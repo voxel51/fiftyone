@@ -203,6 +203,16 @@ export const selectedSampleObjects = atom<Map<string, Sample>>({
   default: new Map(),
 });
 
+export const altSelectedSamples = atom<Set<string>>({
+  key: "altSelectedSamples",
+  default: new Set<string>(),
+});
+
+export const altSelectedSampleObjects = atom<Map<string, Sample>>({
+  key: "altSelectedSampleObjects",
+  default: new Map(),
+});
+
 // only used in extended view, for tagging purpose
 export const hiddenLabels = atom<State.SelectedLabelMap>({
   key: "hiddenLabels",

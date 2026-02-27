@@ -1,6 +1,8 @@
 import type { ID } from "@fiftyone/spotlight";
 import type { Sample } from "@fiftyone/state";
 import {
+  altSelectedSampleObjects,
+  altSelectedSamples,
   selectedSampleObjects,
   selectedSamples,
   useSetSelected,
@@ -11,6 +13,7 @@ import type { Records } from "./useRecords";
 
 export interface SelectThumbnailData {
   shiftKey: boolean;
+  altKey: boolean;
   id: string;
   sample: Sample;
   symbol: ID;
@@ -106,36 +109,86 @@ export default (records: Records) => {
   ref.current = useRecoilCallback(
     ({ set, snapshot }) =>
       async (params: SelectThumbnailData) => {
-        const { shiftKey, id: sampleId, sample, symbol } = params;
-        const current = new Set(await snapshot.getPromise(selectedSamples));
-        let selected = new Set(current);
-        const selectedObjects = new Map(
-          await snapshot.getPromise(selectedSampleObjects)
-        );
+        const { shiftKey, altKey, id: sampleId, sample, symbol } = params;
 
-        const index = get(records, symbol.description);
-        if (shiftKey && !selected.has(sampleId)) {
-          selected = new Set([
-            ...selected,
-            ...addRange(index, selected, records),
-          ]);
-        } else if (shiftKey) {
-          selected = removeRange(index, selected, records);
+        if (altKey) {
+          // Alt-click: toggle alt-selection (negative selection)
+          const currentAlt = new Set(
+            await snapshot.getPromise(altSelectedSamples)
+          );
+          const altObjects = new Map(
+            await snapshot.getPromise(altSelectedSampleObjects)
+          );
+
+          if (currentAlt.has(sampleId)) {
+            currentAlt.delete(sampleId);
+            altObjects.delete(sampleId);
+          } else {
+            currentAlt.add(sampleId);
+            altObjects.set(sampleId, sample);
+          }
+
+          // Mutual exclusivity: remove from positive selection
+          const current = new Set(await snapshot.getPromise(selectedSamples));
+          const selectedObjects = new Map(
+            await snapshot.getPromise(selectedSampleObjects)
+          );
+          if (current.has(sampleId)) {
+            current.delete(sampleId);
+            selectedObjects.delete(sampleId);
+            set(selectedSamples, current);
+            set(selectedSampleObjects, selectedObjects);
+            setSelected(current);
+          }
+
+          set(altSelectedSamples, currentAlt);
+          set(altSelectedSampleObjects, altObjects);
         } else {
-          selected.has(sampleId)
-            ? selected.delete(sampleId)
-            : selected.add(sampleId);
-        }
+          // Normal click: existing positive selection logic
+          const current = new Set(await snapshot.getPromise(selectedSamples));
+          let selected = new Set(current);
+          const selectedObjects = new Map(
+            await snapshot.getPromise(selectedSampleObjects)
+          );
 
-        if (selectedObjects.has(sampleId)) {
-          selectedObjects.delete(sampleId);
-        } else {
-          selectedObjects.set(sampleId, sample);
-        }
+          const index = get(records, symbol.description);
+          if (shiftKey && !selected.has(sampleId)) {
+            selected = new Set([
+              ...selected,
+              ...addRange(index, selected, records),
+            ]);
+          } else if (shiftKey) {
+            selected = removeRange(index, selected, records);
+          } else {
+            selected.has(sampleId)
+              ? selected.delete(sampleId)
+              : selected.add(sampleId);
+          }
 
-        set(selectedSamples, selected);
-        set(selectedSampleObjects, selectedObjects);
-        setSelected(new Set(selected));
+          if (selectedObjects.has(sampleId)) {
+            selectedObjects.delete(sampleId);
+          } else {
+            selectedObjects.set(sampleId, sample);
+          }
+
+          // Mutual exclusivity: remove from alt-selection
+          const currentAlt = new Set(
+            await snapshot.getPromise(altSelectedSamples)
+          );
+          const altObjects = new Map(
+            await snapshot.getPromise(altSelectedSampleObjects)
+          );
+          if (currentAlt.has(sampleId)) {
+            currentAlt.delete(sampleId);
+            altObjects.delete(sampleId);
+            set(altSelectedSamples, currentAlt);
+            set(altSelectedSampleObjects, altObjects);
+          }
+
+          set(selectedSamples, selected);
+          set(selectedSampleObjects, selectedObjects);
+          setSelected(new Set(selected));
+        }
       },
     [records, setSelected]
   );

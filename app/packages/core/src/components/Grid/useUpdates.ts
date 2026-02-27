@@ -74,6 +74,7 @@ const useItemUpdater = (
     modal: false,
   });
   const selected = useRecoilValue(fos.selectedSamples);
+  const altSelected = useRecoilValue(fos.altSelectedSamples);
 
   return useCallback(
     (fontSize: number, lastColoringKey: string | null) => {
@@ -120,6 +121,7 @@ const useItemUpdater = (
             ...options,
             fontSize,
             selected: selected.has(id.description),
+            altSelected: altSelected.has(id.description),
           },
           shouldHardReload
         );
@@ -133,7 +135,7 @@ const useItemUpdater = (
         entry.updateOptions({}, shouldHardReload);
       };
     },
-    [cache, getNewFields, options, selected]
+    [cache, getNewFields, options, selected, altSelected]
   );
 };
 

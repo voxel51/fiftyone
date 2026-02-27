@@ -100,6 +100,7 @@ const globalContextSelector = selector({
     const extended = get(fos.extendedStages);
     const filters = get(fos.filters);
     const selectedSamples = get(fos.selectedSamples);
+    const altSelectedSamples = get(fos.altSelectedSamples);
     const selectedLabels = get(fos.selectedLabels);
     const viewName = get(fos.viewName);
     const extendedSelection = get(fos.extendedSelection);
@@ -115,6 +116,7 @@ const globalContextSelector = selector({
       extended,
       filters,
       selectedSamples,
+      altSelectedSamples,
       selectedLabels,
       viewName,
       extendedSelection,
@@ -158,6 +160,7 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     extended,
     filters,
     selectedSamples,
+    altSelectedSamples,
     params,
     selectedLabels,
     viewName,
@@ -180,6 +183,7 @@ const useExecutionContext = (operatorName, hooks = {}) => {
         extended,
         filters,
         selectedSamples,
+        altSelectedSamples,
         selectedLabels,
         currentSample,
         viewName,
@@ -201,6 +205,7 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     extended,
     filters,
     selectedSamples,
+    altSelectedSamples,
     selectedLabels,
     hooks,
     viewName,
