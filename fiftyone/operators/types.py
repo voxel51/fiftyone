@@ -9,6 +9,7 @@ import types
 
 from ._types.pipeline import Pipeline, PipelineRunInfo, PipelineStage
 from ._types.types import *
+from ._types.upload import UploadView
 
 # This enables Sphinx refs to directly use paths imported here
 __all__ = [

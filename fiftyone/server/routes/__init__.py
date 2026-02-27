@@ -28,8 +28,7 @@ from .tag import Tag
 from .tagging import Tagging
 from .values import Values
 
-# TODO: uncomment in integration PR to enable file upload/delete routes
-# from .files import FileDelete, FileUpload
+from .files import FileDelete, FileUpload
 
 # Starlette routes should not be created here. Please leave as tuple definitions
 routes = (
@@ -54,8 +53,7 @@ routes = (
         ("/tagging", Tagging),
         ("/values", Values),
         ("/get-similar-labels-frames", GetSimilarLabelsFrameCollection),
-        # TODO: uncomment in integration PR to enable file upload/delete routes
-        # ("/files/upload", FileUpload),
-        # ("/files", FileDelete),
+        ("/files/upload", FileUpload),
+        ("/files", FileDelete),
     ]
 )

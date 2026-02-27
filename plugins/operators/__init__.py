@@ -21,6 +21,7 @@ import fiftyone.operators.types as types
 from fiftyone.operators import execution_cache
 import fiftyone.utils.data as foud
 from fiftyone.core.odm.workspace import default_workspace_factory
+from .upload import UploadFiles
 
 from .group_by import GroupBy
 from .model_evaluation import ConfigureScenario, ConfigureScenarioPlotResolver
@@ -3483,3 +3484,6 @@ def register(p):
     p.register(SetActiveLabelSchemas)
     p.register(UpdateLabelSchema)
     p.register(ValidateLabelSchemas)
+
+    # upload
+    p.register(UploadFiles)

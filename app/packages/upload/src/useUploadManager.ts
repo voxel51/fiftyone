@@ -44,12 +44,11 @@ export function useUploadManager({
   const transportRef = useRef(transport ?? createFetchTransport());
   if (transport) transportRef.current = transport;
 
+  const DEFAULT_MAX_CONCURRENT = 6;
+
   // Stable limiter — recreated only when maxConcurrent changes
-  const limiter: ConcurrencyLimiter | undefined = useMemo(
-    () =>
-      maxConcurrent != null
-        ? createConcurrencyLimiter(maxConcurrent)
-        : undefined,
+  const limiter: ConcurrencyLimiter = useMemo(
+    () => createConcurrencyLimiter(maxConcurrent ?? DEFAULT_MAX_CONCURRENT),
     [maxConcurrent]
   );
 
@@ -65,7 +64,6 @@ export function useUploadManager({
       const url = buildUploadUrl(action, item.file);
       const controller = new AbortController();
       abortControllersRef.current.set(item.id, controller);
-      updateFile(item.id, { status: "uploading", progress: 0 });
 
       try {
         const { path } = await transportRef.current.post(url, item.file, {
@@ -99,17 +97,26 @@ export function useUploadManager({
   const upload = useCallback(
     async (action: UploadAction) => {
       lastActionRef.current = action;
-      // Resolve headers once — avoids async yield when headers is undefined
+      const toUpload = filesRef.current.filter((f) => f.status === "selected");
+      if (toUpload.length === 0) return;
+
+      // Mark all selected files as "uploading" synchronously before any async
+      // work. This prevents the autoUpload effect from re-queuing the same
+      // files when the state update triggers a re-render.
+      setFiles((prev) =>
+        prev.map((f) =>
+          f.status === "selected"
+            ? { ...f, status: "uploading" as const, progress: 0 }
+            : f
+        )
+      );
+
       const resolved =
         headers != null ? await resolveHeaders(headers) : undefined;
-      const toUpload = filesRef.current.filter((f) => f.status === "selected");
       const run = (item: FileUploadItem) => uploadOne(item, action, resolved);
-      const tasks = limiter
-        ? toUpload.map((item) => limiter(() => run(item)))
-        : toUpload.map(run);
-      await Promise.all(tasks);
+      await Promise.all(toUpload.map((item) => limiter(() => run(item))));
     },
-    [filesRef, uploadOne, limiter, headers]
+    [filesRef, setFiles, uploadOne, limiter, headers]
   );
 
   const cancel = useCallback(
@@ -167,5 +174,34 @@ export function useUploadManager({
     );
   }, [filesRef, setFiles, headers]);
 
-  return { upload, cancel, retry, cancelAll };
+  /**
+   * Aborts every in-flight upload, sends DELETE requests for all
+   * successfully uploaded files, and clears the file list.
+   *
+   * Unlike `cancelAll` (which is identical in behaviour today), this
+   * method is intended to be the user-facing "destroy everything" action,
+   * while `cancelAll` is the "stop all pending work" action.
+   */
+  const deleteAll = useCallback(async () => {
+    for (const c of abortControllersRef.current.values()) c.abort();
+    abortControllersRef.current.clear();
+
+    const snapshot = filesRef.current;
+    setFiles([]);
+
+    const resolved =
+      headers != null ? await resolveHeaders(headers) : undefined;
+
+    const toDelete = snapshot.filter((f) => f.remotePath);
+    await Promise.allSettled(
+      toDelete.map((f) =>
+        transportRef.current.delete(
+          buildDeleteUrl(lastActionRef.current?.endpoint, f.remotePath!),
+          { headers: resolved }
+        )
+      )
+    );
+  }, [filesRef, setFiles, headers]);
+
+  return { upload, cancel, retry, cancelAll, deleteAll };
 }

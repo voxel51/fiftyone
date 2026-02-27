@@ -1,5 +1,5 @@
 import { renderHook, act } from "@testing-library/react";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { useFileUpload } from "../useFileUpload";
 import {
   createFile,
@@ -9,6 +9,26 @@ import {
 } from "./helpers";
 
 setupFetchMock();
+
+// Progress updates are batched via requestAnimationFrame. In jsdom the
+// real RAF never fires, so we replace it with a synchronous flush.
+let rafCallbacks: Array<FrameRequestCallback> = [];
+beforeEach(() => {
+  rafCallbacks = [];
+  vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
+    rafCallbacks.push(cb);
+    return rafCallbacks.length;
+  });
+  vi.stubGlobal("cancelAnimationFrame", vi.fn());
+});
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+function flushRAF() {
+  const cbs = rafCallbacks.splice(0);
+  cbs.forEach((cb) => cb(performance.now()));
+}
 
 describe("upload — progress", () => {
   it("starts progress at 0 when upload begins", async () => {
@@ -65,11 +85,13 @@ describe("upload — progress", () => {
 
     act(() => {
       triggerProgress(50);
+      flushRAF();
     });
     expect(result.current.files[0].progress).toBe(50);
 
     act(() => {
       triggerProgress(90);
+      flushRAF();
     });
     expect(result.current.files[0].progress).toBe(90);
 
@@ -115,6 +137,7 @@ describe("upload — progress", () => {
     act(() => {
       triggers[0](30);
       triggers[1](70);
+      flushRAF();
     });
 
     expect(result.current.files[0].progress).toBe(30);

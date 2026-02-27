@@ -36,3 +36,11 @@ export {
   validateFiles,
 } from "./utils";
 export type { ConcurrencyLimiter } from "./utils";
+export {
+  createThumbnail,
+  queueThumbnail,
+  isImageFile,
+  isVideoFile,
+  scaledDimensions,
+} from "./thumbnail";
+export type { ThumbnailOptions } from "./thumbnail";
