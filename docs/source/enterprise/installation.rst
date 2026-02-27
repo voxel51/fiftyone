@@ -564,10 +564,12 @@ available globally to all users. Any user can configure credentials for their
 own use, while only admins can configure group specific or global credentials.
 
 A managed credential can optionally be restricted to a specific list of bucket(s):
--   If one or more buckets are provided, the credentials are
+
+*   If one or more buckets are provided, the credentials are
     **bucket-specific credentials** that will only be used to read/write media
     within the specified bucket(s)
--   If no buckets are provided, the credentials are **default credentials**
+
+*   If no buckets are provided, the credentials are **default credentials**
     that will be used whenever trying to read/write any media for the provider
     that does not belong to a bucket with bucket-specific credentials
 
@@ -585,8 +587,9 @@ A managed credential can optionally be restricted to a specific list of bucket(s
 
 Managed credentials are considered unique based on the scope (user, group,
 or global), cloud provider, and the optional bucket(s) they are associated
-with. The default order that managed credentials are used with media
-requests is as follows:
+with. The system will look for credentials in the following default order,
+stopping once the first credential is found:
+
 1.  If the current user has any bucket-specific credentials that match the
     bucket of the media being accessed, those credentials will be used
 2.  If the current user belongs to any groups that have bucket-specific
@@ -653,17 +656,26 @@ Cloud Credentials Origin Preference
 ___________________________________
 If credentials are configured both on the local machine and remotely via the
 Enterprise server, the behavior is for the Enterprise SDK to use the first
-matching set of credentials found. If Enterprise SDK is being used in an Internal
-Service (APP server, delegated operator, etc.) the default is to prefer
-managed credentials returned by the server, otherwise the default is to prefer
-credentials configured on the local machine. This can be manually
-controlled by setting the  `FIFTYONE_CLOUD_CREDS_ORIGIN_PREFERENCE` environment
-variable on the machine to either `local` or `remote`. Regardless of the
-preference, credentials from both sources will be attempted to be fetched and
-used if possible, so if credentials from the preferred source have no matches for
-a given request, credentials from the other source will be attempted before
-giving up.
+matching set of credentials found. 
 
+*  When running the Enterprise SDK locally, the default is to use local
+   credentials, if any exist, and otherwise to use the credentials returned by
+   the Enterprise server.
+
+*  However, if the Enterprise SDK is being used in an Internal Service (App
+   server, delegated operator, etc.) the default is to prefer managed
+   credentials returned by the server.
+
+This can be manually controlled by setting the
+`FIFTYONE_CLOUD_CREDS_ORIGIN_PREFERENCE` environment variable on the machine to
+either `local` or `remote`. Regardless of the preference, credentials from both
+sources will be considered if the default location has none that match. So if
+credentials from the preferred source have no matches for a given request,
+credentials from the other source will be attempted before giving up.
+
+
+Cloud Credentials Local Download
+___________________________________
 
 By default, when using the Enterprise SDK with an API connection, any
 credential for a given user may be fetched to the local machine. This behavior
