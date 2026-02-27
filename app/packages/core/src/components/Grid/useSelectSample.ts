@@ -144,6 +144,21 @@ export default (records: Records) => {
           set(altSelectedSamples, currentAlt);
           set(altSelectedSampleObjects, altObjects);
         } else {
+          // If sample is alt-selected, just un-alt-select it (don't add to positive selection)
+          const currentAlt = new Set(
+            await snapshot.getPromise(altSelectedSamples)
+          );
+          if (currentAlt.has(sampleId)) {
+            currentAlt.delete(sampleId);
+            const altObjects = new Map(
+              await snapshot.getPromise(altSelectedSampleObjects)
+            );
+            altObjects.delete(sampleId);
+            set(altSelectedSamples, currentAlt);
+            set(altSelectedSampleObjects, altObjects);
+            return;
+          }
+
           // Normal click: existing positive selection logic
           const current = new Set(await snapshot.getPromise(selectedSamples));
           let selected = new Set(current);
@@ -169,20 +184,6 @@ export default (records: Records) => {
             selectedObjects.delete(sampleId);
           } else {
             selectedObjects.set(sampleId, sample);
-          }
-
-          // Mutual exclusivity: remove from alt-selection
-          const currentAlt = new Set(
-            await snapshot.getPromise(altSelectedSamples)
-          );
-          const altObjects = new Map(
-            await snapshot.getPromise(altSelectedSampleObjects)
-          );
-          if (currentAlt.has(sampleId)) {
-            currentAlt.delete(sampleId);
-            altObjects.delete(sampleId);
-            set(altSelectedSamples, currentAlt);
-            set(altSelectedSampleObjects, altObjects);
           }
 
           set(selectedSamples, selected);
