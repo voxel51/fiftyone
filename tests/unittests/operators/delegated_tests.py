@@ -11,7 +11,6 @@ import copy
 import logging
 import logging.handlers
 import multiprocessing
-import sys
 import time
 import unittest
 from unittest import mock
@@ -39,10 +38,7 @@ from fiftyone.operators.executor import (
     ExecutionRunState,
     PipelineExecutionContext,
 )
-from fiftyone.operators.delegated import (
-    _capture_stdout_to_logging,
-    _configure_child_logging,
-)
+from fiftyone.operators.delegated import _capture_stdout_to_logging
 from fiftyone.operators.operator import Operator, OperatorConfig
 from fiftyone.operators.types import Pipeline, PipelineRunInfo, PipelineStage
 
@@ -147,6 +143,43 @@ class MockProgressiveOperator(MockGeneratorOperator):
             ctx.set_progress(x / 10, f"progress {x}")
             yield {"executed": True}
             time.sleep(0.1)
+
+
+class MockLoggingOperator(Operator):
+    """Operator that exercises all logging paths."""
+
+    result = {"executed": True}
+
+    @property
+    def config(self):
+        return OperatorConfig(
+            name="mock_logging_operator",
+            label="Mock Logging Operator",
+            disable_schema_validation=True,
+        )
+
+    def resolve_input(self, *args, **kwargs):
+        return
+
+    def resolve_delegation(self, ctx) -> bool:
+        return True
+
+    def execute(self, ctx):
+        import fiftyone as fo
+
+        op_logger = logging.getLogger("fiftyone.test_operator")
+        op_logger.info("operator info")
+        op_logger.debug("operator debug")
+        op_logger.error("operator error")
+        try:
+            raise ValueError("operator exception")
+        except ValueError:
+            op_logger.exception("operator caught exception")
+        print("operator print")
+        with fo.ProgressBar(total=3, quiet=False) as pb:
+            for _ in pb(range(3)):
+                pass
+        return self.result
 
 
 class MockOperatorWithIO(MockOperator):
@@ -592,6 +625,203 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertIsNone(doc.failed_at)
 
         self.assertEqual(doc.result.result, {"executed": True})
+
+    @patch("fiftyone.core.odm.load_dataset")
+    def test_execute_operation_captures_all_logs(
+        self, mock_load_dataset, mock_get_operator
+    ):
+        mock_load_dataset.return_value = MockDataset()
+        mock_get_operator.return_value = MockLoggingOperator()
+
+        test_cases = [
+            (logging.DEBUG, {"debug", "info", "error", "exception"}),
+            (logging.INFO, {"info", "error", "exception"}),
+            (logging.WARNING, {"error", "exception"}),
+        ]
+
+        for fo_level, expected_tags in test_cases:
+            with self.subTest(fo_level=logging.getLevelName(fo_level)):
+                handler = _RecordingHandler()
+                fo_logger = logging.getLogger("fiftyone")
+                root_logger = logging.getLogger()
+                fo_logger.addHandler(handler)
+                root_logger.addHandler(handler)
+                orig_fo_level = fo_logger.level
+                orig_root_level = root_logger.level
+                fo_logger.setLevel(fo_level)
+                root_logger.setLevel(logging.DEBUG)
+
+                try:
+                    doc = self.svc.queue_operation(
+                        operator=f"{TEST_DO_PREFIX}/operator/logging_op",
+                        label=mock_get_operator.return_value.config.label,
+                        delegation_target=f"test_target_logging_{fo_level}",
+                        context=ExecutionContext(
+                            request_params={
+                                "foo": "bar",
+                                "dataset_id": str(ObjectId()),
+                            }
+                        ),
+                    )
+                    self.docs_to_delete.append(doc)
+
+                    results = self.svc.execute_queued_operations(
+                        delegation_target=f"test_target_logging_{fo_level}",
+                        monitor=False,
+                    )
+                    self.assertEqual(len(results), 1)
+                    self.assertIsNone(results[0].error)
+                finally:
+                    fo_logger.removeHandler(handler)
+                    root_logger.removeHandler(handler)
+                    fo_logger.setLevel(orig_fo_level)
+                    root_logger.setLevel(orig_root_level)
+
+                messages = [r.getMessage() for r in handler.records]
+                level_name = logging.getLevelName(fo_level)
+
+                # Logger calls at or above the level must be present
+                if "debug" in expected_tags:
+                    self.assertIn("operator debug", messages)
+                else:
+                    self.assertNotIn("operator debug", messages)
+
+                if "info" in expected_tags:
+                    self.assertIn("operator info", messages)
+                else:
+                    self.assertNotIn("operator info", messages)
+
+                if "error" in expected_tags:
+                    self.assertIn("operator error", messages)
+
+                if "exception" in expected_tags:
+                    exc_records = [
+                        r
+                        for r in handler.records
+                        if r.exc_info
+                        and "operator caught exception" in r.getMessage()
+                    ]
+                    self.assertTrue(len(exc_records) >= 1)
+
+                # print() is tee'd at INFO, so filtered at WARNING+
+                has_print = any("operator print" in m for m in messages)
+                if fo_level <= logging.INFO:
+                    self.assertTrue(
+                        has_print,
+                        f"print() not captured at {level_name}: {messages}",
+                    )
+                else:
+                    self.assertFalse(
+                        has_print,
+                        f"print() should be filtered at {level_name}",
+                    )
+
+                # progress bar 100% via eta logger (always captured
+                # since root logger stays at DEBUG)
+                self.assertTrue(
+                    any("100%" in m for m in messages),
+                    f"No progress bar at {level_name}: {messages}",
+                )
+
+    def test_execute_operation_multi_proc_forwards_child_logs(
+        self, mock_get_operator
+    ):
+        """_execute_operation_multi_proc forwards child process log
+        records through QueueListener to the fiftyone logger's handlers.
+
+        Uses a real multiprocessing.Queue but a mock child process that
+        puts records on the queue, since spawned processes don't inherit
+        test mocks for operator registration."""
+        doc = self.svc.queue_operation(
+            operator=f"{TEST_DO_PREFIX}/operator/mp_log_fwd",
+            delegation_target="test_mp_log_fwd",
+            context=ExecutionContext(
+                request_params={"dataset_id": str(ObjectId())}
+            ),
+        )
+        self.docs_to_delete.append(doc)
+
+        handler = _RecordingHandler()
+        fo_logger = logging.getLogger("fiftyone")
+        fo_logger.addHandler(handler)
+        orig_fo_level = fo_logger.level
+        fo_logger.setLevel(logging.DEBUG)
+
+        real_queue = multiprocessing.Queue()
+
+        # Records the child would put on the queue
+        child_records = [
+            logging.LogRecord(
+                "fiftyone.child", logging.INFO, "", 0, "child info", (), None
+            ),
+            logging.LogRecord(
+                "fiftyone.child", logging.DEBUG, "", 0, "child debug", (), None
+            ),
+            logging.LogRecord(
+                "fiftyone.child", logging.ERROR, "", 0, "child error", (), None
+            ),
+            logging.LogRecord(
+                "fiftyone.child.tee",
+                logging.INFO,
+                "",
+                0,
+                "child print output",
+                (),
+                None,
+            ),
+        ]
+
+        def fake_start():
+            """Simulate the child writing records to the queue."""
+            for rec in child_records:
+                real_queue.put(rec)
+
+        mock_process = mock.MagicMock()
+        mock_process.is_alive.return_value = False
+
+        mock_context = mock.MagicMock()
+        mock_context.Queue.return_value = real_queue
+        mock_context.Process.return_value = mock_process
+        mock_process.start.side_effect = fake_start
+
+        completed_doc = copy.deepcopy(doc)
+        completed_doc.run_state = ExecutionRunState.COMPLETED
+        completed_doc.result = ExecutionResult(result={"executed": True})
+
+        try:
+            with patch(
+                "multiprocessing.get_context", return_value=mock_context
+            ), patch.object(self.svc, "get", return_value=completed_doc):
+                result = self.svc.execute_operation(
+                    operation=doc,
+                    log=False,
+                    monitor=True,
+                    check_interval_seconds=1,
+                )
+        finally:
+            fo_logger.removeHandler(handler)
+            fo_logger.setLevel(orig_fo_level)
+
+        self.assertIsNotNone(result)
+        messages = [r.getMessage() for r in handler.records]
+
+        # All records from the child must have been forwarded
+        self.assertTrue(
+            any("child info" in m for m in messages),
+            f"child info not forwarded: {messages}",
+        )
+        self.assertTrue(
+            any("child debug" in m for m in messages),
+            f"child debug not forwarded: {messages}",
+        )
+        self.assertTrue(
+            any("child error" in m for m in messages),
+            f"child error not forwarded: {messages}",
+        )
+        self.assertTrue(
+            any("child print output" in m for m in messages),
+            f"child print not forwarded: {messages}",
+        )
 
     @patch("fiftyone.core.odm.load_dataset")
     def test_generator_run_success(self, mock_load_dataset, mock_get_operator):
@@ -1046,7 +1276,9 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             # This assertion will now pass
             mock_ping.assert_called_once_with(doc.id)
 
-        mock_psutil_process.assert_called_once_with(mock_process.pid)
+        # psutil.Process may be called more than once (metrics collection
+        # + termination), but it must always be called with the child PID.
+        mock_psutil_process.assert_any_call(mock_process.pid)
         mock_psutil_parent.children.assert_called_once_with(recursive=True)
         mock_psutil_parent.terminate.assert_called_once()
 
@@ -2505,8 +2737,8 @@ class TestPipelineRequestParamsOverrides(unittest.TestCase):
         )
 
 
-def _child_process_progress_worker(log_queue):
-    """Worker that runs a fo.ProgressBar in a spawned child process."""
+def _child_process_logging_worker(log_queue):
+    """Worker that exercises all logging paths in a spawned child."""
     import fiftyone as fo
     from fiftyone.operators.delegated import (
         _capture_stdout_to_logging,
@@ -2514,8 +2746,17 @@ def _child_process_progress_worker(log_queue):
     )
 
     _configure_child_logging(log_queue)
+    child_logger = logging.getLogger(__name__)
+
     with _capture_stdout_to_logging():
-        print("hello from child process")
+        child_logger.info("child info message")
+        child_logger.debug("child debug message")
+        child_logger.error("child error message")
+        try:
+            raise ValueError("child exception")
+        except ValueError:
+            child_logger.exception("child caught exception")
+        print("child print output")
         with fo.ProgressBar(total=3, quiet=False) as pb:
             for _ in pb(range(3)):
                 pass
@@ -2533,45 +2774,109 @@ class _RecordingHandler(logging.Handler):
 
 
 class TestCaptureStdoutToLogging(unittest.TestCase):
-    """Tests for _TeeStream and _capture_stdout_to_logging."""
+    """Tests for _TeeStream and _capture_stdout_to_logging.
+
+    The recording handler is attached to the Python root logger so it
+    captures records from all loggers (fiftyone, eta, etc.), matching
+    what a real file/queue handler would see in production.
+    """
 
     def setUp(self):
         self.handler = _RecordingHandler()
+        # Add to fiftyone logger so the tee discovers it, and to the
+        # root logger so eta/third-party output is also captured.
         self.fo_logger = logging.getLogger("fiftyone")
+        self.root_logger = logging.getLogger()
         self.fo_logger.addHandler(self.handler)
-        self.fo_logger.setLevel(logging.DEBUG)
+        self.root_logger.addHandler(self.handler)
+        self.orig_root_level = self.root_logger.level
+        self.root_logger.setLevel(logging.DEBUG)
 
     def tearDown(self):
         self.fo_logger.removeHandler(self.handler)
+        self.root_logger.removeHandler(self.handler)
+        self.root_logger.setLevel(self.orig_root_level)
 
     def _messages(self):
         return [r.getMessage() for r in self.handler.records]
 
-    def test_progress_bar_captured(self):
+    def test_all_output_captured_respects_level(self):
+        """logger.info/debug/error, exception, print(), and
+        fo.ProgressBar output are all captured, and the fiftyone
+        logging level controls which records reach the logs."""
         import fiftyone as fo
 
-        with _capture_stdout_to_logging():
-            with fo.ProgressBar(total=5, quiet=False) as pb:
-                for _ in pb(range(5)):
-                    pass
-
-        messages = self._messages()
-        has_progress = any("100%" in m for m in messages)
-        self.assertTrue(
-            has_progress, f"No progress bar output found: {messages}"
-        )
-
-    def test_stderr_captured_at_error_level(self):
-        with _capture_stdout_to_logging():
-            sys.stderr.write("error output\n")
-
-        error_records = [
-            r for r in self.handler.records if r.levelno == logging.ERROR
+        test_cases = [
+            (logging.DEBUG, {"debug", "info", "error", "exception"}),
+            (logging.INFO, {"info", "error", "exception"}),
+            (logging.WARNING, {"error", "exception"}),
         ]
-        self.assertTrue(len(error_records) >= 1)
-        self.assertEqual(error_records[0].getMessage(), "error output")
 
-    def test_child_process_captured(self):
+        for fo_level, expected_tags in test_cases:
+            with self.subTest(fo_level=logging.getLevelName(fo_level)):
+                self.handler.records.clear()
+                self.fo_logger.setLevel(fo_level)
+
+                test_logger = logging.getLogger("fiftyone.test")
+
+                with _capture_stdout_to_logging():
+                    test_logger.info("info message")
+                    test_logger.debug("debug message")
+                    test_logger.error("error message")
+                    try:
+                        raise ValueError("test exception")
+                    except ValueError:
+                        test_logger.exception("caught exception")
+                    print("print output")
+                    with fo.ProgressBar(total=5, quiet=False) as pb:
+                        for _ in pb(range(5)):
+                            pass
+
+                messages = self._messages()
+
+                # Logger calls at or above the level must be present
+                if "debug" in expected_tags:
+                    self.assertIn("debug message", messages)
+                else:
+                    self.assertNotIn("debug message", messages)
+
+                if "info" in expected_tags:
+                    self.assertIn("info message", messages)
+                else:
+                    self.assertNotIn("info message", messages)
+
+                if "error" in expected_tags:
+                    self.assertIn("error message", messages)
+
+                if "exception" in expected_tags:
+                    exc_records = [
+                        r for r in self.handler.records if r.exc_info
+                    ]
+                    self.assertTrue(len(exc_records) >= 1)
+
+                # print() is tee'd at INFO level, so it respects the
+                # fiftyone logging level like any other INFO record.
+                has_print = any("print output" in m for m in messages)
+                if fo_level <= logging.INFO:
+                    self.assertTrue(
+                        has_print,
+                        f"print() not captured at {logging.getLevelName(fo_level)}",
+                    )
+                else:
+                    self.assertFalse(
+                        has_print,
+                        f"print() should be filtered at {logging.getLevelName(fo_level)}",
+                    )
+
+                # progress bar 100% via eta logger (always captured
+                # since root logger stays at DEBUG)
+                self.assertTrue(
+                    any("100%" in m for m in messages),
+                    f"No progress bar at {logging.getLevelName(fo_level)}: {messages}",
+                )
+
+    def test_child_process_all_output_captured(self):
+        """All output types from a spawned child process are captured."""
         ctx = multiprocessing.get_context("spawn")
         log_queue = ctx.Queue()
 
@@ -2580,7 +2885,7 @@ class TestCaptureStdoutToLogging(unittest.TestCase):
 
         try:
             proc = ctx.Process(
-                target=_child_process_progress_worker,
+                target=_child_process_logging_worker,
                 args=(log_queue,),
             )
             proc.start()
@@ -2589,9 +2894,21 @@ class TestCaptureStdoutToLogging(unittest.TestCase):
             listener.stop()
 
         messages = self._messages()
-        self.assertIn("hello from child process", messages)
-        has_progress = any("100%" in m for m in messages)
+
+        # logger calls from child
+        self.assertTrue(any("child info message" in m for m in messages))
+        self.assertTrue(any("child debug message" in m for m in messages))
+        self.assertTrue(any("child error message" in m for m in messages))
+        self.assertTrue(any("child caught exception" in m for m in messages))
+
+        # print() from child via tee + QueueHandler
         self.assertTrue(
-            has_progress,
-            f"No progress bar output from child process: {messages}",
+            any("child print output" in m for m in messages),
+            f"print() from child not captured: {messages}",
+        )
+
+        # progress bar from child
+        self.assertTrue(
+            any("100%" in m for m in messages),
+            f"No progress bar completion from child: {messages}",
         )

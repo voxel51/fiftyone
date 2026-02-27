@@ -99,6 +99,7 @@ def _capture_stdout_to_logging():
     output is already handled by writing to the original stream directly.
     """
     tee_logger = logging.getLogger("fiftyone.delegated.stdout")
+    orig_propagate = tee_logger.propagate
     tee_logger.propagate = False
     tee_logger.handlers.clear()
 
@@ -137,7 +138,7 @@ def _capture_stdout_to_logging():
         except Exception:
             pass
         tee_logger.handlers.clear()
-        tee_logger.propagate = True
+        tee_logger.propagate = orig_propagate
 
 
 def _format_system_metrics(child_pid=None):
@@ -197,13 +198,28 @@ def _configure_child_logging(queue):
     """Configures logging in a child process to send logs to a queue.
 
     This function should be called at the start of the target function
-    for any new process. It clears all existing handlers from the root
-    logger and adds a QueueHandler.
+    for any new process. It sets up the Python root logger with a
+    QueueHandler so that ALL loggers (fiftyone, eta, etc.) forward
+    records to the parent process.
+
+    The ``fiftyone`` logger also gets a direct QueueHandler (with
+    propagation disabled) so that ``_capture_stdout_to_logging`` can
+    discover it when copying non-console handlers.
     """
-    root_logger = logging.getLogger("fiftyone")
-    root_logger.handlers.clear()
     queue_handler = logging.handlers.QueueHandler(queue)
-    root_logger.addHandler(queue_handler)
+
+    # Root Python logger — catches eta, third-party, etc.
+    root = logging.getLogger()
+    root.handlers.clear()
+    root.addHandler(queue_handler)
+    root.setLevel(logging.DEBUG)
+
+    # fiftyone logger — direct handler for tee discovery, no propagation
+    # to avoid duplicate records through the root handler above.
+    fo_logger = logging.getLogger("fiftyone")
+    fo_logger.handlers.clear()
+    fo_logger.addHandler(queue_handler)
+    fo_logger.propagate = False
 
 
 def _execute_operator_in_child_process(
@@ -835,7 +851,7 @@ class DelegatedOperationService(object):
                 "delegated_operation_id": str(operation.id),
                 "operator_uri": operation.operator,
             }
-        ):
+        ), _capture_stdout_to_logging():
             try:
                 succeeded = (
                     self.set_running(
@@ -887,47 +903,46 @@ class DelegatedOperationService(object):
     def _execute_operation_sync(self, operation, log=False):
         """Executes an operation synchronously in the current process."""
         updated_doc = None
-        with _capture_stdout_to_logging():
-            try:
-                result = asyncio.run(self._execute_operator(operation))
-                result.raise_exceptions()
-                updated_doc = self.set_completed(
-                    doc_id=operation.id,
-                    result=result,
-                    required_state=ExecutionRunState.RUNNING,
-                )
-                if log:
-                    if updated_doc:
-                        logger.info("Operation %s complete", operation.id)
-                    else:
-                        logger.info(
-                            "Operation %s was not marked as COMPLETED because its state changed externally.",
-                            operation.id,
-                        )
-            except Exception:
-                logger.debug(
-                    "Uncaught exception when executing operator",
-                    exc_info=True,
-                )
-                result = ExecutionResult(error=traceback.format_exc())
-                updated_doc = self.set_failed(
-                    doc_id=operation.id,
-                    result=result,
-                    update_pipeline=operation.parent_id,
-                    required_state=ExecutionRunState.RUNNING,
-                )
-                if log:
-                    if updated_doc:
-                        logger.info(
-                            "Operation %s failed\n%s",
-                            operation.id,
-                            result.error,
-                        )
-                    else:
-                        logger.info(
-                            "Operation %s was not marked as FAILED because its state changed externally.",
-                            operation.id,
-                        )
+        try:
+            result = asyncio.run(self._execute_operator(operation))
+            result.raise_exceptions()
+            updated_doc = self.set_completed(
+                doc_id=operation.id,
+                result=result,
+                required_state=ExecutionRunState.RUNNING,
+            )
+            if log:
+                if updated_doc:
+                    logger.info("Operation %s complete", operation.id)
+                else:
+                    logger.info(
+                        "Operation %s was not marked as COMPLETED because its state changed externally.",
+                        operation.id,
+                    )
+        except Exception:
+            logger.debug(
+                "Uncaught exception when executing operator",
+                exc_info=True,
+            )
+            result = ExecutionResult(error=traceback.format_exc())
+            updated_doc = self.set_failed(
+                doc_id=operation.id,
+                result=result,
+                update_pipeline=operation.parent_id,
+                required_state=ExecutionRunState.RUNNING,
+            )
+            if log:
+                if updated_doc:
+                    logger.info(
+                        "Operation %s failed\n%s",
+                        operation.id,
+                        result.error,
+                    )
+                else:
+                    logger.info(
+                        "Operation %s was not marked as FAILED because its state changed externally.",
+                        operation.id,
+                    )
         if not updated_doc:
             return ExecutionResult(
                 error="Operation state changed externally during execution."
