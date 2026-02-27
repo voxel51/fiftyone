@@ -1009,32 +1009,36 @@ def compute_embeddings(
     else:
         field_mapping = None
 
-    process_video_frames = (
-        samples.media_type == fom.VIDEO and model.media_type == "image"
-    )
+    with contextlib.ExitStack() as context:
+        if hasattr(model, "mode") and model.mode is None:
+            model.mode = samples.media_type
+            context.callback(setattr, model, "mode", None)
 
-    use_data_loader = (
-        isinstance(model, (SupportsGetItem, TorchModelMixin))
-        and not process_video_frames
-    )
-
-    if num_workers is not None and not use_data_loader:
-        logger.warning("Ignoring unsupported `num_workers` parameter")
-
-    if embeddings_field is not None:
-        dataset = samples._dataset
-        embeddings_field, _is_frame_field = dataset._handle_frame_field(
-            embeddings_field
+        process_video_frames = (
+            samples.media_type == fom.VIDEO and model.media_type == "image"
         )
 
-        if dataset.media_type == fom.VIDEO and model.media_type == "image":
-            if not dataset.has_frame_field(embeddings_field):
-                dataset.add_frame_field(embeddings_field, fof.VectorField)
-        else:
-            if not dataset.has_sample_field(embeddings_field):
-                dataset.add_sample_field(embeddings_field, fof.VectorField)
+        use_data_loader = (
+            isinstance(model, (SupportsGetItem, TorchModelMixin))
+            and not process_video_frames
+        )
 
-    with contextlib.ExitStack() as context:
+        if num_workers is not None and not use_data_loader:
+            logger.warning("Ignoring unsupported `num_workers` parameter")
+
+        if embeddings_field is not None:
+            dataset = samples._dataset
+            embeddings_field, _is_frame_field = dataset._handle_frame_field(
+                embeddings_field
+            )
+
+            if dataset.media_type == fom.VIDEO and model.media_type == "image":
+                if not dataset.has_frame_field(embeddings_field):
+                    dataset.add_frame_field(embeddings_field, fof.VectorField)
+            else:
+                if not dataset.has_sample_field(embeddings_field):
+                    dataset.add_sample_field(embeddings_field, fof.VectorField)
+
         if use_data_loader:
             context.enter_context(fou.SetAttributes(model, preprocess=False))
 
@@ -1449,6 +1453,7 @@ def _compute_video_embeddings(
                     raise e
 
                 errors = True
+                embedding = None
                 logger.warning("Sample: %s\nError: %s\n", sample.id, e)
 
             if embeddings_field is not None:

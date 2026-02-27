@@ -8,7 +8,9 @@ Tests for fiftyone/utils/qwen3_vl.py output processor and parsing.
 
 import pytest
 import numpy as np
+from unittest import mock
 
+import fiftyone as fo
 import fiftyone.core.labels as fol
 
 
@@ -396,6 +398,168 @@ class TestQwen3VLEmbeddingMode:
 
             assert isinstance(result, Image.Image)
             assert result.size == (224, height)
+
+
+class TestQwen3VLMode:
+    """Test model mode and media_type behavior"""
+
+    def test_default_mode(self):
+        """Test default config mode is None"""
+        from fiftyone.utils.qwen3_vl import Qwen3VLModelConfig
+
+        config = Qwen3VLModelConfig({})
+        assert config.mode is None
+
+    def test_config_mode_video(self):
+        """Test config accepts mode=video"""
+        from fiftyone.utils.qwen3_vl import Qwen3VLModelConfig
+
+        config = Qwen3VLModelConfig({"mode": "video"})
+        assert config.mode == "video"
+
+    def test_media_type_reflects_mode(self):
+        """Test media_type returns current mode"""
+        from fiftyone.utils.qwen3_vl import Qwen3VLModel
+
+        model = Qwen3VLModel.__new__(Qwen3VLModel)
+        model._mode = "image"
+        assert model.media_type == "image"
+
+        model._mode = "video"
+        assert model.media_type == "video"
+
+    def test_media_type_defaults_image_when_none(self):
+        """Test media_type falls back to image when mode is None"""
+        from fiftyone.utils.qwen3_vl import Qwen3VLModel
+
+        model = Qwen3VLModel.__new__(Qwen3VLModel)
+        model._mode = None
+        assert model.media_type == "image"
+
+    def test_mode_setter(self):
+        """Test mode can be changed at runtime"""
+        from fiftyone.utils.qwen3_vl import Qwen3VLModel
+
+        model = Qwen3VLModel.__new__(Qwen3VLModel)
+        model._mode = "image"
+
+        model.mode = "video"
+        assert model.mode == "video"
+        assert model.media_type == "video"
+
+
+class TestQwen3VLAutoMode:
+    """Test that mode auto-defaults from dataset media type via compute_embeddings"""
+
+    def _make_mock_model(self):
+        import fiftyone.core.models as fom
+
+        class _Mock(fom.Model, fom.EmbeddingsMixin):
+            def __init__(self):
+                self._mode = None
+
+            @property
+            def mode(self):
+                return self._mode
+
+            @mode.setter
+            def mode(self, value):
+                self._mode = value
+
+            @property
+            def media_type(self):
+                return self._mode or "image"
+
+            @property
+            def has_embeddings(self):
+                return True
+
+            def embed(self, arg):
+                return np.random.randn(8).astype(np.float32)
+
+            @property
+            def ragged_batches(self):
+                return True
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                pass
+
+        return _Mock()
+
+    def test_mode_none_video_dataset(self):
+        """mode=None on video dataset -> sample-level embeddings"""
+        model = self._make_mock_model()
+        ds = fo.Dataset()
+        ds.media_type = "video"
+        ds.add_sample(fo.Sample(
+            filepath="/tmp/test_video.mp4"
+        ))
+        mock_reader = mock.MagicMock()
+        with mock.patch(
+            "fiftyone.core.models.etav.FFmpegVideoReader",
+            return_value=mock_reader,
+        ):
+            mock_reader.__enter__ = mock.Mock(return_value=mock_reader)
+            mock_reader.__exit__ = mock.Mock(return_value=False)
+            ds.compute_embeddings(model, embeddings_field="emb")
+        assert ds.has_sample_field("emb")
+        assert not ds.has_frame_field("emb")
+        assert model.mode is None
+        ds.delete()
+
+    def test_explicit_image_not_overridden(self):
+        """mode='image' on video dataset -> frame-level embeddings"""
+        model = self._make_mock_model()
+        model.mode = "image"
+        ds = fo.Dataset()
+        ds.media_type = "video"
+        ds.add_sample(fo.Sample(
+            filepath="/tmp/test_video.mp4"
+        ))
+        mock_reader = mock.MagicMock()
+        mock_reader.__iter__ = mock.Mock(return_value=iter([]))
+        with mock.patch(
+            "fiftyone.core.models.etav.FFmpegVideoReader",
+            return_value=mock_reader,
+        ):
+            mock_reader.__enter__ = mock.Mock(return_value=mock_reader)
+            mock_reader.__exit__ = mock.Mock(return_value=False)
+            ds.compute_embeddings(model, embeddings_field="emb")
+        assert ds.has_frame_field("emb")
+        assert not ds.has_sample_field("emb")
+        assert model.mode == "image"
+        ds.delete()
+
+    def test_mode_none_image_dataset(self):
+        """mode=None on image dataset -> sample-level embeddings"""
+        import PIL.Image
+        import tempfile
+        import os
+
+        model = self._make_mock_model()
+        tmp = os.path.join(tempfile.gettempdir(), "test_auto_mode.png")
+        PIL.Image.new("RGB", (10, 10)).save(tmp)
+        ds = fo.Dataset()
+        ds.add_sample(fo.Sample(filepath=tmp))
+        ds.compute_embeddings(model, embeddings_field="emb")
+        assert ds.has_sample_field("emb")
+        assert model.mode is None
+        ds.delete()
+        os.remove(tmp)
+
+
+class TestQwen3VLVideoConfig:
+    """Test video-specific config defaults"""
+
+    def test_video_fps_default(self):
+        """Test default video_fps is 2.0"""
+        from fiftyone.utils.qwen3_vl import Qwen3VLModelConfig
+
+        config = Qwen3VLModelConfig({})
+        assert config.video_fps == 2.0
 
 
 if __name__ == "__main__":
