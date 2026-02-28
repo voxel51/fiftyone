@@ -40,21 +40,16 @@ def _configure_child_logging(queue):
 
     This function should be called at the start of the target function
     for any new process.  It replaces the stream handlers on every
-    logger that FiftyOne normally configures (``fiftyone``, ``eta``,
-    ``plugins``, plus any ``FIFTYONE_LOGGING_DEBUG_TARGETS``) with a
-    single :class:`~logging.handlers.QueueHandler` so that log records
+    logger that FiftyOne normally configures with a single
+    :class:`~logging.handlers.QueueHandler` so that log records
     are forwarded to the parent process.
-
-    Each logger keeps the same level it had in the parent so the child
-    mirrors what the user would see in their own terminal.
-    ``propagate`` is disabled to prevent records from also flowing
-    through the root Python logger.
     """
     queue_handler = logging.handlers.QueueHandler(queue)
 
     for lgr in _get_loggers():
         lgr.handlers.clear()
         lgr.addHandler(queue_handler)
+        # prevent duplicate logs in the parent process
         lgr.propagate = False
 
 
