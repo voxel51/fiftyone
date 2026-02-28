@@ -489,13 +489,13 @@ class TestQwen3VLAutoMode:
 
         return _Mock()
 
-    def test_mode_none_video_dataset(self):
+    def test_mode_none_video_dataset(self, tmp_path):
         """mode=None on video dataset -> sample-level embeddings"""
         model = self._make_mock_model()
         ds = fo.Dataset()
         ds.media_type = "video"
         ds.add_sample(fo.Sample(
-            filepath="/tmp/test_video.mp4"
+            filepath=str(tmp_path / "test_video.mp4")
         ))
         mock_reader = mock.MagicMock()
         with mock.patch(
@@ -510,14 +510,14 @@ class TestQwen3VLAutoMode:
         assert model.mode is None
         ds.delete()
 
-    def test_explicit_image_not_overridden(self):
+    def test_explicit_image_not_overridden(self, tmp_path):
         """mode='image' on video dataset -> frame-level embeddings"""
         model = self._make_mock_model()
         model.mode = "image"
         ds = fo.Dataset()
         ds.media_type = "video"
         ds.add_sample(fo.Sample(
-            filepath="/tmp/test_video.mp4"
+            filepath=str(tmp_path / "test_video.mp4")
         ))
         mock_reader = mock.MagicMock()
         mock_reader.__iter__ = mock.Mock(return_value=iter([]))
