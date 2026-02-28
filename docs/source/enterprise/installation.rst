@@ -677,8 +677,10 @@ credentials from the other source will be attempted before giving up.
 Cloud Credentials Local Download
 ___________________________________
 
-By default, when using the Enterprise SDK with an API connection, any
-credential for a given user may be fetched to the local machine. This behavior
-may not be desirable. To disable downloading of credentials to machines, set
-the environment variable `ENABLE_CREDS_LOCAL_USE` to `false` on the Voxel-Hub
-API server.
+By default, users must set up local credentials when using the Enterprise SDK
+with an API connection. This is to prevent downloading credentials from the
+Enterprise server to that user's local machine. However, you can change this
+default, so that local SDK usage will access credentials from the Enterprise
+server. To enable downloading of credentials to machines, set the environment
+variable `FEATURE_FLAG_ENABLE_CREDS_LOCAL_USE` to `True` on the Voxel-Hub API
+server.
