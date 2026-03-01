@@ -514,13 +514,27 @@ class TestQwen3VLAutoMode:
         """mode='image' on video dataset -> frame-level embeddings"""
         model = self._make_mock_model()
         model.mode = "image"
+        embed_calls = []
+        _orig_embed = model.embed
+        def _tracking_embed(arg):
+            embed_calls.append(type(arg).__name__)
+            return _orig_embed(arg)
+        model.embed = _tracking_embed
+
         ds = fo.Dataset()
         ds.media_type = "video"
         ds.add_sample(fo.Sample(
             filepath=str(tmp_path / "test_video.mp4")
         ))
         mock_reader = mock.MagicMock()
-        mock_reader.__iter__ = mock.Mock(return_value=iter([]))
+        fake_frame = np.random.randint(0, 255, (64, 64, 3), dtype=np.uint8)
+        mock_reader.__iter__ = mock.Mock(
+            return_value=iter([fake_frame, fake_frame])
+        )
+        mock_reader.total_frame_count = 2
+        type(mock_reader).frame_number = mock.PropertyMock(
+            side_effect=[1, 2]
+        )
         with mock.patch(
             "fiftyone.core.models.etav.FFmpegVideoReader",
             return_value=mock_reader,
@@ -531,6 +545,8 @@ class TestQwen3VLAutoMode:
         assert ds.has_frame_field("emb")
         assert not ds.has_sample_field("emb")
         assert model.mode == "image"
+        assert len(embed_calls) == 2
+        assert all(t != "FFmpegVideoReader" for t in embed_calls)
         ds.delete()
 
     def test_mode_none_image_dataset(self):

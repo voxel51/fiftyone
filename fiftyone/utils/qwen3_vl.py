@@ -33,6 +33,9 @@ def _ensure_qwen3_vl():
 
 
 transformers = fou.lazy_import("transformers", callback=_ensure_qwen3_vl)
+qwen_vl_utils = fou.lazy_import("qwen_vl_utils", callback=_ensure_qwen3_vl)
+
+from PIL import Image as PILImage
 
 
 DEFAULT_QWEN3_VL_MODEL = "Qwen/Qwen3-VL-2B-Instruct"
@@ -305,8 +308,6 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin):
 
     def _generate_detections(self, imgs):
         """Generate detection output via text generation."""
-        from PIL import Image as PILImage
-
         prompt = self._get_prompt()
         results = []
 
@@ -403,8 +404,6 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin):
 
     def _prepare_image(self, img):
         """Convert image to PIL format for processor."""
-        from PIL import Image as PILImage
-
         if isinstance(img, torch.Tensor):
             img = img.cpu().numpy()
             # Transpose CHW to HWC if first dim is channels and last dim is not
@@ -461,8 +460,6 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin):
         Returns:
             a 1D numpy array embedding
         """
-        from PIL import Image as PILImage
-
         raw_fps = video_reader.frame_rate
         sample_fps = self.config.video_fps
 
@@ -499,9 +496,7 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin):
             }
         ]
 
-        from qwen_vl_utils import process_vision_info
-
-        image_inputs, video_inputs = process_vision_info(messages)
+        image_inputs, video_inputs = qwen_vl_utils.process_vision_info(messages)
         text = self._processor.apply_chat_template(
             messages,
             tokenize=False,
