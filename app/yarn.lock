@@ -3386,6 +3386,7 @@ __metadata:
     jsdom: "npm:^26.0.0"
     tsx: "npm:^4.7.0"
     typescript: "npm:^5.5.4"
+    uuid: "npm:^8.3.2"
     vite: "npm:^5.4.21"
     vitest: "npm:^1.6.0"
   peerDependencies:
