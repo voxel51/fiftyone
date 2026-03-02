@@ -79,7 +79,8 @@ def _execute_operator_in_child_process(
         log (False): the optional boolean flag to log the execution
         log_queue (None): a multiprocessing queue to send log records to
         stdout_capture (None): an optional callable returning a context
-            manager that captures stdout/stderr into logging
+            manager that captures stdout/stderr into logging. Must be
+            picklable (e.g. a top-level function) for spawn context.
     """
     # On POSIX systems, become the session leader to take control of any
     # subprocesses. This allows the parent to terminate the entire process
@@ -634,7 +635,8 @@ class DelegatedOperationService(object):
             monitor (False): if we should monitor the state of the operator in a subprocess.
             check_interval_seconds (60): how many seconds to wait between polling operator status.
             stdout_capture (None): an optional callable returning a context
-                manager that captures stdout/stderr into logging
+                manager that captures stdout/stderr into logging. Must be
+                picklable (e.g. a top-level function) for spawn context.
             on_monitor_ping (None): an optional callback ``fn(child_pid)``
                 invoked on each monitor ping
         """
@@ -702,7 +704,8 @@ class DelegatedOperationService(object):
             monitor (False): if we should monitor the state of the operator in a subprocess.
             check_interval_seconds (60): how many seconds to wait between polling operator status.
             stdout_capture (None): an optional callable returning a context
-                manager that captures stdout/stderr into logging
+                manager that captures stdout/stderr into logging. Must be
+                picklable (e.g. a top-level function) for spawn context.
             on_monitor_ping (None): an optional callback ``fn(child_pid)``
                 invoked on each monitor ping
         """
