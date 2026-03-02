@@ -6,9 +6,6 @@ Tests for fiftyone/utils/qwen3_vl.py output processor and parsing.
 |
 """
 
-import os
-import tempfile
-
 import PIL.Image
 import pytest
 import numpy as np
