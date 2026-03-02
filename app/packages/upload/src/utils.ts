@@ -149,32 +149,3 @@ export async function resolveHeaders(
   if (typeof headers === "function") return await headers();
   return headers;
 }
-
-// ── Concurrency limiter ────────────────────────────────────────────────
-
-export type ConcurrencyLimiter = <T>(fn: () => Promise<T>) => Promise<T>;
-
-export function createConcurrencyLimiter(max: number): ConcurrencyLimiter {
-  let active = 0;
-  const queue: (() => void)[] = [];
-
-  function next() {
-    while (queue.length > 0 && active < max) {
-      active++;
-      queue.shift()!();
-    }
-  }
-
-  return <T>(fn: () => Promise<T>): Promise<T> =>
-    new Promise<T>((resolve, reject) => {
-      queue.push(() =>
-        fn()
-          .then(resolve, reject)
-          .finally(() => {
-            active--;
-            next();
-          })
-      );
-      next();
-    });
-}

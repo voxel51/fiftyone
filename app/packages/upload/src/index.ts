@@ -24,7 +24,6 @@ export type {
 export {
   buildDeleteUrl,
   buildUploadUrl,
-  createConcurrencyLimiter,
   createFileItem,
   defaultResolvePath,
   errorMessage,
@@ -35,4 +34,3 @@ export {
   validateFile,
   validateFiles,
 } from "./utils";
-export type { ConcurrencyLimiter } from "./utils";
