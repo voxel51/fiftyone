@@ -442,6 +442,10 @@ class TestQwen3VLAutoMode:
         assert ds.has_sample_field("emb")
         assert not ds.has_frame_field("emb")
         assert model.mode is None
+        sample = ds.first()
+        assert sample.emb is not None
+        assert np.array(sample.emb).shape == (8,)
+        assert np.isfinite(sample.emb).all()
         ds.delete()
 
     def test_explicit_image_not_overridden(self, tmp_path):
@@ -481,6 +485,12 @@ class TestQwen3VLAutoMode:
         assert model.mode == "image"
         assert len(embed_calls) == 2
         assert all(t != "FFmpegVideoReader" for t in embed_calls)
+        frames = list(ds.first().frames.values())
+        assert len(frames) == 2
+        for frame in frames:
+            assert frame.emb is not None
+            assert np.array(frame.emb).shape == (8,)
+            assert np.isfinite(frame.emb).all()
         ds.delete()
 
     def test_mode_none_image_dataset(self, tmp_path):
@@ -493,6 +503,10 @@ class TestQwen3VLAutoMode:
         ds.compute_embeddings(model, embeddings_field="emb")
         assert ds.has_sample_field("emb")
         assert model.mode is None
+        sample = ds.first()
+        assert sample.emb is not None
+        assert np.array(sample.emb).shape == (8,)
+        assert np.isfinite(sample.emb).all()
         ds.delete()
 
 
