@@ -37,8 +37,10 @@ vi.mock("./shared", () => {
     };
 });
 
-vi.mock("@fiftyone/utilities", () => {
+vi.mock("@fiftyone/utilities", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@fiftyone/utilities")>();
     return {
+        ...actual,
         sizeBytesEstimate: vi.fn(() => 1),
     };
 });
