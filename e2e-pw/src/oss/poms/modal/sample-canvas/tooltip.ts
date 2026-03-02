@@ -107,7 +107,7 @@ class TooltipAsserter {
   /**
    * Does the tooltip have this field name
    *
-   * @param name The field name
+   * @param field The field name
    */
   async hasField(field: string) {
     await expect(this.tooltipPom.title).toHaveText(field);
