@@ -1,4 +1,4 @@
-awscli==1.37.2
+awscli==1.44.38
 freezegun==1.5.1
 open3d>=0.16.0
 werkzeug>=2.0.3
