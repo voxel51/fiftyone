@@ -1011,8 +1011,9 @@ def compute_embeddings(
 
     with contextlib.ExitStack() as context:
         if hasattr(model, "mode") and model.mode is None:
-            model.mode = samples.media_type
-            context.callback(setattr, model, "mode", None)
+            context.enter_context(
+                fou.SetAttributes(model, mode=samples.media_type)
+            )
 
         process_video_frames = (
             samples.media_type == fom.VIDEO and model.media_type == "image"
