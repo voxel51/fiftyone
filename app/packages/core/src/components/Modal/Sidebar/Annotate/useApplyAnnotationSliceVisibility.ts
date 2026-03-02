@@ -1,6 +1,6 @@
 import * as fos from "@fiftyone/state";
 import { is3d } from "@fiftyone/utilities";
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 
 /**
@@ -12,6 +12,12 @@ import { useRecoilValue, useSetRecoilState } from "recoil";
  */
 export function useApplyAnnotationSliceVisibility() {
   const groupMediaTypesMap = useRecoilValue(fos.groupMediaTypesMap);
+
+  // Creating a ref to above so that we keep returned callback referentially stable
+  // and having imperative access to this map is fine
+  const groupMediaTypesMapRef = useRef(groupMediaTypesMap);
+  groupMediaTypesMapRef.current = groupMediaTypesMap;
+
   const set3dVisible = useSetRecoilState(fos.groupMedia3dVisibleSetting);
   const setMainVisible = useSetRecoilState(
     fos.groupMediaIsMain2DViewerVisibleSetting
@@ -23,29 +29,24 @@ export function useApplyAnnotationSliceVisibility() {
   const setPinned3DSampleSliceName = useSetRecoilState(fos.pinned3DSampleSlice);
   const setAllActive3dSlices = useSetRecoilState(fos.active3dSlices);
 
-  return useCallback(
-    (sliceName: string) => {
-      const mediaType = groupMediaTypesMap[sliceName];
-      const isThreeD = mediaType ? is3d(mediaType) : false;
+  return useCallback((sliceName: string) => {
+    const mediaType = groupMediaTypesMapRef.current[sliceName];
+    const isThreeD = mediaType ? is3d(mediaType) : false;
 
-      if (isThreeD) {
-        set3dVisible(true);
-        setMainVisible(false);
-        setCarouselVisible(false);
+    if (isThreeD) {
+      set3dVisible(true);
+      setMainVisible(false);
+      setCarouselVisible(false);
 
-        setIs3dSlicePinned(true);
-        setPinned3DSampleSliceName(sliceName);
-        setAllActive3dSlices((prev) =>
-          Array.from(new Set([sliceName, ...prev]))
-        );
-      } else {
-        setMainVisible(true);
-        set3dVisible(false);
-        setCarouselVisible(false);
-        // Unpin 3D so activeModalSample returns modalSample data
-        setIs3dSlicePinned(false);
-      }
-    },
-    [groupMediaTypesMap]
-  );
+      setIs3dSlicePinned(true);
+      setPinned3DSampleSliceName(sliceName);
+      setAllActive3dSlices((prev) => Array.from(new Set([sliceName, ...prev])));
+    } else {
+      setMainVisible(true);
+      set3dVisible(false);
+      setCarouselVisible(false);
+      // Unpin 3D so activeModalSample returns modalSample data
+      setIs3dSlicePinned(false);
+    }
+  }, []);
 }

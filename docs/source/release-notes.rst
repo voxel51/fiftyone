@@ -4,6 +4,68 @@ FiftyOne Release Notes
 .. default-role:: code
 
 
+FiftyOne Enterprise 2.16.3
+--------------------------
+*Released March 2, 2026*
+
+Includes all updates from :ref:`FiftyOne 1.13.3 <release-notes-v1.13.3>`, plus:
+
+:ref:`In-App Annotation <in-app-annotation>`
+
+- Adjusted permissions for annotation-related actions, so that users with
+  `can_tag` level permissions will be able to perform all annotation workflows.
+
+Cloud Media
+
+- Optimized cloud media access checks in order to reduce the number of requests
+  being made.
+- Updated SDK precedence for cloud credentials. When running the SDK locally
+  the system will default to using local credentials when they are available.
+  This precedence can be overridden by setting
+  `FIFTYONE_CLOUD_CRED_ORIGIN_PREFERENCE` to `remote` (or `local`).
+
+Models
+
+- Constrained `timm<1.0.24` in enterprise docker images to better support
+  `omdet` models.
+
+
+.. _release-notes-v1.13.3:
+
+FiftyOne 1.13.3
+---------------
+*Released March 2, 2026*
+
+:ref:`In-App Annotation <in-app-annotation>`
+
+- New feature: Annotation support for detections while in a
+  :ref:`patches views <object-patches-views>`.
+  `#7012 <https://github.com/voxel51/fiftyone/pull/7012>`_
+- Improved UX around bounding box annotation by implementing improved
+  heuristics and disabling pan/zoom when drawing and selecting. 
+  `#7034 <https://github.com/voxel51/fiftyone/pull/7034>`_
+- Improved UX around schema management. Changes now more consistently require
+  the user to hit "Save" before being persisted. 
+  `#7008 <https://github.com/voxel51/fiftyone/pull/7008>`_
+- Improved UX around field visibility. Hiding or showing fields in Explore view
+  is also now reflected in the Annotation view. 
+  `#6993 <https://github.com/voxel51/fiftyone/pull/6993>`_
+- Unified the detection-creation process. 
+  `#7019 <https://github.com/voxel51/fiftyone/pull/7019>`_
+- Added keyboard shortcut to reset zoom and pan in annotation mode. Press "r"
+  to return to the default zoom level and pan position while annotating. 
+  `#7073 <https://github.com/voxel51/fiftyone/pull/7073>`_
+- Fixed undo/redo inconsistencies for detections. 
+  `#7019 <https://github.com/voxel51/fiftyone/pull/7019>`_
+- Fixed a bug where a detection could lose attribute values when switching
+  between different fields. 
+  `#7067 <https://github.com/voxel51/fiftyone/pull/7067>`_
+- Fixed a memory leak in the annotation UI. 
+  `#7047 <https://github.com/voxel51/fiftyone/pull/7047>`_
+- Added comprehensive test suite for data normalization utilities. 
+  `#6995 <https://github.com/voxel51/fiftyone/pull/6995>`_
+
+
 FiftyOne Enterprise 2.16.2
 --------------------------
 *Released February 20, 2026*

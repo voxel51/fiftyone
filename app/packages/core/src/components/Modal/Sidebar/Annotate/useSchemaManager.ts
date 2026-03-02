@@ -43,6 +43,8 @@ type FieldSchema = {
   range?: [number, number];
   values?: (string | number)[];
   classes?: string[];
+  default?: unknown;
+  attributes?: Record<string, unknown>;
 };
 
 /**

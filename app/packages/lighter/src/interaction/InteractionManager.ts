@@ -372,10 +372,14 @@ export class InteractionManager {
     //  By combining both spatial and temporal drags, we can prevent accidental
     //  dragging behavior when clicking (via spatial gate), while still
     //  allowing for pixel-level drag precision (via temporal gate).
-    const isDrag = this.isTemporalDrag() || this.isSpatialDragEvent(event);
+    // const isDrag = this.isTemporalDrag() || this.isSpatialDragEvent(event);
+    //
+    // todo - update handlers to be "sticky" - if a drag starts from a handler,
+    //  that handler should continue to process events even if the pointer
+    //  moves beyond its bounds.
 
     // Apply drag gate to prevent accidental overlay dragging on click
-    if (handler && isDrag) {
+    if (handler) {
       // Handle drag move
       if (!interactiveHandler) {
         handler.onMove?.(

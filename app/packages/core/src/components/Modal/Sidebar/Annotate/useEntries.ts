@@ -56,6 +56,10 @@ const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
       }
     }
 
+    if (result.length === 0) {
+      return [{ kind: EntryKind.EMPTY_ANNOTATIONS }] as SidebarEntry[];
+    }
+
     return result as SidebarEntry[];
   }, [atoms, activeFields, state, expanded]);
 

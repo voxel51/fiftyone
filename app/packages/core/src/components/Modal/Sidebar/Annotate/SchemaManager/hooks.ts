@@ -5,9 +5,12 @@
 import { useOperatorExecutor } from "@fiftyone/operators";
 import {
   datasetSampleCount,
+  groupMediaTypesMap,
+  isGroup,
   mediaType,
   queryPerformanceMaxSearch,
   useNotification,
+  usePreferredGroupAnnotationSlice,
 } from "@fiftyone/state";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useAtomCallback } from "jotai/utils";
@@ -623,10 +626,20 @@ export const useExitNewFieldMode = () => {
 // =============================================================================
 
 /**
- * Hook to get the current dataset media type
+ * Hook to get the effective media type.
+ * For group datasets, resolves to the preferred annotation slice's media type.
  */
 export const useMediaType = () => {
-  return useRecoilValue(mediaType);
+  const datasetMediaType = useRecoilValue(mediaType);
+  const isGroupDataset = useRecoilValue(isGroup);
+  const sliceMediaTypesMap = useRecoilValue(groupMediaTypesMap);
+  const [preferredSlice] = usePreferredGroupAnnotationSlice();
+
+  if (isGroupDataset && preferredSlice && sliceMediaTypesMap[preferredSlice]) {
+    return sliceMediaTypesMap[preferredSlice];
+  }
+
+  return datasetMediaType;
 };
 
 /**

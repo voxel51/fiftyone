@@ -2,7 +2,7 @@
  * Main GUI View component for editing field schema.
  */
 
-import { LoadingSpinner, scrollable } from "@fiftyone/components";
+import { LoadingSpinner } from "@fiftyone/components";
 import {
   Button,
   Size,
@@ -14,12 +14,7 @@ import {
 import { useCallback, useMemo } from "react";
 import { PRIMITIVE_FIELD_TYPES } from "../../constants";
 import { useFieldType } from "../../hooks";
-import {
-  EditSectionHeader,
-  EmptyStateBox,
-  ListContainer,
-  Section,
-} from "../../styled";
+import { EditSectionHeader, EmptyStateBox, Section } from "../../styled";
 import type { AttributeConfig, SchemaConfigType } from "../../utils";
 import AttributesSection from "./AttributesSection";
 import ClassesSection from "./ClassesSection";
@@ -132,23 +127,21 @@ const GUIContent = ({
   // Primitive field types show a different UI
   if (isPrimitive && fType) {
     return (
-      <ListContainer className={scrollable}>
-        <Section>
-          <PrimitiveFieldContent
-            field={field}
-            fieldType={fType}
-            config={config}
-            onConfigChange={onConfigChange}
-            largeLabels
-          />
-        </Section>
-      </ListContainer>
+      <Section>
+        <PrimitiveFieldContent
+          field={field}
+          fieldType={fType}
+          config={config}
+          onConfigChange={onConfigChange}
+          largeLabels
+        />
+      </Section>
     );
   }
 
   if (scanning) {
     return (
-      <ListContainer className={scrollable}>
+      <>
         <Section>
           <EditSectionHeader>
             <Text variant={TextVariant.Lg}>Classes</Text>
@@ -181,12 +174,12 @@ const GUIContent = ({
             </Button>
           </EmptyStateBox>
         </Section>
-      </ListContainer>
+      </>
     );
   }
 
   return (
-    <ListContainer className={scrollable}>
+    <>
       <ClassesSection
         classes={classes}
         attributeCount={attributes.length}
@@ -202,7 +195,7 @@ const GUIContent = ({
         onDeleteAttribute={handleDeleteAttribute}
         onOrderChange={handleAttributeOrderChange}
       />
-    </ListContainer>
+    </>
   );
 };
 

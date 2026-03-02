@@ -1,11 +1,23 @@
+import { DeleteAnnotationCommand, getFieldSchema } from "@fiftyone/annotation";
+import { useCommandBus } from "@fiftyone/command-bus";
+import {
+  DelegatingUndoable,
+  KnownContexts,
+  useCreateCommand,
+} from "@fiftyone/commands";
 import { useIsWorkingInitialized } from "@fiftyone/looker-3d";
-import { isPatchesView } from "@fiftyone/state";
+import {
+  isPatchesView,
+  useModalSampleSchema,
+  useUnboundStateRef,
+} from "@fiftyone/state";
 import { useAtom, useAtomValue } from "jotai";
-import { useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import AddSchema from "./AddSchema";
 import {
+  current,
   currentDisabledFields,
   currentField,
   currentFields,
@@ -47,15 +59,61 @@ const Field = () => {
   const disabled = useAtomValue(currentDisabledFields);
   const [currentFieldValue, setCurrentField] = useAtom(currentField);
   const isPatches = useRecoilValue(isPatchesView);
-  const schema = useMemo(() => createSchema(fields, disabled, isPatches), [
-    disabled,
-    fields,
-    isPatches,
-  ]);
+  const currentLabel = useAtomValue(current);
+  const schema = useMemo(
+    () => createSchema(fields, disabled, isPatches),
+    [disabled, fields, isPatches]
+  );
   const type = useAtomValue(currentType);
   const state = useAtomValue(editing);
+  const modalSampleSchema = useModalSampleSchema();
+  const commandBus = useCommandBus();
+  const nextFieldValue = useRef(currentFieldValue);
+  const labelId = currentLabel?.overlay?.id;
+  const currentLabelRef = useUnboundStateRef(currentLabel);
 
   const is3DAnnotationStagingInitialized = useIsWorkingInitialized();
+
+  const updateField = useCreateCommand(
+    KnownContexts.ModalAnnotate,
+    `update-${labelId}-field`,
+    useCallback(() => {
+      const currentField = currentFieldValue as string;
+      const newField = nextFieldValue.current as string;
+
+      return new DelegatingUndoable(
+        `update-${labelId}-field-action`,
+        // stage mutation on execute
+        async () => {
+          const currentLabel = currentLabelRef.current;
+          const fieldSchema = getFieldSchema(modalSampleSchema, currentField);
+          if (!currentLabel || !fieldSchema) return;
+          await commandBus.execute(
+            new DeleteAnnotationCommand(currentLabel, fieldSchema)
+          );
+          setCurrentField(newField);
+        },
+        // restore original value on undo
+        async () => {
+          const currentLabel = currentLabelRef.current;
+          const fieldSchema = getFieldSchema(modalSampleSchema, newField);
+          if (!currentLabel || !fieldSchema) return;
+          await commandBus.execute(
+            new DeleteAnnotationCommand(currentLabel, fieldSchema)
+          );
+          setCurrentField(currentField);
+        }
+      );
+    }, [
+      modalSampleSchema,
+      currentLabelRef,
+      commandBus,
+      setCurrentField,
+      labelId,
+      currentFieldValue,
+    ]),
+    () => true
+  );
 
   return (
     <>
@@ -67,7 +125,8 @@ const Field = () => {
             smartForm={true}
             data={{ field: currentFieldValue }}
             onChange={({ field }) => {
-              setCurrentField(field);
+              nextFieldValue.current = field;
+              updateField.callback();
             }}
           />
         </div>

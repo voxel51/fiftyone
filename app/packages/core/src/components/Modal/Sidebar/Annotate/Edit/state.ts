@@ -1,4 +1,4 @@
-import { type AnnotationLabel } from "@fiftyone/state";
+import type { AnnotationLabel } from "@fiftyone/state";
 import {
   CLASSIFICATION,
   CLASSIFICATIONS,
@@ -18,6 +18,7 @@ import {
 } from "../state";
 import { addLabel, labels, labelsByPath } from "../useLabels";
 import { activePrimitiveAtom } from "./useActivePrimitive";
+import { buildNewLabelData } from "./useCreate";
 
 export const savedLabel = atom<AnnotationLabel["data"] | null>(null);
 
@@ -107,16 +108,21 @@ export const currentField = atom(
     return get(current)?.path;
   },
   (get, set, path: string) => {
-    const label = get(current);
+    const currentLabel = get(current);
 
     // no label or label is already set to this field
-    if (!label || label.path === path) {
+    if (!currentLabel || currentLabel.path === path) {
       return;
     }
 
-    label.overlay?.updateField(path);
-    label.overlay?.updateLabel({ _id: label.data._id });
-    set(current, { ...label, path, data: { _id: label.data._id } });
+    const currentData = currentLabel.data;
+    const data = buildNewLabelData(path, currentData._cls, currentData?._id);
+    data.bounding_box = currentData?.bounding_box;
+
+    currentLabel.overlay?.updateField(path);
+    currentLabel.overlay?.updateLabel(data);
+
+    set(current, { ...currentLabel, path, data });
   }
 );
 

@@ -88,6 +88,7 @@ import { OpType } from "@fiftyone/annotation/src/types";
 
 export enum EntryKind {
   EMPTY = "EMPTY",
+  EMPTY_ANNOTATIONS = "EMPTY_ANNOTATIONS",
   GROUP = "GROUP",
   INPUT = "INPUT",
   LABEL = "LABEL",
@@ -99,6 +100,10 @@ export interface EmptyEntry {
   kind: EntryKind.EMPTY;
   shown: boolean;
   group: string;
+}
+
+export interface EmptyAnnotationsEntry {
+  kind: EntryKind.EMPTY_ANNOTATIONS;
 }
 
 export interface InputEntry {
@@ -184,6 +189,7 @@ export interface LoadingEntry {
 
 export type SidebarEntry =
   | EmptyEntry
+  | EmptyAnnotationsEntry
   | GroupEntry
   | InputEntry
   | LabelEntry
