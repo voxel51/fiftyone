@@ -1,6 +1,6 @@
 import type { Hide, ID, Show } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import type { LookerCache } from "./types";
 import useFontSize from "./useFontSize";
 import { useGridRenderClaimsLooker } from "./useGridRenderClaimsLooker";
@@ -23,6 +23,11 @@ export default function useRenderer({
   const getFontSize = useFontSize(id);
   const selectSample = useSelectSample(records);
   const renderClaims = useGridRenderClaimsLooker(createLooker);
+
+  // We need returned `renderer` to be referentially stable, which requires referential stability for `showItem`
+  // since `showItem` depends on `renderClaims`, we use a ref
+  const renderClaimsRef = useRef(renderClaims);
+  renderClaimsRef.current = renderClaims;
 
   const detachItem = useCallback(
     (id: ID) => cache.get(id.description)?.detach(),
@@ -62,10 +67,10 @@ export default function useRenderer({
         );
       }
 
-      const looker = renderClaims.shouldOverrideRender({
+      const looker = renderClaimsRef.current.shouldOverrideRender({
         sample: result.sample,
       })
-        ? renderClaims.createLookerWithPluginRenderer(
+        ? renderClaimsRef.current.createLookerWithPluginRenderer(
             { sample: result.sample },
             id,
             getFontSize()
@@ -87,7 +92,7 @@ export default function useRenderer({
       looker.attach(element, dimensions);
       return cache.sizeOf(key);
     },
-    [cache, createLooker, renderClaims, getFontSize, selectSample, store]
+    [cache, createLooker, getFontSize, selectSample, store]
   );
 
   return {
