@@ -122,7 +122,10 @@ function getSampleMimeType(
   selectedMediaPath?: string | null
 ): string | null {
   if (selectedMediaPath && selectedMediaPath !== sample.filepath) {
-    return mime.getType(selectedMediaPath) ?? null;
+    const mimeFromSelectedPath = mime.getType(selectedMediaPath);
+    if (mimeFromSelectedPath) {
+      return mimeFromSelectedPath;
+    }
   }
 
   if (sample.metadata?.mime_type) {

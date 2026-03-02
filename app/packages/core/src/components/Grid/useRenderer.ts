@@ -69,14 +69,10 @@ export default function useRenderer({
 
       let looker: fos.Lookers;
 
-      if (
-        renderClaimsRef.current.shouldOverrideRender({
-          sample: result.sample,
-        })
-      ) {
+      if (renderClaimsRef.current.shouldOverrideRender(result)) {
         try {
           looker = renderClaimsRef.current.createLookerWithPluginRenderer(
-            { sample: result.sample },
+            result,
             id,
             getFontSize()
           );
