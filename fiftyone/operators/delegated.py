@@ -35,6 +35,18 @@ logger = logging.getLogger(__name__)
 logging_context = contextlib.nullcontext
 
 
+def _init_stdout_capture(stdout_capture):
+    """Initializes the stdout capture context manager, falling back to
+    a no-op context if the capture callable fails."""
+    if not stdout_capture:
+        return contextlib.nullcontext()
+    try:
+        return stdout_capture()
+    except Exception:
+        logger.debug("Failed to initialize stdout capture", exc_info=True)
+        return contextlib.nullcontext()
+
+
 def _configure_child_logging(queue):
     """Configures logging in a child process to send logs to a queue.
 
@@ -84,45 +96,44 @@ def _execute_operator_in_child_process(
     logger = logging.getLogger(__name__)
     service = DelegatedOperationService()
     operation = None
-    _stdout_ctx = (
-        stdout_capture() if stdout_capture else contextlib.nullcontext()
-    )
+
     with logging_context(
         {
             "delegated_operation_id": str(operation_id),
         }
-    ), _stdout_ctx:
+    ):
         try:
-            operation = service.get(operation_id)
-            if not operation:
-                logger.error(
-                    "Operation %s not found in child process. Aborting.",
-                    operation_id,
-                )
-                return
-            if log:
-                logger.info(
-                    "\nRunning operation %s (%s) in child process",
-                    operation.id,
-                    operation.operator,
-                )
-
-            result = asyncio.run(service._execute_operator(operation))
-            result.raise_exceptions()
-
-            updated_doc = service.set_completed(
-                doc_id=operation.id,
-                result=result,
-                required_state=ExecutionRunState.RUNNING,
-            )
-            if log:
-                if updated_doc:
-                    logger.info("Operation %s complete", operation.id)
-                else:
-                    logger.info(
-                        "Operation %s was not marked as COMPLETED because its state changed externally.",
-                        operation.id,
+            with _init_stdout_capture(stdout_capture):
+                operation = service.get(operation_id)
+                if not operation:
+                    logger.error(
+                        "Operation %s not found in child process. Aborting.",
+                        operation_id,
                     )
+                    return
+                if log:
+                    logger.info(
+                        "\nRunning operation %s (%s) in child process",
+                        operation.id,
+                        operation.operator,
+                    )
+
+                result = asyncio.run(service._execute_operator(operation))
+                result.raise_exceptions()
+
+                updated_doc = service.set_completed(
+                    doc_id=operation.id,
+                    result=result,
+                    required_state=ExecutionRunState.RUNNING,
+                )
+                if log:
+                    if updated_doc:
+                        logger.info("Operation %s complete", operation.id)
+                    else:
+                        logger.info(
+                            "Operation %s was not marked as COMPLETED because its state changed externally.",
+                            operation.id,
+                        )
         except Exception:
             result = ExecutionResult(error=traceback.format_exc())
             updated_doc = service.set_failed(
@@ -695,15 +706,12 @@ class DelegatedOperationService(object):
             on_monitor_ping (None): an optional callback ``fn(child_pid)``
                 invoked on each monitor ping
         """
-        _stdout_ctx = (
-            stdout_capture() if stdout_capture else contextlib.nullcontext()
-        )
         with logging_context(
             {
                 "delegated_operation_id": str(operation.id),
                 "operator_uri": operation.operator,
             }
-        ), _stdout_ctx:
+        ), _init_stdout_capture(stdout_capture):
             try:
                 succeeded = (
                     self.set_running(
