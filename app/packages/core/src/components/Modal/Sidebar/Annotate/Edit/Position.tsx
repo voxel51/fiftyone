@@ -65,7 +65,7 @@ export default function Position({ readOnly = false }: PositionProps) {
       return;
     }
 
-    const rect = overlay.absoluteBounds;
+    const rect = overlay.bounds;
 
     setState({
       position: { x: rect.x, y: rect.y },
@@ -82,7 +82,8 @@ export default function Position({ readOnly = false }: PositionProps) {
       ) {
         return;
       }
-      const rect = overlay.absoluteBounds;
+
+      const rect = overlay.bounds;
 
       setState({
         position: { x: rect.x, y: rect.y },
@@ -145,7 +146,7 @@ export default function Position({ readOnly = false }: PositionProps) {
             return;
           }
 
-          const oldBounds = overlay.absoluteBounds;
+          const oldBounds = overlay.bounds;
           scene?.executeCommand(
             new TransformOverlayCommand(overlay, overlay.id, oldBounds, {
               ...oldBounds,

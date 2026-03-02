@@ -98,8 +98,7 @@ export type RawLookerLabel = Omit<BaseLabel, "_renderStatus"> | null;
  * These overlays store relative coordinates [0,1] and need coordinate transformation.
  */
 export interface Spatial {
-  absoluteBounds: Rect;
-  relativeBounds: Rect;
+  bounds: Rect;
 
   /** return true if being dragged */
   isDragging(): boolean;

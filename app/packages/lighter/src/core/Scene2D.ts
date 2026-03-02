@@ -67,20 +67,15 @@ export const TypeGuards = {
 
   isSpatial: (
     body: BaseOverlay | InteractionHandler
-  ): body is BaseOverlay & Spatial =>
-    "relativeBounds" in body && "absoluteBounds" in body,
+  ): body is BaseOverlay & Spatial => "bounds" in body,
 
   isTransformable: (
     body: BaseOverlay | InteractionHandler
-  ): body is BaseOverlay & Movable =>
-    "getPosition" in body &&
-    "setPosition" in body &&
-    "getBounds" in body &&
-    "setBounds" in body,
+  ): body is BaseOverlay & Movable => "bounds" in body,
 
   isMovable: (
     body: BaseOverlay | InteractionHandler
-  ): body is BaseOverlay & Movable => true,
+  ): body is BaseOverlay & Movable => "bounds" in body,
 
   isInteractionHandler: (value: unknown): value is InteractionHandler =>
     typeof value === "object" &&
@@ -177,6 +172,7 @@ export class Scene2D {
       config.canvas,
       this.selectionManager,
       config.renderer,
+      this.coordinateSystem,
       this.eventChannel
     );
 
@@ -234,18 +230,10 @@ export class Scene2D {
 
     // Listen for OVERLAY_ESTABLISH events to unset bounds of new overlay
     this.registerEventHandler("lighter:overlay-establish", (event) => {
-      const { overlay, absoluteBounds } = event;
+      const { overlay, bounds } = event;
 
       if (overlay) {
-        const relativeBounds =
-          this.coordinateSystem.absoluteToRelative(absoluteBounds);
-
-        const addCommand = new AddOverlayCommand(
-          this,
-          overlay,
-          absoluteBounds,
-          relativeBounds
-        );
+        const addCommand = new AddOverlayCommand(this, overlay, bounds);
 
         CommandContextManager.instance()
           .getActiveContext()
@@ -257,17 +245,17 @@ export class Scene2D {
     this.registerEventHandler("lighter:overlay-drag-end", (event) => {
       const overlay = this.getOverlay(event.id);
       if (overlay && TypeGuards.isMovable(overlay)) {
-        const { startBounds, absoluteBounds: endBounds } = event;
+        const { startBounds, bounds } = event;
         const moved =
-          Math.abs(startBounds.x - endBounds.x) > 1 ||
-          Math.abs(startBounds.y - endBounds.y) > 1;
+          Math.abs(startBounds.x - bounds.x) > 1 ||
+          Math.abs(startBounds.y - bounds.y) > 1;
 
         if (moved) {
           const moveCommand = new MoveOverlayCommand(
             overlay,
             event.id,
             startBounds,
-            endBounds
+            bounds
           );
           CommandContextManager.instance()
             .getActiveContext()
@@ -280,7 +268,7 @@ export class Scene2D {
     this.registerEventHandler("lighter:overlay-resize-end", (event) => {
       const overlay = this.getOverlay(event.id);
       if (overlay && TypeGuards.isMovable(overlay)) {
-        const { startBounds, absoluteBounds: endBounds } = event;
+        const { startBounds, bounds: endBounds } = event;
         const moved =
           Math.abs(startBounds.x - endBounds.x) > 1 ||
           Math.abs(startBounds.y - endBounds.y) > 1 ||
@@ -1006,6 +994,7 @@ export class Scene2D {
     this.renderingState.setStatus(overlay.id, OVERLAY_STATUS_PENDING);
     // Inject renderer, resource loader, and scene ID into overlay
     overlay.setRenderer(this.config.renderer);
+    overlay.setCoordinateSystem(this.coordinateSystem);
     overlay.setResourceLoader(this.config.resourceLoader);
     overlay.setEventChannel(this.eventChannel);
 
@@ -1478,8 +1467,7 @@ export class Scene2D {
         overlay.ready &&
           this.eventBus.dispatch("lighter:overlay-bounds-changed", {
             id: overlay.id,
-            absoluteBounds: overlay.absoluteBounds,
-            relativeBounds: overlay.relativeBounds,
+            bounds: overlay.bounds,
           });
       }
     }

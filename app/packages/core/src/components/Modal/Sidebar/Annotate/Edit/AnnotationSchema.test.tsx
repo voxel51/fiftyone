@@ -21,7 +21,7 @@ describe("AnnotationSchema", () => {
     mockOverlay = {
       label: { id: "test-id", label: "test-label" },
       id: "overlay-1",
-      absoluteBounds: {
+      bounds: {
         x: 0,
         y: 0,
         width: 100,

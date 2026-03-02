@@ -12,7 +12,6 @@ import {
   SELECTED_DASH_LENGTH,
   STROKE_WIDTH,
 } from "../constants";
-import type { CoordinateSystem2D } from "../core/CoordinateSystem2D";
 import { CONTAINS } from "../core/Scene2D";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { Selectable } from "../selection/Selectable";
@@ -81,7 +80,6 @@ export class BoundingBoxOverlay
   private moveStartBounds?: Rect;
   private isSelectedState = false;
 
-  #coordinateSystem?: CoordinateSystem2D;
   #relativeBounds: Rect;
 
   private textBounds?: Rect;
@@ -101,42 +99,25 @@ export class BoundingBoxOverlay
   }
 
   getPosition() {
+    const { x, y } = this.bounds;
     return {
-      x: this.absoluteBounds.x,
-      y: this.absoluteBounds.y,
+      x,
+      y,
     };
   }
 
-  get ready() {
-    return !!this.#coordinateSystem;
-  }
-
-  get bounds() {
-    return this.absoluteBounds;
-  }
-
-  set bounds(bounds) {
-    this.absoluteBounds = bounds;
-  }
-  private get coordinateSystem() {
-    if (!this.#coordinateSystem) {
-      throw new Error("no coordinate system");
-    }
-    return this.#coordinateSystem;
-  }
-
-  get absoluteBounds(): Rect {
+  get bounds(): Rect {
     const bounds = this.relativeBounds;
-    return this.coordinateSystem.relativeToAbsolute(bounds);
+    return this.getCoordinateSystem().relativeToAbsolute(bounds);
   }
 
-  set absoluteBounds(bounds: Rect | undefined) {
+  set bounds(bounds: Rect | undefined) {
     if (!bounds) {
       this.#relativeBounds = NO_BOUNDS;
       return;
     }
-    const relative = this.coordinateSystem.absoluteToRelative(bounds);
 
+    const relative = this.getCoordinateSystem().absoluteToRelative(bounds);
     this.#relativeBounds = relative;
     this.markDirty();
   }
@@ -157,7 +138,6 @@ export class BoundingBoxOverlay
   protected renderImpl(renderer: Renderer2D, _renderMeta: RenderMeta): void {
     // Dispose of old elements before creating new ones
     renderer.dispose(this.containerId);
-    this.#coordinateSystem = _renderMeta.coordinateSystem;
 
     const style = this.currentStyle;
 
@@ -192,11 +172,11 @@ export class BoundingBoxOverlay
 
     delete mainStrokeStyle.dashPattern;
 
-    renderer.drawRect(this.absoluteBounds, mainStrokeStyle, this.containerId);
+    renderer.drawRect(this.bounds, mainStrokeStyle, this.containerId);
 
     if (hoverStrokeColor) {
       renderer.drawRect(
-        this.absoluteBounds,
+        this.bounds,
         {
           strokeStyle: hoverStrokeColor,
           lineWidth: style.lineWidth || STROKE_WIDTH,
@@ -205,7 +185,7 @@ export class BoundingBoxOverlay
       );
     } else if (overlayStrokeColor && overlayDash) {
       renderer.drawRect(
-        this.absoluteBounds,
+        this.bounds,
         {
           strokeStyle: overlayStrokeColor,
           lineWidth: style.lineWidth,
@@ -223,12 +203,12 @@ export class BoundingBoxOverlay
       const colorObj = parseColorWithAlpha(style.strokeStyle);
       const color = colorObj.color;
       renderer.drawScrim(
-        this.absoluteBounds,
+        this.bounds,
         _renderMeta.canonicalMediaBounds,
         this.containerId
       );
       renderer.drawHandles(
-        this.absoluteBounds,
+        this.bounds,
         style.lineWidth || STROKE_WIDTH,
         color,
         this.containerId
@@ -242,12 +222,12 @@ export class BoundingBoxOverlay
 
       const labelPosition = this.isSelected()
         ? {
-            x: this.absoluteBounds.x + offset * HANDLE_OFFSET_X,
-            y: this.absoluteBounds.y - offset * HANDLE_OFFSET_Y,
+            x: this.bounds.x + offset * HANDLE_OFFSET_X,
+            y: this.bounds.y - offset * HANDLE_OFFSET_Y,
           }
         : {
-            x: this.absoluteBounds.x - offset,
-            y: this.absoluteBounds.y - offset,
+            x: this.bounds.x - offset,
+            y: this.bounds.y - offset,
           };
 
       let textToDraw = this.label?.label;
@@ -306,7 +286,7 @@ export class BoundingBoxOverlay
     worldPoint: Point,
     scale: number
   ): ResizeRegion | null {
-    const { x, y, height, width } = this.absoluteBounds;
+    const { x, y, height, width } = this.bounds;
 
     const isNorth = worldPoint.y <= y + EDGE_THRESHOLD / scale;
     const isEast = worldPoint.x >= x + width - EDGE_THRESHOLD / scale;
@@ -394,7 +374,7 @@ export class BoundingBoxOverlay
     this.moveState = cursorState;
 
     if (cursorState === "SETTING") {
-      this.absoluteBounds = {
+      this.bounds = {
         ...worldPoint,
         height: 0,
         width: 0,
@@ -404,10 +384,10 @@ export class BoundingBoxOverlay
     // Store move start information
     this.moveStartPoint = point;
     this.moveStartPosition = {
-      x: this.absoluteBounds.x,
-      y: this.absoluteBounds.y,
+      x: this.bounds.x,
+      y: this.bounds.y,
     };
-    this.moveStartBounds = { ...this.absoluteBounds };
+    this.moveStartBounds = { ...this.bounds };
 
     return true;
   }
@@ -439,7 +419,7 @@ export class BoundingBoxOverlay
     };
 
     // Update absolute bounds
-    this.absoluteBounds = {
+    this.bounds = {
       x: this.moveStartBounds.x + delta.x,
       y: this.moveStartBounds.y + delta.y,
       width: this.moveStartBounds.width,
@@ -472,8 +452,8 @@ export class BoundingBoxOverlay
           : 1;
 
       if (
-        Math.abs(delta.x / this.absoluteBounds.width) >
-        Math.abs(delta.y / this.absoluteBounds.height)
+        Math.abs(delta.x / this.bounds.width) >
+        Math.abs(delta.y / this.bounds.height)
       ) {
         maintainY = delta.x / aspectRatio;
       } else {
@@ -548,7 +528,7 @@ export class BoundingBoxOverlay
     }
 
     // Update absolute bounds
-    this.absoluteBounds = {
+    this.bounds = {
       x,
       y,
       width,
@@ -570,12 +550,20 @@ export class BoundingBoxOverlay
     return true;
   }
 
+  getCoordinateSystem() {
+    if (!this.coordinateSystem) {
+      throw new Error("no coordinate system");
+    }
+
+    return this.coordinateSystem;
+  }
+
   /**
    * Determines if current bounds are valid.
    * @returns True if current bounds are valid
    */
   hasValidBounds(): boolean {
-    return this.ready && BaseOverlay.validBounds(this.absoluteBounds);
+    return this.ready && BaseOverlay.validBounds(this.bounds);
   }
 
   /**
@@ -694,7 +682,7 @@ export class BoundingBoxOverlay
    * @returns The drawn bounding box with stroke width expansion.
    */
   private getDrawnBBox(): Rect {
-    const bounds = this.absoluteBounds;
+    const bounds = this.bounds;
     const strokeWidth = this.getCurrentStyle()?.lineWidth ?? STROKE_WIDTH;
 
     return {

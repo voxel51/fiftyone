@@ -12,7 +12,7 @@ import {
 } from "../overlay/BoundingBoxOverlay";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { SelectionManager } from "../selection/SelectionManager";
-import type { Point, Rect } from "../types";
+import type { CoordinateSystem, Point, Rect } from "../types";
 import { InteractiveDetectionHandler } from "./InteractiveDetectionHandler";
 
 /**
@@ -59,11 +59,6 @@ export interface InteractionHandler {
    * Returns the position from the start of handler movement
    */
   getMoveStartPosition?(): Point | undefined;
-
-  /**
-   * Returns the bounds of the handler
-   */
-  getAbsoluteBounds?(): Rect;
 
   /**
    * Returns the position from the start of handler movement
@@ -207,6 +202,7 @@ export class InteractionManager {
     private canvas: HTMLCanvasElement,
     private selectionManager: SelectionManager,
     private renderer: Renderer2D,
+    private readonly coordinateSystem: CoordinateSystem,
     eventChannel: string
   ) {
     this.eventBus = getEventBus<LighterEventGroup>(eventChannel);
@@ -261,7 +257,6 @@ export class InteractionManager {
       this.selectionManager.select(handler.id);
     } else {
       handler = this.findHandlerAtPoint(point);
-
       // Prevent pan/zoom when target is selectable
       if (handler && TypeGuards.isSelectable(handler)) {
         this.renderer.disableZoomPan();
@@ -286,7 +281,6 @@ export class InteractionManager {
           this.selectionManager.clearSelection();
 
           interactiveHandler = this.getInteractiveHandler();
-
           if (!interactiveHandler) {
             // Ask QuickDraw (via React) to create a detection and register
             // an interactive handler. This relies on the event bus invoking
@@ -320,9 +314,8 @@ export class InteractionManager {
 
         this.eventBus.dispatch(type, {
           id: handler.id,
-          startPosition: handler.getPosition(),
-          absoluteBounds: handler.absoluteBounds,
-          relativeBounds: handler.relativeBounds,
+          startPosition: handler.bounds,
+          bounds: handler.bounds,
         });
       }
 
@@ -406,8 +399,7 @@ export class InteractionManager {
 
           this.eventBus.dispatch(type, {
             id: handler.id,
-            absoluteBounds: handler.absoluteBounds,
-            relativeBounds: handler.relativeBounds,
+            bounds: handler.bounds,
           });
         }
 
@@ -455,9 +447,8 @@ export class InteractionManager {
           id: handler.id,
           startBounds,
           startPosition,
-          endPosition: handler.getPosition(),
-          absoluteBounds: handler.absoluteBounds,
-          relativeBounds: handler.relativeBounds,
+          endPosition: handler.bounds,
+          bounds: handler.bounds,
         };
 
         if (moveState === "SETTING") {

@@ -9,6 +9,7 @@ import type { InteractionHandler } from "../interaction/InteractionManager";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { ResourceLoader } from "../resource/ResourceLoader";
 import type {
+  CoordinateSystem,
   DrawStyle,
   Point,
   RawLookerLabel,
@@ -33,6 +34,7 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
    */
   protected isDirty = false;
 
+  protected coordinateSystem?: CoordinateSystem;
   protected renderer?: Renderer2D;
   protected resourceLoader?: ResourceLoader;
   protected currentStyle?: DrawStyle;
@@ -75,12 +77,24 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
     this.markDirty();
   }
 
+  get ready() {
+    return !!this.coordinateSystem;
+  }
+
   static validBounds(bounds: Rect | undefined): boolean {
     if (!bounds) return false;
 
     return ["x", "y", "width", "height"].every(
       (prop) => !Number.isNaN(bounds[prop])
     );
+  }
+
+  /**
+   * Sets the coordinate system for this overlay.
+   * @param coordinateSystem - The renderer to use.
+   */
+  setCoordinateSystem(coordinateSystem: CoordinateSystem): void {
+    this.coordinateSystem = coordinateSystem;
   }
 
   /**

@@ -20,7 +20,7 @@ export class AddOverlayCommand implements Undoable {
   constructor(
     private scene: Scene2D,
     private overlay: BaseOverlay | InteractiveDetectionHandler,
-    private absoluteBounds?: Rect,
+    private bounds?: Rect,
     private relativeBounds?: Rect
   ) {
     this.id = `add-overlay-${overlay.id}-${Date.now()}`;
@@ -32,8 +32,8 @@ export class AddOverlayCommand implements Undoable {
       const handler = this.overlay.getOverlay();
       const interactionManager = this.scene.getInteractionManager();
 
-      if (this.absoluteBounds) {
-        handler.absoluteBounds = this.absoluteBounds;
+      if (this.bounds) {
+        handler.bounds = this.bounds;
       }
       if (this.relativeBounds) {
         handler.relativeBounds = this.relativeBounds;
@@ -71,7 +71,7 @@ export class AddOverlayCommand implements Undoable {
       if (this.overlay instanceof InteractiveDetectionHandler) {
         const handler = this.overlay.getOverlay();
 
-        handler.absoluteBounds = undefined;
+        handler.bounds = undefined;
         this.scene.removeOverlay(handler.id, false);
       } else {
         this.scene.removeOverlay(this.overlay.id, false);
