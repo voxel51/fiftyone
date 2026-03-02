@@ -141,7 +141,7 @@ class SampleCanvasAsserter {
   constructor(private readonly sampleCanvasPom: SampleCanvasPom) {}
 
   /**
-   * Does mouse have this cursor style
+   * Does the mouse have this cursor style
    *
    * @param name the cursor style
    */

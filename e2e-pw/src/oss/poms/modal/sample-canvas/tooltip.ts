@@ -44,7 +44,7 @@ export class TooltipPom {
    *
    * @param name The attribute name
    * @param hidden Whether the attribute is in the "Hidden" section
-   * @returns A {Locator}
+   * @returns A {@link Locator}
    */
   getAttribute(name: string, hidden = false) {
     let locator = this.content;
@@ -100,7 +100,7 @@ class TooltipAsserter {
   async isVisible(visible = true) {
     const locator = this.tooltipPom.content;
     return visible
-      ? await expect(locator).toBeAttached()
+      ? await expect(locator).toBeVisible()
       : await expect(locator).toBeHidden();
   }
 
@@ -117,8 +117,8 @@ class TooltipAsserter {
    * Does the tooltip have this label attribute
    *
    * @param attribute An attribute
-   * @param value Whether the
-   * @param hidden
+   * @param value The value
+   * @param hidden  Whether the attribute is in the "hidden" section
    */
   async hasAttribute(attribute: string, value: string, hidden?: boolean) {
     const locator = this.tooltipPom.getAttribute(attribute, hidden);

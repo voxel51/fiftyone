@@ -77,10 +77,6 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
     this.markDirty();
   }
 
-  get ready() {
-    return !!this.coordinateSystem;
-  }
-
   static validBounds(bounds: Rect | undefined): boolean {
     if (!bounds) return false;
 

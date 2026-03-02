@@ -16,6 +16,7 @@ import { CONTAINS } from "../core/Scene2D";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { Selectable } from "../selection/Selectable";
 import type {
+  CoordinateSystem,
   Hoverable,
   Point,
   RawLookerLabel,
@@ -112,6 +113,7 @@ export class BoundingBoxOverlay
   }
 
   set bounds(bounds: Rect | undefined) {
+    this.markDirty();
     if (!bounds) {
       this.#relativeBounds = NO_BOUNDS;
       return;
@@ -119,7 +121,6 @@ export class BoundingBoxOverlay
 
     const relative = this.getCoordinateSystem().absoluteToRelative(bounds);
     this.#relativeBounds = relative;
-    this.markDirty();
   }
 
   get relativeBounds(): Rect {
@@ -550,6 +551,10 @@ export class BoundingBoxOverlay
     return true;
   }
 
+  /**
+   * Get the  {@link CoordinateSystem} of the {@link Scene}
+   * @returns {@link CoordinateSystem}
+   */
   getCoordinateSystem() {
     if (!this.coordinateSystem) {
       throw new Error("no coordinate system");
@@ -563,7 +568,7 @@ export class BoundingBoxOverlay
    * @returns True if current bounds are valid
    */
   hasValidBounds(): boolean {
-    return this.ready && BaseOverlay.validBounds(this.bounds);
+    return BaseOverlay.validBounds(this.bounds);
   }
 
   /**
@@ -610,10 +615,6 @@ export class BoundingBoxOverlay
    * @returns The containment level (NONE = 0, CONTENT = 1, BORDER = 2).
    */
   getContainmentLevel(point: Point): CONTAINS {
-    if (!this.ready) {
-      return CONTAINS.NONE;
-    }
-
     const drawnBounds = this.getDrawnBBox();
 
     // Check if point is inside the main bounding box

@@ -3,7 +3,6 @@
  */
 
 import { BaseLabel } from "@fiftyone/looker/src/overlays/base";
-import { CoordinateSystem2D } from "./core/CoordinateSystem2D";
 
 /**
  * 2D rectangle with position and size.
@@ -98,6 +97,7 @@ export type RawLookerLabel = Omit<BaseLabel, "_renderStatus"> | null;
  * These overlays store relative coordinates [0,1] and need coordinate transformation.
  */
 export interface Spatial {
+  /** The current absolute coordinates in canvas space */
   bounds: Rect;
 
   /** return true if being dragged */
@@ -203,6 +203,5 @@ export class BoundingBoxPersistence {
 
 export interface RenderMeta {
   canonicalMediaBounds: Rect;
-  coordinateSystem: CoordinateSystem2D;
   overlayIndex: number;
 }

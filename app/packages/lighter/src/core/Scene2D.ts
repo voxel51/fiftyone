@@ -26,7 +26,6 @@ import { InteractionManager } from "../interaction/InteractionManager";
 import { InteractiveDetectionHandler } from "../interaction/InteractiveDetectionHandler";
 import { BaseOverlay } from "../overlay/BaseOverlay";
 import { BoundingBoxOverlay } from "../overlay/BoundingBoxOverlay";
-import { ClassificationOverlay } from "../overlay/ClassificationOverlay";
 import type { Selectable } from "../selection/Selectable";
 import type { SelectionOptions } from "../selection/SelectionManager";
 import { SelectionManager } from "../selection/SelectionManager";
@@ -993,8 +992,8 @@ export class Scene2D {
 
     this.renderingState.setStatus(overlay.id, OVERLAY_STATUS_PENDING);
     // Inject renderer, resource loader, and scene ID into overlay
-    overlay.setRenderer(this.config.renderer);
     overlay.setCoordinateSystem(this.coordinateSystem);
+    overlay.setRenderer(this.config.renderer);
     overlay.setResourceLoader(this.config.resourceLoader);
     overlay.setEventChannel(this.eventChannel);
 
@@ -1436,17 +1435,6 @@ export class Scene2D {
   }
 
   /**
-   * Marks Classifications as dirty to be redrawn
-   */
-  private updateClassifications(): void {
-    for (const overlay of this.overlays) {
-      if (overlay instanceof ClassificationOverlay) {
-        overlay.markDirty();
-      }
-    }
-  }
-
-  /**
    * Gets the container dimensions.
    * @returns The container dimensions, or undefined if not available.
    */
@@ -1464,11 +1452,10 @@ export class Scene2D {
     // Before rendering, update relative bounds for overlays that need it
     for (const overlay of this.overlays.values()) {
       if (overlay instanceof BoundingBoxOverlay && overlay.getIsDirty()) {
-        overlay.ready &&
-          this.eventBus.dispatch("lighter:overlay-bounds-changed", {
-            id: overlay.id,
-            bounds: overlay.bounds,
-          });
+        this.eventBus.dispatch("lighter:overlay-bounds-changed", {
+          id: overlay.id,
+          bounds: overlay.bounds,
+        });
       }
     }
 
@@ -1574,7 +1561,6 @@ export class Scene2D {
         this.config.renderer,
         this.createOverlayStyle(overlay),
         {
-          coordinateSystem: this.coordinateSystem,
           canonicalMediaBounds,
           overlayIndex,
         }
