@@ -29,6 +29,8 @@ logger = logging.getLogger(__name__)
 def _ensure_qwen3_vl():
     fou.ensure_package("transformers>=4.57.0")
     fou.ensure_package("accelerate")
+    # 0.0.14 double-applies smart_resize on frame-list videos
+    # (QwenLM/Qwen3-VL#2045); harmless for embeddings.
     fou.ensure_package("qwen-vl-utils>=0.0.1")
 
 
