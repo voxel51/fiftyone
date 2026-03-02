@@ -5,3 +5,63 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+
+  # ---------------------------------------------------------------------------
+  # Fiftyone Python Dependabot configuration
+  # Notes:
+  #   1. Prefer to constrain libraries at the major version
+  #   2. Document where constraints aren't possible with comments
+  #   3. Don't constrain ML-related libraries
+  # For more, see `setup.py`.
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: "pip"
+    directory: "/"
+    registries: '*'
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
+      time: "14:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 5
+    # Dependabot needs to evaluate setup.py to read install_requires
+    insecure-external-code-execution: "allow"
+    # Widen the allowed version requirements to include both the new and old versions, when possible. 
+    # Typically, this only increases the maximum allowed version requirement.
+    versioning-strategy: "auto"
+    ignore:
+      # Ignore patches for all bumps.
+      # All of the stable packages in setup.py
+      # are constrained to a major, so DB won't bump them
+      # unless a new major comes out.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-patch"]
+      # Only do minor versions for these 0.x packages to avoid making 
+      # the 0.x -> 1.0 bump.
+      # We should take those with extra scrutiny.
+      - dependency-name: "strawberry-graphql"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "dill"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "pprintpp"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "sse-starlette"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "starlette"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "tabulate"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "hypercorn"
+        update-types: ["version-update:semver-major"]
+      # Ignore anything mongo related
+      - dependency-name: "pymongo"
+      - dependency-name: "motor"
+      - dependency-name: "mongoengine"
+      # handle internal packages by ourselves
+      - dependency-name: "fiftyone-brain"
+      - dependency-name: "fiftyone-db"
+      - dependency-name: "voxel51-eta"
+
+    groups:
+      stable-python-packages:
+        patterns:
+          - "*"
