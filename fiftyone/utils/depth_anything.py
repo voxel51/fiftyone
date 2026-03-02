@@ -9,6 +9,7 @@ wrapper for the FiftyOne Model Zoo.
 
 import logging
 import os
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 from PIL import Image
@@ -48,7 +49,14 @@ class DepthAnythingV3OutputProcessor(fout.OutputProcessor):
     :class:`fiftyone.core.labels.Heatmap` instances with optional confidence.
     """
 
-    def __call__(self, output, frame_size, confidence_thresh=None, classes=None, **kwargs):
+    def __call__(
+        self,
+        output: Dict[str, Any],
+        frame_size: Tuple[Optional[int], Optional[int]],
+        confidence_thresh: Optional[float] = None,
+        classes: Optional[List[str]] = None,
+        **kwargs,
+    ) -> List[fol.Heatmap]:
         """Processes model output into heatmap labels.
 
         Args:
@@ -258,7 +266,7 @@ class DepthAnythingV3Model(fout.TorchImageModel):
     def media_type(self):
         return "image"
 
-    def _forward_pass(self, imgs):
+    def _forward_pass(self, imgs: List[np.ndarray]) -> Dict[str, Any]:
         prediction = self._model.inference(
             imgs,
             process_res=self.config.process_res,
@@ -291,11 +299,11 @@ class DepthAnythingV3Model(fout.TorchImageModel):
 
     def compute_multiview_depth(
         self,
-        filepaths,
+        filepaths: List[str],
         *,
-        extrinsics=None,
-        intrinsics=None,
-    ):
+        extrinsics: Optional[np.ndarray] = None,
+        intrinsics: Optional[np.ndarray] = None,
+    ) -> List[fol.Heatmap]:
         """Computes multi-view depth using the loaded model.
 
         Args:
@@ -336,17 +344,17 @@ class DepthAnythingV3Model(fout.TorchImageModel):
 
 
 def compute_multiview_depth(
-    filepaths,
-    model_name="depth-anything/da3-large",
+    filepaths: List[str],
+    model_name: str = "depth-anything/da3-large",
     *,
-    process_res=504,
-    process_res_method="upper_bound_resize",
-    use_ray_pose=False,
-    infer_gs=False,
-    export_feat_layers=None,
-    extrinsics=None,
-    intrinsics=None,
-):
+    process_res: int = 504,
+    process_res_method: str = "upper_bound_resize",
+    use_ray_pose: bool = False,
+    infer_gs: bool = False,
+    export_feat_layers: Optional[List[int]] = None,
+    extrinsics: Optional[np.ndarray] = None,
+    intrinsics: Optional[np.ndarray] = None,
+) -> List[fol.Heatmap]:
     """Computes multi-view depth using Depth Anything V3.
 
     Passes all images to the model simultaneously for cross-view
@@ -426,15 +434,15 @@ def compute_multiview_depth(
 
 
 def compute_3d_exports(
-    samples,
-    output_dir,
-    export_format="glb",
-    model_name="depth-anything/da3-large",
-    rel_dir=None,
-    overwrite=False,
-    skip_failures=False,
-    progress=None,
-):
+    samples: Any,
+    output_dir: str,
+    export_format: str = "glb",
+    model_name: str = "depth-anything/da3-large",
+    rel_dir: Optional[str] = None,
+    overwrite: bool = False,
+    skip_failures: bool = False,
+    progress: Optional[bool] = None,
+) -> None:
     """Computes 3D exports (GLB, PLY) for samples using Depth Anything V3.
 
     Examples::
