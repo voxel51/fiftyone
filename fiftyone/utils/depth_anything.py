@@ -83,8 +83,14 @@ class DepthAnythingV3OutputProcessor(fout.OutputProcessor):
 
         depth_maps = output["depth"]
 
+        if depth_maps is None:
+            raise ValueError("Model output 'depth' is None")
+
         if isinstance(depth_maps, torch.Tensor):
             depth_maps = depth_maps.detach().cpu().numpy()
+
+        if depth_maps.size == 0:
+            raise ValueError("Model output 'depth' is empty")
 
         if len(depth_maps.shape) == 2:
             depth_maps = depth_maps[np.newaxis, ...]
