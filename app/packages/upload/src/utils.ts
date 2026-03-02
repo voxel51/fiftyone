@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from "uuid";
 import type {
   FileUploadItem,
   HeadersOption,
@@ -7,10 +8,8 @@ import type {
 
 // ── ID generation ──────────────────────────────────────────────────────
 
-let nextId = 0;
-
 export function generateId(): string {
-  return `upload-${++nextId}-${Date.now()}`;
+  return uuidv4();
 }
 
 // ── File fingerprinting ────────────────────────────────────────────────
@@ -44,7 +43,7 @@ export function validateFile(
   if (accept && !matchesAccept(file, accept)) {
     return `"${file.name}" does not match accepted types: ${accept.join(", ")}`;
   }
-  if (maxSize != null && file.size > maxSize) {
+  if (typeof maxSize === "number" && file.size > maxSize) {
     return maxSizeMessage ?? `"${file.name}" exceeds the maximum file size`;
   }
   if (validate) {
