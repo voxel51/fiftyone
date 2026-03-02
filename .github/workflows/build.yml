@@ -55,6 +55,8 @@ jobs:
       - name: Install app
         if: steps.node-cache.outputs.cache-hit != 'true'
         run: cd app && yarn install
+      - name: Compile
+        run: cd app && yarn compile
       - name: Build app
         run: make app
       - name: Set environment
