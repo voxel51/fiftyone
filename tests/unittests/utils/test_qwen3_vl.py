@@ -6,12 +6,23 @@ Tests for fiftyone/utils/qwen3_vl.py output processor and parsing.
 |
 """
 
+import os
+import tempfile
+
+import PIL.Image
 import pytest
 import numpy as np
+import torch
 from unittest import mock
 
 import fiftyone as fo
 import fiftyone.core.labels as fol
+import fiftyone.core.models as fom
+from fiftyone.utils.qwen3_vl import (
+    Qwen3VLModel,
+    Qwen3VLModelConfig,
+    Qwen3VLOutputProcessor,
+)
 
 
 class TestQwen3VLOutputProcessor:
@@ -19,8 +30,6 @@ class TestQwen3VLOutputProcessor:
 
     def test_parse_valid_array_json(self):
         """Test parsing valid JSON array with detections"""
-        from fiftyone.utils.qwen3_vl import Qwen3VLOutputProcessor
-
         processor = Qwen3VLOutputProcessor()
         raw = '[{"label": "cat", "bbox_2d": [100, 200, 400, 600]}]'
         detections = processor._parse_detections(raw, (1000, 1000))
@@ -35,8 +44,6 @@ class TestQwen3VLOutputProcessor:
 
     def test_parse_single_object_json(self):
         """Test parsing single object JSON (not array)"""
-        from fiftyone.utils.qwen3_vl import Qwen3VLOutputProcessor
-
         processor = Qwen3VLOutputProcessor()
         raw = '{"label": "dog", "bbox_2d": [100, 200, 400, 600]}'
         detections = processor._parse_detections(raw, (1000, 1000))
@@ -46,8 +53,6 @@ class TestQwen3VLOutputProcessor:
 
     def test_parse_multiple_detections(self):
         """Test parsing multiple detections"""
-        from fiftyone.utils.qwen3_vl import Qwen3VLOutputProcessor
-
         processor = Qwen3VLOutputProcessor()
         raw = '''[
             {"label": "cat", "bbox_2d": [0, 0, 500, 500]},
@@ -61,8 +66,6 @@ class TestQwen3VLOutputProcessor:
 
     def test_parse_markdown_wrapped_json(self):
         """Test parsing JSON wrapped in markdown code blocks"""
-        from fiftyone.utils.qwen3_vl import Qwen3VLOutputProcessor
-
         processor = Qwen3VLOutputProcessor()
         raw = '```json\n[{"label": "bird", "bbox_2d": [100, 100, 300, 300]}]\n```'
         detections = processor._parse_detections(raw, (1000, 1000))
@@ -72,8 +75,6 @@ class TestQwen3VLOutputProcessor:
 
     def test_parse_empty_responses(self):
         """Test parsing various empty response formats"""
-        from fiftyone.utils.qwen3_vl import Qwen3VLOutputProcessor
-
         processor = Qwen3VLOutputProcessor()
 
         empty_responses = [
@@ -91,8 +92,6 @@ class TestQwen3VLOutputProcessor:
 
     def test_parse_invalid_json(self):
         """Test graceful handling of invalid JSON"""
-        from fiftyone.utils.qwen3_vl import Qwen3VLOutputProcessor
-
         processor = Qwen3VLOutputProcessor()
         raw = "this is not json at all"
         detections = processor._parse_detections(raw, (1000, 1000))
@@ -101,8 +100,6 @@ class TestQwen3VLOutputProcessor:
 
     def test_parse_missing_bbox(self):
         """Test handling detection without bbox_2d"""
-        from fiftyone.utils.qwen3_vl import Qwen3VLOutputProcessor
-
         processor = Qwen3VLOutputProcessor()
         raw = '[{"label": "cat"}]'
         detections = processor._parse_detections(raw, (1000, 1000))
@@ -111,8 +108,6 @@ class TestQwen3VLOutputProcessor:
 
     def test_parse_invalid_bbox_length(self):
         """Test handling bbox with wrong number of elements"""
-        from fiftyone.utils.qwen3_vl import Qwen3VLOutputProcessor
-
         processor = Qwen3VLOutputProcessor()
         raw = '[{"label": "cat", "bbox_2d": [100, 200, 300]}]'
         detections = processor._parse_detections(raw, (1000, 1000))
@@ -125,8 +120,6 @@ class TestQwen3VLCoordinateClamping:
 
     def test_clamp_coordinates_above_1000(self):
         """Test coordinates above 1000 are clamped to 1.0"""
-        from fiftyone.utils.qwen3_vl import Qwen3VLOutputProcessor
-
         processor = Qwen3VLOutputProcessor()
         raw = '[{"label": "cat", "bbox_2d": [0, 0, 1200, 1200]}]'
         detections = processor._parse_detections(raw, (1000, 1000))
@@ -140,8 +133,6 @@ class TestQwen3VLCoordinateClamping:
 
     def test_clamp_negative_coordinates(self):
         """Test negative coordinates are clamped to 0.0"""
-        from fiftyone.utils.qwen3_vl import Qwen3VLOutputProcessor
-
         processor = Qwen3VLOutputProcessor()
         raw = '[{"label": "cat", "bbox_2d": [-50, -50, 500, 500]}]'
         detections = processor._parse_detections(raw, (1000, 1000))
@@ -155,8 +146,6 @@ class TestQwen3VLCoordinateClamping:
 
     def test_clamp_fully_out_of_range(self):
         """Test fully out-of-range box is clamped to valid region"""
-        from fiftyone.utils.qwen3_vl import Qwen3VLOutputProcessor
-
         processor = Qwen3VLOutputProcessor()
         raw = '[{"label": "cat", "bbox_2d": [-100, -100, 1100, 1100]}]'
         detections = processor._parse_detections(raw, (1000, 1000))
@@ -167,8 +156,6 @@ class TestQwen3VLCoordinateClamping:
 
     def test_skip_zero_size_after_clamp(self):
         """Test boxes that become zero-size after clamping are skipped"""
-        from fiftyone.utils.qwen3_vl import Qwen3VLOutputProcessor
-
         processor = Qwen3VLOutputProcessor()
         raw = '[{"label": "cat", "bbox_2d": [1100, 1100, 1200, 1200]}]'
         detections = processor._parse_detections(raw, (1000, 1000))
@@ -181,8 +168,6 @@ class TestQwen3VLBboxConversion:
 
     def test_standard_conversion(self):
         """Test standard coordinate conversion"""
-        from fiftyone.utils.qwen3_vl import Qwen3VLOutputProcessor
-
         processor = Qwen3VLOutputProcessor()
         raw = '[{"label": "cat", "bbox_2d": [100, 200, 300, 400]}]'
         detections = processor._parse_detections(raw, (1000, 1000))
@@ -195,8 +180,6 @@ class TestQwen3VLBboxConversion:
 
     def test_full_image_bbox(self):
         """Test bbox covering full image"""
-        from fiftyone.utils.qwen3_vl import Qwen3VLOutputProcessor
-
         processor = Qwen3VLOutputProcessor()
         raw = '[{"label": "cat", "bbox_2d": [0, 0, 1000, 1000]}]'
         detections = processor._parse_detections(raw, (1000, 1000))
@@ -206,8 +189,6 @@ class TestQwen3VLBboxConversion:
 
     def test_skip_inverted_bbox(self):
         """Test inverted bbox (x2 < x1) is skipped"""
-        from fiftyone.utils.qwen3_vl import Qwen3VLOutputProcessor
-
         processor = Qwen3VLOutputProcessor()
         raw = '[{"label": "cat", "bbox_2d": [500, 500, 100, 100]}]'
         detections = processor._parse_detections(raw, (1000, 1000))
@@ -220,8 +201,6 @@ class TestQwen3VLOutputProcessorCall:
 
     def test_process_batch(self):
         """Test processing a batch of outputs"""
-        from fiftyone.utils.qwen3_vl import Qwen3VLOutputProcessor
-
         processor = Qwen3VLOutputProcessor()
         outputs = [
             '[{"label": "cat", "bbox_2d": [0, 0, 500, 500]}]',
@@ -245,8 +224,6 @@ class TestQwen3VLModelConfig:
 
     def test_default_config(self):
         """Test default configuration values"""
-        from fiftyone.utils.qwen3_vl import Qwen3VLModelConfig
-
         config = Qwen3VLModelConfig({})
 
         assert config.name_or_path == "Qwen/Qwen3-VL-2B-Instruct"
@@ -258,8 +235,6 @@ class TestQwen3VLModelConfig:
 
     def test_custom_config(self):
         """Test custom configuration values"""
-        from fiftyone.utils.qwen3_vl import Qwen3VLModelConfig
-
         config = Qwen3VLModelConfig({
             "name_or_path": "Qwen/Qwen3-VL-8B-Instruct",
             "classes": ["person", "car"],
@@ -272,8 +247,6 @@ class TestQwen3VLModelConfig:
 
     def test_embedding_config(self):
         """Test embedding-specific configuration"""
-        from fiftyone.utils.qwen3_vl import Qwen3VLModelConfig
-
         config = Qwen3VLModelConfig({
             "name_or_path": "Qwen/Qwen3-VL-Embedding-2B",
             "embedding_dim": 512,
@@ -290,8 +263,6 @@ class TestQwen3VLPromptGeneration:
 
     def test_default_prompt(self):
         """Test default detection prompt"""
-        from fiftyone.utils.qwen3_vl import Qwen3VLModel, Qwen3VLModelConfig
-
         model = Qwen3VLModel.__new__(Qwen3VLModel)
         model.config = Qwen3VLModelConfig({})
 
@@ -302,8 +273,6 @@ class TestQwen3VLPromptGeneration:
 
     def test_custom_classes_prompt(self):
         """Test prompt with custom classes"""
-        from fiftyone.utils.qwen3_vl import Qwen3VLModel, Qwen3VLModelConfig
-
         model = Qwen3VLModel.__new__(Qwen3VLModel)
         model.config = Qwen3VLModelConfig({"classes": ["person", "car", "dog"]})
 
@@ -315,8 +284,6 @@ class TestQwen3VLPromptGeneration:
 
     def test_custom_prompt_override(self):
         """Test custom prompt overrides default"""
-        from fiftyone.utils.qwen3_vl import Qwen3VLModel, Qwen3VLModelConfig
-
         custom = "Find all the cats in this image."
         model = Qwen3VLModel.__new__(Qwen3VLModel)
         model.config = Qwen3VLModelConfig({"prompt": custom})
@@ -331,12 +298,6 @@ class TestQwen3VLEmbeddingMode:
 
     def test_has_embeddings_detection_mode(self):
         """Test has_embeddings is False when output_processor is set"""
-        from fiftyone.utils.qwen3_vl import (
-            Qwen3VLModel,
-            Qwen3VLModelConfig,
-            Qwen3VLOutputProcessor,
-        )
-
         model = Qwen3VLModel.__new__(Qwen3VLModel)
         model._output_processor = Qwen3VLOutputProcessor()
 
@@ -344,8 +305,6 @@ class TestQwen3VLEmbeddingMode:
 
     def test_has_embeddings_embedding_mode(self):
         """Test has_embeddings is True when output_processor is None"""
-        from fiftyone.utils.qwen3_vl import Qwen3VLModel
-
         model = Qwen3VLModel.__new__(Qwen3VLModel)
         model._output_processor = None
 
@@ -353,50 +312,37 @@ class TestQwen3VLEmbeddingMode:
 
     def test_prepare_image_pil(self):
         """Test _prepare_image with PIL input"""
-        from PIL import Image
-        from fiftyone.utils.qwen3_vl import Qwen3VLModel
-
         model = Qwen3VLModel.__new__(Qwen3VLModel)
-        img = Image.new("RGB", (100, 100), color="red")
+        img = PIL.Image.new("RGB", (100, 100), color="red")
         result = model._prepare_image(img)
 
-        assert isinstance(result, Image.Image)
+        assert isinstance(result, PIL.Image.Image)
 
     def test_prepare_image_numpy(self):
         """Test _prepare_image with numpy input"""
-        from PIL import Image
-        from fiftyone.utils.qwen3_vl import Qwen3VLModel
-
         model = Qwen3VLModel.__new__(Qwen3VLModel)
         img = np.random.randint(0, 255, (100, 100, 3), dtype=np.uint8)
         result = model._prepare_image(img)
 
-        assert isinstance(result, Image.Image)
+        assert isinstance(result, PIL.Image.Image)
 
     def test_prepare_image_float_normalized(self):
         """Test _prepare_image with float normalized numpy array"""
-        from PIL import Image
-        from fiftyone.utils.qwen3_vl import Qwen3VLModel
-
         model = Qwen3VLModel.__new__(Qwen3VLModel)
         img = np.random.rand(100, 100, 3).astype(np.float32)
         result = model._prepare_image(img)
 
-        assert isinstance(result, Image.Image)
+        assert isinstance(result, PIL.Image.Image)
 
     def test_prepare_image_hwc_small_height(self):
         """Test _prepare_image with HWC tensors where height is 1, 3, or 4"""
-        import torch
-        from PIL import Image
-        from fiftyone.utils.qwen3_vl import Qwen3VLModel
-
         model = Qwen3VLModel.__new__(Qwen3VLModel)
 
         for height in [1, 3, 4]:
             img = torch.randint(0, 255, (height, 224, 3), dtype=torch.uint8)
             result = model._prepare_image(img)
 
-            assert isinstance(result, Image.Image)
+            assert isinstance(result, PIL.Image.Image)
             assert result.size == (224, height)
 
 
@@ -405,22 +351,16 @@ class TestQwen3VLMode:
 
     def test_default_mode(self):
         """Test default config mode is None"""
-        from fiftyone.utils.qwen3_vl import Qwen3VLModelConfig
-
         config = Qwen3VLModelConfig({})
         assert config.mode is None
 
     def test_config_mode_video(self):
         """Test config accepts mode=video"""
-        from fiftyone.utils.qwen3_vl import Qwen3VLModelConfig
-
         config = Qwen3VLModelConfig({"mode": "video"})
         assert config.mode == "video"
 
     def test_media_type_reflects_mode(self):
         """Test media_type returns current mode"""
-        from fiftyone.utils.qwen3_vl import Qwen3VLModel
-
         model = Qwen3VLModel.__new__(Qwen3VLModel)
         model._mode = "image"
         assert model.media_type == "image"
@@ -430,16 +370,12 @@ class TestQwen3VLMode:
 
     def test_media_type_defaults_image_when_none(self):
         """Test media_type falls back to image when mode is None"""
-        from fiftyone.utils.qwen3_vl import Qwen3VLModel
-
         model = Qwen3VLModel.__new__(Qwen3VLModel)
         model._mode = None
         assert model.media_type == "image"
 
     def test_mode_setter(self):
         """Test mode can be changed at runtime"""
-        from fiftyone.utils.qwen3_vl import Qwen3VLModel
-
         model = Qwen3VLModel.__new__(Qwen3VLModel)
         model._mode = "image"
 
@@ -452,8 +388,6 @@ class TestQwen3VLAutoMode:
     """Test that mode auto-defaults from dataset media type via compute_embeddings"""
 
     def _make_mock_model(self):
-        import fiftyone.core.models as fom
-
         class _Mock(fom.Model, fom.EmbeddingsMixin):
             def __init__(self):
                 self._mode = None
@@ -549,14 +483,10 @@ class TestQwen3VLAutoMode:
         assert all(t != "FFmpegVideoReader" for t in embed_calls)
         ds.delete()
 
-    def test_mode_none_image_dataset(self):
+    def test_mode_none_image_dataset(self, tmp_path):
         """mode=None on image dataset -> sample-level embeddings"""
-        import PIL.Image
-        import tempfile
-        import os
-
         model = self._make_mock_model()
-        tmp = os.path.join(tempfile.gettempdir(), "test_auto_mode.png")
+        tmp = str(tmp_path / "test_auto_mode.png")
         PIL.Image.new("RGB", (10, 10)).save(tmp)
         ds = fo.Dataset()
         ds.add_sample(fo.Sample(filepath=tmp))
@@ -564,7 +494,6 @@ class TestQwen3VLAutoMode:
         assert ds.has_sample_field("emb")
         assert model.mode is None
         ds.delete()
-        os.remove(tmp)
 
 
 class TestQwen3VLVideoConfig:
@@ -572,8 +501,6 @@ class TestQwen3VLVideoConfig:
 
     def test_video_fps_default(self):
         """Test default video_fps is 2.0"""
-        from fiftyone.utils.qwen3_vl import Qwen3VLModelConfig
-
         config = Qwen3VLModelConfig({})
         assert config.video_fps == 2.0
         assert config.max_video_frames == 128
@@ -583,8 +510,6 @@ class TestQwen3VLModeValidation:
     """Test that invalid mode values are rejected"""
 
     def test_invalid_mode_raises(self):
-        from fiftyone.utils.qwen3_vl import Qwen3VLModel
-
         model = Qwen3VLModel.__new__(Qwen3VLModel)
         model._mode = None
 
