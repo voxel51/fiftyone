@@ -10,6 +10,7 @@ import { FoScene } from "../../hooks";
 import { avoidZFightingAtom } from "../../state";
 import { useFo3dContext } from "../context";
 import { getOrthonormalAxis, saveCameraState } from "../utils";
+import { useCameraSelectorControls } from "./cameras/use-camera-selector-controls";
 import { Lights } from "./lights/Lights";
 
 export const SceneControls = ({
@@ -29,6 +30,7 @@ export const SceneControls = ({
     raycastPrecision,
     setRaycastPrecision,
     isComputingSceneBoundingBox,
+    lookAt,
   } = useFo3dContext();
 
   const datasetName = useRecoilValue(fos.datasetName);
@@ -44,6 +46,11 @@ export const SceneControls = ({
 
   // save every quarter second to avoid excessive writes
   const CAMERA_UPDATE_INTERVAL = 250;
+
+  useCameraSelectorControls({
+    cameraControlsRef,
+    lookAt,
+  });
 
   useFrame((state) => {
     if (isComputingSceneBoundingBox) return;
