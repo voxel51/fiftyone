@@ -576,6 +576,21 @@ class TestQwen3VLVideoConfig:
 
         config = Qwen3VLModelConfig({})
         assert config.video_fps == 2.0
+        assert config.max_video_frames == 128
+
+
+class TestQwen3VLModeValidation:
+    """Test that invalid mode values are rejected"""
+
+    def test_invalid_mode_raises(self):
+        from fiftyone.utils.qwen3_vl import Qwen3VLModel
+
+        model = Qwen3VLModel.__new__(Qwen3VLModel)
+        model._mode = None
+
+        for bad in ["garbage", 123, ""]:
+            with pytest.raises(ValueError, match="mode must be"):
+                model.mode = bad
 
 
 if __name__ == "__main__":
