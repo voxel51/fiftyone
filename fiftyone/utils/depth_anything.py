@@ -86,11 +86,25 @@ class DepthAnythingV3OutputProcessor(fout.OutputProcessor):
         if depth_maps is None:
             raise ValueError("Model output 'depth' is None")
 
+        if isinstance(depth_maps, (list, tuple)):
+            depth_maps = torch.stack([
+                t if isinstance(t, torch.Tensor) else torch.as_tensor(t)
+                for t in depth_maps
+            ])
+
         if isinstance(depth_maps, torch.Tensor):
             depth_maps = depth_maps.detach().cpu().numpy()
 
         if depth_maps.size == 0:
             raise ValueError("Model output 'depth' is empty")
+
+        if depth_maps.ndim == 4:
+            depth_maps = depth_maps.squeeze(
+                3 if depth_maps.shape[3] == 1 else 1
+            )
+
+        if depth_maps.ndim == 3 and depth_maps.shape[2] == 1:
+            depth_maps = depth_maps.squeeze(2)
 
         if len(depth_maps.shape) == 2:
             depth_maps = depth_maps[np.newaxis, ...]
