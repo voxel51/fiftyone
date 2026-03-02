@@ -54,7 +54,11 @@ export function useGridRenderClaimsLooker(
         surface: "grid",
       });
 
-      return !!matchedPanel && !!ctx.selectedMediaUrl;
+      return (
+        !!matchedPanel &&
+        !!ctx.selectedMediaUrl &&
+        !!getRawComponent(matchedPanel.name)
+      );
     },
     [dataset, schema, selectedMediaField, panelPlugins]
   );

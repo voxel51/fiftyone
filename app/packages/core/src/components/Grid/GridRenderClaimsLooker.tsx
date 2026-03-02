@@ -96,11 +96,12 @@ const FORWARDED_EVENTS = ["load", "refresh", "selectthumbnail"] as const;
  * Events: Forwards "load", "refresh", and "selectthumbnail" events.
  */
 export class GridRenderClaimsLooker {
-  public loaded = true;
+  public loaded = false;
 
   private readonly eventTarget = new EventTarget();
   private readonly hostElement = document.createElement("div");
   private fallbackLooker: fos.Lookers | null = null;
+  private fallbackHandlers = new Map<string, (event: Event) => void>();
   private mountedElement: HTMLElement | null = null;
   private root: Root | null = null;
   private destroyed = false;
@@ -194,14 +195,23 @@ export class GridRenderClaimsLooker {
     );
 
     this.unmountPluginRenderer();
-    this.fallbackLooker = this.config.createFallbackLooker();
+
+    try {
+      this.fallbackLooker = this.config.createFallbackLooker();
+    } catch (fallbackError) {
+      console.error(
+        `Grid renderClaims: failed to create fallback looker (plugin: ${this.config.pluginName}):`,
+        fallbackError
+      );
+      this.fallbackLooker = null;
+      return;
+    }
 
     // Forward events from fallback looker
     FORWARDED_EVENTS.forEach((eventType) => {
-      this.fallbackLooker?.addEventListener(
-        eventType,
-        this.forwardFallbackEvent(eventType)
-      );
+      const handler = this.forwardFallbackEvent(eventType);
+      this.fallbackHandlers.set(eventType, handler);
+      this.fallbackLooker?.addEventListener(eventType, handler);
     });
 
     if (this.mountedElement) {
@@ -245,6 +255,7 @@ export class GridRenderClaimsLooker {
     }
 
     this.mountPluginRenderer();
+    this.loaded = true;
     this.dispatchEvent("load");
   }
 
@@ -265,9 +276,17 @@ export class GridRenderClaimsLooker {
     this.destroyed = true;
     this.detach();
     this.unmountPluginRenderer();
+    this.removeFallbackHandlers();
     this.fallbackLooker?.destroy();
     this.fallbackLooker = null;
     this.mountedElement = null;
+  }
+
+  private removeFallbackHandlers() {
+    for (const [eventType, handler] of this.fallbackHandlers) {
+      this.fallbackLooker?.removeEventListener(eventType, handler);
+    }
+    this.fallbackHandlers.clear();
   }
 
   private unmountPluginRenderer() {

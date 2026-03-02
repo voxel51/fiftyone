@@ -217,6 +217,51 @@ describe("shared render-claims utilities", () => {
     expect(ctx.schema).toBe(schema);
   });
 
+  it("derives mimeType from selectedMediaPath when it differs from filepath", () => {
+    const sample = {
+      sample: {
+        filepath: "/tmp/document.pdf",
+        metadata: { mime_type: "application/pdf" },
+        media_type: "unknown",
+      },
+      urls: [
+        { field: "filepath", url: "/tmp/document.pdf" },
+        { field: "thumbnail_path", url: "/tmp/preview.jpg" },
+      ],
+    } as const;
+    const dataset = { name: "ds" } as any;
+    const schema = { filepath: { ftype: "StringField" } } as any;
+
+    const ctx = getRenderClaimsContext(
+      sample,
+      "thumbnail_path",
+      dataset,
+      schema
+    );
+
+    expect(ctx.selectedMediaPath).toBe("/tmp/preview.jpg");
+    expect(ctx.mimeType).toBe("image/jpeg");
+    expect(ctx.extension).toBe("jpg");
+  });
+
+  it("uses metadata mime_type when selectedMediaPath matches filepath", () => {
+    const sample = {
+      sample: {
+        filepath: "/tmp/data.bin",
+        metadata: { mime_type: "application/octet-stream" },
+        media_type: "unknown",
+      },
+      urls: [{ field: "filepath", url: "/tmp/data.bin" }],
+    } as const;
+    const dataset = { name: "ds" } as any;
+    const schema = { filepath: { ftype: "StringField" } } as any;
+
+    const ctx = getRenderClaimsContext(sample, "filepath", dataset, schema);
+
+    expect(ctx.selectedMediaPath).toBe("/tmp/data.bin");
+    expect(ctx.mimeType).toBe("application/octet-stream");
+  });
+
   it("selects matching panels by priority", () => {
     const ctx = {
       extension: "pdf",

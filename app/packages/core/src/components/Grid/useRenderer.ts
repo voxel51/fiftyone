@@ -67,18 +67,32 @@ export default function useRenderer({
         );
       }
 
-      const looker = renderClaimsRef.current.shouldOverrideRender({
-        sample: result.sample,
-      })
-        ? renderClaimsRef.current.createLookerWithPluginRenderer(
+      let looker: fos.Lookers;
+
+      if (
+        renderClaimsRef.current.shouldOverrideRender({
+          sample: result.sample,
+        })
+      ) {
+        try {
+          looker = renderClaimsRef.current.createLookerWithPluginRenderer(
             { sample: result.sample },
             id,
             getFontSize()
-          )
-        : (createLooker.current?.(
+          );
+        } catch (e) {
+          console.error("Failed to create plugin renderer, using default:", e);
+          looker = createLooker.current?.(
             { ...result, symbol: id },
             { fontSize: getFontSize() }
-          ) as fos.Lookers);
+          ) as fos.Lookers;
+        }
+      } else {
+        looker = createLooker.current?.(
+          { ...result, symbol: id },
+          { fontSize: getFontSize() }
+        ) as fos.Lookers;
+      }
 
       looker.addEventListener("selectthumbnail", ({ detail }) =>
         selectSample.current?.(detail)

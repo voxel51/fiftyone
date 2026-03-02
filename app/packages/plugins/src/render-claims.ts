@@ -118,8 +118,13 @@ function matchesField(allowed: string[] | undefined, value: string | null) {
 }
 
 function getSampleMimeType(
-  sample: RenderClaimSampleLike["sample"]
+  sample: RenderClaimSampleLike["sample"],
+  selectedMediaPath?: string | null
 ): string | null {
+  if (selectedMediaPath && selectedMediaPath !== sample.filepath) {
+    return mime.getType(selectedMediaPath) ?? null;
+  }
+
   if (sample.metadata?.mime_type) {
     return sample.metadata.mime_type;
   }
@@ -249,7 +254,7 @@ export function getRenderClaimsContext<TSample extends RenderClaimSampleLike>(
       ? fos.getSampleSrc(selectedMediaPath)
       : null,
     extension: getFileExtension(selectedMediaPath),
-    mimeType: getSampleMimeType(sample.sample),
+    mimeType: getSampleMimeType(sample.sample, selectedMediaPath),
     mediaType: sample.sample.media_type ?? sample.sample._media_type ?? null,
     dataset,
     schema,

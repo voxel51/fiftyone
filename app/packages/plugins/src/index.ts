@@ -521,9 +521,14 @@ class PluginComponentRegistry {
         `${name} declared panelOptions.renderClaims without any matchers`
       );
 
-      const unsupportedModeExtensions = getUnsupportedRenderClaimModeExtensions(
-        registration.panelOptions.renderClaims
-      );
+      let unsupportedModeExtensions: string[] = [];
+      try {
+        unsupportedModeExtensions = getUnsupportedRenderClaimModeExtensions(
+          registration.panelOptions.renderClaims
+        );
+      } catch (e) {
+        warn(false, `${name} has invalid renderClaims.modeExtensions: ${e}`);
+      }
       warn(
         unsupportedModeExtensions.length === 0,
         `${name} declared panelOptions.renderClaims with unsupported modeExtensions: ${unsupportedModeExtensions.join(
