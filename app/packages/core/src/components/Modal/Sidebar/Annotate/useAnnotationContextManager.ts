@@ -35,6 +35,17 @@ export type EnterResult = {
  */
 export interface AnnotationContextManager {
   /**
+   * Initialize and activate a field's annotation schema within an
+   * already-active annotation context.
+   *
+   * Use this when the annotation context is already entered (e.g. the
+   * Annotate tab is mounted) and you need to activate a specific field.
+   *
+   * @param field The field name to initialize and activate
+   */
+  activateField: (field: string) => Promise<EnterResult>;
+
+  /**
    * Enter annotation mode, performing any required setup for the specified `path`.
    *
    * If a {@link FieldSchema} does not exist for the specified `path`,
@@ -96,8 +107,8 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
   const { isPrimitive, setActivePrimitive } = usePrimitiveController();
   const { reset: clearStaleMutations } = useSampleMutationManager();
 
-  const initializeFieldSchema = useCallback(
-    async (field: string) => {
+  const activateField = useCallback(
+    async (field: string): Promise<EnterResult> => {
       // activate only the specified field
       setActiveFields([field]);
 
@@ -135,6 +146,11 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
         setLabelSchema(listSchemaResponse.label_schemas);
         setActiveSchemaPaths(listSchemaResponse.active_label_schemas);
 
+        // if the field is a primitive, activate it directly
+        if (isPrimitive(field)) {
+          setActivePrimitive(field);
+        }
+
         return {
           status: InitializationStatus.Success,
         };
@@ -148,9 +164,11 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
     },
     [
       canManageSchema,
+      isPrimitive,
       sampleScanLimit,
       schemaManager,
       setActiveFields,
+      setActivePrimitive,
       setActiveSchemaPaths,
       setLabelSchema,
     ]
@@ -179,15 +197,7 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
 
       // initialize and activate field schema if specified
       if (field) {
-        result = await initializeFieldSchema(field);
-
-        // if the field is a primitive, activate it directly
-        if (
-          result.status === InitializationStatus.Success &&
-          isPrimitive(field)
-        ) {
-          setActivePrimitive(field);
-        }
+        result = await activateField(field);
       }
 
       if (labelId) {
@@ -197,13 +207,11 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
       return result;
     },
     [
+      activateField,
       activeFields,
       contextManager,
-      initializeFieldSchema,
-      isPrimitive,
       setActiveFields,
       setActiveLabelId,
-      setActivePrimitive,
     ]
   );
 
@@ -217,12 +225,13 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
 
   return useMemo(
     () => ({
+      activateField,
       clearEntranceLabelId: () => setActiveLabelId(null),
       enter,
       entranceLabelId: activeLabelId,
       exit,
     }),
-    [activeLabelId, enter, exit, setActiveLabelId]
+    [activateField, activeLabelId, enter, exit, setActiveLabelId]
   );
 };
 

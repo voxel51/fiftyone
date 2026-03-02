@@ -128,6 +128,11 @@ class PluginDocGenerator:
             r"\bdef\s+download_model\s*\("
         )
         self.load_dataset_pattern = re.compile(r"\bdef\s+load_dataset\s*\(")
+        self.empty_heading_pattern = re.compile(
+            r"^\s*#{1,6}\s*$",
+            flags=re.MULTILINE,
+        )
+        self.heading_pattern = re.compile(r"^\s*#{1,6}\s+\S")
 
     def _remove_emojis(self, text: str) -> str:
         """Remove emoji and miscellaneous symbols from a string.
@@ -824,6 +829,17 @@ myst:
                 seo_metadata = self._generate_seo_metadata(plugin, readme_content)
                 frontmatter = self._generate_frontmatter(seo_metadata)
                 github_badge = self._generate_github_badge(plugin)
+
+                processed_readme = self.empty_heading_pattern.sub(
+                    "", processed_readme
+                )
+
+                has_heading = any(
+                    self.heading_pattern.match(line)
+                    for line in processed_readme.splitlines()
+                )
+                if not has_heading:
+                    processed_readme = f"# {display_name}\n\n" + processed_readme
 
                 if plugin.category == "community":
                     community_note = """```{note}

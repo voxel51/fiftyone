@@ -22,14 +22,15 @@ export const useRegisterAnnotationEventHandlers = () => {
     useCallback(async () => {
       if (retryController.canAttempt) {
         await handlePersistenceRequest();
-        retryController.recordAttempt();
       }
-    }, [handlePersistenceRequest, retryController])
+    }, [handlePersistenceRequest, retryController.canAttempt])
   );
 
   useAnnotationEventHandler(
     "annotation:persistenceInFlight",
     useCallback(() => {
+      retryController.recordAttempt();
+
       // silence notifications when unhealthy
       if (!retryController.isUnhealthy) {
         setConfig({
@@ -39,7 +40,7 @@ export const useRegisterAnnotationEventHandlers = () => {
           timeout: INDEFINITE_TOAST_TIMEOUT,
         });
       }
-    }, [retryController.isUnhealthy, setConfig])
+    }, [retryController, setConfig])
   );
 
   useAnnotationEventHandler(
