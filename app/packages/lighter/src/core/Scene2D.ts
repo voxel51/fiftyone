@@ -899,11 +899,12 @@ export class Scene2D {
     let firstRender = true;
     this.config.renderer.addTickHandler(async () => {
       await this.renderFrame();
-      firstRender &&
+      if (firstRender) {
+        firstRender = false;
         requestAnimationFrame(() => {
-          firstRender = false;
           document.dispatchEvent(new CustomEvent("lighter-first-render"));
         });
+      }
     });
   }
 
