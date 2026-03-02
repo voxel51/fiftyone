@@ -50,7 +50,7 @@ setup(
         # python-packaged or meta libraries (unconstrained)
         "Deprecated", # Don't constrain python-packaged `Deprecated`
         "packaging",  # Don't constrain python-packaged `packaging`
-        "setuptools", # Don't constrain python-packaged `packaging`
+        "setuptools", # Don't constrain python-packaged `setuptools`
         # third-party packages (constrained at lower and upper majors)
         "aiofiles>=20,<26",
         "argcomplete>=2,<4",

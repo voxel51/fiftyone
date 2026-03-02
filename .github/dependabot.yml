@@ -23,8 +23,6 @@ updates:
       time: "14:00"
       timezone: "UTC"
     open-pull-requests-limit: 5
-    # Dependabot needs to evaluate setup.py to read install_requires
-    insecure-external-code-execution: "allow"
     # Widen the allowed version requirements to include both the new and old versions, when possible. 
     # Typically, this only increases the maximum allowed version requirement.
     versioning-strategy: "auto"
