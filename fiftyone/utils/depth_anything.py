@@ -113,15 +113,29 @@ class DepthAnythingV3OutputProcessor(fout.OutputProcessor):
         if conf_maps is not None:
             if isinstance(conf_maps, torch.Tensor):
                 conf_maps = conf_maps.detach().cpu().numpy()
-            if len(conf_maps.shape) == 2:
-                conf_maps = conf_maps[np.newaxis, ...]
+            if len(conf_maps) < len(depth_maps):
+                logger.warning(
+                    "Confidence maps (%d) fewer than depth maps (%d), "
+                    "skipping confidence", len(conf_maps), len(depth_maps)
+                )
+                conf_maps = None
+            else:
+                if len(conf_maps.shape) == 2:
+                    conf_maps = conf_maps[np.newaxis, ...]
 
         sky_masks = output.get("sky")
         if sky_masks is not None:
             if isinstance(sky_masks, torch.Tensor):
                 sky_masks = sky_masks.detach().cpu().numpy()
-            if len(sky_masks.shape) == 2:
-                sky_masks = sky_masks[np.newaxis, ...]
+            if len(sky_masks) < len(depth_maps):
+                logger.warning(
+                    "Sky masks (%d) fewer than depth maps (%d), "
+                    "skipping sky", len(sky_masks), len(depth_maps)
+                )
+                sky_masks = None
+            else:
+                if len(sky_masks.shape) == 2:
+                    sky_masks = sky_masks[np.newaxis, ...]
 
         width, height = frame_size
         results = []
@@ -129,7 +143,7 @@ class DepthAnythingV3OutputProcessor(fout.OutputProcessor):
         for i, depth in enumerate(depth_maps):
             if width is not None and height is not None:
                 if depth.shape[0] != height or depth.shape[1] != width:
-                    depth_img = Image.fromarray(depth)
+                    depth_img = Image.fromarray(depth.astype(np.float32))
                     depth_img = depth_img.resize(
                         (width, height), Image.Resampling.BILINEAR
                     )
@@ -152,7 +166,7 @@ class DepthAnythingV3OutputProcessor(fout.OutputProcessor):
                 conf = conf_maps[i]
                 if width is not None and height is not None:
                     if conf.shape[0] != height or conf.shape[1] != width:
-                        conf_img = Image.fromarray(conf)
+                        conf_img = Image.fromarray(conf.astype(np.float32))
                         conf_img = conf_img.resize(
                             (width, height), Image.Resampling.BILINEAR
                         )
@@ -416,7 +430,7 @@ def compute_3d_exports(
         )
 
         try:
-            prediction = model.inference(
+            model.inference(
                 [sample.filepath],
                 infer_gs=infer_gs,
                 export_dir=sample_export_dir,
