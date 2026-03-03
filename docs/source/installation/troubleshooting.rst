@@ -240,7 +240,7 @@ FiftyOne to use a MongoDB instance that you have installed yourself.
 Troubleshooting Windows imports
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-If you encounter a `psutil.NoSuchProcessExists` exists when importing
+If you encounter a `psutil.NoSuchProcess` error when importing
 `fiftyone`, you are likely missing the C++ libraries MongoDB requires.
 
 .. code-block::
