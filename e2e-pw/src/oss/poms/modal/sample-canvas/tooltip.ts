@@ -59,12 +59,8 @@ export class TooltipPom {
    * for this action to succeed.
    */
   async quickEdit() {
-    const render = this.eventUtils.getEventReceivedPromiseForPredicate(
-      "lighter-first-render"
-    );
     await this.locked.hover();
     await this.locked.getByTestId("quick-edit").click();
-    await render;
   }
 
   /**
