@@ -60,7 +60,8 @@ export class OssLoader extends AbstractFiftyoneLoader {
     };
 
     await page.addInitScript(() => {
-      document.addEventListener("mousemove", (e) => {
+      let init = true;
+      const handleCursorChange = (e: MouseEvent) => {
         const element = document.elementFromPoint(e.clientX, e.clientY);
         const cursor = window.getComputedStyle(element).cursor;
         // eslint-disable-next-line
@@ -71,7 +72,12 @@ export class OssLoader extends AbstractFiftyoneLoader {
           window.CURRENT_CURSOR = window.getComputedStyle(element).cursor;
           document.dispatchEvent(new CustomEvent("cursor-change"));
         }
-      });
+      };
+
+      if (init) {
+        init = false;
+        document.addEventListener("mousemove", handleCursorChange);
+      }
 
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore injecting IS_PLAYWRIGHT into window so that
