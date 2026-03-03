@@ -100,26 +100,19 @@ class AppleSharpModel(fout.TorchImageModel):
         self._output_dir_initialized = False
 
     def _load_model(self, config):
-        """Load the SHARP model and move it to the specified device."""
+        """Load the SHARP model."""
         fou.ensure_torch()
         import torch
 
-        if config.device is not None:
-            device = torch.device(config.device)
-        elif torch.cuda.is_available():
-            device = torch.device("cuda")
-        else:
-            device = torch.device("cpu")
-
         state_dict = torch.hub.load_state_dict_from_url(
-            DEFAULT_SHARP_MODEL_URL, progress=True, map_location=device
+            DEFAULT_SHARP_MODEL_URL, progress=True, map_location=self._device
         )
         predictor = sharp_models.create_predictor(
             sharp_models.PredictorParams()
         )
         predictor.load_state_dict(state_dict)
         predictor.eval()
-        predictor = predictor.to(device)
+        predictor = predictor.to(self._device)
         return predictor
 
     @property
