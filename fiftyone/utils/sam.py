@@ -570,9 +570,9 @@ class SegmentAnythingModel(fout.TorchImageModel):
         )
 
         prompt_type = arg["prompt_type"]
-        point_coords = arg["point_coords"]
-        point_labels = arg["point_labels"]
-        boxes = arg["boxes"]
+        point_coords = arg.get("point_coords")
+        point_labels = arg.get("point_labels")
+        boxes = arg.get("boxes")
 
         if prompt_type == "box":
             (
