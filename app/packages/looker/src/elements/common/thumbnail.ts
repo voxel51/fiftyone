@@ -7,15 +7,33 @@ import { BaseState } from "../../state";
 import { BaseElement, Events } from "../base";
 
 import { lookerThumbnailSelector, showSelector } from "./thumbnail.module.css";
-import { altSelectedCheckbox } from "./util.module.css";
+import {
+  selectionIconCheckmark,
+  selectionIconThumbsup,
+  selectionIconThumbsdown,
+  selectionIconPin,
+  selectionIconStar,
+  selectionIconX,
+} from "./util.module.css";
 import { makeCheckboxRow } from "./util";
+
+const ICON_CLASS_MAP: Record<string, string> = {
+  checkmark: selectionIconCheckmark,
+  thumbsup: selectionIconThumbsup,
+  thumbsdown: selectionIconThumbsdown,
+  pin: selectionIconPin,
+  star: selectionIconStar,
+  x: selectionIconX,
+};
+
+const ALL_ICON_CLASSES = Object.values(ICON_CLASS_MAP);
 
 export class ThumbnailSelectorElement<
   State extends BaseState
 > extends BaseElement<State> {
   private shown: boolean;
   private selected: boolean;
-  private altSelected: boolean;
+  private currentIcon: string | null;
   private checkbox: HTMLInputElement;
   private label: HTMLLabelElement;
   private title: HTMLDivElement;
@@ -24,7 +42,7 @@ export class ThumbnailSelectorElement<
   getEvents(): Events<State> {
     return {
       click: ({ event, update, dispatchEvent }) => {
-        update(({ options: { selected, altSelected, inSelectionMode } }) => {
+        update(({ options: { selected, inSelectionMode } }) => {
           if (inSelectionMode && (event.shiftKey || event.ctrlKey)) {
             return {};
           }
@@ -36,11 +54,7 @@ export class ThumbnailSelectorElement<
             altKey: event.altKey,
           });
 
-          if (event.altKey) {
-            return { options: { altSelected: !altSelected, selected: false } };
-          }
-
-          return { options: { selected: !selected, altSelected: false } };
+          return {};
         });
       },
     };
@@ -68,11 +82,11 @@ export class ThumbnailSelectorElement<
   renderSelf(
     {
       hovering,
-      options: { selected, altSelected, inSelectionMode, thumbnailTitle },
+      options: { selected, selectionIcon, inSelectionMode, thumbnailTitle },
     }: Readonly<State>,
     sample
   ) {
-    const shown = hovering || selected || altSelected || inSelectionMode;
+    const shown = hovering || selected || inSelectionMode;
     if (this.shown !== shown) {
       shown
         ? this.element.classList.add(showSelector)
@@ -85,13 +99,16 @@ export class ThumbnailSelectorElement<
       this.checkbox.checked = selected;
     }
 
-    if (this.altSelected !== altSelected && this.checkbox) {
-      this.altSelected = altSelected;
-      if (altSelected) {
-        this.checkbox.classList.add(altSelectedCheckbox);
-      } else {
-        this.checkbox.classList.remove(altSelectedCheckbox);
+    if (this.currentIcon !== selectionIcon && this.checkbox) {
+      // Remove previous icon class
+      for (const cls of ALL_ICON_CLASSES) {
+        this.checkbox.classList.remove(cls);
       }
+      // Add new icon class
+      if (selectionIcon && ICON_CLASS_MAP[selectionIcon]) {
+        this.checkbox.classList.add(ICON_CLASS_MAP[selectionIcon]);
+      }
+      this.currentIcon = selectionIcon;
     }
 
     if (thumbnailTitle && thumbnailTitle(sample) !== this.titleText) {
