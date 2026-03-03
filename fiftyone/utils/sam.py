@@ -44,7 +44,9 @@ class SegmentAnythingModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
         super().__init__(d)
 
         self.auto_kwargs = self.parse_dict(d, "auto_kwargs", default=None)
-        # For each point prompt, three masks are generated. Mask index is used to select which one of the three masks to choose. When not provided, mask with the highest score is chosen.
+        # For each point prompt, three masks are generated. Mask index is used to select
+        # which one of the three masks to choose. When not provided, mask with the
+        # highest score is chosen.
         self.points_mask_index = self.parse_int(
             d, "points_mask_index", default=None
         )
@@ -56,6 +58,7 @@ class SegmentAnythingModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
             "get_item_cls",
             default="fiftyone.utils.sam.SegmentAnythingImageGetItem",
         )
+        self.get_item_args = self.parse_dict(d, "get_item_args", default=None)
 
 
 class _SAMPredictor:
@@ -103,6 +106,7 @@ class SegmentAnythingImageGetItem(fout.GetItem):
         use_numpy (False): whether to use numpy arrays rather than PIL images
             and Torch tensors when loading data
         box_transform (None): SAM specific box transform function to apply
+        validate_prompts (False): Whether to validate combination prompts
     """
 
     def __init__(
@@ -111,12 +115,14 @@ class SegmentAnythingImageGetItem(fout.GetItem):
         transform=None,
         use_numpy=None,
         box_transform=None,
+        validate_prompts=False,
         **kwargs,
     ):
         super().__init__(field_mapping=field_mapping, **kwargs)
         self.transform = transform
         self.use_numpy = use_numpy
         self.box_transform = box_transform
+        self.validate_prompts = validate_prompts
 
         self._load_image = True
         # Use for interactive mode only. Do not use with torch dataloader.
@@ -180,10 +186,9 @@ class SegmentAnythingImageGetItem(fout.GetItem):
         has_points = points is not None and len(points) > 0
         if has_boxes and has_points:
             item_dict["prompt_type"] = "combination"
-            if len(boxes) != len(points):
-                raise ValueError(
-                    f"For combination prompts, there should be a 1-on-1 correspondence between detections and keypoints. Found {len(boxes)} detections and {len(points)} keypoints."
-                )
+            if self.validate_prompts:
+                self._validate_combination(boxes, points, point_type_labels)
+
         elif has_boxes:
             item_dict["prompt_type"] = "box"
         elif has_points:
@@ -236,16 +241,66 @@ class SegmentAnythingImageGetItem(fout.GetItem):
             sam_labels.append(_labels)
         return sam_points, sam_labels, points_classes
 
+    def _validate_combination(self, boxes, points, point_labels):
+        if len(boxes) != len(points):
+            raise ValueError(
+                f"For combination prompts, there should be a 1-on-1 correspondence between detections and keypoints. Found {len(boxes)} detections and {len(points)} keypoints."
+            )
+        # Check whether positive points lie within boxes
+        for pts, box in zip(points, boxes.numpy()):
+            pos_pts = pts[point_labels == 1]
+            are_valid = np.all(
+                (pos_pts[:, 0] >= box[0])
+                & (pos_pts[:, 0] <= box[2])
+                & (pos_pts[:, 1] >= box[1])
+                & (pos_pts[:, 1] <= box[3])
+            )
+            if not are_valid:
+                raise ValueError(
+                    f"Point prompts {pts} not contained within box {box}"
+                )
+
     @property
     def required_keys(self):
+        return ["id", "filepath"]
+
+    # Proposed change for GetItem
+    @property
+    def optional_keys(self):
         # TODO: Add an option to input mask prompts
         return [
-            "id",
-            "filepath",
             "prompt_field",  # for backward compatability
             "box_prompt_field",
             "point_prompt_field",
         ]
+
+    def get_sample_dict(self, sample, set_missing_optional=True):
+        sample_dict = {}
+        for key, field in self.field_mapping.items():
+            try:
+                sample_dict[key] = sample[field]
+            except Exception as e:
+                if key in self.optional_keys and set_missing_optional:
+                    logger.warning(f"Setting optional key {key} to None")
+                    sample_dict[key] = None
+                else:
+                    raise ValueError(
+                        f"Error loading field {field} assigned to key {key}: {e}"
+                    )
+        return sample_dict
+
+    @fout.GetItem.field_mapping.setter
+    def field_mapping(self, value):
+        if value is None:
+            return
+
+        for k, v in value.items():
+            if k not in self.required_keys and k not in self.optional_keys:
+                raise ValueError(
+                    f"Unknown key '{k}'. The supported keys are {self.required_keys}"
+                )
+
+            self._field_mapping[k] = v
 
     def make_interactive(self):
         # Convenience method to avoid re-loading images in interactive mode
@@ -310,8 +365,10 @@ class SAMSegmenterOutputProcessor(fout.OutputProcessor):
                 (x2 - x1) / width,
                 (y2 - y1) / height,
             ]
+            if len(mask.shape) == 3:
+                mask = np.squeeze(mask, axis=0)
 
-            mask = np.squeeze(mask, axis=0)[
+            mask = mask[
                 int(round(y1)) : int(round(y2)),
                 int(round(x1)) : int(round(x2)),
             ]
@@ -465,21 +522,16 @@ class SegmentAnythingModel(fout.TorchImageModel):
                 f"Expected class string. GetItem class can't be initialized from {get_item_cls}"
             )
         get_item = etau.get_class(get_item_cls)
+        get_item_args = self.config.get_item_args or {}
         field_mapping = {} if field_mapping is None else field_mapping
-
-        # A non-solution solution. Fix this!!
-        if "prompt_field" not in field_mapping:
-            field_mapping["prompt_field"] = "NA"
-        if "box_prompt_field" not in field_mapping:
-            field_mapping["box_prompt_field"] = "NA"
-        if "point_prompt_field" not in field_mapping:
-            field_mapping["point_prompt_field"] = "NA"
 
         return get_item(
             field_mapping=field_mapping,
             transform=self._sam_predictor.image_transform,
             use_numpy=True,
             box_transform=self._sam_predictor.box_transform,
+            validate_prompts=get_item_args.pop("validate_prompts", False),
+            **get_item_args,
         )
 
     def _predict_all(self, args):
@@ -523,7 +575,7 @@ class SegmentAnythingModel(fout.TorchImageModel):
         prompt_type = arg["prompt_type"]
         point_coords = arg["point_coords"]
         point_labels = arg["point_labels"]
-        boxes = arg["boxes"].to(self.device)
+        boxes = arg["boxes"]
 
         if prompt_type == "box":
             (
@@ -533,14 +585,14 @@ class SegmentAnythingModel(fout.TorchImageModel):
             ) = self._sam_predictor.processor.predict_torch(
                 point_coords=None,
                 point_labels=None,
-                boxes=boxes,
+                boxes=boxes.to(self.device),
                 multimask_output=False,
             )
             out_boxes = arg["boxes_xyxy"]
 
         elif prompt_type == "point":
             # Each point prompt has varying number of points.
-            out_boxes, out_scores, out_masks = [], [], [], []
+            out_boxes, out_scores, out_masks = [], [], []
 
             for points, labels in zip(point_coords, point_labels):
                 (
@@ -566,18 +618,23 @@ class SegmentAnythingModel(fout.TorchImageModel):
         elif prompt_type == "combination":
             # For combination prompt, batching isn't possible since each combination prompt
             # has varying number of points.
+            out_boxes, out_scores, out_masks = [], [], []
+
             for points, labels, box in zip(point_coords, point_labels, boxes):
                 (
-                    out_masks,
-                    out_scores,
+                    out_mask,
+                    out_score,
                     _,
                 ) = self._sam_predictor.processor.predict(
                     point_coords=points,
                     point_labels=labels,
-                    box=box,
+                    box=box.numpy(),
                     multimask_output=False,
                 )
-                out_boxes = arg["boxes_xyxy"]
+                if out_mask.any():
+                    out_boxes.append(_mask_to_box(out_mask))
+                    out_scores.append(out_score)
+                    out_masks.append(out_mask)
         else:
             raise RuntimeError(f"Invalid prompt type: {prompt_type}")
 
@@ -642,6 +699,8 @@ def _to_abs_boxes(boxes, img_width, img_height, chunk_size=1e6):
 
 
 def _mask_to_box(mask):
+    if len(mask.shape) == 3:
+        mask = np.squeeze(mask, axis=0)
     pos_indices = np.where(mask)
     if all(arr.size == 0 for arr in pos_indices):
         return None
