@@ -1,6 +1,20 @@
 import type { CustomizeColorInput } from "@fiftyone/relay";
 import type { SpaceNodeJSON } from "@fiftyone/spaces";
 
+export type SelectionType = "default" | "alt";
+export type SelectedSamplesMeta = Record<string, { type: SelectionType }>;
+export type SelectionIconStyle =
+  | "checkmark"
+  | "thumbsup"
+  | "thumbsdown"
+  | "pin"
+  | "star"
+  | "x";
+export type SelectionStyle = {
+  default: SelectionIconStyle;
+  alt?: SelectionIconStyle | null;
+};
+
 export namespace State {
   export type MediaType =
     | "image"

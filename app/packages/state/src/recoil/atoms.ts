@@ -203,14 +203,19 @@ export const selectedSampleObjects = atom<Map<string, Sample>>({
   default: new Map(),
 });
 
-export const altSelectedSamples = atom<Set<string>>({
-  key: "altSelectedSamples",
-  default: new Set<string>(),
+export const selectedSamplesMeta = sessionAtom({
+  key: "selectedSamplesMeta",
+  default: {},
 });
 
-export const altSelectedSampleObjects = atom<Map<string, Sample>>({
-  key: "altSelectedSampleObjects",
-  default: new Map(),
+export const selectionStyle = sessionAtom({
+  key: "selectionStyle",
+  default: { default: "checkmark" },
+});
+
+export const altSelectionMode = atom<boolean>({
+  key: "altSelectionMode",
+  default: false,
 });
 
 // only used in extended view, for tagging purpose
