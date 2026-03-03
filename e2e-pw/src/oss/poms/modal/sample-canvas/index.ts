@@ -159,7 +159,9 @@ class SampleCanvasAsserter {
     await expect(this.sampleCanvasPom.checkbox).toBeHidden();
     await this.sampleCanvasPom.tooltip.assert.isVisible(false);
     await expect(this.sampleCanvasPom.locator).toBeVisible();
-    await expect(this.sampleCanvasPom.locator).toHaveScreenshot(name);
+    await expect(this.sampleCanvasPom.locator).toHaveScreenshot(name, {
+      maxDiffPixelRatio: 0.0,
+    });
   }
 
   /**
