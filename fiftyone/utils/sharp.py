@@ -27,10 +27,15 @@ DEFAULT_SHARP_MODEL_URL = (
 )
 DEFAULT_FOCAL_LENGTH = 26.0
 
+_SHARP_REQ = (
+    "sharp @ git+https://github.com/apple/ml-sharp.git"
+    "@1eaa046834b81852261262b41b0919f5c1efdd2e"
+)
+
 
 def _ensure_sharp():
-    if not fou.ensure_package("sharp", error_level=2):
-        fou.install_package("git+https://github.com/apple/ml-sharp.git")
+    if not fou.ensure_package(_SHARP_REQ, error_level=2):
+        fou.install_package(_SHARP_REQ)
 
 
 sharp_models = fou.lazy_import("sharp.models", callback=_ensure_sharp)
