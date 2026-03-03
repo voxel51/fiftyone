@@ -2,6 +2,7 @@ import {
   useAutoSave,
   useRegisterAnnotationCommandHandlers,
   useRegisterAnnotationEventHandlers,
+  useRegisterAnnotationKeybindings,
   useRegisterRendererEventHandlers,
 } from "@fiftyone/annotation";
 import {
@@ -67,6 +68,7 @@ const SpacesContainer = styled.div`
 const AnnotationHandlerRegistration = () => {
   useRegisterAnnotationCommandHandlers();
   useRegisterAnnotationEventHandlers();
+  useRegisterAnnotationKeybindings();
   useRegisterRendererEventHandlers();
   useAnnotationTracking();
 

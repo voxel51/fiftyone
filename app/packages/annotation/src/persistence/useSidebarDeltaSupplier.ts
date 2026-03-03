@@ -1,4 +1,4 @@
-import { DeltaSupplier } from "./deltaSupplier";
+import type { DeltaSupplier } from "./deltaSupplier";
 import { useCallback } from "react";
 import { useSampleMutationManager } from "./useSampleMutationManager";
 import { Primitive } from "@fiftyone/utilities";
@@ -36,10 +36,10 @@ export const useSidebarDeltaSupplier = (): DeltaSupplier => {
   const getLabelDelta = useGetLabelDelta(buildLabelProxy);
 
   return useCallback(() => {
-    return Object.entries(stagedMutations)
-      .map(([path, mutation]) =>
+    return {
+      deltas: Object.entries(stagedMutations).flatMap(([path, mutation]) =>
         getLabelDelta({ data: mutation.data, path, op: mutation.op }, path)
-      )
-      .flat();
+      ),
+    };
   }, [getLabelDelta, stagedMutations]);
 };

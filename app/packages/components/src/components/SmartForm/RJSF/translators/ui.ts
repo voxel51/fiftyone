@@ -91,6 +91,9 @@ export function translateToUISchema(
 
     case SmartFormComponents.JsonEditorView:
       uiSchema["ui:widget"] = "JsonEditorWidget";
+      if (view.height != null) {
+        uiSchema["ui:options"] = { height: view.height };
+      }
       break;
 
     case SmartFormComponents.ColorView:

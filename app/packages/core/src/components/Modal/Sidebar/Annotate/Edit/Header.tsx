@@ -1,5 +1,5 @@
 import { useAtomValue, useSetAtom } from "jotai";
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Redo, Round, Undo } from "../Actions";
 
 import { useLighter } from "@fiftyone/lighter";
@@ -10,7 +10,9 @@ import { ItemLeft, ItemRight } from "../Components";
 import { ICONS } from "../Icons";
 import { Row } from "./Components";
 
+import { labels } from "../useLabels";
 import * as fos from "@fiftyone/state";
+import { isGeneratedView } from "@fiftyone/state";
 import { useRecoilValue } from "recoil";
 import { showModal } from "../state";
 import {
@@ -25,6 +27,7 @@ import { useCurrent3dAnnotationMode } from "@fiftyone/looker-3d/src/state/access
 import useColor from "./useColor";
 import useExit from "./useExit";
 import { useQuickDraw } from "./useQuickDraw";
+import { useAnnotationController } from "@fiftyone/annotation";
 
 const LabelHamburgerMenu = () => {
   const [open, setOpen] = useState<boolean>(false);
@@ -39,13 +42,20 @@ const LabelHamburgerMenu = () => {
   const canEditLabels = useRecoilValue(fos.canEditLabels);
   const currentFieldIsReadOnly = useAtomValue(currentFieldIsReadOnlyAtom);
   const setShowSchemaManager = useSetAtom(showModal);
+  const isGenerated = useRecoilValue(isGeneratedView);
 
   const handleOpenSchemaManager = () => {
     setShowSchemaManager(true);
-    setOpen(false); //handleMenuClose();
+    setOpen(false);
   };
 
   const showEditSchema = canEditLabels.enabled && currentFieldIsReadOnly;
+  const showDelete = !isGenerated;
+  const hasMenuItems = showDelete || showEditSchema;
+
+  if (!hasMenuItems) {
+    return null;
+  }
 
   return (
     <>
@@ -61,12 +71,14 @@ const LabelHamburgerMenu = () => {
         onClose={() => setOpen(false)}
         sx={{ zIndex: 9999 }}
       >
-        <MenuItem onClick={deleteCommand.callback}>
-          <Stack direction="row" gap={1} alignItems="center">
-            <Icon name={IconName.Delete} size={Size.Md} />
-            <Text>{deleteCommand.descriptor.label}</Text>
-          </Stack>
-        </MenuItem>
+        {showDelete && (
+          <MenuItem onClick={deleteCommand.callback}>
+            <Stack direction="row" gap={1} alignItems="center">
+              <Icon name={IconName.Delete} size={Size.Md} />
+              <Text>{deleteCommand.descriptor.label}</Text>
+            </Stack>
+          </MenuItem>
+        )}
         {showEditSchema && (
           <MenuItem onClick={handleOpenSchemaManager}>
             Edit field schema
@@ -82,6 +94,7 @@ const Header = () => {
   const Icon = ICONS[type?.toLowerCase() ?? ""];
   const color = useColor(useAtomValue(currentOverlay) ?? undefined);
 
+  const { exitAnnotationMode } = useAnnotationController();
   const onExit = useExit();
   const { scene } = useLighter();
   const { disableQuickDraw } = useQuickDraw();
@@ -92,11 +105,26 @@ const Header = () => {
   const isAnnotatingPolyline = current3dAnnotationMode === "polyline";
   const isAnnotatingCuboid = current3dAnnotationMode === "cuboid";
 
-  const handleExit = () => {
+  // In patches view with single label, clicking back should go to explore mode
+  const isPatches = useRecoilValue(fos.isPatchesView);
+  const labelCount = useAtomValue(labels).length;
+  const setModalMode = useSetAtom(fos.modalMode);
+  const shouldExitToExplore = isPatches && labelCount === 1;
+
+  const handleExit = useCallback(() => {
+    if (shouldExitToExplore) {
+      exitAnnotationMode();
+    }
     disableQuickDraw();
     scene?.exitInteractiveMode();
     onExit();
-  };
+  }, [
+    shouldExitToExplore,
+    exitAnnotationMode,
+    onExit,
+    disableQuickDraw,
+    scene,
+  ]);
 
   return (
     <Row>

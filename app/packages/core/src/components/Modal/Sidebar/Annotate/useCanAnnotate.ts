@@ -2,6 +2,7 @@ import {
   canAnnotate,
   isGeneratedView,
   isGroup,
+  isPatchesView,
   mediaType,
   readOnly,
 } from "@fiftyone/state";
@@ -36,7 +37,7 @@ const MEDIA_TYPE_TO_DISABLED_REASON: Partial<
   video: "videoDataset",
 };
 
-function getDisabledReason(
+export function getDisabledReason(
   currentMediaType: string | null | undefined,
   isGenerated: boolean,
   isGrouped: boolean,
@@ -63,6 +64,8 @@ export default function useCanAnnotate(): CanAnnotateResult {
   const { supportedSlices } = useGroupAnnotationSlices();
 
   const hasSupportedSlices = supportedSlices.length > 0;
+  const isPatches = useRecoilValue(isPatchesView);
+  const isUnsupportedGeneratedView = isGenerated && !isPatches;
 
   // hide tab entirely if user lacks edit permission or feature disabled
   if (isReadOnlySnapshot || !canAnnotateEnabled) {
@@ -78,7 +81,7 @@ export default function useCanAnnotate(): CanAnnotateResult {
     showAnnotationTab: true,
     disabledReason: getDisabledReason(
       currentMediaType,
-      isGenerated,
+      isUnsupportedGeneratedView,
       isGroupedDataset,
       hasSupportedSlices
     ),
