@@ -1,5 +1,3 @@
-import type { FileUploadItem } from "@fiftyone/upload";
-
 export interface UploadViewProps {
   onChange: (path: string, value: unknown) => void;
   path: string;
@@ -30,13 +28,4 @@ export interface FileValue {
   name: string;
   type: string;
   size: number;
-}
-
-export function fileValueFromUploadItem(item: FileUploadItem): FileValue {
-  return {
-    absolute_path: item.remotePath!,
-    name: item.name,
-    type: item.type,
-    size: item.size,
-  };
 }

@@ -10,20 +10,13 @@ import { Close, Replay, CheckCircle, ErrorOutline } from "@mui/icons-material";
 import type { FileUploadItem } from "@fiftyone/upload";
 import { humanReadableBytes } from "@fiftyone/utilities";
 import FileThumbnail from "./FileThumbnail";
+import { STATUS_COLOR } from "./constants";
 
 interface UploadFileItemProps {
   item: FileUploadItem;
   onCancel: (id: string) => void;
   onRetry: (id: string) => void;
 }
-
-const STATUS_COLOR = {
-  success: "success" as const,
-  error: "error" as const,
-  uploading: "primary" as const,
-  selected: "inherit" as const,
-  cancelled: "inherit" as const,
-};
 
 export default function UploadFileItem({
   item,
