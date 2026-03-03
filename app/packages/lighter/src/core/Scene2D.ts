@@ -171,7 +171,6 @@ export class Scene2D {
       config.canvas,
       this.selectionManager,
       config.renderer,
-      this.coordinateSystem,
       this.eventChannel
     );
 

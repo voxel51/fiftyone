@@ -12,7 +12,7 @@ import {
 } from "../overlay/BoundingBoxOverlay";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { SelectionManager } from "../selection/SelectionManager";
-import type { CoordinateSystem, Point, Rect } from "../types";
+import type { Point, Rect } from "../types";
 import { InteractiveDetectionHandler } from "./InteractiveDetectionHandler";
 
 /**
@@ -202,7 +202,6 @@ export class InteractionManager {
     private canvas: HTMLCanvasElement,
     private selectionManager: SelectionManager,
     private renderer: Renderer2D,
-    private readonly coordinateSystem: CoordinateSystem,
     eventChannel: string
   ) {
     this.eventBus = getEventBus<LighterEventGroup>(eventChannel);
