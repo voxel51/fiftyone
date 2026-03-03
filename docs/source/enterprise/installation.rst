@@ -651,6 +651,7 @@ appropriate provider or specific bucket.
     by using the Enterprise SDK locally. The credentials are only decrypted and
     used internally by the Enterprise servers.
 
+.. _enterprise-cloud-creds-origin-preference:
 
 Cloud Credentials Origin Preference
 ___________________________________
@@ -659,12 +660,12 @@ Enterprise server, the behavior is for the Enterprise SDK to use the first
 matching set of credentials found. 
 
 *  When running the Enterprise SDK locally, the default is to use local
-   credentials, if any exist, and otherwise to use the credentials returned by
-   the Enterprise server.
+   credentials, if any exist, and otherwise to use managed credentials returned
+   by the Enterprise server.
 
 *  However, if the Enterprise SDK is being used in an Internal Service (App
    server, delegated operator, etc.) the default is to prefer managed
-   credentials returned by the server.
+   credentials returned by the Enterprise server.
 
 This can be manually controlled by setting the
 `FIFTYONE_CLOUD_CREDS_ORIGIN_PREFERENCE` environment variable on the machine to
@@ -673,6 +674,7 @@ sources will be considered if the default location has none that match. So if
 credentials from the preferred source have no matches for a given request,
 credentials from the other source will be attempted before giving up.
 
+.. _enterprise-cloud-creds-local-download:
 
 Cloud Credentials Local Download
 ___________________________________
@@ -680,7 +682,7 @@ ___________________________________
 By default, users must set up local credentials when using the Enterprise SDK
 with an API connection. This is to prevent downloading credentials from the
 Enterprise server to that user's local machine. However, you can change this
-default, so that local SDK usage will access credentials from the Enterprise
-server. To enable downloading of credentials to machines, set the environment
-variable `FEATURE_FLAG_ENABLE_CREDS_LOCAL_USE` to `True` on the Voxel-Hub API
-server.
+default, so that local SDK usage will download credentials from the Enterprise
+server, and there is no need to configure credentials locally. To enable
+downloading of credentials to machines, set the environment variable
+`FEATURE_FLAG_ENABLE_CREDS_LOCAL_USE` to `True` on the Enterprise server.
