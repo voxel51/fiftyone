@@ -10,9 +10,10 @@ import {
   useAnnotationEventHandler,
 } from "@fiftyone/annotation";
 import { useCommandBus } from "@fiftyone/command-bus";
-import type { LighterEventGroup, Scene2D } from "@fiftyone/lighter";
 import {
   BoundingBoxOverlay,
+  type LighterEventGroup,
+  type Scene2D,
   UNDEFINED_LIGHTER_SCENE_ID,
   UpdateLabelCommand,
   useLighterEventBus,
@@ -24,13 +25,9 @@ import { useSetAtom } from "jotai";
 import { useAtomCallback } from "jotai/utils";
 import { useCallback, useEffect } from "react";
 import { useRecoilValue } from "recoil";
-import { coerceStringBooleans, useLabelsContext } from "../Sidebar/Annotate";
 import { editing } from "../Sidebar/Annotate/Edit";
-import {
-  current,
-  currentData,
-  savedLabel,
-} from "../Sidebar/Annotate/Edit/state";
+import { current, currentData, savedLabel } from "../Sidebar/Annotate/Edit/state";
+import { coerceStringBooleans, useLabelsContext } from "../Sidebar/Annotate";
 import useColorMappingContext from "./useColorMappingContext";
 import { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";
 
@@ -57,12 +54,8 @@ export const useBridge = (scene: Scene2D | null) => {
   const getCurrentLabel = useAtomCallback(
     useCallback((get) => get(current), [])
   );
-  const {
-    addLabelToSidebar,
-    getLabelById,
-    removeLabelFromSidebar,
-    updateLabelData,
-  } = useLabelsContext();
+  const { addLabelToSidebar, getLabelById, removeLabelFromSidebar, updateLabelData } =
+    useLabelsContext();
   const fieldSchema = useRecoilValue(
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
   );

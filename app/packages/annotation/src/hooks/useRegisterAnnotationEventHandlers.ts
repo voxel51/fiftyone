@@ -1,11 +1,13 @@
+import { useAnnotationEventHandler } from "./useAnnotationEventHandler";
+import { INDEFINITE_TOAST_TIMEOUT, useActivityToast } from "@fiftyone/state";
+import { useCallback } from "react";
+import { IconName, Variant } from "@voxel51/voodo";
 import { useLabelsContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useLabels";
 import { DetectionLabel } from "@fiftyone/looker";
-import { INDEFINITE_TOAST_TIMEOUT, useActivityToast } from "@fiftyone/state";
-import { IconName, Variant } from "@voxel51/voodo";
-import { useCallback } from "react";
-import { usePersistenceRetryController } from "../persistence";
-import { usePersistenceEventHandler } from "../persistence/usePersistenceEventHandler";
-import { useAnnotationEventHandler } from "./useAnnotationEventHandler";
+import {
+  usePersistenceEventHandler,
+  usePersistenceRetryController,
+} from "../persistence";
 
 /**
  * Hook which registers global annotation event handlers.

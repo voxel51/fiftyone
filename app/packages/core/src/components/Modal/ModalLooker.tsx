@@ -29,6 +29,7 @@ export const useClearSelectedLabels = () => {
 
 interface LookerProps {
   sample?: fos.ModalSample;
+  showControls?: boolean;
 }
 
 const ModalLookerNoTimeline = React.memo((props: LookerProps) => {
@@ -82,7 +83,13 @@ export const ModalLooker = React.memo(
     const modalMediaField = useRecoilValue(fos.selectedMediaField(true));
 
     if (shouldRenderImavid) {
-      return <ImaVidLookerReact sample={sample} key={modalMediaField} />;
+      return (
+        <ImaVidLookerReact
+          sample={sample}
+          key={modalMediaField}
+          showControls={mode !== "annotate"}
+        />
+      );
     }
 
     if (video) {
@@ -101,7 +108,7 @@ export const ModalLooker = React.memo(
           <LighterSampleRenderer sample={sample} />
         </div>
       ) : (
-        <ModalLookerNoTimeline sample={sample} />
+        <ModalLookerNoTimeline sample={sample} showControls />
       );
     }
 

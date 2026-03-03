@@ -1,11 +1,11 @@
 import { BoundingBoxOverlay, useLighter } from "@fiftyone/lighter";
 import {
+  activeFields,
   AnnotationLabel,
   AnnotationLabelData,
-  ModalSample,
-  activeFields,
   field,
   isPatchesView,
+  ModalSample,
   useCurrentSampleId,
   useModalSample,
 } from "@fiftyone/state";

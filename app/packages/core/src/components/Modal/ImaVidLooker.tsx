@@ -35,13 +35,17 @@ import { shortcutToHelpItems } from "./utils";
 
 interface ImaVidLookerReactProps {
   sample: fos.ModalSample;
+  showControls?: boolean;
 }
 
 /**
  * Imavid looker component with a timeline.
  */
 export const ImaVidLookerReact = React.memo(
-  ({ sample: sampleDataWithExtraParams }: ImaVidLookerReactProps) => {
+  ({
+    sample: sampleDataWithExtraParams,
+    showControls = true,
+  }: ImaVidLookerReactProps) => {
     const [id] = useState(() => uuid());
     const colorScheme = useRecoilValue(fos.colorScheme);
     const dynamicGroupsTargetFrameRate = useRecoilValue(
@@ -55,8 +59,8 @@ export const ImaVidLookerReact = React.memo(
     const baseLookerOptions = fos.useLookerOptions(true);
 
     const lookerOptions = React.useMemo(
-      () => ({ ...baseLookerOptions }),
-      [baseLookerOptions]
+      () => ({ ...baseLookerOptions, showControls }),
+      [baseLookerOptions, showControls]
     );
 
     const [reset, setReset] = useState(false);

@@ -2,7 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import type { Undoable } from "@fiftyone/commands";
+import { Undoable } from "@fiftyone/commands";
 import type { Scene2D } from "../core/Scene2D";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
 

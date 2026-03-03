@@ -1,11 +1,11 @@
-import { isSystemReadOnlyField } from "./SchemaManager/constants";
+import useCanAnnotate from "./useCanAnnotate";
 import {
   useActiveFieldsList,
   useFieldSchemaData,
   useHiddenFieldsWithMetadata,
   useIsFieldReadOnly,
 } from "./SchemaManager/hooks";
-import useCanAnnotate from "./useCanAnnotate";
+import { isSystemReadOnlyField } from "./SchemaManager/constants";
 
 /**
  * Hook which returns whether the specified field can be annotated by the user.

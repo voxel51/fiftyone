@@ -2,11 +2,11 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import type { AnnotationEventGroup } from "@fiftyone/annotation";
-import type { Undoable } from "@fiftyone/commands";
-import type { EventDispatcher } from "@fiftyone/events";
+import { Undoable } from "@fiftyone/commands";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
 import type { RawLookerLabel } from "../types";
+import { EventDispatcher } from "@fiftyone/events";
+import { AnnotationEventGroup } from "@fiftyone/annotation";
 
 /**
  * Command for transforming an overlay with undo/redo support.

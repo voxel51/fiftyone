@@ -1,8 +1,8 @@
-import { isGeneratedView } from "@fiftyone/state";
 import { useCallback } from "react";
 import { useRecoilValue } from "recoil";
-import { useAnnotationEventBus, usePatchSample } from "../hooks";
+import { isGeneratedView } from "@fiftyone/state";
 import { useAnnotationDeltaSupplier } from "./useAnnotationDeltaSupplier";
+import { useAnnotationEventBus, usePatchSample } from "../hooks";
 
 /**
  * @returns `true` if persistence was successful
