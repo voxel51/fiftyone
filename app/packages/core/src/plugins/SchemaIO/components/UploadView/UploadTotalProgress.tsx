@@ -1,6 +1,7 @@
 import React from "react";
 import { Box, LinearProgress, Typography } from "@mui/material";
 import type { FileUploadItem } from "@fiftyone/upload";
+import { computeTotalProgress } from "./utils";
 
 interface UploadTotalProgressProps {
   files: FileUploadItem[];
@@ -8,16 +9,6 @@ interface UploadTotalProgressProps {
   completedFiles: number;
   failedFiles: number;
   totalFiles: number;
-}
-
-function computeTotalProgress(files: FileUploadItem[]): number {
-  if (files.length === 0) return 0;
-  const sum = files.reduce((acc, f) => {
-    if (f.status === "success") return acc + 100;
-    if (f.status === "uploading") return acc + f.progress;
-    return acc;
-  }, 0);
-  return sum / files.length;
 }
 
 export default function UploadTotalProgress({

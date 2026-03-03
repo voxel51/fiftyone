@@ -1,7 +1,7 @@
 import { useCallback, useRef } from "react";
 import type { FileUploadItem, UseFileUploadOptions } from "@fiftyone/upload";
 import type { FileValue } from "./types";
-import { fileValueFromUploadItem } from "./types";
+import { fileValueFromUploadItem } from "./utils";
 
 interface UseFormSyncOptions {
   path: string;
@@ -16,11 +16,7 @@ interface UseFormSyncOptions {
  * Completed uploads are appended to the form value as `FileValue` objects.
  * Cancelled / removed uploads are pruned by `absolute_path`.
  */
-export default function useFormSync({
-  path,
-  data,
-  onChange,
-}: UseFormSyncOptions) {
+export function useFormSync({ path, data, onChange }: UseFormSyncOptions) {
   const dataRef = useRef(data);
   dataRef.current = data;
 

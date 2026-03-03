@@ -1,25 +1,9 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React from "react";
 import { Box } from "@mui/material";
 import type { FileUploadItem } from "@fiftyone/upload";
 import UploadFileItem from "./UploadFileItem";
-
-const MAX_HEIGHT = 300;
-const ROW_HEIGHT = 52;
-const OVERSCAN = 5;
-
-const STATUS_PRIORITY: Record<string, number> = {
-  uploading: 0,
-  selected: 1,
-  error: 2,
-  cancelled: 3,
-  success: 4,
-};
+import { MAX_HEIGHT, ROW_HEIGHT } from "./constants";
+import { useVirtualizedFileList } from "./useVirtualizedFileList";
 
 interface UploadFileListProps {
   files: FileUploadItem[];
@@ -32,41 +16,16 @@ export default function UploadFileList({
   onCancel,
   onRetry,
 }: UploadFileListProps) {
-  const sortedFiles = useMemo(
-    () =>
-      [...files].sort(
-        (a, b) =>
-          (STATUS_PRIORITY[a.status] ?? 5) - (STATUS_PRIORITY[b.status] ?? 5)
-      ),
-    [files]
-  );
-
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [scrollTop, setScrollTop] = useState(0);
-
-  const handleScroll = useCallback(() => {
-    if (containerRef.current) {
-      setScrollTop(containerRef.current.scrollTop);
-    }
-  }, []);
-
-  // Reset scroll when files change significantly (e.g. clear)
-  useEffect(() => {
-    if (files.length === 0 && containerRef.current) {
-      containerRef.current.scrollTop = 0;
-      setScrollTop(0);
-    }
-  }, [files.length]);
+  const {
+    sortedFiles,
+    containerRef,
+    handleScroll,
+    totalHeight,
+    startIndex,
+    endIndex,
+  } = useVirtualizedFileList(files);
 
   if (files.length === 0) return null;
-
-  const totalHeight = sortedFiles.length * ROW_HEIGHT;
-  const visibleCount = Math.ceil(MAX_HEIGHT / ROW_HEIGHT);
-  const startIndex = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - OVERSCAN);
-  const endIndex = Math.min(
-    sortedFiles.length,
-    startIndex + visibleCount + OVERSCAN * 2
-  );
 
   return (
     <Box
