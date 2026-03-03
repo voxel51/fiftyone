@@ -87,7 +87,7 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
 
   /**
    * Sets the coordinate system for this overlay.
-   * @param coordinateSystem - The renderer to use.
+   * @param coordinateSystem - The coordinate system to use.
    */
   setCoordinateSystem(coordinateSystem: CoordinateSystem): void {
     this.coordinateSystem = coordinateSystem;
