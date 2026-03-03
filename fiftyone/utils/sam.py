@@ -9,6 +9,7 @@ Model Zoo.
 
 import logging
 import numpy as np
+from enum import Enum
 
 import eta.core.utils as etau
 
@@ -32,7 +33,6 @@ class SegmentAnythingModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
     arguments.
 
     Args:
-        prompt_field (None): a sample field containing either Detections or Keypoints to be used for prompting
         auto_kwargs (None): a dictionary of keyword arguments to pass to
             ``segment_anything.SamAutomaticMaskGenerator(model, **auto_kwargs)``
         points_mask_index (None): an optional mask index to use for each
@@ -94,6 +94,20 @@ class _SAMPredictor:
         return True
 
 
+class SAMPromptMode(Enum):
+    auto = 1
+    box_only = 2
+    point_only = 3
+    box_point_combo = 4
+
+    @classmethod
+    def from_mode_name(cls, mode_name):
+        for member in cls:
+            if member.name == mode_name:
+                return member
+        raise ValueError(f"No supported SAM prompt mode with name {mode_name}")
+
+
 class SegmentAnythingImageGetItem(fout.GetItem):
     """A :class:`GetItem` that loads images, bounding boxes and/or keypoints to feed to
     :class:`SegmentAnythingModel` instances.
@@ -118,59 +132,70 @@ class SegmentAnythingImageGetItem(fout.GetItem):
         validate_prompts=False,
         **kwargs,
     ):
+        self.mode = self._set_mode(field_mapping)
+
         super().__init__(field_mapping=field_mapping, **kwargs)
         self.transform = transform
         self.use_numpy = use_numpy
         self.box_transform = box_transform
         self.validate_prompts = validate_prompts
 
-        self._load_image = True
-        # Use for interactive mode only. Do not use with torch dataloader.
-        # TODO: Find an alternative that keeps GetIem stateless.
-        self._curr_image_hw = None
+    def _set_mode(self, field_mapping):
+        prompt_fields = ["box_prompt_field", "point_prompt_field"]
+        is_present = {f: False for f in prompt_fields}
+
+        for key in field_mapping:
+            if key in prompt_fields:
+                is_present[key] = True
+
+        if not any(is_present.values()):
+            return SAMPromptMode(1)  # auto
+        elif (
+            is_present["box_prompt_field"]
+            and not is_present["point_prompt_field"]
+        ):
+            return SAMPromptMode(2)  # box only
+        elif (
+            not is_present["box_prompt_field"]
+            and is_present["point_prompt_field"]
+        ):
+            return SAMPromptMode(3)  # point only
+        else:
+            # NOTE: Because of how we are mainintaing backward compatibilty of prompt_field,
+            # combo mode will be set when prompt_field is used.
+            return SAMPromptMode(4)  # box and point combo
 
     def __call__(self, d):
         item_dict = {}
-        if self._load_image:
-            img = fout._load_image(
-                d["filepath"],
-                use_numpy=self.use_numpy,
-                force_rgb=True,
+        img = fout._load_image(
+            d["filepath"],
+            use_numpy=self.use_numpy,
+            force_rgb=True,
+        )
+        if self.transform is None:
+            raise ValueError(
+                f"Transform cannot be None for {self.__class__.__name__}."
             )
-            if self.transform is None:
-                raise ValueError(
-                    f"Transform cannot be None for {self.__class__.__name__}."
-                )
-            img, img_hw = self.transform(img)
-            item_dict["image"] = img
-            self._curr_image_hw = img_hw
-        else:
-            img_hw = self._curr_image_hw
+        img, img_hw = self.transform(img)
+        item_dict["image"] = img
 
         item_dict["id"] = d["id"]
-        prompts = d.get("prompt_field")
         detections = d.get("box_prompt_field")
         keypoints = d.get("point_prompt_field")
 
-        if prompts is not None:
-            if isinstance(prompts, fol.Detections):
-                if detections:
-                    logger.warning(
-                        "Ignoring prompt_field input. Using the box prompts set via box_prompt_field."
-                    )
-                else:
-                    detections = prompts
-            elif isinstance(prompts, fol.Keypoints):
-                if keypoints:
-                    logger.warning(
-                        "Ignoring prompt_field input. Using the point prompts set via point_prompt_field."
-                    )
-                else:
-                    keypoints = prompts
-            else:
-                raise TypeError(
-                    f"Prompt field (when set) should contain Detections or Keypoints label. Got {type(prompts)}"
-                )
+        if detections and not isinstance(detections, fol.Detections):
+            # This may happen when using prompt_field as the only input prompt.
+            logger.warning(
+                f"Invalid type for box prompts: {type(detections)}. Ignoring box prompts."
+            )
+            detections = None
+
+        if keypoints and not isinstance(keypoints, fol.Keypoints):
+            # This may happen when using prompt_field as the only input prompt.
+            logger.warning(
+                f"Invalid type for point prompts: {type(keypoints)}. Ignoring point prompts."
+            )
+            keypoints = None
 
         # Pre-process box prompts
         boxes, boxes_xyxy, box_classes = self._preprocess_boxes(
@@ -184,6 +209,8 @@ class SegmentAnythingImageGetItem(fout.GetItem):
 
         has_boxes = boxes is not None and len(boxes) > 0
         has_points = points is not None and len(points) > 0
+
+        # Prompt type can be different from SegmentAnythingImageGetItem.mode.
         if has_boxes and has_points:
             item_dict["prompt_type"] = "combination"
             if self.validate_prompts:
@@ -196,17 +223,20 @@ class SegmentAnythingImageGetItem(fout.GetItem):
         else:
             item_dict["prompt_type"] = "auto"
 
-        item_dict["boxes"] = boxes
-        item_dict["boxes_xyxy"] = boxes_xyxy
-        item_dict["point_coords"] = points
-        item_dict["point_labels"] = point_type_labels
-        item_dict["original_size"] = img_hw
+        if has_boxes:
+            item_dict["boxes"] = boxes
+            item_dict["boxes_xyxy"] = boxes_xyxy
+        if has_points:
+            item_dict["point_coords"] = points
+            item_dict["point_labels"] = point_type_labels
 
         if item_dict["prompt_type"] != "auto":
             # Box classes take precedence over point classes
             item_dict["classes"] = (
                 box_classes if box_classes else points_classes
             )
+        item_dict["original_size"] = img_hw
+
         return item_dict
 
     def _preprocess_boxes(self, detections, img_hw):
@@ -262,53 +292,20 @@ class SegmentAnythingImageGetItem(fout.GetItem):
 
     @property
     def required_keys(self):
-        return ["id", "filepath"]
+        common_keys = ["id", "filepath"]
+        box_keys = ["box_prompt_field"]
+        point_keys = ["point_prompt_field"]
 
-    # Proposed change for GetItem
-    @property
-    def optional_keys(self):
-        # TODO: Add an option to input mask prompts
-        return [
-            "prompt_field",  # for backward compatability
-            "box_prompt_field",
-            "point_prompt_field",
-        ]
-
-    def get_sample_dict(self, sample, set_missing_optional=True):
-        sample_dict = {}
-        for key, field in self.field_mapping.items():
-            try:
-                sample_dict[key] = sample[field]
-            except Exception as e:
-                if key in self.optional_keys and set_missing_optional:
-                    logger.warning(f"Setting optional key {key} to None")
-                    sample_dict[key] = None
-                else:
-                    raise ValueError(
-                        f"Error loading field {field} assigned to key {key}: {e}"
-                    )
-        return sample_dict
-
-    @fout.GetItem.field_mapping.setter
-    def field_mapping(self, value):
-        if value is None:
-            return
-
-        for k, v in value.items():
-            if k not in self.required_keys and k not in self.optional_keys:
-                raise ValueError(
-                    f"Unknown key '{k}'. The supported keys are {self.required_keys}"
-                )
-
-            self._field_mapping[k] = v
-
-    def make_interactive(self):
-        # Convenience method to avoid re-loading images in interactive mode
-        self._load_image = False
-
-    def make_singular(self):
-        # Convenience method to enable loading images in singular mode
-        self._load_image = False
+        if self.mode == SAMPromptMode(1):
+            return common_keys
+        elif self.mode == SAMPromptMode(2):
+            return common_keys + box_keys
+        elif self.mode == SAMPromptMode(3):
+            return common_keys + point_keys
+        elif self.mode == SAMPromptMode(4):
+            return common_keys + box_keys + point_keys
+        else:
+            raise ValueError(f"Undefined required keys for {self.mode.name}")
 
 
 class SAMSegmenterOutputProcessor(fout.OutputProcessor):
@@ -328,7 +325,6 @@ class SAMSegmenterOutputProcessor(fout.OutputProcessor):
         frame_size,
         confidence_thresh=None,
         classes=None,
-        **kwargs,
     ):
         return [
             self._parse_output(out, width_height, confidence_thresh, classes)
@@ -471,19 +467,6 @@ class SegmentAnythingModel(fout.TorchImageModel):
         fout.TorchImageModel.__init__(self, config)
         self._sam_auto_generator = self._load_auto_generator()
         self._sam_predictor = _SAMPredictor(model=self._model)
-        self._is_interactive = False
-
-    @property
-    def is_interactive(self):
-        return self._is_interactive
-
-    def set_interactive_mode(self):
-        self._sam_predictor.reset_image()
-        self._is_interactive = True
-
-    def unset_interactive_mode(self):
-        self._is_interactive = False
-        self._sam_predictor.reset_image()
 
     def _download_model(self, config):
         config.download_model_if_necessary()
@@ -525,6 +508,29 @@ class SegmentAnythingModel(fout.TorchImageModel):
         get_item_args = self.config.get_item_args or {}
         field_mapping = {} if field_mapping is None else field_mapping
 
+        if "prompt_field" in field_mapping:
+            # Maintain backward compability of prompt_field.
+            logger.warning(
+                "Instead of prompt_field, use type specific prompt fields, such as, box_prompt_field, point_prompt_field etc."
+            )
+            if (
+                "box_prompt_field" in field_mapping
+                and "point_prompt_field" in field_mapping
+            ):
+                raise ValueError(
+                    "The generic prompt_field cannot be used when both box_prompt_field and point_prompt_field are present."
+                )
+            value = field_mapping.pop("prompt_field")
+            # Copy to box and/or point fields since prompt type is unknown.
+            if "box_prompt_field" not in field_mapping:
+                logger.warning("Moving prompt_field to box_prompt_field")
+                field_mapping["box_prompt_field"] = value
+            if "point_prompt_field" not in field_mapping:
+                logger.warning("Moving prompt_field to point_prompt_field")
+                field_mapping["point_prompt_field"] = value
+
+        # TODO: Add an optional mode in GetItem which can be set via apply_model.
+        # This will make backward compatibility easier to maintain.
         return get_item(
             field_mapping=field_mapping,
             transform=self._sam_predictor.image_transform,
@@ -559,18 +565,9 @@ class SegmentAnythingModel(fout.TorchImageModel):
         return outputs
 
     def _forward_pass(self, arg):
-        if self.is_interactive:
-            if not self._sam_predictor.valid_image(arg["id"]):
-                logger.info("Updating SAM predictor image embedding")
-                self._sam_predictor.set_torch_image(
-                    arg["image"].to(self.device),
-                    arg["original_size"],
-                    arg["id"],
-                )
-        else:
-            self._sam_predictor.set_torch_image(
-                arg["image"].to(self.device), arg["original_size"]
-            )
+        self._sam_predictor.set_torch_image(
+            arg["image"].to(self.device), arg["original_size"]
+        )
 
         prompt_type = arg["prompt_type"]
         point_coords = arg["point_coords"]
