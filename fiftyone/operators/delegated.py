@@ -918,7 +918,14 @@ class DelegatedOperationService(object):
                     logger.debug("Pinging operation %s", operation_id)
                     self._repo.ping(operation_id)
                     if on_monitor_ping:
-                        on_monitor_ping(child_process.pid)
+                        try:
+                            on_monitor_ping(child_process.pid)
+                        except Exception as e:
+                            logger.debug(
+                                "Error in on_monitor_ping callback for operation %s: %s",
+                                operation_id,
+                                e,
+                            )
             except Exception as e:
                 reason = f"Error in monitoring loop: {e}"
                 logger.error(
