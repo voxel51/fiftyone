@@ -853,11 +853,12 @@ class Session(object):
 
         Args:
             default ("checkmark"): the default selection icon style. Supported
-                values are ``"checkmark"``, ``"thumbsup"``, ``"thumbsdown"``,
-                ``"pin"``, ``"star"``, ``"x"``
+                values are ``"checkmark"``, ``"green-checkmark"``,
+                ``"red-checkmark"``, ``"thumbsup"``, ``"thumbsdown"``,
+                ``"pin"``, ``"star"``, ``"x"``, ``"bookmark"``
             alt (None): an optional alt selection icon style
         """
-        style = {"default": default, "alt": alt}
+        style = _resolve_selection_style(default, alt)
         self._state.selection_style = style
         self._client.send_event(SetSelectionStyle(style=style))
 
@@ -1391,6 +1392,42 @@ def _resolve_meta(selected: t.List[str], meta: t.Optional[t.Dict]) -> t.Dict:
             )
 
     return meta
+
+
+def _resolve_selection_style(
+    default: t.Optional[str], alt: t.Optional[str]
+) -> t.Dict:
+    valid_icons = {
+        "checkmark",
+        "green-checkmark",
+        "red-checkmark",
+        "thumbsup",
+        "thumbsdown",
+        "pin",
+        "star",
+        "x",
+        "bookmark",
+    }
+
+    if default is None:
+        default = "checkmark"
+
+    if default not in valid_icons:
+        raise ValueError(
+            f"Invalid default icon style '{default}'. "
+            f"Must be one of {valid_icons}"
+        )
+
+    if alt is not None and alt not in valid_icons:
+        raise ValueError(
+            f"Invalid alt icon style '{alt}'. " f"Must be one of {valid_icons}"
+        )
+
+    style = {"default": default}
+    if alt is not None:
+        style["alt"] = alt
+
+    return style
 
 
 def _on_select_labels(state: StateDescription, event: SelectLabels):

@@ -12,7 +12,11 @@ import unittest
 from dacite import from_dict
 
 from fiftyone.core.state import StateDescription
-from fiftyone.core.session.session import _on_select_labels, _resolve_meta
+from fiftyone.core.session.session import (
+    _on_select_labels,
+    _resolve_meta,
+    _resolve_selection_style,
+)
 from fiftyone.core.session.events import (
     SelectLabels,
     SelectSamples,
@@ -218,3 +222,33 @@ class SessionTests(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             _resolve_meta(selected_ids, meta)
+
+    @drop_datasets
+    def test_selection_style_default_none_falls_back(self):
+        """set_selection_style(default=None) should fall back to checkmark."""
+        style = _resolve_selection_style(None, None)
+        self.assertEqual(style, {"default": "checkmark"})
+
+    @drop_datasets
+    def test_selection_style_valid(self):
+        """Valid default and alt icons should be accepted."""
+        style = _resolve_selection_style("thumbsup", "thumbsdown")
+        self.assertEqual(style, {"default": "thumbsup", "alt": "thumbsdown"})
+
+    @drop_datasets
+    def test_selection_style_alt_none_excluded(self):
+        """alt=None should not include 'alt' key in the result."""
+        style = _resolve_selection_style("checkmark", None)
+        self.assertNotIn("alt", style)
+
+    @drop_datasets
+    def test_selection_style_rejects_invalid_default(self):
+        """Invalid default icon should raise ValueError."""
+        with self.assertRaises(ValueError):
+            _resolve_selection_style("invalid_icon", None)
+
+    @drop_datasets
+    def test_selection_style_rejects_invalid_alt(self):
+        """Invalid alt icon should raise ValueError."""
+        with self.assertRaises(ValueError):
+            _resolve_selection_style("checkmark", "invalid_icon")
