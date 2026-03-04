@@ -192,8 +192,8 @@ class MapAnythingModel(fout.TorchImageModel):
                 tmp = tempfile.NamedTemporaryFile(
                     suffix=".png", delete=False
                 )
-                pil_img.save(tmp.name)
                 tmp.close()
+                pil_img.save(tmp.name)
 
                 try:
                     views = mapanything_image.load_images([tmp.name])
