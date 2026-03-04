@@ -1,10 +1,10 @@
 import type { ID } from "@fiftyone/spotlight";
 import type { Sample } from "@fiftyone/state";
 import {
-  altSelectedSampleObjects,
-  altSelectedSamples,
+  altSelectionMode,
   selectedSampleObjects,
   selectedSamples,
+  selectedMeta,
   useSetSelected,
 } from "@fiftyone/state";
 import { useRef } from "react";
@@ -111,85 +111,78 @@ export default (records: Records) => {
       async (params: SelectThumbnailData) => {
         const { shiftKey, altKey, id: sampleId, sample, symbol } = params;
 
-        if (altKey) {
-          // Alt-click: toggle alt-selection (negative selection)
-          const currentAlt = new Set(
-            await snapshot.getPromise(altSelectedSamples)
-          );
-          const altObjects = new Map(
-            await snapshot.getPromise(altSelectedSampleObjects)
-          );
+        const current = new Set(await snapshot.getPromise(selectedSamples));
+        const currentObjects = new Map(
+          await snapshot.getPromise(selectedSampleObjects)
+        );
+        const currentMeta = {
+          ...(await snapshot.getPromise(selectedMeta)),
+        };
+        const isAltMode = await snapshot.getPromise(altSelectionMode);
 
-          if (currentAlt.has(sampleId)) {
-            currentAlt.delete(sampleId);
-            altObjects.delete(sampleId);
-          } else {
-            currentAlt.add(sampleId);
-            altObjects.set(sampleId, sample);
-          }
-
-          // Mutual exclusivity: remove from positive selection
-          const current = new Set(await snapshot.getPromise(selectedSamples));
-          const selectedObjects = new Map(
-            await snapshot.getPromise(selectedSampleObjects)
-          );
-          if (current.has(sampleId)) {
+        if (altKey && isAltMode) {
+          // Alt-click with altSelectionMode enabled
+          if (current.has(sampleId) && currentMeta[sampleId]?.type === "alt") {
+            // Already alt-selected → deselect
             current.delete(sampleId);
-            selectedObjects.delete(sampleId);
-            set(selectedSamples, current);
-            set(selectedSampleObjects, selectedObjects);
-            setSelected(current);
+            currentObjects.delete(sampleId);
+            delete currentMeta[sampleId];
+          } else {
+            // Add or convert to alt
+            current.add(sampleId);
+            currentObjects.set(sampleId, sample);
+            currentMeta[sampleId] = { type: "alt" };
           }
-
-          set(altSelectedSamples, currentAlt);
-          set(altSelectedSampleObjects, altObjects);
         } else {
-          // If sample is alt-selected, just un-alt-select it (don't add to positive selection)
-          const currentAlt = new Set(
-            await snapshot.getPromise(altSelectedSamples)
-          );
-          if (currentAlt.has(sampleId)) {
-            currentAlt.delete(sampleId);
-            const altObjects = new Map(
-              await snapshot.getPromise(altSelectedSampleObjects)
-            );
-            altObjects.delete(sampleId);
-            set(altSelectedSamples, currentAlt);
-            set(altSelectedSampleObjects, altObjects);
-            return;
-          }
-
-          // Normal click: existing positive selection logic
-          const current = new Set(await snapshot.getPromise(selectedSamples));
-          let selected = new Set(current);
-          const selectedObjects = new Map(
-            await snapshot.getPromise(selectedSampleObjects)
-          );
-
+          // Normal click or alt-click with altSelectionMode disabled
           const index = get(records, symbol.description);
-          if (shiftKey && !selected.has(sampleId)) {
-            selected = new Set([
-              ...selected,
-              ...addRange(index, selected, records),
-            ]);
+
+          if (shiftKey && !current.has(sampleId)) {
+            // Shift-click range add
+            const newSelected = addRange(index, current, records);
+            // Add meta for all newly added samples
+            for (const id of newSelected) {
+              if (!current.has(id)) {
+                currentMeta[id] = { type: "default" };
+              }
+            }
+            for (const id of newSelected) {
+              current.add(id);
+            }
+            // Ensure sample objects for newly added
+            currentObjects.set(sampleId, sample);
           } else if (shiftKey) {
-            selected = removeRange(index, selected, records);
+            // Shift-click range remove
+            const remaining = removeRange(index, current, records);
+            // Clean up meta for removed samples
+            for (const id of current) {
+              if (!remaining.has(id)) {
+                delete currentMeta[id];
+                currentObjects.delete(id);
+              }
+            }
+            current.clear();
+            for (const id of remaining) {
+              current.add(id);
+            }
           } else {
-            selected.has(sampleId)
-              ? selected.delete(sampleId)
-              : selected.add(sampleId);
+            // Single click toggle
+            if (current.has(sampleId)) {
+              current.delete(sampleId);
+              currentObjects.delete(sampleId);
+              delete currentMeta[sampleId];
+            } else {
+              current.add(sampleId);
+              currentObjects.set(sampleId, sample);
+              currentMeta[sampleId] = { type: "default" };
+            }
           }
-
-          if (selectedObjects.has(sampleId)) {
-            selectedObjects.delete(sampleId);
-          } else {
-            selectedObjects.set(sampleId, sample);
-          }
-
-          set(selectedSamples, selected);
-          set(selectedSampleObjects, selectedObjects);
-          setSelected(new Set(selected));
         }
+
+        set(selectedSamples, current);
+        set(selectedSampleObjects, currentObjects);
+        set(selectedMeta, currentMeta);
+        setSelected(new Set(current));
       },
     [records, setSelected]
   );
