@@ -63,6 +63,8 @@ class AppleSharpModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
         self.focal_length_mm = self.parse_number(
             d, "focal_length_mm", default=DEFAULT_FOCAL_LENGTH
         )
+        if self.focal_length_mm <= 0:
+            raise ValueError("focal_length_mm must be positive")
         self.output_dir = self.parse_string(d, "output_dir", default=None)
 
 
