@@ -115,14 +115,6 @@ export const MediaTypeFo3dComponent = () => {
     return foScene.children?.length ?? 0;
   }, [foScene]);
 
-  useHotkey(
-    "KeyB",
-    ({ set }) => {
-      set(isFo3dBackgroundOnAtom, (prev) => !prev);
-    },
-    []
-  );
-
   const [upVector, setUpVectorVal] = useFo3dUpVector(
     foScene,
     settings.defaultUp

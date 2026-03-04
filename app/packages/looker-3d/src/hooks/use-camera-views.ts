@@ -19,6 +19,7 @@ import { useFo3dContext } from "../fo3d/context";
 import {
   annotationPlaneAtom,
   cameraViewStatusAtom,
+  isFo3dBackgroundOnAtom,
   selectedLabelForAnnotationAtom,
 } from "../state";
 import { isDetection3dOverlay, isPolyline3dOverlay } from "../types";
@@ -117,6 +118,7 @@ export const useCameraViews = ({
   const selectedLabelForAnnotation = useRecoilValue(
     selectedLabelForAnnotationAtom
   );
+  const setIsFo3dBackgroundOn = useSetRecoilState(isFo3dBackgroundOnAtom);
 
   const workingLabel = useWorkingLabel(selectedLabelForAnnotation?._id ?? "");
 
@@ -252,6 +254,12 @@ export const useCameraViews = ({
         });
         event.preventDefault();
         window.dispatchEvent(new CustomEvent(SET_ZOOM_TO_SELECTED_EVENT));
+        return;
+      }
+
+      if (!event.metaKey && event.code === "KeyB") {
+        setIsFo3dBackgroundOn((prev) => !prev);
+        event.preventDefault();
         return;
       }
 
