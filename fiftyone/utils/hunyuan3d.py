@@ -14,6 +14,7 @@ import uuid
 
 import numpy as np
 from PIL import Image
+import torch
 
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
@@ -122,9 +123,6 @@ class Hunyuan3DModel(fout.TorchImageModel):
         """
         if isinstance(img, (str, Image.Image)):
             return img
-
-        fou.ensure_torch()
-        import torch
 
         if isinstance(img, torch.Tensor):
             if img.dim() == 4 and img.size(0) == 1:
