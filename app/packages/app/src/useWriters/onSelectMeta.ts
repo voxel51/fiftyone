@@ -12,8 +12,7 @@ const onSelectMeta: RegisteredWriter<"selectedMeta"> =
     commitMutation<setSelectedMutation>(environment, {
       mutation: setSelected,
       variables: {
-        selected:
-          selected instanceof DefaultValue ? [] : Array.from(selected || []),
+        selected: Array.from(selected || []),
         selectedMeta:
           selectedMeta instanceof DefaultValue ? undefined : selectedMeta,
         subscription,

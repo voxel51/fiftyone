@@ -819,9 +819,10 @@ class Session(object):
             ids = []
 
         self._state.selected = list(ids)
-        if meta is not None:
-            self._state.selected_meta = meta
-        self._client.send_event(SelectSamples(self._state.selected, meta=meta))
+        self._state.selected_meta = _resolve_meta(self._state.selected, meta)
+        self._client.send_event(
+            SelectSamples(self._state.selected, meta=self._state.selected_meta)
+        )
 
     @property
     def selected_meta(self) -> t.Dict:
@@ -1360,6 +1361,19 @@ def _on_refresh(session: Session, state: t.Optional[StateDescription]):
 
     if session.dataset is not None:
         session.dataset.reload()
+
+
+def _resolve_meta(selected: t.List[str], meta: t.Optional[t.Dict]) -> t.Dict:
+    if meta is None:
+        return {}
+
+    selected_set = set(selected)
+    extra_keys = set(meta.keys()) - selected_set
+    if extra_keys:
+        raise ValueError(
+            "meta contains IDs not in the selected samples: " f"{extra_keys}"
+        )
+    return meta
 
 
 def _on_select_labels(state: StateDescription, event: SelectLabels):

@@ -37,7 +37,6 @@ import {
 } from "./operators";
 import { useShowOperatorIO } from "./state";
 import usePanelEvent from "./usePanelEvent";
-import { Clear } from "@mui/icons-material";
 
 //
 // BUILT-IN OPERATORS
@@ -521,7 +520,7 @@ class ClearSelectionStyle extends Operator {
     // Convert all alt meta to default
     const currentMeta = await state.snapshot.getPromise(fos.selectedMeta);
     const newMeta: Record<string, { type: string }> = {};
-    for (const [id, entry] of Object.entries(currentMeta)) {
+    for (const [id, _] of Object.entries(currentMeta)) {
       newMeta[id] = { type: "default" };
     }
     state.set(fos.selectedMeta, newMeta);
