@@ -484,6 +484,9 @@ class Operations(object):
                 metadata dicts, e.g.
                 ``{"sample_id": {"type": "default"}}``
         """
+        if meta is not None:
+            _validate_meta(samples, meta)
+
         params = {"samples": samples}
         if meta is not None:
             params["meta"] = meta
@@ -495,10 +498,12 @@ class Operations(object):
 
         Args:
             default ("checkmark"): the default selection icon style. Supported
-                values are ``"checkmark"``, ``"thumbsup"``, ``"thumbsdown"``,
-                ``"pin"``, ``"star"``, ``"x"``
+                values are ``"checkmark"``, ``"green-checkmark"``,
+                ``"red-checkmark"``, ``"thumbsup"``, ``"thumbsdown"``,
+                ``"pin"``, ``"star"``, ``"x"``, ``"bookmark"``
             alt (None): an optional alt selection icon style
         """
+        _validate_selection_style(default, alt)
         return self._ctx.trigger(
             "set_selection_style",
             params={"default": default, "alt": alt},
@@ -742,3 +747,49 @@ class Operations(object):
 
 def _serialize_view(view):
     return json.loads(json_util.dumps(view._serialize()))
+
+
+_VALID_ICON_STYLES = {
+    "checkmark",
+    "green-checkmark",
+    "red-checkmark",
+    "thumbsup",
+    "thumbsdown",
+    "pin",
+    "star",
+    "x",
+    "bookmark",
+}
+
+_VALID_SELECTION_TYPES = {"default", "alt"}
+
+
+def _validate_meta(samples, meta):
+    selected_set = set(samples)
+    extra_keys = set(meta.keys()) - selected_set
+    if extra_keys:
+        raise ValueError(
+            "meta contains IDs not in the selected samples: " f"{extra_keys}"
+        )
+
+    for sample_id, entry in meta.items():
+        sel_type = entry.get("type") if isinstance(entry, dict) else None
+        if sel_type not in _VALID_SELECTION_TYPES:
+            raise ValueError(
+                f"Invalid selection type '{sel_type}' for sample "
+                f"'{sample_id}'. Must be one of {_VALID_SELECTION_TYPES}"
+            )
+
+
+def _validate_selection_style(default, alt):
+    if default is not None and default not in _VALID_ICON_STYLES:
+        raise ValueError(
+            f"Invalid default icon style '{default}'. "
+            f"Must be one of {_VALID_ICON_STYLES}"
+        )
+
+    if alt is not None and alt not in _VALID_ICON_STYLES:
+        raise ValueError(
+            f"Invalid alt icon style '{alt}'. "
+            f"Must be one of {_VALID_ICON_STYLES}"
+        )
