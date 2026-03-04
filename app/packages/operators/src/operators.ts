@@ -82,7 +82,8 @@ export type RawContext = {
   view: string;
   filters: object;
   selectedSamples: Set<string>;
-  altSelectedSamples: Set<string>;
+  selectedMeta: Record<string, { type: string }>;
+  selectionStyle: { default: string; alt?: string | null };
   selectedLabels: any[];
   currentSample: string;
   viewName: string;
@@ -596,9 +597,8 @@ async function executeOperatorAsGenerator(
       selected: currentContext.selectedSamples
         ? Array.from(currentContext.selectedSamples)
         : [],
-      alt_selected: currentContext.altSelectedSamples
-        ? Array.from(currentContext.altSelectedSamples)
-        : [],
+      selected_meta: currentContext.selectedMeta || {},
+      selection_style: currentContext.selectionStyle || {},
       selected_labels: formatSelectedLabels(currentContext.selectedLabels),
       view: currentContext.view,
       view_name: currentContext.viewName,
@@ -876,9 +876,8 @@ export async function resolveRemoteType(
       selected: currentContext.selectedSamples
         ? Array.from(currentContext.selectedSamples)
         : [],
-      alt_selected: currentContext.altSelectedSamples
-        ? Array.from(currentContext.altSelectedSamples)
-        : [],
+      selected_meta: currentContext.selectedMeta || {},
+      selection_style: currentContext.selectionStyle || {},
       selected_labels: formatSelectedLabels(currentContext.selectedLabels),
       view: currentContext.view,
       view_name: currentContext.viewName,
@@ -958,9 +957,8 @@ export async function resolveExecutionOptions(
       selected: currentContext.selectedSamples
         ? Array.from(currentContext.selectedSamples)
         : [],
-      alt_selected: currentContext.altSelectedSamples
-        ? Array.from(currentContext.altSelectedSamples)
-        : [],
+      selected_meta: currentContext.selectedMeta || {},
+      selection_style: currentContext.selectionStyle || {},
       selected_labels: formatSelectedLabels(currentContext.selectedLabels),
       view: currentContext.view,
       view_name: currentContext.viewName,
@@ -996,9 +994,8 @@ export async function fetchRemotePlacements(ctx: ExecutionContext) {
       selected: currentContext.selectedSamples
         ? Array.from(currentContext.selectedSamples)
         : [],
-      alt_selected: currentContext.altSelectedSamples
-        ? Array.from(currentContext.altSelectedSamples)
-        : [],
+      selected_meta: currentContext.selectedMeta || {},
+      selection_style: currentContext.selectionStyle || {},
       selected_labels: formatSelectedLabels(currentContext.selectedLabels),
       current_sample: currentContext.currentSample,
       view_name: currentContext.viewName,
