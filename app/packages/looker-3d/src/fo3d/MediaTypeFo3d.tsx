@@ -5,7 +5,6 @@ import * as fos from "@fiftyone/state";
 import { isInMultiPanelViewAtom, useBrowserStorage } from "@fiftyone/state";
 import type { CameraControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
-import CameraControlsImpl from "camera-controls";
 import { useAtomValue } from "jotai";
 import {
   useCallback,
@@ -33,6 +32,7 @@ import {
 } from "../constants";
 import { StatusBarRootContainer } from "../containers";
 import {
+  useFo3dCameraControlsConfig,
   useFo3dUpVector,
   useFo3d,
   useHotkey,
@@ -123,6 +123,7 @@ export const MediaTypeFo3dComponent = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera>();
   const cameraControlsRef = useRef<CameraControls>();
+
   const datasetName = useRecoilValue(fos.datasetName);
   const canAnnotate = useCanAnnotate();
   const shouldRenderMultiPanelView = useMemo(
@@ -135,73 +136,9 @@ export const MediaTypeFo3dComponent = () => {
   );
   const currentRenderPath = shouldRenderMultiPanelView ? "multi" : "main";
   const isActivelySegmenting = useRecoilValue(isActivelySegmentingSelector);
-  const isSegmentingPointerDown = useRecoilValue(isSegmentingPointerDownAtom);
-  const isCreatingCuboidPointerDown = useRecoilValue(
-    isCreatingCuboidPointerDownAtom
-  );
-  const isCurrentlyTransforming = useRecoilValue(isCurrentlyTransformingAtom);
 
-  const keyState = useRef({
-    shiftRight: false,
-    shiftLeft: false,
-    controlRight: false,
-    controlLeft: false,
-  });
-
-  const updateCameraControlsConfig = useCallback(() => {
-    if (!cameraControlsRef.current) return;
-
-    // Disable camera controls when transforming or creating annotations
-    if (
-      isSegmentingPointerDown ||
-      isCreatingCuboidPointerDown ||
-      isCurrentlyTransforming
-    ) {
-      cameraControlsRef.current.enabled = false;
-      return;
-    }
-
-    // Re-enable camera controls when not transforming
-    cameraControlsRef.current.enabled = true;
-
-    if (keyState.current.shiftRight || keyState.current.shiftLeft) {
-      cameraControlsRef.current.mouseButtons.left =
-        CameraControlsImpl.ACTION.TRUCK;
-    } else if (keyState.current.controlRight || keyState.current.controlLeft) {
-      cameraControlsRef.current.mouseButtons.left =
-        CameraControlsImpl.ACTION.DOLLY;
-    } else {
-      cameraControlsRef.current.mouseButtons.left =
-        CameraControlsImpl.ACTION.ROTATE;
-    }
-  }, [
-    keyState,
-    isCurrentlyTransforming,
-    isSegmentingPointerDown,
-    isCreatingCuboidPointerDown,
-  ]);
-
-  /**
-   * This effect updates the camera controls config when the transforming state changes
-   */
-  useEffect(() => {
-    updateCameraControlsConfig();
-  }, [updateCameraControlsConfig]);
-
-  fos.useEventHandler(document, "keydown", (e: KeyboardEvent) => {
-    if (e.code === "ShiftRight") keyState.current.shiftRight = true;
-    if (e.code === "ShiftLeft") keyState.current.shiftLeft = true;
-    if (e.code === "ControlRight") keyState.current.controlRight = true;
-    if (e.code === "ControlLeft") keyState.current.controlLeft = true;
-    updateCameraControlsConfig();
-  });
-
-  fos.useEventHandler(document, "keyup", (e: KeyboardEvent) => {
-    if (e.code === "ShiftRight") keyState.current.shiftRight = false;
-    if (e.code === "ShiftLeft") keyState.current.shiftLeft = false;
-    if (e.code === "ControlRight") keyState.current.controlRight = false;
-    if (e.code === "ControlLeft") keyState.current.controlLeft = false;
-    updateCameraControlsConfig();
+  useFo3dCameraControlsConfig({
+    cameraControlsRef,
   });
 
   const assetsGroupRef = useRef<THREE.Group>();
