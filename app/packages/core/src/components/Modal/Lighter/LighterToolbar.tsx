@@ -1,18 +1,11 @@
 import { useLighter } from "@fiftyone/lighter";
 import { IMAVID_SHORTCUTS } from "@fiftyone/looker/src/elements/common/actions";
 import * as fos from "@fiftyone/state";
-import {
-  Clickable,
-  Icon,
-  IconName,
-  Orientation,
-  Size,
-  Spacing,
-  Stack,
-} from "@voxel51/voodo";
+import { IconName, Orientation, Spacing, Stack } from "@voxel51/voodo";
 import { useCallback } from "react";
 import styled from "styled-components";
 import { shortcutToHelpItems } from "../utils";
+import ToolbarButton from "./ToolbarButton";
 
 const ToolbarWrapper = styled.div`
   position: absolute;
@@ -28,14 +21,12 @@ const ToolbarContainer = styled.div`
   align-items: center;
   justify-content: flex-end;
   padding: 0.25rem 1rem;
-  min-height: 37px;
+  min-height: 42px;
   width: 100%;
   height: 100%;
   color: ${({ theme }) => theme.text.secondary};
   background-color: ${({ theme }) => theme.background.level3};
-  border: 1px solid ${({ theme }) => theme.primary.plainBorder};
   box-shadow: 0 8px 15px 0 ${({ theme }) => theme.neutral.softBg};
-  border-right: 0;
 `;
 
 /**
@@ -54,15 +45,21 @@ export const LighterToolbar = () => {
     <ToolbarWrapper>
       <ToolbarContainer className="lighter-toolbar" data-cy="lighter-toolbar">
         <Stack orientation={Orientation.Row} spacing={Spacing.Md}>
-          <Clickable onClick={zoomOut}>
-            <Icon name={IconName.Remove} size={Size.Lg} />
-          </Clickable>
-          <Clickable onClick={zoomIn}>
-            <Icon name={IconName.Add} size={Size.Lg} />
-          </Clickable>
-          <Clickable onClick={handleHelp}>
-            <Icon name={IconName.Info} size={Size.Lg} />
-          </Clickable>
+          <ToolbarButton
+            content="Zoom out"
+            icon={IconName.Remove}
+            onClick={zoomOut}
+          />
+          <ToolbarButton
+            content="Zoom in"
+            icon={IconName.Add}
+            onClick={zoomIn}
+          />
+          <ToolbarButton
+            content="Shortcuts & help"
+            icon={IconName.Info}
+            onClick={handleHelp}
+          />
         </Stack>
       </ToolbarContainer>
     </ToolbarWrapper>
