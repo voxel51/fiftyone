@@ -116,7 +116,7 @@ export const SESSION_DEFAULT: Session = {
   selectedSamples: new Set(),
   selectedMeta: {},
   selectedLabels: [],
-  selectionStyle: { default: "green-checkmark", alt: "red-checkmark" }, // TODO: will revert to checkmark after it's done
+  selectionStyle: { default: "checkmark" },
   sessionSpaces: GRID_SPACES_DEFAULT,
   sessionGroupSlice: undefined,
 };
