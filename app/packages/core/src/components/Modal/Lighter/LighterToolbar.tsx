@@ -46,17 +46,17 @@ export const LighterToolbar = () => {
       <ToolbarContainer className="lighter-toolbar" data-cy="lighter-toolbar">
         <Stack orientation={Orientation.Row} spacing={Spacing.Md}>
           <ToolbarButton
-            content="Zoom out"
+            tooltip="Zoom out"
             icon={IconName.Remove}
             onClick={zoomOut}
           />
           <ToolbarButton
-            content="Zoom in"
+            tooltip="Zoom in"
             icon={IconName.Add}
             onClick={zoomIn}
           />
           <ToolbarButton
-            content="Shortcuts & help"
+            tooltip="Shortcuts & help"
             icon={IconName.Info}
             onClick={handleHelp}
           />

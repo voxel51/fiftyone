@@ -8,13 +8,13 @@ import {
 } from "@voxel51/voodo";
 
 export interface ToolbarButtonProps {
-  content: string;
+  tooltip: string;
   icon: IconName;
   onClick: () => void;
 }
 
-const ToolbarButton = ({ content, icon, onClick }: ToolbarButtonProps) => (
-  <Tooltip content={content} anchor={Anchor.Top} portal>
+const ToolbarButton = ({ tooltip, icon, onClick }: ToolbarButtonProps) => (
+  <Tooltip content={tooltip} anchor={Anchor.Top} portal>
     <Clickable onClick={onClick}>
       <Icon name={icon} size={Size.Lg} />
     </Clickable>

@@ -685,9 +685,8 @@ export class PixiRenderer2D implements Renderer2D {
    * Applies a new zoom level if it differs from the current one, and emits
    * viewport events. Caller must ensure viewport exists and compute `next`.
    */
-  private applyZoom(next: number): void {
-    if (!this.viewport || this.viewport.destroyed) return;
-    const current = this.viewport.scaled;
+  private applyZoom(current: number, next: number): void {
+    if (!this.viewport?.destroyed) return;
     if (next !== current) {
       this.viewport.setZoom(next);
       this.emitViewportZoomed();
@@ -696,23 +695,23 @@ export class PixiRenderer2D implements Renderer2D {
   }
 
   zoomIn(): void {
-    if (!this.viewport || this.viewport.destroyed) return;
+    if (!this.viewport?.destroyed) return;
     const current = this.viewport.scaled;
     const next = Math.min(
       current * PixiRenderer2D.ZOOM_FACTOR,
       PixiRenderer2D.ZOOM_MAX
     );
-    this.applyZoom(next);
+    this.applyZoom(current, next);
   }
 
   zoomOut(): void {
-    if (!this.viewport || this.viewport.destroyed) return;
+    if (!this.viewport?.destroyed) return;
     const current = this.viewport.scaled;
     const next = Math.max(
       current / PixiRenderer2D.ZOOM_FACTOR,
       PixiRenderer2D.ZOOM_MIN
     );
-    this.applyZoom(next);
+    this.applyZoom(current, next);
   }
 
   /**

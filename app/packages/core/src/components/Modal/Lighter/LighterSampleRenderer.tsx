@@ -82,6 +82,9 @@ export const LighterSampleRenderer = ({
 
   return (
     <div
+      ref={containerRef}
+      onMouseEnter={() => setIsCanvasHovered(true)}
+      onMouseLeave={() => setIsCanvasHovered(false)}
       className={`lighter-sample-renderer ${className}`}
       data-cy="lighter-sample-renderer"
       id="lighter-sample-renderer-container"
@@ -93,17 +96,10 @@ export const LighterSampleRenderer = ({
         minHeight: 0,
       }}
     >
-      <div
-        ref={containerRef}
-        style={{ flex: 1, minHeight: 0, position: "relative" }}
-        onMouseEnter={() => setIsCanvasHovered(true)}
-        onMouseLeave={() => setIsCanvasHovered(false)}
-      >
-        {containerRef.current && sceneId && (
-          <LighterSetupImpl containerRef={containerRef} sceneId={sceneId} />
-        )}
-        {isCanvasHovered && <LighterToolbar />}
-      </div>
+      {containerRef.current && sceneId && (
+        <LighterSetupImpl containerRef={containerRef} sceneId={sceneId} />
+      )}
+      {isCanvasHovered && <LighterToolbar />}
     </div>
   );
 };
