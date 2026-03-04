@@ -1235,7 +1235,13 @@ def _attach_listeners(session: "Session"):
     def on_select_samples(event: SelectSamples):
         session._state.selected = event.sample_ids
         if event.meta is not None:
-            session._state.selected_meta = event.meta
+            # Filter meta to only include IDs in selected
+            selected_set = set(session._state.selected)
+            session._state.selected_meta = {
+                k: v for k, v in event.meta.items() if k in selected_set
+            }
+        else:
+            session._state.selected_meta = {}
 
     session._client.add_event_listener("select_samples", on_select_samples)
 
@@ -1367,12 +1373,23 @@ def _resolve_meta(selected: t.List[str], meta: t.Optional[t.Dict]) -> t.Dict:
     if meta is None:
         return {}
 
+    valid_types = {"default", "alt"}
+
     selected_set = set(selected)
     extra_keys = set(meta.keys()) - selected_set
     if extra_keys:
         raise ValueError(
             "meta contains IDs not in the selected samples: " f"{extra_keys}"
         )
+
+    for sample_id, entry in meta.items():
+        sel_type = entry.get("type") if isinstance(entry, dict) else None
+        if sel_type not in valid_types:
+            raise ValueError(
+                f"Invalid selection type '{sel_type}' for sample "
+                f"'{sample_id}'. Must be one of {valid_types}"
+            )
+
     return meta
 
 

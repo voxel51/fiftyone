@@ -7,12 +7,22 @@ import type { RegisteredWriter } from "./registerWriter";
 const onSelectSamples: RegisteredWriter<"selectedSamples"> =
   ({ environment, subscription }) =>
   (selected) => {
+    const selectedSet =
+      selected instanceof DefaultValue ? new Set<string>() : selected;
     const sessionRef = getSessionRef();
-    const selectedMeta = sessionRef?.selectedMeta || undefined;
+    const rawMeta = sessionRef?.selectedMeta;
+
+    // Filter meta to only include IDs still in the selected set
+    const selectedMeta = rawMeta
+      ? Object.fromEntries(
+          Object.entries(rawMeta).filter(([id]) => selectedSet.has(id))
+        )
+      : undefined;
+
     commitMutation<setSelectedMutation>(environment, {
       mutation: setSelected,
       variables: {
-        selected: selected instanceof DefaultValue ? [] : Array.from(selected),
+        selected: Array.from(selectedSet),
         selectedMeta,
         subscription,
       },

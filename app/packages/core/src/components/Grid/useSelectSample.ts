@@ -120,63 +120,50 @@ export default (records: Records) => {
         };
         const isAltMode = await snapshot.getPromise(altSelectionMode);
 
-        if (altKey && isAltMode) {
-          // Alt-click with altSelectionMode enabled
-          if (current.has(sampleId) && currentMeta[sampleId]?.type === "alt") {
-            // Already alt-selected → deselect
-            current.delete(sampleId);
-            currentObjects.delete(sampleId);
-            delete currentMeta[sampleId];
-          } else {
-            // Add or convert to alt
-            current.add(sampleId);
-            currentObjects.set(sampleId, sample);
-            currentMeta[sampleId] = { type: "alt" };
-          }
-        } else {
-          // Normal click or alt-click with altSelectionMode disabled
-          const index = get(records, symbol.description);
+        const isAltClick = altKey && isAltMode;
+        const selectionType = isAltClick ? "alt" : "default";
+        const index = get(records, symbol.description);
 
-          if (shiftKey && !current.has(sampleId)) {
-            // Shift-click range add
-            const newSelected = addRange(index, current, records);
-            // Add meta for all newly added samples
-            for (const id of newSelected) {
-              if (!current.has(id)) {
-                currentMeta[id] = { type: "default" };
-              }
-            }
-            for (const id of newSelected) {
-              current.add(id);
-            }
-            // Ensure sample objects for newly added
-            currentObjects.set(sampleId, sample);
-          } else if (shiftKey) {
-            // Shift-click range remove
-            const remaining = removeRange(index, current, records);
-            // Clean up meta for removed samples
-            for (const id of current) {
-              if (!remaining.has(id)) {
-                delete currentMeta[id];
-                currentObjects.delete(id);
-              }
-            }
-            current.clear();
-            for (const id of remaining) {
-              current.add(id);
-            }
-          } else {
-            // Single click toggle
-            if (current.has(sampleId)) {
-              current.delete(sampleId);
-              currentObjects.delete(sampleId);
-              delete currentMeta[sampleId];
-            } else {
-              current.add(sampleId);
-              currentObjects.set(sampleId, sample);
-              currentMeta[sampleId] = { type: "default" };
+        if (shiftKey && !current.has(sampleId)) {
+          // Shift-click (or shift+alt-click) range add
+          const newSelected = addRange(index, current, records);
+          for (const id of newSelected) {
+            if (!current.has(id)) {
+              currentMeta[id] = { type: selectionType };
             }
           }
+          for (const id of newSelected) {
+            current.add(id);
+          }
+          currentObjects.set(sampleId, sample);
+        } else if (shiftKey) {
+          // Shift-click range remove
+          const remaining = removeRange(index, current, records);
+          for (const id of current) {
+            if (!remaining.has(id)) {
+              delete currentMeta[id];
+              currentObjects.delete(id);
+            }
+          }
+          current.clear();
+          for (const id of remaining) {
+            current.add(id);
+          }
+        } else if (current.has(sampleId)) {
+          // Click on any selected sample → deselect
+          current.delete(sampleId);
+          currentObjects.delete(sampleId);
+          delete currentMeta[sampleId];
+        } else if (isAltClick) {
+          // Alt-click unselected sample → alt-select
+          current.add(sampleId);
+          currentObjects.set(sampleId, sample);
+          currentMeta[sampleId] = { type: "alt" };
+        } else {
+          // Normal click unselected sample → default-select
+          current.add(sampleId);
+          currentObjects.set(sampleId, sample);
+          currentMeta[sampleId] = { type: "default" };
         }
 
         set(selectedSamples, current);

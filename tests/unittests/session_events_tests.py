@@ -200,3 +200,21 @@ class SessionTests(unittest.TestCase):
         )
         self.assertIsNone(state.selected_meta.get("b" * 24))
         self.assertIsNone(state.selected_meta.get("c" * 24))
+
+    @drop_datasets
+    def test_select_samples_meta_rejects_invalid_type(self):
+        """Meta with invalid type should raise ValueError."""
+        selected_ids = ["a" * 24]
+        meta = {"a" * 24: {"type": "invalid"}}
+
+        with self.assertRaises(ValueError):
+            _resolve_meta(selected_ids, meta)
+
+    @drop_datasets
+    def test_select_samples_meta_rejects_missing_type(self):
+        """Meta entry without type key should raise ValueError."""
+        selected_ids = ["a" * 24]
+        meta = {"a" * 24: {"foo": "bar"}}
+
+        with self.assertRaises(ValueError):
+            _resolve_meta(selected_ids, meta)

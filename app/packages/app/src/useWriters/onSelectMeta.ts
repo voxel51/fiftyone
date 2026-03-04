@@ -8,13 +8,22 @@ const onSelectMeta: RegisteredWriter<"selectedMeta"> =
   ({ environment, subscription }) =>
   (selectedMeta) => {
     const sessionRef = getSessionRef();
-    const selected = sessionRef?.selectedSamples;
+    const selectedSet = sessionRef?.selectedSamples || new Set<string>();
+    const meta =
+      selectedMeta instanceof DefaultValue ? undefined : selectedMeta;
+
+    // Filter meta to only include IDs still in the selected set
+    const filteredMeta = meta
+      ? Object.fromEntries(
+          Object.entries(meta).filter(([id]) => selectedSet.has(id))
+        )
+      : undefined;
+
     commitMutation<setSelectedMutation>(environment, {
       mutation: setSelected,
       variables: {
-        selected: Array.from(selected || []),
-        selectedMeta:
-          selectedMeta instanceof DefaultValue ? undefined : selectedMeta,
+        selected: Array.from(selectedSet),
+        selectedMeta: filteredMeta,
         subscription,
       },
     });
