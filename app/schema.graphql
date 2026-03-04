@@ -547,6 +547,12 @@ type Mutation {
     subscription: String!
     session: String
     selected: [String!]!
+    selectedMeta: JSON = null
+  ): Boolean!
+  setSelectionStyle(
+    subscription: String!
+    session: String
+    style: JSON!
   ): Boolean!
   setSelectedLabels(
     subscription: String!
