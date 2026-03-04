@@ -168,7 +168,7 @@ class AppleSharpModel(fout.TorchImageModel):
                 img_np = self._to_numpy(img)
                 height, width = img_np.shape[:2]
 
-                sensor_width_mm = 36.0
+                sensor_width_mm = 36.0  # 35mm full-frame sensor
                 f_px = self._focal_length_mm * width / sensor_width_mm
                 disparity_factor = (
                     torch.tensor([f_px / width]).float().to(self._device)
