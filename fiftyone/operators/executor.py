@@ -847,7 +847,9 @@ class ExecutionContext(contextlib.AbstractContextManager):
         A dict with a ``default`` key and optional ``alt`` key specifying
         icon styles.
         """
-        return self.request_params.get("selection_style", {})
+        return self.request_params.get(
+            "selection_style", {"default": "checkmark"}
+        )
 
     @property
     def selected_labels(self):

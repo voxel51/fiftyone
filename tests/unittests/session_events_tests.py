@@ -57,38 +57,22 @@ class SessionTests(unittest.TestCase):
 
     @drop_datasets
     def test_select_samples_with_meta(self):
-        state = StateDescription()
         sample_ids = ["a" * 24, "b" * 24]
         meta = {
             "a" * 24: {"type": "default"},
             "b" * 24: {"type": "alt"},
         }
 
-        event = SelectSamples(sample_ids=sample_ids, meta=meta)
-        state.selected = event.sample_ids
-        state.selected_meta = event.meta
-
-        self.assertListEqual(state.selected, sample_ids)
-        self.assertEqual(state.selected_meta, meta)
-        self.assertEqual(state.selected_meta["b" * 24]["type"], "alt")
+        resolved = _resolve_meta(sample_ids, meta)
+        self.assertEqual(resolved, meta)
+        self.assertEqual(resolved["b" * 24]["type"], "alt")
 
     @drop_datasets
     def test_select_samples_without_meta_clears_stale(self):
-        """Calling select_samples without meta should clear existing meta."""
-        state = StateDescription()
-
-        # First, set up some existing meta
-        state.selected = ["a" * 24]
-        state.selected_meta = {"a" * 24: {"type": "alt"}}
-
-        # Now select new samples without meta — simulates a caller
-        # unaware of the meta feature (backward compat)
+        """_resolve_meta with None should return empty dict."""
         new_ids = ["b" * 24]
-        state.selected = list(new_ids)
-        state.selected_meta = {}  # what select_samples does when meta=None
-
-        self.assertListEqual(state.selected, new_ids)
-        self.assertEqual(state.selected_meta, {})
+        resolved = _resolve_meta(new_ids, None)
+        self.assertEqual(resolved, {})
 
     @drop_datasets
     def test_set_selection_style(self):
@@ -138,72 +122,37 @@ class SessionTests(unittest.TestCase):
 
     @drop_datasets
     def test_select_samples_empty_ids_clears_everything(self):
-        """select_samples() with no args clears selected and meta."""
-        state = StateDescription()
-        state.selected = ["a" * 24]
-        state.selected_meta = {"a" * 24: {"type": "alt"}}
-
-        # Simulate select_samples() with no args
-        state.selected = []
-        state.selected_meta = {}
-
-        self.assertListEqual(state.selected, [])
-        self.assertEqual(state.selected_meta, {})
+        """_resolve_meta with empty ids and None meta returns empty dict."""
+        resolved = _resolve_meta([], None)
+        self.assertEqual(resolved, {})
 
     @drop_datasets
     def test_select_samples_meta_none_same_as_omitted(self):
-        """select_samples(ids, meta=None) behaves same as select_samples(ids)."""
-        state = StateDescription()
-        state.selected = ["a" * 24]
-        state.selected_meta = {"a" * 24: {"type": "alt"}}
-
-        # meta=None should clear stale meta
+        """_resolve_meta(ids, None) returns empty dict same as omitting meta."""
         new_ids = ["b" * 24, "c" * 24]
-        state.selected = list(new_ids)
-        state.selected_meta = {}  # what select_samples does when meta is None
-
-        self.assertListEqual(state.selected, new_ids)
-        self.assertEqual(state.selected_meta, {})
+        resolved = _resolve_meta(new_ids, None)
+        self.assertEqual(resolved, {})
 
     @drop_datasets
     def test_select_samples_empty_meta_dict(self):
-        """select_samples(ids, meta={}) — explicit empty meta is valid."""
-        state = StateDescription()
+        """_resolve_meta(ids, {}) — explicit empty meta is valid."""
         sample_ids = ["a" * 24, "b" * 24]
-
-        state.selected = list(sample_ids)
-        meta = {}
-        # meta is not None, so it goes through the validation path
-        selected_set = set(state.selected)
-        extra_keys = set(meta.keys()) - selected_set
-        self.assertEqual(len(extra_keys), 0)
-        state.selected_meta = meta
-
-        self.assertListEqual(state.selected, sample_ids)
-        self.assertEqual(state.selected_meta, {})
+        resolved = _resolve_meta(sample_ids, {})
+        self.assertEqual(resolved, {})
 
     @drop_datasets
     def test_select_samples_partial_meta(self):
         """Meta for only some IDs is valid — others default on the grid."""
-        state = StateDescription()
         sample_ids = ["a" * 24, "b" * 24, "c" * 24]
         meta = {
             "a" * 24: {"type": "alt"},
             # b and c have no meta — will show default icon on grid
         }
 
-        selected_set = set(sample_ids)
-        extra_keys = set(meta.keys()) - selected_set
-        self.assertEqual(len(extra_keys), 0)
-
-        state.selected = list(sample_ids)
-        state.selected_meta = meta
-
-        self.assertEqual(
-            state.selected_meta.get("a" * 24, {}).get("type"), "alt"
-        )
-        self.assertIsNone(state.selected_meta.get("b" * 24))
-        self.assertIsNone(state.selected_meta.get("c" * 24))
+        resolved = _resolve_meta(sample_ids, meta)
+        self.assertEqual(resolved.get("a" * 24, {}).get("type"), "alt")
+        self.assertIsNone(resolved.get("b" * 24))
+        self.assertIsNone(resolved.get("c" * 24))
 
     @drop_datasets
     def test_select_samples_meta_rejects_invalid_type(self):
@@ -252,3 +201,25 @@ class SessionTests(unittest.TestCase):
         """Invalid alt icon should raise ValueError."""
         with self.assertRaises(ValueError):
             _resolve_selection_style("checkmark", "invalid_icon")
+
+    @drop_datasets
+    def test_resolve_meta_rejects_non_dict(self):
+        """_resolve_meta should reject non-dict, non-None meta."""
+        with self.assertRaises(ValueError):
+            _resolve_meta(["a" * 24], "not a dict")
+
+    @drop_datasets
+    def test_state_from_dict_restores_selection_fields(self):
+        """from_dict should restore selected_meta and selection_style."""
+        d = {
+            "selected": ["a" * 24],
+            "selected_labels": [],
+            "selected_meta": {"a" * 24: {"type": "alt"}},
+            "selection_style": {"default": "thumbsup", "alt": "thumbsdown"},
+        }
+        state = StateDescription.from_dict(d)
+        self.assertEqual(state.selected_meta, {"a" * 24: {"type": "alt"}})
+        self.assertEqual(
+            state.selection_style,
+            {"default": "thumbsup", "alt": "thumbsdown"},
+        )

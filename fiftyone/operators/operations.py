@@ -765,6 +765,8 @@ _VALID_SELECTION_TYPES = {"default", "alt"}
 
 
 def _validate_meta(samples, meta):
+    if not isinstance(meta, dict):
+        raise ValueError("meta must be a dict")
     selected_set = set(samples)
     extra_keys = set(meta.keys()) - selected_set
     if extra_keys:

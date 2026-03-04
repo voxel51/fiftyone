@@ -7,6 +7,7 @@ import { SpaceNodeJSON } from "@fiftyone/spaces";
 import { useCallback } from "react";
 import { atom, AtomOptions, DefaultValue, RecoilState, selector } from "recoil";
 import { State } from "./recoil";
+import type { SelectionIconStyle, SelectionType } from "./recoil/types";
 
 export const GRID_SPACES_DEFAULT = {
   id: "",
@@ -89,9 +90,12 @@ export interface Session {
   modalSelector?: ModalSelector;
   readOnly: boolean;
   selectedSamples: Set<string>;
-  selectedMeta: Record<string, { type: string }>;
+  selectedMeta: Record<string, { type: SelectionType }>;
   selectedLabels: State.SelectedLabel[];
-  selectionStyle: { default: string; alt?: string | null };
+  selectionStyle: {
+    default: SelectionIconStyle;
+    alt?: SelectionIconStyle | null;
+  };
   sessionSpaces: SpaceNodeJSON;
   sessionGroupSlice?: string;
 }

@@ -472,9 +472,15 @@ class SetSelectedSamples extends Operator {
     const { samples, meta } = params || {};
     if (!Array.isArray(samples))
       throw new Error("param 'samples' must be an array of string");
-    hooks.setSelected(new Set(samples));
+    const sampleSet = new Set(samples);
+    hooks.setSelected(sampleSet);
     if (meta) {
-      hooks.setMeta(meta);
+      // Normalize meta to only include IDs in samples
+      const normalizedMeta: Record<string, { type: string }> = {};
+      for (const id of samples) {
+        normalizedMeta[id] = meta[id] || { type: "default" };
+      }
+      hooks.setMeta(normalizedMeta);
     } else {
       // Generate default meta for all samples
       const defaultMeta: Record<string, { type: string }> = {};
@@ -496,12 +502,12 @@ class SetSelectionStyle extends Operator {
     });
   }
   async execute({ state, params }: ExecutionContext) {
+    const { default: defaultIcon, alt } = params || {};
     const style = {
-      default: params.default || "checkmark",
-      alt: params.alt || null,
+      default: defaultIcon || "checkmark",
+      alt: alt || null,
     };
     state.set(fos.selectionStyle, style);
-    state.set(fos.altSelectionMode, !!params.alt);
   }
 }
 
@@ -516,7 +522,6 @@ class ClearSelectionStyle extends Operator {
   }
   async execute({ state }: ExecutionContext) {
     state.set(fos.selectionStyle, { default: "checkmark" });
-    state.set(fos.altSelectionMode, false);
     // Convert all alt meta to default
     const currentMeta = await state.snapshot.getPromise(fos.selectedMeta);
     const newMeta: Record<string, { type: string }> = {};

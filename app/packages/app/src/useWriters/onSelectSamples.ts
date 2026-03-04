@@ -17,7 +17,7 @@ const onSelectSamples: RegisteredWriter<"selectedSamples"> =
       ? Object.fromEntries(
           Object.entries(rawMeta).filter(([id]) => selectedSet.has(id))
         )
-      : undefined;
+      : {};
 
     commitMutation<setSelectedMutation>(environment, {
       mutation: setSelected,

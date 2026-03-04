@@ -209,6 +209,8 @@ class StateDescription(etas.Serializable):
             sample_id=d.get("sample_id", None),
             selected=d.get("selected", []),
             selected_labels=d.get("selected_labels", []),
+            selected_meta=d.get("selected_meta", None),
+            selection_style=d.get("selection_style", None),
             spaces=spaces,
             view=view,
         )

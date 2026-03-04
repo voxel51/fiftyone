@@ -126,6 +126,17 @@ export default (records: Records) => {
 
         if (shiftKey && !current.has(sampleId)) {
           // Shift-click (or shift+alt-click) range add
+          if (current.size === 0) {
+            // No anchor — treat as normal click
+            current.add(sampleId);
+            currentObjects.set(sampleId, sample);
+            currentMeta[sampleId] = { type: selectionType };
+            set(selectedSamples, current);
+            set(selectedSampleObjects, currentObjects);
+            set(selectedMeta, currentMeta);
+            setSelected(new Set(current));
+            return;
+          }
           const newSelected = addRange(index, current, records);
           for (const id of newSelected) {
             if (!current.has(id)) {

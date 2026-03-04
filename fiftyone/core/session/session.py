@@ -834,8 +834,11 @@ class Session(object):
 
     @selected_meta.setter
     def selected_meta(self, meta: t.Dict) -> None:
-        self._state.selected_meta = meta or {}
-        self._client.send_event(SelectSamples(self._state.selected, meta=meta))
+        resolved = _resolve_meta(self._state.selected, meta)
+        self._state.selected_meta = resolved
+        self._client.send_event(
+            SelectSamples(self._state.selected, meta=resolved)
+        )
 
     @property
     def selection_style(self) -> t.Dict:
@@ -1246,9 +1249,9 @@ def _attach_listeners(session: "Session"):
 
     session._client.add_event_listener("select_samples", on_select_samples)
 
-    on_set_selection_style: t.Callable[
-        [SetSelectionStyle], None
-    ] = lambda event: setattr(session._state, "selection_style", event.style)
+    def on_set_selection_style(event: SetSelectionStyle) -> None:
+        session._state.selection_style = event.style
+
     session._client.add_event_listener(
         "set_selection_style", on_set_selection_style
     )
@@ -1373,6 +1376,9 @@ def _on_refresh(session: Session, state: t.Optional[StateDescription]):
 def _resolve_meta(selected: t.List[str], meta: t.Optional[t.Dict]) -> t.Dict:
     if meta is None:
         return {}
+
+    if not isinstance(meta, dict):
+        raise ValueError("meta must be a dict")
 
     valid_types = {"default", "alt"}
 
