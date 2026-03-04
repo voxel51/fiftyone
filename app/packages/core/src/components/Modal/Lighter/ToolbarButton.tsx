@@ -14,7 +14,7 @@ export interface ToolbarButtonProps {
 }
 
 const ToolbarButton = ({ tooltip, icon, onClick }: ToolbarButtonProps) => (
-  <Tooltip content={tooltip} anchor={Anchor.Top} portal>
+  <Tooltip content={tooltip} anchor={Anchor.Top} portal aria-label={tooltip}>
     <Clickable onClick={onClick}>
       <Icon name={icon} size={Size.Lg} />
     </Clickable>

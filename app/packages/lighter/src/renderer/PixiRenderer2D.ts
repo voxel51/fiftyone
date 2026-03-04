@@ -686,7 +686,7 @@ export class PixiRenderer2D implements Renderer2D {
    * viewport events. Caller must ensure viewport exists and compute `next`.
    */
   private applyZoom(current: number, next: number): void {
-    if (!this.viewport?.destroyed) return;
+    if (!this.viewport || this.viewport.destroyed) return;
     if (next !== current) {
       this.viewport.setZoom(next);
       this.emitViewportZoomed();
@@ -695,7 +695,7 @@ export class PixiRenderer2D implements Renderer2D {
   }
 
   zoomIn(): void {
-    if (!this.viewport?.destroyed) return;
+    if (!this.viewport || this.viewport.destroyed) return;
     const current = this.viewport.scaled;
     const next = Math.min(
       current * PixiRenderer2D.ZOOM_FACTOR,
@@ -705,7 +705,7 @@ export class PixiRenderer2D implements Renderer2D {
   }
 
   zoomOut(): void {
-    if (!this.viewport?.destroyed) return;
+    if (!this.viewport || this.viewport.destroyed) return;
     const current = this.viewport.scaled;
     const next = Math.max(
       current / PixiRenderer2D.ZOOM_FACTOR,
