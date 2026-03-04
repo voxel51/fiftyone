@@ -145,7 +145,7 @@ class AppleSharpModel(fout.TorchImageModel):
         self._ensure_output_dir()
         splat_id = uuid.uuid4().hex[:12]
         splat_path = os.path.join(
-            self._output_dir, "splat_%s.ply" % splat_id
+            self._output_dir, f"splat_{splat_id}.ply"
         )
         sharp_utils.save_ply(gaussians, f_px, (height, width), splat_path)
         return fol.Classification(label="3d_gaussians", splat_path=splat_path)
