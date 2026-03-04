@@ -475,15 +475,38 @@ class Operations(object):
             "convert_extended_selection_to_selected_samples"
         )
 
-    def set_selected_samples(self, samples):
+    def set_selected_samples(self, samples, meta=None):
         """Select the specified samples in the App.
 
         Args:
             samples: a list of sample IDs to select
+            meta (None): an optional dict mapping sample IDs to selection
+                metadata dicts, e.g.
+                ``{"sample_id": {"type": "default"}}``
+        """
+        params = {"samples": samples}
+        if meta is not None:
+            params["meta"] = meta
+
+        return self._ctx.trigger("set_selected_samples", params=params)
+
+    def set_selection_style(self, default="checkmark", alt=None):
+        """Set the selection style in the App.
+
+        Args:
+            default ("checkmark"): the default selection icon style. Supported
+                values are ``"checkmark"``, ``"thumbsup"``, ``"thumbsdown"``,
+                ``"pin"``, ``"star"``, ``"x"``
+            alt (None): an optional alt selection icon style
         """
         return self._ctx.trigger(
-            "set_selected_samples", params={"samples": samples}
+            "set_selection_style",
+            params={"default": default, "alt": alt},
         )
+
+    def clear_selection_style(self):
+        """Clear the selection style in the App, reverting to default."""
+        return self._ctx.trigger("clear_selection_style")
 
     def set_view(self, view=None, name=None):
         """Set the current view in the App.

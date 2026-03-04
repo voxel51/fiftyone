@@ -51,6 +51,7 @@ from fiftyone.core.session.events import (
     SetColorScheme,
     SetDatasetColorScheme,
     SetSample,
+    SetSelectionStyle,
     SetSpaces,
     SetGroupSlice,
     StateUpdate,
@@ -800,12 +801,16 @@ class Session(object):
         self,
         ids: t.Optional[t.Union[str, t.Iterable[str]]] = None,
         tags: t.Optional[t.Union[str, t.Iterable[str]]] = None,
+        meta: t.Optional[t.Dict] = None,
     ) -> None:
         """Selects the specified samples in the current view in the App,
 
         Args:
             ids (None): an ID or iterable of IDs of samples to select
             tags (None): a tag or iterable of tags of samples to select
+            meta (None): an optional dict mapping sample IDs to selection
+                metadata dicts, e.g.
+                ``{"sample_id": {"type": "default"}}``
         """
         if tags is not None and self._collection:
             ids = self._collection.match_tags(tags).values("id")
@@ -814,7 +819,57 @@ class Session(object):
             ids = []
 
         self._state.selected = list(ids)
-        self._client.send_event(SelectSamples(self._state.selected))
+        if meta is not None:
+            self._state.selected_meta = meta
+        self._client.send_event(SelectSamples(self._state.selected, meta=meta))
+
+    @property
+    def selected_meta(self) -> t.Dict:
+        """A dict mapping sample IDs to selection metadata.
+
+        Each value is a dict with a ``type`` key (``"default"`` or ``"alt"``).
+        """
+        return self._state.selected_meta or {}
+
+    @selected_meta.setter
+    def selected_meta(self, meta: t.Dict) -> None:
+        self._state.selected_meta = meta or {}
+        self._client.send_event(SelectSamples(self._state.selected, meta=meta))
+
+    @property
+    def selection_style(self) -> t.Dict:
+        """The current selection style config.
+
+        A dict with a ``default`` key and optional ``alt`` key specifying
+        icon styles.
+        """
+        return self._state.selection_style or {"default": "checkmark"}
+
+    def set_selection_style(
+        self, default: str = "checkmark", alt: t.Optional[str] = None
+    ) -> None:
+        """Sets the selection style in the App.
+
+        Args:
+            default ("checkmark"): the default selection icon style. Supported
+                values are ``"checkmark"``, ``"thumbsup"``, ``"thumbsdown"``,
+                ``"pin"``, ``"star"``, ``"x"``
+            alt (None): an optional alt selection icon style
+        """
+        style = {"default": default, "alt": alt}
+        self._state.selection_style = style
+        self._client.send_event(SetSelectionStyle(style=style))
+
+    def clear_selection_style(self) -> None:
+        """Clears the selection style, reverting to default checkmark."""
+        style = {"default": "checkmark"}
+        self._state.selection_style = style
+        # Convert all alt meta to default
+        if self._state.selected_meta:
+            self._state.selected_meta = {
+                k: {"type": "default"} for k in self._state.selected_meta
+            }
+        self._client.send_event(SetSelectionStyle(style=style))
 
     @property
     def selected_labels(self) -> t.List[dict]:
@@ -1176,10 +1231,19 @@ def _attach_listeners(session: "Session"):
     )
     session._client.add_event_listener("state_update", on_state_update)
 
-    on_select_samples: t.Callable[
-        [SelectSamples], None
-    ] = lambda event: setattr(session._state, "selected", event.sample_ids)
+    def on_select_samples(event: SelectSamples):
+        session._state.selected = event.sample_ids
+        if event.meta is not None:
+            session._state.selected_meta = event.meta
+
     session._client.add_event_listener("select_samples", on_select_samples)
+
+    on_set_selection_style: t.Callable[
+        [SetSelectionStyle], None
+    ] = lambda event: setattr(session._state, "selection_style", event.style)
+    session._client.add_event_listener(
+        "set_selection_style", on_set_selection_style
+    )
 
     on_select_labels: t.Callable[
         [SelectLabels], None

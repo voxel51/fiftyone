@@ -833,9 +833,21 @@ class ExecutionContext(contextlib.AbstractContextManager):
         return self.request_params.get("selected", [])
 
     @property
-    def alt_selected(self):
-        """The list of alt-selected (negative selection) sample IDs (if any)."""
-        return self.request_params.get("alt_selected", [])
+    def selected_meta(self):
+        """A dict mapping sample IDs to selection metadata (if any).
+
+        Each value is a dict with a ``type`` key (``"default"`` or ``"alt"``).
+        """
+        return self.request_params.get("selected_meta", {})
+
+    @property
+    def selection_style(self):
+        """The current selection style config (if any).
+
+        A dict with a ``default`` key and optional ``alt`` key specifying
+        icon styles.
+        """
+        return self.request_params.get("selection_style", {})
 
     @property
     def selected_labels(self):
