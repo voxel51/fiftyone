@@ -29,13 +29,14 @@ class TestAppleSharpModelConfig:
 
         assert config.focal_length_mm == 50.0
 
-    def test_custom_output_dir(self):
+    def test_custom_output_dir(self, tmp_path):
         """Test custom output_dir."""
         from fiftyone.utils.sharp import AppleSharpModelConfig
 
-        config = AppleSharpModelConfig({"output_dir": "/tmp/sharp_out"})
+        custom_dir = str(tmp_path / "sharp_out")
+        config = AppleSharpModelConfig({"output_dir": custom_dir})
 
-        assert config.output_dir == "/tmp/sharp_out"
+        assert config.output_dir == custom_dir
 
     def test_combined_config(self):
         """Test multiple custom values together."""
@@ -343,6 +344,7 @@ class TestAppleSharpPredictAll:
     def test_predict_all_empty_list(self, tmp_path):
         """Test empty input returns empty list."""
         model = self._make_model(str(tmp_path))
+        model._model = None
 
         result = model._predict_all([])
 
