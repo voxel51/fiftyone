@@ -688,7 +688,7 @@ export class PixiRenderer2D implements Renderer2D {
   private applyZoom(current: number, next: number): void {
     if (!this.viewport || this.viewport.destroyed) return;
     if (next !== current) {
-      this.viewport.setZoom(next);
+      this.viewport.setZoom(next, true);
       this.emitViewportZoomed();
       this.emitViewportMoved();
     }
