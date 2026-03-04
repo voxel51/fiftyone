@@ -9,21 +9,27 @@ import { BaseElement, Events } from "../base";
 import { lookerThumbnailSelector, showSelector } from "./thumbnail.module.css";
 import {
   selectionIconCheckmark,
+  selectionIconGreenCheckmark,
+  selectionIconRedCheckmark,
   selectionIconThumbsup,
   selectionIconThumbsdown,
   selectionIconPin,
   selectionIconStar,
   selectionIconX,
+  selectionIconBookmark,
 } from "./util.module.css";
 import { makeCheckboxRow } from "./util";
 
 const ICON_CLASS_MAP: Record<string, string> = {
   checkmark: selectionIconCheckmark,
+  "green-checkmark": selectionIconGreenCheckmark,
+  "red-checkmark": selectionIconRedCheckmark,
   thumbsup: selectionIconThumbsup,
   thumbsdown: selectionIconThumbsdown,
   pin: selectionIconPin,
   star: selectionIconStar,
   x: selectionIconX,
+  bookmark: selectionIconBookmark,
 };
 
 const ALL_ICON_CLASSES = Object.values(ICON_CLASS_MAP);
