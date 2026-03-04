@@ -51,6 +51,7 @@ const CardActions = ({
       </Button>
     )}
     <Button
+      data-cy="save-card-button"
       variant={Variant.Icon}
       borderless
       onClick={canSave ? onSave : undefined}

@@ -304,6 +304,7 @@ const NewFieldSchema = () => {
             label="Field name"
             control={
               <Input
+                data-cy="new-field-name"
                 value={fieldName}
                 onChange={(e) => setFieldName(e.target.value)}
                 placeholder="Enter field name"
@@ -339,6 +340,7 @@ const NewFieldSchema = () => {
             label={category === "label" ? "Label type" : "Primitive type"}
             control={
               <Select
+                data-cy="field-type-select"
                 exclusive
                 portal
                 value={category === "label" ? labelType : primitiveType}

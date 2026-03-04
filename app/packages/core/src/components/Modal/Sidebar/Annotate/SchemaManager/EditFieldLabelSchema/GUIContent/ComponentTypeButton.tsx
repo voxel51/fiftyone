@@ -18,6 +18,7 @@ interface ComponentTypeButtonProps {
   isSelected: boolean;
   onClick: () => void;
   largeText?: boolean;
+  "data-cy"?: string;
 }
 
 const ComponentTypeButton = ({
@@ -26,11 +27,16 @@ const ComponentTypeButton = ({
   isSelected,
   onClick,
   largeText = false,
+  "data-cy": dataCy,
 }: ComponentTypeButtonProps) => {
   const theme = useTheme();
 
   return (
-    <div style={{ flex: 1 }}>
+    <div
+      style={{ flex: 1 }}
+      data-cy={dataCy}
+      data-selected={isSelected || undefined}
+    >
       <Clickable onClick={onClick}>
         <div
           style={{

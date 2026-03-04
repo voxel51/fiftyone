@@ -85,6 +85,7 @@ const AttributeFormContent = ({
             Name
           </Text>
           <Input
+            data-cy="attribute-name-input"
             value={formState.name}
             onChange={(e) => handleNameChange(e.target.value)}
             placeholder="Attribute name"
@@ -168,6 +169,7 @@ const AttributeFormContent = ({
           {componentOptions.map((opt) => (
             <ComponentTypeButton
               key={opt.id}
+              data-cy={`component-type-${opt.id}`}
               icon={opt.icon}
               label={opt.label}
               isSelected={formState.component === opt.id}

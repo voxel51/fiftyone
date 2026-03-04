@@ -74,6 +74,7 @@ export default function AutocompleteView(props) {
           return option == value;
         }}
         multiple={multiple}
+        ChipProps={{ "data-cy": "selected-tag" }}
         renderOption={(props, option) => {
           return (
             <MenuItem

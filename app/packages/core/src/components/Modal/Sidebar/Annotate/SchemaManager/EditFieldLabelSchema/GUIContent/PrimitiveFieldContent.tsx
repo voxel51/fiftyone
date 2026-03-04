@@ -219,6 +219,7 @@ const PrimitiveFieldContent = ({
                 isSelected={component === opt.id}
                 onClick={() => handleComponentChange(opt.id)}
                 largeText={largeLabels}
+                data-cy={`component-type-${opt.id}`}
               />
             ))}
           </div>

@@ -17,6 +17,8 @@ const useSamplePrimitives = (): string[] => {
     return [];
   }
 
+  // Show all active primitive fields, even if the sample doesn't
+  // have a value yet (e.g. newly created fields via schema manager)
   const validPrimitivePaths = primitivePaths.filter((path) =>
     activeFields.includes(path)
   );
