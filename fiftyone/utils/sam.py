@@ -62,7 +62,7 @@ class SegmentAnythingModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
 
 
 class _SAMPredictor:
-    def __init__(self, model, **kwargs):
+    def __init__(self, model):
         self.processor = sam.SamPredictor(model)
         self._image_id = None
 
@@ -80,8 +80,10 @@ class _SAMPredictor:
             input_boxes, (img_hw[0], img_hw[1])
         )
 
-    def set_torch_image(self, img_tensor, img_size, img_id=None):
-        self.processor.set_torch_image(img_tensor, img_size)
+    def set_image(self, img, img_id=None, **kwargs):
+        img_size = kwargs["img_size"]
+        device = kwargs.pop("device", "cpu")
+        self.processor.set_torch_image(img.to(device), img_size)
         self._image_id = img_id
 
     def reset_image(self):
@@ -178,8 +180,13 @@ class SegmentAnythingImageGetItem(fout.GetItem):
             )
         img, img_hw = self.transform(img)
         item_dict["image"] = img
-
+        item_dict["original_size"] = img_hw
         item_dict["id"] = d["id"]
+        item_dict.update(self._preprocess_prompts(d, img_hw))
+
+        return item_dict
+
+    def _preprocess_prompts(self, d, img_hw):
         detections = d.get("box_prompt_field")
         keypoints = d.get("point_prompt_field")
 
@@ -210,18 +217,8 @@ class SegmentAnythingImageGetItem(fout.GetItem):
         has_boxes = boxes is not None and len(boxes) > 0
         has_points = points is not None and len(points) > 0
 
-        # Prompt type can be different from SegmentAnythingImageGetItem.mode.
-        if has_boxes and has_points:
-            item_dict["prompt_type"] = "combination"
-            if self.validate_prompts:
-                self._validate_combination(boxes, points, point_type_labels)
-
-        elif has_boxes:
-            item_dict["prompt_type"] = "box"
-        elif has_points:
-            item_dict["prompt_type"] = "point"
-        else:
-            item_dict["prompt_type"] = "auto"
+        item_dict = {}
+        item_dict["prompt_type"] = self._set_prompt_type(has_boxes, has_points)
 
         if has_boxes:
             item_dict["boxes"] = boxes
@@ -235,9 +232,23 @@ class SegmentAnythingImageGetItem(fout.GetItem):
             item_dict["classes"] = (
                 box_classes if box_classes else points_classes
             )
-        item_dict["original_size"] = img_hw
+
+        if self.validate_prompts and has_boxes and has_points:
+            self._validate_combination(boxes, points, point_type_labels)
 
         return item_dict
+
+    def _set_prompt_type(self, has_boxes, has_points):
+        # Prompt type can be different from SegmentAnythingImageGetItem.mode.
+        if has_boxes and has_points:
+            prompt_type = "combination"
+        elif has_boxes:
+            prompt_type = "box"
+        elif has_points:
+            prompt_type = "point"
+        else:
+            prompt_type = "auto"
+        return prompt_type
 
     def _preprocess_boxes(self, detections, img_hw):
         if detections is None or len(detections.detections) == 0:
@@ -278,6 +289,7 @@ class SegmentAnythingImageGetItem(fout.GetItem):
             )
         # Check whether positive points lie within boxes
         for pts, box in zip(points, boxes.numpy()):
+            box = box.flatten()
             pos_pts = pts[point_labels == 1]
             are_valid = np.all(
                 (pos_pts[:, 0] >= box[0])
@@ -464,27 +476,25 @@ class SegmentAnythingModel(fout.TorchImageModel):
                 "fiftyone.utils.sam.SAMSegmenterOutputProcessor"
             )
 
+        if (
+            not config.entrypoint_args
+            or "checkpoint" not in config.entrypoint_args
+        ):
+            config.entrypoint_args["checkpoint"] = config.model_path
+
         fout.TorchImageModel.__init__(self, config)
         self._sam_auto_generator = self._load_auto_generator()
-        self._sam_predictor = _SAMPredictor(model=self._model)
+        self._sam_predictor = self._load_predictor()
 
     def _download_model(self, config):
         config.download_model_if_necessary()
 
+    def _load_predictor(self):
+        return _SAMPredictor(model=self._model)
+
     def _load_auto_generator(self):
         kwargs = self.config.auto_kwargs or {}
         return sam.SamAutomaticMaskGenerator(self._model, **kwargs)
-
-    def _load_model(self, config):
-        entrypoint = etau.get_function(config.entrypoint_fcn)
-        model = entrypoint(checkpoint=config.model_path)
-
-        model = model.to(self._device)
-        if self.using_half_precision:
-            model = model.half()
-        model.eval()
-
-        return model
 
     def predict_all(self, imgs, samples=None):
         if samples is not None:
@@ -533,9 +543,13 @@ class SegmentAnythingModel(fout.TorchImageModel):
         # This will make backward compatibility easier to maintain.
         return get_item(
             field_mapping=field_mapping,
-            transform=self._sam_predictor.image_transform,
-            use_numpy=True,
-            box_transform=self._sam_predictor.box_transform,
+            transform=get_item_args.pop(
+                "transform", self._sam_predictor.image_transform
+            ),
+            use_numpy=get_item_args.pop("use_numpy", True),
+            box_transform=get_item_args.pop(
+                "box_transform", self._sam_predictor.box_transform
+            ),
             validate_prompts=get_item_args.pop("validate_prompts", False),
             **get_item_args,
         )
@@ -550,7 +564,6 @@ class SegmentAnythingModel(fout.TorchImageModel):
             prompt_type = arg.get("prompt_type", "auto")
 
             if prompt_type == "auto":
-                # TODO: Check that pre-processing is correct for auto
                 out = self._forward_pass_auto(arg)
             else:
                 out = self._forward_pass(arg)
@@ -565,8 +578,9 @@ class SegmentAnythingModel(fout.TorchImageModel):
         return outputs
 
     def _forward_pass(self, arg):
-        self._sam_predictor.set_torch_image(
-            arg["image"].to(self.device), arg["original_size"]
+        self._sam_predictor.set_image(
+            arg["image"],
+            **{"img_size": arg["original_size"], "device": self.device},
         )
 
         prompt_type = arg["prompt_type"]

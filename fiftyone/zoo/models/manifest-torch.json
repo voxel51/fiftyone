@@ -271,7 +271,7 @@
                 "type": "fiftyone.utils.sam2.SegmentAnything2ImageModel",
                 "config": {
                     "entrypoint_fcn": "sam2.build_sam.build_sam2",
-                    "entrypoint_args": { "model_cfg": "sam2_hiera_t.yaml" }
+                    "entrypoint_args": { "config_file": "sam2_hiera_t.yaml" }
                 }
             },
             "requirements": {
@@ -415,7 +415,7 @@
                 "type": "fiftyone.utils.sam2.SegmentAnything2ImageModel",
                 "config": {
                     "entrypoint_fcn": "sam2.build_sam.build_sam2",
-                    "entrypoint_args": { "model_cfg": "sam2_hiera_l.yaml" }
+                    "entrypoint_args": { "config_file": "sam2_hiera_l.yaml" }
                 }
             },
             "requirements": {
@@ -722,7 +722,7 @@
                 "config": {
                     "entrypoint_fcn": "sam2.build_sam.build_sam2",
                     "entrypoint_args": {
-                        "model_cfg": "configs/sam2.1/sam2.1_hiera_t.yaml"
+                        "config_file": "configs/sam2.1/sam2.1_hiera_t.yaml"
                     }
                 }
             },
@@ -774,7 +774,7 @@
                 "config": {
                     "entrypoint_fcn": "sam2.build_sam.build_sam2",
                     "entrypoint_args": {
-                        "model_cfg": "configs/sam2.1/sam2.1_hiera_s.yaml"
+                        "config_file": "configs/sam2.1/sam2.1_hiera_s.yaml"
                     }
                 }
             },
@@ -826,7 +826,7 @@
                 "config": {
                     "entrypoint_fcn": "sam2.build_sam.build_sam2",
                     "entrypoint_args": {
-                        "model_cfg": "configs/sam2.1/sam2.1_hiera_b+.yaml"
+                        "config_file": "configs/sam2.1/sam2.1_hiera_b+.yaml"
                     }
                 }
             },
@@ -878,7 +878,7 @@
                 "config": {
                     "entrypoint_fcn": "sam2.build_sam.build_sam2",
                     "entrypoint_args": {
-                        "model_cfg": "configs/sam2.1/sam2.1_hiera_l.yaml"
+                        "config_file": "configs/sam2.1/sam2.1_hiera_l.yaml"
                     }
                 }
             },
