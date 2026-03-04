@@ -47,6 +47,18 @@ export class PixiRenderer2D implements Renderer2D {
   // Container tracking for visibility management
   private containers = new Map<string, PIXI.Container>();
 
+  /** Minimum zoom scale (10%). */
+  private static readonly ZOOM_MIN = 0.1;
+
+  /** Maximum zoom scale (1000%). */
+  private static readonly ZOOM_MAX = 10;
+
+  /** Zoom factor applied per zoom in/out step. */
+  private static readonly ZOOM_FACTOR = 1.2;
+
+  /** Baseline scale (100%). */
+  private static readonly BASELINE_SCALE = 1;
+
   constructor(private canvas: HTMLCanvasElement) {
     this.eventBus = getEventBus();
   }
@@ -662,11 +674,45 @@ export class PixiRenderer2D implements Renderer2D {
    * Reset the viewport's zoom to 100% and clears any pan translation.
    */
   resetZoomPan(): void {
-    this.viewport?.setZoom(1);
+    this.viewport?.setZoom(PixiRenderer2D.BASELINE_SCALE);
     this.viewport?.moveCorner(0, 0);
 
     this.emitViewportZoomed();
     this.emitViewportMoved();
+  }
+
+  /**
+   * Applies a new zoom level if it differs from the current one, and emits
+   * viewport events. Caller must ensure viewport exists and compute `next`.
+   */
+  private applyZoom(next: number): void {
+    if (!this.viewport || this.viewport.destroyed) return;
+    const current = this.viewport.scaled;
+    if (next !== current) {
+      this.viewport.setZoom(next);
+      this.emitViewportZoomed();
+      this.emitViewportMoved();
+    }
+  }
+
+  zoomIn(): void {
+    if (!this.viewport || this.viewport.destroyed) return;
+    const current = this.viewport.scaled;
+    const next = Math.min(
+      current * PixiRenderer2D.ZOOM_FACTOR,
+      PixiRenderer2D.ZOOM_MAX
+    );
+    this.applyZoom(next);
+  }
+
+  zoomOut(): void {
+    if (!this.viewport || this.viewport.destroyed) return;
+    const current = this.viewport.scaled;
+    const next = Math.max(
+      current / PixiRenderer2D.ZOOM_FACTOR,
+      PixiRenderer2D.ZOOM_MIN
+    );
+    this.applyZoom(next);
   }
 
   /**
@@ -715,7 +761,7 @@ export class PixiRenderer2D implements Renderer2D {
    */
   getScale(): number {
     if (!this.viewport || this.viewport.destroyed) {
-      return 1;
+      return PixiRenderer2D.BASELINE_SCALE;
     }
     return this.viewport.scaled;
   }
