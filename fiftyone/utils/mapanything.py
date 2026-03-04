@@ -24,11 +24,15 @@ logger = logging.getLogger(__name__)
 DEFAULT_MAPANYTHING_MODEL = "facebook/map-anything-apache"
 
 
+_MAPANYTHING_REQ = (
+    "mapanything @ git+https://github.com/facebookresearch/"
+    "map-anything.git@v1.1"
+)
+
+
 def _ensure_mapanything():
-    if not fou.ensure_package("mapanything", error_level=2):
-        fou.install_package(
-            "git+https://github.com/facebookresearch/map-anything.git"
-        )
+    if not fou.ensure_package(_MAPANYTHING_REQ, error_level=2):
+        fou.install_package(_MAPANYTHING_REQ)
 
 
 mapanything_models = fou.lazy_import(
