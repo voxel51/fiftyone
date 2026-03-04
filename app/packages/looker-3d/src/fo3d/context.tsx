@@ -22,7 +22,6 @@ interface Fo3dContextT {
   sceneBoundingBox: Box3 | null;
   cursorBounds: Box3 | null;
   lookAt: Vector3 | null;
-  setLookAt: (lookAt: Vector3) => void;
   pluginSettings: Looker3dSettings | null;
   fo3dRoot: string | null;
   autoRotate: boolean;
@@ -44,7 +43,6 @@ const defaultContext: Fo3dContextT = {
   sceneBoundingBox: null,
   cursorBounds: null,
   lookAt: null,
-  setLookAt: () => {},
   pluginSettings: null,
   fo3dRoot: null,
   autoRotate: false,
