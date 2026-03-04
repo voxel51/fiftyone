@@ -172,9 +172,19 @@ class Hunyuan3DModel(fout.TorchImageModel):
             return []
 
         outputs = []
-        for img in imgs:
-            pil_img = self._to_pil(img)
-            mesh = self._model(image=pil_img)[0]
-            outputs.append(self._export_mesh(mesh))
+        for i, img in enumerate(imgs):
+            try:
+                pil_img = self._to_pil(img)
+                mesh = self._model(image=pil_img)[0]
+                outputs.append(self._export_mesh(mesh))
+            except (
+                OSError, ValueError, RuntimeError,
+                IndexError, AttributeError, TypeError,
+            ) as e:
+                logger.warning(
+                    "Hunyuan3D inference failed for image %d: %s",
+                    i, e, exc_info=True,
+                )
+                outputs.append(None)
 
         return outputs
