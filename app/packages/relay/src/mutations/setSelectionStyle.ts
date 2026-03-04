@@ -3,17 +3,15 @@ import { graphql } from "react-relay";
 import r from "../resolve";
 
 export default r(graphql`
-  mutation setSelectedMutation(
+  mutation setSelectionStyleMutation(
     $subscription: String!
     $session: String
-    $selected: [String!]!
-    $selectedMeta: JSON
+    $style: JSON!
   ) {
-    setSelected(
+    setSelectionStyle(
       subscription: $subscription
       session: $session
-      selected: $selected
-      selectedMeta: $selectedMeta
+      style: $style
     )
   }
 `);

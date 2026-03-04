@@ -5,11 +5,14 @@ export type SelectionType = "default" | "alt";
 export type SelectedSamplesMeta = Record<string, { type: SelectionType }>;
 export type SelectionIconStyle =
   | "checkmark"
+  | "green-checkmark"
+  | "red-checkmark"
   | "thumbsup"
   | "thumbsdown"
   | "pin"
   | "star"
-  | "x";
+  | "x"
+  | "bookmark";
 export type SelectionStyle = {
   default: SelectionIconStyle;
   alt?: SelectionIconStyle | null;

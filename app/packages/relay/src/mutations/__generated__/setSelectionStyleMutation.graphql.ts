@@ -9,59 +9,48 @@
 // @ts-nocheck
 
 import { ConcreteRequest, Mutation } from 'relay-runtime';
-export type setSelectedMutation$variables = {
-  selected: ReadonlyArray<string>;
-  selectedMeta?: object | null;
+export type setSelectionStyleMutation$variables = {
   session?: string | null;
+  style: object;
   subscription: string;
 };
-export type setSelectedMutation$data = {
-  readonly setSelected: boolean;
+export type setSelectionStyleMutation$data = {
+  readonly setSelectionStyle: boolean;
 };
-export type setSelectedMutation = {
-  response: setSelectedMutation$data;
-  variables: setSelectedMutation$variables;
+export type setSelectionStyleMutation = {
+  response: setSelectionStyleMutation$data;
+  variables: setSelectionStyleMutation$variables;
 };
 
 const node: ConcreteRequest = (function(){
 var v0 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "selected"
+  "name": "session"
 },
 v1 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "selectedMeta"
+  "name": "style"
 },
 v2 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "session"
-},
-v3 = {
-  "defaultValue": null,
-  "kind": "LocalArgument",
   "name": "subscription"
 },
-v4 = [
+v3 = [
   {
     "alias": null,
     "args": [
       {
         "kind": "Variable",
-        "name": "selected",
-        "variableName": "selected"
-      },
-      {
-        "kind": "Variable",
-        "name": "selectedMeta",
-        "variableName": "selectedMeta"
-      },
-      {
-        "kind": "Variable",
         "name": "session",
         "variableName": "session"
+      },
+      {
+        "kind": "Variable",
+        "name": "style",
+        "variableName": "style"
       },
       {
         "kind": "Variable",
@@ -70,7 +59,7 @@ v4 = [
       }
     ],
     "kind": "ScalarField",
-    "name": "setSelected",
+    "name": "setSelectionStyle",
     "storageKey": null
   }
 ];
@@ -79,39 +68,37 @@ return {
     "argumentDefinitions": [
       (v0/*: any*/),
       (v1/*: any*/),
-      (v2/*: any*/),
-      (v3/*: any*/)
+      (v2/*: any*/)
     ],
     "kind": "Fragment",
     "metadata": null,
-    "name": "setSelectedMutation",
-    "selections": (v4/*: any*/),
+    "name": "setSelectionStyleMutation",
+    "selections": (v3/*: any*/),
     "type": "Mutation",
     "abstractKey": null
   },
   "kind": "Request",
   "operation": {
     "argumentDefinitions": [
-      (v3/*: any*/),
       (v2/*: any*/),
       (v0/*: any*/),
       (v1/*: any*/)
     ],
     "kind": "Operation",
-    "name": "setSelectedMutation",
-    "selections": (v4/*: any*/)
+    "name": "setSelectionStyleMutation",
+    "selections": (v3/*: any*/)
   },
   "params": {
-    "cacheID": "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6",
+    "cacheID": "b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7",
     "id": null,
     "metadata": {},
-    "name": "setSelectedMutation",
+    "name": "setSelectionStyleMutation",
     "operationKind": "mutation",
-    "text": "mutation setSelectedMutation(\n  $subscription: String!\n  $session: String\n  $selected: [String!]!\n  $selectedMeta: JSON\n) {\n  setSelected(subscription: $subscription, session: $session, selected: $selected, selectedMeta: $selectedMeta)\n}\n"
+    "text": "mutation setSelectionStyleMutation(\n  $subscription: String!\n  $session: String\n  $style: JSON!\n) {\n  setSelectionStyle(subscription: $subscription, session: $session, style: $style)\n}\n"
   }
 };
 })();
 
-(node as any).hash = "a1b2c3d4e5f6g7h8i9j0";
+(node as any).hash = "b2c3d4e5f6g7h8i9j0k1";
 
 export default node;

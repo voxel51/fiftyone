@@ -4,19 +4,21 @@ import { DefaultValue } from "recoil";
 import { commitMutation } from "relay-runtime";
 import type { RegisteredWriter } from "./registerWriter";
 
-const onSelectSamples: RegisteredWriter<"selectedSamples"> =
+const onSelectMeta: RegisteredWriter<"selectedMeta"> =
   ({ environment, subscription }) =>
-  (selected) => {
+  (selectedMeta) => {
     const sessionRef = getSessionRef();
-    const selectedMeta = sessionRef?.selectedMeta || undefined;
+    const selected = sessionRef?.selectedSamples;
     commitMutation<setSelectedMutation>(environment, {
       mutation: setSelected,
       variables: {
-        selected: selected instanceof DefaultValue ? [] : Array.from(selected),
-        selectedMeta,
+        selected:
+          selected instanceof DefaultValue ? [] : Array.from(selected || []),
+        selectedMeta:
+          selectedMeta instanceof DefaultValue ? undefined : selectedMeta,
         subscription,
       },
     });
   };
 
-export default onSelectSamples;
+export default onSelectMeta;

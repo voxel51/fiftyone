@@ -89,7 +89,7 @@ export interface Session {
   modalSelector?: ModalSelector;
   readOnly: boolean;
   selectedSamples: Set<string>;
-  selectedSamplesMeta: Record<string, { type: string }>;
+  selectedMeta: Record<string, { type: string }>;
   selectedLabels: State.SelectedLabel[];
   selectionStyle: { default: string; alt?: string | null };
   sessionSpaces: SpaceNodeJSON;
@@ -114,9 +114,9 @@ export const SESSION_DEFAULT: Session = {
   filters: {},
   modalFilters: {},
   selectedSamples: new Set(),
-  selectedSamplesMeta: {},
+  selectedMeta: {},
   selectedLabels: [],
-  selectionStyle: { default: "checkmark" },
+  selectionStyle: { default: "green-checkmark", alt: "red-checkmark" }, // TODO: will revert to checkmark after it's done
   sessionSpaces: GRID_SPACES_DEFAULT,
   sessionGroupSlice: undefined,
 };
