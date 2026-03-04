@@ -120,7 +120,7 @@ class Hunyuan3DModel(fout.TorchImageModel):
 
         The Hunyuan3D pipeline accepts str paths or PIL Images directly.
         """
-        if isinstance(img, str) or isinstance(img, Image.Image):
+        if isinstance(img, (str, Image.Image)):
             return img
 
         fou.ensure_torch()
@@ -140,6 +140,7 @@ class Hunyuan3DModel(fout.TorchImageModel):
                     img = img * 255
                 elif img_min >= -1.0 and img_max <= 1.0:
                     img = (img + 1.0) * 127.5
+                # Floats already in [0, 255] fall through unscaled
                 img = np.clip(img, 0, 255).astype(np.uint8)
             if img.ndim == 3 and img.shape[2] == 1:
                 img = img.squeeze(2)

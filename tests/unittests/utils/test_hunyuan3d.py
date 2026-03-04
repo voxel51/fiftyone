@@ -180,7 +180,7 @@ class TestHunyuan3DExportMesh:
 
             def export(self, path):
                 self._exported_path = path
-                with open(path, "w") as f:
+                with open(path, mode="w") as f:
                     f.write("mock mesh data")
 
         vertices = np.random.rand(num_vertices, 3)
