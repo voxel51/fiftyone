@@ -80,6 +80,7 @@ class ClearSelectedSamples extends Operator {
   }
   async execute({ state }: ExecutionContext) {
     state.reset(fos.selectedSamples);
+    state.set(fos.selectedMeta, {});
   }
 }
 
@@ -465,13 +466,65 @@ class SetSelectedSamples extends Operator {
   useHooks(): object {
     return {
       setSelected: fos.useSetSelected(),
+      setMeta: useSetRecoilState(fos.selectedMeta),
     };
   }
   async execute({ hooks, params }: ExecutionContext) {
-    const { samples } = params || {};
+    const { samples, meta } = params || {};
     if (!Array.isArray(samples))
       throw new Error("param 'samples' must be an array of string");
     hooks.setSelected(new Set(samples));
+    if (meta) {
+      hooks.setMeta(meta);
+    } else {
+      // Generate default meta for all samples
+      const defaultMeta: Record<string, { type: string }> = {};
+      for (const id of samples) {
+        defaultMeta[id] = { type: "default" };
+      }
+      hooks.setMeta(defaultMeta);
+    }
+  }
+}
+
+class SetSelectionStyle extends Operator {
+  _builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "set_selection_style",
+      label: "Set selection style",
+      unlisted: true,
+    });
+  }
+  async execute({ state, params }: ExecutionContext) {
+    const style = {
+      default: params.default || "checkmark",
+      alt: params.alt || null,
+    };
+    state.set(fos.selectionStyle, style);
+    state.set(fos.altSelectionMode, !!params.alt);
+  }
+}
+
+class ClearSelectionStyle extends Operator {
+  _builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "clear_selection_style",
+      label: "Clear selection style",
+      unlisted: true,
+    });
+  }
+  async execute({ state }: ExecutionContext) {
+    state.set(fos.selectionStyle, { default: "checkmark" });
+    state.set(fos.altSelectionMode, false);
+    // Convert all alt meta to default
+    const currentMeta = await state.snapshot.getPromise(fos.selectedMeta);
+    const newMeta: Record<string, { type: string }> = {};
+    for (const [id, entry] of Object.entries(currentMeta)) {
+      newMeta[id] = { type: "default" };
+    }
+    state.set(fos.selectedMeta, newMeta);
   }
 }
 
@@ -1623,6 +1676,8 @@ export function registerBuiltInOperators() {
     _registerBuiltInOperator(ShowSelectedSamples);
     _registerBuiltInOperator(ConvertExtendedSelectionToSelectedSamples);
     _registerBuiltInOperator(SetSelectedSamples);
+    _registerBuiltInOperator(SetSelectionStyle);
+    _registerBuiltInOperator(ClearSelectionStyle);
     _registerBuiltInOperator(OpenPanel);
     _registerBuiltInOperator(ClosePanel);
     _registerBuiltInOperator(SetView);

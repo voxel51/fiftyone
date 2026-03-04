@@ -6,7 +6,18 @@ const useSelectSamples: EventHandlerHook = () => {
   const setter = useSessionSetter();
   return useCallback(
     (payload) => {
-      setter("selectedSamples", new Set(payload.sample_ids));
+      const sampleIds = payload.sample_ids || [];
+      setter("selectedSamples", new Set(sampleIds));
+      if (payload.meta) {
+        setter("selectedMeta", payload.meta);
+      } else {
+        // Generate default meta for all samples
+        const meta: Record<string, { type: string }> = {};
+        for (const id of sampleIds) {
+          meta[id] = { type: "default" };
+        }
+        setter("selectedMeta", meta);
+      }
     },
     [setter]
   );
