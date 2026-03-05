@@ -30,7 +30,7 @@ import * as dynamicGroupAtoms from "../recoil/dynamicGroups";
 import * as schemaAtoms from "../recoil/schema";
 import { datasetName, dynamicGroupsTargetFrameRate } from "../recoil/selectors";
 import { State } from "../recoil/types";
-import { getSampleSrc } from "../recoil/utils";
+import { getSampleSrc, resolveSelectionIcon } from "../recoil/utils";
 import * as viewAtoms from "../recoil/view";
 import { getStandardizedUrls } from "../utils";
 import { useOnShiftClickLabel } from "./useOnShiftClickLabel";
@@ -257,14 +257,10 @@ export default <T extends AbstractLooker<BaseState>>(
         }
 
         const isSelected = selected.has(sample._id);
-        const sampleSelectionType = isSelected
-          ? meta[sample._id]?.type || "default"
-          : null;
-        const sampleSelectionIcon = isSelected
-          ? sampleSelectionType === "alt"
-            ? style.alt || style.default
-            : style.default
-          : null;
+        const {
+          selectionType: sampleSelectionType,
+          selectionIcon: sampleSelectionIcon,
+        } = resolveSelectionIcon(meta, style, sample._id, isSelected);
 
         const looker = new create(
           sample,

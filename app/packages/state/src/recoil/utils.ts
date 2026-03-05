@@ -1,4 +1,9 @@
-import { Sample } from "@fiftyone/looker";
+import type { Sample } from "@fiftyone/looker";
+import type {
+  SelectedSamplesMeta,
+  SelectionStyle,
+  SelectionType,
+} from "./types";
 import {
   EMBEDDED_DOCUMENT_FIELD,
   LABELS,
@@ -164,4 +169,19 @@ export function useAssertedRecoilValue<T>(recoilValue: RecoilValue<T>) {
   }
 
   return value;
+}
+
+export function resolveSelectionIcon(
+  meta: SelectedSamplesMeta,
+  style: SelectionStyle,
+  sampleId: string,
+  isSelected: boolean
+): { selectionType: SelectionType | null; selectionIcon: string | null } {
+  if (!isSelected) {
+    return { selectionType: null, selectionIcon: null };
+  }
+  const selectionType: SelectionType = meta[sampleId]?.type || "default";
+  const selectionIcon =
+    selectionType === "alt" ? style.alt || style.default : style.default;
+  return { selectionType, selectionIcon };
 }

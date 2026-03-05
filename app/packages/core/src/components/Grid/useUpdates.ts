@@ -119,14 +119,12 @@ const useItemUpdater = (
         // handleNewOverlays / refreshSample
         const sampleId = id.description;
         const isSelected = selected.has(sampleId);
-        const selectionType = isSelected
-          ? meta[sampleId]?.type || "default"
-          : null;
-        const selectionIcon = isSelected
-          ? selectionType === "alt"
-            ? style.alt || style.default
-            : style.default
-          : null;
+        const { selectionType, selectionIcon } = fos.resolveSelectionIcon(
+          meta,
+          style,
+          sampleId,
+          isSelected
+        );
 
         entry.updateOptions(
           {

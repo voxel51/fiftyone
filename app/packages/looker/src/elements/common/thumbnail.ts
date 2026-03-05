@@ -39,7 +39,7 @@ export class ThumbnailSelectorElement<
 > extends BaseElement<State> {
   private shown: boolean;
   private selected: boolean;
-  private currentIcon: string | null;
+  private currentIcon: string | null = null;
   private checkbox: HTMLInputElement;
   private label: HTMLLabelElement;
   private title: HTMLDivElement;

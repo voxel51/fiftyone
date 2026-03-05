@@ -29,6 +29,7 @@ const onSetDataset: RegisteredSetter =
     const unsubscribe = subscribeBefore<DatasetPageQuery>((entry) => {
       sessionRef.current.selectedLabels = [];
       sessionRef.current.selectedSamples = new Set();
+      sessionRef.current.selectedMeta = {};
       sessionRef.current.sessionSpaces = GRID_SPACES_DEFAULT;
       sessionRef.current.fieldVisibilityStage = undefined;
       sessionRef.current.colorScheme = ensureColorScheme(

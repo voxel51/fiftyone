@@ -393,6 +393,7 @@ class ClearAllStages extends Operator {
     state.reset(fos.filters);
     hooks.resetExtended();
     state.reset(fos.selectedSamples);
+    state.set(fos.selectedMeta, {});
   }
 }
 
@@ -472,23 +473,8 @@ class SetSelectedSamples extends Operator {
     const { samples, meta } = params || {};
     if (!Array.isArray(samples))
       throw new Error("param 'samples' must be an array of string");
-    const sampleSet = new Set(samples);
-    hooks.setSelected(sampleSet);
-    if (meta) {
-      // Normalize meta to only include IDs in samples
-      const normalizedMeta: Record<string, { type: string }> = {};
-      for (const id of samples) {
-        normalizedMeta[id] = meta[id] || { type: "default" };
-      }
-      hooks.setMeta(normalizedMeta);
-    } else {
-      // Generate default meta for all samples
-      const defaultMeta: Record<string, { type: string }> = {};
-      for (const id of samples) {
-        defaultMeta[id] = { type: "default" };
-      }
-      hooks.setMeta(defaultMeta);
-    }
+    hooks.setMeta(meta || {});
+    hooks.setSelected(new Set(samples));
   }
 }
 

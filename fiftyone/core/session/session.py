@@ -790,11 +790,13 @@ class Session(object):
     @selected.setter  # type: ignore
     def selected(self, sample_ids: t.List[str]) -> None:
         self._state.selected = list(sample_ids) if sample_ids else []
+        self._state.selected_meta = {}
         self._client.send_event(SelectSamples(sample_ids))
 
     def clear_selected(self) -> None:
         """Clears the currently selected samples, if any."""
         self._state.selected = []
+        self._state.selected_meta = {}
         self._client.send_event(SelectSamples([]))
 
     def select_samples(

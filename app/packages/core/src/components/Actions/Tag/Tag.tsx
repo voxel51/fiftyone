@@ -409,6 +409,7 @@ const useTagCallback = (
         set(fos.anyTagging, false);
         reset(fos.selectedLabels);
         reset(fos.selectedSamples);
+        set(fos.selectedMeta, {});
 
         finalize.forEach((r) => r());
       },

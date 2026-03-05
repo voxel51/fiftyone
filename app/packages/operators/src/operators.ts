@@ -2,6 +2,7 @@ import { AnalyticsInfo, usingAnalytics } from "@fiftyone/analytics";
 import SpaceNode from "@fiftyone/spaces/src/SpaceNode";
 import { SpaceNodeJSON } from "@fiftyone/spaces/src/types";
 import { spaceNodeFromJSON } from "@fiftyone/spaces/src/utils";
+import type { SelectionStyle, SelectionType } from "@fiftyone/state";
 import { getFetchFunction, isNullish, ServerError } from "@fiftyone/utilities";
 import { CallbackInterface } from "recoil";
 import { QueueItemStatus } from "./constants";
@@ -82,8 +83,8 @@ export type RawContext = {
   view: string;
   filters: object;
   selectedSamples: Set<string>;
-  selectedMeta: Record<string, { type: string }>;
-  selectionStyle: { default: string; alt: string };
+  selectedMeta: Record<string, { type: SelectionType }>;
+  selectionStyle: SelectionStyle;
   selectedLabels: any[];
   currentSample: string;
   viewName: string;

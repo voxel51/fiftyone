@@ -169,9 +169,9 @@ export default (records: Records) => {
           currentMeta[sampleId] = { type: selectionType };
         }
 
+        set(selectedMeta, currentMeta);
         set(selectedSamples, current);
         set(selectedSampleObjects, currentObjects);
-        set(selectedMeta, currentMeta);
         setSelected(new Set(current));
       },
     [records, setSelected]

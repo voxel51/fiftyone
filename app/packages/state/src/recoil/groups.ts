@@ -202,6 +202,7 @@ export const groupSlice = selector<string>({
       session.sessionGroupSlice =
         slice instanceof DefaultValue ? undefined : slice;
       session.selectedSamples = new Set();
+      session.selectedMeta = {};
       session.selectedLabels = [];
 
       unsubscribe();
