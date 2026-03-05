@@ -24,7 +24,10 @@ import {
   snapCloseAutomaticallyAtom,
   transformModeAtom,
 } from "../../state";
-import { useCurrent3dAnnotationMode } from "../../state/accessors";
+import {
+  useCurrent3dAnnotationMode,
+  useResetSelected3dAnnotationLabel,
+} from "../../state/accessors";
 import { isDetection3dOverlay, isPolyline3dOverlay } from "../../types";
 import {
   useCuboidOperations,
@@ -76,6 +79,7 @@ export const useAnnotationActions = () => {
   const { deleteCuboid } = useCuboidOperations();
   const { deletePolyline, updatePolylinePoints } = usePolylineOperations();
   const workingDoc = useWorkingDoc();
+  const resetSelectedLabel = useResetSelected3dAnnotationLabel();
 
   const handleTransformModeChange = useCallback(
     (mode: TransformMode) => {
@@ -154,6 +158,7 @@ export const useAnnotationActions = () => {
       } else if (isDetection3dOverlay(selectedLabelForAnnotation)) {
         deleteCuboid(selectedLabelForAnnotation._id);
       }
+      resetSelectedLabel();
     }
   }, [
     selectedPoint,
@@ -161,6 +166,7 @@ export const useAnnotationActions = () => {
     selectedLabelForAnnotation,
     deletePolyline,
     deleteCuboid,
+    resetSelectedLabel,
   ]);
 
   useEffect(() => {

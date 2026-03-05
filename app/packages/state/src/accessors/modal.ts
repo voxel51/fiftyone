@@ -1,16 +1,17 @@
-import { useCallback, useMemo } from "react";
+import { Schema } from "@fiftyone/utilities";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useCallback, useMemo } from "react";
 import { useRecoilState, useRecoilValue, useRecoilValueLoadable } from "recoil";
 import { ModalMode, modalMode } from "../jotai";
+import { preferredGroupAnnotationSliceAtom } from "../jotai/group-annotation";
 import {
   activeFields,
+  currentSampleId,
   fieldSchema,
   ModalSample,
   modalSample,
   State,
 } from "../recoil";
-import { Schema } from "@fiftyone/utilities";
-import { preferredGroupAnnotationSliceAtom } from "../jotai/group-annotation";
 
 /**
  * Hook which provides the modal's current active paths,
@@ -88,3 +89,12 @@ export const useModalSampleSchema = (): Schema =>
  */
 export const usePreferredGroupAnnotationSlice = () =>
   useAtom(preferredGroupAnnotationSliceAtom);
+
+/**
+ * Gets the current sample ID.
+ */
+export const useCurrentSampleId = () => {
+  const loadable = useRecoilValueLoadable(currentSampleId);
+
+  return loadable.state === "hasValue" ? loadable.contents : null;
+};

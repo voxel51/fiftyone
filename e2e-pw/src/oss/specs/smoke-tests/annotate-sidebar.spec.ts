@@ -1,14 +1,14 @@
-import { test as base } from "src/oss/fixtures";
-import { GridPom } from "src/oss/poms/grid";
-import { ModalPom } from "src/oss/poms/modal";
-import { SidebarPom } from "src/oss/poms/sidebar";
-import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import {
   ground_truth_schema,
   uniqueness_schema,
 } from "src/oss/assets/annotate-schemas";
+import { test as base } from "src/oss/fixtures";
+import { GridPom } from "src/oss/poms/grid";
+import { ModalPom } from "src/oss/poms/modal";
 import { ModalAnnotateSidebarPom } from "src/oss/poms/modal/annotate-sidebar";
 import { ModalSidebarPom } from "src/oss/poms/modal/modal-sidebar";
+import { SidebarPom } from "src/oss/poms/sidebar";
+import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix("smoke-annotate-sidebar");
 
@@ -93,15 +93,15 @@ test.describe.serial("annotate-sidebar-smoke", () => {
     await modalAnnotateSidebar.assert.verifyActivePrimitiveFieldsCount(1);
 
     await modalAnnotateSidebar.assert.verifyActiveLabelsIsExpanded();
-    await modalAnnotateSidebar.collapseActiveLabels();
+    await modalAnnotateSidebar.toggleActiveLabels();
     await modalAnnotateSidebar.assert.verifyActiveLabelsIsCollapsed();
-    await modalAnnotateSidebar.expandActiveLabels();
+    await modalAnnotateSidebar.toggleActiveLabels();
     await modalAnnotateSidebar.assert.verifyActiveLabelsIsExpanded();
 
     await modalAnnotateSidebar.assert.verifyActivePrimitiveFieldsIsExpanded();
-    await modalAnnotateSidebar.collapseActivePrimitiveFields();
+    await modalAnnotateSidebar.toggleActivePrimitiveFields();
     await modalAnnotateSidebar.assert.verifyActivePrimitiveFieldsIsCollapsed();
-    await modalAnnotateSidebar.expandActivePrimitiveFields();
+    await modalAnnotateSidebar.toggleActivePrimitiveFields();
     await modalAnnotateSidebar.assert.verifyActivePrimitiveFieldsIsExpanded();
 
     // await modalAnnotateSidebar.selectActiveLabel("bird", 1);

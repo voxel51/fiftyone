@@ -91,12 +91,8 @@ export class PixiRenderer2D implements Renderer2D {
     // to re-render the scene with updated scaling
     // TODO: throttle?
     this.viewport.on("zoomed", (_data) => {
-      if (this.viewport) {
-        this.eventBus.dispatch("lighter:zoomed", {
-          scale: this.viewport.scaled,
-        });
-        this.emitViewportMoved();
-      }
+      this.emitViewportZoomed();
+      this.emitViewportMoved();
     });
 
     this.viewport.on("moved", () => {
@@ -663,6 +659,17 @@ export class PixiRenderer2D implements Renderer2D {
   }
 
   /**
+   * Reset the viewport's zoom to 100% and clears any pan translation.
+   */
+  resetZoomPan(): void {
+    this.viewport?.setZoom(1);
+    this.viewport?.moveCorner(0, 0);
+
+    this.emitViewportZoomed();
+    this.emitViewportMoved();
+  }
+
+  /**
    * Disables zoom and pan interactions (e.g., during overlay dragging).
    * This prevents viewport plugins from interfering with overlay interactions.
    */
@@ -725,6 +732,18 @@ export class PixiRenderer2D implements Renderer2D {
       x: this.viewport.x,
       y: this.viewport.y,
     };
+  }
+
+  /**
+   * Emits a zoomed event with the current scale.
+   * @private
+   */
+  private emitViewportZoomed(): void {
+    if (this.viewport) {
+      this.eventBus.dispatch("lighter:zoomed", {
+        scale: this.viewport.scaled,
+      });
+    }
   }
 
   /**

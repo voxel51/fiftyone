@@ -96,6 +96,15 @@ class PluginDocGenerator:
         self.html_tag_pattern = re.compile(r"<[^>]+>")
         self.icon_description_pattern = re.compile(r"^([^\s]+)\s*(.+)")
         self.markdown_img_pattern = re.compile(r"!\[[^\]]*\]\(([^)]+)\)")
+        self._badge_url_tokens = (
+            "colab.research.google.com",
+            "img.shields.io",
+            "img.youtube.com",
+            "badge.fury.io",
+            "badgen.net",
+            "badge.svg",
+            "badge.png",
+        )
         self.user_attachments_pattern = re.compile(
             r"https://github\.com/user-attachments/assets/[a-f0-9-]+"
         )
@@ -119,6 +128,11 @@ class PluginDocGenerator:
             r"\bdef\s+download_model\s*\("
         )
         self.load_dataset_pattern = re.compile(r"\bdef\s+load_dataset\s*\(")
+        self.empty_heading_pattern = re.compile(
+            r"^\s*#{1,6}\s*$",
+            flags=re.MULTILINE,
+        )
+        self.heading_pattern = re.compile(r"^\s*#{1,6}\s+\S")
 
     def _remove_emojis(self, text: str) -> str:
         """Remove emoji and miscellaneous symbols from a string.
@@ -652,44 +666,44 @@ myst:
             logger.warning(f"Failed to fetch content type for {url}: {e}")
         return None
 
+    def _is_badge_url(self, url: str) -> bool:
+        """Check whether a URL points to a known badge image."""
+        url_lower = url.lower()
+        return any(token in url_lower for token in self._badge_url_tokens)
+
     def _extract_image_from_readme(
         self, readme_content: str, github_url: str = ""
     ) -> Optional[str]:
-        """Extract image URLs from README content (ignores videos and gifs)."""
+        """Extract the first non-badge image URL from README content."""
         if not readme_content:
             return None
 
-        image_path = None
         banned_exts = (".mp4", ".mov", ".avi")
 
-        markdown_match = self.markdown_img_pattern.search(readme_content)
-        if markdown_match:
-            url = markdown_match.group(1)
-            if not url.lower().endswith(banned_exts):
+        for m in self.markdown_img_pattern.finditer(readme_content):
+            url = m.group(1)
+            if not url.lower().endswith(banned_exts) and not self._is_badge_url(url):
                 return self._convert_relative_url(url, github_url)
 
-        user_match = self.user_attachments_pattern.search(readme_content)
-        if user_match:
-            url = user_match.group(0)
+        for m in self.user_attachments_pattern.finditer(readme_content):
+            url = m.group(0)
             ctype = self._get_content_type(url)
             if ctype and ctype.startswith("image/"):
                 return url
 
-        github_match = self.github_assets_pattern.search(readme_content)
-        if github_match:
-            url = github_match.group(0)
+        for m in self.github_assets_pattern.finditer(readme_content):
+            url = m.group(0)
             if not url.lower().endswith(banned_exts):
                 ctype = self._get_content_type(url)
                 if ctype and ctype.startswith("image/"):
                     return self._convert_relative_url(url, github_url)
 
-        img_match = self.html_img_pattern.search(readme_content)
-        if img_match:
-            url = img_match.group(1)
-            if not url.lower().endswith(banned_exts):
+        for m in self.html_img_pattern.finditer(readme_content):
+            url = m.group(1)
+            if not url.lower().endswith(banned_exts) and not self._is_badge_url(url):
                 return self._convert_relative_url(url, github_url)
 
-        return image_path
+        return None
 
     def _replace_markdown_image(self, match, github_url: str):
         """Replace function for markdown images."""
@@ -815,6 +829,17 @@ myst:
                 seo_metadata = self._generate_seo_metadata(plugin, readme_content)
                 frontmatter = self._generate_frontmatter(seo_metadata)
                 github_badge = self._generate_github_badge(plugin)
+
+                processed_readme = self.empty_heading_pattern.sub(
+                    "", processed_readme
+                )
+
+                has_heading = any(
+                    self.heading_pattern.match(line)
+                    for line in processed_readme.splitlines()
+                )
+                if not has_heading:
+                    processed_readme = f"# {display_name}\n\n" + processed_readme
 
                 if plugin.category == "community":
                     community_note = """```{note}

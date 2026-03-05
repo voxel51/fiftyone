@@ -72,7 +72,9 @@ class Metadata(DynamicEmbeddedDocument):
 
         with requests.get(url, stream=True) as r:
             r.raise_for_status()
-            size_bytes = int(r.headers["Content-Length"])
+            size_bytes = fou.ResponseStream(
+                r, chunk_size=2**10
+            ).consume_size()
 
         return cls(size_bytes=size_bytes, mime_type=mime_type)
 
@@ -137,8 +139,9 @@ class ImageMetadata(Metadata):
 
         with requests.get(url, stream=True) as r:
             r.raise_for_status()
-            size_bytes = int(r.headers["Content-Length"])
-            width, height, num_channels = get_image_info(fou.ResponseStream(r))
+            resp_stream = fou.ResponseStream(r, chunk_size=2**10)
+            width, height, num_channels = get_image_info(resp_stream)
+            size_bytes = resp_stream.consume_size()
 
         return cls(
             size_bytes=size_bytes,

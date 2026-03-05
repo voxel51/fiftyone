@@ -26,24 +26,32 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-      - name: Setup
+        with:
+          sparse-checkout: |
+            /*
+            !/docs/**
+          sparse-checkout-cone-mode: false
+      - name: Setup Python
         uses: actions/setup-python@v6
-        id: pip-cache
         with:
           python-version: ${{ matrix.python }}
-          cache: "pip"
-          cache-dependency-path: |
+      - name: Setup (UV)
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: ${{ matrix.python }}
+          # TODO: we are unsure if cache is working correctly here
+          enable-cache: true
+          cache-dependency-glob: |
             requirements/common.txt
             requirements/github.txt
             requirements/test.txt
       - name: Install requirements
-        if: steps.pip-cache.outputs.cache-hit != true
         run: |
-          pip install -U wheel setuptools
-          pip install -r requirements/github.txt
+          uv pip install --system -U wheel setuptools
+          uv pip install --system -r requirements/github.txt
       - name: Install fiftyone
         run: |
-          pip install . -r requirements/github.txt
+          uv pip install --system . -r requirements/github.txt
       - name: Configure
         id: test_config
         run: |

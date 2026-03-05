@@ -136,6 +136,25 @@ const AttributeFormContent = ({
         </div>
       )}
 
+      {/* Read-only toggle */}
+      <div>
+        <Stack
+          orientation={Orientation.Row}
+          spacing={Spacing.Sm}
+          style={{ alignItems: "center", marginBottom: 4 }}
+        >
+          <Text variant={TextVariant.Md}>Read-only</Text>
+          <Toggle
+            checked={formState.read_only}
+            onChange={handleReadOnlyChange}
+            size={Size.Sm}
+          />
+        </Stack>
+        <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+          When enabled, annotators can view but cannot edit values.
+        </Text>
+      </div>
+
       {/* Component type buttons */}
       <div>
         <Text
@@ -218,25 +237,6 @@ const AttributeFormContent = ({
           )}
         </div>
       )}
-
-      {/* Read-only toggle */}
-      <div>
-        <Stack
-          orientation={Orientation.Row}
-          spacing={Spacing.Sm}
-          style={{ alignItems: "center", marginBottom: 4 }}
-        >
-          <Text variant={TextVariant.Md}>Read-only</Text>
-          <Toggle
-            checked={formState.read_only}
-            onChange={handleReadOnlyChange}
-            size={Size.Sm}
-          />
-        </Stack>
-        <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
-          When enabled, annotators can view but cannot edit values.
-        </Text>
-      </div>
     </Stack>
   );
 };

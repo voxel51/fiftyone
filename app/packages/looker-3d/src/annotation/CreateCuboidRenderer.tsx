@@ -14,6 +14,11 @@ import {
 } from "../state";
 import { getPlaneFromPositionAndQuaternion } from "../utils";
 import { useCuboidOperations } from "./store/operations";
+import {
+  getDefaultLabel,
+  recordLastCreatedLabel,
+} from "./store/labelResolution";
+import { workingDocSelector } from "./store/working";
 import { CuboidTransformData } from "./types";
 import { useSetEditingToNewCuboid } from "./useSetEditingToNewCuboid";
 
@@ -46,6 +51,7 @@ export const CreateCuboidRenderer = ({
   );
 
   const setEditingToNewCuboid = useSetEditingToNewCuboid();
+  const workingDoc = useRecoilValue(workingDocSelector);
 
   const annotationEventBus = useAnnotationEventBus();
 
@@ -291,15 +297,19 @@ export const CreateCuboidRenderer = ({
           Number(previewCuboid.quaternion[3].toFixed(7)),
         ];
 
+        const labelClass = getDefaultLabel(currentActiveField, workingDoc);
+
         const transformData: CuboidTransformData = {
           location,
           dimensions,
           quaternion,
         };
 
-        createCuboid(labelId, transformData, currentActiveField);
+        createCuboid(labelId, transformData, currentActiveField, labelClass);
 
-        setEditingToNewCuboid(labelId, transformData);
+        setEditingToNewCuboid(labelId, transformData, labelClass);
+
+        recordLastCreatedLabel(currentActiveField, labelClass);
 
         setSelectedLabelForAnnotation({
           _id: labelId,
@@ -333,6 +343,7 @@ export const CreateCuboidRenderer = ({
       previewCuboid,
       createCuboid,
       handleClick,
+      workingDoc,
     ]
   );
 

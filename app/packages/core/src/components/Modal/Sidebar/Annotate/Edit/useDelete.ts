@@ -1,20 +1,22 @@
 import { DeleteAnnotationCommand, getFieldSchema } from "@fiftyone/annotation";
 import { useCommandBus } from "@fiftyone/command-bus";
 import { useLighter } from "@fiftyone/lighter";
+import { isDetection3dOverlay, isPolyline3dOverlay } from "@fiftyone/looker-3d";
 import * as fos from "@fiftyone/state";
+import { isGeneratedView } from "@fiftyone/state";
 
-import { useAtomValue } from "jotai";
-import { useMemo } from "react";
-import { useRecoilValue } from "recoil";
-import { current } from "./state";
-import useExit from "./useExit";
-import { useLabelsContext } from "../useLabels";
 import {
   DelegatingUndoable,
   KnownCommands,
   KnownContexts,
   useKeyBindings,
 } from "@fiftyone/commands";
+import { useAtomValue } from "jotai";
+import { useMemo } from "react";
+import { useRecoilValue } from "recoil";
+import { useLabelsContext } from "../useLabels";
+import { current } from "./state";
+import useExit from "./useExit";
 
 export default function useDelete() {
   const commandBus = useCommandBus();
@@ -27,6 +29,7 @@ export default function useDelete() {
 
   const exit = useExit();
   const setNotification = fos.useNotification();
+  const isGenerated = useRecoilValue(isGeneratedView);
 
   const undoable = useMemo(() => {
     return new DelegatingUndoable(
@@ -65,7 +68,6 @@ export default function useDelete() {
 
           removeLabelFromSidebar(label.data._id);
           removeOverlay(label.overlay.id, false);
-
           setNotification({
             msg: `Label "${label.data.label}" successfully deleted.`,
             variant: "success",
@@ -111,6 +113,7 @@ export default function useDelete() {
       }
     );
   }, [
+    addLabelToSidebar,
     commandBus,
     exit,
     label,
@@ -130,6 +133,19 @@ export default function useDelete() {
           return undoable;
         },
         enablement: () => {
+          // Disable delete for generated views (patches/clips/frames)
+          if (!label || isGenerated) {
+            return false;
+          }
+
+          const is3dLabel =
+            isPolyline3dOverlay(label.data) || isDetection3dOverlay(label.data);
+
+          if (is3dLabel) {
+            // Todo: handled in useAnnotationActions.tsx, reconcile
+            return false;
+          }
+
           return !!label;
         },
         sequence: ["Delete", "Backspace"],
@@ -137,6 +153,6 @@ export default function useDelete() {
         description: "Delete label",
       },
     ],
-    [undoable]
+    [undoable, isGenerated]
   );
 }

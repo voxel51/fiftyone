@@ -75,6 +75,7 @@ export interface DetectionLabel extends RegularLabel {
   dimensions?: [number, number, number];
   location?: [number, number, number];
   rotation?: [number, number, number];
+  quaternion?: [number, number, number, number];
   convexHull?: Coordinates[];
 }
 

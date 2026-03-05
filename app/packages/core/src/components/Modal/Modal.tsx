@@ -2,6 +2,7 @@ import {
   useAutoSave,
   useRegisterAnnotationCommandHandlers,
   useRegisterAnnotationEventHandlers,
+  useRegisterAnnotationKeybindings,
   useRegisterRendererEventHandlers,
 } from "@fiftyone/annotation";
 import {
@@ -13,7 +14,7 @@ import { HelpPanel, JSONPanel } from "@fiftyone/components";
 import { selectiveRenderingEventBus } from "@fiftyone/looker";
 import { OPERATOR_PROMPT_AREAS, OperatorPromptArea } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
-import { ModalMode, useModalMode } from "@fiftyone/state";
+import { canAnnotate, ModalMode, useModalMode } from "@fiftyone/state";
 import {
   currentModalUniqueIdJotaiAtom,
   jotaiStore,
@@ -64,9 +65,10 @@ const SpacesContainer = styled.div`
   z-index: 1501;
 `;
 
-const ModalCommandHandlersRegistration = () => {
+const AnnotationHandlerRegistration = () => {
   useRegisterAnnotationCommandHandlers();
   useRegisterAnnotationEventHandlers();
+  useRegisterAnnotationKeybindings();
   useRegisterRendererEventHandlers();
   useAnnotationTracking();
 
@@ -80,7 +82,7 @@ const ModalCommandHandlersRegistration = () => {
 const Modal = () => {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const pointerDownTargetRef = useRef<EventTarget | null>(null);
-
+  const { enabled: isAnnotationEnabled } = useRecoilValue(canAnnotate);
   const clearModal = fos.useClearModal();
 
   const onPointerDownModalWrapper = useCallback((e: React.PointerEvent) => {
@@ -282,7 +284,7 @@ const Modal = () => {
         data-cy="modal"
       >
         <Actions />
-        <ModalCommandHandlersRegistration />
+        {isAnnotationEnabled && <AnnotationHandlerRegistration />}
         <TooltipInfo />
         <ModalContainer style={{ ...screenParams }}>
           <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_LEFT} />

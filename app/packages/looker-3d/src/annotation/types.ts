@@ -98,6 +98,7 @@ export interface AnnotationPlaneState {
 interface ReconciledLabelBase3D {
   /** True if this label only exists in staged transforms (newly created) */
   isNew?: boolean;
+  label?: string;
 }
 
 /**

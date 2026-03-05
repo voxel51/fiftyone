@@ -29,6 +29,7 @@ export default ({
   const shouldRenderImaVid = useRecoilValue(fos.shouldRenderImaVidLooker(true));
   const dynamicGroupsViewMode = useRecoilValue(fos.dynamicGroupsViewMode(true));
   const hasGroupSlices = useRecoilValue(fos.hasGroupSlices);
+  const isAnnotateMode = fos.useModalMode() === fos.ModalMode.ANNOTATE;
 
   const isSequentialAccessAllowed =
     isNestedDynamicGroup ||
@@ -69,12 +70,16 @@ export default ({
       );
     }
 
+    // Mute the Viewer checkbox when annotate mode controls visibility for a 3D slice
+    const isAnnotating3d = isAnnotateMode && isSlotVisible && threeDSliceExists;
+
     toReturn.push(
       <Checkbox
         key="checkbox-viewer"
         name={"Viewer"}
         value={isMainVisible}
         muted={
+          isAnnotating3d ||
           isImavidInNestedGroup ||
           toReturn.length === 0 ||
           (!(isSlotVisible && threeDSliceExists) && !isCarouselVisible)
@@ -94,6 +99,7 @@ export default ({
     isImavidInNestedGroup,
     setIsCarouselVisible,
     setIsSlotVisible,
+    isAnnotateMode,
   ]);
 
   return (

@@ -40,14 +40,7 @@ To build the documentation locally, follow these steps:
     pip install -r requirements/docs.txt
     ```
 
-3. If you are going to include FiftyOne Enterprise SDK components in your local
-   docs build, you need to install some additional dependencies as well:
-
-    ```shell
-    pip install -r requirements/docs-teams.txt
-    ```
-
-4. To use the `fiftyone` repository to autogenerate docs, you need to add it to
+3. To use the `fiftyone` repository to autogenerate docs, you need to add it to
    your `PYTHONPATH`:
 
     ```shell
@@ -76,6 +69,17 @@ A couple notable flags are supported:
 -   `-s` will update static files only, i.e. `custom.css` and `custom.js`
     mentioned below
 -   `-f` will perform a fast build, i.e. zoo and plugin docs will be skipped
+
+## Previewing a single page
+
+To preview a single page with full styling without running a full build:
+
+```shell
+bash docs/preview_page.bash user_guide/using_datasets.rst
+```
+
+This supports RST and Jupyter notebook files and opens the result in your
+browser. No prior build is required.
 
 ## Contributing
 
