@@ -4766,7 +4766,7 @@ class Match(ViewStage):
         # Only include samples whose `weather` field is "sunny"
         #
 
-        stage = fo.Match(F("weather.label") == "sunny")
+        stage = fo.Match(F("weather").label == "sunny")
         view = dataset.add_stage(stage)
 
         #
@@ -4774,7 +4774,7 @@ class Match(ViewStage):
         # field
         #
 
-        stage = fo.Match(F("predictions.detections").length() >= 2)
+        stage = fo.Match(F("predictions").detections.length() >= 2)
         view = dataset.add_stage(stage)
 
         #
