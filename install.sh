@@ -84,28 +84,31 @@ PIP="$PYTHON -m pip"
 # Do this first so pip installs with a built app
 if [ "$BUILD_APP" = true ]; then
     echo "***** INSTALLING FIFTYONE-APP *****"
-    if ! command -v nvm >/dev/null 2>&1; then
-        echo "Installing nvm..."
-        curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.37.2/install.sh | sh
-    else
-        echo "nvm is already installed, skipping installation"
-    fi
     if [ -z "$XDG_CONFIG_HOME" ]; then
         NVM_DIR="${HOME}/.nvm"
     else
         NVM_DIR="${XDG_CONFIG_HOME}/nvm"
     fi
-    export NVM_DIR
+    export NVM_DIR 
     if [ -s "$NVM_DIR/nvm.sh" ]; then
         . "$NVM_DIR/nvm.sh"
     fi
+
+    if ! command -v nvm >/dev/null 2>&1; then
+        echo "Installing nvm..."
+        curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.4/install.sh | sh
+        . "$NVM_DIR/nvm.sh"
+    else
+        echo "nvm is already installed, skipping installation"
+    fi
+
     nvm install "$NODE_VERSION"
     nvm use "$NODE_VERSION"
-    if ! command -v yarn >/dev/null 2>&1; then
-        echo "Installing yarn..."
-        npm install -g yarn
+    if ! command -v corepack >/dev/null 2>&1; then
+        echo "Installing corepack..."
+        npm install -g corepack
     else
-        echo "yarn is already installed, skipping installation"
+        echo "corepack is already installed, skipping installation"
     fi
     cd app
     echo "Building the App. This will take a minute or two..."
