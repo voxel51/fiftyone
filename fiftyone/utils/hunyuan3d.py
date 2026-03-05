@@ -100,8 +100,13 @@ class Hunyuan3DModel(fout.TorchImageModel):
         self._output_dir_initialized = False
 
     def _load_model(self, config):
+        kwargs = {}
+        if "2.1" in config.name_or_path:
+            kwargs["subfolder"] = "hunyuan3d-dit-v2-1"
+            kwargs["use_safetensors"] = False
+
         pipeline = hy3dgen_shapegen.Hunyuan3DDiTFlowMatchingPipeline.from_pretrained(
-            config.name_or_path
+            config.name_or_path, **kwargs
         )
         return pipeline
 
