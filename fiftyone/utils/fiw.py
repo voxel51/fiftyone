@@ -151,7 +151,12 @@ def _read_mid_csv(path):
     """
     try:
         df = pd.read_csv(path)
-    except Exception:
+    except (
+        FileNotFoundError,
+        pd.errors.ParserError,
+        pd.errors.EmptyDataError,
+        UnicodeDecodeError,
+    ):
         return None
 
     if len(df.columns) < 2 or len(df) == 0:
