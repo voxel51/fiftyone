@@ -1,7 +1,7 @@
 import * as fos from "@fiftyone/state";
-import { CameraControls } from "@react-three/drei";
+import type { CameraControls } from "@react-three/drei";
 import { useRecoilCallback } from "recoil";
-import { Box3, Vector3, Vector3Tuple } from "three";
+import { Box3, Vector3, type Vector3Tuple } from "three";
 import { selectedLabelForAnnotationAtom } from "../state";
 import {
   calculateCameraPositionForUpVector,
@@ -46,9 +46,9 @@ const extractLabel = (
     if (labelFieldData.points3d) {
       flattenedPoints = labelFieldData.points3d.flat();
     } else if (labelFieldData.polylines) {
-      flattenedPoints = labelFieldData.polylines
-        .map((polyline: any) => polyline.points3d.flat())
-        .flat();
+      flattenedPoints = labelFieldData.polylines.flatMap((polyline: any) =>
+        polyline.points3d.flat()
+      );
     }
 
     if (flattenedPoints.length === 0) {
