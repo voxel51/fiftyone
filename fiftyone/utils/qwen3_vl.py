@@ -194,7 +194,7 @@ class Qwen3VLModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
         self.raw_inputs = True
 
 
-class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin):
+class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
     """Wrapper for running inference with Qwen3-VL models.
 
     Qwen3-VL is a vision-language model family that supports:
@@ -263,6 +263,10 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin):
     @property
     def has_embeddings(self):
         return self._output_processor is None
+
+    @property
+    def can_embed_prompts(self):
+        return self.has_embeddings
 
     def _download_model(self, config):
         pass
@@ -448,6 +452,67 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin):
             a ``num_images x embedding_dim`` numpy array
         """
         return self._predict_all(args)
+
+    def embed_prompt(self, prompt):
+        """Generates an embedding for the given text prompt.
+
+        Args:
+            prompt: a text string
+
+        Returns:
+            a numpy vector
+        """
+        return self.embed_prompts([prompt])[0]
+
+    def embed_prompts(self, prompts):
+        """Generates embeddings for the given text prompts.
+
+        Args:
+            prompts: an iterable of text strings
+
+        Returns:
+            a ``num_prompts x num_dims`` array of prompt embeddings
+        """
+        return self._embed_prompts(prompts)
+
+    def _embed_prompts(self, prompts):
+        """Generate embeddings for text prompts.
+
+        Uses the same chat template and hidden-state extraction as
+        image embedding so text and image vectors share the same
+        embedding space.
+        """
+        embeddings = []
+
+        for text in prompts:
+            messages = [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": text},
+                    ],
+                }
+            ]
+
+            inputs = self._processor.apply_chat_template(
+                messages,
+                tokenize=True,
+                add_generation_prompt=False,
+                return_dict=True,
+                return_tensors="pt",
+            )
+            inputs = inputs.to(self._model.device)
+
+            with torch.no_grad():
+                outputs = self._model(
+                    **inputs,
+                    output_hidden_states=True,
+                    return_dict=True,
+                )
+
+            embeddings.append(self._postprocess_embedding(outputs))
+
+        return np.vstack(embeddings)
 
     def _embed_video(self, video_reader):
         """Generate a single embedding for a video via native Qwen3-VL video input.

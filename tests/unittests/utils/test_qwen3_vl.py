@@ -529,5 +529,141 @@ class TestQwen3VLModeValidation:
                 model.mode = bad
 
 
+class TestPromptMixinInterface:
+    """Verify PromptMixin is wired into the class hierarchy."""
+
+    def test_inherits_prompt_mixin(self):
+        assert issubclass(Qwen3VLModel, fom.PromptMixin)
+
+    def test_can_embed_prompts_embedding_mode(self):
+        model = Qwen3VLModel.__new__(Qwen3VLModel)
+        model._output_processor = None
+        assert model.can_embed_prompts is True
+
+    def test_can_embed_prompts_detection_mode(self):
+        model = Qwen3VLModel.__new__(Qwen3VLModel)
+        model._output_processor = Qwen3VLOutputProcessor()
+        assert model.can_embed_prompts is False
+
+    def test_can_embed_prompts_matches_has_embeddings(self):
+        model = Qwen3VLModel.__new__(Qwen3VLModel)
+        model._output_processor = None
+        assert model.can_embed_prompts == model.has_embeddings
+
+        model._output_processor = Qwen3VLOutputProcessor()
+        assert model.can_embed_prompts == model.has_embeddings
+
+
+class TestPromptMixinMocked:
+    """Test embed_prompt / embed_prompts with mocked internals."""
+
+    def _make_model_with_mock_processor(self):
+        """Build a Qwen3VLModel with mocked _model and _processor."""
+        model = Qwen3VLModel.__new__(Qwen3VLModel)
+        model._output_processor = None
+        model._mode = None
+        model.config = Qwen3VLModelConfig({
+            "name_or_path": "Qwen/Qwen3-VL-Embedding-2B",
+            "embedding_dim": None,
+            "normalize_embeddings": True,
+        })
+
+        fake_hidden = torch.randn(1, 10, 2048)
+        mock_outputs = mock.MagicMock()
+        mock_outputs.hidden_states = [fake_hidden]
+
+        mock_model = mock.MagicMock()
+        mock_model.return_value = mock_outputs
+        mock_model.device = torch.device("cpu")
+        model._model = mock_model
+
+        fake_inputs = {
+            "input_ids": torch.randint(0, 1000, (1, 10)),
+            "attention_mask": torch.ones(1, 10, dtype=torch.long),
+        }
+
+        class FakeInputs(dict):
+            def to(self, device):
+                return self
+
+        fake_dict = FakeInputs(fake_inputs)
+
+        mock_processor = mock.MagicMock()
+        mock_processor.apply_chat_template.return_value = fake_dict
+        model._processor = mock_processor
+
+        return model
+
+    def test_embed_prompt_returns_1d(self):
+        model = self._make_model_with_mock_processor()
+        result = model.embed_prompt("a dog playing fetch")
+        assert isinstance(result, np.ndarray)
+        assert result.ndim == 1
+
+    def test_embed_prompts_returns_2d(self):
+        model = self._make_model_with_mock_processor()
+        result = model.embed_prompts(["hello", "world"])
+        assert isinstance(result, np.ndarray)
+        assert result.ndim == 2
+        assert result.shape[0] == 2
+
+    def test_embed_prompt_is_normalized(self):
+        model = self._make_model_with_mock_processor()
+        result = model.embed_prompt("test")
+        norm = np.linalg.norm(result)
+        assert abs(norm - 1.0) < 1e-5, f"Expected unit norm, got {norm}"
+
+    def test_embed_prompt_calls_chat_template_with_text(self):
+        model = self._make_model_with_mock_processor()
+        model.embed_prompt("a sunset over the ocean")
+
+        call_args = model._processor.apply_chat_template.call_args
+        messages = call_args[0][0]
+        assert messages[0]["role"] == "user"
+        content = messages[0]["content"]
+        assert len(content) == 1
+        assert content[0]["type"] == "text"
+        assert content[0]["text"] == "a sunset over the ocean"
+
+    def test_embed_prompt_uses_same_template_args_as_images(self):
+        """Verify text embedding uses identical template kwargs as _embed_images."""
+        model = self._make_model_with_mock_processor()
+        model.embed_prompt("test")
+
+        call_kwargs = model._processor.apply_chat_template.call_args[1]
+        assert call_kwargs["tokenize"] is True
+        assert call_kwargs["add_generation_prompt"] is False
+        assert call_kwargs["return_dict"] is True
+        assert call_kwargs["return_tensors"] == "pt"
+
+    def test_embed_prompt_calls_model_with_hidden_states(self):
+        model = self._make_model_with_mock_processor()
+        model.embed_prompt("test")
+
+        call_kwargs = model._model.call_args[1]
+        assert call_kwargs["output_hidden_states"] is True
+        assert call_kwargs["return_dict"] is True
+
+    def test_embed_prompts_multiple_calls_processor_per_prompt(self):
+        model = self._make_model_with_mock_processor()
+        model.embed_prompts(["a", "b", "c"])
+
+        assert model._processor.apply_chat_template.call_count == 3
+        assert model._model.call_count == 3
+
+    def test_embedding_dim_truncation(self):
+        model = self._make_model_with_mock_processor()
+        model.config.embedding_dim = 512
+        result = model.embed_prompt("test")
+        assert result.shape[0] == 512
+
+    def test_embed_prompt_dispatches_to_embed_prompts(self):
+        model = self._make_model_with_mock_processor()
+        with mock.patch.object(model, "embed_prompts") as mock_ep:
+            mock_ep.return_value = np.random.randn(1, 2048).astype(np.float32)
+            model.embed_prompt("test")
+            mock_ep.assert_called_once_with(["test"])
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
