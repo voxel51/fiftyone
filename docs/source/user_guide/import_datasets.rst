@@ -1620,7 +1620,7 @@ individual image files in a specified directory.
     <dataset_dir>/
         data.h5
 
-where ``data.h5`` (or any ``.h5`` file) contains:
+where ``data.h5`` (or any ``.h5`` or ``.hdf5`` file) contains:
 
 .. code-block:: text
 
@@ -1664,8 +1664,8 @@ HDF5 format as follows:
         print(dataset.head())
 
     When the above command is executed, the images in the HDF5 file will be
-    written to the provided ``images_dir``, which is required because FiftyOne
-    datasets must make their images available as individual files on disk.
+    written to the provided ``images_dir``. If ``images_dir`` is not provided,
+    images will be unpacked into the directory containing the HDF5 file.
 
   .. group-tab:: CLI
 
@@ -1690,8 +1690,8 @@ HDF5 format as follows:
         fiftyone datasets head $NAME
 
     When the above command is executed, the images in the HDF5 file will be
-    written to the provided ``IMAGES_DIR``, which is required because FiftyOne
-    datasets must make their images available as individual files on disk.
+    written to the provided ``IMAGES_DIR``. If ``IMAGES_DIR`` is not provided,
+    images will be unpacked into the directory containing the HDF5 file.
 
 .. note::
 
@@ -1732,7 +1732,7 @@ TFRecords-based datasets are imported.
     <dataset_dir>/
         data.h5
 
-where ``data.h5`` (or any ``.h5`` file) contains:
+where ``data.h5`` (or any ``.h5`` or ``.hdf5`` file) contains:
 
 .. code-block:: text
 
@@ -1777,8 +1777,8 @@ stored in HDF5 format as follows:
         print(dataset.head())
 
     When the above command is executed, the images in the HDF5 file will be
-    written to the provided ``images_dir``, which is required because FiftyOne
-    datasets must make their images available as individual files on disk.
+    written to the provided ``images_dir``. If ``images_dir`` is not provided,
+    images will be unpacked into the directory containing the HDF5 file.
 
   .. group-tab:: CLI
 
@@ -1803,8 +1803,8 @@ stored in HDF5 format as follows:
         fiftyone datasets head $NAME
 
     When the above command is executed, the images in the HDF5 file will be
-    written to the provided ``IMAGES_DIR``, which is required because FiftyOne
-    datasets must make their images available as individual files on disk.
+    written to the provided ``IMAGES_DIR``. If ``IMAGES_DIR`` is not provided,
+    images will be unpacked into the directory containing the HDF5 file.
 
 .. note::
 
