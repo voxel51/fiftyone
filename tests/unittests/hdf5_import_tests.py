@@ -445,6 +445,21 @@ class HDF5FromDirTests(unittest.TestCase):
 
         dataset.delete()
 
+    def test_hdf5_extension_autodiscovery(self):
+        """Test that .hdf5 files are discovered via dataset_dir."""
+        hdf5_path = os.path.join(self._tmp_dir, "data.hdf5")
+        _create_hdf5_pixel_images(hdf5_path, num_images=3)
+
+        dataset = fo.Dataset.from_dir(
+            dataset_dir=self._tmp_dir,
+            dataset_type=fo.types.HDF5Dataset,
+            images_dir=self._images_dir,
+        )
+
+        self.assertEqual(len(dataset), 3)
+
+        dataset.delete()
+
 
 if __name__ == "__main__":
     fo.config.show_progress_bars = False
