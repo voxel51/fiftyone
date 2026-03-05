@@ -233,7 +233,7 @@ class HDF5ImageDatasetImporter(
         hdf5_path = _resolve_hdf5_path(hdf5_path)
 
         if images_dir is None:
-            images_dir = os.path.dirname(hdf5_path)
+            images_dir = os.path.dirname(os.path.abspath(hdf5_path))
             logger.warning(
                 "No `images_dir` provided. Images will be unpacked to '%s'",
                 images_dir,
@@ -357,7 +357,7 @@ class HDF5UnlabeledImageDatasetImporter(
         hdf5_path = _resolve_hdf5_path(hdf5_path)
 
         if images_dir is None:
-            images_dir = os.path.dirname(hdf5_path)
+            images_dir = os.path.dirname(os.path.abspath(hdf5_path))
             logger.warning(
                 "No `images_dir` provided. Images will be unpacked to '%s'",
                 images_dir,
