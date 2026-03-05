@@ -79,7 +79,7 @@ class ClearSelectedSamples extends Operator {
   }
   async execute({ state }: ExecutionContext) {
     state.reset(fos.selectedSamples);
-    state.set(fos.selectedMeta, {});
+    state.reset(fos.selectedMeta);
   }
 }
 
@@ -393,7 +393,7 @@ class ClearAllStages extends Operator {
     state.reset(fos.filters);
     hooks.resetExtended();
     state.reset(fos.selectedSamples);
-    state.set(fos.selectedMeta, {});
+    state.reset(fos.selectedMeta);
   }
 }
 

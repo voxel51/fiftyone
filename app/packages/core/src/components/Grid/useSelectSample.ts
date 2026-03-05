@@ -4,7 +4,6 @@ import {
   selectedSampleObjects,
   selectedSamples,
   selectedMeta,
-  useSetSelected,
 } from "@fiftyone/state";
 import { useRef } from "react";
 import { useRecoilCallback } from "recoil";
@@ -103,7 +102,6 @@ export const removeRange = (
 };
 
 export default (records: Records) => {
-  const setSelected = useSetSelected();
   const ref = useRef<(params: SelectThumbnailData) => Promise<void>>();
   ref.current = useRecoilCallback(
     ({ set, snapshot }) =>
@@ -131,7 +129,6 @@ export default (records: Records) => {
             set(selectedMeta, currentMeta);
             set(selectedSamples, current);
             set(selectedSampleObjects, currentObjects);
-            setSelected(new Set(current));
             return;
           }
           const newSelected = addRange(index, current, records);
@@ -172,9 +169,8 @@ export default (records: Records) => {
         set(selectedMeta, currentMeta);
         set(selectedSamples, current);
         set(selectedSampleObjects, currentObjects);
-        setSelected(new Set(current));
       },
-    [records, setSelected]
+    [records]
   );
   return ref;
 };

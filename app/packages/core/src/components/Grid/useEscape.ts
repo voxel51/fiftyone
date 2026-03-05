@@ -8,7 +8,7 @@ const useEscape = () => {
     document,
     "keydown",
     useRecoilCallback(
-      ({ reset, set, snapshot }) =>
+      ({ reset, snapshot }) =>
         async (event: KeyboardEvent) => {
           const escapeKeyHandlerIds = await snapshot.getPromise(
             fos.escapeKeyHandlerIdsAtom
@@ -27,7 +27,7 @@ const useEscape = () => {
               confirm("Are you sure you want to clear your current selection?")
             ) {
               reset(fos.selectedSamples);
-              set(fos.selectedMeta, {});
+              reset(fos.selectedMeta);
             }
           }
         },
