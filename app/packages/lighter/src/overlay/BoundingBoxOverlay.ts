@@ -16,7 +16,6 @@ import { CONTAINS } from "../core/Scene2D";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { Selectable } from "../selection/Selectable";
 import type {
-  CoordinateSystem,
   Hoverable,
   Point,
   RawLookerLabel,
@@ -556,18 +555,6 @@ export class BoundingBoxOverlay
   }
 
   /**
-   * Get the  {@link CoordinateSystem} of the {@link Scene}
-   * @returns {@link CoordinateSystem}
-   */
-  getCoordinateSystem() {
-    if (!this.coordinateSystem) {
-      throw new Error("no coordinate system");
-    }
-
-    return this.coordinateSystem;
-  }
-
-  /**
    * Determines if current bounds are valid.
    * @returns True if current bounds are valid
    */
@@ -679,6 +666,18 @@ export class BoundingBoxOverlay
     ];
 
     return Math.min(...distances);
+  }
+
+  /**
+   * Get the  {@link CoordinateSystem} of the {@link Scene}
+   * @returns {@link CoordinateSystem}
+   */
+  private getCoordinateSystem() {
+    if (!this.coordinateSystem) {
+      throw new Error("no coordinate system");
+    }
+
+    return this.coordinateSystem;
   }
 
   /**
