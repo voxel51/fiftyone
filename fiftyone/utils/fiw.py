@@ -722,21 +722,14 @@ def _has_relationships(mid_csv_path):
     if df is None or "MID" not in df.columns:
         return False
 
-    try:
-        # Relationship columns are the numeric columns that are not MID
-        for col in df.columns:
-            if col in ("MID", "Name", "Gender"):
-                continue
+    # Relationship columns are the numeric columns that are not MID
+    for col in df.columns:
+        if col in ("MID", "Name", "Gender"):
+            continue
 
-            try:
-                vals = pd.to_numeric(df[col], errors="coerce")
-            except Exception:
-                continue
-
-            if vals.notna().any() and (vals > 0).any():
-                return True
-    except Exception:
-        return False
+        vals = pd.to_numeric(df[col], errors="coerce")
+        if vals.notna().any() and (vals > 0).any():
+            return True
 
     return False
 
