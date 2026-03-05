@@ -95,6 +95,16 @@ class _SAMPredictor:
             return curr_id == self._image_id
         return True
 
+    def predict(self, device, prompt_type=None, **predict_kwargs):
+        if prompt_type == "box":
+            predict_kwargs["boxes"] = predict_kwargs["boxes"].to(device)
+            return self.processor.predict_torch(**predict_kwargs)
+
+        if prompt_type == "combination":
+            predict_kwargs["boxes"] = predict_kwargs["boxes"].numpy()
+
+        return self.processor.predict(**predict_kwargs)
+
 
 class SAMPromptMode(Enum):
     auto = 1
@@ -351,8 +361,16 @@ class SAMSegmenterOutputProcessor(fout.OutputProcessor):
         masks = output["masks"]
         scores = output["scores"]
 
+        if isinstance(masks, torch.Tensor):
+            masks = masks.detach().cpu().numpy()
+        if isinstance(scores, torch.Tensor):
+            scores = scores.detach().cpu().numpy()
+
+        boxes = [None] * len(masks) if boxes is None else boxes
+
         detections = []
         for box, label, mask, score in zip(boxes, labels, masks, scores):
+            score = min(1.0, np.max(scores))
             if (
                 confidence_thresh is not None
                 and score is not None
@@ -364,8 +382,11 @@ class SAMSegmenterOutputProcessor(fout.OutputProcessor):
                 continue
 
             if isinstance(mask, torch.Tensor):
-                mask = mask.detach().cpu().numpy()
+                mask = mask.detach().cpu().int().numpy()
 
+            if box is None:
+                # Compute box from mask
+                box = _mask_to_box(mask)
             x1, y1, x2, y2 = box
             bounding_box = [
                 x1 / width,
@@ -520,9 +541,6 @@ class SegmentAnythingModel(fout.TorchImageModel):
 
         if "prompt_field" in field_mapping:
             # Maintain backward compability of prompt_field.
-            logger.warning(
-                "Instead of prompt_field, use type specific prompt fields, such as, box_prompt_field, point_prompt_field etc."
-            )
             if (
                 "box_prompt_field" in field_mapping
                 and "point_prompt_field" in field_mapping
@@ -589,15 +607,15 @@ class SegmentAnythingModel(fout.TorchImageModel):
         boxes = arg.get("boxes")
 
         if prompt_type == "box":
-            (
-                out_masks,
-                out_scores,
-                _,
-            ) = self._sam_predictor.processor.predict_torch(
-                point_coords=None,
-                point_labels=None,
-                boxes=boxes.to(self.device),
-                multimask_output=False,
+            (out_masks, out_scores, _,) = self._sam_predictor.predict(
+                prompt_type=prompt_type,
+                device=self.device,
+                **{
+                    "point_coords": None,
+                    "point_labels": None,
+                    "boxes": boxes,
+                    "multimask_output": False,
+                },
             )
             out_boxes = arg["boxes_xyxy"]
 
@@ -606,24 +624,26 @@ class SegmentAnythingModel(fout.TorchImageModel):
             out_boxes, out_scores, out_masks = [], [], []
 
             for points, labels in zip(point_coords, point_labels):
-                (
-                    multi_mask,
-                    mask_scores,
-                    _,
-                ) = self._sam_predictor.processor.predict(
-                    point_coords=points,
-                    point_labels=labels,
-                    multimask_output=True,
+                (multi_mask, mask_scores, _,) = self._sam_predictor.predict(
+                    device=self.device,
+                    **{
+                        "point_coords": points,
+                        "point_labels": labels,
+                        "multimask_output": True,
+                    },
                 )
 
                 mask_index = self.config.points_mask_index
                 if mask_index is None:
-                    mask_index = np.argmax(mask_scores)
+                    mask_index = (
+                        torch.argmax(mask_scores)
+                        if isinstance(mask_scores, torch.Tensor)
+                        else np.argmax(mask_scores)
+                    )
 
-                mask = multi_mask[mask_index].astype(int)
+                mask = multi_mask[mask_index]
                 if mask.any():
-                    out_boxes.append(_mask_to_box(mask))
-                    out_scores.append(min(1.0, np.max(mask_scores)))
+                    out_scores.append(mask_scores)
                     out_masks.append(mask)
 
         elif prompt_type == "combination":
@@ -632,18 +652,16 @@ class SegmentAnythingModel(fout.TorchImageModel):
             out_boxes, out_scores, out_masks = [], [], []
 
             for points, labels, box in zip(point_coords, point_labels, boxes):
-                (
-                    out_mask,
-                    out_score,
-                    _,
-                ) = self._sam_predictor.processor.predict(
-                    point_coords=points,
-                    point_labels=labels,
-                    box=box.numpy(),
-                    multimask_output=False,
+                (out_mask, out_score, _,) = self._sam_predictor.predict(
+                    device=self.device,
+                    **{
+                        "point_coords": points,
+                        "point_labels": labels,
+                        "box": box,
+                        "multimask_output": False,
+                    },
                 )
                 if out_mask.any():
-                    out_boxes.append(_mask_to_box(out_mask))
                     out_scores.append(out_score)
                     out_masks.append(out_mask)
         else:

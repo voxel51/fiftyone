@@ -46,6 +46,9 @@ class _SAM2Predictor(fosam._SAMPredictor):
     def __init__(self, model):
         self.processor = smip.SAM2ImagePredictor(model)
         self._image_id = None
+        # Create an alias since SAM2ImagePredictor doesn't have predict_torch.
+        if not hasattr(self.processor, "predict_torch"):
+            self.processor.predict_torch = self.processor.predict
 
     def image_transform(self, img):
         # SAM2 does image pre-processing when it calls SAM2ImagePredictor.set_image.
@@ -54,12 +57,42 @@ class _SAM2Predictor(fosam._SAMPredictor):
 
     def box_transform(self, boxes_xyxy, img_hw):
         return self.processor._transforms.transform_boxes(
-            boxes_xyxy, normalize=True, orig_hw=img_hw
+            torch.tensor(boxes_xyxy), normalize=True, orig_hw=img_hw
         )
 
     def set_image(self, img, img_id=None, **kwargs):
         self.processor.set_image(img)
         self._image_id = img_id
+
+    def predict(self, device, prompt_type=None, **predict_kwargs):
+        boxes = (
+            predict_kwargs.pop("box")
+            if "box" in predict_kwargs
+            else predict_kwargs.get("boxes", None)
+        )
+        if boxes is not None:
+            if len(boxes.shape) == 2:
+                boxes = boxes[None, ...]
+            predict_kwargs["boxes"] = boxes.to(device)
+
+        # Points are expected as tensors of BxNx2 and labels as Bx1 in _predict.
+        # Batch size is 1 for point prompts since we don't batch points.
+        point_coords = predict_kwargs["point_coords"]
+        point_labels = predict_kwargs["point_labels"]
+        if point_coords is not None:
+            if len(point_coords.shape) == 2:
+                point_coords = point_coords[None, ...]
+            predict_kwargs["point_coords"] = torch.tensor(point_coords).to(
+                device
+            )
+        if point_labels is not None:
+            if len(point_labels.shape) == 1:
+                point_labels = point_labels[None, ...]
+            predict_kwargs["point_labels"] = torch.tensor(
+                point_labels, dtype=torch.int
+            ).to(device)
+
+        return self.processor._predict(**predict_kwargs)
 
 
 class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
@@ -146,6 +179,19 @@ class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
     def _load_auto_generator(self):
         kwargs = self.config.auto_kwargs or {}
         return samg.SAM2AutomaticMaskGenerator(self._model, **kwargs)
+
+    def _forward_pass_auto(self, arg):
+        img = arg["image"]
+        detections = []
+        # TODO: Move this to post-processing op.
+        for data in self._sam_auto_generator.generate(img):
+            detection = fol.Detection.from_mask(
+                mask=data["segmentation"],
+                score=data["predicted_iou"],
+                stability=data["stability_score"],
+            )
+            detections.append(detection)
+        return fol.Detections(detections=detections)
 
 
 # TODO: Refactor SAM2 Video Model to use GetItem
