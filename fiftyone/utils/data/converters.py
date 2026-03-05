@@ -82,8 +82,9 @@ def convert_dataset(
             if input_kwargs is None:
                 input_kwargs = {}
 
-            # If the input dataset contains TFRecords, they must be unpacked
-            # into a temporary directory during conversion
+            # If the input dataset contains TFRecords or HDF5 files,
+            # they must be unpacked into a temporary directory during
+            # conversion
             if (
                 _is_tf_records(input_type) or _is_hdf5(input_type)
             ) and "images_dir" not in input_kwargs:
