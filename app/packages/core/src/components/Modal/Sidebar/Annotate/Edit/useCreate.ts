@@ -5,6 +5,7 @@ import type {
   ClassificationOverlay,
 } from "@fiftyone/lighter";
 import { InteractiveDetectionHandler, useLighter } from "@fiftyone/lighter";
+import { ClassificationLabel, DetectionLabel } from "@fiftyone/looker";
 import type { AnnotationLabel } from "@fiftyone/state";
 import {
   CLASSIFICATION,
@@ -14,10 +15,9 @@ import {
 } from "@fiftyone/utilities";
 import { atom, getDefaultStore, useSetAtom } from "jotai";
 import { useCallback } from "react";
+import { isFieldReadOnly, labelSchemaData } from "../state";
 import type { LabelType } from "./state";
 import { defaultField, editing, savedLabel } from "./state";
-import { isFieldReadOnly, labelSchemaData } from "../state";
-import { ClassificationLabel, DetectionLabel } from "@fiftyone/looker";
 
 export interface CreateOptions {
   field?: string;
@@ -28,10 +28,7 @@ const useCreateAnnotationLabel = () => {
   const { scene, addOverlay, overlayFactory } = useLighter();
 
   return useCallback(
-    (
-      type: LabelType,
-      options?: CreateOptions
-    ): AnnotationLabel | undefined => {
+    (type: LabelType, options?: CreateOptions): AnnotationLabel | undefined => {
       const id = objectId();
       const store = getDefaultStore();
 
@@ -88,11 +85,7 @@ const useCreateAnnotationLabel = () => {
 
       return undefined;
     },
-    [
-      addOverlay,
-      overlayFactory,
-      scene,
-    ]
+    [addOverlay, overlayFactory, scene]
   );
 };
 

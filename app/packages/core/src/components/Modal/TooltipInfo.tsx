@@ -9,6 +9,7 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import { Typography } from "@mui/material";
 import { animated, useSpring } from "@react-spring/web";
+import { Orientation, Spacing, Stack } from "@voxel51/voodo";
 import React, {
   useCallback,
   useEffect,
@@ -23,9 +24,8 @@ import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import { joinStringArray } from "../Filters/utils";
 import { ContentDiv, ContentHeader } from "../utils";
-import { Orientation, Spacing, Stack } from "@voxel51/voodo";
-import { useCanAnnotateField } from "./Sidebar/Annotate/useCanAnnotateField";
 import { QuickEditEntry } from "./Sidebar/Annotate";
+import { useCanAnnotateField } from "./Sidebar/Annotate/useCanAnnotateField";
 
 const TOOLTIP_HEADER_ID = "fo-tooltip-header";
 
@@ -244,7 +244,7 @@ export const ContentItem = ({
       }}
     >
       <ContentItemDiv style={style}>
-        <ContentValue>
+        <ContentValue data-cy={`attribute-${name}`}>
           {(() => {
             switch (typeof value) {
               case "number":
@@ -363,19 +363,22 @@ export const TooltipInfo = React.memo(() => {
 
     return (
       <TooltipDiv
+        data-cy={`sample-canvas-tooltip-${
+          isTooltipLocked ? "locked" : "unlocked"
+        }`}
         $isTooltipLocked={isTooltipLocked}
         style={{ ...coordsProps, ...showProps, position: "fixed" }}
         ref={ref}
       >
         <Header title={detail.field} labelId={detail.label.id} />
         <Border color={detail.color} id={detail.label.id} />
-        <TooltipContentDiv>
+        <TooltipContentDiv data-cy="sample-canvas-tooltip-content">
           {detail.label.tags && detail.label.tags.length > 0 && (
             <TagInfo key={"tags"} tags={detail.label?.tags} />
           )}
           <Component key={"attrs"} detail={detail} />
           {isTooltipLocked && (
-            <HiddenItemsContainer>
+            <HiddenItemsContainer data-cy={"hidden-attributes"}>
               <HiddenItems key={detail.field} field={detail.field} />
             </HiddenItemsContainer>
           )}
@@ -393,9 +396,7 @@ export const TooltipInfo = React.memo(() => {
   }
 
   return ReactDOM.createPortal(
-    <div>
-      <Draggable handle={"#" + TOOLTIP_HEADER_ID}>{tooltipDiv}</Draggable>
-    </div>,
+    <Draggable handle={"#" + TOOLTIP_HEADER_ID}>{tooltipDiv}</Draggable>,
     document.body
   );
 });
@@ -528,7 +529,12 @@ const Header = ({ title, labelId }: { title: string; labelId: string }) => {
       key="header"
       id={TOOLTIP_HEADER_ID}
     >
-      <span style={{ fontSize: "0.8rem" }}>{title}</span>
+      <span
+        data-cy="sample-canvas-tooltip-title"
+        style={{ fontSize: "0.8rem" }}
+      >
+        {title}
+      </span>
       {isTooltipLocked ? (
         <Stack orientation={Orientation.Row} spacing={Spacing.Xs}>
           <QuickEditEntry

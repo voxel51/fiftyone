@@ -2,14 +2,13 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { Undoable } from "@fiftyone/commands";
-import type { Rect } from "../types";
-import { Movable } from "./MoveOverlayCommand";
+import type { Undoable } from "@fiftyone/commands";
+import type { Rect, Spatial } from "../types";
 
 /**
  * Options for transforming an overlay.
  */
-export interface TransformOptions {
+export interface TransformOverlayOptions {
   /** New bounds for the overlay */
   bounds?: Rect;
   /** New scale factors */
@@ -24,7 +23,7 @@ export class TransformOverlayCommand implements Undoable {
   readonly description: string;
 
   constructor(
-    private overlay: Movable,
+    private overlay: Spatial,
     overlayId: string,
     private oldBounds: Rect,
     private newBounds: Rect
@@ -34,10 +33,10 @@ export class TransformOverlayCommand implements Undoable {
   }
 
   execute(): void {
-    this.overlay.setBounds(this.newBounds);
+    this.overlay.bounds = this.newBounds;
   }
 
   undo(): void {
-    this.overlay.setBounds(this.oldBounds);
+    this.overlay.bounds = this.oldBounds;
   }
 }
