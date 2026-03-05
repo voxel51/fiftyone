@@ -848,7 +848,7 @@ class ExecutionContext(contextlib.AbstractContextManager):
         icon styles.
         """
         return self.request_params.get(
-            "selection_style", {"default": "checkmark"}
+            "selection_style", {"default": "checkmark", "alt": "checkmark"}
         )
 
     @property

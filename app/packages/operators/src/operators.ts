@@ -83,7 +83,7 @@ export type RawContext = {
   filters: object;
   selectedSamples: Set<string>;
   selectedMeta: Record<string, { type: string }>;
-  selectionStyle: { default: string; alt?: string | null };
+  selectionStyle: { default: string; alt: string };
   selectedLabels: any[];
   currentSample: string;
   viewName: string;

@@ -210,15 +210,7 @@ export const selectedMeta = sessionAtom({
 
 export const selectionStyle = sessionAtom({
   key: "selectionStyle",
-  default: { default: "checkmark" },
-});
-
-export const altSelectionMode = selector<boolean>({
-  key: "altSelectionMode",
-  get: ({ get }) => {
-    const style = get(selectionStyle);
-    return !!style?.alt;
-  },
+  default: { default: "checkmark", alt: "checkmark" },
 });
 
 // only used in extended view, for tagging purpose

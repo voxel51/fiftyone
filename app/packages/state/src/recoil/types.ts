@@ -15,7 +15,7 @@ export type SelectionIconStyle =
   | "bookmark";
 export type SelectionStyle = {
   default: SelectionIconStyle;
-  alt?: SelectionIconStyle | null;
+  alt: SelectionIconStyle;
 };
 
 export namespace State {

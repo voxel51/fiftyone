@@ -1,17 +1,16 @@
-import { selectionStyle } from "@fiftyone/state";
+import { useSessionSetter } from "@fiftyone/state";
 import { useCallback } from "react";
-import { useSetRecoilState } from "recoil";
 import type { EventHandlerHook } from "./registerEvent";
 
 const useSetSelectionStyle: EventHandlerHook = () => {
-  const setStyle = useSetRecoilState(selectionStyle);
+  const setter = useSessionSetter();
 
   return useCallback(
     (payload) => {
-      const style = payload.style || { default: "checkmark" };
-      setStyle(style);
+      const style = payload.style || { default: "checkmark", alt: "checkmark" };
+      setter("selectionStyle", style);
     },
-    [setStyle]
+    [setter]
   );
 };
 

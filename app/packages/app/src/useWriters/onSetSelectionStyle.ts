@@ -13,7 +13,9 @@ const onSetSelectionStyle: RegisteredWriter<"selectionStyle"> =
       mutation: setSelectionStyle,
       variables: {
         style:
-          style instanceof DefaultValue ? { default: "checkmark" } : style,
+          style instanceof DefaultValue
+            ? { default: "checkmark", alt: "checkmark" }
+            : style,
         subscription,
       },
     });

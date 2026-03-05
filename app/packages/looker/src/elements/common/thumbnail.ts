@@ -60,7 +60,7 @@ export class ThumbnailSelectorElement<
             altKey: event.altKey,
           });
 
-          return {};
+          return { options: { selected: !selected } };
         });
       },
     };

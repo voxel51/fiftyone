@@ -847,10 +847,13 @@ class Session(object):
         A dict with a ``default`` key and optional ``alt`` key specifying
         icon styles.
         """
-        return self._state.selection_style or {"default": "checkmark"}
+        return self._state.selection_style or {
+            "default": "checkmark",
+            "alt": "checkmark",
+        }
 
     def set_selection_style(
-        self, default: str = "checkmark", alt: t.Optional[str] = None
+        self, default: str = "checkmark", alt: str = "checkmark"
     ) -> None:
         """Sets the selection style in the App.
 
@@ -859,7 +862,7 @@ class Session(object):
                 values are ``"checkmark"``, ``"green-checkmark"``,
                 ``"red-checkmark"``, ``"thumbsup"``, ``"thumbsdown"``,
                 ``"pin"``, ``"star"``, ``"x"``, ``"bookmark"``
-            alt (None): an optional alt selection icon style
+            alt ("checkmark"): the alt selection icon style
         """
         style = _resolve_selection_style(default, alt)
         self._state.selection_style = style
@@ -867,13 +870,8 @@ class Session(object):
 
     def clear_selection_style(self) -> None:
         """Clears the selection style, reverting to default checkmark."""
-        style = {"default": "checkmark"}
+        style = {"default": "checkmark", "alt": "checkmark"}
         self._state.selection_style = style
-        # Convert all alt meta to default
-        if self._state.selected_meta:
-            self._state.selected_meta = {
-                k: {"type": "default"} for k in self._state.selected_meta
-            }
         self._client.send_event(SetSelectionStyle(style=style))
 
     @property
@@ -1418,22 +1416,21 @@ def _resolve_selection_style(
     if default is None:
         default = "checkmark"
 
+    if alt is None:
+        alt = "checkmark"
+
     if default not in valid_icons:
         raise ValueError(
             f"Invalid default icon style '{default}'. "
             f"Must be one of {valid_icons}"
         )
 
-    if alt is not None and alt not in valid_icons:
+    if alt not in valid_icons:
         raise ValueError(
             f"Invalid alt icon style '{alt}'. " f"Must be one of {valid_icons}"
         )
 
-    style = {"default": default}
-    if alt is not None:
-        style["alt"] = alt
-
-    return style
+    return {"default": default, "alt": alt}
 
 
 def _on_select_labels(state: StateDescription, event: SelectLabels):

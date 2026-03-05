@@ -1,7 +1,6 @@
 import type { ID } from "@fiftyone/spotlight";
 import type { Sample } from "@fiftyone/state";
 import {
-  altSelectionMode,
   selectedSampleObjects,
   selectedSamples,
   selectedMeta,
@@ -118,10 +117,8 @@ export default (records: Records) => {
         const currentMeta = {
           ...(await snapshot.getPromise(selectedMeta)),
         };
-        const isAltMode = await snapshot.getPromise(altSelectionMode);
 
-        const isAltClick = altKey && isAltMode;
-        const selectionType = isAltClick ? "alt" : "default";
+        const selectionType = altKey ? "alt" : "default";
         const index = get(records, symbol.description);
 
         if (shiftKey && !current.has(sampleId)) {
@@ -165,16 +162,11 @@ export default (records: Records) => {
           current.delete(sampleId);
           currentObjects.delete(sampleId);
           delete currentMeta[sampleId];
-        } else if (isAltClick) {
-          // Alt-click unselected sample → alt-select
-          current.add(sampleId);
-          currentObjects.set(sampleId, sample);
-          currentMeta[sampleId] = { type: "alt" };
         } else {
-          // Normal click unselected sample → default-select
+          // Click unselected sample → select with type based on alt key
           current.add(sampleId);
           currentObjects.set(sampleId, sample);
-          currentMeta[sampleId] = { type: "default" };
+          currentMeta[sampleId] = { type: selectionType };
         }
 
         set(selectedSamples, current);

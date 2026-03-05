@@ -97,15 +97,14 @@ class SessionTests(unittest.TestCase):
             "b" * 24: {"type": "default"},
         }
 
-        # Clear style — should revert to checkmark and convert alt meta
-        event = SetSelectionStyle(style={"default": "checkmark"})
+        # Clear style — should revert to checkmark, meta stays as-is
+        clear_style = {"default": "checkmark", "alt": "checkmark"}
+        event = SetSelectionStyle(style=clear_style)
         state.selection_style = event.style
-        state.selected_meta = {
-            k: {"type": "default"} for k in state.selected_meta
-        }
 
-        self.assertEqual(state.selection_style, {"default": "checkmark"})
-        self.assertEqual(state.selected_meta["a" * 24]["type"], "default")
+        self.assertEqual(state.selection_style, clear_style)
+        # Meta is untouched — alt meta stays, just visually same icon now
+        self.assertEqual(state.selected_meta["a" * 24]["type"], "alt")
         self.assertEqual(state.selected_meta["b" * 24]["type"], "default")
 
     @drop_datasets
@@ -176,7 +175,7 @@ class SessionTests(unittest.TestCase):
     def test_selection_style_default_none_falls_back(self):
         """set_selection_style(default=None) should fall back to checkmark."""
         style = _resolve_selection_style(None, None)
-        self.assertEqual(style, {"default": "checkmark"})
+        self.assertEqual(style, {"default": "checkmark", "alt": "checkmark"})
 
     @drop_datasets
     def test_selection_style_valid(self):
@@ -185,10 +184,10 @@ class SessionTests(unittest.TestCase):
         self.assertEqual(style, {"default": "thumbsup", "alt": "thumbsdown"})
 
     @drop_datasets
-    def test_selection_style_alt_none_excluded(self):
-        """alt=None should not include 'alt' key in the result."""
+    def test_selection_style_alt_none_falls_back(self):
+        """alt=None should fall back to checkmark."""
         style = _resolve_selection_style("checkmark", None)
-        self.assertNotIn("alt", style)
+        self.assertEqual(style, {"default": "checkmark", "alt": "checkmark"})
 
     @drop_datasets
     def test_selection_style_rejects_invalid_default(self):

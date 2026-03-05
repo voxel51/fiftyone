@@ -94,7 +94,7 @@ export interface Session {
   selectedLabels: State.SelectedLabel[];
   selectionStyle: {
     default: SelectionIconStyle;
-    alt?: SelectionIconStyle | null;
+    alt: SelectionIconStyle;
   };
   sessionSpaces: SpaceNodeJSON;
   sessionGroupSlice?: string;
@@ -120,7 +120,7 @@ export const SESSION_DEFAULT: Session = {
   selectedSamples: new Set(),
   selectedMeta: {},
   selectedLabels: [],
-  selectionStyle: { default: "checkmark" },
+  selectionStyle: { default: "checkmark", alt: "checkmark" },
   sessionSpaces: GRID_SPACES_DEFAULT,
   sessionGroupSlice: undefined,
 };

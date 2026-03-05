@@ -505,7 +505,7 @@ class SetSelectionStyle extends Operator {
     const { default: defaultIcon, alt } = params || {};
     const style = {
       default: defaultIcon || "checkmark",
-      alt: alt || null,
+      alt: alt || "checkmark",
     };
     state.set(fos.selectionStyle, style);
   }
@@ -521,14 +521,7 @@ class ClearSelectionStyle extends Operator {
     });
   }
   async execute({ state }: ExecutionContext) {
-    state.set(fos.selectionStyle, { default: "checkmark" });
-    // Convert all alt meta to default
-    const currentMeta = await state.snapshot.getPromise(fos.selectedMeta);
-    const newMeta: Record<string, { type: string }> = {};
-    for (const [id, _] of Object.entries(currentMeta)) {
-      newMeta[id] = { type: "default" };
-    }
-    state.set(fos.selectedMeta, newMeta);
+    state.set(fos.selectionStyle, { default: "checkmark", alt: "checkmark" });
   }
 }
 

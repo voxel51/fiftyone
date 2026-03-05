@@ -493,7 +493,7 @@ class Operations(object):
 
         return self._ctx.trigger("set_selected_samples", params=params)
 
-    def set_selection_style(self, default="checkmark", alt=None):
+    def set_selection_style(self, default="checkmark", alt="checkmark"):
         """Set the selection style in the App.
 
         Args:
@@ -501,7 +501,7 @@ class Operations(object):
                 values are ``"checkmark"``, ``"green-checkmark"``,
                 ``"red-checkmark"``, ``"thumbsup"``, ``"thumbsdown"``,
                 ``"pin"``, ``"star"``, ``"x"``, ``"bookmark"``
-            alt (None): an optional alt selection icon style
+            alt ("checkmark"): the alt selection icon style
         """
         _validate_selection_style(default, alt)
         return self._ctx.trigger(
