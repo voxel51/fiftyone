@@ -6,7 +6,7 @@ export class ModalSidebarPom {
   readonly locator: Locator;
   readonly assert: SidebarAsserter;
 
-  constructor(page: Page) {
+  constructor(page: Page, readonly modal: Locator = page.getByTestId("modal")) {
     this.page = page;
 
     this.assert = new SidebarAsserter(this);
@@ -88,13 +88,6 @@ export class ModalSidebarPom {
   // =========================================================================
 
   /**
-   * The modal locator (parent of sidebar)
-   */
-  get modal() {
-    return this.page.getByTestId("modal");
-  }
-
-  /**
    * Click the "Schema" button in the annotation sidebar actions area
    */
   async clickSchemaButton() {
@@ -117,6 +110,8 @@ export class ModalSidebarPom {
 
   /**
    * Click a primitive entry by its field path name
+   *
+   * @param path The field path name
    */
   async clickPrimitiveEntry(path: string) {
     await this.modal.getByText(path, { exact: true }).click();
@@ -131,6 +126,8 @@ export class ModalSidebarPom {
 
   /**
    * Select an option from an MUI Autocomplete dropdown in the modal
+   *
+   * @param label The option label to select
    */
   async selectAutocompleteOption(label: string) {
     await this.page.getByRole("option", { name: label }).click();
@@ -145,6 +142,8 @@ export class ModalSidebarPom {
 
   /**
    * Get a portalled field dropdown option by name
+   *
+   * @param name The option name
    */
   getFieldOption(name: string) {
     return this.page.getByRole("option", { name });
@@ -152,6 +151,8 @@ export class ModalSidebarPom {
 
   /**
    * Select a field from the annotation editing field dropdown
+   *
+   * @param name The field name to select
    */
   async selectField(name: string) {
     await this.fieldDropdown.click();
@@ -247,6 +248,8 @@ class SidebarAsserter {
 
   /**
    * Assert that annotation is disabled with a specific message
+   *
+   * @param messageSubstring The substring to match in the disabled message
    */
   async hasDisabledMessage(messageSubstring: string) {
     await expect(
@@ -260,6 +263,8 @@ class SidebarAsserter {
 
   /**
    * Assert the field dropdown is visible and contains a specific field
+   *
+   * @param name The field name to check for
    */
   async hasFieldOption(name: string) {
     await expect(this.modalSidebarPom.fieldDropdown).toBeVisible();
@@ -271,6 +276,8 @@ class SidebarAsserter {
 
   /**
    * Assert that a radio option with the given label is visible
+   *
+   * @param label The radio option label
    */
   async hasRadioOption(label: string) {
     await expect(
@@ -280,6 +287,8 @@ class SidebarAsserter {
 
   /**
    * Assert that all provided radio options are visible
+   *
+   * @param labels The radio option labels to verify
    */
   async hasRadioOptions(labels: string[]) {
     for (const label of labels) {
@@ -289,6 +298,9 @@ class SidebarAsserter {
 
   /**
    * Assert that a slider is visible with the given min and max values
+   *
+   * @param min The expected minimum value
+   * @param max The expected maximum value
    */
   async hasSliderWithRange(min: string, max: string) {
     const slider = this.modalSidebarPom.modal.locator('[role="slider"]');
@@ -310,7 +322,7 @@ class SidebarAsserter {
    * Assert that a toggle switch is visible in the modal
    */
   async hasBooleanToggle() {
-    // voodo ToggleSwitch renders Headless UI tabs
+    // ToggleSwitch renders Headless UI tabs
     await expect(
       this.modalSidebarPom.modal.getByRole("tab", { name: "False" })
     ).toBeVisible();
@@ -321,6 +333,8 @@ class SidebarAsserter {
 
   /**
    * Assert that MUI Autocomplete chips/tags with the given labels are visible
+   *
+   * @param labels The tag labels to verify
    */
   async hasSelectedTags(labels: string[]) {
     for (const label of labels) {

@@ -1,6 +1,6 @@
 import { expect, Page } from "src/oss/fixtures";
 import type { EventUtils } from "src/shared/event-utils";
-import type { SchemaManagerPom } from ".";
+import type { ComponentType, SchemaManagerPom } from ".";
 
 type JSONValue =
   | string
@@ -11,10 +11,10 @@ type JSONValue =
   | Array<JSONValue>;
 
 /**
- * The JSON editor view for a field in the schema manager
+ * The editor view for a field in the schema manager
  */
-export class JSONEditorPom {
-  readonly assert: JSONEditorAsserter;
+export class EditorPom {
+  readonly assert: EditorAsserter;
 
   constructor(
     readonly page: Page,
@@ -22,7 +22,7 @@ export class JSONEditorPom {
     readonly field: string,
     readonly schemaManager: SchemaManagerPom
   ) {
-    this.assert = new JSONEditorAsserter(this);
+    this.assert = new EditorAsserter(this);
   }
 
   /**
@@ -147,10 +147,10 @@ export class JSONEditorPom {
 }
 
 /**
- * JSON editor view asserter
+ * Editor view asserter
  */
-class JSONEditorAsserter {
-  constructor(private readonly jsonEditorPom: JSONEditorPom) {}
+class EditorAsserter {
+  constructor(private readonly editorPom: EditorPom) {}
 
   /**
    * Does the json match
@@ -158,7 +158,7 @@ class JSONEditorAsserter {
    * @param json The json to compare
    */
   async hasJSON(json: JSONValue) {
-    const current = await this.jsonEditorPom.getJSON();
+    const current = await this.editorPom.getJSON();
     expect(current).toStrictEqual(json);
   }
 
@@ -168,6 +168,25 @@ class JSONEditorAsserter {
    * @param errors The error strings to compare
    */
   async hasErrors(errors: string[]) {
-    expect(await this.jsonEditorPom.getErrors()).toStrictEqual(errors);
+    expect(await this.editorPom.getErrors()).toStrictEqual(errors);
+  }
+
+  /**
+   * Open the field's edit view and verify the range inputs match
+   *
+   * @param min The expected minimum range value
+   * @param max The expected maximum range value
+   */
+  async hasRangeConfig(min: string, max: string) {
+    await this.editorPom.schemaManager.assert.hasRangeValues(min, max);
+  }
+
+  /**
+   * Verify the selected component type in the edit view
+   *
+   * @param id The component type identifier
+   */
+  async hasComponentType(id: ComponentType) {
+    await this.editorPom.schemaManager.assert.hasSelectedComponentType(id);
   }
 }

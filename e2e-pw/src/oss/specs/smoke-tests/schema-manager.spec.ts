@@ -50,6 +50,27 @@ const test = base.extend<{
   },
 });
 
+/**
+ * Navigate to a dataset, open the sample modal, switch to annotate mode,
+ * and open the schema manager.
+ */
+async function openSchemaManager(
+  fiftyoneLoader: Parameters<Parameters<typeof test>[2]>[0]["fiftyoneLoader"],
+  page: Parameters<Parameters<typeof test>[2]>[0]["page"],
+  modal: ModalPom,
+  schemaManager: SchemaManagerPom,
+  dataset: string,
+  sampleId: string
+) {
+  await fiftyoneLoader.waitUntilGridVisible(page, dataset, {
+    searchParams: new URLSearchParams({ id: sampleId }),
+  });
+  await modal.assert.isOpen();
+  await modal.sidebar.switchMode("annotate");
+  await schemaManager.open();
+  await schemaManager.assert.isOpen();
+}
+
 test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
@@ -161,14 +182,14 @@ test.describe.serial("schema manager", () => {
     modal,
     schemaManager,
   }) => {
-    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
-      searchParams: new URLSearchParams({ id }),
-    });
-    // Init
-    await modal.assert.isOpen();
-    await modal.sidebar.switchMode("annotate");
-    await schemaManager.open();
-    await schemaManager.assert.isOpen();
+    await openSchemaManager(
+      fiftyoneLoader,
+      page,
+      modal,
+      schemaManager,
+      datasetName,
+      id
+    );
 
     // Configure
     const row = schemaManager.getFieldRow("classification");
@@ -322,13 +343,14 @@ test.describe.serial("schema manager", () => {
     modal,
     schemaManager,
   }) => {
-    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
-      searchParams: new URLSearchParams({ id }),
-    });
-    await modal.assert.isOpen();
-    await modal.sidebar.switchMode("annotate");
-    await schemaManager.open();
-    await schemaManager.assert.isOpen();
+    await openSchemaManager(
+      fiftyoneLoader,
+      page,
+      modal,
+      schemaManager,
+      datasetName,
+      id
+    );
 
     // Create a new classification field with classes
     await schemaManager.clickNewField();
@@ -361,14 +383,14 @@ test.describe.serial("schema manager", () => {
     modal,
     schemaManager,
   }) => {
-    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
-      searchParams: new URLSearchParams({ id }),
-    });
-    await modal.assert.isOpen();
-    await modal.sidebar.switchMode("annotate");
-
-    await schemaManager.open();
-    await schemaManager.assert.isOpen();
+    await openSchemaManager(
+      fiftyoneLoader,
+      page,
+      modal,
+      schemaManager,
+      datasetName,
+      id
+    );
 
     // Create a new primitive slider field
     await schemaManager.clickNewField();
@@ -399,14 +421,14 @@ test.describe.serial("schema manager", () => {
     modal,
     schemaManager,
   }) => {
-    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
-      searchParams: new URLSearchParams({ id }),
-    });
-    await modal.assert.isOpen();
-    await modal.sidebar.switchMode("annotate");
-
-    await schemaManager.open();
-    await schemaManager.assert.isOpen();
+    await openSchemaManager(
+      fiftyoneLoader,
+      page,
+      modal,
+      schemaManager,
+      datasetName,
+      id
+    );
 
     // Create a new detection field with an attribute
     // Default label type is already "Detections", no need to select it
@@ -445,14 +467,14 @@ test.describe.serial("schema manager", () => {
     modal,
     schemaManager,
   }) => {
-    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
-      searchParams: new URLSearchParams({ id }),
-    });
-    await modal.assert.isOpen();
-    await modal.sidebar.switchMode("annotate");
-
-    await schemaManager.open();
-    await schemaManager.assert.isOpen();
+    await openSchemaManager(
+      fiftyoneLoader,
+      page,
+      modal,
+      schemaManager,
+      datasetName,
+      id
+    );
 
     // Create integer field with radio component and values
     await schemaManager.clickNewField();
@@ -484,14 +506,14 @@ test.describe.serial("schema manager", () => {
     modal,
     schemaManager,
   }) => {
-    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
-      searchParams: new URLSearchParams({ id }),
-    });
-    await modal.assert.isOpen();
-    await modal.sidebar.switchMode("annotate");
-
-    await schemaManager.open();
-    await schemaManager.assert.isOpen();
+    await openSchemaManager(
+      fiftyoneLoader,
+      page,
+      modal,
+      schemaManager,
+      datasetName,
+      id
+    );
 
     // Create date field (datepicker is default and only component)
     await schemaManager.clickNewField();
@@ -517,7 +539,7 @@ test.describe.serial("schema manager", () => {
     await modal.sidebar.switchMode("annotate");
 
     // Verify date picker renders in annotation sidebar
-    await modal.sidebar.clickPrimitiveEntry(dateFieldName);
+    await modal.annotateSidebar.selectActivePrimitiveField(dateFieldName);
     await modal.sidebar.assert.hasDatePicker();
   });
 
@@ -527,14 +549,14 @@ test.describe.serial("schema manager", () => {
     modal,
     schemaManager,
   }) => {
-    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
-      searchParams: new URLSearchParams({ id }),
-    });
-    await modal.assert.isOpen();
-    await modal.sidebar.switchMode("annotate");
-
-    await schemaManager.open();
-    await schemaManager.assert.isOpen();
+    await openSchemaManager(
+      fiftyoneLoader,
+      page,
+      modal,
+      schemaManager,
+      datasetName,
+      id
+    );
 
     // Create boolean field (toggle is default component)
     await schemaManager.clickNewField();
@@ -560,7 +582,7 @@ test.describe.serial("schema manager", () => {
     await modal.sidebar.switchMode("annotate");
 
     // Verify toggle renders in annotation sidebar
-    await modal.sidebar.clickPrimitiveEntry(boolFieldName);
+    await modal.annotateSidebar.selectActivePrimitiveField(boolFieldName);
     await modal.sidebar.assert.hasBooleanToggle();
   });
 
@@ -570,14 +592,14 @@ test.describe.serial("schema manager", () => {
     modal,
     schemaManager,
   }) => {
-    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
-      searchParams: new URLSearchParams({ id }),
-    });
-    await modal.assert.isOpen();
-    await modal.sidebar.switchMode("annotate");
-
-    await schemaManager.open();
-    await schemaManager.assert.isOpen();
+    await openSchemaManager(
+      fiftyoneLoader,
+      page,
+      modal,
+      schemaManager,
+      datasetName,
+      id
+    );
 
     // Create dictionary field (json is default and only component)
     await schemaManager.clickNewField();
@@ -605,14 +627,14 @@ test.describe.serial("schema manager", () => {
     modal,
     schemaManager,
   }) => {
-    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
-      searchParams: new URLSearchParams({ id }),
-    });
-    await modal.assert.isOpen();
-    await modal.sidebar.switchMode("annotate");
-
-    await schemaManager.open();
-    await schemaManager.assert.isOpen();
+    await openSchemaManager(
+      fiftyoneLoader,
+      page,
+      modal,
+      schemaManager,
+      datasetName,
+      id
+    );
 
     // Create string list field with checkboxes component and values
     await schemaManager.clickNewField();
@@ -641,7 +663,7 @@ test.describe.serial("schema manager", () => {
     await modal.sidebar.switchMode("annotate");
 
     // Verify in annotation sidebar — renders as autocomplete with configured choices
-    await modal.sidebar.clickPrimitiveEntry(stringListFieldName);
+    await modal.annotateSidebar.selectActivePrimitiveField(stringListFieldName);
     for (const value of stringListSelections) {
       await modal.sidebar.openAutocomplete();
       await modal.sidebar.selectAutocompleteOption(value);

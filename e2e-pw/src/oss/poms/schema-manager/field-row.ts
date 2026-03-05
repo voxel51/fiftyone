@@ -1,7 +1,7 @@
 import { expect, Page } from "src/oss/fixtures";
 import type { EventUtils } from "src/shared/event-utils";
-import type { SchemaManagerPom } from ".";
-import { JSONEditorPom } from "./json-editor";
+import type { ComponentType, SchemaManagerPom } from ".";
+import { EditorPom } from "./editor";
 
 /**
  * A field row of the schema manager. May be active/hidden, checked/unchecked,
@@ -73,7 +73,7 @@ export class FieldRowPom {
     // click must be forced because the field row has an aria-disabled
     // attribute
     await this.pencil.click({ force: true });
-    return new JSONEditorPom(
+    return new EditorPom(
       this.page,
       this.eventUtils,
       this.field,
@@ -88,7 +88,7 @@ export class FieldRowPom {
     // click must be forced because the field row has an aria-disabled
     // attribute
     await this.scanButton.click({ force: true });
-    return new JSONEditorPom(
+    return new EditorPom(
       this.page,
       this.eventUtils,
       this.field,
@@ -157,17 +157,22 @@ class FieldRowAsserter {
 
   /**
    * Open the field's edit view and verify the range inputs match
+   *
+   * @param min The expected minimum range value
+   * @param max The expected maximum range value
    */
   async hasRangeConfig(min: string, max: string) {
-    await this.fieldRowPom.edit();
-    await this.fieldRowPom.schemaManager.assert.hasRangeValues(min, max);
+    const editor = await this.fieldRowPom.edit();
+    await editor.assert.hasRangeConfig(min, max);
   }
 
   /**
    * Open the field's edit view and verify the selected component type
+   *
+   * @param id The component type identifier
    */
-  async hasComponentType(id: string) {
-    await this.fieldRowPom.edit();
-    await this.fieldRowPom.schemaManager.assert.hasSelectedComponentType(id);
+  async hasComponentType(id: ComponentType) {
+    const editor = await this.fieldRowPom.edit();
+    await editor.assert.hasComponentType(id);
   }
 }

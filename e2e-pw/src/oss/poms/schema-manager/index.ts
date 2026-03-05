@@ -2,6 +2,15 @@ import { Page, expect } from "src/oss/fixtures";
 import type { EventUtils } from "src/shared/event-utils";
 import { FieldRowPom } from "./field-row";
 
+export type ComponentType =
+  | "slider"
+  | "text"
+  | "radio"
+  | "json"
+  | "datepicker"
+  | "toggle"
+  | "checkboxes";
+
 /**
  * The schema manager modal accessible via the sample modal's 'Annotate' tab
  */
@@ -126,9 +135,11 @@ export class SchemaManagerPom {
   }
 
   /**
-   * Get a component type button locator by id (e.g. "slider", "text", "radio")
+   * Get a component type button locator by id
+   *
+   * @param id The component type identifier
    */
-  getComponentTypeButton(id: string) {
+  getComponentTypeButton(id: ComponentType) {
     return this.locator.getByTestId(`component-type-${id}`);
   }
 
@@ -175,6 +186,8 @@ export class SchemaManagerPom {
   /**
    * Add a class by name. Clicks "+ Add class", types the name, then presses
    * Enter to confirm.
+   *
+   * @param name The class name to add
    */
   async addClass(name: string) {
     await this.addClassButton.click();
@@ -191,18 +204,23 @@ export class SchemaManagerPom {
   }
 
   /**
-   * Click a component type button (e.g. "slider", "text", "radio")
+   * Click a component type button
+   *
+   * @param id The component type identifier
    */
-  async selectComponentType(id: string) {
+  async selectComponentType(id: ComponentType) {
     // force: true needed because component may be inside a RichList with aria-disabled
     await this.getComponentTypeButton(id).click({ force: true });
   }
 
   /**
    * Fill the min/max range inputs
+   *
+   * @param min The minimum range value
+   * @param max The maximum range value
    */
   async fillRange(min: string, max: string) {
-    // force: true needed because voodo Input wraps Headless UI Field
+    // force: true needed because Input wraps Headless UI Field
     await this.rangeMinInput.fill(min, { force: true });
     await this.rangeMaxInput.fill(max, { force: true });
   }
@@ -255,6 +273,8 @@ export class SchemaManagerPom {
 
   /**
    * Fill the attribute name input
+   *
+   * @param name The attribute name
    */
   async fillAttributeName(name: string) {
     // force: true needed because input is inside RichList item with aria-disabled
@@ -263,6 +283,8 @@ export class SchemaManagerPom {
 
   /**
    * Add a value to the attribute values list
+   *
+   * @param value The value to add
    */
   async addAttributeValue(value: string) {
     // force: true needed because input is inside RichList item with aria-disabled
@@ -298,10 +320,12 @@ class SchemaManagerAsserter {
 
   /**
    * Verify a component type button is selected in the edit view
+   *
+   * @param id The component type identifier
    */
-  async hasSelectedComponentType(id: string) {
+  async hasSelectedComponentType(id: ComponentType | string) {
     await expect(
-      this.schemaManagerPom.getComponentTypeButton(id)
+      this.schemaManagerPom.getComponentTypeButton(id as ComponentType)
     ).toHaveAttribute("data-selected", "true");
   }
 
@@ -367,6 +391,9 @@ class SchemaManagerAsserter {
 
   /**
    * Verify the range min/max inputs have the expected values
+   *
+   * @param min The expected minimum range value
+   * @param max The expected maximum range value
    */
   async hasRangeValues(min: string, max: string) {
     await expect(this.schemaManagerPom.rangeMinInput).toHaveValue(min);

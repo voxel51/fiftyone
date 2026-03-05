@@ -4,6 +4,7 @@ import { Duration } from "../../utils";
 import { ModalTaggerPom } from "../action-row/tagger/modal-tagger";
 import { ModalPanelPom } from "../panels/modal-panel";
 import { UrlPom } from "../url";
+import { ModalAnnotateSidebarPom } from "./annotate-sidebar";
 import { ModalGroupActionsPom } from "./group-actions";
 import { ModalImaAsVideoControlsPom } from "./imavid-controls";
 import { Looker3DControlsPom } from "./looker-3d-controls";
@@ -18,6 +19,7 @@ export class ModalPom {
   readonly looker: Locator;
   readonly modalContainer: Locator;
 
+  readonly annotateSidebar: ModalAnnotateSidebarPom;
   readonly group: ModalGroupActionsPom;
   readonly imavid: ModalImaAsVideoControlsPom;
   readonly looker3dControls: Looker3DControlsPom;
@@ -38,11 +40,12 @@ export class ModalPom {
     this.looker = this.locator.getByTestId("looker").last();
     this.modalContainer = this.locator.getByTestId("modal-looker-container");
 
+    this.annotateSidebar = new ModalAnnotateSidebarPom(page);
     this.group = new ModalGroupActionsPom(page, this);
     this.imavid = new ModalImaAsVideoControlsPom(page, this);
     this.looker3dControls = new Looker3DControlsPom(page, this);
     this.panel = new ModalPanelPom(page, this);
-    this.sidebar = new ModalSidebarPom(page);
+    this.sidebar = new ModalSidebarPom(page, this.locator);
     this.tagger = new ModalTaggerPom(page, this);
     this.url = new UrlPom(page, eventUtils);
     this.video = new ModalVideoControlsPom(page, this);
