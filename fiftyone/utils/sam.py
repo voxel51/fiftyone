@@ -53,7 +53,7 @@ class SegmentAnythingModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
         if self.points_mask_index and not 0 <= self.points_mask_index <= 2:
             raise ValueError("mask_index must be 0, 1, or 2")
 
-        self.get_item_cls = self.parse_int(
+        self.get_item_cls = self.parse_string(
             d,
             "get_item_cls",
             default="fiftyone.utils.sam.SegmentAnythingImageGetItem",
@@ -110,7 +110,7 @@ class _SAMPredictor:
             return self.processor.predict_torch(**predict_kwargs)
 
         if prompt_type == "combination":
-            predict_kwargs["boxes"] = predict_kwargs["boxes"].numpy()
+            predict_kwargs["box"] = predict_kwargs["box"].numpy()
 
         return self.processor.predict(**predict_kwargs)
 
@@ -165,6 +165,9 @@ class SegmentAnythingImageGetItem(fout.GetItem):
         self.validate_prompts = validate_prompts
 
     def _set_mode(self, field_mapping):
+        if field_mapping is None:
+            return SAMPromptMode(1)  # auto
+
         prompt_fields = ["box_prompt_field", "point_prompt_field"]
         is_present = {f: False for f in prompt_fields}
 
@@ -256,7 +259,11 @@ class SegmentAnythingImageGetItem(fout.GetItem):
             )
 
         if self.validate_prompts and has_boxes and has_points:
-            self._validate_combination(boxes, points, point_type_labels)
+            points_xyxy = []
+            for kp in keypoints.keypoints:
+                _pts = np.array(kp.points) * np.array([img_hw[1], img_hw[0]])
+                points_xyxy.append(_pts)
+            self._validate_combination(boxes_xyxy, points, point_type_labels)
 
         return item_dict
 
@@ -314,13 +321,13 @@ class SegmentAnythingImageGetItem(fout.GetItem):
 
     def _validate_combination(self, boxes, points, point_labels):
         if len(boxes) != len(points):
-            raise ValueError(
+            raise AssertionError(
                 f"For combination prompts, there should be a 1-on-1 correspondence between detections and keypoints. Found {len(boxes)} detections and {len(points)} keypoints."
             )
         # Check whether positive points lie within boxes
-        for pts, box in zip(points, boxes.numpy()):
+        for pts, pts_labels, box in zip(points, point_labels, boxes):
             box = box.flatten()
-            pos_pts = pts[point_labels == 1]
+            pos_pts = pts[pts_labels == 1]
             are_valid = np.all(
                 (pos_pts[:, 0] >= box[0])
                 & (pos_pts[:, 0] <= box[2])
@@ -329,7 +336,7 @@ class SegmentAnythingImageGetItem(fout.GetItem):
             )
             if not are_valid:
                 raise ValueError(
-                    f"Point prompts {pts} not contained within box {box}"
+                    f"Point prompts {pos_pts} not contained within box {box}"
                 )
 
     @property
@@ -406,16 +413,16 @@ class SAMSegmenterOutputProcessor(fout.OutputProcessor):
 
             if isinstance(mask, torch.Tensor):
                 mask = mask.detach().cpu().numpy()
-
             if len(mask.shape) == 3:
                 mask = np.squeeze(mask, axis=0)
-
             if mask.dtype != bool:
                 mask = mask > self.mask_thresh
 
             if box is None:
                 # Compute box from mask
                 box = _mask_to_box(mask)
+                if box is None:
+                    continue
 
             x1, y1, x2, y2 = box
             bounding_box = [
@@ -521,10 +528,9 @@ class SegmentAnythingModel(fout.TorchImageModel):
                 "fiftyone.utils.sam.SAMSegmenterOutputProcessor"
             )
 
-        if (
-            not config.entrypoint_args
-            or "checkpoint" not in config.entrypoint_args
-        ):
+        if config.entrypoint_args is None:
+            config.entrypoint_args = {}
+        if "checkpoint" not in config.entrypoint_args:
             config.entrypoint_args["checkpoint"] = config.model_path
 
         fout.TorchImageModel.__init__(self, config)
@@ -560,8 +566,8 @@ class SegmentAnythingModel(fout.TorchImageModel):
                 f"Expected class string. GetItem class can't be initialized from {get_item_cls}"
             )
         get_item = etau.get_class(get_item_cls)
-        get_item_args = self.config.get_item_args or {}
-        field_mapping = {} if field_mapping is None else field_mapping
+        get_item_args = dict(self.config.get_item_args or {})
+        field_mapping = {} if field_mapping is None else dict(field_mapping)
 
         if "prompt_field" in field_mapping:
             # Maintain backward compability of prompt_field.
@@ -676,7 +682,7 @@ class SegmentAnythingModel(fout.TorchImageModel):
 
                 mask = multi_mask[mask_index]
                 if mask.any():
-                    out_scores.append(mask_scores)
+                    out_scores.append(mask_scores[mask_index])
                     out_masks.append(mask)
 
         elif prompt_type == "combination":
@@ -687,6 +693,7 @@ class SegmentAnythingModel(fout.TorchImageModel):
             for points, labels, box in zip(point_coords, point_labels, boxes):
                 (out_mask, out_score, _,) = self._sam_predictor.predict(
                     device=self.device,
+                    prompt_type=prompt_type,
                     **{
                         "point_coords": points,
                         "point_labels": labels,
@@ -733,7 +740,7 @@ def _to_sam_input(tensor):
 def _get_sam_point_labels(keypoint):
     if "sam_labels" in keypoint and keypoint.sam_labels is not None:
         return keypoint.sam_labels
-    if "sam2_labels" in keypoint and keypoint.sam_labels is not None:
+    if "sam2_labels" in keypoint and keypoint.sam2_labels is not None:
         return keypoint.sam2_labels
     return None
 
