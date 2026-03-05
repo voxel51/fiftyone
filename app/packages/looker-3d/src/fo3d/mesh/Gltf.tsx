@@ -66,7 +66,10 @@ export const Gltf = ({
 
   const groupRef = useRef();
 
-  const mixer = useMemo(() => new AnimationMixer(scene), [scene]);
+  const mixer = useMemo(
+    () => (scene ? new AnimationMixer(scene) : null),
+    [scene]
+  );
 
   useAnimationSelect(name, animations, mixer);
 

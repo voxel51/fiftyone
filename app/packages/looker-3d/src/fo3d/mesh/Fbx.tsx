@@ -64,7 +64,7 @@ export const Fbx = ({
     return fbx?.animations || [];
   }, [fbx]);
 
-  const mixer = useMemo(() => new AnimationMixer(fbx), [fbx]);
+  const mixer = useMemo(() => (fbx ? new AnimationMixer(fbx) : null), [fbx]);
 
   useAnimationSelect(name, animationClips, mixer);
 
