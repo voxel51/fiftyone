@@ -121,6 +121,10 @@ export class BoundingBoxOverlay
 
     const relative = this.getCoordinateSystem().absoluteToRelative(bounds);
     this.#relativeBounds = relative;
+    this.eventBus.dispatch("lighter:overlay-bounds-changed", {
+      id: this.id,
+      bounds: this.bounds,
+    });
   }
 
   get relativeBounds(): Rect {

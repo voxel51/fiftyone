@@ -25,7 +25,6 @@ import type { InteractionHandler } from "../interaction/InteractionManager";
 import { InteractionManager } from "../interaction/InteractionManager";
 import { InteractiveDetectionHandler } from "../interaction/InteractiveDetectionHandler";
 import { BaseOverlay } from "../overlay/BaseOverlay";
-import { BoundingBoxOverlay } from "../overlay/BoundingBoxOverlay";
 import type { Selectable } from "../selection/Selectable";
 import type { SelectionOptions } from "../selection/SelectionManager";
 import { SelectionManager } from "../selection/SelectionManager";
@@ -1441,16 +1440,6 @@ export class Scene2D {
   private async renderFrame(): Promise<void> {
     // Execute before-render callbacks
     await this.executeRenderCallbacks("before");
-
-    // Before rendering, update relative bounds for overlays that need it
-    for (const overlay of this.overlays.values()) {
-      if (overlay instanceof BoundingBoxOverlay && overlay.getIsDirty()) {
-        this.eventBus.dispatch("lighter:overlay-bounds-changed", {
-          id: overlay.id,
-          bounds: overlay.bounds,
-        });
-      }
-    }
 
     const overlayIndexes: Record<string, number> = {};
 
