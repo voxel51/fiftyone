@@ -496,14 +496,41 @@ export const fo3dContent = atom({
 export const fo3dSample = selector({
   key: "fo3dSample",
   get: ({ get }) => {
+    // Non-group samples already have a single canonical modal sample.
     if (!get(isGroup)) return get(modalSample);
 
+    // Dynamic groups without a dedicated FO3D slice still render from the
+    // currently selected modal sample.
     if (get(isDynamicGroup) && !get(hasFo3dSlice)) {
       return get(modalSample);
     }
 
-    if (!get(hasFo3dSlice)) return null;
+    if (!get(hasFo3dSlice)) {
+      // Direct-3D groups do not have a real FO3D sample, so pick one concrete
+      // 3D slice to stand in for the scene-level sidebar state.
+      const activeSlices = get(active3dSlices);
+      const sampleMap = activeSlices.length
+        ? get(active3dSlicesToSampleMap)
+        : get(all3dSlicesToSampleMap);
+      const pinnedSlice = get(pinned3DSampleSlice);
 
+      // Prefer the pinned slice, then an active visible slice, then any 3D
+      // sample we have available as a last resort.
+      const pinnedRepresentativeSlice =
+        pinnedSlice && sampleMap[pinnedSlice] ? pinnedSlice : null;
+      const activeRepresentativeSlice = activeSlices.find((slice) =>
+        Boolean(sampleMap[slice])
+      );
+      const representativeSlice =
+        pinnedRepresentativeSlice ||
+        activeRepresentativeSlice ||
+        Object.keys(sampleMap)[0];
+
+      return representativeSlice ? sampleMap[representativeSlice] : null;
+    }
+
+    // Real FO3D groups fetch the actual FO3D slice sample and use it as the
+    // source of truth for the viewer.
     const sample = get(
       groupSamples({
         slices: [get(fo3dSlice)],
