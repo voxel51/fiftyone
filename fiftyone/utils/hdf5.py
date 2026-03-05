@@ -458,7 +458,7 @@ def _parse_image(img_data, force_rgb=False):
                 if img_data.max() <= 1.0:
                     img = (img_data * 255).astype(np.uint8)
                 else:
-                    img = img_data.astype(np.uint8)
+                    img = np.clip(img_data, 0, 255).astype(np.uint8)
             else:
                 img = img_data.astype(np.uint8)
         else:
