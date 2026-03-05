@@ -88,8 +88,11 @@ class StateDescription(etas.Serializable):
         self.sample_id = sample_id
         self.selected = selected or []
         self.selected_labels = selected_labels or []
-        self.selected_meta = selected_meta
-        self.selection_style = selection_style
+        self.selected_meta = selected_meta or {}
+        self.selection_style = selection_style or {
+            "default": "checkmark",
+            "alt": "checkmark",
+        }
         self.spaces = spaces
 
         self.view = (
