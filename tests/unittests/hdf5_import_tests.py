@@ -18,6 +18,13 @@ try:
 except ImportError:
     HAS_H5PY = False
 
+try:
+    import cv2
+
+    HAS_CV2 = True
+except ImportError:
+    HAS_CV2 = False
+
 import fiftyone as fo
 import fiftyone.core.labels as fol
 
@@ -160,6 +167,7 @@ class HDF5UnlabeledImportTests(unittest.TestCase):
 
         dataset.delete()
 
+    @unittest.skipUnless(HAS_CV2, "cv2 is not installed")
     def test_unlabeled_encoded_images(self):
         """Test importing encoded (JPEG) images from HDF5."""
         num_images = _create_hdf5_encoded_images(self._hdf5_path)
