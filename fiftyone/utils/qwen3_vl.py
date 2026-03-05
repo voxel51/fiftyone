@@ -482,6 +482,10 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
         image embedding so text and image vectors share the same
         embedding space.
         """
+        prompts = list(prompts)
+        if not prompts:
+            raise ValueError("prompts must contain at least one text string")
+
         embeddings = []
 
         for text in prompts:

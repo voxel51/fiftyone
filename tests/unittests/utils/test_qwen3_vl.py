@@ -664,6 +664,11 @@ class TestPromptMixinMocked:
             model.embed_prompt("test")
             mock_ep.assert_called_once_with(["test"])
 
+    def test_embed_prompts_empty_raises(self):
+        model = self._make_model_with_mock_processor()
+        with pytest.raises(ValueError, match="at least one"):
+            model.embed_prompts([])
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
