@@ -1435,13 +1435,16 @@ class FIWDataset(FiftyOneDataset):
         utilities for FIW.
 
     In order to load the FIW dataset, you must download the source data
-    manually. The directory should contain the official FIW structure::
+    manually. The expected structure is the official FIW database layout::
 
         source_dir/
             FIDs/
                 F0001/
                     MID1/
-                        *.jpg
+                        P00001_face0.jpg
+                        ...
+                    MID2/
+                        ...
                     mid.csv
                 F0002/
                     ...
@@ -1449,9 +1452,17 @@ class FIWDataset(FiftyOneDataset):
             FIW_FIDs.csv (optional)
             FIW_RIDs.csv (optional)
 
-    You can register at
-    https://docs.google.com/forms/d/e/1FAIpQLSd5_hbg-7QlrqE9V4MJShgww308yCxHlj6VOLctETX6aYLQgg/viewform
-    in order to get access to download the data.
+    The ``mid.csv`` file in each family directory contains the relationship
+    matrix, member names, and genders. These files are included in the
+    official FIW download and should not need to be created manually.
+
+    Alternatively, you can provide a directory containing family
+    directories directly (``F0001/``, ``F0002/``, etc.) without the
+    ``FIDs/`` wrapper, or a pre-organized split structure with
+    ``train/data/``, ``val/data/``, ``test/data/`` subdirectories.
+
+    Register at https://fulab.sites.northeastern.edu/fiw-download/ to
+    get access to the official data.
 
     Example usage::
 
