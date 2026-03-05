@@ -305,8 +305,8 @@ export class InteractionManager {
         this.canvas.style.cursor = cursor;
       }
 
-      // If this is a movable overlay, track move state
-      if (TypeGuards.isMovable(handler) && TypeGuards.isSpatial(handler)) {
+      // If this is a spatial overlay, track move state
+      if (TypeGuards.isSpatial(handler)) {
         const type: keyof LighterEventGroup = handler.isDragging?.()
           ? "lighter:overlay-drag-start"
           : "lighter:overlay-resize-start";

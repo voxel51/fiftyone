@@ -2,7 +2,6 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import type { Movable } from "../commands/MoveOverlayCommand";
 import {
   EDGE_THRESHOLD,
   HANDLE_OFFSET_X,
@@ -70,7 +69,7 @@ export const NO_BOUNDS = { x: NaN, y: NaN, width: NaN, height: NaN };
  */
 export class BoundingBoxOverlay
   extends BaseOverlay<BoundingBoxLabel>
-  implements Movable, Selectable, Spatial, Hoverable
+  implements Selectable, Spatial, Hoverable
 {
   private isDraggable: boolean;
   private isResizeable: boolean;

@@ -3,19 +3,7 @@
  */
 
 import type { Undoable } from "@fiftyone/commands";
-import type { Rect } from "../types";
-
-/**
- * Interface for overlays that can be moved.
- */
-export interface Movable {
-  bounds: Rect;
-
-  /**
-   * Mark the overlay as dirty to trigger re-render.
-   */
-  markDirty(): void;
-}
+import type { Rect, Spatial } from "../types";
 
 /**
  * Command for moving an overlay with undo/redo support.
@@ -25,7 +13,7 @@ export class MoveOverlayCommand implements Undoable {
   readonly description: string;
 
   constructor(
-    private overlay: Movable,
+    private overlay: Spatial,
     overlayId: string,
     private oldBounds: Rect,
     private newBounds: Rect

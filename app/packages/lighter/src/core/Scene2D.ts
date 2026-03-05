@@ -10,21 +10,18 @@ import {
   getEventBus,
 } from "@fiftyone/events";
 import { AddOverlayCommand } from "../commands/AddOverlayCommand";
-import {
-  type Movable,
-  MoveOverlayCommand,
-} from "../commands/MoveOverlayCommand";
+import { MoveOverlayCommand } from "../commands/MoveOverlayCommand";
 import { RemoveOverlayCommand } from "../commands/RemoveOverlayCommand";
 import {
-  type TransformOptions,
+  TransformOptions,
   TransformOverlayCommand,
 } from "../commands/TransformOverlayCommand";
 import { STROKE_WIDTH } from "../constants";
 import type { LighterEventGroup } from "../events";
 import type { InteractionHandler } from "../interaction/InteractionManager";
 import { InteractionManager } from "../interaction/InteractionManager";
-import { InteractiveDetectionHandler } from "../interaction/InteractiveDetectionHandler";
-import { BaseOverlay } from "../overlay/BaseOverlay";
+import type { InteractiveDetectionHandler } from "../interaction/InteractiveDetectionHandler";
+import type { BaseOverlay } from "../overlay/BaseOverlay";
 import type { Selectable } from "../selection/Selectable";
 import type { SelectionOptions } from "../selection/SelectionManager";
 import { SelectionManager } from "../selection/SelectionManager";
@@ -66,14 +63,6 @@ export const TypeGuards = {
   isSpatial: (
     body: BaseOverlay | InteractionHandler
   ): body is BaseOverlay & Spatial => "bounds" in body,
-
-  isTransformable: (
-    body: BaseOverlay | InteractionHandler
-  ): body is BaseOverlay & Movable => "bounds" in body,
-
-  isMovable: (
-    body: BaseOverlay | InteractionHandler
-  ): body is BaseOverlay & Movable => "bounds" in body,
 
   isInteractionHandler: (value: unknown): value is InteractionHandler =>
     typeof value === "object" &&
@@ -241,7 +230,7 @@ export class Scene2D {
     // Listen for OVERLAY_DRAG_END events to trigger re-rendering of overlays that are currently dragged
     this.registerEventHandler("lighter:overlay-drag-end", (event) => {
       const overlay = this.getOverlay(event.id);
-      if (overlay && TypeGuards.isMovable(overlay)) {
+      if (overlay && TypeGuards.isSpatial(overlay)) {
         const { startBounds, bounds } = event;
         const moved =
           Math.abs(startBounds.x - bounds.x) > 1 ||
@@ -264,7 +253,7 @@ export class Scene2D {
     // Listen for OVERLAY_RESIZE_END events to trigger re-rendering of overlays that are currently resized
     this.registerEventHandler("lighter:overlay-resize-end", (event) => {
       const overlay = this.getOverlay(event.id);
-      if (overlay && TypeGuards.isMovable(overlay)) {
+      if (overlay && TypeGuards.isSpatial(overlay)) {
         const { startBounds, bounds: endBounds } = event;
         const moved =
           Math.abs(startBounds.x - endBounds.x) > 1 ||
@@ -1116,7 +1105,7 @@ export class Scene2D {
     }
 
     // Check if overlay supports transformation
-    if (!TypeGuards.isTransformable(overlay)) {
+    if (!TypeGuards.isSpatial(overlay)) {
       console.warn(`Overlay with id ${id} does not support transformation`);
       return false;
     }

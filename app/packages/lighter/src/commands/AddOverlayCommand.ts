@@ -4,7 +4,7 @@
 
 import type { Undoable } from "@fiftyone/commands";
 import { getEventBus } from "@fiftyone/events";
-import { Scene2D } from "../core/Scene2D";
+import type { Scene2D } from "../core/Scene2D";
 import type { LighterEventGroup } from "../events";
 import { InteractiveDetectionHandler } from "../interaction/InteractiveDetectionHandler";
 import type { BaseOverlay } from "../overlay/BaseOverlay";

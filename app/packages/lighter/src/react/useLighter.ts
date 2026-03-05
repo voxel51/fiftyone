@@ -7,7 +7,7 @@ import { useCallback, useEffect, useRef } from "react";
 import type { TransformOptions } from "../commands/TransformOverlayCommand";
 import type { RenderCallback } from "../core/Scene2D";
 import { lighterSceneAtom, overlayFactory } from "../index";
-import { BaseOverlay } from "../overlay/BaseOverlay";
+import type { BaseOverlay } from "../overlay/BaseOverlay";
 
 /**
  * Hook for accessing the current lighter instance without side effects.

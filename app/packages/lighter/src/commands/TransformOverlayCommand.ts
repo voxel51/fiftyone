@@ -3,8 +3,17 @@
  */
 
 import type { Undoable } from "@fiftyone/commands";
-import type { Rect } from "../types";
-import type { Movable } from "./MoveOverlayCommand";
+import type { Rect, Spatial } from "../types";
+
+/**
+ * Options for transforming an overlay.
+ */
+export interface TransformOverlayOptions {
+  /** New bounds for the overlay */
+  bounds?: Rect;
+  /** New scale factors */
+  scale?: { x: number; y: number };
+}
 
 /**
  * Command for transforming an overlay with undo/redo support.
@@ -14,7 +23,7 @@ export class TransformOverlayCommand implements Undoable {
   readonly description: string;
 
   constructor(
-    private overlay: Movable,
+    private overlay: Spatial,
     overlayId: string,
     private oldBounds: Rect,
     private newBounds: Rect
