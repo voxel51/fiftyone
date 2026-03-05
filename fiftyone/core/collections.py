@@ -6901,14 +6901,14 @@ class SampleCollection(object):
             # Only include samples whose `weather` field is "sunny"
             #
 
-            view = dataset.match(F("weather").label == "sunny")
+            view = dataset.match(F("weather.label") == "sunny")
 
             #
             # Only include samples with at least 2 objects in their
             # `predictions` field
             #
 
-            view = dataset.match(F("predictions").detections.length() >= 2)
+            view = dataset.match(F("predictions.detections").length() >= 2)
 
             #
             # Only include samples whose `predictions` field contains at least
