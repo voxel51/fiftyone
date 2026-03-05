@@ -143,7 +143,7 @@ const parseAsset = (node: FoSceneRawNode): MeshAsset | undefined => {
         node.plyPath,
         getOptionalStringField(node, "preTransformedPlyPath"),
         meshMaterial,
-        getOptionalBooleanField(node, "isPointCloud") ?? false,
+        getOptionalBooleanField(node, "isPointCloud"),
         getOptionalBooleanField(node, "centerGeometry") ?? true
       );
     }

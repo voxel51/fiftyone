@@ -1,7 +1,9 @@
 import * as fos from "@fiftyone/state";
+import { isWrappableDirect3dSamplePath } from "@fiftyone/utilities";
 import { useEffect, useMemo, useState } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import type { FoScene } from "../fo3d/render-types";
+import { buildSyntheticSceneForDirect3dSamples } from "../fo3d/synthetic-scene";
 import { getFo3dRoot, getMediaPathForFo3dSample } from "../fo3d/utils";
 import type { FiftyoneSceneRawJson } from "../utils";
 import useFo3dFetcher from "./use-fo3d-fetcher";
@@ -65,6 +67,10 @@ type UseFo3dReturnType = {
  */
 export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
   const mediaField = useRecoilValue(fos.selectedMediaField(true));
+  const isGroup = useRecoilValue(fos.isGroup);
+  const active3dSlices = useRecoilValue(fos.active3dSlices);
+  const activeSampleMap = useRecoilValue(fos.active3dSlicesToSampleMap);
+  const all3dSampleMap = useRecoilValue(fos.all3dSlicesToSampleMap);
   const setFo3dContent = useSetRecoilState(fos.fo3dContent);
   const fetchFo3d = useFo3dFetcher();
 
@@ -78,6 +84,34 @@ export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
     [sample, mediaField]
   );
   const url = useMemo(() => fos.getSampleSrc(mediaPath), [mediaPath]);
+  const isWrappableDirectAsset = useMemo(
+    () =>
+      isWrappableDirect3dSamplePath(mediaPath) ||
+      isWrappableDirect3dSamplePath(filepath),
+    [mediaPath, filepath]
+  );
+  const syntheticRawData = useMemo(() => {
+    if (!isWrappableDirectAsset) {
+      return null;
+    }
+
+    const groupedSampleMap =
+      isGroup && active3dSlices.length === 0 ? all3dSampleMap : activeSampleMap;
+
+    return buildSyntheticSceneForDirect3dSamples({
+      sample,
+      mediaField,
+      sampleMap: groupedSampleMap,
+    });
+  }, [
+    isWrappableDirectAsset,
+    sample,
+    mediaField,
+    isGroup,
+    active3dSlices,
+    all3dSampleMap,
+    activeSampleMap,
+  ]);
 
   // This effect fetches fo3d data for the active sample and guards stale updates.
   useEffect(() => {
@@ -85,6 +119,14 @@ export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
 
     setIsLoading(true);
     setRawData(null);
+
+    if (syntheticRawData || isWrappableDirectAsset) {
+      setRawData(syntheticRawData);
+      setIsLoading(false);
+      return () => {
+        isActive = false;
+      };
+    }
 
     fetchFo3d(url, filepath).then((response) => {
       if (!isActive) {
@@ -98,7 +140,7 @@ export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
     return () => {
       isActive = false;
     };
-  }, [fetchFo3d, url, filepath]);
+  }, [fetchFo3d, url, filepath, syntheticRawData, isWrappableDirectAsset]);
 
   const normalizedRawData = useMemo(() => {
     if (!rawData) {
