@@ -10,7 +10,7 @@
 
 # Show usage information
 usage() {
-    echo "Usage:  sh $0 [-h] [-b] [-d] [-e] [-m] [-p] [-o] [-u]
+    echo "Usage:  sh $0 [-h] [-b] [-d] [-e] [-m] [-p] [-o]
 
 Getting help:
 -h      Display this help message.
@@ -22,7 +22,6 @@ Custom installations:
 -m      Install MongoDB from scratch, rather than installing fiftyone-db.
 -p      Install only the core python package, not the App.
 -o      Install docs dependencies.
--u      Use uv pip instead of python -m pip.
 "
 }
 
@@ -34,7 +33,7 @@ DOCS_INSTALL=false
 SOURCE_ETA_INSTALL=false
 SCRATCH_MONGODB_INSTALL=false
 BUILD_APP=true
-USE_UV=false
+
 while getopts "hbdempou" FLAG; do
     case "${FLAG}" in
         h) SHOW_HELP=true ;;
@@ -44,7 +43,6 @@ while getopts "hbdempou" FLAG; do
         m) SCRATCH_MONGODB_INSTALL=true ;;
         p) BUILD_APP=false ;;
         o) DOCS_INSTALL=true ;;
-        u) USE_UV=true ;;
         *)
             usage
             exit 1
@@ -82,11 +80,7 @@ fi
 echo "Python $PY_VER is supported."
 
 # Ensure pip targets this Python interpreter
-if [ "$USE_UV" = true ]; then
-    if ! command -v uv >/dev/null 2>&1; then
-        echo "ERROR: -u flag given but 'uv' not found in PATH."
-        exit 1
-    fi
+if command -v uv >/dev/null 2>&1; then
     PIP="uv pip"
 else
     PIP="$PYTHON -m pip"
@@ -183,11 +177,7 @@ if [ "$SOURCE_BRAIN_INSTALL" = true ]; then
     fi
     if [ "$DEV_INSTALL" = true ]; then
         echo "Performing dev install"
-        if [ "$USE_UV" = true ]; then
-            sh install.sh -d -u
-        else
-            sh install.sh -d
-        fi
+        sh install.sh -d
     else
         echo "Performing install"
         $PIP install .
