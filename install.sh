@@ -10,7 +10,7 @@
 
 # Show usage information
 usage() {
-    echo "Usage:  sh $0 [-h] [-b] [-d] [-e] [-m] [-p] [-o]
+    echo "Usage:  sh $0 [-h] [-b] [-d] [-e] [-m] [-p] [-o] [-u]
 
 Getting help:
 -h      Display this help message.
