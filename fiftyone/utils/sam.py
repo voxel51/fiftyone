@@ -80,6 +80,15 @@ class _SAMPredictor:
             input_boxes, (img_hw[0], img_hw[1])
         )
 
+    def point_transform(self, points, img_hw, point_labels=None):
+        points, labels = _to_sam_points(
+            points,
+            height=img_hw[0],
+            width=img_hw[1],
+            point_labels=point_labels,
+        )
+        return points, labels
+
     def set_image(self, img, img_id=None, **kwargs):
         img_size = kwargs["img_size"]
         device = kwargs.pop("device", "cpu")
@@ -132,6 +141,7 @@ class SegmentAnythingImageGetItem(fout.GetItem):
         use_numpy (False): whether to use numpy arrays rather than PIL images
             and Torch tensors when loading data
         box_transform (None): SAM specific box transform function to apply
+        box_transform (None): SAM specific point transform function to apply
         validate_prompts (False): Whether to validate combination prompts
     """
 
@@ -141,6 +151,7 @@ class SegmentAnythingImageGetItem(fout.GetItem):
         transform=None,
         use_numpy=None,
         box_transform=None,
+        point_transform=None,
         validate_prompts=False,
         **kwargs,
     ):
@@ -150,6 +161,7 @@ class SegmentAnythingImageGetItem(fout.GetItem):
         self.transform = transform
         self.use_numpy = use_numpy
         self.box_transform = box_transform
+        self.point_transform = point_transform
         self.validate_prompts = validate_prompts
 
     def _set_mode(self, field_mapping):
@@ -261,8 +273,10 @@ class SegmentAnythingImageGetItem(fout.GetItem):
         return prompt_type
 
     def _preprocess_boxes(self, detections, img_hw):
-        if detections is None or len(detections.detections) == 0:
+        if detections is None:
             return None, None, None
+        if len(detections.detections) == 0:
+            raise AssertionError("No box prompts found for sample.")
 
         if self.box_transform is None:
             raise AssertionError(
@@ -278,14 +292,20 @@ class SegmentAnythingImageGetItem(fout.GetItem):
         return sam_boxes, boxes_xyxy, box_classes
 
     def _preprocess_points(self, keypoints, img_hw):
-        if keypoints is None or len(keypoints.keypoints) == 0:
+        if keypoints is None:
             return None, None, None
+        if len(keypoints.keypoints) == 0:
+            raise AssertionError("No point prompts found for sample.")
+
         sam_points = []
         sam_labels = []
         points_classes = []
         for kp in keypoints.keypoints:
-            _points, _labels = _to_sam_points(
-                kp.points, img_hw[1], img_hw[0], kp
+            point_labels = _get_sam_point_labels(kp)
+            _points, _labels = self.point_transform(
+                kp.points,
+                img_hw,
+                point_labels,
             )
             points_classes.append(kp.label)
             sam_points.append(_points)
@@ -366,11 +386,14 @@ class SAMSegmenterOutputProcessor(fout.OutputProcessor):
         if isinstance(scores, torch.Tensor):
             scores = scores.detach().cpu().numpy()
 
-        boxes = [None] * len(masks) if boxes is None else boxes
-
+        boxes = [None] * len(masks) if len(boxes) == 0 else boxes
         detections = []
+
         for box, label, mask, score in zip(boxes, labels, masks, scores):
-            score = min(1.0, np.max(scores))
+            if isinstance(mask, torch.Tensor):
+                score = score.detach().cpu().numpy()
+            score = min(1.0, np.max(score))
+
             if (
                 confidence_thresh is not None
                 and score is not None
@@ -382,11 +405,18 @@ class SAMSegmenterOutputProcessor(fout.OutputProcessor):
                 continue
 
             if isinstance(mask, torch.Tensor):
-                mask = mask.detach().cpu().int().numpy()
+                mask = mask.detach().cpu().numpy()
+
+            if len(mask.shape) == 3:
+                mask = np.squeeze(mask, axis=0)
+
+            if mask.dtype != bool:
+                mask = mask > self.mask_thresh
 
             if box is None:
                 # Compute box from mask
                 box = _mask_to_box(mask)
+
             x1, y1, x2, y2 = box
             bounding_box = [
                 x1 / width,
@@ -394,16 +424,11 @@ class SAMSegmenterOutputProcessor(fout.OutputProcessor):
                 (x2 - x1) / width,
                 (y2 - y1) / height,
             ]
-            if len(mask.shape) == 3:
-                mask = np.squeeze(mask, axis=0)
 
             mask = mask[
                 int(round(y1)) : int(round(y2)),
                 int(round(x1)) : int(round(x2)),
             ]
-
-            if mask.dtype != bool:
-                mask = mask > self.mask_thresh
 
             detections.append(
                 fol.Detection(
@@ -413,7 +438,6 @@ class SAMSegmenterOutputProcessor(fout.OutputProcessor):
                     confidence=score,
                 )
             )
-
         return fol.Detections(detections=detections)
 
 
@@ -568,6 +592,9 @@ class SegmentAnythingModel(fout.TorchImageModel):
             box_transform=get_item_args.pop(
                 "box_transform", self._sam_predictor.box_transform
             ),
+            point_transform=get_item_args.pop(
+                "point_transform", self._sam_predictor.point_transform
+            ),
             validate_prompts=get_item_args.pop("validate_prompts", False),
             **get_item_args,
         )
@@ -622,7 +649,6 @@ class SegmentAnythingModel(fout.TorchImageModel):
         elif prompt_type == "point":
             # Each point prompt has varying number of points.
             out_boxes, out_scores, out_masks = [], [], []
-
             for points, labels in zip(point_coords, point_labels):
                 (multi_mask, mask_scores, _,) = self._sam_predictor.predict(
                     device=self.device,
@@ -632,6 +658,13 @@ class SegmentAnythingModel(fout.TorchImageModel):
                         "multimask_output": True,
                     },
                 )
+
+                if multi_mask.shape[0] == 1:
+                    # Squeeze batch dimension
+                    multi_mask = multi_mask.squeeze(0)
+                if mask_scores.shape[0] == 1:
+                    # Squeeze batch dimension
+                    mask_scores = mask_scores.squeeze(0)
 
                 mask_index = self.config.points_mask_index
                 if mask_index is None:
@@ -663,7 +696,7 @@ class SegmentAnythingModel(fout.TorchImageModel):
                 )
                 if out_mask.any():
                     out_scores.append(out_score)
-                    out_masks.append(out_mask)
+                    out_masks.append(out_mask.squeeze(0))
         else:
             raise RuntimeError(f"Invalid prompt type: {prompt_type}")
 
@@ -697,15 +730,21 @@ def _to_sam_input(tensor):
     )
 
 
-def _to_sam_points(points, w, h, keypoint):
+def _get_sam_point_labels(keypoint):
+    if "sam_labels" in keypoint and keypoint.sam_labels is not None:
+        return keypoint.sam_labels
+    if "sam2_labels" in keypoint and keypoint.sam_labels is not None:
+        return keypoint.sam2_labels
+    return None
+
+
+def _to_sam_points(points, height, width, point_labels=None):
     points = np.array(points)
     valid_rows = ~np.isnan(points).any(axis=1)
-    scaled_points = np.array(points[valid_rows]) * np.array([w, h])
+    scaled_points = np.array(points[valid_rows]) * np.array([width, height])
     labels = (
-        np.array(keypoint.sam2_labels)[valid_rows]
-        if "sam2_labels" in keypoint and keypoint.sam2_labels is not None
-        else np.array(keypoint.sam_labels)[valid_rows]
-        if "sam_labels" in keypoint and keypoint.sam_labels is not None
+        np.array(point_labels)[valid_rows]
+        if point_labels is not None
         else np.ones(len(scaled_points))
     )
     return scaled_points.astype(np.float32), labels.astype(np.uint32)

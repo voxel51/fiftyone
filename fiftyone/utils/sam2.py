@@ -57,8 +57,16 @@ class _SAM2Predictor(fosam._SAMPredictor):
 
     def box_transform(self, boxes_xyxy, img_hw):
         return self.processor._transforms.transform_boxes(
-            torch.tensor(boxes_xyxy), normalize=True, orig_hw=img_hw
+            torch.tensor(boxes_xyxy, dtype=torch.float),
+            normalize=True,
+            orig_hw=img_hw,
         )
+
+    def point_transform(self, points, img_hw, point_labels=None):
+        norm_points, labels = super().point_transform(
+            points, (1, 1), point_labels
+        )
+        return self.processor._transforms.transform_coords(norm_points), labels
 
     def set_image(self, img, img_id=None, **kwargs):
         self.processor.set_image(img)
@@ -473,9 +481,9 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
                 classes_obj_id_map[ann_obj_id] = keypoint.label
                 points, labels = fosam._to_sam_points(
                     keypoint.points,
-                    self._curr_frame_width,
-                    self._curr_frame_height,
-                    keypoint,
+                    width=self._curr_frame_width,
+                    height=self._curr_frame_height,
+                    point_labels=fosam._get_sam_point_labels(keypoint),
                 )
 
                 _, _, _ = self.model.add_new_points_or_box(
