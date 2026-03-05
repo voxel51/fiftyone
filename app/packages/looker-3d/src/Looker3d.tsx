@@ -1,10 +1,5 @@
 import * as fos from "@fiftyone/state";
-import {
-  isFo3d,
-  isPointCloud,
-  setContainsPointCloud,
-} from "@fiftyone/utilities";
-import { useAtomValue } from "jotai";
+import { is3d, isDirect3dSamplePath, setContains3d } from "@fiftyone/utilities";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { ActionBar } from "./action-bar";
@@ -12,34 +7,37 @@ import { Container } from "./containers";
 import { Fo3dErrorBoundary } from "./ErrorBoundary";
 import { Leva } from "./fo3d/Leva";
 import { MediaTypeFo3dComponent } from "./fo3d/MediaTypeFo3d";
+import { getMediaPathForFo3dSample } from "./fo3d/utils";
 import { useHotkey } from "./hooks";
-import { MediaTypePcdComponent } from "./MediaTypePcd";
 import {
-  clearTransformStateSelector,
   currentActionAtom,
   fo3dContainsBackground,
   isColormapModalOpenAtom,
   isGridOnAtom,
   isLevaConfigPanelOnAtom,
-  selectedLabelForAnnotationAtom,
 } from "./state";
 
 /**
- * This component is responsible for rendering both "3d" as well as
- * "point_cloud" media types.
- *
- * While "point_cloud" media type is subsumed by "3d" media type, we still
- * need to support it for backwards compatibility.
+ * This component renders all supported 3D contexts through the FO3D pipeline,
+ * including legacy point-cloud media types.
  */
 export const Looker3d = () => {
   const mediaType = useRecoilValue(fos.mediaType);
-  const hasFo3dSlice = useRecoilValue(fos.hasFo3dSlice);
-  const hasPcdSlices = setContainsPointCloud(
-    useRecoilValue(fos.groupMediaTypesSet)
-  );
+  const has3dSlices = setContains3d(useRecoilValue(fos.groupMediaTypesSet));
   const isDynamicGroup = useRecoilValue(fos.isDynamicGroup);
   const parentMediaType = useRecoilValue(fos.parentMediaTypeSelector);
-  const mode = useAtomValue(fos.modalMode);
+  const sample = useRecoilValue(fos.modalSample);
+  const mediaField = useRecoilValue(fos.selectedMediaField(true));
+  const mediaPath = useMemo(
+    () => getMediaPathForFo3dSample(sample, mediaField),
+    [sample, mediaField]
+  );
+  const hasDirect3dPath = useMemo(
+    () =>
+      isDirect3dSamplePath(mediaPath) ||
+      isDirect3dSamplePath(sample.sample.filepath),
+    [mediaPath, sample]
+  );
 
   const [isHovering, setIsHovering] = useState(false);
   const timeout = useRef<ReturnType<typeof setTimeout>>(null);
@@ -57,19 +55,13 @@ export const Looker3d = () => {
     };
   }, []);
 
-  const shouldRenderPcdComponent = useMemo(
-    () =>
-      isPointCloud(mediaType) ||
-      (mediaType === "group" && hasPcdSlices) ||
-      (isDynamicGroup && isPointCloud(parentMediaType)),
-    [mediaType, hasPcdSlices, isDynamicGroup, parentMediaType]
-  );
   const shouldRenderFo3dComponent = useMemo(
     () =>
-      isFo3d(mediaType) ||
-      (mediaType === "group" && hasFo3dSlice) ||
-      (isDynamicGroup && isFo3d(parentMediaType)),
-    [mediaType, hasFo3dSlice, isDynamicGroup, parentMediaType]
+      is3d(mediaType) ||
+      hasDirect3dPath ||
+      (mediaType === "group" && has3dSlices) ||
+      (isDynamicGroup && is3d(parentMediaType)),
+    [mediaType, hasDirect3dPath, has3dSlices, isDynamicGroup, parentMediaType]
   );
 
   const sampleMap = useRecoilValue(fos.active3dSlicesToSampleMap);
@@ -174,21 +166,15 @@ export const Looker3d = () => {
     };
   }, [clear, isHovering]);
 
-  if (!shouldRenderPcdComponent && !shouldRenderFo3dComponent) {
+  if (!shouldRenderFo3dComponent) {
     return <div>Unsupported media type: {mediaType}</div>;
   }
-
-  const component = shouldRenderFo3dComponent ? (
-    <MediaTypeFo3dComponent key={thisSampleId} />
-  ) : (
-    <MediaTypePcdComponent key={thisSampleId} />
-  );
 
   return (
     <Fo3dErrorBoundary boundaryName="fo3d">
       <Leva />
       <Container onMouseOver={update} onMouseMove={update} data-cy="looker3d">
-        {component}
+        <MediaTypeFo3dComponent key={thisSampleId} />
         <ActionBar
           onMouseEnter={() => {
             hoveringRef.current = true;
