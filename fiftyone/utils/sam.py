@@ -214,14 +214,14 @@ class SegmentAnythingImageGetItem(fout.GetItem):
 
         if detections and not isinstance(detections, fol.Detections):
             # This may happen when using prompt_field as the only input prompt.
-            logger.warning(
+            logger.debug(
                 f"Invalid type for box prompts: {type(detections)}. Ignoring box prompts."
             )
             detections = None
 
         if keypoints and not isinstance(keypoints, fol.Keypoints):
             # This may happen when using prompt_field as the only input prompt.
-            logger.warning(
+            logger.debug(
                 f"Invalid type for point prompts: {type(keypoints)}. Ignoring point prompts."
             )
             keypoints = None
@@ -575,10 +575,10 @@ class SegmentAnythingModel(fout.TorchImageModel):
             value = field_mapping.pop("prompt_field")
             # Copy to box and/or point fields since prompt type is unknown.
             if "box_prompt_field" not in field_mapping:
-                logger.warning("Moving prompt_field to box_prompt_field")
+                logger.debug("Moving prompt_field to box_prompt_field")
                 field_mapping["box_prompt_field"] = value
             if "point_prompt_field" not in field_mapping:
-                logger.warning("Moving prompt_field to point_prompt_field")
+                logger.debug("Moving prompt_field to point_prompt_field")
                 field_mapping["point_prompt_field"] = value
 
         # TODO: Add an optional mode in GetItem which can be set via apply_model.
