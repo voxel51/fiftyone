@@ -13,6 +13,7 @@ export const useAnimationSelect = (
     animationClips.length > 0 ? 0 : null
   );
 
+  // This effect plays the selected clip and stops actions on cleanup.
   useEffect(() => {
     if (currentAnimationIndex === null) {
       return;

@@ -6,18 +6,21 @@ import {
   fo3dLoadingStatusThisSample,
 } from "../state";
 import { LoadingStatus } from "../types";
+import { useLoadingStatus } from "./use-loading-status";
 
 export const ALL_LOADING_COMPLETE = "All loading complete!";
 
+/** Tracks THREE loading-manager events and mirrors status/logs into Recoil. */
 export const useTrackStatus = () => {
+  const loadingStatusView = useLoadingStatus();
   const [logs, setLogs] = useRecoilState(fo3dAssetsParseStatusThisSample);
-  const [loadingStatus, setLoadingStatus] = useRecoilState(
+  const [loadingStatusState, setLoadingStatus] = useRecoilState(
     fo3dLoadingStatusThisSample
   );
 
   // Keep a ref to the latest loadingStatus to avoid stale closures
-  const loadingStatusRef = useRef(loadingStatus);
-  loadingStatusRef.current = loadingStatus;
+  const loadingStatusRef = useRef(loadingStatusState);
+  loadingStatusRef.current = loadingStatusState;
 
   // Note: these callbacks can fire synchronously during React's render phase
   // (e.g. when useLoader triggers a THREE loader).
@@ -84,4 +87,6 @@ export const useTrackStatus = () => {
       });
     });
   };
+
+  return loadingStatusView;
 };

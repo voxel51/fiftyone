@@ -25,6 +25,9 @@ interface UseFo3dCameraControlsConfigArgs {
   cameraControlsRef: React.RefObject<CameraControls>;
 }
 
+/**
+ * Syncs camera-controls enablement and custom mouse modifiers.
+ */
 export const useFo3dCameraControlsConfig = ({
   cameraControlsRef,
 }: UseFo3dCameraControlsConfigArgs) => {
@@ -77,6 +80,8 @@ export const useFo3dCameraControlsConfig = ({
     isCurrentlyTransforming,
   ]);
 
+  // This effect reapplies camera control config on load -
+  // and when interaction state changes (tracked in callback).
   useEffect(() => {
     updateCameraControlsConfig();
   }, [updateCameraControlsConfig]);

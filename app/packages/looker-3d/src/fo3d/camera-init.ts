@@ -1,4 +1,4 @@
-import { Box3, Vector3, type Vector3Tuple } from "three";
+import { type Box3, Vector3, type Vector3Tuple } from "three";
 import { DEFAULT_CAMERA_POSITION } from "../constants";
 import type { Looker3dSettings } from "../settings";
 import type { SavedCameraState } from "../types";

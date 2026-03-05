@@ -10,17 +10,17 @@ import {
 } from "three";
 import { PLYLoader } from "three/examples/jsm/loaders/PLYLoader";
 import { HoveredPointMarker } from "../../components/HoveredPointMarker";
-import type {
-  FoMeshBasicMaterialProps,
-  FoMeshMaterial,
-  FoPointcloudMaterialProps,
-  PlyAsset,
-} from "../../hooks";
 import { useFoLoader } from "../../hooks/use-fo-loaders";
 import { useMeshMaterialControls } from "../../hooks/use-mesh-material-controls";
 import { usePointCloudHoverFromRaycast } from "../../hooks/use-point-cloud-hover-from-raycast";
 import { useFo3dContext } from "../context";
 import { usePcdMaterial } from "../point-cloud/use-pcd-material";
+import type {
+  FoMeshBasicMaterialProps,
+  FoMeshMaterial,
+  FoPointcloudMaterialProps,
+  PlyAsset,
+} from "../render-types";
 import { getBasePathForTextures, getResolvedUrlForFo3dAsset } from "../utils";
 
 interface PlyProps {

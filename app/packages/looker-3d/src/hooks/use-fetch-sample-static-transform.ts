@@ -16,7 +16,7 @@ export const useFetchSampleStaticTransform = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  // This effect resets the cache and loading state when the dataset or sample changes
+  // This effect resets cache and loading state when dataset or sample changes.
   useEffect(() => {
     listCacheRef.current = null;
     setIsLoading(false);
