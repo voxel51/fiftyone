@@ -1695,8 +1695,15 @@ HDF5 format as follows:
 
 .. note::
 
-    You can provide the ``hdf5_path`` argument instead of ``dataset_dir`` in
-    the examples above to directly specify the path to the HDF5 file to load.
+    To use this dataset type, you must have the ``h5py`` package installed:
+
+    .. code-block:: shell
+
+        pip install h5py
+
+    You can also provide ``dataset_dir`` instead of ``hdf5_path`` in the
+    examples above. In that case, the importer will look for the first
+    ``.h5`` or ``.hdf5`` file in the directory.
     See :class:`HDF5UnlabeledImageDatasetImporter <fiftyone.utils.hdf5.HDF5UnlabeledImageDatasetImporter>`
     for details.
 
@@ -1801,8 +1808,15 @@ stored in HDF5 format as follows:
 
 .. note::
 
-    You can provide the ``hdf5_path`` argument instead of ``dataset_dir`` in
-    the examples above to directly specify the path to the HDF5 file to load.
+    To use this dataset type, you must have the ``h5py`` package installed:
+
+    .. code-block:: shell
+
+        pip install h5py
+
+    You can also provide ``dataset_dir`` instead of ``hdf5_path`` in the
+    examples above. In that case, the importer will look for the first
+    ``.h5`` or ``.hdf5`` file in the directory.
     See :class:`HDF5ImageDatasetImporter <fiftyone.utils.hdf5.HDF5ImageDatasetImporter>`
     for details.
 
