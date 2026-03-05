@@ -516,9 +516,8 @@ def _resolve_hdf5_path(hdf5_path):
 
     # Also try .hdf5 extension if no .h5 matches found
     if not matches:
-        base_dir = os.path.dirname(hdf5_path)
-        if base_dir:
-            matches = glob.glob(os.path.join(base_dir, "*.hdf5"))
+        base_dir = os.path.dirname(hdf5_path) or "."
+        matches = glob.glob(os.path.join(base_dir, "*.hdf5"))
 
     if not matches:
         raise FileNotFoundError(
