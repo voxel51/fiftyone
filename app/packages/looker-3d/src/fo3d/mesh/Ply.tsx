@@ -32,6 +32,29 @@ interface PlyProps {
   children?: React.ReactNode;
 }
 
+const DEFAULT_PLY_MATERIAL: FoMeshMaterial = {
+  _type: "MeshStandardMaterial",
+  color: "#ffffff",
+  emissiveColor: "#000000",
+  emissiveIntensity: 0,
+  metalness: 0,
+  roughness: 1,
+  opacity: 1,
+  wireframe: false,
+  vertexColors: true,
+};
+
+export const inferPlyIsPointCloud = (
+  geometry: BufferGeometry | null | undefined,
+  explicitIsPointCloud: boolean | undefined
+) => {
+  if (typeof explicitIsPointCloud === "boolean") {
+    return explicitIsPointCloud;
+  }
+
+  return (geometry?.getIndex()?.count ?? 0) === 0;
+};
+
 const PlyWithPointsMaterial = ({
   name,
   geometry,
@@ -199,6 +222,14 @@ export const Ply = ({
 
   const [isUsingVertexColors, setIsUsingVertexColors] = useState(false);
   const [isGeometryResolved, setIsGeometryResolved] = useState(false);
+  const resolvedDefaultMaterial = useMemo(
+    () => defaultMaterial ?? DEFAULT_PLY_MATERIAL,
+    [defaultMaterial]
+  );
+  const shouldRenderAsPointCloud = useMemo(
+    () => inferPlyIsPointCloud(geometry, isPcd),
+    [geometry, isPcd]
+  );
 
   useEffect(() => {
     if (!geometry) {
@@ -228,12 +259,12 @@ export const Ply = ({
       return null;
     }
 
-    if (isPcd) {
+    if (shouldRenderAsPointCloud) {
       return (
         <PlyWithPointsMaterial
           name={name}
           geometry={geometry}
-          defaultMaterial={defaultMaterial}
+          defaultMaterial={resolvedDefaultMaterial}
           quaternion={quaternion}
           position={position}
           scale={scale}
@@ -247,7 +278,7 @@ export const Ply = ({
         <PlyWithMaterialOverride
           name={name}
           geometry={geometry}
-          defaultMaterial={defaultMaterial}
+          defaultMaterial={resolvedDefaultMaterial}
         />
       );
     }
@@ -256,16 +287,16 @@ export const Ply = ({
       <PlyWithNoMaterialOverride
         name={name}
         geometry={geometry}
-        defaultMaterial={defaultMaterial}
+        defaultMaterial={resolvedDefaultMaterial}
       />
     );
   }, [
     isGeometryResolved,
     isUsingVertexColors,
     geometry,
-    isPcd,
+    shouldRenderAsPointCloud,
     name,
-    defaultMaterial,
+    resolvedDefaultMaterial,
     position,
     scale,
     quaternion,
