@@ -5,6 +5,7 @@ HDF5 utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import glob
 import logging
 import os
 
@@ -229,6 +230,8 @@ class HDF5ImageDatasetImporter(
             default="*.h5",
         )
 
+        hdf5_path = _resolve_hdf5_path(hdf5_path)
+
         if images_dir is None:
             images_dir = os.path.dirname(hdf5_path)
             logger.warning(
@@ -347,6 +350,8 @@ class HDF5UnlabeledImageDatasetImporter(
             labels_path=hdf5_path,
             default="*.h5",
         )
+
+        hdf5_path = _resolve_hdf5_path(hdf5_path)
 
         if images_dir is None:
             images_dir = os.path.dirname(hdf5_path)
@@ -477,3 +482,42 @@ def _parse_image(img_data, force_rgb=False):
         # 3-channel images are already RGB; no conversion needed
 
     return img
+
+
+def _resolve_hdf5_path(hdf5_path):
+    """Resolves an HDF5 path that may contain glob patterns.
+
+    If the path is a concrete file, it is returned as-is. Otherwise, glob
+    resolution is attempted for ``.h5`` and ``.hdf5`` extensions.
+
+    Args:
+        hdf5_path: a path or glob pattern for the HDF5 file
+
+    Returns:
+        the resolved path to the HDF5 file
+
+    Raises:
+        FileNotFoundError: if no matching HDF5 file is found
+    """
+    if hdf5_path is None:
+        return None
+
+    if os.path.isfile(hdf5_path):
+        return hdf5_path
+
+    # Try glob resolution (handles patterns like "*.h5")
+    matches = glob.glob(hdf5_path)
+
+    # Also try .hdf5 extension if no .h5 matches found
+    if not matches:
+        base_dir = os.path.dirname(hdf5_path)
+        if base_dir:
+            matches = glob.glob(os.path.join(base_dir, "*.hdf5"))
+
+    if not matches:
+        raise FileNotFoundError(
+            "No HDF5 file found matching '%s'. Ensure the file exists "
+            "with a .h5 or .hdf5 extension" % hdf5_path
+        )
+
+    return matches[0]
