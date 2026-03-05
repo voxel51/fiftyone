@@ -46,9 +46,11 @@ export class FoWebServer {
         "--clean_start",
       ]);
 
+      console.log(procString);
+
       const proc = spawn(procString, { shell: true });
 
-      if (process.env.LOG_PROCESS_OUTPUT?.toLocaleLowerCase() === "true") {
+      if (true) {
         proc.stdout.on("data", (data) => {
           console.log(`stdout: ${data}`);
         });
@@ -68,10 +70,16 @@ export class FoWebServer {
         }...`
       );
 
-      await waitOn({
-        resources: [`http://0.0.0.0:${this.#port}`],
-        timeout: Duration.Seconds(30),
+      const promise = new Promise((resolve) => {
+        setTimeout(() => {
+          resolve();
+        }, 2000);
       });
+      await promise;
+      // await waitOn({
+      //   resources: [`http://0.0.0.0:${this.#port}`],
+      //   timeout: Duration.Seconds(30),
+      // });
       console.log("webserver started");
     } catch (e) {
       console.log(`webserver starting failed`, e);
