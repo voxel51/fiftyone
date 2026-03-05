@@ -153,7 +153,7 @@ def _is_tf_records(dataset_type):
     )
 
 
-def _is_hdf5(dataset_type):
+def _is_hdf5(dataset_type) -> bool:
     if inspect.isclass(dataset_type):
         dataset_type = dataset_type()
 
