@@ -183,7 +183,11 @@ if [ "$SOURCE_BRAIN_INSTALL" = true ]; then
     fi
     if [ "$DEV_INSTALL" = true ]; then
         echo "Performing dev install"
-        sh install.sh -d
+        if [ "$USE_UV" = true ]; then
+            sh install.sh -d -u
+        else
+            sh install.sh -d
+        fi
     else
         echo "Performing install"
         $PIP install .
