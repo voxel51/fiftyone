@@ -13,10 +13,6 @@ const groupDatasetName = getUniqueDatasetNameWithPrefix("group-linking");
 
 const id = "000000000000000000000000";
 
-test.afterAll(async ({ foWebServer }) => {
-  await foWebServer.stopWebServer();
-});
-
 test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
   await foWebServer.startWebServer();
 

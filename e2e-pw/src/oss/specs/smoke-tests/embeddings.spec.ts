@@ -22,10 +22,6 @@ const test = base.extend<{
   },
 });
 
-test.afterAll(async ({ foWebServer }) => {
-  await foWebServer.stopWebServer();
-});
-
 test.beforeAll(async ({ fiftyoneLoader, foWebServer }, testInfo) => {
   // embeddings generation may take a while on slow computers
   testInfo.setTimeout(Duration.Minutes(2));

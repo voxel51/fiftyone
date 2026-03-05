@@ -21,10 +21,6 @@ const extensionDatasetNamePairs = ["pcd", "png"].map(
     ] as const
 );
 
-test.afterAll(async ({ foWebServer }) => {
-  await foWebServer.stopWebServer();
-});
-
 test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
   await foWebServer.startWebServer();
   let pythonCode = `

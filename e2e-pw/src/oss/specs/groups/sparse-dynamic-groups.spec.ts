@@ -14,10 +14,6 @@ const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
 
 const datasetName = getUniqueDatasetNameWithPrefix(`sparse-dynamic-groups`);
 
-test.afterAll(async ({ foWebServer }) => {
-  await foWebServer.stopWebServer();
-});
-
 test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
   await foWebServer.startWebServer();
   await fiftyoneLoader.executePythonCode(`

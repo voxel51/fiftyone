@@ -57,10 +57,6 @@ const writeFrames = async () => {
   );
 };
 
-test.afterAll(async ({ foWebServer }) => {
-  await foWebServer.stopWebServer();
-});
-
 test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
   await foWebServer.startWebServer();
   await writeFrames();
