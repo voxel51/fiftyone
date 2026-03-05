@@ -481,9 +481,6 @@ export const fo3dSlice = selector({
       .filter(({ mediaType }) => isFo3d(mediaType))
       .map(({ name }) => name);
 
-    if (fo3dSlices?.length > 1)
-      throw new Error("can't have more than one fo3d slice");
-
     return fo3dSlices[0];
   },
 });
