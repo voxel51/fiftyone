@@ -428,6 +428,8 @@ def _parse_image(img_data, force_rgb=False):
         img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
         if img is None:
             raise ValueError("Failed to decode image bytes from HDF5 dataset")
+        # imdecode returns BGR; convert to RGB for in-memory convention
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     elif isinstance(img_data, np.ndarray):
         if img_data.ndim == 1:
             # 1D array of encoded bytes
@@ -436,6 +438,8 @@ def _parse_image(img_data, force_rgb=False):
                 raise ValueError(
                     "Failed to decode image bytes from HDF5 dataset"
                 )
+            # imdecode returns BGR; convert to RGB for in-memory convention
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         elif img_data.ndim in (2, 3):
             # Raw pixel array (H, W) or (H, W, C)
             img = img_data.astype(np.uint8)
@@ -450,6 +454,8 @@ def _parse_image(img_data, force_rgb=False):
         img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
         if img is None:
             raise ValueError("Failed to decode image bytes from HDF5 dataset")
+        # imdecode returns BGR; convert to RGB for in-memory convention
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     else:
         raise TypeError(
             "Unsupported image data type %s from HDF5 dataset" % type(img_data)
@@ -459,8 +465,8 @@ def _parse_image(img_data, force_rgb=False):
         if img.ndim == 2:
             img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
         elif img.ndim == 3 and img.shape[2] == 4:
-            img = cv2.cvtColor(img, cv2.COLOR_BGRA2RGB)
-        elif img.ndim == 3 and img.shape[2] == 3:
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            # RGBA to RGB: drop alpha channel
+            img = img[:, :, :3]
+        # 3-channel images are already RGB; no conversion needed
 
     return img
