@@ -261,6 +261,9 @@ class HDF5ImageDatasetImporter(
     def __next__(self):
         return next(self._iter_dataset_ingestor)
 
+    def __len__(self):
+        return len(self._dataset_ingestor)
+
     @property
     def has_dataset_info(self):
         return False
@@ -380,6 +383,9 @@ class HDF5UnlabeledImageDatasetImporter(
 
     def __next__(self):
         return next(self._iter_dataset_ingestor)
+
+    def __len__(self):
+        return len(self._dataset_ingestor)
 
     @property
     def has_dataset_info(self):
