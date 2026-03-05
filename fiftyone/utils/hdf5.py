@@ -442,7 +442,14 @@ def _parse_image(img_data, force_rgb=False):
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         elif img_data.ndim in (2, 3):
             # Raw pixel array (H, W) or (H, W, C)
-            img = img_data.astype(np.uint8)
+            if img_data.dtype.kind == "f":
+                # Float images in [0, 1] range: scale to [0, 255]
+                if img_data.max() <= 1.0:
+                    img = (img_data * 255).astype(np.uint8)
+                else:
+                    img = img_data.astype(np.uint8)
+            else:
+                img = img_data.astype(np.uint8)
         else:
             raise ValueError(
                 "Unsupported image data shape %s from HDF5 dataset"
