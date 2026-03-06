@@ -26,7 +26,7 @@ import torch
 logger = logging.getLogger(__name__)
 
 
-def _ensure_depth_anything_3():
+def _ensure_depth_anything_3() -> None:
     if not fou.ensure_package("depth-anything-3", error_level=2):
         fou.install_package(
             "git+https://github.com/ByteDance-Seed/depth-anything-3.git"
@@ -226,7 +226,7 @@ class DepthAnythingV3ModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
             to extract intermediate features from (e.g. ``[0, 5, 10]``)
     """
 
-    def __init__(self, d):
+    def __init__(self, d: dict) -> None:
         d = self.init(d)
         super().__init__(d)
 
@@ -283,12 +283,12 @@ class DepthAnythingV3Model(fout.TorchImageModel):
         config: a :class:`DepthAnythingV3ModelConfig`
     """
 
-    def _download_model(self, config):
+    def _download_model(self, config: DepthAnythingV3ModelConfig) -> None:
         from huggingface_hub import snapshot_download
 
         snapshot_download(config.name_or_path)
 
-    def _load_model(self, config):
+    def _load_model(self, config: DepthAnythingV3ModelConfig) -> torch.nn.Module:
         model = da3_api.DepthAnything3.from_pretrained(config.name_or_path)
         model = model.to(self._device)
         if self.using_half_precision:
@@ -297,7 +297,7 @@ class DepthAnythingV3Model(fout.TorchImageModel):
         return model
 
     @property
-    def media_type(self):
+    def media_type(self) -> str:
         return "image"
 
     def _forward_pass(self, imgs: List[np.ndarray]) -> Dict[str, Any]:
