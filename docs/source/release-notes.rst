@@ -32,7 +32,7 @@ FiftyOne 1.13.4
 
 App
 
-- Ensure the release of `starlette 1.0` will not negatively impact the App.
+- Ensured the release of `starlette 1.0` will not negatively impact the App.
   `#7137 <https://github.com/voxel51/fiftyone/pull/7137>`_
 
 
