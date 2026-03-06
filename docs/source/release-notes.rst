@@ -7,6 +7,8 @@ FiftyOne Enterprise 2.16.4
 --------------------------
 *Released March 9, 2026*
 
+Includes all updates from :ref:`FiftyOne 1.13.4 <release-notes-v1.13.4>`, plus:
+
 Cloud Media
 
 - Fixed a race condition where concurrent reads and writes of cloud credential
@@ -19,7 +21,19 @@ Cloud Media
 Auto-Labeling
 
 - Fixed a bug where :ref:`auto-labeling <verified-auto-labeling>` may fail if a
-  mounted directory is not yet initialized
+  mounted directory is not yet initialized.
+
+
+.. _release-notes-v1.13.4:
+
+FiftyOne 1.13.4
+---------------
+*Released March 9, 2026*
+
+App
+
+- Ensure the release of `starlette 1.0` will not negatively impact the App.
+  `#7137 <https://github.com/voxel51/fiftyone/pull/7137>`_
 
 
 FiftyOne Enterprise 2.16.3
