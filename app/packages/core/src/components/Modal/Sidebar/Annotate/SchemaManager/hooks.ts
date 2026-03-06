@@ -2,7 +2,6 @@
  * Custom hooks for SchemaManager
  */
 
-import { useOperatorExecutor } from "@fiftyone/operators";
 import {
   datasetSampleCount,
   groupMediaTypesMap,
@@ -12,6 +11,10 @@ import {
   useNotification,
   usePreferredGroupAnnotationSlice,
 } from "@fiftyone/state";
+import {
+  useSchemaManager,
+  type UpdateSchemaRequest,
+} from "../useSchemaManager";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useAtomCallback } from "jotai/utils";
 import { useRecoilValue } from "recoil";
@@ -23,6 +26,7 @@ import {
   activeSchemaTab,
   addToActiveSchemas,
   currentField,
+  exploreActiveFields,
   fieldAttributeCount,
   fieldType,
   fieldTypes,
@@ -206,6 +210,24 @@ export const useIsFieldActive = (field: string) => {
   return activeFields?.includes(field) ?? false;
 };
 
+/**
+ * Hook that returns a callback to add a field to exploreActiveFields,
+ * ensuring it's immediately visible in the Annotate sidebar.
+ */
+export const useAddToExploreActiveFields = () => {
+  const currentFields = useAtomValue(exploreActiveFields);
+  const setFields = useSetAtom(exploreActiveFields);
+
+  return useCallback(
+    (field: string) => {
+      if (currentFields && !currentFields.includes(field)) {
+        setFields([...currentFields, field]);
+      }
+    },
+    [currentFields, setFields]
+  );
+};
+
 // =============================================================================
 // Field Data Hooks
 // =============================================================================
@@ -337,8 +359,7 @@ export const useToggleFieldVisibility = (field: string) => {
   const addToActive = useSetAtom(addToActiveSchemas);
   const removeFromActive = useSetAtom(removeFromActiveSchemas);
   const activeFields = useAtomValue(activeLabelSchemas);
-  const activateOperator = useOperatorExecutor("activate_label_schemas");
-  const deactivateOperator = useOperatorExecutor("deactivate_label_schemas");
+  const { activateSchemas, deactivateSchemas } = useSchemaManager();
 
   const isActive = activeFields?.includes(field) ?? false;
 
@@ -346,36 +367,22 @@ export const useToggleFieldVisibility = (field: string) => {
     const fieldSet = new Set([field]);
     if (isActive) {
       removeFromActive(fieldSet);
-      deactivateOperator.execute(
-        { fields: [field] },
-        {
-          callback: (result) => {
-            if (result.error) {
-              addToActive(fieldSet); // rollback on failure
-            }
-          },
-        }
-      );
+      deactivateSchemas({ fields: [field] }).catch(() => {
+        addToActive(fieldSet); // rollback on failure
+      });
     } else {
       addToActive(fieldSet);
-      activateOperator.execute(
-        { fields: [field] },
-        {
-          callback: (result) => {
-            if (result.error) {
-              removeFromActive(fieldSet); // rollback on failure
-            }
-          },
-        }
-      );
+      activateSchemas({ fields: [field] }).catch(() => {
+        removeFromActive(fieldSet); // rollback on failure
+      });
     }
   }, [
     field,
     isActive,
     addToActive,
     removeFromActive,
-    activateOperator,
-    deactivateOperator,
+    activateSchemas,
+    deactivateSchemas,
   ]);
 
   return { isActive, toggle };
@@ -391,12 +398,12 @@ export const useToggleFieldVisibility = (field: string) => {
 export const useActivateFields = () => {
   const addToActiveSchema = useSetAtom(addToActiveSchemas);
   const [selected, setSelected] = useAtom(selectedHiddenFields);
-  const activateFields = useOperatorExecutor("activate_label_schemas");
+  const { activateSchemas } = useSchemaManager();
   const setMessage = useNotification();
 
   return useCallback(() => {
     addToActiveSchema(selected);
-    activateFields.execute({ fields: Array.from(selected) });
+    activateSchemas({ fields: Array.from(selected) });
     setSelected(new Set());
     setMessage({
       msg: `${selected.size} schema${
@@ -404,7 +411,7 @@ export const useActivateFields = () => {
       } moved to active fields`,
       variant: "success",
     });
-  }, [activateFields, addToActiveSchema, selected, setSelected, setMessage]);
+  }, [activateSchemas, addToActiveSchema, selected, setSelected, setMessage]);
 };
 
 /**
@@ -413,12 +420,12 @@ export const useActivateFields = () => {
 export const useDeactivateFields = () => {
   const removeFromActiveSchema = useSetAtom(removeFromActiveSchemas);
   const [selected, setSelected] = useAtom(selectedActiveFields);
-  const deactivateFields = useOperatorExecutor("deactivate_label_schemas");
+  const { deactivateSchemas } = useSchemaManager();
   const setMessage = useNotification();
 
   return useCallback(() => {
     removeFromActiveSchema(selected);
-    deactivateFields.execute({ fields: Array.from(selected) });
+    deactivateSchemas({ fields: Array.from(selected) });
     setSelected(new Set());
     setMessage({
       msg: `${selected.size} schema${
@@ -427,7 +434,7 @@ export const useDeactivateFields = () => {
       variant: "success",
     });
   }, [
-    deactivateFields,
+    deactivateSchemas,
     removeFromActiveSchema,
     selected,
     setSelected,
@@ -451,8 +458,7 @@ export const useFullSchemaEditor = () => {
   const setShowModal = useSetAtom(showModal);
   const setMessage = useNotification();
 
-  const validate = useOperatorExecutor("validate_label_schemas");
-  const updateSchema = useOperatorExecutor("update_label_schema");
+  const { validateSchemas, updateSchema: updateSchemaOp } = useSchemaManager();
 
   // Reset JSON editor state on unmount
   useEffect(() => {
@@ -507,16 +513,13 @@ export const useFullSchemaEditor = () => {
           }
         }
 
-        validate.execute(
-          { label_schemas: labelSchemas },
-          {
-            skipErrorNotification: true,
-            callback: (result) => {
-              setErrors(result.result?.errors ?? []);
-              setIsValidating(false);
-            },
-          }
-        );
+        validateSchemas({ label_schemas: labelSchemas })
+          .then((result) => {
+            setErrors(result?.errors ?? []);
+          })
+          .finally(() => {
+            setIsValidating(false);
+          });
       } catch (e) {
         if (e instanceof SyntaxError) {
           setErrors([e.message]);
@@ -524,7 +527,7 @@ export const useFullSchemaEditor = () => {
         setIsValidating(false);
       }
     },
-    [setDraftJson, validate, setErrors]
+    [setDraftJson, validateSchemas, setErrors]
   );
 
   const save = useCallback(async () => {
@@ -542,17 +545,15 @@ export const useFullSchemaEditor = () => {
       const parsed = JSON.parse(draftJson);
 
       // Update each field's label_schema
-      const updates: Promise<void>[] = [];
+      const updates: Promise<unknown>[] = [];
       for (const [field, data] of Object.entries(parsed)) {
         if (data && typeof data === "object" && "label_schema" in data) {
           const labelSchema = (data as { label_schema: unknown }).label_schema;
           updates.push(
-            new Promise((resolve) => {
-              updateSchema.execute(
-                { field, label_schema: labelSchema },
-                { callback: () => resolve() }
-              );
-            })
+            updateSchemaOp({
+              field,
+              label_schema: labelSchema,
+            } as UpdateSchemaRequest)
           );
         }
       }
@@ -577,7 +578,7 @@ export const useFullSchemaEditor = () => {
   }, [
     draftJson,
     errors,
-    updateSchema,
+    updateSchemaOp,
     setDraftJson,
     setErrors,
     setMessage,

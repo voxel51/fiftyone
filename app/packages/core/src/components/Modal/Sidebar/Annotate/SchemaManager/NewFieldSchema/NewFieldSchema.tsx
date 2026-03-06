@@ -7,7 +7,6 @@
  */
 
 import { scrollable } from "@fiftyone/components";
-import { useSetAtom, useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useNotification, useRefresh } from "@fiftyone/state";
@@ -24,6 +23,7 @@ import {
 } from "@voxel51/voodo";
 
 import {
+  useAddToExploreActiveFields,
   useExitNewFieldMode,
   useLabelSchemasData,
   useMediaType,
@@ -31,7 +31,6 @@ import {
   useSetLabelSchemasData,
 } from "../hooks";
 
-import { exploreActiveFields } from "../../state";
 import { useSchemaManager } from "../../useSchemaManager";
 
 import AttributesSection from "../EditFieldLabelSchema/GUIContent/AttributesSection";
@@ -80,8 +79,7 @@ const NewFieldSchema = () => {
   const currentMediaType = useMediaType();
   const is3dMedia = !!(currentMediaType && is3d(currentMediaType));
 
-  const currentExploreFields = useAtomValue(exploreActiveFields);
-  const setExploreFields = useSetAtom(exploreActiveFields);
+  const addToExploreActiveFields = useAddToExploreActiveFields();
   const notify = useNotification();
   const refreshSchema = useRefresh();
 
@@ -237,9 +235,7 @@ const NewFieldSchema = () => {
       // Add the new field to exploreActiveFields so it's
       // immediately visible (visibleLabelSchemas intersects
       // activeLabelSchemas with exploreActiveFields).
-      if (currentExploreFields && !currentExploreFields.includes(trimmedName)) {
-        setExploreFields([...currentExploreFields, trimmedName]);
-      }
+      addToExploreActiveFields(trimmedName);
 
       refreshSchema();
       exitNewFieldMode();
@@ -253,12 +249,12 @@ const NewFieldSchema = () => {
       setIsCreating(false);
     }
   }, [
+    addToExploreActiveFields,
     attributes,
     canCreate,
     category,
     classes,
     createAndActivateField,
-    currentExploreFields,
     exitNewFieldMode,
     fieldName,
     labelType,
@@ -269,7 +265,6 @@ const NewFieldSchema = () => {
     primitiveType,
     refreshSchema,
     setActiveLabelSchemas,
-    setExploreFields,
     setLabelSchemasData,
   ]);
 

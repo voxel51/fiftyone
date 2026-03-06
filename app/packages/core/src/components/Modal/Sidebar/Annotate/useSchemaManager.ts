@@ -273,13 +273,23 @@ type OperatorResponse<T> = {
 type OperatorCallback<T> = (response: OperatorResponse<T>) => void;
 
 /**
+ * Extra options forwarded to the operator executor.
+ */
+type OperatorExecuteOptions = {
+  skipErrorNotification?: boolean;
+};
+
+/**
  * Type representing an operator.
  *
  * This type is an incomplete definition and exists for type-safety of
  * logic in this file.
  */
 type Operator<T, R> = {
-  execute: (request: T, options: { callback?: OperatorCallback<R> }) => void;
+  execute: (
+    request: T,
+    options: { callback?: OperatorCallback<R> } & OperatorExecuteOptions
+  ) => void;
 };
 
 /**
@@ -291,10 +301,12 @@ type Operator<T, R> = {
  *
  * @param operator Operator to execute
  * @param request Request body
+ * @param options Extra options forwarded to the operator executor
  */
 const operatorAsPromise = <T, R>(
   operator: Operator<T, R>,
-  request: T
+  request: T,
+  options?: OperatorExecuteOptions
 ): Promise<R> => {
   return new Promise((resolve, reject) => {
     const operatorCallback: OperatorCallback<R> = (
@@ -307,7 +319,7 @@ const operatorAsPromise = <T, R>(
       }
     };
 
-    operator.execute(request, { callback: operatorCallback });
+    operator.execute(request, { callback: operatorCallback, ...options });
   });
 };
 
@@ -418,7 +430,9 @@ export const useSchemaManager = (): SchemaManager => {
 
   const validateSchemas = useCallback(
     (request: ValidateSchemasRequest): Promise<ValidateSchemasResponse> => {
-      return operatorAsPromise(validateSchemasOperator, request);
+      return operatorAsPromise(validateSchemasOperator, request, {
+        skipErrorNotification: true,
+      });
     },
     [validateSchemasOperator]
   );
