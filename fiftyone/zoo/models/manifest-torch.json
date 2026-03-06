@@ -26,13 +26,24 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_max_dim": 2048,
-                    "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225],
+                    "image_mean": [
+                        0.485,
+                        0.456,
+                        0.406
+                    ],
+                    "image_std": [
+                        0.229,
+                        0.224,
+                        0.225
+                    ],
                     "embeddings_layer": "<classifier.6"
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -85,12 +96,23 @@
                     },
                     "mask_targets_path": "{{eta-resources}}/voc-labels.txt",
                     "image_dim": 520,
-                    "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225]
+                    "image_mean": [
+                        0.485,
+                        0.456,
+                        0.406
+                    ],
+                    "image_std": [
+                        0.229,
+                        0.224,
+                        0.225
+                    ]
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -107,7 +129,10 @@
                 "official"
             ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -135,7 +160,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "segment-anything"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "segment-anything"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -183,7 +212,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "segment-anything"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "segment-anything"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -231,7 +264,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "segment-anything"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "segment-anything"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -274,12 +311,18 @@
                 "type": "fiftyone.utils.sam2.SegmentAnything2ImageModel",
                 "config": {
                     "entrypoint_fcn": "sam2.build_sam.build_sam2",
-                    "entrypoint_args": { "model_cfg": "sam2_hiera_t.yaml" },
+                    "entrypoint_args": {
+                        "model_cfg": "sam2_hiera_t.yaml"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "sam2"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "sam2"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -287,7 +330,12 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "official"],
+            "tags": [
+                "segment-anything",
+                "torch",
+                "zero-shot",
+                "official"
+            ],
             "training_data": [
                 {
                     "name": "SA-V",
@@ -319,12 +367,18 @@
                 "type": "fiftyone.utils.sam2.SegmentAnything2ImageModel",
                 "config": {
                     "entrypoint_fcn": "sam2.build_sam.build_sam2",
-                    "entrypoint_args": { "model_cfg": "sam2_hiera_s.yaml" },
+                    "entrypoint_args": {
+                        "model_cfg": "sam2_hiera_s.yaml"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "sam2"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "sam2"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -370,12 +424,18 @@
                 "type": "fiftyone.utils.sam2.SegmentAnything2ImageModel",
                 "config": {
                     "entrypoint_fcn": "sam2.build_sam.build_sam2",
-                    "entrypoint_args": { "model_cfg": "sam2_hiera_b+.yaml" },
+                    "entrypoint_args": {
+                        "model_cfg": "sam2_hiera_b+.yaml"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "sam2"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "sam2"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -421,12 +481,18 @@
                 "type": "fiftyone.utils.sam2.SegmentAnything2ImageModel",
                 "config": {
                     "entrypoint_fcn": "sam2.build_sam.build_sam2",
-                    "entrypoint_args": { "model_cfg": "sam2_hiera_l.yaml" },
+                    "entrypoint_args": {
+                        "model_cfg": "sam2_hiera_l.yaml"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "sam2"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "sam2"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -472,11 +538,17 @@
                 "type": "fiftyone.utils.sam2.SegmentAnything2VideoModel",
                 "config": {
                     "entrypoint_fcn": "sam2.build_sam.build_sam2_video_predictor",
-                    "entrypoint_args": { "model_cfg": "sam2_hiera_t.yaml" }
+                    "entrypoint_args": {
+                        "model_cfg": "sam2_hiera_t.yaml"
+                    }
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "sam2"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "sam2"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -523,12 +595,18 @@
                 "type": "fiftyone.utils.sam2.SegmentAnything2VideoModel",
                 "config": {
                     "entrypoint_fcn": "sam2.build_sam.build_sam2_video_predictor",
-                    "entrypoint_args": { "model_cfg": "sam2_hiera_s.yaml" },
+                    "entrypoint_args": {
+                        "model_cfg": "sam2_hiera_s.yaml"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "sam2"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "sam2"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -575,12 +653,18 @@
                 "type": "fiftyone.utils.sam2.SegmentAnything2VideoModel",
                 "config": {
                     "entrypoint_fcn": "sam2.build_sam.build_sam2_video_predictor",
-                    "entrypoint_args": { "model_cfg": "sam2_hiera_b+.yaml" },
+                    "entrypoint_args": {
+                        "model_cfg": "sam2_hiera_b+.yaml"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "sam2"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "sam2"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -627,12 +711,18 @@
                 "type": "fiftyone.utils.sam2.SegmentAnything2VideoModel",
                 "config": {
                     "entrypoint_fcn": "sam2.build_sam.build_sam2_video_predictor",
-                    "entrypoint_args": { "model_cfg": "sam2_hiera_l.yaml" },
+                    "entrypoint_args": {
+                        "model_cfg": "sam2_hiera_l.yaml"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "sam2"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "sam2"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -679,11 +769,17 @@
                 "type": "fiftyone.utils.sam2.SegmentAnything2VideoModel",
                 "config": {
                     "entrypoint_fcn": "sam2.build_sam.build_sam2_video_predictor",
-                    "entrypoint_args": { "model_cfg": "sam2_hiera_t.yaml" }
+                    "entrypoint_args": {
+                        "model_cfg": "sam2_hiera_t.yaml"
+                    }
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "sam2"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "sam2"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -738,7 +834,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "sam2"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "sam2"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -746,7 +846,13 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "transformer", "official"],
+            "tags": [
+                "segment-anything",
+                "torch",
+                "zero-shot",
+                "transformer",
+                "official"
+            ],
             "training_data": [
                 {
                     "name": "SA-V",
@@ -785,7 +891,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "sam2"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "sam2"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -838,7 +948,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "sam2"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "sam2"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -891,7 +1005,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "sam2"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "sam2"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -943,7 +1061,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "sam2"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "sam2"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -997,7 +1119,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "sam2"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "sam2"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -1051,7 +1177,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "sam2"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "sam2"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -1105,7 +1235,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "sam2"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "sam2"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -1161,12 +1295,23 @@
                     },
                     "mask_targets_path": "{{eta-resources}}/voc-labels.txt",
                     "image_dim": 520,
-                    "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225]
+                    "image_mean": [
+                        0.485,
+                        0.456,
+                        0.406
+                    ],
+                    "image_std": [
+                        0.229,
+                        0.224,
+                        0.225
+                    ]
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -1183,7 +1328,10 @@
                 "official"
             ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1213,13 +1361,24 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_max_dim": 2048,
-                    "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225],
+                    "image_mean": [
+                        0.485,
+                        0.456,
+                        0.406
+                    ],
+                    "image_std": [
+                        0.229,
+                        0.224,
+                        0.225
+                    ],
                     "embeddings_layer": "<classifier"
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -1270,13 +1429,24 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_max_dim": 2048,
-                    "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225],
+                    "image_mean": [
+                        0.485,
+                        0.456,
+                        0.406
+                    ],
+                    "image_std": [
+                        0.229,
+                        0.224,
+                        0.225
+                    ],
                     "embeddings_layer": "<classifier"
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -1327,13 +1497,24 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_max_dim": 2048,
-                    "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225],
+                    "image_mean": [
+                        0.485,
+                        0.456,
+                        0.406
+                    ],
+                    "image_std": [
+                        0.229,
+                        0.224,
+                        0.225
+                    ],
                     "embeddings_layer": "<classifier"
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -1384,13 +1565,24 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_max_dim": 2048,
-                    "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225],
+                    "image_mean": [
+                        0.485,
+                        0.456,
+                        0.406
+                    ],
+                    "image_std": [
+                        0.229,
+                        0.224,
+                        0.225
+                    ],
                     "embeddings_layer": "<classifier"
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -1443,7 +1635,10 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -1460,7 +1655,10 @@
                 "official"
             ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1492,12 +1690,23 @@
                     },
                     "mask_targets_path": "{{eta-resources}}/voc-labels.txt",
                     "image_dim": 520,
-                    "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225]
+                    "image_mean": [
+                        0.485,
+                        0.456,
+                        0.406
+                    ],
+                    "image_std": [
+                        0.229,
+                        0.224,
+                        0.225
+                    ]
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -1514,7 +1723,10 @@
                 "official"
             ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1546,12 +1758,23 @@
                     },
                     "mask_targets_path": "{{eta-resources}}/voc-labels.txt",
                     "image_dim": 520,
-                    "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225]
+                    "image_mean": [
+                        0.485,
+                        0.456,
+                        0.406
+                    ],
+                    "image_std": [
+                        0.229,
+                        0.224,
+                        0.225
+                    ]
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -1568,7 +1791,10 @@
                 "official"
             ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1598,13 +1824,25 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_max_dim": 2048,
-                    "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225],
+                    "image_mean": [
+                        0.485,
+                        0.456,
+                        0.406
+                    ],
+                    "image_std": [
+                        0.229,
+                        0.224,
+                        0.225
+                    ],
                     "embeddings_layer": "<fc"
                 }
             },
             "requirements": {
-                "packages": ["scipy", "torch", "torchvision"],
+                "packages": [
+                    "scipy",
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -1653,14 +1891,29 @@
                     },
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
-                    "image_size": [299, 299],
-                    "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225],
+                    "image_size": [
+                        299,
+                        299
+                    ],
+                    "image_mean": [
+                        0.485,
+                        0.456,
+                        0.406
+                    ],
+                    "image_std": [
+                        0.229,
+                        0.224,
+                        0.225
+                    ],
                     "embeddings_layer": "<fc"
                 }
             },
             "requirements": {
-                "packages": ["scipy", "torch", "torchvision"],
+                "packages": [
+                    "scipy",
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -1731,15 +1984,42 @@
                             "right ankle"
                         ],
                         "edges": [
-                            [11, 5, 3, 1, 0, 2, 4, 6, 12],
-                            [9, 7, 5, 6, 8, 10],
-                            [15, 13, 11, 12, 14, 16]
+                            [
+                                11,
+                                5,
+                                3,
+                                1,
+                                0,
+                                2,
+                                4,
+                                6,
+                                12
+                            ],
+                            [
+                                9,
+                                7,
+                                5,
+                                6,
+                                8,
+                                10
+                            ],
+                            [
+                                15,
+                                13,
+                                11,
+                                12,
+                                14,
+                                16
+                            ]
                         ]
                     }
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -1756,7 +2036,10 @@
                 "official"
             ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1787,7 +2070,10 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -1804,7 +2090,10 @@
                 "official"
             ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1834,13 +2123,24 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_max_dim": 2048,
-                    "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225],
+                    "image_mean": [
+                        0.485,
+                        0.456,
+                        0.406
+                    ],
+                    "image_std": [
+                        0.229,
+                        0.224,
+                        0.225
+                    ],
                     "embeddings_layer": "<classifier.1"
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -1891,13 +2191,24 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_max_dim": 2048,
-                    "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225],
+                    "image_mean": [
+                        0.485,
+                        0.456,
+                        0.406
+                    ],
+                    "image_std": [
+                        0.229,
+                        0.224,
+                        0.225
+                    ],
                     "embeddings_layer": "<classifier.1"
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -1948,13 +2259,24 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_max_dim": 2048,
-                    "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225],
+                    "image_mean": [
+                        0.485,
+                        0.456,
+                        0.406
+                    ],
+                    "image_std": [
+                        0.229,
+                        0.224,
+                        0.225
+                    ],
                     "embeddings_layer": "<classifier.1"
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -2005,13 +2327,24 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_max_dim": 2048,
-                    "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225],
+                    "image_mean": [
+                        0.485,
+                        0.456,
+                        0.406
+                    ],
+                    "image_std": [
+                        0.229,
+                        0.224,
+                        0.225
+                    ],
                     "embeddings_layer": "<fc"
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -2062,13 +2395,24 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_max_dim": 2048,
-                    "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225],
+                    "image_mean": [
+                        0.485,
+                        0.456,
+                        0.406
+                    ],
+                    "image_std": [
+                        0.229,
+                        0.224,
+                        0.225
+                    ],
                     "embeddings_layer": "<fc"
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -2119,13 +2463,24 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_max_dim": 2048,
-                    "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225],
+                    "image_mean": [
+                        0.485,
+                        0.456,
+                        0.406
+                    ],
+                    "image_std": [
+                        0.229,
+                        0.224,
+                        0.225
+                    ],
                     "embeddings_layer": "<fc"
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -2176,13 +2531,24 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_max_dim": 2048,
-                    "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225],
+                    "image_mean": [
+                        0.485,
+                        0.456,
+                        0.406
+                    ],
+                    "image_std": [
+                        0.229,
+                        0.224,
+                        0.225
+                    ],
                     "embeddings_layer": "<fc"
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -2233,13 +2599,24 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_max_dim": 2048,
-                    "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225],
+                    "image_mean": [
+                        0.485,
+                        0.456,
+                        0.406
+                    ],
+                    "image_std": [
+                        0.229,
+                        0.224,
+                        0.225
+                    ],
                     "embeddings_layer": "<fc"
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -2290,13 +2667,24 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_max_dim": 2048,
-                    "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225],
+                    "image_mean": [
+                        0.485,
+                        0.456,
+                        0.406
+                    ],
+                    "image_std": [
+                        0.229,
+                        0.224,
+                        0.225
+                    ],
                     "embeddings_layer": "<fc"
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -2347,13 +2735,24 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_max_dim": 2048,
-                    "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225],
+                    "image_mean": [
+                        0.485,
+                        0.456,
+                        0.406
+                    ],
+                    "image_std": [
+                        0.229,
+                        0.224,
+                        0.225
+                    ],
                     "embeddings_layer": "<fc"
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -2406,7 +2805,10 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision>=0.8.0"],
+                "packages": [
+                    "torch",
+                    "torchvision>=0.8.0"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -2414,9 +2816,19 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "retinanet", "resnet", "official"],
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "retinanet",
+                "resnet",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -2446,13 +2858,24 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_max_dim": 2048,
-                    "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225],
+                    "image_mean": [
+                        0.485,
+                        0.456,
+                        0.406
+                    ],
+                    "image_std": [
+                        0.229,
+                        0.224,
+                        0.225
+                    ],
                     "embeddings_layer": "<fc"
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -2503,13 +2926,24 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_max_dim": 2048,
-                    "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225],
+                    "image_mean": [
+                        0.485,
+                        0.456,
+                        0.406
+                    ],
+                    "image_std": [
+                        0.229,
+                        0.224,
+                        0.225
+                    ],
                     "embeddings_layer": "<fc"
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -2560,12 +2994,23 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_max_dim": 2048,
-                    "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225]
+                    "image_mean": [
+                        0.485,
+                        0.456,
+                        0.406
+                    ],
+                    "image_std": [
+                        0.229,
+                        0.224,
+                        0.225
+                    ]
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -2573,7 +3018,13 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "imagenet", "torch", "squeezenet", "official"],
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "squeezenet",
+                "official"
+            ],
             "training_data": [
                 {
                     "name": "ImageNet-1K",
@@ -2608,12 +3059,23 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_max_dim": 2048,
-                    "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225]
+                    "image_mean": [
+                        0.485,
+                        0.456,
+                        0.406
+                    ],
+                    "image_std": [
+                        0.229,
+                        0.224,
+                        0.225
+                    ]
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -2662,13 +3124,24 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_max_dim": 2048,
-                    "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225],
+                    "image_mean": [
+                        0.485,
+                        0.456,
+                        0.406
+                    ],
+                    "image_std": [
+                        0.229,
+                        0.224,
+                        0.225
+                    ],
                     "embeddings_layer": "<classifier.6"
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -2712,18 +3185,31 @@
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.vgg.vgg11",
-                    "entrypoint_args": { "weights": "VGG11_Weights.DEFAULT" },
+                    "entrypoint_args": {
+                        "weights": "VGG11_Weights.DEFAULT"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_max_dim": 2048,
-                    "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225],
+                    "image_mean": [
+                        0.485,
+                        0.456,
+                        0.406
+                    ],
+                    "image_std": [
+                        0.229,
+                        0.224,
+                        0.225
+                    ],
                     "embeddings_layer": "<classifier.6"
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -2774,13 +3260,24 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_max_dim": 2048,
-                    "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225],
+                    "image_mean": [
+                        0.485,
+                        0.456,
+                        0.406
+                    ],
+                    "image_std": [
+                        0.229,
+                        0.224,
+                        0.225
+                    ],
                     "embeddings_layer": "<classifier.6"
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -2824,18 +3321,31 @@
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.vgg.vgg13",
-                    "entrypoint_args": { "weights": "VGG13_Weights.DEFAULT" },
+                    "entrypoint_args": {
+                        "weights": "VGG13_Weights.DEFAULT"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_max_dim": 2048,
-                    "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225],
+                    "image_mean": [
+                        0.485,
+                        0.456,
+                        0.406
+                    ],
+                    "image_std": [
+                        0.229,
+                        0.224,
+                        0.225
+                    ],
                     "embeddings_layer": "<classifier.6"
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -2886,13 +3396,24 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_max_dim": 2048,
-                    "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225],
+                    "image_mean": [
+                        0.485,
+                        0.456,
+                        0.406
+                    ],
+                    "image_std": [
+                        0.229,
+                        0.224,
+                        0.225
+                    ],
                     "embeddings_layer": "<classifier.6"
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -2936,18 +3457,31 @@
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.vgg.vgg16",
-                    "entrypoint_args": { "weights": "VGG16_Weights.DEFAULT" },
+                    "entrypoint_args": {
+                        "weights": "VGG16_Weights.DEFAULT"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_max_dim": 2048,
-                    "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225],
+                    "image_mean": [
+                        0.485,
+                        0.456,
+                        0.406
+                    ],
+                    "image_std": [
+                        0.229,
+                        0.224,
+                        0.225
+                    ],
                     "embeddings_layer": "<classifier.6"
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -2998,13 +3532,24 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_max_dim": 2048,
-                    "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225],
+                    "image_mean": [
+                        0.485,
+                        0.456,
+                        0.406
+                    ],
+                    "image_std": [
+                        0.229,
+                        0.224,
+                        0.225
+                    ],
                     "embeddings_layer": "<classifier.6"
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -3048,18 +3593,31 @@
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.vgg.vgg19",
-                    "entrypoint_args": { "weights": "VGG19_Weights.DEFAULT" },
+                    "entrypoint_args": {
+                        "weights": "VGG19_Weights.DEFAULT"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_max_dim": 2048,
-                    "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225],
+                    "image_mean": [
+                        0.485,
+                        0.456,
+                        0.406
+                    ],
+                    "image_std": [
+                        0.229,
+                        0.224,
+                        0.225
+                    ],
                     "embeddings_layer": "<classifier.6"
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -3110,13 +3668,24 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_max_dim": 2048,
-                    "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225],
+                    "image_mean": [
+                        0.485,
+                        0.456,
+                        0.406
+                    ],
+                    "image_std": [
+                        0.229,
+                        0.224,
+                        0.225
+                    ],
                     "embeddings_layer": "<fc"
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -3167,13 +3736,24 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_max_dim": 2048,
-                    "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225],
+                    "image_mean": [
+                        0.485,
+                        0.456,
+                        0.406
+                    ],
+                    "image_std": [
+                        0.229,
+                        0.224,
+                        0.225
+                    ],
                     "embeddings_layer": "<fc"
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -3213,9 +3793,20 @@
                     "entrypoint_fcn": "",
                     "labels_path": "{{eta-resources}}/voc-labels.txt",
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
-                    "image_size": [224, 224],
-                    "image_mean": [0.48145466, 0.4578275, 0.40821073],
-                    "image_std": [0.26862954, 0.26130258, 0.27577711],
+                    "image_size": [
+                        224,
+                        224
+                    ],
+                    "image_mean": [
+                        0.48145466,
+                        0.4578275,
+                        0.40821073
+                    ],
+                    "image_std": [
+                        0.26862954,
+                        0.26130258,
+                        0.27577711
+                    ],
                     "embeddings_layer": "visual",
                     "tokenizer_base_filename": "clip_bpe_simple_vocab_16e6.txt.gz",
                     "tokenizer_base_url": "https://github.com/openai/CLIP/raw/main/clip/bpe_simple_vocab_16e6.txt.gz",
@@ -3223,7 +3814,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "open_clip_torch"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "open_clip_torch"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -3241,7 +3836,10 @@
                 "transformer"
             ],
             "training_data": [
-                { "name": "LAION-2B", "url": "https://laion.ai/blog/laion-5b/" }
+                {
+                    "name": "LAION-2B",
+                    "url": "https://laion.ai/blog/laion-5b/"
+                }
             ],
             "date_added": "2023-12-13 14:25:51"
         },
@@ -3259,7 +3857,11 @@
                 "config": {}
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -3292,7 +3894,11 @@
                 "config": {}
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -3330,7 +3936,11 @@
                 "config": {}
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -3368,7 +3978,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -3400,7 +4014,11 @@
                 "config": {}
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -3408,7 +4026,11 @@
                     "support": true
                 }
             },
-            "tags": ["depth", "torch", "transformers"],
+            "tags": [
+                "depth",
+                "torch",
+                "transformers"
+            ],
             "training_data": [],
             "date_added": "2024-02-06 14:25:51"
         },
@@ -3428,7 +4050,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -3436,7 +4062,12 @@
                     "support": true
                 }
             },
-            "tags": ["depth", "3d", "torch", "transformers"],
+            "tags": [
+                "depth",
+                "3d",
+                "torch",
+                "transformers"
+            ],
             "training_data": [],
             "date_added": "2026-01-05 12:00:00"
         },
@@ -3456,7 +4087,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -3464,7 +4099,12 @@
                     "support": true
                 }
             },
-            "tags": ["depth", "3d", "torch", "transformers"],
+            "tags": [
+                "depth",
+                "3d",
+                "torch",
+                "transformers"
+            ],
             "training_data": [],
             "date_added": "2026-01-05 12:00:00"
         },
@@ -3484,7 +4124,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -3492,7 +4136,12 @@
                     "support": true
                 }
             },
-            "tags": ["depth", "3d", "torch", "transformers"],
+            "tags": [
+                "depth",
+                "3d",
+                "torch",
+                "transformers"
+            ],
             "training_data": [],
             "date_added": "2026-01-05 12:00:00"
         },
@@ -3515,7 +4164,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -3555,7 +4208,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers>=4.51"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers>=4.51"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -3573,7 +4230,10 @@
                 "official"
             ],
             "training_data": [
-                { "name": "WebLI", "url": "https://arxiv.org/abs/2209.06794" }
+                {
+                    "name": "WebLI",
+                    "url": "https://arxiv.org/abs/2209.06794"
+                }
             ],
             "date_added": "2024-01-17 14:25:51"
         },
@@ -3591,7 +4251,11 @@
                 "config": {}
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -3642,7 +4306,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -3686,7 +4354,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -3703,7 +4375,10 @@
                 "official"
             ],
             "training_data": [
-                { "name": "WebLI", "url": "https://arxiv.org/abs/2209.06794" }
+                {
+                    "name": "WebLI",
+                    "url": "https://arxiv.org/abs/2209.06794"
+                }
             ],
             "date_added": "2024-01-17 14:25:51"
         },
@@ -3723,7 +4398,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -3740,7 +4419,10 @@
                 "official"
             ],
             "training_data": [
-                { "name": "WebLI", "url": "https://arxiv.org/abs/2209.06794" }
+                {
+                    "name": "WebLI",
+                    "url": "https://arxiv.org/abs/2209.06794"
+                }
             ],
             "date_added": "2025-07-15 13:49:00"
         },
@@ -3760,7 +4442,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -3777,7 +4463,10 @@
                 "official"
             ],
             "training_data": [
-                { "name": "WebLI", "url": "https://arxiv.org/abs/2209.06794" }
+                {
+                    "name": "WebLI",
+                    "url": "https://arxiv.org/abs/2209.06794"
+                }
             ],
             "date_added": "2025-07-28 15:25:00"
         },
@@ -3797,7 +4486,12 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers>=4.51", "timm<1.0.24"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers>=4.51",
+                    "timm<1.0.24"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -3851,9 +4545,20 @@
                     "entrypoint_fcn": "",
                     "labels_path": "{{eta-resources}}/voc-labels.txt",
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
-                    "image_size": [224, 224],
-                    "image_mean": [0.48145466, 0.4578275, 0.40821073],
-                    "image_std": [0.26862954, 0.26130258, 0.27577711],
+                    "image_size": [
+                        224,
+                        224
+                    ],
+                    "image_mean": [
+                        0.48145466,
+                        0.4578275,
+                        0.40821073
+                    ],
+                    "image_std": [
+                        0.26862954,
+                        0.26130258,
+                        0.27577711
+                    ],
                     "embeddings_layer": "visual",
                     "tokenizer_base_filename": "clip_bpe_simple_vocab_16e6.txt.gz",
                     "tokenizer_base_url": "https://github.com/openai/CLIP/raw/main/clip/bpe_simple_vocab_16e6.txt.gz",
@@ -3862,7 +4567,10 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -3881,7 +4589,10 @@
                 "official"
             ],
             "training_data": [
-                { "name": "WIT-400M", "url": "https://github.com/openai/CLIP" }
+                {
+                    "name": "WIT-400M",
+                    "url": "https://github.com/openai/CLIP"
+                }
             ],
             "date_added": "2022-04-12 17:49:51"
         },
@@ -3906,7 +4617,10 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -3950,7 +4664,10 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -3994,7 +4711,10 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -4038,7 +4758,10 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -4082,7 +4805,10 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -4126,7 +4852,10 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -4170,7 +4899,10 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -4214,7 +4946,10 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -4274,9 +5009,18 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2025-05-22 14:14:45"
         },
@@ -4317,9 +5061,18 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2025-05-22 14:14:45"
         },
@@ -4360,9 +5113,18 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2025-05-22 14:14:45"
         },
@@ -4403,9 +5165,18 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2025-05-22 14:14:45"
         },
@@ -4446,9 +5217,18 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2024-03-11 19:22:51"
         },
@@ -4489,9 +5269,18 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2024-03-11 19:22:51"
         },
@@ -4532,9 +5321,18 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2024-03-11 19:22:51"
         },
@@ -4575,9 +5373,18 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2024-03-11 19:22:51"
         },
@@ -4618,9 +5425,18 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2024-03-11 19:22:51"
         },
@@ -4661,9 +5477,18 @@
                     "support": true
                 }
             },
-            "tags": ["instances", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "instances",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2024-04-02 19:22:51"
         },
@@ -4704,9 +5529,18 @@
                     "support": true
                 }
             },
-            "tags": ["instances", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "instances",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2024-04-02 19:22:51"
         },
@@ -4747,9 +5581,18 @@
                     "support": true
                 }
             },
-            "tags": ["instances", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "instances",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2024-04-02 19:22:51"
         },
@@ -4790,9 +5633,18 @@
                     "support": true
                 }
             },
-            "tags": ["instances", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "instances",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2024-04-02 19:22:51"
         },
@@ -4833,9 +5685,18 @@
                     "support": true
                 }
             },
-            "tags": ["instances", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "instances",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2024-04-02 19:22:51"
         },
@@ -4876,9 +5737,18 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2024-03-11 19:22:51"
         },
@@ -4919,9 +5789,18 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2024-03-11 19:22:51"
         },
@@ -4962,9 +5841,18 @@
                     "support": true
                 }
             },
-            "tags": ["instances", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "instances",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2024-04-02 19:22:51"
         },
@@ -5005,9 +5893,18 @@
                     "support": true
                 }
             },
-            "tags": ["instances", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "instances",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2024-04-02 19:22:51"
         },
@@ -5048,9 +5945,18 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2024-07-01 19:22:51"
         },
@@ -5091,9 +5997,18 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2024-07-01 19:22:51"
         },
@@ -5134,9 +6049,18 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2024-07-01 19:22:51"
         },
@@ -5177,9 +6101,18 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2024-07-01 19:22:51"
         },
@@ -5220,9 +6153,18 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2024-07-01 19:22:51"
         },
@@ -5263,9 +6205,18 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2024-10-05 19:22:51"
         },
@@ -5306,9 +6257,18 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2024-10-05 19:22:51"
         },
@@ -5349,9 +6309,18 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2024-10-05 19:22:51"
         },
@@ -5392,9 +6361,18 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2024-10-05 19:22:51"
         },
@@ -5435,9 +6413,18 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2024-10-05 19:22:51"
         },
@@ -5478,9 +6465,18 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2026-01-15 12:00:00"
         },
@@ -5521,9 +6517,18 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2026-01-15 12:00:00"
         },
@@ -5564,9 +6569,18 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2026-01-15 12:00:00"
         },
@@ -5607,9 +6621,18 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2026-01-15 12:00:00"
         },
@@ -5650,9 +6673,18 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2026-01-15 12:00:00"
         },
@@ -5693,9 +6725,18 @@
                     "support": true
                 }
             },
-            "tags": ["instances", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "instances",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2026-01-15 12:00:00"
         },
@@ -5736,9 +6777,18 @@
                     "support": true
                 }
             },
-            "tags": ["instances", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "instances",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2026-01-15 12:00:00"
         },
@@ -5779,9 +6829,18 @@
                     "support": true
                 }
             },
-            "tags": ["instances", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "instances",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2026-01-15 12:00:00"
         },
@@ -5822,9 +6881,18 @@
                     "support": true
                 }
             },
-            "tags": ["instances", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "instances",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2026-01-15 12:00:00"
         },
@@ -5865,9 +6933,18 @@
                     "support": true
                 }
             },
-            "tags": ["instances", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "instances",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2026-01-15 12:00:00"
         },
@@ -5908,9 +6985,18 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "imagenet", "torch", "yolo", "official"],
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "ImageNet-1K", "url": "https://www.image-net.org/download.php" }
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
             ],
             "date_added": "2026-01-15 12:00:00"
         },
@@ -5951,9 +7037,18 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "imagenet", "torch", "yolo", "official"],
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "ImageNet-1K", "url": "https://www.image-net.org/download.php" }
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
             ],
             "date_added": "2026-01-15 12:00:00"
         },
@@ -5994,9 +7089,18 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "imagenet", "torch", "yolo", "official"],
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "ImageNet-1K", "url": "https://www.image-net.org/download.php" }
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
             ],
             "date_added": "2026-01-15 12:00:00"
         },
@@ -6037,9 +7141,18 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "imagenet", "torch", "yolo", "official"],
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "ImageNet-1K", "url": "https://www.image-net.org/download.php" }
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
             ],
             "date_added": "2026-01-15 12:00:00"
         },
@@ -6080,9 +7193,18 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "imagenet", "torch", "yolo", "official"],
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "ImageNet-1K", "url": "https://www.image-net.org/download.php" }
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
             ],
             "date_added": "2026-01-15 12:00:00"
         },
@@ -6123,9 +7245,18 @@
                     "support": true
                 }
             },
-            "tags": ["keypoints", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "keypoints",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2026-01-15 12:00:00"
         },
@@ -6166,9 +7297,18 @@
                     "support": true
                 }
             },
-            "tags": ["keypoints", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "keypoints",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2026-01-15 12:00:00"
         },
@@ -6209,9 +7349,18 @@
                     "support": true
                 }
             },
-            "tags": ["keypoints", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "keypoints",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2026-01-15 12:00:00"
         },
@@ -6252,9 +7401,18 @@
                     "support": true
                 }
             },
-            "tags": ["keypoints", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "keypoints",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2026-01-15 12:00:00"
         },
@@ -6295,9 +7453,18 @@
                     "support": true
                 }
             },
-            "tags": ["keypoints", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "keypoints",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2026-01-15 12:00:00"
         },
@@ -6338,9 +7505,18 @@
                     "support": true
                 }
             },
-            "tags": ["instances", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "instances",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2024-10-05 19:22:51"
         },
@@ -6381,9 +7557,18 @@
                     "support": true
                 }
             },
-            "tags": ["instances", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "instances",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2024-10-05 19:22:51"
         },
@@ -6424,9 +7609,18 @@
                     "support": true
                 }
             },
-            "tags": ["instances", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "instances",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2024-10-05 19:22:51"
         },
@@ -6467,9 +7661,18 @@
                     "support": true
                 }
             },
-            "tags": ["instances", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "instances",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2024-10-05 19:22:51"
         },
@@ -6510,9 +7713,18 @@
                     "support": true
                 }
             },
-            "tags": ["instances", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "instances",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2024-10-05 19:22:51"
         },
@@ -6553,7 +7765,13 @@
                     "support": true
                 }
             },
-            "tags": ["instances", "torch", "yolo", "zero-shot", "official"],
+            "tags": [
+                "instances",
+                "torch",
+                "yolo",
+                "zero-shot",
+                "official"
+            ],
             "training_data": [
                 {
                     "name": "Objects365v1",
@@ -6611,7 +7829,13 @@
                     "support": true
                 }
             },
-            "tags": ["instances", "torch", "yolo", "zero-shot", "official"],
+            "tags": [
+                "instances",
+                "torch",
+                "yolo",
+                "zero-shot",
+                "official"
+            ],
             "training_data": [
                 {
                     "name": "Objects365v1",
@@ -6669,7 +7893,13 @@
                     "support": true
                 }
             },
-            "tags": ["instances", "torch", "yolo", "zero-shot", "official"],
+            "tags": [
+                "instances",
+                "torch",
+                "yolo",
+                "zero-shot",
+                "official"
+            ],
             "training_data": [
                 {
                     "name": "Objects365v1",
@@ -6727,7 +7957,13 @@
                     "support": true
                 }
             },
-            "tags": ["instances", "torch", "yolo", "zero-shot", "official"],
+            "tags": [
+                "instances",
+                "torch",
+                "yolo",
+                "zero-shot",
+                "official"
+            ],
             "training_data": [
                 {
                     "name": "Objects365v1",
@@ -6785,7 +8021,13 @@
                     "support": true
                 }
             },
-            "tags": ["instances", "torch", "yolo", "zero-shot", "official"],
+            "tags": [
+                "instances",
+                "torch",
+                "yolo",
+                "zero-shot",
+                "official"
+            ],
             "training_data": [
                 {
                     "name": "Objects365v1",
@@ -6843,7 +8085,13 @@
                     "support": true
                 }
             },
-            "tags": ["instances", "torch", "yolo", "zero-shot", "official"],
+            "tags": [
+                "instances",
+                "torch",
+                "yolo",
+                "zero-shot",
+                "official"
+            ],
             "training_data": [
                 {
                     "name": "Objects365v1",
@@ -6910,7 +8158,10 @@
                 "official"
             ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2024-07-01 19:22:51"
         },
@@ -6960,7 +8211,10 @@
                 "official"
             ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2024-07-01 19:22:51"
         },
@@ -7001,7 +8255,13 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "torch", "yolo", "zero-shot", "official"],
+            "tags": [
+                "detection",
+                "torch",
+                "yolo",
+                "zero-shot",
+                "official"
+            ],
             "training_data": [
                 {
                     "name": "Objects365v1",
@@ -7055,7 +8315,13 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "torch", "yolo", "zero-shot", "official"],
+            "tags": [
+                "detection",
+                "torch",
+                "yolo",
+                "zero-shot",
+                "official"
+            ],
             "training_data": [
                 {
                     "name": "Objects365v1",
@@ -7109,7 +8375,13 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "torch", "yolo", "zero-shot", "official"],
+            "tags": [
+                "detection",
+                "torch",
+                "yolo",
+                "zero-shot",
+                "official"
+            ],
             "training_data": [
                 {
                     "name": "Objects365v1",
@@ -7163,7 +8435,13 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "torch", "yolo", "zero-shot", "official"],
+            "tags": [
+                "detection",
+                "torch",
+                "yolo",
+                "zero-shot",
+                "official"
+            ],
             "training_data": [
                 {
                     "name": "Objects365v1",
@@ -7482,7 +8760,13 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "oiv7", "torch", "yolo", "official"],
+            "tags": [
+                "detection",
+                "oiv7",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
                 {
                     "name": "Open Images V7",
@@ -7528,7 +8812,13 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "oiv7", "torch", "yolo", "official"],
+            "tags": [
+                "detection",
+                "oiv7",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
                 {
                     "name": "Open Images V7",
@@ -7574,7 +8864,13 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "oiv7", "torch", "yolo", "official"],
+            "tags": [
+                "detection",
+                "oiv7",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
                 {
                     "name": "Open Images V7",
@@ -7620,7 +8916,13 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "oiv7", "torch", "yolo", "official"],
+            "tags": [
+                "detection",
+                "oiv7",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
                 {
                     "name": "Open Images V7",
@@ -7666,7 +8968,13 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "oiv7", "torch", "yolo", "official"],
+            "tags": [
+                "detection",
+                "oiv7",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
                 {
                     "name": "Open Images V7",
@@ -7693,7 +9001,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "super-gradients"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "super-gradients"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -7701,7 +9013,12 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "torch", "yolo", "official"],
+            "tags": [
+                "detection",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
                 {
                     "name": "MS COCO 2017",
@@ -7751,9 +9068,18 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "yolo",
+                "official"
+            ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2025-05-22 14:14:45"
         },
@@ -7777,7 +9103,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -7822,7 +9152,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -7867,7 +9201,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -7912,7 +9250,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -7957,7 +9299,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -8006,7 +9352,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -8051,7 +9401,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -8096,7 +9450,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -8141,7 +9499,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -8186,7 +9548,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -8231,7 +9597,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -8276,7 +9646,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -8321,7 +9695,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -8365,7 +9743,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -8409,7 +9791,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -8453,7 +9839,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -8497,7 +9887,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -8541,7 +9935,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -8559,7 +9957,10 @@
                 "official"
             ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2025-07-03 12:00:00"
         },
@@ -8582,7 +9983,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -8600,7 +10005,10 @@
                 "official"
             ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2025-07-03 12:00:00"
         },
@@ -8620,7 +10028,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -8638,7 +10050,10 @@
                 "official"
             ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2025-07-15 23:00:00"
         },
@@ -8658,7 +10073,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -8676,7 +10095,10 @@
                 "official"
             ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2025-07-15 23:00:00"
         },
@@ -8696,7 +10118,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -8714,7 +10140,10 @@
                 "official"
             ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2025-07-15 23:00:00"
         },
@@ -8734,7 +10163,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -8752,7 +10185,10 @@
                 "official"
             ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2025-07-15 23:00:00"
         },
@@ -8772,7 +10208,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -8790,7 +10230,10 @@
                 "official"
             ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2025-07-15 23:00:00"
         },
@@ -8814,7 +10257,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -8857,7 +10304,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -8900,7 +10351,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -8943,7 +10398,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -8986,7 +10445,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -9029,7 +10492,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -9081,8 +10548,12 @@
                     "transformers",
                     "huggingface_hub"
                 ],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": [
                 "classification",
@@ -9099,9 +10570,9 @@
             "base_name": "monet-zero-torch",
             "base_filename": null,
             "version": null,
-            "description": "CLIP‑based vision‑language model for zero‑shot dermatology image classification.",
+            "description": "CLIP\u00e2\u20ac\u2018based vision\u00e2\u20ac\u2018language model for zero\u00e2\u20ac\u2018shot dermatology image classification.",
             "source": "https://huggingface.co/suinleelab/monet",
-            "author": "Su‑In Lee Lab",
+            "author": "Su\u00e2\u20ac\u2018In Lee Lab",
             "license": "MIT",
             "size_bytes": 1710000000,
             "default_deployment_config_dict": {
@@ -9117,9 +10588,17 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": [
                 "classification",
@@ -9130,7 +10609,7 @@
             ],
             "training_data": [
                 {
-                    "name": "MONET (dermatology image–text corpus)",
+                    "name": "MONET (dermatology image\u00e2\u20ac\u201ctext corpus)",
                     "url": "https://huggingface.co/suinleelab/monet"
                 }
             ],
@@ -9140,7 +10619,7 @@
             "base_name": "pubmed-clip-vit-base-patch32",
             "base_filename": null,
             "version": null,
-            "description": "Zero-shot medical image classifier trained on biomedical image–text pairs.",
+            "description": "Zero-shot medical image classifier trained on biomedical image\u00e2\u20ac\u201ctext pairs.",
             "source": "https://huggingface.co/flaviagiammarino/pubmed-clip-vit-base-patch32",
             "author": "Sedigheh Eslami et al.",
             "license": "MIT",
@@ -9149,14 +10628,26 @@
                 "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForImageClassification",
                 "config": {
                     "name_or_path": "flaviagiammarino/pubmed-clip-vit-base-patch32",
-                    "transforms_args": { "use_fast": false },
-                    "transformers_processor_kwargs": { "padding": true }
+                    "transforms_args": {
+                        "use_fast": false
+                    },
+                    "transformers_processor_kwargs": {
+                        "padding": true
+                    }
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": [
                 "classification",
@@ -9186,7 +10677,11 @@
                 "config": {}
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -9223,7 +10718,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -9240,7 +10739,10 @@
                 "official"
             ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2025-07-09 12:00:00"
         },
@@ -9263,7 +10765,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -9280,7 +10786,10 @@
                 "official"
             ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2025-07-09 12:00:00"
         },
@@ -9303,7 +10812,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -9320,7 +10833,10 @@
                 "official"
             ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2025-07-09 12:00:00"
         },
@@ -9343,7 +10859,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -9360,7 +10880,10 @@
                 "official"
             ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2025-07-09 12:00:00"
         },
@@ -9383,7 +10906,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -9400,7 +10927,10 @@
                 "official"
             ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2025-07-09 12:00:00"
         },
@@ -9423,7 +10953,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -9440,7 +10974,10 @@
                 "official"
             ],
             "training_data": [
-                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2025-07-09 12:00:00"
         },
@@ -9465,7 +11002,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "perception_models"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "perception_models"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -9473,7 +11014,10 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch"],
+            "tags": [
+                "embeddings",
+                "torch"
+            ],
             "training_data": [
                 {
                     "name": "PE Video Dataset",
@@ -9500,7 +11044,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "perception_models"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "perception_models"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -9508,7 +11056,10 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch"],
+            "tags": [
+                "embeddings",
+                "torch"
+            ],
             "training_data": [
                 {
                     "name": "PE Video Dataset",
@@ -9533,11 +11084,25 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
-            "tags": ["detection", "torch", "transformers", "zero-shot", "official"],
+            "tags": [
+                "detection",
+                "torch",
+                "transformers",
+                "zero-shot",
+                "official"
+            ],
             "date_added": "2025-08-11 15:00:08"
         },
         {
@@ -9556,11 +11121,25 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
-            "tags": ["detection", "torch", "transformers", "zero-shot", "official"],
+            "tags": [
+                "detection",
+                "torch",
+                "transformers",
+                "zero-shot",
+                "official"
+            ],
             "date_added": "2025-08-11 15:00:08"
         },
         {
@@ -9579,11 +11158,25 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
-            "tags": ["detection", "torch", "transformers", "zero-shot", "official"],
+            "tags": [
+                "detection",
+                "torch",
+                "transformers",
+                "zero-shot",
+                "official"
+            ],
             "date_added": "2025-08-11 15:00:08"
         },
         {
@@ -9603,11 +11196,27 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers>=4.51.0", "accelerate", "qwen-vl-utils"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers>=4.51.0",
+                    "accelerate",
+                    "qwen-vl-utils"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
-            "tags": ["detection", "vlm", "torch", "transformer", "zero-shot"],
+            "tags": [
+                "detection",
+                "vlm",
+                "torch",
+                "transformer",
+                "zero-shot"
+            ],
             "training_data": [],
             "date_added": "2026-01-20 12:00:00"
         },
@@ -9628,11 +11237,27 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers>=4.51.0", "accelerate", "qwen-vl-utils"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers>=4.51.0",
+                    "accelerate",
+                    "qwen-vl-utils"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
-            "tags": ["detection", "vlm", "torch", "transformer", "zero-shot"],
+            "tags": [
+                "detection",
+                "vlm",
+                "torch",
+                "transformer",
+                "zero-shot"
+            ],
             "training_data": [],
             "date_added": "2026-01-20 12:00:00"
         },
@@ -9653,11 +11278,27 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers>=4.51.0", "accelerate", "qwen-vl-utils"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers>=4.51.0",
+                    "accelerate",
+                    "qwen-vl-utils"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
-            "tags": ["detection", "vlm", "torch", "transformer", "zero-shot"],
+            "tags": [
+                "detection",
+                "vlm",
+                "torch",
+                "transformer",
+                "zero-shot"
+            ],
             "training_data": [],
             "date_added": "2026-01-20 12:00:00"
         },
@@ -9677,11 +11318,26 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers>=4.57.0", "accelerate", "qwen-vl-utils"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers>=4.57.0",
+                    "accelerate",
+                    "qwen-vl-utils"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
-            "tags": ["embeddings", "vlm", "torch", "transformer"],
+            "tags": [
+                "embeddings",
+                "vlm",
+                "torch",
+                "transformer"
+            ],
             "training_data": [],
             "date_added": "2026-01-22 12:00:00"
         },
@@ -9701,13 +11357,512 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers>=4.57.0", "accelerate", "qwen-vl-utils"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers>=4.57.0",
+                    "accelerate",
+                    "qwen-vl-utils"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
-            "tags": ["embeddings", "vlm", "torch", "transformer"],
+            "tags": [
+                "embeddings",
+                "vlm",
+                "torch",
+                "transformer"
+            ],
             "training_data": [],
             "date_added": "2026-01-22 12:00:00"
+        },
+        {
+            "base_name": "rfdetr-nano-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "RF-DETR Nano real-time object detector trained on COCO. Ultra-fast, suitable for edge devices.",
+            "source": "https://github.com/roboflow/rf-detr",
+            "author": "Roboflow",
+            "license": "Apache 2.0",
+            "size_bytes": 122000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.rfdetr.RFDETRDetectionModel",
+                "config": {
+                    "model_type": "RFDETRNano"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "rfdetr"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "transformer",
+                "rfdetr",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
+            ],
+            "date_added": "2026-03-06 12:00:00"
+        },
+        {
+            "base_name": "rfdetr-small-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "RF-DETR Small real-time object detector trained on COCO. Fast with good accuracy.",
+            "source": "https://github.com/roboflow/rf-detr",
+            "author": "Roboflow",
+            "license": "Apache 2.0",
+            "size_bytes": 128000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.rfdetr.RFDETRDetectionModel",
+                "config": {
+                    "model_type": "RFDETRSmall"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "rfdetr"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "transformer",
+                "rfdetr",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
+            ],
+            "date_added": "2026-03-06 12:00:00"
+        },
+        {
+            "base_name": "rfdetr-medium-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "RF-DETR Medium real-time object detector trained on COCO. Balanced speed and accuracy.",
+            "source": "https://github.com/roboflow/rf-detr",
+            "author": "Roboflow",
+            "license": "Apache 2.0",
+            "size_bytes": 135000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.rfdetr.RFDETRDetectionModel",
+                "config": {
+                    "model_type": "RFDETRMedium"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "rfdetr"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "transformer",
+                "rfdetr",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
+            ],
+            "date_added": "2026-03-06 12:00:00"
+        },
+        {
+            "base_name": "rfdetr-base-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "RF-DETR Base real-time object detector trained on COCO. High accuracy for general use.",
+            "source": "https://github.com/roboflow/rf-detr",
+            "author": "Roboflow",
+            "license": "Apache 2.0",
+            "size_bytes": 116000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.rfdetr.RFDETRDetectionModel",
+                "config": {
+                    "model_type": "RFDETRBase"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "rfdetr"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "transformer",
+                "rfdetr",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
+            ],
+            "date_added": "2026-03-06 12:00:00"
+        },
+        {
+            "base_name": "rfdetr-large-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "RF-DETR Large real-time object detector trained on COCO. Maximum detection accuracy.",
+            "source": "https://github.com/roboflow/rf-detr",
+            "author": "Roboflow",
+            "license": "Apache 2.0",
+            "size_bytes": 136000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.rfdetr.RFDETRDetectionModel",
+                "config": {
+                    "model_type": "RFDETRLarge"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "rfdetr"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "transformer",
+                "rfdetr",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
+            ],
+            "date_added": "2026-03-06 12:00:00"
+        },
+        {
+            "base_name": "rfdetr-seg-nano-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "RF-DETR Seg Nano instance segmentation model trained on COCO. Ultra-fast, suitable for edge devices.",
+            "source": "https://github.com/roboflow/rf-detr",
+            "author": "Roboflow",
+            "license": "Apache 2.0",
+            "size_bytes": 134000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.rfdetr.RFDETRSegmentationModel",
+                "config": {
+                    "model_type": "RFDETRSegNano"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "rfdetr"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "instances",
+                "coco",
+                "torch",
+                "transformer",
+                "rfdetr",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
+            ],
+            "date_added": "2026-03-06 12:00:00"
+        },
+        {
+            "base_name": "rfdetr-seg-small-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "RF-DETR Seg Small instance segmentation model trained on COCO. Fast with good accuracy.",
+            "source": "https://github.com/roboflow/rf-detr",
+            "author": "Roboflow",
+            "license": "Apache 2.0",
+            "size_bytes": 135000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.rfdetr.RFDETRSegmentationModel",
+                "config": {
+                    "model_type": "RFDETRSegSmall"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "rfdetr"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "instances",
+                "coco",
+                "torch",
+                "transformer",
+                "rfdetr",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
+            ],
+            "date_added": "2026-03-06 12:00:00"
+        },
+        {
+            "base_name": "rfdetr-seg-medium-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "RF-DETR Seg Medium instance segmentation model trained on COCO. Balanced speed and accuracy.",
+            "source": "https://github.com/roboflow/rf-detr",
+            "author": "Roboflow",
+            "license": "Apache 2.0",
+            "size_bytes": 143000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.rfdetr.RFDETRSegmentationModel",
+                "config": {
+                    "model_type": "RFDETRSegMedium"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "rfdetr"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "instances",
+                "coco",
+                "torch",
+                "transformer",
+                "rfdetr",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
+            ],
+            "date_added": "2026-03-06 12:00:00"
+        },
+        {
+            "base_name": "rfdetr-seg-large-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "RF-DETR Seg Large instance segmentation model trained on COCO. High accuracy segmentation.",
+            "source": "https://github.com/roboflow/rf-detr",
+            "author": "Roboflow",
+            "license": "Apache 2.0",
+            "size_bytes": 145000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.rfdetr.RFDETRSegmentationModel",
+                "config": {
+                    "model_type": "RFDETRSegLarge"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "rfdetr"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "instances",
+                "coco",
+                "torch",
+                "transformer",
+                "rfdetr",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
+            ],
+            "date_added": "2026-03-06 12:00:00"
+        },
+        {
+            "base_name": "rfdetr-seg-xlarge-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "RF-DETR Seg XLarge instance segmentation model trained on COCO. Very high accuracy.",
+            "source": "https://github.com/roboflow/rf-detr",
+            "author": "Roboflow",
+            "license": "Apache 2.0",
+            "size_bytes": 152000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.rfdetr.RFDETRSegmentationModel",
+                "config": {
+                    "model_type": "RFDETRSegXLarge"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "rfdetr"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "instances",
+                "coco",
+                "torch",
+                "transformer",
+                "rfdetr",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
+            ],
+            "date_added": "2026-03-06 12:00:00"
+        },
+        {
+            "base_name": "rfdetr-seg-2xlarge-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "RF-DETR Seg 2XLarge instance segmentation model trained on COCO. Maximum segmentation accuracy.",
+            "source": "https://github.com/roboflow/rf-detr",
+            "author": "Roboflow",
+            "license": "Apache 2.0",
+            "size_bytes": 154000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.rfdetr.RFDETRSegmentationModel",
+                "config": {
+                    "model_type": "RFDETRSeg2XLarge"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "rfdetr"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "instances",
+                "coco",
+                "torch",
+                "transformer",
+                "rfdetr",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
+            ],
+            "date_added": "2026-03-06 12:00:00"
         }
     ]
 }
