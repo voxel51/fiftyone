@@ -3,6 +3,7 @@
  */
 
 import {
+  activeField,
   datasetSampleCount,
   groupMediaTypesMap,
   isGroup,
@@ -17,7 +18,7 @@ import {
 } from "../useSchemaManager";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useAtomCallback } from "jotai/utils";
-import { useRecoilValue } from "recoil";
+import { useRecoilCallback, useRecoilValue } from "recoil";
 import { isEqual } from "lodash";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -213,18 +214,31 @@ export const useIsFieldActive = (field: string) => {
 /**
  * Hook that returns a callback to add a field to exploreActiveFields,
  * ensuring it's immediately visible in the Annotate sidebar.
+ *
+ * Also sets the Recoil `activeField` so that when the dataset query
+ * re-fetches (e.g. via `reload_dataset`), the field is "checked" in
+ * Explore and the Sidebar.tsx Recoil→Jotai sync preserves it.
  */
 export const useAddToExploreActiveFields = () => {
   const currentFields = useAtomValue(exploreActiveFields);
   const setFields = useSetAtom(exploreActiveFields);
+
+  const activateInExplore = useRecoilCallback(
+    ({ set }) =>
+      (field: string) => {
+        set(activeField({ modal: true, path: field }), true);
+      },
+    []
+  );
 
   return useCallback(
     (field: string) => {
       if (currentFields && !currentFields.includes(field)) {
         setFields([...currentFields, field]);
       }
+      activateInExplore(field);
     },
-    [currentFields, setFields]
+    [currentFields, setFields, activateInExplore]
   );
 };
 
