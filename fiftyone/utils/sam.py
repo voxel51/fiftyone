@@ -166,7 +166,7 @@ class SegmentAnythingImageGetItem(fout.GetItem):
 
     def _set_mode(self, field_mapping):
         if field_mapping is None:
-            return SAMPromptMode(1)  # auto
+            return SAMPromptMode.auto
 
         prompt_fields = ["box_prompt_field", "point_prompt_field"]
         is_present = {f: False for f in prompt_fields}
@@ -176,21 +176,21 @@ class SegmentAnythingImageGetItem(fout.GetItem):
                 is_present[key] = True
 
         if not any(is_present.values()):
-            return SAMPromptMode(1)  # auto
+            return SAMPromptMode.auto
         elif (
             is_present["box_prompt_field"]
             and not is_present["point_prompt_field"]
         ):
-            return SAMPromptMode(2)  # box only
+            return SAMPromptMode.box_only
         elif (
             not is_present["box_prompt_field"]
             and is_present["point_prompt_field"]
         ):
-            return SAMPromptMode(3)  # point only
+            return SAMPromptMode.point_only
         else:
             # NOTE: Because of how we are mainintaing backward compatibilty of prompt_field,
             # combo mode will be set when prompt_field is used.
-            return SAMPromptMode(4)  # box and point combo
+            return SAMPromptMode.box_point_combo
 
     def __call__(self, d):
         item_dict = {}
@@ -345,13 +345,13 @@ class SegmentAnythingImageGetItem(fout.GetItem):
         box_keys = ["box_prompt_field"]
         point_keys = ["point_prompt_field"]
 
-        if self.mode == SAMPromptMode(1):
+        if self.mode == SAMPromptMode.auto:
             return common_keys
-        elif self.mode == SAMPromptMode(2):
+        elif self.mode == SAMPromptMode.box_only:
             return common_keys + box_keys
-        elif self.mode == SAMPromptMode(3):
+        elif self.mode == SAMPromptMode.point_only:
             return common_keys + point_keys
-        elif self.mode == SAMPromptMode(4):
+        elif self.mode == SAMPromptMode.box_point_combo:
             return common_keys + box_keys + point_keys
         else:
             raise ValueError(f"Undefined required keys for {self.mode.name}")
