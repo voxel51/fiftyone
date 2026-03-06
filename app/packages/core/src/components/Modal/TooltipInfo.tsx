@@ -29,12 +29,12 @@ import { useCanAnnotateField } from "./Sidebar/Annotate/useCanAnnotateField";
 
 const TOOLTIP_HEADER_ID = "fo-tooltip-header";
 
-const TooltipDiv = animated(styled(ContentDiv)<{ $isTooltipLocked: boolean }>`
+const TooltipDiv = animated(styled(ContentDiv) <{ $isTooltipLocked: boolean }>`
   position: absolute;
   margin-top: 0;
   left: -1000;
   top: -1000;
-  z-index: 20000;
+  z-index: 1500;
   min-width: 15rem;
   pointer-events: ${(props) => (props.$isTooltipLocked ? "auto" : "none")};
 `);
@@ -589,9 +589,8 @@ const Border = ({ color, id }) => {
   return (
     <BorderDiv
       style={{
-        borderTop: `2px ${
-          selectedLabels.has(id) ? "dashed" : "solid"
-        } ${color}`,
+        borderTop: `2px ${selectedLabels.has(id) ? "dashed" : "solid"
+          } ${color}`,
       }}
     />
   );
@@ -637,23 +636,23 @@ const AttrInfo = ({ label, field, labelType, children = null }) => {
   const attributes =
     typeof label.attributes === "object"
       ? Object.entries(
-          label.attributes as { [key: string]: { value: string | number } }
-        ).map<[string, string | number]>(([k, v]) => [
-          "attributes." + k,
-          v.value,
-        ])
+        label.attributes as { [key: string]: { value: string | number } }
+      ).map<[string, string | number]>(([k, v]) => [
+        "attributes." + k,
+        v.value,
+      ])
       : null;
 
   // we're prettifying the instance config attributes here
   const instanceAttributes = label.instance
     ? Object.entries(label.instance)
-        .filter(
-          ([k, v]) =>
-            typeof v === "string" &&
-            v.length > 0 &&
-            (k === "_id" || !k.startsWith("_"))
-        )
-        .map(([k, v]) => ["instance " + (k === "_id" ? "id" : k), v])
+      .filter(
+        ([k, v]) =>
+          typeof v === "string" &&
+          v.length > 0 &&
+          (k === "_id" || !k.startsWith("_"))
+      )
+      .map(([k, v]) => ["instance " + (k === "_id" ? "id" : k), v])
     : null;
 
   return (
