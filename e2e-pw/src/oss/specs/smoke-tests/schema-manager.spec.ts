@@ -36,65 +36,51 @@ test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, mediaFactory, foWebServer }) => {
-  await foWebServer.startWebServer();
-  await mediaFactory.createBlankImage({
-    outputPath: "/tmp/blank.png",
-    width: 50,
-    height: 50,
-    fillColor: "#ffffff",
-    hideLogs: true,
-  });
+test.beforeAll(
+  async ({ fiftyoneLoader, datasetFactory, mediaFactory, foWebServer }) => {
+    await foWebServer.startWebServer();
+    await datasetFactory.createBlankDataset({
+      datasetName,
+      schema: {
+        classification: "Classification",
+      },
+      withSampleData: () => ({ classification: { label: "value" } }),
+    });
 
-  await fiftyoneLoader.executePythonCode(`
-  from bson import ObjectId
-  import fiftyone as fo
+    await datasetFactory.createBlankDataset({
+      datasetName: detectionDatasetName,
+      schema: {
+        predictions: "Detections",
+      },
+      withSampleData: () => {
+        return {
+          predictions: {
+            detections: [
+              {
+                label: "cat",
+                bounding_box: [0.1, 0.1, 0.2, 0.2],
+              },
+              {
+                label: "dog",
+                bounding_box: [0.3, 0.3, 0.2, 0.2],
+              },
+            ],
+          },
+        };
+      },
+      savedViews: { patches: "dataset.to_patches('predictions')" },
+    });
 
-  dataset = fo.Dataset("${datasetName}")
+    await mediaFactory.createBlankVideo({
+      outputPath: "/tmp/blank-video.webm",
+      duration: 1,
+      width: 50,
+      height: 50,
+      frameRate: 5,
+      color: "#000000",
+    });
 
-  sample = fo.Sample(
-      _id=ObjectId("${id}"),
-      classification=fo.Classification(label="value"),
-      filepath="/tmp/blank.png"
-  )
-  dataset._sample_collection.insert_many(
-      [dataset._make_dict(sample, include_id=True)]
-  )
-
-  dataset.add_sample_field(
-      "classification",
-      fo.EmbeddedDocumentField,
-      embedded_doc_type=fo.Classification,
-  )
-  dataset.save()`);
-
-  await fiftyoneLoader.executePythonCode(`
-  import fiftyone as fo
-
-  dataset = fo.Dataset("${detectionDatasetName}")
-  sample = fo.Sample(
-      filepath="/tmp/blank.png",
-      predictions=fo.Detections(detections=[
-          fo.Detection(label="cat", bounding_box=[0.1, 0.1, 0.2, 0.2]),
-          fo.Detection(label="dog", bounding_box=[0.3, 0.3, 0.2, 0.2]),
-      ])
-  )
-  dataset.add_samples([sample])
-
-  # Save patches view for testing annotation disabled on generated views
-  patches = dataset.to_patches("predictions")
-  dataset.save_view("patches", patches)`);
-
-  await mediaFactory.createBlankVideo({
-    outputPath: "/tmp/blank-video.webm",
-    duration: 1,
-    width: 50,
-    height: 50,
-    frameRate: 5,
-    color: "#000000",
-  });
-
-  await fiftyoneLoader.executePythonCode(`
+    await fiftyoneLoader.executePythonCode(`
   from bson import ObjectId
   import fiftyone as fo
 
@@ -111,7 +97,7 @@ test.beforeAll(async ({ fiftyoneLoader, mediaFactory, foWebServer }) => {
   )
   dataset.save()`);
 
-  await fiftyoneLoader.executePythonCode(`
+    await fiftyoneLoader.executePythonCode(`
   from bson import ObjectId
   import fiftyone as fo
 
@@ -124,7 +110,8 @@ test.beforeAll(async ({ fiftyoneLoader, mediaFactory, foWebServer }) => {
       group=group.element("video1")
   )
   dataset.add_samples([sample])`);
-});
+  }
+);
 
 const DEFAULT_LABEL_SCHEMA = {
   attributes: [

@@ -91,52 +91,22 @@ test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, mediaFactory, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-  await mediaFactory.createBlankImage({
-    outputPath: "/tmp/blank.png",
-    width: imageWidth,
-    height: imageHeight,
-    fillColor: "#ffffff",
-    hideLogs: true,
+  await datasetFactory.createBlankImageDataset({
+    datasetName,
+    imageOptions: {
+      fillColor: "white",
+      height: imageHeight,
+      width: imageWidth,
+    },
+    withSampleData: () => ({
+      classification: { label: "value" },
+      detections: {
+        detections: [{ label: "value", bounding_box: [0.25, 0.25, 0.5, 0.5] }],
+      },
+    }),
   });
-
-  await fiftyoneLoader.executePythonCode(`
-  from bson import ObjectId
-  import fiftyone as fo
-  from datetime import datetime
-
-  dataset = fo.Dataset("${datasetName}")
-  dataset.media_type = "image"
-
-  sample = fo.Sample(
-      _id=ObjectId("${id}"),
-      classification=fo.Classification(label="value"),
-      detections=fo.Detections(
-          detections=[
-              fo.Detection(label="value", bounding_box=[0.25, 0.25, 0.5, 0.5]),
-          ]
-      ),
-      filepath="/tmp/blank.png"
-  )
-  dataset._sample_collection.insert_many(
-      [dataset._make_dict(sample, include_id=True)]
-  )
-
-  dataset.add_sample_field(
-      "classification",
-      fo.EmbeddedDocumentField,
-      embedded_doc_type=fo.Classification,
-  )
-  dataset.add_sample_field(
-      "detections",
-      fo.EmbeddedDocumentField,
-      embedded_doc_type=fo.Detections,
-  )
-  dataset.save()
-  sample = dataset.first()
-  sample.tags = ["tag"]
-  sample.save()`);
 });
 
 test.describe.serial("quick edit", () => {
