@@ -1,4 +1,5 @@
 import { Page, expect } from "src/oss/fixtures";
+import { isElementCoveredBy } from "src/oss/utils";
 import type { EventUtils } from "src/shared/event-utils";
 
 /**
@@ -155,19 +156,15 @@ class TooltipAsserter {
   async isBehindSchemaManager() {
     const bbox = await this.tooltipPom.locked.boundingBox();
     if (!bbox) {
-      throw new Error("Tooltip must be visible and locked to check stacking order");
+      throw new Error(
+        "Tooltip must be visible and locked to check stacking order"
+      );
     }
 
-    // Click the center of the tooltip and check if it is covered by the schema manager modal
-    const isCovered = await this.tooltipPom.page.evaluate(
-      ({ x, y }: { x: number; y: number }) => {
-        const el = document.elementFromPoint(x, y);
-        return (
-          el?.closest('[data-cy="schema-manager"]') !== null ||
-          el?.getAttribute("data-cy") === "schema-manager"
-        );
-      },
-      { x: bbox.x + bbox.width / 2, y: bbox.y + bbox.height / 2 }
+    const isCovered = await isElementCoveredBy(
+      this.tooltipPom.page,
+      { x: bbox.x + bbox.width / 2, y: bbox.y + bbox.height / 2 },
+      '[data-cy="schema-manager"]'
     );
 
     expect(isCovered).toBe(true);
