@@ -7,10 +7,9 @@
  */
 
 import { scrollable } from "@fiftyone/components";
-import { useSetAtom } from "jotai";
+import { useSetAtom, useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { useOperatorExecutor } from "@fiftyone/operators";
 import { useNotification, useRefresh } from "@fiftyone/state";
 import { is3d } from "@fiftyone/utilities";
 import {
@@ -31,6 +30,9 @@ import {
   useSetActiveLabelSchemas,
   useSetLabelSchemasData,
 } from "../hooks";
+
+import { exploreActiveFields } from "../../state";
+import { useSchemaManager } from "../../useSchemaManager";
 
 import AttributesSection from "../EditFieldLabelSchema/GUIContent/AttributesSection";
 import ClassesSection from "../EditFieldLabelSchema/GUIContent/ClassesSection";
@@ -70,8 +72,7 @@ const NewFieldSchema = () => {
   );
   const [newAttributes, setNewAttributes] = useState<Set<string>>(new Set());
 
-  const createField = useOperatorExecutor("create_and_activate_field");
-  const getSchemas = useOperatorExecutor("get_label_schemas");
+  const { createAndActivateField, listSchemas } = useSchemaManager();
   const setLabelSchemasData = useSetLabelSchemasData();
   const setActiveLabelSchemas = useSetActiveLabelSchemas();
   const exitNewFieldMode = useExitNewFieldMode();
@@ -79,6 +80,8 @@ const NewFieldSchema = () => {
   const currentMediaType = useMediaType();
   const is3dMedia = !!(currentMediaType && is3d(currentMediaType));
 
+  const currentExploreFields = useAtomValue(exploreActiveFields);
+  const setExploreFields = useSetAtom(exploreActiveFields);
   const notify = useNotification();
   const refreshSchema = useRefresh();
 
@@ -194,88 +197,79 @@ const NewFieldSchema = () => {
     []
   );
 
-  const handleCreate = useCallback(() => {
+  const handleCreate = useCallback(async () => {
     if (!canCreate) return;
 
     setIsCreating(true);
     const trimmedName = fieldName.trim();
 
-    // Build params
-    const params: Record<string, unknown> = {
-      field_name: trimmedName,
-      field_category: category,
-      field_type: category === "label" ? labelType : primitiveType,
-      read_only: false,
-    };
-
-    if (category === "primitive" && primitiveConfig) {
-      params.schema_config = primitiveConfig;
-    } else if (category === "label") {
-      // Build new_attributes array for data schema creation
+    // Build label schema config for label fields
+    let label_schema_config: Record<string, unknown> | undefined;
+    if (category === "label") {
       const newAttrsArr = attributes.filter((attr) =>
         newAttributes.has(attr.name)
       );
-
-      params.label_schema_config = {
+      label_schema_config = {
         classes,
         attributes,
         new_attributes: newAttrsArr.length > 0 ? newAttrsArr : undefined,
       };
     }
 
-    createField.execute(params, {
-      callback: (createResult) => {
-        if (createResult.error) {
-          const error = createResult.errorMessage || createResult.error;
+    try {
+      await createAndActivateField({
+        field_name: trimmedName,
+        field_category: category,
+        field_type: category === "label" ? labelType : primitiveType,
+        read_only: false,
+        label_schema_config,
+        schema_config:
+          category === "primitive" && primitiveConfig
+            ? primitiveConfig
+            : undefined,
+      });
 
-          console.error("Failed to create field:", error);
-          notify({
-            msg: `Failed to create field: ${error}`,
-            variant: "error",
-          });
+      const { active_label_schemas, label_schemas } = await listSchemas({});
 
-          setIsCreating(false);
-          return;
-        }
+      setLabelSchemasData(label_schemas);
+      setActiveLabelSchemas(active_label_schemas);
 
-        // Refresh schemas data
-        getSchemas.execute(
-          {},
-          {
-            callback: (schemasResult) => {
-              setIsCreating(false);
+      // Add the new field to exploreActiveFields so it's
+      // immediately visible (visibleLabelSchemas intersects
+      // activeLabelSchemas with exploreActiveFields).
+      if (currentExploreFields && !currentExploreFields.includes(trimmedName)) {
+        setExploreFields([...currentExploreFields, trimmedName]);
+      }
 
-              if (schemasResult.result) {
-                const { active_label_schemas, label_schemas } =
-                  schemasResult.result;
-
-                setLabelSchemasData(label_schemas);
-                setActiveLabelSchemas(active_label_schemas);
-
-                refreshSchema();
-                exitNewFieldMode();
-              }
-            },
-          }
-        );
-      },
-    });
+      refreshSchema();
+      exitNewFieldMode();
+    } catch (error) {
+      console.error("Failed to create field:", error);
+      notify({
+        msg: `Failed to create field: ${error}`,
+        variant: "error",
+      });
+    } finally {
+      setIsCreating(false);
+    }
   }, [
     attributes,
     canCreate,
     category,
     classes,
-    createField,
+    createAndActivateField,
+    currentExploreFields,
     exitNewFieldMode,
     fieldName,
-    getSchemas,
     labelType,
+    listSchemas,
     newAttributes,
     notify,
     primitiveConfig,
     primitiveType,
     refreshSchema,
     setActiveLabelSchemas,
+    setExploreFields,
     setLabelSchemasData,
   ]);
 

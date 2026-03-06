@@ -133,6 +133,21 @@ export type UpdateSchemaResponse = {
   label_schema: FieldSchema;
 };
 
+export type CreateAndActivateFieldRequest = {
+  field_name: string;
+  field_category: "label" | "primitive";
+  field_type: string;
+  read_only?: boolean;
+  label_schema_config?: Record<string, unknown>;
+  schema_config?: Record<string, unknown>;
+};
+
+export type CreateAndActivateFieldResponse = {
+  field_name: string;
+  label_schema: FieldSchema;
+  error?: string;
+};
+
 export type ValidateSchemasRequest = {
   label_schemas?: AnnotationSchema;
 };
@@ -153,6 +168,15 @@ export interface SchemaManager {
   activateSchemas: (
     request: ActivateSchemasRequest
   ) => Promise<ActivateSchemasResponse>;
+
+  /**
+   * Create a new field and activate it for annotation.
+   *
+   * @param request Creation request
+   */
+  createAndActivateField: (
+    request: CreateAndActivateFieldRequest
+  ) => Promise<CreateAndActivateFieldResponse>;
 
   /**
    * Create one or more new schema.
@@ -294,6 +318,9 @@ export const useSchemaManager = (): SchemaManager => {
   const activateSchemasOperator = useOperatorExecutor(
     "@voxel51/operators/activate_label_schemas"
   ) as Operator<ActivateSchemasRequest, ActivateSchemasResponse>;
+  const createAndActivateFieldOperator = useOperatorExecutor(
+    "@voxel51/operators/create_and_activate_field"
+  ) as Operator<CreateAndActivateFieldRequest, CreateAndActivateFieldResponse>;
   const createSchemasOperator = useOperatorExecutor(
     "@voxel51/operators/generate_label_schemas"
   ) as Operator<CreateSchemasRequest, CreateSchemasResponse>;
@@ -327,6 +354,15 @@ export const useSchemaManager = (): SchemaManager => {
       return operatorAsPromise(activateSchemasOperator, request);
     },
     [activateSchemasOperator]
+  );
+
+  const createAndActivateField = useCallback(
+    (
+      request: CreateAndActivateFieldRequest
+    ): Promise<CreateAndActivateFieldResponse> => {
+      return operatorAsPromise(createAndActivateFieldOperator, request);
+    },
+    [createAndActivateFieldOperator]
   );
 
   const createSchemas = useCallback(
@@ -411,6 +447,7 @@ export const useSchemaManager = (): SchemaManager => {
   return useMemo(
     () => ({
       activateSchemas: activateSchemas,
+      createAndActivateField: createAndActivateField,
       createSchemas: createSchemas,
       deactivateSchemas: deactivateSchema,
       deleteSchemas: deleteSchemas,
@@ -423,6 +460,7 @@ export const useSchemaManager = (): SchemaManager => {
     }),
     [
       activateSchemas,
+      createAndActivateField,
       createSchemas,
       deactivateSchema,
       deleteSchemas,
