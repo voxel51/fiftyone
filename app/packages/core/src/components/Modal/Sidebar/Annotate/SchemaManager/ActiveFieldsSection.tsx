@@ -174,7 +174,7 @@ const ActiveFieldsSection = () => {
           <Tooltip
             content={
               <Text>
-                Fields currently active and available for dataset annotation
+                Fields currently active and available in the "Annotate" tab
               </Text>
             }
             anchor={Anchor.Bottom}
@@ -212,7 +212,7 @@ const ActiveFieldsSection = () => {
         <Tooltip
           content={
             <Text>
-              Fields currently active and available for dataset annotation
+              Fields currently active and available in the "Annotate" tab
             </Text>
           }
           anchor={Anchor.Top}
