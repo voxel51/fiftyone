@@ -75,7 +75,7 @@ export class TooltipPom {
  * Sample canvas tooltip asserter
  */
 class TooltipAsserter {
-  constructor(private readonly tooltipPom: TooltipPom) {}
+  constructor(private readonly tooltipPom: TooltipPom) { }
 
   /**
    * Is the tooltip locked
@@ -143,5 +143,33 @@ class TooltipAsserter {
     }
 
     await Promise.all(promises);
+  }
+
+  /**
+   * Is the tooltip behind the schema manager modal (z-index regression test)
+   *
+   * This verifies that the schema manager's ModalBackground has a higher
+   * z-index than the TooltipInfo, preventing locked canvas tooltips from appearing above
+   * the modal overlay.
+   */
+  async isBehindSchemaManager() {
+    const bbox = await this.tooltipPom.locked.boundingBox();
+    if (!bbox) {
+      throw new Error("Tooltip must be visible and locked to check stacking order");
+    }
+
+    // Click the center of the tooltip and check if it is covered by the schema manager modal
+    const isCovered = await this.tooltipPom.page.evaluate(
+      ({ x, y }: { x: number; y: number }) => {
+        const el = document.elementFromPoint(x, y);
+        return (
+          el?.closest('[data-cy="schema-manager"]') !== null ||
+          el?.getAttribute("data-cy") === "schema-manager"
+        );
+      },
+      { x: bbox.x + bbox.width / 2, y: bbox.y + bbox.height / 2 }
+    );
+
+    expect(isCovered).toBe(true);
   }
 }
