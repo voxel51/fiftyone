@@ -76,20 +76,16 @@ test.describe.serial("schema manager tooltip z-index stacking", () => {
     await modal.assert.isOpen();
     await modal.waitForSampleLoadDomAttribute();
 
-    // Hover over the detection at the center to trigger the tooltip
-    await modal.sampleCanvas.move(0.5, 0.5);
+    await modal.sampleCanvas.move(0.5, 0.5, "pointer");
     await modal.sampleCanvas.tooltip.assert.isVisible();
 
-    // Lock the tooltip so it persists when we navigate away
     await modal.sampleCanvas.tooltip.toggleLock();
     await modal.sampleCanvas.tooltip.assert.isLocked();
 
-    // Switch to annotate mode and open schema manager
     await modal.sidebar.switchMode("annotate");
     await schemaManager.open();
     await schemaManager.assert.isOpen();
 
-    // REGRESSION TEST: Verify the schema manager modal is visually above the tooltip
     await modal.sampleCanvas.tooltip.assert.isBehindSchemaManager();
   });
 });
