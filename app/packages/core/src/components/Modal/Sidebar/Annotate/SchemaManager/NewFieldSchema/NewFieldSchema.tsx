@@ -23,11 +23,11 @@ import {
 } from "@voxel51/voodo";
 
 import {
+  useActiveFieldsList,
   useAddToExploreActiveFields,
   useExitNewFieldMode,
   useLabelSchemasData,
   useMediaType,
-  useSetActiveLabelSchemas,
   useSetLabelSchemasData,
 } from "../hooks";
 
@@ -73,7 +73,7 @@ const NewFieldSchema = () => {
 
   const { createAndActivateField, listSchemas } = useSchemaManager();
   const setLabelSchemasData = useSetLabelSchemasData();
-  const setActiveLabelSchemas = useSetActiveLabelSchemas();
+  const { setFields: setActiveFields } = useActiveFieldsList();
   const exitNewFieldMode = useExitNewFieldMode();
   const schemasData = useLabelSchemasData();
   const currentMediaType = useMediaType();
@@ -230,7 +230,7 @@ const NewFieldSchema = () => {
       const { active_label_schemas, label_schemas } = await listSchemas({});
 
       setLabelSchemasData(label_schemas);
-      setActiveLabelSchemas(active_label_schemas);
+      setActiveFields(active_label_schemas);
 
       // Add the new field to exploreActiveFields so it's
       // immediately visible (visibleLabelSchemas intersects
@@ -264,7 +264,7 @@ const NewFieldSchema = () => {
     primitiveConfig,
     primitiveType,
     refreshSchema,
-    setActiveLabelSchemas,
+    setActiveFields,
     setLabelSchemasData,
   ]);
 

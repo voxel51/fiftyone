@@ -531,6 +531,13 @@ export const useFullSchemaEditor = () => {
           .then((result) => {
             setErrors(result?.errors ?? []);
           })
+          .catch((error) => {
+            setErrors([
+              error instanceof Error
+                ? error.message
+                : "Failed to validate schema",
+            ]);
+          })
           .finally(() => {
             setIsValidating(false);
           });
