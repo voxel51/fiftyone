@@ -830,25 +830,33 @@ class ExecutionContext(contextlib.AbstractContextManager):
     @property
     def selected(self):
         """The list of selected sample IDs (if any)."""
-        return self.request_params.get("selected", [])
+        selected = self.request_params.get("selected", None)
+        if selected is not None:
+            return selected
+
+        return [
+            s["sample_id"] if isinstance(s, dict) else s
+            for s in self.selected_samples
+        ]
 
     @property
-    def selected_meta(self):
-        """A dict mapping sample IDs to selection metadata (if any).
+    def selected_samples(self):
+        """A list of selected sample dicts (if any).
 
-        Each value is a dict with a ``type`` key (``"default"`` or ``"alt"``).
+        Each dict has ``sample_id`` and ``type`` (``"default"`` or ``"alt"``).
         """
-        return self.request_params.get("selected_meta", {})
+        return self.request_params.get("selected_samples", [])
 
     @property
-    def selection_style(self):
-        """The current selection style config (if any).
+    def sample_selection_style(self):
+        """The current sample selection style config (if any).
 
         A dict with a ``default`` key and optional ``alt`` key specifying
         icon styles.
         """
         return self.request_params.get(
-            "selection_style", {"default": "checkmark", "alt": "checkmark"}
+            "sample_selection_style",
+            {"default": "checkmark", "alt": "checkmark"},
         )
 
     @property

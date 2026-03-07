@@ -51,7 +51,7 @@ from fiftyone.core.session.events import (
     SetColorScheme,
     SetDatasetColorScheme,
     SetSample,
-    SetSelectionStyle,
+    SetSampleSelectionStyle,
     SetSpaces,
     SetGroupSlice,
     StateUpdate,
@@ -790,29 +790,45 @@ class Session(object):
     @selected.setter  # type: ignore
     def selected(self, sample_ids: t.List[str]) -> None:
         self._state.selected = list(sample_ids) if sample_ids else []
-        self._state.selected_meta = {}
-        self._client.send_event(SelectSamples(sample_ids))
+        samples = [
+            {"sample_id": sid, "type": "default"}
+            for sid in self._state.selected
+        ]
+        self._state.selected_samples = samples
+        self._client.send_event(SelectSamples(samples=samples))
+
+    @property
+    def selected_samples(self) -> t.List[t.Dict]:
+        """A list of selected sample dicts, each with ``sample_id`` and
+        ``type`` (``"default"`` or ``"alt"``).
+        """
+        return list(self._state.selected_samples or [])
+
+    @selected_samples.setter
+    def selected_samples(self, samples: t.List) -> None:
+        normalized = _normalize_selected_samples(samples)
+        self._state.selected_samples = normalized
+        self._state.selected = [s["sample_id"] for s in normalized]
+        self._client.send_event(SelectSamples(samples=normalized))
 
     def clear_selected(self) -> None:
         """Clears the currently selected samples, if any."""
         self._state.selected = []
-        self._state.selected_meta = {}
-        self._client.send_event(SelectSamples([]))
+        self._state.selected_samples = []
+        self._client.send_event(SelectSamples(samples=[]))
 
     def select_samples(
         self,
-        ids: t.Optional[t.Union[str, t.Iterable[str]]] = None,
+        ids: t.Optional[t.Union[str, t.Iterable]] = None,
         tags: t.Optional[t.Union[str, t.Iterable[str]]] = None,
-        meta: t.Optional[t.Dict] = None,
     ) -> None:
-        """Selects the specified samples in the current view in the App,
+        """Selects the specified samples in the current view in the App.
 
         Args:
-            ids (None): an ID or iterable of IDs of samples to select
+            ids (None): an ID or iterable of IDs of samples to select.
+                Items can be plain strings (all ``"default"`` type) or dicts
+                of the form ``{"sample_id": "...", "type": "default"|"alt"}``.
             tags (None): a tag or iterable of tags of samples to select
-            meta (None): an optional dict mapping sample IDs to selection
-                metadata dicts, e.g.
-                ``{"sample_id": {"type": "default"}}``
         """
         if tags is not None and self._collection:
             ids = self._collection.match_tags(tags).values("id")
@@ -820,44 +836,27 @@ class Session(object):
         if ids is None:
             ids = []
 
-        self._state.selected = list(ids)
-        self._state.selected_meta = _resolve_meta(self._state.selected, meta)
-        self._client.send_event(
-            SelectSamples(self._state.selected, meta=self._state.selected_meta)
-        )
+        normalized = _normalize_selected_samples(list(ids))
+        self._state.selected_samples = normalized
+        self._state.selected = [s["sample_id"] for s in normalized]
+        self._client.send_event(SelectSamples(samples=normalized))
 
     @property
-    def selected_meta(self) -> t.Dict:
-        """A dict mapping sample IDs to selection metadata.
-
-        Each value is a dict with a ``type`` key (``"default"`` or ``"alt"``).
-        """
-        return self._state.selected_meta or {}
-
-    @selected_meta.setter
-    def selected_meta(self, meta: t.Dict) -> None:
-        resolved = _resolve_meta(self._state.selected, meta)
-        self._state.selected_meta = resolved
-        self._client.send_event(
-            SelectSamples(self._state.selected, meta=resolved)
-        )
-
-    @property
-    def selection_style(self) -> t.Dict:
-        """The current selection style config.
+    def sample_selection_style(self) -> t.Dict:
+        """The current sample selection style config.
 
         A dict with a ``default`` key and optional ``alt`` key specifying
         icon styles.
         """
-        return self._state.selection_style or {
+        return self._state.sample_selection_style or {
             "default": "checkmark",
             "alt": "checkmark",
         }
 
-    def set_selection_style(
+    def set_sample_selection_style(
         self, default: str = "checkmark", alt: str = "checkmark"
     ) -> None:
-        """Sets the selection style in the App.
+        """Sets the sample selection style in the App.
 
         Args:
             default ("checkmark"): the default selection icon style. Supported
@@ -867,14 +866,14 @@ class Session(object):
             alt ("checkmark"): the alt selection icon style
         """
         style = _resolve_selection_style(default, alt)
-        self._state.selection_style = style
-        self._client.send_event(SetSelectionStyle(style=style))
+        self._state.sample_selection_style = style
+        self._client.send_event(SetSampleSelectionStyle(style=style))
 
-    def clear_selection_style(self) -> None:
-        """Clears the selection style, reverting to default checkmark."""
+    def clear_sample_selection_style(self) -> None:
+        """Clears the sample selection style, reverting to default checkmark."""
         style = {"default": "checkmark", "alt": "checkmark"}
-        self._state.selection_style = style
-        self._client.send_event(SetSelectionStyle(style=style))
+        self._state.sample_selection_style = style
+        self._client.send_event(SetSampleSelectionStyle(style=style))
 
     @property
     def selected_labels(self) -> t.List[dict]:
@@ -1237,23 +1236,20 @@ def _attach_listeners(session: "Session"):
     session._client.add_event_listener("state_update", on_state_update)
 
     def on_select_samples(event: SelectSamples):
-        session._state.selected = event.sample_ids
-        if event.meta is not None:
-            # Filter meta to only include IDs in selected
-            selected_set = set(session._state.selected)
-            session._state.selected_meta = {
-                k: v for k, v in event.meta.items() if k in selected_set
-            }
-        else:
-            session._state.selected_meta = {}
+        session._state.selected_samples = event.samples
+        session._state.selected = [
+            s["sample_id"] if isinstance(s, dict) else s for s in event.samples
+        ]
 
     session._client.add_event_listener("select_samples", on_select_samples)
 
-    def on_set_selection_style(event: SetSelectionStyle) -> None:
-        session._state.selection_style = event.style
+    def on_set_sample_selection_style(
+        event: SetSampleSelectionStyle,
+    ) -> None:
+        session._state.sample_selection_style = event.style
 
     session._client.add_event_listener(
-        "set_selection_style", on_set_selection_style
+        "set_sample_selection_style", on_set_sample_selection_style
     )
 
     on_select_labels: t.Callable[
@@ -1373,31 +1369,33 @@ def _on_refresh(session: Session, state: t.Optional[StateDescription]):
         session.dataset.reload()
 
 
-def _resolve_meta(selected: t.List[str], meta: t.Optional[t.Dict]) -> t.Dict:
-    if meta is None:
-        return {}
+def _normalize_selected_samples(
+    samples: t.List,
+) -> t.List[t.Dict]:
+    """Normalizes a list of selected samples to the canonical format.
 
-    if not isinstance(meta, dict):
-        raise ValueError("meta must be a dict")
-
+    Accepts both ``list[str]`` (all "default") and
+    ``list[dict]`` (``{"sample_id": ..., "type": ...}``).
+    """
     valid_types = {"default", "alt"}
-
-    selected_set = set(selected)
-    extra_keys = set(meta.keys()) - selected_set
-    if extra_keys:
-        raise ValueError(
-            "meta contains IDs not in the selected samples: " f"{extra_keys}"
-        )
-
-    for sample_id, entry in meta.items():
-        sel_type = entry.get("type") if isinstance(entry, dict) else None
-        if sel_type not in valid_types:
+    result = []
+    for item in samples:
+        if isinstance(item, str):
+            result.append({"sample_id": item, "type": "default"})
+        elif isinstance(item, dict):
+            sample_id = item.get("sample_id")
+            sel_type = item.get("type", "default")
+            if sel_type not in valid_types:
+                raise ValueError(
+                    f"Invalid selection type '{sel_type}' for sample "
+                    f"'{sample_id}'. Must be one of {valid_types}"
+                )
+            result.append({"sample_id": sample_id, "type": sel_type})
+        else:
             raise ValueError(
-                f"Invalid selection type '{sel_type}' for sample "
-                f"'{sample_id}'. Must be one of {valid_types}"
+                f"Invalid sample entry: {item}. Must be a string or dict"
             )
-
-    return meta
+    return result
 
 
 def _resolve_selection_style(

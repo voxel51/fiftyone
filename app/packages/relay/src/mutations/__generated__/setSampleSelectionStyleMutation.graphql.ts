@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<21e1737c2b81b672b44e1d9d9e71197c>>
+ * @generated SignedSource<<c61a4e0a3765beea310523c67b0401ee>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,17 +9,17 @@
 // @ts-nocheck
 
 import { ConcreteRequest, Mutation } from 'relay-runtime';
-export type setSelectionStyleMutation$variables = {
+export type setSampleSelectionStyleMutation$variables = {
   session?: string | null;
   style: object;
   subscription: string;
 };
-export type setSelectionStyleMutation$data = {
-  readonly setSelectionStyle: boolean;
+export type setSampleSelectionStyleMutation$data = {
+  readonly setSampleSelectionStyle: boolean;
 };
-export type setSelectionStyleMutation = {
-  response: setSelectionStyleMutation$data;
-  variables: setSelectionStyleMutation$variables;
+export type setSampleSelectionStyleMutation = {
+  response: setSampleSelectionStyleMutation$data;
+  variables: setSampleSelectionStyleMutation$variables;
 };
 
 const node: ConcreteRequest = (function(){
@@ -59,7 +59,7 @@ v3 = [
       }
     ],
     "kind": "ScalarField",
-    "name": "setSelectionStyle",
+    "name": "setSampleSelectionStyle",
     "storageKey": null
   }
 ];
@@ -72,7 +72,7 @@ return {
     ],
     "kind": "Fragment",
     "metadata": null,
-    "name": "setSelectionStyleMutation",
+    "name": "setSampleSelectionStyleMutation",
     "selections": (v3/*: any*/),
     "type": "Mutation",
     "abstractKey": null
@@ -85,20 +85,20 @@ return {
       (v1/*: any*/)
     ],
     "kind": "Operation",
-    "name": "setSelectionStyleMutation",
+    "name": "setSampleSelectionStyleMutation",
     "selections": (v3/*: any*/)
   },
   "params": {
-    "cacheID": "6a8621dc7e1f61e1aafd6e6cf83b1e75",
+    "cacheID": "cdcf823051a6535f72568d0a3142d85e",
     "id": null,
     "metadata": {},
-    "name": "setSelectionStyleMutation",
+    "name": "setSampleSelectionStyleMutation",
     "operationKind": "mutation",
-    "text": "mutation setSelectionStyleMutation(\n  $subscription: String!\n  $session: String\n  $style: JSON!\n) {\n  setSelectionStyle(subscription: $subscription, session: $session, style: $style)\n}\n"
+    "text": "mutation setSampleSelectionStyleMutation(\n  $subscription: String!\n  $session: String\n  $style: JSON!\n) {\n  setSampleSelectionStyle(subscription: $subscription, session: $session, style: $style)\n}\n"
   }
 };
 })();
 
-(node as any).hash = "14dc523b49ed9a262b6e44ec5539fb3b";
+(node as any).hash = "63b00868c5d650e29c11cbdf6c83747c";
 
 export default node;

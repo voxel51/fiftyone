@@ -543,13 +543,12 @@ type Mutation {
     stages: BSONArray!
     sidebarGroups: [SidebarGroupInput!]!
   ): Boolean!
-  setSelected(
+  setSelectedSamples(
     subscription: String!
     session: String
-    selected: [String!]!
-    selectedMeta: JSON = null
+    selectedSamples: JSON!
   ): Boolean!
-  setSelectionStyle(
+  setSampleSelectionStyle(
     subscription: String!
     session: String
     style: JSON!

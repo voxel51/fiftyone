@@ -45,9 +45,8 @@ class StateDescription(etas.Serializable):
         sample_id (None): a :attr:`fiftyone.core.sample.Sample.id`
         selected (None): the list of currently selected samples
         selected_labels (None): the list of currently selected labels
-        selected_meta (None): a dict mapping sample IDs to selection
-            metadata
-        selection_style (None): a dict with selection style config
+        selected_samples (None): a list of dicts with sample selection info
+        sample_selection_style (None): a dict with selection style config
         spaces (None): a :class:`fiftyone.core.odm.workspace.Space`
         view (None): the current :class:`fiftyone.core.view.DatasetView`
         view_name (None): the name of the view if the current view is a
@@ -65,8 +64,8 @@ class StateDescription(etas.Serializable):
         sample_id=None,
         selected=None,
         selected_labels=None,
-        selected_meta=None,
-        selection_style=None,
+        selected_samples=None,
+        sample_selection_style=None,
         spaces=None,
         view=None,
         view_name=None,
@@ -88,8 +87,8 @@ class StateDescription(etas.Serializable):
         self.sample_id = sample_id
         self.selected = selected or []
         self.selected_labels = selected_labels or []
-        self.selected_meta = selected_meta or {}
-        self.selection_style = selection_style or {
+        self.selected_samples = selected_samples or []
+        self.sample_selection_style = sample_selection_style or {
             "default": "checkmark",
             "alt": "checkmark",
         }
@@ -212,8 +211,8 @@ class StateDescription(etas.Serializable):
             sample_id=d.get("sample_id", None),
             selected=d.get("selected", []),
             selected_labels=d.get("selected_labels", []),
-            selected_meta=d.get("selected_meta", None),
-            selection_style=d.get("selection_style", None),
+            selected_samples=d.get("selected_samples", None),
+            sample_selection_style=d.get("sample_selection_style", None),
             spaces=spaces,
             view=view,
         )

@@ -475,26 +475,30 @@ class Operations(object):
             "convert_extended_selection_to_selected_samples"
         )
 
-    def set_selected_samples(self, samples, meta=None):
+    def set_selected_samples(self, samples):
         """Select the specified samples in the App.
 
         Args:
-            samples: a list of sample IDs to select
-            meta (None): an optional dict mapping sample IDs to selection
-                metadata dicts, e.g.
-                ``{"sample_id": {"type": "default"}}``
+            samples: a list of sample IDs (strings) or dicts of the form
+                ``{"sample_id": "...", "type": "default"|"alt"}``
         """
-        if meta is not None:
-            _validate_meta(samples, meta)
+        normalized = []
+        for item in samples:
+            if isinstance(item, str):
+                normalized.append({"sample_id": item, "type": "default"})
+            elif isinstance(item, dict):
+                normalized.append(item)
+            else:
+                raise ValueError(
+                    f"Invalid sample item: {item}. Must be a string or dict"
+                )
 
-        params = {"samples": samples}
-        if meta is not None:
-            params["meta"] = meta
+        return self._ctx.trigger(
+            "set_selected_samples", params={"samples": normalized}
+        )
 
-        return self._ctx.trigger("set_selected_samples", params=params)
-
-    def set_selection_style(self, default="checkmark", alt="checkmark"):
-        """Set the selection style in the App.
+    def set_sample_selection_style(self, default="checkmark", alt="checkmark"):
+        """Set the sample selection style in the App.
 
         Args:
             default ("checkmark"): the default selection icon style. Supported
@@ -505,13 +509,13 @@ class Operations(object):
         """
         _validate_selection_style(default, alt)
         return self._ctx.trigger(
-            "set_selection_style",
+            "set_sample_selection_style",
             params={"default": default, "alt": alt},
         )
 
-    def clear_selection_style(self):
-        """Clear the selection style in the App, reverting to default."""
-        return self._ctx.trigger("clear_selection_style")
+    def clear_sample_selection_style(self):
+        """Clear the sample selection style in the App, reverting to default."""
+        return self._ctx.trigger("clear_sample_selection_style")
 
     def set_view(self, view=None, name=None):
         """Set the current view in the App.
@@ -760,27 +764,6 @@ _VALID_ICON_STYLES = {
     "x",
     "bookmark",
 }
-
-_VALID_SELECTION_TYPES = {"default", "alt"}
-
-
-def _validate_meta(samples, meta):
-    if not isinstance(meta, dict):
-        raise ValueError("meta must be a dict")
-    selected_set = set(samples)
-    extra_keys = set(meta.keys()) - selected_set
-    if extra_keys:
-        raise ValueError(
-            "meta contains IDs not in the selected samples: " f"{extra_keys}"
-        )
-
-    for sample_id, entry in meta.items():
-        sel_type = entry.get("type") if isinstance(entry, dict) else None
-        if sel_type not in _VALID_SELECTION_TYPES:
-            raise ValueError(
-                f"Invalid selection type '{sel_type}' for sample "
-                f"'{sample_id}'. Must be one of {_VALID_SELECTION_TYPES}"
-            )
 
 
 def _validate_selection_style(default, alt):

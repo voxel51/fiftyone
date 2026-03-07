@@ -169,27 +169,28 @@ class Mutation(SetColorScheme):
         return True
 
     @gql.mutation
-    async def set_selected(
+    async def set_selected_samples(
         self,
         subscription: str,
         session: t.Optional[str],
-        selected: t.List[str],
-        selected_meta: t.Optional[JSON] = None,
+        selected_samples: JSON,
     ) -> bool:
         await dispatch_event(
             subscription,
-            fose.SelectSamples(sample_ids=selected, meta=selected_meta),
+            fose.SelectSamples(samples=selected_samples),
         )
         return True
 
     @gql.mutation
-    async def set_selection_style(
+    async def set_sample_selection_style(
         self,
         subscription: str,
         session: t.Optional[str],
         style: JSON,
     ) -> bool:
-        await dispatch_event(subscription, fose.SetSelectionStyle(style=style))
+        await dispatch_event(
+            subscription, fose.SetSampleSelectionStyle(style=style)
+        )
         return True
 
     @gql.mutation

@@ -35,7 +35,7 @@ EventType = t.Union[
     "SetColorScheme",
     "SetGroupSlice",
     "SetSample",
-    "SetSelectionStyle",
+    "SetSampleSelectionStyle",
     "SetSpaces",
     "StateUpdate",
     "SetFieldVisibilityStage",
@@ -151,13 +151,12 @@ class SelectLabels(Event):
 class SelectSamples(Event):
     """Select samples event"""
 
-    sample_ids: t.List[str]
-    meta: t.Optional[t.Dict] = None
+    samples: t.List[t.Dict]
 
 
 @dataclass
-class SetSelectionStyle(Event):
-    """Set selection style event"""
+class SetSampleSelectionStyle(Event):
+    """Set sample selection style event"""
 
     style: t.Dict
 
