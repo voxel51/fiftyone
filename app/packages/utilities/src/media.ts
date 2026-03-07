@@ -30,6 +30,8 @@ const WRAPPABLE_DIRECT_3D_SAMPLE_EXTENSIONS = new Set([
   ".stl",
 ]);
 
+const FO3D_SAMPLE_EXTENSION = ".fo3d";
+
 const decodePath = (path: string) => {
   try {
     return decodeURIComponent(path);
@@ -135,6 +137,13 @@ export const isWrappableDirect3dSamplePath = (
 };
 
 /**
+ * Returns true when the provided sample path points to a real FO3D scene file.
+ */
+export const isFo3dSamplePath = (path: string | null | undefined): boolean => {
+  return getSamplePathExtension(path) === FO3D_SAMPLE_EXTENSION;
+};
+
+/**
  * Returns true if the provided media type is associated with FO3D.
  *
  * @param mediaType media type
@@ -149,7 +158,7 @@ export const isFo3d = (mediaType: string): boolean => {
  * @param mediaType media type
  */
 export const isPointCloud = (mediaType: string): boolean => {
-  return ["point-cloud", "point_cloud"].includes(mediaType);
+  return ["pcd", "point-cloud", "point_cloud"].includes(mediaType);
 };
 
 /**
@@ -197,9 +206,9 @@ export const setContains3d = (mediaTypes: Set<string>): boolean => {
  * @param set set of values
  * @param predicate function to evaluate truthiness
  */
-const anyMatch = (
-  set: Set<any>,
-  predicate: (element: any) => boolean
+const anyMatch = <T>(
+  set: Set<T>,
+  predicate: (element: T) => boolean
 ): boolean => {
   return [...set].findIndex((e) => predicate(e)) >= 0;
 };

@@ -17,9 +17,9 @@ import { isNativeMediaType } from "@fiftyone/looker/src/util";
 import {
   EMBEDDED_DOCUMENT_FIELD,
   LIST_FIELD,
-  getSamplePathExtension,
   getMimeType,
   isDirect3dSamplePath,
+  isFo3dSamplePath,
   isNullish,
 } from "@fiftyone/utilities";
 import { useEffect, useRef } from "react";
@@ -178,8 +178,8 @@ export default <T extends AbstractLooker<BaseState>>(
 
         if (create === ThreeDLooker) {
           config.isFo3d =
-            getSamplePathExtension(sample["filepath"] as string) === ".fo3d" ||
-            getSamplePathExtension(sampleMediaFilePath) === ".fo3d";
+            isFo3dSamplePath(sample["filepath"] as string) ||
+            isFo3dSamplePath(sampleMediaFilePath);
 
           const orthographicProjectionField = Object.entries(sample)
             .find(
