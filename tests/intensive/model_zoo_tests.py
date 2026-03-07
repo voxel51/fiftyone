@@ -284,9 +284,17 @@ def _apply_video_models(
 
         for sample in dataset:
             if len(sample.frames) > 0:
+                first_frame = sample.frames[1]
                 last_frame = sample.frames[len(sample.frames)]
                 assert last_frame[label_field] is not None
                 assert len(last_frame[label_field].detections) > 0
+                # if our prompt field does not have a mask,
+                # the label field shouldn't have a mask either
+                assert (
+                    first_frame[kwargs[_SAM_PROMPT_FIELD]].detections[0].mask is None
+                ) == (
+                    last_frame[label_field].detections[0].mask is None
+                )
 
     session = fo.launch_app(dataset)
     session.wait()
