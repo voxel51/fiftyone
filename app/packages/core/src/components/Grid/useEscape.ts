@@ -27,7 +27,6 @@ const useEscape = () => {
               confirm("Are you sure you want to clear your current selection?")
             ) {
               reset(fos.selectedSamples);
-              reset(fos.selectedMeta);
             }
           }
         },

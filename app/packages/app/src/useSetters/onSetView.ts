@@ -42,8 +42,7 @@ const onSetView: RegisteredSetter =
         }
 
         sessionRef.current.selectedLabels = [];
-        sessionRef.current.selectedSamples = new Set();
-        sessionRef.current.selectedMeta = {};
+        sessionRef.current.selectedSamples = new Map();
         sessionRef.current.fieldVisibilityStage = undefined;
         router.history.push(
           resolveURL({

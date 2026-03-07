@@ -25,7 +25,7 @@ import { useErrorHandler } from "react-error-boundary";
 import { useRelayEnvironment } from "react-relay";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { dynamicGroupsElementCount, selectedMediaField } from "../recoil";
-import { selectedSamples, selectedMeta, selectionStyle } from "../recoil/atoms";
+import { selectedSamples, sampleSelectionStyle } from "../recoil/atoms";
 import * as dynamicGroupAtoms from "../recoil/dynamicGroups";
 import * as schemaAtoms from "../recoil/schema";
 import { datasetName, dynamicGroupsTargetFrameRate } from "../recoil/selectors";
@@ -45,8 +45,7 @@ export default <T extends AbstractLooker<BaseState>>(
   const abortControllerRef = useRef(new AbortController());
   const environment = useRelayEnvironment();
   const selected = useRecoilValue(selectedSamples);
-  const meta = useRecoilValue(selectedMeta);
-  const style = useRecoilValue(selectionStyle);
+  const style = useRecoilValue(sampleSelectionStyle);
   const isClip = useRecoilValue(viewAtoms.isClipsView);
   const isFrame = useRecoilValue(viewAtoms.isFramesView);
   const isPatch = useRecoilValue(viewAtoms.isPatchesView);
@@ -260,7 +259,7 @@ export default <T extends AbstractLooker<BaseState>>(
         const {
           selectionType: sampleSelectionType,
           selectionIcon: sampleSelectionIcon,
-        } = resolveSelectionIcon(meta, style, sample._id, isSelected);
+        } = resolveSelectionIcon(selected, style, sample._id, isSelected);
 
         const looker = new create(
           sample,
@@ -305,7 +304,6 @@ export default <T extends AbstractLooker<BaseState>>(
       options,
       shouldRenderImaVidLooker,
       selected,
-      meta,
       style,
       thumbnail,
       view,

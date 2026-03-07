@@ -1,16 +1,16 @@
 import {
-  setSelectionStyle,
-  type setSelectionStyleMutation,
+  setSampleSelectionStyle,
+  type setSampleSelectionStyleMutation,
 } from "@fiftyone/relay";
 import { DefaultValue } from "recoil";
 import { commitMutation } from "relay-runtime";
 import type { RegisteredWriter } from "./registerWriter";
 
-const onSetSelectionStyle: RegisteredWriter<"selectionStyle"> =
+const onSetSampleSelectionStyle: RegisteredWriter<"sampleSelectionStyle"> =
   ({ environment, subscription }) =>
   (style) => {
-    commitMutation<setSelectionStyleMutation>(environment, {
-      mutation: setSelectionStyle,
+    commitMutation<setSampleSelectionStyleMutation>(environment, {
+      mutation: setSampleSelectionStyle,
       variables: {
         style:
           style instanceof DefaultValue
@@ -21,4 +21,4 @@ const onSetSelectionStyle: RegisteredWriter<"selectionStyle"> =
     });
   };
 
-export default onSetSelectionStyle;
+export default onSetSampleSelectionStyle;

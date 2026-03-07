@@ -149,7 +149,7 @@ export const tagParameters = ({
       return [sampleId];
     }
     if (selectedSamples.size) {
-      return [...selectedSamples];
+      return [...selectedSamples.keys()];
     }
 
     return null;

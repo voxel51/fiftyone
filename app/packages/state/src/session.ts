@@ -89,10 +89,9 @@ export interface Session {
   modalFilters: State.Filters;
   modalSelector?: ModalSelector;
   readOnly: boolean;
-  selectedSamples: Set<string>;
-  selectedMeta: Record<string, { type: SelectionType }>;
+  selectedSamples: Map<string, SelectionType>;
   selectedLabels: State.SelectedLabel[];
-  selectionStyle: {
+  sampleSelectionStyle: {
     default: SelectionIconStyle;
     alt: SelectionIconStyle;
   };
@@ -117,10 +116,9 @@ export const SESSION_DEFAULT: Session = {
   fieldVisibilityStage: undefined,
   filters: {},
   modalFilters: {},
-  selectedSamples: new Set(),
-  selectedMeta: {},
+  selectedSamples: new Map(),
   selectedLabels: [],
-  selectionStyle: { default: "checkmark", alt: "checkmark" },
+  sampleSelectionStyle: { default: "checkmark", alt: "checkmark" },
   sessionSpaces: GRID_SPACES_DEFAULT,
   sessionGroupSlice: undefined,
 };

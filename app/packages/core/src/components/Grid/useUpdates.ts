@@ -74,8 +74,7 @@ const useItemUpdater = (
     modal: false,
   });
   const selected = useRecoilValue(fos.selectedSamples);
-  const meta = useRecoilValue(fos.selectedMeta);
-  const style = useRecoilValue(fos.selectionStyle);
+  const style = useRecoilValue(fos.sampleSelectionStyle);
 
   return useCallback(
     (fontSize: number, lastColoringKey: string | null) => {
@@ -120,7 +119,7 @@ const useItemUpdater = (
         const sampleId = id.description;
         const isSelected = selected.has(sampleId);
         const { selectionType, selectionIcon } = fos.resolveSelectionIcon(
-          meta,
+          selected,
           style,
           sampleId,
           isSelected
@@ -146,7 +145,7 @@ const useItemUpdater = (
         entry.updateOptions({}, shouldHardReload);
       };
     },
-    [cache, getNewFields, options, selected, meta, style]
+    [cache, getNewFields, options, selected, style]
   );
 };
 

@@ -10,8 +10,7 @@ const onSetSimilarityParameters: RegisteredSetter =
   ({ router, sessionRef }) =>
   () => {
     sessionRef.current.selectedLabels = [];
-    sessionRef.current.selectedSamples = new Set();
-    sessionRef.current.selectedMeta = {};
+    sessionRef.current.selectedSamples = new Map();
     const unsubscribe = subscribe((_, { set }) => {
       set(similaritySorting, false);
       set(savedLookerOptions, (cur) => ({

@@ -79,7 +79,6 @@ class ClearSelectedSamples extends Operator {
   }
   async execute({ state }: ExecutionContext) {
     state.reset(fos.selectedSamples);
-    state.reset(fos.selectedMeta);
   }
 }
 
@@ -393,7 +392,6 @@ class ClearAllStages extends Operator {
     state.reset(fos.filters);
     hooks.resetExtended();
     state.reset(fos.selectedSamples);
-    state.reset(fos.selectedMeta);
   }
 }
 
@@ -424,7 +422,7 @@ class ShowSelectedSamples extends Operator {
       fos.selectedSamples
     );
     state.set(fos.extendedSelection, {
-      selection: Array.from(selectedSamples),
+      selection: Array.from(selectedSamples.keys()),
       scope: "global",
     });
   }
@@ -447,7 +445,11 @@ class ConvertExtendedSelectionToSelectedSamples extends Operator {
     const extendedSelection = await state.snapshot.getPromise(
       fos.extendedSelection
     );
-    state.set(fos.selectedSamples, new Set(extendedSelection.selection));
+    const map = new Map<string, string>();
+    for (const id of extendedSelection.selection || []) {
+      map.set(id, "default");
+    }
+    state.set(fos.selectedSamples, map);
     state.set(fos.extendedSelection, { selection: null });
     hooks.resetExtended();
   }
@@ -466,24 +468,30 @@ class SetSelectedSamples extends Operator {
   useHooks(): object {
     return {
       setSelected: fos.useSetSelected(),
-      setMeta: useSetRecoilState(fos.selectedMeta),
     };
   }
   async execute({ hooks, params }: ExecutionContext) {
-    const { samples, meta } = params || {};
+    const { samples } = params || {};
     if (!Array.isArray(samples))
-      throw new Error("param 'samples' must be an array of string");
-    hooks.setMeta(meta || {});
-    hooks.setSelected(new Set(samples));
+      throw new Error("param 'samples' must be an array");
+    const map = new Map<string, string>();
+    for (const item of samples) {
+      if (typeof item === "string") {
+        map.set(item, "default");
+      } else if (item && typeof item === "object") {
+        map.set(item.sample_id, item.type || "default");
+      }
+    }
+    hooks.setSelected(map);
   }
 }
 
-class SetSelectionStyle extends Operator {
+class SetSampleSelectionStyle extends Operator {
   _builtIn = true;
   get config(): OperatorConfig {
     return new OperatorConfig({
-      name: "set_selection_style",
-      label: "Set selection style",
+      name: "set_sample_selection_style",
+      label: "Set sample selection style",
       unlisted: true,
     });
   }
@@ -493,21 +501,24 @@ class SetSelectionStyle extends Operator {
       default: defaultIcon || "checkmark",
       alt: alt || "checkmark",
     };
-    state.set(fos.selectionStyle, style);
+    state.set(fos.sampleSelectionStyle, style);
   }
 }
 
-class ClearSelectionStyle extends Operator {
+class ClearSampleSelectionStyle extends Operator {
   _builtIn = true;
   get config(): OperatorConfig {
     return new OperatorConfig({
-      name: "clear_selection_style",
-      label: "Clear selection style",
+      name: "clear_sample_selection_style",
+      label: "Clear sample selection style",
       unlisted: true,
     });
   }
   async execute({ state }: ExecutionContext) {
-    state.set(fos.selectionStyle, { default: "checkmark", alt: "checkmark" });
+    state.set(fos.sampleSelectionStyle, {
+      default: "checkmark",
+      alt: "checkmark",
+    });
   }
 }
 
@@ -1659,8 +1670,8 @@ export function registerBuiltInOperators() {
     _registerBuiltInOperator(ShowSelectedSamples);
     _registerBuiltInOperator(ConvertExtendedSelectionToSelectedSamples);
     _registerBuiltInOperator(SetSelectedSamples);
-    _registerBuiltInOperator(SetSelectionStyle);
-    _registerBuiltInOperator(ClearSelectionStyle);
+    _registerBuiltInOperator(SetSampleSelectionStyle);
+    _registerBuiltInOperator(ClearSampleSelectionStyle);
     _registerBuiltInOperator(OpenPanel);
     _registerBuiltInOperator(ClosePanel);
     _registerBuiltInOperator(SetView);

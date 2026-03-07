@@ -2,7 +2,6 @@ import type { CustomizeColorInput } from "@fiftyone/relay";
 import type { SpaceNodeJSON } from "@fiftyone/spaces";
 
 export type SelectionType = "default" | "alt";
-export type SelectedSamplesMeta = Record<string, { type: SelectionType }>;
 export type SelectionIconStyle =
   | "checkmark"
   | "green-checkmark"

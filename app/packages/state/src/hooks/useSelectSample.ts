@@ -5,10 +5,10 @@ const useSelectSample = () => {
   return useRecoilCallback(
     ({ set, snapshot }) =>
       async (sampleId: string) => {
-        const selected = new Set(await snapshot.getPromise(selectedSamples));
+        const selected = new Map(await snapshot.getPromise(selectedSamples));
         selected.has(sampleId)
           ? selected.delete(sampleId)
-          : selected.add(sampleId);
+          : selected.set(sampleId, "default");
         set(selectedSamples, selected);
       },
     []

@@ -136,8 +136,7 @@ const dispatchSideEffect = ({
   }
 
   session.selectedLabels = [];
-  session.selectedSamples = new Set();
-  session.selectedMeta = {};
+  session.selectedSamples = new Map();
 
   const currentDataset: string | undefined =
     // @ts-ignore

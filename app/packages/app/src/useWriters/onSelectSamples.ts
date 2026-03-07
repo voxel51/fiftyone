@@ -1,5 +1,8 @@
-import { getSessionRef } from "@fiftyone/state";
-import { setSelected, type setSelectedMutation } from "@fiftyone/relay";
+import {
+  setSelectedSamples,
+  type setSelectedSamplesMutation,
+} from "@fiftyone/relay";
+import type { SelectionType } from "@fiftyone/state";
 import { DefaultValue } from "recoil";
 import { commitMutation } from "relay-runtime";
 import type { RegisteredWriter } from "./registerWriter";
@@ -7,23 +10,23 @@ import type { RegisteredWriter } from "./registerWriter";
 const onSelectSamples: RegisteredWriter<"selectedSamples"> =
   ({ environment, subscription }) =>
   (selected) => {
-    const selectedSet =
-      selected instanceof DefaultValue ? new Set<string>() : selected;
-    const sessionRef = getSessionRef();
-    const rawMeta = sessionRef?.selectedMeta;
+    const selectedMap =
+      selected instanceof DefaultValue
+        ? new Map<string, SelectionType>()
+        : selected;
 
-    // Filter meta to only include IDs still in the selected set
-    const selectedMeta = rawMeta
-      ? Object.fromEntries(
-          Object.entries(rawMeta).filter(([id]) => selectedSet.has(id))
-        )
-      : {};
+    // Serialize Map to [{sample_id, type}, ...] for the mutation
+    const selectedSamplesPayload = Array.from(selectedMap.entries()).map(
+      ([sampleId, type]) => ({
+        sample_id: sampleId,
+        type,
+      })
+    );
 
-    commitMutation<setSelectedMutation>(environment, {
-      mutation: setSelected,
+    commitMutation<setSelectedSamplesMutation>(environment, {
+      mutation: setSelectedSamples,
       variables: {
-        selected: Array.from(selectedSet),
-        selectedMeta,
+        selectedSamples: selectedSamplesPayload,
         subscription,
       },
     });

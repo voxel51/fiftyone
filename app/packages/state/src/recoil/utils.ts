@@ -1,9 +1,5 @@
 import type { Sample } from "@fiftyone/looker";
-import type {
-  SelectedSamplesMeta,
-  SelectionStyle,
-  SelectionType,
-} from "./types";
+import type { SelectionStyle, SelectionType } from "./types";
 import {
   EMBEDDED_DOCUMENT_FIELD,
   LABELS,
@@ -172,7 +168,7 @@ export function useAssertedRecoilValue<T>(recoilValue: RecoilValue<T>) {
 }
 
 export function resolveSelectionIcon(
-  meta: SelectedSamplesMeta,
+  selectedSamples: Map<string, SelectionType>,
   style: SelectionStyle,
   sampleId: string,
   isSelected: boolean
@@ -180,7 +176,8 @@ export function resolveSelectionIcon(
   if (!isSelected) {
     return { selectionType: null, selectionIcon: null };
   }
-  const selectionType: SelectionType = meta[sampleId]?.type || "default";
+  const selectionType: SelectionType =
+    selectedSamples.get(sampleId) || "default";
   const selectionIcon =
     selectionType === "alt" ? style.alt || style.default : style.default;
   return { selectionType, selectionIcon };

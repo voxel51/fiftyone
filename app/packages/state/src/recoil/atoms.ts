@@ -19,6 +19,7 @@ import { GRID_SPACES_DEFAULT, sessionAtom } from "../session";
 import { collapseFields } from "../utils";
 import { getBrowserStorageEffectForKey } from "./customEffects";
 import { groupMediaTypesSet } from "./groups";
+import type { SelectionType } from "./types";
 import { State } from "./types";
 
 export const refresher = atom<number>({
@@ -195,7 +196,7 @@ export const selectedLabels = sessionAtom({
 
 export const selectedSamples = sessionAtom({
   key: "selectedSamples",
-  default: new Set<string>(),
+  default: new Map<string, SelectionType>(),
 });
 
 export const selectedSampleObjects = atom<Map<string, Sample>>({
@@ -203,13 +204,8 @@ export const selectedSampleObjects = atom<Map<string, Sample>>({
   default: new Map(),
 });
 
-export const selectedMeta = sessionAtom({
-  key: "selectedMeta",
-  default: {},
-});
-
-export const selectionStyle = sessionAtom({
-  key: "selectionStyle",
+export const sampleSelectionStyle = sessionAtom({
+  key: "sampleSelectionStyle",
   default: { default: "checkmark", alt: "checkmark" },
 });
 

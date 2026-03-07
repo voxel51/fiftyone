@@ -1,10 +1,7 @@
 import type { ID } from "@fiftyone/spotlight";
 import type { Sample } from "@fiftyone/state";
-import {
-  selectedSampleObjects,
-  selectedSamples,
-  selectedMeta,
-} from "@fiftyone/state";
+import { selectedSampleObjects, selectedSamples } from "@fiftyone/state";
+import type { SelectionType } from "@fiftyone/state";
 import { useRef } from "react";
 import { useRecoilCallback } from "recoil";
 import type { Records } from "./useRecords";
@@ -108,65 +105,52 @@ export default (records: Records) => {
       async (params: SelectThumbnailData) => {
         const { shiftKey, altKey, id: sampleId, sample, symbol } = params;
 
-        const current = new Set(await snapshot.getPromise(selectedSamples));
+        const current = new Map(await snapshot.getPromise(selectedSamples));
         const currentObjects = new Map(
           await snapshot.getPromise(selectedSampleObjects)
         );
-        const currentMeta = {
-          ...(await snapshot.getPromise(selectedMeta)),
-        };
 
-        const selectionType = altKey ? "alt" : "default";
+        const selectionType: SelectionType = altKey ? "alt" : "default";
         const index = get(records, symbol.description);
 
         if (shiftKey && !current.has(sampleId)) {
           // Shift-click (or shift+alt-click) range add
           if (current.size === 0) {
             // No anchor — treat as normal click
-            current.add(sampleId);
+            current.set(sampleId, selectionType);
             currentObjects.set(sampleId, sample);
-            currentMeta[sampleId] = { type: selectionType };
-            set(selectedMeta, currentMeta);
             set(selectedSamples, current);
             set(selectedSampleObjects, currentObjects);
             return;
           }
-          const newSelected = addRange(index, current, records);
+          const currentKeys = new Set(current.keys());
+          const newSelected = addRange(index, currentKeys, records);
           for (const id of newSelected) {
             if (!current.has(id)) {
-              currentMeta[id] = { type: selectionType };
+              current.set(id, selectionType);
             }
-          }
-          for (const id of newSelected) {
-            current.add(id);
           }
           currentObjects.set(sampleId, sample);
         } else if (shiftKey) {
           // Shift-click range remove
-          const remaining = removeRange(index, current, records);
-          for (const id of current) {
+          const currentKeys = new Set(current.keys());
+          const remaining = removeRange(index, currentKeys, records);
+          for (const id of currentKeys) {
             if (!remaining.has(id)) {
-              delete currentMeta[id];
+              current.delete(id);
               currentObjects.delete(id);
             }
-          }
-          current.clear();
-          for (const id of remaining) {
-            current.add(id);
           }
         } else if (current.has(sampleId)) {
           // Click on any selected sample → deselect
           current.delete(sampleId);
           currentObjects.delete(sampleId);
-          delete currentMeta[sampleId];
         } else {
           // Click unselected sample → select with type based on alt key
-          current.add(sampleId);
+          current.set(sampleId, selectionType);
           currentObjects.set(sampleId, sample);
-          currentMeta[sampleId] = { type: selectionType };
         }
 
-        set(selectedMeta, currentMeta);
         set(selectedSamples, current);
         set(selectedSampleObjects, currentObjects);
       },

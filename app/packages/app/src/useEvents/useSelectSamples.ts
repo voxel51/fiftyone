@@ -1,4 +1,5 @@
-import { type SelectedSamplesMeta, useSessionSetter } from "@fiftyone/state";
+import type { SelectionType } from "@fiftyone/state";
+import { useSessionSetter } from "@fiftyone/state";
 import { useCallback } from "react";
 import type { EventHandlerHook } from "./registerEvent";
 
@@ -6,18 +7,13 @@ const useSelectSamples: EventHandlerHook = () => {
   const setter = useSessionSetter();
   return useCallback(
     (payload) => {
-      const sampleIds = payload.sample_ids || [];
-      setter("selectedSamples", new Set(sampleIds));
-      if (payload.meta) {
-        setter("selectedMeta", payload.meta);
-      } else {
-        // Generate default meta for all samples
-        const meta: SelectedSamplesMeta = {};
-        for (const id of sampleIds) {
-          meta[id] = { type: "default" };
-        }
-        setter("selectedMeta", meta);
+      const samples: Array<{ sample_id: string; type: SelectionType }> =
+        payload.samples || [];
+      const map = new Map<string, SelectionType>();
+      for (const s of samples) {
+        map.set(s.sample_id, s.type || "default");
       }
+      setter("selectedSamples", map);
     },
     [setter]
   );
