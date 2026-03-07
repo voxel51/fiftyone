@@ -72,10 +72,6 @@ interface Fo3dSceneContentProps {
    */
   isSceneInitialized: boolean;
   /**
-   * Sample data for labels
-   */
-  sample: fos.ModalSample;
-  /**
    * Point cloud settings
    */
   pointCloudSettings: Fo3dPointCloudSettings;
@@ -106,12 +102,14 @@ export const Fo3dSceneContent = ({
   foScene,
   isSceneInitialized,
   isGizmoHelperVisible,
-  sample,
   pointCloudSettings,
   assetsGroupRef,
   cameraRef,
 }: Fo3dSceneContentProps) => {
   const mode = useAtomValue(fos.modalMode);
+  const {
+    state: { activeSampleMap: labelSampleMap },
+  } = fos.useRenderConfig3d();
 
   useCameraViews({
     cameraRef,
@@ -162,7 +160,7 @@ export const Fo3dSceneContent = ({
 
       {isSceneInitialized && (
         <>
-          <ThreeDLabels sampleMap={{ fo3d: sample }} />
+          <ThreeDLabels sampleMap={labelSampleMap} />
           <FrustumCollection />
         </>
       )}

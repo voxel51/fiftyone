@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import type { Box3, Vector3 } from "three";
+import type { Box3, LoadingManager, Vector3 } from "three";
 import {
   isFo3dCameraLifecycleReady,
   type Fo3dCameraLifecycleState,
@@ -18,6 +18,7 @@ interface UseFo3dSceneContextStateArgs {
   isComputingSceneBoundingBox: boolean;
   rootAssetCount: number;
   fo3dRoot: string | null;
+  loadingManager: LoadingManager | null;
   cameraLifecycleState: Fo3dCameraLifecycleState;
 }
 
@@ -31,6 +32,7 @@ export const useFo3dSceneContextState = ({
   isComputingSceneBoundingBox,
   rootAssetCount,
   fo3dRoot,
+  loadingManager,
   cameraLifecycleState,
 }: UseFo3dSceneContextStateArgs) => {
   const [upVector, setUpVectorVal] = useFo3dUpVector(
@@ -72,6 +74,7 @@ export const useFo3dSceneContextState = ({
       setUpVector,
       isComputingSceneBoundingBox,
       fo3dRoot,
+      loadingManager,
       sceneBoundingBox: effectiveSceneBoundingBox,
       cursorBounds,
       lookAt,
@@ -93,6 +96,7 @@ export const useFo3dSceneContextState = ({
       setUpVector,
       isComputingSceneBoundingBox,
       fo3dRoot,
+      loadingManager,
       effectiveSceneBoundingBox,
       cursorBounds,
       lookAt,

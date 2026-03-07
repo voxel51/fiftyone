@@ -1,5 +1,6 @@
 import { useAnnotationEventHandler } from "@fiftyone/annotation";
 import { useTheme } from "@fiftyone/components";
+import * as fos from "@fiftyone/state";
 import { ModalSample } from "@fiftyone/state";
 import FitScreenIcon from "@mui/icons-material/FitScreen";
 import { IconButton, MenuItem, Select } from "@mui/material";
@@ -316,6 +317,9 @@ export const SidePanel = ({
   isSceneInitialized,
   sample,
 }: SidePanelProps) => {
+  const {
+    state: { activeSampleMap: labelSampleMap },
+  } = fos.useRenderConfig3d();
   const { imageSlices, resolveUrlForImageSlice, isLoadingImageSlices } =
     useImageSlicesIfAvailable(sample);
 
@@ -429,7 +433,7 @@ export const SidePanel = ({
             </group>
             {isSceneInitialized && (
               <ThreeDLabels
-                sampleMap={{ fo3d: sample as any }}
+                sampleMap={labelSampleMap}
                 globalOpacity={0.5}
                 isMainPanel={false}
               />

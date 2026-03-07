@@ -1,5 +1,5 @@
 import { createContext, Dispatch, SetStateAction, useContext } from "react";
-import type { Box3, Vector3 } from "three";
+import type { Box3, LoadingManager, Vector3 } from "three";
 import type { Looker3dSettings } from "../settings";
 import { HoverMetadata } from "../types";
 import {
@@ -29,6 +29,7 @@ interface Fo3dContextT {
   lookAt: Vector3 | null;
   pluginSettings: Looker3dSettings | null;
   fo3dRoot: string | null;
+  loadingManager: LoadingManager | null;
   autoRotate: boolean;
   setAutoRotate: (autoRotate: boolean) => void;
   pointCloudSettings: Fo3dPointCloudSettings;
@@ -51,6 +52,7 @@ const defaultContext: Fo3dContextT = {
   lookAt: null,
   pluginSettings: null,
   fo3dRoot: null,
+  loadingManager: null,
   autoRotate: false,
   setAutoRotate: () => {},
   pointCloudSettings: {

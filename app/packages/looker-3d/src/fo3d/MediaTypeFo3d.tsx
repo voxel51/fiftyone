@@ -3,9 +3,13 @@ import useCanAnnotate from "@fiftyone/core/src/components/Modal/Sidebar/Annotate
 import { usePluginSettings } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import type { CameraControls } from "@react-three/drei";
-import { useReducer, useRef } from "react";
-import { useRecoilValue } from "recoil";
-import type * as THREE from "three";
+import { useMemo, useReducer, useRef } from "react";
+import {
+  LoadingManager,
+  type Group,
+  type PerspectiveCamera,
+  type Vector3,
+} from "three";
 import { MultiPanelView } from "../annotation/MultiPanelView";
 import { SinglePanelView } from "../annotation/SinglePanelView";
 import { AnnotationToolbar } from "../annotation/annotation-toolbar/AnnotationToolbar";
@@ -34,13 +38,13 @@ import { FoScene } from "./render-types";
 
 interface Fo3dPanelsProps {
   shouldRenderMultiPanelView: boolean;
-  upVector: THREE.Vector3 | null;
-  assetsGroupRef: React.RefObject<THREE.Group>;
+  upVector: Vector3 | null;
+  assetsGroupRef: React.RefObject<Group>;
   foScene: FoScene | null;
-  sample: fos.ModalSample;
-  cameraRef: React.RefObject<THREE.PerspectiveCamera>;
+  interactionSample: fos.ModalSample;
+  cameraRef: React.RefObject<PerspectiveCamera>;
   cameraControlsRef: React.RefObject<CameraControls>;
-  mountCameraPosition: THREE.Vector3;
+  mountCameraPosition: Vector3;
   cameraLifecycleState: Fo3dCameraLifecycleState;
   mode: string;
 }
@@ -50,7 +54,7 @@ const Fo3dPanels = ({
   upVector,
   assetsGroupRef,
   foScene,
-  sample,
+  interactionSample,
   cameraRef,
   cameraControlsRef,
   mountCameraPosition,
@@ -59,7 +63,7 @@ const Fo3dPanels = ({
 }: Fo3dPanelsProps) => {
   const { resetActiveNode } = useFo3dInteractionLifecycle({
     cameraLifecycleState,
-    sample,
+    interactionSample,
     upVector,
     mode,
     cameraControlsRef,
@@ -71,7 +75,7 @@ const Fo3dPanels = ({
         key={upVector ? upVector.toArray().join(",") : null}
         assetsGroupRef={assetsGroupRef}
         foScene={foScene}
-        sample={sample}
+        sample={interactionSample}
         cameraRef={cameraRef}
         cameraControlsRef={cameraControlsRef}
         defaultCameraPosition={mountCameraPosition}
@@ -84,7 +88,6 @@ const Fo3dPanels = ({
     <SinglePanelView
       assetsGroupRef={assetsGroupRef}
       foScene={foScene}
-      sample={sample}
       cameraRef={cameraRef}
       cameraControlsRef={cameraControlsRef}
       defaultCameraPosition={mountCameraPosition}
@@ -94,28 +97,32 @@ const Fo3dPanels = ({
 };
 
 export const MediaTypeFo3dComponent = () => {
-  const sample = useRecoilValue(fos.fo3dSample);
+  const {
+    state: { interactionSample, sceneSample },
+  } = fos.useRenderConfig3d();
   const settings = usePluginSettings<Looker3dSettings>("3d");
   const mode = fos.useModalMode();
   const canAnnotate = useCanAnnotate().showAnnotationTab;
   const current3dAnnotationMode = useCurrent3dAnnotationMode();
+  const sceneSampleId = sceneSample.id ?? sceneSample.sample._id;
+  const loadingManager = useMemo(() => new LoadingManager(), [sceneSampleId]);
 
   const {
     foScene,
     isLoading: isParsingFo3d,
     fo3dRoot,
     rootAssetCount,
-  } = useFo3d(sample);
+  } = useFo3d(sceneSample);
 
   const [cameraLifecycleState, dispatchCameraLifecycle] = useReducer(
     fo3dCameraLifecycleReducer,
     FO3D_CAMERA_LIFECYCLE.WAITING_FOR_SCENE
   );
 
-  const cameraRef = useRef<THREE.PerspectiveCamera>();
+  const cameraRef = useRef<PerspectiveCamera>();
   const cameraControlsRef = useRef<CameraControls>();
-  const assetsGroupRef = useRef<THREE.Group>();
-  const threeJsLoadingStatus = useTrackStatus();
+  const assetsGroupRef = useRef<Group>();
+  const threeJsLoadingStatus = useTrackStatus(loadingManager);
 
   useFo3dCameraControlsConfig({
     cameraControlsRef,
@@ -131,7 +138,7 @@ export const MediaTypeFo3dComponent = () => {
     foScene,
     isParsingFo3d,
     rootAssetCount,
-    isThreeJsLoadingSuccess: threeJsLoadingStatus.isSuccess,
+    isThreeJsLoading: threeJsLoadingStatus.isLoading,
   });
 
   const { upVector, effectiveSceneBoundingBox, contextValue } =
@@ -142,6 +149,7 @@ export const MediaTypeFo3dComponent = () => {
       isComputingSceneBoundingBox,
       rootAssetCount,
       fo3dRoot,
+      loadingManager,
       cameraLifecycleState,
     });
 
@@ -196,7 +204,7 @@ export const MediaTypeFo3dComponent = () => {
         upVector={upVector}
         assetsGroupRef={assetsGroupRef}
         foScene={foScene}
-        sample={sample}
+        interactionSample={interactionSample}
         cameraRef={cameraRef}
         cameraControlsRef={cameraControlsRef}
         mountCameraPosition={mountCameraPosition}

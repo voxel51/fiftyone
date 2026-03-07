@@ -122,7 +122,6 @@ export const MultiPanelView = ({
         foScene={foScene}
         upVector={upVector}
         isSceneInitialized={isSceneInitialized}
-        sample={sample}
         pointCloudSettings={pointCloudSettings}
         assetsGroupRef={assetsGroupRef}
       />

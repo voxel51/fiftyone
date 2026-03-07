@@ -9,6 +9,7 @@ import { Leva } from "./fo3d/Leva";
 import { MediaTypeFo3dComponent } from "./fo3d/MediaTypeFo3d";
 import { getMediaPathForFo3dSample } from "./fo3d/utils";
 import { useHotkey } from "./hooks";
+import { getLooker3dRenderKey } from "./looker3d-render-key";
 import {
   currentActionAtom,
   fo3dContainsBackground,
@@ -53,7 +54,7 @@ export const Looker3d = () => {
     return () => {
       setFo3dHasBackground(false);
     };
-  }, []);
+  }, [setFo3dHasBackground]);
 
   const shouldRenderFo3dComponent = useMemo(
     () =>
@@ -64,7 +65,14 @@ export const Looker3d = () => {
     [mediaType, hasDirect3dPath, has3dSlices, isDynamicGroup, parentMediaType]
   );
 
-  const sampleMap = useRecoilValue(fos.active3dSlicesToSampleMap);
+  const {
+    state: { activeSampleMap: sampleMap, activeFo3dSlice },
+  } = fos.useRenderConfig3d();
+
+  const looker3dSceneKey = getLooker3dRenderKey({
+    modalSampleId: thisSampleId,
+    activeFo3dSlice,
+  });
 
   useHotkey(
     "KeyG",
@@ -171,10 +179,10 @@ export const Looker3d = () => {
   }
 
   return (
-    <Fo3dErrorBoundary boundaryName="fo3d">
+    <Fo3dErrorBoundary key={looker3dSceneKey} boundaryName="fo3d">
       <Leva />
       <Container onMouseOver={update} onMouseMove={update} data-cy="looker3d">
-        <MediaTypeFo3dComponent key={thisSampleId} />
+        <MediaTypeFo3dComponent key={looker3dSceneKey} />
         <ActionBar
           onMouseEnter={() => {
             hoveringRef.current = true;

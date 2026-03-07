@@ -1,4 +1,3 @@
-import type { ModalSample } from "@fiftyone/state";
 import type { CameraControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import { useLayoutEffect, useRef } from "react";
@@ -28,7 +27,6 @@ interface SinglePanelViewProps {
   cameraRef: React.RefObject<THREE.PerspectiveCamera>;
   defaultCameraPosition: Vector3;
   foScene: FoScene;
-  sample: ModalSample;
   onPointerMissed: (event: MouseEvent | null) => void;
 }
 
@@ -38,7 +36,6 @@ export const SinglePanelView = ({
   cameraRef,
   defaultCameraPosition,
   foScene,
-  sample,
   onPointerMissed,
 }: SinglePanelViewProps) => {
   const { upVector, autoRotate, isSceneInitialized, pointCloudSettings } =
@@ -76,7 +73,6 @@ export const SinglePanelView = ({
           cameraControlsRef={cameraControlsRef}
           foScene={foScene}
           isSceneInitialized={isSceneInitialized}
-          sample={sample}
           pointCloudSettings={pointCloudSettings}
           assetsGroupRef={assetsGroupRef}
           cameraRef={cameraRef}

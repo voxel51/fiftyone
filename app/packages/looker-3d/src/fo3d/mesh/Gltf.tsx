@@ -27,6 +27,7 @@ export const Gltf = ({
   children: React.ReactNode;
 }) => {
   const { fo3dRoot } = useFo3dContext();
+  const { loadingManager } = useFo3dContext();
   const isInMultiPanelView = useRecoilValue(isInMultiPanelViewAtom);
 
   const gltfUrl = useMemo(
@@ -48,6 +49,9 @@ export const Gltf = ({
     true,
     undefined,
     (loader) => {
+      if (loadingManager) {
+        loader.manager = loadingManager;
+      }
       loader.setResourcePath(resourcePath);
     }
   );

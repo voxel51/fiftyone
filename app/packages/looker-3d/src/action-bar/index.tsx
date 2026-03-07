@@ -1,11 +1,12 @@
 import * as fos from "@fiftyone/state";
-import { isFo3d as utilIsFo3d } from "@fiftyone/utilities";
+import { isFo3dSamplePath } from "@fiftyone/utilities";
 import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import { Logs } from "../Logs";
 import { SET_EGO_VIEW_EVENT, SET_TOP_VIEW_EVENT } from "../constants";
 import { ActionBarContainer, ActionsBar } from "../containers";
 import { LEVA_CONTAINER_ID } from "../fo3d/Leva";
+import { getMediaPathForFo3dSample } from "../fo3d/utils";
 import { useHotkey } from "../hooks";
 import { fo3dContainsBackground as fo3dContainsBackgroundAtom } from "../state";
 import { LevaConfigPanel } from "./LevaConfigPanel";
@@ -25,17 +26,26 @@ export const ActionBar = ({
   onMouseEnter: () => void;
   onMouseLeave: () => void;
 }) => {
-  const isFo3dSlice = useRecoilValue(fos.fo3dSlice);
-  const mediaType = useRecoilValue(fos.mediaType);
-  const isFo3d = useMemo(
-    () => Boolean(isFo3dSlice) || utilIsFo3d(mediaType),
-    [isFo3dSlice, mediaType]
-  );
-  const hasMultiple3dSlices = useRecoilValue(fos.hasMultiple3dSlices);
-  const isGroup = useRecoilValue(fos.isGroup);
+  const {
+    state: {
+      activeFo3dSlice,
+      sceneSample,
+      interactionSample,
+      hasMultipleSlices,
+      fo3dContent,
+    },
+  } = fos.useRenderConfig3d();
+  const mediaField = useRecoilValue(fos.selectedMediaField(true));
+  const isFo3d = useMemo(() => {
+    const mediaPath = getMediaPathForFo3dSample(sceneSample, mediaField);
 
-  const sample = useRecoilValue(fos.fo3dSample);
-  const sampleForJsonView = sample;
+    return (
+      Boolean(activeFo3dSlice) ||
+      isFo3dSamplePath(mediaPath) ||
+      isFo3dSamplePath(sceneSample?.sample?.filepath)
+    );
+  }, [activeFo3dSlice, mediaField, sceneSample]);
+  const isGroup = useRecoilValue(fos.isGroup);
 
   const fo3dContainsBackground = useRecoilValue(fo3dContainsBackgroundAtom);
 
@@ -45,21 +55,21 @@ export const ActionBar = ({
   useHotkey(
     "KeyJ",
     () => {
-      jsonPanel.toggle(sampleForJsonView);
+      jsonPanel.toggle(interactionSample);
     },
-    [sampleForJsonView],
+    [interactionSample],
     { useTransaction: false }
   );
 
   const componentsToRender = useMemo(() => {
     const components = [];
 
-    if (hasMultiple3dSlices) {
+    if (hasMultipleSlices) {
       components.push(<SliceSelector key="slice-selector" />);
     }
 
     components.push(<LevaConfigPanel key="leva-config-panel" />);
-    if (isFo3d) {
+    if (isFo3d && fo3dContent) {
       components.push(<ViewFo3d jsonPanel={jsonPanel} key="inspect-fo3d" />);
     }
 
@@ -103,7 +113,7 @@ export const ActionBar = ({
       <ViewJSON
         key="view-json"
         jsonPanel={jsonPanel}
-        sample={sampleForJsonView}
+        sample={interactionSample}
       />
     );
 
@@ -112,12 +122,13 @@ export const ActionBar = ({
     return components;
   }, [
     fo3dContainsBackground,
-    hasMultiple3dSlices,
+    fo3dContent,
+    hasMultipleSlices,
     isFo3d,
     isGroup,
     jsonPanel,
     helpPanel,
-    sampleForJsonView,
+    interactionSample,
   ]);
 
   return (

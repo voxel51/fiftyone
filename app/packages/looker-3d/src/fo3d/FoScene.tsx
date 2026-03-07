@@ -278,13 +278,9 @@ export const FoSceneComponent = ({ scene }: FoSceneProps) => {
     }
   }, [scene, isSceneInitialized]);
 
-  if (!fo3dRoot) {
-    return null;
-  }
-
   return (
     <>
-      {isFo3dBackgroundOn && scene.background && (
+      {isFo3dBackgroundOn && fo3dRoot && scene.background && (
         <Fo3dErrorBoundary ignoreError boundaryName="background">
           <Suspense fallback={null}>
             <Fo3dBackground background={scene.background} />

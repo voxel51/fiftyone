@@ -21,7 +21,7 @@ import { useZoomToSelected } from "./use-zoom-to-selected";
 
 interface UseFo3dInteractionLifecycleArgs {
   cameraLifecycleState: Fo3dCameraLifecycleState;
-  sample: fos.ModalSample;
+  interactionSample: fos.ModalSample;
   upVector: Vector3 | null;
   mode: string;
   cameraControlsRef: React.RefObject<CameraControls>;
@@ -32,7 +32,7 @@ interface UseFo3dInteractionLifecycleArgs {
  */
 export const useFo3dInteractionLifecycle = ({
   cameraLifecycleState,
-  sample,
+  interactionSample,
   upVector,
   mode,
   cameraControlsRef,
@@ -70,7 +70,7 @@ export const useFo3dInteractionLifecycle = ({
 
   // Zoom to selected labels and use them as the new lookAt
   const handleZoomToSelected = useZoomToSelected({
-    sample,
+    interactionSample,
     upVector,
     mode,
     cameraControlsRef,

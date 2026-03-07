@@ -1,8 +1,8 @@
 import { PopoutSectionTitle } from "@fiftyone/components";
 import { Checkbox } from "@fiftyone/core";
 import * as fos from "@fiftyone/state";
-import { useCallback, useMemo, useRef, useState } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useCallback, useMemo, useRef } from "react";
+import { useRecoilState, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import { ACTION_SET_PCDS } from "../constants";
 import {
@@ -30,25 +30,26 @@ const SliceSelectorLabel = styled.div`
 `;
 
 export const SliceSelector = () => {
-  const active3dSlices = useRecoilValue(fos.active3dSlices);
-  const all3dSlices = useRecoilValue(fos.all3dSlices);
+  const {
+    state: { activeSlices, allSlices },
+  } = fos.useRenderConfig3d();
   const [currentAction, setAction] = useRecoilState(currentActionAtom);
 
   const activeSlicesLabel = useMemo(() => {
-    if (!active3dSlices || active3dSlices.length === 0) {
+    if (!activeSlices || activeSlices.length === 0) {
       return "";
     }
 
-    if (active3dSlices.length === 1) {
-      return active3dSlices[0];
+    if (activeSlices.length === 1) {
+      return activeSlices[0];
     }
 
-    if (active3dSlices.length === all3dSlices.length) {
+    if (activeSlices.length === allSlices.length) {
       return "all 3D slices";
     }
 
-    return `${active3dSlices.length} slices`;
-  }, [active3dSlices, all3dSlices]);
+    return `${activeSlices.length} slices`;
+  }, [activeSlices, allSlices]);
 
   const handleActionClick = useCallback(() => {
     if (currentAction === ACTION_SET_PCDS) {
@@ -58,7 +59,7 @@ export const SliceSelector = () => {
     }
   }, [setAction, currentAction]);
 
-  if (!active3dSlices || active3dSlices.length === 0) {
+  if (!activeSlices || activeSlices.length === 0) {
     return null;
   }
 
@@ -76,19 +77,20 @@ export const SliceSelector = () => {
 };
 
 const PcdsSelector = () => {
-  const [active3dSlices, setActive3dSlices] = useRecoilState(
-    fos.active3dSlices
-  );
-  const all3dSlices = Object.keys(useRecoilValue(fos.all3dSlicesToSampleMap));
+  const {
+    state: { activeSlices, allSampleMap },
+    actions,
+  } = fos.useRenderConfig3d();
+  const setCurrentAction = useSetRecoilState(currentActionAtom);
+  const allSlices = Object.keys(allSampleMap);
 
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const ref = useRef<HTMLDivElement>(null);
+  fos.useOutsideClick(containerRef, () => {
+    setCurrentAction(null);
+  });
 
-  const [isSelectorOpen, setIsSelectorOpen] = useState(false);
-  fos.useOutsideClick(ref, () => isSelectorOpen && setIsSelectorOpen(false));
-
-  if (all3dSlices.length === 0) {
+  if (allSlices.length === 0) {
     return null;
   }
 
@@ -97,21 +99,17 @@ const PcdsSelector = () => {
       <ActionPopOverInner>
         <PopoutSectionTitle>Select 3D slices</PopoutSectionTitle>
         <div data-cy={"looker3d-slice-checkboxes"}>
-          {all3dSlices.map((slice) => {
+          {allSlices.map((slice) => {
             return (
               <Checkbox
                 name={slice}
                 key={slice}
-                value={active3dSlices.includes(slice)}
+                value={activeSlices.includes(slice)}
                 muted={
-                  active3dSlices.includes(slice) && active3dSlices.length === 1
+                  activeSlices.includes(slice) && activeSlices.length === 1
                 }
                 setValue={(value) => {
-                  setActive3dSlices(
-                    value
-                      ? [...active3dSlices, slice]
-                      : active3dSlices.filter((s) => s !== slice)
-                  );
+                  actions.toggleSlice(slice, value);
                 }}
               />
             );

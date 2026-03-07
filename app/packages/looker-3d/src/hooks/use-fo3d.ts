@@ -1,9 +1,15 @@
 import * as fos from "@fiftyone/state";
-import { isWrappableDirect3dSamplePath } from "@fiftyone/utilities";
+import {
+  isFo3dSamplePath,
+  isWrappableDirect3dSamplePath,
+} from "@fiftyone/utilities";
 import { useEffect, useMemo, useState } from "react";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { useRecoilValue } from "recoil";
 import type { FoScene } from "../fo3d/render-types";
-import { buildSyntheticSceneForDirect3dSamples } from "../fo3d/synthetic-scene";
+import {
+  buildSyntheticSceneForDirect3dSamples,
+  buildSyntheticSceneNodesForDirect3dSamples,
+} from "../fo3d/synthetic-scene";
 import { getFo3dRoot, getMediaPathForFo3dSample } from "../fo3d/utils";
 import type { FiftyoneSceneRawJson } from "../utils";
 import useFo3dFetcher from "./use-fo3d-fetcher";
@@ -32,20 +38,20 @@ const stripPreTransformedAttributes = (node: FoSceneRawNode) => {
 
 const normalizeFo3dRawData = (
   rawData: FiftyoneSceneRawJson,
-  fo3dRoot: string
+  fo3dRoot: string | null
 ): FiftyoneSceneRawJson => {
   const normalizedData = cloneRawData(rawData);
 
   stripPreTransformedAttributes(normalizedData);
 
-  if (normalizedData.background?.image) {
+  if (fo3dRoot && normalizedData.background?.image) {
     normalizedData.background.image = getResolvedUrlForFo3dAsset(
       normalizedData.background.image,
       fo3dRoot
     );
   }
 
-  if (normalizedData.background?.cube) {
+  if (fo3dRoot && normalizedData.background?.cube) {
     normalizedData.background.cube = normalizedData.background.cube.map(
       (cubePath) => getResolvedUrlForFo3dAsset(cubePath, fo3dRoot)
     ) as [string, string, string, string, string, string];
@@ -54,10 +60,58 @@ const normalizeFo3dRawData = (
   return normalizedData;
 };
 
+const getSampleMapForSlices = (
+  sampleMap: Record<string, fos.ModalSample>,
+  slices: string[]
+) => {
+  return Object.fromEntries(
+    slices
+      .map((slice) => [slice, sampleMap[slice]] as const)
+      .filter(([, currentSample]) => Boolean(currentSample))
+  );
+};
+
+/**
+ * Appends active direct-3D slices onto an existing FO3D scene definition.
+ */
+export const appendDirect3dSamplesToScene = ({
+  mediaField,
+  rawData,
+  sampleMap,
+}: {
+  mediaField: string;
+  rawData: FiftyoneSceneRawJson;
+  sampleMap: Record<string, fos.ModalSample>;
+}) => {
+  const sampleEntries = Object.entries(sampleMap);
+
+  if (!sampleEntries.length) {
+    return rawData;
+  }
+
+  const syntheticChildren = buildSyntheticSceneNodesForDirect3dSamples({
+    sample: sampleEntries[0][1],
+    mediaField,
+    sampleMap,
+  });
+
+  if (!syntheticChildren.length) {
+    return rawData;
+  }
+
+  const mergedRawData = cloneRawData(rawData);
+  mergedRawData.children = [
+    ...(mergedRawData.children ?? []),
+    ...syntheticChildren,
+  ];
+
+  return mergedRawData;
+};
+
 type UseFo3dReturnType = {
   foScene: FoScene | null;
   isLoading: boolean;
-  fo3dRoot: string;
+  fo3dRoot: string | null;
   rootAssetCount: number;
 };
 
@@ -68,20 +122,28 @@ type UseFo3dReturnType = {
 export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
   const mediaField = useRecoilValue(fos.selectedMediaField(true));
   const isGroup = useRecoilValue(fos.isGroup);
-  const active3dSlices = useRecoilValue(fos.active3dSlices);
-  const activeSampleMap = useRecoilValue(fos.active3dSlicesToSampleMap);
-  const all3dSampleMap = useRecoilValue(fos.all3dSlicesToSampleMap);
-  const setFo3dContent = useSetRecoilState(fos.fo3dContent);
+  const { state: group3dState, actions } = fos.useRenderConfig3d();
   const fetchFo3d = useFo3dFetcher();
 
   const [isLoading, setIsLoading] = useState(true);
   const [rawData, setRawData] = useState<FiftyoneSceneRawJson | null>(null);
 
   const filepath = sample.sample.filepath;
-  const fo3dRoot = useMemo(() => getFo3dRoot(filepath), [filepath]);
   const mediaPath = useMemo(
     () => getMediaPathForFo3dSample(sample, mediaField),
     [sample, mediaField]
+  );
+  const isRealFo3dScene = useMemo(
+    () => isFo3dSamplePath(mediaPath) || isFo3dSamplePath(filepath),
+    [mediaPath, filepath]
+  );
+  const fo3dPath = useMemo(
+    () => (isFo3dSamplePath(mediaPath) ? mediaPath : filepath),
+    [mediaPath, filepath]
+  );
+  const fo3dRoot = useMemo(
+    () => (isRealFo3dScene ? getFo3dRoot(fo3dPath) : null),
+    [fo3dPath, isRealFo3dScene]
   );
   const url = useMemo(() => fos.getSampleSrc(mediaPath), [mediaPath]);
   const isWrappableDirectAsset = useMemo(
@@ -90,13 +152,40 @@ export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
       isWrappableDirect3dSamplePath(filepath),
     [mediaPath, filepath]
   );
+  const groupedDirectSampleMap = useMemo(() => {
+    if (!isGroup) {
+      return undefined;
+    }
+
+    if (group3dState.activeSlices.length) {
+      return getSampleMapForSlices(
+        group3dState.allSampleMap,
+        group3dState.activeDirectSlices
+      );
+    }
+
+    const realFo3dSliceSet = new Set(group3dState.realFo3dSlices);
+    return Object.fromEntries(
+      Object.entries(group3dState.allSampleMap).filter(
+        ([slice]) => !realFo3dSliceSet.has(slice)
+      )
+    );
+  }, [
+    group3dState.activeDirectSlices,
+    group3dState.activeSlices,
+    group3dState.allSampleMap,
+    isGroup,
+    group3dState.realFo3dSlices,
+  ]);
   const syntheticRawData = useMemo(() => {
-    if (!isWrappableDirectAsset) {
+    if (group3dState.activeFo3dSlice || !isWrappableDirectAsset) {
       return null;
     }
 
     const groupedSampleMap =
-      isGroup && active3dSlices.length === 0 ? all3dSampleMap : activeSampleMap;
+      isGroup && group3dState.activeSlices.length === 0
+        ? groupedDirectSampleMap
+        : group3dState.activeSampleMap;
 
     return buildSyntheticSceneForDirect3dSamples({
       sample,
@@ -104,13 +193,14 @@ export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
       sampleMap: groupedSampleMap,
     });
   }, [
+    group3dState.activeFo3dSlice,
+    group3dState.activeSampleMap,
+    group3dState.activeSlices,
     isWrappableDirectAsset,
-    sample,
-    mediaField,
     isGroup,
-    active3dSlices,
-    all3dSampleMap,
-    activeSampleMap,
+    groupedDirectSampleMap,
+    mediaField,
+    sample,
   ]);
 
   // This effect fetches fo3d data for the active sample and guards stale updates.
@@ -120,6 +210,29 @@ export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
     setIsLoading(true);
     setRawData(null);
 
+    if (isRealFo3dScene) {
+      fetchFo3d(url, fo3dPath).then((response) => {
+        if (!isActive) {
+          return;
+        }
+
+        const mergedResponse = groupedDirectSampleMap
+          ? appendDirect3dSamplesToScene({
+              mediaField,
+              rawData: response,
+              sampleMap: groupedDirectSampleMap,
+            })
+          : response;
+
+        setRawData(mergedResponse);
+        setIsLoading(false);
+      });
+
+      return () => {
+        isActive = false;
+      };
+    }
+
     if (syntheticRawData || isWrappableDirectAsset) {
       setRawData(syntheticRawData);
       setIsLoading(false);
@@ -128,19 +241,23 @@ export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
       };
     }
 
-    fetchFo3d(url, filepath).then((response) => {
-      if (!isActive) {
-        return;
-      }
-
-      setRawData(response);
-      setIsLoading(false);
-    });
+    setRawData(null);
+    setIsLoading(false);
 
     return () => {
       isActive = false;
     };
-  }, [fetchFo3d, url, filepath, syntheticRawData, isWrappableDirectAsset]);
+  }, [
+    fetchFo3d,
+    fo3dPath,
+    filepath,
+    groupedDirectSampleMap,
+    isRealFo3dScene,
+    isWrappableDirectAsset,
+    mediaField,
+    syntheticRawData,
+    url,
+  ]);
 
   const normalizedRawData = useMemo(() => {
     if (!rawData) {
@@ -152,12 +269,8 @@ export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
 
   // This effect writes normalized fo3d content into Recoil state.
   useEffect(() => {
-    if (!normalizedRawData) {
-      return;
-    }
-
-    setFo3dContent(normalizedRawData);
-  }, [normalizedRawData, setFo3dContent]);
+    actions.setFo3dContent(normalizedRawData);
+  }, [actions, normalizedRawData]);
 
   const foScene = useMemo(() => {
     if (!normalizedRawData) {

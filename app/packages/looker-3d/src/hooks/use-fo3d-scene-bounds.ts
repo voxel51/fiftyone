@@ -8,7 +8,7 @@ type UseFo3dSceneBoundsArgs = {
   foScene: FoScene | null;
   isParsingFo3d: boolean;
   rootAssetCount: number;
-  isThreeJsLoadingSuccess: boolean;
+  isThreeJsLoading: boolean;
 };
 
 /**
@@ -19,10 +19,10 @@ export const useFo3dSceneBounds = ({
   foScene,
   isParsingFo3d,
   rootAssetCount,
-  isThreeJsLoadingSuccess,
+  isThreeJsLoading,
 }: UseFo3dSceneBoundsArgs) => {
   const isReadyToComputeBounds =
-    Boolean(foScene) && !isParsingFo3d && isThreeJsLoadingSuccess;
+    Boolean(foScene) && !isParsingFo3d && !isThreeJsLoading;
 
   const {
     boundingBox: sceneBoundingBox,

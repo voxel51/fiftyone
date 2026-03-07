@@ -133,6 +133,34 @@ const buildSyntheticNode = ({
 };
 
 /**
+ * Builds synthetic FO3D child nodes for each direct-3D sample in the slice map.
+ */
+export const buildSyntheticSceneNodesForDirect3dSamples = ({
+  sample,
+  mediaField,
+  sampleMap,
+}: {
+  sample: ModalSample;
+  mediaField: string;
+  sampleMap?: SliceToSampleMap;
+}): FiftyoneSceneRawJson[] => {
+  const sceneSamples =
+    sampleMap && Object.keys(sampleMap).length > 0
+      ? sampleMap
+      : { default: sample };
+
+  return Object.entries(sceneSamples)
+    .map(([slice, currentSample]) =>
+      buildSyntheticNode({
+        sample: currentSample,
+        slice,
+        mediaField,
+      })
+    )
+    .filter((node): node is FiftyoneSceneRawJson => Boolean(node));
+};
+
+/**
  * Synthesizes a scene for direct-3D samples so they can render through the
  * standard FO3D scene pipeline.
  */
@@ -145,20 +173,11 @@ export const buildSyntheticSceneForDirect3dSamples = ({
   mediaField: string;
   sampleMap?: SliceToSampleMap;
 }): FiftyoneSceneRawJson | null => {
-  const sceneSamples =
-    sampleMap && Object.keys(sampleMap).length > 0
-      ? sampleMap
-      : { default: sample };
-
-  const children = Object.entries(sceneSamples)
-    .map(([slice, currentSample]) =>
-      buildSyntheticNode({
-        sample: currentSample,
-        slice,
-        mediaField,
-      })
-    )
-    .filter((node): node is FiftyoneSceneRawJson => Boolean(node));
+  const children = buildSyntheticSceneNodesForDirect3dSamples({
+    sample,
+    mediaField,
+    sampleMap,
+  });
 
   if (!children.length) {
     return null;
