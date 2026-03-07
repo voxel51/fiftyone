@@ -228,3 +228,61 @@ class TestDepthAnythingV3OutputProcessor:
         results = processor({"depth": depth}, (None, None))
 
         assert results[0].map.shape == (50, 60)
+
+    def test_scale_factor_surfaced_on_first_heatmap(self):
+        """Test scale_factor from prediction is attached to first heatmap."""
+        processor = self._make_processor()
+        depth = np.array([[[1.0, 2.0], [3.0, 4.0]]], dtype=np.float32)
+
+        results = processor(
+            {"depth": depth, "scale_factor": 0.42}, (2, 2)
+        )
+
+        assert results[0].scale_factor == pytest.approx(0.42)
+
+    def test_scale_factor_absent_when_not_provided(self):
+        """Test scale_factor is not set when missing from output."""
+        processor = self._make_processor()
+        depth = np.array([[[1.0, 2.0], [3.0, 4.0]]], dtype=np.float32)
+
+        results = processor({"depth": depth}, (2, 2))
+
+        assert not hasattr(results[0], "scale_factor") or results[0].scale_factor is None
+
+
+class TestDepthAnythingV3ModelConfigNewParams:
+    """Test new config parameters: ref_view_strategy, align_to_input_ext_scale."""
+
+    def test_ref_view_strategy_default(self):
+        """Test ref_view_strategy defaults to saddle_balanced."""
+        from fiftyone.utils.depth_anything import DepthAnythingV3ModelConfig
+
+        config = DepthAnythingV3ModelConfig({})
+
+        assert config.ref_view_strategy == "saddle_balanced"
+
+    def test_ref_view_strategy_explicit(self):
+        """Test ref_view_strategy can be set to each valid value."""
+        from fiftyone.utils.depth_anything import DepthAnythingV3ModelConfig
+
+        for strategy in ("first", "middle", "saddle_balanced", "saddle_sim_range"):
+            config = DepthAnythingV3ModelConfig({"ref_view_strategy": strategy})
+            assert config.ref_view_strategy == strategy
+
+    def test_align_to_input_ext_scale_default(self):
+        """Test align_to_input_ext_scale defaults to True."""
+        from fiftyone.utils.depth_anything import DepthAnythingV3ModelConfig
+
+        config = DepthAnythingV3ModelConfig({})
+
+        assert config.align_to_input_ext_scale is True
+
+    def test_align_to_input_ext_scale_explicit(self):
+        """Test align_to_input_ext_scale can be set explicitly."""
+        from fiftyone.utils.depth_anything import DepthAnythingV3ModelConfig
+
+        config_false = DepthAnythingV3ModelConfig({"align_to_input_ext_scale": False})
+        assert config_false.align_to_input_ext_scale is False
+
+        config_true = DepthAnythingV3ModelConfig({"align_to_input_ext_scale": True})
+        assert config_true.align_to_input_ext_scale is True
