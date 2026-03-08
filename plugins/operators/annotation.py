@@ -239,8 +239,6 @@ class CreateAndActivateField(foo.Operator):
             # Activate the field (prepend to make it appear at top)
             ctx.dataset.activate_label_schemas(field_name, prepend=True)
 
-            ctx.trigger("reload_dataset")
-
             return {
                 "field_name": field_name,
                 "label_schema": label_schema,
