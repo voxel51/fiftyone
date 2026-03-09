@@ -133,25 +133,13 @@ class Scene2D {
 
 ```typescript
 interface Spatial {
-    getRelativeBounds(): Rect;
-    setAbsoluteBounds(bounds: Rect): void;
-    getAbsoluteBounds(): Rect;
-    setRelativeBounds(bounds: Rect): void;
-    needsCoordinateUpdate(): boolean;
-    markForCoordinateUpdate(): void;
-    markCoordinateUpdateComplete(): void;
+    bounds: Rect;
 }
 
 interface Selectable {
     isSelected(): boolean;
     setSelected(selected: boolean): void;
     getSelectionPriority(): number;
-}
-
-interface Movable {
-    getPosition(): Point;
-    setPosition(position: Point): void;
-    markDirty(): void;
 }
 
 interface Hoverable {

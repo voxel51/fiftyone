@@ -51,9 +51,9 @@ jobs:
           echo "short_sha=$short_sha" >> "$GITHUB_ENV"
           echo "today=$(date +%Y%m%d)" >> "$GITHUB_ENV"
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
       - name: Build and push internal image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           build-args: |
             BUILD_TYPE=source

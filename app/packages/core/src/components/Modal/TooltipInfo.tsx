@@ -9,6 +9,7 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import { Typography } from "@mui/material";
 import { animated, useSpring } from "@react-spring/web";
+import { Orientation, Spacing, Stack } from "@voxel51/voodo";
 import React, {
   useCallback,
   useEffect,
@@ -23,18 +24,17 @@ import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import { joinStringArray } from "../Filters/utils";
 import { ContentDiv, ContentHeader } from "../utils";
-import { Orientation, Spacing, Stack } from "@voxel51/voodo";
-import { useCanAnnotateField } from "./Sidebar/Annotate/useCanAnnotateField";
 import { QuickEditEntry } from "./Sidebar/Annotate";
+import { useCanAnnotateField } from "./Sidebar/Annotate/useCanAnnotateField";
 
 const TOOLTIP_HEADER_ID = "fo-tooltip-header";
 
-const TooltipDiv = animated(styled(ContentDiv)<{ $isTooltipLocked: boolean }>`
+const TooltipDiv = animated(styled(ContentDiv) <{ $isTooltipLocked: boolean }>`
   position: absolute;
   margin-top: 0;
   left: -1000;
   top: -1000;
-  z-index: 20000;
+  z-index: 1500;
   min-width: 15rem;
   pointer-events: ${(props) => (props.$isTooltipLocked ? "auto" : "none")};
 `);
@@ -244,7 +244,7 @@ export const ContentItem = ({
       }}
     >
       <ContentItemDiv style={style}>
-        <ContentValue>
+        <ContentValue data-cy={`attribute-${name}`}>
           {(() => {
             switch (typeof value) {
               case "number":
@@ -363,19 +363,22 @@ export const TooltipInfo = React.memo(() => {
 
     return (
       <TooltipDiv
+        data-cy={`sample-canvas-tooltip-${
+          isTooltipLocked ? "locked" : "unlocked"
+        }`}
         $isTooltipLocked={isTooltipLocked}
         style={{ ...coordsProps, ...showProps, position: "fixed" }}
         ref={ref}
       >
         <Header title={detail.field} labelId={detail.label.id} />
         <Border color={detail.color} id={detail.label.id} />
-        <TooltipContentDiv>
+        <TooltipContentDiv data-cy="sample-canvas-tooltip-content">
           {detail.label.tags && detail.label.tags.length > 0 && (
             <TagInfo key={"tags"} tags={detail.label?.tags} />
           )}
           <Component key={"attrs"} detail={detail} />
           {isTooltipLocked && (
-            <HiddenItemsContainer>
+            <HiddenItemsContainer data-cy={"hidden-attributes"}>
               <HiddenItems key={detail.field} field={detail.field} />
             </HiddenItemsContainer>
           )}
@@ -393,9 +396,7 @@ export const TooltipInfo = React.memo(() => {
   }
 
   return ReactDOM.createPortal(
-    <div>
-      <Draggable handle={"#" + TOOLTIP_HEADER_ID}>{tooltipDiv}</Draggable>
-    </div>,
+    <Draggable handle={"#" + TOOLTIP_HEADER_ID}>{tooltipDiv}</Draggable>,
     document.body
   );
 });
@@ -528,7 +529,12 @@ const Header = ({ title, labelId }: { title: string; labelId: string }) => {
       key="header"
       id={TOOLTIP_HEADER_ID}
     >
-      <span style={{ fontSize: "0.8rem" }}>{title}</span>
+      <span
+        data-cy="sample-canvas-tooltip-title"
+        style={{ fontSize: "0.8rem" }}
+      >
+        {title}
+      </span>
       {isTooltipLocked ? (
         <Stack orientation={Orientation.Row} spacing={Spacing.Xs}>
           <QuickEditEntry
@@ -583,9 +589,8 @@ const Border = ({ color, id }) => {
   return (
     <BorderDiv
       style={{
-        borderTop: `2px ${
-          selectedLabels.has(id) ? "dashed" : "solid"
-        } ${color}`,
+        borderTop: `2px ${selectedLabels.has(id) ? "dashed" : "solid"
+          } ${color}`,
       }}
     />
   );
@@ -631,23 +636,23 @@ const AttrInfo = ({ label, field, labelType, children = null }) => {
   const attributes =
     typeof label.attributes === "object"
       ? Object.entries(
-          label.attributes as { [key: string]: { value: string | number } }
-        ).map<[string, string | number]>(([k, v]) => [
-          "attributes." + k,
-          v.value,
-        ])
+        label.attributes as { [key: string]: { value: string | number } }
+      ).map<[string, string | number]>(([k, v]) => [
+        "attributes." + k,
+        v.value,
+      ])
       : null;
 
   // we're prettifying the instance config attributes here
   const instanceAttributes = label.instance
     ? Object.entries(label.instance)
-        .filter(
-          ([k, v]) =>
-            typeof v === "string" &&
-            v.length > 0 &&
-            (k === "_id" || !k.startsWith("_"))
-        )
-        .map(([k, v]) => ["instance " + (k === "_id" ? "id" : k), v])
+      .filter(
+        ([k, v]) =>
+          typeof v === "string" &&
+          v.length > 0 &&
+          (k === "_id" || !k.startsWith("_"))
+      )
+      .map(([k, v]) => ["instance " + (k === "_id" ? "id" : k), v])
     : null;
 
   return (
