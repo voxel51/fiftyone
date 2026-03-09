@@ -38,12 +38,11 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
   }
 
   private getStackIndex(): number {
-    let index = 0;
-    for (const overlay of activeClassifications.values()) {
-      if (overlay === this) return index;
-      index++;
-    }
-    return 0;
+    const alphabetical = [...activeClassifications.values()].sort((a, b) =>
+      (a.label?.label ?? "").localeCompare(b.label?.label ?? "")
+    );
+
+    return alphabetical.indexOf(this);
   }
 
   getCursor(_worldPoint: Point, _scale: number): string {
