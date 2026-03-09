@@ -6,6 +6,9 @@ Tests for fiftyone/utils/depth_anything.py Depth Anything V3 model wrapper.
 |
 """
 
+import inspect
+from types import SimpleNamespace
+
 import numpy as np
 import pytest
 import torch
@@ -286,3 +289,81 @@ class TestDepthAnythingV3ModelConfigNewParams:
 
         config_true = DepthAnythingV3ModelConfig({"align_to_input_ext_scale": True})
         assert config_true.align_to_input_ext_scale is True
+
+
+class TestDepthAnythingV3Exports:
+    def test_compute_3d_exports_uses_keyword_only_args_and_sets_gs_video_path(
+        self, monkeypatch
+    ):
+        from fiftyone.utils.depth_anything import DepthAnythingV3Model
+        import fiftyone.utils.depth_anything as foda
+
+        class _FakeSample(dict):
+            def __init__(self, filepath):
+                super().__init__()
+                self.filepath = filepath
+
+        class _FakeCollection:
+            def __init__(self, samples):
+                self._samples = samples
+
+            def iter_samples(self, autosave=True, progress=None):
+                return iter(self._samples)
+
+        class _FakeFilenameMaker:
+            def __init__(self, output_dir, rel_dir=None, ignore_existing=False):
+                self.output_dir = output_dir
+
+            def get_output_path(self, filepath, output_ext=""):
+                return self.output_dir + "\\sample"
+
+        calls = []
+
+        def _fake_inference(filepaths, **kwargs):
+            calls.append((filepaths, kwargs))
+            gs_video_dir = kwargs["export_dir"] + "\\gs_video"
+            import os
+            os.makedirs(gs_video_dir, exist_ok=True)
+            with open(gs_video_dir + "\\0000_wander.mp4", "wb") as f:
+                f.write(b"")
+
+        monkeypatch.setattr(foda.fov, "validate_collection", lambda samples: None)
+        monkeypatch.setattr(foda.fou, "UniqueFilenameMaker", _FakeFilenameMaker)
+
+        model = DepthAnythingV3Model.__new__(DepthAnythingV3Model)
+        model._model = SimpleNamespace(inference=_fake_inference)
+
+        sample = _FakeSample("C:\\data\\image.png")
+        samples = _FakeCollection([sample])
+
+        model.compute_3d_exports(
+            samples,
+            "C:\\exports",
+            export_format="gs_video",
+            conf_thresh_percentile=12.5,
+            num_max_points=123,
+            show_cameras=False,
+        )
+
+        signature = inspect.signature(model.compute_3d_exports)
+        assert (
+            signature.parameters["conf_thresh_percentile"].kind
+            is inspect.Parameter.KEYWORD_ONLY
+        )
+        assert (
+            signature.parameters["num_max_points"].kind
+            is inspect.Parameter.KEYWORD_ONLY
+        )
+        assert (
+            signature.parameters["show_cameras"].kind
+            is inspect.Parameter.KEYWORD_ONLY
+        )
+
+        assert len(calls) == 1
+        _, kwargs = calls[0]
+        assert kwargs["infer_gs"] is True
+        assert kwargs["export_format"] == "gs_video"
+        assert kwargs["conf_thresh_percentile"] == pytest.approx(12.5)
+        assert kwargs["num_max_points"] == 123
+        assert kwargs["show_cameras"] is False
+        assert sample["da3_export_path"] == "C:\\exports\\sample\\gs_video\\0000_wander.mp4"

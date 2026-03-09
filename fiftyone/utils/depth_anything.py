@@ -7,6 +7,7 @@ wrapper for the FiftyOne Model Zoo.
 |
 """
 
+import glob
 import logging
 import os
 from typing import Any, Dict, List, Optional, Tuple
@@ -412,6 +413,7 @@ class DepthAnythingV3Model(fout.TorchImageModel):
         overwrite: bool = False,
         skip_failures: bool = False,
         progress: Optional[bool] = None,
+        *,
         conf_thresh_percentile: float = 40.0,
         num_max_points: int = 1_000_000,
         show_cameras: bool = True,
@@ -483,3 +485,9 @@ class DepthAnythingV3Model(fout.TorchImageModel):
                 sample["da3_export_path"] = os.path.join(
                     sample_export_dir, "gs_ply", "0000.ply"
                 )
+            elif export_format == "gs_video":
+                video_paths = sorted(
+                    glob.glob(os.path.join(sample_export_dir, "gs_video", "*.mp4"))
+                )
+                if video_paths:
+                    sample["da3_export_path"] = video_paths[-1]
