@@ -93,7 +93,7 @@ test.afterAll(async ({ foWebServer }) => {
 
 test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-  await datasetFactory.createBlankImageDataset({
+  await datasetFactory.createBlankDataset({
     datasetName,
     imageOptions: {
       fillColor: "white",
