@@ -89,6 +89,7 @@ they've been granted access.
 
 Labeler
 -------
+
 Labelers only have access to datasets to which they have been specifically
 granted access (a dataset's
 :ref:`default access level <enterprise-default-access>` does not apply to
