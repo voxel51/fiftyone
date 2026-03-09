@@ -11,7 +11,7 @@ import logging
 import os
 import pathlib
 import stat
-
+import mimetypes
 import eta.core.utils as etau
 import strawberry as gql
 from starlette.applications import Starlette
@@ -107,6 +107,9 @@ schema = gql.Schema(
     scalar_overrides=SCALAR_OVERRIDES,
 )
 
+mimetypes.add_type('application/javascript', '.js')
+mimetypes.add_type('text/css', '.css')
+mimetypes.add_type('application/wasm', '.wasm')
 
 app = Starlette(
     middleware=[
