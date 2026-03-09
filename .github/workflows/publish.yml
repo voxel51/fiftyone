@@ -72,7 +72,7 @@ jobs:
 
       - name: Build and push (except latest)
         if: matrix.python != '3.11'
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           build-args: |
             BUILD_TYPE=released
@@ -88,7 +88,7 @@ jobs:
 
       - name: Build and push (latest)
         if: matrix.python == '3.11'
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           build-args: |
             BUILD_TYPE=released
