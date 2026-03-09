@@ -6,10 +6,8 @@ import { dispatchTimelineSetFrameNumberEvent } from "@fiftyone/playback";
 import { SCALE_FACTOR } from "../../constants";
 import { ImaVidFramesController } from "../../lookers/imavid/controller";
 import {
-  BaseState,
   Control,
   ControlEventKeyType,
-  ControlMap,
   ImaVidConfig,
   ImaVidState,
   VideoState,
@@ -25,8 +23,6 @@ import {
   selectSample,
 } from "../../shared/actions";
 import { dispatchTooltipEvent } from "./util";
-
-export { readActions, json, resetZoom, selectSample };
 
 const escape: Control = {
   title: "Escape context",
