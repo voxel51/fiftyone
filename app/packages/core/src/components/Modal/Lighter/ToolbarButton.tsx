@@ -6,6 +6,7 @@ import {
   Size,
   Tooltip,
 } from "@voxel51/voodo";
+import styled from "styled-components";
 
 export interface ToolbarButtonProps {
   tooltip: string;
@@ -13,11 +14,21 @@ export interface ToolbarButtonProps {
   onClick: () => void;
 }
 
+const ButtonWrapper = styled.span`
+  display: inline-flex;
+  transition: transform 0.15s ease;
+  &:hover {
+    transform: translateY(-2px);
+  }
+`;
+
 const ToolbarButton = ({ tooltip, icon, onClick }: ToolbarButtonProps) => (
   <Tooltip content={tooltip} anchor={Anchor.Top} portal aria-label={tooltip}>
-    <Clickable onClick={onClick}>
-      <Icon name={icon} size={Size.Lg} />
-    </Clickable>
+    <ButtonWrapper>
+      <Clickable onClick={onClick}>
+        <Icon name={icon} size={Size.Lg} />
+      </Clickable>
+    </ButtonWrapper>
   </Tooltip>
 );
 

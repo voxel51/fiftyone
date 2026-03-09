@@ -176,14 +176,6 @@ export class MockRenderer2D {
     return this.canvas;
   }
 
-  resetZoomPan(): void {
-    this.scale = 1;
-  }
-
-  zoomIn(): void {}
-
-  zoomOut(): void {}
-
   disableZoomPan(): void {}
 
   enableZoomPan(): void {}

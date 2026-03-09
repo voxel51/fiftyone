@@ -99,6 +99,11 @@ export class PixiRenderer2D implements Renderer2D {
 
     // Activate drag, pinch, and wheel plugins.
     this.viewport.drag().pinch().wheel();
+    // Enforce zoom bounds so wheel/pinch cannot drive scale outside [ZOOM_MIN, ZOOM_MAX].
+    this.viewport.clampZoom({
+      minScale: PixiRenderer2D.ZOOM_MIN,
+      maxScale: PixiRenderer2D.ZOOM_MAX,
+    });
 
     // to re-render the scene with updated scaling
     // TODO: throttle?
@@ -684,11 +689,18 @@ export class PixiRenderer2D implements Renderer2D {
   /**
    * Applies a new zoom level if it differs from the current one, and emits
    * viewport events. Caller must ensure viewport exists and compute `next`.
+   *
+   * @param current - Current zoom level (e.g. viewport.scaled).
+   * @param next - Target zoom level to apply.
    */
   private applyZoom(current: number, next: number): void {
     if (!this.viewport || this.viewport.destroyed) return;
-    if (next !== current) {
-      this.viewport.setZoom(next, true);
+    const clamped = Math.max(
+      PixiRenderer2D.ZOOM_MIN,
+      Math.min(PixiRenderer2D.ZOOM_MAX, next)
+    );
+    if (clamped !== current) {
+      this.viewport.setZoom(clamped, true);
       this.emitViewportZoomed();
       this.emitViewportMoved();
     }
