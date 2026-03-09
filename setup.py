@@ -69,7 +69,7 @@ INSTALL_REQUIRES = [
     "setuptools",
     "sseclient-py>=1.7.2,<2",
     "sse-starlette>=0.10.3,<1",
-    "starlette>=0.24.0",
+    "starlette>=0.24.0,<0.53",
     "strawberry-graphql>=0.262.4,<0.292.0",
     "tabulate",
     "tqdm",
