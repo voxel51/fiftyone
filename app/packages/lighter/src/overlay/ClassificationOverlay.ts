@@ -71,6 +71,18 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
     return alphabetical.indexOf(this);
   }
 
+  public get label(): RawLookerLabel {
+    return super.label;
+  }
+
+  public set label(value: RawLookerLabel) {
+    super.label = value;
+
+    getChannelMap(this.channel).forEach((classificationOverlay) =>
+      classificationOverlay.markDirty()
+    );
+  }
+
   getCursor(_worldPoint: Point, _scale: number): string {
     return "pointer";
   }
