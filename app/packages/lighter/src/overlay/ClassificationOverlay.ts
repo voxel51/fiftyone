@@ -24,21 +24,47 @@ export interface ClassificationOptions {
   label: RawLookerLabel;
 }
 
-const activeClassifications = new Map<string, ClassificationOverlay>();
+/**
+ * Per-channel registry of active classification overlays.
+ * Keyed by event channel so overlays from different scenes don't interfere.
+ */
+const channelRegistry = new Map<
+  string | undefined,
+  Map<string, ClassificationOverlay>
+>();
+
+function getChannelMap(
+  channel: string | undefined
+): Map<string, ClassificationOverlay> {
+  let map = channelRegistry.get(channel);
+  if (!map) {
+    map = new Map();
+    channelRegistry.set(channel, map);
+  }
+  return map;
+}
 
 /**
  * Classification overlay implementation with selection support.
  */
 export class ClassificationOverlay extends BaseOverlay implements Selectable {
   private isSelectedState = false;
+  private channel: string | undefined = undefined;
 
   constructor(options: ClassificationOptions) {
     super(options.id, options.field, options.label);
-    activeClassifications.set(this.id, this);
+  }
+
+  setEventChannel(eventChannel: string | undefined): void {
+    super.setEventChannel(eventChannel);
+    this.channel = eventChannel;
+
+    getChannelMap(this.channel).set(this.id, this);
   }
 
   private getStackIndex(): number {
-    const alphabetical = [...activeClassifications.values()].sort((a, b) =>
+    const siblings = getChannelMap(this.channel);
+    const alphabetical = [...siblings.values()].sort((a, b) =>
       (a.label?.label ?? "").localeCompare(b.label?.label ?? "")
     );
 
@@ -136,7 +162,13 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
   }
 
   destroy(): void {
-    activeClassifications.delete(this.id);
+    const map = getChannelMap(this.channel);
+    map.delete(this.id);
+
+    if (map.size === 0) {
+      channelRegistry.delete(this.channel);
+    }
+
     super.destroy();
   }
 }
