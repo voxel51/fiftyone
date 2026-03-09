@@ -412,7 +412,7 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
         try:
             self.ctx = _load_video_frames_monkey_patches()
         except Exception as e:
-            logger.warning(
+            logger.error(
                 "Failed to monkey patch sam2.utils.misc.load_video_frames: %s",
                 e,
             )
@@ -918,8 +918,7 @@ def load_fiftyone_video_frames_from_image_files(
     with tempfile.TemporaryDirectory(prefix="fo_sam2_frames_") as tmpdir:
         for idx, frame_filepath in enumerate(sample.values("filepath")):
             src = frame_filepath
-            ext = os.path.splitext(src)[1].lower()
-            dest = os.path.join(tmpdir, "%05d%s" % (idx, ext))
+            dest = os.path.join(tmpdir, "%05d.jpg" % idx)
             os.symlink(os.path.abspath(src), dest)
 
         return smutil.load_video_frames_from_jpg_images(
