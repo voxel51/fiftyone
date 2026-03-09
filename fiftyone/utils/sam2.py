@@ -8,9 +8,7 @@ wrapper for the FiftyOne Model Zoo.
 """
 
 import logging
-import contextlib
 import os
-import shutil
 import tempfile
 from typing import List, Optional
 
@@ -473,12 +471,6 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
     def predict_all(
         self, imgs: List[np.ndarray], samples: Optional[List] = None
     ) -> List[fol.Detections]:
-        batch_size = self.config.batch_size
-        if (batch_size is None) or (batch_size == len(imgs)):
-            logger.warning(
-                f"Batch size {batch_size} may be insufficient for the sequence of frames"
-            )
-
         # Get the prompt field name from needs_fields (sample-level in this path)
         if "prompt_field" in self.needs_fields:
             prompt_field = self.needs_fields["prompt_field"]
@@ -615,8 +607,6 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
             return self._forward_pass_boxes(video_reader, sample)
         elif self._curr_prompt_type == "points":
             return self._forward_pass_points(video_reader, sample)
-        elif self._curr_prompt_type == "masks":
-            return self._forward_pass_boxes(video_reader, sample)
 
     def _forward_pass_boxes(self, video_reader, sample):
         image_folder = getattr(video_reader, "image_folder", None)
@@ -886,12 +876,9 @@ def load_fiftyone_video_frames_from_video_file(
     img_std = torch.tensor(img_std, dtype=torch.float32)[:, None, None]
 
     num_frames = len(sample.frames)
-    try:
-        images = torch.zeros(
-            num_frames, 3, image_size, image_size, dtype=torch.float32
-        )
-    except Exception as e:
-        raise (e)
+    images = torch.zeros(
+        num_frames, 3, image_size, image_size, dtype=torch.float32
+    )
     for frame_number in range(num_frames):
         current_frame = video_reader.read()
         resized_frame = (

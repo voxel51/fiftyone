@@ -338,10 +338,8 @@ def _apply_video_models_on_flattened_dataset(
 
     # convert to image dataset
     dataset = dataset.to_frames(sample_frames=True, sparse=True)
-    model_kwargs = {
-        "media_mode": "image",
-        "batch_size": batch_size,
-    }
+    model_kwargs = model_kwargs or {}
+    model_kwargs.update({"media_mode": "image"})
 
     if _SAM_PROMPT_FIELD in kwargs:
         dataset.match(F("frame_number") > 1).set_field(
