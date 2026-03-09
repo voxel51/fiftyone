@@ -2,7 +2,6 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { randomUUID } from "crypto";
 import { OssLoader } from "src/oss/fixtures/loader";
 import { createBlankImage } from "../media-factory/image";
 
@@ -229,13 +228,11 @@ const createBlankDataset = (() => {
       );
     }
 
-    const id = randomUUID();
     const promises = new Array<Promise<void>>();
-    const samples = new Array<BlankSample>();
     const sampleData = new Array<string>();
 
     for (let index = 0; index < numSamples; index++) {
-      const filepath = `/tmp/${id}/${index}.png`;
+      const filepath = `/tmp/${datasetName}/${index}.png`;
       promises.push(
         createBlankImage({
           outputPath: filepath,
@@ -249,7 +246,6 @@ const createBlankDataset = (() => {
         filepath,
         index,
       };
-      samples.push(blankSample);
       sampleData.push(
         `sample_data.append(json.loads('${JSON.stringify(
           withSampleData(blankSample)
@@ -294,7 +290,7 @@ const createBlankDataset = (() => {
         samples.append(
             fo.Sample(
                 _id=ObjectId(f"{idx:024x}"),
-                filepath=f"/tmp/${datasetName}-{idx}.png",
+                filepath=f"/tmp/${datasetName}/{idx}.png",
                 index=idx
             )
         )

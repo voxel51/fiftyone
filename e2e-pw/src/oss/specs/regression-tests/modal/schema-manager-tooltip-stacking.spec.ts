@@ -22,44 +22,19 @@ test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, mediaFactory, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-  await mediaFactory.createBlankImage({
-    outputPath: "/tmp/tooltip-stacking.png",
-    width: 640,
-    height: 480,
-    fillColor: "#ffffff",
-    hideLogs: true,
+  await datasetFactory.createBlankDataset({
+    datasetName,
+    schema: { detections: "Detections" },
+    withSampleData: () => {
+      return {
+        detections: {
+          detections: [{ bounding_box: [0, 0, 1, 1], label: "cat" }],
+        },
+      };
+    },
   });
-
-  await fiftyoneLoader.executePythonCode(`
-  from bson import ObjectId
-  import fiftyone as fo
-
-  dataset = fo.Dataset("${datasetName}")
-  dataset.media_type = "image"
-
-  sample = fo.Sample(
-      _id=ObjectId("${id}"),
-      detections=fo.Detections(
-          detections=[
-              fo.Detection(label="cat", bounding_box=[0, 0, 1, 1]),
-          ]
-      ),
-      filepath="/tmp/tooltip-stacking.png"
-  )
-  dataset._sample_collection.insert_many(
-      [dataset._make_dict(sample, include_id=True)]
-  )
-
-  dataset.add_sample_field(
-      "detections",
-      fo.EmbeddedDocumentField,
-      embedded_doc_type=fo.Detections,
-  )
-  dataset.save()
-  sample = dataset.first()
-  sample.save()`);
 });
 
 test.describe.serial("schema manager tooltip z-index stacking", () => {
@@ -78,7 +53,6 @@ test.describe.serial("schema manager tooltip z-index stacking", () => {
 
     await modal.sampleCanvas.move(0.5, 0.5, "pointer");
     await modal.sampleCanvas.tooltip.assert.isVisible();
-
     await modal.sampleCanvas.tooltip.toggleLock();
     await modal.sampleCanvas.tooltip.assert.isLocked();
 
