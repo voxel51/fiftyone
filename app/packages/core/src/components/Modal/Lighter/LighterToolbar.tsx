@@ -1,5 +1,5 @@
 import { useLighter } from "@fiftyone/lighter";
-import { IMAVID_SHORTCUTS } from "@fiftyone/looker/src/elements/common/actions";
+import { ANNOTATE_SHORTCUTS } from "./annotateActions";
 import * as fos from "@fiftyone/state";
 import { IconName, Orientation, Spacing, Stack } from "@voxel51/voodo";
 import { useCallback } from "react";
@@ -38,7 +38,7 @@ export const LighterToolbar = () => {
   const { zoomIn, zoomOut } = useLighter();
 
   const handleHelp = useCallback(() => {
-    helpPanel.open(shortcutToHelpItems(IMAVID_SHORTCUTS));
+    helpPanel.open(shortcutToHelpItems(ANNOTATE_SHORTCUTS));
   }, [helpPanel]);
 
   return (
@@ -54,6 +54,7 @@ export const LighterToolbar = () => {
             tooltip="Zoom in"
             icon={IconName.Add}
             onClick={zoomIn}
+            testId="zoom-in"
           />
           <ToolbarButton
             tooltip="Shortcuts & help"

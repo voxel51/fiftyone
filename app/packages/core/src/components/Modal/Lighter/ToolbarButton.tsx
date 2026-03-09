@@ -12,6 +12,8 @@ export interface ToolbarButtonProps {
   tooltip: string;
   icon: IconName;
   onClick: () => void;
+  /** Optional data-testid for e2e tests */
+  testId?: string;
 }
 
 const ButtonWrapper = styled.span`
@@ -22,10 +24,15 @@ const ButtonWrapper = styled.span`
   }
 `;
 
-const ToolbarButton = ({ tooltip, icon, onClick }: ToolbarButtonProps) => (
+const ToolbarButton = ({
+  tooltip,
+  icon,
+  onClick,
+  testId,
+}: ToolbarButtonProps) => (
   <Tooltip content={tooltip} anchor={Anchor.Top} portal aria-label={tooltip}>
     <ButtonWrapper>
-      <Clickable onClick={onClick}>
+      <Clickable onClick={onClick} data-testid={testId}>
         <Icon name={icon} size={Size.Lg} />
       </Clickable>
     </ButtonWrapper>

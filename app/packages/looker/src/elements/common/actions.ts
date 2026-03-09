@@ -18,21 +18,15 @@ import { clampScale } from "../../util";
 import { getFrameNumber } from "../util";
 
 import { isHoveringAnyLabelWithInstanceConfig } from "@fiftyone/state/src/jotai";
+import {
+  readActions,
+  json,
+  resetZoom,
+  selectSample,
+} from "../../shared/actions";
 import { dispatchTooltipEvent } from "./util";
 
-const readActions = <State extends BaseState>(
-  actions: ControlMap<State>
-): ControlMap<State> => {
-  return Object.fromEntries(
-    Object.entries(actions).reduce((acc, [_, v]) => {
-      if (Array.isArray(v.eventKeys)) {
-        return [...acc, ...v.eventKeys.map((key) => [key, v])];
-      }
-
-      return [...acc, [v.eventKeys || v.shortcut, v]];
-    }, [])
-  );
-};
+export { readActions, json, resetZoom, selectSample };
 
 const escape: Control = {
   title: "Escape context",
@@ -294,15 +288,6 @@ export const cropToContent: Control = {
   },
 };
 
-export const resetZoom: Control = {
-  title: "Reset zoom",
-  shortcut: "r",
-  detail: "Reset zoom to default",
-  action: (update) => {
-    update({ setZoom: true });
-  },
-};
-
 export const settings: Control = {
   title: "Preferences",
   shortcut: "p",
@@ -350,23 +335,6 @@ export const controlsToggle: Control = {
       }
     });
   },
-};
-
-export const json: Control = {
-  title: "JSON",
-  shortcut: "j",
-  detail: "View JSON",
-  action: (update, dispatchEvent) => {
-    dispatchEvent("panels", { showJSON: "toggle" });
-  },
-};
-
-export const selectSample: Control = {
-  title: "Select or Deselect Sample",
-  shortcut: "x",
-  eventKeys: null,
-  detail: "Grid → Control + Click",
-  action: () => null,
 };
 
 export const COMMON = {

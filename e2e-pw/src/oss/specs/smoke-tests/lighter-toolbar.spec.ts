@@ -59,12 +59,12 @@ test.describe.serial("lighter-toolbar-smoke", () => {
     await modal.waitForSampleLoadDomAttribute();
     await modalSidebar.switchMode("annotate");
 
-    const sampleRenderer = modal.locator.locator(
+    const sampleRenderer = modal.sampleCanvas.locator.locator(
       '[data-cy="lighter-sample-renderer"]'
     );
+    await expect(sampleRenderer).toBeVisible();
+    await modal.sampleCanvas.toolbar.assert.isVisible(false);
     await sampleRenderer.hover();
-
-    const lighterToolbar = modal.locator.locator('[data-cy="lighter-toolbar"]');
-    await expect(lighterToolbar).toBeVisible();
+    await modal.sampleCanvas.toolbar.assert.isVisible();
   });
 });
