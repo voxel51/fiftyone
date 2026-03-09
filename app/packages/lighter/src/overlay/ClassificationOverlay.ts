@@ -2,16 +2,18 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import { Selectable } from "../selection/Selectable";
+import { BaseOverlay } from "./BaseOverlay";
+
+import type { Renderer2D } from "../renderer/Renderer2D";
+import type { Point, RawLookerLabel, RenderMeta } from "../types";
+
 import {
   LABEL_ARCHETYPE_PRIORITY,
   TAB_DASH_HOVERED,
   TAB_DASH_SELECTED,
   TAB_DASH_WIDTH,
 } from "../constants";
-import type { Renderer2D } from "../renderer/Renderer2D";
-import { Selectable } from "../selection/Selectable";
-import { Point, RawLookerLabel, Rect, RenderMeta } from "../types";
-import { BaseOverlay } from "./BaseOverlay";
 
 /**
  * Options for creating a classification overlay.
@@ -22,15 +24,26 @@ export interface ClassificationOptions {
   label: RawLookerLabel;
 }
 
+const activeClassifications = new Map<string, ClassificationOverlay>();
+
 /**
  * Classification overlay implementation with selection support.
  */
 export class ClassificationOverlay extends BaseOverlay implements Selectable {
   private isSelectedState = false;
-  private textBounds?: Rect;
 
   constructor(options: ClassificationOptions) {
     super(options.id, options.field, options.label);
+    activeClassifications.set(this.id, this);
+  }
+
+  private getStackIndex(): number {
+    let index = 0;
+    for (const overlay of activeClassifications.values()) {
+      if (overlay === this) return index;
+      index++;
+    }
+    return 0;
   }
 
   getCursor(_worldPoint: Point, _scale: number): string {
@@ -91,7 +104,7 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
         fontStyle: hasLabel ? "normal" : "italic",
         backgroundColor,
         anchor: { vertical: "top" },
-        offset: { bottom: renderMeta.overlayIndex },
+        offset: { bottom: this.getStackIndex() },
         rounded: 4,
         tab: "right",
         dashline,
@@ -121,5 +134,10 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
 
   getSelectionPriority(): number {
     return LABEL_ARCHETYPE_PRIORITY.CLASSIFICATION;
+  }
+
+  destroy(): void {
+    activeClassifications.delete(this.id);
+    super.destroy();
   }
 }

@@ -1,4 +1,4 @@
-import { BoundingBoxOverlay, useLighter } from "@fiftyone/lighter";
+import { BoundingBoxOverlay, type Scene2D, useLighter } from "@fiftyone/lighter";
 import {
   activeFields,
   AnnotationLabel,
@@ -40,19 +40,42 @@ const LABEL_LIST_INFO: Record<string, { listKey: string; type: LabelType }> = {
 
 const handleSample = async ({
   createLabel,
+  existingIds,
   getFieldType,
   paths,
   sample,
+  scene,
   schemas,
+  updateLabelAtom,
 }: {
   createLabel: ReturnType<typeof useCreateAnnotationLabel>;
+  existingIds?: Set<string>;
   getFieldType: (path: string) => Promise<LabelType>;
   paths: { [key: string]: string };
   sample: ModalSample;
+  scene?: Scene2D | null;
   schemas: string[];
+  updateLabelAtom?: (id: string, data: AnnotationLabelData) => boolean;
 }) => {
   const data = sample.sample;
-  const labels: AnnotationLabel[] = [];
+  const newLabels: AnnotationLabel[] = [];
+
+  const handleUpdateOrCreate = (
+    labelDataList: AnnotationLabelData[],
+    type: LabelType,
+    path: string
+  ) => {
+		labelDataList.forEach(labelData => {
+      if (existingIds?.has(labelData._id)) {
+        const overlay = scene?.getOverlay(labelData._id);
+        if (overlay) overlay.label = labelData;
+        updateLabelAtom?.(labelData._id, labelData);
+      } else {
+        const label = createLabel(path, type, labelData);
+        if (label) newLabels.push(label);
+      }
+    });
+  };
 
   for (const path in paths) {
     if (!schemas.includes(path)) {
@@ -72,9 +95,13 @@ const handleSample = async ({
     }
     const result = get(data, paths[path]);
 
-    const array = Array.isArray(result) ? result : result ? [result] : [];
+    const labelDataList = Array.isArray(result)
+      ? result
+      : result
+        ? [result]
+        : [];
 
-    labels.push(...array.map((data) => createLabel(path, type, data)));
+    handleUpdateOrCreate(labelDataList, type, path);
   }
 
   // Process fields in activeLabelSchemas that aren't in Recoil's activeFields
@@ -96,23 +123,27 @@ const handleSample = async ({
 
     const listInfo = LABEL_LIST_INFO[cls];
     if (listInfo) {
-      const items = (fieldData as Record<string, unknown>)[
+      const labelDataList = (fieldData as Record<string, unknown>)[
         listInfo.listKey
-      ] as unknown[];
+      ] as AnnotationLabelData[];
 
-      if (Array.isArray(items)) {
-        labels.push(
-          ...items.map((item) => createLabel(schemaPath, listInfo.type, item))
-        );
+      if (Array.isArray(labelDataList)) {
+        handleUpdateOrCreate(labelDataList, listInfo.type, schemaPath);
       }
     } else if (KNOWN_SINGULAR_TYPES.has(cls)) {
-      labels.push(createLabel(schemaPath, cls as LabelType, fieldData));
+      handleUpdateOrCreate(
+        [fieldData as AnnotationLabelData],
+        cls as LabelType,
+        schemaPath
+      );
     } else {
-      console.warn(`Unsupported label _cls "${cls}" for field "${schemaPath}"`);
+      console.warn(
+        `Unsupported label _cls "${cls}" for field "${schemaPath}"`
+      );
     }
   }
 
-  return labels.sort((a, b) =>
+  return newLabels.sort((a, b) =>
     (a.data.label ?? "").localeCompare(b.data?.label ?? "")
   );
 };
@@ -404,28 +435,28 @@ export default function useLabels() {
           setLoading(LabelsState.COMPLETE);
         });
       } else if (loadingRef.current === LabelsState.COMPLETE) {
-        // refresh label data
-        getLabelsFromSample().then((result) => {
+        // Collect IDs of overlays already in the scene so we can
+        // update them without creating duplicate overlay instances
+        const existingIds = new Set(
+          scene?.getAllOverlays().map((o) => o.id) ?? []
+        );
+
+        // Only create overlays for truly new labels
+        handleSample({
+          existingIds,
+          createLabel,
+          paths,
+          sample: modalSample,
+          scene,
+          getFieldType,
+          schemas: active,
+          updateLabelAtom,
+        }).then((newLabels) => {
           if (stale) return;
 
-          result.forEach((annotationLabel) => {
-            // update overlays
-            if (scene?.hasOverlay(annotationLabel.data._id)) {
-              scene.getOverlay(annotationLabel.data._id)!.label =
-                annotationLabel.data;
-            }
-
-            // update sidebar, or add if this is a new label
-            const updated = updateLabelAtom(
-              annotationLabel.data._id,
-              annotationLabel.data
-            );
-
-            // new label, add it
-            if (!updated) {
-              addLabelToStore(annotationLabel);
-              addLabelToRenderer(annotationLabel);
-            }
+          newLabels.forEach((annotationLabel) => {
+            addLabelToStore(annotationLabel);
+            addLabelToRenderer(annotationLabel);
           });
         });
       }
