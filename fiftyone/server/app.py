@@ -107,9 +107,13 @@ schema = gql.Schema(
     scalar_overrides=SCALAR_OVERRIDES,
 )
 
-mimetypes.add_type('application/javascript', '.js')
-mimetypes.add_type('text/css', '.css')
-mimetypes.add_type('application/wasm', '.wasm')
+mtypes = (  # ensure mimetypes for Windows
+    ('application/javascript', '.js'),
+    ('text/css', '.css'),
+    ('application/wasm', '.wasm'),
+)
+for mtype, ext in mtypes:
+    mimetypes.add_type(mtype, ext)
 
 app = Starlette(
     middleware=[
