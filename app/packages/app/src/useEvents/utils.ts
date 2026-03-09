@@ -1,7 +1,7 @@
 import type { ColorSchemeInput } from "@fiftyone/relay";
 import { subscribeBefore } from "@fiftyone/relay";
 import type { SpaceNodeJSON } from "@fiftyone/spaces";
-import type { Session, State } from "@fiftyone/state";
+import type { SelectionType, Session, State } from "@fiftyone/state";
 import { ensureColorScheme } from "@fiftyone/state";
 import { env, toCamelCase } from "@fiftyone/utilities";
 import { atom } from "recoil";
@@ -49,12 +49,29 @@ export const processState = (
     workspace,
   };
 };
-const resolveSelected = (state: { selected?: string[] }) => {
+const resolveSelected = (state: {
+  selected?: string[];
+  selected_samples?: Array<{ sample_id: string; type: SelectionType }>;
+}) => {
   if (env().VITE_NO_STATE) {
-    return new Set<string>();
+    return new Map<string, SelectionType>();
   }
 
-  return new Set<string>(state.selected || []);
+  // Prefer selected_samples (list of dicts with type info) if available
+  if (state.selected_samples?.length) {
+    const map = new Map<string, SelectionType>();
+    for (const s of state.selected_samples) {
+      map.set(s.sample_id, s.type || "default");
+    }
+    return map;
+  }
+
+  // Fallback: flat selected list — all default type
+  const map = new Map<string, SelectionType>();
+  for (const id of state.selected || []) {
+    map.set(id, "default");
+  }
+  return map;
 };
 
 const resolveSelectedLabels = (state: { selected_labels?: string[] }) => {

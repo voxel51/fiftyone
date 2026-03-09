@@ -32,11 +32,11 @@ export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
       }: Parameters<SpotlightConfig<number, Sample>["onItemClick"]>["0"]) => {
         if (event.ctrlKey || event.metaKey) {
           set(atoms.selectedSamples, (selected) => {
-            const newSelected = new Set([...selected]);
+            const newSelected = new Map(selected);
             if (newSelected.has(item.id.description)) {
               newSelected.delete(item.id.description);
             } else {
-              newSelected.add(item.id.description);
+              newSelected.set(item.id.description, "default");
             }
 
             return newSelected;

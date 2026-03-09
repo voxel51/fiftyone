@@ -140,6 +140,7 @@ def handle_dataset_change(
         state.sample_id = None
         state.selected = []
         state.selected_labels = []
+        state.selected_samples = []
         state.spaces = None
         state.view = None
     except:
@@ -149,6 +150,7 @@ def handle_dataset_change(
         state.sample_id = None
         state.selected = []
         state.selected_labels = []
+        state.selected_samples = []
         state.spaces = None
         state.view = None
         return
@@ -268,6 +270,7 @@ def handle_saved_view(
             state.view = state.dataset.load_saved_view(doc.name)
         state.selected = []
         state.selected_labels = []
+        state.selected_samples = []
     except:
         pass
 
