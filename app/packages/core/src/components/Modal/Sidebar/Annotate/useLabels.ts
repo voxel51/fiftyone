@@ -118,10 +118,10 @@ const handleSample = async ({
     const fieldData = get(data, schemaPath);
     if (!fieldData || typeof fieldData !== "object") continue;
 
-    const cls = (fieldData as Record<string, unknown>)?._cls as string;
-    if (!cls) continue;
+    const labelType = (fieldData as Record<string, unknown>)?._cls as LabelType;
+    if (!labelType) continue;
 
-    const listInfo = LABEL_LIST_INFO[cls];
+    const listInfo = LABEL_LIST_INFO[labelType];
     if (listInfo) {
       const labelDataList = (fieldData as Record<string, unknown>)[
         listInfo.listKey
@@ -130,15 +130,15 @@ const handleSample = async ({
       if (Array.isArray(labelDataList)) {
         handleUpdateOrCreate(labelDataList, listInfo.type, schemaPath);
       }
-    } else if (KNOWN_SINGULAR_TYPES.has(cls)) {
+    } else if (KNOWN_SINGULAR_TYPES.has(labelType)) {
       handleUpdateOrCreate(
         [fieldData as AnnotationLabelData],
-        cls as LabelType,
+        labelType,
         schemaPath
       );
     } else {
       console.warn(
-        `Unsupported label _cls "${cls}" for field "${schemaPath}"`
+        `Unsupported label _cls "${labelType}" for field "${schemaPath}"`
       );
     }
   }
