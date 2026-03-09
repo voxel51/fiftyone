@@ -7,7 +7,7 @@ updates:
       interval: "weekly"
 
   # ---------------------------------------------------------------------------
-  # Fiftyone Python Dependabot configuration
+  # FiftyOne Python Dependabot configuration
   # Notes:
   #   1. Prefer to constrain libraries at the major version
   #   2. Document where constraints aren't possible with comments
