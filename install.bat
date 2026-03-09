@@ -38,12 +38,25 @@ SHIFT
 GOTO parse
 :endparse
 
+:: Resolve pip backend
+where uv >nul 2>&1
+IF NOT ERRORLEVEL 1 (
+  set PIP=uv pip
+) else (
+  where pip >nul 2>&1
+  IF ERRORLEVEL 1 (
+    echo ERROR: Neither 'uv' nor 'pip' found in PATH. Please install one before running this script.
+    exit /b 1
+  )
+  set PIP=pip
+)
+
 :: Do this first so pip installs with a built app
 if %BUILD_APP%==true (
   echo ***** INSTALLING FIFTYONE-APP *****
   :: TODO - Add nvm and yarn installs
   cd app
-  echo "Building the App. This will take a minute or two..."
+  echo Building the App. This will take a minute or two...
   call yarn install > nul 2>&1
   call yarn build:win32
   cd ..
@@ -51,7 +64,7 @@ if %BUILD_APP%==true (
 
 IF %USE_FIFTY_ONE_DB%==true (
   echo ***** INSTALLING FIFTYONE-DB *****
-  pip install fiftyone-db
+  %PIP% install fiftyone-db
 ) else (
   echo ***** USING LOCAL MONGODB *****
 )
@@ -75,27 +88,26 @@ IF %SOURCE_BRAIN_INSTALL%==true (
     CALL install.bat -d
   ) else (
     echo Performing install
-    pip install .
+    %PIP% install .
   )
   popd
 ) else (
-  pip install --upgrade fiftyone-brain
+  %PIP% install --upgrade fiftyone-brain
 )
 
 echo ***** INSTALLING FIFTYONE *****
 IF %DEV_INSTALL%==true (
   echo Performing dev install
-  pip install -r requirements/dev.txt
+  %PIP% install -r requirements/dev.txt
   pre-commit install
-  pip install .
+  %PIP% install .
 ) else if %DOCS_INSTALL%==true (
   echo Performing docs install
-  pip install -r requirements/docs.txt
-  pip install -e .
+  %PIP% install -r requirements/docs.txt
+  %PIP% install -e .
 ) else (
   echo Performing install
-  pip install -r requirements.txt
-  pip install .
+  %PIP% install .
 )
 
 IF %SOURCE_ETA_INSTALL%==true (
@@ -114,10 +126,10 @@ IF %SOURCE_ETA_INSTALL%==true (
   )
   IF %DEV_INSTALL%==true (
     echo Performing dev install
-    pip install .
+    %PIP% install .
   ) else (
     echo Performing install
-    pip install .
+    %PIP% install .
   )
   if not exist "eta\config.json" (
     echo "Installing default ETA config"

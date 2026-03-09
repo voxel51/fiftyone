@@ -33,7 +33,8 @@ DOCS_INSTALL=false
 SOURCE_ETA_INSTALL=false
 SCRATCH_MONGODB_INSTALL=false
 BUILD_APP=true
-while getopts "hbdempo" FLAG; do
+
+while getopts "hbdempou" FLAG; do
     case "${FLAG}" in
         h) SHOW_HELP=true ;;
         b) SOURCE_BRAIN_INSTALL=true ;;
@@ -79,7 +80,11 @@ fi
 echo "Python $PY_VER is supported."
 
 # Ensure pip targets this Python interpreter
-PIP="$PYTHON -m pip"
+if command -v uv >/dev/null 2>&1; then
+    PIP="uv pip"
+else
+    PIP="$PYTHON -m pip"
+fi
 
 # Do this first so pip installs with a built app
 if [ "$BUILD_APP" = true ]; then
