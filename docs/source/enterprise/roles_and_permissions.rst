@@ -93,7 +93,8 @@ Labeler
 Labelers only have access to datasets to which they have been specifically
 granted access (a dataset's
 :ref:`default access level <enterprise-default-access>` does not apply to
-Labelers), and they may only be granted **Can tag** access to datasets.
+Labelers), and they may only be granted **Can view** or **Can tag** access
+to datasets.
 
 Labelers cannot create new datasets, clone existing datasets, export datasets, or
 view other users of the deployment.
