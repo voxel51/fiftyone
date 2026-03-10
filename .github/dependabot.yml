@@ -25,7 +25,7 @@ updates:
     open-pull-requests-limit: 5
     # Widen the allowed version requirements to include both the new and old versions, when possible. 
     # Typically, this only increases the maximum allowed version requirement.
-    versioning-strategy: "auto"
+    versioning-strategy: "widen"
     ignore:
       # Ignore anything mongo related
       - dependency-name: "pymongo"
