@@ -5,23 +5,23 @@ import { ModalSampleRenderer } from "./ModalSampleRenderer";
 
 const {
   createSampleRendererRenderContext,
-  datasetToken,
   getMatchingSampleRenderer,
   getRawComponent,
   getSampleRendererComponent,
   mockDataset,
   mockSchema,
-  schemaToken,
+  useCurrentDataset,
+  useModalSampleSchema,
   useActivePlugins,
 } = vi.hoisted(() => ({
-  datasetToken: Symbol("dataset"),
-  schemaToken: Symbol("schema"),
   mockDataset: { name: "dataset" },
   mockSchema: { filepath: { ftype: "StringField" } },
   createSampleRendererRenderContext: vi.fn(),
   getMatchingSampleRenderer: vi.fn(),
   getRawComponent: vi.fn(),
   getSampleRendererComponent: vi.fn(),
+  useCurrentDataset: vi.fn(),
+  useModalSampleSchema: vi.fn(),
   useActivePlugins: vi.fn(),
 }));
 
@@ -38,15 +38,8 @@ vi.mock("@fiftyone/plugins", () => ({
 }));
 
 vi.mock("@fiftyone/state", () => ({
-  dataset: datasetToken,
-  State: { SPACE: { SAMPLE: "sample" } },
-  fieldSchema: vi.fn(() => schemaToken),
-}));
-
-vi.mock("recoil", () => ({
-  useRecoilValue: vi.fn((selector) =>
-    selector === datasetToken ? mockDataset : mockSchema
-  ),
+  useCurrentDataset: (...args: unknown[]) => useCurrentDataset(...args),
+  useModalSampleSchema: (...args: unknown[]) => useModalSampleSchema(...args),
 }));
 
 vi.mock("./MetadataLooker", () => ({
@@ -96,6 +89,8 @@ describe("ModalSampleRenderer", () => {
 
   beforeEach(() => {
     consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    useCurrentDataset.mockReturnValue(mockDataset);
+    useModalSampleSchema.mockReturnValue(mockSchema);
     useActivePlugins.mockReturnValue([registration]);
     createSampleRendererRenderContext.mockReturnValue(ctx);
     getMatchingSampleRenderer.mockReturnValue(registration);
