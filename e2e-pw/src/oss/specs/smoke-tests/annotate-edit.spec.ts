@@ -1,43 +1,23 @@
-import { test as base } from "src/oss/fixtures";
-import { GridPom } from "src/oss/poms/grid";
-import { ModalPom } from "src/oss/poms/modal";
-import { SidebarPom } from "src/oss/poms/sidebar";
-import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import {
   ground_truth_schema,
   uniqueness_schema,
 } from "src/oss/assets/annotate-schemas";
-import { ModalAnnotateSidebarPom } from "src/oss/poms/modal/annotate-sidebar";
-import { ModalSidebarPom } from "src/oss/poms/modal/modal-sidebar";
-import { ModalAnnotateEditPom } from "src/oss/poms/modal/annotate-edit";
+import { test as base } from "src/oss/fixtures";
+import { GridPom } from "src/oss/poms/grid";
+import { ModalPom } from "src/oss/poms/modal";
+import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix("smoke-annotate-edit");
 
 const test = base.extend<{
   grid: GridPom;
   modal: ModalPom;
-  modalAnnotateSidebar: ModalAnnotateSidebarPom;
-  modalSidebar: ModalSidebarPom;
-  sidebar: SidebarPom;
-  modalAnnotateEdit: ModalAnnotateEditPom;
 }>({
   grid: async ({ page, eventUtils }, use) => {
     await use(new GridPom(page, eventUtils));
   },
   modal: async ({ page, eventUtils }, use) => {
     await use(new ModalPom(page, eventUtils));
-  },
-  modalAnnotateSidebar: async ({ page }, use) => {
-    await use(new ModalAnnotateSidebarPom(page));
-  },
-  modalSidebar: async ({ page }, use) => {
-    await use(new ModalSidebarPom(page));
-  },
-  sidebar: async ({ page }, use) => {
-    await use(new SidebarPom(page));
-  },
-  modalAnnotateEdit: async ({ page }, use) => {
-    await use(new ModalAnnotateEditPom(page));
   },
 });
 
@@ -69,14 +49,7 @@ test.afterEach(async ({ modal, page }) => {
 });
 
 test.describe.serial("annotate-sidebar-smoke", () => {
-  test("smoke", async ({
-    grid,
-    modal,
-    annotateSDK,
-    modalSidebar,
-    modalAnnotateSidebar,
-    modalAnnotateEdit,
-  }) => {
+  test("smoke", async ({ grid, modal, annotateSDK }) => {
     await annotateSDK.updateLabelSchema(
       datasetName,
       "ground_truth",
@@ -91,22 +64,25 @@ test.describe.serial("annotate-sidebar-smoke", () => {
     await annotateSDK.addFieldToActiveLabelSchema(datasetName, "uniqueness");
     await grid.openFirstSample();
     await modal.waitForSampleLoadDomAttribute();
-    await modalSidebar.switchMode("annotate");
-    await modalAnnotateSidebar.selectActiveLabel("bird", 1);
-    await modalAnnotateEdit.assert.verifyUndoButtonDisabled();
-    await modalAnnotateEdit.assert.verifyRedoButtonDisabled();
-    await modalAnnotateEdit.assert.verifyFieldLabel("confidence", "confidence");
-    await modalAnnotateEdit.setFieldValue("confidence", "0.85");
-    await modalAnnotateEdit.assert.verifyFieldValue("confidence", "0.85");
-    await modalAnnotateEdit.assert.verifyUndoButtonEnabled();
-    await modalAnnotateEdit.assert.verifyRedoButtonDisabled();
-    await modalAnnotateEdit.undo();
-    await modalAnnotateEdit.assert.verifyFieldValue("confidence", "");
-    await modalAnnotateEdit.assert.verifyUndoButtonDisabled();
-    await modalAnnotateEdit.assert.verifyRedoButtonEnabled();
-    await modalAnnotateEdit.redo();
-    await modalAnnotateEdit.assert.verifyFieldValue("confidence", "0.85");
-    await modalAnnotateEdit.assert.verifyUndoButtonEnabled();
-    await modalAnnotateEdit.assert.verifyRedoButtonDisabled();
+    await modal.sidebar.switchMode("annotate");
+    await modal.sidebar.annotate.selectActiveLabel("bird", 1);
+    await modal.sidebar.edit.assert.undoIsEnabled(false);
+    await modal.sidebar.edit.assert.redoIsEnabled(false);
+    await modal.sidebar.edit.assert.verifyFieldLabel(
+      "confidence",
+      "confidence"
+    );
+    await modal.sidebar.edit.setFieldValue("confidence", "0.85");
+    await modal.sidebar.edit.assert.verifyFieldValue("confidence", "0.85");
+    await modal.sidebar.edit.assert.undoIsEnabled();
+    await modal.sidebar.edit.assert.redoIsEnabled(false);
+    await modal.sidebar.edit.undo();
+    await modal.sidebar.edit.assert.verifyFieldValue("confidence", "");
+    await modal.sidebar.edit.assert.undoIsEnabled(false);
+    await modal.sidebar.edit.assert.redoIsEnabled();
+    await modal.sidebar.edit.redo();
+    await modal.sidebar.edit.assert.verifyFieldValue("confidence", "0.85");
+    await modal.sidebar.edit.assert.undoIsEnabled();
+    await modal.sidebar.edit.assert.redoIsEnabled(false);
   });
 });

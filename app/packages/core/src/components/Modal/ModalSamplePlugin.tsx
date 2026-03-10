@@ -11,11 +11,10 @@ const ContentColumn = styled.div`
   display: flex;
   flex-direction: column;
   flex-grow: 1;
-  padding-top: 5px;
   width: 100%;
   height: 100%;
   position: relative;
-  overflow-y: hidden;
+  overflow: hidden;
 `;
 
 export const ModalSample = React.memo(() => {
@@ -35,7 +34,7 @@ export const ModalSample = React.memo(() => {
   }, []);
 
   return (
-    <ContentColumn>
+    <ContentColumn data-cy="sample-canvas">
       <ErrorBoundary onReset={() => {}}>
         <Suspense>
           {isGroup ? <Group /> : is3D ? <Sample3d /> : <Sample2D />}

@@ -1,9 +1,9 @@
 import { useAnnotationController } from "@fiftyone/annotation";
 import { Stack } from "@mui/material";
 import { Button, Clickable, Icon, IconName, Size } from "@voxel51/voodo";
-import React, { FC, ReactNode } from "react";
-import { useCanAnnotateField } from "./useCanAnnotateField";
+import { FC, ReactNode } from "react";
 import useCanAnnotate from "./useCanAnnotate";
+import { useCanAnnotateField } from "./useCanAnnotateField";
 
 type QuickEditActionType = "icon" | "button";
 
@@ -38,6 +38,7 @@ const QuickEditAction: FC<{
 
   return type === "icon" ? (
     <Clickable
+      data-cy="quick-edit"
       onClick={() => {
         enterAnnotationMode(path, labelId);
         onClick?.();
@@ -47,13 +48,14 @@ const QuickEditAction: FC<{
     </Clickable>
   ) : (
     <Button
+      data-cy="quick-edit"
       leadingIcon={EditIcon}
       size={Size.Xs}
       onClick={() => {
         enterAnnotationMode(path, labelId);
         onClick?.();
       }}
-    ></Button>
+    />
   );
 };
 

@@ -38,6 +38,8 @@ async function loadConfig() {
       },
     },
     server: {
+      allowedHosts: true,
+      host: true,
       port: Number.parseInt(process.env.FIFTYONE_DEFAULT_APP_PORT || "5173"),
       proxy: {
         "/plugins": {

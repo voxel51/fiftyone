@@ -21,12 +21,12 @@ describe("AnnotationSchema", () => {
     mockOverlay = {
       label: { id: "test-id", label: "test-label" },
       id: "overlay-1",
-      getAbsoluteBounds: vi.fn(() => ({
+      bounds: {
         x: 0,
         y: 0,
         width: 100,
         height: 100,
-      })),
+      },
     };
   });
 

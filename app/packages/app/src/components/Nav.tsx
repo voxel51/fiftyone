@@ -6,6 +6,7 @@ import {
   IconButton,
   iconContainer,
 } from "@fiftyone/components";
+import { useTrackEvent } from "@fiftyone/analytics";
 import { ViewBar } from "@fiftyone/core";
 import * as fos from "@fiftyone/state";
 import { useRefresh } from "@fiftyone/state";
@@ -81,6 +82,7 @@ const Nav: React.FC<
   const refresh = useRefresh();
   const { mode, setMode } = useColorScheme();
   const setTheme = useSetRecoilState(fos.theme);
+  const trackEvent = useTrackEvent();
 
   return (
     <>
@@ -105,6 +107,7 @@ const Nav: React.FC<
               const nextMode = mode === "dark" ? "light" : "dark";
               setMode(nextMode);
               setTheme(nextMode);
+              trackEvent("switch_app_theme", { theme: nextMode });
             }}
             sx={{
               color: (theme) => theme.palette.text.secondary,

@@ -3,10 +3,42 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.16.4
+--------------------------
+*Released March 9, 2026*
+
+Includes all updates from :ref:`FiftyOne 1.13.4 <release-notes-v1.13.4>`, plus:
+
+Cloud Media
+
+- Fixed a race condition where concurrent reads and writes of cloud credential
+  files could cause credential loading to fail.
+- Fixed a bug where Azure `load_credentials()` was not forwarding the profile
+  parameter.
+- Fixed a bug with cloud credentials priority resolution order, ensuring the
+  correct credential is selected first.
+
+Auto-Labeling
+
+- Fixed a bug where :ref:`auto-labeling <verified-auto-labeling>` may fail if a
+  mounted directory is not yet initialized.
+
+
+.. _release-notes-v1.13.4:
+
+FiftyOne 1.13.4
+---------------
+*Released March 9, 2026*
+
+App
+
+- Ensured the release of `starlette 1.0` will not negatively impact the App.
+  `#7137 <https://github.com/voxel51/fiftyone/pull/7137>`_
+
 
 FiftyOne Enterprise 2.16.3
 --------------------------
-*Released March 2, 2026*
+*Released March 3, 2026*
 
 Includes all updates from :ref:`FiftyOne 1.13.3 <release-notes-v1.13.3>`, plus:
 
@@ -19,10 +51,16 @@ Cloud Media
 
 - Optimized cloud media access checks in order to reduce the number of requests
   being made.
-- Updated SDK precedence for cloud credentials. When running the SDK locally
-  the system will default to using local credentials when they are available.
-  This precedence can be overridden by setting
-  `FIFTYONE_CLOUD_CRED_ORIGIN_PREFERENCE` to `remote` (or `local`).
+- Updated default behavior for local SDK use of cloud credentials, checking for
+  credentials configured locally before attempting to download
+  :ref:`managed cloud credentials <enterprise-cloud-storage-page>`,
+  and disabling download of managed credentials by default. Both
+  :ref:`local vs remote precedence <enterprise-cloud-creds-origin-preference>`,
+  and
+  :ref:`enabling vs disabling download of managed credentials <enterprise-cloud-creds-local-download>`
+  are configurable.
+- Fixed a bug where some cloud credentials would fail if they were uploaded by
+  a user who no longer exists in the database.
 
 Models
 
@@ -34,7 +72,7 @@ Models
 
 FiftyOne 1.13.3
 ---------------
-*Released March 2, 2026*
+*Released March 3, 2026*
 
 :ref:`In-App Annotation <in-app-annotation>`
 

@@ -6,13 +6,7 @@ import { type EventDispatcher, getEventBus } from "@fiftyone/events";
 import { getSampleSrc } from "@fiftyone/state";
 import type { LighterEventGroup } from "../events";
 import type { Renderer2D } from "../renderer/Renderer2D";
-import type {
-  BoundedOverlay,
-  CanonicalMedia,
-  Dimensions,
-  Rect,
-  RenderMeta,
-} from "../types";
+import type { CanonicalMedia, Dimensions, Rect, RenderMeta } from "../types";
 import { BaseOverlay } from "./BaseOverlay";
 
 /**
@@ -36,10 +30,7 @@ const isRectNonEmpty = (bounds: Rect | undefined): boolean => {
  * Uses an HTML <img> element instead of Pixi textures to avoid CORS requirements.
  * Also implements CanonicalMedia for coordinate transformations.
  */
-export class ImageOverlay
-  extends BaseOverlay
-  implements BoundedOverlay, CanonicalMedia
-{
+export class ImageOverlay extends BaseOverlay implements CanonicalMedia {
   private imgElement?: HTMLImageElement;
   private originalDimensions?: Dimensions;
   private currentBounds?: Rect;
