@@ -144,6 +144,19 @@ class DepthAnythingV3OutputProcessor(fout.OutputProcessor):
                 if len(sky_masks.shape) == 2:
                     sky_masks = sky_masks[np.newaxis, ...]
 
+        scale_factors = output.get("scale_factor")
+        if isinstance(scale_factors, torch.Tensor):
+            scale_factors = scale_factors.detach().cpu().numpy()
+        if scale_factors is not None and np.ndim(scale_factors) > 0:
+            if len(scale_factors) < len(depth_maps):
+                logger.warning(
+                    "Scale factors (%d) fewer than depth maps (%d), "
+                    "skipping scale_factor",
+                    len(scale_factors),
+                    len(depth_maps),
+                )
+                scale_factors = None
+
         width, height = frame_size
         results = []
 
@@ -196,8 +209,18 @@ class DepthAnythingV3OutputProcessor(fout.OutputProcessor):
             if heatmap.is_metric:
                 heatmap.max_depth = float(max_depth)
 
-            if output.get("scale_factor") is not None:
-                heatmap.scale_factor = output["scale_factor"]
+            if scale_factors is not None:
+                value = (
+                    scale_factors
+                    if np.ndim(scale_factors) == 0
+                    else scale_factors[i]
+                )
+                if isinstance(value, np.ndarray):
+                    value = value.item()
+                elif hasattr(value, "item"):
+                    value = value.item()
+
+                heatmap.scale_factor = float(value)
 
             results.append(heatmap)
 

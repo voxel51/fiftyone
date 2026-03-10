@@ -269,6 +269,28 @@ class TestDepthAnythingV3OutputProcessor:
         assert results[0].scale_factor == pytest.approx(0.42)
         assert results[1].scale_factor == pytest.approx(0.42)
 
+    def test_batched_scale_factor_tensor_is_scalarized_per_heatmap(self):
+        """Test batched tensor scale_factor is converted per heatmap."""
+        processor = self._make_processor()
+        depth = np.array([
+            [[1.0, 2.0], [3.0, 4.0]],
+            [[2.0, 3.0], [4.0, 5.0]],
+        ], dtype=np.float32)
+
+        results = processor(
+            {
+                "depth": depth,
+                "scale_factor": torch.tensor([0.42, 0.84], dtype=torch.float32),
+            },
+            (2, 2),
+        )
+
+        assert len(results) == 2
+        assert isinstance(results[0].scale_factor, float)
+        assert isinstance(results[1].scale_factor, float)
+        assert results[0].scale_factor == pytest.approx(0.42)
+        assert results[1].scale_factor == pytest.approx(0.84)
+
 
 class TestDepthAnythingV3ModelConfigNewParams:
     """Test new config parameters: ref_view_strategy, align_to_input_ext_scale."""
