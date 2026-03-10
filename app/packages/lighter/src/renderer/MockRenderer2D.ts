@@ -181,6 +181,10 @@ export class MockRenderer2D {
 
   enableZoomPan(): void { }
 
+  resetZoomPan(): void {
+    this.scale = 1;
+  }
+
   getViewportState(): ViewportState {
     return { scale: this.scale, panX: 0, panY: 0 };
   }
