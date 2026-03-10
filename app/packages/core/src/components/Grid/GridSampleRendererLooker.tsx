@@ -112,6 +112,7 @@ const GridSampleRendererWrapper = ({
   onSelect,
 }: GridSampleRendererWrapperProps) => {
   const [hovering, setHovering] = React.useState(false);
+  const showSelectionControl = hovering || selected;
 
   return (
     <div
@@ -121,14 +122,16 @@ const GridSampleRendererWrapper = ({
       onMouseLeave={() => setHovering(false)}
     >
       {children}
+      {showSelectionControl && (
+        <Checkbox
+          style={SELECT_SAMPLE_BUTTON_STYLES}
+          title={selected ? "Selected" : "Select sample"}
+          checked={selected}
+          onClick={onSelect}
+        />
+      )}
       {hovering && (
         <>
-          <Checkbox
-            style={SELECT_SAMPLE_BUTTON_STYLES}
-            title={selected ? "Selected" : "Select sample"}
-            checked={selected}
-            onClick={onSelect}
-          />
           <button
             title="Open sample modal"
             onClick={onOpenModal}

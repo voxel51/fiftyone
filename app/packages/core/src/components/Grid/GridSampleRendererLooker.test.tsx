@@ -127,7 +127,7 @@ describe("GridSampleRendererLooker", () => {
 
     await waitFor(() => {
       expect(getOpenModalButton(host)).toBeNull();
-      expect(getSelectControl(host)).toBeNull();
+      expect(getSelectControl(host)).toBeTruthy();
     });
 
     looker.destroy();
