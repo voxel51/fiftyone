@@ -9726,7 +9726,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "mapanything"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "mapanything @ git+https://github.com/facebookresearch/map-anything.git@v1.1"
+                ],
                 "cpu": {
                     "support": true
                 },

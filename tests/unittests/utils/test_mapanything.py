@@ -45,14 +45,17 @@ def _mock_mapanything_deps():
 
 def _make_model(output_type="depth"):
     """Create a minimal MapAnythingModel without loading weights."""
-    from fiftyone.utils.mapanything import MapAnythingModel
+    from fiftyone.utils.mapanything import (
+        MapAnythingModel,
+        MapAnythingModelConfig,
+    )
 
-    model = MapAnythingModel.__new__(MapAnythingModel)
-    model._output_type = output_type
-    model._use_amp = True
-    model._amp_dtype = "bf16"
-    model._device = torch.device("cpu")
-    return model
+    with patch.object(
+        MapAnythingModel, "_load_model", return_value=MagicMock()
+    ):
+        return MapAnythingModel(
+            MapAnythingModelConfig({"output_type": output_type})
+        )
 
 
 def _mock_pred(h=518, w=518, depth_val=None):
@@ -483,8 +486,7 @@ class TestPointcloudOutput:
 
     def test_pointcloud_coordinates_finite(self):
         result, _, _ = self._run_pointcloud()
-        for pt in result[0].points3d[:100]:
-            assert all(np.isfinite(v) for v in pt)
+        assert np.all(np.isfinite(result[0].points3d))
 
     def test_different_spatial_size(self):
         result, _, _ = self._run_pointcloud(h=392, w=518)
@@ -541,11 +543,10 @@ class TestPredictAll:
         assert len(result) == 8
 
     def test_invalid_output_type_raises(self):
-        model = _make_model("invalid")
-        _patch_infer(model, _mock_pred())
-        with _patch_load_images():
-            with pytest.raises(ValueError, match="output_type"):
-                model._predict_all([Image.new("RGB", (64, 64))])
+        from fiftyone.utils.mapanything import MapAnythingModelConfig
+
+        with pytest.raises(ValueError, match="output_type"):
+            MapAnythingModelConfig({"output_type": "invalid"})
 
     def test_infer_called_per_image(self):
         model = _make_model("depth")
@@ -634,16 +635,31 @@ class TestInputVariations:
         with _patch_load_images():
             return model._predict_all([img])
 
-    def test_pil_rgb(self):
-        result = self._run(Image.new("RGB", (640, 480)))
-        assert isinstance(result[0], fol.Heatmap)
-
-    def test_pil_rgba(self):
-        result = self._run(Image.new("RGBA", (640, 480)))
-        assert isinstance(result[0], fol.Heatmap)
-
-    def test_pil_grayscale(self):
-        result = self._run(Image.new("L", (640, 480)))
+    @pytest.mark.parametrize(
+        ("mode", "size"),
+        [
+            ("RGB", (640, 480)),
+            ("RGBA", (640, 480)),
+            ("L", (640, 480)),
+            ("RGB", (32, 32)),
+            ("RGB", (3840, 2160)),
+            ("RGB", (480, 640)),
+            ("RGB", (1000, 100)),
+            ("RGB", (100, 1000)),
+        ],
+        ids=[
+            "pil-rgb",
+            "pil-rgba",
+            "pil-grayscale",
+            "small-32px",
+            "large-4k",
+            "portrait",
+            "extreme-landscape",
+            "extreme-portrait",
+        ],
+    )
+    def test_pil_inputs(self, mode, size):
+        result = self._run(Image.new(mode, size))
         assert isinstance(result[0], fol.Heatmap)
 
     def test_numpy_uint8(self):
@@ -655,26 +671,6 @@ class TestInputVariations:
         p = str(tmp_path / "img.png")
         Image.new("RGB", (100, 100)).save(p)
         result = self._run(p)
-        assert isinstance(result[0], fol.Heatmap)
-
-    def test_small_32px(self):
-        result = self._run(Image.new("RGB", (32, 32)))
-        assert isinstance(result[0], fol.Heatmap)
-
-    def test_large_4k(self):
-        result = self._run(Image.new("RGB", (3840, 2160)))
-        assert isinstance(result[0], fol.Heatmap)
-
-    def test_portrait(self):
-        result = self._run(Image.new("RGB", (480, 640)))
-        assert isinstance(result[0], fol.Heatmap)
-
-    def test_extreme_landscape(self):
-        result = self._run(Image.new("RGB", (1000, 100)))
-        assert isinstance(result[0], fol.Heatmap)
-
-    def test_extreme_portrait(self):
-        result = self._run(Image.new("RGB", (100, 1000)))
         assert isinstance(result[0], fol.Heatmap)
 
 
@@ -828,36 +824,14 @@ class TestManifestEntry:
 class TestBatchProcessing:
     """Test batch inference behavior."""
 
-    def test_batch_1(self):
+    @pytest.mark.parametrize("batch_size", [1, 2, 4, 16])
+    def test_batch_size(self, batch_size):
         model = _make_model("depth")
         _patch_infer(model, _mock_pred())
-        with _patch_load_images():
-            result = model._predict_all([Image.new("RGB", (64, 64))])
-        assert len(result) == 1
-
-    def test_batch_2(self):
-        model = _make_model("depth")
-        _patch_infer(model, _mock_pred())
-        imgs = [Image.new("RGB", (64, 64)) for _ in range(2)]
+        imgs = [Image.new("RGB", (64, 64)) for _ in range(batch_size)]
         with _patch_load_images():
             result = model._predict_all(imgs)
-        assert len(result) == 2
-
-    def test_batch_4(self):
-        model = _make_model("depth")
-        _patch_infer(model, _mock_pred())
-        imgs = [Image.new("RGB", (64, 64)) for _ in range(4)]
-        with _patch_load_images():
-            result = model._predict_all(imgs)
-        assert len(result) == 4
-
-    def test_batch_16(self):
-        model = _make_model("depth")
-        _patch_infer(model, _mock_pred())
-        imgs = [Image.new("RGB", (64, 64)) for _ in range(16)]
-        with _patch_load_images():
-            result = model._predict_all(imgs)
-        assert len(result) == 16
+        assert len(result) == batch_size
 
     def test_batch_vs_individual_depth(self):
         """Batch of 3 produces same results as 3 individual calls."""
