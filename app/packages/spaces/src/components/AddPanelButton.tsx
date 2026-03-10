@@ -20,10 +20,6 @@ export default function AddPanelButton({ node, spaceId }: AddPanelButtonProps) {
   const isModalActive = useRecoilValue(fos.isModalActive);
   const panelsPredicate = useCallback(
     (panel: PluginComponentRegistration) => {
-      if (panel.panelOptions?.renderClaims) {
-        return false;
-      }
-
       const surface = panel.panelOptions?.surfaces;
       if (isModalActive) {
         return surface === "modal" || surface === "grid modal";
