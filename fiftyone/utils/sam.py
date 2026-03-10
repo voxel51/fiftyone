@@ -180,6 +180,11 @@ class SegmentAnythingImageGetItem(fout.GetItem):
         point_transform=None,
         **kwargs,
     ):
+        # Used for managing backward compatibility with prompt_field in field mapping.
+        self._has_prompt_field = (
+            field_mapping.pop("prompt_field", None) is not None
+        )
+
         self.mode = self._set_mode(field_mapping)
 
         super().__init__(field_mapping=field_mapping, **kwargs)
@@ -247,7 +252,8 @@ class SegmentAnythingImageGetItem(fout.GetItem):
         item_dict["image"] = img
         item_dict["original_size"] = img_hw
         item_dict["id"] = d["id"]
-        item_dict.update(self._preprocess_prompts(d, img_hw))
+        prompts = self._preprocess_prompts(d, img_hw)
+        item_dict.update(prompts)
 
         return item_dict
 
@@ -267,6 +273,9 @@ class SegmentAnythingImageGetItem(fout.GetItem):
                 "point_labels": positive / negative labels for points
                 "classes": class labels for prompts
         """
+        if self.mode == SAMPromptMode.auto:
+            return {"prompt_type": self.mode.name}
+
         detections = d.get("box_prompt_field")
         keypoints = d.get("point_prompt_field")
 
@@ -297,17 +306,28 @@ class SegmentAnythingImageGetItem(fout.GetItem):
         has_boxes = boxes is not None and len(boxes) > 0
         has_points = points is not None and len(points) > 0
 
-        if self.mode == SAMPromptMode.box_point_combo:
-            if has_boxes and has_points and len(boxes) != len(points):
-                raise ValueError(
-                    f"For {self.mode} mode, combination prompt requires the same number of boxes and points. Provided {len(boxes)} boxes and {len(points)} points."
-                )
+        if self._has_prompt_field and not has_boxes and not has_points:
+            raise ValueError("No prompts available when using prompt_field.")
 
-        if not has_boxes and self.mode == SAMPromptMode.box_only:
+        elif self.mode == SAMPromptMode.box_only and not has_boxes:
             raise ValueError(f"Boxes not available for {self.mode}")
 
-        if not has_points and self.mode == SAMPromptMode.point_only:
+        elif self.mode == SAMPromptMode.point_only and not has_points:
             raise ValueError(f"Points not available for {self.mode}")
+
+        elif (
+            self.mode == SAMPromptMode.box_point_combo
+            and not self._has_prompt_field
+        ):
+            if not has_boxes or not has_points:
+                raise ValueError(
+                    f"For {self.mode}, both boxes and points are required."
+                )
+            if len(boxes) != len(points):
+                raise ValueError(
+                    f"For {self.mode}, boxes and points must match: "
+                    f"got {len(boxes)} boxes and {len(points)} points."
+                )
 
         item_dict = {}
         item_dict["prompt_type"] = self.mode.name
@@ -319,11 +339,8 @@ class SegmentAnythingImageGetItem(fout.GetItem):
             item_dict["point_coords"] = points
             item_dict["point_labels"] = point_type_labels
 
-        if self.mode != SAMPromptMode.auto:
-            # Box classes take precedence over point classes
-            item_dict["classes"] = (
-                box_classes if box_classes else points_classes
-            )
+        # Box classes take precedence over point classes
+        item_dict["classes"] = box_classes if box_classes else points_classes
 
         return item_dict
 
@@ -475,7 +492,7 @@ class SAMSegmenterOutputProcessor(fout.OutputProcessor):
                 {
                     "masks": _masks,
                     "scores": _mask_scores,
-                    "labels": labels[idx] if labels else None,
+                    "labels": labels[idx] if labels else [],
                     "boxes": box_prompts[idx] if box_prompts else [],
                 }
             )
@@ -511,6 +528,7 @@ class SAMSegmenterOutputProcessor(fout.OutputProcessor):
             else boxes
         )
         boxes = [None] * len(masks) if len(boxes) == 0 else boxes
+        labels = [None] * len(masks) if not labels else labels
         detections = []
 
         for box, label, mask, score in zip(boxes, labels, masks, scores):
@@ -718,7 +736,7 @@ class SegmentAnythingModel(fout.TorchImageModel):
                 raise ValueError(
                     "The generic prompt_field cannot be used when both box_prompt_field and point_prompt_field are present."
                 )
-            value = field_mapping.pop("prompt_field")
+            value = field_mapping["prompt_field"]
             # Copy to box and/or point fields since prompt type is unknown.
             if "box_prompt_field" not in field_mapping:
                 logger.debug("Moving prompt_field to box_prompt_field")
@@ -762,7 +780,7 @@ class SegmentAnythingModel(fout.TorchImageModel):
 
         Returns:
             a collated dictionary of model input for the batch. Expected keys are:
-                "image": a torch tensor of (B_img X B X C X H X W) shape or a list of numpy arrays of (B X C X H X W) shape
+                "image": a list of torch tensor or numpy arrays of (B X C X H X W) shape
                 "boxes": a list of B X 4 boxes for SAM model input
                 "boxes_xyxy: a list of B x 4 boxes in XYXY pixels in original image space
                 "point_coords": a list of B X N x 2 point coordinates, padded as needed
@@ -778,8 +796,7 @@ class SegmentAnythingModel(fout.TorchImageModel):
             for key, val in item.items():
                 if key == "point_labels":
                     continue
-
-                if key == "point_coords":
+                elif key == "point_coords":
                     # Pad point prompts and point labels
                     point_labels = item["point_labels"]
 
@@ -803,9 +820,6 @@ class SegmentAnythingModel(fout.TorchImageModel):
                 else:
                     results[key].append(val)
 
-        if isinstance(results["image"][0], torch.Tensor):
-            results["image"] = torch.cat(results["image"], dim=0)
-
         # Collapse prompt type
         results["prompt_type"] = results["prompt_type"][0]
 
@@ -813,7 +827,9 @@ class SegmentAnythingModel(fout.TorchImageModel):
 
     def _predict_all(self, args):
         if self._preprocess and self.has_collate_fn:
-            # Preprocessing only applies collate. Args are expected to have the model transformations applied.
+            # Pre-processing only applies collate. Args are expected to have the model transformations applied.
+            if isinstance(args, dict):
+                args = [args]
             args = self.collate_fn(args)
 
         prompt_type = args["prompt_type"]
@@ -823,7 +839,7 @@ class SegmentAnythingModel(fout.TorchImageModel):
         orig_image_sizes = args.get("original_size")
         # Only preserve boxes when using prompts with boxes.
         boxes_xyxy = (
-            args["boxes_xyxy"]
+            args.get("boxes_xyxy")
             if prompt_type in ["box_only", "box_point_combo"]
             else None
         )
@@ -863,7 +879,9 @@ class SegmentAnythingModel(fout.TorchImageModel):
         images = imgs["image"]
 
         # Adapted from segment-anything.modeling.sam.SAM.forward.
-        input_images = self._model.preprocess(images)
+        input_images = torch.cat(
+            [self._model.preprocess(img) for img in images], dim=0
+        )
         image_embeddings = self._model.image_encoder(input_images)
 
         point_coords = imgs.get("point_coords")
