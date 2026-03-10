@@ -14,19 +14,28 @@ export const createPly = (options: {
     numPoints = 125,
     color = [64, 192, 255],
   } = options;
+  const serializedOptions = JSON.stringify({
+    outputPath,
+    shape,
+    numPoints,
+    color,
+  });
 
   const startTime = performance.now();
   console.log(`Creating ply with options: ${JSON.stringify(options)}`);
 
   const pythonCode = `
+  import json
   from pathlib import Path
 
-  output_path = Path("${outputPath}")
+  options = json.loads(r'''${serializedOptions}''')
+
+  output_path = Path(options["outputPath"])
   output_path.parent.mkdir(parents=True, exist_ok=True)
 
-  shape = "${shape}"
-  num_points = ${numPoints}
-  color = ${JSON.stringify(color)}
+  shape = options["shape"]
+  num_points = int(options["numPoints"])
+  color = options["color"]
 
   if shape == "cube":
     vertices = [
@@ -101,8 +110,21 @@ export const createPly = (options: {
     timeout: Duration.Seconds(5),
   });
 
-  if (proc.stderr) {
-    console.error(proc.stderr.toString());
+  if (proc.error) {
+    throw proc.error;
+  }
+
+  const stderr = proc.stderr ? proc.stderr.toString().trim() : "";
+  if (proc.status !== 0) {
+    throw new Error(
+      `PLY generation failed with exit code ${proc.status}: ${
+        stderr || "unknown error"
+      }`
+    );
+  }
+
+  if (stderr) {
+    console.warn(stderr);
   }
 
   const endTime = performance.now();

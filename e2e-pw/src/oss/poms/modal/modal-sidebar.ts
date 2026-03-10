@@ -94,16 +94,6 @@ export class ModalSidebarPom {
   }
 
   /**
-   * Returns the locator for the sidebar field container of the specified field
-   *
-   * @param field - The field identifier to locate
-   * @returns A Locator pointing to the sidebar field container element
-   */
-  getSidebarFieldContainer(field: string) {
-    return this.locator.getByTestId(`sidebar-field-container-${field}`);
-  }
-
-  /**
    * Retrieves the text content of a sidebar entry by its key
    *
    * @param key - The key identifier of the sidebar entry
@@ -121,7 +111,7 @@ export class ModalSidebarPom {
    * @returns A promise resolving to the field count text, or null if not found
    */
   async getSidebarFieldCount(field: string) {
-    return this.getSidebarFieldContainer(field)
+    return this.getSidebarField(field)
       .getByTestId("entry-count-all")
       .textContent();
   }
@@ -300,9 +290,7 @@ class ModalSidebarAsserter {
    */
   async verifySidebarFieldCount(field: string, count: string | number) {
     await expect(
-      this.modalSidebarPom
-        .getSidebarFieldContainer(field)
-        .getByTestId("entry-count-all")
+      this.modalSidebarPom.getSidebarField(field).getByTestId("entry-count-all")
     ).toHaveText(String(count));
   }
 

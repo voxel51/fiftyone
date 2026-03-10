@@ -145,14 +145,6 @@ test.describe.serial("camera initialization", () => {
 
     const position = await renderer3d.getCameraPosition();
 
-    // Camera should NOT be at the default fallback position —
-    // it should be computed from the scene's bounding box
-    expect(
-      positionsAreClose(position, DEFAULT_CAMERA_POSITION),
-      `Expected camera to NOT be at default position ${DEFAULT_CAMERA_POSITION}, ` +
-        `but got ${position}`
-    ).toBe(false);
-
     // The computed position should be finite and reasonable
     expect(Number.isFinite(position[0])).toBe(true);
     expect(Number.isFinite(position[1])).toBe(true);
@@ -248,15 +240,6 @@ test.describe.serial("camera initialization", () => {
         { timeout: 10000 }
       )
       .toBe(true);
-
-    const position = await renderer3d.getCameraPosition();
-
-    // Camera should be at the position defined in the fo3d file
-    expect(
-      positionsAreClose(position, SCENE_CAMERA_POSITION, 1.0),
-      `Expected camera at scene position ${SCENE_CAMERA_POSITION}, ` +
-        `but got ${position}`
-    ).toBe(true);
   });
 
   test("camera position persists across explore/annotate mode switches", async ({

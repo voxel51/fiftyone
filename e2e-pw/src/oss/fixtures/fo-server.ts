@@ -50,15 +50,13 @@ export class FoWebServer {
 
       const proc = spawn(procString, { shell: true });
 
-      if (true) {
-        proc.stdout.on("data", (data) => {
-          console.log(`stdout: ${data}`);
-        });
+      proc.stdout.on("data", (data) => {
+        console.log(`stdout: ${data}`);
+      });
 
-        proc.stderr.on("data", (data) => {
-          console.error(`stderr: ${data}`);
-        });
-      }
+      proc.stderr.on("data", (data) => {
+        console.error(`stderr: ${data}`);
+      });
 
       this.#webserverProcessConfig = {
         processId: proc.pid,
@@ -70,16 +68,10 @@ export class FoWebServer {
         }...`
       );
 
-      const promise = new Promise((resolve) => {
-        setTimeout(() => {
-          resolve();
-        }, 2000);
+      await waitOn({
+        resources: [`tcp:127.0.0.1:${this.#port}`],
+        timeout: Duration.Seconds(30),
       });
-      await promise;
-      // await waitOn({
-      //   resources: [`http://0.0.0.0:${this.#port}`],
-      //   timeout: Duration.Seconds(30),
-      // });
       console.log("webserver started");
     } catch (e) {
       console.log(`webserver starting failed`, e);
