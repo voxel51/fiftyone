@@ -60,34 +60,17 @@ export default function useRenderer({
 
       const result = store.get(id);
 
-      if (!createLooker.current || !result) {
+      if (!result) {
         throw new Error(
           `Failed to retrieve sample from store: ${id.description}`
         );
       }
 
-      let looker: fos.Lookers;
-
-      if (sampleRendererRef.current.shouldOverrideRender(result)) {
-        try {
-          looker = sampleRendererRef.current.createItemWithSampleRenderer(
-            result,
-            id,
-            getFontSize()
-          );
-        } catch (e) {
-          console.error("Failed to create plugin renderer, using default:", e);
-          looker = createLooker.current?.(
-            { ...result, symbol: id },
-            { fontSize: getFontSize() }
-          ) as fos.Lookers;
-        }
-      } else {
-        looker = createLooker.current?.(
-          { ...result, symbol: id },
-          { fontSize: getFontSize() }
-        ) as fos.Lookers;
-      }
+      const looker = sampleRendererRef.current.createItem(
+        result,
+        id,
+        getFontSize()
+      );
 
       looker.addEventListener("selectthumbnail", ({ detail }) =>
         selectSample.current?.(detail)
@@ -101,7 +84,7 @@ export default function useRenderer({
       looker.attach(element, dimensions);
       return cache.sizeOf(key);
     },
-    [cache, createLooker, getFontSize, selectSample, store]
+    [cache, getFontSize, selectSample, store]
   );
 
   return {

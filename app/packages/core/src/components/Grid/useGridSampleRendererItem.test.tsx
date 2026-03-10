@@ -6,20 +6,17 @@ import { useGridSampleRendererItem } from "./useGridSampleRendererItem";
 
 const {
   createSampleRendererRenderContext,
-  datasetToken,
   getMatchingSampleRenderer,
   getRawComponent,
   getSampleRendererComponent,
   mockDataset,
-  mockSchema,
   mockSelectedMediaField,
-  schemaToken,
-  selectedMediaFieldToken,
+  mockSchema,
+  useCurrentDataset,
+  useSampleSchema,
+  useSelectedMediaFieldGrid,
   useActivePlugins,
 } = vi.hoisted(() => ({
-  datasetToken: Symbol("dataset"),
-  schemaToken: Symbol("schema"),
-  selectedMediaFieldToken: Symbol("selectedMediaField"),
   mockDataset: { name: "dataset" },
   mockSchema: { filepath: { ftype: "StringField" } },
   mockSelectedMediaField: "filepath",
@@ -27,6 +24,9 @@ const {
   getMatchingSampleRenderer: vi.fn(),
   getRawComponent: vi.fn(),
   getSampleRendererComponent: vi.fn(),
+  useCurrentDataset: vi.fn(),
+  useSampleSchema: vi.fn(),
+  useSelectedMediaFieldGrid: vi.fn(),
   useActivePlugins: vi.fn(),
 }));
 
@@ -43,10 +43,10 @@ vi.mock("@fiftyone/plugins", () => ({
 }));
 
 vi.mock("@fiftyone/state", () => ({
-  dataset: datasetToken,
-  State: { SPACE: { SAMPLE: "sample" } },
-  fieldSchema: vi.fn(() => schemaToken),
-  selectedMediaField: vi.fn(() => selectedMediaFieldToken),
+  useCurrentDataset: (...args: unknown[]) => useCurrentDataset(...args),
+  useSampleSchema: (...args: unknown[]) => useSampleSchema(...args),
+  useSelectedMediaFieldGrid: (...args: unknown[]) =>
+    useSelectedMediaFieldGrid(...args),
 }));
 
 vi.mock("recoil", () => ({
@@ -55,17 +55,6 @@ vi.mock("recoil", () => ({
       ({ children }: React.PropsWithChildren) =>
         <>{children}</>
   ),
-  useRecoilValue: vi.fn((selector) => {
-    if (selector === datasetToken) {
-      return mockDataset;
-    }
-
-    if (selector === schemaToken) {
-      return mockSchema;
-    }
-
-    return mockSelectedMediaField;
-  }),
 }));
 
 const Renderer = ({ ctx }: { ctx: { media: { url: string | null } } }) => (
@@ -106,6 +95,9 @@ const sampleResult = {
 
 describe("useGridSampleRendererItem", () => {
   beforeEach(() => {
+    useCurrentDataset.mockReturnValue(mockDataset);
+    useSampleSchema.mockReturnValue(mockSchema);
+    useSelectedMediaFieldGrid.mockReturnValue(mockSelectedMediaField);
     createSampleRendererRenderContext.mockReturnValue(ctx);
     getMatchingSampleRenderer.mockReturnValue(registration);
     getRawComponent.mockReturnValue(Renderer);
@@ -124,34 +116,40 @@ describe("useGridSampleRendererItem", () => {
       useGridSampleRendererItem(createDefaultLooker)
     );
 
-    expect(result.current.shouldOverrideRender(sampleResult)).toBe(true);
-
-    const looker = result.current.createItemWithSampleRenderer(
+    const looker = result.current.createItem(
       sampleResult,
       { description: "sample-id" } as any,
       12
     );
 
     expect(looker).toBeInstanceOf(GridSampleRendererItem);
+    expect(createDefaultLooker.current).not.toHaveBeenCalled();
   });
 
   it("stays on the default path when no sample renderer matches", () => {
+    const fallbackLooker = {
+      addEventListener: vi.fn(),
+      attach: vi.fn(),
+    };
     const createDefaultLooker = {
-      current: vi.fn(),
+      current: vi.fn(() => fallbackLooker),
     } as any;
     const { result } = renderHook(() =>
       useGridSampleRendererItem(createDefaultLooker)
     );
+    const symbol = { description: "sample-id" } as any;
 
     getMatchingSampleRenderer.mockReturnValue(null);
 
-    expect(result.current.shouldOverrideRender(sampleResult)).toBe(false);
-    expect(() =>
-      result.current.createItemWithSampleRenderer(
-        sampleResult,
-        { description: "sample-id" } as any,
-        12
-      )
-    ).toThrow("matching sample renderer");
+    const looker = result.current.createItem(sampleResult, symbol, 12);
+
+    expect(looker).toBe(fallbackLooker);
+    expect(createDefaultLooker.current).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sample: sampleResult.sample,
+        symbol,
+      }),
+      { fontSize: 12 }
+    );
   });
 });

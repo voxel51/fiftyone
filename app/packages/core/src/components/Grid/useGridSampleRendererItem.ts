@@ -13,6 +13,8 @@ import { useCallback } from "react";
 import { useRecoilBridgeAcrossReactRoots_UNSTABLE } from "recoil";
 import { GridSampleRendererItem } from "./GridSampleRendererItem";
 
+type GridSampleResult = { sample: fos.Sample } & Record<string, unknown>;
+
 /** Hook that wraps default grid media rendering with sample renderer support. */
 export function useGridSampleRendererItem(
   createDefaultLooker: ReturnType<typeof fos.useCreateLooker>
@@ -27,7 +29,7 @@ export function useGridSampleRendererItem(
   const RecoilBridge = useRecoilBridgeAcrossReactRoots_UNSTABLE();
 
   const getResolvedRenderer = useCallback(
-    (result: { sample: fos.Sample }) => {
+    (result: GridSampleResult) => {
       if (!dataset) {
         return null;
       }
@@ -61,59 +63,53 @@ export function useGridSampleRendererItem(
     [dataset, schema, selectedMediaField, sampleRenderers]
   );
 
-  const shouldOverrideRender = useCallback(
-    (result: { sample: fos.Sample }): boolean =>
-      Boolean(getResolvedRenderer(result)),
-    [getResolvedRenderer]
-  );
+  const createDefaultItem = useCallback(
+    (result: GridSampleResult, id: ID, fontSize: number): fos.Lookers => {
+      const looker = createDefaultLooker.current?.(
+        {
+          ...result,
+          symbol: id,
+        },
+        { fontSize }
+      ) as fos.Lookers;
 
-  const createItemWithSampleRenderer = useCallback(
-    (result: { sample: fos.Sample }, id: ID, fontSize: number): fos.Lookers => {
-      if (!dataset || !createDefaultLooker.current) {
-        throw new Error("Dataset or createLooker not available");
+      if (!looker) {
+        throw new Error("Failed to create default looker");
       }
 
+      return looker;
+    },
+    [createDefaultLooker]
+  );
+
+  const createItem = useCallback(
+    (result: GridSampleResult, id: ID, fontSize: number): fos.Lookers => {
       const resolvedRenderer = getResolvedRenderer(result);
 
       if (!resolvedRenderer) {
-        throw new Error(
-          "createLooker called without a matching sample renderer."
-        );
+        return createDefaultItem(result, id, fontSize);
       }
 
-      const createFallbackLooker = () => {
-        const fallback = createDefaultLooker.current?.(
-          {
-            ...result,
-            symbol: id,
-            frameNumber: 0,
-            frameRate: 0,
-            urls: {},
-          },
-          { fontSize }
-        ) as fos.Lookers;
-
-        if (!fallback) {
-          throw new Error(
-            "Failed to create fallback looker for sample renderer"
-          );
-        }
-
-        return fallback;
-      };
-
-      return new GridSampleRendererItem({
-        createFallbackLooker,
-        pluginName: resolvedRenderer.registration.name,
-        Renderer: resolvedRenderer.Renderer,
-        RecoilBridge:
-          RecoilBridge as React.ComponentType<React.PropsWithChildren>,
-        ctx: resolvedRenderer.ctx,
-        symbol: id,
-      }) as unknown as fos.Lookers;
+      try {
+        return new GridSampleRendererItem({
+          createFallbackLooker: () => createDefaultItem(result, id, fontSize),
+          pluginName: resolvedRenderer.registration.name,
+          Renderer: resolvedRenderer.Renderer,
+          RecoilBridge:
+            RecoilBridge as React.ComponentType<React.PropsWithChildren>,
+          ctx: resolvedRenderer.ctx,
+          symbol: id,
+        }) as unknown as fos.Lookers;
+      } catch (error) {
+        console.error(
+          "Failed to create plugin renderer, using default:",
+          error
+        );
+        return createDefaultItem(result, id, fontSize);
+      }
     },
-    [dataset, getResolvedRenderer, RecoilBridge]
+    [createDefaultItem, getResolvedRenderer, RecoilBridge]
   );
 
-  return { shouldOverrideRender, createItemWithSampleRenderer };
+  return { createItem };
 }
