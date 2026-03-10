@@ -18,6 +18,8 @@ import {
   EMBEDDED_DOCUMENT_FIELD,
   LIST_FIELD,
   getMimeType,
+  isDirect3dSamplePath,
+  isFo3dSamplePath,
   isNullish,
 } from "@fiftyone/utilities";
 import { useEffect, useRef } from "react";
@@ -32,7 +34,7 @@ import { datasetName, dynamicGroupsTargetFrameRate } from "../recoil/selectors";
 import { State } from "../recoil/types";
 import { getSampleSrc } from "../recoil/utils";
 import * as viewAtoms from "../recoil/view";
-import { getStandardizedUrls } from "../utils";
+import { getNormalizedUrls } from "../utils";
 import { useOnShiftClickLabel } from "./useOnShiftClickLabel";
 
 export default <T extends AbstractLooker<BaseState>>(
@@ -105,16 +107,23 @@ export default <T extends AbstractLooker<BaseState>>(
         // sometimes the urls are an array of objects, sometimes they are just an object
         // this is a workaround to make sure we can handle both cases
         // todo: investigate why this is the case
-        const urls = getStandardizedUrls(rawUrls);
+        const urls = getNormalizedUrls(rawUrls);
 
         // split("?")[0] is to remove query params, if any, from signed urls
         const filePath =
           urls.filepath?.split("?")[0] ?? (sample.filepath as string);
+        const mediaFieldPath = urls[mediaField];
+        const isDirect3dSample =
+          isDirect3dSamplePath(filePath) ||
+          isDirect3dSamplePath(mediaFieldPath);
 
-        if (!isNativeMediaType(sample.media_type ?? sample._media_type)) {
+        if (
+          !isNativeMediaType(sample.media_type ?? sample._media_type) &&
+          !isDirect3dSample
+        ) {
           create = MetadataLooker;
         } else {
-          if (filePath.endsWith(".pcd") || filePath.endsWith(".fo3d")) {
+          if (isDirect3dSample) {
             create = ThreeDLooker;
           } else if (mimeType !== null) {
             const isVideo = mimeType.startsWith("video/");
@@ -168,7 +177,10 @@ export default <T extends AbstractLooker<BaseState>>(
         }
 
         if (create === ThreeDLooker) {
-          config.isFo3d = (sample["filepath"] as string).endsWith(".fo3d");
+          const sampleFilepath = sample["filepath"];
+          config.isFo3d =
+            isFo3dSamplePath(sampleFilepath) ||
+            isFo3dSamplePath(sampleMediaFilePath);
 
           const orthographicProjectionField = Object.entries(sample)
             .find(
