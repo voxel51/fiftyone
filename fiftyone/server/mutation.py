@@ -103,7 +103,6 @@ class Mutation(SetColorScheme):
         )
         state.group_id = None
         state.sample_id = None
-        state.selected = []
         state.selected_labels = []
         state.selected_samples = []
         state.spaces = foo.default_workspace_factory()
@@ -251,7 +250,6 @@ class Mutation(SetColorScheme):
         state = get_state()
         state.group_id = None
         state.sample_id = None
-        state.selected = []
         state.selected_labels = []
         state.selected_samples = []
 

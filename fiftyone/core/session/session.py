@@ -707,7 +707,6 @@ class Session(object):
         self._state.group_id = None
         self._state.sample_id = None
         self._state.spaces = default_workspace_factory()
-        self._state.selected = []
         self._state.selected_samples = []
         self._state.selected_labels = []
         self._state.view = None
@@ -752,7 +751,6 @@ class Session(object):
 
         self._state.group_id = None
         self._state.sample_id = None
-        self._state.selected = []
         self._state.selected_samples = []
         self._state.selected_labels = []
 
@@ -797,7 +795,6 @@ class Session(object):
     @selected.setter  # type: ignore
     def selected(self, sample_ids: t.List[str]) -> None:
         samples = _normalize_selected_samples(sample_ids or [])
-        self._state.selected = [s["sample_id"] for s in samples]
         self._state.selected_samples = samples
         self._client.send_event(SelectSamples(samples=samples))
 
@@ -812,12 +809,10 @@ class Session(object):
     def selected_samples(self, samples: t.List) -> None:
         normalized = _normalize_selected_samples(samples)
         self._state.selected_samples = normalized
-        self._state.selected = [s["sample_id"] for s in normalized]
         self._client.send_event(SelectSamples(samples=normalized))
 
     def clear_selected(self) -> None:
         """Clears the currently selected samples, if any."""
-        self._state.selected = []
         self._state.selected_samples = []
         self._client.send_event(SelectSamples(samples=[]))
 
@@ -844,7 +839,6 @@ class Session(object):
 
         normalized = _normalize_selected_samples(list(ids))
         self._state.selected_samples = normalized
-        self._state.selected = [s["sample_id"] for s in normalized]
         self._client.send_event(SelectSamples(samples=normalized))
 
     @property
@@ -1242,9 +1236,6 @@ def _attach_listeners(session: "Session"):
 
     def on_select_samples(event: SelectSamples):
         session._state.selected_samples = event.samples
-        session._state.selected = [
-            s["sample_id"] if isinstance(s, dict) else s for s in event.samples
-        ]
 
     session._client.add_event_listener("select_samples", on_select_samples)
 

@@ -43,7 +43,6 @@ class Sort(HTTPEndpoint):
         )
 
         state = fose.get_state()
-        state.selected = []
         state.selected_labels = []
         state.selected_samples = []
 

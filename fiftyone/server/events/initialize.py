@@ -138,7 +138,6 @@ def handle_dataset_change(
         state.group_id = None
         state.group_slice = state.dataset.group_slice
         state.sample_id = None
-        state.selected = []
         state.selected_labels = []
         state.selected_samples = []
         state.spaces = None
@@ -148,7 +147,6 @@ def handle_dataset_change(
         state.group_id = None
         state.group_slice = None
         state.sample_id = None
-        state.selected = []
         state.selected_labels = []
         state.selected_samples = []
         state.spaces = None
@@ -268,7 +266,6 @@ def handle_saved_view(
         if slug:
             doc = state.dataset._get_saved_view_doc(slug, slug=True)
             state.view = state.dataset.load_saved_view(doc.name)
-        state.selected = []
         state.selected_labels = []
         state.selected_samples = []
     except:

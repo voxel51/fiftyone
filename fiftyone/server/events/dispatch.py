@@ -54,9 +54,6 @@ async def dispatch_event(
         state.selected_labels = event.labels
 
     if isinstance(event, SelectSamples):
-        state.selected = [
-            s["sample_id"] if isinstance(s, dict) else s for s in event.samples
-        ]
         state.selected_samples = event.samples
 
     if isinstance(event, SetColorScheme):

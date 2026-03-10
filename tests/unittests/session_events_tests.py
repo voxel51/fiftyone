@@ -6,9 +6,11 @@ FiftyOne session events-related unit tests.
 |
 """
 
+import asyncio
+from collections import defaultdict
 from dataclasses import asdict
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from dacite import from_dict
 
@@ -25,6 +27,8 @@ from fiftyone.core.session.events import (
     SetSampleSelectionStyle,
 )
 from fiftyone.operators.operations import Operations
+from fiftyone.server.events.dispatch import dispatch_event
+from fiftyone.server.events.state import set_state
 
 from decorators import drop_datasets
 
@@ -182,6 +186,84 @@ class SessionTests(unittest.TestCase):
             style = _resolve_selection_style(icon, icon)
             self.assertEqual(style["default"], icon)
             self.assertEqual(style["alt"], icon)
+
+    # -------------------------------------------------------------------
+    # StateDescription.selected — computed property
+    # -------------------------------------------------------------------
+
+    @drop_datasets
+    def test_selected_property_derives_from_selected_samples(self):
+        """selected is computed from selected_samples."""
+        state = StateDescription()
+        state.selected_samples = [
+            {"sample_id": "a" * 24, "type": "default"},
+            {"sample_id": "b" * 24, "type": "alt"},
+        ]
+        self.assertEqual(state.selected, ["a" * 24, "b" * 24])
+
+    @drop_datasets
+    def test_selected_property_empty(self):
+        """selected is [] when selected_samples is []."""
+        state = StateDescription()
+        self.assertEqual(state.selected, [])
+
+    @drop_datasets
+    def test_selected_property_is_read_only(self):
+        """selected cannot be set directly on StateDescription."""
+        state = StateDescription()
+        with self.assertRaises(AttributeError):
+            state.selected = ["a" * 24]
+
+    @drop_datasets
+    def test_selected_updates_when_selected_samples_changes(self):
+        """Mutating selected_samples is reflected in selected."""
+        state = StateDescription()
+        state.selected_samples = [
+            {"sample_id": "a" * 24, "type": "default"},
+        ]
+        self.assertEqual(state.selected, ["a" * 24])
+
+        state.selected_samples.append({"sample_id": "b" * 24, "type": "alt"})
+        self.assertEqual(state.selected, ["a" * 24, "b" * 24])
+
+        state.selected_samples = []
+        self.assertEqual(state.selected, [])
+
+    @drop_datasets
+    def test_constructor_selected_samples_takes_priority(self):
+        """selected_samples kwarg takes priority over selected kwarg."""
+        state = StateDescription(
+            selected=["a" * 24],
+            selected_samples=[
+                {"sample_id": "b" * 24, "type": "alt"},
+            ],
+        )
+        self.assertEqual(state.selected, ["b" * 24])
+        self.assertEqual(
+            state.selected_samples,
+            [
+                {"sample_id": "b" * 24, "type": "alt"},
+            ],
+        )
+
+    @drop_datasets
+    def test_constructor_bootstraps_from_selected(self):
+        """selected kwarg bootstraps selected_samples when no selected_samples."""
+        state = StateDescription(selected=["a" * 24, "b" * 24])
+        self.assertEqual(
+            state.selected_samples,
+            [
+                {"sample_id": "a" * 24, "type": "default"},
+                {"sample_id": "b" * 24, "type": "default"},
+            ],
+        )
+        self.assertEqual(state.selected, ["a" * 24, "b" * 24])
+
+    @drop_datasets
+    def test_selected_in_attributes(self):
+        """selected is included in attributes() for serialization."""
+        state = StateDescription()
+        self.assertIn("selected", state.attributes())
 
     # -------------------------------------------------------------------
     # SetSampleSelectionStyle event + StateDescription
@@ -402,3 +484,74 @@ class SessionTests(unittest.TestCase):
         self.assertEqual(len(event.samples), 2)
         self.assertEqual(event.samples[0]["sample_id"], "a" * 24)
         self.assertEqual(event.samples[1]["type"], "alt")
+
+    # -------------------------------------------------------------------
+    # dispatch_event round-trip
+    # -------------------------------------------------------------------
+
+    @drop_datasets
+    @patch(
+        "fiftyone.server.events.dispatch.get_listeners",
+        return_value=defaultdict(list),
+    )
+    def test_dispatch_select_samples_updates_state(self, _mock):
+        """dispatch_event(SelectSamples) updates selected_samples and
+        selected is derived."""
+        state = StateDescription()
+        set_state(state)
+
+        event = SelectSamples(
+            samples=[
+                {"sample_id": "a" * 24, "type": "default"},
+                {"sample_id": "b" * 24, "type": "alt"},
+            ]
+        )
+        asyncio.get_event_loop().run_until_complete(
+            dispatch_event(None, event)
+        )
+
+        self.assertEqual(
+            state.selected_samples,
+            [
+                {"sample_id": "a" * 24, "type": "default"},
+                {"sample_id": "b" * 24, "type": "alt"},
+            ],
+        )
+        self.assertEqual(state.selected, ["a" * 24, "b" * 24])
+
+    @drop_datasets
+    @patch(
+        "fiftyone.server.events.dispatch.get_listeners",
+        return_value=defaultdict(list),
+    )
+    def test_dispatch_select_samples_clear(self, _mock):
+        """dispatch_event(SelectSamples(samples=[])) clears both fields."""
+        state = StateDescription()
+        state.selected_samples = [
+            {"sample_id": "a" * 24, "type": "default"},
+        ]
+        set_state(state)
+
+        asyncio.get_event_loop().run_until_complete(
+            dispatch_event(None, SelectSamples(samples=[]))
+        )
+
+        self.assertEqual(state.selected, [])
+        self.assertEqual(state.selected_samples, [])
+
+    @drop_datasets
+    @patch(
+        "fiftyone.server.events.dispatch.get_listeners",
+        return_value=defaultdict(list),
+    )
+    def test_dispatch_set_sample_selection_style(self, _mock):
+        """dispatch_event(SetSampleSelectionStyle) updates state."""
+        state = StateDescription()
+        set_state(state)
+
+        style = {"default": "thumbsup", "alt": "thumbsdown"}
+        asyncio.get_event_loop().run_until_complete(
+            dispatch_event(None, SetSampleSelectionStyle(style=style))
+        )
+
+        self.assertEqual(state.sample_selection_style, style)

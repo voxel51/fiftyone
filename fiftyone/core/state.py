@@ -87,16 +87,18 @@ class StateDescription(etas.Serializable):
 
         self.sample_id = sample_id
         self.selected_labels = selected_labels or []
-        self.selected_samples = selected_samples or []
 
-        # Derive selected from selected_samples when present to keep in sync
-        if self.selected_samples:
-            self.selected = [
-                s["sample_id"] if isinstance(s, dict) else s
-                for s in self.selected_samples
+        # If selected_samples provided, use it as source of truth.
+        # Otherwise, bootstrap from legacy `selected` (flat ID list).
+        if selected_samples:
+            self.selected_samples = selected_samples
+        elif selected:
+            self.selected_samples = [
+                {"sample_id": s, "type": "default"} for s in selected
             ]
         else:
-            self.selected = selected or []
+            self.selected_samples = []
+
         self.sample_selection_style = sample_selection_style or dict(
             DEFAULT_SELECTION_STYLE
         )
@@ -106,6 +108,25 @@ class StateDescription(etas.Serializable):
             dataset.load_saved_view(view_name)
             if dataset is not None and view_name
             else view
+        )
+
+    @property
+    def selected(self):
+        """The list of currently selected sample IDs.
+
+        Derived from :attr:`selected_samples`.
+        """
+        return [
+            s["sample_id"] if isinstance(s, dict) else s
+            for s in (self.selected_samples or [])
+        ]
+
+    def attributes(self):
+        return list(
+            filter(
+                lambda a: a not in {"dataset", "view"},
+                list(vars(self)) + ["selected"],
+            )
         )
 
     def serialize(self, reflective=True):
@@ -159,13 +180,6 @@ class StateDescription(etas.Serializable):
                 d["field_visibility_stage"] = self.field_visibility_stage
 
             return d
-
-    def attributes(self):
-        return list(
-            filter(
-                lambda a: a not in {"dataset", "view"}, super().attributes()
-            )
-        )
 
     @classmethod
     def from_dict(cls, d):
