@@ -28,12 +28,18 @@ type NormalizedMatchMedia = {
   mediaTypes?: string[];
 };
 
+/**
+ * Declarative media matchers used to determine renderer compatibility.
+ */
 export type MatchMedia = {
   extensions?: string[];
   mimeTypes?: string[];
   mediaTypes?: string[];
 };
 
+/**
+ * Normalized media attributes derived from a sample and selected media field.
+ */
 export type SampleRendererMediaContext = {
   field: string;
   path: string | null;
@@ -44,27 +50,42 @@ export type SampleRendererMediaContext = {
   isNative: boolean;
 };
 
+/**
+ * Context used to evaluate whether a sample renderer supports a sample.
+ */
 export type SampleRendererMatchContext<TSample = unknown> = {
   sample: TSample;
   media: SampleRendererMediaContext;
   surface: SampleRendererSurface;
 };
 
+/**
+ * Full context passed to sample renderer components at render time.
+ */
 export type SampleRendererRenderContext<TSample = unknown> =
   SampleRendererMatchContext<TSample> & {
     dataset: fos.State.Dataset;
     schema: Schema;
   };
 
+/**
+ * Props shape received by sample renderer React components.
+ */
 export type SampleRendererProps<TSample = unknown> = {
   ctx: SampleRendererRenderContext<TSample>;
 };
 
+/**
+ * Grid-specific renderer behavior, including enablement and optional override.
+ */
 export type GridConfig<TSample = unknown> = {
   enabled?: boolean;
   overrideComponent?: React.FunctionComponent<SampleRendererProps<TSample>>;
 };
 
+/**
+ * Configuration for registering and selecting a sample renderer.
+ */
 export type SampleRendererOptions<TSample = unknown> = {
   priority?: number;
   supports:
@@ -120,6 +141,9 @@ function normalizeMatcherArray(
   return Array.from(new Set(normalizedValues));
 }
 
+/**
+ * Normalizes a match-media configuration for case-insensitive comparisons.
+ */
 export function normalizeMatchMedia(
   matchMedia: MatchMedia | undefined
 ): NormalizedMatchMedia {
@@ -172,6 +196,9 @@ function isMatchMediaObject(
   return Boolean(supports) && typeof supports !== "function";
 }
 
+/**
+ * Returns true when a match-media config includes at least one matcher.
+ */
 export function hasMatchMediaMatchers(matchMedia: MatchMedia | undefined) {
   const normalized = normalizeMatchMedia(matchMedia);
 
@@ -182,6 +209,9 @@ export function hasMatchMediaMatchers(matchMedia: MatchMedia | undefined) {
   );
 }
 
+/**
+ * Checks whether a media context satisfies all provided match-media filters.
+ */
 export function matchesMatchMedia(
   matchMedia: MatchMedia | undefined,
   media: SampleRendererMediaContext
@@ -202,6 +232,9 @@ export function matchesMatchMedia(
   );
 }
 
+/**
+ * Extracts the normalized file extension from a path or URL.
+ */
 export function getFileExtension(path: string | null | undefined) {
   if (!path) {
     return null;
@@ -218,6 +251,9 @@ export function getFileExtension(path: string | null | undefined) {
   return fileName.slice(dotIndex + 1).toLowerCase();
 }
 
+/**
+ * Resolves the selected media path for a sample using standardized URL fields.
+ */
 export function getSelectedMediaPath<TSample extends SampleRendererSampleLike>(
   sample: TSample,
   selectedMediaField: string
@@ -232,6 +268,9 @@ export function getSelectedMediaPath<TSample extends SampleRendererSampleLike>(
   );
 }
 
+/**
+ * Builds normalized media metadata used for sample renderer matching and render context.
+ */
 export function createSampleRendererMediaContext<
   TSample extends SampleRendererSampleLike
 >(sample: TSample, selectedMediaField: string): SampleRendererMediaContext {
@@ -250,6 +289,9 @@ export function createSampleRendererMediaContext<
   };
 }
 
+/**
+ * Creates the full render context passed to sample renderer components.
+ */
 export function createSampleRendererRenderContext<
   TSample extends SampleRendererSampleLike
 >(
@@ -268,12 +310,18 @@ export function createSampleRendererRenderContext<
   };
 }
 
+/**
+ * Returns whether a sample renderer registration is explicitly enabled for grid.
+ */
 export function isSampleRendererGridEnabled(
   registration: SampleRendererRegistrationLike
 ) {
   return registration.sampleRendererOptions.grid?.enabled === true;
 }
 
+/**
+ * Evaluates whether a renderer registration supports the provided match context.
+ */
 export function supportsSampleRenderer<TSample = unknown>(
   registration: SampleRendererRegistrationLike<TSample>,
   ctx: SampleRendererMatchContext<TSample>
@@ -303,6 +351,9 @@ export function supportsSampleRenderer<TSample = unknown>(
   return matchesMatchMedia(supports, ctx.media);
 }
 
+/**
+ * Sorts renderer registrations by priority, then by name for deterministic ordering.
+ */
 export function sortSampleRenderersByPriority<
   TRegistration extends SampleRendererRegistrationLike
 >(registrationA: TRegistration, registrationB: TRegistration) {
@@ -316,6 +367,9 @@ export function sortSampleRenderersByPriority<
   return registrationA.name.localeCompare(registrationB.name);
 }
 
+/**
+ * Returns the highest-priority renderer registration that supports the given context.
+ */
 export function getMatchingSampleRenderer<
   TRegistration extends SampleRendererRegistrationLike
 >(registrations: TRegistration[], ctx: SampleRendererMatchContext) {
@@ -327,6 +381,9 @@ export function getMatchingSampleRenderer<
   );
 }
 
+/**
+ * Selects the renderer component to use for the current surface.
+ */
 export function getSampleRendererComponent<TSample = unknown>(
   registration: SampleRendererRegistrationLike<TSample>,
   surface: SampleRendererSurface,

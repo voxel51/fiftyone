@@ -23,51 +23,6 @@ export const useCurrent3dAnnotationMode = () => {
 };
 
 /**
- * Hook to retrieve the current dataset.
- *
- * @returns The current dataset
- */
-export const useDataset = () => {
-  return useRecoilValue(dataset);
-};
-
-/**
- * Hook to retrieve the frame-level field schema.
- *
- * @returns The frame schema
- */
-export const useFrameSchema = () => {
-  return useRecoilValue(fieldSchema({ space: State.SPACE.FRAME }));
-};
-
-/**
- * Hook to retrieve the sample-level field schema.
- *
- * @returns The sample schema
- */
-export const useSampleSchema = () => {
-  return useRecoilValue(fieldSchema({ space: State.SPACE.SAMPLE }));
-};
-
-/**
- * Hook to retrieve the selected media field for the grid view.
- *
- * @returns The selected media field state for the grid
- */
-export const useSelectedMediaFieldGrid = () => {
-  return useRecoilValue(selectedMediaField(false));
-};
-
-/**
- * Hook to retrieve the selected media field for the modal view.
- *
- * @returns The selected media field state for the modal
- */
-export const useGridSelectedMediaFieldModal = () => {
-  return useRecoilValue(selectedMediaField(true));
-};
-
-/**
  * Hook to set the current 3D annotation mode.
  *
  * @returns A function that accepts the annotation mode to set

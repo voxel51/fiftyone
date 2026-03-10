@@ -4,33 +4,26 @@ import {
   getRawComponent,
   getSampleRendererComponent,
   PluginComponentType,
-  type SampleRendererProps,
   useActivePlugins,
 } from "@fiftyone/plugins";
 import type { ID } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import type React from "react";
-import { useCallback, useMemo } from "react";
-import {
-  useRecoilBridgeAcrossReactRoots_UNSTABLE,
-  useRecoilValue,
-} from "recoil";
+import { useCallback } from "react";
+import { useRecoilBridgeAcrossReactRoots_UNSTABLE } from "recoil";
 import { GridSampleRendererItem } from "./GridSampleRendererItem";
 
 /** Hook that wraps default grid media rendering with sample renderer support. */
 export function useGridSampleRendererItem(
   createDefaultLooker: ReturnType<typeof fos.useCreateLooker>
 ) {
-  const dataset = useRecoilValue(fos.dataset);
-  const schema = useRecoilValue(
-    fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
-  );
-  const selectedMediaField = useRecoilValue(fos.selectedMediaField(false));
-  const pluginCtx = useMemo(() => ({ schema, dataset }), [schema, dataset]);
-  const sampleRenderers = useActivePlugins(
-    PluginComponentType.SampleRenderer,
-    pluginCtx
-  );
+  const dataset = fos.useCurrentDataset();
+  const schema = fos.useSampleSchema();
+
+  const sampleRenderers = useActivePlugins(PluginComponentType.SampleRenderer);
+
+  const selectedMediaField = fos.useSelectedMediaFieldGrid();
+
   const RecoilBridge = useRecoilBridgeAcrossReactRoots_UNSTABLE();
 
   const getResolvedRenderer = useCallback(
@@ -61,7 +54,7 @@ export function useGridSampleRendererItem(
         Renderer: getSampleRendererComponent(
           matchedRenderer,
           "grid",
-          canonicalRenderer as React.ComponentType<SampleRendererProps>
+          canonicalRenderer
         ),
       };
     },

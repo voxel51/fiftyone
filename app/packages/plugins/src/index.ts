@@ -3,7 +3,13 @@ import * as fos from "@fiftyone/state";
 import * as fou from "@fiftyone/utilities";
 import { getFetchFunction, getFetchParameters } from "@fiftyone/utilities";
 import * as _ from "lodash";
-import React, { FunctionComponent, useEffect, useMemo, useState } from "react";
+import React, {
+  FunctionComponent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import * as recoil from "recoil";
 import { wrapCustomComponent } from "./components";
 import "./externalize";
@@ -259,6 +265,12 @@ export function safePluginActivator(
   return false;
 }
 
+export function useGetDefaultPluginCtx() {
+  const dataset = fos.useCurrentDataset();
+  const schema = fos.useSampleSchema();
+  return useCallback(() => ({ schema, dataset }), [schema, dataset]);
+}
+
 /**
  * A react hook that returns a list of active plugins.
  *
@@ -268,12 +280,22 @@ export function safePluginActivator(
  */
 export function useActivePlugins<TType extends PluginComponentType>(
   type: TType,
-  ctx: any
+  ctx?: Record<string, unknown>
 ) {
+  const getDefaultPluginCtx = useGetDefaultPluginCtx();
+
+  const resolvedCtx = useMemo(() => {
+    if (ctx) {
+      return ctx;
+    }
+
+    return getDefaultPluginCtx();
+  }, [ctx, getDefaultPluginCtx]);
+
   const getActivePlugins = () =>
     usingRegistry()
       .getByType(type)
-      .filter((plugin) => safePluginActivator(plugin, ctx));
+      .filter((plugin) => safePluginActivator(plugin, resolvedCtx));
 
   const [plugins, setPlugins] =
     useState<PluginComponentRegistrationByType[TType][]>(getActivePlugins);
@@ -286,7 +308,7 @@ export function useActivePlugins<TType extends PluginComponentType>(
     return () => {
       unsubscribe();
     };
-  }, [type, ctx]);
+  }, [type, resolvedCtx]);
 
   return plugins;
 }

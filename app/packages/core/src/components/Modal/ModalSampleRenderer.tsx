@@ -4,12 +4,10 @@ import {
   getRawComponent,
   getSampleRendererComponent,
   PluginComponentType,
-  type SampleRendererProps,
   useActivePlugins,
 } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
-import React, { useMemo } from "react";
-import { useRecoilValue } from "recoil";
+import React from "react";
 import { MetadataLooker } from "./MetadataLooker";
 
 type ModalSampleRendererProps = {
@@ -56,14 +54,11 @@ class ModalSampleRendererErrorBoundary extends React.Component<
  */
 export const ModalSampleRenderer = React.memo(
   ({ sample, modalMediaField }: ModalSampleRendererProps) => {
-    const dataset = useRecoilValue(fos.dataset);
-    const schema = useRecoilValue(
-      fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
-    );
-    const pluginCtx = useMemo(() => ({ schema, dataset }), [schema, dataset]);
+    const dataset = fos.useCurrentDataset();
+    const schema = fos.useModalSampleSchema();
+
     const sampleRenderers = useActivePlugins(
-      PluginComponentType.SampleRenderer,
-      pluginCtx
+      PluginComponentType.SampleRenderer
     );
 
     const fallback = <MetadataLooker sample={sample} />;
@@ -91,7 +86,7 @@ export const ModalSampleRenderer = React.memo(
     const Renderer = getSampleRendererComponent(
       matchedRenderer,
       "modal",
-      canonicalRenderer as React.ComponentType<SampleRendererProps>
+      canonicalRenderer
     );
 
     // Include sample ID so the error boundary resets when navigating between samples
