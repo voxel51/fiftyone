@@ -7,6 +7,7 @@ Tests for fiftyone/utils/depth_anything.py Depth Anything V3 model wrapper.
 """
 
 import inspect
+import os
 from types import SimpleNamespace
 
 import numpy as np
@@ -252,6 +253,22 @@ class TestDepthAnythingV3OutputProcessor:
 
         assert not hasattr(results[0], "scale_factor") or results[0].scale_factor is None
 
+    def test_scale_factor_surfaced_on_all_heatmaps(self):
+        """Test scale_factor is attached to every heatmap in a batch."""
+        processor = self._make_processor()
+        depth = np.array([
+            [[1.0, 2.0], [3.0, 4.0]],
+            [[2.0, 3.0], [4.0, 5.0]],
+        ], dtype=np.float32)
+
+        results = processor(
+            {"depth": depth, "scale_factor": 0.42}, (2, 2)
+        )
+
+        assert len(results) == 2
+        assert results[0].scale_factor == pytest.approx(0.42)
+        assert results[1].scale_factor == pytest.approx(0.42)
+
 
 class TestDepthAnythingV3ModelConfigNewParams:
     """Test new config parameters: ref_view_strategy, align_to_input_ext_scale."""
@@ -290,6 +307,13 @@ class TestDepthAnythingV3ModelConfigNewParams:
         config_true = DepthAnythingV3ModelConfig({"align_to_input_ext_scale": True})
         assert config_true.align_to_input_ext_scale is True
 
+    def test_ref_view_strategy_invalid_raises(self):
+        """Test invalid ref_view_strategy values fail fast."""
+        from fiftyone.utils.depth_anything import DepthAnythingV3ModelConfig
+
+        with pytest.raises(ValueError, match="Unsupported ref_view_strategy"):
+            DepthAnythingV3ModelConfig({"ref_view_strategy": "typo"})
+
 
 class TestDepthAnythingV3Exports:
     def test_compute_3d_exports_uses_keyword_only_args_and_sets_gs_video_path(
@@ -315,16 +339,15 @@ class TestDepthAnythingV3Exports:
                 self.output_dir = output_dir
 
             def get_output_path(self, filepath, output_ext=""):
-                return self.output_dir + "\\sample"
+                return os.path.join(self.output_dir, "sample")
 
         calls = []
 
         def _fake_inference(filepaths, **kwargs):
             calls.append((filepaths, kwargs))
-            gs_video_dir = kwargs["export_dir"] + "\\gs_video"
-            import os
+            gs_video_dir = os.path.join(kwargs["export_dir"], "gs_video")
             os.makedirs(gs_video_dir, exist_ok=True)
-            with open(gs_video_dir + "\\0000_wander.mp4", "wb") as f:
+            with open(os.path.join(gs_video_dir, "0000_wander.mp4"), "wb") as f:
                 f.write(b"")
 
         monkeypatch.setattr(foda.fov, "validate_collection", lambda samples: None)
@@ -366,4 +389,6 @@ class TestDepthAnythingV3Exports:
         assert kwargs["conf_thresh_percentile"] == pytest.approx(12.5)
         assert kwargs["num_max_points"] == 123
         assert kwargs["show_cameras"] is False
-        assert sample["da3_export_path"] == "C:\\exports\\sample\\gs_video\\0000_wander.mp4"
+        assert sample["da3_export_path"] == os.path.join(
+            "C:\\exports", "sample", "gs_video", "0000_wander.mp4"
+        )

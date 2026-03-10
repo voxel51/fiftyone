@@ -41,6 +41,12 @@ da3_api = fou.lazy_import(
 )
 
 DEFAULT_DA3_MODEL = "depth-anything/da3-base"
+_VALID_REF_VIEW_STRATEGIES = (
+    "first",
+    "middle",
+    "saddle_balanced",
+    "saddle_sim_range",
+)
 
 
 class DepthAnythingV3OutputProcessor(fout.OutputProcessor):
@@ -190,6 +196,9 @@ class DepthAnythingV3OutputProcessor(fout.OutputProcessor):
             if heatmap.is_metric:
                 heatmap.max_depth = float(max_depth)
 
+            if output.get("scale_factor") is not None:
+                heatmap.scale_factor = output["scale_factor"]
+
             results.append(heatmap)
 
         if results:
@@ -203,9 +212,6 @@ class DepthAnythingV3OutputProcessor(fout.OutputProcessor):
 
             if output.get("aux"):
                 results[0].aux = output["aux"]
-
-            if output.get("scale_factor") is not None:
-                results[0].scale_factor = output["scale_factor"]
 
         return results
 
@@ -261,6 +267,14 @@ class DepthAnythingV3ModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
         self.ref_view_strategy = self.parse_string(
             d, "ref_view_strategy", default="saddle_balanced"
         )
+        if self.ref_view_strategy not in _VALID_REF_VIEW_STRATEGIES:
+            raise ValueError(
+                "Unsupported ref_view_strategy '%s'. Supported values are: %s"
+                % (
+                    self.ref_view_strategy,
+                    ", ".join(_VALID_REF_VIEW_STRATEGIES),
+                )
+            )
 
         self.align_to_input_ext_scale = self.parse_bool(
             d, "align_to_input_ext_scale", default=True
