@@ -19,6 +19,7 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.core.clips as foc
 from fiftyone.core.config import AppConfig
+from fiftyone.core.session.constants import DEFAULT_SELECTION_STYLE
 import fiftyone.core.dataset as fod
 from fiftyone.core.odm.dataset import ColorScheme
 from fiftyone.core.odm.workspace import Space
@@ -85,13 +86,20 @@ class StateDescription(etas.Serializable):
         self.group_slice = group_slice
 
         self.sample_id = sample_id
-        self.selected = selected or []
         self.selected_labels = selected_labels or []
         self.selected_samples = selected_samples or []
-        self.sample_selection_style = sample_selection_style or {
-            "default": "checkmark",
-            "alt": "checkmark",
-        }
+
+        # Derive selected from selected_samples when present to keep in sync
+        if self.selected_samples:
+            self.selected = [
+                s["sample_id"] if isinstance(s, dict) else s
+                for s in self.selected_samples
+            ]
+        else:
+            self.selected = selected or []
+        self.sample_selection_style = sample_selection_style or dict(
+            DEFAULT_SELECTION_STYLE
+        )
         self.spaces = spaces
 
         self.view = (

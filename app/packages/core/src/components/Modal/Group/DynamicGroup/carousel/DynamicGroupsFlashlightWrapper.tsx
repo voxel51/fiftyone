@@ -105,7 +105,7 @@ export const DynamicGroupsFlashlightWrapper = React.memo(() => {
           looker.addEventListener(
             "selectthumbnail",
             ({ detail }: CustomEvent) => {
-              selectSample.current(detail.id);
+              selectSample.current(detail.id, detail.altKey);
             }
           );
 

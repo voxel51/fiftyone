@@ -14,7 +14,12 @@ import eta.core.utils as etau
 
 import fiftyone.core.dataset as fod
 import fiftyone.core.odm as foo
+from fiftyone.core.session.constants import (
+    DEFAULT_SELECTION_STYLE,
+    VALID_ICON_STYLES,
+)
 import fiftyone.core.session.events as fose
+from fiftyone.core.session.session import _normalize_selected_samples
 from fiftyone.core.state import build_color_scheme
 import fiftyone.core.stages as fos
 import fiftyone.core.utils as fou
@@ -170,15 +175,34 @@ class Mutation(SetColorScheme):
         return True
 
     @gql.mutation
+    async def set_selected(
+        self,
+        subscription: str,
+        session: t.Optional[str],
+        selected: t.List[str],
+    ) -> bool:
+        """Backward-compatible mutation that accepts a flat list of sample IDs.
+
+        All samples are set to ``"default"`` selection type.
+        """
+        samples = [{"sample_id": sid, "type": "default"} for sid in selected]
+        await dispatch_event(
+            subscription,
+            fose.SelectSamples(samples=samples),
+        )
+        return True
+
+    @gql.mutation
     async def set_selected_samples(
         self,
         subscription: str,
         session: t.Optional[str],
         selected_samples: JSON,
     ) -> bool:
+        samples = _normalize_selected_samples(selected_samples or [])
         await dispatch_event(
             subscription,
-            fose.SelectSamples(samples=selected_samples),
+            fose.SelectSamples(samples=samples),
         )
         return True
 
@@ -189,6 +213,11 @@ class Mutation(SetColorScheme):
         session: t.Optional[str],
         style: JSON,
     ) -> bool:
+        if not isinstance(style, dict):
+            style = dict(DEFAULT_SELECTION_STYLE)
+        for key in ("default", "alt"):
+            if style.get(key) not in VALID_ICON_STYLES:
+                style[key] = DEFAULT_SELECTION_STYLE[key]
         await dispatch_event(
             subscription, fose.SetSampleSelectionStyle(style=style)
         )

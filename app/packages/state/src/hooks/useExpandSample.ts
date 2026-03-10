@@ -36,7 +36,10 @@ export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
             if (newSelected.has(item.id.description)) {
               newSelected.delete(item.id.description);
             } else {
-              newSelected.set(item.id.description, "default");
+              newSelected.set(
+                item.id.description,
+                event.altKey ? "alt" : "default"
+              );
             }
 
             return newSelected;

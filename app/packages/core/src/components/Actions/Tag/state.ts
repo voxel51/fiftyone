@@ -10,7 +10,7 @@ import { selectorFamily } from "recoil";
  */
 export const overrideFilters = (
   modal: boolean,
-  selectedSamples: Map<string, unknown>
+  selectedSamples: Map<string, fos.SelectionType>
 ) => {
   return modal && !!selectedSamples.size;
 };
@@ -117,7 +117,7 @@ export const tagParameters = ({
   modal: boolean;
   view: fos.State.Stage[];
   filters: fos.State.Filters;
-  selectedSamples: Map<string, unknown>;
+  selectedSamples: Map<string, fos.SelectionType>;
   selectedLabels: fos.State.SelectedLabel[];
   hiddenLabels: fos.State.SelectedLabel[];
   activeFields: string[];

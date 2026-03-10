@@ -7,7 +7,11 @@ import { SpaceNodeJSON } from "@fiftyone/spaces";
 import { useCallback } from "react";
 import { atom, AtomOptions, DefaultValue, RecoilState, selector } from "recoil";
 import { State } from "./recoil";
-import type { SelectionIconStyle, SelectionType } from "./recoil/types";
+import {
+  DEFAULT_SELECTION_STYLE,
+  type SelectionIconStyle,
+  type SelectionType,
+} from "./recoil/types";
 
 export const GRID_SPACES_DEFAULT = {
   id: "",
@@ -118,7 +122,7 @@ export const SESSION_DEFAULT: Session = {
   modalFilters: {},
   selectedSamples: new Map(),
   selectedLabels: [],
-  sampleSelectionStyle: { default: "checkmark", alt: "checkmark" },
+  sampleSelectionStyle: DEFAULT_SELECTION_STYLE,
   sessionSpaces: GRID_SPACES_DEFAULT,
   sessionGroupSlice: undefined,
 };

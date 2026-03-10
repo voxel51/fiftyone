@@ -39,6 +39,11 @@ import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 
 import fiftyone.core.session.client as fosc
+from fiftyone.core.session.constants import (
+    DEFAULT_SELECTION_STYLE,
+    VALID_ICON_STYLES,
+    VALID_SELECTION_TYPES,
+)
 from fiftyone.core.session.events import (
     CaptureNotebookCell,
     CloseSession,
@@ -703,6 +708,7 @@ class Session(object):
         self._state.sample_id = None
         self._state.spaces = default_workspace_factory()
         self._state.selected = []
+        self._state.selected_samples = []
         self._state.selected_labels = []
         self._state.view = None
 
@@ -747,6 +753,7 @@ class Session(object):
         self._state.group_id = None
         self._state.sample_id = None
         self._state.selected = []
+        self._state.selected_samples = []
         self._state.selected_labels = []
 
     @property
@@ -789,11 +796,8 @@ class Session(object):
 
     @selected.setter  # type: ignore
     def selected(self, sample_ids: t.List[str]) -> None:
-        self._state.selected = list(sample_ids) if sample_ids else []
-        samples = [
-            {"sample_id": sid, "type": "default"}
-            for sid in self._state.selected
-        ]
+        samples = _normalize_selected_samples(sample_ids or [])
+        self._state.selected = [s["sample_id"] for s in samples]
         self._state.selected_samples = samples
         self._client.send_event(SelectSamples(samples=samples))
 
@@ -835,6 +839,8 @@ class Session(object):
 
         if ids is None:
             ids = []
+        elif isinstance(ids, str):
+            ids = [ids]
 
         normalized = _normalize_selected_samples(list(ids))
         self._state.selected_samples = normalized
@@ -848,10 +854,9 @@ class Session(object):
         A dict with a ``default`` key and optional ``alt`` key specifying
         icon styles.
         """
-        return self._state.sample_selection_style or {
-            "default": "checkmark",
-            "alt": "checkmark",
-        }
+        return self._state.sample_selection_style or dict(
+            DEFAULT_SELECTION_STYLE
+        )
 
     def set_sample_selection_style(
         self, default: str = "checkmark", alt: str = "checkmark"
@@ -871,7 +876,7 @@ class Session(object):
 
     def clear_sample_selection_style(self) -> None:
         """Clears the sample selection style, reverting to default checkmark."""
-        style = {"default": "checkmark", "alt": "checkmark"}
+        style = dict(DEFAULT_SELECTION_STYLE)
         self._state.sample_selection_style = style
         self._client.send_event(SetSampleSelectionStyle(style=style))
 
@@ -1377,23 +1382,27 @@ def _normalize_selected_samples(
     Accepts both ``list[str]`` (all "default") and
     ``list[dict]`` (``{"sample_id": ..., "type": ...}``).
     """
-    valid_types = {"default", "alt"}
     result = []
     for item in samples:
         if isinstance(item, str):
             result.append({"sample_id": item, "type": "default"})
         elif isinstance(item, dict):
             sample_id = item.get("sample_id")
+            if not isinstance(sample_id, str) or not sample_id:
+                raise ValueError(
+                    f"Invalid or missing 'sample_id' in dict entry: "
+                    f"{item}. Must be a non-empty string"
+                )
             sel_type = item.get("type", "default")
-            if sel_type not in valid_types:
+            if sel_type not in VALID_SELECTION_TYPES:
                 raise ValueError(
                     f"Invalid selection type '{sel_type}' for sample "
-                    f"'{sample_id}'. Must be one of {valid_types}"
+                    f"'{sample_id}'. Must be one of {VALID_SELECTION_TYPES}"
                 )
             result.append({"sample_id": sample_id, "type": sel_type})
         else:
-            raise ValueError(
-                f"Invalid sample entry: {item}. Must be a string or dict"
+            raise TypeError(
+                f"Invalid sample entry: {item!r}. Must be a string or dict"
             )
     return result
 
@@ -1401,33 +1410,22 @@ def _normalize_selected_samples(
 def _resolve_selection_style(
     default: t.Optional[str], alt: t.Optional[str]
 ) -> t.Dict:
-    valid_icons = {
-        "checkmark",
-        "green-checkmark",
-        "red-checkmark",
-        "thumbsup",
-        "thumbsdown",
-        "pin",
-        "star",
-        "x",
-        "bookmark",
-    }
-
     if default is None:
-        default = "checkmark"
+        default = DEFAULT_SELECTION_STYLE["default"]
 
     if alt is None:
-        alt = "checkmark"
+        alt = DEFAULT_SELECTION_STYLE["alt"]
 
-    if default not in valid_icons:
+    if default not in VALID_ICON_STYLES:
         raise ValueError(
             f"Invalid default icon style '{default}'. "
-            f"Must be one of {valid_icons}"
+            f"Must be one of {VALID_ICON_STYLES}"
         )
 
-    if alt not in valid_icons:
+    if alt not in VALID_ICON_STYLES:
         raise ValueError(
-            f"Invalid alt icon style '{alt}'. " f"Must be one of {valid_icons}"
+            f"Invalid alt icon style '{alt}'. "
+            f"Must be one of {VALID_ICON_STYLES}"
         )
 
     return {"default": default, "alt": alt}

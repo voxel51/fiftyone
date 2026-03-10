@@ -106,7 +106,7 @@ const Column: React.FC = () => {
           looker.addEventListener(
             "selectthumbnail",
             ({ detail }: CustomEvent) => {
-              selectSample.current(detail.id);
+              selectSample.current(detail.id, detail.altKey);
             }
           );
 

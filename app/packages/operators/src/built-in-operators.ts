@@ -79,6 +79,7 @@ class ClearSelectedSamples extends Operator {
   }
   async execute({ state }: ExecutionContext) {
     state.reset(fos.selectedSamples);
+    state.reset(fos.selectedSampleObjects);
   }
 }
 
@@ -445,11 +446,12 @@ class ConvertExtendedSelectionToSelectedSamples extends Operator {
     const extendedSelection = await state.snapshot.getPromise(
       fos.extendedSelection
     );
-    const map = new Map<string, string>();
+    const map = new Map<string, fos.SelectionType>();
     for (const id of extendedSelection.selection || []) {
       map.set(id, "default");
     }
     state.set(fos.selectedSamples, map);
+    state.set(fos.selectedSampleObjects, new Map());
     state.set(fos.extendedSelection, { selection: null });
     hooks.resetExtended();
   }
@@ -470,11 +472,11 @@ class SetSelectedSamples extends Operator {
       setSelected: fos.useSetSelected(),
     };
   }
-  async execute({ hooks, params }: ExecutionContext) {
+  async execute({ hooks, params, state }: ExecutionContext) {
     const { samples } = params || {};
     if (!Array.isArray(samples))
       throw new Error("param 'samples' must be an array");
-    const map = new Map<string, string>();
+    const map = new Map<string, fos.SelectionType>();
     for (const item of samples) {
       if (typeof item === "string") {
         map.set(item, "default");
@@ -483,6 +485,7 @@ class SetSelectedSamples extends Operator {
       }
     }
     hooks.setSelected(map);
+    state.set(fos.selectedSampleObjects, new Map());
   }
 }
 
@@ -498,8 +501,8 @@ class SetSampleSelectionStyle extends Operator {
   async execute({ state, params }: ExecutionContext) {
     const { default: defaultIcon, alt } = params || {};
     const style = {
-      default: defaultIcon || "checkmark",
-      alt: alt || "checkmark",
+      default: defaultIcon || fos.DEFAULT_SELECTION_STYLE.default,
+      alt: alt || fos.DEFAULT_SELECTION_STYLE.alt,
     };
     state.set(fos.sampleSelectionStyle, style);
   }
@@ -515,10 +518,7 @@ class ClearSampleSelectionStyle extends Operator {
     });
   }
   async execute({ state }: ExecutionContext) {
-    state.set(fos.sampleSelectionStyle, {
-      default: "checkmark",
-      alt: "checkmark",
-    });
+    state.set(fos.sampleSelectionStyle, fos.DEFAULT_SELECTION_STYLE);
   }
 }
 

@@ -22,6 +22,7 @@ import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
+from fiftyone.core.session.constants import DEFAULT_SELECTION_STYLE
 from fiftyone.operators import constants
 from fiftyone.operators.decorators import coroutine_timeout
 from fiftyone.operators.message import GeneratedMessage, MessageType
@@ -856,7 +857,7 @@ class ExecutionContext(contextlib.AbstractContextManager):
         """
         return self.request_params.get(
             "sample_selection_style",
-            {"default": "checkmark", "alt": "checkmark"},
+            dict(DEFAULT_SELECTION_STYLE),
         )
 
     @property

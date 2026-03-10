@@ -17,6 +17,11 @@ export type SelectionStyle = {
   alt: SelectionIconStyle;
 };
 
+export const DEFAULT_SELECTION_STYLE: SelectionStyle = {
+  default: "checkmark",
+  alt: "checkmark",
+};
+
 export namespace State {
   export type MediaType =
     | "image"

@@ -552,7 +552,7 @@ export const selectedPatchIds = selectorFamily({
       const selectedSampleObjects = get(atoms.selectedSampleObjects);
 
       if (isPatches || modal) {
-        return selectedSamples;
+        return new Set(selectedSamples.keys());
       }
       let patchIds: string[] = [];
       for (const sampleId of Array.from(selectedSamples.keys())) {

@@ -20,7 +20,7 @@ import { collapseFields } from "../utils";
 import { getBrowserStorageEffectForKey } from "./customEffects";
 import { groupMediaTypesSet } from "./groups";
 import type { SelectionType } from "./types";
-import { State } from "./types";
+import { DEFAULT_SELECTION_STYLE, State } from "./types";
 
 export const refresher = atom<number>({
   key: "refresher",
@@ -206,7 +206,7 @@ export const selectedSampleObjects = atom<Map<string, Sample>>({
 
 export const sampleSelectionStyle = sessionAtom({
   key: "sampleSelectionStyle",
-  default: { default: "checkmark", alt: "checkmark" },
+  default: DEFAULT_SELECTION_STYLE,
 });
 
 // only used in extended view, for tagging purpose

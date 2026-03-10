@@ -1,4 +1,4 @@
-import { useSessionSetter } from "@fiftyone/state";
+import { DEFAULT_SELECTION_STYLE, useSessionSetter } from "@fiftyone/state";
 import { useCallback } from "react";
 import type { EventHandlerHook } from "./registerEvent";
 
@@ -7,7 +7,7 @@ const useSetSampleSelectionStyle: EventHandlerHook = () => {
 
   return useCallback(
     (payload) => {
-      const style = payload.style || { default: "checkmark", alt: "checkmark" };
+      const style = payload.style || DEFAULT_SELECTION_STYLE;
       setter("sampleSelectionStyle", style);
     },
     [setter]

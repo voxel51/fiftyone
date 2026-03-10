@@ -193,7 +193,17 @@ export interface BaseOptions {
   zoomPad: number;
   selected: boolean;
   selectionType: "default" | "alt" | null;
-  selectionIcon: string | null;
+  selectionIcon:
+    | "checkmark"
+    | "green-checkmark"
+    | "red-checkmark"
+    | "thumbsup"
+    | "thumbsdown"
+    | "pin"
+    | "star"
+    | "x"
+    | "bookmark"
+    | null;
   shouldHandleKeyEvents?: boolean;
   inSelectionMode: boolean;
   timeZone: string;

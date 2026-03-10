@@ -156,7 +156,12 @@ class SelectSamples(Event):
 
 @dataclass
 class SetSampleSelectionStyle(Event):
-    """Set sample selection style event"""
+    """Set the sample selection icon style.
+
+    Attributes:
+        style: a dict with ``"default"`` and ``"alt"`` keys mapping to icon
+            style names (e.g. ``"checkmark"``, ``"thumbsup"``, etc.)
+    """
 
     style: t.Dict
 

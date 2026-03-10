@@ -9,6 +9,9 @@ FiftyOne operator execution.
 import json
 
 from bson import json_util
+
+from fiftyone.core.session.constants import VALID_ICON_STYLES
+from fiftyone.core.session.session import _normalize_selected_samples
 from .categories import Categories
 
 
@@ -482,17 +485,7 @@ class Operations(object):
             samples: a list of sample IDs (strings) or dicts of the form
                 ``{"sample_id": "...", "type": "default"|"alt"}``
         """
-        normalized = []
-        for item in samples:
-            if isinstance(item, str):
-                normalized.append({"sample_id": item, "type": "default"})
-            elif isinstance(item, dict):
-                normalized.append(item)
-            else:
-                raise ValueError(
-                    f"Invalid sample item: {item}. Must be a string or dict"
-                )
-
+        normalized = _normalize_selected_samples(samples)
         return self._ctx.trigger(
             "set_selected_samples", params={"samples": normalized}
         )
@@ -753,28 +746,15 @@ def _serialize_view(view):
     return json.loads(json_util.dumps(view._serialize()))
 
 
-_VALID_ICON_STYLES = {
-    "checkmark",
-    "green-checkmark",
-    "red-checkmark",
-    "thumbsup",
-    "thumbsdown",
-    "pin",
-    "star",
-    "x",
-    "bookmark",
-}
-
-
-def _validate_selection_style(default, alt):
-    if default is not None and default not in _VALID_ICON_STYLES:
+def _validate_selection_style(default, alt) -> None:
+    if default is not None and default not in VALID_ICON_STYLES:
         raise ValueError(
             f"Invalid default icon style '{default}'. "
-            f"Must be one of {_VALID_ICON_STYLES}"
+            f"Must be one of {VALID_ICON_STYLES}"
         )
 
-    if alt is not None and alt not in _VALID_ICON_STYLES:
+    if alt is not None and alt not in VALID_ICON_STYLES:
         raise ValueError(
             f"Invalid alt icon style '{alt}'. "
-            f"Must be one of {_VALID_ICON_STYLES}"
+            f"Must be one of {VALID_ICON_STYLES}"
         )

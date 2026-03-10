@@ -20,7 +20,7 @@ export const SelectSampleCheckbox = ({
       title={selected ? "Select sample" : "Selected"}
       checked={selected}
       style={{ color: theme.primary.plainColor }}
-      onClick={() => select(sampleId)}
+      onClick={(e) => select(sampleId, e.altKey)}
       data-cy="select-sample-checkbox"
     />
   );

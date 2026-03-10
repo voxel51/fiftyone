@@ -543,6 +543,11 @@ type Mutation {
     stages: BSONArray!
     sidebarGroups: [SidebarGroupInput!]!
   ): Boolean!
+  setSelected(
+    subscription: String!
+    session: String
+    selected: [String!]!
+  ): Boolean!
   setSelectedSamples(
     subscription: String!
     session: String

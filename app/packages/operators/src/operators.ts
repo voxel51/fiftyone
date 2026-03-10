@@ -576,6 +576,21 @@ function formatSelectedLabels(selectedLabels) {
   return labels;
 }
 
+function formatSelectionPayload(currentContext: RawContext) {
+  return {
+    selected: currentContext.selectedSamples
+      ? Array.from(currentContext.selectedSamples.keys())
+      : [],
+    selected_samples: currentContext.selectedSamples
+      ? Array.from(currentContext.selectedSamples.entries()).map(
+          ([sample_id, type]) => ({ sample_id, type })
+        )
+      : [],
+    sample_selection_style: currentContext.sampleSelectionStyle || {},
+    selected_labels: formatSelectedLabels(currentContext.selectedLabels),
+  };
+}
+
 async function executeOperatorAsGenerator(
   operator: Operator,
   ctx: ExecutionContext
@@ -594,16 +609,7 @@ async function executeOperatorAsGenerator(
       operator_uri: operator.uri,
       params: ctx.params,
       request_delegation: ctx.requestDelegation,
-      selected: currentContext.selectedSamples
-        ? Array.from(currentContext.selectedSamples.keys())
-        : [],
-      selected_samples: currentContext.selectedSamples
-        ? Array.from(currentContext.selectedSamples.entries()).map(
-            ([sample_id, type]) => ({ sample_id, type })
-          )
-        : [],
-      sample_selection_style: currentContext.sampleSelectionStyle || {},
-      selected_labels: formatSelectedLabels(currentContext.selectedLabels),
+      ...formatSelectionPayload(currentContext),
       view: currentContext.view,
       view_name: currentContext.viewName,
       group_slice: currentContext.groupSlice,
@@ -768,16 +774,7 @@ export async function executeOperatorWithContext(
           operator_uri: operatorURI,
           params: ctx.params,
           request_delegation: ctx.requestDelegation,
-          selected: currentContext.selectedSamples
-            ? Array.from(currentContext.selectedSamples.keys())
-            : [],
-          selected_samples: currentContext.selectedSamples
-            ? Array.from(currentContext.selectedSamples.entries()).map(
-                ([sample_id, type]) => ({ sample_id, type })
-              )
-            : [],
-          sample_selection_style: currentContext.sampleSelectionStyle || {},
-          selected_labels: formatSelectedLabels(currentContext.selectedLabels),
+          ...formatSelectionPayload(currentContext),
           view: currentContext.view,
           view_name: currentContext.viewName,
           group_slice: currentContext.groupSlice,
@@ -847,7 +844,7 @@ type CurrentContext = {
   view: any;
   extended: any;
   filters: any;
-  selectedSamples: Set<string>;
+  selectedSamples: Map<string, SelectionType>;
   selectedLabels: any;
   currentSample: string;
   viewName: string;
@@ -883,16 +880,7 @@ export async function resolveRemoteType(
       request_delegation: ctx.requestDelegation,
       results: results ? results.result : null,
       target,
-      selected: currentContext.selectedSamples
-        ? Array.from(currentContext.selectedSamples.keys())
-        : [],
-      selected_samples: currentContext.selectedSamples
-        ? Array.from(currentContext.selectedSamples.entries()).map(
-            ([sample_id, type]) => ({ sample_id, type })
-          )
-        : [],
-      sample_selection_style: currentContext.sampleSelectionStyle || {},
-      selected_labels: formatSelectedLabels(currentContext.selectedLabels),
+      ...formatSelectionPayload(currentContext),
       view: currentContext.view,
       view_name: currentContext.viewName,
       group_slice: currentContext.groupSlice,
@@ -968,16 +956,7 @@ export async function resolveExecutionOptions(
       operator_uri: operatorURI,
       params: ctx.params,
       request_delegation: ctx.requestDelegation,
-      selected: currentContext.selectedSamples
-        ? Array.from(currentContext.selectedSamples.keys())
-        : [],
-      selected_samples: currentContext.selectedSamples
-        ? Array.from(currentContext.selectedSamples.entries()).map(
-            ([sample_id, type]) => ({ sample_id, type })
-          )
-        : [],
-      sample_selection_style: currentContext.sampleSelectionStyle || {},
-      selected_labels: formatSelectedLabels(currentContext.selectedLabels),
+      ...formatSelectionPayload(currentContext),
       view: currentContext.view,
       view_name: currentContext.viewName,
       group_slice: currentContext.groupSlice,
@@ -1009,16 +988,7 @@ export async function fetchRemotePlacements(ctx: ExecutionContext) {
       extended_selection: currentContext.extendedSelection,
       view: currentContext.view,
       filters: currentContext.filters,
-      selected: currentContext.selectedSamples
-        ? Array.from(currentContext.selectedSamples.keys())
-        : [],
-      selected_samples: currentContext.selectedSamples
-        ? Array.from(currentContext.selectedSamples.entries()).map(
-            ([sample_id, type]) => ({ sample_id, type })
-          )
-        : [],
-      sample_selection_style: currentContext.sampleSelectionStyle || {},
-      selected_labels: formatSelectedLabels(currentContext.selectedLabels),
+      ...formatSelectionPayload(currentContext),
       current_sample: currentContext.currentSample,
       view_name: currentContext.viewName,
       group_slice: currentContext.groupSlice,
