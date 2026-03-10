@@ -7,9 +7,9 @@ import { EventDispatcher, getEventBus } from "@fiftyone/events";
 import { TypeGuards } from "../core/Scene2D";
 import type { LighterEventGroup } from "../events";
 import {
-  BoundingBoxOverlay,
+  DetectionOverlay,
   type MoveState,
-} from "../overlay/BoundingBoxOverlay";
+} from "../overlay/DetectionOverlay";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { SelectionManager } from "../selection/SelectionManager";
 import type { Point, Rect } from "../types";
@@ -21,7 +21,7 @@ import { InteractiveDetectionHandler } from "./InteractiveDetectionHandler";
 export interface InteractionHandler {
   readonly id: string;
   readonly cursor?: string;
-  overlay?: BoundingBoxOverlay;
+  overlay?: DetectionOverlay;
 
   /**
    * Returns true if the handler is being dragged or resized.
@@ -39,7 +39,7 @@ export interface InteractionHandler {
   isResizing?(): boolean;
 
   /**
-   * Returns true if a new BoundingBoxOverlay is being created.
+   * Returns true if a new DetectionOverlay is being created.
    */
   isSetting?(): boolean;
 

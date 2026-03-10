@@ -1448,7 +1448,7 @@ export class Scene2D {
   /**
    * Renders a specific overlay if it's pending.
    * @param overlayId - The ID of the overlay to render.
-   * @param overlayIndex - The index of this particular overlay with respect to its type (e.g. ClassificationOverlay, BoundingBoxOverlay, etc.)
+   * @param overlayIndex - The index of this particular overlay with respect to its type (e.g. ClassificationOverlay, DetectionOverlay, etc.)
    */
   private renderOverlay(overlayId: string, overlayIndex: number): void {
     const overlay = this.overlays.get(overlayId);
@@ -1510,7 +1510,7 @@ export class Scene2D {
    * Executes the rendering of an overlay with proper error handling.
    * @param overlayId - The ID of the overlay being rendered.
    * @param overlay - The overlay to render.
-   * @param overlayIndex - The index of this particular overlay with respect to its type (e.g. ClassificationOverlay, BoundingBoxOverlay, etc.)
+   * @param overlayIndex - The index of this particular overlay with respect to its type (e.g. ClassificationOverlay, DetectionOverlay, etc.)
    */
   private executeOverlayRender(
     overlayId: string,

@@ -1,6 +1,6 @@
 import {
   type BaseOverlay,
-  BoundingBoxOverlay,
+  DetectionOverlay,
   ClassificationOverlay,
   useLighter,
 } from "@fiftyone/lighter";
@@ -22,7 +22,7 @@ import { useGetLabelDelta } from "./useGetLabelDelta";
  * @param overlay Lighter overlay
  */
 const buildAnnotationLabel = (overlay: BaseOverlay): LabelProxy | undefined => {
-  if (overlay instanceof BoundingBoxOverlay && overlay.label.label) {
+  if (overlay instanceof DetectionOverlay && overlay.label.label) {
     const bounds = overlay.relativeBounds;
     const boundingBox: BoundingBox = [
       bounds.x,

@@ -1,6 +1,6 @@
 import type {
-  BoundingBoxOptions,
-  BoundingBoxOverlay,
+  DetectionOverlayOptions,
+  DetectionOverlay,
   ClassificationOptions,
   ClassificationOverlay,
 } from "@fiftyone/lighter";
@@ -66,9 +66,9 @@ const useCreateAnnotationLabel = () => {
         const readOnly = isFieldReadOnly(fieldSchema);
 
         const overlay = overlayFactory.create<
-          BoundingBoxOptions,
-          BoundingBoxOverlay
-        >("bounding-box", {
+          DetectionOverlayOptions,
+          DetectionOverlay
+        >("detection", {
           field,
           id,
           label: data as DetectionLabel,

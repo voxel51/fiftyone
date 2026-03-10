@@ -31,7 +31,7 @@ import { distanceFromLineSegment } from "../utils/geometry";
 import { decodeMask } from "../utils/maskDecoding";
 import { BaseOverlay } from "./BaseOverlay";
 
-export type BoundingBoxLabel = RawLookerLabel & {
+export type DetectionLabel = RawLookerLabel & {
   label: string;
   bounding_box: number[];
   confidence?: number;
@@ -42,11 +42,11 @@ export type BoundingBoxLabel = RawLookerLabel & {
 /**
  * Options for creating a bounding box overlay.
  */
-export interface BoundingBoxOptions {
+export interface DetectionOverlayOptions {
   id: string;
   // Relative bounds [0,1]
   relativeBounds?: Rect;
-  label: BoundingBoxLabel;
+  label: DetectionLabel;
   field: string;
   draggable?: boolean;
   resizeable?: boolean;
@@ -70,8 +70,8 @@ export const NO_BOUNDS = { x: NaN, y: NaN, width: NaN, height: NaN };
 /**
  * Bounding box overlay implementation with drag support, selection, and spatial coordinates.
  */
-export class BoundingBoxOverlay
-  extends BaseOverlay<BoundingBoxLabel>
+export class DetectionOverlay
+  extends BaseOverlay<DetectionLabel>
   implements Selectable, Spatial, Hoverable
 {
   private isDraggable: boolean;
@@ -95,7 +95,7 @@ export class BoundingBoxOverlay
 
   public cursor = "pointer";
 
-  constructor(options: BoundingBoxOptions) {
+  constructor(options: DetectionOverlayOptions) {
     super(options.id, options.field, options.label);
     this.isDraggable = options.draggable !== false;
     this.isResizeable = options.resizeable !== false;
@@ -104,7 +104,7 @@ export class BoundingBoxOverlay
   }
 
   getOverlayType(): string {
-    return "BoundingBoxOverlay";
+    return "DetectionOverlay";
   }
 
   getPosition() {
@@ -803,7 +803,7 @@ export class BoundingBoxOverlay
         this.markDirty();
       })
       .catch((err) => {
-        console.error("[BoundingBoxOverlay] mask decode failed:", err);
+        console.error("[DetectionOverlay] mask decode failed:", err);
         this.maskDecoding = false;
       });
   }

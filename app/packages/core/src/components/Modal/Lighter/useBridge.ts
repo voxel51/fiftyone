@@ -11,7 +11,7 @@ import {
 } from "@fiftyone/annotation";
 import { useCommandBus } from "@fiftyone/command-bus";
 import {
-  BoundingBoxOverlay,
+  DetectionOverlay,
   type LighterEventGroup,
   type Scene2D,
   UNDEFINED_LIGHTER_SCENE_ID,
@@ -160,7 +160,7 @@ export const useBridge = (scene: Scene2D | null) => {
     useCallback(
       (payload) => {
         if (
-          payload.overlay instanceof BoundingBoxOverlay &&
+          payload.overlay instanceof DetectionOverlay &&
           payload.overlay.field
         ) {
           addLabelToSidebar({

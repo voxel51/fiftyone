@@ -1,5 +1,5 @@
 import {
-  BoundingBoxOverlay,
+  DetectionOverlay,
   TransformOverlayCommand,
   UNDEFINED_LIGHTER_SCENE_ID,
   useLighter,
@@ -61,7 +61,7 @@ export default function Position({ readOnly = false }: PositionProps) {
   );
 
   useEffect(() => {
-    if (!(overlay instanceof BoundingBoxOverlay) || !overlay.hasValidBounds()) {
+    if (!(overlay instanceof DetectionOverlay) || !overlay.hasValidBounds()) {
       return;
     }
 
@@ -76,7 +76,7 @@ export default function Position({ readOnly = false }: PositionProps) {
   const handleBoundsChange = useCallback(
     (payload: { id: string }) => {
       if (
-        !(overlay instanceof BoundingBoxOverlay) ||
+        !(overlay instanceof DetectionOverlay) ||
         !overlay.hasValidBounds() ||
         payload.id !== data?._id
       ) {
@@ -140,7 +140,7 @@ export default function Position({ readOnly = false }: PositionProps) {
         onChange={(data: Coordinates) => {
           if (
             readOnly ||
-            !(overlay instanceof BoundingBoxOverlay) ||
+            !(overlay instanceof DetectionOverlay) ||
             !overlay.hasValidBounds()
           ) {
             return;

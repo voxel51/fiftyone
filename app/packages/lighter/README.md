@@ -30,7 +30,7 @@ interaction handling, and overlay representation.
 ├─────────────────────────────────────────────────────────────────┤
 │  BaseOverlay ──┐                                                │
 │                ├── ImageOverlay (CanonicalMedia)                │
-│                ├── BoundingBoxOverlay (Spatial, Selectable)     │
+│                ├── DetectionOverlay (Spatial, Selectable)     │
 │                ├── ClassificationOverlay (Selectable)           │
 │                └── Custom Overlays                              │
 ├─────────────────────────────────────────────────────────────────┤
@@ -126,7 +126,8 @@ class Scene2D {
 **Built-in Overlays**:
 
 -   **ImageOverlay**: Displays sample images, implements `CanonicalMedia`
--   **BoundingBoxOverlay**: Detection boxes with drag support
+-   **DetectionOverlay**: Detection boxes with optional mask rendering, mask
+    editing, resize, and drag support
 -   **ClassificationOverlay**: Text labels with selection
 
 **Interface Implementations**:
