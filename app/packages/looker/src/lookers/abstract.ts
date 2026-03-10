@@ -45,6 +45,7 @@ import {
   LabelData,
   Sample,
   StateUpdate,
+  ViewportState,
 } from "../state";
 import {
   createWorker,
@@ -271,6 +272,32 @@ export abstract class AbstractLooker<
 
   getSampleOverlays(): Overlay<State>[] {
     return this.sampleOverlays;
+  }
+
+  /**
+   * Returns a snapshot of the current zoom and pan state.
+   * Used to hand off the camera position when switching to ANNOTATE mode.
+   */
+  getViewportState(): ViewportState {
+    return {
+      scale: this.state.scale,
+      panX: this.state.pan[0],
+      panY: this.state.pan[1],
+    };
+  }
+
+  /**
+   * Restores a previously captured zoom and pan state.
+   *
+   * `setZoom: false` is necessary. Without it, Looker's render cycle will
+   * immediately overwrite these values with its own auto-fit calculation.
+   */
+  setViewportState({ scale, panX, panY }: ViewportState): void {
+    this.updater({
+      scale,
+      pan: [panX, panY] as Coordinates,
+      setZoom: false,
+    });
   }
 
   loadOverlays(sample: Sample): void {
@@ -508,13 +535,13 @@ export abstract class AbstractLooker<
     const argsWithSignal: AddEventListenerOptions =
       typeof optionsOrUseCapture === "boolean"
         ? {
-            signal: this.abortController?.signal,
-            capture: optionsOrUseCapture,
-          }
+          signal: this.abortController?.signal,
+          capture: optionsOrUseCapture,
+        }
         : {
-            ...(optionsOrUseCapture ?? {}),
-            signal: this.abortController?.signal,
-          };
+          ...(optionsOrUseCapture ?? {}),
+          signal: this.abortController?.signal,
+        };
     this.eventTarget.addEventListener(eventType, handler, argsWithSignal);
   }
 
@@ -859,9 +886,9 @@ export abstract class AbstractLooker<
     ];
     this.state.relativeCoordinates = [
       (this.state.cursorCoordinates[0] - this.state.transformedMediaBBox[0]) /
-        this.state.transformedMediaBBox[2],
+      this.state.transformedMediaBBox[2],
       (this.state.cursorCoordinates[1] - this.state.transformedMediaBBox[1]) /
-        this.state.transformedMediaBBox[3],
+      this.state.transformedMediaBBox[3],
     ];
     this.state.pixelCoordinates = [
       this.state.relativeCoordinates[0] * this.state.dimensions[0],
@@ -885,10 +912,10 @@ export abstract class AbstractLooker<
   protected hasResized(): boolean {
     return Boolean(
       !this.previousState?.windowBBox ||
-        !this.state?.windowBBox ||
-        this.previousState.windowBBox.some(
-          (v, i) => v !== this.state.windowBBox[i]
-        )
+      !this.state?.windowBBox ||
+      this.previousState.windowBBox.some(
+        (v, i) => v !== this.state.windowBBox[i]
+      )
     );
   }
 
