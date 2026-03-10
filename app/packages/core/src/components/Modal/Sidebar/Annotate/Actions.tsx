@@ -37,6 +37,7 @@ import { editing } from "./Edit";
 import { fieldsOfType } from "./Edit/state";
 import useCreate from "./Edit/useCreate";
 import { useQuickDraw } from "./Edit/useQuickDraw";
+import { useSegmentationMasks } from "./Edit/useSegmentationMasks";
 import useCanManageSchema from "./useCanManageSchema";
 import useShowModal from "./useShowModal";
 
@@ -212,6 +213,62 @@ const Detection = () => {
           <path
             d="M4.25 15.75C3.8375 15.75 3.48438 15.6031 3.19063 15.3094C2.89687 15.0156 2.75 14.6625 2.75 14.25V3.75C2.75 3.3375 2.89687 2.98438 3.19063 2.69063C3.48438 2.39687 3.8375 2.25 4.25 2.25H14.75C15.1625 2.25 15.5156 2.39687 15.8094 2.69063C16.1031 2.98438 16.25 3.3375 16.25 3.75V14.25C16.25 14.6625 16.1031 15.0156 15.8094 15.3094C15.5156 15.6031 15.1625 15.75 14.75 15.75H4.25ZM4.25 14.25H14.75V3.75H4.25V14.25Z"
             fill="currentColor"
+          />
+        </svg>
+      </Square>
+    </Tooltip>
+  );
+};
+
+const Segmentation = () => {
+  const { active, enter, exit } = useSegmentationMasks();
+  const isPatchView = useRecoilValue(isPatchesView);
+  const fields = useAtomValue(fieldsOfType(DETECTION));
+  const disabled = isPatchView || fields.length === 0;
+
+  const tooltip = isPatchView
+    ? "Creating masks is not supported in this view"
+    : active
+      ? "Exit mask creation"
+      : "Create new mask";
+
+  return (
+    <Tooltip placement="top-center" text={tooltip}>
+      <Square
+        $active={active}
+        className={disabled ? "disabled" : ""}
+        onClick={() => {
+          if (disabled) return;
+          if (active) {
+            exit();
+          } else {
+            enter();
+          }
+        }}
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="19"
+          height="18"
+          viewBox="0 0 19 18"
+          fill="none"
+        >
+          <title>Segmentation Mask</title>
+          {/* Mask face outline */}
+          <path
+            d="M3.5 3C3.5 1.9 4.4 1 5.5 1H13.5C14.6 1 15.5 1.9 15.5 3V8C15.5 12.7 13 15.5 9.5 17C6 15.5 3.5 12.7 3.5 8V3ZM5 2.5V8C5 11.8 7 14.2 9.5 15.4C12 14.2 14 11.8 14 8V2.5H5Z"
+            fill="currentColor"
+          />
+          {/* Left eye */}
+          <circle cx="7.5" cy="7" r="1" fill="currentColor" />
+          {/* Right eye */}
+          <circle cx="11.5" cy="7" r="1" fill="currentColor" />
+          {/* Neutral mouth */}
+          <path
+            d="M7.5 11H11.5"
+            stroke="currentColor"
+            strokeWidth="1.3"
+            strokeLinecap="round"
           />
         </svg>
       </Square>
@@ -413,7 +470,10 @@ const Actions = () => {
               <ThreeDPolylines />
             </>
           ) : (
-            <Detection />
+            <>
+              <Detection />
+              <Segmentation />
+            </>
           )}
         </ItemLeft>
         <ItemRight style={{ columnGap: "0.1rem" }}>
