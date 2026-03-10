@@ -51,12 +51,12 @@ import {
 import { collapseFields, getCurrentEnvironment } from "../utils";
 import * as atoms from "./atoms";
 import { getBrowserStorageEffectForKey } from "./customEffects";
+import { activeModalSidebarSample } from "./groups";
 import {
   active3dSlices,
   active3dSlicesToSampleMap,
-  activeModalSidebarSample,
   pinned3DSampleSlice,
-} from "./groups";
+} from "./renderConfig3d.atoms";
 import { isLargeVideo } from "./options";
 import { cumulativeValues, values } from "./pathData";
 import {

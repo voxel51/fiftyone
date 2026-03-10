@@ -19,6 +19,7 @@ import {
   currentModalUniqueIdJotaiAtom,
   jotaiStore,
 } from "@fiftyone/state/src/jotai";
+import { is3d } from "@fiftyone/utilities";
 import React, { Fragment, useCallback, useMemo, useRef } from "react";
 import ReactDOM from "react-dom";
 import { useRecoilCallback, useRecoilValue } from "recoil";
@@ -84,6 +85,9 @@ const Modal = () => {
   const pointerDownTargetRef = useRef<EventTarget | null>(null);
   const { enabled: isAnnotationEnabled } = useRecoilValue(canAnnotate);
   const clearModal = fos.useClearModal();
+  const {
+    state: { is3dVisible },
+  } = fos.useRenderConfig3d();
 
   const onPointerDownModalWrapper = useCallback((e: React.PointerEvent) => {
     // Track where the pointer down started
@@ -180,17 +184,14 @@ const Modal = () => {
     ({ snapshot }) =>
       async () => {
         const mediaType = await snapshot.getPromise(fos.mediaType);
-        const is3dVisible = await snapshot.getPromise(
-          fos.groupMediaIs3dVisible
-        );
-        if (activeLookerRef.current || mediaType === "3d" || is3dVisible) {
+        if (activeLookerRef.current || is3d(mediaType) || is3dVisible) {
           // we handle close logic in modal + other places
           return;
         }
 
         await modalCloseHandler();
       },
-    [modalCloseHandler]
+    [is3dVisible, modalCloseHandler]
   );
 
   const isSidebarVisible = useRecoilValue(fos.sidebarVisible(true));

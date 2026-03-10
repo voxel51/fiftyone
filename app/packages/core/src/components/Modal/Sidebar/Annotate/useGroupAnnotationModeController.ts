@@ -16,6 +16,10 @@ import { useRecoilState } from "recoil";
  */
 export function useGroupAnnotationModeController() {
   const mode = useModalMode();
+  const {
+    state: { is3dVisibleSetting: threeDVisible },
+    actions,
+  } = fos.useRenderConfig3d();
   const [modalGroupSliceValue, setModalGroupSliceValue] = useRecoilState(
     fos.modalGroupSlice
   );
@@ -26,10 +30,6 @@ export function useGroupAnnotationModeController() {
   const [carouselVisible, setCarouselVisible] = useRecoilState(
     fos.groupMediaIsCarouselVisibleSetting
   );
-  const [threeDVisible, setThreeDVisible] = useRecoilState(
-    fos.groupMedia3dVisibleSetting
-  );
-
   // Track the previous mode for detecting transitions
   const prevModeRef = useRef(mode);
 
@@ -51,12 +51,12 @@ export function useGroupAnnotationModeController() {
       if (!snapshot) return;
       setMainVisible(snapshot.main);
       setCarouselVisible(snapshot.carousel);
-      setThreeDVisible(snapshot.threeDViewer);
+      actions.setVisible(snapshot.threeDViewer);
       if (snapshot.slice !== undefined) {
         setModalGroupSliceValue(snapshot.slice);
       }
     },
-    []
+    [actions, setCarouselVisible, setMainVisible, setModalGroupSliceValue]
   );
 
   // This effect handles mode transitions

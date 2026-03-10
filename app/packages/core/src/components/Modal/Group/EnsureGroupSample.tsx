@@ -1,4 +1,5 @@
 import { Loading } from "@fiftyone/components";
+import * as fos from "@fiftyone/state";
 import {
   GroupSampleNotFound,
   groupField,
@@ -7,7 +8,6 @@ import {
   modalGroupSlice,
   modalSample,
   non3dSamples,
-  pinned3d,
 } from "@fiftyone/state";
 import { get } from "lodash";
 import React, { Suspense, useEffect } from "react";
@@ -18,7 +18,10 @@ import {
 } from "recoil";
 import { is3d } from "@fiftyone/utilities";
 
-export default ({ children }: React.PropsWithChildren<{}>) => {
+export default ({
+  children,
+}: React.PropsWithChildren<Record<string, never>>) => {
+  const { actions } = fos.useRenderConfig3d();
   const modal = useRecoilValueLoadable(modalSample);
   const slice = useRecoilValue(modalGroupSlice);
   const resetGroupSlice = useRecoilCallback(
@@ -39,10 +42,10 @@ export default ({ children }: React.PropsWithChildren<{}>) => {
           }
         }
 
-        slice === null && set(pinned3d, true);
+        slice === null && actions.setPinned(true);
         set(modalGroupSlice, slice);
       },
-    []
+    [actions]
   );
 
   useEffect(() => {
