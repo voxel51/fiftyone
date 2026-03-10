@@ -215,10 +215,8 @@ class TestStaticTransformsRoute:
     async def test_group_sample_includes_matching_dataset_transform(
         self,
         static_transforms_endpoint,
-        mock_request,
+        mock_group_request,
         grouped_dataset,
-        grouped_dataset_id,
-        grouped_sample_id,
     ):
         """Tests grouped samples include dataset transforms for matching slice."""
         grouped_dataset.static_transforms = {
@@ -236,10 +234,7 @@ class TestStaticTransformsRoute:
             ),
         }
 
-        request = mock_request(
-            dataset_id_override=grouped_dataset_id,
-            sample_id_override=grouped_sample_id,
-        )
+        request = mock_group_request()
         response = await static_transforms_endpoint.get(request)
 
         assert response.status_code == 200
