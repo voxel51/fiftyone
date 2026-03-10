@@ -51,11 +51,29 @@ class _SAM2Predictor(fosam._SAMPredictor):
             self.processor.predict_torch = self.processor.predict
 
     def image_transform(self, img):
+        """Transforms image for SAM2 model input.
+
+        Args:
+            img: a uint8 numpy array containing image in HWC format
+
+        Returns:
+            a uint8 numpy array containing image in HWC format
+            a tuple containing original image dimensions
+        """
         # SAM2 does image pre-processing when it calls SAM2ImagePredictor.set_image.
         # No straight-forward way to decouple them other than extracting the functionality.
         return img, img.shape[:2]
 
     def box_transform(self, boxes_xyxy, img_hw):
+        """Transforms boxes for SAM2 model prompts.
+
+        Args:
+            boxes_xyxy: list of boxes in XYXY pixels
+            img_hw: original image height and width
+
+        Returns:
+            resized boxes for SAM2 as a Bx4 tensor
+        """
         return self.processor._transforms.transform_boxes(
             torch.tensor(boxes_xyxy, dtype=torch.float),
             normalize=True,
@@ -63,6 +81,17 @@ class _SAM2Predictor(fosam._SAMPredictor):
         )
 
     def point_transform(self, points, img_hw, point_labels=None):
+        """Transforms points for SAM2 model prompts.
+
+        Args:
+            points: relative points in xyxy format
+            img_hw: original image height and width
+            point_labels (None): list containing positive (1) and negative (0) point labels. Defaults to None.
+
+        Returns:
+            a torch tensor containing points in XYXY pixels for SAM2 model
+            a torch tensor containing positive and negative labels
+        """
         norm_points, labels = fosam._to_sam_points(
             points,
             height=1,
@@ -161,6 +190,14 @@ class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
         return samg.SAM2AutomaticMaskGenerator(self._model, **kwargs)
 
     def _forward_pass(self, imgs):
+        """Forward pass with prompts
+
+        Args:
+            imgs: a dict containing model input
+
+        Returns:
+            a dict containing model output
+        """
         multimask_output = imgs.pop("multimask_output", False)
         images = imgs.pop("image")
 
@@ -188,6 +225,14 @@ class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
         return outputs
 
     def _forward_pass_auto(self, args):
+        """Forward pass with no prompts.
+
+        Args:
+            imgs: a dictionary containing model input
+
+        Returns:
+            a :class:`fiftyone.core.labels.Detections` instance
+        """
         images = args.pop("image")
         for img in images:
             detections = []

@@ -65,15 +65,28 @@ class SegmentAnythingModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
         )
         self.get_item_args = self.parse_dict(d, "get_item_args", default=None)
 
-        self._preprocess = False
-
 
 class _SAMPredictor:
+    """Wrapper for ``segment_anything.predictor.SamPredictor``.
+
+    Args:
+        model: a :class:`segment_anything.modeling.Sam` model
+    """
+
     def __init__(self, model):
         self.processor = sam.SamPredictor(model)
         self._image_id = None
 
     def image_transform(self, img):
+        """Transforms image for SAM model input.
+
+        Args:
+            img: a uint8 numpy array containing image in HWC format
+
+        Returns:
+            a torch image tensor in CHW format
+            a tuple containing original image dimensions
+        """
         image_torch = torch.as_tensor(
             self.processor.transform.apply_image(img)
         )
@@ -81,6 +94,15 @@ class _SAMPredictor:
         return image_torch, img.shape[:2]
 
     def box_transform(self, boxes_xyxy, img_hw):
+        """Transforms boxes for SAM model prompts.
+
+        Args:
+            boxes_xyxy: list of boxes in XYXY pixels
+            img_hw: original image height and width
+
+        Returns:
+            resized boxes for SAM as a Bx4 tensor
+        """
         sam_boxes = np.round(boxes_xyxy).astype(int)
         input_boxes = torch.tensor(sam_boxes)
         return self.processor.transform.apply_boxes_torch(
@@ -89,6 +111,17 @@ class _SAMPredictor:
         )
 
     def point_transform(self, points, img_hw, point_labels=None):
+        """Transforms points for SAM model prompts.
+
+        Args:
+            points: relative points in xyxy format
+            img_hw: original image height and width
+            point_labels (None): list containing positive (1) and negative (0) point labels. Defaults to None.
+
+        Returns:
+            a torch tensor containing points in XYXY pixels for SAM model
+            a torch tensor containing positive and negative labels
+        """
         points, labels = _to_sam_points(
             points,
             height=img_hw[0],
@@ -100,6 +133,8 @@ class _SAMPredictor:
 
 
 class SAMPromptMode(Enum):
+    """Enumeration of supported prompt modes for SAM."""
+
     auto = 1
     box_only = 2
     point_only = 3
@@ -107,6 +142,14 @@ class SAMPromptMode(Enum):
 
     @classmethod
     def from_mode_name(cls, mode_name):
+        """_summary_
+
+        Args:
+            mode_name: name of the prompt mode
+
+        Returns:
+            class member based on prompt mode
+        """
         for member in cls:
             if member.name == mode_name:
                 return member
@@ -125,7 +168,7 @@ class SegmentAnythingImageGetItem(fout.GetItem):
         use_numpy (False): whether to use numpy arrays rather than PIL images
             and Torch tensors when loading data
         box_transform (None): SAM specific box transform function to apply
-        box_transform (None): SAM specific point transform function to apply
+        point_transform (None): SAM specific point transform function to apply
     """
 
     def __init__(
@@ -146,6 +189,13 @@ class SegmentAnythingImageGetItem(fout.GetItem):
         self.point_transform = point_transform
 
     def _set_mode(self, field_mapping):
+        """Initializes mode based on field mapping dictionary.
+        Args:
+            field_mapping: a dict mapping required keys to sample fields
+
+        Returns:
+            a :class:`SAMPromptMode` instance
+        """
         if field_mapping is None:
             return SAMPromptMode.auto
 
@@ -174,6 +224,15 @@ class SegmentAnythingImageGetItem(fout.GetItem):
             return SAMPromptMode.box_point_combo
 
     def __call__(self, d):
+        """Prepares the model input for a given sample's data.
+
+        Args:
+            d: a dict mapping the :meth:`required_keys` to values from the
+                sample being processed
+
+        Returns:
+            the model input
+        """
         item_dict = {}
         img = fout._load_image(
             d["filepath"],
@@ -193,6 +252,21 @@ class SegmentAnythingImageGetItem(fout.GetItem):
         return item_dict
 
     def _preprocess_prompts(self, d, img_hw):
+        """Pre-processes prompts for SAM model input.
+
+        Args:
+            d: a dictionary containing prompts
+            img_hw: original image height and width
+
+        Returns:
+            a dictionary containing prompts. Expected keys are:
+                "prompt_type": name of the prompt type
+                "boxes": boxes for SAM model input
+                "boxes_xyxy": boxes in XYXY original image space
+                "point_coords": points for SAM model input
+                "point_labels": positive / negative labels for points
+                "classes": class labels for prompts
+        """
         detections = d.get("box_prompt_field")
         keypoints = d.get("point_prompt_field")
 
@@ -254,6 +328,17 @@ class SegmentAnythingImageGetItem(fout.GetItem):
         return item_dict
 
     def _preprocess_boxes(self, detections, img_hw):
+        """Pre-processes boxes from :class:`fiftyone.core.labels.Detections`.
+
+        Args:
+            detections: a :class:`fiftyone.core.labels.Detections` instance
+            img_hw: original image height and width
+
+        Returns:
+            a torch tensor of boxes for SAM model prompts
+            a numpy array of boxes in XYXY pixels in original image space
+            a list class labels for the boxes
+        """
         if detections is None:
             return None, None, None
         if len(detections.detections) == 0:
@@ -273,6 +358,17 @@ class SegmentAnythingImageGetItem(fout.GetItem):
         return sam_boxes, boxes_xyxy, box_classes
 
     def _preprocess_points(self, keypoints, img_hw):
+        """Pre-processes points from :class:`fiftyone.core.labels.Keypoints`.
+
+        Args:
+            keypoints: a :class:`fiftyone.core.labels.Keypoints` instance
+            img_hw: original image height and width
+
+        Returns:
+            a list of torch tensor of points in XYXY pixels for SAM model prompts
+            a list of torch tensor of positive and negative labels for each point
+            a list of class labels for each set of points
+        """
         if keypoints is None:
             return None, None, None
         if len(keypoints.keypoints) == 0:
@@ -295,6 +391,9 @@ class SegmentAnythingImageGetItem(fout.GetItem):
 
     @property
     def required_keys(self):
+        """The list of keys that must exist on the dicts provided to the
+        :meth:`__call__` method at runtime."""
+
         common_keys = ["id", "filepath"]
         box_keys = ["box_prompt_field"]
         point_keys = ["point_prompt_field"]
@@ -312,7 +411,12 @@ class SegmentAnythingImageGetItem(fout.GetItem):
 
 
 class SAMSegmenterOutputProcessor(fout.OutputProcessor):
-    """Converts SAM model outputs to FiftyOne format."""
+    """Converts SAM model outputs to FiftyOne format.
+
+    Args:
+        classes (None): the list of class labels for the model
+        mask_thresh (0.5): Threshold for converting float masks to boolean masks
+    """
 
     def __init__(self, classes=None, mask_thresh=0.5, **kwargs):
         if classes is not None:
@@ -332,7 +436,21 @@ class SAMSegmenterOutputProcessor(fout.OutputProcessor):
         labels=None,
         mask_index=None,
     ):
-        # Post-process output from model
+        """Returns processed model output in FiftyOne format.
+
+        Args:
+            output: a list of model output per sample
+            frame_size: a tuple containing original image width and height
+            confidence_thresh (None): confidence threshold for filtering predictions. Defaults to None.
+            classes (None): classes for filtering predictions. Defaults to None.
+            box_prompts (None): boxes in XYXY pixels in original image space. Defaults to None.
+            labels (None): a list of class labels for each prompt. Defaults to None.
+            mask_index (None): index for selecting mask from multi-mask SAM model output. Defaults to None.
+
+        Returns:
+            a list of :class:`fiftyone.core.labels.Detections` instances
+        """
+        # Post-process output from model.
         post_processed_out = []
         for idx, out in enumerate(output):
             masks = out["masks"]  # (B, C, H, W)
@@ -370,6 +488,17 @@ class SAMSegmenterOutputProcessor(fout.OutputProcessor):
         ]
 
     def _parse_output(self, output, frame_wh, confidence_thresh, classes):
+        """Parses model output and converts to FiftyOne format.
+
+        Args:
+            output: post-processed SAM model output for a sample
+            frame_wh: a tuple containing original sample image width and height
+            confidence_thresh: confidence threshold for filtering predictions
+            classes: classes for filtering predictions
+
+        Returns:
+            a :class:`fiftyone.core.labels.Detections` instance
+        """
         width, height = frame_wh
 
         boxes = output["boxes"]
@@ -531,15 +660,26 @@ class SegmentAnythingModel(fout.TorchImageModel):
         """Performs prediction a single image.
 
         Args:
-            img (dict): A dictionary containing image, original size, and prompts. See :class:`fiftyone.utils.sam.SegmentAnythingGetItem` for details.
+            img: a dictionary containing image, original size, and prompts. See :class:`fiftyone.utils.sam.SegmentAnythingGetItem` for details.
+            sample (None): sample is no longer used. Available for backward compatibility.
 
         Returns:
             a :class:`fiftyone.core.labels.Detections` instance or a dict
-            containing the masks, iou_predictions, low_res_logits for SAM model.
+            containing the "masks", "iou_predictions", "low_res_logits" from SAM model output.
         """
-        return self.predict_all(img, sample)
+        return self.predict_all(img, sample)[0]
 
     def predict_all(self, imgs, samples=None):
+        """Performs prediction on multiple images.
+
+        Args:
+            img: A dictionary containing images, original sizes, and prompts. See :class:`fiftyone.utils.sam.SegmentAnythingGetItem` for details.
+            samples (None): samples is no longer used. Available for backward compatibility.
+
+        Returns:
+            a list of :class:`fiftyone.core.labels.Detections` instances or a list of dict
+            containing the "masks", "iou_predictions", "low_res_logits" from SAM model output.
+        """
         if samples is not None:
             raise RuntimeError(
                 "Use of SamplesMixin has been deprecated."
@@ -549,6 +689,14 @@ class SegmentAnythingModel(fout.TorchImageModel):
         return self._predict_all(imgs)
 
     def build_get_item(self, field_mapping=None):
+        """Builds a :class:`SegmentAnythingImageGetItem` for loading model input from samples.
+
+        Args:
+            field_mapping (None): a dict mapping required keys to sample fields
+
+        Returns:
+            a :class:`SegmentAnythingImageGetItem` instance
+        """
         get_item_cls = self.config.get_item_cls
         if get_item_cls is None:
             raise Exception("GetItem class is set to None")
@@ -597,6 +745,8 @@ class SegmentAnythingModel(fout.TorchImageModel):
 
     @property
     def ragged_batches(self):
+        # Ragged image batches are not allowed. All image tensors fed to the model
+        # forward pass must be of the same size.
         return False
 
     @property
@@ -605,6 +755,21 @@ class SegmentAnythingModel(fout.TorchImageModel):
 
     @staticmethod
     def collate_fn(batch):
+        """Collates a batch of inputs where each input is generated from :class:`SegmentAnythingImageGetItem`.
+
+        Args:
+            batch: a list of dict containing model input from :class:`SegmentAnythingImageGetItem`
+
+        Returns:
+            a collated dictionary of model input for the batch. Expected keys are:
+                "image": a torch tensor of (B_img X B X C X H X W) shape or a list of numpy arrays of (B X C X H X W) shape
+                "boxes": a list of B X 4 boxes for SAM model input
+                "boxes_xyxy: a list of B x 4 boxes in XYXY pixels in original image space
+                "point_coords": a list of B X N x 2 point coordinates, padded as needed
+                "point_labels": a list of B X N point positive/negative labels, padded as needed
+                "prompt_type": name of prompt type for the batch
+                "classes": a list of classes for each prompt
+        """
         results = {}
         for key in batch[0]:
             results[key] = []
@@ -651,16 +816,18 @@ class SegmentAnythingModel(fout.TorchImageModel):
             # Preprocessing only applies collate. Args are expected to have the model transformations applied.
             args = self.collate_fn(args)
 
-        prompt_type = args.pop("prompt_type")
+        prompt_type = args["prompt_type"]
         if prompt_type == "auto":
             return self._forward_pass_auto(args)
 
         orig_image_sizes = args.get("original_size")
-        # Only preserve boxes when using box prompts.
+        # Only preserve boxes when using prompts with boxes.
         boxes_xyxy = (
-            args.pop("boxes_xyxy") if prompt_type == "box_only" else None
+            args["boxes_xyxy"]
+            if prompt_type in ["box_only", "box_point_combo"]
+            else None
         )
-        labels = args.pop("classes")
+        labels = args["classes"]
         for key in args:
             if isinstance(args[key], torch.Tensor):
                 args[key] = args[key].to(self.device)
@@ -684,8 +851,16 @@ class SegmentAnythingModel(fout.TorchImageModel):
         return output
 
     def _forward_pass(self, imgs):
+        """Forward pass with prompts
+
+        Args:
+            imgs: a dict containing model input
+
+        Returns:
+            a dict containing model output
+        """
         multimask_output = imgs.pop("multimask_output", False)
-        images = imgs.pop("image")
+        images = imgs["image"]
 
         # Adapted from segment-anything.modeling.sam.SAM.forward.
         input_images = self._model.preprocess(images)
@@ -735,8 +910,16 @@ class SegmentAnythingModel(fout.TorchImageModel):
             )
         return outputs
 
-    def _forward_pass_auto(self, args):
-        images = args.pop("image")
+    def _forward_pass_auto(self, imgs):
+        """Forward pass with no prompts.
+
+        Args:
+            imgs: a dictionary containing model input
+
+        Returns:
+            a :class:`fiftyone.core.labels.Detections` instance
+        """
+        images = imgs["image"]
         for img in images:
             inp = _to_sam_input(img)
             detections = []
