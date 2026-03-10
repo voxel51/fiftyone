@@ -3,6 +3,12 @@ import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GridSampleRendererLooker } from "./GridSampleRendererLooker";
 
+vi.mock("./GridTagBubbles", () => ({
+  default: ({ sample }: { sample?: { filepath?: string } }) => (
+    <div data-testid="grid-tag-bubbles">{sample?.filepath}</div>
+  ),
+}));
+
 class MockFallbackLooker extends EventTarget {
   public loaded = true;
   attach = vi.fn();
@@ -15,7 +21,7 @@ class MockFallbackLooker extends EventTarget {
 }
 
 const BASE_CTX = {
-  sample: { sample: { id: "sample-id" } },
+  sample: { sample: { id: "sample-id", filepath: "/tmp/file.pdf" } },
   media: {
     field: "filepath",
     path: "/tmp/file.pdf",
@@ -76,6 +82,7 @@ describe("GridSampleRendererLooker", () => {
     await waitFor(() => {
       expect(host.textContent).toContain("/media/file.pdf");
     });
+    expect(host.textContent).toContain("/tmp/file.pdf");
 
     expect(createFallbackLooker).not.toHaveBeenCalled();
     expect(loadSpy).toHaveBeenCalled();

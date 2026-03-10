@@ -8,6 +8,7 @@ import * as fos from "@fiftyone/state";
 import { Checkbox } from "@mui/material";
 import React from "react";
 import { createRoot, type Root } from "react-dom/client";
+import GridTagBubbles from "./GridTagBubbles";
 
 type GridSampleRendererLookerConfig = {
   createFallbackLooker: () => fos.Lookers;
@@ -212,6 +213,9 @@ export class GridSampleRendererLooker {
     }
 
     const { Renderer, ctx, RecoilBridge } = this.config;
+    const sample =
+      (ctx.sample as { sample?: Record<string, unknown> })?.sample ??
+      (ctx.sample as Record<string, unknown>);
     this.root.render(
       <RecoilBridge>
         <GridSampleRendererErrorBoundary
@@ -224,6 +228,7 @@ export class GridSampleRendererLooker {
             onSelect={this.handleSelectSampleClick}
           >
             <Renderer ctx={ctx} />
+            <GridTagBubbles sample={sample} />
           </GridSampleRendererWrapper>
         </GridSampleRendererErrorBoundary>
       </RecoilBridge>
