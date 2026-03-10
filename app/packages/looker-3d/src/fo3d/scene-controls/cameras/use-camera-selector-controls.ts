@@ -17,6 +17,7 @@ import { CameraAutocomplete } from "./CameraAutocomplete";
 import {
   buildCameraControlOptionsFromTransforms,
   type CameraControlOption,
+  resolveCameraSelectorTarget,
 } from "./utils";
 
 type UseCameraSelectorControlsParams = {
@@ -68,7 +69,7 @@ export const useCameraSelectorControls = ({
     if (!stillValid) {
       setSelectedCameraKey(null);
     }
-  }, [cameraOptions]);
+  }, [cameraOptions, selectedCameraKey]);
 
   const applyCameraSelection = useCallback(
     (cameraKey: string) => {
@@ -83,8 +84,14 @@ export const useCameraSelectorControls = ({
       setCameraPosition(translation);
 
       if (cameraControlsRef?.current) {
-        const target =
+        const fallbackTarget =
           lookAt || cameraControlsRef.current.getTarget(new Vector3());
+        const target = resolveCameraSelectorTarget({
+          translation,
+          quaternion: selectedCamera.quaternion,
+          fallbackTarget,
+        });
+
         cameraControlsRef.current.setLookAt(
           translation[0],
           translation[1],

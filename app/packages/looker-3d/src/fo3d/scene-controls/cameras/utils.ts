@@ -1,3 +1,5 @@
+import { Quaternion, Vector3 } from "three";
+
 export type SerializedStaticTransform = {
   translation: [number, number, number] | number[];
   quaternion: [number, number, number, number] | number[];
@@ -11,6 +13,7 @@ export type CameraControlOption = {
   sourceFrame: string;
   targetFrame: string;
   translation: [number, number, number];
+  quaternion: [number, number, number, number];
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> => {
@@ -70,6 +73,7 @@ export const buildCameraControlOptionsFromTransforms = (
       sourceFrame,
       targetFrame,
       translation: value.translation as [number, number, number],
+      quaternion: value.quaternion as [number, number, number, number],
     });
   });
 
@@ -100,6 +104,63 @@ export const buildCameraControlOptionsFromTransforms = (
       label: `${option.label} (${seen})`,
     };
   });
+};
+
+const FALLBACK_TARGET_DISTANCE = 1;
+const MIN_LOOK_AT_DISTANCE_SQUARED = 1e-8;
+
+const isFiniteVector3 = (vector: Vector3) =>
+  Number.isFinite(vector.x) &&
+  Number.isFinite(vector.y) &&
+  Number.isFinite(vector.z);
+
+/**
+ * Resolves the look-at target for camera selector transitions.
+ * Falls back to camera-forward direction when the fallback target would place
+ * the camera and target at the same point.
+ */
+export const resolveCameraSelectorTarget = ({
+  translation,
+  quaternion,
+  fallbackTarget,
+}: {
+  translation: [number, number, number];
+  quaternion: [number, number, number, number];
+  fallbackTarget: Vector3;
+}): Vector3 => {
+  const cameraPosition = new Vector3(
+    translation[0],
+    translation[1],
+    translation[2]
+  );
+
+  if (
+    isFiniteVector3(fallbackTarget) &&
+    cameraPosition.distanceToSquared(fallbackTarget) >
+      MIN_LOOK_AT_DISTANCE_SQUARED
+  ) {
+    return fallbackTarget.clone();
+  }
+
+  const cameraForward = new Vector3(0, 0, 1).applyQuaternion(
+    new Quaternion(
+      quaternion[0],
+      quaternion[1],
+      quaternion[2],
+      quaternion[3]
+    ).normalize()
+  );
+
+  if (
+    isFiniteVector3(cameraForward) &&
+    cameraForward.lengthSq() > MIN_LOOK_AT_DISTANCE_SQUARED
+  ) {
+    return cameraPosition.clone().add(cameraForward);
+  }
+
+  return cameraPosition
+    .clone()
+    .add(new Vector3(0, 0, FALLBACK_TARGET_DISTANCE));
 };
 
 export const filterCameraControlOptions = (

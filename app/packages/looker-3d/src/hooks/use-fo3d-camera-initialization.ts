@@ -17,6 +17,26 @@ import { cameraPositionAtom } from "../state";
 import { RenderPath } from "../types";
 import { useFo3dCameraLookAt } from "./use-fo3d-camera-look-at";
 
+const ORIGIN = new Vector3(0, 0, 0);
+const FALLBACK_TARGET_OFFSET = new Vector3(0, 0, 1);
+const MIN_TARGET_DISTANCE_SQUARED = 1e-8;
+
+const isFiniteVector3 = (vector: Vector3): boolean => {
+  return (
+    Number.isFinite(vector.x) &&
+    Number.isFinite(vector.y) &&
+    Number.isFinite(vector.z)
+  );
+};
+
+const toVector3 = (tuple: [number, number, number]) => {
+  return new Vector3(tuple[0], tuple[1], tuple[2]);
+};
+
+const areCoLocated = (a: Vector3, b: Vector3) => {
+  return a.distanceToSquared(b) <= MIN_TARGET_DISTANCE_SQUARED;
+};
+
 interface UseFo3dCameraInitializationArgs {
   cameraRef: React.RefObject<PerspectiveCamera>;
   cameraControlsRef: React.RefObject<CameraControls>;
@@ -51,6 +71,31 @@ export const useFo3dCameraInitialization = ({
     cameraControlsRef,
   });
 
+  const resolveTargetForOverridePosition = useCallback(
+    (overridePositionTuple: [number, number, number]) => {
+      const overridePosition = toVector3(overridePositionTuple);
+
+      if (!areCoLocated(overridePosition, ORIGIN)) {
+        return ORIGIN;
+      }
+
+      // If origin override also targets origin, controls get a
+      // zero camera-target distance which leads to degenerate state (eye = position - target, and can't be zero)
+      // and pinch/truck effectively stalls.
+      const currentTarget = cameraControlsRef.current?.getTarget(new Vector3());
+      if (
+        currentTarget &&
+        isFiniteVector3(currentTarget) &&
+        !areCoLocated(overridePosition, currentTarget)
+      ) {
+        return currentTarget;
+      }
+
+      return overridePosition.clone().add(FALLBACK_TARGET_OFFSET);
+    },
+    [cameraControlsRef]
+  );
+
   // Default camera position for mounts/remounts. Prefer persisted position so
   // mode switches don't flash back to hardcoded defaults.
   const mountCameraPosition = useMemo(() => {
@@ -65,7 +110,7 @@ export const useFo3dCameraInitialization = ({
     }
 
     return DEFAULT_CAMERA_POSITION();
-  }, [datasetName, currentRenderPath]);
+  }, [datasetName]);
 
   const persistCurrentCameraState = useCallback(() => {
     if (!cameraRef.current || !cameraControlsRef.current) {
@@ -161,7 +206,6 @@ export const useFo3dCameraInitialization = ({
   useEffect(() => {
     // Only fire when overriddenCameraPosition actually changes, not on mount/init
     if (prevOverrideRef.current === overriddenCameraPosition) {
-      prevOverrideRef.current = overriddenCameraPosition;
       return;
     }
     prevOverrideRef.current = overriddenCameraPosition;
@@ -172,10 +216,10 @@ export const useFo3dCameraInitialization = ({
 
     applyLookAt({
       position: overriddenCameraPosition,
-      target: [0, 0, 0],
+      target: resolveTargetForOverridePosition(overriddenCameraPosition),
       animate: true,
     });
-  }, [overriddenCameraPosition, applyLookAt]);
+  }, [overriddenCameraPosition, applyLookAt, resolveTargetForOverridePosition]);
 
   // This effect persists camera state on cleanup for render-path changes and unmount.
   useEffect(() => {

@@ -49,10 +49,12 @@ type CameraHarness = {
   getTarget: ReturnType<typeof vi.fn>;
 };
 
-const makeCameraHarness = (): CameraHarness => {
+const makeCameraHarness = (
+  targetValue: [number, number, number] = [4, 5, 6]
+): CameraHarness => {
   const setLookAt = vi.fn();
   const getTarget = vi.fn((target: Vector3) => {
-    target.set(4, 5, 6);
+    target.set(targetValue[0], targetValue[1], targetValue[2]);
     return target;
   });
 
@@ -82,7 +84,7 @@ const makeFoScene = (
       position,
       lookAt,
     },
-  } as any);
+  } as unknown as Parameters<typeof useFo3dCameraInitialization>[0]["foScene"]);
 
 describe("useFo3dCameraInitialization", () => {
   beforeEach(() => {
@@ -233,6 +235,34 @@ describe("useFo3dCameraInitialization", () => {
     rerender();
 
     expect(setLookAt).toHaveBeenCalledWith(4, 5, 6, 0, 0, 0, true);
+  });
+
+  it("uses non-degenerate target for origin override when current target is colocated", () => {
+    const { cameraRef, cameraControlsRef, setLookAt } = makeCameraHarness([
+      0, 0, 0,
+    ]);
+    const dispatchCameraLifecycle = vi.fn();
+
+    mockRecoilState.overriddenCameraPosition = [1, 2, 3];
+
+    const { rerender } = renderHook(() =>
+      useFo3dCameraInitialization({
+        cameraRef,
+        cameraControlsRef,
+        currentRenderPath: "main",
+        foScene: makeFoScene(null, null),
+        sceneBoundingBox: null,
+        upVector: new Vector3(0, 1, 0),
+        settings: null,
+        isBoundsResolved: true,
+        dispatchCameraLifecycle,
+      })
+    );
+
+    mockRecoilState.overriddenCameraPosition = [0, 0, 0];
+    rerender();
+
+    expect(setLookAt).toHaveBeenCalledWith(0, 0, 0, 0, 0, 1, true);
   });
 
   it("persists camera state on cleanup", () => {
