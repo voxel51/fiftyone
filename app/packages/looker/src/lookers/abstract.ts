@@ -16,6 +16,7 @@ import {
   Schema,
   withPath,
 } from "@fiftyone/utilities";
+import { buildThumbnailSelectionDetail } from "../selection";
 import { isEmpty } from "lodash";
 import { v4 as uuid } from "uuid";
 import { VideoLooker } from "..";
@@ -334,12 +335,15 @@ export abstract class AbstractLooker<
   protected getDispatchEvent(): (eventType: string, detail: any) => void {
     return (eventType: string, detail: any) => {
       if (eventType === "selectthumbnail") {
-        this.dispatchEvent(eventType, {
-          shiftKey: detail,
-          id: this.sample.id,
-          sample: this.sample,
-          symbol: this.state.config.symbol,
-        });
+        this.dispatchEvent(
+          eventType,
+          buildThumbnailSelectionDetail({
+            id: this.sample.id,
+            sample: this.sample,
+            symbol: this.state.config.symbol,
+            modifiers: detail,
+          })
+        );
         return;
       }
 

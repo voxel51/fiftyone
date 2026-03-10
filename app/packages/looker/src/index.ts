@@ -7,6 +7,7 @@ export * from "./cache";
 export { freeVideos, getFrameNumber } from "./elements/util";
 export * from "./lookers";
 export * from "./overlays";
+export * from "./selection";
 export * from "./selective-rendering-events";
 export type {
   BaseState,
