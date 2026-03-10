@@ -2,6 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import type { ViewportState } from "@fiftyone/looker";
 import type {
   Dimensions2D,
   DrawStyle,
@@ -176,9 +177,17 @@ export class MockRenderer2D {
     return this.canvas;
   }
 
-  disableZoomPan(): void {}
+  disableZoomPan(): void { }
 
-  enableZoomPan(): void {}
+  enableZoomPan(): void { }
+
+  getViewportState(): ViewportState {
+    return { scale: this.scale, panX: 0, panY: 0 };
+  }
+
+  setViewportState({ scale }: ViewportState): void {
+    this.scale = scale;
+  }
 
   screenToWorld(screenPoint: Point): Point {
     return {

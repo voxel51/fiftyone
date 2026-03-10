@@ -18,6 +18,7 @@ import {
   SELECTED_COLOR,
   TAB_GAP_DEFAULT,
 } from "../constants";
+import type { ViewportState } from "@fiftyone/looker";
 import type { LighterEventGroup } from "../events";
 import type { DrawStyle, Point, Rect, TextOptions } from "../types";
 import { parseColorWithAlpha } from "../utils/color";
@@ -664,6 +665,33 @@ export class PixiRenderer2D implements Renderer2D {
   resetZoomPan(): void {
     this.viewport?.setZoom(1);
     this.viewport?.moveCorner(0, 0);
+
+    this.emitViewportZoomed();
+    this.emitViewportMoved();
+  }
+
+  /**
+   * Returns the current zoom and pan state of the pixi-viewport.
+   */
+  getViewportState(): ViewportState {
+    return {
+      scale: this.viewport?.scaled ?? 1,
+      panX: this.viewport?.x ?? 0,
+      panY: this.viewport?.y ?? 0,
+    };
+  }
+
+  /**
+   * Restores a previously captured zoom and pan state to the pixi-viewport.
+   * Scale is applied first so that the pan offset is interpreted at the
+   * correct zoom level.
+   */
+  setViewportState({ scale, panX, panY }: ViewportState): void {
+    if (!this.viewport || this.viewport.destroyed) return;
+
+    this.viewport.setZoom(scale);
+    this.viewport.x = panX;
+    this.viewport.y = panY;
 
     this.emitViewportZoomed();
     this.emitViewportMoved();

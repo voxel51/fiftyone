@@ -17,6 +17,7 @@ import {
   TransformOverlayCommand,
 } from "../commands/TransformOverlayCommand";
 import { STROKE_WIDTH } from "../constants";
+import type { ViewportState } from "@fiftyone/looker";
 import type { LighterEventGroup } from "../events";
 import type { InteractionHandler } from "../interaction/InteractionManager";
 import { InteractionManager } from "../interaction/InteractionManager";
@@ -623,6 +624,22 @@ export class Scene2D {
    */
   resetZoomPan(): void {
     this.config.renderer.resetZoomPan();
+  }
+
+  /**
+   * Returns the current zoom and pan state of the scene's renderer.
+   * Use this to snapshot the viewport before unmounting the scene.
+   */
+  getViewportState(): ViewportState {
+    return this.config.renderer.getViewportState();
+  }
+
+  /**
+   * Restores a previously captured zoom and pan state to the scene's renderer.
+   * Call this after the renderer is initialized and the render loop has started.
+   */
+  setViewportState(state: ViewportState): void {
+    this.config.renderer.setViewportState(state);
   }
 
   /**

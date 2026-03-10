@@ -2,6 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import type { ViewportState } from "@fiftyone/looker";
 import type { DrawStyle, Point, Rect, TextOptions } from "../types";
 
 /**
@@ -55,6 +56,17 @@ export interface ResourceOptions {
  * 2D renderer interface.
  */
 export interface Renderer2D {
+  // Viewport state
+  /**
+   * Returns the current zoom and pan state of the viewport.
+   */
+  getViewportState(): ViewportState;
+
+  /**
+   * Applies a previously captured zoom and pan state to the viewport.
+   */
+  setViewportState(state: ViewportState): void;
+
   // Tick loop
   addTickHandler(onFrame: () => void): void;
   resetTickHandler(): void;
