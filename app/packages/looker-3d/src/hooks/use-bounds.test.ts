@@ -1,6 +1,6 @@
 import { act, renderHook } from "@testing-library/react-hooks";
-import { Box3, Group } from "three";
-import { afterEach, describe, expect, it, Mock, vi } from "vitest";
+import { Box3, type Group } from "three";
+import { type Mock, afterEach, describe, expect, it, vi } from "vitest";
 import { useFo3dBounds } from "./use-bounds";
 
 vi.useFakeTimers();
@@ -98,7 +98,12 @@ describe("useFo3dBounds", () => {
     // Mock Box3 to return a box with non-finite values
     const MockBox3 = vi.fn().mockImplementation(() => {
       return {
-        min: { x: Infinity, y: 0, z: 0, equals: vi.fn(() => true) },
+        min: {
+          x: Number.POSITIVE_INFINITY,
+          y: 0,
+          z: 0,
+          equals: vi.fn(() => true),
+        },
         max: { x: 1, y: 1, z: 1, equals: vi.fn(() => true) },
         setFromObject: vi.fn().mockReturnThis(),
       };
@@ -207,7 +212,6 @@ describe("useFo3dBounds", () => {
     } as unknown as React.RefObject<Group>;
 
     let computeCallCount = 0;
-    let computeCycleCount = 0; // Track which computation cycle we're in
     const MockBox3 = vi.fn().mockImplementation(() => {
       computeCallCount++;
       // Return different boxes based on compute cycle

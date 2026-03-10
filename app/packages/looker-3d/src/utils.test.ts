@@ -118,8 +118,8 @@ describe("computeMinMaxForScalarBufferAttribute", () => {
   it("handles empty array", () => {
     const attr = new BufferAttribute(new Float32Array([]), 1);
     expect(computeMinMaxForScalarBufferAttribute(attr)).toEqual({
-      min: Infinity,
-      max: -Infinity,
+      min: Number.POSITIVE_INFINITY,
+      max: Number.NEGATIVE_INFINITY,
     });
   });
 });
@@ -684,9 +684,9 @@ describe("isValidPoint3d", () => {
     expect(isValidPoint3d([1, 2])).toBe(false);
     expect(isValidPoint3d([1, 2, 3, 4])).toBe(false);
     expect(isValidPoint3d([1, 2, "3"])).toBe(false);
-    expect(isValidPoint3d([1, 2, NaN])).toBe(false);
-    expect(isValidPoint3d([1, 2, Infinity])).toBe(false);
-    expect(isValidPoint3d([1, 2, -Infinity])).toBe(false);
+    expect(isValidPoint3d([1, 2, Number.NaN])).toBe(false);
+    expect(isValidPoint3d([1, 2, Number.POSITIVE_INFINITY])).toBe(false);
+    expect(isValidPoint3d([1, 2, Number.NEGATIVE_INFINITY])).toBe(false);
   });
 });
 
@@ -842,11 +842,11 @@ describe("isValidPolylineSegment", () => {
   });
 
   it("handles edge cases", () => {
-    expect(isValidPolylineSegment([[NaN, 2, 3]])).toBe(false);
+    expect(isValidPolylineSegment([[Number.NaN, 2, 3]])).toBe(false);
     expect(
       isValidPolylineSegment([
         [1, 2, 3],
-        [Infinity, 5, 6],
+        [Number.POSITIVE_INFINITY, 5, 6],
       ])
     ).toBe(false);
     expect(
@@ -891,9 +891,9 @@ describe("getAxisAlignedBoundingBoxForPoints3d", () => {
       [1, 2],
       [1, 2, 3, 4],
       [1, 2, "3"],
-      [1, 2, NaN],
-      [1, 2, Infinity],
-      [1, 2, -Infinity],
+      [1, 2, Number.NaN],
+      [1, 2, Number.POSITIVE_INFINITY],
+      [1, 2, Number.NEGATIVE_INFINITY],
     ] as any;
     const result = getAxisAlignedBoundingBoxForPoints3d(invalidPoints);
     expect(result).toEqual({
@@ -962,7 +962,7 @@ describe("getAxisAlignedBoundingBoxForPoints3d", () => {
       [7, 8, 9],
       [1, 2],
       [10, 11, 12],
-      [NaN, 2, 3],
+      [Number.NaN, 2, 3],
       [13, 14, 15],
     ] as any;
     const result = getAxisAlignedBoundingBoxForPoints3d(mixedPoints);
@@ -1063,11 +1063,11 @@ describe("getAxisAlignedBoundingBoxForPoints3d", () => {
   it("filters out points with Infinity and computes bounding box", () => {
     const points = [
       [1, 2, 3],
-      [Infinity, 4, 5],
-      [6, Infinity, 7],
-      [8, 9, Infinity],
+      [Number.POSITIVE_INFINITY, 4, 5],
+      [6, Number.POSITIVE_INFINITY, 7],
+      [8, 9, Number.POSITIVE_INFINITY],
       [10, 11, 12],
-      [-Infinity, 13, 14],
+      [Number.NEGATIVE_INFINITY, 13, 14],
     ] as any;
     const result = getAxisAlignedBoundingBoxForPoints3d(points);
     expect(result.location).toEqual([5.5, 6.5, 7.5]);
@@ -1077,9 +1077,9 @@ describe("getAxisAlignedBoundingBoxForPoints3d", () => {
   it("filters out points with NaN and computes bounding box", () => {
     const points = [
       [1, 2, 3],
-      [NaN, 4, 5],
-      [6, NaN, 7],
-      [8, 9, NaN],
+      [Number.NaN, 4, 5],
+      [6, Number.NaN, 7],
+      [8, 9, Number.NaN],
       [10, 11, 12],
     ] as any;
     const result = getAxisAlignedBoundingBoxForPoints3d(points);

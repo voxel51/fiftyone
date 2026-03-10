@@ -43,6 +43,7 @@ export const usePercolateMaterial = (
   scene: Object3D,
   newMaterial: ReturnType<typeof useMeshMaterialControls>["material"]
 ) => {
+  // This effect applies opacity and wireframe settings across scene materials.
   useEffect(() => {
     scene.traverse((node: Mesh) => {
       if (!node.material) {

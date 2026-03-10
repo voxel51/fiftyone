@@ -12,7 +12,7 @@ import TimelineIcon from "@mui/icons-material/Timeline";
 import CameraIcon from "@mui/icons-material/Videocam";
 import Text from "@mui/material/Typography";
 import { animated, useSpring } from "@react-spring/web";
-import { getPerf, PerfHeadless } from "r3f-perf";
+import { PerfHeadless, getPerf } from "r3f-perf";
 import {
   type RefObject,
   useCallback,
@@ -198,10 +198,13 @@ const CameraInfo = ({
   }
 
   return (
-    <div style={{ display: "flex", alignItems: "center", opacity: 0.5 }}>
+    <div
+      style={{ display: "flex", alignItems: "center", opacity: 0.5 }}
+      data-cy="looker3d-statusbar-camera-info"
+    >
       <CameraIcon fontSize="small" />
       <div style={{ marginLeft: "0.5em", marginTop: "-5px" }}>
-        <Text variant="caption">
+        <Text variant="caption" data-cy="looker3d-statusbar-camera-position">
           {cameraPosition.x.toFixed(2)}, {cameraPosition.y.toFixed(2)},{" "}
           {cameraPosition.z.toFixed(2)}
         </Text>
@@ -420,7 +423,10 @@ export const StatusBar = ({
   return (
     <animated.div ref={containerRef} style={{ ...springProps }}>
       {!showPerfStatus && (
-        <MutedIconButton onClick={onClickHandler}>
+        <MutedIconButton
+          onClick={onClickHandler}
+          data-cy="looker3d-statusbar-toggle"
+        >
           <InfoIcon />
         </MutedIconButton>
       )}
@@ -445,16 +451,24 @@ export const StatusBar = ({
         </SegmentHint>
       )}
 
-      {!segmentState.isActive && (
+      {/* NOTE: this is a one-off case where we disable the component in playwright
+   so that this banner doesn't interfere with the tests.
+   waiting for analytics to show up before we can dismiss it is a pain
+   and adds significant time to the tests.
+   we should usually _never_ have any divergence between tests and prod. */}
+      {!segmentState.isActive && !window.IS_PLAYWRIGHT && (
         <AnnotationTips isMultiviewOn={isMultiviewOn} />
       )}
 
       {showPerfStatus && (
         <>
           <PerfStats />
-          <StatusBarContainer>
+          <StatusBarContainer data-cy="looker3d-statusbar">
             <CloseBar $bg={`rgba(255, 109, 5, 0.06)`}>
-              <IconButton onClick={onClickHandler}>
+              <IconButton
+                onClick={onClickHandler}
+                data-cy="looker3d-statusbar-close"
+              >
                 <Close />
               </IconButton>
             </CloseBar>
