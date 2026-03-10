@@ -1,8 +1,8 @@
 import { renderHook } from "@testing-library/react-hooks";
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { GridSampleRendererLooker } from "./GridSampleRendererLooker";
-import { useGridSampleRendererLooker } from "./useGridSampleRendererLooker";
+import { GridSampleRendererItem } from "./GridSampleRendererItem";
+import { useGridSampleRendererItem } from "./useGridSampleRendererItem";
 
 const {
   createSampleRendererRenderContext,
@@ -104,7 +104,7 @@ const sampleResult = {
   },
 } as any;
 
-describe("useGridSampleRendererLooker", () => {
+describe("useGridSampleRendererItem", () => {
   beforeEach(() => {
     createSampleRendererRenderContext.mockReturnValue(ctx);
     getMatchingSampleRenderer.mockReturnValue(registration);
@@ -113,7 +113,7 @@ describe("useGridSampleRendererLooker", () => {
     useActivePlugins.mockReturnValue([registration]);
   });
 
-  it("creates a grid sample renderer looker when a renderer matches", () => {
+  it("creates a grid sample renderer item when a renderer matches", () => {
     const createDefaultLooker = {
       current: vi.fn(() => ({
         addEventListener: vi.fn(),
@@ -121,18 +121,18 @@ describe("useGridSampleRendererLooker", () => {
       })),
     } as any;
     const { result } = renderHook(() =>
-      useGridSampleRendererLooker(createDefaultLooker)
+      useGridSampleRendererItem(createDefaultLooker)
     );
 
     expect(result.current.shouldOverrideRender(sampleResult)).toBe(true);
 
-    const looker = result.current.createLookerWithSampleRenderer(
+    const looker = result.current.createItemWithSampleRenderer(
       sampleResult,
       { description: "sample-id" } as any,
       12
     );
 
-    expect(looker).toBeInstanceOf(GridSampleRendererLooker);
+    expect(looker).toBeInstanceOf(GridSampleRendererItem);
   });
 
   it("stays on the default path when no sample renderer matches", () => {
@@ -140,14 +140,14 @@ describe("useGridSampleRendererLooker", () => {
       current: vi.fn(),
     } as any;
     const { result } = renderHook(() =>
-      useGridSampleRendererLooker(createDefaultLooker)
+      useGridSampleRendererItem(createDefaultLooker)
     );
 
     getMatchingSampleRenderer.mockReturnValue(null);
 
     expect(result.current.shouldOverrideRender(sampleResult)).toBe(false);
     expect(() =>
-      result.current.createLookerWithSampleRenderer(
+      result.current.createItemWithSampleRenderer(
         sampleResult,
         { description: "sample-id" } as any,
         12

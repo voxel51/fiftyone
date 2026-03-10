@@ -1,7 +1,7 @@
 import { fireEvent, waitFor } from "@testing-library/react";
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { GridSampleRendererLooker } from "./GridSampleRendererLooker";
+import { GridSampleRendererItem } from "./GridSampleRendererItem";
 
 vi.mock("./GridTagBubbles", () => ({
   default: ({ sample }: { sample?: { filepath?: string } }) => (
@@ -46,7 +46,7 @@ const getOpenModalButton = (host: HTMLElement) =>
 const getSelectControl = (host: HTMLElement) =>
   host.querySelector("[title='Select sample'], [title='Selected']");
 
-describe("GridSampleRendererLooker", () => {
+describe("GridSampleRendererItem", () => {
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
@@ -63,7 +63,7 @@ describe("GridSampleRendererLooker", () => {
     const Renderer = ({ ctx }: { ctx: { media: { url: string | null } } }) => (
       <div data-testid="renderer">{ctx.media.url}</div>
     );
-    const looker = new GridSampleRendererLooker({
+    const looker = new GridSampleRendererItem({
       createFallbackLooker,
       pluginName: "pdf-renderer",
       Renderer,
@@ -147,7 +147,7 @@ describe("GridSampleRendererLooker", () => {
     const Renderer = () => {
       throw new Error("render failed");
     };
-    const looker = new GridSampleRendererLooker({
+    const looker = new GridSampleRendererItem({
       createFallbackLooker,
       pluginName: "broken-renderer",
       Renderer,
@@ -191,7 +191,7 @@ describe("GridSampleRendererLooker", () => {
     const Renderer = () => {
       throw new Error("render failed");
     };
-    const looker = new GridSampleRendererLooker({
+    const looker = new GridSampleRendererItem({
       createFallbackLooker,
       pluginName: "broken-renderer",
       Renderer,
