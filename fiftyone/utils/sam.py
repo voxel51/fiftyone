@@ -98,31 +98,6 @@ class _SAMPredictor:
         points = self.processor.transform.apply_coords(points, img_hw)
         return torch.tensor(points), torch.tensor(labels)
 
-    def set_image(self, img, img_id=None, **kwargs):
-        img_size = kwargs["img_size"]
-        device = kwargs.pop("device", "cpu")
-        self.processor.set_torch_image(img.to(device), img_size)
-        self._image_id = img_id
-
-    def reset_image(self):
-        self.processor.reset_image()
-        self._image_id = None
-
-    def valid_image(self, curr_id):
-        if self.processor.is_image_set():
-            return curr_id == self._image_id
-        return True
-
-    def predict(self, device, prompt_type=None, **predict_kwargs):
-        if prompt_type == "box":
-            predict_kwargs["boxes"] = predict_kwargs["boxes"].to(device)
-            return self.processor.predict_torch(**predict_kwargs)
-
-        if prompt_type == "combination":
-            predict_kwargs["box"] = predict_kwargs["box"].numpy()
-
-        return self.processor.predict(**predict_kwargs)
-
 
 class SAMPromptMode(Enum):
     auto = 1
@@ -552,6 +527,18 @@ class SegmentAnythingModel(fout.TorchImageModel):
         kwargs = self.config.auto_kwargs or {}
         return sam.SamAutomaticMaskGenerator(self._model, **kwargs)
 
+    def predict(self, img, sample=None):
+        """Performs prediction a single image.
+
+        Args:
+            img (dict): A dictionary containing image, original size, and prompts. See :class:`fiftyone.utils.sam.SegmentAnythingGetItem` for details.
+
+        Returns:
+            a :class:`fiftyone.core.labels.Detections` instance or a dict
+            containing the masks, iou_predictions, low_res_logits for SAM model.
+        """
+        return self.predict_all(img, sample)
+
     def predict_all(self, imgs, samples=None):
         if samples is not None:
             raise RuntimeError(
@@ -593,7 +580,6 @@ class SegmentAnythingModel(fout.TorchImageModel):
                 field_mapping["point_prompt_field"] = value
 
         # TODO: Add an optional mode in GetItem which can be set via apply_model.
-        # This will make backward compatibility easier to maintain.
         return get_item(
             field_mapping=field_mapping,
             transform=get_item_args.pop(
@@ -652,15 +638,13 @@ class SegmentAnythingModel(fout.TorchImageModel):
                 else:
                     results[key].append(val)
 
-        results["image"] = torch.cat(results["image"], dim=0)
+        if isinstance(results["image"][0], torch.Tensor):
+            results["image"] = torch.cat(results["image"], dim=0)
 
         # Collapse prompt type
         results["prompt_type"] = results["prompt_type"][0]
 
         return results
-
-    def predict(self, img):
-        return self._predict_all(img)
 
     def _predict_all(self, args):
         if self._preprocess and self.has_collate_fn:

@@ -52,7 +52,7 @@ class _SAM2Predictor(fosam._SAMPredictor):
 
     def image_transform(self, img):
         # SAM2 does image pre-processing when it calls SAM2ImagePredictor.set_image.
-        # No straight-forward way to decouple them.
+        # No straight-forward way to decouple them other than extracting the functionality.
         return img, img.shape[:2]
 
     def box_transform(self, boxes_xyxy, img_hw):
@@ -63,44 +63,16 @@ class _SAM2Predictor(fosam._SAMPredictor):
         )
 
     def point_transform(self, points, img_hw, point_labels=None):
-        norm_points, labels = super().point_transform(
-            points, (1, 1), point_labels
+        norm_points, labels = fosam._to_sam_points(
+            points,
+            height=1,
+            width=1,
+            point_labels=point_labels,
         )
-        return self.processor._transforms.transform_coords(norm_points), labels
-
-    def set_image(self, img, img_id=None, **kwargs):
-        self.processor.set_image(img)
-        self._image_id = img_id
-
-    def predict(self, device, prompt_type=None, **predict_kwargs):
-        boxes = (
-            predict_kwargs.pop("box")
-            if "box" in predict_kwargs
-            else predict_kwargs.get("boxes", None)
+        unnorm_points = self.processor._transforms.transform_coords(
+            norm_points
         )
-        if boxes is not None:
-            if len(boxes.shape) == 2:
-                boxes = boxes[None, ...]
-            predict_kwargs["boxes"] = boxes.to(device)
-
-        # Points are expected as tensors of BxNx2 and labels as Bx1 in _predict.
-        # Batch size is 1 for point prompts since we don't batch points.
-        point_coords = predict_kwargs["point_coords"]
-        point_labels = predict_kwargs["point_labels"]
-        if point_coords is not None:
-            if len(point_coords.shape) == 2:
-                point_coords = point_coords[None, ...]
-            predict_kwargs["point_coords"] = torch.tensor(point_coords).to(
-                device
-            )
-        if point_labels is not None:
-            if len(point_labels.shape) == 1:
-                point_labels = point_labels[None, ...]
-            predict_kwargs["point_labels"] = torch.tensor(
-                point_labels, dtype=torch.int
-            ).to(device)
-
-        return self.processor._predict(**predict_kwargs)
+        return torch.tensor(unnorm_points), torch.tensor(labels)
 
 
 class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
@@ -188,17 +160,45 @@ class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
         kwargs = self.config.auto_kwargs or {}
         return samg.SAM2AutomaticMaskGenerator(self._model, **kwargs)
 
-    def _forward_pass_auto(self, arg):
-        img = arg["image"]
-        detections = []
-        # TODO: Move this to post-processing op.
-        for data in self._sam_auto_generator.generate(img):
-            detection = fol.Detection.from_mask(
-                mask=data["segmentation"],
-                score=data["predicted_iou"],
-                stability=data["stability_score"],
+    def _forward_pass(self, imgs):
+        multimask_output = imgs.pop("multimask_output", False)
+        images = imgs.pop("image")
+
+        self._sam_predictor.processor.set_image_batch(images)
+
+        point_coords = imgs.get("point_coords")
+        point_labels = imgs.get("point_labels")
+        boxes = imgs.get("boxes")
+        mask_inputs = imgs.get("mask_inputs")  # Not used currently
+
+        outputs = []
+        for img_idx in range(len(images)):
+            out_masks, iou_pred, _ = self._sam_predictor.processor._predict(
+                point_coords=point_coords[img_idx]
+                if point_coords is not None
+                else None,
+                point_labels=point_labels[img_idx]
+                if point_labels is not None
+                else None,
+                boxes=boxes[img_idx] if boxes is not None else None,
+                mask_input=mask_inputs[img_idx] if mask_inputs else None,
+                multimask_output=multimask_output,
             )
-            detections.append(detection)
+            outputs.append({"masks": out_masks, "iou_predictions": iou_pred})
+        return outputs
+
+    def _forward_pass_auto(self, args):
+        images = args.pop("image")
+        for img in images:
+            detections = []
+            # TODO: Move this to post-processing op.
+            for data in self._sam_auto_generator.generate(img):
+                detection = fol.Detection.from_mask(
+                    mask=data["segmentation"],
+                    score=data["predicted_iou"],
+                    stability=data["stability_score"],
+                )
+                detections.append(detection)
         return fol.Detections(detections=detections)
 
 
