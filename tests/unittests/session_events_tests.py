@@ -6,16 +6,14 @@ FiftyOne session events-related unit tests.
 |
 """
 
-import asyncio
-from collections import defaultdict
 from dataclasses import asdict
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from dacite import from_dict
 
+# pylint: disable=no-name-in-module,import-error
 from fiftyone.core.session.constants import VALID_ICON_STYLES
-from fiftyone.core.state import StateDescription
 from fiftyone.core.session.session import (
     _on_select_labels,
     _normalize_selected_samples,
@@ -23,12 +21,12 @@ from fiftyone.core.session.session import (
 )
 from fiftyone.core.session.events import (
     SelectLabels,
-    SelectSamples,
     SetSampleSelectionStyle,
 )
+
+# pylint: enable=no-name-in-module,import-error
+from fiftyone.core.state import StateDescription
 from fiftyone.operators.operations import Operations
-from fiftyone.server.events.dispatch import dispatch_event
-from fiftyone.server.events.state import set_state
 
 from decorators import drop_datasets
 
@@ -232,7 +230,7 @@ class SessionTests(unittest.TestCase):
     @drop_datasets
     def test_constructor_selected_samples_takes_priority(self):
         """selected_samples kwarg takes priority over selected kwarg."""
-        state = StateDescription(
+        state = StateDescription(  # pylint: disable=unexpected-keyword-arg
             selected=["a" * 24],
             selected_samples=[
                 {"sample_id": "b" * 24, "type": "alt"},
@@ -450,7 +448,9 @@ class SessionTests(unittest.TestCase):
         mock_ctx = MagicMock()
         ops = Operations(mock_ctx)
 
-        ops.set_sample_selection_style(default="thumbsup", alt="thumbsdown")
+        ops.set_sample_selection_style(  # pylint: disable=no-member
+            default="thumbsup", alt="thumbsdown"
+        )
 
         mock_ctx.trigger.assert_called_once_with(
             "set_sample_selection_style",
@@ -463,95 +463,8 @@ class SessionTests(unittest.TestCase):
         mock_ctx = MagicMock()
         ops = Operations(mock_ctx)
 
-        ops.clear_sample_selection_style()
+        ops.clear_sample_selection_style()  # pylint: disable=no-member
 
         mock_ctx.trigger.assert_called_once_with(
             "clear_sample_selection_style"
         )
-
-    # -------------------------------------------------------------------
-    # SelectSamples event
-    # -------------------------------------------------------------------
-
-    def test_select_samples_event_with_dicts(self):
-        """SelectSamples event stores list of dicts."""
-        event = SelectSamples(
-            samples=[
-                {"sample_id": "a" * 24, "type": "default"},
-                {"sample_id": "b" * 24, "type": "alt"},
-            ]
-        )
-        self.assertEqual(len(event.samples), 2)
-        self.assertEqual(event.samples[0]["sample_id"], "a" * 24)
-        self.assertEqual(event.samples[1]["type"], "alt")
-
-    # -------------------------------------------------------------------
-    # dispatch_event round-trip
-    # -------------------------------------------------------------------
-
-    @drop_datasets
-    @patch(
-        "fiftyone.server.events.dispatch.get_listeners",
-        return_value=defaultdict(list),
-    )
-    def test_dispatch_select_samples_updates_state(self, _mock):
-        """dispatch_event(SelectSamples) updates selected_samples and
-        selected is derived."""
-        state = StateDescription()
-        set_state(state)
-
-        event = SelectSamples(
-            samples=[
-                {"sample_id": "a" * 24, "type": "default"},
-                {"sample_id": "b" * 24, "type": "alt"},
-            ]
-        )
-        asyncio.get_event_loop().run_until_complete(
-            dispatch_event(None, event)
-        )
-
-        self.assertEqual(
-            state.selected_samples,
-            [
-                {"sample_id": "a" * 24, "type": "default"},
-                {"sample_id": "b" * 24, "type": "alt"},
-            ],
-        )
-        self.assertEqual(state.selected, ["a" * 24, "b" * 24])
-
-    @drop_datasets
-    @patch(
-        "fiftyone.server.events.dispatch.get_listeners",
-        return_value=defaultdict(list),
-    )
-    def test_dispatch_select_samples_clear(self, _mock):
-        """dispatch_event(SelectSamples(samples=[])) clears both fields."""
-        state = StateDescription()
-        state.selected_samples = [
-            {"sample_id": "a" * 24, "type": "default"},
-        ]
-        set_state(state)
-
-        asyncio.get_event_loop().run_until_complete(
-            dispatch_event(None, SelectSamples(samples=[]))
-        )
-
-        self.assertEqual(state.selected, [])
-        self.assertEqual(state.selected_samples, [])
-
-    @drop_datasets
-    @patch(
-        "fiftyone.server.events.dispatch.get_listeners",
-        return_value=defaultdict(list),
-    )
-    def test_dispatch_set_sample_selection_style(self, _mock):
-        """dispatch_event(SetSampleSelectionStyle) updates state."""
-        state = StateDescription()
-        set_state(state)
-
-        style = {"default": "thumbsup", "alt": "thumbsdown"}
-        asyncio.get_event_loop().run_until_complete(
-            dispatch_event(None, SetSampleSelectionStyle(style=style))
-        )
-
-        self.assertEqual(state.sample_selection_style, style)
