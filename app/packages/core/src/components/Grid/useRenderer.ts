@@ -3,7 +3,7 @@ import * as fos from "@fiftyone/state";
 import { useCallback, useMemo, useRef } from "react";
 import type { LookerCache } from "./types";
 import useFontSize from "./useFontSize";
-import { useGridRenderClaimsLooker } from "./useGridRenderClaimsLooker";
+import { useGridSampleRendererLooker } from "./useGridSampleRendererLooker";
 import useSelectSample from "./useSelectSample";
 import type { SampleStore } from "./useSpotlightPager";
 
@@ -22,12 +22,11 @@ export default function useRenderer({
   const createLooker = fos.useCreateLooker(false, true, lookerOptions);
   const getFontSize = useFontSize(id);
   const selectSample = useSelectSample(records);
-  const renderClaims = useGridRenderClaimsLooker(createLooker);
+  const sampleRenderer = useGridSampleRendererLooker(createLooker);
 
-  // We need returned `renderer` to be referentially stable, which requires referential stability for `showItem`
-  // since `showItem` depends on `renderClaims`, we use a ref
-  const renderClaimsRef = useRef(renderClaims);
-  renderClaimsRef.current = renderClaims;
+  // `showItem` must stay stable even as the sample renderer hook refreshes.
+  const sampleRendererRef = useRef(sampleRenderer);
+  sampleRendererRef.current = sampleRenderer;
 
   const detachItem = useCallback(
     (id: ID) => cache.get(id.description)?.detach(),
@@ -69,9 +68,9 @@ export default function useRenderer({
 
       let looker: fos.Lookers;
 
-      if (renderClaimsRef.current.shouldOverrideRender(result)) {
+      if (sampleRendererRef.current.shouldOverrideRender(result)) {
         try {
-          looker = renderClaimsRef.current.createLookerWithPluginRenderer(
+          looker = sampleRendererRef.current.createLookerWithSampleRenderer(
             result,
             id,
             getFontSize()
