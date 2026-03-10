@@ -709,6 +709,7 @@ class Session(object):
         self._state.spaces = default_workspace_factory()
         self._state.selected_samples = []
         self._state.selected_labels = []
+        self._state.sample_selection_style = dict(DEFAULT_SELECTION_STYLE)
         self._state.view = None
 
     @property
@@ -753,6 +754,7 @@ class Session(object):
         self._state.sample_id = None
         self._state.selected_samples = []
         self._state.selected_labels = []
+        self._state.sample_selection_style = dict(DEFAULT_SELECTION_STYLE)
 
     @property
     def has_plots(self) -> bool:
@@ -794,7 +796,17 @@ class Session(object):
 
     @selected.setter  # type: ignore
     def selected(self, sample_ids: t.List[str]) -> None:
-        samples = _normalize_selected_samples(sample_ids or [])
+        # Preserve existing selection types; new IDs default to "default"
+        existing = {
+            s["sample_id"]: s["type"]
+            for s in (self._state.selected_samples or [])
+            if isinstance(s, dict)
+        }
+        samples = [
+            {"sample_id": sid, "type": existing.get(sid, "default")}
+            for sid in (sample_ids or [])
+        ]
+        samples = _normalize_selected_samples(samples)
         self._state.selected_samples = samples
         self._client.send_event(SelectSamples(samples=samples))
 

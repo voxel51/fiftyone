@@ -105,6 +105,7 @@ class Mutation(SetColorScheme):
         state.sample_id = None
         state.selected_labels = []
         state.selected_samples = []
+        state.sample_selection_style = dict(DEFAULT_SELECTION_STYLE)
         state.spaces = foo.default_workspace_factory()
         state.view = None
 
@@ -252,6 +253,7 @@ class Mutation(SetColorScheme):
         state.sample_id = None
         state.selected_labels = []
         state.selected_samples = []
+        state.sample_selection_style = dict(DEFAULT_SELECTION_STYLE)
 
         if not dataset_name:
             state.dataset = None
