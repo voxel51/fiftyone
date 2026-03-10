@@ -1,6 +1,7 @@
 import { rollbackViewBar } from "@fiftyone/core";
 import { setView, type setViewMutation } from "@fiftyone/relay";
 import {
+  DEFAULT_SELECTION_STYLE,
   type State,
   datasetName,
   stateSubscription,
@@ -43,6 +44,7 @@ const onSetView: RegisteredSetter =
 
         sessionRef.current.selectedLabels = [];
         sessionRef.current.selectedSamples = new Map();
+        sessionRef.current.sampleSelectionStyle = DEFAULT_SELECTION_STYLE;
         sessionRef.current.fieldVisibilityStage = undefined;
         router.history.push(
           resolveURL({
