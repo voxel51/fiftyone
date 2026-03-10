@@ -166,7 +166,8 @@ class MapAnythingModel(fout.TorchImageModel):
     def _to_pil(self, img):
         """Convert any image input to PIL RGB."""
         if isinstance(img, str):
-            return Image.open(img).convert("RGB")
+            with Image.open(img) as f:
+                return f.convert("RGB")
 
         if isinstance(img, Image.Image):
             return img.convert("RGB")
@@ -214,6 +215,10 @@ class MapAnythingModel(fout.TorchImageModel):
                     mask_edges=True,
                 )
 
+                if not preds:
+                    raise RuntimeError(
+                        "MapAnything infer() returned no predictions"
+                    )
                 pred = preds[0]
 
                 if self._output_type == "depth":
@@ -256,8 +261,8 @@ class MapAnythingModel(fout.TorchImageModel):
                     )
                 else:
                     raise ValueError(
-                        "output_type must be 'depth' or 'pointcloud', "
-                        "got '%s'" % self._output_type
+                        f"output_type must be 'depth' or 'pointcloud', "
+                        f"got '{self._output_type}'"
                     )
 
         return outputs

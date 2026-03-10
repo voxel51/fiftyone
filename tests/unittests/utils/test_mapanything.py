@@ -784,11 +784,13 @@ class TestManifestEntry:
     @pytest.fixture(scope="class")
     def manifest(self):
         import json
+        import fiftyone
+
         manifest_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(
-                os.path.dirname(os.path.abspath(__file__))
-            ))),
-            "fiftyone", "zoo", "models", "manifest-torch.json",
+            os.path.dirname(fiftyone.__file__),
+            "zoo",
+            "models",
+            "manifest-torch.json",
         )
         with open(manifest_path, "r") as f:
             data = json.load(f)
@@ -874,7 +876,7 @@ class TestBatchProcessing:
                 model_single._predict_all([img])[0] for _ in range(3)
             ]
 
-        for b, s in zip(batch_result, single_results):
+        for b, s in zip(batch_result, single_results, strict=True):
             np.testing.assert_array_equal(b.map, s.map)
 
     def test_batch_vs_individual_pointcloud(self):
@@ -896,7 +898,7 @@ class TestBatchProcessing:
                 model_single._predict_all([img])[0] for _ in range(2)
             ]
 
-        for b, s in zip(batch_result, single_results):
+        for b, s in zip(batch_result, single_results, strict=True):
             np.testing.assert_array_equal(b.points3d, s.points3d)
 
     def test_mixed_input_types_in_batch(self, tmp_path):
