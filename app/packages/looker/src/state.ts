@@ -299,11 +299,11 @@ export interface TooltipOverlay {
   label: object;
   target?: number;
   type:
-    | "Classification"
-    | "Detection"
-    | "Keypoint"
-    | "Polyline"
-    | "Segmentation";
+  | "Classification"
+  | "Detection"
+  | "Keypoint"
+  | "Polyline"
+  | "Segmentation";
 }
 
 export interface BaseState {
@@ -527,4 +527,14 @@ export interface FrameChunkResponse extends FrameChunk {
   frames: FrameSample[];
   range: [number, number];
   error?: boolean;
+}
+
+/**
+ * The zoom and pan state of a modal viewer, used to transfer camera position
+ * when switching between Explore (Looker) and Annotate (Lighter) modes.
+ */
+export interface ViewportState {
+  scale: number;
+  panX: number;
+  panY: number;
 }
