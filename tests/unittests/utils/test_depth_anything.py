@@ -9,6 +9,7 @@ Tests for fiftyone/utils/depth_anything.py Depth Anything V3 model wrapper.
 import inspect
 import os
 from types import SimpleNamespace
+from typing import Any, Iterator, List, Optional
 
 import numpy as np
 import pytest
@@ -340,32 +341,43 @@ class TestDepthAnythingV3ModelConfigNewParams:
 class TestDepthAnythingV3Exports:
     def test_compute_3d_exports_uses_keyword_only_args_and_sets_gs_video_path(
         self, monkeypatch
-    ):
+    ) -> None:
         from fiftyone.utils.depth_anything import DepthAnythingV3Model
         import fiftyone.utils.depth_anything as foda
 
         class _FakeSample(dict):
-            def __init__(self, filepath):
+            def __init__(self, filepath: str) -> None:
                 super().__init__()
                 self.filepath = filepath
 
         class _FakeCollection:
-            def __init__(self, samples):
+            def __init__(self, samples: List["_FakeSample"]) -> None:
                 self._samples = samples
 
-            def iter_samples(self, autosave=True, progress=None):
+            def iter_samples(
+                self,
+                autosave: bool = True,
+                progress: Optional[bool] = None,
+            ) -> Iterator["_FakeSample"]:
                 return iter(self._samples)
 
         class _FakeFilenameMaker:
-            def __init__(self, output_dir, rel_dir=None, ignore_existing=False):
+            def __init__(
+                self,
+                output_dir: str,
+                rel_dir: Optional[str] = None,
+                ignore_existing: bool = False,
+            ) -> None:
                 self.output_dir = output_dir
 
-            def get_output_path(self, filepath, output_ext=""):
+            def get_output_path(
+                self, filepath: str, output_ext: str = ""
+            ) -> str:
                 return os.path.join(self.output_dir, "sample")
 
         calls = []
 
-        def _fake_inference(filepaths, **kwargs):
+        def _fake_inference(filepaths: List[str], **kwargs: Any) -> None:
             calls.append((filepaths, kwargs))
             gs_video_dir = os.path.join(kwargs["export_dir"], "gs_video")
             os.makedirs(gs_video_dir, exist_ok=True)
