@@ -26,6 +26,7 @@ DEFAULT_SHARP_MODEL_URL = (
     "https://ml-site.cdn-apple.com/models/sharp/sharp_2572gikvuh.pt"
 )
 DEFAULT_FOCAL_LENGTH = 26.0
+_FULL_FRAME_SENSOR_WIDTH_MM = 36.0
 
 _SHARP_REQ = (
     "sharp @ git+https://github.com/apple/ml-sharp.git"
@@ -137,8 +138,52 @@ class AppleSharpModel(fout.TorchImageModel):
         if isinstance(img, Image.Image):
             return np.array(img.convert("RGB"))
 
+        if isinstance(img, np.ndarray):
+            if img.ndim == 3 and img.shape[-1] == 3 and img.dtype == np.uint8:
+                return img
+
+            pil_img = fout.ToPILImage()(img)
+            return np.array(pil_img.convert("RGB"))
+
         pil_img = fout.ToPILImage()(img)
         return np.array(pil_img.convert("RGB"))
+
+    def focal_length_to_fpx(self, width):
+        """Convert 35mm-equivalent focal length in mm to focal length in px."""
+        return self._focal_length_mm * width / _FULL_FRAME_SENSOR_WIDTH_MM
+
+    def disparity_factor(self, width):
+        """Compute the SHARP disparity factor for an image width."""
+        fou.ensure_torch()
+        import torch
+
+        f_px = self.focal_length_to_fpx(width)
+        return torch.tensor(
+            [f_px / width], dtype=torch.float32, device=self._device
+        )
+
+    def compute_intrinsics(self, height, width, f_px):
+        """Build the 4x4 intrinsics matrix for the input image."""
+        fou.ensure_torch()
+        import torch
+
+        return torch.tensor(
+            [
+                [f_px, 0, width / 2, 0],
+                [0, f_px, height / 2, 0],
+                [0, 0, 1, 0],
+                [0, 0, 0, 1],
+            ],
+            dtype=torch.float32,
+            device=self._device,
+        )
+
+    def resize_intrinsics(self, intrinsics, internal_shape, height, width):
+        """Scale intrinsics for the resized SHARP inference shape."""
+        intrinsics_resized = intrinsics.clone()
+        intrinsics_resized[0] *= internal_shape[1] / width
+        intrinsics_resized[1] *= internal_shape[0] / height
+        return intrinsics_resized
 
     def _export_gaussians(self, gaussians, f_px, height, width):
         """Export gaussians to a PLY file and return a Classification label."""
@@ -156,7 +201,21 @@ class AppleSharpModel(fout.TorchImageModel):
         import torch
         import torch.nn.functional as F
 
-        if not isinstance(imgs, list):
+        if isinstance(imgs, torch.Tensor):
+            if imgs.ndim == 3:
+                imgs = [imgs]
+            elif imgs.ndim == 4:
+                imgs = list(imgs)
+            else:
+                raise ValueError("Expected CHW or NCHW torch tensor input")
+        elif isinstance(imgs, np.ndarray):
+            if imgs.ndim == 3:
+                imgs = [imgs]
+            elif imgs.ndim == 4:
+                imgs = list(imgs)
+            else:
+                raise ValueError("Expected HWC or NHWC numpy array input")
+        elif not isinstance(imgs, list):
             imgs = [imgs]
 
         if len(imgs) == 0:
@@ -168,11 +227,8 @@ class AppleSharpModel(fout.TorchImageModel):
                 img_np = self._to_numpy(img)
                 height, width = img_np.shape[:2]
 
-                sensor_width_mm = 36.0  # 35mm full-frame sensor
-                f_px = self._focal_length_mm * width / sensor_width_mm
-                disparity_factor = (
-                    torch.tensor([f_px / width]).float().to(self._device)
-                )
+                f_px = self.focal_length_to_fpx(width)
+                disparity_factor = self.disparity_factor(width)
 
                 img_pt = torch.from_numpy(img_np.copy()).float().to(self._device)
                 img_pt = img_pt.permute(2, 0, 1) / 255.0
@@ -187,22 +243,10 @@ class AppleSharpModel(fout.TorchImageModel):
 
                 gaussians_ndc = self._model(img_resized, disparity_factor)
 
-                intrinsics = (
-                    torch.tensor(
-                        [
-                            [f_px, 0, width / 2, 0],
-                            [0, f_px, height / 2, 0],
-                            [0, 0, 1, 0],
-                            [0, 0, 0, 1],
-                        ]
-                    )
-                    .float()
-                    .to(self._device)
+                intrinsics = self.compute_intrinsics(height, width, f_px)
+                intrinsics_resized = self.resize_intrinsics(
+                    intrinsics, internal_shape, height, width
                 )
-
-                intrinsics_resized = intrinsics.clone()
-                intrinsics_resized[0] *= internal_shape[1] / width
-                intrinsics_resized[1] *= internal_shape[0] / height
 
                 gaussians = sharp_utils.unproject_gaussians(
                     gaussians_ndc,

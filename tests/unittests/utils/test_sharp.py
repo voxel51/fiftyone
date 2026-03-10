@@ -107,72 +107,67 @@ class TestAppleSharpToNumpy:
         assert result[0, 0, 1] == 128
         assert result[0, 0, 2] == 128
 
+    def test_to_numpy_ndarray_rgb_uint8(self):
+        """Test uint8 HWC numpy array is handled directly."""
+        import numpy as np
+
+        model = self._make_model()
+        arr = np.zeros((20, 30, 3), dtype=np.uint8)
+        arr[0, 0] = [255, 128, 64]
+        result = model._to_numpy(arr)
+
+        assert isinstance(result, np.ndarray)
+        assert result.dtype == np.uint8
+        assert result.shape == (20, 30, 3)
+        assert np.array_equal(result, arr)
+
 
 class TestAppleSharpIntrinsics:
     """Test focal length and intrinsics calculations."""
 
+    def _make_model(self, focal_length_mm=26.0):
+        """Create a minimal model instance for intrinsics tests."""
+        import torch
+        from fiftyone.utils.sharp import AppleSharpModel
+
+        model = AppleSharpModel.__new__(AppleSharpModel)
+        model._focal_length_mm = focal_length_mm
+        model._device = torch.device("cpu")
+        return model
+
     def test_focal_length_to_fpx_default(self):
         """Test f_px calculation with default 26mm focal length."""
-        focal_length_mm = 26.0
-        width = 1920
-        sensor_width_mm = 36.0
-
-        f_px = focal_length_mm * width / sensor_width_mm
-
-        assert f_px == pytest.approx(1386.67, rel=0.01)
+        model = self._make_model(26.0)
+        assert model.focal_length_to_fpx(1920) == pytest.approx(
+            1386.67, rel=0.01
+        )
 
     def test_focal_length_to_fpx_50mm(self):
         """Test f_px calculation with 50mm focal length."""
-        focal_length_mm = 50.0
-        width = 1920
-        sensor_width_mm = 36.0
-
-        f_px = focal_length_mm * width / sensor_width_mm
-
-        assert f_px == pytest.approx(2666.67, rel=0.01)
+        model = self._make_model(50.0)
+        assert model.focal_length_to_fpx(1920) == pytest.approx(
+            2666.67, rel=0.01
+        )
 
     def test_disparity_factor_calculation(self):
         """Test disparity factor is f_px / width."""
-        focal_length_mm = 26.0
-        width = 1000
-        sensor_width_mm = 36.0
-
-        f_px = focal_length_mm * width / sensor_width_mm
-        disparity_factor = f_px / width
-
-        assert disparity_factor == pytest.approx(0.7222, rel=0.01)
+        model = self._make_model(26.0)
+        disparity_factor = model.disparity_factor(1000)
+        assert disparity_factor.item() == pytest.approx(0.7222, rel=0.01)
 
     def test_intrinsics_matrix_shape(self):
         """Test intrinsics matrix is 4x4."""
-        import torch
-
-        f_px = 1000.0
-        width = 1920
-        height = 1080
-
-        intrinsics = torch.tensor([
-            [f_px, 0, width / 2, 0],
-            [0, f_px, height / 2, 0],
-            [0, 0, 1, 0],
-            [0, 0, 0, 1],
-        ]).float()
-
+        model = self._make_model()
+        intrinsics = model.compute_intrinsics(1080, 1920, 1000.0)
         assert intrinsics.shape == (4, 4)
 
     def test_intrinsics_matrix_values(self):
         """Test intrinsics matrix has correct structure."""
-        import torch
-
         f_px = 1500.0
         width = 1920
         height = 1080
-
-        intrinsics = torch.tensor([
-            [f_px, 0, width / 2, 0],
-            [0, f_px, height / 2, 0],
-            [0, 0, 1, 0],
-            [0, 0, 0, 1],
-        ]).float()
+        model = self._make_model()
+        intrinsics = model.compute_intrinsics(height, width, f_px)
 
         assert intrinsics[0, 0] == f_px
         assert intrinsics[1, 1] == f_px
@@ -183,23 +178,15 @@ class TestAppleSharpIntrinsics:
 
     def test_intrinsics_resized_scaling(self):
         """Test intrinsics scaling for internal_shape."""
-        import torch
-
         f_px = 1000.0
         width = 1920
         height = 1080
         internal_shape = (1536, 1536)
-
-        intrinsics = torch.tensor([
-            [f_px, 0, width / 2, 0],
-            [0, f_px, height / 2, 0],
-            [0, 0, 1, 0],
-            [0, 0, 0, 1],
-        ]).float()
-
-        intrinsics_resized = intrinsics.clone()
-        intrinsics_resized[0] *= internal_shape[1] / width
-        intrinsics_resized[1] *= internal_shape[0] / height
+        model = self._make_model()
+        intrinsics = model.compute_intrinsics(height, width, f_px)
+        intrinsics_resized = model.resize_intrinsics(
+            intrinsics, internal_shape, height, width
+        )
 
         assert intrinsics_resized[0, 0] == pytest.approx(f_px * 1536 / 1920)
         assert intrinsics_resized[1, 1] == pytest.approx(f_px * 1536 / 1080)
@@ -394,6 +381,43 @@ class TestAppleSharpPredictAll:
         assert len(result) == 3
         for r in result:
             assert isinstance(r, fol.Classification)
+
+    def test_predict_all_batched_tensor(self, tmp_path):
+        """Test NCHW tensor input is split into per-image predictions."""
+        from unittest.mock import patch, MagicMock
+        import torch
+
+        model = self._make_model(str(tmp_path))
+        model._model = MagicMock(return_value=torch.zeros(1, 100, 14))
+        imgs = torch.randint(0, 255, (2, 3, 480, 640), dtype=torch.uint8)
+
+        with patch("fiftyone.utils.sharp.sharp_utils.save_ply"):
+            with patch(
+                "fiftyone.utils.sharp.sharp_utils.unproject_gaussians",
+                return_value=torch.zeros(100, 14),
+            ):
+                result = model._predict_all(imgs)
+
+        assert len(result) == 2
+
+    def test_predict_all_batched_ndarray(self, tmp_path):
+        """Test NHWC ndarray input is split into per-image predictions."""
+        from unittest.mock import patch, MagicMock
+        import numpy as np
+        import torch
+
+        model = self._make_model(str(tmp_path))
+        model._model = MagicMock(return_value=torch.zeros(1, 100, 14))
+        imgs = np.random.randint(0, 255, (2, 480, 640, 3), dtype=np.uint8)
+
+        with patch("fiftyone.utils.sharp.sharp_utils.save_ply"):
+            with patch(
+                "fiftyone.utils.sharp.sharp_utils.unproject_gaussians",
+                return_value=torch.zeros(100, 14),
+            ):
+                result = model._predict_all(imgs)
+
+        assert len(result) == 2
 
     def test_predict_all_output_type(self, tmp_path):
         """Test each output element is a Classification with splat_path."""
