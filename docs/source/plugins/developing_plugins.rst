@@ -4710,36 +4710,31 @@ Using the custom component as the view for a Python operator field:
         def execute(self, ctx):
             return {}
 
-Custom file rendering claims
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Custom sample renderers
+~~~~~~~~~~~~~~~~~~~~~~~
 
-Panels can declare file matching rules via ``panelOptions.renderClaims`` to
-provide custom rendering for non-native media types in the grid and modal.
-When a sample's file matches a panel's claims, that panel's component is used
-to render the sample instead of the default looker. Native media types
-(images, videos, 3d) always use the built-in renderers and cannot be overridden
-by claims.
+Plugins can register ``SampleRenderer`` components to provide custom rendering
+for non-native media types in the grid and modal. Native media types
+(``image``, ``video``, ``point-cloud``, ``3d``) continue
+to use the built-in media renderers.
 
-Each claim specifies one or more matcher lists: ``extensions``,
-``mimeTypes``, and ``mediaTypes``. All specified groups must match (AND), and
-a sample matches a group if it matches any value in that list (OR). Matching
-is case-insensitive.
+Each sample renderer declares ``sampleRendererOptions.supports``. The simplest
+form is a matcher object with ``extensions``, ``mimeTypes``, and
+``mediaTypes``. All specified matcher groups must match (AND), and values in a
+group are matched case-insensitively (OR). ``supports`` can also be a predicate
+function that receives the sample renderer match context.
 
-By default, render claims are only active in the modal. To enable claims in
-other contexts, add the appropriate constants to
-``renderClaims.modeExtensions``:
+Grid rendering is opt-in. Set ``sampleRendererOptions.grid.enabled`` to
+``true`` to enable a renderer in the grid. If you need a different grid-only
+implementation, provide ``sampleRendererOptions.grid.overrideComponent``;
+otherwise the canonical renderer component is reused in both modal and grid.
 
--   Include ``RENDER_CLAIM_MODE_EXTENSION_GRID`` to enable rendering in the
-    grid
--   Include ``RENDER_CLAIM_MODE_EXTENSION_MODAL_ANNOTATE`` to enable
-    rendering in the modal's annotate mode
+The sample renderer component receives a single ``ctx`` prop containing the
+sample renderer render context:
 
-The claim-based renderer component receives two props:
-
--   ``ctx``: a rendering context object containing ``sample``,
-    ``selectedMediaField``, ``selectedMediaPath``, ``selectedMediaUrl``,
-    ``extension``, ``mimeType``, ``mediaType``, ``dataset``, and ``schema``
--   ``url``: the resolved media URL (same value as ``ctx.selectedMediaUrl``)
+-   ``sample`` and ``media``
+-   ``surface`` (``"modal"`` or ``"grid"``)
+-   ``dataset`` and ``schema``
 
 Here's an example of a hypothetical plugin config that renders PDF files in
 both the grid and modal:
@@ -4748,16 +4743,15 @@ both the grid and modal:
     :linenos:
 
     import {
+      type SampleRendererProps,
       PluginComponentType,
-      RENDER_CLAIM_MODE_EXTENSION_GRID,
-      RENDER_CLAIM_MODE_EXTENSION_MODAL_ANNOTATE,
       registerComponent,
     } from "@fiftyone/plugins";
 
-    function PdfRenderer({ ctx, url }) {
+    function PdfRenderer({ ctx }: SampleRendererProps) {
       return (
         <iframe
-          src={url}
+          src={ctx.media.url ?? ""}
           title={ctx.sample.sample.filepath}
           style={{ width: "100%", height: "100%", border: 0 }}
         />
@@ -4768,25 +4762,21 @@ both the grid and modal:
       name: "PDFRenderer",
       label: "PDF renderer",
       component: PdfRenderer,
-      type: PluginComponentType.Panel,
+      type: PluginComponentType.SampleRenderer,
       activator: () => true,
-      panelOptions: {
-        surfaces: "grid modal",
+      sampleRendererOptions: {
         priority: 100,
-        renderClaims: {
+        supports: {
           extensions: [".pdf"],
           mimeTypes: ["application/pdf"],
           mediaTypes: ["unknown"],
-          modeExtensions: [
-            RENDER_CLAIM_MODE_EXTENSION_GRID,
-            RENDER_CLAIM_MODE_EXTENSION_MODAL_ANNOTATE,
-          ],
+        },
+        grid: {
+          enabled: true,
         },
       },
     });
 
-If multiple panels match the same sample, the one with the highest
-``panelOptions.priority`` wins. Ties are broken by name.
 
 FiftyOne App state
 ------------------
