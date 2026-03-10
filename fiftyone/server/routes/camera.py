@@ -14,10 +14,157 @@ from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
+import fiftyone.core.camera as focam
 from fiftyone.server import utils
 from fiftyone.server.utils.datasets import get_dataset, get_sample_from_dataset
 
+_MAX_COLLECT_DEPTH = 4
+
 logger = logging.getLogger(__name__)
+
+
+def _parse_transform_key(key: str):
+    """Parses a transform key of form `source::target` or `source`."""
+    if "::" in key:
+        source_frame, target_frame = key.split("::", 1)
+    else:
+        source_frame = key
+        target_frame = focam.DEFAULT_TRANSFORM_TARGET_FRAME
+
+    return source_frame, target_frame
+
+
+def _serialize_static_transform(
+    transform: focam.StaticTransform,
+    source_frame: Optional[str] = None,
+    target_frame: Optional[str] = None,
+):
+    """Serializes a static transform with normalized source/target frames."""
+    serialized = utils.json.serialize(transform)
+    normalized_source = serialized.get("source_frame") or source_frame
+    if not normalized_source:
+        return None
+
+    normalized_target = (
+        serialized.get("target_frame")
+        or target_frame
+        or focam.DEFAULT_TRANSFORM_TARGET_FRAME
+    )
+    serialized["source_frame"] = normalized_source
+    serialized["target_frame"] = normalized_target
+    return serialized
+
+
+def _collect_sample_static_transforms_from_value(
+    value,
+    dataset_transforms: dict,
+    serialized_transforms: List[dict],
+    _depth: int = 0,
+):
+    """Collects static transforms from a sample field value."""
+    if isinstance(value, list):
+        if _depth >= _MAX_COLLECT_DEPTH:
+            return
+
+        for item in value:
+            _collect_sample_static_transforms_from_value(
+                item,
+                dataset_transforms,
+                serialized_transforms,
+                _depth=_depth + 1,
+            )
+        return
+
+    if isinstance(value, focam.StaticTransform):
+        serialized = _serialize_static_transform(value)
+        if serialized is not None:
+            serialized_transforms.append(serialized)
+        return
+
+    if isinstance(value, focam.StaticTransformRef):
+        source_frame, target_frame = _parse_transform_key(value.ref)
+        ref_value = dataset_transforms.get(value.ref)
+        if isinstance(ref_value, focam.StaticTransform):
+            serialized = _serialize_static_transform(
+                ref_value,
+                source_frame=source_frame,
+                target_frame=target_frame,
+            )
+            if serialized is not None:
+                serialized_transforms.append(serialized)
+
+
+def _get_sample_group_slice_name(dataset, sample) -> Optional[str]:
+    """Gets the group's slice name for a sample, if available."""
+    if dataset.group_field is None:
+        return None
+
+    group = getattr(sample, dataset.group_field, None)
+    if group is None:
+        return None
+
+    try:
+        return group.name
+    except (AttributeError, KeyError):
+        return None
+
+
+def _list_resolved_sample_static_transforms(dataset, sample) -> List[dict]:
+    """Lists static transforms for a sample."""
+    dataset_transforms = dataset.static_transforms or {}
+    serialized_transforms = []
+
+    for _, value in sample.iter_fields():
+        _collect_sample_static_transforms_from_value(
+            value, dataset_transforms, serialized_transforms
+        )
+
+    slice_name = _get_sample_group_slice_name(dataset, sample)
+    if slice_name:
+        for key, transform in dataset_transforms.items():
+            if not isinstance(transform, focam.StaticTransform):
+                continue
+
+            source_frame, target_frame = _parse_transform_key(key)
+            if source_frame != slice_name:
+                continue
+
+            serialized = _serialize_static_transform(
+                transform,
+                source_frame=source_frame,
+                target_frame=target_frame,
+            )
+            if serialized is not None:
+                serialized_transforms.append(serialized)
+
+    # Sample-level transforms are collected first, so they take
+    # precedence over dataset-level ones during dedup.
+    deduped_transforms = {}
+    for serialized in serialized_transforms:
+        source_frame = serialized.get("source_frame")
+        if not source_frame:
+            continue
+
+        target_frame = (
+            serialized.get("target_frame")
+            or focam.DEFAULT_TRANSFORM_TARGET_FRAME
+        )
+        serialized["target_frame"] = target_frame
+
+        dedupe_key = f"{source_frame}::{target_frame}"
+        if dedupe_key in deduped_transforms:
+            continue
+
+        deduped_transforms[dedupe_key] = serialized
+
+    return sorted(
+        deduped_transforms.values(),
+        key=lambda transform: (
+            transform.get("source_frame") or "",
+            transform.get("target_frame")
+            or focam.DEFAULT_TRANSFORM_TARGET_FRAME,
+        ),
+    )
 
 
 class CameraIntrinsics(HTTPEndpoint):
@@ -37,8 +184,7 @@ class CameraIntrinsics(HTTPEndpoint):
         sample_id = request.path_params["sample_id"]
 
         logger.debug(
-            "Received GET request for camera intrinsics for sample %s "
-            "in dataset %s",
+            "Received GET request for camera intrinsics for sample %s in dataset %s",
             sample_id,
             dataset_id,
         )
@@ -57,84 +203,32 @@ class CameraIntrinsics(HTTPEndpoint):
 
 
 class StaticTransforms(HTTPEndpoint):
-    """Static transforms endpoint."""
+    """Resolved sample static transforms endpoint."""
 
     async def get(self, request: Request) -> JSONResponse:
-        """Retrieves a static transform for a sample.
+        """Retrieves static transforms for a sample.
 
         Args:
             request: Starlette request with dataset_id and sample_id in path
-                params, and optional source_frame, target_frame, chain_via
-                query params
+                params
 
         Returns:
-            JSON response containing the transform data, or null if not found
+            JSON response containing ``{"transforms": [...]}``
         """
         dataset_id = request.path_params["dataset_id"]
         sample_id = request.path_params["sample_id"]
-        source_frame, target_frame, chain_via = _parse_transform_params(
-            request
-        )
 
         logger.debug(
-            "Received GET request for static transform for sample %s "
-            "in dataset %s (source_frame=%s, target_frame=%s, chain_via=%s)",
+            "Received GET request for static transforms for sample %s in dataset %s",
             sample_id,
             dataset_id,
-            source_frame,
-            target_frame,
-            chain_via,
         )
 
         dataset = get_dataset(dataset_id)
         sample = get_sample_from_dataset(dataset, sample_id)
 
-        try:
-            transform = dataset.resolve_transformation(
-                sample,
-                source_frame=source_frame,
-                target_frame=target_frame,
-                chain_via=chain_via,
-            )
-        except ValueError as err:
-            # ValueError can occur when chain_via frames don't chain
-            raise HTTPException(status_code=400, detail=str(err)) from err
-
-        if transform is None:
-            return utils.json.JSONResponse({"transform": None})
-
-        return utils.json.JSONResponse(
-            {"transform": utils.json.serialize(transform)}
-        )
-
-
-def _parse_sample_ids(request: Request) -> List[str]:
-    """Parses sample_ids from query params.
-
-    Args:
-        request: Starlette request with sample_ids query param
-
-    Raises:
-        HTTPException: If sample_ids is missing or empty
-
-    Returns:
-        List of sample IDs
-    """
-    sample_ids_param = request.query_params.get("sample_ids")
-    if not sample_ids_param:
-        raise HTTPException(
-            status_code=400,
-            detail="Missing required query parameter 'sample_ids'",
-        )
-
-    sample_ids = [s.strip() for s in sample_ids_param.split(",") if s.strip()]
-    if not sample_ids:
-        raise HTTPException(
-            status_code=400,
-            detail="No valid sample IDs provided",
-        )
-
-    return sample_ids
+        transforms = _list_resolved_sample_static_transforms(dataset, sample)
+        return utils.json.JSONResponse({"transforms": transforms})
 
 
 def _parse_transform_params(
@@ -367,118 +461,6 @@ def _collect_static_transforms(
     return results
 
 
-class BatchIntrinsics(HTTPEndpoint):
-    """Batch camera intrinsics endpoint."""
-
-    async def get(self, request: Request) -> JSONResponse:
-        """Retrieves camera intrinsics for multiple samples.
-
-        Args:
-            request: Starlette request with dataset_id in path params and
-                sample_ids as comma-separated query param
-
-        Returns:
-            JSON response containing results dict mapping sample_id to
-            intrinsics data, null, or error message
-        """
-        dataset_id = request.path_params["dataset_id"]
-        sample_ids = _parse_sample_ids(request)
-
-        logger.debug(
-            "Received GET request for batch camera intrinsics for %d samples "
-            "in dataset %s",
-            len(sample_ids),
-            dataset_id,
-        )
-
-        dataset = get_dataset(dataset_id)
-
-        results = {}
-        for sample_id in sample_ids:
-            try:
-                sample = dataset[sample_id]
-            except KeyError:
-                results[sample_id] = {
-                    "error": f"Sample '{sample_id}' not found"
-                }
-                continue
-
-            intrinsics = dataset.resolve_intrinsics(sample)
-            if intrinsics is None:
-                results[sample_id] = {"intrinsics": None}
-            else:
-                results[sample_id] = {
-                    "intrinsics": utils.json.serialize(intrinsics)
-                }
-
-        return utils.json.JSONResponse({"results": results})
-
-
-class BatchStaticTransforms(HTTPEndpoint):
-    """Batch static transforms endpoint."""
-
-    async def get(self, request: Request) -> JSONResponse:
-        """Retrieves static transforms for multiple samples.
-
-        Args:
-            request: Starlette request with dataset_id in path params,
-                sample_ids as comma-separated query param, and optional
-                source_frame, target_frame, chain_via query params
-
-        Returns:
-            JSON response containing results dict mapping sample_id to
-            transform data, null, or error message
-        """
-        dataset_id = request.path_params["dataset_id"]
-        sample_ids = _parse_sample_ids(request)
-        source_frame, target_frame, chain_via = _parse_transform_params(
-            request
-        )
-
-        logger.debug(
-            "Received GET request for batch static transforms for %d samples "
-            "in dataset %s (source_frame=%s, target_frame=%s, chain_via=%s)",
-            len(sample_ids),
-            dataset_id,
-            source_frame,
-            target_frame,
-            chain_via,
-        )
-
-        dataset = get_dataset(dataset_id)
-
-        results = {}
-        for sample_id in sample_ids:
-            try:
-                sample = dataset[sample_id]
-            except KeyError:
-                results[sample_id] = {
-                    "error": f"Sample '{sample_id}' not found"
-                }
-                continue
-
-            try:
-                transform = dataset.resolve_transformation(
-                    sample,
-                    source_frame=source_frame,
-                    target_frame=target_frame,
-                    chain_via=chain_via,
-                )
-            except ValueError as err:
-                # ValueError can occur when chain_via frames don't chain
-                results[sample_id] = {"error": str(err)}
-                continue
-
-            if transform is None:
-                results[sample_id] = {"transform": None}
-            else:
-                results[sample_id] = {
-                    "transform": utils.json.serialize(transform)
-                }
-
-        return utils.json.JSONResponse({"results": results})
-
-
 class GroupIntrinsics(HTTPEndpoint):
     """Group camera intrinsics endpoint.
 
@@ -639,13 +621,5 @@ CameraRoutes = [
     (
         "/dataset/{dataset_id}/sample/{sample_id}/group/static_transforms",
         GroupStaticTransforms,
-    ),
-    (
-        "/dataset/{dataset_id}/samples/intrinsics",
-        BatchIntrinsics,
-    ),
-    (
-        "/dataset/{dataset_id}/samples/static_transforms",
-        BatchStaticTransforms,
     ),
 ]
