@@ -44,11 +44,9 @@ export const SinglePanelView = ({
   const containerRef = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
-    const canvas = document.getElementById(CANVAS_WRAPPER_ID);
-
-    if (canvas) {
-      canvas.querySelector("canvas")?.setAttribute("canvas-loaded", "true");
-    }
+    containerRef.current
+      ?.querySelector(`#${CANVAS_WRAPPER_ID} canvas`)
+      ?.setAttribute("canvas-loaded", "true");
   }, [isSceneInitialized]);
 
   return (

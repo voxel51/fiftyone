@@ -74,7 +74,7 @@ export default () => {
 
   if (
     allSampleMapLoadable.state === "loading" ||
-    !allSampleMapLoadable.contents[pinnedSlice || ""]
+    !allSampleMapLoadable.contents[pinnedSlice ?? ""]
   ) {
     return <Loading>Pixelating...</Loading>;
   }

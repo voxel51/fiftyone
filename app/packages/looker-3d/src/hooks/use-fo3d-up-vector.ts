@@ -24,7 +24,7 @@ const UP_VECTOR_STORAGE_CODEC = {
 
       const [x, y, z] = parsed;
       return new Vector3(x, y, z);
-    } catch (error) {
+    } catch {
       return null;
     }
   },

@@ -1,6 +1,6 @@
 import type { LoadingManager } from "three";
 import { useEffect, useRef } from "react";
-import { useRecoilState } from "recoil";
+import { useRecoilState, useSetRecoilState } from "recoil";
 import {
   fo3dAssetsParseStatusThisSample,
   fo3dLoadingStatusThisSample,
@@ -13,7 +13,7 @@ export const ALL_LOADING_COMPLETE = "All loading complete!";
 /** Tracks THREE loading-manager events and mirrors status/logs into Recoil. */
 export const useTrackStatus = (loadingManager: LoadingManager | null) => {
   const loadingStatusView = useLoadingStatus();
-  const [, setLogs] = useRecoilState(fo3dAssetsParseStatusThisSample);
+  const setLogs = useSetRecoilState(fo3dAssetsParseStatusThisSample);
   const [loadingStatusState, setLoadingStatus] = useRecoilState(
     fo3dLoadingStatusThisSample
   );

@@ -122,7 +122,10 @@ type UseFo3dReturnType = {
 export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
   const mediaField = useRecoilValue(fos.selectedMediaField(true));
   const isGroup = useRecoilValue(fos.isGroup);
-  const { state: group3dState, actions } = fos.useRenderConfig3d();
+  const {
+    state: group3dState,
+    actions: { setFo3dContent },
+  } = fos.useRenderConfig3d();
   const fetchFo3d = useFo3dFetcher();
 
   const [isLoading, setIsLoading] = useState(true);
@@ -211,22 +214,31 @@ export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
     setRawData(null);
 
     if (isRealFo3dScene) {
-      fetchFo3d(url, fo3dPath).then((response) => {
-        if (!isActive) {
-          return;
-        }
+      fetchFo3d(url, fo3dPath)
+        .then((response) => {
+          if (!isActive) {
+            return;
+          }
 
-        const mergedResponse = groupedDirectSampleMap
-          ? appendDirect3dSamplesToScene({
-              mediaField,
-              rawData: response,
-              sampleMap: groupedDirectSampleMap,
-            })
-          : response;
+          const mergedResponse = groupedDirectSampleMap
+            ? appendDirect3dSamplesToScene({
+                mediaField,
+                rawData: response,
+                sampleMap: groupedDirectSampleMap,
+              })
+            : response;
 
-        setRawData(mergedResponse);
-        setIsLoading(false);
-      });
+          setRawData(mergedResponse);
+          setIsLoading(false);
+        })
+        .catch(() => {
+          if (!isActive) {
+            return;
+          }
+
+          setRawData(null);
+          setIsLoading(false);
+        });
 
       return () => {
         isActive = false;
@@ -269,8 +281,8 @@ export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
 
   // This effect writes normalized fo3d content into Recoil state.
   useEffect(() => {
-    actions.setFo3dContent(normalizedRawData);
-  }, [actions, normalizedRawData]);
+    setFo3dContent(normalizedRawData);
+  }, [normalizedRawData, setFo3dContent]);
 
   const foScene = useMemo(() => {
     if (!normalizedRawData) {

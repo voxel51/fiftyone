@@ -47,7 +47,7 @@ describe("buildSyntheticSceneForDirect3dSamples", () => {
     ["/tmp/lidar/frame.pcd", "Z"],
     ["/tmp/lidar/frame.ply", "Z"],
     ["/tmp/lidar/frame.stl", "Z"],
-  ])("sets camera.up=%s for %s synthetic scenes", (path, expectedUp) => {
+  ])("sets camera.up for %s synthetic scenes to %s", (path, expectedUp) => {
     const scene = buildSyntheticSceneForDirect3dSamples({
       sample: buildModalSample(path),
       mediaField: "filepath",

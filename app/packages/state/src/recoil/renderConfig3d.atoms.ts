@@ -247,7 +247,7 @@ export const fo3dSlice = selector<string | null>({
   get: ({ get }) => get(activeFo3dSlice),
 });
 
-export const fo3dContent = atom({
+export const fo3dContent = atom<unknown | null>({
   key: "fo3dContent",
   default: null,
 });

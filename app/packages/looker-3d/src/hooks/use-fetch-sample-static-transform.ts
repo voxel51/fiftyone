@@ -48,19 +48,24 @@ export const useFetchSampleStaticTransform = () => {
     setIsLoading(true);
     setError(null);
 
+    const fetchDatasetId = datasetId;
+    const fetchSampleId = sampleId;
+
     try {
       const response = await fetch<void, StaticTransformsListResponse>(
         "GET",
-        `/dataset/${encodeURIComponent(datasetId)}/sample/${encodeURIComponent(
-          sampleId
-        )}/static_transforms`
+        `/dataset/${encodeURIComponent(
+          fetchDatasetId
+        )}/sample/${encodeURIComponent(fetchSampleId)}/static_transforms`
       );
 
       const transforms = Array.isArray(response?.transforms)
         ? response.transforms
         : [];
 
-      listCacheRef.current = transforms;
+      if (datasetId === fetchDatasetId && sampleId === fetchSampleId) {
+        listCacheRef.current = transforms;
+      }
       return transforms;
     } catch (fetchError) {
       const normalizedError =
@@ -68,10 +73,14 @@ export const useFetchSampleStaticTransform = () => {
           ? fetchError
           : new Error(String(fetchError));
 
-      setError(normalizedError);
+      if (datasetId === fetchDatasetId && sampleId === fetchSampleId) {
+        setError(normalizedError);
+      }
       return [];
     } finally {
-      setIsLoading(false);
+      if (datasetId === fetchDatasetId && sampleId === fetchSampleId) {
+        setIsLoading(false);
+      }
     }
   }, [datasetId, sampleId]);
 

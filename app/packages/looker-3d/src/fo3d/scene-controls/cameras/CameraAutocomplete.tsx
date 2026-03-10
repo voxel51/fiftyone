@@ -103,7 +103,6 @@ export const CameraAutocomplete = ({
       }
 
       setIsOpen(false);
-      setSearchValue(selectedOption?.label ?? "");
     };
 
     document.addEventListener("pointerdown", handlePointerDown);
@@ -169,6 +168,15 @@ export const CameraAutocomplete = ({
     child?.scrollIntoView({ block: "nearest" });
   }, []);
 
+  // This effect keeps keyboard-driven highlight visible in the dropdown list.
+  useEffect(() => {
+    if (!isOpen || filteredOptions.length === 0) {
+      return;
+    }
+
+    scrollActiveIntoView(activeIndex);
+  }, [activeIndex, filteredOptions.length, isOpen, scrollActiveIntoView]);
+
   const selectOption = (option: CameraControlOption) => {
     onSelect(option.key);
     setSearchValue(option.label);
@@ -197,25 +205,16 @@ export const CameraAutocomplete = ({
           if (event.key === "ArrowDown") {
             event.preventDefault();
             setIsOpen(true);
-            setActiveIndex((current) => {
-              const next = Math.min(
-                current + 1,
-                Math.max(filteredOptions.length - 1, 0)
-              );
-              scrollActiveIntoView(next);
-              return next;
-            });
+            setActiveIndex((current) =>
+              Math.min(current + 1, Math.max(filteredOptions.length - 1, 0))
+            );
             return;
           }
 
           if (event.key === "ArrowUp") {
             event.preventDefault();
             setIsOpen(true);
-            setActiveIndex((current) => {
-              const next = Math.max(current - 1, 0);
-              scrollActiveIntoView(next);
-              return next;
-            });
+            setActiveIndex((current) => Math.max(current - 1, 0));
             return;
           }
 

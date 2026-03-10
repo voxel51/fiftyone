@@ -64,10 +64,8 @@ vi.mock("./use-fo3d-fetcher", () => ({
 }));
 
 vi.mock("./use-fo3d-scene-parser", () => ({
-  buildFoScene: (rawData: FiftyoneSceneRawJson) =>
-    mockState.buildFoScene(rawData),
-  getRootAssetCount: (scene: FiftyoneSceneRawJson | null) =>
-    mockState.getRootAssetCount(scene),
+  buildFoScene: mockState.buildFoScene,
+  getRootAssetCount: mockState.getRootAssetCount,
 }));
 
 const DEFAULT_MATERIAL = {
@@ -137,11 +135,13 @@ const getLastNonNullFo3dContent = () => {
 
 const createDeferred = <T>() => {
   let resolve!: (value: T) => void;
-  const promise = new Promise<T>((res) => {
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
     resolve = res;
+    reject = rej;
   });
 
-  return { promise, resolve };
+  return { promise, resolve, reject };
 };
 
 describe("useFo3d", () => {

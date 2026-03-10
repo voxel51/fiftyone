@@ -119,9 +119,9 @@ export const MediaTypeFo3dComponent = () => {
     FO3D_CAMERA_LIFECYCLE.WAITING_FOR_SCENE
   );
 
-  const cameraRef = useRef<PerspectiveCamera>();
-  const cameraControlsRef = useRef<CameraControls>();
-  const assetsGroupRef = useRef<Group>();
+  const cameraRef = useRef<PerspectiveCamera | null>(null);
+  const cameraControlsRef = useRef<CameraControls | null>(null);
+  const assetsGroupRef = useRef<Group | null>(null);
   const threeJsLoadingStatus = useTrackStatus(loadingManager);
 
   useFo3dCameraControlsConfig({

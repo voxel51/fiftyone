@@ -26,8 +26,7 @@ export const Gltf = ({
   scale: Vector3;
   children: React.ReactNode;
 }) => {
-  const { fo3dRoot } = useFo3dContext();
-  const { loadingManager } = useFo3dContext();
+  const { fo3dRoot, loadingManager } = useFo3dContext();
   const isInMultiPanelView = useRecoilValue(isInMultiPanelViewAtom);
 
   const gltfUrl = useMemo(

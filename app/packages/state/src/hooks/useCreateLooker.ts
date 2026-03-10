@@ -177,8 +177,9 @@ export default <T extends AbstractLooker<BaseState>>(
         }
 
         if (create === ThreeDLooker) {
+          const sampleFilepath = sample["filepath"];
           config.isFo3d =
-            isFo3dSamplePath(sample["filepath"] as string) ||
+            isFo3dSamplePath(sampleFilepath) ||
             isFo3dSamplePath(sampleMediaFilePath);
 
           const orthographicProjectionField = Object.entries(sample)

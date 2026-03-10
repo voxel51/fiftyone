@@ -20,7 +20,7 @@ export const GroupView = () => {
   const isCarouselVisible = useRecoilValue(fos.groupMediaIsCarouselVisible);
   const isMainVisible = useRecoilValue(fos.groupMediaIsMain2DViewerVisible);
   const {
-    state: { is3dVisible, isPinned: is3dPinned },
+    state: { is3dVisible },
   } = fos.useRenderConfig3d();
   const [width, setWidth] = useBrowserStorage(
     "group-modal-split-view-width",

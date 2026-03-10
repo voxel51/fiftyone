@@ -1,6 +1,6 @@
 import { useFrame } from "@react-three/fiber";
 import { folder, useControls } from "leva";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { AnimationClip, AnimationMixer } from "three";
 import { PANEL_ORDER_ANIMATIONS } from "../constants";
 
@@ -37,9 +37,13 @@ export const useAnimationSelect = (
     });
   }, [availableAnimationClips]);
 
-  // This effect sets animation to the first clip.
+  // This effect sets animation to the first clip when the mixer first appears.
+  const prevMixerRef = useRef<AnimationMixer | null>(null);
   useEffect(() => {
-    if (!mixer || !availableAnimationClips.length) {
+    const mixerWasNull = prevMixerRef.current === null;
+    prevMixerRef.current = mixer;
+
+    if (!mixer || !availableAnimationClips.length || !mixerWasNull) {
       return;
     }
 
@@ -74,12 +78,17 @@ export const useAnimationSelect = (
   });
 
   const animationNameEntries = useMemo(() => {
-    const entries = Object.fromEntries(
-      availableAnimationClips.map((clip, index) => [
-        clip.name.split("|").pop(),
-        index,
-      ])
-    );
+    const entries: Record<string, number | null> = {};
+    const labelCounts = new Map<string, number>();
+
+    availableAnimationClips.forEach((clip, index) => {
+      const baseLabel =
+        clip.name.split("|").pop()?.trim() || `Animation ${index + 1}`;
+      const nextCount = (labelCounts.get(baseLabel) ?? 0) + 1;
+      labelCounts.set(baseLabel, nextCount);
+      const label = nextCount > 1 ? `${baseLabel} (${nextCount})` : baseLabel;
+      entries[label] = index;
+    });
 
     entries["NO ANIMATION"] = null;
 

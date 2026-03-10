@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useState } from "react";
-import type { Box3, LoadingManager, Vector3 } from "three";
+import { useMemo, useState } from "react";
+import type { Box3, LoadingManager } from "three";
 import {
   isFo3dCameraLifecycleReady,
   type Fo3dCameraLifecycleState,
@@ -56,12 +56,7 @@ export const useFo3dSceneContextState = ({
   const { effectiveSceneBoundingBox, cursorBounds, lookAt } =
     useFo3dDerivedSceneState(sceneBoundingBox);
 
-  const setUpVector = useCallback(
-    (nextUpVector: Vector3) => {
-      setUpVectorVal(nextUpVector);
-    },
-    [setUpVectorVal]
-  );
+  const setUpVector = setUpVectorVal;
 
   const isSceneInitialized = isFo3dCameraLifecycleReady(cameraLifecycleState);
 

@@ -33,10 +33,16 @@ export interface CameraConfigSources {
   upVector: Vector3 | null;
 }
 
+const isFiniteVector3 = (vector: Vector3): boolean => {
+  return (
+    Number.isFinite(vector.x) &&
+    Number.isFinite(vector.y) &&
+    Number.isFinite(vector.z)
+  );
+};
+
 const isFiniteBbox = (bbox: Box3 | null): bbox is Box3 =>
-  bbox !== null &&
-  Math.abs(bbox.max.x) !== Number.POSITIVE_INFINITY &&
-  Math.abs(bbox.min.x) !== Number.POSITIVE_INFINITY;
+  bbox !== null && isFiniteVector3(bbox.min) && isFiniteVector3(bbox.max);
 
 export interface UpVectorConfigSources {
   sceneUpAxis: string | null | undefined;

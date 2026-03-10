@@ -59,11 +59,14 @@ vi.mock("recoil", async () => {
 
   return {
     ...actual,
-    useRecoilState: (atom: { key: string }) => {
+    useSetRecoilState: (atom: { key: string }) => {
       if (atom.key === mockAtoms.fo3dAssetsParseStatusThisSample.key) {
-        return [store.logs, setLogs];
+        return setLogs;
       }
 
+      throw new Error(`Unexpected recoil atom: ${atom.key}`);
+    },
+    useRecoilState: (atom: { key: string }) => {
       if (atom.key === mockAtoms.fo3dLoadingStatusThisSample.key) {
         return [store.loadingStatus, setLoadingStatus];
       }

@@ -10,7 +10,7 @@ export const Fo3dSupportedExtensions = [
   ".gltf",
   ".glb",
   ".fbx",
-];
+] as const;
 
 export class BoxGeometryAsset {
   constructor(

@@ -1,6 +1,6 @@
 import * as fos from "@fiftyone/state";
 import type { CameraControls } from "@react-three/drei";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import type { Vector3 } from "three";
 import { SET_ZOOM_TO_SELECTED_EVENT } from "../constants";
@@ -40,6 +40,16 @@ export const useFo3dInteractionLifecycle = ({
   const { setAutoRotate } = useFo3dContext();
   const isActivelySegmenting = useRecoilValue(isActivelySegmentingSelector);
   const isSceneReady = isFo3dCameraLifecycleReady(cameraLifecycleState);
+  const isActivelySegmentingRef = useRef(isActivelySegmenting);
+  const setAutoRotateRef = useRef(setAutoRotate);
+
+  useEffect(() => {
+    isActivelySegmentingRef.current = isActivelySegmenting;
+  }, [isActivelySegmenting]);
+
+  useEffect(() => {
+    setAutoRotateRef.current = setAutoRotate;
+  }, [setAutoRotate]);
 
   const resetActiveNode = useRecoilCallback(
     ({ set }) =>
@@ -49,7 +59,7 @@ export const useFo3dInteractionLifecycle = ({
           return;
         }
 
-        if (isActivelySegmenting) {
+        if (isActivelySegmentingRef.current) {
           return;
         }
 
@@ -58,9 +68,9 @@ export const useFo3dInteractionLifecycle = ({
         set(clearTransformStateSelector, null);
         set(selectedPolylineVertexAtom, null);
         set(isCurrentlyTransformingAtom, false);
-        setAutoRotate(false);
+        setAutoRotateRef.current(false);
       },
-    [isActivelySegmenting, setAutoRotate]
+    []
   );
 
   // This effect clears active interaction state when scene readiness changes.

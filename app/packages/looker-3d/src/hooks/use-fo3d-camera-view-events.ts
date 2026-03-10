@@ -10,6 +10,8 @@ import type { Looker3dSettings } from "../settings";
 import { cameraPositionAtom } from "../state";
 import { useFo3dCameraLookAt } from "./use-fo3d-camera-look-at";
 
+const BOUNDS_RETRY_DELAY_MS = 50;
+
 interface UseFo3dCameraViewEventsArgs {
   cameraRef: React.RefObject<PerspectiveCamera>;
   cameraControlsRef: React.RefObject<CameraControls>;
@@ -90,7 +92,7 @@ export const useFo3dCameraViewEvents = ({
             (id) => id !== timeoutId
           );
           applyLookAt(lookAt);
-        }, 50);
+        }, BOUNDS_RETRY_DELAY_MS);
         pendingTimeoutIdsRef.current.push(timeoutId);
         return;
       }
