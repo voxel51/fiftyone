@@ -3,7 +3,7 @@ import * as fos from "@fiftyone/state";
 import { useCallback, useMemo, useRef } from "react";
 import type { LookerCache } from "./types";
 import useFontSize from "./useFontSize";
-import { useGridSampleRendererLooker } from "./useGridSampleRendererLooker";
+import { useGridSampleRendererItem } from "./useGridSampleRendererItem";
 import useSelectSample from "./useSelectSample";
 import type { SampleStore } from "./useSpotlightPager";
 
@@ -22,7 +22,7 @@ export default function useRenderer({
   const createLooker = fos.useCreateLooker(false, true, lookerOptions);
   const getFontSize = useFontSize(id);
   const selectSample = useSelectSample(records);
-  const sampleRenderer = useGridSampleRendererLooker(createLooker);
+  const sampleRenderer = useGridSampleRendererItem(createLooker);
 
   // `showItem` must stay stable even as the sample renderer hook refreshes.
   const sampleRendererRef = useRef(sampleRenderer);
@@ -70,7 +70,7 @@ export default function useRenderer({
 
       if (sampleRendererRef.current.shouldOverrideRender(result)) {
         try {
-          looker = sampleRendererRef.current.createLookerWithSampleRenderer(
+          looker = sampleRendererRef.current.createItemWithSampleRenderer(
             result,
             id,
             getFontSize()

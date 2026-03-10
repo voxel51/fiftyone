@@ -15,10 +15,10 @@ import {
   useRecoilBridgeAcrossReactRoots_UNSTABLE,
   useRecoilValue,
 } from "recoil";
-import { GridSampleRendererLooker } from "./GridSampleRendererLooker";
+import { GridSampleRendererItem } from "./GridSampleRendererItem";
 
 /** Hook that wraps default grid media rendering with sample renderer support. */
-export function useGridSampleRendererLooker(
+export function useGridSampleRendererItem(
   createDefaultLooker: ReturnType<typeof fos.useCreateLooker>
 ) {
   const dataset = useRecoilValue(fos.dataset);
@@ -74,7 +74,7 @@ export function useGridSampleRendererLooker(
     [getResolvedRenderer]
   );
 
-  const createLookerWithSampleRenderer = useCallback(
+  const createItemWithSampleRenderer = useCallback(
     (result: { sample: fos.Sample }, id: ID, fontSize: number): fos.Lookers => {
       if (!dataset || !createDefaultLooker.current) {
         throw new Error("Dataset or createLooker not available");
@@ -109,7 +109,7 @@ export function useGridSampleRendererLooker(
         return fallback;
       };
 
-      return new GridSampleRendererLooker({
+      return new GridSampleRendererItem({
         createFallbackLooker,
         pluginName: resolvedRenderer.registration.name,
         Renderer: resolvedRenderer.Renderer,
@@ -119,8 +119,8 @@ export function useGridSampleRendererLooker(
         symbol: id,
       }) as unknown as fos.Lookers;
     },
-    [createDefaultLooker, dataset, getResolvedRenderer, RecoilBridge]
+    [dataset, getResolvedRenderer, RecoilBridge]
   );
 
-  return { shouldOverrideRender, createLookerWithSampleRenderer };
+  return { shouldOverrideRender, createItemWithSampleRenderer };
 }

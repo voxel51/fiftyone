@@ -10,7 +10,7 @@ import React from "react";
 import { createRoot, type Root } from "react-dom/client";
 import GridTagBubbles from "./GridTagBubbles";
 
-type GridSampleRendererLookerConfig = {
+type GridSampleRendererItemConfig = {
   createFallbackLooker: () => fos.Lookers;
   pluginName: string;
   Renderer: React.ComponentType<SampleRendererProps>;
@@ -95,7 +95,7 @@ const SELECT_SAMPLE_BUTTON_STYLES: React.CSSProperties = {
 // Events that should be forwarded from the built-in fallback renderer.
 const FORWARDED_EVENTS = ["load", "refresh", "selectthumbnail"] as const;
 
-type GridLookerOptions = {
+type GridItemOptions = {
   selected?: boolean;
   inSelectionMode?: boolean;
 };
@@ -157,7 +157,7 @@ const GridSampleRendererWrapper = ({
  *
  * Events: Forwards "load", "refresh", and "selectthumbnail" events.
  */
-export class GridSampleRendererLooker {
+export class GridSampleRendererItem {
   public loaded = false;
 
   private readonly eventTarget = new EventTarget();
@@ -172,7 +172,7 @@ export class GridSampleRendererLooker {
   private selected = false;
   private inSelectionMode = false;
 
-  constructor(private readonly config: GridSampleRendererLookerConfig) {
+  constructor(private readonly config: GridSampleRendererItemConfig) {
     Object.assign(this.hostElement.style, HOST_ELEMENT_STYLES);
   }
 
@@ -395,7 +395,7 @@ export class GridSampleRendererLooker {
   updateOptions(options: unknown, disableReload?: boolean) {
     if (!this.fallbackLooker) {
       const { selected: nextSelected, inSelectionMode: nextInSelectionMode } =
-        options as GridLookerOptions;
+        options as GridItemOptions;
 
       const shouldRender =
         (typeof nextSelected === "boolean" && this.selected !== nextSelected) ||
