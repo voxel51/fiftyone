@@ -12,7 +12,7 @@ import {
   STROKE_WIDTH,
 } from "../constants";
 import { CONTAINS } from "../core/Scene2D";
-import type { Renderer2D } from "../renderer/Renderer2D";
+import type { ImageSource, Renderer2D } from "../renderer/Renderer2D";
 import type { Selectable } from "../selection/Selectable";
 import type {
   Hoverable,
@@ -28,12 +28,15 @@ import {
   getSimpleStrokeStyles,
 } from "../utils/colorMapping";
 import { distanceFromLineSegment } from "../utils/geometry";
+import { decodeMask } from "../utils/maskDecoding";
 import { BaseOverlay } from "./BaseOverlay";
 
 export type BoundingBoxLabel = RawLookerLabel & {
   label: string;
   bounding_box: number[];
   confidence?: number;
+  mask?: string;
+  mask_path?: string;
 };
 
 /**
@@ -82,6 +85,13 @@ export class BoundingBoxOverlay
   #relativeBounds: Rect;
 
   private textBounds?: Rect;
+
+  /** Cached decoded mask bitmap, keyed by the raw mask string to detect changes. */
+  private maskBitmap?: ImageBitmap;
+  /** The mask string that was used to produce `maskBitmap`. */
+  private decodedMaskKey?: string;
+  /** True while an async decode is in flight. */
+  private maskDecoding = false;
 
   public cursor = "pointer";
 
@@ -146,6 +156,16 @@ export class BoundingBoxOverlay
 
     if (!style) return;
 
+    const hasMask = this.maskBitmap != null;
+
+    // Kick off async mask decode if needed
+    this.decodeMaskIfNeeded(style.strokeStyle || style.fillStyle || "#ffffff");
+
+    // Draw mask bitmap if available
+    if (hasMask) {
+      this.drawMask(renderer);
+    }
+
     // Check if this label has an instance to determine stroke styling
     const hasInstance = this.label?.instance?._id !== undefined;
 
@@ -175,7 +195,10 @@ export class BoundingBoxOverlay
 
     delete mainStrokeStyle.dashPattern;
 
-    renderer.drawRect(this.bounds, mainStrokeStyle, this.containerId);
+    // Hide bbox stroke by default when mask is present (only show on selection/hover)
+    if (!hasMask || this.isSelectedState || this.isHoveredState) {
+      renderer.drawRect(this.bounds, mainStrokeStyle, this.containerId);
+    }
 
     if (hoverStrokeColor) {
       renderer.drawRect(
@@ -744,5 +767,70 @@ export class BoundingBoxOverlay
       label: this.label,
       type: "Detection",
     };
+  }
+
+  /**
+   * Returns true if this detection has a mask (inline or on-disk).
+   */
+  hasMask(): boolean {
+    return !!this.label?.mask || !!this.label?.mask_path;
+  }
+
+  /**
+   * Kicks off async mask decoding if the label has mask data that hasn't been
+   * decoded yet (or has changed since last decode).
+   */
+  private decodeMaskIfNeeded(color: string): void {
+    const maskData = this.label?.mask;
+
+    if (typeof maskData !== "string" || this.maskDecoding) {
+      return;
+    }
+
+    // Already decoded this exact mask
+    if (this.decodedMaskKey === maskData) {
+      return;
+    }
+
+    this.maskDecoding = true;
+
+    decodeMask(maskData, color)
+      .then((bitmap) => {
+        this.maskBitmap?.close();
+        this.maskBitmap = bitmap;
+        this.decodedMaskKey = maskData;
+        this.maskDecoding = false;
+        this.markDirty();
+      })
+      .catch((err) => {
+        console.error("[BoundingBoxOverlay] mask decode failed:", err);
+        this.maskDecoding = false;
+      });
+  }
+
+  /**
+   * Draws the decoded mask bitmap within the bounding box bounds.
+   */
+  private drawMask(renderer: Renderer2D): void {
+    if (!this.maskBitmap) return;
+
+    const imageSource: ImageSource = {
+      type: "bitmap",
+      bitmap: this.maskBitmap,
+    };
+
+    renderer.drawImage(
+      imageSource,
+      this.bounds,
+      { opacity: 0.7 },
+      this.containerId
+    );
+  }
+
+  override destroy(): void {
+    this.maskBitmap?.close();
+    this.maskBitmap = undefined;
+    this.decodedMaskKey = undefined;
+    super.destroy();
   }
 }
