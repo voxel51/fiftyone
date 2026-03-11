@@ -242,7 +242,9 @@ const NewFieldSchema = () => {
     } catch (error) {
       console.error("Failed to create field:", error);
       notify({
-        msg: `Failed to create field: ${error}`,
+        msg: `Failed to create field: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
         variant: "error",
       });
     } finally {

@@ -220,8 +220,14 @@ export const useIsFieldActive = (field: string) => {
  * Explore and the Sidebar.tsx Recoil→Jotai sync preserves it.
  */
 export const useAddToExploreActiveFields = () => {
-  const currentFields = useAtomValue(exploreActiveFields);
-  const setFields = useSetAtom(exploreActiveFields);
+  const addField = useAtomCallback(
+    useCallback((get, set, field: string) => {
+      const current = get(exploreActiveFields);
+      if (current && !current.includes(field)) {
+        set(exploreActiveFields, [...current, field]);
+      }
+    }, [])
+  );
 
   const activateInExplore = useRecoilCallback(
     ({ set }) =>
@@ -233,12 +239,10 @@ export const useAddToExploreActiveFields = () => {
 
   return useCallback(
     (field: string) => {
-      if (currentFields && !currentFields.includes(field)) {
-        setFields([...currentFields, field]);
-      }
+      addField(field);
       activateInExplore(field);
     },
-    [currentFields, setFields, activateInExplore]
+    [addField, activateInExplore]
   );
 };
 
@@ -411,13 +415,21 @@ export const useToggleFieldVisibility = (field: string) => {
  */
 export const useActivateFields = () => {
   const addToActiveSchema = useSetAtom(addToActiveSchemas);
+  const removeFromActiveSchema = useSetAtom(removeFromActiveSchemas);
   const [selected, setSelected] = useAtom(selectedHiddenFields);
   const { activateSchemas } = useSchemaManager();
   const setMessage = useNotification();
 
   return useCallback(() => {
+    const fields = Array.from(selected);
     addToActiveSchema(selected);
-    activateSchemas({ fields: Array.from(selected) });
+    activateSchemas({ fields }).catch(() => {
+      removeFromActiveSchema(selected); // rollback on failure
+      setMessage({
+        msg: "Failed to activate fields",
+        variant: "error",
+      });
+    });
     setSelected(new Set());
     setMessage({
       msg: `${selected.size} schema${
@@ -425,21 +437,36 @@ export const useActivateFields = () => {
       } moved to active fields`,
       variant: "success",
     });
-  }, [activateSchemas, addToActiveSchema, selected, setSelected, setMessage]);
+  }, [
+    activateSchemas,
+    addToActiveSchema,
+    removeFromActiveSchema,
+    selected,
+    setSelected,
+    setMessage,
+  ]);
 };
 
 /**
  * Hook to deactivate (move to hidden) selected active fields
  */
 export const useDeactivateFields = () => {
+  const addToActiveSchema = useSetAtom(addToActiveSchemas);
   const removeFromActiveSchema = useSetAtom(removeFromActiveSchemas);
   const [selected, setSelected] = useAtom(selectedActiveFields);
   const { deactivateSchemas } = useSchemaManager();
   const setMessage = useNotification();
 
   return useCallback(() => {
+    const fields = Array.from(selected);
     removeFromActiveSchema(selected);
-    deactivateSchemas({ fields: Array.from(selected) });
+    deactivateSchemas({ fields }).catch(() => {
+      addToActiveSchema(selected); // rollback on failure
+      setMessage({
+        msg: "Failed to deactivate fields",
+        variant: "error",
+      });
+    });
     setSelected(new Set());
     setMessage({
       msg: `${selected.size} schema${
@@ -448,6 +475,7 @@ export const useDeactivateFields = () => {
       variant: "success",
     });
   }, [
+    addToActiveSchema,
     deactivateSchemas,
     removeFromActiveSchema,
     selected,
