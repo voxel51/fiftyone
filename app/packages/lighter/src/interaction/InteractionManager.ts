@@ -61,11 +61,6 @@ export interface InteractionHandler {
   getMoveStartPosition?(): Point | undefined;
 
   /**
-   * Returns the bounds of the handler
-   */
-  getAbsoluteBounds?(): Rect;
-
-  /**
    * Returns the position from the start of handler movement
    */
   getMoveStartBounds?(): Rect | undefined;
@@ -261,7 +256,6 @@ export class InteractionManager {
       this.selectionManager.select(handler.id);
     } else {
       handler = this.findHandlerAtPoint(point);
-
       // Prevent pan/zoom when target is selectable
       if (handler && TypeGuards.isSelectable(handler)) {
         this.renderer.disableZoomPan();
@@ -286,7 +280,6 @@ export class InteractionManager {
           this.selectionManager.clearSelection();
 
           interactiveHandler = this.getInteractiveHandler();
-
           if (!interactiveHandler) {
             // Ask QuickDraw (via React) to create a detection and register
             // an interactive handler. This relies on the event bus invoking
@@ -312,17 +305,16 @@ export class InteractionManager {
         this.canvas.style.cursor = cursor;
       }
 
-      // If this is a movable overlay, track move state
-      if (TypeGuards.isMovable(handler) && TypeGuards.isSpatial(handler)) {
+      // If this is a spatial overlay, track move state
+      if (TypeGuards.isSpatial(handler)) {
         const type: keyof LighterEventGroup = handler.isDragging?.()
           ? "lighter:overlay-drag-start"
           : "lighter:overlay-resize-start";
 
         this.eventBus.dispatch(type, {
           id: handler.id,
-          startPosition: handler.getPosition(),
-          absoluteBounds: handler.getAbsoluteBounds(),
-          relativeBounds: handler.getRelativeBounds(),
+          startPosition: handler.bounds,
+          bounds: handler.bounds,
         });
       }
 
@@ -402,8 +394,6 @@ export class InteractionManager {
       }
 
       if (handler.isMoving?.()) {
-        this.renderer.disableZoomPan();
-
         // Emit move event with bounds information
         if (TypeGuards.isSpatial(handler)) {
           const type = handler.isDragging?.()
@@ -412,8 +402,7 @@ export class InteractionManager {
 
           this.eventBus.dispatch(type, {
             id: handler.id,
-            absoluteBounds: handler.getAbsoluteBounds(),
-            relativeBounds: handler.getRelativeBounds(),
+            bounds: handler.bounds,
           });
         }
 
@@ -461,9 +450,8 @@ export class InteractionManager {
           id: handler.id,
           startBounds,
           startPosition,
-          endPosition: handler.getPosition(),
-          absoluteBounds: handler.getAbsoluteBounds(),
-          relativeBounds: handler.getRelativeBounds(),
+          endPosition: handler.bounds,
+          bounds: handler.bounds,
         };
 
         if (moveState === "SETTING") {
