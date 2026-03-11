@@ -124,7 +124,7 @@ export default class DetectionOverlay<
 
     // Resolve label-specific selection visuals (color/fill overrides)
     const labelVisuals = isSelected
-      ? resolveLabelSelectionVisuals(this.label._id, state.options)
+      ? resolveLabelSelectionVisuals(this.label.id, state.options)
       : null;
 
     const { strokeColor, overlayStrokeColor, overlayDash } =
@@ -160,8 +160,11 @@ export default class DetectionOverlay<
     // Fill bounding box for filled label selection styles
     if (labelVisuals?.fillColor) {
       const [bx, by, bw, bh] = this.getDrawnBBox(state);
+      const prevAlpha = ctx.globalAlpha;
+      ctx.globalAlpha = 1.0;
       ctx.fillStyle = labelVisuals.fillColor;
       ctx.fillRect(bx, by, bw, bh);
+      ctx.globalAlpha = prevAlpha;
     }
   }
 
