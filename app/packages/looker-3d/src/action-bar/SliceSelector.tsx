@@ -1,34 +1,55 @@
 import { PopoutSectionTitle } from "@fiftyone/components";
 import { Checkbox } from "@fiftyone/core";
 import * as fos from "@fiftyone/state";
-import { useCallback, useMemo, useRef, useState } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useCallback, useMemo, useRef } from "react";
+import { useRecoilState, useSetRecoilState } from "recoil";
+import styled from "styled-components";
 import { ACTION_SET_PCDS } from "../constants";
-import { ActionItem } from "../containers";
+import {
+  ActionItem,
+  ActionPopOverDiv,
+  ActionPopOverInner,
+} from "../containers";
 import { currentActionAtom } from "../state";
-import { ActionPopOver } from "./shared";
+
+const SliceSelectorLabel = styled.div`
+  margin-right: 1rem;
+  max-width: 8.5rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-decoration-line: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 0.2em;
+  text-decoration-thickness: from-font;
+  text-decoration-color: var(--fo-palette-text-tertiary);
+
+  &:hover {
+    text-decoration-color: var(--fo-palette-primary-main);
+  }
+`;
 
 export const SliceSelector = () => {
-  const activePcdSlices = useRecoilValue(fos.active3dSlices);
-  const allPcdSlices = useRecoilValue(fos.all3dSlices);
+  const {
+    state: { activeSlices, allSlices },
+  } = fos.useRenderConfig3d();
   const [currentAction, setAction] = useRecoilState(currentActionAtom);
 
   const activeSlicesLabel = useMemo(() => {
-    if (!activePcdSlices || activePcdSlices.length === 0) {
+    if (!activeSlices || activeSlices.length === 0) {
       return "";
     }
 
-    if (activePcdSlices.length === 1) {
-      return `Showing ${activePcdSlices[0]}`;
+    if (activeSlices.length === 1) {
+      return activeSlices[0];
     }
-    if (activePcdSlices.length === 2) {
-      return `Showing ${activePcdSlices.join(" and ")}`;
+
+    if (activeSlices.length === allSlices.length) {
+      return "all 3D slices";
     }
-    if (activePcdSlices.length === allPcdSlices.length) {
-      return "Showing all point clouds";
-    }
-    return `Showing ${activePcdSlices.length} point clouds`;
-  }, [activePcdSlices, allPcdSlices]);
+
+    return `${activeSlices.length} slices`;
+  }, [activeSlices, allSlices]);
 
   const handleActionClick = useCallback(() => {
     if (currentAction === ACTION_SET_PCDS) {
@@ -38,17 +59,16 @@ export const SliceSelector = () => {
     }
   }, [setAction, currentAction]);
 
-  if (!activePcdSlices || activePcdSlices.length === 0) {
+  if (!activeSlices || activeSlices.length === 0) {
     return null;
   }
 
   return (
     <>
-      <ActionItem
-        data-cy={"looker3d-select-slices"}
-        title="Select point clouds"
-      >
-        <div onClick={handleActionClick}>{activeSlicesLabel}</div>
+      <ActionItem data-cy={"looker3d-select-slices"} title="Select 3D slices">
+        <SliceSelectorLabel onClick={handleActionClick}>
+          {activeSlicesLabel}
+        </SliceSelectorLabel>
       </ActionItem>
 
       {currentAction === ACTION_SET_PCDS && <PcdsSelector />}
@@ -57,44 +77,45 @@ export const SliceSelector = () => {
 };
 
 const PcdsSelector = () => {
-  const [activePcdSlices, setActivePcdSlices] = useRecoilState(
-    fos.active3dSlices
-  );
-  const allPcdSlices = Object.keys(useRecoilValue(fos.all3dSlicesToSampleMap));
+  const {
+    state: { activeSlices, allSampleMap },
+    actions,
+  } = fos.useRenderConfig3d();
+  const setCurrentAction = useSetRecoilState(currentActionAtom);
+  const allSlices = Object.keys(allSampleMap);
 
-  const ref = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const [isSelectorOpen, setIsSelectorOpen] = useState(false);
-  fos.useOutsideClick(ref, () => isSelectorOpen && setIsSelectorOpen(false));
+  fos.useOutsideClick(containerRef, () => {
+    setCurrentAction(null);
+  });
 
-  if (allPcdSlices.length === 0) {
+  if (allSlices.length === 0) {
     return null;
   }
 
   return (
-    <ActionPopOver>
-      <PopoutSectionTitle>Select point clouds</PopoutSectionTitle>
-      <div data-cy={"looker3d-slice-checkboxes"}>
-        {allPcdSlices.map((slice) => {
-          return (
-            <Checkbox
-              name={slice}
-              key={slice}
-              value={activePcdSlices.includes(slice)}
-              muted={
-                activePcdSlices.includes(slice) && activePcdSlices.length === 1
-              }
-              setValue={(value) => {
-                setActivePcdSlices(
-                  value
-                    ? [...activePcdSlices, slice]
-                    : activePcdSlices.filter((s) => s !== slice)
-                );
-              }}
-            />
-          );
-        })}
-      </div>
-    </ActionPopOver>
+    <ActionPopOverDiv ref={containerRef}>
+      <ActionPopOverInner>
+        <PopoutSectionTitle>Select 3D slices</PopoutSectionTitle>
+        <div data-cy={"looker3d-slice-checkboxes"}>
+          {allSlices.map((slice) => {
+            return (
+              <Checkbox
+                name={slice}
+                key={slice}
+                value={activeSlices.includes(slice)}
+                muted={
+                  activeSlices.includes(slice) && activeSlices.length === 1
+                }
+                setValue={(value) => {
+                  actions.toggleSlice(slice, value);
+                }}
+              />
+            );
+          })}
+        </div>
+      </ActionPopOverInner>
+    </ActionPopOverDiv>
   );
 };
