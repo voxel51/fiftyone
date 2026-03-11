@@ -1,5 +1,6 @@
 import { useOperatorExecutor } from "@fiftyone/operators";
 import { useCallback, useMemo } from "react";
+import type { AttributeConfig, SchemaConfigType } from "./SchemaManager/utils";
 
 /**
  * Schema field types.
@@ -133,13 +134,19 @@ export type UpdateSchemaResponse = {
   label_schema: FieldSchema;
 };
 
+export type LabelSchemaConfig = {
+  classes?: string[];
+  attributes?: AttributeConfig[];
+  new_attributes?: AttributeConfig[];
+};
+
 export type CreateAndActivateFieldRequest = {
   field_name: string;
   field_category: "label" | "primitive";
   field_type: string;
   read_only?: boolean;
-  label_schema_config?: Record<string, unknown>;
-  schema_config?: Record<string, unknown>;
+  label_schema_config?: LabelSchemaConfig;
+  schema_config?: SchemaConfigType;
 };
 
 export type CreateAndActivateFieldResponse = {

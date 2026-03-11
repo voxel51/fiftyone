@@ -31,7 +31,10 @@ import {
   useSetLabelSchemasData,
 } from "../hooks";
 
-import { useSchemaManager } from "../../useSchemaManager";
+import {
+  useSchemaManager,
+  type LabelSchemaConfig,
+} from "../../useSchemaManager";
 
 import AttributesSection from "../EditFieldLabelSchema/GUIContent/AttributesSection";
 import ClassesSection from "../EditFieldLabelSchema/GUIContent/ClassesSection";
@@ -202,7 +205,7 @@ const NewFieldSchema = () => {
     const trimmedName = fieldName.trim();
 
     // Build label schema config for label fields
-    let label_schema_config: Record<string, unknown> | undefined;
+    let label_schema_config: LabelSchemaConfig | undefined;
     if (category === "label") {
       const newAttrsArr = attributes.filter((attr) =>
         newAttributes.has(attr.name)

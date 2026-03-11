@@ -223,7 +223,9 @@ export const useAddToExploreActiveFields = () => {
   const addField = useAtomCallback(
     useCallback((get, set, field: string) => {
       const current = get(exploreActiveFields);
-      if (current && !current.includes(field)) {
+      if (!current) {
+        set(exploreActiveFields, [field]);
+      } else if (!current.includes(field)) {
         set(exploreActiveFields, [...current, field]);
       }
     }, [])
