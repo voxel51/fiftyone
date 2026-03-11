@@ -276,9 +276,8 @@ def _apply_video_models(
     dataset.match_frames(F("frame_number") <= max_frames).keep_frames()
 
     if _SAM_PROMPT_FIELD in kwargs:
-        prompt_field = kwargs[_SAM_PROMPT_FIELD]
         dataset.match_frames(F("frame_number") > 1).set_field(
-            prompt_field, None
+            kwargs[_SAM_PROMPT_FIELD], None
         ).save()
 
     for idx, model_name in enumerate(model_names, 1):
@@ -302,6 +301,7 @@ def _apply_video_models(
                 assert len(last_frame[label_field].detections) > 0
                 # if our prompt field does not have a mask,
                 # the label field shouldn't have a mask either
+                prompt_field = kwargs[_SAM_PROMPT_FIELD]
                 if prompt_field.startswith("frames."):
                     prompt_field = prompt_field[len("frames.") :]
                 assert (

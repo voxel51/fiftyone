@@ -851,7 +851,7 @@ def load_fiftyone_video_frames(
     img_mean=(0.485, 0.456, 0.406),
     img_std=(0.229, 0.224, 0.225),
     async_loading_frames=False,
-    compute_device=torch.device("cuda"),
+    compute_device=None,
 ):
     """
     The signature of this function matches
@@ -875,7 +875,7 @@ def load_fiftyone_video_frames(
             image_size=image_size,
             img_mean=img_mean,
             img_std=img_std,
-            async_loading_frames=async_loading_frames,
+            async_loading_frames=False,
         )
     else:
         raise NotImplementedError("Unsupported media type")
@@ -888,8 +888,11 @@ def load_fiftyone_video_frames_from_video_file(
     offload_video_to_cpu,
     img_mean=(0.485, 0.456, 0.406),
     img_std=(0.229, 0.224, 0.225),
-    compute_device=torch.device("cuda"),
+    compute_device=None,
 ):
+    if compute_device is None:
+        compute_device = "cuda:0" if torch.cuda.is_available() else "cpu"
+
     img_mean = torch.tensor(img_mean, dtype=torch.float32)[:, None, None]
     img_std = torch.tensor(img_std, dtype=torch.float32)[:, None, None]
 
