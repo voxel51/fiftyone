@@ -1,8 +1,4 @@
-import {
-  ModalSample,
-  getSampleSrc,
-  getStandardizedUrls,
-} from "@fiftyone/state";
+import { ModalSample, getNormalizedUrls, getSampleSrc } from "@fiftyone/state";
 import {
   BufferManager,
   DETECTION,
@@ -77,7 +73,7 @@ export class ImaVidFrameSamples {
     urls: ModalSample["urls"],
     mediaField: string
   ): Promise<string> {
-    const standardizedUrls = getStandardizedUrls(urls);
+    const standardizedUrls = getNormalizedUrls(urls);
     const image = new Image();
     const source = getSampleSrc(standardizedUrls[mediaField]);
 
