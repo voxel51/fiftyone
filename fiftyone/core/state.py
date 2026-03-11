@@ -47,7 +47,8 @@ class StateDescription(etas.Serializable):
         selected (None): the list of currently selected samples
         selected_labels (None): the list of currently selected labels
         selected_samples (None): a list of dicts with sample selection info
-        sample_selection_style (None): a dict with selection style config
+        sample_selection_style (None): a dict mapping selection types to
+            icon style names (e.g. ``{"default": "checkmark", "alt": "thumbsdown"}``)
         spaces (None): a :class:`fiftyone.core.odm.workspace.Space`
         view (None): the current :class:`fiftyone.core.view.DatasetView`
         view_name (None): the name of the view if the current view is a

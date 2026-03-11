@@ -844,9 +844,10 @@ class ExecutionContext(contextlib.AbstractContextManager):
     def selected_samples(self):
         """A list of selected sample dicts (if any).
 
-        Each dict has ``sample_id`` and ``type`` (``"default"`` or ``"alt"``).
+        Each dict has ``sample_id`` and ``type`` (``"default"`` or ``"alt"``),
+        where type corresponds to a key in :attr:`sample_selection_style`.
         """
-        return self.request_params.get("selected_samples", [])
+        return self.request_params.get("selected_samples") or []
 
     @property
     def sample_selection_style(self):

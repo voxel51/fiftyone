@@ -813,7 +813,8 @@ class Session(object):
     @property
     def selected_samples(self) -> t.List[t.Dict]:
         """A list of selected sample dicts, each with ``sample_id`` and
-        ``type`` (``"default"`` or ``"alt"``).
+        ``type`` (``"default"`` or ``"alt"``), where type corresponds to a
+        key in :attr:`sample_selection_style`.
         """
         return list(self._state.selected_samples or [])
 
@@ -838,7 +839,8 @@ class Session(object):
         Args:
             ids (None): an ID or iterable of IDs of samples to select.
                 Items can be plain strings (all ``"default"`` type) or dicts
-                of the form ``{"sample_id": "...", "type": "default"|"alt"}``.
+                of the form ``{"sample_id": "...", "type": "default"|"alt"}``,
+                where type corresponds to a key in :attr:`sample_selection_style`.
             tags (None): a tag or iterable of tags of samples to select
         """
         if tags is not None and self._collection:

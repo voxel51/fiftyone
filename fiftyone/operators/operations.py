@@ -483,7 +483,8 @@ class Operations(object):
 
         Args:
             samples: a list of sample IDs (strings) or dicts of the form
-                ``{"sample_id": "...", "type": "default"|"alt"}``
+                ``{"sample_id": "...", "type": "default"|"alt"}``, where
+                type corresponds to a key in ``sample_selection_style``
         """
         normalized = _normalize_selected_samples(samples)
         return self._ctx.trigger(
