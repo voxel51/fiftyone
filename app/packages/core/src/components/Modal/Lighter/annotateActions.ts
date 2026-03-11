@@ -2,10 +2,8 @@
  * The looker package (@fiftyone/looker) defines the Control/ControlMap shape and
  * we want to preserve that shape in Lighter so we can use it to define shortcuts.
  *
- * However Lighter handles keyboard/mouse for annotate mode internally - this file helps
- * us map those internal actions to Controls so we can use them to document shortcuts.
- *
- * Shortcuts from: https://docs.google.com/spreadsheets/d/1lKVgTCEg67LucW_vlUHR_GIzjgXQgjBfNtxP1bZxB1k/edit?gid=968389650#gid=968389650
+ * This file helps us map internal actions to Controls so
+ * we can use them to document shortcuts.
  */
 
 import {
@@ -112,11 +110,9 @@ const zoomInOut = annotateNoOp(
 );
 
 /**
- * Actions supported in Annotate mode from:
- * https://docs.google.com/spreadsheets/d/1lKVgTCEg67LucW_vlUHR_GIzjgXQgjBfNtxP1bZxB1k/edit?gid=968389650#gid=968389650
  * Each key is the action identifier; value is the associated control object.
  */
-export const ANNOTATE: ControlMap<BaseState> = {
+const ANNOTATE: ControlMap<BaseState> = {
   navigateToPreviousNextSample,
   selectDeselectSample: selectSample, // re-use looker action
   toggleFullscreen,
