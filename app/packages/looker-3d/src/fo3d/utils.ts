@@ -20,7 +20,7 @@ import type {
   FoScene,
   FoSceneNode,
 } from "../hooks";
-import { SavedCameraState } from "../types";
+import type { SavedCameraState } from "../types";
 
 export const getCameraPositionKey = (datasetName?: string) =>
   `${datasetName ?? "fiftyone"}-fo3d-camera-position`;
@@ -192,7 +192,7 @@ export const getResolvedUrlForFo3dAsset = (
 
 export const getThreeMaterialFromFo3dMaterial = (
   foMtl: Record<string, number | string | boolean>,
-  avoidZFighting: boolean = true
+  avoidZFighting = true
 ) => {
   const { _type, ...props } = foMtl;
   props["transparent"] = (props.opacity as number) < 1;
@@ -266,6 +266,47 @@ export const getOrthonormalAxis = (vec: Vector3Tuple | Vector3) => {
 
   if (vec[0] === 0 && vec[1] === 0 && vec[2] === -1) {
     return "-Z";
+  }
+
+  return null;
+};
+
+export const ORTHONORMAL_AXIS_OPTIONS = [
+  "X",
+  "Y",
+  "Z",
+  "-X",
+  "-Y",
+  "-Z",
+] as const;
+
+export type OrthonormalAxis = typeof ORTHONORMAL_AXIS_OPTIONS[number];
+
+export const getUpVectorFromAxis = (
+  axis: string | null | undefined
+): Vector3 | null => {
+  if (axis === "X") {
+    return new Vector3(1, 0, 0);
+  }
+
+  if (axis === "Y") {
+    return new Vector3(0, 1, 0);
+  }
+
+  if (axis === "Z") {
+    return new Vector3(0, 0, 1);
+  }
+
+  if (axis === "-X") {
+    return new Vector3(-1, 0, 0);
+  }
+
+  if (axis === "-Y") {
+    return new Vector3(0, -1, 0);
+  }
+
+  if (axis === "-Z") {
+    return new Vector3(0, 0, -1);
   }
 
   return null;
