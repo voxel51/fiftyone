@@ -101,7 +101,9 @@ class _SAM2Predictor(fosam._SAMPredictor):
         unnorm_points = self.processor._transforms.transform_coords(
             norm_points
         )
-        return torch.tensor(unnorm_points), torch.tensor(labels)
+        return torch.tensor(unnorm_points, dtype=torch.float64), torch.tensor(
+            labels, dtype=torch.int
+        )
 
 
 class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
@@ -222,7 +224,12 @@ class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
                 mask_input=mask_inputs[img_idx] if mask_inputs else None,
                 multimask_output=multimask_output,
             )
-            outputs.append({"masks": out_masks, "iou_predictions": iou_pred})
+            outputs.append(
+                {
+                    "masks": out_masks.float(),
+                    "iou_predictions": iou_pred.float(),
+                }
+            )
         return outputs
 
     def _forward_pass_auto(self, args):

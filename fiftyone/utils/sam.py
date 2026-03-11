@@ -525,8 +525,8 @@ class SAMSegmenterOutputProcessor(fout.OutputProcessor):
 
         boxes = output["boxes"]
         labels = output["labels"]
-        masks = output["masks"].detach().cpu().numpy()
-        scores = output["scores"].detach().cpu().numpy()
+        masks = output["masks"].float().detach().cpu().numpy()
+        scores = output["scores"].float().detach().cpu().numpy()
         boxes = (
             boxes.detach().cpu().numpy()
             if isinstance(boxes, torch.Tensor)
@@ -547,36 +547,39 @@ class SAMSegmenterOutputProcessor(fout.OutputProcessor):
             if classes is not None and label not in classes:
                 continue
 
-            if box is None:
-                # Compute box from mask
-                box = _mask_to_box(mask)
-                if box is None:
-                    continue
-
-            x1, y1, x2, y2 = box
-            bounding_box = [
-                x1 / width,
-                y1 / height,
-                (x2 - x1) / width,
-                (y2 - y1) / height,
-            ]
-
-            mask = mask[
-                int(round(y1)) : int(round(y2)),
-                int(round(x1)) : int(round(x2)),
-            ]
-
             if mask.dtype != bool:
                 mask = mask > self.mask_thresh
 
-            detections.append(
-                fol.Detection(
-                    label=label,
-                    bounding_box=bounding_box,
-                    mask=mask,
-                    confidence=score,
+            if box is None:
+                detections.append(
+                    fol.Detection.from_mask(
+                        mask=mask,
+                        label=label,
+                        confidence=score,
+                    )
                 )
-            )
+            else:
+                x1, y1, x2, y2 = box
+                bounding_box = [
+                    x1 / width,
+                    y1 / height,
+                    (x2 - x1) / width,
+                    (y2 - y1) / height,
+                ]
+
+                mask = mask[
+                    int(round(y1)) : int(round(y2)),
+                    int(round(x1)) : int(round(x2)),
+                ]
+
+                detections.append(
+                    fol.Detection(
+                        label=label,
+                        bounding_box=bounding_box,
+                        mask=mask,
+                        confidence=score,
+                    )
+                )
         return fol.Detections(detections=detections)
 
 
