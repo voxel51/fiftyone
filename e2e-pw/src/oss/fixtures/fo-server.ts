@@ -46,17 +46,17 @@ export class FoWebServer {
         "--clean_start",
       ]);
 
+      console.log(procString);
+
       const proc = spawn(procString, { shell: true });
 
-      if (process.env.LOG_PROCESS_OUTPUT?.toLocaleLowerCase() === "true") {
-        proc.stdout.on("data", (data) => {
-          console.log(`stdout: ${data}`);
-        });
+      proc.stdout.on("data", (data) => {
+        console.log(`stdout: ${data}`);
+      });
 
-        proc.stderr.on("data", (data) => {
-          console.error(`stderr: ${data}`);
-        });
-      }
+      proc.stderr.on("data", (data) => {
+        console.error(`stderr: ${data}`);
+      });
 
       this.#webserverProcessConfig = {
         processId: proc.pid,
@@ -69,7 +69,7 @@ export class FoWebServer {
       );
 
       await waitOn({
-        resources: [`http://0.0.0.0:${this.#port}`],
+        resources: [`tcp:127.0.0.1:${this.#port}`],
         timeout: Duration.Seconds(30),
       });
       console.log("webserver started");
