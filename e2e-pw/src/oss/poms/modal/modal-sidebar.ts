@@ -105,7 +105,20 @@ export class ModalSidebarPom {
   }
 
   /**
+   * Retrieves the count value displayed for a given sidebar field
+   *
+   * @param field - The field identifier whose count should be retrieved
+   * @returns A promise resolving to the field count text, or null if not found
+   */
+  async getSidebarFieldCount(field: string) {
+    return this.getSidebarField(field)
+      .getByTestId("entry-count-all")
+      .textContent();
+  }
+
+  /**
    * Retrieves the number of sample tags displayed in the sidebar
+   *
    * @returns A promise resolving to the sample tag count as a number
    */
   async getSampleTagCount() {
@@ -266,6 +279,19 @@ class ModalSidebarAsserter {
         this.verifySidebarEntryText(key, value)
       )
     );
+  }
+
+  /**
+   * Asserts that the count displayed for a sidebar field matches the expected
+   * value
+   *
+   * @param field - The field identifier whose count should be checked
+   * @param count - The expected count value for the field
+   */
+  async verifySidebarFieldCount(field: string, count: string | number) {
+    await expect(
+      this.modalSidebarPom.getSidebarField(field).getByTestId("entry-count-all")
+    ).toHaveText(String(count));
   }
 
   /**
