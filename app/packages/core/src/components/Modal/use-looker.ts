@@ -1,5 +1,8 @@
 import * as fos from "@fiftyone/state";
-import React, { useEffect, useRef, useState } from "react";
+import { modalViewportState } from "@fiftyone/state";
+import { jotaiStore } from "@fiftyone/state";
+import { useAtomValue, useSetAtom } from "jotai";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { v4 as uuid } from "uuid";
@@ -47,7 +50,15 @@ function useLooker<L extends fos.Lookers>({
     selectedMediaField;
     /** end refreshers */
 
-    return createLooker.current(sampleRef.current);
+    const newLooker = createLooker.current(sampleRef.current);
+
+    // Seed the initial viewport so the first paint shows the restored position. 
+    const saved = jotaiStore.get(modalViewportState);
+    if (saved && saved.sampleId === sampleRef.current.sample._id) {
+      newLooker.setViewportState(saved);
+    }
+
+    return newLooker;
   }, [createLooker, reset, selectedMediaField]) as L;
 
   useEffect(() => {
@@ -129,6 +140,49 @@ function useLooker<L extends fos.Lookers>({
       setActiveLookerRef(looker as fos.Lookers);
     }
   }, [looker, setActiveLookerRef]);
+
+  const setViewportState = useSetAtom(modalViewportState);
+  const savedViewport = useAtomValue(modalViewportState);
+
+  // Capture zoom/pan before the looker is removed from the DOM
+  // so the position can be restored when EXPLORE mode (Looker) remounts.
+  useLayoutEffect(() => {
+    return () => {
+      if (looker?.state?.loaded && looker.state.dimensions) {
+        setViewportState({
+          sampleId: sample.sample._id,
+          ...looker.getViewportState(),
+        });
+      }
+    };
+  }, [looker, sample, setViewportState]);
+
+  // Restore zoom/pan that was captured when Lighter unmounted.
+  useEffect(() => {
+    if (!looker || !savedViewport || savedViewport.sampleId !== sample.sample._id) {
+      return () => { };
+    }
+
+    let applied = false;
+
+    const apply = () => {
+      if (applied || !looker.state.loaded || looker.state.setZoom) return;
+      applied = true;
+      looker.setViewportState(savedViewport);
+    };
+
+    // Try immediately in case the looker finished loading before this effect ran.
+    apply();
+
+    // Subscribe to catch the transition once initial auto-zoom completes.
+    const unsubSetZoom = looker.subscribeToState("setZoom", apply);
+    const unsubLoaded = looker.subscribeToState("loaded", apply);
+
+    return () => {
+      unsubSetZoom();
+      unsubLoaded();
+    };
+  }, [looker, savedViewport, sample]);
 
   return { id, looker, ref, sample, updateLookerOptions };
 }

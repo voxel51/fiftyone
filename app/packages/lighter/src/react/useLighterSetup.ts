@@ -4,7 +4,7 @@
 
 import { useLookerOptions } from "@fiftyone/state";
 import { useAtom } from "jotai";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   PixiRenderer2D,
   Scene2D,
@@ -35,6 +35,7 @@ export const useLighterSetupWithPixi = (
   sceneId: string
 ) => {
   const [scene, setScene] = useAtom(lighterSceneAtom);
+  const [isRendererReady, setIsRendererReady] = useState(false);
   const eventChannel = scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID;
   const eventBus = useLighterEventBus(eventChannel);
 
@@ -70,12 +71,16 @@ export const useLighterSetupWithPixi = (
   useEffect(() => {
     if (!scene || scene.isDestroyed) return;
 
+    setIsRendererReady(false);
+
     rendererRef.current?.initializePixiJS().then(() => {
       scene.startRenderLoop();
+      setIsRendererReady(true);
     });
 
     return () => {
       scene.destroy();
+      setIsRendererReady(false);
     };
   }, [scene]);
 
@@ -89,5 +94,5 @@ export const useLighterSetupWithPixi = (
     }
   }, [scene, options, eventBus]);
 
-  return { scene };
+  return { scene, isRendererReady };
 };

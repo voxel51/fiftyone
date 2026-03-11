@@ -11,7 +11,8 @@ import {
 import type { Sample } from "@fiftyone/state";
 import * as fos from "@fiftyone/state";
 import { getSampleSrc } from "@fiftyone/state";
-import { useAtomValue } from "jotai";
+import { modalViewportState } from "@fiftyone/state";
+import { useAtomValue, useSetAtom } from "jotai";
 import React, {
   useEffect,
   useLayoutEffect,
@@ -98,7 +99,11 @@ export const LighterSampleRenderer = ({
       }}
     >
       {containerRef.current && sceneId && (
-        <LighterSetupImpl containerRef={containerRef} sceneId={sceneId} />
+        <LighterSetupImpl
+          containerRef={containerRef}
+          sceneId={sceneId}
+          sampleId={sampleRef.current?.sample?._id}
+        />
       )}
     </div>
   );
@@ -107,8 +112,9 @@ export const LighterSampleRenderer = ({
 const LighterSetupImpl = (props: {
   containerRef: React.RefObject<HTMLDivElement>;
   sceneId: string;
+  sampleId: string | undefined;
 }) => {
-  const { containerRef, sceneId } = props;
+  const { containerRef, sceneId, sampleId } = props;
 
   const options = useRecoilValue(
     fos.lookerOptions({ modal: true, withFilter: false })
@@ -127,10 +133,44 @@ const LighterSetupImpl = (props: {
 
   const canvas = singletonCanvas.getCanvas(containerRef.current);
 
-  const { scene } = useLighterSetupWithPixi(canvas, mergedOptions, sceneId);
+  const { scene, isRendererReady } = useLighterSetupWithPixi(
+    canvas,
+    mergedOptions,
+    sceneId
+  );
 
   // This is the bridge between FiftyOne state management system and Lighter
   useBridge(scene);
+
+  const setViewportState = useSetAtom(modalViewportState);
+  const savedViewport = useAtomValue(modalViewportState);
+
+  // Capture zoom/pan before this component is removed from the DOM
+  useLayoutEffect(() => {
+    return () => {
+      if (scene && !scene.isDestroyed && sampleId) {
+        setViewportState({
+          sampleId,
+          ...scene.getViewportState(),
+        });
+      }
+    };
+  }, [scene, sampleId, setViewportState]);
+
+  // Restore zoom/pan once the Pixi renderer is ready
+  useEffect(() => {
+    if (
+      !isRendererReady ||
+      !scene ||
+      scene.isDestroyed ||
+      !savedViewport ||
+      savedViewport.sampleId !== sampleId
+    ) {
+      return;
+    }
+
+    scene.setViewportState(savedViewport);
+  }, [isRendererReady, scene, savedViewport, sampleId]);
 
   return null;
 };
