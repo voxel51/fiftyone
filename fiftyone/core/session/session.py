@@ -1560,7 +1560,11 @@ def _resolve_label_selection_style(
 
 
 def _on_select_labels(state: StateDescription, event: SelectLabels):
-    setattr(state, "selected_labels", [asdict(data) for data in event.labels])
+    labels = [asdict(data) for data in event.labels]
+    for label in labels:
+        if not label.get("type"):
+            label["type"] = "default"
+    setattr(state, "selected_labels", labels)
 
 
 def _pull_group_slice(

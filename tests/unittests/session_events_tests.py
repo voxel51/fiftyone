@@ -56,9 +56,12 @@ class SessionTests(unittest.TestCase):
         )
 
         _on_select_labels(state, event)
-        self.assertListEqual(
-            state.selected_labels, [asdict(data) for data in event.labels]
-        )
+        # _on_select_labels defaults missing type to "default"
+        expected = [asdict(data) for data in event.labels]
+        for label in expected:
+            if not label.get("type"):
+                label["type"] = "default"
+        self.assertListEqual(state.selected_labels, expected)
 
         _on_select_labels(
             state,
