@@ -63,7 +63,7 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
   }
 
   // The "stack index" is the order in which Classifications are drawn to the scene.
-  // They are displayed vertically in the upper-left of the scene and sorted alphaetically by label class.
+  // They are displayed vertically in the upper-left of the scene and sorted alphabetically by label class.
   private getStackIndex(): number {
     const siblings = getChannelMap(this.channel);
     const alphabetical = [...siblings.values()].sort((a, b) =>
