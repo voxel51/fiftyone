@@ -10,3 +10,5 @@ import os
 BUILTIN_PLUGINS_DIR = os.path.normpath(
     os.path.join(os.path.dirname(__file__), "..", "..", "plugins")
 )
+
+PLUGIN_MODULE_PREFIX = "fiftyone.plugins.orgs"

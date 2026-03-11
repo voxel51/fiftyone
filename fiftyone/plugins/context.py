@@ -7,82 +7,108 @@ FiftyOne plugin context.
 """
 
 import importlib
+import importlib.abc
+import importlib.machinery
 import logging
 import os
-import re
 import sys
 import traceback
 import types
 
-import fiftyone as fo
-import fiftyone.core.utils as fou
 import fiftyone.plugins as fop
+import fiftyone.plugins.constants as fpc
 
 from fiftyone.operators.decorators import plugins_cache
 from fiftyone.operators.operator import Operator
 
-
 logger = logging.getLogger(__name__)
 
 INIT_FILENAME = "__init__.py"
-PLUGIN_MODULE_PREFIX = "fiftyone.plugins.orgs"
 
 
-def _to_python_safe_name(name):
-    """Converts a name to a Python-safe identifier.
+class PluginModuleFinder(importlib.abc.MetaPathFinder):
+    """Custom meta-path finder that resolves synthetic plugin module names.
 
-    - PascalCase → snake_case
-    - Hyphens/spaces → underscores
-    - Strips leading @ symbol
+    This finder resolves the plugin module with synthetic names
+    like ``fiftyone.plugins.orgs.<org>.<plugin>`` back to the original file on
+    disk using the same :class:`PluginDefinition` objects that the normal
+    plugin-loading path uses.
     """
-    if not name:
-        return name
 
-    # Strip @ prefix
-    name = name.lstrip("@")
+    _installed = False
+    _plugin_map = None  # {module_name: PluginDefinition}
+    _discovering = False
 
-    # PascalCase to snake_case: insert underscore before uppercase letters
-    name = re.sub(r"(?<!^)(?=[A-Z])", "_", name)
+    @classmethod
+    def install(cls):
+        """Installs this finder on ``sys.meta_path`` (idempotent)."""
+        if not cls._installed:
+            sys.meta_path.append(cls())
+            cls._installed = True
 
-    # Replace hyphens and spaces with underscores, lowercase
-    name = re.sub(r"[-\s]+", "_", name).lower()
+    @classmethod
+    def _get_plugin_map(cls):
+        """Returns the ``{module_name: PluginDefinition}`` map.
 
-    # Remove any remaining non-alphanumeric characters except underscore
-    name = re.sub(r"[^a-z0-9_]", "", name)
+        On first call (e.g. in a spawned child process), performs a
+        lightweight filesystem scan via :func:`list_plugins` — the same
+        discovery that the normal plugin-loading path uses.  No plugin
+        code is executed.
+        """
+        if cls._plugin_map is not None:
+            return cls._plugin_map
 
-    # Ensure doesn't start with a number
-    if name and name[0].isdigit():
-        name = "_" + name
+        if cls._discovering:
+            return {}
 
-    return name
+        cls._discovering = True
+        try:
+            plugin_map = {}
+            for pd in fop.list_plugins(enabled="all", builtin="all"):
+                if os.path.isfile(pd.py_entry_path):
+                    plugin_map[pd.module_name] = pd
+            cls._plugin_map = plugin_map
+        except Exception:
+            logger.debug(
+                "Failed to discover plugin paths for module finder",
+                exc_info=True,
+            )
+            cls._plugin_map = {}
+        finally:
+            cls._discovering = False
 
+        return cls._plugin_map
 
-def _get_plugin_module_name(plugin_name, fallback_name=None):
-    """Gets the synthetic module name for a plugin.
+    def find_spec(self, fullname, path, target=None):
+        """Implements the :class:`importlib.abc.MetaPathFinder` protocol."""
+        if not fullname.startswith(fpc.PLUGIN_MODULE_PREFIX):
+            return None
 
-    Args:
-        plugin_name: the plugin name (e.g., "@org/plugin" or "plugin")
-        fallback_name: fallback name to use if plugin_name can't be parsed
+        plugin_map = self._get_plugin_map()
 
-    Returns:
-        module name like "fiftyone.plugins.orgs.<org>.<plugin>"
-    """
-    org = "external"
-    name = None
+        # Registered plugin module — return a real file-backed spec
+        if fullname in plugin_map:
+            pd = plugin_map[fullname]
+            return importlib.util.spec_from_file_location(
+                fullname,
+                pd.py_entry_path,
+                submodule_search_locations=[pd.directory],
+            )
 
-    if plugin_name:
-        if "/" in plugin_name:
-            parts = plugin_name.split("/", 1)
-            org = _to_python_safe_name(parts[0])
-            name = _to_python_safe_name(parts[1])
-        else:
-            name = _to_python_safe_name(plugin_name)
+        # Check if fullname is a namespace prefix (intermediate package)
+        # e.g. "fiftyone.plugins.orgs" or "fiftyone.plugins.orgs.voxel51"
+        prefix = fullname + "."
+        is_prefix = fullname == fpc.PLUGIN_MODULE_PREFIX or any(
+            k.startswith(prefix) for k in plugin_map
+        )
+        if is_prefix:
+            spec = importlib.machinery.ModuleSpec(
+                fullname, None, is_package=True
+            )
+            spec.submodule_search_locations = []
+            return spec
 
-    # Ensure we have valid names
-    org = org or "external"
-    name = name or _to_python_safe_name(fallback_name) or "plugin"
-
-    return f"{PLUGIN_MODULE_PREFIX}.{org}.{name}"
+        return None
 
 
 def _ensure_parent_modules(module_name, plugin_dir):
@@ -236,10 +262,7 @@ class PluginContext(object):
             if not os.path.isfile(module_path):
                 return
 
-            # Use synthetic module name based on plugin name to avoid
-            # path-dependent naming issues (e.g., /sc/... becoming sc.home...)
-            fallback_name = os.path.basename(module_dir)
-            module_name = _get_plugin_module_name(self.name, fallback_name)
+            module_name = self.plugin_definition.module_name
 
             _ensure_parent_modules(module_name, module_dir)
 

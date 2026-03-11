@@ -5,7 +5,9 @@ FiftyOne plugin context tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-
+import multiprocessing
+import os
+import pickle
 import sys
 from unittest import mock
 
@@ -34,7 +36,7 @@ class TestPluginModuleNameParsing:
         ],
     )
     def test_to_python_safe_name(self, input_name, expected):
-        assert fpctx._to_python_safe_name(input_name) == expected
+        assert fpd._to_python_safe_name(input_name) == expected
 
     @pytest.mark.parametrize(
         "plugin_name,fallback,expected",
@@ -74,7 +76,7 @@ class TestPluginModuleNameParsing:
         ],
     )
     def test_get_plugin_module_name(self, plugin_name, fallback, expected):
-        assert fpctx._get_plugin_module_name(plugin_name, fallback) == expected
+        assert fpd._get_plugin_module_name(plugin_name, fallback) == expected
 
 
 class TestPluginRegistration:
@@ -209,3 +211,110 @@ def register(ctx):
             assert not ctx.has_errors(), f"Plugin had errors: {ctx.errors}"
             # pylint: disable=no-member
             assert ctx.helper_value == 99
+
+
+def _make_plugin(tmp_path, name="@test_org/spawn_plugin", operators=None):
+    """Helper to create a temporary plugin on disk and return its definition."""
+    plugin_dir = tmp_path / "spawn-plugin"
+    plugin_dir.mkdir(parents=True, exist_ok=True)
+
+    metadata = {
+        "name": name,
+        "label": "Spawn Test Plugin",
+        "version": "1.0.0",
+        "operators": operators or ["SpawnOperator"],
+    }
+    with open(plugin_dir / "fiftyone.yml", "w") as f:
+        yaml.dump(metadata, f)
+
+    with open(plugin_dir / "__init__.py", "w") as f:
+        f.write(
+            """
+def worker_fn(x):
+    return x * 2
+
+
+def register(ctx):
+    pass
+"""
+        )
+
+    return fpd.PluginDefinition(str(plugin_dir), metadata)
+
+
+def _clear_synthetic_modules(module_name):
+    """Remove a synthetic plugin module and its parents from sys.modules."""
+    to_remove = [
+        k
+        for k in sys.modules
+        if k == module_name or k.startswith(module_name + ".")
+    ]
+    parts = module_name.split(".")
+    for i in range(len(parts), 0, -1):
+        prefix = ".".join(parts[:i])
+        if (
+            prefix.startswith("fiftyone.plugins.orgs")
+            and prefix != "fiftyone.plugins"
+        ):
+            to_remove.append(prefix)
+
+    for k in set(to_remove):
+        sys.modules.pop(k, None)
+
+
+def _reset_finder():
+    """Reset finder state to simulate a fresh process."""
+    fpctx.PluginModuleFinder._plugin_map = None
+    fpctx.PluginModuleFinder._discovering = False
+
+
+class TestPluginModuleFinder:
+    """Tests for PluginModuleFinder resolving synthetic modules in a
+    spawn multiprocessing context where sys.modules is empty."""
+
+    def test_plugin_function_survives_pickle_roundtrip(self, tmp_path):
+        """A function from a plugin module should be picklable and
+        unpicklable via the finder — this is what multiprocessing.spawn does."""
+        pd = _make_plugin(tmp_path)
+        module_name = pd.module_name
+
+        with mock.patch("fiftyone.config.plugins_dir", str(tmp_path)):
+            ctx = fpctx.PluginContext(pd)
+            ctx.register_all()
+
+            fn = sys.modules[module_name].worker_fn
+            pickled = pickle.dumps(fn)
+
+            # Simulate spawn: clear modules, reset finder
+            _clear_synthetic_modules(module_name)
+            _reset_finder()
+
+            restored_fn = pickle.loads(pickled)
+            assert restored_fn(7) == 14
+
+    def test_spawn_process_can_call_plugin_function(self, tmp_path):
+        """End-to-end: a spawn child process should be able to call a
+        function defined in a plugin module."""
+        pd = _make_plugin(tmp_path)
+        module_name = pd.module_name
+
+        # Use env var so the spawn child (fresh process) discovers the plugin
+        old_env = os.environ.get("FIFTYONE_PLUGINS_DIR")
+        os.environ["FIFTYONE_PLUGINS_DIR"] = str(tmp_path)
+        try:
+            with mock.patch("fiftyone.config.plugins_dir", str(tmp_path)):
+                ctx = fpctx.PluginContext(pd)
+                ctx.register_all()
+
+                fn = sys.modules[module_name].worker_fn
+
+                mp_ctx = multiprocessing.get_context("spawn")
+                with mp_ctx.Pool(1) as pool:
+                    results = pool.map(fn, [1, 2, 3])
+
+                assert results == [2, 4, 6]
+        finally:
+            if old_env is None:
+                os.environ.pop("FIFTYONE_PLUGINS_DIR", None)
+            else:
+                os.environ["FIFTYONE_PLUGINS_DIR"] = old_env

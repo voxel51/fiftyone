@@ -25,8 +25,13 @@ from .core import (
     ensure_plugin_compatibility,
 )
 from .definitions import PluginDefinition
-from .context import PluginContext
+from .context import PluginContext, PluginModuleFinder
 from .secrets import PluginSecretsResolver
+
+# Install the custom finder so that synthetic plugin module names
+# (fiftyone.plugins.orgs.*) are resolvable in spawned subprocesses
+# where sys.modules starts empty.
+PluginModuleFinder.install()
 
 # This enables Sphinx refs to directly use paths imported here
 __all__ = [

@@ -2495,3 +2495,139 @@ class TestPipelineRequestParamsOverrides(unittest.TestCase):
             doc.pipeline.stages[1].request_params_overrides,
             {"dataset_name": "export_dataset"},
         )
+
+
+def _make_spawn_operator_plugin(tmp_path):
+    """Create a plugin whose operator uses multiprocessing.spawn internally."""
+    import yaml
+
+    plugin_dir = tmp_path / "spawn-op-plugin"
+    plugin_dir.mkdir(parents=True, exist_ok=True)
+
+    metadata = {
+        "name": "@test_org/spawn_op",
+        "label": "Spawn Operator Plugin",
+        "version": "1.0.0",
+        "operators": ["SpawnMapOperator"],
+    }
+    with open(plugin_dir / "fiftyone.yml", "w") as f:
+        yaml.dump(metadata, f)
+
+    with open(plugin_dir / "__init__.py", "w") as f:
+        f.write(
+            '''
+import multiprocessing
+import pickle
+
+from fiftyone.operators.operator import Operator, OperatorConfig
+
+
+def _worker(x):
+    """Module-level function that spawn workers must resolve."""
+    return x ** 2
+
+
+def _run_in_spawn(pickled_fn, items, result_queue):
+    """Target for a spawn Process. Unpickles the function (triggering
+    module import) and calls it, sending back the result or exception."""
+    try:
+        fn = pickle.loads(pickled_fn)
+        result_queue.put(("ok", [fn(x) for x in items]))
+    except Exception as e:
+        result_queue.put(("error", e))
+
+
+class SpawnMapOperator(Operator):
+    @property
+    def config(self):
+        return OperatorConfig(
+            name="SpawnMapOperator",
+            label="Spawn Map Operator",
+            disable_schema_validation=True,
+        )
+
+    def resolve_input(self, *args, **kwargs):
+        return None
+
+    def execute(self, ctx):
+        mp_ctx = multiprocessing.get_context("spawn")
+        q = mp_ctx.Queue()
+
+        # Pickle _worker in the parent (succeeds — module is loaded here)
+        pickled_fn = pickle.dumps(_worker)
+
+        # Spawn a child that unpickles _worker (forces module import)
+        p = mp_ctx.Process(
+            target=_run_in_spawn, args=(pickled_fn, [1, 2, 3, 4], q)
+        )
+        p.start()
+        p.join(timeout=30)
+
+        if q.empty():
+            raise RuntimeError(
+                "Spawn process exited without returning a result"
+            )
+
+        status, payload = q.get_nowait()
+        if status == "error":
+            raise payload
+
+        return {"results": payload}
+
+
+def register(p):
+    p.register(SpawnMapOperator)
+'''
+        )
+
+    return metadata
+
+
+class TestDelegatedExecutorSpawnPlugin(unittest.IsolatedAsyncioTestCase):
+    """Integration test: the delegated executor resolves and executes a
+    non-builtin plugin operator that uses multiprocessing.spawn internally."""
+
+    async def test_execute_operator_with_spawn_multiprocessing(self):
+        import os
+        import tempfile
+
+        from fiftyone.operators import decorators as dec
+
+        with (tempfile.TemporaryDirectory() as tmp_dir):
+            from pathlib import Path
+
+            tmp_path = Path(tmp_dir)
+            _make_spawn_operator_plugin(tmp_path)
+            operator_uri = "@test_org/spawn_op/SpawnMapOperator"
+
+            doc = DelegatedOperationDocument(operator=operator_uri)
+            doc.id = ObjectId()
+            doc.run_state = ExecutionRunState.RUNNING
+            doc.context = ExecutionContext()
+            doc.context.request_params = {}
+
+            old_env = os.environ.get("FIFTYONE_PLUGINS_DIR")
+            os.environ["FIFTYONE_PLUGINS_DIR"] = tmp_dir
+            # Clear plugins cache so the temp plugin is discovered
+            old_cache = dec.cache.copy()
+            old_dir_state = dec.dir_cache.get("state")
+            dec.cache.clear()
+            dec.dir_cache["state"] = None
+            try:
+                with mock.patch("fiftyone.config.plugins_dir", tmp_dir):
+                    svc = DelegatedOperationService(repo=mock.MagicMock())
+                    result = await svc._execute_operator(doc)
+
+                    self.assertIsNone(
+                        result.error,
+                        f"Operator failed: {result.error}",
+                    )
+                    self.assertEqual(result.result, {"results": [1, 4, 9, 16]})
+            finally:
+                if old_env is None:
+                    os.environ.pop("FIFTYONE_PLUGINS_DIR", None)
+                else:
+                    os.environ["FIFTYONE_PLUGINS_DIR"] = old_env
+                dec.cache.clear()
+                dec.cache.update(old_cache)
+                dec.dir_cache["state"] = old_dir_state

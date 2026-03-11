@@ -7,6 +7,7 @@ Plugin definitions.
 """
 import hashlib
 import os
+import re
 
 import yaml
 
@@ -133,6 +134,16 @@ class PluginDefinition(object):
     @property
     def js_bundle_path(self):
         return self._get_abs_path(self.js_bundle)
+
+    @property
+    def module_name(self):
+        """The synthetic Python module name for this plugin.
+
+        Returns a name like ``fiftyone.plugins.orgs.<org>.<plugin>`` derived
+        from the plugin name declared in metadata.
+        """
+        fallback = os.path.basename(self._directory)
+        return _get_plugin_module_name(self.name, fallback)
 
     @property
     def py_entry(self):
@@ -265,3 +276,60 @@ class PluginDefinition(object):
             return None
 
         return os.path.join(self.directory, filename)
+
+
+def _to_python_safe_name(name):
+    """Converts a name to a Python-safe identifier.
+
+    - PascalCase → snake_case
+    - Hyphens/spaces → underscores
+    - Strips leading @ symbol
+    """
+    if not name:
+        return name
+
+    # Strip @ prefix
+    name = name.lstrip("@")
+
+    # PascalCase to snake_case: insert underscore before uppercase letters
+    name = re.sub(r"(?<!^)(?=[A-Z])", "_", name)
+
+    # Replace hyphens and spaces with underscores, lowercase
+    name = re.sub(r"[-\s]+", "_", name).lower()
+
+    # Remove any remaining non-alphanumeric characters except underscore
+    name = re.sub(r"[^a-z0-9_]", "", name)
+
+    # Ensure doesn't start with a number
+    if name and name[0].isdigit():
+        name = "_" + name
+
+    return name
+
+
+def _get_plugin_module_name(plugin_name, fallback_name=None):
+    """Gets the synthetic module name for a plugin.
+
+    Args:
+        plugin_name: the plugin name (e.g., "@org/plugin" or "plugin")
+        fallback_name: fallback name to use if plugin_name can't be parsed
+
+    Returns:
+        module name like ``fiftyone.plugins.orgs.<org>.<plugin>``
+    """
+    org = "external"
+    name = None
+
+    if plugin_name:
+        if "/" in plugin_name:
+            parts = plugin_name.split("/", 1)
+            org = _to_python_safe_name(parts[0])
+            name = _to_python_safe_name(parts[1])
+        else:
+            name = _to_python_safe_name(plugin_name)
+
+    # Ensure we have valid names
+    org = org or "external"
+    name = name or _to_python_safe_name(fallback_name) or "plugin"
+
+    return f"{fpc.PLUGIN_MODULE_PREFIX}.{org}.{name}"
