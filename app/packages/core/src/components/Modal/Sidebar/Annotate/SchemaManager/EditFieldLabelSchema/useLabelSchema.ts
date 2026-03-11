@@ -20,6 +20,10 @@ import {
   useSchemaManager,
   type UpdateSchemaRequest,
 } from "../../useSchemaManager";
+import {
+  dispatchSchemaManagerEvent,
+  useSchemaManagerEventBus,
+} from "../events";
 import { currentLabelSchema } from "../state";
 import { reconcileComponent } from "../utils";
 
@@ -146,6 +150,7 @@ const useSave = (field: string, visibilityChanged: boolean) => {
   const notify = useNotification();
   const [current] = useCurrentLabelSchema(field);
   const setCurrentField = useSetAtom(currentField);
+  const { dispatch } = useSchemaManagerEventBus();
 
   return {
     isSaving,
@@ -163,13 +168,13 @@ const useSave = (field: string, visibilityChanged: boolean) => {
       } catch (error) {
         console.error("Failed to save label schema:", error);
         setIsSaving(false);
-        document.dispatchEvent(new CustomEvent("schema-manager-save-complete"));
+        dispatchSchemaManagerEvent(dispatch, "schema-manager:save-complete");
         return;
       }
 
       setSaved(current);
       setIsSaving(false);
-      document.dispatchEvent(new CustomEvent("schema-manager-save-complete"));
+      dispatchSchemaManagerEvent(dispatch, "schema-manager:save-complete");
 
       // Determine activation change: first save auto-activates,
       // otherwise apply the visibility toggle for this field
@@ -209,6 +214,7 @@ const useScan = (field: string) => {
   const [, setCurrent] = useCurrentLabelSchema(field);
   const { createSchemas } = useSchemaManager();
   const limit = useQueryPerformanceSampleLimit();
+  const { dispatch } = useSchemaManagerEventBus();
   return {
     isScanning,
     scan: async () => {
@@ -220,7 +226,7 @@ const useScan = (field: string) => {
         }
       } finally {
         setIsScanning(false);
-        document.dispatchEvent(new CustomEvent("schema-manager-scan-complete"));
+        dispatchSchemaManagerEvent(dispatch, "schema-manager:scan-complete");
       }
     },
     cancelScan: () => {
@@ -237,6 +243,7 @@ const useValidate = (field: string) => {
   const [, setCurrent] = useCurrentLabelSchema(field);
   const discard = useDiscard(field, () => setErrors([]));
   const { validateSchemas } = useSchemaManager();
+  const { dispatch } = useSchemaManagerEventBus();
 
   const resetErrors = useCallback(() => {
     setErrors([]);
@@ -261,15 +268,13 @@ const useValidate = (field: string) => {
           setErrors(result.errors);
         }
 
-        if (!result.errors.length) {
+        if (!result.errors?.length) {
           setCurrent(parsed);
           setIsValid(true);
-          document.dispatchEvent(new CustomEvent("schema-manager-valid-json"));
+          dispatchSchemaManagerEvent(dispatch, "schema-manager:valid-json");
         } else {
           setIsValid(false);
-          document.dispatchEvent(
-            new CustomEvent("schema-manager-invalid-json")
-          );
+          dispatchSchemaManagerEvent(dispatch, "schema-manager:invalid-json");
         }
       } catch (e) {
         if (e instanceof SyntaxError) {

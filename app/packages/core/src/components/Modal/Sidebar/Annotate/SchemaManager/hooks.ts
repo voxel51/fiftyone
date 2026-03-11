@@ -27,7 +27,6 @@ import {
   activeSchemaTab,
   addToActiveSchemas,
   currentField,
-  exploreActiveFields,
   fieldAttributeCount,
   fieldType,
   fieldTypes,
@@ -212,39 +211,20 @@ export const useIsFieldActive = (field: string) => {
 };
 
 /**
- * Hook that returns a callback to add a field to exploreActiveFields,
- * ensuring it's immediately visible in the Annotate sidebar.
+ * Hook that returns a callback to activate a field in the Explore sidebar.
  *
- * Also sets the Recoil `activeField` so that when the dataset query
- * re-fetches (e.g. via `reload_dataset`), the field is "checked" in
- * Explore and the Sidebar.tsx Recoil→Jotai sync preserves it.
+ * Sets the Recoil `activeField` source of truth. The Sidebar.tsx
+ * Recoil→Jotai sync effect automatically propagates this change to the
+ * Jotai `exploreActiveFields` atom, ensuring the field becomes visible
+ * in the Annotate sidebar via `visibleLabelSchemas`.
  */
 export const useAddToExploreActiveFields = () => {
-  const addField = useAtomCallback(
-    useCallback((get, set, field: string) => {
-      const current = get(exploreActiveFields);
-      if (!current) {
-        set(exploreActiveFields, [field]);
-      } else if (!current.includes(field)) {
-        set(exploreActiveFields, [...current, field]);
-      }
-    }, [])
-  );
-
-  const activateInExplore = useRecoilCallback(
+  return useRecoilCallback(
     ({ set }) =>
       (field: string) => {
         set(activeField({ modal: true, path: field }), true);
       },
     []
-  );
-
-  return useCallback(
-    (field: string) => {
-      addField(field);
-      activateInExplore(field);
-    },
-    [addField, activateInExplore]
   );
 };
 
