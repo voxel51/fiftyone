@@ -1,16 +1,15 @@
 import * as fos from "@fiftyone/state";
-import { isFo3d as utilIsFo3d } from "@fiftyone/utilities";
+import { isFo3dSamplePath } from "@fiftyone/utilities";
 import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import { Logs } from "../Logs";
 import { SET_EGO_VIEW_EVENT, SET_TOP_VIEW_EVENT } from "../constants";
 import { ActionBarContainer, ActionsBar } from "../containers";
 import { LEVA_CONTAINER_ID } from "../fo3d/Leva";
+import { getMediaPathForFo3dSample } from "../fo3d/utils";
 import { useHotkey } from "../hooks";
 import { fo3dContainsBackground as fo3dContainsBackgroundAtom } from "../state";
-import { ChooseColorSpace } from "./ColorSpace";
 import { LevaConfigPanel } from "./LevaConfigPanel";
-import { SetPointSizeButton } from "./PointSize";
 import { SetViewButton } from "./SetViewButton";
 import { SliceSelector } from "./SliceSelector";
 import { ToggleFo3dBackground } from "./ToggleBackground";
@@ -27,25 +26,26 @@ export const ActionBar = ({
   onMouseEnter: () => void;
   onMouseLeave: () => void;
 }) => {
-  const isFo3dSlice = useRecoilValue(fos.fo3dSlice);
-  const mediaType = useRecoilValue(fos.mediaType);
-  const isFo3d = useMemo(
-    () => isFo3dSlice || utilIsFo3d(mediaType),
-    [isFo3dSlice, mediaType]
-  );
-  const hasMultiplePcdSlices = useRecoilValue(fos.hasMultiple3dSlices);
+  const {
+    state: {
+      activeFo3dSlice,
+      sceneSample,
+      interactionSample,
+      hasMultipleSlices,
+      fo3dContent,
+    },
+  } = fos.useRenderConfig3d();
+  const mediaField = useRecoilValue(fos.selectedMediaField(true));
+  const isFo3d = useMemo(() => {
+    const mediaPath = getMediaPathForFo3dSample(sceneSample, mediaField);
+
+    return (
+      Boolean(activeFo3dSlice) ||
+      isFo3dSamplePath(mediaPath) ||
+      isFo3dSamplePath(sceneSample?.sample?.filepath)
+    );
+  }, [activeFo3dSlice, mediaField, sceneSample]);
   const isGroup = useRecoilValue(fos.isGroup);
-
-  const sampleMap = useRecoilValue(fos.active3dSlicesToSampleMap);
-  const sample = useRecoilValue(fos.fo3dSample);
-
-  const sampleForJsonView = useMemo(() => {
-    if (isFo3d) {
-      return sample;
-    }
-
-    return sampleMap;
-  }, [sampleMap, sample, isFo3d]);
 
   const fo3dContainsBackground = useRecoilValue(fo3dContainsBackgroundAtom);
 
@@ -55,18 +55,21 @@ export const ActionBar = ({
   useHotkey(
     "KeyJ",
     () => {
-      jsonPanel.toggle(sampleForJsonView);
+      jsonPanel.toggle(interactionSample);
     },
-    [sampleForJsonView],
+    [interactionSample],
     { useTransaction: false }
   );
 
   const componentsToRender = useMemo(() => {
     const components = [];
 
-    components.push(<LevaConfigPanel key="leva-config-panel" />);
+    if (hasMultipleSlices) {
+      components.push(<SliceSelector key="slice-selector" />);
+    }
 
-    if (isFo3d) {
+    components.push(<LevaConfigPanel key="leva-config-panel" />);
+    if (isFo3d && fo3dContent) {
       components.push(<ViewFo3d jsonPanel={jsonPanel} key="inspect-fo3d" />);
     }
 
@@ -76,13 +79,8 @@ export const ActionBar = ({
       components.push(<ToggleFo3dBackground key="toggle-background" />);
     }
 
-    if (isFo3d && isGroup) {
+    if (isGroup) {
       components.push(<ToggleFrustums key="toggle-frustums" />);
-    }
-
-    if (!isFo3d) {
-      components.push(<SetPointSizeButton key="set-point-size" />);
-      components.push(<ChooseColorSpace key="choose-color-space" />);
     }
 
     components.push(
@@ -115,7 +113,7 @@ export const ActionBar = ({
       <ViewJSON
         key="view-json"
         jsonPanel={jsonPanel}
-        sample={sampleForJsonView}
+        sample={interactionSample}
       />
     );
 
@@ -124,11 +122,13 @@ export const ActionBar = ({
     return components;
   }, [
     fo3dContainsBackground,
+    fo3dContent,
+    hasMultipleSlices,
     isFo3d,
     isGroup,
     jsonPanel,
     helpPanel,
-    sampleForJsonView,
+    interactionSample,
   ]);
 
   return (
@@ -138,7 +138,6 @@ export const ActionBar = ({
         onMouseEnter={onMouseEnter}
         onMouseLeave={onMouseLeave}
       >
-        {hasMultiplePcdSlices && <SliceSelector />}
         <Logs />
         <ActionsBar>{componentsToRender}</ActionsBar>
       </ActionBarContainer>

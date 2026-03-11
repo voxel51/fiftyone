@@ -72,18 +72,11 @@ const useMeshTooltipProps = (label: any) => {
 
         set(fos.tooltipDetail, getDetailsFromLabel(label));
 
-        if (!label.instance) return;
-
-        const pinned3DSample = snapshot
-          .getLoadable(fos.pinned3DSample)
-          .getValue();
-
-        if (!pinned3DSample?.sample) return;
-        const sampleId = pinned3DSample.sample._id;
+        if (!label.instance || !label.sampleId) return;
 
         selectiveRenderingEventBus.emit(
           new LabelHoveredEvent({
-            sampleId,
+            sampleId: label.sampleId,
             labelId: label.id,
             instanceId: label.instance._id,
             field: label.path,
