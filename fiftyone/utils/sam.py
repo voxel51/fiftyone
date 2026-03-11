@@ -248,7 +248,10 @@ class SegmentAnythingImageGetItem(fout.GetItem):
             raise ValueError(
                 f"Transform cannot be None for {self.__class__.__name__}."
             )
-        img, img_hw = self.transform(img)
+        if self.mode != SAMPromptMode.auto:
+            img, img_hw = self.transform(img)
+        else:
+            img_hw = img.shape[-2:]
         item_dict["image"] = img
         item_dict["original_size"] = img_hw
         item_dict["id"] = d["id"]
@@ -491,7 +494,7 @@ class SAMSegmenterOutputProcessor(fout.OutputProcessor):
             post_processed_out.append(
                 {
                     "masks": _masks,
-                    "scores": _mask_scores,
+                    "scores": _mask_scores.clamp(max=1),
                     "labels": labels[idx] if labels else [],
                     "boxes": box_prompts[idx] if box_prompts else [],
                 }
@@ -542,9 +545,6 @@ class SAMSegmenterOutputProcessor(fout.OutputProcessor):
             if classes is not None and label not in classes:
                 continue
 
-            if mask.dtype != bool:
-                mask = mask > self.mask_thresh
-
             if box is None:
                 # Compute box from mask
                 box = _mask_to_box(mask)
@@ -563,6 +563,9 @@ class SAMSegmenterOutputProcessor(fout.OutputProcessor):
                 int(round(y1)) : int(round(y2)),
                 int(round(x1)) : int(round(x2)),
             ]
+
+            if mask.dtype != bool:
+                mask = mask > self.mask_thresh
 
             detections.append(
                 fol.Detection(
@@ -937,27 +940,20 @@ class SegmentAnythingModel(fout.TorchImageModel):
         Returns:
             a :class:`fiftyone.core.labels.Detections` instance
         """
+        outputs = []
         images = imgs["image"]
         for img in images:
-            inp = _to_sam_input(img)
             detections = []
             # TODO: Move this to post-processing op.
-            for data in self._sam_auto_generator.generate(inp):
+            for data in self._sam_auto_generator.generate(img):
                 detection = fol.Detection.from_mask(
                     mask=data["segmentation"],
                     score=data["predicted_iou"],
                     stability=data["stability_score"],
                 )
                 detections.append(detection)
-        return fol.Detections(detections=detections)
-
-
-def _to_sam_input(tensor):
-    return (
-        (255 * tensor.squeeze(0).cpu().numpy())
-        .astype("uint8")
-        .transpose(1, 2, 0)
-    )
+            outputs.append(fol.Detections(detections=detections))
+        return outputs
 
 
 def _get_sam_point_labels(keypoint):

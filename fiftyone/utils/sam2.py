@@ -233,6 +233,7 @@ class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
         Returns:
             a :class:`fiftyone.core.labels.Detections` instance
         """
+        outputs = []
         images = args.pop("image")
         for img in images:
             detections = []
@@ -244,7 +245,8 @@ class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
                     stability=data["stability_score"],
                 )
                 detections.append(detection)
-        return fol.Detections(detections=detections)
+            outputs.append(fol.Detections(detections=detections))
+        return outputs
 
 
 # TODO: Refactor SAM2 Video Model to use GetItem
