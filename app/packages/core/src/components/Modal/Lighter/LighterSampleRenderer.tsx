@@ -11,7 +11,7 @@ import {
 import type { Sample } from "@fiftyone/state";
 import * as fos from "@fiftyone/state";
 import { getSampleSrc } from "@fiftyone/state";
-import { modalViewportState } from "@fiftyone/state";
+import { jotaiStore, modalViewportState } from "@fiftyone/state";
 import { useAtomValue, useSetAtom } from "jotai";
 import React, {
   useEffect,
@@ -133,19 +133,24 @@ const LighterSetupImpl = (props: {
 
   const canvas = singletonCanvas.getCanvas(containerRef.current);
 
-  const { scene, isRendererReady } = useLighterSetupWithPixi(
+  const savedViewportState = jotaiStore.get(modalViewportState);
+  const initialViewport =
+    savedViewportState?.sampleId === sampleId ? savedViewportState : null;
+
+  const { scene } = useLighterSetupWithPixi(
     canvas,
     mergedOptions,
-    sceneId
+    sceneId,
+    initialViewport
   );
 
   // This is the bridge between FiftyOne state management system and Lighter
   useBridge(scene);
 
   const setViewportState = useSetAtom(modalViewportState);
-  const savedViewport = useAtomValue(modalViewportState);
 
   // Capture zoom/pan before this component is removed from the DOM
+  // so the state can be restored when EXPLORE mode (Looker) remounts.
   useLayoutEffect(() => {
     return () => {
       if (scene && !scene.isDestroyed && sampleId) {
@@ -156,21 +161,6 @@ const LighterSetupImpl = (props: {
       }
     };
   }, [scene, sampleId, setViewportState]);
-
-  // Restore zoom/pan once the Pixi renderer is ready
-  useEffect(() => {
-    if (
-      !isRendererReady ||
-      !scene ||
-      scene.isDestroyed ||
-      !savedViewport ||
-      savedViewport.sampleId !== sampleId
-    ) {
-      return;
-    }
-
-    scene.setViewportState(savedViewport);
-  }, [isRendererReady, scene, savedViewport, sampleId]);
 
   return null;
 };

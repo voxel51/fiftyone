@@ -2,9 +2,10 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import type { ViewportState } from "@fiftyone/looker";
 import { useLookerOptions } from "@fiftyone/state";
 import { useAtom } from "jotai";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import {
   PixiRenderer2D,
   Scene2D,
@@ -28,14 +29,20 @@ export type LighterOptions = Partial<ReturnType<typeof useLookerOptions>>;
  * i.e., it should not change during the lifetime of the component.
  * @param options - The options for the scene.
  * @param sceneId - A unique scene ID
+ * @param initialViewport - Optional zoom/pan state to apply before the first render frame,
  */
 export const useLighterSetupWithPixi = (
   stableCanvas: HTMLCanvasElement,
   options: LighterOptions,
-  sceneId: string
+  sceneId: string,
+  initialViewport?: ViewportState | null
 ) => {
   const [scene, setScene] = useAtom(lighterSceneAtom);
-  const [isRendererReady, setIsRendererReady] = useState(false);
+
+  // Frozen at mount time — modalViewportState only changes on Looker/Lighter unmount 
+  // so this value is stable for the entire lifetime of the component.
+  const initialViewportRef = useRef(initialViewport);
+
   const eventChannel = scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID;
   const eventBus = useLighterEventBus(eventChannel);
 
@@ -71,16 +78,15 @@ export const useLighterSetupWithPixi = (
   useEffect(() => {
     if (!scene || scene.isDestroyed) return;
 
-    setIsRendererReady(false);
-
     rendererRef.current?.initializePixiJS().then(() => {
+      if (initialViewportRef.current) {
+        scene.setViewportState(initialViewportRef.current);
+      }
       scene.startRenderLoop();
-      setIsRendererReady(true);
     });
 
     return () => {
       scene.destroy();
-      setIsRendererReady(false);
     };
   }, [scene]);
 
@@ -94,5 +100,5 @@ export const useLighterSetupWithPixi = (
     }
   }, [scene, options, eventBus]);
 
-  return { scene, isRendererReady };
+  return { scene };
 };
