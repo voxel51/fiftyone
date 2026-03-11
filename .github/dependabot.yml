@@ -11,7 +11,7 @@ updates:
   # Notes:
   #   1. Prefer to constrain libraries at the major version
   #   2. Document where constraints aren't possible with comments
-  #   3. Don't constrain ML-related libraries
+  #   3. Constrain ML-related libraries at upper bound
   # For more, see `setup.py`.
   # ---------------------------------------------------------------------------
   - package-ecosystem: "pip"
