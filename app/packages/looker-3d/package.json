@@ -2,7 +2,6 @@
     "name": "@fiftyone/looker-3d",
     "version": "0.0.0",
     "scripts": {
-        "check": "biome check --write ./src README.md tsconfig.json vite.config.ts",
         "dev": "vite",
         "build": "vite build",
         "preview": "vite preview",

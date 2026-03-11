@@ -149,6 +149,7 @@ export const usePcdMaterialControls = (
 
   const [bounds, setBounds] = useRecoilState(boundsAtom);
 
+  // This effect resets bounds to sanitized min/max for the active shading attribute.
   useEffect(() => {
     const min = thresholdsLut[shadeBy]?.min;
     const max = thresholdsLut[shadeBy]?.max;
@@ -300,6 +301,7 @@ export const usePcdMaterialControls = (
     activeThresholdAtomFamily(shadeBy)
   );
 
+  // This effect resets active threshold defaults when shading attributes change.
   useEffect(() => {
     const min = thresholdsLut[shadeBy]?.min ?? 0;
     const max = thresholdsLut[shadeBy]?.max ?? 1;
