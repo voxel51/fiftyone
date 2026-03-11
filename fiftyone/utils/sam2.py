@@ -522,7 +522,25 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
 
         # The existing video path will handle
         # prompt extraction, registration, propagation, and detection construction
-        sample_detections = self.predict(mock_reader, mock_video_sample)
+        try:
+            sample_detections = self.predict(mock_reader, mock_video_sample)
+        except Exception as e:
+            if "mat1 and mat2 must have the same dtype" in str(e):
+                """
+                ------------------------------------------------------------
+                This error typically occurs due to a mixed-precision dtype mismatch in SAM2's
+                internal transformer layers. This is a known issue in SAM2's implementation
+                that is more likely to occur when propagating across
+                multiple sequences with different label sets, as this triggers
+                more complex memory attention paths in SAM2's tracking stack.
+                ------------------------------------------------------------
+                """
+                raise RuntimeError(
+                    f"Error propagating to all frames; \
+                please try with a shorter sequence with continuous frames and consistent labels."
+                )
+            else:
+                raise e
 
         return [
             sample_detections.get(i + 1, fol.Detections())
