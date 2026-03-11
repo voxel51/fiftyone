@@ -522,6 +522,39 @@ class ClearSampleSelectionStyle extends Operator {
   }
 }
 
+class SetLabelSelectionStyle extends Operator {
+  _builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "set_label_selection_style",
+      label: "Set label selection style",
+      unlisted: true,
+    });
+  }
+  async execute({ state, params }: ExecutionContext) {
+    const { default: defaultStyle, alt } = params || {};
+    const style = {
+      default: defaultStyle || fos.DEFAULT_LABEL_SELECTION_STYLE.default,
+      alt: alt || fos.DEFAULT_LABEL_SELECTION_STYLE.alt,
+    };
+    state.set(fos.labelSelectionStyle, style);
+  }
+}
+
+class ClearLabelSelectionStyle extends Operator {
+  _builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "clear_label_selection_style",
+      label: "Clear label selection style",
+      unlisted: true,
+    });
+  }
+  async execute({ state }: ExecutionContext) {
+    state.set(fos.labelSelectionStyle, fos.DEFAULT_LABEL_SELECTION_STYLE);
+  }
+}
+
 class SetView extends Operator {
   _builtIn = true;
   get config(): OperatorConfig {
@@ -814,6 +847,7 @@ class SetSelectedLabels extends Operator {
             sampleId: label.sampleId ?? label.sample_id,
             labelId: label.labelId ?? label.label_id,
             frameNumber: label.frameNumber ?? label.frame_number,
+            type: label.type || "default",
           };
         })
       : [];
@@ -1672,6 +1706,8 @@ export function registerBuiltInOperators() {
     _registerBuiltInOperator(SetSelectedSamples);
     _registerBuiltInOperator(SetSampleSelectionStyle);
     _registerBuiltInOperator(ClearSampleSelectionStyle);
+    _registerBuiltInOperator(SetLabelSelectionStyle);
+    _registerBuiltInOperator(ClearLabelSelectionStyle);
     _registerBuiltInOperator(OpenPanel);
     _registerBuiltInOperator(ClosePanel);
     _registerBuiltInOperator(SetView);

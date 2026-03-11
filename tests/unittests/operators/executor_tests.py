@@ -136,6 +136,34 @@ class TestOperatorExecutionContext(unittest.TestCase):
         )
         self.assertEqual(ctx.selected_samples, [])  # pylint: disable=no-member
 
+    def test_label_selection_style_default(self):
+        """ctx.label_selection_style returns default when not set."""
+        ctx = ExecutionContext(
+            operator_uri="test_op",
+            request_params={"dataset_name": "test"},
+        )
+        self.assertEqual(
+            ctx.label_selection_style,
+            {"default": "dashed", "alt": "dashed"},
+        )
+
+    def test_label_selection_style_from_params(self):
+        """ctx.label_selection_style reads from request_params."""
+        ctx = ExecutionContext(
+            operator_uri="test_op",
+            request_params={
+                "dataset_name": "test",
+                "label_selection_style": {
+                    "default": "dashed-green",
+                    "alt": "filled-red",
+                },
+            },
+        )
+        self.assertEqual(
+            ctx.label_selection_style,
+            {"default": "dashed-green", "alt": "filled-red"},
+        )
+
     def test_target_view(self):
         ds = fo.Dataset()
         view = ds.limit(3)

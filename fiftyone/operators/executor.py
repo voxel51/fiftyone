@@ -22,7 +22,10 @@ import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
-from fiftyone.core.session.constants import DEFAULT_SELECTION_STYLE
+from fiftyone.core.session.constants import (
+    DEFAULT_LABEL_SELECTION_STYLE,
+    DEFAULT_SELECTION_STYLE,
+)
 from fiftyone.operators import constants
 from fiftyone.operators.decorators import coroutine_timeout
 from fiftyone.operators.message import GeneratedMessage, MessageType
@@ -862,6 +865,18 @@ class ExecutionContext(contextlib.AbstractContextManager):
         )
 
     @property
+    def label_selection_style(self):
+        """The current label selection style config (if any).
+
+        A dict with a ``default`` key and optional ``alt`` key specifying
+        label selection visual styles.
+        """
+        return self.request_params.get(
+            "label_selection_style",
+            dict(DEFAULT_LABEL_SELECTION_STYLE),
+        )
+
+    @property
     def selected_labels(self):
         """A list of selected labels (if any).
 
@@ -872,6 +887,7 @@ class ExecutionContext(contextlib.AbstractContextManager):
         -   ``field``: the field name containing the label
         -   ``frame_number``: the frame number containing the label (only
             applicable to video samples)
+        -   ``type``: the selection type (``"default"`` or ``"alt"``)
         """
         return self.request_params.get("selected_labels", [])
 
