@@ -8,7 +8,9 @@ import { useCallback } from "react";
 import { atom, AtomOptions, DefaultValue, RecoilState, selector } from "recoil";
 import { State } from "./recoil";
 import {
+  DEFAULT_LABEL_SELECTION_STYLE,
   DEFAULT_SELECTION_STYLE,
+  type LabelSelectionStyle,
   type SelectionIconStyle,
   type SelectionType,
 } from "./recoil/types";
@@ -99,6 +101,7 @@ export interface Session {
     default: SelectionIconStyle;
     alt: SelectionIconStyle;
   };
+  labelSelectionStyle: LabelSelectionStyle;
   sessionSpaces: SpaceNodeJSON;
   sessionGroupSlice?: string;
 }
@@ -123,6 +126,7 @@ export const SESSION_DEFAULT: Session = {
   selectedSamples: new Map(),
   selectedLabels: [],
   sampleSelectionStyle: DEFAULT_SELECTION_STYLE,
+  labelSelectionStyle: DEFAULT_LABEL_SELECTION_STYLE,
   sessionSpaces: GRID_SPACES_DEFAULT,
   sessionGroupSlice: undefined,
 };

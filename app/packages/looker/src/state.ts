@@ -204,6 +204,8 @@ export interface BaseOptions {
     | "x"
     | "bookmark"
     | null;
+  selectedLabelTypes: Record<string, string>;
+  labelSelectionStyle: { default: string; alt: string };
   shouldHandleKeyEvents?: boolean;
   inSelectionMode: boolean;
   timeZone: string;
@@ -483,6 +485,8 @@ export const DEFAULT_BASE_OPTIONS: BaseOptions = {
   selected: false,
   selectionType: null,
   selectionIcon: null,
+  selectedLabelTypes: {},
+  labelSelectionStyle: { default: "dashed", alt: "dashed" },
   inSelectionMode: false,
   timeZone: "UTC",
   mimetype: "",

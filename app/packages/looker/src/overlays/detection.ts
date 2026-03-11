@@ -19,7 +19,11 @@ import {
   PointInfo,
   RegularLabel,
 } from "./base";
-import { getInstanceStrokeStyles, t } from "./util";
+import {
+  getInstanceStrokeStyles,
+  resolveLabelSelectionVisuals,
+  t,
+} from "./util";
 
 let cache: Record<
   string,
@@ -118,12 +122,19 @@ export default class DetectionOverlay<
       isHoveringParticularLabelWithInstanceConfig(this.label.instance._id);
     const isSelected = this.isSelected(state);
 
+    // Resolve label-specific selection visuals (color/fill overrides)
+    const labelVisuals = isSelected
+      ? resolveLabelSelectionVisuals(this.label._id, state.options)
+      : null;
+
     const { strokeColor, overlayStrokeColor, overlayDash } =
       getInstanceStrokeStyles({
         isSelected,
         getColor: () => this.getColor(state),
         isHoveringInstance: !!doesInstanceMatch,
         dashLength: state.dashLength,
+        labelSelectionColor: labelVisuals?.color,
+        labelSelectionIsDashed: labelVisuals?.isDashed ?? true,
       });
 
     if (
@@ -142,8 +153,15 @@ export default class DetectionOverlay<
       this.strokeRect(ctx, state, strokeColor);
     }
 
-    if (overlayStrokeColor && overlayDash) {
+    if (overlayStrokeColor && overlayDash != null) {
       this.strokeRect(ctx, state, overlayStrokeColor, overlayDash);
+    }
+
+    // Fill bounding box for filled label selection styles
+    if (labelVisuals?.fillColor) {
+      const [bx, by, bw, bh] = this.getDrawnBBox(state);
+      ctx.fillStyle = labelVisuals.fillColor;
+      ctx.fillRect(bx, by, bw, bh);
     }
   }
 

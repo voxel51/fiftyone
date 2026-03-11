@@ -7,6 +7,7 @@ import useSetColorScheme from "./useSetColorScheme";
 import useSetFieldVisibilityStage from "./useSetFieldVisibilityStage";
 import useSetGroupSlice from "./useSetGroupSlice";
 import useSetSample from "./useSetSample";
+import useSetLabelSelectionStyle from "./useSetLabelSelectionStyle";
 import useSetSampleSelectionStyle from "./useSetSampleSelectionStyle";
 import useSetSpaces from "./useSetSpaces";
 import useStateUpdate from "./useStateUpdate";
@@ -22,5 +23,6 @@ registerEvent("setSpaces", useSetSpaces);
 registerEvent("stateUpdate", useStateUpdate);
 registerEvent("setFieldVisibilityStage", useSetFieldVisibilityStage);
 registerEvent("setSampleSelectionStyle", useSetSampleSelectionStyle);
+registerEvent("setLabelSelectionStyle", useSetLabelSelectionStyle);
 
 export { default } from "./useEvents";

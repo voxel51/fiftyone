@@ -98,6 +98,10 @@ export const lookerOptions = selectorFamily<
         colorscale: colorscale,
         attributeVisibility: activeVisibility,
         selectedLabels: [...get(selectors.selectedLabelIds)],
+        selectedLabelTypes: Object.fromEntries(
+          get(selectors.selectedLabelTypes)
+        ),
+        labelSelectionStyle: get(atoms.labelSelectionStyle),
         selectedLabelTags: getActiveLabelTags(
           isLabelTagActive,
           activeFilter,

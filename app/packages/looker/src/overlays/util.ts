@@ -6,6 +6,7 @@ import { COLOR_BY, REGRESSION, getColor } from "@fiftyone/utilities";
 import colorString from "color-string";
 import { INFO_COLOR, SELECTED_AND_HOVERED_COLOR } from "../constants";
 import type {
+  BaseOptions,
   BaseState,
   Coloring,
   Coordinates,
@@ -313,11 +314,15 @@ export function getInstanceStrokeStyles({
   getColor,
   isHoveringInstance,
   dashLength,
+  labelSelectionColor,
+  labelSelectionIsDashed,
 }: {
   isSelected: boolean;
   getColor: () => string;
   isHoveringInstance: boolean;
   dashLength: number;
+  labelSelectionColor?: string;
+  labelSelectionIsDashed?: boolean;
 }) {
   // Main stroke color
   let strokeColor = getColor();
@@ -332,9 +337,75 @@ export function getInstanceStrokeStyles({
     overlayStrokeColor = SELECTED_AND_HOVERED_COLOR;
     overlayDash = dashLength;
   } else if (isSelected) {
-    overlayStrokeColor = INFO_COLOR;
-    overlayDash = dashLength;
+    // Use label-specific selection color if provided, otherwise default
+    overlayStrokeColor = labelSelectionColor || INFO_COLOR;
+    overlayDash = labelSelectionIsDashed !== false ? dashLength : 0;
   }
 
   return { strokeColor, overlayStrokeColor, overlayDash };
+}
+
+// Label selection visual style colors
+export const LABEL_SELECTION_GREEN = "#00ff00";
+export const LABEL_SELECTION_RED = "#ff0000";
+const LABEL_SELECTION_GREEN_FILL = "rgba(0, 255, 0, 0.25)";
+const LABEL_SELECTION_RED_FILL = "rgba(255, 0, 0, 0.25)";
+
+export interface LabelSelectionVisuals {
+  styleName: string;
+  color: string;
+  fillColor: string | null;
+  isDashed: boolean;
+}
+
+/**
+ * Resolves the visual style for a selected label based on its type and the
+ * configured label selection style. Returns null if the label is not selected.
+ */
+export function resolveLabelSelectionVisuals(
+  labelId: string,
+  options: BaseOptions
+): LabelSelectionVisuals | null {
+  const { selectedLabels, selectedLabelTypes, labelSelectionStyle } = options;
+
+  if (!selectedLabels.includes(labelId)) {
+    return null;
+  }
+
+  const labelType = selectedLabelTypes[labelId] || "default";
+  const styleName = labelSelectionStyle[labelType] || "dashed";
+
+  switch (styleName) {
+    case "dashed-green":
+      return {
+        styleName,
+        color: LABEL_SELECTION_GREEN,
+        fillColor: null,
+        isDashed: true,
+      };
+    case "dashed-red":
+      return {
+        styleName,
+        color: LABEL_SELECTION_RED,
+        fillColor: null,
+        isDashed: true,
+      };
+    case "filled-green":
+      return {
+        styleName,
+        color: LABEL_SELECTION_GREEN,
+        fillColor: LABEL_SELECTION_GREEN_FILL,
+        isDashed: false,
+      };
+    case "filled-red":
+      return {
+        styleName,
+        color: LABEL_SELECTION_RED,
+        fillColor: LABEL_SELECTION_RED_FILL,
+        isDashed: false,
+      };
+    case "dashed":
+    default:
+      return { styleName, color: INFO_COLOR, fillColor: null, isDashed: true };
+  }
 }
