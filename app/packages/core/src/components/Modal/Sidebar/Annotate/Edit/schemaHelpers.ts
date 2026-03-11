@@ -119,6 +119,31 @@ export const createRadio = (
   };
 };
 
+/**
+ * Creates an array schema for multi-select checkbox list: list<str> with checkboxes component.
+ * Uses the same choices format as createRadio; rendered via CheckboxesView (CheckboxesWidget).
+ */
+export const createCheckboxList = (
+  name: string,
+  choices: string[] | number[]
+) => {
+  return {
+    type: "array",
+    items: {
+      type: "string",
+    },
+    view: {
+      name: "CheckboxList",
+      label: name,
+      component: "CheckboxesView",
+      choices: choices.map((choice: string | number) => ({
+        label: getLabel(choice),
+        value: choice,
+      })),
+    },
+  };
+};
+
 export const createTags = (name: string, choices: string[] | number[]) => {
   return {
     type: "array",
@@ -257,10 +282,16 @@ export function generatePrimitiveSchema(
   }
 
   if (schema.type === "list<float>" || schema.type === "list<int>") {
+    if (schema.component === "checkboxes") {
+      return createCheckboxList(name, schema.values || []);
+    }
     return createNumericList(name, schema?.values || []);
   }
 
   if (schema.type === "list<str>") {
+    if (schema.component === "checkboxes") {
+      return createCheckboxList(name, schema.values || []);
+    }
     return createTags(name, schema.values || []);
   }
 
