@@ -16,7 +16,6 @@ updates:
   # ---------------------------------------------------------------------------
   - package-ecosystem: "pip"
     directory: "/"
-    registries: '*'
     schedule:
       interval: "weekly"
       day: "wednesday"
