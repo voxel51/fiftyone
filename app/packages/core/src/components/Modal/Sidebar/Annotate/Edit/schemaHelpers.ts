@@ -120,8 +120,7 @@ export const createRadio = (
 };
 
 /**
- * Creates an array schema for multi-select checkbox list: list<str> with checkboxes component.
- * Uses the same choices format as createRadio; rendered via CheckboxesView (CheckboxesWidget).
+ * Creates an array schema for multi-select checkbox list
  */
 export const createCheckboxList = (
   name: string,

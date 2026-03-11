@@ -52,9 +52,9 @@ export default function CheckboxesWidget(props: WidgetProps) {
     [enumValues, enumNames]
   );
 
-  // values is always an array of selected values (preserve original types)
+  // convert values to string for comparison.
   const validStringValues = useMemo(
-    // handle strings, ints, etc.
+    // handle strings, ints, etc., de-duping as we goa
     () => new Set((values ?? []).map((v: unknown) => String(v))),
     [values]
   );
@@ -68,8 +68,7 @@ export default function CheckboxesWidget(props: WidgetProps) {
       if (originalValue === undefined) return;
 
       // convert values to string for comparison
-      const currentArr = [...(values ?? [])];
-      const currentSet = new Set(currentArr.map((v) => String(v)));
+      const currentSet = new Set(values.map((v: unknown) => String(v)));
 
       if (checked) {
         currentSet.add(optionValueStr);
