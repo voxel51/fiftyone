@@ -2607,7 +2607,9 @@ class TestDelegatedExecutorSpawnPlugin(unittest.IsolatedAsyncioTestCase):
             doc.context.request_params = {}
 
             old_env = os.environ.get("FIFTYONE_PLUGINS_DIR")
+            old_db_admin = os.environ.get("FIFTYONE_DATABASE_ADMIN")
             os.environ["FIFTYONE_PLUGINS_DIR"] = tmp_dir
+            os.environ["FIFTYONE_DATABASE_ADMIN"] = "false"
             # Clear plugins cache so the temp plugin is discovered
             old_cache = dec.cache.copy()
             old_dir_state = dec.dir_cache.get("state")
@@ -2628,6 +2630,10 @@ class TestDelegatedExecutorSpawnPlugin(unittest.IsolatedAsyncioTestCase):
                     os.environ.pop("FIFTYONE_PLUGINS_DIR", None)
                 else:
                     os.environ["FIFTYONE_PLUGINS_DIR"] = old_env
+                if old_db_admin is None:
+                    os.environ.pop("FIFTYONE_DATABASE_ADMIN", None)
+                else:
+                    os.environ["FIFTYONE_DATABASE_ADMIN"] = old_db_admin
                 dec.cache.clear()
                 dec.cache.update(old_cache)
                 dec.dir_cache["state"] = old_dir_state

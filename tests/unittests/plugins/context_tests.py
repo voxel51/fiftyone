@@ -300,7 +300,9 @@ class TestPluginModuleFinder:
 
         # Use env var so the spawn child (fresh process) discovers the plugin
         old_env = os.environ.get("FIFTYONE_PLUGINS_DIR")
+        old_db_admin = os.environ.get("FIFTYONE_DATABASE_ADMIN")
         os.environ["FIFTYONE_PLUGINS_DIR"] = str(tmp_path)
+        os.environ["FIFTYONE_DATABASE_ADMIN"] = "false"
         try:
             with mock.patch("fiftyone.config.plugins_dir", str(tmp_path)):
                 ctx = fpctx.PluginContext(pd)
@@ -318,3 +320,7 @@ class TestPluginModuleFinder:
                 os.environ.pop("FIFTYONE_PLUGINS_DIR", None)
             else:
                 os.environ["FIFTYONE_PLUGINS_DIR"] = old_env
+            if old_db_admin is None:
+                os.environ.pop("FIFTYONE_DATABASE_ADMIN", None)
+            else:
+                os.environ["FIFTYONE_DATABASE_ADMIN"] = old_db_admin
