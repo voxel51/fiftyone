@@ -28,6 +28,7 @@ import ModalNavigation from "./ModalNavigation";
 import { ModalSpace } from "./ModalSpace";
 import { Sidebar } from "./Sidebar";
 import { useAnnotationTracking } from "./Sidebar/Annotate/useAnnotationTracking";
+import { SegmentationToolbar } from "./Sidebar/Annotate/Edit/SegmentationToolbar";
 import { TooltipInfo } from "./TooltipInfo";
 import { useLookerHelpers, useTooltipEventHandler } from "./hooks";
 import { modalContext } from "./modal-context";
@@ -284,6 +285,7 @@ const Modal = () => {
         data-cy="modal"
       >
         <Actions />
+        <SegmentationToolbar />
         {isAnnotationEnabled && <AnnotationHandlerRegistration />}
         <TooltipInfo />
         <ModalContainer style={{ ...screenParams }}>
