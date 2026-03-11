@@ -129,7 +129,9 @@ class _SAMPredictor:
             point_labels=point_labels,
         )
         points = self.processor.transform.apply_coords(points, img_hw)
-        return torch.tensor(points), torch.tensor(labels)
+        return torch.tensor(points, dtype=torch.float64), torch.tensor(
+            labels, dtype=torch.int
+        )
 
 
 class SAMPromptMode(Enum):
@@ -251,7 +253,7 @@ class SegmentAnythingImageGetItem(fout.GetItem):
         if self.mode != SAMPromptMode.auto:
             img, img_hw = self.transform(img)
         else:
-            img_hw = img.shape[-2:]
+            img_hw = img.shape[:2]
         item_dict["image"] = img
         item_dict["original_size"] = img_hw
         item_dict["id"] = d["id"]
@@ -853,9 +855,6 @@ class SegmentAnythingModel(fout.TorchImageModel):
             elif isinstance(args[key][0], torch.Tensor):
                 args[key] = [v.to(self.device) for v in args[key]]
 
-        args["multimask_output"] = (
-            True if prompt_type == "point_only" else False
-        )
         output = self._forward_pass(args)
 
         if self._output_processor is not None:
@@ -878,7 +877,6 @@ class SegmentAnythingModel(fout.TorchImageModel):
         Returns:
             a dict containing model output
         """
-        multimask_output = imgs.pop("multimask_output", False)
         images = imgs["image"]
 
         # Adapted from segment-anything.modeling.sam.SAM.forward.
@@ -891,6 +889,9 @@ class SegmentAnythingModel(fout.TorchImageModel):
         point_labels = imgs.get("point_labels")
         boxes = imgs.get("boxes")
         mask_inputs = imgs.get("mask_inputs")  # Not used currently
+        multimask_output = (
+            True if (boxes is None and point_coords is not None) else False
+        )
 
         outputs = []
         for img_idx, img_embedding in enumerate(image_embeddings):
@@ -924,8 +925,8 @@ class SegmentAnythingModel(fout.TorchImageModel):
             masks = masks > self._model.mask_threshold
             outputs.append(
                 {
-                    "masks": masks,
-                    "iou_predictions": iou_predictions,
+                    "masks": masks.float(),
+                    "iou_predictions": iou_predictions.float(),
                     "low_res_logits": low_res_masks,
                 }
             )

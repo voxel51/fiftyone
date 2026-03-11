@@ -198,7 +198,6 @@ class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
         Returns:
             a dict containing model output
         """
-        multimask_output = imgs.pop("multimask_output", False)
         images = imgs.pop("image")
 
         self._sam_predictor.processor.set_image_batch(images)
@@ -207,7 +206,9 @@ class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
         point_labels = imgs.get("point_labels")
         boxes = imgs.get("boxes")
         mask_inputs = imgs.get("mask_inputs")  # Not used currently
-
+        multimask_output = (
+            True if (boxes is None and point_coords is not None) else False
+        )
         outputs = []
         for img_idx in range(len(images)):
             out_masks, iou_pred, _ = self._sam_predictor.processor._predict(
