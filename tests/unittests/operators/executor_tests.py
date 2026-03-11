@@ -90,6 +90,52 @@ class TestOperatorExecutionContext(unittest.TestCase):
         self.assertEqual(delegated_ctx.delegation_target, "scheduler-one")
         self.assertIsNone(delegated_ctx.num_distributed_tasks)
 
+    def test_selected_from_selected_samples(self):
+        """ctx.selected derives IDs from selected_samples when selected is absent."""
+        ctx = ExecutionContext(
+            operator_uri="test_op",
+            request_params={
+                "dataset_name": "test",
+                "selected_samples": [
+                    {"sample_id": "aaa", "type": "default"},
+                    {"sample_id": "bbb", "type": "alt"},
+                ],
+            },
+        )
+        self.assertEqual(ctx.selected, ["aaa", "bbb"])
+        self.assertEqual(
+            ctx.selected_samples,  # pylint: disable=no-member
+            [
+                {"sample_id": "aaa", "type": "default"},
+                {"sample_id": "bbb", "type": "alt"},
+            ],
+        )
+
+    def test_selected_prefers_selected_param(self):
+        """ctx.selected uses request_params['selected'] when present."""
+        ctx = ExecutionContext(
+            operator_uri="test_op",
+            request_params={
+                "dataset_name": "test",
+                "selected": ["ccc"],
+                "selected_samples": [
+                    {"sample_id": "ccc", "type": "alt"},
+                ],
+            },
+        )
+        self.assertEqual(ctx.selected, ["ccc"])
+
+    def test_selected_samples_none_returns_empty(self):
+        """ctx.selected_samples returns [] when param is None."""
+        ctx = ExecutionContext(
+            operator_uri="test_op",
+            request_params={
+                "dataset_name": "test",
+                "selected_samples": None,
+            },
+        )
+        self.assertEqual(ctx.selected_samples, [])  # pylint: disable=no-member
+
     def test_target_view(self):
         ds = fo.Dataset()
         view = ds.limit(3)
