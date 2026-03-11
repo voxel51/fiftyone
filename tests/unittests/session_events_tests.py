@@ -13,14 +13,20 @@ from unittest.mock import MagicMock
 from dacite import from_dict
 
 # pylint: disable=no-name-in-module,import-error
-from fiftyone.core.session.constants import VALID_ICON_STYLES
+from fiftyone.core.session.constants import (
+    VALID_ICON_STYLES,
+    VALID_LABEL_SELECTION_STYLES,
+)
 from fiftyone.core.session.session import (
     _on_select_labels,
+    _normalize_selected_labels,
     _normalize_selected_samples,
+    _resolve_label_selection_style,
     _resolve_selection_style,
 )
 from fiftyone.core.session.events import (
     SelectLabels,
+    SetLabelSelectionStyle,
     SetSampleSelectionStyle,
 )
 
@@ -468,3 +474,238 @@ class SessionTests(unittest.TestCase):
         mock_ctx.trigger.assert_called_once_with(
             "clear_sample_selection_style"
         )
+
+    # -------------------------------------------------------------------
+    # _normalize_selected_labels
+    # -------------------------------------------------------------------
+
+    def test_normalize_selected_labels_with_type(self):
+        """Normalize labels with explicit type."""
+        labels = [
+            {
+                "label_id": "l1",
+                "sample_id": "s1",
+                "field": "detections",
+                "type": "alt",
+            }
+        ]
+        result = _normalize_selected_labels(labels)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["type"], "alt")
+        self.assertEqual(result[0]["label_id"], "l1")
+
+    def test_normalize_selected_labels_without_type(self):
+        """Normalize labels without type defaults to 'default'."""
+        labels = [{"label_id": "l1", "sample_id": "s1", "field": "detections"}]
+        result = _normalize_selected_labels(labels)
+        self.assertEqual(result[0]["type"], "default")
+
+    def test_normalize_selected_labels_preserves_optional_keys(self):
+        """Optional keys like frame_number and instance_id are preserved."""
+        labels = [
+            {
+                "label_id": "l1",
+                "sample_id": "s1",
+                "field": "detections",
+                "frame_number": 5,
+                "instance_id": "inst1",
+            }
+        ]
+        result = _normalize_selected_labels(labels)
+        self.assertEqual(result[0]["frame_number"], 5)
+        self.assertEqual(result[0]["instance_id"], "inst1")
+
+    def test_normalize_selected_labels_rejects_invalid_type(self):
+        """Invalid selection type raises ValueError."""
+        with self.assertRaises(ValueError):
+            _normalize_selected_labels(
+                [
+                    {
+                        "label_id": "l1",
+                        "sample_id": "s1",
+                        "field": "detections",
+                        "type": "invalid",
+                    }
+                ]
+            )
+
+    def test_normalize_selected_labels_rejects_missing_keys(self):
+        """Missing required keys raises ValueError."""
+        with self.assertRaises(ValueError):
+            _normalize_selected_labels([{"label_id": "l1", "sample_id": "s1"}])
+
+        with self.assertRaises(ValueError):
+            _normalize_selected_labels(
+                [{"label_id": "l1", "field": "detections"}]
+            )
+
+    def test_normalize_selected_labels_rejects_non_dict(self):
+        """Non-dict entries raise TypeError."""
+        with self.assertRaises(TypeError):
+            _normalize_selected_labels(["not_a_dict"])
+
+    def test_normalize_selected_labels_empty(self):
+        """Empty list returns empty list."""
+        result = _normalize_selected_labels([])
+        self.assertEqual(result, [])
+
+    # -------------------------------------------------------------------
+    # _resolve_label_selection_style
+    # -------------------------------------------------------------------
+
+    def test_label_selection_style_default_none_falls_back(self):
+        """Both None should fall back to dashed."""
+        style = _resolve_label_selection_style(None, None)
+        self.assertEqual(style, {"default": "dashed", "alt": "dashed"})
+
+    def test_label_selection_style_valid(self):
+        """Valid default and alt styles should be accepted."""
+        style = _resolve_label_selection_style("dashed-green", "filled-red")
+        self.assertEqual(
+            style, {"default": "dashed-green", "alt": "filled-red"}
+        )
+
+    def test_label_selection_style_alt_none_falls_back(self):
+        """alt=None should fall back to dashed."""
+        style = _resolve_label_selection_style("dashed", None)
+        self.assertEqual(style, {"default": "dashed", "alt": "dashed"})
+
+    def test_label_selection_style_rejects_invalid_default(self):
+        """Invalid default style should raise ValueError."""
+        with self.assertRaises(ValueError):
+            _resolve_label_selection_style("invalid_style", None)
+
+    def test_label_selection_style_rejects_invalid_alt(self):
+        """Invalid alt style should raise ValueError."""
+        with self.assertRaises(ValueError):
+            _resolve_label_selection_style("dashed", "invalid_style")
+
+    def test_label_selection_style_all_valid_styles(self):
+        """Every supported label selection style should be accepted."""
+        for s in VALID_LABEL_SELECTION_STYLES:
+            style = _resolve_label_selection_style(s, s)
+            self.assertEqual(style["default"], s)
+            self.assertEqual(style["alt"], s)
+
+    # -------------------------------------------------------------------
+    # SetLabelSelectionStyle event + StateDescription
+    # -------------------------------------------------------------------
+
+    @drop_datasets
+    def test_set_label_selection_style(self):
+        state = StateDescription()
+        event = SetLabelSelectionStyle(
+            style={"default": "dashed-green", "alt": "filled-red"}
+        )
+        state.label_selection_style = event.style
+        self.assertEqual(
+            state.label_selection_style["default"], "dashed-green"
+        )
+        self.assertEqual(state.label_selection_style["alt"], "filled-red")
+
+    @drop_datasets
+    def test_clear_label_selection_style(self):
+        state = StateDescription()
+        state.label_selection_style = {
+            "default": "filled-green",
+            "alt": "dashed-red",
+        }
+        clear_style = {"default": "dashed", "alt": "dashed"}
+        event = SetLabelSelectionStyle(style=clear_style)
+        state.label_selection_style = event.style
+        self.assertEqual(state.label_selection_style, clear_style)
+
+    @drop_datasets
+    def test_state_from_dict_restores_label_selection_style(self):
+        """from_dict should restore label_selection_style."""
+        d = {
+            "selected": [],
+            "selected_labels": [],
+            "label_selection_style": {
+                "default": "dashed-green",
+                "alt": "filled-red",
+            },
+        }
+        state = StateDescription.from_dict(d)
+        self.assertEqual(
+            state.label_selection_style,
+            {"default": "dashed-green", "alt": "filled-red"},
+        )
+
+    @drop_datasets
+    def test_state_from_dict_missing_label_style_uses_default(self):
+        """from_dict without label_selection_style uses default dashed."""
+        d = {
+            "selected": [],
+            "selected_labels": [],
+        }
+        state = StateDescription.from_dict(d)
+        self.assertEqual(
+            state.label_selection_style,
+            {"default": "dashed", "alt": "dashed"},
+        )
+
+    # -------------------------------------------------------------------
+    # Operations.set_label_selection_style / clear_label_selection_style
+    # -------------------------------------------------------------------
+
+    @drop_datasets
+    def test_ops_set_label_selection_style(self):
+        """ctx.ops.set_label_selection_style triggers correctly."""
+        mock_ctx = MagicMock()
+        ops = Operations(mock_ctx)
+
+        ops.set_label_selection_style(  # pylint: disable=no-member
+            default="dashed-green", alt="filled-red"
+        )
+
+        mock_ctx.trigger.assert_called_once_with(
+            "set_label_selection_style",
+            params={"default": "dashed-green", "alt": "filled-red"},
+        )
+
+    @drop_datasets
+    def test_ops_clear_label_selection_style(self):
+        """ctx.ops.clear_label_selection_style triggers correctly."""
+        mock_ctx = MagicMock()
+        ops = Operations(mock_ctx)
+
+        ops.clear_label_selection_style()  # pylint: disable=no-member
+
+        mock_ctx.trigger.assert_called_once_with("clear_label_selection_style")
+
+    @drop_datasets
+    def test_ops_set_selected_labels_with_type(self):
+        """ctx.ops.set_selected_labels normalizes type."""
+        mock_ctx = MagicMock()
+        ops = Operations(mock_ctx)
+
+        labels = [
+            {
+                "label_id": "l1",
+                "sample_id": "s1",
+                "field": "detections",
+                "type": "alt",
+            }
+        ]
+        ops.set_selected_labels(labels)
+
+        mock_ctx.trigger.assert_called_once()
+        call_args = mock_ctx.trigger.call_args
+        self.assertEqual(call_args[0][0], "set_selected_labels")
+        passed_labels = call_args[1]["params"]["labels"]
+        self.assertEqual(passed_labels[0]["type"], "alt")
+
+    @drop_datasets
+    def test_ops_set_selected_labels_defaults_type(self):
+        """ctx.ops.set_selected_labels defaults type to 'default'."""
+        mock_ctx = MagicMock()
+        ops = Operations(mock_ctx)
+
+        labels = [{"label_id": "l1", "sample_id": "s1", "field": "detections"}]
+        ops.set_selected_labels(labels)
+
+        mock_ctx.trigger.assert_called_once()
+        call_args = mock_ctx.trigger.call_args
+        passed_labels = call_args[1]["params"]["labels"]
+        self.assertEqual(passed_labels[0]["type"], "default")
