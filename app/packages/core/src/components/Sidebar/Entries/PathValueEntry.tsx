@@ -358,8 +358,10 @@ const SlicesLoadable = ({ path }: { path: string }) => {
 
 const useSlicesData = <T,>(path: string) => {
   const keys = path.split(".");
-  const loadable = useRecoilValueLoadable(fos.active3dSlicesToSampleMap);
-  const slices = Array.from(useRecoilValue(fos.active3dSlices) || []).sort();
+  const {
+    state: { activeSampleMapLoadable: loadable, activeSlices },
+  } = fos.useRenderConfig3d();
+  const slices = Array.from(activeSlices || []).sort();
 
   if (loadable.state === "loading") {
     throw loadable.contents;
@@ -460,9 +462,10 @@ const PathValueEntry = ({
   ) => void;
 }) => {
   const [hovering, setHovering] = useState<boolean>(false);
-  const pinned3DSample = useRecoilValue(fos.pinned3DSampleSlice);
-  const active3dSlices = useRecoilValue(fos.active3dSlices);
-  const slices = Boolean(pinned3DSample) && (active3dSlices?.length || 1) > 1;
+  const {
+    state: { pinnedSlice: pinned3DSlice, activeSlices: active3dSlices },
+  } = fos.useRenderConfig3d();
+  const slices = Boolean(pinned3DSlice) && (active3dSlices?.length || 1) > 1;
 
   const isScalar = useRecoilValue(isScalarValue(path));
   return (

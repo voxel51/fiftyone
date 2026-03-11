@@ -3,7 +3,7 @@ import { usePanelTitle } from "@fiftyone/spaces";
 import * as fos from "@fiftyone/state";
 import { groupId, useBrowserStorage } from "@fiftyone/state";
 import { Resizable } from "re-resizable";
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import EnsureGroupSample from "./EnsureGroupSample";
 import { groupContainer, mainGroup } from "./Group.module.css";
@@ -18,8 +18,10 @@ export const GroupView = () => {
   const key = useRecoilValue(groupId);
   const mediaField = useRecoilValue(fos.selectedMediaField(true));
   const isCarouselVisible = useRecoilValue(fos.groupMediaIsCarouselVisible);
-  const is3dVisible = useRecoilValue(fos.groupMediaIs3dVisible);
   const isMainVisible = useRecoilValue(fos.groupMediaIsMain2DViewerVisible);
+  const {
+    state: { is3dVisible },
+  } = fos.useRenderConfig3d();
   const [width, setWidth] = useBrowserStorage(
     "group-modal-split-view-width",
     DEFAULT_SPLIT_VIEW_LEFT_WIDTH
@@ -33,13 +35,22 @@ export const GroupView = () => {
     fos.activeSliceDescriptorLabel
   );
   const [_, setPanelTitle, resetPanelTitle] = usePanelTitle();
+  const panelTitleHandlersRef = useRef({
+    resetPanelTitle,
+    setPanelTitle,
+  });
+
+  panelTitleHandlersRef.current = {
+    resetPanelTitle,
+    setPanelTitle,
+  };
 
   useEffect(() => {
     const updatedTitle = `📌 ${activeSliceDescriptorLabel}`;
-    setPanelTitle(updatedTitle);
+    panelTitleHandlersRef.current.setPanelTitle(updatedTitle);
 
     return () => {
-      resetPanelTitle();
+      panelTitleHandlersRef.current.resetPanelTitle();
     };
   }, [activeSliceDescriptorLabel]);
 
