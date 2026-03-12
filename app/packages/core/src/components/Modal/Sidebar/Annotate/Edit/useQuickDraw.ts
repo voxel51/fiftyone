@@ -254,28 +254,20 @@ export const useQuickDraw = () => {
    * overlay, remembers field/label for auto-assignment).
    */
   const finalizeCurrentDetection = useCallback(() => {
-    const currentScene = sceneRef.current;
-    if (
-      currentScene &&
-      !currentScene.isDestroyed &&
-      currentScene.renderLoopActive
-    ) {
-      currentScene.exitInteractiveMode();
-    }
-
+    const scene = sceneRef.current;
     const currentLabel = selectedLabelRef.current;
 
     if (currentLabel) {
-      if (currentLabel.overlay) {
-        addOverlay(currentLabel.overlay as BaseOverlay);
-      }
-
       setLastUsedField(currentLabel.path);
+
       if (currentLabel.data.label) {
         setLastUsedLabel(currentLabel.path, currentLabel.data.label);
       }
     }
-  }, [addOverlay, setLastUsedField, setLastUsedLabel]);
+
+    scene?.exitInteractiveMode();
+    onExit();
+  }, [addOverlay, onExit, setLastUsedField, setLastUsedLabel]);
 
   /**
    * Handles the `lighter:overlay-create` event fired by `InteractionManager`
@@ -299,6 +291,7 @@ export const useQuickDraw = () => {
         const labelValue = field
           ? getQuickDrawDetectionLabel(field) ?? undefined
           : undefined;
+
         createDetection({ field, labelValue });
       },
       [
@@ -327,9 +320,8 @@ export const useQuickDraw = () => {
 
         finalizeCurrentDetection();
         disableQuickDraw();
-        onExit();
       },
-      [claimEvent, disableQuickDraw, finalizeCurrentDetection, onExit]
+      [claimEvent, disableQuickDraw, finalizeCurrentDetection]
     )
   );
 
