@@ -197,6 +197,12 @@ export class InteractionManager {
   private readonly DOUBLE_CLICK_DISTANCE_THRESHOLD = 10; // pixels
 
   private currentPixelCoordinates?: Point;
+  private pendingQuickDraw?: {
+    point: Point;
+    worldPoint: Point;
+    scale: number;
+    pointerId: number;
+  };
   private readonly eventBus: EventDispatcher<LighterEventGroup>;
   constructor(
     private canvas: HTMLCanvasElement,
@@ -249,7 +255,7 @@ export class InteractionManager {
 
     let handler: InteractionHandler | undefined = undefined;
 
-    let interactiveHandler = this.getInteractiveHandler();
+    const interactiveHandler = this.getInteractiveHandler();
 
     if (interactiveHandler) {
       handler = interactiveHandler.getOverlay();
@@ -271,30 +277,25 @@ export class InteractionManager {
         this.selectionManager.select(handler!.id);
       }
 
-      // QuickDraw: clicking outside the selected overlay starts a new detection.
+      // QuickDraw: defer overlay creation until we confirm this is a drag.
+      // If the user releases without dragging (a click), exit QuickDraw mode.
       if (quickDrawBridge.isQuickDrawActive()) {
         const isNonOverlay = !handler || handler.id === this.canonicalMediaId;
 
         if (isNonOverlay || isUnselectedOverlay) {
           this.renderer.disableZoomPan();
-          this.selectionManager.clearSelection();
+          this.selectionManager.clearSelection({ ignoreSideEffects: true });
 
-          interactiveHandler = this.getInteractiveHandler();
-          if (!interactiveHandler) {
-            // Ask QuickDraw (via React) to create a detection and register
-            // an interactive handler. This relies on the event bus invoking
-            // handlers synchronously so the handler is available immediately
-            // after dispatch returns.
-            this.eventBus.dispatch("lighter:overlay-create", {
-              eventId: crypto.randomUUID(),
-            });
-            interactiveHandler = this.getInteractiveHandler();
-          }
+          this.pendingQuickDraw = {
+            point,
+            worldPoint,
+            scale,
+            pointerId: event.pointerId,
+          };
 
-          if (interactiveHandler) {
-            handler = interactiveHandler.getOverlay();
-            this.selectionManager.select(handler.id);
-          }
+          this.canvas.setPointerCapture(event.pointerId);
+          event.preventDefault();
+          return;
         }
       }
     }
@@ -345,6 +346,60 @@ export class InteractionManager {
     const worldPoint = this.renderer.screenToWorld(point);
     const scale = this.renderer.getScale();
     this.currentPixelCoordinates = point;
+
+    // Promote pending QuickDraw to actual drawing once drag threshold is exceeded.
+    if (this.pendingQuickDraw) {
+      const dx = point.x - this.pendingQuickDraw.point.x;
+      const dy = point.y - this.pendingQuickDraw.point.y;
+      const distSq = dx * dx + dy * dy;
+
+      if (distSq > this.CLICK_THRESHOLD * this.CLICK_THRESHOLD) {
+        const pending = this.pendingQuickDraw;
+        this.pendingQuickDraw = undefined;
+
+        // Ask QuickDraw (via React) to create a detection and register
+        // an interactive handler. This relies on the event bus invoking
+        // handlers synchronously so the handler is available immediately
+        // after dispatch returns.
+        this.eventBus.dispatch("lighter:overlay-create", {
+          eventId: crypto.randomUUID(),
+        });
+
+        const interactiveHandler = this.getInteractiveHandler();
+        if (interactiveHandler) {
+          const handler = interactiveHandler.getOverlay();
+          this.selectionManager.select(handler.id);
+
+          // Initialize the handler with the original pointerdown point
+          handler.onPointerDown?.(
+            pending.point,
+            pending.worldPoint,
+            event,
+            pending.scale
+          );
+
+          // Update with the current pointer position
+          handler.onMove?.(
+            point,
+            worldPoint,
+            event,
+            scale,
+            this.maintainAspectRatio
+          );
+
+          if (TypeGuards.isSpatial(handler)) {
+            this.eventBus.dispatch("lighter:overlay-drag-start", {
+              id: handler.id,
+              startPosition: handler.bounds,
+              bounds: handler.bounds,
+            });
+          }
+        }
+      }
+
+      this.canvas.style.cursor = "crosshair";
+      return;
+    }
 
     const interactiveHandler = this.getInteractiveHandler();
     let handler = this.findMovingHandler() || this.findHandlerAtPoint(point);
@@ -415,6 +470,19 @@ export class InteractionManager {
   };
 
   private handlePointerUp = (event: PointerEvent): void => {
+    // Click-to-quit: if there was no significant movement, exit QuickDraw.
+    if (this.pendingQuickDraw) {
+      this.pendingQuickDraw = undefined;
+      this.eventBus.dispatch("lighter:quickdraw-quit", {
+        eventId: crypto.randomUUID(),
+      });
+      this.renderer.enableZoomPan();
+      this.canvas.releasePointerCapture(event.pointerId);
+      this.clickStartPoint = undefined;
+      this.clickStartTime = 0;
+      return;
+    }
+
     const point = this.getCanvasPoint(event);
     const worldPoint = this.renderer.screenToWorld(point);
     const scale = this.renderer.getScale();
@@ -496,6 +564,11 @@ export class InteractionManager {
   };
 
   private handlePointerCancel = (event: PointerEvent): void => {
+    if (this.pendingQuickDraw) {
+      this.pendingQuickDraw = undefined;
+      this.renderer.enableZoomPan();
+    }
+
     const movingHandler = this.findMovingHandler();
 
     if (movingHandler) {

@@ -48,6 +48,13 @@ const detectionTypes = new Set(["Detection", "Detections"]);
 const lastProcessedCreateIdAtom = atom<string | null>(null);
 
 /**
+ * Tracks the last processed `lighter:quickdraw-quit` event ID so that only one
+ * `useQuickDraw` instance handles the quit, even though the hook is
+ * called in multiple components.
+ */
+const lastProcessedQuitIdAtom = atom<string | null>(null);
+
+/**
  * Centralized hook for managing quick draw mode state and operations.
  */
 export const useQuickDraw = () => {
@@ -59,7 +66,6 @@ export const useQuickDraw = () => {
   const defaultDetectionField = useAtomValue(defaultField(DETECTION));
   const { scene, addOverlay } = useLighter();
   const { selectedLabel } = useAnnotationContext();
-
   const createDetection = useCreate(DETECTION);
 
   const useEventHandler = useLighterEventHandler(
@@ -69,6 +75,7 @@ export const useQuickDraw = () => {
   // Using refs to prevent shared closure contexts from retaining old Scene2D instances.
   const sceneRef = useRef(scene);
   sceneRef.current = scene;
+
   const selectedLabelRef = useRef(selectedLabel);
   selectedLabelRef.current = selectedLabel;
 
@@ -245,12 +252,52 @@ export const useQuickDraw = () => {
     }, [])
   );
 
+  const claimQuitEvent = useAtomCallback(
+    useCallback((get, set, eventId: string) => {
+      if (get(lastProcessedQuitIdAtom) === eventId) {
+        return false;
+      }
+
+      set(lastProcessedQuitIdAtom, eventId);
+
+      return true;
+    }, [])
+  );
+
+  /**
+   * Handles the `lighter:overlay-create` event fired by `InteractionManager`
+   * Exits interactive mode and finalizes the current detection (persists
+   * overlay, remembers field/label for auto-assignment).
+   */
+  const finalizeCurrentDetection = useCallback(() => {
+    const currentScene = sceneRef.current;
+    if (
+      currentScene &&
+      !currentScene.isDestroyed &&
+      currentScene.renderLoopActive
+    ) {
+      currentScene.exitInteractiveMode();
+    }
+
+    const currentLabel = selectedLabelRef.current;
+
+    if (currentLabel) {
+      if (currentLabel.overlay) {
+        addOverlay(currentLabel.overlay as BaseOverlay);
+      }
+
+      setLastUsedField(currentLabel.path);
+      if (currentLabel.data.label) {
+        setLastUsedLabel(currentLabel.path, currentLabel.data.label);
+      }
+    }
+  }, [addOverlay, setLastUsedField, setLastUsedLabel]);
+
   /**
    * Handles the `lighter:overlay-create` event fired by `InteractionManager`
    * on pointer-down when no interactive handler exists.
    *
-   * 1. Finalize the previous detection (exit interactive mode, persist overlay,
-   *    remember field/label for auto-assignment).
+   * 1. Finalize the previous detection.
    * 2. Resolve field and label for the next detection.
    * 3. Create the next detection.
    */
@@ -262,29 +309,8 @@ export const useQuickDraw = () => {
           return;
         }
 
-        // Finalize the previous detection if one exists
-        const currentScene = sceneRef.current;
-        const currentLabel = selectedLabelRef.current;
+        finalizeCurrentDetection();
 
-        if (currentLabel && quickDrawActive) {
-          if (
-            currentScene &&
-            !currentScene.isDestroyed &&
-            currentScene.renderLoopActive
-          ) {
-            currentScene.exitInteractiveMode();
-            if (currentLabel.overlay) {
-              addOverlay(currentLabel.overlay as BaseOverlay);
-            }
-          }
-
-          setLastUsedField(currentLabel.path);
-          if (currentLabel.data.label) {
-            setLastUsedLabel(currentLabel.path, currentLabel.data.label);
-          }
-        }
-
-        // Create the next detection
         const field = getQuickDrawDetectionField() ?? undefined;
         const labelValue = field
           ? getQuickDrawDetectionLabel(field) ?? undefined
@@ -292,15 +318,33 @@ export const useQuickDraw = () => {
         createDetection({ field, labelValue });
       },
       [
-        addOverlay,
         claimCreateEvent,
         createDetection,
+        finalizeCurrentDetection,
         getQuickDrawDetectionField,
         getQuickDrawDetectionLabel,
-        quickDrawActive,
-        setLastUsedField,
-        setLastUsedLabel,
       ]
+    )
+  );
+
+  /**
+   * Handles the `lighter:quickdraw-quit` event fired by `InteractionManager`
+   * when the user clicks without dragging in QuickDraw mode.
+   *
+   * Finalizes any in-progress detection and disables QuickDraw.
+   */
+  useEventHandler(
+    "lighter:quickdraw-quit",
+    useCallback(
+      (payload) => {
+        if (!claimQuitEvent(payload.eventId)) {
+          return;
+        }
+
+        finalizeCurrentDetection();
+        disableQuickDraw();
+      },
+      [claimQuitEvent, disableQuickDraw, finalizeCurrentDetection]
     )
   );
 
