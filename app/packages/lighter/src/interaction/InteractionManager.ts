@@ -284,7 +284,6 @@ export class InteractionManager {
 
         if (isNonOverlay || isUnselectedOverlay) {
           this.renderer.disableZoomPan();
-          this.selectionManager.clearSelection({ ignoreSideEffects: true });
 
           this.pendingQuickDraw = {
             point,
@@ -357,10 +356,9 @@ export class InteractionManager {
         const pending = this.pendingQuickDraw;
         this.pendingQuickDraw = undefined;
 
-        // Ask QuickDraw (via React) to create a detection and register
+        // Signal QuickDraw to create a detection and register
         // an interactive handler. This relies on the event bus invoking
-        // handlers synchronously so the handler is available immediately
-        // after dispatch returns.
+        // handlers synchronously so the handler is immediately available.
         this.eventBus.dispatch("lighter:overlay-create", {
           eventId: crypto.randomUUID(),
         });

@@ -7,7 +7,6 @@ import { fieldType, isFieldReadOnly, labelSchemaData } from "../state";
 import { labelsByPath } from "../useLabels";
 import { defaultField, useAnnotationContext } from "./state";
 import {
-  BaseOverlay,
   UNDEFINED_LIGHTER_SCENE_ID,
   useLighter,
   useLighterEventHandler,
@@ -58,7 +57,7 @@ export const useQuickDraw = () => {
   const setLastUsedField = useSetAtom(lastUsedDetectionFieldAtom);
   const labelsMap = useAtomValue(labelsByPath);
   const defaultDetectionField = useAtomValue(defaultField(DETECTION));
-  const { scene, addOverlay } = useLighter();
+  const { scene } = useLighter();
   const { selectedLabel } = useAnnotationContext();
   const createDetection = useCreate(DETECTION);
   const onExit = useExit();
@@ -236,22 +235,21 @@ export const useQuickDraw = () => {
   );
 
   const claimEvent = useAtomCallback(
-    useCallback((get, set, eventType: string, eventId: string) => {
+    useCallback((get, _set, eventType: string, eventId: string) => {
       const claimed = get(claimedEventsAtom);
       if (claimed.get(eventType) === eventId) {
         return false;
       }
 
-      set(claimedEventsAtom, new Map(claimed).set(eventType, eventId));
+      claimed.set(eventType, eventId);
 
       return true;
     }, [])
   );
 
   /**
-   * Handles the `lighter:overlay-create` event fired by `InteractionManager`
-   * Exits interactive mode and finalizes the current detection (persists
-   * overlay, remembers field/label for auto-assignment).
+   * Cache field/label for auto-assignment
+   * Close out previous label
    */
   const finalizeCurrentDetection = useCallback(() => {
     const scene = sceneRef.current;
@@ -267,15 +265,12 @@ export const useQuickDraw = () => {
 
     scene?.exitInteractiveMode();
     onExit();
-  }, [addOverlay, onExit, setLastUsedField, setLastUsedLabel]);
+  }, [onExit, setLastUsedField, setLastUsedLabel]);
 
   /**
-   * Handles the `lighter:overlay-create` event fired by `InteractionManager`
-   * on pointer-down when no interactive handler exists.
-   *
-   * 1. Finalize the previous detection.
-   * 2. Resolve field and label for the next detection.
-   * 3. Create the next detection.
+   * Cache field/label for auto-assignment
+   * Close out previous label
+   * Create the next detection.
    */
   useEventHandler(
     "lighter:overlay-create",
@@ -305,10 +300,9 @@ export const useQuickDraw = () => {
   );
 
   /**
-   * Handles the `lighter:quickdraw-quit` event fired by `InteractionManager`
-   * when the user clicks without dragging in QuickDraw mode.
-   *
-   * Finalizes any in-progress detection and disables QuickDraw.
+   * Cache field/label for auto-assignment
+   * Close out previous label
+   * Exit QuickDraw
    */
   useEventHandler(
     "lighter:quickdraw-quit",
