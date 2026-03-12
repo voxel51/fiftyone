@@ -38,7 +38,7 @@ class SegmentAnythingModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
         points_mask_index (None): an optional mask index to use for each
             keypoint output
         get_item_cls (None): a string like
-            ``"fifytone.utils.sam.SegmentAnythingImageGetItem"`` specifying the
+            ``"fiftytone.utils.sam.SegmentAnythingImageGetItem"`` specifying the
             :class:`GetItem` to use for SAM
         get_item_args (None): a dictionary of arguments for
             ``get_item_cls(field_mapping=field_mapping, **kwargs)``
@@ -144,7 +144,7 @@ class SAMPromptMode(Enum):
 
     @classmethod
     def from_mode_name(cls, mode_name):
-        """_summary_
+        """Creates an instance from mode name.
 
         Args:
             mode_name: name of the prompt mode
@@ -478,11 +478,12 @@ class SAMSegmenterOutputProcessor(fout.OutputProcessor):
             masks = out["masks"]  # (B, C, H, W)
             mask_scores = out["iou_predictions"]  # (B, C)
             if masks.shape[1] > 1:
-                _mask_index = (
-                    mask_index
-                    if mask_index is not None
-                    else mask_scores.argmax(dim=1)
-                )
+                if mask_index is not None:
+                    _mask_index = torch.full(
+                        (masks.shape[0],), mask_index, dtype=torch.int
+                    )
+                else:
+                    _mask_index = mask_scores.argmax(dim=1)
                 _masks = masks[
                     torch.arange(masks.shape[0]), _mask_index
                 ]  # (B, H, W)
@@ -855,7 +856,11 @@ class SegmentAnythingModel(fout.TorchImageModel):
         for key in args:
             if isinstance(args[key], torch.Tensor):
                 args[key] = args[key].to(self.device)
-            elif isinstance(args[key][0], torch.Tensor):
+            elif (
+                isinstance(args[key], list)
+                and args[key]
+                and isinstance(args[key][0], torch.Tensor)
+            ):
                 args[key] = [v.to(self.device) for v in args[key]]
 
         output = self._forward_pass(args)
