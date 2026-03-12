@@ -300,15 +300,24 @@ class _BasenameLookup(dict):
 
     Subclasses :class:`dict` so that downstream code expecting a dict-like
     ``data_map`` (e.g. ``data_map.get(filename)``) continues to work.
+    All standard dict methods (``in``, ``len``, ``items``, iteration, etc.)
+    route through the same resolution logic to avoid behavioral
+    inconsistencies.
     """
 
     def __init__(self, filepaths):
+        super().__init__()
         self._index = defaultdict(list)
-        for f in filepaths:
+        self._filepaths = list(filepaths)
+        for f in self._filepaths:
             self._index[os.path.basename(f)].append(f)
-        super().__init__(self._index)
 
-    def get(self, filename, default=None):
+    def _resolve(self, filename):
+        """Resolve a CVAT filename to a local filepath.
+
+        Returns the filepath if unambiguously resolved, or :data:`_MISSING`
+        otherwise.
+        """
         basename = filename.replace(os.sep, "/").rsplit("/", 1)[-1]
         if candidates := self._index.get(basename):
             if len(candidates) == 1:
@@ -337,15 +346,38 @@ class _BasenameLookup(dict):
                         len(matches),
                     )
 
-            return default
+        return _MISSING
 
-        return default
+    def get(self, filename, default=None):
+        result = self._resolve(filename)
+        return default if result is _MISSING else result
 
     def __getitem__(self, filename):
-        result = self.get(filename, _MISSING)
+        result = self._resolve(filename)
         if result is _MISSING:
             raise KeyError(filename)
         return result
+
+    def __contains__(self, filename):
+        return self._resolve(filename) is not _MISSING
+
+    def __len__(self):
+        return len(self._filepaths)
+
+    def __iter__(self):
+        return iter(self._filepaths)
+
+    def __bool__(self):
+        return len(self._filepaths) > 0
+
+    def keys(self):
+        return {f: None for f in self._filepaths}.keys()
+
+    def values(self):
+        return {f: f for f in self._filepaths}.values()
+
+    def items(self):
+        return {f: f for f in self._filepaths}.items()
 
 
 def _parse_task_metadata(
