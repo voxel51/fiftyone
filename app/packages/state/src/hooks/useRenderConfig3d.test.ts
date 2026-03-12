@@ -1,7 +1,11 @@
 import { renderHook } from "@testing-library/react-hooks";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ModalSample } from "../recoil/modal";
-import { useRenderConfig3d } from "./useRenderConfig3d";
+import {
+  useRenderConfig3dActions,
+  useRenderConfig3dImperativeState,
+  useRenderConfig3dState,
+} from "./useRenderConfig3d";
 
 const mockInternals = vi.hoisted(() => ({
   groupMediaIs3dVisible: { key: "groupMediaIs3dVisible" },
@@ -158,7 +162,19 @@ const setState = (values: Record<string, unknown>) => {
   };
 };
 
-describe("useRenderConfig3d", () => {
+const useRenderConfig3dHooks = () => {
+  const state = useRenderConfig3dState();
+  const actions = useRenderConfig3dActions();
+  const query = useRenderConfig3dImperativeState();
+
+  return {
+    state,
+    actions,
+    query,
+  };
+};
+
+describe("useRenderConfig3d split hooks", () => {
   beforeEach(() => {
     const sceneSample = buildModalSample("scene-id", "/tmp/scene.fo3d");
     const sceneBSample = buildModalSample("scene-b-id", "/tmp/scene-b.fo3d");
@@ -193,7 +209,7 @@ describe("useRenderConfig3d", () => {
       fo3dContent: { name: "scene" },
     });
 
-    const { result } = renderHook(() => useRenderConfig3d());
+    const { result } = renderHook(() => useRenderConfig3dHooks());
 
     expect(result.current.state.pinnedSlice).toBe("lidar");
     expect(result.current.state.activeFo3dSlice).toBe("scene");
@@ -203,8 +219,43 @@ describe("useRenderConfig3d", () => {
     expect(result.current.state.fo3dContent).toEqual({ name: "scene" });
   });
 
+  it("exposes imperative querying via query.getState", async () => {
+    const interactionSample = buildModalSample("lidar-id", "/tmp/lidar.pcd");
+    const sceneSample = buildModalSample("scene-id", "/tmp/scene.fo3d");
+    const activeSampleMap = {
+      scene: sceneSample,
+      lidar: interactionSample,
+    };
+
+    setState({
+      is3dPinned: true,
+      pinned3DSampleSlice: "lidar",
+      active3dSlices: ["lidar", "scene"],
+      activeFo3dSlice: "scene",
+      activeNonFo3d3dSlices: ["lidar"],
+      interaction3dSample: interactionSample,
+      interaction3dSlice: "lidar",
+      sceneSample,
+      active3dSlicesToSampleMap: activeSampleMap,
+      all3dSlicesToSampleMap: activeSampleMap,
+      fo3dContent: { name: "scene" },
+    });
+
+    const { result } = renderHook(() => useRenderConfig3dHooks());
+    const queriedState = await result.current.query.getState();
+
+    expect(queriedState.activeFo3dSlice).toBe("scene");
+    expect(queriedState.activeSlices).toEqual(["lidar", "scene"]);
+    expect(queriedState.pinnedSlice).toBe("lidar");
+    expect(queriedState.activeSampleMap).toEqual(activeSampleMap);
+    expect(queriedState.allSampleMap).toEqual(activeSampleMap);
+    expect(queriedState.interactionSample).toBe(interactionSample);
+    expect(queriedState.sceneSample).toBe(sceneSample);
+    expect(queriedState.fo3dContent).toEqual({ name: "scene" });
+  });
+
   it("initializes render config 3d from a 3d modal slice", async () => {
-    const { result } = renderHook(() => useRenderConfig3d());
+    const { result } = renderHook(() => useRenderConfig3dHooks());
 
     await result.current.actions.initializeFromModalSlice("lidar");
 
@@ -220,7 +271,7 @@ describe("useRenderConfig3d", () => {
       active3dSlices: ["lidar"],
     });
 
-    const { result } = renderHook(() => useRenderConfig3d());
+    const { result } = renderHook(() => useRenderConfig3dHooks());
 
     await result.current.actions.initializeFromModalSlice("image");
 
@@ -250,7 +301,7 @@ describe("useRenderConfig3d", () => {
       },
     });
 
-    const { result } = renderHook(() => useRenderConfig3d());
+    const { result } = renderHook(() => useRenderConfig3dHooks());
 
     await result.current.actions.toggleSlice("scene-b", true);
 
@@ -273,7 +324,7 @@ describe("useRenderConfig3d", () => {
       },
     });
 
-    const { result } = renderHook(() => useRenderConfig3d());
+    const { result } = renderHook(() => useRenderConfig3dHooks());
 
     await result.current.actions.reconcileAvailableSlices();
 
@@ -291,7 +342,7 @@ describe("useRenderConfig3d", () => {
       groupMedia3dVisibleSetting: true,
     });
 
-    const { result } = renderHook(() => useRenderConfig3d());
+    const { result } = renderHook(() => useRenderConfig3dHooks());
 
     await result.current.actions.focusSlice("image");
 
