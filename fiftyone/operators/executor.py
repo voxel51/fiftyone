@@ -842,7 +842,7 @@ class ExecutionContext(contextlib.AbstractContextManager):
 
     @property
     def selected_samples(self):
-        """A list of selected sample dicts (if any).
+        """A list of selected sample dicts, if any.
 
         Each dict has ``sample_id`` and ``type`` (``"default"`` or ``"alt"``),
         where type corresponds to a key in :attr:`sample_selection_style`.
