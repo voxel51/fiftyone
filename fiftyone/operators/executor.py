@@ -851,7 +851,7 @@ class ExecutionContext(contextlib.AbstractContextManager):
 
     @property
     def sample_selection_style(self):
-        """The current sample selection style config (if any).
+        """The current sample selection style config, if any.
 
         A dict with a ``default`` key and optional ``alt`` key specifying
         icon styles.
