@@ -809,9 +809,9 @@ class Session(object):
             {"sample_id": sid, "type": existing.get(sid, "default")}
             for sid in (sample_ids or [])
         ]
-        samples = _normalize_selected_samples(samples)
-        self._state.selected_samples = samples
-        self._client.send_event(SelectSamples(samples=samples))
+        normalized = _normalize_selected_samples(samples)
+        self._state.selected_samples = normalized
+        self._client.send_event(SelectSamples(samples=normalized))
 
     @property
     def selected_samples(self) -> t.List[t.Dict]:
