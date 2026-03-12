@@ -287,18 +287,15 @@ export abstract class AbstractLooker<
   }
 
   /**
-   * Restores a previously captured zoom and pan state.
-   *
-   * `setZoom: false` is necessary. Without it, Looker's render cycle will
-   * immediately overwrite these values with its own auto-fit calculation.
+   * Seeds a viewport to be applied on the first fully-loaded render, as an
+   * alternative to the default auto-zoom. Consumed once inside postProcess()
+   * the first time setZoom && overlaysPrepared are both true, then cleared.
    */
-  setViewportState({ scale, panX, panY }: ViewportState): void {
-    this.updater({
-      scale,
-      pan: [panX, panY] as Coordinates,
-      setZoom: false,
-    });
+  setInitialViewport(viewport: ViewportState): void {
+    this.pinnedViewport = viewport;
   }
+
+  protected pinnedViewport: ViewportState | null = null;
 
   loadOverlays(sample: Sample): void {
     this.sampleOverlays = loadOverlays(sample, this.state.config.fieldSchema);

@@ -1,7 +1,7 @@
 import { getImageElements } from "../elements";
 import { COMMON_SHORTCUTS } from "../elements/common";
 import type { Overlay } from "../overlays/base";
-import type { ImageState } from "../state";
+import type { Coordinates, ImageState } from "../state";
 import { DEFAULT_IMAGE_OPTIONS } from "../state";
 import { AbstractLooker } from "./abstract";
 import { LookerUtils } from "./shared";
@@ -78,7 +78,14 @@ export class ImageLooker extends AbstractLooker<ImageState> {
     if (this.state.zoomToContent) {
       LookerUtils.toggleZoom(this.state, this.currentOverlays);
     } else if (this.state.setZoom && this.state.overlaysPrepared) {
-      if (this.state.options.zoom) {
+      if (this.pinnedViewport) {
+        this.state.scale = this.pinnedViewport.scale;
+        this.state.pan = [
+          this.pinnedViewport.panX,
+          this.pinnedViewport.panY,
+        ] as Coordinates;
+        this.pinnedViewport = null;
+      } else if (this.state.options.zoom) {
         this.state = zoomToContent(this.state, this.pluckedOverlays);
       } else {
         this.state.pan = [0, 0];
