@@ -1,5 +1,6 @@
 import { Page, expect } from "src/oss/fixtures";
 import type { EventUtils } from "src/shared/event-utils";
+import { ToolbarPom } from "./toolbar";
 import { TooltipPom } from "./tooltip";
 
 export interface Box {
@@ -42,6 +43,13 @@ export class SampleCanvasPom {
    */
   get tooltip() {
     return new TooltipPom(this.page, this.eventUtils);
+  }
+
+  /**
+   * The Lighter toolbar (annotate mode), if present
+   */
+  get toolbar() {
+    return new ToolbarPom(this.page, this.eventUtils);
   }
 
   /**
@@ -118,6 +126,17 @@ export class SampleCanvasPom {
     await this.eventUtils.getEventReceivedPromiseForPredicate("cursor-change");
   }
 
+  /**
+   * Move the mouse to the right edge of the viewport (e.g. to avoid tooltips in
+   * screenshots).
+   */
+  async moveMouseToViewportEdge() {
+    const viewport = this.page.viewportSize();
+    if (viewport) {
+      await this.page.mouse.move(viewport.width - 1, viewport.height / 2);
+    }
+  }
+
   async #toScreenCoordinates(x: number, y: number) {
     if (!this.#box) {
       this.#box = await this.locator.boundingBox();
@@ -158,6 +177,8 @@ class SampleCanvasAsserter {
   async hasScreenshot(name: string) {
     await expect(this.sampleCanvasPom.checkbox).toBeHidden();
     await this.sampleCanvasPom.tooltip.assert.isVisible(false);
+    await this.sampleCanvasPom.moveMouseToViewportEdge();
+    await this.sampleCanvasPom.toolbar.assert.isVisible(false);
     await expect(this.sampleCanvasPom.locator).toBeVisible();
     await expect(this.sampleCanvasPom.locator).toHaveScreenshot(name, {
       maxDiffPixelRatio: 0.0,

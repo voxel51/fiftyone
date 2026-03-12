@@ -620,13 +620,6 @@ export class Scene2D {
   }
 
   /**
-   * Reset the scene's zoom level to 100% and clears pan translation.
-   */
-  resetZoomPan(): void {
-    this.config.renderer.resetZoomPan();
-  }
-
-  /**
    * Returns the current zoom and pan state of the scene's renderer.
    * Use this to snapshot the viewport before unmounting the scene.
    */
@@ -640,6 +633,27 @@ export class Scene2D {
    */
   setViewportState(state: ViewportState): void {
     this.config.renderer.setViewportState(state);
+  }
+
+  /**
+   * Reset the scene's zoom level to 100% and clears pan translation.
+   */
+  resetZoomPan(): void {
+    this.config.renderer.resetZoomPan();
+  }
+
+  /**
+   * Increase the viewport zoom level (zoom in).
+   */
+  zoomIn(): void {
+    this.config.renderer.zoomIn();
+  }
+
+  /**
+   * Decrease the viewport zoom level (zoom out).
+   */
+  zoomOut(): void {
+    this.config.renderer.zoomOut();
   }
 
   /**

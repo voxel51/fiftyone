@@ -144,6 +144,16 @@ export interface Renderer2D {
   resetZoomPan(): void;
 
   /**
+   * Increase the viewport zoom level (zoom in).
+   */
+  zoomIn(): void;
+
+  /**
+   * Decrease the viewport zoom level (zoom out).
+   */
+  zoomOut(): void;
+
+  /**
    * Disables zoom and pan interactions (e.g., during overlay dragging).
    */
   disableZoomPan(): void;
