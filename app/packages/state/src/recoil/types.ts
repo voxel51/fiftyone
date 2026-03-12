@@ -1,4 +1,5 @@
 import type { CustomizeColorInput } from "@fiftyone/relay";
+import type { ImageOptions } from "@fiftyone/looker";
 import type { SpaceNodeJSON } from "@fiftyone/spaces";
 
 export type SelectionType = "default" | "alt";
