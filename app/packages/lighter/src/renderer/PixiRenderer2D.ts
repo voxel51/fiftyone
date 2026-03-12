@@ -841,9 +841,6 @@ export class PixiRenderer2D implements Renderer2D {
    */
   private emitViewportZoomed(): void {
     if (this.viewport) {
-      console.log(
-        `[Lighter] Zoom: scale=${this.viewport.scaled.toFixed(2)}, pan-x=${this.viewport.x.toFixed(2)}, pan-y=${this.viewport.y.toFixed(2)}`
-      );
       this.eventBus.dispatch("lighter:zoomed", {
         scale: this.viewport.scaled,
       });
@@ -855,9 +852,6 @@ export class PixiRenderer2D implements Renderer2D {
    */
   private emitViewportMoved(): void {
     if (this.viewport) {
-      console.log(
-        `[Lighter] Pan: scale=${this.viewport.scaled.toFixed(2)}, pan-x=${this.viewport.x.toFixed(2)}, pan-y=${this.viewport.y.toFixed(2)}`
-      );
       this.eventBus.dispatch("lighter:viewport-moved", {
         x: this.viewport.x,
         y: this.viewport.y,
