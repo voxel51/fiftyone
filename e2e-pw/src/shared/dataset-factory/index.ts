@@ -273,11 +273,15 @@ const createBlankDataset = (() => {
 
     await loader.executePythonCode(`
     from bson import ObjectId
+    from datetime import datetime
     import fiftyone as fo
     import json
 
     dataset = fo.Dataset("${datasetName}")
+    dataset.add_sample_field("index", fo.IntField)
     dataset.media_type = "image"
+
+    now = datetime.now()
 
     ${addFields.join("\n")}
 
@@ -287,13 +291,14 @@ const createBlankDataset = (() => {
     ${sampleData.join("\n")}
     
     for idx in range(0, ${numSamples}):
-        samples.append(
-            fo.Sample(
-                _id=ObjectId(f"{idx:024x}"),
-                filepath=f"/tmp/${datasetName}/{idx}.png",
-                index=idx
-            )
+        sample = fo.Sample(
+            _id=ObjectId(f"{idx:024x}"),
+            filepath=f"/tmp/${datasetName}/{idx}.png",
+            index=idx
         )
+        sample.created_at = now
+        sample.last_modified_at = now
+        samples.append(sample)
     
     dataset._sample_collection.insert_many(
         [
@@ -307,7 +312,6 @@ const createBlankDataset = (() => {
         return `dataset.save_view("${name}", ${view})`;
       })
       .join("\n")}
-    
     `);
   };
 })();

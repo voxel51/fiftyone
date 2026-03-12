@@ -1,3 +1,4 @@
+import { ObjectId } from "mongodb";
 import { test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { Box, SampleCanvasType } from "src/oss/poms/modal/sample-canvas";
@@ -100,26 +101,38 @@ test.beforeAll(async ({ datasetFactory, foWebServer }) => {
       height: imageHeight,
       width: imageWidth,
     },
+    schema: {
+      classification: "Classification",
+      detections: "Detections",
+    },
     withSampleData: () => ({
-      classification: { label: "value" },
+      classification: { _id: new ObjectId().toString(), label: "value" },
       detections: {
-        detections: [{ label: "value", bounding_box: [0.25, 0.25, 0.5, 0.5] }],
+        detections: [
+          {
+            _id: new ObjectId().toString(),
+            label: "value",
+            bounding_box: [0.25, 0.25, 0.5, 0.5],
+          },
+        ],
       },
     }),
   });
 });
 
 test.describe.serial("quick edit", () => {
-  test.beforeEach(async ({ fiftyoneLoader, page }) => {
+  test.beforeEach(async ({ fiftyoneLoader, modal, page }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
       searchParams: new URLSearchParams({ id }),
     });
+
+    await modal.waitForSampleLoadDomAttribute();
+    await modal.assert.isOpen();
+    await modal.sampleCanvas.assert.is(SampleCanvasType.LOOKER);
   });
 
   test("classification via sidebar", async ({ modal }) => {
     // Init
-    await modal.assert.isOpen();
-    await modal.sampleCanvas.assert.is(SampleCanvasType.LOOKER);
     await modal.sampleCanvas.move(0.9, 0.9);
     await modal.sampleCanvas.assert.hasScreenshot("classification-looker.png");
 
@@ -142,10 +155,8 @@ test.describe.serial("quick edit", () => {
     await modal.sampleCanvas.assert.hasScreenshot("classification-lighter.png");
   });
 
-  test("detections via tooltip", async ({ modal }) => {
+  test("detections via tooltip", async ({ modal, page }) => {
     // Init
-    await modal.assert.isOpen();
-    await modal.sampleCanvas.assert.is(SampleCanvasType.LOOKER);
     await modal.sampleCanvas.move(0.9, 0.9);
     await modal.sampleCanvas.assert.hasCursor("default");
 
@@ -172,6 +183,7 @@ test.describe.serial("quick edit", () => {
     await modal.sampleCanvas.move(0.9, 0.9, "default");
     await modal.sidebar.edit.assert.redoIsEnabled(false);
     await modal.sidebar.edit.assert.undoIsEnabled(false);
+
     await modal.sampleCanvas.assert.hasScreenshot(
       "detection-lighter-selected-centered.png"
     );
