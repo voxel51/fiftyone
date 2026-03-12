@@ -1,5 +1,4 @@
 import { test as base, expect } from "src/oss/fixtures";
-import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { SchemaManagerPom } from "src/oss/poms/schema-manager";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
@@ -17,13 +16,9 @@ const videoId = "000000000000000000000001";
 const groupVideoId = "000000000000000000000003";
 
 const test = base.extend<{
-  grid: GridPom;
   modal: ModalPom;
   schemaManager: SchemaManagerPom;
 }>({
-  grid: async ({ page, eventUtils }, use) => {
-    await use(new GridPom(page, eventUtils));
-  },
   modal: async ({ page, eventUtils }, use) => {
     await use(new ModalPom(page, eventUtils));
   },
@@ -44,7 +39,9 @@ test.beforeAll(
       schema: {
         classification: "Classification",
       },
-      withSampleData: () => ({ classification: { label: "value" } }),
+      withSampleData: (_, { createId }) => ({
+        classification: { _id: createId(), label: "value" },
+      }),
     });
 
     await datasetFactory.createBlankDataset({
@@ -52,15 +49,17 @@ test.beforeAll(
       schema: {
         predictions: "Detections",
       },
-      withSampleData: () => {
+      withSampleData: (_, { createId }) => {
         return {
           predictions: {
             detections: [
               {
+                _id: createId(id),
                 label: "cat",
                 bounding_box: [0.1, 0.1, 0.2, 0.2],
               },
               {
+                _id: createId(),
                 label: "dog",
                 bounding_box: [0.3, 0.3, 0.2, 0.2],
               },
@@ -231,17 +230,12 @@ test.describe.serial("schema manager", () => {
   test("patches view required field prompt activates schema and enters edit mode", async ({
     fiftyoneLoader,
     page,
-    grid,
     modal,
   }) => {
     // Navigate to patches view
     await fiftyoneLoader.waitUntilGridVisible(page, detectionDatasetName, {
-      searchParams: new URLSearchParams({ view: "patches" }),
+      searchParams: new URLSearchParams({ view: "patches", id }),
     });
-
-    // Open first patch in modal
-    await grid.openFirstSample();
-    await modal.assert.isOpen();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
 

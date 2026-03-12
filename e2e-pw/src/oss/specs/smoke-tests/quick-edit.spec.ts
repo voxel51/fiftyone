@@ -1,4 +1,3 @@
-import { ObjectId } from "mongodb";
 import { test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { Box, SampleCanvasType } from "src/oss/poms/modal/sample-canvas";
@@ -105,12 +104,12 @@ test.beforeAll(async ({ datasetFactory, foWebServer }) => {
       classification: "Classification",
       detections: "Detections",
     },
-    withSampleData: () => ({
-      classification: { _id: new ObjectId().toString(), label: "value" },
+    withSampleData: (_, { createId }) => ({
+      classification: { _id: createId(), label: "value" },
       detections: {
         detections: [
           {
-            _id: new ObjectId().toString(),
+            _id: createId(),
             label: "value",
             bounding_box: [0.25, 0.25, 0.5, 0.5],
           },

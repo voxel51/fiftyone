@@ -4,6 +4,7 @@
 
 import { OssLoader } from "src/oss/fixtures/loader";
 import { createBlankImage } from "../media-factory/image";
+import { createId, indexToId } from "../utils";
 
 /**
  * Represents a minimal, unpopulated dataset sample scaffold.
@@ -18,6 +19,19 @@ interface BlankSample {
 
   /** The zero-based index of the sample within the dataset. */
   index: number;
+}
+
+/**
+ * A collection of utility functions passed to {@link DatasetOptions.withSampleData}
+ * for use when constructing sample data.
+ */
+interface Helpers {
+  /**
+   * Creates a MongoDB-style object ID wrapper from an optional string.
+   * If omitted, a new unique ObjectId is generated.
+   * @see {@link createId}
+   */
+  createId: (id?: string) => { $oid: string };
 }
 
 /**
@@ -58,28 +72,6 @@ const LABEL_TYPES = new Set([
   "Detection",
   "Detections",
 ]);
-
-/**
- * Converts a non-negative integer into a 24-character zero-padded hex string,
- * suitable for use as a MongoDB-compatible ObjectId.
- *
- * Negative integers are converted to their unsigned 32-bit representation
- * before encoding.
- *
- * @param integer - The integer to convert. Must be a whole number.
- * @returns A 24-character hexadecimal string.
- * @throws {TypeError} If `integer` is not an integer.
- *
- * @example
- * indexToId(0)   // "000000000000000000000000"
- * indexToId(255) // "0000000000000000000000ff"
- */
-function indexToId(integer: number) {
-  if (!Number.isInteger(integer))
-    throw new TypeError("value is not an integer");
-
-  return (integer < 0 ? integer >>> 0 : integer).toString(16).padStart(24, "0");
-}
 
 /**
  * Type guard that checks whether a given string is a FiftyOne {@link Label} type.
@@ -157,7 +149,7 @@ interface DatasetOptions {
    * @example
    * {
    *   "ground_truth": "Detection",
-   *   "confidence": "FloatField",
+   *   "uniqueness": "FloatField",
    * }
    */
   schema?: {
@@ -176,10 +168,10 @@ interface DatasetOptions {
    * withSampleData: (blankSample) => ({
    *   ...blankSample,
    *   label: "cat",
-   *   confidence: 0.97,
+   *   uniqueness: 0.97,
    * })
    */
-  withSampleData?: (blankSample: BlankSample) => JSONObject;
+  withSampleData?: (blankSample: BlankSample, helpers: Helpers) => JSONObject;
 }
 
 /**
@@ -203,8 +195,8 @@ interface DatasetOptions {
  *   numSamples: 10,
  *   numbered: true,
  *   imageOptions: { fillColor: "black", width: 128, height: 128 },
- *   schema: { ground_truth: "Detection", confidence: "FloatField" },
- *   withSampleData: ({ index }) => ({ confidence: index * 0.1 }),
+ *   schema: { hello: "StringField" },
+ *   withSampleData: ({ index }, { createId }) => ({ _id: createId(indexToId(index)), hello: "world"  }),
  * });
  */
 const createBlankDataset = (() => {
@@ -247,8 +239,8 @@ const createBlankDataset = (() => {
         index,
       };
       sampleData.push(
-        `sample_data.append(json.loads('${JSON.stringify(
-          withSampleData(blankSample)
+        `sample_data.append(json_util.loads('${JSON.stringify(
+          withSampleData(blankSample, { createId })
         )}'))`
       );
     }
@@ -272,7 +264,7 @@ const createBlankDataset = (() => {
     }
 
     await loader.executePythonCode(`
-    from bson import ObjectId
+    from bson import ObjectId, json_util
     from datetime import datetime
     import fiftyone as fo
     import json
