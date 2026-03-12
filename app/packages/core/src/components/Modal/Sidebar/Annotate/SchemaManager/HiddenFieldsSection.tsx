@@ -174,7 +174,7 @@ const HiddenFieldsSection = () => {
         <Tooltip
           content={
             <Text>
-              Fields currently hidden and not available for dataset annotation
+              Fields currently hidden and not available in the "Annotate" tab
             </Text>
           }
           anchor={Anchor.Top}

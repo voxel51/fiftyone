@@ -81,7 +81,7 @@ const Subheading = () => {
 
   return (
     <Text color={TextColor.Secondary} style={{ marginTop: "0.5rem" }}>
-      Manage your label schemas
+      Manage your field schemas
     </Text>
   );
 };

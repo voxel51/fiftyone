@@ -253,7 +253,7 @@ const PrimitiveFieldContent = ({
       {!hasErrors && (
         <>
           <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
-            <Text variant={TextVariant.Lg}>Field Preview:</Text>
+            <Text variant={TextVariant.Lg}>Field preview:</Text>
             <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
               How this field will appear to users during annotation
             </Text>
