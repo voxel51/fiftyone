@@ -89,7 +89,7 @@ if [ "$BUILD_APP" = true ]; then
     else
         NVM_DIR="${XDG_CONFIG_HOME}/nvm"
     fi
-    export NVM_DIR 
+    export NVM_DIR
     if [ -s "$NVM_DIR/nvm.sh" ]; then
         . "$NVM_DIR/nvm.sh"
     fi
