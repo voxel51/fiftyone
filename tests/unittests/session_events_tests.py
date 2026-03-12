@@ -186,46 +186,8 @@ class SessionTests(unittest.TestCase):
             self.assertEqual(style["alt"], icon)
 
     # -------------------------------------------------------------------
-    # StateDescription.selected — computed property
+    # StateDescription.selected_samples constructor behavior
     # -------------------------------------------------------------------
-
-    @drop_datasets
-    def test_selected_property_derives_from_selected_samples(self):
-        """selected is computed from selected_samples."""
-        state = StateDescription()
-        state.selected_samples = [
-            {"sample_id": "a" * 24, "type": "default"},
-            {"sample_id": "b" * 24, "type": "alt"},
-        ]
-        self.assertEqual(state.selected, ["a" * 24, "b" * 24])
-
-    @drop_datasets
-    def test_selected_property_empty(self):
-        """selected is [] when selected_samples is []."""
-        state = StateDescription()
-        self.assertEqual(state.selected, [])
-
-    @drop_datasets
-    def test_selected_property_is_read_only(self):
-        """selected cannot be set directly on StateDescription."""
-        state = StateDescription()
-        with self.assertRaises(AttributeError):
-            state.selected = ["a" * 24]
-
-    @drop_datasets
-    def test_selected_updates_when_selected_samples_changes(self):
-        """Mutating selected_samples is reflected in selected."""
-        state = StateDescription()
-        state.selected_samples = [
-            {"sample_id": "a" * 24, "type": "default"},
-        ]
-        self.assertEqual(state.selected, ["a" * 24])
-
-        state.selected_samples.append({"sample_id": "b" * 24, "type": "alt"})
-        self.assertEqual(state.selected, ["a" * 24, "b" * 24])
-
-        state.selected_samples = []
-        self.assertEqual(state.selected, [])
 
     @drop_datasets
     def test_constructor_selected_samples_takes_priority(self):
@@ -236,7 +198,6 @@ class SessionTests(unittest.TestCase):
                 {"sample_id": "b" * 24, "type": "alt"},
             ],
         )
-        self.assertEqual(state.selected, ["b" * 24])
         self.assertEqual(
             state.selected_samples,
             [
@@ -255,13 +216,6 @@ class SessionTests(unittest.TestCase):
                 {"sample_id": "b" * 24, "type": "default"},
             ],
         )
-        self.assertEqual(state.selected, ["a" * 24, "b" * 24])
-
-    @drop_datasets
-    def test_selected_in_attributes(self):
-        """selected is included in attributes() for serialization."""
-        state = StateDescription()
-        self.assertIn("selected", state.attributes())
 
     # -------------------------------------------------------------------
     # SetSampleSelectionStyle event + StateDescription
@@ -320,13 +274,19 @@ class SessionTests(unittest.TestCase):
 
     @drop_datasets
     def test_state_from_dict_backward_compat_strings(self):
-        """from_dict with flat selected list and no selected_samples."""
+        """from_dict with flat selected list and no selected_samples bootstraps."""
         d = {
             "selected": ["a" * 24, "b" * 24],
             "selected_labels": [],
         }
         state = StateDescription.from_dict(d)
-        self.assertEqual(state.selected, ["a" * 24, "b" * 24])
+        self.assertEqual(
+            state.selected_samples,
+            [
+                {"sample_id": "a" * 24, "type": "default"},
+                {"sample_id": "b" * 24, "type": "default"},
+            ],
+        )
 
     @drop_datasets
     def test_state_from_dict_missing_style_uses_default(self):
@@ -351,7 +311,6 @@ class SessionTests(unittest.TestCase):
         }
         state = StateDescription.from_dict(d)
         self.assertEqual(state.selected_samples, [])
-        self.assertEqual(state.selected, [])
 
     # -------------------------------------------------------------------
     # Operations.set_selected_samples — backward & forward compat

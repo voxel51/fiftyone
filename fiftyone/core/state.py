@@ -44,7 +44,6 @@ class StateDescription(etas.Serializable):
         group_id (None): a :attr:`fiftyone.core.groups.Group.id`
         group_slice (None): a :attr:`fiftyone.core.groups.Group.name`
         sample_id (None): a :attr:`fiftyone.core.sample.Sample.id`
-        selected (None): the list of currently selected samples
         selected_labels (None): the list of currently selected labels
         selected_samples (None): a list of dicts with sample selection info
         sample_selection_style (None): a dict mapping selection types to
@@ -111,22 +110,11 @@ class StateDescription(etas.Serializable):
             else view
         )
 
-    @property
-    def selected(self):
-        """The list of currently selected sample IDs.
-
-        Derived from :attr:`selected_samples`.
-        """
-        return [
-            s["sample_id"] if isinstance(s, dict) else s
-            for s in (self.selected_samples or [])
-        ]
-
     def attributes(self):
         return list(
             filter(
                 lambda a: a not in {"dataset", "view"},
-                list(vars(self)) + ["selected"],
+                vars(self),
             )
         )
 

@@ -792,7 +792,10 @@ class Session(object):
         """A list of sample IDs of the currently selected samples in the App,
         if any.
         """
-        return list(self._state.selected)
+        return [
+            s["sample_id"] if isinstance(s, dict) else s
+            for s in (self._state.selected_samples or [])
+        ]
 
     @selected.setter  # type: ignore
     def selected(self, sample_ids: t.List[str]) -> None:
