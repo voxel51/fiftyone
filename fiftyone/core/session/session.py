@@ -869,6 +869,14 @@ class Session(object):
             DEFAULT_SELECTION_STYLE
         )
 
+    @sample_selection_style.setter
+    def sample_selection_style(self, style: t.Dict) -> None:
+        resolved = _resolve_selection_style(
+            style.get("default"), style.get("alt")
+        )
+        self._state.sample_selection_style = resolved
+        self._client.send_event(SetSampleSelectionStyle(style=resolved))
+
     def set_sample_selection_style(
         self, default: str = "checkmark", alt: str = "checkmark"
     ) -> None:

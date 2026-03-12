@@ -51,27 +51,15 @@ export const processState = (
   };
 };
 const resolveSelected = (state: {
-  selected?: string[];
   selected_samples?: Array<{ sample_id: string; type: SelectionType }>;
 }) => {
   if (env().VITE_NO_STATE) {
     return new Map<string, SelectionType>();
   }
 
-  // Prefer selected_samples (with type info) when explicitly present —
-  // an empty array is an authoritative clear, not a missing field
-  if (state.selected_samples !== undefined) {
-    const map = new Map<string, SelectionType>();
-    for (const s of state.selected_samples) {
-      map.set(s.sample_id, s.type || "default");
-    }
-    return map;
-  }
-
-  // Fallback: flat selected list — all default type (legacy compat)
   const map = new Map<string, SelectionType>();
-  for (const id of state.selected || []) {
-    map.set(id, "default");
+  for (const s of state.selected_samples || []) {
+    map.set(s.sample_id, s.type || "default");
   }
   return map;
 };
