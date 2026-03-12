@@ -1,7 +1,5 @@
 import * as fos from "@fiftyone/state";
-import { modalViewportState } from "@fiftyone/state";
-import { jotaiStore } from "@fiftyone/state";
-import { useSetAtom } from "jotai";
+import { modalBridge, useSaveModalViewport } from "@fiftyone/state";
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useRecoilValue, useSetRecoilState } from "recoil";
@@ -135,7 +133,7 @@ function useLooker<L extends fos.Lookers>({
     }
   }, [looker, setActiveLookerRef]);
 
-  const setViewportState = useSetAtom(modalViewportState);
+  const setViewportState = useSaveModalViewport();
 
   // Capture zoom/pan before the looker is removed from the DOM
   // so the position can be restored when EXPLORE mode (Looker) remounts.
@@ -152,7 +150,7 @@ function useLooker<L extends fos.Lookers>({
 
   // Seed the viewport to restore when the Looker first fully loads.
   useEffect(() => {
-    const saved = jotaiStore.get(modalViewportState);
+    const saved = modalBridge.getModalViewport();
     if (saved?.sampleId === sample.sample._id) {
       looker.setInitialViewport(saved);
     }

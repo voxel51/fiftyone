@@ -11,8 +11,8 @@ import {
 import type { Sample } from "@fiftyone/state";
 import * as fos from "@fiftyone/state";
 import { getSampleSrc } from "@fiftyone/state";
-import { jotaiStore, modalViewportState } from "@fiftyone/state";
-import { useAtomValue, useSetAtom } from "jotai";
+import { modalBridge, useSaveModalViewport } from "@fiftyone/state";
+import { useAtomValue } from "jotai";
 import React, {
   useEffect,
   useLayoutEffect,
@@ -133,7 +133,7 @@ const LighterSetupImpl = (props: {
 
   const canvas = singletonCanvas.getCanvas(containerRef.current);
 
-  const savedViewportState = jotaiStore.get(modalViewportState);
+  const savedViewportState = modalBridge.getModalViewport();
   const initialViewport =
     savedViewportState?.sampleId === sampleId ? savedViewportState : null;
 
@@ -147,7 +147,7 @@ const LighterSetupImpl = (props: {
   // This is the bridge between FiftyOne state management system and Lighter
   useBridge(scene);
 
-  const setViewportState = useSetAtom(modalViewportState);
+  const setViewportState = useSaveModalViewport();
 
   // Capture zoom/pan before this component is removed from the DOM
   // so the state can be restored when EXPLORE mode (Looker) remounts.

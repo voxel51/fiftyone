@@ -4,6 +4,8 @@ import { useCallback, useMemo } from "react";
 import { useRecoilState, useRecoilValue, useRecoilValueLoadable } from "recoil";
 import { ModalMode, modalMode } from "../jotai";
 import { preferredGroupAnnotationSliceAtom } from "../jotai/group-annotation";
+import { __unsafeModalViewportAtom } from "../jotai/modal";
+import type { ModalViewportState } from "../jotai/modal";
 import {
   activeFields,
   currentSampleId,
@@ -98,3 +100,15 @@ export const useCurrentSampleId = () => {
 
   return loadable.state === "hasValue" ? loadable.contents : null;
 };
+
+/**
+ * Gets the saved modal viewport (zoom/pan) state.
+ */
+export const useModalViewport = (): ModalViewportState | null =>
+  useAtomValue(__unsafeModalViewportAtom);
+
+/**
+ * Returns a setter for persisting the modal viewport (zoom/pan) state.
+ */
+export const useSaveModalViewport = () =>
+  useSetAtom(__unsafeModalViewportAtom);

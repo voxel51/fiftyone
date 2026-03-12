@@ -38,11 +38,14 @@ export interface ModalViewportState extends ViewportState {
 
 /**
  * The zoom and pan state of the modal viewer at the moment the user last
- * switched modes (EXPLORE vs ANNOTATE). 
- * 
- * The type assertion on the initial value is a small hack that prevents 
- * TypeScript (when strictNullChecks is off) from accidentally picking Jotai's 
- * read-only `atom(read)` overload for the bare `null` literal. 
+ * switched modes (EXPLORE vs ANNOTATE).
+ *
+ * The type assertion on the initial value is a small hack that prevents
+ * TypeScript (when strictNullChecks is off) from accidentally picking Jotai's
+ * read-only `atom(read)` overload for the bare `null` literal.
  * TODO: See if we can find a better solution.
+ *
+ * @internal Do not import this atom directly. Use `useSaveModalViewport`,
+ * `useModalViewport`, or `modalBridge.viewport` instead.
  */
-export const modalViewportState = atom(null as ModalViewportState | null);
+export const __unsafeModalViewportAtom = atom(null as ModalViewportState | null);
