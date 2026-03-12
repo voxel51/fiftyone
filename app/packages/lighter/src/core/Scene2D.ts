@@ -626,6 +626,20 @@ export class Scene2D {
   }
 
   /**
+   * Increase the viewport zoom level (zoom in).
+   */
+  zoomIn(): void {
+    this.config.renderer.zoomIn();
+  }
+
+  /**
+   * Decrease the viewport zoom level (zoom out).
+   */
+  zoomOut(): void {
+    this.config.renderer.zoomOut();
+  }
+
+  /**
    * Gets the canvas bounding rectangle for coordinate conversion.
    * This is a safer alternative to getCanvas() when you only need the bounds.
    * @returns The DOMRect of the canvas element.

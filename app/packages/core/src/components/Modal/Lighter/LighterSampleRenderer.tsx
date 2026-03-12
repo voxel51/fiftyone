@@ -12,15 +12,10 @@ import type { Sample } from "@fiftyone/state";
 import * as fos from "@fiftyone/state";
 import { getSampleSrc } from "@fiftyone/state";
 import { useAtomValue } from "jotai";
-import React, {
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { activeLabelSchemas } from "../Sidebar/Annotate/state";
+import { LighterToolbar } from "./LighterToolbar";
 import { singletonCanvas } from "./SharedCanvas";
 import { useBridge } from "./useBridge";
 
@@ -41,6 +36,7 @@ export const LighterSampleRenderer = ({
   const containerRef = useRef<HTMLDivElement>(null);
   // unique scene id allows us to destroy/recreate scenes reliably
   const [sceneId, setSceneId] = useState<string | null>(null);
+  const [isCanvasHovered, setIsCanvasHovered] = useState(false);
 
   const { scene, isReady, addOverlay } = useLighter();
 
@@ -87,6 +83,8 @@ export const LighterSampleRenderer = ({
   return (
     <div
       ref={containerRef}
+      onMouseEnter={() => setIsCanvasHovered(true)}
+      onMouseLeave={() => setIsCanvasHovered(false)}
       className={`lighter-sample-renderer ${className}`}
       data-cy="lighter-sample-renderer"
       id="lighter-sample-renderer-container"
@@ -95,11 +93,13 @@ export const LighterSampleRenderer = ({
         height: "100%",
         display: "flex",
         flexDirection: "column",
+        minHeight: 0,
       }}
     >
       {containerRef.current && sceneId && (
         <LighterSetupImpl containerRef={containerRef} sceneId={sceneId} />
       )}
+      {isCanvasHovered && <LighterToolbar />}
     </div>
   );
 };
