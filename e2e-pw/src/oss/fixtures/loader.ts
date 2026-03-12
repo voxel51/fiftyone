@@ -7,6 +7,13 @@ import {
 import { PythonRunner } from "src/shared/python-runner/python-runner";
 import { Duration } from "../utils";
 
+const clearPersistedBrowserState = async (page: Page) => {
+  await page.evaluate(() => {
+    window.localStorage.clear();
+    window.sessionStorage.clear();
+  });
+};
+
 export class OssLoader extends AbstractFiftyoneLoader {
   constructor() {
     super();
@@ -149,6 +156,7 @@ export class OssLoader extends AbstractFiftyoneLoader {
         const ctx = page.context();
         ctx.clearCookies();
         ctx.clearPermissions();
+        await clearPersistedBrowserState(page);
         await page.reload({ waitUntil: "domcontentloaded" });
         await this.waitUntilGridVisible(page, datasetName, options, true);
       }
