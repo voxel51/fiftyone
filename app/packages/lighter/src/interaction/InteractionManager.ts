@@ -340,64 +340,75 @@ export class InteractionManager {
     }
   }
 
-  private handlePointerMove = (event: PointerEvent): void => {
+  // Promote pending QuickDraw event once drag threshold is exceeded.
+  private quickDrawCreate = (event: PointerEvent): boolean => {
+    if (!this.pendingQuickDraw) return false;
+
     const point = this.getCanvasPoint(event);
     const worldPoint = this.renderer.screenToWorld(point);
     const scale = this.renderer.getScale();
     this.currentPixelCoordinates = point;
 
-    // Promote pending QuickDraw to actual drawing once drag threshold is exceeded.
-    if (this.pendingQuickDraw) {
-      const dx = point.x - this.pendingQuickDraw.point.x;
-      const dy = point.y - this.pendingQuickDraw.point.y;
-      const distSq = dx * dx + dy * dy;
+    const dx = point.x - this.pendingQuickDraw.point.x;
+    const dy = point.y - this.pendingQuickDraw.point.y;
+    const distSq = dx * dx + dy * dy;
 
-      if (distSq > this.CLICK_THRESHOLD * this.CLICK_THRESHOLD) {
-        const pending = this.pendingQuickDraw;
-        this.pendingQuickDraw = undefined;
+    if (distSq > this.CLICK_THRESHOLD * this.CLICK_THRESHOLD) {
+      const pending = this.pendingQuickDraw;
+      this.pendingQuickDraw = undefined;
 
-        // Signal QuickDraw to create a detection and register
-        // an interactive handler. This relies on the event bus invoking
-        // handlers synchronously so the handler is immediately available.
-        this.eventBus.dispatch("lighter:overlay-create", {
-          eventId: crypto.randomUUID(),
-        });
+      // Signal QuickDraw to create a detection and register
+      // an interactive handler. This relies on the event bus invoking
+      // handlers synchronously so the handler is immediately available.
+      this.eventBus.dispatch("lighter:overlay-create", {
+        eventId: crypto.randomUUID(),
+      });
 
-        const interactiveHandler = this.getInteractiveHandler();
-        if (interactiveHandler) {
-          const handler = interactiveHandler.getOverlay();
-          this.selectionManager.select(handler.id);
+      const interactiveHandler = this.getInteractiveHandler();
+      if (interactiveHandler) {
+        const handler = interactiveHandler.getOverlay();
+        this.selectionManager.select(handler.id);
 
-          // Initialize the handler with the original pointerdown point
-          handler.onPointerDown?.(
-            pending.point,
-            pending.worldPoint,
-            event,
-            pending.scale
-          );
+        // Initialize the handler with the original pointerdown point
+        handler.onPointerDown?.(
+          pending.point,
+          pending.worldPoint,
+          event,
+          pending.scale
+        );
 
-          // Update with the current pointer position
-          handler.onMove?.(
-            point,
-            worldPoint,
-            event,
-            scale,
-            this.maintainAspectRatio
-          );
+        // Update with the current pointer position
+        handler.onMove?.(
+          point,
+          worldPoint,
+          event,
+          scale,
+          this.maintainAspectRatio
+        );
 
-          if (TypeGuards.isSpatial(handler)) {
-            this.eventBus.dispatch("lighter:overlay-drag-start", {
-              id: handler.id,
-              startPosition: handler.bounds,
-              bounds: handler.bounds,
-            });
-          }
+        if (TypeGuards.isSpatial(handler)) {
+          this.eventBus.dispatch("lighter:overlay-drag-start", {
+            id: handler.id,
+            startPosition: handler.bounds,
+            bounds: handler.bounds,
+          });
         }
-      }
 
-      this.canvas.style.cursor = "crosshair";
-      return;
+        this.configureCursorStyle(handler, worldPoint, scale);
+      }
     }
+
+    return true;
+  };
+
+  private handlePointerMove = (event: PointerEvent): void => {
+    // short-circuit if pending QuickDraw operation kicks off
+    if (this.quickDrawCreate(event)) return;
+
+    const point = this.getCanvasPoint(event);
+    const worldPoint = this.renderer.screenToWorld(point);
+    const scale = this.renderer.getScale();
+    this.currentPixelCoordinates = point;
 
     const interactiveHandler = this.getInteractiveHandler();
     let handler = this.findMovingHandler() || this.findHandlerAtPoint(point);
