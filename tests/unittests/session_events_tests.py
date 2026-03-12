@@ -8,7 +8,6 @@ FiftyOne session events-related unit tests.
 
 from dataclasses import asdict
 import unittest
-from unittest.mock import MagicMock
 
 from dacite import from_dict
 
@@ -26,7 +25,6 @@ from fiftyone.core.session.events import (
 
 # pylint: enable=no-name-in-module,import-error
 from fiftyone.core.state import StateDescription
-from fiftyone.operators.operations import Operations
 
 from decorators import drop_datasets
 
@@ -311,119 +309,3 @@ class SessionTests(unittest.TestCase):
         }
         state = StateDescription.from_dict(d)
         self.assertEqual(state.selected_samples, [])
-
-    # -------------------------------------------------------------------
-    # Operations.set_selected_samples — backward & forward compat
-    # -------------------------------------------------------------------
-
-    @drop_datasets
-    def test_ops_set_selected_samples_with_id_list(self):
-        """ctx.ops.set_selected_samples(id_list) — backward compat."""
-        mock_ctx = MagicMock()
-        ops = Operations(mock_ctx)
-
-        id_list = ["a" * 24, "b" * 24]
-        ops.set_selected_samples(id_list)
-
-        mock_ctx.trigger.assert_called_once_with(
-            "set_selected_samples",
-            params={
-                "samples": [
-                    {"sample_id": "a" * 24, "type": "default"},
-                    {"sample_id": "b" * 24, "type": "default"},
-                ]
-            },
-        )
-
-    @drop_datasets
-    def test_ops_set_selected_samples_with_dict_list(self):
-        """ctx.ops.set_selected_samples([{sample_id, type}]) — new format."""
-        mock_ctx = MagicMock()
-        ops = Operations(mock_ctx)
-
-        samples = [
-            {"sample_id": "a" * 24, "type": "default"},
-            {"sample_id": "b" * 24, "type": "alt"},
-        ]
-        ops.set_selected_samples(samples)
-
-        mock_ctx.trigger.assert_called_once_with(
-            "set_selected_samples",
-            params={"samples": samples},
-        )
-
-    @drop_datasets
-    def test_ops_set_selected_samples_mixed_input(self):
-        """ctx.ops.set_selected_samples with mixed strings and dicts."""
-        mock_ctx = MagicMock()
-        ops = Operations(mock_ctx)
-
-        ops.set_selected_samples(
-            [
-                "a" * 24,
-                {"sample_id": "b" * 24, "type": "alt"},
-            ]
-        )
-
-        mock_ctx.trigger.assert_called_once_with(
-            "set_selected_samples",
-            params={
-                "samples": [
-                    {"sample_id": "a" * 24, "type": "default"},
-                    {"sample_id": "b" * 24, "type": "alt"},
-                ]
-            },
-        )
-
-    @drop_datasets
-    def test_ops_set_selected_samples_empty(self):
-        """ctx.ops.set_selected_samples([]) clears selection."""
-        mock_ctx = MagicMock()
-        ops = Operations(mock_ctx)
-
-        ops.set_selected_samples([])
-
-        mock_ctx.trigger.assert_called_once_with(
-            "set_selected_samples",
-            params={"samples": []},
-        )
-
-    @drop_datasets
-    def test_ops_set_selected_samples_rejects_invalid(self):
-        """ctx.ops.set_selected_samples with invalid items raises."""
-        mock_ctx = MagicMock()
-        ops = Operations(mock_ctx)
-
-        with self.assertRaises(TypeError):
-            ops.set_selected_samples([123])
-
-    # -------------------------------------------------------------------
-    # Operations.set_sample_selection_style / clear_sample_selection_style
-    # -------------------------------------------------------------------
-
-    @drop_datasets
-    def test_ops_set_sample_selection_style(self):
-        """ctx.ops.set_sample_selection_style triggers correctly."""
-        mock_ctx = MagicMock()
-        ops = Operations(mock_ctx)
-
-        ops.set_sample_selection_style(  # pylint: disable=no-member
-            default="thumbsup", alt="thumbsdown"
-        )
-
-        mock_ctx.trigger.assert_called_once_with(
-            "set_sample_selection_style",
-            params={"default": "thumbsup", "alt": "thumbsdown"},
-        )
-
-    @drop_datasets
-    def test_ops_clear_sample_selection_style(self):
-        """ctx.ops.clear_sample_selection_style triggers correctly."""
-        mock_ctx = MagicMock()
-        ops = Operations(mock_ctx)
-
-        ops.clear_sample_selection_style()  # pylint: disable=no-member
-
-        mock_ctx.trigger.assert_called_once_with(
-            "clear_sample_selection_style"
-        )

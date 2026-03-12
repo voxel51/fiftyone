@@ -111,8 +111,8 @@ class TestOperatorExecutionContext(unittest.TestCase):
             ],
         )
 
-    def test_selected_prefers_selected_param(self):
-        """ctx.selected uses request_params['selected'] when present."""
+    def test_selected_derives_from_selected_samples_when_both_present(self):
+        """ctx.selected derives from selected_samples when both are present."""
         ctx = ExecutionContext(
             operator_uri="test_op",
             request_params={
@@ -123,7 +123,19 @@ class TestOperatorExecutionContext(unittest.TestCase):
                 ],
             },
         )
+        # selected_samples takes priority
         self.assertEqual(ctx.selected, ["ccc"])
+
+    def test_selected_falls_back_to_selected_param(self):
+        """ctx.selected falls back to request_params['selected'] when no selected_samples."""
+        ctx = ExecutionContext(
+            operator_uri="test_op",
+            request_params={
+                "dataset_name": "test",
+                "selected": ["ddd"],
+            },
+        )
+        self.assertEqual(ctx.selected, ["ddd"])
 
     def test_selected_samples_none_returns_empty(self):
         """ctx.selected_samples returns [] when param is None."""

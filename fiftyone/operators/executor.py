@@ -830,15 +830,19 @@ class ExecutionContext(contextlib.AbstractContextManager):
 
     @property
     def selected(self):
-        """The list of selected sample IDs (if any)."""
-        selected = self.request_params.get("selected", None)
-        if selected is not None:
-            return selected
+        """The list of selected sample IDs (if any).
 
-        return [
-            s["sample_id"] if isinstance(s, dict) else s
-            for s in self.selected_samples
-        ]
+        Derived from :attr:`selected_samples` when available, otherwise
+        falls back to ``request_params["selected"]``.
+        """
+        selected_samples = self.request_params.get("selected_samples", None)
+        if selected_samples:
+            return [
+                s["sample_id"] if isinstance(s, dict) else s
+                for s in selected_samples
+            ]
+
+        return self.request_params.get("selected") or []
 
     @property
     def selected_samples(self):
