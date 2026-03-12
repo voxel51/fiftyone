@@ -202,8 +202,7 @@ export interface BaseOptions {
     | "pin"
     | "star"
     | "x"
-    | "bookmark"
-    | null;
+    | "bookmark";
   shouldHandleKeyEvents?: boolean;
   inSelectionMode: boolean;
   timeZone: string;
@@ -482,7 +481,7 @@ export const DEFAULT_BASE_OPTIONS: BaseOptions = {
   zoomPad: 0.2,
   selected: false,
   selectionType: null,
-  selectionIcon: null,
+  selectionIcon: "checkmark",
   inSelectionMode: false,
   timeZone: "UTC",
   mimetype: "",

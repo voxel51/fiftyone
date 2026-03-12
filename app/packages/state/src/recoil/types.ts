@@ -1,9 +1,17 @@
 import type { CustomizeColorInput } from "@fiftyone/relay";
-import type { ImageOptions } from "@fiftyone/looker";
 import type { SpaceNodeJSON } from "@fiftyone/spaces";
 
 export type SelectionType = "default" | "alt";
-export type SelectionIconStyle = ImageOptions["selectionIcon"];
+export type SelectionIconStyle =
+  | "checkmark"
+  | "green-checkmark"
+  | "red-checkmark"
+  | "thumbsup"
+  | "thumbsdown"
+  | "pin"
+  | "star"
+  | "x"
+  | "bookmark";
 export type SelectionStyle = {
   default: SelectionIconStyle;
   alt: SelectionIconStyle;

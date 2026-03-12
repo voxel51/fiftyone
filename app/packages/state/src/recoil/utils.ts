@@ -1,5 +1,9 @@
 import type { Sample } from "@fiftyone/looker";
-import type { SelectionStyle, SelectionType } from "./types";
+import type {
+  SelectionIconStyle,
+  SelectionStyle,
+  SelectionType,
+} from "./types";
 import {
   EMBEDDED_DOCUMENT_FIELD,
   LABELS,
@@ -172,9 +176,9 @@ export function resolveSelectionIcon(
   style: SelectionStyle,
   sampleId: string,
   isSelected: boolean
-): { selectionType: SelectionType | null; selectionIcon: string | null } {
+): { selectionType: SelectionType | null; selectionIcon: SelectionIconStyle } {
   if (!isSelected) {
-    return { selectionType: null, selectionIcon: null };
+    return { selectionType: null, selectionIcon: style.default };
   }
   const selectionType: SelectionType =
     selectedSamples.get(sampleId) || "default";
