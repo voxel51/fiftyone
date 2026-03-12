@@ -2,8 +2,19 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import { useCallback, useMemo, useRef } from "react";
 import { atom, useAtomValue, useSetAtom } from "jotai";
-import { useCallback, useMemo } from "react";
+import { useAtomCallback } from "jotai/utils";
+
+import {
+  BaseOverlay,
+  UNDEFINED_LIGHTER_SCENE_ID,
+  useLighter,
+  useLighterEventHandler,
+} from "@fiftyone/lighter";
+import { useAnnotationContext } from "./state";
+import { DETECTION } from "@fiftyone/utilities";
+import useCreate from "./useCreate";
 
 export type SegmentationTool = "select" | "brush" | "eraser"; // | "pen";
 export type SegmentationToolShape = "circle" | "square";
@@ -21,6 +32,13 @@ const segmentationActiveAtom = atom<boolean>(false);
 const toolAtom = atom<SegmentationTool>("select");
 const toolSizeAtom = atom<number>(DEFAULT_TOOL_SIZE);
 const toolShapeAtom = atom<SegmentationToolShape>("circle");
+
+/**
+ * Tracks the last processed `lighter:overlay-create` event ID so that only one
+ * `useSegmentationMasks` instance handles each event, even though the hook is
+ * called in multiple components.
+ */
+const lastProcessedCreateIdAtom = atom<string | null>(null);
 
 // ---------------------------------------------------------------------------
 // Unsafe exports for non-React bridge access only.
@@ -40,6 +58,18 @@ const toolShapeAtom = atom<SegmentationToolShape>("circle");
  * This hook only owns segmentation-specific tool state.
  */
 export const useSegmentationMasks = () => {
+  const { scene, addOverlay } = useLighter();
+  const { selectedLabel } = useAnnotationContext();
+  const useEventHandler = useLighterEventHandler(
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+  );
+
+  // Using refs to prevent shared closure contexts from retaining old Scene2D instances.
+  const sceneRef = useRef(scene);
+  sceneRef.current = scene;
+  const selectedLabelRef = useRef(selectedLabel);
+  selectedLabelRef.current = selectedLabel;
+
   const segmentationActive = useAtomValue(segmentationActiveAtom);
   const tool = useAtomValue(toolAtom);
   const toolSize = useAtomValue(toolSizeAtom);
@@ -49,6 +79,8 @@ export const useSegmentationMasks = () => {
   const setTool = useSetAtom(toolAtom);
   const setToolSizeRaw = useSetAtom(toolSizeAtom);
   const setToolShape = useSetAtom(toolShapeAtom);
+
+  const createDetection = useCreate(DETECTION);
 
   const enter = useCallback(() => {
     setActive(true);
@@ -86,6 +118,61 @@ export const useSegmentationMasks = () => {
       setToolShape(shape);
     },
     [setToolShape]
+  );
+
+  const claimCreateEvent = useAtomCallback(
+    useCallback((get, set, eventId: string) => {
+      if (get(lastProcessedCreateIdAtom) === eventId) {
+        return false;
+      }
+
+      set(lastProcessedCreateIdAtom, eventId);
+
+      return true;
+    }, [])
+  );
+
+  /**
+   * Handles the `lighter:overlay-create` event fired by `InteractionManager`
+   * on pointer-down when no interactive handler exists.
+   *
+   * 1. Finalize the previous detection (exit interactive mode, persist overlay,
+   *    remember field/label for auto-assignment).
+   * 2. Resolve field and label for the next detection.
+   * 3. Create the next detection.
+   */
+  useEventHandler(
+    "lighter:overlay-create",
+    useCallback(
+      (payload) => {
+        if (!segmentationActive || !claimCreateEvent(payload.eventId)) {
+          return;
+        }
+
+        // Finalize the previous detection if one exists
+        const currentScene = sceneRef.current;
+        const currentLabel = selectedLabelRef.current;
+
+        if (currentLabel) {
+          if (
+            currentScene &&
+            !currentScene.isDestroyed &&
+            currentScene.renderLoopActive
+          ) {
+            currentScene.exitInteractiveMode();
+
+            if (currentLabel.overlay) {
+              addOverlay(currentLabel.overlay as BaseOverlay);
+            }
+          }
+        }
+
+        // TODO: assume previous `field` and `labelValue`
+        // e.g. createDetection({ field, labelValue });
+        createDetection();
+      },
+      [claimCreateEvent, segmentationActive]
+    )
   );
 
   return useMemo(

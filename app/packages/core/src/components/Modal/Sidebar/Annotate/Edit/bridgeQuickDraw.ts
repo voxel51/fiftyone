@@ -14,7 +14,7 @@ export const quickDrawBridge = {
    * Check if quick draw mode is currently active.
    * @returns true if quick draw mode is active, false otherwise
    */
-  isQuickDrawActive(): boolean {
+  isActive(): boolean {
     const store = getDefaultStore();
     return store.get(_dangerousQuickDrawActiveAtom);
   },

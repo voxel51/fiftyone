@@ -3,13 +3,11 @@
  */
 
 import { quickDrawBridge } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/bridgeQuickDraw";
+import { segmentationMasksBridge } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/bridgeSegmentationMasks";
 import { EventDispatcher, getEventBus } from "@fiftyone/events";
 import { TypeGuards } from "../core/Scene2D";
 import type { LighterEventGroup } from "../events";
-import {
-  DetectionOverlay,
-  type MoveState,
-} from "../overlay/DetectionOverlay";
+import { DetectionOverlay, type MoveState } from "../overlay/DetectionOverlay";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { SelectionManager } from "../selection/SelectionManager";
 import type { Point, Rect } from "../types";
@@ -272,7 +270,7 @@ export class InteractionManager {
       }
 
       // QuickDraw: clicking outside the selected overlay starts a new detection.
-      if (quickDrawBridge.isQuickDrawActive()) {
+      if (segmentationMasksBridge.isActive() || quickDrawBridge.isActive()) {
         const isNonOverlay = !handler || handler.id === this.canonicalMediaId;
 
         if (isNonOverlay || isUnselectedOverlay) {
@@ -329,7 +327,7 @@ export class InteractionManager {
     scale: number
   ): void {
     if (
-      quickDrawBridge.isQuickDrawActive() &&
+      quickDrawBridge.isActive() &&
       handler &&
       TypeGuards.isSelectable(handler) &&
       !handler.isSelected()
@@ -409,7 +407,7 @@ export class InteractionManager {
         event.preventDefault();
       }
       this.configureCursorStyle(handler, worldPoint, scale);
-    } else if (quickDrawBridge.isQuickDrawActive() && !interactiveHandler) {
+    } else if (quickDrawBridge.isActive() && !interactiveHandler) {
       this.canvas.style.cursor = "crosshair";
     }
   };

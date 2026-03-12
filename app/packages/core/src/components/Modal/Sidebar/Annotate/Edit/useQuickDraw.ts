@@ -28,13 +28,13 @@ export const _dangerousQuickDrawActiveAtom = atom<boolean>(false);
  * Examples: "ground_truth.detections", "predictions.detections"
  * Used to remember which detection field the user was annotating.
  */
-const lastUsedDetectionFieldAtom = atom<string | null>(null);
+const lastUsedFieldAtom = atom<string | null>(null);
 
 /**
  * Tracks the last-used label value (class) for each field path.
  * Used for auto-assignment when creating new labels in quick draw mode.
  */
-const lastUsedLabelByFieldAtom = atomFamily((_field: string) =>
+const lastUsedLabelAtom = atomFamily((_field: string) =>
   atom<string | null>(null)
 );
 
@@ -54,7 +54,7 @@ export const useQuickDraw = () => {
   const [quickDrawActive, setQuickDrawActive] = useAtom(
     _dangerousQuickDrawActiveAtom
   );
-  const setLastUsedField = useSetAtom(lastUsedDetectionFieldAtom);
+  const setLastUsedField = useSetAtom(lastUsedFieldAtom);
   const labelsMap = useAtomValue(labelsByPath);
   const defaultDetectionField = useAtomValue(defaultField(DETECTION));
   const { scene, addOverlay } = useLighter();
@@ -80,22 +80,19 @@ export const useQuickDraw = () => {
   );
 
   /**
-   * Getter which wraps {@link lastUsedLabelByFieldAtom} atom family.
+   * Getter which wraps {@link lastUsedLabelAtom} atom family.
    */
   const getLastUsedLabel = useAtomCallback(
-    useCallback(
-      (get, _set, path: string) => get(lastUsedLabelByFieldAtom(path)),
-      []
-    )
+    useCallback((get, _set, path: string) => get(lastUsedLabelAtom(path)), [])
   );
 
   /**
-   * Setter which wraps {@link lastUsedLabelByFieldAtom} atom family.
+   * Setter which wraps {@link lastUsedLabelAtom} atom family.
    */
   const setLastUsedLabel = useAtomCallback(
     useCallback(
       (_get, set, path: string, label: string) =>
-        set(lastUsedLabelByFieldAtom(path), label),
+        set(lastUsedLabelAtom(path), label),
       []
     )
   );
@@ -130,7 +127,7 @@ export const useQuickDraw = () => {
   }, [setQuickDrawActive]);
 
   /**
-   * Get the auto-assigned detection field path.
+   * Determine field path to use.
    *
    * Auto-assignment priority:
    * 1. Last-used detection field (if in quick draw mode and previously set)
@@ -143,10 +140,10 @@ export const useQuickDraw = () => {
    * a field set by `trackLastUsedDetection` in the same synchronous call-stack
    * is visible immediately (avoids stale closure).
    */
-  const getQuickDrawDetectionField = useAtomCallback(
+  const getLastField = useAtomCallback(
     useCallback(
       (get): string | null => {
-        const lastField = get(lastUsedDetectionFieldAtom);
+        const lastField = get(lastUsedFieldAtom);
 
         if (lastField) {
           const schema = get(labelSchemaData(lastField));
@@ -194,7 +191,7 @@ export const useQuickDraw = () => {
    *
    * Returns null if no label value can be determined.
    */
-  const getQuickDrawDetectionLabel = useCallback(
+  const getLastLabel = useCallback(
     (fieldPath: string): string | null => {
       const lastUsedLabel = getLastUsedLabel(fieldPath);
 
@@ -258,7 +255,7 @@ export const useQuickDraw = () => {
     "lighter:overlay-create",
     useCallback(
       (payload) => {
-        if (!claimCreateEvent(payload.eventId)) {
+        if (!quickDrawActive || !claimCreateEvent(payload.eventId)) {
           return;
         }
 
@@ -266,7 +263,7 @@ export const useQuickDraw = () => {
         const currentScene = sceneRef.current;
         const currentLabel = selectedLabelRef.current;
 
-        if (currentLabel && quickDrawActive) {
+        if (currentLabel) {
           if (
             currentScene &&
             !currentScene.isDestroyed &&
@@ -284,19 +281,17 @@ export const useQuickDraw = () => {
           }
         }
 
-        // Create the next detection
-        const field = getQuickDrawDetectionField() ?? undefined;
-        const labelValue = field
-          ? getQuickDrawDetectionLabel(field) ?? undefined
-          : undefined;
+        const field = getLastField() ?? undefined;
+        const labelValue = field ? getLastLabel(field) ?? undefined : undefined;
+
         createDetection({ field, labelValue });
       },
       [
         addOverlay,
         claimCreateEvent,
         createDetection,
-        getQuickDrawDetectionField,
-        getQuickDrawDetectionLabel,
+        getLastField,
+        getLastLabel,
         quickDrawActive,
         setLastUsedField,
         setLastUsedLabel,
