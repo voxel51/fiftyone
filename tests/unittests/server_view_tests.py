@@ -1030,7 +1030,7 @@ class MatchLabelTagsTests(unittest.TestCase):
     """Tests for _match_label_tags covering all four (exclude, matching) cases.
 
     Dataset layout used across all tests:
-      - sample1: two detections — one tagged ["target"], one tagged ["other"]
+      - sample1: two detections, one tagged ["target"], one tagged ["other"]
       - sample2: one detection tagged ["other"]
 
     Filtering on tag "target" yields different results depending on the mode:
@@ -1051,12 +1051,24 @@ class MatchLabelTagsTests(unittest.TestCase):
                     fol.Detection(label="beta", tags=["other"]),
                 ]
             ),
+            # ground_truth also carries "target" so that a correct $nor must
+            # cover both label fields to exclude this sample
+            ground_truth=fol.Detections(
+                detections=[
+                    fol.Detection(label="delta", tags=["target"]),
+                ]
+            ),
         )
         self.sample2 = fos.Sample(
             filepath="image2.png",
             predictions=fol.Detections(
                 detections=[
                     fol.Detection(label="gamma", tags=["other"]),
+                ]
+            ),
+            ground_truth=fol.Detections(
+                detections=[
+                    fol.Detection(label="epsilon", tags=["other"]),
                 ]
             ),
         )
@@ -1128,19 +1140,29 @@ class MatchLabelTagsTests(unittest.TestCase):
 
     def test_exclude_matching(self):
         """exclude=True, matching=True: $nor prefilter keeps only samples that
-        have *no* "target"-tagged label; all labels in those samples are kept.
+        have *no* "target"-tagged label across *all* label fields; all labels
+        in those samples are kept.
 
-        Only sample2 has no "target" label, so it is the only sample returned
-        with its single detection intact.
+        sample1 carries "target" in both predictions and ground_truth.
+        sample2 carries "target" in neither field.
+
+        The $nor condition must cover every label path, if it regresses to
+        $or, sample1 is returned instead of sample2. If any label field is
+        omitted from the conditions, sample1 leaks through even with $nor
+        (it would only be excluded via the one field that is checked).
         """
         view = fosv.get_extended_view(
             self.dataset.view(),
             filters=self._label_tags_filter(exclude=True, matching=True),
         )
         self.assertEqual(len(view), 1)
-        detections = view.first().predictions.detections
-        self.assertEqual(len(detections), 1)
-        self.assertEqual(detections[0].label, "gamma")
+        sample = view.first()
+        # predictions: only the "other"-tagged detection is present
+        self.assertEqual(len(sample.predictions.detections), 1)
+        self.assertEqual(sample.predictions.detections[0].label, "gamma")
+        # ground_truth: also intact and carries no "target" tag
+        self.assertEqual(len(sample.ground_truth.detections), 1)
+        self.assertEqual(sample.ground_truth.detections[0].label, "epsilon")
 
 
 class GetExtendedViewTests(unittest.TestCase):
