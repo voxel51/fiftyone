@@ -13,7 +13,7 @@ import * as fos from "@fiftyone/state";
 import { getSampleSrc } from "@fiftyone/state";
 import { modalBridge, useSaveModalViewport } from "@fiftyone/state";
 import { useAtomValue } from "jotai";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, useLayoutEffect } from "react";
 import { useRecoilValue } from "recoil";
 import { activeLabelSchemas } from "../Sidebar/Annotate/state";
 import { LighterToolbar } from "./LighterToolbar";
