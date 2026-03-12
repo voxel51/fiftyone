@@ -13,6 +13,7 @@ import {
   useLighterEventHandler,
 } from "@fiftyone/lighter";
 import useCreate from "./useCreate";
+import useExit from "./useExit";
 
 /**
  * Flag to track if quick draw mode is active.
@@ -60,6 +61,7 @@ export const useQuickDraw = () => {
   const { scene, addOverlay } = useLighter();
   const { selectedLabel } = useAnnotationContext();
   const createDetection = useCreate(DETECTION);
+  const onExit = useExit();
 
   const useEventHandler = useLighterEventHandler(
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
@@ -325,8 +327,9 @@ export const useQuickDraw = () => {
 
         finalizeCurrentDetection();
         disableQuickDraw();
+        onExit();
       },
-      [claimEvent, disableQuickDraw, finalizeCurrentDetection]
+      [claimEvent, disableQuickDraw, finalizeCurrentDetection, onExit]
     )
   );
 
