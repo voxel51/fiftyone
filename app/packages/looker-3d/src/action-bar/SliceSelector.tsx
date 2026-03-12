@@ -30,9 +30,7 @@ const SliceSelectorLabel = styled.div`
 `;
 
 export const SliceSelector = () => {
-  const {
-    state: { activeSlices, allSlices },
-  } = fos.useRenderConfig3d();
+  const { activeSlices, allSlices } = fos.useRenderConfig3dState();
   const [currentAction, setAction] = useRecoilState(currentActionAtom);
 
   const activeSlicesLabel = useMemo(() => {
@@ -77,10 +75,9 @@ export const SliceSelector = () => {
 };
 
 const PcdsSelector = () => {
-  const {
-    state: { activeSlices, allSampleMap, allSlices },
-    actions,
-  } = fos.useRenderConfig3d();
+  const { activeSlices, allSampleMap, allSlices } =
+    fos.useRenderConfig3dState();
+  const actions = fos.useRenderConfig3dActions();
   const setCurrentAction = useSetRecoilState(currentActionAtom);
   const availableSlices = allSlices.filter((slice) =>
     Boolean(allSampleMap[slice])

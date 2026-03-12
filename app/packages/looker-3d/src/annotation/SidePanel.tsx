@@ -317,9 +317,7 @@ export const SidePanel = ({
   isSceneInitialized,
   sample,
 }: SidePanelProps) => {
-  const {
-    state: { activeSampleMap: labelSampleMap },
-  } = fos.useRenderConfig3d();
+  const { activeSampleMap: labelSampleMap } = fos.useRenderConfig3dState();
   const { imageSlices, resolveUrlForImageSlice, isLoadingImageSlices } =
     useImageSlicesIfAvailable(sample);
 

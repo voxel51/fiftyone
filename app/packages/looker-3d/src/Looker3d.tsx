@@ -65,9 +65,8 @@ export const Looker3d = () => {
     [mediaType, hasDirect3dPath, has3dSlices, isDynamicGroup, parentMediaType]
   );
 
-  const {
-    state: { activeSampleMap: sampleMap, activeFo3dSlice },
-  } = fos.useRenderConfig3d();
+  const { activeSampleMap: sampleMap, activeFo3dSlice } =
+    fos.useRenderConfig3dState();
 
   const looker3dSceneKey = getLooker3dRenderKey({
     modalSampleId: thisSampleId,

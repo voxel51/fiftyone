@@ -122,10 +122,8 @@ type UseFo3dReturnType = {
 export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
   const mediaField = useRecoilValue(fos.selectedMediaField(true));
   const isGroup = useRecoilValue(fos.isGroup);
-  const {
-    state: group3dState,
-    actions: { setFo3dContent },
-  } = fos.useRenderConfig3d();
+  const group3dState = fos.useRenderConfig3dState();
+  const { setFo3dContent } = fos.useRenderConfig3dActions();
   const fetchFo3d = useFo3dFetcher();
 
   const [isLoading, setIsLoading] = useState(true);
