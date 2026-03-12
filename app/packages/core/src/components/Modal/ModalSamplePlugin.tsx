@@ -21,20 +21,6 @@ const ContentColumn = styled.div`
 export const ModalSample = React.memo(() => {
   const isGroup = useRecoilValue(fos.isGroup);
   const is3DMediaType = useRecoilValue(fos.is3DDataset);
-  const sample = useRecoilValue(fos.modalSample);
-  const modalMediaField = useRecoilValue(fos.selectedMediaField(true));
-  const isDirect3dSampleUnknownMediaType = useMemo(() => {
-    const mediaPath = Array.isArray(sample.urls)
-      ? sample.urls.find((url) => url.field === modalMediaField)?.url ??
-        sample.urls[0]?.url
-      : sample.urls[modalMediaField];
-
-    return (
-      isDirect3dSamplePath(mediaPath) ||
-      isDirect3dSamplePath(sample.sample.filepath)
-    );
-  }, [sample, modalMediaField]);
-
   const setIsTooltipLocked = useSetRecoilState(fos.isTooltipLocked);
   const setTooltipDetail = useSetRecoilState(fos.tooltipDetail);
 
@@ -53,13 +39,33 @@ export const ModalSample = React.memo(() => {
         <Suspense>
           {isGroup ? (
             <Group />
-          ) : is3DMediaType || isDirect3dSampleUnknownMediaType ? (
-            <Sample3d />
           ) : (
-            <Sample2D />
+            <NonGroupModalSample is3DMediaType={is3DMediaType} />
           )}
         </Suspense>
       </ErrorBoundary>
     </ContentColumn>
   );
 });
+
+const NonGroupModalSample = ({ is3DMediaType }: { is3DMediaType: boolean }) => {
+  const sample = useRecoilValue(fos.modalSample);
+  const modalMediaField = useRecoilValue(fos.selectedMediaField(true));
+  const isDirect3dSampleUnknownMediaType = useMemo(() => {
+    const mediaPath = Array.isArray(sample.urls)
+      ? sample.urls.find((url) => url.field === modalMediaField)?.url ??
+        sample.urls[0]?.url
+      : sample.urls[modalMediaField];
+
+    return (
+      isDirect3dSamplePath(mediaPath) ||
+      isDirect3dSamplePath(sample.sample.filepath as string)
+    );
+  }, [sample, modalMediaField]);
+
+  return is3DMediaType || isDirect3dSampleUnknownMediaType ? (
+    <Sample3d />
+  ) : (
+    <Sample2D />
+  );
+};
