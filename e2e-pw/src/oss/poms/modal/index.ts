@@ -238,7 +238,8 @@ export class ModalPom {
         )?.textContent;
         return slice !== currentSlice;
       },
-      { currentSlice, groupField }
+      { currentSlice, groupField },
+      { timeout: Duration.Seconds(5) }
     );
     return this.waitForSampleLoadDomAttribute(allowErrorInfo);
   }

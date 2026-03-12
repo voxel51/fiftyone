@@ -275,6 +275,7 @@ test.describe.serial("camera initialization", () => {
       .toBe(true);
 
     await renderer3d.dragCameraBy(10, 10);
+    // we wait for canvas animation which takes a few ms to run, 100 to be safe
     // eslint-disable-next-line playwright/no-wait-for-timeout
     await page.waitForTimeout(100);
 
