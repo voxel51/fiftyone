@@ -15,7 +15,7 @@ autodocsumm==0.2.14
 # docutils 0.22.x is available but not compatible with Sphinx 8.3.0
 # Sphinx 8.3.0 requires: docutils>=0.20,<0.22
 # Using latest compatible version from 0.21.x series
-docutils==0.22.4
+docutils<0.22
 pypandoc>=1.11
 sphinx-markdown-builder==0.6.10
 huggingface_hub>=1.3.2
