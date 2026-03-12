@@ -9,7 +9,7 @@ Unit tests for ``fiftyone.utils.cvat`` helpers.
 import os
 import unittest
 
-import fiftyone as fo
+import fiftyone as fo  # noqa: F401  bootstrap modules to avoid circular imports
 from fiftyone.utils.cvat import _BasenameLookup
 
 
@@ -181,6 +181,35 @@ class TestBasenameLookup(unittest.TestCase):
         lookup = _BasenameLookup([path])
         self.assertEqual(lookup.get("d/e/f/img.jpg"), path)
         self.assertEqual(lookup.get("img.jpg"), path)
+
+    def test_iterated_keys_round_trip(self):
+        """Iterated keys must resolve back through get/contains/getitem."""
+        paths = [
+            "/data/images/train/cat.jpg",
+            "/data/images/val/dog.jpg",
+        ]
+        lookup = _BasenameLookup(paths)
+        for key in lookup:
+            self.assertIn(key, lookup)
+            self.assertEqual(lookup[key], key)
+            self.assertEqual(lookup.get(key), key)
+
+    def test_iterated_keys_round_trip_ambiguous_basenames(self):
+        """Round-trip must work even when basenames collide."""
+        paths = [
+            "/data/images/train/cat.jpg",
+            "/data/images/val/cat.jpg",
+        ]
+        lookup = _BasenameLookup(paths)
+        for key in lookup:
+            self.assertIn(key, lookup)
+            self.assertEqual(lookup[key], key)
+
+    def test_duplicate_filepaths_deduplicated(self):
+        paths = ["/data/a.jpg", "/data/b.jpg", "/data/a.jpg"]
+        lookup = _BasenameLookup(paths)
+        self.assertEqual(len(lookup), 2)
+        self.assertEqual(list(lookup), ["/data/a.jpg", "/data/b.jpg"])
 
 
 if __name__ == "__main__":

@@ -308,7 +308,8 @@ class _BasenameLookup(dict):
     def __init__(self, filepaths):
         super().__init__()
         self._index = defaultdict(list)
-        self._filepaths = list(filepaths)
+        self._filepaths = tuple(dict.fromkeys(filepaths))
+        self._filepath_set = set(self._filepaths)
         for f in self._filepaths:
             self._index[os.path.basename(f)].append(f)
 
@@ -318,6 +319,10 @@ class _BasenameLookup(dict):
         Returns the filepath if unambiguously resolved, or :data:`_MISSING`
         otherwise.
         """
+        # Fast path: exact filepath match (e.g. from iterating this object)
+        if filename in self._filepath_set:
+            return filename
+
         basename = filename.replace(os.sep, "/").rsplit("/", 1)[-1]
         if candidates := self._index.get(basename):
             if len(candidates) == 1:
@@ -371,7 +376,7 @@ class _BasenameLookup(dict):
         return len(self._filepaths) > 0
 
     def keys(self):
-        return {f: None for f in self._filepaths}.keys()
+        return dict.fromkeys(self._filepaths).keys()
 
     def values(self):
         return {f: f for f in self._filepaths}.values()
