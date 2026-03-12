@@ -8,10 +8,8 @@ import { GroupSampleWrapper } from "./GroupSampleWrapper";
 import { GroupSuspense } from "./GroupSuspense";
 
 const Sample3dWrapper = () => {
-  const {
-    state: { interactionSample, isPinned },
-    actions,
-  } = fos.useRenderConfig3d();
+  const { interactionSample, isPinned } = fos.useRenderConfig3dState();
+  const actions = fos.useRenderConfig3dActions();
 
   const hover = fos.useHoveredSample(interactionSample.sample);
   const hasGroupView = !useRecoilValue(fos.only3d);
@@ -33,49 +31,24 @@ const Sample3dWrapper = () => {
 };
 
 export default () => {
-  const {
-    state: { activeSlices, allSampleMapLoadable, pinnedSlice },
-    actions,
-  } = fos.useRenderConfig3d();
+  const { activeSlices, allSampleMap, pinnedSlice } =
+    fos.useRenderConfig3dState();
+  const actions = fos.useRenderConfig3dActions();
   const modalId = useRecoilValue(fos.modalSampleId);
-  const sampleMapKey = useMemo(() => {
-    if (allSampleMapLoadable.state !== "hasValue") {
-      return allSampleMapLoadable.state;
-    }
-
-    return Object.keys(allSampleMapLoadable.contents).sort().join(",");
-  }, [allSampleMapLoadable]);
-
-  if (allSampleMapLoadable.state === "hasError") {
-    throw allSampleMapLoadable.contents;
-  }
+  const sampleMapKey = useMemo(
+    () => Object.keys(allSampleMap).sort().join(","),
+    [allSampleMap]
+  );
 
   useEffect(() => {
-    if (allSampleMapLoadable.state !== "hasValue") {
-      return;
-    }
-
     actions.reconcileAvailableSlices();
-  }, [
-    actions,
-    activeSlices,
-    allSampleMapLoadable.state,
-    modalId,
-    pinnedSlice,
-    sampleMapKey,
-  ]);
+  }, [actions, activeSlices, modalId, pinnedSlice, sampleMapKey]);
 
-  if (
-    allSampleMapLoadable.state === "hasValue" &&
-    !Object.keys(allSampleMapLoadable.contents).length
-  ) {
+  if (!Object.keys(allSampleMap).length) {
     return <Loading>No 3D slices</Loading>;
   }
 
-  if (
-    allSampleMapLoadable.state === "loading" ||
-    !allSampleMapLoadable.contents[pinnedSlice ?? ""]
-  ) {
+  if (!allSampleMap[pinnedSlice ?? ""]) {
     return <Loading>Pixelating...</Loading>;
   }
 

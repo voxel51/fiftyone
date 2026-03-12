@@ -15,10 +15,9 @@ export default ({
   modal: boolean;
   anchorRef: MutableRefObject<HTMLDivElement | null>;
 }) => {
-  const {
-    state: { has3dSlice: threeDSliceExists, is3dVisibleSetting: isSlotVisible },
-    actions,
-  } = fos.useRenderConfig3d();
+  const { has3dSlice: threeDSliceExists, is3dVisibleSetting: isSlotVisible } =
+    fos.useRenderConfig3dState();
+  const actions = fos.useRenderConfig3dActions();
   const [isCarouselVisible, setIsCarouselVisible] = useRecoilState(
     fos.groupMediaIsCarouselVisibleSetting
   );

@@ -9,9 +9,11 @@ const Group = () => {
   const dynamic = useRecoilValue(fos.isDynamicGroup);
   const only3d = useRecoilValue(fos.only3d);
   const {
-    state: { is3dVisible, is3dVisibleSetting: isLooker3DVisible, isPinned },
-    actions,
-  } = fos.useRenderConfig3d();
+    is3dVisible,
+    is3dVisibleSetting: isLooker3DVisible,
+    isPinned,
+  } = fos.useRenderConfig3dState();
+  const actions = fos.useRenderConfig3dActions();
   const isMainVisible = useRecoilValue(fos.groupMediaIsMain2DViewerVisible);
 
   const isNestedDynamicGroup = useRecoilValue(fos.isNestedDynamicGroup);

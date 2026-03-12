@@ -16,10 +16,8 @@ import { useRecoilState } from "recoil";
  */
 export function useGroupAnnotationModeController() {
   const mode = useModalMode();
-  const {
-    state: { is3dVisibleSetting: threeDVisible },
-    actions: { setVisible },
-  } = fos.useRenderConfig3d();
+  const { is3dVisibleSetting: threeDVisible } = fos.useRenderConfig3dState();
+  const { setVisible } = fos.useRenderConfig3dActions();
   const [modalGroupSliceValue, setModalGroupSliceValue] = useRecoilState(
     fos.modalGroupSlice
   );
@@ -52,7 +50,7 @@ export function useGroupAnnotationModeController() {
       setMainVisible(snapshot.main);
       setCarouselVisible(snapshot.carousel);
       setVisible(snapshot.threeDViewer);
-      if (snapshot.slice !== undefined) {
+      if (typeof snapshot.slice !== "undefined") {
         setModalGroupSliceValue(snapshot.slice);
       }
     },

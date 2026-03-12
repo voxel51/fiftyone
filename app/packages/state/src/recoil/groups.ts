@@ -167,7 +167,7 @@ export const defaultGroupSlice = graphQLSyncFragmentAtom<
   }
 );
 
-export const modalGroupSlice = atom<string>({
+export const modalGroupSlice = atom<string | null>({
   key: "modalGroupSlice",
   default: null,
 });

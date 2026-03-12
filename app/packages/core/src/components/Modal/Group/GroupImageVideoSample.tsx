@@ -6,10 +6,8 @@ import { GroupSampleWrapper } from "./GroupSampleWrapper";
 
 export const GroupImageVideoSample = () => {
   const sample = useRecoilValue(fos.modalSample);
-  const {
-    state: { isPinned },
-    actions,
-  } = fos.useRenderConfig3d();
+  const { isPinned } = fos.useRenderConfig3dState();
+  const actions = fos.useRenderConfig3dActions();
   const hover = fos.useHoveredSample(sample.sample);
 
   return (
