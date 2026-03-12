@@ -1533,11 +1533,10 @@ class TransformersDetectorOutputProcessor(fout.DetectorOutputProcessor):
 
             if self._is_grounded:
                 if not used_grounded_text_labels:
-                    grounded_classes = classes or self.classes
-                    if grounded_classes is not None and 0 <= int(label) < len(
-                        grounded_classes
+                    if self.classes is not None and 0 <= int(label) < len(
+                        self.classes
                     ):
-                        label = grounded_classes[int(label)]
+                        label = self.classes[int(label)]
                     else:
                         label = str(label)
             elif self.classes is not None and 0 <= int(label) < len(self.classes):
