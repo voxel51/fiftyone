@@ -1026,6 +1026,123 @@ class ServerDocTests(unittest.TestCase):
         self.assertEqual(doc["frame_collection_name"], None)
 
 
+class MatchLabelTagsTests(unittest.TestCase):
+    """Tests for _match_label_tags covering all four (exclude, matching) cases.
+
+    Dataset layout used across all tests:
+      - sample1: two detections — one tagged ["target"], one tagged ["other"]
+      - sample2: one detection tagged ["other"]
+
+    Filtering on tag "target" yields different results depending on the mode:
+
+      exclude=False, matching=False → prefilter samples then select labels
+      exclude=True,  matching=False → no prefilter, exclude matching labels
+      exclude=False, matching=True  → prefilter samples, keep all labels
+      exclude=True,  matching=True  → prefilter to *exclude* samples that match
+    """
+
+    def setUp(self):
+        self.dataset = fod.Dataset()
+        self.sample1 = fos.Sample(
+            filepath="image1.png",
+            predictions=fol.Detections(
+                detections=[
+                    fol.Detection(label="alpha", tags=["target"]),
+                    fol.Detection(label="beta", tags=["other"]),
+                ]
+            ),
+        )
+        self.sample2 = fos.Sample(
+            filepath="image2.png",
+            predictions=fol.Detections(
+                detections=[
+                    fol.Detection(label="gamma", tags=["other"]),
+                ]
+            ),
+        )
+        self.dataset.add_samples([self.sample1, self.sample2])
+
+    def tearDown(self):
+        self.dataset.delete()
+
+    def _label_tags_filter(self, exclude, matching):
+        return {
+            "_label_tags": {
+                "values": ["target"],
+                "exclude": exclude,
+                "isMatching": matching,
+            }
+        }
+
+    def test_no_exclude_no_matching(self):
+        """exclude=False, matching=False: prefilter samples with $or, then
+        select_labels keeps only the tagged labels within those samples.
+
+        Only sample1 has a "target" label, so it is the only sample returned.
+        Within sample1 only the "alpha" (target-tagged) detection survives.
+        """
+        view = fosv.get_extended_view(
+            self.dataset.view(),
+            filters=self._label_tags_filter(exclude=False, matching=False),
+        )
+        self.assertEqual(len(view), 1)
+        detections = view.first().predictions.detections
+        self.assertEqual(len(detections), 1)
+        self.assertEqual(detections[0].label, "alpha")
+
+    def test_exclude_no_matching(self):
+        """exclude=True, matching=False: no sample-level prefilter, then
+        exclude_labels removes "target"-tagged labels from every sample.
+
+        Both samples survive; sample1 loses its "alpha" detection and
+        sample2 is unchanged.
+        """
+        view = fosv.get_extended_view(
+            self.dataset.view(),
+            filters=self._label_tags_filter(exclude=True, matching=False),
+        )
+        self.assertEqual(len(view), 2)
+        ids_to_detections = {str(s.id): s.predictions.detections for s in view}
+        a_detections = ids_to_detections[str(self.sample1.id)]
+        b_detections = ids_to_detections[str(self.sample2.id)]
+        self.assertEqual(len(a_detections), 1)
+        self.assertEqual(a_detections[0].label, "beta")
+        self.assertEqual(len(b_detections), 1)
+        self.assertEqual(b_detections[0].label, "gamma")
+
+    def test_no_exclude_matching(self):
+        """exclude=False, matching=True: $or prefilter keeps only samples that
+        have at least one "target"-tagged label; all labels are preserved.
+
+        Only sample1 passes the prefilter and both its detections are kept.
+        """
+        view = fosv.get_extended_view(
+            self.dataset.view(),
+            filters=self._label_tags_filter(exclude=False, matching=True),
+        )
+        self.assertEqual(len(view), 1)
+        detections = view.first().predictions.detections
+        self.assertEqual(len(detections), 2)
+        labels = {d.label for d in detections}
+        self.assertEqual(labels, {"alpha", "beta"})
+
+    def test_exclude_matching(self):
+        """exclude=True, matching=True: $nor prefilter keeps only samples that
+        have *no* "target"-tagged label; all labels in those samples are kept.
+
+        Only sample2 has no "target" label, so it is the only sample returned
+        with its single detection intact.
+        """
+        view = fosv.get_extended_view(
+            self.dataset.view(),
+            filters=self._label_tags_filter(exclude=True, matching=True),
+        )
+        self.assertEqual(len(view), 1)
+        detections = view.first().predictions.detections
+        self.assertEqual(len(detections), 1)
+        self.assertEqual(detections[0].label, "gamma")
+
+
 class GetExtendedViewTests(unittest.TestCase):
     def test_filter_invalid_id_returns_none(self):
         ds = fod.Dataset()
