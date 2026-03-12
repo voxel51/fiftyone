@@ -346,8 +346,10 @@ class ModalAsserter {
     title: string,
     { pinned }: { pinned: boolean } = { pinned: false }
   ) {
-    const actualTitle = await this.modalPom.modalSamplePluginTitle;
-    const expectedTitle = pinned ? `📌 ${title}` : title;
-    expect(actualTitle).toBe(expectedTitle);
+    await expect
+      .poll(async () => this.modalPom.modalSamplePluginTitle, {
+        timeout: 5000,
+      })
+      .toBe(pinned ? `📌 ${title}` : title);
   }
 }

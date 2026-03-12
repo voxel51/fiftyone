@@ -1,6 +1,8 @@
+import fs from "fs";
 import { spawnSync } from "child_process";
 import { Duration, getPythonCommand } from "src/oss/utils";
 import { dedentPythonCode } from "src/oss/utils/dedent";
+import { writeToTmpFile } from "src/oss/utils/fs";
 
 export const createPly = (options: {
   outputPath: string;
@@ -101,14 +103,14 @@ export const createPly = (options: {
       f.write(f"{len(face)} " + indices + "\\n")
   `;
 
-  const command = getPythonCommand([
-    "-c",
-    `'''${dedentPythonCode(pythonCode)}'''`,
-  ]);
+  const sourceFilePath = writeToTmpFile(dedentPythonCode(pythonCode), "py");
+  const command = getPythonCommand([JSON.stringify(sourceFilePath)]);
   const proc = spawnSync(command, {
     shell: true,
     timeout: Duration.Seconds(5),
   });
+
+  fs.unlinkSync(sourceFilePath);
 
   if (proc.error) {
     throw proc.error;
