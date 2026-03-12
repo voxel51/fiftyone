@@ -330,6 +330,40 @@ export const non3dSamples = selector({
     get(groupSamples({ slices: get(allNon3dSlices), count: 1 })),
 });
 
+export const groupHasSampleOnSlice = graphQLSelectorFamily<
+  VariablesOf<foq.paginateSamplesQuery>,
+  { groupId: string | null; slice: string | null },
+  boolean
+>({
+  key: "groupHasSampleOnSlice",
+  environment: RelayEnvironmentKey,
+  query: foq.paginateSamples,
+  variables:
+    ({ groupId, slice }) =>
+    ({ get }) => {
+      if (!groupId || !slice) {
+        return null;
+      }
+
+      return {
+        count: 1,
+        dataset: get(datasetName),
+        view: get(groupView),
+        filter: {
+          group: {
+            slice: get(groupSlice),
+            id: groupId,
+            slices: [slice],
+          },
+        },
+        paginationData: false,
+      };
+    },
+  mapResponse: (data: ResponseFrom<foq.paginateSamplesQuery>) => {
+    return data.samples.edges.length > 0;
+  },
+});
+
 export const activeModalSample = selector({
   key: "activeModalSample",
   get: ({ get }) => {
