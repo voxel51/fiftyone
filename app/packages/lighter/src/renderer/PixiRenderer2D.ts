@@ -700,13 +700,29 @@ export class PixiRenderer2D implements Renderer2D {
 
   /**
    * Restores a previously captured zoom and pan state to the pixi-viewport.
-   * Scale is applied first so that the pan offset is interpreted at the
-   * correct zoom level.
+   * When the incoming scale exceeds this renderer's zoom bounds the pan is
+   * recomputed so the same world-space center point stays on screen.
    */
   setViewportState({ scale, panX, panY }: ViewportState): void {
     if (!this.viewport || this.viewport.destroyed) return;
 
-    this.viewport.setZoom(scale);
+    const clampedScale = Math.min(
+      Math.max(scale, PixiRenderer2D.ZOOM_MIN),
+      PixiRenderer2D.ZOOM_MAX
+    );
+
+    if (clampedScale !== scale) {
+      const cx = this.canvas.clientWidth / 2;
+      const cy = this.canvas.clientHeight / 2;
+
+      const worldCenterX = (cx - panX) / scale;
+      const worldCenterY = (cy - panY) / scale;
+
+      panX = cx - worldCenterX * clampedScale;
+      panY = cy - worldCenterY * clampedScale;
+    }
+
+    this.viewport.setZoom(clampedScale);
     this.viewport.x = panX;
     this.viewport.y = panY;
 
@@ -825,6 +841,9 @@ export class PixiRenderer2D implements Renderer2D {
    */
   private emitViewportZoomed(): void {
     if (this.viewport) {
+      console.log(
+        `[Lighter] Zoom: scale=${this.viewport.scaled.toFixed(2)}, pan-x=${this.viewport.x.toFixed(2)}, pan-y=${this.viewport.y.toFixed(2)}`
+      );
       this.eventBus.dispatch("lighter:zoomed", {
         scale: this.viewport.scaled,
       });
@@ -836,6 +855,9 @@ export class PixiRenderer2D implements Renderer2D {
    */
   private emitViewportMoved(): void {
     if (this.viewport) {
+      console.log(
+        `[Lighter] Pan: scale=${this.viewport.scaled.toFixed(2)}, pan-x=${this.viewport.x.toFixed(2)}, pan-y=${this.viewport.y.toFixed(2)}`
+      );
       this.eventBus.dispatch("lighter:viewport-moved", {
         x: this.viewport.x,
         y: this.viewport.y,
