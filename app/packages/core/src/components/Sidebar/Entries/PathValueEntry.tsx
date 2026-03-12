@@ -358,24 +358,14 @@ const SlicesLoadable = ({ path }: { path: string }) => {
 
 const useSlicesData = <T,>(path: string) => {
   const keys = path.split(".");
-  const {
-    state: { activeSampleMapLoadable: loadable, activeSlices },
-  } = fos.useRenderConfig3d();
+  const { activeSampleMap, activeSlices } = fos.useRenderConfig3dState();
   const slices = Array.from(activeSlices || []).sort();
 
-  if (loadable.state === "loading") {
-    throw loadable.contents;
-  }
-
-  if (loadable.state === "hasError") {
-    throw loadable.contents;
-  }
-
-  if (!slices.every((slice) => loadable.contents[slice])) {
+  if (!slices.every((slice) => activeSampleMap[slice])) {
     throw new Promise(() => null);
   }
 
-  const data = { ...loadable.contents } as object;
+  const data = { ...activeSampleMap } as object;
 
   const target = fos.useAssertedRecoilValue(fos.field(keys[0]));
   const isList = useRecoilValue(fos.isOfDocumentFieldList(path));
@@ -426,6 +416,10 @@ const useData = <T,>(path: string): T => {
   }
 
   if (loadable.state === "hasError") {
+    if (loadable.contents instanceof fos.GroupSampleNotFound) {
+      return null as T;
+    }
+
     if (loadable.contents instanceof fos.SampleNotFound) {
       throw new Promise(() => null);
     }
@@ -462,9 +456,8 @@ const PathValueEntry = ({
   ) => void;
 }) => {
   const [hovering, setHovering] = useState<boolean>(false);
-  const {
-    state: { pinnedSlice: pinned3DSlice, activeSlices: active3dSlices },
-  } = fos.useRenderConfig3d();
+  const { pinnedSlice: pinned3DSlice, activeSlices: active3dSlices } =
+    fos.useRenderConfig3dState();
   const slices = Boolean(pinned3DSlice) && (active3dSlices?.length || 1) > 1;
 
   const isScalar = useRecoilValue(isScalarValue(path));
