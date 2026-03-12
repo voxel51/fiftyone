@@ -19,7 +19,7 @@ from fiftyone.core.session.constants import (
     VALID_ICON_STYLES,
 )
 import fiftyone.core.session.events as fose
-from fiftyone.core.session.session import _normalize_selected_samples
+from fiftyone.core.session.utils import normalize_selected_samples
 from fiftyone.core.state import build_color_scheme
 import fiftyone.core.stages as fos
 import fiftyone.core.utils as fou
@@ -199,7 +199,7 @@ class Mutation(SetColorScheme):
         session: t.Optional[str],
         selected_samples: JSON,
     ) -> bool:
-        samples = _normalize_selected_samples(selected_samples or [])
+        samples = normalize_selected_samples(selected_samples or [])
         await dispatch_event(
             subscription,
             fose.SelectSamples(samples=samples),

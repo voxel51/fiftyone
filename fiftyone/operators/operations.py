@@ -11,7 +11,7 @@ import json
 from bson import json_util
 
 from fiftyone.core.session.constants import VALID_ICON_STYLES
-from fiftyone.core.session.session import _normalize_selected_samples
+from fiftyone.core.session.utils import normalize_selected_samples
 from .categories import Categories
 
 
@@ -486,7 +486,7 @@ class Operations(object):
                 ``{"sample_id": "...", "type": "default"|"alt"}``, where
                 type corresponds to a key in ``sample_selection_style``
         """
-        normalized = _normalize_selected_samples(samples)
+        normalized = normalize_selected_samples(samples)
         return self._ctx.trigger(
             "set_selected_samples", params={"samples": normalized}
         )

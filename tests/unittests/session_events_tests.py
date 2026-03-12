@@ -16,9 +16,9 @@ from dacite import from_dict
 from fiftyone.core.session.constants import VALID_ICON_STYLES
 from fiftyone.core.session.session import (
     _on_select_labels,
-    _normalize_selected_samples,
     _resolve_selection_style,
 )
+from fiftyone.core.session.utils import normalize_selected_samples
 from fiftyone.core.session.events import (
     SelectLabels,
     SetSampleSelectionStyle,
@@ -61,91 +61,91 @@ class SessionTests(unittest.TestCase):
         self.assertListEqual(state.selected_labels, [])
 
     # -------------------------------------------------------------------
-    # _normalize_selected_samples
+    # normalize_selected_samples
     # -------------------------------------------------------------------
 
-    def test_normalize_selected_samples_with_dicts(self):
+    def testnormalize_selected_samples_with_dicts(self):
         """Normalize list of dicts with sample_id and type."""
         samples = [
             {"sample_id": "a" * 24, "type": "default"},
             {"sample_id": "b" * 24, "type": "alt"},
         ]
-        result = _normalize_selected_samples(samples)
+        result = normalize_selected_samples(samples)
         self.assertEqual(len(result), 2)
         self.assertEqual(result[0]["sample_id"], "a" * 24)
         self.assertEqual(result[0]["type"], "default")
         self.assertEqual(result[1]["sample_id"], "b" * 24)
         self.assertEqual(result[1]["type"], "alt")
 
-    def test_normalize_selected_samples_with_strings(self):
+    def testnormalize_selected_samples_with_strings(self):
         """Normalize list of plain string IDs — all become type 'default'."""
         samples = ["a" * 24, "b" * 24]
-        result = _normalize_selected_samples(samples)
+        result = normalize_selected_samples(samples)
         self.assertEqual(len(result), 2)
         self.assertEqual(result[0], {"sample_id": "a" * 24, "type": "default"})
         self.assertEqual(result[1], {"sample_id": "b" * 24, "type": "default"})
 
-    def test_normalize_selected_samples_mixed(self):
+    def testnormalize_selected_samples_mixed(self):
         """Normalize a mix of strings and dicts."""
         samples = [
             "a" * 24,
             {"sample_id": "b" * 24, "type": "alt"},
         ]
-        result = _normalize_selected_samples(samples)
+        result = normalize_selected_samples(samples)
         self.assertEqual(result[0], {"sample_id": "a" * 24, "type": "default"})
         self.assertEqual(result[1], {"sample_id": "b" * 24, "type": "alt"})
 
-    def test_normalize_selected_samples_empty(self):
+    def testnormalize_selected_samples_empty(self):
         """Normalizing empty list returns empty list."""
-        result = _normalize_selected_samples([])
+        result = normalize_selected_samples([])
         self.assertEqual(result, [])
 
-    def test_normalize_selected_samples_dict_without_type_defaults(self):
+    def testnormalize_selected_samples_dict_without_type_defaults(self):
         """Dict without 'type' key defaults to 'default'."""
         samples = [{"sample_id": "a" * 24}]
-        result = _normalize_selected_samples(samples)
+        result = normalize_selected_samples(samples)
         self.assertEqual(result[0]["type"], "default")
 
-    def test_normalize_selected_samples_rejects_invalid_type(self):
+    def testnormalize_selected_samples_rejects_invalid_type(self):
         """Dict with invalid type should raise ValueError."""
         with self.assertRaises(ValueError):
-            _normalize_selected_samples(
+            normalize_selected_samples(
                 [{"sample_id": "a" * 24, "type": "invalid"}]
             )
 
-    def test_normalize_selected_samples_rejects_non_string_non_dict(self):
+    def testnormalize_selected_samples_rejects_non_string_non_dict(self):
         """Non-string, non-dict entries should raise TypeError."""
         with self.assertRaises(TypeError):
-            _normalize_selected_samples([123])
+            normalize_selected_samples([123])
 
         with self.assertRaises(TypeError):
-            _normalize_selected_samples([None])
+            normalize_selected_samples([None])
 
         with self.assertRaises(TypeError):
-            _normalize_selected_samples([[]])
+            normalize_selected_samples([[]])
 
-    def test_normalize_selected_samples_preserves_order(self):
+    def testnormalize_selected_samples_preserves_order(self):
         """Normalization preserves insertion order."""
         ids = [chr(ord("a") + i) * 24 for i in range(5)]
-        result = _normalize_selected_samples(ids)
+        result = normalize_selected_samples(ids)
         self.assertEqual([r["sample_id"] for r in result], ids)
 
-    def test_normalize_selected_samples_duplicate_ids(self):
+    def testnormalize_selected_samples_duplicate_ids(self):
         """Duplicate IDs are preserved (no dedup at this layer)."""
         samples = ["a" * 24, "a" * 24]
-        result = _normalize_selected_samples(samples)
+        result = normalize_selected_samples(samples)
         self.assertEqual(len(result), 2)
 
-    def test_normalize_selected_samples_rejects_missing_sample_id(self):
+    def testnormalize_selected_samples_rejects_missing_sample_id(self):
         """Dict without sample_id should raise ValueError."""
         with self.assertRaises(ValueError):
-            _normalize_selected_samples([{"type": "default"}])
+            normalize_selected_samples([{"type": "default"}])
 
         with self.assertRaises(ValueError):
-            _normalize_selected_samples([{"sample_id": "", "type": "default"}])
+            normalize_selected_samples([{"sample_id": "", "type": "default"}])
 
         with self.assertRaises(ValueError):
-            _normalize_selected_samples(
+            normalize_selected_samples(
                 [{"sample_id": None, "type": "default"}]
             )
 
