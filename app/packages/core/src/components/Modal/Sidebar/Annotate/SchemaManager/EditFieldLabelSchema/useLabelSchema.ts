@@ -2,7 +2,6 @@
  * Hook for managing label schema editing for a field
  */
 
-import { useOperatorExecutor } from "@fiftyone/operators";
 import {
   useNotification,
   useQueryPerformanceSampleLimit,
@@ -21,6 +20,10 @@ import {
   useSchemaManager,
   type UpdateSchemaRequest,
 } from "../../useSchemaManager";
+import {
+  dispatchSchemaManagerEvent,
+  useSchemaManagerEventBus,
+} from "../events";
 import { currentLabelSchema } from "../state";
 import { reconcileComponent } from "../utils";
 
@@ -147,6 +150,7 @@ const useSave = (field: string, visibilityChanged: boolean) => {
   const notify = useNotification();
   const [current] = useCurrentLabelSchema(field);
   const setCurrentField = useSetAtom(currentField);
+  const { dispatch } = useSchemaManagerEventBus();
 
   return {
     isSaving,
@@ -164,13 +168,13 @@ const useSave = (field: string, visibilityChanged: boolean) => {
       } catch (error) {
         console.error("Failed to save label schema:", error);
         setIsSaving(false);
-        document.dispatchEvent(new CustomEvent("schema-manager-save-complete"));
+        dispatchSchemaManagerEvent(dispatch, "schema-manager:save-complete");
         return;
       }
 
       setSaved(current);
       setIsSaving(false);
-      document.dispatchEvent(new CustomEvent("schema-manager-save-complete"));
+      dispatchSchemaManagerEvent(dispatch, "schema-manager:save-complete");
 
       // Determine activation change: first save auto-activates,
       // otherwise apply the visibility toggle for this field
@@ -208,26 +212,22 @@ const useSave = (field: string, visibilityChanged: boolean) => {
 const useScan = (field: string) => {
   const [isScanning, setIsScanning] = useState(false);
   const [, setCurrent] = useCurrentLabelSchema(field);
-  const generate = useOperatorExecutor("generate_label_schemas");
+  const { createSchemas } = useSchemaManager();
   const limit = useQueryPerformanceSampleLimit();
+  const { dispatch } = useSchemaManagerEventBus();
   return {
     isScanning,
-    scan: () => {
+    scan: async () => {
       setIsScanning(true);
-      generate.execute(
-        { field, limit },
-        {
-          callback: (result) => {
-            if (result.result) {
-              setCurrent(result.result.label_schema);
-            }
-            setIsScanning(false);
-            document.dispatchEvent(
-              new CustomEvent("schema-manager-scan-complete")
-            );
-          },
+      try {
+        const result = await createSchemas({ field, limit });
+        if (result.label_schema) {
+          setCurrent(result.label_schema);
         }
-      );
+      } finally {
+        setIsScanning(false);
+        dispatchSchemaManagerEvent(dispatch, "schema-manager:scan-complete");
+      }
     },
     cancelScan: () => {
       setIsScanning(false);
@@ -242,7 +242,8 @@ const useValidate = (field: string) => {
 
   const [, setCurrent] = useCurrentLabelSchema(field);
   const discard = useDiscard(field, () => setErrors([]));
-  const validate = useOperatorExecutor("validate_label_schemas");
+  const { validateSchemas } = useSchemaManager();
+  const { dispatch } = useSchemaManagerEventBus();
 
   const resetErrors = useCallback(() => {
     setErrors([]);
@@ -255,42 +256,33 @@ const useValidate = (field: string) => {
     isValid,
     isValidating,
     resetErrors,
-    validate: (data: string) => {
+    validate: async (data: string) => {
       try {
         setIsValidating(true);
         const parsed = JSON.parse(data);
-        validate.execute(
-          { label_schemas: { [field]: parsed } },
-          {
-            skipErrorNotification: true,
-            callback: (result) => {
-              if (result.result.errors) {
-                setErrors(result.result.errors);
-              }
+        const result = await validateSchemas({
+          label_schemas: { [field]: parsed },
+        });
 
-              if (!result.result.errors.length) {
-                setCurrent(parsed);
-                setIsValid(true);
-                document.dispatchEvent(
-                  new CustomEvent("schema-manager-valid-json")
-                );
-              } else {
-                setIsValid(false);
-                document.dispatchEvent(
-                  new CustomEvent("schema-manager-invalid-json")
-                );
-              }
-              setIsValidating(false);
-            },
-          }
-        );
+        if (result.errors) {
+          setErrors(result.errors);
+        }
+
+        if (!result.errors?.length) {
+          setCurrent(parsed);
+          setIsValid(true);
+          dispatchSchemaManagerEvent(dispatch, "schema-manager:valid-json");
+        } else {
+          setIsValid(false);
+          dispatchSchemaManagerEvent(dispatch, "schema-manager:invalid-json");
+        }
       } catch (e) {
         if (e instanceof SyntaxError) {
           setErrors([e.message]);
         }
-
-        setIsValidating(false);
         setIsValid(false);
+      } finally {
+        setIsValidating(false);
       }
     },
   };
