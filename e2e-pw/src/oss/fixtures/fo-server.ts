@@ -49,6 +49,28 @@ export class FoWebServer {
       console.log(procString);
 
       const proc = spawn(procString, { shell: true });
+      let startupComplete = false;
+
+      const startupFailure = new Promise<never>((_, reject) => {
+        const handleError = (err: Error) => {
+          if (!startupComplete) {
+            reject(err);
+          }
+        };
+
+        const handleExit = (code: number | null, signal: string | null) => {
+          if (!startupComplete) {
+            reject(
+              new Error(
+                `webserver exited before startup completed (code=${code}, signal=${signal})`
+              )
+            );
+          }
+        };
+
+        proc.once("error", handleError);
+        proc.once("exit", handleExit);
+      });
 
       proc.stdout.on("data", (data) => {
         console.log(`stdout: ${data}`);
@@ -68,10 +90,17 @@ export class FoWebServer {
         }...`
       );
 
-      await waitOn({
-        resources: [`tcp:127.0.0.1:${this.#port}`],
-        timeout: Duration.Seconds(30),
-      });
+      await Promise.race([
+        waitOn({
+          resources: [
+            `tcp:127.0.0.1:${this.#port}`,
+            `http-get://127.0.0.1:${this.#port}/graphql`,
+          ],
+          timeout: Duration.Seconds(30),
+        }),
+        startupFailure,
+      ]);
+      startupComplete = true;
       console.log("webserver started");
     } catch (e) {
       console.log(`webserver starting failed`, e);
@@ -81,12 +110,14 @@ export class FoWebServer {
       } catch (stopErr) {
         console.warn("Error stopping webserver:", stopErr);
       }
+
+      throw e;
     }
   }
 
   async stopWebServer(timeoutMs = 10000): Promise<void> {
     if (!this.#webserverProcessConfig.processId) {
-      throw new Error("webserver process not started");
+      return;
     }
 
     const killPromise = new Promise<void>((resolve, reject) => {
