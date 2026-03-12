@@ -1520,7 +1520,10 @@ class TransformersDetectorOutputProcessor(fout.DetectorOutputProcessor):
 
         scores = output["scores"].cpu().numpy()
         boxes = output["boxes"].cpu().numpy()
-        labels = output.get("text_labels", output["labels"])
+        labels = output.get("text_labels")
+        used_grounded_text_labels = labels is not None
+        if labels is None:
+            labels = output["labels"]
         if hasattr(labels, "cpu"):
             labels = labels.cpu().numpy()
 
@@ -1528,11 +1531,19 @@ class TransformersDetectorOutputProcessor(fout.DetectorOutputProcessor):
             if confidence_thresh is not None and score < confidence_thresh:
                 continue
 
-            if not self._is_grounded:
-                if self.classes is not None and 0 <= int(label) < len(self.classes):
-                    label = self.classes[int(label)]
-                else:
-                    label = str(label)
+            if self._is_grounded:
+                if not used_grounded_text_labels:
+                    grounded_classes = classes or self.classes
+                    if grounded_classes is not None and 0 <= int(label) < len(
+                        grounded_classes
+                    ):
+                        label = grounded_classes[int(label)]
+                    else:
+                        label = str(label)
+            elif self.classes is not None and 0 <= int(label) < len(self.classes):
+                label = self.classes[int(label)]
+            else:
+                label = str(label)
 
             if classes is not None and label not in classes:
                 continue
