@@ -182,6 +182,7 @@ class SegmentAnythingImageGetItem(fout.GetItem):
         point_transform=None,
         **kwargs,
     ):
+        field_mapping = {} if field_mapping is None else dict(field_mapping)
         # Used for managing backward compatibility with prompt_field in field mapping.
         self._has_prompt_field = (
             field_mapping.pop("prompt_field", None) is not None
@@ -709,7 +710,7 @@ class SegmentAnythingModel(fout.TorchImageModel):
         """
         if samples is not None:
             raise RuntimeError(
-                "Use of SamplesMixin has been deprecated."
+                "Use of SamplesMixin has been deprecated. "
                 "Use SegmentAnythingGetItem to get inputs for the predict_all method."
             )
 
@@ -830,6 +831,11 @@ class SegmentAnythingModel(fout.TorchImageModel):
                     results[key].append(val)
 
         # Collapse prompt type
+        prompt_types = results["prompt_type"]
+        if not all(pt == prompt_types[0] for pt in prompt_types):
+            raise ValueError(
+                "All samples in a batch must have the same prompt_type"
+            )
         results["prompt_type"] = results["prompt_type"][0]
 
         return results
