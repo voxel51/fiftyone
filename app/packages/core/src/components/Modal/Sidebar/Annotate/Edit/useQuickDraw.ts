@@ -41,18 +41,11 @@ const lastUsedLabelByFieldAtom = atomFamily((_field: string) =>
 const detectionTypes = new Set(["Detection", "Detections"]);
 
 /**
- * Tracks the last processed `lighter:overlay-create` event ID so that only one
+ * Tracks the last processed event ID for each event type so that only one
  * `useQuickDraw` instance handles each event, even though the hook is
  * called in multiple components.
  */
-const lastProcessedCreateIdAtom = atom<string | null>(null);
-
-/**
- * Tracks the last processed `lighter:quickdraw-quit` event ID so that only one
- * `useQuickDraw` instance handles the quit, even though the hook is
- * called in multiple components.
- */
-const lastProcessedQuitIdAtom = atom<string | null>(null);
+const claimedEventsAtom = atom<Map<string, string>>(new Map());
 
 /**
  * Centralized hook for managing quick draw mode state and operations.
@@ -240,25 +233,14 @@ export const useQuickDraw = () => {
     [getLabelSchema, getLastUsedLabel, labelsMap]
   );
 
-  const claimCreateEvent = useAtomCallback(
-    useCallback((get, set, eventId: string) => {
-      if (get(lastProcessedCreateIdAtom) === eventId) {
+  const claimEvent = useAtomCallback(
+    useCallback((get, set, eventType: string, eventId: string) => {
+      const claimed = get(claimedEventsAtom);
+      if (claimed.get(eventType) === eventId) {
         return false;
       }
 
-      set(lastProcessedCreateIdAtom, eventId);
-
-      return true;
-    }, [])
-  );
-
-  const claimQuitEvent = useAtomCallback(
-    useCallback((get, set, eventId: string) => {
-      if (get(lastProcessedQuitIdAtom) === eventId) {
-        return false;
-      }
-
-      set(lastProcessedQuitIdAtom, eventId);
+      set(claimedEventsAtom, new Map(claimed).set(eventType, eventId));
 
       return true;
     }, [])
@@ -305,7 +287,7 @@ export const useQuickDraw = () => {
     "lighter:overlay-create",
     useCallback(
       (payload) => {
-        if (!claimCreateEvent(payload.eventId)) {
+        if (!claimEvent("overlay-create", payload.eventId)) {
           return;
         }
 
@@ -318,7 +300,7 @@ export const useQuickDraw = () => {
         createDetection({ field, labelValue });
       },
       [
-        claimCreateEvent,
+        claimEvent,
         createDetection,
         finalizeCurrentDetection,
         getQuickDrawDetectionField,
@@ -337,14 +319,14 @@ export const useQuickDraw = () => {
     "lighter:quickdraw-quit",
     useCallback(
       (payload) => {
-        if (!claimQuitEvent(payload.eventId)) {
+        if (!claimEvent("quickdraw-quit", payload.eventId)) {
           return;
         }
 
         finalizeCurrentDetection();
         disableQuickDraw();
       },
-      [claimQuitEvent, disableQuickDraw, finalizeCurrentDetection]
+      [claimEvent, disableQuickDraw, finalizeCurrentDetection]
     )
   );
 
