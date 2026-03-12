@@ -31,7 +31,7 @@ export default () => {
           .getValue();
 
         if (is3d(map[fallback])) {
-          const is3dPinned = (await query.getState()).isPinned;
+          const is3dPinned = await query.getIsPinned();
           if (is3dPinned && currentModalSelector && currentModalSlice) {
             fallback = currentModalSlice;
           } else {

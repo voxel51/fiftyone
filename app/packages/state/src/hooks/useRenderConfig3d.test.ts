@@ -219,39 +219,15 @@ describe("useRenderConfig3d split hooks", () => {
     expect(result.current.state.fo3dContent).toEqual({ name: "scene" });
   });
 
-  it("exposes imperative querying via query.getState", async () => {
-    const interactionSample = buildModalSample("lidar-id", "/tmp/lidar.pcd");
-    const sceneSample = buildModalSample("scene-id", "/tmp/scene.fo3d");
-    const activeSampleMap = {
-      scene: sceneSample,
-      lidar: interactionSample,
-    };
-
+  it("exposes imperative querying via query.getIsPinned", async () => {
     setState({
       is3dPinned: true,
-      pinned3DSampleSlice: "lidar",
-      active3dSlices: ["lidar", "scene"],
-      activeFo3dSlice: "scene",
-      activeNonFo3d3dSlices: ["lidar"],
-      interaction3dSample: interactionSample,
-      interaction3dSlice: "lidar",
-      sceneSample,
-      active3dSlicesToSampleMap: activeSampleMap,
-      all3dSlicesToSampleMap: activeSampleMap,
-      fo3dContent: { name: "scene" },
     });
 
     const { result } = renderHook(() => useRenderConfig3dHooks());
-    const queriedState = await result.current.query.getState();
+    const isPinned = await result.current.query.getIsPinned();
 
-    expect(queriedState.activeFo3dSlice).toBe("scene");
-    expect(queriedState.activeSlices).toEqual(["lidar", "scene"]);
-    expect(queriedState.pinnedSlice).toBe("lidar");
-    expect(queriedState.activeSampleMap).toEqual(activeSampleMap);
-    expect(queriedState.allSampleMap).toEqual(activeSampleMap);
-    expect(queriedState.interactionSample).toBe(interactionSample);
-    expect(queriedState.sceneSample).toBe(sceneSample);
-    expect(queriedState.fo3dContent).toEqual({ name: "scene" });
+    expect(isPinned).toBe(true);
   });
 
   it("initializes render config 3d from a 3d modal slice", async () => {

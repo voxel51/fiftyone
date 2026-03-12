@@ -1,17 +1,17 @@
 import { is3d } from "@fiftyone/utilities";
 import { useMemo } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
-import type { ModalSample } from "../recoil/modal";
 import {
-  groupMediaIsMain2DViewerVisibleSetting,
   groupMediaIsCarouselVisibleSetting,
+  groupMediaIsMain2DViewerVisibleSetting,
   groupMediaTypesMap,
 } from "../recoil/groups";
-import * as internals from "../recoil/renderConfig3d.atoms";
 import {
   areSlicesEqual,
   resolveNormalized3dSelection,
 } from "../recoil/groups.utils";
+import type { ModalSample } from "../recoil/modal";
+import * as internals from "../recoil/renderConfig3d.atoms";
 
 type RenderConfig3dSampleMap = Record<string, ModalSample>;
 
@@ -83,8 +83,8 @@ export type RenderConfig3dActions = {
  * Imperative snapshot query helpers exposed by {@link useRenderConfig3dImperativeState}.
  */
 export type RenderConfig3dImperativeState = {
-  /** Resolves the latest 3D render config state from a Recoil snapshot. */
-  getState: () => Promise<RenderConfig3dState>;
+  /** Resolves the latest pinned status */
+  getIsPinned: () => Promise<boolean>;
 };
 
 /**
@@ -164,53 +164,18 @@ export const useRenderConfig3dState = (): RenderConfig3dState => {
  */
 export const useRenderConfig3dImperativeState =
   (): RenderConfig3dImperativeState => {
-    const getState = useRecoilCallback(
+    const getIsPinned = useRecoilCallback(
       ({ snapshot }) =>
-        async () => ({
-          is3dVisible: await snapshot.getPromise(
-            internals.groupMediaIs3dVisible
-          ),
-          is3dVisibleSetting: await snapshot.getPromise(
-            internals.groupMedia3dVisibleSetting
-          ),
-          isPinned: await snapshot.getPromise(internals.is3dPinned),
-          has3dSlice: await snapshot.getPromise(internals.has3dSlice),
-          hasFo3dSlice: await snapshot.getPromise(internals.hasFo3dSlice),
-          pinnedSlice: await snapshot.getPromise(internals.pinned3DSampleSlice),
-          activeSlices: await snapshot.getPromise(internals.active3dSlices),
-          allSlices: await snapshot.getPromise(internals.all3dSlices),
-          non3dSlices: await snapshot.getPromise(internals.allNon3dSlices),
-          hasMultipleSlices: await snapshot.getPromise(
-            internals.hasMultiple3dSlices
-          ),
-          realFo3dSlices: await snapshot.getPromise(internals.realFo3dSlices),
-          activeFo3dSlice: await snapshot.getPromise(internals.activeFo3dSlice),
-          activeDirectSlices: await snapshot.getPromise(
-            internals.activeNonFo3d3dSlices
-          ),
-          activeSampleMap: await snapshot.getPromise(
-            internals.active3dSlicesToSampleMap
-          ),
-          allSampleMap: await snapshot.getPromise(
-            internals.all3dSlicesToSampleMap
-          ),
-          interactionSample: await snapshot.getPromise(
-            internals.interaction3dSample
-          ),
-          interactionSlice: await snapshot.getPromise(
-            internals.interaction3dSlice
-          ),
-          sceneSample: await snapshot.getPromise(internals.sceneSample),
-          fo3dContent: await snapshot.getPromise(internals.fo3dContent),
-        }),
+        async () =>
+          snapshot.getPromise(internals.is3dPinned),
       []
     );
 
     return useMemo<RenderConfig3dImperativeState>(
       () => ({
-        getState,
+        getIsPinned,
       }),
-      [getState]
+      [getIsPinned]
     );
   };
 
