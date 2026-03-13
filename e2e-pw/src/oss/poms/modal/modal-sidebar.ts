@@ -131,11 +131,7 @@ export class ModalSidebarPom {
    *  @returns A promise resolving to the label tag count as a number.
    */
   async getLabelTagCount() {
-    return Number(
-      await this.getSidebarField("_label_tags")
-        .getByTestId("entry-count-all")
-        .textContent()
-    );
+    return Number(await this.getSidebarFieldCount("_label_tags"));
   }
 
   /**

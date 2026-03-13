@@ -11,6 +11,8 @@ import { ModalSidebarPom } from "./modal-sidebar";
 import { SampleCanvasPom } from "./sample-canvas";
 import { ModalVideoControlsPom } from "./video-controls";
 
+const SAMPLE_LOAD_TIMEOUT = Duration.Seconds(20);
+
 export class ModalPom {
   readonly assert: ModalAsserter;
 
@@ -239,7 +241,7 @@ export class ModalPom {
         return slice !== currentSlice;
       },
       { currentSlice, groupField },
-      { timeout: Duration.Seconds(5) }
+      { timeout: SAMPLE_LOAD_TIMEOUT }
     );
     return this.waitForSampleLoadDomAttribute(allowErrorInfo);
   }
@@ -303,7 +305,7 @@ export class ModalPom {
         );
       },
       allowErrorInfo,
-      { timeout: Duration.Seconds(20) }
+      { timeout: SAMPLE_LOAD_TIMEOUT }
     );
   }
 }

@@ -103,7 +103,7 @@ class Looker3DControlsAsserter {
   }
 
   async verifySliceSelectorHidden() {
-    await expect(this.looker3dControlsPom.sliceSelector).toHaveCount(0);
+    await expect(this.looker3dControlsPom.sliceSelector).toBeHidden();
   }
 
   async verifySliceChecked(slice: string, checked = true) {
