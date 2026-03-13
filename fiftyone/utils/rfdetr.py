@@ -228,8 +228,16 @@ class _RFDETRBaseModel(fout.TorchSamplesMixin, fout.TorchImageModel):
 
         return {"results": results, "sizes": sizes}
 
-    def _parse_classes(self, config: Any) -> None:
-        return None
+    def _parse_classes(self, config: Any) -> Optional[list[str]]:
+        classes = fout.TorchImageModel._parse_classes(self, config)
+        if classes is not None:
+            return classes
+
+        class_names = self._class_name_map
+        if isinstance(class_names, dict):
+            return [name for _, name in sorted(class_names.items())]
+
+        return list(class_names)
 
     def _build_output_processor(self, config: Any) -> None:
         # RF-DETR output conversion is handled in _predict_all
@@ -254,7 +262,7 @@ class _RFDETRBaseModel(fout.TorchSamplesMixin, fout.TorchImageModel):
             )
 
         labels = []
-        for sv_dets, (w, h) in zip(results, sizes, strict=True):
+        for sv_dets, (w, h) in zip(results, sizes):
             fo_dets = _sv_detections_to_fo(
                 sv_dets, w, h, class_names, has_masks=self._has_masks
             )

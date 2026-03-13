@@ -108,6 +108,46 @@ class TestRFDETRBatchingContract:
         assert ragged_batches is False
 
 
+class TestRFDETRClassParsing:
+    def test_parse_classes_prefers_manifest_classes(self):
+        from fiftyone.utils.rfdetr import RFDETRDetectionModel
+
+        model = RFDETRDetectionModel.__new__(RFDETRDetectionModel)
+        model._model = SimpleNamespace(class_names={5: "zebra", 1: "person"})
+
+        classes = model._parse_classes(
+            SimpleNamespace(
+                classes=["cat", "dog"],
+                labels_string=None,
+                labels_path=None,
+                mask_targets=None,
+                mask_targets_path=None,
+                output_processor_args=None,
+            )
+        )
+
+        assert classes == ["cat", "dog"]
+
+    def test_parse_classes_falls_back_to_loaded_model_classes(self):
+        from fiftyone.utils.rfdetr import RFDETRDetectionModel
+
+        model = RFDETRDetectionModel.__new__(RFDETRDetectionModel)
+        model._model = SimpleNamespace(class_names={5: "zebra", 1: "person"})
+
+        classes = model._parse_classes(
+            SimpleNamespace(
+                classes=None,
+                labels_string=None,
+                labels_path=None,
+                mask_targets=None,
+                mask_targets_path=None,
+                output_processor_args=None,
+            )
+        )
+
+        assert classes == ["person", "zebra"]
+
+
 class TestRFDETRDirectInputRGBConversion:
     def test_predict_all_converts_common_direct_inputs_to_rgb(
         self, tmp_path: Path
@@ -216,6 +256,34 @@ class TestRFDETROutputParsing:
         assert detection.label == "person"
         assert detection.mask.dtype == bool
         assert detection.mask.shape == (3, 3)
+        assert detection.mask.all()
+
+    @pytest.mark.parametrize(
+        "mask",
+        (
+            np.ones((1, 1, 1, 6), dtype=np.float32),
+            np.ones((1, 1, 6, 1), dtype=np.float32),
+        ),
+        ids=("leading_channel_dim", "trailing_channel_dim"),
+    )
+    def test_segmentation_masks_preserve_singleton_channel_dims(self, mask):
+        from fiftyone.utils.rfdetr import RFDETRSegmentationModel
+
+        def _fake_predict(images: list[Image.Image], threshold: float):
+            return _FakeSVDets(
+                xyxy=[[0, 0, 6, 1]],
+                confidence=[0.9],
+                class_id=[1],
+                mask=mask,
+            )
+
+        model = _make_model(RFDETRSegmentationModel, _fake_predict)
+
+        labels = model.predict_all([Image.new("RGB", (6, 1))])
+        detection = labels[0].detections[0]
+
+        assert detection.mask.dtype == bool
+        assert detection.mask.shape == (1, 6)
         assert detection.mask.all()
 
     def test_degenerate_boxes_are_skipped(self):

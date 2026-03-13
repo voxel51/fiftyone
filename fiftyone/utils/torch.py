@@ -1415,12 +1415,32 @@ def _clip_box_to_frame(box, frame_size):
 
 def _crop_detection_mask(mask, box, mask_thresh=0.5):
     mask_full = np.asarray(mask)
-    if mask_full.ndim > 2:
-        mask_full = np.squeeze(mask_full)
+    x1, y1, x2, y2 = box
+
+    if mask_full.ndim == 3:
+        candidates = []
+        if mask_full.shape[0] == 1:
+            candidates.append(mask_full[0])
+        if mask_full.shape[-1] == 1:
+            candidates.append(mask_full[..., 0])
+        if not candidates:
+            return None
+
+        if len(candidates) == 1:
+            mask_full = candidates[0]
+        else:
+            exp_h = max(0, int(np.ceil(y2)) - int(np.floor(y1)))
+            exp_w = max(0, int(np.ceil(x2)) - int(np.floor(x1)))
+
+            # Prefer the channel interpretation that best matches the bbox.
+            mask_full = min(
+                candidates,
+                key=lambda arr: abs(arr.shape[0] - exp_h)
+                + abs(arr.shape[1] - exp_w),
+            )
     if mask_full.ndim != 2:
         return None
 
-    x1, y1, x2, y2 = box
     r1 = max(0, min(mask_full.shape[0], int(np.floor(y1))))
     r2 = max(0, min(mask_full.shape[0], int(np.ceil(y2))))
     c1 = max(0, min(mask_full.shape[1], int(np.floor(x1))))
