@@ -6,10 +6,14 @@ Builtin panels.
 |
 """
 
+from fiftyone.internal.features.registry import is_feature_enabled
+
 from .model_evaluation import EvaluationPanel
 from .similarity_search import SimilaritySearchPanel
 
 
 def register(p):
     p.register(EvaluationPanel)
-    p.register(SimilaritySearchPanel)
+
+    if is_feature_enabled("VFF_SIMILARITY_SEARCH"):
+        p.register(SimilaritySearchPanel)
