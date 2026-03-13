@@ -427,9 +427,6 @@ const useData = <T,>(path: string): T => {
     throw loadable.contents;
   }
 
-  const field = fos.useAssertedRecoilValue(fos.field(keys[0]));
-  const isList = useRecoilValue(fos.isOfDocumentFieldList(path));
-
   return fos.pullSidebarValue(field, keys, loadable.contents, isList) as T;
 };
 

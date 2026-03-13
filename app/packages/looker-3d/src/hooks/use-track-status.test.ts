@@ -158,4 +158,38 @@ describe("useTrackStatus", () => {
     expect(store.logs).toEqual([]);
     expect(store.loadingStatus.status).toBe(LoadingStatus.IDLE);
   });
+
+  it("marks idle scenes as successful once the current scene is ready", async () => {
+    const manager = new LoadingManager();
+
+    const { rerender } = renderHook(
+      ({
+        currentManager,
+        isSceneReady,
+      }: {
+        currentManager: LoadingManager;
+        isSceneReady: boolean;
+      }) => useTrackStatus(currentManager, isSceneReady),
+      {
+        initialProps: { currentManager: manager, isSceneReady: false },
+      }
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(store.loadingStatus.status).toBe(LoadingStatus.IDLE);
+
+    rerender({ currentManager: manager, isSceneReady: true });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(store.loadingStatus).toMatchObject({
+      status: LoadingStatus.SUCCESS,
+      progress: 100,
+    });
+  });
 });
