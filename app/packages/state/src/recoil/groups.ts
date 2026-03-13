@@ -333,7 +333,7 @@ export const non3dSamples = selector({
 export const groupHasSampleOnSlice = graphQLSelectorFamily<
   VariablesOf<foq.paginateSamplesQuery>,
   { groupId: string | null; slice: string | null },
-  boolean
+  boolean | null
 >({
   key: "groupHasSampleOnSlice",
   environment: RelayEnvironmentKey,
@@ -351,7 +351,7 @@ export const groupHasSampleOnSlice = graphQLSelectorFamily<
         view: get(groupView),
         filter: {
           group: {
-            slice: get(groupSlice),
+            slice,
             id: groupId,
             slices: [slice],
           },
