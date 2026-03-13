@@ -21,20 +21,21 @@ import useExit from "./useExit";
  * This atom is exported to allow inspection from non-React code.
  * This atom should not be used in React code.
  */
-export const _dangerousQuickDrawActiveAtom = atom<boolean>(false);
+const quickDrawActiveAtom = atom<boolean>(false);
+export { quickDrawActiveAtom as _dangerousQuickDrawActiveAtom };
 
 /**
  * Tracks the last-used detection field path in quick draw mode.
  * Examples: "ground_truth.detections", "predictions.detections"
  * Used to remember which detection field the user was annotating.
  */
-const lastUsedDetectionFieldAtom = atom<string | null>(null);
+const lastUsedFieldAtom = atom<string | null>(null);
 
 /**
  * Tracks the last-used label value (class) for each field path.
  * Used for auto-assignment when creating new labels in quick draw mode.
  */
-const lastUsedLabelByFieldAtom = atomFamily((_field: string) =>
+const lastUsedLabelAtom = atomFamily((_field: string) =>
   atom<string | null>(null)
 );
 
@@ -51,10 +52,8 @@ const claimedEventsAtom = atom<Map<string, string>>(new Map());
  * Centralized hook for managing quick draw mode state and operations.
  */
 export const useQuickDraw = () => {
-  const [quickDrawActive, setQuickDrawActive] = useAtom(
-    _dangerousQuickDrawActiveAtom
-  );
-  const setLastUsedField = useSetAtom(lastUsedDetectionFieldAtom);
+  const [quickDrawActive, setQuickDrawActive] = useAtom(quickDrawActiveAtom);
+  const setLastUsedField = useSetAtom(lastUsedFieldAtom);
   const labelsMap = useAtomValue(labelsByPath);
   const defaultDetectionField = useAtomValue(defaultField(DETECTION));
   const { scene } = useLighter();
@@ -81,22 +80,19 @@ export const useQuickDraw = () => {
   );
 
   /**
-   * Getter which wraps {@link lastUsedLabelByFieldAtom} atom family.
+   * Getter which wraps {@link lastUsedLabelAtom} atom family.
    */
   const getLastUsedLabel = useAtomCallback(
-    useCallback(
-      (get, _set, path: string) => get(lastUsedLabelByFieldAtom(path)),
-      []
-    )
+    useCallback((get, _set, path: string) => get(lastUsedLabelAtom(path)), [])
   );
 
   /**
-   * Setter which wraps {@link lastUsedLabelByFieldAtom} atom family.
+   * Setter which wraps {@link lastUsedLabelAtom} atom family.
    */
   const setLastUsedLabel = useAtomCallback(
     useCallback(
       (_get, set, path: string, label: string) =>
-        set(lastUsedLabelByFieldAtom(path), label),
+        set(lastUsedLabelAtom(path), label),
       []
     )
   );
@@ -147,7 +143,7 @@ export const useQuickDraw = () => {
   const getQuickDrawDetectionField = useAtomCallback(
     useCallback(
       (get): string | null => {
-        const lastField = get(lastUsedDetectionFieldAtom);
+        const lastField = get(lastUsedFieldAtom);
 
         if (lastField) {
           const schema = get(labelSchemaData(lastField));
