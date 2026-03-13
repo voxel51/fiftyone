@@ -114,14 +114,18 @@ class SegmentAnything2VideoModelConfig(
 
     See :class:`fiftyone.utils.torch.TorchImageModelConfig` for additional
     arguments.
+
+    Args:
+        media_mode (None): the media mode to use for the model (only "video" and "image" are supported). If None, defaults to "video"
     """
 
     def __init__(self, d):
         d = self.init(d)
         super().__init__(d)
 
-        self.batch_size = self.parse_int(d, "batch_size", default=None)
         self.media_mode = self.parse_string(d, "media_mode", default="video")
+        if self.media_mode not in ["video", "image"]:
+            raise ValueError("media_mode must be one of 'video' or 'image'")
 
 
 class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
@@ -397,7 +401,7 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
         config: a :class:`SegmentAnything2VideoModelConfig`
     """
 
-    def __init__(self, config, media_mode="video"):
+    def __init__(self, config):
         dir(sam2)  # ensure package is installed
         self._fields = {}
 
@@ -418,9 +422,7 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
             )
 
         self.model = self._load_model(config)
-        self.media_mode = (
-            getattr(config, "media_mode", None) or media_mode or "video"
-        )
+        self.media_mode = getattr(config, "media_mode", "video")
 
         self._curr_prompt_type = None
         self._curr_prompts = None
@@ -451,7 +453,7 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
             )
         return model
 
-    def predict(self, video_reader, sample=None):
+    def predict(self, video_reader, sample):
         field_name, negative_field_name = self._get_field()
         (
             self._curr_frame_width,
@@ -465,7 +467,6 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
             )
         else:
             self._curr_negative_prompts = None
-
         return self._forward_pass(video_reader, sample)
 
     def predict_all(
@@ -493,10 +494,9 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
         if not has_prompt:
             return [fol.Detections() for _ in samples]
 
-        # We construct a lightweight container that mimics a video sample for flattened frames
-        # The sample has a `frames` dict and delegates to
-        # the existing video path via `_forward_pass_boxes`.
-        class _MockVideoSample(object):
+        class _ImageSamplesAsVideoFrames:
+            """Adapts a list of image samples to the video sample interface."""
+
             media_type = focm.IMAGE
 
             def __init__(self, frames):
@@ -506,14 +506,7 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
             def frames(self):
                 return {ii + 1: ff for ii, ff in enumerate(self._frames)}
 
-            def values(self, field_name):
-                if field_name == "filepath":
-                    return [f.filepath for f in self._frames]
-                raise AttributeError(
-                    "No field '%s' on mock video sample" % field_name
-                )
-
-        mock_video_sample = _MockVideoSample(samples)
+        mock_video_sample = _ImageSamplesAsVideoFrames(samples)
 
         hh, ww = 0, 0
         if len(imgs) > 0:
@@ -937,7 +930,10 @@ def load_fiftyone_video_frames_from_image_files(
     """
 
     with tempfile.TemporaryDirectory(prefix="fo_sam2_frames_") as tmpdir:
-        for idx, frame_filepath in enumerate(sample.values("filepath")):
+        frame_filepaths = [
+            sample.frames[ii].filepath for ii in sorted(sample.frames.keys())
+        ]
+        for idx, frame_filepath in enumerate(frame_filepaths):
             src = frame_filepath
             dest = os.path.join(tmpdir, "%05d.jpg" % idx)
             os.symlink(os.path.abspath(src), dest)
