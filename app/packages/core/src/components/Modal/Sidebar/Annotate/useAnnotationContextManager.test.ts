@@ -25,6 +25,12 @@ const listResponseWithSchema = (field: string): ListSchemasResponse => ({
   },
 });
 
+// Shared mock store for jotaiStore.get()
+let mockMgmtOps: {
+  initializeSchema: typeof mockInitializeSchema;
+  activateSchemas: typeof mockActivateSchemas;
+} | null = null;
+
 vi.mock("@fiftyone/annotation", () => ({
   useSampleMutationManager: () => ({ reset: vi.fn() }),
 }));
@@ -38,6 +44,12 @@ vi.mock("@fiftyone/state", () => ({
   })),
   useActiveModalFields: () => [[], vi.fn()],
   useQueryPerformanceSampleLimit: () => 1000,
+}));
+
+vi.mock("@fiftyone/state/src/jotai", () => ({
+  jotaiStore: {
+    get: vi.fn(() => mockMgmtOps),
+  },
 }));
 
 vi.mock("./Edit/useActivePrimitive", () => ({
@@ -64,13 +76,9 @@ vi.mock("./useCanManageSchema", () => ({
 
 vi.mock("./useSchemaResolver", async () => {
   const { atom } = await import("jotai");
-  const mgmtAtom = atom<{
-    initializeSchema: typeof mockInitializeSchema;
-    activateSchemas: typeof mockActivateSchemas;
-  } | null>(null);
 
   return {
-    schemaManagementOpsAtom: mgmtAtom,
+    schemaManagementOpsAtom: atom(null),
     useSchemaResolver: () => ({
       listSchemas: mockListSchemas,
     }),
@@ -80,31 +88,18 @@ vi.mock("./useSchemaResolver", async () => {
 const { useAnnotationContextManager, InitializationStatus } = await import(
   "./useAnnotationContextManager"
 );
-const { schemaManagementOpsAtom } = await import("./useSchemaResolver");
-
-import React from "react";
-import { createStore, Provider } from "jotai";
-
-const createWrapper = (store: ReturnType<typeof createStore>) => {
-  return ({ children }: { children: React.ReactNode }) =>
-    React.createElement(Provider, { store }, children);
-};
 
 describe("activateField", () => {
-  let store: ReturnType<typeof createStore>;
-
   beforeEach(() => {
     vi.clearAllMocks();
     mockCanManageSchema = true;
     mockListSchemas.mockResolvedValue(emptyListResponse);
     mockInitializeSchema.mockResolvedValue({ label_schema: {} });
     mockActivateSchemas.mockResolvedValue({});
-
-    store = createStore();
-    store.set(schemaManagementOpsAtom, {
+    mockMgmtOps = {
       initializeSchema: mockInitializeSchema,
       activateSchemas: mockActivateSchemas,
-    });
+    };
   });
 
   it.each([
@@ -117,16 +112,14 @@ describe("activateField", () => {
     [
       "mgmtOps is null",
       () => {
-        store.set(schemaManagementOpsAtom, null);
+        mockMgmtOps = null;
       },
     ],
   ])(
     "returns InsufficientPermissions when %s",
     async (_label, setupOverride) => {
       setupOverride();
-      const { result } = renderHook(() => useAnnotationContextManager(), {
-        wrapper: createWrapper(store),
-      });
+      const { result } = renderHook(() => useAnnotationContextManager());
 
       let enterResult: { status: number };
       await act(async () => {
@@ -143,9 +136,7 @@ describe("activateField", () => {
   );
 
   it("uses schemaResolver for reads and mgmtOps for writes", async () => {
-    const { result } = renderHook(() => useAnnotationContextManager(), {
-      wrapper: createWrapper(store),
-    });
+    const { result } = renderHook(() => useAnnotationContextManager());
 
     await act(async () => {
       await result.current.activateField("predictions");
@@ -168,9 +159,7 @@ describe("activateField", () => {
   it("skips initializeSchema when field already has a schema", async () => {
     mockListSchemas.mockResolvedValue(listResponseWithSchema("ground_truth"));
 
-    const { result } = renderHook(() => useAnnotationContextManager(), {
-      wrapper: createWrapper(store),
-    });
+    const { result } = renderHook(() => useAnnotationContextManager());
 
     await act(async () => {
       await result.current.activateField("ground_truth");
@@ -185,9 +174,7 @@ describe("activateField", () => {
   it("returns ServerError when a write operation fails", async () => {
     mockInitializeSchema.mockRejectedValue(new Error("forbidden"));
 
-    const { result } = renderHook(() => useAnnotationContextManager(), {
-      wrapper: createWrapper(store),
-    });
+    const { result } = renderHook(() => useAnnotationContextManager());
 
     let enterResult: { status: number; message?: string };
     await act(async () => {
