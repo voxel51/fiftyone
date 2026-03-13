@@ -41,6 +41,6 @@ export interface ModalViewportState extends ViewportState {
  * switched modes (EXPLORE vs ANNOTATE).
  *
  * @internal Do not import this atom directly. Use `useSaveModalViewport`,
- * `useModalViewport`, or `modalBridge.viewport` instead.
+ * `useModalViewport`, or `modalBridge.getModalViewport()` instead.
  */
 export const __unsafeModalViewportAtom = atom<ModalViewportState | null>(null);
