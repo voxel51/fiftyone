@@ -98,6 +98,14 @@ export const useLighter = () => {
     []
   );
 
+  const zoomIn = useCallback(() => {
+    sceneRef.current?.zoomIn();
+  }, []);
+
+  const zoomOut = useCallback(() => {
+    sceneRef.current?.zoomOut();
+  }, []);
+
   return {
     scene,
     isReady,
@@ -107,5 +115,7 @@ export const useLighter = () => {
     transformOverlay,
     overlayFactory,
     registerRenderCallback,
+    zoomIn,
+    zoomOut,
   };
 };
