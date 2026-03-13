@@ -8,6 +8,10 @@ import { PythonRunner } from "src/shared/python-runner/python-runner";
 import { Duration } from "../utils";
 
 const clearPersistedBrowserState = async (page: Page) => {
+  if (page.isClosed()) {
+    return;
+  }
+
   await page.evaluate(() => {
     window.localStorage.clear();
     window.sessionStorage.clear();
@@ -153,12 +157,30 @@ export class OssLoader extends AbstractFiftyoneLoader {
       if (isRetry) {
         throw e;
       } else {
-        const ctx = page.context();
-        ctx.clearCookies();
-        ctx.clearPermissions();
-        await clearPersistedBrowserState(page);
-        await page.reload({ waitUntil: "domcontentloaded" });
-        await this.waitUntilGridVisible(page, datasetName, options, true);
+        if (page.isClosed()) {
+          throw e;
+        }
+
+        try {
+          const ctx = page.context();
+          await ctx.clearCookies();
+          await ctx.clearPermissions();
+          await clearPersistedBrowserState(page);
+
+          if (page.isClosed()) {
+            throw e;
+          }
+
+          await page.reload({ waitUntil: "domcontentloaded" });
+        } catch (cleanupError) {
+          if (page.isClosed()) {
+            throw e;
+          }
+
+          throw cleanupError;
+        }
+
+        return this.waitUntilGridVisible(page, datasetName, options, true);
       }
     }
 
