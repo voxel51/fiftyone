@@ -141,6 +141,7 @@ export class OssLoader extends AbstractFiftyoneLoader {
       searchParams: undefined,
       withGrid: true,
     };
+    const shouldPreserveModalFromUrl = Boolean(searchParams?.get("id"));
 
     await page.addInitScript(() => {
       let init = true;
@@ -201,9 +202,11 @@ export class OssLoader extends AbstractFiftyoneLoader {
       });
     }
 
-    // Defensive cleanup for cross-test modal contamination:
-    // if URL still carries an active modal id, close modal before dataset navigation.
-    await dismissModalIfPresent(page);
+    // Defensive cleanup for cross-test modal contamination.
+    // Skip this when the caller intentionally opens a modal via ?id=...
+    if (!shouldPreserveModalFromUrl) {
+      await dismissModalIfPresent(page);
+    }
 
     const pathname = await page.evaluate(() => window.location.pathname);
     if (pathname !== `/datasets/${datasetName}`) {
@@ -261,8 +264,10 @@ export class OssLoader extends AbstractFiftyoneLoader {
     }
 
     // The modal can still animate in after initial dataset navigation settles.
-    // Run a second defensive close pass so upcoming grid clicks are not intercepted.
-    await dismissModalIfPresent(page);
+    // Run a second defensive close pass unless this navigation explicitly requested a modal.
+    if (!shouldPreserveModalFromUrl) {
+      await dismissModalIfPresent(page);
+    }
 
     if (isEmptyDataset) {
       return;
