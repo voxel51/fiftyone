@@ -1,3 +1,13 @@
+# Immediate product questions
+
+-   Nomenclature - Taxonomy vs. Ontology
+-   Can we start with purely hierarchical/relationship instead of custom
+    logical DSL
+-   Referencing other ontologies is not a requirement currently
+-   Decisions on versioning
+
+---
+
 # Questions
 
 Summary of open questions for the ontology design. Each item has a short title
