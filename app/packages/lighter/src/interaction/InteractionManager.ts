@@ -194,7 +194,7 @@ export class InteractionManager {
   private readonly CLICK_THRESHOLD = 3; // pixels, dictates drag vs. click
   private readonly DRAG_TIME_THRESHOLD = 500; // ms, dictates drag vs. click
   private readonly DOUBLE_CLICK_TIME_THRESHOLD = 500; // ms
-  private readonly DOUBLE_CLICK_DISTANCE_THRESHOLD = 3; // pixels
+  private readonly DOUBLE_CLICK_DISTANCE_THRESHOLD = 10; // pixels
 
   private currentPixelCoordinates?: Point;
   private pendingQuickDraw?: {
