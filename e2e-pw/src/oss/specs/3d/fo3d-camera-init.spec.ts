@@ -17,7 +17,7 @@ import {
  * Camera initialization e2e tests.
  *
  * Validates that the 3D viewer initializes the camera correctly from various
- * sources, and that the camera position persists across sample navigations.
+ * sources, and that the camera position persists across sample navigations and explore/annotate mode changes.
  */
 
 /** The default fallback camera position when no other source is available. */
@@ -34,19 +34,10 @@ const basicScenePath = `/tmp/cam-init-scene-${basicDatasetName}.fo3d`;
 
 const scenePosDatasetName = getUniqueDatasetNameWithPrefix("cam-init-scenepos");
 const scenePosScenePath = `/tmp/cam-init-scenepos-${scenePosDatasetName}.fo3d`;
-const TEMP_FILE_PATHS = [
-  basicPlyMeshPath,
-  basicPlyPcdPath,
-  basicScenePath,
-  scenePosScenePath,
-];
-const DATASET_NAMES = [basicDatasetName, scenePosDatasetName];
 
 // Camera position and lookAt defined in the fo3d scene
 const SCENE_CAMERA_POSITION: [number, number, number] = [15, 10, 20];
 const SCENE_CAMERA_LOOK_AT: [number, number, number] = [1, 2, 3];
-
-// ─── test setup ────────────────────────────────────────────────────────────
 
 const test = base.extend<{
   grid: GridPom;

@@ -11,7 +11,7 @@ jobs:
   test-e2e:
     timeout-minutes: 90
     runs-on: ubuntu-latest # the standard runner's 14GB free disk space is not sufficient.  We create more free space with the `jlumbroso/free-disk-space` action as a step (below).
-    name: Test e2e (Mongo ${{ matrix.mongodb-version }})
+    name: Test e2e (Mongo ${{ matrix.mongodb-version }}, shard ${{ matrix.shard }}/3)
     env:
       FIFTYONE_DO_NOT_TRACK: true
       FIFTYONE_APP_DEFAULT_QUERY_PERFORMANCE: false
@@ -29,6 +29,7 @@ jobs:
       matrix:
         mongodb-version:
           - "latest"
+        shard: [1, 2, 3]
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -155,7 +156,7 @@ jobs:
         working-directory: e2e-pw
 
       - name: Run Playwright tests
-        run: yarn e2e
+        run: yarn e2e --shard=${{ matrix.shard }}/3
         working-directory: e2e-pw
 
       - name: Lint Playwright tests
@@ -166,6 +167,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-report-mongodb-${{ matrix.mongodb-version }}
+          name: playwright-report-mongodb-${{ matrix.mongodb-version }}-shard-${{ matrix.shard }}
           path: e2e-pw/playwright-report/
           retention-days: 30
