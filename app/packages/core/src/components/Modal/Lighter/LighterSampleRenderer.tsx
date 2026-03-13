@@ -160,7 +160,7 @@ const LighterSetupImpl = (props: {
         });
       }
     };
-  }, [scene, sampleId, setViewportState]);
+  }, [scene, sampleId]);
 
   return null;
 };

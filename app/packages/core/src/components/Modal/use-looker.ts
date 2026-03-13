@@ -141,12 +141,12 @@ function useLooker<L extends fos.Lookers>({
     return () => {
       if (looker?.state?.loaded && looker.state.dimensions) {
         setViewportState({
-          sampleId: sample.sample._id,
+          sampleId: sampleRef.current.sample._id,
           ...looker.getViewportState(),
         });
       }
     };
-  }, [looker, sample, setViewportState]);
+  }, [looker]);
 
   // Seed the viewport to restore when the Looker first fully loads.
   useEffect(() => {

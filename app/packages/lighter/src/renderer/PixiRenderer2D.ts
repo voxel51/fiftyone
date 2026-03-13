@@ -705,6 +705,7 @@ export class PixiRenderer2D implements Renderer2D {
    */
   setViewportState({ scale, panX, panY }: ViewportState): void {
     if (!this.viewport || this.viewport.destroyed) return;
+    if (!scale || !isFinite(scale)) return;
 
     const clampedScale = Math.min(
       Math.max(scale, PixiRenderer2D.ZOOM_MIN),
