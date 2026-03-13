@@ -85,6 +85,7 @@ test.describe.serial("sparse groups tests", () => {
       modal,
     }) => {
       await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+      await grid.selectSlice("first");
       await grid.assert.isEntryCountTextEqualTo("1 group with slice");
       await grid.selectSlice("shared");
       await grid.assert.isEntryCountTextEqualTo("2 groups with slice");
@@ -111,6 +112,7 @@ test.describe.serial("sparse groups tests", () => {
       modal,
     }) => {
       await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+      await grid.selectSlice("first");
       await grid.assert.isEntryCountTextEqualTo("1 group with slice");
       await grid.selectSlice("second");
       await grid.assert.isEntryCountTextEqualTo("1 group with slice");
