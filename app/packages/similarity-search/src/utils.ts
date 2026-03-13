@@ -1,3 +1,4 @@
+import { getFetchParameters } from "@fiftyone/utilities";
 import { SimilarityRun, DateFilterPreset, QueryType } from "./types";
 import { DAY_MS } from "./constants";
 
@@ -113,6 +114,12 @@ export type BuildExecutionParamsInput = {
   runName: string;
   negativeQueryIds: string[];
 };
+
+export function getMediaUrl(filepath: string): string {
+  const params = getFetchParameters();
+  const path = `${params.pathPrefix}/media`.replaceAll("//", "/");
+  return `${params.origin}${path}?filepath=${encodeURIComponent(filepath)}`;
+}
 
 export const buildExecutionParams = (
   input: BuildExecutionParamsInput

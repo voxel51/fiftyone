@@ -8,14 +8,11 @@ import GridView from "@mui/icons-material/GridView";
 import ImageSearch from "@mui/icons-material/ImageSearch";
 import OpenInNew from "@mui/icons-material/OpenInNew";
 import Refresh from "@mui/icons-material/Refresh";
-import ImageList from "@mui/material/ImageList";
-import ImageListItem from "@mui/material/ImageListItem";
 import {
   usePromptOperatorInput,
   useFirstExistingUri,
 } from "@fiftyone/operators";
 import { scrollable } from "@fiftyone/components";
-import { getFetchParameters } from "@fiftyone/utilities";
 import {
   Button,
   Checkbox,
@@ -38,16 +35,17 @@ import React, {
   useState,
 } from "react";
 import { BrainKeyConfig, SimilarityRun, RunFilterState } from "../types";
+import {
+  BRAIN_COMPUTE_SIMILARITY_URI,
+  BRAIN_PLUGIN_URL,
+  DOCS_URL,
+} from "../constants";
 import { formatQuery, formatTime } from "../utils";
+import SampleThumbnails from "./SampleThumbnails";
 import StatusBadge from "./StatusBadge";
 import FilterBar from "./FilterBar";
 import BulkActionBar from "./BulkActionBar";
 import * as s from "./styles";
-
-const BRAIN_COMPUTE_SIMILARITY_URI = "@voxel51/brain/compute_similarity";
-const BRAIN_PLUGIN_URL =
-  "https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/brain";
-const DOCS_URL = "https://docs.voxel51.com/brain.html#similarity";
 
 type RunListProps = {
   runs: SimilarityRun[];
@@ -95,59 +93,6 @@ const ExpandLessIcon = () => (
 /** Tooltip content with explicit dark-mode text color (Voodo tooltip
  *  doesn't set one, so it inherits black from the browser default). */
 const tip = (text: string) => <span style={s.tooltipText}>{text}</span>;
-
-/** Always proxy through the media endpoint — handles gs://, s3://, etc. */
-function getMediaUrl(filepath: string): string {
-  const params = getFetchParameters();
-  const path = `${params.pathPrefix}/media`.replaceAll("//", "/");
-  return `${params.origin}${path}?filepath=${encodeURIComponent(filepath)}`;
-}
-
-const THUMB_SIZE = 36;
-const THUMB_GAP = 4;
-const THUMB_SINGLE_ROW_MAX = 10;
-
-function SampleThumbnails({
-  ids,
-  sampleMedia,
-}: {
-  ids: string[];
-  sampleMedia: Record<string, string>;
-}) {
-  if (!ids.length) return null;
-
-  const useOneRow = ids.length <= THUMB_SINGLE_ROW_MAX;
-  const cols = useOneRow ? ids.length : Math.ceil(ids.length / 2);
-  const rows = useOneRow ? 1 : 2;
-
-  return (
-    <ImageList
-      cols={cols}
-      rowHeight={THUMB_SIZE}
-      gap={THUMB_GAP}
-      sx={{
-        gridTemplateColumns: `repeat(${cols}, ${THUMB_SIZE}px) !important`,
-        overflowX: "auto",
-        overflowY: "hidden",
-        maxHeight: THUMB_SIZE * rows + THUMB_GAP * (rows - 1),
-        m: 0,
-      }}
-    >
-      {ids.map((id) => {
-        const filepath = sampleMedia[id];
-        return (
-          <ImageListItem key={id}>
-            {filepath ? (
-              <img src={getMediaUrl(filepath)} alt="" style={s.thumbnail} />
-            ) : (
-              <div style={s.thumbnailPlaceholder} />
-            )}
-          </ImageListItem>
-        );
-      })}
-    </ImageList>
-  );
-}
 
 /**
  * Isolated component so `usePromptOperatorInput` is only called when the
