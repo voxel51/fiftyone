@@ -1125,6 +1125,26 @@ class ToPILImage(object):
         return F.to_pil_image(img)
 
 
+def to_rgb_pil(img):
+    """Converts image-like input to an RGB PIL image."""
+    if isinstance(img, (str, os.PathLike)):
+        return _load_image(os.fspath(img), use_numpy=False, force_rgb=True)
+
+    return ToPILImage()(img).convert("RGB")
+
+
+def imgs_to_rgb_pil(imgs):
+    """Converts a batch of image-like inputs to RGB PIL images."""
+    pil_images = []
+    sizes = []
+    for img in imgs:
+        pil = to_rgb_pil(img)
+        pil_images.append(pil)
+        sizes.append((pil.width, pil.height))
+
+    return pil_images, sizes
+
+
 class MinResize(object):
     """Transform that resizes the PIL image or torch Tensor, if necessary, so
     that its minimum dimensions are at least the specified size.
@@ -1379,6 +1399,76 @@ class ClassifierOutputProcessor(OutputProcessor):
         return preds
 
 
+def _clip_box_to_frame(box, frame_size):
+    width, height = frame_size
+
+    x1, y1, x2, y2 = map(float, box)
+    x1 = min(max(x1, 0.0), width)
+    y1 = min(max(y1, 0.0), height)
+    x2 = min(max(x2, 0.0), width)
+    y2 = min(max(y2, 0.0), height)
+    if x2 <= x1 or y2 <= y1:
+        return None
+
+    return x1, y1, x2, y2
+
+
+def _crop_detection_mask(mask, box, mask_thresh=0.5):
+    mask_full = np.asarray(mask)
+    if mask_full.ndim > 2:
+        mask_full = np.squeeze(mask_full)
+    if mask_full.ndim != 2:
+        return None
+
+    x1, y1, x2, y2 = box
+    r1 = max(0, min(mask_full.shape[0], int(np.floor(y1))))
+    r2 = max(0, min(mask_full.shape[0], int(np.ceil(y2))))
+    c1 = max(0, min(mask_full.shape[1], int(np.floor(x1))))
+    c2 = max(0, min(mask_full.shape[1], int(np.ceil(x2))))
+    if r1 >= r2 or c1 >= c2:
+        return None
+
+    mask_crop = mask_full[r1:r2, c1:c2]
+    if mask_crop.size == 0:
+        return None
+
+    if mask_crop.dtype != bool:
+        mask_crop = mask_crop > mask_thresh
+
+    return mask_crop
+
+
+def _make_frame_detection(
+    label, box, frame_size, confidence=None, mask=None, mask_thresh=0.5
+):
+    width, height = frame_size
+
+    clipped_box = _clip_box_to_frame(box, frame_size)
+    if clipped_box is None:
+        return None
+
+    x1, y1, x2, y2 = clipped_box
+    kwargs = {
+        "label": label,
+        "bounding_box": [
+            x1 / width,
+            y1 / height,
+            (x2 - x1) / width,
+            (y2 - y1) / height,
+        ],
+        "confidence": (
+            float(confidence) if confidence is not None else None
+        ),
+    }
+
+    if mask is not None:
+        mask_crop = _crop_detection_mask(mask, clipped_box, mask_thresh)
+        if mask_crop is not None:
+            kwargs["mask"] = mask_crop
+
+    return fol.Detection(**kwargs)
+
+
 class DetectorOutputProcessor(OutputProcessor):
     """Output processor for object detectors.
 
@@ -1429,8 +1519,6 @@ class DetectorOutputProcessor(OutputProcessor):
         ]
 
     def _parse_output(self, output, frame_size, confidence_thresh, classes):
-        width, height = frame_size
-
         boxes = output["boxes"].detach().cpu().numpy()
         labels = output["labels"].detach().cpu().numpy()
         scores = output["scores"].detach().cpu().numpy()
@@ -1445,21 +1533,13 @@ class DetectorOutputProcessor(OutputProcessor):
             if classes is not None and label not in classes:
                 continue
 
-            x1, y1, x2, y2 = box
-            bounding_box = [
-                x1 / width,
-                y1 / height,
-                (x2 - x1) / width,
-                (y2 - y1) / height,
-            ]
-
-            detections.append(
-                fol.Detection(
-                    label=label,
-                    bounding_box=bounding_box,
-                    confidence=score,
-                )
+            detection = _make_frame_detection(
+                label, box, frame_size, confidence=score
             )
+            if detection is None:
+                continue
+
+            detections.append(detection)
 
         return fol.Detections(detections=detections)
 
@@ -1519,8 +1599,6 @@ class InstanceSegmenterOutputProcessor(OutputProcessor):
         ]
 
     def _parse_output(self, output, frame_size, confidence_thresh, classes):
-        width, height = frame_size
-
         boxes = output["boxes"].detach().cpu().numpy()
         labels = output["labels"].detach().cpu().numpy()
         masks = output["masks"].detach().cpu().numpy()
@@ -1543,30 +1621,18 @@ class InstanceSegmenterOutputProcessor(OutputProcessor):
             if classes is not None and label not in classes:
                 continue
 
-            x1, y1, x2, y2 = box
-            bounding_box = [
-                x1 / width,
-                y1 / height,
-                (x2 - x1) / width,
-                (y2 - y1) / height,
-            ]
-
-            mask = np.squeeze(mask, axis=0)[
-                int(round(y1)) : int(round(y2)),
-                int(round(x1)) : int(round(x2)),
-            ]
-
-            if mask.dtype != bool:
-                mask = mask > self.mask_thresh
-
-            detections.append(
-                fol.Detection(
-                    label=label,
-                    bounding_box=bounding_box,
-                    mask=mask,
-                    confidence=score,
-                )
+            detection = _make_frame_detection(
+                label,
+                box,
+                frame_size,
+                confidence=score,
+                mask=mask,
+                mask_thresh=self.mask_thresh,
             )
+            if detection is None:
+                continue
+
+            detections.append(detection)
 
         return fol.Detections(detections=detections)
 
