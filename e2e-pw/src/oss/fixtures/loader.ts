@@ -260,6 +260,10 @@ export class OssLoader extends AbstractFiftyoneLoader {
       }
     }
 
+    // The modal can still animate in after initial dataset navigation settles.
+    // Run a second defensive close pass so upcoming grid clicks are not intercepted.
+    await dismissModalIfPresent(page);
+
     if (isEmptyDataset) {
       return;
     }
