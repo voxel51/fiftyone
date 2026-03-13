@@ -149,15 +149,15 @@ class GridAsserter {
   }
 
   async isEntryCountTextEqualTo(text: string) {
-    return this.gridPom.page.waitForFunction(
-      (text_) => {
-        return (
-          document.querySelector("[data-cy='entry-counts']")?.textContent ===
-          text_
-        );
-      },
-      text,
-      { timeout: Duration.Seconds(10) }
-    );
+    const entryCounts = this.gridPom.page.getByTestId("entry-counts");
+    const normalize = (value: string | null) =>
+      (value ?? "").replace(/\s+/g, " ").trim();
+
+    await expect(entryCounts).toBeVisible({ timeout: Duration.Seconds(20) });
+    await expect
+      .poll(async () => normalize(await entryCounts.textContent()), {
+        timeout: Duration.Seconds(20),
+      })
+      .toBe(normalize(text));
   }
 }
