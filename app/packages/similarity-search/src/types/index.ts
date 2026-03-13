@@ -42,6 +42,7 @@ export type SimilarityRun = {
   source_view?: Record<string, unknown>[];
   operator_run_id?: string;
   status_details?: string;
+  created_by?: string;
 };
 
 /**
