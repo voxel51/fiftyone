@@ -6,6 +6,7 @@ import {
   useQueryPerformanceSampleLimit,
 } from "@fiftyone/state";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { jotaiStore } from "@fiftyone/state/src/jotai";
 import { useCallback, useMemo } from "react";
 import { usePrimitiveController } from "./Edit/useActivePrimitive";
 import useSave from "./Edit/useSave";
@@ -107,12 +108,16 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
   const sampleScanLimit = useQueryPerformanceSampleLimit();
   const canManageSchema = useCanManageSchema();
   const schemaResolver = useSchemaResolver();
-  const mgmtOps = useAtomValue(schemaManagementOpsAtom);
   const { isPrimitive, setActivePrimitive } = usePrimitiveController();
   const { reset: clearStaleMutations } = useSampleMutationManager();
 
   const activateField = useCallback(
     async (field: string): Promise<EnterResult> => {
+      // Read management ops from the store at execution time to avoid
+      // stale closure — the atom may be set by SchemaManagementProvider's
+      // effect after this callback was created.
+      const mgmtOps = jotaiStore.get(schemaManagementOpsAtom);
+
       if (!canManageSchema || !mgmtOps) {
         return {
           status: InitializationStatus.InsufficientPermissions,
@@ -166,7 +171,6 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
     [
       canManageSchema,
       isPrimitive,
-      mgmtOps,
       sampleScanLimit,
       schemaResolver,
       setActiveFields,

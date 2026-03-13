@@ -13,12 +13,10 @@ import ImportSchema, { useShowImportSchema } from "./ImportSchema";
 import LabelEntry from "./LabelEntry";
 import LoadingEntry from "./LoadingEntry";
 import PrimitiveEntry from "./PrimitiveEntry";
-import SchemaManagementProvider from "./SchemaManagementProvider";
 import SchemaManager from "./SchemaManager";
 import { labelSchemasData, showModal } from "./state";
 import type { AnnotationDisabledReason } from "./useCanAnnotate";
 import useEntries from "./useEntries";
-import useCanManageSchema from "./useCanManageSchema";
 import useSourceFieldToActivate from "./useSourceFieldToActivate";
 import useLabels from "./useLabels";
 import { usePrimitivesCount } from "./usePrimitivesCount";
@@ -154,7 +152,6 @@ const Annotate = ({ disabledReason }: AnnotateProps) => {
   const loading = useAtomValue(labelSchemasData) === null;
   const isEditingValue = useAtomValue(isEditing);
 
-  const canManageSchema = useCanManageSchema();
   const contextManager = useAnnotationContextManager();
   const { clear: clearUndo } = useUndoRedo(KnownContexts.ModalAnnotate);
 
@@ -183,7 +180,6 @@ const Annotate = ({ disabledReason }: AnnotateProps) => {
 
   return (
     <>
-      {canManageSchema && <SchemaManagementProvider key="mgmt-provider" />}
       {isEditingValue && <Edit key="edit" />}
       {showSetup ? (
         <ImportSchema
