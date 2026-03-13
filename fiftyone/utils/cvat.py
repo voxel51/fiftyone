@@ -5923,6 +5923,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         frame_id = frame_data.get("frame_id", None)
 
         label = None
+        label_type = None
 
         if anno_type in ("shapes", "track"):
             shape_type = anno["type"]
@@ -5962,8 +5963,32 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 label_type = "detections"
                 label = cvat_shape.to_detection()
             elif shape_type == "mask":
-                label_type = "detections"
-                label = cvat_shape.to_instance()
+                if expected_label_type in (
+                    "polyline",
+                    "polylines",
+                    "polygon",
+                    "polygons",
+                ):
+                    # Convert mask to polyline/polygon
+                    detection = cvat_shape.to_instance()
+                    if expected_label_type in ("polyline", "polylines"):
+                        filled = False
+                    else:
+                        filled = True
+
+                    label_type = "polylines"
+                    label = detection.to_polyline(tolerance=2, filled=filled)
+                    label.id = detection.id
+                elif expected_label_type == "segmentation":
+                    # Convert mask to a piece of a segmentation mask
+                    detection = cvat_shape.to_instance()
+                    label_type = "segmentation"
+                    label = detection.to_polyline(tolerance=2, filled=True)
+                    label.id = detection.id
+                else:
+                    # Default: keep as instance detection with mask
+                    label_type = "detections"
+                    label = cvat_shape.to_instance()
             elif shape_type == "polygon":
                 if expected_label_type == "segmentation":
                     # A piece of a segmentation mask
