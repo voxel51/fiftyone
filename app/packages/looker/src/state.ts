@@ -534,7 +534,7 @@ export interface FrameChunkResponse extends FrameChunk {
  * when switching between Explore (Looker) and Annotate (Lighter) modes.
  */
 export interface ViewportState {
-  scale: number;
-  panX: number;
-  panY: number;
+  readonly scale: number;
+  readonly panX: number;
+  readonly panY: number;
 }

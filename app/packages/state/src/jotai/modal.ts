@@ -33,7 +33,7 @@ export const modalMode = atomWithStorage<ModalMode>(
  * modes (EXPLORE vs ANNOTATE).
  */
 export interface ModalViewportState extends ViewportState {
-  sampleId: string;
+  readonly sampleId: string;
 }
 
 /**
