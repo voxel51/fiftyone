@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import { test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
@@ -14,6 +15,11 @@ const groupSpecs = [1, 2, 3].map((index) => ({
   plyName: `scene-${index}-ply`,
   offset: index * 0.15,
 }));
+const TEMP_FILE_PATHS = groupSpecs.flatMap((spec) => [
+  spec.imagePath,
+  spec.pcdPath,
+  spec.plyPath,
+]);
 
 const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
   grid: async ({ page, eventUtils }, use) => {
@@ -144,8 +150,35 @@ dataset.add_samples(samples)
   `);
 });
 
-test.afterAll(async ({ foWebServer }) => {
-  await foWebServer.stopWebServer();
+test.afterAll(async ({ fiftyoneLoader, foWebServer }) => {
+  try {
+    await fiftyoneLoader.executePythonCode(`
+import fiftyone as fo
+
+if fo.dataset_exists("${datasetName}"):
+    fo.delete_dataset("${datasetName}")
+    `);
+  } catch (error) {
+    void error;
+  }
+
+  try {
+    await foWebServer.stopWebServer();
+  } catch (error) {
+    void error;
+  }
+
+  try {
+    for (const filePath of TEMP_FILE_PATHS) {
+      try {
+        fs.rmSync(filePath, { force: true });
+      } catch (error) {
+        void error;
+      }
+    }
+  } catch (error) {
+    void error;
+  }
 });
 
 test.describe.serial("grouped point-cloud and ply", () => {
@@ -157,8 +190,6 @@ test.describe.serial("grouped point-cloud and ply", () => {
     grid,
     modal,
   }) => {
-    const seenGroupIndices = new Set<number>();
-
     const assertSingleSliceState = async (
       index: number,
       expectedSlice: "image" | "pcd" | "ply"
@@ -171,10 +202,7 @@ test.describe.serial("grouped point-cloud and ply", () => {
           ? spec.pcdName
           : spec.plyName;
 
-      if (!seenGroupIndices.has(index)) {
-        await modal.looker3dControls.waitForAllAssetsLoaded();
-        seenGroupIndices.add(index);
-      }
+      await modal.looker3dControls.waitForAllAssetsLoaded();
 
       await modal.assert.verifyModalSamplePluginTitle(expectedSlice, {
         pinned: true,
@@ -187,10 +215,23 @@ test.describe.serial("grouped point-cloud and ply", () => {
       await modal.sidebar.assert.verifySidebarFieldCount("detections", 1);
     };
 
+    const assertImageSliceState = async (index: number) => {
+      const spec = groupSpecs[index];
+
+      await modal.assert.verifyModalSamplePluginTitle("image", {
+        pinned: true,
+      });
+      await modal.sidebar.assert.waitUntilSidebarEntryTextEqualsMultiple({
+        "group.name": "image",
+        name: spec.imageName,
+        scene: spec.scene,
+      });
+      await modal.sidebar.assert.verifySidebarFieldCount("detections", 1);
+    };
+
     await grid.openFirstSample();
     await modal.waitForSampleLoadDomAttribute(true);
     await modal.looker3dControls.waitForAllAssetsLoaded();
-    seenGroupIndices.add(0);
 
     await modal.assert.verifyModalSamplePluginTitle("image", { pinned: true });
     await modal.looker3dControls.assert.verifySliceSelectorLabel("pcd");
@@ -231,6 +272,23 @@ test.describe.serial("grouped point-cloud and ply", () => {
     await modal.looker3dControls.assert.verifySliceChecked("ply");
     await modal.looker3dControls.closeSliceSelector();
 
+    await modal.groupLooker.click();
+    await assertImageSliceState(0);
+    await modal.clickOnLooker3d();
+    await modal.looker3dControls.waitForAllAssetsLoaded();
+    await modal.assert.verifyModalSamplePluginTitle("pcd and ply", {
+      pinned: true,
+    });
+    await modal.sidebar.assert.verifySidebarEntryTexts({
+      "pcd-group.name": "pcd",
+      "ply-group.name": "ply",
+      "pcd-name": groupSpecs[0].pcdName,
+      "ply-name": groupSpecs[0].plyName,
+      "pcd-scene": groupSpecs[0].scene,
+      "ply-scene": groupSpecs[0].scene,
+    });
+    await modal.sidebar.assert.verifySidebarFieldCount("detections", 2);
+
     await modal.toggleLooker3dSlice("pcd");
     await assertSingleSliceState(0, "ply");
     await modal.looker3dControls.assert.verifySliceSelectorLabel("ply");
@@ -238,6 +296,11 @@ test.describe.serial("grouped point-cloud and ply", () => {
     await modal.looker3dControls.assert.verifySliceChecked("pcd", false);
     await modal.looker3dControls.assert.verifySliceChecked("ply");
     await modal.looker3dControls.closeSliceSelector();
+
+    await modal.groupLooker.click();
+    await assertImageSliceState(0);
+    await modal.clickOnLooker3d();
+    await assertSingleSliceState(0, "ply");
 
     await modal.navigateNextSample();
     await assertSingleSliceState(1, "ply");
