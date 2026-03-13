@@ -8,6 +8,24 @@ type SavedCameraState = {
   target: number[];
 };
 
+const SAVED_CAMERA_STATE_VALIDATOR_BODY = `
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed?.position) &&
+      parsed.position.length === 3 &&
+      Array.isArray(parsed?.target) &&
+      parsed.target.length === 3
+      ? parsed
+      : null;
+  } catch {
+    return null;
+  }
+`;
+
 export function positionsAreClose(
   a: CameraPosition,
   b: CameraPosition,
@@ -80,28 +98,16 @@ export class Renderer3dPom {
   async getSavedCameraState(
     datasetName: string
   ): Promise<SavedCameraState | null> {
-    return this.page.evaluate((name) => {
-      const raw = localStorage.getItem(`${name}-fo3d-camera-position`);
-      if (!raw) {
-        return null;
-      }
+    return this.page.evaluate(
+      ({ name, validatorBody }) => {
+        const validateSavedCameraState = new Function("raw", validatorBody);
 
-      try {
-        const parsed = JSON.parse(raw);
-        if (
-          !Array.isArray(parsed?.position) ||
-          !Array.isArray(parsed?.target) ||
-          parsed.position.length !== 3 ||
-          parsed.target.length !== 3
-        ) {
-          return null;
-        }
-
-        return parsed as SavedCameraState;
-      } catch {
-        return null;
-      }
-    }, datasetName);
+        return validateSavedCameraState(
+          localStorage.getItem(`${name}-fo3d-camera-position`)
+        );
+      },
+      { name: datasetName, validatorBody: SAVED_CAMERA_STATE_VALIDATOR_BODY }
+    ) as Promise<SavedCameraState | null>;
   }
 
   async waitForSavedCameraState(
@@ -109,25 +115,16 @@ export class Renderer3dPom {
     timeout = 10000
   ): Promise<SavedCameraState> {
     await this.page.waitForFunction(
-      (name) => {
-        const raw = localStorage.getItem(`${name}-fo3d-camera-position`);
-        if (!raw) {
-          return false;
-        }
+      ({ name, validatorBody }) => {
+        const validateSavedCameraState = new Function("raw", validatorBody);
 
-        try {
-          const parsed = JSON.parse(raw);
-          return (
-            Array.isArray(parsed?.position) &&
-            parsed.position.length === 3 &&
-            Array.isArray(parsed?.target) &&
-            parsed.target.length === 3
-          );
-        } catch {
-          return false;
-        }
+        return Boolean(
+          validateSavedCameraState(
+            localStorage.getItem(`${name}-fo3d-camera-position`)
+          )
+        );
       },
-      datasetName,
+      { name: datasetName, validatorBody: SAVED_CAMERA_STATE_VALIDATOR_BODY },
       { timeout }
     );
 
@@ -147,7 +144,7 @@ export class Renderer3dPom {
     }, datasetName);
   }
 
-  async dragCameraBy(deltaX: number, deltaY: number) {
+  async dragCameraBy(deltaX: number, deltaY: number): Promise<void> {
     await this.looker3d.waitFor({ state: "visible" });
 
     const box = await this.looker3d.boundingBox();
@@ -158,9 +155,13 @@ export class Renderer3dPom {
     const startX = box.x + box.width / 2;
     const startY = box.y + box.height / 2;
 
-    await this.page.mouse.move(startX, startY);
+    // Ease into the drag and then interpolate a longer path so the renderer
+    // consistently receives pointer movement events during camera rotation.
+    await this.page.mouse.move(startX, startY, { steps: 6 });
     await this.page.mouse.down();
-    await this.page.mouse.move(startX + deltaX, startY + deltaY);
+    await this.page.mouse.move(startX + deltaX, startY + deltaY, {
+      steps: 18,
+    });
     await this.page.mouse.up();
   }
 
