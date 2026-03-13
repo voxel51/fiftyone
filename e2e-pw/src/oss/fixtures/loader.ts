@@ -100,7 +100,7 @@ export class OssLoader extends AbstractFiftyoneLoader {
     datasetName: string,
     options?: WaitUntilGridVisibleOptions,
     isRetry?: boolean
-  ) {
+  ): Promise<void> {
     const { isEmptyDataset, searchParams, withGrid } = options ?? {
       isEmptyDataset: false,
       searchParams: undefined,

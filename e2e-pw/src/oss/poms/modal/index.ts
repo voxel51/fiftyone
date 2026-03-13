@@ -126,6 +126,8 @@ export class ModalPom {
       }
 
       await this.page.keyboard.press("c");
+      // Controls take time to hide
+      // eslint-disable-next-line playwright/no-wait-for-timeout
       await this.page.waitForTimeout(300);
 
       attempts++;
