@@ -3,8 +3,6 @@
  */
 
 import { HorizontalAlign, Jimp, loadFont, VerticalAlign } from "jimp";
-import path from "path";
-import { ensureDirExists } from "../utils";
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const fonts = require("jimp/fonts");
 
@@ -98,8 +96,6 @@ export const createBlankImage = async (options: {
       maxHeight: height,
     });
   }
-
-  ensureDirExists(path.dirname(outputPath));
 
   await image.write(outputPath as `${string}.${string}`);
   const endTime = performance.now();

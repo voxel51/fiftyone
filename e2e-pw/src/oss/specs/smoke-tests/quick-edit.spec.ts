@@ -154,7 +154,7 @@ test.describe.serial("quick edit", () => {
     await modal.sampleCanvas.assert.hasScreenshot("classification-lighter.png");
   });
 
-  test("detections via tooltip", async ({ modal, page }) => {
+  test("detections via tooltip", async ({ modal }) => {
     // Init
     await modal.sampleCanvas.move(0.9, 0.9);
     await modal.sampleCanvas.assert.hasCursor("default");

@@ -2,9 +2,11 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import os from "os";
+import path from "path";
 import { OssLoader } from "src/oss/fixtures/loader";
 import { createBlankImage } from "../media-factory/image";
-import { createId, indexToId } from "../utils";
+import { createId, ensureDirExists, indexToId } from "../utils";
 
 /**
  * Represents a minimal, unpopulated dataset sample scaffold.
@@ -211,10 +213,10 @@ const createBlankDataset = (() => {
     numSamples = 1,
     numbered = false,
     savedViews = {},
-    schema,
+    schema = {},
     withSampleData = () => ({}),
   }: DatasetOptions) => {
-    if (numSamples < 1 || !Number.isInteger(numSamples)) {
+    if (numSamples < 0 || !Number.isInteger(numSamples)) {
       throw new Error(
         `Expected 'numSamples' to be an integer, but got ${numSamples}`
       );
@@ -222,9 +224,13 @@ const createBlankDataset = (() => {
 
     const promises = new Array<Promise<void>>();
     const sampleData = new Array<string>();
+    const sampleFilepaths = new Array<string>();
+
+    const outputDir = path.join(os.tmpdir(), datasetName);
+    await ensureDirExists(outputDir);
 
     for (let index = 0; index < numSamples; index++) {
-      const filepath = `/tmp/${datasetName}/${index}.png`;
+      const filepath = path.join(outputDir, `${index}.png`);
       promises.push(
         createBlankImage({
           outputPath: filepath,
@@ -238,6 +244,7 @@ const createBlankDataset = (() => {
         filepath,
         index,
       };
+      sampleFilepaths.push(filepath);
       sampleData.push(
         `sample_data.append(json_util.loads('${JSON.stringify(
           withSampleData(blankSample, { createId })
@@ -259,7 +266,7 @@ const createBlankDataset = (() => {
       addFields.push(`
     dataset.add_sample_field(
         "${path}", fo.${fieldType},
-        embedded_doc_type=fo.${embeddedDocType}
+        embedded_doc_type=${embeddedDocType ? "fo." : ""}${embeddedDocType}
     )`);
     }
 
@@ -285,13 +292,15 @@ const createBlankDataset = (() => {
     for idx in range(0, ${numSamples}):
         sample = fo.Sample(
             _id=ObjectId(f"{idx:024x}"),
-            filepath=f"/tmp/${datasetName}/{idx}.png",
+            filepath="${sampleFilepaths}",
             index=idx
         )
         sample.created_at = now
         sample.last_modified_at = now
         samples.append(sample)
     
+    # ensure the "fixed" IDs are used so linking by sample ID is easy works
+    # requires a direct call to dataset._make_dict
     dataset._sample_collection.insert_many(
         [
             dict(**dataset._make_dict(sample, include_id=True), **data)
