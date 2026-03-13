@@ -63,6 +63,7 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
   fs.writeFileSync(basicPlyPcdPath, getPlyPointCloud());
 
   // ── Dataset 1: no camera props → camera should init from bbox ──
+  // ── Dataset 2: explicit camera.position + camera.look_at in fo3d ──
   await fiftyoneLoader.executePythonCode(`
 import fiftyone as fo
 
@@ -83,14 +84,9 @@ scene.write("${basicScenePath}")
 sample1 = fo.Sample(filepath="${basicScenePath}", name="sample1")
 sample2 = fo.Sample(filepath="${basicScenePath}", name="sample2")
 dataset.add_samples([sample1, sample2])
-  `);
 
-  // ── Dataset 2: explicit camera.position + camera.look_at in fo3d ──
-  await fiftyoneLoader.executePythonCode(`
-import fiftyone as fo
-
-dataset = fo.Dataset("${scenePosDatasetName}")
-dataset.persistent = True
+dataset2 = fo.Dataset("${scenePosDatasetName}")
+dataset2.persistent = True
 
 scene = fo.Scene()
 mesh = fo.PlyMesh("mesh", "${basicPlyMeshPath}")
@@ -104,7 +100,7 @@ scene.camera = fo.PerspectiveCamera(
 scene.write("${scenePosScenePath}")
 
 sample = fo.Sample(filepath="${scenePosScenePath}", name="sample-with-cam")
-dataset.add_samples([sample])
+dataset2.add_samples([sample])
   `);
 });
 
@@ -115,6 +111,11 @@ test.afterAll(async ({ foWebServer }) => {
 // ─── tests ─────────────────────────────────────────────────────────────────
 
 test.describe.serial("camera initialization", () => {
+  test.afterEach(async ({ page, modal }) => {
+    await modal.close({ ignoreError: true });
+    await page.reload();
+  });
+
   test("fresh load computes camera from bounding box", async ({
     page,
     grid,
