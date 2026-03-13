@@ -22,6 +22,8 @@ export class MockRenderer2D {
   private tickHandlers: (() => void)[] = [];
   private containers = new Map<string, any>();
   private scale = 1;
+  private panX = 0;
+  private panY = 0;
   private containerDimensions = { width: 800, height: 600 };
 
   constructor(canvas?: HTMLCanvasElement) {
@@ -189,8 +191,10 @@ export class MockRenderer2D {
     return { scale: this.scale, panX: 0, panY: 0 };
   }
 
-  setViewportState({ scale }: ViewportState): void {
+  setViewportState({ scale, panX, panY }: ViewportState): void {
     this.scale = scale;
+    this.panX = panX;
+    this.panY = panY;
   }
 
   screenToWorld(screenPoint: Point): Point {
