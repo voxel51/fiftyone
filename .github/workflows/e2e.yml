@@ -43,6 +43,17 @@ jobs:
         with:
           large-packages: false
 
+      - name: Compute app tree hash
+        id: app-tree-hash
+        run: echo "hash=$(git rev-parse HEAD:app)" >> $GITHUB_OUTPUT
+
+      - name: Cache built app static assets
+        id: app-static-cache
+        uses: actions/cache@v5
+        with:
+          path: fiftyone/server/static
+          key: app-static-${{ runner.os }}-${{ steps.app-tree-hash.outputs.hash }}
+
       - name: Cache Node Modules
         id: app-node-cache
         uses: actions/cache@v5
@@ -53,11 +64,12 @@ jobs:
           key: node-modules-${{ hashFiles('app/yarn.lock') }}
 
       - name: Install app
-        if: steps.app-node-cache.outputs.cache-hit != 'true'
+        if: steps.app-static-cache.outputs.cache-hit != 'true' && steps.app-node-cache.outputs.cache-hit != 'true'
         run: yarn install
         working-directory: app
 
       - name: Build app
+        if: steps.app-static-cache.outputs.cache-hit != 'true'
         run: make app
 
       - name: Bundle built app static assets
