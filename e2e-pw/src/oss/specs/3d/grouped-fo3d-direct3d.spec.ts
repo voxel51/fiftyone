@@ -271,7 +271,6 @@ test.describe.serial("grouped fo3d and direct 3d", () => {
     await grid.openFirstSample();
     await modal.waitForSampleLoadDomAttribute(true);
     await modal.looker3dControls.waitForAllAssetsLoaded();
-    seenGroupIndices.add(0);
 
     await modal.assert.verifyModalSamplePluginTitle("image", { pinned: true });
     await modal.looker3dControls.assert.verifySliceSelectorLabel("fo3d_left");
@@ -310,11 +309,9 @@ test.describe.serial("grouped fo3d and direct 3d", () => {
 
     await navigateMixedState("forward", 1);
     await assertFo3dAndDirectState(1);
-    seenGroupIndices.add(1);
 
     await navigateMixedState("forward", 2);
     await assertFo3dAndDirectState(2);
-    seenGroupIndices.add(2);
 
     await navigateMixedState("backward", 1);
     await assertFo3dAndDirectState(1, false);
