@@ -108,7 +108,7 @@ export const useModalViewport = (): ModalViewportState | null =>
   useAtomValue(__unsafeModalViewportAtom);
 
 /**
- * Returns a setter for persisting the modal viewport (zoom/pan) state.
+ * Setter for persisting the modal viewport (zoom/pan) state.
  */
 export const useSaveModalViewport = () =>
   useSetAtom(__unsafeModalViewportAtom);
