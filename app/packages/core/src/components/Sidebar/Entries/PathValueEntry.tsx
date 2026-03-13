@@ -410,6 +410,8 @@ const Loadable = ({ path }: { path: string }) => {
 const useData = <T,>(path: string): T => {
   const keys = path.split(".");
   const loadable = useRecoilValueLoadable(fos.activeModalSidebarSample);
+  const field = fos.useAssertedRecoilValue(fos.field(keys[0]));
+  const isList = useRecoilValue(fos.isOfDocumentFieldList(path));
 
   if (loadable.state === "loading") {
     throw loadable.contents;
@@ -453,9 +455,9 @@ const PathValueEntry = ({
   ) => void;
 }) => {
   const [hovering, setHovering] = useState<boolean>(false);
-  const { pinnedSlice: pinned3DSlice, activeSlices: active3dSlices } =
+  const { activeSlices: active3dSlices, isPinned } =
     fos.useRenderConfig3dState();
-  const slices = Boolean(pinned3DSlice) && (active3dSlices?.length || 1) > 1;
+  const slices = isPinned && (active3dSlices?.length || 1) > 1;
 
   const isScalar = useRecoilValue(isScalarValue(path));
   return (
