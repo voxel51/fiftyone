@@ -18,6 +18,43 @@ const clearPersistedBrowserState = async (page: Page) => {
   });
 };
 
+const dismissModalIfPresent = async (page: Page) => {
+  if (page.isClosed()) {
+    return;
+  }
+
+  const currentUrl = page.url();
+  if (!currentUrl || currentUrl === "about:blank") {
+    return;
+  }
+
+  let hasModalIdInQuery = false;
+  try {
+    hasModalIdInQuery = new URL(currentUrl).searchParams.has("id");
+  } catch {
+    return;
+  }
+
+  if (!hasModalIdInQuery) {
+    return;
+  }
+
+  try {
+    await page.click("body", {
+      position: { x: 0, y: 0 },
+      timeout: Duration.Seconds(2),
+    });
+  } catch {
+    // modal may already be gone
+  }
+
+  try {
+    await page.keyboard.press("Escape");
+  } catch {
+    // page may be transitioning
+  }
+};
+
 export class OssLoader extends AbstractFiftyoneLoader {
   constructor() {
     super();
@@ -128,6 +165,10 @@ export class OssLoader extends AbstractFiftyoneLoader {
         waitUntil: "domcontentloaded",
       });
     }
+
+    // Defensive cleanup for cross-test modal contamination:
+    // if URL still carries an active modal id, close modal before dataset navigation.
+    await dismissModalIfPresent(page);
 
     const pathname = await page.evaluate(() => window.location.pathname);
     if (pathname !== `/datasets/${datasetName}`) {
