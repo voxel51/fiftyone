@@ -18,78 +18,6 @@ const clearPersistedBrowserState = async (page: Page) => {
   });
 };
 
-const isModalVisible = async (page: Page) => {
-  if (page.isClosed()) {
-    return false;
-  }
-
-  return page.evaluate(() => {
-    const modal = document.querySelector(
-      "[data-cy='modal']"
-    ) as HTMLElement | null;
-
-    if (!modal) {
-      return false;
-    }
-
-    const style = window.getComputedStyle(modal);
-    if (style.display === "none" || style.visibility === "hidden") {
-      return false;
-    }
-
-    if (Number(style.opacity) === 0 || style.pointerEvents === "none") {
-      return false;
-    }
-
-    const rect = modal.getBoundingClientRect();
-    return rect.width > 0 && rect.height > 0;
-  });
-};
-
-const dismissModalIfPresent = async (page: Page) => {
-  if (page.isClosed()) {
-    return;
-  }
-
-  const currentUrl = page.url();
-  if (!currentUrl || currentUrl === "about:blank") {
-    return;
-  }
-
-  let hasModalIdInQuery = false;
-  try {
-    hasModalIdInQuery = new URL(currentUrl).searchParams.has("id");
-  } catch {
-    return;
-  }
-
-  const modalVisible = await isModalVisible(page);
-  if (!hasModalIdInQuery && !modalVisible) {
-    return;
-  }
-
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      await page.click("body", {
-        position: { x: 0, y: 0 },
-        timeout: Duration.Seconds(2),
-      });
-    } catch {
-      // modal may already be gone
-    }
-
-    try {
-      await page.keyboard.press("Escape");
-    } catch {
-      // page may be transitioning
-    }
-
-    if (!(await isModalVisible(page))) {
-      break;
-    }
-  }
-};
-
 export class OssLoader extends AbstractFiftyoneLoader {
   constructor() {
     super();
@@ -141,7 +69,6 @@ export class OssLoader extends AbstractFiftyoneLoader {
       searchParams: undefined,
       withGrid: true,
     };
-    const shouldPreserveModalFromUrl = Boolean(searchParams?.get("id"));
 
     await page.addInitScript(() => {
       let init = true;
@@ -202,12 +129,6 @@ export class OssLoader extends AbstractFiftyoneLoader {
       });
     }
 
-    // Defensive cleanup for cross-test modal contamination.
-    // Skip this when the caller intentionally opens a modal via ?id=...
-    if (!shouldPreserveModalFromUrl) {
-      await dismissModalIfPresent(page);
-    }
-
     const pathname = await page.evaluate(() => window.location.pathname);
     if (pathname !== `/datasets/${datasetName}`) {
       await forceDatasetFromSelector();
@@ -261,12 +182,6 @@ export class OssLoader extends AbstractFiftyoneLoader {
 
         return this.waitUntilGridVisible(page, datasetName, options, true);
       }
-    }
-
-    // The modal can still animate in after initial dataset navigation settles.
-    // Run a second defensive close pass unless this navigation explicitly requested a modal.
-    if (!shouldPreserveModalFromUrl) {
-      await dismissModalIfPresent(page);
     }
 
     if (isEmptyDataset) {
