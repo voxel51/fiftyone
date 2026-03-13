@@ -12,7 +12,7 @@ type WebServerProcessConfig = {
 
 export class FoWebServer {
   readonly #port: number;
-  #webserverProcessConfig: WebServerProcessConfig;
+  #webserverProcessConfig?: WebServerProcessConfig;
 
   constructor(port: number) {
     this.#port = port;
@@ -116,12 +116,14 @@ export class FoWebServer {
   }
 
   async stopWebServer(timeoutMs = 10000): Promise<void> {
-    if (!this.#webserverProcessConfig.processId) {
+    const processId = this.#webserverProcessConfig?.processId;
+
+    if (!processId) {
       return;
     }
 
     const killPromise = new Promise<void>((resolve, reject) => {
-      kill(this.#webserverProcessConfig.processId, "SIGTERM", (err) => {
+      kill(processId, "SIGTERM", (err) => {
         if (err) {
           return reject(err);
         }
@@ -137,6 +139,10 @@ export class FoWebServer {
       );
     });
 
-    return Promise.race([killPromise, timeoutPromise]);
+    try {
+      await Promise.race([killPromise, timeoutPromise]);
+    } finally {
+      this.#webserverProcessConfig = undefined;
+    }
   }
 }
