@@ -7,7 +7,9 @@ Builtin panels.
 """
 
 from .model_evaluation import EvaluationPanel
+from .similarity_search import SimilaritySearchPanel
 
 
 def register(p):
     p.register(EvaluationPanel)
+    p.register(SimilaritySearchPanel)
