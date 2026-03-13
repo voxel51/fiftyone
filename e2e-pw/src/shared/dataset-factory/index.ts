@@ -224,8 +224,6 @@ const createBlankDataset = (() => {
 
     const promises = new Array<Promise<void>>();
     const sampleData = new Array<string>();
-    const sampleFilepaths = new Array<string>();
-
     const outputDir = path.join(os.tmpdir(), datasetName);
     await ensureDirExists(outputDir);
 
@@ -244,7 +242,6 @@ const createBlankDataset = (() => {
         filepath,
         index,
       };
-      sampleFilepaths.push(filepath);
       sampleData.push(
         `sample_data.append(json_util.loads('${JSON.stringify(
           withSampleData(blankSample, { createId })
@@ -271,10 +268,13 @@ const createBlankDataset = (() => {
     }
 
     await loader.executePythonCode(`
-    from bson import ObjectId, json_util
     from datetime import datetime
-    import fiftyone as fo
     import json
+    import os
+
+    from bson import ObjectId, json_util
+
+    import fiftyone as fo
 
     dataset = fo.Dataset("${datasetName}")
     dataset.add_sample_field("index", fo.IntField)
@@ -292,7 +292,7 @@ const createBlankDataset = (() => {
     for idx in range(0, ${numSamples}):
         sample = fo.Sample(
             _id=ObjectId(f"{idx:024x}"),
-            filepath="${sampleFilepaths}",
+            filepath=os.path.join("${outputDir}", f"{idx}.png"),
             index=idx
         )
         sample.created_at = now

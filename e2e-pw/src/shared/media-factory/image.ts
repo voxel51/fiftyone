@@ -10,9 +10,6 @@ const fonts = require("jimp/fonts");
  * Generates a blank PNG image at the specified path, with optional fill color
  * and centered watermark text.
  *
- * Creates any intermediate directories in `outputPath` if they do not exist.
- * Performance timing is logged to the console unless `hideLogs` is `true`.
- *
  * @param options - Configuration for image generation.
  * @param options.outputPath - The absolute or relative file path where the image
  *   will be saved. Must include a file extension (e.g. `/tmp/dataset/0.png`).
