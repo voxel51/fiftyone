@@ -34,6 +34,13 @@ const basicScenePath = `/tmp/cam-init-scene-${basicDatasetName}.fo3d`;
 
 const scenePosDatasetName = getUniqueDatasetNameWithPrefix("cam-init-scenepos");
 const scenePosScenePath = `/tmp/cam-init-scenepos-${scenePosDatasetName}.fo3d`;
+const TEMP_FILE_PATHS = [
+  basicPlyMeshPath,
+  basicPlyPcdPath,
+  basicScenePath,
+  scenePosScenePath,
+];
+const DATASET_NAMES = [basicDatasetName, scenePosDatasetName];
 
 // Camera position and lookAt defined in the fo3d scene
 const SCENE_CAMERA_POSITION: [number, number, number] = [15, 10, 20];
@@ -186,8 +193,6 @@ test.describe.serial("camera initialization", () => {
     expect(savedBefore?.position).toHaveLength(3);
     expect(savedBefore?.target).toHaveLength(3);
 
-    const positionBefore = cameraBefore;
-
     // Navigate to next sample, then come back
     await modal.navigateNextSample();
     await modal.navigatePreviousSample();
@@ -196,7 +201,7 @@ test.describe.serial("camera initialization", () => {
       .poll(
         async () => {
           const currentCamera = await renderer3d.getCameraPosition();
-          return positionsAreClose(currentCamera, positionBefore, 1.0);
+          return positionsAreClose(currentCamera, cameraBefore, 1.0);
         },
         { timeout: 10000, intervals: [500] }
       )
@@ -207,10 +212,10 @@ test.describe.serial("camera initialization", () => {
     expect(
       positionsAreClose(
         positionAfter as [number, number, number],
-        positionBefore,
+        cameraBefore,
         1.0
       ),
-      `Expected camera to be restored to ${positionBefore}, but got ${positionAfter}`
+      `Expected camera to be restored to ${cameraBefore}, but got ${positionAfter}`
     ).toBe(true);
   });
 
