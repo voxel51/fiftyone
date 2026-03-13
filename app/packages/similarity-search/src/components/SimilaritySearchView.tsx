@@ -3,8 +3,8 @@ import { Spinner } from "@voxel51/voodo";
 import React, { Suspense } from "react";
 import { SimilaritySearchViewProps } from "../types";
 import { useSimilarityPanel } from "../hooks/useSimilarityPanel";
-import RunList from "./RunList";
-import NewSearch from "./NewSearch";
+import RunList from "./Home/RunList";
+import NewSearch from "./NewSearch/NewSearch";
 import * as s from "./styles";
 
 function SimilaritySearchReady(props: SimilaritySearchViewProps) {

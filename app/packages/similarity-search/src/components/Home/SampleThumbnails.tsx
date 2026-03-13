@@ -1,8 +1,7 @@
-import ImageList from "@mui/material/ImageList";
-import ImageListItem from "@mui/material/ImageListItem";
-import { THUMB_SIZE, THUMB_GAP, THUMB_SINGLE_ROW_MAX } from "../constants";
-import { getMediaUrl } from "../utils";
-import * as s from "./styles";
+import { ImageList, ImageListItem } from "../../mui";
+import { THUMB_SIZE, THUMB_GAP, THUMB_SINGLE_ROW_MAX } from "../../constants";
+import { getMediaUrl } from "../../utils";
+import * as s from "../styles";
 
 type SampleThumbnailsProps = {
   ids: string[];

@@ -15,16 +15,6 @@ export const fullSize: CSSProperties = {
   height: "100%",
 };
 
-export const flexColumn: CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-};
-
-export const flexRow: CSSProperties = {
-  display: "flex",
-  flexDirection: "row",
-};
-
 export const tooltipText: CSSProperties = {
   color: "var(--color-content-text-primary)",
 };
@@ -55,35 +45,8 @@ export const emptyState: CSSProperties = {
   gap: 8,
 };
 
-export const runsList: CSSProperties = {
-  flex: 1,
-  overflow: "auto",
-  display: "flex",
-  flexDirection: "column",
-  gap: 8,
-};
-
-export const runCard: CSSProperties = {
-  borderRadius: 6,
-  padding: 12,
-  border: "1px solid var(--fo-palette-text-secondary)",
-  background: "var(--fo-palette-background-level1)",
-};
-
-export const checkboxCell: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  marginRight: 8,
-  paddingTop: 2,
-};
-
 export const actionButtons: CSSProperties = {
   display: "flex",
-};
-
-export const expandButton: CSSProperties = {
-  display: "flex",
-  justifyContent: "flex-end",
 };
 
 export const expandedSection: CSSProperties = {

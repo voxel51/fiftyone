@@ -1,13 +1,15 @@
-import Add from "@mui/icons-material/Add";
-import ContentCopy from "@mui/icons-material/ContentCopy";
-import Delete from "@mui/icons-material/Delete";
-import EditNote from "@mui/icons-material/EditNote";
-import ExpandLess from "@mui/icons-material/ExpandLess";
-import ExpandMore from "@mui/icons-material/ExpandMore";
-import GridView from "@mui/icons-material/GridView";
-import ImageSearch from "@mui/icons-material/ImageSearch";
-import OpenInNew from "@mui/icons-material/OpenInNew";
-import Refresh from "@mui/icons-material/Refresh";
+import {
+  AddIcon as Add,
+  ContentCopyIcon as ContentCopy,
+  DeleteIcon as Delete,
+  EditNoteIcon as EditNote,
+  ExpandLessIcon as ExpandLess,
+  ExpandMoreIcon as ExpandMore,
+  GridViewIcon as GridView,
+  ImageSearchIcon as ImageSearch,
+  OpenInNewIcon as OpenInNew,
+  RefreshIcon as Refresh,
+} from "../../mui";
 import {
   usePromptOperatorInput,
   useFirstExistingUri,
@@ -17,6 +19,7 @@ import {
   Button,
   Checkbox,
   Heading,
+  RichList,
   Size,
   Stack,
   Text,
@@ -34,18 +37,18 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { BrainKeyConfig, SimilarityRun, RunFilterState } from "../types";
+import { BrainKeyConfig, SimilarityRun, RunFilterState } from "../../types";
 import {
   BRAIN_COMPUTE_SIMILARITY_URI,
   BRAIN_PLUGIN_URL,
   DOCS_URL,
-} from "../constants";
-import { formatQuery, formatTime } from "../utils";
-import SampleThumbnails from "./SampleThumbnails";
+} from "../../constants";
+import { formatQuery, formatTime } from "../../utils";
 import StatusBadge from "./StatusBadge";
+import SampleThumbnails from "./SampleThumbnails";
 import FilterBar from "./FilterBar";
 import BulkActionBar from "./BulkActionBar";
-import * as s from "./styles";
+import * as s from "../styles";
 
 type RunListProps = {
   runs: SimilarityRun[];
@@ -90,8 +93,6 @@ const ExpandLessIcon = () => (
   />
 );
 
-/** Tooltip content with explicit dark-mode text color (Voodo tooltip
- *  doesn't set one, so it inherits black from the browser default). */
 const tip = (text: string) => <span style={s.tooltipText}>{text}</span>;
 
 /**
@@ -119,7 +120,6 @@ function NoBrainKeysEmptyState() {
   return (
     <div style={s.noBrainKeysContainer}>
       <div style={s.noBrainKeysCard}>
-        {/* Header section */}
         <div style={s.noBrainKeysHeader}>
           <div style={s.noBrainKeysIconBox}>
             <ImageSearch
@@ -137,7 +137,7 @@ function NoBrainKeysEmptyState() {
             >
               No similarity index found
             </Text>
-            <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+            <Text variant={TextVariant.Md} color={TextColor.Secondary}>
               {hasBrainOperator
                 ? "Create an index to search for similar samples by image or text."
                 : "Install the Brain plugin or compute the similarity index via Python SDK."}
@@ -145,31 +145,26 @@ function NoBrainKeysEmptyState() {
           </div>
         </div>
 
-        {/* Divider */}
         <div style={s.divider} />
 
         {hasBrainOperator ? (
-          <>
-            {/* Primary CTA */}
-            <div style={s.noBrainKeysCta}>
-              <ComputeSimilarityButton />
-              <Text variant={TextVariant.Sm} color={TextColor.Muted}>
-                or create an index via{" "}
-                <span
-                  style={{ textDecoration: "underline", cursor: "pointer" }}
-                  onClick={() => window.open(DOCS_URL, "_blank")}
-                >
-                  Python SDK
-                </span>
-              </Text>
-            </div>
-          </>
+          <div style={s.noBrainKeysCta}>
+            <ComputeSimilarityButton />
+            <Text variant={TextVariant.Md} color={TextColor.Muted}>
+              or create an index via{" "}
+              <span
+                style={{ textDecoration: "underline", cursor: "pointer" }}
+                onClick={() => window.open(DOCS_URL, "_blank")}
+              >
+                Python SDK
+              </span>
+            </Text>
+          </div>
         ) : (
           <>
-            {/* Install plugin instructions */}
             <div style={s.noBrainKeysSection}>
               <Text
-                variant={TextVariant.Sm}
+                variant={TextVariant.Md}
                 color={TextColor.Muted}
                 style={{ marginBottom: 6 }}
               >
@@ -181,7 +176,7 @@ function NoBrainKeysEmptyState() {
     --plugin-names @voxel51/brain`}
               </pre>
               <Text
-                variant={TextVariant.Sm}
+                variant={TextVariant.Md}
                 color={TextColor.Muted}
                 style={{ marginTop: 10 }}
               >
@@ -189,13 +184,11 @@ function NoBrainKeysEmptyState() {
               </Text>
             </div>
 
-            {/* Divider */}
             <div style={s.divider} />
 
-            {/* Python SDK fallback */}
             <div style={s.noBrainKeysSection}>
               <Text
-                variant={TextVariant.Sm}
+                variant={TextVariant.Md}
                 color={TextColor.Muted}
                 style={{ marginBottom: 6 }}
               >
@@ -212,10 +205,8 @@ results = fob.compute_similarity(
               </pre>
             </div>
 
-            {/* Divider */}
             <div style={s.divider} />
 
-            {/* Actions */}
             <div style={s.noBrainKeysActions}>
               <Button
                 variant={Variant.Secondary}
@@ -237,6 +228,108 @@ results = fob.compute_similarity(
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+function RunActions({
+  run,
+  isExpanded,
+  onApply,
+  onClone,
+  onDelete,
+  onToggleExpand,
+}: {
+  run: SimilarityRun;
+  isExpanded: boolean;
+  onApply: (runId: string) => void;
+  onClone: (runId: string) => void;
+  onDelete: (runId: string) => void;
+  onToggleExpand: (run: SimilarityRun) => void;
+}) {
+  const isImage = run.query_type === "image";
+
+  return (
+    <div style={s.actionButtons}>
+      <Tooltip content={tip("Show results")}>
+        <Button
+          size={Size.Sm}
+          variant={Variant.Borderless}
+          leadingIcon={ApplyIcon}
+          onClick={() => onApply(run.run_id)}
+          disabled={run.status !== "completed"}
+        />
+      </Tooltip>
+      <Tooltip content={tip("Clone search")}>
+        <Button
+          size={Size.Sm}
+          variant={Variant.Borderless}
+          leadingIcon={CloneIcon}
+          onClick={() => onClone(run.run_id)}
+        />
+      </Tooltip>
+      <Tooltip content={tip("Delete")}>
+        <Button
+          size={Size.Sm}
+          variant={Variant.Borderless}
+          leadingIcon={DeleteIcon}
+          onClick={() => onDelete(run.run_id)}
+        />
+      </Tooltip>
+      {isImage && (
+        <Tooltip content={isExpanded ? tip("Collapse") : tip("Show samples")}>
+          <Button
+            size={Size.Sm}
+            variant={Variant.Borderless}
+            leadingIcon={isExpanded ? ExpandLessIcon : ExpandMoreIcon}
+            onClick={() => onToggleExpand(run)}
+          />
+        </Tooltip>
+      )}
+    </div>
+  );
+}
+
+function ExpandedThumbnails({
+  run,
+  sampleMedia,
+}: {
+  run: SimilarityRun;
+  sampleMedia: Record<string, string>;
+}) {
+  const positiveIds = Array.isArray(run.query) ? run.query : [];
+  const negativeIds = run.negative_query_ids ?? [];
+
+  if (!positiveIds.length && !negativeIds.length) return null;
+
+  return (
+    <div style={s.expandedSection}>
+      <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
+        {positiveIds.length > 0 && (
+          <div>
+            <Text
+              variant={TextVariant.Md}
+              color={TextColor.Success}
+              style={{ marginBottom: "0.375rem" }}
+            >
+              Positive ({positiveIds.length})
+            </Text>
+            <SampleThumbnails ids={positiveIds} sampleMedia={sampleMedia} />
+          </div>
+        )}
+        {negativeIds.length > 0 && (
+          <div>
+            <Text
+              variant={TextVariant.Md}
+              color={TextColor.Destructive}
+              style={{ marginBottom: "0.375rem" }}
+            >
+              Negative ({negativeIds.length})
+            </Text>
+            <SampleThumbnails ids={negativeIds} sampleMedia={sampleMedia} />
+          </div>
+        )}
+      </Stack>
     </div>
   );
 }
@@ -266,8 +359,6 @@ export default function RunList({
 }: RunListProps) {
   const [expandedRunIds, setExpandedRunIds] = useState<Set<string>>(new Set());
 
-  // Accumulate sample media across multiple expand calls so previous
-  // thumbnails aren't lost when a new card is expanded
   const accumulatedMedia = useRef<Record<string, string>>({});
   useEffect(() => {
     if (sampleMedia && Object.keys(sampleMedia).length > 0) {
@@ -293,18 +384,31 @@ export default function RunList({
         return next;
       });
 
-      // Fetch sample media when expanding (side effect outside setState)
       if (!wasExpanded) {
         const positiveIds = Array.isArray(run.query) ? run.query : [];
         const negativeIds = run.negative_query_ids ?? [];
         const allIds = [...positiveIds, ...negativeIds];
-
         if (allIds.length > 0) {
           onGetSampleMedia({ sample_ids: allIds });
         }
       }
     },
     [expandedRunIds, onGetSampleMedia]
+  );
+
+  const handleSelected = useCallback(
+    (selectedIds: string[]) => {
+      // RichList gives us the full selected array — sync it
+      const currentIds = new Set(selectedIds);
+      // Determine what changed and forward to parent
+      for (const id of selectedIds) {
+        if (!selectedRunIds.has(id)) onToggleRunSelection(id);
+      }
+      for (const id of selectedRunIds) {
+        if (!currentIds.has(id)) onToggleRunSelection(id);
+      }
+    },
+    [selectedRunIds, onToggleRunSelection]
   );
 
   const visibleRunIds = useMemo(
@@ -333,6 +437,73 @@ export default function RunList({
   const handleBulkDelete = useCallback(() => {
     onBulkDelete(Array.from(selectedRunIds));
   }, [onBulkDelete, selectedRunIds]);
+
+  const listItems = useMemo(
+    () =>
+      filteredRuns.map((run) => ({
+        id: run.run_id,
+        data: {
+          canSelect: selectMode,
+          primaryContent: (
+            <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
+              <Stack
+                orientation={Orientation.Row}
+                spacing={Spacing.Sm}
+                style={{ alignItems: "center" }}
+              >
+                <span style={{ fontWeight: "bold" }}>{run.run_name}</span>
+                <StatusBadge status={run.status} />
+                {run.status === "completed" && (
+                  <Text variant={TextVariant.Md} color={TextColor.Muted}>
+                    {run.result_count} results
+                  </Text>
+                )}
+              </Stack>
+              <Text variant={TextVariant.Md} color={TextColor.Secondary}>
+                {formatQuery(run)} {"\u00B7"} {run.brain_key}
+                {run.k ? ` \u00B7 k=${run.k}` : ""}
+                {run.reverse ? " (least similar)" : ""}
+              </Text>
+              <Text variant={TextVariant.Md} color={TextColor.Muted}>
+                {formatTime(run.creation_time)}
+                {run.created_by ? ` by ${run.created_by}` : ""}
+              </Text>
+              {run.status === "failed" && run.status_details && (
+                <Text variant={TextVariant.Md} color={TextColor.Destructive}>
+                  {run.status_details}
+                </Text>
+              )}
+            </Stack>
+          ),
+          actions: selectMode ? undefined : (
+            <RunActions
+              run={run}
+              isExpanded={expandedRunIds.has(run.run_id)}
+              onApply={onApply}
+              onClone={onClone}
+              onDelete={onDelete}
+              onToggleExpand={handleToggleExpand}
+            />
+          ),
+          additionalContent:
+            run.query_type === "image" &&
+            expandedRunIds.has(run.run_id) &&
+            !selectMode ? (
+              <ExpandedThumbnails run={run} sampleMedia={mergedMedia} />
+            ) : undefined,
+        },
+      })),
+    [
+      filteredRuns,
+      selectMode,
+      expandedRunIds,
+      mergedMedia,
+      onApply,
+      onClone,
+      onDelete,
+      handleToggleExpand,
+    ]
+  );
 
   return (
     <div style={s.runListContainer}>
@@ -389,7 +560,7 @@ export default function RunList({
         </Stack>
       </Stack>
 
-      {/* Filter bar — hidden when there are no brain keys / runs */}
+      {/* Filter bar */}
       {brainKeys.length > 0 && (
         <FilterBar
           filterState={filterState}
@@ -399,25 +570,13 @@ export default function RunList({
         />
       )}
 
-      {/* Select All row */}
-      {selectMode && filteredRuns.length > 0 && (
-        <div style={s.selectAllRow}>
-          <Checkbox
-            label={allVisibleSelected ? "Deselect all" : "Select all"}
-            checked={allVisibleSelected}
-            onChange={handleSelectAllToggle}
-            size={Size.Sm}
-          />
-        </div>
-      )}
-
       {/* Content area */}
       {brainKeys.length === 0 ? (
         <NoBrainKeysEmptyState />
       ) : runs.length === 0 ? (
         <div style={s.emptyState}>
           <Text color={TextColor.Secondary}>No similarity searches yet</Text>
-          <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+          <Text variant={TextVariant.Md} color={TextColor.Secondary}>
             Click "New Search" to find similar samples using your computed
             embeddings.
           </Text>
@@ -427,175 +586,36 @@ export default function RunList({
           <Text color={TextColor.Secondary}>No runs match your filters</Text>
         </div>
       ) : (
-        <div style={s.runsList}>
-          {filteredRuns.map((run) => {
-            const isImage = run.query_type === "image";
-            const isExpanded = expandedRunIds.has(run.run_id);
-            const positiveIds = Array.isArray(run.query) ? run.query : [];
-            const negativeIds = run.negative_query_ids ?? [];
-            const isSelected = selectedRunIds.has(run.run_id);
-
-            return (
-              <div key={run.run_id} style={s.runCard}>
-                <Stack
-                  orientation={Orientation.Row}
-                  style={{
-                    justifyContent: "space-between",
-                    alignItems: "flex-start",
-                  }}
-                >
-                  {/* Checkbox in select mode */}
-                  {selectMode && (
-                    <div style={s.checkboxCell}>
-                      <Checkbox
-                        checked={isSelected}
-                        onChange={() => onToggleRunSelection(run.run_id)}
-                        size={Size.Sm}
-                      />
-                    </div>
-                  )}
-
-                  <Stack
-                    orientation={Orientation.Column}
-                    spacing={Spacing.Xs}
-                    style={{ flex: 1, minWidth: 0 }}
-                  >
-                    <Stack
-                      orientation={Orientation.Row}
-                      spacing={Spacing.Sm}
-                      style={{ alignItems: "center" }}
-                    >
-                      <Text
-                        variant={TextVariant.Md}
-                        color={TextColor.Primary}
-                        style={{ fontWeight: "bold" }}
-                      >
-                        {run.run_name}
-                      </Text>
-                      <StatusBadge status={run.status} />
-                      {run.status === "completed" && (
-                        <Text variant={TextVariant.Md} color={TextColor.Muted}>
-                          {run.result_count} results
-                        </Text>
-                      )}
-                    </Stack>
-                    <Text variant={TextVariant.Md} color={TextColor.Secondary}>
-                      {formatQuery(run)} {"\u00B7"} {run.brain_key}
-                      {run.k ? ` \u00B7 k=${run.k}` : ""}
-                      {run.reverse ? " (least similar)" : ""}
-                    </Text>
-                    <Text variant={TextVariant.Md} color={TextColor.Muted}>
-                      {formatTime(run.creation_time)}
-                      {run.created_by ? ` by ${run.created_by}` : ""}
-                    </Text>
-                    {run.status === "failed" && run.status_details && (
-                      <Text
-                        variant={TextVariant.Md}
-                        color={TextColor.Destructive}
-                      >
-                        {run.status_details}
-                      </Text>
-                    )}
-                  </Stack>
-
-                  {!selectMode && (
-                    <Stack
-                      orientation={Orientation.Column}
-                      spacing={Spacing.Xs}
-                      style={{ flexShrink: 0, alignItems: "flex-end" }}
-                    >
-                      <div style={s.actionButtons}>
-                        <Tooltip content={tip("Show results")}>
-                          <Button
-                            size={Size.Sm}
-                            variant={Variant.Borderless}
-                            leadingIcon={ApplyIcon}
-                            onClick={() => onApply(run.run_id)}
-                            disabled={run.status !== "completed"}
-                          />
-                        </Tooltip>
-                        <Tooltip content={tip("Clone search")}>
-                          <Button
-                            size={Size.Sm}
-                            variant={Variant.Borderless}
-                            leadingIcon={CloneIcon}
-                            onClick={() => onClone(run.run_id)}
-                          />
-                        </Tooltip>
-                        <Tooltip content={tip("Delete")}>
-                          <Button
-                            size={Size.Sm}
-                            variant={Variant.Borderless}
-                            leadingIcon={DeleteIcon}
-                            onClick={() => onDelete(run.run_id)}
-                          />
-                        </Tooltip>
-                      </div>
-                      {isImage && (
-                        <div style={s.expandButton}>
-                          <Tooltip
-                            content={
-                              isExpanded ? tip("Collapse") : tip("Show samples")
-                            }
-                          >
-                            <Button
-                              size={Size.Sm}
-                              variant={Variant.Secondary}
-                              leadingIcon={
-                                isExpanded ? ExpandLessIcon : ExpandMoreIcon
-                              }
-                              onClick={() => handleToggleExpand(run)}
-                            />
-                          </Tooltip>
-                        </div>
-                      )}
-                    </Stack>
-                  )}
-                </Stack>
-
-                {isImage && isExpanded && !selectMode && (
-                  <div style={s.expandedSection}>
-                    <Stack
-                      orientation={Orientation.Column}
-                      spacing={Spacing.Sm}
-                    >
-                      {positiveIds.length > 0 && (
-                        <div>
-                          <Text
-                            variant={TextVariant.Md}
-                            color={TextColor.Success}
-                            style={{ marginBottom: "0.375rem" }}
-                          >
-                            Positive ({positiveIds.length})
-                          </Text>
-                          <SampleThumbnails
-                            ids={positiveIds}
-                            sampleMedia={mergedMedia}
-                          />
-                        </div>
-                      )}
-                      {negativeIds.length > 0 && (
-                        <div>
-                          <Text
-                            variant={TextVariant.Md}
-                            color={TextColor.Destructive}
-                            style={{ marginBottom: "0.375rem" }}
-                          >
-                            Negative ({negativeIds.length})
-                          </Text>
-                          <SampleThumbnails
-                            ids={negativeIds}
-                            sampleMedia={mergedMedia}
-                          />
-                        </div>
-                      )}
-                    </Stack>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+        <>
+          {selectMode && filteredRuns.length > 0 && (
+            <div style={s.selectAllRow}>
+              <Checkbox
+                label={allVisibleSelected ? "Deselect all" : "Select all"}
+                checked={allVisibleSelected}
+                onChange={handleSelectAllToggle}
+                size={Size.Sm}
+              />
+            </div>
+          )}
+          <style>{`
+            .similarity-run-list > div {
+              border-radius: 6px;
+              transition: background-color 0.15s ease;
+            }
+            .similarity-run-list > div:hover {
+              background-color: var(--fo-palette-background-level2);
+            }
+            .similarity-run-list .justify-between {
+              align-items: flex-start !important;
+            }
+          `}</style>
+          <RichList
+            className="similarity-run-list"
+            listItems={listItems}
+            selected={Array.from(selectedRunIds)}
+            onSelected={handleSelected}
+          />
+        </>
       )}
 
       {/* Bulk action bar */}

@@ -1,4 +1,4 @@
-import Delete from "@mui/icons-material/Delete";
+import { DeleteIcon as Delete } from "../../mui";
 import {
   Button,
   Size,
@@ -11,8 +11,8 @@ import {
   Variant,
 } from "@voxel51/voodo";
 import React, { useCallback, useEffect, useState } from "react";
-import { pluralizeRuns } from "../utils";
-import * as s from "./styles";
+import { pluralizeRuns } from "../../utils";
+import * as s from "../styles";
 
 type BulkActionBarProps = {
   selectedCount: number;

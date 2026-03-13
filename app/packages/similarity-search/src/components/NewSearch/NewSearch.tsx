@@ -1,4 +1,4 @@
-import ArrowBack from "@mui/icons-material/ArrowBack";
+import { ArrowBackIcon as ArrowBack } from "../../mui";
 import {
   Button,
   FormField,
@@ -24,10 +24,10 @@ import {
   useOperatorExecutor,
 } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
-import { BrainKeyConfig, CloneConfig, QueryType } from "../types";
-import { SEARCH_OPERATOR_URI, INIT_RUN_OPERATOR_URI } from "../constants";
-import { canSubmitSearch, buildExecutionParams } from "../utils";
-import * as s from "./styles";
+import { BrainKeyConfig, CloneConfig, QueryType } from "../../types";
+import { SEARCH_OPERATOR_URI, INIT_RUN_OPERATOR_URI } from "../../constants";
+import { canSubmitSearch, buildExecutionParams } from "../../utils";
+import * as s from "../styles";
 
 type NewSearchProps = {
   brainKeys: BrainKeyConfig[];
