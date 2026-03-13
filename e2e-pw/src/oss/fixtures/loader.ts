@@ -18,6 +18,34 @@ const clearPersistedBrowserState = async (page: Page) => {
   });
 };
 
+const isModalVisible = async (page: Page) => {
+  if (page.isClosed()) {
+    return false;
+  }
+
+  return page.evaluate(() => {
+    const modal = document.querySelector(
+      "[data-cy='modal']"
+    ) as HTMLElement | null;
+
+    if (!modal) {
+      return false;
+    }
+
+    const style = window.getComputedStyle(modal);
+    if (style.display === "none" || style.visibility === "hidden") {
+      return false;
+    }
+
+    if (Number(style.opacity) === 0 || style.pointerEvents === "none") {
+      return false;
+    }
+
+    const rect = modal.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
+  });
+};
+
 const dismissModalIfPresent = async (page: Page) => {
   if (page.isClosed()) {
     return;
@@ -35,23 +63,30 @@ const dismissModalIfPresent = async (page: Page) => {
     return;
   }
 
-  if (!hasModalIdInQuery) {
+  const modalVisible = await isModalVisible(page);
+  if (!hasModalIdInQuery && !modalVisible) {
     return;
   }
 
-  try {
-    await page.click("body", {
-      position: { x: 0, y: 0 },
-      timeout: Duration.Seconds(2),
-    });
-  } catch {
-    // modal may already be gone
-  }
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      await page.click("body", {
+        position: { x: 0, y: 0 },
+        timeout: Duration.Seconds(2),
+      });
+    } catch {
+      // modal may already be gone
+    }
 
-  try {
-    await page.keyboard.press("Escape");
-  } catch {
-    // page may be transitioning
+    try {
+      await page.keyboard.press("Escape");
+    } catch {
+      // page may be transitioning
+    }
+
+    if (!(await isModalVisible(page))) {
+      break;
+    }
   }
 };
 

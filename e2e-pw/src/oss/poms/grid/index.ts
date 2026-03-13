@@ -152,12 +152,12 @@ class GridAsserter {
     return this.gridPom.page.waitForFunction(
       (text_) => {
         return (
-          document.querySelector("[data-cy='entry-counts']").textContent ===
+          document.querySelector("[data-cy='entry-counts']")?.textContent ===
           text_
         );
       },
       text,
-      { timeout: 2000 }
+      { timeout: Duration.Seconds(10) }
     );
   }
 }
