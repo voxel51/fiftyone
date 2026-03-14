@@ -168,7 +168,7 @@ def _to_instances(result, confidence_thresh=None, classes=None):
     )
     masks = (  # return to [N, H, W], to bool array
         masks.squeeze(0) if masks.ndim > 3 else masks
-    ).numpy() > 0.5
+    ).detach().cpu().numpy() > 0.5
     confs = result.boxes.conf.detach().cpu().numpy().astype(float)
     track_ids = _extract_track_ids(result)
 
