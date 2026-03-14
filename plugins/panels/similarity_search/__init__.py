@@ -242,13 +242,9 @@ class SimilaritySearchPanel(Panel):
 
                 supports_prompts = getattr(config, "supports_prompts", False)
                 patches_field = getattr(config, "patches_field", None)
-
-                max_k = None
-                try:
-                    mk = getattr(config, "max_k", None)
-                    max_k = mk() if callable(mk) else mk
-                except Exception:
-                    pass
+                model = getattr(config, "model", None)
+                backend = getattr(config, "method", None)
+                embeddings_field = getattr(config, "embeddings_field", None)
 
                 supports_least = True
                 try:
@@ -266,8 +262,10 @@ class SimilaritySearchPanel(Panel):
                         "key": key,
                         "supports_prompts": bool(supports_prompts),
                         "supports_least_similarity": bool(supports_least),
-                        "max_k": max_k,
                         "patches_field": patches_field,
+                        "model": model,
+                        "backend": backend,
+                        "embeddings_field": embeddings_field,
                     }
                 )
             except Exception as e:

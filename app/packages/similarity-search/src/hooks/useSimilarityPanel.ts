@@ -1,4 +1,6 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useRecoilValue } from "recoil";
+import * as fos from "@fiftyone/state";
 import { SimilaritySearchViewProps } from "../types";
 import { useNavigate } from "./useNavigate";
 import { useRuns } from "./useRuns";
@@ -46,9 +48,33 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
     getSampleMedia: view.get_sample_media,
   });
 
-  const brainKeys = data.brain_keys ?? [];
+  const allBrainKeys = data.brain_keys ?? [];
   const appliedRunId = (props as any).data?.applied_run_id;
   const sampleMedia: Record<string, string> = (data as any).sample_media ?? {};
+
+  // Detect patches view and filter brain keys accordingly
+  const isPatchesView = useRecoilValue(fos.isPatchesView);
+  const viewStages = useRecoilValue(fos.view);
+
+  const patchesField = useMemo(() => {
+    if (!isPatchesView) return undefined;
+    const stage = (viewStages as any[])?.find(
+      (s: any) => s._cls === "fiftyone.core.stages.ToPatches"
+    );
+    if (!stage) return undefined;
+    return stage.kwargs?.find(
+      ([k]: [string, unknown]) => k === "field"
+    )?.[1] as string | undefined;
+  }, [isPatchesView, viewStages]);
+
+  const brainKeys = useMemo(() => {
+    if (isPatchesView) {
+      // Patches view: only brain keys matching the active patches field
+      return allBrainKeys.filter((bk) => bk.patches_field === patchesField);
+    }
+    // Normal view: exclude patch-only brain keys
+    return allBrainKeys.filter((bk) => !bk.patches_field);
+  }, [allBrainKeys, isPatchesView, patchesField]);
 
   const handleApply = useCallback(
     (runId: string) => {
@@ -109,6 +135,7 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
     runs,
     filteredRuns,
     brainKeys,
+    isPatchesView,
     appliedRunId,
     sampleMedia,
     cloneConfig,

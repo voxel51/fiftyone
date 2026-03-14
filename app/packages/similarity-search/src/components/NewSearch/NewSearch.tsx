@@ -5,6 +5,7 @@ import {
   Heading,
   Input,
   InputType,
+  RadioGroup,
   Select,
   Size,
   Stack,
@@ -32,6 +33,7 @@ import * as s from "../styles";
 type NewSearchProps = {
   brainKeys: BrainKeyConfig[];
   cloneConfig?: CloneConfig | null;
+  isPatchesView?: boolean;
   onBack: () => void;
   onSubmitted: () => void;
 };
@@ -41,6 +43,7 @@ const BackIcon = () => <ArrowBack fontSize="small" />;
 export default function NewSearch({
   brainKeys,
   cloneConfig,
+  isPatchesView = false,
   onBack,
   onSubmitted,
 }: NewSearchProps) {
@@ -48,17 +51,45 @@ export default function NewSearch({
   const selectedLabels = useRecoilValue(fos.selectedLabels);
   const view = useRecoilValue(fos.view);
 
-  const [brainKey, setBrainKey] = useState(cloneConfig?.brain_key ?? "");
-  const [queryType, setQueryType] = useState<QueryType>(
-    cloneConfig?.query_type ?? "text"
+  const hasSamplesSelected = useMemo(
+    () =>
+      (selectedLabels && selectedLabels.length > 0) ||
+      (selectedSamples && selectedSamples.size > 0),
+    [selectedSamples, selectedLabels]
   );
+
+  // Find the first brain key that supports text prompts
+  const firstTextKey = useMemo(
+    () => brainKeys.find((bk) => bk.supports_prompts),
+    [brainKeys]
+  );
+
+  // Default brain key + query type based on context
+  const defaultBrainKey = useMemo(() => {
+    if (cloneConfig?.brain_key) return cloneConfig.brain_key;
+    if (hasSamplesSelected) return brainKeys[0]?.key ?? "";
+    if (firstTextKey) return firstTextKey.key;
+    return brainKeys[0]?.key ?? "";
+  }, [cloneConfig, hasSamplesSelected, firstTextKey, brainKeys]);
+
+  const defaultQueryType = useMemo((): QueryType => {
+    if (cloneConfig?.query_type) return cloneConfig.query_type;
+    if (hasSamplesSelected) return "image";
+    if (firstTextKey) return "text";
+    return "image";
+  }, [cloneConfig, hasSamplesSelected, firstTextKey]);
+
+  const [brainKey, setBrainKey] = useState(defaultBrainKey);
+  const [queryType, setQueryType] = useState<QueryType>(defaultQueryType);
   const [textQuery, setTextQuery] = useState(cloneConfig?.query ?? "");
-  const [k, setK] = useState<number | "">(cloneConfig?.k ?? "");
+  const [k, setK] = useState<number | "">(cloneConfig?.k ?? 25);
   const [reverse, setReverse] = useState(cloneConfig?.reverse ?? false);
   const [distField, setDistField] = useState(cloneConfig?.dist_field ?? "");
   const [runName, setRunName] = useState("");
   const hasView = Array.isArray(view) && view.length > 0;
-  const [searchScope, setSearchScope] = useState<"view" | "dataset">("view");
+  const [searchScope, setSearchScope] = useState<"view" | "dataset">(
+    isPatchesView ? "view" : "view"
+  );
 
   const { execute: initRun } = useOperatorExecutor(INIT_RUN_OPERATOR_URI);
 
@@ -66,7 +97,6 @@ export default function NewSearch({
   const selectedConfig = brainKeys.find((bk) => bk.key === brainKey);
   const supportsPrompts = selectedConfig?.supports_prompts ?? false;
   const supportsLeast = selectedConfig?.supports_least_similarity ?? true;
-  const maxK = selectedConfig?.max_k;
 
   // Auto-select first brain key if none selected
   useEffect(() => {
@@ -134,9 +164,6 @@ export default function NewSearch({
   const handleSuccess = useCallback(
     (result: any) => {
       if (result?.delegated) {
-        // Delegated: the DO is queued. Create a run record so it
-        // appears in the panel list immediately while the worker
-        // picks it up.
         const operatorRunId = result?.result?.id?.$oid;
         initRun(
           {
@@ -148,8 +175,6 @@ export default function NewSearch({
           }
         );
       } else {
-        // Immediate execution: the operator already created the
-        // run record and completed the search.
         onSubmitted();
       }
     },
@@ -168,7 +193,7 @@ export default function NewSearch({
     },
   }));
 
-  const kError = maxK != null && typeof k === "number" && k > maxK;
+  const kError = typeof k === "number" && k > 10000;
 
   return (
     <div style={s.newSearchContainer}>
@@ -189,22 +214,51 @@ export default function NewSearch({
       </Stack>
 
       <Stack orientation={Orientation.Column} spacing={Spacing.Lg}>
-        {/* Brain key selector */}
+        {/* Similarity index selector */}
         <FormField
-          label="Brain Key"
+          label="Similarity Index"
           control={
-            <Select
-              exclusive
-              options={brainKeyOptions}
-              value={brainKey}
-              onChange={(value) => setBrainKey((value as string) ?? "")}
-            />
+            <>
+              {/* Index info card */}
+              {selectedConfig && (
+                <div style={{ ...s.noBrainKeysWarning, marginBottom: 8 }}>
+                  <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
+                    {selectedConfig.model && (
+                      <Text
+                        variant={TextVariant.Md}
+                        color={TextColor.Secondary}
+                      >
+                        Model: {selectedConfig.model}
+                      </Text>
+                    )}
+                    {selectedConfig.backend && (
+                      <Text
+                        variant={TextVariant.Md}
+                        color={TextColor.Secondary}
+                      >
+                        Backend: {selectedConfig.backend}
+                      </Text>
+                    )}
+                    <Text variant={TextVariant.Md} color={TextColor.Secondary}>
+                      Supports text queries?{" "}
+                      {selectedConfig.supports_prompts ? "\u2705" : "\u274C"}
+                    </Text>
+                  </Stack>
+                </div>
+              )}
+              <Select
+                exclusive
+                options={brainKeyOptions}
+                value={brainKey}
+                onChange={(value) => setBrainKey((value as string) ?? "")}
+              />
+            </>
           }
         />
 
         {brainKeys.length === 0 && (
           <div style={s.noBrainKeysWarning}>
-            <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+            <Text variant={TextVariant.Md} color={TextColor.Secondary}>
               No similarity indexes found. Compute a similarity index on your
               dataset first.
             </Text>
@@ -215,30 +269,23 @@ export default function NewSearch({
         <FormField
           label="Search scope"
           control={
-            <Stack orientation={Orientation.Row} spacing={Spacing.Xs}>
-              <Button
-                variant={
-                  searchScope === "view" ? Variant.Primary : Variant.Secondary
-                }
-                size={Size.Sm}
-                onClick={() => setSearchScope("view")}
-                style={{ flex: 1 }}
-              >
-                Current View
-              </Button>
-              <Button
-                variant={
-                  searchScope === "dataset"
-                    ? Variant.Primary
-                    : Variant.Secondary
-                }
-                size={Size.Sm}
-                onClick={() => setSearchScope("dataset")}
-                style={{ flex: 1 }}
-              >
-                Full Dataset
-              </Button>
-            </Stack>
+            <RadioGroup
+              options={
+                isPatchesView
+                  ? [
+                      { value: "dataset", label: "All Patches" },
+                      { value: "view", label: "Current Patches View" },
+                    ]
+                  : [
+                      { value: "dataset", label: "Full Dataset" },
+                      { value: "view", label: "Current View" },
+                    ]
+              }
+              value={searchScope}
+              onChange={(value) => setSearchScope(value as "view" | "dataset")}
+              size={Size.Sm}
+              style={{ display: "flex", flexDirection: "row", gap: "1rem" }}
+            />
           }
         />
 
@@ -253,7 +300,7 @@ export default function NewSearch({
               onClick={() => setQueryType("text")}
               style={{ flex: 1 }}
             >
-              Text Prompt
+              Text Search
             </Button>
             <Button
               variant={
@@ -263,7 +310,7 @@ export default function NewSearch({
               onClick={() => setQueryType("image")}
               style={{ flex: 1 }}
             >
-              Image Similarity
+              Image Search
             </Button>
           </Stack>
         )}
@@ -305,10 +352,10 @@ export default function NewSearch({
           </div>
         )}
 
-        {/* K value */}
+        {/* Number of matches */}
         <FormField
-          label={`Number of results (k)${maxK ? ` (max: ${maxK})` : ""}`}
-          error={kError ? `Exceeds max k of ${maxK}` : undefined}
+          label="Number of matches"
+          error={kError ? "Exceeds maximum of 10,000" : undefined}
           control={
             <Input
               type={InputType.Number}
@@ -318,7 +365,6 @@ export default function NewSearch({
                 setK(val === "" ? "" : parseInt(val, 10));
               }}
               min={1}
-              max={maxK ?? undefined}
               size={Size.Sm}
               error={kError}
             />
@@ -349,9 +395,9 @@ export default function NewSearch({
           }
         />
 
-        {/* Run name */}
+        {/* Search name */}
         <FormField
-          label="Run name (optional)"
+          label="Search name (optional)"
           control={
             <Input
               placeholder="My search"

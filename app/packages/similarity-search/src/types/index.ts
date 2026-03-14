@@ -15,8 +15,10 @@ export type BrainKeyConfig = {
   key: string;
   supports_prompts: boolean;
   supports_least_similarity: boolean;
-  max_k?: number;
   patches_field?: string;
+  model?: string;
+  backend?: string;
+  embeddings_field?: string;
 };
 
 /**

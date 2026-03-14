@@ -599,11 +599,7 @@ export default function RunList({
           )}
           <style>{`
             .similarity-run-list > div {
-              border-radius: 6px;
-              transition: background-color 0.15s ease;
-            }
-            .similarity-run-list > div:hover {
-              background-color: var(--fo-palette-background-level2);
+              cursor: pointer;
             }
             .similarity-run-list .justify-between {
               align-items: flex-start !important;
