@@ -62,3 +62,4 @@ export { default as ToastView } from "./ToastView";
 export { default as TreeSelectionView } from "./TreeSelectionView";
 export { default as TupleView } from "./TupleView";
 export { default as UnsupportedView } from "./UnsupportedView";
+export { default as UploadView } from "./UploadView";

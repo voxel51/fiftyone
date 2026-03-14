@@ -28,6 +28,8 @@ from .tag import Tag
 from .tagging import Tagging
 from .values import Values
 
+from .files import FileDelete, FileUpload
+
 # Starlette routes should not be created here. Please leave as tuple definitions
 routes = (
     CameraRoutes
@@ -51,5 +53,7 @@ routes = (
         ("/tagging", Tagging),
         ("/values", Values),
         ("/get-similar-labels-frames", GetSimilarLabelsFrameCollection),
+        ("/files/upload", FileUpload),
+        ("/files", FileDelete),
     ]
 )

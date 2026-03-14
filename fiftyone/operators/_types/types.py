@@ -231,6 +231,62 @@ class Object(BaseType):
         """
         return self.define_property(name, UploadedFile(), **kwargs)
 
+    def uploads(
+        self,
+        name,
+        destination,
+        accept=None,
+        max_size=None,
+        max_files=None,
+        max_concurrent=None,
+        **kwargs,
+    ):
+        """Defines a file upload property.
+
+        This creates a :class:`List` of :class:`File` objects with an
+        :class:`UploadView` that renders a drag-and-drop upload zone.
+        Uploaded files are streamed to the server and the resulting
+        :class:`File` objects contain the server-resolved ``absolute_path``.
+
+        Examples::
+
+            import fiftyone.operators.types as types
+
+            inputs = types.Object()
+
+            # Simple upload
+            inputs.uploads("files", destination="/data/uploads")
+
+            # With constraints
+            inputs.uploads(
+                "images",
+                destination="/data/images",
+                accept=["image/*"],
+                max_size=10_000_000,
+                max_files=5,
+            )
+
+        Args:
+            name: the name of the property
+            destination: the server directory to upload files into
+            accept (None): list of accepted file types (MIME types or
+                extensions)
+            max_size (None): maximum file size in bytes
+            max_files (None): maximum number of files
+            max_concurrent (None): maximum number of concurrent uploads
+        """
+        from fiftyone.operators._types.upload import UploadView
+
+        upload_view = UploadView(
+            destination=destination,
+            accept=accept,
+            max_size=max_size,
+            max_files=max_files,
+            max_concurrent=max_concurrent,
+            **kwargs,
+        )
+        return self.define_property(name, List(File()), view=upload_view)
+
     def view(self, name, view, **kwargs):
         """Defines a view-only property.
 

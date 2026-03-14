@@ -61,3 +61,6 @@ operators:
   - set_active_label_schemas
   - update_label_schema
   - validate_label_schemas
+
+  # upload
+  - upload_files

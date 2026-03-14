@@ -58,6 +58,14 @@ async function loadConfig() {
           secure: false,
           ws: false,
         },
+        "/files": {
+          target: `http://127.0.0.1:${
+            process.env.FIFTYONE_DEFAULT_APP_PORT ?? "5151"
+          }`,
+          changeOrigin: false,
+          secure: false,
+          ws: false,
+        },
       },
     },
   });
