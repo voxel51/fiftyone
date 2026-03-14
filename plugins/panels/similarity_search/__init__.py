@@ -80,7 +80,8 @@ class SimilaritySearchPanel(Panel):
 
         try:
             brain_keys = dataset.list_brain_runs(type="similarity")
-        except Exception:
+        except Exception as e:
+            logger.warning("Failed to list brain runs: %s", e)
             brain_keys = []
 
         result = []
@@ -108,8 +109,13 @@ class SimilaritySearchPanel(Panel):
                         if callable(sl)
                         else (sl if sl is not None else True)
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning(
+                        "Failed to probe supports_least_similarity for key %s: %s",
+                        key,
+                        e,
+                    )
+                    supports_least = False
 
                 result.append(
                     {

@@ -103,7 +103,7 @@ export type SimilaritySearchEventName =
 export type SimilaritySearchSchemaView = {
   component: "SimilaritySearchView";
   composite_view?: boolean;
-} & Record<SimilaritySearchEventName, string> &
+} & Partial<Record<SimilaritySearchEventName, string>> &
   Record<string, any>;
 
 /**

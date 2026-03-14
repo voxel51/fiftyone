@@ -7,7 +7,6 @@ const isPluginBuild = process.env.STANDALONE !== "true";
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  mode: "development",
   plugins: [
     react(),
     isPluginBuild
@@ -28,9 +27,7 @@ export default defineConfig({
       formats: ["umd"],
     },
   },
-  define: {
-    "process.env.NODE_ENV": '"development"',
-  },
+  define: {},
   optimizeDeps: {
     exclude: ["react", "react-dom"],
   },
