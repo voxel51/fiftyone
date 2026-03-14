@@ -15,7 +15,9 @@ from PIL import Image
 import pytest
 import torch
 
+import fiftyone as fo
 import fiftyone.core.labels as fol
+from decorators import drop_datasets
 
 
 class _FakeSVDets:
@@ -106,6 +108,74 @@ class TestRFDETRBatchingContract:
 
         assert transforms is None
         assert ragged_batches is False
+
+    @drop_datasets
+    def test_apply_model_batches_raw_pil_inputs(
+        self, monkeypatch, tmp_path: Path
+    ):
+        from fiftyone.utils.rfdetr import (
+            RFDETRDetectionModel,
+            RFDETRDetectionModelConfig,
+        )
+        import fiftyone.utils.rfdetr as ford
+
+        batch_sizes = []
+
+        def _fake_predict(
+            images: list[Image.Image], threshold: float
+        ) -> list[_FakeSVDets]:
+            batch_sizes.append(len(images))
+            assert threshold == pytest.approx(0.6)
+            assert [img.mode for img in images] == ["RGB", "RGB"]
+            return [_FakeSVDets() for _ in images]
+
+        def _fake_load(
+            model_type: str, device: Optional[str] = None
+        ) -> object:
+            assert model_type == "RFDETRNano"
+            assert device == "cpu"
+            return SimpleNamespace(
+                predict=_fake_predict,
+                class_names={1: "person"},
+            )
+
+        monkeypatch.setattr(ford, "_load_rfdetr_model", _fake_load)
+
+        image_paths = []
+        for idx in range(2):
+            path = tmp_path / f"sample-{idx}.png"
+            Image.new("RGB", (8, 8), color=(idx * 32, 0, 0)).save(path)
+            image_paths.append(path)
+
+        model = RFDETRDetectionModel(
+            RFDETRDetectionModelConfig(
+                {
+                    "model_type": "RFDETRNano",
+                    "device": "cpu",
+                    "confidence_thresh": 0.6,
+                }
+            )
+        )
+
+        dataset = fo.Dataset()
+        try:
+            dataset.add_samples(
+                [fo.Sample(filepath=str(path)) for path in image_paths]
+            )
+
+            dataset.apply_model(
+                model,
+                label_field="predictions",
+                batch_size=2,
+                num_workers=0,
+                skip_failures=False,
+            )
+
+            assert batch_sizes == [2]
+            assert len(dataset.exists("predictions")) == 2
+            assert dataset.count("predictions.detections") == 2
+        finally:
+            dataset.delete()
 
 
 class TestRFDETRClassParsing:

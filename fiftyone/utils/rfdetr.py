@@ -197,6 +197,16 @@ class _RFDETRBaseModel(fout.TorchSamplesMixin, fout.TorchImageModel):
         fout.TorchImageModel.__init__(self, config)
 
     @property
+    def has_collate_fn(self) -> bool:
+        return True
+
+    @staticmethod
+    def collate_fn(batch: list[Any]) -> list[Any]:
+        # Preserve raw per-image inputs so apply_model() can batch RF-DETR
+        # without forcing Torch's default tensor collate on PIL images.
+        return batch
+
+    @property
     def _class_name_map(self):
         """Lazy access to class names from the loaded rfdetr model."""
         return self._model.class_names
