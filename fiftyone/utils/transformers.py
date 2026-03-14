@@ -1504,7 +1504,7 @@ class TransformersDetectorOutputProcessor(fout.DetectorOutputProcessor):
                     threshold=confidence_thresh or 0,
                     target_sizes=image_sizes,
                 )
-            except Exception:
+            except TypeError:
                 # Before transformers standardization.
                 output = self._objection_detection_processor(
                     output,
