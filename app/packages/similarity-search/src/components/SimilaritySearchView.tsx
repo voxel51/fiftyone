@@ -5,6 +5,7 @@ import { SimilaritySearchViewProps } from "../types";
 import { useSimilarityPanel } from "../hooks/useSimilarityPanel";
 import RunList from "./Home/RunList";
 import NewSearch from "./NewSearch/NewSearch";
+import SimilarityIndex from "./SimilarityIndex/SimilarityIndex";
 import * as s from "./styles";
 
 function SimilaritySearchReady(props: SimilaritySearchViewProps) {
@@ -53,6 +54,12 @@ function SimilaritySearchReady(props: SimilaritySearchViewProps) {
           isPatchesView={panel.isPatchesView}
           onBack={panel.navigateHome}
           onSubmitted={panel.handleSubmitted}
+        />
+      )}
+      {panel.page === "similarity_index" && (
+        <SimilarityIndex
+          brainKeys={panel.brainKeys}
+          onBack={panel.navigateHome}
         />
       )}
     </div>
