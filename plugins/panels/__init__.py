@@ -16,5 +16,13 @@ def register(p):
 
     if is_feature_enabled("VFF_SIMILARITY_SEARCH"):
         from .similarity_search import SimilaritySearchPanel
+        from .similarity_search.operators import (
+            InitSimilarityRunOperator,
+            ListSimilarityRunsOperator,
+            SimilaritySearchOperator,
+        )
 
         p.register(SimilaritySearchPanel)
+        p.register(SimilaritySearchOperator)
+        p.register(ListSimilarityRunsOperator)
+        p.register(InitSimilarityRunOperator)
