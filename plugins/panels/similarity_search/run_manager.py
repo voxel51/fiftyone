@@ -6,11 +6,14 @@ Similarity search run manager.
 |
 """
 
+import logging
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from .constants import STORE_NAME, RunStatus
+
+logger = logging.getLogger(__name__)
 
 
 class RunManager:
@@ -41,8 +44,8 @@ class RunManager:
             "run_id": run_id,
             "run_name": run_params.get("run_name") or f"Search {now[:16]}",
             "status": RunStatus.PENDING,
-            "brain_key": run_params["brain_key"],
-            "query_type": run_params["query_type"],
+            "brain_key": self._require_param(run_params, "brain_key"),
+            "query_type": self._require_param(run_params, "query_type"),
             "query": run_params.get("query"),
             "k": run_params.get("k"),
             "reverse": run_params.get("reverse", False),
@@ -82,9 +85,11 @@ class RunManager:
             updates: dict of fields to update
         """
         run = self.get_run(run_id)
-        if run:
-            run.update(updates)
-            self._store.set(self._key(run_id), run)
+        if not run:
+            logger.warning("Attempted to update non-existent run %s", run_id)
+            return
+        run.update(updates)
+        self._store.set(self._key(run_id), run)
 
     def set_operator_run_id(self, run_id: str, operator_run_id: str):
         """Link a delegated operation ID to a run and create index key.
@@ -117,7 +122,9 @@ class RunManager:
             run_id: the run ID
         """
         run = self.get_run(run_id)
-        if run and run.get("operator_run_id"):
+        if not run:
+            return
+        if run.get("operator_run_id"):
             self._store.delete(f"{self._OPID_PREFIX}{run['operator_run_id']}")
         self._store.delete(self._key(run_id))
 
@@ -144,6 +151,13 @@ class RunManager:
 
         runs.sort(key=lambda r: r.get("creation_time", ""), reverse=True)
         return runs
+
+    @staticmethod
+    def _require_param(params: Dict, key: str):
+        value = params.get(key)
+        if not value:
+            raise ValueError(f"'{key}' is required")
+        return value
 
     def _key(self, run_id: str) -> str:
         return f"{self._RUN_PREFIX}{run_id}"

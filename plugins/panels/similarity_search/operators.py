@@ -186,7 +186,7 @@ class SimilaritySearchOperator(foo.Operator):
             )
             neg_embeddings = [np.asarray(e) for e in embeddings]
 
-        if not len(pos_embeddings):
+        if not pos_embeddings:
             raise ValueError("No embeddings found for positive samples")
 
         pos_mean = np.mean(pos_embeddings, axis=0)
