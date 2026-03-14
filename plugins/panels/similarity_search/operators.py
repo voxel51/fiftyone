@@ -99,7 +99,11 @@ class SimilaritySearchOperator(foo.Operator):
             if negative_query_ids and isinstance(query, list):
                 # Vector arithmetic: mean(positive) - mean(negative)
                 query = self._compute_combined_query(
-                    dataset, brain_key, query, negative_query_ids
+                    dataset,
+                    brain_key,
+                    query,
+                    negative_query_ids,
+                    patches_field=patches_field,
                 )
 
             ctx.set_progress(0.3, label="Running similarity query...")
@@ -150,7 +154,11 @@ class SimilaritySearchOperator(foo.Operator):
 
     @staticmethod
     def _compute_combined_query(
-        dataset, brain_key, positive_ids, negative_ids
+        dataset,
+        brain_key,
+        positive_ids,
+        negative_ids,
+        patches_field=None,
     ):
         """Compute a combined query vector from positive and negative samples.
 
@@ -159,23 +167,27 @@ class SimilaritySearchOperator(foo.Operator):
         Args:
             dataset: the dataset
             brain_key: the brain key for the similarity index
-            positive_ids: list of positive sample IDs
-            negative_ids: list of negative sample IDs
+            positive_ids: list of positive sample/label IDs
+            negative_ids: list of negative sample/label IDs
+            patches_field: if set, IDs are label IDs (patch IDs)
 
         Returns:
             numpy array representing the combined query vector
         """
         results = dataset.load_brain_results(brain_key)
 
-        embeddings, ids, _ = results.get_embeddings(
-            sample_ids=positive_ids, allow_missing=True
+        # For patch-backed indices, IDs are label IDs not sample IDs
+        id_key = "label_ids" if patches_field else "sample_ids"
+
+        embeddings, _, _ = results.get_embeddings(
+            **{id_key: positive_ids}, allow_missing=True
         )
         pos_embeddings = [np.asarray(e) for e in embeddings]
 
         neg_embeddings = []
         if negative_ids:
-            embeddings, ids, _ = results.get_embeddings(
-                sample_ids=negative_ids, allow_missing=True
+            embeddings, _, _ = results.get_embeddings(
+                **{id_key: negative_ids}, allow_missing=True
             )
             neg_embeddings = [np.asarray(e) for e in embeddings]
 
