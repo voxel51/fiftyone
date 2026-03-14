@@ -20,9 +20,11 @@ def register(p):
             InitSimilarityRunOperator,
             ListSimilarityRunsOperator,
             SimilaritySearchOperator,
+            SimilaritySearchSubscriptionOperator,
         )
 
         p.register(SimilaritySearchPanel)
         p.register(SimilaritySearchOperator)
         p.register(ListSimilarityRunsOperator)
         p.register(InitSimilarityRunOperator)
+        p.register(SimilaritySearchSubscriptionOperator)

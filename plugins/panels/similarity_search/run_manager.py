@@ -28,14 +28,14 @@ class RunManager:
     def __init__(self, ctx):
         self._store = ctx.store(STORE_NAME)
 
-    def create_run(self, run_params: Dict[str, Any]) -> str:
+    def create_run(self, run_params: Dict[str, Any]) -> Dict[str, Any]:
         """Create a new run entry.
 
         Args:
             run_params: run configuration parameters
 
         Returns:
-            the run ID
+            the full run data dict
         """
         run_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc).isoformat()
@@ -63,8 +63,8 @@ class RunManager:
             "status_details": None,
             "created_by": run_params.get("created_by"),
         }
-        self._store.set(self._key(run_id), run_data)
-        return run_id
+        self.set_run(run_id, run_data)
+        return run_data
 
     def get_run(self, run_id: str) -> Optional[Dict]:
         """Get a run by ID.
@@ -77,8 +77,20 @@ class RunManager:
         """
         return self._store.get(self._key(run_id))
 
+    def set_run(self, run_id: str, run_data: Dict[str, Any]):
+        """Write a full run record to the store (atomic upsert).
+
+        Args:
+            run_id: the run ID
+            run_data: the complete run data dict
+        """
+        self._store.set(self._key(run_id), run_data)
+
     def update_run(self, run_id: str, updates: Dict[str, Any]):
-        """Update fields on an existing run.
+        """Update fields on an existing run (read-modify-write).
+
+        For hot paths where the caller already holds the full run dict,
+        prefer mutating locally and calling :meth:`set_run` directly.
 
         Args:
             run_id: the run ID
@@ -89,7 +101,7 @@ class RunManager:
             logger.warning("Attempted to update non-existent run %s", run_id)
             return
         run.update(updates)
-        self._store.set(self._key(run_id), run)
+        self.set_run(run_id, run)
 
     def set_operator_run_id(self, run_id: str, operator_run_id: str):
         """Link a delegated operation ID to a run and create index key.

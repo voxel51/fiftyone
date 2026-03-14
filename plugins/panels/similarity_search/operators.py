@@ -13,7 +13,7 @@ import numpy as np
 
 import fiftyone.operators as foo
 
-from .constants import RunStatus
+from .constants import STORE_NAME, RunStatus
 from .run_manager import RunManager
 
 logger = logging.getLogger(__name__)
@@ -45,6 +45,7 @@ class SimilaritySearchOperator(foo.Operator):
     def execute(self, ctx):
         manager = RunManager(ctx)
         run_id = ctx.params.get("run_id")
+        run_data = None
 
         if not run_id:
             # For delegated execution, InitSimilarityRunOperator already
@@ -52,24 +53,24 @@ class SimilaritySearchOperator(foo.Operator):
             # ID). Look it up so we update the same record.
             do_id = ctx.request_params.get("run_doc")
             if do_id:
-                existing = manager.find_run_by_operator_id(str(do_id))
-                if existing:
-                    run_id = existing["run_id"]
+                run_data = manager.find_run_by_operator_id(str(do_id))
+                if run_data:
+                    run_id = run_data["run_id"]
 
         # If still no run_id (immediate execution, or no matching
         # record found), create a new run record.
         if not run_id:
-            run_id = manager.create_run(ctx.params)
+            run_data = manager.create_run(ctx.params)
+            run_id = run_data["run_id"]
+
+        # If we found an existing run_id but didn't load run_data yet
+        if not run_data:
+            run_data = manager.get_run(run_id)
 
         try:
-            now = datetime.now(timezone.utc).isoformat()
-            manager.update_run(
-                run_id,
-                {
-                    "status": RunStatus.RUNNING,
-                    "start_time": now,
-                },
-            )
+            run_data["status"] = RunStatus.RUNNING
+            run_data["start_time"] = datetime.now(timezone.utc).isoformat()
+            manager.set_run(run_id, run_data)
 
             ctx.set_progress(0.1, label="Loading similarity index...")
 
@@ -123,16 +124,12 @@ class SimilaritySearchOperator(foo.Operator):
 
             ctx.set_progress(0.9, label="Saving results...")
 
-            manager.update_run(
-                run_id,
-                {
-                    "status": RunStatus.COMPLETED,
-                    "result_ids": result_ids,
-                    "result_count": len(result_ids),
-                    "result_view": result_view_stages,
-                    "end_time": datetime.now(timezone.utc).isoformat(),
-                },
-            )
+            run_data["status"] = RunStatus.COMPLETED
+            run_data["result_ids"] = result_ids
+            run_data["result_count"] = len(result_ids)
+            run_data["result_view"] = result_view_stages
+            run_data["end_time"] = datetime.now(timezone.utc).isoformat()
+            manager.set_run(run_id, run_data)
 
             ctx.set_progress(1.0, label="Done")
 
@@ -145,14 +142,10 @@ class SimilaritySearchOperator(foo.Operator):
                 str(e),
                 exc_info=True,
             )
-            manager.update_run(
-                run_id,
-                {
-                    "status": RunStatus.FAILED,
-                    "status_details": str(e),
-                    "end_time": datetime.now(timezone.utc).isoformat(),
-                },
-            )
+            run_data["status"] = RunStatus.FAILED
+            run_data["status_details"] = str(e)
+            run_data["end_time"] = datetime.now(timezone.utc).isoformat()
+            manager.set_run(run_id, run_data)
             raise
 
     @staticmethod
@@ -216,7 +209,8 @@ class InitSimilarityRunOperator(foo.Operator):
 
     def execute(self, ctx):
         manager = RunManager(ctx)
-        run_id = manager.create_run(ctx.params)
+        run_data = manager.create_run(ctx.params)
+        run_id = run_data["run_id"]
 
         # Link the delegated operation to the run
         operator_run_id = ctx.params.get("operator_run_id")
@@ -240,3 +234,15 @@ class ListSimilarityRunsOperator(foo.Operator):
     def execute(self, ctx):
         manager = RunManager(ctx)
         return {"runs": manager.list_runs()}
+
+
+class SimilaritySearchSubscriptionOperator(foo.SseOperator):
+    """Operator that provides SSE notifications for execution store changes."""
+
+    @property
+    def subscription_config(self):
+        return foo.SseOperatorConfig(
+            name="get_similarity_search_subscription_notifier",
+            label="Similarity Search Subscription Notifications",
+            store_name=STORE_NAME,
+        )
