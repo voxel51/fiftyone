@@ -15,8 +15,10 @@ export type BrainKeyConfig = {
   key: string;
   supports_prompts: boolean;
   supports_least_similarity: boolean;
-  max_k?: number;
   patches_field?: string;
+  model?: string;
+  backend?: string;
+  embeddings_field?: string;
 };
 
 /**
@@ -42,6 +44,7 @@ export type SimilarityRun = {
   source_view?: Record<string, unknown>[];
   operator_run_id?: string;
   status_details?: string;
+  created_by?: string;
 };
 
 /**
@@ -78,9 +81,12 @@ export type DateFilterPreset =
 /**
  * Filter state for the runs list.
  */
+export type OwnerFilter = "all" | "mine";
+
 export type RunFilterState = {
   searchText: string;
   datePreset: DateFilterPreset;
+  ownerFilter: OwnerFilter;
 };
 
 /**

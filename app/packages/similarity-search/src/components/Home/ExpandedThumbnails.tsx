@@ -1,0 +1,58 @@
+import {
+  Stack,
+  Text,
+  TextColor,
+  TextVariant,
+  Orientation,
+  Spacing,
+} from "@voxel51/voodo";
+import React from "react";
+import { SimilarityRun } from "../../types";
+import SampleThumbnails from "./SampleThumbnails";
+import * as s from "../styles";
+
+type ExpandedThumbnailsProps = {
+  run: SimilarityRun;
+  sampleMedia: Record<string, string>;
+};
+
+export default function ExpandedThumbnails({
+  run,
+  sampleMedia,
+}: ExpandedThumbnailsProps) {
+  const positiveIds = Array.isArray(run.query) ? run.query : [];
+  const negativeIds = run.negative_query_ids ?? [];
+
+  if (!positiveIds.length && !negativeIds.length) return null;
+
+  return (
+    <div style={s.expandedSection}>
+      <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
+        {positiveIds.length > 0 && (
+          <div>
+            <Text
+              variant={TextVariant.Md}
+              color={TextColor.Success}
+              style={{ marginBottom: "0.375rem" }}
+            >
+              Positive ({positiveIds.length})
+            </Text>
+            <SampleThumbnails ids={positiveIds} sampleMedia={sampleMedia} />
+          </div>
+        )}
+        {negativeIds.length > 0 && (
+          <div>
+            <Text
+              variant={TextVariant.Md}
+              color={TextColor.Destructive}
+              style={{ marginBottom: "0.375rem" }}
+            >
+              Negative ({negativeIds.length})
+            </Text>
+            <SampleThumbnails ids={negativeIds} sampleMedia={sampleMedia} />
+          </div>
+        )}
+      </Stack>
+    </div>
+  );
+}
