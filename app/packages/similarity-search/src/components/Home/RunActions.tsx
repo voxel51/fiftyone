@@ -1,0 +1,89 @@
+import { Button, Size, Tooltip, Variant } from "@voxel51/voodo";
+import React from "react";
+import {
+  ContentCopyIcon as ContentCopy,
+  DeleteIcon as Delete,
+  ExpandLessIcon as ExpandLess,
+  ExpandMoreIcon as ExpandMore,
+  GridViewIcon as GridView,
+} from "../../mui";
+import { SimilarityRun } from "../../types";
+import * as s from "../styles";
+
+const ApplyIcon = () => <GridView fontSize="small" />;
+const CloneIcon = () => <ContentCopy fontSize="small" />;
+const DeleteIconBtn = () => <Delete fontSize="small" />;
+const ExpandMoreIcon = () => (
+  <ExpandMore
+    fontSize="small"
+    style={{ color: "var(--fo-palette-text-secondary)" }}
+  />
+);
+const ExpandLessIcon = () => (
+  <ExpandLess
+    fontSize="small"
+    style={{ color: "var(--fo-palette-text-secondary)" }}
+  />
+);
+
+const tip = (text: string) => <span style={s.tooltipText}>{text}</span>;
+
+type RunActionsProps = {
+  run: SimilarityRun;
+  isExpanded: boolean;
+  onApply: (runId: string) => void;
+  onClone: (runId: string) => void;
+  onDelete: (runId: string) => void;
+  onToggleExpand: (run: SimilarityRun) => void;
+};
+
+export default function RunActions({
+  run,
+  isExpanded,
+  onApply,
+  onClone,
+  onDelete,
+  onToggleExpand,
+}: RunActionsProps) {
+  const isImage = run.query_type === "image";
+
+  return (
+    <div style={s.actionButtons}>
+      <Tooltip content={tip("Show results")}>
+        <Button
+          size={Size.Sm}
+          variant={Variant.Borderless}
+          leadingIcon={ApplyIcon}
+          onClick={() => onApply(run.run_id)}
+          disabled={run.status !== "completed"}
+        />
+      </Tooltip>
+      <Tooltip content={tip("Clone search")}>
+        <Button
+          size={Size.Sm}
+          variant={Variant.Borderless}
+          leadingIcon={CloneIcon}
+          onClick={() => onClone(run.run_id)}
+        />
+      </Tooltip>
+      <Tooltip content={tip("Delete")}>
+        <Button
+          size={Size.Sm}
+          variant={Variant.Borderless}
+          leadingIcon={DeleteIconBtn}
+          onClick={() => onDelete(run.run_id)}
+        />
+      </Tooltip>
+      {isImage && (
+        <Tooltip content={isExpanded ? tip("Collapse") : tip("Show samples")}>
+          <Button
+            size={Size.Sm}
+            variant={Variant.Borderless}
+            leadingIcon={isExpanded ? ExpandLessIcon : ExpandMoreIcon}
+            onClick={() => onToggleExpand(run)}
+          />
+        </Tooltip>
+      )}
+    </div>
+  );
+}

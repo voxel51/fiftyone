@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   formatQuery,
   formatTime,
-  pluralizeRuns,
+  pluralizeSearches,
   getDateRange,
   matchesText,
   matchesDate,
@@ -97,17 +97,17 @@ describe("formatTime", () => {
   });
 });
 
-describe("pluralizeRuns", () => {
+describe("pluralizeSearches", () => {
   it("returns singular for 1", () => {
-    expect(pluralizeRuns(1)).toBe("1 run");
+    expect(pluralizeSearches(1)).toBe("1 search");
   });
 
   it("returns plural for 0", () => {
-    expect(pluralizeRuns(0)).toBe("0 runs");
+    expect(pluralizeSearches(0)).toBe("0 searches");
   });
 
   it("returns plural for many", () => {
-    expect(pluralizeRuns(5)).toBe("5 runs");
+    expect(pluralizeSearches(5)).toBe("5 searches");
   });
 });
 

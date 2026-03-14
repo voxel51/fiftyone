@@ -18,16 +18,11 @@ import {
   Spacing,
   Variant,
 } from "@voxel51/voodo";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useRecoilValue } from "recoil";
-import {
-  OperatorExecutionButton,
-  useOperatorExecutor,
-} from "@fiftyone/operators";
-import * as fos from "@fiftyone/state";
-import { BrainKeyConfig, CloneConfig, QueryType } from "../../types";
-import { SEARCH_OPERATOR_URI, INIT_RUN_OPERATOR_URI } from "../../constants";
-import { canSubmitSearch, buildExecutionParams } from "../../utils";
+import React from "react";
+import { OperatorExecutionButton } from "@fiftyone/operators";
+import { BrainKeyConfig, CloneConfig } from "../../types";
+import { SEARCH_OPERATOR_URI } from "../../constants";
+import { useNewSearchForm } from "../../hooks/useNewSearchForm";
 import * as s from "../styles";
 
 type NewSearchProps = {
@@ -47,153 +42,7 @@ export default function NewSearch({
   onBack,
   onSubmitted,
 }: NewSearchProps) {
-  const selectedSamples = useRecoilValue(fos.selectedSamples);
-  const selectedLabels = useRecoilValue(fos.selectedLabels);
-  const view = useRecoilValue(fos.view);
-
-  const hasSamplesSelected = useMemo(
-    () =>
-      (selectedLabels && selectedLabels.length > 0) ||
-      (selectedSamples && selectedSamples.size > 0),
-    [selectedSamples, selectedLabels]
-  );
-
-  // Find the first brain key that supports text prompts
-  const firstTextKey = useMemo(
-    () => brainKeys.find((bk) => bk.supports_prompts),
-    [brainKeys]
-  );
-
-  // Default brain key + query type based on context
-  const defaultBrainKey = useMemo(() => {
-    if (cloneConfig?.brain_key) return cloneConfig.brain_key;
-    if (hasSamplesSelected) return brainKeys[0]?.key ?? "";
-    if (firstTextKey) return firstTextKey.key;
-    return brainKeys[0]?.key ?? "";
-  }, [cloneConfig, hasSamplesSelected, firstTextKey, brainKeys]);
-
-  const defaultQueryType = useMemo((): QueryType => {
-    if (cloneConfig?.query_type) return cloneConfig.query_type;
-    if (hasSamplesSelected) return "image";
-    if (firstTextKey) return "text";
-    return "image";
-  }, [cloneConfig, hasSamplesSelected, firstTextKey]);
-
-  const [brainKey, setBrainKey] = useState(defaultBrainKey);
-  const [queryType, setQueryType] = useState<QueryType>(defaultQueryType);
-  const [textQuery, setTextQuery] = useState(cloneConfig?.query ?? "");
-  const [k, setK] = useState<number | "">(cloneConfig?.k ?? 25);
-  const [reverse, setReverse] = useState(cloneConfig?.reverse ?? false);
-  const [distField, setDistField] = useState(cloneConfig?.dist_field ?? "");
-  const [runName, setRunName] = useState("");
-  const hasView = Array.isArray(view) && view.length > 0;
-  const [searchScope, setSearchScope] = useState<"view" | "dataset">(
-    isPatchesView ? "view" : "view"
-  );
-
-  const { execute: initRun } = useOperatorExecutor(INIT_RUN_OPERATOR_URI);
-
-  // Get config for selected brain key
-  const selectedConfig = brainKeys.find((bk) => bk.key === brainKey);
-  const supportsPrompts = selectedConfig?.supports_prompts ?? false;
-  const supportsLeast = selectedConfig?.supports_least_similarity ?? true;
-
-  // Auto-select first brain key if none selected
-  useEffect(() => {
-    if (!brainKey && brainKeys.length > 0) {
-      setBrainKey(brainKeys[0].key);
-    }
-  }, [brainKey, brainKeys]);
-
-  // Reset query type if brain key doesn't support prompts
-  useEffect(() => {
-    if (!supportsPrompts && queryType === "text") {
-      setQueryType("image");
-    }
-  }, [supportsPrompts, queryType]);
-
-  const queryIds = useMemo(() => {
-    if (selectedLabels && selectedLabels.length > 0) {
-      return selectedLabels.map((l: any) => l.label_id);
-    }
-    if (selectedSamples && selectedSamples.size > 0) {
-      return Array.from(selectedSamples);
-    }
-    return [];
-  }, [selectedSamples, selectedLabels]);
-
-  // Negative query IDs will be wired in with the alt-selection PR
-  const negativeQueryIds: string[] = [];
-
-  // Build the params that will be passed to the operator
-  const executionParams = useMemo(
-    () =>
-      buildExecutionParams({
-        brainKey,
-        queryType,
-        textQuery,
-        queryIds,
-        reverse,
-        patchesField: selectedConfig?.patches_field,
-        searchScope,
-        hasView,
-        view: view as unknown[],
-        k,
-        distField,
-        runName,
-        negativeQueryIds,
-      }),
-    [
-      brainKey,
-      queryType,
-      textQuery,
-      k,
-      reverse,
-      distField,
-      runName,
-      selectedConfig,
-      view,
-      searchScope,
-      hasView,
-      queryIds,
-      negativeQueryIds,
-    ]
-  );
-
-  // Called when operator execution completes (or is queued for delegation)
-  const handleSuccess = useCallback(
-    (result: any) => {
-      if (result?.delegated) {
-        const operatorRunId = result?.result?.id?.$oid;
-        initRun(
-          {
-            ...executionParams,
-            operator_run_id: operatorRunId,
-          },
-          {
-            callback: () => onSubmitted(),
-          }
-        );
-      } else {
-        onSubmitted();
-      }
-    },
-    [initRun, executionParams, onSubmitted]
-  );
-
-  const handleError = useCallback((error: any) => {
-    console.error("Similarity search failed:", error);
-  }, []);
-
-  const brainKeyOptions = brainKeys.map((bk) => ({
-    id: bk.key,
-    data: {
-      label:
-        bk.key + (bk.patches_field ? ` (patches: ${bk.patches_field})` : ""),
-    },
-  }));
-
-  const kError = typeof k === "number" && k > 10000;
+  const form = useNewSearchForm(brainKeys, cloneConfig, onSubmitted);
 
   return (
     <div style={s.newSearchContainer}>
@@ -218,43 +67,36 @@ export default function NewSearch({
         <FormField
           label="Similarity Index"
           control={
-            <>
-              {/* Index info card */}
-              {selectedConfig && (
-                <div style={{ ...s.noBrainKeysWarning, marginBottom: 8 }}>
-                  <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
-                    {selectedConfig.model && (
-                      <Text
-                        variant={TextVariant.Md}
-                        color={TextColor.Secondary}
-                      >
-                        Model: {selectedConfig.model}
-                      </Text>
-                    )}
-                    {selectedConfig.backend && (
-                      <Text
-                        variant={TextVariant.Md}
-                        color={TextColor.Secondary}
-                      >
-                        Backend: {selectedConfig.backend}
-                      </Text>
-                    )}
-                    <Text variant={TextVariant.Md} color={TextColor.Secondary}>
-                      Supports text queries?{" "}
-                      {selectedConfig.supports_prompts ? "\u2705" : "\u274C"}
-                    </Text>
-                  </Stack>
-                </div>
-              )}
-              <Select
-                exclusive
-                options={brainKeyOptions}
-                value={brainKey}
-                onChange={(value) => setBrainKey((value as string) ?? "")}
-              />
-            </>
+            <Select
+              exclusive
+              options={form.brainKeyOptions}
+              value={form.brainKey}
+              onChange={(value) => form.setBrainKey((value as string) ?? "")}
+            />
           }
         />
+
+        {/* Index info card */}
+        {form.selectedConfig && (
+          <div style={s.noBrainKeysWarning}>
+            <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
+              {form.selectedConfig.model && (
+                <Text variant={TextVariant.Md} color={TextColor.Secondary}>
+                  Model: {form.selectedConfig.model}
+                </Text>
+              )}
+              {form.selectedConfig.backend && (
+                <Text variant={TextVariant.Md} color={TextColor.Secondary}>
+                  Backend: {form.selectedConfig.backend}
+                </Text>
+              )}
+              <Text variant={TextVariant.Md} color={TextColor.Secondary}>
+                Supports text queries?{" "}
+                {form.selectedConfig.supports_prompts ? "\u2705" : "\u274C"}
+              </Text>
+            </Stack>
+          </div>
+        )}
 
         {brainKeys.length === 0 && (
           <div style={s.noBrainKeysWarning}>
@@ -281,8 +123,10 @@ export default function NewSearch({
                       { value: "view", label: "Current View" },
                     ]
               }
-              value={searchScope}
-              onChange={(value) => setSearchScope(value as "view" | "dataset")}
+              value={form.searchScope}
+              onChange={(value) =>
+                form.setSearchScope(value as "view" | "dataset")
+              }
               size={Size.Sm}
               style={{ display: "flex", flexDirection: "row", gap: "1rem" }}
             />
@@ -290,24 +134,24 @@ export default function NewSearch({
         />
 
         {/* Query type toggle */}
-        {supportsPrompts && (
+        {form.supportsPrompts && (
           <Stack orientation={Orientation.Row} spacing={Spacing.Xs}>
             <Button
               variant={
-                queryType === "text" ? Variant.Primary : Variant.Secondary
+                form.queryType === "text" ? Variant.Primary : Variant.Secondary
               }
               size={Size.Sm}
-              onClick={() => setQueryType("text")}
+              onClick={() => form.setQueryType("text")}
               style={{ flex: 1 }}
             >
               Text Search
             </Button>
             <Button
               variant={
-                queryType === "image" ? Variant.Primary : Variant.Secondary
+                form.queryType === "image" ? Variant.Primary : Variant.Secondary
               }
               size={Size.Sm}
-              onClick={() => setQueryType("image")}
+              onClick={() => form.setQueryType("image")}
               style={{ flex: 1 }}
             >
               Image Search
@@ -316,14 +160,14 @@ export default function NewSearch({
         )}
 
         {/* Query input */}
-        {queryType === "text" ? (
+        {form.queryType === "text" ? (
           <FormField
             label="Text query"
             control={
               <TextArea
                 placeholder="Enter a text prompt..."
-                value={textQuery}
-                onChange={(e) => setTextQuery(e.target.value)}
+                value={form.textQuery}
+                onChange={(e) => form.setTextQuery(e.target.value)}
                 rows={3}
                 size={Size.Sm}
               />
@@ -332,7 +176,7 @@ export default function NewSearch({
         ) : (
           <div
             style={
-              queryIds.length > 0
+              form.queryIds.length > 0
                 ? s.querySelectorBoxActive
                 : s.querySelectorBoxInactive
             }
@@ -340,12 +184,14 @@ export default function NewSearch({
             <Text
               variant={TextVariant.Sm}
               color={
-                queryIds.length > 0 ? TextColor.Success : TextColor.Secondary
+                form.queryIds.length > 0
+                  ? TextColor.Success
+                  : TextColor.Secondary
               }
             >
-              {queryIds.length > 0
-                ? `${queryIds.length} ${
-                    selectedLabels?.length > 0 ? "labels" : "samples"
+              {form.queryIds.length > 0
+                ? `${form.queryIds.length} ${
+                    form.selectedLabels?.length > 0 ? "labels" : "samples"
                   } selected (positive)`
                 : "Select samples in the grid"}
             </Text>
@@ -355,27 +201,27 @@ export default function NewSearch({
         {/* Number of matches */}
         <FormField
           label="Number of matches"
-          error={kError ? "Exceeds maximum of 10,000" : undefined}
+          error={form.kError ? "Exceeds maximum of 10,000" : undefined}
           control={
             <Input
               type={InputType.Number}
-              value={k === "" ? "" : String(k)}
+              value={form.k === "" ? "" : String(form.k)}
               onChange={(e) => {
                 const val = e.target.value;
-                setK(val === "" ? "" : parseInt(val, 10));
+                form.setK(val === "" ? "" : parseInt(val, 10));
               }}
               min={1}
               size={Size.Sm}
-              error={kError}
+              error={form.kError}
             />
           }
         />
 
         {/* Reverse toggle */}
-        {supportsLeast && (
+        {form.supportsLeast && (
           <Toggle
-            checked={reverse}
-            onChange={(checked) => setReverse(checked)}
+            checked={form.reverse}
+            onChange={(checked) => form.setReverse(checked)}
             label="Least similar (reverse)"
             size={Size.Sm}
           />
@@ -388,8 +234,8 @@ export default function NewSearch({
           control={
             <Input
               placeholder="e.g., similarity_dist"
-              value={distField}
-              onChange={(e) => setDistField(e.target.value)}
+              value={form.distField}
+              onChange={(e) => form.setDistField(e.target.value)}
               size={Size.Sm}
             />
           }
@@ -401,23 +247,21 @@ export default function NewSearch({
           control={
             <Input
               placeholder="My search"
-              value={runName}
-              onChange={(e) => setRunName(e.target.value)}
+              value={form.runName}
+              onChange={(e) => form.setRunName(e.target.value)}
               size={Size.Sm}
             />
           }
         />
 
-        {/* Submit with execution target selector */}
+        {/* Submit */}
         <div style={s.submitRow}>
           <OperatorExecutionButton
             operatorUri={SEARCH_OPERATOR_URI}
-            executionParams={executionParams}
-            onSuccess={handleSuccess}
-            onError={handleError}
-            disabled={
-              !canSubmitSearch(brainKey, queryType, textQuery, queryIds.length)
-            }
+            executionParams={form.executionParams}
+            onSuccess={form.handleSuccess}
+            onError={form.handleError}
+            disabled={!form.canSubmit}
             variant="contained"
           >
             Search

@@ -1,4 +1,5 @@
 import {
+  Button,
   Input,
   InputType,
   Select,
@@ -9,9 +10,10 @@ import {
   TextVariant,
   Orientation,
   Spacing,
+  Variant,
 } from "@voxel51/voodo";
 import React from "react";
-import { RunFilterState, DateFilterPreset } from "../../types";
+import { RunFilterState, DateFilterPreset, OwnerFilter } from "../../types";
 import { DATE_PRESET_OPTIONS } from "../../constants";
 import * as s from "../styles";
 
@@ -29,7 +31,9 @@ export default function FilterBar({
   totalCount,
 }: FilterBarProps) {
   const isFiltered =
-    filterState.searchText !== "" || filterState.datePreset !== "all";
+    filterState.searchText !== "" ||
+    filterState.datePreset !== "all" ||
+    filterState.ownerFilter !== "all";
 
   return (
     <Stack
@@ -66,11 +70,35 @@ export default function FilterBar({
             }
           />
         </div>
+        <Stack orientation={Orientation.Row} spacing={Spacing.Xs}>
+          <Button
+            variant={
+              filterState.ownerFilter === "all"
+                ? Variant.Primary
+                : Variant.Secondary
+            }
+            size={Size.Sm}
+            onClick={() => onChange({ ...filterState, ownerFilter: "all" })}
+          >
+            All
+          </Button>
+          <Button
+            variant={
+              filterState.ownerFilter === "mine"
+                ? Variant.Primary
+                : Variant.Secondary
+            }
+            size={Size.Sm}
+            onClick={() => onChange({ ...filterState, ownerFilter: "mine" })}
+          >
+            Mine
+          </Button>
+        </Stack>
       </Stack>
 
       {isFiltered && (
-        <Text variant={TextVariant.Sm} color={TextColor.Muted}>
-          Showing {resultCount} of {totalCount} runs
+        <Text variant={TextVariant.Md} color={TextColor.Muted}>
+          Showing {resultCount} of {totalCount} searches
         </Text>
       )}
     </Stack>

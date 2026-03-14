@@ -13,6 +13,7 @@ const cloneConfig = atom<CloneConfig | null>(null);
 const filterState = atom<RunFilterState>({
   searchText: "",
   datePreset: "all",
+  ownerFilter: "all",
 });
 const selectMode = atom<boolean>(false);
 const selectedRunIds = atom<Set<string>>(new Set());

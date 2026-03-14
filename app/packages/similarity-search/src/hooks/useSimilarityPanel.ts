@@ -20,12 +20,18 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
   const { data = {}, schema } = props;
   const { view } = schema;
 
-  const { page, navigateHome, navigateNewSearch } = useNavigate();
+  const { page, navigateHome, navigateNewSearch, navigateSimilarityIndex } =
+    useNavigate();
   const { runs, loaded, refreshRuns } = useRuns();
   const [submitting, setSubmitting] = useState(false);
   const { cloneConfig, setCloneConfig, clearCloneConfig } = useCloneConfig();
 
-  const { filteredRuns, filterState, setFilterState } = useFilteredRuns(runs);
+  // currentUser is null in OSS, populated by FOE via panel data
+  const currentUser = (data as any).current_user ?? null;
+  const { filteredRuns, filterState, setFilterState } = useFilteredRuns(
+    runs,
+    currentUser
+  );
   const multiSelect = useMultiSelect();
 
   const triggers = useTriggers<{
@@ -153,5 +159,6 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
     setFilterState,
     navigateHome,
     getSampleMedia: triggers.getSampleMedia,
+    navigateSimilarityIndex,
   };
 };

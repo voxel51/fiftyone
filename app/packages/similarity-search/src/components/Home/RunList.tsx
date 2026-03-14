@@ -1,20 +1,9 @@
 import {
   AddIcon as Add,
-  ContentCopyIcon as ContentCopy,
-  DeleteIcon as Delete,
   EditNoteIcon as EditNote,
-  ExpandLessIcon as ExpandLess,
-  ExpandMoreIcon as ExpandMore,
-  GridViewIcon as GridView,
-  ImageSearchIcon as ImageSearch,
-  OpenInNewIcon as OpenInNew,
   RefreshIcon as Refresh,
+  SettingsIcon as Settings,
 } from "../../mui";
-import {
-  usePromptOperatorInput,
-  useFirstExistingUri,
-} from "@fiftyone/operators";
-import { scrollable } from "@fiftyone/components";
 import {
   Button,
   Checkbox,
@@ -38,14 +27,11 @@ import React, {
   useState,
 } from "react";
 import { BrainKeyConfig, SimilarityRun, RunFilterState } from "../../types";
-import {
-  BRAIN_COMPUTE_SIMILARITY_URI,
-  BRAIN_PLUGIN_URL,
-  DOCS_URL,
-} from "../../constants";
 import { formatQuery, formatTime } from "../../utils";
 import StatusBadge from "./StatusBadge";
-import SampleThumbnails from "./SampleThumbnails";
+import RunActions from "./RunActions";
+import ExpandedThumbnails from "./ExpandedThumbnails";
+import NoBrainKeysEmptyState from "./NoBrainKeysEmptyState";
 import FilterBar from "./FilterBar";
 import BulkActionBar from "./BulkActionBar";
 import * as s from "../styles";
@@ -62,6 +48,7 @@ type RunListProps = {
   onBulkDelete: (runIds: string[]) => void;
   onRefresh: () => void;
   onNewSearch: () => void;
+  onSettings: () => void;
   onGetSampleMedia: (payload: { sample_ids: string[] }) => void;
   filterState: RunFilterState;
   onFilterChange: (state: RunFilterState) => void;
@@ -74,265 +61,12 @@ type RunListProps = {
   onClearAndExit: () => void;
 };
 
-const ApplyIcon = () => <GridView fontSize="small" />;
-const CloneIcon = () => <ContentCopy fontSize="small" />;
-const DeleteIcon = () => <Delete fontSize="small" />;
 const RefreshIcon = () => <Refresh fontSize="small" />;
 const AddIcon = () => <Add fontSize="small" />;
 const ManageIcon = () => <EditNote fontSize="small" />;
-const ExpandMoreIcon = () => (
-  <ExpandMore
-    fontSize="small"
-    style={{ color: "var(--fo-palette-text-secondary)" }}
-  />
-);
-const ExpandLessIcon = () => (
-  <ExpandLess
-    fontSize="small"
-    style={{ color: "var(--fo-palette-text-secondary)" }}
-  />
-);
+const SettingsIconBtn = () => <Settings fontSize="small" />;
 
 const tip = (text: string) => <span style={s.tooltipText}>{text}</span>;
-
-/**
- * Isolated component so `usePromptOperatorInput` is only called when the
- * operator actually exists (hooks can't be conditional).
- */
-function ComputeSimilarityButton() {
-  const promptForInput = usePromptOperatorInput();
-  return (
-    <Button
-      variant={Variant.Primary}
-      size={Size.Sm}
-      onClick={() => promptForInput(BRAIN_COMPUTE_SIMILARITY_URI)}
-    >
-      Compute Similarity Index
-    </Button>
-  );
-}
-
-function NoBrainKeysEmptyState() {
-  const { exists: hasBrainOperator } = useFirstExistingUri([
-    BRAIN_COMPUTE_SIMILARITY_URI,
-  ]);
-
-  return (
-    <div style={s.noBrainKeysContainer}>
-      <div style={s.noBrainKeysCard}>
-        <div style={s.noBrainKeysHeader}>
-          <div style={s.noBrainKeysIconBox}>
-            <ImageSearch
-              style={{
-                fontSize: 24,
-                color: "var(--fo-palette-primary-main)",
-              }}
-            />
-          </div>
-          <div style={s.noBrainKeysHeaderText}>
-            <Text
-              variant={TextVariant.Md}
-              color={TextColor.Primary}
-              style={{ fontWeight: 600 }}
-            >
-              No similarity index found
-            </Text>
-            <Text variant={TextVariant.Md} color={TextColor.Secondary}>
-              {hasBrainOperator
-                ? "Create an index to search for similar samples by image or text."
-                : "Install the Brain plugin or compute the similarity index via Python SDK."}
-            </Text>
-          </div>
-        </div>
-
-        <div style={s.divider} />
-
-        {hasBrainOperator ? (
-          <div style={s.noBrainKeysCta}>
-            <ComputeSimilarityButton />
-            <Text variant={TextVariant.Md} color={TextColor.Muted}>
-              or create an index via{" "}
-              <span
-                style={{ textDecoration: "underline", cursor: "pointer" }}
-                onClick={() => window.open(DOCS_URL, "_blank")}
-              >
-                Python SDK
-              </span>
-            </Text>
-          </div>
-        ) : (
-          <>
-            <div style={s.noBrainKeysSection}>
-              <Text
-                variant={TextVariant.Md}
-                color={TextColor.Muted}
-                style={{ marginBottom: 6 }}
-              >
-                Install via CLI:
-              </Text>
-              <pre className={scrollable} style={s.codeBlock}>
-                {`fiftyone plugins download \\
-    https://github.com/voxel51/fiftyone-plugins \\
-    --plugin-names @voxel51/brain`}
-              </pre>
-              <Text
-                variant={TextVariant.Md}
-                color={TextColor.Muted}
-                style={{ marginTop: 10 }}
-              >
-                Enterprise: ask your admin to install via Settings &gt; Plugins.
-              </Text>
-            </div>
-
-            <div style={s.divider} />
-
-            <div style={s.noBrainKeysSection}>
-              <Text
-                variant={TextVariant.Md}
-                color={TextColor.Muted}
-                style={{ marginBottom: 6 }}
-              >
-                Or create an index via Python:
-              </Text>
-              <pre className={scrollable} style={s.codeBlock}>
-                {`import fiftyone.brain as fob
-
-results = fob.compute_similarity(
-    dataset,
-    model="clip-vit-base32-torch",
-    brain_key="clip_sim",
-)`}
-              </pre>
-            </div>
-
-            <div style={s.divider} />
-
-            <div style={s.noBrainKeysActions}>
-              <Button
-                variant={Variant.Secondary}
-                size={Size.Sm}
-                onClick={() => window.open(DOCS_URL, "_blank")}
-                trailingIcon={() => <OpenInNew style={{ fontSize: 14 }} />}
-              >
-                View Docs
-              </Button>
-              <Button
-                variant={Variant.Primary}
-                size={Size.Sm}
-                onClick={() => window.open(BRAIN_PLUGIN_URL, "_blank")}
-                trailingIcon={() => <OpenInNew style={{ fontSize: 14 }} />}
-              >
-                Brain Plugin
-              </Button>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function RunActions({
-  run,
-  isExpanded,
-  onApply,
-  onClone,
-  onDelete,
-  onToggleExpand,
-}: {
-  run: SimilarityRun;
-  isExpanded: boolean;
-  onApply: (runId: string) => void;
-  onClone: (runId: string) => void;
-  onDelete: (runId: string) => void;
-  onToggleExpand: (run: SimilarityRun) => void;
-}) {
-  const isImage = run.query_type === "image";
-
-  return (
-    <div style={s.actionButtons}>
-      <Tooltip content={tip("Show results")}>
-        <Button
-          size={Size.Sm}
-          variant={Variant.Borderless}
-          leadingIcon={ApplyIcon}
-          onClick={() => onApply(run.run_id)}
-          disabled={run.status !== "completed"}
-        />
-      </Tooltip>
-      <Tooltip content={tip("Clone search")}>
-        <Button
-          size={Size.Sm}
-          variant={Variant.Borderless}
-          leadingIcon={CloneIcon}
-          onClick={() => onClone(run.run_id)}
-        />
-      </Tooltip>
-      <Tooltip content={tip("Delete")}>
-        <Button
-          size={Size.Sm}
-          variant={Variant.Borderless}
-          leadingIcon={DeleteIcon}
-          onClick={() => onDelete(run.run_id)}
-        />
-      </Tooltip>
-      {isImage && (
-        <Tooltip content={isExpanded ? tip("Collapse") : tip("Show samples")}>
-          <Button
-            size={Size.Sm}
-            variant={Variant.Borderless}
-            leadingIcon={isExpanded ? ExpandLessIcon : ExpandMoreIcon}
-            onClick={() => onToggleExpand(run)}
-          />
-        </Tooltip>
-      )}
-    </div>
-  );
-}
-
-function ExpandedThumbnails({
-  run,
-  sampleMedia,
-}: {
-  run: SimilarityRun;
-  sampleMedia: Record<string, string>;
-}) {
-  const positiveIds = Array.isArray(run.query) ? run.query : [];
-  const negativeIds = run.negative_query_ids ?? [];
-
-  if (!positiveIds.length && !negativeIds.length) return null;
-
-  return (
-    <div style={s.expandedSection}>
-      <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
-        {positiveIds.length > 0 && (
-          <div>
-            <Text
-              variant={TextVariant.Md}
-              color={TextColor.Success}
-              style={{ marginBottom: "0.375rem" }}
-            >
-              Positive ({positiveIds.length})
-            </Text>
-            <SampleThumbnails ids={positiveIds} sampleMedia={sampleMedia} />
-          </div>
-        )}
-        {negativeIds.length > 0 && (
-          <div>
-            <Text
-              variant={TextVariant.Md}
-              color={TextColor.Destructive}
-              style={{ marginBottom: "0.375rem" }}
-            >
-              Negative ({negativeIds.length})
-            </Text>
-            <SampleThumbnails ids={negativeIds} sampleMedia={sampleMedia} />
-          </div>
-        )}
-      </Stack>
-    </div>
-  );
-}
 
 export default function RunList({
   runs,
@@ -346,6 +80,7 @@ export default function RunList({
   onBulkDelete,
   onRefresh,
   onNewSearch,
+  onSettings,
   onGetSampleMedia,
   filterState,
   onFilterChange,
@@ -398,9 +133,7 @@ export default function RunList({
 
   const handleSelected = useCallback(
     (selectedIds: string[]) => {
-      // RichList gives us the full selected array — sync it
       const currentIds = new Set(selectedIds);
-      // Determine what changed and forward to parent
       for (const id of selectedIds) {
         if (!selectedRunIds.has(id)) onToggleRunSelection(id);
       }
@@ -516,7 +249,9 @@ export default function RunList({
           alignItems: "center",
         }}
       >
-        <Heading level="h2">Similarity Search</Heading>
+        <Heading level="h2">
+          {runs.length} Similarity {runs.length === 1 ? "Search" : "Searches"}
+        </Heading>
         <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
           {runs.length > 0 && (
             <Tooltip content={tip("Refresh")}>
@@ -529,15 +264,23 @@ export default function RunList({
             </Tooltip>
           )}
           {runs.length > 0 && (
-            <Button
-              variant={selectMode ? Variant.Secondary : Variant.Borderless}
-              size={Size.Sm}
-              leadingIcon={ManageIcon}
-              onClick={onToggleSelectMode}
-            >
-              {selectMode ? "Done" : "Manage"}
-            </Button>
+            <Tooltip content={tip("Manage searches")}>
+              <Button
+                variant={selectMode ? Variant.Secondary : Variant.Borderless}
+                size={Size.Sm}
+                leadingIcon={ManageIcon}
+                onClick={onToggleSelectMode}
+              />
+            </Tooltip>
           )}
+          <Tooltip content={tip("Similarity indexes")}>
+            <Button
+              size={Size.Sm}
+              variant={Variant.Borderless}
+              leadingIcon={SettingsIconBtn}
+              onClick={onSettings}
+            />
+          </Tooltip>
           <Tooltip
             content={
               brainKeys.length === 0
@@ -583,7 +326,9 @@ export default function RunList({
         </div>
       ) : filteredRuns.length === 0 ? (
         <div style={s.emptyState}>
-          <Text color={TextColor.Secondary}>No runs match your filters</Text>
+          <Text color={TextColor.Secondary}>
+            No searches match your filters
+          </Text>
         </div>
       ) : (
         <>

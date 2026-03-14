@@ -33,6 +33,7 @@ function SimilaritySearchReady(props: SimilaritySearchViewProps) {
           onBulkDelete={panel.handleBulkDelete}
           onRefresh={panel.refreshRuns}
           onNewSearch={panel.handleNewSearch}
+          onSettings={panel.navigateSimilarityIndex}
           onGetSampleMedia={panel.getSampleMedia}
           filterState={panel.filterState}
           onFilterChange={panel.setFilterState}

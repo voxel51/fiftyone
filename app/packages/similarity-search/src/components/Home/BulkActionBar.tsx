@@ -11,7 +11,7 @@ import {
   Variant,
 } from "@voxel51/voodo";
 import React, { useCallback, useEffect, useState } from "react";
-import { pluralizeRuns } from "../../utils";
+import { pluralizeSearches } from "../../utils";
 import * as s from "../styles";
 
 type BulkActionBarProps = {
@@ -51,7 +51,7 @@ export default function BulkActionBar({
 
   if (selectedCount === 0) return null;
 
-  const label = pluralizeRuns(selectedCount);
+  const label = pluralizeSearches(selectedCount);
 
   return (
     <div style={s.bulkActionBar}>

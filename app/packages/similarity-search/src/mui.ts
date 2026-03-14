@@ -17,6 +17,7 @@ export { default as GridViewIcon } from "@mui/icons-material/GridView";
 export { default as ImageSearchIcon } from "@mui/icons-material/ImageSearch";
 export { default as OpenInNewIcon } from "@mui/icons-material/OpenInNew";
 export { default as RefreshIcon } from "@mui/icons-material/Refresh";
+export { default as SettingsIcon } from "@mui/icons-material/Settings";
 
 // Components
 export { default as ImageList } from "@mui/material/ImageList";

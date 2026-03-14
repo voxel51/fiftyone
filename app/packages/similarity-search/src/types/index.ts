@@ -81,9 +81,12 @@ export type DateFilterPreset =
 /**
  * Filter state for the runs list.
  */
+export type OwnerFilter = "all" | "mine";
+
 export type RunFilterState = {
   searchText: string;
   datePreset: DateFilterPreset;
+  ownerFilter: OwnerFilter;
 };
 
 /**

@@ -26,8 +26,8 @@ export const formatTime = (isoString?: string): string => {
   return date.toLocaleString();
 };
 
-export const pluralizeRuns = (count: number): string => {
-  return `${count} ${count === 1 ? "run" : "runs"}`;
+export const pluralizeSearches = (count: number): string => {
+  return `${count} ${count === 1 ? "search" : "searches"}`;
 };
 
 export const getDateRange = (
