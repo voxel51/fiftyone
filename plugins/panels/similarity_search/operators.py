@@ -67,6 +67,11 @@ class SimilaritySearchOperator(foo.Operator):
         if not run_data:
             run_data = manager.get_run(run_id)
 
+        # Stale/missing run; recover with a fresh record
+        if not run_data:
+            run_data = manager.create_run(ctx.params)
+            run_id = run_data["run_id"]
+
         try:
             run_data["status"] = RunStatus.RUNNING
             run_data["start_time"] = datetime.now(timezone.utc).isoformat()
@@ -109,7 +114,7 @@ class SimilaritySearchOperator(foo.Operator):
             ctx.set_progress(0.3, label="Running similarity query...")
 
             # Build kwargs, omitting None values
-            kwargs = dict(brain_key=brain_key)
+            kwargs = {"brain_key": brain_key}
             if k is not None:
                 kwargs["k"] = k
             if reverse:
@@ -146,10 +151,11 @@ class SimilaritySearchOperator(foo.Operator):
                 str(e),
                 exc_info=True,
             )
-            run_data["status"] = RunStatus.FAILED
-            run_data["status_details"] = str(e)
-            run_data["end_time"] = datetime.now(timezone.utc).isoformat()
-            manager.set_run(run_id, run_data)
+            if run_data:
+                run_data["status"] = RunStatus.FAILED
+                run_data["status_details"] = str(e)
+                run_data["end_time"] = datetime.now(timezone.utc).isoformat()
+                manager.set_run(run_id, run_data)
             raise
 
     @staticmethod

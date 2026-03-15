@@ -180,6 +180,9 @@ class SimilaritySearchPanel(Panel):
             return
 
         manager = RunManager(ctx)
+        if not manager.get_run(run_id):
+            ctx.ops.notify("Run not found", variant="error")
+            return
         manager.update_run(run_id, {"run_name": new_name.strip()})
         ctx.ops.notify("Run renamed", variant="success")
         self.list_runs(ctx)

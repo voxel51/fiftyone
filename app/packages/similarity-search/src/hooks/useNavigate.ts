@@ -6,7 +6,7 @@ type ViewState = {
 };
 
 type NavigateResult = {
-  page: string;
+  page: ViewState["page"];
   navigateHome: () => void;
   navigateNewSearch: () => void;
   navigateSimilarityIndex: () => void;
