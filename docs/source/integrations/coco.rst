@@ -219,7 +219,7 @@ file containing COCO-formatted labels to work with:
 
     The default value is ``tolerance=2``, which reduces the number of polygon
     vertices while keeping a small approximation error. Typical values are
-    ``0`` (lossless) to ``3`` (more aggressive simplification).
+    ``1`` (lossless) to ``3`` (more aggressive simplification).
 
     .. seealso::
 
