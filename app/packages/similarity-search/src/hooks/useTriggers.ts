@@ -1,5 +1,5 @@
 import { useTriggerPanelEvent } from "@fiftyone/operators";
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 
 /**
  * Given a record of keys to event names, returns a record of trigger functions.
@@ -9,18 +9,22 @@ export default function useTriggers<
   T extends Record<string, (...args: any[]) => void>
 >(eventMap: { [K in keyof T]: string }): T {
   const trigger = useTriggerPanelEvent();
+  const eventMapRef = useRef(eventMap);
+  eventMapRef.current = eventMap;
 
   return useMemo(() => {
     const result = {} as T;
 
-    for (const key in eventMap) {
-      const eventName = eventMap[key];
-      result[key] = ((payload?: any) =>
-        safeTrigger(trigger, eventName, payload)) as T[typeof key];
+    for (const key in eventMapRef.current) {
+      const k = key;
+      result[k] = ((payload?: any) =>
+        safeTrigger(trigger, eventMapRef.current[k], payload)) as T[typeof k];
     }
 
     return result;
-  }, [trigger, ...Object.values(eventMap)]);
+    // eventMap keys are static — only trigger identity matters
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trigger]);
 }
 
 function safeTrigger(

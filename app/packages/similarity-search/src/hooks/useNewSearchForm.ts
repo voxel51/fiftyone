@@ -6,6 +6,8 @@ import { BrainKeyConfig, CloneConfig, QueryType } from "../types";
 import { INIT_RUN_OPERATOR_URI } from "../constants";
 import { canSubmitSearch, buildExecutionParams } from "../utils";
 
+const EMPTY_NEGATIVE_IDS: string[] = [];
+
 export const useNewSearchForm = (
   brainKeys: BrainKeyConfig[],
   cloneConfig: CloneConfig | null | undefined,
@@ -79,8 +81,6 @@ export const useNewSearchForm = (
     return [];
   }, [selectedSamples, selectedLabels]);
 
-  const negativeQueryIds: string[] = [];
-
   const executionParams = useMemo(
     () =>
       buildExecutionParams({
@@ -96,7 +96,7 @@ export const useNewSearchForm = (
         k,
         distField,
         runName,
-        negativeQueryIds,
+        negativeQueryIds: EMPTY_NEGATIVE_IDS,
       }),
     [
       brainKey,
@@ -111,7 +111,6 @@ export const useNewSearchForm = (
       searchScope,
       hasView,
       queryIds,
-      negativeQueryIds,
     ]
   );
 
@@ -136,12 +135,8 @@ export const useNewSearchForm = (
 
   const kError = typeof k === "number" && k > 10000;
 
-  const canSubmit = canSubmitSearch(
-    brainKey,
-    queryType,
-    textQuery,
-    queryIds.length
-  );
+  const canSubmit =
+    !kError && canSubmitSearch(brainKey, queryType, textQuery, queryIds.length);
 
   const brainKeyOptions = brainKeys.map((bk) => ({
     id: bk.key,

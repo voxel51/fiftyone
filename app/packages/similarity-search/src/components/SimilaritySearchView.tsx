@@ -38,13 +38,7 @@ function SimilaritySearchReady(props: SimilaritySearchViewProps) {
           onGetSampleMedia={panel.getSampleMedia}
           filterState={panel.filterState}
           onFilterChange={panel.setFilterState}
-          selectMode={panel.selectMode}
-          selectedRunIds={panel.selectedRunIds}
-          onToggleSelectMode={panel.toggleSelectMode}
-          onToggleRunSelection={panel.toggleRunSelection}
-          onSelectAll={panel.selectAll}
-          onDeselectAll={panel.deselectAll}
-          onClearAndExit={panel.clearAndExit}
+          selection={panel.selection}
         />
       )}
       {panel.page === "new_search" && (

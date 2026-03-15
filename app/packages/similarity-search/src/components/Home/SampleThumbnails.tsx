@@ -1,3 +1,4 @@
+import React from "react";
 import { ImageList, ImageListItem } from "../../mui";
 import { THUMB_SIZE, THUMB_GAP, THUMB_SINGLE_ROW_MAX } from "../../constants";
 import { getMediaUrl } from "../../utils";

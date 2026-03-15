@@ -26,7 +26,15 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
   const [submitting, setSubmitting] = useState(false);
   const { cloneConfig, setCloneConfig, clearCloneConfig } = useCloneConfig();
 
-  const multiSelect = useMultiSelect();
+  const {
+    clearAndExit,
+    selectMode,
+    selectedRunIds,
+    toggleSelectMode,
+    toggleRunSelection,
+    selectAll,
+    deselectAll,
+  } = useMultiSelect();
 
   const triggers = useTriggers<{
     applyRun: (payload: { run_id: string }) => void;
@@ -108,9 +116,9 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
   const handleBulkDelete = useCallback(
     (runIds: string[]) => {
       triggers.bulkDeleteRuns({ run_ids: runIds });
-      multiSelect.clearAndExit();
+      clearAndExit();
     },
-    [triggers, multiSelect.clearAndExit]
+    [triggers, clearAndExit]
   );
 
   const handleClone = useCallback(
@@ -143,6 +151,27 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
     navigateHome();
   }, [navigateHome, refreshRuns]);
 
+  const selection = useMemo(
+    () => ({
+      selectMode,
+      selectedRunIds,
+      onToggleSelectMode: toggleSelectMode,
+      onToggleRunSelection: toggleRunSelection,
+      onSelectAll: selectAll,
+      onDeselectAll: deselectAll,
+      onClearAndExit: clearAndExit,
+    }),
+    [
+      selectMode,
+      selectedRunIds,
+      toggleSelectMode,
+      toggleRunSelection,
+      selectAll,
+      deselectAll,
+      clearAndExit,
+    ]
+  );
+
   return {
     // state
     page,
@@ -155,7 +184,7 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
     sampleMedia,
     cloneConfig,
     filterState,
-    ...multiSelect,
+    selection,
 
     // actions
     handleApply,

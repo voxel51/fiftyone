@@ -21,7 +21,7 @@ export const useFetchRuns = (): {
   const lastDatasetName = useRef<string | null | undefined>();
   const panelId = usePanelId();
   const datasetName = useRecoilValue(datasetNameAtom);
-  const [runs, setRuns] = useAtom(atoms.runs);
+  const [, setRuns] = useAtom(atoms.runs);
   const { execute: fetchRuns } = useOperatorExecutor(
     "@voxel51/panels/list_similarity_runs"
   );
@@ -71,20 +71,16 @@ export const useFetchRuns = (): {
     ) {
       lastPanelId.current = panelId;
       lastDatasetName.current = datasetName;
-      refreshRuns();
       initialized.current = true;
+      refreshRuns();
       return;
     }
 
     if (!initialized.current) {
-      if (runs && runs.length > 0) {
-        initialized.current = true;
-      } else {
-        refreshRuns();
-        initialized.current = true;
-      }
+      initialized.current = true;
+      refreshRuns();
     }
-  }, [refreshRuns, runs, panelId, datasetName]);
+  }, [refreshRuns, panelId, datasetName]);
 
   return { refreshRuns, sortFn, loaded };
 };

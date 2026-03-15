@@ -36,6 +36,16 @@ import FilterBar from "./FilterBar";
 import BulkActionBar from "./BulkActionBar";
 import * as s from "../styles";
 
+type SelectionState = {
+  selectMode: boolean;
+  selectedRunIds: Set<string>;
+  onToggleSelectMode: () => void;
+  onToggleRunSelection: (runId: string) => void;
+  onSelectAll: (visibleRunIds: string[]) => void;
+  onDeselectAll: () => void;
+  onClearAndExit: () => void;
+};
+
 type RunListProps = {
   runs: SimilarityRun[];
   filteredRuns: SimilarityRun[];
@@ -52,13 +62,7 @@ type RunListProps = {
   onGetSampleMedia: (payload: { sample_ids: string[] }) => void;
   filterState: RunFilterState;
   onFilterChange: (state: RunFilterState) => void;
-  selectMode: boolean;
-  selectedRunIds: Set<string>;
-  onToggleSelectMode: () => void;
-  onToggleRunSelection: (runId: string) => void;
-  onSelectAll: (visibleRunIds: string[]) => void;
-  onDeselectAll: () => void;
-  onClearAndExit: () => void;
+  selection: SelectionState;
 };
 
 const RefreshIcon = () => <Refresh fontSize="small" />;
@@ -67,6 +71,8 @@ const ManageIcon = () => <EditNote fontSize="small" />;
 const SettingsIconBtn = () => <Settings fontSize="small" />;
 
 const tip = (text: string) => <span style={s.tooltipText}>{text}</span>;
+
+const MAX_CACHED_MEDIA = 500;
 
 export default function RunList({
   runs,
@@ -84,64 +90,79 @@ export default function RunList({
   onGetSampleMedia,
   filterState,
   onFilterChange,
-  selectMode,
-  selectedRunIds,
-  onToggleSelectMode,
-  onToggleRunSelection,
-  onSelectAll,
-  onDeselectAll,
-  onClearAndExit,
+  selection,
 }: RunListProps) {
+  const {
+    selectMode,
+    selectedRunIds,
+    onToggleSelectMode,
+    onSelectAll,
+    onDeselectAll,
+    onClearAndExit,
+  } = selection;
+
   const [expandedRunIds, setExpandedRunIds] = useState<Set<string>>(new Set());
 
   const accumulatedMedia = useRef<Record<string, string>>({});
   useEffect(() => {
     if (sampleMedia && Object.keys(sampleMedia).length > 0) {
-      accumulatedMedia.current = {
-        ...accumulatedMedia.current,
-        ...sampleMedia,
-      };
+      const merged = { ...accumulatedMedia.current, ...sampleMedia };
+      // Cap accumulated media to prevent unbounded growth
+      const keys = Object.keys(merged);
+      if (keys.length > MAX_CACHED_MEDIA) {
+        const trimmed: Record<string, string> = {};
+        for (const key of keys.slice(-MAX_CACHED_MEDIA)) {
+          trimmed[key] = merged[key];
+        }
+        accumulatedMedia.current = trimmed;
+      } else {
+        accumulatedMedia.current = merged;
+      }
     }
   }, [sampleMedia]);
   const mergedMedia = { ...accumulatedMedia.current, ...sampleMedia };
 
-  const handleToggleExpand = useCallback(
-    (run: SimilarityRun) => {
-      const wasExpanded = expandedRunIds.has(run.run_id);
+  const pendingFetchRef = useRef<string | null>(null);
 
-      setExpandedRunIds((prev) => {
-        const next = new Set(prev);
-        if (next.has(run.run_id)) {
-          next.delete(run.run_id);
-        } else {
-          next.add(run.run_id);
-        }
-        return next;
-      });
-
-      if (!wasExpanded) {
-        const positiveIds = Array.isArray(run.query) ? run.query : [];
-        const negativeIds = run.negative_query_ids ?? [];
-        const allIds = [...positiveIds, ...negativeIds];
-        if (allIds.length > 0) {
-          onGetSampleMedia({ sample_ids: allIds });
-        }
+  const handleToggleExpand = useCallback((run: SimilarityRun) => {
+    setExpandedRunIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(run.run_id)) {
+        next.delete(run.run_id);
+      } else {
+        next.add(run.run_id);
+        // Schedule media fetch for newly expanded run
+        pendingFetchRef.current = run.run_id;
       }
-    },
-    [expandedRunIds, onGetSampleMedia]
-  );
+      return next;
+    });
+  }, []);
+
+  // Fetch media after expansion state settles
+  useEffect(() => {
+    const runId = pendingFetchRef.current;
+    if (!runId || !expandedRunIds.has(runId)) {
+      pendingFetchRef.current = null;
+      return;
+    }
+    pendingFetchRef.current = null;
+
+    const run = filteredRuns.find((r) => r.run_id === runId);
+    if (!run) return;
+
+    const positiveIds = Array.isArray(run.query) ? run.query : [];
+    const negativeIds = run.negative_query_ids ?? [];
+    const allIds = [...positiveIds, ...negativeIds];
+    if (allIds.length > 0) {
+      onGetSampleMedia({ sample_ids: allIds });
+    }
+  }, [expandedRunIds, filteredRuns, onGetSampleMedia]);
 
   const handleSelected = useCallback(
     (selectedIds: string[]) => {
-      const currentIds = new Set(selectedIds);
-      for (const id of selectedIds) {
-        if (!selectedRunIds.has(id)) onToggleRunSelection(id);
-      }
-      for (const id of selectedRunIds) {
-        if (!currentIds.has(id)) onToggleRunSelection(id);
-      }
+      selection.onToggleRunSelection(selectedIds[selectedIds.length - 1]);
     },
-    [selectedRunIds, onToggleRunSelection]
+    [selection]
   );
 
   const visibleRunIds = useMemo(
@@ -342,14 +363,6 @@ export default function RunList({
               />
             </div>
           )}
-          <style>{`
-            .similarity-run-list > div {
-              cursor: pointer;
-            }
-            .similarity-run-list .justify-between {
-              align-items: flex-start !important;
-            }
-          `}</style>
           <RichList
             className="similarity-run-list"
             listItems={listItems}
