@@ -55,6 +55,7 @@ test.describe.serial("QuickDraw", () => {
     await modal.sidebar.annotate.quickDraw("Detections");
     await modal.sidebar.annotate.assert.quickDrawIsActive();
 
+    // hover over the canvas
     await modal.sampleCanvas.assert.hasCursor("pointer");
     await modal.sampleCanvas.move(0.5, 0.5);
     await modal.sampleCanvas.assert.hasCursor("crosshair");
@@ -80,7 +81,7 @@ test.describe.serial("QuickDraw", () => {
       "draw-and-quit-detection-selected.png"
     );
 
-    // Click-to-quit off the detection to avoid tooltip
+    // Click-to-quit off the detection
     await modal.sampleCanvas.move(0.1, 0.1);
     await modal.sampleCanvas.down();
     await modal.sampleCanvas.up();
@@ -104,19 +105,20 @@ test.describe.serial("QuickDraw", () => {
     await modal.sampleCanvas.assert.hasCursor("nwse-resize");
 
     // Draw detection #2 (bottom-right quadrant)
-    await modal.sampleCanvas.move(0.6, 0.6, "crosshair");
+    await modal.sampleCanvas.move(0.6, 0.8, "crosshair");
     await modal.sampleCanvas.down();
-    await modal.sampleCanvas.move(0.8, 0.8);
+    await modal.sampleCanvas.move(0.8, 0.6);
     await modal.sampleCanvas.up();
-    await modal.sampleCanvas.assert.hasCursor("nwse-resize");
+    await modal.sampleCanvas.assert.hasCursor("nesw-resize");
     await modal.sampleCanvas.assert.hasScreenshot(
       "multiple-detections-second-selected.png"
     );
 
     // Click-to-quit off both detections
-    await modal.sampleCanvas.move(0.1, 0.9);
+    await modal.sampleCanvas.move(0.5, 0.5);
     await modal.sampleCanvas.down();
     await modal.sampleCanvas.up();
+    await modal.sidebar.annotate.assert.quickDrawIsActive(false);
     await modal.sampleCanvas.assert.hasCursor("default");
     await modal.sampleCanvas.assert.hasScreenshot(
       "multiple-detections-exited-quickdraw.png"
