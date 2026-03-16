@@ -1489,30 +1489,17 @@ class TransformersDetectorOutputProcessor(fout.DetectorOutputProcessor):
     ):
         if self._is_grounded:
             text_labels = self.classes
+            if text_labels is not None and not isinstance(
+                text_labels[0], list
+            ):
+                text_labels = [text_labels] * len(image_sizes)
 
-            try:
-                if text_labels is not None and not isinstance(
-                    text_labels[0], list
-                ):
-                    batched_labels = [text_labels] * len(image_sizes)
-                else:
-                    batched_labels = text_labels
-
-                output = self._objection_detection_processor(
-                    output,
-                    text_labels=batched_labels,
-                    threshold=confidence_thresh or 0,
-                    target_sizes=image_sizes,
-                )
-            except TypeError:
-                # Before transformers standardization.
-                output = self._objection_detection_processor(
-                    output,
-                    kwargs.get("input_ids", text_labels),
-                    threshold=confidence_thresh or 0,
-                    target_sizes=image_sizes,
-                )
-
+            output = self._objection_detection_processor(
+                output,
+                text_labels=text_labels,
+                threshold=confidence_thresh or 0,
+                target_sizes=image_sizes,
+            )
         else:
             output = self._objection_detection_processor(
                 output,
