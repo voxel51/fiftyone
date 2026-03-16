@@ -60,7 +60,10 @@ class SimilaritySearchOperator(foo.Operator):
         # If still no run_id (immediate execution, or no matching
         # record found), create a new run record.
         if not run_id:
-            run_data = manager.create_run(ctx.params)
+            params = {**ctx.params}
+            if ctx.user_id:
+                params["created_by"] = str(ctx.user_id)
+            run_data = manager.create_run(params)
             run_id = run_data["run_id"]
 
         # If we found an existing run_id but didn't load run_data yet
@@ -234,7 +237,10 @@ class InitSimilarityRunOperator(foo.Operator):
 
     def execute(self, ctx):
         manager = RunManager(ctx)
-        run_data = manager.create_run(ctx.params)
+        params = {**ctx.params}
+        if ctx.user_id:
+            params["created_by"] = str(ctx.user_id)
+        run_data = manager.create_run(params)
         run_id = run_data["run_id"]
 
         # Link the delegated operation to the run
