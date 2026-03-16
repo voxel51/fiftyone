@@ -194,8 +194,8 @@ Cloud Media
   Note: Configuration for `teams-api` may need to be
   `updated <https://github.com/voxel51/fiftyone-teams-app-deploy/blob/main/docker/docs/upgrading.md#fiftyone-enterprise-v216-additional-api-routes>`_
   given the new `/cloud_credentials` routes.
-- Users can configure their preferences for accessing cloud credentials locally
-  Both
+- Users can configure their preferences for accessing cloud credentials
+  locally. Both
   :ref:`local vs remote precedence <enterprise-cloud-creds-origin-preference>`,
   and
   :ref:`enabling vs disabling download of managed credentials <enterprise-cloud-creds-local-download>`
