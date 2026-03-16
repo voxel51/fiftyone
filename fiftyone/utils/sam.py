@@ -843,7 +843,12 @@ class SegmentAnythingModel(fout.TorchSamplesMixin, fout.TorchImageModel):
                 continue
 
             for kp in keypoints.keypoints:
-                sam_points, sam_labels = _to_sam_points(kp.points, w, h, kp)
+                sam_points, sam_labels = _to_sam_points(
+                    kp.points,
+                    width=w,
+                    height=h,
+                    point_labels=_get_sam_point_labels(kp),
+                )
 
                 multi_mask, mask_scores, _ = sam_predictor.predict(
                     point_coords=sam_points,
