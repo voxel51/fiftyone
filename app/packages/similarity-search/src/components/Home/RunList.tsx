@@ -160,9 +160,9 @@ export default function RunList({
 
   const handleSelected = useCallback(
     (selectedIds: string[]) => {
-      selection.onToggleRunSelection(selectedIds[selectedIds.length - 1]);
+      onSelectAll(selectedIds);
     },
-    [selection]
+    [onSelectAll]
   );
 
   const visibleRunIds = useMemo(
@@ -271,7 +271,11 @@ export default function RunList({
         }}
       >
         <Heading level="h2">
-          {runs.length} Similarity {runs.length === 1 ? "Search" : "Searches"}
+          {runs.length > 0
+            ? `${runs.length} Similarity ${
+                runs.length === 1 ? "Search" : "Searches"
+              }`
+            : "Similarity Search"}
         </Heading>
         <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
           {runs.length > 0 && (
