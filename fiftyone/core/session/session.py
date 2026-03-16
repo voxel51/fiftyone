@@ -789,11 +789,11 @@ class Session(object):
 
     @property
     def selected(self) -> t.List[str]:
-        """A list of sample IDs of the currently selected samples in the App,
+        """A list of IDs of the currently selected samples in the App,
         if any.
         """
         return [
-            s["sample_id"] if isinstance(s, dict) else s
+            s["id"] if isinstance(s, dict) else s
             for s in (self._state.selected_samples or [])
         ]
 
@@ -801,12 +801,12 @@ class Session(object):
     def selected(self, sample_ids: t.List[str]) -> None:
         # Preserve existing selection types; new IDs default to "default"
         existing = {
-            s["sample_id"]: s["type"]
+            s["id"]: s["type"]
             for s in (self._state.selected_samples or [])
             if isinstance(s, dict)
         }
         samples = [
-            {"sample_id": sid, "type": existing.get(sid, "default")}
+            {"id": sid, "type": existing.get(sid, "default")}
             for sid in (sample_ids or [])
         ]
         normalized = _normalize_selected_samples(samples)
@@ -815,9 +815,14 @@ class Session(object):
 
     @property
     def selected_samples(self) -> t.List[t.Dict]:
-        """A list of selected sample dicts, each with ``sample_id`` and
-        ``type`` (``"default"`` or ``"alt"``), where type corresponds to a
-        key in :attr:`sample_selection_style`.
+        """A list of selected sample dicts, each with ``id`` and ``type``
+        (``"default"`` or ``"alt"``), where type corresponds to a key in
+        :attr:`sample_selection_style`.
+
+        Despite its name, ``selected_samples`` represents whatever sample grid items are in
+        the current view: samples in a standard dataset view,
+        patches in a patches view, clips in a clips view, or frames in a
+        frames view.
         """
         return list(self._state.selected_samples or [])
 
@@ -839,12 +844,15 @@ class Session(object):
     ) -> None:
         """Selects the specified samples in the current view in the App.
 
+        Despite its name, this applies to whatever sample grid items are in
+        the current view: samples, patches, clips, or frames.
+
         Args:
-            ids (None): an ID or iterable of IDs of samples to select.
-                Items can be plain strings (all ``"default"`` type) or dicts
-                of the form ``{"sample_id": "...", "type": "default"|"alt"}``,
-                where type corresponds to a key in :attr:`sample_selection_style`.
-            tags (None): a tag or iterable of tags of samples to select
+            ids (None): an ID or iterable of IDs to select. Items can be
+                plain strings (all ``"default"`` type) or dicts of the form
+                ``{"id": "...", "type": "default"|"alt"}``, where type
+                corresponds to a key in :attr:`sample_selection_style`.
+            tags (None): a tag or iterable of tags to select
         """
         if tags is not None and self._collection:
             ids = self._collection.match_tags(tags).values("id")
@@ -860,7 +868,7 @@ class Session(object):
 
     @property
     def sample_selection_style(self) -> t.Dict:
-        """The current sample selection style config.
+        """The current sample grid selection style config.
 
         A dict with a ``default`` key and optional ``alt`` key specifying
         icon styles.
@@ -880,7 +888,7 @@ class Session(object):
     def set_sample_selection_style(
         self, default: str = "checkmark", alt: str = "checkmark"
     ) -> None:
-        """Sets the sample selection style in the App.
+        """Sets the sample grid selection style in the App.
 
         Args:
             default ("checkmark"): the default selection icon style. Supported
@@ -894,7 +902,7 @@ class Session(object):
         self._client.send_event(SetSampleSelectionStyle(style=style))
 
     def clear_sample_selection_style(self) -> None:
-        """Clears the sample selection style, reverting to default checkmark."""
+        """Clears the sample grid selection style, reverting to default checkmark."""
         style = dict(DEFAULT_SELECTION_STYLE)
         self._state.sample_selection_style = style
         self._client.send_event(SetSampleSelectionStyle(style=style))

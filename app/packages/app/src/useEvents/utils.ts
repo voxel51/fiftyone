@@ -51,7 +51,7 @@ export const processState = (
   };
 };
 const resolveSelected = (state: {
-  selected_samples?: Array<{ sample_id: string; type: SelectionType }>;
+  selected_samples?: Array<{ id: string; type: SelectionType }>;
 }) => {
   if (env().VITE_NO_STATE) {
     return new Map<string, SelectionType>();
@@ -59,7 +59,7 @@ const resolveSelected = (state: {
 
   const map = new Map<string, SelectionType>();
   for (const s of state.selected_samples || []) {
-    map.set(s.sample_id, s.type || "default");
+    map.set(s.id, s.type || "default");
   }
   return map;
 };

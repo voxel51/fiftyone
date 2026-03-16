@@ -481,7 +481,7 @@ class SetSelectedSamples extends Operator {
       if (typeof item === "string") {
         map.set(item, "default");
       } else if (item && typeof item === "object") {
-        map.set(item.sample_id, item.type || "default");
+        map.set(item.id, item.type || "default");
       }
     }
     hooks.setSelected(map);

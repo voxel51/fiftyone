@@ -29,20 +29,20 @@ class OperationsTests(unittest.TestCase):
             "set_selected_samples",
             params={
                 "samples": [
-                    {"sample_id": "a" * 24, "type": "default"},
-                    {"sample_id": "b" * 24, "type": "default"},
+                    {"id": "a" * 24, "type": "default"},
+                    {"id": "b" * 24, "type": "default"},
                 ]
             },
         )
 
     def test_set_selected_samples_with_dict_list(self):
-        """ctx.ops.set_selected_samples([{sample_id, type}]) — new format."""
+        """ctx.ops.set_selected_samples([{id, type}]) — new format."""
         mock_ctx = MagicMock()
         ops = Operations(mock_ctx)
 
         samples = [
-            {"sample_id": "a" * 24, "type": "default"},
-            {"sample_id": "b" * 24, "type": "alt"},
+            {"id": "a" * 24, "type": "default"},
+            {"id": "b" * 24, "type": "alt"},
         ]
         ops.set_selected_samples(samples)
 
@@ -59,7 +59,7 @@ class OperationsTests(unittest.TestCase):
         ops.set_selected_samples(
             [
                 "a" * 24,
-                {"sample_id": "b" * 24, "type": "alt"},
+                {"id": "b" * 24, "type": "alt"},
             ]
         )
 
@@ -67,8 +67,8 @@ class OperationsTests(unittest.TestCase):
             "set_selected_samples",
             params={
                 "samples": [
-                    {"sample_id": "a" * 24, "type": "default"},
-                    {"sample_id": "b" * 24, "type": "alt"},
+                    {"id": "a" * 24, "type": "default"},
+                    {"id": "b" * 24, "type": "alt"},
                 ]
             },
         )

@@ -481,9 +481,12 @@ class Operations(object):
     def set_selected_samples(self, samples):
         """Select the specified samples in the App.
 
+        Despite its name, ``selected_samples`` represents whatever sample grid
+        items are in the current view: samples, patches, clips, or frames.
+
         Args:
-            samples: a list of sample IDs (strings) or dicts of the form
-                ``{"sample_id": "...", "type": "default"|"alt"}``, where
+            samples: a list of IDs (strings) or dicts of the form
+                ``{"id": "...", "type": "default"|"alt"}``, where
                 type corresponds to a key in ``sample_selection_style``
         """
         normalized = normalize_selected_samples(samples)
@@ -492,7 +495,7 @@ class Operations(object):
         )
 
     def set_sample_selection_style(self, default="checkmark", alt="checkmark"):
-        """Set the sample selection style in the App.
+        """Set the sample grid selection style in the App.
 
         Args:
             default ("checkmark"): the default selection icon style. Supported
@@ -508,7 +511,7 @@ class Operations(object):
         )
 
     def clear_sample_selection_style(self):
-        """Clear the sample selection style in the App, reverting to default."""
+        """Clear the sample grid selection style in the App, reverting to default."""
         return self._ctx.trigger("clear_sample_selection_style")
 
     def set_view(self, view=None, name=None):

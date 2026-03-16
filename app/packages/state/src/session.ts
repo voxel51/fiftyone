@@ -9,7 +9,7 @@ import { atom, AtomOptions, DefaultValue, RecoilState, selector } from "recoil";
 import { State } from "./recoil";
 import {
   DEFAULT_SELECTION_STYLE,
-  type SelectionIconStyle,
+  type SelectionStyle,
   type SelectionType,
 } from "./recoil/types";
 
@@ -95,10 +95,7 @@ export interface Session {
   readOnly: boolean;
   selectedSamples: Map<string, SelectionType>;
   selectedLabels: State.SelectedLabel[];
-  sampleSelectionStyle: {
-    default: SelectionIconStyle;
-    alt: SelectionIconStyle;
-  };
+  sampleSelectionStyle: SelectionStyle;
   sessionSpaces: SpaceNodeJSON;
   sessionGroupSlice?: string;
 }

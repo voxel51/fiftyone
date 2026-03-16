@@ -830,7 +830,7 @@ class ExecutionContext(contextlib.AbstractContextManager):
 
     @property
     def selected(self):
-        """The list of selected sample IDs (if any).
+        """The list of selected IDs (if any).
 
         Derived from :attr:`selected_samples` when available, otherwise
         falls back to ``request_params["selected"]``.
@@ -838,8 +838,7 @@ class ExecutionContext(contextlib.AbstractContextManager):
         selected_samples = self.request_params.get("selected_samples", None)
         if selected_samples:
             return [
-                s["sample_id"] if isinstance(s, dict) else s
-                for s in selected_samples
+                s["id"] if isinstance(s, dict) else s for s in selected_samples
             ]
 
         return self.request_params.get("selected") or []
@@ -848,14 +847,17 @@ class ExecutionContext(contextlib.AbstractContextManager):
     def selected_samples(self):
         """A list of selected sample dicts, if any.
 
-        Each dict has ``sample_id`` and ``type`` (``"default"`` or ``"alt"``),
+        Each dict has ``id`` and ``type`` (``"default"`` or ``"alt"``),
         where type corresponds to a key in :attr:`sample_selection_style`.
+
+        Despite its name, ``selected_samples`` represents whatever sample grid
+        items are in the current view: samples, patches, clips, or frames.
         """
         return self.request_params.get("selected_samples") or []
 
     @property
     def sample_selection_style(self):
-        """The current sample selection style config, if any.
+        """The current sample grid selection style config, if any.
 
         A dict with a ``default`` key and optional ``alt`` key specifying
         icon styles.

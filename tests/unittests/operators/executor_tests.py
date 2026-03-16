@@ -97,8 +97,8 @@ class TestOperatorExecutionContext(unittest.TestCase):
             request_params={
                 "dataset_name": "test",
                 "selected_samples": [
-                    {"sample_id": "aaa", "type": "default"},
-                    {"sample_id": "bbb", "type": "alt"},
+                    {"id": "aaa", "type": "default"},
+                    {"id": "bbb", "type": "alt"},
                 ],
             },
         )
@@ -106,8 +106,8 @@ class TestOperatorExecutionContext(unittest.TestCase):
         self.assertEqual(
             ctx.selected_samples,  # pylint: disable=no-member
             [
-                {"sample_id": "aaa", "type": "default"},
-                {"sample_id": "bbb", "type": "alt"},
+                {"id": "aaa", "type": "default"},
+                {"id": "bbb", "type": "alt"},
             ],
         )
 
@@ -119,7 +119,7 @@ class TestOperatorExecutionContext(unittest.TestCase):
                 "dataset_name": "test",
                 "selected": ["ccc"],
                 "selected_samples": [
-                    {"sample_id": "ccc", "type": "alt"},
+                    {"id": "ccc", "type": "alt"},
                 ],
             },
         )

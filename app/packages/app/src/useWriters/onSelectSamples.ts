@@ -15,10 +15,10 @@ const onSelectSamples: RegisteredWriter<"selectedSamples"> =
         ? new Map<string, SelectionType>()
         : selected;
 
-    // Serialize Map to [{sample_id, type}, ...] for the mutation
+    // Serialize Map to [{id, type}, ...] for the mutation
     const selectedSamplesPayload = Array.from(selectedMap.entries()).map(
-      ([sampleId, type]) => ({
-        sample_id: sampleId,
+      ([id, type]) => ({
+        id,
         type,
       })
     );

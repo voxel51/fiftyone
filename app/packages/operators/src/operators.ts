@@ -583,7 +583,7 @@ function formatSelectionPayload(currentContext: RawContext) {
       : [],
     selected_samples: currentContext.selectedSamples
       ? Array.from(currentContext.selectedSamples.entries()).map(
-          ([sample_id, type]) => ({ sample_id, type })
+          ([id, type]) => ({ id, type })
         )
       : [],
     sample_selection_style: currentContext.sampleSelectionStyle || {},

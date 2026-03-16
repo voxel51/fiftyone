@@ -185,7 +185,7 @@ class Mutation(SetColorScheme):
 
         All samples are set to ``"default"`` selection type.
         """
-        samples = [{"sample_id": sid, "type": "default"} for sid in selected]
+        samples = [{"id": sid, "type": "default"} for sid in selected]
         await dispatch_event(
             subscription,
             fose.SelectSamples(samples=samples),

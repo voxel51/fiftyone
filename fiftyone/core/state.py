@@ -94,7 +94,7 @@ class StateDescription(etas.Serializable):
             self.selected_samples = selected_samples
         elif selected:
             self.selected_samples = [
-                {"sample_id": s, "type": "default"} for s in selected
+                {"id": s, "type": "default"} for s in selected
             ]
         else:
             self.selected_samples = []

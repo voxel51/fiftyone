@@ -63,16 +63,16 @@ class SessionTests(unittest.TestCase):
     # -------------------------------------------------------------------
 
     def testnormalize_selected_samples_with_dicts(self):
-        """Normalize list of dicts with sample_id and type."""
+        """Normalize list of dicts with id and type."""
         samples = [
-            {"sample_id": "a" * 24, "type": "default"},
-            {"sample_id": "b" * 24, "type": "alt"},
+            {"id": "a" * 24, "type": "default"},
+            {"id": "b" * 24, "type": "alt"},
         ]
         result = normalize_selected_samples(samples)
         self.assertEqual(len(result), 2)
-        self.assertEqual(result[0]["sample_id"], "a" * 24)
+        self.assertEqual(result[0]["id"], "a" * 24)
         self.assertEqual(result[0]["type"], "default")
-        self.assertEqual(result[1]["sample_id"], "b" * 24)
+        self.assertEqual(result[1]["id"], "b" * 24)
         self.assertEqual(result[1]["type"], "alt")
 
     def testnormalize_selected_samples_with_strings(self):
@@ -80,18 +80,18 @@ class SessionTests(unittest.TestCase):
         samples = ["a" * 24, "b" * 24]
         result = normalize_selected_samples(samples)
         self.assertEqual(len(result), 2)
-        self.assertEqual(result[0], {"sample_id": "a" * 24, "type": "default"})
-        self.assertEqual(result[1], {"sample_id": "b" * 24, "type": "default"})
+        self.assertEqual(result[0], {"id": "a" * 24, "type": "default"})
+        self.assertEqual(result[1], {"id": "b" * 24, "type": "default"})
 
     def testnormalize_selected_samples_mixed(self):
         """Normalize a mix of strings and dicts."""
         samples = [
             "a" * 24,
-            {"sample_id": "b" * 24, "type": "alt"},
+            {"id": "b" * 24, "type": "alt"},
         ]
         result = normalize_selected_samples(samples)
-        self.assertEqual(result[0], {"sample_id": "a" * 24, "type": "default"})
-        self.assertEqual(result[1], {"sample_id": "b" * 24, "type": "alt"})
+        self.assertEqual(result[0], {"id": "a" * 24, "type": "default"})
+        self.assertEqual(result[1], {"id": "b" * 24, "type": "alt"})
 
     def testnormalize_selected_samples_empty(self):
         """Normalizing empty list returns empty list."""
@@ -100,16 +100,14 @@ class SessionTests(unittest.TestCase):
 
     def testnormalize_selected_samples_dict_without_type_defaults(self):
         """Dict without 'type' key defaults to 'default'."""
-        samples = [{"sample_id": "a" * 24}]
+        samples = [{"id": "a" * 24}]
         result = normalize_selected_samples(samples)
         self.assertEqual(result[0]["type"], "default")
 
     def testnormalize_selected_samples_rejects_invalid_type(self):
         """Dict with invalid type should raise ValueError."""
         with self.assertRaises(ValueError):
-            normalize_selected_samples(
-                [{"sample_id": "a" * 24, "type": "invalid"}]
-            )
+            normalize_selected_samples([{"id": "a" * 24, "type": "invalid"}])
 
     def testnormalize_selected_samples_rejects_non_string_non_dict(self):
         """Non-string, non-dict entries should raise TypeError."""
@@ -126,7 +124,7 @@ class SessionTests(unittest.TestCase):
         """Normalization preserves insertion order."""
         ids = [chr(ord("a") + i) * 24 for i in range(5)]
         result = normalize_selected_samples(ids)
-        self.assertEqual([r["sample_id"] for r in result], ids)
+        self.assertEqual([r["id"] for r in result], ids)
 
     def testnormalize_selected_samples_duplicate_ids(self):
         """Duplicate IDs are preserved (no dedup at this layer)."""
@@ -134,18 +132,16 @@ class SessionTests(unittest.TestCase):
         result = normalize_selected_samples(samples)
         self.assertEqual(len(result), 2)
 
-    def testnormalize_selected_samples_rejects_missing_sample_id(self):
-        """Dict without sample_id should raise ValueError."""
+    def testnormalize_selected_samples_rejects_missing_id(self):
+        """Dict without id should raise ValueError."""
         with self.assertRaises(ValueError):
             normalize_selected_samples([{"type": "default"}])
 
         with self.assertRaises(ValueError):
-            normalize_selected_samples([{"sample_id": "", "type": "default"}])
+            normalize_selected_samples([{"id": "", "type": "default"}])
 
         with self.assertRaises(ValueError):
-            normalize_selected_samples(
-                [{"sample_id": None, "type": "default"}]
-            )
+            normalize_selected_samples([{"id": None, "type": "default"}])
 
     # -------------------------------------------------------------------
     # _resolve_selection_style
@@ -193,13 +189,13 @@ class SessionTests(unittest.TestCase):
         state = StateDescription(  # pylint: disable=unexpected-keyword-arg
             selected=["a" * 24],
             selected_samples=[
-                {"sample_id": "b" * 24, "type": "alt"},
+                {"id": "b" * 24, "type": "alt"},
             ],
         )
         self.assertEqual(
             state.selected_samples,
             [
-                {"sample_id": "b" * 24, "type": "alt"},
+                {"id": "b" * 24, "type": "alt"},
             ],
         )
 
@@ -210,8 +206,8 @@ class SessionTests(unittest.TestCase):
         self.assertEqual(
             state.selected_samples,
             [
-                {"sample_id": "a" * 24, "type": "default"},
-                {"sample_id": "b" * 24, "type": "default"},
+                {"id": "a" * 24, "type": "default"},
+                {"id": "b" * 24, "type": "default"},
             ],
         )
 
@@ -253,7 +249,7 @@ class SessionTests(unittest.TestCase):
             "selected": ["a" * 24],
             "selected_labels": [],
             "selected_samples": [
-                {"sample_id": "a" * 24, "type": "alt"},
+                {"id": "a" * 24, "type": "alt"},
             ],
             "sample_selection_style": {
                 "default": "thumbsup",
@@ -263,7 +259,7 @@ class SessionTests(unittest.TestCase):
         state = StateDescription.from_dict(d)
         self.assertEqual(
             state.selected_samples,
-            [{"sample_id": "a" * 24, "type": "alt"}],
+            [{"id": "a" * 24, "type": "alt"}],
         )
         self.assertEqual(
             state.sample_selection_style,
@@ -281,8 +277,8 @@ class SessionTests(unittest.TestCase):
         self.assertEqual(
             state.selected_samples,
             [
-                {"sample_id": "a" * 24, "type": "default"},
-                {"sample_id": "b" * 24, "type": "default"},
+                {"id": "a" * 24, "type": "default"},
+                {"id": "b" * 24, "type": "default"},
             ],
         )
 

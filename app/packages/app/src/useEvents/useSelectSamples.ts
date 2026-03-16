@@ -7,11 +7,11 @@ const useSelectSamples: EventHandlerHook = () => {
   const setter = useSessionSetter();
   return useCallback(
     (payload) => {
-      const samples: Array<{ sample_id: string; type: SelectionType }> =
+      const samples: Array<{ id: string; type: SelectionType }> =
         payload.samples || [];
       const map = new Map<string, SelectionType>();
       for (const s of samples) {
-        map.set(s.sample_id, s.type || "default");
+        map.set(s.id, s.type || "default");
       }
       setter("selectedSamples", map);
     },
