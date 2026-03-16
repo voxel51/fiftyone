@@ -63,7 +63,7 @@ def apply_model(
     output_dir=None,
     rel_dir=None,
     progress=None,
-    pin_memory=None,
+    pin_memory=False,
     **kwargs,
 ):
     """Applies the model to the samples in the collection.
@@ -109,7 +109,7 @@ def apply_model(
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
-        pin_memory (None): whether to pin memory when using a DataLoader. Only
+        pin_memory (False): whether to pin memory when using a DataLoader. Only
             applicable for Torch-based models. This setting can have a significant
             impact on memory usage, so it is not enabled by default.
         **kwargs: optional model-specific keyword arguments passed through
@@ -894,23 +894,17 @@ def _make_data_loader(
         )
         worker_init_fn = None
 
-    if pin_memory is None:
-        pin_memory = False
-    if (
-        pin_memory
-        and isinstance(model, fout.TorchImageModel)
-        and not model._using_gpu
-    ):
-        logger.warning(
-            "The provided model is not on a GPU, so `pin_memory=True` has no "
-            "effect"
-        )
-        pin_memory = False
     if pin_memory:
         if not isinstance(model, TorchModelMixin):
             logger.warning(
                 "The provided model is not a `TorchModelMixin`, so `pin_memory` "
                 "will be disabled."
+            )
+            pin_memory = False
+        elif not model._using_gpu:
+            logger.warning(
+                "The provided model is not using a GPU, so `pin_memory` will be "
+                "disabled."
             )
             pin_memory = False
         else:
@@ -938,7 +932,7 @@ def compute_embeddings(
     num_workers=None,
     skip_failures=True,
     progress=None,
-    pin_memory=None,
+    pin_memory=False,
     **kwargs,
 ):
     """Computes embeddings for the samples in the collection using the given
@@ -973,7 +967,7 @@ def compute_embeddings(
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
-        pin_memory (None): whether to pin memory when using a DataLoader. Only
+        pin_memory (False): whether to pin memory when using a DataLoader. Only
             applicable for Torch-based models. This setting can have a significant
             impact on memory usage, so it is not enabled by default.
         **kwargs: optional model-specific keyword arguments passed through
