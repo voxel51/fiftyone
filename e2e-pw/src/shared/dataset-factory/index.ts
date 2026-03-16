@@ -100,7 +100,7 @@ interface DatasetOptions {
   datasetName: string;
 
   /**
-   * The number of samples to include in the dataset.
+   * The number of samples to include in the dataset. At most 100
    * @default 1
    */
   numSamples?: number;
@@ -216,9 +216,15 @@ const createBlankDataset = (() => {
     schema = {},
     withSampleData = () => ({}),
   }: DatasetOptions) => {
-    if (numSamples < 0 || !Number.isInteger(numSamples)) {
+    if (!Number.isInteger(numSamples)) {
       throw new Error(
         `Expected 'numSamples' to be an integer, but got ${numSamples}`
+      );
+    }
+
+    if (numSamples < 1 || numSamples > 100) {
+      throw new Error(
+        `'numSamples' must be >0 and <=100, but got ${numSamples}`
       );
     }
 
@@ -282,11 +288,15 @@ const createBlankDataset = (() => {
 
     now = datetime.now()
 
+
+    # an easy hack for creating a small number of samples
+    # fix me to scale this factory
     ${addFields.join("\n")}
 
     samples = []
     sample_data = []
 
+    # also a hack
     ${sampleData.join("\n")}
     
     for idx in range(0, ${numSamples}):
