@@ -1051,6 +1051,12 @@ class MatchLabelTagsTests(unittest.TestCase):
                     fol.Detection(label="beta", tags=["other"]),
                 ]
             ),
+            # additional field which contains only non-target labels
+            predictions2=fol.Detections(
+                detections=[
+                    fol.Detection(label="beta", tags=["other"]),
+                ]
+            ),
             # ground_truth also carries "target" so that a correct $nor must
             # cover both label fields to exclude this sample
             ground_truth=fol.Detections(
