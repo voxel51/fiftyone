@@ -126,17 +126,24 @@ class SimilaritySearchOperator(foo.Operator):
 
             ctx.set_progress(0.7, label="Collecting results...")
 
-            # Serialize the result view for efficient reconstruction
-            result_view_stages = result_view._serialize(include_uuids=False)
+            dynamic_results = ctx.params.get("dynamic_results", False)
 
-            result_ids = [str(rid) for rid in result_view.values("id")]
+            if dynamic_results:
+                result_view_stages = result_view._serialize(
+                    include_uuids=False
+                )
+                result_count = len(result_view)
+            else:
+                result_ids = [str(rid) for rid in result_view.values("id")]
+                result_view_stages = None
+                result_count = len(result_ids)
 
             ctx.set_progress(0.9, label="Saving results...")
 
             run_data["status"] = RunStatus.COMPLETED
-            run_data["result_ids"] = result_ids
-            run_data["result_count"] = len(result_ids)
+            run_data["result_ids"] = result_ids if not dynamic_results else []
             run_data["result_view"] = result_view_stages
+            run_data["result_count"] = result_count
             run_data["end_time"] = datetime.now(timezone.utc).isoformat()
             manager.set_run(run_id, run_data)
 

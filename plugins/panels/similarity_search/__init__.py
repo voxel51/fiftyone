@@ -80,24 +80,23 @@ class SimilaritySearchPanel(Panel):
 
         result_view_stages = run_data.get("result_view")
         patches_field = run_data.get("patches_field")
+        result_ids = run_data.get("result_ids", [])
+
+        if not result_view_stages and not result_ids:
+            ctx.ops.notify("Run has no results", variant="warning")
+            return
 
         try:
             if result_view_stages:
                 from fiftyone.core.view import DatasetView
 
                 view = DatasetView._build(ctx.dataset, result_view_stages)
+            elif patches_field:
+                view = ctx.dataset.to_patches(patches_field).select(
+                    result_ids, ordered=True
+                )
             else:
-                result_ids = run_data.get("result_ids", [])
-                if not result_ids:
-                    ctx.ops.notify("Run has no results", variant="warning")
-                    return
-
-                if patches_field:
-                    view = ctx.dataset.to_patches(patches_field).select(
-                        result_ids, ordered=True
-                    )
-                else:
-                    view = ctx.dataset.select(result_ids, ordered=True)
+                view = ctx.dataset.select(result_ids, ordered=True)
 
             ctx.ops.set_view(view)
             ctx.panel.set_state("applied_run_id", run_id)
