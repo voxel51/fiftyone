@@ -6,13 +6,34 @@ import { ModalPom } from "src/oss/poms/modal";
 import { SampleCanvasType } from "src/oss/poms/modal/sample-canvas";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
-const DATASET_NAME = getUniqueDatasetNameWithPrefix("quick-draw");
-
 const test = base.extend<{
   modal: ModalPom;
+  datasetName: string;
 }>({
   modal: async ({ page, eventUtils }, use) => {
     await use(new ModalPom(page, eventUtils));
+  },
+  datasetName: async ({ annotateSDK, datasetFactory }, use, testInfo) => {
+    const name = getUniqueDatasetNameWithPrefix(
+      `quick-draw-${testInfo.title.replace(/\s+/g, "-")}`
+    );
+
+    await datasetFactory.createBlankDataset({
+      datasetName: name,
+      schema: {
+        detections: "Detections",
+      },
+    });
+
+    await annotateSDK.updateLabelSchema(name, "detections", {
+      type: "detections",
+      classes: [],
+      attributes: [],
+      component: "dropdown",
+    });
+    await annotateSDK.addFieldToActiveLabelSchema(name, "detections");
+
+    await use(name);
   },
 });
 
@@ -20,28 +41,13 @@ test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ annotateSDK, datasetFactory, foWebServer }) => {
+test.beforeAll(async ({ foWebServer }) => {
   await foWebServer.startWebServer();
-
-  await datasetFactory.createBlankDataset({
-    datasetName: DATASET_NAME,
-    schema: {
-      detections: "Detections",
-    },
-  });
-
-  await annotateSDK.updateLabelSchema(DATASET_NAME, "detections", {
-    type: "detections",
-    classes: [],
-    attributes: [],
-    component: "dropdown",
-  });
-  await annotateSDK.addFieldToActiveLabelSchema(DATASET_NAME, "detections");
 });
 
 test.describe.serial("QuickDraw", () => {
-  test.beforeEach(async ({ fiftyoneLoader, modal, page }) => {
-    await fiftyoneLoader.waitUntilGridVisible(page, DATASET_NAME, {
+  test.beforeEach(async ({ datasetName, fiftyoneLoader, modal, page }) => {
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
       searchParams: new URLSearchParams({ id: "000000000000000000000000" }),
     });
 
