@@ -77,6 +77,8 @@ export class OssLoader extends AbstractFiftyoneLoader {
       if (init) {
         init = false;
         document.addEventListener("mousemove", handleCursorChange);
+        document.addEventListener("pointerdown", handleCursorChange);
+        document.addEventListener("pointerup", handleCursorChange);
       }
 
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment

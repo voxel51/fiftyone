@@ -75,7 +75,7 @@ test.describe.serial("QuickDraw", () => {
     await modal.sampleCanvas.down();
     await modal.sampleCanvas.move(0.6, 0.6);
     await modal.sampleCanvas.up();
-    await modal.sampleCanvas.assert.hasCursor("crosshair");
+    await modal.sampleCanvas.assert.hasCursor("nwse-resize");
     await modal.sampleCanvas.assert.hasScreenshot(
       "draw-and-quit-detection-selected.png"
     );
@@ -85,7 +85,7 @@ test.describe.serial("QuickDraw", () => {
     await modal.sampleCanvas.down();
     await modal.sampleCanvas.up();
     await modal.sidebar.annotate.assert.quickDrawIsActive(false);
-    await modal.sampleCanvas.assert.hasCursor("crosshair");
+    await modal.sampleCanvas.assert.hasCursor("default");
     await modal.sampleCanvas.assert.hasScreenshot(
       "draw-and-quit-exited-quickdraw.png"
     );
@@ -101,14 +101,14 @@ test.describe.serial("QuickDraw", () => {
     await modal.sampleCanvas.down();
     await modal.sampleCanvas.move(0.4, 0.4);
     await modal.sampleCanvas.up();
-    await modal.sampleCanvas.assert.hasCursor("crosshair");
+    await modal.sampleCanvas.assert.hasCursor("nwse-resize");
 
     // Draw detection #2 (bottom-right quadrant)
     await modal.sampleCanvas.move(0.6, 0.6, "crosshair");
     await modal.sampleCanvas.down();
     await modal.sampleCanvas.move(0.8, 0.8);
     await modal.sampleCanvas.up();
-    await modal.sampleCanvas.assert.hasCursor("crosshair");
+    await modal.sampleCanvas.assert.hasCursor("nwse-resize");
     await modal.sampleCanvas.assert.hasScreenshot(
       "multiple-detections-second-selected.png"
     );
@@ -117,7 +117,7 @@ test.describe.serial("QuickDraw", () => {
     await modal.sampleCanvas.move(0.1, 0.9);
     await modal.sampleCanvas.down();
     await modal.sampleCanvas.up();
-    await modal.sampleCanvas.assert.hasCursor("crosshair");
+    await modal.sampleCanvas.assert.hasCursor("default");
     await modal.sampleCanvas.assert.hasScreenshot(
       "multiple-detections-exited-quickdraw.png"
     );
