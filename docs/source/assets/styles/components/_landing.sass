@@ -1267,3 +1267,100 @@
 
   .quick-action-pill
     white-space: nowrap
+
+// --- AI search bar (Brian v2) ---
+
+.hero-ai-search
+  width: 100%
+  display: flex
+  align-items: center
+  gap: 10px
+  padding: 12px 20px
+  border: 1px solid var(--pst-border-color)
+  border-radius: 8px
+  background: var(--pst-color-surface)
+  color: var(--pst-color-text-secondary)
+  font-size: 1rem
+  cursor: pointer
+  transition: border-color $transition-normal, box-shadow $transition-normal
+  height: auto
+
+  &:hover
+    border-color: $voxel-primary
+    box-shadow: 0 0 0 2px $voxel-primary-light
+
+// --- Social links nowrap ---
+
+#social-links-table th a
+  white-space: nowrap
+
+
+// --- Heading hierarchy fix (Brian v2) ---
+
+.hero-heading
+  font-size: 2.6rem !important
+  font-weight: 700 !important
+  letter-spacing: -0.02em
+
+
+// --- Full-width capability sections (Brian v2) ---
+
+.capability-section
+  margin-top: 16px
+
+.capability-row
+  display: flex
+  align-items: center
+  gap: 40px
+  padding: 32px 0
+  border-bottom: 1px solid var(--pst-border-color)
+
+  &:last-child
+    border-bottom: none
+
+  &.reverse
+    flex-direction: row-reverse
+
+.capability-text
+  flex: 1
+
+  h3
+    font-size: 1.4rem
+    font-weight: $font-weight-bold
+    margin: 0 0 12px
+    color: var(--pst-color-text-base)
+
+  p
+    font-size: 0.95rem
+    color: var(--pst-color-text-secondary)
+    line-height: 1.6
+    margin: 0 0 16px
+
+.capability-cta
+  display: inline-block
+  font-size: 0.9rem
+  font-weight: $font-weight-medium
+  color: $voxel-primary
+  text-decoration: none
+  transition: color $transition-normal
+
+  &:hover
+    color: $voxel-primary-hover
+    text-decoration: none
+
+.capability-image
+  flex: 1
+  max-width: 50%
+
+  img
+    width: 100%
+    border-radius: 8px
+    border: 1px solid var(--pst-border-color)
+
+@media (max-width: $tablet)
+  .capability-row,
+  .capability-row.reverse
+    flex-direction: column
+
+  .capability-image
+    max-width: 100%
