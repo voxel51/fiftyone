@@ -82,6 +82,7 @@ export const matchesDate = (
   if (!run.creation_time) return false;
 
   const runDate = new Date(run.creation_time);
+  if (isNaN(runDate.getTime())) return false;
   if (start && runDate < start) return false;
   if (end && runDate > end) return false;
   return true;

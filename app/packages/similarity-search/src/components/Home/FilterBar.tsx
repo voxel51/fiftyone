@@ -22,6 +22,7 @@ type FilterBarProps = {
   onChange: (state: RunFilterState) => void;
   resultCount: number;
   totalCount: number;
+  canFilterByOwner: boolean;
 };
 
 export default function FilterBar({
@@ -29,11 +30,12 @@ export default function FilterBar({
   onChange,
   resultCount,
   totalCount,
+  canFilterByOwner,
 }: FilterBarProps) {
   const isFiltered =
     filterState.searchText !== "" ||
     filterState.datePreset !== "all" ||
-    filterState.ownerFilter !== "all";
+    (canFilterByOwner && filterState.ownerFilter !== "all");
 
   return (
     <Stack
@@ -70,30 +72,32 @@ export default function FilterBar({
             }
           />
         </div>
-        <Stack orientation={Orientation.Row} spacing={Spacing.Xs}>
-          <Button
-            variant={
-              filterState.ownerFilter === "all"
-                ? Variant.Primary
-                : Variant.Secondary
-            }
-            size={Size.Sm}
-            onClick={() => onChange({ ...filterState, ownerFilter: "all" })}
-          >
-            All
-          </Button>
-          <Button
-            variant={
-              filterState.ownerFilter === "mine"
-                ? Variant.Primary
-                : Variant.Secondary
-            }
-            size={Size.Sm}
-            onClick={() => onChange({ ...filterState, ownerFilter: "mine" })}
-          >
-            Mine
-          </Button>
-        </Stack>
+        {canFilterByOwner && (
+          <Stack orientation={Orientation.Row} spacing={Spacing.Xs}>
+            <Button
+              variant={
+                filterState.ownerFilter === "all"
+                  ? Variant.Primary
+                  : Variant.Secondary
+              }
+              size={Size.Sm}
+              onClick={() => onChange({ ...filterState, ownerFilter: "all" })}
+            >
+              All
+            </Button>
+            <Button
+              variant={
+                filterState.ownerFilter === "mine"
+                  ? Variant.Primary
+                  : Variant.Secondary
+              }
+              size={Size.Sm}
+              onClick={() => onChange({ ...filterState, ownerFilter: "mine" })}
+            >
+              Mine
+            </Button>
+          </Stack>
+        )}
       </Stack>
 
       {isFiltered && (

@@ -51,7 +51,9 @@ export const useNewSearchForm = (
   const [distField, setDistField] = useState(cloneConfig?.dist_field ?? "");
   const [runName, setRunName] = useState("");
   const hasView = Array.isArray(view) && view.length > 0;
-  const [searchScope, setSearchScope] = useState<"view" | "dataset">("view");
+  const [searchScope, setSearchScope] = useState<"view" | "dataset">(
+    hasView ? "view" : "dataset"
+  );
 
   const { execute: initRun } = useOperatorExecutor(INIT_RUN_OPERATOR_URI);
 
@@ -70,6 +72,12 @@ export const useNewSearchForm = (
       setQueryType("image");
     }
   }, [supportsPrompts, queryType]);
+
+  useEffect(() => {
+    if (!supportsLeast && reverse) {
+      setReverse(false);
+    }
+  }, [supportsLeast, reverse]);
 
   const queryIds = useMemo(() => {
     if (selectedLabels && selectedLabels.length > 0) {
@@ -133,7 +141,9 @@ export const useNewSearchForm = (
     console.error("Similarity search failed:", error);
   }, []);
 
-  const kError = typeof k === "number" && k > 10000;
+  const kError =
+    k !== "" &&
+    (!Number.isFinite(k) || !Number.isInteger(k) || k < 1 || k > 10000);
 
   const canSubmit =
     !kError && canSubmitSearch(brainKey, queryType, textQuery, queryIds.length);

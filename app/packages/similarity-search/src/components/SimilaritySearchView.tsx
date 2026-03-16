@@ -38,6 +38,7 @@ function SimilaritySearchReady(props: SimilaritySearchViewProps) {
           onGetSampleMedia={panel.getSampleMedia}
           filterState={panel.filterState}
           onFilterChange={panel.setFilterState}
+          canFilterByOwner={panel.canFilterByOwner}
           selection={panel.selection}
         />
       )}

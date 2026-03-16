@@ -51,6 +51,7 @@ export default function RunActions({
     <div style={s.actionButtons}>
       <Tooltip content={tip("Show results")}>
         <Button
+          aria-label="Show results"
           size={Size.Sm}
           variant={Variant.Borderless}
           leadingIcon={ApplyIcon}
@@ -60,6 +61,7 @@ export default function RunActions({
       </Tooltip>
       <Tooltip content={tip("Clone search")}>
         <Button
+          aria-label="Clone search"
           size={Size.Sm}
           variant={Variant.Borderless}
           leadingIcon={CloneIcon}
@@ -68,6 +70,7 @@ export default function RunActions({
       </Tooltip>
       <Tooltip content={tip("Delete")}>
         <Button
+          aria-label="Delete"
           size={Size.Sm}
           variant={Variant.Borderless}
           leadingIcon={DeleteIconBtn}
@@ -77,6 +80,7 @@ export default function RunActions({
       {isImage && (
         <Tooltip content={isExpanded ? tip("Collapse") : tip("Show samples")}>
           <Button
+            aria-label={isExpanded ? "Collapse" : "Show samples"}
             size={Size.Sm}
             variant={Variant.Borderless}
             leadingIcon={isExpanded ? ExpandLessIcon : ExpandMoreIcon}

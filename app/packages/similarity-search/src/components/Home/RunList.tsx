@@ -62,6 +62,7 @@ type RunListProps = {
   onGetSampleMedia: (payload: { sample_ids: string[] }) => void;
   filterState: RunFilterState;
   onFilterChange: (state: RunFilterState) => void;
+  canFilterByOwner: boolean;
   selection: SelectionState;
 };
 
@@ -90,6 +91,7 @@ export default function RunList({
   onGetSampleMedia,
   filterState,
   onFilterChange,
+  canFilterByOwner,
   selection,
 }: RunListProps) {
   const {
@@ -335,6 +337,7 @@ export default function RunList({
           onChange={onFilterChange}
           resultCount={filteredRuns.length}
           totalCount={runs.length}
+          canFilterByOwner={canFilterByOwner}
         />
       )}
 

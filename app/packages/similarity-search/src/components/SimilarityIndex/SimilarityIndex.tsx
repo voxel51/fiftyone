@@ -96,12 +96,15 @@ export default function SimilarityIndex({
         spacing={Spacing.Sm}
         style={{ alignItems: "center", marginBottom: "1rem" }}
       >
-        <Button
-          size={Size.Sm}
-          variant={Variant.Borderless}
-          leadingIcon={BackIcon}
-          onClick={onBack}
-        />
+        <Tooltip content="Back to similarity searches">
+          <Button
+            aria-label="Back to similarity searches"
+            size={Size.Sm}
+            variant={Variant.Borderless}
+            leadingIcon={BackIcon}
+            onClick={onBack}
+          />
+        </Tooltip>
         <Text variant={TextVariant.Md} color={TextColor.Secondary}>
           Back to similarity searches
         </Text>

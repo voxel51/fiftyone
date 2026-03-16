@@ -94,6 +94,7 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
 
   // currentUser is null in OSS, populated by FOE via panel data
   const currentUser = (data as any).current_user ?? null;
+  const canFilterByOwner = !!currentUser;
   const { filteredRuns, filterState, setFilterState } = useFilteredRuns(
     runs,
     currentUser
@@ -184,6 +185,7 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
     sampleMedia,
     cloneConfig,
     filterState,
+    canFilterByOwner,
     selection,
 
     // actions

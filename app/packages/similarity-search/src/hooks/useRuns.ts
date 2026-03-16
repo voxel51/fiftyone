@@ -21,17 +21,19 @@ export const useRuns = (): UseRunsResult => {
 
   const updateRun = useCallback(
     (run: SimilarityRun) => {
-      const newRuns = [...runs];
-      const idx = newRuns.findIndex((r) => r.run_id === run.run_id);
-      if (idx >= 0) {
-        newRuns.splice(idx, 1, run);
-      } else {
-        newRuns.push(run);
-      }
-      newRuns.sort(sortFn);
-      setRuns(newRuns);
+      setRuns((prev) => {
+        const newRuns = [...prev];
+        const idx = newRuns.findIndex((r) => r.run_id === run.run_id);
+        if (idx >= 0) {
+          newRuns.splice(idx, 1, run);
+        } else {
+          newRuns.push(run);
+        }
+        newRuns.sort(sortFn);
+        return newRuns;
+      });
     },
-    [runs, sortFn, setRuns]
+    [sortFn, setRuns]
   );
 
   const removeRun = useCallback(
