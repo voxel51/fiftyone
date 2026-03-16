@@ -50,6 +50,7 @@ class SegmentAnythingModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
         if self.points_mask_index and not 0 <= self.points_mask_index <= 2:
             raise ValueError("mask_index must be 0, 1, or 2")
 
+
 class _SAMPredictor:
     """Wrapper for ``segment_anything.predictor.SamPredictor``.
 
@@ -231,11 +232,11 @@ class SegmentAnythingImageGetItem(fout.GetItem):
             use_numpy=self.use_numpy,
             force_rgb=True,
         )
-        if self.transform is None:
-            raise ValueError(
-                f"Transform cannot be None for {self.__class__.__name__}."
-            )
         if self.mode != SAMPromptMode.auto:
+            if self.transform is None:
+                raise ValueError(
+                    f"Transform cannot be None for {self.__class__.__name__}."
+                )
             img, img_hw = self.transform(img)
         else:
             img_hw = img.shape[:2]
@@ -381,6 +382,10 @@ class SegmentAnythingImageGetItem(fout.GetItem):
         if len(keypoints.keypoints) == 0:
             raise AssertionError("No point prompts found for sample.")
 
+        if self.point_transform is None:
+            raise AssertionError(
+                "Point transform cannot be None when pre-processing point prompts."
+            )
         sam_points = []
         sam_labels = []
         points_classes = []
@@ -901,6 +906,8 @@ class SegmentAnythingModel(fout.TorchSamplesMixin, fout.TorchImageModel):
 
 def _to_sam_input(tensor):
     return (255 * tensor.cpu().numpy()).astype("uint8").transpose(1, 2, 0)
+
+
 def _get_sam_point_labels(keypoint):
     if "sam_labels" in keypoint and keypoint.sam_labels is not None:
         return keypoint.sam_labels
