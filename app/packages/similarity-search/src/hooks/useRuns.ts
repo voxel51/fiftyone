@@ -33,14 +33,16 @@ export const useRuns = (): UseRunsResult => {
         return newRuns;
       });
     },
-    [sortFn, setRuns]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [sortFn]
   );
 
   const removeRun = useCallback(
     (runId: string) => {
       setRuns((prev) => prev.filter((r) => r.run_id !== runId));
     },
-    [setRuns]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
   );
 
   return { runs, loaded, refreshRuns, updateRun, removeRun };

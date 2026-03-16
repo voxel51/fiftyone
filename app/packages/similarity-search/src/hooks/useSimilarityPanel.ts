@@ -147,8 +147,11 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
 
   const handleSubmitted = useCallback(async () => {
     setSubmitting(true);
-    await refreshRuns();
-    setSubmitting(false);
+    try {
+      await refreshRuns();
+    } finally {
+      setSubmitting(false);
+    }
     navigateHome();
   }, [navigateHome, refreshRuns]);
 
