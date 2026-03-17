@@ -94,7 +94,9 @@ Labelers only have access to datasets to which they have been specifically
 granted access (a dataset's
 :ref:`default access level <enterprise-default-access>` does not apply to
 Labelers), and they may only be granted **Can view** or **Can tag** access
-to datasets.
+to datasets. Additionally, Labelers have access to
+:ref:`In-App Annotation <in-app-annotation>`, features excluding Schema
+Management.
 
 Labelers cannot create new datasets, clone existing datasets, export datasets, or
 view other users of the deployment.
