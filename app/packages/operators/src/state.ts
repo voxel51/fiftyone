@@ -1087,6 +1087,11 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
     loadResult = OperatorLoadResult.NOT_FOUND;
   }
 
+  // If the operator fails to load AND the consumer tries to call execute,
+  // this error gets set and will be thrown on the next render
+  const [resolutionError, setResolutionError] = useState<Error | null>(null);
+  if (resolutionError) throw resolutionError;
+
   const [isExecuting, setIsExecuting] = useState(false);
 
   const [error, setError] = useState(null);
@@ -1110,10 +1115,11 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
 
   const execute = useRecoilCallback(
     (state) => async (paramOverrides, options?: OperatorExecutorOptions) => {
-      // skip execution if operator did not load successfully
+      // defer throw to next render so it reaches an error boundary
       if (loadResult !== OperatorLoadResult.SUCCESS) {
-        // consumer should check loadResult; log error for no-op
-        console.error(`Error loading operator ${uri}; cannot execute`);
+        setResolutionError(
+          new Error(`Operator "${uri}" not found or not accessible`)
+        );
         return;
       }
 
