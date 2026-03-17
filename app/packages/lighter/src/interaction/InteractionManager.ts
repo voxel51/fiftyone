@@ -14,6 +14,7 @@ import type { Renderer2D } from "../renderer/Renderer2D";
 import type { SelectionManager } from "../selection/SelectionManager";
 import type { Point, Rect } from "../types";
 import { InteractiveDetectionHandler } from "./InteractiveDetectionHandler";
+import { v4 as generateUUID } from "uuid";
 
 /**
  * Interface for objects that can handle interaction events.
@@ -361,7 +362,7 @@ export class InteractionManager {
       // an interactive handler. This relies on the event bus invoking
       // handlers synchronously so the handler is immediately available.
       this.eventBus.dispatch("lighter:overlay-create", {
-        eventId: crypto.randomUUID(),
+        eventId: generateUUID(),
       });
 
       const interactiveHandler = this.getInteractiveHandler();
@@ -483,7 +484,7 @@ export class InteractionManager {
     if (this.pendingQuickDraw) {
       this.pendingQuickDraw = undefined;
       this.eventBus.dispatch("lighter:quickdraw-quit", {
-        eventId: crypto.randomUUID(),
+        eventId: generateUUID(),
       });
       this.renderer.enableZoomPan();
       this.canvas.releasePointerCapture(event.pointerId);
