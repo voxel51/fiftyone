@@ -1027,6 +1027,14 @@ export function useOperatorBrowser() {
 }
 
 /**
+ * Result of attempting to load a local or remote operator.
+ */
+export enum OperatorLoadResult {
+  SUCCESS = "SUCCESS",
+  NOT_FOUND = "NOT_FOUND",
+}
+
+/**
  * @param uri - The URI of the operator to execute.
  * @param handlers - The optional handlers for the operator.
  * @returns An object containing the state of the operator execution.
@@ -1068,7 +1076,17 @@ export function useOperatorBrowser() {
 export function useOperatorExecutor(uri, handlers: any = {}) {
   uri = resolveOperatorURI(uri, { keepMethod: true });
 
-  const { operator } = getLocalOrRemoteOperator(uri);
+  let operator;
+  let loadResult: OperatorLoadResult;
+  try {
+    operator = getLocalOrRemoteOperator(uri).operator;
+    loadResult = OperatorLoadResult.SUCCESS;
+  } catch (err) {
+    // operator does not exist
+    operator = {};
+    loadResult = OperatorLoadResult.NOT_FOUND;
+  }
+
   const [isExecuting, setIsExecuting] = useState(false);
 
   const [error, setError] = useState(null);
@@ -1079,7 +1097,7 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
   const [needsOutput, setNeedsOutput] = useState(false);
   const context = useExecutionContext(uri);
   const currentSample = useCurrentSample();
-  const hooks = operator.useHooks(context);
+  const hooks = operator?.useHooks?.(context) ?? {};
   const notify = fos.useNotification();
 
   const clear = useCallback(() => {
@@ -1092,6 +1110,13 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
 
   const execute = useRecoilCallback(
     (state) => async (paramOverrides, options?: OperatorExecutorOptions) => {
+      // skip execution if operator did not load successfully
+      if (loadResult !== OperatorLoadResult.SUCCESS) {
+        // consumer should check loadResult; log error for no-op
+        console.error(`Error loading operator ${uri}; cannot execute`);
+        return;
+      }
+
       const { delegationTarget, requestDelegation, skipOutput, callback } =
         options || {};
       setIsExecuting(true);
@@ -1160,6 +1185,7 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
     clear,
     hasResultOrError: result || error,
     isDelegated,
+    loadResult,
   };
 }
 
