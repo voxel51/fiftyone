@@ -3325,6 +3325,53 @@ class DatasetTests(unittest.TestCase):
         )
 
     @drop_datasets
+    def test_merge_samples_embedded_docs_multiple_list_fields(self):
+        # Regression test for forward-iteration-with-deletion bug in
+        # _merge_docs: when two or more ListFields are mapped into the same
+        # embedded root via `fields`, the loop `for i in range(len(list_fields))`
+        # that deletes matching entries skips elements / raises IndexError.
+        sample1 = fo.Sample(
+            filepath="image.jpg",
+            data=fo.DynamicEmbeddedDocument(
+                tags=["existing"],
+                values=[1, 2, 3],
+            ),
+        )
+
+        sample2 = fo.Sample(
+            filepath="image.jpg",
+            tags=["new_tag"],
+            values=[4, 5],
+        )
+
+        dataset1 = fo.Dataset()
+        dataset1.add_sample(sample1, dynamic=True)
+
+        dataset2 = fo.Dataset()
+        dataset2.add_sample_field(
+            "values", fof.ListField, subfield=fof.IntField
+        )
+        dataset2.add_sample(sample2)
+
+        # Map both ListFields into the same embedded root "data"
+        # This triggers the bug: list_fields will contain
+        # ["data.tags", "data.values"] and both match root "data"
+        dataset1.merge_samples(
+            dataset2,
+            fields={"tags": "data.tags", "values": "data.values"},
+        )
+
+        sample1.reload()
+        merged_tags = sample1.data.tags
+        merged_values = sample1.data.values
+
+        # Both list fields should have been merged (appended)
+        self.assertIn("existing", merged_tags)
+        self.assertIn("new_tag", merged_tags)
+        self.assertIn(1, merged_values)
+        self.assertIn(4, merged_values)
+
+    @drop_datasets
     def test_add_collection(self):
         sample1 = fo.Sample(filepath="image.jpg", foo="bar")
         dataset1 = fo.Dataset()
