@@ -110,12 +110,19 @@ async function loadModel(): Promise<void> {
 
   const opts: ort.InferenceSession.SessionOptions = { executionProviders: ["wasm"] };
 
+  const fetchModel = async (url: string, name: string): Promise<ArrayBuffer> => {
+    const res = await fetch(url);
+    if (!res.ok)
+      throw new Error(`${name} fetch failed: ${res.status} ${res.statusText}`);
+    return res.arrayBuffer();
+  };
+
   encoderSession = await ort.InferenceSession.create(
-    await (await fetch(ENCODER_URL)).arrayBuffer(), opts
+    await fetchModel(ENCODER_URL, "Encoder"), opts
   );
 
   decoderSession = await ort.InferenceSession.create(
-    await (await fetch(DECODER_URL)).arrayBuffer(), opts
+    await fetchModel(DECODER_URL, "Decoder"), opts
   );
 }
 
