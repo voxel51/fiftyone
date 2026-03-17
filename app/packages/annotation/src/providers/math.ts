@@ -14,7 +14,7 @@ export interface ProcessedImage {
 }
 
 /**
- * Map normalized [0,1] coordinates to the SAM2_INPUT_SIZExSAM2_INPUT_SIZEx1024 padded/scaled
+ * Map normalized [0,1] coordinates to the SAM2_INPUT_SIZE x SAM2_INPUT_SIZE padded/scaled
  * encoder input space.
  *
  * @param x Normalized x coordinate in [0,1]
