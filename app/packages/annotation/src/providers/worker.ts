@@ -186,10 +186,10 @@ self.onmessage = async (e: MessageEvent) => {
   const { id, type, payload } = e.data;
 
   try {
-    if (type == "loadModel") {
+    if (type === "loadModel") {
       await loadModel();
       self.postMessage({ id, type, success: true });
-    } else if (type == "embedAndDecode") {
+    } else if (type === "embedAndDecode") {
       const { mask, bbox } = await embedAndDecode(payload.imageUrl, payload.points);
       self.postMessage({ id, type, success: true, result: { mask, bbox } }, [mask.buffer] as any);
     } else {

@@ -54,6 +54,7 @@ export class BrowserAnnotationProvider implements AnnotationProvider {
     return promise;
   }
 
+  // Only aborts the most recent inference. Earlier in-flight requests are not cancelled.
   abort(): void {
     if (this.lastInferenceId === null)
       return;
@@ -68,9 +69,11 @@ export class BrowserAnnotationProvider implements AnnotationProvider {
   }
 
   dispose(): void {
+    for (const entry of this.pending.values())
+      entry.reject(new Error("Provider disposed"));
+    this.pending.clear();
     this.worker?.terminate();
     this.worker = null;
-    this.pending.clear();
   }
 
   private send<T extends WorkerMessageType>(
