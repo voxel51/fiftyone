@@ -185,7 +185,7 @@ export default function NewSearch({
               variant={TextVariant.Sm}
               color={
                 form.queryIds.length > 0
-                  ? TextColor.Success
+                  ? TextColor.Primary
                   : TextColor.Secondary
               }
             >
@@ -227,6 +227,18 @@ export default function NewSearch({
           />
         )}
 
+        {/* Dynamic results */}
+        <Toggle
+          checked={form.dynamicResults}
+          onChange={(checked) => form.setDynamicResults(checked)}
+          label={
+            form.dynamicResults
+              ? "Dynamic results — results will always reflect the latest dataset state, but loading will be slower"
+              : "Dynamic results"
+          }
+          size={Size.Sm}
+        />
+
         {/* Distance field */}
         <FormField
           label="Distance field (optional)"
@@ -240,20 +252,6 @@ export default function NewSearch({
             />
           }
         />
-
-        {/* Dynamic results */}
-        <Toggle
-          checked={form.dynamicResults}
-          onChange={(checked) => form.setDynamicResults(checked)}
-          label="Dynamic results"
-          size={Size.Sm}
-        />
-        {form.dynamicResults && (
-          <Text variant={TextVariant.Sm} color={TextColor.Muted}>
-            Results will always reflect the latest dataset state, but loading
-            will be slower.
-          </Text>
-        )}
 
         {/* Search name */}
         <FormField
