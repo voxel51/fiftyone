@@ -11116,10 +11116,11 @@ def _merge_docs(
 
                 keep_list_field = []
                 for f in list_fields:
-                    child = f[len(prefix) :] if f.startswith(prefix) else None
+
                     if (
-                        f.startswith(prefix)
-                        and child not in doc_list_fields[root]
+                        child := f[len(prefix) :]
+                        if f.startswith(prefix)
+                        else None
                     ):
                         doc_list_fields[root].append(child)
                     else:
@@ -11128,10 +11129,11 @@ def _merge_docs(
 
                 keep_elem_field = []
                 for e in elem_fields:
-                    child = e[len(prefix) :] if e.startswith(prefix) else None
+
                     if (
-                        e.startswith(prefix)
-                        and child not in doc_elem_fields[root]
+                        child := e[len(prefix) :]
+                        if e.startswith(prefix)
+                        else None
                     ):
                         doc_elem_fields[root].append(child)
                     else:
