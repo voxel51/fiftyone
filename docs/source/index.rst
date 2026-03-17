@@ -3,16 +3,22 @@ FiftyOne
 
 .. raw:: html
 
-  <div class="responsive-banner">
-    <a href="https://link.voxel51.com/visual-ai-survey-5" target="_blank" aria-label="Share how you build, deploy, and scale visual AI">
-      <video class="banner-mobile" autoplay loop muted playsinline aria-hidden="true">
-        <source src="https://cdn.voxel51.com/banner/survey_2026_january_1200x200.webm" type="video/webm">
-      </video>
-      <video class="banner-desktop" autoplay loop muted playsinline aria-hidden="true">
-        <source src="https://cdn.voxel51.com/banner/survey_2026_january_2400x400.webm" type="video/webm">
-      </video>
-    </a>
-  </div>
+  <div id="banner" class="responsive-banner" style="display:none"></div>
+  <script src="https://cdn.voxel51.com/banner_config.js"></script>
+  <script>
+    (function(){
+      if(typeof defined_banner_config==="undefined")return;
+      var c=defined_banner_config,b=document.getElementById("banner"),a=document.createElement("a");
+      a.href=c.url;a.target="_blank";a.rel="noopener";a.setAttribute("aria-label",c.description);
+      ["banner-mobile","banner-desktop"].forEach(function(cls){
+        var v=document.createElement("video"),s=document.createElement("source");
+        v.className=cls;v.autoplay=v.loop=v.muted=v.playsInline=true;
+        s.src=c["video_"+cls.split("-")[1]];s.type="video/webm";
+        v.appendChild(s);a.appendChild(v);
+      });
+      b.appendChild(a);b.style.display="";
+    })();
+  </script>
 
 .. Social links ---------------------------------------------------------------
 
