@@ -655,8 +655,8 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
                         for neg_keypoint in neg_frame_keypoints.keypoints:
                             neg_points, _ = fosam._to_sam_points(
                                 neg_keypoint.points,
-                                self._curr_frame_width,
-                                self._curr_frame_height,
+                                width=self._curr_frame_width,
+                                height=self._curr_frame_height,
                                 point_labels=fosam._get_sam_point_labels(
                                     neg_keypoint
                                 ),

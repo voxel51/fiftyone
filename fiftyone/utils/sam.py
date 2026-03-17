@@ -127,21 +127,6 @@ class SAMPromptMode(Enum):
     point_only = 3
     box_point_combo = 4
 
-    @classmethod
-    def from_mode_name(cls, mode_name):
-        """Creates an instance from mode name.
-
-        Args:
-            mode_name: name of the prompt mode
-
-        Returns:
-            class member based on prompt mode
-        """
-        for member in cls:
-            if member.name == mode_name:
-                return member
-        raise ValueError(f"No supported SAM prompt mode with name {mode_name}")
-
 
 class SegmentAnythingImageGetItem(fout.GetItem):
     """A :class:`GetItem` that loads images, bounding boxes and/or keypoints to feed to
@@ -212,7 +197,7 @@ class SegmentAnythingImageGetItem(fout.GetItem):
         ):
             return SAMPromptMode.point_only
         else:
-            # NOTE: Because of how we are mainintaing backward compatibilty of prompt_field,
+            # NOTE: Because of how we are maintaining backward compatibilty of prompt_field,
             # combo mode will be set when prompt_field is used.
             return SAMPromptMode.box_point_combo
 
@@ -925,8 +910,17 @@ def _to_sam_points(points, height, width, point_labels=None):
     points = np.array(points)
     valid_rows = ~np.isnan(points).any(axis=1)
     scaled_points = np.array(points[valid_rows]) * np.array([width, height])
+
+    if point_labels is not None:
+        point_labels = np.array(point_labels)
+        if len(point_labels) != len(points):
+            raise ValueError(
+                f"point_labels length ({len(point_labels)}) must match "
+                f"points length ({len(points)})"
+            )
+
     labels = (
-        np.array(point_labels)[valid_rows]
+        point_labels[valid_rows]
         if point_labels is not None
         else np.ones(len(scaled_points))
     )
