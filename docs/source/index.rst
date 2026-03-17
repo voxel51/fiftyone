@@ -8,7 +8,9 @@ FiftyOne
   <script>
     (function(){
       if(typeof defined_banner_config==="undefined")return;
-      var c=defined_banner_config,b=document.getElementById("banner"),a=document.createElement("a");
+      var c=defined_banner_config;
+      if(!c.url||!c.video_mobile||!c.video_desktop||c.url.indexOf("https://")!==0)return;
+      var b=document.getElementById("banner"),a=document.createElement("a");
       a.href=c.url;a.target="_blank";a.rel="noopener";a.setAttribute("aria-label",c.description);
       ["banner-mobile","banner-desktop"].forEach(function(cls){
         var v=document.createElement("video"),s=document.createElement("source");
