@@ -133,6 +133,9 @@ async function embedAndDecode(
   if (!encoderSession || !decoderSession)
     throw new Error("Model not loaded");
 
+  if (points.length === 0)
+    throw new Error("At least one prompt point is required");
+
   const imageData = await loadImageData(imageUrl);
   const processedImageData = preprocessImage(imageData);
 
