@@ -3365,11 +3365,9 @@ class DatasetTests(unittest.TestCase):
         merged_tags = sample1.data.tags
         merged_values = sample1.data.values
 
-        # Both list fields should have been merged (appended)
-        self.assertIn("existing", merged_tags)
-        self.assertIn("new_tag", merged_tags)
-        self.assertIn(1, merged_values)
-        self.assertIn(4, merged_values)
+        # Both list fields should have been fully merged (append unique values)
+        self.assertCountEqual(merged_tags, ["existing", "new_tag"])
+        self.assertCountEqual(merged_values, [1, 2, 3, 4, 5])
 
     @drop_datasets
     def test_add_collection(self):
