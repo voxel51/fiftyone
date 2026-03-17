@@ -162,7 +162,13 @@ def _to_instances(result, confidence_thresh=None, classes=None):
 
     clss = np.rint(result.boxes.cls.detach().cpu().numpy()).astype(int)
     boxes = result.boxes.xywhn.detach().cpu().numpy().astype(float)
-    masks = result.masks.data.detach().cpu().numpy() > 0.5
+    # scale to original image size, expects 4 dim input
+    masks = ultralytics.utils.ops.scale_masks(
+        result.masks.data[None], result.orig_img.shape[:2]
+    )
+    masks = (  # return to [N, H, W], to bool array
+        masks.squeeze(0) if masks.ndim > 3 else masks
+    ).detach().cpu().numpy() > 0.5
     confs = result.boxes.conf.detach().cpu().numpy().astype(float)
     track_ids = _extract_track_ids(result)
 
