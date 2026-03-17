@@ -245,6 +245,7 @@ describe("buildExecutionParams", () => {
     distField: "",
     runName: "",
     negativeQueryIds: [],
+    dynamicResults: false,
   };
 
   it("builds basic text query params", () => {

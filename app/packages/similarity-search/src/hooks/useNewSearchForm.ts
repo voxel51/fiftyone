@@ -50,6 +50,7 @@ export const useNewSearchForm = (
   const [reverse, setReverse] = useState(cloneConfig?.reverse ?? false);
   const [distField, setDistField] = useState(cloneConfig?.dist_field ?? "");
   const [runName, setRunName] = useState("");
+  const [dynamicResults, setDynamicResults] = useState(false);
   const hasView = Array.isArray(view) && view.length > 0;
   const [searchScope, setSearchScope] = useState<"view" | "dataset">(
     hasView ? "view" : "dataset"
@@ -105,6 +106,7 @@ export const useNewSearchForm = (
         distField,
         runName,
         negativeQueryIds: EMPTY_NEGATIVE_IDS,
+        dynamicResults,
       }),
     [
       brainKey,
@@ -114,6 +116,7 @@ export const useNewSearchForm = (
       reverse,
       distField,
       runName,
+      dynamicResults,
       selectedConfig,
       view,
       searchScope,
@@ -174,6 +177,8 @@ export const useNewSearchForm = (
     setRunName,
     searchScope,
     setSearchScope,
+    dynamicResults,
+    setDynamicResults,
 
     // derived
     selectedConfig,

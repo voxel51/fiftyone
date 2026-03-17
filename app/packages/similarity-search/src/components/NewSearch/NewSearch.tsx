@@ -241,6 +241,20 @@ export default function NewSearch({
           }
         />
 
+        {/* Dynamic results */}
+        <Toggle
+          checked={form.dynamicResults}
+          onChange={(checked) => form.setDynamicResults(checked)}
+          label="Dynamic results"
+          size={Size.Sm}
+        />
+        {form.dynamicResults && (
+          <Text variant={TextVariant.Sm} color={TextColor.Muted}>
+            Results will always reflect the latest dataset state, but loading
+            will be slower.
+          </Text>
+        )}
+
         {/* Search name */}
         <FormField
           label="Search name (optional)"

@@ -114,6 +114,7 @@ export type BuildExecutionParamsInput = {
   distField: string;
   runName: string;
   negativeQueryIds: string[];
+  dynamicResults: boolean;
 };
 
 export function getMediaUrl(filepath: string): string {
@@ -161,6 +162,10 @@ export const buildExecutionParams = (
 
   if (negativeQueryIds.length > 0) {
     params.negative_query_ids = negativeQueryIds;
+  }
+
+  if (input.dynamicResults) {
+    params.dynamic_results = true;
   }
 
   return params;
