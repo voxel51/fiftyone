@@ -11112,21 +11112,23 @@ def _merge_docs(
                 doc_fields.append(root)
 
             if merge_lists:
+                prefix = root + "."
+
                 keep_list_field = []
-                keep_elem_field = []
-                for i, f in enumerate(list_fields):
-                    if f.startswith(root + ".") and f not in doc_list_fields:
-                        doc_list_fields[root].append(f[len(root) + 1 :])
+                for f in list_fields:
+                    if f.startswith(prefix) and f not in doc_list_fields:
+                        doc_list_fields[root].append(f[len(prefix) :])
                     else:
                         keep_list_field.append(f)
-                list_fields[:] = keep_list_field
+                list_fields = keep_list_field
 
-                for i, e in enumerate(elem_fields):
-                    if f.startswith(root + ".") and e not in doc_elem_fields:
-                        doc_elem_fields[root].append(f[len(root) + 1 :])
+                keep_elem_field = []
+                for e in elem_fields:
+                    if e.startswith(prefix) and e not in doc_elem_fields:
+                        doc_elem_fields[root].append(e[len(prefix) :])
                     else:
                         keep_elem_field.append(e)
-                elem_fields[:] = keep_elem_field
+                elem_fields = keep_elem_field
 
     # Handle merging of simple fields
     if overwrite:
