@@ -34,7 +34,12 @@ let decoderSession: ort.InferenceSession | null = null;
  * @param url Image source URL
  */
 async function loadImageData(url: string): Promise<ImageData> {
-  const response = await fetch(url);
+  let response: Response;
+  try {
+    response = await fetch(url);
+  } catch (e) {
+    throw new Error(`Image fetch failed (check CORS headers): ${e}`);
+  }
   if (!response.ok)
     throw new Error(`Image fetch failed: ${response.status} ${response.statusText}`);
 
