@@ -48,9 +48,7 @@ function useLooker<L extends fos.Lookers>({
     selectedMediaField;
     /** end refreshers */
 
-    const newLooker = createLooker.current(sampleRef.current);
-
-    return newLooker;
+    return createLooker.current(sampleRef.current);
   }, [createLooker, reset, selectedMediaField]) as L;
 
   useEffect(() => {
@@ -148,11 +146,12 @@ function useLooker<L extends fos.Lookers>({
     };
   }, [looker]);
 
-  // Seed the viewport to restore when the Looker first fully loads.
-  useEffect(() => {
-    const saved = modalBridge.getModalViewport();
-    if (saved?.sampleId === sample.sample._id) {
-      looker.setInitialViewport(saved);
+  // Seed the saved viewport into the looker after mount. This runs after
+  // unmounting component's useLayoutEffect cleanup has already written to the atom.
+  useLayoutEffect(() => {
+    const savedViewport = modalBridge.getModalViewport();
+    if (savedViewport?.sampleId === sample.sample._id) {
+      looker.updateOptions({ seedViewport: savedViewport }, true);
     }
   }, [looker, sample]);
 

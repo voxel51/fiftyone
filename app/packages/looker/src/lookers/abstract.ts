@@ -286,17 +286,6 @@ export abstract class AbstractLooker<
     };
   }
 
-  /**
-   * Seeds a viewport to be applied on the first fully-loaded render, as an
-   * alternative to the default auto-zoom. Consumed once inside postProcess()
-   * the first time setZoom && overlaysPrepared are both true, then cleared.
-   */
-  setInitialViewport(viewport: ViewportState): void {
-    this.pinnedViewport = viewport;
-  }
-
-  protected pinnedViewport: ViewportState | null = null;
-
   loadOverlays(sample: Sample): void {
     this.sampleOverlays = loadOverlays(sample, this.state.config.fieldSchema);
   }
