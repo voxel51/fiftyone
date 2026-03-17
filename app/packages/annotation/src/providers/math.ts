@@ -69,11 +69,12 @@ export function computeMaskBbox(
   maskW = SAM2_OUTPUT_SIZE
 ): { x: number; y: number; w: number; h: number } | null {
   const { originalWidth: W, originalHeight: H, scale, padX, padY } = img;
-  const ms = maskH / SAM2_INPUT_SIZE;
-  const mpx = Math.floor(padX * ms);
-  const mpy = Math.floor(padY * ms);
-  const mw = Math.round(W * scale * ms);
-  const mh = Math.round(H * scale * ms);
+  const msx = maskW / SAM2_INPUT_SIZE;
+  const msy = maskH / SAM2_INPUT_SIZE;
+  const mpx = Math.floor(padX * msx);
+  const mpy = Math.floor(padY * msy);
+  const mw = Math.round(W * scale * msx);
+  const mh = Math.round(H * scale * msy);
 
   // Find exact bbox of positive logits in mask space
   let mx0 = maskW, my0 = maskH, mx1 = -1, my1 = -1;
@@ -120,11 +121,12 @@ export function postprocessMask(
   maskW = SAM2_OUTPUT_SIZE
 ): Float32Array {
   const { originalWidth: W, originalHeight: H, scale, padX, padY } = img;
-  const ms = maskH / SAM2_INPUT_SIZE;
-  const mpx = Math.floor(padX * ms);
-  const mpy = Math.floor(padY * ms);
-  const mw = Math.round(W * scale * ms);
-  const mh = Math.round(H * scale * ms);
+  const msx = maskW / SAM2_INPUT_SIZE;
+  const msy = maskH / SAM2_INPUT_SIZE;
+  const mpx = Math.floor(padX * msx);
+  const mpy = Math.floor(padY * msy);
+  const mw = Math.round(W * scale * msx);
+  const mh = Math.round(H * scale * msy);
   const out = new Float32Array(bbox.w * bbox.h);
 
   for (let iy = 0; iy < bbox.h; iy++) {

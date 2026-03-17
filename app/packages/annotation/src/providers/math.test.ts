@@ -102,11 +102,12 @@ describe("computeMaskBbox", () => {
 
     // Derive expected bbox using the same mapping as computeMaskBbox
     const W = 100, H = 50;
-    const ms = SAM2_OUTPUT_SIZE / SZ;
-    const mpx = Math.floor(img.padX * ms);
-    const mpy = Math.floor(img.padY * ms);
-    const mw = Math.round(W * img.scale * ms);
-    const mh = Math.round(H * img.scale * ms);
+    const msx = SAM2_OUTPUT_SIZE / SZ;
+    const msy = SAM2_OUTPUT_SIZE / SZ;
+    const mpx = Math.floor(img.padX * msx);
+    const mpy = Math.floor(img.padY * msy);
+    const mw = Math.round(W * img.scale * msx);
+    const mh = Math.round(H * img.scale * msy);
     const x1 = Math.max(0, Math.floor(((regionX - mpx) / mw) * W));
     const y1 = Math.max(0, Math.floor(((regionY - mpy) / mh) * H));
     const x2 = Math.min(W - 1, Math.ceil(((regionX + regionW - 1 - mpx) / mw) * W));
