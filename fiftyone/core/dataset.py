@@ -11120,7 +11120,7 @@ def _merge_docs(
                         doc_list_fields[root].append(f[len(prefix) :])
                     else:
                         keep_list_field.append(f)
-                list_fields = keep_list_field
+                list_fields[:] = keep_list_field
 
                 keep_elem_field = []
                 for e in elem_fields:
@@ -11128,7 +11128,7 @@ def _merge_docs(
                         doc_elem_fields[root].append(e[len(prefix) :])
                     else:
                         keep_elem_field.append(e)
-                elem_fields = keep_elem_field
+                elem_fields[:] = keep_elem_field
 
     # Handle merging of simple fields
     if overwrite:
