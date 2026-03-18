@@ -48,7 +48,7 @@ body:
         - MacOS 26.3.1 (25D2128), Apple M5 Pro 18/20-core CPU/GPU 48 GB
         - Windows 10 22H2 build 19045, Intel 12700, 32 GB DDR4 RAM, (AMD | Intel | NVIDIA) GPU
         - Linux Ubuntu 24.04.3 LTS, AMD Ryzen 9900X, 64 GB DDR5 RAM, (AMD | Intel | NVIDIA) GPU
-        - Details for 'other' OS if selected
+        - Details for 'Other' OS if selected
   - type: dropdown
     id: browsers
     attributes:
@@ -110,9 +110,9 @@ body:
         member of your organization be willing to contribute a fix for this bug to the 
         FiftyOne codebase?
       options:
-        - label: Yes. I can contribute a fix for this bug independently
-        - label: Yes. I would be willing to contribute a fix for this bug with guidance from the FiftyOne community
-        - label: No. I cannot contribute a bug fix at this time
+        - label: Yes, I can contribute a fix for this bug independently
+        - label: Yes, I would be willing to contribute a fix for this bug with guidance from the FiftyOne community
+        - label: No, I cannot contribute a bug fix at this time
   - type: upload
     id: screenshots
     attributes:
@@ -123,6 +123,6 @@ body:
   - type: markdown
     attributes:
       value: |
-        Consider joining out Discord community https://discord.gg/fiftyone-community 🔥
-        Get help from other users, join in on computer vision discussions, showcase 
-        your projects, and network with others!
+        Consider joining the Voxel51 Discord community https://discord.gg/fiftyone-community 🔥
+        Get help from other users, join in on computer vision discussions, showcase your projects, 
+        and network with others!
