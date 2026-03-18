@@ -44,9 +44,9 @@ body:
           - GPU make & model if applicable
           <details><summary>Linux shell command</summary?
             <code>
-              echo "---OS---" && \
-              uname -a && \
-              echo "---HWinfo---" && \
+              echo "---OS---" && %5C
+              uname -a && %5C
+              echo "---HWinfo---" && %5C
               lshw -short -sanitize 2>/dev/null | grep -E "processor|memory|display|storage"
             </code>
           </details>
