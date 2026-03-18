@@ -79,6 +79,10 @@ body:
         Provide a reproducible test case that is the bare minimum necessary to generate 
         the problem. Please avoid sharing code that relies on your local data or 
         datasets. Include a short video or screenshot if the bug is in the App.
+      placeholder: |
+        ```
+        # your code code goes here, don't forget the backticks (`)
+        ```
   - type: input
     id: python-ver
     validations:
@@ -97,6 +101,15 @@ body:
       placeholder: FiftyOne 1.11.1
     validations:
       required: true
+  - type: textarea
+    id: additional-info
+    attributes:
+      label: Other info/logs
+      description: |
+        Include any logs or source code that would be helpful to diagnose the problem.
+        If including tracebacks, please include the full traceback. Large logs and
+        files should be attached. Please do not use screenshots for sharing text. Code
+        snippets should be used instead when providing tracebacks, logs, etc.
   - type: checkboxes
     id: contribute
     validations:
