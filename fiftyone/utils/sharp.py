@@ -131,6 +131,11 @@ class AppleSharpModel(fout.TorchImageModel):
         if not self._output_dir_initialized:
             if self._output_dir is None:
                 self._output_dir = tempfile.mkdtemp(prefix="sharp_")
+                logger.warning(
+                    "No output_dir provided; outputs will be written to "
+                    "temporary directory '%s'",
+                    self._output_dir,
+                )
             os.makedirs(self._output_dir, exist_ok=True)
             self._output_dir_initialized = True
 
