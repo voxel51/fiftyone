@@ -3,7 +3,7 @@ import useCanAnnotate from "@fiftyone/core/src/components/Modal/Sidebar/Annotate
 import { usePluginSettings } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import type { CameraControls } from "@react-three/drei";
-import { useMemo, useReducer, useRef } from "react";
+import { useEffect, useMemo, useReducer, useRef } from "react";
 import {
   LoadingManager,
   type Group,
@@ -29,6 +29,7 @@ import type { Looker3dSettings } from "../settings";
 import { useCurrent3dAnnotationMode } from "../state/accessors";
 import { Annotation3d } from "./Annotation3d";
 import {
+  FO3D_CAMERA_LIFECYCLE_ACTION,
   FO3D_CAMERA_LIFECYCLE,
   type Fo3dCameraLifecycleState,
   fo3dCameraLifecycleReducer,
@@ -118,6 +119,13 @@ export const MediaTypeFo3dComponent = () => {
     fo3dCameraLifecycleReducer,
     FO3D_CAMERA_LIFECYCLE.WAITING_FOR_SCENE
   );
+
+  // Reset camera initialization whenever the scene identity changes.
+  useEffect(() => {
+    dispatchCameraLifecycle({
+      type: FO3D_CAMERA_LIFECYCLE_ACTION.WAIT_FOR_SCENE,
+    });
+  }, [sceneSampleId]);
 
   const cameraRef = useRef<PerspectiveCamera | null>(null);
   const cameraControlsRef = useRef<CameraControls | null>(null);

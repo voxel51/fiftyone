@@ -265,7 +265,14 @@ export const useCameraViews = ({
         return;
       }
 
-      if (!event.metaKey && event.code === "KeyB") {
+      if (
+        event.code === "KeyB" &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        !event.altKey &&
+        !event.shiftKey &&
+        !event.repeat
+      ) {
         setIsFo3dBackgroundOn((prev) => !prev);
         event.preventDefault();
         return;

@@ -451,12 +451,7 @@ export const StatusBar = ({
         </SegmentHint>
       )}
 
-      {/* NOTE: this is a one-off case where we disable the component in playwright
-   so that this banner doesn't interfere with the tests.
-   waiting for analytics to show up before we can dismiss it is a pain
-   and adds significant time to the tests.
-   we should usually _never_ have any divergence between tests and prod. */}
-      {!segmentState.isActive && !window.IS_PLAYWRIGHT && (
+      {!segmentState.isActive && (
         <AnnotationTips isMultiviewOn={isMultiviewOn} />
       )}
 
