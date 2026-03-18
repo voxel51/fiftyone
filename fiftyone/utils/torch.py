@@ -1890,7 +1890,7 @@ class FiftyOneTorchDataset(Dataset):
             samples, "id", local_process_group=local_process_group
         )
 
-        if len(set(self.ids)) != len(self.ids) and not vectorize:
+        if not vectorize and len(set(self.ids)) != len(self.ids):
             logger.warning(
                 "The sample collection contains repeated sample IDs. This can "
                 "lead to unexpected results when `vectorize=False`. It is "
