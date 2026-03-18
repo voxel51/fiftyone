@@ -1,0 +1,53 @@
+name: Documentation Issue 📝
+description: Use this template for proposing documentation issues
+title: "[DOCS] "
+labels:
+  - documentation
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for submitting an issue. Please refer to our [issue policy](https://www.github.com/voxel51/fiftyone/blob/develop/ISSUE_POLICY.md) for information on what types of issues we address.
+
+  - type: input
+    id: doc-url
+    validations:
+      required: true
+    attributes:
+      label: 🔗 URL(s) with the issue
+      description: Please provide a link to the documentation entry in question.
+      placeholder: https://docs.voxel51.com/...
+
+  - type: textarea
+    id: description
+    validations:
+      required: true
+    attributes:
+      label: 📋 Description of proposal (what needs changing)
+      description: |
+        Provide a clear description. Why is the proposed documentation better?
+      placeholder: Describe the documentation issue and what should be changed
+
+  - type: checkboxes
+    id: contribute
+    validations:
+      required: true
+    attributes:
+      label: 🚀 Willingness to contribute
+      description: |
+        The FiftyOne Community encourages documentation contributions. Would you or another
+        member of your organization be willing to contribute a fix for this documentation
+        issue to the FiftyOne codebase?
+      options:
+        - label: Yes. I can contribute a documentation fix independently
+        - label: Yes. I would be willing to contribute a documentation fix with guidance from the FiftyOne community
+        - label: No. I cannot contribute a documentation fix at this time
+
+  - type: markdown
+    attributes:
+      value: |
+        ### 📚 Helpful Resources
+        - 📖 [FiftyOne Documentation](https://docs.voxel51.com/)
+        - 💬 [Discord Community](https://discord.gg/fiftyone-community)
+        - 🎬 [YouTube Channel](https://www.youtube.com/@voxel51)
