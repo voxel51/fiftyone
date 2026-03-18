@@ -9,6 +9,7 @@ wrapper for the FiftyOne Model Zoo.
 
 import logging
 import os
+import struct
 import tempfile
 import uuid
 
@@ -16,6 +17,7 @@ import numpy as np
 from PIL import Image
 
 import fiftyone.core.labels as fol
+import fiftyone.core.threed as fo3d
 import fiftyone.core.utils as fou
 import fiftyone.utils.torch as fout
 import fiftyone.zoo.models as fozm
@@ -27,6 +29,8 @@ DEFAULT_SHARP_MODEL_URL = (
 )
 DEFAULT_FOCAL_LENGTH = 26.0
 _FULL_FRAME_SENSOR_WIDTH_MM = 36.0
+_SH_C0 = 0.28209479177387814  # 1 / (2 * sqrt(pi))
+_MAX_PREVIEW_POINTS = 50000
 
 _SHARP_REQ = (
     "sharp @ git+https://github.com/apple/ml-sharp.git"
@@ -185,15 +189,104 @@ class AppleSharpModel(fout.TorchImageModel):
         intrinsics_resized[1] *= internal_shape[0] / height
         return intrinsics_resized
 
+    def _splat_to_pointcloud(self, splat_path, pc_path):
+        """Convert a Gaussian splat PLY to a downsampled RGB point cloud PLY.
+
+        Reads the splat PLY, converts zeroth-order spherical harmonic
+        coefficients (``f_dc_0/1/2``) to RGB, applies sigmoid to opacity,
+        filters transparent points, and downsamples to at most
+        ``_MAX_PREVIEW_POINTS`` by keeping the highest-opacity points.
+        """
+        with open(splat_path, "rb") as f:
+            n_verts = 0
+            while True:
+                line = f.readline().decode("ascii").strip()
+                if line.startswith("element vertex"):
+                    n_verts = int(line.split()[-1])
+                if line == "end_header":
+                    break
+
+            # x y z f_dc_0 f_dc_1 f_dc_2 opacity scale_0..2 rot_0..3
+            vertex_data = np.frombuffer(
+                f.read(n_verts * 14 * 4), dtype=np.float32
+            ).reshape(n_verts, 14)
+
+        xyz = vertex_data[:, 0:3]
+        f_dc = vertex_data[:, 3:6]
+        opacity_raw = vertex_data[:, 6]
+
+        rgb = np.clip(0.5 + _SH_C0 * f_dc, 0.0, 1.0)
+        rgb = (rgb * 255).astype(np.uint8)
+
+        opacity = 1.0 / (1.0 + np.exp(-opacity_raw))
+
+        mask = opacity > 0.2
+        xyz, rgb, opacity = xyz[mask], rgb[mask], opacity[mask]
+
+        if len(xyz) > _MAX_PREVIEW_POINTS:
+            top_idx = np.argsort(opacity)[-_MAX_PREVIEW_POINTS:]
+            xyz, rgb = xyz[top_idx], rgb[top_idx]
+
+        n_out = xyz.shape[0]
+        with open(pc_path, "wb") as f:
+            header = (
+                "ply\n"
+                "format binary_little_endian 1.0\n"
+                f"element vertex {n_out}\n"
+                "property float x\n"
+                "property float y\n"
+                "property float z\n"
+                "property uchar red\n"
+                "property uchar green\n"
+                "property uchar blue\n"
+                "end_header\n"
+            )
+            f.write(header.encode("ascii"))
+            for i in range(n_out):
+                f.write(struct.pack(
+                    "<fffBBB",
+                    xyz[i, 0], xyz[i, 1], xyz[i, 2],
+                    rgb[i, 0], rgb[i, 1], rgb[i, 2],
+                ))
+
+        return n_out
+
     def _export_gaussians(self, gaussians, f_px, height, width):
-        """Export gaussians to a PLY file and return a Classification label."""
+        """Export gaussians to PLY and a viewable ``.fo3d`` scene.
+
+        Returns a :class:`fiftyone.core.labels.Classification` with
+        ``splat_path`` (raw Gaussian splat PLY) and ``scene_path``
+        (``.fo3d`` file viewable in the FiftyOne App).
+        """
         self._ensure_output_dir()
         splat_id = uuid.uuid4().hex[:12]
+
         splat_path = os.path.join(
             self._output_dir, f"splat_{splat_id}.ply"
         )
         sharp_utils.save_ply(gaussians, f_px, (height, width), splat_path)
-        return fol.Classification(label="3d_gaussians", splat_path=splat_path)
+
+        pc_name = f"pc_{splat_id}.ply"
+        pc_path = os.path.join(self._output_dir, pc_name)
+        self._splat_to_pointcloud(splat_path, pc_path)
+
+        scene = fo3d.Scene()
+        scene.add(fo3d.PlyMesh(
+            "gaussians",
+            pc_name,  # relative to .fo3d location
+            is_point_cloud=True,
+            center_geometry=True,
+        ))
+        scene_path = os.path.join(
+            self._output_dir, f"scene_{splat_id}.fo3d"
+        )
+        scene.write(scene_path)
+
+        return fol.Classification(
+            label="3d_gaussians",
+            splat_path=splat_path,
+            scene_path=scene_path,
+        )
 
     def _predict_all(self, imgs):
         """Run SHARP inference on a list of images and return Classifications."""
