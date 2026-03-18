@@ -1,0 +1,129 @@
+name: Bug Report
+description: Use this template for reporting bugs encountered while using FiftyOne
+title: "[BUG] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for submitting an issue. Please refer to our 
+        [issue policy](https://www.github.com/voxel51/fiftyone/blob/develop/ISSUE_POLICY.md) 
+        for information on what types of issues we address.
+  - type: textarea
+    id: bug-description
+    validations:
+      required: true
+    attributes:
+      label: Describe the problem
+      description: | 
+        Describe the problem clearly here. Include descriptions of the 
+        expected behavior and the actual behavior.
+      placeholder: Your summary goes here
+  - type: checkboxes
+    id: reported-os
+    validations:
+      required: true
+    attributes:
+      label: Operating System Platform & Distribution
+      description: What Operating System (OS) was the bug found on? Select all that apply.
+      options:
+        - label: Linux
+        - label: MacOS
+        - label: Windows
+        - label: Other (please specify)
+  - type: textarea
+    id: system-detail
+    validations:
+      required: true
+    attributes:
+      label: System Details
+      description: |
+        Provide additional details about the system the bug occured on. Please include: 
+          - Additional OS details
+          - CPU Make & Model
+          - System memory (RAM) amount + type
+          - GPU make & model if applicable
+      placeholder: |
+        - MacOS 26.3.1 (25D2128), Apple M5 Pro 18/20-core CPU/GPU 48 GB
+        - Windows 10 22H2 build 19045, Intel 12700, 32 GB DDR4 RAM, (AMD | Intel | NVIDIA) GPU
+        - Linux Ubuntu 24.04.3 LTS, AMD Ryzen 9900X, 64 GB DDR5 RAM, (AMD | Intel | NVIDIA) GPU
+        - Details for 'other' OS if selected
+  - type: dropdown
+    id: browsers
+    attributes:
+      label: If the bug happens in a web browser, which browsers was it observed?
+      multiple: true
+      options:
+        - Firefox
+        - Chrome (or Chromium-based)
+        - Safari
+        - Microsoft Edge
+        - Not applicable
+      default: 4
+  - type: checkboxes
+    id: install
+    validations:
+      required: true
+    attributes:
+      label: Installation type
+      description: What installation method for `fiftyone` was used?
+      options:
+        - label: Package (`pip`)
+        - label: Source (`git`)
+  - type: textarea
+    id: code
+    validations:
+      required: true
+    attributes:
+      label: Code to reproduce issue
+      description: |
+        Provide a reproducible test case that is the bare minimum necessary to generate 
+        the problem. Please avoid sharing code that relies on your local data or 
+        datasets. Include a short video or screenshot if the bug is in the App.
+  - type: input
+    id: python-ver
+    validations:
+      required: true
+    attributes:
+      label: What version of Python?
+      description: | 
+        Which version of Python was the bug found on? `python --version`
+      placeholder: Python 3.11.14
+  - type: input
+    id: fiftyone-ver
+    attributes:
+      label: What version of FiftyOne?
+      description: | 
+        Which version of Fiftyone was the bug found on? `fiftyone --version`
+      placeholder: FiftyOne 1.11.1
+    validations:
+      required: true
+  - type: checkboxes
+    id: contribute
+    validations:
+      required: true
+    attributes:
+      label: Willingness to contribute
+      description: |
+        The FiftyOne Community encourages bug fix contributions. Would you or another 
+        member of your organization be willing to contribute a fix for this bug to the 
+        FiftyOne codebase?
+      options:
+        - label: Yes. I can contribute a fix for this bug independently
+        - label: Yes. I would be willing to contribute a fix for this bug with guidance from the FiftyOne community
+        - label: No. I cannot contribute a bug fix at this time
+      default: 0
+  - type: upload
+    id: screenshots
+    attributes:
+      label: Upload screenshots
+      description: If applicable, add screenshots to help explain your problem.
+    validations:
+      required: false
+  - type: markdown
+    attributes:
+      value: |
+        Consider joining out Discord community https://discord.gg/fiftyone-community 🔥
+        Get help from other users, join in on computer vision discussions, showcase 
+        your projects, and network with others!
