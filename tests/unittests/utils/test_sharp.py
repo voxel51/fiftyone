@@ -259,7 +259,9 @@ class TestAppleSharpExportGaussians:
         from unittest.mock import patch
         import fiftyone.core.labels as fol
 
-        with patch("fiftyone.utils.sharp.sharp_utils.save_ply"):
+        with patch("fiftyone.utils.sharp.sharp_utils.save_ply"), \
+                 patch("fiftyone.utils.sharp.AppleSharpModel._splat_to_pointcloud"), \
+                 patch("fiftyone.utils.sharp.fo3d.Scene.write"):
             model = self._make_model(str(tmp_path))
             result = model._export_gaussians(None, 1000.0, 1080, 1920)
 
@@ -269,7 +271,9 @@ class TestAppleSharpExportGaussians:
         """Test result has splat_path attribute."""
         from unittest.mock import patch
 
-        with patch("fiftyone.utils.sharp.sharp_utils.save_ply"):
+        with patch("fiftyone.utils.sharp.sharp_utils.save_ply"), \
+                 patch("fiftyone.utils.sharp.AppleSharpModel._splat_to_pointcloud"), \
+                 patch("fiftyone.utils.sharp.fo3d.Scene.write"):
             model = self._make_model(str(tmp_path))
             result = model._export_gaussians(None, 1000.0, 1080, 1920)
 
@@ -281,7 +285,9 @@ class TestAppleSharpExportGaussians:
         """Test label is '3d_gaussians'."""
         from unittest.mock import patch
 
-        with patch("fiftyone.utils.sharp.sharp_utils.save_ply"):
+        with patch("fiftyone.utils.sharp.sharp_utils.save_ply"), \
+                 patch("fiftyone.utils.sharp.AppleSharpModel._splat_to_pointcloud"), \
+                 patch("fiftyone.utils.sharp.fo3d.Scene.write"):
             model = self._make_model(str(tmp_path))
             result = model._export_gaussians(None, 1000.0, 1080, 1920)
 
@@ -291,7 +297,9 @@ class TestAppleSharpExportGaussians:
         """Test multiple exports produce unique paths."""
         from unittest.mock import patch
 
-        with patch("fiftyone.utils.sharp.sharp_utils.save_ply"):
+        with patch("fiftyone.utils.sharp.sharp_utils.save_ply"), \
+                 patch("fiftyone.utils.sharp.AppleSharpModel._splat_to_pointcloud"), \
+                 patch("fiftyone.utils.sharp.fo3d.Scene.write"):
             model = self._make_model(str(tmp_path))
             result1 = model._export_gaussians(None, 1000.0, 1080, 1920)
             result2 = model._export_gaussians(None, 1000.0, 1080, 1920)
@@ -306,7 +314,9 @@ class TestAppleSharpExportGaussians:
         output_dir = str(tmp_path / "splats")
         os.makedirs(output_dir)
 
-        with patch("fiftyone.utils.sharp.sharp_utils.save_ply"):
+        with patch("fiftyone.utils.sharp.sharp_utils.save_ply"), \
+                 patch("fiftyone.utils.sharp.AppleSharpModel._splat_to_pointcloud"), \
+                 patch("fiftyone.utils.sharp.fo3d.Scene.write"):
             model = self._make_model(output_dir)
             result = model._export_gaussians(None, 1000.0, 1080, 1920)
 
@@ -349,7 +359,9 @@ class TestAppleSharpPredictAll:
 
         img = Image.new("RGB", (640, 480), color=(128, 128, 128))
 
-        with patch("fiftyone.utils.sharp.sharp_utils.save_ply"):
+        with patch("fiftyone.utils.sharp.sharp_utils.save_ply"), \
+                 patch("fiftyone.utils.sharp.AppleSharpModel._splat_to_pointcloud"), \
+                 patch("fiftyone.utils.sharp.fo3d.Scene.write"):
             with patch("fiftyone.utils.sharp.sharp_utils.unproject_gaussians",
                        return_value=torch.zeros(100, 14)):
                 result = model._predict_all(img)
@@ -373,7 +385,9 @@ class TestAppleSharpPredictAll:
             Image.new("RGB", (1024, 768), color=(0, 0, 255)),
         ]
 
-        with patch("fiftyone.utils.sharp.sharp_utils.save_ply"):
+        with patch("fiftyone.utils.sharp.sharp_utils.save_ply"), \
+                 patch("fiftyone.utils.sharp.AppleSharpModel._splat_to_pointcloud"), \
+                 patch("fiftyone.utils.sharp.fo3d.Scene.write"):
             with patch("fiftyone.utils.sharp.sharp_utils.unproject_gaussians",
                        return_value=torch.zeros(100, 14)):
                 result = model._predict_all(imgs)
@@ -391,7 +405,9 @@ class TestAppleSharpPredictAll:
         model._model = MagicMock(return_value=torch.zeros(1, 100, 14))
         imgs = torch.randint(0, 255, (2, 3, 480, 640), dtype=torch.uint8)
 
-        with patch("fiftyone.utils.sharp.sharp_utils.save_ply"):
+        with patch("fiftyone.utils.sharp.sharp_utils.save_ply"), \
+                 patch("fiftyone.utils.sharp.AppleSharpModel._splat_to_pointcloud"), \
+                 patch("fiftyone.utils.sharp.fo3d.Scene.write"):
             with patch(
                 "fiftyone.utils.sharp.sharp_utils.unproject_gaussians",
                 return_value=torch.zeros(100, 14),
@@ -410,7 +426,9 @@ class TestAppleSharpPredictAll:
         model._model = MagicMock(return_value=torch.zeros(1, 100, 14))
         imgs = np.random.randint(0, 255, (2, 480, 640, 3), dtype=np.uint8)
 
-        with patch("fiftyone.utils.sharp.sharp_utils.save_ply"):
+        with patch("fiftyone.utils.sharp.sharp_utils.save_ply"), \
+                 patch("fiftyone.utils.sharp.AppleSharpModel._splat_to_pointcloud"), \
+                 patch("fiftyone.utils.sharp.fo3d.Scene.write"):
             with patch(
                 "fiftyone.utils.sharp.sharp_utils.unproject_gaussians",
                 return_value=torch.zeros(100, 14),
@@ -431,7 +449,9 @@ class TestAppleSharpPredictAll:
 
         img = Image.new("RGB", (640, 480), color=(100, 100, 100))
 
-        with patch("fiftyone.utils.sharp.sharp_utils.save_ply"):
+        with patch("fiftyone.utils.sharp.sharp_utils.save_ply"), \
+                 patch("fiftyone.utils.sharp.AppleSharpModel._splat_to_pointcloud"), \
+                 patch("fiftyone.utils.sharp.fo3d.Scene.write"):
             with patch("fiftyone.utils.sharp.sharp_utils.unproject_gaussians",
                        return_value=torch.zeros(100, 14)):
                 result = model._predict_all([img])
