@@ -31,18 +31,16 @@ import {
   isNestedDynamicGroup,
   shouldRenderImaVidLooker,
 } from "./dynamicGroups";
+import { ModalSample, modalLooker, modalSample, modalSelector } from "./modal";
+import { RelayEnvironmentKey } from "./relay";
 import {
   active3dSlices,
-  active3dSlicesToSampleMap,
-  all3dSlicesToSampleMap,
   allNon3dSlices,
   has3dSlice,
+  interaction3dSample,
   is3dPinned,
   pinned3DSampleSlice,
 } from "./renderConfig3d.atoms";
-import { resolveInteraction3dState } from "./groups.utils";
-import { ModalSample, modalLooker, modalSample, modalSelector } from "./modal";
-import { RelayEnvironmentKey } from "./relay";
 import { datasetName, parentMediaTypeSelector } from "./selectors";
 import { State } from "./types";
 import { mapSampleResponse } from "./utils";
@@ -336,17 +334,7 @@ export const activeModalSample = selector({
   key: "activeModalSample",
   get: ({ get }) => {
     if (get(is3dPinned)) {
-      const activeSlices = get(active3dSlices);
-      return resolveInteraction3dState({
-        isGroup: get(isGroup),
-        modalSample: get(modalSample),
-        activeSlices,
-        activeSampleMap: activeSlices.length
-          ? get(active3dSlicesToSampleMap)
-          : {},
-        allSampleMap: get(isGroup) ? get(all3dSlicesToSampleMap) : {},
-        pinnedSlice: get(pinned3DSampleSlice),
-      }).representativeSample.sample;
+      return get(interaction3dSample).sample;
     }
 
     return get(modalSample).sample;

@@ -113,12 +113,13 @@ export const normalizeActive3dSlices = ({
     return uniqueSlices;
   }
 
-  const activeFo3dSlice =
-    preferredFo3dSlice &&
+  const canUsePreferredFo3dSlice =
+    preferredFo3dSlice !== null &&
     fo3dSliceSet.has(preferredFo3dSlice) &&
-    uniqueSlices.includes(preferredFo3dSlice)
-      ? preferredFo3dSlice
-      : uniqueSlices.find((slice) => fo3dSliceSet.has(slice)) ?? null;
+    uniqueSlices.includes(preferredFo3dSlice);
+  const activeFo3dSlice = canUsePreferredFo3dSlice
+    ? preferredFo3dSlice
+    : uniqueSlices.find((slice) => fo3dSliceSet.has(slice)) ?? null;
 
   if (!activeFo3dSlice) {
     return uniqueSlices;

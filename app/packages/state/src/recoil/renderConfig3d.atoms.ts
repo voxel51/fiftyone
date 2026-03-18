@@ -109,7 +109,8 @@ export const activeFo3dSlice = selector<string | null>({
 
     if (
       pinnedSlice &&
-      currentActive3dSlices.includes(pinnedSlice) &&
+      (currentActive3dSlices.length === 0 ||
+        currentActive3dSlices.includes(pinnedSlice)) &&
       fo3dSliceSet.has(pinnedSlice)
     ) {
       return pinnedSlice;
@@ -160,8 +161,10 @@ export const all3dSlicesToSampleMap = selector<Record<string, ModalSample>>({
   },
 });
 
-export const interaction3dSampleMap = selector<Record<string, ModalSample>>({
-  key: "interaction3dSampleMap",
+export const interaction3dState = selector<
+  ReturnType<typeof resolveInteraction3dState>
+>({
+  key: "interaction3dState",
   get: ({ get }) => {
     const isGrouped = get(isGroup);
     const currentActive3dSlices = get(active3dSlices);
@@ -175,46 +178,23 @@ export const interaction3dSampleMap = selector<Record<string, ModalSample>>({
         : {},
       allSampleMap: isGrouped ? get(all3dSlicesToSampleMap) : {},
       pinnedSlice: get(pinned3DSampleSlice),
-    }).sampleMap;
+    });
   },
+});
+
+export const interaction3dSampleMap = selector<Record<string, ModalSample>>({
+  key: "interaction3dSampleMap",
+  get: ({ get }) => get(interaction3dState).sampleMap,
 });
 
 export const interaction3dSlice = selector<string | null>({
   key: "interaction3dSlice",
-  get: ({ get }) => {
-    const isGrouped = get(isGroup);
-    const currentActive3dSlices = get(active3dSlices);
-
-    return resolveInteraction3dState({
-      isGroup: isGrouped,
-      modalSample: get(modalSample),
-      activeSlices: currentActive3dSlices,
-      activeSampleMap: currentActive3dSlices.length
-        ? get(active3dSlicesToSampleMap)
-        : {},
-      allSampleMap: isGrouped ? get(all3dSlicesToSampleMap) : {},
-      pinnedSlice: get(pinned3DSampleSlice),
-    }).representativeSlice;
-  },
+  get: ({ get }) => get(interaction3dState).representativeSlice,
 });
 
 export const interaction3dSample = selector<ModalSample>({
   key: "interaction3dSample",
-  get: ({ get }) => {
-    const isGrouped = get(isGroup);
-    const currentActive3dSlices = get(active3dSlices);
-
-    return resolveInteraction3dState({
-      isGroup: isGrouped,
-      modalSample: get(modalSample),
-      activeSlices: currentActive3dSlices,
-      activeSampleMap: currentActive3dSlices.length
-        ? get(active3dSlicesToSampleMap)
-        : {},
-      allSampleMap: isGrouped ? get(all3dSlicesToSampleMap) : {},
-      pinnedSlice: get(pinned3DSampleSlice),
-    }).representativeSample;
-  },
+  get: ({ get }) => get(interaction3dState).representativeSample,
 });
 
 export const all3dSlices = selector<string[]>({
@@ -268,17 +248,7 @@ export const sceneSample = selector<ModalSample>({
       return get(all3dSlicesToSampleMap)[renderedFo3dSlice] ?? get(modalSample);
     }
 
-    const currentActive3dSlices = get(active3dSlices);
-    return resolveInteraction3dState({
-      isGroup: true,
-      modalSample: get(modalSample),
-      activeSlices: currentActive3dSlices,
-      activeSampleMap: currentActive3dSlices.length
-        ? get(active3dSlicesToSampleMap)
-        : {},
-      allSampleMap: get(all3dSlicesToSampleMap),
-      pinnedSlice: get(pinned3DSampleSlice),
-    }).representativeSample;
+    return get(interaction3dSample);
   },
 });
 
