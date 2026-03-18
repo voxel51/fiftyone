@@ -232,6 +232,9 @@ export const Ply = ({
   );
 
   useEffect(() => {
+    setIsGeometryResolved(false);
+    setIsUsingVertexColors(false);
+
     if (!geometry) {
       return;
     }

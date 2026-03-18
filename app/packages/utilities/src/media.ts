@@ -210,5 +210,5 @@ const anyMatch = <T>(
   set: Set<T>,
   predicate: (element: T) => boolean
 ): boolean => {
-  return [...set].findIndex((e) => predicate(e)) >= 0;
+  return [...set].some(predicate);
 };

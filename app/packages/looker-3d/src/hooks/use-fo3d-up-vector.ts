@@ -1,10 +1,7 @@
 import * as fos from "@fiftyone/state";
 import { useCallback, useEffect, useMemo } from "react";
 import { Vector3 } from "three";
-import {
-  resolveConfiguredUpVector,
-  resolveUpVector,
-} from "../fo3d/camera-init";
+import { resolveUpVector } from "../fo3d/camera-init";
 import type { FoScene } from "../fo3d/render-types";
 import { getUpVectorFromAxis } from "../fo3d/utils";
 import type { Looker3dSettings } from "../settings";
@@ -79,28 +76,13 @@ export const useFo3dUpVector = (
     [sceneDefinesUpVector, setLocalUpVectorVal, setSessionUpVectorVal]
   );
 
-  const resolveEffectiveUpVector = useMemo(
-    () =>
-      (
-        storedUpVector: Vector3 | null,
-        usesSceneScopedStorage: boolean
-      ): Vector3 => {
-        if (usesSceneScopedStorage) {
-          return (
-            storedUpVector ??
-            resolveConfiguredUpVector({
-              sceneUpAxis,
-              pluginDefaultUp,
-            })
-          );
-        }
-
-        return resolveUpVector({
-          sceneUpAxis,
-          pluginDefaultUp,
-          storedUpVector,
-        });
-      },
+  const resolveEffectiveUpVector = useCallback(
+    (storedUpVector: Vector3 | null): Vector3 =>
+      resolveUpVector({
+        sceneUpAxis,
+        pluginDefaultUp,
+        storedUpVector,
+      }),
     [sceneUpAxis, pluginDefaultUp]
   );
 
@@ -108,10 +90,7 @@ export const useFo3dUpVector = (
   // prevent no-op writes that can cause re-render loops.
   useEffect(() => {
     setActiveUpVectorVal((storedUpVector) => {
-      const resolvedUpVector = resolveEffectiveUpVector(
-        storedUpVector,
-        sceneDefinesUpVector
-      );
+      const resolvedUpVector = resolveEffectiveUpVector(storedUpVector);
 
       if (storedUpVector?.equals(resolvedUpVector)) {
         return storedUpVector;
@@ -122,15 +101,15 @@ export const useFo3dUpVector = (
   }, [resolveEffectiveUpVector, sceneDefinesUpVector, setActiveUpVectorVal]);
 
   const upVector = useMemo(
-    () => resolveEffectiveUpVector(activeUpVector, sceneDefinesUpVector),
-    [activeUpVector, sceneDefinesUpVector, resolveEffectiveUpVector]
+    () => resolveEffectiveUpVector(activeUpVector),
+    [activeUpVector, resolveEffectiveUpVector]
   );
 
   const setUpVectorVal = useCallback(
     (value: Vector3 | null | ((v: Vector3 | null) => Vector3 | null)) => {
       setActiveUpVectorVal((storedUpVector) => {
         const nextUpVector =
-          value instanceof Function ? value(storedUpVector) : value;
+          typeof value === "function" ? value(storedUpVector) : value;
 
         if (storedUpVector?.equals(nextUpVector)) {
           return storedUpVector;
