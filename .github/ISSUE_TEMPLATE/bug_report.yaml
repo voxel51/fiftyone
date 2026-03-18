@@ -16,7 +16,7 @@ body:
       required: true
     attributes:
       label: 🗃️ Describe the problem
-      description: | 
+      description: |
         Describe the problem clearly here. Include descriptions of the 
         expected behavior and the actual behavior.
       placeholder: 🕵 What is the bug and what were you expeciting?
@@ -104,7 +104,7 @@ body:
       required: true
     attributes:
       label: 🐍 What version of Python?
-      description: | 
+      description: |
         Which version of Python was the bug found on? `python --version`
       placeholder: Python 3.11.14
 
@@ -112,7 +112,7 @@ body:
     id: fiftyone-ver
     attributes:
       label: 🔖 What version of FiftyOne?
-      description: | 
+      description: |
         Which version of Fiftyone was the bug found on? `fiftyone --version`
       placeholder: FiftyOne 1.11.1
     validations:
@@ -127,8 +127,7 @@ body:
         If including tracebacks, please include the full traceback. Large logs and
         files should be attached. Please do not use screenshots for sharing text. Code
         snippets should be used instead when providing tracebacks, logs, etc.
-      placeholder:
-        🧠 Add as much detail as possible
+      placeholder: 🧠 Add as much detail as possible
 
   - type: checkboxes
     id: contribute
@@ -156,6 +155,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Consider joining the Voxel51 Discord community https://discord.gg/fiftyone-community 🔥
-        Get help from other users, join in on computer vision discussions, showcase your projects, 
-        and network with others!
+        ### 📚 Helpful Resources
+        - 📖 [FiftyOne Documentation](https://docs.voxel51.com/)
+        - 💬 [Discord Community](https://discord.gg/fiftyone-community)
+        - 🎬 [YouTube Channel](https://www.youtube.com/@voxel51)
