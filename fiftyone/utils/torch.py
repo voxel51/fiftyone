@@ -1837,6 +1837,12 @@ class FiftyOneTorchDataset(Dataset):
     from an arbitrary :class:`fiftyone.core.collections.SampleCollection` via
     the provided :class:`GetItem` instance.
 
+    .. warning::
+
+        For input views with repeated sample IDs, it is recommended to use
+        ``vectorize=True``. Do not use ``vectorize=False`` in this case,
+        it will give unexpected results.
+
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         get_item: a :class:`GetItem`
