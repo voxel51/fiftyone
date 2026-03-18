@@ -1,7 +1,7 @@
 const DB_NAME = "fiftyone-models";
 const STORE_NAME = "weights";
-const MAX_RETRIES = 3;
 const RETRY_BACKOFF_MS = 1000;
+export const MAX_RETRIES = 3;
 
 /** Open (or create) the IndexedDB database for model weight caching. */
 function openDB(): Promise<IDBDatabase> {
