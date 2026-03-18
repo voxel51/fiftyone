@@ -10,7 +10,7 @@ import { StatusBarRootContainer } from "../containers";
 import { Fo3dSceneContent } from "../fo3d/Fo3dCanvas";
 import HoverMetadataHUD from "../fo3d/HoverMetadataHUD";
 import { useFo3dContext } from "../fo3d/context";
-import { FoScene } from "../fo3d/render-types";
+import type { FoScene } from "../fo3d/render-types";
 
 const CANVAS_WRAPPER_ID = "sample3d-canvas-wrapper";
 

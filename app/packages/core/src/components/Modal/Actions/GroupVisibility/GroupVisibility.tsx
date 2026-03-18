@@ -66,7 +66,7 @@ export default ({
         muted={
           isAnnotating3d ||
           isImavidInNestedGroup ||
-          toReturn.length === 0 ||
+          (!isCarouselVisible && toReturn.length === 0) ||
           (!(isSlotVisible && threeDSliceExists) && !isCarouselVisible)
         }
         setValue={(value) => setIsMainVisible(value)}

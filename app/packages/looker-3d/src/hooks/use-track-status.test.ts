@@ -130,4 +130,32 @@ describe("useTrackStatus", () => {
       itemsTotal: 2,
     });
   });
+
+  it("ignores queued updates from a manager after it is replaced", async () => {
+    const managerA = new LoadingManager();
+    const managerB = new LoadingManager();
+
+    const { rerender } = renderHook(
+      ({ manager }: { manager: LoadingManager }) => useTrackStatus(manager),
+      {
+        initialProps: { manager: managerA },
+      }
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    act(() => {
+      managerA.onStart("/stale.fo3d", 1, 1);
+      rerender({ manager: managerB });
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(store.logs).toEqual([]);
+    expect(store.loadingStatus.status).toBe(LoadingStatus.IDLE);
+  });
 });

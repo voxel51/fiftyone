@@ -78,11 +78,13 @@ export const SliceSelector = () => {
 
 const PcdsSelector = () => {
   const {
-    state: { activeSlices, allSampleMap },
+    state: { activeSlices, allSampleMap, allSlices },
     actions,
   } = fos.useRenderConfig3d();
   const setCurrentAction = useSetRecoilState(currentActionAtom);
-  const allSlices = Object.keys(allSampleMap);
+  const availableSlices = allSlices.filter((slice) =>
+    Boolean(allSampleMap[slice])
+  );
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -90,7 +92,7 @@ const PcdsSelector = () => {
     setCurrentAction(null);
   });
 
-  if (allSlices.length === 0) {
+  if (availableSlices.length === 0) {
     return null;
   }
 
@@ -99,7 +101,7 @@ const PcdsSelector = () => {
       <ActionPopOverInner>
         <PopoutSectionTitle>Select 3D slices</PopoutSectionTitle>
         <div data-cy={"looker3d-slice-checkboxes"}>
-          {allSlices.map((slice) => {
+          {availableSlices.map((slice) => {
             return (
               <Checkbox
                 name={slice}

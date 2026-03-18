@@ -131,8 +131,11 @@ describe("Group", () => {
     });
   });
 
-  it("does not repin 3d when the main viewer is still visible", () => {
+  it("does not repin 3d when the main viewer is still visible", async () => {
     render(<Group />);
-    expect(mockState.setPinned).not.toHaveBeenCalled();
+
+    await waitFor(() => {
+      expect(mockState.setPinned).not.toHaveBeenCalled();
+    });
   });
 });

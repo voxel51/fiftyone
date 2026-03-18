@@ -9,6 +9,7 @@ import { LoadingStatus } from "../types";
 import { useLoadingStatus } from "./use-loading-status";
 
 export const ALL_LOADING_COMPLETE = "All loading complete!";
+const noop = () => undefined;
 
 /** Tracks THREE loading-manager events and mirrors status/logs into Recoil. */
 export const useTrackStatus = (loadingManager: LoadingManager | null) => {
@@ -35,11 +36,17 @@ export const useTrackStatus = (loadingManager: LoadingManager | null) => {
       return;
     }
 
+    let active = true;
+
     // Note: these callbacks can fire synchronously during React's render phase
     // (e.g. when useLoader triggers a THREE loader).
     // We defer state updates with queueMicrotask to avoid the React warning:
     loadingManager.onStart = (url, itemsLoaded, itemsTotal) => {
       queueMicrotask(() => {
+        if (!active) {
+          return;
+        }
+
         const log = "Started loading file: " + url;
         setLogs((prevLogs) => [...prevLogs, { message: log, status: "info" }]);
 
@@ -56,6 +63,10 @@ export const useTrackStatus = (loadingManager: LoadingManager | null) => {
 
     loadingManager.onLoad = () => {
       queueMicrotask(() => {
+        if (!active) {
+          return;
+        }
+
         const log = ALL_LOADING_COMPLETE;
         setLogs((prevLogs) => [
           ...prevLogs,
@@ -75,6 +86,10 @@ export const useTrackStatus = (loadingManager: LoadingManager | null) => {
 
     loadingManager.onProgress = (url, itemsLoaded, itemsTotal) => {
       queueMicrotask(() => {
+        if (!active) {
+          return;
+        }
+
         const log = `Loading file: ${url}. Loaded ${itemsLoaded} of ${itemsTotal} files.`;
         setLogs((prevLogs) => [...prevLogs, { message: log, status: "info" }]);
 
@@ -91,6 +106,10 @@ export const useTrackStatus = (loadingManager: LoadingManager | null) => {
 
     loadingManager.onError = (url) => {
       queueMicrotask(() => {
+        if (!active) {
+          return;
+        }
+
         const log = "There was an error loading " + url;
         setLogs((prevLogs) => [...prevLogs, { message: log, status: "error" }]);
 
@@ -104,10 +123,11 @@ export const useTrackStatus = (loadingManager: LoadingManager | null) => {
     };
 
     return () => {
-      loadingManager.onStart = () => {};
-      loadingManager.onLoad = () => {};
-      loadingManager.onProgress = () => {};
-      loadingManager.onError = () => {};
+      active = false;
+      loadingManager.onStart = noop;
+      loadingManager.onLoad = noop;
+      loadingManager.onProgress = noop;
+      loadingManager.onError = noop;
     };
   }, [loadingManager, setLoadingStatus, setLogs]);
 

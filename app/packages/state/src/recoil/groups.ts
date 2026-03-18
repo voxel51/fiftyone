@@ -239,7 +239,7 @@ export const currentSlice = selectorFamily<string | null, boolean>({
 });
 
 export const currentSlices = selectorFamily<string[] | null, boolean>({
-  key: "currentSlice",
+  key: "currentSlices",
   get:
     (modal) =>
     ({ get }) => {
