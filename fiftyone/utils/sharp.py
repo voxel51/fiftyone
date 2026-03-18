@@ -134,6 +134,33 @@ class AppleSharpModel(fout.TorchImageModel):
             os.makedirs(self._output_dir, exist_ok=True)
             self._output_dir_initialized = True
 
+    @staticmethod
+    def _focal_length_from_exif(img):
+        """Extract 35mm-equivalent focal length from EXIF data.
+
+        Args:
+            img: a filepath string or PIL Image
+
+        Returns:
+            focal length in mm, or None if unavailable
+        """
+        try:
+            if isinstance(img, str):
+                img = Image.open(img)
+
+            if not isinstance(img, Image.Image):
+                return None
+
+            exif = img.getexif()
+            ifd = exif.get_ifd(0x8769)  # ExifIFD
+            fl_35 = ifd.get(41989)  # FocalLengthIn35mmFilm
+            if fl_35 and fl_35 > 0:
+                return float(fl_35)
+        except Exception:
+            pass
+
+        return None
+
     def _to_numpy(self, img):
         """Convert input to numpy uint8 HWC array."""
         if isinstance(img, str):
@@ -317,11 +344,15 @@ class AppleSharpModel(fout.TorchImageModel):
         outputs = []
         with torch.no_grad():
             for img in imgs:
+                exif_fl = self._focal_length_from_exif(img)
                 img_np = self._to_numpy(img)
                 height, width = img_np.shape[:2]
 
-                f_px = self.focal_length_to_fpx(width)
-                disparity_factor = self.disparity_factor(width)
+                fl_mm = exif_fl if exif_fl is not None else self._focal_length_mm
+                f_px = fl_mm * width / _FULL_FRAME_SENSOR_WIDTH_MM
+                disparity_factor = torch.tensor(
+                    [f_px / width], dtype=torch.float32, device=self._device
+                )
 
                 img_pt = torch.from_numpy(img_np.copy()).float().to(self._device)
                 img_pt = img_pt.permute(2, 0, 1) / 255.0
