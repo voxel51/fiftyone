@@ -300,6 +300,26 @@ export const useQuickDraw = () => {
     )
   );
 
+  /**
+   * Cache field/label for auto-assignment
+   * Close out previous label
+   * Exit QuickDraw
+   */
+  useEventHandler(
+    "lighter:quickdraw-quit",
+    useCallback(
+      (payload) => {
+        if (!claimEvent("quickdraw-quit", payload.eventId)) {
+          return;
+        }
+
+        finalizeCurrentDetection();
+        disableQuickDraw();
+      },
+      [claimEvent, disableQuickDraw, finalizeCurrentDetection]
+    )
+  );
+
   return useMemo(
     () => ({
       // State (read-only)
