@@ -55,10 +55,72 @@ def _serialize_static_transform(
     return serialized
 
 
+def _build_transform_dedupe_key(
+    source_frame: str, target_frame: Optional[str] = None
+) -> str:
+    """Builds a canonical ``source::target`` key for transform deduping."""
+    normalized_target = target_frame or focam.DEFAULT_TRANSFORM_TARGET_FRAME
+    return f"{source_frame}::{normalized_target}"
+
+
+def _get_serialized_transform_dedupe_key(
+    serialized_transform: dict,
+) -> Optional[str]:
+    """Builds dedupe key for a serialized transform."""
+    source_frame = serialized_transform.get("source_frame")
+    if not source_frame:
+        return None
+
+    target_frame = (
+        serialized_transform.get("target_frame")
+        or focam.DEFAULT_TRANSFORM_TARGET_FRAME
+    )
+    serialized_transform["target_frame"] = target_frame
+    return _build_transform_dedupe_key(source_frame, target_frame)
+
+
+def _serialized_transforms_have_dedupe_key(
+    serialized_transforms: List[dict], dedupe_key: str
+) -> bool:
+    """Whether serialized transforms already include the dedupe key."""
+    for serialized in serialized_transforms:
+        if _get_serialized_transform_dedupe_key(serialized) == dedupe_key:
+            return True
+
+    return False
+
+
+def _collect_inline_transform_dedupe_keys_from_value(
+    value, inline_transform_dedupe_keys: set, _depth: int = 0
+):
+    """Collects dedupe keys for inline sample-level static transforms."""
+    if isinstance(value, list):
+        if _depth >= _MAX_COLLECT_DEPTH:
+            return
+
+        for item in value:
+            _collect_inline_transform_dedupe_keys_from_value(
+                item,
+                inline_transform_dedupe_keys,
+                _depth=_depth + 1,
+            )
+        return
+
+    if isinstance(value, focam.StaticTransform):
+        serialized = _serialize_static_transform(value)
+        if serialized is None:
+            return
+
+        dedupe_key = _get_serialized_transform_dedupe_key(serialized)
+        if dedupe_key is not None:
+            inline_transform_dedupe_keys.add(dedupe_key)
+
+
 def _collect_sample_static_transforms_from_value(
     value,
     dataset_transforms: dict,
     serialized_transforms: List[dict],
+    inline_transform_dedupe_keys: set,
     _depth: int = 0,
 ):
     """Collects static transforms from a sample field value."""
@@ -71,6 +133,7 @@ def _collect_sample_static_transforms_from_value(
                 item,
                 dataset_transforms,
                 serialized_transforms,
+                inline_transform_dedupe_keys,
                 _depth=_depth + 1,
             )
         return
@@ -83,6 +146,17 @@ def _collect_sample_static_transforms_from_value(
 
     if isinstance(value, focam.StaticTransformRef):
         source_frame, target_frame = _parse_transform_key(value.ref)
+        ref_dedupe_key = _build_transform_dedupe_key(
+            source_frame, target_frame
+        )
+        if ref_dedupe_key in inline_transform_dedupe_keys:
+            return
+
+        if _serialized_transforms_have_dedupe_key(
+            serialized_transforms, ref_dedupe_key
+        ):
+            return
+
         ref_value = dataset_transforms.get(value.ref)
         if isinstance(ref_value, focam.StaticTransform):
             serialized = _serialize_static_transform(
@@ -113,10 +187,19 @@ def _list_resolved_sample_static_transforms(dataset, sample) -> List[dict]:
     """Lists static transforms for a sample."""
     dataset_transforms = dataset.static_transforms or {}
     serialized_transforms = []
+    inline_transform_dedupe_keys = set()
+
+    for _, value in sample.iter_fields():
+        _collect_inline_transform_dedupe_keys_from_value(
+            value, inline_transform_dedupe_keys
+        )
 
     for _, value in sample.iter_fields():
         _collect_sample_static_transforms_from_value(
-            value, dataset_transforms, serialized_transforms
+            value,
+            dataset_transforms,
+            serialized_transforms,
+            inline_transform_dedupe_keys,
         )
 
     slice_name = _get_sample_group_slice_name(dataset, sample)
@@ -141,17 +224,10 @@ def _list_resolved_sample_static_transforms(dataset, sample) -> List[dict]:
     # precedence over dataset-level ones during dedup.
     deduped_transforms = {}
     for serialized in serialized_transforms:
-        source_frame = serialized.get("source_frame")
-        if not source_frame:
+        dedupe_key = _get_serialized_transform_dedupe_key(serialized)
+        if dedupe_key is None:
             continue
 
-        target_frame = (
-            serialized.get("target_frame")
-            or focam.DEFAULT_TRANSFORM_TARGET_FRAME
-        )
-        serialized["target_frame"] = target_frame
-
-        dedupe_key = f"{source_frame}::{target_frame}"
         if dedupe_key in deduped_transforms:
             continue
 

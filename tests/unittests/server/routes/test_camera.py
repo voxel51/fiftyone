@@ -307,6 +307,38 @@ class TestStaticTransformsRoute:
         assert data["transforms"][0]["target_frame"] == "world"
         assert data["transforms"][0]["translation"] == [1.0, 2.0, 3.0]
 
+        sample.clear_field("transforms")
+        sample.clear_field("transform_ref")
+        sample.save()
+
+        # Ref-before-inline order should still prefer inline sample transforms.
+        sample["transform_ref"] = StaticTransformRef(ref="camera::world")
+        sample["transforms"] = [
+            StaticTransform(
+                translation=[1.0, 2.0, 3.0],
+                quaternion=[0.0, 0.0, 0.0, 1.0],
+                source_frame="camera",
+                target_frame="world",
+            ),
+            StaticTransform(
+                translation=[9.0, 9.0, 9.0],
+                quaternion=[0.0, 0.0, 0.0, 1.0],
+                source_frame="camera",
+                target_frame="world",
+            ),
+        ]
+        sample.save()
+
+        request = mock_request()
+        response = await static_transforms_endpoint.get(request)
+
+        assert response.status_code == 200
+        data = json.loads(response.body)
+        assert len(data["transforms"]) == 1
+        assert data["transforms"][0]["source_frame"] == "camera"
+        assert data["transforms"][0]["target_frame"] == "world"
+        assert data["transforms"][0]["translation"] == [1.0, 2.0, 3.0]
+
     @pytest.mark.asyncio
     async def test_dataset_not_found(
         self, static_transforms_endpoint, mock_request
