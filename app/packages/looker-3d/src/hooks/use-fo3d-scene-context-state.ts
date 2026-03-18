@@ -56,8 +56,6 @@ export const useFo3dSceneContextState = ({
   const { effectiveSceneBoundingBox, cursorBounds, lookAt } =
     useFo3dDerivedSceneState(sceneBoundingBox);
 
-  const setUpVector = setUpVectorVal;
-
   const isSceneInitialized = isFo3dCameraLifecycleReady(cameraLifecycleState);
 
   const contextValue = useMemo(
@@ -66,7 +64,7 @@ export const useFo3dSceneContextState = ({
       isSceneInitialized,
       numPrimaryAssets: rootAssetCount,
       upVector,
-      setUpVector,
+      setUpVector: setUpVectorVal,
       isComputingSceneBoundingBox,
       fo3dRoot,
       loadingManager,
@@ -88,7 +86,7 @@ export const useFo3dSceneContextState = ({
       isSceneInitialized,
       rootAssetCount,
       upVector,
-      setUpVector,
+      setUpVectorVal,
       isComputingSceneBoundingBox,
       fo3dRoot,
       loadingManager,

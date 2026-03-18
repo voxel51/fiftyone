@@ -31,7 +31,7 @@ export const ModalSample = React.memo(() => {
 
     return (
       isDirect3dSamplePath(mediaPath) ||
-      isDirect3dSamplePath(sample.sample.filepath as string)
+      isDirect3dSamplePath(sample.sample.filepath)
     );
   }, [sample, modalMediaField]);
 
