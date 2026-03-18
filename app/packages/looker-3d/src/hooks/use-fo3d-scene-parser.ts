@@ -1,5 +1,4 @@
 import { Quaternion, Vector3 } from "three";
-import type { FiftyoneSceneRawJson, FoSceneRawNode } from "../utils";
 import {
   BoxGeometryAsset,
   CylinderGeometryAsset,
@@ -17,6 +16,7 @@ import {
   SphereGeometryAsset,
   StlAsset,
 } from "../fo3d/render-types";
+import type { FiftyoneSceneRawJson, FoSceneRawNode } from "../utils";
 
 type NodeRecord = Record<string, unknown>;
 
@@ -24,6 +24,14 @@ type NodeWithStringFields<T extends string> = FoSceneRawNode &
   Record<T, string>;
 type NodeWithNumberFields<T extends string> = FoSceneRawNode &
   Record<T, number>;
+
+const FO_MESH_MATERIAL_TYPES = new Set<FoMeshMaterial["_type"]>([
+  "MeshBasicMaterial",
+  "MeshStandardMaterial",
+  "MeshLambertMaterial",
+  "MeshPhongMaterial",
+  "MeshDepthMaterial",
+]);
 
 const hasStringField = <T extends string>(
   node: FoSceneRawNode,
@@ -60,7 +68,10 @@ const isFoPointcloudMaterial = (
 const isFoMeshMaterial = (
   material: FoSceneRawNode["defaultMaterial"] | undefined
 ): material is FoMeshMaterial => {
-  return Boolean(material) && material._type !== "PointCloudMaterial";
+  return Boolean(
+    material &&
+      FO_MESH_MATERIAL_TYPES.has(material._type as FoMeshMaterial["_type"])
+  );
 };
 
 const isNumberTuple = <T extends 3 | 4>(
