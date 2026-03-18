@@ -16,7 +16,11 @@ import {
   SphereGeometryAsset,
   StlAsset,
 } from "../fo3d/render-types";
-import type { FiftyoneSceneRawJson, FoSceneRawNode } from "../utils";
+import {
+  type FiftyoneSceneRawJson,
+  type FoSceneRawNode,
+  isNumericTuple,
+} from "../utils";
 
 type NodeRecord = Record<string, unknown>;
 
@@ -74,24 +78,11 @@ const isFoMeshMaterial = (
   );
 };
 
-const isNumberTuple = <T extends 3 | 4>(
-  value: unknown,
-  size: T
-): value is T extends 3
-  ? [number, number, number]
-  : [number, number, number, number] => {
-  return (
-    Array.isArray(value) &&
-    value.length === size &&
-    value.every((item) => typeof item === "number")
-  );
-};
-
 const toVector3 = (
   value: unknown,
   fallback: [number, number, number] = [0, 0, 0]
 ) => {
-  const vector = isNumberTuple(value, 3) ? value : fallback;
+  const vector = isNumericTuple(value, 3) ? value : fallback;
   return new Vector3(vector[0], vector[1], vector[2]);
 };
 
@@ -99,7 +90,7 @@ const toQuaternion = (
   value: unknown,
   fallback: [number, number, number, number] = [0, 0, 0, 1]
 ) => {
-  const quaternion = isNumberTuple(value, 4) ? value : fallback;
+  const quaternion = isNumericTuple(value, 4) ? value : fallback;
   return new Quaternion(
     quaternion[0],
     quaternion[1],

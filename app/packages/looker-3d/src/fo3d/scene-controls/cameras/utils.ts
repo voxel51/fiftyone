@@ -1,4 +1,5 @@
 import { Quaternion, Vector3 } from "three";
+import { isNumericTuple } from "../../../utils";
 
 export type SerializedStaticTransform = {
   translation: [number, number, number] | number[];
@@ -18,17 +19,6 @@ export type CameraControlOption = {
 
 const isRecord = (value: unknown): value is Record<string, unknown> => {
   return typeof value === "object" && value !== null;
-};
-
-const isNumericTuple = (
-  value: unknown,
-  expectedLength: number
-): value is number[] => {
-  return (
-    Array.isArray(value) &&
-    value.length === expectedLength &&
-    value.every((item) => typeof item === "number")
-  );
 };
 
 export const isStaticTransform = (

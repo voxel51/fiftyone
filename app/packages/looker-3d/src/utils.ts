@@ -467,6 +467,20 @@ export function radiansToQuaternion(
 }
 
 /**
+ * Checks if value is a numeric tuple of given length.
+ */
+export const isNumericTuple = (
+  value: unknown,
+  expectedLength: number
+): value is number[] => {
+  return (
+    Array.isArray(value) &&
+    value.length === expectedLength &&
+    value.every((item) => typeof item === "number" && Number.isFinite(item))
+  );
+};
+
+/**
  * Validates a single 3D point to ensure it's a valid array of 3 numbers
  */
 export const isValidPoint3d = (point: unknown): point is Vector3Tuple => {
