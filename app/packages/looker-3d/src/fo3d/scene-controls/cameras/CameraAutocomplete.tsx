@@ -107,7 +107,7 @@ export const CameraAutocomplete = ({
 
     document.addEventListener("pointerdown", handlePointerDown);
     return () => document.removeEventListener("pointerdown", handlePointerDown);
-  }, [isOpen, selectedOption?.label]);
+  }, [isOpen]);
 
   const filteredOptions = useMemo(
     () => filterCameraControlOptions(options, searchValue),

@@ -26,9 +26,8 @@ export const useAnimationSelect = (
 
     setCurrentAnimationIndex((currentValue) => {
       if (
-        currentValue === null ||
-        currentValue < 0 ||
-        currentValue >= availableAnimationClips.length
+        currentValue !== null &&
+        (currentValue < 0 || currentValue >= availableAnimationClips.length)
       ) {
         return 0;
       }
@@ -78,8 +77,10 @@ export const useAnimationSelect = (
   });
 
   const animationNameEntries = useMemo(() => {
-    const entries: Record<string, number | null> = {};
-    const labelCounts = new Map<string, number>();
+    const entries: Record<string, number | null> = {
+      "NO ANIMATION": null,
+    };
+    const labelCounts = new Map<string, number>([["NO ANIMATION", 1]]);
 
     availableAnimationClips.forEach((clip, index) => {
       const baseLabel =
@@ -89,8 +90,6 @@ export const useAnimationSelect = (
       const label = nextCount > 1 ? `${baseLabel} (${nextCount})` : baseLabel;
       entries[label] = index;
     });
-
-    entries["NO ANIMATION"] = null;
 
     return entries;
   }, [availableAnimationClips]);
@@ -113,5 +112,10 @@ export const useAnimationSelect = (
         }
       ),
     };
-  }, [availableAnimationClips, currentAnimationIndex, animationNameEntries]);
+  }, [
+    assetLabel,
+    availableAnimationClips,
+    currentAnimationIndex,
+    animationNameEntries,
+  ]);
 };

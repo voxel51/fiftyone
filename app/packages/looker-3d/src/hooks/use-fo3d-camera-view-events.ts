@@ -86,11 +86,11 @@ export const useFo3dCameraViewEvents = ({
       // so we lazily recompute it and try again shortly after.
       if (!sceneBoundingBox) {
         recomputeBounds();
-        const lookAt = buildViewLookAt(view, true);
         const timeoutId = window.setTimeout(() => {
           pendingTimeoutIdsRef.current = pendingTimeoutIdsRef.current.filter(
             (id) => id !== timeoutId
           );
+          const lookAt = buildViewLookAt(view, true);
           applyLookAt(lookAt);
         }, BOUNDS_RETRY_DELAY_MS);
         pendingTimeoutIdsRef.current.push(timeoutId);
