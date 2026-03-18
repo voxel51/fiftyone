@@ -7,12 +7,12 @@ import { fieldType, isFieldReadOnly, labelSchemaData } from "../state";
 import { labelsByPath } from "../useLabels";
 import { defaultField, useAnnotationContext } from "./state";
 import {
-  BaseOverlay,
   UNDEFINED_LIGHTER_SCENE_ID,
   useLighter,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
 import useCreate from "./useCreate";
+import useExit from "./useExit";
 
 /**
  * Flag to track if quick draw mode is active.
@@ -56,10 +56,10 @@ export const useQuickDraw = () => {
   const setLastUsedField = useSetAtom(lastUsedFieldAtom);
   const labelsMap = useAtomValue(labelsByPath);
   const defaultDetectionField = useAtomValue(defaultField(DETECTION));
-  const { scene, addOverlay } = useLighter();
+  const { scene } = useLighter();
   const { selectedLabel } = useAnnotationContext();
-
   const createDetection = useCreate(DETECTION);
+  const onExit = useExit();
 
   const useEventHandler = useLighterEventHandler(
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
@@ -245,6 +245,26 @@ export const useQuickDraw = () => {
   );
 
   /**
+   * Cache field/label for auto-assignment
+   * Close out previous label
+   */
+  const finalizeCurrentDetection = useCallback(() => {
+    const scene = sceneRef.current;
+    const currentLabel = selectedLabelRef.current;
+
+    if (currentLabel) {
+      setLastUsedField(currentLabel.path);
+
+      if (currentLabel.data.label) {
+        setLastUsedLabel(currentLabel.path, currentLabel.data.label);
+      }
+    }
+
+    scene?.exitInteractiveMode();
+    onExit();
+  }, [onExit, setLastUsedField, setLastUsedLabel]);
+
+  /**
    * Handles the `lighter:overlay-create` event fired by `InteractionManager`
    * on pointer-down when no interactive handler exists.
    *
@@ -261,44 +281,21 @@ export const useQuickDraw = () => {
           return;
         }
 
-        // Finalize the previous detection if one exists
-        const currentScene = sceneRef.current;
-        const currentLabel = selectedLabelRef.current;
+        finalizeCurrentDetection();
 
-        if (currentLabel && quickDrawActive) {
-          if (
-            currentScene &&
-            !currentScene.isDestroyed &&
-            currentScene.renderLoopActive
-          ) {
-            currentScene.exitInteractiveMode();
-            if (currentLabel.overlay) {
-              addOverlay(currentLabel.overlay as BaseOverlay);
-            }
-          }
-
-          setLastUsedField(currentLabel.path);
-          if (currentLabel.data.label) {
-            setLastUsedLabel(currentLabel.path, currentLabel.data.label);
-          }
-        }
-
-        // Create the next detection
         const field = getQuickDrawDetectionField() ?? undefined;
         const labelValue = field
           ? getQuickDrawDetectionLabel(field) ?? undefined
           : undefined;
+
         createDetection({ field, labelValue });
       },
       [
-        addOverlay,
         claimEvent,
         createDetection,
+        finalizeCurrentDetection,
         getQuickDrawDetectionField,
         getQuickDrawDetectionLabel,
-        quickDrawActive,
-        setLastUsedField,
-        setLastUsedLabel,
       ]
     )
   );
