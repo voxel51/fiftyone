@@ -1,0 +1,95 @@
+name: Installation Issue 🛠️
+description: Use this template for reporting bugs encountered while installing FiftyOne
+title: "[INSTALL] "
+labels:
+  - bug
+  - installation
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for submitting an issue. Please refer to our [issue policy](https://www.github.com/voxel51/fiftyone/blob/develop/ISSUE_POLICY.md) for information on what types of issues we address.
+
+  - type: input
+    id: os-platform
+    validations:
+      required: true
+    attributes:
+      label: 🖥️ OS Platform and Distribution
+      description: What operating system are you using?
+      placeholder: e.g., Linux Ubuntu 24.04.3 LTS
+
+  - type: input
+    id: python-ver
+    validations:
+      required: true
+    attributes:
+      label: 🐍 Python version
+      description: |
+        Which version of Python are you using? `python --version`
+      placeholder: Python 3.11.14
+
+  - type: input
+    id: fiftyone-ver
+    validations:
+      required: true
+    attributes:
+      label: 🔖 FiftyOne version
+      description: |
+        Which version of FiftyOne are you installing? `fiftyone --version`
+      placeholder: FiftyOne 1.11.1
+
+  - type: checkboxes
+    id: install-method
+    validations:
+      required: true
+    attributes:
+      label: ⤵️ FiftyOne installed from
+      description: What installation method are you using?
+      options:
+        - label: Package (`pip`)
+        - label: Source (`git`)
+
+  - type: textarea
+    id: commands
+    validations:
+      required: true
+    attributes:
+      label: ⌨️ Commands to reproduce
+      description: |
+        As thoroughly as possible, please provide the Python and/or shell commands
+        used to encounter the issue.
+      placeholder: |
+        ```
+        # commands here
+        ```
+
+  - type: textarea
+    id: problem-description
+    validations:
+      required: true
+    attributes:
+      label: 🗃️ Describe the problem
+      description: |
+        Provide the exact sequence of commands / steps that you executed before
+        running into the problem.
+      placeholder: Describe what happened and what you expected
+
+  - type: textarea
+    id: additional-info
+    attributes:
+      label: 🪵 Other info/logs
+      description: |
+        Include any logs or source code that would be helpful to diagnose the problem.
+        If including tracebacks, please include the full traceback. Large logs and
+        files should be attached.
+      placeholder: 🧠 Add as much detail as possible
+
+  - type: markdown
+    attributes:
+      value: |
+        ### 📚 Helpful Resources
+        - 📖 [FiftyOne Documentation](https://docs.voxel51.com/)
+        - 💬 [Discord Community](https://discord.gg/fiftyone-community)
+        - 🎬 [YouTube Channel](https://www.youtube.com/@voxel51)
