@@ -42,10 +42,20 @@ body:
           - CPU Make & Model
           - System memory (RAM) amount + type
           - GPU make & model if applicable
+          <details><summary>Linux shell command</summary?
+
+          ```
+          echo "---OS---" && \
+          uname -a && \
+          echo "---HWinfo---" && \
+          lshw -short -sanitize 2>/dev/null | grep -E "processor|memory|display|storage"
+          ```
+          
+          </details>
       placeholder: |
-        - MacOS 26.3.1 (25D2128), Apple M5 Pro 18/20-core CPU/GPU 48 GB
-        - Windows 10 22H2 build 19045, Intel 12700, 32 GB DDR4 RAM, (AMD | Intel | NVIDIA) GPU
-        - Linux Ubuntu 24.04.3 LTS, AMD Ryzen 9900X, 64 GB DDR5 RAM, (AMD | Intel | NVIDIA) GPU
+        - On MacOS: System Settings -> General -> About -> System Report -> Copy/Paste
+        - On Windows: Settings -> System -> About -> Copy/Paste
+        - On Linux: See shell command above if needed
         - Details for 'Other' OS if selected
   - type: dropdown
     id: browsers
@@ -110,6 +120,8 @@ body:
         If including tracebacks, please include the full traceback. Large logs and
         files should be attached. Please do not use screenshots for sharing text. Code
         snippets should be used instead when providing tracebacks, logs, etc.
+      placeholder:
+        🧠 Add as much detail as possible
   - type: checkboxes
     id: contribute
     validations:
