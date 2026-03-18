@@ -7,6 +7,22 @@ import type { FiftyoneSceneRawJson, FoSceneRawNode } from "../utils";
 import { getMediaPathForFo3dSample } from "./utils";
 
 type SliceToSampleMap = Record<string, ModalSample>;
+type Direct3dMediaFieldName =
+  | "pcdPath"
+  | "plyPath"
+  | "gltfPath"
+  | "fbxPath"
+  | "stlPath";
+type SyntheticSceneNode = Omit<
+  FiftyoneSceneRawJson,
+  "background" | "camera" | "lights"
+> &
+  Partial<Record<Direct3dMediaFieldName, string>>;
+type SyntheticNodeConfig = {
+  nodeType: string;
+  mediaFieldName: Direct3dMediaFieldName;
+  defaultMaterial: FoSceneRawNode["defaultMaterial"];
+};
 
 const DEFAULT_MESH_MATERIAL: FoSceneRawNode["defaultMaterial"] = {
   _type: "MeshStandardMaterial",
@@ -60,8 +76,12 @@ const DEFAULT_SCENE_BACKGROUND: FiftyoneSceneRawJson["background"] = {
 /**
  * Returns the synthetic FO3D node metadata for a supported direct-3D file.
  */
-const getNodeConfigForExtension = (extension: string | null) => {
-  switch (extension) {
+const getNodeConfigForExtension = (
+  extension: string | null
+): SyntheticNodeConfig | null => {
+  const normalizedExtension = extension?.toLowerCase() ?? null;
+
+  switch (normalizedExtension) {
     case ".pcd":
       return {
         nodeType: "PointCloud",
@@ -119,17 +139,17 @@ const buildSyntheticNode = ({
     return null;
   }
 
-  const node = {
+  const node: SyntheticSceneNode = {
     _type: nodeConfig.nodeType,
     name: slice,
     defaultMaterial: nodeConfig.defaultMaterial,
     ...EMPTY_SCENE_NODE_PROPS,
-  } as FiftyoneSceneRawJson;
+  };
 
   // Each loader expects the source path on a node-type-specific media field.
   node[nodeConfig.mediaFieldName] = mediaPath;
 
-  return node;
+  return node as FiftyoneSceneRawJson;
 };
 
 /**

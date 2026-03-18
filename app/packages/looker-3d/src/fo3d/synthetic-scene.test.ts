@@ -20,6 +20,7 @@ const buildModalSample = (
 describe("buildSyntheticSceneForDirect3dSamples", () => {
   it.each([
     ["/tmp/lidar/frame.pcd", "PointCloud", "pcdPath"],
+    ["/tmp/lidar/frame.PCD", "PointCloud", "pcdPath"],
     ["/tmp/lidar/frame.ply", "PlyMesh", "plyPath"],
     ["/tmp/lidar/frame.gltf", "GltfMesh", "gltfPath"],
     ["/tmp/lidar/frame.glb", "GltfMesh", "gltfPath"],

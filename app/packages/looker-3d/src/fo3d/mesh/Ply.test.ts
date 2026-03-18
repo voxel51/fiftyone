@@ -22,6 +22,14 @@ const buildGeometryWithFaces = () => {
 };
 
 describe("inferPlyIsPointCloud", () => {
+  it("falls back to point-cloud mode when geometry is null", () => {
+    expect(inferPlyIsPointCloud(null, undefined)).toBe(true);
+  });
+
+  it("falls back to point-cloud mode when geometry is undefined", () => {
+    expect(inferPlyIsPointCloud(undefined, undefined)).toBe(true);
+  });
+
   it("returns mesh mode when geometry has indexed faces", () => {
     const geometry = buildGeometryWithFaces();
     expect(inferPlyIsPointCloud(geometry, undefined)).toBe(false);
