@@ -183,6 +183,16 @@ export interface Renderer2D {
   getViewportPosition(): { x: number; y: number };
 
   /**
+   * Adjusts the viewport zoom and pan so that the given world-space rectangle
+   * is centered and fully visible, with optional padding.
+   *
+   * @param worldRect - The rectangle in world (canvas) coordinates to fit.
+   * @param padding - Fraction of the viewport to reserve as padding on each
+   *   side (0–1). Defaults to 0. A value of 0.1 leaves 10% padding.
+   */
+  fitToRect(worldRect: Rect, padding?: number): void;
+
+  /**
    * Check if the renderer is initialized and ready to use.
    * @returns True if the renderer is ready.
    */

@@ -197,6 +197,8 @@ export class MockRenderer2D {
     this.panY = panY;
   }
 
+  fitToRect(_worldRect: Rect, _padding?: number): void {}
+
   screenToWorld(screenPoint: Point): Point {
     return {
       x: screenPoint.x / this.scale,

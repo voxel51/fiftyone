@@ -732,6 +732,38 @@ export class PixiRenderer2D implements Renderer2D {
   }
 
   /**
+   * Adjusts the viewport zoom and pan so that the given world-space rectangle
+   * is centered and fully visible, with optional padding.
+   */
+  fitToRect(worldRect: Rect, padding: number = 0): void {
+    if (!this.viewport || this.viewport.destroyed) return;
+    if (!worldRect.width || !worldRect.height) return;
+
+    const { width: canvasW, height: canvasH } = this.getContainerDimensions();
+    if (!canvasW || !canvasH) return;
+
+    const squeeze = 1 - padding * 2;
+    const scaleX = (canvasW * squeeze) / worldRect.width;
+    const scaleY = (canvasH * squeeze) / worldRect.height;
+    const scale = Math.min(
+      Math.max(Math.min(scaleX, scaleY), PixiRenderer2D.ZOOM_MIN),
+      PixiRenderer2D.ZOOM_MAX
+    );
+
+    const rectCenterX = worldRect.x + worldRect.width / 2;
+    const rectCenterY = worldRect.y + worldRect.height / 2;
+    const panX = canvasW / 2 - rectCenterX * scale;
+    const panY = canvasH / 2 - rectCenterY * scale;
+
+    this.viewport.setZoom(scale);
+    this.viewport.x = panX;
+    this.viewport.y = panY;
+
+    this.emitViewportZoomed();
+    this.emitViewportMoved();
+  }
+
+  /**
    * Applies a new zoom level if it differs from the current one, and emits
    * viewport events. Caller must ensure viewport exists and compute `next`.
    *
