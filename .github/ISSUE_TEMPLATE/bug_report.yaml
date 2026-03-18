@@ -10,7 +10,7 @@ body:
       value: |
         Thank you for submitting an issue. Please refer to our [issue policy](https://www.github.com/voxel51/fiftyone/blob/develop/ISSUE_POLICY.md) for information on what types of issues we address.
 
-  - type: textareah
+  - type: textarea
     id: bug-description
     validations:
       required: true
