@@ -265,13 +265,9 @@ export const useQuickDraw = () => {
   }, [onExit, setLastUsedField, setLastUsedLabel]);
 
   /**
-   * Handles the `lighter:overlay-create` event fired by `InteractionManager`
-   * on pointer-down when no interactive handler exists.
-   *
-   * 1. Finalize the previous detection (exit interactive mode, persist overlay,
-   *    remember field/label for auto-assignment).
-   * 2. Resolve field and label for the next detection.
-   * 3. Create the next detection.
+   * Cache field/label for auto-assignment
+   * Close out previous label
+   * Create the next detection.
    */
   useEventHandler(
     "lighter:overlay-create",
