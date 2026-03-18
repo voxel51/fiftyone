@@ -44,12 +44,12 @@ body:
           - GPU make & model if applicable
           <details><summary>Linux shell command</summary?
 
-          ```
-          echo "---OS---" && \
-          uname -a && \
-          echo "---HWinfo---" && \
-          lshw -short -sanitize 2>/dev/null | grep -E "processor|memory|display|storage"
-          ```
+              ```
+              echo "---OS---" && \
+              uname -a && \
+              echo "---HWinfo---" && \
+              lshw -short -sanitize 2>/dev/null | grep -E "processor|memory|display|storage"
+              ```
           
           </details>
       placeholder: |
