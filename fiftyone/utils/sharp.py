@@ -151,18 +151,19 @@ class AppleSharpModel(fout.TorchImageModel):
         """
         try:
             if isinstance(img, str):
-                img = Image.open(img)
-
-            if not isinstance(img, Image.Image):
+                with Image.open(img) as _img:
+                    exif = _img.getexif()
+            elif isinstance(img, Image.Image):
+                exif = img.getexif()
+            else:
                 return None
 
-            exif = img.getexif()
             ifd = exif.get_ifd(0x8769)  # ExifIFD
             fl_35 = ifd.get(41989)  # FocalLengthIn35mmFilm
             if fl_35 and fl_35 > 0:
                 return float(fl_35)
-        except Exception:
-            pass
+        except (OSError, ValueError, TypeError, KeyError) as e:
+            logger.debug("Could not read EXIF focal length: %s", e)
 
         return None
 
@@ -232,7 +233,12 @@ class AppleSharpModel(fout.TorchImageModel):
         with open(splat_path, "rb") as f:
             n_verts = 0
             while True:
-                line = f.readline().decode("ascii").strip()
+                raw = f.readline()
+                if not raw:
+                    raise ValueError(
+                        "Malformed PLY header in '%s'" % splat_path
+                    )
+                line = raw.decode("ascii").strip()
                 if line.startswith("element vertex"):
                     n_verts = int(line.split()[-1])
                 if line == "end_header":
