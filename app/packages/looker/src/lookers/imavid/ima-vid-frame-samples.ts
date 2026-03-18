@@ -73,9 +73,9 @@ export class ImaVidFrameSamples {
     urls: ModalSample["urls"],
     mediaField: string
   ): Promise<string> {
-    const standardizedUrls = getNormalizedUrls(urls);
+    const normalizedUrls = getNormalizedUrls(urls);
     const image = new Image();
-    const source = getSampleSrc(standardizedUrls[mediaField]);
+    const source = getSampleSrc(normalizedUrls[mediaField]);
 
     return new Promise((resolve) => {
       image.addEventListener(

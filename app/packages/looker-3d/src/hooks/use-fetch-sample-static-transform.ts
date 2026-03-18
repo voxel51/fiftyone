@@ -2,16 +2,17 @@ import * as fos from "@fiftyone/state";
 import { getFetchFunction } from "@fiftyone/utilities";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
+import type { StaticTransform } from "../frustum/types";
 
 type StaticTransformsListResponse = {
-  transforms: unknown[];
+  transforms: StaticTransform[];
 };
 
 export const useFetchSampleStaticTransform = () => {
   const datasetId = useRecoilValue(fos.datasetId);
   const sampleId = useRecoilValue(fos.currentSampleId);
 
-  const listCacheRef = useRef<unknown[] | null>(null);
+  const listCacheRef = useRef<StaticTransform[] | null>(null);
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -28,7 +29,7 @@ export const useFetchSampleStaticTransform = () => {
   }, []);
 
   const fetchAvailableStaticTransforms = useCallback(async (): Promise<
-    unknown[]
+    StaticTransform[]
   > => {
     if (!datasetId || !sampleId) {
       return [];
@@ -39,11 +40,6 @@ export const useFetchSampleStaticTransform = () => {
     }
 
     const fetch = getFetchFunction({ cache: true });
-    if (!fetch) {
-      const fetchError = new Error("Fetch function not initialized");
-      setError(fetchError);
-      return [];
-    }
 
     setIsLoading(true);
     setError(null);

@@ -15,6 +15,7 @@ import { selectiveRenderingEventBus } from "@fiftyone/looker";
 import { OPERATOR_PROMPT_AREAS, OperatorPromptArea } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
 import { canAnnotate, ModalMode, useModalMode } from "@fiftyone/state";
+import { is3d } from "@fiftyone/utilities";
 import {
   currentModalUniqueIdJotaiAtom,
   jotaiStore,
@@ -183,7 +184,11 @@ const Modal = () => {
         const is3dVisible = await snapshot.getPromise(
           fos.groupMediaIs3dVisible
         );
-        if (activeLookerRef.current || mediaType === "3d" || is3dVisible) {
+        if (
+          activeLookerRef.current ||
+          (mediaType && is3d(mediaType)) ||
+          is3dVisible
+        ) {
           // we handle close logic in modal + other places
           return;
         }
