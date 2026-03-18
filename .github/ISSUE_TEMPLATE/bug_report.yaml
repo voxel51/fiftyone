@@ -113,7 +113,6 @@ body:
         - label: Yes. I can contribute a fix for this bug independently
         - label: Yes. I would be willing to contribute a fix for this bug with guidance from the FiftyOne community
         - label: No. I cannot contribute a bug fix at this time
-      default: 0
   - type: upload
     id: screenshots
     attributes:
