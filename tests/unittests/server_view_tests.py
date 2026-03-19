@@ -1104,9 +1104,14 @@ class MatchLabelTagsTests(unittest.TestCase):
             filters=self._label_tags_filter(exclude=False, matching=False),
         )
         self.assertEqual(len(view), 1)
-        detections = view.first().predictions.detections
-        self.assertEqual(len(detections), 1)
-        self.assertEqual(detections[0].label, "alpha")
+        ground_truth = view.first().ground_truth.detections
+        self.assertEqual(len(ground_truth), 1)
+        self.assertEqual(ground_truth[0].label, "delta")
+        predictions = view.first().predictions.detections
+        self.assertEqual(len(predictions), 1)
+        self.assertEqual(predictions[0].label, "alpha")
+        predictions = view.first().predictions2.detections
+        self.assertEqual(len(predictions), 0)
 
     def test_exclude_no_matching(self):
         """exclude=True, matching=False: no sample-level prefilter, then
@@ -1120,13 +1125,35 @@ class MatchLabelTagsTests(unittest.TestCase):
             filters=self._label_tags_filter(exclude=True, matching=False),
         )
         self.assertEqual(len(view), 2)
-        ids_to_detections = {str(s.id): s.predictions.detections for s in view}
-        a_detections = ids_to_detections[str(self.sample1.id)]
-        b_detections = ids_to_detections[str(self.sample2.id)]
-        self.assertEqual(len(a_detections), 1)
-        self.assertEqual(a_detections[0].label, "beta")
-        self.assertEqual(len(b_detections), 1)
-        self.assertEqual(b_detections[0].label, "gamma")
+        ids_to_detections = lambda f: {
+            str(s.id): s[f].detections for s in view
+        }
+
+        # ground truth
+        sample1_ground_truth = ids_to_detections("ground_truth")[
+            self.sample1.id
+        ]
+        self.assertEqual(len(sample1_ground_truth), 0)
+        sample2_ground_truth = ids_to_detections("ground_truth")[
+            self.sample2.id
+        ]
+        self.assertEqual(len(sample2_ground_truth), 1)
+        self.assertEqual(sample2_ground_truth[0].label, "epsilon")
+
+        # predictions
+        sample1_predictions = ids_to_detections("predictions")[self.sample1.id]
+        self.assertEqual(len(sample1_predictions), 1)
+        self.assertEqual(sample1_predictions[0].label, "beta")
+        sample2_predictions = ids_to_detections("predictions")[self.sample2.id]
+        self.assertEqual(len(sample2_predictions), 1)
+        self.assertEqual(sample2_predictions[0].label, "gamma")
+
+        # predictions2
+        sample1_predictions2 = ids_to_detections("predictions2")[
+            self.sample1.id
+        ]
+        self.assertEqual(len(sample1_predictions2), 1)
+        self.assertEqual(sample1_predictions2[0].label, "beta")
 
     def test_no_exclude_matching(self):
         """exclude=False, matching=True: $or prefilter keeps only samples that
@@ -1139,10 +1166,21 @@ class MatchLabelTagsTests(unittest.TestCase):
             filters=self._label_tags_filter(exclude=False, matching=True),
         )
         self.assertEqual(len(view), 1)
-        detections = view.first().predictions.detections
-        self.assertEqual(len(detections), 2)
-        labels = {d.label for d in detections}
+        sample = view.first()
+
+        # ground_truth
+        ground_truth = sample.ground_truth.detections
+        self.assertEqual(len(ground_truth), 1)
+        self.assertEqual(ground_truth[0].label, "delta")
+
+        # predictions
+        predictions = sample.predictions.detections
+        self.assertEqual(len(predictions), 2)
+        labels = {d.label for d in predictions}
         self.assertEqual(labels, {"alpha", "beta"})
+        predictions2 = sample.predictions2.detections
+        self.assertEqual(len(predictions2), 1)
+        self.assertEqual(predictions2[0].label, "beta")
 
     def test_exclude_matching(self):
         """exclude=True, matching=True: $nor prefilter keeps only samples that
@@ -1163,12 +1201,16 @@ class MatchLabelTagsTests(unittest.TestCase):
         )
         self.assertEqual(len(view), 1)
         sample = view.first()
-        # predictions: only the "other"-tagged detection is present
-        self.assertEqual(len(sample.predictions.detections), 1)
-        self.assertEqual(sample.predictions.detections[0].label, "gamma")
         # ground_truth: also intact and carries no "target" tag
         self.assertEqual(len(sample.ground_truth.detections), 1)
         self.assertEqual(sample.ground_truth.detections[0].label, "epsilon")
+
+        # predictions: only the "other"-tagged detection is present
+        self.assertEqual(len(sample.predictions.detections), 1)
+        self.assertEqual(sample.predictions.detections[0].label, "gamma")
+
+        # predictions2: empty
+        self.assertIsNone(sample.predictions2)
 
 
 class GetExtendedViewTests(unittest.TestCase):
