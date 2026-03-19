@@ -117,6 +117,27 @@ describe("loadModelWeights", () => {
     expect(onProgress).toHaveBeenNthCalledWith(2, 5, 5);
   });
 
+  it.each([
+    { name: "no onProgress callback", onProgress: undefined, fetchOverride: undefined },
+    { name: "ReadableStream body unavailable", onProgress: vi.fn(), fetchOverride: () => {
+      const response = mockFetchResponse(TEST_BUFFER);
+      Object.defineProperty(response, "body", { value: null });
+      return vi.fn().mockResolvedValue(response);
+    }},
+    { name: "Content-Length missing", onProgress: vi.fn(), fetchOverride: () =>
+      vi.fn().mockResolvedValue(new Response(new Uint8Array(64), { status: 200, statusText: "OK" }))
+    },
+  ])("Skips streaming: $name", async ({ onProgress, fetchOverride }) => {
+    if (fetchOverride)
+      global.fetch = fetchOverride();
+
+    const result = await loadModelWeights(TEST_URL, onProgress);
+
+    expect(result.byteLength).toBe(64);
+    if (onProgress)
+      expect(onProgress).not.toHaveBeenCalled();
+  });
+
   it("Throws on 4xx without retrying", async () => {
     global.fetch = vi.fn().mockResolvedValue(mockFetchResponse(new ArrayBuffer(0), 404));
 

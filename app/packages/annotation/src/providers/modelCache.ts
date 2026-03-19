@@ -68,10 +68,11 @@ async function fetchWithProgress(
     }
 
     try {
-      const total = Number(response.headers.get("content-length")) || 0;
+      const contentLength = response.headers.get("content-length");
+      const total = contentLength ? Number(contentLength) : 0;
 
-      // Fast path: skip streaming if no progress callback or ReadableStream unavailable
-      if (!onProgress || !response.body)
+      // Fast path: skip streaming if no progress callback, no total size, or ReadableStream unavailable
+      if (!onProgress || !total || !response.body)
         return await response.arrayBuffer();
 
       const reader = response.body.getReader();
