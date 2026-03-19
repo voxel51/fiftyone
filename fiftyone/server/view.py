@@ -975,15 +975,15 @@ def _match_label_tags(view: foc.SampleCollection, label_tags):
     values = label_tags["values"]
     exclude = label_tags["exclude"]
     matching = label_tags["isMatching"]
-    expr = lambda exclude, values: {"$nin" if exclude else "$in": values}
 
     if not exclude or matching:
+        operator = "$nor" if exclude else "$or"
         view = view.mongo(
             [
                 {
                     "$match": {
-                        "$or": [
-                            {f"{path}.tags": expr(exclude, values)}
+                        operator: [
+                            {f"{path}.tags": {"$in": values}}
                             for path in label_paths
                         ]
                     }
@@ -991,16 +991,17 @@ def _match_label_tags(view: foc.SampleCollection, label_tags):
             ]
         )
 
-    if not matching and exclude:
-        view = view.exclude_labels(
-            tags=label_tags["values"],
-            omit_empty=False,
-            fields=view._get_label_fields(),
-        )
-    elif not matching:
-        view = view.select_labels(
-            tags=label_tags["values"],
-            fields=view._get_label_fields(),
-        )
+    if not matching:
+        if exclude:
+            view = view.exclude_labels(
+                tags=values,
+                omit_empty=False,
+                fields=view._get_label_fields(),
+            )
+        else:
+            view = view.select_labels(
+                tags=values,
+                fields=view._get_label_fields(),
+            )
 
     return view
