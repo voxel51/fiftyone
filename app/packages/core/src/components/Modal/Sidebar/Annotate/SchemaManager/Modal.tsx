@@ -183,7 +183,10 @@ const Modal = () => {
     }
     return el;
   }, []);
-  const { closeSchemaManager } = useSchemaManagerModal();
+  const {
+    schemaManagerDisplayed,
+    closeSchemaManager,
+  } = useSchemaManagerModal();
 
   useEffect(() => {
     element.style.display = "block";
@@ -193,39 +196,41 @@ const Modal = () => {
     };
   }, [element]);
 
-  return createPortal(
-    <ModalBackground onClick={() => closeSchemaManager()}>
-      <ModalContainer
-        data-cy="schema-manager"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <ModalHeader>
-          <Heading />
-          <Button
-            variant={Variant.Icon}
-            borderless
-            size={Size.Sm}
-            data-cy="close-schema-manager"
-            onClick={() => closeSchemaManager()}
-            style={{ marginRight: "14px" }}
+  return schemaManagerDisplayed
+    ? createPortal(
+        <ModalBackground onClick={() => closeSchemaManager()}>
+          <ModalContainer
+            data-cy="schema-manager"
+            onClick={(e) => e.stopPropagation()}
           >
-            <Icon
-              name={IconName.Close}
-              size={Size.Lg}
-              className={textColorClass(TextColor.Secondary)}
-            />
-          </Button>
-        </ModalHeader>
+            <ModalHeader>
+              <Heading />
+              <Button
+                variant={Variant.Icon}
+                borderless
+                size={Size.Sm}
+                data-cy="close-schema-manager"
+                onClick={() => closeSchemaManager()}
+                style={{ marginRight: "14px" }}
+              >
+                <Icon
+                  name={IconName.Close}
+                  size={Size.Lg}
+                  className={textColorClass(TextColor.Secondary)}
+                />
+              </Button>
+            </ModalHeader>
 
-        <Subheading />
+            <Subheading />
 
-        <Page />
+            <Page />
 
-        <SchemaManagerFooter />
-      </ModalContainer>
-    </ModalBackground>,
-    element
-  );
+            <SchemaManagerFooter />
+          </ModalContainer>
+        </ModalBackground>,
+        element
+      )
+    : null;
 };
 
 export default Modal;

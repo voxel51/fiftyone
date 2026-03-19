@@ -7,7 +7,6 @@ import Actions from "./Actions";
 import Edit, { isEditing } from "./Edit";
 import ImportSchema, { useShowImportSchema } from "./ImportSchema";
 import SchemaManager from "./SchemaManager";
-import { useSchemaManagerModal } from "./SchemaManager/hooks";
 import { labelSchemasData } from "./state";
 import type { AnnotationDisabledReason } from "./useCanAnnotate";
 import useSourceFieldToActivate from "./useSourceFieldToActivate";
@@ -64,7 +63,6 @@ interface AnnotateProps {
 }
 
 const Annotate = ({ disabledReason }: AnnotateProps) => {
-  const { schemaManagerDisplayed } = useSchemaManagerModal();
   const loading = useAtomValue(labelSchemasData) === null;
   const isEditingValue = useAtomValue(isEditing);
 
@@ -108,7 +106,7 @@ const Annotate = ({ disabledReason }: AnnotateProps) => {
       ) : (
         <LabelList key="annotate" />
       )}
-      {schemaManagerDisplayed && <SchemaManager key="manage" />}
+      <SchemaManager key="manage" />
     </>
   );
 };
