@@ -170,7 +170,8 @@ class DelegatedOperationRepo(object):
 
         Args:
             _id: the operation ID
-            log_tail: optional log tail to set atomically with the ping
+            log_tail: optional log tail to include. This should be capped to a
+            reasonable length and should not take the place of a log file
         """
         raise NotImplementedError("subclass must implement ping()")
 
@@ -616,7 +617,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
 
     def ping(self, _id: ObjectId, log_tail: str = None):
         updates = {"updated_at": datetime.utcnow()}
-        if log_tail is not None:
+        if log_tail and isinstance(log_tail, str):
             updates["log_tail"] = log_tail
         doc = self._collection.find_one_and_update(
             filter={"_id": _id},
