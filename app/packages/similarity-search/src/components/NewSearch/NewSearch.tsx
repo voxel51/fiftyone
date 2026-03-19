@@ -191,7 +191,10 @@ export default function NewSearch({
             >
               {form.queryIds.length > 0
                 ? `${form.queryIds.length} ${
-                    form.selectedLabels?.length > 0 ? "labels" : "samples"
+                    Array.isArray(form.selectedLabels) &&
+                    form.selectedLabels.length > 0
+                      ? "labels"
+                      : "samples"
                   } selected (positive)`
                 : "Select samples in the grid"}
             </Text>

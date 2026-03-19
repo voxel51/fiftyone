@@ -62,7 +62,7 @@ export const useFetchRuns = (): {
         reject(error instanceof Error ? error : new Error(String(error)));
       });
     });
-  }, [fetchRuns, setRuns, sortFn]);
+  }, [fetchRuns, sortFn]);
 
   useEffect(() => {
     if (

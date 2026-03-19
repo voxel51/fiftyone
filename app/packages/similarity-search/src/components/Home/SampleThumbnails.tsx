@@ -37,7 +37,11 @@ export default function SampleThumbnails({
         return (
           <ImageListItem key={id}>
             {filepath ? (
-              <img src={getMediaUrl(filepath)} alt="" style={s.thumbnail} />
+              <img
+                src={getMediaUrl(filepath)}
+                alt="selected images"
+                style={s.thumbnail}
+              />
             ) : (
               <div style={s.thumbnailPlaceholder} />
             )}

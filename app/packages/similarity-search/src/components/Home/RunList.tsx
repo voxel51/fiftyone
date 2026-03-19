@@ -160,13 +160,6 @@ export default function RunList({
     }
   }, [expandedRunIds, filteredRuns, onGetSampleMedia]);
 
-  const handleSelected = useCallback(
-    (selectedIds: string[]) => {
-      onSelectAll(selectedIds);
-    },
-    [onSelectAll]
-  );
-
   const visibleRunIds = useMemo(
     () => filteredRuns.map((r) => r.run_id),
     [filteredRuns]
@@ -374,7 +367,7 @@ export default function RunList({
             className="similarity-run-list"
             listItems={listItems}
             selected={Array.from(selectedRunIds)}
-            onSelected={handleSelected}
+            onSelected={onSelectAll}
           />
         </>
       )}
