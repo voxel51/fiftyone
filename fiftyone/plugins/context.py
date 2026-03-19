@@ -202,7 +202,15 @@ class PluginContext(object):
                         if isinstance(s, dict) and not s.get("required", True)
                     }
                     if optional:
-                        instance._optional_plugin_secrets = optional
+                        from fiftyone.plugins.secrets import (
+                            PluginSecretsResolver,
+                        )
+
+                        PluginSecretsResolver().register_operator(
+                            operator_uri=instance.uri,
+                            required_secrets=self.secrets,
+                            optional_keys=optional,
+                        )
 
                 self.instances.append(instance)
         except:
