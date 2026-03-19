@@ -222,7 +222,7 @@ class Hunyuan3DModel(fout.TorchImageModel):
                 mesh = self._model(image=pil_img)[0]
                 outputs.append(self._export_mesh(mesh))
             except (
-                OSError, ValueError, RuntimeError,
+                OSError, ValueError, RuntimeError, KeyError,
                 IndexError, AttributeError, TypeError,
             ) as e:
                 logger.warning(
