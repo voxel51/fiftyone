@@ -56,7 +56,6 @@ export class InteractiveKeypointHandler implements InteractionHandler {
 
   onMove(_point: Point, worldPoint: Point, _event: PointerEvent): boolean {
     this.overlay.setPreviewPoint(worldPoint);
-    this.overlay.markDirty();
     return true;
   }
 

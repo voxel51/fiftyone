@@ -58,7 +58,7 @@ export type LighterEventGroup = {
   /** Emitted when an overlay finishes being established */
   "lighter:overlay-establish": {
     id: string;
-    overlay: InteractionHandler;
+    handler: InteractionHandler;
     startBounds: Rect;
     startPosition: Point;
     bounds: Rect;
@@ -123,14 +123,17 @@ export type LighterEventGroup = {
   "lighter:keypoint-point-added": {
     id: string;
     pointIndex: number;
-    point: Point;
+    /** Absolute (world-space) coordinates of the added point */
+    worldPoint: Point;
   };
   /** Emitted when a keypoint is moved via drag */
   "lighter:keypoint-point-moved": {
     id: string;
     pointIndex: number;
-    from: Point;
-    to: Point;
+    /** Absolute (world-space) coordinates before the move */
+    worldFrom: Point;
+    /** Absolute (world-space) coordinates after the move */
+    worldTo: Point;
   };
   /** Emitted when a keypoint is deleted */
   "lighter:keypoint-point-deleted": { id: string; pointIndex: number };

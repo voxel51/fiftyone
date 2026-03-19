@@ -20,11 +20,11 @@ export function parseColorWithAlpha(color: string): {
   alpha: number;
 } {
   const cached = colorCache.get(color);
-  if (cached) return cached;
+  if (cached) return { ...cached };
 
   const result = parseColorWithAlphaUncached(color);
   colorCache.set(color, result);
-  return result;
+  return { ...result };
 }
 
 function parseColorWithAlphaUncached(color: string): {

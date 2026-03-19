@@ -181,7 +181,13 @@ export class KeypointOverlay
 
   set bounds(_bounds: Rect | undefined) {
     // Keypoint bounds are derived from points, not set directly.
-    // This setter exists to satisfy the Spatial interface.
+    // This no-op setter exists to satisfy the Spatial interface.
+    // To reposition points, mutate them individually via movePoint/addPoint/removePoint.
+    if (_bounds) {
+      console.warn(
+        `KeypointOverlay(${this.id}): setting bounds directly is a no-op; mutate points instead.`
+      );
+    }
     this.markDirty();
   }
 
@@ -516,8 +522,8 @@ export class KeypointOverlay
       this.eventBus.dispatch("lighter:keypoint-point-moved", {
         id: this.id,
         pointIndex: movedIdx,
-        from: this.relativePointToAbsolute(from),
-        to: absPoint,
+        worldFrom: this.relativePointToAbsolute(from),
+        worldTo: absPoint,
       });
     }
 
@@ -540,7 +546,7 @@ export class KeypointOverlay
     this.eventBus.dispatch("lighter:keypoint-point-added", {
       id: this.id,
       pointIndex: idx,
-      point: worldPoint,
+      worldPoint,
     });
 
     this.markDirty();

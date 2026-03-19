@@ -620,7 +620,7 @@ export class PixiRenderer2D implements Renderer2D {
     );
 
     graphics.setStrokeStyle({
-      width: style.lineWidth || 1,
+      width: (style.lineWidth || 1) / this.getScale(),
       color: color,
       alpha: alpha * (style.opacity || 1),
     });
