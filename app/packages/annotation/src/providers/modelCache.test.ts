@@ -2,29 +2,46 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { loadModelWeights, MAX_RETRIES } from "./modelCache";
 
 // Minimal in-memory IndexedDB mock
-function createMockIDB() {
+function createMockIDB(options?: { failOn?: "get" | "put" }) {
+  const { failOn } = options ?? {};
   const store = new Map<string, ArrayBuffer>();
   const closeSpy = vi.fn();
 
   const mockObjectStore = () => ({
     get: (key: string) => {
-      const req = { result: undefined as ArrayBuffer | undefined, onsuccess: null as any, onerror: null as any };
-      setTimeout(() => { req.result = store.get(key); req.onsuccess?.(); });
+      const req = {
+        result: undefined as ArrayBuffer | undefined,
+        onsuccess: null as any,
+        onerror: null as any,
+        error: failOn === "get" ? new Error("read failed") : null,
+      };
+      setTimeout(() => {
+        if (failOn === "get") { req.onerror?.(); }
+        else { req.result = store.get(key); req.onsuccess?.(); }
+      });
       return req;
     },
     put: (value: ArrayBuffer, key: string) => { store.set(key, value); },
   });
 
   const mockDB = {
-    transaction: () => {
+    transaction: (_store?: string, mode?: string) => {
       const os = mockObjectStore();
-      return {
+      const shouldFailPut = failOn === "put" && mode === "readwrite";
+      const tx = {
         objectStore: () => os,
         onerror: null as any,
+        error: shouldFailPut ? new Error("write failed") : null,
         set oncomplete(fn: any) {
-          setTimeout(() => fn?.());
+          if (!shouldFailPut)
+            setTimeout(() => fn?.());
         },
       };
+  
+      if (shouldFailPut)
+        setTimeout(() => tx.onerror?.());
+  
+      return tx;
     },
     createObjectStore: () => {},
     close: closeSpy,
@@ -86,7 +103,7 @@ describe("loadModelWeights", () => {
 
     expect(result.byteLength).toBe(64);
     expect(global.fetch).toHaveBeenCalledTimes(1);
-    expect(closeSpy).toHaveBeenCalled();
+    expect(closeSpy).toHaveBeenCalledTimes(1);
   });
 
   it("Returns cached buffer without fetching on cache hit", async () => {
@@ -96,7 +113,18 @@ describe("loadModelWeights", () => {
 
     expect(result.byteLength).toBe(64);
     expect(global.fetch).not.toHaveBeenCalled();
-    expect(closeSpy).toHaveBeenCalled();
+    expect(closeSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("Caches downloaded buffer for subsequent calls", async () => {
+    await loadModelWeights(TEST_URL);
+    (global.fetch as ReturnType<typeof vi.fn>).mockClear();
+
+    const result = await loadModelWeights(TEST_URL);
+
+    expect(result.byteLength).toBe(64);
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(closeSpy).toHaveBeenCalledTimes(2);
   });
 
   it("Calls onProgress with full size on cache hit", async () => {
@@ -106,7 +134,7 @@ describe("loadModelWeights", () => {
     await loadModelWeights(TEST_URL, onProgress);
 
     expect(onProgress).toHaveBeenCalledWith(64, 64);
-    expect(closeSpy).toHaveBeenCalled();
+    expect(closeSpy).toHaveBeenCalledTimes(1);
   });
 
   it("Streams progress via onProgress on cache miss", async () => {
@@ -121,7 +149,7 @@ describe("loadModelWeights", () => {
     expect(onProgress).toHaveBeenCalledTimes(2);
     expect(onProgress).toHaveBeenNthCalledWith(1, 3, 5);
     expect(onProgress).toHaveBeenNthCalledWith(2, 5, 5);
-    expect(closeSpy).toHaveBeenCalled();
+    expect(closeSpy).toHaveBeenCalledTimes(1);
   });
 
   it.each([
@@ -143,7 +171,7 @@ describe("loadModelWeights", () => {
     expect(result.byteLength).toBe(64);
     if (onProgress)
       expect(onProgress).not.toHaveBeenCalled();
-    expect(closeSpy).toHaveBeenCalled();
+    expect(closeSpy).toHaveBeenCalledTimes(1);
   });
 
   it("Throws on 4xx without retrying", async () => {
@@ -151,14 +179,19 @@ describe("loadModelWeights", () => {
 
     await expect(loadModelWeights(TEST_URL)).rejects.toThrow("404");
     expect(global.fetch).toHaveBeenCalledTimes(1);
-    expect(closeSpy).toHaveBeenCalled();
+    expect(closeSpy).toHaveBeenCalledTimes(1);
   });
 
-  it("Retries on 5xx and eventually succeeds", async () => {
-    vi.useFakeTimers();
-    global.fetch = vi.fn()
+  it.each([
+    { name: "5xx", mockFetch: () => vi.fn()
       .mockResolvedValueOnce(mockFetchResponse(new ArrayBuffer(0), 500))
-      .mockResolvedValue(mockFetchResponse(TEST_BUFFER));
+      .mockResolvedValue(mockFetchResponse(TEST_BUFFER)) },
+    { name: "network error", mockFetch: () => vi.fn()
+      .mockRejectedValueOnce(new Error("Network Error"))
+      .mockResolvedValue(mockFetchResponse(TEST_BUFFER)) },
+  ])("Retries on $name and eventually succeeds", async ({ mockFetch }) => {
+    vi.useFakeTimers();
+    global.fetch = mockFetch();
 
     const promise = loadModelWeights(TEST_URL);
     await vi.runAllTimersAsync();
@@ -166,24 +199,24 @@ describe("loadModelWeights", () => {
 
     expect(result.byteLength).toBe(64);
     expect(global.fetch).toHaveBeenCalledTimes(2);
-    expect(closeSpy).toHaveBeenCalled();
+    expect(closeSpy).toHaveBeenCalledTimes(1);
     vi.useRealTimers();
   });
 
-  it("Retries on network error and eventually succeeds", async () => {
-    vi.useFakeTimers();
-    global.fetch = vi.fn()
-      .mockRejectedValueOnce(new Error("Network Error"))
-      .mockResolvedValue(mockFetchResponse(TEST_BUFFER));
+  it.each([
+    { name: "idbGet fails", failOn: "get" as const, warning: "IndexedDB cache read failed, downloading instead: Error: read failed" },
+    { name: "idbPut fails", failOn: "put" as const, warning: "IndexedDB cache write failed: Error: write failed" },
+  ])("Warns and falls through when $name", async ({ failOn, warning }) => {
+    const idb = createMockIDB({ failOn });
+    vi.stubGlobal("indexedDB", idb.mockIndexedDB);
+    const onWarning = vi.fn();
 
-    const promise = loadModelWeights(TEST_URL);
-    await vi.runAllTimersAsync();
-    const result = await promise;
+    const result = await loadModelWeights(TEST_URL, undefined, onWarning);
 
     expect(result.byteLength).toBe(64);
-    expect(global.fetch).toHaveBeenCalledTimes(2);
-    expect(closeSpy).toHaveBeenCalled();
-    vi.useRealTimers();
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(onWarning).toHaveBeenCalledWith(warning);
+    expect(idb.closeSpy).toHaveBeenCalledTimes(1);
   });
 
   it("Falls through to fetch and warns when IndexedDB is unavailable", async () => {
@@ -207,7 +240,7 @@ describe("loadModelWeights", () => {
     expect(err).toBeInstanceOf(Error);
     expect((err as Error).message).toBe("Network Error");
     expect(global.fetch).toHaveBeenCalledTimes(MAX_RETRIES);
-    expect(closeSpy).toHaveBeenCalled();
+    expect(closeSpy).toHaveBeenCalledTimes(1);
     vi.useRealTimers();
   });
 });
