@@ -31,22 +31,17 @@ from fiftyone.server.media_cache import is_path_allowed
 
 logger = logging.getLogger(__name__)
 
-# Register MIME types for FiftyOne-specific formats.
-# Process-local, in-memory only — does not modify system MIME databases.
-# Does not affect eta.core image/video detection (verified).
-#
-# TODO: Migrate these to the eta package with proper is_*_mime_type()
-# detection methods (similar to etai.is_image_mime_type), then replace
-# the custom registration + blocklist approach with eta-based detection.
-mimetypes.add_type("application/x-pcd", ".pcd")
-mimetypes.add_type("application/x-fo3d", ".fo3d")
-mimetypes.add_type("application/x-rrd", ".rrd")
-mimetypes.add_type("application/x-npy", ".npy")
+# @todo: migrate to eta with proper is_*_mime_type() detection methods
+for _mime, _ext in (
+    ("application/x-pcd", ".pcd"),
+    ("application/x-fo3d", ".fo3d"),
+    ("application/x-rrd", ".rrd"),
+    ("application/x-npy", ".npy"),
+):
+    mimetypes.add_type(_mime, _ext)
 
-# MIME prefixes that indicate non-media content
+# Non-media MIME types blocked on the /media endpoint only
 _BLOCKED_MIME_PREFIXES = ("text/",)
-
-# Specific non-media MIME types to block
 _BLOCKED_MIME_TYPES = frozenset(
     {
         "application/json",
@@ -57,15 +52,11 @@ _BLOCKED_MIME_TYPES = frozenset(
 
 
 def _is_media_file(filepath: str) -> bool:
-    """Check if a filepath is a recognized media type.
+    """Checks whether a filepath has a recognized media MIME type.
 
-    Uses eta.core for image/video detection (same as
-    fiftyone.core.media.get_media_type), then falls back to
-    mimetypes.guess_type for other formats.
-
-    Files with known non-media MIME types (text/*, application/json, etc.)
-    are blocked. Files with None MIME type (unrecognized extension) are
-    allowed through — Layer 3 (directory allowlist) constrains them.
+    Uses ``eta.core`` for image/video detection, then falls back to
+    ``mimetypes.guess_type``. Files with unrecognized extensions (None
+    MIME) are allowed through to the directory allowlist check.
     """
     if etai.is_image_mime_type(filepath):
         return True
@@ -74,48 +65,46 @@ def _is_media_file(filepath: str) -> bool:
         return True
 
     mime_type, _ = mimetypes.guess_type(filepath)
-
-    # No MIME type — unrecognized format (e.g., .mtl, .ply, .fbx on
-    # some systems). Allow through; Layer 3 constrains by directory.
     if mime_type is None:
         return True
 
-    # Block known non-media MIME types
     if mime_type.startswith(_BLOCKED_MIME_PREFIXES):
         return False
 
-    if mime_type in _BLOCKED_MIME_TYPES:
-        return False
-
-    # Allow everything else: audio/*, model/*, application/x-pcd,
-    # application/x-fo3d, application/x-rrd, application/x-npy,
-    # application/octet-stream, and system-registered types for
-    # 3D formats (e.g., .obj -> application/x-tgif,
-    # .stl -> application/vnd.ms-pki.stl)
-    return True
+    return mime_type not in _BLOCKED_MIME_TYPES
 
 
 def _validate_media_path(
     request: Request,
-) -> tuple[t.Optional[str], t.Optional[Response]]:
-    """Validate and normalize the requested media path.
+) -> tuple[str | None, Response | None]:
+    """Validates and normalizes the requested media path.
 
-    Returns (resolved_path, None) on success.
-    Returns (None, error_response) on failure.
+    Applies three layers of defense:
+
+    1. **Path normalization** — expands ``~``, resolves ``..`` and
+       symlinks via ``pathlib.Path.expanduser().resolve()``.
+    2. **Media type check** — rejects files with known non-media MIME
+       types (``text/*``, ``application/json``, etc.) on this endpoint.
+    3. **Directory allowlist** — rejects files outside directories that
+       have been registered by dataset media resolution or server config.
+
+    Args:
+        request: a Starlette ``Request``
+
+    Returns:
+        a ``(resolved_path, None)`` tuple on success, or
+        ``(None, error_response)`` on failure
     """
     raw_path = request.query_params.get("filepath")
     if not raw_path:
         return None, Response(status_code=400)
 
-    # Layer 1: Path normalization — expand ~, resolve .., symlinks
     resolved = Path(raw_path).expanduser().resolve(strict=False)
     resolved_str = str(resolved)
 
-    # Layer 2: Media type check
     if not _is_media_file(resolved_str):
         return None, Response(status_code=403)
 
-    # Layer 3: Directory allowlist
     if not is_path_allowed(resolved_str):
         return None, Response(status_code=403)
 

@@ -7,12 +7,16 @@ FiftyOne Server /media route unit tests.
 """
 
 from pathlib import Path
+from urllib.parse import urlencode
 
 import pytest
 from starlette.requests import Request
 
 from fiftyone.server.media_cache import add_allowed_dir, clear
-from fiftyone.server.routes.media import _is_media_file, _validate_media_path
+from fiftyone.server.routes.media import (
+    _is_media_file,
+    _validate_media_path,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -20,9 +24,6 @@ def _clear_cache():
     clear()
     yield
     clear()
-
-
-# --- _is_media_file tests ---
 
 
 class TestIsMediaFile:
@@ -51,12 +52,9 @@ class TestIsMediaFile:
         assert _is_media_file("/data/recording.rrd") is True
 
     def test_obj_allowed(self):
-        # .obj has incorrect system MIME (application/x-tgif) but is not
-        # in the blocklist, so it passes through
         assert _is_media_file("/data/model.obj") is True
 
     def test_mtl_allowed(self):
-        # .mtl has no MIME type on most systems (None), which passes through
         assert _is_media_file("/data/material.mtl") is True
 
     def test_text_plain_blocked(self):
@@ -81,15 +79,10 @@ class TestIsMediaFile:
         assert _is_media_file("/data/app.js") is False
 
     def test_no_extension_allowed(self):
-        # No MIME type (None) — passes through to Layer 3
         assert _is_media_file("/data/somefile") is True
 
 
-# --- _validate_media_path tests ---
-
-
 def _make_request(filepath=None):
-    """Create a mock Starlette Request with the given filepath query param."""
     scope = {
         "type": "http",
         "method": "GET",
@@ -97,8 +90,6 @@ def _make_request(filepath=None):
         "headers": [],
     }
     if filepath is not None:
-        from urllib.parse import urlencode
-
         scope["query_string"] = urlencode({"filepath": filepath}).encode()
     return Request(scope)
 
@@ -172,7 +163,6 @@ class TestValidateMediaPath:
         assert path is not None
 
     def test_traversal_normalized_then_blocked(self):
-        """Path with .. is resolved before checking, so it hits the real target."""
         add_allowed_dir("/data/datasets")
         request = _make_request("/data/datasets/../../etc/passwd")
         path, error = _validate_media_path(request)
@@ -180,7 +170,6 @@ class TestValidateMediaPath:
         assert error.status_code == 403
 
     def test_env_var_style_roots(self):
-        """Simulates FIFTYONE_MEDIA_ALLOWED_ROOTS behavior."""
         add_allowed_dir("/external/media")
         request = _make_request("/external/media/photo.jpg")
         path, error = _validate_media_path(request)

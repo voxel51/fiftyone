@@ -13,7 +13,6 @@ from packaging.version import Version
 
 from importlib.metadata import metadata
 
-
 CLIENT_TYPE = "fiftyone"
 
 FIFTYONE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -30,6 +29,7 @@ BASE_DIR = os.path.dirname(FIFTYONE_DIR)
 TEAMS_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "var", "teams.json")
 WELCOME_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "var", "welcome.json")
 RESOURCES_DIR = os.path.join(FIFTYONE_DIR, "resources")
+MEDIA_ALLOWED_ROOTS = os.environ.get("FIFTYONE_MEDIA_ALLOWED_ROOTS", "")
 
 #
 # The compatible versions for this client

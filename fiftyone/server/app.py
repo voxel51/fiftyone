@@ -29,12 +29,14 @@ from starlette.staticfiles import NotModifiedResponse, PathLike, StaticFiles
 from starlette.types import Scope
 
 import fiftyone as fo
+import fiftyone.constants as foc
 from fiftyone.operators.store.notification_service import (
     MongoChangeStreamNotificationServiceLifecycleManager,
     default_notification_service,
     is_notification_service_disabled,
 )
 from fiftyone.server.constants import SCALAR_OVERRIDES
+from fiftyone.server.media_cache import add_allowed_dir
 from fiftyone.server.context import GraphQL
 from fiftyone.server.extensions import EndSession
 from fiftyone.server.mutation import Mutation
@@ -161,15 +163,12 @@ app = Starlette(
 
 @app.on_event("startup")
 async def startup_event():
-    from fiftyone.server.media_cache import add_allowed_dir
-
     # Seed media directory allowlist for path traversal prevention
     add_allowed_dir(fo.config.default_dataset_dir)
     add_allowed_dir(fo.config.dataset_zoo_dir)
     add_allowed_dir(fo.config.model_zoo_dir)
 
-    extra = os.environ.get("FIFTYONE_MEDIA_ALLOWED_ROOTS", "")
-    for root in extra.split(","):
+    for root in foc.MEDIA_ALLOWED_ROOTS.split(","):
         root = root.strip()
         if root:
             add_allowed_dir(root)

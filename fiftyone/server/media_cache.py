@@ -14,25 +14,40 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 _lock = threading.Lock()
-_allowed_dirs: set[str] = set()
+_allowed_dirs = set()
 
 
 def add_allowed_dir(dir_path: str) -> None:
-    """Register a directory as allowed for media serving."""
+    """Registers a directory as allowed for media serving.
+
+    Args:
+        dir_path: a directory path
+    """
     resolved = str(Path(dir_path).expanduser().resolve())
     with _lock:
         _allowed_dirs.add(resolved)
 
 
 def add_allowed_dir_for_filepath(filepath: str) -> None:
-    """Register the parent directory of a filepath as allowed."""
+    """Registers the parent directory of a filepath as allowed.
+
+    Args:
+        filepath: a file path
+    """
     resolved_parent = str(Path(filepath).expanduser().resolve().parent)
     with _lock:
         _allowed_dirs.add(resolved_parent)
 
 
 def is_path_allowed(resolved_path: str) -> bool:
-    """Check if a resolved path falls under any allowed directory."""
+    """Checks if a resolved path falls under any allowed directory.
+
+    Args:
+        resolved_path: an absolute resolved file path
+
+    Returns:
+        True/False
+    """
     with _lock:
         return any(
             resolved_path == d or resolved_path.startswith(d + os.sep)
@@ -41,6 +56,6 @@ def is_path_allowed(resolved_path: str) -> bool:
 
 
 def clear() -> None:
-    """Clear all allowed directories (for testing)."""
+    """Clears all allowed directories."""
     with _lock:
         _allowed_dirs.clear()
