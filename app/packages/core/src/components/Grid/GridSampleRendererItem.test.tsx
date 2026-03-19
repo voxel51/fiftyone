@@ -9,7 +9,7 @@ vi.mock("./GridTagBubbles", () => ({
   ),
 }));
 
-class MockFallbackLooker extends EventTarget {
+class MockFallbackRenderer extends EventTarget {
   public loaded = true;
   attach = vi.fn();
   detach = vi.fn();
@@ -59,14 +59,16 @@ describe("GridSampleRendererItem", () => {
   });
 
   it("mounts plugin renderer and does not invoke fallback on success", async () => {
-    const createFallbackLooker = vi.fn(() => new MockFallbackLooker() as any);
-    const Renderer = ({ ctx }: { ctx: { media: { url: string | null } } }) => (
+    const createFallbackRenderer = vi.fn(
+      () => new MockFallbackRenderer() as any
+    );
+    const Component = ({ ctx }: { ctx: { media: { url: string | null } } }) => (
       <div data-testid="renderer">{ctx.media.url}</div>
     );
-    const looker = new GridSampleRendererItem({
-      createFallbackLooker,
+    const renderer = new GridSampleRendererItem({
+      createFallbackRenderer,
       pluginName: "pdf-renderer",
-      Renderer,
+      Renderer: Component,
       RecoilBridge: TestBridge,
       ctx: BASE_CTX as any,
       symbol: BASE_SYMBOL,
@@ -75,24 +77,24 @@ describe("GridSampleRendererItem", () => {
     document.body.appendChild(host);
 
     const loadSpy = vi.fn();
-    looker.addEventListener("load", loadSpy);
+    renderer.addEventListener("load", loadSpy);
 
-    looker.attach(host, [200, 120], 12);
+    renderer.attach(host, [200, 120], 12);
 
     await waitFor(() => {
       expect(host.textContent).toContain("/media/file.pdf");
     });
     expect(host.textContent).toContain("/tmp/file.pdf");
 
-    expect(createFallbackLooker).not.toHaveBeenCalled();
+    expect(createFallbackRenderer).not.toHaveBeenCalled();
     expect(loadSpy).toHaveBeenCalled();
     expect(getOpenModalButton(host)).toBeNull();
     expect(getSelectControl(host)).toBeNull();
 
-    const renderer = host.querySelector("[data-testid='renderer']");
-    expect(renderer).toBeTruthy();
+    const element = host.querySelector("[data-testid='renderer']");
+    expect(element).toBeTruthy();
 
-    const wrapper = renderer?.parentElement as HTMLElement | null;
+    const wrapper = element?.parentElement as HTMLElement | null;
     expect(wrapper).toBeTruthy();
 
     fireEvent.mouseEnter(wrapper as HTMLElement);
@@ -111,7 +113,7 @@ describe("GridSampleRendererItem", () => {
     expect(hostClickSpy).toHaveBeenCalled();
 
     const selectSpy = vi.fn();
-    looker.addEventListener("selectthumbnail", selectSpy);
+    renderer.addEventListener("selectthumbnail", selectSpy);
     const selectButton = getSelectControl(host) as HTMLElement | null;
     expect(selectButton).toBeTruthy();
     selectButton?.dispatchEvent(
@@ -137,18 +139,18 @@ describe("GridSampleRendererItem", () => {
       expect(getSelectControl(host)).toBeTruthy();
     });
 
-    looker.destroy();
+    renderer.destroy();
     host.remove();
   });
 
-  it("activates fallback looker when plugin renderer throws", async () => {
-    const fallback = new MockFallbackLooker();
-    const createFallbackLooker = vi.fn(() => fallback as any);
+  it("activates fallback renderer when plugin renderer throws", async () => {
+    const fallback = new MockFallbackRenderer();
+    const createFallbackRenderer = vi.fn(() => fallback as any);
     const Renderer = () => {
       throw new Error("render failed");
     };
-    const looker = new GridSampleRendererItem({
-      createFallbackLooker,
+    const renderer = new GridSampleRendererItem({
+      createFallbackRenderer,
       pluginName: "broken-renderer",
       Renderer,
       RecoilBridge: TestBridge,
@@ -158,11 +160,11 @@ describe("GridSampleRendererItem", () => {
     const host = document.createElement("div");
     document.body.appendChild(host);
 
-    looker.attach(host, [320, 180], 14);
+    renderer.attach(host, [320, 180], 14);
 
-    // Fallback should be created and attached to the same host element
+    // Fallback renderer should be created and attached to the same host element
     await waitFor(() => {
-      expect(createFallbackLooker).toHaveBeenCalled();
+      expect(createFallbackRenderer).toHaveBeenCalled();
     });
     expect(fallback.attach).toHaveBeenCalledWith(
       host,
@@ -170,29 +172,29 @@ describe("GridSampleRendererItem", () => {
       expect.anything()
     );
 
-    // Delegation: methods forward to the fallback looker
-    looker.updateOptions({ foo: "bar" }, true);
+    // Delegation: methods forward to the fallback renderer
+    renderer.updateOptions({ foo: "bar" }, true);
     expect(fallback.updateOptions).toHaveBeenCalled();
 
-    looker.refreshSample(["predictions"]);
+    renderer.refreshSample(["predictions"]);
     expect(fallback.refreshSample).toHaveBeenCalled();
 
-    expect(looker.getSampleOverlays()).toEqual([]);
-    expect(looker.getSizeBytesEstimate()).toBe(256);
+    expect(renderer.getSampleOverlays()).toEqual([]);
+    expect(renderer.getSizeBytesEstimate()).toBe(256);
 
-    looker.destroy();
+    renderer.destroy();
     expect(fallback.destroy).toHaveBeenCalled();
     host.remove();
   });
 
-  it("forwards events from fallback looker to its own listeners", async () => {
-    const fallback = new MockFallbackLooker();
-    const createFallbackLooker = vi.fn(() => fallback as any);
+  it("forwards events from fallback renderer to its own listeners", async () => {
+    const fallback = new MockFallbackRenderer();
+    const createFallbackRenderer = vi.fn(() => fallback as any);
     const Renderer = () => {
       throw new Error("render failed");
     };
-    const looker = new GridSampleRendererItem({
-      createFallbackLooker,
+    const renderer = new GridSampleRendererItem({
+      createFallbackRenderer,
       pluginName: "broken-renderer",
       Renderer,
       RecoilBridge: TestBridge,
@@ -205,18 +207,18 @@ describe("GridSampleRendererItem", () => {
     const selectSpy = vi.fn();
     const refreshSpy = vi.fn();
     const loadSpy = vi.fn();
-    looker.addEventListener("selectthumbnail", selectSpy);
-    looker.addEventListener("refresh", refreshSpy);
-    looker.addEventListener("load", loadSpy);
+    renderer.addEventListener("selectthumbnail", selectSpy);
+    renderer.addEventListener("refresh", refreshSpy);
+    renderer.addEventListener("load", loadSpy);
 
-    looker.attach(host, [320, 180], 14);
+    renderer.attach(host, [320, 180], 14);
 
-    // Wait for fallback to activate
+    // Wait for fallback renderer to activate
     await waitFor(() => {
-      expect(createFallbackLooker).toHaveBeenCalled();
+      expect(createFallbackRenderer).toHaveBeenCalled();
     });
 
-    // Simulate events emitted by the fallback looker
+    // Simulate events emitted by the fallback renderer
     fallback.dispatchEvent(
       new CustomEvent("selectthumbnail", { detail: { id: "sample-1" } })
     );
@@ -230,7 +232,7 @@ describe("GridSampleRendererItem", () => {
     expect(refreshSpy).toHaveBeenCalled();
     expect(loadSpy).toHaveBeenCalled();
 
-    looker.destroy();
+    renderer.destroy();
     host.remove();
   });
 });

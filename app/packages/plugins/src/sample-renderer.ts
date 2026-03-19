@@ -1,12 +1,12 @@
 import { isNativeMediaType } from "@fiftyone/looker/src/util";
 import * as fos from "@fiftyone/state";
-import { Schema } from "@fiftyone/utilities";
+import type { Schema } from "@fiftyone/utilities";
 import mime from "mime";
 import type React from "react";
 
 type SampleRendererSurface = "grid" | "modal";
 
-type SampleRendererSampleLike = {
+export type SampleRendererSampleLike = {
   sample: {
     filepath: string;
     media_type?: string | null;
@@ -20,12 +20,6 @@ type SampleRendererSampleLike = {
   urls?:
     | { [field: string]: string }
     | readonly { readonly field: string; readonly url: string | null }[];
-};
-
-type NormalizedMatchMedia = {
-  extensions?: string[];
-  mimeTypes?: string[];
-  mediaTypes?: string[];
 };
 
 /**
@@ -146,7 +140,7 @@ function normalizeMatcherArray(
  */
 export function normalizeMatchMedia(
   matchMedia: MatchMedia | undefined
-): NormalizedMatchMedia {
+): MatchMedia {
   return {
     extensions: normalizeMatcherArray(
       matchMedia?.extensions,
@@ -185,15 +179,6 @@ function getSampleMimeType(
 
   const mimeFromFilePath = mime.getType(sample.filepath);
   return mimeFromFilePath ?? null;
-}
-
-function isMatchMediaObject(
-  supports:
-    | MatchMedia
-    | ((ctx: SampleRendererMatchContext<unknown>) => boolean)
-    | undefined
-): supports is MatchMedia {
-  return Boolean(supports) && typeof supports !== "function";
 }
 
 /**

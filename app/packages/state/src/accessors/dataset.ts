@@ -7,13 +7,25 @@ import {
   State,
 } from "../recoil";
 
+/**
+ * Get the current dataset ID.
+ *
+ * @returns The current dataset ID, or null if no dataset is selected
+ */
 export const useCurrentDatasetId = (): string | null =>
   useRecoilValue(datasetId);
 
+/**
+ * Get the current dataset.
+ *
+ * @returns The current dataset state
+ */
 export const useCurrentDataset = () => useRecoilValue(dataset);
 
 /**
  * Get the current sample schema.
+ *
+ * @returns The field schema for the sample space
  */
 export const useSampleSchema = () =>
   useRecoilValue(fieldSchema({ space: State.SPACE.SAMPLE }));

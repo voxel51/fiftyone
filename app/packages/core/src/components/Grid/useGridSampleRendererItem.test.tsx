@@ -7,7 +7,7 @@ import { useGridSampleRendererItem } from "./useGridSampleRendererItem";
 const {
   createSampleRendererRenderContext,
   getMatchingSampleRenderer,
-  getRawComponent,
+  getComponent,
   getSampleRendererComponent,
   mockDataset,
   mockSelectedMediaField,
@@ -22,7 +22,7 @@ const {
   mockSelectedMediaField: "filepath",
   createSampleRendererRenderContext: vi.fn(),
   getMatchingSampleRenderer: vi.fn(),
-  getRawComponent: vi.fn(),
+  getComponent: vi.fn(),
   getSampleRendererComponent: vi.fn(),
   useCurrentDataset: vi.fn(),
   useSampleSchema: vi.fn(),
@@ -36,7 +36,7 @@ vi.mock("@fiftyone/plugins", () => ({
     createSampleRendererRenderContext(...args),
   getMatchingSampleRenderer: (...args: unknown[]) =>
     getMatchingSampleRenderer(...args),
-  getRawComponent: (...args: unknown[]) => getRawComponent(...args),
+  getComponent: (...args: unknown[]) => getComponent(...args),
   getSampleRendererComponent: (...args: unknown[]) =>
     getSampleRendererComponent(...args),
   useActivePlugins: (...args: unknown[]) => useActivePlugins(...args),
@@ -100,7 +100,7 @@ describe("useGridSampleRendererItem", () => {
     useSelectedMediaFieldGrid.mockReturnValue(mockSelectedMediaField);
     createSampleRendererRenderContext.mockReturnValue(ctx);
     getMatchingSampleRenderer.mockReturnValue(registration);
-    getRawComponent.mockReturnValue(Renderer);
+    getComponent.mockReturnValue(Renderer);
     getSampleRendererComponent.mockReturnValue(Renderer);
     useActivePlugins.mockReturnValue([registration]);
   });
@@ -116,35 +116,35 @@ describe("useGridSampleRendererItem", () => {
       useGridSampleRendererItem(createDefaultLooker)
     );
 
-    const looker = result.current.createItem(
+    const item = result.current.current.createItem(
       sampleResult,
       { description: "sample-id" } as any,
       12
     );
 
-    expect(looker).toBeInstanceOf(GridSampleRendererItem);
+    expect(item).toBeInstanceOf(GridSampleRendererItem);
     expect(createDefaultLooker.current).not.toHaveBeenCalled();
   });
 
   it("stays on the default path when no sample renderer matches", () => {
-    const fallbackLooker = {
+    const fallbackItem = {
       addEventListener: vi.fn(),
       attach: vi.fn(),
     };
-    const createDefaultLooker = {
-      current: vi.fn(() => fallbackLooker),
+    const createDefaultItem = {
+      current: vi.fn(() => fallbackItem),
     } as any;
     const { result } = renderHook(() =>
-      useGridSampleRendererItem(createDefaultLooker)
+      useGridSampleRendererItem(createDefaultItem)
     );
     const symbol = { description: "sample-id" } as any;
 
     getMatchingSampleRenderer.mockReturnValue(null);
 
-    const looker = result.current.createItem(sampleResult, symbol, 12);
+    const looker = result.current.current.createItem(sampleResult, symbol, 12);
 
-    expect(looker).toBe(fallbackLooker);
-    expect(createDefaultLooker.current).toHaveBeenCalledWith(
+    expect(looker).toBe(fallbackItem);
+    expect(createDefaultItem.current).toHaveBeenCalledWith(
       expect.objectContaining({
         sample: sampleResult.sample,
         symbol,

@@ -11,7 +11,7 @@ import { createRoot, type Root } from "react-dom/client";
 import GridTagBubbles from "./GridTagBubbles";
 
 type GridSampleRendererItemConfig = {
-  createFallbackLooker: () => fos.Lookers;
+  createFallbackRenderer: () => fos.Lookers;
   pluginName: string;
   Renderer: React.ComponentType<SampleRendererProps>;
   RecoilBridge: React.ComponentType<React.PropsWithChildren>;
@@ -162,7 +162,7 @@ export class GridSampleRendererItem {
 
   private readonly eventTarget = new EventTarget();
   private readonly hostElement = document.createElement("div");
-  private fallbackLooker: fos.Lookers | null = null;
+  private fallbackRenderer: fos.Lookers | null = null;
   private fallbackHandlers = new Map<string, (event: Event) => void>();
   private mountedElement: HTMLElement | null = null;
   private root: Root | null = null;
@@ -204,7 +204,7 @@ export class GridSampleRendererItem {
   }
 
   private renderPluginRenderer() {
-    if (this.fallbackLooker || this.destroyed) {
+    if (this.fallbackRenderer || this.destroyed) {
       return;
     }
 
@@ -279,7 +279,7 @@ export class GridSampleRendererItem {
   };
 
   private switchToFallback(error: Error) {
-    if (this.destroyed || this.fallbackLooker) {
+    if (this.destroyed || this.fallbackRenderer) {
       return;
     }
 
@@ -292,13 +292,13 @@ export class GridSampleRendererItem {
     this.unmountPluginRenderer();
 
     try {
-      this.fallbackLooker = this.config.createFallbackLooker();
+      this.fallbackRenderer = this.config.createFallbackRenderer();
     } catch (fallbackError) {
       console.error(
         `Grid sample renderer: failed to create fallback renderer (plugin: ${this.config.pluginName}):`,
         fallbackError
       );
-      this.fallbackLooker = null;
+      this.fallbackRenderer = null;
       return;
     }
 
@@ -306,11 +306,11 @@ export class GridSampleRendererItem {
     FORWARDED_EVENTS.forEach((eventType) => {
       const handler = this.forwardFallbackEvent(eventType);
       this.fallbackHandlers.set(eventType, handler);
-      this.fallbackLooker?.addEventListener(eventType, handler);
+      this.fallbackRenderer?.addEventListener(eventType, handler);
     });
 
     if (this.mountedElement) {
-      this.fallbackLooker.attach(
+      this.fallbackRenderer.attach(
         this.mountedElement,
         this.lastDimensions,
         this.lastFontSize
@@ -338,8 +338,8 @@ export class GridSampleRendererItem {
     this.lastFontSize = fontSize;
     this.mountedElement = resolvedElement;
 
-    if (this.fallbackLooker) {
-      this.fallbackLooker.attach(resolvedElement, dimensions, fontSize);
+    if (this.fallbackRenderer) {
+      this.fallbackRenderer.attach(resolvedElement, dimensions, fontSize);
       return;
     }
 
@@ -355,8 +355,8 @@ export class GridSampleRendererItem {
   }
 
   detach() {
-    if (this.fallbackLooker) {
-      this.fallbackLooker.detach();
+    if (this.fallbackRenderer) {
+      this.fallbackRenderer.detach();
       return;
     }
 
@@ -372,14 +372,14 @@ export class GridSampleRendererItem {
     this.detach();
     this.unmountPluginRenderer();
     this.removeFallbackHandlers();
-    this.fallbackLooker?.destroy();
-    this.fallbackLooker = null;
+    this.fallbackRenderer?.destroy();
+    this.fallbackRenderer = null;
     this.mountedElement = null;
   }
 
   private removeFallbackHandlers() {
     for (const [eventType, handler] of this.fallbackHandlers) {
-      this.fallbackLooker?.removeEventListener(eventType, handler);
+      this.fallbackRenderer?.removeEventListener(eventType, handler);
     }
     this.fallbackHandlers.clear();
   }
@@ -393,7 +393,7 @@ export class GridSampleRendererItem {
    * Delegates to the built-in fallback renderer. No-op if plugin renderer is active.
    */
   updateOptions(options: unknown, disableReload?: boolean) {
-    if (!this.fallbackLooker) {
+    if (!this.fallbackRenderer) {
       const { selected: nextSelected, inSelectionMode: nextInSelectionMode } =
         options as GridItemOptions;
 
@@ -417,7 +417,7 @@ export class GridSampleRendererItem {
       return;
     }
 
-    this.fallbackLooker?.updateOptions(
+    this.fallbackRenderer?.updateOptions(
       options as Parameters<fos.Lookers["updateOptions"]>[0],
       disableReload
     );
@@ -427,20 +427,20 @@ export class GridSampleRendererItem {
    * Delegates to the built-in fallback renderer. No-op if plugin renderer is active.
    */
   refreshSample(renderLabels: string[] | null = null) {
-    this.fallbackLooker?.refreshSample(renderLabels);
+    this.fallbackRenderer?.refreshSample(renderLabels);
   }
 
   /**
    * Returns sample overlays from the built-in fallback renderer, or empty array.
    */
   getSampleOverlays() {
-    return this.fallbackLooker?.getSampleOverlays() ?? [];
+    return this.fallbackRenderer?.getSampleOverlays() ?? [];
   }
 
   /**
    * Returns the estimated size from the built-in fallback renderer, or 1.
    */
   getSizeBytesEstimate() {
-    return this.fallbackLooker?.getSizeBytesEstimate() ?? 1;
+    return this.fallbackRenderer?.getSizeBytesEstimate() ?? 1;
   }
 }

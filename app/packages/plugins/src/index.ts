@@ -13,11 +13,11 @@ import React, {
 import * as recoil from "recoil";
 import { wrapCustomComponent } from "./components";
 import "./externalize";
-import {
-  hasMatchMediaMatchers,
-  type SampleRendererOptions,
-  type SampleRendererProps,
+import type {
+  SampleRendererOptions,
+  SampleRendererProps,
 } from "./sample-renderer";
+import { hasMatchMediaMatchers } from "./sample-renderer";
 import { pluginsLoaderAtom } from "./state";
 
 declare global {
@@ -72,9 +72,9 @@ export function getByType<TType extends PluginComponentType>(type: TType) {
   return usingRegistry().getByType(type);
 }
 
-/** Returns the original (unwrapped) component registered under the given name. */
-export function getRawComponent(name: string) {
-  return usingRegistry().getRawComponent(name);
+/** Returns the component registered under the given name. */
+export function getComponent<T>(name: string) {
+  return usingRegistry().getComponent<T>(name);
 }
 
 async function fetchPluginsMetadata(): Promise<PluginDefinition[]> {
@@ -265,7 +265,7 @@ export function safePluginActivator(
   return false;
 }
 
-export function useGetDefaultPluginCtx() {
+function useGetDefaultPluginCtx() {
   const dataset = fos.useCurrentDataset();
   const schema = fos.useSampleSchema();
   return useCallback(() => ({ schema, dataset }), [schema, dataset]);
@@ -536,7 +536,6 @@ const REQUIRED = ["name", "type", "component"];
 class PluginComponentRegistry {
   private data = new Map<string, PluginComponentRegistration>();
   private pluginDefinitions = new Map<string, PluginDefinition>();
-  private rawComponents = new Map<string, FunctionComponent<unknown>>();
   private scripts = new Set<string>();
   private subscribers = new Set<RegistryEventHandler>();
   registerScript(name: string) {
@@ -551,8 +550,8 @@ class PluginComponentRegistry {
   hasScript(name: string) {
     return this.scripts.has(name);
   }
-  getRawComponent(name: string) {
-    return this.rawComponents.get(name);
+  getComponent<T>(name: string) {
+    return this.data.get(name).component as React.FunctionComponent<T>;
   }
   register(registration: PluginComponentRegistration) {
     const { name } = registration;
@@ -602,16 +601,11 @@ class PluginComponentRegistry {
       component: wrapCustomComponent(registration.component),
     };
 
-    this.rawComponents.set(
-      name,
-      registration.component as FunctionComponent<unknown>
-    );
     this.data.set(name, wrappedRegistration);
 
     this.notifyAllSubscribers("register");
   }
   unregister(name: string): boolean {
-    this.rawComponents.delete(name);
     this.notifyAllSubscribers("unregister");
     return this.data.delete(name);
   }
@@ -627,7 +621,6 @@ class PluginComponentRegistry {
   }
   clear() {
     this.data.clear();
-    this.rawComponents.clear();
   }
   subscribe(handler: RegistryEventHandler) {
     this.subscribers.add(handler);
@@ -671,7 +664,6 @@ export * from "./state";
 export {
   createSampleRendererMediaContext,
   createSampleRendererRenderContext,
-  getFileExtension,
   getMatchingSampleRenderer,
   getSampleRendererComponent,
   getSelectedMediaPath,
@@ -679,7 +671,6 @@ export {
   isSampleRendererGridEnabled,
   matchesMatchMedia,
   normalizeMatchMedia,
-  sortSampleRenderersByPriority,
   supportsSampleRenderer,
 } from "./sample-renderer";
 export type {
@@ -690,6 +681,7 @@ export type {
   SampleRendererOptions,
   SampleRendererProps,
   SampleRendererRenderContext,
+  SampleRendererSampleLike,
 } from "./sample-renderer";
 
 type RegistryEvent = "register" | "unregister";

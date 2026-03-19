@@ -117,9 +117,9 @@ export const getStandardizedUrls = (
     | readonly { readonly field: string; readonly url: string }[]
     | { [field: string]: string }
     | ModalSample["urls"]
-) => {
+): { [field: string]: string } => {
   if (!Array.isArray(urls)) {
-    return urls;
+    return urls as { [field: string]: string };
   }
 
   return Object.fromEntries(urls.map(({ field, url }) => [field, url]));

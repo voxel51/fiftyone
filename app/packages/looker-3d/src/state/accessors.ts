@@ -1,9 +1,3 @@
-import {
-  dataset,
-  fieldSchema,
-  selectedMediaField,
-  State,
-} from "@fiftyone/state";
 import { useRecoilValue, useResetRecoilState, useSetRecoilState } from "recoil";
 import {
   current3dAnnotationModeAtom,

@@ -23,7 +23,6 @@
   display: inline-block;
   box-sizing: content-box;
   padding: 2px;
-  color: var(--fo-palette-text-lookerTag);
   border-radius: 3px;
   font-weight: bold;
   text-align: center;
@@ -33,8 +32,4 @@
   max-width: calc(100% - 8px);
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.gridTagBubble > a {
-  color: var(--fo-palette-text-lookerTag);
 }

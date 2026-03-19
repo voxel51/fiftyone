@@ -1,9 +1,10 @@
 import {
   createSampleRendererRenderContext,
+  getComponent,
   getMatchingSampleRenderer,
-  getRawComponent,
   getSampleRendererComponent,
   PluginComponentType,
+  SampleRendererProps,
   useActivePlugins,
 } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
@@ -61,10 +62,8 @@ export const ModalSampleRenderer = React.memo(
       PluginComponentType.SampleRenderer
     );
 
-    const fallback = <MetadataLooker sample={sample} />;
-
     if (!dataset) {
-      return fallback;
+      throw new Error("no dataset");
     }
 
     const ctx = createSampleRendererRenderContext(
@@ -76,9 +75,10 @@ export const ModalSampleRenderer = React.memo(
     );
     const matchedRenderer = getMatchingSampleRenderer(sampleRenderers, ctx);
     const canonicalRenderer = matchedRenderer
-      ? getRawComponent(matchedRenderer.name)
+      ? getComponent<SampleRendererProps>(matchedRenderer.name)
       : null;
 
+    const fallback = <MetadataLooker sample={sample} />;
     if (!matchedRenderer || !ctx.media.url || !canonicalRenderer) {
       return fallback;
     }

@@ -1,7 +1,8 @@
+import type { SampleRendererSampleLike } from "@fiftyone/plugins";
 import {
   createSampleRendererRenderContext,
+  getComponent,
   getMatchingSampleRenderer,
-  getRawComponent,
   getSampleRendererComponent,
   PluginComponentType,
   useActivePlugins,
@@ -9,11 +10,11 @@ import {
 import type { ID } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import type React from "react";
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { useRecoilBridgeAcrossReactRoots_UNSTABLE } from "recoil";
 import { GridSampleRendererItem } from "./GridSampleRendererItem";
 
-type GridSampleResult = { sample: fos.Sample } & Record<string, unknown>;
+type GridSampleResult = SampleRendererSampleLike;
 
 /** Hook that wraps default grid media rendering with sample renderer support. */
 export function useGridSampleRendererItem(
@@ -29,13 +30,13 @@ export function useGridSampleRendererItem(
   const RecoilBridge = useRecoilBridgeAcrossReactRoots_UNSTABLE();
 
   const getResolvedRenderer = useCallback(
-    (result: GridSampleResult) => {
+    ({ sample, urls }: GridSampleResult) => {
       if (!dataset) {
         return null;
       }
 
       const ctx = createSampleRendererRenderContext(
-        result,
+        { sample, urls },
         selectedMediaField,
         dataset,
         schema,
@@ -43,7 +44,7 @@ export function useGridSampleRendererItem(
       );
       const matchedRenderer = getMatchingSampleRenderer(sampleRenderers, ctx);
       const canonicalRenderer = matchedRenderer
-        ? getRawComponent(matchedRenderer.name)
+        ? getComponent(matchedRenderer.name)
         : null;
 
       if (!matchedRenderer || !ctx.media.url || !canonicalRenderer) {
@@ -92,7 +93,7 @@ export function useGridSampleRendererItem(
 
       try {
         return new GridSampleRendererItem({
-          createFallbackLooker: () => createDefaultItem(result, id, fontSize),
+          createFallbackRenderer: () => createDefaultItem(result, id, fontSize),
           pluginName: resolvedRenderer.registration.name,
           Renderer: resolvedRenderer.Renderer,
           RecoilBridge:
@@ -111,5 +112,8 @@ export function useGridSampleRendererItem(
     [createDefaultItem, getResolvedRenderer, RecoilBridge]
   );
 
-  return { createItem };
+  // `showItem` must stay stable even as the sample renderer hook refreshes.
+  const ref = useRef({ createItem });
+  ref.current = { createItem };
+  return ref;
 }

@@ -1,6 +1,6 @@
 import type { Hide, ID, Show } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useMemo } from "react";
 import type { LookerCache } from "./types";
 import useFontSize from "./useFontSize";
 import { useGridSampleRendererItem } from "./useGridSampleRendererItem";
@@ -22,11 +22,7 @@ export default function useRenderer({
   const createLooker = fos.useCreateLooker(false, true, lookerOptions);
   const getFontSize = useFontSize(id);
   const selectSample = useSelectSample(records);
-  const sampleRenderer = useGridSampleRendererItem(createLooker);
-
-  // `showItem` must stay stable even as the sample renderer hook refreshes.
-  const sampleRendererRef = useRef(sampleRenderer);
-  sampleRendererRef.current = sampleRenderer;
+  const sampleRendererRef = useGridSampleRendererItem(createLooker);
 
   const detachItem = useCallback(
     (id: ID) => cache.get(id.description)?.detach(),
@@ -66,25 +62,25 @@ export default function useRenderer({
         );
       }
 
-      const looker = sampleRendererRef.current.createItem(
+      const item = sampleRendererRef.current.createItem(
         result,
         id,
         getFontSize()
       );
 
-      looker.addEventListener("selectthumbnail", ({ detail }) =>
+      item.addEventListener("selectthumbnail", ({ detail }) =>
         selectSample.current?.(detail)
       );
-      looker.addEventListener("refresh", () => {
+      item.addEventListener("refresh", () => {
         cache.isShown(key) &&
-          spotlight.sizeChange(key, looker.getSizeBytesEstimate());
+          spotlight.sizeChange(key, item.getSizeBytesEstimate());
       });
 
-      cache.set(key, looker);
-      looker.attach(element, dimensions);
+      cache.set(key, item);
+      item.attach(element, dimensions);
       return cache.sizeOf(key);
     },
-    [cache, getFontSize, selectSample, store]
+    [cache, getFontSize, selectSample, sampleRendererRef, store]
   );
 
   return {

@@ -36,7 +36,7 @@ describe("metadata looker elements", () => {
 
     const root = getMetadataElements({
       abortController: new AbortController(),
-      config: config as any,
+      config: config,
       dispatchEvent: () => undefined,
       update: () => undefined,
     });
@@ -46,18 +46,18 @@ describe("metadata looker elements", () => {
     ) as MetadataGridTagsElement | undefined;
 
     expect(tagsElement).toBeTruthy();
-    expect(tagsElement?.isShown(config as any)).toBe(true);
+    expect(tagsElement?.isShown(config)).toBe(true);
     expect(
       tagsElement?.isShown({
         ...config,
         thumbnail: false,
-      } as any)
+      })
     ).toBe(false);
     expect(
       tagsElement?.isShown({
         ...config,
         isModal: true,
-      } as any)
+      })
     ).toBe(false);
   });
 });

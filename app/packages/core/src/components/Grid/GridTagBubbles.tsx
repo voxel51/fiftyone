@@ -2,9 +2,9 @@ import { computeTagData } from "@fiftyone/looker/src/elements/common/computeTagD
 import * as fos from "@fiftyone/state";
 import { prettify } from "@fiftyone/utilities";
 import React, { useMemo } from "react";
-import { useRecoilValue } from "recoil";
 import styles from "./GridTagBubbles.module.css";
 
+const DEFAULT_FONT_SIZE = 14;
 const SPACING_COEFFICIENT = 0.1;
 
 type GridTagBubblesProps = {
@@ -23,11 +23,11 @@ const getTagAttribute = (path: string | undefined, value: string) => {
 
 export default function GridTagBubbles({ sample }: GridTagBubblesProps) {
   const options = fos.useLookerOptions(false);
-  const fieldSchema = useRecoilValue(
-    fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
-  );
+  const fieldSchema = fos.useSampleSchema();
 
-  const spacing = `${(options.fontSize ?? 14) * SPACING_COEFFICIENT}px`;
+  const spacing = `${
+    (options.fontSize ?? DEFAULT_FONT_SIZE) * SPACING_COEFFICIENT
+  }px`;
 
   const tags = useMemo(() => {
     if (
@@ -69,7 +69,7 @@ export default function GridTagBubbles({ sample }: GridTagBubblesProps) {
   }
 
   return (
-    <div className={styles.gridTagBubbles} data-cy="grid-render-claims-tags">
+    <div className={styles.gridTagBubbles}>
       {tags.map(({ color, path, title, value }, index) => {
         const formattedValue = prettify(value);
         return (

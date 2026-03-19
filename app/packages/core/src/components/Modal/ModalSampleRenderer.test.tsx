@@ -6,7 +6,7 @@ import { ModalSampleRenderer } from "./ModalSampleRenderer";
 const {
   createSampleRendererRenderContext,
   getMatchingSampleRenderer,
-  getRawComponent,
+  getComponent,
   getSampleRendererComponent,
   mockDataset,
   mockSchema,
@@ -18,7 +18,7 @@ const {
   mockSchema: { filepath: { ftype: "StringField" } },
   createSampleRendererRenderContext: vi.fn(),
   getMatchingSampleRenderer: vi.fn(),
-  getRawComponent: vi.fn(),
+  getComponent: vi.fn(),
   getSampleRendererComponent: vi.fn(),
   useCurrentDataset: vi.fn(),
   useModalSampleSchema: vi.fn(),
@@ -31,7 +31,7 @@ vi.mock("@fiftyone/plugins", () => ({
     createSampleRendererRenderContext(...args),
   getMatchingSampleRenderer: (...args: unknown[]) =>
     getMatchingSampleRenderer(...args),
-  getRawComponent: (...args: unknown[]) => getRawComponent(...args),
+  getComponent: (...args: unknown[]) => getComponent(...args),
   getSampleRendererComponent: (...args: unknown[]) =>
     getSampleRendererComponent(...args),
   useActivePlugins: (...args: unknown[]) => useActivePlugins(...args),
@@ -94,7 +94,7 @@ describe("ModalSampleRenderer", () => {
     useActivePlugins.mockReturnValue([registration]);
     createSampleRendererRenderContext.mockReturnValue(ctx);
     getMatchingSampleRenderer.mockReturnValue(registration);
-    getRawComponent.mockReturnValue(Renderer);
+    getComponent.mockReturnValue(Renderer);
     getSampleRendererComponent.mockReturnValue(Renderer);
   });
 
@@ -132,7 +132,7 @@ describe("ModalSampleRenderer", () => {
       throw new Error("boom");
     };
 
-    getRawComponent.mockReturnValue(ThrowingRenderer);
+    getComponent.mockReturnValue(ThrowingRenderer);
     getSampleRendererComponent.mockReturnValue(ThrowingRenderer);
 
     render(<ModalSampleRenderer sample={sample} modalMediaField="filepath" />);

@@ -1,24 +1,23 @@
-import { render, screen } from "@testing-library/react";
 import { COLOR_BY, STRING_FIELD, type Schema } from "@fiftyone/utilities";
+import { cleanup, render, screen } from "@testing-library/react";
 import React from "react";
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import GridTagBubbles from "./GridTagBubbles";
 
 const mockUseLookerOptions = vi.fn();
-const mockUseRecoilValue = vi.fn();
+const mockUseSampleSchema = vi.fn();
 
 vi.mock("@fiftyone/state", () => ({
-  State: {
-    SPACE: {
-      SAMPLE: "sample",
-    },
-  },
-  fieldSchema: (params: unknown) => params,
+  useSampleSchema: (params: unknown) => mockUseSampleSchema(params),
   useLookerOptions: (...args: unknown[]) => mockUseLookerOptions(...args),
-}));
-
-vi.mock("recoil", () => ({
-  useRecoilValue: (...args: unknown[]) => mockUseRecoilValue(...args),
 }));
 
 const SCHEMA: Schema = {
@@ -63,7 +62,7 @@ describe("GridTagBubbles", () => {
   });
 
   beforeEach(() => {
-    mockUseRecoilValue.mockReturnValue(SCHEMA);
+    mockUseSampleSchema.mockReturnValue(SCHEMA);
     mockUseLookerOptions.mockReturnValue({
       activePaths: ["filepath", "tags", "_label_tags"],
       attributeVisibility: {},
@@ -75,6 +74,10 @@ describe("GridTagBubbles", () => {
       selectedLabelTags: [],
       timeZone: "UTC",
     });
+  });
+
+  afterEach(() => {
+    cleanup();
   });
 
   it("renders primitive and tag bubbles", () => {
@@ -99,6 +102,7 @@ describe("GridTagBubbles", () => {
     });
 
     render(<GridTagBubbles sample={SAMPLE} />);
-    expect(screen.queryAllByText("/tmp/example.pdf").length).toBeGreaterThan(0);
+
+    expect(screen.queryByText("/tmp/example.pdf")).toBeTruthy();
   });
 });
