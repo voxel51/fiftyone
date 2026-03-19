@@ -83,7 +83,7 @@ const Annotate = ({ disabledReason }: AnnotateProps) => {
       contextManager.exit();
       clearUndo();
     };
-  }, []); // omit clearUndo and contextManager else infinte loading
+  }, []);
 
   const disabledMsg =
     disabledReason !== null ? DISABLED_MESSAGES[disabledReason] : undefined;

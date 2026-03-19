@@ -55,8 +55,6 @@ export type LighterEventGroup = {
   // ============================================================================
   /** Emitted on "pointer down" to inform QuickDraw to create a new detection */
   "lighter:overlay-create": { eventId: string };
-  /** Emitted when user clicks without dragging in QuickDraw mode to exit */
-  "lighter:quickdraw-quit": { eventId: string };
   /** Emitted when an overlay finishes being established */
   "lighter:overlay-establish": {
     id: string;
