@@ -6,11 +6,16 @@ FiftyOne Server /media route
 |
 """
 
+import logging
+import mimetypes
 import os
 import typing as t
+from pathlib import Path
 
 import anyio
 import aiofiles
+import eta.core.image as etai
+import eta.core.video as etav
 from aiofiles.threadpool.binary import AsyncBufferedReader
 from aiofiles.os import stat as aio_stat
 from starlette.endpoints import HTTPEndpoint
@@ -21,6 +26,100 @@ from starlette.responses import (
     StreamingResponse,
     guess_type,
 )
+
+from fiftyone.server.media_cache import is_path_allowed
+
+logger = logging.getLogger(__name__)
+
+# Register MIME types for FiftyOne-specific formats.
+# Process-local, in-memory only — does not modify system MIME databases.
+# Does not affect eta.core image/video detection (verified).
+#
+# TODO: Migrate these to the eta package with proper is_*_mime_type()
+# detection methods (similar to etai.is_image_mime_type), then replace
+# the custom registration + blocklist approach with eta-based detection.
+mimetypes.add_type("application/x-pcd", ".pcd")
+mimetypes.add_type("application/x-fo3d", ".fo3d")
+mimetypes.add_type("application/x-rrd", ".rrd")
+mimetypes.add_type("application/x-npy", ".npy")
+
+# MIME prefixes that indicate non-media content
+_BLOCKED_MIME_PREFIXES = ("text/",)
+
+# Specific non-media MIME types to block
+_BLOCKED_MIME_TYPES = frozenset(
+    {
+        "application/json",
+        "application/xml",
+        "application/javascript",
+    }
+)
+
+
+def _is_media_file(filepath: str) -> bool:
+    """Check if a filepath is a recognized media type.
+
+    Uses eta.core for image/video detection (same as
+    fiftyone.core.media.get_media_type), then falls back to
+    mimetypes.guess_type for other formats.
+
+    Files with known non-media MIME types (text/*, application/json, etc.)
+    are blocked. Files with None MIME type (unrecognized extension) are
+    allowed through — Layer 3 (directory allowlist) constrains them.
+    """
+    if etai.is_image_mime_type(filepath):
+        return True
+
+    if etav.is_video_mime_type(filepath):
+        return True
+
+    mime_type, _ = mimetypes.guess_type(filepath)
+
+    # No MIME type — unrecognized format (e.g., .mtl, .ply, .fbx on
+    # some systems). Allow through; Layer 3 constrains by directory.
+    if mime_type is None:
+        return True
+
+    # Block known non-media MIME types
+    if mime_type.startswith(_BLOCKED_MIME_PREFIXES):
+        return False
+
+    if mime_type in _BLOCKED_MIME_TYPES:
+        return False
+
+    # Allow everything else: audio/*, model/*, application/x-pcd,
+    # application/x-fo3d, application/x-rrd, application/x-npy,
+    # application/octet-stream, and system-registered types for
+    # 3D formats (e.g., .obj -> application/x-tgif,
+    # .stl -> application/vnd.ms-pki.stl)
+    return True
+
+
+def _validate_media_path(
+    request: Request,
+) -> tuple[t.Optional[str], t.Optional[Response]]:
+    """Validate and normalize the requested media path.
+
+    Returns (resolved_path, None) on success.
+    Returns (None, error_response) on failure.
+    """
+    raw_path = request.query_params.get("filepath")
+    if not raw_path:
+        return None, Response(status_code=400)
+
+    # Layer 1: Path normalization — expand ~, resolve .., symlinks
+    resolved = Path(raw_path).expanduser().resolve(strict=False)
+    resolved_str = str(resolved)
+
+    # Layer 2: Media type check
+    if not _is_media_file(resolved_str):
+        return None, Response(status_code=403)
+
+    # Layer 3: Directory allowlist
+    if not is_path_allowed(resolved_str):
+        return None, Response(status_code=403)
+
+    return resolved_str, None
 
 
 async def ranged(
@@ -58,7 +157,9 @@ class Media(HTTPEndpoint):
     async def get(
         self, request: Request
     ) -> t.Union[FileResponse, StreamingResponse]:
-        path = request.query_params["filepath"]
+        path, error = _validate_media_path(request)
+        if error:
+            return error
 
         response: t.Union[FileResponse, StreamingResponse]
 
@@ -77,12 +178,12 @@ class Media(HTTPEndpoint):
 
         response.headers["Access-Control-Allow-Origin"] = "*"
         response.headers["Access-Control-Allow-Methods"] = "GET, HEAD, OPTIONS"
-        response.headers[
-            "Access-Control-Allow-Headers"
-        ] = "Range, Content-Type, Authorization"
-        response.headers[
-            "Access-Control-Expose-Headers"
-        ] = "Accept-Ranges, Content-Range, Content-Length"
+        response.headers["Access-Control-Allow-Headers"] = (
+            "Range, Content-Type, Authorization"
+        )
+        response.headers["Access-Control-Expose-Headers"] = (
+            "Accept-Ranges, Content-Range, Content-Length"
+        )
         return response
 
     async def ranged_file_response(
@@ -136,7 +237,10 @@ class Media(HTTPEndpoint):
         return response
 
     async def head(self, request: Request) -> Response:
-        path = request.query_params["filepath"]
+        path, error = _validate_media_path(request)
+        if error:
+            return error
+
         response = Response()
         size = (await aio_stat(path)).st_size
         response.headers.update(

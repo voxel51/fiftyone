@@ -28,6 +28,7 @@ from fiftyone.utils.utils3d import OrthographicProjectionMetadata
 from fiftyone.utils.rerun import RrdFile
 
 import fiftyone.core.media as fom
+from fiftyone.server.media_cache import add_allowed_dir_for_filepath
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +82,11 @@ async def get_metadata(
         opm_field,
         detections_fields,
         additional_fields,
-    ) = additional_media_fields if additional_media_fields is not None else _get_additional_media_fields(collection)
+    ) = (
+        additional_media_fields
+        if additional_media_fields is not None
+        else _get_additional_media_fields(collection)
+    )
 
     filepath_result, filepath_source, urls = _create_media_urls(
         collection,
@@ -452,6 +457,7 @@ def _create_media_urls(
 
         if path not in cache:
             cache[path] = path
+            add_allowed_dir_for_filepath(path)
 
         if use_opm and opm_filepath == field:
             filepath_source = path

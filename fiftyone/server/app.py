@@ -29,7 +29,6 @@ from starlette.staticfiles import NotModifiedResponse, PathLike, StaticFiles
 from starlette.types import Scope
 
 import fiftyone as fo
-import fiftyone.constants as foc
 from fiftyone.operators.store.notification_service import (
     MongoChangeStreamNotificationServiceLifecycleManager,
     default_notification_service,
@@ -108,9 +107,9 @@ schema = gql.Schema(
 )
 
 mtypes = (  # ensure mimetypes for Windows
-    ('application/javascript', '.js'),
-    ('text/css', '.css'),
-    ('application/wasm', '.wasm'),
+    ("application/javascript", ".js"),
+    ("text/css", ".css"),
+    ("application/wasm", ".wasm"),
 )
 for mtype, ext in mtypes:
     mimetypes.add_type(mtype, ext)
@@ -162,6 +161,19 @@ app = Starlette(
 
 @app.on_event("startup")
 async def startup_event():
+    from fiftyone.server.media_cache import add_allowed_dir
+
+    # Seed media directory allowlist for path traversal prevention
+    add_allowed_dir(fo.config.default_dataset_dir)
+    add_allowed_dir(fo.config.dataset_zoo_dir)
+    add_allowed_dir(fo.config.model_zoo_dir)
+
+    extra = os.environ.get("FIFTYONE_MEDIA_ALLOWED_ROOTS", "")
+    for root in extra.split(","):
+        root = root.strip()
+        if root:
+            add_allowed_dir(root)
+
     if is_notification_service_disabled():
         logger.info("Execution Store notification service is disabled")
         return
