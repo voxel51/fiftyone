@@ -46,7 +46,9 @@ class TestExecutionContext:
         mock.get_secret_sync.side_effect = lambda key, operator: MockSecret(
             key, self.secrets.get(key)
         )
-        mock._registered_secrets = {self.operator_uri: self.plugin_secrets}
+        mock._registered_secrets = {
+            self.operator_uri: {k: True for k in self.plugin_secrets}
+        }
         return mock
 
     def test_secret(self):
@@ -151,7 +153,7 @@ class TestGetSecret:
     @pytest.fixture(autouse=False)
     def plugin_secrets_resolver(self, secrets_client):
         resolver = fop.PluginSecretsResolver()
-        resolver._registered_secrets = {"operator": ["MY_SECRET_KEY"]}
+        resolver._registered_secrets = {"operator": {"MY_SECRET_KEY": True}}
         resolver._instance.client = secrets_client
         return resolver
 
@@ -172,7 +174,7 @@ class TestGetSecretSync:
         )
 
         resolver = fop.PluginSecretsResolver()
-        resolver._registered_secrets = {"operator": ["MY_SECRET_KEY"]}
+        resolver._registered_secrets = {"operator": {"MY_SECRET_KEY": True}}
 
         result = resolver.get_secret_sync(
             key="MY_SECRET_KEY", operator_uri="operator"
@@ -186,10 +188,83 @@ class TestGetSecretSync:
         )
 
         resolver = fop.PluginSecretsResolver()
-        resolver._registered_secrets = {"operator": ["SOME_OTHER_SECRET_KEY"]}
+        resolver._registered_secrets = {
+            "operator": {"SOME_OTHER_SECRET_KEY": True}
+        }
 
         result = resolver.get_secret_sync(
             key="MY_SECRET_KEY", operator_uri="operator"
         )
 
         assert result is None
+
+
+class TestOptionalSecrets:
+    def test_register_operator_marks_optional_keys(self):
+        resolver = fop.PluginSecretsResolver()
+        resolver.register_operator(
+            operator_uri="op",
+            required_secrets=["REQ_KEY", "OPT_KEY"],
+            optional_keys={"OPT_KEY"},
+        )
+
+        reqs = resolver._registered_secrets["op"]
+        assert reqs["REQ_KEY"] is True
+        assert reqs["OPT_KEY"] is False
+
+    def test_register_operator_all_required_by_default(self):
+        resolver = fop.PluginSecretsResolver()
+        resolver.register_operator(
+            operator_uri="op",
+            required_secrets=["KEY_A", "KEY_B"],
+        )
+
+        reqs = resolver._registered_secrets["op"]
+        assert reqs["KEY_A"] is True
+        assert reqs["KEY_B"] is True
+
+    def test_optional_secret_resolves_when_present(self, mocker):
+        mocker.patch.dict(os.environ, {"OPT_KEY": "opt_value"})
+
+        resolver = fop.PluginSecretsResolver()
+        resolver._instance.client = fois.EnvSecretProvider()
+        resolver.register_operator(
+            operator_uri="op",
+            required_secrets=["OPT_KEY"],
+            optional_keys={"OPT_KEY"},
+        )
+
+        result = resolver.get_secret_sync(key="OPT_KEY", operator_uri="op")
+
+        assert result == "opt_value"
+
+    def test_optional_secret_passes_optional_flag(self):
+        mock_client = MagicMock(spec=fois.EnvSecretProvider)
+        mock_client.get_sync.return_value = "value"
+
+        resolver = fop.PluginSecretsResolver()
+        resolver.register_operator(
+            operator_uri="op",
+            required_secrets=["OPT_KEY"],
+            optional_keys={"OPT_KEY"},
+        )
+        resolver._instance.client = mock_client
+
+        resolver.get_secret_sync(key="OPT_KEY", operator_uri="op")
+
+        mock_client.get_sync.assert_called_once_with("OPT_KEY", optional=True)
+
+    def test_required_secret_does_not_pass_optional_flag(self):
+        mock_client = MagicMock(spec=fois.EnvSecretProvider)
+        mock_client.get_sync.return_value = "value"
+
+        resolver = fop.PluginSecretsResolver()
+        resolver.register_operator(
+            operator_uri="op",
+            required_secrets=["REQ_KEY"],
+        )
+        resolver._instance.client = mock_client
+
+        resolver.get_secret_sync(key="REQ_KEY", operator_uri="op")
+
+        mock_client.get_sync.assert_called_once_with("REQ_KEY")

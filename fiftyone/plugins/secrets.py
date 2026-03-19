@@ -19,7 +19,6 @@ class PluginSecretsResolver:
 
     _instance = None
     _registered_secrets = {}
-    _optional_secrets = {}
 
     def __new__(cls):
         if cls._instance is None:
@@ -56,9 +55,10 @@ class PluginSecretsResolver:
         required_secrets: typing.List[str],
         optional_keys: typing.Set[str] = None,
     ) -> None:
-        self._registered_secrets[operator_uri] = required_secrets
-        if optional_keys:
-            self._optional_secrets[operator_uri] = optional_keys
+        optional_keys = optional_keys or set()
+        self._registered_secrets[operator_uri] = {
+            key: key not in optional_keys for key in required_secrets
+        }
 
     def client(self) -> fois.ISecretProvider:
         if not self._instance:
@@ -85,9 +85,10 @@ class PluginSecretsResolver:
         if not valid_keys:
             return {}
 
-        optional = self._optional_secrets.get(operator_uri)
-        if optional:
-            kwargs["optional_keys"] = optional
+        reqs = self._registered_secrets.get(operator_uri, {})
+        optional_keys = {k for k, required in reqs.items() if not required}
+        if optional_keys:
+            kwargs["optional_keys"] = optional_keys
 
         resolved_secrets = await self.client.get_multiple(keys, **kwargs)
         return resolved_secrets
@@ -129,8 +130,8 @@ class PluginSecretsResolver:
         if not valid_keys:
             return None
 
-        optional = self._optional_secrets.get(operator_uri)
-        if optional and key in optional:
+        reqs = self._registered_secrets.get(operator_uri, {})
+        if not reqs.get(key, True):
             kwargs["optional"] = True
 
         return self.client.get_sync(key, **kwargs)
