@@ -8,6 +8,7 @@ import { useAtom } from "jotai";
 import { useEffect, useRef } from "react";
 import {
   PixiRenderer2D,
+  Rect,
   Scene2D,
   globalPixiResourceLoader,
   lighterSceneAtom,
@@ -22,6 +23,10 @@ export type LighterOptions = Partial<ReturnType<typeof useLookerOptions>> & {
   zoom?: boolean;
   // Padding applied when auto-zooming to content.
   zoomPad?: number;
+  // Pre-computed zoom target in normalized [0,1] coordinates. When provided
+  // alongside zoom: true, the viewport snaps to this rect as soon as the image
+  // loads, without waiting for overlay objects to be added to the scene.
+  zoomTarget?: Rect | null;
 };
 
 /**
@@ -65,6 +70,7 @@ export const useLighterSetupWithPixi = (
       alpha: options.alpha,
       zoom: options.zoom,
       zoomPad: options.zoomPad,
+      zoomTarget: options.zoomTarget ?? undefined,
     };
 
     const newScene = new Scene2D({

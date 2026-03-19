@@ -16,6 +16,7 @@ import { useAtomValue } from "jotai";
 import React, { useEffect, useMemo, useRef, useState, useLayoutEffect } from "react";
 import { useRecoilValue } from "recoil";
 import { activeLabelSchemas } from "../Sidebar/Annotate/state";
+import { extractZoomTarget } from "./extractZoomTarget";
 import { LighterToolbar } from "./LighterToolbar";
 import { singletonCanvas } from "./SharedCanvas";
 import { useBridge } from "./useBridge";
@@ -106,6 +107,7 @@ export const LighterSampleRenderer = ({
           containerRef={containerRef}
           sceneId={sceneId}
           sampleId={sampleRef.current?.sample?._id}
+          sampleData={sampleRef.current?.sample}
         />
       )}
       {isCanvasHovered && <LighterToolbar />}
@@ -117,8 +119,9 @@ const LighterSetupImpl = (props: {
   containerRef: React.RefObject<HTMLDivElement>;
   sceneId: string;
   sampleId: string | undefined;
+  sampleData: Record<string, unknown> | undefined;
 }) => {
-  const { containerRef, sceneId, sampleId } = props;
+  const { containerRef, sceneId, sampleId, sampleData } = props;
 
   const options = useRecoilValue(
     fos.lookerOptions({ modal: true, withFilter: false })
@@ -137,14 +140,21 @@ const LighterSetupImpl = (props: {
   const optionsZoom = ("zoom" in options && options.zoom) as boolean | undefined;
   const effectiveZoom = !!optionsZoom && !initialViewport;
 
+  const zoomTarget = useMemo(
+    () => (effectiveZoom && sampleData ? extractZoomTarget(sampleData) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [effectiveZoom]
+  );
+
   const mergedOptions = useMemo(
     () => ({
       ...options,
       activePaths: jotaiActivePaths ?? options.activePaths,
       zoom: effectiveZoom,
       zoomPad: DEFAULT_ZOOM_PAD,
+      zoomTarget,
     }),
-    [options, jotaiActivePaths, effectiveZoom]
+    [options, jotaiActivePaths, effectiveZoom, zoomTarget]
   );
 
   const canvas = singletonCanvas.getCanvas(containerRef.current);

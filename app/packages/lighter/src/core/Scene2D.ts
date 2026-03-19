@@ -161,6 +161,7 @@ export class Scene2D {
 
   private shouldZoomToContent = false;
   private pendingZoomPad = 0;
+  private pendingZoomTarget: Rect | null = null;
   private canonicalMediaBoundsReady = false;
 
   constructor(private readonly config: Scene2DConfig) {
@@ -170,6 +171,7 @@ export class Scene2D {
     if (config.options?.zoom) {
       this.shouldZoomToContent = true;
       this.pendingZoomPad = config.options.zoomPad ?? 0;
+      this.pendingZoomTarget = config.options.zoomTarget ?? null;
     }
 
     this.coordinateSystem = new CoordinateSystem2D();
@@ -1000,11 +1002,10 @@ export class Scene2D {
    * Applies one-shot viewport mutations before each frame is drawn.
    */
   private preProcess(): void {
-    if (this.shouldZoomToContent && this.canonicalMediaBoundsReady) {
-      if (this.getContentBounds() !== null) {
-        this.fitToContent(this.pendingZoomPad);
-        this.shouldZoomToContent = false;
-      }
+    if (this.shouldZoomToContent && this.canonicalMediaBoundsReady && this.pendingZoomTarget) {
+      const worldRect = this.coordinateSystem.relativeToAbsolute(this.pendingZoomTarget);
+      this.config.renderer.fitToRect(worldRect, this.pendingZoomPad);
+      this.shouldZoomToContent = false;
     }
   }
 
