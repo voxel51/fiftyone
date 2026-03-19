@@ -14,6 +14,7 @@ import type { Renderer2D } from "../renderer/Renderer2D";
 import type { SelectionManager } from "../selection/SelectionManager";
 import type { Point, Rect } from "../types";
 import { InteractiveDetectionHandler } from "./InteractiveDetectionHandler";
+import { v4 as generateUUID } from "uuid";
 
 /**
  * Interface for objects that can handle interaction events.
@@ -204,6 +205,14 @@ export class InteractionManager {
     pointerId: number;
   };
   private readonly eventBus: EventDispatcher<LighterEventGroup>;
+
+  private pendingQuickDraw?: {
+    point: Point;
+    worldPoint: Point;
+    scale: number;
+    pointerId: number;
+  };
+
   constructor(
     private canvas: HTMLCanvasElement,
     private selectionManager: SelectionManager,
@@ -361,7 +370,7 @@ export class InteractionManager {
       // an interactive handler. This relies on the event bus invoking
       // handlers synchronously so the handler is immediately available.
       this.eventBus.dispatch("lighter:overlay-create", {
-        eventId: crypto.randomUUID(),
+        eventId: generateUUID(),
       });
 
       const interactiveHandler = this.getInteractiveHandler();
@@ -478,19 +487,26 @@ export class InteractionManager {
     }
   };
 
+  private quickDrawQuit = (event: PointerEvent): boolean => {
+    if (!this.pendingQuickDraw) return false;
+
+    this.eventBus.dispatch("lighter:quickdraw-quit", {
+      eventId: generateUUID(),
+    });
+
+    this.pendingQuickDraw = undefined;
+    this.renderer.enableZoomPan();
+    this.canvas.releasePointerCapture(event.pointerId);
+    this.clickStartPoint = undefined;
+    this.clickStartTime = 0;
+
+    return true;
+  };
+
   private handlePointerUp = (event: PointerEvent): void => {
-    // Click-to-quit: if there was no significant movement, exit QuickDraw.
-    if (this.pendingQuickDraw) {
-      this.pendingQuickDraw = undefined;
-      this.eventBus.dispatch("lighter:quickdraw-quit", {
-        eventId: crypto.randomUUID(),
-      });
-      this.renderer.enableZoomPan();
-      this.canvas.releasePointerCapture(event.pointerId);
-      this.clickStartPoint = undefined;
-      this.clickStartTime = 0;
-      return;
-    }
+    // if we still have a pendingQuickDraw there was no significant movement
+    // the user clicked to exit QuickDraw
+    if (this.quickDrawQuit(event)) return;
 
     const point = this.getCanvasPoint(event);
     const worldPoint = this.renderer.screenToWorld(point);

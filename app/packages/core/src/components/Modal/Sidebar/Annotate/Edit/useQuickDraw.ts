@@ -231,13 +231,15 @@ export const useQuickDraw = () => {
   );
 
   const claimEvent = useAtomCallback(
-    useCallback((get, _set, eventType: string, eventId: string) => {
-      const claimed = get(claimedEventsAtom);
-      if (claimed.get(eventType) === eventId) {
+    useCallback((get, set, eventType: string, eventId: string) => {
+      const claimedEvents = get(claimedEventsAtom);
+      if (claimedEvents.get(eventType) === eventId) {
         return false;
       }
 
-      claimed.set(eventType, eventId);
+      const updatedEvents = new Map(claimedEvents);
+      updatedEvents.set(eventType, eventId);
+      set(claimedEventsAtom, updatedEvents);
 
       return true;
     }, [])
