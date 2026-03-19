@@ -1457,3 +1457,18 @@ export type OperatorPromptPropsType = {
 };
 
 export type ValidationErrorsType = Array<{ path: string; reason: string }>;
+
+/**
+ * Response type returned from operator execution.
+ */
+export type OperatorResponse<T> = {
+  result: {
+    result: T;
+  };
+  error?: string;
+  error_message?: string;
+  delegated: boolean;
+  executor?: {
+    id?: string;
+  };
+};
