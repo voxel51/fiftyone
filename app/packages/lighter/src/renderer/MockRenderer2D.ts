@@ -85,6 +85,20 @@ export class MockRenderer2D {
     return { width: text.length * 8, height: 16 };
   }
 
+  drawPoint(
+    center: Point,
+    radius: number,
+    style: DrawStyle,
+    containerId: string
+  ): void {
+    this.containers.set(containerId, {
+      type: "point",
+      center,
+      radius,
+      style,
+    });
+  }
+
   drawLine(
     start: Point,
     end: Point,

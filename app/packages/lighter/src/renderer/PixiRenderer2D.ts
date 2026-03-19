@@ -533,6 +533,35 @@ export class PixiRenderer2D implements Renderer2D {
     return bg;
   }
 
+  drawPoint(
+    center: Point,
+    radius: number,
+    style: DrawStyle,
+    containerId: string
+  ): void {
+    const graphics = new PIXI.Graphics();
+    const scaledRadius = radius / this.getScale();
+
+    if (style.fillStyle) {
+      const { color, alpha } = parseColorWithAlpha(style.fillStyle);
+      graphics.circle(center.x, center.y, scaledRadius);
+      graphics.fill({ color, alpha: alpha * (style.opacity || 1) });
+    }
+
+    if (style.strokeStyle) {
+      const { color, alpha } = parseColorWithAlpha(style.strokeStyle);
+      graphics.circle(center.x, center.y, scaledRadius);
+      graphics.setStrokeStyle({
+        width: (style.lineWidth || 1) / this.getScale(),
+        color,
+        alpha: alpha * (style.opacity || 1),
+      });
+      graphics.stroke();
+    }
+
+    this.addToContainer(graphics, containerId);
+  }
+
   drawLine(
     start: Point,
     end: Point,
