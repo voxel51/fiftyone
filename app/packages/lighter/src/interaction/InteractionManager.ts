@@ -539,6 +539,26 @@ export class InteractionManager {
       this.maintainAspectRatio = event.shiftKey;
       return;
     }
+
+    // Delete/Backspace: remove sub-selected keypoint
+    if (event.key === "Delete" || event.key === "Backspace") {
+      const selectedId = this.selectionManager.getSelectedIds()[0];
+      if (selectedId) {
+        const handler = this.handlers.find((h) => h.id === selectedId);
+        if (
+          handler &&
+          "getSelectedPointIndex" in handler &&
+          "removePoint" in handler
+        ) {
+          const kp = handler as any;
+          const idx = kp.getSelectedPointIndex();
+          if (idx !== null && idx >= 0) {
+            kp.removePoint(idx);
+            event.preventDefault();
+          }
+        }
+      }
+    }
   };
 
   /**
