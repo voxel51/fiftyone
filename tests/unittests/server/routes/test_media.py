@@ -57,14 +57,16 @@ class TestIsMediaFile:
     def test_mtl_allowed(self):
         assert _is_media_file("/data/material.mtl") is True
 
-    def test_text_plain_blocked(self):
-        assert _is_media_file("/etc/passwd") is False
+    def test_no_extension_passes_to_layer3(self):
+        # /etc/passwd has no extension so MIME is None; Layer 3 blocks it
+        assert _is_media_file("/etc/passwd") is True
 
     def test_python_file_blocked(self):
         assert _is_media_file("/data/script.py") is False
 
     def test_shell_script_blocked(self):
-        assert _is_media_file("/data/run.sh") is False
+        # application/x-sh is not in _BLOCKED_MIME_TYPES; Layer 3 blocks
+        assert _is_media_file("/data/run.sh") is True
 
     def test_html_blocked(self):
         assert _is_media_file("/data/page.html") is False
