@@ -4,6 +4,7 @@ import { loadModelWeights, MAX_RETRIES } from "./modelCache";
 // Minimal in-memory IndexedDB mock
 function createMockIDB() {
   const store = new Map<string, ArrayBuffer>();
+  const closeSpy = vi.fn();
 
   const mockObjectStore = () => ({
     get: (key: string) => {
@@ -26,7 +27,7 @@ function createMockIDB() {
       };
     },
     createObjectStore: () => {},
-    close: () => {},
+    close: closeSpy,
   };
 
   const mockIndexedDB = {
@@ -37,7 +38,7 @@ function createMockIDB() {
     },
   };
 
-  return { store, mockIndexedDB };
+  return { store, mockIndexedDB, closeSpy };
 }
 
 function mockFetchResponse(body: ArrayBuffer, status = 200) {
@@ -68,12 +69,14 @@ const TEST_BUFFER = new ArrayBuffer(64);
 
 describe("loadModelWeights", () => {
   let store: Map<string, ArrayBuffer>;
+  let closeSpy: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useRealTimers();
     const idb = createMockIDB();
     store = idb.store;
+    closeSpy = idb.closeSpy;
     vi.stubGlobal("indexedDB", idb.mockIndexedDB);
     global.fetch = vi.fn().mockResolvedValue(mockFetchResponse(TEST_BUFFER));
   });
@@ -83,6 +86,7 @@ describe("loadModelWeights", () => {
 
     expect(result.byteLength).toBe(64);
     expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(closeSpy).toHaveBeenCalled();
   });
 
   it("Returns cached buffer without fetching on cache hit", async () => {
@@ -92,6 +96,7 @@ describe("loadModelWeights", () => {
 
     expect(result.byteLength).toBe(64);
     expect(global.fetch).not.toHaveBeenCalled();
+    expect(closeSpy).toHaveBeenCalled();
   });
 
   it("Calls onProgress with full size on cache hit", async () => {
@@ -101,6 +106,7 @@ describe("loadModelWeights", () => {
     await loadModelWeights(TEST_URL, onProgress);
 
     expect(onProgress).toHaveBeenCalledWith(64, 64);
+    expect(closeSpy).toHaveBeenCalled();
   });
 
   it("Streams progress via onProgress on cache miss", async () => {
@@ -115,6 +121,7 @@ describe("loadModelWeights", () => {
     expect(onProgress).toHaveBeenCalledTimes(2);
     expect(onProgress).toHaveBeenNthCalledWith(1, 3, 5);
     expect(onProgress).toHaveBeenNthCalledWith(2, 5, 5);
+    expect(closeSpy).toHaveBeenCalled();
   });
 
   it.each([
@@ -136,6 +143,7 @@ describe("loadModelWeights", () => {
     expect(result.byteLength).toBe(64);
     if (onProgress)
       expect(onProgress).not.toHaveBeenCalled();
+    expect(closeSpy).toHaveBeenCalled();
   });
 
   it("Throws on 4xx without retrying", async () => {
@@ -143,6 +151,7 @@ describe("loadModelWeights", () => {
 
     await expect(loadModelWeights(TEST_URL)).rejects.toThrow("404");
     expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(closeSpy).toHaveBeenCalled();
   });
 
   it("Retries on 5xx and eventually succeeds", async () => {
@@ -157,6 +166,7 @@ describe("loadModelWeights", () => {
 
     expect(result.byteLength).toBe(64);
     expect(global.fetch).toHaveBeenCalledTimes(2);
+    expect(closeSpy).toHaveBeenCalled();
     vi.useRealTimers();
   });
 
@@ -172,6 +182,7 @@ describe("loadModelWeights", () => {
 
     expect(result.byteLength).toBe(64);
     expect(global.fetch).toHaveBeenCalledTimes(2);
+    expect(closeSpy).toHaveBeenCalled();
     vi.useRealTimers();
   });
 
@@ -183,6 +194,7 @@ describe("loadModelWeights", () => {
 
     expect(result.byteLength).toBe(64);
     expect(onWarning).toHaveBeenCalledWith("IndexedDB open failed, downloading instead: Error: blocked");
+    expect(closeSpy).not.toHaveBeenCalled();
   });
 
   it("Throws after all retries exhausted", async () => {
@@ -195,6 +207,7 @@ describe("loadModelWeights", () => {
     expect(err).toBeInstanceOf(Error);
     expect((err as Error).message).toBe("Network Error");
     expect(global.fetch).toHaveBeenCalledTimes(MAX_RETRIES);
+    expect(closeSpy).toHaveBeenCalled();
     vi.useRealTimers();
   });
 });

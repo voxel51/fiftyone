@@ -1,6 +1,7 @@
 const DB_NAME = "fiftyone-models";
 const STORE_NAME = "weights";
 const RETRY_BACKOFF_MS = 1000;
+const FETCH_TIMEOUT_MS = 60_000;
 export const MAX_RETRIES = 3;
 
 /** Open (or create) the IndexedDB database for model weight caching. */
@@ -52,11 +53,15 @@ async function fetchWithProgress(
       await new Promise((r) => setTimeout(r, RETRY_BACKOFF_MS * attempt));
 
     let response: Response;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
     try {
-      response = await fetch(url);
+      response = await fetch(url, { signal: controller.signal });
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
       continue;
+    } finally {
+      clearTimeout(timeoutId);
     }
 
     if (!response.ok) {
@@ -102,7 +107,7 @@ async function fetchWithProgress(
     }
   }
 
-  throw lastError;
+  throw lastError ?? new Error(`Failed to fetch ${url} after ${MAX_RETRIES} attempts`);
 }
 
 /**
