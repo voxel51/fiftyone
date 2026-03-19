@@ -1,4 +1,4 @@
-import { atom, useAtom, useAtomValue } from "jotai";
+import { atom, useAtomValue, useSetAtom } from "jotai";
 import { FeatureCache } from "../utils";
 import { useEffect } from "react";
 import { listEnabledFeatures } from "../client";
@@ -11,6 +11,32 @@ const isInitializedAtom = atom<boolean>(false);
 const isFetchingAtom = atom<boolean>(false);
 
 /**
+ * Write-only atom which handles cache initialization.
+ *
+ * This method is idempotent; if a request is already in flight or has already
+ * resolved, another request will not be made.
+ */
+const initializeFeaturesAtom = atom(null, async (get, set) => {
+  if (get(isInitializedAtom) || get(isFetchingAtom)) {
+    return;
+  }
+
+  set(isFetchingAtom, true);
+
+  try {
+    const res = await listEnabledFeatures();
+    const cache = get(featureCacheAtom);
+    cache.clear();
+    res?.features?.forEach((feature) => cache.setFeature(feature, true));
+    set(isInitializedAtom, true);
+  } catch (err) {
+    console.warn("Failed to fetch features", err);
+  } finally {
+    set(isFetchingAtom, false);
+  }
+});
+
+/**
  * Hook which provides access to a shared cache of enabled features.
  */
 export const useFeatureCache = (): {
@@ -18,24 +44,11 @@ export const useFeatureCache = (): {
   isResolved: boolean;
 } => {
   const cache = useAtomValue(featureCacheAtom);
-  const [isInitialized, setIsInitialized] = useAtom(isInitializedAtom);
-  const [isFetching, setIsFetching] = useAtom(isFetchingAtom);
+  const isInitialized = useAtomValue(isInitializedAtom);
+  const initializeCache = useSetAtom(initializeFeaturesAtom);
 
   useEffect(() => {
-    if (!isInitialized && !isFetching) {
-      setIsFetching(true);
-
-      listEnabledFeatures()
-        .then((res) => {
-          cache.clear();
-          res?.features?.forEach((feature) => cache.setFeature(feature, true));
-        })
-        .catch((err) => console.warn("Failed to fetch features", err))
-        .finally(() => {
-          setIsFetching(false);
-          setIsInitialized(true);
-        });
-    }
+    initializeCache();
   }, [cache]);
 
   return { cache, isResolved: isInitialized };

@@ -2,6 +2,7 @@ import { GizmoHelper, GizmoViewport, Grid, Line } from "@react-three/drei";
 import { useEffect, useMemo } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { DoubleSide, Vector3 } from "three";
+import { FO_USER_DATA } from "../constants";
 import {
   gridCellSizeAtom,
   gridSectionSizeAtom,
@@ -66,6 +67,7 @@ const FoAxesHelper = ({
       .map((axis) => {
         return (
           <Line
+            userData={{ [FO_USER_DATA.IS_HELPER]: true }}
             key={axis.color}
             points={[axis.start, axis.end]}
             color={axis.color}
@@ -153,8 +155,9 @@ export const Gizmos = ({
   return (
     <>
       {isGridOn && isGridVisible && (
-        <>
+        <group userData={{ [FO_USER_DATA.IS_HELPER]: true }}>
           <Grid
+            userData={{ [FO_USER_DATA.IS_HELPER]: true }}
             quaternion={gridHelperQuarternion}
             infiniteGrid={isGridInfinitelyLarge}
             side={DoubleSide}
@@ -171,11 +174,15 @@ export const Gizmos = ({
             sectionThickness={0.4}
           />
           <FoAxesHelper maxInOrthonormalPlane={maxInOrthonormalPlane} />
-        </>
+        </group>
       )}
       {isGizmoHelperVisible && (
-        <GizmoHelper alignment="top-left" margin={[80, 100]}>
-          <GizmoViewport />
+        <GizmoHelper
+          alignment="top-left"
+          margin={[80, 100]}
+          userData={{ [FO_USER_DATA.IS_HELPER]: true }}
+        >
+          <GizmoViewport userData={{ [FO_USER_DATA.IS_HELPER]: true }} />
         </GizmoHelper>
       )}
     </>

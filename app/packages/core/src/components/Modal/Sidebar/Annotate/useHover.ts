@@ -12,7 +12,7 @@ export const hoveringLabelIds = atom<string[]>([]);
 export default function useHover() {
   const { scene } = useLighter();
   const useEventHandler = useLighterEventHandler(
-    scene?.getSceneId() ?? UNDEFINED_LIGHTER_SCENE_ID
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
   );
 
   useEventHandler(

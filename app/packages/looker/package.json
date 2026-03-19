@@ -22,7 +22,7 @@
         "@xmldom/xmldom": "^0.8.6",
         "copy-to-clipboard": "^3.3.1",
         "fast-png": "^6.2.0",
-        "immutable": "^4.0.0-rc.12",
+        "immutable": "^4.3.8",
         "lodash": "^4.17.23",
         "lru-cache": "^11.0.1",
         "mime": "^2.5.2",

@@ -7,6 +7,12 @@ const { DISABLE_COVERAGE } = process.env;
 export default defineConfig({
   test: {
     environment: "jsdom",
+    setupFiles: ["./vitest.setup.ts"],
+    server: {
+      deps: {
+        inline: ["plotly.js", "react-plotly.js", "@rjsf/mui", "@rjsf/core"],
+      },
+    },
     coverage: {
       reporter: ["json", "lcov", "text", "html"],
       reportsDirectory: "./coverage",
@@ -22,7 +28,11 @@ export default defineConfig({
     },
   },
   plugins: [relay],
-  alias: {
-    path: "path-browserify",
+  resolve: {
+    alias: {
+      path: "path-browserify",
+    },
+    // Ensure MUI can resolve properly in tests
+    extensions: [".mjs", ".js", ".mts", ".ts", ".jsx", ".tsx", ".json"],
   },
 });

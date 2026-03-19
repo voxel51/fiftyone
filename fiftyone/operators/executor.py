@@ -9,6 +9,7 @@ FiftyOne operator execution.
 import asyncio
 import collections
 import contextlib
+import copy
 import dataclasses
 import inspect
 import logging
@@ -483,6 +484,7 @@ async def do_execute_pipeline(pipeline, ctx):
     """
     registry = OperatorRegistry()
     pipeline_stages = pipeline.stages or []
+    base_request_params = ctx.request_params
     ctx.pipeline = PipelineExecutionContext(
         active=True, total_stages=len(pipeline_stages), curr_stage_index=0
     )
@@ -497,8 +499,12 @@ async def do_execute_pipeline(pipeline, ctx):
                 if active or stage.always_run:
                     ctx.pipeline.curr_stage_index = idx
                     operator_uri = stage.operator_uri
-                    params = stage.params or {}
-                    ctx.request_params["params"] = params
+                    updated_request_params = copy.deepcopy(base_request_params)
+                    updated_request_params.update(
+                        stage.request_params_overrides or {}
+                    )
+                    updated_request_params["params"] = stage.params or {}
+                    ctx.request_params = updated_request_params
                     stage_operator = registry.get_operator(operator_uri)
                     if not stage_operator:
                         raise ValueError(

@@ -84,9 +84,11 @@ import {
   unsupportedMatcher,
 } from "./utils";
 import * as viewAtoms from "./view";
+import { OpType } from "@fiftyone/annotation/src/types";
 
 export enum EntryKind {
   EMPTY = "EMPTY",
+  EMPTY_ANNOTATIONS = "EMPTY_ANNOTATIONS",
   GROUP = "GROUP",
   INPUT = "INPUT",
   LABEL = "LABEL",
@@ -98,6 +100,10 @@ export interface EmptyEntry {
   kind: EntryKind.EMPTY;
   shown: boolean;
   group: string;
+}
+
+export interface EmptyAnnotationsEntry {
+  kind: EntryKind.EMPTY_ANNOTATIONS;
 }
 
 export interface InputEntry {
@@ -161,10 +167,13 @@ export type AnnotationLabel =
   | Detection3DAnnotationLabel
   | PolylineAnnotationLabel;
 
+export type AnnotationLabelData = AnnotationLabel["data"];
+
 export interface PrimitiveValue {
   type: "Primitive";
   data: Primitive;
   path: string;
+  op?: OpType;
 }
 
 export interface LabelEntry {
@@ -180,6 +189,7 @@ export interface LoadingEntry {
 
 export type SidebarEntry =
   | EmptyEntry
+  | EmptyAnnotationsEntry
   | GroupEntry
   | InputEntry
   | LabelEntry

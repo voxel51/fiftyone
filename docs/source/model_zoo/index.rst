@@ -59,6 +59,8 @@ apply cutting-edge computer vision techniques to your data.
 
 .. include:: models/model_cards.rst
 
+.. include:: models/plugin_model_cards.rst
+
 .. End of model cards
 
 .. raw:: html

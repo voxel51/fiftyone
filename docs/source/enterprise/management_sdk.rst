@@ -27,7 +27,7 @@ API reference
 Connections
 -----------
 
-.. automodule:: fiftyone.management.connection
+.. autoapimodule:: fiftyone.management.connection
    :members: test_api_connection, reload_connection
 
 .. _enterprise-sdk-api-keys:
@@ -35,7 +35,7 @@ Connections
 API keys
 --------
 
-.. automodule:: fiftyone.management.api_key
+.. autoapimodule:: fiftyone.management.api_key
    :members:
    :undoc-members:
 
@@ -44,7 +44,7 @@ API keys
 Cloud credentials
 -----------------
 
-.. automodule:: fiftyone.management.cloud_credentials
+.. autoapimodule:: fiftyone.management.cloud_credentials
    :members:
    :undoc-members:
 
@@ -53,7 +53,7 @@ Cloud credentials
 Dataset permissions
 -------------------
 
-.. automodule:: fiftyone.management.dataset
+.. autoapimodule:: fiftyone.management.dataset
    :members:
    :undoc-members:
 
@@ -62,7 +62,7 @@ Dataset permissions
 Organization settings
 ---------------------
 
-.. automodule:: fiftyone.management.organization
+.. autoapimodule:: fiftyone.management.organization
    :members:
    :undoc-members:
 
@@ -71,7 +71,7 @@ Organization settings
 Plugin management
 -----------------
 
-.. automodule:: fiftyone.management.plugin
+.. autoapimodule:: fiftyone.management.plugin
    :members:
    :undoc-members:
 
@@ -80,7 +80,7 @@ Plugin management
 Orchestrator management
 -----------------------
 
-.. automodule:: fiftyone.management.orchestrator
+.. autoapimodule:: fiftyone.management.orchestrator
    :members:
    :undoc-members:
 
@@ -89,7 +89,7 @@ Orchestrator management
 Secrets
 -------
 
-.. automodule:: fiftyone.management.secret
+.. autoapimodule:: fiftyone.management.secret
    :members:
    :undoc-members:
 
@@ -98,7 +98,7 @@ Secrets
 Snapshots
 ---------
 
-.. automodule:: fiftyone.management.snapshot
+.. autoapimodule:: fiftyone.management.snapshot
    :members:
    :undoc-members:
 
@@ -107,7 +107,7 @@ Snapshots
 User management
 ---------------
 
-.. automodule:: fiftyone.management.users
+.. autoapimodule:: fiftyone.management.users
    :members:
    :undoc-members:
 
@@ -116,6 +116,6 @@ User management
 Group management
 ----------------
 
-.. automodule:: fiftyone.management.user_groups
+.. autoapimodule:: fiftyone.management.user_groups
    :members:
    :undoc-members:

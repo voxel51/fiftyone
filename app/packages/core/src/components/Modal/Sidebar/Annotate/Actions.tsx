@@ -5,8 +5,12 @@ import {
   ANNOTATION_CUBOID,
   ANNOTATION_POLYLINE,
 } from "@fiftyone/looker-3d/src/constants";
-import { current3dAnnotationModeAtom } from "@fiftyone/looker-3d/src/state";
-import { is3DDataset } from "@fiftyone/state";
+import {
+  useCurrent3dAnnotationMode,
+  useReset3dAnnotationMode,
+  useSetCurrent3dAnnotationMode,
+} from "@fiftyone/looker-3d/src/state/accessors";
+import { is3DDataset, isPatchesView, pinned3d } from "@fiftyone/state";
 import {
   CLASSIFICATION,
   DETECTION,
@@ -16,13 +20,23 @@ import {
 } from "@fiftyone/utilities";
 import PolylineIcon from "@mui/icons-material/Timeline";
 import CuboidIcon from "@mui/icons-material/ViewInAr";
-import { useSetAtom } from "jotai";
+import {
+  Button,
+  Size,
+  Text,
+  TextColor,
+  TextVariant,
+  Variant,
+} from "@voxel51/voodo";
+import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ItemLeft, ItemRight } from "./Components";
 import { editing } from "./Edit";
+import { fieldsOfType } from "./Edit/state";
 import useCreate from "./Edit/useCreate";
+import { useQuickDraw } from "./Edit/useQuickDraw";
 import useCanManageSchema from "./useCanManageSchema";
 import useShowModal from "./useShowModal";
 
@@ -59,16 +73,20 @@ const Container = styled.div<{ $active?: boolean }>`
   white-space: nowrap;
 
   path {
-    fill: #999999;
+    fill: var(--color-content-icon-subtle);
   }
 
   ${({ $active, theme }) =>
     $active &&
     `
     color: ${theme.text.primary};
-    
+
     path {
       fill: ${theme.primary.plainColor};
+    }
+
+    svg {
+      filter: drop-shadow(0 0 5px ${theme.primary.plainColor});
     }
   `}
 
@@ -88,7 +106,7 @@ const Container = styled.div<{ $active?: boolean }>`
 `;
 
 export const Round = styled(Container)`
-  border-radius: 1.25rem;
+  border-radius: var(--radius-full);
   width: 2rem;
   height: 2rem;
   &:hover {
@@ -111,14 +129,37 @@ export const RoundButtonWhite = styled(RoundButton)`
 `;
 
 const Square = styled(Container)<{ $active?: boolean }>`
-  border-radius: 0.1rem;
+  border-radius: var(--radius-xs);
 `;
 
 const Classification = () => {
   const create = useCreate(CLASSIFICATION);
+  const isPatchView = useRecoilValue(isPatchesView);
+  const reset3dAnnotationMode = useReset3dAnnotationMode();
+  const fields = useAtomValue(fieldsOfType(CLASSIFICATION));
+  const disabled = isPatchView || fields.length === 0;
+
+  const handleCreateClassification = useCallback(() => {
+    if (disabled) return;
+    create();
+
+    // Exit other "persistent" annotation modes like 3D
+    reset3dAnnotationMode();
+  }, [create, disabled]);
+
   return (
-    <Tooltip placement="top-center" text="Create new classification">
-      <Square onClick={create}>
+    <Tooltip
+      placement="top-center"
+      text={
+        isPatchView
+          ? "Creating classifications is not supported in this view"
+          : "Create new classification"
+      }
+    >
+      <Square
+        onClick={handleCreateClassification}
+        className={disabled ? "disabled" : ""}
+      >
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="19"
@@ -138,10 +179,28 @@ const Classification = () => {
 };
 
 const Detection = () => {
-  const create = useCreate(DETECTION);
+  const { quickDrawActive, toggleQuickDraw } = useQuickDraw();
+  const isPatchView = useRecoilValue(isPatchesView);
+
+  const fields = useAtomValue(fieldsOfType(DETECTION));
+  const disabled = isPatchView || fields.length === 0;
+
+  const tooltip = isPatchView
+    ? "Creating detections is not supported in this view"
+    : quickDrawActive
+    ? "Exit detection creation"
+    : "Create new detections";
+
   return (
-    <Tooltip placement="top-center" text="Create new detection">
-      <Square onClick={create}>
+    <Tooltip placement="top-center" text={tooltip}>
+      <Square
+        $active={quickDrawActive}
+        className={disabled ? "disabled" : ""}
+        onClick={() => {
+          if (disabled) return;
+          toggleQuickDraw();
+        }}
+      >
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="19"
@@ -164,7 +223,11 @@ export const Undo = () => {
   const { undo, undoEnabled } = useUndoRedo();
 
   return (
-    <Round onClick={undo} className={undoEnabled ? "" : "disabled"}>
+    <Round
+      onClick={undo}
+      className={undoEnabled ? "" : "disabled"}
+      data-cy="undo-button"
+    >
       <svg
         xmlns="http://www.w3.org/2000/svg"
         width="13"
@@ -187,7 +250,11 @@ export const Redo = () => {
 
   return (
     <Tooltip placement="top-center" text="Redo">
-      <Round onClick={redo} className={redoEnabled ? "" : "disabled"}>
+      <Round
+        onClick={redo}
+        className={redoEnabled ? "" : "disabled"}
+        data-cy="redo-button"
+      >
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="13"
@@ -208,9 +275,9 @@ export const Redo = () => {
 
 export const ThreeDPolylines = () => {
   const setEditing = useSetAtom(editing);
-  const [current3dAnnotationMode, setCurrent3dAnnotationMode] = useRecoilState(
-    current3dAnnotationModeAtom
-  );
+  const current3dAnnotationMode = useCurrent3dAnnotationMode();
+  const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
+  const visibleFields = useAtomValue(fieldsOfType(POLYLINE));
 
   const polylineFields = use3dAnnotationFields(
     useCallback(
@@ -222,6 +289,7 @@ export const ThreeDPolylines = () => {
   );
 
   const hasPolylineFieldsInSchema = polylineFields && polylineFields.length > 0;
+  const disabled = visibleFields.length === 0;
   const isPolylineAnnotateActive =
     current3dAnnotationMode === ANNOTATION_POLYLINE;
 
@@ -236,7 +304,9 @@ export const ThreeDPolylines = () => {
     >
       <Square
         $active={isPolylineAnnotateActive}
+        className={disabled ? "disabled" : ""}
         onClick={() => {
+          if (disabled) return;
           if (isPolylineAnnotateActive) {
             setCurrent3dAnnotationMode(null);
             return;
@@ -260,9 +330,9 @@ export const ThreeDPolylines = () => {
 
 export const ThreeDCuboids = () => {
   const setEditing = useSetAtom(editing);
-  const [current3dAnnotationMode, setCurrent3dAnnotationMode] = useRecoilState(
-    current3dAnnotationModeAtom
-  );
+  const current3dAnnotationMode = useCurrent3dAnnotationMode();
+  const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
+  const visibleFields = useAtomValue(fieldsOfType(DETECTION));
 
   const cuboidFields = use3dAnnotationFields(
     useCallback(
@@ -274,6 +344,7 @@ export const ThreeDCuboids = () => {
   );
 
   const hasCuboidFieldsInSchema = cuboidFields && cuboidFields.length > 0;
+  const disabled = visibleFields.length === 0;
   const isCuboidAnnotateActive = current3dAnnotationMode === ANNOTATION_CUBOID;
 
   return (
@@ -287,7 +358,9 @@ export const ThreeDCuboids = () => {
     >
       <Square
         $active={isCuboidAnnotateActive}
+        className={disabled ? "disabled" : ""}
         onClick={() => {
+          if (disabled) return;
           if (isCuboidAnnotateActive) {
             setCurrent3dAnnotationMode(null);
             return;
@@ -312,19 +385,29 @@ export const ThreeDCuboids = () => {
 const Schema = () => {
   const showModal = useShowModal();
 
-  return <RoundButton onClick={showModal}>Schema</RoundButton>;
+  return (
+    <Button variant={Variant.Borderless} size={Size.Sm} onClick={showModal}>
+      Schema
+    </Button>
+  );
 };
 
 const Actions = () => {
-  const is3D = useRecoilValue(is3DDataset);
+  // This checks if media type of the dataset resolved to 3d
+  const is3dDataset = useRecoilValue(is3DDataset);
+  // This checks if a 3d sample is pinned - is true when media type is `group` with a 3d slice pinned
+  const is3dSamplePinned = useRecoilValue(pinned3d);
+
   const canManage = useCanManageSchema();
+
+  const areThreedActionsVisible = is3dDataset || is3dSamplePinned;
 
   return (
     <ActionsDiv style={{ margin: "0 0.25rem", paddingBottom: "0.5rem" }}>
       <Row>
         <ItemLeft style={{ columnGap: "0.1rem" }}>
           <Classification />
-          {is3D ? (
+          {areThreedActionsVisible ? (
             <>
               <ThreeDCuboids />
               <ThreeDPolylines />
@@ -339,8 +422,12 @@ const Actions = () => {
         </ItemRight>
       </Row>
       {canManage && (
-        <Row style={{ fontSize: "0.80rem" }}>
-          <ItemLeft style={{ width: "50%" }}>Click labels to edit</ItemLeft>
+        <Row>
+          <ItemLeft style={{ width: "50%" }}>
+            <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
+              Click labels to edit
+            </Text>
+          </ItemLeft>
           <ItemRight style={{ width: "50%" }}>
             <Schema />
           </ItemRight>

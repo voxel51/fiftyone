@@ -45,7 +45,16 @@ function CustomOperatorIcon(props: CustomOperatorIconPropsType) {
 
 function ImageIcon(props: ImageIconPropsType) {
   const { src, iconProps } = props;
-  return <img {...iconProps} src={src} height={21} width={21} />;
+  // `max-width: none;` is needed to override voodo css reset of `max-width: 100%`
+  return (
+    <img
+      {...iconProps}
+      src={src}
+      height={21}
+      width={21}
+      style={{ ...iconProps?.style, maxWidth: "none" }}
+    />
+  );
 }
 
 function isIconFont(path: string) {

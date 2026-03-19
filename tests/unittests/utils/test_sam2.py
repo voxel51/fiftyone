@@ -732,5 +732,76 @@ class TestVideoModelNegativeKeypoints:
         assert call['labels'][0] == 1
 
 
+class TestToSamPointsLabels:
+    """Test _to_sam_points respects point label attributes"""
+
+    def test_sam2_labels_respected(self):
+        """Test that sam2_labels on a Keypoint are used as point labels"""
+        from fiftyone.utils.sam import _to_sam_points
+
+        kp = fol.Keypoint(
+            points=[[0.3, 0.3], [0.5, 0.5], [0.7, 0.7]],
+            sam2_labels=[1, 1, 0],
+        )
+        _, labels = _to_sam_points(kp.points, 640, 480, kp)
+        assert list(labels) == [1, 1, 0]
+
+    def test_sam_labels_respected(self):
+        """Test that sam_labels on a Keypoint are used as point labels"""
+        from fiftyone.utils.sam import _to_sam_points
+
+        kp = fol.Keypoint(
+            points=[[0.3, 0.3], [0.5, 0.5]],
+            sam_labels=[1, 0],
+        )
+        _, labels = _to_sam_points(kp.points, 640, 480, kp)
+        assert list(labels) == [1, 0]
+
+    def test_no_labels_defaults_to_positive(self):
+        """Test that missing label attributes default to all ones"""
+        from fiftyone.utils.sam import _to_sam_points
+
+        kp = fol.Keypoint(
+            points=[[0.3, 0.3], [0.5, 0.5], [0.7, 0.7]],
+        )
+        _, labels = _to_sam_points(kp.points, 640, 480, kp)
+        assert list(labels) == [1, 1, 1]
+
+    def test_sam2_labels_priority_over_sam_labels(self):
+        """Test that sam2_labels takes priority when both are set"""
+        from fiftyone.utils.sam import _to_sam_points
+
+        kp = fol.Keypoint(
+            points=[[0.3, 0.3], [0.5, 0.5]],
+            sam2_labels=[1, 0],
+            sam_labels=[0, 1],
+        )
+        _, labels = _to_sam_points(kp.points, 640, 480, kp)
+        assert list(labels) == [1, 0]
+
+    def test_sam2_labels_with_nan_points(self):
+        """Test that NaN points are filtered and labels stay aligned"""
+        from fiftyone.utils.sam import _to_sam_points
+
+        kp = fol.Keypoint(
+            points=[[0.3, 0.3], [float('nan'), float('nan')], [0.7, 0.7]],
+            sam2_labels=[1, 0, 0],
+        )
+        pts, labels = _to_sam_points(kp.points, 640, 480, kp)
+        assert len(pts) == 2
+        assert list(labels) == [1, 0]
+
+    def test_all_negative_labels(self):
+        """Test that all-zero labels are passed through"""
+        from fiftyone.utils.sam import _to_sam_points
+
+        kp = fol.Keypoint(
+            points=[[0.2, 0.2], [0.5, 0.5], [0.8, 0.8]],
+            sam2_labels=[0, 0, 0],
+        )
+        _, labels = _to_sam_points(kp.points, 640, 480, kp)
+        assert list(labels) == [0, 0, 0]
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

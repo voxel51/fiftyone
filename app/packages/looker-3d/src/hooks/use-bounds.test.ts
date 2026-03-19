@@ -118,18 +118,12 @@ describe("useFo3dBounds", () => {
     expect(result.current.boundingBox).toBeNull();
   });
 
-  it("waits for predicate before computing bounds", () => {
+  it("waits for isReady before computing bounds", () => {
     const objectRef = {
       current: {
         updateWorldMatrix: vi.fn(),
       },
     } as unknown as React.RefObject<Group>;
-    let callCount = 0;
-    const predicate = vi.fn(() => {
-      callCount++;
-      // Return true after 3 calls to simulate a condition becoming ready
-      return callCount > 3;
-    });
 
     // Mock Box3 to return a valid stable box
     const MockBox3 = vi.fn().mockImplementation(() => {
@@ -142,20 +136,30 @@ describe("useFo3dBounds", () => {
 
     (Box3 as unknown as Mock).mockImplementation(MockBox3);
 
-    const { result } = renderHook(() => useFo3dBounds(objectRef, predicate));
+    // Initially not ready
+    const { result, rerender } = renderHook(
+      ({ isReady }: { isReady: boolean }) => useFo3dBounds(objectRef, isReady),
+      { initialProps: { isReady: false } }
+    );
 
     expect(result.current.boundingBox).toBeNull();
 
-    // Advance time to allow predicate to return true
+    // Still not computing since isReady is false
     act(() => {
-      for (let i = 0; i < 20; i++) {
-        vi.advanceTimersByTime(50);
-      }
+      vi.advanceTimersByTime(100);
     });
 
-    // After predicate returns true, bounding box should be computed
-    expect(predicate).toHaveBeenCalled();
-    expect(callCount).toBeGreaterThan(3);
+    expect(result.current.boundingBox).toBeNull();
+
+    // Now mark as ready
+    rerender({ isReady: true });
+
+    // Advance time to allow stabilization
+    act(() => {
+      vi.runAllTimers();
+    });
+
+    // After isReady becomes true and stabilization, bounding box should be computed
     expect(result.current.boundingBox).not.toBeNull();
   });
 

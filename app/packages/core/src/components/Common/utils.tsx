@@ -44,14 +44,14 @@ export const getFormatter = (fieldType: string, timeZone: string, bounds) => {
       bounds[1]
     );
 
-    hasTitle = dtFormatters[0] !== null;
+    hasTitle = !!dtFormatters.common;
   }
 
   return {
     hasTitle,
     formatter: (v) => {
       if (date) {
-        const str = dtFormatters[1].format(v).split(",");
+        const str = dtFormatters.diff.format(v).split(",");
         if (str.length === 1) {
           const day = str[0].split("-");
           if (day.length === 3) {
@@ -68,8 +68,7 @@ export const getFormatter = (fieldType: string, timeZone: string, bounds) => {
 
         let [day, time] = str;
 
-        if (dtFormatters[1].resolvedOptions().fractionalSecondDigits === 3) {
-          time += "ms";
+        if (dtFormatters.diff.resolvedOptions().fractionalSecondDigits === 3) {
           return (
             <>
               <div>{day}</div>
@@ -106,6 +105,7 @@ export const getStep = (
 
   const step = delta / max;
   if (
+    fieldType &&
     [INT_FIELD, FRAME_NUMBER_FIELD, FRAME_SUPPORT_FIELD].includes(fieldType)
   ) {
     return Math.ceil(step);

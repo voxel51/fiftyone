@@ -24,19 +24,21 @@ const ElementsContainer = styled.div`
 
 export const NonNestedDynamicGroup = () => {
   const [isBigLookerVisible, setIsBigLookerVisible] = useRecoilState(
-    fos.groupMediaIsMainVisibleSetting
+    fos.groupMediaIsMain2DViewerVisibleSetting
   );
   const viewMode = useRecoilValue(fos.dynamicGroupsViewMode(true));
   const isCarouselVisible = useRecoilValue(
     fos.groupMediaIsCarouselVisibleSetting
   );
   const parent = useRecoilValue(fos.parentMediaTypeSelector);
+  const isAnnotateMode = fos.useModalMode() === fos.ModalMode.ANNOTATE;
 
+  // This effect ensures the main 2D viewer stays visible outside carousel mode (skipped in annotate mode)
   useEffect(() => {
-    if (!isBigLookerVisible && viewMode !== "carousel") {
+    if (!isBigLookerVisible && viewMode !== "carousel" && !isAnnotateMode) {
       setIsBigLookerVisible(true);
     }
-  }, [isBigLookerVisible, viewMode, setIsBigLookerVisible]);
+  }, [isBigLookerVisible, viewMode, setIsBigLookerVisible, isAnnotateMode]);
 
   return (
     <RootContainer>

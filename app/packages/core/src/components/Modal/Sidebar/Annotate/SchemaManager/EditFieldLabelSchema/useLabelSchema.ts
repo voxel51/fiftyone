@@ -2,12 +2,30 @@
  * Hook for managing label schema editing for a field
  */
 
-import { useOperatorExecutor } from "@fiftyone/operators";
-import { useAtom, useAtomValue } from "jotai";
+import {
+  useNotification,
+  useQueryPerformanceSampleLimit,
+} from "@fiftyone/state";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { isEqual } from "lodash";
-import { useMemo, useState } from "react";
-import { labelSchemaData } from "../../state";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  activeLabelSchemas,
+  addToActiveSchemas,
+  currentField,
+  labelSchemaData,
+  removeFromActiveSchemas,
+} from "../../state";
+import {
+  useSchemaManager,
+  type UpdateSchemaRequest,
+} from "../../useSchemaManager";
+import {
+  dispatchSchemaManagerEvent,
+  useSchemaManagerEventBus,
+} from "../events";
 import { currentLabelSchema } from "../state";
+import { reconcileComponent } from "../utils";
 
 // =============================================================================
 // Internal Hooks
@@ -26,7 +44,8 @@ const useDefaultLabelSchema = (field: string) => {
   return data?.default_label_schema;
 };
 
-const useDiscard = (field: string) => {
+const useDiscard = (field: string, reset: () => void) => {
+  const [inc, setInc] = useState(0);
   const [currentSchema, setCurrent] = useCurrentLabelSchema(field);
   const defaultLabelSchema = useDefaultLabelSchema(field);
   const [saved] = useSavedLabelSchema(field);
@@ -35,8 +54,11 @@ const useDiscard = (field: string) => {
     currentLabelSchema: currentSchema,
     defaultLabelSchema,
     discard: () => {
+      setInc(inc + 1);
       setCurrent(saved ?? defaultLabelSchema);
+      reset();
     },
+    editorKey: inc.toString(),
   };
 };
 
@@ -48,6 +70,35 @@ const useHasChanges = (one: unknown, two: unknown) => {
       return true;
     }
   }, [one, two]);
+};
+
+/**
+ * Manages pending visibility for a single field. Uses local state to track
+ * whether the user toggled visibility; persisted on save via per-field
+ * activate/deactivate operators.
+ */
+const useVisibility = (field: string) => {
+  const activeSchemas = useAtomValue(activeLabelSchemas);
+  const [toggled, setToggled] = useState(false);
+
+  const savedVisible = (activeSchemas ?? []).includes(field);
+  const isFieldVisible = toggled ? !savedVisible : savedVisible;
+  const visibilityChanged = toggled;
+
+  const toggleVisibility = useCallback(() => {
+    setToggled((t) => !t);
+  }, []);
+
+  const discardVisibility = useCallback(() => {
+    setToggled(false);
+  }, []);
+
+  return {
+    isFieldVisible,
+    visibilityChanged,
+    toggleVisibility,
+    discardVisibility,
+  };
 };
 
 export const useReadOnly = (field: string) => {
@@ -88,25 +139,71 @@ const useSavedLabelSchema = (field: string) => {
   ] as const;
 };
 
-const useSave = (field: string) => {
+const useSave = (field: string, visibilityChanged: boolean) => {
   const [isSaving, setIsSaving] = useState(false);
   const [savedLabelSchema, setSaved] = useSavedLabelSchema(field);
-  const update = useOperatorExecutor("update_label_schema");
+  const { updateSchema, activateSchemas, deactivateSchemas } =
+    useSchemaManager();
+  const addToActive = useSetAtom(addToActiveSchemas);
+  const removeFromActive = useSetAtom(removeFromActiveSchemas);
+  const activeSchemas = useAtomValue(activeLabelSchemas);
+  const notify = useNotification();
   const [current] = useCurrentLabelSchema(field);
+  const setCurrentField = useSetAtom(currentField);
+  const { dispatch } = useSchemaManagerEventBus();
 
   return {
     isSaving,
-    save: () => {
+    save: async () => {
+      const isFirstSave = !savedLabelSchema;
       setIsSaving(true);
-      update.execute(
-        { field, label_schema: current },
-        {
-          callback: () => {
-            setSaved(current);
-            setIsSaving(false);
-          },
-        }
-      );
+
+      const labelSchema = current ? reconcileComponent(current) : current;
+
+      try {
+        await updateSchema({
+          field,
+          label_schema: labelSchema,
+        } as UpdateSchemaRequest);
+      } catch (error) {
+        console.error("Failed to save label schema:", error);
+        setIsSaving(false);
+        dispatchSchemaManagerEvent(dispatch, "schema-manager:save-complete");
+        return;
+      }
+
+      setSaved(current);
+      setIsSaving(false);
+      dispatchSchemaManagerEvent(dispatch, "schema-manager:save-complete");
+
+      // Determine activation change: first save auto-activates,
+      // otherwise apply the visibility toggle for this field
+      const fieldSet = new Set([field]);
+      const wasActive = (activeSchemas ?? []).includes(field);
+      const shouldActivate = isFirstSave || (visibilityChanged && !wasActive);
+      const shouldDeactivate = !isFirstSave && visibilityChanged && wasActive;
+
+      if (shouldActivate) {
+        addToActive(fieldSet);
+        activateSchemas({ fields: [field] }).catch((error) => {
+          removeFromActive(fieldSet);
+          notify({
+            msg: `Failed to activate field: ${error}`,
+            variant: "error",
+          });
+        });
+      } else if (shouldDeactivate) {
+        removeFromActive(fieldSet);
+        deactivateSchemas({ fields: [field] }).catch((error) => {
+          addToActive(fieldSet);
+          notify({
+            msg: `Failed to deactivate field: ${error}`,
+            variant: "error",
+          });
+        });
+      }
+
+      setCurrentField(null);
     },
     savedLabelSchema,
   };
@@ -115,23 +212,25 @@ const useSave = (field: string) => {
 const useScan = (field: string) => {
   const [isScanning, setIsScanning] = useState(false);
   const [, setCurrent] = useCurrentLabelSchema(field);
-  const generate = useOperatorExecutor("generate_label_schemas");
-
+  const { createSchemas } = useSchemaManager();
+  const limit = useQueryPerformanceSampleLimit();
+  const { dispatch } = useSchemaManagerEventBus();
   return {
     isScanning,
-    scan: () => {
+    scan: async () => {
       setIsScanning(true);
-      generate.execute(
-        { field },
-        {
-          callback: (result) => {
-            if (result.result) {
-              setCurrent(result.result.label_schema);
-            }
-            setIsScanning(false);
-          },
+      try {
+        const result = await createSchemas({ field, limit });
+        if (result.label_schema) {
+          setCurrent(result.label_schema);
         }
-      );
+      } finally {
+        setIsScanning(false);
+        dispatchSchemaManagerEvent(dispatch, "schema-manager:scan-complete");
+      }
+    },
+    cancelScan: () => {
+      setIsScanning(false);
     },
   };
 };
@@ -140,44 +239,50 @@ const useValidate = (field: string) => {
   const [errors, setErrors] = useState<string[]>([]);
   const [isValid, setIsValid] = useState(true);
   const [isValidating, setIsValidating] = useState(false);
+
   const [, setCurrent] = useCurrentLabelSchema(field);
-  const validate = useOperatorExecutor("validate_label_schemas");
+  const discard = useDiscard(field, () => setErrors([]));
+  const { validateSchemas } = useSchemaManager();
+  const { dispatch } = useSchemaManagerEventBus();
+
+  const resetErrors = useCallback(() => {
+    setErrors([]);
+    setIsValid(true);
+  }, []);
 
   return {
+    ...discard,
     errors,
     isValid,
     isValidating,
-    validate: (data: string) => {
+    resetErrors,
+    validate: async (data: string) => {
       try {
         setIsValidating(true);
         const parsed = JSON.parse(data);
-        validate.execute(
-          { label_schemas: { [field]: parsed } },
-          {
-            skipErrorNotification: true,
-            callback: (result) => {
-              if (result.result.errors) {
-                setErrors(result.result.errors);
-              }
+        const result = await validateSchemas({
+          label_schemas: { [field]: parsed },
+        });
 
-              if (!result.result.errors.length) {
-                setCurrent(parsed);
-                setIsValid(true);
-              } else {
-                setIsValid(false);
-              }
-              setIsValidating(false);
-            },
-          }
-        );
+        if (result.errors) {
+          setErrors(result.errors);
+        }
+
+        if (!result.errors?.length) {
+          setCurrent(parsed);
+          setIsValid(true);
+          dispatchSchemaManagerEvent(dispatch, "schema-manager:valid-json");
+        } else {
+          setIsValid(false);
+          dispatchSchemaManagerEvent(dispatch, "schema-manager:invalid-json");
+        }
       } catch (e) {
         if (e instanceof SyntaxError) {
           setErrors([e.message]);
         }
-
-        setIsValidating(false);
         setIsValid(false);
-        return;
+      } finally {
+        setIsValidating(false);
       }
     },
   };
@@ -188,25 +293,47 @@ const useValidate = (field: string) => {
 // =============================================================================
 
 export default function useLabelSchema(field: string) {
-  const discard = useDiscard(field);
   const readOnly = useReadOnly(field);
   const configUpdate = useConfigUpdate(field);
   const scan = useScan(field);
-  const save = useSave(field);
+  const visibility = useVisibility(field);
+  const save = useSave(field, visibility.visibilityChanged);
   const validate = useValidate(field);
-  const hasChanges = useHasChanges(
-    discard.currentLabelSchema,
+  const schemaChanged = useHasChanges(
+    validate.currentLabelSchema,
     save.savedLabelSchema
   );
 
+  const hasChanges =
+    schemaChanged || !!validate.errors.length || visibility.visibilityChanged;
+
+  // Discard unsaved schema edits when navigating away (back button unmounts
+  // this view). Visibility is local state so it resets automatically on unmount.
+  // After a successful save, savedLabelSchema is already updated before unmount,
+  // so re-opening the field will show the saved state correctly.
+  useEffect(() => {
+    return () => {
+      currentLabelSchema.remove(field);
+    };
+  }, [field]);
+
+  // Wrap discard to also revert visibility
+  const originalDiscard = validate.discard;
+  const discard = useCallback(() => {
+    originalDiscard();
+    visibility.discardVisibility();
+  }, [originalDiscard, visibility.discardVisibility]);
+
   return {
     hasChanges,
+    isFieldVisible: visibility.isFieldVisible,
+    toggleVisibility: visibility.toggleVisibility,
 
-    ...discard,
     ...readOnly,
     ...configUpdate,
     ...save,
     ...scan,
     ...validate,
+    discard,
   };
 }

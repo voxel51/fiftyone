@@ -1,9 +1,20 @@
-import { EXPLORE, modalMode, useModalExplorEntries } from "@fiftyone/state";
-import { useAtomValue } from "jotai";
-import React, { useEffect } from "react";
+import {
+  activeFields,
+  ANNOTATE,
+  EXPLORE,
+  datasetName,
+  modalMode,
+  useModalExplorEntries,
+} from "@fiftyone/state";
+import { useAtomValue, useSetAtom } from "jotai";
+import { useEffect } from "react";
+import { useRecoilValue } from "recoil";
 import ExploreSidebar from "../../Sidebar";
 import SidebarContainer from "../../Sidebar/SidebarContainer";
 import Annotate from "./Annotate";
+import { AnnotationSliceSelector } from "./Annotate/AnnotationSliceSelector";
+import { GroupModeTransitionManager } from "./Annotate/GroupModeTransitionManager";
+import { exploreActiveFields } from "./Annotate/state";
 import useCanAnnotate from "./Annotate/useCanAnnotate";
 import useLoadSchemas from "./Annotate/useLoadSchemas";
 import Mode from "./Mode";
@@ -24,17 +35,46 @@ const Explore = () => {
 
 const Sidebar = () => {
   const mode = useAtomValue(modalMode);
-  const { showAnnotationTab, disabledReason } = useCanAnnotate();
+  const { showAnnotationTab, disabledReason, isGroupedDataset } =
+    useCanAnnotate();
+  const datasetNameValue = useRecoilValue(datasetName);
+  const exploreFields = useRecoilValue(
+    activeFields({ modal: true, expanded: false })
+  );
+  const setExploreFields = useSetAtom(exploreActiveFields);
+
+  useEffect(() => {
+    setExploreFields(exploreFields);
+    return () => setExploreFields(null);
+  }, [exploreFields, setExploreFields]);
 
   const loadSchemas = useLoadSchemas();
+
+  // This effect loads schemas on init for valid annotation sessions
   useEffect(() => {
-    // Only load schemas if annotation is fully enabled (no disabled reason)
-    showAnnotationTab && !disabledReason && loadSchemas();
-  }, [showAnnotationTab, disabledReason, loadSchemas]);
+    if (showAnnotationTab && !disabledReason) {
+      // Only load schemas if annotation is fully enabled (no disabled reason)
+      // Also reload when dataset changes
+      loadSchemas();
+    }
+  }, [showAnnotationTab, disabledReason, loadSchemas, datasetNameValue]);
+
+  const showSliceSelector =
+    showAnnotationTab &&
+    mode === ANNOTATE &&
+    isGroupedDataset &&
+    !disabledReason;
+
+  const showTransitionManager =
+    showAnnotationTab && isGroupedDataset && !disabledReason;
 
   return (
     <SidebarContainer modal={true}>
       {showAnnotationTab && <Mode />}
+      {showTransitionManager && <GroupModeTransitionManager />}
+      {showSliceSelector && (
+        <AnnotationSliceSelector onSliceSelected={loadSchemas} />
+      )}
       {mode === EXPLORE || !showAnnotationTab ? (
         <Explore />
       ) : (

@@ -11,6 +11,7 @@ import {
   NotFoundError,
 } from "@fiftyone/utilities";
 import * as jsonpatch from "fast-json-patch";
+import { toExtendedJson } from "./transformer";
 import { encodeURIPath, parseETag } from "./util";
 
 /**
@@ -25,6 +26,8 @@ export type PatchSampleRequest = {
   versionToken: string;
   path?: string;
   labelId?: string;
+  generatedDatasetName?: string;
+  generatedSampleId?: string;
 };
 
 export type ErrorResponse = {
@@ -46,8 +49,36 @@ export class PatchApplicationError extends Error {
   }
 }
 
-const handleErrorResponse = async (response: Response) => {
-  if (response.status === 400) {
+/**
+ * Error resulting from a version mismatch.
+ *
+ * When attempting to patch a sample, the server validates the provided version
+ * token and rejects the update if there is a version mismatch.
+ *
+ * The updated sample data is provided in the response body, and a current
+ * version token is provided in the ETag header.
+ */
+export class VersionMismatchError extends Error {
+  constructor(
+    message?: string,
+    readonly responseBody?: Record<string, unknown>,
+    readonly versionToken?: string
+  ) {
+    super(message);
+    this.name = "Version Mismatch Error";
+  }
+}
+
+/**
+ * Mapping of response code => error handler.
+ *
+ * These handlers are intended to be specific to known domain errors for the
+ * annotation endpoints. For all other response codes, default error handling
+ * is sufficient.
+ */
+const errorHandlers: Record<number, (response: Response) => Promise<void>> = {
+  // bad request
+  400: async (response) => {
     // either a malformed request, or a list of errors from applying the patch
     let errorResponse: ErrorResponse | undefined;
     try {
@@ -59,15 +90,39 @@ const handleErrorResponse = async (response: Response) => {
       }
     } catch (err) {
       // doesn't look like a list of errors
+      console.error("unparsable error:", err);
     }
     if (errorResponse?.errors) {
+      console.error("Patch application errors:", errorResponse.errors);
       throw new PatchApplicationError(errorResponse.errors.join(", "));
     }
 
-    throw new MalformedRequestError();
-  } else if (response.status === 404) {
+    throw new MalformedRequestError(
+      "Unexpected error response. See console for details."
+    );
+  },
+
+  // sample not found
+  404: async () => {
     throw new NotFoundError({ path: "sample" });
-  }
+  },
+
+  // version token mismatch
+  412: async (response) => {
+    let responseBody: Record<string, unknown>;
+    try {
+      responseBody = await response.json();
+    } catch (err) {
+      // JSON parsing error
+      console.warn("error parsing response body", err);
+    }
+
+    throw new VersionMismatchError(
+      "Invalid version token",
+      responseBody,
+      parseETag(response.headers.get("ETag"))
+    );
+  },
 };
 
 /**
@@ -76,10 +131,10 @@ const handleErrorResponse = async (response: Response) => {
  * @param config fetch configuration
  */
 const doFetch = <A, R>(
-  config: FetchFunctionConfig<A>
+  config: Omit<FetchFunctionConfig<A>, "errorHandler">
 ): Promise<FetchFunctionResult<R>> => {
   return getFetchFunctionExtended()({
-    errorHandler: handleErrorResponse,
+    errorHandler: (response) => errorHandlers[response.status]?.(response),
     ...config,
   });
 };
@@ -92,15 +147,47 @@ const doFetch = <A, R>(
 export const patchSample = async (
   request: PatchSampleRequest
 ): Promise<PatchSampleResponse> => {
+  // Build the base path for the request.
   const pathParts = ["dataset", request.datasetId, "sample", request.sampleId];
+
+  // Use the sampleField endpoint for field-level updates (eg detection in patchesView)
   if (request.path && request.labelId) {
     pathParts.push(request.path, request.labelId);
   }
 
+  // Add generated dataset and label ids as query parameter if present
+  // This enables syncing changes from the source to the currently loaded generated dataset.
+  // We do this instead of making a separate request with the generated dataset _id
+  // because we want to ensure permissions are checked against the src dataset.
+  const queryParams = new URLSearchParams();
+  if (request.generatedDatasetName) {
+    if (
+      !request.generatedSampleId ||
+      request.generatedSampleId === request.sampleId
+    ) {
+      throw new Error(
+        "generatedSampleId is required and must be different from sampleId when generatedDatasetName is provided"
+      );
+    }
+    queryParams.set("generated_dataset", request.generatedDatasetName);
+    queryParams.set("generated_sample_id", request.generatedSampleId);
+  }
+
+  const queryString = queryParams.toString();
+  const pathWithQuery = queryString
+    ? `${encodeURIPath(pathParts)}?${queryString}`
+    : encodeURIPath(pathParts);
+
+  // Convert ObjectId strings to Extended JSON ({ $oid: "..." }) so the server
+  // can deserialize them as bson.ObjectId rather than storing plain strings.
+  const deltas = request.deltas.map((delta) =>
+    "value" in delta ? { ...delta, value: toExtendedJson(delta.value) } : delta
+  );
+
   const response = await doFetch<JSONDeltas, Sample>({
-    path: encodeURIPath(pathParts),
+    path: pathWithQuery,
     method: "PATCH",
-    body: request.deltas,
+    body: deltas,
     headers: {
       "Content-Type": "application/json-patch+json",
       "If-Match": `"${request.versionToken}"`,

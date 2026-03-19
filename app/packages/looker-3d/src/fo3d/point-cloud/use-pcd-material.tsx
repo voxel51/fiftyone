@@ -67,9 +67,7 @@ export const usePcdMaterial = (
 
   const { boundingBox: pcdBoundingBox } = useFo3dBounds(
     pcdContainerRef,
-    useCallback(() => {
-      return !!geometry;
-    }, [geometry])
+    !!geometry
   );
 
   const minMaxCoordinates = useMemo(() => {

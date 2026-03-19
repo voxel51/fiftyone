@@ -54,6 +54,7 @@ class TestPipelineType(unittest.TestCase):
                     name="stage2",
                     num_distributed_tasks=5,
                     params={"foo": "bar"},
+                    request_params_overrides={"view_name": "filtered_view"},
                     always_run=True,
                     rerunnable=False,
                 ),
@@ -69,6 +70,7 @@ class TestPipelineType(unittest.TestCase):
                         "name": None,
                         "num_distributed_tasks": None,
                         "params": None,
+                        "request_params_overrides": None,
                         "always_run": False,
                         "rerunnable": None,
                     },
@@ -77,6 +79,9 @@ class TestPipelineType(unittest.TestCase):
                         "name": "stage2",
                         "num_distributed_tasks": 5,
                         "params": {"foo": "bar"},
+                        "request_params_overrides": {
+                            "view_name": "filtered_view"
+                        },
                         "always_run": True,
                         "rerunnable": False,
                     },

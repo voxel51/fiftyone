@@ -3,6 +3,426 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.16.4
+--------------------------
+*Released March 9, 2026*
+
+Includes all updates from :ref:`FiftyOne 1.13.4 <release-notes-v1.13.4>`, plus:
+
+Cloud Media
+
+- Fixed a race condition where concurrent reads and writes of cloud credential
+  files could cause credential loading to fail.
+- Fixed a bug where Azure `load_credentials()` was not forwarding the profile
+  parameter.
+- Fixed a bug with cloud credentials priority resolution order, ensuring the
+  correct credential is selected first.
+
+Auto-Labeling
+
+- Fixed a bug where :ref:`auto-labeling <verified-auto-labeling>` may fail if a
+  mounted directory is not yet initialized.
+
+
+.. _release-notes-v1.13.4:
+
+FiftyOne 1.13.4
+---------------
+*Released March 9, 2026*
+
+App
+
+- Ensured the release of `starlette 1.0` will not negatively impact the App.
+  `#7137 <https://github.com/voxel51/fiftyone/pull/7137>`_
+
+
+FiftyOne Enterprise 2.16.3
+--------------------------
+*Released March 3, 2026*
+
+Includes all updates from :ref:`FiftyOne 1.13.3 <release-notes-v1.13.3>`, plus:
+
+:ref:`In-App Annotation <in-app-annotation>`
+
+- Adjusted permissions for annotation-related actions, so that users with
+  `can_tag` level permissions will be able to perform all annotation workflows.
+
+Cloud Media
+
+- Optimized cloud media access checks in order to reduce the number of requests
+  being made.
+- Updated default behavior for local SDK use of cloud credentials, checking for
+  credentials configured locally before attempting to download
+  :ref:`managed cloud credentials <enterprise-cloud-storage-page>`,
+  and disabling download of managed credentials by default. Both
+  :ref:`local vs remote precedence <enterprise-cloud-creds-origin-preference>`,
+  and
+  :ref:`enabling vs disabling download of managed credentials <enterprise-cloud-creds-local-download>`
+  are configurable.
+- Fixed a bug where some cloud credentials would fail if they were uploaded by
+  a user who no longer exists in the database.
+
+Models
+
+- Constrained `timm<1.0.24` in enterprise docker images to better support
+  `omdet` models.
+
+
+.. _release-notes-v1.13.3:
+
+FiftyOne 1.13.3
+---------------
+*Released March 3, 2026*
+
+:ref:`In-App Annotation <in-app-annotation>`
+
+- New feature: Annotation support for detections while in a
+  :ref:`patches views <object-patches-views>`.
+  `#7012 <https://github.com/voxel51/fiftyone/pull/7012>`_
+- Improved UX around bounding box annotation by implementing improved
+  heuristics and disabling pan/zoom when drawing and selecting. 
+  `#7034 <https://github.com/voxel51/fiftyone/pull/7034>`_
+- Improved UX around schema management. Changes now more consistently require
+  the user to hit "Save" before being persisted. 
+  `#7008 <https://github.com/voxel51/fiftyone/pull/7008>`_
+- Improved UX around field visibility. Hiding or showing fields in Explore view
+  is also now reflected in the Annotation view. 
+  `#6993 <https://github.com/voxel51/fiftyone/pull/6993>`_
+- Unified the detection-creation process. 
+  `#7019 <https://github.com/voxel51/fiftyone/pull/7019>`_
+- Added keyboard shortcut to reset zoom and pan in annotation mode. Press "r"
+  to return to the default zoom level and pan position while annotating. 
+  `#7073 <https://github.com/voxel51/fiftyone/pull/7073>`_
+- Fixed undo/redo inconsistencies for detections. 
+  `#7019 <https://github.com/voxel51/fiftyone/pull/7019>`_
+- Fixed a bug where a detection could lose attribute values when switching
+  between different fields. 
+  `#7067 <https://github.com/voxel51/fiftyone/pull/7067>`_
+- Fixed a memory leak in the annotation UI. 
+  `#7047 <https://github.com/voxel51/fiftyone/pull/7047>`_
+- Added comprehensive test suite for data normalization utilities. 
+  `#6995 <https://github.com/voxel51/fiftyone/pull/6995>`_
+
+
+FiftyOne Enterprise 2.16.2
+--------------------------
+*Released February 20, 2026*
+
+Includes all updates from :ref:`FiftyOne 1.13.2 <release-notes-v1.13.2>`, plus:
+
+- Fixed a bug where Guest users were unable to load datasets.
+
+
+.. _release-notes-v1.13.2:
+
+FiftyOne 1.13.2
+---------------
+*Released February 20, 2026*
+
+:ref:`In-App Annotation <in-app-annotation>`
+
+- Added some 3D annotation polish. We now zoom to the selected vertex for 3D
+  polylines. Label selection now uses heuristics to select the right label by
+  default. Tooltips are now hidden while editing a 3D label.
+  `#7022 <https://github.com/voxel51/fiftyone/pull/7022>`_,
+  `#7043 <https://github.com/voxel51/fiftyone/pull/7043>`_
+- Fixed a bug with undo/redo when deleting 3D labels.
+  `#7022 <https://github.com/voxel51/fiftyone/pull/7022>`_
+
+App
+
+- Fixed issues with video timeline sync: timeline subscribers were not
+  receiving frame updates during video playback, and frame stepping (using `.`
+  and `,` keys) had a momentary off-by-one flicker.
+  `#7044 <https://github.com/voxel51/fiftyone/pull/7044>`_
+
+
+
+FiftyOne Enterprise 2.16.1
+--------------------------
+*Released February 18, 2026*
+
+Includes all updates from :ref:`FiftyOne 1.13.1 <release-notes-v1.13.1>`, plus:
+
+- Reduced the need for manual refreshes in the App by disabling the in-memory
+  singleton cache in the App server
+- Disabled, by default, the task-based `disable_sample_fields` behavior that
+  reduces timeouts. New behavior can still be enabled by setting the
+  `FIFTYONE_ENABLE_RPC` environment variable to `True`. Note: Configuration for
+  `teams-api` may need to be
+  `updated <https://github.com/voxel51/fiftyone-teams-app-deploy/blob/main/docker/docs/upgrading.md#fiftyone-enterprise-v215-additional-api-routes>`_
+  given the new `/rpc` routes.
+- `Updated documentation <https://github.com/voxel51/fiftyone-teams-app-deploy/blob/main/docker/docs/expose-teams-api.md>`_
+  with updated configuration for exposing the new teams-api routes `/rpc` and
+  `/cloud_credentials`.
+
+
+.. _release-notes-v1.13.1:
+
+FiftyOne 1.13.1
+---------------
+*Released February 18, 2026*
+
+App
+ - Fixed a bug where a new release of the `strawberry-graphql` library was
+   incompatible with the application.
+   `#7017 <https://github.com/voxel51/fiftyone/pull/7017>`_,
+   `#7029 <https://github.com/voxel51/fiftyone/pull/7029>`_
+ - Fixed a bug where annotation state wasn't always updating properly when
+   switching between samples.
+   `#7001 <https://github.com/voxel51/fiftyone/pull/7001>`_
+
+
+FiftyOne Enterprise 2.16.0
+--------------------------
+*Released February 12, 2026*
+
+Includes all updates from :ref:`FiftyOne 1.13.0 <release-notes-v1.13.0>`, plus:
+
+Cloud Media
+
+- New Feature: Scoped Cloud Credentials. Cloud credentials for accessing cloud
+  media can now be assigned to one of three different scopes: per-user,
+  per-user-group, and (as always) globally. All scopes of credentials support
+  being further scoped by bucket-name filters, restricting their use to
+  matching bucket names. Via the Settings / Cloud Credentials page, admins can
+  manage all scopes of credentials, while any user can manage their own
+  credentials. Scoped cloud credentials can also be managed using
+  :func:`add_cloud_credentials() <fiftyone.management.cloud_credentials.add_cloud_credentials>`
+  and 
+  :func:`delete_cloud_credentials() <fiftyone.management.cloud_credentials.delete_cloud_credentials>`.
+  Note: Configuration for `teams-api` may need to be
+  `updated <https://github.com/voxel51/fiftyone-teams-app-deploy/blob/main/docker/docs/upgrading.md#fiftyone-enterprise-v216-additional-api-routes>`_
+  given the new `/cloud_credentials` routes.
+
+Plugins and Operators
+
+- Disabled the plugins cache (`plugins_cache_enabled=False`) by default when
+  launching the Enterprise App locally.
+- Exposed the :ref:`Data Quality panel's <data-quality>` underlying operators
+  for direct invocation by users if desired.
+
+App
+
+- Fixed a bug on the Runs page, where filtering would incorrectly filter out
+  certain runs.
+
+Security
+
+- Updated a number of dependencies in order to resolve security
+  vulnerabilities: `azure-core`, `eslint`, `js-yaml`, `tar`, and `wheel`
+
+
+.. _release-notes-v1.13.0:
+
+FiftyOne 1.13.0
+---------------
+*Released February 12, 2026*
+
+App
+
+- New Feature: :ref:`In-App Annotation <in-app-annotation>` Create, edit, and
+  delete classification and detection labels on images, as well as cuboid and
+  3d polylines on 3d datasets. :ref:`Dataset Managers <enterprise-can-edit>`
+  can define an annotation schema to constrain all metadata edits, either
+  manually or by scanning an existing dataset. But, when no schema exists,
+  labelers can choose to bypass a schema and quick-edit right away.
+- New Feature: 3D → 2D projection overlays for cuboids and polylines on image
+  slices, including crosshair with coordinate tooltip.
+  `#6935 <https://github.com/voxel51/fiftyone/pull/6935>`_
+- Improved cursor tracking and raycasting logic for 3D multi-panel
+  visualizations. `#6886 <https://github.com/voxel51/fiftyone/pull/6886>`_,
+  `#6921 <https://github.com/voxel51/fiftyone/pull/6921>`_
+- Optimization: Significantly reduced time to fetch data to populate the grid
+  for datasets with many label fields.
+  `#6934 <https://github.com/voxel51/fiftyone/pull/6934>`_
+- Fixed a bug where RGB segmentation masks stored directly in MongoDB as
+  3-channel arrays were not rendering correctly.
+  `#6805 <https://github.com/voxel51/fiftyone/pull/6805>`_
+- Fixed a bug where img icons for plugins were not sized correctly.
+  `#6937 <https://github.com/voxel51/fiftyone/pull/6937>`_
+
+
+Core
+
+- Fix file descriptor leak when loading images during model inference.
+  `#6773 <https://github.com/voxel51/fiftyone/pull/6773>`_
+
+Models
+
+- Pinned `timm<1.0.24` for omdet-turbo-swin-tiny-torch to fix inference
+  failure. `#6891 <https://github.com/voxel51/fiftyone/pull/6891>`_
+
+CLI
+
+- Added a `fiftyone app debug` command that launches the App in debug mode. In
+  debug mode, server logs are printed to the shell, which is useful, eg, when
+  developing plugins. `#6848 <https://github.com/voxel51/fiftyone/pull/6848>`_
+
+
+
+FiftyOne Enterprise 2.15.0
+--------------------------
+*Released February 4, 2026*
+
+Includes all updates from :ref:`FiftyOne 1.12.0 <release-notes-v1.12.0>`, plus:
+
+Core
+
+- Introduced the `scan_for_label_mistakes` operator. This operator allows you
+  to identify incorrect classification labels, for example those generated by a
+  foundation model, by manually selecting a small number of "verified" labels.
+- Migrated more methods to use a more robust approach for communication with
+  the API: `add_samples()`, `set_values()` now join `delete_sample_fields()`.
+  This will significantly increase the reliability and consistency of long
+  running requests. This change is disabled by default, but can be enabled
+  by setting the `FIFTYONE_ENABLE_RPC` environment variable to `True`.
+- Users can now configure their priority preference for loading credentials
+  (remote vs local) when accessing storage utilities. 
+  `#2209 <https://github.com/voxel51/fiftyone-teams/pull/2209>`_
+
+Plugins, Operators, and Orchestrators
+
+- From the Runs page, users can now rerun an
+  :class:`PipelineOperator <fiftyone.operators.PipelineOperator>` starting at a
+  failed stage -- rerunning the entire stage, or a single
+  :ref:`Operator <using-operators>`. Original runs are archived and hidden by
+  default in the UI, but can be made visible using the "show archived" toggle.
+- Improved reliability of push-based
+  :ref:`orchestrators <enterprise-delegated-orchestrator>`. The system will now
+  automatically retry operations stuck in the queued state for push-based
+  orchestrators. Users can configure their API to automatically requeue
+  operations targeting push-based orchestrators after a delay or a certain
+  number of attempts.
+- New default expiration time for monitored Delegated
+  :ref:`Operators <using-operators>` is now 30 minutes, allowing for more
+  accurate termination of stuck pods while respecting non-monitored operations.
+- Fixed distributed execution to prevent sample skipping, introducing new
+  default ID-range batching strategy, and now use a strategy pattern to select
+  between slice-based batching and ID-range batching.
+- For `Kubernetes Orchestrator <https://github.com/voxel51/fiftyone-teams-app-deploy/blob/main/docs/orchestrators/configuring-kubernetes-orchestrator.md>`_,
+  made both `image` and `kubeConfig` parameters optional, allowing users to
+  specify them via configuration if desired.
+
+Authorization
+
+- The restriction on role re-upgrades is no longer based on "role" but now
+  "license tier". For example, Admin and Member are considered the same tier
+  since they both use up the same seat type, so users are free to switch
+  between those roles without restrictions.
+
+App
+
+- Added a multi-scope cloud credentials UI to the Admin's Settings page.
+  Available scopes are GLOBAL, GROUP, and USER, each with its own tab.
+- Updated UI to show downgrade warning based on tiers.
+
+Security
+
+- Updated a number of dependencies in order to resolve security
+  vulnerabilities: `diff`, `fonttools`, `glob`, `h2`, `js-yaml`,
+  `langchain-core`, `nodemailer`, `qs`, and `starlette`.
+
+.. _release-notes-v1.12.0:
+
+FiftyOne 1.12.0
+---------------
+*Released February 4, 2026*
+
+Core
+
+- Added a first-class camera module with 
+  :ref:`intrinsics/extrinsics data models <camera-intrinsics-extrinsics>`,
+  :ref:`dataset-level refs <storing-camera-calibration>`, and
+  :ref:`projection utilities for 3D <-> 2D workflows <camera-projection>`.
+  `#6700 <https://github.com/voxel51/fiftyone/pull/6700>`_,
+  `#6780 <https://github.com/voxel51/fiftyone/pull/6780>`_,
+  `#6703 <https://github.com/voxel51/fiftyone/pull/6703>`_,
+  `#6730 <https://github.com/voxel51/fiftyone/pull/6730>`_
+- Added a builtin `reload_saved_view` :ref:`operator <using-operators>` that
+  allows for checking + reloading saved generated views. Calling `reload()` on
+  a saved generated view will now automatically update the saved view's
+  metadata. Backing datasets for saved generated views are now marked as
+  persistent so that they are not affected by non-persistent dataset cleanup.
+  Deleting a dataset or specific generated saved views will automatically mark
+  the now-deprecated backing dataset as non-persistent. Switch to
+  `_state["dataset_id"]` in generated views to prevent unnecessary reloads when
+  the parent dataset is renamed.
+  `#6067 <https://github.com/voxel51/fiftyone/pull/6067>`_
+- Added :meth:`get_cpu_count() <fiftyone.core.utils.get_cpu_count>` which
+  properly accounts for docker / kubernetes CPU limits. Updated
+  :meth:`recommend_thread_pool_workers() <fiftyone.core.utils.recommend_thread_pool_workers>`
+  and
+  :meth:`recommend_process_pool_workers() <fiftyone.core.utils.recommend_process_pool_workers>`
+  to use this new function.
+  `#6290 <https://github.com/voxel51/fiftyone/pull/6290>`_
+
+Plugins and Operators
+
+- Expanded support for rerunning Delegated :ref:`Operators <using-operators>`.
+  Set `rerunnable` to True or False on the operator config of your Operator or
+  :class:`PipelineStage <fiftyone.operators.types.PipelineStage>` to control
+  whether users can rerun that operation. Note: the PipelineStage config takes
+  precedence over the Operator config, or set the stage config to `None` to
+  default to the Operator `rerunnable` value. 
+  `#6729 <https://github.com/voxel51/fiftyone/pull/6729>`_
+- You can now use ``fiftyone delegated rerun <operatorId>`` to rerun
+  Delegated :ref:`Operators <using-operators>`.
+  `#6729 <https://github.com/voxel51/fiftyone/pull/6729>`_
+- Added support for archiving Delegated :ref:`Operators <using-operators>`, in
+  addition to deleting them. Archived Delegated Operators will automatically be
+  filtered out when calling `list_operations`. 
+  `#6716 <https://github.com/voxel51/fiftyone/pull/6716>`_
+- Added support for immediate
+  :class:`PipelineOperator <fiftyone.operators.PipelineOperator>` execution, with
+  added live pipeline execution capability and enhanced error handling. 
+  `#6628 <https://github.com/voxel51/fiftyone/pull/6628>`_
+- Fixed a bug for multi-select autocomplete fields when setting a default
+  value. `#6748 <https://github.com/voxel51/fiftyone/pull/6748>`_
+
+Model Zoo
+
+- SAM2 models now support negative prompts for refined segmentation control.
+  Users can specify a `negative_prompt_field` parameter when applying SAM2
+  models to exclude unwanted regions from segmentation masks. This enables more
+  precise segmentation by providing both positive prompts (regions to segment)
+  and negative prompts (regions to exclude). Works with both image and video
+  SAM2 models using Detections or Keypoints. 
+  `#6520 <https://github.com/voxel51/fiftyone/pull/6520>`_
+- Added YOLO26 model family to the model zoo, including classification,
+  detection, and instance segmentation models, based on the January 2026
+  Ultralytics release. `#6760 <https://github.com/voxel51/fiftyone/pull/6760>`_
+- Added three LLMDet open-vocabulary zero-shot object detectors
+  (tiny/base/large) to the Torch model zoo. 
+  `#6248 <https://github.com/voxel51/fiftyone/pull/6248>`_
+- Updated
+  :meth:`get_implied_field_kwargs() <fiftyone.core.odm.get_implied_field_kwargs>`
+  to correctly handle values that contain subclasses of `EmbeddedDocumentField`. 
+  `#6639 <https://github.com/voxel51/fiftyone/pull/6639>`_
+
+Brain
+
+- Fixed: When subselecting samples from the lancedb table, ensure the samples
+  being selected exist in the table. 
+  `#272 <https://github.com/voxel51/fiftyone-brain/pull/272>`_
+
+ETA
+
+- Fixed an incompatibility with `numpy>=2` and the `FFmpegVideoReader`.
+  `#686 <https://github.com/voxel51/eta/pull/686>`_
+
+Docs
+
+- Expanded user guide with comprehensive camera calibration coverage:
+  :ref:`Storing Camera Calibration <storing-camera-calibration>`,
+  :ref:`Camera Intrinsics/Extrinsics <camera-intrinsics-extrinsics>`, and
+  :ref:`3D <-> 2D Projection <camera-projection>`.
+  `#6711 <https://github.com/voxel51/fiftyone/pull/6711>`_
+- Fixed broken active projects reference in CONTRIBUTING.md 
+  `#6770 <https://github.com/voxel51/fiftyone/pull/6770>`_
+
+
+
 FiftyOne Enterprise 2.14.1
 --------------------------
 *Released January 14, 2026*

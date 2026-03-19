@@ -3,17 +3,22 @@
  */
 
 import { LoadingSpinner } from "@fiftyone/components";
-import { Text, TextColor, TextVariant } from "@voxel51/voodo";
-import { useCallback, useMemo } from "react";
 import {
-  EditSectionHeader,
-  EmptyStateBox,
-  ListContainer,
-  Section,
-} from "../../styled";
-import type { SchemaConfigType } from "../../utils";
+  Button,
+  Size,
+  Text,
+  TextColor,
+  TextVariant,
+  Variant,
+} from "@voxel51/voodo";
+import { useCallback, useMemo } from "react";
+import { PRIMITIVE_FIELD_TYPES } from "../../constants";
+import { useFieldType } from "../../hooks";
+import { EditSectionHeader, EmptyStateBox, Section } from "../../styled";
+import type { AttributeConfig, SchemaConfigType } from "../../utils";
 import AttributesSection from "./AttributesSection";
 import ClassesSection from "./ClassesSection";
+import PrimitiveFieldContent from "./PrimitiveFieldContent";
 
 // Re-export types for external use
 export type {
@@ -23,15 +28,26 @@ export type {
 } from "../../utils";
 
 interface GUIContentProps {
+  field: string;
   config: SchemaConfigType | undefined;
   scanning: boolean;
+  onCancelScan?: () => void;
   onConfigChange?: (config: SchemaConfigType) => void;
 }
 
-const GUIContent = ({ config, scanning, onConfigChange }: GUIContentProps) => {
+const GUIContent = ({
+  field,
+  config,
+  scanning,
+  onCancelScan,
+  onConfigChange,
+}: GUIContentProps) => {
+  const fType = useFieldType(field);
+  const isPrimitive = fType ? PRIMITIVE_FIELD_TYPES.has(fType) : false;
+
   const classes = useMemo(() => config?.classes || [], [config?.classes]);
   const attributes = useMemo(
-    () => config?.attributes || {},
+    () => config?.attributes || [],
     [config?.attributes]
   );
 
@@ -70,36 +86,103 @@ const GUIContent = ({ config, scanning, onConfigChange }: GUIContentProps) => {
     [config, onConfigChange]
   );
 
+  const handleAddAttribute = useCallback(
+    (attrConfig: AttributeConfig) => {
+      if (!config) return;
+      // Add new attribute at the beginning of the list
+      const newAttributes = [attrConfig, ...attributes];
+      onConfigChange?.({ ...config, attributes: newAttributes });
+    },
+    [config, attributes, onConfigChange]
+  );
+
+  const handleEditAttribute = useCallback(
+    (oldName: string, attrConfig: AttributeConfig) => {
+      if (!config) return;
+      const newAttributes = attributes.map((attr) =>
+        attr.name === oldName ? attrConfig : attr
+      );
+      onConfigChange?.({ ...config, attributes: newAttributes });
+    },
+    [config, attributes, onConfigChange]
+  );
+
+  const handleDeleteAttribute = useCallback(
+    (name: string) => {
+      if (!config) return;
+      const newAttributes = attributes.filter((attr) => attr.name !== name);
+      onConfigChange?.({ ...config, attributes: newAttributes });
+    },
+    [config, attributes, onConfigChange]
+  );
+
+  const handleAttributeOrderChange = useCallback(
+    (newOrder: AttributeConfig[]) => {
+      if (!config) return;
+      onConfigChange?.({ ...config, attributes: newOrder });
+    },
+    [config, onConfigChange]
+  );
+
+  // Primitive field types show a different UI
+  if (isPrimitive && fType) {
+    return (
+      <Section>
+        <PrimitiveFieldContent
+          field={field}
+          fieldType={fType}
+          config={config}
+          onConfigChange={onConfigChange}
+          largeLabels
+        />
+      </Section>
+    );
+  }
+
   if (scanning) {
     return (
-      <ListContainer>
+      <>
         <Section>
           <EditSectionHeader>
             <Text variant={TextVariant.Lg}>Classes</Text>
           </EditSectionHeader>
-          <EmptyStateBox>
-            <LoadingSpinner style={{ marginRight: 8 }} />
+          <EmptyStateBox style={{ flexDirection: "column", gap: 8 }}>
+            <LoadingSpinner />
             <Text color={TextColor.Secondary}>Scanning schema</Text>
+            <Button
+              size={Size.Sm}
+              variant={Variant.Secondary}
+              onClick={onCancelScan}
+            >
+              Cancel
+            </Button>
           </EmptyStateBox>
         </Section>
         <Section>
           <EditSectionHeader>
             <Text variant={TextVariant.Lg}>Attributes</Text>
           </EditSectionHeader>
-          <EmptyStateBox>
-            <LoadingSpinner style={{ marginRight: 8 }} />
+          <EmptyStateBox style={{ flexDirection: "column", gap: 8 }}>
+            <LoadingSpinner />
             <Text color={TextColor.Secondary}>Scanning schema</Text>
+            <Button
+              size={Size.Sm}
+              variant={Variant.Secondary}
+              onClick={onCancelScan}
+            >
+              Cancel
+            </Button>
           </EmptyStateBox>
         </Section>
-      </ListContainer>
+      </>
     );
   }
 
   return (
-    <ListContainer>
+    <>
       <ClassesSection
         classes={classes}
-        attributeCount={Object.keys(attributes).length}
+        attributeCount={attributes.length}
         onAddClass={handleAddClass}
         onEditClass={handleEditClass}
         onDeleteClass={handleDeleteClass}
@@ -107,14 +190,12 @@ const GUIContent = ({ config, scanning, onConfigChange }: GUIContentProps) => {
       />
       <AttributesSection
         attributes={attributes}
-        onAddAttribute={() => {
-          // TODO: Implement add attribute
-        }}
-        onEditAttribute={(_name) => {
-          // TODO: Implement edit attribute
-        }}
+        onAddAttribute={handleAddAttribute}
+        onEditAttribute={handleEditAttribute}
+        onDeleteAttribute={handleDeleteAttribute}
+        onOrderChange={handleAttributeOrderChange}
       />
-    </ListContainer>
+    </>
   );
 };
 

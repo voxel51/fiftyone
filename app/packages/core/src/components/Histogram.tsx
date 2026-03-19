@@ -213,19 +213,18 @@ const HistogramRenderer: React.FC<{ path: string }> = ({ path }) => {
             if (map[key]) {
               if (isDateTime || isDate) {
                 const [start, end] = map[key];
-                const [cFmt, dFmt] = getDateTimeRangeFormattersWithPrecision(
-                  isDate ? "UTC" : timeZone,
-                  start,
-                  end
-                );
-                let range = dFmt.formatRange(start, end).replaceAll("/", "-");
+                const { common: cFmt, diff: dFmt } =
+                  getDateTimeRangeFormattersWithPrecision(
+                    isDate ? "UTC" : timeZone,
+                    start,
+                    end
+                  );
+                let range = dFmt.formatRange(start, end);
 
                 if (dFmt.resolvedOptions().fractionalSecondDigits === 3) {
                   range = range.replaceAll(",", ".");
                 }
-                title = `Range: ${
-                  cFmt ? cFmt.format(start).replaceAll("/", "-") : ""
-                } ${range.replaceAll("/", "-")}`;
+                title = `Range: ${cFmt ? cFmt.format(start) : ""} ${range}`;
               } else {
                 title = `Range: [${map[key]
                   .map((e) => (Number.isInteger(e) ? e : e.toFixed(3)))

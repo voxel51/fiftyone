@@ -17,7 +17,10 @@ export type { Renderer2D } from "./renderer/Renderer2D";
 // Overlay exports
 export type { BaseOverlay } from "./overlay/BaseOverlay";
 export { BoundingBoxOverlay } from "./overlay/BoundingBoxOverlay";
-export type { BoundingBoxOptions } from "./overlay/BoundingBoxOverlay";
+export type {
+  BoundingBoxLabel,
+  BoundingBoxOptions,
+} from "./overlay/BoundingBoxOverlay";
 export { ClassificationOverlay } from "./overlay/ClassificationOverlay";
 export type { ClassificationOptions } from "./overlay/ClassificationOverlay";
 export { ImageOverlay } from "./overlay/ImageOverlay";
@@ -49,7 +52,6 @@ export type { SelectionOptions } from "./selection/SelectionManager";
 
 // Command exports
 export { MoveOverlayCommand } from "./commands/MoveOverlayCommand";
-export type { Movable } from "./commands/MoveOverlayCommand";
 export { TransformOverlayCommand } from "./commands/TransformOverlayCommand";
 export { UpdateLabelCommand } from "./commands/UpdateLabelCommand";
 

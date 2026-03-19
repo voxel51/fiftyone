@@ -1,19 +1,35 @@
-import { stagedPolylineTransformsAtom } from "@fiftyone/looker-3d/src/state";
+import { DeleteAnnotationCommand, getFieldSchema } from "@fiftyone/annotation";
+import { useCommandBus } from "@fiftyone/command-bus";
+import {
+  DelegatingUndoable,
+  KnownContexts,
+  useCreateCommand,
+} from "@fiftyone/commands";
+import { useIsWorkingInitialized } from "@fiftyone/looker-3d";
+import {
+  isPatchesView,
+  useModalSampleSchema,
+  useUnboundStateRef,
+} from "@fiftyone/state";
 import { useAtom, useAtomValue } from "jotai";
-import { useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import AddSchema from "./AddSchema";
 import {
+  current,
   currentDisabledFields,
   currentField,
   currentFields,
   currentType,
   editing,
-  isNew,
 } from "./state";
 
-const createSchema = (choices: string[], disabled: Set<string>) => ({
+const createSchema = (
+  choices: string[],
+  disabled: Set<string>,
+  readOnly = false
+) => ({
   type: "object",
   view: {
     component: "ObjectView",
@@ -26,6 +42,7 @@ const createSchema = (choices: string[], disabled: Set<string>) => ({
         label: "field",
         placeholder: "Select a field",
         component: "DropdownView",
+        readOnly,
         choices: choices.map((choice) => ({
           name: "Choice",
           label: choice,
@@ -41,35 +58,75 @@ const Field = () => {
   const fields = useAtomValue(currentFields);
   const disabled = useAtomValue(currentDisabledFields);
   const [currentFieldValue, setCurrentField] = useAtom(currentField);
+  const isPatches = useRecoilValue(isPatchesView);
+  const currentLabel = useAtomValue(current);
   const schema = useMemo(
-    () => createSchema(fields, disabled),
-    [disabled, fields]
+    () => createSchema(fields, disabled, isPatches),
+    [disabled, fields, isPatches]
   );
   const type = useAtomValue(currentType);
   const state = useAtomValue(editing);
-  const isCreating = useAtomValue(isNew);
+  const modalSampleSchema = useModalSampleSchema();
+  const commandBus = useCommandBus();
+  const nextFieldValue = useRef(currentFieldValue);
+  const labelId = currentLabel?.overlay?.id;
+  const currentLabelRef = useUnboundStateRef(currentLabel);
 
-  const polylinePointTransforms =
-    useRecoilValue(stagedPolylineTransformsAtom) ?? {};
+  const is3DAnnotationStagingInitialized = useIsWorkingInitialized();
 
-  if (!isCreating) {
-    return null;
-  }
+  const updateField = useCreateCommand(
+    KnownContexts.ModalAnnotate,
+    `update-${labelId}-field`,
+    useCallback(() => {
+      const currentField = currentFieldValue as string;
+      const newField = nextFieldValue.current as string;
 
-  // todo: temp: skip for 3d
-  if (Object.keys(polylinePointTransforms).length > 0) {
-    return null;
-  }
+      return new DelegatingUndoable(
+        `update-${labelId}-field-action`,
+        // stage mutation on execute
+        async () => {
+          const currentLabel = currentLabelRef.current;
+          const fieldSchema = getFieldSchema(modalSampleSchema, currentField);
+          if (!currentLabel || !fieldSchema) return;
+          await commandBus.execute(
+            new DeleteAnnotationCommand(currentLabel, fieldSchema)
+          );
+          setCurrentField(newField);
+        },
+        // restore original value on undo
+        async () => {
+          const currentLabel = currentLabelRef.current;
+          const fieldSchema = getFieldSchema(modalSampleSchema, newField);
+          if (!currentLabel || !fieldSchema) return;
+          await commandBus.execute(
+            new DeleteAnnotationCommand(currentLabel, fieldSchema)
+          );
+          setCurrentField(currentField);
+        }
+      );
+    }, [
+      modalSampleSchema,
+      currentLabelRef,
+      commandBus,
+      setCurrentField,
+      labelId,
+      currentFieldValue,
+    ]),
+    () => true
+  );
 
   return (
     <>
-      {!!fields.length && (
+      {/* Note: we don't allow field selection in 3D since it's handled in the "left" in-canvas sidebar */}
+      {!!fields.length && !is3DAnnotationStagingInitialized && (
         <div>
           <SchemaIOComponent
             schema={schema}
+            smartForm={true}
             data={{ field: currentFieldValue }}
             onChange={({ field }) => {
-              setCurrentField(field);
+              nextFieldValue.current = field;
+              updateField.callback();
             }}
           />
         </div>

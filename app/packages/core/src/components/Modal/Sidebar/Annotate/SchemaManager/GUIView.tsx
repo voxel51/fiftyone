@@ -4,18 +4,19 @@
  * Main view for the Schema Manager with GUI and JSON tabs.
  */
 
-import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
-import { Typography } from "@mui/material";
-import { Size, ToggleSwitch } from "@voxel51/voodo";
-import { useAtomValue, useSetAtom } from "jotai";
+import { Code, scrollable } from "@fiftyone/components";
+import { Size, Text, TextColor, ToggleSwitch } from "@voxel51/voodo";
 import { useCallback } from "react";
-import { CodeView } from "../../../../../plugins/SchemaIO/components";
-import { activeSchemaTab, labelSchemasData } from "../state";
 import ActiveFieldsSection from "./ActiveFieldsSection";
 import { Container, Item } from "./Components";
 import { TAB_GUI, TAB_IDS, TAB_JSON } from "./constants";
 import HiddenFieldsSection from "./HiddenFieldsSection";
-import { useFullSchemaEditor } from "./hooks";
+import {
+  useFullSchemaEditor,
+  useLabelSchemasData,
+  useSchemaEditorGUIJSONToggle,
+  useSelectionCleanup,
+} from "./hooks";
 import { ContentArea } from "./styled";
 
 // =============================================================================
@@ -33,6 +34,9 @@ export { selectedActiveFields, selectedHiddenFields } from "./state";
  * GUI content - field list with drag-drop
  */
 const GUIContent = () => {
+  // Reset selection when switching away from GUI tab
+  useSelectionCleanup();
+
   return (
     <>
       <ActiveFieldsSection />
@@ -45,19 +49,20 @@ const GUIContent = () => {
  * JSON content - raw schema view (read-only)
  */
 const JSONContent = () => {
-  const schemasData = useAtomValue(labelSchemasData);
+  const schemasData = useLabelSchemasData();
   const { currentJson } = useFullSchemaEditor();
 
   if (!schemasData) {
     return (
       <Item style={{ justifyContent: "center", opacity: 0.7 }}>
-        <Typography color="secondary">No schema data available</Typography>
+        <Text color={TextColor.Secondary}>No schema data available</Text>
       </Item>
     );
   }
 
   return (
     <ContentArea
+      className={scrollable}
       style={{
         position: "absolute",
         top: "50px",
@@ -66,22 +71,12 @@ const JSONContent = () => {
         bottom: 0,
       }}
     >
-      <CodeView
-        data={currentJson}
-        path="schemas"
-        schema={{
-          view: {
-            language: "json",
-            readOnly: true,
-            width: "100%",
-            height: "100%",
-            componentsProps: {
-              container: {
-                style: { height: "100%" },
-              },
-            },
-          },
-        }}
+      <Code
+        value={currentJson}
+        language="json"
+        height="100%"
+        width="100%"
+        readOnly
       />
     </ContentArea>
   );
@@ -92,34 +87,25 @@ const JSONContent = () => {
 // =============================================================================
 
 const GUIView = () => {
-  const { isEnabled: isM4Enabled } = useFeature({
-    feature: FeatureFlag.VFF_ANNOTATION_M4,
-  });
-  const activeTab = useAtomValue(activeSchemaTab);
-  const setActiveTab = useSetAtom(activeSchemaTab);
+  const { tab: activeTab, setTab: setActiveTab } =
+    useSchemaEditorGUIJSONToggle();
 
   // Guard against invalid activeTab values (indexOf returns -1 for unknown values)
   const tabIndex = TAB_IDS.indexOf(activeTab);
   const defaultIndex = tabIndex === -1 ? 0 : tabIndex;
 
-  const handleTabChange = useCallback((index: number) => {
-    const tabId = TAB_IDS[index];
-    if (tabId) {
-      setActiveTab(tabId);
-    }
-  }, []);
-
-  // When M4 flag is off, show GUI content directly without toggle
-  if (!isM4Enabled) {
-    return (
-      <Container style={{ marginBottom: "0.5rem" }}>
-        <GUIContent />
-      </Container>
-    );
-  }
+  const handleTabChange = useCallback(
+    (index: number) => {
+      const tabId = TAB_IDS[index];
+      if (tabId) {
+        setActiveTab(tabId);
+      }
+    },
+    [setActiveTab]
+  );
 
   return (
-    <Container style={{ marginBottom: "0.5rem" }}>
+    <Container className={scrollable} style={{ marginTop: "1.5rem" }}>
       <ToggleSwitch
         size={Size.Md}
         defaultIndex={defaultIndex}

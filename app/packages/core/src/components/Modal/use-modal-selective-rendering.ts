@@ -13,8 +13,7 @@ import { useDetectNewActiveLabelFields } from "../Sidebar/useDetectNewActiveLabe
 
 export const useImageModalSelectiveRendering = (
   modalId: string,
-  looker: Lookers,
-  ghost?: boolean
+  looker: Lookers
 ) => {
   const { getNewFields } = useDetectNewActiveLabelFields({
     modal: true,
@@ -26,7 +25,7 @@ export const useImageModalSelectiveRendering = (
   )}-image`;
 
   useEffect(() => {
-    if (!looker || ghost) {
+    if (!looker) {
       return;
     }
 
@@ -61,7 +60,7 @@ export const useImageModalSelectiveRendering = (
     }
 
     looker.updateOptions({}, shouldHardReload);
-  }, [id, looker, getNewFields, ghost]);
+  }, [id, looker, getNewFields]);
 };
 
 export const useImavidModalSelectiveRendering = (

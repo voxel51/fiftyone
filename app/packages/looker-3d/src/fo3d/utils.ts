@@ -20,9 +20,47 @@ import type {
   FoScene,
   FoSceneNode,
 } from "../hooks";
+import { SavedCameraState } from "../types";
 
 export const getCameraPositionKey = (datasetName?: string) =>
   `${datasetName ?? "fiftyone"}-fo3d-camera-position`;
+
+/**
+ * Retrieve camera state from local storage for given dataset, if available
+ */
+export const getSavedCameraState = (
+  datasetName?: string
+): SavedCameraState | null => {
+  const raw = window?.localStorage.getItem(getCameraPositionKey(datasetName));
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    if (
+      parsed &&
+      Array.isArray(parsed.position) &&
+      parsed.position.length === 3 &&
+      Array.isArray(parsed.target) &&
+      parsed.target.length === 3
+    ) {
+      return parsed as SavedCameraState;
+    }
+  } catch {}
+  return null;
+};
+
+/**
+ * Save camera state to local storage for given dataset
+ */
+export const saveCameraState = (
+  datasetName: string | undefined,
+  position: number[],
+  target: number[]
+) => {
+  window?.localStorage.setItem(
+    getCameraPositionKey(datasetName),
+    JSON.stringify({ position, target })
+  );
+};
 
 export const getAssetUrlForSceneNode = (node: FoSceneNode): string => {
   if (!node.asset) return null;

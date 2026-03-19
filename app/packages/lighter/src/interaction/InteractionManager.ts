@@ -2,6 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import { quickDrawBridge } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/bridgeQuickDraw";
 import { EventDispatcher, getEventBus } from "@fiftyone/events";
 import { TypeGuards } from "../core/Scene2D";
 import type { LighterEventGroup } from "../events";
@@ -58,11 +59,6 @@ export interface InteractionHandler {
    * Returns the position from the start of handler movement
    */
   getMoveStartPosition?(): Point | undefined;
-
-  /**
-   * Returns the bounds of the handler
-   */
-  getAbsoluteBounds?(): Rect;
 
   /**
    * Returns the position from the start of handler movement
@@ -195,8 +191,8 @@ export class InteractionManager {
   private canonicalMediaId?: string;
 
   // Configuration
-  private readonly CLICK_THRESHOLD = 0.1;
-  private readonly CLICK_TIME_THRESHOLD = 300; // ms
+  private readonly CLICK_THRESHOLD = 10; // pixels, dictates drag vs. click
+  private readonly DRAG_TIME_THRESHOLD = 500; // ms, dictates drag vs. click
   private readonly DOUBLE_CLICK_TIME_THRESHOLD = 500; // ms
   private readonly DOUBLE_CLICK_DISTANCE_THRESHOLD = 10; // pixels
 
@@ -206,9 +202,9 @@ export class InteractionManager {
     private canvas: HTMLCanvasElement,
     private selectionManager: SelectionManager,
     private renderer: Renderer2D,
-    sceneId: string,
+    eventChannel: string
   ) {
-    this.eventBus = getEventBus<LighterEventGroup>(sceneId);
+    this.eventBus = getEventBus<LighterEventGroup>(eventChannel);
     this.setupEventListeners();
   }
 
@@ -253,13 +249,54 @@ export class InteractionManager {
 
     let handler: InteractionHandler | undefined = undefined;
 
-    const interactiveHandler = this.getInteractiveHandler();
+    let interactiveHandler = this.getInteractiveHandler();
 
     if (interactiveHandler) {
       handler = interactiveHandler.getOverlay();
       this.selectionManager.select(handler.id);
     } else {
       handler = this.findHandlerAtPoint(point);
+      // Prevent pan/zoom when target is selectable
+      if (handler && TypeGuards.isSelectable(handler)) {
+        this.renderer.disableZoomPan();
+      }
+
+      // If clicking an overlay, select it
+      const isUnselectedOverlay =
+        !!handler &&
+        TypeGuards.isSelectable(handler) &&
+        !this.selectionManager.isSelected(handler.id);
+
+      if (isUnselectedOverlay) {
+        this.selectionManager.select(handler!.id);
+      }
+
+      // QuickDraw: clicking outside the selected overlay starts a new detection.
+      if (quickDrawBridge.isQuickDrawActive()) {
+        const isNonOverlay = !handler || handler.id === this.canonicalMediaId;
+
+        if (isNonOverlay || isUnselectedOverlay) {
+          this.renderer.disableZoomPan();
+          this.selectionManager.clearSelection();
+
+          interactiveHandler = this.getInteractiveHandler();
+          if (!interactiveHandler) {
+            // Ask QuickDraw (via React) to create a detection and register
+            // an interactive handler. This relies on the event bus invoking
+            // handlers synchronously so the handler is available immediately
+            // after dispatch returns.
+            this.eventBus.dispatch("lighter:overlay-create", {
+              eventId: crypto.randomUUID(),
+            });
+            interactiveHandler = this.getInteractiveHandler();
+          }
+
+          if (interactiveHandler) {
+            handler = interactiveHandler.getOverlay();
+            this.selectionManager.select(handler.id);
+          }
+        }
+      }
     }
 
     if (handler?.onPointerDown?.(point, worldPoint, event, scale)) {
@@ -268,17 +305,16 @@ export class InteractionManager {
         this.canvas.style.cursor = cursor;
       }
 
-      // If this is a movable overlay, track move state
-      if (TypeGuards.isMovable(handler) && TypeGuards.isSpatial(handler)) {
+      // If this is a spatial overlay, track move state
+      if (TypeGuards.isSpatial(handler)) {
         const type: keyof LighterEventGroup = handler.isDragging?.()
           ? "lighter:overlay-drag-start"
           : "lighter:overlay-resize-start";
 
         this.eventBus.dispatch(type, {
           id: handler.id,
-          startPosition: handler.getPosition(),
-          absoluteBounds: handler.getAbsoluteBounds(),
-          relativeBounds: handler.getRelativeBounds(),
+          startPosition: handler.bounds,
+          bounds: handler.bounds,
         });
       }
 
@@ -286,6 +322,23 @@ export class InteractionManager {
       event.preventDefault();
     }
   };
+
+  private configureCursorStyle(
+    handler: InteractionHandler,
+    worldPoint: Point,
+    scale: number
+  ): void {
+    if (
+      quickDrawBridge.isQuickDrawActive() &&
+      handler &&
+      TypeGuards.isSelectable(handler) &&
+      !handler.isSelected()
+    ) {
+      this.canvas.style.cursor = "crosshair";
+    } else if (TypeGuards.isInteractionHandler(handler) && handler.getCursor) {
+      this.canvas.style.cursor = handler.getCursor(worldPoint, scale);
+    }
+  }
 
   private handlePointerMove = (event: PointerEvent): void => {
     const point = this.getCanvasPoint(event);
@@ -302,6 +355,22 @@ export class InteractionManager {
       this.handleHover(this.currentPixelCoordinates, event);
     }
 
+    // To determine drag behavior, we allow for two cases:
+    //  1. A spatial drag indicates that the pointer has moved a sufficient
+    //    distance from its starting point. We allow for some epsilon of
+    //    movement to allow for normal clicks to move a few pixels.
+    //  2. A temporal drag indicates that the pointer has been pressed for a
+    //    sufficient period of time.
+    //  By combining both spatial and temporal drags, we can prevent accidental
+    //  dragging behavior when clicking (via spatial gate), while still
+    //  allowing for pixel-level drag precision (via temporal gate).
+    // const isDrag = this.isTemporalDrag() || this.isSpatialDragEvent(event);
+    //
+    // todo - update handlers to be "sticky" - if a drag starts from a handler,
+    //  that handler should continue to process events even if the pointer
+    //  moves beyond its bounds.
+
+    // Apply drag gate to prevent accidental overlay dragging on click
     if (handler) {
       // Handle drag move
       if (!interactiveHandler) {
@@ -325,8 +394,6 @@ export class InteractionManager {
       }
 
       if (handler.isMoving?.()) {
-        this.renderer.disableZoomPan();
-
         // Emit move event with bounds information
         if (TypeGuards.isSpatial(handler)) {
           const type = handler.isDragging?.()
@@ -335,18 +402,15 @@ export class InteractionManager {
 
           this.eventBus.dispatch(type, {
             id: handler.id,
-            absoluteBounds: handler.getAbsoluteBounds(),
-            relativeBounds: handler.getRelativeBounds(),
+            bounds: handler.bounds,
           });
         }
 
         event.preventDefault();
       }
-
-      // Update cursor
-      if (TypeGuards.isInteractionHandler(handler) && handler.getCursor) {
-        this.canvas.style.cursor = handler.getCursor(worldPoint, scale);
-      }
+      this.configureCursorStyle(handler, worldPoint, scale);
+    } else if (quickDrawBridge.isQuickDrawActive() && !interactiveHandler) {
+      this.canvas.style.cursor = "crosshair";
     }
   };
 
@@ -380,18 +444,14 @@ export class InteractionManager {
         this.removeHandler(interactiveHandler);
       }
 
-      this.canvas.style.cursor =
-        handler.getCursor?.(worldPoint, scale) || this.canvas.style.cursor;
-
       // Emit move end event with bounds information
       if (TypeGuards.isSpatial(handler) && startBounds && startPosition) {
         const detail = {
           id: handler.id,
           startBounds,
           startPosition,
-          endPosition: handler.getPosition(),
-          absoluteBounds: handler.getAbsoluteBounds(),
-          relativeBounds: handler.getRelativeBounds(),
+          endPosition: handler.bounds,
+          bounds: handler.bounds,
         };
 
         if (moveState === "SETTING") {
@@ -415,8 +475,6 @@ export class InteractionManager {
       }
 
       this.canvas.releasePointerCapture(event.pointerId);
-      // Re-enable zoom/pan after overlay dragging ends
-      this.renderer.enableZoomPan();
       event.preventDefault();
     } else if (handler && !handler.isMoving?.()) {
       // This was a click, not a drag - handle as click for selection
@@ -430,8 +488,11 @@ export class InteractionManager {
       this.handleClick(point, event, now);
     }
 
+    this.renderer.enableZoomPan();
     this.canvas.style.cursor =
       handler?.getCursor?.(worldPoint, scale) || this.canvas.style.cursor;
+    this.clickStartPoint = undefined;
+    this.clickStartTime = 0;
   };
 
   private handlePointerCancel = (event: PointerEvent): void => {
@@ -504,17 +565,8 @@ export class InteractionManager {
   private handleClick(point: Point, event: PointerEvent, now: number): void {
     if (!this.clickStartPoint || !this.clickStartTime) return;
 
-    const distance = Math.sqrt(
-      Math.pow(point.x - this.clickStartPoint.x, 2) +
-      Math.pow(point.y - this.clickStartPoint.y, 2)
-    );
-    const duration = now - this.clickStartTime;
-
-    // Check if this is a valid click (not too much movement or time)
-    if (
-      distance <= this.CLICK_THRESHOLD &&
-      duration <= this.CLICK_TIME_THRESHOLD
-    ) {
+    // Check if this is a valid click (not a drag)
+    if (!this.isSpatialDragEvent(event)) {
       // Skip canonical media (background) when finding handler for clicks
       // This ensures clicking on empty space clears selection
       const handler = this.findHandlerAtPoint(point, true);
@@ -529,7 +581,6 @@ export class InteractionManager {
 
       // Handle selection if the handler is selectable
       if (handler && TypeGuards.isSelectable(handler)) {
-        this.selectionManager.toggle(handler.id, { event });
         event.preventDefault();
       }
       // Otherwise, handle regular click
@@ -621,6 +672,7 @@ export class InteractionManager {
 
     // Update the hovered handler
     this.hoveredHandler = handler;
+    this.configureCursorStyle(handler, worldPoint, scale);
   }
 
   private handleZoomed = (
@@ -635,7 +687,7 @@ export class InteractionManager {
     const timeDiff = now - this.lastClickTime;
     const distance = Math.sqrt(
       Math.pow(point.x - this.lastClickPoint.x, 2) +
-      Math.pow(point.y - this.lastClickPoint.y, 2)
+        Math.pow(point.y - this.lastClickPoint.y, 2)
     );
 
     return (
@@ -735,6 +787,45 @@ export class InteractionManager {
     };
 
     return screenPoint;
+  }
+
+  /**
+   * Returns whether the event should be considered a spatial drag.
+   *
+   * This method checks whether the event's position exceeds the spatial gate
+   * specified by {@link CLICK_THRESHOLD}.
+   *
+   * @param event Pointer event
+   * @private
+   */
+  private isSpatialDragEvent(event: PointerEvent): boolean {
+    if (this.clickStartPoint) {
+      const point = this.getCanvasPoint(event);
+      const distanceSquared =
+        Math.pow(point.x - this.clickStartPoint.x, 2) +
+        Math.pow(point.y - this.clickStartPoint.y, 2);
+
+      return distanceSquared > this.CLICK_THRESHOLD * this.CLICK_THRESHOLD;
+    }
+
+    return false;
+  }
+
+  /**
+   * Returns whether the current time should be considered a temporal drag.
+   *
+   * This method checks whether the delta between the current time and the
+   * initial pointerdown time exceeds the temporal gate specified by
+   * {@link DRAG_TIME_THRESHOLD}.
+   *
+   * @private
+   */
+  private isTemporalDrag(): boolean {
+    if (this.clickStartTime) {
+      return Date.now() - this.clickStartTime > this.DRAG_TIME_THRESHOLD;
+    }
+
+    return false;
   }
 
   /**

@@ -3,6 +3,7 @@ import { CameraControls, View } from "@react-three/drei";
 import styled from "styled-components";
 import * as THREE from "three";
 import { Vector3 } from "three";
+import { PANEL_ID_MAIN, getPanelElementId } from "../constants";
 import { Fo3dPointCloudSettings } from "../fo3d/context";
 import { Fo3dSceneContent } from "../fo3d/Fo3dCanvas";
 import { FoScene } from "../hooks";
@@ -40,7 +41,7 @@ export const MainPanel = ({
   assetsGroupRef,
 }: MainPanelProps) => {
   return (
-    <MainPanelContainer id="main-panel">
+    <MainPanelContainer id={getPanelElementId(PANEL_ID_MAIN)}>
       <View
         style={{
           position: "absolute",

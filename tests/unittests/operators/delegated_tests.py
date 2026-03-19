@@ -5,6 +5,7 @@ FiftyOne delegated operator related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import asyncio
 import copy
 import time
@@ -165,6 +166,61 @@ class MockProgressiveOperatorWithOutputs(MockGeneratorOperator):
 
     def resolve_output(self, *args, **kwargs):
         return MockOutputs()
+
+
+@patch(
+    "fiftyone.operators.registry.OperatorRegistry.get_operator",
+    return_value=MockOperator(),
+)
+class DelegatedOperationAsyncServiceTests(unittest.IsolatedAsyncioTestCase):
+    _should_fail = False
+
+    def setUp(self):
+        self.mock_is_remote_service = patch.object(
+            delegated_operation,
+            "is_remote_service",
+            return_value=False,
+        ).start()
+
+        self.mock_operator_exists = patch(
+            "fiftyone.operators.registry.OperatorRegistry.operator_exists",
+            return_value=True,
+        ).start()
+        self.docs_to_delete = []
+        self.svc = DelegatedOperationService()
+
+    def tearDown(self):
+        self.delete_test_data()
+        patch.stopall()
+
+    def delete_test_data(self):
+        self.svc._repo._collection.delete_many(
+            {"operator": {"$regex": TEST_DO_PREFIX}}
+        )
+
+    @patch("fiftyone.core.odm.load_dataset")
+    async def test_set_completed_in_async_context(
+        self, mock_load_dataset, mock_get_operator
+    ):
+        dataset_id = ObjectId()
+        dataset_name = f"test_dataset_{dataset_id}"
+        mock_load_dataset.return_value.name = dataset_name
+        mock_load_dataset.return_value._doc.id = dataset_id
+
+        ctx = ExecutionContext()
+        ctx.request_params = {"foo": "bar"}
+        doc = self.svc.queue_operation(
+            operator=f"{TEST_DO_PREFIX}/operator/foo",
+            label=mock_get_operator.return_value.name,
+            delegation_target="test_target",
+            context=ctx.serialize(),
+        )
+        self.assertEqual(doc.label, mock_get_operator.return_value.name)
+
+        self.docs_to_delete.append(doc)
+
+        doc = self.svc.set_completed(doc_id=doc.id)
+        self.assertEqual(doc.run_state, ExecutionRunState.COMPLETED)
 
 
 @patch(
@@ -1806,31 +1862,6 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         doc = self.svc.get(doc.id)
         self.assertEqual(doc.label, "this is my delegated operation run.")
 
-    @patch("fiftyone.core.odm.load_dataset")
-    @pytest.mark.asyncio
-    async def test_set_completed_in_async_context(
-        self, mock_load_dataset, mock_get_operator
-    ):
-        dataset_id = ObjectId()
-        dataset_name = f"test_dataset_{dataset_id}"
-        mock_load_dataset.return_value.name = dataset_name
-        mock_load_dataset.return_value._doc.id = dataset_id
-
-        ctx = ExecutionContext()
-        ctx.request_params = {"foo": "bar"}
-        doc = self.svc.queue_operation(
-            operator=f"{TEST_DO_PREFIX}/operator/foo",
-            label=mock_get_operator.return_value.name,
-            delegation_target="test_target",
-            context=ctx.serialize(),
-        )
-        self.assertEqual(doc.label, mock_get_operator.return_value.name)
-
-        self.docs_to_delete.append(doc)
-
-        doc = self.svc.set_completed(doc_id=doc.id)
-        self.assertEqual(doc.run_state, ExecutionRunState.COMPLETED)
-
     def test_queue_op_remote_service(self, mock_get_operator):
         self.mock_is_remote_service.return_value = True
         db = delegated_operation.MongoDelegatedOperationRepo()
@@ -1947,4 +1978,520 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             updated_parent_do.pipeline_run_info.child_errors[
                 str(child_doc.id)
             ],
+        )
+
+
+@patch(
+    "fiftyone.operators.registry.OperatorRegistry.get_operator",
+    return_value=MockOperator(),
+)
+class TestPipelineRequestParamsOverrides(unittest.TestCase):
+    """Tests for the request_params_overrides feature in pipelines."""
+
+    def setUp(self):
+        self.mock_is_remote_service = patch.object(
+            delegated_operation,
+            "is_remote_service",
+            return_value=False,
+        ).start()
+
+        self.mock_operator_exists = patch(
+            "fiftyone.operators.registry.OperatorRegistry.operator_exists",
+            return_value=True,
+        ).start()
+        self.docs_to_delete = []
+        self.svc = DelegatedOperationService()
+
+    def tearDown(self):
+        self.delete_test_data()
+        patch.stopall()
+
+    def delete_test_data(self):
+        self.svc._repo._collection.delete_many(
+            {"operator": {"$regex": TEST_DO_PREFIX}}
+        )
+
+    def test_pipeline_stage_overrides_view_name(self, mock_get_operator):
+        """Test that request_params_overrides correctly overrides view_name per stage."""
+        from fiftyone.operators import executor as exec_module
+
+        # Track the contexts seen during execution
+        contexts_seen = []
+
+        async def mock_do_execute_operator(operator, ctx, exhaust=False):
+            # Capture the context at this point
+            contexts_seen.append(copy.deepcopy(ctx.request_params))
+            return None
+
+        with patch.object(
+            exec_module,
+            "do_execute_operator",
+            side_effect=mock_do_execute_operator,
+        ):
+            pipeline = Pipeline(
+                [
+                    PipelineStage(
+                        operator_uri="@test/op1",
+                        name="stage_one",
+                        request_params_overrides={
+                            "view_name": "filtered_view"
+                        },
+                    ),
+                    PipelineStage(
+                        operator_uri="@test/op2",
+                        name="stage_two",
+                        request_params_overrides={"view_name": "other_view"},
+                    ),
+                ]
+            )
+
+            ctx = ExecutionContext(
+                request_params={
+                    "dataset_name": "test_dataset",
+                    "view_name": "original_view",
+                }
+            )
+
+            # Execute the pipeline
+            asyncio.run(exec_module.do_execute_pipeline(pipeline, ctx))
+
+        # Verify we executed both stages
+        self.assertEqual(len(contexts_seen), 2)
+
+        # First stage should have view_name overridden to "filtered_view"
+        self.assertEqual(contexts_seen[0].get("view_name"), "filtered_view")
+
+        # Second stage should have view_name overridden to "other_view"
+        self.assertEqual(contexts_seen[1].get("view_name"), "other_view")
+
+    def test_pipeline_stage_overrides_multiple_params(self, mock_get_operator):
+        """Test that request_params_overrides can override multiple parameters."""
+        from fiftyone.operators import executor as exec_module
+
+        contexts_seen = []
+
+        async def mock_do_execute_operator(operator, ctx, exhaust=False):
+            contexts_seen.append(copy.deepcopy(ctx.request_params))
+            return None
+
+        with patch.object(
+            exec_module,
+            "do_execute_operator",
+            side_effect=mock_do_execute_operator,
+        ):
+            pipeline = Pipeline(
+                [
+                    PipelineStage(
+                        operator_uri="@test/op1",
+                        name="stage_one",
+                        params={"stage_param": "value1"},
+                        request_params_overrides={
+                            "view_name": "special_view",
+                            "filters": {"field": "value"},
+                            "custom_field": "custom_value",
+                        },
+                    ),
+                ]
+            )
+
+            ctx = ExecutionContext(
+                request_params={
+                    "dataset_name": "test_dataset",
+                    "view_name": "default_view",
+                }
+            )
+
+            asyncio.run(exec_module.do_execute_pipeline(pipeline, ctx))
+
+        self.assertEqual(len(contexts_seen), 1)
+
+        # Verify overrides were applied
+        self.assertEqual(contexts_seen[0].get("view_name"), "special_view")
+        self.assertEqual(contexts_seen[0].get("filters"), {"field": "value"})
+        self.assertEqual(contexts_seen[0].get("custom_field"), "custom_value")
+
+        # Verify params were set correctly (not overridden by request_params_overrides)
+        self.assertEqual(
+            contexts_seen[0].get("params"), {"stage_param": "value1"}
+        )
+
+    def test_pipeline_stage_without_overrides(self, mock_get_operator):
+        """Test that stages without overrides work normally."""
+        from fiftyone.operators import executor as exec_module
+
+        contexts_seen = []
+
+        async def mock_do_execute_operator(operator, ctx, exhaust=False):
+            contexts_seen.append(copy.deepcopy(ctx.request_params))
+            return None
+
+        with patch.object(
+            exec_module,
+            "do_execute_operator",
+            side_effect=mock_do_execute_operator,
+        ):
+            pipeline = Pipeline(
+                [
+                    PipelineStage(
+                        operator_uri="@test/op1",
+                        name="stage_one",
+                        params={"stage_param": "value1"}
+                        # No request_params_overrides
+                    ),
+                ]
+            )
+
+            ctx = ExecutionContext(
+                request_params={
+                    "dataset_name": "test_dataset",
+                    "view_name": "default_view",
+                }
+            )
+
+            asyncio.run(exec_module.do_execute_pipeline(pipeline, ctx))
+
+        self.assertEqual(len(contexts_seen), 1)
+
+        # Verify original request params were preserved
+        self.assertEqual(contexts_seen[0].get("view_name"), "default_view")
+        self.assertEqual(contexts_seen[0].get("dataset_name"), "test_dataset")
+        self.assertEqual(
+            contexts_seen[0].get("params"), {"stage_param": "value1"}
+        )
+
+    def test_pipeline_stage_overrides_dont_affect_params(
+        self, mock_get_operator
+    ):
+        """Test that request_params_overrides doesn't override the params field."""
+        from fiftyone.operators import executor as exec_module
+
+        contexts_seen = []
+
+        async def mock_do_execute_operator(operator, ctx, exhaust=False):
+            contexts_seen.append(copy.deepcopy(ctx.request_params))
+            return None
+
+        with patch.object(
+            exec_module,
+            "do_execute_operator",
+            side_effect=mock_do_execute_operator,
+        ):
+            pipeline = Pipeline(
+                [
+                    PipelineStage(
+                        operator_uri="@test/op1",
+                        name="stage_one",
+                        params={"correct_param": "correct_value"},
+                        request_params_overrides={
+                            "params": {
+                                "wrong_param": "wrong_value"
+                            },  # Should be ignored
+                            "view_name": "special_view",
+                        },
+                    ),
+                ]
+            )
+
+            ctx = ExecutionContext(
+                request_params={
+                    "dataset_name": "test_dataset",
+                }
+            )
+
+            asyncio.run(exec_module.do_execute_pipeline(pipeline, ctx))
+
+        self.assertEqual(len(contexts_seen), 1)
+
+        # Verify params came from stage.params, not from overrides
+        # The implementation applies request_params_overrides first, then sets params from stage.params
+        # So the final params should be from stage.params
+        self.assertEqual(
+            contexts_seen[0].get("params"), {"correct_param": "correct_value"}
+        )
+
+        # But view_name should still be overridden
+        self.assertEqual(contexts_seen[0].get("view_name"), "special_view")
+
+    def test_pipeline_stage_overrides_are_not_cumulative(
+        self, mock_get_operator
+    ):
+        """Test that overrides from one stage do NOT carry forward to the next stage."""
+        from fiftyone.operators import executor as exec_module
+
+        contexts_seen = []
+
+        async def mock_do_execute_operator(operator, ctx, exhaust=False):
+            contexts_seen.append(copy.deepcopy(ctx.request_params))
+            return None
+
+        with patch.object(
+            exec_module,
+            "do_execute_operator",
+            side_effect=mock_do_execute_operator,
+        ):
+            pipeline = Pipeline(
+                [
+                    PipelineStage(
+                        operator_uri="@test/op1",
+                        name="stage_one",
+                        request_params_overrides={
+                            "view_name": "view_from_stage1",
+                            "field1": "value1",
+                        },
+                    ),
+                    PipelineStage(
+                        operator_uri="@test/op2",
+                        name="stage_two",
+                        request_params_overrides={"field2": "value2"}
+                        # view_name should NOT carry forward from stage 1
+                    ),
+                ]
+            )
+
+            ctx = ExecutionContext(
+                request_params={
+                    "dataset_name": "test_dataset",
+                    "view_name": "original_view",
+                }
+            )
+
+            asyncio.run(exec_module.do_execute_pipeline(pipeline, ctx))
+
+        # Should be called twice (once per stage)
+        self.assertEqual(len(contexts_seen), 2)
+
+        # First stage should have its overrides applied to the base params
+        self.assertEqual(contexts_seen[0].get("view_name"), "view_from_stage1")
+        self.assertEqual(contexts_seen[0].get("field1"), "value1")
+        self.assertIsNone(contexts_seen[0].get("field2"))
+
+        # Second stage should start fresh from base params, NOT accumulate stage 1's overrides
+        self.assertEqual(
+            contexts_seen[1].get("view_name"), "original_view"
+        )  # Back to original!
+        self.assertIsNone(
+            contexts_seen[1].get("field1")
+        )  # Stage 1's override NOT carried over
+        self.assertEqual(contexts_seen[1].get("field2"), "value2")
+
+    def test_pipeline_stage_overrides_reset_each_stage(
+        self, mock_get_operator
+    ):
+        """Test that each stage starts with the original base request params."""
+        from fiftyone.operators import executor as exec_module
+
+        contexts_seen = []
+
+        async def mock_do_execute_operator(operator, ctx, exhaust=False):
+            contexts_seen.append(copy.deepcopy(ctx.request_params))
+            return None
+
+        with patch.object(
+            exec_module,
+            "do_execute_operator",
+            side_effect=mock_do_execute_operator,
+        ):
+            pipeline = Pipeline(
+                [
+                    PipelineStage(
+                        operator_uri="@test/op1",
+                        name="stage_one",
+                        params={"param1": "value1"},
+                        request_params_overrides={
+                            "view_name": "custom_view_1",
+                            "custom_field": "custom_1",
+                        },
+                    ),
+                    PipelineStage(
+                        operator_uri="@test/op2",
+                        name="stage_two",
+                        params={"param2": "value2"},
+                        request_params_overrides={
+                            "view_name": "custom_view_2",
+                        }
+                        # custom_field should NOT be present here
+                    ),
+                    PipelineStage(
+                        operator_uri="@test/op3",
+                        name="stage_three",
+                        params={"param3": "value3"},
+                        # No overrides - should get original base params
+                    ),
+                ]
+            )
+
+            ctx = ExecutionContext(
+                request_params={
+                    "dataset_name": "test_dataset",
+                    "view_name": "original_view",
+                }
+            )
+
+            asyncio.run(exec_module.do_execute_pipeline(pipeline, ctx))
+
+        self.assertEqual(len(contexts_seen), 3)
+
+        # Stage 1: has its own overrides
+        self.assertEqual(contexts_seen[0].get("view_name"), "custom_view_1")
+        self.assertEqual(contexts_seen[0].get("custom_field"), "custom_1")
+        self.assertEqual(contexts_seen[0].get("params"), {"param1": "value1"})
+
+        # Stage 2: starts fresh, only has its own overrides
+        self.assertEqual(contexts_seen[1].get("view_name"), "custom_view_2")
+        self.assertIsNone(
+            contexts_seen[1].get("custom_field")
+        )  # NOT carried over from stage 1
+        self.assertEqual(contexts_seen[1].get("params"), {"param2": "value2"})
+
+        # Stage 3: no overrides, gets original base params
+        self.assertEqual(contexts_seen[2].get("view_name"), "original_view")
+        self.assertIsNone(contexts_seen[2].get("custom_field"))
+        self.assertEqual(contexts_seen[2].get("params"), {"param3": "value3"})
+
+    def test_pipeline_stage_serialization_with_overrides(
+        self, mock_get_operator
+    ):
+        """Test that request_params_overrides serializes and deserializes correctly."""
+        pipeline = Pipeline(
+            [
+                PipelineStage(
+                    operator_uri="@test/op1",
+                    name="stage_one",
+                    params={"param1": "value1"},
+                    request_params_overrides={
+                        "view_name": "filtered_view",
+                        "filters": {"field": "value"},
+                    },
+                ),
+                PipelineStage(
+                    operator_uri="@test/op2",
+                    name="stage_two",
+                    # No overrides
+                ),
+            ]
+        )
+
+        # Serialize to JSON
+        json_repr = pipeline.to_json()
+
+        # Verify structure
+        self.assertEqual(len(json_repr["stages"]), 2)
+        self.assertEqual(
+            json_repr["stages"][0]["request_params_overrides"],
+            {"view_name": "filtered_view", "filters": {"field": "value"}},
+        )
+        self.assertIsNone(
+            json_repr["stages"][1].get("request_params_overrides")
+        )
+
+        # Deserialize from JSON
+        restored_pipeline = Pipeline.from_json(json_repr)
+
+        # Verify restoration
+        self.assertEqual(len(restored_pipeline.stages), 2)
+        self.assertEqual(
+            restored_pipeline.stages[0].request_params_overrides,
+            {"view_name": "filtered_view", "filters": {"field": "value"}},
+        )
+        self.assertIsNone(restored_pipeline.stages[1].request_params_overrides)
+
+    def test_pipeline_stage_creation_with_overrides(self, mock_get_operator):
+        """Test creating pipeline stages with request_params_overrides."""
+        # Test using stage() method
+        pipeline = Pipeline()
+        stage1 = pipeline.stage(
+            operator_uri="@test/op1",
+            name="stage_one",
+            params={"param1": "value1"},
+            request_params_overrides={"view_name": "custom_view"},
+        )
+
+        self.assertEqual(
+            stage1.request_params_overrides, {"view_name": "custom_view"}
+        )
+        self.assertEqual(
+            pipeline.stages[0].request_params_overrides,
+            {"view_name": "custom_view"},
+        )
+
+    def test_pipeline_stage_accepts_extra_kwargs(self, mock_get_operator):
+        """Test that PipelineStage accepts and discards extra kwargs for forward compatibility."""
+        # This should not raise an error
+        stage = PipelineStage(
+            operator_uri="@test/op1",
+            name="test_stage",
+            unknown_future_field="some_value",
+            another_unknown_field={"nested": "data"},
+        )
+
+        self.assertEqual(stage.operator_uri, "@test/op1")
+        self.assertEqual(stage.name, "test_stage")
+        # Unknown fields should be silently discarded
+        self.assertFalse(hasattr(stage, "unknown_future_field"))
+
+    def test_pipeline_accepts_extra_kwargs(self, mock_get_operator):
+        """Test that Pipeline accepts and discards extra kwargs for forward compatibility."""
+        # This should not raise an error
+        pipeline = Pipeline(
+            stages=[PipelineStage(operator_uri="@test/op1")],
+            unknown_future_field="some_value",
+        )
+
+        self.assertEqual(len(pipeline.stages), 1)
+        # Unknown fields should be silently discarded
+        self.assertFalse(hasattr(pipeline, "unknown_future_field"))
+
+    @patch("fiftyone.core.odm.load_dataset")
+    def test_queue_operation_with_pipeline_overrides(
+        self, mock_load_dataset, mock_get_operator
+    ):
+        """Test that queuing an operation with a pipeline containing overrides works."""
+        dataset_id = ObjectId()
+        dataset_name = f"test_dataset_{dataset_id}"
+        mock_load_dataset.return_value.name = dataset_name
+        mock_load_dataset.return_value._doc.id = dataset_id
+
+        pipeline = Pipeline(
+            [
+                PipelineStage(
+                    name="filter_stage",
+                    operator_uri="@test/filter_op",
+                    params={"threshold": 0.5},
+                    request_params_overrides={"view_name": "filtered_samples"},
+                ),
+                PipelineStage(
+                    name="export_stage",
+                    operator_uri="@test/export_op",
+                    params={"format": "json"},
+                    request_params_overrides={
+                        "dataset_name": "export_dataset"
+                    },
+                ),
+            ]
+        )
+
+        doc = self.svc.queue_operation(
+            operator=f"{TEST_DO_PREFIX}/pipeline/with_overrides",
+            label="Pipeline with Request Overrides",
+            delegation_target="test_target",
+            context=ExecutionContext(
+                request_params={"dataset_name": dataset_name},
+            ),
+            pipeline=pipeline,
+        )
+
+        self.docs_to_delete.append(doc)
+        self.assertIsNotNone(doc.pipeline)
+        self.assertEqual(len(doc.pipeline.stages), 2)
+
+        # Verify first stage overrides
+        self.assertEqual(
+            doc.pipeline.stages[0].request_params_overrides,
+            {"view_name": "filtered_samples"},
+        )
+
+        # Verify second stage overrides
+        self.assertEqual(
+            doc.pipeline.stages[1].request_params_overrides,
+            {"dataset_name": "export_dataset"},
         )

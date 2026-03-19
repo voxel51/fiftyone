@@ -6,7 +6,13 @@ import {
   STRING_FIELD,
   VALID_PRIMITIVE_TYPES,
 } from "@fiftyone/utilities";
-import { DefaultValue, atomFamily, selector, selectorFamily } from "recoil";
+import {
+  DefaultValue,
+  atomFamily,
+  selector,
+  selectorFamily,
+  useRecoilValue,
+} from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
 import type { ResponseFrom } from "../utils";
 import { config } from "./config";
@@ -528,3 +534,9 @@ export const queryPerformanceMaxSearch = selector({
     );
   },
 });
+
+/**
+ * Hook which returns the sample limit for dataset query performance.
+ */
+export const useQueryPerformanceSampleLimit = () =>
+  useRecoilValue(queryPerformanceMaxSearch);

@@ -5,7 +5,7 @@ import {
 } from "@fiftyone/relay";
 import { SpaceNodeJSON } from "@fiftyone/spaces";
 import { useCallback } from "react";
-import { AtomOptions, DefaultValue, RecoilState, atom, selector } from "recoil";
+import { atom, AtomOptions, DefaultValue, RecoilState, selector } from "recoil";
 import { State } from "./recoil";
 
 export const GRID_SPACES_DEFAULT = {
@@ -32,13 +32,56 @@ export type ModalSelector = {
   hasPrevious?: boolean;
 };
 
+/**
+ * Read-only session properties that cannot be set externally via useSessionSetter().
+ * These are set only during session initialization in useLocalSession.
+ */
+const READONLY_SESSION_DEFAULTS = {
+  canAnnotate: { enabled: true, message: undefined as string | undefined },
+  canCreateNewField: {
+    enabled: true,
+    message: undefined as string | undefined,
+  },
+  canEditCustomColors: {
+    enabled: true,
+    message: undefined as string | undefined,
+  },
+  canEditLabels: {
+    enabled: true,
+    message: undefined as string | undefined,
+  },
+  canEditSavedViews: {
+    enabled: true,
+    message: undefined as string | undefined,
+  },
+  canEditWorkspaces: {
+    enabled: true,
+    message: undefined as string | undefined,
+  },
+  canManageSchema: { enabled: true, message: undefined as string | undefined },
+  canModifySidebarGroup: {
+    enabled: true,
+    message: undefined as string | undefined,
+  },
+  canTagSamplesOrLabels: {
+    enabled: true,
+    message: undefined as string | undefined,
+  },
+  readOnly: false, // snapshots
+};
+
+type ReadOnlySessionKey = keyof typeof READONLY_SESSION_DEFAULTS;
+
 export interface Session {
+  canAnnotate: { enabled: boolean; message?: string };
   canEditCustomColors: { enabled: boolean; message?: string };
   canEditSavedViews: { enabled: boolean; message?: string };
   canEditWorkspaces: { enabled: boolean; message?: string };
   canCreateNewField: { enabled: boolean; message?: string };
+  canManageSchema: { enabled: boolean; message?: string };
   canModifySidebarGroup: { enabled: boolean; message?: string };
   canTagSamplesOrLabels: { enabled: boolean; message?: string };
+  canEditLabels: { enabled: boolean; message?: string };
   colorScheme: ColorSchemeInput;
   fieldVisibilityStage?: State.FieldVisibilityStage;
   filters: State.Filters;
@@ -52,12 +95,7 @@ export interface Session {
 }
 
 export const SESSION_DEFAULT: Session = {
-  canCreateNewField: { enabled: true, message: undefined },
-  canEditCustomColors: { enabled: true, message: undefined },
-  canEditSavedViews: { enabled: true, message: undefined },
-  canEditWorkspaces: { enabled: true, message: undefined },
-  canModifySidebarGroup: { enabled: true, message: undefined },
-  canTagSamplesOrLabels: { enabled: true, message: undefined },
+  ...READONLY_SESSION_DEFAULTS,
   colorScheme: {
     colorPool: [],
     colorBy: "field",
@@ -73,23 +111,13 @@ export const SESSION_DEFAULT: Session = {
   fieldVisibilityStage: undefined,
   filters: {},
   modalFilters: {},
-  readOnly: false,
   selectedSamples: new Set(),
   selectedLabels: [],
   sessionSpaces: GRID_SPACES_DEFAULT,
   sessionGroupSlice: undefined,
 };
 
-type SetterKeys = keyof Omit<
-  Session,
-  | "canCreateNewField"
-  | "canEditCustomColors"
-  | "canEditSavedViews"
-  | "canEditWorkspaces"
-  | "canModifySidebarGroup"
-  | "canTagSamplesOrLabels"
-  | "readOnly"
->;
+type SetterKeys = keyof Omit<Session, ReadOnlySessionKey>;
 type Setter = <K extends SetterKeys>(key: K, value: Session[K]) => void;
 
 type SessionAtomOptions<K extends keyof Session> = {
@@ -198,21 +226,19 @@ export function sessionAtom<K extends keyof Session>(
       }
 
       if (
-        options.key === "canCreateNewField" ||
-        options.key === "canEditCustomColors" ||
-        options.key === "canEditSavedViews" ||
-        options.key === "canEditWorkspaces" ||
-        options.key === "canModifySidebarGroup" ||
-        options.key === "canTagSamplesOrLabels" ||
-        options.key === "readOnly" ||
+        options.key in READONLY_SESSION_DEFAULTS ||
         typeof newValue === "boolean"
       ) {
         throw new Error(`cannot set ${options.key}`);
       }
 
       if (!isTest) {
-        setterRef(options.key, newValue);
-        sessionRef[options.key] = newValue;
+        if (setterRef) {
+          setterRef(options.key, newValue);
+        }
+        if (sessionRef) {
+          sessionRef[options.key] = newValue;
+        }
       }
 
       set(value, newValue);

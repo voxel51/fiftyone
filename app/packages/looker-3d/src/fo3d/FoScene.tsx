@@ -38,18 +38,16 @@ interface FoSceneProps {
   scene: FoScene;
 }
 
-const getAssetForNode = (node: FoSceneNode, children: React.ReactNode) => {
+const getAssetJsx = (node: FoSceneNode, children: React.ReactNode) => {
   if (!node.asset) {
     return null;
   }
 
   const label = getLabelForSceneNode(node);
-
-  let jsx: JSX.Element = null;
   const key = `${label}-${node.position.x}-${node.position.y}-${node.position.z}`;
 
   if (node.asset instanceof ObjAsset) {
-    jsx = (
+    return (
       <Obj
         key={key}
         name={node.name}
@@ -62,7 +60,7 @@ const getAssetForNode = (node: FoSceneNode, children: React.ReactNode) => {
       </Obj>
     );
   } else if (node.asset instanceof PcdAsset) {
-    jsx = (
+    return (
       <Pcd
         key={key}
         name={node.name}
@@ -75,7 +73,7 @@ const getAssetForNode = (node: FoSceneNode, children: React.ReactNode) => {
       </Pcd>
     );
   } else if (node.asset instanceof PlyAsset) {
-    jsx = (
+    return (
       <Ply
         key={key}
         name={node.name}
@@ -88,7 +86,7 @@ const getAssetForNode = (node: FoSceneNode, children: React.ReactNode) => {
       </Ply>
     );
   } else if (node.asset instanceof StlAsset) {
-    jsx = (
+    return (
       <Stl
         key={key}
         name={node.name}
@@ -101,7 +99,7 @@ const getAssetForNode = (node: FoSceneNode, children: React.ReactNode) => {
       </Stl>
     );
   } else if (node.asset instanceof GltfAsset) {
-    jsx = (
+    return (
       <Gltf
         key={key}
         name={node.name}
@@ -114,7 +112,7 @@ const getAssetForNode = (node: FoSceneNode, children: React.ReactNode) => {
       </Gltf>
     );
   } else if (node.asset instanceof FbxAsset) {
-    jsx = (
+    return (
       <Fbx
         key={key}
         name={node.name}
@@ -127,7 +125,7 @@ const getAssetForNode = (node: FoSceneNode, children: React.ReactNode) => {
       </Fbx>
     );
   } else if (node.asset instanceof BoxGeometryAsset) {
-    jsx = (
+    return (
       <Box
         key={key}
         name={node.name}
@@ -140,7 +138,7 @@ const getAssetForNode = (node: FoSceneNode, children: React.ReactNode) => {
       </Box>
     );
   } else if (node.asset instanceof CylinderGeometryAsset) {
-    jsx = (
+    return (
       <Cylinder
         key={key}
         name={node.name}
@@ -153,7 +151,7 @@ const getAssetForNode = (node: FoSceneNode, children: React.ReactNode) => {
       </Cylinder>
     );
   } else if (node.asset instanceof SphereGeometryAsset) {
-    jsx = (
+    return (
       <Sphere
         key={key}
         name={node.name}
@@ -166,7 +164,7 @@ const getAssetForNode = (node: FoSceneNode, children: React.ReactNode) => {
       </Sphere>
     );
   } else if (node.asset instanceof PlaneGeometryAsset) {
-    jsx = (
+    return (
       <Plane
         key={key}
         name={node.name}
@@ -180,15 +178,7 @@ const getAssetForNode = (node: FoSceneNode, children: React.ReactNode) => {
     );
   }
 
-  if (!jsx) {
-    return null;
-  }
-
-  return (
-    <AssetErrorBoundary>
-      <Suspense fallback={null}>{jsx}</Suspense>
-    </AssetErrorBoundary>
-  );
+  return null;
 };
 
 const R3fNode = ({
@@ -217,12 +207,20 @@ const R3fNode = ({
     [label, visibilityMap]
   );
 
-  const memoizedAsset = useMemo(
-    () => (isNodeVisible ? getAssetForNode(node, children) : null),
+  const assetJsx = useMemo(
+    () => (isNodeVisible ? getAssetJsx(node, children) : null),
     [node, children, isNodeVisible]
   );
 
-  return memoizedAsset;
+  if (!assetJsx) {
+    return null;
+  }
+
+  return (
+    <AssetErrorBoundary>
+      <Suspense fallback={null}>{assetJsx}</Suspense>
+    </AssetErrorBoundary>
+  );
 };
 
 const SceneR3f = ({

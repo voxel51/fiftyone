@@ -1,8 +1,5 @@
 import { useTheme } from "@fiftyone/components";
-import {
-  current3dAnnotationModeAtom,
-  currentActiveAnnotationField3dAtom,
-} from "@fiftyone/looker-3d/src/state";
+import { currentActiveAnnotationField3dAtom } from "@fiftyone/looker-3d/src/state";
 import {
   DETECTION,
   DETECTIONS,
@@ -10,7 +7,8 @@ import {
   POLYLINES,
 } from "@fiftyone/utilities";
 import { useCallback, useEffect } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilState } from "recoil";
+import { useCurrent3dAnnotationMode } from "../../state/accessors";
 import { use3dAnnotationFields } from "../use3dAnnotationFields";
 
 export const FieldSelection = () => {
@@ -18,7 +16,7 @@ export const FieldSelection = () => {
     currentActiveAnnotationField3dAtom
   );
 
-  const current3dAnnotationMode = useRecoilValue(current3dAnnotationModeAtom);
+  const current3dAnnotationMode = useCurrent3dAnnotationMode();
   const isPolylineAnnotateActive = current3dAnnotationMode === "polyline";
   const isCuboidAnnotateActive = current3dAnnotationMode === "cuboid";
 

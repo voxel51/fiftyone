@@ -69,17 +69,19 @@ export class ActionManager {
    * Undoes the last undoable.
    * @returns True if the undo was successful, false otherwise.
    */
-  undo(): boolean {
+  async undo(): Promise<boolean> {
     const undoable = this.undoStack.pop();
     if (undoable) {
       try {
-        undoable.undo();
+        await undoable.undo();
         this.redoStack.push(undoable);
         this.fireActionListeners(undoable.id, true);
         this.fireUndoListeners();
         return true;
       } catch (error) {
-        console.error(`An exception ocurred during undo execution for undoable ${undoable.id}`);
+        console.error(
+          `An exception ocurred during undo execution for undoable ${undoable.id}`
+        );
         console.error(error);
         this.fireUndoListeners();
         return false;
@@ -92,17 +94,19 @@ export class ActionManager {
    * Redoes the last undone undoable action.
    * @returns True if the redo was successful, false otherwise.
    */
-  redo(): boolean {
+  async redo(): Promise<boolean> {
     const undoable = this.redoStack.pop();
     if (undoable) {
       try {
-        undoable.execute();
+        await undoable.execute();
         this.undoStack.push(undoable);
         this.fireActionListeners(undoable.id, false);
         this.fireUndoListeners();
         return true;
       } catch (error) {
-        console.error(`An exception occurred during redo execution for undoable ${undoable.id}`);
+        console.error(
+          `An exception occurred during redo execution for undoable ${undoable.id}`
+        );
         console.error(error);
         this.fireUndoListeners();
         return false;
@@ -149,8 +153,8 @@ export class ActionManager {
    * stack.
    * @param action The action to execute
    */
-  execute(action: Action): void {
-    action.execute();
+  async execute(action: Action): Promise<void> {
+    await action.execute();
     if (isUndoable(action)) {
       this.push(action as Undoable);
     }

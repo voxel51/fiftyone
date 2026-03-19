@@ -1,26 +1,28 @@
 import { LoadingSpinner } from "@fiftyone/components";
-import { EntryKind } from "@fiftyone/state";
-import { Typography } from "@mui/material";
+import { EntryKind, isGeneratedView } from "@fiftyone/state";
+import { Text, TextColor, TextVariant } from "@voxel51/voodo";
 import { atom, useAtomValue } from "jotai";
 import React, { useEffect } from "react";
+import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import Sidebar from "../../../Sidebar";
 import Actions from "./Actions";
 import Edit, { isEditing } from "./Edit";
 import GroupEntry from "./GroupEntry";
-import ImportSchema from "./ImportSchema";
+import ImportSchema, { useShowImportSchema } from "./ImportSchema";
 import LabelEntry from "./LabelEntry";
 import LoadingEntry from "./LoadingEntry";
 import PrimitiveEntry from "./PrimitiveEntry";
 import SchemaManager from "./SchemaManager";
-import { activeLabelSchemas, labelSchemasData, showModal } from "./state";
+import { labelSchemasData, showModal } from "./state";
 import type { AnnotationDisabledReason } from "./useCanAnnotate";
 import useEntries from "./useEntries";
+import useSourceFieldToActivate from "./useSourceFieldToActivate";
 import useLabels from "./useLabels";
-import { KnownContexts, useCommandContext } from "@fiftyone/commands";
 import { usePrimitivesCount } from "./usePrimitivesCount";
-
-const showImportPage = atom((get) => !get(activeLabelSchemas)?.length);
+import { useAnnotationContextManager } from "./useAnnotationContextManager";
+import useDelete from "./Edit/useDelete";
+import { KnownContexts, useUndoRedo } from "@fiftyone/commands";
 
 const DISABLED_MESSAGES: Record<
   Exclude<AnnotationDisabledReason, null>,
@@ -28,15 +30,13 @@ const DISABLED_MESSAGES: Record<
 > = {
   generatedView: (
     <p>
-      Annotation isn&rsquo;t supported for patches, frames, clips, or
-      materialized views.
+      Annotation isn&rsquo;t supported for frames, clips, or materialized views.
     </p>
   ),
-  groupedDataset: (
+  groupedDatasetNoSupportedSlices: (
     <p>
-      Annotation isn&rsquo;t supported for grouped datasets. Use{" "}
-      <code>SelectGroupSlices</code> to create a view of the image or 3D slices
-      you want to label.
+      This grouped dataset has no slices that support annotation. Only image and
+      3D slices can be annotated.
     </p>
   ),
   videoDataset: <p>Annotation isn&rsquo;t supported for video datasets.</p>,
@@ -51,38 +51,71 @@ const Container = styled.div`
   overflow: auto;
 `;
 
+const EmptyLabelsContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.5rem 1rem;
+  gap: 0.5rem;
+`;
+
 const Loading = () => {
   return (
     <Container>
       <LoadingSpinner />
-      <Typography color="secondary" padding="1rem 0">
+      <Text
+        color={TextColor.Secondary}
+        variant={TextVariant.Md}
+        style={{ padding: "1rem 0" }}
+      >
         Loading
-      </Typography>
+      </Text>
     </Container>
   );
 };
 
 const AnnotateSidebar = () => {
-  useLabels();
   usePrimitivesCount();
-  const editing = useAtomValue(isEditing);
+  const isEditingValue = useAtomValue(isEditing);
+  const isGenerated = useRecoilValue(isGeneratedView);
+  const [entries] = useEntries();
 
-  if (editing) return null;
+  // Don't show label list in edit mode or in generated views (patches/clips/frames)
+  // In generated views, only the edit panel should be visible
+  if (isEditingValue || isGenerated) return null;
 
   return (
     <>
       <Actions />
       <Sidebar
         isDisabled={() => true}
-        render={(key, group, entry) => {
+        render={(_key, _group, entry) => {
           if (entry.kind === EntryKind.GROUP) {
             return { children: <GroupEntry name={entry.name} /> };
           }
 
           if (entry.kind === EntryKind.LABEL) {
-            const { kind: _, atom } = entry;
+            const { kind: _kind, atom } = entry;
             return {
               children: <LabelEntry atom={atom} />,
+              disabled: true,
+            };
+          }
+
+          if (entry.kind === EntryKind.EMPTY_ANNOTATIONS) {
+            return {
+              children: (
+                <EmptyLabelsContainer>
+                  <Text variant={TextVariant.Lg}>No labels to annotate</Text>
+                  <Text
+                    color={TextColor.Secondary}
+                    variant={TextVariant.Md}
+                    style={{ textAlign: "center" }}
+                  >
+                    Check that your fields are enabled on Explore.
+                  </Text>
+                </EmptyLabelsContainer>
+              ),
               disabled: true,
             };
           }
@@ -116,22 +149,27 @@ interface AnnotateProps {
 
 const Annotate = ({ disabledReason }: AnnotateProps) => {
   const showSchemaModal = useAtomValue(showModal);
-  const showImport = useAtomValue(showImportPage);
   const loading = useAtomValue(labelSchemasData) === null;
-  const editing = useAtomValue(isEditing);
-  const { activate, deactivate } = useCommandContext(
-    KnownContexts.ModalAnnotate,
-    true
-  );
-
-  useEffect(() => {
-    activate();
-    return () => {
-      deactivate();
-    };
-  }, [activate, deactivate]);
+  const isEditingValue = useAtomValue(isEditing);
+  const contextManager = useAnnotationContextManager();
+  const { clear: clearUndo } = useUndoRedo(KnownContexts.ModalAnnotate);
 
   const isDisabled = disabledReason !== null;
+  const requiredField = useSourceFieldToActivate();
+  const showSetup = useShowImportSchema(isDisabled, requiredField);
+
+  useLabels();
+  useDelete();
+
+  useEffect(() => {
+    contextManager.enter();
+
+    return () => {
+      contextManager.exit();
+      clearUndo();
+    };
+  }, []);
+
   const disabledMsg =
     disabledReason !== null ? DISABLED_MESSAGES[disabledReason] : undefined;
 
@@ -141,12 +179,13 @@ const Annotate = ({ disabledReason }: AnnotateProps) => {
 
   return (
     <>
-      {editing && <Edit key="edit" />}
-      {showImport ? (
+      {isEditingValue && <Edit key="edit" />}
+      {showSetup ? (
         <ImportSchema
           key="import"
           disabled={isDisabled}
           disabledMsg={disabledMsg}
+          requiredField={requiredField}
         />
       ) : (
         <AnnotateSidebar key="annotate" />

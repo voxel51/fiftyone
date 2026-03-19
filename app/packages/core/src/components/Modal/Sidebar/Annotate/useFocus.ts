@@ -3,12 +3,13 @@ import {
   useLighter,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
+import { isGeneratedView } from "@fiftyone/state";
 import { getDefaultStore } from "jotai";
 import { useCallback, useRef } from "react";
+import { useRecoilValue } from "recoil";
 import { editing } from "./Edit";
-import { current, hasChanges, savedLabel } from "./Edit/state";
+import { current, savedLabel } from "./Edit/state";
 import useExit from "./Edit/useExit";
-import useSave from "./Edit/useSave";
 import { labelMap } from "./useLabels";
 
 const STORE = getDefaultStore();
@@ -16,11 +17,11 @@ const STORE = getDefaultStore();
 export default function useFocus() {
   const { scene } = useLighter();
   const useEventHandler = useLighterEventHandler(
-    scene?.getSceneId() ?? UNDEFINED_LIGHTER_SCENE_ID
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
   );
   const selectId = useRef<string | null>(null);
   const onExit = useExit();
-  const onSave = useSave();
+  const isGenerated = useRecoilValue(isGeneratedView);
 
   const select = useCallback(() => {
     const id = selectId.current;
@@ -40,31 +41,20 @@ export default function useFocus() {
   useEventHandler(
     "lighter:overlay-deselect",
     useCallback(
-      async (payload) => {
+      (payload) => {
         if (payload.ignoreSideEffects) {
           return;
         }
 
-        const id = STORE.get(current)?.overlay?.id;
-
-        // no unsaved changes, allow the exit
-        if (!id || !STORE.get(hasChanges)) {
-          onExit();
+        // In generated views (patches/clips/frames), don't exit edit mode on deselect
+        // The user should stay in edit mode for the single label
+        if (isGenerated) {
           return;
         }
 
-        // there are unsaved changes, ask for confirmation
-        scene?.selectOverlay(payload.id, { ignoreSideEffects: true });
-        await onSave();
         onExit();
-
-        scene?.deselectOverlay(id, {
-          ignoreSideEffects: true,
-        });
-
-        select();
       },
-      [scene, onSave, onExit, select]
+      [isGenerated, onExit]
     )
   );
 
@@ -82,6 +72,12 @@ export default function useFocus() {
           const currentLabel = STORE.get(current);
 
           if (currentLabel?.isNew) return;
+
+          // If clicking on the same overlay that's already being edited, allow it
+          // (needed for drag/resize interactions in patches view auto-edit)
+          if (currentLabel?.overlay?.id === payload.id) {
+            return;
+          }
 
           // a label is already being edited, let the DESELECT event handle it
           scene?.deselectOverlay(payload.id, { ignoreSideEffects: true });

@@ -18,7 +18,7 @@ import type {
 } from "../../hooks";
 import { useFoLoader } from "../../hooks/use-fo-loaders";
 import { useMeshMaterialControls } from "../../hooks/use-mesh-material-controls";
-import { usePointCloudHover } from "../../hooks/use-point-cloud-hover";
+import { usePointCloudHoverFromRaycast } from "../../hooks/use-point-cloud-hover-from-raycast";
 import { useFo3dContext } from "../context";
 import { usePcdMaterial } from "../point-cloud/use-pcd-material";
 import { getBasePathForTextures, getResolvedUrlForFo3dAsset } from "../utils";
@@ -57,7 +57,7 @@ const PlyWithPointsMaterial = ({
     opacity: defaultMaterial.opacity,
   } as FoPointcloudMaterialProps;
 
-  const pointsContainerRef = useRef();
+  const pointsContainerRef = useRef<Points>(null);
 
   const { pointsMaterial, shadingMode } = usePcdMaterial(
     name,
@@ -70,13 +70,11 @@ const PlyWithPointsMaterial = ({
 
   const mesh = useMemo(() => new Points(geometry), [geometry]);
 
-  const { hoverProps, currentHoveredPoint } = usePointCloudHover({
+  const { currentHoveredPoint } = usePointCloudHoverFromRaycast({
     geometry,
     assetName: name,
     shadingMode,
-    position,
-    quaternion,
-    scale,
+    pointsRef: pointsContainerRef,
   });
 
   const { setHoverMetadata } = useFo3dContext();
@@ -97,7 +95,7 @@ const PlyWithPointsMaterial = ({
       {currentHoveredPoint && (
         <HoveredPointMarker position={currentHoveredPoint} />
       )}
-      <primitive ref={pointsContainerRef} object={mesh} {...hoverProps}>
+      <primitive ref={pointsContainerRef} object={mesh}>
         {pointsMaterial}
       </primitive>
     </>

@@ -21,9 +21,9 @@ import {
 import type { LighterEventGroup } from "../events";
 import type { DrawStyle, Point, Rect, TextOptions } from "../types";
 import { parseColorWithAlpha } from "../utils/color";
-import { DashLine } from "./pixi-renderer-utils/dashed-line";
 import type { ImageOptions, ImageSource, Renderer2D } from "./Renderer2D";
 import { sharedPixiApp } from "./SharedPixiApplication";
+import { DashLine } from "./pixi-renderer-utils/dashed-line";
 
 /**
  * PixiJS renderer.
@@ -47,8 +47,12 @@ export class PixiRenderer2D implements Renderer2D {
   // Container tracking for visibility management
   private containers = new Map<string, PIXI.Container>();
 
-  constructor(private canvas: HTMLCanvasElement, sceneId: string) {
-    this.eventBus = getEventBus<LighterEventGroup>(sceneId);
+  constructor(private canvas: HTMLCanvasElement) {
+    this.eventBus = getEventBus();
+  }
+
+  setEventChannel(channelId: string) {
+    this.eventBus = getEventBus(channelId);
   }
 
   public async initializePixiJS(): Promise<void> {
@@ -87,12 +91,8 @@ export class PixiRenderer2D implements Renderer2D {
     // to re-render the scene with updated scaling
     // TODO: throttle?
     this.viewport.on("zoomed", (_data) => {
-      if (this.viewport) {
-        this.eventBus.dispatch("lighter:zoomed", {
-          scale: this.viewport.scaled,
-        });
-        this.emitViewportMoved();
-      }
+      this.emitViewportZoomed();
+      this.emitViewportMoved();
     });
 
     this.viewport.on("moved", () => {
@@ -117,7 +117,8 @@ export class PixiRenderer2D implements Renderer2D {
   };
 
   addTickHandler(onFrame: () => void): void {
-    if (this.isRunning) {
+    if (!this.app || this.isRunning) {
+      return;
     }
 
     this.isRunning = true;
@@ -189,24 +190,33 @@ export class PixiRenderer2D implements Renderer2D {
     this.addToContainer(graphics, containerId);
   }
 
-  drawScrim(bounds: Rect, borderWidth: number, containerId: string): void {
-    borderWidth /= this.getScale();
-    const sceneDimensions = this.getContainerDimensions();
+  drawScrim(
+    bounds: Rect,
+    canonicalMediaBounds: Rect,
+    containerId: string
+  ): void {
     const mask = new PIXI.Graphics();
-
-    mask.rect(0, 0, sceneDimensions.width, sceneDimensions.height);
+    mask.rect(
+      canonicalMediaBounds.x,
+      canonicalMediaBounds.y,
+      canonicalMediaBounds.width,
+      canonicalMediaBounds.height
+    );
     mask.setFillStyle({ color: SELECTED_COLOR, alpha: SELECTED_ALPHA });
     mask.fill();
 
-    const halfWidth = borderWidth / 2;
-    const x = Math.max(bounds.x - halfWidth, 0);
-    const y = Math.max(bounds.y - halfWidth, 0);
-    const w =
-      Math.min(bounds.width + borderWidth, sceneDimensions.width - bounds.x) +
-      Math.min(bounds.x, 0);
-    const h =
-      Math.min(bounds.height + borderWidth, sceneDimensions.height - bounds.y) +
-      Math.min(bounds.y, 0);
+    const x = Math.max(bounds.x, canonicalMediaBounds.x);
+    const y = Math.max(bounds.y, canonicalMediaBounds.y);
+    const maxRight = Math.min(
+      canonicalMediaBounds.x + canonicalMediaBounds.width,
+      bounds.x + bounds.width
+    );
+    const w = maxRight - x;
+    const maxBottom = Math.min(
+      canonicalMediaBounds.y + canonicalMediaBounds.height,
+      bounds.y + bounds.height
+    );
+    const h = maxBottom - y;
 
     mask.rect(x, y, w, h);
     mask.cut();
@@ -649,6 +659,17 @@ export class PixiRenderer2D implements Renderer2D {
   }
 
   /**
+   * Reset the viewport's zoom to 100% and clears any pan translation.
+   */
+  resetZoomPan(): void {
+    this.viewport?.setZoom(1);
+    this.viewport?.moveCorner(0, 0);
+
+    this.emitViewportZoomed();
+    this.emitViewportMoved();
+  }
+
+  /**
    * Disables zoom and pan interactions (e.g., during overlay dragging).
    * This prevents viewport plugins from interfering with overlay interactions.
    */
@@ -711,6 +732,18 @@ export class PixiRenderer2D implements Renderer2D {
       x: this.viewport.x,
       y: this.viewport.y,
     };
+  }
+
+  /**
+   * Emits a zoomed event with the current scale.
+   * @private
+   */
+  private emitViewportZoomed(): void {
+    if (this.viewport) {
+      this.eventBus.dispatch("lighter:zoomed", {
+        scale: this.viewport.scaled,
+      });
+    }
   }
 
   /**
@@ -909,6 +942,10 @@ export class PixiRenderer2D implements Renderer2D {
   }
 
   cleanUp(): void {
+    if (!this.app) {
+      return;
+    }
+
     this.resetTickHandler();
     this.viewport?.destroy({ children: true });
     this.viewport?.removeChildren();

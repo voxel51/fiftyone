@@ -28,7 +28,9 @@ import {
 } from "./base";
 import { getLabelColor } from "./util";
 
-export type Classification = RegularLabel;
+export type Classification = {
+  _cls: "Classification";
+} & RegularLabel;
 
 export interface Regression {
   confidence?: number | NONFINITE;

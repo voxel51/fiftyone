@@ -1,7 +1,7 @@
 import { PillButton } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { VisibilityOff } from "@mui/icons-material";
-import React, { Suspense } from "react";
+import React, { Suspense, useState } from "react";
 import {
   DefaultValue,
   selectorFamily,
@@ -11,6 +11,7 @@ import {
 import { NameAndCountContainer } from "../../../utils";
 import { PathEntryCounts } from "../EntryCounts";
 import Icon from "./Icon";
+import { QuickEditEntry } from "../../../Modal/Sidebar/Annotate";
 
 const PATH_OVERRIDES = {
   tags: "sample tags",
@@ -81,15 +82,20 @@ const useTitleTemplate = ({
     const enabled = !useRecoilValue(fos.isDisabledCheckboxPath(path));
     const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
     const expandedPath = useRecoilValue(fos.expandPath(path));
+    const [hovering, setHovering] = useState(false);
 
     return (
       <NameAndCountContainer
         ref={container}
         data-cy={`sidebar-field-container-${path}`}
+        onMouseEnter={() => setHovering(true)}
+        onMouseLeave={() => setHovering(false)}
       >
         <span key="path" data-cy={`sidebar-field-${path}`}>
           <span ref={hoverTarget} {...hoverHandlers}>
-            {PATH_OVERRIDES[path] || path}
+            <QuickEditEntry enabled={hovering && modal} path={path}>
+              {PATH_OVERRIDES[path] || path}
+            </QuickEditEntry>
           </span>
         </span>
         {modal && (

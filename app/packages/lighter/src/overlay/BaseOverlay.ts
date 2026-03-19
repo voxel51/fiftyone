@@ -2,13 +2,14 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { getEventBus, type EventDispatcher } from "@fiftyone/events";
+import { type EventDispatcher, getEventBus } from "@fiftyone/events";
 import { CONTAINS } from "../core/Scene2D";
 import type { LighterEventGroup } from "../events";
-import { InteractionHandler } from "../interaction/InteractionManager";
+import type { InteractionHandler } from "../interaction/InteractionManager";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { ResourceLoader } from "../resource/ResourceLoader";
 import type {
+  CoordinateSystem,
   DrawStyle,
   Point,
   RawLookerLabel,
@@ -33,11 +34,12 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
    */
   protected isDirty = false;
 
+  protected coordinateSystem?: CoordinateSystem;
   protected renderer?: Renderer2D;
   protected resourceLoader?: ResourceLoader;
   protected currentStyle?: DrawStyle;
 
-  private _sceneId?: string;
+  private _eventChannel?: string;
   private _eventBus?: EventDispatcher<LighterEventGroup>;
 
   constructor(id: string, field: string, label: Label) {
@@ -51,11 +53,11 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
   private _label: Label;
 
   /**
-   * Gets the event bus, initializing it lazily with the sceneId if available.
+   * Gets the event bus, initializing it lazily with the eventChannel if available.
    */
   protected get eventBus(): EventDispatcher<LighterEventGroup> {
     if (!this._eventBus) {
-      this._eventBus = getEventBus<LighterEventGroup>(this._sceneId);
+      this._eventBus = getEventBus<LighterEventGroup>(this._eventChannel);
     }
     return this._eventBus;
   }
@@ -84,6 +86,14 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
   }
 
   /**
+   * Sets the coordinate system for this overlay.
+   * @param coordinateSystem - The coordinate system to use.
+   */
+  setCoordinateSystem(coordinateSystem: CoordinateSystem): void {
+    this.coordinateSystem = coordinateSystem;
+  }
+
+  /**
    * Sets the renderer for this overlay.
    * @param renderer - The renderer to use.
    */
@@ -100,12 +110,12 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
   }
 
   /**
-   * Sets the scene ID for this overlay.
-   * @param sceneId - The scene ID to use for the event bus channel.
+   * Sets the event channel for this overlay.
+   * @param eventChannel - The value to use for the event bus channel.
    */
-  setSceneId(sceneId: string | undefined): void {
-    this._sceneId = sceneId;
-    // Reset eventBus so it gets reinitialized with the new sceneId
+  setEventChannel(eventChannel: string | undefined): void {
+    this._eventChannel = eventChannel;
+    // Reset eventBus so it gets reinitialized with the new eventChannel
     this._eventBus = undefined;
   }
 
@@ -219,7 +229,8 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
    * Override this method in subclasses to perform specific cleanup.
    */
   destroy(): void {
-    // Base implementation - subclasses should override if needed
+    this._eventBus = undefined;
+    this._eventChannel = undefined;
   }
 
   // InteractionHandler interface implementation

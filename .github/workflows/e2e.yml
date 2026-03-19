@@ -1,7 +1,12 @@
 name: Test e2e
 
-on: workflow_call
-
+on:
+  workflow_call:
+    secrets:
+      docker-username:
+        required: false
+      docker-password:
+        required: false
 jobs:
   test-e2e:
     timeout-minutes: 90
@@ -15,6 +20,7 @@ jobs:
       ELECTRON_EXTRA_LAUNCH_ARGS: "--disable-gpu"
       PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/ms-playwright
       FIFTYONE_PLUGINS_DIR: ${{ github.workspace }}/e2e-pw/src/shared/assets/plugins
+      VFF_EXP_ANNOTATION: true
     defaults:
       run:
         shell: bash
@@ -22,15 +28,16 @@ jobs:
       fail-fast: false
       matrix:
         mongodb-version:
-          - "6"
-          - "7"
-          - "8.0"
           - "latest"
     steps:
       - name: Checkout
         uses: actions/checkout@v6
         with:
           submodules: true
+          sparse-checkout: |
+            /*
+            !/docs/**
+          sparse-checkout-cone-mode: false
 
       - name: Setup node 22
         uses: actions/setup-node@v6
@@ -42,17 +49,32 @@ jobs:
       - name: Prepare yarn 4
         run: corepack prepare yarn@4.9.1 --activate
 
+      - name: Login to Docker Hub
+        uses: docker/login-action@v4
+        # Skip docker login on forks (that won't have the docker-* secrets)
+        if: env.docker-username != '' && env.docker-password != ''
+        env:
+          docker-username: ${{ secrets.docker-username }}
+          docker-password: ${{ secrets.docker-password }}
+        with:
+          username: ${{ env.docker-username }}
+          password: ${{ env.docker-password }}
+
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.12.1
         with:
           mongodb-version: ${{ matrix.mongodb-version }}
 
-      - name: Setup
+      - name: Setup Python
         uses: actions/setup-python@v6
-        id: pip-cache
         with:
           python-version: 3.10.16
-          cache: "pip"
+
+      - name: Setup (UV)
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: 3.10.16
+          enable-cache: true
           cache-dependency-path: |
             requirements/common.txt
             requirements/github.txt
@@ -63,9 +85,8 @@ jobs:
         with:
           large-packages: false # e2e test failed when `true`
       - name: Install requirements
-        if: steps.pip-cache.outputs.cache-hit != true
         run: |
-          pip install -r requirements/e2e.txt
+          uv pip install --system -r requirements/e2e.txt
 
       - name: Cache Node Modules
         id: app-node-cache
@@ -86,7 +107,7 @@ jobs:
 
       - name: Install fiftyone
         run: |
-          pip install .
+          uv pip install --system . -r requirements/e2e.txt
 
       - name: Configure
         id: test_config
@@ -143,7 +164,7 @@ jobs:
 
       - name: Upload test report
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-report-mongodb-${{ matrix.mongodb-version }}
           path: e2e-pw/playwright-report/

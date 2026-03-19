@@ -6,21 +6,17 @@ import styled, { useTheme } from "styled-components";
 import { Column } from "./Components";
 import { Container } from "./Icons";
 import { labels } from "./useLabels";
+import { IconProps } from "@mui/material";
 
-const PlusMinusButton = ({
-  expanded,
-  toggle,
-}: {
-  expanded: boolean;
-  toggle: () => void;
-}) => {
+const PlusMinusButton = (props: PlusMinusButtonProps) => {
+  const { expanded, toggle, ...otherProps } = props;
   const Component = expanded ? Remove : Add;
 
-  return <Component onClick={toggle} />;
+  return <Component onClick={toggle} {...otherProps} />;
 };
 
 const GroupHeader = styled.div`
-  border-radius: 3px;
+  border-radius: var(--radius-xs);
   padding: 0.5rem;
   display: flex;
   justify-content: space-between;
@@ -50,7 +46,7 @@ const GroupDiv = styled.div`
 
 const Round = styled.div`
   align-items: center;
-  border-radius: 1rem;
+  border-radius: var(--radius-full);
   display: flex;
   cursor: pointer;
   flex-direction: column;
@@ -76,6 +72,7 @@ const Toggle = ({ name }: { name: string }) => {
       <PlusMinusButton
         expanded={expanded}
         toggle={() => setExpanded((cur) => !cur)}
+        data-cy={`sidebar-group-${name}-toggle`}
       />
     </Round>
   );
@@ -122,7 +119,9 @@ const Group = React.memo(({ name }: { name: string }) => {
           </GroupDiv>
 
           <Column>
-            <Container>{count === null ? <LoadingDots /> : count}</Container>
+            <Container data-cy={`sidebar-group-${name}-field-count`}>
+              {count === null ? <LoadingDots /> : count}
+            </Container>
             <Toggle name={name} />
           </Column>
         </GroupHeader>
@@ -132,3 +131,8 @@ const Group = React.memo(({ name }: { name: string }) => {
 });
 
 export default Group;
+
+type PlusMinusButtonProps = IconProps & {
+  expanded: boolean;
+  toggle: () => void;
+};

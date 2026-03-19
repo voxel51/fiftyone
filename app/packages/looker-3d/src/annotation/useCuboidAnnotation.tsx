@@ -1,10 +1,16 @@
 import { TransformControlsProps } from "@react-three/drei";
-import { useCallback, useMemo, useRef } from "react";
-import { useRecoilState } from "recoil";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { Vector3Tuple } from "three";
 import * as THREE from "three";
-import { stagedCuboidTransformsAtom, tempLabelTransformsAtom } from "../state";
-import { useReverseSyncCuboidTransforms } from "./useReverseSyncCuboidTransforms";
+import {
+  useCuboidOperations,
+  useEndDrag,
+  useStartDrag,
+  useUpdateTransient,
+  useWorkingLabel,
+} from "../annotation/store";
+import type { TransientCuboidState } from "../annotation/store/types";
+import { isDetection3dOverlay } from "../types";
 
 interface UseCuboidAnnotationProps {
   label: any;
@@ -25,151 +31,104 @@ export const useCuboidAnnotation = ({
   isAnnotateMode,
   isSelectedForAnnotation,
 }: UseCuboidAnnotationProps) => {
-  const [stagedCuboidTransforms, setStagedCuboidTransforms] = useRecoilState(
-    stagedCuboidTransformsAtom
-  );
+  const labelId = label._id;
 
-  // Reverse sync: when staged transforms change from canvas manipulation,
-  // sync back to the sidebar
-  useReverseSyncCuboidTransforms();
-
-  // Note: For cuboids, `position` means relative offset (delta)
-  const [tempCuboidTransforms, setTempCuboidTransforms] = useRecoilState(
-    tempLabelTransformsAtom(label._id)
-  );
+  const workingLabel = useWorkingLabel(labelId);
+  const { updateCuboid } = useUpdateTransient();
+  const { finalizeCuboidDrag } = useCuboidOperations();
+  const startDrag = useStartDrag();
+  const endDrag = useEndDrag();
 
   const transformControlsRef = useRef<TransformControlsProps>(null);
   const contentRef = useRef<THREE.Group>(null);
 
-  // Apply staged transforms if they exist, otherwise use original values
+  // Compute effective values from working store (or fallback to props)
   const [
     effectiveLocation,
     effectiveDimensions,
     effectiveRotation,
     effectiveQuaternion,
-  ] = useMemo(
-    () => [
-      stagedCuboidTransforms[label._id]?.location ?? location,
-      stagedCuboidTransforms[label._id]?.dimensions ?? dimensions,
-      stagedCuboidTransforms[label._id]?.rotation ?? rotation,
-      stagedCuboidTransforms[label._id]?.quaternion ?? null,
-    ],
-    [stagedCuboidTransforms, location, dimensions, rotation]
-  );
-
-  const originalQuaternion = useMemo(() => {
-    // Use staged quaternion if available, otherwise convert from euler rotation
-    // This ensures we preserve the existing rotation when starting to rotate
-    const stagedQuaternion = stagedCuboidTransforms[label._id]?.quaternion;
-    if (stagedQuaternion) {
-      return new THREE.Quaternion(...stagedQuaternion);
+  ] = useMemo(() => {
+    if (isDetection3dOverlay(workingLabel)) {
+      const result = [
+        workingLabel.location,
+        workingLabel.dimensions,
+        workingLabel.rotation ?? rotation,
+        workingLabel.quaternion ?? null,
+      ];
+      return result;
     }
+    // Fallback to props if not in working store
+    return [location, dimensions, rotation, null];
+  }, [workingLabel, location, dimensions, rotation]);
 
-    // Convert euler rotation to quaternion
-    const euler = new THREE.Euler(...effectiveRotation, "XYZ");
-    return new THREE.Quaternion().setFromEuler(euler);
-  }, [stagedCuboidTransforms, effectiveRotation]);
+  const handleTransformStart = useCallback(() => {
+    startDrag(labelId);
+  }, [startDrag, labelId]);
 
   const handleTransformChange = useCallback(() => {
     if (!contentRef.current || !transformControlsRef.current) return;
 
-    const transformControls = transformControlsRef.current as any;
+    const transformControls = transformControlsRef.current;
     const mode = transformControls.mode;
+
+    let transientUpdate: TransientCuboidState = {};
 
     if (mode === "translate") {
       const position = contentRef.current.position;
-      setTempCuboidTransforms({
-        position: position.toArray(),
-      });
+      // Store position as delta from effective location
+      transientUpdate.positionDelta = [
+        position.x - effectiveLocation[0],
+        position.y - effectiveLocation[1],
+        position.z - effectiveLocation[2],
+      ];
     } else if (mode === "scale") {
-      // Compute transient dimensions from scale
+      // Compute transient dimensions delta from scale
       const scale = contentRef.current.scale;
 
-      const transientDimensions: [number, number, number] = [
+      const newDimensions: [number, number, number] = [
         effectiveDimensions[0] * scale.x,
         effectiveDimensions[1] * scale.y,
         effectiveDimensions[2] * scale.z,
       ];
 
-      setTempCuboidTransforms({
-        // Note: make sure with scale, position is (0,0,0) to avoid double application of position
-        position: contentRef.current.position.toArray(),
-        dimensions: transientDimensions,
-      });
+      transientUpdate.dimensionsDelta = [
+        newDimensions[0] - effectiveDimensions[0],
+        newDimensions[1] - effectiveDimensions[1],
+        newDimensions[2] - effectiveDimensions[2],
+      ];
 
-      // Reset scale to avoid double application of scale
+      // Reset scale to avoid double application
       contentRef.current.scale.set(1, 1, 1);
     } else if (mode === "rotate") {
       const quaternion = contentRef.current.quaternion.clone();
-      const quaternionArray: [number, number, number, number] = [
+      transientUpdate.quaternionOverride = [
         quaternion.x,
         quaternion.y,
         quaternion.z,
         quaternion.w,
       ];
-
-      setTempCuboidTransforms({
-        position: contentRef.current.position.toArray(),
-        quaternion: quaternionArray,
-      });
-
-      // contentRef.current.quaternion.set(0, 0, 0, 1);
     }
-  }, [effectiveDimensions]);
+
+    // Update transient store
+    updateCuboid(labelId, transientUpdate);
+  }, [labelId, effectiveLocation, effectiveDimensions, updateCuboid]);
 
   const handleTransformEnd = useCallback(() => {
-    if (!contentRef.current || !transformControlsRef.current) return;
-
-    const transformControls = transformControlsRef.current as any;
-    const mode = transformControls.mode;
-
-    const newTransform: {
-      location: number[];
-      dimensions: number[];
-      rotation?: Vector3Tuple;
-      quaternion?: [number, number, number, number];
-    } = {
-      location: [...effectiveLocation],
-      dimensions: [...effectiveDimensions],
-      quaternion: [...effectiveQuaternion],
-      rotation: effectiveRotation,
-    };
-
-    // Read from temp transforms, commit, and clear
-    const tempTransforms = tempCuboidTransforms;
-
-    if (mode === "translate" && tempTransforms?.position) {
-      // Commit position change - add the delta (from temp transforms) to effectiveLocation
-      const delta = tempTransforms.position;
-      newTransform.location = [delta[0], delta[1], delta[2]] as Vector3Tuple;
-    } else if (mode === "scale" && tempTransforms?.dimensions) {
-      // Commit scale/dimensions change from temp transforms
-      newTransform.dimensions = tempTransforms.dimensions as Vector3Tuple;
-    } else if (mode === "rotate") {
-      let quaternionToCommit = tempTransforms.quaternion;
-
-      if (quaternionToCommit) {
-        // Store quaternion directly - conversion to Euler is deferred until final save
-        newTransform.quaternion = quaternionToCommit;
-        // Clear rotation to avoid conflict - quaternion is authoritative
-        newTransform.rotation = undefined;
-      }
+    if (!contentRef.current || !transformControlsRef.current) {
+      return;
     }
 
-    setStagedCuboidTransforms((prev) => ({
-      ...prev,
-      [label._id]: newTransform,
-    }));
+    finalizeCuboidDrag(labelId);
 
-    setTempCuboidTransforms(null);
-  }, [
-    effectiveLocation,
-    effectiveDimensions,
-    effectiveRotation,
-    label._id,
-    tempCuboidTransforms,
-    stagedCuboidTransforms,
-  ]);
+    // We'll have accounted for scale by mutating dimensions, so reset scale
+    contentRef.current.scale.set(1, 1, 1);
+  }, [labelId, finalizeCuboidDrag]);
+
+  // This effect clears drag state on unmount
+  useEffect(() => {
+    return () => endDrag(labelId);
+  }, [labelId, endDrag]);
 
   return {
     location,
@@ -183,6 +142,7 @@ export const useCuboidAnnotation = ({
     transformControlsRef,
     contentRef,
 
+    handleTransformStart,
     handleTransformChange,
     handleTransformEnd,
   };

@@ -18,6 +18,7 @@ export enum SmartFormComponents {
   CheckboxView = "CheckboxView",
   DropdownView = "DropdownView",
   Dropdown = "Dropdown",
+  SelectWidget = "SelectWidget",
   RadioView = "RadioView",
   RadioGroup = "RadioGroup",
   AutocompleteView = "AutocompleteView",
@@ -44,6 +45,9 @@ export enum SmartFormComponents {
   PlotlyView = "PlotlyView",
   SliderView = "SliderView",
   ToggleView = "ToggleView",
+  LabelValueView = "LabelValueView",
+  DatePickerView = "DatePickerView",
+  JsonEditorView = "JsonEditorView",
 }
 
 export interface SmartFormProps {

@@ -3,7 +3,6 @@
  */
 
 import { BaseLabel } from "@fiftyone/looker/src/overlays/base";
-import { BaseOverlay } from "./overlay/BaseOverlay";
 
 /**
  * 2D rectangle with position and size.
@@ -94,44 +93,12 @@ export type OverlayStatus =
 export type RawLookerLabel = Omit<BaseLabel, "_renderStatus"> | null;
 
 /**
- * Interface for overlays that have current bounds.
- */
-export interface BoundedOverlay extends BaseOverlay {
-  getCurrentBounds(): Rect | undefined;
-  forceUpdateBounds(): void;
-}
-
-/**
  * Interface for overlays that have spatial location/bounds.
  * These overlays store relative coordinates [0,1] and need coordinate transformation.
  */
 export interface Spatial {
-  /** Get relative coordinates [0-1rom data model */
-  getRelativeBounds(): Rect;
-
-  /** Set absolute coordinates in canvas space */
-  setAbsoluteBounds(bounds: Rect): void;
-
-  /** Get current absolute coordinates in canvas space */
-  getAbsoluteBounds(): Rect;
-
-  /** Set relative coordinates [0-1rom data model */
-  setRelativeBounds(bounds: Rect): void;
-
-  /** Check if overlay needs coordinate update */
-  needsCoordinateUpdate(): boolean;
-
-  /** Mark as needing coordinate update */
-  markForCoordinateUpdate(): void;
-
-  /** Mark coordinate update as complete */
-  markCoordinateUpdateComplete(): void;
-
-  /** get current position */
-  getPosition(): Point;
-
-  /** get position from start of drag/resize */
-  getMoveStartPosition(): Point | undefined;
+  /** The current absolute coordinates in canvas space */
+  bounds: Rect;
 
   /** return true if being dragged */
   isDragging(): boolean;
@@ -192,9 +159,6 @@ export interface CanonicalMedia {
 
   /** Get aspect ratio */
   getAspectRatio(): number;
-
-  /** Listen for bounds changes */
-  onBoundsChanged(callback: (bounds: Rect) => void): () => void;
 
   /** Force update bounds calculation */
   updateBounds(): void;

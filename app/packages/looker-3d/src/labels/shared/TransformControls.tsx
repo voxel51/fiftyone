@@ -4,6 +4,7 @@ import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import * as THREE from "three";
+import { FO_USER_DATA } from "../../constants";
 import {
   currentArchetypeSelectedForTransformAtom,
   isCurrentlyTransformingAtom,
@@ -95,8 +96,12 @@ export const Transformable = ({
       {isAnnotateMode &&
         isSelectedForTransform &&
         currentArchetypeSelectedForTransform === archetype && (
-          <group position={new THREE.Vector3(...transformControlsPosition)}>
+          <group
+            userData={{ [FO_USER_DATA.IS_HELPER]: true }}
+            position={new THREE.Vector3(...transformControlsPosition)}
+          >
             <TransformControls
+              userData={{ [FO_USER_DATA.IS_HELPER]: true }}
               ref={transformControlsRef}
               rotationSnap={0.01}
               scaleSnap={0.01}

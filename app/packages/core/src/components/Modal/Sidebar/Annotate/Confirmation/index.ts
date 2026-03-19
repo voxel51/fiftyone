@@ -1,1 +1,1 @@
-export { ConfirmationContext, default } from "./Confirmation";
+export * from "./useConfirmDelete";

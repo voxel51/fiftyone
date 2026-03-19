@@ -1,21 +1,19 @@
 import { useAnnotationEventBus } from "@fiftyone/annotation";
 import { LabeledField } from "@fiftyone/components";
 import { DetectionLabel } from "@fiftyone/looker";
-import { formatDegrees } from "@fiftyone/looker-3d/src/annotation/utils/rotation-utils";
 import {
-  isCurrentlyTransformingAtom,
-  stagedCuboidTransformsAtom,
-  tempLabelTransformsAtom,
-} from "@fiftyone/looker-3d/src/state";
-import {
+  formatDegrees,
   quaternionToRadians,
   radiansToQuaternion,
-} from "@fiftyone/looker-3d/src/utils";
+  useIsDragInProgress,
+  useTransientCuboid,
+  useWorkingLabel,
+} from "@fiftyone/looker-3d";
+import { DETECTION } from "@fiftyone/utilities";
 import { Box, Stack, TextField } from "@mui/material";
 import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useState } from "react";
-import { useRecoilValue } from "recoil";
-import { Quaternion, Vector3Tuple } from "three";
+import { Vector3Tuple } from "three";
 import { currentData, currentOverlay } from "./state";
 
 interface Coordinates3d {
@@ -49,8 +47,12 @@ const hasValidBounds = (coordinates: Coordinates3d): boolean => {
   );
 };
 
-export default function Position3d() {
-  const [state, setState] = useState<Coordinates3d>({
+export interface Position3dProps {
+  readOnly?: boolean;
+}
+
+export default function Position3d({ readOnly = false }: Position3dProps) {
+  const [transformState, setTransformState] = useState<Coordinates3d>({
     position: {},
     dimensions: {},
     rotation: {},
@@ -58,108 +60,114 @@ export default function Position3d() {
   const data = useAtomValue<DetectionLabel>(currentData);
   const overlay = useAtomValue(currentOverlay);
   const eventBus = useAnnotationEventBus();
-  const stagedCuboidTransforms = useRecoilValue(stagedCuboidTransformsAtom);
-  const isCurrentlyTransforming = useRecoilValue(isCurrentlyTransformingAtom);
   const labelId = data?._id ?? "";
-  const tempTransforms = useRecoilValue(tempLabelTransformsAtom(labelId));
+
+  const workingLabel = useWorkingLabel(labelId);
+
+  // Need transient state for live drag preview
+  const transientState = useTransientCuboid(labelId);
+  const isDragInProgress = useIsDragInProgress();
 
   useEffect(() => {
-    if (typeof stagedCuboidTransforms[labelId]?.dimensions === "undefined") {
+    let baseLocation: Vector3Tuple | undefined;
+    let baseDimensions: Vector3Tuple | undefined;
+    let baseRotation: Vector3Tuple | undefined;
+    let baseQuaternion: [number, number, number, number] | undefined;
+
+    if (workingLabel && workingLabel._cls === DETECTION) {
+      baseLocation = workingLabel.location;
+      baseDimensions = workingLabel.dimensions;
+      baseRotation = workingLabel.rotation;
+      baseQuaternion = workingLabel.quaternion;
+    } else if (data?.location && data?.dimensions) {
+      // This shouldn't really happen but is here for a fallback
+      console.warn(
+        "[Position3d] Using fallback data path - workingLabel not available for label:",
+        data._id
+      );
+      baseLocation = data.location;
+      baseDimensions = data.dimensions;
+      baseRotation = data.rotation;
+    }
+
+    if (!baseLocation || !baseDimensions) {
       return;
     }
 
-    // Resolve final quaterninon by combining the temp quaternion with the original quaternion
-    // console.log(">>>stagedCuboidTransforms[data._id]?.quaternion", stagedCuboidTransforms[data._id]?.quaternion);
-    const stagedQuat = new Quaternion(
-      ...(Array.isArray(stagedCuboidTransforms[labelId]?.quaternion)
-        ? stagedCuboidTransforms[labelId]?.quaternion
-        : [0, 0, 0, 1])
-    );
+    // Apply transient deltas if they exist (like, during active drag)
+    let displayLocation = baseLocation;
+    let displayDimensions = baseDimensions;
+    let displayQuaternion = baseQuaternion;
 
-    // If currently transforming, use temp transforms if available
-    if (isCurrentlyTransforming && tempTransforms) {
-      const tempPosition = tempTransforms.position;
-      const tempDimensions = tempTransforms.dimensions;
-      const tempQuaternion = tempTransforms.quaternion;
-
-      const finalQuat = (
-        tempQuaternion ? new Quaternion(...tempQuaternion) : stagedQuat
-      ).toArray();
-
-      const fallbackDimensions = data.dimensions;
-
-      // Convert quaternion to radians for display
-      const rotationRadians = finalQuat ? quaternionToRadians(finalQuat) : null;
-
-      setState({
-        position: {
-          x: tempPosition[0],
-          y: tempPosition[1],
-          z: tempPosition[2],
-        },
-        dimensions: tempDimensions
-          ? {
-              lx: tempDimensions[0],
-              ly: tempDimensions[1],
-              lz: tempDimensions[2],
-            }
-          : fallbackDimensions
-          ? {
-              lx: fallbackDimensions[0],
-              ly: fallbackDimensions[1],
-              lz: fallbackDimensions[2],
-            }
-          : {},
-        rotation: rotationRadians
-          ? {
-              rx: rotationRadians[0],
-              ry: rotationRadians[1],
-              rz: rotationRadians[2],
-            }
-          : { rx: 0, ry: 0, rz: 0 },
-      });
-      return;
+    if (transientState) {
+      if (transientState.positionDelta) {
+        displayLocation = [
+          baseLocation[0] + transientState.positionDelta[0],
+          baseLocation[1] + transientState.positionDelta[1],
+          baseLocation[2] + transientState.positionDelta[2],
+        ];
+      }
+      if (transientState.dimensionsDelta) {
+        displayDimensions = [
+          baseDimensions[0] + transientState.dimensionsDelta[0],
+          baseDimensions[1] + transientState.dimensionsDelta[1],
+          baseDimensions[2] + transientState.dimensionsDelta[2],
+        ];
+      }
+      if (transientState.quaternionOverride) {
+        displayQuaternion = transientState.quaternionOverride;
+      }
     }
 
-    const location = data.location;
-    const dimensions = data.dimensions;
-    const rotation = data.rotation;
-
-    if (location && dimensions) {
-      setState({
-        position: { x: location[0], y: location[1], z: location[2] },
-        dimensions: {
-          lx: dimensions[0],
-          ly: dimensions[1],
-          lz: dimensions[2],
-        },
-        rotation: { rx: rotation[0], ry: rotation[1], rz: rotation[2] },
-      });
+    // Convert quaternion to rotation for display
+    let displayRotation = baseRotation;
+    if (displayQuaternion) {
+      displayRotation = quaternionToRadians(displayQuaternion);
     }
-  }, [data, isCurrentlyTransforming, tempTransforms, stagedCuboidTransforms]);
+
+    setTransformState({
+      position: {
+        x: displayLocation[0],
+        y: displayLocation[1],
+        z: displayLocation[2],
+      },
+      dimensions: {
+        lx: displayDimensions[0],
+        ly: displayDimensions[1],
+        lz: displayDimensions[2],
+      },
+      rotation: displayRotation
+        ? {
+            rx: displayRotation[0],
+            ry: displayRotation[1],
+            rz: displayRotation[2],
+          }
+        : { rx: 0, ry: 0, rz: 0 },
+    });
+  }, [data, workingLabel, transientState, isDragInProgress]);
 
   const handleUserInputChange = useCallback(
     (coordinateDelta: Partial<Coordinates3d>) => {
-      if (!data?._id) {
+      if (readOnly || !data?._id) {
         return;
       }
 
       // synchronize internal state
       const newState = {
         position: {
-          ...state.position,
+          ...transformState.position,
           ...coordinateDelta.position,
         },
         dimensions: {
-          ...state.dimensions,
+          ...transformState.dimensions,
           ...coordinateDelta.dimensions,
         },
         rotation: {
-          ...state.rotation,
+          ...transformState.rotation,
           ...coordinateDelta.rotation,
         },
       };
-      setState(newState);
+      setTransformState(newState);
 
       if (!hasValidBounds(newState)) {
         return;
@@ -202,7 +210,7 @@ export default function Position3d() {
         });
       }
     },
-    [data, state, overlay, eventBus]
+    [data, transformState, overlay, eventBus, readOnly]
   );
 
   return (
@@ -219,13 +227,14 @@ export default function Position3d() {
           formControl={
             <TextField
               type="number"
-              value={formatValue(state.position.x)}
+              value={formatValue(transformState.position.x)}
               onChange={(e) => {
                 handleUserInputChange({
                   position: { x: parseFloat(e.target.value) },
                 });
               }}
               size="small"
+              disabled={readOnly}
             />
           }
         />
@@ -235,13 +244,14 @@ export default function Position3d() {
           formControl={
             <TextField
               type="number"
-              value={formatValue(state.position.y)}
+              value={formatValue(transformState.position.y)}
               onChange={(e) => {
                 handleUserInputChange({
                   position: { y: parseFloat(e.target.value) },
                 });
               }}
               size="small"
+              disabled={readOnly}
             />
           }
         />
@@ -251,13 +261,14 @@ export default function Position3d() {
           formControl={
             <TextField
               type="number"
-              value={formatValue(state.position.z)}
+              value={formatValue(transformState.position.z)}
               onChange={(e) => {
                 handleUserInputChange({
                   position: { z: parseFloat(e.target.value) },
                 });
               }}
               size="small"
+              disabled={readOnly}
             />
           }
         />
@@ -275,7 +286,7 @@ export default function Position3d() {
           formControl={
             <TextField
               type="number"
-              value={formatValue(state.dimensions.lx)}
+              value={formatValue(transformState.dimensions.lx)}
               onChange={(e) => {
                 handleUserInputChange({
                   dimensions: { lx: parseFloat(e.target.value) },
@@ -283,6 +294,7 @@ export default function Position3d() {
               }}
               size="small"
               inputProps={{ step: 0.1 }}
+              disabled={readOnly}
             />
           }
         />
@@ -292,7 +304,7 @@ export default function Position3d() {
           formControl={
             <TextField
               type="number"
-              value={formatValue(state.dimensions.ly)}
+              value={formatValue(transformState.dimensions.ly)}
               onChange={(e) => {
                 handleUserInputChange({
                   dimensions: { ly: parseFloat(e.target.value) },
@@ -300,6 +312,7 @@ export default function Position3d() {
               }}
               size="small"
               inputProps={{ step: 0.1 }}
+              disabled={readOnly}
             />
           }
         />
@@ -309,7 +322,7 @@ export default function Position3d() {
           formControl={
             <TextField
               type="number"
-              value={formatValue(state.dimensions.lz)}
+              value={formatValue(transformState.dimensions.lz)}
               onChange={(e) => {
                 handleUserInputChange({
                   dimensions: { lz: parseFloat(e.target.value) },
@@ -317,6 +330,7 @@ export default function Position3d() {
               }}
               size="small"
               inputProps={{ step: 0.1 }}
+              disabled={readOnly}
             />
           }
         />
@@ -330,11 +344,11 @@ export default function Position3d() {
         sx={{ pl: 0, pt: 1, mb: 1 }}
       >
         <LabeledField
-          label={`rx (${formatDegrees(state.rotation.rx)}°)`}
+          label={`rx (${formatDegrees(transformState.rotation.rx)}°)`}
           formControl={
             <TextField
               type="number"
-              value={formatValue(state.rotation.rx)}
+              value={formatValue(transformState.rotation.rx)}
               onChange={(e) => {
                 handleUserInputChange({
                   rotation: { rx: parseFloat(e.target.value) },
@@ -342,16 +356,17 @@ export default function Position3d() {
               }}
               size="small"
               inputProps={{ step: 0.01 }}
+              disabled={readOnly}
             />
           }
         />
 
         <LabeledField
-          label={`ry (${formatDegrees(state.rotation.ry)}°)`}
+          label={`ry (${formatDegrees(transformState.rotation.ry)}°)`}
           formControl={
             <TextField
               type="number"
-              value={formatValue(state.rotation.ry)}
+              value={formatValue(transformState.rotation.ry)}
               onChange={(e) => {
                 handleUserInputChange({
                   rotation: { ry: parseFloat(e.target.value) },
@@ -359,16 +374,17 @@ export default function Position3d() {
               }}
               size="small"
               inputProps={{ step: 0.01 }}
+              disabled={readOnly}
             />
           }
         />
 
         <LabeledField
-          label={`rz (${formatDegrees(state.rotation.rz)}°)`}
+          label={`rz (${formatDegrees(transformState.rotation.rz)}°)`}
           formControl={
             <TextField
               type="number"
-              value={formatValue(state.rotation.rz)}
+              value={formatValue(transformState.rotation.rz)}
               onChange={(e) => {
                 handleUserInputChange({
                   rotation: { rz: parseFloat(e.target.value) },
@@ -376,6 +392,7 @@ export default function Position3d() {
               }}
               size="small"
               inputProps={{ step: 0.01 }}
+              disabled={readOnly}
             />
           }
         />

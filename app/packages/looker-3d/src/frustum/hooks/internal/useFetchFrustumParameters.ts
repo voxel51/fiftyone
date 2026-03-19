@@ -70,7 +70,7 @@ export function useFetchFrustumParameters() {
       setError(null);
 
       try {
-        const fetch = getFetchFunction();
+        const fetch = getFetchFunction({ cache: true });
         if (!fetch) {
           throw new Error("Fetch function not initialized");
         }

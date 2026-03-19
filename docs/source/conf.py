@@ -76,7 +76,15 @@ extensions = [
     "myst_parser",
     "llms_txt",
     "sphinx_remove_toctrees",
+    "sphinx_markdown_builder",
 ]
+
+teams_dir = os.environ.get("FIFTYONE_TEAMS_DIR")
+if teams_dir:
+    extensions.append("autoapi.extension")
+    autoapi_dirs = [os.path.join(teams_dir, "fiftyone")]
+    autoapi_generate_api_docs = False
+    autoapi_options = ["members", "undoc-members", "show-inheritance"]
 
 # Types of class members to generate documentation for.
 autodoc_default_options = {
@@ -202,6 +210,7 @@ html_favicon = "_static/favicon/favicon.ico"
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
+html_extra_path = ["404.html"]
 
 # These paths are either relative to html_static_path
 # or fully qualified paths (eg. https://...)

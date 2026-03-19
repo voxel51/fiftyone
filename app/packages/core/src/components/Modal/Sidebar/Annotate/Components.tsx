@@ -25,7 +25,7 @@ const Container = styled.div`
 `;
 
 export const Round = styled(Container)`
-  border-radius: 1.25rem;
+  border-radius: var(--radius-full);
 
   &:hover {
     color: ${({ theme }) => theme.text.primary};
@@ -33,7 +33,7 @@ export const Round = styled(Container)`
 `;
 
 export const Square = styled(Container)`
-  border-radius: 0.25rem;
+  border-radius: var(--radius-sm);
 `;
 
 const ItemColumn = styled.div`

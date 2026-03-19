@@ -2,29 +2,26 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import { Action, CommandContextManager } from "@fiftyone/commands";
 import {
-  clearChannel,
   EventDispatcher,
   EventHandler,
+  clearChannel,
   getEventBus,
 } from "@fiftyone/events";
 import { AddOverlayCommand } from "../commands/AddOverlayCommand";
-import {
-  MoveOverlayCommand,
-  type Movable,
-} from "../commands/MoveOverlayCommand";
+import { MoveOverlayCommand } from "../commands/MoveOverlayCommand";
 import { RemoveOverlayCommand } from "../commands/RemoveOverlayCommand";
 import {
+  TransformOptions,
   TransformOverlayCommand,
-  type TransformOptions,
 } from "../commands/TransformOverlayCommand";
 import { STROKE_WIDTH } from "../constants";
 import type { LighterEventGroup } from "../events";
 import type { InteractionHandler } from "../interaction/InteractionManager";
 import { InteractionManager } from "../interaction/InteractionManager";
-import { InteractiveDetectionHandler } from "../interaction/InteractiveDetectionHandler";
-import { BaseOverlay } from "../overlay/BaseOverlay";
-import { ClassificationOverlay } from "../overlay/ClassificationOverlay";
+import type { InteractiveDetectionHandler } from "../interaction/InteractiveDetectionHandler";
+import type { BaseOverlay } from "../overlay/BaseOverlay";
 import type { Selectable } from "../selection/Selectable";
 import type { SelectionOptions } from "../selection/SelectionManager";
 import { SelectionManager } from "../selection/SelectionManager";
@@ -49,7 +46,6 @@ import {
   RenderingStateManager,
 } from "./RenderingStateManager";
 import type { Scene2DConfig, SceneOptions } from "./SceneConfig";
-import { CommandContextManager, Action } from "@fiftyone/commands";
 
 export const TypeGuards = {
   isHoverable: (
@@ -66,25 +62,7 @@ export const TypeGuards = {
 
   isSpatial: (
     body: BaseOverlay | InteractionHandler
-  ): body is BaseOverlay & Spatial =>
-    "getRelativeBounds" in body && "setAbsoluteBounds" in body,
-
-  isTransformable: (
-    body: BaseOverlay | InteractionHandler
-  ): body is BaseOverlay & Movable =>
-    "getPosition" in body &&
-    "setPosition" in body &&
-    "getBounds" in body &&
-    "setBounds" in body,
-
-  isMovable: (
-    body: BaseOverlay | InteractionHandler
-  ): body is BaseOverlay & Movable =>
-    "id" in body &&
-    "getPosition" in body &&
-    "setPosition" in body &&
-    "getBounds" in body &&
-    "setBounds" in body,
+  ): body is BaseOverlay & Spatial => "bounds" in body,
 
   isInteractionHandler: (value: unknown): value is InteractionHandler =>
     typeof value === "object" &&
@@ -155,7 +133,6 @@ export class Scene2D {
   private renderingState = new RenderingStateManager();
   private sceneOptions?: SceneOptions;
   private selectionManager: SelectionManager;
-  private unsubscribeCanonicalMediaBounds?: () => void;
   private renderCallbacks = new Map<string, RenderCallback>();
   private colorMappingContext?: ColorMappingContext;
   private overlayOrderOptions: OverlayOrderOptions = {};
@@ -166,6 +143,9 @@ export class Scene2D {
   private abortController = new AbortController();
   private readonly sceneId: string;
   private readonly eventBus: EventDispatcher<LighterEventGroup>;
+  private readonly eventChannel: string = Math.random()
+    .toString(36)
+    .substring(2, 9);
 
   private _isDestroyed = false;
 
@@ -174,15 +154,27 @@ export class Scene2D {
     this.sceneId = config.sceneId;
 
     this.coordinateSystem = new CoordinateSystem2D();
-    this.selectionManager = new SelectionManager(this.sceneId);
+    this.selectionManager = new SelectionManager(this.eventChannel);
     this.interactionManager = new InteractionManager(
       config.canvas,
       this.selectionManager,
       config.renderer,
-      this.sceneId
+      this.eventChannel
     );
 
-    this.eventBus = getEventBus<LighterEventGroup>(this.sceneId);
+    this.eventBus = getEventBus<LighterEventGroup>(this.eventChannel);
+
+    // Listen for canonical media bounds changes to update coordinate system and overlays
+    this.registerEventHandler(
+      "lighter:canonical-media-bounds-changed",
+      (event) => {
+        this.coordinateSystem.updateTransform(event.bounds);
+
+        this.overlays.forEach((overlay) => {
+          overlay.markDirty();
+        });
+      }
+    );
 
     // Listen for scene options changes to trigger re-rendering
     this.registerEventHandler("lighter:scene-options-changed", (event) => {
@@ -224,36 +216,36 @@ export class Scene2D {
 
     // Listen for OVERLAY_ESTABLISH events to unset bounds of new overlay
     this.registerEventHandler("lighter:overlay-establish", (event) => {
-      const { overlay, absoluteBounds, relativeBounds } = event;
+      const { overlay, bounds } = event;
 
       if (overlay) {
-        const addCommand = new AddOverlayCommand(
-          this,
-          overlay,
-          absoluteBounds,
-          relativeBounds
-        );
-        CommandContextManager.instance().getActiveContext().pushUndoable(addCommand);
+        const addCommand = new AddOverlayCommand(this, overlay, bounds);
+
+        CommandContextManager.instance()
+          .getActiveContext()
+          .pushUndoable(addCommand);
       }
     });
 
     // Listen for OVERLAY_DRAG_END events to trigger re-rendering of overlays that are currently dragged
     this.registerEventHandler("lighter:overlay-drag-end", (event) => {
       const overlay = this.getOverlay(event.id);
-      if (overlay && TypeGuards.isMovable(overlay)) {
-        const { startBounds, absoluteBounds: endBounds } = event;
+      if (overlay && TypeGuards.isSpatial(overlay)) {
+        const { startBounds, bounds } = event;
         const moved =
-          Math.abs(startBounds.x - endBounds.x) > 1 ||
-          Math.abs(startBounds.y - endBounds.y) > 1;
+          Math.abs(startBounds.x - bounds.x) > 1 ||
+          Math.abs(startBounds.y - bounds.y) > 1;
 
         if (moved) {
           const moveCommand = new MoveOverlayCommand(
             overlay,
             event.id,
             startBounds,
-            endBounds
+            bounds
           );
-          CommandContextManager.instance().getActiveContext().pushUndoable(moveCommand);
+          CommandContextManager.instance()
+            .getActiveContext()
+            .pushUndoable(moveCommand);
         }
       }
     });
@@ -261,8 +253,8 @@ export class Scene2D {
     // Listen for OVERLAY_RESIZE_END events to trigger re-rendering of overlays that are currently resized
     this.registerEventHandler("lighter:overlay-resize-end", (event) => {
       const overlay = this.getOverlay(event.id);
-      if (overlay && TypeGuards.isMovable(overlay)) {
-        const { startBounds, absoluteBounds: endBounds } = event;
+      if (overlay && TypeGuards.isSpatial(overlay)) {
+        const { startBounds, bounds: endBounds } = event;
         const moved =
           Math.abs(startBounds.x - endBounds.x) > 1 ||
           Math.abs(startBounds.y - endBounds.y) > 1 ||
@@ -276,7 +268,9 @@ export class Scene2D {
             startBounds,
             endBounds
           );
-          CommandContextManager.instance().getActiveContext().pushUndoable(moveCommand);
+          CommandContextManager.instance()
+            .getActiveContext()
+            .pushUndoable(moveCommand);
         }
       }
     });
@@ -622,6 +616,13 @@ export class Scene2D {
    */
   setCursor(cursor: string): void {
     this.config.canvas.style.cursor = cursor;
+  }
+
+  /**
+   * Reset the scene's zoom level to 100% and clears pan translation.
+   */
+  resetZoomPan(): void {
+    this.config.renderer.resetZoomPan();
   }
 
   /**
@@ -972,17 +973,13 @@ export class Scene2D {
 
     this.renderingState.setStatus(overlay.id, OVERLAY_STATUS_PENDING);
     // Inject renderer, resource loader, and scene ID into overlay
+    overlay.setCoordinateSystem(this.coordinateSystem);
     overlay.setRenderer(this.config.renderer);
     overlay.setResourceLoader(this.config.resourceLoader);
-    overlay.setSceneId(this.sceneId);
+    overlay.setEventChannel(this.eventChannel);
 
     // Add to internal tracking
     this.overlays.set(overlay.id, overlay);
-
-    // Update coordinates if spatial and canonical media is set
-    if (TypeGuards.isSpatial(overlay) && this.canonicalMedia) {
-      this.updateSpatialOverlayCoordinates(overlay);
-    }
 
     // Register with managers first
     this.interactionManager.addHandler(overlay);
@@ -992,6 +989,18 @@ export class Scene2D {
 
     // Recalculate overlay order to maintain proper z-ordering
     this.recalculateOverlayOrder();
+
+    // Mark sibling classifications dirty
+    // so new overlay doesn't...overlay them
+    if (overlay.getOverlayType() === "ClassificationOverlay") {
+      [...this.overlays.values()]
+        .filter(
+          (sibling) =>
+            sibling !== overlay &&
+            sibling.getOverlayType() === "ClassificationOverlay"
+        )
+        .forEach((sibling) => sibling.markDirty());
+    }
 
     this.eventBus.dispatch("lighter:overlay-added", {
       id: overlay.id,
@@ -1085,7 +1094,10 @@ export class Scene2D {
    * @param options - The transformation options.
    * @returns True if the transformation was successful, false otherwise.
    */
-  async transformOverlay(id: string, options: TransformOptions): Promise<boolean> {
+  async transformOverlay(
+    id: string,
+    options: TransformOptions
+  ): Promise<boolean> {
     const overlay = this.overlays.get(id);
     if (!overlay) {
       console.warn(`Overlay with id ${id} not found`);
@@ -1093,13 +1105,13 @@ export class Scene2D {
     }
 
     // Check if overlay supports transformation
-    if (!TypeGuards.isTransformable(overlay)) {
+    if (!TypeGuards.isSpatial(overlay)) {
       console.warn(`Overlay with id ${id} does not support transformation`);
       return false;
     }
 
     // Get current bounds for undo/redo
-    const oldBounds = overlay.getBounds();
+    const oldBounds = overlay.bounds;
 
     // Calculate new bounds
     let newBounds = { ...oldBounds };
@@ -1182,7 +1194,9 @@ export class Scene2D {
    * @param isUndoable - Whether the command is undoable.
    */
   async executeCommand(command: Action, isUndoable = true): Promise<void> {
-    await CommandContextManager.instance().getActiveContext().executeAction(command);
+    await CommandContextManager.instance()
+      .getActiveContext()
+      .executeAction(command);
     this.eventBus.dispatch("lighter:command-executed", {
       commandId: command.id,
       isUndoable,
@@ -1228,14 +1242,6 @@ export class Scene2D {
 
     this.isRenderLoopActive = false;
 
-    // Clean up canonical media subscription BEFORE clearing overlays
-    // This ensures we properly unsubscribe from boundsChangeCallbacks
-    // before the ImageOverlay's boundsChangeCallbacks array is replaced
-    if (this.unsubscribeCanonicalMediaBounds) {
-      this.unsubscribeCanonicalMediaBounds();
-      this.unsubscribeCanonicalMediaBounds = undefined;
-    }
-
     // Clear canonical media references
     this.canonicalMedia = undefined;
     this.canonicalMediaId = undefined;
@@ -1254,7 +1260,7 @@ export class Scene2D {
     this.abortController.abort();
 
     // Clear all event handlers for this scene's channel and remove from registry
-    clearChannel(this.sceneId);
+    clearChannel(this.eventChannel);
 
     // Clean up renderer (NOT destroy)
     this.config.renderer.cleanUp();
@@ -1354,21 +1360,6 @@ export class Scene2D {
 
     // Ensure canonical media is in the background
     this.ensureCanonicalMediaInBackground(overlayOrMedia.id);
-
-    // Set up bounds change listener for coordinate system updates
-    this.unsubscribeCanonicalMediaBounds = overlayOrMedia.onBoundsChanged(
-      (bounds) => {
-        this.coordinateSystem.updateTransform(bounds);
-
-        this.updateAllSpatialOverlays();
-        this.updateClassifications();
-      }
-    );
-
-    // Emit event for coordinate transformation updates
-    this.eventBus.dispatch("lighter:canonical-media-changed", {
-      overlayId: this.canonicalMediaId || "custom",
-    });
   }
 
   /**
@@ -1425,62 +1416,6 @@ export class Scene2D {
   }
 
   /**
-   * Updates coordinates for all spatial overlays.
-   */
-  private updateAllSpatialOverlays(): void {
-    for (const overlay of this.overlays.values()) {
-      if (TypeGuards.isSpatial(overlay)) {
-        this.updateSpatialOverlayCoordinates(overlay);
-      }
-    }
-  }
-
-  /**
-   * Marks Classifications as dirty to be redrawn
-   */
-  private updateClassifications(): void {
-    this.overlays.forEach((overlay) => {
-      if (overlay instanceof ClassificationOverlay) {
-        overlay.markDirty();
-      }
-    });
-  }
-
-  /**
-   * Updates coordinates for a single spatial overlay.
-   */
-  private updateSpatialOverlayCoordinates(
-    overlay: BaseOverlay & Spatial
-  ): void {
-    const relativeBounds = overlay.getRelativeBounds();
-    if (BaseOverlay.validBounds(relativeBounds)) {
-      const absoluteBounds =
-        this.coordinateSystem.relativeToAbsolute(relativeBounds);
-      overlay.setAbsoluteBounds(absoluteBounds);
-    }
-  }
-
-  /**
-   * Updates relative bounds for a spatial overlay based on its current absolute bounds.
-   * This is used when an overlay's position is changed and we need to update its relative coordinates.
-   * @param overlay - The spatial overlay to update.
-   */
-  private updateSpatialOverlayRelativeBounds(
-    overlay: BaseOverlay & Spatial
-  ): void {
-    const absoluteBounds = overlay.getAbsoluteBounds();
-
-    if (BaseOverlay.validBounds(absoluteBounds)) {
-      const relativeBounds =
-        this.coordinateSystem.absoluteToRelative(absoluteBounds);
-
-      // Update the overlays relative bounds
-      overlay.setRelativeBounds(relativeBounds);
-      overlay.markCoordinateUpdateComplete();
-    }
-  }
-
-  /**
    * Gets the container dimensions.
    * @returns The container dimensions, or undefined if not available.
    */
@@ -1494,26 +1429,6 @@ export class Scene2D {
   private async renderFrame(): Promise<void> {
     // Execute before-render callbacks
     await this.executeRenderCallbacks("before");
-
-    // Before rendering, update relative bounds for overlays that need it
-    for (const overlay of this.overlays.values()) {
-      if (TypeGuards.isSpatial(overlay) && overlay.needsCoordinateUpdate()) {
-        this.updateSpatialOverlayRelativeBounds(overlay);
-        const absoluteBounds = overlay.getAbsoluteBounds();
-        const relativeBounds = overlay.getRelativeBounds();
-
-        if (
-          BaseOverlay.validBounds(absoluteBounds) &&
-          BaseOverlay.validBounds(relativeBounds)
-        ) {
-          this.eventBus.dispatch("lighter:overlay-bounds-changed", {
-            id: overlay.id,
-            absoluteBounds,
-            relativeBounds,
-          });
-        }
-      }
-    }
 
     const overlayIndexes: Record<string, number> = {};
 
@@ -1723,5 +1638,13 @@ export class Scene2D {
    */
   public getSceneId(): string | undefined {
     return this.sceneId;
+  }
+
+  /**
+   * Gets the event channel for this instance.
+   * @returns Event channel.
+   */
+  public getEventChannel(): string {
+    return this.eventChannel;
   }
 }

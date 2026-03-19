@@ -13,23 +13,10 @@ import {
   PrimitiveValue,
   Sample,
 } from "@fiftyone/state";
-import {
-  BOOLEAN_FIELD,
-  DATE_FIELD,
-  DATE_TIME_FIELD,
-  DICT_FIELD,
-  Field,
-  FLOAT_FIELD,
-  FRAME_NUMBER_FIELD,
-  INT_FIELD,
-  LIST_FIELD,
-  OBJECT_ID_FIELD,
-  Primitive,
-  Schema,
-  STRING_FIELD,
-  UUID_FIELD,
-} from "@fiftyone/utilities";
+import { Field, Primitive } from "@fiftyone/utilities";
 import { get } from "lodash";
+import type { OpType } from "./types";
+import { arePrimitivesEqual, isPrimitiveFieldType } from "./util";
 
 /**
  * Helper type representing a `fo.Polylines`-like element.
@@ -53,11 +40,6 @@ type ClassificationsParent = {
 };
 
 /**
- * Operation type.
- */
-export type OpType = "mutate" | "delete";
-
-/**
  * Types of "native" labels which support delta calculation.
  */
 type FieldType =
@@ -73,55 +55,23 @@ const isFieldType = (field: Field, fieldType: FieldType): boolean => {
 };
 
 /**
- * Supported primitive field types for annotation editing.
- * Matches SUPPORTED_PRIMITIVES in fiftyone/core/annotation/constants.py
+ * Build the annotation path for a label.
+ *
+ *
+ * @param label The annotation label
+ * @param isGenerated Whether this is from a generated dataset
+ * @returns The adjusted path for the annotation
  */
-const SUPPORTED_PRIMITIVE_FTYPES = new Set([
-  BOOLEAN_FIELD,
-  DATE_FIELD,
-  DATE_TIME_FIELD,
-  DICT_FIELD,
-  FLOAT_FIELD,
-  FRAME_NUMBER_FIELD,
-  INT_FIELD,
-  OBJECT_ID_FIELD,
-  STRING_FIELD,
-  UUID_FIELD,
-]);
-
-/**
- * Supported subfield types for list primitives.
- * Matches SUPPORTED_LISTS_OF_PRIMITIVES in fiftyone/core/annotation/constants.py
- */
-const SUPPORTED_LIST_PRIMITIVE_SUBFIELDS = new Set([
-  BOOLEAN_FIELD,
-  FLOAT_FIELD,
-  INT_FIELD,
-  STRING_FIELD,
-]);
-
-/**
- * Check if the field schema represents a supported primitive type.
- */
-const isPrimitiveFieldType = (field: Field): boolean => {
-  if (!field?.ftype) {
-    return false;
+export const buildAnnotationPath = (
+  label: LabelProxy,
+  isGenerated: boolean
+): string => {
+  let basePath = label.path;
+  if (isGenerated) {
+    // Patches views flatten the structure so we need to adjust the path to reflect the src sample.
+    if (label.type === "Detection") basePath = `${basePath}.detections`;
   }
-
-  if (SUPPORTED_PRIMITIVE_FTYPES.has(field.ftype)) {
-    return true;
-  }
-
-  // Check list of primitives (e.g., list<string>, list<int>, list<float>)
-  if (
-    field.ftype === LIST_FIELD &&
-    field.subfield &&
-    SUPPORTED_LIST_PRIMITIVE_SUBFIELDS.has(field.subfield)
-  ) {
-    return true;
-  }
-
-  return false;
+  return basePath;
 };
 
 /**
@@ -158,17 +108,25 @@ export type LabelProxy =
  * @param label Current label state
  * @param schema Field schema
  * @param opType Operation type
+ * @param isGenerated Whether this is from a generated view
  */
 export const buildLabelDeltas = (
   sample: Sample,
   label: LabelProxy,
   schema: Field,
-  opType: OpType
+  opType: OpType,
+  isGenerated = false
 ) => {
   if (opType === "mutate") {
-    return buildMutationDeltas(sample, label, schema);
+    return buildMutationDeltas(sample, label, schema, isGenerated);
   } else if (opType === "delete") {
-    return buildDeletionDeltas(sample, label, schema);
+    // Primitives cannot be deleted via this path
+    return buildDeletionDeltas(
+      sample,
+      label as Exclude<LabelProxy, PrimitiveValue>,
+      schema,
+      isGenerated
+    );
   } else {
     throw new Error(`Unsupported opType ${opType}`);
   }
@@ -180,11 +138,13 @@ export const buildLabelDeltas = (
  * @param sample Sample containing unmodified label data
  * @param label Current label state (annotation label or primitive label)
  * @param schema Field schema
+ * @param isGenerated Whether this is from a generated view
  */
 export const buildMutationDeltas = (
   sample: Sample,
   label: LabelProxy,
-  schema: Field
+  schema: Field,
+  isGenerated = false
 ): JSONDeltas => {
   // Need to branch on single element vs. list-based mutations due to
   // inferred data model differences.
@@ -194,7 +154,8 @@ export const buildMutationDeltas = (
     if (isFieldType(schema, "Detections")) {
       return buildDetectionsMutationDelta(
         sample,
-        label as DetectionAnnotationLabel
+        label as DetectionAnnotationLabel,
+        isGenerated
       );
     } else if (isFieldType(schema, "Detection")) {
       return buildDetectionMutationDelta(
@@ -204,9 +165,15 @@ export const buildMutationDeltas = (
     }
   } else if (label.type === "Classification") {
     if (isFieldType(schema, "Classifications")) {
-      return buildClassificationsMutationDeltas(sample, label);
+      return buildClassificationsMutationDeltas(
+        sample,
+        label as LabelMetadata<ClassificationLabel>
+      );
     } else if (isFieldType(schema, "Classification")) {
-      return buildClassificationMutationDeltas(sample, label);
+      return buildClassificationMutationDeltas(
+        sample,
+        label as LabelMetadata<ClassificationLabel>
+      );
     }
   } else if (label.type === "Polyline") {
     if (isFieldType(schema, "Polylines")) {
@@ -221,10 +188,12 @@ export const buildMutationDeltas = (
       );
     }
   } else if (isPrimitiveFieldType(schema)) {
+    const primitiveLabel = label as PrimitiveValue;
     return buildPrimitiveMutationDelta(
       sample,
-      label.path,
-      (label as PrimitiveValue).data
+      primitiveLabel.path,
+      primitiveLabel.data,
+      primitiveLabel.op
     );
   }
 
@@ -239,12 +208,20 @@ export const buildMutationDeltas = (
  * @param sample Sample containing unmodified label data
  * @param label Current label state
  * @param schema Field schema
+ * @param isGenerated Whether this is from a generated view
  */
 export const buildDeletionDeltas = (
   sample: Sample,
-  label: LabelProxy,
-  schema: Field
+  label: Exclude<LabelProxy, PrimitiveValue>,
+  schema: Field,
+  isGenerated = false
 ): JSONDeltas => {
+  // Future-proofing for generated views: deletion is always a simple remove of the label
+  // The backend handles removing from the source sample's list
+  if (isGenerated) {
+    return [{ op: "remove", path: "/" }];
+  }
+
   // todo refactor to reduce code duplication
   if (label.type === "Detection") {
     if (isFieldType(schema, "Detections")) {
@@ -267,7 +244,7 @@ export const buildDeletionDeltas = (
         ),
       });
     } else if (isFieldType(schema, "Detection")) {
-      return [{ op: "remove", path: "" }];
+      return [{ op: "remove", path: "/" }];
     }
   } else if (label.type === "Classification") {
     if (isFieldType(schema, "Classifications")) {
@@ -290,7 +267,7 @@ export const buildDeletionDeltas = (
         ),
       });
     } else if (isFieldType(schema, "Classification")) {
-      return [{ op: "remove", path: "" }];
+      return [{ op: "remove", path: "/" }];
     }
   } else if (label.type === "Polyline") {
     if (isFieldType(schema, "Polylines")) {
@@ -311,7 +288,7 @@ export const buildDeletionDeltas = (
         ),
       });
     } else {
-      return [{ op: "remove", path: "" }];
+      return [{ op: "remove", path: "/" }];
     }
   }
 
@@ -342,17 +319,27 @@ const buildSingleMutationDelta = <
 const buildPrimitiveMutationDelta = (
   sample: Sample,
   path: string,
-  data: Primitive
+  data: Primitive,
+  op?: OpType
 ): JSONDeltas => {
-  const existingValue = get(sample, path) as Primitive;
+  // convert any undefined values to null so they are serialized
+  // as null for the server
+  const newValue = data ?? null;
+  const existingValue = get(sample, path) ?? null;
 
   // If the value hasn't changed, return empty deltas
-  if (existingValue === data) {
+  if (arePrimitivesEqual(existingValue, newValue)) {
     return [];
   }
 
-  // Return a replace operation with empty path - buildJsonPath will prepend the label path
-  return [{ op: "replace", path: "", value: data }];
+  // we leave path empty because buildJsonPath will prepend the label path
+  if (op === "delete") {
+    return [{ op: "remove", path: "" }];
+  } else if (op === "add") {
+    return [{ op: "add", path: "", value: newValue }];
+  } else {
+    return [{ op: "replace", path: "", value: newValue }];
+  }
 };
 
 /**
@@ -383,21 +370,37 @@ export const buildDetectionMutationDelta = (
  *
  * @param sample Sample containing unmodified label data
  * @param label Current label state
- */
-export const buildDetectionsMutationDelta = (
+ * @param isGenerated Whether this is from a generated view
+ */ export const buildDetectionsMutationDelta = (
   sample: Sample,
-  label: LabelMetadata<DetectionLabel> | Detection2DMetadata
+  label: LabelMetadata<DetectionLabel> | Detection2DMetadata,
+  isGenerated = false
 ): JSONDeltas => {
   const existingLabel = <DetectionsParent>(
     extractNestedField(sample, label.path)
-  ) ?? {
-    detections: [],
-  };
+  ) ?? { detections: [] };
+
+  const newDetection = makeDetectionLabel(label);
+  const existingDetection =
+    existingLabel.detections?.find((det) => det._id === label.data._id) ?? {};
+
+  if (isGenerated) {
+    // Field-level single updates
+
+    return generateJsonPatch(existingDetection, newDetection);
+  }
+
+  // Merge with existing data so server-enriched properties (tags,
+  // attributes, _cls, etc.) are preserved when the overlay only carries
+  // a minimal subset of fields.
+  const mergedDetection = existingDetection
+    ? { ...existingDetection, ...newDetection }
+    : newDetection;
 
   const newArray = [...existingLabel.detections];
   upsertArrayElement(
     newArray,
-    makeDetectionLabel(label),
+    mergedDetection,
     (det) => det._id === label.data._id
   );
 
@@ -425,7 +428,7 @@ export const buildClassificationMutationDeltas = (
 /**
  * Build a list of JSON deltas for the given sample and classification label.
  *
- * This method assumes that the detection exists as part of a parent
+ * This method assumes that the classification exists as part of a parent
  * `fo.Classifications` field.
  *
  * @param sample Sample containing unmodified label data
@@ -441,10 +444,18 @@ export const buildClassificationsMutationDeltas = (
     classifications: [],
   };
 
+  const existingClassification = existingLabel.classifications.find(
+    (cls) => cls._id === label.data._id
+  );
+
+  const mergedClassification = existingClassification
+    ? { ...existingClassification, ...label.data }
+    : { ...label.data };
+
   const newArray = [...existingLabel.classifications];
   upsertArrayElement(
     newArray,
-    { ...label.data },
+    mergedClassification,
     (cls) => cls._id === label.data._id
   );
 
@@ -491,10 +502,18 @@ export const buildPolylinesMutationDeltas = (
     polylines: [],
   };
 
+  const existingPolyline = existingLabel.polylines.find(
+    (ply) => ply._id === label.data._id
+  );
+
+  const mergedPolyline = existingPolyline
+    ? { ...existingPolyline, ...label.data }
+    : { ...label.data };
+
   const newArray = [...existingLabel.polylines];
   upsertArrayElement(
     newArray,
-    { ...label.data },
+    mergedPolyline,
     (ply) => ply._id === label.data._id
   );
 
@@ -531,16 +550,17 @@ const upsertArrayElement = <T>(
 };
 
 /**
- * Build a JSON-patch-compatible path from the sample root.
+ * Build a JSON-patch-compatible path from the root object.
  *
  * @param labelPath Dot-delimited path to label field
  * @param operationPath Slash-delimited JSON-patch path to mutation field
  */
 export const buildJsonPath = (
-  labelPath: string,
+  labelPath: string | null,
   operationPath: string
 ): string => {
-  const parts = labelPath.split(".");
+  // labelPath will be null when building paths for sample field updates
+  const parts = labelPath?.split(".") || [];
   parts.push(
     ...operationPath
       .split("/")
@@ -548,41 +568,6 @@ export const buildJsonPath = (
   );
 
   return `/${parts.join("/")}`;
-};
-
-/**
- * Get the field schema for the given path.
- *
- * @param schema Sample schema
- * @param path Field path
- */
-export const getFieldSchema = (schema: Schema, path: string): Field | null => {
-  if (!schema || !path) {
-    return null;
-  }
-
-  const pathParts = path.split(".");
-  const root = schema[pathParts[0]];
-  return getFieldSchemaHelper(root, pathParts.slice(1));
-};
-
-/**
- * Recursive helper for {@link getFieldSchema}.
- */
-const getFieldSchemaHelper = (
-  field: Field,
-  pathParts: string[]
-): Field | null => {
-  if (!field) {
-    return null;
-  }
-
-  if (!pathParts || pathParts.length === 0) {
-    return field;
-  }
-
-  const nextField = field.fields?.[pathParts[0]];
-  return getFieldSchemaHelper(nextField, pathParts.slice(1));
 };
 
 /**

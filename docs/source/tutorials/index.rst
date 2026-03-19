@@ -34,6 +34,13 @@ your datasets and turn your good models into *great models*.
 .. Add tutorial cards below
 
 .. customcarditem::
+    :header: Using FiftyOne Skills with Gemini CLI __SUB_NEW__
+    :description: Use natural language to orchestrate computer vision workflows in Google Colab with FiftyOne Skills and the Gemini CLI. Load data, run inference, and evaluate models through conversational commands.
+    :link: gemini_fiftyone_skills.html
+    :image: https://cdn.voxel51.com/tutorial_gemini_fiftyone_skills/config_ready.webp
+    :tags: Dataset-Curation,Model-Evaluation,Plugins
+
+.. customcarditem::
     :header: Integrating Cosmos-Transfer with FiftyOne __SUB_NEW__
     :description: Learn how to integrate NVIDIA Cosmos-Transfer 2.5, a world foundation model for Physical AI, with FiftyOne to curate, visualize, and process multimodal datasets for robotics and autonomous systems.
     :link: cosmos-transfer-integration.html
@@ -48,7 +55,7 @@ your datasets and turn your good models into *great models*.
     :tags: Dataset-Evaluation,Dataset-Curation,Model-Evaluation,Brain,Plugins
 
 .. customcarditem::
-    :header: Exploring Kaputt Dataset __SUB_NEW__
+    :header: Exploring Kaputt Dataset
     :description: Learn how to work with the Kaputt dataset in FiftyOne.
     :link: kaputt_dataset.html
     :image: https://cdn.voxel51.com/kaputt_overview.webp
@@ -232,9 +239,10 @@ your datasets and turn your good models into *great models*.
    :maxdepth: 1
    :hidden:
 
+   Using FiftyOne Skills with Gemini CLI __SUB_NEW__ <gemini_fiftyone_skills.ipynb>   
    Integrating NVIDIA Cosmos-Transfer with FiftyOne __SUB_NEW__ <cosmos-transfer-integration.ipynb>
    Google Gemini Vision in FiftyOne __SUB_NEW__ <gemini_vision.ipynb>
-   Exploring Kaputt Dataset __SUB_NEW__ <kaputt_dataset.ipynb>
+   Exploring Kaputt Dataset <kaputt_dataset.ipynb>
    DINOv3 visual search <dinov3.ipynb>
    pandas and FiftyOne <pandas_comparison.ipynb>
    Evaluating object detections <evaluate_detections.ipynb>

@@ -15,7 +15,9 @@ export const DynamicGroupCarousel = React.memo(() => {
   );
 
   const theme = useTheme();
-  const isMainVisible = useRecoilValue(fos.groupMediaIsMainVisibleSetting);
+  const isMainVisible = useRecoilValue(
+    fos.groupMediaIsMain2DViewerVisibleSetting
+  );
 
   /**
    * BIG HACK: TODO: FIX ME

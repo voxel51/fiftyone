@@ -17,6 +17,8 @@ from dataclasses import dataclass
 from urllib.parse import urlparse, urljoin
 from datetime import datetime
 
+import eta.core.utils as etau
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -42,6 +44,9 @@ class PluginDocGenerator:
         self.plugins_dir.mkdir(exist_ok=True)
         self.plugins_ecosystem_dir = self.plugins_dir / "plugins_ecosystem"
         self.plugins_ecosystem_dir.mkdir(exist_ok=True)
+        self.models_dir = self.docs_source_dir / "model_zoo" / "models"
+        self.models_dir.mkdir(parents=True, exist_ok=True)
+        self._plugin_model_cards = []
         self._compile_regex_patterns()
 
     def _compile_regex_patterns(self):
@@ -91,6 +96,15 @@ class PluginDocGenerator:
         self.html_tag_pattern = re.compile(r"<[^>]+>")
         self.icon_description_pattern = re.compile(r"^([^\s]+)\s*(.+)")
         self.markdown_img_pattern = re.compile(r"!\[[^\]]*\]\(([^)]+)\)")
+        self._badge_url_tokens = (
+            "colab.research.google.com",
+            "img.shields.io",
+            "img.youtube.com",
+            "badge.fury.io",
+            "badgen.net",
+            "badge.svg",
+            "badge.png",
+        )
         self.user_attachments_pattern = re.compile(
             r"https://github\.com/user-attachments/assets/[a-f0-9-]+"
         )
@@ -114,6 +128,11 @@ class PluginDocGenerator:
             r"\bdef\s+download_model\s*\("
         )
         self.load_dataset_pattern = re.compile(r"\bdef\s+load_dataset\s*\(")
+        self.empty_heading_pattern = re.compile(
+            r"^\s*#{1,6}\s*$",
+            flags=re.MULTILINE,
+        )
+        self.heading_pattern = re.compile(r"^\s*#{1,6}\s+\S")
 
     def _remove_emojis(self, text: str) -> str:
         """Remove emoji and miscellaneous symbols from a string.
@@ -346,6 +365,152 @@ myst:
             logger.warning(f"Error fetching stars for {owner}/{repo}: {e}")
         return None
 
+    def _fetch_plugin_manifest(
+        self, owner: str, repo: str, path: str, branch: str
+    ) -> Optional[List[dict]]:
+        """Fetch and parse manifest.json from a plugin repository."""
+        manifest_path = f"{path}/manifest.json" if path else "manifest.json"
+        url = f"https://raw.githubusercontent.com/{owner}/{repo}/{branch}/{manifest_path}"
+        try:
+            resp = requests.get(url, timeout=6)
+            if resp.status_code != 200:
+                return None
+            data = resp.json()
+            if not isinstance(data, dict):
+                return None
+            return data.get("models", [])
+        except (requests.RequestException, ValueError) as e:
+            logger.debug(f"No manifest found at {url}: {e}")
+        return None
+
+    def _format_model_tags(self, tags: List[str]) -> List[str]:
+        """Convert model tags to display format."""
+        display_tags = []
+        for tag in tags:
+            if tag == "torch":
+                display_tags.append("PyTorch")
+            elif tag in ("tf", "tf1", "tf2"):
+                display_tags.append(
+                    "TensorFlow" + ("-" + tag[2:] if len(tag) > 2 else "")
+                )
+            else:
+                display_tags.append(tag.capitalize().replace(" ", "-"))
+        return display_tags
+
+    def _generate_plugin_model_docs(
+        self, models: List[dict], plugin_name: str, plugin_link: str,
+        github_url: str
+    ) -> None:
+        """Generate model documentation for plugin models."""
+        for model in models:
+            name = model.get("base_name")
+            if not name:
+                continue
+
+            description = self._clean_description(model.get("description", ""))
+            tags = model.get("tags") or []
+            source = model.get("source", "")
+            author = model.get("author")
+            license_str = model.get("license")
+            req = model.get("requirements") or {}
+            size_bytes = model.get("size_bytes")
+            size_str = etau.to_human_bytes_str(size_bytes, decimals=2) if size_bytes else None
+            packages = req.get("packages") or []
+            supports_cpu = "yes" if (req.get("cpu") or {}).get("support") else "no"
+            supports_gpu = "yes" if (req.get("gpu") or {}).get("support") else "no"
+            model_slug = re.sub(r"[^\w]", "_", name)
+            safe_name = plugin_name.replace("-", "--").replace("_", "__")
+
+            content = f"""
+.. _model-zoo-{model_slug}:
+
+{name}
+{"_" * len(name)}
+
+.. raw:: html
+
+    <a href="../../plugins/{plugin_link}" target="_blank">
+        <img src="https://img.shields.io/badge/Plugin-{safe_name}-orange" alt="From Plugin">
+    </a>
+
+.. note::
+
+    This is a :ref:`remotely-sourced model <model-zoo-remote>` from the
+    `{plugin_name} <../../plugins/{plugin_link}>`_ plugin, maintained by the community.
+    It is not part of FiftyOne core and may have special installation requirements.
+    Please review the plugin documentation and license before use.
+
+{description}.
+
+**Details**
+
+-   Model name: ``{name}``
+-   Model source: {source}
+"""
+            if author:
+                content += f"-   Model author: {author}\n"
+            if license_str:
+                content += f"-   Model license: {license_str}\n"
+            if size_str:
+                content += f"-   Model size: {size_str}\n"
+
+            content += f"""-   Exposes embeddings? {"yes" if "embeddings" in tags else "no"}
+-   Tags: ``{", ".join(tags)}``
+
+**Requirements**
+
+"""
+            if packages:
+                content += f"-   Packages: ``{', '.join(packages)}``\n\n"
+
+            content += f"""-   CPU support
+
+    -   {supports_cpu}
+
+-   GPU support
+
+    -   {supports_gpu}
+
+**Example usage**
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    foz.register_zoo_model_source("{github_url}")
+
+    dataset = foz.load_zoo_dataset(
+        "coco-2017",
+        split="validation",
+        dataset_name=fo.get_default_dataset_name(),
+        max_samples=50,
+        shuffle=True,
+    )
+
+    model = foz.load_zoo_model("{name}")
+
+    dataset.apply_model(model, label_field="predictions")
+
+    session = fo.launch_app(dataset)
+"""
+            model_path = self.models_dir / f"{model_slug}.rst"
+            with open(model_path, "w", encoding="utf-8") as f:
+                f.write(content)
+
+            display_tags = self._format_model_tags(tags)
+            display_tags.append("Plugin")
+
+            self._plugin_model_cards.append(f"""
+.. customcarditem::
+    :header: {name}
+    :description: {description}
+    :link: models/{model_slug}.html
+    :tags: {",".join(display_tags)}
+""")
+            logger.info(f"Generated model docs for {name}")
+
     def extract_plugins_from_readme(self, readme_content: str) -> List[Plugin]:
         """Extract plugin information from the README content."""
         plugins = []
@@ -501,44 +666,44 @@ myst:
             logger.warning(f"Failed to fetch content type for {url}: {e}")
         return None
 
+    def _is_badge_url(self, url: str) -> bool:
+        """Check whether a URL points to a known badge image."""
+        url_lower = url.lower()
+        return any(token in url_lower for token in self._badge_url_tokens)
+
     def _extract_image_from_readme(
         self, readme_content: str, github_url: str = ""
     ) -> Optional[str]:
-        """Extract image URLs from README content (ignores videos and gifs)."""
+        """Extract the first non-badge image URL from README content."""
         if not readme_content:
             return None
 
-        image_path = None
         banned_exts = (".mp4", ".mov", ".avi")
 
-        markdown_match = self.markdown_img_pattern.search(readme_content)
-        if markdown_match:
-            url = markdown_match.group(1)
-            if not url.lower().endswith(banned_exts):
+        for m in self.markdown_img_pattern.finditer(readme_content):
+            url = m.group(1)
+            if not url.lower().endswith(banned_exts) and not self._is_badge_url(url):
                 return self._convert_relative_url(url, github_url)
 
-        user_match = self.user_attachments_pattern.search(readme_content)
-        if user_match:
-            url = user_match.group(0)
+        for m in self.user_attachments_pattern.finditer(readme_content):
+            url = m.group(0)
             ctype = self._get_content_type(url)
             if ctype and ctype.startswith("image/"):
                 return url
 
-        github_match = self.github_assets_pattern.search(readme_content)
-        if github_match:
-            url = github_match.group(0)
+        for m in self.github_assets_pattern.finditer(readme_content):
+            url = m.group(0)
             if not url.lower().endswith(banned_exts):
                 ctype = self._get_content_type(url)
                 if ctype and ctype.startswith("image/"):
                     return self._convert_relative_url(url, github_url)
 
-        img_match = self.html_img_pattern.search(readme_content)
-        if img_match:
-            url = img_match.group(1)
-            if not url.lower().endswith(banned_exts):
+        for m in self.html_img_pattern.finditer(readme_content):
+            url = m.group(1)
+            if not url.lower().endswith(banned_exts) and not self._is_badge_url(url):
                 return self._convert_relative_url(url, github_url)
 
-        return image_path
+        return None
 
     def _replace_markdown_image(self, match, github_url: str):
         """Replace function for markdown images."""
@@ -665,6 +830,17 @@ myst:
                 frontmatter = self._generate_frontmatter(seo_metadata)
                 github_badge = self._generate_github_badge(plugin)
 
+                processed_readme = self.empty_heading_pattern.sub(
+                    "", processed_readme
+                )
+
+                has_heading = any(
+                    self.heading_pattern.match(line)
+                    for line in processed_readme.splitlines()
+                )
+                if not has_heading:
+                    processed_readme = f"# {display_name}\n\n" + processed_readme
+
                 if plugin.category == "community":
                     community_note = """```{note}
 This is a **community plugin**, an external project maintained by its respective author.
@@ -767,6 +943,16 @@ Please review each plugin's documentation and license before use.
                 has_model = False
                 has_dataset = False
 
+            if has_model:
+                models = self._fetch_plugin_manifest(owner, repo, path, branch)
+                if models:
+                    github_url = f"https://github.com/{owner}/{repo}"
+                    if path:
+                        github_url += f"/tree/{branch}/{path}"
+                    self._generate_plugin_model_docs(
+                        models, plugin_name, plugin_link, github_url
+                    )
+
             extra_tags = [
                 tag
                 for tag, condition in [
@@ -802,6 +988,12 @@ Please review each plugin's documentation and license before use.
         )
         with open(self.plugins_ecosystem_dir / "plugin_cards.rst", "w") as f:
             f.write(plugins_ecosystem_content)
+
+        cards_path = self.models_dir / "plugin_model_cards.rst"
+        with open(cards_path, "w", encoding="utf-8") as f:
+            f.write("\n".join(self._plugin_model_cards))
+        if self._plugin_model_cards:
+            logger.info(f"Generated {len(self._plugin_model_cards)} plugin model cards")
 
         logger.info("Plugin documentation generated successfully!")
 

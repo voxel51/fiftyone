@@ -25,8 +25,7 @@ export type LighterEventGroup = {
   /** Emitted when an overlay's bounds change */
   "lighter:overlay-bounds-changed": {
     id: string;
-    absoluteBounds: Rect;
-    relativeBounds: Rect;
+    bounds: Rect;
   };
 
   // ============================================================================
@@ -54,27 +53,28 @@ export type LighterEventGroup = {
   // ============================================================================
   // USER INTERACTION EVENTS
   // ============================================================================
+  /** Emitted on "pointer down" to inform QuickDraw to create a new detection */
+  "lighter:overlay-create": { eventId: string };
   /** Emitted when an overlay finishes being established */
   "lighter:overlay-establish": {
     id: string;
     overlay: InteractiveDetectionHandler;
     startBounds: Rect;
     startPosition: Point;
-    absoluteBounds: Rect;
-    relativeBounds: Rect;
+    bounds: Rect;
   };
+  /** Emitted when an overlay creation is undone, before the overlay is removed */
+  "lighter:overlay-undone": { id: string };
   /** Emitted when an overlay starts being dragged */
   "lighter:overlay-drag-start": {
     id: string;
     startPosition: Point;
-    absoluteBounds: Rect;
-    relativeBounds: Rect;
+    bounds: Rect;
   };
   /** Emitted when an overlay is being dragged */
   "lighter:overlay-drag-move": {
     id: string;
-    absoluteBounds: Rect;
-    relativeBounds: Rect;
+    bounds: Rect;
   };
   /** Emitted when an overlay drag ends */
   "lighter:overlay-drag-end": {
@@ -82,21 +82,18 @@ export type LighterEventGroup = {
     startPosition: Point;
     endPosition: Point;
     startBounds: Rect;
-    absoluteBounds: Rect;
-    relativeBounds: Rect;
+    bounds: Rect;
   };
   /** Emitted when an overlay starts being resized */
   "lighter:overlay-resize-start": {
     id: string;
     startPosition: Point;
-    absoluteBounds: Rect;
-    relativeBounds: Rect;
+    bounds: Rect;
   };
   /** Emitted when an overlay is being resized */
   "lighter:overlay-resize-move": {
     id: string;
-    absoluteBounds: Rect;
-    relativeBounds: Rect;
+    bounds: Rect;
   };
   /** Emitted when an overlay resize ends */
   "lighter:overlay-resize-end": {
@@ -104,8 +101,7 @@ export type LighterEventGroup = {
     startPosition: Point;
     endPosition: Point;
     startBounds: Rect;
-    absoluteBounds: Rect;
-    relativeBounds: Rect;
+    bounds: Rect;
   };
   /** Emitted when an overlay is clicked */
   "lighter:overlay-click": { id: string; point: Point };
@@ -151,8 +147,8 @@ export type LighterEventGroup = {
   // ============================================================================
   /** Emitted when the canvas or container is resized */
   "lighter:resize": { width: number; height: number };
-  /** Emitted when the canonical media overlay is changed */
-  "lighter:canonical-media-changed": { overlayId: string };
+  /** Emitted when the canonical media's bounds change (resize, initial layout, etc.) */
+  "lighter:canonical-media-bounds-changed": { bounds: Rect };
   /** Emitted when scene options change (activePaths, showOverlays, alpha) */
   "lighter:scene-options-changed": {
     activePaths?: string[];

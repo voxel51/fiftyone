@@ -1,5 +1,4 @@
 import { LoadingDots } from "@fiftyone/components";
-import { predicateOrFallbackAfterTimeout } from "@fiftyone/core";
 import useCanAnnotate from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useCanAnnotate";
 import { usePluginSettings } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
@@ -23,6 +22,7 @@ import { Vector3 } from "three";
 import { StatusBar } from "../StatusBar";
 import { MultiPanelView } from "../annotation/MultiPanelView";
 import { AnnotationToolbar } from "../annotation/annotation-toolbar/AnnotationToolbar";
+import { useRenderModel } from "../annotation/store/renderModel";
 import { PcdColorMapTunnel } from "../components/PcdColormapModal";
 import {
   DEFAULT_BOUNDING_BOX,
@@ -39,6 +39,8 @@ import {
   useZoomToSelected,
 } from "../hooks";
 import { useFo3dBounds } from "../hooks/use-bounds";
+import { useCursorBounds } from "../hooks/use-cursor-bounds";
+import { useLabelBounds } from "../hooks/use-label-bounds";
 import { useLoadingStatus } from "../hooks/use-loading-status";
 import type { Looker3dSettings } from "../settings";
 import {
@@ -49,27 +51,26 @@ import {
   currentHoveredPointAtom,
   isActivelySegmentingSelector,
   isCreatingCuboidPointerDownAtom,
-  current3dAnnotationModeAtom,
   isCurrentlyTransformingAtom,
   isFo3dBackgroundOnAtom,
   isSegmentingPointerDownAtom,
   selectedPolylineVertexAtom,
 } from "../state";
+import { useCurrent3dAnnotationMode } from "../state/accessors";
 import { HoverMetadata } from "../types";
 import { calculateCameraPositionForUpVector } from "../utils";
 import { Annotation3d } from "./Annotation3d";
 import { Fo3dSceneContent } from "./Fo3dCanvas";
 import HoverMetadataHUD from "./HoverMetadataHUD";
-import { Fo3dSceneContext } from "./context";
+import { DEFAULT_RAYCAST_PRECISION, Fo3dSceneContext } from "./context";
 import {
-  getCameraPositionKey,
   getFo3dRoot,
   getMediaPathForFo3dSample,
   getOrthonormalAxis,
+  getSavedCameraState,
 } from "./utils";
 
 const CANVAS_WRAPPER_ID = "sample3d-canvas-wrapper";
-const SCENE_BOUNDS_COMPUTE_TIMEOUT_MS = 15000;
 
 const MainContainer = styled.main`
   display: flex;
@@ -81,7 +82,9 @@ const MainContainer = styled.main`
 export const MediaTypeFo3dComponent = () => {
   const sample = useRecoilValue(fos.fo3dSample);
   const mediaField = useRecoilValue(fos.selectedMediaField(true));
-  const is2DSampleViewerVisible = useRecoilValue(fos.groupMediaIsMainVisible);
+  const is2DSampleViewerVisible = useRecoilValue(
+    fos.groupMediaIsMain2DViewerVisible
+  );
   const isGroup = useRecoilValue(fos.isGroup);
   const setIsInMultiPanelView = useSetRecoilState(isInMultiPanelViewAtom);
 
@@ -265,47 +268,24 @@ export const MediaTypeFo3dComponent = () => {
 
   const loadingStatus = useLoadingStatus();
 
-  const isLoadingStatusFinal =
-    loadingStatus.isSuccess ||
-    loadingStatus.isFailed ||
-    loadingStatus.isAborted;
-
-  // keep the current value in a ref so the predicate always sees fresh state
-  const isFinalRef = useRef(isLoadingStatusFinal);
-  isFinalRef.current = isLoadingStatusFinal;
-
-  const canComputeBoundsPredicateRef = useRef(
-    predicateOrFallbackAfterTimeout(
-      () => isFinalRef.current,
-      true,
-      SCENE_BOUNDS_COMPUTE_TIMEOUT_MS
-    )
-  );
-
-  useEffect(() => {
-    canComputeBoundsPredicateRef.current = predicateOrFallbackAfterTimeout(
-      () => isFinalRef.current,
-      true,
-      SCENE_BOUNDS_COMPUTE_TIMEOUT_MS
-    );
-    // here, fo3dRoot plays the role of the key that indicates a fresh load
-  }, [fo3dRoot]);
-
-  const canComputeBounds = useCallback(
-    () => canComputeBoundsPredicateRef.current(),
-    []
-  );
+  // Ready when fo3d is parsed, foScene has assets, and all referenced assets are loaded
+  const isReadyForBounds =
+    Boolean(foScene) && !isParsingFo3d && loadingStatus.isSuccess;
 
   const {
     boundingBox: sceneBoundingBox,
     recomputeBounds,
     isComputing: isComputingSceneBoundingBox,
-  } = useFo3dBounds(assetsGroupRef, canComputeBounds, {
-    hardTimeoutMs: SCENE_BOUNDS_COMPUTE_TIMEOUT_MS,
+  } = useFo3dBounds(assetsGroupRef, isReadyForBounds, {
     numPrimaryAssets,
   });
 
   const effectiveSceneBoundingBox = sceneBoundingBox || DEFAULT_BOUNDING_BOX;
+
+  const renderModel = useRenderModel();
+  const labelBounds = useLabelBounds(renderModel);
+
+  const cursorBounds = useCursorBounds(effectiveSceneBoundingBox, labelBounds);
 
   useEffect(() => {
     if (effectiveSceneBoundingBox && !lookAt) {
@@ -336,13 +316,10 @@ export const MediaTypeFo3dComponent = () => {
 
   const overriddenCameraPosition = useRecoilValue(cameraPositionAtom);
 
-  const lastSavedCameraPosition = useMemo(() => {
-    const lastSavedCameraPosition = window?.localStorage.getItem(
-      getCameraPositionKey(datasetName)
-    );
-
-    return lastSavedCameraPosition ? JSON.parse(lastSavedCameraPosition) : null;
-  }, [datasetName]);
+  const lastSavedCameraState = useMemo(
+    () => getSavedCameraState(datasetName),
+    [datasetName]
+  );
 
   const getDefaultCameraPosition = useCallback(
     (ignoreLastSavedCameraPosition = false) => {
@@ -378,15 +355,11 @@ export const MediaTypeFo3dComponent = () => {
         );
       }
 
-      if (
-        !ignoreLastSavedCameraPosition &&
-        lastSavedCameraPosition &&
-        lastSavedCameraPosition.length === 3
-      ) {
+      if (!ignoreLastSavedCameraPosition && lastSavedCameraState) {
         return new Vector3(
-          lastSavedCameraPosition[0],
-          lastSavedCameraPosition[1],
-          lastSavedCameraPosition[2]
+          lastSavedCameraState.position[0],
+          lastSavedCameraState.position[1],
+          lastSavedCameraState.position[2]
         );
       }
 
@@ -423,7 +396,7 @@ export const MediaTypeFo3dComponent = () => {
       foScene,
       effectiveSceneBoundingBox,
       upVector,
-      lastSavedCameraPosition,
+      lastSavedCameraState,
     ]
   );
 
@@ -575,72 +548,68 @@ export const MediaTypeFo3dComponent = () => {
 
   fos.useEventHandler(window, SET_ZOOM_TO_SELECTED_EVENT, handleZoomToSelected);
 
-  // this effect sets the appropriate lookAt and camera position
-  // and marks the scene as initialized
+  // Restore camera from localStorage or scene config as soon as controls are available.
+  // This does not depend on bounding box.
+  useEffect(() => {
+    if (!cameraControlsRef.current || !cameraRef.current || !foScene) {
+      return;
+    }
+
+    // try restoring from saved state first
+    if (lastSavedCameraState) {
+      cameraControlsRef.current.setLookAt(
+        lastSavedCameraState.position[0],
+        lastSavedCameraState.position[1],
+        lastSavedCameraState.position[2],
+        lastSavedCameraState.target[0],
+        lastSavedCameraState.target[1],
+        lastSavedCameraState.target[2],
+        false
+      );
+      setSceneInitialized(true);
+      return;
+    }
+
+    // try restoring from scene-defined lookAt
+    if (foScene.cameraProps.lookAt?.length === 3) {
+      cameraControlsRef.current.setTarget(
+        foScene.cameraProps.lookAt[0],
+        foScene.cameraProps.lookAt[1],
+        foScene.cameraProps.lookAt[2],
+        false
+      );
+      setSceneInitialized(true);
+      return;
+    }
+
+    // no saved state and no scene config — fall through to bbox-dependent effect below
+  }, [foScene, lastSavedCameraState, cameraControlsRef, cameraRef]);
+
+  // Fallback: position camera based on bounding box when no saved state is available.
+  // This only runs when we have no localStorage/scene-config camera AND bbox is ready.
   useEffect(() => {
     if (
       !cameraControlsRef.current ||
       !cameraRef.current ||
-      isComputingSceneBoundingBox
+      isComputingSceneBoundingBox ||
+      isSceneInitialized
     ) {
       return;
     }
 
-    // restore camera position and target from localStorage if it exists
-    const lastSavedCameraState = window?.localStorage.getItem(
-      getCameraPositionKey(datasetName)
-    );
-    let restored = false;
-    if (lastSavedCameraState) {
-      try {
-        const parsed = JSON.parse(lastSavedCameraState);
-        if (
-          parsed &&
-          Array.isArray(parsed.position) &&
-          parsed.position.length === 3 &&
-          Array.isArray(parsed.target) &&
-          parsed.target.length === 3
-        ) {
-          cameraControlsRef.current.setLookAt(
-            parsed.position[0],
-            parsed.position[1],
-            parsed.position[2],
-            parsed.target[0],
-            parsed.target[1],
-            parsed.target[2],
-            false
-          );
-          setSceneInitialized(true);
-          restored = true;
-        }
-      } catch {}
-    }
-
-    if (!restored) {
-      if (foScene?.cameraProps.lookAt?.length === 3) {
-        cameraControlsRef.current.setTarget(
-          foScene.cameraProps.lookAt[0],
-          foScene.cameraProps.lookAt[1],
-          foScene.cameraProps.lookAt[2],
-          false
-        );
-        setSceneInitialized(true);
-        return;
-      } else {
-        onChangeView("top", {
-          useAnimation: false,
-          ignoreLastSavedCameraPosition: false,
-          isFirstTime: true,
-        });
-        setSceneInitialized(true);
-      }
-    }
+    // only reach here if the first effect didn't initialize (no saved state, no scene lookAt)
+    onChangeView("top", {
+      useAnimation: false,
+      ignoreLastSavedCameraPosition: false,
+      isFirstTime: true,
+    });
+    setSceneInitialized(true);
   }, [
-    foScene,
     onChangeView,
     cameraControlsRef,
     cameraRef,
     isComputingSceneBoundingBox,
+    isSceneInitialized,
   ]);
 
   useTrackStatus();
@@ -658,8 +627,12 @@ export const MediaTypeFo3dComponent = () => {
     "fo3d-pointCloudSettings",
     {
       enableTooltip: false,
-      rayCastingSensitivity: "high",
     }
+  );
+
+  const [raycastPrecision, setRaycastPrecision] = useBrowserStorage(
+    "fo3d-raycastingPrecision",
+    DEFAULT_RAYCAST_PRECISION
   );
 
   const [hoverMetadata, setHoverMetadata] = useState<HoverMetadata | null>(
@@ -667,7 +640,8 @@ export const MediaTypeFo3dComponent = () => {
   );
 
   const isAnnotationPlaneEnabled = useRecoilValue(annotationPlaneAtom).enabled;
-  const current3dAnnotationMode = useRecoilValue(current3dAnnotationModeAtom);
+
+  const current3dAnnotationMode = useCurrent3dAnnotationMode();
   const isPolylineAnnotateActive = current3dAnnotationMode === "polyline";
   const isCuboidAnnotateActive = current3dAnnotationMode === "cuboid";
 
@@ -706,12 +680,15 @@ export const MediaTypeFo3dComponent = () => {
         isComputingSceneBoundingBox,
         fo3dRoot,
         sceneBoundingBox: effectiveSceneBoundingBox,
+        cursorBounds,
         lookAt,
         setLookAt,
         autoRotate,
         setAutoRotate,
         pointCloudSettings,
         setPointCloudSettings,
+        raycastPrecision,
+        setRaycastPrecision,
         hoverMetadata,
         setHoverMetadata,
         pluginSettings: settings,

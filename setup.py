@@ -7,13 +7,11 @@ Installs FiftyOne.
 |
 """
 
-from importlib import metadata
 import os
-import re
 from setuptools import setup, find_packages
 
 
-VERSION = "1.13.0"
+VERSION = "1.14.0"
 
 
 def get_version():
@@ -25,95 +23,7 @@ def get_version():
                 % (version, VERSION)
             )
         return version
-
     return VERSION
-
-
-INSTALL_REQUIRES = [
-    # third-party packages
-    "aiofiles",
-    "argcomplete",
-    "async_lru>=2",
-    "beautifulsoup4",
-    "boto3",
-    "cachetools",
-    "dacite>=1.6.0,<2",
-    "dill",
-    "Deprecated",
-    "exceptiongroup",
-    "ftfy",
-    "humanize",
-    "hypercorn>=0.13.2",
-    "Jinja2>=3",
-    "jsonpatch",
-    "matplotlib",
-    "mongoengine~=0.29.1",
-    "motor~=3.6.0",
-    "numpy",
-    "packaging",
-    "pandas",
-    # Pillow 11.2.0 introduced CVE 2025-48379 that is fixed in 11.3.0
-    "Pillow>=6.2,!=11.2.*",
-    "plotly>=6.1.1",
-    "pprintpp",
-    "psutil",
-    "pymongo~=4.9.2",
-    "pytz",
-    "PyYAML",
-    "regex",
-    "retrying",
-    "rtree",
-    "scikit-learn",
-    "scikit-image",
-    "scipy",
-    "setuptools",
-    "sseclient-py>=1.7.2,<2",
-    "sse-starlette>=0.10.3,<1",
-    "starlette>=0.24.0",
-    "strawberry-graphql>=0.262.4",
-    "tabulate",
-    "tqdm",
-    "xmltodict",
-    "universal-analytics-python3>=1.0.1,<2",
-    "pydash",
-    # internal packages
-    "fiftyone-brain>=0.21.5,<0.22",
-    "fiftyone-db>=0.4,<2.0",
-    "voxel51-eta>=0.15.3,<0.16",
-]
-
-
-CHOOSE_INSTALL_REQUIRES = [
-    (
-        (
-            "opencv-python",
-            "opencv-contrib-python",
-            "opencv-contrib-python-headless",
-        ),
-        "opencv-python-headless",
-    )
-]
-
-
-def choose_requirement(mains, secondary):
-    chosen = secondary
-    for main in mains:
-        try:
-            name = re.split(r"[!<>=]", main)[0]
-            metadata.version(name)
-            chosen = main
-            break
-        except metadata.PackageNotFoundError:
-            pass
-
-    return str(chosen)
-
-
-def get_install_requirements(install_requires, choose_install_requires):
-    for mains, secondary in choose_install_requires:
-        install_requires.append(choose_requirement(mains, secondary))
-
-    return install_requires
 
 
 with open("README.md", "r", encoding="utf-8") as fh:
@@ -136,9 +46,60 @@ setup(
     packages=find_packages(
         exclude=["app", "eta", "package", "requirements", "tests", "tools"]
     ),
-    install_requires=get_install_requirements(
-        INSTALL_REQUIRES, CHOOSE_INSTALL_REQUIRES
-    ),
+    install_requires=[
+        # python-packaged or meta libraries (unconstrained)
+        "Deprecated", # Don't constrain python-packaged `Deprecated`
+        "packaging",  # Don't constrain python-packaged `packaging`
+        "setuptools", # Don't constrain python-packaged `setuptools`
+        # third-party packages (constrained at lower and upper majors)
+        "aiofiles>=20,<26",
+        "argcomplete>=2,<4",
+        "async_lru>=2,<3",
+        "beautifulsoup4>=2,<5", # BS4 will only have 4.x versions
+        "boto3>=1,<2",
+        "cachetools>=5,<7",
+        "dacite>=1.6.0,<2",
+        "dill>=0.1,<0.5",
+        "exceptiongroup>=1,<2",
+        "ftfy>=4,<7",
+        "humanize>=2,<5",
+        "hypercorn>=0.13.2,<0.19",
+        "Jinja2>=3,<4",
+        "jsonpatch>=1,<2",
+        "mongoengine~=0.29.1",  # Keep small bounds on mongo-related libraries
+        "motor~=3.6.0",         # Keep small bounds on mongo-related libraries
+        "Pillow>=6.2,!=11.2.*", # Pillow 11.2.0 introduced CVE 2025-48379 that is fixed in 11.3.0
+        "plotly>=6.1.1,<7",
+        "pprintpp>=0.1,<0.5",
+        "psutil>=5,<7",
+        "pydash>=6,<9",
+        "pymongo~=4.9.2", # Keep small bounds on mongo-related libraries
+        "pytz",           # Doesn't follow semver, keep unconstrained
+        "PyYAML>=4,<7",
+        "regex",          # Doesn't follow semver, keep unconstrained
+        "retrying>=1,<2",
+        "sseclient-py>=1.7.2,<2",
+        "sse-starlette>=0.10.3,<1",
+        "starlette>=0.24.0,<0.53",
+        "strawberry-graphql>=0.262.4,<0.292.0",
+        "tabulate>=0.7,<0.10",
+        "tqdm>=2,<5",
+        "xmltodict>=1,<2",
+        "universal-analytics-python3>=1.0.1,<2",
+        # ML Libraries
+        "matplotlib<4",
+        "numpy<3",
+        "opencv-python-headless<5",
+        "pandas<4",
+        "rtree<2",
+        "scikit-learn<2",
+        "scikit-image<1",
+        "scipy<2",
+        # internal packages
+        "fiftyone-brain>=0.21.5,<0.22",
+        "fiftyone-db>=0.4,<2.0",
+        "voxel51-eta>=0.15.3,<0.16",
+    ],
     include_package_data=True,
     classifiers=[
         "Development Status :: 5 - Production/Stable",

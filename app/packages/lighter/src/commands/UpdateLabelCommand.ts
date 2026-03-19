@@ -2,7 +2,9 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { Undoable } from "@fiftyone/commands";
+import type { AnnotationEventGroup } from "@fiftyone/annotation";
+import type { Undoable } from "@fiftyone/commands";
+import type { EventDispatcher } from "@fiftyone/events";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
 import type { RawLookerLabel } from "../types";
 
@@ -12,13 +14,14 @@ import type { RawLookerLabel } from "../types";
 export class UpdateLabelCommand implements Undoable {
   readonly id: string;
   readonly description: string;
-
   readonly nextLabel: RawLookerLabel;
+  private hasExecuted = false;
 
   constructor(
     private overlay: BaseOverlay,
     private currentLabel: RawLookerLabel,
-    nextLabel: RawLookerLabel
+    nextLabel: RawLookerLabel,
+    private readonly eventBus: EventDispatcher<AnnotationEventGroup>
   ) {
     this.id = `update-label-${overlay.id}-${Date.now()}`;
     this.description = `Update label ${overlay.id}`;
@@ -27,10 +30,22 @@ export class UpdateLabelCommand implements Undoable {
 
   execute(): void {
     update(this.overlay, this.nextLabel);
+
+    if (this.hasExecuted) {
+      this.eventBus.dispatch("annotation:labelEdit", {
+        label: this.nextLabel!,
+      });
+    } else {
+      this.hasExecuted = true;
+    }
   }
 
   undo(): void {
     update(this.overlay, this.currentLabel);
+
+    this.eventBus.dispatch("annotation:undoLabelEdit", {
+      label: this.currentLabel!,
+    });
   }
 }
 

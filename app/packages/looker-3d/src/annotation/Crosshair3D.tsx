@@ -2,14 +2,13 @@ import { useTheme } from "@fiftyone/components";
 import { Html } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
 import { useMemo } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import * as THREE from "three";
 import { useFo3dContext } from "../fo3d/context";
-import {
-  isCurrentlyTransformingAtom,
-  sharedCursorPositionAtom,
-} from "../state";
+import { useRaycastResult } from "../hooks/use-raycast-result";
+import { isCurrentlyTransformingAtom } from "../state";
+import type { PanelId } from "../types";
 
 const CROSS_HAIR_SIZE = 20;
 const LINE_WIDTH = 2;
@@ -52,25 +51,49 @@ const Vertical = styled.div<{ $color: string }>`
   transform: translateX(-50%);
 `;
 
-export const Crosshair3D = () => {
+interface Crosshair3DProps {
+  panelId: PanelId;
+}
+
+/**
+ * Crosshair3D - Renders a crosshair at the shared cursor position.
+ *
+ * Only renders when the cursor is in a different panel than this one.
+ * The panel where the cursor is located doesn't need a crosshair since
+ * the cursor itself is visible there.
+ *
+ * @param panelId - The ID of the panel this crosshair belongs to
+ */
+export const Crosshair3D = ({ panelId }: Crosshair3DProps) => {
   const { camera } = useThree();
-  const { sceneBoundingBox } = useFo3dContext();
+  const { cursorBounds } = useFo3dContext();
   const theme = useTheme();
   const isCurrentlyTransforming = useRecoilValue(isCurrentlyTransformingAtom);
 
-  const worldPosition = useRecoilValue(sharedCursorPositionAtom);
+  const raycastResult = useRaycastResult();
+
+  const shouldRender =
+    raycastResult.sourcePanel !== null && raycastResult.sourcePanel !== panelId;
 
   const worldVector = useMemo(() => {
-    if (!worldPosition) return null;
+    if (!shouldRender || !raycastResult.worldPosition) return null;
 
-    const vector = new THREE.Vector3(...worldPosition);
+    const vector = new THREE.Vector3(...raycastResult.worldPosition);
 
-    if (sceneBoundingBox) {
-      vector.clamp(sceneBoundingBox.min, sceneBoundingBox.max);
+    // Only clamp if the position is extremely far outside the bounds.
+    // Allows for a more natural experience when moving the cursor around
+    if (cursorBounds) {
+      const boundsSize = cursorBounds.getSize(new THREE.Vector3());
+      const maxDim = Math.max(boundsSize.x, boundsSize.y, boundsSize.z);
+      // Allow positions up to 2x the bounds size outside before clamping
+      const margin = maxDim * 2;
+      const expandedMin = cursorBounds.min.clone().subScalar(margin);
+      const expandedMax = cursorBounds.max.clone().addScalar(margin);
+      vector.clamp(expandedMin, expandedMax);
     }
 
     return vector;
-  }, [worldPosition, sceneBoundingBox]);
+  }, [shouldRender, raycastResult.worldPosition, cursorBounds]);
 
   // Convert 3D world position to 2D screen coordinates
   const screenPosition = useMemo(() => {
@@ -91,7 +114,7 @@ export const Crosshair3D = () => {
     return null;
   }
 
-  if (!screenPosition) {
+  if (!shouldRender || !screenPosition || !worldVector) {
     return null;
   }
 

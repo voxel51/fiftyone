@@ -25,7 +25,14 @@ import KeypointOverlay, { getKeypointPoints } from "./keypoint";
 import PolylineOverlay, { getPolylinePoints } from "./polyline";
 import SegmentationOverlay, { getSegmentationPoints } from "./segmentation";
 
-export type { PointInfo } from "./base";
+export * from "./base";
+export * from "./classifications";
+export * from "./detection";
+export * from "./heatmap";
+export * from "./keypoint";
+export * from "./polyline";
+export * from "./segmentation";
+export * from "./util";
 
 export const fromLabel = (overlayType) => (field, label) =>
   label ? [new overlayType(field, label)] : [];

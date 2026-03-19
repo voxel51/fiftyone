@@ -1,13 +1,18 @@
-import { atom } from "jotai";
+import { atom, useAtom } from "jotai";
 import { atomFamily } from "jotai/utils";
 import { capitalize } from "lodash";
+import { LabelSchemaMeta } from "./useSchemaManager";
+import { useMemo } from "react";
+import { PRIMITIVE_FIELD_TYPES } from "./SchemaManager/constants";
 
 // Tab state for GUI/JSON toggle
 export const activeSchemaTab = atom<"gui" | "json">("gui");
 
 export const currentField = atom<null | string>();
 
-export const labelSchemasData = atom(null);
+export const labelSchemasData = atom<Record<string, LabelSchemaMeta> | null>(
+  null
+);
 
 export const labelSchemaData = atomFamily((field: string) => {
   return atom(
@@ -19,6 +24,37 @@ export const labelSchemaData = atomFamily((field: string) => {
 });
 
 export const activeLabelSchemas = atom<string[] | null>(null);
+
+/**
+ * Mirror of Recoil activeFields({ modal: true }), written by Sidebar.tsx.
+ * Can't read Recoil from inside a Jotai atom's getter, so we need the data
+ * bridged into a Jotai atom. null means not yet initialized — in that case
+ * visibleLabelSchemas treats the explore set as empty (only primitive fields
+ * pass through).
+ */
+export const exploreActiveFields = atom<string[] | null>(null);
+
+/**
+ * Intersection of activeLabelSchemas and exploreActiveFields.
+ * Display consumers should read this instead of activeLabelSchemas so that
+ * hiding a field in the Explore sidebar also hides it in Annotate.
+ */
+export const visibleLabelSchemas = atom((get) => {
+  const active = get(activeLabelSchemas);
+  if (!active) return [];
+
+  const explore = get(exploreActiveFields);
+  const exploreSet = new Set(explore ?? []);
+  return active.filter((field) => {
+    const type = get(fieldType(field));
+    // Primitive fields don't appear in the Explore sidebar — always show them.
+    // Everything else is a label (embedded doc) type — filter by explore visibility.
+    if (type && PRIMITIVE_FIELD_TYPES.has(type)) {
+      return true;
+    }
+    return exploreSet.has(field);
+  });
+});
 
 export const inactiveLabelSchemas = atom((get) =>
   Object.keys(get(labelSchemasData) ?? {})
@@ -69,7 +105,8 @@ export const fieldType = atomFamily((path: string) =>
 export const fieldAttributeCount = atomFamily((path: string) =>
   atom((get) => {
     const data = get(labelSchemaData(path));
-    return Object.keys(data?.label_schema?.attributes ?? {}).length;
+    const attrs = data?.label_schema?.attributes;
+    return Array.isArray(attrs) ? attrs.length : 0;
   })
 );
 
@@ -97,3 +134,65 @@ export const removeFromActiveSchemas = atom(
 );
 
 export const showModal = atom(false);
+
+/**
+ * Check if a field is read-only.
+ *
+ * User-set schema `read_only` (from Schema Manager) takes precedence,
+ * then falls back to field-level `read_only` (from Python backend).
+ */
+export const isFieldReadOnly = (data: LabelSchemaMeta | undefined): boolean => {
+  return !!data?.label_schema?.read_only || !!data?.read_only;
+};
+
+/**
+ * Public API for the current annotation schema context.
+ */
+export interface AnnotationSchemaContext {
+  /**
+   * Current loaded annotation schema.
+   */
+  labelSchema: Record<string, LabelSchemaMeta> | null;
+
+  /**
+   * Set the loaded annotation schema.
+   *
+   * @param schema Schema or null
+   */
+  setLabelSchema: (schema: Record<string, LabelSchemaMeta> | null) => void;
+
+  /**
+   * List of active schema paths.
+   *
+   * Each path in this list is available for annotation.
+   */
+  activeSchemaPaths: string[] | null;
+
+  /**
+   * Set the list of active schema paths.
+   *
+   * @param paths Active paths or null
+   */
+  setActiveSchemaPaths: (paths: string[] | null) => void;
+}
+
+/**
+ * Hook which provides the current {@link AnnotationSchemaContext}.
+ */
+export const useAnnotationSchemaContext = (): AnnotationSchemaContext => {
+  const [labelSchema, setLabelSchema] = useAtom<Record<
+    string,
+    LabelSchemaMeta
+  > | null>(labelSchemasData);
+  const [activeSchemaPaths, setActiveSchemaPaths] = useAtom(activeLabelSchemas);
+
+  return useMemo(
+    () => ({
+      activeSchemaPaths,
+      labelSchema,
+      setActiveSchemaPaths,
+      setLabelSchema,
+    }),
+    [activeSchemaPaths, labelSchema, setActiveSchemaPaths, setLabelSchema]
+  );
+};

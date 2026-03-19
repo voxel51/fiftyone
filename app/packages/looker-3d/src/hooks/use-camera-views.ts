@@ -5,9 +5,10 @@ import { useAtomValue } from "jotai";
 import React, { useCallback, useEffect } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { PerspectiveCamera, Quaternion, Vector3 } from "three";
-import {
-  CuboidTransformData,
-  PolylinePointTransformData,
+import { useWorkingLabel } from "../annotation/store";
+import type {
+  ReconciledDetection3D,
+  ReconciledPolyline3D,
 } from "../annotation/types";
 import {
   SET_EGO_VIEW_EVENT,
@@ -19,9 +20,8 @@ import {
   annotationPlaneAtom,
   cameraViewStatusAtom,
   selectedLabelForAnnotationAtom,
-  stagedCuboidTransformsAtom,
-  stagedPolylineTransformsAtom,
 } from "../state";
+import { isDetection3dOverlay, isPolyline3dOverlay } from "../types";
 
 interface UseCameraViewsProps {
   cameraRef: React.RefObject<PerspectiveCamera>;
@@ -34,15 +34,18 @@ interface UseCameraViewsProps {
  * For polylines, calculates the centroid and radius from bounding box of all points.
  */
 const calculateLabelCentroidAndRadius = (
-  cuboidTransform?: CuboidTransformData | null,
-  polylinePointTransforms?: PolylinePointTransformData | null
+  label?: ReconciledDetection3D | ReconciledPolyline3D | null
 ): { centroid: Vector3; radius: number } | null => {
-  if (cuboidTransform) {
-    const location = cuboidTransform.location;
-    const dimensions = cuboidTransform.dimensions;
+  if (!label) {
+    return null;
+  }
+
+  if (isDetection3dOverlay(label)) {
+    const location = label.location;
+    const dimensions = label.dimensions;
 
     if (location) {
-      // Todo: Add comment on formula here for radius
+      // Calculate radius based on dimensions diagonal
       const radius =
         Math.sqrt(
           dimensions[0] ** 2 + dimensions[1] ** 2 + dimensions[2] ** 2
@@ -53,10 +56,10 @@ const calculateLabelCentroidAndRadius = (
         radius,
       };
     }
-  } else if (polylinePointTransforms?.segments) {
-    const points3d = polylinePointTransforms.segments.map((seg) => seg.points);
+  } else if (isPolyline3dOverlay(label)) {
+    const points3d = label.points3d;
 
-    if (points3d.length > 0) {
+    if (points3d && points3d.length > 0) {
       const allPoints = points3d.flat();
       if (allPoints.length > 0) {
         const sum = allPoints.reduce(
@@ -114,8 +117,8 @@ export const useCameraViews = ({
   const selectedLabelForAnnotation = useRecoilValue(
     selectedLabelForAnnotationAtom
   );
-  const stagedPolylineTransforms = useRecoilValue(stagedPolylineTransformsAtom);
-  const stagedCuboidTransforms = useRecoilValue(stagedCuboidTransformsAtom);
+
+  const workingLabel = useWorkingLabel(selectedLabelForAnnotation?._id ?? "");
 
   // We use current camera position and look at point to calculate the camera position
   // with some reasonable constraints.
@@ -222,7 +225,7 @@ export const useCameraViews = ({
         return;
       }
 
-      if (event.code === "KeyT") {
+      if (!event.metaKey && event.code === "KeyT") {
         setCameraViewStatus({
           viewName: "Top view",
           timestamp: Date.now(),
@@ -232,7 +235,7 @@ export const useCameraViews = ({
         return;
       }
 
-      if (event.code === "KeyE") {
+      if (!event.metaKey && event.code === "KeyE") {
         setCameraViewStatus({
           viewName: "Ego view",
           timestamp: Date.now(),
@@ -242,7 +245,7 @@ export const useCameraViews = ({
         return;
       }
 
-      if (event.code === "KeyZ") {
+      if (!event.metaKey && event.code === "KeyZ") {
         setCameraViewStatus({
           viewName: "Crop",
           timestamp: Date.now(),
@@ -371,10 +374,7 @@ export const useCameraViews = ({
       }
 
       if (selectedLabelForAnnotation && cameraControlsRef.current) {
-        const labelInfo = calculateLabelCentroidAndRadius(
-          stagedCuboidTransforms?.[selectedLabelForAnnotation._id],
-          stagedPolylineTransforms?.[selectedLabelForAnnotation._id]
-        );
+        const labelInfo = calculateLabelCentroidAndRadius(workingLabel);
 
         if (labelInfo) {
           const { centroid, radius } = labelInfo;
@@ -397,8 +397,8 @@ export const useCameraViews = ({
       annotationPlane,
       enableAnnotationPlaneCameraView,
       selectedLabelForAnnotation,
-      stagedCuboidTransforms,
-      stagedPolylineTransforms,
+      workingLabel,
+      cameraControlsRef,
     ]
   );
 

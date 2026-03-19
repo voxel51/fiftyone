@@ -51,7 +51,7 @@ on your data quickly and easily.
     :button_link: groups.html
 
 .. customcalloutitem::
-    :header: Annotating datasets
+    :header: Annotating datasets __SUB_NEW__
     :description: Use builtin or custom integrations to add or edit labels on your FiftyOne datasets.
     :button_text: Learn more about annotations
     :button_link: annotation.html
@@ -117,7 +117,7 @@ on your data quickly and easily.
     Using the App <app>
     Dataset views <using_views>
     Grouped datasets <groups>
-    Annotating datasets <annotation>
+    Annotating datasets __SUB_NEW__ <annotation>
     Evaluating models __SUB_NEW__ <evaluation>
     Using aggregations <using_aggregations>
     Interactive plots <plots>

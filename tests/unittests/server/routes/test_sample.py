@@ -8,7 +8,7 @@ FiftyOne Server mutation endpoint unit tests.
 import datetime
 
 # pylint: disable=no-value-for-parameter
-from unittest.mock import MagicMock, AsyncMock
+from unittest.mock import MagicMock, AsyncMock, patch
 import json
 
 from bson import ObjectId, json_util
@@ -296,23 +296,31 @@ class TestSampleRoutes:
     async def test_if_match_header_failure(
         self, mutator, mock_request, sample, if_match
     ):
-        """Tests that a 412 HTTPException is raised for an invalid If-Match."""
-        if if_match is None:
-            pytest.skip("Fixture returned None, skipping this test.")
-
+        """Tests that a 412 response with the current sample is returned
+        for a stale If-Match."""
         sample["primitive_field"] = "new_value"
         sample.save()
+        sample.reload()
 
         mock_request.body.return_value = json_payload(
             {"primitive_field": "newer_value"}
         )
 
-        with pytest.raises(HTTPException) as exc_info:
-            #####
-            await mutator.patch(mock_request)
-            #####
+        #####
+        response = await mutator.patch(mock_request)
+        #####
 
-            assert exc_info.value.status_code == 412
+        assert response.status_code == 412
+
+        # Response should contain the current sample data
+        response_dict = json.loads(response.body)
+        assert isinstance(response_dict, dict)
+        assert response_dict["primitive_field"] == "new_value"
+
+        # ETag should match the current sample
+        assert response.headers.get("ETag") == fors.generate_sample_etag(
+            sample
+        )
 
     @pytest.mark.asyncio
     async def test_unsupported_label_class(
@@ -1043,27 +1051,16 @@ class TestSampleFieldRoute:
         )
 
     @pytest.mark.asyncio
-    @pytest.mark.parametrize(
-        "if_match", [None] + _if_match_values, indirect=True
-    )
-    async def test_if_match_header_failure(
+    @pytest.mark.parametrize("if_match", [None], indirect=True)
+    async def test_if_match_header_missing(
         self, mutator, mock_request, sample, if_match
     ):
-        """Tests that a 4xx HTTPException is raised for an invalid If-Match."""
-        if if_match is None:
-            expected_status = 400
-            expected_detail = "Invalid If-Match header"
-        else:
-            expected_status = 412
-            expected_detail = "If-Match condition failed"
-
-        # Update the sample to change its last_modified_at
+        """Tests that a 400 HTTPException is raised for a missing If-Match."""
         sample["primitive_field"] = "new_value"
         sample.save()
         sample.reload()
 
         patch_payload = [{"op": "replace", "path": "/label", "value": "fish"}]
-
         mock_request.body.return_value = json_payload(patch_payload)
 
         with pytest.raises(HTTPException) as exc_info:
@@ -1071,8 +1068,38 @@ class TestSampleFieldRoute:
             await mutator.patch(mock_request)
             #####
 
-        assert exc_info.value.status_code == expected_status
-        assert exc_info.value.detail == expected_detail
+        assert exc_info.value.status_code == 400
+        assert exc_info.value.detail == "Invalid If-Match header"
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("if_match", _if_match_values, indirect=True)
+    async def test_if_match_header_failure(
+        self, mutator, mock_request, sample, if_match
+    ):
+        """Tests that a 412 response with the current sample is returned
+        for a stale If-Match."""
+        # Update the sample to change its last_modified_at
+        sample["primitive_field"] = "new_value"
+        sample.save()
+        sample.reload()
+
+        patch_payload = [{"op": "replace", "path": "/label", "value": "fish"}]
+        mock_request.body.return_value = json_payload(patch_payload)
+
+        #####
+        response = await mutator.patch(mock_request)
+        #####
+
+        assert response.status_code == 412
+
+        # Response should contain the current sample data
+        response_dict = json.loads(response.body)
+        assert isinstance(response_dict, dict)
+
+        # ETag should match the current sample
+        assert response.headers.get("ETag") == fors.generate_sample_etag(
+            sample
+        )
 
     @pytest.mark.asyncio
     async def test_field_path_not_found(self, mutator, mock_request, sample):
@@ -1510,3 +1537,61 @@ class TestRootDeleteError:
         result = fors.handle_json_patch(target, operations)
 
         assert result.label == "dog"
+
+
+class TestEnsureSampleField:
+    """Tests for the ensure_sample_field function."""
+
+    @pytest.fixture(name="sample")
+    def fixture_sample(self, dataset):
+        sample = fo.Sample(filepath="/tmp/test_ensure_field.jpg")
+        dataset.add_sample(sample)
+        sample.reload()
+        return sample
+
+    def test_initializes_unset_detections_field(self, dataset, sample):
+        """Tests that ensure_sample_field initializes a Detections field that
+        exists in the dataset schema but has no value on the sample."""
+        dataset.add_sample_field(
+            "uninit_dets", fo.EmbeddedDocumentField, fol.Detections
+        )
+        sample.reload()
+
+        assert sample.get_field("uninit_dets") is None
+
+        fors.ensure_sample_field(sample, "uninit_dets.detections.0")
+
+        val = sample.get_field("uninit_dets")
+        assert isinstance(val, fol.Detections)
+        assert val.detections == []
+
+    def test_initializes_field_when_getitem_raises(self, dataset, sample):
+        dataset.add_sample_field(
+            "stale_dets", fo.EmbeddedDocumentField, fol.Detections
+        )
+        sample.reload()
+
+        original_getitem = type(sample).__getitem__
+        getitem_call_count = [0]
+
+        def mock_getitem(self_inner, key):
+            if key == "stale_dets":
+                getitem_call_count[0] += 1
+                if getitem_call_count[0] == 1:
+                    raise KeyError("Sample has no field 'stale_dets'")
+            return original_getitem(self_inner, key)
+
+        with patch.object(type(sample), "__getitem__", mock_getitem):
+            fors.ensure_sample_field(sample, "stale_dets.detections.0")
+
+        val = sample.get_field("stale_dets")
+        assert isinstance(val, fol.Detections)
+        assert val.detections == []
+
+    def test_no_schema_field_is_noop(self, sample):
+        """Tests that ensure_sample_field is a no-op when the field is not in
+        the dataset schema (no type info available to create it)."""
+        fors.ensure_sample_field(sample, "nonexistent.detections.0")
+
+        with pytest.raises(AttributeError):
+            sample.get_field("nonexistent")
