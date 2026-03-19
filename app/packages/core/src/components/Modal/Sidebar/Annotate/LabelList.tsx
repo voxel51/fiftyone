@@ -67,12 +67,10 @@ export default function AnnotateSidebar() {
         isDisabled={() => true}
         render={(_key, _group, entry) => {
           if (entry.kind === EntryKind.GROUP) {
-            console.log("GROUP");
             return { children: <GroupEntry name={entry.name} /> };
           }
 
           if (entry.kind === EntryKind.LABEL) {
-            console.log("LABEL");
             const { kind: _kind, atom } = entry;
             return {
               children: <LabelEntry atom={atom} />,
@@ -81,7 +79,6 @@ export default function AnnotateSidebar() {
           }
 
           if (entry.kind === EntryKind.EMPTY_ANNOTATIONS) {
-            console.log("EMPTY");
             return {
               children: (
                 <EmptyLabelsContainer>
@@ -100,7 +97,6 @@ export default function AnnotateSidebar() {
           }
 
           if (entry.kind === EntryKind.LOADING) {
-            console.log("LOADING");
             return {
               children: <LoadingEntry />,
               disabled: true,
@@ -108,7 +104,6 @@ export default function AnnotateSidebar() {
           }
 
           if (entry.kind === EntryKind.PATH) {
-            console.log("PATH");
             return {
               children: <PrimitiveEntry path={entry.path} />,
               disabled: false,
