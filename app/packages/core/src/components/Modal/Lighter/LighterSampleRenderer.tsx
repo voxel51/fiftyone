@@ -4,6 +4,8 @@
 import {
   ImageOptions,
   ImageOverlay,
+  KeypointOptions,
+  KeypointOverlay,
   overlayFactory,
   useLighter,
   useLighterSetupWithPixi,
@@ -69,6 +71,79 @@ export const LighterSampleRenderer = ({
 
       // Set the image overlay as canonical media for coordinate transformations
       scene.setCanonicalMedia(mediaOverlay);
+
+      // TODO: REMOVE — hardcoded test keypoints for visual verification
+      const testKeypoints = overlayFactory.create<
+        KeypointOptions,
+        KeypointOverlay
+      >("keypoint", {
+        id: "test-keypoints-skeleton",
+        field: "",
+        label: {
+          _id: "test-kp-1",
+          label: "person",
+          tags: [],
+          points: [
+            [0.3, 0.2], // head
+            [0.3, 0.4], // torso
+            [0.2, 0.35], // left hand
+            [0.4, 0.35], // right hand
+            [0.25, 0.6], // left foot
+            [0.35, 0.6], // right foot
+          ],
+        },
+        connections: [
+          [0, 1], // head → torso
+          [1, 2], // torso → left hand
+          [1, 3], // torso → right hand
+          [1, 4], // torso → left foot
+          [1, 5], // torso → right foot
+        ],
+        closed: false,
+      });
+      addOverlay(testKeypoints, false);
+
+      const testPoints = overlayFactory.create<
+        KeypointOptions,
+        KeypointOverlay
+      >("keypoint", {
+        id: "test-keypoints-points-only",
+        field: "",
+        label: {
+          _id: "test-kp-2",
+          label: "prompts",
+          tags: [],
+          points: [
+            [0.6, 0.3],
+            [0.7, 0.5],
+            [0.65, 0.7],
+          ],
+        },
+        // No connections — just individual points
+      });
+      addOverlay(testPoints, false);
+
+      const testPolygon = overlayFactory.create<
+        KeypointOptions,
+        KeypointOverlay
+      >("keypoint", {
+        id: "test-keypoints-polygon",
+        field: "",
+        label: {
+          _id: "test-kp-3",
+          label: "ROI",
+          tags: [],
+          points: [
+            [0.5, 0.1],
+            [0.9, 0.1],
+            [0.9, 0.4],
+            [0.5, 0.4],
+          ],
+        },
+        connections: [[0, 1, 2, 3]],
+        closed: true,
+      });
+      addOverlay(testPolygon, false);
     }
   }, [isReady, addOverlay, scene]);
 
