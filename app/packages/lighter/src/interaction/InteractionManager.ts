@@ -324,8 +324,15 @@ export class InteractionManager {
         this.canvas.style.cursor = cursor;
       }
 
-      // If this is a spatial overlay, track move state
-      if (TypeGuards.isSpatial(handler)) {
+      // If this is a spatial overlay with move state, track drag/resize lifecycle.
+      // Handlers that manage their own drag events (e.g. KeypointOverlay point
+      // drags) don't provide getMoveStartBounds/getMoveStartPosition, so we skip
+      // dispatching to avoid stranded start events with no matching end.
+      if (
+        TypeGuards.isSpatial(handler) &&
+        handler.getMoveStartBounds?.() &&
+        handler.getMoveStartPosition?.()
+      ) {
         const type: keyof LighterEventGroup = handler.isDragging?.()
           ? "lighter:overlay-drag-start"
           : "lighter:overlay-resize-start";
@@ -884,6 +891,9 @@ export class InteractionManager {
    * Clears all handlers.
    */
   clearHandlers(): void {
+    for (const handler of this.handlers) {
+      handler.cleanup?.();
+    }
     this.handlers = [];
     this.hoveredHandler = undefined;
   }

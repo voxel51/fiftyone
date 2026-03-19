@@ -477,10 +477,10 @@ export class KeypointOverlay
   }
 
   onMove(
-    point: Point,
-    _worldPoint: Point,
+    _point: Point,
+    worldPoint: Point,
     _event: PointerEvent,
-    scale: number
+    _scale: number
   ): boolean {
     if (
       this.dragPointIndex === null ||
@@ -490,16 +490,11 @@ export class KeypointOverlay
       return false;
     }
 
-    const delta = {
-      x: (point.x - this.moveStartScreenPoint.x) / scale,
-      y: (point.y - this.moveStartScreenPoint.y) / scale,
-    };
-
-    const t = this.getCoordinateSystem().getTransform();
-    this.#relativePoints[this.dragPointIndex] = [
-      this.moveStartRelativePoint[0] + delta.x / t.scaleX,
-      this.moveStartRelativePoint[1] + delta.y / t.scaleY,
-    ];
+    // Convert world-space cursor position directly to relative coordinates.
+    // This avoids double-scaling that would occur from computing a screen-space
+    // delta and dividing by both renderer scale and coordinate transform scale.
+    this.#relativePoints[this.dragPointIndex] =
+      this.absolutePointToRelative(worldPoint);
 
     this.markDirty();
     return true;
