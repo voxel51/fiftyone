@@ -18,87 +18,86 @@ from fiftyone.server.media_cache import (
 )
 
 
+def _resolve(path):
+    return str(Path(path).resolve())
+
+
 @pytest.fixture(autouse=True)
 def _clear_cache():
-    """Clear the media cache before and after each test."""
+    """Resets the allowlist between tests."""
     clear()
     yield
     clear()
 
 
-class TestAddAndCheckDir:
-    def test_path_under_allowed_dir(self):
-        add_allowed_dir("/data/datasets")
-        resolved = str(Path("/data/datasets/coco/image.jpg").resolve())
-        assert is_path_allowed(resolved) is True
+_ALLOWED_PATHS = [
+    ("/data/datasets", "/data/datasets/coco/image.jpg"),
+    ("/data/datasets", "/data/datasets/a/b/c/deep.png"),
+    ("/data/foo", "/data/foo/file.jpg"),
+]
 
-    def test_nested_path_under_allowed_dir(self):
-        add_allowed_dir("/data/datasets")
-        resolved = str(Path("/data/datasets/a/b/c/image.jpg").resolve())
-        assert is_path_allowed(resolved) is True
+_REJECTED_PATHS = [
+    ("/data/datasets", "/etc/passwd"),
+    ("/data/datasets", "/tmp/rogue.jpg"),
+    ("/data/foo", "/data/foobar/file.jpg"),
+]
 
-    def test_path_outside_allowed_dir(self):
-        add_allowed_dir("/data/datasets")
-        resolved = str(Path("/etc/passwd").resolve())
-        assert is_path_allowed(resolved) is False
+
+class TestIsPathAllowed:
+    """Verifies directory-based path allowlisting."""
+
+    @pytest.mark.parametrize("allowed_dir,filepath", _ALLOWED_PATHS)
+    def test_allowed(self, allowed_dir, filepath):
+        """Paths under a registered directory are accepted."""
+        add_allowed_dir(allowed_dir)
+        assert is_path_allowed(_resolve(filepath)) is True
+
+    @pytest.mark.parametrize("allowed_dir,filepath", _REJECTED_PATHS)
+    def test_rejected(self, allowed_dir, filepath):
+        """Paths outside registered directories are rejected."""
+        add_allowed_dir(allowed_dir)
+        assert is_path_allowed(_resolve(filepath)) is False
 
     def test_empty_cache_rejects_all(self):
-        resolved = str(Path("/data/datasets/image.jpg").resolve())
-        assert is_path_allowed(resolved) is False
+        """An empty allowlist rejects everything."""
+        assert is_path_allowed(_resolve("/data/image.jpg")) is False
+
+    def test_multiple_dirs(self):
+        """Paths under any registered directory are accepted."""
+        add_allowed_dir("/data/images")
+        add_allowed_dir("/mnt/nas/videos")
+        assert is_path_allowed(_resolve("/data/images/a.jpg")) is True
+        assert is_path_allowed(_resolve("/mnt/nas/videos/b.mp4")) is True
+        assert is_path_allowed(_resolve("/tmp/c.jpg")) is False
+
+    def test_tilde_expansion(self):
+        """Tilde paths are expanded before registration."""
+        add_allowed_dir("~/fiftyone")
+        home = str(Path.home())
+        path = _resolve(f"{home}/fiftyone/dataset/image.jpg")
+        assert is_path_allowed(path) is True
 
 
 class TestAddDirForFilepath:
-    def test_parent_dir_registered(self):
-        add_allowed_dir_for_filepath("/data/datasets/coco/image001.jpg")
-        resolved = str(Path("/data/datasets/coco/image002.jpg").resolve())
-        assert is_path_allowed(resolved) is True
+    """Verifies that registering a filepath allows its sibling files."""
 
-    def test_sibling_dir_not_registered(self):
-        add_allowed_dir_for_filepath("/data/datasets/coco/image001.jpg")
-        resolved = str(Path("/data/datasets/voc/image001.jpg").resolve())
-        assert is_path_allowed(resolved) is False
+    def test_sibling_allowed(self):
+        """A file in the same directory as a registered filepath passes."""
+        add_allowed_dir_for_filepath("/data/coco/image001.jpg")
+        assert is_path_allowed(_resolve("/data/coco/image002.jpg")) is True
 
-
-class TestNoPartialDirMatch:
-    def test_partial_prefix_rejected(self):
-        """``/data/foo`` must NOT match ``/data/foobar/file.jpg``."""
-        add_allowed_dir("/data/foo")
-        resolved = str(Path("/data/foobar/file.jpg").resolve())
-        assert is_path_allowed(resolved) is False
-
-    def test_exact_prefix_with_separator_accepted(self):
-        add_allowed_dir("/data/foo")
-        resolved = str(Path("/data/foo/file.jpg").resolve())
-        assert is_path_allowed(resolved) is True
+    def test_different_parent_rejected(self):
+        """A file in a different directory is rejected."""
+        add_allowed_dir_for_filepath("/data/coco/image001.jpg")
+        assert is_path_allowed(_resolve("/data/voc/image001.jpg")) is False
 
 
 class TestClear:
-    def test_clear_removes_all(self):
+    """Verifies that clear() invalidates all registrations."""
+
+    def test_clear(self):
         add_allowed_dir("/data/datasets")
-        resolved = str(Path("/data/datasets/image.jpg").resolve())
-        assert is_path_allowed(resolved) is True
-
+        path = _resolve("/data/datasets/image.jpg")
+        assert is_path_allowed(path) is True
         clear()
-        assert is_path_allowed(resolved) is False
-
-
-class TestMultipleDirs:
-    def test_paths_under_different_dirs(self):
-        add_allowed_dir("/data/images")
-        add_allowed_dir("/mnt/nas/videos")
-
-        img = str(Path("/data/images/photo.jpg").resolve())
-        vid = str(Path("/mnt/nas/videos/clip.mp4").resolve())
-        other = str(Path("/tmp/rogue.jpg").resolve())
-
-        assert is_path_allowed(img) is True
-        assert is_path_allowed(vid) is True
-        assert is_path_allowed(other) is False
-
-
-class TestTildeExpansion:
-    def test_tilde_resolved(self):
-        home = str(Path.home())
-        add_allowed_dir("~/fiftyone")
-        resolved = str(Path(f"{home}/fiftyone/dataset/image.jpg").resolve())
-        assert is_path_allowed(resolved) is True
+        assert is_path_allowed(path) is False
