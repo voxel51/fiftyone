@@ -84,9 +84,20 @@ export interface Renderer2D {
     style: DrawStyle,
     containerId: string
   ): void;
+  drawPoints(
+    centers: Point[],
+    radius: number,
+    style: DrawStyle,
+    containerId: string
+  ): void;
   drawLine(
     start: Point,
     end: Point,
+    style: DrawStyle,
+    containerId: string
+  ): void;
+  drawLines(
+    segments: Array<[Point, Point]>,
     style: DrawStyle,
     containerId: string
   ): void;

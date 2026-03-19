@@ -745,9 +745,13 @@ export class InteractionManager {
     point: Point,
     skipCanonicalMedia: boolean = false
   ): InteractionHandler | undefined {
-    // Find handlers in reverse order (topmost first)
-    // Note: this is a hack, we need a better z-order logic
-    const candidates: InteractionHandler[] = [];
+    // Single-pass: find best handler at point using priority rules.
+    // Priority: selected > highest selectable priority > topmost (reverse order).
+    let bestSelected: InteractionHandler | undefined;
+    let bestSelectable: InteractionHandler | undefined;
+    let bestSelectablePriority = -1;
+    let topmost: InteractionHandler | undefined;
+
     for (let i = this.handlers.length - 1; i >= 0; i--) {
       const handler = this.handlers[i];
 
@@ -755,46 +759,25 @@ export class InteractionManager {
         continue;
       }
 
-      if (handler.containsPoint(point)) {
-        candidates.push(handler);
+      if (!handler.containsPoint(point)) {
+        continue;
       }
-    }
 
-    if (candidates.length === 0) return undefined;
-    if (candidates.length === 1) return candidates[0];
+      if (!topmost) topmost = handler;
 
-    // First, check if any candidates are selected - selected overlays override everything
-    const selectedCandidates = candidates.filter((handler) => {
       if (TypeGuards.isSelectable(handler)) {
-        return this.selectionManager.isSelected(handler.id);
+        if (!bestSelected && this.selectionManager.isSelected(handler.id)) {
+          bestSelected = handler;
+        }
+        const priority = handler.getSelectionPriority();
+        if (priority > bestSelectablePriority) {
+          bestSelectablePriority = priority;
+          bestSelectable = handler;
+        }
       }
-      return false;
-    });
-
-    if (selectedCandidates.length > 0) {
-      return selectedCandidates[0];
     }
 
-    // If multiple handlers found, prefer selectable ones with higher priority
-    const selectableCandidates = candidates.filter((handler) =>
-      TypeGuards.isSelectable(handler)
-    );
-
-    if (selectableCandidates.length > 0) {
-      // Choose the selectable candidate with highest selection priority
-      return selectableCandidates.reduce((best, current) => {
-        const bestPriority = TypeGuards.isSelectable(best)
-          ? best.getSelectionPriority()
-          : 0;
-        const currentPriority = TypeGuards.isSelectable(current)
-          ? current.getSelectionPriority()
-          : 0;
-        return currentPriority > bestPriority ? current : best;
-      });
-    }
-
-    // Fall back to the first candidate (topmost)
-    return candidates[0];
+    return bestSelected || bestSelectable || topmost;
   }
 
   private getCanvasPoint(event: PointerEvent): Point {
@@ -958,8 +941,9 @@ export class InteractionManager {
     }
 
     // Add any remaining handlers that weren't in the overlay order
+    const overlayOrderSet = new Set(overlayOrder);
     for (const handler of this.handlers) {
-      if (!overlayOrder.includes(handler.id)) {
+      if (!overlayOrderSet.has(handler.id)) {
         reorderedHandlers.push(handler);
       }
     }

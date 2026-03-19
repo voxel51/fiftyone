@@ -88,6 +88,11 @@ export class KeypointOverlay
   // Preview point for interactive creation (cursor tracking)
   private previewPoint?: Point | null = null;
 
+  // Caches — invalidated in markDirty()
+  private _absPointsCache: Point[] | null = null;
+  private _boundsCache: Rect | null = null;
+  private _relativeBoundsCache: Rect | null = null;
+
   public cursor = "pointer";
 
   constructor(options: KeypointOptions) {
@@ -123,7 +128,18 @@ export class KeypointOverlay
   }
 
   private getAbsolutePoints(): Point[] {
-    return this.#relativePoints.map((p) => this.relativePointToAbsolute(p));
+    if (this._absPointsCache) return this._absPointsCache;
+    this._absPointsCache = this.#relativePoints.map((p) =>
+      this.relativePointToAbsolute(p)
+    );
+    return this._absPointsCache;
+  }
+
+  override markDirty(): void {
+    this._absPointsCache = null;
+    this._boundsCache = null;
+    this._relativeBoundsCache = null;
+    super.markDirty();
   }
 
   private getCoordinateSystem() {
@@ -139,18 +155,28 @@ export class KeypointOverlay
 
   get bounds(): Rect {
     if (this.#relativePoints.length === 0) return NO_BOUNDS;
+    if (this._boundsCache) return this._boundsCache;
 
     const pts = this.getAbsolutePoints();
-    const xs = pts.map((p) => p.x);
-    const ys = pts.map((p) => p.y);
-    const pad = KEYPOINT_HIT_RADIUS / (this.renderer?.getScale() ?? 1);
+    let minX = Infinity,
+      minY = Infinity,
+      maxX = -Infinity,
+      maxY = -Infinity;
+    for (const p of pts) {
+      if (p.x < minX) minX = p.x;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.y > maxY) maxY = p.y;
+    }
 
-    return {
-      x: Math.min(...xs) - pad,
-      y: Math.min(...ys) - pad,
-      width: Math.max(...xs) - Math.min(...xs) + pad * 2,
-      height: Math.max(...ys) - Math.min(...ys) + pad * 2,
+    const pad = KEYPOINT_HIT_RADIUS / (this.renderer?.getScale() ?? 1);
+    this._boundsCache = {
+      x: minX - pad,
+      y: minY - pad,
+      width: maxX - minX + pad * 2,
+      height: maxY - minY + pad * 2,
     };
+    return this._boundsCache;
   }
 
   set bounds(_bounds: Rect | undefined) {
@@ -161,16 +187,26 @@ export class KeypointOverlay
 
   get relativeBounds(): Rect {
     if (this.#relativePoints.length === 0) return NO_BOUNDS;
+    if (this._relativeBoundsCache) return this._relativeBoundsCache;
 
-    const xs = this.#relativePoints.map((p) => p[0]);
-    const ys = this.#relativePoints.map((p) => p[1]);
+    let minX = Infinity,
+      minY = Infinity,
+      maxX = -Infinity,
+      maxY = -Infinity;
+    for (const p of this.#relativePoints) {
+      if (p[0] < minX) minX = p[0];
+      if (p[0] > maxX) maxX = p[0];
+      if (p[1] < minY) minY = p[1];
+      if (p[1] > maxY) maxY = p[1];
+    }
 
-    return {
-      x: Math.min(...xs),
-      y: Math.min(...ys),
-      width: Math.max(...xs) - Math.min(...xs),
-      height: Math.max(...ys) - Math.min(...ys),
+    this._relativeBoundsCache = {
+      x: minX,
+      y: minY,
+      width: maxX - minX,
+      height: maxY - minY,
     };
+    return this._relativeBoundsCache;
   }
 
   isDragging(): boolean {
@@ -201,33 +237,37 @@ export class KeypointOverlay
 
     const absPoints = this.getAbsolutePoints();
     const strokeColor = style.strokeStyle || "#ffffff";
+    const lineWidth = style.lineWidth || STROKE_WIDTH;
 
-    // 1. Draw connection edges
-    const edgeStyle: DrawStyle = {
-      strokeStyle: strokeColor,
-      lineWidth: style.lineWidth || STROKE_WIDTH,
-    };
-
+    // 1. Batch all connection edges into a single draw call
+    const edgeSegments: Array<[Point, Point]> = [];
     for (const path of this.connections) {
       for (let i = 1; i < path.length; i++) {
         const from = absPoints[path[i - 1]];
         const to = absPoints[path[i]];
         if (from && to) {
-          renderer.drawLine(from, to, edgeStyle, this.containerId);
+          edgeSegments.push([from, to]);
         }
       }
 
-      // Close the polygon if requested
       if (this.closed && path.length > 2) {
         const first = absPoints[path[0]];
         const last = absPoints[path[path.length - 1]];
         if (first && last) {
-          renderer.drawLine(last, first, edgeStyle, this.containerId);
+          edgeSegments.push([last, first]);
         }
       }
     }
 
-    // 2. Draw preview line (during interactive creation)
+    if (edgeSegments.length > 0) {
+      renderer.drawLines(
+        edgeSegments,
+        { strokeStyle: strokeColor, lineWidth },
+        this.containerId
+      );
+    }
+
+    // 2. Draw preview line (during interactive creation — dashed, separate call)
     if (this.previewPoint && absPoints.length > 0) {
       const lastPoint = absPoints[absPoints.length - 1];
       renderer.drawLine(
@@ -235,7 +275,7 @@ export class KeypointOverlay
         this.previewPoint,
         {
           strokeStyle: strokeColor,
-          lineWidth: style.lineWidth || STROKE_WIDTH,
+          lineWidth,
           dashPattern: [6, 4],
           opacity: 0.6,
         },
@@ -243,43 +283,56 @@ export class KeypointOverlay
       );
     }
 
-    // 3. Draw points
+    // 3. Batch all regular points into a single draw call
+    const pointStyle: DrawStyle = {
+      fillStyle: strokeColor,
+      strokeStyle: "#ffffff",
+      lineWidth,
+    };
+
+    const regularPoints: Point[] = [];
+    let selectedPoint: Point | undefined;
+
     for (let i = 0; i < absPoints.length; i++) {
-      const pt = absPoints[i];
-      const isSubSelected = this.selectedPointIndex === i;
-      const radius = isSubSelected ? KEYPOINT_SELECTED_RADIUS : KEYPOINT_RADIUS;
-
-      const pointStyle: DrawStyle = {
-        fillStyle: strokeColor,
-        strokeStyle: "#ffffff",
-        lineWidth: style.lineWidth || STROKE_WIDTH,
-      };
-
-      renderer.drawPoint(pt, radius, pointStyle, this.containerId);
-
-      // Draw inner highlight for sub-selected point
-      if (isSubSelected) {
-        renderer.drawPoint(
-          pt,
-          KEYPOINT_RADIUS,
-          { fillStyle: "#ffffff" },
-          this.containerId
-        );
+      if (this.selectedPointIndex === i) {
+        selectedPoint = absPoints[i];
+      } else {
+        regularPoints.push(absPoints[i]);
       }
     }
 
-    // 4. Draw label text
+    if (regularPoints.length > 0) {
+      renderer.drawPoints(
+        regularPoints,
+        KEYPOINT_RADIUS,
+        pointStyle,
+        this.containerId
+      );
+    }
+
+    // Draw selected point at larger radius + inner highlight (separate calls)
+    if (selectedPoint) {
+      renderer.drawPoint(
+        selectedPoint,
+        KEYPOINT_SELECTED_RADIUS,
+        pointStyle,
+        this.containerId
+      );
+      renderer.drawPoint(
+        selectedPoint,
+        KEYPOINT_RADIUS,
+        { fillStyle: "#ffffff" },
+        this.containerId
+      );
+    }
+
+    // 4. Draw label text (reuses cached bounds)
     if (this.label && this.label.label?.length > 0) {
       const labelBounds = this.bounds;
       if (BaseOverlay.validBounds(labelBounds)) {
-        const labelPosition = {
-          x: labelBounds.x,
-          y: labelBounds.y,
-        };
-
         renderer.drawText(
           this.label.label,
-          labelPosition,
+          { x: labelBounds.x, y: labelBounds.y },
           {
             fontColor: "#ffffff",
             backgroundColor: style.fillStyle || style.strokeStyle || "#000",

@@ -99,6 +99,20 @@ export class MockRenderer2D {
     });
   }
 
+  drawPoints(
+    centers: Point[],
+    radius: number,
+    style: DrawStyle,
+    containerId: string
+  ): void {
+    this.containers.set(containerId, {
+      type: "points",
+      centers,
+      radius,
+      style,
+    });
+  }
+
   drawLine(
     start: Point,
     end: Point,
@@ -109,6 +123,18 @@ export class MockRenderer2D {
       type: "line",
       start,
       end,
+      style,
+    });
+  }
+
+  drawLines(
+    segments: Array<[Point, Point]>,
+    style: DrawStyle,
+    containerId: string
+  ): void {
+    this.containers.set(containerId, {
+      type: "lines",
+      segments,
       style,
     });
   }

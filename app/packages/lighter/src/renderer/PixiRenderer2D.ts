@@ -542,6 +542,8 @@ export class PixiRenderer2D implements Renderer2D {
     const graphics = new PIXI.Graphics();
     const scaledRadius = radius / this.getScale();
 
+    // PixiJS v8: fill() consumes the current path, so stroke needs its own
+    // circle() call. This is intentional — not a redundant draw.
     if (style.fillStyle) {
       const { color, alpha } = parseColorWithAlpha(style.fillStyle);
       graphics.circle(center.x, center.y, scaledRadius);
@@ -558,6 +560,76 @@ export class PixiRenderer2D implements Renderer2D {
       });
       graphics.stroke();
     }
+
+    this.addToContainer(graphics, containerId);
+  }
+
+  drawPoints(
+    centers: Point[],
+    radius: number,
+    style: DrawStyle,
+    containerId: string
+  ): void {
+    if (centers.length === 0) return;
+    const graphics = new PIXI.Graphics();
+    const scaledRadius = radius / this.getScale();
+
+    const fillParsed = style.fillStyle
+      ? parseColorWithAlpha(style.fillStyle)
+      : undefined;
+    const strokeParsed = style.strokeStyle
+      ? parseColorWithAlpha(style.strokeStyle)
+      : undefined;
+
+    // PixiJS v8: fill() consumes the current path, so fill and stroke each
+    // need their own batch of circle() calls.
+    if (fillParsed) {
+      for (const center of centers) {
+        graphics.circle(center.x, center.y, scaledRadius);
+      }
+      graphics.fill({
+        color: fillParsed.color,
+        alpha: fillParsed.alpha * (style.opacity || 1),
+      });
+    }
+
+    if (strokeParsed) {
+      for (const center of centers) {
+        graphics.circle(center.x, center.y, scaledRadius);
+      }
+      graphics.setStrokeStyle({
+        width: (style.lineWidth || 1) / this.getScale(),
+        color: strokeParsed.color,
+        alpha: strokeParsed.alpha * (style.opacity || 1),
+      });
+      graphics.stroke();
+    }
+
+    this.addToContainer(graphics, containerId);
+  }
+
+  drawLines(
+    segments: Array<[Point, Point]>,
+    style: DrawStyle,
+    containerId: string
+  ): void {
+    if (segments.length === 0) return;
+    const graphics = new PIXI.Graphics();
+    const { color, alpha } = parseColorWithAlpha(
+      style.strokeStyle || "#000000"
+    );
+
+    graphics.setStrokeStyle({
+      width: style.lineWidth || 1,
+      color: color,
+      alpha: alpha * (style.opacity || 1),
+    });
+
+    for (const [start, end] of segments) {
+      graphics.moveTo(start.x, start.y);
+      graphics.lineTo(end.x, end.y);
+    }
+    graphics.stroke();
 
     this.addToContainer(graphics, containerId);
   }
