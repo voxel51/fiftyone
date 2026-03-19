@@ -69,4 +69,8 @@ export class InteractiveKeypointHandler implements InteractionHandler {
     // Finish creation — caller listens for establish event
     return true;
   }
+
+  cleanup(): void {
+    this.overlay.setPreviewPoint(null);
+  }
 }

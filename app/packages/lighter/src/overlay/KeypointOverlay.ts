@@ -225,8 +225,31 @@ export class KeypointOverlay
     return this.#relativePoints.length > 0;
   }
 
-  // ---------------------------------------------------------------------------
-  // Rendering
+  /**
+   * Collects edge segments from connections with bounds-checked indices.
+   */
+  private collectEdgeSegments(absPoints: Point[]): Array<[Point, Point]> {
+    const segments: Array<[Point, Point]> = [];
+    const len = absPoints.length;
+    for (const path of this.connections) {
+      for (let i = 1; i < path.length; i++) {
+        const fromIdx = path[i - 1];
+        const toIdx = path[i];
+        if (fromIdx >= 0 && fromIdx < len && toIdx >= 0 && toIdx < len) {
+          segments.push([absPoints[fromIdx], absPoints[toIdx]]);
+        }
+      }
+
+      if (this.closed && path.length > 2) {
+        const firstIdx = path[0];
+        const lastIdx = path[path.length - 1];
+        if (firstIdx >= 0 && firstIdx < len && lastIdx >= 0 && lastIdx < len) {
+          segments.push([absPoints[lastIdx], absPoints[firstIdx]]);
+        }
+      }
+    }
+    return segments;
+  }
   // ---------------------------------------------------------------------------
 
   protected renderImpl(renderer: Renderer2D, _renderMeta: RenderMeta): void {
@@ -240,24 +263,7 @@ export class KeypointOverlay
     const lineWidth = style.lineWidth || STROKE_WIDTH;
 
     // 1. Batch all connection edges into a single draw call
-    const edgeSegments: Array<[Point, Point]> = [];
-    for (const path of this.connections) {
-      for (let i = 1; i < path.length; i++) {
-        const from = absPoints[path[i - 1]];
-        const to = absPoints[path[i]];
-        if (from && to) {
-          edgeSegments.push([from, to]);
-        }
-      }
-
-      if (this.closed && path.length > 2) {
-        const first = absPoints[path[0]];
-        const last = absPoints[path[path.length - 1]];
-        if (first && last) {
-          edgeSegments.push([last, first]);
-        }
-      }
-    }
+    const edgeSegments = this.collectEdgeSegments(absPoints);
 
     if (edgeSegments.length > 0) {
       renderer.drawLines(
@@ -369,25 +375,9 @@ export class KeypointOverlay
 
     // Check proximity to connection edges
     const edgeThreshold = EDGE_THRESHOLD / scale;
-    for (const path of this.connections) {
-      for (let i = 1; i < path.length; i++) {
-        const from = absPoints[path[i - 1]];
-        const to = absPoints[path[i]];
-        if (from && to) {
-          if (distanceFromLineSegment(point, from, to) <= edgeThreshold) {
-            return CONTAINS.CONTENT;
-          }
-        }
-      }
-
-      if (this.closed && path.length > 2) {
-        const first = absPoints[path[0]];
-        const last = absPoints[path[path.length - 1]];
-        if (first && last) {
-          if (distanceFromLineSegment(point, last, first) <= edgeThreshold) {
-            return CONTAINS.CONTENT;
-          }
-        }
+    for (const [from, to] of this.collectEdgeSegments(absPoints)) {
+      if (distanceFromLineSegment(point, from, to) <= edgeThreshold) {
+        return CONTAINS.CONTENT;
       }
     }
 
@@ -406,24 +396,9 @@ export class KeypointOverlay
     }
 
     // Distance to edges
-    for (const path of this.connections) {
-      for (let i = 1; i < path.length; i++) {
-        const from = absPoints[path[i - 1]];
-        const to = absPoints[path[i]];
-        if (from && to) {
-          const d = distanceFromLineSegment(wp, from, to);
-          if (d < minDist) minDist = d;
-        }
-      }
-
-      if (this.closed && path.length > 2) {
-        const first = absPoints[path[0]];
-        const last = absPoints[path[path.length - 1]];
-        if (first && last) {
-          const d = distanceFromLineSegment(wp, last, first);
-          if (d < minDist) minDist = d;
-        }
-      }
+    for (const [from, to] of this.collectEdgeSegments(absPoints)) {
+      const d = distanceFromLineSegment(wp, from, to);
+      if (d < minDist) minDist = d;
     }
 
     return minDist;

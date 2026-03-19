@@ -14,6 +14,27 @@ import type { Point, Rect } from "../types";
 import { InteractiveDetectionHandler } from "./InteractiveDetectionHandler";
 
 /**
+ * Interface for handlers that support sub-selecting and removing individual
+ * points (e.g. keypoint overlays).
+ */
+export interface KeypointMutationHandler {
+  getSelectedPointIndex(): number | null;
+  removePoint(index: number): void;
+}
+
+function hasKeypointMutation(
+  h: InteractionHandler
+): h is InteractionHandler & KeypointMutationHandler {
+  return (
+    "getSelectedPointIndex" in h &&
+    "removePoint" in h &&
+    typeof (h as Record<string, unknown>).getSelectedPointIndex ===
+      "function" &&
+    typeof (h as Record<string, unknown>).removePoint === "function"
+  );
+}
+
+/**
  * Interface for objects that can handle interaction events.
  */
 export interface InteractionHandler {
@@ -545,15 +566,10 @@ export class InteractionManager {
       const selectedId = this.selectionManager.getSelectedIds()[0];
       if (selectedId) {
         const handler = this.handlers.find((h) => h.id === selectedId);
-        if (
-          handler &&
-          "getSelectedPointIndex" in handler &&
-          "removePoint" in handler
-        ) {
-          const kp = handler as any;
-          const idx = kp.getSelectedPointIndex();
+        if (handler && hasKeypointMutation(handler)) {
+          const idx = handler.getSelectedPointIndex();
           if (idx !== null && idx >= 0) {
-            kp.removePoint(idx);
+            handler.removePoint(idx);
             event.preventDefault();
           }
         }

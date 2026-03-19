@@ -2,21 +2,15 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import type {
-  Dimensions2D,
-  DrawStyle,
-  Point,
-  Rect,
-  TextOptions,
-} from "../types";
-import type { ImageOptions, ImageSource } from "./Renderer2D";
+import type { DrawStyle, Point, Rect, TextOptions } from "../types";
+import type { ImageOptions, ImageSource, Renderer2D } from "./Renderer2D";
 
 /**
  * Mock implementation of Renderer2D for lightweight testing and development.
  * This mock provides no-op implementations of all renderer methods, making it
  * suitable for creating lightweight lighter scenes without actual rendering.
  */
-export class MockRenderer2D {
+export class MockRenderer2D implements Renderer2D {
   private canvas: HTMLCanvasElement;
   private tickHandlers: (() => void)[] = [];
   private containers = new Map<string, any>();
@@ -75,14 +69,14 @@ export class MockRenderer2D {
     position: Point,
     options: TextOptions | undefined,
     containerId: string
-  ): Dimensions2D {
+  ): Rect {
     this.containers.set(containerId, {
       type: "text",
       text,
       position,
       options,
     });
-    return { width: text.length * 8, height: 16 };
+    return { x: position.x, y: position.y, width: text.length * 8, height: 16 };
   }
 
   drawPoint(
@@ -216,9 +210,19 @@ export class MockRenderer2D {
     return this.canvas;
   }
 
+  resetZoomPan(): void {}
+
+  zoomIn(): void {}
+
+  zoomOut(): void {}
+
   disableZoomPan(): void {}
 
   enableZoomPan(): void {}
+
+  isReady(): boolean {
+    return true;
+  }
 
   screenToWorld(screenPoint: Point): Point {
     return {

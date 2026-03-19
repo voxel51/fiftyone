@@ -18,8 +18,18 @@ function isInteractiveHandler(
   overlay: BaseOverlay | InteractionHandler
 ): overlay is InteractionHandler & { getOverlay(): BaseOverlay } {
   return (
-    "getOverlay" in overlay && typeof (overlay as any).getOverlay === "function"
+    "getOverlay" in overlay &&
+    typeof (overlay as Record<string, unknown>).getOverlay === "function"
   );
+}
+
+/**
+ * Type guard for overlays that expose a settable relativeBounds property.
+ */
+function hasRelativeBounds(
+  obj: BaseOverlay
+): obj is BaseOverlay & { relativeBounds: Rect } {
+  return "relativeBounds" in obj;
 }
 
 /**
@@ -48,12 +58,8 @@ export class AddOverlayCommand implements Undoable {
       if (this.bounds && "bounds" in spatial) {
         spatial.bounds = this.bounds;
       }
-      if (
-        this.relativeBounds &&
-        "relativeBounds" in handler &&
-        typeof (handler as any).relativeBounds !== "undefined"
-      ) {
-        (handler as any).relativeBounds = this.relativeBounds;
+      if (this.relativeBounds && hasRelativeBounds(handler)) {
+        handler.relativeBounds = this.relativeBounds;
       }
 
       interactionManager.removeHandler(this.overlay as InteractionHandler);
