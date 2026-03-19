@@ -6,7 +6,6 @@ FiftyOne Server /media route
 |
 """
 
-import logging
 import mimetypes
 import os
 import typing as t
@@ -28,8 +27,6 @@ from starlette.responses import (
 )
 
 from fiftyone.server.media_cache import is_path_allowed
-
-logger = logging.getLogger(__name__)
 
 # @todo: migrate to eta with proper is_*_mime_type() detection methods
 for _mime, _ext in (
@@ -167,12 +164,12 @@ class Media(HTTPEndpoint):
 
         response.headers["Access-Control-Allow-Origin"] = "*"
         response.headers["Access-Control-Allow-Methods"] = "GET, HEAD, OPTIONS"
-        response.headers["Access-Control-Allow-Headers"] = (
-            "Range, Content-Type, Authorization"
-        )
-        response.headers["Access-Control-Expose-Headers"] = (
-            "Accept-Ranges, Content-Range, Content-Length"
-        )
+        response.headers[
+            "Access-Control-Allow-Headers"
+        ] = "Range, Content-Type, Authorization"
+        response.headers[
+            "Access-Control-Expose-Headers"
+        ] = "Accept-Ranges, Content-Range, Content-Length"
         return response
 
     async def ranged_file_response(

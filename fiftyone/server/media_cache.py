@@ -6,12 +6,9 @@ Allowed media directory registry for path traversal prevention.
 |
 """
 
-import logging
 import os
 import threading
 from pathlib import Path
-
-logger = logging.getLogger(__name__)
 
 _lock = threading.Lock()
 _allowed_dirs = set()
