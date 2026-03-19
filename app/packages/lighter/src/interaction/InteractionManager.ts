@@ -198,12 +198,6 @@ export class InteractionManager {
   private readonly DOUBLE_CLICK_DISTANCE_THRESHOLD = 3; // pixels
 
   private currentPixelCoordinates?: Point;
-  private pendingQuickDraw?: {
-    point: Point;
-    worldPoint: Point;
-    scale: number;
-    pointerId: number;
-  };
   private readonly eventBus: EventDispatcher<LighterEventGroup>;
 
   private pendingQuickDraw?: {
