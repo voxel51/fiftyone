@@ -182,7 +182,7 @@ describe("loadModelWeights", () => {
     const result = await loadModelWeights(TEST_URL, undefined, onWarning);
 
     expect(result.byteLength).toBe(64);
-    expect(onWarning).toHaveBeenCalledWith("IndexedDB cache read failed, downloading instead: Error: blocked");
+    expect(onWarning).toHaveBeenCalledWith("IndexedDB open failed, downloading instead: Error: blocked");
   });
 
   it("Throws after all retries exhausted", async () => {

@@ -123,28 +123,32 @@ export async function loadModelWeights(
 
   try {
     db = await openDB();
-    const cached = await idbGet(db, url);
-    if (cached) {
-      onProgress?.(cached.byteLength, cached.byteLength);
-      return cached;
-    }
   } catch (err) {
-    onWarning?.(`IndexedDB cache read failed, downloading instead: ${err}`);
+    onWarning?.(`IndexedDB open failed, downloading instead: ${err}`);
+    return fetchWithProgress(url, onProgress);
   }
 
   try {
+    try {
+      const cached = await idbGet(db, url);
+      if (cached) {
+        onProgress?.(cached.byteLength, cached.byteLength);
+        return cached;
+      }
+    } catch (err) {
+      onWarning?.(`IndexedDB cache read failed, downloading instead: ${err}`);
+    }
+
     const buffer = await fetchWithProgress(url, onProgress);
 
-    if (db) {
-      try {
-        await idbPut(db, url, buffer);
-      } catch (err) {
-        onWarning?.(`IndexedDB cache write failed: ${err}`);
-      }
+    try {
+      await idbPut(db, url, buffer);
+    } catch (err) {
+      onWarning?.(`IndexedDB cache write failed: ${err}`);
     }
 
     return buffer;
   } finally {
-    db?.close();
+    db.close();
   }
 }
