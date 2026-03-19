@@ -143,7 +143,7 @@ export class KeypointOverlay
     const pts = this.getAbsolutePoints();
     const xs = pts.map((p) => p.x);
     const ys = pts.map((p) => p.y);
-    const pad = KEYPOINT_RADIUS / (this.renderer?.getScale() ?? 1);
+    const pad = KEYPOINT_HIT_RADIUS / (this.renderer?.getScale() ?? 1);
 
     return {
       x: Math.min(...xs) - pad,
@@ -297,7 +297,9 @@ export class KeypointOverlay
   // ---------------------------------------------------------------------------
 
   containsPoint(point: Point): boolean {
-    return this.getContainmentLevel(point) !== CONTAINS.NONE;
+    // point is in screen space — convert to world space for distance checks
+    const worldPoint = this.renderer?.screenToWorld(point) ?? point;
+    return this.getContainmentLevel(worldPoint) !== CONTAINS.NONE;
   }
 
   getContainmentLevel(point: Point): CONTAINS {
@@ -340,12 +342,13 @@ export class KeypointOverlay
   }
 
   getMouseDistance(point: Point): number {
+    const wp = this.renderer?.screenToWorld(point) ?? point;
     const absPoints = this.getAbsolutePoints();
     let minDist = Number.POSITIVE_INFINITY;
 
     // Distance to points
     for (const pt of absPoints) {
-      const d = distance(point.x, point.y, pt.x, pt.y);
+      const d = distance(wp.x, wp.y, pt.x, pt.y);
       if (d < minDist) minDist = d;
     }
 
@@ -355,7 +358,7 @@ export class KeypointOverlay
         const from = absPoints[path[i - 1]];
         const to = absPoints[path[i]];
         if (from && to) {
-          const d = distanceFromLineSegment(point, from, to);
+          const d = distanceFromLineSegment(wp, from, to);
           if (d < minDist) minDist = d;
         }
       }
@@ -364,7 +367,7 @@ export class KeypointOverlay
         const first = absPoints[path[0]];
         const last = absPoints[path[path.length - 1]];
         if (first && last) {
-          const d = distanceFromLineSegment(point, last, first);
+          const d = distanceFromLineSegment(wp, last, first);
           if (d < minDist) minDist = d;
         }
       }
