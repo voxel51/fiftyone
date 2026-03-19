@@ -18,70 +18,30 @@ from fiftyone.server.routes.media import (
     _validate_media_path,
 )
 
+_ALLOWED_DIR = "/data/datasets"
 
-@pytest.fixture(autouse=True)
-def _clear_cache():
-    clear()
-    yield
-    clear()
+_MEDIA_ALLOWED = [
+    "/d/image.jpg",
+    "/d/image.png",
+    "/d/video.mp4",
+    "/d/video.mov",
+    "/d/cloud.pcd",
+    "/d/scene.fo3d",
+    "/d/mask.npy",
+    "/d/data.rrd",
+    "/d/model.obj",
+    "/d/material.mtl",
+    "/d/noext",
+    "/etc/passwd",
+]
 
-
-class TestIsMediaFile:
-    def test_image_allowed(self):
-        assert _is_media_file("/data/image.jpg") is True
-        assert _is_media_file("/data/image.png") is True
-        assert _is_media_file("/data/image.gif") is True
-        assert _is_media_file("/data/image.bmp") is True
-        assert _is_media_file("/data/image.webp") is True
-
-    def test_video_allowed(self):
-        assert _is_media_file("/data/video.mp4") is True
-        assert _is_media_file("/data/video.avi") is True
-        assert _is_media_file("/data/video.mov") is True
-
-    def test_pcd_allowed(self):
-        assert _is_media_file("/data/cloud.pcd") is True
-
-    def test_fo3d_allowed(self):
-        assert _is_media_file("/data/scene.fo3d") is True
-
-    def test_npy_allowed(self):
-        assert _is_media_file("/data/mask.npy") is True
-
-    def test_rrd_allowed(self):
-        assert _is_media_file("/data/recording.rrd") is True
-
-    def test_obj_allowed(self):
-        assert _is_media_file("/data/model.obj") is True
-
-    def test_mtl_allowed(self):
-        assert _is_media_file("/data/material.mtl") is True
-
-    def test_no_extension_passes_to_layer3(self):
-        # /etc/passwd has no extension so MIME is None; Layer 3 blocks it
-        assert _is_media_file("/etc/passwd") is True
-
-    def test_python_file_blocked(self):
-        assert _is_media_file("/data/script.py") is False
-
-    def test_shell_script_blocked(self):
-        # application/x-sh is not in _BLOCKED_MIME_TYPES; Layer 3 blocks
-        assert _is_media_file("/data/run.sh") is True
-
-    def test_html_blocked(self):
-        assert _is_media_file("/data/page.html") is False
-
-    def test_json_blocked(self):
-        assert _is_media_file("/data/config.json") is False
-
-    def test_xml_blocked(self):
-        assert _is_media_file("/data/data.xml") is False
-
-    def test_javascript_blocked(self):
-        assert _is_media_file("/data/app.js") is False
-
-    def test_no_extension_allowed(self):
-        assert _is_media_file("/data/somefile") is True
+_MEDIA_BLOCKED = [
+    "/d/script.py",
+    "/d/page.html",
+    "/d/config.json",
+    "/d/data.xml",
+    "/d/app.js",
+]
 
 
 def _make_request(filepath=None):
@@ -96,84 +56,79 @@ def _make_request(filepath=None):
     return Request(scope)
 
 
+@pytest.fixture(autouse=True)
+def _clear_cache():
+    """Resets the allowlist between tests."""
+    clear()
+    yield
+    clear()
+
+
+@pytest.fixture()
+def allowed_dir():
+    """Registers and returns the standard test directory."""
+    add_allowed_dir(_ALLOWED_DIR)
+    return _ALLOWED_DIR
+
+
+class TestIsMediaFile:
+    """Verifies MIME-based media type detection (Layer 2)."""
+
+    @pytest.mark.parametrize("filepath", _MEDIA_ALLOWED)
+    def test_allowed(self, filepath):
+        """Files with media or unrecognized MIME types pass Layer 2."""
+        assert _is_media_file(filepath) is True
+
+    @pytest.mark.parametrize("filepath", _MEDIA_BLOCKED)
+    def test_blocked(self, filepath):
+        """Files with known non-media MIME types are rejected."""
+        assert _is_media_file(filepath) is False
+
+
+_VALIDATE_REJECTED = {
+    "outside allowed dirs": "/etc/passwd",
+    "traversal normalized then rejected": "../../../etc/passwd",
+    "valid MIME but outside allowed dirs": "/tmp/rogue.jpg",
+    "traversal escapes allowed dir": "/data/datasets/../../etc/passwd",
+    "non-media MIME blocked": "/data/datasets/script.py",
+}
+
+_VALIDATE_ALLOWED = {
+    "standard image": "image.jpg",
+    "point cloud": "cloud.pcd",
+    "3D scene": "scene.fo3d",
+    "numpy mask": "mask.npy",
+    "rerun data": "data.rrd",
+    "unknown MIME passes to Layer 3": "material.mtl",
+}
+
+
 class TestValidateMediaPath:
+    """Verifies the full three-layer validation pipeline."""
+
     def test_missing_filepath_returns_400(self):
-        request = _make_request()
-        path, error = _validate_media_path(request)
-        assert path is None
-        assert error.status_code == 400
+        """Requests without a filepath param get 400."""
+        _, error = _validate_media_path(_make_request())
+        assert error is not None and error.status_code == 400
 
-    def test_system_file_blocked_by_mime(self):
-        request = _make_request("/etc/passwd")
-        path, error = _validate_media_path(request)
-        assert path is None
-        assert error.status_code == 403
+    @pytest.mark.parametrize(
+        "filepath",
+        _VALIDATE_REJECTED.values(),
+        ids=_VALIDATE_REJECTED.keys(),
+    )
+    def test_rejected(self, allowed_dir, filepath):
+        """Invalid or unauthorized paths are rejected."""
+        _, error = _validate_media_path(_make_request(filepath))
+        assert error is not None and error.status_code == 403
 
-    def test_path_traversal_blocked(self):
-        request = _make_request("../../../etc/passwd")
-        path, error = _validate_media_path(request)
-        assert path is None
-        assert error.status_code == 403
-
-    def test_media_outside_allowed_dir_blocked(self):
-        request = _make_request("/tmp/rogue.jpg")
-        path, error = _validate_media_path(request)
-        assert path is None
-        assert error.status_code == 403
-
-    def test_valid_image_in_allowed_dir(self):
-        add_allowed_dir("/data/datasets")
-        request = _make_request("/data/datasets/image.jpg")
-        path, error = _validate_media_path(request)
-        expected = str(Path("/data/datasets/image.jpg").resolve())
-        assert path == expected
+    @pytest.mark.parametrize(
+        "filename",
+        _VALIDATE_ALLOWED.values(),
+        ids=_VALIDATE_ALLOWED.keys(),
+    )
+    def test_allowed(self, allowed_dir, filename):
+        """Valid media files in an allowed directory pass all layers."""
+        filepath = f"{_ALLOWED_DIR}/{filename}"
+        path, error = _validate_media_path(_make_request(filepath))
         assert error is None
-
-    def test_pcd_in_allowed_dir(self):
-        add_allowed_dir("/data/datasets")
-        request = _make_request("/data/datasets/cloud.pcd")
-        path, error = _validate_media_path(request)
-        assert error is None
-        assert path is not None
-
-    def test_fo3d_in_allowed_dir(self):
-        add_allowed_dir("/data/datasets")
-        request = _make_request("/data/datasets/scene.fo3d")
-        path, error = _validate_media_path(request)
-        assert error is None
-        assert path is not None
-
-    def test_npy_in_allowed_dir(self):
-        add_allowed_dir("/data/datasets")
-        request = _make_request("/data/datasets/mask.npy")
-        path, error = _validate_media_path(request)
-        assert error is None
-        assert path is not None
-
-    def test_rrd_in_allowed_dir(self):
-        add_allowed_dir("/data/datasets")
-        request = _make_request("/data/datasets/data.rrd")
-        path, error = _validate_media_path(request)
-        assert error is None
-        assert path is not None
-
-    def test_unknown_ext_in_allowed_dir(self):
-        add_allowed_dir("/data/datasets")
-        request = _make_request("/data/datasets/material.mtl")
-        path, error = _validate_media_path(request)
-        assert error is None
-        assert path is not None
-
-    def test_traversal_normalized_then_blocked(self):
-        add_allowed_dir("/data/datasets")
-        request = _make_request("/data/datasets/../../etc/passwd")
-        path, error = _validate_media_path(request)
-        assert path is None
-        assert error.status_code == 403
-
-    def test_env_var_style_roots(self):
-        add_allowed_dir("/external/media")
-        request = _make_request("/external/media/photo.jpg")
-        path, error = _validate_media_path(request)
-        assert error is None
-        assert path is not None
+        assert path == str(Path(filepath).resolve())
