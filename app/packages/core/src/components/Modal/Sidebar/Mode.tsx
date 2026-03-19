@@ -37,11 +37,6 @@ const Mode = () => {
   const theme = useTheme();
   const background = { background: theme.background.level1 };
   const text = { color: theme.text.secondary };
-  const editing = useAtomValue(isEditing);
-
-  if (editing) {
-    return null;
-  }
 
   return (
     <Container>

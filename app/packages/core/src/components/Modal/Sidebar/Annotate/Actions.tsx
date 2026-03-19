@@ -20,14 +20,6 @@ import {
 } from "@fiftyone/utilities";
 import PolylineIcon from "@mui/icons-material/Timeline";
 import CuboidIcon from "@mui/icons-material/ViewInAr";
-import {
-  Button,
-  Size,
-  Text,
-  TextColor,
-  TextVariant,
-  Variant,
-} from "@voxel51/voodo";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { useRecoilValue } from "recoil";
@@ -37,8 +29,6 @@ import { editing } from "./Edit";
 import { fieldsOfType } from "./Edit/state";
 import useCreate from "./Edit/useCreate";
 import { useQuickDraw } from "./Edit/useQuickDraw";
-import useCanManageSchema from "./useCanManageSchema";
-import useShowModal from "./useShowModal";
 
 const ActionsDiv = styled.div`
   align-items: center;
@@ -382,23 +372,11 @@ export const ThreeDCuboids = () => {
   );
 };
 
-const Schema = () => {
-  const showModal = useShowModal();
-
-  return (
-    <Button variant={Variant.Borderless} size={Size.Sm} onClick={showModal}>
-      Schema
-    </Button>
-  );
-};
-
 const Actions = () => {
   // This checks if media type of the dataset resolved to 3d
   const is3dDataset = useRecoilValue(is3DDataset);
   // This checks if a 3d sample is pinned - is true when media type is `group` with a 3d slice pinned
   const is3dSamplePinned = useRecoilValue(pinned3d);
-
-  const canManage = useCanManageSchema();
 
   const areThreedActionsVisible = is3dDataset || is3dSamplePinned;
 
@@ -421,18 +399,6 @@ const Actions = () => {
           <Redo />
         </ItemRight>
       </Row>
-      {canManage && (
-        <Row>
-          <ItemLeft style={{ width: "50%" }}>
-            <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
-              Click labels to edit
-            </Text>
-          </ItemLeft>
-          <ItemRight style={{ width: "50%" }}>
-            <Schema />
-          </ItemRight>
-        </Row>
-      )}
     </ActionsDiv>
   );
 };
