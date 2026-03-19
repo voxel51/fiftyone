@@ -119,13 +119,26 @@ class Hunyuan3DModel(fout.TorchImageModel):
         if not self._output_dir_initialized:
             if self._output_dir is None:
                 self._output_dir = tempfile.mkdtemp(prefix="hunyuan3d_")
+                self._owns_output_dir = True
                 logger.warning(
                     "No output_dir provided; outputs will be written to "
                     "temporary directory '%s'",
                     self._output_dir,
                 )
+            else:
+                self._owns_output_dir = False
             os.makedirs(self._output_dir, exist_ok=True)
             self._output_dir_initialized = True
+
+    def cleanup(self):
+        """Remove the temporary output directory if one was created."""
+        if getattr(self, "_owns_output_dir", False) and self._output_dir:
+            import shutil
+            shutil.rmtree(self._output_dir, ignore_errors=True)
+            self._output_dir_initialized = False
+
+    def __del__(self):
+        self.cleanup()
 
     def _to_pil(self, img):
         """Convert input to PIL Image if needed.
