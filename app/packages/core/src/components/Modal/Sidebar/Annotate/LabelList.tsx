@@ -40,16 +40,16 @@ export default function AnnotateSidebar() {
   // In generated views, only the edit panel should be visible
   if (isEditingValue || isGenerated) return null;
 
+  const headerStyle = {
+    display: "flex",
+    justifyContent: "space-between",
+    marginInline: "1rem",
+    paddingBottom: "0.5rem",
+  };
+
   return (
     <>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          marginInline: "1rem",
-          paddingBottom: "0.5rem",
-        }}
-      >
+      <div style={headerStyle}>
         <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
           Click labels to edit
         </Text>
