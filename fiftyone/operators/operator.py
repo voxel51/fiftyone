@@ -136,6 +136,7 @@ class Operator(object):
 
         self._builtin = _builtin
         self._plugin_secrets = None
+        self._optional_plugin_secrets = set()
         self.plugin_name = plugin_name
 
     @property

@@ -194,6 +194,16 @@ class PluginContext(object):
                 instance.plugin_name = self.name
                 if self.secrets:
                     instance.add_secrets(self.secrets)
+
+                    raw = self.plugin_definition._metadata.get("secrets", [])
+                    optional = {
+                        s["key"]
+                        for s in raw
+                        if isinstance(s, dict) and not s.get("required", True)
+                    }
+                    if optional:
+                        instance._optional_plugin_secrets = optional
+
                 self.instances.append(instance)
         except:
             logger.warning(

@@ -217,3 +217,42 @@ def test_github_repository_parse_url():
     expected = {"user": "USER", "repo": "REPO", "ref": "COMMIT"}
     params = foug.GitHubRepository.parse_url(url)
     assert params == expected
+
+
+class TestPluginDefinitionSecretsParsing:
+    """PluginDefinition.secrets should extract keys from both formats."""
+
+    def _make_definition(self, metadata):
+        with mock.patch("os.path.isdir", return_value=True):
+            return fpd.PluginDefinition("/fake/dir", metadata)
+
+    def test_secrets_plain_strings_backward_compat(self):
+        defn = self._make_definition(
+            {"name": "test", "secrets": ["KEY_A", "KEY_B"]}
+        )
+        assert defn.secrets == ["KEY_A", "KEY_B"]
+
+    def test_secrets_dict_format(self):
+        defn = self._make_definition(
+            {
+                "name": "test",
+                "secrets": [
+                    {"key": "KEY_A", "required": False},
+                    {"key": "KEY_B"},
+                ],
+            }
+        )
+        assert defn.secrets == ["KEY_A", "KEY_B"]
+
+    def test_secrets_mixed_format(self):
+        defn = self._make_definition(
+            {
+                "name": "test",
+                "secrets": [
+                    "KEY_A",
+                    {"key": "KEY_B", "required": False},
+                    "KEY_C",
+                ],
+            }
+        )
+        assert defn.secrets == ["KEY_A", "KEY_B", "KEY_C"]

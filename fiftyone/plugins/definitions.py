@@ -202,7 +202,10 @@ class PluginDefinition(object):
     @property
     def secrets(self):
         """A list of required secrets for the plugin."""
-        return self._metadata.get("secrets")
+        raw = self._metadata.get("secrets")
+        if not raw:
+            return raw
+        return [s if isinstance(s, str) else s["key"] for s in raw]
 
     def to_dict(self):
         """Returns a JSON dict representation of the plugin metadata.

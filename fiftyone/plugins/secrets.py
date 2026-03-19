@@ -19,6 +19,7 @@ class PluginSecretsResolver:
 
     _instance = None
     _registered_secrets = {}
+    _optional_secrets = {}
 
     def __new__(cls):
         if cls._instance is None:
@@ -50,9 +51,14 @@ class PluginSecretsResolver:
         return keys
 
     def register_operator(
-        self, operator_uri: str, required_secrets: typing.List[str]
+        self,
+        operator_uri: str,
+        required_secrets: typing.List[str],
+        optional_keys: typing.Set[str] = None,
     ) -> None:
         self._registered_secrets[operator_uri] = required_secrets
+        if optional_keys:
+            self._optional_secrets[operator_uri] = optional_keys
 
     def client(self) -> fois.ISecretProvider:
         if not self._instance:
@@ -77,7 +83,11 @@ class PluginSecretsResolver:
         # pylint: disable=no-member
         valid_keys = self._validate_keys(keys, operator_uri)
         if not valid_keys:
-            return None
+            return {}
+
+        optional = self._optional_secrets.get(operator_uri)
+        if optional:
+            kwargs["optional_keys"] = optional
 
         resolved_secrets = await self.client.get_multiple(keys, **kwargs)
         return resolved_secrets
@@ -118,6 +128,10 @@ class PluginSecretsResolver:
         valid_keys = self._validate_keys(key, operator_uri)
         if not valid_keys:
             return None
+
+        optional = self._optional_secrets.get(operator_uri)
+        if optional and key in optional:
+            kwargs["optional"] = True
 
         return self.client.get_sync(key, **kwargs)
 

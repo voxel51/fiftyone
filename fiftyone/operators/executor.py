@@ -430,6 +430,7 @@ async def prepare_operator_executor(
         delegated_operation_id=delegated_operation_id,
         operator_uri=operator_uri,
         required_secrets=operator._plugin_secrets,
+        optional_secrets=operator._optional_plugin_secrets,
         pipeline=pipeline_ctx,
     )
 
@@ -551,6 +552,7 @@ async def resolve_type(registry, operator_uri, request_params):
         request_params,
         operator_uri=operator_uri,
         required_secrets=operator._plugin_secrets,
+        optional_secrets=operator._optional_plugin_secrets,
     )
     await ctx.resolve_secret_values(operator._plugin_secrets)
 
@@ -596,6 +598,7 @@ async def resolve_execution_options(registry, operator_uri, request_params):
         request_params,
         operator_uri=operator_uri,
         required_secrets=operator._plugin_secrets,
+        optional_secrets=operator._optional_plugin_secrets,
     )
     await ctx.resolve_secret_values(operator._plugin_secrets)
     try:
@@ -623,6 +626,7 @@ def resolve_placement(operator, request_params):
         request_params,
         operator_uri=operator.uri,
         required_secrets=operator._plugin_secrets,
+        optional_secrets=operator._optional_plugin_secrets,
     )
     try:
         # User code
@@ -648,6 +652,7 @@ class ExecutionContext(contextlib.AbstractContextManager):
         operator_uri (None): the unique id of the operator
         required_secrets (None): the list of required secrets from the
             plugin's definition
+        optional_secrets (None): a set of secret keys that are optional
         pipeline (None): an optional :class:`PipelineExecutionContext` with
             information about the current pipeline execution, if this operator
             is being executed as part of a pipeline
@@ -661,6 +666,7 @@ class ExecutionContext(contextlib.AbstractContextManager):
         delegated_operation_id=None,
         operator_uri=None,
         required_secrets=None,
+        optional_secrets=None,
         pipeline=None,
     ):
         if request_params is None:
@@ -688,6 +694,7 @@ class ExecutionContext(contextlib.AbstractContextManager):
             self._secrets_client.register_operator(
                 operator_uri=self._operator_uri,
                 required_secrets=self._required_secret_keys,
+                optional_keys=optional_secrets,
             )
         if self.panel_id:
             self._panel_state = self.params.get("panel_state", {})
