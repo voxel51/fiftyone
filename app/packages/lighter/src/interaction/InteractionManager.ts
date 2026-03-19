@@ -6,10 +6,8 @@ import { quickDrawBridge } from "@fiftyone/core/src/components/Modal/Sidebar/Ann
 import { EventDispatcher, getEventBus } from "@fiftyone/events";
 import { TypeGuards } from "../core/Scene2D";
 import type { LighterEventGroup } from "../events";
-import {
-  BoundingBoxOverlay,
-  type MoveState,
-} from "../overlay/BoundingBoxOverlay";
+import type { BaseOverlay } from "../overlay/BaseOverlay";
+import { type MoveState } from "../overlay/BoundingBoxOverlay";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { SelectionManager } from "../selection/SelectionManager";
 import type { Point, Rect } from "../types";
@@ -21,7 +19,7 @@ import { InteractiveDetectionHandler } from "./InteractiveDetectionHandler";
 export interface InteractionHandler {
   readonly id: string;
   readonly cursor?: string;
-  overlay?: BoundingBoxOverlay;
+  overlay?: BaseOverlay;
 
   /**
    * Returns true if the handler is being dragged or resized.
