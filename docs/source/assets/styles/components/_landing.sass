@@ -1364,3 +1364,82 @@
 
   .capability-image
     max-width: 100%
+
+
+// --- Install CTA block (v3) ---
+
+.install-cta
+  text-align: center
+  padding: 24px 0 32px
+  max-width: 500px
+  margin: 0 auto
+
+.install-code
+  display: inline-flex
+  align-items: center
+  gap: 12px
+  padding: 10px 16px
+  background: #1e1e1e
+  border-radius: 8px
+  margin-bottom: 12px
+
+  code
+    color: #d4d4d4
+    font-size: 0.95rem
+    font-family: $font-family-monospace
+    background: transparent
+    padding: 0
+
+.copy-btn
+  padding: 4px 12px
+  border: 1px solid rgba(255, 255, 255, 0.2)
+  border-radius: 4px
+  background: transparent
+  color: rgba(255, 255, 255, 0.7)
+  font-size: 0.75rem
+  cursor: pointer
+  transition: background $transition-normal, color $transition-normal
+
+  &:hover
+    background: rgba(255, 255, 255, 0.1)
+    color: $white
+
+.install-guide-link
+  display: block
+  font-size: 0.85rem
+  color: $voxel-primary
+  text-decoration: none
+
+  &:hover
+    text-decoration: underline
+
+// --- Pill NEW badge (v3) ---
+
+.quick-action-pill.pill-new
+  position: relative
+
+  &::after
+    content: "NEW"
+    font-size: 0.55rem
+    background: $voxel-primary
+    color: $white
+    padding: 1px 5px
+    border-radius: 4px
+    margin-left: 6px
+    font-weight: 700
+    vertical-align: middle
+    letter-spacing: 0.5px
+
+// --- Keyboard shortcut badge in search bar (v3) ---
+
+.hero-shortcut-badge
+  display: inline-block
+  padding: 2px 8px
+  border: 1px solid var(--pst-border-color)
+  border-radius: 4px
+  background: var(--color-background, #f1ecea)
+  color: var(--pst-color-text-secondary)
+  font-size: 0.75rem
+  font-family: $font-family-monospace
+  margin-left: auto
+  cursor: pointer

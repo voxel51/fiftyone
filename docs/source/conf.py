@@ -189,7 +189,7 @@ html_theme = "pydata_sphinx_theme"
 html_theme_options = {
     "navbar_start": ["navbar-logo"],
     "navbar_center": ["navbar-links"],
-    "navbar_end": ["book-a-demo"],
+    "navbar_end": ["theme-switcher", "book-a-demo"],
     "navbar_align": "left",
     "navbar_persistent": [],
     "footer_start": ["copyright"],
