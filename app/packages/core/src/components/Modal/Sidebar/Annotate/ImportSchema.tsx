@@ -20,7 +20,7 @@ import RequiredFieldPrompt from "./RequiredFieldPrompt";
 import { activeLabelSchemas } from "./state";
 import useCanManageSchema from "./useCanManageSchema";
 import type { RequiredField } from "./useSourceFieldToActivate";
-import useShowModal from "./useShowModal";
+import { useSchemaManagerModal } from "./SchemaManager/hooks";
 
 const DISABLED_DEFAULT =
   "Annotation is not yet supported for this type of media or view.";
@@ -113,7 +113,7 @@ const ImportSchema = (
   }
 ) => {
   const canManage = useCanManageSchema();
-  const showModal = useShowModal();
+  const { open: showModal } = useSchemaManagerModal();
 
   const showRequiredFieldPrompt = requiredField != null && !disabled;
 

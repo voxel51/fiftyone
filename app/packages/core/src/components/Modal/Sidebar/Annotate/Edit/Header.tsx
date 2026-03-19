@@ -14,7 +14,7 @@ import { labels } from "../useLabels";
 import * as fos from "@fiftyone/state";
 import { isGeneratedView } from "@fiftyone/state";
 import { useRecoilValue } from "recoil";
-import { showModal } from "../state";
+import { useSchemaManagerModal } from "../SchemaManager/hooks";
 import {
   currentFieldIsReadOnlyAtom,
   currentOverlay,
@@ -41,11 +41,11 @@ const LabelHamburgerMenu = () => {
   // Permission and read-only state
   const canEditLabels = useRecoilValue(fos.canEditLabels);
   const currentFieldIsReadOnly = useAtomValue(currentFieldIsReadOnlyAtom);
-  const setShowSchemaManager = useSetAtom(showModal);
+  const { open: openSchemaManager } = useSchemaManagerModal();
   const isGenerated = useRecoilValue(isGeneratedView);
 
   const handleOpenSchemaManager = () => {
-    setShowSchemaManager(true);
+    openSchemaManager();
     setOpen(false);
   };
 

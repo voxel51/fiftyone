@@ -11,7 +11,7 @@ import React from "react";
 import styled from "styled-components";
 import { activeSchemaTab } from "../state";
 import useCanManageSchema from "../useCanManageSchema";
-import useShowModal from "../useShowModal";
+import { useSchemaManagerModal } from "../SchemaManager/hooks";
 import { editing } from "./state";
 
 const Container = styled.div`
@@ -33,7 +33,7 @@ const ICONS = {
 
 const AddSchema = ({ type }: { type: string }) => {
   const canManage = useCanManageSchema();
-  const showModal = useShowModal();
+  const { open: showModal } = useSchemaManagerModal();
   const setActiveTab = useSetAtom(activeSchemaTab);
   const Icon = ICONS[type];
   const setEditing = useSetAtom(editing);

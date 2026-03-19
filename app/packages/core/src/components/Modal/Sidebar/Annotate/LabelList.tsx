@@ -18,7 +18,7 @@ import LoadingEntry from "./LoadingEntry";
 import PrimitiveEntry from "./PrimitiveEntry";
 import useEntries from "./useEntries";
 import { usePrimitivesCount } from "./usePrimitivesCount";
-import useShowModal from "./useShowModal";
+import { useSchemaManagerModal } from "./SchemaManager/hooks";
 import useCanManageSchema from "./useCanManageSchema";
 
 const EmptyLabelsContainer = styled.div`
@@ -33,7 +33,7 @@ export default function AnnotateSidebar() {
   usePrimitivesCount();
   const isEditingValue = useAtomValue(isEditing);
   const isGenerated = useRecoilValue(isGeneratedView);
-  const showSchemaManager = useShowModal();
+  const { open: showSchemaManager } = useSchemaManagerModal();
   const canManage = useCanManageSchema();
 
   // Don't show label list in edit mode or in generated views (patches/clips/frames)

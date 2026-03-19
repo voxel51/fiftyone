@@ -26,8 +26,8 @@ import {
   useNewFieldMode,
   useSchemaEditorGUIJSONToggle,
   useSchemaManagerCleanup,
+  useSchemaManagerModal,
   useSelectedFieldCounts,
-  useShowSchemaManagerModal,
 } from "./hooks";
 import NewFieldSchema from "./NewFieldSchema";
 import {
@@ -43,8 +43,10 @@ export { ModalHeader as Header } from "./styled";
 
 const Heading = () => {
   const { field, setField } = useCurrentField();
-  const { isNewField: newFieldMode, setIsNewField: setNewFieldMode } =
-    useNewFieldMode();
+  const {
+    isNewField: newFieldMode,
+    setIsNewField: setNewFieldMode,
+  } = useNewFieldMode();
 
   if (newFieldMode) {
     return (
@@ -104,8 +106,10 @@ const Page = () => {
 const SchemaManagerFooter = () => {
   const field = useCurrentFieldValue();
   const { tab } = useSchemaEditorGUIJSONToggle();
-  const { activeCount: activeSelectedCount, hiddenCount: hiddenSelectedCount } =
-    useSelectedFieldCounts();
+  const {
+    activeCount: activeSelectedCount,
+    hiddenCount: hiddenSelectedCount,
+  } = useSelectedFieldCounts();
   const activateFields = useActivateFields();
   const deactivateFields = useDeactivateFields();
 
@@ -179,7 +183,7 @@ const Modal = () => {
     }
     return el;
   }, []);
-  const setShowModal = useShowSchemaManagerModal();
+  const { close: closeModal } = useSchemaManagerModal();
 
   useEffect(() => {
     element.style.display = "block";
@@ -190,7 +194,7 @@ const Modal = () => {
   }, [element]);
 
   return createPortal(
-    <ModalBackground onClick={() => setShowModal(false)}>
+    <ModalBackground onClick={() => closeModal()}>
       <ModalContainer
         data-cy="schema-manager"
         onClick={(e) => e.stopPropagation()}
@@ -202,7 +206,7 @@ const Modal = () => {
             borderless
             size={Size.Sm}
             data-cy="close-schema-manager"
-            onClick={() => setShowModal(false)}
+            onClick={() => closeModal()}
             style={{ marginRight: "14px" }}
           >
             <Icon

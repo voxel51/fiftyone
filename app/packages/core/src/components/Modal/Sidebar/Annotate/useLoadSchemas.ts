@@ -1,18 +1,18 @@
 import { useOperatorExecutor } from "@fiftyone/operators";
 import { useSetAtom } from "jotai";
 import { useCallback, useEffect } from "react";
+import { useSchemaManagerModal } from "./SchemaManager/hooks";
 import {
   activeLabelSchemas,
   activePathsOrder,
   labelSchemasData,
-  showModal,
 } from "./state";
 
 export default function useLoadSchemas() {
   const setData = useSetAtom(labelSchemasData);
   const setActive = useSetAtom(activeLabelSchemas);
   const setActivePathsOrder = useSetAtom(activePathsOrder);
-  const setShowModal = useSetAtom(showModal);
+  const { close: closeModal } = useSchemaManagerModal();
   const get = useOperatorExecutor("get_label_schemas");
 
   useEffect(() => {
@@ -35,7 +35,7 @@ export default function useLoadSchemas() {
 
     // Reset paths order and close modal
     setActivePathsOrder(null);
-    setShowModal(false);
+    closeModal();
 
     get.execute({});
   }, []);

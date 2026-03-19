@@ -7,8 +7,12 @@ vi.mock("./useCanManageSchema", () => ({
   default: vi.fn(() => true),
 }));
 
-vi.mock("./useShowModal", () => ({
-  default: vi.fn(() => vi.fn()),
+vi.mock("./SchemaManager/hooks", () => ({
+  useSchemaManagerModalState: vi.fn(() => ({
+    isOpen: false,
+    open: vi.fn(),
+    close: vi.fn(),
+  })),
 }));
 
 vi.mock("./RequiredFieldPrompt", () => ({

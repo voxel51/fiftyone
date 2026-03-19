@@ -33,7 +33,7 @@ import {
   labelSchemaData,
   labelSchemasData,
   removeFromActiveSchemas,
-  showModal,
+  showSchemaManagerAtom,
 } from "../state";
 import {
   draftJsonContent,
@@ -84,17 +84,10 @@ export const useSetCurrentField = () => {
  * Hook to control the schema manager modal visibility
  */
 export const useSchemaManagerModal = () => {
-  const [isOpen, setIsOpen] = useAtom(showModal);
+  const [isOpen, setIsOpen] = useAtom(showSchemaManagerAtom);
   const open = useCallback(() => setIsOpen(true), [setIsOpen]);
   const close = useCallback(() => setIsOpen(false), [setIsOpen]);
-  return { isOpen, setIsOpen, open, close };
-};
-
-/**
- * Hook to show the schema manager modal
- */
-export const useShowSchemaManagerModal = () => {
-  return useSetAtom(showModal);
+  return { isOpen, open, close };
 };
 
 // =============================================================================
@@ -479,7 +472,7 @@ export const useFullSchemaEditor = () => {
   const [errors, setErrors] = useAtom(jsonValidationErrors);
   const [isValidating, setIsValidating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const setShowModal = useSetAtom(showModal);
+  const { close: closeModal } = useSchemaManagerModal();
   const setMessage = useNotification();
 
   const { validateSchemas, updateSchema: updateSchemaOp } = useSchemaManager();
@@ -598,7 +591,7 @@ export const useFullSchemaEditor = () => {
         msg: "Schema changes saved",
         variant: "success",
       });
-      setShowModal(false);
+      closeModal();
     } catch (e) {
       setIsSaving(false);
       setMessage({
@@ -613,7 +606,7 @@ export const useFullSchemaEditor = () => {
     setDraftJson,
     setErrors,
     setMessage,
-    setShowModal,
+    closeModal,
   ]);
 
   const discard = useCallback(() => {
