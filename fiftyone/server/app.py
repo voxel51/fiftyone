@@ -169,8 +169,7 @@ async def startup_event():
     add_allowed_dir(fo.config.model_zoo_dir)
 
     for root in foc.MEDIA_ALLOWED_ROOTS.split(","):
-        root = root.strip()
-        if root:
+        if root := root.strip():
             add_allowed_dir(root)
 
     if is_notification_service_disabled():
