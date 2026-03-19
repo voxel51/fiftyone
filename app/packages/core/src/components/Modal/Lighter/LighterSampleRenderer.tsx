@@ -93,11 +93,9 @@ export const LighterSampleRenderer = ({
       //     ],
       //   },
       //   connections: [
-      //     [0, 1], // head → torso
-      //     [1, 2], // torso → left hand
-      //     [1, 3], // torso → right hand
-      //     [1, 4], // torso → left foot
-      //     [1, 5], // torso → right foot
+      //     [0, 1],    // head → torso
+      //     [2, 1, 3], // left hand → torso → right hand
+      //     [4, 1, 5], // left foot → torso → right foot
       //   ],
       //   closed: false,
       // });
