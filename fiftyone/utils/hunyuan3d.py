@@ -17,6 +17,7 @@ from PIL import Image
 import torch
 
 import fiftyone.core.labels as fol
+import fiftyone.core.threed as fo3d
 import fiftyone.core.utils as fou
 import fiftyone.utils.torch as fout
 import fiftyone.zoo.models as fozm
@@ -118,6 +119,11 @@ class Hunyuan3DModel(fout.TorchImageModel):
         if not self._output_dir_initialized:
             if self._output_dir is None:
                 self._output_dir = tempfile.mkdtemp(prefix="hunyuan3d_")
+                logger.warning(
+                    "No output_dir provided; outputs will be written to "
+                    "temporary directory '%s'",
+                    self._output_dir,
+                )
             os.makedirs(self._output_dir, exist_ok=True)
             self._output_dir_initialized = True
 
@@ -152,7 +158,7 @@ class Hunyuan3DModel(fout.TorchImageModel):
         raise TypeError("Unsupported image type: %s" % type(img).__name__)
 
     def _export_mesh(self, mesh):
-        """Export mesh to disk and return a Label."""
+        """Export mesh to disk and return a Classification with viewable scene."""
         self._ensure_output_dir()
 
         mesh_id = uuid.uuid4().hex[:12]
@@ -161,9 +167,30 @@ class Hunyuan3DModel(fout.TorchImageModel):
         )
         mesh.export(mesh_path)
 
-        return fol.Label(
+        mesh_filename = "mesh_%s.%s" % (mesh_id, self._output_format)
+        _mesh_types = {
+            "obj": fo3d.ObjMesh,
+            "stl": fo3d.StlMesh,
+            "ply": fo3d.PlyMesh,
+            "fbx": fo3d.FbxMesh,
+            "gltf": fo3d.GltfMesh,
+            "glb": fo3d.GltfMesh,
+        }
+        mesh_cls = _mesh_types.get(self._output_format, fo3d.ObjMesh)
+        scene = fo3d.Scene()
+        scene.add(mesh_cls(
+            "mesh",
+            mesh_filename,
+        ))
+        scene_path = os.path.join(
+            self._output_dir, "scene_%s.fo3d" % mesh_id
+        )
+        scene.write(scene_path)
+
+        return fol.Classification(
             label="3d_mesh",
             mesh_path=mesh_path,
+            scene_path=scene_path,
             vertices=mesh.vertices.shape[0],
             faces=mesh.faces.shape[0],
         )
