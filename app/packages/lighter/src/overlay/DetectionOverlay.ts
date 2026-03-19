@@ -241,7 +241,9 @@ export class DetectionOverlay
       );
     }
 
-    if (this.label && this.label.label?.length > 0) {
+    const showLabel = !hasMask || hoverStrokeColor || overlayStrokeColor;
+
+    if (this.label && this.label.label?.length > 0 && showLabel) {
       const offset = style.lineWidth
         ? style.lineWidth / renderer.getScale() / 2
         : 0;
