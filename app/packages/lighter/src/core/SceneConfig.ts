@@ -15,6 +15,16 @@ export interface SceneOptions {
   showOverlays?: boolean;
   /** Opacity for overlays */
   alpha?: number;
+  /**
+   * Automatically zoom to the bounding box of all spatial overlays on the first render 
+   * tick after canonical media bounds and at least one spatial overlay are both available.
+   */
+  zoom?: boolean;
+  /**
+   * Fraction of the viewport to leave as empty space on each side when
+   * applying auto-zoom. Defaults to 0 if not specified.
+   */
+  zoomPad?: number;
 }
 
 /**

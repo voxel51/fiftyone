@@ -159,9 +159,18 @@ export class Scene2D {
 
   private _isDestroyed = false;
 
+  private shouldZoomToContent = false;
+  private pendingZoomPad = 0;
+  private canonicalMediaBoundsReady = false;
+
   constructor(private readonly config: Scene2DConfig) {
     this.sceneOptions = config.options;
     this.sceneId = config.sceneId;
+
+    if (config.options?.zoom) {
+      this.shouldZoomToContent = true;
+      this.pendingZoomPad = config.options.zoomPad ?? 0;
+    }
 
     this.coordinateSystem = new CoordinateSystem2D();
     this.selectionManager = new SelectionManager(this.eventChannel);
@@ -179,6 +188,7 @@ export class Scene2D {
       "lighter:canonical-media-bounds-changed",
       (event) => {
         this.coordinateSystem.updateTransform(event.bounds);
+        this.canonicalMediaBoundsReady = true;
 
         this.overlays.forEach((overlay) => {
           overlay.markDirty();
@@ -692,6 +702,16 @@ export class Scene2D {
   }
 
   /**
+   * Whether the canonical media (the image) has reported its pixel bounds.
+   * Readable synchronously on any render tick — avoids the race condition of
+   * subscribing to the `lighter:canonical-media-bounds-changed` event from
+   * React, where the event may fire before the subscriber is mounted.
+   */
+  get hasCanonicalMediaBounds(): boolean {
+    return this.canonicalMediaBoundsReady;
+  }
+
+  /**
    * Reset the scene's zoom level to 100% and clears pan translation.
    */
   resetZoomPan(): void {
@@ -971,8 +991,21 @@ export class Scene2D {
 
     this.isRenderLoopActive = true;
     this.config.renderer.addTickHandler(async () => {
+      this.preProcess();
       await this.renderFrame();
     });
+  }
+
+  /**
+   * Applies one-shot viewport mutations before each frame is drawn.
+   */
+  private preProcess(): void {
+    if (this.shouldZoomToContent && this.canonicalMediaBoundsReady) {
+      if (this.getContentBounds() !== null) {
+        this.fitToContent(this.pendingZoomPad);
+        this.shouldZoomToContent = false;
+      }
+    }
   }
 
   /**

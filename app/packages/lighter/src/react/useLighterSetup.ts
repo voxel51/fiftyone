@@ -17,7 +17,12 @@ import {
 
 // TODO: Ultimately, we'll want to remove dependency on "looker" and create our own options type
 // This type extends what fos.useLookerOptions returns to maintain compatibility during transition
-export type LighterOptions = Partial<ReturnType<typeof useLookerOptions>>;
+export type LighterOptions = Partial<ReturnType<typeof useLookerOptions>> & {
+  // Auto-zoom to spatial overlay content on the first eligible render tick.
+  zoom?: boolean;
+  // Padding applied when auto-zooming to content.
+  zoomPad?: number;
+};
 
 /**
  * Hook for setting up the Lighter library in React components.
@@ -29,7 +34,7 @@ export type LighterOptions = Partial<ReturnType<typeof useLookerOptions>>;
  * i.e., it should not change during the lifetime of the component.
  * @param options - The options for the scene.
  * @param sceneId - A unique scene ID
- * @param initialViewport - Optional zoom/pan state to apply before the first render frame,
+ * @param initialViewport - Optional zoom/pan state to apply before the first render frame.
  */
 export const useLighterSetupWithPixi = (
   stableCanvas: HTMLCanvasElement,
@@ -54,11 +59,12 @@ export const useLighterSetupWithPixi = (
     const renderer = new PixiRenderer2D(stableCanvas);
     rendererRef.current = renderer;
 
-    // Extract only the options we need for Scene2D
     const sceneOptions = {
       activePaths: options.activePaths,
       showOverlays: options.showOverlays,
       alpha: options.alpha,
+      zoom: options.zoom,
+      zoomPad: options.zoomPad,
     };
 
     const newScene = new Scene2D({

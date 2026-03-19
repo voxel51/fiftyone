@@ -20,6 +20,10 @@ import { LighterToolbar } from "./LighterToolbar";
 import { singletonCanvas } from "./SharedCanvas";
 import { useBridge } from "./useBridge";
 
+// Padding applied on each side when zooming to patch content.
+// 0.1 per side = 0.2 total. This matches Looker's zoomPad: 0.2 default.
+const DEFAULT_ZOOM_PAD = 0.1;
+
 export interface LighterSampleRendererProps {
   /** Custom CSS class name */
   className?: string;
@@ -123,19 +127,27 @@ const LighterSetupImpl = (props: {
   // Read activePaths directly from Jotai to bypass Recoil's filterPaths,
   // which strips newly created fields not yet in the GraphQL schema cache
   const jotaiActivePaths = useAtomValue(activeLabelSchemas);
-  const mergedOptions = useMemo(
-    () => ({
-      ...options,
-      activePaths: jotaiActivePaths ?? options.activePaths,
-    }),
-    [options, jotaiActivePaths]
-  );
-
-  const canvas = singletonCanvas.getCanvas(containerRef.current);
 
   const savedViewportState = modalBridge.getModalViewport();
   const initialViewport =
     savedViewportState?.sampleId === sampleId ? savedViewportState : null;
+
+  // Zoom to content only when options.zoom is set and there is no saved
+  // viewport to restore. Restoring a viewport takes precedence over auto-zoom.
+  const optionsZoom = ("zoom" in options && options.zoom) as boolean | undefined;
+  const effectiveZoom = !!optionsZoom && !initialViewport;
+
+  const mergedOptions = useMemo(
+    () => ({
+      ...options,
+      activePaths: jotaiActivePaths ?? options.activePaths,
+      zoom: effectiveZoom,
+      zoomPad: DEFAULT_ZOOM_PAD,
+    }),
+    [options, jotaiActivePaths, effectiveZoom]
+  );
+
+  const canvas = singletonCanvas.getCanvas(containerRef.current);
 
   const { scene } = useLighterSetupWithPixi(
     canvas,
