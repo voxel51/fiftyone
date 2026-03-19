@@ -183,7 +183,7 @@ const Modal = () => {
     }
     return el;
   }, []);
-  const { close: closeModal } = useSchemaManagerModal();
+  const { closeSchemaManager } = useSchemaManagerModal();
 
   useEffect(() => {
     element.style.display = "block";
@@ -194,7 +194,7 @@ const Modal = () => {
   }, [element]);
 
   return createPortal(
-    <ModalBackground onClick={() => closeModal()}>
+    <ModalBackground onClick={() => closeSchemaManager()}>
       <ModalContainer
         data-cy="schema-manager"
         onClick={(e) => e.stopPropagation()}
@@ -206,7 +206,7 @@ const Modal = () => {
             borderless
             size={Size.Sm}
             data-cy="close-schema-manager"
-            onClick={() => closeModal()}
+            onClick={() => closeSchemaManager()}
             style={{ marginRight: "14px" }}
           >
             <Icon

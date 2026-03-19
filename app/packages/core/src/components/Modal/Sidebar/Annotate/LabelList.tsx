@@ -33,7 +33,7 @@ export default function AnnotateSidebar() {
   usePrimitivesCount();
   const isEditingValue = useAtomValue(isEditing);
   const isGenerated = useRecoilValue(isGeneratedView);
-  const { open: showSchemaManager } = useSchemaManagerModal();
+  const { openSchemaManager } = useSchemaManagerModal();
   const canManage = useCanManageSchema();
 
   // Don't show label list in edit mode or in generated views (patches/clips/frames)
@@ -57,7 +57,7 @@ export default function AnnotateSidebar() {
           <Button
             variant={Variant.Borderless}
             size={Size.Sm}
-            onClick={showSchemaManager}
+            onClick={openSchemaManager}
           >
             Schema
           </Button>

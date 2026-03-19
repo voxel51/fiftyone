@@ -64,7 +64,7 @@ interface AnnotateProps {
 }
 
 const Annotate = ({ disabledReason }: AnnotateProps) => {
-  const { isOpen: showSchemaManager } = useSchemaManagerModal();
+  const { schemaManagerDisplayed } = useSchemaManagerModal();
   const loading = useAtomValue(labelSchemasData) === null;
   const isEditingValue = useAtomValue(isEditing);
 
@@ -108,7 +108,7 @@ const Annotate = ({ disabledReason }: AnnotateProps) => {
       ) : (
         <LabelList key="annotate" />
       )}
-      {showSchemaManager && <SchemaManager key="manage" />}
+      {schemaManagerDisplayed && <SchemaManager key="manage" />}
     </>
   );
 };

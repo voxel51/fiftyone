@@ -33,7 +33,7 @@ const ICONS = {
 
 const AddSchema = ({ type }: { type: string }) => {
   const canManage = useCanManageSchema();
-  const { open: showModal } = useSchemaManagerModal();
+  const { openSchemaManager } = useSchemaManagerModal();
   const setActiveTab = useSetAtom(activeSchemaTab);
   const Icon = ICONS[type];
   const setEditing = useSetAtom(editing);
@@ -61,7 +61,7 @@ const AddSchema = ({ type }: { type: string }) => {
         onClick={() => {
           setActiveTab("other");
           setEditing(null);
-          showModal();
+          openSchemaManager();
         }}
       >
         Add schema

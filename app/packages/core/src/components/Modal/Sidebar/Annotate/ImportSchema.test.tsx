@@ -8,10 +8,10 @@ vi.mock("./useCanManageSchema", () => ({
 }));
 
 vi.mock("./SchemaManager/hooks", () => ({
-  useSchemaManagerModalState: vi.fn(() => ({
-    isOpen: false,
-    open: vi.fn(),
-    close: vi.fn(),
+  useSchemaManagerModal: vi.fn(() => ({
+    schemaManagerDisplayed: false,
+    openSchemaManager: vi.fn(),
+    closeSchemaManager: vi.fn(),
   })),
 }));
 

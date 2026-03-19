@@ -113,7 +113,7 @@ const ImportSchema = (
   }
 ) => {
   const canManage = useCanManageSchema();
-  const { open: showModal } = useSchemaManagerModal();
+  const { openSchemaManager } = useSchemaManagerModal();
 
   const showRequiredFieldPrompt = requiredField != null && !disabled;
 
@@ -145,7 +145,7 @@ const ImportSchema = (
             <SetupPrompt
               disabled={disabled}
               canManage={canManage}
-              onAddSchema={showModal}
+              onAddSchema={openSchemaManager}
             />
           )}
         </Stack>

@@ -41,7 +41,7 @@ const LabelHamburgerMenu = () => {
   // Permission and read-only state
   const canEditLabels = useRecoilValue(fos.canEditLabels);
   const currentFieldIsReadOnly = useAtomValue(currentFieldIsReadOnlyAtom);
-  const { open: openSchemaManager } = useSchemaManagerModal();
+  const { openSchemaManager } = useSchemaManagerModal();
   const isGenerated = useRecoilValue(isGeneratedView);
 
   const handleOpenSchemaManager = () => {

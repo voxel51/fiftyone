@@ -12,7 +12,7 @@ export default function useLoadSchemas() {
   const setData = useSetAtom(labelSchemasData);
   const setActive = useSetAtom(activeLabelSchemas);
   const setActivePathsOrder = useSetAtom(activePathsOrder);
-  const { close: closeModal } = useSchemaManagerModal();
+  const { closeSchemaManager } = useSchemaManagerModal();
   const get = useOperatorExecutor("get_label_schemas");
 
   useEffect(() => {
@@ -35,7 +35,7 @@ export default function useLoadSchemas() {
 
     // Reset paths order and close modal
     setActivePathsOrder(null);
-    closeModal();
+    closeSchemaManager();
 
     get.execute({});
   }, []);
