@@ -4,9 +4,6 @@ import { OwnerFilter, RunStatus, SearchScope } from "./types";
 export const SEARCH_OPERATOR_URI = "@voxel51/panels/similarity_search";
 export const INIT_RUN_OPERATOR_URI = "@voxel51/panels/init_similarity_run";
 export const BRAIN_COMPUTE_SIMILARITY_URI = "@voxel51/brain/compute_similarity";
-export const BRAIN_PLUGIN_URL =
-  "https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/brain";
-export const DOCS_URL = "https://docs.voxel51.com/brain.html#similarity";
 
 export const DAY_MS = 86_400_000;
 

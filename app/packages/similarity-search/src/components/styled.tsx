@@ -41,11 +41,6 @@ export const FullSize = styled({
 });
 FullSize.displayName = "FullSize";
 
-export const Divider = styled({
-  borderTop: "1px solid var(--fo-palette-divider)",
-});
-Divider.displayName = "Divider";
-
 // ─── RunList ────────────────────────────────────────────────────────
 
 export const SelectAllRow = styled({
@@ -60,7 +55,7 @@ export const ExpandedSection = styled({
 });
 ExpandedSection.displayName = "ExpandedSection";
 
-// ─── Thumbnails ─────────────────────────────────────────────────────
+// ─── Thumbnail Images ─────────────────────────────────────────────────────
 
 export const thumbnailStyle: CSSProperties = {
   width: 36,
@@ -76,46 +71,6 @@ export const ThumbnailPlaceholder = styled({
   background: "var(--fo-palette-background-level2)",
 });
 ThumbnailPlaceholder.displayName = "ThumbnailPlaceholder";
-
-// ─── NoBrainKeys Empty State ────────────────────────────────────────
-
-export const NoBrainKeysCard = styled({
-  width: "100%",
-  borderRadius: 8,
-  background: "var(--fo-palette-background-level2)",
-  border: "1px solid var(--fo-palette-divider)",
-  overflow: "hidden",
-});
-NoBrainKeysCard.displayName = "NoBrainKeysCard";
-
-export const NoBrainKeysIconBox = styled({
-  width: 44,
-  height: 44,
-  borderRadius: 8,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  flexShrink: 0,
-  background: "var(--fo-palette-background-level3)",
-});
-NoBrainKeysIconBox.displayName = "NoBrainKeysIconBox";
-
-export const NoBrainKeysSection = styled({
-  padding: 16,
-});
-NoBrainKeysSection.displayName = "NoBrainKeysSection";
-
-export const codeBlockStyle: CSSProperties = {
-  borderRadius: 6,
-  padding: 12,
-  fontFamily: "monospace",
-  fontSize: 12,
-  lineHeight: "20px",
-  background: "var(--fo-palette-background-level3)",
-  color: "var(--fo-palette-text-secondary)",
-  margin: 0,
-  whiteSpace: "pre",
-};
 
 // ─── NewSearch ──────────────────────────────────────────────────────
 
