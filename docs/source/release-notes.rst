@@ -3,6 +3,32 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.16.5
+--------------------------
+*Released March 23, 2026*
+
+Includes all updates from :ref:`FiftyOne 1.13.5 <release-notes-v1.13.5>`, plus:
+
+Security
+
+- Updated a number of dependencies in order to resolve security
+  vulnerabilities: `aiohttp`, `axios`, `cryptography`, `dompurify`, `eslint`,
+  `immutable`, `lodash`, `minimatch`, `pillow`, `protobuf`, `pynacl`, `qs`,
+  `rollup`, and `tar`.
+
+
+.. _release-notes-v1.13.5:
+
+FiftyOne 1.13.5
+---------------
+*Released March 23, 2026*
+
+Models
+
+- Fix for grounded zero shot object detection transformer adaptor.
+  `#7197 <https://github.com/voxel51/fiftyone/pull/7197>`_
+
+
 FiftyOne Enterprise 2.16.4
 --------------------------
 *Released March 9, 2026*
