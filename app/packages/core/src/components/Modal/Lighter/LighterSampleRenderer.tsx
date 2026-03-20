@@ -16,7 +16,7 @@ import { useAtomValue } from "jotai";
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { activeLabelSchemas } from "../Sidebar/Annotate/state";
-import { extractZoomTarget } from "./extractZoomTarget";
+import { extractZoomTarget } from "./utils";
 import { LighterToolbar } from "./LighterToolbar";
 import { singletonCanvas } from "./SharedCanvas";
 import { useBridge } from "./useBridge";
