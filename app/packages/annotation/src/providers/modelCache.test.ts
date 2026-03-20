@@ -209,6 +209,26 @@ describe("loadModelWeights", () => {
     vi.useRealTimers();
   });
 
+  it("Retries on fetch timeout and eventually succeeds", async () => {
+    vi.useFakeTimers();
+    global.fetch = vi.fn()
+      .mockImplementationOnce((_url: string, init?: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+        }))
+      .mockResolvedValue(mockFetchResponse(TEST_BUFFER));
+
+    const promise = loadModelWeights(TEST_URL);
+    await vi.advanceTimersByTimeAsync(61_000);
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    expect(result.byteLength).toBe(64);
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+    expect(closeSpy).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
+  });
+
   it.each([
     { name: "idbGet fails", failOn: "get" as const, warning: "IndexedDB cache read failed, downloading instead: Error: read failed" },
     { name: "idbPut fails", failOn: "put" as const, warning: "IndexedDB cache write failed: Error: write failed" },

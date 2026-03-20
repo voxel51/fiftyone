@@ -87,7 +87,7 @@ async function fetchWithProgress(
         onProgress(loaded, total);
       }
 
-      return result.buffer;
+      return loaded === total ? result.buffer : result.slice(0, loaded).buffer;
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
     } finally {
