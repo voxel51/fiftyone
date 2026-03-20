@@ -586,6 +586,7 @@ export class PixiRenderer2D implements Renderer2D {
       case "canvas":
         if (image.canvas) {
           const texture = PIXI.Texture.from(image.canvas);
+          texture.source.update();
           sprite = new PIXI.Sprite(texture);
         } else {
           return;

@@ -1045,9 +1045,17 @@ export class DetectionOverlay
     const newW = Math.max(1, Math.round(newWidth));
     const newH = Math.max(1, Math.round(newHeight));
 
-    // Always allocate a fresh canvas so the renderer sees a new reference
-    // (Pixi caches textures by canvas element, so reusing the same canvas
-    // produces stale renders even after texture.update()).
+    // Skip resize if bounds haven't changed
+    if (
+      newW === w &&
+      newH === h &&
+      Math.abs(worldMinX - oldBounds.x) < 1e-6 &&
+      Math.abs(worldMinY - oldBounds.y) < 1e-6
+    ) {
+      return;
+    }
+
+    // Allocate new canvas and copy old content at the correct offset
     const newCanvas = document.createElement("canvas");
     newCanvas.width = newW;
     newCanvas.height = newH;
