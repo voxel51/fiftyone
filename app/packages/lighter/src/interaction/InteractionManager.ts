@@ -357,7 +357,7 @@ export class InteractionManager {
       point.y - this.pendingQuickDraw.point.y
     );
 
-    if (distance >= this.CLICK_THRESHOLD) {
+    if (distance > this.CLICK_THRESHOLD) {
       const pending = this.pendingQuickDraw;
       this.pendingQuickDraw = undefined;
 
