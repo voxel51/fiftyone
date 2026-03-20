@@ -102,7 +102,7 @@ export class DetectionOverlay
   // ---- Mask painting state ----
   private maskCanvas?: HTMLCanvasElement;
   private maskCtx?: CanvasRenderingContext2D;
-  private lastMaskPoint?: { x: number; y: number };
+  private lastMaskPoint?: Point;
 
   public cursor = "pointer";
 
@@ -1045,17 +1045,9 @@ export class DetectionOverlay
     const newW = Math.max(1, Math.round(newWidth));
     const newH = Math.max(1, Math.round(newHeight));
 
-    // Skip resize if bounds haven't changed
-    if (
-      newW === w &&
-      newH === h &&
-      Math.abs(worldMinX - oldBounds.x) < 1e-6 &&
-      Math.abs(worldMinY - oldBounds.y) < 1e-6
-    ) {
-      return;
-    }
-
-    // Allocate new canvas and copy old content at the correct offset
+    // Always allocate a fresh canvas so the renderer sees a new reference
+    // (Pixi caches textures by canvas element, so reusing the same canvas
+    // produces stale renders even after texture.update()).
     const newCanvas = document.createElement("canvas");
     newCanvas.width = newW;
     newCanvas.height = newH;
@@ -1086,7 +1078,7 @@ export class DetectionOverlay
   /**
    * Converts a world-space point to mask-pixel coordinates.
    */
-  private worldToMask(worldPoint: Point): { x: number; y: number } | undefined {
+  private worldToMask(worldPoint: Point): Point | undefined {
     const bounds = this.bounds;
     if (!bounds || bounds.width <= 0 || bounds.height <= 0) return undefined;
     if (!this.maskCanvas) return undefined;
@@ -1100,7 +1092,7 @@ export class DetectionOverlay
   /**
    * Paints a single dab at the given mask-pixel coordinate.
    */
-  private paintAt(pt: { x: number; y: number }): void {
+  private paintAt(point: Point): void {
     if (!this.maskCtx) return;
 
     const tool = segmentationMasksBridge.getActiveTool();
@@ -1123,9 +1115,9 @@ export class DetectionOverlay
 
     ctx.beginPath();
     if (shape === "circle") {
-      ctx.arc(pt.x, pt.y, radius, 0, Math.PI * 2);
+      ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
     } else {
-      ctx.rect(pt.x - radius, pt.y - radius, size, size);
+      ctx.rect(point.x - radius, point.y - radius, size, size);
     }
     ctx.fill();
   }
@@ -1134,10 +1126,7 @@ export class DetectionOverlay
    * Interpolates between two mask-pixel points, painting a dab at each step
    * to avoid gaps during fast mouse movement.
    */
-  private paintLine(
-    from: { x: number; y: number },
-    to: { x: number; y: number }
-  ): void {
+  private paintLine(from: Point, to: Point): void {
     const dx = to.x - from.x;
     const dy = to.y - from.y;
     const distance = Math.hypot(dx, dy);
