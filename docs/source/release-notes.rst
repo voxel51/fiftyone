@@ -9,6 +9,13 @@ FiftyOne Enterprise 2.16.5
 
 Includes all updates from :ref:`FiftyOne 1.13.5 <release-notes-v1.13.5>`, plus:
 
+Cloud Media
+
+- Fixed a bug where wildcard bucket-prefix cloud credentials (e.g.
+  `https://account.blob.core.windows.net/*`) could incorrectly match buckets
+  belonging to different storage accounts.
+
+
 Security
 
 - Updated a number of dependencies in order to resolve security
