@@ -84,7 +84,7 @@ def stringify(d, _cls=None):
         try:
             # historically, bytes were used for numpy arrays
             return _handle_numpy_array(d, _cls)
-        except:
+        except Exception:
             # with plugins, bytes can represent other data, omit for non
             return str(d)
 
