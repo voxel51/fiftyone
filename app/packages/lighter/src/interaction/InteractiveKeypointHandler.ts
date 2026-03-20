@@ -2,6 +2,8 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import type { EventDispatcher } from "@fiftyone/events";
+import type { LighterEventGroup } from "../events";
 import { KeypointOverlay } from "../overlay/KeypointOverlay";
 import type { Point } from "../types";
 import type { InteractionHandler } from "./InteractionManager";
@@ -18,7 +20,10 @@ export class InteractiveKeypointHandler implements InteractionHandler {
   readonly id = INTERACTIVE_KEYPOINT_HANDLER_ID;
   readonly cursor = "crosshair";
 
-  constructor(public readonly overlay: KeypointOverlay) {}
+  constructor(
+    public readonly overlay: KeypointOverlay,
+    private readonly eventBus: EventDispatcher<LighterEventGroup>
+  ) {}
 
   containsPoint(): boolean {
     // Capture all clicks while in creation mode
@@ -65,7 +70,17 @@ export class InteractiveKeypointHandler implements InteractionHandler {
   }
 
   onDoubleClick(_point: Point, _event: PointerEvent): boolean {
-    // Finish creation — caller listens for establish event
+    // Finish creation by dispatching the same establish event used by
+    // InteractiveDetectionHandler (via InteractionManager). This triggers
+    // AddOverlayCommand to promote the overlay from interactive → scene.
+    const bounds = this.overlay.bounds;
+    this.eventBus.dispatch("lighter:overlay-establish", {
+      id: this.overlay.id,
+      handler: this,
+      startBounds: bounds,
+      startPosition: { x: bounds.x, y: bounds.y },
+      bounds,
+    });
     return true;
   }
 

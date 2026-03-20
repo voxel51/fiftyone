@@ -255,7 +255,7 @@ export class PixiRenderer2D implements Renderer2D {
     if (style.strokeStyle) {
       const colorObj = parseColorWithAlpha(style.strokeStyle);
       const color = colorObj.color;
-      const alpha = colorObj.alpha * (style.opacity || 1);
+      const alpha = colorObj.alpha * (style.opacity ?? 1);
 
       if (style.dashPattern && style.dashPattern.length > 0) {
         const dashLine = new DashLine(graphics, {
@@ -547,7 +547,7 @@ export class PixiRenderer2D implements Renderer2D {
     if (style.fillStyle) {
       const { color, alpha } = parseColorWithAlpha(style.fillStyle);
       graphics.circle(center.x, center.y, scaledRadius);
-      graphics.fill({ color, alpha: alpha * (style.opacity || 1) });
+      graphics.fill({ color, alpha: alpha * (style.opacity ?? 1) });
     }
 
     if (style.strokeStyle) {
@@ -556,7 +556,7 @@ export class PixiRenderer2D implements Renderer2D {
       graphics.setStrokeStyle({
         width: (style.lineWidth || 1) / this.getScale(),
         color,
-        alpha: alpha * (style.opacity || 1),
+        alpha: alpha * (style.opacity ?? 1),
       });
       graphics.stroke();
     }
@@ -589,7 +589,7 @@ export class PixiRenderer2D implements Renderer2D {
       }
       graphics.fill({
         color: fillParsed.color,
-        alpha: fillParsed.alpha * (style.opacity || 1),
+        alpha: fillParsed.alpha * (style.opacity ?? 1),
       });
     }
 
@@ -600,7 +600,7 @@ export class PixiRenderer2D implements Renderer2D {
       graphics.setStrokeStyle({
         width: (style.lineWidth || 1) / this.getScale(),
         color: strokeParsed.color,
-        alpha: strokeParsed.alpha * (style.opacity || 1),
+        alpha: strokeParsed.alpha * (style.opacity ?? 1),
       });
       graphics.stroke();
     }
@@ -622,7 +622,7 @@ export class PixiRenderer2D implements Renderer2D {
     graphics.setStrokeStyle({
       width: (style.lineWidth || 1) / this.getScale(),
       color: color,
-      alpha: alpha * (style.opacity || 1),
+      alpha: alpha * (style.opacity ?? 1),
     });
 
     for (const [start, end] of segments) {
@@ -650,7 +650,7 @@ export class PixiRenderer2D implements Renderer2D {
         dash: style.dashPattern,
         width: style.lineWidth || 1,
         color: color,
-        alpha: alpha * (style.opacity || 1),
+        alpha: alpha * (style.opacity ?? 1),
       });
       dashLine.moveTo(start.x, start.y);
       dashLine.lineTo(end.x, end.y);
@@ -659,7 +659,7 @@ export class PixiRenderer2D implements Renderer2D {
       graphics.setStrokeStyle({
         width: style.lineWidth || 1,
         color: color,
-        alpha: alpha * (style.opacity || 1),
+        alpha: alpha * (style.opacity ?? 1),
       });
       graphics.moveTo(start.x, start.y);
       graphics.lineTo(end.x, end.y);

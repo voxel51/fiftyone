@@ -22,7 +22,11 @@ import type {
   RenderMeta,
   Spatial,
 } from "../types";
-import { distance, distanceFromLineSegment } from "../utils/geometry";
+import {
+  distance,
+  distanceFromLineSegment,
+  pointInPolygon,
+} from "../utils/geometry";
 import { BaseOverlay } from "./BaseOverlay";
 import { NO_BOUNDS } from "./BoundingBoxOverlay";
 
@@ -71,6 +75,7 @@ export class KeypointOverlay
 {
   private isDraggable: boolean;
   private isDeletable: boolean;
+  private isSelectable: boolean;
   private connections: number[][];
   private closed: boolean;
   private isSelectedState = false;
@@ -91,6 +96,7 @@ export class KeypointOverlay
   // Caches — invalidated in markDirty()
   private _absPointsCache: Point[] | null = null;
   private _boundsCache: Rect | null = null;
+  private _boundsCachedScale: number | null = null;
   private _relativeBoundsCache: Rect | null = null;
 
   public cursor = "pointer";
@@ -104,6 +110,7 @@ export class KeypointOverlay
     this.closed = options.closed ?? false;
     this.isDraggable = options.draggable !== false;
     this.isDeletable = options.deletable !== false;
+    this.isSelectable = options.selectable !== false;
   }
 
   getOverlayType(): string {
@@ -138,6 +145,7 @@ export class KeypointOverlay
   override markDirty(): void {
     this._absPointsCache = null;
     this._boundsCache = null;
+    this._boundsCachedScale = null;
     this._relativeBoundsCache = null;
     super.markDirty();
   }
@@ -155,7 +163,13 @@ export class KeypointOverlay
 
   get bounds(): Rect {
     if (this.#relativePoints.length === 0) return NO_BOUNDS;
-    if (this._boundsCache) return this._boundsCache;
+
+    const currentScale = this.renderer?.getScale() ?? 1;
+
+    // Invalidate cache when scale changes (pad is scale-dependent)
+    if (this._boundsCache && this._boundsCachedScale === currentScale) {
+      return this._boundsCache;
+    }
 
     const pts = this.getAbsolutePoints();
     let minX = Infinity,
@@ -169,13 +183,14 @@ export class KeypointOverlay
       if (p.y > maxY) maxY = p.y;
     }
 
-    const pad = KEYPOINT_HIT_RADIUS / (this.renderer?.getScale() ?? 1);
+    const pad = KEYPOINT_HIT_RADIUS / currentScale;
     this._boundsCache = {
       x: minX - pad,
       y: minY - pad,
       width: maxX - minX + pad * 2,
       height: maxY - minY + pad * 2,
     };
+    this._boundsCachedScale = currentScale;
     return this._boundsCache;
   }
 
@@ -387,12 +402,23 @@ export class KeypointOverlay
       }
     }
 
+    // For closed polygons, check if point is inside the polygon interior
+    if (this.closed && pointInPolygon(point, absPoints)) {
+      return CONTAINS.CONTENT;
+    }
+
     return CONTAINS.NONE;
   }
 
   getMouseDistance(point: Point): number {
     const wp = this.renderer?.screenToWorld(point) ?? point;
     const absPoints = this.getAbsolutePoints();
+
+    // For closed polygons, interior points are direct hits
+    if (this.closed && pointInPolygon(wp, absPoints)) {
+      return 0;
+    }
+
     let minDist = Number.POSITIVE_INFINITY;
 
     // Distance to points
@@ -654,7 +680,7 @@ export class KeypointOverlay
   }
 
   getSelectionPriority(): number {
-    return LABEL_ARCHETYPE_PRIORITY.KEYPOINT;
+    return this.isSelectable ? LABEL_ARCHETYPE_PRIORITY.KEYPOINT : -1;
   }
 
   // ---------------------------------------------------------------------------

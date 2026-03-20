@@ -328,19 +328,20 @@ export class InteractionManager {
       // Handlers that manage their own drag events (e.g. KeypointOverlay point
       // drags) don't provide getMoveStartBounds/getMoveStartPosition, so we skip
       // dispatching to avoid stranded start events with no matching end.
-      if (
-        TypeGuards.isSpatial(handler) &&
-        handler.getMoveStartBounds?.() &&
-        handler.getMoveStartPosition?.()
-      ) {
+      // Capture move start state before the type guard narrows `handler` away
+      // from InteractionHandler (which defines these optional methods).
+      const startPosition = handler.getMoveStartPosition?.();
+      const startBounds = handler.getMoveStartBounds?.();
+
+      if (TypeGuards.isSpatial(handler) && startPosition && startBounds) {
         const type: keyof LighterEventGroup = handler.isDragging?.()
           ? "lighter:overlay-drag-start"
           : "lighter:overlay-resize-start";
 
         this.eventBus.dispatch(type, {
           id: handler.id,
-          startPosition: handler.bounds,
-          bounds: handler.bounds,
+          startPosition,
+          bounds: startBounds,
         });
       }
 

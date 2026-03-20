@@ -95,3 +95,29 @@ export function distanceFromLineSegment(
     (px - closestX) * (px - closestX) + (py - closestY) * (py - closestY)
   );
 }
+
+/**
+ * Tests whether a point lies inside a polygon using the ray-casting algorithm.
+ * The polygon is defined by an ordered list of vertices; the last vertex is
+ * implicitly connected back to the first.
+ */
+export function pointInPolygon(point: Point, polygon: Point[]): boolean {
+  const n = polygon.length;
+  if (n < 3) return false;
+
+  let inside = false;
+  for (let i = 0, j = n - 1; i < n; j = i++) {
+    const xi = polygon[i].x,
+      yi = polygon[i].y;
+    const xj = polygon[j].x,
+      yj = polygon[j].y;
+
+    if (
+      yi > point.y !== yj > point.y &&
+      point.x < ((xj - xi) * (point.y - yi)) / (yj - yi) + xi
+    ) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
