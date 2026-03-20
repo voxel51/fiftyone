@@ -186,6 +186,12 @@ describe("loadModelWeights", () => {
     { name: "5xx", mockFetch: () => vi.fn()
       .mockResolvedValueOnce(mockFetchResponse(new ArrayBuffer(0), 500))
       .mockResolvedValue(mockFetchResponse(TEST_BUFFER)) },
+    { name: "408 timeout", mockFetch: () => vi.fn()
+      .mockResolvedValueOnce(mockFetchResponse(new ArrayBuffer(0), 408))
+      .mockResolvedValue(mockFetchResponse(TEST_BUFFER)) },
+    { name: "429 throttle", mockFetch: () => vi.fn()
+      .mockResolvedValueOnce(mockFetchResponse(new ArrayBuffer(0), 429))
+      .mockResolvedValue(mockFetchResponse(TEST_BUFFER)) },
     { name: "network error", mockFetch: () => vi.fn()
       .mockRejectedValueOnce(new Error("Network Error"))
       .mockResolvedValue(mockFetchResponse(TEST_BUFFER)) },

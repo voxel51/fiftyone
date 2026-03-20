@@ -59,8 +59,9 @@ async function fetchWithProgress(
 
       if (!response.ok) {
         lastError = new Error(`${response.status} ${response.statusText} (${url})`);
-        // Don't retry 4xx (break and throw)
-        if (response.status >= 400 && response.status < 500)
+        // Retry transient errors (5xx, 408 timeout, 429 throttle). Break (and throw) on other 4xx
+        if (response.status >= 400 && response.status < 500
+          && response.status !== 408 && response.status !== 429)
           break;
         continue;
       }
@@ -73,7 +74,7 @@ async function fetchWithProgress(
         return await response.arrayBuffer();
 
       const reader = response.body.getReader();
-      const chunks: Uint8Array[] = [];
+      const result = new Uint8Array(total);
       let loaded = 0;
 
       for (;;) {
@@ -81,16 +82,9 @@ async function fetchWithProgress(
         if (done)
           break;
 
-        chunks.push(value);
+        result.set(value, loaded);
         loaded += value.byteLength;
         onProgress(loaded, total);
-      }
-
-      const result = new Uint8Array(loaded);
-      let offset = 0;
-      for (const chunk of chunks) {
-        result.set(chunk, offset);
-        offset += chunk.byteLength;
       }
 
       return result.buffer;
