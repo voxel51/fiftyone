@@ -1,5 +1,5 @@
-import React from "react";
 import { Box, Stack, Typography } from "@mui/material";
+import React from "react";
 import { getComponentProps } from "../utils";
 
 export default function LabelValueView(props) {
@@ -8,6 +8,7 @@ export default function LabelValueView(props) {
   const { label } = view;
   return (
     <Box {...getComponentProps(props, "container")}>
+      <h2>asdfsadf</h2>
       <Stack direction="row" spacing={1} {...getComponentProps(props, "stack")}>
         {/* todo: add description and caption */}
         <Typography

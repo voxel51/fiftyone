@@ -26,13 +26,24 @@ const getLabel = (value?: unknown): string => {
   return value as string;
 };
 
+const getPrimitiveSchemaType = (
+  type: string
+): "string" | "number" | "boolean" => {
+  if (type === "float" || type === "int") return "number";
+  if (type === "bool") return "boolean";
+  return "string";
+};
+
 /**
  * Creates a disabled text input for read-only fields.
  * For array values, the data should be formatted as comma-separated before passing to the component.
  */
-export const createReadOnly = (name: string): SchemaType => {
+export const createReadOnly = (
+  name: string,
+  type: string = "string"
+): SchemaType => {
   return {
-    type: "string",
+    type: getPrimitiveSchemaType(type),
     view: {
       name: "LabelValueView",
       label: name,
@@ -277,7 +288,7 @@ export function generatePrimitiveSchema(
   schema: PrimitiveSchema
 ): SchemaType | undefined {
   if (schema.readOnly) {
-    return createReadOnly(name);
+    return createReadOnly(name, schema.type);
   }
 
   if (schema.type === "list<float>" || schema.type === "list<int>") {
