@@ -72,7 +72,10 @@ class SimilaritySearchOperator(foo.Operator):
 
         # Stale/missing run; recover with a fresh record
         if not run_data:
-            run_data = manager.create_run(ctx.params)
+            params = {**ctx.params}
+            if ctx.user_id:
+                params["created_by"] = str(ctx.user_id)
+            run_data = manager.create_run(params)
             run_id = run_data["run_id"]
 
         try:

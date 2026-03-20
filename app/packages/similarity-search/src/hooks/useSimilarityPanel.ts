@@ -151,8 +151,8 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
       await refreshRuns();
     } finally {
       setSubmitting(false);
+      navigateHome();
     }
-    navigateHome();
   }, [navigateHome, refreshRuns]);
 
   const selection = useMemo(

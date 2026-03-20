@@ -60,7 +60,7 @@ export const useNewSearchForm = (
 
   const selectedConfig = brainKeys.find((bk) => bk.key === brainKey);
   const supportsPrompts = selectedConfig?.supports_prompts ?? false;
-  const supportsLeast = selectedConfig?.supports_least_similarity ?? true;
+  const supportsLeast = selectedConfig?.supports_least_similarity ?? false;
 
   useEffect(() => {
     if (!brainKey && brainKeys.length > 0) {
