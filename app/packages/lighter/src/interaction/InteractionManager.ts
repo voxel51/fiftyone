@@ -7,7 +7,10 @@ import { segmentationMasksBridge } from "@fiftyone/core/src/components/Modal/Sid
 import { EventDispatcher, getEventBus } from "@fiftyone/events";
 import { TypeGuards } from "../core/Scene2D";
 import type { LighterEventGroup } from "../events";
-import { DetectionOverlay, type MoveState } from "../overlay/DetectionOverlay";
+import {
+  DetectionOverlay,
+  type InteractionState,
+} from "../overlay/DetectionOverlay";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { SelectionManager } from "../selection/SelectionManager";
 import type { Point, Rect } from "../types";
@@ -22,9 +25,9 @@ export interface InteractionHandler {
   overlay?: DetectionOverlay;
 
   /**
-   * Returns true if the handler is being dragged or resized.
+   * Returns true if the handler is being interacted with
    */
-  isMoving?(): boolean;
+  isInteracting?(): boolean;
 
   /**
    * Returns true if the handler is being dragged.
@@ -49,9 +52,9 @@ export interface InteractionHandler {
   getCursor?(worldPoint: Point, scale: number): string;
 
   /**
-   * Returns the current move state of the handler
+   * Returns the current state of the handler
    */
-  getMoveState?(): MoveState;
+  getInteractionState?(): InteractionState;
 
   /**
    * Returns the position from the start of handler movement
@@ -345,7 +348,8 @@ export class InteractionManager {
     this.currentPixelCoordinates = point;
 
     const interactiveHandler = this.getInteractiveHandler();
-    let handler = this.findMovingHandler() || this.findHandlerAtPoint(point);
+    let handler =
+      this.findInteractingHandler() || this.findHandlerAtPoint(point);
 
     if (!interactiveHandler) {
       // we don't want to handle hover in interactive mode
@@ -391,7 +395,7 @@ export class InteractionManager {
         );
       }
 
-      if (handler.isMoving?.()) {
+      if (handler.isInteracting?.()) {
         // Emit move event with bounds information
         if (TypeGuards.isSpatial(handler)) {
           const type = handler.isDragging?.()
@@ -425,11 +429,11 @@ export class InteractionManager {
     if (interactiveHandler) {
       handler = interactiveHandler.getOverlay();
     } else {
-      handler = this.findMovingHandler() || this.findHandlerAtPoint(point);
+      handler = this.findInteractingHandler() || this.findHandlerAtPoint(point);
     }
 
-    if (handler?.isMoving?.()) {
-      const moveState = handler.getMoveState?.();
+    if (handler?.isInteracting?.()) {
+      const interactionState = handler.getInteractionState?.();
       const startBounds = handler.getMoveStartBounds?.();
       const startPosition = handler.getMoveStartPosition?.();
 
@@ -452,10 +456,10 @@ export class InteractionManager {
           bounds: handler.bounds,
         };
 
-        if (moveState === "SETTING") {
+        if (interactionState === "SETTING") {
           if (!interactiveHandler) {
             throw new Error(
-              "Invariant violation: moveState is SETTING but interactiveHandler is undefined"
+              "Invariant violation: interactionState is SETTING but interactiveHandler is undefined"
             );
           }
 
@@ -465,7 +469,7 @@ export class InteractionManager {
           });
         } else {
           const type =
-            moveState === "DRAGGING"
+            interactionState === "DRAGGING"
               ? "lighter:overlay-drag-end"
               : "lighter:overlay-resize-end";
           this.eventBus.dispatch(type, detail);
@@ -474,7 +478,7 @@ export class InteractionManager {
 
       this.canvas.releasePointerCapture(event.pointerId);
       event.preventDefault();
-    } else if (handler && !handler.isMoving?.()) {
+    } else if (handler && !handler.isInteracting?.()) {
       // This was a click, not a drag - handle as click for selection
       this.handleClick(point, event, now);
 
@@ -494,9 +498,9 @@ export class InteractionManager {
   };
 
   private handlePointerCancel = (event: PointerEvent): void => {
-    const movingHandler = this.findMovingHandler();
+    const interactingHandler = this.findInteractingHandler();
 
-    if (movingHandler) {
+    if (interactingHandler) {
       this.canvas.releasePointerCapture(event.pointerId);
       // Re-enable zoom/pan after drag cancellation
       this.renderer.enableZoomPan();
@@ -600,7 +604,7 @@ export class InteractionManager {
     const scale = this.renderer.getScale();
 
     const handler = this.findHandlerAtPoint(point);
-    const movingHandler = this.findMovingHandler();
+    const interactingHandler = this.findInteractingHandler();
 
     if (!handler || handler.id === this.canonicalMediaId) {
       this.canvas.style.cursor = "default";
@@ -622,7 +626,7 @@ export class InteractionManager {
     }
 
     // If we are dragging, we should unhover the previous one
-    if (movingHandler) {
+    if (interactingHandler) {
       if (this.hoveredHandler) {
         this.hoveredHandler.onHoverLeave?.(point, event);
         this.eventBus.dispatch("lighter:overlay-unhover", {
@@ -646,7 +650,7 @@ export class InteractionManager {
     }
 
     // If we are hovering on a new overlay, hover the new one
-    if (handler && this.hoveredHandler !== handler && !movingHandler) {
+    if (handler && this.hoveredHandler !== handler && !interactingHandler) {
       handler.onHoverEnter?.(point, event);
       this.canvas.style.cursor =
         handler.getCursor?.(worldPoint, scale) || this.canvas.style.cursor;
@@ -895,13 +899,11 @@ export class InteractionManager {
   }
 
   /**
-   * Finds a handler that is being dragged or resized.
+   * Finds a handler that is being interacted with.
    * @returns The handler if found, undefined otherwise.
    */
-  findMovingHandler(): InteractionHandler | undefined {
-    return this.handlers.find(
-      (handler) => handler.isMoving && handler.isMoving()
-    );
+  findInteractingHandler(): InteractionHandler | undefined {
+    return this.handlers.find((handler) => handler.isInteracting?.());
   }
 
   /**
