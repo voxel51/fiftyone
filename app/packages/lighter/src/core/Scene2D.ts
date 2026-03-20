@@ -983,40 +983,43 @@ export class Scene2D {
       await this.renderFrame();
     });
 
-    // Apply the initial zoom immediately if the image loaded before Pixi was ready.
-    // Otherwise, wait for the first canonical-media-bounds-changed event and apply then.
+    // The initial zoom requires two conditions before it can run:
+    // lighter:resize — Dimension correctness guarantee and Pixi readiness
+    // lighter:canonical-media-bounds-changed — image bounds are known
+    //
+    // These events can arrive in either order. Apply the zoom when the second
+    // condition arrives, regardless of ordering.
     if (this.shouldInitialZoom) {
-      const existingBounds = this.canonicalMedia?.getRenderedBounds();
-      if (existingBounds?.width && existingBounds?.height) {
-        this.applyInitialZoom();
-      } else {
-        const offZoom = this.eventBus.on(
-          "lighter:canonical-media-bounds-changed",
-          () => {
-            offZoom();
-            this.applyInitialZoom();
-          }
-        );
-        this.abortController.signal.addEventListener("abort", offZoom);
-      }
+      let resized = false;
+      let boundsReady = false;
+
+      const tryApply = () => {
+        if (resized && boundsReady) {
+          offResize();
+          offBounds();
+          this.applyInitialZoom();
+        }
+      };
+
+      const offResize = this.eventBus.on("lighter:resize", () => {
+        resized = true;
+        tryApply();
+      });
+      this.abortController.signal.addEventListener("abort", offResize);
+
+      const offBounds = this.eventBus.on(
+        "lighter:canonical-media-bounds-changed",
+        () => {
+          boundsReady = true;
+          tryApply();
+        }
+      );
+      this.abortController.signal.addEventListener("abort", offBounds);
     }
   }
 
-  /**
-   * Applies the initial zoom-to-content viewport mutation.
-   * Always called from `startRenderLoop` — either immediately (if the image
-   * loaded before Pixi was ready) or on the first `canonical-media-bounds-changed`
-   * event (if the image loads after the render loop starts). This guarantees
-   * the Pixi viewport exists before `fitToRect` is called, preventing the
-   * silent no-op that would leave `deferShow` permanently blocked.
-   *
-   * Skips if canvas dimensions are not yet available.
-   */
   private applyInitialZoom(): void {
     if (!this.shouldInitialZoom || !this.initialZoomTarget) return;
-
-    const dims = this.config.renderer.getContainerDimensions();
-    if (!dims.width || !dims.height) return;
 
     const worldRect = this.coordinateSystem.relativeToAbsolute(this.initialZoomTarget);
     if (!worldRect.width || !worldRect.height) return;
