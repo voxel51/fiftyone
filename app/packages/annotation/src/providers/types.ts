@@ -25,6 +25,8 @@ export interface BoundingBox {
 
 export interface InferenceResult {
   mask: Float32Array;
+  maskWidth: number;
+  maskHeight: number;
   bbox: BoundingBox;
 }
 

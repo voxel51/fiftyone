@@ -1,5 +1,5 @@
 import * as ort from "onnxruntime-web";
-import type { PromptPoint, WorkerMessageType, WorkerNotifications, WorkerResponse } from "./types";
+import type { InferenceResult, PromptPoint, WorkerMessageType, WorkerNotifications, WorkerResponse } from "./types";
 import {
   SAM2_INPUT_SIZE,
   SAM2_OUTPUT_SIZE,
@@ -7,9 +7,11 @@ import {
   computeMaskBbox,
   normalizeBbox,
   postprocessMask,
+  type ImageGeometry,
   type ProcessedImage,
 } from "./math";
 import { loadModelWeights } from "./modelCache";
+import { getEmbedding, putEmbedding } from "./embeddingCache";
 
 // Typed postMessage helpers to enforce message shapes at compile time.
 
@@ -166,28 +168,59 @@ async function loadModel(): Promise<void> {
 async function embedAndDecode(
   imageUrl: string,
   points: PromptPoint[]
-): Promise<{ mask: Float32Array; bbox: { x: number; y: number; w: number; h: number } }> {
+): Promise<InferenceResult> {
   if (!encoderSession || !decoderSession)
     throw new Error("Model not loaded");
 
   if (points.length === 0)
     throw new Error("At least one prompt point is required");
 
-  const imageData = await loadImageData(imageUrl);
-  const processedImageData = preprocessImage(imageData);
+  let encResults: Record<string, ort.Tensor>;
+  let geometry: ImageGeometry;
 
-  // Key names are defined by the ONNX model and must match exactly.
-  // Encode — input: "image"; outputs: "image_embed", "high_res_feats_0", "high_res_feats_1"
-  const encResults = await encoderSession.run({
-    image: new ort.Tensor("float32", processedImageData.tensor, [1, 3, SAM2_INPUT_SIZE, SAM2_INPUT_SIZE]),
-  });
+  const postWarning = (message: string) => postNotification("warning", message);
+
+  const cached = await getEmbedding(imageUrl, postWarning);
+  if (cached) {
+    encResults = {
+      image_embed: new ort.Tensor("float32", cached.imageEmbed.data, cached.imageEmbed.dims),
+      high_res_feats_0: new ort.Tensor("float32", cached.highResFeats0.data, cached.highResFeats0.dims),
+      high_res_feats_1: new ort.Tensor("float32", cached.highResFeats1.data, cached.highResFeats1.dims),
+    };
+    geometry = cached.processedImage;
+  } else {
+    const imageData = await loadImageData(imageUrl);
+    const processed = preprocessImage(imageData);
+    geometry = processed;
+
+    encResults = await encoderSession.run({
+      image: new ort.Tensor("float32", processed.tensor, [1, 3, SAM2_INPUT_SIZE, SAM2_INPUT_SIZE]),
+    });
+
+    // Fire-and-forget: IDB write runs in background while decoder proceeds.
+    // Memory LRU is updated synchronously inside putEmbedding before the first await.
+    putEmbedding(imageUrl, {
+      // Key names are defined by the ONNX model and must match exactly.
+      // Encode — input: "image"; outputs: "image_embed", "high_res_feats_0", "high_res_feats_1"
+      imageEmbed: { data: encResults["image_embed"].data as Float32Array, dims: [...encResults["image_embed"].dims] },
+      highResFeats0: { data: encResults["high_res_feats_0"].data as Float32Array, dims: [...encResults["high_res_feats_0"].dims] },
+      highResFeats1: { data: encResults["high_res_feats_1"].data as Float32Array, dims: [...encResults["high_res_feats_1"].dims] },
+      processedImage: {
+        originalWidth: geometry.originalWidth,
+        originalHeight: geometry.originalHeight,
+        scale: geometry.scale,
+        padX: geometry.padX,
+        padY: geometry.padY,
+      },
+    }, postWarning);
+  }
 
   // Build decoder inputs
   const n = points.length;
   const coords = new Float32Array(n * 2);
   const labels = new Float32Array(n);
   for (let i = 0; i < n; i++) {
-    const [sx, sy] = transformPoint(points[i].x, points[i].y, processedImageData);
+    const [sx, sy] = transformPoint(points[i].x, points[i].y, geometry);
     coords[i * 2] = sx;
     coords[i * 2 + 1] = sy;
     labels[i] = points[i].label;
@@ -216,14 +249,14 @@ async function embedAndDecode(
   }
 
   const bestMask = masks.slice(bestIdx * sz, (bestIdx + 1) * sz);
-  const bbox = computeMaskBbox(bestMask, processedImageData);
+  const bbox = computeMaskBbox(bestMask, geometry);
 
   if (!bbox)
     throw new Error("Model returned an empty mask");
 
-  const finalMask = postprocessMask(bestMask, processedImageData, bbox);
+  const finalMask = postprocessMask(bestMask, geometry, bbox);
 
-  return { mask: finalMask, bbox: normalizeBbox(bbox, processedImageData) };
+  return { mask: finalMask, maskWidth: bbox.w, maskHeight: bbox.h, bbox: normalizeBbox(bbox, geometry) };
 }
 
 // Worker message handler
@@ -235,8 +268,8 @@ self.onmessage = async (e: MessageEvent) => {
       await loadModel();
       postResponse(id, "loadModel", undefined as void);
     } else if (type === "embedAndDecode") {
-      const { mask, bbox } = await embedAndDecode(payload.imageUrl, payload.points);
-      postResponse(id, "embedAndDecode", { mask, bbox }, [mask.buffer as ArrayBuffer]);
+      const result = await embedAndDecode(payload.imageUrl, payload.points);
+      postResponse(id, "embedAndDecode", result, [result.mask.buffer as ArrayBuffer]);
     } else {
       postError(id, type, `Unknown message type: ${type}`);
     }
