@@ -114,11 +114,11 @@ export class OperatorAnnotationAgent<T extends InferenceResultProxy>
    *
    * @param task The task to query model metadata for.
    */
-  async getModelMetadata(task: AgentTaskType): Promise<ModelMetadata> {
+  async getModelMetadata(task: AgentTaskType): Promise<ModelMetadata | null> {
     const schema = await this.resolveInputSchema({ task });
     const modelMetadata = schema?.type?.properties
       ?.model_metadata as ResolveTypePropertyEntry<ModelMetadata>;
-    return modelMetadata?.default ?? { name: "Unknown model" };
+    return modelMetadata?.default ?? null;
   }
 
   /**
