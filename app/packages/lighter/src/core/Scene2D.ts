@@ -158,18 +158,18 @@ export class Scene2D {
     .substring(2, 9);
 
   private _isDestroyed = false;
+  private shouldInitialZoom = false;
+  private initialZoomPad = 0;
+  private initialZoomTarget: Rect | null = null;
 
-  private shouldZoomToContent = false;
-  private pendingZoomPad = 0;
-  private pendingZoomTarget: Rect | null = null;
   constructor(private readonly config: Scene2DConfig) {
     this.sceneOptions = config.options;
     this.sceneId = config.sceneId;
 
     if (config.options?.zoom) {
-      this.shouldZoomToContent = true;
-      this.pendingZoomPad = config.options.zoomPad ?? 0;
-      this.pendingZoomTarget = config.options.zoomTarget ?? null;
+      this.shouldInitialZoom = true;
+      this.initialZoomPad = config.options.zoomPad ?? 0;
+      this.initialZoomTarget = config.options.zoomTarget ?? null;
     }
 
     this.coordinateSystem = new CoordinateSystem2D();
@@ -980,30 +980,50 @@ export class Scene2D {
 
     this.isRenderLoopActive = true;
     this.config.renderer.addTickHandler(async () => {
-      this.preProcess();
       await this.renderFrame();
     });
+
+    // Apply the initial zoom immediately if the image loaded before Pixi was ready.
+    // Otherwise, wait for the first canonical-media-bounds-changed event and apply then.
+    if (this.shouldInitialZoom) {
+      const existingBounds = this.canonicalMedia?.getRenderedBounds();
+      if (existingBounds?.width && existingBounds?.height) {
+        this.applyInitialZoom();
+      } else {
+        const offZoom = this.eventBus.on(
+          "lighter:canonical-media-bounds-changed",
+          () => {
+            offZoom();
+            this.applyInitialZoom();
+          }
+        );
+        this.abortController.signal.addEventListener("abort", offZoom);
+      }
+    }
   }
 
   /**
-   * Applies one-shot viewport mutations before each frame is drawn.
+   * Applies the initial zoom-to-content viewport mutation.
+   * Always called from `startRenderLoop` — either immediately (if the image
+   * loaded before Pixi was ready) or on the first `canonical-media-bounds-changed`
+   * event (if the image loads after the render loop starts). This guarantees
+   * the Pixi viewport exists before `fitToRect` is called, preventing the
+   * silent no-op that would leave `waitForViewport` permanently blocked.
    *
-   * Skips the zoom attempt if the renderer has no canvas dimensions yet
-   * so that `fitToRect` doesn't silently no-op and clear `shouldZoomToContent`
-   * before a valid zoom can be applied.
+   * Skips if canvas dimensions are not yet available.
    */
-  private preProcess(): void {
-    if (!this.shouldZoomToContent || !this.pendingZoomTarget) return;
+  private applyInitialZoom(): void {
+    if (!this.shouldInitialZoom || !this.initialZoomTarget) return;
 
     const dims = this.config.renderer.getContainerDimensions();
     if (!dims.width || !dims.height) return;
 
-    const worldRect = this.coordinateSystem.relativeToAbsolute(this.pendingZoomTarget);
+    const worldRect = this.coordinateSystem.relativeToAbsolute(this.initialZoomTarget);
     if (!worldRect.width || !worldRect.height) return;
 
-    this.config.renderer.fitToRect(worldRect, this.pendingZoomPad);
-    this.shouldZoomToContent = false;
-    this.pendingZoomTarget = null;
+    this.config.renderer.fitToRect(worldRect, this.initialZoomPad);
+    this.shouldInitialZoom = false;
+    this.initialZoomTarget = null;
   }
 
   /**
