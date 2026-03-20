@@ -58,10 +58,10 @@ class DelegatedOperationDocument(object):
         self.id = None
         self._doc = None
         self.metadata = None
-        self.log_upload_error = None
+        self.log_path = None
         self.log_size = None
         self.log_tail = None
-        self.log_path = None
+        self.log_upload_error = None
         self.monitored = False
         self.archived = False
         self.rerunnable = rerunnable
