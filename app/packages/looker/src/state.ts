@@ -204,7 +204,7 @@ export interface BaseOptions {
   pointFilter: (path: string, point: Point) => boolean;
   thumbnailTitle?: (sample: any) => string;
   mediaFallback: boolean;
-  seedViewport?: ViewportState | null;
+  initialViewport?: ViewportState | null;
 }
 
 export type BoundingBox = [number, number, number, number];
@@ -482,7 +482,7 @@ export const DEFAULT_BASE_OPTIONS: BaseOptions = {
   attributeVisibility: {},
   mediaFallback: false,
   shouldHandleKeyEvents: true,
-  seedViewport: null,
+  initialViewport: null,
 };
 
 export const DEFAULT_FRAME_OPTIONS: FrameOptions = {

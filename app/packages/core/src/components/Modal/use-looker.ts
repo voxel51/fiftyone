@@ -151,7 +151,7 @@ function useLooker<L extends fos.Lookers>({
   useLayoutEffect(() => {
     const savedViewport = modalBridge.getModalViewport();
     if (savedViewport?.sampleId === sample.sample._id) {
-      looker.updateOptions({ seedViewport: savedViewport }, true);
+      looker.updateOptions({ initialViewport: savedViewport }, true);
     }
   }, [looker, sample]);
 

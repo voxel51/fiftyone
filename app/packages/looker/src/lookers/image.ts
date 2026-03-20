@@ -78,13 +78,13 @@ export class ImageLooker extends AbstractLooker<ImageState> {
     if (this.state.zoomToContent) {
       LookerUtils.toggleZoom(this.state, this.currentOverlays);
     } else if (this.state.setZoom && this.state.overlaysPrepared) {
-      if (this.state.options.seedViewport) {
-        this.state.scale = this.state.options.seedViewport.scale;
+      if (this.state.options.initialViewport) {
+        this.state.scale = this.state.options.initialViewport.scale;
         this.state.pan = [
-          this.state.options.seedViewport.panX,
-          this.state.options.seedViewport.panY,
+          this.state.options.initialViewport.panX,
+          this.state.options.initialViewport.panY,
         ] as Coordinates;
-        this.state.options = { ...this.state.options, seedViewport: null };
+        this.state.options = { ...this.state.options, initialViewport: null };
       } else if (this.state.options.zoom) {
         this.state = zoomToContent(this.state, this.pluckedOverlays);
       } else {
