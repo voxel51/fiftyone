@@ -8,7 +8,7 @@ import {
   useLighter,
   useLighterSetupWithPixi,
 } from "@fiftyone/lighter";
-import type { Sample } from "@fiftyone/state";
+import type { ModalViewportState, Sample } from "@fiftyone/state";
 import * as fos from "@fiftyone/state";
 import { getSampleSrc } from "@fiftyone/state";
 import { modalBridge, useSaveModalViewport } from "@fiftyone/state";
@@ -135,7 +135,7 @@ const LighterSetupImpl = (props: {
   sampleId: string | undefined;
   sampleData: Record<string, unknown> | undefined;
   effectiveZoom: boolean;
-  initialViewport: ReturnType<typeof modalBridge.getModalViewport>;
+  initialViewport: ModalViewportState | null;
 }) => {
   const { containerRef, sceneId, sampleId, sampleData, effectiveZoom, initialViewport } =
     props;
