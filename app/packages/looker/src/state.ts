@@ -204,6 +204,7 @@ export interface BaseOptions {
   pointFilter: (path: string, point: Point) => boolean;
   thumbnailTitle?: (sample: any) => string;
   mediaFallback: boolean;
+  seedViewport?: ViewportState | null;
 }
 
 export type BoundingBox = [number, number, number, number];
@@ -275,7 +276,6 @@ export interface FrameOptions extends BaseOptions {
 
 export interface ImageOptions extends BaseOptions {
   zoom: boolean;
-  seedViewport?: ViewportState | null;
 }
 
 export interface VideoOptions extends BaseOptions {
@@ -482,6 +482,7 @@ export const DEFAULT_BASE_OPTIONS: BaseOptions = {
   attributeVisibility: {},
   mediaFallback: false,
   shouldHandleKeyEvents: true,
+  seedViewport: null,
 };
 
 export const DEFAULT_FRAME_OPTIONS: FrameOptions = {
@@ -493,7 +494,6 @@ export const DEFAULT_FRAME_OPTIONS: FrameOptions = {
 export const DEFAULT_IMAGE_OPTIONS: ImageOptions = {
   ...DEFAULT_BASE_OPTIONS,
   zoom: false,
-  seedViewport: null,
 };
 
 export const DEFAULT_VIDEO_OPTIONS: VideoOptions = {
