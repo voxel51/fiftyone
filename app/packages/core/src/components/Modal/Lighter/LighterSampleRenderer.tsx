@@ -118,8 +118,7 @@ export const LighterSampleRenderer = ({
         <LighterSetupImpl
           containerRef={containerRef}
           sceneId={sceneId}
-          sampleId={sampleId}
-          sampleData={sampleRef.current?.sample}
+          sampleRef={sampleRef}
           effectiveZoom={effectiveZoom}
           initialViewport={initialViewport}
         />
@@ -132,13 +131,14 @@ export const LighterSampleRenderer = ({
 const LighterSetupImpl = (props: {
   containerRef: React.RefObject<HTMLDivElement>;
   sceneId: string;
-  sampleId: string | undefined;
-  sampleData: Record<string, unknown> | undefined;
+  sampleRef: React.RefObject<Sample>;
   effectiveZoom: boolean;
   initialViewport: ModalViewportState | null;
 }) => {
-  const { containerRef, sceneId, sampleId, sampleData, effectiveZoom, initialViewport } =
-    props;
+  const { containerRef, sceneId, sampleRef, effectiveZoom, initialViewport } = props;
+
+  const sampleId = sampleRef.current?.sample?._id;
+  const sampleData = sampleRef.current?.sample;
 
   const options = useRecoilValue(
     fos.lookerOptions({ modal: true, withFilter: false })
