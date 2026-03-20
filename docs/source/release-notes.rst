@@ -32,7 +32,7 @@ FiftyOne 1.13.5
 
 Models
 
-- Fix for grounded zero shot object detection transformer adaptor.
+- Fixed issue with grounded zero shot object detection transformer adaptor.
   `#7197 <https://github.com/voxel51/fiftyone/pull/7197>`_
 
 
