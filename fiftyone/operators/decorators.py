@@ -86,7 +86,7 @@ def plugins_cache(func):
 def dir_state(dirpath):
     try:
         state = hash(os.path.getmtime(dirpath))
-    except:
+    except Exception:
         return None
 
     for p in _iter_plugin_metadata_files(root_dir=dirpath):
