@@ -162,8 +162,6 @@ export class Scene2D {
   private shouldZoomToContent = false;
   private pendingZoomPad = 0;
   private pendingZoomTarget: Rect | null = null;
-  private canonicalMediaBoundsReady = false;
-
   constructor(private readonly config: Scene2DConfig) {
     this.sceneOptions = config.options;
     this.sceneId = config.sceneId;
@@ -190,7 +188,6 @@ export class Scene2D {
       "lighter:canonical-media-bounds-changed",
       (event) => {
         this.coordinateSystem.updateTransform(event.bounds);
-        this.canonicalMediaBoundsReady = true;
 
         this.overlays.forEach((overlay) => {
           overlay.markDirty();
@@ -704,16 +701,6 @@ export class Scene2D {
   }
 
   /**
-   * Whether the canonical media (the image) has reported its pixel bounds.
-   * Readable synchronously on any render tick — avoids the race condition of
-   * subscribing to the `lighter:canonical-media-bounds-changed` event from
-   * React, where the event may fire before the subscriber is mounted.
-   */
-  get hasCanonicalMediaBounds(): boolean {
-    return this.canonicalMediaBoundsReady;
-  }
-
-  /**
    * Reset the scene's zoom level to 100% and clears pan translation.
    */
   resetZoomPan(): void {
@@ -1000,13 +987,23 @@ export class Scene2D {
 
   /**
    * Applies one-shot viewport mutations before each frame is drawn.
+   *
+   * Skips the zoom attempt if the renderer has no canvas dimensions yet
+   * so that `fitToRect` doesn't silently no-op and clear `shouldZoomToContent`
+   * before a valid zoom can be applied.
    */
   private preProcess(): void {
-    if (this.shouldZoomToContent && this.canonicalMediaBoundsReady && this.pendingZoomTarget) {
-      const worldRect = this.coordinateSystem.relativeToAbsolute(this.pendingZoomTarget);
-      this.config.renderer.fitToRect(worldRect, this.pendingZoomPad);
-      this.shouldZoomToContent = false;
-    }
+    if (!this.shouldZoomToContent || !this.pendingZoomTarget) return;
+
+    const dims = this.config.renderer.getContainerDimensions();
+    if (!dims.width || !dims.height) return;
+
+    const worldRect = this.coordinateSystem.relativeToAbsolute(this.pendingZoomTarget);
+    if (!worldRect.width || !worldRect.height) return;
+
+    this.config.renderer.fitToRect(worldRect, this.pendingZoomPad);
+    this.shouldZoomToContent = false;
+    this.pendingZoomTarget = null;
   }
 
   /**

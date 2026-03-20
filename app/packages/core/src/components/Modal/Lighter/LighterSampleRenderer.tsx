@@ -13,7 +13,7 @@ import * as fos from "@fiftyone/state";
 import { getSampleSrc } from "@fiftyone/state";
 import { modalBridge, useSaveModalViewport } from "@fiftyone/state";
 import { useAtomValue } from "jotai";
-import React, { useEffect, useMemo, useRef, useState, useLayoutEffect } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { activeLabelSchemas } from "../Sidebar/Annotate/state";
 import { extractZoomTarget } from "./extractZoomTarget";
@@ -51,6 +51,20 @@ export const LighterSampleRenderer = ({
   const sampleRef = useRef(sample);
   sampleRef.current = sample;
 
+  const options = useRecoilValue(
+    fos.lookerOptions({ modal: true, withFilter: false })
+  );
+
+  const sampleId = sample?.sample?._id;
+  const savedViewportState = modalBridge.getModalViewport();
+  const initialViewport =
+    savedViewportState?.sampleId === sampleId ? savedViewportState : null;
+
+  // Zoom to content only when options.zoom is set and there is no saved
+  // viewport to restore. Restoring a viewport takes precedence over auto-zoom.
+  const optionsZoom = ("zoom" in options && options.zoom) as boolean | undefined;
+  const effectiveZoom = !!optionsZoom && !initialViewport;
+
   /**
    * This effect is responsible for loading the sample and adding the overlays to the scene.
    */
@@ -69,6 +83,7 @@ export const LighterSampleRenderer = ({
         {
           src: mediaUrl,
           maintainAspectRatio: true,
+          waitForViewport: effectiveZoom,
         }
       );
       addOverlay(mediaOverlay, false);
@@ -106,8 +121,10 @@ export const LighterSampleRenderer = ({
         <LighterSetupImpl
           containerRef={containerRef}
           sceneId={sceneId}
-          sampleId={sampleRef.current?.sample?._id}
+          sampleId={sampleId}
           sampleData={sampleRef.current?.sample}
+          effectiveZoom={effectiveZoom}
+          initialViewport={initialViewport}
         />
       )}
       {isCanvasHovered && <LighterToolbar />}
@@ -120,8 +137,11 @@ const LighterSetupImpl = (props: {
   sceneId: string;
   sampleId: string | undefined;
   sampleData: Record<string, unknown> | undefined;
+  effectiveZoom: boolean;
+  initialViewport: ReturnType<typeof modalBridge.getModalViewport>;
 }) => {
-  const { containerRef, sceneId, sampleId, sampleData } = props;
+  const { containerRef, sceneId, sampleId, sampleData, effectiveZoom, initialViewport } =
+    props;
 
   const options = useRecoilValue(
     fos.lookerOptions({ modal: true, withFilter: false })
@@ -130,15 +150,6 @@ const LighterSetupImpl = (props: {
   // Read activePaths directly from Jotai to bypass Recoil's filterPaths,
   // which strips newly created fields not yet in the GraphQL schema cache
   const jotaiActivePaths = useAtomValue(activeLabelSchemas);
-
-  const savedViewportState = modalBridge.getModalViewport();
-  const initialViewport =
-    savedViewportState?.sampleId === sampleId ? savedViewportState : null;
-
-  // Zoom to content only when options.zoom is set and there is no saved
-  // viewport to restore. Restoring a viewport takes precedence over auto-zoom.
-  const optionsZoom = ("zoom" in options && options.zoom) as boolean | undefined;
-  const effectiveZoom = !!optionsZoom && !initialViewport;
 
   const zoomTarget = useMemo(
     () => (effectiveZoom && sampleData ? extractZoomTarget(sampleData) : null),
