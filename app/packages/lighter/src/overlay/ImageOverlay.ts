@@ -25,7 +25,7 @@ export interface ImageOptions {
    * `renderFrame` calls `show()`, so there is no flash at default zoom,
    * ensuring the first visible frame is correct.
    */
-  waitForViewport?: boolean;
+  deferShow?: boolean;
 }
 
 const isRectNonEmpty = (bounds: Rect | undefined): boolean => {
@@ -90,7 +90,7 @@ export class ImageOverlay extends BaseOverlay implements CanonicalMedia {
 
       // Wait for the first viewport-moved event (triggered by fitToRect) to 
       // unblock the image. Ths avoids an image flash at default zoom.
-      if (this.options.waitForViewport) {
+      if (this.options.deferShow) {
         this.waitingForViewport = true;
 
         let unblocked = false;
@@ -474,7 +474,7 @@ export class ImageOverlay extends BaseOverlay implements CanonicalMedia {
 
   /**
    * Shows the image element, unless still waiting for the first viewport
-   * positioning event (see `waitForViewport` option).
+   * positioning event (see `deferShow` option).
    */
   show(): void {
     if (this.waitingForViewport) return;

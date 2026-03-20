@@ -1008,7 +1008,7 @@ export class Scene2D {
    * loaded before Pixi was ready) or on the first `canonical-media-bounds-changed`
    * event (if the image loads after the render loop starts). This guarantees
    * the Pixi viewport exists before `fitToRect` is called, preventing the
-   * silent no-op that would leave `waitForViewport` permanently blocked.
+   * silent no-op that would leave `deferShow` permanently blocked.
    *
    * Skips if canvas dimensions are not yet available.
    */
