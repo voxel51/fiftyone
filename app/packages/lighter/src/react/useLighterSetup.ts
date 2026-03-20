@@ -28,6 +28,8 @@ export type LighterOptions = Partial<ReturnType<typeof useLookerOptions>> & {
   // alongside zoom: true, the viewport snaps to this rect as soon as the image
   // loads, without waiting for overlay objects to be added to the scene.
   zoomTarget?: Rect | null;
+  // Saved zoom/pan state to restore before the first render frame.
+  initialViewport?: ViewportState | null;
 };
 
 /**
@@ -40,19 +42,17 @@ export type LighterOptions = Partial<ReturnType<typeof useLookerOptions>> & {
  * i.e., it should not change during the lifetime of the component.
  * @param options - The options for the scene.
  * @param sceneId - A unique scene ID
- * @param initialViewport - Optional zoom/pan state to apply before the first render frame.
  */
 export const useLighterSetupWithPixi = (
   stableCanvas: HTMLCanvasElement,
   options: LighterOptions,
   sceneId: string,
-  initialViewport?: ViewportState | null
 ) => {
   const [scene, setScene] = useAtom(lighterSceneAtom);
 
   // Frozen at mount time — modalViewportState only changes on Looker/Lighter unmount 
   // so this value is stable for the entire lifetime of the component.
-  const initialViewportRef = useRef(initialViewport);
+  const initialViewportRef = useRef(options.initialViewport);
   const rendererRef = useRef<PixiRenderer2D | null>(null);
 
   const eventChannel = scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID;

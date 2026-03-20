@@ -80,7 +80,7 @@ export const LighterSampleRenderer = ({
         {
           src: mediaUrl,
           maintainAspectRatio: true,
-          waitForViewport: effectiveZoom,
+          deferShow: effectiveZoom,
         }
       );
       addOverlay(mediaOverlay, false);
@@ -160,8 +160,9 @@ const LighterSetupImpl = (props: {
       activePaths: jotaiActivePaths ?? options.activePaths,
       zoom: effectiveZoom,
       zoomTarget,
+      initialViewport,
     }),
-    [options, jotaiActivePaths, effectiveZoom, zoomTarget]
+    [options, jotaiActivePaths, effectiveZoom, zoomTarget, initialViewport]
   );
 
   const canvas = singletonCanvas.getCanvas(containerRef.current);
@@ -170,7 +171,6 @@ const LighterSetupImpl = (props: {
     canvas,
     mergedOptions,
     sceneId,
-    initialViewport
   );
 
   // This is the bridge between FiftyOne state management system and Lighter
