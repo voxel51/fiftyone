@@ -52,27 +52,19 @@ async function fetchWithProgress(
     if (attempt > 0)
       await new Promise((r) => setTimeout(r, RETRY_BACKOFF_MS * attempt));
 
-    let response: Response;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
     try {
-      response = await fetch(url, { signal: controller.signal });
-    } catch (err) {
-      lastError = err instanceof Error ? err : new Error(String(err));
-      continue;
-    } finally {
-      clearTimeout(timeoutId);
-    }
+      const response = await fetch(url, { signal: controller.signal });
 
-    if (!response.ok) {
-      lastError = new Error(`${response.status} ${response.statusText} (${url})`);
-      // Don't retry 4xx
-      if (response.status >= 400 && response.status < 500)
-        throw lastError;
-      continue;
-    }
+      if (!response.ok) {
+        lastError = new Error(`${response.status} ${response.statusText} (${url})`);
+        // Don't retry 4xx (break and throw)
+        if (response.status >= 400 && response.status < 500)
+          break;
+        continue;
+      }
 
-    try {
       const contentLength = response.headers.get("content-length");
       const total = contentLength ? Number(contentLength) : 0;
 
@@ -104,6 +96,8 @@ async function fetchWithProgress(
       return result.buffer;
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 
