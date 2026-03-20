@@ -6,6 +6,7 @@ import type { ViewportState } from "@fiftyone/looker";
 import { useLookerOptions } from "@fiftyone/state";
 import { useAtom } from "jotai";
 import { useEffect, useRef } from "react";
+import { DEFAULT_ZOOM_PAD } from "../constants";
 import {
   PixiRenderer2D,
   Rect,
@@ -52,11 +53,11 @@ export const useLighterSetupWithPixi = (
   // Frozen at mount time — modalViewportState only changes on Looker/Lighter unmount 
   // so this value is stable for the entire lifetime of the component.
   const initialViewportRef = useRef(initialViewport);
+  const rendererRef = useRef<PixiRenderer2D | null>(null);
 
   const eventChannel = scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID;
   const eventBus = useLighterEventBus(eventChannel);
 
-  const rendererRef = useRef<PixiRenderer2D | null>(null);
 
   useEffect(() => {
     if (!stableCanvas || !sceneId) return;
@@ -69,7 +70,7 @@ export const useLighterSetupWithPixi = (
       showOverlays: options.showOverlays,
       alpha: options.alpha,
       zoom: options.zoom,
-      zoomPad: options.zoomPad,
+      zoomPad: options.zoomPad ?? DEFAULT_ZOOM_PAD,
       zoomTarget: options.zoomTarget ?? undefined,
     };
 

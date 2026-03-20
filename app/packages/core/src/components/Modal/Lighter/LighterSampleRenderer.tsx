@@ -21,9 +21,6 @@ import { LighterToolbar } from "./LighterToolbar";
 import { singletonCanvas } from "./SharedCanvas";
 import { useBridge } from "./useBridge";
 
-// Padding applied on each side when zooming to patch content.
-// 0.1 per side = 0.2 total. This matches Looker's zoomPad: 0.2 default.
-const DEFAULT_ZOOM_PAD = 0.1;
 
 export interface LighterSampleRendererProps {
   /** Custom CSS class name */
@@ -162,7 +159,6 @@ const LighterSetupImpl = (props: {
       ...options,
       activePaths: jotaiActivePaths ?? options.activePaths,
       zoom: effectiveZoom,
-      zoomPad: DEFAULT_ZOOM_PAD,
       zoomTarget,
     }),
     [options, jotaiActivePaths, effectiveZoom, zoomTarget]
