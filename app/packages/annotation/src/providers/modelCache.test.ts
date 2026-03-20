@@ -21,7 +21,7 @@ function createMockIDB(options?: { failOn?: "get" | "put" }) {
       });
       return req;
     },
-    put: (value: ArrayBuffer, key: string) => { store.set(key, value); },
+    put: (value: ArrayBuffer, key: string) => { if (failOn !== "put") store.set(key, value); },
   });
 
   const mockDB = {
@@ -256,6 +256,28 @@ describe("loadModelWeights", () => {
     expect(closeSpy).not.toHaveBeenCalled();
   });
 
+  it("Retries on truncated response and eventually succeeds", async () => {
+    vi.useFakeTimers();
+    const truncated = new Response(
+      new ReadableStream({
+        start(controller) { controller.enqueue(new Uint8Array(32)); controller.close(); },
+      }),
+      { status: 200, statusText: "OK", headers: { "content-length": "64" } }
+    );
+    global.fetch = vi.fn()
+      .mockResolvedValueOnce(truncated)
+      .mockResolvedValue(mockFetchResponse(TEST_BUFFER));
+
+    const promise = loadModelWeights(TEST_URL, vi.fn());
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    expect(result.byteLength).toBe(64);
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+    expect(closeSpy).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
+  });
+
   it("Throws after all retries exhausted", async () => {
     vi.useFakeTimers();
     global.fetch = vi.fn().mockRejectedValue(new Error("Network Error"));
@@ -265,6 +287,26 @@ describe("loadModelWeights", () => {
     const err = await promise;
     expect(err).toBeInstanceOf(Error);
     expect((err as Error).message).toBe("Network Error");
+    expect(global.fetch).toHaveBeenCalledTimes(MAX_RETRIES);
+    expect(closeSpy).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
+  });
+
+  it("Throws on truncated response after all retries exhausted", async () => {
+    vi.useFakeTimers();
+    const makeTruncated = () => new Response(
+      new ReadableStream({
+        start(controller) { controller.enqueue(new Uint8Array(32)); controller.close(); },
+      }),
+      { status: 200, statusText: "OK", headers: { "content-length": "64" } }
+    );
+    global.fetch = vi.fn().mockImplementation(() => Promise.resolve(makeTruncated()));
+
+    const promise = loadModelWeights(TEST_URL, vi.fn()).catch((e: Error) => e);
+    await vi.runAllTimersAsync();
+    const err = await promise;
+    expect(err).toBeInstanceOf(Error);
+    expect((err as Error).message).toMatch(/Truncated response.*32 of 64/);
     expect(global.fetch).toHaveBeenCalledTimes(MAX_RETRIES);
     expect(closeSpy).toHaveBeenCalledTimes(1);
     vi.useRealTimers();

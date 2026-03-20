@@ -87,7 +87,9 @@ async function fetchWithProgress(
         onProgress(loaded, total);
       }
 
-      return loaded === total ? result.buffer : result.slice(0, loaded).buffer;
+      if (loaded !== total)
+        throw new Error(`Truncated response: received ${loaded} of ${total} bytes (${url})`);
+      return result.buffer;
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
     } finally {
