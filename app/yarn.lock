@@ -2429,6 +2429,7 @@ __metadata:
   peerDependencies:
     "@fiftyone/commands": "*"
     "@fiftyone/events": "*"
+    "@fiftyone/voodo": "*"
     jotai: "*"
     react: "*"
   languageName: unknown
