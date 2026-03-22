@@ -530,9 +530,10 @@ class ZeroShotTransformerEmbeddingsMixin(EmbeddingsMixin):
         with torch.no_grad():
             for k, v in args.items():
                 args[k] = v.to(self.device)
-            return (
-                self._model.get_image_features(**args).detach().cpu().numpy()
-            )
+            features = self._model.get_image_features(**args)
+            if not isinstance(features, torch.Tensor):
+                features = features.pooler_output
+            return features.detach().cpu().numpy()
 
 
 class ZeroShotTransformerPromptMixin(PromptMixin):
