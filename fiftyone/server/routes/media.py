@@ -73,7 +73,7 @@ def _is_media_file(filepath: str) -> bool:
 
 def _validate_media_path(
     request: Request,
-) -> tuple[str | None, Response | None]:
+) -> tuple[t.Optional[str], t.Optional[Response]]:
     """Validates and normalizes the requested media path.
 
     Applies three layers of defense:
