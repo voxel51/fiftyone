@@ -30,7 +30,7 @@ describe("resolveModalGroupSlice", () => {
     ).toBe("right");
   });
 
-  it("prefers deterministic non-3d slice for fresh modal open on 3d baseline", () => {
+  it("keeps the clicked 3d grid slice for a fresh modal open", () => {
     expect(
       resolveModalGroupSlice({
         groupSlice: "pcd",
@@ -41,7 +41,7 @@ describe("resolveModalGroupSlice", () => {
         is3dPinned: true,
         destinationHasCurrentModalSlice: null,
       })
-    ).toBe("image");
+    ).toBe("pcd");
   });
 
   it("preserves current modal slice when destination confirms it exists", () => {

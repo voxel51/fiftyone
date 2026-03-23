@@ -23,12 +23,13 @@ const getFirstNon3dSlice = (groupMediaTypes: GroupMediaType[]) =>
  *
  * Precedence:
  * 1. Start from the grid slice (`groupSlice`) as the baseline.
- * 2. Preserve `currentModalSlice` only for existing modal-to-modal navigation,
+ * 2. Fresh modal opens keep the clicked grid slice, including 3D slices.
+ * 3. Preserve `currentModalSlice` only for existing modal-to-modal navigation,
  *    and only when the destination group confirms that slice exists.
- * 3. If baseline is 3D and we cannot preserve:
- *    - fresh modal open OR unpinned: move to deterministic first non-3D slice
- *    - pinned existing modal: stay on baseline 3D slice
- * 4. If baseline is non-3D, keep baseline.
+ * 4. If baseline is 3D during modal-to-modal navigation and we cannot preserve:
+ *    - unpinned: move to deterministic first non-3D slice
+ *    - pinned: stay on baseline 3D slice
+ * 5. If baseline is non-3D, keep baseline.
  */
 export const resolveModalGroupSlice = ({
   groupSlice,
@@ -41,6 +42,10 @@ export const resolveModalGroupSlice = ({
 }: ResolveModalGroupSliceParams): string | null => {
   if (!groupSlice) {
     return currentModalSlice;
+  }
+
+  if (!hasExistingModal) {
+    return groupSlice;
   }
 
   const currentModalSliceIsKnown = Boolean(
@@ -66,7 +71,7 @@ export const resolveModalGroupSlice = ({
     return groupSlice;
   }
 
-  if (!is3dPinned || !hasExistingModal) {
+  if (!is3dPinned) {
     return getFirstNon3dSlice(groupMediaTypes) ?? groupSlice;
   }
 

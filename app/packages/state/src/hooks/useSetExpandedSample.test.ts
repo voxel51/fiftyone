@@ -134,7 +134,7 @@ describe("useSetExpandedSample", () => {
     });
   });
 
-  it("prefers a deterministic 2d slice when opening from a 3d grid slice", async () => {
+  it("keeps the 3d grid slice when opening the modal from a 3d group view", async () => {
     setState({
       modalSelector: null,
       modalGroupSlice: "pcd",
@@ -144,7 +144,7 @@ describe("useSetExpandedSample", () => {
 
     await result.current({ id: "next-id", groupId: "next-group-id" });
 
-    expect(stateStore.values.modalGroupSlice).toBe("image");
+    expect(stateStore.values.modalGroupSlice).toBe("pcd");
     expect(stateStore.values.modalSelector).toEqual({
       id: "next-id",
       groupId: "next-group-id",
