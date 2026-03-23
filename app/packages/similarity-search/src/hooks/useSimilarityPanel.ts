@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useRecoilValue } from "recoil";
 import * as fos from "@fiftyone/state";
-import { SimilaritySearchViewProps } from "../types";
+import { SimilaritySearchViewProps, SimilarityRun } from "../types";
 import { useNavigate } from "./useNavigate";
 import { useRuns } from "./useRuns";
 import { useFilteredRuns } from "./useFilteredRuns";
@@ -9,52 +9,18 @@ import { useMultiSelect } from "./useMultiSelect";
 import { useCloneConfig } from "./useCloneConfig";
 import useTriggers from "./useTriggers";
 
-/**
- * Orchestration hook for the similarity search panel.
- *
- * Wires together navigation, runs, filtering, multi-select,
- * clone config, and panel event triggers. Components consume
- * the returned API without touching atoms or triggers directly.
- */
-export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
-  const { data: panelData = {}, schema } = props;
-  const { view } = schema;
+// ─── Derived State ──────────────────────────────────────────────────
 
-  const { page, navigateHome, navigateNewSearch, navigateSimilarityIndex } =
-    useNavigate();
+/**
+ * Derives all read-only state for the similarity search panel
+ * from sub-hooks and panel data: brain keys, runs, filtering,
+ * patches view detection, and current user.
+ */
+const useDerivedPanelState = (props: SimilaritySearchViewProps) => {
+  const { data: panelData = {} } = props;
+
   const { runs: allRuns, loaded, refreshRuns } = useRuns();
   const [submitting, setSubmitting] = useState(false);
-  const { cloneConfig, setCloneConfig, clearCloneConfig } = useCloneConfig();
-
-  const {
-    clearAndExit,
-    selectMode,
-    selectedRunIds,
-    toggleSelectMode,
-    toggleRunSelection,
-    selectAll,
-    deselectAll,
-  } = useMultiSelect();
-
-  const triggers = useTriggers<{
-    applyRun: (payload: { run_id: string }) => void;
-    deleteRun: (payload: { run_id: string }) => void;
-    bulkDeleteRuns: (payload: { run_ids: string[] }) => void;
-    cloneRun: (payload: { run_id: string }) => void;
-    renameRun: (payload: { run_id: string; new_name: string }) => void;
-    listRuns: () => void;
-    getBrainKeys: () => void;
-    getSampleMedia: (payload: { sample_ids: string[] }) => void;
-  }>({
-    applyRun: view.apply_run,
-    deleteRun: view.delete_run,
-    bulkDeleteRuns: view.bulk_delete_runs,
-    cloneRun: view.clone_run,
-    renameRun: view.rename_run,
-    listRuns: view.list_runs,
-    getBrainKeys: view.get_brain_keys,
-    getSampleMedia: view.get_sample_media,
-  });
 
   const allBrainKeys = panelData.brain_keys ?? [];
   const appliedRunId = (panelData as Record<string, unknown>).applied_run_id as
@@ -106,6 +72,65 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
     runs,
     currentUser
   );
+
+  return {
+    loaded: loaded && !submitting,
+    runs,
+    allRuns,
+    filteredRuns,
+    brainKeys,
+    isPatchesView,
+    appliedRunId,
+    sampleMedia,
+    filterState,
+    canFilterByOwner,
+    refreshRuns,
+    setFilterState,
+    submitting,
+    setSubmitting,
+  };
+};
+
+// ─── Actions ────────────────────────────────────────────────────────
+
+type PanelActionsDeps = {
+  runs: SimilarityRun[];
+  refreshRuns: () => Promise<void>;
+  setSubmitting: (v: boolean) => void;
+  navigateHome: () => void;
+  navigateNewSearch: () => void;
+  triggers: {
+    applyRun: (payload: { run_id: string }) => void;
+    deleteRun: (payload: { run_id: string }) => void;
+    bulkDeleteRuns: (payload: { run_ids: string[] }) => void;
+  };
+  setCloneConfig: (config: {
+    brain_key: string;
+    query_type: "text" | "image";
+    query?: string;
+    k?: number;
+    reverse: boolean;
+    dist_field?: string;
+  }) => void;
+  clearCloneConfig: () => void;
+  clearAndExit: () => void;
+};
+
+/**
+ * All action handlers (commands) for the similarity search panel.
+ */
+const useSimilarityPanelActions = (deps: PanelActionsDeps) => {
+  const {
+    runs,
+    refreshRuns,
+    setSubmitting,
+    navigateHome,
+    navigateNewSearch,
+    triggers,
+    setCloneConfig,
+    clearCloneConfig,
+    clearAndExit,
+  } = deps;
 
   const handleApply = useCallback(
     (runId: string) => {
@@ -160,7 +185,78 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
       setSubmitting(false);
       navigateHome();
     }
-  }, [navigateHome, refreshRuns]);
+  }, [navigateHome, refreshRuns, setSubmitting]);
+
+  return {
+    handleApply,
+    handleClone,
+    handleDelete,
+    handleBulkDelete,
+    handleNewSearch,
+    handleSubmitted,
+  };
+};
+
+// ─── Orchestrator ───────────────────────────────────────────────────
+
+/**
+ * Orchestration hook for the similarity search panel.
+ *
+ * Composes useDerivedPanelState (read-only derived state) and
+ * useSimilarityPanelActions (command handlers). Components consume
+ * the returned API without touching atoms or triggers directly.
+ */
+export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
+  const { schema } = props;
+  const { view } = schema;
+
+  const { page, navigateHome, navigateNewSearch, navigateSimilarityIndex } =
+    useNavigate();
+  const { cloneConfig, setCloneConfig, clearCloneConfig } = useCloneConfig();
+
+  const {
+    clearAndExit,
+    selectMode,
+    selectedRunIds,
+    toggleSelectMode,
+    toggleRunSelection,
+    selectAll,
+    deselectAll,
+  } = useMultiSelect();
+
+  const triggers = useTriggers<{
+    applyRun: (payload: { run_id: string }) => void;
+    deleteRun: (payload: { run_id: string }) => void;
+    bulkDeleteRuns: (payload: { run_ids: string[] }) => void;
+    cloneRun: (payload: { run_id: string }) => void;
+    renameRun: (payload: { run_id: string; new_name: string }) => void;
+    listRuns: () => void;
+    getBrainKeys: () => void;
+    getSampleMedia: (payload: { sample_ids: string[] }) => void;
+  }>({
+    applyRun: view.apply_run,
+    deleteRun: view.delete_run,
+    bulkDeleteRuns: view.bulk_delete_runs,
+    cloneRun: view.clone_run,
+    renameRun: view.rename_run,
+    listRuns: view.list_runs,
+    getBrainKeys: view.get_brain_keys,
+    getSampleMedia: view.get_sample_media,
+  });
+
+  const state = useDerivedPanelState(props);
+
+  const actions = useSimilarityPanelActions({
+    runs: state.runs,
+    refreshRuns: state.refreshRuns,
+    setSubmitting: state.setSubmitting,
+    navigateHome,
+    navigateNewSearch,
+    triggers,
+    setCloneConfig,
+    clearCloneConfig,
+    clearAndExit,
+  });
 
   const selection = useMemo(
     () => ({
@@ -186,27 +282,22 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
   return {
     // state
     page,
-    loaded: loaded && !submitting,
-    runs,
-    filteredRuns,
-    brainKeys,
-    isPatchesView,
-    appliedRunId,
-    sampleMedia,
+    loaded: state.loaded,
+    runs: state.runs,
+    filteredRuns: state.filteredRuns,
+    brainKeys: state.brainKeys,
+    isPatchesView: state.isPatchesView,
+    appliedRunId: state.appliedRunId,
+    sampleMedia: state.sampleMedia,
     cloneConfig,
-    filterState,
-    canFilterByOwner,
+    filterState: state.filterState,
+    canFilterByOwner: state.canFilterByOwner,
     selection,
 
     // actions
-    handleApply,
-    handleClone,
-    handleDelete,
-    handleBulkDelete,
-    handleNewSearch,
-    handleSubmitted,
-    refreshRuns,
-    setFilterState,
+    ...actions,
+    refreshRuns: state.refreshRuns,
+    setFilterState: state.setFilterState,
     navigateHome,
     getSampleMedia: triggers.getSampleMedia,
     navigateSimilarityIndex,
