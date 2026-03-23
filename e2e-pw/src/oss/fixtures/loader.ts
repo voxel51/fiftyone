@@ -81,8 +81,11 @@ export class OssLoader extends AbstractFiftyoneLoader {
       // @ts-ignore storing a page-global init flag on window for Playwright
       window.__FO_PLAYWRIGHT_INIT__ = true;
 
-      window.localStorage.clear();
-      window.sessionStorage.clear();
+      if (!window.name.includes("__FO_PLAYWRIGHT_STORAGE_CLEARED__")) {
+        window.localStorage.clear();
+        window.sessionStorage.clear();
+        window.name = `${window.name}__FO_PLAYWRIGHT_STORAGE_CLEARED__`;
+      }
 
       const handleCursorChange = (e: MouseEvent) => {
         const element = document.elementFromPoint(e.clientX, e.clientY);
