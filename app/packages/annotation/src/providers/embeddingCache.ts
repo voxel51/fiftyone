@@ -2,6 +2,7 @@ import type { ImageGeometry } from "./math";
 
 const DB_NAME = "fiftyone-embeddings";
 const STORE_NAME = "embeddings";
+const META_STORE = "metadata";
 export const MAX_CACHE_ENTRIES = 5;
 
 interface StoredTensor {
@@ -14,7 +15,6 @@ export interface CachedEmbedding {
   highResFeats0: StoredTensor;
   highResFeats1: StoredTensor;
   processedImage: ImageGeometry;
-  lastAccessed: number;
 }
 
 /**
@@ -32,7 +32,10 @@ function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, 1);
 
-    req.onupgradeneeded = () => req.result.createObjectStore(STORE_NAME);
+    req.onupgradeneeded = () => {
+      req.result.createObjectStore(STORE_NAME);
+      req.result.createObjectStore(META_STORE);
+    };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
@@ -81,6 +84,36 @@ function idbGetAllKeys(db: IDBDatabase): Promise<string[]> {
   });
 }
 
+/** Write a lightweight timestamp to the metadata store. */
+function idbPutMeta(db: IDBDatabase, key: string, lastAccessed: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(META_STORE, "readwrite");
+    tx.objectStore(META_STORE).put(lastAccessed, key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+/** Read a timestamp from the metadata store. */
+function idbGetMeta(db: IDBDatabase, key: string): Promise<number | undefined> {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(META_STORE, "readonly");
+    const req = tx.objectStore(META_STORE).get(key);
+    req.onsuccess = () => resolve(req.result as number | undefined);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+/** Delete a metadata entry by key. */
+function idbDeleteMeta(db: IDBDatabase, key: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(META_STORE, "readwrite");
+    tx.objectStore(META_STORE).delete(key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
 /** Move a key to the end of the Map (= most recently used). */
 function touch(key: string, value: CachedEmbedding): void {
   cache.delete(key);
@@ -105,18 +138,19 @@ async function evictIDB(db: IDBDatabase): Promise<void> {
   if (keys.length <= MAX_CACHE_ENTRIES)
     return;
 
-  // Read timestamps for all entries
+  // Read timestamps from lightweight metadata store
   const entries: { key: string; lastAccessed: number }[] = [];
   for (const key of keys) {
-    const record = await idbGet(db, key).catch((): undefined => undefined);
-    entries.push({ key, lastAccessed: record?.lastAccessed ?? 0 });
+    const ts = await idbGetMeta(db, key).catch((): undefined => undefined);
+    entries.push({ key, lastAccessed: ts ?? 0 });
   }
 
-  // Sort oldest first, delete excess
+  // Sort oldest first, delete excess from both stores
   entries.sort((a, b) => a.lastAccessed - b.lastAccessed);
   const toDelete = entries.length - MAX_CACHE_ENTRIES;
   for (let i = 0; i < toDelete; i++) {
     await idbDelete(db, entries[i].key).catch(() => {});
+    await idbDeleteMeta(db, entries[i].key).catch(() => {});
   }
 }
 
@@ -130,12 +164,11 @@ export async function getEmbedding(
 ): Promise<CachedEmbedding | undefined> {
   const mem = cache.get(url);
   if (mem) {
-    mem.lastAccessed = Date.now();
     touch(url, mem);
 
-    // Persist updated timestamp to IDB (fire-and-forget)
+    // Persist updated timestamp to lightweight metadata store (fire-and-forget)
     openDB()
-      .then((db) => idbPut(db, url, mem).finally(() => db.close()))
+      .then((db) => idbPutMeta(db, url, Date.now()).finally(() => db.close()))
       .catch((err) => onWarning?.(`Embedding cache timestamp update failed: ${err}`));
 
     return mem;
@@ -154,12 +187,11 @@ export async function getEmbedding(
     if (!record)
       return undefined;
 
-    record.lastAccessed = Date.now();
     touch(url, record);
     evictMemory();
 
-    // Update lastAccessed in IDB (fire-and-forget: close() will wait for pending txn)
-    idbPut(db, url, record).catch((err) => onWarning?.(`Embedding cache timestamp update failed: ${err}`));
+    // Update timestamp in lightweight metadata store (fire-and-forget: close() waits for pending txn)
+    idbPutMeta(db, url, Date.now()).catch((err) => onWarning?.(`Embedding cache timestamp update failed: ${err}`));
 
     return record;
   } catch (err) {
@@ -179,7 +211,6 @@ export async function putEmbedding(
   embedding: CachedEmbedding,
   onWarning?: (message: string) => void
 ): Promise<void> {
-  embedding.lastAccessed = Date.now();
   touch(url, embedding);
   evictMemory();
 
@@ -193,6 +224,7 @@ export async function putEmbedding(
 
   try {
     await idbPut(db, url, embedding);
+    await idbPutMeta(db, url, Date.now());
     await evictIDB(db);
   } catch (err) {
     onWarning?.(`Embedding cache write failed: ${err}`);

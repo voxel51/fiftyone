@@ -10,34 +10,40 @@ import {
 function createMockIDB(options?: { failOn?: "get" | "put" }) {
   const { failOn } = options ?? {};
   const store = new Map<string, CachedEmbedding>();
+  const metaStore = new Map<string, number>();
   const closeSpy = vi.fn();
 
-  const mockObjectStore = () => ({
+  const makeMockObjectStore = (backing: Map<string, any>) => () => ({
     get: (key: string) => {
       const req = {
-        result: undefined as CachedEmbedding | undefined,
+        result: undefined as any,
         onsuccess: null as any,
         onerror: null as any,
         error: failOn === "get" ? new Error("read failed") : null,
       };
       setTimeout(() => {
         if (failOn === "get") { req.onerror?.(); }
-        else { req.result = store.get(key); req.onsuccess?.(); }
+        else { req.result = backing.get(key); req.onsuccess?.(); }
       });
       return req;
     },
-    put: (value: CachedEmbedding, key: string) => { if (failOn !== "put") store.set(key, value); },
-    delete: (key: string) => { store.delete(key); },
+    put: (value: any, key: string) => { if (failOn !== "put") backing.set(key, value); },
+    delete: (key: string) => { backing.delete(key); },
     getAllKeys: () => {
       const req = { result: [] as string[], onsuccess: null as any, onerror: null as any };
-      setTimeout(() => { req.result = [...store.keys()]; req.onsuccess?.(); });
+      setTimeout(() => { req.result = [...backing.keys()]; req.onsuccess?.(); });
       return req;
     },
   });
 
+  const stores: Record<string, ReturnType<typeof makeMockObjectStore>> = {
+    embeddings: makeMockObjectStore(store),
+    metadata: makeMockObjectStore(metaStore),
+  };
+
   const mockDB = {
-    transaction: (_store?: string, mode?: string) => {
-      const os = mockObjectStore();
+    transaction: (storeName?: string, mode?: string) => {
+      const os = (stores[storeName ?? "embeddings"] ?? stores["embeddings"])();
       const shouldFailPut = failOn === "put" && mode === "readwrite";
       const tx = {
         objectStore: () => os,
@@ -75,7 +81,6 @@ function createTestEmbedding(seed = 51): CachedEmbedding {
     highResFeats0: { data: new Float32Array([seed + 2]), dims: [1, 1] },
     highResFeats1: { data: new Float32Array([seed + 3]), dims: [1, 1] },
     processedImage: { originalWidth: 640, originalHeight: 480, scale: 1.6, padX: 12, padY: 56 },
-    lastAccessed: 0,
   };
 }
 
