@@ -109,7 +109,7 @@ body:
         datasets. Include a short video or screenshot if the bug is in the App.
       placeholder: |
         ```
-        # your code code goes here, don't forget the backticks (`)
+        # your code goes here, don't forget the backticks (`)
         ```
   - type: input
     id: python-ver
@@ -122,7 +122,7 @@ body:
         ---
 
       description: |
-        Which version of Python was the bug found on? `python --version`
+        Which version of Python was the bug found on? `python --version` or `pip show fiftyone`
       placeholder: Python 3.11.14
 
   - type: input
