@@ -16,6 +16,7 @@ import type { SelectionManager } from "../selection/SelectionManager";
 import type { Point, Rect } from "../types";
 import { buildBrushCursor } from "./buildBrushCursor";
 import { InteractiveDetectionHandler } from "./InteractiveDetectionHandler";
+import { v4 as generateUUID } from "uuid";
 
 /**
  * Interface for objects that can handle interaction events.
@@ -193,13 +194,21 @@ export class InteractionManager {
   private canonicalMediaId?: string;
 
   // Configuration
-  private readonly CLICK_THRESHOLD = 10; // pixels, dictates drag vs. click
+  private readonly CLICK_THRESHOLD = 3; // pixels, dictates drag vs. click
   private readonly DRAG_TIME_THRESHOLD = 500; // ms, dictates drag vs. click
   private readonly DOUBLE_CLICK_TIME_THRESHOLD = 500; // ms
   private readonly DOUBLE_CLICK_DISTANCE_THRESHOLD = 10; // pixels
 
   private currentPixelCoordinates?: Point;
   private readonly eventBus: EventDispatcher<LighterEventGroup>;
+
+  private pendingQuickDraw?: {
+    point: Point;
+    worldPoint: Point;
+    scale: number;
+    pointerId: number;
+  };
+
   constructor(
     private canvas: HTMLCanvasElement,
     private selectionManager: SelectionManager,
@@ -250,7 +259,6 @@ export class InteractionManager {
     this.clickStartPoint = point;
 
     let handler: InteractionHandler | undefined = undefined;
-
     let interactiveHandler = this.getInteractiveHandler();
 
     if (interactiveHandler) {
@@ -273,8 +281,26 @@ export class InteractionManager {
         this.selectionManager.select(handler!.id);
       }
 
-      // QuickDraw: clicking outside the selected overlay starts a new detection.
-      if (segmentationMasksBridge.isActive() || quickDrawBridge.isActive()) {
+      // QuickDraw: defer overlay creation until we confirm this is a drag.
+      // If the user releases without dragging (a click), exit QuickDraw mode.
+      if (quickDrawBridge.isActive()) {
+        const isNonOverlay = !handler || handler.id === this.canonicalMediaId;
+
+        if (isNonOverlay || isUnselectedOverlay) {
+          this.renderer.disableZoomPan();
+
+          this.pendingQuickDraw = {
+            point,
+            worldPoint,
+            scale,
+            pointerId: event.pointerId,
+          };
+
+          this.canvas.setPointerCapture(event.pointerId);
+          event.preventDefault();
+          return;
+        }
+      } else if (segmentationMasksBridge.isActive()) {
         const isNonOverlay = !handler || handler.id === this.canonicalMediaId;
 
         if (isNonOverlay || isUnselectedOverlay) {
@@ -346,7 +372,72 @@ export class InteractionManager {
     }
   }
 
+  // Promote pending QuickDraw event once drag threshold is exceeded.
+  private quickDrawCreate = (event: PointerEvent): boolean => {
+    if (!this.pendingQuickDraw) return false;
+
+    const point = this.getCanvasPoint(event);
+    const worldPoint = this.renderer.screenToWorld(point);
+    const scale = this.renderer.getScale();
+    this.currentPixelCoordinates = point;
+
+    const distance = Math.hypot(
+      point.x - this.pendingQuickDraw.point.x,
+      point.y - this.pendingQuickDraw.point.y
+    );
+
+    if (distance > this.CLICK_THRESHOLD) {
+      const pending = this.pendingQuickDraw;
+      this.pendingQuickDraw = undefined;
+
+      // Signal QuickDraw to create a detection and register
+      // an interactive handler. This relies on the event bus invoking
+      // handlers synchronously so the handler is immediately available.
+      this.eventBus.dispatch("lighter:overlay-create", {
+        eventId: generateUUID(),
+      });
+
+      const interactiveHandler = this.getInteractiveHandler();
+      if (interactiveHandler) {
+        const handler = interactiveHandler.getOverlay();
+        this.selectionManager.select(handler.id);
+
+        // Initialize the handler with the original pointerdown point
+        handler.onPointerDown?.(
+          pending.point,
+          pending.worldPoint,
+          event,
+          pending.scale
+        );
+
+        // Update with the current pointer position
+        handler.onMove?.(
+          point,
+          worldPoint,
+          event,
+          scale,
+          this.maintainAspectRatio
+        );
+
+        if (TypeGuards.isSpatial(handler)) {
+          this.eventBus.dispatch("lighter:overlay-drag-start", {
+            id: handler.id,
+            startPosition: handler.bounds,
+            bounds: handler.bounds,
+          });
+        }
+
+        this.configureCursorStyle(handler, worldPoint, scale);
+      }
+    }
+
+    return true;
+  };
+
   private handlePointerMove = (event: PointerEvent): void => {
+    // short-circuit if pending QuickDraw operation kicks off
+    if (this.quickDrawCreate(event)) return;
+
     const point = this.getCanvasPoint(event);
     const worldPoint = this.renderer.screenToWorld(point);
     const scale = this.renderer.getScale();
@@ -425,7 +516,27 @@ export class InteractionManager {
     }
   };
 
+  private quickDrawQuit = (event: PointerEvent): boolean => {
+    if (!this.pendingQuickDraw) return false;
+
+    this.eventBus.dispatch("lighter:quickdraw-quit", {
+      eventId: generateUUID(),
+    });
+
+    this.pendingQuickDraw = undefined;
+    this.renderer.enableZoomPan();
+    this.canvas.releasePointerCapture(event.pointerId);
+    this.clickStartPoint = undefined;
+    this.clickStartTime = 0;
+
+    return true;
+  };
+
   private handlePointerUp = (event: PointerEvent): void => {
+    // if we still have a pendingQuickDraw there was no significant movement
+    // the user clicked to exit QuickDraw
+    if (this.quickDrawQuit(event)) return;
+
     const point = this.getCanvasPoint(event);
     const worldPoint = this.renderer.screenToWorld(point);
     const scale = this.renderer.getScale();
@@ -507,6 +618,11 @@ export class InteractionManager {
   };
 
   private handlePointerCancel = (event: PointerEvent): void => {
+    if (this.pendingQuickDraw) {
+      this.pendingQuickDraw = undefined;
+      this.renderer.enableZoomPan();
+    }
+
     const interactingHandler = this.findInteractingHandler();
 
     if (interactingHandler) {

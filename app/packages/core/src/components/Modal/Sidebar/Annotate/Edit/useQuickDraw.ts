@@ -7,12 +7,12 @@ import { fieldType, isFieldReadOnly, labelSchemaData } from "../state";
 import { labelsByPath } from "../useLabels";
 import { defaultField, useAnnotationContext } from "./state";
 import {
-  BaseOverlay,
   UNDEFINED_LIGHTER_SCENE_ID,
   useLighter,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
 import useCreate from "./useCreate";
+import useExit from "./useExit";
 
 /**
  * Flag to track if quick draw mode is active.
@@ -21,7 +21,8 @@ import useCreate from "./useCreate";
  * This atom is exported to allow inspection from non-React code.
  * This atom should not be used in React code.
  */
-export const _dangerousQuickDrawActiveAtom = atom<boolean>(false);
+const quickDrawActiveAtom = atom<boolean>(false);
+export { quickDrawActiveAtom as _dangerousQuickDrawActiveAtom };
 
 /**
  * Tracks the last-used detection field path in quick draw mode.
@@ -41,26 +42,24 @@ const lastUsedLabelAtom = atomFamily((_field: string) =>
 const detectionTypes = new Set(["Detection", "Detections"]);
 
 /**
- * Tracks the last processed `lighter:overlay-create` event ID so that only one
+ * Tracks the last processed event ID for each event type so that only one
  * `useQuickDraw` instance handles each event, even though the hook is
  * called in multiple components.
  */
-const lastProcessedCreateIdAtom = atom<string | null>(null);
+const claimedEventsAtom = atom<Map<string, string>>(new Map());
 
 /**
  * Centralized hook for managing quick draw mode state and operations.
  */
 export const useQuickDraw = () => {
-  const [quickDrawActive, setQuickDrawActive] = useAtom(
-    _dangerousQuickDrawActiveAtom
-  );
+  const [quickDrawActive, setQuickDrawActive] = useAtom(quickDrawActiveAtom);
   const setLastUsedField = useSetAtom(lastUsedFieldAtom);
   const labelsMap = useAtomValue(labelsByPath);
   const defaultDetectionField = useAtomValue(defaultField(DETECTION));
-  const { scene, addOverlay } = useLighter();
+  const { scene } = useLighter();
   const { selectedLabel } = useAnnotationContext();
-
   const createDetection = useCreate(DETECTION);
+  const onExit = useExit();
 
   const useEventHandler = useLighterEventHandler(
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
@@ -230,72 +229,90 @@ export const useQuickDraw = () => {
     [getLabelSchema, getLastUsedLabel, labelsMap]
   );
 
-  const claimCreateEvent = useAtomCallback(
-    useCallback((get, set, eventId: string) => {
-      if (get(lastProcessedCreateIdAtom) === eventId) {
+  const claimEvent = useAtomCallback(
+    useCallback((get, set, eventType: string, eventId: string) => {
+      const claimedEvents = get(claimedEventsAtom);
+      if (claimedEvents.get(eventType) === eventId) {
         return false;
       }
 
-      set(lastProcessedCreateIdAtom, eventId);
+      const updatedEvents = new Map(claimedEvents);
+      updatedEvents.set(eventType, eventId);
+      set(claimedEventsAtom, updatedEvents);
 
       return true;
     }, [])
   );
 
   /**
-   * Handles the `lighter:overlay-create` event fired by `InteractionManager`
-   * on pointer-down when no interactive handler exists.
-   *
-   * 1. Finalize the previous detection (exit interactive mode, persist overlay,
-   *    remember field/label for auto-assignment).
-   * 2. Resolve field and label for the next detection.
-   * 3. Create the next detection.
+   * Cache field/label for auto-assignment
+   * Close out previous label
+   */
+  const finalizeCurrentDetection = useCallback(() => {
+    const scene = sceneRef.current;
+    const currentLabel = selectedLabelRef.current;
+
+    if (currentLabel) {
+      setLastUsedField(currentLabel.path);
+
+      if (currentLabel.data.label) {
+        setLastUsedLabel(currentLabel.path, currentLabel.data.label);
+      }
+    }
+
+    scene?.exitInteractiveMode();
+    onExit();
+  }, [onExit, setLastUsedField, setLastUsedLabel]);
+
+  /**
+   * Cache field/label for auto-assignment
+   * Close out previous label
+   * Create the next detection.
    */
   useEventHandler(
     "lighter:overlay-create",
     useCallback(
       (payload) => {
-        if (!quickDrawActive || !claimCreateEvent(payload.eventId)) {
+        if (!claimEvent("overlay-create", payload.eventId)) {
           return;
         }
 
-        // Finalize the previous detection if one exists
-        const currentScene = sceneRef.current;
-        const currentLabel = selectedLabelRef.current;
+        finalizeCurrentDetection();
 
-        if (currentLabel) {
-          if (
-            currentScene &&
-            !currentScene.isDestroyed &&
-            currentScene.renderLoopActive
-          ) {
-            currentScene.exitInteractiveMode();
-            if (currentLabel.overlay) {
-              addOverlay(currentLabel.overlay as BaseOverlay);
-            }
-          }
-
-          setLastUsedField(currentLabel.path);
-          if (currentLabel.data.label) {
-            setLastUsedLabel(currentLabel.path, currentLabel.data.label);
-          }
-        }
-
-        const field = getLastField() ?? undefined;
-        const labelValue = field ? getLastLabel(field) ?? undefined : undefined;
+        const field = getQuickDrawDetectionField() ?? undefined;
+        const labelValue = field
+          ? getQuickDrawDetectionLabel(field) ?? undefined
+          : undefined;
 
         createDetection({ field, labelValue });
       },
       [
-        addOverlay,
-        claimCreateEvent,
+        claimEvent,
         createDetection,
+        finalizeCurrentDetection,
         getLastField,
         getLastLabel,
-        quickDrawActive,
-        setLastUsedField,
-        setLastUsedLabel,
       ]
+    )
+  );
+
+  /**
+   * Cache field/label for auto-assignment
+   * Close out previous label
+   * Exit QuickDraw
+   */
+  useEventHandler(
+    "lighter:quickdraw-quit",
+    useCallback(
+      (payload) => {
+        if (!claimEvent("quickdraw-quit", payload.eventId)) {
+          return;
+        }
+
+        finalizeCurrentDetection();
+        disableQuickDraw();
+      },
+      [claimEvent, disableQuickDraw, finalizeCurrentDetection]
     )
   );
 

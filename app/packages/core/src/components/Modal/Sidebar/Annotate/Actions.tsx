@@ -197,6 +197,8 @@ const Detection = () => {
       <Square
         $active={quickDrawActive}
         className={disabled ? "disabled" : ""}
+        data-cy="quick-draw-detection"
+        data-cy-active={quickDrawActive}
         onClick={() => {
           if (disabled) return;
           toggleQuickDraw();
