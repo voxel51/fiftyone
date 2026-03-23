@@ -400,12 +400,26 @@ the following:
 
 .. code-block:: shell
 
+   [default]
+   account_name = ...
+   sas_token = ...
+   alias = ...  # optional
+
+.. code-block:: shell
+
     [default]
     account_name = ...
     client_id = ...
     secret = ...
     tenant = ...
     alias = ...  # optional
+
+.. note::
+
+   File based cloud credentials support interpolation so make sure to escape
+   any special characters if you want their literal version to be used.
+   For example, sas_tokens often contain ``%`` characters that should be escaped as
+   ``%%`` in the .ini file.
 
 When populating samples with Azure Storage filepaths, you can either specify
 paths by their full URL:

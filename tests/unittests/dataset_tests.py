@@ -3325,6 +3325,39 @@ class DatasetTests(unittest.TestCase):
         )
 
     @drop_datasets
+    def test_merge_samples_embedded_docs_multiple_list_fields(self):
+        sample1 = fo.Sample(
+            filepath="image.jpg",
+            data=fo.DynamicEmbeddedDocument(
+                tags=["1"],
+                values=[1, 2, 3],
+            ),
+        )
+
+        sample2 = fo.Sample(
+            filepath="image.jpg",
+            tags=["2"],
+            values=[4, 5],
+        )
+
+        dataset1 = fo.Dataset()
+        dataset1.add_sample(sample1, dynamic=True)
+
+        dataset2 = fo.Dataset()
+        dataset2.add_sample_field(
+            "values", fof.ListField, subfield=fof.IntField
+        )
+        dataset2.add_sample(sample2)
+
+        dataset1.merge_samples(
+            dataset2,
+            fields={"tags": "data.tags", "values": "data.values"},
+        )
+
+        self.assertListEqual(sample1.data.tags, ["1", "2"])
+        self.assertListEqual(sample1.data.values, [1, 2, 3, 4, 5])
+
+    @drop_datasets
     def test_add_collection(self):
         sample1 = fo.Sample(filepath="image.jpg", foo="bar")
         dataset1 = fo.Dataset()
