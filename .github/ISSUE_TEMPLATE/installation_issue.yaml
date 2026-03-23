@@ -42,7 +42,7 @@ body:
     attributes:
       label: 🔖 FiftyOne version
       description: |
-        Which version of FiftyOne are you installing? `fiftyone --version`
+        Which version of FiftyOne are you installing? `fiftyone --version` or `pip show fiftyone`
       placeholder: FiftyOne 1.11.1
 
   - type: checkboxes
