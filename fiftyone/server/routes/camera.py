@@ -194,6 +194,8 @@ def _list_resolved_sample_static_transforms(dataset, sample) -> List[dict]:
             value, inline_transform_dedupe_keys
         )
 
+    # We do two passes so that sample-attached StaticTransform values win
+    # over StaticTransformRef values regardless of field-order
     for _, value in sample.iter_fields():
         _collect_sample_static_transforms_from_value(
             value,
