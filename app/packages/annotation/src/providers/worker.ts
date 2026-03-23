@@ -212,6 +212,7 @@ async function embedAndDecode(
         padX: geometry.padX,
         padY: geometry.padY,
       },
+      lastAccessed: 0,
     }, postWarning);
   }
 

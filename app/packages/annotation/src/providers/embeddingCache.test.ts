@@ -75,6 +75,7 @@ function createTestEmbedding(seed = 51): CachedEmbedding {
     highResFeats0: { data: new Float32Array([seed + 2]), dims: [1, 1] },
     highResFeats1: { data: new Float32Array([seed + 3]), dims: [1, 1] },
     processedImage: { originalWidth: 640, originalHeight: 480, scale: 1.6, padX: 12, padY: 56 },
+    lastAccessed: 0,
   };
 }
 
@@ -141,6 +142,32 @@ describe("embeddingCache", () => {
     expect(kept).toBeDefined();
     expect(openSpy).toHaveBeenCalledTimes(MAX_CACHE_ENTRIES + 1 + 2);
     expect(closeSpy).toHaveBeenCalledTimes(MAX_CACHE_ENTRIES + 1 + 2);
+  });
+
+  it("Preserves prior-session IDB entries after reload and new write", async () => {
+    // Seed MAX_CACHE_ENTRIES entries (simulates a prior session)
+    for (let i = 0; i < MAX_CACHE_ENTRIES; i++)
+      await putEmbedding(`https://example.com/${i}.jpg`, createTestEmbedding(i));
+
+    // Simulate page reload: memory is empty, IDB still has all entries
+    _resetMemoryCache();
+
+    // Write one new entry: it should evict only the oldest, not all prior entries
+    await putEmbedding("https://example.com/new.jpg", createTestEmbedding(99));
+
+    // Entry 0 is oldest, gets evicted. Entries 1-4 + new should survive.
+    _resetMemoryCache();
+
+    const evicted = await getEmbedding("https://example.com/0.jpg");
+    expect(evicted).toBeUndefined();
+
+    for (let i = 1; i < MAX_CACHE_ENTRIES; i++) {
+      const kept = await getEmbedding(`https://example.com/${i}.jpg`);
+      expect(kept).toBeDefined();
+    }
+
+    const newEntry = await getEmbedding("https://example.com/new.jpg");
+    expect(newEntry).toBeDefined();
   });
 
   it.each([

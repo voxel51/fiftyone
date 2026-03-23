@@ -14,6 +14,7 @@ export interface CachedEmbedding {
   highResFeats0: StoredTensor;
   highResFeats1: StoredTensor;
   processedImage: ImageGeometry;
+  lastAccessed: number;
 }
 
 /**
@@ -86,12 +87,32 @@ function touch(key: string, value: CachedEmbedding): void {
   cache.set(key, value);
 }
 
-/** Remove IDB entries that aren't in the current memory LRU. */
+/** Evict oldest entries from memory when over limit. */
+function evictMemory(): void {
+  while (cache.size > MAX_CACHE_ENTRIES) {
+    const [oldest] = cache.keys();
+    cache.delete(oldest);
+  }
+}
+
+/** Evict oldest IDB entries by lastAccessed timestamp when over limit. */
 async function evictIDB(db: IDBDatabase): Promise<void> {
   const keys = await idbGetAllKeys(db);
+  if (keys.length <= MAX_CACHE_ENTRIES)
+    return;
+
+  // Read timestamps for all entries
+  const entries: { key: string; lastAccessed: number }[] = [];
   for (const key of keys) {
-    if (!cache.has(key))
-      await idbDelete(db, key).catch(() => {});
+    const record = await idbGet(db, key).catch((): undefined => undefined);
+    entries.push({ key, lastAccessed: record?.lastAccessed ?? 0 });
+  }
+
+  // Sort oldest first, delete excess
+  entries.sort((a, b) => a.lastAccessed - b.lastAccessed);
+  const toDelete = entries.length - MAX_CACHE_ENTRIES;
+  for (let i = 0; i < toDelete; i++) {
+    await idbDelete(db, entries[i].key).catch(() => {});
   }
 }
 
@@ -122,7 +143,13 @@ export async function getEmbedding(
     if (!record)
       return undefined;
 
+    record.lastAccessed = Date.now();
     touch(url, record);
+    evictMemory();
+
+    // Update lastAccessed in IDB (fire-and-forget)
+    idbPut(db, url, record).catch(() => {});
+
     return record;
   } catch (err) {
     onWarning?.(`Embedding cache read failed: ${err}`);
@@ -141,13 +168,9 @@ export async function putEmbedding(
   embedding: CachedEmbedding,
   onWarning?: (message: string) => void
 ): Promise<void> {
+  embedding.lastAccessed = Date.now();
   touch(url, embedding);
-
-/** Evict oldest from memory (Map iteration order = insertion order) */
-  while (cache.size > MAX_CACHE_ENTRIES) {
-    const [oldest] = cache.keys();
-    cache.delete(oldest);
-  }
+  evictMemory();
 
   let db: IDBDatabase;
   try {
