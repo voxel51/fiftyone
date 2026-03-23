@@ -235,4 +235,39 @@ describe("GridSampleRendererItem", () => {
     renderer.destroy();
     host.remove();
   });
+
+  it("avoids synchronously unmounting the plugin root during fallback", async () => {
+    const createFallbackLooker = vi.fn(() => new MockFallbackLooker() as any);
+    const Renderer = () => {
+      throw new Error("render failed");
+    };
+    const looker = new GridSampleRendererItem({
+      createFallbackLooker,
+      pluginName: "broken-renderer",
+      Renderer,
+      RecoilBridge: TestBridge,
+      ctx: BASE_CTX as any,
+      symbol: BASE_SYMBOL,
+    });
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+
+    looker.attach(host, [320, 180], 14);
+
+    await waitFor(() => {
+      expect(createFallbackLooker).toHaveBeenCalled();
+    });
+
+    expect(
+      consoleErrorSpy.mock.calls.some((call) =>
+        call.some(
+          (arg) =>
+            typeof arg === "string" && arg.includes("synchronously unmount")
+        )
+      )
+    ).toBe(false);
+
+    looker.destroy();
+    host.remove();
+  });
 });

@@ -39,7 +39,9 @@ class GridSampleRendererErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error) {
-    this.props.onError(error);
+    // Defer the fallback handoff so React can finish the failed render before
+    // we tear down the dedicated root and replace it with a built-in looker.
+    queueMicrotask(() => this.props.onError(error));
   }
 
   render() {
