@@ -16,7 +16,7 @@ import type { SegmentationToolData } from "@fiftyone/core/src/components/Modal/S
  * small to render meaningfully.
  */
 export function buildBrushCursor(toolData: SegmentationToolData): string {
-  if (toolData.tool === "select") return "pointer";
+  if (toolData.tool === "select") return "default";
 
   const diameter = Math.round(
     Math.min(MAX_TOOL_SIZE, Math.max(MIN_TOOL_SIZE, toolData.size))

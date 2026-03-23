@@ -279,10 +279,8 @@ export const useQuickDraw = () => {
 
         finalizeCurrentDetection();
 
-        const field = getQuickDrawDetectionField() ?? undefined;
-        const labelValue = field
-          ? getQuickDrawDetectionLabel(field) ?? undefined
-          : undefined;
+        const field = getLastField() ?? undefined;
+        const labelValue = field ? getLastLabel(field) ?? undefined : undefined;
 
         createDetection({ field, labelValue });
       },
