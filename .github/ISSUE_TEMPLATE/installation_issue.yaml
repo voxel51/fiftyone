@@ -9,7 +9,8 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thank you for submitting an issue. Please refer to our [issue policy](https://www.github.com/voxel51/fiftyone/blob/develop/ISSUE_POLICY.md) for information on what types of issues we address.
+        Thank you for submitting an issue. Please refer to our [issue policy](https://www.github.com/voxel51/fiftyone/blob/develop/ISSUE_POLICY.md) 
+        for information on what types of issues we address.
 
   - type: input
     id: os-platform
@@ -25,7 +26,11 @@ body:
     validations:
       required: true
     attributes:
-      label: 🐍 Python version
+      label: |+
+        🐍 Python version
+
+        ---
+
       description: |
         Which version of Python are you using? `python --version`
       placeholder: Python 3.11.14
@@ -45,7 +50,11 @@ body:
     validations:
       required: true
     attributes:
-      label: ⤵️ FiftyOne installed from
+      label: |+
+        ⤵️ FiftyOne installed from
+
+        ---
+
       description: What installation method are you using?
       options:
         - label: Package (`pip`)
@@ -56,7 +65,11 @@ body:
     validations:
       required: true
     attributes:
-      label: ⌨️ Commands to reproduce
+      label: |+
+        ⌨️ Commands to reproduce
+
+        ---
+
       description: |
         As thoroughly as possible, please provide the Python and/or shell commands
         used to encounter the issue.
@@ -70,7 +83,11 @@ body:
     validations:
       required: true
     attributes:
-      label: 🗃️ Describe the problem
+      label: |+
+        🗃️ Describe the problem
+
+        ---
+
       description: |
         Provide the exact sequence of commands / steps that you executed before
         running into the problem.
@@ -79,7 +96,11 @@ body:
   - type: textarea
     id: additional-info
     attributes:
-      label: 🪵 Other info/logs
+      label: |+
+        🪵 Other info/logs
+
+        ---
+
       description: |
         Include any logs or source code that would be helpful to diagnose the problem.
         If including tracebacks, please include the full traceback. Large logs and
