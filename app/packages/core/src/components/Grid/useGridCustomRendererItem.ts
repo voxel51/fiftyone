@@ -1,42 +1,44 @@
-import type { SampleRendererSampleLike } from "@fiftyone/plugins";
 import {
   createSampleRendererRenderContext,
-  getComponent,
   getMatchingSampleRenderer,
+  getRawComponent,
   getSampleRendererComponent,
   PluginComponentType,
   useActivePlugins,
 } from "@fiftyone/plugins";
+import type { SampleRendererSampleLike } from "@fiftyone/plugins";
 import type { ID } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import type React from "react";
-import { useCallback, useRef } from "react";
+import { useCallback } from "react";
 import { useRecoilBridgeAcrossReactRoots_UNSTABLE } from "recoil";
-import { GridSampleRendererItem } from "./GridSampleRendererItem";
+import { GridCustomRendererItem } from "./GridCustomRendererItem";
 
 type GridSampleResult = SampleRendererSampleLike;
 
 /** Hook that wraps default grid media rendering with sample renderer support. */
-export function useGridSampleRendererItem(
+export function useGridCustomRendererItem(
   createDefaultLooker: ReturnType<typeof fos.useCreateLooker>
 ) {
   const dataset = fos.useCurrentDataset();
   const schema = fos.useSampleSchema();
 
   const sampleRenderers = useActivePlugins(PluginComponentType.SampleRenderer);
+  const { isDisabled: isDatasetRendererDisabled } =
+    fos.useGridCustomRendererFailover();
 
   const selectedMediaField = fos.useSelectedMediaFieldGrid();
 
   const RecoilBridge = useRecoilBridgeAcrossReactRoots_UNSTABLE();
 
   const getResolvedRenderer = useCallback(
-    ({ sample, urls }: GridSampleResult) => {
-      if (!dataset) {
+    (result: GridSampleResult) => {
+      if (!dataset || isDatasetRendererDisabled) {
         return null;
       }
 
       const ctx = createSampleRendererRenderContext(
-        { sample, urls },
+        result,
         selectedMediaField,
         dataset,
         schema,
@@ -44,7 +46,7 @@ export function useGridSampleRendererItem(
       );
       const matchedRenderer = getMatchingSampleRenderer(sampleRenderers, ctx);
       const canonicalRenderer = matchedRenderer
-        ? getComponent(matchedRenderer.name)
+        ? getRawComponent(matchedRenderer.name)
         : null;
 
       if (!matchedRenderer || !ctx.media.url || !canonicalRenderer) {
@@ -61,7 +63,13 @@ export function useGridSampleRendererItem(
         ),
       };
     },
-    [dataset, schema, selectedMediaField, sampleRenderers]
+    [
+      dataset,
+      isDatasetRendererDisabled,
+      schema,
+      selectedMediaField,
+      sampleRenderers,
+    ]
   );
 
   const createDefaultItem = useCallback(
@@ -92,8 +100,7 @@ export function useGridSampleRendererItem(
       }
 
       try {
-        return new GridSampleRendererItem({
-          createFallbackRenderer: () => createDefaultItem(result, id, fontSize),
+        return new GridCustomRendererItem({
           pluginName: resolvedRenderer.registration.name,
           Renderer: resolvedRenderer.Renderer,
           RecoilBridge:
@@ -112,8 +119,5 @@ export function useGridSampleRendererItem(
     [createDefaultItem, getResolvedRenderer, RecoilBridge]
   );
 
-  // `showItem` must stay stable even as the sample renderer hook refreshes.
-  const ref = useRef({ createItem });
-  ref.current = { createItem };
-  return ref;
+  return { createItem };
 }

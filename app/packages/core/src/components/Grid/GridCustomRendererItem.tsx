@@ -10,8 +10,7 @@ import React from "react";
 import { createRoot, type Root } from "react-dom/client";
 import GridTagBubbles from "./GridTagBubbles";
 
-type GridSampleRendererItemConfig = {
-  createFallbackRenderer: () => fos.Lookers;
+type GridCustomRendererItemConfig = {
   pluginName: string;
   Renderer: React.ComponentType<SampleRendererProps>;
   RecoilBridge: React.ComponentType<React.PropsWithChildren>;
@@ -23,7 +22,7 @@ type GridSampleRendererItemConfig = {
 type GridItemDimensions = [width: number, height: number];
 
 /** Error boundary for a sample renderer with fallback behavior. */
-class GridSampleRendererErrorBoundary extends React.Component<
+class GridCustomRendererErrorBoundary extends React.Component<
   React.PropsWithChildren<{ onError: (error: Error) => void }>,
   { hasError: boolean }
 > {
@@ -39,8 +38,8 @@ class GridSampleRendererErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error) {
-    // Defer the fallback handoff so React can finish the failed render before
-    // we tear down the dedicated root and replace it with a built-in looker.
+    // Defer the fail-open handoff so React can finish the failed render before
+    // we tear down the dedicated plugin root.
     queueMicrotask(() => this.props.onError(error));
   }
 
@@ -94,26 +93,23 @@ const SELECT_SAMPLE_BUTTON_STYLES: React.CSSProperties = {
   zIndex: 20,
 };
 
-// Events that should be forwarded from the built-in fallback renderer.
-const FORWARDED_EVENTS = ["load", "refresh", "selectthumbnail"] as const;
-
 type GridItemOptions = {
   selected?: boolean;
   inSelectionMode?: boolean;
 };
 
-type GridSampleRendererWrapperProps = React.PropsWithChildren<{
+type GridCustomRendererWrapperProps = React.PropsWithChildren<{
   selected: boolean;
   onOpenModal: React.MouseEventHandler<HTMLButtonElement>;
   onSelect: React.MouseEventHandler<HTMLButtonElement>;
 }>;
 
-const GridSampleRendererWrapper = ({
+const GridCustomRendererWrapper = ({
   children,
   selected,
   onOpenModal,
   onSelect,
-}: GridSampleRendererWrapperProps) => {
+}: GridCustomRendererWrapperProps) => {
   const [hovering, setHovering] = React.useState(false);
   const showSelectionControl = hovering || selected;
 
@@ -154,28 +150,27 @@ const GridSampleRendererWrapper = ({
  * Lifecycle:
  * 1. Create instance with config
  * 2. Call attach() to mount the renderer
- * 3. If renderer fails, switchToFallback() activates the built-in renderer
+ * 3. If renderer fails, mark the dataset fail-open and wait for the grid to
+ *    rebuild with the built-in renderer on the next pass
  * 4. Call destroy() to clean up resources
  *
- * Events: Forwards "load", "refresh", and "selectthumbnail" events.
+ * Events: Forwards "load" and "selectthumbnail" events.
  */
-export class GridSampleRendererItem {
+export class GridCustomRendererItem {
   public loaded = false;
 
   private readonly eventTarget = new EventTarget();
   private readonly hostElement = document.createElement("div");
-  private fallbackRenderer: fos.Lookers | null = null;
-  private fallbackHandlers = new Map<string, (event: Event) => void>();
   private mountedElement: HTMLElement | null = null;
-  private root: Root | null = null;
+  private pluginRoot: Root | null = null;
+  private pluginFailed = false;
   private destroyed = false;
-  private lastDimensions?: GridItemDimensions;
-  private lastFontSize?: number;
   private selected = false;
   private inSelectionMode = false;
 
-  constructor(private readonly config: GridSampleRendererItemConfig) {
+  constructor(private readonly config: GridCustomRendererItemConfig) {
     Object.assign(this.hostElement.style, HOST_ELEMENT_STYLES);
+    this.pluginFailed = fos.isGridCustomRendererFailOpen();
   }
 
   addEventListener(
@@ -198,41 +193,43 @@ export class GridSampleRendererItem {
     this.eventTarget.dispatchEvent(new CustomEvent(eventType, { detail }));
   }
 
-  private forwardFallbackEvent(eventType: string): (event: Event) => void {
-    return (event: Event) => {
-      const detail = event instanceof CustomEvent ? event.detail : undefined;
-      this.dispatchEvent(eventType, detail);
-    };
+  private isDatasetFailOpen() {
+    return fos.isGridCustomRendererFailOpen();
   }
 
   private renderPluginRenderer() {
-    if (this.fallbackRenderer || this.destroyed) {
-      return;
+    if (this.isDatasetFailOpen()) {
+      this.pluginFailed = true;
     }
 
-    if (!this.root) {
-      this.root = createRoot(this.hostElement);
+    if (this.destroyed || this.pluginFailed) {
+      return;
     }
 
     const { Renderer, ctx, RecoilBridge } = this.config;
     const sample =
       (ctx.sample as { sample?: Record<string, unknown> })?.sample ??
       (ctx.sample as Record<string, unknown>);
-    this.root.render(
+
+    if (!this.pluginRoot) {
+      this.pluginRoot = createRoot(this.hostElement);
+    }
+
+    this.pluginRoot.render(
       <RecoilBridge>
-        <GridSampleRendererErrorBoundary
+        <GridCustomRendererErrorBoundary
           onError={(error) => this.switchToFallback(error)}
           key={ctx.media.url ?? this.config.pluginName}
         >
-          <GridSampleRendererWrapper
+          <GridCustomRendererWrapper
             selected={this.selected}
             onOpenModal={this.handleOpenModalClick}
             onSelect={this.handleSelectSampleClick}
           >
             <Renderer ctx={ctx} />
             <GridTagBubbles sample={sample} />
-          </GridSampleRendererWrapper>
-        </GridSampleRendererErrorBoundary>
+          </GridCustomRendererWrapper>
+        </GridCustomRendererErrorBoundary>
       </RecoilBridge>
     );
   }
@@ -281,43 +278,29 @@ export class GridSampleRendererItem {
   };
 
   private switchToFallback(error: Error) {
-    if (this.destroyed || this.fallbackRenderer) {
+    if (this.destroyed || this.pluginFailed) {
       return;
     }
 
     console.error(
       `Grid sample renderer failed (plugin: ${this.config.pluginName}), ` +
-        "falling back to the built-in renderer:",
+        "disabling custom grid renderers for the rest of this browser session:",
       error
     );
 
-    this.unmountPluginRenderer();
+    this.pluginFailed = true;
 
-    try {
-      this.fallbackRenderer = this.config.createFallbackRenderer();
-    } catch (fallbackError) {
-      console.error(
-        `Grid sample renderer: failed to create fallback renderer (plugin: ${this.config.pluginName}):`,
-        fallbackError
-      );
-      this.fallbackRenderer = null;
-      return;
-    }
-
-    // Forward events from the built-in fallback renderer.
-    FORWARDED_EVENTS.forEach((eventType) => {
-      const handler = this.forwardFallbackEvent(eventType);
-      this.fallbackHandlers.set(eventType, handler);
-      this.fallbackRenderer?.addEventListener(eventType, handler);
+    fos.markGridCustomRendererFailed({
+      datasetName: this.config.ctx.dataset.name,
+      rendererName: this.config.pluginName,
+      errorMessage: error.message,
     });
 
-    if (this.mountedElement) {
-      this.fallbackRenderer.attach(
-        this.mountedElement,
-        this.lastDimensions,
-        this.lastFontSize
-      );
-    }
+    setTimeout(() => {
+      if (!this.destroyed) {
+        this.unmountPluginRenderer();
+      }
+    }, 0);
   }
 
   attach(
@@ -336,18 +319,10 @@ export class GridSampleRendererItem {
       return;
     }
 
-    this.lastDimensions = dimensions;
-    this.lastFontSize = fontSize;
     this.mountedElement = resolvedElement;
-
-    if (this.fallbackRenderer) {
-      this.fallbackRenderer.attach(resolvedElement, dimensions, fontSize);
-      return;
-    }
 
     if (this.hostElement.parentElement !== resolvedElement) {
       // Replace all children of the target element with the host element.
-      // This ensures the renderer has exclusive control of the container.
       resolvedElement.replaceChildren(this.hostElement);
     }
 
@@ -357,11 +332,6 @@ export class GridSampleRendererItem {
   }
 
   detach() {
-    if (this.fallbackRenderer) {
-      this.fallbackRenderer.detach();
-      return;
-    }
-
     this.hostElement.remove();
   }
 
@@ -373,76 +343,49 @@ export class GridSampleRendererItem {
     this.destroyed = true;
     this.detach();
     this.unmountPluginRenderer();
-    this.removeFallbackHandlers();
-    this.fallbackRenderer?.destroy();
-    this.fallbackRenderer = null;
+    this.pluginFailed = false;
     this.mountedElement = null;
-  }
-
-  private removeFallbackHandlers() {
-    for (const [eventType, handler] of this.fallbackHandlers) {
-      this.fallbackRenderer?.removeEventListener(eventType, handler);
-    }
-    this.fallbackHandlers.clear();
+    this.hostElement.remove();
   }
 
   private unmountPluginRenderer() {
-    this.root?.unmount();
-    this.root = null;
+    this.pluginRoot?.unmount();
+    this.pluginRoot = null;
   }
 
-  /**
-   * Delegates to the built-in fallback renderer. No-op if plugin renderer is active.
-   */
   updateOptions(options: unknown, disableReload?: boolean) {
-    if (!this.fallbackRenderer) {
-      const { selected: nextSelected, inSelectionMode: nextInSelectionMode } =
-        options as GridItemOptions;
+    void disableReload;
 
-      const shouldRender =
-        (typeof nextSelected === "boolean" && this.selected !== nextSelected) ||
-        (typeof nextInSelectionMode === "boolean" &&
-          this.inSelectionMode !== nextInSelectionMode);
+    const { selected: nextSelected, inSelectionMode: nextInSelectionMode } =
+      options as GridItemOptions;
 
-      if (typeof nextSelected === "boolean") {
-        this.selected = nextSelected;
-      }
+    const shouldRender =
+      (typeof nextSelected === "boolean" && this.selected !== nextSelected) ||
+      (typeof nextInSelectionMode === "boolean" &&
+        this.inSelectionMode !== nextInSelectionMode);
 
-      if (typeof nextInSelectionMode === "boolean") {
-        this.inSelectionMode = nextInSelectionMode;
-      }
-
-      if (shouldRender) {
-        this.renderPluginRenderer();
-      }
-
-      return;
+    if (typeof nextSelected === "boolean") {
+      this.selected = nextSelected;
     }
 
-    this.fallbackRenderer?.updateOptions(
-      options as Parameters<fos.Lookers["updateOptions"]>[0],
-      disableReload
-    );
+    if (typeof nextInSelectionMode === "boolean") {
+      this.inSelectionMode = nextInSelectionMode;
+    }
+
+    if (shouldRender) {
+      this.renderPluginRenderer();
+    }
   }
 
-  /**
-   * Delegates to the built-in fallback renderer. No-op if plugin renderer is active.
-   */
   refreshSample(renderLabels: string[] | null = null) {
-    this.fallbackRenderer?.refreshSample(renderLabels);
+    void renderLabels;
   }
 
-  /**
-   * Returns sample overlays from the built-in fallback renderer, or empty array.
-   */
   getSampleOverlays() {
-    return this.fallbackRenderer?.getSampleOverlays() ?? [];
+    return [];
   }
 
-  /**
-   * Returns the estimated size from the built-in fallback renderer, or 1.
-   */
   getSizeBytesEstimate() {
-    return this.fallbackRenderer?.getSizeBytesEstimate() ?? 1;
+    return 1;
   }
 }

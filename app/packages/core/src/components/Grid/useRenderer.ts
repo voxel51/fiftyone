@@ -1,9 +1,9 @@
 import type { Hide, ID, Show } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import type { LookerCache } from "./types";
 import useFontSize from "./useFontSize";
-import { useGridSampleRendererItem } from "./useGridSampleRendererItem";
+import { useGridCustomRendererItem } from "./useGridCustomRendererItem";
 import useSelectSample from "./useSelectSample";
 import type { SampleStore } from "./useSpotlightPager";
 
@@ -22,7 +22,11 @@ export default function useRenderer({
   const createLooker = fos.useCreateLooker(false, true, lookerOptions);
   const getFontSize = useFontSize(id);
   const selectSample = useSelectSample(records);
-  const sampleRendererRef = useGridSampleRendererItem(createLooker);
+  const sampleRenderer = useGridCustomRendererItem(createLooker);
+
+  // `showItem` must stay stable even as the sample renderer hook refreshes.
+  const sampleRendererRef = useRef(sampleRenderer);
+  sampleRendererRef.current = sampleRenderer;
 
   const detachItem = useCallback(
     (id: ID) => cache.get(id.description)?.detach(),
