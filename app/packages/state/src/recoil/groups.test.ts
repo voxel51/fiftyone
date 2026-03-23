@@ -105,3 +105,36 @@ describe("groupHasSampleOnSlice", () => {
     });
   });
 });
+
+describe("currentGroupSliceNames", () => {
+  const testCurrentGroupSliceNames = <
+    TestSelector<typeof groups.currentGroupSliceNames>
+  >(<unknown>groups.currentGroupSliceNames);
+
+  it("returns only the slices that exist on the active group", () => {
+    setMockAtoms({
+      hasGroupSlices: true,
+      groupId: "group-id",
+      groupField: "group",
+      groupSlices: ["left", "pcd", "right"],
+      groupSamples: [
+        { sample: { group: { name: "pcd" } } },
+        { sample: { group: { name: "left" } } },
+      ],
+    });
+
+    expect(testCurrentGroupSliceNames()).toStrictEqual(["left", "pcd"]);
+  });
+
+  it("returns an empty list when there is no active group", () => {
+    setMockAtoms({
+      hasGroupSlices: true,
+      groupId: null,
+      groupField: "group",
+      groupSlices: ["left", "pcd", "right"],
+      groupSamples: [{ sample: { group: { name: "pcd" } } }],
+    });
+
+    expect(testCurrentGroupSliceNames()).toStrictEqual([]);
+  });
+});
