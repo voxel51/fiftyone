@@ -115,6 +115,8 @@ export type LighterEventGroup = {
   "lighter:overlay-all-unhover": { point: Point };
   /** Emitted when the mouse moves while hovering over an overlay */
   "lighter:overlay-hover-move": { id: string; point: Point };
+  /** Emitted when user clicks without dragging in QuickDraw mode to exit */
+  "lighter:quickdraw-quit": { eventId: string };
 
   // ============================================================================
   // SELECTION EVENTS
