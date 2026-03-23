@@ -305,10 +305,21 @@ export class ModalPom {
       { timeout: Duration.Seconds(20) }
     );
   }
+
+  async waitForLighterReady() {
+    return this.page.waitForFunction(
+      () =>
+        document
+          .querySelector(`[data-cy=lighter-sample-renderer] canvas`)
+          ?.getAttribute("lighter-ready") === "true",
+      undefined,
+      { timeout: Duration.Seconds(20) }
+    );
+  }
 }
 
 class ModalAsserter {
-  constructor(private readonly modalPom: ModalPom) {}
+  constructor(private readonly modalPom: ModalPom) { }
 
   async isClosed() {
     await expect(this.modalPom.modalContainer).toBeHidden();

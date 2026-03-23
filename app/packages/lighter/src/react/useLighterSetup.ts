@@ -96,6 +96,7 @@ export const useLighterSetupWithPixi = (
         scene.setViewportState(initialViewportRef.current);
       }
       scene.startRenderLoop();
+      stableCanvas.setAttribute("lighter-ready", "true");
     });
 
     return () => {

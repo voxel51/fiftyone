@@ -75,6 +75,10 @@ test.describe.serial("viewport-bridge-visual", () => {
 
     await modal.sidebar.switchMode("annotate");
     await modal.sampleCanvas.assert.is(SampleCanvasType.LIGHTER);
+
+    // Wait for PixiJS to have fully initialised and applied the transferred viewport 
+    // before switching back
+    await modal.waitForLighterReady();
     await modal.sidebar.switchMode("explore");
     await modal.sampleCanvas.assert.is(SampleCanvasType.LOOKER);
     await modal.waitForSampleLoadDomAttribute();
