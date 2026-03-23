@@ -34,7 +34,7 @@ body:
         Provide a clear description. Why is the proposed documentation better?
       placeholder: Describe the documentation issue and what should be changed
 
-  - type: checkboxes
+  - type: dropdown
     id: contribute
     validations:
       required: true
@@ -49,9 +49,9 @@ body:
         member of your organization be willing to contribute a fix for this documentation
         issue to the FiftyOne codebase?
       options:
-        - label: Yes. I can contribute a documentation fix independently
-        - label: Yes. I would be willing to contribute a documentation fix with guidance from the FiftyOne community
-        - label: No. I cannot contribute a documentation fix at this time
+        - Yes. I can contribute a documentation fix independently
+        - Yes. I would be willing to contribute a documentation fix with guidance from the FiftyOne community
+        - No. I cannot contribute a documentation fix at this time
 
   - type: markdown
     attributes:
