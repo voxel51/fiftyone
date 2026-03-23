@@ -15,8 +15,11 @@ import {
   _unsafeToolSizeAtom,
   _unsafeSegmentationActiveAtom,
   _unsafeToolShapeAtom,
-  type SegmentationTool,
-  type SegmentationToolShape,
+} from "./useSegmentationMasks";
+import type {
+  SegmentationTool,
+  SegmentationToolShape,
+  SegmentationToolData,
 } from "./useSegmentationMasks";
 
 /**
@@ -41,7 +44,7 @@ export const segmentationMasksBridge = {
   /**
    * Current brush/eraser size in pixels.
    */
-  getBrushSize(): number {
+  getToolSize(): number {
     return getDefaultStore().get(_unsafeToolSizeAtom);
   },
 
@@ -50,5 +53,13 @@ export const segmentationMasksBridge = {
    */
   getToolShape(): SegmentationToolShape {
     return getDefaultStore().get(_unsafeToolShapeAtom);
+  },
+
+  getToolData(scale: number): SegmentationToolData {
+    return {
+      size: this.getToolSize() * scale,
+      tool: this.getActiveTool(),
+      shape: this.getToolShape(),
+    };
   },
 };

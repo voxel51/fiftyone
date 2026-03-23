@@ -16,13 +16,18 @@ import { useAnnotationContext } from "./state";
 import { DETECTION } from "@fiftyone/utilities";
 import useCreate from "./useCreate";
 
+export const DEFAULT_TOOL_SIZE = 16;
+export const MIN_TOOL_SIZE = 1;
+export const MAX_TOOL_SIZE = 32;
+
 export type SegmentationTool = "select" | "brush" | "eraser"; // | "pen";
 export type SegmentationToolShape = "circle" | "square";
 
-const DEFAULT_TOOL_SIZE = 10;
-const MIN_TOOL_SIZE = 1;
-const MAX_TOOL_SIZE = 50;
-const TOOL_SIZE_STEP = 2;
+export interface SegmentationToolData {
+  size: number;
+  tool: SegmentationTool;
+  shape: SegmentationToolShape;
+}
 
 // ---------------------------------------------------------------------------
 // Atoms (internal)
@@ -99,11 +104,11 @@ export const useSegmentationMasks = () => {
   );
 
   const increaseToolSize = useCallback(() => {
-    setToolSizeRaw((prev) => Math.min(prev + TOOL_SIZE_STEP, MAX_TOOL_SIZE));
+    setToolSizeRaw((prev) => Math.min(prev + 1, MAX_TOOL_SIZE));
   }, [setToolSizeRaw]);
 
   const decreaseToolSize = useCallback(() => {
-    setToolSizeRaw((prev) => Math.max(prev - TOOL_SIZE_STEP, MIN_TOOL_SIZE));
+    setToolSizeRaw((prev) => Math.max(prev - 1, MIN_TOOL_SIZE));
   }, [setToolSizeRaw]);
 
   const setToolSize = useCallback(

@@ -407,7 +407,7 @@ export class DetectionOverlay
     if (this.isPaintingActive()) {
       if (!this.hasValidBounds()) {
         // Bootstrap bounds from the brush dab so ensureMaskCanvas has a size
-        const half = segmentationMasksBridge.getBrushSize() / 2;
+        const half = segmentationMasksBridge.getToolSize() / 2;
         this.bounds = {
           x: worldPoint.x - half,
           y: worldPoint.y - half,
@@ -1024,7 +1024,7 @@ export class DetectionOverlay
     const tool = segmentationMasksBridge.getActiveTool();
 
     if (tool === "brush") {
-      const half = segmentationMasksBridge.getBrushSize() / 2;
+      const half = segmentationMasksBridge.getToolSize() / 2;
       worldMinX = Math.min(worldMinX, worldPoint.x - half);
       worldMinY = Math.min(worldMinY, worldPoint.y - half);
       worldMaxX = Math.max(worldMaxX, worldPoint.x + half);
@@ -1104,7 +1104,7 @@ export class DetectionOverlay
     if (!this.maskCtx) return;
 
     const tool = segmentationMasksBridge.getActiveTool();
-    const size = segmentationMasksBridge.getBrushSize();
+    const size = segmentationMasksBridge.getToolSize();
     const shape = segmentationMasksBridge.getToolShape();
     const radius = size / 2;
 

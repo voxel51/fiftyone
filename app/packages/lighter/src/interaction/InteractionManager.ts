@@ -14,6 +14,7 @@ import {
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { SelectionManager } from "../selection/SelectionManager";
 import type { Point, Rect } from "../types";
+import { buildBrushCursor } from "./buildBrushCursor";
 import { InteractiveDetectionHandler } from "./InteractiveDetectionHandler";
 
 /**
@@ -329,7 +330,11 @@ export class InteractionManager {
     worldPoint: Point,
     scale: number
   ): void {
-    if (
+    if (segmentationMasksBridge.isActive()) {
+      this.canvas.style.cursor = buildBrushCursor(
+        segmentationMasksBridge.getToolData(scale)
+      );
+    } else if (
       quickDrawBridge.isActive() &&
       handler &&
       TypeGuards.isSelectable(handler) &&
@@ -411,6 +416,10 @@ export class InteractionManager {
         event.preventDefault();
       }
       this.configureCursorStyle(handler, worldPoint, scale);
+    } else if (segmentationMasksBridge.isActive() && !interactiveHandler) {
+      this.canvas.style.cursor = buildBrushCursor(
+        segmentationMasksBridge.getToolData(scale)
+      );
     } else if (quickDrawBridge.isActive() && !interactiveHandler) {
       this.canvas.style.cursor = "crosshair";
     }

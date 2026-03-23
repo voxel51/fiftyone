@@ -41,6 +41,8 @@ export type { ResourceLoader } from "./resource/ResourceLoader";
 export type { LighterEventGroup } from "./events";
 
 // Interaction exports
+export { buildBrushCursor } from "./interaction/buildBrushCursor";
+export type { BrushCursorOptions } from "./interaction/buildBrushCursor";
 export { InteractionManager } from "./interaction/InteractionManager";
 export type { InteractionHandler } from "./interaction/InteractionManager";
 export { InteractiveDetectionHandler } from "./interaction/InteractiveDetectionHandler";
