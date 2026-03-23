@@ -199,23 +199,42 @@ export class SampleCanvasPom {
    * Capture a clean screenshot of the sample canvas with overlays hidden.
    *
    * Moves the cursor to the canvas center and holds Shift so renderers hide
-   * annotation overlays before snapping the screenshot.
+   * annotation overlays before snapping the screenshot. Polls until two
+   * consecutive frames are pixel-identical so the result is stable regardless
+   * of machine speed (local vs CI).
    *
-   * @param stabilizationMs How long to wait after pressing Shift before
-   *   capturing (defaults to 200ms)
+   * @param hideOverlays Whether to hold Shift to suppress annotation overlays
+   * @param pollMs Interval between stability-check frames (defaults to 100ms)
+   * @param maxAttempts Maximum number of poll iterations before giving up
+   *   (default 20 means a 2 s ceiling)
    */
-  async screenshot(hideOverlays = false, stabilizationMs = 200): Promise<Buffer> {
+  async screenshot(
+    hideOverlays = false,
+    pollMs = 100,
+    maxAttempts = 20
+  ): Promise<Buffer> {
     const box = await this.locator.boundingBox();
     await this.page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+
     if (hideOverlays) {
       await this.page.keyboard.down("Shift");
     }
-    await this.page.waitForTimeout(stabilizationMs);
-    const buf = await this.locator.screenshot();
-    if (hideOverlays) {
-      await this.page.keyboard.up("Shift");
+
+    // Poll until two consecutive screenshots are pixel-identical, meaning the
+    // canvas has finished rendering and is no longer animating.
+    let prev: Buffer | null = null;
+    for (let i = 0; i < maxAttempts; i++) {
+      await this.page.waitForTimeout(pollMs);
+      const curr = Buffer.from(await this.locator.screenshot());
+      if (prev && Buffer.compare(prev, curr) === 0) {
+        if (hideOverlays) await this.page.keyboard.up("Shift");
+        return curr;
+      }
+      prev = curr;
     }
-    return buf;
+
+    if (hideOverlays) await this.page.keyboard.up("Shift");
+    return prev!;
   }
 
   async #toScreenCoordinates(x: number, y: number) {
