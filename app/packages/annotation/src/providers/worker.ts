@@ -188,14 +188,23 @@ async function embedAndDecode(
 
   const cacheKey = CACHE_PREFIX + imageUrl;
   const cached = await getEmbedding(cacheKey, postWarning);
+  let cacheHit = false;
+
   if (cached) {
-    encResults = {
-      image_embed: new ort.Tensor("float32", cached.imageEmbed.data, cached.imageEmbed.dims),
-      high_res_feats_0: new ort.Tensor("float32", cached.highResFeats0.data, cached.highResFeats0.dims),
-      high_res_feats_1: new ort.Tensor("float32", cached.highResFeats1.data, cached.highResFeats1.dims),
-    };
-    geometry = cached.processedImage;
-  } else {
+    try {
+      encResults = {
+        image_embed: new ort.Tensor("float32", cached.imageEmbed.data, cached.imageEmbed.dims),
+        high_res_feats_0: new ort.Tensor("float32", cached.highResFeats0.data, cached.highResFeats0.dims),
+        high_res_feats_1: new ort.Tensor("float32", cached.highResFeats1.data, cached.highResFeats1.dims),
+      };
+      geometry = cached.processedImage;
+      cacheHit = true;
+    } catch {
+      postWarning("Corrupt embedding cache entry, re-encoding");
+    }
+  }
+
+  if (!cacheHit) {
     const imageData = await loadImageData(imageUrl);
     const processed = preprocessImage(imageData);
     geometry = processed;
