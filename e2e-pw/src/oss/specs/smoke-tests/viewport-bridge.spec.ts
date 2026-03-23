@@ -6,6 +6,7 @@ import { SampleCanvasType } from "src/oss/poms/modal/sample-canvas";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix("viewport-bridge-e2e");
+const STABILIZATION_MS = 200;
 
 const test = base.extend<{
   grid: GridPom;
@@ -29,6 +30,9 @@ async function panCanvas(
   offsetPixels: number
 ) {
   const box = await modal.sampleCanvas.locator.boundingBox();
+  if (!box) {
+    throw new Error("Canvas bounding box not available");
+  }
   const startX = box.x + box.width / 2;
   const startY = box.y + box.height / 2;
 
@@ -81,7 +85,7 @@ async function screenshotCanvas(modal: ModalPom): Promise<Buffer> {
 
   await page.keyboard.down("Shift");
 
-  await page.waitForTimeout(200);
+  await page.waitForTimeout(STABILIZATION_MS);
   const buf = await modal.sampleCanvas.locator.screenshot();
   await page.keyboard.up("Shift");
   return buf;
@@ -170,9 +174,6 @@ test.describe.serial("viewport-bridge-visual", () => {
     await grid.openFirstSample();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sampleCanvas.assert.is(SampleCanvasType.LOOKER);
-
-    await modal.sidebar.switchMode("explore");
-    await modal.waitForSampleLoadDomAttribute();
 
     await zoomCanvas(modal, ZOOM_IN);
     await panCanvas(modal, "right", PAN_X);
