@@ -1,7 +1,7 @@
 import {
   createSampleRendererRenderContext,
   getMatchingSampleRenderer,
-  getRawComponent,
+  getComponent,
   getSampleRendererComponent,
   PluginComponentType,
   useActivePlugins,
@@ -46,7 +46,7 @@ export function useGridCustomRendererItem(
       );
       const matchedRenderer = getMatchingSampleRenderer(sampleRenderers, ctx);
       const canonicalRenderer = matchedRenderer
-        ? getRawComponent(matchedRenderer.name)
+        ? getComponent(matchedRenderer.name)
         : null;
 
       if (!matchedRenderer || !ctx.media.url || !canonicalRenderer) {
