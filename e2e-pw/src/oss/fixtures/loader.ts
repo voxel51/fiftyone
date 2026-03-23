@@ -71,7 +71,19 @@ export class OssLoader extends AbstractFiftyoneLoader {
     };
 
     await page.addInitScript(() => {
-      let init = true;
+      // eslint-disable-next-line
+      // @ts-ignore storing a page-global init flag on window for Playwright
+      if (window.__FO_PLAYWRIGHT_INIT__) {
+        return;
+      }
+
+      // eslint-disable-next-line
+      // @ts-ignore storing a page-global init flag on window for Playwright
+      window.__FO_PLAYWRIGHT_INIT__ = true;
+
+      window.localStorage.clear();
+      window.sessionStorage.clear();
+
       const handleCursorChange = (e: MouseEvent) => {
         const element = document.elementFromPoint(e.clientX, e.clientY);
         const cursor = window.getComputedStyle(element).cursor;
@@ -85,23 +97,12 @@ export class OssLoader extends AbstractFiftyoneLoader {
         }
       };
 
-      if (init) {
-        init = false;
-        document.addEventListener("mousemove", handleCursorChange);
-      }
+      document.addEventListener("mousemove", handleCursorChange);
 
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore injecting IS_PLAYWRIGHT into window so that
       // we can disable 1) analytics, and 2) QA performance toast banners
       window.IS_PLAYWRIGHT = true;
-
-      // Clear modal mode state to ensure tests start in explore mode
-      const keys = Object.keys(localStorage);
-      keys.forEach((key) => {
-        if (key.includes("modalMode")) {
-          localStorage.removeItem(key);
-        }
-      });
     });
 
     const forceDatasetFromSelector = async () => {
