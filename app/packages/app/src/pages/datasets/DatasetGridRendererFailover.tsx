@@ -9,7 +9,8 @@ import { useRecoilValue } from "recoil";
  */
 const DatasetGridRendererFailoverReload = () => {
   const currentSubscription = useRecoilValue(fos.stateSubscription);
-  const { failure, forcedSubscription } = fos.useGridCustomRendererFailover();
+  const { forcedSubscription, hasAnyFailures } =
+    fos.useGridCustomRendererFailover();
 
   /**
    * This layout effect performs the one-time reload that moves the app off the
@@ -17,7 +18,7 @@ const DatasetGridRendererFailoverReload = () => {
    * for the rest of the browser session.
    */
   useLayoutEffect(() => {
-    if (!failure || !forcedSubscription) {
+    if (!hasAnyFailures || !forcedSubscription) {
       return;
     }
 
@@ -26,7 +27,7 @@ const DatasetGridRendererFailoverReload = () => {
     }
 
     window.location.reload();
-  }, [currentSubscription, failure, forcedSubscription]);
+  }, [currentSubscription, forcedSubscription, hasAnyFailures]);
 
   return null;
 };
@@ -34,12 +35,9 @@ const DatasetGridRendererFailoverReload = () => {
 /** Banner shown when the session has been switched to the built-in grid renderer. */
 const DatasetGridRendererFailoverBanner = () => {
   const currentDatasetName = useRecoilValue(fos.datasetName);
-  const gridRendererFailover = fos.useGridCustomRendererFailover();
-  const failedDatasetName = gridRendererFailover.failure?.datasetName;
-  const shouldShowBanner =
-    gridRendererFailover.isBannerVisible &&
-    Boolean(failedDatasetName) &&
-    failedDatasetName === currentDatasetName;
+  const gridRendererFailover =
+    fos.useGridCustomRendererFailover(currentDatasetName);
+  const shouldShowBanner = gridRendererFailover.isBannerVisible;
 
   if (!shouldShowBanner) {
     return null;
@@ -61,7 +59,7 @@ const DatasetGridRendererFailoverBanner = () => {
       {gridRendererFailover.failure?.datasetName
         ? ` while rendering "${gridRendererFailover.failure.datasetName}"`
         : ""}{" "}
-      so FiftyOne switched all datasets to the built-in grid renderer for the
+      so FiftyOne switched this dataset to the built-in grid renderer for the
       rest of this browser session.
     </Alert>
   );

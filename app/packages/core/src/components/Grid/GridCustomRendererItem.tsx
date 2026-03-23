@@ -170,7 +170,9 @@ export class GridCustomRendererItem {
 
   constructor(private readonly config: GridCustomRendererItemConfig) {
     Object.assign(this.hostElement.style, HOST_ELEMENT_STYLES);
-    this.pluginFailed = fos.isGridCustomRendererFailOpen();
+    this.pluginFailed = fos.isGridCustomRendererFailOpen(
+      this.config.ctx.dataset.name
+    );
   }
 
   addEventListener(
@@ -194,7 +196,7 @@ export class GridCustomRendererItem {
   }
 
   private isDatasetFailOpen() {
-    return fos.isGridCustomRendererFailOpen();
+    return fos.isGridCustomRendererFailOpen(this.config.ctx.dataset.name);
   }
 
   private renderPluginRenderer() {
@@ -284,7 +286,7 @@ export class GridCustomRendererItem {
 
     console.error(
       `Grid sample renderer failed (plugin: ${this.config.pluginName}), ` +
-        "disabling custom grid renderers for the rest of this browser session:",
+        "disabling custom grid renderers for this dataset for the rest of this browser session:",
       error
     );
 

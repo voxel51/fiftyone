@@ -25,7 +25,7 @@ export function useGridCustomRendererItem(
 
   const sampleRenderers = useActivePlugins(PluginComponentType.SampleRenderer);
   const { isDisabled: isDatasetRendererDisabled } =
-    fos.useGridCustomRendererFailover();
+    fos.useGridCustomRendererFailover(dataset?.name);
 
   const selectedMediaField = fos.useSelectedMediaFieldGrid();
 

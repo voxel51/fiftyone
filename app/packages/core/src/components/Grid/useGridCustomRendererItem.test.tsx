@@ -108,6 +108,7 @@ describe("useGridCustomRendererItem", () => {
     useGridCustomRendererFailover.mockReturnValue({
       dismissBanner: vi.fn(),
       failure: null,
+      hasAnyFailures: false,
       isBannerVisible: false,
       isDisabled: false,
     });
@@ -184,6 +185,7 @@ describe("useGridCustomRendererItem", () => {
         failedAt: Date.now(),
         rendererName: registration.name,
       },
+      hasAnyFailures: true,
       isBannerVisible: true,
       isDisabled: true,
     });

@@ -1,24 +1,18 @@
+/**
+ * @fileoverview
+ *
+ * If a custom grid renderer throws, we mark that dataset as fail-open for the
+ * rest of the browser session, reload onto a fresh synced subscription, and
+ * then keep that dataset on the built-in grid renderer.
+ *
+ * Implementation-wise, this is a tiny external store backed by
+ * `sessionStorage`: it tracks failed datasets locally, exposes a forced
+ * subscription for the reload path, and uses `useSyncExternalStore` for React
+ * reactivity. We do not use Recoil here because state subscription needs to
+ * read the forced subscription synchronously outside normal React rendering.
+ */
 import { useSyncExternalStore } from "react";
 
-/**
- * Session-scoped fail-open metadata for the first custom grid renderer crash.
- *
- * Why this exists:
- * a thrown custom grid renderer can poison the app's current backend-synced
- * subscription. Once that happens, normal dataset navigation can drift out of
- * sync, with the URL, dataset selector, sidebar, and grid content disagreeing
- * about which dataset is actually active.
- *
- * The mitigation is intentionally session-wide:
- * - record the first renderer failure in this browser tab
- * - disable all custom grid renderers for the rest of the session
- * - force the app onto a fresh synced subscription
- * - persist that decision in sessionStorage so the one-time reload preserves it
- *
- * This store lives outside Recoil on purpose. React components need to
- * subscribe to it, but the forced subscription must also be readable
- * synchronously from `stateSubscription` during selector evaluation.
- */
 export type GridCustomRendererFailure = {
   datasetName: string;
   rendererName: string;
@@ -27,8 +21,12 @@ export type GridCustomRendererFailure = {
 };
 
 type GridCustomRendererFailoverSnapshot = {
-  dismissedBanner: boolean;
-  failure: GridCustomRendererFailure | null;
+  // Per-dataset UI state for the warning banner. Dismissing a banner should
+  // not clear fail-open mode, so this is tracked separately from `failures`.
+  dismissedBanners: Record<string, boolean>;
+  // Per-dataset fail-open decisions for this browser session. If a dataset is
+  // present here, its custom grid renderer stays disabled until the tab ends.
+  failures: Record<string, GridCustomRendererFailure>;
 };
 
 type MarkGridCustomRendererFailedOptions = {
@@ -40,20 +38,101 @@ type MarkGridCustomRendererFailedOptions = {
 const STORAGE_KEY = "grid-custom-renderer-failover";
 
 const createEmptySnapshot = (): GridCustomRendererFailoverSnapshot => ({
-  dismissedBanner: false,
-  failure: null,
+  dismissedBanners: {},
+  failures: {},
 });
-
-const getForcedSubscription = (failure: GridCustomRendererFailure | null) => {
-  return failure ? `failopen-${failure.failedAt}` : null;
-};
 
 const canUseSessionStorage = () =>
   typeof window !== "undefined" && typeof window.sessionStorage !== "undefined";
 
+const isFailure = (value: unknown): value is GridCustomRendererFailure => {
+  return Boolean(
+    value &&
+      typeof value === "object" &&
+      typeof (value as GridCustomRendererFailure).datasetName === "string" &&
+      typeof (value as GridCustomRendererFailure).rendererName === "string" &&
+      typeof (value as GridCustomRendererFailure).failedAt === "number"
+  );
+};
+
+const parseFailures = (
+  value: unknown
+): Record<string, GridCustomRendererFailure> => {
+  if (!value || typeof value !== "object") {
+    return {};
+  }
+
+  return Object.entries(value).reduce<
+    Record<string, GridCustomRendererFailure>
+  >((acc, [datasetName, failure]) => {
+    if (isFailure(failure) && failure.datasetName === datasetName) {
+      acc[datasetName] = failure;
+    }
+
+    return acc;
+  }, {});
+};
+
+const parseDismissedBanners = (value: unknown): Record<string, boolean> => {
+  if (!value || typeof value !== "object") {
+    return {};
+  }
+
+  return Object.entries(value).reduce<Record<string, boolean>>(
+    (acc, [datasetName, dismissed]) => {
+      if (typeof dismissed === "boolean") {
+        acc[datasetName] = dismissed;
+      }
+
+      return acc;
+    },
+    {}
+  );
+};
+
+const migrateLegacySnapshot = (value: Record<string, unknown>) => {
+  const failure = isFailure(value.failure) ? value.failure : null;
+
+  if (!failure) {
+    return createEmptySnapshot();
+  }
+
+  return {
+    dismissedBanners: {
+      [failure.datasetName]: value.dismissedBanner === true,
+    },
+    failures: {
+      [failure.datasetName]: failure,
+    },
+  };
+};
+
+const getLatestFailure = (
+  failures: Record<string, GridCustomRendererFailure>
+): GridCustomRendererFailure | null => {
+  let latestFailure: GridCustomRendererFailure | null = null;
+
+  for (const failure of Object.values(failures)) {
+    if (!latestFailure || failure.failedAt > latestFailure.failedAt) {
+      latestFailure = failure;
+    }
+  }
+
+  return latestFailure;
+};
+
+const getForcedSubscription = (
+  failures: Record<string, GridCustomRendererFailure>
+) => {
+  const latestFailure = getLatestFailure(failures);
+
+  return latestFailure ? `failopen-${latestFailure.failedAt}` : null;
+};
+
 /**
- * Reads the current persisted shape. Older auxiliary fields are ignored so the
- * store stays small and the forced subscription can be derived from `failure`.
+ * Reads the current persisted shape. The previous session-wide shape is still
+ * accepted so an existing tab can seamlessly upgrade to the dataset-scoped
+ * model without manual storage clearing.
  */
 const readSnapshot = (): GridCustomRendererFailoverSnapshot => {
   if (!canUseSessionStorage()) {
@@ -73,25 +152,16 @@ const readSnapshot = (): GridCustomRendererFailoverSnapshot => {
       return createEmptySnapshot();
     }
 
-    const failure =
-      "failure" in value &&
-      value.failure &&
-      typeof value.failure === "object" &&
-      typeof (value.failure as GridCustomRendererFailure).datasetName ===
-        "string" &&
-      typeof (value.failure as GridCustomRendererFailure).rendererName ===
-        "string" &&
-      typeof (value.failure as GridCustomRendererFailure).failedAt === "number"
-        ? (value.failure as GridCustomRendererFailure)
-        : null;
+    if ("failures" in value || "dismissedBanners" in value) {
+      return {
+        dismissedBanners: parseDismissedBanners(
+          (value as { dismissedBanners?: unknown }).dismissedBanners
+        ),
+        failures: parseFailures((value as { failures?: unknown }).failures),
+      };
+    }
 
-    return {
-      dismissedBanner:
-        "dismissedBanner" in value && typeof value.dismissedBanner === "boolean"
-          ? value.dismissedBanner
-          : false,
-      failure,
-    };
+    return migrateLegacySnapshot(value as Record<string, unknown>);
   } catch {
     return createEmptySnapshot();
   }
@@ -114,6 +184,28 @@ const replaceSnapshot = (nextSnapshot: GridCustomRendererFailoverSnapshot) => {
   listeners.forEach((listener) => listener());
 };
 
+const getFailure = (
+  datasetName: string | null | undefined,
+  currentSnapshot: GridCustomRendererFailoverSnapshot = snapshot
+) => {
+  if (!datasetName) {
+    return null;
+  }
+
+  return currentSnapshot.failures[datasetName] ?? null;
+};
+
+const isBannerDismissed = (
+  datasetName: string | null | undefined,
+  currentSnapshot: GridCustomRendererFailoverSnapshot = snapshot
+) => {
+  if (!datasetName) {
+    return false;
+  }
+
+  return currentSnapshot.dismissedBanners[datasetName] === true;
+};
+
 /** Subscribes React to this external fail-open store. */
 export const subscribeToGridCustomRendererFailover = (listener: () => void) => {
   listeners.add(listener);
@@ -123,29 +215,34 @@ export const subscribeToGridCustomRendererFailover = (listener: () => void) => {
   };
 };
 
-/** Returns the current session fail-open snapshot. */
+/** Returns the current fail-open snapshot for this browser session. */
 export const getGridCustomRendererFailoverSnapshot = () => snapshot;
 
 /**
- * Returns the replacement synced subscription used after fail-open. It is
- * derived from the recorded failure so the persisted store only needs one piece
- * of state to describe the session decision.
+ * Returns the replacement synced subscription used after a renderer crash. The
+ * disable state is dataset-scoped, but subscription repair still happens at
+ * the tab level because the poisoned sync channel is shared by the whole app.
  */
 export const getGridCustomRendererFailoverForcedSubscription = () =>
-  getForcedSubscription(snapshot.failure);
+  getForcedSubscription(snapshot.failures);
 
-/** Returns the recorded fail-open decision for the current browser session. */
-export const getGridCustomRendererFailover = () => snapshot.failure;
+/** Returns the recorded failure for a dataset in the current browser session. */
+export const getGridCustomRendererFailover = (
+  datasetName: string | null | undefined
+) => getFailure(datasetName);
 
-/** Whether custom grid renderers are disabled for the current browser session. */
-export const isGridCustomRendererFailOpen = () =>
-  Boolean(getGridCustomRendererFailover());
+/** Whether custom grid renderers are disabled for the given dataset. */
+export const isGridCustomRendererFailOpen = (
+  datasetName: string | null | undefined
+) => Boolean(getFailure(datasetName));
 
 /**
- * Records the first renderer failure for the current browser session.
+ * Records the first renderer failure for a dataset in the current browser
+ * session.
  *
- * Later failures are ignored so the tab keeps one stable fail-open decision
- * and one stable forced subscription for the rest of its lifetime.
+ * Repeated failures on the same dataset are ignored, but a later first failure
+ * on a different dataset will mint a fresh forced subscription so the app can
+ * reload away from any newly poisoned sync channel.
  */
 export const markGridCustomRendererFailed = ({
   datasetName,
@@ -156,37 +253,57 @@ export const markGridCustomRendererFailed = ({
     return null;
   }
 
-  if (snapshot.failure) {
-    return snapshot.failure;
+  const existingFailure = getFailure(datasetName);
+
+  if (existingFailure) {
+    return existingFailure;
   }
+
+  const latestFailure = getLatestFailure(snapshot.failures);
+  const failedAt = Math.max(
+    Date.now(),
+    latestFailure ? latestFailure.failedAt + 1 : 0
+  );
 
   const failure = {
     datasetName,
     rendererName,
-    failedAt: Date.now(),
+    failedAt,
     ...(errorMessage ? { errorMessage } : {}),
   };
 
   replaceSnapshot({
-    dismissedBanner: false,
-    failure,
+    dismissedBanners: {
+      ...snapshot.dismissedBanners,
+      [datasetName]: false,
+    },
+    failures: {
+      ...snapshot.failures,
+      [datasetName]: failure,
+    },
   });
 
   return failure;
 };
 
 /**
- * Hides the warning banner without clearing fail-open mode. Dismissing the
- * banner is purely a UI choice and should not re-enable crashing renderers.
+ * Hides the warning banner for a dataset without clearing fail-open mode.
+ * Dismissing the banner is purely a UI choice and should not re-enable the
+ * crashing renderer for that dataset.
  */
-export const dismissGridCustomRendererFailoverBanner = () => {
-  if (snapshot.dismissedBanner) {
+export const dismissGridCustomRendererFailoverBanner = (
+  datasetName: string | null | undefined
+) => {
+  if (!datasetName || isBannerDismissed(datasetName)) {
     return;
   }
 
   replaceSnapshot({
     ...snapshot,
-    dismissedBanner: true,
+    dismissedBanners: {
+      ...snapshot.dismissedBanners,
+      [datasetName]: true,
+    },
   });
 };
 
@@ -195,21 +312,29 @@ export const dismissGridCustomRendererFailoverBanner = () => {
  *
  * `useSyncExternalStore` bridges React to this module-level source of truth,
  * while selectors and other non-React code can still read it synchronously.
+ *
+ * When a dataset name is provided, the disable/banner state is scoped to that
+ * dataset. The forced subscription remains shared because the sync repair path
+ * still applies to the entire tab.
  */
-export const useGridCustomRendererFailover = () => {
+export const useGridCustomRendererFailover = (datasetName?: string | null) => {
   const currentSnapshot = useSyncExternalStore(
     subscribeToGridCustomRendererFailover,
     getGridCustomRendererFailoverSnapshot,
     createEmptySnapshot
   );
 
+  const failure = getFailure(datasetName, currentSnapshot);
+
   return {
-    dismissBanner: dismissGridCustomRendererFailoverBanner,
-    failure: currentSnapshot.failure,
-    forcedSubscription: getForcedSubscription(currentSnapshot.failure),
+    dismissBanner: () =>
+      dismissGridCustomRendererFailoverBanner(datasetName ?? null),
+    failure,
+    forcedSubscription: getForcedSubscription(currentSnapshot.failures),
+    hasAnyFailures: Object.keys(currentSnapshot.failures).length > 0,
     isBannerVisible:
-      Boolean(currentSnapshot.failure) && !currentSnapshot.dismissedBanner,
-    isDisabled: Boolean(currentSnapshot.failure),
+      Boolean(failure) && !isBannerDismissed(datasetName, currentSnapshot),
+    isDisabled: Boolean(failure),
   };
 };
 

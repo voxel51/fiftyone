@@ -75,7 +75,7 @@ describe("GridCustomRendererItem", () => {
       expect(host.textContent).toContain("/media/file.pdf");
     });
 
-    expect(getGridCustomRendererFailover()).toBeNull();
+    expect(getGridCustomRendererFailover(BASE_CTX.dataset.name)).toBeNull();
     expect(loadSpy).toHaveBeenCalled();
     expect(getOpenModalButton(host)).toBeNull();
     expect(getSelectControl(host)).toBeNull();
@@ -148,7 +148,9 @@ describe("GridCustomRendererItem", () => {
     looker.attach(host, [320, 180], 14);
 
     await waitFor(() => {
-      expect(getGridCustomRendererFailover()).toMatchObject({
+      expect(
+        getGridCustomRendererFailover(BASE_CTX.dataset.name)
+      ).toMatchObject({
         datasetName: "dataset",
         errorMessage: "render failed",
         rendererName: "broken-renderer",
@@ -184,7 +186,7 @@ describe("GridCustomRendererItem", () => {
     looker.attach(host, [320, 180], 14);
 
     await waitFor(() => {
-      expect(getGridCustomRendererFailover()).toBeTruthy();
+      expect(getGridCustomRendererFailover(BASE_CTX.dataset.name)).toBeTruthy();
     });
 
     expect(
