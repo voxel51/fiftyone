@@ -46,6 +46,12 @@ const HF_BASE = "https://huggingface.co/SharpAI/sam2-hiera-tiny-onnx/resolve/mai
 const ENCODER_URL = `${HF_BASE}/encoder.with_runtime_opt.ort`;
 const DECODER_URL = `${HF_BASE}/decoder.onnx`;
 
+/**
+ * Prefix embedding cache keys with the encoder contract so stale entries
+ * are ignored if/when the model or preprocessing changes.
+ */
+const CACHE_PREFIX = `${ENCODER_URL}:${SAM2_INPUT_SIZE}:`;
+
 const isCOI = typeof crossOriginIsolated !== "undefined" && crossOriginIsolated;
 ort.env.wasm.numThreads = isCOI ? 4 : 1;
 ort.env.wasm.simd = true;
@@ -180,7 +186,8 @@ async function embedAndDecode(
 
   const postWarning = (message: string) => postNotification("warning", message);
 
-  const cached = await getEmbedding(imageUrl, postWarning);
+  const cacheKey = CACHE_PREFIX + imageUrl;
+  const cached = await getEmbedding(cacheKey, postWarning);
   if (cached) {
     encResults = {
       image_embed: new ort.Tensor("float32", cached.imageEmbed.data, cached.imageEmbed.dims),
@@ -199,7 +206,7 @@ async function embedAndDecode(
 
     // Fire-and-forget: IDB write runs in background while decoder proceeds.
     // Memory LRU is updated synchronously inside putEmbedding before the first await.
-    putEmbedding(imageUrl, {
+    putEmbedding(cacheKey, {
       // Key names are defined by the ONNX model and must match exactly.
       // Encode — input: "image"; outputs: "image_embed", "high_res_feats_0", "high_res_feats_1"
       imageEmbed: { data: encResults["image_embed"].data as Float32Array, dims: [...encResults["image_embed"].dims] },
