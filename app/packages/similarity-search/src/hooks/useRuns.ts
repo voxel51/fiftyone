@@ -36,13 +36,20 @@ export const useRuns = (): UseRunsResult => {
   const { execute: fetchRuns } = useOperatorExecutor(
     "@voxel51/panels/list_similarity_runs"
   );
+  const fetchingRef = useRef(false);
 
   const refreshRuns = useCallback(() => {
+    if (fetchingRef.current) {
+      return Promise.resolve();
+    }
+    fetchingRef.current = true;
+
     return new Promise<void>((resolve, reject) => {
       fetchRuns(
         {},
         {
           callback: (result?: Record<string, unknown>) => {
+            fetchingRef.current = false;
             try {
               if (result?.error) {
                 console.error("Error fetching similarity runs:", result.error);
@@ -65,6 +72,7 @@ export const useRuns = (): UseRunsResult => {
           },
         }
       ).catch((error: unknown) => {
+        fetchingRef.current = false;
         console.error("Operator execution failed for fetchRuns:", error);
         reject(error instanceof Error ? error : new Error(String(error)));
       });

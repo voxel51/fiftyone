@@ -15,14 +15,9 @@ import {
   Spacing,
   Variant,
 } from "@voxel51/voodo";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { BrainKeyConfig, SimilarityRun, RunFilterState } from "../../types";
+import { useSampleMedia } from "../../hooks/useSampleMedia";
 import { formatQuery, formatTime } from "../../utils";
 import StatusBadge from "./StatusBadge";
 import RunActions from "./RunActions";
@@ -64,8 +59,6 @@ type RunListProps = {
 
 const tip = (text: string) => <span style={s.tooltipText}>{text}</span>;
 
-const MAX_CACHED_MEDIA = 500;
-
 export default function RunList({
   runs,
   filteredRuns,
@@ -96,60 +89,28 @@ export default function RunList({
 
   const [expandedRunIds, setExpandedRunIds] = useState<Set<string>>(new Set());
 
-  const accumulatedMedia = useRef<Record<string, string>>({});
-  useEffect(() => {
-    if (sampleMedia && Object.keys(sampleMedia).length > 0) {
-      const merged = { ...accumulatedMedia.current, ...sampleMedia };
-      // Cap accumulated media to prevent unbounded growth
-      const keys = Object.keys(merged);
-      if (keys.length > MAX_CACHED_MEDIA) {
-        const trimmed: Record<string, string> = {};
-        for (const key of keys.slice(-MAX_CACHED_MEDIA)) {
-          trimmed[key] = merged[key];
+  const { mergedMedia, handleToggleExpand: onMediaToggle } = useSampleMedia({
+    sampleMedia,
+    expandedRunIds,
+    filteredRuns,
+    onGetSampleMedia,
+  });
+
+  const handleToggleExpand = useCallback(
+    (run: SimilarityRun) => {
+      onMediaToggle(run);
+      setExpandedRunIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(run.run_id)) {
+          next.delete(run.run_id);
+        } else {
+          next.add(run.run_id);
         }
-        accumulatedMedia.current = trimmed;
-      } else {
-        accumulatedMedia.current = merged;
-      }
-    }
-  }, [sampleMedia]);
-  const mergedMedia = { ...accumulatedMedia.current, ...sampleMedia };
-
-  const pendingFetchRef = useRef<string | null>(null);
-
-  const handleToggleExpand = useCallback((run: SimilarityRun) => {
-    setExpandedRunIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(run.run_id)) {
-        next.delete(run.run_id);
-      } else {
-        next.add(run.run_id);
-        // Schedule media fetch for newly expanded run
-        pendingFetchRef.current = run.run_id;
-      }
-      return next;
-    });
-  }, []);
-
-  // Fetch media after expansion state settles
-  useEffect(() => {
-    const runId = pendingFetchRef.current;
-    if (!runId || !expandedRunIds.has(runId)) {
-      pendingFetchRef.current = null;
-      return;
-    }
-    pendingFetchRef.current = null;
-
-    const run = filteredRuns.find((r) => r.run_id === runId);
-    if (!run) return;
-
-    const positiveIds = Array.isArray(run.query) ? run.query : [];
-    const negativeIds = run.negative_query_ids ?? [];
-    const allIds = [...positiveIds, ...negativeIds];
-    if (allIds.length > 0) {
-      onGetSampleMedia({ sample_ids: allIds });
-    }
-  }, [expandedRunIds, filteredRuns, onGetSampleMedia]);
+        return next;
+      });
+    },
+    [onMediaToggle]
+  );
 
   const visibleRunIds = useMemo(
     () => filteredRuns.map((r) => r.run_id),
