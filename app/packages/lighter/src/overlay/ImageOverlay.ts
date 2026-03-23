@@ -88,7 +88,7 @@ export class ImageOverlay extends BaseOverlay implements CanonicalMedia {
         }
       );
 
-      // Wait for the first viewport-moved event (triggered by fitToRect) to 
+      // Wait for the first viewport-moved event (triggered by fitToRect) to
       // unblock the image. Ths avoids an image flash at default zoom.
       if (this.options.deferShow) {
         this.waitingForViewport = true;
@@ -184,6 +184,7 @@ export class ImageOverlay extends BaseOverlay implements CanonicalMedia {
       this.emitError(new Error(`Invalid sample source: ${this.options.src}`));
       return;
     }
+    this.imgElement.style.imageRendering = "pixelated";
     this.imgElement.src = src;
 
     this.imgElement.style.position = "absolute";
@@ -435,7 +436,8 @@ export class ImageOverlay extends BaseOverlay implements CanonicalMedia {
    * Emit canonical media bounds changed event.
    */
   private notifyBoundsChanged(): void {
-    if (!this.currentBounds || !this.sceneEventBus || !this.isImageLoaded) return;
+    if (!this.currentBounds || !this.sceneEventBus || !this.isImageLoaded)
+      return;
 
     this.sceneEventBus.dispatch("lighter:canonical-media-bounds-changed", {
       bounds: this.currentBounds,
