@@ -15,8 +15,7 @@ export const useMultiSelect = () => {
       }
       return !prev;
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [setSelectMode, setSelectedRunIds]);
 
   const toggleRunSelection = useCallback(
     (runId: string) => {
@@ -30,28 +29,24 @@ export const useMultiSelect = () => {
         return next;
       });
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
+    [setSelectedRunIds]
   );
 
   const selectAll = useCallback(
     (visibleRunIds: string[]) => {
       setSelectedRunIds(new Set(visibleRunIds));
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
+    [setSelectedRunIds]
   );
 
   const deselectAll = useCallback(() => {
     setSelectedRunIds(new Set());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [setSelectedRunIds]);
 
   const clearAndExit = useCallback(() => {
     setSelectedRunIds(new Set());
     setSelectMode(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [setSelectedRunIds, setSelectMode]);
 
   return {
     selectMode,

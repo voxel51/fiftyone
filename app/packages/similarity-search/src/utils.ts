@@ -1,5 +1,10 @@
 import { getFetchParameters } from "@fiftyone/utilities";
-import { SimilarityRun, DateFilterPreset, QueryType } from "./types";
+import {
+  SimilarityRun,
+  DateFilterPreset,
+  QueryType,
+  SearchScope,
+} from "./types";
 import { DAY_MS } from "./constants";
 
 export const formatQuery = (run: SimilarityRun): string => {
@@ -107,7 +112,7 @@ export type BuildExecutionParamsInput = {
   queryIds: string[];
   reverse: boolean;
   patchesField?: string;
-  searchScope: "view" | "dataset";
+  searchScope: SearchScope;
   hasView: boolean;
   view: unknown[];
   k: number | "";
@@ -125,7 +130,7 @@ export function getMediaUrl(filepath: string): string {
 
 export const buildExecutionParams = (
   input: BuildExecutionParamsInput
-): Record<string, any> => {
+): Record<string, unknown> => {
   const {
     brainKey,
     queryType,
@@ -144,7 +149,7 @@ export const buildExecutionParams = (
 
   const query = queryType === "text" ? textQuery.trim() : queryIds;
 
-  const params: Record<string, any> = {
+  const params: Record<string, unknown> = {
     brain_key: brainKey,
     query_type: queryType,
     query,

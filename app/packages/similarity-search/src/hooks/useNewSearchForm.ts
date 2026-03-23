@@ -1,28 +1,22 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRecoilValue } from "recoil";
-import { useOperatorExecutor } from "@fiftyone/operators";
-import * as fos from "@fiftyone/state";
-import { BrainKeyConfig, CloneConfig, QueryType } from "../types";
-import { INIT_RUN_OPERATOR_URI } from "../constants";
-import { canSubmitSearch, buildExecutionParams } from "../utils";
+import { useEffect, useMemo, useState } from "react";
+import { BrainKeyConfig, CloneConfig, QueryType, SearchScope } from "../types";
+import { SCOPE_VIEW, SCOPE_DATASET } from "../constants";
+import { useSearchSelection } from "./useSearchSelection";
+import { useSearchSubmission } from "./useSearchSubmission";
 
-const EMPTY_NEGATIVE_IDS: string[] = [];
-
+/**
+ * Hook for managing the new search form state.
+ *
+ * Composes useSearchSelection (FO selection state) and
+ * useSearchSubmission (params building + submit handlers).
+ */
 export const useNewSearchForm = (
   brainKeys: BrainKeyConfig[],
   cloneConfig: CloneConfig | null | undefined,
   onSubmitted: () => void
 ) => {
-  const selectedSamples = useRecoilValue(fos.selectedSamples);
-  const selectedLabels = useRecoilValue(fos.selectedLabels);
-  const view = useRecoilValue(fos.view);
-
-  const hasSamplesSelected = useMemo(
-    () =>
-      (selectedLabels && selectedLabels.length > 0) ||
-      (selectedSamples && selectedSamples.size > 0),
-    [selectedSamples, selectedLabels]
-  );
+  const { selectedLabels, view, hasSamplesSelected, queryIds, hasView } =
+    useSearchSelection();
 
   const firstTextKey = useMemo(
     () => brainKeys.find((bk) => bk.supports_prompts),
@@ -43,6 +37,8 @@ export const useNewSearchForm = (
     return "image";
   }, [cloneConfig, hasSamplesSelected, firstTextKey]);
 
+  // ─── Form fields ────────────────────────────────────────────────
+
   const [brainKey, setBrainKey] = useState(defaultBrainKey);
   const [queryType, setQueryType] = useState<QueryType>(defaultQueryType);
   const [textQuery, setTextQuery] = useState(cloneConfig?.query ?? "");
@@ -51,16 +47,17 @@ export const useNewSearchForm = (
   const [distField, setDistField] = useState(cloneConfig?.dist_field ?? "");
   const [runName, setRunName] = useState("");
   const [dynamicResults, setDynamicResults] = useState(false);
-  const hasView = Array.isArray(view) && view.length > 0;
-  const [searchScope, setSearchScope] = useState<"view" | "dataset">(
-    hasView ? "view" : "dataset"
+  const [searchScope, setSearchScope] = useState<SearchScope>(
+    hasView ? SCOPE_VIEW : SCOPE_DATASET
   );
 
-  const { execute: initRun } = useOperatorExecutor(INIT_RUN_OPERATOR_URI);
+  // ─── Derived config ─────────────────────────────────────────────
 
   const selectedConfig = brainKeys.find((bk) => bk.key === brainKey);
   const supportsPrompts = selectedConfig?.supports_prompts ?? false;
   const supportsLeast = selectedConfig?.supports_least_similarity ?? false;
+
+  // ─── Auto-correct effects ───────────────────────────────────────
 
   useEffect(() => {
     if (!brainKey && brainKeys.length > 0) {
@@ -80,76 +77,27 @@ export const useNewSearchForm = (
     }
   }, [supportsLeast, reverse]);
 
-  const queryIds = useMemo(() => {
-    if (selectedLabels && selectedLabels.length > 0) {
-      return selectedLabels.map((l: any) => l.label_id);
-    }
-    if (selectedSamples && selectedSamples.size > 0) {
-      return Array.from(selectedSamples);
-    }
-    return [];
-  }, [selectedSamples, selectedLabels]);
+  // ─── Submission ─────────────────────────────────────────────────
 
-  const executionParams = useMemo(
-    () =>
-      buildExecutionParams({
-        brainKey,
-        queryType,
-        textQuery,
-        queryIds,
-        reverse,
-        patchesField: selectedConfig?.patches_field,
-        searchScope,
-        hasView,
-        view: view as unknown[],
-        k,
-        distField,
-        runName,
-        negativeQueryIds: EMPTY_NEGATIVE_IDS,
-        dynamicResults,
-      }),
-    [
+  const { executionParams, handleSuccess, handleError, kError, canSubmit } =
+    useSearchSubmission({
       brainKey,
       queryType,
       textQuery,
-      k,
+      queryIds,
       reverse,
+      selectedConfig,
+      searchScope,
+      hasView,
+      view: view as unknown[],
+      k,
       distField,
       runName,
       dynamicResults,
-      selectedConfig,
-      view,
-      searchScope,
-      hasView,
-      queryIds,
-    ]
-  );
+      onSubmitted,
+    });
 
-  const handleSuccess = useCallback(
-    (result: any) => {
-      if (result?.delegated) {
-        const operatorRunId = result?.result?.id?.$oid;
-        initRun(
-          { ...executionParams, operator_run_id: operatorRunId },
-          { callback: () => onSubmitted() }
-        );
-      } else {
-        onSubmitted();
-      }
-    },
-    [initRun, executionParams, onSubmitted]
-  );
-
-  const handleError = useCallback((error: any) => {
-    console.error("Similarity search failed:", error);
-  }, []);
-
-  const kError =
-    k !== "" &&
-    (!Number.isFinite(k) || !Number.isInteger(k) || k < 1 || k > 10000);
-
-  const canSubmit =
-    !kError && canSubmitSearch(brainKey, queryType, textQuery, queryIds.length);
+  // ─── Brain key options ──────────────────────────────────────────
 
   const brainKeyOptions = brainKeys.map((bk) => ({
     id: bk.key,

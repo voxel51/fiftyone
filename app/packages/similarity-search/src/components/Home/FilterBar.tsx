@@ -14,8 +14,8 @@ import {
 } from "@voxel51/voodo";
 import React from "react";
 import { RunFilterState, DateFilterPreset } from "../../types";
-import { DATE_PRESET_OPTIONS } from "../../constants";
-import * as s from "../styles";
+import { DATE_PRESET_OPTIONS, OWNER_ALL, OWNER_MINE } from "../../constants";
+import { FilterBarSearchCol, FilterBarDateCol } from "../styled";
 
 type FilterBarProps = {
   filterState: RunFilterState;
@@ -35,7 +35,7 @@ export default function FilterBar({
   const isFiltered =
     filterState.searchText !== "" ||
     filterState.datePreset !== "all" ||
-    (canFilterByOwner && filterState.ownerFilter !== "all");
+    (canFilterByOwner && filterState.ownerFilter !== OWNER_ALL);
 
   return (
     <Stack
@@ -48,7 +48,7 @@ export default function FilterBar({
         spacing={Spacing.Sm}
         style={{ alignItems: "center" }}
       >
-        <div style={s.filterBarSearchCol}>
+        <FilterBarSearchCol>
           <Input
             type={InputType.Search}
             placeholder="Filter by name, query, or brain key..."
@@ -58,8 +58,8 @@ export default function FilterBar({
             }
             size={Size.Sm}
           />
-        </div>
-        <div style={s.filterBarDateCol}>
+        </FilterBarSearchCol>
+        <FilterBarDateCol>
           <Select
             exclusive
             options={DATE_PRESET_OPTIONS}
@@ -71,28 +71,32 @@ export default function FilterBar({
               })
             }
           />
-        </div>
+        </FilterBarDateCol>
         {canFilterByOwner && (
           <Stack orientation={Orientation.Row} spacing={Spacing.Xs}>
             <Button
               variant={
-                filterState.ownerFilter === "all"
+                filterState.ownerFilter === OWNER_ALL
                   ? Variant.Primary
                   : Variant.Secondary
               }
               size={Size.Sm}
-              onClick={() => onChange({ ...filterState, ownerFilter: "all" })}
+              onClick={() =>
+                onChange({ ...filterState, ownerFilter: OWNER_ALL })
+              }
             >
               All
             </Button>
             <Button
               variant={
-                filterState.ownerFilter === "mine"
+                filterState.ownerFilter === OWNER_MINE
                   ? Variant.Primary
                   : Variant.Secondary
               }
               size={Size.Sm}
-              onClick={() => onChange({ ...filterState, ownerFilter: "mine" })}
+              onClick={() =>
+                onChange({ ...filterState, ownerFilter: OWNER_MINE })
+              }
             >
               Mine
             </Button>

@@ -3,7 +3,7 @@ import { useMemo, useRef } from "react";
 
 /**
  * Given a record of keys to event names, returns a record of trigger functions.
- * Follows the VAL panel pattern for frontend-to-panel communication.
+ * Follows the panel event pattern for frontend-to-panel communication.
  */
 export default function useTriggers<
   T extends Record<string, (...args: any[]) => void>

@@ -18,6 +18,7 @@ import {
 import React, { useCallback, useMemo, useState } from "react";
 import { BrainKeyConfig, SimilarityRun, RunFilterState } from "../../types";
 import { useSampleMedia } from "../../hooks/useSampleMedia";
+import { MIDDLE_DOT } from "../../constants";
 import { formatQuery, formatTime } from "../../utils";
 import StatusBadge from "./StatusBadge";
 import RunActions from "./RunActions";
@@ -25,7 +26,12 @@ import ExpandedThumbnails from "./ExpandedThumbnails";
 import NoBrainKeysEmptyState from "./NoBrainKeysEmptyState";
 import FilterBar from "./FilterBar";
 import BulkActionBar from "./BulkActionBar";
-import * as s from "../styles";
+import {
+  RunListContainer,
+  SelectAllRow,
+  EmptyStateBox,
+  tooltipTextStyle,
+} from "../styled";
 
 type SelectionState = {
   selectMode: boolean;
@@ -57,7 +63,7 @@ type RunListProps = {
   selection: SelectionState;
 };
 
-const tip = (text: string) => <span style={s.tooltipText}>{text}</span>;
+const tip = (text: string) => <span style={tooltipTextStyle}>{text}</span>;
 
 export default function RunList({
   runs,
@@ -163,8 +169,8 @@ export default function RunList({
                 )}
               </Stack>
               <Text variant={TextVariant.Md} color={TextColor.Secondary}>
-                {formatQuery(run)} {"\u00B7"} {run.brain_key}
-                {run.k ? ` \u00B7 k=${run.k}` : ""}
+                {formatQuery(run)} {MIDDLE_DOT} {run.brain_key}
+                {run.k ? ` ${MIDDLE_DOT} k=${run.k}` : ""}
                 {run.reverse ? " (least similar)" : ""}
               </Text>
               <Text variant={TextVariant.Md} color={TextColor.Muted}>
@@ -209,7 +215,7 @@ export default function RunList({
   );
 
   return (
-    <div style={s.runListContainer}>
+    <RunListContainer>
       {/* Header */}
       <Stack
         orientation={Orientation.Row}
@@ -292,30 +298,30 @@ export default function RunList({
       {brainKeys.length === 0 ? (
         <NoBrainKeysEmptyState />
       ) : runs.length === 0 ? (
-        <div style={s.emptyState}>
+        <EmptyStateBox>
           <Text color={TextColor.Secondary}>No similarity searches yet</Text>
           <Text variant={TextVariant.Md} color={TextColor.Secondary}>
             Click "New Search" to find similar samples using your computed
             embeddings.
           </Text>
-        </div>
+        </EmptyStateBox>
       ) : filteredRuns.length === 0 ? (
-        <div style={s.emptyState}>
+        <EmptyStateBox>
           <Text color={TextColor.Secondary}>
             No searches match your filters
           </Text>
-        </div>
+        </EmptyStateBox>
       ) : (
         <>
           {selectMode && filteredRuns.length > 0 && (
-            <div style={s.selectAllRow}>
+            <SelectAllRow>
               <Checkbox
                 label={allVisibleSelected ? "Deselect all" : "Select all"}
                 checked={allVisibleSelected}
                 onChange={handleSelectAllToggle}
                 size={Size.Sm}
               />
-            </div>
+            </SelectAllRow>
           )}
           <RichList
             className="similarity-run-list"
@@ -334,6 +340,6 @@ export default function RunList({
           onCancel={onClearAndExit}
         />
       )}
-    </div>
+    </RunListContainer>
   );
 }

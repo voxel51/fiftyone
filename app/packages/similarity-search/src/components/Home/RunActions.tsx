@@ -5,12 +5,12 @@ import {
   GridViewIcon as GridView,
 } from "../../mui";
 import { SimilarityRun } from "../../types";
-import * as s from "../styles";
+import { ActionButtons, tooltipTextStyle } from "../styled";
 
 const ApplyIcon = () => <GridView fontSize="small" />;
 const CloneIcon = () => <ContentCopy fontSize="small" />;
 
-const tip = (text: string) => <span style={s.tooltipText}>{text}</span>;
+const tip = (text: string) => <span style={tooltipTextStyle}>{text}</span>;
 
 type RunActionsProps = {
   run: SimilarityRun;
@@ -32,7 +32,7 @@ export default function RunActions({
   const isImage = run.query_type === "image";
 
   return (
-    <div style={s.actionButtons}>
+    <ActionButtons>
       <Tooltip content={tip("Show results")}>
         <Button
           aria-label="Show results"
@@ -74,6 +74,6 @@ export default function RunActions({
           />
         </Tooltip>
       )}
-    </div>
+    </ActionButtons>
   );
 }

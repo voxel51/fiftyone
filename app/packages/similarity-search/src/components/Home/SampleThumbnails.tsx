@@ -2,7 +2,7 @@ import React from "react";
 import { ImageList, ImageListItem } from "../../mui";
 import { THUMB_SIZE, THUMB_GAP, THUMB_SINGLE_ROW_MAX } from "../../constants";
 import { getMediaUrl } from "../../utils";
-import * as s from "../styles";
+import { thumbnailStyle, ThumbnailPlaceholder } from "../styled";
 
 type SampleThumbnailsProps = {
   ids: string[];
@@ -40,10 +40,10 @@ export default function SampleThumbnails({
               <img
                 src={getMediaUrl(filepath)}
                 alt="selected images"
-                style={s.thumbnail}
+                style={thumbnailStyle}
               />
             ) : (
-              <div style={s.thumbnailPlaceholder} />
+              <ThumbnailPlaceholder />
             )}
           </ImageListItem>
         );

@@ -17,7 +17,7 @@ import useTriggers from "./useTriggers";
  * the returned API without touching atoms or triggers directly.
  */
 export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
-  const { data = {}, schema } = props;
+  const { data: panelData = {}, schema } = props;
   const { view } = schema;
 
   const { page, navigateHome, navigateNewSearch, navigateSimilarityIndex } =
@@ -56,9 +56,15 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
     getSampleMedia: view.get_sample_media,
   });
 
-  const allBrainKeys = data.brain_keys ?? [];
-  const appliedRunId = (props as any).data?.applied_run_id;
-  const sampleMedia: Record<string, string> = (data as any).sample_media ?? {};
+  const allBrainKeys = panelData.brain_keys ?? [];
+  const appliedRunId = (panelData as Record<string, unknown>).applied_run_id as
+    | string
+    | undefined;
+  const sampleMedia: Record<string, string> =
+    ((panelData as Record<string, unknown>).sample_media as Record<
+      string,
+      string
+    >) ?? {};
 
   // Detect patches view and filter brain keys accordingly
   const isPatchesView = useRecoilValue(fos.isPatchesView);
@@ -93,7 +99,8 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
   );
 
   // currentUser is null in OSS, populated by FOE via panel data
-  const currentUser = (data as any).current_user ?? null;
+  const currentUser =
+    ((panelData as Record<string, unknown>).current_user as string) ?? null;
   const canFilterByOwner = !!currentUser;
   const { filteredRuns, filterState, setFilterState } = useFilteredRuns(
     runs,

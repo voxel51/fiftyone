@@ -6,21 +6,21 @@ import { useSimilarityPanel } from "../hooks/useSimilarityPanel";
 import RunList from "./Home/RunList";
 import NewSearch from "./NewSearch/NewSearch";
 import SimilarityIndex from "./SimilarityIndex/SimilarityIndex";
-import * as s from "./styles";
+import { FullCenter, FullSize } from "./styled";
 
 function SimilaritySearchReady(props: SimilaritySearchViewProps) {
   const panel = useSimilarityPanel(props);
 
   if (!panel.loaded) {
     return (
-      <div style={s.fullCenter}>
+      <FullCenter>
         <Spinner />
-      </div>
+      </FullCenter>
     );
   }
 
   return (
-    <div style={s.fullSize}>
+    <FullSize>
       {panel.page === "home" && (
         <RunList
           runs={panel.runs}
@@ -57,7 +57,7 @@ function SimilaritySearchReady(props: SimilaritySearchViewProps) {
           onBack={panel.navigateHome}
         />
       )}
-    </div>
+    </FullSize>
   );
 }
 
@@ -67,18 +67,18 @@ export default function SimilaritySearchView(props: SimilaritySearchViewProps) {
 
   if (!panelId) {
     return (
-      <div style={s.fullCenter}>
+      <FullCenter>
         <Spinner />
-      </div>
+      </FullCenter>
     );
   }
 
   return (
     <Suspense
       fallback={
-        <div style={s.fullCenter}>
+        <FullCenter>
           <Spinner />
-        </div>
+        </FullCenter>
       }
     >
       <SimilaritySearchReady {...props} />

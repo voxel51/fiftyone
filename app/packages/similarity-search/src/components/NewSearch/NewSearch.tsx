@@ -21,10 +21,16 @@ import {
 } from "@voxel51/voodo";
 import React from "react";
 import { OperatorExecutionButton } from "@fiftyone/operators";
-import { BrainKeyConfig, CloneConfig } from "../../types";
-import { SEARCH_OPERATOR_URI } from "../../constants";
+import { BrainKeyConfig, CloneConfig, SearchScope } from "../../types";
+import { SEARCH_OPERATOR_URI, CHECK_MARK, CROSS_MARK } from "../../constants";
 import { useNewSearchForm } from "../../hooks/useNewSearchForm";
-import * as s from "../styles";
+import {
+  NewSearchContainer,
+  InfoCard,
+  SubmitRow,
+  QuerySelectorBoxActive,
+  QuerySelectorBoxInactive,
+} from "../styled";
 
 type NewSearchProps = {
   brainKeys: BrainKeyConfig[];
@@ -44,7 +50,7 @@ export default function NewSearch({
   const form = useNewSearchForm(brainKeys, cloneConfig, onSubmitted);
 
   return (
-    <div style={s.newSearchContainer}>
+    <NewSearchContainer>
       <Stack
         orientation={Orientation.Row}
         spacing={Spacing.Sm}
@@ -77,7 +83,7 @@ export default function NewSearch({
 
         {/* Index info card */}
         {form.selectedConfig && (
-          <div style={s.noBrainKeysWarning}>
+          <InfoCard>
             <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
               {form.selectedConfig.model && (
                 <Text variant={TextVariant.Md} color={TextColor.Secondary}>
@@ -91,19 +97,19 @@ export default function NewSearch({
               )}
               <Text variant={TextVariant.Md} color={TextColor.Secondary}>
                 Supports text queries?{" "}
-                {form.selectedConfig.supports_prompts ? "\u2705" : "\u274C"}
+                {form.selectedConfig.supports_prompts ? CHECK_MARK : CROSS_MARK}
               </Text>
             </Stack>
-          </div>
+          </InfoCard>
         )}
 
         {brainKeys.length === 0 && (
-          <div style={s.noBrainKeysWarning}>
+          <InfoCard>
             <Text variant={TextVariant.Md} color={TextColor.Secondary}>
               No similarity indexes found. Compute a similarity index on your
               dataset first.
             </Text>
-          </div>
+          </InfoCard>
         )}
 
         {/* Search scope */}
@@ -123,9 +129,7 @@ export default function NewSearch({
                     ]
               }
               value={form.searchScope}
-              onChange={(value) =>
-                form.setSearchScope(value as "view" | "dataset")
-              }
+              onChange={(value) => form.setSearchScope(value as SearchScope)}
               size={Size.Sm}
               style={{ display: "flex", flexDirection: "row", gap: "1rem" }}
             />
@@ -172,32 +176,23 @@ export default function NewSearch({
               />
             }
           />
-        ) : (
-          <div
-            style={
-              form.queryIds.length > 0
-                ? s.querySelectorBoxActive
-                : s.querySelectorBoxInactive
-            }
-          >
-            <Text
-              variant={TextVariant.Sm}
-              color={
-                form.queryIds.length > 0
-                  ? TextColor.Primary
-                  : TextColor.Secondary
-              }
-            >
-              {form.queryIds.length > 0
-                ? `${form.queryIds.length} ${
-                    Array.isArray(form.selectedLabels) &&
-                    form.selectedLabels.length > 0
-                      ? "labels"
-                      : "samples"
-                  } selected (positive)`
-                : "Select samples in the grid"}
+        ) : form.queryIds.length > 0 ? (
+          <QuerySelectorBoxActive>
+            <Text variant={TextVariant.Sm} color={TextColor.Primary}>
+              {`${form.queryIds.length} ${
+                Array.isArray(form.selectedLabels) &&
+                form.selectedLabels.length > 0
+                  ? "labels"
+                  : "samples"
+              } selected (positive)`}
             </Text>
-          </div>
+          </QuerySelectorBoxActive>
+        ) : (
+          <QuerySelectorBoxInactive>
+            <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+              Select samples in the grid
+            </Text>
+          </QuerySelectorBoxInactive>
         )}
 
         {/* Number of matches */}
@@ -269,7 +264,7 @@ export default function NewSearch({
         />
 
         {/* Submit */}
-        <div style={s.submitRow}>
+        <SubmitRow>
           <OperatorExecutionButton
             operatorUri={SEARCH_OPERATOR_URI}
             executionParams={form.executionParams}
@@ -280,8 +275,8 @@ export default function NewSearch({
           >
             Search
           </OperatorExecutionButton>
-        </div>
+        </SubmitRow>
       </Stack>
-    </div>
+    </NewSearchContainer>
   );
 }

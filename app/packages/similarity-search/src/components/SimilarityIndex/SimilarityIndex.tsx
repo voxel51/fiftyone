@@ -22,7 +22,7 @@ import React, { useMemo } from "react";
 import { BrainKeyConfig } from "../../types";
 import { BRAIN_COMPUTE_SIMILARITY_URI } from "../../constants";
 import NoBrainKeysEmptyState from "../Home/NoBrainKeysEmptyState";
-import * as s from "../styles";
+import { RunListContainer } from "../styled";
 
 type SimilarityIndexProps = {
   brainKeys: BrainKeyConfig[];
@@ -88,7 +88,7 @@ export default function SimilarityIndex({
   );
 
   return (
-    <div style={s.runListContainer}>
+    <RunListContainer>
       <Stack
         orientation={Orientation.Row}
         spacing={Spacing.Sm}
@@ -124,6 +124,6 @@ export default function SimilarityIndex({
           <RichList listItems={listItems} />
         </>
       )}
-    </div>
+    </RunListContainer>
   );
 }

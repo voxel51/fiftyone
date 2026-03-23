@@ -12,7 +12,7 @@ import {
 } from "@voxel51/voodo";
 import React, { useCallback, useEffect, useState } from "react";
 import { pluralizeSearches } from "../../utils";
-import * as s from "../styles";
+import { BulkActionBarContainer } from "../styled";
 
 type BulkActionBarProps = {
   selectedCount: number;
@@ -52,7 +52,7 @@ export default function BulkActionBar({
   const label = pluralizeSearches(selectedCount);
 
   return (
-    <div style={s.bulkActionBar}>
+    <BulkActionBarContainer>
       {confirming ? (
         <Stack
           orientation={Orientation.Row}
@@ -108,6 +108,6 @@ export default function BulkActionBar({
           </Stack>
         </Stack>
       )}
-    </div>
+    </BulkActionBarContainer>
   );
 }

@@ -20,7 +20,18 @@ import {
   BRAIN_PLUGIN_URL,
   DOCS_URL,
 } from "../../constants";
-import * as s from "../styles";
+import {
+  NoBrainKeysContainer,
+  NoBrainKeysCard,
+  NoBrainKeysHeader,
+  NoBrainKeysIconBox,
+  NoBrainKeysHeaderText,
+  NoBrainKeysSection,
+  NoBrainKeysCta,
+  NoBrainKeysActions,
+  Divider,
+  codeBlockStyle,
+} from "../styled";
 
 function ComputeSimilarityButton() {
   const promptForInput = usePromptOperatorInput();
@@ -41,18 +52,18 @@ export default function NoBrainKeysEmptyState() {
   ]);
 
   return (
-    <div style={s.noBrainKeysContainer}>
-      <div style={s.noBrainKeysCard}>
-        <div style={s.noBrainKeysHeader}>
-          <div style={s.noBrainKeysIconBox}>
+    <NoBrainKeysContainer>
+      <NoBrainKeysCard>
+        <NoBrainKeysHeader>
+          <NoBrainKeysIconBox>
             <ImageSearch
               style={{
                 fontSize: 24,
                 color: "var(--fo-palette-primary-main)",
               }}
             />
-          </div>
-          <div style={s.noBrainKeysHeaderText}>
+          </NoBrainKeysIconBox>
+          <NoBrainKeysHeaderText>
             <Text
               variant={TextVariant.Md}
               color={TextColor.Primary}
@@ -65,13 +76,13 @@ export default function NoBrainKeysEmptyState() {
                 ? "Create an index to search for similar samples by image or text."
                 : "Install the Brain plugin or compute the similarity index via Python SDK."}
             </Text>
-          </div>
-        </div>
+          </NoBrainKeysHeaderText>
+        </NoBrainKeysHeader>
 
-        <div style={s.divider} />
+        <Divider />
 
         {hasBrainOperator ? (
-          <div style={s.noBrainKeysCta}>
+          <NoBrainKeysCta>
             <ComputeSimilarityButton />
             <Text variant={TextVariant.Md} color={TextColor.Muted}>
               or create an index via{" "}
@@ -84,10 +95,10 @@ export default function NoBrainKeysEmptyState() {
                 Python SDK
               </a>
             </Text>
-          </div>
+          </NoBrainKeysCta>
         ) : (
           <>
-            <div style={s.noBrainKeysSection}>
+            <NoBrainKeysSection>
               <Text
                 variant={TextVariant.Md}
                 color={TextColor.Muted}
@@ -95,7 +106,7 @@ export default function NoBrainKeysEmptyState() {
               >
                 Install via CLI:
               </Text>
-              <pre className={scrollable} style={s.codeBlock}>
+              <pre className={scrollable} style={codeBlockStyle}>
                 {`fiftyone plugins download \\
     https://github.com/voxel51/fiftyone-plugins \\
     --plugin-names @voxel51/brain`}
@@ -107,11 +118,11 @@ export default function NoBrainKeysEmptyState() {
               >
                 Enterprise: ask your admin to install via Settings &gt; Plugins.
               </Text>
-            </div>
+            </NoBrainKeysSection>
 
-            <div style={s.divider} />
+            <Divider />
 
-            <div style={s.noBrainKeysSection}>
+            <NoBrainKeysSection>
               <Text
                 variant={TextVariant.Md}
                 color={TextColor.Muted}
@@ -119,7 +130,7 @@ export default function NoBrainKeysEmptyState() {
               >
                 Or create an index via Python:
               </Text>
-              <pre className={scrollable} style={s.codeBlock}>
+              <pre className={scrollable} style={codeBlockStyle}>
                 {`import fiftyone.brain as fob
 
 results = fob.compute_similarity(
@@ -128,11 +139,11 @@ results = fob.compute_similarity(
     brain_key="clip_sim",
 )`}
               </pre>
-            </div>
+            </NoBrainKeysSection>
 
-            <div style={s.divider} />
+            <Divider />
 
-            <div style={s.noBrainKeysActions}>
+            <NoBrainKeysActions>
               <Button
                 variant={Variant.Secondary}
                 size={Size.Sm}
@@ -149,10 +160,10 @@ results = fob.compute_similarity(
               >
                 Brain Plugin
               </Button>
-            </div>
+            </NoBrainKeysActions>
           </>
         )}
-      </div>
-    </div>
+      </NoBrainKeysCard>
+    </NoBrainKeysContainer>
   );
 }

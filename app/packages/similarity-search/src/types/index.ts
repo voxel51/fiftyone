@@ -9,6 +9,11 @@ export type RunStatus = "pending" | "running" | "completed" | "failed";
 export type QueryType = "text" | "image";
 
 /**
+ * Scope for a similarity search (full dataset or current view).
+ */
+export type SearchScope = "view" | "dataset";
+
+/**
  * Configuration for a brain similarity key.
  */
 export type BrainKeyConfig = {

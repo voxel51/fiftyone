@@ -9,7 +9,7 @@ import {
 import React from "react";
 import { SimilarityRun } from "../../types";
 import SampleThumbnails from "./SampleThumbnails";
-import * as s from "../styles";
+import { ExpandedSection } from "../styled";
 
 type ExpandedThumbnailsProps = {
   run: SimilarityRun;
@@ -26,33 +26,25 @@ export default function ExpandedThumbnails({
   if (!positiveIds.length && !negativeIds.length) return null;
 
   return (
-    <div style={s.expandedSection}>
+    <ExpandedSection>
       <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
         {positiveIds.length > 0 && (
-          <div>
-            <Text
-              variant={TextVariant.Md}
-              color={TextColor.Success}
-              style={{ marginBottom: "0.375rem" }}
-            >
+          <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
+            <Text variant={TextVariant.Md} color={TextColor.Success}>
               Positive ({positiveIds.length})
             </Text>
             <SampleThumbnails ids={positiveIds} sampleMedia={sampleMedia} />
-          </div>
+          </Stack>
         )}
         {negativeIds.length > 0 && (
-          <div>
-            <Text
-              variant={TextVariant.Md}
-              color={TextColor.Destructive}
-              style={{ marginBottom: "0.375rem" }}
-            >
+          <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
+            <Text variant={TextVariant.Md} color={TextColor.Destructive}>
               Negative ({negativeIds.length})
             </Text>
             <SampleThumbnails ids={negativeIds} sampleMedia={sampleMedia} />
-          </div>
+          </Stack>
         )}
       </Stack>
-    </div>
+    </ExpandedSection>
   );
 }
