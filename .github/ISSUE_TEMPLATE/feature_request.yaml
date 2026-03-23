@@ -8,14 +8,19 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thank you for submitting an issue. Please refer to our [issue policy](https://www.github.com/voxel51/fiftyone/blob/develop/ISSUE_POLICY.md) for information on what types of issues we address.
+        Thank you for submitting an issue. Please refer to our [issue policy](https://www.github.com/voxel51/fiftyone/blob/develop/ISSUE_POLICY.md) 
+        for information on what types of issues we address.
 
   - type: textarea
     id: proposal-summary
     validations:
       required: true
     attributes:
-      label: 📋 Proposal Summary
+      label: |+
+        📋 Proposal Summary
+
+        ---
+
       description: |
         In a few sentences, provide a clear, high-level description of the feature request.
       placeholder: Describe the feature you'd like to see
@@ -25,7 +30,11 @@ body:
     validations:
       required: true
     attributes:
-      label: 💡 Motivation
+      label: |+
+        💡 Motivation
+
+        ---
+
       description: |
         - What is the use case for this feature?
         - Why is this use case valuable to support for FiftyOne users in general?
@@ -38,7 +47,11 @@ body:
     validations:
       required: true
     attributes:
-      label: 🎯 What areas of FiftyOne does this feature affect?
+      label: |+
+        🎯 What areas of FiftyOne does this feature affect?
+
+        ---
+
       description: Select all that apply.
       options:
         - label: "App: FiftyOne application"
@@ -48,7 +61,11 @@ body:
   - type: textarea
     id: details
     attributes:
-      label: 📝 Details
+      label: |+
+        📝 Details
+
+        ---
+
       description: |
         Use this section to include any additional information about the feature. If you
         have a proposal for how to implement this feature, please include it here.
@@ -59,7 +76,11 @@ body:
     validations:
       required: true
     attributes:
-      label: 🚀 Willingness to contribute
+      label: |+
+        🚀 Willingness to contribute
+
+        ---
+
       description: |
         The FiftyOne Community welcomes contributions! Would you or another member of your
         organization be willing to contribute an implementation of this feature?
