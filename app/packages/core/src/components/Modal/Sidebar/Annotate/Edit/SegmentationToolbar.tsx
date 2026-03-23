@@ -8,34 +8,43 @@
  */
 
 import { FloatingToolbar, Tooltip } from "@fiftyone/components";
-import { Brush, FormatColorReset, Redo, Undo } from "@mui/icons-material";
-import { SingleValueSlider } from "@voxel51/voodo";
+import {
+  Brush,
+  CircleOutlined,
+  CropSquare,
+  FormatColorReset,
+  Redo,
+  Undo,
+} from "@mui/icons-material";
 import React from "react";
 import styled from "styled-components";
-import { useSegmentationMasks } from "./useSegmentationMasks";
+import {
+  MAX_TOOL_SIZE,
+  MIN_TOOL_SIZE,
+  useSegmentationMasks,
+} from "./useSegmentationMasks";
 
 // ---------------------------------------------------------------------------
 // Local styled helpers (domain-specific, not in FloatingToolbar)
 // ---------------------------------------------------------------------------
 
-const SizeSliderContainer = styled.div`
-  width: 28px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-`;
-
-const SizeLabel = styled.span`
-  font-size: 8px;
-  color: ${({ theme }) => theme.text.secondary};
+const SizeInput = styled.input`
+  width: 32px;
+  border: 1px solid ${({ theme }) => theme.primary.plainBorder};
+  border-radius: 3px;
+  background: ${({ theme }) => theme.background.level1};
+  color: ${({ theme }) => theme.text.primary};
+  font-size: 11px;
   text-align: center;
-`;
+  outline: none;
 
-const SliderWrapper = styled.div`
-  height: 60px;
-  display: flex;
-  align-items: center;
+  &:focus {
+    border-color: ${({ theme }) => theme.primary.main};
+  }
+
+  &::-webkit-inner-spin-button {
+    opacity: 1;
+  }
 `;
 
 // ---------------------------------------------------------------------------
@@ -75,7 +84,9 @@ export const SegmentationToolbar: React.FC<SegmentationToolbarProps> = ({
     active,
     tool,
     toolSize,
+    toolShape,
     switchTool,
+    switchToolShape,
     setToolSize,
   } = useSegmentationMasks();
 
@@ -107,19 +118,33 @@ export const SegmentationToolbar: React.FC<SegmentationToolbarProps> = ({
 
       {/* ---- Brush size ---- */}
       <FloatingToolbar.Group label="Size">
-        <SizeSliderContainer>
-          <SliderWrapper>
-            <SingleValueSlider
-              min={1}
-              max={50}
-              step={1}
-              value={toolSize}
-              onChange={setToolSize}
-              bare
-            />
-          </SliderWrapper>
-          <SizeLabel>{toolSize}</SizeLabel>
-        </SizeSliderContainer>
+        <SizeInput
+          type="number"
+          min={MIN_TOOL_SIZE}
+          max={MAX_TOOL_SIZE}
+          value={toolSize}
+          onChange={(e) => setToolSize(Number(e.target.value))}
+        />
+      </FloatingToolbar.Group>
+
+      {/* ---- Brush shape ---- */}
+      <FloatingToolbar.Group label="Shape">
+        <Tooltip placement="left-center" text="Circle">
+          <FloatingToolbar.Action
+            active={toolShape === "circle"}
+            onClick={() => switchToolShape("circle")}
+          >
+            <CircleOutlined />
+          </FloatingToolbar.Action>
+        </Tooltip>
+        <Tooltip placement="left-center" text="Square">
+          <FloatingToolbar.Action
+            active={toolShape === "square"}
+            onClick={() => switchToolShape("square")}
+          >
+            <CropSquare />
+          </FloatingToolbar.Action>
+        </Tooltip>
       </FloatingToolbar.Group>
 
       {/* ---- Actions ---- */}

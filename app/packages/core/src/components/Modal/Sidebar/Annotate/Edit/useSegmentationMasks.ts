@@ -113,7 +113,9 @@ export const useSegmentationMasks = () => {
 
   const setToolSize = useCallback(
     (size: number) => {
-      setToolSizeRaw(Math.max(MIN_TOOL_SIZE, Math.min(size, MAX_TOOL_SIZE)));
+      const n = Number(size);
+      if (Number.isNaN(n)) return;
+      setToolSizeRaw(Math.max(MIN_TOOL_SIZE, Math.min(n, MAX_TOOL_SIZE)));
     },
     [setToolSizeRaw]
   );
