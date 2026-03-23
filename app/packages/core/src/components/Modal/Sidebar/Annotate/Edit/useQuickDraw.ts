@@ -120,13 +120,6 @@ export const useQuickDraw = () => {
   }, [setQuickDrawActive]);
 
   /**
-   * Toggle quick draw mode.
-   */
-  const toggleQuickDraw = useCallback(() => {
-    setQuickDrawActive((prev) => !prev);
-  }, [setQuickDrawActive]);
-
-  /**
    * Get the auto-assigned detection field path.
    *
    * Auto-assignment priority:
@@ -264,6 +257,24 @@ export const useQuickDraw = () => {
     scene?.exitInteractiveMode();
     onExit();
   }, [onExit, setLastUsedField, setLastUsedLabel]);
+
+  /**
+   * Toggle quick draw mode. When exiting, finalizes the current detection
+   * (caches field/label, exits interactive mode, closes edit form).
+   */
+  const toggleQuickDraw = useCallback(() => {
+    if (quickDrawActive) {
+      finalizeCurrentDetection();
+      disableQuickDraw();
+    } else {
+      enableQuickDraw();
+    }
+  }, [
+    quickDrawActive,
+    finalizeCurrentDetection,
+    disableQuickDraw,
+    enableQuickDraw,
+  ]);
 
   /**
    * Cache field/label for auto-assignment
