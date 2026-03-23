@@ -57,6 +57,7 @@ export default function AnnotateSidebar() {
           <Button
             variant={Variant.Borderless}
             size={Size.Sm}
+            data-cy="open-schema-manager"
             onClick={openSchemaManager}
           >
             Schema
