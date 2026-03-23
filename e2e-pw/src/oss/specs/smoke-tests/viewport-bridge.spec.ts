@@ -70,7 +70,8 @@ test.describe.serial("viewport-bridge-visual", () => {
     await modal.sampleCanvas.zoom(ZOOM_IN);
     await modal.sampleCanvas.pan("right", PAN_X);
 
-    const before = await modal.sampleCanvas.screenshot(hideOverlays);
+    // Give the viewport state time to settle before the baseline screenshot.
+    const before = await modal.sampleCanvas.screenshot(hideOverlays, 500);
 
     await modal.sidebar.switchMode("annotate");
     await modal.sampleCanvas.assert.is(SampleCanvasType.LIGHTER);
@@ -78,7 +79,7 @@ test.describe.serial("viewport-bridge-visual", () => {
     await modal.sampleCanvas.assert.is(SampleCanvasType.LOOKER);
     await modal.waitForSampleLoadDomAttribute();
 
-    const after = await modal.sampleCanvas.screenshot(hideOverlays);
+    const after = await modal.sampleCanvas.screenshot(hideOverlays, 500);
 
     // Same renderer, overlays hidden — must be pixel-perfect.
     expect(Buffer.compare(before, after)).toBe(0);
