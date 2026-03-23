@@ -2530,7 +2530,10 @@ def compute_filehash(filepath, method=None, chunk_size=None):
     Args:
         filepath: the path to the file
         method (None): an optional ``hashlib`` method to use. If not specified,
-            the builtin ``str.__hash__`` will be used
+            the builtin ``str.__hash__`` will be used, which returns an
+            integer. The default hashing method will display non-unique values in the app or
+            if accessing filehash values via Javascript. If this is problematic, you
+            should include the argument `method="sha1"` for unique string values.
         chunk_size (None): an optional chunk size to use to read the file, in
             bytes. Only applicable when a ``method`` is provided. The default
             is 64kB. If negative, the entire file is read at once
