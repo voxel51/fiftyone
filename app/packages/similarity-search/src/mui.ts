@@ -5,7 +5,7 @@
  * Only icons listed here have no voodo counterpart yet.
  */
 
-// Icons without voodo equivalents
+// Icons without voodo equivalents (pending PRs in design-system now)
 export { default as ContentCopyIcon } from "@mui/icons-material/ContentCopy";
 export { default as GridViewIcon } from "@mui/icons-material/GridView";
 export { default as ImageSearchIcon } from "@mui/icons-material/ImageSearch";
