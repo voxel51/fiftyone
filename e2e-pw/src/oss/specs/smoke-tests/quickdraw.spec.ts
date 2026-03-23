@@ -85,6 +85,20 @@ test.describe.serial("QuickDraw", () => {
     await modal.sidebar.annotate.assert.quickDrawIsActive(false);
   });
 
+  test("click-to-quit threshold", async ({ modal }) => {
+    // Activate QuickDraw
+    await modal.sidebar.annotate.quickDraw("Detections");
+    await modal.sidebar.annotate.assert.quickDrawIsActive();
+
+    // Click-to-quit with a shaky hand
+    await modal.sampleCanvas.move(0.5, 0.5, "crosshair");
+    await modal.sampleCanvas.down();
+    await modal.sampleCanvas.movePixels(2, 2);
+    await modal.sampleCanvas.up();
+    await modal.sampleCanvas.assert.hasCursor("default");
+    await modal.sidebar.annotate.assert.quickDrawIsActive(false);
+  });
+
   test("draw and click-to-quit", async ({ modal }) => {
     // Activate QuickDraw
     await modal.sidebar.annotate.quickDraw("Detections");

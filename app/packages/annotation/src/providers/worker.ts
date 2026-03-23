@@ -1,5 +1,5 @@
 import * as ort from "onnxruntime-web";
-import type { PromptPoint } from "./types";
+import type { PromptPoint, WorkerMessageType, WorkerNotifications, WorkerResponse } from "./types";
 import {
   SAM2_INPUT_SIZE,
   SAM2_OUTPUT_SIZE,
@@ -9,6 +9,29 @@ import {
   postprocessMask,
   type ProcessedImage,
 } from "./math";
+import { loadModelWeights } from "./modelCache";
+
+// Typed postMessage helpers to enforce message shapes at compile time.
+
+function postNotification<T extends keyof WorkerNotifications>(
+  type: T,
+  result: WorkerNotifications[T]
+): void {
+  self.postMessage({ type, result });
+}
+
+function postResponse<T extends WorkerMessageType>(
+  id: number,
+  type: T,
+  result: WorkerResponse<T>,
+  transfer?: Transferable[]
+): void {
+  self.postMessage({ id, type, success: true, result }, transfer as any);
+}
+
+function postError(id: number, type: string, error: string): void {
+  self.postMessage({ id, type, success: false, error });
+}
 
 // ImageNet normalization (SAM2 trained on ImageNet-normalized images)
 const IMAGE_MEAN = [0.485, 0.456, 0.406];
@@ -60,7 +83,7 @@ async function loadImageData(url: string): Promise<ImageData> {
 }
 
 /**
- * Scale and pad the image to SAM2_INPUT_SIZExSAM2_INPUT_SIZE, then extract
+ * Scale and pad the image to SAM2_INPUT_SIZE x SAM2_INPUT_SIZE, then extract
  * a normalized float tensor.
  *
  * @param imageData Raw RGBA pixel data from the source image
@@ -102,28 +125,35 @@ function preprocessImage(imageData: ImageData): ProcessedImage {
 }
 
 /**
- * Fetch and initialize the ONNX encoder and decoder sessions (idempotent).
+ * Download (or load from IndexedDB cache) and initialize the ONNX sessions.
+ * Posts progress and warning notifications back to the main thread during download.
  */
 async function loadModel(): Promise<void> {
-  if (encoderSession && decoderSession)
-    return;
-
   const opts: ort.InferenceSession.SessionOptions = { executionProviders: ["wasm"] };
 
-  const fetchModel = async (url: string, name: string): Promise<ArrayBuffer> => {
-    const res = await fetch(url);
-    if (!res.ok)
-      throw new Error(`${name} fetch failed: ${res.status} ${res.statusText}`);
-    return res.arrayBuffer();
-  };
+  const postProgress = (file: "encoder" | "decoder", loaded: number, total: number) =>
+    postNotification("progress", { file, loaded, total });
 
-  encoderSession = await ort.InferenceSession.create(
-    await fetchModel(ENCODER_URL, "Encoder"), opts
-  );
+  const postWarning = (message: string) =>
+    postNotification("warning", message);
 
-  decoderSession = await ort.InferenceSession.create(
-    await fetchModel(DECODER_URL, "Decoder"), opts
-  );
+  if (!encoderSession) {
+    const encoderBuf = await loadModelWeights(
+      ENCODER_URL,
+      (loaded, total) => postProgress("encoder", loaded, total),
+      postWarning
+    );
+    encoderSession = await ort.InferenceSession.create(encoderBuf, opts);
+  }
+
+  if (!decoderSession) {
+    const decoderBuf = await loadModelWeights(
+      DECODER_URL,
+      (loaded, total) => postProgress("decoder", loaded, total),
+      postWarning
+    );
+    decoderSession = await ort.InferenceSession.create(decoderBuf, opts);
+  }
 }
 
 /**
@@ -203,15 +233,15 @@ self.onmessage = async (e: MessageEvent) => {
   try {
     if (type === "loadModel") {
       await loadModel();
-      self.postMessage({ id, type, success: true });
+      postResponse(id, "loadModel", undefined as void);
     } else if (type === "embedAndDecode") {
       const { mask, bbox } = await embedAndDecode(payload.imageUrl, payload.points);
-      self.postMessage({ id, type, success: true, result: { mask, bbox } }, [mask.buffer] as any);
+      postResponse(id, "embedAndDecode", { mask, bbox }, [mask.buffer as ArrayBuffer]);
     } else {
-      self.postMessage({ id, type, success: false, error: `Unknown: ${type}` });
+      postError(id, type, `Unknown message type: ${type}`);
     }
   } catch (err) {
-    self.postMessage({ id, type, success: false, error: err instanceof Error ? err.message : String(err) });
+    postError(id, type, err instanceof Error ? err.message : String(err));
   }
 };
 

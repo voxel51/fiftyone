@@ -1,8 +1,11 @@
 import type {
   AnnotationProvider,
+  DownloadProgressCallback,
   InferenceRequest,
   InferenceResult,
+  WarningCallback,
   WorkerMessageType,
+  WorkerNotifications,
   WorkerRequest,
   WorkerResponse,
 } from "./types";
@@ -17,17 +20,35 @@ export class BrowserAnnotationProvider implements AnnotationProvider {
   private nextId = 0;
   private pending = new Map<number, Pending<unknown>>();
   private lastInferenceId: number | null = null;
+  private onProgress: DownloadProgressCallback | null = null;
+  private onWarning: WarningCallback | null = null;
 
-  async initialize(): Promise<void> {
+  async initialize(onProgress?: DownloadProgressCallback, onWarning?: WarningCallback): Promise<void> {
+    if (this.worker)
+      throw new Error("Already initialized. Call dispose() first.");
+
     this.worker = new Worker(new URL("./worker.ts", import.meta.url), {
       type: "module",
     });
+
+    this.onProgress = onProgress ?? null;
+    this.onWarning = onWarning ?? null;
 
     this.worker.onmessage = (e: MessageEvent) => {
       const { id, type, success, result, error } = e.data;
 
       if (type === "ready")
         return;
+
+      if (type === "progress") {
+        this.onProgress?.(result as WorkerNotifications["progress"]);
+        return;
+      }
+
+      if (type === "warning") {
+        this.onWarning?.(result as WorkerNotifications["warning"]);
+        return;
+      }
 
       const entry = this.pending.get(id);
       if (!entry)
@@ -74,6 +95,8 @@ export class BrowserAnnotationProvider implements AnnotationProvider {
     this.pending.clear();
     this.worker?.terminate();
     this.worker = null;
+    this.onProgress = null;
+    this.onWarning = null;
   }
 
   private send<T extends WorkerMessageType>(

@@ -352,11 +352,12 @@ export class InteractionManager {
     const scale = this.renderer.getScale();
     this.currentPixelCoordinates = point;
 
-    const dx = point.x - this.pendingQuickDraw.point.x;
-    const dy = point.y - this.pendingQuickDraw.point.y;
-    const distSq = dx * dx + dy * dy;
+    const distance = Math.hypot(
+      point.x - this.pendingQuickDraw.point.x,
+      point.y - this.pendingQuickDraw.point.y
+    );
 
-    if (distSq > this.CLICK_THRESHOLD * this.CLICK_THRESHOLD) {
+    if (distance > this.CLICK_THRESHOLD) {
       const pending = this.pendingQuickDraw;
       this.pendingQuickDraw = undefined;
 
