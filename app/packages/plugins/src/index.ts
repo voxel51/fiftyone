@@ -662,16 +662,9 @@ export function usePluginSettings<T>(
 export * from "./state";
 
 export {
-  createSampleRendererMediaContext,
   createSampleRendererRenderContext,
   getMatchingSampleRenderer,
   getSampleRendererComponent,
-  getSelectedMediaPath,
-  hasMatchMediaMatchers,
-  isSampleRendererGridEnabled,
-  matchesMatchMedia,
-  normalizeMatchMedia,
-  supportsSampleRenderer,
 } from "./sample-renderer";
 export type {
   GridConfig,

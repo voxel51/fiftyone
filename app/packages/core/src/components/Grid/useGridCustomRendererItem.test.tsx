@@ -7,7 +7,7 @@ import { useGridCustomRendererItem } from "./useGridCustomRendererItem";
 const {
   createSampleRendererRenderContext,
   getMatchingSampleRenderer,
-  getRawComponent,
+  getComponent,
   getSampleRendererComponent,
   isGridCustomRendererFailOpen,
   mockDataset,
@@ -24,7 +24,7 @@ const {
   mockSelectedMediaField: "filepath",
   createSampleRendererRenderContext: vi.fn(),
   getMatchingSampleRenderer: vi.fn(),
-  getRawComponent: vi.fn(),
+  getComponent: vi.fn(),
   getSampleRendererComponent: vi.fn(),
   isGridCustomRendererFailOpen: vi.fn(),
   useCurrentDataset: vi.fn(),
@@ -40,7 +40,7 @@ vi.mock("@fiftyone/plugins", () => ({
     createSampleRendererRenderContext(...args),
   getMatchingSampleRenderer: (...args: unknown[]) =>
     getMatchingSampleRenderer(...args),
-  getRawComponent: (...args: unknown[]) => getRawComponent(...args),
+  getComponent: (...args: unknown[]) => getComponent(...args),
   getSampleRendererComponent: (...args: unknown[]) =>
     getSampleRendererComponent(...args),
   useActivePlugins: (...args: unknown[]) => useActivePlugins(...args),
@@ -116,7 +116,7 @@ describe("useGridCustomRendererItem", () => {
     useSelectedMediaFieldGrid.mockReturnValue(mockSelectedMediaField);
     createSampleRendererRenderContext.mockReturnValue(ctx);
     getMatchingSampleRenderer.mockReturnValue(registration);
-    getRawComponent.mockReturnValue(Renderer);
+    getComponent.mockReturnValue(Renderer);
     getSampleRendererComponent.mockReturnValue(Renderer);
     isGridCustomRendererFailOpen.mockReturnValue(false);
     useActivePlugins.mockReturnValue([registration]);
