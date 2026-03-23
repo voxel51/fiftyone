@@ -95,7 +95,11 @@ function evictMemory(): void {
   }
 }
 
-/** Evict oldest IDB entries by lastAccessed timestamp when over limit. */
+/**
+ * Evict oldest IDB entries by lastAccessed timestamp when over limit.
+ * Read failures treat entries as oldest (lastAccessed=0), which may
+ * cause premature eviction. This is Acceptable since cache is an
+ * optimization, not a source of truth. */
 async function evictIDB(db: IDBDatabase): Promise<void> {
   const keys = await idbGetAllKeys(db);
   if (keys.length <= MAX_CACHE_ENTRIES)
@@ -154,8 +158,8 @@ export async function getEmbedding(
     touch(url, record);
     evictMemory();
 
-    // Update lastAccessed in IDB (fire-and-forget)
-    idbPut(db, url, record).catch(() => {});
+    // Update lastAccessed in IDB (fire-and-forget: close() will wait for pending txn)
+    idbPut(db, url, record).catch((err) => onWarning?.(`Embedding cache timestamp update failed: ${err}`));
 
     return record;
   } catch (err) {
