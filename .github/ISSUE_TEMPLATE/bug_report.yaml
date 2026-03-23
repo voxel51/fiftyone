@@ -122,7 +122,7 @@ body:
         ---
 
       description: |
-        Which version of Python was the bug found on? `python --version` or `pip show fiftyone`
+        Which version of Python was the bug found on? `python --version`
       placeholder: Python 3.11.14
 
   - type: input
@@ -132,7 +132,7 @@ body:
     attributes:
       label: 🔖 What version of FiftyOne?
       description: |
-        Which version of Fiftyone was the bug found on? `fiftyone --version`
+        Which version of Fiftyone was the bug found on? `fiftyone --version` or `pip show fiftyone`
       placeholder: FiftyOne 1.11.1
 
   - type: textarea
