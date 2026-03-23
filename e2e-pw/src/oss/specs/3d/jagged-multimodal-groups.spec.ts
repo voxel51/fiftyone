@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { expect, test as base } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
@@ -201,14 +201,13 @@ test.describe.serial("jagged multimodal groups", () => {
     modal,
   }) => {
     await grid.selectSlice("pcd");
+    await grid.sliceSelector.assert.verifyActiveSlice("pcd");
     await grid.assert.isEntryCountTextEqualTo("4 groups with slice");
 
     await grid.openFirstSample();
     await modal.waitForSampleLoadDomAttribute(true);
     await modal.looker3dControls.waitForAllAssetsLoaded();
-    await expect(
-      modal.modalContainer.getByTestId("looker-error-info")
-    ).toHaveCount(0);
+    await modal.assert.verifyHasNoViewerError();
     await modal.sidebar.assert.waitUntilSidebarEntryTextEqualsMultiple({
       "group.name": "pcd",
       name: groupSpecs[0].pcdName,
@@ -217,9 +216,7 @@ test.describe.serial("jagged multimodal groups", () => {
 
     await modal.navigateNextSample(true);
     await modal.looker3dControls.waitForAllAssetsLoaded();
-    await expect(
-      modal.modalContainer.getByTestId("looker-error-info")
-    ).toHaveCount(0);
+    await modal.assert.verifyHasNoViewerError();
     await modal.sidebar.assert.waitUntilSidebarEntryTextEqualsMultiple({
       "group.name": "pcd",
       name: groupSpecs[1].pcdName,
@@ -228,11 +225,9 @@ test.describe.serial("jagged multimodal groups", () => {
   });
 
   test("opens the first modal cleanly from every grid slice", async ({
-    page,
     grid,
     modal,
   }) => {
-    const selectorSlice = page.getByTestId("selector-slice");
     const assertModalHasNoViewerError = async ({
       is3dSlice,
     }: {
@@ -242,9 +237,7 @@ test.describe.serial("jagged multimodal groups", () => {
         await modal.looker3dControls.waitForAllAssetsLoaded();
       }
 
-      await expect(
-        modal.modalContainer.getByTestId("looker-error-info")
-      ).toHaveCount(0);
+      await modal.assert.verifyHasNoViewerError();
     };
     const sliceExpectations = [
       {
@@ -277,10 +270,8 @@ test.describe.serial("jagged multimodal groups", () => {
       expectedScene,
       expectedAnnotationSlices,
     } of sliceExpectations) {
-      await selectorSlice.click();
-      await page.getByTestId(`selector-result-${slice}`).click();
-
-      await expect(selectorSlice).toHaveValue(slice);
+      await grid.selectSlice(slice);
+      await grid.sliceSelector.assert.verifyActiveSlice(slice);
       await grid.assert.isEntryCountTextEqualTo(entryCount);
 
       await grid.openFirstSample();
@@ -296,9 +287,7 @@ test.describe.serial("jagged multimodal groups", () => {
       await modal.sidebar.annotate.assert.verifyAvailableAnnotationSlices(
         expectedAnnotationSlices
       );
-      await expect(modal.sidebar.annotate.annotationSliceSelector).toHaveValue(
-        slice
-      );
+      await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice(slice);
       await assertModalHasNoViewerError({ is3dSlice: slice === "pcd" });
 
       await modal.sidebar.switchMode("explore");
@@ -312,9 +301,7 @@ test.describe.serial("jagged multimodal groups", () => {
       await modal.sidebar.annotate.assert.verifyAvailableAnnotationSlices(
         expectedAnnotationSlices
       );
-      await expect(modal.sidebar.annotate.annotationSliceSelector).toHaveValue(
-        slice
-      );
+      await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice(slice);
       await assertModalHasNoViewerError({ is3dSlice: slice === "pcd" });
 
       await modal.sidebar.switchMode("explore");
@@ -325,7 +312,7 @@ test.describe.serial("jagged multimodal groups", () => {
       );
 
       await modal.close();
-      await expect(modal.locator).toBeHidden();
+      await modal.assert.isClosed();
     }
   });
 });

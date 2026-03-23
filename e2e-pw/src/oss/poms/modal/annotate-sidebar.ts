@@ -203,4 +203,15 @@ class ModalAnnotateSidebarAsserter {
       await this.modalAnnotateSidebar.getAvailableAnnotationSlices();
     expect(actualSlices).toStrictEqual(expectedSlices);
   }
+
+  /**
+   * Verify that the annotation slice selector currently has the expected slice selected.
+   *
+   * @param expectedSlice The slice name that should be active
+   */
+  async verifySelectedAnnotationSlice(expectedSlice: string) {
+    await expect(this.modalAnnotateSidebar.annotationSliceSelector).toHaveValue(
+      expectedSlice
+    );
+  }
 }

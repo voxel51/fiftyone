@@ -1,5 +1,4 @@
 import fs from "node:fs";
-import { expect } from "src/oss/fixtures";
 import { test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
@@ -148,9 +147,7 @@ test.describe.serial("jagged grouped fo3d", () => {
       await modal.looker3dControls.assert.verifySliceSelectorLabel(
         expectedSlice
       );
-      await expect(
-        modal.modalContainer.getByTestId("looker-error-info")
-      ).toHaveCount(0);
+      await modal.assert.verifyHasNoViewerError();
       await modal.sidebar.assert.waitUntilSidebarEntryTextEqualsMultiple({
         "group.name": expectedSlice,
         name: sample.name,
@@ -178,11 +175,9 @@ test.describe.serial("jagged grouped fo3d", () => {
   });
 
   test("opens the first modal cleanly from every grid slice", async ({
-    page,
     grid,
     modal,
   }) => {
-    const selectorSlice = page.getByTestId("selector-slice");
     const sliceExpectations = [
       { slice: "x", entryCount: "2 groups with slice" },
       { slice: "y", entryCount: "2 groups with slice" },
@@ -190,25 +185,21 @@ test.describe.serial("jagged grouped fo3d", () => {
     ] as const;
 
     for (const { slice, entryCount } of sliceExpectations) {
-      await selectorSlice.click();
-      await page.getByTestId(`selector-result-${slice}`).click();
-
-      await expect(selectorSlice).toHaveValue(slice);
+      await grid.selectSlice(slice);
+      await grid.sliceSelector.assert.verifyActiveSlice(slice);
       await grid.assert.isEntryCountTextEqualTo(entryCount);
 
       await grid.openFirstSample();
       await modal.waitForSampleLoadDomAttribute(true);
       await modal.looker3dControls.waitForAllAssetsLoaded();
-      await expect(
-        modal.modalContainer.getByTestId("looker-error-info")
-      ).toHaveCount(0);
+      await modal.assert.verifyHasNoViewerError();
       await modal.sidebar.assert.waitUntilSidebarEntryTextEquals(
         "group.name",
         slice
       );
 
       await modal.close();
-      await expect(modal.locator).toBeHidden();
+      await modal.assert.isClosed();
     }
   });
 });

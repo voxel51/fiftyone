@@ -328,6 +328,12 @@ class ModalAsserter {
     await expect(this.modalPom.locator).toBeVisible();
   }
 
+  async verifyHasNoViewerError() {
+    await expect(
+      this.modalPom.modalContainer.getByTestId("looker-error-info")
+    ).toHaveCount(0);
+  }
+
   async verifySelectionCount(n: number) {
     const action = this.modalPom.locator.getByTestId("action-manage-selected");
 
