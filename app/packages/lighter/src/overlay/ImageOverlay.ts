@@ -89,7 +89,7 @@ export class ImageOverlay extends BaseOverlay implements CanonicalMedia {
       );
 
       // Wait for the first viewport-moved event (triggered by fitToRect) to 
-      // unblock the image. Ths avoids an image flash at default zoom.
+      // unblock the image. This avoids an image flash at default zoom.
       if (this.options.deferShow) {
         this.waitingForViewport = true;
 
