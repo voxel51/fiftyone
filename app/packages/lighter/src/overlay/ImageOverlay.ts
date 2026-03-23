@@ -155,6 +155,18 @@ export class ImageOverlay extends BaseOverlay implements CanonicalMedia {
   }
 
   /**
+   * Returns the container dimensions by reading directly from the DOM.
+   * This is the authoritative source of truth for container dimensions.
+   */
+  private getContainerDimensionsFromDom(): { width: number; height: number } {
+    const parent = this.renderer?.getCanvas().parentElement;
+    if (parent) {
+      return { width: parent.clientWidth, height: parent.clientHeight };
+    }
+    return { width: 0, height: 0 };
+  }
+
+  /**
    * Creates the HTML image element and appends it to the container.
    * @param container - The container element to append the image to.
    */
@@ -202,9 +214,8 @@ export class ImageOverlay extends BaseOverlay implements CanonicalMedia {
         };
         this.isImageLoaded = true;
 
-        // Trigger initial layout
-        if (this.renderer) {
-          const dims = this.renderer.getContainerDimensions();
+        const dims = this.getContainerDimensionsFromDom();
+        if (dims.width && dims.height) {
           this.handleResize(dims.width, dims.height);
         }
 
@@ -311,8 +322,10 @@ export class ImageOverlay extends BaseOverlay implements CanonicalMedia {
       renderer.isReady() &&
       (!this.currentBounds || !isRectNonEmpty(this.currentBounds))
     ) {
-      const dims = renderer.getContainerDimensions();
-      this.handleResize(dims.width, dims.height);
+      const dims = this.getContainerDimensionsFromDom();
+      if (dims.width && dims.height) {
+        this.handleResize(dims.width, dims.height);
+      }
     }
 
     if (this.isImageLoaded) {
@@ -394,7 +407,7 @@ export class ImageOverlay extends BaseOverlay implements CanonicalMedia {
    */
   updateBounds(): void {
     if (this.renderer) {
-      const containerDimensions = this.renderer.getContainerDimensions();
+      const containerDimensions = this.getContainerDimensionsFromDom();
       if (
         containerDimensions &&
         containerDimensions.width > 0 &&
@@ -422,7 +435,7 @@ export class ImageOverlay extends BaseOverlay implements CanonicalMedia {
    * Emit canonical media bounds changed event.
    */
   private notifyBoundsChanged(): void {
-    if (!this.currentBounds || !this.sceneEventBus) return;
+    if (!this.currentBounds || !this.sceneEventBus || !this.isImageLoaded) return;
 
     this.sceneEventBus.dispatch("lighter:canonical-media-bounds-changed", {
       bounds: this.currentBounds,

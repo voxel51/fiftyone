@@ -71,7 +71,7 @@ setup(
         "Pillow>=6.2,!=11.2.*", # Pillow 11.2.0 introduced CVE 2025-48379 that is fixed in 11.3.0
         "plotly>=6.1.1,<7",
         "pprintpp>=0.1,<0.5",
-        "psutil>=5,<7",
+        "psutil>=5,<8",
         "pydash>=6,<9",
         "pymongo~=4.9.2", # Keep small bounds on mongo-related libraries
         "pytz",           # Doesn't follow semver, keep unconstrained
@@ -79,7 +79,7 @@ setup(
         "regex",          # Doesn't follow semver, keep unconstrained
         "retrying>=1,<2",
         "sseclient-py>=1.7.2,<2",
-        "sse-starlette>=0.10.3,<1",
+        "sse-starlette>=0.10.3,<4",
         "starlette>=0.24.0,<0.53",
         "strawberry-graphql>=0.262.4,<0.292.0",
         "tabulate>=0.7,<0.10",
