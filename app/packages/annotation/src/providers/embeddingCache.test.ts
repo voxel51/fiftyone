@@ -109,11 +109,14 @@ describe("embeddingCache", () => {
     expect(closeSpy).toHaveBeenCalledTimes(1);
 
     const result = await getEmbedding(TEST_URL);
-
     expect(result).toBe(embedding);
-    // Memory hit. IDB not opened again.
-    expect(openSpy).toHaveBeenCalledTimes(1);
-    expect(closeSpy).toHaveBeenCalledTimes(1);
+
+    // Let fire-and-forget IDB timestamp write settle
+    await new Promise((r) => setTimeout(r, 10));
+
+    // Memory hit opens IDB once to persist lastAccessed
+    expect(openSpy).toHaveBeenCalledTimes(2);
+    expect(closeSpy).toHaveBeenCalledTimes(2);
   });
 
   it("Falls back to IndexedDB when memory is empty", async () => {
@@ -168,6 +171,28 @@ describe("embeddingCache", () => {
 
     const newEntry = await getEmbedding("https://example.com/new.jpg");
     expect(newEntry).toBeDefined();
+  });
+
+  it("Memory hit updates IDB timestamp so hot entries survive eviction", async () => {
+    // Fill cache
+    for (let i = 0; i < MAX_CACHE_ENTRIES; i++)
+      await putEmbedding(`https://example.com/${i}.jpg`, createTestEmbedding(i));
+
+    // Touch entry 0 from memory (updates its IDB lastAccessed)
+    await getEmbedding("https://example.com/0.jpg");
+  
+    // Let the fire-and-forget IDB write settle
+    await new Promise((r) => setTimeout(r, 10));
+
+    // Add a new entry which should evict entry 1 (oldest untouched), not entry 0
+    await putEmbedding("https://example.com/new.jpg", createTestEmbedding(99));
+
+    _resetMemoryCache();
+    const hot = await getEmbedding("https://example.com/0.jpg");
+    const evicted = await getEmbedding("https://example.com/1.jpg");
+
+    expect(hot).toBeDefined();
+    expect(evicted).toBeUndefined();
   });
 
   it.each([

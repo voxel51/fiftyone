@@ -126,7 +126,14 @@ export async function getEmbedding(
 ): Promise<CachedEmbedding | undefined> {
   const mem = cache.get(url);
   if (mem) {
+    mem.lastAccessed = Date.now();
     touch(url, mem);
+
+    // Persist updated timestamp to IDB (fire-and-forget)
+    openDB()
+      .then((db) => idbPut(db, url, mem).finally(() => db.close()))
+      .catch((err) => onWarning?.(`Embedding cache timestamp update failed: ${err}`));
+
     return mem;
   }
 
