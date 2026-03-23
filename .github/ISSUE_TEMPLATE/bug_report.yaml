@@ -20,7 +20,7 @@ body:
       description: |
         Describe the problem clearly here. Include descriptions of the 
         expected behavior and the actual behavior.
-      placeholder: 🕵 What is the bug and what were you expeciting?
+      placeholder: 🕵 What is the bug and what were you expecting?
 
   - type: checkboxes
     id: reported-os
@@ -46,7 +46,7 @@ body:
         ---
 
       description: |
-        Provide additional details about the system the bug occured on. Please include: 
+        Provide additional details about the system the bug occurred on. Please include: 
           - Additional OS details
           - CPU Make & Model
           - System memory (RAM) amount + type
@@ -98,7 +98,7 @@ body:
     validations:
       required: true
     attributes:
-      label:  |+
+      label: |+
         ⌨️ Code to reproduce issue
 
         ---
@@ -127,13 +127,13 @@ body:
 
   - type: input
     id: fiftyone-ver
+    validations:
+      required: true
     attributes:
       label: 🔖 What version of FiftyOne?
       description: |
         Which version of Fiftyone was the bug found on? `fiftyone --version`
       placeholder: FiftyOne 1.11.1
-    validations:
-      required: true
 
   - type: textarea
     id: additional-info
