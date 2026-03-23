@@ -1055,21 +1055,18 @@ export class DetectionOverlay
       return;
     }
 
-    // Allocate new canvas and copy old content at the correct offset
+    // Allocate new canvas and copy over old pixels
     const newCanvas = document.createElement("canvas");
     newCanvas.width = newW;
     newCanvas.height = newH;
     const newCtx = newCanvas.getContext("2d")!;
 
-    if (hasContent) {
-      const offsetX = Math.round(((oldBounds.x - worldMinX) / newWidth) * newW);
-      const offsetY = Math.round(
-        ((oldBounds.y - worldMinY) / newHeight) * newH
-      );
-      const drawW = Math.round((oldBounds.width / newWidth) * newW);
-      const drawH = Math.round((oldBounds.height / newHeight) * newH);
+    if (hasContent && this.maskCtx) {
+      const offsetX = Math.round(oldBounds.x - worldMinX);
+      const offsetY = Math.round(oldBounds.y - worldMinY);
+      const oldData = this.maskCtx.getImageData(0, 0, w, h);
 
-      newCtx.drawImage(this.maskCanvas, offsetX, offsetY, drawW, drawH);
+      newCtx.putImageData(oldData, offsetX, offsetY);
     }
 
     this.maskCanvas = newCanvas;
