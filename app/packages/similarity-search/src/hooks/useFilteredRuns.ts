@@ -1,7 +1,12 @@
 import { useMemo } from "react";
-import { useAtom } from "jotai";
-import atoms from "../state";
+import { atom, useAtom } from "jotai";
 import { SimilarityRun, RunFilterState } from "../types";
+
+const filterStateAtom = atom<RunFilterState>({
+  searchText: "",
+  datePreset: "all",
+  ownerFilter: "all",
+});
 import { getDateRange, matchesText, matchesDate } from "../utils";
 
 export const useFilteredRuns = (
@@ -12,7 +17,7 @@ export const useFilteredRuns = (
   filterState: RunFilterState;
   setFilterState: (state: RunFilterState) => void;
 } => {
-  const [filterState, setFilterState] = useAtom(atoms.filterState);
+  const [filterState, setFilterState] = useAtom(filterStateAtom);
 
   const filteredRuns = useMemo(() => {
     const { searchText, datePreset, ownerFilter } = filterState;

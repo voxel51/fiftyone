@@ -1,10 +1,12 @@
 import { useCallback } from "react";
-import { useAtom } from "jotai";
-import atoms from "../state";
+import { atom, useAtom } from "jotai";
+
+const selectModeAtom = atom<boolean>(false);
+const selectedRunIdsAtom = atom<Set<string>>(new Set());
 
 export const useMultiSelect = () => {
-  const [selectMode, setSelectMode] = useAtom(atoms.selectMode);
-  const [selectedRunIds, setSelectedRunIds] = useAtom(atoms.selectedRunIds);
+  const [selectMode, setSelectMode] = useAtom(selectModeAtom);
+  const [selectedRunIds, setSelectedRunIds] = useAtom(selectedRunIdsAtom);
 
   const toggleSelectMode = useCallback(() => {
     setSelectMode((prev) => {

@@ -1,7 +1,8 @@
-import { useAtom } from "jotai";
+import { atom, useAtom } from "jotai";
 import { useCallback } from "react";
-import atoms from "../state";
 import { CloneConfig } from "../types";
+
+const cloneConfigAtom = atom<CloneConfig | null>(null);
 
 type UseCloneConfigResult = {
   cloneConfig: CloneConfig | null;
@@ -13,7 +14,7 @@ type UseCloneConfigResult = {
  * Hook for managing the clone config state.
  */
 export const useCloneConfig = (): UseCloneConfigResult => {
-  const [cloneConfig, setCloneConfigAtom] = useAtom(atoms.cloneConfig);
+  const [cloneConfig, setCloneConfigAtom] = useAtom(cloneConfigAtom);
 
   const setCloneConfig = useCallback(
     (config: CloneConfig) => {
