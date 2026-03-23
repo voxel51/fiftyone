@@ -3,4 +3,5 @@ export * from "./deltas";
 export * from "./events";
 export * from "./hooks";
 export * from "./persistence";
+export * from "./providers";
 export * from "./util";

@@ -63,6 +63,10 @@ export function translateToUISchema(
       uiSchema["ui:widget"] = "radio";
       break;
 
+    case SmartFormComponents.CheckboxesView:
+      uiSchema["ui:widget"] = "checkboxes";
+      break;
+
     case SmartFormComponents.AutocompleteView:
       uiSchema["ui:widget"] = "AutoComplete";
       uiSchema["ui:options"] = {

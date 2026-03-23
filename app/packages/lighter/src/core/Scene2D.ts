@@ -1131,18 +1131,6 @@ export class Scene2D {
     // Recalculate overlay order to maintain proper z-ordering
     this.recalculateOverlayOrder();
 
-    // Mark sibling classifications dirty
-    // so new overlay doesn't...overlay them
-    if (overlay.getOverlayType() === "ClassificationOverlay") {
-      [...this.overlays.values()]
-        .filter(
-          (sibling) =>
-            sibling !== overlay &&
-            sibling.getOverlayType() === "ClassificationOverlay"
-        )
-        .forEach((sibling) => sibling.markDirty());
-    }
-
     this.eventBus.dispatch("lighter:overlay-added", {
       id: overlay.id,
       overlay,
@@ -1166,8 +1154,6 @@ export class Scene2D {
     const overlay = this.overlays.get(id);
 
     if (overlay) {
-      const overlayType = overlay.getOverlayType();
-
       this.interactionManager.removeHandler(overlay);
       this.selectionManager.removeSelectable(id);
 
@@ -1182,13 +1168,6 @@ export class Scene2D {
         (overlayId) => overlayId !== id
       );
       this.renderingState.clear(id);
-
-      // make sure we don't leave a gap in our stack of Classifications
-      if (overlayType === "ClassificationOverlay") {
-        [...this.overlays.values()]
-          .filter((sibling) => sibling.getOverlayType() === overlayType)
-          .forEach((sibling) => sibling.markDirty());
-      }
     }
 
     this.eventBus.dispatch("lighter:overlay-removed", { id });
@@ -1571,15 +1550,8 @@ export class Scene2D {
     // Execute before-render callbacks
     await this.executeRenderCallbacks("before");
 
-    const overlayIndexes: Record<string, number> = {};
-
     for (const overlayId of this.overlayOrder) {
-      const overlayType = this.overlays.get(overlayId)!.getOverlayType();
-      const currentIndex = overlayIndexes[overlayType] ?? -1;
-      const overlayIndex = currentIndex + 1;
-      overlayIndexes[overlayType] = overlayIndex;
-
-      this.renderOverlay(overlayId, overlayIndex);
+      this.renderOverlay(overlayId);
     }
 
     // Execute after-render callbacks
@@ -1589,9 +1561,8 @@ export class Scene2D {
   /**
    * Renders a specific overlay if it's pending.
    * @param overlayId - The ID of the overlay to render.
-   * @param overlayIndex - The index of this particular overlay with respect to its type (e.g. ClassificationOverlay, BoundingBoxOverlay, etc.)
    */
-  private renderOverlay(overlayId: string, overlayIndex: number): void {
+  private renderOverlay(overlayId: string): void {
     const overlay = this.overlays.get(overlayId);
 
     if (!overlay) {
@@ -1601,7 +1572,7 @@ export class Scene2D {
     const status = this.renderingState.getStatus(overlayId);
 
     if (overlay && this.shouldRenderOverlay(overlay, status)) {
-      this.executeOverlayRender(overlayId, overlay, overlayIndex);
+      this.executeOverlayRender(overlayId, overlay);
     }
 
     if (this.shouldShowOverlay(overlay)) {
@@ -1651,13 +1622,8 @@ export class Scene2D {
    * Executes the rendering of an overlay with proper error handling.
    * @param overlayId - The ID of the overlay being rendered.
    * @param overlay - The overlay to render.
-   * @param overlayIndex - The index of this particular overlay with respect to its type (e.g. ClassificationOverlay, BoundingBoxOverlay, etc.)
    */
-  private executeOverlayRender(
-    overlayId: string,
-    overlay: BaseOverlay,
-    overlayIndex: number
-  ): void {
+  private executeOverlayRender(overlayId: string, overlay: BaseOverlay): void {
     this.renderingState.setStatus(overlayId, OVERLAY_STATUS_PAINTING);
 
     try {
@@ -1674,7 +1640,6 @@ export class Scene2D {
         this.createOverlayStyle(overlay),
         {
           canonicalMediaBounds,
-          overlayIndex,
         }
       );
 
