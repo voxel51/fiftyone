@@ -1,10 +1,7 @@
-import { Button, Size, Tooltip, Variant } from "@voxel51/voodo";
+import { Button, IconName, Size, Tooltip, Variant } from "@voxel51/voodo";
 import React from "react";
 import {
   ContentCopyIcon as ContentCopy,
-  DeleteIcon as Delete,
-  ExpandLessIcon as ExpandLess,
-  ExpandMoreIcon as ExpandMore,
   GridViewIcon as GridView,
 } from "../../mui";
 import { SimilarityRun } from "../../types";
@@ -12,19 +9,6 @@ import * as s from "../styles";
 
 const ApplyIcon = () => <GridView fontSize="small" />;
 const CloneIcon = () => <ContentCopy fontSize="small" />;
-const DeleteIconBtn = () => <Delete fontSize="small" />;
-const ExpandMoreIcon = () => (
-  <ExpandMore
-    fontSize="small"
-    style={{ color: "var(--fo-palette-text-secondary)" }}
-  />
-);
-const ExpandLessIcon = () => (
-  <ExpandLess
-    fontSize="small"
-    style={{ color: "var(--fo-palette-text-secondary)" }}
-  />
-);
 
 const tip = (text: string) => <span style={s.tooltipText}>{text}</span>;
 
@@ -73,7 +57,7 @@ export default function RunActions({
           aria-label="Delete"
           size={Size.Sm}
           variant={Variant.Borderless}
-          leadingIcon={DeleteIconBtn}
+          leadingIcon={IconName.Delete}
           onClick={() => onDelete(run.run_id)}
         />
       </Tooltip>
@@ -83,7 +67,9 @@ export default function RunActions({
             aria-label={isExpanded ? "Collapse" : "Show samples"}
             size={Size.Sm}
             variant={Variant.Borderless}
-            leadingIcon={isExpanded ? ExpandLessIcon : ExpandMoreIcon}
+            leadingIcon={
+              isExpanded ? IconName.ChevronTop : IconName.ChevronBottom
+            }
             onClick={() => onToggleExpand(run)}
           />
         </Tooltip>

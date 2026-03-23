@@ -1,4 +1,3 @@
-import { AddIcon as Add, ArrowBackIcon as ArrowBack } from "../../mui";
 import {
   usePromptOperatorInput,
   useFirstExistingUri,
@@ -6,6 +5,8 @@ import {
 import {
   Button,
   Heading,
+  HeadingLevel,
+  IconName,
   RichList,
   Size,
   Stack,
@@ -28,9 +29,6 @@ type SimilarityIndexProps = {
   onBack: () => void;
 };
 
-const BackIcon = () => <ArrowBack fontSize="small" />;
-const AddIcon = () => <Add fontSize="small" />;
-
 function AddIndexButton() {
   const promptForInput = usePromptOperatorInput();
   const { exists: hasBrainOperator } = useFirstExistingUri([
@@ -43,7 +41,7 @@ function AddIndexButton() {
     <Button
       variant={Variant.Primary}
       size={Size.Sm}
-      leadingIcon={AddIcon}
+      leadingIcon={IconName.Add}
       onClick={() => promptForInput(BRAIN_COMPUTE_SIMILARITY_URI)}
     >
       Similarity Index
@@ -101,7 +99,7 @@ export default function SimilarityIndex({
             aria-label="Back to similarity searches"
             size={Size.Sm}
             variant={Variant.Borderless}
-            leadingIcon={BackIcon}
+            leadingIcon={IconName.ArrowLeft}
             onClick={onBack}
           />
         </Tooltip>

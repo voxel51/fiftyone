@@ -5,6 +5,8 @@ import {
 import { scrollable } from "@fiftyone/components";
 import {
   Button,
+  Icon,
+  IconName,
   Size,
   Text,
   TextColor,
@@ -12,10 +14,7 @@ import {
   Variant,
 } from "@voxel51/voodo";
 import React from "react";
-import {
-  ImageSearchIcon as ImageSearch,
-  OpenInNewIcon as OpenInNew,
-} from "../../mui";
+import { ImageSearchIcon as ImageSearch } from "../../mui";
 import {
   BRAIN_COMPUTE_SIMILARITY_URI,
   BRAIN_PLUGIN_URL,
@@ -76,12 +75,14 @@ export default function NoBrainKeysEmptyState() {
             <ComputeSimilarityButton />
             <Text variant={TextVariant.Md} color={TextColor.Muted}>
               or create an index via{" "}
-              <span
-                style={{ textDecoration: "underline", cursor: "pointer" }}
-                onClick={() => window.open(DOCS_URL, "_blank")}
+              <a
+                href={DOCS_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: "inherit", textDecoration: "underline" }}
               >
                 Python SDK
-              </span>
+              </a>
             </Text>
           </div>
         ) : (
@@ -136,7 +137,7 @@ results = fob.compute_similarity(
                 variant={Variant.Secondary}
                 size={Size.Sm}
                 onClick={() => window.open(DOCS_URL, "_blank")}
-                trailingIcon={() => <OpenInNew style={{ fontSize: 14 }} />}
+                trailingIcon={IconName.ExternalLink}
               >
                 View Docs
               </Button>
@@ -144,7 +145,7 @@ results = fob.compute_similarity(
                 variant={Variant.Primary}
                 size={Size.Sm}
                 onClick={() => window.open(BRAIN_PLUGIN_URL, "_blank")}
-                trailingIcon={() => <OpenInNew style={{ fontSize: 14 }} />}
+                trailingIcon={IconName.ExternalLink}
               >
                 Brain Plugin
               </Button>

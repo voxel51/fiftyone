@@ -1,13 +1,9 @@
 import {
-  AddIcon as Add,
-  EditNoteIcon as EditNote,
-  RefreshIcon as Refresh,
-  SettingsIcon as Settings,
-} from "../../mui";
-import {
   Button,
   Checkbox,
   Heading,
+  HeadingLevel,
+  IconName,
   RichList,
   Size,
   Stack,
@@ -65,11 +61,6 @@ type RunListProps = {
   canFilterByOwner: boolean;
   selection: SelectionState;
 };
-
-const RefreshIcon = () => <Refresh fontSize="small" />;
-const AddIcon = () => <Add fontSize="small" />;
-const ManageIcon = () => <EditNote fontSize="small" />;
-const SettingsIconBtn = () => <Settings fontSize="small" />;
 
 const tip = (text: string) => <span style={s.tooltipText}>{text}</span>;
 
@@ -200,7 +191,9 @@ export default function RunList({
                 spacing={Spacing.Sm}
                 style={{ alignItems: "center" }}
               >
-                <span style={{ fontWeight: "bold" }}>{run.run_name}</span>
+                <Text variant={TextVariant.Md} style={{ fontWeight: "bold" }}>
+                  {run.run_name}
+                </Text>
                 <StatusBadge status={run.status} />
                 {run.status === "completed" && (
                   <Text variant={TextVariant.Md} color={TextColor.Muted}>
@@ -265,7 +258,7 @@ export default function RunList({
           alignItems: "center",
         }}
       >
-        <Heading level="h2">
+        <Heading level={HeadingLevel.H2}>
           {runs.length > 0
             ? `${runs.length} Similarity ${
                 runs.length === 1 ? "Search" : "Searches"
@@ -278,7 +271,7 @@ export default function RunList({
               <Button
                 size={Size.Sm}
                 variant={Variant.Borderless}
-                leadingIcon={RefreshIcon}
+                leadingIcon={IconName.Refresh}
                 onClick={onRefresh}
               />
             </Tooltip>
@@ -288,7 +281,7 @@ export default function RunList({
               <Button
                 variant={selectMode ? Variant.Secondary : Variant.Borderless}
                 size={Size.Sm}
-                leadingIcon={ManageIcon}
+                leadingIcon={IconName.Notes}
                 onClick={onToggleSelectMode}
               />
             </Tooltip>
@@ -297,7 +290,7 @@ export default function RunList({
             <Button
               size={Size.Sm}
               variant={Variant.Borderless}
-              leadingIcon={SettingsIconBtn}
+              leadingIcon={IconName.Settings}
               onClick={onSettings}
             />
           </Tooltip>
@@ -312,7 +305,7 @@ export default function RunList({
               <Button
                 variant={Variant.Primary}
                 size={Size.Sm}
-                leadingIcon={AddIcon}
+                leadingIcon={IconName.Add}
                 onClick={onNewSearch}
                 disabled={brainKeys.length === 0}
               >

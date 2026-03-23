@@ -1,6 +1,6 @@
-import { DeleteIcon as Delete } from "../../mui";
 import {
   Button,
+  IconName,
   Size,
   Stack,
   Text,
@@ -19,8 +19,6 @@ type BulkActionBarProps = {
   onDelete: () => void;
   onCancel: () => void;
 };
-
-const DeleteIcon = () => <Delete fontSize="small" />;
 
 export default function BulkActionBar({
   selectedCount,
@@ -75,7 +73,7 @@ export default function BulkActionBar({
             <Button
               size={Size.Sm}
               variant={Variant.Danger}
-              leadingIcon={DeleteIcon}
+              leadingIcon={IconName.Delete}
               onClick={handleConfirm}
             >
               Confirm Delete
@@ -102,7 +100,7 @@ export default function BulkActionBar({
             <Button
               size={Size.Sm}
               variant={Variant.Danger}
-              leadingIcon={DeleteIcon}
+              leadingIcon={IconName.Delete}
               onClick={handleDeleteClick}
             >
               Delete

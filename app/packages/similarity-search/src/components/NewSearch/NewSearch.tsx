@@ -1,8 +1,9 @@
-import { ArrowBackIcon as ArrowBack } from "../../mui";
 import {
   Button,
   FormField,
   Heading,
+  HeadingLevel,
+  IconName,
   Input,
   InputType,
   RadioGroup,
@@ -33,8 +34,6 @@ type NewSearchProps = {
   onSubmitted: () => void;
 };
 
-const BackIcon = () => <ArrowBack fontSize="small" />;
-
 export default function NewSearch({
   brainKeys,
   cloneConfig,
@@ -54,10 +53,10 @@ export default function NewSearch({
         <Button
           size={Size.Sm}
           variant={Variant.Borderless}
-          leadingIcon={BackIcon}
+          leadingIcon={IconName.ArrowLeft}
           onClick={onBack}
         />
-        <Heading level="h2">
+        <Heading level={HeadingLevel.H2}>
           {cloneConfig ? "Clone Search" : "New Search"}
         </Heading>
       </Stack>
