@@ -137,6 +137,87 @@ export class SampleCanvasPom {
     }
   }
 
+  /**
+   * Drag the canvas center by a known pixel offset to pan the viewport.
+   *
+   * A rightward drag adds +N to panX; a downward drag adds +N to panY.
+   *
+   * @param direction The direction to pan
+   * @param offsetPixels How many pixels to drag
+   */
+  async pan(
+    direction: "left" | "right" | "up" | "down",
+    offsetPixels: number
+  ) {
+    const box = await this.locator.boundingBox();
+    if (!box) {
+      throw new Error("Canvas bounding box not available");
+    }
+    const startX = box.x + box.width / 2;
+    const startY = box.y + box.height / 2;
+
+    let endX = startX;
+    let endY = startY;
+
+    switch (direction) {
+      case "left":
+        endX -= offsetPixels;
+        break;
+      case "right":
+        endX += offsetPixels;
+        break;
+      case "up":
+        endY -= offsetPixels;
+        break;
+      case "down":
+        endY += offsetPixels;
+        break;
+    }
+
+    await this.page.mouse.move(startX, startY);
+    await this.page.mouse.down();
+    await this.page.mouse.move(endX, endY, { steps: 10 });
+    await this.page.mouse.up();
+  }
+
+  /**
+   * Zoom the canvas by scrolling the mouse wheel at the canvas center.
+   *
+   * A negative deltaY zooms in; a positive deltaY zooms out.
+   *
+   * @param deltaY The wheel scroll delta (negative = zoom in, positive = zoom out)
+   */
+  async zoom(deltaY: number) {
+    const box = await this.locator.boundingBox();
+    const cx = box.x + box.width / 2;
+    const cy = box.y + box.height / 2;
+    await this.page.mouse.move(cx, cy);
+    await this.page.mouse.wheel(0, deltaY);
+  }
+
+  /**
+   * Capture a clean screenshot of the sample canvas with overlays hidden.
+   *
+   * Moves the cursor to the canvas center and holds Shift so renderers hide
+   * annotation overlays before snapping the screenshot.
+   *
+   * @param stabilizationMs How long to wait after pressing Shift before
+   *   capturing (defaults to 200ms)
+   */
+  async screenshot(hideOverlays = false, stabilizationMs = 200): Promise<Buffer> {
+    const box = await this.locator.boundingBox();
+    await this.page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    if (hideOverlays) {
+      await this.page.keyboard.down("Shift");
+    }
+    await this.page.waitForTimeout(stabilizationMs);
+    const buf = await this.locator.screenshot();
+    if (hideOverlays) {
+      await this.page.keyboard.up("Shift");
+    }
+    return buf;
+  }
+
   async #toScreenCoordinates(x: number, y: number) {
     if (!this.#box) {
       this.#box = await this.locator.boundingBox();
@@ -157,7 +238,7 @@ export class SampleCanvasPom {
  * Sample canvas asserter
  */
 class SampleCanvasAsserter {
-  constructor(private readonly sampleCanvasPom: SampleCanvasPom) {}
+  constructor(private readonly sampleCanvasPom: SampleCanvasPom) { }
 
   /**
    * Does the mouse have this cursor style

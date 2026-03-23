@@ -6,7 +6,6 @@ import { SampleCanvasType } from "src/oss/poms/modal/sample-canvas";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix("viewport-bridge-e2e");
-const STABILIZATION_MS = 200;
 
 const test = base.extend<{
   grid: GridPom;
@@ -19,77 +18,6 @@ const test = base.extend<{
     await use(new ModalPom(page, eventUtils));
   },
 });
-
-/**
- * Drag the canvas center by a known pixel offset.
- * A rightward drag adds +N to panX; a downward drag adds +N to panY.
- */
-async function panCanvas(
-  modal: ModalPom,
-  direction: "left" | "right" | "up" | "down",
-  offsetPixels: number
-) {
-  const box = await modal.sampleCanvas.locator.boundingBox();
-  if (!box) {
-    throw new Error("Canvas bounding box not available");
-  }
-  const startX = box.x + box.width / 2;
-  const startY = box.y + box.height / 2;
-
-  let endX = startX;
-  let endY = startY;
-
-  switch (direction) {
-    case "left":
-      endX -= offsetPixels;
-      break;
-    case "right":
-      endX += offsetPixels;
-      break;
-    case "up":
-      endY -= offsetPixels;
-      break;
-    case "down":
-      endY += offsetPixels;
-      break;
-  }
-
-  await modal.sampleCanvas.page.mouse.move(startX, startY);
-  await modal.sampleCanvas.page.mouse.down();
-  await modal.sampleCanvas.page.mouse.move(endX, endY, { steps: 10 });
-  await modal.sampleCanvas.page.mouse.up();
-}
-
-/**
- * Zoom the canvas by scrolling the mouse wheel at the canvas center.
- *
- * A negative deltaY zooms in; a positive deltaY zooms out.
- */
-async function zoomCanvas(modal: ModalPom, deltaY: number) {
-  const box = await modal.sampleCanvas.locator.boundingBox();
-  const cx = box.x + box.width / 2;
-  const cy = box.y + box.height / 2;
-  await modal.sampleCanvas.page.mouse.move(cx, cy);
-  await modal.sampleCanvas.page.mouse.wheel(0, deltaY);
-}
-
-/**
- * Capture a clean screenshot of the sample canvas.
- */
-async function screenshotCanvas(modal: ModalPom): Promise<Buffer> {
-  const page = modal.sampleCanvas.page;
-
-  // Move cursor into canvas so Looker registers the Shift keydown
-  const box = await modal.sampleCanvas.locator.boundingBox();
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-
-  await page.keyboard.down("Shift");
-
-  await page.waitForTimeout(STABILIZATION_MS);
-  const buf = await modal.sampleCanvas.locator.screenshot();
-  await page.keyboard.up("Shift");
-  return buf;
-}
 
 test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
   await foWebServer.startWebServer();
@@ -131,6 +59,7 @@ test.describe.serial("viewport-bridge-visual", () => {
     grid,
     modal,
   }) => {
+    const hideOverlays = true;
     const PAN_X = 150;
     const ZOOM_IN = -600;
 
@@ -138,10 +67,10 @@ test.describe.serial("viewport-bridge-visual", () => {
     await modal.waitForSampleLoadDomAttribute();
     await modal.sampleCanvas.assert.is(SampleCanvasType.LOOKER);
 
-    await zoomCanvas(modal, ZOOM_IN);
-    await panCanvas(modal, "right", PAN_X);
+    await modal.sampleCanvas.zoom(ZOOM_IN);
+    await modal.sampleCanvas.pan("right", PAN_X);
 
-    const before = await screenshotCanvas(modal);
+    const before = await modal.sampleCanvas.screenshot(hideOverlays);
 
     await modal.sidebar.switchMode("annotate");
     await modal.sampleCanvas.assert.is(SampleCanvasType.LIGHTER);
@@ -149,7 +78,7 @@ test.describe.serial("viewport-bridge-visual", () => {
     await modal.sampleCanvas.assert.is(SampleCanvasType.LOOKER);
     await modal.waitForSampleLoadDomAttribute();
 
-    const after = await screenshotCanvas(modal);
+    const after = await modal.sampleCanvas.screenshot(hideOverlays);
 
     // Same renderer, overlays hidden — must be pixel-perfect.
     expect(Buffer.compare(before, after)).toBe(0);
@@ -168,6 +97,7 @@ test.describe.serial("viewport-bridge-visual", () => {
     grid,
     modal,
   }) => {
+    const hideOverlays = true;
     const PAN_X = 150;
     const ZOOM_IN = -600;
 
@@ -175,15 +105,15 @@ test.describe.serial("viewport-bridge-visual", () => {
     await modal.waitForSampleLoadDomAttribute();
     await modal.sampleCanvas.assert.is(SampleCanvasType.LOOKER);
 
-    await zoomCanvas(modal, ZOOM_IN);
-    await panCanvas(modal, "right", PAN_X);
+    await modal.sampleCanvas.zoom(ZOOM_IN);
+    await modal.sampleCanvas.pan("right", PAN_X);
 
-    const lookerBuf = await screenshotCanvas(modal);
+    const lookerBuf = await modal.sampleCanvas.screenshot(hideOverlays);
 
     await modal.sidebar.switchMode("annotate");
     await modal.sampleCanvas.assert.is(SampleCanvasType.LIGHTER);
 
-    const lighterBuf = await screenshotCanvas(modal);
+    const lighterBuf = await modal.sampleCanvas.screenshot(hideOverlays);
 
     const lookerImg = await Jimp.read(lookerBuf);
     const lighterImg = await Jimp.read(lighterBuf);
