@@ -19,7 +19,7 @@ const test = base.extend<{
 
   datasetName: async ({ datasetFactory }, use) => {
     const datasetName = getUniqueDatasetNameWithPrefix(
-      `image-rendering-is-pixlated`
+      `image-rendering-is-pixelated`
     );
     await datasetFactory.createBlankDataset({
       datasetName,
