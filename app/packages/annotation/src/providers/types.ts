@@ -53,16 +53,35 @@ export type WorkerMessages = {
 
 /** One-way worker-to-main-thread notification payloads. */
 export type WorkerNotifications = {
+  status: ProviderStatus;
   progress: DownloadProgress;
   warning: string;
+  error: ProviderError;
 };
 
 export type WorkerMessageType = keyof WorkerMessages;
 export type WorkerRequest<T extends WorkerMessageType> = WorkerMessages[T]["request"];
 export type WorkerResponse<T extends WorkerMessageType> = WorkerMessages[T]["response"];
 
+/** Status events emitted during the provider lifecycle. */
+export type ProviderStatus = "loading" | "encoding" | "ready" | "failure";
+
+/** Typed error categories for structured error reporting. */
+export type ProviderErrorKind =
+  | "unsupported"
+  | "download_failure"
+  | "encoder_failure"
+  | "decoder_failure";
+
+export interface ProviderError {
+  kind: ProviderErrorKind;
+  message: string;
+}
+
+export type StatusCallback = (status: ProviderStatus) => void;
 export type DownloadProgressCallback = (progress: DownloadProgress) => void;
 export type WarningCallback = (message: string) => void;
+export type ErrorCallback = (error: ProviderError) => void;
 
 export interface AnnotationProvider {
   initialize(): Promise<void>;

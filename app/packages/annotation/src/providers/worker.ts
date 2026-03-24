@@ -1,5 +1,14 @@
 import * as ort from "onnxruntime-web";
-import type { InferenceResult, PromptPoint, WorkerMessageType, WorkerNotifications, WorkerResponse } from "./types";
+import type {
+  DownloadProgress,
+  InferenceResult,
+  ProviderError,
+  ProviderStatus,
+  PromptPoint,
+  WorkerMessageType,
+  WorkerNotifications,
+  WorkerResponse,
+} from "./types";
 import {
   SAM2_INPUT_SIZE,
   SAM2_OUTPUT_SIZE,
@@ -13,13 +22,29 @@ import {
 import { loadModelWeights } from "./modelCache";
 import { getEmbedding, putEmbedding } from "./embeddingCache";
 
-// Typed postMessage helpers to enforce message shapes at compile time.
+// Typed helpers to enforce message shapes at compile time.
 
 function postNotification<T extends keyof WorkerNotifications>(
   type: T,
   result: WorkerNotifications[T]
 ): void {
   self.postMessage({ type, result });
+}
+
+function postStatusNotification(status: ProviderStatus): void {
+  postNotification("status", status);
+}
+
+function postProgressNotification(progress: DownloadProgress): void {
+  postNotification("progress", progress);
+}
+
+function postWarningNotification(message: string): void {
+  postNotification("warning", message);
+}
+
+function postErrorNotification(error: ProviderError): void {
+  postNotification("error", error);
 }
 
 function postResponse<T extends WorkerMessageType>(
@@ -139,29 +164,39 @@ function preprocessImage(imageData: ImageData): ProcessedImage {
 async function loadModel(): Promise<void> {
   const opts: ort.InferenceSession.SessionOptions = { executionProviders: ["wasm"] };
 
-  const postProgress = (file: "encoder" | "decoder", loaded: number, total: number) =>
-    postNotification("progress", { file, loaded, total });
+  postStatusNotification("loading");
 
-  const postWarning = (message: string) =>
-    postNotification("warning", message);
-
-  if (!encoderSession) {
-    const encoderBuf = await loadModelWeights(
-      ENCODER_URL,
-      (loaded, total) => postProgress("encoder", loaded, total),
-      postWarning
-    );
-    encoderSession = await ort.InferenceSession.create(encoderBuf, opts);
+  async function loadSession(
+    url: string,
+    name: "encoder" | "decoder",
+    failureKind: "encoder_failure" | "decoder_failure",
+  ): Promise<ort.InferenceSession> {
+    let buf: ArrayBuffer;
+    try {
+      buf = await loadModelWeights(
+        url,
+        (loaded, total) => postProgressNotification({ file: name, loaded, total }),
+        postWarningNotification
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      postErrorNotification({ kind: "download_failure", message: `${name} download failed: ${msg}` });
+      throw err;
+    }
+    try {
+      return await ort.InferenceSession.create(buf, opts);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      postErrorNotification({ kind: failureKind, message: `${name} init failed: ${msg}` });
+      throw err;
+    }
   }
 
-  if (!decoderSession) {
-    const decoderBuf = await loadModelWeights(
-      DECODER_URL,
-      (loaded, total) => postProgress("decoder", loaded, total),
-      postWarning
-    );
-    decoderSession = await ort.InferenceSession.create(decoderBuf, opts);
-  }
+  if (!encoderSession)
+    encoderSession = await loadSession(ENCODER_URL, "encoder", "encoder_failure");
+
+  if (!decoderSession)
+    decoderSession = await loadSession(DECODER_URL, "decoder", "decoder_failure");
 }
 
 /**
@@ -184,10 +219,10 @@ async function embedAndDecode(
   let encResults: Record<string, ort.Tensor>;
   let geometry: ImageGeometry;
 
-  const postWarning = (message: string) => postNotification("warning", message);
+  postStatusNotification("encoding");
 
   const cacheKey = CACHE_PREFIX + imageUrl;
-  const cached = await getEmbedding(cacheKey, postWarning);
+  const cached = await getEmbedding(cacheKey, postWarningNotification);
   let cacheHit = false;
 
   if (cached) {
@@ -200,7 +235,7 @@ async function embedAndDecode(
       geometry = cached.processedImage;
       cacheHit = true;
     } catch {
-      postWarning("Corrupt embedding cache entry, re-encoding");
+      postWarningNotification("Corrupt embedding cache entry, re-encoding");
     }
   }
 
@@ -228,7 +263,7 @@ async function embedAndDecode(
         padX: geometry.padX,
         padY: geometry.padY,
       },
-    }, postWarning);
+    }, postWarningNotification);
   }
 
   // Build decoder inputs
@@ -285,12 +320,15 @@ self.onmessage = async (e: MessageEvent) => {
       postResponse(id, "loadModel", undefined as void);
     } else if (type === "embedAndDecode") {
       const result = await embedAndDecode(payload.imageUrl, payload.points);
+      postStatusNotification("ready");
       postResponse(id, "embedAndDecode", result, [result.mask.buffer as ArrayBuffer]);
     } else {
       postError(id, type, `Unknown message type: ${type}`);
     }
   } catch (err) {
-    postError(id, type, err instanceof Error ? err.message : String(err));
+    const msg = err instanceof Error ? err.message : String(err);
+    postStatusNotification("failure");
+    postError(id, type, msg);
   }
 };
 
