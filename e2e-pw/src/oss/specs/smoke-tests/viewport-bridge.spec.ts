@@ -144,6 +144,30 @@ test.describe.serial("viewport-bridge-visual", () => {
     console.log("[diag] before buffer length:", before.length, "| after buffer length:", after.length);
     console.log("[diag] buffers identical:", Buffer.compare(before, after) === 0);
 
+    // If the buffers differ, log the first differing pixel coordinates and
+    // RGBA values so CI output pinpoints exactly what changed.
+    if (Buffer.compare(before, after) !== 0) {
+      const beforeImg = await Jimp.read(before);
+      const afterImg = await Jimp.read(after);
+      const diffs: string[] = [];
+      outer: for (let y = 0; y < beforeImg.height; y++) {
+        for (let x = 0; x < beforeImg.width; x++) {
+          const bPx = beforeImg.getPixelColor(x, y);
+          const aPx = afterImg.getPixelColor(x, y);
+          if (bPx !== aPx) {
+            diffs.push(
+              `(${x},${y}): before=0x${bPx.toString(16).padStart(8, "0")} after=0x${aPx.toString(16).padStart(8, "0")}`
+            );
+            if (diffs.length >= 20) break outer;
+          }
+        }
+      }
+      console.log(
+        `[diag] First ${diffs.length} differing pixel(s):\n` +
+          diffs.join("\n")
+      );
+    }
+
     // Same renderer, overlays hidden — must be pixel-perfect.
     expect(Buffer.compare(before, after)).toBe(0);
   });
@@ -182,28 +206,11 @@ test.describe.serial("viewport-bridge-visual", () => {
     const lookerImg = await Jimp.read(lookerBuf);
     const lighterImg = await Jimp.read(lighterBuf);
 
-    // Crop the renderer-specific toolbar strip from the bottom of each image
-    // so that the Looker controls bar and the Lighter toolbar row are excluded
-    // from the pixel comparison. Both toolbars occupy roughly the bottom 35px.
-    const TOOLBAR_HEIGHT = 35;
-    const cropWidth = lookerImg.width;
-    const cropHeight = lookerImg.height - TOOLBAR_HEIGHT;
-    const lookerCropped = lookerImg.clone().crop({
-      x: 0,
-      y: 0,
-      w: cropWidth,
-      h: cropHeight,
-    });
-    const lighterCropped = lighterImg.clone().crop({
-      x: 0,
-      y: 0,
-      w: cropWidth,
-      h: cropHeight,
-    });
-
     // Allow per-pixel color distance up to 15% of the maximum (255) to account
     // for the difference in rendering pipelines (Canvas 2D vs WebGL/Pixi.js).
-    const diff = jimpDiff(lookerCropped, lighterCropped, 0.15);
+    // Screenshots now capture only the inner <canvas> element, so toolbar
+    // strips are already excluded.
+    const diff = jimpDiff(lookerImg, lighterImg, 0.15);
 
 
     // Less than 10% of pixels may differ; a completely wrong viewport would

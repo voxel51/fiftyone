@@ -203,6 +203,10 @@ export class SampleCanvasPom {
    * consecutive frames are pixel-identical so the result is stable regardless
    * of machine speed (local vs CI).
    *
+   * Screenshots the inner <canvas> element directly rather than the full
+   * container div. This excludes HTML overlays (hover checkbox, controls bar)
+   * that may be in transient states and cause non-deterministic pixel diffs.
+   *
    * @param hideOverlays Whether to hold Shift to suppress annotation overlays
    * @param pollMs Interval between stability-check frames (defaults to 100ms)
    * @param maxAttempts Maximum number of poll iterations before giving up
@@ -220,12 +224,24 @@ export class SampleCanvasPom {
       await this.page.keyboard.down("Shift");
     }
 
+    // Target only the raw <canvas> element (Looker or Lighter) to avoid
+    // capturing HTML overlays (checkbox, controls) that aren't part of the
+    // rendered image and can be in different visibility states between shots.
+    const lookerCanvas = this.page.locator(
+      `[data-cy=${SampleCanvasType.LOOKER}] canvas`
+    );
+    const lighterCanvas = this.page.locator(
+      `[data-cy=${SampleCanvasType.LIGHTER}] canvas`
+    );
+    const target =
+      (await lookerCanvas.count()) > 0 ? lookerCanvas : lighterCanvas;
+
     // Poll until two consecutive screenshots are pixel-identical, meaning the
     // canvas has finished rendering and is no longer animating.
     let prev: Buffer | null = null;
     for (let i = 0; i < maxAttempts; i++) {
       await this.page.waitForTimeout(pollMs);
-      const curr = Buffer.from(await this.locator.screenshot());
+      const curr = Buffer.from(await target.screenshot());
       if (prev && Buffer.compare(prev, curr) === 0) {
         if (hideOverlays) await this.page.keyboard.up("Shift");
         return curr;
