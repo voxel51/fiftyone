@@ -262,15 +262,19 @@ const Segmentation = () => {
             fill="currentColor"
           />
           {/* Left eye */}
-          <circle cx="7.5" cy="7" r="1" fill="currentColor" />
-          {/* Right eye */}
-          <circle cx="11.5" cy="7" r="1" fill="currentColor" />
-          {/* Neutral mouth */}
           <path
-            d="M7.5 11H11.5"
-            stroke="currentColor"
-            strokeWidth="1.3"
-            strokeLinecap="round"
+            d="M7.5 5.7A1.3 1.3 0 1 1 7.5 8.3A1.3 1.3 0 1 1 7.5 5.7Z"
+            fill="currentColor"
+          />
+          {/* Right eye */}
+          <path
+            d="M11.5 5.7A1.3 1.3 0 1 1 11.5 8.3A1.3 1.3 0 1 1 11.5 5.7Z"
+            fill="currentColor"
+          />
+          {/* Smile */}
+          <path
+            d="M7 10.5H12Q9.5 14 7 10.5Z"
+            fill="currentColor"
           />
         </svg>
       </Square>
