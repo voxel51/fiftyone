@@ -76,6 +76,17 @@ export class ModalAnnotateSidebarPom {
   async toggleActivePrimitiveFields() {
     await this.locator.getByTestId("sidebar-group-PRIMITIVES-toggle").click();
   }
+
+  /**
+   * Activate quick draw mode for a label type (e.g. "Detections")
+   *
+   * @param labelType The label type to quick draw
+   */
+  async quickDraw(labelType: "Detections") {
+    if (labelType === "Detections") {
+      await this.page.getByTestId("quick-draw-detection").click();
+    }
+  }
 }
 
 /**
@@ -147,5 +158,17 @@ class ModalAnnotateSidebarAsserter {
     const actualCount =
       await this.modalAnnotateSidebar.getActivePrimitiveFieldsCount();
     expect(actualCount).toBe(expectedCount);
+  }
+
+  /**
+   * Assert that quick draw mode is active or inactive
+   *
+   * @param active Whether quick draw should be active (default true)
+   */
+  async quickDrawIsActive(active = true) {
+    const button = this.modalAnnotateSidebar.page.getByTestId(
+      "quick-draw-detection"
+    );
+    await expect(button).toHaveAttribute("data-cy-active", active.toString());
   }
 }
