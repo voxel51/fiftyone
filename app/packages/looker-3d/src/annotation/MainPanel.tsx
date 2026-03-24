@@ -1,4 +1,3 @@
-import { ModalSample } from "@fiftyone/state";
 import { CameraControls, View } from "@react-three/drei";
 import styled from "styled-components";
 import * as THREE from "three";
@@ -23,7 +22,6 @@ export interface MainPanelProps {
   foScene: FoScene;
   upVector: Vector3 | null;
   isSceneInitialized: boolean;
-  sample: ModalSample;
   pointCloudSettings: Fo3dPointCloudSettings;
   assetsGroupRef: React.RefObject<THREE.Group>;
 }
@@ -36,7 +34,6 @@ export const MainPanel = ({
   foScene,
   upVector,
   isSceneInitialized,
-  sample,
   pointCloudSettings,
   assetsGroupRef,
 }: MainPanelProps) => {
@@ -64,7 +61,6 @@ export const MainPanel = ({
           foScene={foScene}
           isSceneInitialized={isSceneInitialized}
           isGizmoHelperVisible={false}
-          sample={sample}
           pointCloudSettings={pointCloudSettings}
           assetsGroupRef={assetsGroupRef}
           cameraRef={cameraRef}

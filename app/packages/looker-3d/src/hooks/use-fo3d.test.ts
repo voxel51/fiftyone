@@ -33,11 +33,9 @@ vi.mock("@fiftyone/state", () => ({
   selectedMediaField: () => mockAtoms.selectedMediaField,
   isGroup: mockAtoms.isGroup,
   getSampleSrc: mockState.getSampleSrc,
-  useRenderConfig3d: () => ({
-    state: mockState.group3dState,
-    actions: {
-      setFo3dContent: mockState.setFo3dContent,
-    },
+  useRenderConfig3dState: () => mockState.group3dState,
+  useRenderConfig3dActions: () => ({
+    setFo3dContent: mockState.setFo3dContent,
   }),
 }));
 

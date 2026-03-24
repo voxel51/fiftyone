@@ -26,7 +26,7 @@ export const Gltf = ({
   scale: Vector3;
   children: React.ReactNode;
 }) => {
-  const { fo3dRoot } = useFo3dContext();
+  const { fo3dRoot, loadingManager } = useFo3dContext();
   const isInMultiPanelView = useRecoilValue(isInMultiPanelViewAtom);
 
   const gltfUrl = useMemo(
@@ -48,6 +48,9 @@ export const Gltf = ({
     true,
     undefined,
     (loader) => {
+      if (loadingManager) {
+        loader.manager = loadingManager;
+      }
       loader.setResourcePath(resourcePath);
     }
   );
@@ -66,7 +69,10 @@ export const Gltf = ({
 
   const groupRef = useRef();
 
-  const mixer = useMemo(() => new AnimationMixer(scene), [scene]);
+  const mixer = useMemo(
+    () => (scene ? new AnimationMixer(scene) : null),
+    [scene]
+  );
 
   useAnimationSelect(name, animations, mixer);
 

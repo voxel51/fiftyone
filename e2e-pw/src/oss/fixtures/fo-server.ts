@@ -12,7 +12,7 @@ type WebServerProcessConfig = {
 
 export class FoWebServer {
   readonly #port: number;
-  #webserverProcessConfig: WebServerProcessConfig;
+  #webserverProcessConfig?: WebServerProcessConfig;
 
   constructor(port: number) {
     this.#port = port;
@@ -46,17 +46,39 @@ export class FoWebServer {
         "--clean_start",
       ]);
 
+      console.log(procString);
+
       const proc = spawn(procString, { shell: true });
+      let startupComplete = false;
 
-      if (process.env.LOG_PROCESS_OUTPUT?.toLocaleLowerCase() === "true") {
-        proc.stdout.on("data", (data) => {
-          console.log(`stdout: ${data}`);
-        });
+      const startupFailure = new Promise<never>((_, reject) => {
+        const handleError = (err: Error) => {
+          if (!startupComplete) {
+            reject(err);
+          }
+        };
 
-        proc.stderr.on("data", (data) => {
-          console.error(`stderr: ${data}`);
-        });
-      }
+        const handleExit = (code: number | null, signal: string | null) => {
+          if (!startupComplete) {
+            reject(
+              new Error(
+                `webserver exited before startup completed (code=${code}, signal=${signal})`
+              )
+            );
+          }
+        };
+
+        proc.once("error", handleError);
+        proc.once("exit", handleExit);
+      });
+
+      proc.stdout.on("data", (data) => {
+        console.log(`stdout: ${data}`);
+      });
+
+      proc.stderr.on("data", (data) => {
+        console.error(`stderr: ${data}`);
+      });
 
       this.#webserverProcessConfig = {
         processId: proc.pid,
@@ -68,10 +90,17 @@ export class FoWebServer {
         }...`
       );
 
-      await waitOn({
-        resources: [`http://0.0.0.0:${this.#port}`],
-        timeout: Duration.Seconds(30),
-      });
+      await Promise.race([
+        waitOn({
+          resources: [
+            `tcp:127.0.0.1:${this.#port}`,
+            `http-get://127.0.0.1:${this.#port}/graphql`,
+          ],
+          timeout: Duration.Seconds(30),
+        }),
+        startupFailure,
+      ]);
+      startupComplete = true;
       console.log("webserver started");
     } catch (e) {
       console.log(`webserver starting failed`, e);
@@ -81,16 +110,20 @@ export class FoWebServer {
       } catch (stopErr) {
         console.warn("Error stopping webserver:", stopErr);
       }
+
+      throw e;
     }
   }
 
   async stopWebServer(timeoutMs = 10000): Promise<void> {
-    if (!this.#webserverProcessConfig.processId) {
-      throw new Error("webserver process not started");
+    const processId = this.#webserverProcessConfig?.processId;
+
+    if (!processId) {
+      return;
     }
 
     const killPromise = new Promise<void>((resolve, reject) => {
-      kill(this.#webserverProcessConfig.processId, "SIGTERM", (err) => {
+      kill(processId, "SIGTERM", (err) => {
         if (err) {
           return reject(err);
         }
@@ -106,6 +139,10 @@ export class FoWebServer {
       );
     });
 
-    return Promise.race([killPromise, timeoutPromise]);
+    try {
+      await Promise.race([killPromise, timeoutPromise]);
+    } finally {
+      this.#webserverProcessConfig = undefined;
+    }
   }
 }

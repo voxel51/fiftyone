@@ -153,16 +153,12 @@ export const getMediaPathForFo3dSample = (
   sample: ModalSample,
   mediaField: string
 ) => {
-  let mediaPath: string;
-
   if (Array.isArray(sample.urls)) {
     const mediaFieldObj = sample.urls.find((url) => url.field === mediaField);
-    mediaPath = mediaFieldObj?.url ?? sample.urls[0].url;
-  } else {
-    mediaPath = sample.urls[mediaField];
+    return mediaFieldObj?.url ?? sample.urls[0]?.url ?? sample.sample.filepath;
   }
 
-  return mediaPath;
+  return sample.urls?.[mediaField] ?? sample.sample.filepath;
 };
 
 export const getFo3dRoot = (fo3dPath: string) => {

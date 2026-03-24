@@ -1,7 +1,7 @@
 import * as fos from "@fiftyone/state";
-import { CameraControls } from "@react-three/drei";
+import type { CameraControls } from "@react-three/drei";
 import { useRecoilCallback } from "recoil";
-import { Box3, Vector3, Vector3Tuple } from "three";
+import { Box3, Vector3, type Vector3Tuple } from "three";
 import { selectedLabelForAnnotationAtom } from "../state";
 import {
   calculateCameraPositionForUpVector,
@@ -9,7 +9,7 @@ import {
 } from "../utils";
 
 interface UseZoomToSelectedProps {
-  sample: fos.ModalSample;
+  interactionSample: fos.ModalSample;
   upVector: Vector3 | null;
   mode: string;
   cameraControlsRef: React.RefObject<CameraControls>;
@@ -46,9 +46,9 @@ const extractLabel = (
     if (labelFieldData.points3d) {
       flattenedPoints = labelFieldData.points3d.flat();
     } else if (labelFieldData.polylines) {
-      flattenedPoints = labelFieldData.polylines
-        .map((polyline: any) => polyline.points3d.flat())
-        .flat();
+      flattenedPoints = labelFieldData.polylines.flatMap((polyline: any) =>
+        polyline.points3d.flat()
+      );
     }
 
     if (flattenedPoints.length === 0) {
@@ -87,7 +87,7 @@ const createBoundingBox = (label: {
  * Otherwise, it zooms to all selected labels.
  */
 export const useZoomToSelected = ({
-  sample,
+  interactionSample,
   upVector,
   mode,
   cameraControlsRef,
@@ -114,7 +114,8 @@ export const useZoomToSelected = ({
           .map((selectedLabel) => {
             const field = selectedLabel.field;
             const labelId = selectedLabel.labelId;
-            const labelFieldData = sample.sample[field] ?? selectedLabel;
+            const labelFieldData =
+              interactionSample.sample[field] ?? selectedLabel;
             const label = extractLabel(labelFieldData, labelId);
             return label ? createBoundingBox(label) : null;
           })
@@ -152,7 +153,7 @@ export const useZoomToSelected = ({
           true
         );
       },
-    [sample, upVector, mode, cameraControlsRef]
+    [interactionSample, upVector, mode, cameraControlsRef]
   );
 
   return handleZoomToSelected;
