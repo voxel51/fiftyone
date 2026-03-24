@@ -177,6 +177,28 @@ export class DetectionOverlay
       this.drawMask(renderer);
     }
 
+    // lightweight border when editing detection mask
+    if (this.isSelected() && this.isPaintingActive()) {
+      renderer.drawScrim(
+        this.bounds,
+        _renderMeta.canonicalMediaBounds,
+        this.containerId
+      );
+
+      renderer.drawRect(
+        this.bounds,
+        {
+          strokeStyle: style.strokeStyle || "#ffffff",
+          lineWidth: 1,
+          dashPattern: [4, 4],
+        },
+        this.containerId
+      );
+
+      this.emitLoaded();
+      return;
+    }
+
     // Check if this label has an instance to determine stroke styling
     const hasInstance = this.label?.instance?._id !== undefined;
 
