@@ -183,17 +183,10 @@ const LighterSetupImpl = (props: {
   useLayoutEffect(() => {
     return () => {
       if (scene && !scene.isDestroyed && sampleId) {
-        const vp = scene.getViewportState();
-        console.log(
-          "[viewport-bridge] Lighter cleanup saving viewport:",
-          JSON.stringify({ sampleId, ...vp })
-        );
-        setViewportState({ sampleId, ...vp });
-      } else {
-        console.log(
-          "[viewport-bridge] Lighter cleanup SKIPPED (scene destroyed or no sampleId):",
-          { isDestroyed: scene?.isDestroyed, sampleId }
-        );
+        setViewportState({
+          sampleId,
+          ...scene.getViewportState(),
+        });
       }
     };
   }, [scene, sampleId]);

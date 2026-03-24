@@ -93,23 +93,10 @@ export const useLighterSetupWithPixi = (
 
     rendererRef.current?.initializePixiJS().then(() => {
       if (initialViewportRef.current) {
-        console.log(
-          "[viewport-bridge] Lighter applying initialViewport:",
-          JSON.stringify(initialViewportRef.current)
-        );
         scene.setViewportState(initialViewportRef.current);
-        console.log(
-          "[viewport-bridge] Lighter viewport after setViewportState:",
-          JSON.stringify(scene.getViewportState())
-        );
-      } else {
-        console.log("[viewport-bridge] Lighter: no initialViewport to apply");
       }
       scene.startRenderLoop();
-      // Signal to E2E tests that PixiJS has fully initialised and the viewport
-      // has been applied. Mirrors the `canvas-loaded` attribute on Looker's canvas.
       stableCanvas.setAttribute("lighter-ready", "true");
-      console.log("[viewport-bridge] lighter-ready set on canvas");
     });
 
     return () => {

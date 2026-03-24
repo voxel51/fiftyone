@@ -138,20 +138,10 @@ function useLooker<L extends fos.Lookers>({
   useLayoutEffect(() => {
     return () => {
       if (looker?.state?.loaded && looker.state.dimensions) {
-        const vp = looker.getViewportState();
-        console.log(
-          "[viewport-bridge] Looker cleanup saving viewport:",
-          JSON.stringify({ sampleId: sampleRef.current.sample._id, ...vp })
-        );
         setViewportState({
           sampleId: sampleRef.current.sample._id,
-          ...vp,
+          ...looker.getViewportState(),
         });
-      } else {
-        console.log(
-          "[viewport-bridge] Looker cleanup SKIPPED (not loaded or no dimensions):",
-          { loaded: looker?.state?.loaded, dimensions: looker?.state?.dimensions }
-        );
       }
     };
   }, [looker]);
@@ -161,16 +151,7 @@ function useLooker<L extends fos.Lookers>({
   useLayoutEffect(() => {
     const savedViewport = modalBridge.getModalViewport();
     if (savedViewport?.sampleId === sample.sample._id) {
-      console.log(
-        "[viewport-bridge] Looker mount applying saved viewport:",
-        JSON.stringify(savedViewport)
-      );
       looker.updateOptions({ initialViewport: savedViewport }, true);
-    } else {
-      console.log(
-        "[viewport-bridge] Looker mount: no viewport to restore",
-        { atomSampleId: savedViewport?.sampleId, currentSampleId: sample.sample._id }
-      );
     }
   }, [looker, sample]);
 

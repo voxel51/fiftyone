@@ -319,7 +319,7 @@ export class ModalPom {
 }
 
 class ModalAsserter {
-  constructor(private readonly modalPom: ModalPom) { }
+  constructor(private readonly modalPom: ModalPom) {}
 
   async isClosed() {
     await expect(this.modalPom.modalContainer).toBeHidden();
