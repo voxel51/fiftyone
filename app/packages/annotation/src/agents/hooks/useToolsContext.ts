@@ -1,5 +1,5 @@
 import { AgentTaskType, ROI, Vec2 } from "../types";
-import { atom, useAtom } from "jotai";
+import { atom, useAtom, useAtomValue } from "jotai";
 import { useCallback, useMemo } from "react";
 import { useActiveTask } from "./useActiveTask";
 
@@ -49,7 +49,7 @@ export interface ToolsState extends ToolsContext {
 const positivePointsAtom = atom<Vec2[]>([]);
 const negativePointsAtom = atom<Vec2[]>([]);
 const regionsOfInterestAtom = atom<ROI[]>([]);
-const textPromptAtom = atom<string | undefined>(undefined);
+const textPromptAtom = atom<string | null>(null);
 
 /**
  * Hook which returns the current {@link ToolsContext} (read-only).
@@ -58,10 +58,10 @@ const textPromptAtom = atom<string | undefined>(undefined);
  */
 export const useToolsContext = (): ToolsContext => {
   const { activeTask } = useActiveTask();
-  const [positivePoints] = useAtom(positivePointsAtom);
-  const [negativePoints] = useAtom(negativePointsAtom);
-  const [regionsOfInterest] = useAtom(regionsOfInterestAtom);
-  const [textPrompt] = useAtom(textPromptAtom);
+  const positivePoints = useAtomValue(positivePointsAtom);
+  const negativePoints = useAtomValue(negativePointsAtom);
+  const regionsOfInterest = useAtomValue(regionsOfInterestAtom);
+  const textPrompt = useAtomValue(textPromptAtom);
 
   return useMemo(
     () => ({
@@ -115,7 +115,7 @@ export const useToolsState = (): ToolsState => {
     setPositivePoints([]);
     setNegativePoints([]);
     setRegionsOfInterest([]);
-    setTextPrompt(undefined);
+    setTextPrompt(null);
   }, [
     setPositivePoints,
     setNegativePoints,

@@ -15,14 +15,14 @@ export const AgentSelect = ({
   onChange,
 }: {
   value?: AgentDescriptor<InferenceResultProxy> | null;
-  onChange?: (agent: AgentDescriptor<InferenceResultProxy>) => void;
+  onChange?: (agent: AgentDescriptor<InferenceResultProxy> | null) => void;
 }) => {
   const [agent, setAgent] =
     useState<AgentDescriptor<InferenceResultProxy> | null>(value);
   const agentSelector = useAgentSelector();
 
   useEffect(() => {
-    setAgent(value);
+    setAgent(value ?? null);
   }, [value]);
 
   const selectOptions = useMemo(

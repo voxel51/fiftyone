@@ -18,7 +18,9 @@ export interface AgentSelector {
   isResolved: boolean;
 
   /** Set the active agent. */
-  setActiveAgent: (descriptor: AgentDescriptor<InferenceResultProxy>) => void;
+  setActiveAgent: (
+    descriptor: AgentDescriptor<InferenceResultProxy> | null
+  ) => void;
 }
 
 const activeAgentAtom = atom<AgentDescriptor<InferenceResultProxy> | null>(

@@ -1463,6 +1463,7 @@ export type ValidationErrorsType = Array<{ path: string; reason: string }>;
  */
 export type OperatorResponse<T> = {
   result: {
+    id?: string;
     result: T;
   };
   error?: string;
