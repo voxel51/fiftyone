@@ -60,7 +60,7 @@ describe("OperatorAnnotationAgent", () => {
     it("should return an async result when the operator is delegated", async () => {
       mockFetch.mockResolvedValue({
         delegated: true,
-        executor: { id: "exec-1" },
+        result: { id: "exec-1" },
       });
 
       const result = await agent.infer(makeContext());
@@ -86,7 +86,7 @@ describe("OperatorAnnotationAgent", () => {
       mockFetch.mockResolvedValue({ delegated: true });
 
       await expect(agent.infer(makeContext())).rejects.toThrow(
-        /no executor id/i
+        /no operator id/i
       );
     });
 
