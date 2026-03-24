@@ -98,9 +98,7 @@ const Fo3dPanels = ({
 };
 
 export const MediaTypeFo3dComponent = () => {
-  const {
-    state: { interactionSample, sceneSample },
-  } = fos.useRenderConfig3d();
+  const { interactionSample, sceneSample } = fos.useRenderConfig3dState();
   const settings = usePluginSettings<Looker3dSettings>("3d");
   const mode = fos.useModalMode();
   const canAnnotate = useCanAnnotate().showAnnotationTab;
@@ -119,6 +117,7 @@ export const MediaTypeFo3dComponent = () => {
     fo3dCameraLifecycleReducer,
     FO3D_CAMERA_LIFECYCLE.WAITING_FOR_SCENE
   );
+  const isSceneReady = cameraLifecycleState === FO3D_CAMERA_LIFECYCLE.READY;
 
   // Reset camera initialization whenever the scene identity changes.
   useEffect(() => {
@@ -130,7 +129,7 @@ export const MediaTypeFo3dComponent = () => {
   const cameraRef = useRef<PerspectiveCamera | null>(null);
   const cameraControlsRef = useRef<CameraControls | null>(null);
   const assetsGroupRef = useRef<Group | null>(null);
-  const threeJsLoadingStatus = useTrackStatus(loadingManager);
+  const threeJsLoadingStatus = useTrackStatus(loadingManager, isSceneReady);
 
   useFo3dCameraControlsConfig({
     cameraControlsRef,
