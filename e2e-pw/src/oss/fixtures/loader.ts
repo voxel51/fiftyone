@@ -92,15 +92,19 @@ export class OssLoader extends AbstractFiftyoneLoader {
         const cursor = window.getComputedStyle(element).cursor;
         // eslint-disable-next-line
         // @ts-ignore
-        if (cursor !== window.CURRENT_CURSOR) {
+        if (cursor !== window.__FO_PLAYWRIGHT_CURRENT_CURSOR) {
           // eslint-disable-next-line
           // @ts-ignore
-          window.CURRENT_CURSOR = window.getComputedStyle(element).cursor;
+          window.__FO_PLAYWRIGHT_CURRENT_CURSOR =
+            window.getComputedStyle(element).cursor;
           document.dispatchEvent(new CustomEvent("cursor-change"));
         }
       };
 
       document.addEventListener("mousemove", handleCursorChange);
+      document.addEventListener("mousemove", handleCursorChange);
+      document.addEventListener("pointerdown", handleCursorChange);
+      document.addEventListener("pointerup", handleCursorChange);
 
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore injecting IS_PLAYWRIGHT into window so that

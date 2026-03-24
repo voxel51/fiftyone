@@ -13,11 +13,11 @@ import {
   plus,
 } from "../../icons";
 import { BaseState } from "../../state";
+import { json } from "../../shared/actions";
 import { BaseElement, Events } from "../base";
 import {
   cropToContent,
   help,
-  json,
   settings,
   toggleOverlays,
   zoomIn,

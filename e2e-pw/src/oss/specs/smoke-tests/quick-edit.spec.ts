@@ -1,15 +1,42 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
 import { test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { Box, SampleCanvasType } from "src/oss/poms/modal/sample-canvas";
-import { SchemaManagerPom } from "src/oss/poms/schema-manager";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
-const datasetName = getUniqueDatasetNameWithPrefix("quick-edit");
-const id = "000000000000000000000000";
-const imageWidth = 914;
-const imageHeight = 620;
-const initialBoundingBox = { x: 0.25, y: 0.25, width: 0.5, height: 0.5 };
-const detectionTestPoints = (({ x, y, width, height }: Box) => {
+/** Unique dataset name scoped to this test file, prefixed with `"quick-edit"`. */
+const DATASET_NAME = getUniqueDatasetNameWithPrefix("quick-edit");
+
+/** The fixed ObjectId used to address the single sample in the dataset. */
+const ID = "000000000000000000000000";
+
+/** Width of the generated sample image in pixels. */
+const IMAGE_WIDTH = 914;
+
+/** Height of the generated sample image in pixels. */
+const IMAGE_HEIGHT = 620;
+
+/**
+ * The initial bounding box for the detection label, expressed in relative
+ * (0–1) coordinates. Centered in the image with 50% width and height.
+ */
+const INITIAL_BOUNDING_BOX = { x: 0.25, y: 0.25, width: 0.5, height: 0.5 };
+
+/**
+ * Derived from {@link INITIAL_BOUNDING_BOX}, this array describes all eight
+ * interactive handle points on a detection bounding box (four corners and four
+ * edge midpoints).
+ *
+ * Each entry contains:
+ * - `name`   — A human-readable label used in screenshot filenames.
+ * - `cursor` — The CSS cursor prefix expected when hovering the handle.
+ * - `x / y`  — The canvas-relative position (0–1) of the handle.
+ * - `resize` — The expected bounding box after dragging the handle to (0.5, 0.5).
+ * - `move`   — The expected bounding box after dragging the box center to this handle's position.
+ */
+const DETECTION_CORNERS_AND_EDGES = (({ x, y, width, height }: Box) => {
   return [
     {
       name: "top-left",
@@ -76,80 +103,84 @@ const detectionTestPoints = (({ x, y, width, height }: Box) => {
       move: { x: 0, y: 0.25, height, width },
     },
   ];
-})(initialBoundingBox);
+})(INITIAL_BOUNDING_BOX);
 
 const test = base.extend<{
   modal: ModalPom;
-  schemaManager: SchemaManagerPom;
 }>({
   modal: async ({ page, eventUtils }, use) => {
     await use(new ModalPom(page, eventUtils));
   },
 });
 
+/** Stops the FiftyOne web server after all tests in this file have run. */
 test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, mediaFactory, foWebServer }) => {
+/**
+ * Starts the FiftyOne web server and creates a single-sample dataset
+ * with a `Classification` and a `Detections` field before any tests run.
+ * The detection is initialized to {@link INITIAL_BOUNDING_BOX}.
+ */
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-  await mediaFactory.createBlankImage({
-    outputPath: "/tmp/blank.png",
-    width: imageWidth,
-    height: imageHeight,
-    fillColor: "#ffffff",
-    hideLogs: true,
+  await datasetFactory.createBlankDataset({
+    datasetName: DATASET_NAME,
+    imageOptions: {
+      fillColor: "white",
+      height: IMAGE_HEIGHT,
+      width: IMAGE_WIDTH,
+    },
+    schema: {
+      classification: "Classification",
+      detections: "Detections",
+    },
+    withSampleData: (_, { createId }) => ({
+      classification: { _id: createId(), label: "value" },
+      detections: {
+        detections: [
+          {
+            _id: createId(),
+            label: "value",
+            bounding_box: [0.25, 0.25, 0.5, 0.5],
+          },
+        ],
+      },
+    }),
   });
-
-  await fiftyoneLoader.executePythonCode(`
-  from bson import ObjectId
-  import fiftyone as fo
-  from datetime import datetime
-
-  dataset = fo.Dataset("${datasetName}")
-  dataset.media_type = "image"
-
-  sample = fo.Sample(
-      _id=ObjectId("${id}"),
-      classification=fo.Classification(label="value"),
-      detections=fo.Detections(
-          detections=[
-              fo.Detection(label="value", bounding_box=[0.25, 0.25, 0.5, 0.5]),
-          ]
-      ),
-      filepath="/tmp/blank.png"
-  )
-  dataset._sample_collection.insert_many(
-      [dataset._make_dict(sample, include_id=True)]
-  )
-
-  dataset.add_sample_field(
-      "classification",
-      fo.EmbeddedDocumentField,
-      embedded_doc_type=fo.Classification,
-  )
-  dataset.add_sample_field(
-      "detections",
-      fo.EmbeddedDocumentField,
-      embedded_doc_type=fo.Detections,
-  )
-  dataset.save()
-  sample = dataset.first()
-  sample.tags = ["tag"]
-  sample.save()`);
 });
 
+/**
+ * End-to-end tests for the quick-edit workflow in the sample modal.
+ *
+ * Each test opens the modal for the single sample in {@link DATASET_NAME}
+ * (filtered by {@link ID}) and exercises the quick-edit UI for different
+ * label types. Tests are run serially to avoid race conditions on shared
+ * server state.
+ */
 test.describe.serial("quick edit", () => {
-  test.beforeEach(async ({ fiftyoneLoader, page }) => {
-    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
-      searchParams: new URLSearchParams({ id }),
+  /**
+   * Before each test, navigate to the dataset grid filtered to the target
+   * sample, open the modal, and assert that the looker canvas is visible.
+   */
+  test.beforeEach(async ({ fiftyoneLoader, modal, page }) => {
+    await fiftyoneLoader.waitUntilGridVisible(page, DATASET_NAME, {
+      searchParams: new URLSearchParams({ id: ID }),
     });
-  });
 
-  test("classification via sidebar", async ({ modal }) => {
-    // Init
+    await modal.waitForSampleLoadDomAttribute();
     await modal.assert.isOpen();
     await modal.sampleCanvas.assert.is(SampleCanvasType.LOOKER);
+  });
+
+  /**
+   * Verifies that a Classification label can be opened in quick-edit mode
+   * via the sidebar. Checks the tooltip content before transitioning and
+   * asserts the canvas switches to the lighter (quick-edit) view.
+   */
+  test("classification via sidebar", async ({ modal }) => {
+    // Init
     await modal.sampleCanvas.move(0.9, 0.9);
     await modal.sampleCanvas.assert.hasScreenshot("classification-looker.png");
 
@@ -172,10 +203,14 @@ test.describe.serial("quick edit", () => {
     await modal.sampleCanvas.assert.hasScreenshot("classification-lighter.png");
   });
 
+  /**
+   * Verifies that a Detection label can be opened in quick-edit mode via the
+   * tooltip. Exercises all eight bounding-box handles, asserting correct
+   * resize and move behavior including undo/redo for each handle. Also
+   * validates that setting the `confidence` field updates the canvas.
+   */
   test("detections via tooltip", async ({ modal }) => {
     // Init
-    await modal.assert.isOpen();
-    await modal.sampleCanvas.assert.is(SampleCanvasType.LOOKER);
     await modal.sampleCanvas.move(0.9, 0.9);
     await modal.sampleCanvas.assert.hasCursor("default");
 
@@ -206,26 +241,30 @@ test.describe.serial("quick edit", () => {
       "detection-lighter-selected-centered.png"
     );
 
+    /**
+     * Asserts that the sidebar edit fields reflect the given bounding box,
+     * converting relative (0–1) coordinates to absolute pixel values.
+     */
     const assertPosition = async function ({ x, y, width, height }: Box) {
       await modal.sidebar.edit.assert.verifyFieldValue(
         "position.x",
-        (x * imageWidth).toString()
+        (x * IMAGE_WIDTH).toString()
       );
       await modal.sidebar.edit.assert.verifyFieldValue(
         "position.y",
-        (y * imageHeight).toString()
+        (y * IMAGE_HEIGHT).toString()
       );
       await modal.sidebar.edit.assert.verifyFieldValue(
         "dimensions.width",
-        (width * imageWidth).toString()
+        (width * IMAGE_WIDTH).toString()
       );
       await modal.sidebar.edit.assert.verifyFieldValue(
         "dimensions.height",
-        (height * imageHeight).toString()
+        (height * IMAGE_HEIGHT).toString()
       );
     };
 
-    for (const point of detectionTestPoints) {
+    for (const point of DETECTION_CORNERS_AND_EDGES) {
       // Resize box
       await modal.sampleCanvas.move(point.x, point.y, `${point.cursor}-resize`);
       await modal.sampleCanvas.down();
@@ -244,7 +283,7 @@ test.describe.serial("quick edit", () => {
       await modal.sampleCanvas.assert.hasScreenshot(
         "detection-lighter-selected-centered.png"
       );
-      await assertPosition(initialBoundingBox);
+      await assertPosition(INITIAL_BOUNDING_BOX);
 
       // Redo
       await modal.sidebar.edit.redo();
@@ -264,10 +303,10 @@ test.describe.serial("quick edit", () => {
       await modal.sampleCanvas.assert.hasScreenshot(
         "detection-lighter-selected-centered.png"
       );
-      await assertPosition(initialBoundingBox);
+      await assertPosition(INITIAL_BOUNDING_BOX);
     }
 
-    for (const point of detectionTestPoints) {
+    for (const point of DETECTION_CORNERS_AND_EDGES) {
       // Move box
       await modal.sampleCanvas.move(0.5, 0.5);
       await modal.sampleCanvas.down();
@@ -285,7 +324,7 @@ test.describe.serial("quick edit", () => {
       await modal.sampleCanvas.assert.hasScreenshot(
         "detection-lighter-selected-centered.png"
       );
-      await assertPosition(initialBoundingBox);
+      await assertPosition(INITIAL_BOUNDING_BOX);
 
       // Redo
       await modal.sidebar.edit.redo();
@@ -305,15 +344,17 @@ test.describe.serial("quick edit", () => {
       await modal.sampleCanvas.assert.hasScreenshot(
         "detection-lighter-selected-centered.png"
       );
-      await assertPosition(initialBoundingBox);
+      await assertPosition(INITIAL_BOUNDING_BOX);
     }
 
+    // Change confidence
     await modal.sidebar.edit.setFieldValue("confidence", "1.0");
     await modal.sampleCanvas.move(0.9, 0.9);
     await modal.sampleCanvas.assert.hasScreenshot(
       "detection-lighter-selected-centered-confidence-1.0.png"
     );
 
+    // Deselect
     await modal.sampleCanvas.move(0.5, 0.5, "grab");
     await modal.sampleCanvas.click(0.9, 0.9);
     await modal.sampleCanvas.move(0.9, 0.9, "default");
