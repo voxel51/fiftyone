@@ -747,13 +747,9 @@ function initScrollSpyFix() {
 
   const sections = [];
   tocLinks.forEach((link) => {
-    try {
-      const id = decodeURIComponent(link.getAttribute("href").slice(1));
-      const el = document.getElementById(id);
-      if (el) sections.push({ el, link });
-    } catch (e) {
-      /* malformed href, skip */
-    }
+    const id = decodeURIComponent(link.getAttribute("href").slice(1));
+    const el = document.getElementById(id);
+    if (el) sections.push({ el, link });
   });
   if (!sections.length) return;
 
