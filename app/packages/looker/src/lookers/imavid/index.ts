@@ -1,4 +1,4 @@
-import { getStandardizedUrls } from "@fiftyone/state";
+import { getNormalizedUrls } from "@fiftyone/state";
 import {
   BufferManager,
   DETECTION,
@@ -264,7 +264,7 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
       const { image: _cachedImage, ...sampleWithoutImage } =
         this.frameStoreController.store.samples.get(sampleIdFromFramesStore);
       sample = sampleWithoutImage.sample;
-      this.state.config.sources = getStandardizedUrls(sampleWithoutImage.urls);
+      this.state.config.sources = getNormalizedUrls(sampleWithoutImage.urls);
     } else if (this.sample) {
       sample = this.sample;
     }

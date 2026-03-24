@@ -1,10 +1,10 @@
 import useCanAnnotate from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useCanAnnotate";
 import * as fos from "@fiftyone/state";
-import { CameraControls } from "@react-three/drei";
+import type { CameraControls } from "@react-three/drei";
 import { useAtomValue } from "jotai";
 import React, { useCallback, useEffect } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
-import { PerspectiveCamera, Quaternion, Vector3 } from "three";
+import { type PerspectiveCamera, Quaternion, Vector3 } from "three";
 import { useWorkingLabel } from "../annotation/store";
 import type {
   ReconciledDetection3D,
@@ -19,6 +19,7 @@ import { useFo3dContext } from "../fo3d/context";
 import {
   annotationPlaneAtom,
   cameraViewStatusAtom,
+  isFo3dBackgroundOnAtom,
   selectedLabelForAnnotationAtom,
 } from "../state";
 import { isDetection3dOverlay, isPolyline3dOverlay } from "../types";
@@ -77,8 +78,16 @@ const calculateLabelCentroidAndRadius = (
         );
 
         // Calculate bounding box to determine viewing radius
-        const min = [Infinity, Infinity, Infinity];
-        const max = [-Infinity, -Infinity, -Infinity];
+        const min = [
+          Number.POSITIVE_INFINITY,
+          Number.POSITIVE_INFINITY,
+          Number.POSITIVE_INFINITY,
+        ];
+        const max = [
+          Number.NEGATIVE_INFINITY,
+          Number.NEGATIVE_INFINITY,
+          Number.NEGATIVE_INFINITY,
+        ];
         for (const point of allPoints) {
           min[0] = Math.min(min[0], point[0]);
           min[1] = Math.min(min[1], point[1]);
@@ -117,6 +126,7 @@ export const useCameraViews = ({
   const selectedLabelForAnnotation = useRecoilValue(
     selectedLabelForAnnotationAtom
   );
+  const setIsFo3dBackgroundOn = useSetRecoilState(isFo3dBackgroundOnAtom);
 
   const workingLabel = useWorkingLabel(selectedLabelForAnnotation?._id ?? "");
 
@@ -252,6 +262,19 @@ export const useCameraViews = ({
         });
         event.preventDefault();
         window.dispatchEvent(new CustomEvent(SET_ZOOM_TO_SELECTED_EVENT));
+        return;
+      }
+
+      if (
+        event.code === "KeyB" &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        !event.altKey &&
+        !event.shiftKey &&
+        !event.repeat
+      ) {
+        setIsFo3dBackgroundOn((prev) => !prev);
+        event.preventDefault();
         return;
       }
 
@@ -402,6 +425,7 @@ export const useCameraViews = ({
     ]
   );
 
+  // This effect registers and cleans up keyboard shortcuts for camera views.
   useEffect(() => {
     document.addEventListener("keydown", handleKeyDown);
 

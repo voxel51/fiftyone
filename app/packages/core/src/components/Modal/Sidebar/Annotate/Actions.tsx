@@ -10,7 +10,11 @@ import {
   useReset3dAnnotationMode,
   useSetCurrent3dAnnotationMode,
 } from "@fiftyone/looker-3d/src/state/accessors";
-import { is3DDataset, isPatchesView, pinned3d } from "@fiftyone/state";
+import {
+  is3DDataset,
+  isPatchesView,
+  useRenderConfig3dState,
+} from "@fiftyone/state";
 import {
   CLASSIFICATION,
   DETECTION,
@@ -398,7 +402,7 @@ const Actions = () => {
   // This checks if media type of the dataset resolved to 3d
   const is3dDataset = useRecoilValue(is3DDataset);
   // This checks if a 3d sample is pinned - is true when media type is `group` with a 3d slice pinned
-  const is3dSamplePinned = useRecoilValue(pinned3d);
+  const { isPinned: is3dSamplePinned } = useRenderConfig3dState();
 
   const canManage = useCanManageSchema();
 

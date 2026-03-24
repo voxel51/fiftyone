@@ -181,8 +181,8 @@ export const toEulerFromDegreesArray = (degreesArr: Vector3Tuple) => {
 export const computeMinMaxForColorBufferAttribute = (
   colorAttribute: BufferAttribute | InterleavedBufferAttribute
 ) => {
-  let minX = Infinity,
-    maxX = -Infinity;
+  let minX = Number.POSITIVE_INFINITY,
+    maxX = Number.NEGATIVE_INFINITY;
 
   for (let i = 0; i < colorAttribute.count; i++) {
     const x = colorAttribute.getX(i);
@@ -203,8 +203,8 @@ export const computeMinMaxForScalarBufferAttribute = (
   attribute: BufferAttribute | InterleavedBufferAttribute
 ) => {
   const a = attribute.array;
-  let mn = Infinity,
-    mx = -Infinity;
+  let mn = Number.POSITIVE_INFINITY,
+    mx = Number.NEGATIVE_INFINITY;
   for (let i = 0; i < a.length; i += attribute.itemSize) {
     const v = a[i];
     if (v < mn) mn = v;
@@ -358,10 +358,7 @@ export function getPlaneFromPositionAndQuaternion(
  * @param safetyMargin - The expansion factor (e.g., 1.5 for 1.5x expansion)
  * @returns A new expanded bounding box
  */
-export function expandBoundingBox(
-  boundingBox: Box3,
-  safetyMargin: number = 1.5
-): Box3 {
+export function expandBoundingBox(boundingBox: Box3, safetyMargin = 1.5): Box3 {
   if (!boundingBox || boundingBox.isEmpty()) {
     return boundingBox;
   }
@@ -470,6 +467,20 @@ export function radiansToQuaternion(
 }
 
 /**
+ * Checks if value is a numeric tuple of given length.
+ */
+export const isNumericTuple = (
+  value: unknown,
+  expectedLength: number
+): value is number[] => {
+  return (
+    Array.isArray(value) &&
+    value.length === expectedLength &&
+    value.every((item) => typeof item === "number" && Number.isFinite(item))
+  );
+};
+
+/**
  * Validates a single 3D point to ensure it's a valid array of 3 numbers
  */
 export const isValidPoint3d = (point: unknown): point is Vector3Tuple => {
@@ -548,12 +559,12 @@ export const getAxisAlignedBoundingBoxForPoints3d = (
     };
   }
 
-  let minX = Infinity,
-    minY = Infinity,
-    minZ = Infinity;
-  let maxX = -Infinity,
-    maxY = -Infinity,
-    maxZ = -Infinity;
+  let minX = Number.POSITIVE_INFINITY,
+    minY = Number.POSITIVE_INFINITY,
+    minZ = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY,
+    maxY = Number.NEGATIVE_INFINITY,
+    maxZ = Number.NEGATIVE_INFINITY;
 
   for (const [x, y, z] of validPoints) {
     minX = Math.min(minX, x);
@@ -601,7 +612,7 @@ export const calculateCameraPositionForUpVector = (
   center: Vector3,
   size: Vector3,
   upVector: Vector3,
-  distanceMultiplier: number = 2.5,
+  distanceMultiplier = 2.5,
   viewType: "top" | "pov" = "pov"
 ): Vector3 => {
   const maxSize = Math.max(size.x, size.y, size.z);
@@ -626,7 +637,7 @@ export const calculateCameraPositionForUpVector = (
   const horizontalDist = Math.abs(Math.cos(angle) * distance) / 15;
 
   // 1. choose a world-forward direction (Y up ideally, else X)
-  let worldForward = new Vector3(0, 1, 0);
+  const worldForward = new Vector3(0, 1, 0);
   if (Math.abs(upDir.dot(worldForward)) > 0.999) {
     worldForward.set(1, 0, 0);
   }

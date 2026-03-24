@@ -28,6 +28,7 @@ export { default as usePanel } from "./usePanel";
 export { default as useQueryPerformance } from "./useQueryPerformance";
 export { default as useRefresh } from "./useRefresh";
 export * from "./useRefreshSample";
+export * from "./useRenderConfig3d";
 export { default as useReset } from "./useReset";
 export { default as useResetExtendedSelection } from "./useResetExtendedSelection";
 export * from "./useRetryController";

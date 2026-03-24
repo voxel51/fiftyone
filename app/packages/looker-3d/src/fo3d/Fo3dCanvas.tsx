@@ -7,8 +7,8 @@ import {
   PerspectiveCamera as PerspectiveCameraDrei,
 } from "@react-three/drei";
 import { useAtomValue } from "jotai";
-import * as THREE from "three";
-import { Vector3 } from "three";
+import type * as THREE from "three";
+import type { Vector3 } from "three";
 import { SpinningCube } from "../SpinningCube";
 import { StatusTunnel } from "../StatusBar";
 import { AnnotationPlane } from "../annotation/AnnotationPlane";
@@ -17,13 +17,13 @@ import { Crosshair3D } from "../annotation/Crosshair3D";
 import { SegmentPolylineRenderer } from "../annotation/SegmentPolylineRenderer";
 import { PANEL_ID_MAIN } from "../constants";
 import { FrustumCollection } from "../frustum";
-import { FoScene } from "../hooks";
 import { useCameraViews } from "../hooks/use-camera-views";
 import { ThreeDLabels } from "../labels";
 import { RaycastService } from "../services/RaycastService";
 import { FoSceneComponent } from "./FoScene";
 import { Gizmos } from "./Gizmos";
-import { Fo3dPointCloudSettings } from "./context";
+import type { Fo3dPointCloudSettings } from "./context";
+import { FoScene } from "./render-types";
 import { SceneControls } from "./scene-controls/SceneControls";
 
 interface Fo3dSceneContentProps {
@@ -72,10 +72,6 @@ interface Fo3dSceneContentProps {
    */
   isSceneInitialized: boolean;
   /**
-   * Sample data for labels
-   */
-  sample: fos.ModalSample;
-  /**
    * Point cloud settings
    */
   pointCloudSettings: Fo3dPointCloudSettings;
@@ -106,12 +102,12 @@ export const Fo3dSceneContent = ({
   foScene,
   isSceneInitialized,
   isGizmoHelperVisible,
-  sample,
   pointCloudSettings,
   assetsGroupRef,
   cameraRef,
 }: Fo3dSceneContentProps) => {
   const mode = useAtomValue(fos.modalMode);
+  const { activeSampleMap: labelSampleMap } = fos.useRenderConfig3dState();
 
   useCameraViews({
     cameraRef,
@@ -162,7 +158,7 @@ export const Fo3dSceneContent = ({
 
       {isSceneInitialized && (
         <>
-          <ThreeDLabels sampleMap={{ fo3d: sample }} />
+          <ThreeDLabels sampleMap={labelSampleMap} />
           <FrustumCollection />
         </>
       )}
