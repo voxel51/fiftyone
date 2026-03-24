@@ -273,7 +273,10 @@ export const useQuickDraw = () => {
     "lighter:overlay-create",
     useCallback(
       (payload) => {
-        if (!claimEvent("overlay-create", payload.eventId)) {
+        if (
+          !quickDrawActive ||
+          !claimEvent("overlay-create", payload.eventId)
+        ) {
           return;
         }
 
@@ -290,6 +293,7 @@ export const useQuickDraw = () => {
         finalizeCurrentDetection,
         getLastField,
         getLastLabel,
+        quickDrawActive,
       ]
     )
   );

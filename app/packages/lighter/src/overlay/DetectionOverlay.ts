@@ -444,6 +444,12 @@ export class DetectionOverlay
 
       if (maskPoint) {
         this.interactionState = "PAINTING";
+        this.moveStartPoint = point;
+        this.moveStartPosition = {
+          x: this.bounds.x,
+          y: this.bounds.y,
+        };
+        this.moveStartBounds = { ...this.bounds };
         this.lastMaskPoint = maskPoint;
         this.paintAt(maskPoint);
         this.markDirty();
@@ -666,20 +672,13 @@ export class DetectionOverlay
   }
 
   onPointerUp(_point: Point, _event: PointerEvent): boolean {
-    if (this.interactionState === "PAINTING") {
-      this.interactionState = "NONE";
-      this.lastMaskPoint = undefined;
-      this.renderer?.enableZoomPan();
-
-      return true;
-    }
-
     if (!this.moveStartPoint || !this.moveStartBounds) return false;
 
     this.interactionState = "NONE";
     this.moveStartPoint = undefined;
     this.moveStartPosition = undefined;
     this.moveStartBounds = undefined;
+    this.lastMaskPoint = undefined;
     this.renderer?.enableZoomPan();
 
     return true;

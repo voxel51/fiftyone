@@ -314,7 +314,7 @@ export class InteractionManager {
             // handlers synchronously so the handler is available immediately
             // after dispatch returns.
             this.eventBus.dispatch("lighter:overlay-create", {
-              eventId: crypto.randomUUID(),
+              eventId: generateUUID(),
             });
             interactiveHandler = this.getInteractiveHandler();
           }
@@ -576,17 +576,13 @@ export class InteractionManager {
           bounds: handler.bounds,
         };
 
-        if (interactionState === "SETTING") {
-          if (!interactiveHandler) {
-            throw new Error(
-              "Invariant violation: interactionState is SETTING but interactiveHandler is undefined"
-            );
+        if (interactionState === "SETTING" || interactionState === "PAINTING") {
+          if (interactiveHandler) {
+            this.eventBus.dispatch("lighter:overlay-establish", {
+              ...detail,
+              overlay: interactiveHandler,
+            });
           }
-
-          this.eventBus.dispatch("lighter:overlay-establish", {
-            ...detail,
-            overlay: interactiveHandler,
-          });
         } else {
           const type =
             interactionState === "DRAGGING"
