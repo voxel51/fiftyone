@@ -27,9 +27,7 @@ import { OperatorResponse } from "@fiftyone/operators/src/types";
  *
  *   supported_tasks - list[str], default = e.g. ["segment"]
  *   inference_capabilities - list[str], default = e.g. ["positivePoint", "roi"]
- *     (dynamic: resolved per-task when `params.task` is set)
  *   model_metadata - object with at least a "name" field
- *     (dynamic: resolved per-task when `params.task` is set)
  *
  * All {@link AnnotationContext} fields are forwarded to the operator as
  * `params`, so the operator can access them via `ctx.params`.
@@ -64,10 +62,10 @@ export class OperatorAnnotationAgent<T extends InferenceResultProxy>
     }
 
     if (response.delegated) {
-      const sessionId = response.executor?.id;
+      const sessionId = response.result?.id;
       if (!sessionId) {
         throw new Error(
-          `Operator ${this.operatorUri} returned a delegated result with no executor id`
+          `Operator ${this.operatorUri} returned a delegated result with no operator id`
         );
       }
       return { type: "async", sessionId };
@@ -76,7 +74,7 @@ export class OperatorAnnotationAgent<T extends InferenceResultProxy>
     return {
       type: "sync",
       taskType: context.taskType,
-      response: response.result.result,
+      response: response.result?.result,
     };
   }
 
