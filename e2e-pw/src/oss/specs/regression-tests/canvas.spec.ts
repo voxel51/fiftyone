@@ -45,11 +45,11 @@ test.describe.serial("Pixelated Image Rendering", () => {
    *
    * 1. **Explore mode (Looker canvas)** — the default view when opening a
    *    sample. Asserts the canvas type is `LOOKER` and compares a screenshot
-   *    against the `looker-is-pixelated.png` baseline.
+   *    against the `pixelated.png` baseline.
    *
    * 2. **Annotate mode (Lighter canvas)** — activated by switching the sidebar
    *    mode to "annotate". Compares a screenshot against the
-   *    `lighter-is-pixelated.png` baseline.
+   *    `pixelated.png` baseline.
    */
   test("Explore and Annotate canvases have pixelated image rendering", async ({
     datasetName,
