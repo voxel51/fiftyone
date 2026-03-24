@@ -673,7 +673,6 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
             args[k] = v.to(self.device)
 
         output = self._forward_pass(args)
-
         # now there is another difference
         # should maybe consider adding callbacks of some sort
         # this just opens more ways for the user to mess up
@@ -1489,13 +1488,23 @@ class TransformersDetectorOutputProcessor(fout.DetectorOutputProcessor):
         **kwargs,
     ):
         if self._is_grounded:
+            text_labels = self.classes
+            if text_labels is not None and not isinstance(
+                text_labels[0], list
+            ):
+                text_labels = [text_labels] * len(image_sizes)
+
             output = self._objection_detection_processor(
-                output, kwargs.get("input_ids"),
-                threshold=confidence_thresh or 0, target_sizes=image_sizes,
+                output,
+                text_labels=text_labels,
+                threshold=confidence_thresh or 0,
+                target_sizes=image_sizes,
             )
         else:
             output = self._objection_detection_processor(
-                output, target_sizes=image_sizes, threshold=confidence_thresh or 0
+                output,
+                target_sizes=image_sizes,
+                threshold=confidence_thresh or 0,
             )
         res = []
         for o, img_sz in zip(output, image_sizes, strict=True):
@@ -1510,7 +1519,9 @@ class TransformersDetectorOutputProcessor(fout.DetectorOutputProcessor):
 
         return res
 
-    def _parse_output(self, output, frame_size, confidence_thresh, classes=None):
+    def _parse_output(
+        self, output, frame_size, confidence_thresh, classes=None
+    ):
         """Converts raw detector output to :class:`fiftyone.core.labels.Detections`.
 
         Unlike the base class, this handles grounded detection models that
@@ -1529,7 +1540,9 @@ class TransformersDetectorOutputProcessor(fout.DetectorOutputProcessor):
                 continue
 
             if not self._is_grounded:
-                if self.classes is not None and 0 <= int(label) < len(self.classes):
+                if self.classes is not None and 0 <= int(label) < len(
+                    self.classes
+                ):
                     label = self.classes[int(label)]
                 else:
                     label = str(label)

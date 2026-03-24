@@ -163,8 +163,14 @@ class DelegatedOperationRepo(object):
         """Count all operations."""
         raise NotImplementedError("subclass must implement count()")
 
-    def ping(self, _id: ObjectId) -> DelegatedOperationDocument:
-        """Updates the updated_at field of an operation to keep it alive."""
+    def ping(self, _id: ObjectId, log_tail: str = None):
+        """Updates the updated_at field of an operation to keep it alive.
+
+        Args:
+            _id: the operation ID
+            log_tail: optional log tail to include. This should be capped to a
+            reasonable length and should not take the place of a log file
+        """
         raise NotImplementedError("subclass must implement ping()")
 
 
@@ -607,13 +613,14 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
 
         return self._collection.count_documents(filter=query)
 
-    def ping(self, _id: ObjectId):
-        doc = self._collection.find_one_and_update(
+    def ping(self, _id: ObjectId, log_tail: str = None):
+        updates = {"updated_at": datetime.utcnow()}
+        if log_tail and isinstance(log_tail, str):
+            updates["log_tail"] = log_tail
+        self._collection.update_one(
             filter={"_id": _id},
-            update={"$set": {"updated_at": datetime.utcnow()}},
-            return_document=pymongo.ReturnDocument.AFTER,
+            update={"$set": updates},
         )
-        return DelegatedOperationDocument().from_pymongo(doc)
 
     def _extract_search_query(self, search):
         if search:
