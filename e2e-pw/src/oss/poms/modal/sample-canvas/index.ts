@@ -182,9 +182,6 @@ export class SampleCanvasPom {
 
   /**
    * Zoom the canvas by scrolling the mouse wheel at the canvas center.
-   *
-   * A negative deltaY zooms in; a positive deltaY zooms out.
-   *
    * @param deltaY The wheel scroll delta (negative = zoom in, positive = zoom out)
    */
   async zoom(deltaY: number) {
@@ -196,27 +193,12 @@ export class SampleCanvasPom {
   }
 
   /**
-   * Capture a clean screenshot of the sample canvas with overlays hidden.
-   *
-   * Moves the cursor to the canvas center and holds Shift so renderers hide
-   * annotation overlays before snapping the screenshot. Polls until two
-   * consecutive frames are pixel-identical so the result is stable regardless
-   * of machine speed (local vs CI).
-   *
-   * Screenshots the inner <canvas> element directly rather than the full
-   * container div. This excludes HTML overlays (hover checkbox, controls bar)
-   * that may be in transient states and cause non-deterministic pixel diffs.
-   *
+   * Capture a clean screenshot of the sample canvas.
+   * Moves the cursor to the canvas center and optionally holds Shift so
+   * renderers hide annotation overlays before snapping the screenshot.
    * @param hideOverlays Whether to hold Shift to suppress annotation overlays
-   * @param pollMs Interval between stability-check frames (defaults to 100ms)
-   * @param maxAttempts Maximum number of poll iterations before giving up
-   *   (default 20 means a 2 s ceiling)
    */
-  async screenshot(
-    hideOverlays = false,
-    pollMs = 100,
-    maxAttempts = 20
-  ): Promise<Buffer> {
+  async screenshot(hideOverlays = false): Promise<Buffer> {
     const box = await this.locator.boundingBox();
     await this.page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
 
@@ -236,21 +218,9 @@ export class SampleCanvasPom {
     const target =
       (await lookerCanvas.count()) > 0 ? lookerCanvas : lighterCanvas;
 
-    // Poll until two consecutive screenshots are pixel-identical, meaning the
-    // canvas has finished rendering and is no longer animating.
-    let prev: Buffer | null = null;
-    for (let i = 0; i < maxAttempts; i++) {
-      await this.page.waitForTimeout(pollMs);
-      const curr = Buffer.from(await target.screenshot());
-      if (prev && Buffer.compare(prev, curr) === 0) {
-        if (hideOverlays) await this.page.keyboard.up("Shift");
-        return curr;
-      }
-      prev = curr;
-    }
-
+    const buf = Buffer.from(await target.screenshot());
     if (hideOverlays) await this.page.keyboard.up("Shift");
-    return prev!;
+    return buf;
   }
 
   async #toScreenCoordinates(x: number, y: number) {

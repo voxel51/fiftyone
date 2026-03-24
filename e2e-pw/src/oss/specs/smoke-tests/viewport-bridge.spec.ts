@@ -47,15 +47,7 @@ test.afterEach(async ({ modal, page }) => {
 });
 
 test.describe.serial("viewport-bridge-visual", () => {
-  /**
-   * Looker -> Lighter -> Looker round-trip, same renderer screenshot comparison.
-   *
-   * After panning and zooming Looker, we toggle through Lighter and back.
-   * Since Looker is the same renderer both times, the screenshot must be
-   * pixel-for-pixel identical — this proves the atom bridge preserves the
-   * full viewport state with zero loss.
-   */
-  test("visual round-trip: Looker screenshot is identical before and after Looker→Lighter→Looker", async ({
+  test("visual round-trip: Looker screenshot is identical after toggling to Lighter and back", async ({
     grid,
     modal,
   }) => {
@@ -93,15 +85,6 @@ test.describe.serial("viewport-bridge-visual", () => {
     expect(diff.percent).toBeLessThan(0.001);
   });
 
-  /**
-   * Cross-renderer visual comparison: Looker vs Lighter showing the same region.
-   *
-   * After panning and zooming in Looker, we switch to Lighter and compare the
-   * two screenshots with Jimp. The two renderers (Canvas 2D vs WebGL/Pixi.js)
-   * produce slightly different pixels, so we allow up to 10% per-pixel
-   * deviation. If the viewport were NOT restored the image region would be
-   * completely different and the diff would approach 1.0.
-   */
   test("visual cross-renderer: Lighter shows same image region as Looker after viewport transfer", async ({
     grid,
     modal,
@@ -129,10 +112,7 @@ test.describe.serial("viewport-bridge-visual", () => {
 
     // Allow per-pixel color distance up to 15% of the maximum (255) to account
     // for the difference in rendering pipelines (Canvas 2D vs WebGL/Pixi.js).
-    // Screenshots now capture only the inner <canvas> element, so toolbar
-    // strips are already excluded.
     const diff = jimpDiff(lookerImg, lighterImg, 0.15);
-
 
     // Less than 10% of pixels may differ; a completely wrong viewport would
     // push this near 1.0.
