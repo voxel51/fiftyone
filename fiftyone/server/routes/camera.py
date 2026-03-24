@@ -38,18 +38,20 @@ def _parse_transform_key(key: str):
 
 def _serialize_static_transform(
     transform: focam.StaticTransform,
-    source_frame: Optional[str] = None,
-    target_frame: Optional[str] = None,
+    fallback_source_frame: Optional[str] = None,
+    fallback_target_frame: Optional[str] = None,
 ) -> Optional[_SerializedStaticTransform]:
-    """Serializes a static transform with normalized source/target frames."""
+    """Serializes a transform, filling missing frames from fallbacks."""
     serialized = utils.json.serialize(transform)
-    normalized_source = serialized.get("source_frame") or source_frame
+    normalized_source = (
+        serialized.get("source_frame") or fallback_source_frame
+    )
     if not normalized_source:
         return None
 
     normalized_target = (
         serialized.get("target_frame")
-        or target_frame
+        or fallback_target_frame
         or focam.DEFAULT_TRANSFORM_TARGET_FRAME
     )
     serialized["source_frame"] = normalized_source
@@ -183,8 +185,8 @@ def _collect_sample_static_transforms_from_value(
         if isinstance(ref_value, focam.StaticTransform):
             serialized = _serialize_static_transform(
                 ref_value,
-                source_frame=source_frame,
-                target_frame=target_frame,
+                fallback_source_frame=source_frame,
+                fallback_target_frame=target_frame,
             )
             if serialized is not None:
                 serialized_transforms.append(serialized)
@@ -227,8 +229,8 @@ def _list_resolved_sample_static_transforms(
 
             serialized = _serialize_static_transform(
                 transform,
-                source_frame=source_frame,
-                target_frame=target_frame,
+                fallback_source_frame=source_frame,
+                fallback_target_frame=target_frame,
             )
             if serialized is not None:
                 serialized_transforms.append(serialized)
