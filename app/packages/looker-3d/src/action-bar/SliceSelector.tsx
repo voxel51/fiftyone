@@ -29,10 +29,11 @@ const SliceSelectorLabel = styled.div`
   }
 `;
 
+/**
+ * Toggles the grouped 3D slice picker and summarizes the current selection.
+ */
 export const SliceSelector = () => {
-  const {
-    state: { activeSlices, allSlices },
-  } = fos.useRenderConfig3d();
+  const { activeSlices, allSlices } = fos.useRenderConfig3dState();
   const [currentAction, setAction] = useRecoilState(currentActionAtom);
 
   const activeSlicesLabel = useMemo(() => {
@@ -65,10 +66,12 @@ export const SliceSelector = () => {
 
   return (
     <>
-      <ActionItem data-cy={"looker3d-select-slices"} title="Select 3D slices">
-        <SliceSelectorLabel onClick={handleActionClick}>
-          {activeSlicesLabel}
-        </SliceSelectorLabel>
+      <ActionItem
+        data-cy={"looker3d-select-slices"}
+        title="Select 3D slices"
+        onClick={handleActionClick}
+      >
+        <SliceSelectorLabel>{activeSlicesLabel}</SliceSelectorLabel>
       </ActionItem>
 
       {currentAction === ACTION_SET_PCDS && <PcdsSelector />}
@@ -77,10 +80,9 @@ export const SliceSelector = () => {
 };
 
 const PcdsSelector = () => {
-  const {
-    state: { activeSlices, allSampleMap, allSlices },
-    actions,
-  } = fos.useRenderConfig3d();
+  const { activeSlices, allSampleMap, allSlices } =
+    fos.useRenderConfig3dState();
+  const actions = fos.useRenderConfig3dActions();
   const setCurrentAction = useSetRecoilState(currentActionAtom);
   const availableSlices = allSlices.filter((slice) =>
     Boolean(allSampleMap[slice])

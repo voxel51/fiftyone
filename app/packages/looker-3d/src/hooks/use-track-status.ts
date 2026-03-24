@@ -12,7 +12,10 @@ export const ALL_LOADING_COMPLETE = "All loading complete!";
 const noop = () => undefined;
 
 /** Tracks THREE loading-manager events and mirrors status/logs into Recoil. */
-export const useTrackStatus = (loadingManager: LoadingManager | null) => {
+export const useTrackStatus = (
+  loadingManager: LoadingManager | null,
+  isSceneReady = false
+) => {
   const loadingStatusView = useLoadingStatus();
   const setLogs = useSetRecoilState(fo3dAssetsParseStatusThisSample);
   const [loadingStatusState, setLoadingStatus] = useRecoilState(
@@ -30,6 +33,26 @@ export const useTrackStatus = (loadingManager: LoadingManager | null) => {
       timestamp: Date.now(),
     });
   }, [loadingManager, setLoadingStatus, setLogs]);
+
+  useEffect(() => {
+    if (!isSceneReady || loadingStatusState.status !== LoadingStatus.IDLE) {
+      return;
+    }
+
+    setLoadingStatus({
+      status: LoadingStatus.SUCCESS,
+      progress: 100,
+      itemsLoaded: loadingStatusState.itemsLoaded || 0,
+      itemsTotal: loadingStatusState.itemsTotal || 0,
+      timestamp: Date.now(),
+    });
+  }, [
+    isSceneReady,
+    loadingStatusState.itemsLoaded,
+    loadingStatusState.itemsTotal,
+    loadingStatusState.status,
+    setLoadingStatus,
+  ]);
 
   useEffect(() => {
     if (!loadingManager) {

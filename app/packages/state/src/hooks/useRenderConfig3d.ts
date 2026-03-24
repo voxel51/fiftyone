@@ -1,27 +1,22 @@
 import { is3d } from "@fiftyone/utilities";
 import { useMemo } from "react";
-import type { Loadable } from "recoil";
+import { useRecoilCallback, useRecoilValue } from "recoil";
 import {
-  useRecoilCallback,
-  useRecoilValue,
-  useRecoilValueLoadable,
-} from "recoil";
-import type { ModalSample } from "../recoil/modal";
-import {
-  groupMediaIsMain2DViewerVisibleSetting,
   groupMediaIsCarouselVisibleSetting,
+  groupMediaIsMain2DViewerVisibleSetting,
   groupMediaTypesMap,
 } from "../recoil/groups";
-import * as internals from "../recoil/renderConfig3d.atoms";
 import {
   areSlicesEqual,
   resolveNormalized3dSelection,
 } from "../recoil/groups.utils";
+import type { ModalSample } from "../recoil/modal";
+import * as internals from "../recoil/renderConfig3d.atoms";
 
 type RenderConfig3dSampleMap = Record<string, ModalSample>;
 
 /**
- * Derived 3D modal state exposed by {@link useRenderConfig3d}.
+ * Derived 3D modal state exposed by {@link useRenderConfig3dState}.
  */
 export type RenderConfig3dState = {
   /** Active non-FO3D 3D slices rendered alongside the scene. */
@@ -30,14 +25,10 @@ export type RenderConfig3dState = {
   activeFo3dSlice: string | null;
   /** Resolved samples for the currently active 3D slices. */
   activeSampleMap: RenderConfig3dSampleMap;
-  /** Raw loadable for the active 3D sample map. */
-  activeSampleMapLoadable: Loadable<RenderConfig3dSampleMap>;
   /** Slice names currently participating in 3D rendering. */
   activeSlices: string[];
   /** Resolved samples for every available 3D slice in the current modal context. */
   allSampleMap: RenderConfig3dSampleMap;
-  /** Raw loadable for the full 3D sample map. */
-  allSampleMapLoadable: Loadable<RenderConfig3dSampleMap>;
   /** All available 3D slice names. */
   allSlices: string[];
   /** Parsed FO3D scene content cached for the active scene sample. */
@@ -69,7 +60,7 @@ export type RenderConfig3dState = {
 };
 
 /**
- * Mutation helpers exposed by {@link useRenderConfig3d}.
+ * Mutation helpers exposed by {@link useRenderConfig3dActions}.
  */
 export type RenderConfig3dActions = {
   /** Focuses a slice in the modal, switching between 2D and 3D modes as needed. */
@@ -89,23 +80,17 @@ export type RenderConfig3dActions = {
 };
 
 /**
- * Public return shape for {@link useRenderConfig3d}.
+ * Imperative snapshot query helpers exposed by {@link useRenderConfig3dImperativeState}.
  */
-export type UseRenderConfig3dResult = {
-  actions: RenderConfig3dActions;
-  state: RenderConfig3dState;
+export type RenderConfig3dImperativeState = {
+  /** Resolves the latest pinned status */
+  getIsPinned: () => Promise<boolean>;
 };
 
 /**
- * Public 3D render config hook.
- *
- * This is the single supported React-facing API for 3D modal render state.
- * It exposes the derived state needed by 3D UI and the write actions that keep
- * FO3D/direct-slice invariants consistent.
- *
- * @returns Derived 3D modal state plus the mutations that keep it normalized.
+ * Suspense-compatible 3D render state for React rendering.
  */
-export const useRenderConfig3d = (): UseRenderConfig3dResult => {
+export const useRenderConfig3dState = (): RenderConfig3dState => {
   const is3dVisible = useRecoilValue(internals.groupMediaIs3dVisible);
   const is3dVisibleSetting = useRecoilValue(
     internals.groupMedia3dVisibleSetting
@@ -125,13 +110,79 @@ export const useRenderConfig3d = (): UseRenderConfig3dResult => {
   const interactionSlice = useRecoilValue(internals.interaction3dSlice);
   const sceneSample = useRecoilValue(internals.sceneSample);
   const fo3dContent = useRecoilValue(internals.fo3dContent);
-  const activeSampleMapLoadable = useRecoilValueLoadable(
-    internals.active3dSlicesToSampleMap
-  );
-  const allSampleMapLoadable = useRecoilValueLoadable(
-    internals.all3dSlicesToSampleMap
-  );
+  const activeSampleMap = useRecoilValue(internals.active3dSlicesToSampleMap);
+  const allSampleMap = useRecoilValue(internals.all3dSlicesToSampleMap);
 
+  return useMemo<RenderConfig3dState>(
+    () => ({
+      is3dVisible,
+      is3dVisibleSetting,
+      isPinned,
+      has3dSlice,
+      hasFo3dSlice,
+      pinnedSlice,
+      activeSlices,
+      allSlices,
+      non3dSlices,
+      hasMultipleSlices,
+      realFo3dSlices,
+      activeFo3dSlice,
+      activeDirectSlices,
+      activeSampleMap,
+      allSampleMap,
+      interactionSample,
+      interactionSlice,
+      sceneSample,
+      fo3dContent,
+    }),
+    [
+      activeDirectSlices,
+      activeFo3dSlice,
+      activeSampleMap,
+      activeSlices,
+      allSampleMap,
+      allSlices,
+      fo3dContent,
+      has3dSlice,
+      hasFo3dSlice,
+      hasMultipleSlices,
+      interactionSample,
+      interactionSlice,
+      is3dVisible,
+      is3dVisibleSetting,
+      isPinned,
+      non3dSlices,
+      pinnedSlice,
+      realFo3dSlices,
+      sceneSample,
+    ]
+  );
+};
+
+/**
+ * Imperative 3D render state queries for event handlers and callbacks.
+ */
+export const useRenderConfig3dImperativeState =
+  (): RenderConfig3dImperativeState => {
+    const getIsPinned = useRecoilCallback(
+      ({ snapshot }) =>
+        async () =>
+          snapshot.getPromise(internals.is3dPinned),
+      []
+    );
+
+    return useMemo<RenderConfig3dImperativeState>(
+      () => ({
+        getIsPinned,
+      }),
+      [getIsPinned]
+    );
+  };
+
+/**
+ * 3D render config mutation actions.
+ */
+export const useRenderConfig3dActions = (): RenderConfig3dActions => {
   const setFo3dContent = useRecoilCallback(
     ({ set }) =>
       (content: unknown | null) => {
@@ -337,60 +388,7 @@ export const useRenderConfig3d = (): UseRenderConfig3dResult => {
     []
   );
 
-  const state = useMemo<RenderConfig3dState>(
-    () => ({
-      is3dVisible,
-      is3dVisibleSetting,
-      isPinned,
-      has3dSlice,
-      hasFo3dSlice,
-      pinnedSlice,
-      activeSlices,
-      allSlices,
-      non3dSlices,
-      hasMultipleSlices,
-      realFo3dSlices,
-      activeFo3dSlice,
-      activeDirectSlices,
-      activeSampleMap:
-        activeSampleMapLoadable.state === "hasValue"
-          ? activeSampleMapLoadable.contents
-          : {},
-      allSampleMap:
-        allSampleMapLoadable.state === "hasValue"
-          ? allSampleMapLoadable.contents
-          : {},
-      activeSampleMapLoadable,
-      allSampleMapLoadable,
-      interactionSample,
-      interactionSlice,
-      sceneSample,
-      fo3dContent,
-    }),
-    [
-      activeDirectSlices,
-      activeFo3dSlice,
-      activeSampleMapLoadable,
-      activeSlices,
-      allSampleMapLoadable,
-      allSlices,
-      fo3dContent,
-      has3dSlice,
-      hasFo3dSlice,
-      hasMultipleSlices,
-      interactionSample,
-      interactionSlice,
-      is3dVisible,
-      is3dVisibleSetting,
-      isPinned,
-      non3dSlices,
-      pinnedSlice,
-      realFo3dSlices,
-      sceneSample,
-    ]
-  );
-
-  const actions = useMemo<RenderConfig3dActions>(
+  return useMemo<RenderConfig3dActions>(
     () => ({
       focusSlice,
       initializeFromModalSlice,
@@ -409,13 +407,5 @@ export const useRenderConfig3d = (): UseRenderConfig3dResult => {
       setVisible,
       toggleSlice,
     ]
-  );
-
-  return useMemo<UseRenderConfig3dResult>(
-    () => ({
-      state,
-      actions,
-    }),
-    [actions, state]
   );
 };

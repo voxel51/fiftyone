@@ -6,6 +6,7 @@ import {
   groupSliceFragment,
   groupSliceFragment$key,
 } from "@fiftyone/relay";
+import { get as getPath } from "lodash";
 import { VariablesOf } from "react-relay";
 import {
   DefaultValue,
@@ -167,7 +168,7 @@ export const defaultGroupSlice = graphQLSyncFragmentAtom<
   }
 );
 
-export const modalGroupSlice = atom<string>({
+export const modalGroupSlice = atom<string | null>({
   key: "modalGroupSlice",
   default: null,
 });
@@ -200,6 +201,48 @@ export const groupSlices = selector({
         .sort();
     }
     return [];
+  },
+});
+
+/**
+ * Slice names that actually exist for the currently opened modal group.
+ *
+ * This differs from {@link groupSlices}, which describes dataset-level slice
+ * definitions. Sparse groups may omit some slices entirely, and annotate-mode
+ * selectors should only offer slices that are present for the active group.
+ */
+export const currentGroupSliceNames = selector<string[]>({
+  key: "currentGroupSliceNames",
+  get: ({ get }) => {
+    if (!get(hasGroupSlices) || !get(groupId)) {
+      return [];
+    }
+
+    const slices = get(groupSlices);
+    if (!slices.length) {
+      return [];
+    }
+
+    const currentGroupField = get(groupField);
+    const samples = get(
+      groupSamples({
+        slices,
+        count: null,
+        paginationData: false,
+      })
+    );
+    const availableSliceSet = new Set(
+      samples
+        .map(
+          (sample) =>
+            getPath(sample.sample, `${currentGroupField}.name`) as unknown as
+              | string
+              | null
+        )
+        .filter(Boolean)
+    );
+
+    return slices.filter((slice) => availableSliceSet.has(slice));
   },
 });
 
@@ -328,6 +371,40 @@ export const non3dSamples = selector({
   key: "non3dSamples",
   get: ({ get }) =>
     get(groupSamples({ slices: get(allNon3dSlices), count: 1 })),
+});
+
+export const groupHasSampleOnSlice = graphQLSelectorFamily<
+  VariablesOf<foq.paginateSamplesQuery>,
+  { groupId: string | null; slice: string | null },
+  boolean | null
+>({
+  key: "groupHasSampleOnSlice",
+  environment: RelayEnvironmentKey,
+  query: foq.paginateSamples,
+  variables:
+    ({ groupId, slice }) =>
+    ({ get }) => {
+      if (!groupId || !slice) {
+        return null;
+      }
+
+      return {
+        count: 1,
+        dataset: get(datasetName),
+        view: get(groupView),
+        filter: {
+          group: {
+            slice,
+            id: groupId,
+            slices: [slice],
+          },
+        },
+        paginationData: false,
+      };
+    },
+  mapResponse: (data: ResponseFrom<foq.paginateSamplesQuery>) => {
+    return data.samples.edges.length > 0;
+  },
 });
 
 export const activeModalSample = selector({

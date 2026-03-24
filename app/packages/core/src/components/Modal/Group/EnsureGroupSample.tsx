@@ -21,7 +21,7 @@ import { is3d } from "@fiftyone/utilities";
 export default ({
   children,
 }: React.PropsWithChildren<Record<string, never>>) => {
-  const { actions } = fos.useRenderConfig3d();
+  const actions = fos.useRenderConfig3dActions();
   const modal = useRecoilValueLoadable(modalSample);
   const slice = useRecoilValue(modalGroupSlice);
   const resetGroupSlice = useRecoilCallback(
