@@ -23,7 +23,7 @@ export const dynamicGroupsElementCount = selectorFamily({
             paths: [""],
             useSelection: false,
           })
-        ).at(0)?.count ?? 0
+        )?.at(0)?.count ?? 0
       );
     },
 });

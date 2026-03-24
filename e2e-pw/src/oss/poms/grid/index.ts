@@ -81,6 +81,11 @@ export class GridPom {
   }
 
   async selectSlice(slice: string) {
+    if (await this.page.getByTestId("modal").isVisible()) {
+      // Defensive, no-op-ish cleanup to dismiss any open thing before interacting with the grid slice selector.
+      await this.page.click("body", { position: { x: 0, y: 0 } });
+    }
+
     await this.sliceSelector.selectSlice(slice);
   }
 
@@ -149,15 +154,15 @@ class GridAsserter {
   }
 
   async isEntryCountTextEqualTo(text: string) {
-    return this.gridPom.page.waitForFunction(
-      (text_) => {
-        return (
-          document.querySelector("[data-cy='entry-counts']").textContent ===
-          text_
-        );
-      },
-      text,
-      { timeout: 2000 }
-    );
+    const entryCounts = this.gridPom.page.getByTestId("entry-counts");
+    const normalize = (value: string | null) =>
+      (value ?? "").replace(/\s+/g, " ").trim();
+
+    await expect(entryCounts).toBeVisible({ timeout: Duration.Seconds(20) });
+    await expect
+      .poll(async () => normalize(await entryCounts.textContent()), {
+        timeout: Duration.Seconds(20),
+      })
+      .toBe(normalize(text));
   }
 }

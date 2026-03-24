@@ -1,4 +1,5 @@
 import { useLoader } from "@react-three/fiber";
+import { useFo3dContext } from "../fo3d/context";
 
 function ensureArray(value) {
   if (Array.isArray(value)) {
@@ -19,7 +20,13 @@ export function useFoLoader<
   urls: TInput,
   loaderFunction?: Parameters<typeof useLoader>[2]
 ) {
+  const { loadingManager } = useFo3dContext();
+
   return useLoader(loader, urls, (loaderInstance) => {
+    if (loadingManager) {
+      (loaderInstance as { manager?: unknown }).manager = loadingManager;
+    }
+
     const customCredentialsAudience = sessionStorage.getItem(
       "customCredentialsAudience"
     );

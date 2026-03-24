@@ -10,7 +10,12 @@ import {
   KnownContexts,
   useKeyBindings,
 } from "@fiftyone/commands";
-import { HelpPanel, JSONPanel } from "@fiftyone/components";
+import {
+  ErrorDisplayMarkup,
+  HelpPanel,
+  JSONPanel,
+  Loading,
+} from "@fiftyone/components";
 import { selectiveRenderingEventBus } from "@fiftyone/looker";
 import { OPERATOR_PROMPT_AREAS, OperatorPromptArea } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
@@ -19,9 +24,20 @@ import {
   currentModalUniqueIdJotaiAtom,
   jotaiStore,
 } from "@fiftyone/state/src/jotai";
-import React, { Fragment, useCallback, useMemo, useRef } from "react";
+import { is3d } from "@fiftyone/utilities";
+import React, {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+} from "react";
 import ReactDOM from "react-dom";
 import { useRecoilCallback, useRecoilValue } from "recoil";
+import {
+  ErrorBoundary as ReactErrorBoundary,
+  FallbackProps,
+} from "react-error-boundary";
 import styled from "styled-components";
 import Actions from "./Actions";
 import ModalNavigation from "./ModalNavigation";
@@ -79,11 +95,58 @@ const AnnotationHandlerRegistration = () => {
   return <Fragment />;
 };
 
+const ModalErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => {
+  const modalGroupSlice = useRecoilValue(fos.modalGroupSlice);
+  const errorSliceRef = useRef(modalGroupSlice);
+  const recoverGroupSlice = useRecoilCallback(
+    ({ snapshot, set }) =>
+      async () => {
+        const fallback = await snapshot.getPromise(fos.groupSlice);
+
+        if (fallback) {
+          set(fos.modalGroupSlice, fallback);
+        }
+      },
+    []
+  );
+
+  useEffect(() => {
+    if (error instanceof fos.GroupSampleNotFound) {
+      void recoverGroupSlice();
+    }
+  }, [error, recoverGroupSlice]);
+
+  useEffect(() => {
+    if (
+      error instanceof fos.GroupSampleNotFound &&
+      modalGroupSlice &&
+      modalGroupSlice !== errorSliceRef.current
+    ) {
+      resetErrorBoundary();
+    }
+  }, [error, modalGroupSlice, resetErrorBoundary]);
+
+  if (error instanceof fos.GroupSampleNotFound) {
+    return <Loading>Pixelating...</Loading>;
+  }
+
+  return (
+    <ErrorDisplayMarkup
+      error={error as Error}
+      resetErrorBoundary={resetErrorBoundary}
+    />
+  );
+};
+
 const Modal = () => {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const pointerDownTargetRef = useRef<EventTarget | null>(null);
   const { enabled: isAnnotationEnabled } = useRecoilValue(canAnnotate);
   const clearModal = fos.useClearModal();
+  const { is3dVisible } = fos.useRenderConfig3dState();
+  const groupSlice = useRecoilValue(fos.groupSlice);
+  const modalGroupSlice = useRecoilValue(fos.modalGroupSlice);
+  const modalSelector = useRecoilValue(fos.modalSelector);
 
   const onPointerDownModalWrapper = useCallback((e: React.PointerEvent) => {
     // Track where the pointer down started
@@ -108,89 +171,82 @@ const Modal = () => {
   const { jsonPanel, helpPanel } = useLookerHelpers();
 
   const modalCloseHandler = useRecoilCallback(
-    ({ snapshot, set }) =>
-      async () => {
-        const isTooltipCurrentlyLocked = await snapshot.getPromise(
-          fos.isTooltipLocked
-        );
-        if (isTooltipCurrentlyLocked) {
-          set(fos.isTooltipLocked, false);
-          return;
-        }
+    ({ snapshot, set }) => async () => {
+      const isTooltipCurrentlyLocked = await snapshot.getPromise(
+        fos.isTooltipLocked
+      );
+      if (isTooltipCurrentlyLocked) {
+        set(fos.isTooltipLocked, false);
+        return;
+      }
 
-        jsonPanel.close();
-        helpPanel.close();
+      jsonPanel.close();
+      helpPanel.close();
 
-        const isFullScreen = await snapshot.getPromise(fos.fullscreen);
+      const isFullScreen = await snapshot.getPromise(fos.fullscreen);
 
-        if (isFullScreen) {
-          set(fos.fullscreen, false);
-          return;
-        }
+      if (isFullScreen) {
+        set(fos.fullscreen, false);
+        return;
+      }
 
-        clearModal();
-        activeLookerRef.current?.removeEventListener(
-          "close",
-          modalCloseHandler
-        );
+      clearModal();
+      activeLookerRef.current?.removeEventListener("close", modalCloseHandler);
 
-        selectiveRenderingEventBus.removeAllListeners();
+      selectiveRenderingEventBus.removeAllListeners();
 
-        jotaiStore.set(currentModalUniqueIdJotaiAtom, "");
-      },
+      jotaiStore.set(currentModalUniqueIdJotaiAtom, "");
+    },
     [clearModal, jsonPanel, helpPanel]
   );
 
   const selectCallback = useRecoilCallback(
-    ({ snapshot, set }) =>
-      async () => {
-        const current = await snapshot.getPromise(fos.modalSelector);
-        set(fos.selectedSamples, (selected) => {
-          const newSelected = new Set([...Array.from(selected)]);
-          if (current?.id) {
-            if (newSelected.has(current.id)) {
-              newSelected.delete(current.id);
-            } else {
-              newSelected.add(current.id);
-            }
+    ({ snapshot, set }) => async () => {
+      const current = await snapshot.getPromise(fos.modalSelector);
+      set(fos.selectedSamples, (selected) => {
+        const newSelected = new Set([...Array.from(selected)]);
+        if (current?.id) {
+          if (newSelected.has(current.id)) {
+            newSelected.delete(current.id);
+          } else {
+            newSelected.add(current.id);
           }
-          return newSelected;
-        });
-      },
+        }
+        return newSelected;
+      });
+    },
     []
   );
 
   const sidebarFn = useRecoilCallback(
-    ({ set }) =>
-      async () => {
-        set(fos.sidebarVisible(true), (prev) => !prev);
-      },
+    ({ set }) => async () => {
+      set(fos.sidebarVisible(true), (prev) => !prev);
+    },
     []
   );
 
   const fullscreenFn = useRecoilCallback(
-    ({ set }) =>
-      async () => {
-        set(fos.fullscreen, (prev) => !prev);
-      },
+    ({ set }) => async () => {
+      set(fos.fullscreen, (prev) => !prev);
+    },
     []
   );
 
   const closeFn = useRecoilCallback(
-    ({ snapshot }) =>
-      async () => {
-        const mediaType = await snapshot.getPromise(fos.mediaType);
-        const is3dVisible = await snapshot.getPromise(
-          fos.groupMediaIs3dVisible
-        );
-        if (activeLookerRef.current || mediaType === "3d" || is3dVisible) {
-          // we handle close logic in modal + other places
-          return;
-        }
+    ({ snapshot }) => async () => {
+      const mediaType = await snapshot.getPromise(fos.mediaType);
+      if (
+        activeLookerRef.current ||
+        (mediaType && is3d(mediaType)) ||
+        is3dVisible
+      ) {
+        // we handle close logic in modal + other places
+        return;
+      }
 
-        await modalCloseHandler();
-      },
-    [modalCloseHandler]
+      await modalCloseHandler();
+    },
+    [is3dVisible, modalCloseHandler]
   );
 
   const isSidebarVisible = useRecoilValue(fos.sidebarVisible(true));
@@ -243,22 +299,21 @@ const Modal = () => {
   > | null>(null);
 
   const onLookerSet = useRecoilCallback(
-    ({ snapshot }) =>
-      (looker: fos.Lookers) => {
-        looker.addEventListener("close", modalCloseHandler);
+    ({ snapshot }) => (looker: fos.Lookers) => {
+      looker.addEventListener("close", modalCloseHandler);
 
-        // remove previous event listener
-        removeTooltipEventHanlderRef.current?.();
-        removeTooltipEventHanlderRef.current = addTooltipEventHandler(looker);
+      // remove previous event listener
+      removeTooltipEventHanlderRef.current?.();
+      removeTooltipEventHanlderRef.current = addTooltipEventHandler(looker);
 
-        // set the current modal unique id
-        jotaiStore.set(
-          currentModalUniqueIdJotaiAtom,
-          `${snapshot.getLoadable(fos.groupId).getValue()}-${snapshot
-            .getLoadable(fos.nullableModalSampleId)
-            .getValue()}`
-        );
-      },
+      // set the current modal unique id
+      jotaiStore.set(
+        currentModalUniqueIdJotaiAtom,
+        `${snapshot.getLoadable(fos.groupId).getValue()}-${snapshot
+          .getLoadable(fos.nullableModalSampleId)
+          .getValue()}`
+      );
+    },
     [modalCloseHandler, addTooltipEventHandler]
   );
 
@@ -287,29 +342,39 @@ const Modal = () => {
         {isAnnotationEnabled && <AnnotationHandlerRegistration />}
         <TooltipInfo />
         <ModalContainer style={{ ...screenParams }}>
-          <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_LEFT} />
-          <ModalNavigation closePanels={closePanels} />
-          <SpacesContainer>
-            <ModalSpace />
-          </SpacesContainer>
-          {isSidebarVisible && <Sidebar />}
-          <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_RIGHT} />
+          <ReactErrorBoundary
+            FallbackComponent={ModalErrorFallback}
+            resetKeys={[
+              modalSelector?.id,
+              modalSelector?.groupId,
+              groupSlice,
+              modalGroupSlice,
+            ]}
+          >
+            <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_LEFT} />
+            <ModalNavigation closePanels={closePanels} />
+            <SpacesContainer>
+              <ModalSpace />
+            </SpacesContainer>
+            {isSidebarVisible && <Sidebar />}
+            <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_RIGHT} />
 
-          {jsonPanel.isOpen && (
-            <JSONPanel
-              containerRef={jsonPanel.containerRef}
-              onClose={() => jsonPanel.close()}
-              onCopy={() => jsonPanel.copy()}
-              json={jsonPanel.json}
-            />
-          )}
-          {helpPanel.isOpen && (
-            <HelpPanel
-              containerRef={helpPanel.containerRef}
-              onClose={() => helpPanel.close()}
-              items={helpPanel.items}
-            />
-          )}
+            {jsonPanel.isOpen && (
+              <JSONPanel
+                containerRef={jsonPanel.containerRef}
+                onClose={() => jsonPanel.close()}
+                onCopy={() => jsonPanel.copy()}
+                json={jsonPanel.json}
+              />
+            )}
+            {helpPanel.isOpen && (
+              <HelpPanel
+                containerRef={helpPanel.containerRef}
+                onClose={() => helpPanel.close()}
+                items={helpPanel.items}
+              />
+            )}
+          </ReactErrorBoundary>
         </ModalContainer>
       </ModalWrapper>
     </modalContext.Provider>,
