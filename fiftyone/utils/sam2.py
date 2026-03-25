@@ -346,14 +346,14 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
         entrypoint = etau.get_function(config.entrypoint_fcn)
         with self.ctx:
             model = entrypoint(
-                config.entrypoint_args["model_cfg"],
+                config.entrypoint_args["config_file"],
                 ckpt_path=config.model_path,
                 device=self._device,
             )
         return model
 
     def predict(self, video_reader, sample):
-        field_name, negative_field_name = self._get_field()
+        field_name = self._get_field()
         (
             self._curr_frame_width,
             self._curr_frame_height,
@@ -381,17 +381,7 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
 
         prompt_field = prompt_field[len("frames.") :]
 
-        # Get negative_prompt_field if provided
-        negative_prompt_field = None
-        if "negative_prompt_field" in self.needs_fields:
-            negative_prompt_field = self.needs_fields["negative_prompt_field"]
-            if not negative_prompt_field.startswith("frames."):
-                raise ValueError(
-                    "'negative_prompt_field' should be a frame field for segment anything 2 video model"
-                )
-            negative_prompt_field = negative_prompt_field[len("frames.") :]
-
-        return prompt_field, negative_prompt_field
+        return prompt_field
 
     def _get_prompt_type(self, sample, field_name):
         for _, frame in sample.frames.items():
