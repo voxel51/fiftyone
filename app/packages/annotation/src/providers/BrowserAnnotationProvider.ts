@@ -88,9 +88,14 @@ export class BrowserAnnotationProvider implements AnnotationProvider {
 
     this.onStatus?.("loading");
 
-    this.worker = new Worker(new URL("./worker.ts", import.meta.url), {
-      type: "module",
-    });
+    try {
+      this.worker = new Worker(new URL("./worker.ts", import.meta.url), {
+        type: "module",
+      });
+    } catch (err) {
+      this.onStatus?.("failure");
+      throw err;
+    }
 
     this.worker.onmessage = (e: MessageEvent) => {
       const { id, type, success, result, error } = e.data;
@@ -133,6 +138,8 @@ export class BrowserAnnotationProvider implements AnnotationProvider {
       for (const entry of this.pending.values())
         entry.reject(new Error(msg));
       this.pending.clear();
+      this.worker?.terminate();
+      this.worker = null;
     };
 
     try {

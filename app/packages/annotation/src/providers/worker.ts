@@ -217,8 +217,6 @@ async function embedAndDecode(
   let encResults: Record<string, ort.Tensor>;
   let geometry: ImageGeometry;
 
-  postStatusNotification("encoding");
-
   const cacheKey = CACHE_PREFIX + imageUrl;
   const cached = await getEmbedding(cacheKey, postWarningNotification);
   let cacheHit = false;
@@ -238,6 +236,7 @@ async function embedAndDecode(
   }
 
   if (!cacheHit) {
+    postStatusNotification("encoding");
     const imageData = await loadImageData(imageUrl);
     const processed = preprocessImage(imageData);
     geometry = processed;
@@ -324,6 +323,8 @@ self.onmessage = async (e: MessageEvent) => {
       postError(id, type, `Unknown message type: ${type}`);
     }
   } catch (err) {
+    if (type === "embedAndDecode")
+      postErrorNotification({ kind: "inference_failure", message: err instanceof Error ? err.message : String(err) });
     postError(id, type, err instanceof Error ? err.message : String(err));
   }
 };

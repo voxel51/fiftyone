@@ -71,7 +71,8 @@ export type ProviderErrorKind =
   | "unsupported"
   | "download_failure"
   | "encoder_failure"
-  | "decoder_failure";
+  | "decoder_failure"
+  | "inference_failure";
 
 export interface ProviderError {
   kind: ProviderErrorKind;
