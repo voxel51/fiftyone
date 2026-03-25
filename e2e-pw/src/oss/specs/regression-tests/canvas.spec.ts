@@ -18,9 +18,7 @@ const test = base.extend<{
   },
 
   datasetName: async ({ datasetFactory }, use) => {
-    const datasetName = getUniqueDatasetNameWithPrefix(
-      `image-rendering-is-pixelated`
-    );
+    const datasetName = getUniqueDatasetNameWithPrefix(`canvas-regressions`);
     await datasetFactory.createBlankDataset({
       datasetName,
       numbered: true, // Numbering ensures we capture the rendering details
@@ -38,7 +36,7 @@ test.beforeAll(async ({ foWebServer }) => {
   await foWebServer.startWebServer();
 });
 
-test.describe.serial("Pixelated Image Rendering", () => {
+test.describe.serial("Canvas Rendering Regressions", () => {
   /**
    * Verifies that the `image-rendering: pixelated` CSS property is applied
    * correctly in both canvas modes:
