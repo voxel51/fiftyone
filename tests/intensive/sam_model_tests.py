@@ -18,10 +18,7 @@ import torch
 
 import fiftyone as fo
 import fiftyone.zoo as foz
-from fiftyone.core.labels import (
-    Detection,
-    Detections,
-)
+from fiftyone.core.labels import Detection, Detections, Keypoint, Keypoints
 from fiftyone import ViewField as F
 
 MASK_IOU = 0.99
@@ -225,8 +222,8 @@ class TestSAMParity(unittest.TestCase):
                 labels.append(gt_det.label)
 
             outputs = {
-                "masks": torch.tensor(np.concatenate(masks, axis=0)),
-                "iou_predictions": torch.tensor(
+                "masks": torch.as_tensor(np.concatenate(masks, axis=0)),
+                "iou_predictions": torch.as_tensor(
                     np.concatenate(scores, axis=0)
                 ),
             }
@@ -298,8 +295,8 @@ class TestSAMParity(unittest.TestCase):
                 labels.append(PLACEHOLDER_LABEL)
 
             outputs = {
-                "masks": torch.tensor(np.concatenate(masks, axis=0)),
-                "iou_predictions": torch.tensor(
+                "masks": torch.as_tensor(np.concatenate(masks, axis=0)),
+                "iou_predictions": torch.as_tensor(
                     np.concatenate(scores, axis=0)
                 ),
             }
@@ -403,8 +400,8 @@ class TestSAM2Parity(unittest.TestCase):
                 labels.append(gt_det.label)
 
             outputs = {
-                "masks": torch.tensor(np.concatenate(masks, axis=0)),
-                "iou_predictions": torch.tensor(
+                "masks": torch.as_tensor(np.concatenate(masks, axis=0)),
+                "iou_predictions": torch.as_tensor(
                     np.concatenate(scores, axis=0)
                 ),
             }
@@ -477,8 +474,8 @@ class TestSAM2Parity(unittest.TestCase):
                 labels.append(PLACEHOLDER_LABEL)
 
             outputs = {
-                "masks": torch.tensor(np.concatenate(masks, axis=0)),
-                "iou_predictions": torch.tensor(
+                "masks": torch.as_tensor(np.concatenate(masks, axis=0)),
+                "iou_predictions": torch.as_tensor(
                     np.concatenate(scores, axis=0)
                 ),
             }
@@ -495,6 +492,95 @@ class TestSAM2Parity(unittest.TestCase):
             fo_field,
             direct_field,
             eval_key="eval_sam2_kp",
+        )
+
+    def test_combined_box_and_point_prompt_parity(self):
+        """Box + center-point combined prompts."""
+        fo_field = "sam2_combo_fo"
+        direct_field = "sam2_combo_direct"
+
+        # Build synthetic center-point keypoints from ground_truth boxes
+        for sample in self.dataset.iter_samples(progress=False, autosave=True):
+            gt = sample.get_field("ground_truth")
+            if gt is None:
+                continue
+            kps = []
+            for det in gt.detections:
+                bx, by, bw, bh = det.bounding_box
+                cx, cy = bx + bw / 2, by + bh / 2
+                kps.append(Keypoint(points=[(cx, cy)], label=det.label))
+            sample["combo_points"] = Keypoints(keypoints=kps)
+
+        # FiftyOne model inference with box and point prompts
+        self.dataset.apply_model(
+            self.fo_model,
+            label_field=fo_field,
+            box_prompt_field="ground_truth",
+            point_prompt_field="combo_points",
+        )
+
+        # Direct SAM2 inference with box + center point
+        for sample in self.dataset.iter_samples(progress=False, autosave=True):
+            gt = sample.get_field("ground_truth")
+            combo_kps = sample.get_field("combo_points")
+            if gt is None or not gt.detections:
+                sample[direct_field] = Detections()
+                continue
+
+            image = _get_image_as_numpy(sample.filepath)
+            h, w = image.shape[:2]
+
+            self.predictor.set_image(image)
+
+            masks = []
+            scores = []
+            dims_hw = (h, w)
+            box_prompts = []
+            labels = []
+            for i, gt_det in enumerate(gt.detections):
+                box_abs = _box_to_sam_abs(gt_det.bounding_box, w, h)
+
+                # Also provide center point if available
+                point_coords = None
+                point_labels = None
+                if combo_kps is not None and i < len(combo_kps.keypoints):
+                    pts = combo_kps.keypoints[i].points
+                    if pts:
+                        px, py = pts[0]
+                        point_coords = np.array([[px * w, py * h]])
+                        point_labels = np.array([1])
+
+                _masks, _scores, _ = self.predictor.predict(
+                    point_coords=point_coords,
+                    point_labels=point_labels,
+                    box=box_abs,
+                    multimask_output=False,
+                )
+
+                masks.append(_masks[None, ...])
+                scores.append(_scores[None, ...])
+                box_prompts.append(box_abs)
+                labels.append(gt_det.label)
+
+            outputs = {
+                "masks": torch.as_tensor(np.concatenate(masks, axis=0)),
+                "iou_predictions": torch.as_tensor(
+                    np.concatenate(scores, axis=0)
+                ),
+            }
+            sample[direct_field] = self.output_processor(
+                output=[outputs],
+                frame_size=[dims_hw],
+                box_prompts=[box_prompts],
+                labels=[labels],
+            )[0]
+
+        _assert_parity(
+            self,
+            self.dataset,
+            fo_field,
+            direct_field,
+            eval_key="eval_sam2_combo",
         )
 
 
