@@ -404,22 +404,17 @@ const useOperatorPromptSubmitOptions = (
   }, [options, selectedID]);
 
   if (selectedOption) selectedOption.selected = true;
-  const showWarning =
+  const requiresOrchestratorSetup =
     executionOptions.orchestratorRegistrationEnabled &&
     !hasAvailableOrchestrators &&
     !executionOptions.allowImmediateExecution;
-  const warningStr =
-    "This operation requires [delegated execution](https://docs.voxel51.com/plugins/using_plugins.html#delegated-operations)";
-  const warningMessage = React.createElement(Markdown, null, warningStr);
 
   return {
-    showWarning,
-    warningTitle: "No available orchestrators",
-    warningMessage,
-    options,
+    handleSubmit,
     hasOptions: options.length > 0,
     isLoading: execDetails.isLoading,
-    handleSubmit,
+    options,
+    requiresOrchestratorSetup,
   };
 };
 

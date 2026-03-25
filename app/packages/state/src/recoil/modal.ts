@@ -14,10 +14,12 @@ import {
   groupSlice,
   hasGroupSlices,
   modalGroupSlice,
-  pinned3DSample,
-  pinned3DSampleSlice,
-  pinned3d,
 } from "./groups";
+import {
+  interaction3dSample,
+  pinned3DSampleSlice,
+  is3dPinned,
+} from "./renderConfig3d.atoms";
 import { RelayEnvironmentKey } from "./relay";
 import { datasetName } from "./selectors";
 import { mapSampleResponse } from "./utils";
@@ -53,8 +55,8 @@ export const sidebarSampleId = selector<null | string>({
 
     const override = get(pinned3DSampleSlice);
 
-    return get(pinned3d) && override
-      ? get(pinned3DSample).id
+    return get(is3dPinned) && override
+      ? get(interaction3dSample).id
       : get(modalSampleId);
   },
 });
@@ -65,8 +67,8 @@ export const currentSampleId = selector({
     const override = get(pinned3DSampleSlice);
 
     const id =
-      get(pinned3d) && override
-        ? get(pinned3DSample).id
+      get(is3dPinned) && override
+        ? get(interaction3dSample).id
         : get(nullableModalSampleId);
 
     if (id?.endsWith("-modal")) {

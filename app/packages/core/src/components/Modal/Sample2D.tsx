@@ -23,8 +23,10 @@ const CheckboxWrapper = styled.div`
 export const SampleWrapper = ({
   children,
   sampleAtom = modalSample,
+  sample: providedSample,
 }: React.PropsWithChildren<{
   sampleAtom?: RecoilValueReadOnly<ModalSample>;
+  sample?: ModalSample;
 }>) => {
   const [hovering, setHovering] = useState(false);
   const modalMode = useModalMode();
@@ -51,7 +53,8 @@ export const SampleWrapper = ({
     };
   }, [clear, hovering]);
   const hoveringRef = useRef(false);
-  const sample = useRecoilValue(sampleAtom);
+  const recoilSample = useRecoilValue(sampleAtom);
+  const sample = providedSample ?? recoilSample;
   const { handlers: hoverEventHandlers } = useHoveredSample(sample.sample, {
     update,
     clear,

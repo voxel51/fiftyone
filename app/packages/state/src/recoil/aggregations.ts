@@ -51,7 +51,7 @@ export const aggregationQuery = graphQLSelectorFamily<
     root?: boolean;
     useSelection?: boolean;
   },
-  Aggregation[]
+  Aggregation[] | null
 >({
   key: "aggregationQuery",
   environment: RelayEnvironmentKey,
@@ -136,7 +136,7 @@ export const aggregations = selectorFamily({
           extended = false;
         }
 
-        return get(aggregationQuery({ ...params, extended }));
+        return get(aggregationQuery({ ...params, extended })) ?? [];
       }
       return [];
     },
