@@ -10,6 +10,7 @@ import {
   activeFields,
   currentSampleId,
   fieldSchema,
+  lookerOptions,
   ModalSample,
   modalSample,
   State,
@@ -112,3 +113,12 @@ export const useModalViewport = (): ModalViewportState | null =>
  */
 export const useSaveModalViewport = () =>
   useSetAtom(__unsafeModalViewportAtom);
+
+/**
+ * Gets the looker options for the modal.
+ *
+ * @param withFilter - Whether to apply frontend label filtering. Defaults to `false`.
+ */
+export const useModalLookerOptions = (withFilter = false) => {
+  return useRecoilValue(lookerOptions({ modal: true, withFilter }));
+};

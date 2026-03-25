@@ -9,18 +9,16 @@ import {
   useLighterSetupWithPixi,
 } from "@fiftyone/lighter";
 import type { ModalViewportState, Sample } from "@fiftyone/state";
-import * as fos from "@fiftyone/state";
-import { getSampleSrc } from "@fiftyone/state";
-import { modalBridge, useSaveModalViewport } from "@fiftyone/state";
+import { getSampleSrc, useModalLookerOptions } from "@fiftyone/state";
 import { useAtomValue } from "jotai";
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { useRecoilValue } from "recoil";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { activeLabelSchemas } from "../Sidebar/Annotate/state";
 import { extractZoomTarget } from "./utils";
 import { LighterToolbar } from "./LighterToolbar";
 import { singletonCanvas } from "./SharedCanvas";
 import { useBridge } from "./useBridge";
-
+import useDeferShow from "./useDeferShow";
+import useRetrieveViewport from "./useRetrieveViewport";
 
 export interface LighterSampleRendererProps {
   /** Custom CSS class name */
@@ -48,19 +46,8 @@ export const LighterSampleRenderer = ({
   const sampleRef = useRef(sample);
   sampleRef.current = sample;
 
-  const options = useRecoilValue(
-    fos.lookerOptions({ modal: true, withFilter: false })
-  );
-
   const sampleId = sample?.sample?._id;
-  const savedViewportState = modalBridge.getModalViewport();
-  const initialViewport =
-    savedViewportState?.sampleId === sampleId ? savedViewportState : null;
-
-  // Zoom to content only when options.zoom is set and there is no saved
-  // viewport to restore. Restoring a viewport takes precedence over auto-zoom.
-  const optionsZoom = ("zoom" in options && options.zoom) as boolean | undefined;
-  const effectiveZoom = !!optionsZoom && !initialViewport;
+  const { effectiveZoom, initialViewport } = useDeferShow(sampleId);
 
   /**
    * This effect is responsible for loading the sample and adding the overlays to the scene.
@@ -140,9 +127,7 @@ const LighterSetupImpl = (props: {
   const sampleId = sampleRef.current?.sample?._id;
   const sampleData = sampleRef.current?.sample;
 
-  const options = useRecoilValue(
-    fos.lookerOptions({ modal: true, withFilter: false })
-  );
+  const options = useModalLookerOptions();
 
   // Read activePaths directly from Jotai to bypass Recoil's filterPaths,
   // which strips newly created fields not yet in the GraphQL schema cache
@@ -176,20 +161,7 @@ const LighterSetupImpl = (props: {
   // This is the bridge between FiftyOne state management system and Lighter
   useBridge(scene);
 
-  const setViewportState = useSaveModalViewport();
-
-  // Capture zoom/pan before this component is removed from the DOM
-  // so the state can be restored when EXPLORE mode (Looker) remounts.
-  useLayoutEffect(() => {
-    return () => {
-      if (scene && !scene.isDestroyed && sampleId) {
-        setViewportState({
-          sampleId,
-          ...scene.getViewportState(),
-        });
-      }
-    };
-  }, [scene, sampleId]);
+  useRetrieveViewport(scene, sampleId);
 
   return null;
 };
