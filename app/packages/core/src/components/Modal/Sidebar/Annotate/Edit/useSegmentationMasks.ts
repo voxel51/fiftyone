@@ -23,7 +23,8 @@ export const MAX_TOOL_SIZE = 32;
 export type SegmentationTool = "select" | "brush" | "eraser"; // | "pen";
 export type SegmentationToolShape = "circle" | "square";
 
-export interface SegmentationToolData {
+export interface SegmentationToolState {
+  active: boolean;
   size: number;
   tool: SegmentationTool;
   shape: SegmentationToolShape;

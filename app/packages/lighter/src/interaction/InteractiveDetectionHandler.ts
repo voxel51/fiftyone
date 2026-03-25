@@ -4,7 +4,7 @@
 
 import { DetectionOverlay } from "../overlay/DetectionOverlay";
 import type { Point } from "../types";
-import type { InteractionHandler } from "./InteractionManager";
+import type { InteractionHandler, OverlayEvent } from "./InteractionManager";
 
 const INTERACTIVE_DETECTION_HANDLER_ID = "interactive-detection-handler";
 
@@ -38,11 +38,7 @@ export class InteractiveDetectionHandler implements InteractionHandler {
     this.overlay.markDirty();
   }
 
-  onPointerDown(
-    point: Point,
-    _worldPoint: Point,
-    _event: PointerEvent
-  ): boolean {
+  onPointerDown({ point }: OverlayEvent): boolean {
     this.startPoint = point;
     this._isDragging = true;
     this.overlay.toggleSelected();
@@ -76,13 +72,7 @@ export class InteractiveDetectionHandler implements InteractionHandler {
     return true;
   }
 
-  onMove(
-    point: Point,
-    _worldPoint: Point,
-    _event: PointerEvent,
-    _scale: number,
-    _maintainAspectRatio?: boolean
-  ): boolean {
+  onMove({ point }: OverlayEvent): boolean {
     return this.updateBounds(point);
   }
 
@@ -90,7 +80,7 @@ export class InteractiveDetectionHandler implements InteractionHandler {
     return this.updateBounds(point);
   }
 
-  onPointerUp(_point: Point, _event: PointerEvent): boolean {
+  onPointerUp(_params: OverlayEvent): boolean {
     if (!this._isDragging || !this.startPoint) {
       this._isDragging = false;
       return false;

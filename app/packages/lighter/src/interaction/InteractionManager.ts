@@ -7,6 +7,7 @@ import { segmentationMasksBridge } from "@fiftyone/core/src/components/Modal/Sid
 import { EventDispatcher, getEventBus } from "@fiftyone/events";
 import { TypeGuards } from "../core/Scene2D";
 import type { LighterEventGroup } from "../events";
+import type { SegmentationToolState } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useSegmentationMasks";
 import {
   DetectionOverlay,
   type InteractionState,
@@ -19,162 +20,90 @@ import { InteractiveDetectionHandler } from "./InteractiveDetectionHandler";
 import { v4 as generateUUID } from "uuid";
 
 /**
- * Interface for objects that can handle interaction events.
+ * Unified event object passed to overlay interaction handlers.
+ * Contains all pointer-event context needed for down / move / up handling.
+ */
+export interface OverlayEvent {
+  /** Canvas-space (screen-space) pointer position. */
+  point: Point;
+  /** World-space pointer position (after inverse camera transform). */
+  worldPoint: Point;
+  /** The original DOM pointer event. */
+  event: PointerEvent;
+  /** Current camera zoom scale factor. */
+  scale: number;
+  /** Whether shift-key aspect-ratio lock is active. */
+  maintainAspectRatio?: boolean;
+  /** Segmentation painting tool state, if segmentation mode is active. */
+  segmentationToolState?: SegmentationToolState;
+}
+
+/**
+ * Interface for objects that can handle interaction events from the
+ * {@link InteractionManager}.
+ *
+ * Overlays (e.g. {@link DetectionOverlay}) implement this interface directly.
+ * Ephemeral helpers like {@link InteractiveDetectionHandler} wrap an overlay
+ * and act as a proxy during drag-to-create flows.
  */
 export interface InteractionHandler {
+  /** Unique identifier, typically the overlay or handler ID. */
   readonly id: string;
+  /** Default CSS cursor while this handler is hovered. */
   readonly cursor?: string;
+  /** The overlay this handler is managing, if any. */
   overlay?: DetectionOverlay;
 
-  /**
-   * Returns true if the handler is being interacted with
-   */
+  /** Returns true if the handler is being interacted with */
   isInteracting?(): boolean;
-
-  /**
-   * Returns true if the handler is being dragged.
-   */
+  /** Returns true if the handler is being dragged. */
   isDragging?(): boolean;
-
-  /**
-   * Returns true if the handler is being resized.
-   */
+  /** Returns true if the handler is being resized. */
   isResizing?(): boolean;
-
-  /**
-   * Returns true if a new DetectionOverlay is being created.
-   */
+  /** Returns true if a new DetectionOverlay is being created. */
   isSetting?(): boolean;
 
-  /**
-   * Returns the type of cursor that is currently appropriate
-   * @param worldPoint - Current screen location translated to viewport location.
-   * @param scale - The current scaling factor of the renderer.
-   */
+  /** Returns the CSS cursor appropriate for the given world point. */
   getCursor?(worldPoint: Point, scale: number): string;
-
-  /**
-   * Returns the current state of the handler
-   */
+  /** Returns the current state of the handler */
   getInteractionState?(): InteractionState;
 
-  /**
-   * Returns the position from the start of handler movement
-   */
+  /** Returns the position from the start of handler movement */
   getMoveStartPosition?(): Point | undefined;
-
-  /**
-   * Returns the position from the start of handler movement
-   */
+  /** Returns the position from the start of handler movement */
   getMoveStartBounds?(): Rect | undefined;
 
-  /**
-   * Handle pointer down event.
-   * @param point - The point where the event occurred.
-   * @param worldPoint - Screen point translated to viewport point.
-   * @param event - The original pointer event.
-   * @param scale - The current scaling factor of the renderer.
-   * @returns True if the event was handled and should not propagate.
-   */
-  onPointerDown?(
-    point: Point,
-    worldPoint: Point,
-    event: PointerEvent,
-    scale: number
-  ): boolean;
+  /** Called when a pointer-down occurs on this handler. */
+  onPointerDown?(params: OverlayEvent): boolean;
+  /** Called on pointer-move while this handler is active. */
+  onMove?(params: OverlayEvent): boolean;
+  /** Called when the pointer is released. */
+  onPointerUp?(params: OverlayEvent): boolean;
 
-  /**
-   * Handle pointer move event.
-   * @param point - The point where the event occurred.
-   * @param worldPoint - Screen point translated to viewport point.
-   * @param event - The original pointer event.
-   * @param scale - The current scaling factor of the renderer.
-   * @param maintainAspectRatio - Maintain aspect ratio during resize (shift key held).
-   * @returns True if the event was handled.
-   */
-  onMove?(
-    point: Point,
-    worldPoint: Point,
-    event: PointerEvent,
-    scale: number,
-    maintainAspectRatio?: boolean
-  ): boolean;
-
-  /**
-   * Handle pointer up event.
-   * @param point - The point where the event occurred.
-   * @param event - The original pointer event.
-   * @param scale - The current scaling factor of the renderer.
-   * @returns True if the event was handled.
-   */
-  onPointerUp?(point: Point, event: PointerEvent, scale: number): boolean;
-
-  /**
-   * Handle click event.
-   * @param point - The point where the event occurred.
-   * @param event - The original pointer event.
-   * @param scale - The current scaling factor of the renderer.
-   * @returns True if the event was handled.
-   */
+  /** Single-click handler. */
   onClick?(point: Point, event: PointerEvent, scale: number): boolean;
-
-  /**
-   * Handle double-click event.
-   * @param point - The point where the event occurred.
-   * @param event - The original pointer event.
-   * @returns True if the event was handled.
-   */
+  /** Double-click handler. */
   onDoubleClick?(point: Point, event: PointerEvent): boolean;
 
-  /**
-   * Handle hover enter event.
-   * @param point - The point where the event occurred.
-   * @param event - The original pointer event.
-   * @returns True if the event was handled.
-   */
+  /** Called when the pointer enters this handler's hit area. */
   onHoverEnter?(point: Point | null, event: PointerEvent | null): boolean;
-
-  /**
-   * Handle hover leave event.
-   * @param point - The point where the event occurred.
-   * @param event - The original pointer event.
-   * @returns True if the event was handled.
-   */
+  /** Called when the pointer leaves this handler's hit area. */
   onHoverLeave?(point?: Point | null, event?: PointerEvent | null): boolean;
-
-  /**
-   * Handle hover move event.
-   * @param point - The point where the event occurred.
-   * @param event - The original pointer event.
-   * @returns True if the event was handled.
-   */
+  /** Called on pointer-move while hovering (no button pressed). */
   onHoverMove?(point?: Point | null, event?: PointerEvent | null): boolean;
 
-  /**
-   * Forces the overlay to be in hovered state.
-   */
+  /** Forces the overlay to be in hovered state. */
   forceHoverEnter?(): void;
-
-  /**
-   * Forces the overlay to be in unhovered state.
-   */
+  /** Forces the overlay to be in unhovered state. */
   forceHoverLeave?(): void;
 
-  /**
-   * Check if this handler can handle events at the given point.
-   * @param point - The point to test.
-   * @returns True if this handler can handle events at the point.
-   */
+  /** Hit-test: does the given point fall within this handler's area? */
   containsPoint(point: Point): boolean;
 
-  /**
-   * Marks the overlay as dirty, indicating it needs to be re-rendered.
-   */
+  /** Marks the overlay as dirty, indicating it needs to be re-rendered. */
   markDirty(): void;
 
-  /**
-   * Release any resources held by the handler.
-   */
+  /** Release any resources held by the handler. */
   cleanup?(): void;
 }
 
@@ -327,7 +256,15 @@ export class InteractionManager {
       }
     }
 
-    if (handler?.onPointerDown?.(point, worldPoint, event, scale)) {
+    if (
+      handler?.onPointerDown?.({
+        point,
+        worldPoint,
+        event,
+        scale,
+        segmentationToolState: segmentationMasksBridge.getToolState(),
+      })
+    ) {
       const cursor = handler.getCursor?.(worldPoint, scale);
       if (cursor) {
         this.canvas.style.cursor = cursor;
@@ -358,7 +295,7 @@ export class InteractionManager {
   ): void {
     if (segmentationMasksBridge.isActive()) {
       this.canvas.style.cursor = buildBrushCursor(
-        segmentationMasksBridge.getToolData(scale)
+        segmentationMasksBridge.getToolState(scale)!
       );
     } else if (
       quickDrawBridge.isActive() &&
@@ -403,21 +340,21 @@ export class InteractionManager {
         this.selectionManager.select(handler.id);
 
         // Initialize the handler with the original pointerdown point
-        handler.onPointerDown?.(
-          pending.point,
-          pending.worldPoint,
+        handler.onPointerDown?.({
+          point: pending.point,
+          worldPoint: pending.worldPoint,
           event,
-          pending.scale
-        );
+          scale: pending.scale,
+        });
 
         // Update with the current pointer position
-        handler.onMove?.(
+        handler.onMove?.({
           point,
           worldPoint,
           event,
           scale,
-          this.maintainAspectRatio
-        );
+          maintainAspectRatio: this.maintainAspectRatio,
+        });
 
         if (TypeGuards.isSpatial(handler)) {
           this.eventBus.dispatch("lighter:overlay-drag-start", {
@@ -470,25 +407,21 @@ export class InteractionManager {
 
     // Apply drag gate to prevent accidental overlay dragging on click
     if (handler) {
+      const moveParams: OverlayEvent = {
+        point,
+        worldPoint,
+        event,
+        scale,
+        maintainAspectRatio: this.maintainAspectRatio,
+        segmentationToolState: segmentationMasksBridge.getToolState(),
+      };
+
       // Handle drag move
       if (!interactiveHandler) {
-        handler.onMove?.(
-          point,
-          worldPoint,
-          event,
-          scale,
-          this.maintainAspectRatio
-        );
+        handler.onMove?.(moveParams);
       } else {
         handler = interactiveHandler.getOverlay();
-
-        handler.onMove?.(
-          point,
-          worldPoint,
-          event,
-          scale,
-          this.maintainAspectRatio
-        );
+        handler.onMove?.(moveParams);
       }
 
       if (handler.isInteracting?.()) {
@@ -509,7 +442,7 @@ export class InteractionManager {
       this.configureCursorStyle(handler, worldPoint, scale);
     } else if (segmentationMasksBridge.isActive() && !interactiveHandler) {
       this.canvas.style.cursor = buildBrushCursor(
-        segmentationMasksBridge.getToolData(scale)
+        segmentationMasksBridge.getToolState(scale)!
       );
     } else if (quickDrawBridge.isActive() && !interactiveHandler) {
       this.canvas.style.cursor = "crosshair";
@@ -558,7 +491,13 @@ export class InteractionManager {
       const startPosition = handler.getMoveStartPosition?.();
 
       // Handle drag end
-      handler.onPointerUp?.(point, event, scale);
+      handler.onPointerUp?.({
+        point,
+        worldPoint,
+        event,
+        scale,
+        segmentationToolState: segmentationMasksBridge.getToolState(),
+      });
 
       if (interactiveHandler) {
         // When interactive detection is complete, remove the interactive handler
@@ -599,7 +538,7 @@ export class InteractionManager {
       this.handleClick(point, event, now);
 
       // Clean up drag handler
-      handler.onPointerUp?.(point, event, scale);
+      handler.onPointerUp?.({ point, worldPoint, event, scale });
       this.canvas.releasePointerCapture(event.pointerId);
     } else {
       // Handle click

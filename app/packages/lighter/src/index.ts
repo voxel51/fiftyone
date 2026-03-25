@@ -44,7 +44,10 @@ export type { LighterEventGroup } from "./events";
 export { buildBrushCursor } from "./interaction/buildBrushCursor";
 export type { BrushCursorOptions } from "./interaction/buildBrushCursor";
 export { InteractionManager } from "./interaction/InteractionManager";
-export type { InteractionHandler } from "./interaction/InteractionManager";
+export type {
+  InteractionHandler,
+  OverlayEvent,
+} from "./interaction/InteractionManager";
 export { InteractiveDetectionHandler } from "./interaction/InteractiveDetectionHandler";
 
 // Selection exports

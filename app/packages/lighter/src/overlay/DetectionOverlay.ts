@@ -27,7 +27,8 @@ import {
   getInstanceStrokeStyles,
   getSimpleStrokeStyles,
 } from "../utils/colorMapping";
-import { segmentationMasksBridge } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/bridgeSegmentationMasks";
+import type { SegmentationToolState } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useSegmentationMasks";
+import type { OverlayEvent } from "../interaction/InteractionManager";
 import { distanceFromLineSegment } from "../utils/geometry";
 import { decodeMask } from "../utils/maskDecoding";
 import { BaseOverlay } from "./BaseOverlay";
@@ -103,6 +104,7 @@ export class DetectionOverlay
   private maskCanvas?: HTMLCanvasElement;
   private maskCtx?: CanvasRenderingContext2D;
   private lastMaskPoint?: Point;
+  private segmentationTool?: SegmentationToolState;
 
   public cursor = "pointer";
 
@@ -419,22 +421,26 @@ export class DetectionOverlay
   }
 
   // Interaction handlers
-  onPointerDown(
-    point: Point,
-    worldPoint: Point,
-    _event: PointerEvent,
-    scale: number
-  ): boolean {
+  onPointerDown({
+    point,
+    worldPoint,
+    scale,
+    segmentationToolState,
+  }: OverlayEvent): boolean {
+    this.segmentationTool = segmentationToolState;
+
     // Segmentation painting takes priority over drag/resize
     if (this.isPaintingActive()) {
       if (!this.hasValidBounds()) {
         // Bootstrap bounds from the brush dab so ensureMaskCanvas has a size
-        const half = segmentationMasksBridge.getToolSize() / 2;
+        const size = segmentationToolState?.size ?? 0;
+        const half = size / 2;
+
         this.bounds = {
           x: worldPoint.x - half,
           y: worldPoint.y - half,
-          width: half * 2,
-          height: half * 2,
+          width: size,
+          height: size,
         };
       }
 
@@ -492,13 +498,16 @@ export class DetectionOverlay
     return true;
   }
 
-  onMove(
-    point: Point,
-    worldPoint: Point,
-    event: PointerEvent,
-    scale: number,
-    maintainAspectRatio?: boolean
-  ): boolean {
+  onMove({
+    point,
+    worldPoint,
+    event,
+    scale,
+    maintainAspectRatio,
+    segmentationToolState,
+  }: OverlayEvent): boolean {
+    this.segmentationTool = segmentationToolState;
+
     if (this.interactionState === "PAINTING") {
       this.updateMaskBounds(worldPoint);
       const maskPoint = this.worldToMask(worldPoint);
@@ -671,14 +680,16 @@ export class DetectionOverlay
     return true;
   }
 
-  onPointerUp(_point: Point, _event: PointerEvent): boolean {
+  onPointerUp({ segmentationToolState }: OverlayEvent): boolean {
+    this.segmentationTool = segmentationToolState;
+
     if (!this.moveStartPoint || !this.moveStartBounds) return false;
 
     this.interactionState = "NONE";
+    this.lastMaskPoint = undefined;
     this.moveStartPoint = undefined;
     this.moveStartPosition = undefined;
     this.moveStartBounds = undefined;
-    this.lastMaskPoint = undefined;
     this.renderer?.enableZoomPan();
 
     return true;
@@ -949,10 +960,11 @@ export class DetectionOverlay
    * Whether segmentation brush/eraser painting should intercept pointer events.
    */
   private isPaintingActive(): boolean {
-    if (!segmentationMasksBridge.isActive()) return false;
+    if (!this.segmentationTool?.active) return false;
 
-    return ["brush", "eraser"].includes(
-      segmentationMasksBridge.getActiveTool()
+    return (
+      this.segmentationTool.tool === "brush" ||
+      this.segmentationTool.tool === "eraser"
     );
   }
 
@@ -1042,10 +1054,10 @@ export class DetectionOverlay
     }
 
     // For brush, include the dab extent
-    const tool = segmentationMasksBridge.getActiveTool();
+    const tool = this.segmentationTool?.tool;
 
     if (tool === "brush") {
-      const half = segmentationMasksBridge.getToolSize() / 2;
+      const half = (this.segmentationTool?.size ?? 0) / 2;
       worldMinX = Math.min(worldMinX, worldPoint.x - half);
       worldMinY = Math.min(worldMinY, worldPoint.y - half);
       worldMaxX = Math.max(worldMaxX, worldPoint.x + half);
@@ -1121,9 +1133,9 @@ export class DetectionOverlay
   private paintAt(point: Point): void {
     if (!this.maskCtx) return;
 
-    const tool = segmentationMasksBridge.getActiveTool();
-    const size = segmentationMasksBridge.getToolSize();
-    const shape = segmentationMasksBridge.getToolShape();
+    const tool = this.segmentationTool?.tool;
+    const size = this.segmentationTool?.size ?? 0;
+    const shape = this.segmentationTool?.shape ?? "circle";
     const radius = size / 2;
 
     const ctx = this.maskCtx;

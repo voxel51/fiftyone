@@ -19,7 +19,7 @@ import {
 import type {
   SegmentationTool,
   SegmentationToolShape,
-  SegmentationToolData,
+  SegmentationToolState,
 } from "./useSegmentationMasks";
 
 /**
@@ -55,10 +55,15 @@ export const segmentationMasksBridge = {
     return getDefaultStore().get(_unsafeToolShapeAtom);
   },
 
-  getToolData(scale: number): SegmentationToolData {
+  /**
+   * Returns the full segmentation tool state
+   * @param scale - Optional scale factor by which to multiply the tool size
+   */
+  getToolState(scale = 1): SegmentationToolState {
     return {
-      size: this.getToolSize() * scale,
+      active: this.isActive(),
       tool: this.getActiveTool(),
+      size: this.getToolSize() * scale,
       shape: this.getToolShape(),
     };
   },
