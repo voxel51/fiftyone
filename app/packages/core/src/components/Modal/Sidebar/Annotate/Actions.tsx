@@ -29,7 +29,8 @@ import styled from "styled-components";
 import { ItemLeft, ItemRight } from "./Components";
 import { editing } from "./Edit";
 import { useClassification } from "./Edit/useClassification";
-import { fieldsOfType } from "./Edit/state";
+import useExit from "./Edit/useExit";
+import { fieldsOfType, isEditing } from "./Edit/state";
 import { useQuickDraw } from "./Edit/useQuickDraw";
 
 const ActionsDiv = styled.div`
@@ -68,6 +69,11 @@ const Container = styled.div<{ $active?: boolean }>`
     fill: var(--color-content-icon-subtle);
   }
 
+  path.stroke-icon {
+    fill: none;
+    stroke: var(--color-content-icon-subtle);
+  }
+
   ${({ $active, theme }) =>
     $active &&
     `
@@ -75,6 +81,11 @@ const Container = styled.div<{ $active?: boolean }>`
 
     path {
       fill: ${theme.primary.plainColor};
+    }
+
+    path.stroke-icon {
+      fill: none;
+      stroke: ${theme.primary.plainColor};
     }
 
     svg {
@@ -94,6 +105,11 @@ const Container = styled.div<{ $active?: boolean }>`
 
   &:not(.disabled):hover path {
     fill: ${({ theme }) => theme.primary.plainColor};
+  }
+
+  &:not(.disabled):hover path.stroke-icon {
+    fill: none;
+    stroke: ${({ theme }) => theme.primary.plainColor};
   }
 `;
 
@@ -124,9 +140,67 @@ const Square = styled(Container)<{ $active?: boolean }>`
   border-radius: var(--radius-xs);
 `;
 
+const Select = () => {
+  const isEditingValue = useAtomValue(isEditing);
+  const { quickDrawActive, disableQuickDraw } = useQuickDraw();
+  const onExit = useExit();
+  const current3dAnnotationMode = useCurrent3dAnnotationMode();
+  const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
+
+  const active =
+    !isEditingValue && !quickDrawActive && !current3dAnnotationMode;
+
+  const handleSelect = useCallback(() => {
+    if (active) return;
+
+    if (current3dAnnotationMode) {
+      setCurrent3dAnnotationMode(null);
+    }
+
+    if (quickDrawActive) {
+      disableQuickDraw();
+    }
+
+    onExit();
+  }, [
+    active,
+    current3dAnnotationMode,
+    disableQuickDraw,
+    onExit,
+    quickDrawActive,
+    setCurrent3dAnnotationMode,
+  ]);
+
+  return (
+    <Tooltip placement="top-center" text="Select">
+      <Square $active={active} onClick={handleSelect}>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="19"
+          height="18"
+          viewBox="0 0 19 18"
+          fill="none"
+        >
+          <title>Select</title>
+          <path
+            className="stroke-icon"
+            d="M4 3L4 17L8 13L14 13L4 3Z"
+            strokeWidth="1.5"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </Square>
+    </Tooltip>
+  );
+};
+
 const Classification = () => {
-  const { active, disabled, tooltip, toggleClassification } =
-    useClassification();
+  const {
+    active,
+    disabled,
+    tooltip,
+    toggleClassification,
+  } = useClassification();
 
   return (
     <Tooltip placement="top-center" text={tooltip}>
@@ -371,6 +445,7 @@ const Actions = () => {
     <ActionsDiv style={{ margin: "0 0.25rem", paddingBottom: "0.5rem" }}>
       <Row>
         <ItemLeft style={{ columnGap: "0.1rem" }}>
+          <Select />
           <Classification />
           {areThreedActionsVisible ? (
             <>
