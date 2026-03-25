@@ -164,8 +164,6 @@ function preprocessImage(imageData: ImageData): ProcessedImage {
 async function loadModel(): Promise<void> {
   const opts: ort.InferenceSession.SessionOptions = { executionProviders: ["wasm"] };
 
-  postStatusNotification("loading");
-
   async function loadSession(
     url: string,
     name: "encoder" | "decoder",
@@ -326,9 +324,7 @@ self.onmessage = async (e: MessageEvent) => {
       postError(id, type, `Unknown message type: ${type}`);
     }
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    postStatusNotification("failure");
-    postError(id, type, msg);
+    postError(id, type, err instanceof Error ? err.message : String(err));
   }
 };
 

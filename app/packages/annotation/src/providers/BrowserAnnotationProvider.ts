@@ -139,6 +139,8 @@ export class BrowserAnnotationProvider implements AnnotationProvider {
       await this.send("loadModel", {}).promise;
       this.onStatus?.("ready");
     } catch (err) {
+      this.worker?.terminate();
+      this.worker = null;
       this.onStatus?.("failure");
       throw err;
     }
@@ -170,10 +172,6 @@ export class BrowserAnnotationProvider implements AnnotationProvider {
     this.pending.clear();
     this.worker?.terminate();
     this.worker = null;
-    this.onStatus = null;
-    this.onProgress = null;
-    this.onWarning = null;
-    this.onError = null;
   }
 
   private send<T extends WorkerMessageType>(
