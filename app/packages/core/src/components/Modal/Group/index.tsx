@@ -8,10 +8,16 @@ import { GroupView } from "./GroupView";
 const Group = () => {
   const dynamic = useRecoilValue(fos.isDynamicGroup);
   const only3d = useRecoilValue(fos.only3d);
+  const {
+    is3dVisible,
+    is3dVisibleSetting: isLooker3DVisible,
+    isPinned,
+  } = fos.useRenderConfig3dState();
+  const actions = fos.useRenderConfig3dActions();
+  const isMainVisible = useRecoilValue(fos.groupMediaIsMain2DViewerVisible);
 
   const isNestedDynamicGroup = useRecoilValue(fos.isNestedDynamicGroup);
   const isOrderedDynamicGroup = useRecoilValue(fos.isOrderedDynamicGroup);
-  const isLooker3DVisible = useRecoilValue(fos.groupMedia3dVisibleSetting);
   const isCarouselVisible = useRecoilValue(
     fos.groupMediaIsCarouselVisibleSetting
   );
@@ -48,7 +54,15 @@ const Group = () => {
     isLooker3DVisible,
     isCarouselVisible,
     isAnnotateMode,
+    setDynamicGroupsViewMode,
+    setIsMainLookerVisible,
   ]);
+
+  useEffect(() => {
+    if (is3dVisible && !isMainVisible && !isPinned) {
+      void actions.setPinned(true);
+    }
+  }, [actions, is3dVisible, isMainVisible, isPinned]);
 
   if (dynamic) {
     return <DynamicGroup />;
