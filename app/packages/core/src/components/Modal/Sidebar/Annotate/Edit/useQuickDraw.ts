@@ -2,10 +2,10 @@ import { DETECTION } from "@fiftyone/utilities";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { atomFamily, useAtomCallback } from "jotai/utils";
 import { countBy, maxBy } from "lodash";
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { fieldType, isFieldReadOnly, labelSchemaData } from "../state";
 import { labelsByPath } from "../useLabels";
-import { defaultField, useAnnotationContext } from "./state";
+import { currentType, defaultField, useAnnotationContext } from "./state";
 import {
   UNDEFINED_LIGHTER_SCENE_ID,
   useLighter,
@@ -53,6 +53,7 @@ const claimedEventsAtom = atom<Map<string, string>>(new Map());
  */
 export const useQuickDraw = () => {
   const [quickDrawActive, setQuickDrawActive] = useAtom(quickDrawActiveAtom);
+  const isEditingDetection = useAtomValue(currentType) === DETECTION;
   const setLastUsedField = useSetAtom(lastUsedFieldAtom);
   const labelsMap = useAtomValue(labelsByPath);
   const defaultDetectionField = useAtomValue(defaultField(DETECTION));
@@ -118,6 +119,13 @@ export const useQuickDraw = () => {
   const disableQuickDraw = useCallback(() => {
     setQuickDrawActive(false);
   }, [setQuickDrawActive]);
+
+  // Auto-enable QuickDraw when a detection is being edited
+  useEffect(() => {
+    if (isEditingDetection && !quickDrawActive) {
+      setQuickDrawActive(true);
+    }
+  }, [isEditingDetection, quickDrawActive, setQuickDrawActive]);
 
   /**
    * Get the auto-assigned detection field path.
