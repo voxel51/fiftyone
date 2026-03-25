@@ -255,14 +255,16 @@ class SegmentAnythingImageGetItem(fout.GetItem):
         detections = d.get("box_prompt_field")
         keypoints = d.get("point_prompt_field")
 
-        if detections and not isinstance(detections, fol.Detections):
+        if detections is not None and not isinstance(
+            detections, fol.Detections
+        ):
             # This may happen when using prompt_field as the only input prompt.
             logger.debug(
                 f"Invalid type for box prompts: {type(detections)}. Ignoring box prompts."
             )
             detections = None
 
-        if keypoints and not isinstance(keypoints, fol.Keypoints):
+        if keypoints is not None and not isinstance(keypoints, fol.Keypoints):
             # This may happen when using prompt_field as the only input prompt.
             logger.debug(
                 f"Invalid type for point prompts: {type(keypoints)}. Ignoring point prompts."
