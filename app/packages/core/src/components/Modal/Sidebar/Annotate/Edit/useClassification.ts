@@ -20,7 +20,7 @@ export const useClassification = () => {
   const isPatchView = useRecoilValue(isPatchesView);
   const reset3dAnnotationMode = useReset3dAnnotationMode();
   const fields = useAtomValue(fieldsOfType(CLASSIFICATION));
-  const active = useAtomValue(currentType) === CLASSIFICATION;
+  const classificationActive = useAtomValue(currentType) === CLASSIFICATION;
 
   const disabled = isPatchView || fields.length === 0;
 
@@ -40,16 +40,16 @@ export const useClassification = () => {
   }, [onExit]);
 
   const toggleClassification = useCallback(() => {
-    if (active) {
+    if (classificationActive) {
       disableClassification();
     } else {
       enableClassification();
     }
-  }, [active, disableClassification, enableClassification]);
+  }, [classificationActive, disableClassification, enableClassification]);
 
   return useMemo(
     () => ({
-      active,
+      classificationActive,
       disabled,
       tooltip,
       enableClassification,
@@ -57,7 +57,7 @@ export const useClassification = () => {
       toggleClassification,
     }),
     [
-      active,
+      classificationActive,
       disabled,
       tooltip,
       enableClassification,

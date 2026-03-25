@@ -23,14 +23,13 @@ import {
 import PolylineIcon from "@mui/icons-material/Timeline";
 import CuboidIcon from "@mui/icons-material/ViewInAr";
 import { useAtomValue, useSetAtom } from "jotai";
-import { useCallback } from "react";
+import { createContext, useCallback, useContext } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ItemLeft, ItemRight } from "./Components";
 import { editing } from "./Edit";
 import { useClassification } from "./Edit/useClassification";
-import useExit from "./Edit/useExit";
-import { fieldsOfType, isEditing } from "./Edit/state";
+import { fieldsOfType } from "./Edit/state";
 import { useQuickDraw } from "./Edit/useQuickDraw";
 
 const ActionsDiv = styled.div`
@@ -140,40 +139,21 @@ const Square = styled(Container)<{ $active?: boolean }>`
   border-radius: var(--radius-xs);
 `;
 
-const Select = () => {
-  const isEditingValue = useAtomValue(isEditing);
-  const { quickDrawActive, disableQuickDraw } = useQuickDraw();
-  const onExit = useExit();
-  const current3dAnnotationMode = useCurrent3dAnnotationMode();
-  const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
+const DeactivateAllContext = createContext<() => void>(() => {});
 
-  const active =
-    !isEditingValue && !quickDrawActive && !current3dAnnotationMode;
+/**
+ * Returns a callback that deactivates all active annotation actions
+ * (editing, QuickDraw, 3D modes). Action buttons should call this
+ * before activating themselves.
+ */
+export const useDeactivateAll = () => useContext(DeactivateAllContext);
 
-  const handleSelect = useCallback(() => {
-    if (active) return;
-
-    if (current3dAnnotationMode) {
-      setCurrent3dAnnotationMode(null);
-    }
-
-    if (quickDrawActive) {
-      disableQuickDraw();
-    }
-
-    onExit();
-  }, [
-    active,
-    current3dAnnotationMode,
-    disableQuickDraw,
-    onExit,
-    quickDrawActive,
-    setCurrent3dAnnotationMode,
-  ]);
+const Select = ({ active }: { active: boolean }) => {
+  const deactivateAll = useDeactivateAll();
 
   return (
     <Tooltip placement="top-center" text="Select">
-      <Square $active={active} onClick={handleSelect}>
+      <Square $active={active} onClick={active ? undefined : deactivateAll}>
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="19"
@@ -196,17 +176,22 @@ const Select = () => {
 
 const Classification = () => {
   const {
-    active,
+    classificationActive,
     disabled,
     tooltip,
-    toggleClassification,
+    enableClassification,
   } = useClassification();
+  const deactivateAll = useDeactivateAll();
 
   return (
     <Tooltip placement="top-center" text={tooltip}>
       <Square
-        $active={active}
-        onClick={toggleClassification}
+        $active={classificationActive}
+        onClick={() => {
+          if (disabled) return;
+          deactivateAll();
+          if (!classificationActive) enableClassification();
+        }}
         className={disabled ? "disabled" : ""}
       >
         <svg
@@ -228,7 +213,8 @@ const Classification = () => {
 };
 
 const Detection = () => {
-  const { quickDrawActive, toggleQuickDraw } = useQuickDraw();
+  const { quickDrawActive, enableQuickDraw } = useQuickDraw();
+  const deactivateAll = useDeactivateAll();
   const isPatchView = useRecoilValue(isPatchesView);
 
   const fields = useAtomValue(fieldsOfType(DETECTION));
@@ -249,7 +235,8 @@ const Detection = () => {
         data-cy-active={quickDrawActive}
         onClick={() => {
           if (disabled) return;
-          toggleQuickDraw();
+          deactivateAll();
+          if (!quickDrawActive) enableQuickDraw();
         }}
       >
         <svg
@@ -328,6 +315,7 @@ export const ThreeDPolylines = () => {
   const setEditing = useSetAtom(editing);
   const current3dAnnotationMode = useCurrent3dAnnotationMode();
   const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
+  const deactivateAll = useDeactivateAll();
   const visibleFields = useAtomValue(fieldsOfType(POLYLINE));
 
   const polylineFields = use3dAnnotationFields(
@@ -358,14 +346,11 @@ export const ThreeDPolylines = () => {
         className={disabled ? "disabled" : ""}
         onClick={() => {
           if (disabled) return;
-          if (isPolylineAnnotateActive) {
-            setCurrent3dAnnotationMode(null);
-            return;
-          }
+          deactivateAll();
+
+          if (isPolylineAnnotateActive) return;
 
           if (!hasPolylineFieldsInSchema) {
-            // Setting `editing` to a string triggers schema creation flow
-            // See docstring of `editing` atom for more details
             setEditing(POLYLINE);
             return;
           }
@@ -383,6 +368,7 @@ export const ThreeDCuboids = () => {
   const setEditing = useSetAtom(editing);
   const current3dAnnotationMode = useCurrent3dAnnotationMode();
   const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
+  const deactivateAll = useDeactivateAll();
   const visibleFields = useAtomValue(fieldsOfType(DETECTION));
 
   const cuboidFields = use3dAnnotationFields(
@@ -412,14 +398,11 @@ export const ThreeDCuboids = () => {
         className={disabled ? "disabled" : ""}
         onClick={() => {
           if (disabled) return;
-          if (isCuboidAnnotateActive) {
-            setCurrent3dAnnotationMode(null);
-            return;
-          }
+          deactivateAll();
+
+          if (isCuboidAnnotateActive) return;
 
           if (!hasCuboidFieldsInSchema) {
-            // Setting `editing` to a string triggers schema creation flow
-            // See docstring of `editing` atom for more details
             setEditing(DETECTION);
             return;
           }
@@ -439,29 +422,44 @@ const Actions = () => {
   // This checks if a 3d sample is pinned - is true when media type is `group` with a 3d slice pinned
   const { isPinned: is3dSamplePinned } = useRenderConfig3dState();
 
-  const areThreedActionsVisible = is3dDataset || is3dSamplePinned;
+  const { classificationActive, disableClassification } = useClassification();
+  const { quickDrawActive, disableQuickDraw } = useQuickDraw();
+  const current3dAnnotationMode = useCurrent3dAnnotationMode();
+  const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
+
+  const noActiveActions =
+    !classificationActive && !quickDrawActive && !current3dAnnotationMode;
+  const areThreeDActionsVisible = is3dDataset || is3dSamplePinned;
+
+  const deactivateAll = useCallback(() => {
+    disableClassification();
+    setCurrent3dAnnotationMode(null);
+    disableQuickDraw();
+  }, [disableClassification, disableQuickDraw, setCurrent3dAnnotationMode]);
 
   return (
-    <ActionsDiv style={{ margin: "0 0.25rem", paddingBottom: "0.5rem" }}>
-      <Row>
-        <ItemLeft style={{ columnGap: "0.1rem" }}>
-          <Select />
-          <Classification />
-          {areThreedActionsVisible ? (
-            <>
-              <ThreeDCuboids />
-              <ThreeDPolylines />
-            </>
-          ) : (
-            <Detection />
-          )}
-        </ItemLeft>
-        <ItemRight style={{ columnGap: "0.1rem" }}>
-          <Undo />
-          <Redo />
-        </ItemRight>
-      </Row>
-    </ActionsDiv>
+    <DeactivateAllContext.Provider value={deactivateAll}>
+      <ActionsDiv style={{ margin: "0 0.25rem", paddingBottom: "0.5rem" }}>
+        <Row>
+          <ItemLeft style={{ columnGap: "0.1rem" }}>
+            <Select active={noActiveActions} />
+            <Classification />
+            {areThreeDActionsVisible ? (
+              <>
+                <ThreeDCuboids />
+                <ThreeDPolylines />
+              </>
+            ) : (
+              <Detection />
+            )}
+          </ItemLeft>
+          <ItemRight style={{ columnGap: "0.1rem" }}>
+            <Undo />
+            <Redo />
+          </ItemRight>
+        </Row>
+      </ActionsDiv>
+    </DeactivateAllContext.Provider>
   );
 };
 
