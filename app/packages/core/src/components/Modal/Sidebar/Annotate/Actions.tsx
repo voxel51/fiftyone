@@ -7,7 +7,6 @@ import {
 } from "@fiftyone/looker-3d/src/constants";
 import {
   useCurrent3dAnnotationMode,
-  useReset3dAnnotationMode,
   useSetCurrent3dAnnotationMode,
 } from "@fiftyone/looker-3d/src/state/accessors";
 import {
@@ -16,7 +15,6 @@ import {
   useRenderConfig3dState,
 } from "@fiftyone/state";
 import {
-  CLASSIFICATION,
   DETECTION,
   DETECTIONS,
   POLYLINE,
@@ -30,8 +28,8 @@ import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ItemLeft, ItemRight } from "./Components";
 import { editing } from "./Edit";
+import { useClassification } from "./Edit/useClassification";
 import { fieldsOfType } from "./Edit/state";
-import useCreate from "./Edit/useCreate";
 import { useQuickDraw } from "./Edit/useQuickDraw";
 
 const ActionsDiv = styled.div`
@@ -127,31 +125,14 @@ const Square = styled(Container)<{ $active?: boolean }>`
 `;
 
 const Classification = () => {
-  const create = useCreate(CLASSIFICATION);
-  const isPatchView = useRecoilValue(isPatchesView);
-  const reset3dAnnotationMode = useReset3dAnnotationMode();
-  const fields = useAtomValue(fieldsOfType(CLASSIFICATION));
-  const disabled = isPatchView || fields.length === 0;
-
-  const handleCreateClassification = useCallback(() => {
-    if (disabled) return;
-    create();
-
-    // Exit other "persistent" annotation modes like 3D
-    reset3dAnnotationMode();
-  }, [create, disabled]);
+  const { active, disabled, tooltip, toggleClassification } =
+    useClassification();
 
   return (
-    <Tooltip
-      placement="top-center"
-      text={
-        isPatchView
-          ? "Creating classifications is not supported in this view"
-          : "Create new classification"
-      }
-    >
+    <Tooltip placement="top-center" text={tooltip}>
       <Square
-        onClick={handleCreateClassification}
+        $active={active}
+        onClick={toggleClassification}
         className={disabled ? "disabled" : ""}
       >
         <svg
