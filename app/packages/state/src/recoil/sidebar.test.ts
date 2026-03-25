@@ -541,6 +541,7 @@ describe("hiddenNoneGroups selector", () => {
           sample: {},
         },
       },
+      is3dPinned: true,
       pinned3DSampleSlice: "one",
     });
 
@@ -560,6 +561,30 @@ describe("hiddenNoneGroups selector", () => {
           },
         },
       },
+      is3dPinned: true,
+      pinned3DSampleSlice: "one",
+    });
+
+    expect(testHiddenNoneGroups()).toStrictEqual(present);
+  });
+
+  it("falls back to the active modal sample when 3d is no longer pinned", () => {
+    setMockAtoms(base);
+    setMockAtoms({
+      active3dSlices: ["one", "two"],
+      active3dSlicesToSampleMap: {
+        one: {
+          sample: {},
+        },
+        two: {
+          sample: {},
+        },
+      },
+      activeModalSidebarSample: {
+        my_field: "value",
+        my_list_field: [{ subfield: "value" }],
+      },
+      is3dPinned: false,
       pinned3DSampleSlice: "one",
     });
 

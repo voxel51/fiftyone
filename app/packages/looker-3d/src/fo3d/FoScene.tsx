@@ -3,6 +3,17 @@ import { Suspense, useEffect, useMemo } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { Fo3dErrorBoundary } from "../ErrorBoundary";
 import { PANEL_ORDER_VISIBILITY } from "../constants";
+import { useUrlModifier } from "../hooks/use-fo3d-fetcher";
+import { fo3dContainsBackground, isFo3dBackgroundOnAtom } from "../state";
+import { AssetErrorBoundary } from "./AssetErrorBoundary";
+import { Fo3dBackground } from "./Background";
+import { useFo3dContext } from "./context";
+import { Fbx } from "./mesh/Fbx";
+import { Gltf } from "./mesh/Gltf";
+import { Obj } from "./mesh/Obj";
+import { Ply } from "./mesh/Ply";
+import { Stl } from "./mesh/Stl";
+import { Pcd } from "./point-cloud/Pcd";
 import {
   BoxGeometryAsset,
   CylinderGeometryAsset,
@@ -16,18 +27,7 @@ import {
   PlyAsset,
   SphereGeometryAsset,
   StlAsset,
-} from "../hooks";
-import { useUrlModifier } from "../hooks/use-fo3d-fetcher";
-import { fo3dContainsBackground, isFo3dBackgroundOnAtom } from "../state";
-import { AssetErrorBoundary } from "./AssetErrorBoundary";
-import { Fo3dBackground } from "./Background";
-import { useFo3dContext } from "./context";
-import { Fbx } from "./mesh/Fbx";
-import { Gltf } from "./mesh/Gltf";
-import { Obj } from "./mesh/Obj";
-import { Ply } from "./mesh/Ply";
-import { Stl } from "./mesh/Stl";
-import { Pcd } from "./point-cloud/Pcd";
+} from "./render-types";
 import { Box } from "./shape/Box";
 import { Cylinder } from "./shape/Cylinder";
 import { Plane } from "./shape/Plane";
@@ -278,13 +278,9 @@ export const FoSceneComponent = ({ scene }: FoSceneProps) => {
     }
   }, [scene, isSceneInitialized]);
 
-  if (!fo3dRoot) {
-    return null;
-  }
-
   return (
     <>
-      {isFo3dBackgroundOn && scene.background && (
+      {isFo3dBackgroundOn && fo3dRoot && scene.background && (
         <Fo3dErrorBoundary ignoreError boundaryName="background">
           <Suspense fallback={null}>
             <Fo3dBackground background={scene.background} />

@@ -1366,18 +1366,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         # Try to infer from group slice
         if self.media_type == fom.GROUP:
-            group = None
-            if self.group_field is not None:
-                group = getattr(sample, self.group_field, None)
-            if group is None and self.group_field == "group":
-                group = getattr(sample, "group", None)
-
-            if group is not None:
-                try:
-                    slice_name = group.name
-                    return intrinsics_map.get(slice_name)
-                except (AttributeError, KeyError):
-                    pass
+            slice_name = fog.get_group_slice_name(sample, self.group_field)
+            if slice_name is not None:
+                return intrinsics_map.get(slice_name)
 
         return None
 
@@ -1438,17 +1429,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         # Try to infer source_frame from group slice if not provided
         if source_frame is None:
             if self.media_type == fom.GROUP:
-                group = None
-                if self.group_field is not None:
-                    group = getattr(sample, self.group_field, None)
-                if group is None and self.group_field == "group":
-                    group = getattr(sample, "group", None)
-
-                if group is not None:
-                    try:
-                        source_frame = group.name
-                    except (AttributeError, KeyError):
-                        pass
+                source_frame = fog.get_group_slice_name(
+                    sample, self.group_field
+                )
 
         # Try direct resolution first
         result = self._resolve_transformation_direct(

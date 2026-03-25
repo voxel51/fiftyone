@@ -24,7 +24,13 @@ export interface BoundingBox {
 }
 
 export interface InferenceResult {
+  /** Row-major mask values in [0,1], length = maskWidth * maskHeight. */
   mask: Float32Array;
+  /** Pixel width of the cropped mask region. */
+  maskWidth: number;
+  /** Pixel height of the cropped mask region. */
+  maskHeight: number;
+  /** Bounding box in normalized [0,1] coordinates. */
   bbox: BoundingBox;
 }
 
@@ -33,15 +39,30 @@ interface WorkerMessage<Req, Res> {
   response: Res;
 }
 
+export interface DownloadProgress {
+  file: "encoder" | "decoder";
+  loaded: number;
+  total: number;
+}
+
 /** Maps worker message types to their request/response payloads. */
 export type WorkerMessages = {
   loadModel: WorkerMessage<Record<string, never>, void>;
   embedAndDecode: WorkerMessage<InferenceRequest, InferenceResult>;
 };
 
+/** One-way worker-to-main-thread notification payloads. */
+export type WorkerNotifications = {
+  progress: DownloadProgress;
+  warning: string;
+};
+
 export type WorkerMessageType = keyof WorkerMessages;
 export type WorkerRequest<T extends WorkerMessageType> = WorkerMessages[T]["request"];
 export type WorkerResponse<T extends WorkerMessageType> = WorkerMessages[T]["response"];
+
+export type DownloadProgressCallback = (progress: DownloadProgress) => void;
+export type WarningCallback = (message: string) => void;
 
 export interface AnnotationProvider {
   initialize(): Promise<void>;

@@ -3,6 +3,39 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.16.5
+--------------------------
+*Released March 23, 2026*
+
+Includes all updates from :ref:`FiftyOne 1.13.5 <release-notes-v1.13.5>`, plus:
+
+Cloud Media
+
+- Fixed a bug where wildcard bucket-prefix cloud credentials (e.g.
+  `https://account.blob.core.windows.net/*`) could incorrectly match buckets
+  belonging to different storage accounts.
+
+
+Security
+
+- Updated a number of dependencies in order to resolve security
+  vulnerabilities: `aiohttp`, `axios`, `cryptography`, `dompurify`, `eslint`,
+  `immutable`, `lodash`, `minimatch`, `pillow`, `protobuf`, `pynacl`, `qs`,
+  `rollup`, and `tar`.
+
+
+.. _release-notes-v1.13.5:
+
+FiftyOne 1.13.5
+---------------
+*Released March 23, 2026*
+
+Models
+
+- Fixed issue with grounded zero shot object detection transformer adaptor.
+  `#7197 <https://github.com/voxel51/fiftyone/pull/7197>`_
+
+
 FiftyOne Enterprise 2.16.4
 --------------------------
 *Released March 9, 2026*
@@ -194,6 +227,12 @@ Cloud Media
   Note: Configuration for `teams-api` may need to be
   `updated <https://github.com/voxel51/fiftyone-teams-app-deploy/blob/main/docker/docs/upgrading.md#fiftyone-enterprise-v216-additional-api-routes>`_
   given the new `/cloud_credentials` routes.
+- Users can configure their preferences for accessing cloud credentials
+  locally. Both
+  :ref:`local vs remote precedence <enterprise-cloud-creds-origin-preference>`,
+  and
+  :ref:`enabling vs disabling download of managed credentials <enterprise-cloud-creds-local-download>`
+  are configurable.
 
 Plugins and Operators
 
@@ -277,9 +316,6 @@ Core
   This will significantly increase the reliability and consistency of long
   running requests. This change is disabled by default, but can be enabled
   by setting the `FIFTYONE_ENABLE_RPC` environment variable to `True`.
-- Users can now configure their priority preference for loading credentials
-  (remote vs local) when accessing storage utilities. 
-  `#2209 <https://github.com/voxel51/fiftyone-teams/pull/2209>`_
 
 Plugins, Operators, and Orchestrators
 
