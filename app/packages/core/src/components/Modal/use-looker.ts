@@ -1,6 +1,6 @@
 import * as fos from "@fiftyone/state";
 import { modalBridge, useSaveModalViewport } from "@fiftyone/state";
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { v4 as uuid } from "uuid";
@@ -91,6 +91,8 @@ function useLooker<L extends fos.Lookers>({
     return () => looker?.destroy();
   }, [looker]);
 
+  useSyncViewport(looker, sampleRef);
+
   const jsonPanel = fos.useJSONPanel();
   const helpPanel = fos.useHelpPanel();
 
@@ -131,13 +133,26 @@ function useLooker<L extends fos.Lookers>({
     }
   }, [looker, setActiveLookerRef]);
 
+  return { id, looker, ref, sample, updateLookerOptions };
+}
+
+export default useLooker;
+
+/**
+ * Persists the looker's zoom/pan state when it unmounts, and restores it on
+ * mount, so the viewport survives switching between EXPLORE and ANNOTATE modes.
+ */
+function useSyncViewport<L extends fos.Lookers>(
+  looker: L,
+  sampleRef: RefObject<fos.ModalSample>
+) {
   const setViewportState = useSaveModalViewport();
 
   // Capture zoom/pan before the looker is removed from the DOM
   // so the position can be restored when EXPLORE mode (Looker) remounts.
   useLayoutEffect(() => {
     return () => {
-      if (looker?.state?.loaded && looker.state.dimensions) {
+      if (looker?.state?.loaded && looker.state.dimensions && sampleRef.current) {
         setViewportState({
           sampleId: sampleRef.current.sample._id,
           ...looker.getViewportState(),
@@ -150,12 +165,8 @@ function useLooker<L extends fos.Lookers>({
   // unmounting component's useLayoutEffect cleanup has already written to the atom.
   useLayoutEffect(() => {
     const savedViewport = modalBridge.getModalViewport();
-    if (savedViewport?.sampleId === sample.sample._id) {
+    if (sampleRef.current && savedViewport?.sampleId === sampleRef.current.sample._id) {
       looker.updateOptions({ initialViewport: savedViewport }, true);
     }
-  }, [looker, sample]);
-
-  return { id, looker, ref, sample, updateLookerOptions };
+  }, [looker]);
 }
-
-export default useLooker;
