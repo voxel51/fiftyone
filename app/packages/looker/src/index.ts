@@ -22,7 +22,6 @@ export type {
   Sample,
   VideoConfig,
   VideoOptions,
-  ViewportState,
 } from "./state";
 export { zoomAspectRatio } from "./zoom";
 export type RGB = [number, number, number];

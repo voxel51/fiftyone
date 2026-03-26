@@ -18,9 +18,8 @@ import {
   SELECTED_COLOR,
   TAB_GAP_DEFAULT,
 } from "../constants";
-import type { ViewportState } from "@fiftyone/looker";
 import type { LighterEventGroup } from "../events";
-import type { DrawStyle, Point, Rect, TextOptions } from "../types";
+import type { DrawStyle, Point, Rect, TextOptions, ViewportState } from "../types";
 import { parseColorWithAlpha } from "../utils/color";
 import type { ImageOptions, ImageSource, Renderer2D } from "./Renderer2D";
 import { sharedPixiApp } from "./SharedPixiApplication";

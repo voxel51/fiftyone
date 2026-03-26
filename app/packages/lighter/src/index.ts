@@ -76,6 +76,7 @@ export type {
   Spatial,
   TextOptions,
   TransformMatrix,
+  ViewportState,
 } from "./types";
 
 export { getOverlayColor } from "./utils/colorMapping";

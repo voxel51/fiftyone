@@ -2,8 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import type { ViewportState } from "@fiftyone/looker";
-import type { DrawStyle, Point, Rect, TextOptions } from "../types";
+import type { DrawStyle, Point, Rect, TextOptions, ViewportState } from "../types";
 
 /**
  * Types of image sources that can be rendered.

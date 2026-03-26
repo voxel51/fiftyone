@@ -2,13 +2,13 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import type { ViewportState } from "@fiftyone/looker";
 import type {
   Dimensions2D,
   DrawStyle,
   Point,
   Rect,
   TextOptions,
+  ViewportState,
 } from "../types";
 import type { ImageOptions, ImageSource } from "./Renderer2D";
 

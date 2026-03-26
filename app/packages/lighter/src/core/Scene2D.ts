@@ -17,7 +17,7 @@ import {
   TransformOverlayCommand,
 } from "../commands/TransformOverlayCommand";
 import { STROKE_WIDTH } from "../constants";
-import type { ViewportState } from "@fiftyone/looker";
+import type { ViewportState } from "../types";
 import type { LighterEventGroup } from "../events";
 import type { InteractionHandler } from "../interaction/InteractionManager";
 import { InteractionManager } from "../interaction/InteractionManager";

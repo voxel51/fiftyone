@@ -2,7 +2,6 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import type { ViewportState } from "@fiftyone/looker";
 import { useLookerOptions } from "@fiftyone/state";
 import { useAtom } from "jotai";
 import { useEffect, useRef } from "react";
@@ -11,6 +10,7 @@ import {
   PixiRenderer2D,
   Rect,
   Scene2D,
+  ViewportState,
   globalPixiResourceLoader,
   lighterSceneAtom,
   useLighterEventBus,
