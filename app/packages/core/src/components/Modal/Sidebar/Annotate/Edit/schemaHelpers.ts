@@ -26,11 +26,10 @@ const getLabel = (value?: unknown): string => {
   return value as string;
 };
 
-const getPrimitiveSchemaType = (
-  type: string
-): "string" | "number" | "boolean" => {
+const getPrimitiveSchemaType = (type: string): string => {
   if (type === "float" || type === "int") return "number";
   if (type === "bool") return "boolean";
+  if (type === "dict") return "object";
   return "string";
 };
 
