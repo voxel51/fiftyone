@@ -466,16 +466,17 @@ class SAMSegmenterOutputProcessor(fout.OutputProcessor):
             if masks.shape[1] > 1:
                 if mask_index is not None:
                     _mask_index = torch.full(
-                        (masks.shape[0],), mask_index, dtype=torch.int
+                        (masks.shape[0],),
+                        mask_index,
+                        dtype=torch.long,
+                        device=masks.device,
                     )
                 else:
                     _mask_index = mask_scores.argmax(dim=1)
-                _masks = masks[
-                    torch.arange(masks.shape[0]), _mask_index
-                ]  # (B, H, W)
-                _mask_scores = mask_scores[
-                    torch.arange(masks.shape[0]), _mask_index
-                ]  # (B,)
+
+                row_index = torch.arange(masks.shape[0], device=masks.device)
+                _masks = masks[row_index, _mask_index]  # (B, H, W)
+                _mask_scores = mask_scores[row_index, _mask_index]  # (B,)
             else:
                 _masks = masks.squeeze(1)
                 _mask_scores = mask_scores.squeeze(1)
