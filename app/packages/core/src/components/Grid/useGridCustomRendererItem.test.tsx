@@ -13,6 +13,7 @@ const {
   mockDataset,
   mockSelectedMediaField,
   mockSchema,
+  trackEvent,
   useGridCustomRendererFailover,
   useCurrentDataset,
   useSampleSchema,
@@ -27,6 +28,7 @@ const {
   getComponent: vi.fn(),
   getSampleRendererComponent: vi.fn(),
   isGridCustomRendererFailOpen: vi.fn(),
+  trackEvent: vi.fn(),
   useCurrentDataset: vi.fn(),
   useGridCustomRendererFailover: vi.fn(),
   useSampleSchema: vi.fn(),
@@ -55,6 +57,10 @@ vi.mock("@fiftyone/state", () => ({
   useSampleSchema: (...args: unknown[]) => useSampleSchema(...args),
   useSelectedMediaFieldGrid: (...args: unknown[]) =>
     useSelectedMediaFieldGrid(...args),
+}));
+
+vi.mock("@fiftyone/analytics", () => ({
+  useTrackEvent: () => trackEvent,
 }));
 
 vi.mock("recoil", () => ({
@@ -141,6 +147,7 @@ describe("useGridCustomRendererItem", () => {
 
     expect(looker).toBeInstanceOf(GridCustomRendererItem);
     expect(createDefaultLooker.current).not.toHaveBeenCalled();
+    expect(trackEvent).toHaveBeenCalledWith("grid_custom_renderer_used");
   });
 
   it("stays on the default path when no sample renderer matches", () => {
@@ -168,6 +175,7 @@ describe("useGridCustomRendererItem", () => {
       }),
       { fontSize: 12 }
     );
+    expect(trackEvent).not.toHaveBeenCalled();
   });
 
   it("stays on the default path when the dataset renderer is fail-open", () => {
@@ -205,5 +213,6 @@ describe("useGridCustomRendererItem", () => {
       }),
       { fontSize: 12 }
     );
+    expect(trackEvent).not.toHaveBeenCalled();
   });
 });
