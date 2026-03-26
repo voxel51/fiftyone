@@ -44,10 +44,7 @@ export function extractZoomTarget(sample: Record<string, unknown>): Rect | null 
     found = true;
   };
 
-  for (const value of Object.values(sample)) {
-    if (!value || typeof value !== "object") continue;
-
-    const label = value as Record<string, unknown>;
+  const visitLabel = (label: Record<string, unknown>): void => {
     const cls = label._cls;
 
     if (cls === "Detection") {
@@ -59,7 +56,18 @@ export function extractZoomTarget(sample: Record<string, unknown>): Rect | null 
           visitDetection(det);
         }
       }
+    } else if (cls === "DynamicEmbeddedDocument") {
+      for (const nested of Object.values(label)) {
+        if (nested && typeof nested === "object" && !Array.isArray(nested)) {
+          visitLabel(nested as Record<string, unknown>);
+        }
+      }
     }
+  };
+
+  for (const value of Object.values(sample)) {
+    if (!value || typeof value !== "object") continue;
+    visitLabel(value as Record<string, unknown>);
   }
 
   if (!found) return null;
