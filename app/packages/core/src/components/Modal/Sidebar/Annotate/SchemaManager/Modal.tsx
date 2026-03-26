@@ -176,6 +176,8 @@ const Modal = () => {
   // and JSON editor state is reset by useFullSchemaEditor's cleanup effect.
   useSchemaManagerCleanup();
 
+  const { closeSchemaManager } = useSchemaManagerModal();
+
   const element = useMemo(() => {
     const el = document.getElementById("annotation");
     if (!el) {
@@ -183,10 +185,6 @@ const Modal = () => {
     }
     return el;
   }, []);
-  const {
-    schemaManagerDisplayed,
-    closeSchemaManager,
-  } = useSchemaManagerModal();
 
   useEffect(() => {
     element.style.display = "block";
@@ -196,41 +194,39 @@ const Modal = () => {
     };
   }, [element]);
 
-  return schemaManagerDisplayed
-    ? createPortal(
-        <ModalBackground onClick={() => closeSchemaManager()}>
-          <ModalContainer
-            data-cy="schema-manager"
-            onClick={(e) => e.stopPropagation()}
+  return createPortal(
+    <ModalBackground onClick={() => closeSchemaManager()}>
+      <ModalContainer
+        data-cy="schema-manager"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <ModalHeader>
+          <Heading />
+          <Button
+            variant={Variant.Icon}
+            borderless
+            size={Size.Sm}
+            data-cy="close-schema-manager"
+            onClick={() => closeSchemaManager()}
+            style={{ marginRight: "14px" }}
           >
-            <ModalHeader>
-              <Heading />
-              <Button
-                variant={Variant.Icon}
-                borderless
-                size={Size.Sm}
-                data-cy="close-schema-manager"
-                onClick={() => closeSchemaManager()}
-                style={{ marginRight: "14px" }}
-              >
-                <Icon
-                  name={IconName.Close}
-                  size={Size.Lg}
-                  className={textColorClass(TextColor.Secondary)}
-                />
-              </Button>
-            </ModalHeader>
+            <Icon
+              name={IconName.Close}
+              size={Size.Lg}
+              className={textColorClass(TextColor.Secondary)}
+            />
+          </Button>
+        </ModalHeader>
 
-            <Subheading />
+        <Subheading />
 
-            <Page />
+        <Page />
 
-            <SchemaManagerFooter />
-          </ModalContainer>
-        </ModalBackground>,
-        element
-      )
-    : null;
+        <SchemaManagerFooter />
+      </ModalContainer>
+    </ModalBackground>,
+    element
+  );
 };
 
 export default Modal;
