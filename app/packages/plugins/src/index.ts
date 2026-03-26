@@ -598,7 +598,13 @@ class PluginComponentRegistry {
 
     const wrappedRegistration = {
       ...registration,
-      component: wrapCustomComponent(registration.component),
+      // Sample renderers provide their own grid/modal-specific fallbacks and
+      // should not inherit the generic plugin boundary, which clears the modal
+      // on error before local recovery can run.
+      component:
+        registration.type === PluginComponentType.SampleRenderer
+          ? registration.component
+          : wrapCustomComponent(registration.component),
     };
 
     this.data.set(name, wrappedRegistration);
