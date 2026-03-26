@@ -153,7 +153,12 @@ const Select = ({ active }: { active: boolean }) => {
 
   return (
     <Tooltip placement="top-center" text="Select">
-      <Square $active={active} onClick={active ? undefined : deactivateAll}>
+      <Square
+          $active={active}
+          data-cy="select-action"
+          data-cy-active={active}
+          onClick={active ? undefined : deactivateAll}
+        >
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="19"
@@ -187,6 +192,8 @@ const Classification = () => {
     <Tooltip placement="top-center" text={tooltip}>
       <Square
         $active={classificationActive}
+        data-cy="create-classification"
+        data-cy-active={classificationActive}
         onClick={() => {
           if (disabled) return;
           deactivateAll();

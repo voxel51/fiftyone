@@ -122,6 +122,20 @@ export class ModalAnnotateSidebarPom {
   }
 
   /**
+   * Click the Select action button
+   */
+  async selectAction() {
+    await this.page.getByTestId("select-action").click();
+  }
+
+  /**
+   * Click the Classification action button
+   */
+  async createClassification() {
+    await this.page.getByTestId("create-classification").click();
+  }
+
+  /**
    * Activate quick draw mode for a label type (e.g. "Detections")
    *
    * @param labelType The label type to quick draw
@@ -224,6 +238,28 @@ class ModalAnnotateSidebarAsserter {
     await expect(this.modalAnnotateSidebar.annotationSliceSelector).toHaveValue(
       expectedSlice
     );
+  }
+
+  /**
+   * Assert that the Select action is active or inactive
+   *
+   * @param active Whether the select action should be active (default true)
+   */
+  async selectIsActive(active = true) {
+    const button = this.modalAnnotateSidebar.page.getByTestId("select-action");
+    await expect(button).toHaveAttribute("data-cy-active", active.toString());
+  }
+
+  /**
+   * Assert that the Classification action is active or inactive
+   *
+   * @param active Whether the classification action should be active (default true)
+   */
+  async classificationIsActive(active = true) {
+    const button = this.modalAnnotateSidebar.page.getByTestId(
+      "create-classification"
+    );
+    await expect(button).toHaveAttribute("data-cy-active", active.toString());
   }
 
   /**
