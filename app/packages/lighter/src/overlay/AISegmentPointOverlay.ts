@@ -5,21 +5,17 @@
  * Renders each point as a green circle with a white "+" cross.
  */
 
-import {
-  KEYPOINT_HIT_RADIUS,
-  KEYPOINT_RADIUS,
-  KEYPOINT_SELECTED_RADIUS,
-  STROKE_WIDTH,
-} from "../constants";
+import { STROKE_WIDTH } from "../constants";
 import type { Renderer2D } from "../renderer/Renderer2D";
-import type { Point, RenderMeta } from "../types";
-import { BaseOverlay } from "./BaseOverlay";
+import type { RenderMeta } from "../types";
 import { KeypointOverlay, type KeypointOptions } from "./KeypointOverlay";
 
+const AI_POINT_RADIUS = 10;
+const AI_POINT_SELECTED_RADIUS = 13;
 const POSITIVE_COLOR = "#22c55e"; // green-500
 const POSITIVE_SELECTED_COLOR = "#4ade80"; // green-400
 const CROSS_COLOR = "#ffffff";
-const CROSS_LINE_WIDTH = 2;
+const CROSS_LINE_WIDTH = 2.5;
 
 /**
  * AI-segment point overlay that renders positive prompt-points as
@@ -35,6 +31,14 @@ export class AISegmentPointOverlay extends KeypointOverlay {
 
   override getOverlayType(): string {
     return "AISegmentPointOverlay";
+  }
+
+  /**
+   * No-op: AI segment points are independent — no preview line from
+   * the last point to the cursor.
+   */
+  override setPreviewPoint(_worldPoint: { x: number; y: number } | null): void {
+    // intentionally empty
   }
 
   protected override renderImpl(
@@ -55,7 +59,7 @@ export class AISegmentPointOverlay extends KeypointOverlay {
     for (let i = 0; i < absPoints.length; i++) {
       const isSelected = this.selectedPointIndex === i;
       const center = absPoints[i];
-      const radius = isSelected ? KEYPOINT_SELECTED_RADIUS : KEYPOINT_RADIUS;
+      const radius = isSelected ? AI_POINT_SELECTED_RADIUS : AI_POINT_RADIUS;
       const fillColor = isSelected ? POSITIVE_SELECTED_COLOR : POSITIVE_COLOR;
 
       // 1. Green filled circle with white border

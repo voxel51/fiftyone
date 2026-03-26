@@ -7,7 +7,7 @@
  * and wiring them to the annotation agent inference pipeline.
  */
 
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { atom, useAtomValue, useSetAtom } from "jotai";
 import { useAtomCallback } from "jotai/utils";
 import { getEventBus } from "@fiftyone/events";
@@ -21,14 +21,12 @@ import {
   useLighter,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
-import {
-  useToolsState,
-  useActiveTask,
-  useAgentSelector,
-  useAnnotationAgent,
-  useApplyInferenceResult,
-  AgentTaskType,
-} from "@fiftyone/annotation";
+import { useToolsState } from "@fiftyone/annotation/src/agents/hooks/useToolsContext";
+import { useActiveTask } from "@fiftyone/annotation/src/agents/hooks/useActiveTask";
+import { useAgentSelector } from "@fiftyone/annotation/src/agents/hooks/useAgentSelector";
+import { useAnnotationAgent } from "@fiftyone/annotation/src/agents/hooks/useAnnotationAgent";
+import { useApplyInferenceResult } from "@fiftyone/annotation/src/agents/hooks/useApplyInferenceResult";
+import { AgentTaskType } from "@fiftyone/annotation/src/agents/types";
 import { v4 as generateUUID } from "uuid";
 
 // ---------------------------------------------------------------------------
@@ -85,18 +83,14 @@ export const useAISegment = () => {
     >("ai-segment-point", {
       id,
       field: "",
-      label: { _id: id, label: "", tags: [], points: [] },
+      label: { id, label: "", tags: [], points: [] } as any,
     });
 
     addOverlay(overlay, false);
     setOverlayId(id);
 
-    // Enter interactive mode so every click places a point
-    const eventBus = getEventBus<LighterEventGroup>(
-      currentScene.getEventChannel()
-    );
-    const handler = new InteractiveKeypointHandler(overlay, eventBus);
-    currentScene.enterInteractiveMode(handler);
+    // Interactive mode is deferred until the user types a prompt.
+    // See the useEffect below that watches `prompt`.
   }, [overlayFactory, addOverlay, setActive, setActiveTask, setOverlayId]);
 
   const exit = useCallback(() => {
@@ -130,10 +124,48 @@ export const useAISegment = () => {
 
   const setPrompt = useCallback(
     (text: string) => {
-      toolsState.setTextPrompt(text || null);
+      toolsState.setTextPrompt(text);
     },
     [toolsState]
   );
+
+  // ---- enter interactive mode only when prompt is non-empty ----
+
+  const interactiveModeRef = useRef(false);
+
+  useEffect(() => {
+    const currentScene = sceneRef.current;
+    if (!currentScene || currentScene.isDestroyed || !active) return;
+
+    const hasPrompt = prompt.length > 0;
+
+    if (hasPrompt && !interactiveModeRef.current && overlayId) {
+      // Prompt just became non-empty — enter interactive mode
+      const overlay = getOverlay?.(overlayId);
+      if (overlay) {
+        const eventBus = getEventBus<LighterEventGroup>(
+          currentScene.getEventChannel()
+        );
+        const handler = new InteractiveKeypointHandler(
+          overlay as AISegmentPointOverlay,
+          eventBus
+        );
+        currentScene.enterInteractiveMode(handler);
+        interactiveModeRef.current = true;
+      }
+    } else if (!hasPrompt && interactiveModeRef.current) {
+      // Prompt cleared — exit interactive mode (keep overlay)
+      currentScene.exitInteractiveMode();
+      interactiveModeRef.current = false;
+    }
+  }, [active, prompt, overlayId, getOverlay]);
+
+  // Clean up ref on exit
+  useEffect(() => {
+    if (!active) {
+      interactiveModeRef.current = false;
+    }
+  }, [active]);
 
   // ---- point events → inference ----
 

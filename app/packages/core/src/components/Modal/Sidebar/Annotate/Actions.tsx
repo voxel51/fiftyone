@@ -41,6 +41,7 @@ import { editing } from "./Edit";
 import { fieldsOfType } from "./Edit/state";
 import useCreate from "./Edit/useCreate";
 import { useQuickDraw } from "./Edit/useQuickDraw";
+import { useSegmentationMasks } from "./Edit/useSegmentationMasks";
 import useCanManageSchema from "./useCanManageSchema";
 import useShowModal from "./useShowModal";
 
@@ -218,6 +219,55 @@ const Detection = () => {
           <path
             d="M4.25 15.75C3.8375 15.75 3.48438 15.6031 3.19063 15.3094C2.89687 15.0156 2.75 14.6625 2.75 14.25V3.75C2.75 3.3375 2.89687 2.98438 3.19063 2.69063C3.48438 2.39687 3.8375 2.25 4.25 2.25H14.75C15.1625 2.25 15.5156 2.39687 15.8094 2.69063C16.1031 2.98438 16.25 3.3375 16.25 3.75V14.25C16.25 14.6625 16.1031 15.0156 15.8094 15.3094C15.5156 15.6031 15.1625 15.75 14.75 15.75H4.25ZM4.25 14.25H14.75V3.75H4.25V14.25Z"
             fill="currentColor"
+          />
+        </svg>
+      </Square>
+    </Tooltip>
+  );
+};
+
+const Segmentation = () => {
+  const { active, enter, exit } = useSegmentationMasks();
+  const isPatchView = useRecoilValue(isPatchesView);
+  const fields = useAtomValue(fieldsOfType(DETECTION));
+  const disabled = isPatchView || fields.length === 0;
+
+  const tooltip = isPatchView
+    ? "Segmentation is not supported in this view"
+    : active
+    ? "Exit segmentation mode"
+    : "Segmentation tools";
+
+  return (
+    <Tooltip placement="top-center" text={tooltip}>
+      <Square
+        $active={active}
+        className={disabled ? "disabled" : ""}
+        onClick={() => {
+          if (disabled) return;
+          if (active) {
+            exit();
+          } else {
+            enter();
+          }
+        }}
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="19"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+        >
+          <title>Segmentation</title>
+          {/* Layers / stack icon */}
+          <path
+            d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="none"
           />
         </svg>
       </Square>
@@ -419,7 +469,10 @@ const Actions = () => {
               <ThreeDPolylines />
             </>
           ) : (
-            <Detection />
+            <>
+              <Detection />
+              <Segmentation />
+            </>
           )}
         </ItemLeft>
         <ItemRight style={{ columnGap: "0.1rem" }}>

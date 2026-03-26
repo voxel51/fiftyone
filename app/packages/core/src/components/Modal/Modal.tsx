@@ -40,12 +40,14 @@ import {
 } from "react-error-boundary";
 import styled from "styled-components";
 import Actions from "./Actions";
+import { AISegmentBanner } from "./AISegmentBanner";
 import ModalNavigation from "./ModalNavigation";
 import { ModalSpace } from "./ModalSpace";
 import { Sidebar } from "./Sidebar";
 import SchemaManagementProvider from "./Sidebar/Annotate/SchemaManagementProvider";
 import useCanManageSchema from "./Sidebar/Annotate/useCanManageSchema";
 import { useAnnotationTracking } from "./Sidebar/Annotate/useAnnotationTracking";
+import { SegmentationToolbar } from "./Sidebar/Annotate/Edit/SegmentationToolbar";
 import { TooltipInfo } from "./TooltipInfo";
 import { useLookerHelpers, useTooltipEventHandler } from "./hooks";
 import { modalContext } from "./modal-context";
@@ -351,6 +353,8 @@ const Modal = () => {
         data-cy="modal"
       >
         <Actions />
+        <SegmentationToolbar />
+        <AISegmentBanner />
         {isAnnotationEnabled && <AnnotationHandlerRegistration />}
         <TooltipInfo />
         <ModalContainer style={{ ...screenParams }}>

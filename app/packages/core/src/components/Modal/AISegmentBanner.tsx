@@ -5,14 +5,15 @@
  * Shows a text prompt input and instruction text.
  */
 
-import React from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import styled from "styled-components";
 import { useAISegment } from "./Sidebar/Annotate/Edit/useAISegment";
 
 const BannerContainer = styled.div`
   position: absolute;
-  top: 12px;
-  left: 50%;
+  top: 50px;
+  /* Center over the canvas area (left of the sidebar, roughly 70% of viewport) */
+  left: 35%;
   transform: translateX(-50%);
   z-index: 10002;
   display: flex;
@@ -53,15 +54,46 @@ const InstructionText = styled.div`
 
 export const AISegmentBanner: React.FC = () => {
   const { active, prompt, setPrompt } = useAISegment();
+  const [draft, setDraft] = useState(prompt);
+
+  // Sync draft when prompt changes externally (e.g. on reset/exit)
+  useEffect(() => {
+    setDraft(prompt);
+  }, [prompt]);
+
+  const commitPrompt = useCallback(() => {
+    const trimmed = draft.trim();
+    if (trimmed !== prompt) {
+      setPrompt(trimmed);
+    }
+  }, [draft, prompt, setPrompt]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        commitPrompt();
+        (e.target as HTMLInputElement).blur();
+      }
+      // Stop keyboard events from reaching the canvas (e.g. Delete key)
+      e.stopPropagation();
+    },
+    [commitPrompt]
+  );
 
   if (!active) return null;
 
   return (
-    <BannerContainer>
+    <BannerContainer
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+    >
       <PromptInput
         placeholder="Describe the object to segment..."
-        value={prompt}
-        onChange={(e) => setPrompt(e.target.value)}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commitPrompt}
+        onKeyDown={handleKeyDown}
         autoFocus
       />
       {prompt.length > 0 && (
