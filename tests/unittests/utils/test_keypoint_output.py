@@ -25,3 +25,5 @@ class TestKeypointOutputProcessorSerialization:
         x, y = result.keypoints[0].points[0]
         assert type(x) is float, f"x is {type(x)}, expected float"
         assert type(y) is float, f"y is {type(y)}, expected float"
+        assert x == 0.5, f"x is {x}, expected 0.5"
+        assert y == 0.5, f"y is {y}, expected 0.5"
