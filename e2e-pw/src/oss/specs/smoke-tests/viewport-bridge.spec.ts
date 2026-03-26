@@ -1,11 +1,10 @@
-import { Jimp, diff as jimpDiff } from "jimp";
-import { test as base, expect } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { SampleCanvasType } from "src/oss/poms/modal/sample-canvas";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
-const datasetName = getUniqueDatasetNameWithPrefix("viewport-bridge-e2e");
+const DATASET_NAME = getUniqueDatasetNameWithPrefix("viewport-bridge-e2e");
 
 const test = base.extend<{
   grid: GridPom;
@@ -19,18 +18,13 @@ const test = base.extend<{
   },
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-  await fiftyoneLoader.executePythonCode(`
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    dataset_name = "${datasetName}"
-    dataset = foz.load_zoo_dataset(
-      "quickstart", max_samples=5, dataset_name=dataset_name
-    )
-    dataset.persistent = True
-  `);
+  await datasetFactory.createBlankDataset({
+    datasetName: DATASET_NAME,
+    numSamples: 1,
+    numbered: true,
+  });
 });
 
 test.afterAll(async ({ foWebServer }) => {
@@ -38,7 +32,7 @@ test.afterAll(async ({ foWebServer }) => {
 });
 
 test.beforeEach(async ({ page, fiftyoneLoader }) => {
-  await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+  await fiftyoneLoader.waitUntilGridVisible(page, DATASET_NAME);
 });
 
 test.afterEach(async ({ modal, page }) => {
@@ -51,18 +45,21 @@ test.describe.serial("viewport-bridge-visual", () => {
     grid,
     modal,
   }) => {
-    const hideOverlays = true;
-    const PAN_X = 150;
-    const ZOOM_IN = -600;
-
     await grid.openFirstSample();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sampleCanvas.assert.is(SampleCanvasType.LOOKER);
 
-    await modal.sampleCanvas.zoom(ZOOM_IN);
-    await modal.sampleCanvas.pan("right", PAN_X);
+    // Zoom in by scrolling the wheel at the canvas centre.
+    await modal.sampleCanvas.move(0.5, 0.5);
+    await modal.sampleCanvas.wheel(0, -600);
 
-    const before = await modal.sampleCanvas.screenshot(hideOverlays);
+    // Pan right by dragging from the canvas centre 150px to the right.
+    await modal.sampleCanvas.move(0.5, 0.5);
+    await modal.sampleCanvas.down();
+    await modal.sampleCanvas.movePixels(150, 0);
+    await modal.sampleCanvas.up();
+
+    await modal.sampleCanvas.assert.hasScreenshot("round-trip-looker.png");
 
     await modal.sidebar.switchMode("annotate");
     await modal.sampleCanvas.assert.is(SampleCanvasType.LIGHTER);
@@ -75,47 +72,32 @@ test.describe.serial("viewport-bridge-visual", () => {
     await modal.sampleCanvas.assert.is(SampleCanvasType.LOOKER);
     await modal.waitForSampleLoadDomAttribute();
 
-    const after = await modal.sampleCanvas.screenshot(hideOverlays);
-
-    // Use a Jimp-based comparison with a tiny per-pixel tolerance instead of
-    // a strict byte-level comparison.
-    const beforeImg = await Jimp.read(before);
-    const afterImg = await Jimp.read(after);
-    const diff = jimpDiff(beforeImg, afterImg, 0.02);
-    expect(diff.percent).toBeLessThan(0.001);
+    await modal.sampleCanvas.assert.hasScreenshot("round-trip-looker.png");
   });
 
   test("visual cross-renderer: Lighter shows same image region as Looker after viewport transfer", async ({
     grid,
     modal,
   }) => {
-    const hideOverlays = true;
-    const PAN_X = 150;
-    const ZOOM_IN = -600;
-
     await grid.openFirstSample();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sampleCanvas.assert.is(SampleCanvasType.LOOKER);
 
-    await modal.sampleCanvas.zoom(ZOOM_IN);
-    await modal.sampleCanvas.pan("right", PAN_X);
+    // Zoom in by scrolling the wheel at the canvas centre.
+    await modal.sampleCanvas.move(0.5, 0.5);
+    await modal.sampleCanvas.wheel(0, -600);
 
-    const lookerBuf = await modal.sampleCanvas.screenshot(hideOverlays);
+    // Pan right by dragging from the canvas centre 150px to the right.
+    await modal.sampleCanvas.move(0.5, 0.5);
+    await modal.sampleCanvas.down();
+    await modal.sampleCanvas.movePixels(150, 0);
+    await modal.sampleCanvas.up();
+
+    await modal.sampleCanvas.assert.hasScreenshot("cross-renderer.png");
 
     await modal.sidebar.switchMode("annotate");
     await modal.sampleCanvas.assert.is(SampleCanvasType.LIGHTER);
 
-    const lighterBuf = await modal.sampleCanvas.screenshot(hideOverlays);
-
-    const lookerImg = await Jimp.read(lookerBuf);
-    const lighterImg = await Jimp.read(lighterBuf);
-
-    // Allow per-pixel color distance up to 15% of the maximum (255) to account
-    // for the difference in rendering pipelines (Canvas 2D vs WebGL/Pixi.js).
-    const diff = jimpDiff(lookerImg, lighterImg, 0.15);
-
-    // Less than 10% of pixels may differ; a completely wrong viewport would
-    // push this near 1.0.
-    expect(diff.percent).toBeLessThan(0.1);
+    await modal.sampleCanvas.assert.hasScreenshot("cross-renderer.png");
   });
 });
