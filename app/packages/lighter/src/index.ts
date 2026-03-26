@@ -25,6 +25,7 @@ export { ClassificationOverlay } from "./overlay/ClassificationOverlay";
 export type { ClassificationOptions } from "./overlay/ClassificationOverlay";
 export { ImageOverlay } from "./overlay/ImageOverlay";
 export type { ImageOptions } from "./overlay/ImageOverlay";
+export { AISegmentPointOverlay } from "./overlay/AISegmentPointOverlay";
 export { KeypointOverlay } from "./overlay/KeypointOverlay";
 export type { KeypointLabel, KeypointOptions } from "./overlay/KeypointOverlay";
 export { OverlayFactory } from "./overlay/OverlayFactory";

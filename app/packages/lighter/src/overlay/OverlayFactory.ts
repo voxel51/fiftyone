@@ -6,6 +6,7 @@ import type { BaseOverlay } from "./BaseOverlay";
 import { BoundingBoxOverlay } from "./BoundingBoxOverlay";
 import { ClassificationOverlay } from "./ClassificationOverlay";
 import { ImageOverlay } from "./ImageOverlay";
+import { AISegmentPointOverlay } from "./AISegmentPointOverlay";
 import { KeypointOverlay } from "./KeypointOverlay";
 
 /**
@@ -34,6 +35,10 @@ export class OverlayFactory {
     );
     factory.register("image", (opts) => new ImageOverlay(opts));
     factory.register("keypoint", (opts) => new KeypointOverlay(opts));
+    factory.register(
+      "ai-segment-point",
+      (opts) => new AISegmentPointOverlay(opts)
+    );
 
     return factory;
   }

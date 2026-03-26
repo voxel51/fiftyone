@@ -84,7 +84,7 @@ export class KeypointOverlay
   #relativePoints: [number, number][];
 
   // Per-point sub-selection
-  private selectedPointIndex: number | null = null;
+  protected selectedPointIndex: number | null = null;
 
   // Drag state for individual points
   private dragPointIndex: number | null = null;
@@ -92,7 +92,7 @@ export class KeypointOverlay
   private moveStartRelativePoint?: [number, number];
 
   // Preview point for interactive creation (cursor tracking)
-  private previewPoint?: Point | null = null;
+  protected previewPoint?: Point | null = null;
 
   // Caches — invalidated in markDirty()
   private _absPointsCache: Point[] | null = null;
@@ -135,7 +135,7 @@ export class KeypointOverlay
     return [(ap.x - t.offsetX) / t.scaleX, (ap.y - t.offsetY) / t.scaleY];
   }
 
-  private getAbsolutePoints(): Point[] {
+  protected getAbsolutePoints(): Point[] {
     if (this._absPointsCache) return this._absPointsCache;
     this._absPointsCache = this.#relativePoints.map((p) =>
       this.relativePointToAbsolute(p)
