@@ -1,0 +1,117 @@
+import {
+  Align,
+  Button,
+  IconName,
+  Justify,
+  Size,
+  Stack,
+  Text,
+  TextColor,
+  TextVariant,
+  Orientation,
+  Spacing,
+  Variant,
+} from "@voxel51/voodo";
+import React, { useCallback, useEffect, useState } from "react";
+import { pluralizeSearches } from "../../utils";
+import { BulkActionBarContainer } from "../styled";
+
+type BulkActionBarProps = {
+  selectedCount: number;
+  onDelete: () => void;
+  onCancel: () => void;
+};
+
+export default function BulkActionBar({
+  selectedCount,
+  onDelete,
+  onCancel,
+}: BulkActionBarProps) {
+  const [confirming, setConfirming] = useState(false);
+
+  // Reset confirmation state when selection is cleared
+  useEffect(() => {
+    if (selectedCount === 0) {
+      setConfirming(false);
+    }
+  }, [selectedCount]);
+
+  const handleDeleteClick = useCallback(() => {
+    setConfirming(true);
+  }, []);
+
+  const handleConfirm = useCallback(() => {
+    setConfirming(false);
+    onDelete();
+  }, [onDelete]);
+
+  const handleCancelConfirm = useCallback(() => {
+    setConfirming(false);
+  }, []);
+
+  if (selectedCount === 0) return null;
+
+  const label = pluralizeSearches(selectedCount);
+
+  return (
+    <BulkActionBarContainer>
+      {confirming ? (
+        <Stack
+          orientation={Orientation.Row}
+          spacing={Spacing.Sm}
+          align={Align.Center}
+          justify={Justify.Between}
+        >
+          <Text variant={TextVariant.Md} color={TextColor.Destructive}>
+            Delete {label}?
+          </Text>
+          <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
+            <Button
+              size={Size.Sm}
+              variant={Variant.Secondary}
+              onClick={handleCancelConfirm}
+            >
+              Cancel
+            </Button>
+            <Button
+              size={Size.Sm}
+              variant={Variant.Danger}
+              leadingIcon={IconName.Delete}
+              onClick={handleConfirm}
+            >
+              Confirm Delete
+            </Button>
+          </Stack>
+        </Stack>
+      ) : (
+        <Stack
+          orientation={Orientation.Row}
+          spacing={Spacing.Sm}
+          align={Align.Center}
+          justify={Justify.Between}
+        >
+          <Text variant={TextVariant.Md} color={TextColor.Primary}>
+            {label} selected
+          </Text>
+          <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
+            <Button
+              size={Size.Sm}
+              variant={Variant.Secondary}
+              onClick={onCancel}
+            >
+              Cancel
+            </Button>
+            <Button
+              size={Size.Sm}
+              variant={Variant.Danger}
+              leadingIcon={IconName.Delete}
+              onClick={handleDeleteClick}
+            >
+              Delete
+            </Button>
+          </Stack>
+        </Stack>
+      )}
+    </BulkActionBarContainer>
+  );
+}
