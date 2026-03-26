@@ -1,16 +1,17 @@
+import { useTrackEvent } from "@fiftyone/analytics";
+import type { SampleRendererSampleLike } from "@fiftyone/plugins";
 import {
   createSampleRendererRenderContext,
-  getMatchingSampleRenderer,
   getComponent,
+  getMatchingSampleRenderer,
   getSampleRendererComponent,
   PluginComponentType,
   useActivePlugins,
 } from "@fiftyone/plugins";
-import type { SampleRendererSampleLike } from "@fiftyone/plugins";
 import type { ID } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import type React from "react";
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { useRecoilBridgeAcrossReactRoots_UNSTABLE } from "recoil";
 import { GridCustomRendererItem } from "./GridCustomRendererItem";
 
@@ -22,6 +23,7 @@ export function useGridCustomRendererItem(
 ) {
   const dataset = fos.useCurrentDataset();
   const schema = fos.useSampleSchema();
+  const trackEvent = useTrackEvent();
 
   const sampleRenderers = useActivePlugins(PluginComponentType.SampleRenderer);
   const { isDisabled: isDatasetRendererDisabled } =
@@ -30,6 +32,7 @@ export function useGridCustomRendererItem(
   const selectedMediaField = fos.useSelectedMediaFieldGrid();
 
   const RecoilBridge = useRecoilBridgeAcrossReactRoots_UNSTABLE();
+  const hasTrackedRendererUsageRef = useRef(false);
 
   const getResolvedRenderer = useCallback(
     (result: GridSampleResult) => {
@@ -100,7 +103,7 @@ export function useGridCustomRendererItem(
       }
 
       try {
-        return new GridCustomRendererItem({
+        const item = new GridCustomRendererItem({
           pluginName: resolvedRenderer.registration.name,
           Renderer: resolvedRenderer.Renderer,
           RecoilBridge:
@@ -108,6 +111,15 @@ export function useGridCustomRendererItem(
           ctx: resolvedRenderer.ctx,
           symbol: id,
         }) as unknown as fos.Lookers;
+
+        // Track coarse-grained adoption once per active grid instance (rather
+        // than once per tile)
+        if (!hasTrackedRendererUsageRef.current) {
+          hasTrackedRendererUsageRef.current = true;
+          trackEvent("grid_custom_renderer_used");
+        }
+
+        return item;
       } catch (error) {
         console.error(
           "Failed to create plugin renderer, using default:",
@@ -116,7 +128,7 @@ export function useGridCustomRendererItem(
         return createDefaultItem(result, id, fontSize);
       }
     },
-    [createDefaultItem, getResolvedRenderer, RecoilBridge]
+    [createDefaultItem, getResolvedRenderer, RecoilBridge, trackEvent]
   );
 
   return { createItem };
