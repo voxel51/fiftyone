@@ -154,17 +154,17 @@ class SegmentAnythingImageGetItem(fout.GetItem):
     ):
         field_mapping = {} if field_mapping is None else dict(field_mapping)
 
-        # Used for managing backward compatibility with prompt_field in field mapping.
-        # NOTE: Using prompt_field as the only key for prompting isn't supported. Use the type specific prompt key.
+        # NOTE: Using prompt_field as a key for prompting isn't supported. Use the type specific prompt key.
+        # prompt_key is used for managing backward compatibility in field mapping in apply_model.
         self._has_prompt_field = (
             field_mapping.pop("prompt_field", None) is not None
         )
         if self._has_prompt_field and (
             "box_prompt_field" not in field_mapping
-            and "point_prompt_field" not in field_mapping
+            or "point_prompt_field" not in field_mapping
         ):
             raise ValueError(
-                "Field mapping contains prompt_field only which is not a required key. Use type specific prompt key: box_prompt_field or point_prompt_field."
+                "Field mapping contains prompt_field which is not a required key. Use type specific prompt key(s) -- box_prompt_field, point_prompt_field."
             )
 
         self.mode = self._set_mode(field_mapping)
@@ -474,17 +474,17 @@ class SAMSegmenterOutputProcessor(fout.OutputProcessor):
                 else:
                     _mask_index = mask_scores.argmax(dim=1)
 
-                row_index = torch.arange(masks.shape[0], device=masks.device)
-                _masks = masks[row_index, _mask_index]  # (B, H, W)
-                _mask_scores = mask_scores[row_index, _mask_index]  # (B,)
+                _row_index = torch.arange(masks.shape[0], device=masks.device)
+                out_masks = masks[_row_index, _mask_index]  # (B, H, W)
+                out_mask_scores = mask_scores[_row_index, _mask_index]  # (B,)
             else:
-                _masks = masks.squeeze(1)
-                _mask_scores = mask_scores.squeeze(1)
+                out_masks = masks.squeeze(1)
+                out_mask_scores = mask_scores.squeeze(1)
 
             post_processed_out.append(
                 {
-                    "masks": _masks,
-                    "scores": _mask_scores.clamp(max=1),
+                    "masks": out_masks,
+                    "scores": out_mask_scores.clamp(max=1),
                     "labels": labels[idx] if labels else [],
                     "boxes": box_prompts[idx] if box_prompts else [],
                 }
