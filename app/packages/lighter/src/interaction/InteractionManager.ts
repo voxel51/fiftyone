@@ -282,10 +282,11 @@ export class InteractionManager {
 
       // QuickDraw: defer overlay creation until we confirm this is a drag.
       // If the user releases without dragging (a click), exit QuickDraw mode.
+      // Clicking on an existing overlay selects it normally instead.
       if (quickDrawBridge.isQuickDrawActive()) {
         const isNonOverlay = !handler || handler.id === this.canonicalMediaId;
 
-        if (isNonOverlay || isUnselectedOverlay) {
+        if (isNonOverlay) {
           this.renderer.disableZoomPan();
 
           this.pendingQuickDraw = {
@@ -337,7 +338,7 @@ export class InteractionManager {
       TypeGuards.isSelectable(handler) &&
       !handler.isSelected()
     ) {
-      this.canvas.style.cursor = "crosshair";
+      this.canvas.style.cursor = "pointer";
     } else if (TypeGuards.isInteractionHandler(handler) && handler.getCursor) {
       this.canvas.style.cursor = handler.getCursor(worldPoint, scale);
     }
