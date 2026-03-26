@@ -2,6 +2,7 @@ import { useRecoilValue } from "recoil";
 import {
   dataset,
   datasetId,
+  datasetName,
   fieldSchema,
   selectedMediaField,
   State,
@@ -21,6 +22,14 @@ export const useCurrentDatasetId = (): string | null =>
  * @returns The current dataset state
  */
 export const useCurrentDataset = () => useRecoilValue(dataset);
+
+/**
+ * Get the current dataset name.
+ *
+ * @returns The current dataset name
+ */
+export const useCurrentDatasetName = (): string | null =>
+  useRecoilValue(datasetName);
 
 /**
  * Get the current sample schema.

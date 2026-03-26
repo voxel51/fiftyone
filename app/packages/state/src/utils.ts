@@ -112,7 +112,7 @@ export const collapseFields = (paths): StrictField[] => {
   return Object.entries(schema).map(([_, field]) => toStrictField(field));
 };
 
-export const getStandardizedUrls = (
+export const getNormalizedUrls = (
   urls:
     | readonly { readonly field: string; readonly url: string }[]
     | { [field: string]: string }

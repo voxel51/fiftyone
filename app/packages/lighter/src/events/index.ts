@@ -25,8 +25,7 @@ export type LighterEventGroup = {
   /** Emitted when an overlay's bounds change */
   "lighter:overlay-bounds-changed": {
     id: string;
-    absoluteBounds: Rect;
-    relativeBounds: Rect;
+    bounds: Rect;
   };
 
   // ============================================================================
@@ -62,7 +61,7 @@ export type LighterEventGroup = {
     overlay: InteractiveDetectionHandler;
     startBounds: Rect;
     startPosition: Point;
-    absoluteBounds: Rect;
+    bounds: Rect;
   };
   /** Emitted when an overlay creation is undone, before the overlay is removed */
   "lighter:overlay-undone": { id: string };
@@ -70,14 +69,12 @@ export type LighterEventGroup = {
   "lighter:overlay-drag-start": {
     id: string;
     startPosition: Point;
-    absoluteBounds: Rect;
-    relativeBounds: Rect;
+    bounds: Rect;
   };
   /** Emitted when an overlay is being dragged */
   "lighter:overlay-drag-move": {
     id: string;
-    absoluteBounds: Rect;
-    relativeBounds: Rect;
+    bounds: Rect;
   };
   /** Emitted when an overlay drag ends */
   "lighter:overlay-drag-end": {
@@ -85,21 +82,18 @@ export type LighterEventGroup = {
     startPosition: Point;
     endPosition: Point;
     startBounds: Rect;
-    absoluteBounds: Rect;
-    relativeBounds: Rect;
+    bounds: Rect;
   };
   /** Emitted when an overlay starts being resized */
   "lighter:overlay-resize-start": {
     id: string;
     startPosition: Point;
-    absoluteBounds: Rect;
-    relativeBounds: Rect;
+    bounds: Rect;
   };
   /** Emitted when an overlay is being resized */
   "lighter:overlay-resize-move": {
     id: string;
-    absoluteBounds: Rect;
-    relativeBounds: Rect;
+    bounds: Rect;
   };
   /** Emitted when an overlay resize ends */
   "lighter:overlay-resize-end": {
@@ -107,8 +101,7 @@ export type LighterEventGroup = {
     startPosition: Point;
     endPosition: Point;
     startBounds: Rect;
-    absoluteBounds: Rect;
-    relativeBounds: Rect;
+    bounds: Rect;
   };
   /** Emitted when an overlay is clicked */
   "lighter:overlay-click": { id: string; point: Point };
@@ -122,6 +115,8 @@ export type LighterEventGroup = {
   "lighter:overlay-all-unhover": { point: Point };
   /** Emitted when the mouse moves while hovering over an overlay */
   "lighter:overlay-hover-move": { id: string; point: Point };
+  /** Emitted when user clicks without dragging in QuickDraw mode to exit */
+  "lighter:quickdraw-quit": { eventId: string };
 
   // ============================================================================
   // SELECTION EVENTS

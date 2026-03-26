@@ -25,7 +25,7 @@ Whether you're working with images, videos, or other data types, a plugin can
 help you streamline your machine learning workflows and co-develop your data
 and models.
 
-.. image:: /images/plugins/plugin-design.png
+.. image:: https://cdn.voxel51.com/develop_plugins/plugin-design.png
     :align: center
 
 .. _plugins-design-types:
@@ -141,6 +141,34 @@ directory.
    For JS plugins we recommend forking the
    `FiftyOne Hello World JS Example <https://github.com/voxel51/hello-world-plugin-js>`_
    repository and following the conventions there to build your JS plugin.
+
+.. _plugins-local-testing:
+
+Testing plugins locally
+-----------------------
+
+.. versionadded:: 1.13.0
+
+The easiest way to test a plugin during development is the
+``fiftyone app debug`` command, which launches the App with server logs
+printed directly to your shell:
+
+.. code-block:: shell
+
+    fiftyone app debug
+
+You can also load a specific dataset immediately on launch:
+
+.. code-block:: shell
+
+    fiftyone app debug <name>
+
+.. note::
+
+    Make sure your plugin is installed in your
+    :ref:`plugins directory <plugins-directory>` before launching. If you
+    add or modify a plugin while the App is running, restart the debug
+    session to pick up the changes.
 
 .. _plugin-anatomy:
 
@@ -3889,6 +3917,95 @@ avoid roadblocks along the way.
     `panel examples <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/panel-examples>`_
     plugin to see a collection of fully-functional panels that demonstrate
     the common patterns below.
+
+.. _panel-hybrid-python-js-panels:
+
+Hybrid panels (Python + JavaScript/React)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+FiftyOne supports building panels that combine Python and JavaScript/React
+code. This allows you to leverage the full power of React and the JS ecosystem
+while still taking advantage of the simplicity and expressiveness of Python for
+defining panel logic and state.
+
+The Python panel class handles configuration, state initialization, and event
+logic. The ``render()`` method connects to the React component via
+``composite_view=True``. Any event handlers passed as view kwargs become
+callable from JavaScript:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.operators as foo
+    import fiftyone.operators.types as types
+
+    class HybridPanel(foo.Panel):
+        @property
+        def config(self):
+            return foo.PanelConfig(
+                name="hybrid_panel",
+                label="Hybrid Panel",
+                icon="adjust",
+                surfaces="grid modal",
+            )
+
+        def on_load(self, ctx):
+            ctx.panel.set_state("count", 0)
+
+        def increment(self, ctx):
+            count = ctx.panel.get_state("count") or 0
+            ctx.panel.set_state("count", count + 1)
+
+        def render(self, ctx):
+            panel = types.Object()
+            return types.Property(
+                panel,
+                view=types.View(
+                    component="MyCustomView",
+                    composite_view=True,
+                    increment=self.increment,
+                ),
+            )
+
+    def register(p):
+        p.register(HybridPanel)
+
+On the JavaScript side, register a component whose ``name`` matches the
+``component`` argument in ``render()``. Access panel state via
+``usePanelStatePartial`` and trigger Python event handlers using
+``useTriggerPanelEvent``:
+
+.. code-block:: jsx
+    :linenos:
+
+    import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
+    import { usePanelStatePartial } from "@fiftyone/spaces";
+    import { useTriggerPanelEvent } from "@fiftyone/operators";
+
+    function MyCustomView({ schema }) {
+        const [state] = usePanelStatePartial("state", {});
+        const triggerEvent = useTriggerPanelEvent();
+        const { increment } = schema.view;
+
+        return (
+            <button onClick={() => triggerEvent(increment)}>
+                Count: {state.count}
+            </button>
+        );
+    }
+
+    registerComponent({
+        name: "MyCustomView",
+        label: "MyCustomView",
+        component: MyCustomView,
+        type: PluginComponentType.Component,
+        activator: () => true,
+    });
+    
+.. note::
+
+    Check out the `Hybrid Panel Plugin <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/hybrid-panel>`_
+    for a complete example of building a hybrid panel.
 
 .. _panel-callbacks:
 

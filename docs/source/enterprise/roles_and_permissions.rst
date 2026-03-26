@@ -22,7 +22,8 @@ FiftyOne Enterprise.
 Roles
 _____
 
-FiftyOne Enterprise has four user roles: Admin, Member, Collaborator, and Guest.
+FiftyOne Enterprise has five user roles: Admin, Member, Collaborator,
+Labeler, and Guest.
 
 Admins can access user management features by clicking on their account icon in
 the upper-right of the FiftyOne Enterprise App and navigating to the
@@ -84,6 +85,22 @@ Collaborators cannot create new datasets, clone existing datasets, or view
 other users of the deployment. Collaborators may export datasets to which
 they've been granted access.
 
+.. _enterprise-labeler:
+
+Labeler
+-------
+
+Labelers only have access to datasets to which they have been specifically
+granted access (a dataset's
+:ref:`default access level <enterprise-default-access>` does not apply to
+Labelers), and they may only be granted **Can view** or **Can tag** access
+to datasets. Additionally, Labelers can update annotations and metadata on
+samples using FiftyOne's :ref:`in-App annotation features <in-app-annotation>`,
+but cannot make changes to the Annotation Schema.
+
+Labelers cannot create new datasets, clone existing datasets, export datasets, or
+view other users of the deployment.
+
 .. _enterprise-guest:
 
 Guest
@@ -109,8 +126,8 @@ access to datasets.
 
 Admins can manage groups through the "Settings > Team > Groups" page.
 Each group can be given specific dataset access permissions, which apply to
-all users within the group. Collaborators' and guests' access to the dataset is 
-limited by the maximum dataset access level of the role. 
+all users within the group. Collaborators', labelers', and guests' access to
+the dataset is limited by the maximum dataset access level of the role. 
 
 .. image:: /images/enterprise/admin_team_groups_page.png
    :alt: admin-team-groups-page
@@ -181,8 +198,9 @@ A dataset's default access level can be set to **No access**, **Can view**,
 
 .. note::
 
-   Default access level only applies to Members. Guests and Collaborators must
-   be granted :ref:`specific access <enterprise-specific-access>` to datasets.
+   Default access level only applies to Members. Guests, Labelers, and
+   Collaborators must be granted
+   :ref:`specific access <enterprise-specific-access>` to datasets.
 
 .. _enterprise-specific-access:
 
@@ -212,6 +230,7 @@ The following permissions are available to each user role:
    or **Can manage** permissions
 -  Collaborators may be granted **Can view**, **Can tag**, 
    or **Can edit** permissions
+-  Labelers may be granted **Can view** or **Can tag** permissions
 -  Guests may be granted **Can view** permissions
 
 .. note::
@@ -221,9 +240,9 @@ The following permissions are available to each user role:
    is not yet user of a FiftyOne Enterprise deployment.
 
    When the invitation is accepted, the user will become a Guest if the
-   **Can view** permission is chosen or a Collaborator if a higher permission
-   is chosen, and an Admin can upgrade this user to another role if desired via
-   the Team Settings page.
+   **Can view** permission is chosen, a Labeler if the **Can tag** permission is
+   chosen, or a Collaborator if a higher permission is chosen, and an Admin can
+   upgrade this user to another role if desired via the Team Settings page.
 
 .. _enterprise-no-access:
 
@@ -247,8 +266,8 @@ example by adding or removing samples, tags, annotation runs, brain runs, etc.
 
 .. note::
 
-   Members (but not Guests or Collaborators) with **Can view** access to a
-   dataset may clone the dataset.
+   Members (but not Guests, Labelers, or Collaborators) with **Can view** access
+   to a dataset may clone the dataset.
 
 .. _enterprise-can-tag:
 

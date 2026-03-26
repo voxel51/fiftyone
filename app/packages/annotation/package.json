@@ -29,9 +29,13 @@
         "script": "dist/index.umd.js"
     },
     "packageManager": "yarn@4.9.1",
+    "dependencies": {
+        "onnxruntime-web": "^1.24.3"
+    },
     "peerDependencies": {
         "@fiftyone/commands": "*",
         "@fiftyone/events": "*",
+        "@fiftyone/voodo": "*",
         "jotai": "*",
         "react": "*"
     }

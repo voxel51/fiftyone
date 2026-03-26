@@ -404,22 +404,17 @@ const useOperatorPromptSubmitOptions = (
   }, [options, selectedID]);
 
   if (selectedOption) selectedOption.selected = true;
-  const showWarning =
+  const requiresOrchestratorSetup =
     executionOptions.orchestratorRegistrationEnabled &&
     !hasAvailableOrchestrators &&
     !executionOptions.allowImmediateExecution;
-  const warningStr =
-    "This operation requires [delegated execution](https://docs.voxel51.com/plugins/using_plugins.html#delegated-operations)";
-  const warningMessage = React.createElement(Markdown, null, warningStr);
 
   return {
-    showWarning,
-    warningTitle: "No available orchestrators",
-    warningMessage,
-    options,
+    handleSubmit,
     hasOptions: options.length > 0,
     isLoading: execDetails.isLoading,
-    handleSubmit,
+    options,
+    requiresOrchestratorSetup,
   };
 };
 
@@ -1027,6 +1022,14 @@ export function useOperatorBrowser() {
 }
 
 /**
+ * Result of attempting to load a local or remote operator.
+ */
+export enum OperatorLoadResult {
+  SUCCESS = "SUCCESS",
+  NOT_FOUND = "NOT_FOUND",
+}
+
+/**
  * @param uri - The URI of the operator to execute.
  * @param handlers - The optional handlers for the operator.
  * @returns An object containing the state of the operator execution.
@@ -1068,7 +1071,24 @@ export function useOperatorBrowser() {
 export function useOperatorExecutor(uri, handlers: any = {}) {
   uri = resolveOperatorURI(uri, { keepMethod: true });
 
-  const { operator } = getLocalOrRemoteOperator(uri);
+  let operator;
+  let loadResult: OperatorLoadResult;
+  try {
+    operator = getLocalOrRemoteOperator(uri).operator;
+    loadResult = OperatorLoadResult.SUCCESS;
+  } catch (err) {
+    // operator does not exist
+    operator = {};
+    loadResult = OperatorLoadResult.NOT_FOUND;
+  }
+
+  // If the operator fails to load AND the consumer tries to call execute,
+  // this error gets set and will be thrown on the next render
+  const [resolutionError, setResolutionError] = useState<Error | null>(null);
+  if (resolutionError) {
+    throw resolutionError;
+  }
+
   const [isExecuting, setIsExecuting] = useState(false);
 
   const [error, setError] = useState(null);
@@ -1079,7 +1099,7 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
   const [needsOutput, setNeedsOutput] = useState(false);
   const context = useExecutionContext(uri);
   const currentSample = useCurrentSample();
-  const hooks = operator.useHooks(context);
+  const hooks = operator?.useHooks?.(context) ?? {};
   const notify = fos.useNotification();
 
   const clear = useCallback(() => {
@@ -1092,6 +1112,16 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
 
   const execute = useRecoilCallback(
     (state) => async (paramOverrides, options?: OperatorExecutorOptions) => {
+      // exit early if operator did not load successfully
+      if (loadResult !== OperatorLoadResult.SUCCESS) {
+        // defer throw to next render rather than throwing directly;
+        // this better contextualizes the cause of the error
+        setResolutionError(
+          new Error(`Operator "${uri}" not found or not accessible`)
+        );
+        return;
+      }
+
       const { delegationTarget, requestDelegation, skipOutput, callback } =
         options || {};
       setIsExecuting(true);
@@ -1148,7 +1178,7 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
       setHasExecuted(true);
       setIsExecuting(false);
     },
-    [currentSample, context]
+    [currentSample, context, loadResult]
   );
   return {
     isExecuting,
@@ -1160,6 +1190,7 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
     clear,
     hasResultOrError: result || error,
     isDelegated,
+    loadResult,
   };
 }
 

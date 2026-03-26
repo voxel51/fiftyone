@@ -61,6 +61,7 @@ export const useHotkey = (
     [decoratedCb, keyCode]
   );
 
+  // This effect registers and cleans up the global keydown listener.
   useEffect(() => {
     window.addEventListener(KEYBOARD_EVENT_NAME, handle);
 

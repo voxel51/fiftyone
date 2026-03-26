@@ -63,6 +63,7 @@ def apply_model(
     output_dir=None,
     rel_dir=None,
     progress=None,
+    pin_memory=False,
     **kwargs,
 ):
     """Applies the model to the samples in the collection.
@@ -108,6 +109,9 @@ def apply_model(
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
+        pin_memory (False): whether to pin memory when using a DataLoader. Only
+            applicable for Torch-based models. This setting can have a significant
+            impact on memory usage, so it is not enabled by default.
         **kwargs: optional model-specific keyword arguments passed through
             to the underlying inference implementation
     """
@@ -283,6 +287,7 @@ def apply_model(
                 filename_maker,
                 progress,
                 field_mapping,
+                pin_memory,
             )
 
         if batch_size is not None:
@@ -455,6 +460,7 @@ def _apply_image_model_data_loader(
     filename_maker,
     progress,
     field_mapping,
+    pin_memory,
 ):
     needs_samples = isinstance(model, SamplesMixin)
 
@@ -465,6 +471,7 @@ def _apply_image_model_data_loader(
         num_workers,
         skip_failures,
         field_mapping,
+        pin_memory,
     )
 
     samples = _select_fields_for_inference(samples, model)
@@ -849,6 +856,7 @@ def _make_data_loader(
     num_workers,
     skip_failures,
     field_mapping,
+    pin_memory,
 ):
     # This function supports DataLoaders that emit numpy arrays that can
     # therefore be used for non-Torch models; but we do not currently use this
@@ -886,7 +894,24 @@ def _make_data_loader(
         )
         worker_init_fn = None
 
-    pin_memory = isinstance(model, fout.TorchImageModel) and model._using_gpu
+    if pin_memory:
+        if not isinstance(model, TorchModelMixin):
+            logger.warning(
+                "The provided model is not a `TorchModelMixin`, so `pin_memory` "
+                "will be disabled."
+            )
+            pin_memory = False
+        elif not model._using_gpu:
+            logger.warning(
+                "The provided model is not using a GPU, so `pin_memory` will be "
+                "disabled."
+            )
+            pin_memory = False
+        else:
+            logger.info(
+                "Using `pin_memory=True` for DataLoader. This may increase "
+                "memory usage, so monitor your system to avoid OOM errors."
+            )
 
     return tud.DataLoader(
         dataset,
@@ -907,6 +932,7 @@ def compute_embeddings(
     num_workers=None,
     skip_failures=True,
     progress=None,
+    pin_memory=False,
     **kwargs,
 ):
     """Computes embeddings for the samples in the collection using the given
@@ -941,6 +967,9 @@ def compute_embeddings(
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
+        pin_memory (False): whether to pin memory when using a DataLoader. Only
+            applicable for Torch-based models. This setting can have a significant
+            impact on memory usage, so it is not enabled by default.
         **kwargs: optional model-specific keyword arguments passed through
             to the underlying inference implementation
 
@@ -1009,32 +1038,37 @@ def compute_embeddings(
     else:
         field_mapping = None
 
-    process_video_frames = (
-        samples.media_type == fom.VIDEO and model.media_type == "image"
-    )
+    with contextlib.ExitStack() as context:
+        if hasattr(model, "mode") and model.mode is None:
+            context.enter_context(
+                fou.SetAttributes(model, mode=samples.media_type)
+            )
 
-    use_data_loader = (
-        isinstance(model, (SupportsGetItem, TorchModelMixin))
-        and not process_video_frames
-    )
-
-    if num_workers is not None and not use_data_loader:
-        logger.warning("Ignoring unsupported `num_workers` parameter")
-
-    if embeddings_field is not None:
-        dataset = samples._dataset
-        embeddings_field, _is_frame_field = dataset._handle_frame_field(
-            embeddings_field
+        process_video_frames = (
+            samples.media_type == fom.VIDEO and model.media_type == "image"
         )
 
-        if dataset.media_type == fom.VIDEO and model.media_type == "image":
-            if not dataset.has_frame_field(embeddings_field):
-                dataset.add_frame_field(embeddings_field, fof.VectorField)
-        else:
-            if not dataset.has_sample_field(embeddings_field):
-                dataset.add_sample_field(embeddings_field, fof.VectorField)
+        use_data_loader = (
+            isinstance(model, (SupportsGetItem, TorchModelMixin))
+            and not process_video_frames
+        )
 
-    with contextlib.ExitStack() as context:
+        if num_workers is not None and not use_data_loader:
+            logger.warning("Ignoring unsupported `num_workers` parameter")
+
+        if embeddings_field is not None:
+            dataset = samples._dataset
+            embeddings_field, _is_frame_field = dataset._handle_frame_field(
+                embeddings_field
+            )
+
+            if dataset.media_type == fom.VIDEO and model.media_type == "image":
+                if not dataset.has_frame_field(embeddings_field):
+                    dataset.add_frame_field(embeddings_field, fof.VectorField)
+            else:
+                if not dataset.has_sample_field(embeddings_field):
+                    dataset.add_sample_field(embeddings_field, fof.VectorField)
+
         if use_data_loader:
             context.enter_context(fou.SetAttributes(model, preprocess=False))
 
@@ -1072,6 +1106,7 @@ def compute_embeddings(
                 skip_failures,
                 progress,
                 field_mapping,
+                pin_memory,
             )
 
         if batch_size is not None:
@@ -1194,6 +1229,7 @@ def _compute_image_embeddings_data_loader(
     skip_failures,
     progress,
     field_mapping,
+    pin_memory,
 ):
     data_loader = _make_data_loader(
         samples,
@@ -1202,6 +1238,7 @@ def _compute_image_embeddings_data_loader(
         num_workers,
         skip_failures,
         field_mapping,
+        pin_memory,
     )
 
     samples = _select_fields_for_embeddings(samples, embeddings_field)
@@ -1449,6 +1486,7 @@ def _compute_video_embeddings(
                     raise e
 
                 errors = True
+                embedding = None
                 logger.warning("Sample: %s\nError: %s\n", sample.id, e)
 
             if embeddings_field is not None:

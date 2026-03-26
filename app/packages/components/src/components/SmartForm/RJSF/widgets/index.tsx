@@ -1,5 +1,6 @@
 import AutoComplete from "./AutoComplete";
 import CheckboxWidget from "./CheckboxWidget";
+import CheckboxesWidget from "./CheckboxesWidget";
 import DatePickerWidget from "./DatePickerWidget";
 import Dropdown from "./Dropdown";
 import JsonEditorWidget from "./JsonEditorWidget";
@@ -21,5 +22,6 @@ export default {
   TextWidget,
   BooleanWidget: ToggleWidget,
   CheckboxWidget,
+  checkboxes: CheckboxesWidget,
   radio: RadioWidget,
 };

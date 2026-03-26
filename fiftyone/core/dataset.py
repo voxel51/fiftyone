@@ -1366,18 +1366,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         # Try to infer from group slice
         if self.media_type == fom.GROUP:
-            group = None
-            if self.group_field is not None:
-                group = getattr(sample, self.group_field, None)
-            if group is None and self.group_field == "group":
-                group = getattr(sample, "group", None)
-
-            if group is not None:
-                try:
-                    slice_name = group.name
-                    return intrinsics_map.get(slice_name)
-                except (AttributeError, KeyError):
-                    pass
+            slice_name = fog.get_group_slice_name(sample, self.group_field)
+            if slice_name is not None:
+                return intrinsics_map.get(slice_name)
 
         return None
 
@@ -1438,17 +1429,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         # Try to infer source_frame from group slice if not provided
         if source_frame is None:
             if self.media_type == fom.GROUP:
-                group = None
-                if self.group_field is not None:
-                    group = getattr(sample, self.group_field, None)
-                if group is None and self.group_field == "group":
-                    group = getattr(sample, "group", None)
-
-                if group is not None:
-                    try:
-                        source_frame = group.name
-                    except (AttributeError, KeyError):
-                        pass
+                source_frame = fog.get_group_slice_name(
+                    sample, self.group_field
+                )
 
         # Try direct resolution first
         result = self._resolve_transformation_direct(
@@ -11112,17 +11095,23 @@ def _merge_docs(
                 doc_fields.append(root)
 
             if merge_lists:
-                for i in range(len(list_fields)):
-                    f = list_fields[i]
-                    if f.startswith(root + "."):
-                        del list_fields[i]
-                        doc_list_fields[root].append(f[len(root + ".") :])
+                prefix = root + "."
 
-                for i in range(len(elem_fields)):
-                    f = elem_fields[i]
-                    if f.startswith(root + "."):
-                        del elem_fields[i]
-                        doc_elem_fields[root].append(f[len(root + ".") :])
+                _keep_list_fields = []
+                for f in list_fields:
+                    if f.startswith(prefix):
+                        doc_list_fields[root].append(f[len(prefix) :])
+                    else:
+                        _keep_list_fields.append(f)
+                list_fields[:] = _keep_list_fields
+
+                _keep_elem_fields = []
+                for f in elem_fields:
+                    if f.startswith(prefix):
+                        doc_elem_fields[root].append(f[len(prefix) :])
+                    else:
+                        _keep_elem_fields.append(f)
+                elem_fields[:] = _keep_elem_fields
 
     # Handle merging of simple fields
     if overwrite:

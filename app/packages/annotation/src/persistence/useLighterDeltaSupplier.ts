@@ -1,19 +1,20 @@
-import type { DeltaSupplier } from "./deltaSupplier";
 import {
   type BaseOverlay,
   BoundingBoxOverlay,
   ClassificationOverlay,
   useLighter,
 } from "@fiftyone/lighter";
-import { useCallback } from "react";
 import type { DetectionLabel } from "@fiftyone/looker";
 import type { ClassificationLabel } from "@fiftyone/looker/src/overlays/classifications";
-import { useGetLabelDelta } from "./useGetLabelDelta";
-import { buildAnnotationPath, type LabelProxy } from "../deltas";
-import { hasValidBounds } from "@fiftyone/utilities";
 import { BoundingBox } from "@fiftyone/looker/src/state";
+import { isPatchesView } from "@fiftyone/state";
+import { hasValidBounds } from "@fiftyone/utilities";
+import { useCallback } from "react";
 import { useRecoilValue } from "recoil";
-import { isGeneratedView, isPatchesView } from "@fiftyone/state";
+import type { LabelProxy } from "../deltas";
+import { buildAnnotationPath } from "../deltas";
+import type { DeltaSupplier } from "./deltaSupplier";
+import { useGetLabelDelta } from "./useGetLabelDelta";
 
 /**
  * Build a {@link LabelProxy} instance from a lighter overlay.
@@ -22,7 +23,7 @@ import { isGeneratedView, isPatchesView } from "@fiftyone/state";
  */
 const buildAnnotationLabel = (overlay: BaseOverlay): LabelProxy | undefined => {
   if (overlay instanceof BoundingBoxOverlay && overlay.label.label) {
-    const bounds = overlay.getRelativeBounds();
+    const bounds = overlay.relativeBounds;
     const boundingBox: BoundingBox = [
       bounds.x,
       bounds.y,

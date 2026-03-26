@@ -3,10 +3,75 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.16.5
+--------------------------
+*Released March 23, 2026*
+
+Includes all updates from :ref:`FiftyOne 1.13.5 <release-notes-v1.13.5>`, plus:
+
+Cloud Media
+
+- Fixed a bug where wildcard bucket-prefix cloud credentials (e.g.
+  `https://account.blob.core.windows.net/*`) could incorrectly match buckets
+  belonging to different storage accounts.
+
+
+Security
+
+- Updated a number of dependencies in order to resolve security
+  vulnerabilities: `aiohttp`, `axios`, `cryptography`, `dompurify`, `eslint`,
+  `immutable`, `lodash`, `minimatch`, `pillow`, `protobuf`, `pynacl`, `qs`,
+  `rollup`, and `tar`.
+
+
+.. _release-notes-v1.13.5:
+
+FiftyOne 1.13.5
+---------------
+*Released March 23, 2026*
+
+Models
+
+- Fixed issue with grounded zero shot object detection transformer adaptor.
+  `#7197 <https://github.com/voxel51/fiftyone/pull/7197>`_
+
+
+FiftyOne Enterprise 2.16.4
+--------------------------
+*Released March 9, 2026*
+
+Includes all updates from :ref:`FiftyOne 1.13.4 <release-notes-v1.13.4>`, plus:
+
+Cloud Media
+
+- Fixed a race condition where concurrent reads and writes of cloud credential
+  files could cause credential loading to fail.
+- Fixed a bug where Azure `load_credentials()` was not forwarding the profile
+  parameter.
+- Fixed a bug with cloud credentials priority resolution order, ensuring the
+  correct credential is selected first.
+
+Auto-Labeling
+
+- Fixed a bug where :ref:`auto-labeling <verified-auto-labeling>` may fail if a
+  mounted directory is not yet initialized.
+
+
+.. _release-notes-v1.13.4:
+
+FiftyOne 1.13.4
+---------------
+*Released March 9, 2026*
+
+App
+
+- Ensured the release of `starlette 1.0` will not negatively impact the App.
+  `#7137 <https://github.com/voxel51/fiftyone/pull/7137>`_
+
 
 FiftyOne Enterprise 2.16.3
 --------------------------
-*Released March 2, 2026*
+*Released March 3, 2026*
 
 Includes all updates from :ref:`FiftyOne 1.13.3 <release-notes-v1.13.3>`, plus:
 
@@ -19,10 +84,16 @@ Cloud Media
 
 - Optimized cloud media access checks in order to reduce the number of requests
   being made.
-- Updated SDK precedence for cloud credentials. When running the SDK locally
-  the system will default to using local credentials when they are available.
-  This precedence can be overridden by setting
-  `FIFTYONE_CLOUD_CRED_ORIGIN_PREFERENCE` to `remote` (or `local`).
+- Updated default behavior for local SDK use of cloud credentials, checking for
+  credentials configured locally before attempting to download
+  :ref:`managed cloud credentials <enterprise-cloud-storage-page>`,
+  and disabling download of managed credentials by default. Both
+  :ref:`local vs remote precedence <enterprise-cloud-creds-origin-preference>`,
+  and
+  :ref:`enabling vs disabling download of managed credentials <enterprise-cloud-creds-local-download>`
+  are configurable.
+- Fixed a bug where some cloud credentials would fail if they were uploaded by
+  a user who no longer exists in the database.
 
 Models
 
@@ -34,7 +105,7 @@ Models
 
 FiftyOne 1.13.3
 ---------------
-*Released March 2, 2026*
+*Released March 3, 2026*
 
 :ref:`In-App Annotation <in-app-annotation>`
 
@@ -156,6 +227,12 @@ Cloud Media
   Note: Configuration for `teams-api` may need to be
   `updated <https://github.com/voxel51/fiftyone-teams-app-deploy/blob/main/docker/docs/upgrading.md#fiftyone-enterprise-v216-additional-api-routes>`_
   given the new `/cloud_credentials` routes.
+- Users can configure their preferences for accessing cloud credentials
+  locally. Both
+  :ref:`local vs remote precedence <enterprise-cloud-creds-origin-preference>`,
+  and
+  :ref:`enabling vs disabling download of managed credentials <enterprise-cloud-creds-local-download>`
+  are configurable.
 
 Plugins and Operators
 
@@ -239,9 +316,6 @@ Core
   This will significantly increase the reliability and consistency of long
   running requests. This change is disabled by default, but can be enabled
   by setting the `FIFTYONE_ENABLE_RPC` environment variable to `True`.
-- Users can now configure their priority preference for loading credentials
-  (remote vs local) when accessing storage utilities. 
-  `#2209 <https://github.com/voxel51/fiftyone-teams/pull/2209>`_
 
 Plugins, Operators, and Orchestrators
 
