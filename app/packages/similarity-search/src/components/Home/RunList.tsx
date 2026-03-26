@@ -17,7 +17,7 @@ import {
   Spacing,
   Variant,
 } from "@voxel51/voodo";
-import React, { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { BrainKeyConfig, SimilarityRun, RunFilterState } from "../../types";
 import { useSampleMedia } from "../../hooks/useSampleMedia";
 import { MIDDLE_DOT } from "../../constants";
@@ -25,7 +25,6 @@ import { formatQuery, formatTime } from "../../utils";
 import StatusBadge from "./StatusBadge";
 import RunActions from "./RunActions";
 import ExpandedThumbnails from "./ExpandedThumbnails";
-import NoBrainKeysEmptyState from "./NoBrainKeysEmptyState";
 import FilterBar from "./FilterBar";
 import BulkActionBar from "./BulkActionBar";
 import { SelectAllRow, tooltipTextStyle } from "../styled";
@@ -293,9 +292,7 @@ export default function RunList({
       )}
 
       {/* Content area */}
-      {brainKeys.length === 0 ? (
-        <NoBrainKeysEmptyState />
-      ) : runs.length === 0 ? (
+      {runs.length === 0 ? (
         <Stack
           orientation={Orientation.Column}
           align={Align.Center}

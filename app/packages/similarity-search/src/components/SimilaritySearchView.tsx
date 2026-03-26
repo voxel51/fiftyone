@@ -6,6 +6,7 @@ import { useSimilarityPanel } from "../hooks/useSimilarityPanel";
 import RunList from "./Home/RunList";
 import NewSearch from "./NewSearch/NewSearch";
 import SimilarityIndex from "./SimilarityIndex/SimilarityIndex";
+import SimilaritySearchCTA from "./SimilaritySearchCTA";
 import { FullCenter, FullSize } from "./styled";
 
 function SimilaritySearchReady(props: SimilaritySearchViewProps) {
@@ -17,6 +18,10 @@ function SimilaritySearchReady(props: SimilaritySearchViewProps) {
         <Spinner />
       </FullCenter>
     );
+  }
+
+  if (panel.brainKeys.length === 0 && panel.runs.length === 0) {
+    return <SimilaritySearchCTA mode="onboarding" />;
   }
 
   return (

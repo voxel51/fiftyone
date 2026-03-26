@@ -5,8 +5,6 @@ import {
 import {
   Align,
   Button,
-  Heading,
-  HeadingLevel,
   IconName,
   Justify,
   RichList,
@@ -20,10 +18,10 @@ import {
   Spacing,
   Variant,
 } from "@voxel51/voodo";
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { BrainKeyConfig } from "../../types";
 import { BRAIN_COMPUTE_SIMILARITY_URI } from "../../constants";
-import NoBrainKeysEmptyState from "../Home/NoBrainKeysEmptyState";
+import SimilaritySearchCTA from "../SimilaritySearchCTA";
 
 type SimilarityIndexProps = {
   brainKeys: BrainKeyConfig[];
@@ -114,7 +112,7 @@ export default function SimilarityIndex({
       </Stack>
 
       {brainKeys.length === 0 ? (
-        <NoBrainKeysEmptyState />
+        <SimilaritySearchCTA mode="onboarding" />
       ) : (
         <>
           <Stack
