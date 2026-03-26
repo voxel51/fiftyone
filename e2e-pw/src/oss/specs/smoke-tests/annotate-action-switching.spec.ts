@@ -5,7 +5,7 @@
  * are mutually exclusive — activating one deactivates the others.
  */
 import { ground_truth_schema } from "src/oss/assets/annotate-schemas";
-import { expect, test as base } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
@@ -152,10 +152,7 @@ test.describe.serial("action switching", () => {
     await modal.sidebar.annotate.assert.selectIsActive(false);
   });
 
-  test("Select button deactivates Classification", async ({
-    grid,
-    modal,
-  }) => {
+  test("Select button deactivates Classification", async ({ grid, modal }) => {
     await grid.openFirstSample();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
