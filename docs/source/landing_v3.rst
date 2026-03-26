@@ -99,27 +99,27 @@ FiftyOne
   <div class="quick-links-grid">
     <a href="installation/index.html" class="quick-link-item">
       <span class="quick-link-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
-      Install
-    </a>
-    <a href="user_guide/import_datasets.html" class="quick-link-item">
-      <span class="quick-link-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
-      Import
+      Install FiftyOne
     </a>
     <a href="#" class="quick-link-item" onclick="event.preventDefault();if(window.Kapa){window.Kapa.open({mode:'ai',query:'How do I evaluate my model in FiftyOne?',submit:true});}">
       <span class="quick-link-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
-      Evaluate
+      Evaluate my model
+    </a>
+    <a href="dataset_zoo/index.html" class="quick-link-item">
+      <span class="quick-link-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+      Load a zoo dataset
+    </a>
+    <a href="user_guide/import_datasets.html" class="quick-link-item">
+      <span class="quick-link-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+      Import my data
     </a>
     <a href="plugins/index.html" class="quick-link-item">
       <span class="quick-link-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
-      Plugins
+      Browse plugins
     </a>
     <a href="getting_started/annotation/index.html" class="quick-link-item">
       <span class="quick-link-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
       Label my dataset <span class="new-badge">NEW</span>
-    </a>
-    <a href="dataset_zoo/index.html" class="quick-link-item">
-      <span class="quick-link-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
-      Zoo dataset
     </a>
   </div>
 
@@ -152,6 +152,10 @@ ________________________
 
 .. raw:: html
 
+    <a href="getting_started/index.html" class="capability-cta-v4 section-header-cta">
+      <span class="orange-arrow-circle"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+      Explore all getting started guides
+    </a>
     <div class="use-case-section">
         <div class="row use-case-cards-grid">
 
@@ -194,13 +198,6 @@ ________________________
 .. raw:: html
 
         </div>
-
-.. customanimatedcta::
-    :button_text: Explore all getting started guides
-    :button_link: getting_started/index.html
-
-.. raw:: html
-
     </div>
 
 .. raw:: html
@@ -227,13 +224,15 @@ _________________
 
 .. raw:: html
 
+    <p class="capability-subtitle">Everything you need to build, evaluate, and ship better computer vision models.</p>
+
     <div class="capability-section">
       <div class="capability-row">
         <div class="capability-text">
           <h3>Visualize</h3>
           <p>Explore your data in the FiftyOne App. Browse images, videos, and 3D data side-by-side with labels, metadata, and model predictions — all in one interactive view.</p>
           <a href="user_guide/app.html" class="capability-cta-v4">
-            <span class="orange-arrow-circle"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+            <span class="gray-arrow-circle"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
             Explore the FiftyOne App
           </a>
         </div>
@@ -246,12 +245,12 @@ _________________
           <h3>Evaluate</h3>
           <p>Aggregate metrics alone don't give you the full picture. FiftyOne makes it easy to see where your models succeed and fail so you can iterate faster.</p>
           <a href="tutorials/evaluate_detections.html" class="capability-cta-v4">
-            <span class="orange-arrow-circle"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+            <span class="gray-arrow-circle"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
             Evaluate models
           </a>
         </div>
         <div class="capability-image">
-          <img src="_static/images/homepage_evaluate.gif" alt="Evaluate" loading="lazy" />
+          <img src="https://cdn.voxel51.com/images/capabilities/homepage_evaluate.gif" alt="Evaluate" loading="lazy" />
         </div>
       </div>
       <div class="capability-row">
@@ -259,12 +258,12 @@ _________________
           <h3>Curate</h3>
           <p>Reveal hidden structure in your data with embedding visualizations. Mine hard samples, find near-duplicates, and recommend the best data for annotation.</p>
           <a href="tutorials/image_embeddings.html" class="capability-cta-v4">
-            <span class="orange-arrow-circle"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
-            Experience the power of embeddings
+            <span class="gray-arrow-circle"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+            Explore Embeddings
           </a>
         </div>
         <div class="capability-image">
-          <img src="_static/images/homepage_embeddings.gif" alt="Curate" loading="lazy" />
+          <img src="https://cdn.voxel51.com/images/capabilities/homepage_embeddings.gif" alt="Curate" loading="lazy" />
         </div>
       </div>
       <div class="capability-row reverse">
@@ -272,17 +271,17 @@ _________________
           <h3>Annotate</h3>
           <p>Annotation mistakes create an artificial ceiling on model performance. Use FiftyOne to automatically identify possible label mistakes and correct them in-app.</p>
           <a href="getting_started/annotation/index.html" class="capability-cta-v4">
-            <span class="orange-arrow-circle"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
-            Explore the annotation guide
+            <span class="gray-arrow-circle"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+            Explore Annotations
           </a>
         </div>
         <div class="capability-image">
-          <img src="_static/images/homepage_mistakes.gif" alt="Annotate" loading="lazy" />
+          <img src="https://cdn.voxel51.com/images/capabilities/homepage_mistakes.gif" alt="Annotate" loading="lazy" />
         </div>
       </div>
     </div>
 
-.. Section 4: Integrations (5-column grid) ------------------------------------
+.. Section 4: Integrations (tiered grid) --------------------------------------
 
 .. raw:: html
 
@@ -293,7 +292,15 @@ ______________________________
 
 .. raw:: html
 
-    <div class="integrations-logos integrations-grid-v4">
+    <div class="section-header-row" style="margin-bottom:24px;">
+      <p class="capability-subtitle" style="margin:0;">FiftyOne integrates natively with your favorite tools. Click on a logo to learn how.</p>
+      <a href="integrations/index.html" class="capability-cta-v4">
+        <span class="orange-arrow-circle"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+        View all integrations
+      </a>
+    </div>
+    <!-- Tier 1: Featured integrations (larger logos) -->
+    <div class="integrations-tier1">
 
 .. customimagelink::
     :image_link: recipes/adding_detections.html
@@ -301,9 +308,9 @@ ______________________________
     :image_title: PyTorch
 
 .. customimagelink::
-    :image_link: integrations/lightning_flash.html
-    :image_src: https://voxel51.com/images/integrations/pytorch-lightning-128.png
-    :image_title: PyTorch Lightning
+    :image_link: recipes/adding_detections.html
+    :image_src: https://voxel51.com/images/integrations/tensorflow-128.png
+    :image_title: TensorFlow
 
 .. customimagelink::
     :image_link: integrations/huggingface.html
@@ -316,14 +323,50 @@ ______________________________
     :image_title: Ultralytics
 
 .. customimagelink::
+    :image_link: https://platform.openai.com/
+    :image_src: https://cdn.voxel51.com/images/integrations/openai-128.png
+    :image_title: OpenAI
+
+.. customimagelink::
+    :image_link: https://docs.anthropic.com/
+    :image_src: https://cdn.voxel51.com/images/integrations/anthropic-128.png
+    :image_title: Anthropic
+
+.. customimagelink::
+    :image_link: https://github.com/features/copilot
+    :image_src: https://cdn.voxel51.com/images/integrations/github-copilot-128.png
+    :image_title: GitHub Copilot
+
+.. customimagelink::
+    :image_link: enterprise/installation.html#google-cloud-storage
+    :image_src: https://voxel51.com/images/integrations/google-cloud-128.png
+    :image_title: Google Cloud
+
+.. customimagelink::
+    :image_link: enterprise/installation.html#amazon-s3
+    :image_src: https://voxel51.com/images/integrations/aws-128.png
+    :image_title: Amazon Web Services
+
+.. customimagelink::
+    :image_link: enterprise/installation.html#microsoft-azure
+    :image_src: https://voxel51.com/images/integrations/azure-128.png
+    :image_title: Azure
+
+.. raw:: html
+
+    </div>
+    <!-- Tier 2: Additional integrations (smaller logos) -->
+    <div class="integrations-tier2">
+
+.. customimagelink::
+    :image_link: integrations/lightning_flash.html
+    :image_src: https://voxel51.com/images/integrations/pytorch-lightning-128.png
+    :image_title: PyTorch Lightning
+
+.. customimagelink::
     :image_link: integrations/super_gradients.html
     :image_src: https://voxel51.com/images/integrations/super-gradients-128.png
     :image_title: SuperGradients
-
-.. customimagelink::
-    :image_link: recipes/adding_detections.html
-    :image_src: https://voxel51.com/images/integrations/tensorflow-128.png
-    :image_title: TensorFlow
 
 .. customimagelink::
     :image_link: tutorials/detectron2.html
@@ -435,58 +478,40 @@ ______________________________
     :image_src: https://voxel51.com/images/integrations/scale-128.png
     :image_title: Scale AI
 
-.. customimagelink::
-    :image_link: enterprise/installation.html#google-cloud-storage
-    :image_src: https://voxel51.com/images/integrations/google-cloud-128.png
-    :image_title: Google Cloud
-
-.. customimagelink::
-    :image_link: enterprise/installation.html#amazon-s3
-    :image_src: https://voxel51.com/images/integrations/aws-128.png
-    :image_title: Amazon Web Services
-
-.. customimagelink::
-    :image_link: enterprise/installation.html#microsoft-azure
-    :image_src: https://voxel51.com/images/integrations/azure-128.png
-    :image_title: Azure
-
 .. raw:: html
 
     </div>
 
-.. raw:: html
-
-    <div style="text-align: center; margin-top: 16px;">
-      <a href="integrations/index.html" class="integrations-view-all">
-        <span class="orange-arrow-circle"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
-        View all integrations
-      </a>
-    </div>
 
 .. Section 5: Need Support? ---------------------------------------------------
 
 .. raw:: html
 
+  <div class="section-label-pill">Community</div>
+
+Need Support?
+_____________
+
+.. raw:: html
+
+  <p class="capability-subtitle">If you run into any issues with FiftyOne or have any burning questions, feel free to connect with us</p>
   <div class="support-section">
-    <div class="section-label-pill">Community</div>
-    <h2 class="support-heading">Need Support?</h2>
-    <p class="support-subheading">Connect with the FiftyOne community and team</p>
     <div class="support-links">
-      <a target="_blank" href="https://github.com/voxel51/fiftyone" class="support-link">
-        <img alt="GitHub" src="_static/images/icons/github-logo-256px.png" />
-        <span>GitHub</span>
+      <a target="_blank" href="https://github.com/voxel51/fiftyone" class="nav-pill nav-pill-outlined">
+        <img alt="GitHub" src="_static/images/icons/github-logo-256px.png" width="18" height="18">
+        View on GitHub
       </a>
-      <a target="_blank" href="https://community.voxel51.com/" class="support-link">
-        <img alt="Discord" src="_static/images/icons/discord-logo-256px.png" />
-        <span>Discord</span>
+      <a target="_blank" href="https://community.voxel51.com/" class="nav-pill nav-pill-outlined">
+        <img alt="Discord" src="_static/images/icons/discord-logo-256px.png" width="18" height="18">
+        Join us on Discord
       </a>
-      <a target="_blank" href="https://slack.voxel51.com/" class="support-link">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>
-        <span>Slack</span>
+      <a target="_blank" href="https://colab.research.google.com/github/voxel51/fiftyone-examples/blob/master/examples/quickstart.ipynb" class="nav-pill nav-pill-outlined">
+        <img alt="Colab" src="_static/images/icons/colab-logo-256px.png" width="18" height="18">
+        Try it in Colab
       </a>
-      <a href="mailto:support@voxel51.com" class="support-link">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
-        <span>support@voxel51.com</span>
+      <a href="mailto:support@voxel51.com" class="nav-pill nav-pill-outlined">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+        Email support
       </a>
     </div>
   </div>
