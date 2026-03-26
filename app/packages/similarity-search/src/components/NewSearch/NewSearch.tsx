@@ -270,12 +270,13 @@ export default function NewSearch({
           <OperatorExecutionButton
             operatorUri={SEARCH_OPERATOR_URI}
             executionParams={form.executionParams}
+            onClick={form.handleClick}
             onSuccess={form.handleSuccess}
             onError={form.handleError}
-            disabled={!form.canSubmit}
+            disabled={!form.canSubmit || form.submitting}
             variant="contained"
           >
-            Search
+            {form.submitting ? "Searching..." : "Search"}
           </OperatorExecutionButton>
         </Stack>
       </Stack>

@@ -79,23 +79,30 @@ export const useNewSearchForm = (
 
   // ─── Submission ─────────────────────────────────────────────────
 
-  const { executionParams, handleSuccess, handleError, kError, canSubmit } =
-    useSearchSubmission({
-      brainKey,
-      queryType,
-      textQuery,
-      queryIds,
-      reverse,
-      selectedConfig,
-      searchScope,
-      hasView,
-      view: view as unknown[],
-      k,
-      distField,
-      runName,
-      dynamicResults,
-      onSubmitted,
-    });
+  const {
+    executionParams,
+    handleClick,
+    handleSuccess,
+    handleError,
+    kError,
+    canSubmit,
+    submitting,
+  } = useSearchSubmission({
+    brainKey,
+    queryType,
+    textQuery,
+    queryIds,
+    reverse,
+    selectedConfig,
+    searchScope,
+    hasView,
+    view: view as unknown[],
+    k,
+    distField,
+    runName,
+    dynamicResults,
+    onSubmitted,
+  });
 
   // ─── Brain key options ──────────────────────────────────────────
 
@@ -136,10 +143,12 @@ export const useNewSearchForm = (
     selectedLabels,
     kError,
     canSubmit,
+    submitting,
     brainKeyOptions,
     executionParams,
 
     // handlers
+    handleClick,
     handleSuccess,
     handleError,
   };

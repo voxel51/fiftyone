@@ -19,7 +19,13 @@ import useTriggers from "./useTriggers";
 const useDerivedPanelState = (props: SimilaritySearchViewProps) => {
   const { data: panelData = {} } = props;
 
-  const { runs: allRuns, loaded, refreshRuns } = useRuns();
+  const {
+    runs: allRuns,
+    loaded,
+    refreshRuns,
+    removeRun,
+    removeRuns,
+  } = useRuns();
   const [submitting, setSubmitting] = useState(false);
 
   const allBrainKeys = panelData.brain_keys ?? [];
@@ -85,6 +91,8 @@ const useDerivedPanelState = (props: SimilaritySearchViewProps) => {
     filterState,
     canFilterByOwner,
     refreshRuns,
+    removeRun,
+    removeRuns,
     setFilterState,
     submitting,
     setSubmitting,
@@ -96,6 +104,8 @@ const useDerivedPanelState = (props: SimilaritySearchViewProps) => {
 type PanelActionsDeps = {
   runs: SimilarityRun[];
   refreshRuns: () => Promise<void>;
+  removeRun: (runId: string) => void;
+  removeRuns: (runIds: string[]) => void;
   setSubmitting: (v: boolean) => void;
   navigateHome: () => void;
   navigateNewSearch: () => void;
@@ -123,6 +133,8 @@ const useSimilarityPanelActions = (deps: PanelActionsDeps) => {
   const {
     runs,
     refreshRuns,
+    removeRun,
+    removeRuns,
     setSubmitting,
     navigateHome,
     navigateNewSearch,
@@ -142,16 +154,18 @@ const useSimilarityPanelActions = (deps: PanelActionsDeps) => {
   const handleDelete = useCallback(
     (runId: string) => {
       triggers.deleteRun({ run_id: runId });
+      removeRun(runId);
     },
-    [triggers]
+    [triggers, removeRun]
   );
 
   const handleBulkDelete = useCallback(
     (runIds: string[]) => {
       triggers.bulkDeleteRuns({ run_ids: runIds });
+      removeRuns(runIds);
       clearAndExit();
     },
-    [triggers, clearAndExit]
+    [triggers, removeRuns, clearAndExit]
   );
 
   const handleClone = useCallback(
@@ -249,6 +263,8 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
   const actions = useSimilarityPanelActions({
     runs: state.runs,
     refreshRuns: state.refreshRuns,
+    removeRun: state.removeRun,
+    removeRuns: state.removeRuns,
     setSubmitting: state.setSubmitting,
     navigateHome,
     navigateNewSearch,

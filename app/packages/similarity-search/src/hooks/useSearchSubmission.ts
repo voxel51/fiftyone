@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useOperatorExecutor } from "@fiftyone/operators";
 import { BrainKeyConfig, QueryType, SearchScope } from "../types";
 import { INIT_RUN_OPERATOR_URI } from "../constants";
@@ -28,6 +28,7 @@ type UseSearchSubmissionInput = {
  */
 export const useSearchSubmission = (input: UseSearchSubmissionInput) => {
   const { execute: initRun } = useOperatorExecutor(INIT_RUN_OPERATOR_URI);
+  const [submitting, setSubmitting] = useState(false);
 
   const executionParams = useMemo(
     () =>
@@ -64,6 +65,10 @@ export const useSearchSubmission = (input: UseSearchSubmissionInput) => {
     ]
   );
 
+  const handleClick = useCallback(() => {
+    setSubmitting(true);
+  }, []);
+
   const handleSuccess = useCallback(
     (result: Record<string, unknown>) => {
       if (result?.delegated) {
@@ -73,9 +78,15 @@ export const useSearchSubmission = (input: UseSearchSubmissionInput) => {
         const operatorRunId = resultObj?.id?.$oid;
         initRun(
           { ...executionParams, operator_run_id: operatorRunId },
-          { callback: () => input.onSubmitted() }
+          {
+            callback: () => {
+              setSubmitting(false);
+              input.onSubmitted();
+            },
+          }
         );
       } else {
+        setSubmitting(false);
         input.onSubmitted();
       }
     },
@@ -83,6 +94,7 @@ export const useSearchSubmission = (input: UseSearchSubmissionInput) => {
   );
 
   const handleError = useCallback((error: unknown) => {
+    setSubmitting(false);
     console.error("Similarity search failed:", error);
   }, []);
 
@@ -102,5 +114,13 @@ export const useSearchSubmission = (input: UseSearchSubmissionInput) => {
       input.queryIds.length
     );
 
-  return { executionParams, handleSuccess, handleError, kError, canSubmit };
+  return {
+    executionParams,
+    handleClick,
+    handleSuccess,
+    handleError,
+    kError,
+    canSubmit,
+    submitting,
+  };
 };

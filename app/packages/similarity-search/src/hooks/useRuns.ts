@@ -1,5 +1,5 @@
 import { atom, useAtom } from "jotai";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { useOperatorExecutor } from "@fiftyone/operators";
 import { usePanelId } from "@fiftyone/spaces";
@@ -7,6 +7,7 @@ import { datasetName as datasetNameAtom } from "@fiftyone/state";
 import { SimilarityRun } from "../types";
 
 const runsAtom = atom<SimilarityRun[]>([]);
+const loadedAtom = atom(false);
 
 type UseRunsResult = {
   runs: SimilarityRun[];
@@ -14,6 +15,7 @@ type UseRunsResult = {
   refreshRuns: () => Promise<void>;
   updateRun: (run: SimilarityRun) => void;
   removeRun: (runId: string) => void;
+  removeRuns: (runIds: string[]) => void;
 };
 
 const sortFn = (a: SimilarityRun, b: SimilarityRun) =>
@@ -27,7 +29,7 @@ const sortFn = (a: SimilarityRun, b: SimilarityRun) =>
  */
 export const useRuns = (): UseRunsResult => {
   const [runs, setRuns] = useAtom(runsAtom);
-  const [loaded, setLoaded] = useState(false);
+  const [loaded, setLoaded] = useAtom(loadedAtom);
   const initialized = useRef(false);
   const lastPanelId = useRef<string | undefined>();
   const lastDatasetName = useRef<string | null | undefined>();
@@ -121,5 +123,13 @@ export const useRuns = (): UseRunsResult => {
     [setRuns]
   );
 
-  return { runs, loaded, refreshRuns, updateRun, removeRun };
+  const removeRuns = useCallback(
+    (runIds: string[]) => {
+      const ids = new Set(runIds);
+      setRuns((prev) => prev.filter((r) => !ids.has(r.run_id)));
+    },
+    [setRuns]
+  );
+
+  return { runs, loaded, refreshRuns, updateRun, removeRun, removeRuns };
 };
