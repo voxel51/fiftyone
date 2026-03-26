@@ -18,6 +18,7 @@ module.exports = tseslint.config(
       "playwright/expect-expect": "off",
       "playwright/no-wait-for-selector": "off",
       "playwright/no-force-option": "off",
+      "playwright/no-conditional-in-test": "off",
     },
   },
   {
