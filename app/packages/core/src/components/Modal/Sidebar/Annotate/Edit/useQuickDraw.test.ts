@@ -40,7 +40,10 @@ vi.mock("../useLabels", () => ({
   labelsByPath: atom<Record<string, unknown>>({}),
 }));
 
+const currentTypeAtom = atom<string | null>(null);
+
 vi.mock("./state", () => ({
+  currentType: currentTypeAtom,
   defaultField: () => defaultFieldAtom,
   useAnnotationContext: () => stableAnnotationContext,
 }));
