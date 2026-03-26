@@ -148,9 +148,9 @@ test.describe.serial("static actions toolbar", () => {
     await modal.sidebar.annotate.quickDraw("Detections");
     await modal.sidebar.annotate.assert.quickDrawIsActive();
 
-    await modal.sampleCanvas.move(0.3, 0.3, "crosshair");
+    await modal.sampleCanvas.move(0.1, 0.1, "crosshair");
     await modal.sampleCanvas.down();
-    await modal.sampleCanvas.move(0.5, 0.5);
+    await modal.sampleCanvas.move(0.2, 0.2);
     await modal.sampleCanvas.up();
     await modal.sampleCanvas.assert.hasCursor("nwse-resize");
 
