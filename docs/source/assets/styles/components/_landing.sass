@@ -1443,3 +1443,396 @@
   font-family: $font-family-monospace
   margin-left: auto
   cursor: pointer
+
+// ==============================================
+// Variant 4: Designer Mockup Redesign (v4)
+// ==============================================
+
+// --- Hero Nav Pills ---
+
+.hero-nav-pills
+  display: flex
+  gap: 12px
+  justify-content: center
+  flex-wrap: wrap
+  margin-bottom: 32px
+
+.nav-pill
+  display: inline-flex
+  align-items: center
+  gap: 8px
+  padding: 10px 24px
+  border-radius: 48px
+  font-size: 14px
+  font-weight: 500
+  font-family: 'Geist', sans-serif
+  text-decoration: none
+  transition: all 0.2s ease
+  white-space: nowrap
+
+  img, svg
+    width: 18px
+    height: 18px
+
+.nav-pill-outlined
+  background: transparent
+  border: 1px solid var(--pst-border-color)
+  color: var(--pst-color-text-base)
+
+  &:hover
+    border-color: #FA5300
+    color: #FA5300
+    text-decoration: none
+
+.nav-pill-filled
+  background: #17191A
+  border: 1px solid #17191A
+  color: #fff
+
+  &:hover
+    background: #2a2d31
+    border-color: #2a2d31
+    color: #fff
+    text-decoration: none
+
+// --- Quick Links Grid ---
+
+.quick-links-grid
+  display: grid
+  grid-template-columns: repeat(3, 1fr)
+  gap: 12px 24px
+  max-width: 540px
+  margin: 0 auto 16px
+
+.quick-link-item
+  display: flex
+  align-items: center
+  gap: 10px
+  text-decoration: none
+  color: var(--pst-color-text-base)
+  font-size: 0.9rem
+  font-family: 'Geist', sans-serif
+  padding: 6px 0
+  transition: color 0.2s ease
+
+  &:hover
+    color: #FA5300
+    text-decoration: none
+
+.quick-link-icon
+  display: inline-flex
+  align-items: center
+  justify-content: center
+  width: 28px
+  height: 28px
+  border-radius: 50%
+  background: rgba(0, 0, 0, 0.08)
+  flex-shrink: 0
+
+  svg
+    width: 14px
+    height: 14px
+
+.new-badge
+  font-size: 0.6rem
+  background: #FA5300
+  color: #fff
+  padding: 1px 5px
+  border-radius: 4px
+  font-weight: 700
+  letter-spacing: 0.5px
+  margin-left: 4px
+  vertical-align: middle
+
+// --- Install Bar ---
+
+.install-bar
+  background: #17191A
+  border-radius: 8px
+  padding: 20px 28px
+  margin: 16px 0 32px
+  display: flex
+  align-items: center
+  justify-content: space-between
+  gap: 20px
+  flex-wrap: wrap
+
+.install-bar-left
+  display: flex
+  flex-direction: column
+  gap: 4px
+
+.install-bar-title
+  color: #fff
+  font-size: 0.85rem
+  font-weight: 500
+  font-family: 'Geist', sans-serif
+
+.install-bar-command
+  color: #d4d4d4
+  font-size: 0.95rem
+  font-family: 'Geist Mono', monospace
+  background: transparent
+
+.install-bar-right
+  display: flex
+  align-items: center
+  gap: 10px
+
+.install-bar-copy
+  padding: 8px 18px
+  border: 1px solid rgba(255, 255, 255, 0.25)
+  border-radius: 48px
+  background: transparent
+  color: rgba(255, 255, 255, 0.8)
+  font-size: 0.8rem
+  font-family: 'Geist', sans-serif
+  cursor: pointer
+  transition: all 0.2s ease
+
+  &:hover
+    background: rgba(255, 255, 255, 0.1)
+    color: #fff
+
+.install-bar-guide
+  display: inline-flex
+  align-items: center
+  gap: 8px
+  padding: 8px 18px
+  border-radius: 48px
+  background: #fff
+  color: #17191A
+  font-size: 0.8rem
+  font-weight: 500
+  font-family: 'Geist', sans-serif
+  text-decoration: none
+  transition: all 0.2s ease
+
+  &:hover
+    background: #f0f0f0
+    text-decoration: none
+    color: #17191A
+
+// --- Section Label Pill ---
+
+.section-label-pill
+  display: inline-block
+  padding: 4px 14px
+  border: 1px solid var(--pst-border-color)
+  border-radius: 48px
+  font-size: 0.75rem
+  font-weight: 500
+  color: var(--pst-color-text-muted, #68615D)
+  text-transform: uppercase
+  letter-spacing: 0.5px
+  margin-bottom: 12px
+  font-family: 'Geist', sans-serif
+
+// --- Orange Arrow Circle (reusable CTA icon) ---
+
+.orange-arrow-circle
+  display: inline-flex
+  align-items: center
+  justify-content: center
+  width: 24px
+  height: 24px
+  border-radius: 50%
+  background: #FA5300
+  flex-shrink: 0
+
+  svg
+    width: 12px
+    height: 12px
+    stroke: #fff
+    fill: none
+
+// --- Capability CTA v4 ---
+
+.capability-cta-v4
+  display: inline-flex
+  align-items: center
+  gap: 8px
+  font-size: 0.9rem
+  font-weight: 500
+  color: var(--pst-color-text-base)
+  text-decoration: none
+  font-family: 'Geist', sans-serif
+  transition: color 0.2s ease
+
+  &:hover
+    color: #FA5300
+    text-decoration: none
+
+// --- Quickstart CTA Banner ---
+
+.quickstart-cta-banner
+  display: flex
+  align-items: center
+  justify-content: space-between
+  gap: 16px
+  padding: 20px 28px
+  margin: 32px 0 48px
+  border: 1px solid #FA5300
+  border-radius: 10px
+  background: rgba(250, 83, 0, 0.05)
+  min-height: 64px
+
+.quickstart-cta-text
+  flex: 1
+  font-size: 0.95rem
+  color: var(--pst-color-text-base)
+  font-family: 'Geist', sans-serif
+
+  strong
+    font-weight: 600
+
+.quickstart-cta-btn
+  display: inline-flex
+  align-items: center
+  gap: 8px
+  padding: 8px 20px
+  border-radius: 48px
+  background: #FA5300
+  color: #fff
+  text-decoration: none
+  font-size: 0.85rem
+  font-weight: 500
+  font-family: 'Geist', sans-serif
+  white-space: nowrap
+  transition: background 0.2s ease
+
+  &:hover
+    background: #e04a00
+    color: #fff
+    text-decoration: none
+
+// --- Support Section ---
+
+.support-section
+  text-align: center
+  padding: 48px 0 32px
+  border-top: 1px solid var(--pst-border-color)
+
+.support-heading
+  font-size: 1.75rem
+  font-weight: 700
+  margin-bottom: 8px
+  color: var(--pst-color-text-base)
+  font-family: 'Geist', sans-serif
+
+.support-subheading
+  font-size: 0.95rem
+  color: var(--pst-color-text-muted, #68615D)
+  margin-bottom: 28px
+  font-family: 'Geist', sans-serif
+
+.support-links
+  display: flex
+  flex-wrap: wrap
+  gap: 24px
+  justify-content: center
+  align-items: center
+
+.support-link
+  display: flex
+  align-items: center
+  gap: 8px
+  color: var(--pst-color-text-secondary)
+  text-decoration: none
+  font-size: 0.9rem
+  font-family: 'Geist', sans-serif
+  transition: color 0.2s ease
+
+  &:hover
+    color: #FA5300
+    text-decoration: none
+
+  img, svg
+    width: 22px
+    height: 22px
+
+// --- Integrations 5-column grid ---
+
+.integrations-logos.integrations-grid-v4
+  display: grid !important
+  grid-template-columns: repeat(5, 1fr)
+  gap: 12px
+  justify-items: center
+
+  .image-link
+    width: 100%
+    max-width: 140px
+    height: 96px
+    display: flex
+    align-items: center
+    justify-content: center
+
+    img
+      max-width: 80px
+      max-height: 60px
+
+// --- Integrations view-all CTA ---
+
+.integrations-view-all
+  display: inline-flex
+  align-items: center
+  gap: 8px
+  margin-top: 16px
+  font-size: 0.9rem
+  font-weight: 500
+  color: var(--pst-color-text-base)
+  text-decoration: none
+  font-family: 'Geist', sans-serif
+  transition: color 0.2s ease
+
+  &:hover
+    color: #FA5300
+    text-decoration: none
+
+// --- Responsive (v4) ---
+
+@media (max-width: $tablet)
+  .hero-nav-pills
+    gap: 8px
+
+  .nav-pill
+    padding: 8px 16px
+    font-size: 13px
+
+  .quick-links-grid
+    grid-template-columns: repeat(2, 1fr)
+    max-width: 360px
+
+  .install-bar
+    flex-direction: column
+    align-items: stretch
+    text-align: center
+
+  .install-bar-right
+    justify-content: center
+
+  .integrations-logos.integrations-grid-v4
+    grid-template-columns: repeat(4, 1fr)
+
+  .quickstart-cta-banner
+    flex-direction: column
+    text-align: center
+
+  .support-links
+    gap: 16px
+
+@media (max-width: $mobile)
+  .hero-nav-pills
+    flex-direction: column
+    align-items: center
+
+  .quick-links-grid
+    grid-template-columns: 1fr 1fr
+    max-width: 300px
+
+  .integrations-logos.integrations-grid-v4
+    grid-template-columns: repeat(3, 1fr)
+
+  .support-links
+    flex-direction: column
+    gap: 12px

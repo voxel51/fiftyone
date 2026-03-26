@@ -5,12 +5,29 @@ FiftyOne
 
 .. raw:: html
 
+  <!-- Geist Font (landing page only) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/geist@1/dist/fonts/geist-sans/style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/geist@1/dist/fonts/geist-mono/style.css">
+
   <style>
+    /* Landing page scoped token overrides */
+    .bd-article {
+      --pst-color-primary: #FA5300;
+      --pst-color-link: #FA5300;
+      --pst-color-link-hover: #e04a00;
+      --pst-color-surface: #F0EBE9;
+      --pst-color-border: #F0EBE9;
+      --pst-color-text-muted: #68615D;
+      --pst-color-secondary: #99918D;
+      font-family: 'Geist', sans-serif;
+    }
+    .bd-article code, .bd-article pre {
+      font-family: 'Geist Mono', monospace;
+    }
     #fiftyone > h1:first-child { display: none !important; height: 0 !important; margin: 0 !important; overflow: hidden !important; }
     .bd-article h2 { font-size: 2.1rem !important; font-weight: 600 !important; }
-    .hero-heading { font-size: 2.4rem !important; font-weight: 700 !important; margin-bottom: 24px !important; }
+    .hero-heading { font-size: 2.4rem !important; font-weight: 700 !important; margin-bottom: 24px !important; letter-spacing: -0.02em; }
     .hero-search-container { margin-top: 36px !important; }
-    .onboarding-banner { margin-bottom: 60px !important; }
   </style>
 
 
@@ -45,34 +62,27 @@ FiftyOne
 
 .. raw:: html
 
-  <div class="social-links">
-    <table id="social-links-table">
-      <th>
-        <a target="_blank" href="https://github.com/voxel51/fiftyone">
-          <img alt="GitHub repository" src="_static/images/icons/github-logo-256px.png">
-          &nbsp;<span style="white-space:nowrap">View on GitHub</span>
-        </a>
-      </th>
-      <th>
-        <a target="_blank" href="https://community.voxel51.com/">
-          <img alt="Discord community" src="_static/images/icons/discord-logo-256px.png">
-          &nbsp;<span style="white-space:nowrap">Join us on Discord</span>
-        </a>
-      </th>
-      <th>
-        <a href="enterprise/index.html">
-          <img alt="FiftyOne Enterprise" src="_static/images/icons/voxel51-166px.png">
-          &nbsp;<span style="white-space:nowrap">Start building with FiftyOne Enterprise</span>
-        </a>
-      </th>
-    </table>
+  <!-- Hero Nav Pills -->
+  <div class="hero-nav-pills">
+    <a target="_blank" href="https://github.com/voxel51/fiftyone" class="nav-pill nav-pill-outlined">
+      <img alt="GitHub" src="_static/images/icons/github-logo-256px.png" width="18" height="18">
+      View on GitHub
+    </a>
+    <a target="_blank" href="https://community.voxel51.com/" class="nav-pill nav-pill-outlined">
+      <img alt="Discord" src="_static/images/icons/discord-logo-256px.png" width="18" height="18">
+      Join us on Discord
+    </a>
+    <a href="enterprise/index.html" class="nav-pill nav-pill-filled">
+      <img alt="Voxel51" src="_static/images/icons/voxel51-166px.png" width="18" height="18">
+      FiftyOne Enterprise
+    </a>
   </div>
 
 .. Section 1: Hero with AI search bar -----------------------------------------
 
 .. raw:: html
 
-  <div class="landing-hero">
+  <div class="landing-hero pills-only">
     <h1 class="hero-heading">Start building with FiftyOne</h1>
     <div class="hero-search-container">
       <button class="hero-search-btn hero-ai-search" aria-label="Ask AI about FiftyOne" onclick="if(window.Kapa){window.Kapa.open();}">
@@ -81,29 +91,61 @@ FiftyOne
         <span class="hero-shortcut-badge" onclick="event.stopPropagation();if(window.Kapa){window.Kapa.open();}">&#8984;K</span>
       </button>
     </div>
-    <div class="quick-action-pills">
-      <a href="installation/index.html" class="quick-action-pill">Install FiftyOne</a>
-      <a href="user_guide/import_datasets.html" class="quick-action-pill">Import my data</a>
-      <a href="#" class="quick-action-pill" onclick="event.preventDefault();if(window.Kapa){window.Kapa.open({mode:'ai',query:'How do I evaluate my model in FiftyOne?',submit:true});}">Evaluate my model</a>
-      <a href="plugins/index.html" class="quick-action-pill">Browse plugins</a>
-      <a href="getting_started/annotation/index.html" class="quick-action-pill pill-new">Label my dataset</a>
-      <a href="dataset_zoo/index.html" class="quick-action-pill">Load a zoo dataset</a>
-    </div>
   </div>
-
-.. Section 1b: Pip install CTA ------------------------------------------------
 
 .. raw:: html
 
-  <div class="install-cta">
-    <div class="install-code" data-analytics="pip-install-copy">
-      <code>pip install fiftyone</code>
-      <button class="copy-btn" onclick="navigator.clipboard.writeText('pip install fiftyone');var b=this;b.textContent='Copied!';setTimeout(function(){b.textContent='Copy';},2000);" aria-label="Copy install command">Copy</button>
+  <!-- Quick Links Grid -->
+  <div class="quick-links-grid">
+    <a href="installation/index.html" class="quick-link-item">
+      <span class="quick-link-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+      Install
+    </a>
+    <a href="user_guide/import_datasets.html" class="quick-link-item">
+      <span class="quick-link-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+      Import
+    </a>
+    <a href="#" class="quick-link-item" onclick="event.preventDefault();if(window.Kapa){window.Kapa.open({mode:'ai',query:'How do I evaluate my model in FiftyOne?',submit:true});}">
+      <span class="quick-link-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+      Evaluate
+    </a>
+    <a href="plugins/index.html" class="quick-link-item">
+      <span class="quick-link-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+      Plugins
+    </a>
+    <a href="getting_started/annotation/index.html" class="quick-link-item">
+      <span class="quick-link-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+      Label my dataset <span class="new-badge">NEW</span>
+    </a>
+    <a href="dataset_zoo/index.html" class="quick-link-item">
+      <span class="quick-link-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+      Zoo dataset
+    </a>
+  </div>
+
+.. Section 1b: Install bar ----------------------------------------------------
+
+.. raw:: html
+
+  <div class="install-bar">
+    <div class="install-bar-left">
+      <span class="install-bar-title">Install FiftyOne</span>
+      <code class="install-bar-command">pip install fiftyone</code>
     </div>
-    <a href="installation/index.html" class="install-guide-link" data-analytics="install-guide-click">Full installation guide &rarr;</a>
+    <div class="install-bar-right">
+      <button class="install-bar-copy" onclick="navigator.clipboard.writeText('pip install fiftyone');var b=this;b.textContent='Copied!';setTimeout(function(){b.textContent='Copy';},2000);" aria-label="Copy install command">Copy</button>
+      <a href="installation/index.html" class="install-bar-guide">
+        Full installation guide
+        <span class="orange-arrow-circle"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+      </a>
+    </div>
   </div>
 
 .. Section 2: Use-Case Cards --------------------------------------------------
+
+.. raw:: html
+
+  <div class="section-label-pill">Get Started</div>
 
 What are you working on?
 ________________________
@@ -163,15 +205,22 @@ ________________________
 
 .. raw:: html
 
-    <div class="onboarding-banner">
-        <div class="onboarding-banner-text">
-            <strong>New to FiftyOne?</strong> Start with the 5-minute quickstart.
-        </div>
-        <a href="https://colab.research.google.com/github/voxel51/fiftyone-examples/blob/master/examples/quickstart.ipynb" target="_blank" class="onboarding-banner-cta">Open in Colab &rarr;</a>
-        <button class="onboarding-dismiss" aria-label="Dismiss">&times;</button>
+  <!-- New to FiftyOne CTA Banner -->
+  <div class="quickstart-cta-banner">
+    <div class="quickstart-cta-text">
+      <strong>New to FiftyOne?</strong> Start with the 5-minute quickstart to explore your first dataset in the FiftyOne App.
     </div>
+    <a href="https://colab.research.google.com/github/voxel51/fiftyone-examples/blob/master/examples/quickstart.ipynb" target="_blank" class="quickstart-cta-btn">
+      Open in Colab
+      <span class="orange-arrow-circle"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+    </a>
+  </div>
 
 .. Section 3: Core Capabilities -----------------------------------------------
+
+.. raw:: html
+
+  <div class="section-label-pill">Capabilities</div>
 
 Core Capabilities
 _________________
@@ -183,7 +232,10 @@ _________________
         <div class="capability-text">
           <h3>Visualize</h3>
           <p>Explore your data in the FiftyOne App. Browse images, videos, and 3D data side-by-side with labels, metadata, and model predictions — all in one interactive view.</p>
-          <a href="user_guide/app.html" class="capability-cta">Explore the FiftyOne App &rarr;</a>
+          <a href="user_guide/app.html" class="capability-cta-v4">
+            <span class="orange-arrow-circle"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+            Explore the FiftyOne App
+          </a>
         </div>
         <div class="capability-image">
           <img src="_static/images/groups-modal.gif" alt="Visualize" loading="lazy" />
@@ -193,7 +245,10 @@ _________________
         <div class="capability-text">
           <h3>Evaluate</h3>
           <p>Aggregate metrics alone don't give you the full picture. FiftyOne makes it easy to see where your models succeed and fail so you can iterate faster.</p>
-          <a href="tutorials/evaluate_detections.html" class="capability-cta">See how to evaluate models with FiftyOne &rarr;</a>
+          <a href="tutorials/evaluate_detections.html" class="capability-cta-v4">
+            <span class="orange-arrow-circle"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+            Evaluate models
+          </a>
         </div>
         <div class="capability-image">
           <img src="_static/images/homepage_evaluate.gif" alt="Evaluate" loading="lazy" />
@@ -203,7 +258,10 @@ _________________
         <div class="capability-text">
           <h3>Curate</h3>
           <p>Reveal hidden structure in your data with embedding visualizations. Mine hard samples, find near-duplicates, and recommend the best data for annotation.</p>
-          <a href="tutorials/image_embeddings.html" class="capability-cta">Experience the power of embeddings &rarr;</a>
+          <a href="tutorials/image_embeddings.html" class="capability-cta-v4">
+            <span class="orange-arrow-circle"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+            Experience the power of embeddings
+          </a>
         </div>
         <div class="capability-image">
           <img src="_static/images/homepage_embeddings.gif" alt="Curate" loading="lazy" />
@@ -213,7 +271,10 @@ _________________
         <div class="capability-text">
           <h3>Annotate</h3>
           <p>Annotation mistakes create an artificial ceiling on model performance. Use FiftyOne to automatically identify possible label mistakes and correct them in-app.</p>
-          <a href="getting_started/annotation/index.html" class="capability-cta">Explore the annotation guide &rarr;</a>
+          <a href="getting_started/annotation/index.html" class="capability-cta-v4">
+            <span class="orange-arrow-circle"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+            Explore the annotation guide
+          </a>
         </div>
         <div class="capability-image">
           <img src="_static/images/homepage_mistakes.gif" alt="Annotate" loading="lazy" />
@@ -221,17 +282,18 @@ _________________
       </div>
     </div>
 
-.. Section 4: Integrations (full logo wall) -----------------------------------
-
-Integrations
-____________
-
-FiftyOne integrates naturally with your favorite tools. Click on a logo to
-learn how:
+.. Section 4: Integrations (5-column grid) ------------------------------------
 
 .. raw:: html
 
-    <div class="integrations-logos">
+  <div class="section-label-pill">Integrations</div>
+
+Works with your favorite tools
+______________________________
+
+.. raw:: html
+
+    <div class="integrations-logos integrations-grid-v4">
 
 .. customimagelink::
     :image_link: recipes/adding_detections.html
@@ -394,37 +456,39 @@ learn how:
 
 .. raw:: html
 
-    <div style="margin-top: 10px;">
-
-.. customanimatedcta::
-    :button_text: View all integrations
-    :button_link: integrations/index.html
-
-.. raw:: html
-
+    <div style="text-align: center; margin-top: 16px;">
+      <a href="integrations/index.html" class="integrations-view-all">
+        <span class="orange-arrow-circle"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+        View all integrations
+      </a>
     </div>
 
-.. Section 5: Social + Support Bar --------------------------------------------
+.. Section 5: Need Support? ---------------------------------------------------
 
 .. raw:: html
 
-  <div class="landing-social-bar">
-    <a target="_blank" href="https://github.com/voxel51/fiftyone" class="social-bar-item">
-      <img alt="GitHub" src="_static/images/icons/github-logo-256px.png" />
-      <span>GitHub</span>
-    </a>
-    <a target="_blank" href="https://community.voxel51.com/" class="social-bar-item">
-      <img alt="Discord" src="_static/images/icons/discord-logo-256px.png" />
-      <span>Discord</span>
-    </a>
-    <a target="_blank" href="https://colab.research.google.com/github/voxel51/fiftyone-examples/blob/master/examples/quickstart.ipynb" class="social-bar-item">
-      <img alt="Colab" src="_static/images/icons/colab-logo-256px.png" />
-      <span>Try in Colab</span>
-    </a>
-    <a href="mailto:support@voxel51.com" class="social-bar-item">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
-      <span>support@voxel51.com</span>
-    </a>
+  <div class="support-section">
+    <div class="section-label-pill">Community</div>
+    <h2 class="support-heading">Need Support?</h2>
+    <p class="support-subheading">Connect with the FiftyOne community and team</p>
+    <div class="support-links">
+      <a target="_blank" href="https://github.com/voxel51/fiftyone" class="support-link">
+        <img alt="GitHub" src="_static/images/icons/github-logo-256px.png" />
+        <span>GitHub</span>
+      </a>
+      <a target="_blank" href="https://community.voxel51.com/" class="support-link">
+        <img alt="Discord" src="_static/images/icons/discord-logo-256px.png" />
+        <span>Discord</span>
+      </a>
+      <a target="_blank" href="https://slack.voxel51.com/" class="support-link">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>
+        <span>Slack</span>
+      </a>
+      <a href="mailto:support@voxel51.com" class="support-link">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+        <span>support@voxel51.com</span>
+      </a>
+    </div>
   </div>
 
 
