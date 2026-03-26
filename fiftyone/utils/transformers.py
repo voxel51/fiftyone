@@ -532,7 +532,12 @@ class ZeroShotTransformerEmbeddingsMixin(EmbeddingsMixin):
                 args[k] = v.to(self.device)
             features = self._model.get_image_features(**args)
             if not isinstance(features, torch.Tensor):
-                features = features.pooler_output
+                features = getattr(features, "pooler_output", None)
+                if features is None:
+                    raise ValueError(
+                        "get_image_features() returned a non-tensor "
+                        "output without a pooler_output attribute"
+                    )
             return features.detach().cpu().numpy()
 
 
