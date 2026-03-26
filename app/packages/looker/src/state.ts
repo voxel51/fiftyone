@@ -454,7 +454,7 @@ export const DEFAULT_BASE_OPTIONS: BaseOptions = {
   selectedLabels: [],
   selectedLabelTags: undefined,
   showConfidence: false,
-  showControls: true,
+  showControls: false,
   showIndex: false,
   showJSON: false,
   showHelp: false,

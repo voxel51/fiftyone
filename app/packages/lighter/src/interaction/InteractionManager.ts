@@ -6,10 +6,8 @@ import { quickDrawBridge } from "@fiftyone/core/src/components/Modal/Sidebar/Ann
 import { EventDispatcher, getEventBus } from "@fiftyone/events";
 import { TypeGuards } from "../core/Scene2D";
 import type { LighterEventGroup } from "../events";
-import {
-  BoundingBoxOverlay,
-  type MoveState,
-} from "../overlay/BoundingBoxOverlay";
+import type { BaseOverlay } from "../overlay/BaseOverlay";
+import { type MoveState } from "../overlay/BoundingBoxOverlay";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { SelectionManager } from "../selection/SelectionManager";
 import type { Point, Rect } from "../types";
@@ -17,12 +15,33 @@ import { InteractiveDetectionHandler } from "./InteractiveDetectionHandler";
 import { v4 as generateUUID } from "uuid";
 
 /**
+ * Interface for handlers that support sub-selecting and removing individual
+ * points (e.g. keypoint overlays).
+ */
+export interface KeypointMutationHandler {
+  getSelectedPointIndex(): number | null;
+  removePoint(index: number): void;
+}
+
+function hasKeypointMutation(
+  h: InteractionHandler
+): h is InteractionHandler & KeypointMutationHandler {
+  return (
+    "getSelectedPointIndex" in h &&
+    "removePoint" in h &&
+    typeof (h as Record<string, unknown>).getSelectedPointIndex ===
+      "function" &&
+    typeof (h as Record<string, unknown>).removePoint === "function"
+  );
+}
+
+/**
  * Interface for objects that can handle interaction events.
  */
 export interface InteractionHandler {
   readonly id: string;
   readonly cursor?: string;
-  overlay?: BoundingBoxOverlay;
+  overlay?: BaseOverlay;
 
   /**
    * Returns true if the handler is being dragged or resized.
@@ -309,16 +328,24 @@ export class InteractionManager {
         this.canvas.style.cursor = cursor;
       }
 
-      // If this is a spatial overlay, track move state
-      if (TypeGuards.isSpatial(handler)) {
+      // If this is a spatial overlay with move state, track drag/resize lifecycle.
+      // Handlers that manage their own drag events (e.g. KeypointOverlay point
+      // drags) don't provide getMoveStartBounds/getMoveStartPosition, so we skip
+      // dispatching to avoid stranded start events with no matching end.
+      // Capture move start state before the type guard narrows `handler` away
+      // from InteractionHandler (which defines these optional methods).
+      const startPosition = handler.getMoveStartPosition?.();
+      const startBounds = handler.getMoveStartBounds?.();
+
+      if (TypeGuards.isSpatial(handler) && startPosition && startBounds) {
         const type: keyof LighterEventGroup = handler.isDragging?.()
           ? "lighter:overlay-drag-start"
           : "lighter:overlay-resize-start";
 
         this.eventBus.dispatch(type, {
           id: handler.id,
-          startPosition: handler.bounds,
-          bounds: handler.bounds,
+          startPosition,
+          bounds: startBounds,
         });
       }
 
@@ -552,7 +579,7 @@ export class InteractionManager {
 
           this.eventBus.dispatch("lighter:overlay-establish", {
             ...detail,
-            overlay: interactiveHandler,
+            handler: interactiveHandler,
           });
         } else {
           const type =
@@ -634,6 +661,21 @@ export class InteractionManager {
     if (event.shiftKey) {
       this.maintainAspectRatio = event.shiftKey;
       return;
+    }
+
+    // Delete/Backspace: remove sub-selected keypoint
+    if (event.key === "Delete" || event.key === "Backspace") {
+      const selectedId = this.selectionManager.getSelectedIds()[0];
+      if (selectedId) {
+        const handler = this.handlers.find((h) => h.id === selectedId);
+        if (handler && hasKeypointMutation(handler)) {
+          const idx = handler.getSelectedPointIndex();
+          if (idx !== null && idx >= 0) {
+            handler.removePoint(idx);
+            event.preventDefault();
+          }
+        }
+      }
     }
   };
 
@@ -821,9 +863,13 @@ export class InteractionManager {
     point: Point,
     skipCanonicalMedia: boolean = false
   ): InteractionHandler | undefined {
-    // Find handlers in reverse order (topmost first)
-    // Note: this is a hack, we need a better z-order logic
-    const candidates: InteractionHandler[] = [];
+    // Single-pass: find best handler at point using priority rules.
+    // Priority: selected > highest selectable priority > topmost (reverse order).
+    let bestSelected: InteractionHandler | undefined;
+    let bestSelectable: InteractionHandler | undefined;
+    let bestSelectablePriority = -1;
+    let topmost: InteractionHandler | undefined;
+
     for (let i = this.handlers.length - 1; i >= 0; i--) {
       const handler = this.handlers[i];
 
@@ -831,46 +877,25 @@ export class InteractionManager {
         continue;
       }
 
-      if (handler.containsPoint(point)) {
-        candidates.push(handler);
+      if (!handler.containsPoint(point)) {
+        continue;
       }
-    }
 
-    if (candidates.length === 0) return undefined;
-    if (candidates.length === 1) return candidates[0];
+      if (!topmost) topmost = handler;
 
-    // First, check if any candidates are selected - selected overlays override everything
-    const selectedCandidates = candidates.filter((handler) => {
       if (TypeGuards.isSelectable(handler)) {
-        return this.selectionManager.isSelected(handler.id);
+        if (!bestSelected && this.selectionManager.isSelected(handler.id)) {
+          bestSelected = handler;
+        }
+        const priority = handler.getSelectionPriority();
+        if (priority > bestSelectablePriority) {
+          bestSelectablePriority = priority;
+          bestSelectable = handler;
+        }
       }
-      return false;
-    });
-
-    if (selectedCandidates.length > 0) {
-      return selectedCandidates[0];
     }
 
-    // If multiple handlers found, prefer selectable ones with higher priority
-    const selectableCandidates = candidates.filter((handler) =>
-      TypeGuards.isSelectable(handler)
-    );
-
-    if (selectableCandidates.length > 0) {
-      // Choose the selectable candidate with highest selection priority
-      return selectableCandidates.reduce((best, current) => {
-        const bestPriority = TypeGuards.isSelectable(best)
-          ? best.getSelectionPriority()
-          : 0;
-        const currentPriority = TypeGuards.isSelectable(current)
-          ? current.getSelectionPriority()
-          : 0;
-        return currentPriority > bestPriority ? current : best;
-      });
-    }
-
-    // Fall back to the first candidate (topmost)
-    return candidates[0];
+    return bestSelected || bestSelectable || topmost;
   }
 
   private getCanvasPoint(event: PointerEvent): Point {
@@ -961,6 +986,9 @@ export class InteractionManager {
    * Clears all handlers.
    */
   clearHandlers(): void {
+    for (const handler of this.handlers) {
+      handler.cleanup?.();
+    }
     this.handlers = [];
     this.hoveredHandler = undefined;
   }
@@ -1034,8 +1062,9 @@ export class InteractionManager {
     }
 
     // Add any remaining handlers that weren't in the overlay order
+    const overlayOrderSet = new Set(overlayOrder);
     for (const handler of this.handlers) {
-      if (!overlayOrder.includes(handler.id)) {
+      if (!overlayOrderSet.has(handler.id)) {
         reorderedHandlers.push(handler);
       }
     }

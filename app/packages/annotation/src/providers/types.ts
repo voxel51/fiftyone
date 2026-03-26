@@ -24,7 +24,13 @@ export interface BoundingBox {
 }
 
 export interface InferenceResult {
+  /** Row-major mask values in [0,1], length = maskWidth * maskHeight. */
   mask: Float32Array;
+  /** Pixel width of the cropped mask region. */
+  maskWidth: number;
+  /** Pixel height of the cropped mask region. */
+  maskHeight: number;
+  /** Bounding box in normalized [0,1] coordinates. */
   bbox: BoundingBox;
 }
 

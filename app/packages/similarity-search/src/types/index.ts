@@ -9,14 +9,21 @@ export type RunStatus = "pending" | "running" | "completed" | "failed";
 export type QueryType = "text" | "image";
 
 /**
+ * Scope for a similarity search (full dataset or current view).
+ */
+export type SearchScope = "view" | "dataset";
+
+/**
  * Configuration for a brain similarity key.
  */
 export type BrainKeyConfig = {
   key: string;
   supports_prompts: boolean;
   supports_least_similarity: boolean;
-  max_k?: number;
   patches_field?: string;
+  model?: string;
+  backend?: string;
+  embeddings_field?: string;
 };
 
 /**
@@ -42,6 +49,7 @@ export type SimilarityRun = {
   source_view?: Record<string, unknown>[];
   operator_run_id?: string;
   status_details?: string;
+  created_by?: string;
 };
 
 /**
@@ -78,9 +86,12 @@ export type DateFilterPreset =
 /**
  * Filter state for the runs list.
  */
+export type OwnerFilter = "all" | "mine";
+
 export type RunFilterState = {
   searchText: string;
   datePreset: DateFilterPreset;
+  ownerFilter: OwnerFilter;
 };
 
 /**
