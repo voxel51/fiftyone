@@ -323,7 +323,7 @@ self.onmessage = async (e: MessageEvent) => {
       postError(id, type, `Unknown message type: ${type}`);
     }
   } catch (err) {
-    if (type === "embedAndDecode")
+      postStatusNotification("failure");
       postErrorNotification({ kind: "inference_failure", message: err instanceof Error ? err.message : String(err) });
     postError(id, type, err instanceof Error ? err.message : String(err));
   }
