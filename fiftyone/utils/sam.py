@@ -89,9 +89,8 @@ class _SAMPredictor:
             resized boxes for SAM as a Bx4 tensor
         """
         sam_boxes = np.round(boxes_xyxy).astype(int)
-        input_boxes = torch.tensor(sam_boxes)
         return self.processor.transform.apply_boxes_torch(
-            input_boxes,
+            torch.tensor(sam_boxes),
             (img_hw[0], img_hw[1]),
         )
 
@@ -107,16 +106,18 @@ class _SAMPredictor:
             a torch tensor containing points in XYXY pixels for SAM model
             a torch tensor containing positive and negative labels
         """
-        points, labels = _to_sam_points(
+        sam_points, labels = _to_sam_points(
             points,
             height=img_hw[0],
             width=img_hw[1],
             point_labels=point_labels,
         )
-        points = self.processor.transform.apply_coords(points, img_hw)
-        return torch.tensor(points, dtype=torch.float64), torch.tensor(
-            labels, dtype=torch.int
+        transformed_points = self.processor.transform.apply_coords(
+            sam_points, img_hw
         )
+        return torch.tensor(
+            transformed_points, dtype=torch.float64
+        ), torch.tensor(labels, dtype=torch.int)
 
 
 class SAMPromptMode(Enum):
