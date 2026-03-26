@@ -30,6 +30,10 @@ export const useSearchSubmission = (input: UseSearchSubmissionInput) => {
   const { execute: initRun } = useOperatorExecutor(INIT_RUN_OPERATOR_URI);
   const [submitting, setSubmitting] = useState(false);
 
+  const handleOptionSelected = useCallback(() => {
+    setSubmitting(true);
+  }, []);
+
   const executionParams = useMemo(
     () =>
       buildExecutionParams({
@@ -65,12 +69,9 @@ export const useSearchSubmission = (input: UseSearchSubmissionInput) => {
     ]
   );
 
-  const handleClick = useCallback(() => {
-    setSubmitting(true);
-  }, []);
-
   const handleSuccess = useCallback(
     (result: Record<string, unknown>) => {
+      setSubmitting(false);
       if (result?.delegated) {
         const resultObj = result?.result as
           | { id?: { $oid?: string } }
@@ -78,15 +79,9 @@ export const useSearchSubmission = (input: UseSearchSubmissionInput) => {
         const operatorRunId = resultObj?.id?.$oid;
         initRun(
           { ...executionParams, operator_run_id: operatorRunId },
-          {
-            callback: () => {
-              setSubmitting(false);
-              input.onSubmitted();
-            },
-          }
+          { callback: () => input.onSubmitted() }
         );
       } else {
-        setSubmitting(false);
         input.onSubmitted();
       }
     },
@@ -116,7 +111,7 @@ export const useSearchSubmission = (input: UseSearchSubmissionInput) => {
 
   return {
     executionParams,
-    handleClick,
+    handleOptionSelected,
     handleSuccess,
     handleError,
     kError,

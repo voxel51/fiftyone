@@ -81,7 +81,7 @@ export const useNewSearchForm = (
 
   const {
     executionParams,
-    handleClick,
+    handleOptionSelected,
     handleSuccess,
     handleError,
     kError,
@@ -148,7 +148,7 @@ export const useNewSearchForm = (
     executionParams,
 
     // handlers
-    handleClick,
+    handleOptionSelected,
     handleSuccess,
     handleError,
   };
