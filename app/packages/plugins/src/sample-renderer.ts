@@ -243,7 +243,7 @@ export function getSelectedMediaPath<TSample extends SampleRendererSampleLike>(
   sample: TSample,
   selectedMediaField: string
 ) {
-  const urls = sample.urls ? fos.getStandardizedUrls(sample.urls) : undefined;
+  const urls = sample.urls ? fos.getNormalizedUrls(sample.urls) : undefined;
 
   return (
     urls?.[selectedMediaField] ||

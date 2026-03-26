@@ -57,6 +57,8 @@ export const ModalSampleRenderer = React.memo(
   ({ sample, modalMediaField }: ModalSampleRendererProps) => {
     const dataset = fos.useCurrentDataset();
     const schema = fos.useModalSampleSchema();
+    const { isDisabled: isDatasetRendererDisabled } =
+      fos.useGridCustomRendererFailover(dataset?.name);
 
     const sampleRenderers = useActivePlugins(
       PluginComponentType.SampleRenderer
@@ -64,6 +66,10 @@ export const ModalSampleRenderer = React.memo(
 
     if (!dataset) {
       throw new Error("no dataset");
+    }
+
+    if (isDatasetRendererDisabled) {
+      return <MetadataLooker sample={sample} />;
     }
 
     const ctx = createSampleRendererRenderContext(
@@ -78,9 +84,8 @@ export const ModalSampleRenderer = React.memo(
       ? getComponent<SampleRendererProps>(matchedRenderer.name)
       : null;
 
-    const fallback = <MetadataLooker sample={sample} />;
     if (!matchedRenderer || !ctx.media.url || !canonicalRenderer) {
-      return fallback;
+      return <MetadataLooker sample={sample} />;
     }
 
     const Renderer = getSampleRendererComponent(
@@ -93,7 +98,10 @@ export const ModalSampleRenderer = React.memo(
     const rendererKey = `${matchedRenderer.name}-${sample.sample.id}`;
 
     return (
-      <ModalSampleRendererErrorBoundary key={rendererKey} fallback={fallback}>
+      <ModalSampleRendererErrorBoundary
+        key={rendererKey}
+        fallback={<MetadataLooker sample={sample} />}
+      >
         <Renderer ctx={ctx} />
       </ModalSampleRendererErrorBoundary>
     );

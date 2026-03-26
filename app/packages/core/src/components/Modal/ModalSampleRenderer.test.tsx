@@ -11,6 +11,7 @@ const {
   mockDataset,
   mockSchema,
   useCurrentDataset,
+  useGridCustomRendererFailover,
   useModalSampleSchema,
   useActivePlugins,
 } = vi.hoisted(() => ({
@@ -21,6 +22,7 @@ const {
   getComponent: vi.fn(),
   getSampleRendererComponent: vi.fn(),
   useCurrentDataset: vi.fn(),
+  useGridCustomRendererFailover: vi.fn(),
   useModalSampleSchema: vi.fn(),
   useActivePlugins: vi.fn(),
 }));
@@ -39,6 +41,8 @@ vi.mock("@fiftyone/plugins", () => ({
 
 vi.mock("@fiftyone/state", () => ({
   useCurrentDataset: (...args: unknown[]) => useCurrentDataset(...args),
+  useGridCustomRendererFailover: (...args: unknown[]) =>
+    useGridCustomRendererFailover(...args),
   useModalSampleSchema: (...args: unknown[]) => useModalSampleSchema(...args),
 }));
 
@@ -90,6 +94,14 @@ describe("ModalSampleRenderer", () => {
   beforeEach(() => {
     consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     useCurrentDataset.mockReturnValue(mockDataset);
+    useGridCustomRendererFailover.mockReturnValue({
+      dismissBanner: vi.fn(),
+      failure: null,
+      forcedSubscription: null,
+      hasAnyFailures: false,
+      isBannerVisible: false,
+      isDisabled: false,
+    });
     useModalSampleSchema.mockReturnValue(mockSchema);
     useActivePlugins.mockReturnValue([registration]);
     createSampleRendererRenderContext.mockReturnValue(ctx);
@@ -125,6 +137,27 @@ describe("ModalSampleRenderer", () => {
 
     expect(screen.getByTestId("metadata").textContent).toBe("sample-id");
     expect(screen.queryByTestId("renderer")).toBeNull();
+  });
+
+  it("falls back to MetadataLooker when the dataset renderer is fail-open", () => {
+    useGridCustomRendererFailover.mockReturnValue({
+      dismissBanner: vi.fn(),
+      failure: {
+        datasetName: mockDataset.name,
+        failedAt: Date.now(),
+        rendererName: registration.name,
+      },
+      forcedSubscription: "failopen-1",
+      hasAnyFailures: true,
+      isBannerVisible: true,
+      isDisabled: true,
+    });
+
+    render(<ModalSampleRenderer sample={sample} modalMediaField="filepath" />);
+
+    expect(screen.getByTestId("metadata").textContent).toBe("sample-id");
+    expect(screen.queryByTestId("renderer")).toBeNull();
+    expect(getMatchingSampleRenderer).not.toHaveBeenCalled();
   });
 
   it("falls back cleanly when the sample renderer throws", async () => {
