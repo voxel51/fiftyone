@@ -1,7 +1,4 @@
-import {
-  usePromptOperatorInput,
-  useFirstExistingUri,
-} from "@fiftyone/operators";
+import { constants } from "@fiftyone/utilities";
 import {
   Align,
   Button,
@@ -18,9 +15,8 @@ import {
   Spacing,
   Variant,
 } from "@voxel51/voodo";
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { BrainKeyConfig } from "../../types";
-import { BRAIN_COMPUTE_SIMILARITY_URI } from "../../constants";
 import SimilaritySearchCTA from "../SimilaritySearchCTA";
 
 type SimilarityIndexProps = {
@@ -28,30 +24,19 @@ type SimilarityIndexProps = {
   onBack: () => void;
 };
 
-function AddIndexButton() {
-  const promptForInput = usePromptOperatorInput();
-  const { exists: hasBrainOperator } = useFirstExistingUri([
-    BRAIN_COMPUTE_SIMILARITY_URI,
-  ]);
-
-  if (!hasBrainOperator) return null;
-
-  return (
-    <Button
-      variant={Variant.Primary}
-      size={Size.Sm}
-      leadingIcon={IconName.Add}
-      onClick={() => promptForInput(BRAIN_COMPUTE_SIMILARITY_URI)}
-    >
-      Similarity Index
-    </Button>
-  );
-}
-
 export default function SimilarityIndex({
   brainKeys,
   onBack,
 }: SimilarityIndexProps) {
+  const [showCTA, setShowCTA] = useState(false);
+
+  const onAddIndex = useCallback(() => {
+    if (constants.IS_APP_MODE_FIFTYONE) {
+      setShowCTA(true);
+    } else {
+      // TODO: trigger event compute similarity operator on teams
+    }
+  }, []);
   const listItems = useMemo(
     () =>
       brainKeys.map((bk) => ({
@@ -111,8 +96,11 @@ export default function SimilarityIndex({
         </Text>
       </Stack>
 
-      {brainKeys.length === 0 ? (
-        <SimilaritySearchCTA mode="onboarding" />
+      {brainKeys.length === 0 || showCTA ? (
+        <SimilaritySearchCTA
+          mode="onboarding"
+          onBack={showCTA ? () => setShowCTA(false) : undefined}
+        />
       ) : (
         <>
           <Stack
@@ -120,7 +108,14 @@ export default function SimilarityIndex({
             justify={Justify.End}
             style={{ marginBottom: "1rem" }}
           >
-            <AddIndexButton />
+            <Button
+              variant={Variant.Primary}
+              size={Size.Sm}
+              leadingIcon={IconName.Add}
+              onClick={onAddIndex}
+            >
+              Similarity Index
+            </Button>
           </Stack>
           <RichList listItems={listItems} />
         </>
