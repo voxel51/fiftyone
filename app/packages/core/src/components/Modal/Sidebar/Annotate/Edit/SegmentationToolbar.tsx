@@ -30,6 +30,13 @@ const SelectIcon = () => (
   </svg>
 );
 
+const CloseIcon = () => (
+  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+    <title>Exit AI Segment</title>
+    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+  </svg>
+);
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -49,16 +56,19 @@ export const SegmentationToolbar: React.FC = () => {
       visible={segmentationActive}
     >
       <FloatingToolbar.Group label="Tool">
-        <Tooltip placement="right-center" text="Select">
-          <FloatingToolbar.Action
-            active={!aiSegmentActive}
-            onClick={() => {
-              if (aiSegmentActive) exitAI();
-            }}
-          >
-            <SelectIcon />
-          </FloatingToolbar.Action>
-        </Tooltip>
+        {aiSegmentActive ? (
+          <Tooltip placement="right-center" text="Exit AI Segment">
+            <FloatingToolbar.Action onClick={exitAI}>
+              <CloseIcon />
+            </FloatingToolbar.Action>
+          </Tooltip>
+        ) : (
+          <Tooltip placement="right-center" text="Select">
+            <FloatingToolbar.Action active={!aiSegmentActive}>
+              <SelectIcon />
+            </FloatingToolbar.Action>
+          </Tooltip>
+        )}
         <Tooltip placement="right-center" text="AI Segment (A)">
           <FloatingToolbar.Action
             active={aiSegmentActive}

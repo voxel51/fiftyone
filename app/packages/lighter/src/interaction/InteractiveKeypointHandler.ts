@@ -55,8 +55,36 @@ export class InteractiveKeypointHandler implements InteractionHandler {
     worldPoint: Point,
     _event: PointerEvent
   ): boolean {
+    // Block placement while inference is processing (ripple active)
+    if (
+      "isProcessing" in this.overlay &&
+      (this.overlay as any).isProcessing()
+    ) {
+      return true; // swallow the click
+    }
+
+    // Only place points within the sample image bounds
+    if (!this.isWithinSample(worldPoint)) {
+      return false;
+    }
+
     this.overlay.addPoint(worldPoint);
     return true;
+  }
+
+  /**
+   * Checks whether a world-space point falls within the [0,1] normalized
+   * sample bounds (i.e. inside the image).
+   */
+  private isWithinSample(worldPoint: Point): boolean {
+    const cs = this.overlay.getCoordinateSystemPublic?.();
+    if (!cs) return true; // no coordinate system — allow placement
+
+    const t = cs.getTransform();
+    const rx = (worldPoint.x - t.offsetX) / t.scaleX;
+    const ry = (worldPoint.y - t.offsetY) / t.scaleY;
+
+    return rx >= 0 && rx <= 1 && ry >= 0 && ry <= 1;
   }
 
   onMove(_point: Point, worldPoint: Point, _event: PointerEvent): boolean {

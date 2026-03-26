@@ -158,6 +158,14 @@ export class KeypointOverlay
     return this.coordinateSystem;
   }
 
+  /**
+   * Public accessor for the coordinate system, used by external handlers
+   * (e.g. InteractiveKeypointHandler) to check sample bounds.
+   */
+  getCoordinateSystemPublic() {
+    return this.coordinateSystem;
+  }
+
   // ---------------------------------------------------------------------------
   // Spatial interface
   // ---------------------------------------------------------------------------

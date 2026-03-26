@@ -192,13 +192,19 @@ export const useAISegment = () => {
         // Feed into tools state → AnnotationContext
         toolsState.addPositivePoint(newPoint);
 
-        // Trigger inference
+        // Trigger inference — ripple animation is already running
+        // (started by AISegmentPointOverlay.addPoint → startProcessing)
         const agent = resolvedAgentRef.current;
         const apply = applyResultRef.current;
         if (agent) {
           agent.infer().then((result) => {
+            // Stop ripple when result arrives
+            keypointOverlay.stopProcessing();
             if (result) apply(result);
           });
+        } else {
+          // No agent — stop ripple immediately
+          keypointOverlay.stopProcessing();
         }
       },
       [getOverlay, getOverlayId, toolsState]
@@ -212,18 +218,28 @@ export const useAISegment = () => {
         const currentOverlayId = getOverlayId();
         if (!currentOverlayId || payload.id !== currentOverlayId) return;
 
+        const overlay = getOverlay?.(currentOverlayId) as
+          | AISegmentPointOverlay
+          | undefined;
+
         toolsState.removePositivePoint(payload.pointIndex);
 
         // Re-infer with updated point set
         const agent = resolvedAgentRef.current;
         const apply = applyResultRef.current;
-        if (agent) {
+        if (agent && overlay) {
+          // Pick the last remaining point for the ripple, if any
+          const points = overlay.getRelativePoints();
+          if (points.length > 0) {
+            overlay.startProcessing(points.length - 1);
+          }
           agent.infer().then((result) => {
+            overlay.stopProcessing();
             if (result) apply(result);
           });
         }
       },
-      [getOverlayId, toolsState]
+      [getOverlay, getOverlayId, toolsState]
     )
   );
 
