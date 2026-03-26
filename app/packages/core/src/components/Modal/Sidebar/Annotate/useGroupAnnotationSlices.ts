@@ -1,4 +1,5 @@
 import {
+  currentGroupSliceNames,
   groupMediaTypes,
   isGroup,
   usePreferredGroupAnnotationSlice,
@@ -31,6 +32,7 @@ export interface UseGroupAnnotationSlicesResult {
  */
 export function useGroupAnnotationSlices(): UseGroupAnnotationSlicesResult {
   const mediaTypes = useRecoilValue(groupMediaTypes);
+  const currentSlices = useRecoilValue(currentGroupSliceNames);
   const isGroupDataset = useRecoilValue(isGroup);
 
   const [preferredSlice, setPreferredSlice] =
@@ -44,7 +46,16 @@ export function useGroupAnnotationSlices(): UseGroupAnnotationSlicesResult {
       };
     }
 
-    const allSlices: AnnotationSliceInfo[] = mediaTypes
+    // Grouped datasets can be sparse. In annotate mode, only offer slices that
+    // actually exist on the currently opened group instead of every dataset-
+    // level slice definition.
+    const currentSliceSet = new Set(currentSlices);
+    const availableMediaTypes =
+      currentSliceSet.size > 0
+        ? mediaTypes.filter(({ name }) => currentSliceSet.has(name))
+        : mediaTypes;
+
+    const allSlices: AnnotationSliceInfo[] = availableMediaTypes
       .map(({ name, mediaType }) => ({
         name,
         mediaType,
@@ -68,7 +79,7 @@ export function useGroupAnnotationSlices(): UseGroupAnnotationSlicesResult {
       allSlices,
       supportedSlices,
     };
-  }, [mediaTypes, isGroupDataset]);
+  }, [currentSlices, isGroupDataset, mediaTypes]);
 
   return {
     ...sliceData,

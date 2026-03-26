@@ -1,4 +1,3 @@
-import { Alert, AlertTitle } from "@mui/material";
 import { useOperatorPrompt } from "../state";
 import { BaseStylesProvider } from "../styled-components";
 import { getOperatorPromptConfigs } from "../utils";
@@ -10,22 +9,10 @@ export default function OperatorPromptBody(props: {
   operatorPrompt: OperatorPromptType;
 }) {
   const { operatorPrompt } = props;
-  const {
-    showWarning,
-    // warningTitle,
-    warningMessage,
-    showResultOrError,
-  } = getOperatorPromptConfigs(operatorPrompt);
-  const warningTitle = null; // todo
+  const { showResultOrError } = getOperatorPromptConfigs(operatorPrompt);
 
   return (
     <BaseStylesProvider>
-      {showWarning && (
-        <Alert severity="warning">
-          <AlertTitle>{warningTitle}</AlertTitle>
-          {warningMessage}
-        </Alert>
-      )}
       {operatorPrompt.showPrompt && (
         <OperatorPromptForm operatorPrompt={operatorPrompt} />
       )}

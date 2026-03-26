@@ -40,12 +40,12 @@ export function useFetchFrustumParameters() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [fetchTrigger, setFetchTrigger] = useState(0);
+  const { activeFo3dSlice: currentFo3dSlice, non3dSlices: allNon3dSlices } =
+    fos.useRenderConfig3dState();
 
   const datasetId = useRecoilValue(fos.datasetId);
   const sampleId = useRecoilValue(fos.currentSampleId);
   const isGroup = useRecoilValue(fos.isGroup);
-  const currentFo3dSlice = useRecoilValue(fos.fo3dSlice);
-  const allNon3dSlices = useRecoilValue(fos.allNon3dSlices);
   const modalSample = useRecoilValue(fos.modalSample);
 
   const { resolveUrlForImageSlice, isLoadingImageSlices } =

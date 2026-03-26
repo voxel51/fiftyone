@@ -26,6 +26,8 @@ export enum SampleCanvasType {
 export class SampleCanvasPom {
   readonly assert: SampleCanvasAsserter;
   #box?: Box;
+  #mouseX = 0;
+  #mouseY = 0;
 
   constructor(readonly page: Page, readonly eventUtils: EventUtils) {
     this.assert = new SampleCanvasAsserter(this);
@@ -65,7 +67,7 @@ export class SampleCanvasPom {
   get cursor(): Promise<string> {
     // eslint-disable-next-line
     // @ts-ignore
-    return this.page.evaluate(() => window.CURRENT_CURSOR);
+    return this.page.evaluate(() => window.__FO_PLAYWRIGHT_CURRENT_CURSOR);
   }
 
   /**
@@ -76,6 +78,8 @@ export class SampleCanvasPom {
    */
   async click(x: number, y: number) {
     const xy = await this.#toScreenCoordinates(x, y);
+    this.#mouseX = xy.x;
+    this.#mouseY = xy.y;
     await this.page.mouse.click(xy.x, xy.y);
   }
 
@@ -87,6 +91,8 @@ export class SampleCanvasPom {
    */
   async dblclick(x: number, y: number) {
     const xy = await this.#toScreenCoordinates(x, y);
+    this.#mouseX = xy.x;
+    this.#mouseY = xy.y;
     await this.page.mouse.dblclick(xy.x, xy.y);
   }
 
@@ -106,7 +112,26 @@ export class SampleCanvasPom {
    */
   async move(x: number, y: number, cursor?: string) {
     const xy = await this.#toScreenCoordinates(x, y);
+    this.#mouseX = xy.x;
+    this.#mouseY = xy.y;
     await this.page.mouse.move(xy.x, xy.y);
+    if (cursor) {
+      await this.assert.hasCursor(cursor);
+    }
+  }
+
+  /**
+   * Mouse move on the sample canvas by x and y
+   *
+   * @param x The distance to move along the x-axis
+   * @param y The distance to move along the y-axis
+   * @param cursor An optional cursor value to expect after moving
+   */
+  async movePixels(x: number, y: number, cursor?: string) {
+    this.#mouseX += x;
+    this.#mouseY += y;
+    await this.page.mouse.move(this.#mouseX, this.#mouseY);
+
     if (cursor) {
       await this.assert.hasCursor(cursor);
     }

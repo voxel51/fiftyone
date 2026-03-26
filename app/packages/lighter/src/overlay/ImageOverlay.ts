@@ -184,8 +184,10 @@ export class ImageOverlay extends BaseOverlay implements CanonicalMedia {
       this.emitError(new Error(`Invalid sample source: ${this.options.src}`));
       return;
     }
+
     this.imgElement.src = src;
 
+    this.imgElement.style.imageRendering = "pixelated";
     this.imgElement.style.position = "absolute";
     this.imgElement.style.top = "0";
     this.imgElement.style.left = "0";
