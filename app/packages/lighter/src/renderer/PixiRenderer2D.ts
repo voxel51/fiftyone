@@ -648,7 +648,7 @@ export class PixiRenderer2D implements Renderer2D {
     if (style.dashPattern && style.dashPattern.length > 0) {
       const dashLine = new DashLine(graphics, {
         dash: style.dashPattern,
-        width: style.lineWidth || 1,
+        width: (style.lineWidth || 1) / this.getScale(),
         color: color,
         alpha: alpha * (style.opacity ?? 1),
       });
@@ -657,7 +657,7 @@ export class PixiRenderer2D implements Renderer2D {
     } else {
       // Use solid line implementation
       graphics.setStrokeStyle({
-        width: style.lineWidth || 1,
+        width: (style.lineWidth || 1) / this.getScale(),
         color: color,
         alpha: alpha * (style.opacity ?? 1),
       });

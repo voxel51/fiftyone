@@ -61,6 +61,7 @@ export const HANDLE_OFFSET_Y = 3;
 export const KEYPOINT_RADIUS = 5;
 export const KEYPOINT_SELECTED_RADIUS = 8;
 export const KEYPOINT_HIT_RADIUS = 10;
+export const PREVIEW_LINE_OPACITY = 0.6;
 
 /**
  * Opacity of selected bounding boxes

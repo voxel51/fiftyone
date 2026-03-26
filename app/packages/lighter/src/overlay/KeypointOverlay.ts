@@ -8,6 +8,7 @@ import {
   KEYPOINT_RADIUS,
   KEYPOINT_SELECTED_RADIUS,
   LABEL_ARCHETYPE_PRIORITY,
+  PREVIEW_LINE_OPACITY,
   STROKE_WIDTH,
 } from "../constants";
 import { CONTAINS } from "../core/Scene2D";
@@ -304,7 +305,7 @@ export class KeypointOverlay
           strokeStyle: strokeColor,
           lineWidth,
           dashPattern: [6, 4],
-          opacity: 0.6,
+          opacity: PREVIEW_LINE_OPACITY,
         },
         this.containerId
       );
@@ -578,6 +579,7 @@ export class KeypointOverlay
    * Removes the point at the given index.
    */
   removePoint(index: number): void {
+    if (!this.isDeletable) return;
     if (index < 0 || index >= this.#relativePoints.length) return;
 
     this.#relativePoints.splice(index, 1);
