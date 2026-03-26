@@ -531,10 +531,6 @@ export interface FrameChunkResponse extends FrameChunk {
   error?: boolean;
 }
 
-/**
- * The zoom and pan state of a modal viewer, used to transfer camera position
- * when switching between Explore (Looker) and Annotate (Lighter) modes.
- */
 export interface ViewportState {
   readonly scale: number;
   readonly panX: number;
