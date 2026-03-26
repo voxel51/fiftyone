@@ -3,17 +3,24 @@
  *
  * Hook for AI-assisted segmentation mode.
  *
- * Manages the lifecycle of placing positive prompt-points on the canvas
- * and wiring them to the annotation agent inference pipeline.
+ * Flow:
+ *  1. User enters AI segment mode → point overlay created
+ *  2. User types text prompt → interactive mode activated
+ *  3. User clicks canvas → positive point placed → inference triggered
+ *  4. First result → pending Detection overlay created with mask + bbox
+ *  5. More points → inference re-triggered → same Detection overlay updated
+ *  6. User configures field/class in sidebar → confirms label
  */
 
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { atom, useAtomValue, useSetAtom } from "jotai";
+import { atom, getDefaultStore, useAtomValue, useSetAtom } from "jotai";
 import { useAtomCallback } from "jotai/utils";
 import { getEventBus } from "@fiftyone/events";
 
 import {
   type AISegmentPointOverlay,
+  type BoundingBoxOverlay,
+  type BoundingBoxOptions,
   type KeypointOptions,
   type LighterEventGroup,
   InteractiveKeypointHandler,
@@ -21,13 +28,30 @@ import {
   useLighter,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
+import type { DetectionLabel } from "@fiftyone/looker";
+import type { AnnotationLabel } from "@fiftyone/state";
 import { useToolsState } from "@fiftyone/annotation/src/agents/hooks/useToolsContext";
 import { useActiveTask } from "@fiftyone/annotation/src/agents/hooks/useActiveTask";
 import { useAgentSelector } from "@fiftyone/annotation/src/agents/hooks/useAgentSelector";
+import { useAgentRegistry } from "@fiftyone/annotation/src/agents/hooks/useAgentRegistry";
 import { useAnnotationAgent } from "@fiftyone/annotation/src/agents/hooks/useAnnotationAgent";
-import { useApplyInferenceResult } from "@fiftyone/annotation/src/agents/hooks/useApplyInferenceResult";
-import { AgentTaskType } from "@fiftyone/annotation/src/agents/types";
+import { OperatorAnnotationAgent } from "@fiftyone/annotation/src/agents/OperatorAnnotationAgent";
+import {
+  AgentTaskType,
+  type InferenceResult,
+  type SegmentationInferenceResult,
+} from "@fiftyone/annotation/src/agents/types";
+import { DETECTION, objectId } from "@fiftyone/utilities";
 import { v4 as generateUUID } from "uuid";
+import { defaultField, editing, savedLabel } from "./state";
+import { useAnnotationContext } from "./state";
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+const AI_SEGMENT_OPERATOR_URI = "@voxel51/annotation/segment";
+const AI_SEGMENT_AGENT_ID = "ai-segment-operator";
 
 // ---------------------------------------------------------------------------
 // Atoms
@@ -35,6 +59,9 @@ import { v4 as generateUUID } from "uuid";
 
 const aiSegmentActiveAtom = atom<boolean>(false);
 const aiSegmentOverlayIdAtom = atom<string | null>(null);
+const pendingDetectionIdAtom = atom<string | null>(null);
+/** Whether the agent has been registered in this session */
+const agentRegisteredAtom = atom<boolean>(false);
 
 // ---------------------------------------------------------------------------
 // Hook
@@ -45,26 +72,44 @@ export const useAISegment = () => {
     useLighter();
   const toolsState = useToolsState();
   const { setActiveTask } = useActiveTask();
-  const { activeAgent } = useAgentSelector();
+  const { activeAgent, setActiveAgent } = useAgentSelector();
+  const registry = useAgentRegistry();
   const resolvedAgent = useAnnotationAgent(activeAgent?.agent);
-  const applyResult = useApplyInferenceResult();
+  const { selectedLabel } = useAnnotationContext();
 
   const useEventHandler = useLighterEventHandler(
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
   );
 
-  // Refs for stale-closure safety in event callbacks
   const sceneRef = useRef(scene);
   sceneRef.current = scene;
   const resolvedAgentRef = useRef(resolvedAgent);
   resolvedAgentRef.current = resolvedAgent;
-  const applyResultRef = useRef(applyResult);
-  applyResultRef.current = applyResult;
 
   const active = useAtomValue(aiSegmentActiveAtom);
   const overlayId = useAtomValue(aiSegmentOverlayIdAtom);
   const setActive = useSetAtom(aiSegmentActiveAtom);
   const setOverlayId = useSetAtom(aiSegmentOverlayIdAtom);
+  const setEditing = useSetAtom(editing);
+  const setPendingDetectionId = useSetAtom(pendingDetectionIdAtom);
+
+  const getAgentRegistered = useAtomCallback(
+    useCallback((get) => get(agentRegisteredAtom), [])
+  );
+  const setAgentRegistered = useSetAtom(agentRegisteredAtom);
+
+  // ---- lazy agent registration (on first point, not on enter) ----
+
+  const ensureAgent = useCallback(async () => {
+    if (getAgentRegistered()) return;
+
+    const agent = new OperatorAnnotationAgent<SegmentationInferenceResult>(
+      AI_SEGMENT_OPERATOR_URI
+    );
+    await registry.register(AI_SEGMENT_AGENT_ID, "AI Segment", agent);
+    setActiveAgent({ id: AI_SEGMENT_AGENT_ID, label: "AI Segment", agent });
+    setAgentRegistered(true);
+  }, [registry, setActiveAgent, getAgentRegistered, setAgentRegistered]);
 
   // ---- enter / exit ----
 
@@ -75,7 +120,6 @@ export const useAISegment = () => {
     setActiveTask(AgentTaskType.SEGMENT);
     setActive(true);
 
-    // Create the point overlay
     const id = `ai-segment-points-${generateUUID()}`;
     const overlay = overlayFactory.create<
       Omit<KeypointOptions, "connections" | "closed">,
@@ -88,9 +132,6 @@ export const useAISegment = () => {
 
     addOverlay(overlay, false);
     setOverlayId(id);
-
-    // Interactive mode is deferred until the user types a prompt.
-    // See the useEffect below that watches `prompt`.
   }, [overlayFactory, addOverlay, setActive, setActiveTask, setOverlayId]);
 
   const exit = useCallback(() => {
@@ -99,7 +140,6 @@ export const useAISegment = () => {
       currentScene.exitInteractiveMode();
     }
 
-    // Get overlay ID before resetting
     const currentOverlayId = overlayId;
     if (currentOverlayId) {
       removeOverlay(currentOverlayId, false);
@@ -109,6 +149,7 @@ export const useAISegment = () => {
     setActiveTask(null);
     setActive(false);
     setOverlayId(null);
+    setPendingDetectionId(null);
   }, [
     overlayId,
     removeOverlay,
@@ -116,6 +157,7 @@ export const useAISegment = () => {
     setActiveTask,
     setActive,
     setOverlayId,
+    setPendingDetectionId,
   ]);
 
   // ---- text prompt ----
@@ -140,7 +182,6 @@ export const useAISegment = () => {
     const hasPrompt = prompt.length > 0;
 
     if (hasPrompt && !interactiveModeRef.current && overlayId) {
-      // Prompt just became non-empty — enter interactive mode
       const overlay = getOverlay?.(overlayId);
       if (overlay) {
         const eventBus = getEventBus<LighterEventGroup>(
@@ -154,18 +195,144 @@ export const useAISegment = () => {
         interactiveModeRef.current = true;
       }
     } else if (!hasPrompt && interactiveModeRef.current) {
-      // Prompt cleared — exit interactive mode (keep overlay)
       currentScene.exitInteractiveMode();
       interactiveModeRef.current = false;
     }
   }, [active, prompt, overlayId, getOverlay]);
 
-  // Clean up ref on exit
   useEffect(() => {
     if (!active) {
       interactiveModeRef.current = false;
     }
   }, [active]);
+
+  // ---- apply inference result ----
+
+  const getPendingDetectionId = useAtomCallback(
+    useCallback((get) => get(pendingDetectionIdAtom), [])
+  );
+
+  const applyResult = useCallback(
+    (result: InferenceResult<SegmentationInferenceResult>) => {
+      if (result.type !== "sync") {
+        console.warn("[AI Segment] Async results not yet supported");
+        return;
+      }
+
+      const detection = result.response?.detections?.[0];
+      if (!detection) {
+        console.warn("[AI Segment] No detection in inference result");
+        return;
+      }
+
+      // (a) Existing label selected → update its mask in-place
+      if (selectedLabel && "bounding_box" in selectedLabel.data) {
+        const overlay = getOverlay?.(selectedLabel.data._id) as
+          | BoundingBoxOverlay
+          | undefined;
+        if (overlay) {
+          overlay.updateLabel({
+            ...overlay.label,
+            bounding_box: detection.bounding_box ?? overlay.label.bounding_box,
+            mask: detection.mask,
+          });
+          overlay.markDirty();
+          return;
+        }
+      }
+
+      // (b) Pending detection from a previous inference → update it
+      const existingId = getPendingDetectionId();
+      const existingOverlay = existingId
+        ? (getOverlay?.(existingId) as BoundingBoxOverlay | undefined)
+        : undefined;
+
+      if (existingOverlay) {
+        existingOverlay.updateLabel({
+          ...existingOverlay.label,
+          label: detection.label || existingOverlay.label.label,
+          bounding_box: detection.bounding_box,
+          mask: detection.mask,
+        });
+        existingOverlay.markDirty();
+      } else {
+        // (c) First inference → create new pending Detection
+        if (!overlayFactory || !scene) return;
+
+        const store = getDefaultStore();
+        const id = objectId();
+        const field = store.get(defaultField(DETECTION)) ?? undefined;
+        if (!field) {
+          console.warn("[AI Segment] No detection field available");
+          return;
+        }
+
+        const labelValue = detection.label || toolsState.textPrompt || "object";
+
+        const labelData: DetectionLabel = {
+          _id: id,
+          _cls: "Detection",
+          label: labelValue,
+          bounding_box: detection.bounding_box,
+          mask: detection.mask,
+          tags: [],
+        } as any;
+
+        const overlay = overlayFactory.create<
+          BoundingBoxOptions,
+          BoundingBoxOverlay
+        >("bounding-box", {
+          id,
+          field,
+          label: labelData,
+          draggable: true,
+          resizeable: true,
+        });
+
+        const bb = detection.bounding_box;
+        if (bb && bb.length === 4) {
+          const cs = scene.getCoordinateSystem();
+          if (cs) {
+            const t = cs.getTransform();
+            overlay.bounds = {
+              x: t.offsetX + bb[0] * t.scaleX,
+              y: t.offsetY + bb[1] * t.scaleY,
+              width: bb[2] * t.scaleX,
+              height: bb[3] * t.scaleY,
+            };
+          }
+        }
+
+        addOverlay(overlay);
+        setPendingDetectionId(id);
+
+        store.set(savedLabel, labelData);
+        setEditing(
+          atom<AnnotationLabel>({
+            isNew: true,
+            data: labelData,
+            overlay,
+            path: field,
+            type: DETECTION,
+          })
+        );
+      }
+    },
+    [
+      overlayFactory,
+      scene,
+      addOverlay,
+      getOverlay,
+      getPendingDetectionId,
+      selectedLabel,
+      setPendingDetectionId,
+      setEditing,
+      toolsState,
+    ]
+  );
+
+  const applyResultRef = useRef(applyResult);
+  applyResultRef.current = applyResult;
 
   // ---- point events → inference ----
 
@@ -180,7 +347,6 @@ export const useAISegment = () => {
         const currentOverlayId = getOverlayId();
         if (!currentOverlayId || payload.id !== currentOverlayId) return;
 
-        // Get relative [0,1] coordinates from the overlay
         const overlay = getOverlay?.(currentOverlayId);
         if (!overlay || !("getRelativePoints" in overlay)) return;
 
@@ -189,25 +355,33 @@ export const useAISegment = () => {
         const newPoint = relativePoints[payload.pointIndex];
         if (!newPoint) return;
 
-        // Feed into tools state → AnnotationContext
+        // Update tools state so AnnotationContext stays in sync
         toolsState.addPositivePoint(newPoint);
 
-        // Trigger inference — ripple animation is already running
-        // (started by AISegmentPointOverlay.addPoint → startProcessing)
-        const agent = resolvedAgentRef.current;
-        const apply = applyResultRef.current;
-        if (agent) {
-          agent.infer().then((result) => {
-            // Stop ripple when result arrives
-            keypointOverlay.stopProcessing();
-            if (result) apply(result);
+        // Register agent lazily on first point, then infer.
+        // Use queueMicrotask to let Jotai flush the addPositivePoint
+        // state update before resolvedAgent.infer() reads the context.
+        ensureAgent().then(() => {
+          queueMicrotask(() => {
+            const agent = resolvedAgentRef.current;
+            if (agent) {
+              agent
+                .infer()
+                .then((result) => {
+                  keypointOverlay.stopProcessing();
+                  if (result) applyResultRef.current(result);
+                })
+                .catch((err) => {
+                  console.error("[AI Segment] Inference failed:", err);
+                  keypointOverlay.stopProcessing();
+                });
+            } else {
+              keypointOverlay.stopProcessing();
+            }
           });
-        } else {
-          // No agent — stop ripple immediately
-          keypointOverlay.stopProcessing();
-        }
+        });
       },
-      [getOverlay, getOverlayId, toolsState]
+      [getOverlay, getOverlayId, toolsState, ensureAgent]
     )
   );
 
@@ -221,21 +395,28 @@ export const useAISegment = () => {
         const overlay = getOverlay?.(currentOverlayId) as
           | AISegmentPointOverlay
           | undefined;
+        if (!overlay) return;
 
         toolsState.removePositivePoint(payload.pointIndex);
 
-        // Re-infer with updated point set
-        const agent = resolvedAgentRef.current;
-        const apply = applyResultRef.current;
-        if (agent && overlay) {
-          // Pick the last remaining point for the ripple, if any
-          const points = overlay.getRelativePoints();
-          if (points.length > 0) {
-            overlay.startProcessing(points.length - 1);
-          }
-          agent.infer().then((result) => {
-            overlay.stopProcessing();
-            if (result) apply(result);
+        const points = overlay.getRelativePoints();
+        if (points.length > 0) {
+          overlay.startProcessing(points.length - 1);
+
+          queueMicrotask(() => {
+            const agent = resolvedAgentRef.current;
+            if (agent) {
+              agent
+                .infer()
+                .then((result) => {
+                  overlay.stopProcessing();
+                  if (result) applyResultRef.current(result);
+                })
+                .catch((err) => {
+                  console.error("[AI Segment] Inference failed:", err);
+                  overlay.stopProcessing();
+                });
+            }
           });
         }
       },
