@@ -147,16 +147,25 @@ class SegmentAnythingImageGetItem(fout.GetItem):
         self,
         field_mapping=None,
         transform=None,
-        use_numpy=None,
+        use_numpy=False,
         box_transform=None,
         point_transform=None,
         **kwargs,
     ):
         field_mapping = {} if field_mapping is None else dict(field_mapping)
+
         # Used for managing backward compatibility with prompt_field in field mapping.
+        # NOTE: Using prompt_field as the only key for prompting isn't supported. Use the type specific prompt key.
         self._has_prompt_field = (
             field_mapping.pop("prompt_field", None) is not None
         )
+        if self._has_prompt_field and (
+            "box_prompt_field" not in field_mapping
+            and "point_prompt_field" not in field_mapping
+        ):
+            raise ValueError(
+                "Field mapping contains prompt_field only which is not a required key. Use type specific prompt key: box_prompt_field or point_prompt_field."
+            )
 
         self.mode = self._set_mode(field_mapping)
 
