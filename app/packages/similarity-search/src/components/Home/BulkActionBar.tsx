@@ -1,6 +1,8 @@
 import {
+  Align,
   Button,
   IconName,
+  Justify,
   Size,
   Stack,
   Text,
@@ -57,7 +59,8 @@ export default function BulkActionBar({
         <Stack
           orientation={Orientation.Row}
           spacing={Spacing.Sm}
-          style={{ justifyContent: "space-between", alignItems: "center" }}
+          align={Align.Center}
+          justify={Justify.Between}
         >
           <Text variant={TextVariant.Md} color={TextColor.Destructive}>
             Delete {label}?
@@ -84,7 +87,8 @@ export default function BulkActionBar({
         <Stack
           orientation={Orientation.Row}
           spacing={Spacing.Sm}
-          style={{ justifyContent: "space-between", alignItems: "center" }}
+          align={Align.Center}
+          justify={Justify.Between}
         >
           <Text variant={TextVariant.Md} color={TextColor.Primary}>
             {label} selected

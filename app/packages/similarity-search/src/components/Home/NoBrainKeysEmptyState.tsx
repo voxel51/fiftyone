@@ -4,10 +4,15 @@ import {
 } from "@fiftyone/operators";
 import { scrollable } from "@fiftyone/components";
 import {
+  Align,
   Button,
   Icon,
   IconName,
+  Justify,
+  Orientation,
   Size,
+  Spacing,
+  Stack,
   Text,
   TextColor,
   TextVariant,
@@ -21,14 +26,9 @@ import {
   DOCS_URL,
 } from "../../constants";
 import {
-  NoBrainKeysContainer,
   NoBrainKeysCard,
-  NoBrainKeysHeader,
   NoBrainKeysIconBox,
-  NoBrainKeysHeaderText,
   NoBrainKeysSection,
-  NoBrainKeysCta,
-  NoBrainKeysActions,
   Divider,
   codeBlockStyle,
 } from "../styled";
@@ -52,9 +52,19 @@ export default function NoBrainKeysEmptyState() {
   ]);
 
   return (
-    <NoBrainKeysContainer>
+    <Stack
+      orientation={Orientation.Column}
+      align={Align.Center}
+      justify={Justify.Center}
+      style={{ flex: 1, padding: "0 40px" }}
+    >
       <NoBrainKeysCard>
-        <NoBrainKeysHeader>
+        <Stack
+          orientation={Orientation.Row}
+          spacing={Spacing.Md}
+          align={Align.Center}
+          style={{ padding: 16 }}
+        >
           <NoBrainKeysIconBox>
             <ImageSearch
               style={{
@@ -63,7 +73,7 @@ export default function NoBrainKeysEmptyState() {
               }}
             />
           </NoBrainKeysIconBox>
-          <NoBrainKeysHeaderText>
+          <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
             <Text
               variant={TextVariant.Md}
               color={TextColor.Primary}
@@ -76,13 +86,18 @@ export default function NoBrainKeysEmptyState() {
                 ? "Create an index to search for similar samples by image or text."
                 : "Install the Brain plugin or compute the similarity index via Python SDK."}
             </Text>
-          </NoBrainKeysHeaderText>
-        </NoBrainKeysHeader>
+          </Stack>
+        </Stack>
 
         <Divider />
 
         {hasBrainOperator ? (
-          <NoBrainKeysCta>
+          <Stack
+            orientation={Orientation.Column}
+            align={Align.Center}
+            spacing={Spacing.Sm}
+            style={{ padding: "20px 16px" }}
+          >
             <ComputeSimilarityButton />
             <Text variant={TextVariant.Md} color={TextColor.Muted}>
               or create an index via{" "}
@@ -95,7 +110,7 @@ export default function NoBrainKeysEmptyState() {
                 Python SDK
               </a>
             </Text>
-          </NoBrainKeysCta>
+          </Stack>
         ) : (
           <>
             <NoBrainKeysSection>
@@ -143,7 +158,12 @@ results = fob.compute_similarity(
 
             <Divider />
 
-            <NoBrainKeysActions>
+            <Stack
+              orientation={Orientation.Row}
+              align={Align.Center}
+              justify={Justify.Between}
+              style={{ padding: 16 }}
+            >
               <Button
                 variant={Variant.Secondary}
                 size={Size.Sm}
@@ -160,10 +180,10 @@ results = fob.compute_similarity(
               >
                 Brain Plugin
               </Button>
-            </NoBrainKeysActions>
+            </Stack>
           </>
         )}
       </NoBrainKeysCard>
-    </NoBrainKeysContainer>
+    </Stack>
   );
 }

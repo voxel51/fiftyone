@@ -1,11 +1,18 @@
-import { Button, IconName, Size, Tooltip, Variant } from "@voxel51/voodo";
+import {
+  Button,
+  IconName,
+  Size,
+  Stack,
+  Tooltip,
+  Variant,
+} from "@voxel51/voodo";
 import React from "react";
 import {
   ContentCopyIcon as ContentCopy,
   GridViewIcon as GridView,
 } from "../../mui";
 import { SimilarityRun } from "../../types";
-import { ActionButtons, tooltipTextStyle } from "../styled";
+import { tooltipTextStyle } from "../styled";
 
 const ApplyIcon = () => <GridView fontSize="small" />;
 const CloneIcon = () => <ContentCopy fontSize="small" />;
@@ -32,11 +39,11 @@ export default function RunActions({
   const isImage = run.query_type === "image";
 
   return (
-    <ActionButtons>
+    <Stack>
       <Tooltip content={tip("Show results")}>
         <Button
           aria-label="Show results"
-          size={Size.Sm}
+          size={Size.Md}
           variant={Variant.Borderless}
           leadingIcon={ApplyIcon}
           onClick={() => onApply(run.run_id)}
@@ -46,7 +53,7 @@ export default function RunActions({
       <Tooltip content={tip("Clone search")}>
         <Button
           aria-label="Clone search"
-          size={Size.Sm}
+          size={Size.Md}
           variant={Variant.Borderless}
           leadingIcon={CloneIcon}
           onClick={() => onClone(run.run_id)}
@@ -55,7 +62,7 @@ export default function RunActions({
       <Tooltip content={tip("Delete")}>
         <Button
           aria-label="Delete"
-          size={Size.Sm}
+          size={Size.Md}
           variant={Variant.Borderless}
           leadingIcon={IconName.Delete}
           onClick={() => onDelete(run.run_id)}
@@ -65,7 +72,7 @@ export default function RunActions({
         <Tooltip content={isExpanded ? tip("Collapse") : tip("Show samples")}>
           <Button
             aria-label={isExpanded ? "Collapse" : "Show samples"}
-            size={Size.Sm}
+            size={Size.Md}
             variant={Variant.Borderless}
             leadingIcon={
               isExpanded ? IconName.ChevronTop : IconName.ChevronBottom
@@ -74,6 +81,6 @@ export default function RunActions({
           />
         </Tooltip>
       )}
-    </ActionButtons>
+    </Stack>
   );
 }

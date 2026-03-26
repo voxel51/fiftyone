@@ -3,10 +3,12 @@ import {
   useFirstExistingUri,
 } from "@fiftyone/operators";
 import {
+  Align,
   Button,
   Heading,
   HeadingLevel,
   IconName,
+  Justify,
   RichList,
   Size,
   Stack,
@@ -22,7 +24,6 @@ import React, { useMemo } from "react";
 import { BrainKeyConfig } from "../../types";
 import { BRAIN_COMPUTE_SIMILARITY_URI } from "../../constants";
 import NoBrainKeysEmptyState from "../Home/NoBrainKeysEmptyState";
-import { RunListContainer } from "../styled";
 
 type SimilarityIndexProps = {
   brainKeys: BrainKeyConfig[];
@@ -88,16 +89,20 @@ export default function SimilarityIndex({
   );
 
   return (
-    <RunListContainer>
+    <Stack
+      orientation={Orientation.Column}
+      style={{ padding: 16, height: "100%" }}
+    >
       <Stack
         orientation={Orientation.Row}
         spacing={Spacing.Sm}
-        style={{ alignItems: "center", marginBottom: "1rem" }}
+        align={Align.Center}
+        style={{ marginBottom: "1rem" }}
       >
         <Tooltip content="Back to similarity searches">
           <Button
             aria-label="Back to similarity searches"
-            size={Size.Sm}
+            size={Size.Md}
             variant={Variant.Borderless}
             leadingIcon={IconName.ArrowLeft}
             onClick={onBack}
@@ -114,16 +119,14 @@ export default function SimilarityIndex({
         <>
           <Stack
             orientation={Orientation.Row}
-            style={{
-              justifyContent: "flex-end",
-              marginBottom: "1rem",
-            }}
+            justify={Justify.End}
+            style={{ marginBottom: "1rem" }}
           >
             <AddIndexButton />
           </Stack>
           <RichList listItems={listItems} />
         </>
       )}
-    </RunListContainer>
+    </Stack>
   );
 }

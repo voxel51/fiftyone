@@ -1,4 +1,5 @@
 import {
+  Align,
   Button,
   FormField,
   Heading,
@@ -6,6 +7,7 @@ import {
   IconName,
   Input,
   InputType,
+  Justify,
   RadioGroup,
   Select,
   Size,
@@ -27,7 +29,6 @@ import { useNewSearchForm } from "../../hooks/useNewSearchForm";
 import {
   NewSearchContainer,
   InfoCard,
-  SubmitRow,
   QuerySelectorBoxActive,
   QuerySelectorBoxInactive,
 } from "../styled";
@@ -54,10 +55,11 @@ export default function NewSearch({
       <Stack
         orientation={Orientation.Row}
         spacing={Spacing.Sm}
-        style={{ alignItems: "center", marginBottom: "1.5rem" }}
+        align={Align.Center}
+        style={{ marginBottom: "1.5rem" }}
       >
         <Button
-          size={Size.Sm}
+          size={Size.Md}
           variant={Variant.Borderless}
           leadingIcon={IconName.ArrowLeft}
           onClick={onBack}
@@ -264,7 +266,7 @@ export default function NewSearch({
         />
 
         {/* Submit */}
-        <SubmitRow>
+        <Stack justify={Justify.End}>
           <OperatorExecutionButton
             operatorUri={SEARCH_OPERATOR_URI}
             executionParams={form.executionParams}
@@ -275,7 +277,7 @@ export default function NewSearch({
           >
             Search
           </OperatorExecutionButton>
-        </SubmitRow>
+        </Stack>
       </Stack>
     </NewSearchContainer>
   );

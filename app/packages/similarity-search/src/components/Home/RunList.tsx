@@ -1,9 +1,11 @@
 import {
+  Align,
   Button,
   Checkbox,
   Heading,
   HeadingLevel,
   IconName,
+  Justify,
   RichList,
   Size,
   Stack,
@@ -26,12 +28,7 @@ import ExpandedThumbnails from "./ExpandedThumbnails";
 import NoBrainKeysEmptyState from "./NoBrainKeysEmptyState";
 import FilterBar from "./FilterBar";
 import BulkActionBar from "./BulkActionBar";
-import {
-  RunListContainer,
-  SelectAllRow,
-  EmptyStateBox,
-  tooltipTextStyle,
-} from "../styled";
+import { SelectAllRow, tooltipTextStyle } from "../styled";
 
 type SelectionState = {
   selectMode: boolean;
@@ -156,7 +153,7 @@ export default function RunList({
               <Stack
                 orientation={Orientation.Row}
                 spacing={Spacing.Sm}
-                style={{ alignItems: "center" }}
+                align={Align.Center}
               >
                 <Text variant={TextVariant.Md} style={{ fontWeight: "bold" }}>
                   {run.run_name}
@@ -215,15 +212,16 @@ export default function RunList({
   );
 
   return (
-    <RunListContainer>
+    <Stack
+      orientation={Orientation.Column}
+      style={{ padding: 16, height: "100%" }}
+    >
       {/* Header */}
       <Stack
         orientation={Orientation.Row}
-        style={{
-          marginBottom: "1rem",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
+        align={Align.Center}
+        justify={Justify.Between}
+        style={{ marginBottom: "1rem" }}
       >
         <Heading level={HeadingLevel.H2}>
           {runs.length > 0
@@ -236,7 +234,7 @@ export default function RunList({
           {runs.length > 0 && (
             <Tooltip content={tip("Refresh")}>
               <Button
-                size={Size.Sm}
+                size={Size.Md}
                 variant={Variant.Borderless}
                 leadingIcon={IconName.Refresh}
                 onClick={onRefresh}
@@ -247,7 +245,7 @@ export default function RunList({
             <Tooltip content={tip("Manage searches")}>
               <Button
                 variant={selectMode ? Variant.Secondary : Variant.Borderless}
-                size={Size.Sm}
+                size={Size.Md}
                 leadingIcon={IconName.Notes}
                 onClick={onToggleSelectMode}
               />
@@ -255,7 +253,7 @@ export default function RunList({
           )}
           <Tooltip content={tip("Similarity indexes")}>
             <Button
-              size={Size.Sm}
+              size={Size.Md}
               variant={Variant.Borderless}
               leadingIcon={IconName.Settings}
               onClick={onSettings}
@@ -298,19 +296,31 @@ export default function RunList({
       {brainKeys.length === 0 ? (
         <NoBrainKeysEmptyState />
       ) : runs.length === 0 ? (
-        <EmptyStateBox>
+        <Stack
+          orientation={Orientation.Column}
+          align={Align.Center}
+          justify={Justify.Center}
+          spacing={Spacing.Sm}
+          style={{ flex: 1 }}
+        >
           <Text color={TextColor.Secondary}>No similarity searches yet</Text>
           <Text variant={TextVariant.Md} color={TextColor.Secondary}>
             Click "New Search" to find similar samples using your computed
             embeddings.
           </Text>
-        </EmptyStateBox>
+        </Stack>
       ) : filteredRuns.length === 0 ? (
-        <EmptyStateBox>
+        <Stack
+          orientation={Orientation.Column}
+          align={Align.Center}
+          justify={Justify.Center}
+          spacing={Spacing.Sm}
+          style={{ flex: 1 }}
+        >
           <Text color={TextColor.Secondary}>
             No searches match your filters
           </Text>
-        </EmptyStateBox>
+        </Stack>
       ) : (
         <>
           {selectMode && filteredRuns.length > 0 && (
@@ -340,6 +350,6 @@ export default function RunList({
           onCancel={onClearAndExit}
         />
       )}
-    </RunListContainer>
+    </Stack>
   );
 }

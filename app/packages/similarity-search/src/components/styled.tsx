@@ -4,6 +4,10 @@
  * Each wraps a simple `div` with the corresponding CSSProperties from
  * the old styles.ts, keeping components focused on logic rather than
  * layout plumbing.
+ *
+ * Prefer voodo `Stack` with `Align`/`Justify` props for pure flex
+ * containers. Keep styled() wrappers only for components that need
+ * non-flex CSS (borders, backgrounds, positioning, fixed dimensions).
  */
 import React, { CSSProperties, HTMLAttributes, forwardRef } from "react";
 
@@ -44,33 +48,10 @@ Divider.displayName = "Divider";
 
 // ─── RunList ────────────────────────────────────────────────────────
 
-export const RunListContainer = styled({
-  padding: 16,
-  height: "100%",
-  display: "flex",
-  flexDirection: "column",
-});
-RunListContainer.displayName = "RunListContainer";
-
 export const SelectAllRow = styled({
   marginBottom: 8,
 });
 SelectAllRow.displayName = "SelectAllRow";
-
-export const EmptyStateBox = styled({
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
-  flex: 1,
-  gap: 8,
-});
-EmptyStateBox.displayName = "EmptyStateBox";
-
-export const ActionButtons = styled({
-  display: "flex",
-});
-ActionButtons.displayName = "ActionButtons";
 
 export const ExpandedSection = styled({
   marginTop: 12,
@@ -98,16 +79,6 @@ ThumbnailPlaceholder.displayName = "ThumbnailPlaceholder";
 
 // ─── NoBrainKeys Empty State ────────────────────────────────────────
 
-export const NoBrainKeysContainer = styled({
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
-  flex: 1,
-  padding: "0 40px",
-});
-NoBrainKeysContainer.displayName = "NoBrainKeysContainer";
-
 export const NoBrainKeysCard = styled({
   width: "100%",
   borderRadius: 8,
@@ -116,14 +87,6 @@ export const NoBrainKeysCard = styled({
   overflow: "hidden",
 });
 NoBrainKeysCard.displayName = "NoBrainKeysCard";
-
-export const NoBrainKeysHeader = styled({
-  display: "flex",
-  gap: 12,
-  padding: 16,
-  alignItems: "center",
-});
-NoBrainKeysHeader.displayName = "NoBrainKeysHeader";
 
 export const NoBrainKeysIconBox = styled({
   width: 44,
@@ -136,13 +99,6 @@ export const NoBrainKeysIconBox = styled({
   background: "var(--fo-palette-background-level3)",
 });
 NoBrainKeysIconBox.displayName = "NoBrainKeysIconBox";
-
-export const NoBrainKeysHeaderText = styled({
-  display: "flex",
-  flexDirection: "column",
-  gap: 2,
-});
-NoBrainKeysHeaderText.displayName = "NoBrainKeysHeaderText";
 
 export const NoBrainKeysSection = styled({
   padding: 16,
@@ -161,23 +117,6 @@ export const codeBlockStyle: CSSProperties = {
   whiteSpace: "pre",
 };
 
-export const NoBrainKeysActions = styled({
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  padding: 16,
-});
-NoBrainKeysActions.displayName = "NoBrainKeysActions";
-
-export const NoBrainKeysCta = styled({
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  gap: 10,
-  padding: "20px 16px",
-});
-NoBrainKeysCta.displayName = "NoBrainKeysCta";
-
 // ─── NewSearch ──────────────────────────────────────────────────────
 
 export const NewSearchContainer = styled({
@@ -192,12 +131,6 @@ export const InfoCard = styled({
   border: "1px solid var(--fo-palette-divider)",
 });
 InfoCard.displayName = "InfoCard";
-
-export const SubmitRow = styled({
-  display: "flex",
-  justifyContent: "flex-end",
-});
-SubmitRow.displayName = "SubmitRow";
 
 const querySelectorBoxBase: CSSProperties = {
   borderRadius: 6,

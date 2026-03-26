@@ -1,4 +1,5 @@
 import {
+  Align,
   Button,
   Input,
   InputType,
@@ -46,7 +47,7 @@ export default function FilterBar({
       <Stack
         orientation={Orientation.Row}
         spacing={Spacing.Sm}
-        style={{ alignItems: "center" }}
+        align={Align.Center}
       >
         <FilterBarSearchCol>
           <Input
