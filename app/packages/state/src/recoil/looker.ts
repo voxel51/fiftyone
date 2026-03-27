@@ -69,7 +69,6 @@ export const lookerOptions = selectorFamily<
           showConfidence: get(
             selectors.appConfigOption({ modal: true, key: "showConfidence" })
           ),
-          showControls: true,
           showTooltip: get(
             selectors.appConfigOption({ modal: true, key: "showTooltip" })
           ),

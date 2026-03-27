@@ -4,13 +4,17 @@ export const SAM2_INPUT_SIZE = 1024;
 // Fixed output mask resolution from the SAM2 decoder (model constraint).
 export const SAM2_OUTPUT_SIZE = 256;
 
-export interface ProcessedImage {
-  tensor: Float32Array;
+// Geometric metadata from preprocessing (shared by encoder, decoder, and cache).
+export interface ImageGeometry {
   originalWidth: number;
   originalHeight: number;
   scale: number;
   padX: number;
   padY: number;
+}
+
+export interface ProcessedImage extends ImageGeometry {
+  tensor: Float32Array;
 }
 
 /**
@@ -25,7 +29,7 @@ export interface ProcessedImage {
 export function transformPoint(
   x: number,
   y: number,
-  img: ProcessedImage
+  img: ImageGeometry
 ): [number, number] {
   return [
     x * img.originalWidth * img.scale + img.padX,
@@ -42,7 +46,7 @@ export function transformPoint(
  */
 export function normalizeBbox(
   bbox: { x: number; y: number; w: number; h: number },
-  img: ProcessedImage
+  img: ImageGeometry
 ): { x: number; y: number; w: number; h: number } {
   return {
     x: bbox.x / img.originalWidth,
@@ -64,7 +68,7 @@ export function normalizeBbox(
  */
 export function computeMaskBbox(
   maskData: Float32Array,
-  img: ProcessedImage,
+  img: ImageGeometry,
   maskH = SAM2_OUTPUT_SIZE,
   maskW = SAM2_OUTPUT_SIZE
 ): { x: number; y: number; w: number; h: number } | null {
@@ -115,7 +119,7 @@ export function computeMaskBbox(
  */
 export function postprocessMask(
   maskData: Float32Array,
-  img: ProcessedImage,
+  img: ImageGeometry,
   bbox: { x: number; y: number; w: number; h: number },
   maskH = SAM2_OUTPUT_SIZE,
   maskW = SAM2_OUTPUT_SIZE

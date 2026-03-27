@@ -45,6 +45,10 @@ class SimilaritySearchPanel(Panel):
         ctx.panel.set_data("runs", runs)
         ctx.panel.set_data("brain_keys", brain_keys)
 
+        # None in OSS, populated by FiftyOne Teams
+        current_user = str(ctx.user_id) if ctx.user_id else None
+        ctx.panel.set_data("current_user", current_user)
+
         view_state = ctx.panel.get_state("view") or {"page": "home"}
         ctx.panel.set_state("view", view_state)
 
