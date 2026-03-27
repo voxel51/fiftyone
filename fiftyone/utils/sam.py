@@ -802,7 +802,8 @@ class SegmentAnythingModel(fout.TorchImageModelWithPrompts):
             preprocess_prompts (False): Whether to pre-process prompts to SAM format. If False, inputs prompts are assumed to be in the expected SAM format
 
         Returns:
-            _type_: _description_
+            :class:`fiftyone.core.labels.Detections` or dict
+            containing the "masks", "iou_predictions", "low_res_logits" from SAM model output.
         """
         if sample is not None and not self._sam_predictor.valid_image(
             sample.id
