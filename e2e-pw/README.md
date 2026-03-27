@@ -137,7 +137,7 @@ await DatasetFactory.createBlankDataset({
         uniqueness: "FloatField",
     },
     withSampleData: ({ _id, filepath, index }, { createId }) => ({
-        _id: createId(indexToId(index)),
+        // _id, filepath, index are already attached to the sample
         ground_truth: {
             _cls: "Detection",
             label: "cat",
