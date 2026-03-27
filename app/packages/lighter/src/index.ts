@@ -83,3 +83,6 @@ export type {
 } from "./types";
 
 export { getOverlayColor } from "./utils/colorMapping";
+
+// Constants
+export { DEFAULT_ZOOM_PAD } from "./constants";

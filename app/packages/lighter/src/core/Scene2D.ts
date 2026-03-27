@@ -82,8 +82,10 @@ export const TypeGuards = {
  */
 const isUsableBounds = (bounds: Rect | undefined): bounds is Rect => {
   if (!bounds) return false;
-  return BaseOverlay.validBounds(bounds) && bounds.width !== 0 && bounds.height !== 0;
-}
+  return (
+    BaseOverlay.validBounds(bounds) && bounds.width !== 0 && bounds.height !== 0
+  );
+};
 
 /**
  * Const enum for point containment levels.
@@ -158,19 +160,10 @@ export class Scene2D {
     .substring(2, 9);
 
   private _isDestroyed = false;
-  private shouldInitialZoom = false;
-  private initialZoomPad = 0;
-  private initialZoomTarget: Rect | null = null;
 
   constructor(private readonly config: Scene2DConfig) {
     this.sceneOptions = config.options;
     this.sceneId = config.sceneId;
-
-    if (config.options?.zoom) {
-      this.shouldInitialZoom = true;
-      this.initialZoomPad = config.options.zoomPad ?? 0;
-      this.initialZoomTarget = config.options.zoomTarget ?? null;
-    }
 
     this.coordinateSystem = new CoordinateSystem2D();
     this.selectionManager = new SelectionManager(this.eventChannel);
@@ -982,51 +975,51 @@ export class Scene2D {
     this.config.renderer.addTickHandler(async () => {
       await this.renderFrame();
     });
-
-    // The initial zoom requires two conditions before it can run:
-    // lighter:resize — Dimension correctness guarantee and Pixi readiness
-    // lighter:canonical-media-bounds-changed — image bounds are known
-    //
-    // These events can arrive in either order. Apply the zoom when the second
-    // condition arrives, regardless of ordering.
-    if (this.shouldInitialZoom) {
-      let resized = false;
-      let boundsReady = false;
-
-      const tryApply = () => {
-        if (resized && boundsReady) {
-          offResize();
-          offBounds();
-          this.applyInitialZoom();
-        }
-      };
-
-      const offResize = this.eventBus.on("lighter:resize", () => {
-        resized = true;
-        tryApply();
-      });
-      this.abortController.signal.addEventListener("abort", offResize);
-
-      const offBounds = this.eventBus.on(
-        "lighter:canonical-media-bounds-changed",
-        () => {
-          boundsReady = true;
-          tryApply();
-        }
-      );
-      this.abortController.signal.addEventListener("abort", offBounds);
-    }
   }
 
-  private applyInitialZoom(): void {
-    if (!this.shouldInitialZoom || !this.initialZoomTarget) return;
+  /**
+   * Queues a content-aware auto-zoom that fires once two async prerequisites
+   * are both satisfied:
+   *   - `lighter:resize`  — canvas has correct pixel dimensions (PixiJS ready)
+   *   - `lighter:canonical-media-bounds-changed` — image bounds are known
+   *
+   * These events can arrive in either order. The zoom is applied when the
+   * second one arrives, then `lighter:viewport-initialized` is dispatched so
+   * the React container can be revealed.
+   *
+   * @param target - Zoom target rect in normalized [0,1] image-relative coords.
+   * @param pad    - Fraction of the viewport to keep as padding on each side.
+   */
+  public queueInitialZoom(target: Rect, pad: number = 0): void {
+    let resized = false;
+    let boundsReady = false;
 
-    const worldRect = this.coordinateSystem.relativeToAbsolute(this.initialZoomTarget);
-    if (!worldRect.width || !worldRect.height) return;
+    const tryApply = () => {
+      if (!resized || !boundsReady) return;
+      offResize();
+      offBounds();
 
-    this.config.renderer.fitToRect(worldRect, this.initialZoomPad);
-    this.shouldInitialZoom = false;
-    this.initialZoomTarget = null;
+      const worldRect = this.coordinateSystem.relativeToAbsolute(target);
+      if (!worldRect.width || !worldRect.height) return;
+
+      this.config.renderer.fitToRect(worldRect, pad);
+      this.eventBus.dispatch("lighter:viewport-initialized", {});
+    };
+
+    const offResize = this.eventBus.on("lighter:resize", () => {
+      resized = true;
+      tryApply();
+    });
+    this.abortController.signal.addEventListener("abort", offResize);
+
+    const offBounds = this.eventBus.on(
+      "lighter:canonical-media-bounds-changed",
+      () => {
+        boundsReady = true;
+        tryApply();
+      }
+    );
+    this.abortController.signal.addEventListener("abort", offBounds);
   }
 
   /**

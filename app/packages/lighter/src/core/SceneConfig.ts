@@ -4,7 +4,6 @@
 
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { ResourceLoader } from "../resource/ResourceLoader";
-import type { Rect } from "../types";
 
 /**
  * Options for scene behavior and overlay management.
@@ -16,17 +15,6 @@ export interface SceneOptions {
   showOverlays?: boolean;
   /** Opacity for overlays */
   alpha?: number;
-  /** Automatically zoom to content */
-  zoom?: boolean;
-  /** Padding applied when auto-zooming to content. Defaults to 0. */
-  zoomPad?: number;
-  /**
-   * Pre-computed zoom target in normalized [0,1] coordinates relative to the
-   * canonical media. When provided alongside `zoom: true`, Scene2D will apply
-   * the zoom as soon as image dimensions are known, without waiting for spatial
-   * overlay objects to be added to the scene.
-   */
-  zoomTarget?: Rect;
 }
 
 /**

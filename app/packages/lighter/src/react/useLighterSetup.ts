@@ -5,12 +5,9 @@
 import { useLookerOptions } from "@fiftyone/state";
 import { useAtom } from "jotai";
 import { useEffect, useRef } from "react";
-import { DEFAULT_ZOOM_PAD } from "../constants";
 import {
   PixiRenderer2D,
-  Rect,
   Scene2D,
-  ViewportState,
   globalPixiResourceLoader,
   lighterSceneAtom,
   useLighterEventBus,
@@ -20,16 +17,18 @@ import {
 // TODO: Ultimately, we'll want to remove dependency on "looker" and create our own options type
 // This type extends what fos.useLookerOptions returns to maintain compatibility during transition
 export type LighterOptions = Partial<ReturnType<typeof useLookerOptions>> & {
-  // Auto-zoom to spatial overlay content on the first eligible render tick.
-  zoom?: boolean;
-  // Padding applied when auto-zooming to content.
-  zoomPad?: number;
-  // Pre-computed zoom target in normalized [0,1] coordinates. When provided
-  // alongside zoom: true, the viewport snaps to this rect as soon as the image
-  // loads, without waiting for overlay objects to be added to the scene.
-  zoomTarget?: Rect | null;
-  // Saved zoom/pan state to restore before the first render frame.
-  initialViewport?: ViewportState | null;
+  /**
+   * Called once after PixiJS initialization completes, before the first render
+   * frame. Use this to apply one-time viewport setup such as restoring a saved
+   * viewport state or queuing a content-aware initial zoom.
+   *
+   * Example:
+   *   onInitialized: (scene) => {
+   *     if (savedViewport) scene.setViewportState(savedViewport);
+   *     else if (zoomTarget) scene.queueInitialZoom(zoomTarget, pad);
+   *   }
+   */
+  onInitialized?: (scene: Scene2D) => void;
 };
 
 /**
@@ -46,18 +45,18 @@ export type LighterOptions = Partial<ReturnType<typeof useLookerOptions>> & {
 export const useLighterSetupWithPixi = (
   stableCanvas: HTMLCanvasElement,
   options: LighterOptions,
-  sceneId: string,
+  sceneId: string
 ) => {
   const [scene, setScene] = useAtom(lighterSceneAtom);
 
-  // Frozen at mount time — modalViewportState only changes on Looker/Lighter unmount 
-  // so this value is stable for the entire lifetime of the component.
-  const initialViewportRef = useRef(options.initialViewport);
+  // Freeze the callback at mount time so we never re-run initialization if the
+  // parent re-renders with a new function reference.
+  const onInitializedRef = useRef(options.onInitialized);
+
   const rendererRef = useRef<PixiRenderer2D | null>(null);
 
   const eventChannel = scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID;
   const eventBus = useLighterEventBus(eventChannel);
-
 
   useEffect(() => {
     if (!stableCanvas || !sceneId) return;
@@ -69,9 +68,6 @@ export const useLighterSetupWithPixi = (
       activePaths: options.activePaths,
       showOverlays: options.showOverlays,
       alpha: options.alpha,
-      zoom: options.zoom,
-      zoomPad: options.zoomPad ?? DEFAULT_ZOOM_PAD,
-      zoomTarget: options.zoomTarget ?? undefined,
     };
 
     const newScene = new Scene2D({
@@ -92,8 +88,8 @@ export const useLighterSetupWithPixi = (
     if (!scene || scene.isDestroyed) return;
 
     rendererRef.current?.initializePixiJS().then(() => {
-      if (initialViewportRef.current) {
-        scene.setViewportState(initialViewportRef.current);
+      if (onInitializedRef.current) {
+        onInitializedRef.current(scene);
       }
       scene.startRenderLoop();
       stableCanvas.setAttribute("lighter-ready", "true");

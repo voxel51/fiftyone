@@ -18,14 +18,6 @@ export interface ImageOptions {
   opacity?: number;
   maintainAspectRatio?: boolean;
   field?: string;
-  /**
-   * When true, the image element stays hidden until `lighter:viewport-moved`
-   * fires — i.e. until `fitToRect` applies the auto-zoom in `preProcess`.
-   * The image becomes visible in the exact same tick as the zoom, before
-   * `renderFrame` calls `show()`, so there is no flash at default zoom,
-   * ensuring the first visible frame is correct.
-   */
-  deferShow?: boolean;
 }
 
 const isRectNonEmpty = (bounds: Rect | undefined): boolean => {
@@ -44,10 +36,8 @@ export class ImageOverlay extends BaseOverlay implements CanonicalMedia {
   private currentBounds?: Rect;
   private resizeObserver?: ResizeObserver;
   private viewportUnsubscribe?: () => void;
-  private viewportGateUnsubscribe?: () => void;
   private sceneEventBus?: EventDispatcher<LighterEventGroup>;
   private isImageLoaded = false;
-  private waitingForViewport = false;
 
   constructor(private options: ImageOptions) {
     const id = `image-${Date.now()}-${Math.random()
@@ -72,10 +62,6 @@ export class ImageOverlay extends BaseOverlay implements CanonicalMedia {
       this.viewportUnsubscribe();
       this.viewportUnsubscribe = undefined;
     }
-    if (this.viewportGateUnsubscribe) {
-      this.viewportGateUnsubscribe();
-      this.viewportGateUnsubscribe = undefined;
-    }
 
     if (eventChannel) {
       this.sceneEventBus = getEventBus<LighterEventGroup>(eventChannel);
@@ -87,28 +73,6 @@ export class ImageOverlay extends BaseOverlay implements CanonicalMedia {
           this.updateImageTransform(event.x, event.y, event.scale);
         }
       );
-
-      // Wait for the first viewport-moved event (triggered by fitToRect) to 
-      // unblock the image. This avoids an image flash at default zoom.
-      if (this.options.deferShow) {
-        this.waitingForViewport = true;
-
-        let unblocked = false;
-        const unblock = () => {
-          if (unblocked) return;
-          unblocked = true;
-          this.waitingForViewport = false;
-          if (this.viewportGateUnsubscribe) {
-            this.viewportGateUnsubscribe();
-            this.viewportGateUnsubscribe = undefined;
-          }
-        };
-
-        this.viewportGateUnsubscribe = this.sceneEventBus.on(
-          "lighter:viewport-moved",
-          unblock
-        );
-      }
     }
   }
 
@@ -437,7 +401,8 @@ export class ImageOverlay extends BaseOverlay implements CanonicalMedia {
    * Emit canonical media bounds changed event.
    */
   private notifyBoundsChanged(): void {
-    if (!this.currentBounds || !this.sceneEventBus || !this.isImageLoaded) return;
+    if (!this.currentBounds || !this.sceneEventBus || !this.isImageLoaded)
+      return;
 
     this.sceneEventBus.dispatch("lighter:canonical-media-bounds-changed", {
       bounds: this.currentBounds,
@@ -488,11 +453,9 @@ export class ImageOverlay extends BaseOverlay implements CanonicalMedia {
   }
 
   /**
-   * Shows the image element, unless still waiting for the first viewport
-   * positioning event (see `deferShow` option).
+   * Shows the image element.
    */
   show(): void {
-    if (this.waitingForViewport) return;
     if (this.imgElement) {
       this.imgElement.style.display = "";
     }
@@ -521,11 +484,6 @@ export class ImageOverlay extends BaseOverlay implements CanonicalMedia {
     if (this.viewportUnsubscribe) {
       this.viewportUnsubscribe();
       this.viewportUnsubscribe = undefined;
-    }
-
-    if (this.viewportGateUnsubscribe) {
-      this.viewportGateUnsubscribe();
-      this.viewportGateUnsubscribe = undefined;
     }
 
     if (this.imgElement) {
