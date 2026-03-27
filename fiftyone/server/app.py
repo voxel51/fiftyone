@@ -97,6 +97,8 @@ class HeadersMiddleware(BaseHTTPMiddleware):
     ) -> Response:
         response = await call_next(request)
         response.headers["x-colab-notebook-cache-control"] = "no-cache"
+        response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+        response.headers["Cross-Origin-Embedder-Policy"] = "credentialless"
         return response
 
 

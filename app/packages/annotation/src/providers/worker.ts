@@ -78,8 +78,14 @@ const DECODER_URL = `${HF_BASE}/decoder.onnx`;
 const CACHE_PREFIX = `${ENCODER_URL}:${SAM2_INPUT_SIZE}:`;
 
 const isCOI = typeof crossOriginIsolated !== "undefined" && crossOriginIsolated;
-ort.env.wasm.numThreads = isCOI ? 4 : 1;
+ort.env.wasm.numThreads = isCOI ? navigator.hardwareConcurrency || 4 : 1;
 ort.env.wasm.simd = true;
+
+// Dev: optimizeDeps.exclude lets ort use its embedded WASM bundle.
+// Prod: worker bundling strips the embedded WASM, so point to the emitted files.
+if (!import.meta.env?.DEV) {
+  ort.env.wasm.wasmPaths = import.meta.env.ORT_WASM_PATH;
+}
 
 let encoderSession: ort.InferenceSession | null = null;
 let decoderSession: ort.InferenceSession | null = null;
