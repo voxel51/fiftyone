@@ -80,7 +80,7 @@ class _SAMPredictor:
 
     def __init__(self, model):
         self.processor = sam.SamPredictor(model)
-        self._image_id = None
+        self.image_id = None
 
     def image_transform(self, img):
         """Transforms image for SAM model input.
@@ -139,6 +139,33 @@ class _SAMPredictor:
             transformed_points, dtype=torch.float64
         ), torch.tensor(labels, dtype=torch.int)
 
+    def set_image(self, filepath, img_id=None):
+        """Calculates the image embeddings and caches them.
+
+        Args:
+            filepath: a filepath to image media
+            img_id (None): a unique identifier for the image
+        """
+        img = fout._load_image(
+            filepath,
+            use_numpy=True,
+            force_rgb=True,
+        )
+        # NOTE: SamPredictor.set_image applies the image transform.
+        self.processor.set_image(img)
+        self.image_id = img_id
+
+    def reset_image(self):
+        """Resets the currently set image."""
+
+        self.processor.reset_image()
+        self.image_id = None
+
+    def valid_image(self, curr_id):
+        if self.processor.is_image_set:
+            return curr_id == self.image_id
+        return False
+
 
 class SAMPromptMode(Enum):
     """Enumeration of supported prompt modes for SAM."""
@@ -147,6 +174,16 @@ class SAMPromptMode(Enum):
     box_only = 2
     point_only = 3
     box_point_combo = 4
+
+    def get_prompt(self, has_boxes=False, has_points=False):
+        if has_boxes and has_points:
+            return SAMPromptMode.box_point_combo
+        elif has_boxes:
+            return SAMPromptMode.box_only
+        elif has_points:
+            return SAMPromptMode.point_only
+        else:
+            return SAMPromptMode.auto
 
 
 class SegmentAnythingImageGetItem(fout.GetItem):
@@ -745,6 +782,137 @@ class SegmentAnythingModel(fout.TorchImageModelWithPrompts):
         kwargs = self.config.auto_kwargs or {}
         return sam.SamAutomaticMaskGenerator(self._model, **kwargs)
 
+    def predict_interactive(
+        self,
+        sample=None,
+        boxes=None,
+        points=None,
+        point_labels=None,
+        prompt_classes=None,
+        preprocess_prompts=False,
+    ):
+        """Generates predictions in interactive mode. Image embedding is cached.
+
+        Args:
+            sample (None): a FiftyOne Sample with image media
+            boxes (None): a tensor of Bx4 pre-processed boxes in XYXY pixels or a list of boxes in relative xywh format
+            points (None): a tensor of BxNx2 pre-processed points in XY pixels or a list of points in relative xy format
+            point_labels (None): a BxN array of labels for the point prompts
+            prompt_classes (None): a list of B class labels
+            preprocess_prompts (False): Whether to pre-process prompts to SAM format. If False, inputs prompts are assumed to be in the expected SAM format
+
+        Returns:
+            _type_: _description_
+        """
+        if sample is not None and not self._sam_predictor.valid_image(
+            sample.id
+        ):
+            # Compute and cache image embedding
+            self._sam_predictor.set_image(sample.filepath, sample.id)
+
+        if sample is None:
+            logger.warning("No sample input. Using cached image embeddings.")
+
+        if boxes is None and points is None:
+            # Auto segment
+            img = fout._load_image(
+                sample.filepath,
+                use_numpy=True,
+                force_rgb=True,
+            )
+            return self._forward_pass_auto(imgs={"image": [img]})
+
+        if boxes is not None and points is not None:
+            if len(boxes) != len(points):
+                raise AssertionError(
+                    f"Number of prompt boxes ({len(boxes)}) should be equal to the number of prompt points ({len(points)})"
+                )
+        sam_boxes, sam_points, sam_point_labels = boxes, points, point_labels
+        img_hw = self._sam_predictor.processor.original_size
+
+        boxes_xyxy = None
+        if preprocess_prompts:
+            # Preprocess prompts to sam model input
+            logger.info("Pre-processing input prompts to SAM format")
+            if boxes is not None and len(boxes):
+                boxes_xyxy = _to_abs_boxes(
+                    np.array(boxes), img_hw[1], img_hw[0]
+                )
+                sam_boxes = self._sam_predictor.box_transform(
+                    boxes_xyxy=boxes_xyxy,
+                    img_hw=img_hw,
+                )
+
+            if points is not None and len(points):
+                if point_labels is not None and len(point_labels) != len(
+                    points
+                ):
+                    raise AssertionError(
+                        "Points and point labels should be the same length."
+                    )
+                _points, _point_labels = [], []
+                point_labels = (
+                    [None] * len((points))
+                    if point_labels is None
+                    else point_labels
+                )
+                for pts, pts_labels in zip(points, point_labels):
+                    _pts, _pts_labels = self._sam_predictor.point_transform(
+                        points=pts,
+                        img_hw=img_hw,
+                        point_labels=pts_labels,
+                    )
+                    _points.append(_pts)
+                    _point_labels.append(_pts_labels)
+
+                max_points = max([pts.shape[0] for pts in _points])
+                padded_points = []
+                padded_labels = []
+                for pts, pts_labels in zip(_points, _point_labels):
+                    pad_amount = max_points - pts.shape[0]
+                    padded_pts = torch.nn.functional.pad(
+                        pts, (0, 0, 0, pad_amount), value=0.0
+                    )
+                    padded_lbls = torch.nn.functional.pad(
+                        pts_labels.int(), (0, pad_amount), value=-1
+                    )
+
+                    padded_points.append(padded_pts)  # BxNx2
+                    padded_labels.append(padded_lbls)  # BxN
+                sam_points = torch.stack(padded_points)
+                sam_point_labels = torch.stack(padded_labels)
+
+        multimask_output = (
+            True if (sam_boxes is None and sam_points is not None) else False
+        )
+        (
+            masks,
+            iou_predictions,
+            low_res_logits,
+        ) = self._sam_predictor.processor.predict_torch(
+            point_coords=sam_points,
+            point_labels=sam_point_labels,
+            boxes=sam_boxes,
+            multimask_output=multimask_output,
+        )
+
+        output = {
+            "masks": masks.float(),
+            "iou_predictions": iou_predictions.float(),
+            "low_res_logits": low_res_logits,
+        }
+
+        if self._output_processor is not None:
+            return self._output_processor(
+                [output],
+                [img_hw],
+                confidence_thresh=self.config.confidence_thresh,
+                box_prompts=[boxes_xyxy] if boxes_xyxy is not None else None,
+                labels=[prompt_classes],
+                mask_index=self.config.points_mask_index,
+            )[0]
+        return output
+
     def predict(self, img, sample=None):
         """Performs prediction a single image.
 
@@ -857,7 +1025,7 @@ class SegmentAnythingModel(fout.TorchImageModelWithPrompts):
 
         Returns:
             a collated dictionary of model input for the batch. Expected keys are:
-                "image": a list of torch tensor or numpy arrays of (B X C X H X W) shape
+                "image": a list of torch tensor or numpy arrays of (C X H X W) shape
                 "boxes": a list of B X 4 boxes for SAM model input
                 "boxes_xyxy: a list of B x 4 boxes in XYXY pixels in original image space
                 "point_coords": a list of B X N x 2 point coordinates, padded as needed
@@ -1090,16 +1258,3 @@ def _to_abs_boxes(boxes, img_width, img_height, chunk_size=1e6):
         boxes_xyxy[start:end, 3] *= img_height
 
     return boxes_xyxy
-
-
-def _mask_to_box(mask):
-    if len(mask.shape) == 3:
-        mask = np.squeeze(mask, axis=0)
-    pos_indices = np.where(mask)
-    if all(arr.size == 0 for arr in pos_indices):
-        return None
-    x1 = np.min(pos_indices[1])
-    x2 = np.max(pos_indices[1])
-    y1 = np.min(pos_indices[0])
-    y2 = np.max(pos_indices[0])
-    return [x1, y1, x2, y2]
