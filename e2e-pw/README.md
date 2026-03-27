@@ -167,7 +167,7 @@ an `id` search param to `waitUntilGridVisible` — the modal will open
 immediately on that sample.
 
 ```ts
-await fiftyoneLoader.waitUntilGridVisible(page, DATASET_NAME, {
+await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id: indexToId(0) }),
 });
 ```
