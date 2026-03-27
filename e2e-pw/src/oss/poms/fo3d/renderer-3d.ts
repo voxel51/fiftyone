@@ -1,7 +1,9 @@
-import { Locator, Page } from "src/oss/fixtures";
+import { Jimp } from "jimp";
+import { expect, Locator, Page } from "src/oss/fixtures";
 import { Asset3dPanelPom } from "src/oss/poms/fo3d/assets-panel";
 
 export type CameraPosition = [number, number, number];
+const DEFAULT_MIN_RENDERED_PIXELS = 150;
 
 type SavedCameraState = {
   position: number[];
@@ -39,6 +41,7 @@ export function positionsAreClose(
 }
 
 export class Renderer3dPom {
+  readonly assert: Renderer3dAsserter;
   readonly asset3dPanel: Asset3dPanelPom;
   readonly modalLookerContainer: Locator;
   readonly looker3d: Locator;
@@ -48,6 +51,7 @@ export class Renderer3dPom {
   readonly statusBarCameraPosition: Locator;
 
   constructor(private readonly page: Page) {
+    this.assert = new Renderer3dAsserter(this);
     this.asset3dPanel = new Asset3dPanelPom(this.page);
     this.modalLookerContainer = this.page.getByTestId("modal-looker-container");
     this.looker3d = this.modalLookerContainer.getByTestId("looker3d");
@@ -165,6 +169,35 @@ export class Renderer3dPom {
     await this.page.mouse.up();
   }
 
+  async countRenderedPixels(): Promise<number> {
+    const screenshot = await this.looker3d.screenshot();
+    const image = await Jimp.read(screenshot);
+
+    const width = image.bitmap.width;
+    const height = image.bitmap.height;
+    const centerCrop = image.clone().crop({
+      x: Math.floor(width * 0.2),
+      y: Math.floor(height * 0.2),
+      w: Math.max(1, Math.floor(width * 0.6)),
+      h: Math.max(1, Math.floor(height * 0.6)),
+    });
+
+    let renderedPixelCount = 0;
+
+    for (let index = 0; index < centerCrop.bitmap.data.length; index += 4) {
+      const red = centerCrop.bitmap.data[index];
+      const green = centerCrop.bitmap.data[index + 1];
+      const blue = centerCrop.bitmap.data[index + 2];
+      const alpha = centerCrop.bitmap.data[index + 3];
+
+      if (alpha > 0 && red + green + blue > 30) {
+        renderedPixelCount += 1;
+      }
+    }
+
+    return renderedPixelCount;
+  }
+
   private parseCameraPosition(text: string): CameraPosition {
     const match = text.match(
       /(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/
@@ -179,5 +212,21 @@ export class Renderer3dPom {
       Number.parseFloat(match[2]),
       Number.parseFloat(match[3]),
     ];
+  }
+}
+
+class Renderer3dAsserter {
+  constructor(private readonly renderer3dPom: Renderer3dPom) {}
+
+  async expectSomethingToRender(
+    minRenderedPixels = DEFAULT_MIN_RENDERED_PIXELS
+  ) {
+    await expect(this.renderer3dPom.looker3d).toBeVisible();
+
+    await expect
+      .poll(async () => this.renderer3dPom.countRenderedPixels(), {
+        timeout: 5000,
+      })
+      .toBeGreaterThan(minRenderedPixels);
   }
 }
