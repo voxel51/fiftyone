@@ -2,8 +2,8 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import * as _ from "lodash";
-import { isObject } from "./util";
+import { cloneDeep } from "lodash";
+import { isObject } from "@fiftyone/utilities";
 
 /**
  * DataTransformer implementations offer conversion from one record type to another.
@@ -26,7 +26,7 @@ export type FieldTransformer = {
  */
 const DateTimeTransformer: FieldTransformer = {
   canTransform: (data: unknown): boolean => {
-    return isObject(data) && "$date" in (data as object);
+    return isObject(data) && "$date" in data;
   },
   transform: (data: unknown): { _cls: "DateTime"; datetime: number } => {
     const date = new Date((data as { $date: string }).$date);
@@ -39,7 +39,7 @@ const DateTimeTransformer: FieldTransformer = {
  */
 const ObjectIdTransformer: FieldTransformer = {
   canTransform: (data: unknown): boolean => {
-    return isObject(data) && "$oid" in (data as object);
+    return isObject(data) && "$oid" in data;
   },
   transform: (data: unknown): string => {
     return (data as { $oid: string }).$oid;
@@ -76,7 +76,7 @@ const SampleTransformer: DataTransformer = {
     };
 
     // transformation happens in-place, so create a new copy of the data first
-    const result = _.cloneDeep(data);
+    const result = cloneDeep(data);
     transformInner(result);
     return result;
   },
