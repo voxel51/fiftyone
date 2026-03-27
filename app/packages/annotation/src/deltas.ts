@@ -13,7 +13,7 @@ import type {
   PrimitiveValue,
   Sample,
 } from "@fiftyone/state";
-import type { Field, Primitive } from "@fiftyone/utilities";
+import { Field, isObject, Primitive } from "@fiftyone/utilities";
 import { get } from "lodash";
 import type { OpType } from "./types";
 import { arePrimitivesEqual, isPrimitiveFieldType } from "./util";
@@ -318,11 +318,7 @@ export const buildSingleMutationDelta = <
   //  (`_cls`, `_id`, `tags`) are preserved when the overlay only has a
   //  subset of fields
   const merged =
-    typeof data === "object" &&
-    data !== null &&
-    !Array.isArray(data) &&
-    typeof existingLabel === "object" &&
-    !Array.isArray(existingLabel)
+    isObject(data) && isObject(existingLabel)
       ? { ...existingLabel, ...data }
       : data;
 
