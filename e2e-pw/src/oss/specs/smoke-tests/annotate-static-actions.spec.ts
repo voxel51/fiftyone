@@ -5,9 +5,7 @@
  * that the schema manager opens from the label list, and that exiting
  * QuickDraw closes the edit form.
  */
-import { ground_truth_schema } from "src/oss/assets/annotate-schemas";
 import { expect, test as base } from "src/oss/fixtures";
-import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { SchemaManagerPom } from "src/oss/poms/schema-manager";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
@@ -15,15 +13,12 @@ import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 const datasetName = getUniqueDatasetNameWithPrefix(
   "smoke-annotate-static-actions"
 );
+const id = "000000000000000000000000";
 
 const test = base.extend<{
-  grid: GridPom;
   modal: ModalPom;
   schemaManager: SchemaManagerPom;
 }>({
-  grid: async ({ page, eventUtils }, use) => {
-    await use(new GridPom(page, eventUtils));
-  },
   modal: async ({ page, eventUtils }, use) => {
     await use(new ModalPom(page, eventUtils));
   },
@@ -32,25 +27,38 @@ const test = base.extend<{
   },
 });
 
-test.beforeAll(async ({ annotateSDK, foWebServer, fiftyoneLoader }) => {
+test.beforeAll(async ({ annotateSDK, datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-  await fiftyoneLoader.executePythonCode(`
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    dataset_name = "${datasetName}"
-    dataset = foz.load_zoo_dataset(
-      "quickstart", max_samples=5, dataset_name=dataset_name
-    )
-    dataset.persistent = True
-  `);
-
-  await annotateSDK.updateLabelSchema(
+  await datasetFactory.createBlankDataset({
     datasetName,
-    "ground_truth",
-    ground_truth_schema
-  );
-  await annotateSDK.addFieldToActiveLabelSchema(datasetName, "ground_truth");
+    schema: {
+      detections: "Detections",
+    },
+    withSampleData: (_, { createId }) => ({
+      detections: {
+        detections: [
+          {
+            _id: createId(),
+            label: "bird",
+            bounding_box: [0.3, 0.3, 0.2, 0.2],
+          },
+          {
+            _id: createId(),
+            label: "bird",
+            bounding_box: [0.6, 0.6, 0.2, 0.2],
+          },
+        ],
+      },
+    }),
+  });
+
+  await annotateSDK.updateLabelSchema(datasetName, "detections", {
+    type: "detections",
+    classes: ["bird", "cat"],
+    attributes: [],
+    component: "dropdown",
+  });
+  await annotateSDK.addFieldToActiveLabelSchema(datasetName, "detections");
 });
 
 test.afterAll(async ({ foWebServer }) => {
@@ -58,7 +66,9 @@ test.afterAll(async ({ foWebServer }) => {
 });
 
 test.beforeEach(async ({ page, fiftyoneLoader }) => {
-  await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+  await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
+    searchParams: new URLSearchParams({ id }),
+  });
 });
 
 test.afterEach(async ({ modal, page }) => {
@@ -68,11 +78,10 @@ test.afterEach(async ({ modal, page }) => {
 
 test.describe.serial("static actions toolbar", () => {
   test("actions toolbar remains visible while editing a label", async ({
-    grid,
     modal,
     page,
   }) => {
-    await grid.openFirstSample();
+    await modal.assert.isOpen();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
 
@@ -84,7 +93,7 @@ test.describe.serial("static actions toolbar", () => {
     await expect(quickDrawButton).toBeVisible();
 
     // Click a label to enter edit mode
-    await modal.sidebar.annotate.selectActiveLabel("bird", 1);
+    await modal.sidebar.annotate.selectActiveLabel("bird", 0);
 
     // Actions toolbar should still be visible
     await expect(undoButton).toBeVisible();
@@ -92,10 +101,9 @@ test.describe.serial("static actions toolbar", () => {
   });
 
   test("mode toggle remains visible while editing a label", async ({
-    grid,
     modal,
   }) => {
-    await grid.openFirstSample();
+    await modal.assert.isOpen();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
 
@@ -106,7 +114,7 @@ test.describe.serial("static actions toolbar", () => {
     await expect(annotateButton).toBeVisible();
 
     // Click a label to enter edit mode
-    await modal.sidebar.annotate.selectActiveLabel("bird", 1);
+    await modal.sidebar.annotate.selectActiveLabel("bird", 0);
 
     // Mode toggle should still be visible
     await expect(exploreButton).toBeVisible();
@@ -114,11 +122,10 @@ test.describe.serial("static actions toolbar", () => {
   });
 
   test("schema manager opens from label list", async ({
-    grid,
     modal,
     schemaManager,
   }) => {
-    await grid.openFirstSample();
+    await modal.assert.isOpen();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
 
@@ -130,10 +137,9 @@ test.describe.serial("static actions toolbar", () => {
   });
 
   test("exiting QuickDraw via toggle closes the edit form", async ({
-    grid,
     modal,
   }) => {
-    await grid.openFirstSample();
+    await modal.assert.isOpen();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
 
