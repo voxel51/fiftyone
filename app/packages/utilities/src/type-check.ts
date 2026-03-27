@@ -47,5 +47,5 @@ const PRIMITIVE_TYPES = ["string", "number", "boolean"];
  * @param data Data to check
  */
 export const isObject = (data: unknown): data is object => {
-  return data && typeof data === "object" && !Array.isArray(data);
+  return data !== null && typeof data === "object" && !Array.isArray(data);
 };
