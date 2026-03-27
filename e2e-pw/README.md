@@ -184,6 +184,9 @@ the DOM's perspective.
 // Move the pointer to a canvas-relative position (0–1 in both axes)
 await modal.sampleCanvas.move(0.5, 0.5);
 
+// Optionally, assert a cursor value change on move
+await modal.sampleCanvas.move(0.9, 0.9, "grab");
+
 // Press and release the mouse button
 await modal.sampleCanvas.down();
 await modal.sampleCanvas.up();
