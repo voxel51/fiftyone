@@ -29,7 +29,7 @@ import {
   pointInPolygon,
 } from "../utils/geometry";
 import { BaseOverlay } from "./BaseOverlay";
-import { NO_BOUNDS } from "./BoundingBoxOverlay";
+import { NO_BOUNDS } from "./DetectionOverlay";
 
 export type KeypointLabel = RawLookerLabel & {
   label: string;

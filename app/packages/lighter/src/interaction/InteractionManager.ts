@@ -549,7 +549,7 @@ export class InteractionManager {
           if (interactiveHandler) {
             this.eventBus.dispatch("lighter:overlay-establish", {
               ...detail,
-              overlay: interactiveHandler,
+              handler: interactiveHandler,
             });
           }
         } else {

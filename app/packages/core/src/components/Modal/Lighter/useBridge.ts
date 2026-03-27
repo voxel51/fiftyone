@@ -135,7 +135,7 @@ export const useBridge = (scene: Scene2D | null) => {
         // Only route detection overlays into the detection establish path.
         // Non-detection overlays (e.g. keypoints) fire the same event but
         // should not enter the detection sidebar flow.
-        if (!(payload.handler.overlay instanceof BoundingBoxOverlay)) {
+        if (!(payload.handler.overlay instanceof DetectionOverlay)) {
           return;
         }
 
