@@ -230,11 +230,6 @@ on the media type, but the testing approach is identical. Writing tests this
 way makes specs easier to read and collaborate on, since there is only one
 pattern to learn regardless of what is being tested.
 
-```ts
-await modal.sampleCanvas.move(0.9, 0.9);
-await modal.sampleCanvas.assert.hasScreenshot("my-test-state.png");
-```
-
 ### Known Issues
 
 #### Browser / Target has been closed
