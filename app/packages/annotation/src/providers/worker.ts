@@ -83,7 +83,7 @@ ort.env.wasm.simd = true;
 
 // Dev: optimizeDeps.exclude lets ort use its embedded WASM bundle.
 // Prod: worker bundling strips the embedded WASM, so point to the emitted files.
-if (!import.meta.env?.DEV) {
+if (!import.meta.env?.DEV && import.meta.env?.ORT_WASM_PATH) {
   ort.env.wasm.wasmPaths = import.meta.env.ORT_WASM_PATH;
 }
 

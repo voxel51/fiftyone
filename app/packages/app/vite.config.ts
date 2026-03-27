@@ -1,5 +1,5 @@
-import fs from "fs";
-import path from "path";
+import fs from "node:fs";
+import path from "node:path";
 import reactRefresh from "@vitejs/plugin-react-refresh";
 import nodePolyfills from "rollup-plugin-polyfill-node";
 import { defineConfig } from "vite";
