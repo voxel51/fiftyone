@@ -30,6 +30,9 @@ export const QUERY_PERFORMANCE_RESULTS =
 export const SIDEBAR_MODE =
   "https://docs.voxel51.com/user_guide/app.html#sidebar-mode";
 
+export const SORT_BY_INDEXED_FIELDS =
+  "https://docs.voxel51.com/user_guide/app.html#sorting-in-the-grid";
+
 export const SORT_BY_SIMILARITY =
   "https://docs.voxel51.com/user_guide/app.html#app-similarity";
 
