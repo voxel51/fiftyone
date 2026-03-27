@@ -6,6 +6,7 @@ import type { BaseOverlay } from "./BaseOverlay";
 import { DetectionOverlay } from "./DetectionOverlay";
 import { ClassificationOverlay } from "./ClassificationOverlay";
 import { ImageOverlay } from "./ImageOverlay";
+import { KeypointOverlay } from "./KeypointOverlay";
 
 /**
  * Constructor type for overlays.
@@ -32,6 +33,7 @@ export class OverlayFactory {
       (opts) => new ClassificationOverlay(opts)
     );
     factory.register("image", (opts) => new ImageOverlay(opts));
+    factory.register("keypoint", (opts) => new KeypointOverlay(opts));
 
     return factory;
   }

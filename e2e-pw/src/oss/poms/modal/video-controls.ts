@@ -33,6 +33,7 @@ export class ModalVideoControlsPom {
   }
 
   private async clickSettings() {
+    await this.modal.sampleCanvas.move(0.5, 0.5);
     return this.controls.getByTestId("looker-controls-settings").click();
   }
 

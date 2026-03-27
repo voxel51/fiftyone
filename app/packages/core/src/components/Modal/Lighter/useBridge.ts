@@ -26,7 +26,11 @@ import { useAtomCallback } from "jotai/utils";
 import { useCallback, useEffect } from "react";
 import { useRecoilValue } from "recoil";
 import { editing } from "../Sidebar/Annotate/Edit";
-import { current, currentData, savedLabel } from "../Sidebar/Annotate/Edit/state";
+import {
+  current,
+  currentData,
+  savedLabel,
+} from "../Sidebar/Annotate/Edit/state";
 import { coerceStringBooleans, useLabelsContext } from "../Sidebar/Annotate";
 import useColorMappingContext from "./useColorMappingContext";
 import { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";
@@ -54,8 +58,12 @@ export const useBridge = (scene: Scene2D | null) => {
   const getCurrentLabel = useAtomCallback(
     useCallback((get) => get(current), [])
   );
-  const { addLabelToSidebar, getLabelById, removeLabelFromSidebar, updateLabelData } =
-    useLabelsContext();
+  const {
+    addLabelToSidebar,
+    getLabelById,
+    removeLabelFromSidebar,
+    updateLabelData,
+  } = useLabelsContext();
   const fieldSchema = useRecoilValue(
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
   );
@@ -124,11 +132,18 @@ export const useBridge = (scene: Scene2D | null) => {
     "lighter:overlay-establish",
     useCallback(
       (payload) => {
+        // Only route detection overlays into the detection establish path.
+        // Non-detection overlays (e.g. keypoints) fire the same event but
+        // should not enter the detection sidebar flow.
+        if (!(payload.handler.overlay instanceof BoundingBoxOverlay)) {
+          return;
+        }
+
         annotationEventBus.dispatch(
           "annotation:canvasDetectionOverlayEstablish",
           {
             id: payload.id,
-            overlay: payload.overlay.overlay,
+            overlay: payload.handler.overlay,
           }
         );
       },

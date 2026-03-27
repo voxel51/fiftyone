@@ -25,6 +25,8 @@ export { ClassificationOverlay } from "./overlay/ClassificationOverlay";
 export type { ClassificationOptions } from "./overlay/ClassificationOverlay";
 export { ImageOverlay } from "./overlay/ImageOverlay";
 export type { ImageOptions } from "./overlay/ImageOverlay";
+export { KeypointOverlay } from "./overlay/KeypointOverlay";
+export type { KeypointLabel, KeypointOptions } from "./overlay/KeypointOverlay";
 export { OverlayFactory } from "./overlay/OverlayFactory";
 export type { OverlayConstructor } from "./overlay/OverlayFactory";
 
@@ -49,6 +51,7 @@ export type {
   OverlayEvent,
 } from "./interaction/InteractionManager";
 export { InteractiveDetectionHandler } from "./interaction/InteractiveDetectionHandler";
+export { InteractiveKeypointHandler } from "./interaction/InteractiveKeypointHandler";
 
 // Selection exports
 export type { Selectable } from "./selection/Selectable";
