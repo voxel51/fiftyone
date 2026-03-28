@@ -8,7 +8,10 @@ import { ModalGroupActionsPom } from "./group-actions";
 import { ModalImaAsVideoControlsPom } from "./imavid-controls";
 import { Looker3DControlsPom } from "./looker-3d-controls";
 import { ModalSidebarPom } from "./modal-sidebar";
-import { SampleCanvasPom } from "./sample-canvas";
+import {
+  compareLocatorScreenshotToBuffer,
+  SampleCanvasPom,
+} from "./sample-canvas";
 import { ModalVideoControlsPom } from "./video-controls";
 
 const SAMPLE_LOAD_TIMEOUT = Duration.Seconds(20);
@@ -310,6 +313,12 @@ export class ModalPom {
       { timeout: SAMPLE_LOAD_TIMEOUT }
     );
   }
+
+  async captureStableMain2DRendererScreenshot() {
+    await this.groupLooker.waitFor({ state: "visible" });
+    await this.sampleCanvas.moveMouseToViewportEdge();
+    return this.groupLooker.screenshot();
+  }
 }
 
 class ModalAsserter {
@@ -332,6 +341,26 @@ class ModalAsserter {
     await expect(
       this.modalPom.modalContainer.getByTestId("looker-error-info")
     ).toHaveCount(0);
+  }
+
+  async verifyPrimary2dRendererVisible() {
+    await expect(this.modalPom.groupLooker).toBeVisible();
+  }
+
+  async verify3dRendererVisible() {
+    await expect(this.modalPom.looker3d).toBeVisible();
+  }
+
+  async verifyMain2RendererMatchesScreenshotBuffer(expectedScreenshot: Buffer) {
+    await expect(this.modalPom.groupLooker).toBeVisible();
+    await this.modalPom.sampleCanvas.tooltip.assert.isVisible(false);
+    await this.modalPom.sampleCanvas.toolbar.assert.isVisible(false);
+    await this.modalPom.sampleCanvas.moveMouseToViewportEdge();
+
+    await compareLocatorScreenshotToBuffer(
+      this.modalPom.groupLooker,
+      expectedScreenshot
+    );
   }
 
   async verifySelectionCount(n: number) {

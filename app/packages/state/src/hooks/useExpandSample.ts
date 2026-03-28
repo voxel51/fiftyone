@@ -6,7 +6,9 @@ import { get } from "lodash";
 import { useRecoilCallback } from "recoil";
 import * as atoms from "../recoil/atoms";
 import * as groupAtoms from "../recoil/groups";
-import useSetExpandedSample from "./useSetExpandedSample";
+import useSetExpandedSample, {
+  SET_EXPANDED_SAMPLE_SOURCE_OPEN,
+} from "./useSetExpandedSample";
 import useSetModalState from "./useSetModalState";
 
 export type Sample = Exclude<
@@ -100,7 +102,12 @@ export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
           previous,
         })
           .then(() => iter(Promise.resolve(item.id)))
-          .then((data) => setExpandedSample({ ...data, hasNext, hasPrevious }));
+          .then((data) =>
+            setExpandedSample(
+              { ...data, hasNext, hasPrevious },
+              { source: SET_EXPANDED_SAMPLE_SOURCE_OPEN }
+            )
+          );
       },
     [setExpandedSample, setModalState]
   );

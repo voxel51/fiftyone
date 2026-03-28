@@ -1,4 +1,5 @@
-import { Page, expect } from "src/oss/fixtures";
+import { diff as diffImages, Jimp } from "jimp";
+import { expect, Locator, Page } from "src/oss/fixtures";
 import type { EventUtils } from "src/shared/event-utils";
 import { ToolbarPom } from "./toolbar";
 import { TooltipPom } from "./tooltip";
@@ -29,7 +30,10 @@ export class SampleCanvasPom {
   #mouseX = 0;
   #mouseY = 0;
 
-  constructor(readonly page: Page, readonly eventUtils: EventUtils) {
+  constructor(
+    readonly page: Page,
+    readonly eventUtils: EventUtils
+  ) {
     this.assert = new SampleCanvasAsserter(this);
   }
 
@@ -155,6 +159,16 @@ export class SampleCanvasPom {
     }
   }
 
+  /**
+   * Capture a screenshot of the current sample canvas after moving the pointer
+   * away from the viewport center to avoid hover-driven overlays.
+   */
+  async captureStableScreenshot() {
+    await this.locator.waitFor({ state: "visible" });
+    await this.moveMouseToViewportEdge();
+    return this.locator.screenshot();
+  }
+
   async #toScreenCoordinates(x: number, y: number) {
     if (!this.#box) {
       this.#box = await this.locator.boundingBox();
@@ -170,6 +184,36 @@ export class SampleCanvasPom {
     };
   }
 }
+
+/**
+ * Compares the pixels produced by a locator against a previously captured
+ * screenshot buffer. Useful in following setup where you care about continuity
+ * check more than comparing against golden image:
+ * - Action K
+ * - Record screenshot state S
+ * - Action K...K+n
+ * - Assert S = S_new
+ *
+ * @param locator The locator to capture for comparison
+ * @param expectedScreenshot A prior screenshot buffer from the same UI region
+ * @param maxDiffPercent Tolerance of pixel difference in percent
+ */
+export const compareLocatorScreenshotToBuffer = async (
+  locator: Locator,
+  expectedScreenshot: Buffer,
+  maxDiffPercent = 0
+) => {
+  const actualScreenshot = await locator.screenshot();
+  const [expectedImage, actualImage] = await Promise.all([
+    Jimp.read(expectedScreenshot),
+    Jimp.read(actualScreenshot),
+  ]);
+
+  expect(actualImage.bitmap.width).toBe(expectedImage.bitmap.width);
+  expect(actualImage.bitmap.height).toBe(expectedImage.bitmap.height);
+  const diff = diffImages(expectedImage, actualImage);
+  expect(diff.percent).toBeLessThanOrEqual(maxDiffPercent);
+};
 
 /**
  * Sample canvas asserter
@@ -197,10 +241,27 @@ class SampleCanvasAsserter {
     await this.sampleCanvasPom.tooltip.assert.isVisible(false);
     await this.sampleCanvasPom.moveMouseToViewportEdge();
     await this.sampleCanvasPom.toolbar.assert.isVisible(false);
-    await expect(this.sampleCanvasPom.locator).toBeVisible();
     await expect(this.sampleCanvasPom.locator).toHaveScreenshot(name, {
       maxDiffPixelRatio: 0.0,
     });
+  }
+
+  /**
+   * Does the current canvas render the same pixels as a previously
+   * captured stable screenshot buffer.
+   *
+   * @param expectedScreenshot A prior screenshot buffer captured from the same view
+   */
+  async matchesScreenshotBuffer(expectedScreenshot: Buffer) {
+    await expect(this.sampleCanvasPom.checkbox).toBeHidden();
+    await this.sampleCanvasPom.tooltip.assert.isVisible(false);
+    await this.sampleCanvasPom.toolbar.assert.isVisible(false);
+    await this.sampleCanvasPom.moveMouseToViewportEdge();
+
+    await compareLocatorScreenshotToBuffer(
+      this.sampleCanvasPom.locator,
+      expectedScreenshot
+    );
   }
 
   /**
