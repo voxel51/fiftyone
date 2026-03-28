@@ -7692,7 +7692,7 @@ def _from_int_bool(value):
 
 def _parse_value(value, attr_type=None):
     if attr_type == "text":
-        return str(value)
+        return None if value == "" else str(value)
 
     try:
         return int(value)
