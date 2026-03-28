@@ -6043,11 +6043,20 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             if expected_label_type == "scalar":
                 label_type = "scalar"
                 if assigned_scalar_attrs:
+                    _attr_types = (
+                        attr_type_map.get(anno["label_id"], {})
+                        if attr_type_map
+                        else {}
+                    )
                     num_attrs = len(anno["attributes"])
                     attr_ind = 0
                     while label is None and attr_ind < num_attrs:
+                        attr = anno["attributes"][attr_ind]
+                        attr_type = _attr_types.get(
+                            attr["spec_id"], None
+                        )
                         label = _parse_value(
-                            anno["attributes"][attr_ind]["value"]
+                            attr["value"], attr_type=attr_type
                         )
                         attr_ind += 1
                         if label is not None:
@@ -7682,16 +7691,18 @@ def _from_int_bool(value):
 
 
 def _parse_value(value, attr_type=None):
-    if attr_type != "text":
-        try:
-            return int(value)
-        except:
-            pass
+    if attr_type == "text":
+        return str(value)
 
-        try:
-            return float(value)
-        except:
-            pass
+    try:
+        return int(value)
+    except:
+        pass
+
+    try:
+        return float(value)
+    except:
+        pass
 
     if etau.is_str(value):
         if value in ("True", "true"):
