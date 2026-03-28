@@ -339,13 +339,17 @@ class SegmentAnythingImageGetItem(fout.GetItem):
             keypoints = None
 
         # Pre-process box prompts
-        boxes, boxes_xyxy, box_classes = self._preprocess_boxes(
-            detections, img_hw
+        boxes, boxes_xyxy, box_classes = preprocess_detections_to_sam(
+            detections, img_hw, self.box_transform
         )
 
         # Pre-process point prompts
-        points, point_type_labels, points_classes = self._preprocess_points(
-            keypoints, img_hw
+        (
+            points,
+            point_type_labels,
+            points_classes,
+        ) = preprocess_keypoints_to_sam(
+            keypoints, img_hw, self.point_transform
         )
 
         has_boxes = boxes is not None and len(boxes) > 0
@@ -388,72 +392,6 @@ class SegmentAnythingImageGetItem(fout.GetItem):
         item_dict["classes"] = box_classes if box_classes else points_classes
 
         return item_dict
-
-    def _preprocess_boxes(self, detections, img_hw):
-        """Pre-processes boxes from :class:`fiftyone.core.labels.Detections`.
-
-        Args:
-            detections: a :class:`fiftyone.core.labels.Detections` instance
-            img_hw: original image height and width
-
-        Returns:
-            a torch tensor of boxes for SAM model prompts
-            a numpy array of boxes in XYXY pixels in original image space
-            a list class labels for the boxes
-        """
-        if detections is None:
-            return None, None, None
-        if len(detections.detections) == 0:
-            raise AssertionError("No box prompts found for sample.")
-
-        if self.box_transform is None:
-            raise AssertionError(
-                "Box transform cannot be None when pre-processing box prompts."
-            )
-        boxes = []
-        box_classes = []
-        for d in detections.detections:
-            boxes.append(d.bounding_box)
-            box_classes.append(d.label)
-        boxes_xyxy = _to_abs_boxes(np.array(boxes), img_hw[1], img_hw[0])
-        sam_boxes = self.box_transform(boxes_xyxy, img_hw)
-        return sam_boxes, boxes_xyxy, box_classes
-
-    def _preprocess_points(self, keypoints, img_hw):
-        """Pre-processes points from :class:`fiftyone.core.labels.Keypoints`.
-
-        Args:
-            keypoints: a :class:`fiftyone.core.labels.Keypoints` instance
-            img_hw: original image height and width
-
-        Returns:
-            a list of torch tensor of points in XYXY pixels for SAM model prompts
-            a list of torch tensor of positive and negative labels for each point
-            a list of class labels for each set of points
-        """
-        if keypoints is None:
-            return None, None, None
-        if len(keypoints.keypoints) == 0:
-            raise AssertionError("No point prompts found for sample.")
-
-        if self.point_transform is None:
-            raise AssertionError(
-                "Point transform cannot be None when pre-processing point prompts."
-            )
-        sam_points = []
-        sam_labels = []
-        points_classes = []
-        for kp in keypoints.keypoints:
-            point_labels = _get_sam_point_labels(kp)
-            _points, _labels = self.point_transform(
-                kp.points,
-                img_hw,
-                point_labels,
-            )
-            points_classes.append(kp.label)
-            sam_points.append(_points)
-            sam_labels.append(_labels)
-        return sam_points, sam_labels, points_classes
 
     @property
     def required_keys(self):
@@ -528,6 +466,74 @@ class SegmentAnythingImageGetItemForVideo(SegmentAnythingImageGetItem):
             return common_keys + box_keys + point_keys
         else:
             raise ValueError(f"Undefined required keys for {self.mode.name}")
+def preprocess_detections_to_sam(detections, img_hw, box_transform):
+    """Pre-processes boxes from :class:`fiftyone.core.labels.Detections`.
+
+    Args:
+        detections: a :class:`fiftyone.core.labels.Detections` instance
+        img_hw: original image height and width
+        box_transform: SAM specific box transform function to apply
+
+    Returns:
+        a torch tensor of boxes for SAM model prompts
+        a numpy array of boxes in XYXY pixels in original image space
+        a list class labels for the boxes
+    """
+    if detections is None:
+        return None, None, None
+    if len(detections.detections) == 0:
+        raise AssertionError("No box prompts found for sample.")
+
+    if box_transform is None:
+        raise AssertionError(
+            "Box transform cannot be None when pre-processing box prompts."
+        )
+    boxes = []
+    box_classes = []
+    for d in detections.detections:
+        boxes.append(d.bounding_box)
+        box_classes.append(d.label)
+    boxes_xyxy = _to_abs_boxes(np.array(boxes), img_hw[1], img_hw[0])
+    sam_boxes = box_transform(boxes_xyxy, img_hw)
+    return sam_boxes, boxes_xyxy, box_classes
+
+
+def preprocess_keypoints_to_sam(keypoints, img_hw, point_transform):
+    """Pre-processes points from :class:`fiftyone.core.labels.Keypoints`.
+
+    Args:
+        keypoints: a :class:`fiftyone.core.labels.Keypoints` instance
+        img_hw: original image height and width
+        point_transform: SAM specific point transform function to apply
+
+    Returns:
+        a list of torch tensor of points in XYXY pixels for SAM model prompts
+        a list of torch tensor of positive and negative labels for each point
+        a list of class labels for each set of points
+    """
+    if keypoints is None:
+        return None, None, None
+    if len(keypoints.keypoints) == 0:
+        raise AssertionError("No point prompts found for sample.")
+
+    if point_transform is None:
+        raise AssertionError(
+            "Point transform cannot be None when pre-processing point prompts."
+        )
+    sam_points = []
+    sam_labels = []
+    points_classes = []
+    for kp in keypoints.keypoints:
+        point_labels = _get_sam_point_labels(kp)
+        _points, _labels = point_transform(
+            kp.points,
+            img_hw,
+            point_labels,
+        )
+        points_classes.append(kp.label)
+        sam_points.append(_points)
+        sam_labels.append(_labels)
+    return sam_points, sam_labels, points_classes
 
 
 class SAMSegmenterOutputProcessor(fout.OutputProcessor):
@@ -789,18 +795,17 @@ class SegmentAnythingModel(fout.TorchImageModelWithPrompts):
         points=None,
         point_labels=None,
         prompt_classes=None,
-        preprocess_prompts=False,
+        boxes_xyxy=None,
     ):
         """Generates predictions in interactive mode. Image embedding is cached.
 
         Args:
             sample (None): a FiftyOne Sample with image media
-            boxes (None): a tensor of Bx4 pre-processed boxes in XYXY pixels or a list of boxes in relative xywh format
-            points (None): a tensor of BxNx2 pre-processed points in XY pixels or a list of points in relative xy format
-            point_labels (None): a BxN array of labels for the point prompts
+            boxes (None): a tensor of Bx4 pre-processed boxes in XYXY pixels
+            points (None): a tensor of BxNx2 or a list of B tensors with pre-processed points in XY pixels
+            point_labels (None): a BxN tensor or a list of B tensors of labels for the point prompts
             prompt_classes (None): a list of B class labels
-            preprocess_prompts (False): Whether to pre-process prompts to SAM format. If False, inputs prompts are assumed to be in the expected SAM format
-
+            boxes_xyxy: a list of Bx4 boxes in XYXY pixels in original image space
         Returns:
             :class:`fiftyone.core.labels.Detections` or dict
             containing the "masks", "iou_predictions", "low_res_logits" from SAM model output.
@@ -831,45 +836,21 @@ class SegmentAnythingModel(fout.TorchImageModelWithPrompts):
         sam_boxes, sam_points, sam_point_labels = boxes, points, point_labels
         img_hw = self._sam_predictor.processor.original_size
 
-        boxes_xyxy = None
-        if preprocess_prompts:
-            # Preprocess prompts to sam model input
-            logger.info("Pre-processing input prompts to SAM format")
-            if boxes is not None and len(boxes):
-                boxes_xyxy = _to_abs_boxes(
-                    np.array(boxes), img_hw[1], img_hw[0]
+        if points is not None and len(points):
+            if point_labels is None:
+                raise AssertionError(
+                    "Point labels can't be None when points are provided."
                 )
-                sam_boxes = self._sam_predictor.box_transform(
-                    boxes_xyxy=boxes_xyxy,
-                    img_hw=img_hw,
+            if point_labels is not None and len(point_labels) != len(points):
+                raise AssertionError(
+                    "Points and point labels should be the same length."
                 )
 
-            if points is not None and len(points):
-                if point_labels is not None and len(point_labels) != len(
-                    points
-                ):
-                    raise AssertionError(
-                        "Points and point labels should be the same length."
-                    )
-                _points, _point_labels = [], []
-                point_labels = (
-                    [None] * len((points))
-                    if point_labels is None
-                    else point_labels
-                )
-                for pts, pts_labels in zip(points, point_labels):
-                    _pts, _pts_labels = self._sam_predictor.point_transform(
-                        points=pts,
-                        img_hw=img_hw,
-                        point_labels=pts_labels,
-                    )
-                    _points.append(_pts)
-                    _point_labels.append(_pts_labels)
-
-                max_points = max([pts.shape[0] for pts in _points])
+            if isinstance(points, list):
+                max_points = max([pts.shape[0] for pts in points])
                 padded_points = []
                 padded_labels = []
-                for pts, pts_labels in zip(_points, _point_labels):
+                for pts, pts_labels in zip(points, point_labels):
                     pad_amount = max_points - pts.shape[0]
                     padded_pts = torch.nn.functional.pad(
                         pts, (0, 0, 0, pad_amount), value=0.0
@@ -880,8 +861,8 @@ class SegmentAnythingModel(fout.TorchImageModelWithPrompts):
 
                     padded_points.append(padded_pts)  # BxNx2
                     padded_labels.append(padded_lbls)  # BxN
-                sam_points = torch.stack(padded_points)
-                sam_point_labels = torch.stack(padded_labels)
+                sam_points = torch.stack(padded_points).to(self.device)
+                sam_point_labels = torch.stack(padded_labels).to(self.device)
 
         multimask_output = (
             True if (sam_boxes is None and sam_points is not None) else False
@@ -893,7 +874,7 @@ class SegmentAnythingModel(fout.TorchImageModelWithPrompts):
         ) = self._sam_predictor.processor.predict_torch(
             point_coords=sam_points,
             point_labels=sam_point_labels,
-            boxes=sam_boxes,
+            boxes=sam_boxes.to(self.device) if sam_boxes is not None else None,
             multimask_output=multimask_output,
         )
 
@@ -909,7 +890,9 @@ class SegmentAnythingModel(fout.TorchImageModelWithPrompts):
                 [img_hw],
                 confidence_thresh=self.config.confidence_thresh,
                 box_prompts=[boxes_xyxy] if boxes_xyxy is not None else None,
-                labels=[prompt_classes],
+                labels=[prompt_classes]
+                if prompt_classes is not None
+                else None,
                 mask_index=self.config.points_mask_index,
             )[0]
         return output
@@ -1026,7 +1009,7 @@ class SegmentAnythingModel(fout.TorchImageModelWithPrompts):
 
         Returns:
             a collated dictionary of model input for the batch. Expected keys are:
-                "image": a list of torch tensor or numpy arrays of (C X H X W) shape
+                "image": a list of torch tensor of (1 x C X H X W) shape or HWC numpy arrays
                 "boxes": a list of B X 4 boxes for SAM model input
                 "boxes_xyxy: a list of B x 4 boxes in XYXY pixels in original image space
                 "point_coords": a list of B X N x 2 point coordinates, padded as needed
