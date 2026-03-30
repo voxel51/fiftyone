@@ -74,14 +74,13 @@ CVAT Integration
 
 App
 
-- Added support for direct 3D file formats (PCD, PLY, STL, FBX, GLTF, OBJ)
-  rendering alongside FO3D content in grouped media, unifying our 3D rendering
-  implementation. `#7246 <https://github.com/voxel51/fiftyone/pull/7246>`_
-- Enhanced 3D modal rendering with improved slice reconciliation and visibility
-  toggling. `#7246 <https://github.com/voxel51/fiftyone/pull/7246>`_
-- Improved grouped media navigation with better slice selection and pinning
-  behavior. Better handling of sparse group configurations with automatic slice
-  fallback logic. `#7246 <https://github.com/voxel51/fiftyone/pull/7246>`_
+- Added direct support for many 3D formats (PCD, PLY, STL, FBX, GLTF) as well
+  as support for mixed formats alongside FO3D.
+  `#7164 <https://github.com/voxel51/fiftyone/pull/7164>`_
+- Added an affordance to jump between different saved camera poses associated
+  with a sample. `#7164 <https://github.com/voxel51/fiftyone/pull/7164>`_
+- Improved support of sparse / imbalanced group datasets.
+  `#7164 <https://github.com/voxel51/fiftyone/pull/7164>`_
 - Updated Adaptive Toolbar to prefer rendering action buttons over 'more
   options' button where possible.
   `#6990 <https://github.com/voxel51/fiftyone/pull/6990>`_
@@ -89,8 +88,8 @@ App
   `#7092 <https://github.com/voxel51/fiftyone/pull/7092>`_
 - Standardized timestamp display and generally improved UI for range filters in
   grid sidebar. `#7027 <https://github.com/voxel51/fiftyone/pull/7027>`_
-- Fixed modal state transitions when switching between 2D and 3D viewers.
-  `#7246 <https://github.com/voxel51/fiftyone/pull/7246>`_
+- Fixed bugs in camera position persistence across scene/sample/navigation
+  changes. `#7164 <https://github.com/voxel51/fiftyone/pull/7164>`_
 - Fixed `#6388 <https://github.com/voxel51/fiftyone/issues/6388>`_. Exclude
   samples by label tags now works as expected.
   `#7174 <https://github.com/voxel51/fiftyone/pull/7174>`_
