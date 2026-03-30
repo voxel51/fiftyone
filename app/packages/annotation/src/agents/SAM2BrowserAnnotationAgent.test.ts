@@ -1,13 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { BrowserAnnotationProvider } from "../providers";
+import { BrowserAnnotationProvider, PointLabel } from "../providers";
 import { SAM2BrowserAnnotationAgent } from "./SAM2BrowserAnnotationAgent";
 import {
   AgentTaskType,
   type AnnotationContext,
   InferenceCapability,
 } from "./types";
-
-const PointLabel = { NEGATIVE: 0, POSITIVE: 1 } as const;
 
 const makeContext = (
   overrides: Partial<AnnotationContext> = {}
