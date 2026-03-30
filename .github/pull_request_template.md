@@ -6,6 +6,8 @@ Use keywords to link issues. Closes/Fixes will auto-close the issue when this PR
 - Fixes #issue-number
 Learn more about linking PRs to an issue on GitHub:
 https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/linking-a-pull-request-to-an-issue
+
+Leave empty or write "No related issues to link" if no related issues exist.
 -->
 
 ## 📋 What changes are proposed in this pull request?
@@ -32,8 +34,11 @@ Describe the tests you ran or wrote to verify your changes. Include:
         notes for FiftyOne users.
 
 <!--
+If answering "yes" above"
 Details in 1-2 sentences. You can refer to another PR with a description
 if this PR is part of a larger change.
+
+If answering "no" above, leave empty or add "N/A"
 -->
 
 ### What areas of FiftyOne does this PR affect?
