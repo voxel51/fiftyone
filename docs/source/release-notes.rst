@@ -3,6 +3,204 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.17.0
+--------------------------
+*Released March 31, 2026*
+
+Includes all updates from :ref:`FiftyOne 1.14.0 <release-notes-v1.14.0>`, plus:
+
+App
+
+- Introduced a "Your recent runs" widget on the Datasets page, showing run
+  status with visual indicators and direct links to run details.
+- Improved logic when user attempts to follow a link but is not logged in. We
+  will now more consistently remember the original destination and redirect on
+  login.
+- Fixed a bug where saving a valid auth config would result in a validation
+  error.
+- Fixed search logic on Runs page.
+
+Core
+
+- Added support for Azure SAS token credentials for cloud authentication. If an
+  Azure SAS token is provided when setting Azure cloud credentials, we will
+  only use that token and not generate one on your behalf.
+
+Auth and Users
+
+- Introduced a new :ref:`Labeler <enterprise-labeler>` role. This role only
+  allows explicit dataset access, tagging of samples, and manual annotation in
+  those datasets.
+- Added `lastUpdatedAt` field to account data to provide a more accurate
+  measure of user activity.
+
+
+.. _release-notes-v1.14.0:
+
+FiftyOne 1.14.0
+---------------
+*Released March 31, 2026*
+
+In-App Annotation
+
+- Fixed a bug which could cause erroneous patch requests while annotating
+  samples `#7224 <https://github.com/voxel51/fiftyone/pull/7224>`_
+- Fixed: in "Create new Detections" mode, a user may "click to exit".
+  Previously, clicking would create a new Detection with neither width nor
+  height. `#7205 <https://github.com/voxel51/fiftyone/pull/7205>`_
+- Fixed: Newly created fields in the Schema Manager aren't available for
+  annotation. `#7140 <https://github.com/voxel51/fiftyone/pull/7140>`_
+- Fixed an issue where being in annotation mode, then closing the modal, could
+  cause display options to be removed.
+  `#7158 <https://github.com/voxel51/fiftyone/pull/7158>`_
+- Fixed a bug where tooltips would improperly render above Schema Manager
+  `#7102 <https://github.com/voxel51/fiftyone/pull/7102>`_
+- Fixed a crash for users with only tagging permissions when attempting to load
+  the schema management UI.
+  `#7182 <https://github.com/voxel51/fiftyone/pull/7182>`_
+
+CVAT Integration
+
+- Improved handling of mask data when downloading
+  :ref:`CVAT <cvat-integration>` annotations to correctly convert masks to
+  polylines, polygons, and segmentation formats based on expected label types.
+  `#7056 <https://github.com/voxel51/fiftyone/pull/7056>`_
+- Fixed `#7024 <https://github.com/voxel51/fiftyone/issues/7024>`_. In the
+  :ref:`CVAT integration <cvat-integration>`, annotations could fail to load
+  when calling
+  :func:`load_annotations() <fiftyone.utils.annotations.load_annotations>`
+  if there were >10 CVAT projects.
+  `#7058 <https://github.com/voxel51/fiftyone/pull/7058>`_
+
+App
+
+- Added support for direct 3D file formats (PCD, PLY, STL, FBX, GLTF, OBJ)
+  rendering alongside FO3D content in grouped media, unifying our 3D rendering
+  implementation. `#7246 <https://github.com/voxel51/fiftyone/pull/7246>`_
+- Enhanced 3D modal rendering with improved slice reconciliation and visibility
+  toggling. `#7246 <https://github.com/voxel51/fiftyone/pull/7246>`_
+- Improved grouped media navigation with better slice selection and pinning
+  behavior. Better handling of sparse group configurations with automatic slice
+  fallback logic. `#7246 <https://github.com/voxel51/fiftyone/pull/7246>`_
+- Updated Adaptive Toolbar to prefer rendering action buttons over 'more
+  options' button where possible.
+  `#6990 <https://github.com/voxel51/fiftyone/pull/6990>`_
+- Improved hover styling for buttons in the Nav Bar.
+  `#7092 <https://github.com/voxel51/fiftyone/pull/7092>`_
+- Standardized timestamp display and generally improved UI for range filters in
+  grid sidebar. `#7027 <https://github.com/voxel51/fiftyone/pull/7027>`_
+- Fixed modal state transitions when switching between 2D and 3D viewers.
+  `#7246 <https://github.com/voxel51/fiftyone/pull/7246>`_
+- Fixed `#6388 <https://github.com/voxel51/fiftyone/issues/6388>`_. Exclude
+  samples by label tags now works as expected.
+  `#7174 <https://github.com/voxel51/fiftyone/pull/7174>`_
+- Fixed an issue where frame labels (detections) permanently disappear on
+  videos longer than ~5100 frames by detecting LRU cache misses and correctly
+  restarting the frame stream.
+  `#7053 <https://github.com/voxel51/fiftyone/pull/7053>`_
+- Fixed `#2010 <https://github.com/voxel51/fiftyone/issues/2010>`_. Blank page
+  when running on windows systems.
+  `#7152 <https://github.com/voxel51/fiftyone/pull/7152>`_
+- Fixed a bug where the FiftyOne App crashed when loading datasets if Python or
+  FiftyOne plugins were installed under non-standard filesystem paths (e.g.,
+  `/sc/home/...`). Plugins are now registered using synthetic module names that
+  don't depend on filesystem location.
+  `#6749 <https://github.com/voxel51/fiftyone/pull/6749>`_
+
+Plugins and Operators
+
+- Added :ref:`async data loading <operator-async-data-loading>` to
+  :ref:`Operators <using-operators>`. Added `LoaderView` and `Object.loader()`
+  to enable operators to load data asynchronously in forms without blocking
+  user input. The loader executes an operator and tracks state
+  (`idle`/`loading`/`loaded`/`errored`) with the result stored at the property
+  path. `#6723 <https://github.com/voxel51/fiftyone/pull/6723>`_
+- When constructing a
+  :class:`PipelineStage <fiftyone.operators.types.PipelineStage>`, you can now
+  pass `request_params_overrides`, which will override any of the corresponding
+  params in the parent operator's request params.
+  `#6954 <http://github.com/voxel51/fiftyone/pull/6954>`_
+- Added ability to detect failed operator loading for `useOperatorExecutor`
+  consumers. `#7203 <https://github.com/voxel51/fiftyone/pull/7203>`_
+- All builtin operators that are expensive to execute on large datasets now
+  default to delegated execution if
+  :ref:`orchestrators <enterprise-delegated-orchestrator>` are available.
+  `#6985 <https://github.com/voxel51/fiftyone/pull/6985>`_
+- Fixed missing Delegated :ref:`Operators <using-operators>` logs for builtin
+  plugins. `#7111 <https://github.com/voxel51/fiftyone/pull/7111>`_
+
+Models
+
+- Added new Depth Anything V3 models added to the model zoo:
+  `depth-anything-v3-small-torch`, `depth-anything-v3-base-torch`, and
+  `depth-anything-v3-large-torch` variants.
+  `#6718 <https://github.com/voxel51/fiftyone/pull/6718>`_
+- Added enable text-based similarity search support to `Qwen3VLModel`.
+  Implemented `embed_prompt()` / `embed_prompts()` for text embedding. Text
+  embeddings use the same pipeline as image embeddings (same chat template
+  args, same _postprocess_embedding) so vectors share a common space.
+  `#7132 <https://github.com/voxel51/fiftyone/pull/7132>`_
+- Added native video embedding support to Qwen3-VL. Now
+  :meth:`compute_embeddings()
+  <fiftyone.core.collections.SampleCollection.compute_embeddings>` will route
+  to the native video path when `model.media_type == "video"`, producing one
+  embedding per video. `#7049 <https://github.com/voxel51/fiftyone/pull/7049>`_
+- Added Apple SHARP single-image to 3D Gaussian splat model. Outputs `.ply`
+  files stored in `splat_path` attribute.
+  `#6833 <https://github.com/voxel51/fiftyone/pull/6833>`_
+- New argument `pin_memory` in
+  :meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`
+  and
+  :meth:`compute_embeddings() <fiftyone.core.collections.SampleCollection.compute_embeddings>`.
+  This argument allows you to use more memory to get faster inference in cases
+  when inference is bottlenecked by CPU to GPU transfer times.
+  `#7184 <https://github.com/voxel51/fiftyone/pull/7184>`_
+- Fixed: YOLO segmentation models will now have their masks properly scaled
+  when inference results are converted using
+  :func:`fiftyone.utils.ultralytics.to_instances() <fiftyone.utils.ultralytics.to_instances>`.
+  `#7186 <https://github.com/voxel51/fiftyone/pull/7186>`_
+- Fixed field name mismatch in `_to_sam_points` that prevents object-level
+  point labels from working.
+  `#6941 <http://github.com/voxel51/fiftyone/pull/6941>`_
+
+Core
+
+- Improved exception handling robustness across multiple modules by refining
+  catch clauses to explicitly target standard exceptions.
+  `#7214 <https://github.com/voxel51/fiftyone/pull/7214>`_
+- Fixed metadata computations for urls without `Content-Length` set.
+  `#6998 <http://github.com/voxel51/fiftyone/pull/6998>`_
+
+Build
+
+- Installer now exposes `-u` flag that switches the `pip` backend to `uv pip`
+  for the duration of the install.
+  `#7129 <https://github.com/voxel51/fiftyone/pull/7129>`_
+- Fixed `#7151 <https://github.com/voxel51/fiftyone/issues/7151>`_. Windows
+  source install reports "error: File not found: requirements.txt".
+  `#7129 <https://github.com/voxel51/fiftyone/pull/7129>`_
+- Fixed nvm installation issue in install.sh. Bumped nvm version to 0.40.4.
+  `#7157 <https://github.com/voxel51/fiftyone/pull/7157>`_
+
+Documentation
+
+- Updated example operating system versions in bug report and installation
+  issue templates to reflect current platform versions.
+  `#6898 <https://github.com/voxel51/fiftyone/pull/6898>`_
+- Updated contribution guidelines, adding a Windows-specific instruction for
+  running the install script.
+  `#6900 <https://github.com/voxel51/fiftyone/pull/6900>`_
+- Fixed `#4553 <https://github.com/voxel51/fiftyone/issues/4553>`_. Added
+  documentation for the `tolerance` parameter, which controls polygon
+  simplification when exporting instance segmentations, to the
+  :ref:`COCO integration docs <coco-format>`.
+  `#7175 <https://github.com/voxel51/fiftyone/pull/7175>`_
+- Fixed incorrect examples in docstring for the :meth:`match()
+  <fiftyone.core.collections.SampleCollection.match>` function.
+  `#7127 <https://github.com/voxel51/fiftyone/pull/7127>`_
+
+
+
 FiftyOne Enterprise 2.16.5
 --------------------------
 *Released March 23, 2026*
