@@ -34,7 +34,7 @@ Describe the tests you ran or wrote to verify your changes. Include:
         notes for FiftyOne users.
 
 <!--
-If answering "yes" above"
+If answering "yes" above:
 Details in 1-2 sentences. You can refer to another PR with a description
 if this PR is part of a larger change.
 
