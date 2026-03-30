@@ -145,6 +145,16 @@ export class SampleCanvasPom {
   }
 
   /**
+   * Scroll the mouse wheel at the current cursor position.
+   *
+   * @param deltaX Horizontal scroll delta
+   * @param deltaY Vertical scroll delta (negative = zoom in, positive = zoom out)
+   */
+  async wheel(deltaX: number, deltaY: number) {
+    await this.page.mouse.wheel(deltaX, deltaY);
+  }
+
+  /**
    * Wait for the cursor to change
    */
   async waitForCursorChange() {
@@ -182,7 +192,7 @@ export class SampleCanvasPom {
  * Sample canvas asserter
  */
 class SampleCanvasAsserter {
-  constructor(private readonly sampleCanvasPom: SampleCanvasPom) {}
+  constructor(private readonly sampleCanvasPom: SampleCanvasPom) { }
 
   /**
    * Does the mouse have this cursor style

@@ -310,6 +310,17 @@ export class ModalPom {
       { timeout: SAMPLE_LOAD_TIMEOUT }
     );
   }
+
+  async waitForLighterReady() {
+    return this.page.waitForFunction(
+      () =>
+        document
+          .querySelector(`[data-cy=lighter-sample-renderer] canvas`)
+          ?.getAttribute("lighter-ready") === "true",
+      undefined,
+      { timeout: Duration.Seconds(20) }
+    );
+  }
 }
 
 class ModalAsserter {

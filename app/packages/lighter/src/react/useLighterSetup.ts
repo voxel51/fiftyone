@@ -16,7 +16,20 @@ import {
 
 // TODO: Ultimately, we'll want to remove dependency on "looker" and create our own options type
 // This type extends what fos.useLookerOptions returns to maintain compatibility during transition
-export type LighterOptions = Partial<ReturnType<typeof useLookerOptions>>;
+export type LighterOptions = Partial<ReturnType<typeof useLookerOptions>> & {
+  /**
+   * Called once after PixiJS initialization completes, before the first render
+   * frame. Use this to apply one-time viewport setup such as restoring a saved
+   * viewport state or queuing a content-aware initial zoom.
+   *
+   * Example:
+   *   onInitialized: (scene) => {
+   *     if (savedViewport) scene.setViewportState(savedViewport);
+   *     else if (zoomTarget) scene.queueInitialZoom(zoomTarget, pad);
+   *   }
+   */
+  onInitialized?: (scene: Scene2D) => void;
+};
 
 /**
  * Hook for setting up the Lighter library in React components.
@@ -35,10 +48,15 @@ export const useLighterSetupWithPixi = (
   sceneId: string
 ) => {
   const [scene, setScene] = useAtom(lighterSceneAtom);
-  const eventChannel = scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID;
-  const eventBus = useLighterEventBus(eventChannel);
+
+  // Freeze the callback at mount time so we never re-run initialization if the
+  // parent re-renders with a new function reference.
+  const onInitializedRef = useRef(options.onInitialized);
 
   const rendererRef = useRef<PixiRenderer2D | null>(null);
+
+  const eventChannel = scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID;
+  const eventBus = useLighterEventBus(eventChannel);
 
   useEffect(() => {
     if (!stableCanvas || !sceneId) return;
@@ -46,7 +64,6 @@ export const useLighterSetupWithPixi = (
     const renderer = new PixiRenderer2D(stableCanvas);
     rendererRef.current = renderer;
 
-    // Extract only the options we need for Scene2D
     const sceneOptions = {
       activePaths: options.activePaths,
       showOverlays: options.showOverlays,
@@ -71,7 +88,11 @@ export const useLighterSetupWithPixi = (
     if (!scene || scene.isDestroyed) return;
 
     rendererRef.current?.initializePixiJS().then(() => {
+      if (onInitializedRef.current) {
+        onInitializedRef.current(scene);
+      }
       scene.startRenderLoop();
+      stableCanvas.setAttribute("lighter-ready", "true");
     });
 
     return () => {

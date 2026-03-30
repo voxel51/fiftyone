@@ -4,10 +4,13 @@ import { useCallback, useMemo } from "react";
 import { useRecoilState, useRecoilValue, useRecoilValueLoadable } from "recoil";
 import { ModalMode, modalMode } from "../jotai";
 import { preferredGroupAnnotationSliceAtom } from "../jotai/group-annotation";
+import { __unsafeModalViewportAtom } from "../jotai/modal";
+import type { ModalViewportState } from "../jotai/modal";
 import {
   activeFields,
   currentSampleId,
   fieldSchema,
+  lookerOptions,
   ModalSample,
   modalSample,
   State,
@@ -97,4 +100,25 @@ export const useCurrentSampleId = () => {
   const loadable = useRecoilValueLoadable(currentSampleId);
 
   return loadable.state === "hasValue" ? loadable.contents : null;
+};
+
+/**
+ * Gets the saved modal viewport (zoom/pan) state.
+ */
+export const useModalViewport = (): ModalViewportState | null =>
+  useAtomValue(__unsafeModalViewportAtom);
+
+/**
+ * Setter for persisting the modal viewport (zoom/pan) state.
+ */
+export const useSaveModalViewport = () =>
+  useSetAtom(__unsafeModalViewportAtom);
+
+/**
+ * Gets the looker options for the modal.
+ *
+ * @param withFilter - Whether to apply frontend label filtering. Defaults to `false`.
+ */
+export const useModalLookerOptions = (withFilter = false) => {
+  return useRecoilValue(lookerOptions({ modal: true, withFilter }));
 };

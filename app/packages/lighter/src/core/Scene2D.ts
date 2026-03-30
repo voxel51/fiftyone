@@ -17,11 +17,12 @@ import {
   TransformOverlayCommand,
 } from "../commands/TransformOverlayCommand";
 import { STROKE_WIDTH } from "../constants";
+import type { ViewportState } from "../types";
 import type { LighterEventGroup } from "../events";
 import type { InteractionHandler } from "../interaction/InteractionManager";
 import { InteractionManager } from "../interaction/InteractionManager";
 import type { InteractiveDetectionHandler } from "../interaction/InteractiveDetectionHandler";
-import type { BaseOverlay } from "../overlay/BaseOverlay";
+import { BaseOverlay } from "../overlay/BaseOverlay";
 import type { Selectable } from "../selection/Selectable";
 import type { SelectionOptions } from "../selection/SelectionManager";
 import { SelectionManager } from "../selection/SelectionManager";
@@ -73,6 +74,17 @@ export const TypeGuards = {
     typeof (value as { containsPoint: unknown }).containsPoint === "function" &&
     "markDirty" in value &&
     typeof (value as { markDirty: unknown }).markDirty === "function",
+};
+
+/**
+ * Type guard that narrows `Rect | undefined` to `Rect` and confirms the rect
+ * has non-zero area.
+ */
+const isUsableBounds = (bounds: Rect | undefined): bounds is Rect => {
+  if (!bounds) return false;
+  return (
+    BaseOverlay.validBounds(bounds) && bounds.width !== 0 && bounds.height !== 0
+  );
 };
 
 /**
@@ -619,6 +631,69 @@ export class Scene2D {
   }
 
   /**
+   * Returns the current zoom and pan state of the scene's renderer.
+   * Use this to snapshot the viewport before unmounting the scene.
+   */
+  getViewportState(): ViewportState {
+    return this.config.renderer.getViewportState();
+  }
+
+  /**
+   * Restores a previously captured zoom and pan state to the scene's renderer.
+   * Call this after the renderer is initialized and the render loop has started.
+   */
+  setViewportState(state: ViewportState): void {
+    this.config.renderer.setViewportState(state);
+  }
+
+  /**
+   * Computes the smallest rectangle in world coordinates that
+   * contains all `Spatial` overlays in the scene (excluding canonical media).
+   * Only overlays with non-zero area bounds are included.
+   *
+   * @returns The union bounding rect, or `null` if no qualifying overlays exist.
+   */
+  getContentBounds(): Rect | null {
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    let found = false;
+
+    this.overlays.forEach((overlay, id) => {
+      if (id === this.canonicalMediaId) return;
+      if (!TypeGuards.isSpatial(overlay)) return;
+
+      const bounds = overlay.bounds;
+      if (!isUsableBounds(bounds)) return;
+
+      minX = Math.min(minX, bounds.x);
+      minY = Math.min(minY, bounds.y);
+      maxX = Math.max(maxX, bounds.x + bounds.width);
+      maxY = Math.max(maxY, bounds.y + bounds.height);
+      found = true;
+    });
+
+    if (!found) return null;
+
+    return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+  }
+
+  /**
+   * Adjusts the viewport so all `Spatial` overlays are centered and fully
+   * visible. A no-op when there are no qualifying overlays.
+   *
+   * @param padding - Fraction of the viewport to keep as empty space on each
+   *   side (0–1). Passed directly to `Renderer2D.fitToRect`. Defaults to 0.
+   */
+  fitToContent(padding?: number): void {
+    const bounds = this.getContentBounds();
+    if (bounds) {
+      this.config.renderer.fitToRect(bounds, padding);
+    }
+  }
+
+  /**
    * Reset the scene's zoom level to 100% and clears pan translation.
    */
   resetZoomPan(): void {
@@ -900,6 +975,51 @@ export class Scene2D {
     this.config.renderer.addTickHandler(async () => {
       await this.renderFrame();
     });
+  }
+
+  /**
+   * Queues a content-aware auto-zoom that fires once two async prerequisites
+   * are both satisfied:
+   *   - `lighter:resize`  — canvas has correct pixel dimensions (PixiJS ready)
+   *   - `lighter:canonical-media-bounds-changed` — image bounds are known
+   *
+   * These events can arrive in either order. The zoom is applied when the
+   * second one arrives, then `lighter:viewport-initialized` is dispatched so
+   * the React container can be revealed.
+   *
+   * @param target - Zoom target rect in normalized [0,1] image-relative coords.
+   * @param pad    - Fraction of the viewport to keep as padding on each side.
+   */
+  public queueInitialZoom(target: Rect, pad: number = 0): void {
+    let resized = false;
+    let boundsReady = false;
+
+    const tryApply = () => {
+      if (!resized || !boundsReady) return;
+      offResize();
+      offBounds();
+
+      const worldRect = this.coordinateSystem.relativeToAbsolute(target);
+      if (!worldRect.width || !worldRect.height) return;
+
+      this.config.renderer.fitToRect(worldRect, pad);
+      this.eventBus.dispatch("lighter:viewport-initialized", {});
+    };
+
+    const offResize = this.eventBus.on("lighter:resize", () => {
+      resized = true;
+      tryApply();
+    });
+    this.abortController.signal.addEventListener("abort", offResize);
+
+    const offBounds = this.eventBus.on(
+      "lighter:canonical-media-bounds-changed",
+      () => {
+        boundsReady = true;
+        tryApply();
+      }
+    );
+    this.abortController.signal.addEventListener("abort", offBounds);
   }
 
   /**

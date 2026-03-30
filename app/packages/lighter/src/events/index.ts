@@ -185,6 +185,12 @@ export type LighterEventGroup = {
   "lighter:zoomed": { scale: number };
   /** Emitted when the viewport is panned/moved */
   "lighter:viewport-moved": { x: number; y: number; scale: number };
+  /**
+   * Emitted by Scene2D.queueInitialZoom once fitToRect has been applied.
+   * Signals that the initial viewport is fully set and it is safe to reveal
+   * the scene container (i.e. remove the visibility:hidden guard).
+   */
+  "lighter:viewport-initialized": Record<string, never>;
 
   // ============================================================================
   // "DO" EVENTS USERS CAN EMIT TO FORCE STATE CHANGES OR ACTIONS
