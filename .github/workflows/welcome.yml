@@ -1,4 +1,4 @@
-name: Welcome
+name: PR Welcome Comment
 
 on:
   pull_request_target:
