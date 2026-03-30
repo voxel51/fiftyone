@@ -22,18 +22,29 @@ async function loadConfig() {
       nodePolyfills(),
       // pluginRewriteAll to address this vite bug: https://github.com/vitejs/vite/issues/2415
       pluginRewriteAll(),
-      // In production, the worker bundle strips ort's embedded WASM.
-      // Emit the WASM runtime files so ort can load them at runtime.
-      {
-        name: "copy-ort-wasm",
-        apply: "build",
-        buildStart() {
-          const ortDist = path.dirname(require.resolve("onnxruntime-web"));
-          for (const f of ["ort-wasm-simd-threaded.jsep.wasm", "ort-wasm-simd-threaded.jsep.mjs"]) {
-            this.emitFile({ type: "asset", fileName: `assets/${f}`, source: fs.readFileSync(path.join(ortDist, f)) });
-          }
-        },
-      },
+      // Vite's worker bundling breaks ort's WASM resolution and emits hashed
+      // copies that ort can't find by name. Emit unhashed copies and clean up.
+      (() => {
+        const ortWasmFiles = ["ort-wasm-simd-threaded.jsep.wasm", "ort-wasm-simd-threaded.jsep.mjs"];
+        return {
+          name: "copy-ort-wasm",
+          buildStart() {
+            const ortDist = path.dirname(require.resolve("onnxruntime-web"));
+            for (const f of ortWasmFiles) {
+              this.emitFile({ type: "asset", fileName: `assets/${f}`, source: fs.readFileSync(path.join(ortDist, f)) });
+            }
+          },
+          closeBundle() {
+            const distAssets = path.resolve(__dirname, "dist/assets");
+            const keep = new Set(ortWasmFiles);
+            for (const f of fs.readdirSync(distAssets)) {
+              if (f.includes("ort-wasm") && !keep.has(f)) {
+                fs.unlinkSync(path.join(distAssets, f));
+              }
+            }
+          },
+        };
+      })(),
     ],
     assetsInclude: ["**/*.onnx"],
     define: {
