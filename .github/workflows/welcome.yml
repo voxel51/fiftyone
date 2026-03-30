@@ -26,7 +26,7 @@ jobs:
               body: [
                 `Thanks for opening this pull request, @${context.payload.pull_request.user.login}! 🎉`,
                 '',
-                'A maintainer will review your changes soon. In the meantime, please make certain:',
+                'A maintainer will review your changes soon. In the meantime, please ensure:',
                 '',
                 '- [ ] You filled out the PR template above, completely to the best of your knowledge',
                 '- [ ] You include tests (if applicable)',
