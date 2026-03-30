@@ -35,24 +35,6 @@ jobs:
               issue_number: context.payload.pull_request.number,
               body: [
                 `Thanks for opening this pull request, @${pr.user.login}! 🎉`,
-            const { data: pr } = await github.rest.pulls.get({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: context.payload.pull_request.number,
-            });
-
-            const internal = ['MEMBER', 'OWNER', 'COLLABORATOR'];
-            if (internal.includes(pr.author_association)) {
-              console.log(`Skipping: ${pr.user.login} is ${pr.author_association}`);
-              return;
-            }
-
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.payload.pull_request.number,
-              body: [
-                `Thanks for opening this pull request, @${pr.user.login}! 🎉`,
                 '',
                 'A maintainer will review your changes soon. In the meantime, please ensure:',
                 '',
