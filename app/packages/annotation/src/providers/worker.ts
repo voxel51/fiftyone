@@ -64,10 +64,8 @@ function postError(id: number, type: string, error: string): void {
 const IMAGE_MEAN = [0.485, 0.456, 0.406];
 const IMAGE_STD = [0.229, 0.224, 0.225];
 
-// SAM2 Tiny model weights (HuggingFace-hosted, pre-optimized ONNX)
-// Meta (Apache 2.0, https://huggingface.co/facebook/sam2-hiera-tiny)
-// SharpAI (Apache 2.0, ONNX conversion + ORT optimization, https://huggingface.co/SharpAI/sam2-hiera-tiny-onnx)
-const HF_BASE = "https://huggingface.co/SharpAI/sam2-hiera-tiny-onnx/resolve/main";
+// SAM2 Tiny model weights (pre-optimized ONNX)
+const HF_BASE = "https://models-cdn.voxel51.com/sam2";
 const ENCODER_URL = `${HF_BASE}/encoder.with_runtime_opt.ort`;
 const DECODER_URL = `${HF_BASE}/decoder.onnx`;
 
