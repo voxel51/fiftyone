@@ -5898,6 +5898,18 @@ specify the desired transformation. The ``chain_via`` parameter enables
 composing transformations through intermediate frames (e.g., camera → ego →
 world).
 
+Resolution precedence for extrinsics is:
+
+1.  Direct ``source_frame -> target_frame`` match
+2.  If provided, explicit ``chain_via`` path only
+3.  If ``chain_via`` is omitted and ``target_frame="world"``, automatic
+    chaining through up to two intermediate frames
+
+Automatic chaining only applies when a unique forward path exists. If no valid
+path exists, or more than one valid path exists, no automatic chain is chosen
+and resolution returns ``None``. When deterministic path selection matters,
+provide ``chain_via`` explicitly.
+
 .. note::
 
     For :ref:`grouped datasets <groups>`, the group slice name plays an
