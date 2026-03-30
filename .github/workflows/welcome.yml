@@ -3,12 +3,6 @@ name: Welcome
 on:
   pull_request_target:
     types: [opened]
-  workflow_dispatch:
-    inputs:
-      pr_number:
-        description: "PR number to test with (dry run)"
-        required: true
-        type: number
 
 permissions:
   issues: write
@@ -18,29 +12,21 @@ jobs:
   welcome:
     runs-on: ubuntu-latest
     if: >-
-      github.event_name == 'workflow_dispatch' ||
-      (github.event.pull_request.author_association != 'MEMBER' &&
+      github.event.pull_request.author_association != 'MEMBER' &&
       github.event.pull_request.author_association != 'OWNER' &&
-      github.event.pull_request.author_association != 'COLLABORATOR')
+      github.event.pull_request.author_association != 'COLLABORATOR'
     steps:
       - name: Comment on PR
         uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
           script: |
-            const pr = context.payload.pull_request
-              || (await github.rest.pulls.get({
-                   owner: context.repo.owner,
-                   repo: context.repo.repo,
-                   pull_number: context.payload.inputs.pr_number,
-                 })).data;
-
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: pr.number,
+              issue_number: context.payload.pull_request.number,
               body: [
-                `Thanks for opening this pull request, @${pr.user.login}! 🎉`,
+                `Thanks for opening this pull request, @${context.payload.pull_request.user.login}! 🎉`,
                 '',
                 'A maintainer will review your changes soon. In the meantime, please ensure:',
                 '',
