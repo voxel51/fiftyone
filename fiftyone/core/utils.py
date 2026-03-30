@@ -2538,8 +2538,8 @@ def compute_filehash(filepath, method=None, chunk_size=None):
             bytes. Only applicable when a ``method`` is provided. The default
             is 64kB. If negative, the entire file is read at once
 
-        Returns:
-            the hash
+    Returns:
+        the hash
     """
     if method is None:
         with open(filepath, "rb") as f:
