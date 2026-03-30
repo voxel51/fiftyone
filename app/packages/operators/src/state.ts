@@ -435,22 +435,21 @@ export const useOperatorExecutionOptions = ({
   onExecute,
 }: {
   operatorUri: string;
-  onExecute: (opts: OperatorExecutorOptions) => void;
+  onExecute: (options?: OperatorExecutorOptions) => void;
 }): {
   executionOptions: OperatorExecutionOption[];
+  requiresOrchestratorSetup: boolean;
 } => {
   const ctx = useExecutionContext(operatorUri);
   const { isRemote } = getLocalOrRemoteOperator(operatorUri);
   const execDetails = useExecutionOptions(operatorUri, ctx, isRemote);
-  const submitOptions = useOperatorPromptSubmitOptions(
+  const { options, requiresOrchestratorSetup } = useOperatorPromptSubmitOptions(
     operatorUri,
     execDetails,
     onExecute
   );
 
-  return {
-    executionOptions: submitOptions.options,
-  };
+  return { executionOptions: options, requiresOrchestratorSetup };
 };
 
 export const useOperatorPrompt = () => {
