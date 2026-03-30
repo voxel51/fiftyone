@@ -1082,6 +1082,21 @@ supported values are:
 
 See :ref:`this section <cvat-unexpected-annotations>` for more details.
 
+If your CVAT task uses ``text`` attributes and you need to preserve their raw
+string values (for example, leading zeros such as ``"0020"``), you can pass
+`preserve_cvat_text_strings=True` when loading annotations:
+
+.. code:: python
+    :linenos:
+
+    view.load_annotations(
+        anno_key,
+        preserve_cvat_text_strings=True,
+    )
+
+By default, FiftyOne preserves the existing behavior and still infers scalar
+types from attribute values.
+
 .. _cvat-managing-annotation-runs:
 
 Managing annotation runs

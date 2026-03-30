@@ -7,7 +7,10 @@ FiftyOne utilities unit tests.
 """
 
 from datetime import datetime
+import os
 import sys
+import tempfile
+import textwrap
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -21,6 +24,7 @@ import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
 from fiftyone.migrations.runner import MigrationRunner
+import fiftyone.utils.cvat as foucvat
 import fiftyone.utils.data as foud
 from fiftyone import ViewField as F
 
@@ -1108,6 +1112,134 @@ class ResponseStreamTests(unittest.TestCase):
         stream.read(100)
         size = stream.consume_size()
         self.assertEqual(size, len(data))
+
+
+class CVATUtilsTests(unittest.TestCase):
+    def test_parse_cvat_attribute_value_preserves_only_text_attributes(self):
+        self.assertEqual(
+            foucvat._parse_cvat_attribute_value(  # pylint: disable=protected-access
+                "0020",
+                input_type="text",
+                preserve_cvat_text_strings=False,
+            ),
+            20,
+        )
+        self.assertEqual(
+            foucvat._parse_cvat_attribute_value(  # pylint: disable=protected-access
+                "0020",
+                input_type="text",
+                preserve_cvat_text_strings=True,
+            ),
+            "0020",
+        )
+        self.assertIs(
+            foucvat._parse_cvat_attribute_value(  # pylint: disable=protected-access
+                "False",
+                input_type="checkbox",
+                preserve_cvat_text_strings=True,
+            ),
+            False,
+        )
+
+    def test_cvat_backend_config_load_credentials_accepts_preserve_flag(self):
+        config = foucvat.CVATBackendConfig(name="cvat", label_schema={})
+        self.assertFalse(config.preserve_cvat_text_strings)
+
+        config.load_credentials(preserve_cvat_text_strings=True)
+        self.assertTrue(config.preserve_cvat_text_strings)
+
+    def test_cvat_tag_preserves_text_attributes_with_api_schema(self):
+        label_dict = {
+            "id": 1,
+            "label_id": 10,
+            "attributes": [
+                {"spec_id": 100, "value": "0020"},
+                {"spec_id": 101, "value": "100"},
+            ],
+        }
+        class_map = {10: "person"}
+        attr_id_map = {10: {"bib": 100, "score": 101}}
+        attr_input_type_map = {10: {100: "text", 101: "select"}}
+
+        tag = foucvat.CVATTag(
+            label_dict,
+            class_map,
+            attr_id_map,
+            server_id_map={},
+            attr_input_type_map=attr_input_type_map,
+            preserve_cvat_text_strings=True,
+        )
+
+        self.assertEqual(tag.attributes["bib"], "0020")
+        self.assertEqual(tag.attributes["score"], 100)
+
+    def test_load_cvat_image_annotations_preserve_text_attributes(self):
+        xml_str = textwrap.dedent(
+            """\
+            <?xml version="1.0" encoding="utf-8"?>
+            <annotations>
+                <version>1.1</version>
+                <meta>
+                    <task>
+                        <labels>
+                            <label>
+                                <name>person</name>
+                                <attributes>
+                                    <attribute>
+                                        <name>bib</name>
+                                        <values></values>
+                                    </attribute>
+                                    <attribute>
+                                        <name>score</name>
+                                        <values>low
+high</values>
+                                    </attribute>
+                                    <attribute>
+                                        <name>flag</name>
+                                        <input_type>checkbox</input_type>
+                                        <values>True
+False</values>
+                                    </attribute>
+                                </attributes>
+                            </label>
+                        </labels>
+                    </task>
+                </meta>
+                <image id="0" name="img.jpg" width="100" height="100">
+                    <tag label="person">
+                        <attribute name="bib">0020</attribute>
+                        <attribute name="score">100</attribute>
+                        <attribute name="flag">False</attribute>
+                    </tag>
+                </image>
+            </annotations>
+            """
+        ).lstrip()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            xml_path = os.path.join(temp_dir, "labels.xml")
+            with open(xml_path, "w", encoding="utf-8") as f:
+                f.write(xml_str)
+
+            _, _, images_default = foucvat.load_cvat_image_annotations(
+                xml_path
+            )
+            attrs_default = {
+                a.name: a.value for a in images_default[0].tags[0].attributes
+            }
+            self.assertEqual(attrs_default["bib"], 20)
+            self.assertEqual(attrs_default["score"], 100)
+            self.assertIs(attrs_default["flag"], False)
+
+            _, _, images_preserved = foucvat.load_cvat_image_annotations(
+                xml_path, preserve_cvat_text_strings=True
+            )
+            attrs_preserved = {
+                a.name: a.value for a in images_preserved[0].tags[0].attributes
+            }
+            self.assertEqual(attrs_preserved["bib"], "0020")
+            self.assertEqual(attrs_preserved["score"], 100)
+            self.assertIs(attrs_preserved["flag"], False)
 
 
 if __name__ == "__main__":

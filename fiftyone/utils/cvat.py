@@ -1537,12 +1537,21 @@ class CVATImage(object):
         )
 
     @classmethod
-    def from_image_dict(cls, d):
+    def from_image_dict(
+        cls,
+        d,
+        text_attribute_names_by_label=None,
+        preserve_cvat_text_strings=False,
+    ):
         """Creates a :class:`CVATImage` from an ``<image>`` tag of a CVAT image
         annotations XML file.
 
         Args:
             d: a dict representation of an ``<image>`` tag
+            text_attribute_names_by_label (None): an optional dict mapping
+                label names to text attribute names
+            preserve_cvat_text_strings (False): whether to preserve raw strings
+                for CVAT ``text`` attributes
 
         Returns:
             a :class:`CVATImage`
@@ -1555,23 +1564,63 @@ class CVATImage(object):
 
         tags = []
         for td in _ensure_list(d.get("tag", [])):
-            tags.append(CVATImageTag.from_tag_dict(td))
+            tags.append(
+                CVATImageTag.from_tag_dict(
+                    td,
+                    text_attribute_names=_get_label_text_attribute_names(
+                        text_attribute_names_by_label, td.get("@label", None)
+                    ),
+                    preserve_cvat_text_strings=preserve_cvat_text_strings,
+                )
+            )
 
         boxes = []
         for bd in _ensure_list(d.get("box", [])):
-            boxes.append(CVATImageBox.from_box_dict(bd))
+            boxes.append(
+                CVATImageBox.from_box_dict(
+                    bd,
+                    text_attribute_names=_get_label_text_attribute_names(
+                        text_attribute_names_by_label, bd.get("@label", None)
+                    ),
+                    preserve_cvat_text_strings=preserve_cvat_text_strings,
+                )
+            )
 
         polygons = []
         for pd in _ensure_list(d.get("polygon", [])):
-            polygons.append(CVATImagePolygon.from_polygon_dict(pd))
+            polygons.append(
+                CVATImagePolygon.from_polygon_dict(
+                    pd,
+                    text_attribute_names=_get_label_text_attribute_names(
+                        text_attribute_names_by_label, pd.get("@label", None)
+                    ),
+                    preserve_cvat_text_strings=preserve_cvat_text_strings,
+                )
+            )
 
         polylines = []
         for pd in _ensure_list(d.get("polyline", [])):
-            polylines.append(CVATImagePolyline.from_polyline_dict(pd))
+            polylines.append(
+                CVATImagePolyline.from_polyline_dict(
+                    pd,
+                    text_attribute_names=_get_label_text_attribute_names(
+                        text_attribute_names_by_label, pd.get("@label", None)
+                    ),
+                    preserve_cvat_text_strings=preserve_cvat_text_strings,
+                )
+            )
 
         points = []
         for pd in _ensure_list(d.get("points", [])):
-            points.append(CVATImagePoints.from_points_dict(pd))
+            points.append(
+                CVATImagePoints.from_points_dict(
+                    pd,
+                    text_attribute_names=_get_label_text_attribute_names(
+                        text_attribute_names_by_label, pd.get("@label", None)
+                    ),
+                    preserve_cvat_text_strings=preserve_cvat_text_strings,
+                )
+            )
 
         return cls(
             id,
@@ -1686,7 +1735,9 @@ class CVATImageAnno(object):
         return occluded, attributes
 
     @staticmethod
-    def _parse_anno_dict(d):
+    def _parse_anno_dict(
+        d, text_attribute_names=None, preserve_cvat_text_strings=False
+    ):
         occluded = _from_int_bool(d.get("@occluded", None))
 
         attributes = []
@@ -1699,7 +1750,19 @@ class CVATImageAnno(object):
                     # should be ignored since we're not using the API here
                     continue
 
-                value = _parse_value(attr["#text"])
+                input_type = None
+                if (
+                    preserve_cvat_text_strings
+                    and text_attribute_names is not None
+                    and name in text_attribute_names
+                ):
+                    input_type = "text"
+
+                value = _parse_cvat_attribute_value(
+                    attr["#text"],
+                    input_type=input_type,
+                    preserve_cvat_text_strings=preserve_cvat_text_strings,
+                )
                 attributes.append(CVATAttribute(name, value))
 
         return occluded, attributes
@@ -1744,19 +1807,29 @@ class CVATImageTag(CVATImageAnno):
         return cls(label, attributes=attributes)
 
     @classmethod
-    def from_tag_dict(cls, d):
+    def from_tag_dict(
+        cls, d, text_attribute_names=None, preserve_cvat_text_strings=False
+    ):
         """Creates a :class:`CVATImageTag` from a ``<tag>`` tag of a
         CVAT image annotation XML file.
 
         Args:
             d: a dict representation of a ``<tag>`` tag
+            text_attribute_names (None): the names of text attributes for the
+                tag's label
+            preserve_cvat_text_strings (False): whether to preserve raw strings
+                for CVAT ``text`` attributes
 
         Returns:
             a :class:`CVATImageTag`
         """
         label = d["@label"]
 
-        _, attributes = cls._parse_anno_dict(d)
+        _, attributes = cls._parse_anno_dict(
+            d,
+            text_attribute_names=text_attribute_names,
+            preserve_cvat_text_strings=preserve_cvat_text_strings,
+        )
         return cls(label, attributes=attributes)
 
 
@@ -1839,12 +1912,18 @@ class CVATImageBox(CVATImageAnno):
         )
 
     @classmethod
-    def from_box_dict(cls, d):
+    def from_box_dict(
+        cls, d, text_attribute_names=None, preserve_cvat_text_strings=False
+    ):
         """Creates a :class:`CVATImageBox` from a ``<box>`` tag of a CVAT image
         annotation XML file.
 
         Args:
             d: a dict representation of a ``<box>`` tag
+            text_attribute_names (None): the names of text attributes for the
+                box's label
+            preserve_cvat_text_strings (False): whether to preserve raw strings
+                for CVAT ``text`` attributes
 
         Returns:
             a :class:`CVATImageBox`
@@ -1856,7 +1935,11 @@ class CVATImageBox(CVATImageAnno):
         xbr = int(round(float(d["@xbr"])))
         ybr = int(round(float(d["@ybr"])))
 
-        occluded, attributes = cls._parse_anno_dict(d)
+        occluded, attributes = cls._parse_anno_dict(
+            d,
+            text_attribute_names=text_attribute_names,
+            preserve_cvat_text_strings=preserve_cvat_text_strings,
+        )
 
         return cls(
             label, xtl, ytl, xbr, ybr, occluded=occluded, attributes=attributes
@@ -1940,19 +2023,29 @@ class CVATImagePolygon(CVATImageAnno, HasCVATPoints):
         return polylines
 
     @classmethod
-    def from_polygon_dict(cls, d):
+    def from_polygon_dict(
+        cls, d, text_attribute_names=None, preserve_cvat_text_strings=False
+    ):
         """Creates a :class:`CVATImagePolygon` from a ``<polygon>`` tag of a
         CVAT image annotation XML file.
 
         Args:
             d: a dict representation of a ``<polygon>`` tag
+            text_attribute_names (None): the names of text attributes for the
+                polygon's label
+            preserve_cvat_text_strings (False): whether to preserve raw strings
+                for CVAT ``text`` attributes
 
         Returns:
             a :class:`CVATImagePolygon`
         """
         label = d["@label"]
         points = cls._parse_cvat_points_str(d["@points"])
-        occluded, attributes = cls._parse_anno_dict(d)
+        occluded, attributes = cls._parse_anno_dict(
+            d,
+            text_attribute_names=text_attribute_names,
+            preserve_cvat_text_strings=preserve_cvat_text_strings,
+        )
 
         return cls(label, points, occluded=occluded, attributes=attributes)
 
@@ -2037,19 +2130,29 @@ class CVATImagePolyline(CVATImageAnno, HasCVATPoints):
         return polylines
 
     @classmethod
-    def from_polyline_dict(cls, d):
+    def from_polyline_dict(
+        cls, d, text_attribute_names=None, preserve_cvat_text_strings=False
+    ):
         """Creates a :class:`CVATImagePolyline` from a ``<polyline>`` tag of a
         CVAT image annotation XML file.
 
         Args:
             d: a dict representation of a ``<polyline>`` tag
+            text_attribute_names (None): the names of text attributes for the
+                polyline's label
+            preserve_cvat_text_strings (False): whether to preserve raw strings
+                for CVAT ``text`` attributes
 
         Returns:
             a :class:`CVATImagePolyline`
         """
         label = d["@label"]
         points = cls._parse_cvat_points_str(d["@points"])
-        occluded, attributes = cls._parse_anno_dict(d)
+        occluded, attributes = cls._parse_anno_dict(
+            d,
+            text_attribute_names=text_attribute_names,
+            preserve_cvat_text_strings=preserve_cvat_text_strings,
+        )
 
         return cls(label, points, occluded=occluded, attributes=attributes)
 
@@ -2108,19 +2211,29 @@ class CVATImagePoints(CVATImageAnno, HasCVATPoints):
         return cls(label, points, occluded=occluded, attributes=attributes)
 
     @classmethod
-    def from_points_dict(cls, d):
+    def from_points_dict(
+        cls, d, text_attribute_names=None, preserve_cvat_text_strings=False
+    ):
         """Creates a :class:`CVATImagePoints` from a ``<points>`` tag of a
         CVAT image annotation XML file.
 
         Args:
             d: a dict representation of a ``<points>`` tag
+            text_attribute_names (None): the names of text attributes for the
+                keypoint's label
+            preserve_cvat_text_strings (False): whether to preserve raw strings
+                for CVAT ``text`` attributes
 
         Returns:
             a :class:`CVATImagePoints`
         """
         label = d["@label"]
         points = cls._parse_cvat_points_str(d["@points"])
-        occluded, attributes = cls._parse_anno_dict(d)
+        occluded, attributes = cls._parse_anno_dict(
+            d,
+            text_attribute_names=text_attribute_names,
+            preserve_cvat_text_strings=preserve_cvat_text_strings,
+        )
         return cls(label, points, occluded=occluded, attributes=attributes)
 
 
@@ -2294,13 +2407,23 @@ class CVATTrack(object):
         )
 
     @classmethod
-    def from_track_dict(cls, d, frame_size):
+    def from_track_dict(
+        cls,
+        d,
+        frame_size,
+        text_attribute_names=None,
+        preserve_cvat_text_strings=False,
+    ):
         """Creates a :class:`CVATTrack` from a ``<track>`` tag of a CVAT video
         annotation XML file.
 
         Args:
             d: a dict representation of an ``<track>`` tag
             frame_size: the ``(width, height)`` of the video frames
+            text_attribute_names (None): the names of text attributes for the
+                track's label
+            preserve_cvat_text_strings (False): whether to preserve raw strings
+                for CVAT ``text`` attributes
 
         Returns:
             a :class:`CVATTrack`
@@ -2312,22 +2435,42 @@ class CVATTrack(object):
 
         boxes = {}
         for bd in _ensure_list(d.get("box", [])):
-            box = CVATVideoBox.from_box_dict(label, bd)
+            box = CVATVideoBox.from_box_dict(
+                label,
+                bd,
+                text_attribute_names=text_attribute_names,
+                preserve_cvat_text_strings=preserve_cvat_text_strings,
+            )
             boxes[box.frame] = box
 
         polygons = {}
         for pd in _ensure_list(d.get("polygon", [])):
-            polygon = CVATVideoPolygon.from_polygon_dict(label, pd)
+            polygon = CVATVideoPolygon.from_polygon_dict(
+                label,
+                pd,
+                text_attribute_names=text_attribute_names,
+                preserve_cvat_text_strings=preserve_cvat_text_strings,
+            )
             polygons[polygon.frame] = polygon
 
         polylines = {}
         for pd in _ensure_list(d.get("polyline", [])):
-            polyline = CVATVideoPolyline.from_polyline_dict(label, pd)
+            polyline = CVATVideoPolyline.from_polyline_dict(
+                label,
+                pd,
+                text_attribute_names=text_attribute_names,
+                preserve_cvat_text_strings=preserve_cvat_text_strings,
+            )
             polylines[polyline.frame] = polyline
 
         points = {}
         for pd in _ensure_list(d.get("points", [])):
-            point = CVATVideoPoints.from_points_dict(label, pd)
+            point = CVATVideoPoints.from_points_dict(
+                label,
+                pd,
+                text_attribute_names=text_attribute_names,
+                preserve_cvat_text_strings=preserve_cvat_text_strings,
+            )
             points[point.frame] = point
 
         return cls(
@@ -2418,7 +2561,9 @@ class CVATVideoAnno(object):
         return outside, occluded, keyframe, attributes
 
     @staticmethod
-    def _parse_anno_dict(d):
+    def _parse_anno_dict(
+        d, text_attribute_names=None, preserve_cvat_text_strings=False
+    ):
         outside = _from_int_bool(d.get("@outside", None))
         occluded = _from_int_bool(d.get("@occluded", None))
         keyframe = _from_int_bool(d.get("@keyframe", None))
@@ -2433,7 +2578,19 @@ class CVATVideoAnno(object):
                     # should be ignored since we're not using the API here
                     continue
 
-                value = _parse_value(attr["#text"])
+                input_type = None
+                if (
+                    preserve_cvat_text_strings
+                    and text_attribute_names is not None
+                    and name in text_attribute_names
+                ):
+                    input_type = "text"
+
+                value = _parse_cvat_attribute_value(
+                    attr["#text"],
+                    input_type=input_type,
+                    preserve_cvat_text_strings=preserve_cvat_text_strings,
+                )
                 attributes.append(CVATAttribute(name, value))
 
         return outside, occluded, keyframe, attributes
@@ -2549,13 +2706,23 @@ class CVATVideoBox(CVATVideoAnno):
         )
 
     @classmethod
-    def from_box_dict(cls, label, d):
+    def from_box_dict(
+        cls,
+        label,
+        d,
+        text_attribute_names=None,
+        preserve_cvat_text_strings=False,
+    ):
         """Creates a :class:`CVATVideoBox` from a ``<box>`` tag of a CVAT video
         annotation XML file.
 
         Args:
             label: the object label
             d: a dict representation of a ``<box>`` tag
+            text_attribute_names (None): the names of text attributes for the
+                box's label
+            preserve_cvat_text_strings (False): whether to preserve raw strings
+                for CVAT ``text`` attributes
 
         Returns:
             a :class:`CVATVideoBox`
@@ -2567,7 +2734,11 @@ class CVATVideoBox(CVATVideoAnno):
         xbr = int(round(float(d["@xbr"])))
         ybr = int(round(float(d["@ybr"])))
 
-        outside, occluded, keyframe, attributes = cls._parse_anno_dict(d)
+        outside, occluded, keyframe, attributes = cls._parse_anno_dict(
+            d,
+            text_attribute_names=text_attribute_names,
+            preserve_cvat_text_strings=preserve_cvat_text_strings,
+        )
 
         return cls(
             frame,
@@ -2673,20 +2844,34 @@ class CVATVideoPolygon(CVATVideoAnno, HasCVATPoints):
         )
 
     @classmethod
-    def from_polygon_dict(cls, label, d):
+    def from_polygon_dict(
+        cls,
+        label,
+        d,
+        text_attribute_names=None,
+        preserve_cvat_text_strings=False,
+    ):
         """Creates a :class:`CVATVideoPolygon` from a ``<polygon>`` tag of a
         CVAT video annotation XML file.
 
         Args:
             label: the object label
             d: a dict representation of a ``<polygon>`` tag
+            text_attribute_names (None): the names of text attributes for the
+                polygon's label
+            preserve_cvat_text_strings (False): whether to preserve raw strings
+                for CVAT ``text`` attributes
 
         Returns:
             a :class:`CVATVideoPolygon`
         """
         frame = int(d["@frame"])
         points = cls._parse_cvat_points_str(d["@points"])
-        outside, occluded, keyframe, attributes = cls._parse_anno_dict(d)
+        outside, occluded, keyframe, attributes = cls._parse_anno_dict(
+            d,
+            text_attribute_names=text_attribute_names,
+            preserve_cvat_text_strings=preserve_cvat_text_strings,
+        )
         return cls(
             frame,
             label,
@@ -2790,20 +2975,34 @@ class CVATVideoPolyline(CVATVideoAnno, HasCVATPoints):
         )
 
     @classmethod
-    def from_polyline_dict(cls, label, d):
+    def from_polyline_dict(
+        cls,
+        label,
+        d,
+        text_attribute_names=None,
+        preserve_cvat_text_strings=False,
+    ):
         """Creates a :class:`CVATVideoPolyline` from a ``<polyline>`` tag of a
         CVAT video annotation XML file.
 
         Args:
             label: the object label
             d: a dict representation of a ``<polyline>`` tag
+            text_attribute_names (None): the names of text attributes for the
+                polyline's label
+            preserve_cvat_text_strings (False): whether to preserve raw strings
+                for CVAT ``text`` attributes
 
         Returns:
             a :class:`CVATVideoPolyline`
         """
         frame = int(d["@frame"])
         points = cls._parse_cvat_points_str(d["@points"])
-        outside, occluded, keyframe, attributes = cls._parse_anno_dict(d)
+        outside, occluded, keyframe, attributes = cls._parse_anno_dict(
+            d,
+            text_attribute_names=text_attribute_names,
+            preserve_cvat_text_strings=preserve_cvat_text_strings,
+        )
         return cls(
             frame,
             label,
@@ -2894,20 +3093,34 @@ class CVATVideoPoints(CVATVideoAnno, HasCVATPoints):
         )
 
     @classmethod
-    def from_points_dict(cls, label, d):
+    def from_points_dict(
+        cls,
+        label,
+        d,
+        text_attribute_names=None,
+        preserve_cvat_text_strings=False,
+    ):
         """Creates a :class:`CVATVideoPoints` from a ``<points>`` tag of a
         CVAT video annotation XML file.
 
         Args:
             label: the object label
             d: a dict representation of a ``<points>`` tag
+            text_attribute_names (None): the names of text attributes for the
+                keypoint's label
+            preserve_cvat_text_strings (False): whether to preserve raw strings
+                for CVAT ``text`` attributes
 
         Returns:
             a :class:`CVATVideoPoints`
         """
         frame = int(d["@frame"])
         points = cls._parse_cvat_points_str(d["@points"])
-        outside, occluded, keyframe, attributes = cls._parse_anno_dict(d)
+        outside, occluded, keyframe, attributes = cls._parse_anno_dict(
+            d,
+            text_attribute_names=text_attribute_names,
+            preserve_cvat_text_strings=preserve_cvat_text_strings,
+        )
         return cls(
             frame,
             label,
@@ -3142,6 +3355,9 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
 
             Note that this argument cannot be provided when uploading existing
             tracks
+        preserve_cvat_text_strings (False): whether to preserve raw strings for
+            CVAT ``text`` attributes when loading annotations via
+            :meth:`fiftyone.core.collections.SampleCollection.load_annotations`
     """
 
     def __init__(
@@ -3173,6 +3389,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         frame_start=None,
         frame_stop=None,
         frame_step=None,
+        preserve_cvat_text_strings=False,
         **kwargs,
     ):
         super().__init__(name, label_schema, media_field=media_field, **kwargs)
@@ -3196,6 +3413,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         self.frame_start = _validate_frame_arg(frame_start, "frame_start")
         self.frame_stop = _validate_frame_arg(frame_stop, "frame_stop")
         self.frame_step = _validate_frame_arg(frame_step, "frame_step")
+        self.preserve_cvat_text_strings = preserve_cvat_text_strings
 
         # store privately so these aren't serialized
         self._username = username
@@ -3236,7 +3454,13 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         self._headers = value
 
     def load_credentials(
-        self, url=None, username=None, password=None, email=None, headers=None
+        self,
+        url=None,
+        username=None,
+        password=None,
+        email=None,
+        headers=None,
+        preserve_cvat_text_strings=None,
     ):
         self._load_parameters(
             url=url,
@@ -3244,6 +3468,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
             password=password,
             email=email,
             headers=headers,
+            preserve_cvat_text_strings=preserve_cvat_text_strings,
         )
 
 
@@ -4663,6 +4888,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         frame_id_map = results.frame_id_map
         labels_task_map = results.labels_task_map
         is_clips = results._is_clips
+        preserve_cvat_text_strings = bool(
+            results.config.preserve_cvat_text_strings
+        )
 
         _, project_id = self._parse_project_details(
             results.config.project_name, results.config.project_id
@@ -4719,8 +4947,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     frame_stop -= offset
 
                 # Download task data
-                attr_id_map, _class_map_rev = self._get_attr_class_maps(
-                    task_id
+                (
+                    attr_id_map,
+                    _class_map_rev,
+                    attr_input_type_map,
+                ) = self._get_attr_class_maps(
+                    task_id, include_attr_input_types=True
                 )
 
                 job_ids = self._get_job_ids(task_id)
@@ -4797,6 +5029,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             frame_stop,
                             frame_step,
                             assigned_scalar_attrs=scalar_attrs,
+                            attr_input_type_map=attr_input_type_map,
+                            preserve_cvat_text_strings=preserve_cvat_text_strings,
                         )
                         label_field_results = self._merge_results(
                             label_field_results, tag_results
@@ -4818,6 +5052,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             assigned_scalar_attrs=scalar_attrs,
                             occluded_attrs=_occluded_attrs,
                             group_id_attrs=_group_id_attrs,
+                            attr_input_type_map=attr_input_type_map,
+                            preserve_cvat_text_strings=preserve_cvat_text_strings,
                         )
                         label_field_results = self._merge_results(
                             label_field_results, shape_results
@@ -4851,6 +5087,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                                 immutable_attrs=immutable_attrs,
                                 occluded_attrs=_occluded_attrs,
                                 group_id_attrs=_group_id_attrs,
+                                attr_input_type_map=attr_input_type_map,
+                                preserve_cvat_text_strings=preserve_cvat_text_strings,
                             )
                             label_field_results = self._merge_results(
                                 label_field_results, track_shape_results
@@ -4887,18 +5125,27 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         return annotations
 
-    def _get_attr_class_maps(self, task_id):
+    def _get_attr_class_maps(self, task_id, include_attr_input_types=False):
         labels = self._get_task_labels(task_id)
         _class_map = {}
         attr_id_map = {}
+        attr_input_type_map = {}
         for label in labels:
             _class_map[label["id"]] = label["name"]
             attr_id_map[label["id"]] = {
                 i["name"]: i["id"] for i in label["attributes"]
             }
+            if include_attr_input_types:
+                attr_input_type_map[label["id"]] = {
+                    i["id"]: i.get("input_type", None)
+                    for i in label["attributes"]
+                }
 
         # AL: not sure why we didn't just reverse keys/vals initially
         class_map_rev = {n: i for i, n in _class_map.items()}
+
+        if include_attr_input_types:
+            return attr_id_map, class_map_rev, attr_input_type_map
 
         return attr_id_map, class_map_rev
 
@@ -5808,6 +6055,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         immutable_attrs=None,
         occluded_attrs=None,
         group_id_attrs=None,
+        attr_input_type_map=None,
+        preserve_cvat_text_strings=False,
     ):
         results = {}
         prev_type = None
@@ -5848,6 +6097,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 immutable_attrs=immutable_attrs,
                 occluded_attrs=occluded_attrs,
                 group_id_attrs=group_id_attrs,
+                attr_input_type_map=attr_input_type_map,
+                preserve_cvat_text_strings=preserve_cvat_text_strings,
             )
 
         # For non-outside tracked objects, the last track goes to the end of
@@ -5883,6 +6134,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     immutable_attrs=immutable_attrs,
                     occluded_attrs=occluded_attrs,
                     group_id_attrs=group_id_attrs,
+                    attr_input_type_map=attr_input_type_map,
+                    preserve_cvat_text_strings=preserve_cvat_text_strings,
                 )
 
         return results
@@ -5907,6 +6160,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         immutable_attrs=None,
         occluded_attrs=None,
         group_id_attrs=None,
+        attr_input_type_map=None,
+        preserve_cvat_text_strings=False,
     ):
         frame = anno["frame"]
 
@@ -5949,6 +6204,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 occluded_attrs=occluded_attrs,
                 group_id_attrs=group_id_attrs,
                 group_id=track_group_id,
+                attr_input_type_map=attr_input_type_map,
+                preserve_cvat_text_strings=preserve_cvat_text_strings,
             )
 
             # Non-keyframe annotations were interpolated from keyframes but
@@ -6033,8 +6290,16 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     num_attrs = len(anno["attributes"])
                     attr_ind = 0
                     while label is None and attr_ind < num_attrs:
-                        label = _parse_value(
-                            anno["attributes"][attr_ind]["value"]
+                        attr = anno["attributes"][attr_ind]
+                        input_type = _get_cvat_attr_input_type(
+                            attr_input_type_map,
+                            anno.get("label_id", None),
+                            attr.get("spec_id", None),
+                        )
+                        label = _parse_cvat_attribute_value(
+                            attr["value"],
+                            input_type=input_type,
+                            preserve_cvat_text_strings=preserve_cvat_text_strings,
                         )
                         attr_ind += 1
                         if label is not None:
@@ -6054,7 +6319,14 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     label = class_map[anno["label_id"]]
             else:
                 label_type = "classifications"
-                cvat_tag = CVATTag(anno, class_map, attr_id_map, server_id_map)
+                cvat_tag = CVATTag(
+                    anno,
+                    class_map,
+                    attr_id_map,
+                    server_id_map,
+                    attr_input_type_map=attr_input_type_map,
+                    preserve_cvat_text_strings=preserve_cvat_text_strings,
+                )
                 label = cvat_tag.to_classification()
 
         if label is None or label_type in ignore_types:
@@ -7065,6 +7337,10 @@ class CVATLabel(object):
             every label
         server_id_map: a dictionary mapping server IDs to FiftyOne label IDs
         attributes (None): an optional list of additional attributes
+        attr_input_type_map (None): an optional dict mapping label IDs and
+            attribute IDs to CVAT input types
+        preserve_cvat_text_strings (False): whether to preserve raw strings for
+            CVAT ``text`` attributes
     """
 
     def __init__(
@@ -7074,6 +7350,8 @@ class CVATLabel(object):
         attr_id_map,
         server_id_map,
         attributes=None,
+        attr_input_type_map=None,
+        preserve_cvat_text_strings=False,
     ):
         cvat_id = label_dict["label_id"]
         server_id = label_dict["id"]
@@ -7095,7 +7373,14 @@ class CVATLabel(object):
         attr_id_map_rev = {v: k for k, v in attr_id_map[cvat_id].items()}
         for attr in attrs:
             name = attr_id_map_rev[attr["spec_id"]]
-            value = _parse_value(attr["value"])
+            input_type = _get_cvat_attr_input_type(
+                attr_input_type_map, cvat_id, attr["spec_id"]
+            )
+            value = _parse_cvat_attribute_value(
+                attr["value"],
+                input_type=input_type,
+                preserve_cvat_text_strings=preserve_cvat_text_strings,
+            )
             if value is not None:
                 if name.startswith("attribute:"):
                     name = name[len("attribute:") :]
@@ -7163,6 +7448,10 @@ class CVATShape(CVATLabel):
             corresponding attribute linked to the CVAT group id, if any
         group_id (None): an optional group id value for this shape when it
             cannot be parsed from the label dict
+        attr_input_type_map (None): an optional dict mapping label IDs and
+            attribute IDs to CVAT input types
+        preserve_cvat_text_strings (False): whether to preserve raw strings for
+            CVAT ``text`` attributes
     """
 
     def __init__(
@@ -7177,6 +7466,8 @@ class CVATShape(CVATLabel):
         occluded_attrs=None,
         group_id_attrs=None,
         group_id=None,
+        attr_input_type_map=None,
+        preserve_cvat_text_strings=False,
     ):
         super().__init__(
             label_dict,
@@ -7184,6 +7475,8 @@ class CVATShape(CVATLabel):
             attr_id_map,
             server_id_map,
             attributes=immutable_attrs,
+            attr_input_type_map=attr_input_type_map,
+            preserve_cvat_text_strings=preserve_cvat_text_strings,
         )
 
         self.frame_size = ()
@@ -7393,13 +7686,15 @@ class CVATTag(CVATLabel):
         return label
 
 
-def load_cvat_image_annotations(xml_path):
+def load_cvat_image_annotations(xml_path, preserve_cvat_text_strings=False):
     """Loads the CVAT image annotations from the given XML file.
 
     See :ref:`this page <CVATImageDataset-import>` for format details.
 
     Args:
         xml_path: the path to the annotations XML file
+        preserve_cvat_text_strings (False): whether to preserve raw strings for
+            CVAT ``text`` attributes
 
     Returns:
         a tuple of
@@ -7429,10 +7724,22 @@ def load_cvat_image_annotations(xml_path):
     task = meta.get("task", {})
     labels_dict = task.get("labels", {})
     cvat_task_labels = CVATTaskLabels.from_labels_dict(labels_dict)
+    text_attribute_names_by_label = None
+    if preserve_cvat_text_strings:
+        text_attribute_names_by_label = _get_cvat_text_attribute_names(
+            labels_dict
+        )
 
     # Load annotations
     image_dicts = _ensure_list(annotations.get("image", []))
-    cvat_images = [CVATImage.from_image_dict(id) for id in image_dicts]
+    cvat_images = [
+        CVATImage.from_image_dict(
+            id,
+            text_attribute_names_by_label=text_attribute_names_by_label,
+            preserve_cvat_text_strings=preserve_cvat_text_strings,
+        )
+        for id in image_dicts
+    ]
 
     # Load dataset info
     info = {"task_labels": cvat_task_labels.labels}
@@ -7448,13 +7755,15 @@ def load_cvat_image_annotations(xml_path):
     return info, cvat_task_labels, cvat_images
 
 
-def load_cvat_video_annotations(xml_path):
+def load_cvat_video_annotations(xml_path, preserve_cvat_text_strings=False):
     """Loads the CVAT video annotations from the given XML file.
 
     See :ref:`this page <CVATVideoDataset-import>` for format details.
 
     Args:
         xml_path: the path to the annotations XML file
+        preserve_cvat_text_strings (False): whether to preserve raw strings for
+            CVAT ``text`` attributes
 
     Returns:
         a tuple of
@@ -7484,6 +7793,11 @@ def load_cvat_video_annotations(xml_path):
     task = meta.get("task", {})
     labels_dict = task.get("labels", {})
     cvat_task_labels = CVATTaskLabels.from_labels_dict(labels_dict)
+    text_attribute_names_by_label = None
+    if preserve_cvat_text_strings:
+        text_attribute_names_by_label = _get_cvat_text_attribute_names(
+            labels_dict
+        )
 
     # Load annotations
     track_dicts = _ensure_list(annotations.get("track", []))
@@ -7494,7 +7808,15 @@ def load_cvat_video_annotations(xml_path):
             int(original_size["height"]),
         )
         cvat_tracks = [
-            CVATTrack.from_track_dict(td, frame_size) for td in track_dicts
+            CVATTrack.from_track_dict(
+                td,
+                frame_size,
+                text_attribute_names=_get_label_text_attribute_names(
+                    text_attribute_names_by_label, td.get("@label", None)
+                ),
+                preserve_cvat_text_strings=preserve_cvat_text_strings,
+            )
+            for td in track_dicts
         ]
     else:
         cvat_tracks = []
@@ -7632,6 +7954,72 @@ def _ensure_list(value):
     return [value]
 
 
+def _is_cvat_text_input_type(input_type):
+    return etau.is_str(input_type) and input_type.lower() == "text"
+
+
+def _parse_cvat_attribute_value(
+    value, input_type=None, preserve_cvat_text_strings=False
+):
+    parse_values = not (
+        preserve_cvat_text_strings and _is_cvat_text_input_type(input_type)
+    )
+    return _parse_value(value, parse_values=parse_values)
+
+
+def _get_cvat_attr_input_type(attr_input_type_map, cvat_id, spec_id):
+    if attr_input_type_map is None or cvat_id is None or spec_id is None:
+        return None
+
+    return attr_input_type_map.get(cvat_id, {}).get(spec_id, None)
+
+
+def _get_label_text_attribute_names(text_attribute_names_by_label, label):
+    if text_attribute_names_by_label is None or label is None:
+        return None
+
+    return text_attribute_names_by_label.get(label, None)
+
+
+def _get_cvat_text_attribute_names(labels_dict):
+    text_attribute_names = defaultdict(set)
+    labels = _ensure_list(labels_dict.get("label", []))
+    for label in labels:
+        label_name = label.get("name", None) or label.get("@name", None)
+        if label_name is None:
+            continue
+
+        _tmp = label.get("attributes", None) or {}
+        attributes = _ensure_list(_tmp.get("attribute", []))
+        for attribute in attributes:
+            attr_name = attribute.get("name", None) or attribute.get(
+                "@name", None
+            )
+            if attr_name is None:
+                continue
+
+            input_type = attribute.get("input_type", None) or attribute.get(
+                "@input_type", None
+            )
+            if _is_cvat_text_input_type(input_type):
+                text_attribute_names[label_name].add(attr_name)
+                continue
+
+            values = attribute.get("values", None) or attribute.get(
+                "@values", None
+            )
+            if values is None and "values" in attribute:
+                # Empty values in XML correspond to text attributes
+                text_attribute_names[label_name].add(attr_name)
+                continue
+
+            if etau.is_str(values) and not values.strip():
+                # CVAT text attributes export with empty values in XML
+                text_attribute_names[label_name].add(attr_name)
+
+    return dict(text_attribute_names)
+
+
 def _stringify_value(value):
     if value is None:
         return ""
@@ -7658,7 +8046,10 @@ def _from_int_bool(value):
     return None
 
 
-def _parse_value(value):
+def _parse_value(value, parse_values=True):
+    if not parse_values:
+        return value
+
     try:
         return int(value)
     except:
