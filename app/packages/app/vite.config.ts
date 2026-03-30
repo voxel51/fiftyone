@@ -26,9 +26,13 @@ async function loadConfig() {
       // copies that ort can't find by name. Emit unhashed copies and clean up.
       (() => {
         const ortWasmFiles = ["ort-wasm-simd-threaded.jsep.wasm", "ort-wasm-simd-threaded.jsep.mjs"];
+        let assetsDir = "";
         return {
           name: "copy-ort-wasm",
           apply: "build",
+          configResolved(config) {
+            assetsDir = path.resolve(config.root, config.build.outDir, "assets");
+          },
           buildStart() {
             const ortDist = path.dirname(require.resolve("onnxruntime-web"));
             for (const f of ortWasmFiles) {
@@ -36,13 +40,12 @@ async function loadConfig() {
             }
           },
           closeBundle() {
-            const distAssets = path.resolve(__dirname, "dist/assets");
-            if (!fs.existsSync(distAssets))
+            if (!fs.existsSync(assetsDir))
               return;
             const keep = new Set(ortWasmFiles);
-            for (const f of fs.readdirSync(distAssets)) {
+            for (const f of fs.readdirSync(assetsDir)) {
               if (f.includes("ort-wasm") && !keep.has(f)) {
-                fs.unlinkSync(path.join(distAssets, f));
+                fs.unlinkSync(path.join(assetsDir, f));
               }
             }
           },
