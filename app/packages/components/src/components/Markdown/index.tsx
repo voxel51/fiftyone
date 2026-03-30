@@ -169,6 +169,21 @@ const componentsMap = {
       {children}
     </Typography>
   ),
+  ul: ({ children, ...props }) => (
+    <Box component="ul" sx={{ listStyle: "disc", pl: 5, my: 2 }} {...props}>
+      {children}
+    </Box>
+  ),
+  ol: ({ children, ...props }) => (
+    <Box component="ol" sx={{ listStyle: "decimal", pl: 5, my: 2 }} {...props}>
+      {children}
+    </Box>
+  ),
+  li: ({ children, ...props }) => (
+    <Box component="li" sx={{ display: "list-item" }} {...props}>
+      {children}
+    </Box>
+  ),
 };
 
 export default function Markdown(props: ReactMarkdownOptions) {
