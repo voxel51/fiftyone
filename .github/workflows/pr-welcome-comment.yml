@@ -1,4 +1,4 @@
-name: Welcome
+name: PR Welcome Comment
 
 on:
   pull_request_target:
@@ -6,19 +6,20 @@ on:
 
 permissions:
   issues: write
+  pull-requests: write
 
 jobs:
   welcome:
     runs-on: ubuntu-latest
     if: >-
       github.event.pull_request.author_association != 'MEMBER' &&
-      github.event.pull_request.author_association != 'OWNER' && 
+      github.event.pull_request.author_association != 'OWNER' &&
       github.event.pull_request.author_association != 'COLLABORATOR'
     steps:
       - name: Comment on PR
         uses: actions/github-script@v8
         with:
-          github_token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
+          github-token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
           script: |
             await github.rest.issues.createComment({
               owner: context.repo.owner,
