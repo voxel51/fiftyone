@@ -45,11 +45,11 @@ In-App Annotation
 
 - Fixed a bug which could cause erroneous patch requests while annotating
   samples `#7224 <https://github.com/voxel51/fiftyone/pull/7224>`_
-- Fixed: in "Create new Detections" mode, a user may "click to exit".
-  Previously, clicking would create a new Detection with neither width nor
-  height. `#7205 <https://github.com/voxel51/fiftyone/pull/7205>`_
-- Fixed: Newly created fields in the Schema Manager aren't available for
-  annotation. `#7140 <https://github.com/voxel51/fiftyone/pull/7140>`_
+- Fixed a bug in "Create new Detections" mode where clicking to exit would
+  create a new Detection with neither width nor height.
+  `#7205 <https://github.com/voxel51/fiftyone/pull/7205>`_
+- Fixed a bug where newly created fields in the Schema Manager were not
+  available for annotation. `#7140 <https://github.com/voxel51/fiftyone/pull/7140>`_
 - Fixed an issue where being in annotation mode, then closing the modal, could
   cause display options to be removed.
   `#7158 <https://github.com/voxel51/fiftyone/pull/7158>`_
@@ -119,7 +119,7 @@ Plugins and Operators
   :class:`PipelineStage <fiftyone.operators.types.PipelineStage>`, you can now
   pass `request_params_overrides`, which will override any of the corresponding
   params in the parent operator's request params.
-  `#6954 <http://github.com/voxel51/fiftyone/pull/6954>`_
+  `#6954 <https://github.com/voxel51/fiftyone/pull/6954>`_
 - Added ability to detect failed operator loading for `useOperatorExecutor`
   consumers. `#7203 <https://github.com/voxel51/fiftyone/pull/7203>`_
 - All builtin operators that are expensive to execute on large datasets now
@@ -131,11 +131,11 @@ Plugins and Operators
 
 Models
 
-- Added new Depth Anything V3 models added to the model zoo:
+- Added new Depth Anything V3 models to the model zoo:
   `depth-anything-v3-small-torch`, `depth-anything-v3-base-torch`, and
   `depth-anything-v3-large-torch` variants.
   `#6718 <https://github.com/voxel51/fiftyone/pull/6718>`_
-- Added enable text-based similarity search support to `Qwen3VLModel`.
+- Added text-based similarity search support to `Qwen3VLModel`.
   Implemented `embed_prompt()` / `embed_prompts()` for text embedding. Text
   embeddings use the same pipeline as image embeddings (same chat template
   args, same _postprocess_embedding) so vectors share a common space.
@@ -155,13 +155,13 @@ Models
   This argument allows you to use more memory to get faster inference in cases
   when inference is bottlenecked by CPU to GPU transfer times.
   `#7184 <https://github.com/voxel51/fiftyone/pull/7184>`_
-- Fixed: YOLO segmentation models will now have their masks properly scaled
-  when inference results are converted using
+- Fixed a bug where YOLO segmentation model masks were not properly scaled
+  when inference results were converted using
   :func:`fiftyone.utils.ultralytics.to_instances() <fiftyone.utils.ultralytics.to_instances>`.
   `#7186 <https://github.com/voxel51/fiftyone/pull/7186>`_
 - Fixed field name mismatch in `_to_sam_points` that prevents object-level
   point labels from working.
-  `#6941 <http://github.com/voxel51/fiftyone/pull/6941>`_
+  `#6941 <https://github.com/voxel51/fiftyone/pull/6941>`_
 
 Core
 
@@ -169,7 +169,7 @@ Core
   catch clauses to explicitly target standard exceptions.
   `#7214 <https://github.com/voxel51/fiftyone/pull/7214>`_
 - Fixed metadata computations for urls without `Content-Length` set.
-  `#6998 <http://github.com/voxel51/fiftyone/pull/6998>`_
+  `#6998 <https://github.com/voxel51/fiftyone/pull/6998>`_
 
 Build
 
