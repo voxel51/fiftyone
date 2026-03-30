@@ -28,6 +28,7 @@ async function loadConfig() {
         const ortWasmFiles = ["ort-wasm-simd-threaded.jsep.wasm", "ort-wasm-simd-threaded.jsep.mjs"];
         return {
           name: "copy-ort-wasm",
+          apply: "build",
           buildStart() {
             const ortDist = path.dirname(require.resolve("onnxruntime-web"));
             for (const f of ortWasmFiles) {
