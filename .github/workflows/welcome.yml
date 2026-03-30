@@ -5,7 +5,7 @@ on:
     types: [opened]
 
 permissions:
-  pull-requests: write
+  issues: write
 
 jobs:
   welcome:
@@ -16,8 +16,9 @@ jobs:
       github.event.pull_request.author_association != 'COLLABORATOR'
     steps:
       - name: Comment on PR
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
+          github_token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
           script: |
             await github.rest.issues.createComment({
               owner: context.repo.owner,
