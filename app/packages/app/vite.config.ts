@@ -36,6 +36,8 @@ async function loadConfig() {
           },
           closeBundle() {
             const distAssets = path.resolve(__dirname, "dist/assets");
+            if (!fs.existsSync(distAssets))
+              return;
             const keep = new Set(ortWasmFiles);
             for (const f of fs.readdirSync(distAssets)) {
               if (f.includes("ort-wasm") && !keep.has(f)) {
