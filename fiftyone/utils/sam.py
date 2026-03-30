@@ -826,7 +826,7 @@ class SegmentAnythingModel(fout.TorchImageModelWithPrompts):
                 use_numpy=True,
                 force_rgb=True,
             )
-            return self._forward_pass_auto(imgs={"image": [img]})
+            return self._forward_pass_auto(imgs={"image": [img]})[0]
 
         if boxes is not None and points is not None:
             if len(boxes) != len(points):
