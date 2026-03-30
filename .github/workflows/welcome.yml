@@ -4,12 +4,16 @@ on:
   pull_request_target:
     types: [opened]
 
+permissions:
+  issues: write
+
 jobs:
   welcome:
     runs-on: ubuntu-latest
     if: >-
       github.event.pull_request.author_association != 'MEMBER' &&
-      github.event.pull_request.author_association != 'OWNER'
+      github.event.pull_request.author_association != 'OWNER' && 
+      github.event.pull_request.author_association != 'COLLABORATOR'
     steps:
       - name: Comment on PR
         uses: actions/github-script@v7
