@@ -962,5 +962,308 @@ class TestSAMInteractiveParity(unittest.TestCase):
         )
 
 
+class TestSAM2InteractiveParity(unittest.TestCase):
+    """Compare predict_interactive outputs against direct
+    segment_anything inference using evaluate_detections."""
+
+    MODEL_NAME = "segment-anything-2-hiera-tiny-image-torch"
+
+    @classmethod
+    def setUpClass(cls):
+        cls.fo_model = foz.load_zoo_model(cls.MODEL_NAME)
+
+        from sam2.build_sam import build_sam2
+        from sam2.sam2_image_predictor import SAM2ImagePredictor
+        from sam2.automatic_mask_generator import SAM2AutomaticMaskGenerator
+
+        checkpoint_path = cls.fo_model.config.model_path
+        model_cfg = cls.fo_model.config.entrypoint_args["config_file"]
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+
+        sam2 = build_sam2(model_cfg, checkpoint_path, device=device)
+
+        cls.predictor = SAM2ImagePredictor(sam2)
+        cls.auto_gen = SAM2AutomaticMaskGenerator(sam2)
+        cls.device = device
+        cls.dataset = _create_test_dataset(num_samples=2, seed=7)
+        cls.output_processor = fo.utils.sam.SAMSegmenterOutputProcessor()
+
+    def test_interactive_auto_parity(self):
+        interactive_field = "sam2_inter_auto"
+        direct_field = "sam2_direct_auto"
+
+        for sample in self.dataset.iter_samples(progress=False, autosave=True):
+            # predict_interactive auto mode
+            sample[interactive_field] = self.fo_model.predict_interactive(
+                sample=sample
+            )
+
+            # Direct SAM auto
+            image = _get_image_as_numpy(sample.filepath)
+            masks = self.auto_gen.generate(image)
+            sample[direct_field] = _auto_masks_to_detections(masks)
+
+        self.dataset.set_field(
+            f"{interactive_field}.detections.label",
+            F("label").if_else(F("label"), PLACEHOLDER_LABEL),
+        ).save()
+
+        _assert_parity(
+            self,
+            self.dataset,
+            interactive_field,
+            direct_field,
+            eval_key="eval_sam2_inter_auto",
+        )
+
+    def test_interactive_box_prompt_parity(self):
+        interactive_field = "sam2_inter_box"
+        direct_field = "sam2_direct_box"
+
+        for sample in self.dataset.iter_samples(progress=False, autosave=True):
+            gt = sample.get_field("ground_truth")
+            image = _get_image_as_numpy(sample.filepath)
+            h, w = image.shape[:2]
+
+            (
+                boxes,
+                boxes_xyxy,
+                box_classes,
+            ) = fo.utils.sam.preprocess_detections_to_sam(
+                gt, (h, w), self.fo_model._sam_predictor.box_transform
+            )
+            sample[interactive_field] = self.fo_model.predict_interactive(
+                sample=sample,
+                boxes=boxes,
+                boxes_xyxy=boxes_xyxy,
+                prompt_classes=box_classes,
+            )
+
+            self.predictor.set_image(image)
+            masks = []
+            scores = []
+            box_prompts = []
+            labels = []
+            for gt_det in gt.detections:
+                box_abs = _box_to_sam_abs(gt_det.bounding_box, w, h)
+                _masks, _scores, _ = self.predictor.predict(
+                    box=box_abs,
+                    multimask_output=False,
+                )
+                masks.append(_masks[None, ...])
+                scores.append(_scores[None, ...])
+                box_prompts.append(box_abs)
+                labels.append(gt_det.label)
+
+            outputs = {
+                "masks": torch.as_tensor(np.concatenate(masks, axis=0)),
+                "iou_predictions": torch.as_tensor(
+                    np.concatenate(scores, axis=0)
+                ),
+            }
+            sample[direct_field] = self.output_processor(
+                output=[outputs],
+                frame_size=[(h, w)],
+                box_prompts=[box_prompts],
+                labels=[labels],
+            )[0]
+
+        _assert_parity(
+            self,
+            self.dataset,
+            interactive_field,
+            direct_field,
+            eval_key="eval_sam2_inter_box",
+        )
+
+    def test_interactive_keypoint_prompt_parity(self):
+        kp_field = "sam2_inter_test_kps"
+        interactive_field = "sam2_inter_kp"
+        direct_field = "sam2_direct_kp"
+
+        kp_model = foz.load_zoo_model("vitpose-base-simple-torch")
+        self.dataset.apply_model(
+            kp_model, prompt_field="ground_truth", label_field=kp_field
+        )
+
+        for sample in self.dataset.iter_samples(progress=False, autosave=True):
+            kps_label = sample.get_field(kp_field)
+            if kps_label is None or not kps_label.keypoints:
+                sample[interactive_field] = Detections()
+                sample[direct_field] = Detections()
+                continue
+
+            image = _get_image_as_numpy(sample.filepath)
+            h, w = image.shape[:2]
+
+            (
+                points,
+                points_labels,
+                points_classes,
+            ) = fo.utils.sam.preprocess_keypoints_to_sam(
+                kps_label,
+                (h, w),
+                self.fo_model._sam_predictor.point_transform,
+            )
+
+            sample[interactive_field] = self.fo_model.predict_interactive(
+                sample=sample,
+                points=points,
+                point_labels=points_labels,
+                prompt_classes=points_classes,
+            )
+
+            self.predictor.set_image(image)
+            masks = []
+            scores = []
+            labels = []
+            for kp in kps_label.keypoints:
+                pts = np.array(kp.points)
+                valid = (pts[:, 0] > 0) & (pts[:, 1] > 0)
+                if not valid.any():
+                    continue
+
+                pts_abs = pts[valid] * np.array([w, h])
+                pts_labels = np.ones(len(pts_abs), dtype=np.int32)
+
+                _masks, _scores, _ = self.predictor.predict(
+                    point_coords=pts_abs,
+                    point_labels=pts_labels,
+                    multimask_output=True,
+                )
+                masks.append(_masks[None, ...])
+                scores.append(_scores[None, ...])
+                labels.append(PLACEHOLDER_LABEL)
+
+            outputs = {
+                "masks": torch.as_tensor(np.concatenate(masks, axis=0)),
+                "iou_predictions": torch.as_tensor(
+                    np.concatenate(scores, axis=0)
+                ),
+            }
+            sample[direct_field] = self.output_processor(
+                output=[outputs],
+                frame_size=[(h, w)],
+                labels=[labels],
+                mask_index=self.fo_model.config.points_mask_index,
+            )[0]
+
+        self.dataset.set_field(
+            f"{interactive_field}.detections.label",
+            F("label").if_else(F("label"), PLACEHOLDER_LABEL),
+        ).save()
+
+        _assert_parity(
+            self,
+            self.dataset,
+            interactive_field,
+            direct_field,
+            eval_key="eval_sam2_inter_kp",
+        )
+
+    def test_interactive_box_point_combo_parity(self):
+        interactive_field = "sam2_inter_combo"
+        direct_field = "sam2_direct_combo"
+
+        # Build center-point keypoints from ground_truth boxes
+        for sample in self.dataset.iter_samples(progress=False, autosave=True):
+            gt = sample.get_field("ground_truth")
+            if gt is None:
+                continue
+            kps = []
+            for det in gt.detections:
+                bx, by, bw, bh = det.bounding_box
+                cx, cy = bx + bw / 2, by + bh / 2
+                kps.append(Keypoint(points=[(cx, cy)], label=det.label))
+            sample["combo_points"] = Keypoints(keypoints=kps)
+
+        for sample in self.dataset.iter_samples(progress=False, autosave=True):
+            gt = sample.get_field("ground_truth")
+            combo_kps = sample.get_field("combo_points")
+            if gt is None or not gt.detections:
+                sample[interactive_field] = Detections()
+                sample[direct_field] = Detections()
+                continue
+
+            image = _get_image_as_numpy(sample.filepath)
+            h, w = image.shape[:2]
+
+            (
+                boxes,
+                boxes_xyxy,
+                box_classes,
+            ) = fo.utils.sam.preprocess_detections_to_sam(
+                gt, (h, w), self.fo_model._sam_predictor.box_transform
+            )
+
+            (
+                points,
+                points_labels,
+                _,
+            ) = fo.utils.sam.preprocess_keypoints_to_sam(
+                combo_kps,
+                (h, w),
+                self.fo_model._sam_predictor.point_transform,
+            )
+
+            sample[interactive_field] = self.fo_model.predict_interactive(
+                sample=sample,
+                boxes=boxes,
+                points=points,
+                point_labels=points_labels,
+                prompt_classes=box_classes,
+                boxes_xyxy=boxes_xyxy,
+            )
+
+            self.predictor.set_image(image)
+            masks = []
+            scores = []
+            box_prompts = []
+            labels = []
+            for i, gt_det in enumerate(gt.detections):
+                box_abs = _box_to_sam_abs(gt_det.bounding_box, w, h)
+
+                point_coords = None
+                point_labels_arr = None
+                if combo_kps is not None and i < len(combo_kps.keypoints):
+                    pts = combo_kps.keypoints[i].points
+                    if pts:
+                        px, py = pts[0]
+                        point_coords = np.array([[px * w, py * h]])
+                        point_labels_arr = np.array([1])
+
+                _masks, _scores, _ = self.predictor.predict(
+                    point_coords=point_coords,
+                    point_labels=point_labels_arr,
+                    box=box_abs,
+                    multimask_output=False,
+                )
+                masks.append(_masks[None, ...])
+                scores.append(_scores[None, ...])
+                box_prompts.append(box_abs)
+                labels.append(gt_det.label)
+
+            outputs = {
+                "masks": torch.as_tensor(np.concatenate(masks, axis=0)),
+                "iou_predictions": torch.as_tensor(
+                    np.concatenate(scores, axis=0)
+                ),
+            }
+            sample[direct_field] = self.output_processor(
+                output=[outputs],
+                frame_size=[(h, w)],
+                box_prompts=[box_prompts],
+                labels=[labels],
+            )[0]
+
+        _assert_parity(
+            self,
+            self.dataset,
+            interactive_field,
+            direct_field,
+            eval_key="eval_sam2_inter_combo",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
