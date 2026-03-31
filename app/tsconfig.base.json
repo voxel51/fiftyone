@@ -1,0 +1,30 @@
+{
+    "compilerOptions": {
+        "plugins": [
+            {
+                "name": "typescript-plugin-css-modules"
+            }
+        ],
+        "module": "esnext",
+        "target": "es2025",
+        "types": ["node", "vite/client"],
+        "lib": ["esnext", "dom", "dom.iterable"],
+        "noImplicitReturns": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "noImplicitOverride": false,
+        "noFallthroughCasesInSwitch": false,
+        "noPropertyAccessFromIndexSignature": false,
+        "strict": false,
+        "jsx": "react-jsx",
+        "esModuleInterop": true,
+        "isolatedModules": true,
+        "noUncheckedSideEffectImports": true,
+        "moduleDetection": "force",
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "moduleResolution": "bundler",
+        "resolveJsonModule": true,
+        "noEmit": true
+    }
+}
