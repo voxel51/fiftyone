@@ -10,7 +10,11 @@ import {
   useReset3dAnnotationMode,
   useSetCurrent3dAnnotationMode,
 } from "@fiftyone/looker-3d/src/state/accessors";
-import { is3DDataset, isPatchesView, pinned3d } from "@fiftyone/state";
+import {
+  is3DDataset,
+  isPatchesView,
+  useRenderConfig3dState,
+} from "@fiftyone/state";
 import {
   CLASSIFICATION,
   DETECTION,
@@ -196,6 +200,8 @@ const Detection = () => {
       <Square
         $active={quickDrawActive}
         className={disabled ? "disabled" : ""}
+        data-cy="quick-draw-detection"
+        data-cy-active={quickDrawActive}
         onClick={() => {
           if (disabled) return;
           toggleQuickDraw();
@@ -223,7 +229,11 @@ export const Undo = () => {
   const { undo, undoEnabled } = useUndoRedo();
 
   return (
-    <Round onClick={undo} className={undoEnabled ? "" : "disabled"}>
+    <Round
+      onClick={undo}
+      className={undoEnabled ? "" : "disabled"}
+      data-cy="undo-button"
+    >
       <svg
         xmlns="http://www.w3.org/2000/svg"
         width="13"
@@ -246,7 +256,11 @@ export const Redo = () => {
 
   return (
     <Tooltip placement="top-center" text="Redo">
-      <Round onClick={redo} className={redoEnabled ? "" : "disabled"}>
+      <Round
+        onClick={redo}
+        className={redoEnabled ? "" : "disabled"}
+        data-cy="redo-button"
+      >
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="13"
@@ -388,7 +402,7 @@ const Actions = () => {
   // This checks if media type of the dataset resolved to 3d
   const is3dDataset = useRecoilValue(is3DDataset);
   // This checks if a 3d sample is pinned - is true when media type is `group` with a 3d slice pinned
-  const is3dSamplePinned = useRecoilValue(pinned3d);
+  const { isPinned: is3dSamplePinned } = useRenderConfig3dState();
 
   const canManage = useCanManageSchema();
 

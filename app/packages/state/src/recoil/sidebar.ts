@@ -51,12 +51,13 @@ import {
 import { collapseFields, getCurrentEnvironment } from "../utils";
 import * as atoms from "./atoms";
 import { getBrowserStorageEffectForKey } from "./customEffects";
+import { activeModalSidebarSample } from "./groups";
 import {
   active3dSlices,
   active3dSlicesToSampleMap,
-  activeModalSidebarSample,
+  is3dPinned,
   pinned3DSampleSlice,
-} from "./groups";
+} from "./renderConfig3d.atoms";
 import { isLargeVideo } from "./options";
 import { cumulativeValues, values } from "./pathData";
 import {
@@ -1062,8 +1063,7 @@ export const hiddenNoneGroups = selector({
     let slices = ["default"];
 
     const multipleSlices =
-      Boolean(get(pinned3DSampleSlice)) &&
-      (get(active3dSlices)?.length || 1) > 1;
+      Boolean(get(is3dPinned)) && (get(active3dSlices)?.length || 1) > 1;
     if (multipleSlices) {
       samples = get(active3dSlicesToSampleMap);
       slices = Array.from(get(active3dSlices) || []).sort();

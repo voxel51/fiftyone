@@ -1,13 +1,14 @@
 import useCanAnnotate from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useCanAnnotate";
 import * as fos from "@fiftyone/state";
 import { DragIndicator } from "@mui/icons-material";
-import { Box, IconButton, Tooltip, Typography, styled } from "@mui/material";
+import { Box, IconButton, Typography, styled } from "@mui/material";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { annotationToolbarPositionAtom } from "../../state";
 import type { AnnotationToolbarProps } from "../types";
 import { useAnnotationActions } from "./useAnnotationActions";
+import { Anchor, Tooltip } from "@voxel51/voodo";
 
 const Z_INDEX_MAX_ARBITRARY = 10005;
 
@@ -267,11 +268,9 @@ export const AnnotationToolbar = ({ className }: AnnotationToolbarProps) => {
                   // Render regular action button if no custom component is provided
                   return (
                     <Tooltip
+                      portal
                       key={action.id}
-                      sx={{
-                        zIndex: Z_INDEX_MAX_ARBITRARY,
-                      }}
-                      title={
+                      content={
                         <Box sx={{ zIndex: Z_INDEX_MAX_ARBITRARY + 1 }}>
                           {typeof action.tooltip === "string" ? (
                             <Typography variant="body2">
@@ -287,9 +286,7 @@ export const AnnotationToolbar = ({ className }: AnnotationToolbarProps) => {
                           )}
                         </Box>
                       }
-                      placement="left"
-                      arrow
-                      disableHoverListener={false}
+                      anchor={Anchor.Right}
                     >
                       <ActionButton
                         onClick={() =>

@@ -1,33 +1,64 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import { spawnSync } from "child_process";
 import { Duration } from "src/oss/utils";
+
+/**
+ * Options for generating a blank video file via ffmpeg.
+ */
 interface CreateBlankVideoOptions {
   /**
-   * Duration of the video in seconds
+   * Duration of the video in seconds.
    */
   duration: number;
   /**
-   * Width of the video in pixels
+   * Width of the video in pixels.
    */
   width: number;
   /**
-   * Height of the video in pixels
+   * Height of the video in pixels.
    */
   height: number;
   /**
-   * Frame rate of the video in frames per second
+   * Frame rate of the video in frames per second.
    */
   frameRate: number;
   /**
-   * Color of the video in hex format
+   * Background color of the video as a CSS hex string (e.g. `"#ff0000"`).
    */
   color: string;
   /**
-   * Path to the output video.
-   * Make sure the extension of the video matches the codec used (webm)
+   * Path to the output video file.
+   * The file extension must match the codec used — this function encodes
+   * with `libvpx`, so the output path should use a `.webm` extension
+   * (e.g. `/tmp/videos/clip.webm`).
    */
   outputPath: string;
 }
 
+/**
+ * Generates a blank, solid-color video file using ffmpeg.
+ *
+ * The video is encoded with the `libvpx` VP8 codec at a target bitrate of 1Mbps
+ * and `yuv420p` pixel format. The ffmpeg process is run synchronously via a
+ * shell subprocess with a 5-second timeout. Performance timing is always logged
+ * to the console on completion.
+ *
+ * @param options - Configuration for video generation. See {@link CreateBlankVideoOptions}.
+ * @returns A `Promise` that resolves when the video has been written to disk.
+ *
+ * @example
+ * await createBlankVideo({
+ *   outputPath: "/tmp/videos/clip.webm",
+ *   duration: 3,
+ *   width: 640,
+ *   height: 480,
+ *   frameRate: 30,
+ *   color: "#00ff00",
+ * });
+ */
 export const createBlankVideo = async (
   options: CreateBlankVideoOptions
 ): Promise<void> => {

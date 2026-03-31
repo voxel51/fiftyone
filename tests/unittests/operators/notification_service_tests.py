@@ -107,10 +107,9 @@ class TestMongoChangeStreamNotificationService(unittest.TestCase):
             key="test_key", value="test_value", metadata=metadata
         )
 
-        with patch("asyncio.create_task"):
-            asyncio.run(
-                self.notification_service.notify("test_store", message_data)
-            )
+        asyncio.run(
+            self.notification_service.notify("test_store", message_data)
+        )
 
         callback1.assert_called_once_with(message_data)
         callback2.assert_not_called()
@@ -129,10 +128,9 @@ class TestMongoChangeStreamNotificationService(unittest.TestCase):
             key="test_key", value="test_value", metadata=metadata
         )
 
-        with patch("asyncio.create_task"):
-            asyncio.run(
-                self.notification_service.notify("test_store", message_data)
-            )
+        asyncio.run(
+            self.notification_service.notify("test_store", message_data)
+        )
 
         callback.assert_called_once_with(message_data)
         self.remote_notifier.broadcast_to_store.assert_called_once_with(
@@ -140,17 +138,9 @@ class TestMongoChangeStreamNotificationService(unittest.TestCase):
         )
 
 
-@pytest.fixture
-def event_loop():
-    """Create an instance of the default event loop for each test case."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
-
-
 class TestMongoChangeStreamNotificationServiceAsync:
     @pytest.fixture
-    def notification_service(self, event_loop):
+    def notification_service(self):
         remote_notifier = MagicMock()
         remote_notifier.broadcast_to_store = AsyncMock()
 
@@ -185,8 +175,8 @@ class TestMongoChangeStreamNotificationServiceAsync:
             "wallTime": datetime.datetime.now(),
         }
 
-        with patch("asyncio.create_task"):
-            await service._handle_change(change)
+        await service._handle_change(change)
+        await asyncio.gather(*service._background_tasks)
 
         callback.assert_called_once()
         called_message = callback.call_args[0][0]
@@ -215,8 +205,8 @@ class TestMongoChangeStreamNotificationServiceAsync:
             "wallTime": datetime.datetime.now(),
         }
 
-        with patch("asyncio.create_task"):
-            await service._handle_change(change)
+        await service._handle_change(change)
+        await asyncio.gather(*service._background_tasks)
 
         callback.assert_called_once()
         called_message = callback.call_args[0][0]

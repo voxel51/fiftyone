@@ -95,7 +95,12 @@ To contribute any feature to FiftyOne, you must install from source, including
 the `-d` flag to install developer dependencies, pre-commit hooks, etc:
 
 ```shell
-bash install.bash -d
+# Mac or Linux
+bash install.sh -d
+
+# Windows
+.\install.bat -d
+
 ```
 
 Refer to the [main README](README.md#installing-from-source) to make sure you

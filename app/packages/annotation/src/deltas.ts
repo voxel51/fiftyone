@@ -1,19 +1,19 @@
-import { isDetection3d } from "@fiftyone/core";
-import { JSONDeltas } from "@fiftyone/core/src/client";
+import { isDetection3d } from "@fiftyone/core/src/utils/labels";
+import type { JSONDeltas } from "@fiftyone/core/src/client";
 import {
   extractNestedField,
   generateJsonPatch,
 } from "@fiftyone/core/src/utils/json";
-import { ClassificationLabel } from "@fiftyone/looker/src/overlays/classifications";
-import { DetectionLabel } from "@fiftyone/looker/src/overlays/detection";
-import { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
-import {
+import type { ClassificationLabel } from "@fiftyone/looker/src/overlays/classifications";
+import type { DetectionLabel } from "@fiftyone/looker/src/overlays/detection";
+import type { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
+import type {
   AnnotationLabel,
   DetectionAnnotationLabel,
   PrimitiveValue,
   Sample,
 } from "@fiftyone/state";
-import { Field, Primitive } from "@fiftyone/utilities";
+import { Field, isObject, Primitive } from "@fiftyone/utilities";
 import { get } from "lodash";
 import type { OpType } from "./types";
 import { arePrimitivesEqual, isPrimitiveFieldType } from "./util";
@@ -305,7 +305,7 @@ export const buildDeletionDeltas = (
  * @param path Label path
  * @param data Label data
  */
-const buildSingleMutationDelta = <
+export const buildSingleMutationDelta = <
   T extends AnnotationLabel["data"] | Primitive
 >(
   sample: Sample,
@@ -313,7 +313,16 @@ const buildSingleMutationDelta = <
   data: T
 ): JSONDeltas => {
   const existingLabel = <T>extractNestedField(sample, path) ?? {};
-  return generateJsonPatch(existingLabel, data);
+
+  // Merge with existing data so server-enriched properties
+  //  (`_cls`, `_id`, `tags`) are preserved when the overlay only has a
+  //  subset of fields
+  const merged =
+    isObject(data) && isObject(existingLabel)
+      ? { ...existingLabel, ...data }
+      : data;
+
+  return generateJsonPatch(existingLabel, merged);
 };
 
 const buildPrimitiveMutationDelta = (

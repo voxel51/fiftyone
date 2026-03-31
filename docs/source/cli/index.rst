@@ -843,23 +843,24 @@ List operators and panels that are installed locally.
 
 .. code-block:: text
 
-    fiftyone operators list [-h] [-g PATT] [-e] [-d] [-b] [-c] [-o] [-p] [-n]
+    fiftyone operators list [-h] [-g PATT] [-e] [-d] [-b] [-c] [-o] [-p] [-n] [-u]
 
 **Arguments**
 
 .. code-block:: text
 
     optional arguments:
-      -h, --help            show this help message and exit
+      -h, --help              show this help message and exit
       -g PATT, --glob-patt PATT
-                            only show operators whose URI matches the glob pattern
-      -e, --enabled         only show enabled operators and panels
-      -d, --disabled        only show disabled operators and panels
-      -b, --builtins-only   only show builtin operators and panels
-      -c, --no-builtins     only show non-builtin operators and panels
-      -o, --operators-only  only show operators
-      -p, --panels-only     only show panels
-      -n, --names-only      only show names
+                              only show operators whose URI matches the glob pattern
+      -e, --enabled           only show enabled operators and panels
+      -d, --disabled          only show disabled operators and panels
+      -b, --builtins-only     only show builtin operators and panels
+      -c, --no-builtins       only show non-builtin operators and panels
+      -o, --operators-only    only show operators
+      -p, --panels-only       only show panels
+      -n, --names-only        only show names
+      -u, --include-unlisted  include unlisted operators
 
 **Examples**
 
