@@ -16,6 +16,187 @@ $landing-font-mono: 'Geist Mono', monospace
 $landing-radius-pill: 48px
 $landing-radius-card: 16px
 
+// --- Base styles (previously in removed variants) ---
+
+.landing-hero
+  text-align: center
+  padding: 60px 20px 40px
+  max-width: 720px
+  margin: 0 auto
+
+  &.pills-only
+    padding: 20px 20px 12px
+    max-width: 680px
+
+    .quick-action-pills
+      margin: 0
+
+.hero-ai-search
+  width: 100%
+  display: flex
+  align-items: center
+  gap: 10px
+  padding: 12px 20px
+  border: 1px solid var(--pst-border-color)
+  border-radius: 8px
+  background: var(--pst-color-surface)
+  color: var(--pst-color-text-secondary)
+  font-size: 1rem
+  cursor: pointer
+  transition: border-color 0.2s ease, box-shadow 0.2s ease
+  height: auto
+
+  &:hover
+    border-color: $landing-primary
+    box-shadow: 0 0 0 2px rgba(250, 83, 0, 0.1)
+
+.hero-search-placeholder
+  flex: 1
+  text-align: left
+
+.hero-shortcut-badge
+  display: inline-block
+  padding: 2px 8px
+  border: 1px solid var(--pst-border-color)
+  border-radius: 4px
+  background: var(--color-background, $landing-surface)
+  color: var(--pst-color-text-secondary)
+  font-size: 0.75rem
+  font-family: $landing-font-mono
+  margin-left: auto
+  cursor: pointer
+
+.social-links #social-links-table
+  justify-content: center
+
+  tbody tr
+    justify-content: center
+
+#social-links-table th a
+  white-space: nowrap
+
+.onthispage
+  display: none
+
+// --- Capability base layout ---
+
+.capability-row
+  display: flex
+  align-items: center
+  gap: 40px
+  padding: 32px 0
+  border-bottom: 1px solid var(--pst-border-color)
+
+  &:last-child
+    border-bottom: none
+
+  &.reverse
+    flex-direction: row-reverse
+
+.capability-text
+  flex: 1
+
+  h3
+    font-size: 1.4rem
+    font-weight: 700
+    margin: 0 0 12px
+    color: var(--pst-color-text-base)
+
+  p
+    font-size: 0.95rem
+    color: var(--pst-color-text-secondary)
+    line-height: 1.6
+    margin: 0 0 16px
+
+.capability-image
+  flex: 1
+  max-width: 50%
+
+  img
+    width: 100%
+    border-radius: 8px
+    border: 1px solid var(--pst-border-color)
+
+@media (max-width: $tablet)
+  .capability-row,
+  .capability-row.reverse
+    flex-direction: column
+
+  .capability-image
+    max-width: 100%
+
+// --- Use case cards base ---
+
+.use-case-section
+  padding: 32px 0
+
+.use-case-cards-grid
+  display: flex
+  flex-wrap: wrap
+
+.use-case-card-container
+  padding: 10px
+  margin-bottom: 0
+
+.use-case-card
+  display: flex
+  flex-direction: column
+  border: 1px solid var(--pst-border-color)
+  border-radius: 10px
+  overflow: hidden
+  text-decoration: none
+  color: var(--pst-color-text-base)
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06)
+  transition: box-shadow 0.3s ease, transform 0.2s ease
+  height: 100%
+  background: var(--pst-color-surface)
+
+  &:hover
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1)
+    transform: translateY(-3px)
+    text-decoration: none
+    color: var(--pst-color-text-base)
+
+.use-case-card-image
+  width: 100%
+  height: 160px
+  overflow: hidden
+  background: var(--color-background)
+
+  img
+    width: 100%
+    height: 100%
+    object-fit: cover
+
+.use-case-card-body
+  padding: 14px 16px
+
+  h5
+    font-size: 1rem
+    font-weight: 700
+    margin: 0 0 6px
+
+  p
+    font-size: 0.85rem
+    color: var(--pst-color-text-secondary)
+    margin: 0
+    line-height: 1.4
+
+// --- Responsive banner ---
+
+@media (max-width: $tablet)
+  .use-case-card-container
+    flex: 0 0 50%
+    max-width: 50%
+
+@media (max-width: $mobile)
+  .use-case-card-container
+    flex: 0 0 100%
+    max-width: 100%
+
+  .hero-shortcut-badge
+    display: none
+
 // --- Landing page scoped token overrides ---
 
 #fiftyone
