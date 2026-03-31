@@ -166,6 +166,40 @@ class _SAMPredictor:
             return curr_id == self.image_id
         return False
 
+    def predict_batch(
+        self,
+        boxes=None,
+        point_coords=None,
+        point_labels=None,
+        multimask_output=False,
+    ):
+        """Wrapper for ``segment_anything.predictor.SamPredictor.predict_torch``
+
+        Args:
+          point_coords (None): a BxNx2 array of point prompts in (X,Y) pixels
+          point_labels (None): a BxN array of labels for the
+            point prompts. 1 indicates a foreground point and 0 indicates a
+            background point.
+          boxes (None): a Bx4 array of box prompts in XYXY format.
+          multimask_output (False): if true, the model will return three masks.
+
+        Returns:
+          the output masks in BxCxHxW format where C is the number of masks
+          model's prediction in BxC
+          low resolution logits in BxCxHxW where H=W=256
+        """
+        return self.processor.predict_torch(
+            point_coords=point_coords,
+            point_labels=point_labels,
+            boxes=boxes,
+            multimask_output=multimask_output,
+        )
+
+    @property
+    def original_size(self):
+        """Returns height and width of the original image."""
+        return self.processor.original_size
+
 
 class SAMPromptMode(Enum):
     """Enumeration of supported prompt modes for SAM."""
@@ -834,7 +868,7 @@ class SegmentAnythingModel(fout.TorchImageModelWithPrompts):
                     f"Number of prompt boxes ({len(boxes)}) should be equal to the number of prompt points ({len(points)})"
                 )
         sam_boxes, sam_points, sam_point_labels = boxes, points, point_labels
-        img_hw = self._sam_predictor.processor.original_size
+        img_hw = self._sam_predictor.original_size
 
         if points is not None and len(points):
             if point_labels is None:
@@ -871,7 +905,7 @@ class SegmentAnythingModel(fout.TorchImageModelWithPrompts):
             masks,
             iou_predictions,
             low_res_logits,
-        ) = self._sam_predictor.processor.predict_torch(
+        ) = self._sam_predictor.predict_batch(
             point_coords=sam_points,
             point_labels=sam_point_labels,
             boxes=sam_boxes.to(self.device) if sam_boxes is not None else None,
