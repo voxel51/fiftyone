@@ -2392,12 +2392,10 @@ __metadata:
   resolution: "@fiftyone/aggregations@workspace:packages/aggregations"
   dependencies:
     "@babel/preset-typescript": "npm:^7.17.12"
-    "@types/react": "npm:^18.0.12"
     fs-extra: "npm:^10.1.0"
     jest: "npm:^29.7.0"
     lodash: "npm:^4.18.1"
     prettier: "npm:2.2.1"
-    typescript: "npm:4.2.4"
     vite: "npm:^6.4.2"
   languageName: unknown
   linkType: soft
@@ -2421,7 +2419,6 @@ __metadata:
     eslint: "npm:^8.0.0"
     jsdom: "npm:^26.0.0"
     onnxruntime-web: "npm:^1.24.3"
-    typescript: "npm:^4.7.4"
     uuid: "npm:^8.3.2"
     vite: "npm:^6.4.2"
     vite-plugin-externals: "npm:^0.5.0"
@@ -2449,8 +2446,6 @@ __metadata:
     "@material-ui/core": "npm:4.12.4"
     "@types/lodash": "npm:^4.14.182"
     "@types/mime": "npm:^2.0.3"
-    "@types/react": "npm:^18.2.48"
-    "@types/react-dom": "npm:^18.2.18"
     "@types/react-router": "npm:^5.1.20"
     "@types/styled-components": "npm:^5.1.23"
     "@use-gesture/react": "npm:10.1.1"
@@ -2476,7 +2471,6 @@ __metadata:
     resize-observer-polyfill: "npm:^1.5.1"
     rollup-plugin-polyfill-node: "npm:^0.6.2"
     styled-components: "npm:^6.1.8"
-    typescript: "npm:^5.3.2"
     typescript-plugin-css-modules: "npm:^5.0.2"
     uuid: "npm:^8.3.2"
     vite: "npm:^6.4.2"
@@ -2499,7 +2493,6 @@ __metadata:
     "@typescript-eslint/parser": "npm:^6.0.0"
     eslint: "npm:^8.0.0"
     jsdom: "npm:^26.0.0"
-    typescript: "npm:^4.7.4"
     vite: "npm:^6.4.2"
     vite-plugin-externals: "npm:^0.5.0"
     vitest: "npm:^1.6.0"
@@ -2518,7 +2511,6 @@ __metadata:
     "@typescript-eslint/parser": "npm:^6.0.0"
     eslint: "npm:^8.0.0"
     jsdom: "npm:^26.0.0"
-    typescript: "npm:^4.7.4"
     vite: "npm:^6.4.2"
     vite-plugin-externals: "npm:^0.5.0"
     vitest: "npm:^1.6.0"
@@ -2552,7 +2544,6 @@ __metadata:
     react-markdown: "npm:^8.0.7"
     react-syntax-highlighter: "npm:^15.5.0"
     react-use: "npm:^17.5.1"
-    typescript: "npm:^4.7.4"
     typescript-plugin-css-modules: "npm:^5.1.0"
     vite: "npm:^6.4.2"
   peerDependencies:
@@ -2586,9 +2577,7 @@ __metadata:
     "@types/lodash": "npm:^4.14.182"
     "@types/luxon": "npm:^3.6.2"
     "@types/mime": "npm:^2.0.3"
-    "@types/react": "npm:^18.2.0"
     "@types/react-color": "npm:^3.0.6"
-    "@types/react-dom": "npm:^18.0.3"
     "@types/react-grid-layout": "npm:^1.3.5"
     "@types/react-relay": "npm:^14.1.0"
     "@types/react-router": "npm:^5.1.18"
@@ -2633,7 +2622,6 @@ __metadata:
     resize-observer-polyfill: "npm:^1.5.1"
     rollup-plugin-polyfill-node: "npm:^0.6.2"
     styled-components: "npm:^6.1.8"
-    typescript: "npm:^5.4.5"
     typescript-plugin-css-modules: "npm:^5.1.0"
     use-memo-one: "npm:^1.1.3"
     uuid: "npm:^8.3.2"
@@ -2659,7 +2647,6 @@ __metadata:
     "@fiftyone/plugins": "npm:*"
     "@fiftyone/state": "npm:*"
     plotly.js: "npm:^3.1.1"
-    typescript: "npm:^4.7.4"
     use-resize-observer: "npm:^9.0.2"
     vite: "npm:^6.4.2"
     vite-plugin-externals: "npm:^0.5.0"
@@ -2681,7 +2668,6 @@ __metadata:
     "@typescript-eslint/parser": "npm:^6.0.0"
     eslint: "npm:^8.0.0"
     jsdom: "npm:^26.0.0"
-    typescript: "npm:^4.7.4"
     vite: "npm:^6.4.2"
     vite-plugin-externals: "npm:^0.5.0"
     vitest: "npm:^1.6.0"
@@ -2703,7 +2689,6 @@ __metadata:
     "@typescript-eslint/parser": "npm:^6.0.0"
     eslint: "npm:^8.0.0"
     jsdom: "npm:^26.0.0"
-    typescript: "npm:^4.7.4"
     vite: "npm:^6.4.2"
     vite-plugin-externals: "npm:^0.5.0"
     vitest: "npm:^1.6.0"
@@ -2744,7 +2729,7 @@ __metadata:
     relay-compiler: "npm:^14.1.0"
     relay-runtime: "npm:^14.1.0"
     typedoc: "npm:^0.23.21"
-    typescript: "npm:^4.7.4"
+    typescript: "npm:^6.0.2"
     typescript-plugin-css-modules: "npm:^5.0.2"
     vite: "npm:^6.4.2"
     vite-plugin-eslint: "npm:^1.8.1"
@@ -2758,7 +2743,6 @@ __metadata:
   resolution: "@fiftyone/flashlight@workspace:packages/flashlight"
   dependencies:
     prettier: "npm:^2.7.1"
-    typescript: "npm:^4.7.4"
     typescript-plugin-css-modules: "npm:^5.1.0"
     vite: "npm:^6.4.2"
   languageName: unknown
@@ -2768,13 +2752,10 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/lighter@workspace:packages/lighter"
   dependencies:
-    "@types/react": "npm:^18.2.0"
-    "@types/react-dom": "npm:^18.2.0"
     "@typescript-eslint/eslint-plugin": "npm:^6.0.0"
     "@typescript-eslint/parser": "npm:^6.0.0"
     eslint: "npm:^8.0.0"
     pixi.js: "npm:^8.13.1"
-    typescript: "npm:^5.8.3"
   peerDependencies:
     "@fiftyone/commands": "*"
     "@fiftyone/events": "*"
@@ -2795,8 +2776,6 @@ __metadata:
     "@react-three/fiber": "npm:^8.18.0"
     "@types/chroma-js": "npm:^3.1.1"
     "@types/node": "npm:^20.11.10"
-    "@types/react": "npm:^18.2.48"
-    "@types/react-dom": "npm:^18.2.18"
     "@types/three": "npm:^0.176.0"
     "@vitejs/plugin-react": "npm:^1.3.0"
     chroma-js: "npm:^3.1.2"
@@ -2809,7 +2788,6 @@ __metadata:
     styled-components: "npm:^6.1.18"
     three: "npm:^0.182.0"
     tunnel-rat: "npm:^0.1.2"
-    typescript: "npm:^5.4.5"
     vite: "npm:^6.4.2"
     vite-plugin-externals: "npm:^0.5.0"
   peerDependencies:
@@ -2839,7 +2817,6 @@ __metadata:
     mime: "npm:^2.5.2"
     monotone-convex-hull-2d: "npm:^1.0.1"
     prettier: "npm:^2.7.1"
-    typescript: "npm:^4.7.4"
     typescript-plugin-css-modules: "npm:^5.1.0"
     uuid: "npm:^8.3.2"
     vite: "npm:^6.4.2"
@@ -2865,7 +2842,6 @@ __metadata:
     lodash.throttle: "npm:^4.1.1"
     mapbox-gl: "npm:^2.9.2"
     react-map-gl: "npm:^7.0.18"
-    typescript: "npm:^4.7.4"
     use-resize-observer: "npm:^9.0.2"
     vite: "npm:^6.4.2"
     vite-plugin-externals: "npm:^0.5.0"
@@ -2883,10 +2859,8 @@ __metadata:
     "@babel/preset-typescript": "npm:^7.17.12"
     "@fiftyone/utilities": "workspace:^"
     "@testing-library/react": "npm:^14.0.0"
-    "@types/react": "npm:^18.0.12"
     jest: "npm:^29.7.0"
     prettier: "npm:2.2.1"
-    typescript: "npm:4.2.4"
     vite: "npm:^6.4.2"
     vitest: "npm:^3.0.8"
   peerDependencies:
@@ -2907,7 +2881,6 @@ __metadata:
     jotai: "npm:^2.9.3"
     jotai-optics: "npm:^0.4.0"
     prettier: "npm:^3.3.3"
-    typescript: "npm:^5.5.4"
     typescript-eslint: "npm:^7.17.0"
     vite: "npm:^6.4.2"
     vite-plugin-svgr: "npm:^4.2.0"
@@ -2922,11 +2895,9 @@ __metadata:
   dependencies:
     "@babel/preset-typescript": "npm:^7.17.12"
     "@fiftyone/utilities": "workspace:^"
-    "@types/react": "npm:^18.0.12"
     jest: "npm:^29.7.0"
     moment: "npm:^2.29.4"
     prettier: "npm:2.2.1"
-    typescript: "npm:4.2.4"
     vite: "npm:^6.4.2"
   languageName: unknown
   linkType: soft
@@ -2942,7 +2913,6 @@ __metadata:
     relay-compiler: "npm:^14.0.0"
     relay-compiler-language-typescript: "npm:^15.0.1"
     relay-config: "npm:^12.0.1"
-    typescript: "npm:^4.7.4"
     vite: "npm:^6.4.2"
   languageName: unknown
   linkType: soft
@@ -2956,7 +2926,6 @@ __metadata:
     "@fiftyone/plugins": "npm:*"
     "@fiftyone/spaces": "npm:*"
     "@fiftyone/state": "npm:*"
-    typescript: "npm:^4.7.4"
     vite: "npm:^6.4.2"
     vite-plugin-externals: "npm:^0.5.0"
   peerDependencies:
@@ -2991,7 +2960,6 @@ __metadata:
   dependencies:
     "@af-utils/scrollend-polyfill": "npm:^0.0.13"
     "@biomejs/biome": "npm:^1.7.1"
-    typescript: "npm:^5.4.5"
     typescript-plugin-css-modules: "npm:^5.1.0"
     vite: "npm:^6.4.2"
   languageName: unknown
@@ -3010,7 +2978,6 @@ __metadata:
     html2canvas: "npm:1.0.0-rc.7"
     lodash: "npm:^4.18.1"
     prettier: "npm:^2.7.1"
-    typescript: "npm:^4.7.4"
     vite: "npm:^6.4.2"
   peerDependencies:
     "@voxel51/voodo": "*"
@@ -3034,7 +3001,6 @@ __metadata:
     mime: "npm:^2.5.2"
     path-browserify: "npm:^1.0.1"
     prettier: "npm:^2.7.1"
-    typescript: "npm:^4.7.4"
     typescript-plugin-css-modules: "npm:^5.1.0"
     vite: "npm:^6.4.2"
   peerDependencies:
@@ -6513,15 +6479,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/react-dom@npm:^18.0.3, @types/react-dom@npm:^18.2.0, @types/react-dom@npm:^18.2.18":
-  version: 18.3.7
-  resolution: "@types/react-dom@npm:18.3.7"
-  peerDependencies:
-    "@types/react": ^18.0.0
-  checksum: 10/317569219366d487a3103ba1e5e47154e95a002915fdcf73a44162c48fe49c3a57fcf7f57fc6979e70d447112681e6b13c6c3c1df289db8b544df4aab2d318f3
-  languageName: node
-  linkType: hard
-
 "@types/react-grid-layout@npm:^1.3.5":
   version: 1.3.5
   resolution: "@types/react-grid-layout@npm:1.3.5"
@@ -6618,24 +6575,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/react@npm:*":
-  version: 18.2.67
-  resolution: "@types/react@npm:18.2.67"
+"@types/react@npm:18.2.0":
+  version: 18.2.0
+  resolution: "@types/react@npm:18.2.0"
   dependencies:
     "@types/prop-types": "npm:*"
     "@types/scheduler": "npm:*"
     csstype: "npm:^3.0.2"
-  checksum: 10/d7e248dbe8d9d3b05f0d8e128d615fc9c85aa2c5d15634271d20cb9b343dbeffb0875f31a44e7ac63b42afc25949bd4c3633b7ebee45ee4666591ca934a8dffb
-  languageName: node
-  linkType: hard
-
-"@types/react@npm:^18.0.12, @types/react@npm:^18.2.0, @types/react@npm:^18.2.48":
-  version: 18.3.23
-  resolution: "@types/react@npm:18.3.23"
-  dependencies:
-    "@types/prop-types": "npm:*"
-    csstype: "npm:^3.0.2"
-  checksum: 10/4b965dffe34a1f8aac8e2d7e976f113373f38134f9e37239f7e75d7ac6b3c2e1333a8df21febf1fe7749640f8de5708f7668cdfc70bffebda1cc4d3346724fd5
+  checksum: 10/c5fe6b798ab0d4ba2c40173275fb7f1e85a67586d40c97b0bee25a514f44de032e7aa90a98482cc38e106e66102727cdf1be9a8413d29509b92cb384adf4864d
   languageName: node
   linkType: hard
 
@@ -20360,103 +20307,23 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript@npm:4.2.4":
-  version: 4.2.4
-  resolution: "typescript@npm:4.2.4"
+"typescript@npm:^6.0.2":
+  version: 6.0.2
+  resolution: "typescript@npm:6.0.2"
   bin:
     tsc: bin/tsc
     tsserver: bin/tsserver
-  checksum: 10/ca42873f8cdf67f7540e923475e7ad2a31aaa6e5e336ac309c9ab08ccc04555f4d3779285e8e8d8ab05413d4c02c5a26f96e0f8ea9a16affe721f639f87d053a
+  checksum: 10/b9fc2fcee7ee8e5ca6f5138181964550531e18e2d20ecb71b802d4d495881e3444e0ef94cbb6e84eb2ba41e913f6feae3ca33cc722b32e6e6dfadb32d23b80e6
   languageName: node
   linkType: hard
 
-"typescript@npm:^4.7.4":
-  version: 4.9.5
-  resolution: "typescript@npm:4.9.5"
+"typescript@patch:typescript@npm%3A^6.0.2#optional!builtin<compat/typescript>":
+  version: 6.0.2
+  resolution: "typescript@patch:typescript@npm%3A6.0.2#optional!builtin<compat/typescript>::version=6.0.2&hash=5786d5"
   bin:
     tsc: bin/tsc
     tsserver: bin/tsserver
-  checksum: 10/458f7220ab11e0fc191514cc41be1707645ec9a8c2d609448a448e18c522cef9646f58728f6811185a4c35613dacdf6c98cf8965c88b3541d0288c47291e4300
-  languageName: node
-  linkType: hard
-
-"typescript@npm:^5.3.2, typescript@npm:^5.5.4":
-  version: 5.5.4
-  resolution: "typescript@npm:5.5.4"
-  bin:
-    tsc: bin/tsc
-    tsserver: bin/tsserver
-  checksum: 10/1689ccafef894825481fc3d856b4834ba3cc185a9c2878f3c76a9a1ef81af04194849840f3c69e7961e2312771471bb3b460ca92561e1d87599b26c37d0ffb6f
-  languageName: node
-  linkType: hard
-
-"typescript@npm:^5.4.5":
-  version: 5.4.5
-  resolution: "typescript@npm:5.4.5"
-  bin:
-    tsc: bin/tsc
-    tsserver: bin/tsserver
-  checksum: 10/d04a9e27e6d83861f2126665aa8d84847e8ebabcea9125b9ebc30370b98cb38b5dff2508d74e2326a744938191a83a69aa9fddab41f193ffa43eabfdf3f190a5
-  languageName: node
-  linkType: hard
-
-"typescript@npm:^5.8.3":
-  version: 5.8.3
-  resolution: "typescript@npm:5.8.3"
-  bin:
-    tsc: bin/tsc
-    tsserver: bin/tsserver
-  checksum: 10/65c40944c51b513b0172c6710ee62e951b70af6f75d5a5da745cb7fab132c09ae27ffdf7838996e3ed603bb015dadd099006658046941bd0ba30340cc563ae92
-  languageName: node
-  linkType: hard
-
-"typescript@patch:typescript@npm%3A4.2.4#optional!builtin<compat/typescript>":
-  version: 4.2.4
-  resolution: "typescript@patch:typescript@npm%3A4.2.4#optional!builtin<compat/typescript>::version=4.2.4&hash=334f98"
-  bin:
-    tsc: bin/tsc
-    tsserver: bin/tsserver
-  checksum: 10/1ea3cb3bd8aca37b6fd4970ffecf2da000ce4ccaed54c71de87f56f6b0d792a8a7d8a36b521574911804a9789c2f461d319679e1f5580440910987e9f1fcc22a
-  languageName: node
-  linkType: hard
-
-"typescript@patch:typescript@npm%3A^4.7.4#optional!builtin<compat/typescript>":
-  version: 4.9.5
-  resolution: "typescript@patch:typescript@npm%3A4.9.5#optional!builtin<compat/typescript>::version=4.9.5&hash=289587"
-  bin:
-    tsc: bin/tsc
-    tsserver: bin/tsserver
-  checksum: 10/5659316360b5cc2d6f5931b346401fa534107b68b60179cf14970e27978f0936c1d5c46f4b5b8175f8cba0430f522b3ce355b4b724c0ea36ce6c0347fab25afd
-  languageName: node
-  linkType: hard
-
-"typescript@patch:typescript@npm%3A^5.3.2#optional!builtin<compat/typescript>, typescript@patch:typescript@npm%3A^5.5.4#optional!builtin<compat/typescript>":
-  version: 5.5.4
-  resolution: "typescript@patch:typescript@npm%3A5.5.4#optional!builtin<compat/typescript>::version=5.5.4&hash=379a07"
-  bin:
-    tsc: bin/tsc
-    tsserver: bin/tsserver
-  checksum: 10/746fdd0865c5ce4f15e494c57ede03a9e12ede59cfdb40da3a281807853fe63b00ef1c912d7222143499aa82f18b8b472baa1830df8804746d09b55f6cf5b1cc
-  languageName: node
-  linkType: hard
-
-"typescript@patch:typescript@npm%3A^5.4.5#optional!builtin<compat/typescript>":
-  version: 5.4.5
-  resolution: "typescript@patch:typescript@npm%3A5.4.5#optional!builtin<compat/typescript>::version=5.4.5&hash=5adc0c"
-  bin:
-    tsc: bin/tsc
-    tsserver: bin/tsserver
-  checksum: 10/760f7d92fb383dbf7dee2443bf902f4365db2117f96f875cf809167f6103d55064de973db9f78fe8f31ec08fff52b2c969aee0d310939c0a3798ec75d0bca2e1
-  languageName: node
-  linkType: hard
-
-"typescript@patch:typescript@npm%3A^5.8.3#optional!builtin<compat/typescript>":
-  version: 5.8.3
-  resolution: "typescript@patch:typescript@npm%3A5.8.3#optional!builtin<compat/typescript>::version=5.8.3&hash=5786d5"
-  bin:
-    tsc: bin/tsc
-    tsserver: bin/tsserver
-  checksum: 10/b9b1e73dabac5dc730c041325dbd9c99467c1b0d239f1b74ec3b90d831384af3e2ba973946232df670519147eb51a2c20f6f96163cea2b359f03de1e2091cc4f
+  checksum: 10/e5501dfcf8c5b6b9a61f6fa53decc40187cebe3a2b7b2bd51c615007ad4cf6d58298461fef63294f6be9d5f2f33019b2a2e2bf02d9cb7d7f6ec94372bf24ffa2
   languageName: node
   linkType: hard
 
