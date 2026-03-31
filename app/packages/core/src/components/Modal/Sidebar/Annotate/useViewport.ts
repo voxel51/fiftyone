@@ -5,7 +5,7 @@ import type {
   Scene2D,
   ViewportState,
 } from "@fiftyone/lighter";
-import { useLighter } from "@fiftyone/lighter";
+import { useLighter, useLighterEventHandler } from "@fiftyone/lighter";
 import { TypeGuards } from "@fiftyone/lighter/src/core/Scene2D";
 import { useCropToContentSetting, useModalViewport } from "@fiftyone/state";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -15,21 +15,7 @@ const useInitialOverlays = (initialOverlayIds: Set<string> | null) => {
 
   const [ready, setReady] = useState(false);
   const { scene } = useLighter();
-  const callback = useCallback(
-    ({ id }: { id: string }) => {
-      if (initialOverlayIds?.has(id)) {
-        overlaysCount.current += 1;
-      }
-
-      if (overlaysCount.current === initialOverlayIds?.size) {
-        setReady(true);
-        const bus = getEventBus<LighterEventGroup>(scene?.getEventChannel());
-        // All initial overlays have been added, we can remove the listener
-        bus.off("lighter:overlay-added", callback);
-      }
-    },
-    [initialOverlayIds, scene]
-  );
+  useLighterEventHandler("lighter:overlay-added");
 
   useEffect(() => {
     if (!scene) {
