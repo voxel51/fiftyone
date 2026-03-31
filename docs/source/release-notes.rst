@@ -13,6 +13,9 @@ App
 
 - Introduced a "Your recent runs" widget on the Datasets page, showing run
   status with visual indicators and direct links to run details.
+- FiftyOne can now automatically resolve unambiguous `source -> world` static
+  transforms through intermediate frames like `camera -> ego -> world` when
+  `chain_via` is omitted.
 - Improved logic when user attempts to follow a link but is not logged in. We
   will now more consistently remember the original destination and redirect on
   login.
