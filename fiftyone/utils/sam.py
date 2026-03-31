@@ -166,7 +166,7 @@ class _SAMPredictor:
             return curr_id == self.image_id
         return False
 
-    def predict_batch(
+    def predict(
         self,
         boxes=None,
         point_coords=None,
@@ -905,7 +905,7 @@ class SegmentAnythingModel(fout.TorchImageModelWithPrompts):
             masks,
             iou_predictions,
             low_res_logits,
-        ) = self._sam_predictor.predict_batch(
+        ) = self._sam_predictor.predict(
             point_coords=sam_points,
             point_labels=sam_point_labels,
             boxes=sam_boxes.to(self.device) if sam_boxes is not None else None,
@@ -1276,3 +1276,16 @@ def _to_abs_boxes(boxes, img_width, img_height, chunk_size=1e6):
         boxes_xyxy[start:end, 3] *= img_height
 
     return boxes_xyxy
+
+
+def _mask_to_box(mask):
+    if len(mask.shape) == 3:
+        mask = np.squeeze(mask, axis=0)
+    pos_indices = np.where(mask)
+    if all(arr.size == 0 for arr in pos_indices):
+        return None
+    x1 = np.min(pos_indices[1])
+    x2 = np.max(pos_indices[1])
+    y1 = np.min(pos_indices[0])
+    y2 = np.max(pos_indices[0])
+    return [x1, y1, x2, y2]
