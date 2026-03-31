@@ -6,6 +6,8 @@ FiftyOne ontology ODM unit tests.
 |
 """
 
+# pylint: disable=no-member
+
 import unittest
 from datetime import datetime
 
@@ -39,13 +41,13 @@ class OntologyDocumentTests(unittest.TestCase):
                     {"name": "motorcycle"},
                 ],
             },
-            created_at=datetime.utcnow(),
         )
         doc.save()
 
         loaded = OntologyDocument.objects.get(
             name="vehicle_classes", version=1
         )
+        self.assertIsNotNone(loaded.created_at)
         self.assertEqual(loaded.name, "vehicle_classes")
         self.assertEqual(loaded.version, 1)
         self.assertEqual(loaded.type, OntologyType.TAXONOMY)
@@ -79,13 +81,13 @@ class OntologyDocumentTests(unittest.TestCase):
                     },
                 },
             ],
-            created_at=datetime.utcnow(),
         )
         doc.save()
 
         loaded = OntologyDocument.objects.get(
             name="vehicle_damage_attributes", version=1
         )
+        self.assertIsNotNone(loaded.created_at)
         self.assertEqual(loaded.type, OntologyType.CONDITIONAL_ATTRIBUTES)
         self.assertIsInstance(loaded.root, list)
         self.assertEqual(len(loaded.root), 2)
@@ -97,7 +99,6 @@ class OntologyDocumentTests(unittest.TestCase):
             version=1,
             type=OntologyType.TAXONOMY,
             root={"name": "root"},
-            created_at=datetime.utcnow(),
         ).save()
 
         with self.assertRaises(DuplicateKeyError):
@@ -106,7 +107,6 @@ class OntologyDocumentTests(unittest.TestCase):
                 version=1,
                 type=OntologyType.TAXONOMY,
                 root={"name": "root"},
-                created_at=datetime.utcnow(),
             ).save()
 
     def test_multiple_versions(self):
@@ -117,7 +117,6 @@ class OntologyDocumentTests(unittest.TestCase):
                 type=OntologyType.TAXONOMY,
                 description=f"Version {v}",
                 root={"name": "root", "version_data": v},
-                created_at=datetime.utcnow(),
             ).save()
 
         all_versions = OntologyDocument.objects(name="versioned")
@@ -137,7 +136,6 @@ class OntologyDocumentTests(unittest.TestCase):
             version=1,
             type="invalid_type",
             root={},
-            created_at=datetime.utcnow(),
         )
         with self.assertRaises(ValidationError):
             doc.save()
@@ -170,9 +168,9 @@ class OntologyDocumentTests(unittest.TestCase):
             version=1,
             type="taxonomy",
             root={"name": "root"},
-            created_at=datetime.utcnow(),
         )
         doc.save()
+        self.assertIsNotNone(doc.created_at)
 
         original_modified = doc.last_modified_at
 
@@ -181,8 +179,7 @@ class OntologyDocumentTests(unittest.TestCase):
         doc.reload()
 
         self.assertIsNotNone(doc.last_modified_at)
-        if original_modified is not None:
-            self.assertGreaterEqual(doc.last_modified_at, original_modified)
+        self.assertNotEqual(doc.last_modified_at, original_modified)
 
     def test_same_name_different_types(self):
         OntologyDocument(
@@ -190,7 +187,6 @@ class OntologyDocumentTests(unittest.TestCase):
             version=1,
             type=OntologyType.TAXONOMY,
             root={"name": "root"},
-            created_at=datetime.utcnow(),
         ).save()
 
         OntologyDocument(
@@ -198,7 +194,6 @@ class OntologyDocumentTests(unittest.TestCase):
             version=2,
             type=OntologyType.CONDITIONAL_ATTRIBUTES,
             root=[{"name": "attr"}],
-            created_at=datetime.utcnow(),
         ).save()
 
         docs = OntologyDocument.objects(name="shared_name")
@@ -210,21 +205,18 @@ class OntologyDocumentTests(unittest.TestCase):
             version=1,
             type=OntologyType.TAXONOMY,
             root={"name": "root"},
-            created_at=datetime.utcnow(),
         ).save()
         OntologyDocument(
             name="tax2",
             version=1,
             type=OntologyType.TAXONOMY,
             root={"name": "root"},
-            created_at=datetime.utcnow(),
         ).save()
         OntologyDocument(
             name="ca1",
             version=1,
             type=OntologyType.CONDITIONAL_ATTRIBUTES,
             root=[],
-            created_at=datetime.utcnow(),
         ).save()
 
         taxonomies = OntologyDocument.objects(type=OntologyType.TAXONOMY)
@@ -241,7 +233,6 @@ class OntologyDocumentTests(unittest.TestCase):
             version=1,
             type=OntologyType.TAXONOMY,
             root={"name": "root"},
-            created_at=datetime.utcnow(),
         ).save()
 
         self.assertEqual(OntologyDocument.objects(name="to_delete").count(), 1)

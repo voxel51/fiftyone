@@ -7,6 +7,7 @@ Ontology documents.
 """
 
 from enum import Enum
+from datetime import datetime
 
 from mongoengine.fields import DynamicField
 
@@ -56,3 +57,9 @@ class OntologyDocument(Document):
     root = DynamicField()
     created_at = DateTimeField()
     last_modified_at = DateTimeField()
+
+    def save(self, *args, **kwargs):
+        if not self.in_db and self.created_at is None:
+            self.created_at = datetime.utcnow()
+
+        return super().save(*args, **kwargs)
