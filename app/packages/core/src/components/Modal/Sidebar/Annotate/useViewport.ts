@@ -5,16 +5,44 @@ import type {
   Scene2D,
   ViewportState,
 } from "@fiftyone/lighter";
-import { useLighter, useLighterEventHandler } from "@fiftyone/lighter";
+import {
+  UNDEFINED_LIGHTER_SCENE_ID,
+  useLighter,
+  useLighterEventHandler,
+} from "@fiftyone/lighter";
 import { TypeGuards } from "@fiftyone/lighter/src/core/Scene2D";
 import { useCropToContentSetting, useModalViewport } from "@fiftyone/state";
 import { useCallback, useEffect, useRef, useState } from "react";
+
+const useSceneEventHandler = () => {
+  const { scene } = useLighter();
+
+  return useLighterEventHandler(
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+  );
+};
 
 const useInitialOverlays = (initialOverlayIds: Set<string> | null) => {
   const overlaysCount = useRef(0);
 
   const [ready, setReady] = useState(false);
   const { scene } = useLighter();
+
+  const callback = useCallback(
+    ({ id }: { id: string }) => {
+      if (initialOverlayIds?.has(id)) {
+        overlaysCount.current += 1;
+      }
+
+      if (overlaysCount.current === initialOverlayIds?.size) {
+        setReady(true);
+        const bus = getEventBus<LighterEventGroup>(scene?.getEventChannel());
+        // All initial overlays have been added, we can remove the listener
+        bus.off("lighter:overlay-added", callback);
+      }
+    },
+    [initialOverlayIds, scene]
+  );
   useLighterEventHandler("lighter:overlay-added");
 
   useEffect(() => {
@@ -34,54 +62,28 @@ const useInitialOverlays = (initialOverlayIds: Set<string> | null) => {
 
 const useCanonicalMediaBounds = () => {
   const [bounds, setBounds] = useState<Rect | null>(null);
-  const { scene } = useLighter();
-  const callback = useCallback(
-    ({ bounds }: { bounds: Rect }) => {
+
+  useSceneEventHandler()(
+    "lighter:canonical-media-bounds-changed",
+    useCallback(({ bounds }: { bounds: Rect }) => {
       setBounds(bounds);
-      const bus = getEventBus<LighterEventGroup>(scene?.getEventChannel());
-      // Stop listening after the first instance of the event
-      bus.off("lighter:canonical-media-bounds-changed", callback);
-    },
-    [scene]
+    }, []),
+    { once: true }
   );
-
-  useEffect(() => {
-    if (!scene) {
-      return;
-    }
-    const bus = getEventBus<LighterEventGroup>(scene?.getEventChannel());
-
-    bus.on("lighter:canonical-media-bounds-changed", callback);
-    return () => {
-      bus.off("lighter:canonical-media-bounds-changed", callback);
-    };
-  }, [callback, scene]);
 
   return bounds;
 };
 
 const useRendererReady = () => {
   const [ready, setReady] = useState(false);
-  const { scene } = useLighter();
 
-  const callback = useCallback(() => {
-    setReady(true);
-    const bus = getEventBus<LighterEventGroup>(scene?.getEventChannel());
-    // Stop listening after the event has fired
-    bus.off("lighter:renderer-ready", callback);
-  }, [scene]);
-
-  useEffect(() => {
-    if (!scene) {
-      return;
-    }
-    const bus = getEventBus<LighterEventGroup>(scene?.getEventChannel());
-
-    bus.on("lighter:renderer-ready", callback);
-    return () => {
-      bus.off("lighter:renderer-ready", callback);
-    };
-  }, [callback, scene]);
+  useSceneEventHandler()(
+    "lighter:canonical-media-bounds-changed",
+    useCallback(() => {
+      setReady(true);
+    }, []),
+    { once: true }
+  );
 
   return ready;
 };
@@ -126,24 +128,13 @@ const useInitializeViewport = (
     }
   }, [crop, overlayIds, mediaBounds, savedViewport, scene]);
 
-  const callback = useCallback(() => {
-    setInitialized(true);
-    const bus = getEventBus<LighterEventGroup>(scene?.getEventChannel());
-    // Stop listening after the first instance of the event
-    bus.off("lighter:viewport-moved", callback);
-  }, [scene]);
-
-  useEffect(() => {
-    if (!scene) {
-      return;
-    }
-    const bus = getEventBus(scene?.getEventChannel());
-
-    bus.on("lighter:viewport-moved", callback);
-    return () => {
-      bus.off("lighter:viewport-moved", callback);
-    };
-  }, [callback, scene]);
+  useSceneEventHandler()(
+    "lighter:viewport-moved",
+    useCallback(() => {
+      setInitialized(true);
+    }, []),
+    { once: true }
+  );
 
   return initialized;
 };
