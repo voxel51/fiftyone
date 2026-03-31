@@ -94,6 +94,22 @@ export class EventDispatcher<T extends EventGroup> {
    *
    * @returns A function to unregister the handler before it fires
    *
+   * @remarks
+   * The handler passed to `once` is wrapped internally, so the original handler reference
+   * is not compatible with `off`. To unregister before the handler fires, use the
+   * returned unregister function instead.
+   *
+   * ```typescript
+   * // ❌ Will not work — `off` cannot match the internal wrapper
+   * const handler = (data) => console.log(data.id);
+   * eventBus.once("demo:eventA", handler);
+   * eventBus.off("demo:eventA", handler);
+   *
+   * // ✅ Use the returned unregister function instead
+   * const unregister = eventBus.once("demo:eventA", handler);
+   * unregister();
+   * ```
+   *
    * @example
    * ```typescript
    * // Fires once, then removes itself
