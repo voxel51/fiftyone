@@ -8,46 +8,96 @@ Ontology classes for defining reusable annotation structures.
 
 from __future__ import annotations
 
-from copy import deepcopy
 from datetime import datetime
+from enum import Enum
 from typing import Any, Optional
 
 from fiftyone.core.odm.ontology import OntologyType
 
 
+class WhenOperator(str, Enum):
+    """Supported operators for :class:`WhenCondition`."""
+
+    EQUALS = "equals"
+    IN = "in"
+
+
+class WhenCondition:
+    """A visibility condition for an :class:`Attribute`.
+
+    Controls when an attribute is shown based on the value of another
+    attribute.
+
+    Args:
+        operator: the comparison operator
+        field: the name of the field to evaluate
+        value: the value (or values) to compare against
+    """
+
+    def __init__(
+        self,
+        operator: WhenOperator,
+        field: str,
+        value: Any,
+    ):
+        self.operator = WhenOperator(operator)
+        self.field = field
+        self.value = value
+
+    def to_dict(self) -> dict:
+        """Serializes this condition to a dict.
+
+        Returns:
+            a dict
+        """
+        return {
+            self.operator.value: {"field": self.field, "value": self.value}
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> WhenCondition:
+        """Creates a :class:`WhenCondition` from a dict.
+
+        Args:
+            d: a condition dict
+
+        Returns:
+            a :class:`WhenCondition`
+        """
+        operator = next(iter(d))
+        operand = d[operator]
+        return cls(
+            operator=operator,
+            field=operand["field"],
+            value=operand["value"],
+        )
+
+    def __repr__(self) -> str:
+        return (
+            f"WhenCondition(operator={self.operator.value!r}, "
+            f"field={self.field!r}, value={self.value!r})"
+        )
+
+
 class Attribute:
     """A single attribute within a :class:`ConditionalAttributes` ontology.
 
+    Attributes define conditional visibility rules only. Display concerns
+    (type, component, allowed values) belong on the label schema that
+    references this ontology, not here.
+
     Args:
         name: the attribute name
-        type: optional attribute type (e.g. ``"str"``, ``"bool"``,
-            ``"list<str>"``)
-        component: optional UI component hint (e.g. ``"dropdown"``,
-            ``"checkbox"``, ``"radio"``)
-        values: optional list of allowed values
-        when: optional condition dict controlling when this attribute is
-            visible. Must have a single operator key (``"equals"`` or
-            ``"in"``) whose value is a dict with ``"field"`` and ``"value"``
-            keys
-        children: optional list of :class:`Attribute` instances that appear
-            conditionally based on this attribute's value
+        when: :class:`WhenCondition` controlling when this attribute is visible
     """
 
     def __init__(
         self,
         name: str,
-        type: Optional[str] = None,
-        component: Optional[str] = None,
-        values: Optional[list] = None,
-        when: Optional[dict] = None,
-        children: Optional[list[Attribute]] = None,
+        when: WhenCondition,
     ):
         self.name = name
-        self.type = type
-        self.component = component
-        self.values = values
         self.when = when
-        self.children = children or []
 
     def to_dict(self) -> dict:
         """Serializes this attribute to a dict.
@@ -55,24 +105,10 @@ class Attribute:
         Returns:
             a dict
         """
-        d = {"name": self.name}
-
-        if self.type is not None:
-            d["type"] = self.type
-
-        if self.component is not None:
-            d["component"] = self.component
-
-        if self.values is not None:
-            d["values"] = self.values
-
-        if self.when is not None:
-            d["when"] = deepcopy(self.when)
-
-        if self.children:
-            d["children"] = [c.to_dict() for c in self.children]
-
-        return d
+        return {
+            "name": self.name,
+            "when": self.when.to_dict(),
+        }
 
     @classmethod
     def from_dict(cls, d: dict) -> Attribute:
@@ -84,14 +120,9 @@ class Attribute:
         Returns:
             an :class:`Attribute`
         """
-        children = [cls.from_dict(c) for c in d.get("children", [])]
         return cls(
             name=d["name"],
-            type=d.get("type"),
-            component=d.get("component"),
-            values=d.get("values"),
-            when=d.get("when"),
-            children=children,
+            when=WhenCondition.from_dict(d["when"]),
         )
 
     def __repr__(self) -> str:
@@ -200,12 +231,12 @@ class Ontology:
 
 
 class ConditionalAttributes(Ontology):
-    """A named, versioned set of typed attributes with conditional display
-    logic.
+    """A named, versioned set of attributes with conditional display logic.
 
     Each attribute can optionally specify a ``when`` condition that controls
-    its visibility based on the value of another attribute, as well as
-    ``children`` attributes that appear conditionally.
+    its visibility based on the value of another attribute. Display concerns
+    (type, component, allowed values) belong on the label schema that
+    references this ontology.
 
     Args:
         name: the ontology name
@@ -220,17 +251,15 @@ class ConditionalAttributes(Ontology):
             root=[
                 Attribute(
                     name="damage_location",
-                    type="str",
-                    component="dropdown",
-                    values=["front", "rear", "driver_side", "passenger_side"],
-                    when={"equals": {"field": "damage_present", "value": True}},
+                    when=WhenCondition("equals", "damage_present", True),
                 ),
                 Attribute(
                     name="damage_severity",
-                    type="str",
-                    component="radio",
-                    values=["minor", "moderate", "severe"],
-                    when={"equals": {"field": "damage_present", "value": True}},
+                    when=WhenCondition("equals", "damage_present", True),
+                ),
+                Attribute(
+                    name="airbags_deployed",
+                    when=WhenCondition("equals", "damage_location", "front"),
                 ),
             ],
         )

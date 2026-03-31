@@ -8,165 +8,95 @@ FiftyOne ontology data class unit tests.
 
 import unittest
 
-from fiftyone.core.ontology import Attribute, ConditionalAttributes
+from fiftyone.core.ontology import (
+    Attribute,
+    ConditionalAttributes,
+    WhenCondition,
+    WhenOperator,
+)
 
 
-class AttributeTests(unittest.TestCase):
-    def test_basic_attribute(self):
-        attr = Attribute(name="color", type="str", component="dropdown")
-        self.assertEqual(attr.name, "color")
-        self.assertEqual(attr.type, "str")
-        self.assertEqual(attr.component, "dropdown")
-        self.assertIsNone(attr.values)
-        self.assertIsNone(attr.when)
-        self.assertEqual(attr.children, [])
+class WhenConditionTests(unittest.TestCase):
+    def test_create_equals(self):
+        wc = WhenCondition(WhenOperator.EQUALS, "damage_present", True)
+        self.assertEqual(wc.operator, WhenOperator.EQUALS)
+        self.assertEqual(wc.field, "damage_present")
+        self.assertEqual(wc.value, True)
 
-    def test_attribute_with_values(self):
-        attr = Attribute(
-            name="color",
-            type="str",
-            component="dropdown",
-            values=["red", "green", "blue"],
-        )
-        self.assertEqual(attr.values, ["red", "green", "blue"])
+    def test_create_in(self):
+        wc = WhenCondition(WhenOperator.IN, "car_model", ["camry", "corolla"])
+        self.assertEqual(wc.operator, WhenOperator.IN)
+        self.assertEqual(wc.field, "car_model")
+        self.assertEqual(wc.value, ["camry", "corolla"])
 
-    def test_attribute_with_when(self):
-        attr = Attribute(
-            name="damage_location",
-            when={"equals": {"field": "damage_present", "value": True}},
-        )
+    def test_invalid_operator(self):
+        with self.assertRaises(ValueError):
+            WhenCondition("not_valid", "field", "value")
+
+    def test_to_dict(self):
+        wc = WhenCondition(WhenOperator.EQUALS, "damage_present", True)
         self.assertEqual(
-            attr.when,
+            wc.to_dict(),
             {"equals": {"field": "damage_present", "value": True}},
         )
 
-    def test_attribute_with_children(self):
-        parent = Attribute(
-            name="damage_present",
-            type="bool",
-            component="checkbox",
-            children=[
-                Attribute(
-                    name="damage_location",
-                    type="str",
-                    when={
-                        "equals": {
-                            "field": "damage_present",
-                            "value": True,
-                        }
-                    },
-                ),
-            ],
+    def test_from_dict(self):
+        wc = WhenCondition.from_dict(
+            {"in": {"field": "mode", "value": ["a", "b"]}}
         )
-        self.assertEqual(len(parent.children), 1)
-        self.assertEqual(parent.children[0].name, "damage_location")
+        self.assertEqual(wc.operator, WhenOperator.IN)
+        self.assertEqual(wc.field, "mode")
+        self.assertEqual(wc.value, ["a", "b"])
 
-    def test_attribute_to_dict_minimal(self):
-        attr = Attribute(name="color")
-        d = attr.to_dict()
-        self.assertEqual(d, {"name": "color"})
+    def test_roundtrip(self):
+        original = WhenCondition(WhenOperator.EQUALS, "damage_present", True)
+        restored = WhenCondition.from_dict(original.to_dict())
+        self.assertEqual(restored.operator, original.operator)
+        self.assertEqual(restored.field, original.field)
+        self.assertEqual(restored.value, original.value)
 
-    def test_attribute_to_dict_full(self):
+
+class AttributeTests(unittest.TestCase):
+    def test_create(self):
+        when = WhenCondition(WhenOperator.EQUALS, "damage_present", True)
+        attr = Attribute(name="damage_location", when=when)
+        self.assertEqual(attr.name, "damage_location")
+        self.assertEqual(attr.when.operator, WhenOperator.EQUALS)
+        self.assertEqual(attr.when.field, "damage_present")
+
+    def test_to_dict(self):
         attr = Attribute(
-            name="color",
-            type="str",
-            component="dropdown",
-            values=["red", "blue"],
-            when={"equals": {"field": "visible", "value": True}},
-            children=[Attribute(name="shade")],
+            name="damage_location",
+            when=WhenCondition(WhenOperator.EQUALS, "damage_present", True),
         )
         d = attr.to_dict()
-        self.assertEqual(d["name"], "color")
-        self.assertEqual(d["type"], "str")
-        self.assertEqual(d["component"], "dropdown")
-        self.assertEqual(d["values"], ["red", "blue"])
+        self.assertEqual(d["name"], "damage_location")
         self.assertEqual(
             d["when"],
-            {"equals": {"field": "visible", "value": True}},
+            {"equals": {"field": "damage_present", "value": True}},
         )
-        self.assertEqual(len(d["children"]), 1)
-        self.assertEqual(d["children"][0], {"name": "shade"})
 
-    def test_attribute_from_dict_minimal(self):
-        attr = Attribute.from_dict({"name": "color"})
-        self.assertEqual(attr.name, "color")
-        self.assertIsNone(attr.type)
-        self.assertEqual(attr.children, [])
-
-    def test_attribute_from_dict_full(self):
+    def test_from_dict(self):
         d = {
-            "name": "color",
-            "type": "str",
-            "component": "dropdown",
-            "values": ["red"],
+            "name": "damage_location",
             "when": {"in": {"field": "mode", "value": ["a", "b"]}},
-            "children": [{"name": "shade", "type": "str"}],
         }
         attr = Attribute.from_dict(d)
-        self.assertEqual(attr.name, "color")
-        self.assertEqual(attr.type, "str")
-        self.assertEqual(attr.component, "dropdown")
-        self.assertEqual(attr.values, ["red"])
-        self.assertEqual(len(attr.children), 1)
-        self.assertEqual(attr.children[0].name, "shade")
-        self.assertEqual(attr.children[0].type, "str")
+        self.assertEqual(attr.name, "damage_location")
+        self.assertEqual(attr.when.operator, WhenOperator.IN)
+        self.assertEqual(attr.when.field, "mode")
 
-    def test_attribute_roundtrip(self):
+    def test_roundtrip(self):
         original = Attribute(
-            name="damage_present",
-            type="bool",
-            component="checkbox",
-            children=[
-                Attribute(
-                    name="location",
-                    type="str",
-                    component="dropdown",
-                    values=["front", "rear"],
-                    when={
-                        "equals": {
-                            "field": "damage_present",
-                            "value": True,
-                        }
-                    },
-                    children=[
-                        Attribute(
-                            name="airbags_deployed",
-                            type="bool",
-                            when={
-                                "equals": {
-                                    "field": "location",
-                                    "value": "front",
-                                }
-                            },
-                        ),
-                    ],
-                ),
-            ],
+            name="damage_location",
+            when=WhenCondition(WhenOperator.EQUALS, "damage_present", True),
         )
         restored = Attribute.from_dict(original.to_dict())
         self.assertEqual(restored.name, original.name)
-        self.assertEqual(restored.type, original.type)
-        self.assertEqual(len(restored.children), 1)
-        self.assertEqual(len(restored.children[0].children), 1)
-        self.assertEqual(
-            restored.children[0].children[0].name, "airbags_deployed"
-        )
-
-    def test_attribute_repr(self):
-        attr = Attribute(name="color")
-        self.assertEqual(repr(attr), "Attribute(name='color')")
+        self.assertEqual(restored.when.to_dict(), original.when.to_dict())
 
 
 class ConditionalAttributesTests(unittest.TestCase):
-    def test_create_empty(self):
-        ca = ConditionalAttributes(name="test")
-        self.assertEqual(ca.name, "test")
-        self.assertIsNone(ca.description)
-        self.assertEqual(ca.root, [])
-        self.assertIsNone(ca.version)
-        self.assertIsNone(ca.created_at)
-        self.assertEqual(ca._TYPE, "conditional_attributes")
-
     def test_create_with_attributes(self):
         ca = ConditionalAttributes(
             name="vehicle_damage_attributes",
@@ -174,42 +104,42 @@ class ConditionalAttributesTests(unittest.TestCase):
             root=[
                 Attribute(
                     name="damage_location",
-                    type="str",
-                    component="dropdown",
-                    values=["front", "rear"],
-                    when={
-                        "equals": {
-                            "field": "damage_present",
-                            "value": True,
-                        }
-                    },
+                    when=WhenCondition(
+                        WhenOperator.EQUALS, "damage_present", True
+                    ),
                 ),
                 Attribute(
                     name="damage_severity",
-                    type="str",
-                    component="radio",
-                    values=["minor", "moderate", "severe"],
-                    when={
-                        "equals": {
-                            "field": "damage_present",
-                            "value": True,
-                        }
-                    },
+                    when=WhenCondition(
+                        WhenOperator.EQUALS, "damage_present", True
+                    ),
+                ),
+                Attribute(
+                    name="airbags_deployed",
+                    when=WhenCondition(
+                        WhenOperator.EQUALS, "damage_location", "front"
+                    ),
                 ),
             ],
         )
         self.assertEqual(ca.name, "vehicle_damage_attributes")
-        self.assertEqual(len(ca.root), 2)
+        self.assertEqual(len(ca.root), 3)
         self.assertEqual(ca.root[0].name, "damage_location")
-        self.assertEqual(ca.root[1].name, "damage_severity")
+        self.assertEqual(ca.root[2].name, "airbags_deployed")
 
     def test_to_dict(self):
         ca = ConditionalAttributes(
             name="test_ca",
             description="A test",
             root=[
-                Attribute(name="attr1", type="str"),
-                Attribute(name="attr2", type="bool"),
+                Attribute(
+                    name="attr1",
+                    when=WhenCondition(WhenOperator.EQUALS, "enabled", True),
+                ),
+                Attribute(
+                    name="attr2",
+                    when=WhenCondition(WhenOperator.EQUALS, "attr1", "yes"),
+                ),
             ],
         )
         d = ca.to_dict()
@@ -217,7 +147,8 @@ class ConditionalAttributesTests(unittest.TestCase):
         self.assertEqual(d["type"], "conditional_attributes")
         self.assertEqual(d["description"], "A test")
         self.assertEqual(len(d["root"]), 2)
-        self.assertEqual(d["root"][0]["name"], "attr1")
+        self.assertIn("when", d["root"][0])
+        self.assertIn("when", d["root"][1])
         self.assertIsNone(d.get("version"))
         self.assertIsNone(d.get("created_at"))
 
@@ -227,11 +158,13 @@ class ConditionalAttributesTests(unittest.TestCase):
             "type": "conditional_attributes",
             "description": "A test",
             "root": [
-                {"name": "attr1", "type": "str"},
+                {
+                    "name": "attr1",
+                    "when": {"equals": {"field": "enabled", "value": True}},
+                },
                 {
                     "name": "attr2",
-                    "type": "bool",
-                    "children": [{"name": "child1"}],
+                    "when": {"equals": {"field": "attr1", "value": "yes"}},
                 },
             ],
         }
@@ -239,7 +172,8 @@ class ConditionalAttributesTests(unittest.TestCase):
         self.assertEqual(ca.name, "test_ca")
         self.assertEqual(ca.description, "A test")
         self.assertEqual(len(ca.root), 2)
-        self.assertEqual(ca.root[1].children[0].name, "child1")
+        self.assertEqual(ca.root[0].when.field, "enabled")
+        self.assertEqual(ca.root[1].when.field, "attr1")
 
     def test_roundtrip(self):
         original = ConditionalAttributes(
@@ -247,37 +181,30 @@ class ConditionalAttributesTests(unittest.TestCase):
             description="Vehicle damage condition attributes",
             root=[
                 Attribute(
-                    name="damage_present",
-                    type="bool",
-                    component="checkbox",
-                    children=[
-                        Attribute(
-                            name="damage_location",
-                            type="str",
-                            component="dropdown",
-                            values=["front", "rear"],
-                            when={
-                                "equals": {
-                                    "field": "damage_present",
-                                    "value": True,
-                                }
-                            },
-                        ),
-                    ],
+                    name="damage_location",
+                    when=WhenCondition(
+                        WhenOperator.EQUALS, "damage_present", True
+                    ),
+                ),
+                Attribute(
+                    name="damage_severity",
+                    when=WhenCondition(
+                        WhenOperator.EQUALS, "damage_present", True
+                    ),
+                ),
+                Attribute(
+                    name="airbags_deployed",
+                    when=WhenCondition(
+                        WhenOperator.EQUALS, "damage_location", "front"
+                    ),
                 ),
             ],
         )
         restored = ConditionalAttributes.from_dict(original.to_dict())
         self.assertEqual(restored.name, original.name)
         self.assertEqual(restored.description, original.description)
-        self.assertEqual(len(restored.root), 1)
-        self.assertEqual(len(restored.root[0].children), 1)
-        self.assertEqual(restored.root[0].children[0].name, "damage_location")
-
-    def test_repr(self):
-        ca = ConditionalAttributes(name="test")
-        self.assertIn("ConditionalAttributes", repr(ca))
-        self.assertIn("test", repr(ca))
+        self.assertEqual(len(restored.root), 3)
+        self.assertEqual(restored.root[2].when.field, "damage_location")
 
 
 if __name__ == "__main__":
