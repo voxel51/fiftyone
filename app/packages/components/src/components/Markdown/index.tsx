@@ -181,6 +181,11 @@ const componentsMap = {
           pl: isTaskList ? 0 : 5,
           my: 2,
           color: "inherit",
+          // further indent nested lists
+          "& ul, & ol": {
+            my: 0.5,
+            pl: 3,
+          },
         }}
         {...props}
       >
@@ -200,6 +205,11 @@ const componentsMap = {
           pl: isTaskList ? 0 : 5,
           my: 2,
           color: "inherit",
+          // further indent nested lists
+          "& ul, & ol": {
+            my: 0.5,
+            pl: 3,
+          },
         }}
         {...props}
       >
@@ -215,9 +225,15 @@ const componentsMap = {
       <Box
         component="li"
         sx={{
-          display: isTaskItem ? "flex" : "list-item",
-          alignItems: isTaskItem ? "center" : undefined,
+          display: "list-item",
           color: "inherit",
+          ...(isTaskItem && {
+            listStyle: "none",
+            "& > input[type='checkbox']": {
+              mr: 1,
+              verticalAlign: "middle",
+            },
+          }),
         }}
         {...props}
       >
