@@ -161,8 +161,8 @@ const Annotate = ({ disabledReason }: AnnotateProps) => {
   const showSetup = useShowImportSchema(isDisabled, requiredField);
 
   const initialIds = useLabels();
-  useViewport(initialIds);
   useDelete();
+  useViewport(initialIds);
 
   useEffect(() => {
     contextManager.enter();

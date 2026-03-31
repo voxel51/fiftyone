@@ -16,7 +16,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 const useSceneEventHandler = () => {
   const { scene } = useLighter();
-
   return useLighterEventHandler(
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
   );
@@ -24,7 +23,6 @@ const useSceneEventHandler = () => {
 
 const useInitialOverlays = (initialOverlayIds: Set<string> | null) => {
   const overlaysCount = useRef(0);
-
   const [ready, setReady] = useState(false);
   const { scene } = useLighter();
 
@@ -37,19 +35,18 @@ const useInitialOverlays = (initialOverlayIds: Set<string> | null) => {
       if (overlaysCount.current === initialOverlayIds?.size) {
         setReady(true);
         const bus = getEventBus<LighterEventGroup>(scene?.getEventChannel());
-        // All initial overlays have been added, we can remove the listener
+        // All initial overlays added, remove the listener
         bus.off("lighter:overlay-added", callback);
       }
     },
     [initialOverlayIds, scene]
   );
-  useLighterEventHandler("lighter:overlay-added");
 
   useEffect(() => {
     if (!scene) {
       return;
     }
-    const bus = getEventBus<LighterEventGroup>(scene?.getEventChannel());
+    const bus = getEventBus<LighterEventGroup>(scene.getEventChannel());
 
     bus.on("lighter:overlay-added", callback);
     return () => {
@@ -121,9 +118,7 @@ const useInitializeViewport = (
 
     if (savedViewport) {
       scene.setViewportState(savedViewport);
-    }
-
-    if (crop) {
+    } else if (crop) {
       scene.setViewportState(fitOverlays(scene, overlayIds));
     }
   }, [crop, overlayIds, mediaBounds, savedViewport, scene]);
@@ -143,7 +138,6 @@ const useViewport = (initialOverlayIds: Set<string> | null) => {
   const mediaBounds = useCanonicalMediaBounds();
   const overlaysReady = useInitialOverlays(initialOverlayIds);
   const rendererReady = useRendererReady();
-
   const initialized = useInitializeViewport(initialOverlayIds, mediaBounds);
 
   return {

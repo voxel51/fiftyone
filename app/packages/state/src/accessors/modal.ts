@@ -127,7 +127,10 @@ export const useModalLookerOptions = (withFilter = false) => {
  * Gets the current "Crop to content" setting in the modal when in a view
  * "Patches" view
  */
-export const useCropToContentSetting = () => {
+export const useCropToContentSetting = (): [
+  boolean,
+  (crop: boolean) => void
+] => {
   const [value, set] = useRecoilState(cropToContent(true));
   return [value, useCallback((value: boolean) => set(value), [set])];
 };
