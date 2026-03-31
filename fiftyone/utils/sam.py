@@ -38,7 +38,7 @@ class SegmentAnythingModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
         points_mask_index (None): an optional mask index to use for each
             keypoint output
         get_item_cls (None): a string like
-            ``"fiftytone.utils.sam.SegmentAnythingImageGetItem"`` specifying the
+            ``"fiftyone.utils.sam.SegmentAnythingImageGetItem"`` specifying the
             :class:`GetItem` to use for SAM
         get_item_args (None): a dictionary of arguments for
             ``get_item_cls(field_mapping=field_mapping, **kwargs)``
@@ -729,10 +729,10 @@ class SegmentAnythingModel(fout.TorchImageModel):
         """
         get_item_cls = self.config.get_item_cls
         if get_item_cls is None:
-            raise Exception("GetItem class is set to None")
+            raise ValueError("GetItem class is set to None")
 
         if not etau.is_str(self.config.get_item_cls):
-            raise Exception(
+            raise TypeError(
                 f"Expected class string. GetItem class can't be initialized from {get_item_cls}"
             )
         get_item = etau.get_class(get_item_cls)
@@ -815,7 +815,7 @@ class SegmentAnythingModel(fout.TorchImageModel):
                     max_points = max([pts.shape[0] for pts in val])
                     padded_points = []
                     padded_labels = []
-                    for pts, pts_labels in zip(val, point_labels):
+                    for pts, pts_labels in zip(val, point_labels, strict=True):
                         pad_amount = max_points - pts.shape[0]
                         padded_pts = torch.nn.functional.pad(
                             pts, (0, 0, 0, pad_amount), value=0.0
@@ -905,9 +905,7 @@ class SegmentAnythingModel(fout.TorchImageModel):
         point_labels = imgs.get("point_labels")
         boxes = imgs.get("boxes")
         mask_inputs = imgs.get("mask_inputs")  # Not used currently
-        multimask_output = (
-            True if (boxes is None and point_coords is not None) else False
-        )
+        multimask_output = boxes is None and point_coords is not None
 
         outputs = []
         for img_idx, img_embedding in enumerate(image_embeddings):
