@@ -8,26 +8,6 @@ FiftyOne
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/geist@1/dist/fonts/geist-sans/style.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/geist@1/dist/fonts/geist-mono/style.css">
 
-  <style>
-    /* Landing page scoped token overrides */
-    .bd-article {
-      --pst-color-primary: #FA5300;
-      --pst-color-link: #FA5300;
-      --pst-color-link-hover: #e04a00;
-      --pst-color-surface: #F0EBE9;
-      --pst-color-border: #F0EBE9;
-      --pst-color-text-muted: #68615D;
-      --pst-color-secondary: #99918D;
-      font-family: 'Geist', sans-serif;
-    }
-    .bd-article code, .bd-article pre {
-      font-family: 'Geist Mono', monospace;
-    }
-    #fiftyone > h1:first-child { display: none !important; height: 0 !important; margin: 0 !important; overflow: hidden !important; }
-    .bd-article h2 { font-size: 2.1rem !important; font-weight: 600 !important; }
-    .hero-heading { font-size: 2.4rem !important; font-weight: 700 !important; margin-bottom: 24px !important; letter-spacing: -0.02em; }
-    .hero-search-container { margin-top: 36px !important; }
-  </style>
 
 
 .. raw:: html
@@ -236,7 +216,7 @@ _________________
           </a>
         </div>
         <div class="capability-image">
-          <img src="_static/images/groups-modal.gif" alt="Visualize" loading="lazy" />
+          <img src="https://cdn.voxel51.com/images/capabilities/groups-modal.gif" alt="Visualize" loading="lazy" />
         </div>
       </div>
       <div class="capability-row reverse">
@@ -291,8 +271,8 @@ ______________________________
 
 .. raw:: html
 
-    <div class="section-header-row" style="margin-bottom:24px;">
-      <p class="capability-subtitle" style="margin:0;">FiftyOne integrates natively with your favorite tools. Click on a logo to learn how.</p>
+    <div class="section-header-row integrations-subtitle-row">
+      <p class="capability-subtitle integrations-subtitle">FiftyOne integrates natively with your favorite tools. Click on a logo to learn how.</p>
       <a href="integrations/index.html" class="capability-cta-v4">
         <span class="orange-arrow-circle"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
         View all integrations

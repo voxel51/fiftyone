@@ -1,8 +1,70 @@
 // ==============================================
-// Variant 4: Designer Mockup Redesign (v4)
+// Landing Page Redesign (Designer Mockup)
 // ==============================================
 
-// --- Hero Nav Pills ---
+// --- Variables ---
+
+$landing-primary: #FA5300
+$landing-primary-hover: #e04a00
+$landing-dark: #17191A
+$landing-dark-hover: #2a2d31
+$landing-surface: #F0EBE9
+$landing-muted: #68615D
+$landing-secondary: #99918D
+$landing-font: 'Geist', sans-serif
+$landing-font-mono: 'Geist Mono', monospace
+$landing-radius-pill: 48px
+$landing-radius-card: 16px
+
+// --- Landing page scoped token overrides ---
+
+#fiftyone
+  .bd-article
+    --pst-color-primary: #{$landing-primary}
+    --pst-color-link: #{$landing-primary}
+    --pst-color-link-hover: #{$landing-primary-hover}
+    --pst-color-surface: #{$landing-surface}
+    --pst-color-border: #{$landing-surface}
+    --pst-color-text-muted: #{$landing-muted}
+    --pst-color-secondary: #{$landing-secondary}
+    font-family: $landing-font
+
+    code, pre
+      font-family: $landing-font-mono
+
+    h2
+      font-size: 2.1rem
+      font-weight: 600
+
+  // Hide RST title
+  > h1:first-child
+    display: none
+    height: 0
+    margin: 0
+    overflow: hidden
+
+  // Tighten spacing between pill and RST headings
+  section
+    margin-top: 0
+
+    > h2:first-child
+      margin-top: 8px
+      margin-bottom: 16px
+
+  // Hide permalink icons
+  .headerlink
+    display: none
+
+// --- Hero ---
+
+.hero-heading
+  font-size: 2.4rem !important
+  font-weight: 700 !important
+  margin-bottom: 24px !important
+  letter-spacing: -0.02em
+
+.hero-search-container
+  margin-top: 36px !important
 
 .hero-nav-pills
   display: flex
@@ -16,10 +78,10 @@
   align-items: center
   gap: 8px
   padding: 10px 24px
-  border-radius: 48px
+  border-radius: $landing-radius-pill
   font-size: 14px
   font-weight: 500
-  font-family: 'Geist', sans-serif
+  font-family: $landing-font
   text-decoration: none
   transition: all 0.2s ease
   white-space: nowrap
@@ -34,18 +96,18 @@
   color: var(--pst-color-text-base)
 
   &:hover
-    border-color: #FA5300
-    color: #FA5300
+    border-color: $landing-primary
+    color: $landing-primary
     text-decoration: none
 
 .nav-pill-filled
-  background: #17191A
-  border: 1px solid #17191A
+  background: $landing-dark
+  border: 1px solid $landing-dark
   color: #fff
 
   &:hover
-    background: #2a2d31
-    border-color: #2a2d31
+    background: $landing-dark-hover
+    border-color: $landing-dark-hover
     color: #fff
     text-decoration: none
 
@@ -65,13 +127,13 @@
   text-decoration: none
   color: var(--pst-color-text-base)
   font-size: 0.9rem
-  font-family: 'Geist', sans-serif
+  font-family: $landing-font
   padding: 6px 0
   white-space: nowrap
   transition: color 0.2s ease
 
   &:hover
-    color: #FA5300
+    color: $landing-primary
     text-decoration: none
 
 .quick-link-icon
@@ -90,7 +152,7 @@
 
 .new-badge
   font-size: 0.6rem
-  background: #FA5300
+  background: $landing-primary
   color: #fff
   padding: 1px 5px
   border-radius: 4px
@@ -102,7 +164,7 @@
 // --- Install Bar ---
 
 .install-bar
-  background: #17191A
+  background: $landing-dark
   border-radius: 8px
   padding: 20px 28px
   margin: 32px 0
@@ -121,12 +183,12 @@
   color: #fff
   font-size: 0.85rem
   font-weight: 500
-  font-family: 'Geist', sans-serif
+  font-family: $landing-font
 
 .install-bar-command
   color: #d4d4d4
   font-size: 0.95rem
-  font-family: 'Geist Mono', monospace
+  font-family: $landing-font-mono
   background: transparent
 
 .install-bar-right
@@ -137,11 +199,11 @@
 .install-bar-copy
   padding: 8px 18px
   border: 1px solid rgba(255, 255, 255, 0.25)
-  border-radius: 48px
+  border-radius: $landing-radius-pill
   background: transparent
   color: rgba(255, 255, 255, 0.8)
   font-size: 0.8rem
-  font-family: 'Geist', sans-serif
+  font-family: $landing-font
   cursor: pointer
   transition: all 0.2s ease
 
@@ -154,19 +216,19 @@
   align-items: center
   gap: 8px
   padding: 8px 18px
-  border-radius: 48px
+  border-radius: $landing-radius-pill
   background: #fff
-  color: #17191A
+  color: $landing-dark
   font-size: 0.8rem
   font-weight: 500
-  font-family: 'Geist', sans-serif
+  font-family: $landing-font
   text-decoration: none
   transition: all 0.2s ease
 
   &:hover
     background: #f0f0f0
     text-decoration: none
-    color: #17191A
+    color: $landing-dark
 
 // --- Section Label Pill ---
 
@@ -174,23 +236,15 @@
   display: inline-block
   padding: 4px 14px
   border: 1px solid var(--pst-border-color)
-  border-radius: 48px
+  border-radius: $landing-radius-pill
   font-size: 0.75rem
   font-weight: 500
-  color: var(--pst-color-text-muted, #68615D)
+  color: var(--pst-color-text-muted, $landing-muted)
   text-transform: uppercase
   letter-spacing: 0.5px
   margin-top: 48px
   margin-bottom: 8px
-  font-family: 'Geist', sans-serif
-
-// Tighten spacing between pill and RST headings on landing page
-#fiftyone section
-  margin-top: 0 !important
-
-  > h2:first-child
-    margin-top: 8px !important
-    margin-bottom: 16px !important
+  font-family: $landing-font
 
 // --- Section with heading + CTA side by side ---
 
@@ -215,10 +269,11 @@ section#what-are-you-working-on
   justify-content: space-between
   gap: 24px
 
-// --- Hide permalink icons on landing page ---
+.integrations-subtitle-row
+  margin-bottom: 24px
 
-#fiftyone .headerlink
-  display: none !important
+.integrations-subtitle
+  margin: 0
 
 // --- Orange Arrow Circle (reusable CTA icon) ---
 
@@ -229,7 +284,7 @@ section#what-are-you-working-on
   width: 24px
   height: 24px
   border-radius: 50%
-  background: #FA5300
+  background: $landing-primary
   flex-shrink: 0
 
   svg
@@ -238,22 +293,22 @@ section#what-are-you-working-on
     stroke: #fff
     fill: none
 
-// --- Capability card overrides (v4) ---
+// --- Capability Cards ---
 
 .capability-section
   margin-top: 16px
 
 .capability-row
   border-bottom: none !important
-  border-radius: 16px
+  border-radius: $landing-radius-card
   overflow: hidden
-  background: #F0EBE9
+  background: $landing-surface
   margin-bottom: 24px
   padding: 0 !important
   gap: 0 !important
 
   &:nth-child(even)
-    background: #17191A
+    background: $landing-dark
 
     .capability-text h3
       color: #fff
@@ -293,11 +348,11 @@ section#what-are-you-working-on
 
 .capability-subtitle
   font-size: 1rem
-  color: var(--pst-color-text-muted, #68615D)
+  color: var(--pst-color-text-muted, $landing-muted)
   margin-bottom: 32px
-  font-family: 'Geist', sans-serif
+  font-family: $landing-font
 
-// --- Capability CTA v4 ---
+// --- Capability CTA ---
 
 .capability-cta-v4
   display: inline-flex
@@ -307,12 +362,12 @@ section#what-are-you-working-on
   font-weight: 500
   color: var(--pst-color-text-base)
   text-decoration: none
-  font-family: 'Geist', sans-serif
+  font-family: $landing-font
   white-space: nowrap
   transition: color 0.2s ease
 
   &:hover
-    color: #FA5300
+    color: $landing-primary
     text-decoration: none
 
   .gray-arrow-circle
@@ -340,7 +395,7 @@ section#what-are-you-working-on
   gap: 16px
   padding: 20px 28px
   margin: 32px 0 48px
-  border: 1px solid #FA5300
+  border: 1px solid $landing-primary
   border-radius: 10px
   background: rgba(250, 83, 0, 0.05)
   min-height: 64px
@@ -349,7 +404,7 @@ section#what-are-you-working-on
   flex: 1
   font-size: 0.95rem
   color: var(--pst-color-text-base)
-  font-family: 'Geist', sans-serif
+  font-family: $landing-font
 
   strong
     font-weight: 600
@@ -359,18 +414,18 @@ section#what-are-you-working-on
   align-items: center
   gap: 8px
   padding: 8px 20px
-  border-radius: 48px
-  background: #FA5300
+  border-radius: $landing-radius-pill
+  background: $landing-primary
   color: #fff
   text-decoration: none
   font-size: 0.85rem
   font-weight: 500
-  font-family: 'Geist', sans-serif
+  font-family: $landing-font
   white-space: nowrap
   transition: background 0.2s ease
 
   &:hover
-    background: #e04a00
+    background: $landing-primary-hover
     color: #fff
     text-decoration: none
 
@@ -385,13 +440,13 @@ section#what-are-you-working-on
   margin-top: 8px !important
   margin-bottom: 8px
   color: var(--pst-color-text-base)
-  font-family: 'Geist', sans-serif
+  font-family: $landing-font
 
 .support-subheading
   font-size: 0.95rem
-  color: var(--pst-color-text-muted, #68615D)
+  color: var(--pst-color-text-muted, $landing-muted)
   margin-bottom: 28px
-  font-family: 'Geist', sans-serif
+  font-family: $landing-font
 
 .support-links
   display: flex
@@ -407,18 +462,18 @@ section#what-are-you-working-on
   color: var(--pst-color-text-secondary)
   text-decoration: none
   font-size: 0.9rem
-  font-family: 'Geist', sans-serif
+  font-family: $landing-font
   transition: color 0.2s ease
 
   &:hover
-    color: #FA5300
+    color: $landing-primary
     text-decoration: none
 
   img, svg
     width: 22px
     height: 22px
 
-// --- Integrations tiered layout ---
+// --- Integrations Tiered Layout ---
 
 .integrations-tier1,
 .integrations-tier2
@@ -435,7 +490,7 @@ section#what-are-you-working-on
   margin-top: 32px
   margin-bottom: 24px
   padding-bottom: 24px
-  border-bottom: 1px solid var(--pst-color-border, #F0EBE9)
+  border-bottom: 1px solid var(--pst-color-border, $landing-surface)
 
   img
     max-height: 60px
@@ -466,14 +521,14 @@ section#what-are-you-working-on
   font-weight: 500
   color: var(--pst-color-text-base)
   text-decoration: none
-  font-family: 'Geist', sans-serif
+  font-family: $landing-font
   transition: color 0.2s ease
 
   &:hover
-    color: #FA5300
+    color: $landing-primary
     text-decoration: none
 
-// --- Responsive (v4) ---
+// --- Responsive ---
 
 @media (max-width: $tablet)
   .hero-nav-pills
