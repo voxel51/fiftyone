@@ -1,4 +1,4 @@
-import { EventGroup, EventHandler } from "../types";
+import type { EventGroup, EventHandler } from "../types";
 
 type DispatchData<T> = T extends undefined | null ? [data?: T] : [data: T];
 
@@ -86,6 +86,41 @@ export class EventDispatcher<T extends EventGroup> {
   }
 
   /**
+   * Registers a one-time event handler that automatically unregisters itself after firing once.
+   *
+   * @template E - Event type key
+   * @param event - Event type name
+   * @param handler - Handler function (sync or async)
+   *
+   * @returns A function to unregister the handler before it fires
+   *
+   * @example
+   * ```typescript
+   * // Fires once, then removes itself
+   * eventBus.once("demo:eventA", (data) => console.log(data.id));
+   *
+   * // Cancel before it fires
+   * const unregister = eventBus.once("demo:eventA", (data) => console.log(data.id));
+   * unregister();
+   *
+   * // No payload
+   * eventBus.once("demo:eventD", () => console.log("fires once"));
+   * ```
+   */
+  public once<E extends keyof T>(
+    event: E,
+    handler: EventHandler<T[E]>
+  ): () => void {
+    const handlerFn = handler as (data?: T[E]) => void | Promise<void>;
+    const wrapper: EventHandler<T[E]> = ((data?: T[E]) => {
+      this.off(event, wrapper);
+      return handlerFn(data);
+    }) as EventHandler<T[E]>;
+
+    return this.on(event, wrapper);
+  }
+
+  /**
    * Unregisters an event handler.
    *
    * @template E - Event type key
@@ -166,10 +201,11 @@ export class EventDispatcher<T extends EventGroup> {
     ...args: DispatchData<T[E]>
   ): void {
     const data = args[0] as T[E];
-    const typeHandlers = this.handlers[event];
-    if (!typeHandlers || typeHandlers.length === 0) {
+    if (!this.handlers[event]?.length) {
       return;
     }
+    // Make a copy of the handlers at the time of dispatch
+    const typeHandlers = [...this.handlers[event]];
 
     // Collect all handler results (sync handlers return void, async return Promise<void>)
     const promises = typeHandlers.map((handler) => {
