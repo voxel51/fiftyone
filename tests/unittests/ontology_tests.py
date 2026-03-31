@@ -198,25 +198,6 @@ class OntologyDocumentTests(unittest.TestCase):
         self.assertEqual(restored.version, doc.version)
         self.assertEqual(restored.root, doc.root)
 
-    def test_last_modified_at_auto_updates(self):
-        doc = OntologyDocument(
-            name="timestamp_test",
-            version=1,
-            type="taxonomy",
-            root={"name": "root"},
-        )
-        doc.save()
-        self.assertIsNotNone(doc.created_at)
-
-        original_modified = doc.last_modified_at
-
-        doc.description = "updated"
-        doc.save()
-        doc.reload()
-
-        self.assertIsNotNone(doc.last_modified_at)
-        self.assertNotEqual(doc.last_modified_at, original_modified)
-
     def test_same_name_different_types(self):
         OntologyDocument(
             name="shared_name",
@@ -340,6 +321,41 @@ class OntologyDocumentTests(unittest.TestCase):
         doc.delete()
 
         self.assertEqual(OntologyDocument.objects(name="to_delete").count(), 0)
+
+    def test_save_creates_new_version(self):
+        doc = OntologyDocument(
+            name="versioning_test",
+            version=1,
+            type="taxonomy",
+            root={"name": "root"},
+        )
+        doc.save()
+        self.assertIsNotNone(doc.created_at)
+        self.assertEqual(doc.version, 1)
+
+        # Saving an existing doc creates a new version
+        doc.description = "updated"
+        new_doc = doc.save()
+
+        self.assertEqual(new_doc.version, 2)
+        self.assertNotEqual(new_doc.id, doc.id)
+        self.assertIsNotNone(new_doc.created_at)
+
+        # Both versions exist in the database
+        all_versions = OntologyDocument.objects(name="versioning_test")
+        self.assertEqual(all_versions.count(), 2)
+
+        # Original is unchanged
+        original = OntologyDocument.objects.get(
+            name="versioning_test", version=1
+        )
+        self.assertIsNone(original.description)
+
+        # New version has the update
+        latest = OntologyDocument.objects.get(
+            name="versioning_test", version=2
+        )
+        self.assertEqual(latest.description, "updated")
 
 
 if __name__ == "__main__":
