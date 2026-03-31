@@ -1,4 +1,5 @@
 {
+    "files": ["./types/css-modules.d.ts", "./types/mui-theme.d.ts"],
     "compilerOptions": {
         "plugins": [
             {
