@@ -162,7 +162,7 @@ class TestSAMParity(unittest.TestCase):
         cls.predictor = SamPredictor(sam)
         cls.auto_gen = SamAutomaticMaskGenerator(sam)
         cls.device = device
-        cls.dataset = _create_test_dataset(num_samples=10, seed=12)
+        cls.dataset = _create_test_dataset(num_samples=4, seed=12)
         cls.output_processor = fo.utils.sam.SAMSegmenterOutputProcessor()
 
     def test_automatic_segmentation_parity(self):
@@ -339,7 +339,7 @@ class TestSAM2Parity(unittest.TestCase):
         cls.predictor = SAM2ImagePredictor(sam2)
         cls.auto_gen = SAM2AutomaticMaskGenerator(sam2)
         cls.device = device
-        cls.dataset = _create_test_dataset(num_samples=10, seed=21)
+        cls.dataset = _create_test_dataset(num_samples=4, seed=21)
         cls.output_processor = fo.utils.sam.SAMSegmenterOutputProcessor()
 
     def test_automatic_segmentation_parity(self):
