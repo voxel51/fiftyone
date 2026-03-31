@@ -1,5 +1,6 @@
 import { test as base, expect } from "src/oss/fixtures";
 import { Asset3dPanelPom } from "src/oss/poms/fo3d/assets-panel";
+import { Renderer3dPom } from "src/oss/poms/fo3d/renderer-3d";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { SidebarPom } from "src/oss/poms/sidebar";
@@ -13,6 +14,7 @@ const SECOND_SAMPLE_FILENAME = "007195.png";
 const test = base.extend<{
   grid: GridPom;
   modal: ModalPom;
+  renderer3d: Renderer3dPom;
   sidebar: SidebarPom;
   asset3dPanel: Asset3dPanelPom;
 }>({
@@ -21,6 +23,9 @@ const test = base.extend<{
   },
   modal: async ({ page, eventUtils }, use) => {
     await use(new ModalPom(page, eventUtils));
+  },
+  renderer3d: async ({ page }, use) => {
+    await use(new Renderer3dPom(page));
   },
   sidebar: async ({ page }, use) => {
     await use(new SidebarPom(page));
@@ -144,6 +149,55 @@ test.describe.serial("quickstart-groups", () => {
       await expect(modal.carousel).toBeHidden();
       await modal.group.toggleMedia("carousel");
       await expect(modal.carousel).toBeVisible();
+    });
+
+    test("annotate pcd slice renders after refreshing from explore mode", async ({
+      modal,
+      grid,
+      page,
+      renderer3d,
+      fiftyoneLoader,
+    }) => {
+      await modal.sidebar.switchMode("annotate");
+      await modal.sidebar.annotate.selectAnnotationSlice("pcd");
+      await modal.waitForSampleLoadDomAttribute(true);
+      await modal.looker3dControls.waitForAllAssetsLoaded();
+      await modal.assert.verifyHasNoViewerError();
+      await renderer3d.assert.expectSomethingToRender();
+
+      await modal.sidebar.switchMode("explore");
+
+      if (!(await modal.groupLooker.isVisible())) {
+        await modal.group.toggleMedia("viewer");
+      }
+
+      if (!(await modal.looker3d.isVisible())) {
+        await modal.group.toggleMedia("3d");
+      }
+
+      await expect(modal.groupLooker).toBeVisible();
+      await expect(modal.looker3d).toBeVisible();
+      await modal.clickOnLooker();
+      await modal.assert.verifyModalSamplePluginTitle("left", { pinned: true });
+
+      await modal.close();
+      await modal.assert.isClosed();
+
+      await page.reload();
+      await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+
+      await grid.openFirstSample();
+      await modal.waitForSampleLoadDomAttribute(true);
+      await modal.assert.verifyModalSamplePluginTitle("left", { pinned: true });
+      await expect(modal.groupLooker).toBeVisible();
+      await expect(modal.looker3d).toBeVisible();
+
+      await modal.sidebar.switchMode("annotate");
+      await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice("pcd");
+      await modal.waitForSampleLoadDomAttribute(true);
+      await modal.looker3dControls.waitForAllAssetsLoaded();
+      await modal.assert.verifyHasNoViewerError();
+      await renderer3d.assert.expectSomethingToRender();
     });
   });
 
