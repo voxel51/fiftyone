@@ -169,21 +169,62 @@ const componentsMap = {
       {children}
     </Typography>
   ),
-  ul: ({ children, ...props }) => (
-    <Box component="ul" sx={{ listStyle: "disc", pl: 5, my: 2 }} {...props}>
-      {children}
-    </Box>
-  ),
-  ol: ({ children, ...props }) => (
-    <Box component="ol" sx={{ listStyle: "decimal", pl: 5, my: 2 }} {...props}>
-      {children}
-    </Box>
-  ),
-  li: ({ children, ...props }) => (
-    <Box component="li" sx={{ display: "list-item" }} {...props}>
-      {children}
-    </Box>
-  ),
+  ul: ({ children, className, ...props }) => {
+    // using checkboxes instead of bullets
+    const isTaskList = className?.includes("contains-task-list");
+
+    return (
+      <Box
+        component="ul"
+        sx={{
+          listStyle: isTaskList ? "none" : "disc",
+          pl: isTaskList ? 0 : 5,
+          my: 2,
+          color: "inherit",
+        }}
+        {...props}
+      >
+        {children}
+      </Box>
+    );
+  },
+  ol: ({ children, className, ...props }) => {
+    // using checkboxes instead of numbers
+    const isTaskList = className?.includes("contains-task-list");
+
+    return (
+      <Box
+        component="ol"
+        sx={{
+          listStyle: isTaskList ? "none" : "decimal",
+          pl: isTaskList ? 0 : 5,
+          my: 2,
+          color: "inherit",
+        }}
+        {...props}
+      >
+        {children}
+      </Box>
+    );
+  },
+  li: ({ children, className, ...props }) => {
+    // using checkboxes instead of bullets
+    const isTaskItem = className?.includes("task-list-item");
+
+    return (
+      <Box
+        component="li"
+        sx={{
+          display: isTaskItem ? "flex" : "list-item",
+          alignItems: isTaskItem ? "center" : undefined,
+          color: "inherit",
+        }}
+        {...props}
+      >
+        {children}
+      </Box>
+    );
+  },
 };
 
 export default function Markdown(props: ReactMarkdownOptions) {
