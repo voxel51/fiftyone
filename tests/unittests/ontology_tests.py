@@ -9,7 +9,7 @@ FiftyOne ontology ODM unit tests.
 # pylint: disable=no-member
 
 import unittest
-from datetime import datetime
+from datetime import datetime, timezone
 
 from mongoengine.errors import ValidationError
 from pymongo.errors import DuplicateKeyError
@@ -141,7 +141,7 @@ class OntologyDocumentTests(unittest.TestCase):
             doc.save()
 
     def test_serialization(self):
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         doc = OntologyDocument(
             name="serialize_test",
             version=1,

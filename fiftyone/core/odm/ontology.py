@@ -7,7 +7,7 @@ Ontology documents.
 """
 
 from enum import Enum
-from datetime import datetime
+from datetime import datetime, timezone
 
 from mongoengine.fields import DynamicField
 
@@ -60,6 +60,6 @@ class OntologyDocument(Document):
 
     def save(self, *args, **kwargs):
         if not self.in_db and self.created_at is None:
-            self.created_at = datetime.utcnow()
+            self.created_at = datetime.now(timezone.utc)
 
         return super().save(*args, **kwargs)
