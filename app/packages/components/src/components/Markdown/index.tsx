@@ -176,6 +176,7 @@ const componentsMap = {
     return (
       <Box
         component="ul"
+        className={className}
         sx={{
           listStyle: isTaskList ? "none" : "disc",
           pl: isTaskList ? 0 : 5,
@@ -200,6 +201,7 @@ const componentsMap = {
     return (
       <Box
         component="ol"
+        className={className}
         sx={{
           listStyle: isTaskList ? "none" : "decimal",
           pl: isTaskList ? 0 : 5,
@@ -224,6 +226,7 @@ const componentsMap = {
     return (
       <Box
         component="li"
+        className={className}
         sx={{
           display: "list-item",
           color: "inherit",
