@@ -2706,6 +2706,78 @@ performing a cleanup action:
 
         # ... normal stage logic
 
+.. _pipeline-request-params-overrides:
+
+Overriding request parameters per stage
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+By default, each stage in a pipeline inherits the same execution context as the
+top-level pipeline operator — including its ``view``, ``view_name``, ``filters``,
+and other request parameters.
+
+Use ``request_params_overrides`` on a :class:`PipelineStage
+<fiftyone.operators.types.PipelineStage>` to give a specific stage a different
+execution context. Any key you include in ``request_params_overrides`` will
+shadow the corresponding value from the top-level request for that stage only;
+all other stages are unaffected.
+
+Overridable parameters include:
+
+- ``view`` — a list of view stages to apply
+- ``view_name`` — the name of a saved view to use
+- ``filters`` — a dictionary of filters to apply
+- any other valid :ref:`execution context <operator-execution-context>` request
+  parameter
+
+.. note::
+
+    Do **not** include ``params`` inside ``request_params_overrides``. Use the
+    ``params`` field of :class:`PipelineStage
+    <fiftyone.operators.types.PipelineStage>` directly for operator parameters.
+
+.. code-block:: python
+
+    import fiftyone.operators as foo
+    import fiftyone.operators.types as types
+
+    class MultiViewPipeline(foo.PipelineOperator):
+        @property
+        def config(self):
+            return foo.OperatorConfig(
+                name="multi_view_pipeline",
+                label="Multi-View Pipeline",
+                allow_delegated_execution=True,
+                allow_immediate_execution=False,
+            )
+
+        def resolve_pipeline(self, ctx):
+            pipeline = types.Pipeline()
+
+            # Stage 1 runs against the view the user has open
+            pipeline.stage(
+                operator_uri="@my-plugin/compute_stats",
+                name="Stats on current view",
+                params={"field": "predictions"},
+            )
+
+            # Stage 2 runs against a different saved view
+            pipeline.stage(
+                operator_uri="@my-plugin/compute_stats",
+                name="Stats on val split",
+                params={"field": "predictions"},
+                request_params_overrides={"view_name": "val_split"},
+            )
+
+            # Stage 3 runs against the full dataset (no view applied)
+            pipeline.stage(
+                operator_uri="@my-plugin/compute_stats",
+                name="Stats on full dataset",
+                params={"field": "predictions"},
+                request_params_overrides={"view": None, "view_name": None},
+            )
+
+            return pipeline
+
 .. _operator-secrets:
 
 Accessing secrets
