@@ -80,7 +80,7 @@ FiftyOne
       <span class="quick-link-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
       Install FiftyOne
     </a>
-    <a href="#" class="quick-link-item" onclick="event.preventDefault();if(window.Kapa){window.Kapa.open({mode:'ai',query:'How do I evaluate my model in FiftyOne?',submit:true});}">
+    <a href="user_guide/evaluation.html" class="quick-link-item">
       <span class="quick-link-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
       Evaluate my model
     </a>
@@ -520,9 +520,9 @@ _____________
 
     // Keyboard shortcut: Cmd+K / Ctrl+K opens Kapa
     document.addEventListener('keydown', function(e) {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k' && window.Kapa) {
         e.preventDefault();
-        if (window.Kapa) { window.Kapa.open(); }
+        window.Kapa.open();
       }
     });
   })();
