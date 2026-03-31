@@ -10,6 +10,7 @@ import {
   fieldSchema,
   ModalSample,
   modalSample,
+  selectedMediaField,
   State,
 } from "../recoil";
 
@@ -82,6 +83,14 @@ export const useModalSample = (): ModalSample | undefined => {
  */
 export const useModalSampleSchema = (): Schema =>
   useRecoilValue(fieldSchema({ space: State.SPACE.SAMPLE }));
+
+/**
+ * Hook to retrieve the selected media field for the modal view.
+ *
+ * @returns The selected media field state for the modal
+ */
+export const useSelectedMediaFieldModal = () =>
+  useRecoilValue(selectedMediaField(true));
 
 /**
  * Get and set the preferred annotation slice for grouped datasets.

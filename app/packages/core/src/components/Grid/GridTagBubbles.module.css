@@ -1,8 +1,4 @@
-/**
- * Copyright 2017-2026, Voxel51, Inc.
- */
-
-.lookerTags {
+.gridTagBubbles {
   position: absolute;
   bottom: 0;
   max-height: 100%;
@@ -10,22 +6,20 @@
   scrollbar-width: none;
   width: 100%;
   pointer-events: none;
-  font-size: 14px;
-  line-height: 12px;
 }
 
-.lookerTags::-webkit-scrollbar {
-  width: 0px;
+.gridTagBubbles::-webkit-scrollbar {
+  width: 0;
   background: transparent;
   display: none;
 }
 
-.lookerTags::-webkit-scrollbar-thumb {
-  width: 0px;
+.gridTagBubbles::-webkit-scrollbar-thumb {
+  width: 0;
   display: none;
 }
 
-.lookerTags > div {
+.gridTagBubble {
   display: inline-block;
   box-sizing: content-box;
   padding: 2px;
@@ -36,7 +30,6 @@
   white-space: nowrap;
   pointer-events: auto;
   max-width: calc(100% - 8px);
-  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }

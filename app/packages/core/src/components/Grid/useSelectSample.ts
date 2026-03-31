@@ -1,4 +1,5 @@
 import type { ID } from "@fiftyone/spotlight";
+import type { ThumbnailSelectionDetail } from "@fiftyone/looker/src/selection";
 import type { Sample } from "@fiftyone/state";
 import {
   selectedSampleObjects,
@@ -9,12 +10,9 @@ import { useRef } from "react";
 import { useRecoilCallback } from "recoil";
 import type { Records } from "./useRecords";
 
-export interface SelectThumbnailData {
-  shiftKey: boolean;
-  id: string;
-  sample: Sample;
+export type SelectThumbnailData = ThumbnailSelectionDetail<Sample> & {
   symbol: ID;
-}
+};
 
 export const addRange = (
   index: number,
