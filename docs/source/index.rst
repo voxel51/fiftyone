@@ -64,8 +64,8 @@ FiftyOne
   <div class="landing-hero pills-only">
     <h1 class="hero-heading">Start building with FiftyOne</h1>
     <div class="hero-search-container">
-      <button class="hero-search-btn hero-ai-search" aria-label="Ask AI about FiftyOne" onclick="if(window.Kapa){window.Kapa.open();}">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V17a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 0 1 7-7z"/><line x1="10" y1="22" x2="14" y2="22"/></svg>
+      <button class="hero-search-btn hero-ai-search" aria-label="Ask AI about FiftyOne" onclick="if(window.Kapa){window.Kapa.open();}"><img src="_static/images/icons/lightbulb.svg" alt="" width="20" height="20">
+
         <span class="hero-search-placeholder">Ask anything about FiftyOne</span>
         <span class="hero-shortcut-badge" onclick="event.stopPropagation();if(window.Kapa){window.Kapa.open();}">&#8984;K</span>
       </button>
@@ -77,27 +77,27 @@ FiftyOne
   <!-- Quick Links Grid -->
   <div class="quick-links-grid">
     <a href="installation/index.html" class="quick-link-item">
-      <span class="quick-link-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+      <span class="quick-link-icon"></span>
       Install FiftyOne
     </a>
     <a href="user_guide/evaluation.html" class="quick-link-item">
-      <span class="quick-link-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+      <span class="quick-link-icon"></span>
       Evaluate my model
     </a>
     <a href="dataset_zoo/index.html" class="quick-link-item">
-      <span class="quick-link-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+      <span class="quick-link-icon"></span>
       Load a zoo dataset
     </a>
     <a href="user_guide/import_datasets.html" class="quick-link-item">
-      <span class="quick-link-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+      <span class="quick-link-icon"></span>
       Import my data
     </a>
     <a href="plugins/index.html" class="quick-link-item">
-      <span class="quick-link-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+      <span class="quick-link-icon"></span>
       Browse plugins
     </a>
     <a href="getting_started/annotation/index.html" class="quick-link-item">
-      <span class="quick-link-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+      <span class="quick-link-icon"></span>
       Label my dataset <span class="new-badge">NEW</span>
     </a>
   </div>
@@ -115,7 +115,7 @@ FiftyOne
       <button class="install-bar-copy" onclick="navigator.clipboard.writeText('pip install fiftyone');var b=this;b.textContent='Copied!';setTimeout(function(){b.textContent='Copy';},2000);" aria-label="Copy install command">Copy</button>
       <a href="installation/index.html" class="install-bar-guide">
         Full installation guide
-        <span class="orange-arrow-circle"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+        <span class="orange-arrow-circle"></span>
       </a>
     </div>
   </div>
@@ -132,7 +132,7 @@ ________________________
 .. raw:: html
 
     <a href="getting_started/index.html" class="capability-cta-v4 section-header-cta">
-      <span class="orange-arrow-circle"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+      <span class="orange-arrow-circle"></span>
       Explore all getting started guides
     </a>
     <div class="use-case-section">
@@ -188,7 +188,7 @@ ________________________
     </div>
     <a href="https://colab.research.google.com/github/voxel51/fiftyone-examples/blob/master/examples/quickstart.ipynb" target="_blank" class="quickstart-cta-btn">
       Open in Colab
-      <span class="orange-arrow-circle"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+      <span class="orange-arrow-circle"></span>
     </a>
   </div>
 
@@ -211,7 +211,7 @@ _________________
           <h3>Visualize</h3>
           <p>Explore your data in the FiftyOne App. Browse images, videos, and 3D data side-by-side with labels, metadata, and model predictions — all in one interactive view.</p>
           <a href="user_guide/app.html" class="capability-cta-v4">
-            <span class="gray-arrow-circle"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+            <span class="gray-arrow-circle"></span>
             Explore the FiftyOne App
           </a>
         </div>
@@ -224,7 +224,7 @@ _________________
           <h3>Evaluate</h3>
           <p>Aggregate metrics alone don't give you the full picture. FiftyOne makes it easy to see where your models succeed and fail so you can iterate faster.</p>
           <a href="tutorials/evaluate_detections.html" class="capability-cta-v4">
-            <span class="gray-arrow-circle"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+            <span class="gray-arrow-circle"></span>
             Evaluate models
           </a>
         </div>
@@ -237,7 +237,7 @@ _________________
           <h3>Curate</h3>
           <p>Reveal hidden structure in your data with embedding visualizations. Mine hard samples, find near-duplicates, and recommend the best data for annotation.</p>
           <a href="tutorials/image_embeddings.html" class="capability-cta-v4">
-            <span class="gray-arrow-circle"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+            <span class="gray-arrow-circle"></span>
             Explore Embeddings
           </a>
         </div>
@@ -250,7 +250,7 @@ _________________
           <h3>Annotate</h3>
           <p>Annotation mistakes create an artificial ceiling on model performance. Use FiftyOne to automatically identify possible label mistakes and correct them in-app.</p>
           <a href="getting_started/annotation/index.html" class="capability-cta-v4">
-            <span class="gray-arrow-circle"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+            <span class="gray-arrow-circle"></span>
             Explore Annotations
           </a>
         </div>
@@ -274,7 +274,7 @@ ______________________________
     <div class="section-header-row integrations-subtitle-row">
       <p class="capability-subtitle integrations-subtitle">FiftyOne integrates natively with your favorite tools. Click on a logo to learn how.</p>
       <a href="integrations/index.html" class="capability-cta-v4">
-        <span class="orange-arrow-circle"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+        <span class="orange-arrow-circle"></span>
         View all integrations
       </a>
     </div>
@@ -489,7 +489,7 @@ _____________
         Try it in Colab
       </a>
       <a href="mailto:support@voxel51.com" class="nav-pill nav-pill-outlined">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+        <img src="_static/images/icons/envelope.svg" alt="" width="18" height="18">
         Email support
       </a>
     </div>
@@ -533,7 +533,7 @@ _____________
    :hidden:
 
    Overview <self>
-   FiftyOne Enterprise <enterprise/index>
+   FiftyOne Enterprise 🚀 <enterprise/index>
    Installation <installation/index>
    Getting Started <getting_started/index>
    Tutorials <tutorials/index>

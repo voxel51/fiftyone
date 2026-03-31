@@ -15,6 +15,8 @@ $landing-font: 'Geist', sans-serif
 $landing-font-mono: 'Geist Mono', monospace
 $landing-radius-pill: 48px
 $landing-radius-card: 16px
+$arrow-icon-white: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='5' y1='12' x2='19' y2='12'/%3E%3Cpolyline points='12 5 19 12 12 19'/%3E%3C/svg%3E")
+$arrow-icon-dark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2317191A' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='5' y1='12' x2='19' y2='12'/%3E%3Cpolyline points='12 5 19 12 12 19'/%3E%3C/svg%3E")
 
 // --- Base styles (previously in removed variants) ---
 
@@ -75,7 +77,7 @@ $landing-radius-card: 16px
 #social-links-table th a
   white-space: nowrap
 
-#fiftyone .onthispage
+.onthispage
   display: none
 
 // --- Capability base layout ---
@@ -326,10 +328,10 @@ $landing-radius-card: 16px
   border-radius: 50%
   background: rgba(0, 0, 0, 0.08)
   flex-shrink: 0
-
-  svg
-    width: 14px
-    height: 14px
+  background-image: $arrow-icon-dark
+  background-repeat: no-repeat
+  background-position: center
+  background-size: 14px 14px
 
 .new-badge
   font-size: 0.6rem
@@ -465,14 +467,12 @@ section#what-are-you-working-on
   width: 24px
   height: 24px
   border-radius: 50%
-  background: $landing-primary
+  background-color: $landing-primary
+  background-image: $arrow-icon-white
+  background-repeat: no-repeat
+  background-position: center
+  background-size: 12px 12px
   flex-shrink: 0
-
-  svg
-    width: 12px
-    height: 12px
-    stroke: #fff
-    fill: none
 
 // --- Capability Cards ---
 
@@ -504,7 +504,7 @@ section#what-are-you-working-on
         color: rgba(255, 255, 255, 0.8)
 
       .gray-arrow-circle
-        background: rgba(255, 255, 255, 0.2)
+        background-color: rgba(255, 255, 255, 0.2)
 
   &:last-child
     border-bottom: none !important
@@ -558,14 +558,12 @@ section#what-are-you-working-on
     width: 28px
     height: 28px
     border-radius: 50%
-    background: rgba(0, 0, 0, 0.15)
+    background-color: rgba(0, 0, 0, 0.15)
+    background-image: $arrow-icon-white
+    background-repeat: no-repeat
+    background-position: center
+    background-size: 14px 14px
     flex-shrink: 0
-
-    svg
-      width: 14px
-      height: 14px
-      stroke: #fff
-      fill: none
 
 // --- Quickstart CTA Banner ---
 
@@ -746,6 +744,9 @@ section#what-are-you-working-on
   .quick-links-grid
     grid-template-columns: 1fr 1fr
     max-width: 300px
+
+  .quick-link-item
+    white-space: normal
 
   .support-links
     flex-direction: column
