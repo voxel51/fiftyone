@@ -267,6 +267,7 @@ const Detection = () => {
 
 const Segmentation = () => {
   const { active, enter, exit } = useSegmentationMasks();
+  const deactivateAll = useDeactivateAll();
   const isPatchView = useRecoilValue(isPatchesView);
   const fields = useAtomValue(fieldsOfType(DETECTION));
   const disabled = isPatchView || fields.length === 0;
@@ -284,9 +285,9 @@ const Segmentation = () => {
         className={disabled ? "disabled" : ""}
         onClick={() => {
           if (disabled) return;
-          if (active) {
-            exit();
-          } else {
+          deactivateAll();
+
+          if (!active) {
             enter();
           }
         }}
@@ -489,24 +490,38 @@ const Actions = () => {
 
   const { classificationActive, disableClassification } = useClassification();
   const { quickDrawActive, disableQuickDraw } = useQuickDraw();
+  const {
+    active: segmentationMasksActive,
+    exit: disableSegmentationMasks,
+  } = useSegmentationMasks();
   const current3dAnnotationMode = useCurrent3dAnnotationMode();
   const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
 
   const noActiveActions =
-    !classificationActive && !quickDrawActive && !current3dAnnotationMode;
+    !classificationActive &&
+    !quickDrawActive &&
+    !segmentationMasksActive &&
+    !current3dAnnotationMode;
   const areThreeDActionsVisible = is3dDataset || is3dSamplePinned;
 
   const deactivateAll = useCallback(() => {
     disableClassification();
     setCurrent3dAnnotationMode(null);
     disableQuickDraw();
-  }, [disableClassification, disableQuickDraw, setCurrent3dAnnotationMode]);
+    disableSegmentationMasks();
+  }, [
+    disableClassification,
+    disableQuickDraw,
+    disableSegmentationMasks,
+    setCurrent3dAnnotationMode,
+  ]);
 
   return (
     <DeactivateAllContext.Provider value={deactivateAll}>
       <ActionsDiv style={{ margin: "0 0.25rem", paddingBottom: "0.5rem" }}>
         <Row>
           <ItemLeft style={{ columnGap: "0.1rem" }}>
+            <Select active={noActiveActions} />
             <Classification />
             {areThreeDActionsVisible ? (
               <>
@@ -518,24 +533,6 @@ const Actions = () => {
                 <Detection />
                 <Segmentation />
               </>
-            )}
-          </ItemLeft>
-          <ItemRight style={{ columnGap: "0.1rem" }}>
-            <Undo />
-            <Redo />
-          </ItemRight>
-        </Row>
-        <Row>
-          <ItemLeft style={{ columnGap: "0.1rem" }}>
-            <Select active={noActiveActions} />
-            <Classification />
-            {areThreeDActionsVisible ? (
-              <>
-                <ThreeDCuboids />
-                <ThreeDPolylines />
-              </>
-            ) : (
-              <Detection />
             )}
           </ItemLeft>
           <ItemRight style={{ columnGap: "0.1rem" }}>
