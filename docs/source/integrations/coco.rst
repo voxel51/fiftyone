@@ -201,6 +201,30 @@ file containing COCO-formatted labels to work with:
         label_field="ground_truth",
         labels_path="/tmp/coco.json",
     )
+.. note::
+
+    When exporting instance segmentations, FiftyOne converts masks to polygons
+    using an approximation algorithm controlled by the ``tolerance`` parameter
+    (in pixels). Lower values preserve more points at the cost of larger file
+    sizes. Use ``tolerance=0`` for a lossless export:
+
+    .. code-block:: python
+
+        dataset.take(5, seed=51).export(
+            dataset_type=fo.types.COCODetectionDataset,
+            label_field="ground_truth",
+            labels_path="/tmp/coco.json",
+            tolerance=0,  # lossless: preserves all segmentation points
+        )
+
+    The default value is ``tolerance=2``, which reduces the number of polygon
+    vertices while keeping a small approximation error. Typical values are ``1`` to ``3`` pixels.
+
+    .. seealso::
+
+        See
+        :class:`COCODetectionDatasetExporter <fiftyone.utils.coco.COCODetectionDatasetExporter>`
+        for complete descriptions of all export parameters.
 
 Now we have a ``/tmp/coco.json`` file on disk containing COCO labels
 corresponding to the images in ``IMAGES_DIR``:
@@ -303,6 +327,7 @@ will be added to each imported sample.
     :class:`COCODetectionDatasetImporter <fiftyone.utils.coco.COCODetectionDatasetImporter>`
     for complete descriptions of the optional keyword arguments that you can
     pass to :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>`.
+
 
 If your workflow generates model predictions in COCO format, you can use the
 :meth:`add_coco_labels() <fiftyone.utils.coco.add_coco_labels>` utility method

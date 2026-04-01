@@ -4,7 +4,6 @@
  * Displays the list of active (visible) fields with drag-drop reordering.
  */
 
-import { useOperatorExecutor } from "@fiftyone/operators";
 import type { ListItemProps } from "@voxel51/voodo";
 import {
   Anchor,
@@ -24,6 +23,7 @@ import {
 import { atom, useAtomValue } from "jotai";
 import { useCallback, useMemo } from "react";
 import { fieldAttributeCount, fieldType } from "../state";
+import { useSchemaManager } from "../useSchemaManager";
 import { Item } from "./Components";
 import {
   useActiveFieldsList,
@@ -108,8 +108,7 @@ const ActiveFieldsSection = () => {
     )
   );
 
-  // Operator to persist field order to DB
-  const setActiveSchemas = useOperatorExecutor("set_active_label_schemas");
+  const { setActiveSchemas } = useSchemaManager();
 
   const listItems = useMemo(
     () =>
@@ -146,7 +145,7 @@ const ActiveFieldsSection = () => {
       // Update UI immediately
       setFields(newOrder);
       // Persist to DB
-      setActiveSchemas.execute({ fields: newOrder });
+      setActiveSchemas({ fields: newOrder });
     },
     [setFields, setActiveSchemas]
   );
@@ -175,7 +174,7 @@ const ActiveFieldsSection = () => {
           <Tooltip
             content={
               <Text>
-                Fields currently active and available for dataset annotation
+                Fields currently active and available in the "Annotate" tab
               </Text>
             }
             anchor={Anchor.Bottom}
@@ -213,7 +212,7 @@ const ActiveFieldsSection = () => {
         <Tooltip
           content={
             <Text>
-              Fields currently active and available for dataset annotation
+              Fields currently active and available in the "Annotate" tab
             </Text>
           }
           anchor={Anchor.Top}

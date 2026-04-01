@@ -1617,7 +1617,7 @@ class KeypointOutputProcessor(OutputProcessor):
                     # Low confidence
                     points.append((float("nan"), float("nan")))
                 else:
-                    points.append((p[0] / width, p[1] / height))
+                    points.append((float(p[0] / width), float(p[1] / height)))
             _keypoints.append(
                 fol.Keypoint(
                     points=points,
@@ -1837,6 +1837,12 @@ class FiftyOneTorchDataset(Dataset):
     from an arbitrary :class:`fiftyone.core.collections.SampleCollection` via
     the provided :class:`GetItem` instance.
 
+    .. warning::
+
+        For input views with repeated sample IDs, it is recommended to use
+        ``vectorize=True``. Do not use ``vectorize=False`` in this case,
+        it will give unexpected results.
+
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         get_item: a :class:`GetItem`
@@ -1883,6 +1889,13 @@ class FiftyOneTorchDataset(Dataset):
         self.ids = self._load_field(
             samples, "id", local_process_group=local_process_group
         )
+
+        if not vectorize and len(set(self.ids)) != len(self.ids):
+            logger.warning(
+                "The sample collection contains repeated sample IDs. This can "
+                "lead to unexpected results when `vectorize=False`. It is "
+                "recommended to use `vectorize=True` in this case."
+            )
 
         self.vectorize = vectorize
         self.cached_fields = None

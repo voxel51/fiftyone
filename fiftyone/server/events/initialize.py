@@ -144,7 +144,7 @@ def handle_dataset_change(
         state.sample_selection_style = dict(DEFAULT_SELECTION_STYLE)
         state.spaces = None
         state.view = None
-    except:
+    except Exception:
         state.dataset = None
         state.group_id = None
         state.group_slice = None
@@ -168,7 +168,7 @@ def handle_dataset_change(
                 initializer.view, slug=True
             )
             state.view = state.dataset.load_saved_view(doc.name)
-        except:
+        except Exception:
             pass
 
     if initializer.workspace:
@@ -177,7 +177,7 @@ def handle_dataset_change(
                 initializer.workspace, slug=True
             )
             state.spaces = state.dataset.load_workspace(doc.name)
-        except:
+        except Exception:
             pass
 
 
@@ -272,7 +272,7 @@ def handle_saved_view(
         state.selected_labels = []
         state.selected_samples = []
         state.sample_selection_style = dict(DEFAULT_SELECTION_STYLE)
-    except:
+    except Exception:
         pass
 
     return True
@@ -304,7 +304,7 @@ def handle_workspace(
         if slug:
             doc = state.dataset._get_workspace_doc(slug, slug=True)
             state.spaces = state.dataset.load_workspace(doc.name)
-    except:
+    except Exception:
         pass
 
     return True

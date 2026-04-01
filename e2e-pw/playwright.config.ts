@@ -18,6 +18,8 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
   retries: process.env.CI || process.env.IS_UTILITY_DOCKER ? 3 : 0,
+  /* Run one worker per CI shard to keep worker-scoped server state isolated */
+  workers: process.env.CI ? 1 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter:
     process.env.CI || process.env.IS_UTILITY_DOCKER

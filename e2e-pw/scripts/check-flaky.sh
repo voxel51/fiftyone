@@ -7,9 +7,10 @@ nc='\033[0m' # No Color
 
 # Usage message
 usage() {
-  echo "Usage: $0 -s <spec_or_title> [-r <runs=5>] [-h]"
+  echo "Usage: $0 -s <spec_or_title> [-r <runs=5>] [-w <workers=1>] [-h]"
   echo "  -s  Spec file path or test title (required)"
   echo "  -r  Number of times to repeat each test (default 5)"
+  echo "  -w  Number of Playwright workers (default 1 for sequential runs)"
   echo "  -h  Show this help"
   exit 1
 }
@@ -17,11 +18,13 @@ usage() {
 # Parse options
 spec_name=""
 repeat_each=5
+workers=1
 
 while getopts "s:r:w:h" opt; do
   case "$opt" in
   s) spec_name="$OPTARG" ;;
   r) repeat_each="$OPTARG" ;;
+  w) workers="$OPTARG" ;;
   h) usage ;;
   *) usage ;;
   esac
@@ -34,11 +37,12 @@ if [ -z "$spec_name" ]; then
 fi
 
 # Print a quick summary
-echo -e "${purple}==> Running '$spec_name' $repeat_each time(s).${nc}"
+echo -e "${purple}==> Running '$spec_name' $repeat_each time(s) with $workers worker(s).${nc}"
 
 # Call Playwright CLI
 #   --repeat-each: repeats the test suite N times
 npx playwright test \
+  --workers="$workers" \
   --repeat-each="$repeat_each" \
   -g "$spec_name"
 

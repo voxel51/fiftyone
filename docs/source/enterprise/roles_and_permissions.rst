@@ -94,7 +94,9 @@ Labelers only have access to datasets to which they have been specifically
 granted access (a dataset's
 :ref:`default access level <enterprise-default-access>` does not apply to
 Labelers), and they may only be granted **Can view** or **Can tag** access
-to datasets.
+to datasets. Additionally, Labelers can update annotations and metadata on
+samples using FiftyOne's :ref:`in-App annotation features <in-app-annotation>`,
+but cannot make changes to the Annotation Schema.
 
 Labelers cannot create new datasets, clone existing datasets, export datasets, or
 view other users of the deployment.

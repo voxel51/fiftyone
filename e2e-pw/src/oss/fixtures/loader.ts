@@ -7,6 +7,17 @@ import {
 import { PythonRunner } from "src/shared/python-runner/python-runner";
 import { Duration } from "../utils";
 
+const clearPersistedBrowserState = async (page: Page) => {
+  if (page.isClosed()) {
+    return;
+  }
+
+  await page.evaluate(() => {
+    window.localStorage.clear();
+    window.sessionStorage.clear();
+  });
+};
+
 export class OssLoader extends AbstractFiftyoneLoader {
   constructor() {
     super();
@@ -52,45 +63,55 @@ export class OssLoader extends AbstractFiftyoneLoader {
     datasetName: string,
     options?: WaitUntilGridVisibleOptions,
     isRetry?: boolean
-  ) {
-    const { isEmptyDataset, searchParams, withGrid } = options ?? {
-      isEmptyDataset: false,
-      searchParams: undefined,
-      withGrid: true,
-    };
+  ): Promise<void> {
+    const { isEmptyDataset, readySelector, searchParams, withGrid } =
+      options ?? {
+        isEmptyDataset: false,
+        readySelector: undefined,
+        searchParams: undefined,
+        withGrid: true,
+      };
 
     await page.addInitScript(() => {
-      let init = true;
+      // eslint-disable-next-line
+      // @ts-ignore storing a page-global init flag on window for Playwright
+      if (window.__FO_PLAYWRIGHT_INIT__) {
+        return;
+      }
+
+      // eslint-disable-next-line
+      // @ts-ignore storing a page-global init flag on window for Playwright
+      window.__FO_PLAYWRIGHT_INIT__ = true;
+
+      if (!window.name.includes("__FO_PLAYWRIGHT_STORAGE_CLEARED__")) {
+        window.localStorage.clear();
+        window.sessionStorage.clear();
+        window.name = `${window.name}__FO_PLAYWRIGHT_STORAGE_CLEARED__`;
+      }
+
       const handleCursorChange = (e: MouseEvent) => {
         const element = document.elementFromPoint(e.clientX, e.clientY);
         const cursor = window.getComputedStyle(element).cursor;
         // eslint-disable-next-line
         // @ts-ignore
-        if (cursor !== window.CURRENT_CURSOR) {
+        if (cursor !== window.__FO_PLAYWRIGHT_CURRENT_CURSOR) {
           // eslint-disable-next-line
           // @ts-ignore
-          window.CURRENT_CURSOR = window.getComputedStyle(element).cursor;
+          window.__FO_PLAYWRIGHT_CURRENT_CURSOR =
+            window.getComputedStyle(element).cursor;
           document.dispatchEvent(new CustomEvent("cursor-change"));
         }
       };
 
-      if (init) {
-        init = false;
-        document.addEventListener("mousemove", handleCursorChange);
-      }
+      document.addEventListener("mousemove", handleCursorChange);
+      document.addEventListener("mousemove", handleCursorChange);
+      document.addEventListener("pointerdown", handleCursorChange);
+      document.addEventListener("pointerup", handleCursorChange);
 
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore injecting IS_PLAYWRIGHT into window so that
       // we can disable 1) analytics, and 2) QA performance toast banners
       window.IS_PLAYWRIGHT = true;
-
-      // Clear modal mode state to ensure tests start in explore mode
-      const keys = Object.keys(localStorage);
-      keys.forEach((key) => {
-        if (key.includes("modalMode")) {
-          localStorage.removeItem(key);
-        }
-      });
     });
 
     const forceDatasetFromSelector = async () => {
@@ -146,15 +167,42 @@ export class OssLoader extends AbstractFiftyoneLoader {
       if (isRetry) {
         throw e;
       } else {
-        const ctx = page.context();
-        ctx.clearCookies();
-        ctx.clearPermissions();
-        await page.reload({ waitUntil: "domcontentloaded" });
-        await this.waitUntilGridVisible(page, datasetName, options, true);
+        if (page.isClosed()) {
+          throw e;
+        }
+
+        try {
+          const ctx = page.context();
+          await ctx.clearCookies();
+          await ctx.clearPermissions();
+          await clearPersistedBrowserState(page);
+
+          if (page.isClosed()) {
+            throw e;
+          }
+
+          await page.reload({ waitUntil: "domcontentloaded" });
+        } catch (cleanupError) {
+          if (page.isClosed()) {
+            throw e;
+          }
+
+          throw cleanupError;
+        }
+
+        return this.waitUntilGridVisible(page, datasetName, options, true);
       }
     }
 
     if (isEmptyDataset) {
+      return;
+    }
+
+    if (readySelector) {
+      await page.waitForSelector(readySelector, {
+        state: "visible",
+        timeout: Duration.Seconds(10),
+      });
       return;
     }
 
