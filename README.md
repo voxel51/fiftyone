@@ -418,9 +418,9 @@ for more information.
 
 -   **[Annotation:](https://docs.voxel51.com/user_guide/annotation.html)**
     Create and edit 2D and 3D labels directly in the App or integrate with your
-    favorite annotation tools — all in one platform.
+    favorite annotation tools — then curate, QA, and interate all in one platform.
 
-<!-- TODO: add annotation demo video here -->
+https://github.com/user-attachments/assets/b06bcdac-d64f-4465-8668-12007dc0eeaa
 
 -   **[Visualize Complex Datasets:](https://docs.voxel51.com/user_guide/app.html)**
     Easily explore images, videos, and associated labels in a powerful visual
