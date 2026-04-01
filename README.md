@@ -416,6 +416,12 @@ for more information.
 
 ## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> &nbsp; key features &nbsp; 🔑
 
+-   **[Annotation:](https://docs.voxel51.com/user_guide/annotation.html)**
+    Create and edit 2D and 3D labels directly in the App or integrate with your
+    favorite annotation tools — all in one platform.
+
+<!-- TODO: add annotation demo video here -->
+
 -   **[Visualize Complex Datasets:](https://docs.voxel51.com/user_guide/app.html)**
     Easily explore images, videos, and associated labels in a powerful visual
     interface.
@@ -437,12 +443,6 @@ https://github.com/user-attachments/assets/8c32d6c4-51e7-4fea-9a3c-2ffd9690f5d6
     find and fix data issues, annotation errors, and edge cases.
 
 https://github.com/user-attachments/assets/24fa1960-c2dd-46ae-ae5f-d58b3b84cfe4
-
--   **[Annotation:](https://docs.voxel51.com/user_guide/annotation.html)**
-    Create and edit 2D and 3D labels directly in the App or integrate with your
-    favorite annotation tools — all in one platform.
-
-<!-- TODO: add annotation demo video here -->
 
 -   **[Rich Integrations:](https://docs.voxel51.com/integrations/index.html)**
     Works with popular deep learning libraries like PyTorch, Hugging Face,
