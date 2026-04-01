@@ -46,9 +46,6 @@ class _SAM2Predictor(fosam._SAMPredictor):
     def __init__(self, model):
         self.processor = smip.SAM2ImagePredictor(model)
         self._image_id = None
-        # Create an alias since SAM2ImagePredictor doesn't have predict_torch.
-        if not hasattr(self.processor, "predict_torch"):
-            self.processor.predict_torch = self.processor.predict
 
     def image_transform(self, img):
         """Transforms image for SAM2 model input.
