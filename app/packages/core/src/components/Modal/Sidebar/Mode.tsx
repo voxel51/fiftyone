@@ -1,10 +1,8 @@
 import { useAnnotationController } from "@fiftyone/annotation";
 import { useTheme } from "@fiftyone/components";
 import { ModalMode, useModalMode } from "@fiftyone/state";
-import { useAtomValue } from "jotai";
 import React from "react";
 import styled from "styled-components";
-import { isEditing } from "./Annotate/Edit";
 
 const Container = styled.div`
   padding: 0.5rem 1rem;
@@ -37,11 +35,6 @@ const Mode = () => {
   const theme = useTheme();
   const background = { background: theme.background.level1 };
   const text = { color: theme.text.secondary };
-  const editing = useAtomValue(isEditing);
-
-  if (editing) {
-    return null;
-  }
 
   return (
     <Container>

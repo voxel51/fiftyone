@@ -263,7 +263,6 @@ export const mergeHeaders = (
 };
 
 export const getFetchOrigin = () => {
-  // window is not defined in the web worker
   if (hasWindow && window.FIFTYONE_SERVER_ADDRESS) {
     return window.FIFTYONE_SERVER_ADDRESS;
   }

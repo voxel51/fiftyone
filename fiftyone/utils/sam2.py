@@ -247,7 +247,7 @@ class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
         if "negative_prompt_field" in self.needs_fields:
             negative_field = self.needs_fields["negative_prompt_field"]
             if negative_field.startswith("frames."):
-                negative_field = negative_field[len("frames."):]
+                negative_field = negative_field[len("frames.") :]
 
         if negative_field and samples is not None:
             negative_prompts = []
@@ -256,7 +256,9 @@ class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
                     value = sample.get_field(negative_field)
                 except AttributeError:
                     logger.warning(
-                        "Sample %s has no field '%s'", sample.id, negative_field
+                        "Sample %s has no field '%s'",
+                        sample.id,
+                        negative_field,
                     )
                     value = None
                 negative_prompts.append(value)
@@ -307,7 +309,9 @@ class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
                 multimask_output=False,
             )
 
-            if self._curr_negative_prompts and idx < len(self._curr_negative_prompts):
+            if self._curr_negative_prompts and idx < len(
+                self._curr_negative_prompts
+            ):
                 masks = _subtract_negative_box_regions(
                     masks, self._curr_negative_prompts[idx], w, h
                 )
@@ -441,7 +445,9 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
         self._curr_prompts = self._get_prompts(sample, field_name)
         self._curr_prompt_type = self._get_prompt_type(sample, field_name)
         if negative_field_name:
-            self._curr_negative_prompts = self._get_prompts(sample, negative_field_name)
+            self._curr_negative_prompts = self._get_prompts(
+                sample, negative_field_name
+            )
         else:
             self._curr_negative_prompts = None
 
@@ -565,7 +571,9 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
                     (out_mask_logits[i] > 0.0).cpu().numpy(), axis=0
                 )
 
-                if self._curr_negative_prompts and out_frame_idx < len(self._curr_negative_prompts):
+                if self._curr_negative_prompts and out_frame_idx < len(
+                    self._curr_negative_prompts
+                ):
                     mask = _subtract_negative_box_regions(
                         mask,
                         self._curr_negative_prompts[out_frame_idx],
@@ -628,20 +636,30 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
                 classes_obj_id_map[ann_obj_id] = keypoint.label
                 points, labels = fosam._to_sam_points(
                     keypoint.points,
-                    self._curr_frame_width,
-                    self._curr_frame_height,
-                    keypoint,
+                    width=self._curr_frame_width,
+                    height=self._curr_frame_height,
+                    point_labels=fosam._get_sam_point_labels(keypoint),
                 )
 
-                if self._curr_negative_prompts and frame_idx < len(self._curr_negative_prompts):
-                    neg_frame_keypoints = self._curr_negative_prompts[frame_idx]
-                    if neg_frame_keypoints and isinstance(neg_frame_keypoints, fol.Keypoints) and len(neg_frame_keypoints.keypoints) > 0:
+                if self._curr_negative_prompts and frame_idx < len(
+                    self._curr_negative_prompts
+                ):
+                    neg_frame_keypoints = self._curr_negative_prompts[
+                        frame_idx
+                    ]
+                    if (
+                        neg_frame_keypoints
+                        and isinstance(neg_frame_keypoints, fol.Keypoints)
+                        and len(neg_frame_keypoints.keypoints) > 0
+                    ):
                         for neg_keypoint in neg_frame_keypoints.keypoints:
                             neg_points, _ = fosam._to_sam_points(
                                 neg_keypoint.points,
-                                self._curr_frame_width,
-                                self._curr_frame_height,
-                                neg_keypoint,
+                                width=self._curr_frame_width,
+                                height=self._curr_frame_height,
+                                point_labels=fosam._get_sam_point_labels(
+                                    neg_keypoint
+                                ),
                             )
                             neg_labels = np.zeros(len(neg_points), dtype=int)
                             points = np.vstack([points, neg_points])

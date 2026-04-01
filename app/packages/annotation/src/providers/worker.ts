@@ -1,5 +1,14 @@
 import * as ort from "onnxruntime-web";
-import type { InferenceResult, PromptPoint, WorkerMessageType, WorkerNotifications, WorkerResponse } from "./types";
+import type {
+  DownloadProgress,
+  InferenceResult,
+  ProviderError,
+  ProviderStatus,
+  PromptPoint,
+  WorkerMessageType,
+  WorkerNotifications,
+  WorkerResponse,
+} from "./types";
 import {
   SAM2_INPUT_SIZE,
   SAM2_OUTPUT_SIZE,
@@ -13,13 +22,29 @@ import {
 import { loadModelWeights } from "./modelCache";
 import { getEmbedding, putEmbedding } from "./embeddingCache";
 
-// Typed postMessage helpers to enforce message shapes at compile time.
+// Typed helpers to enforce message shapes at compile time.
 
 function postNotification<T extends keyof WorkerNotifications>(
   type: T,
   result: WorkerNotifications[T]
 ): void {
   self.postMessage({ type, result });
+}
+
+function postStatusNotification(status: ProviderStatus): void {
+  postNotification("status", status);
+}
+
+function postProgressNotification(progress: DownloadProgress): void {
+  postNotification("progress", progress);
+}
+
+function postWarningNotification(message: string): void {
+  postNotification("warning", message);
+}
+
+function postErrorNotification(error: ProviderError): void {
+  postNotification("error", error);
 }
 
 function postResponse<T extends WorkerMessageType>(
@@ -39,10 +64,8 @@ function postError(id: number, type: string, error: string): void {
 const IMAGE_MEAN = [0.485, 0.456, 0.406];
 const IMAGE_STD = [0.229, 0.224, 0.225];
 
-// SAM2 Tiny model weights (HuggingFace-hosted, pre-optimized ONNX)
-// Meta (Apache 2.0, https://huggingface.co/facebook/sam2-hiera-tiny)
-// SharpAI (Apache 2.0, ONNX conversion + ORT optimization, https://huggingface.co/SharpAI/sam2-hiera-tiny-onnx)
-const HF_BASE = "https://huggingface.co/SharpAI/sam2-hiera-tiny-onnx/resolve/main";
+// SAM2 Tiny model weights (pre-optimized ONNX)
+const HF_BASE = "https://models-cdn.voxel51.com/sam2";
 const ENCODER_URL = `${HF_BASE}/encoder.with_runtime_opt.ort`;
 const DECODER_URL = `${HF_BASE}/decoder.onnx`;
 
@@ -53,8 +76,14 @@ const DECODER_URL = `${HF_BASE}/decoder.onnx`;
 const CACHE_PREFIX = `${ENCODER_URL}:${SAM2_INPUT_SIZE}:`;
 
 const isCOI = typeof crossOriginIsolated !== "undefined" && crossOriginIsolated;
-ort.env.wasm.numThreads = isCOI ? 4 : 1;
+ort.env.wasm.numThreads = isCOI ? navigator.hardwareConcurrency || 4 : 1;
 ort.env.wasm.simd = true;
+
+// Dev: optimizeDeps.exclude lets ort use its embedded WASM bundle.
+// Prod: worker bundling strips the embedded WASM, so point to the emitted files.
+if (!import.meta.env?.DEV && import.meta.env?.ORT_WASM_PATH) {
+  ort.env.wasm.wasmPaths = import.meta.env.ORT_WASM_PATH;
+}
 
 let encoderSession: ort.InferenceSession | null = null;
 let decoderSession: ort.InferenceSession | null = null;
@@ -139,29 +168,37 @@ function preprocessImage(imageData: ImageData): ProcessedImage {
 async function loadModel(): Promise<void> {
   const opts: ort.InferenceSession.SessionOptions = { executionProviders: ["wasm"] };
 
-  const postProgress = (file: "encoder" | "decoder", loaded: number, total: number) =>
-    postNotification("progress", { file, loaded, total });
-
-  const postWarning = (message: string) =>
-    postNotification("warning", message);
-
-  if (!encoderSession) {
-    const encoderBuf = await loadModelWeights(
-      ENCODER_URL,
-      (loaded, total) => postProgress("encoder", loaded, total),
-      postWarning
-    );
-    encoderSession = await ort.InferenceSession.create(encoderBuf, opts);
+  async function loadSession(
+    url: string,
+    name: "encoder" | "decoder",
+    failureKind: "encoder_failure" | "decoder_failure",
+  ): Promise<ort.InferenceSession> {
+    let buf: ArrayBuffer;
+    try {
+      buf = await loadModelWeights(
+        url,
+        (loaded, total) => postProgressNotification({ file: name, loaded, total }),
+        postWarningNotification
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      postErrorNotification({ kind: "download_failure", message: `${name} download failed: ${msg}` });
+      throw err;
+    }
+    try {
+      return await ort.InferenceSession.create(buf, opts);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      postErrorNotification({ kind: failureKind, message: `${name} init failed: ${msg}` });
+      throw err;
+    }
   }
 
-  if (!decoderSession) {
-    const decoderBuf = await loadModelWeights(
-      DECODER_URL,
-      (loaded, total) => postProgress("decoder", loaded, total),
-      postWarning
-    );
-    decoderSession = await ort.InferenceSession.create(decoderBuf, opts);
-  }
+  if (!encoderSession)
+    encoderSession = await loadSession(ENCODER_URL, "encoder", "encoder_failure");
+
+  if (!decoderSession)
+    decoderSession = await loadSession(DECODER_URL, "decoder", "decoder_failure");
 }
 
 /**
@@ -184,10 +221,8 @@ async function embedAndDecode(
   let encResults: Record<string, ort.Tensor>;
   let geometry: ImageGeometry;
 
-  const postWarning = (message: string) => postNotification("warning", message);
-
   const cacheKey = CACHE_PREFIX + imageUrl;
-  const cached = await getEmbedding(cacheKey, postWarning);
+  const cached = await getEmbedding(cacheKey, postWarningNotification);
   let cacheHit = false;
 
   if (cached) {
@@ -200,11 +235,12 @@ async function embedAndDecode(
       geometry = cached.processedImage;
       cacheHit = true;
     } catch {
-      postWarning("Corrupt embedding cache entry, re-encoding");
+      postWarningNotification("Corrupt embedding cache entry, re-encoding");
     }
   }
 
   if (!cacheHit) {
+    postStatusNotification("encoding");
     const imageData = await loadImageData(imageUrl);
     const processed = preprocessImage(imageData);
     geometry = processed;
@@ -228,7 +264,7 @@ async function embedAndDecode(
         padX: geometry.padX,
         padY: geometry.padY,
       },
-    }, postWarning);
+    }, postWarningNotification);
   }
 
   // Build decoder inputs
@@ -285,11 +321,16 @@ self.onmessage = async (e: MessageEvent) => {
       postResponse(id, "loadModel", undefined as void);
     } else if (type === "embedAndDecode") {
       const result = await embedAndDecode(payload.imageUrl, payload.points);
+      postStatusNotification("ready");
       postResponse(id, "embedAndDecode", result, [result.mask.buffer as ArrayBuffer]);
     } else {
       postError(id, type, `Unknown message type: ${type}`);
     }
   } catch (err) {
+    if (type === "embedAndDecode") {
+      postStatusNotification("failure");
+      postErrorNotification({ kind: "inference_failure", message: err instanceof Error ? err.message : String(err) });
+    }
     postError(id, type, err instanceof Error ? err.message : String(err));
   }
 };
