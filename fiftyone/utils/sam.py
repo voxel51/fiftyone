@@ -209,16 +209,6 @@ class SAMPromptMode(Enum):
     point_only = 3
     box_point_combo = 4
 
-    def get_prompt(self, has_boxes=False, has_points=False):
-        if has_boxes and has_points:
-            return SAMPromptMode.box_point_combo
-        elif has_boxes:
-            return SAMPromptMode.box_only
-        elif has_points:
-            return SAMPromptMode.point_only
-        else:
-            return SAMPromptMode.auto
-
 
 class SegmentAnythingImageGetItem(fout.GetItem):
     """A :class:`GetItem` that loads images, bounding boxes and/or keypoints to feed to
