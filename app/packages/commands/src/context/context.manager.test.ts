@@ -1,5 +1,5 @@
 import { describe, it, vi, expect, beforeEach } from "vitest";
-import { CommandContextManager, KnownContexts } from "./CommandContextManager";
+import { CommandContextManager, KnownCommands, KnownContexts } from "./CommandContextManager";
 import { DelegatingUndoable } from "../actions";
 
 describe("CommandContextManager", () => {
@@ -133,6 +133,141 @@ describe("CommandContextManager", () => {
       new KeyboardEvent("keydown", { ctrlKey: true, key: "x" })
     );
     expect(execFn).toBeCalledTimes(0);
+  });
+
+  describe("Escape key priority: ModalAnnotate overrides Modal", () => {
+    // Simulates the annotate-tab Escape behavior:
+    // When a label is selected (Header mounted), ModalAnnotate's Escape binding
+    // should fire instead of Modal's close handler.
+    // When the label is deselected (Header unmounted / binding unregistered),
+    // Modal's Escape should fire again.
+
+    const escapeEvent = () =>
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true });
+
+    it("ModalAnnotate Escape fires instead of Modal Escape when both are bound", async () => {
+      const modalClose = vi.fn();
+      const annotateDeselect = vi.fn();
+
+      const manager = CommandContextManager.instance();
+
+      const modalCtx = manager.getCommandContext(KnownContexts.Modal)!;
+      const annotateCtx = manager.getCommandContext(KnownContexts.ModalAnnotate)!;
+
+      const modalCmd = modalCtx.registerCommand("fo.modal.close.test", modalClose, () => true);
+      modalCtx.bindKey("Escape", modalCmd.id);
+
+      const annotateCmd = annotateCtx.registerCommand(
+        KnownCommands.ModalAnnotateDeselect,
+        annotateDeselect,
+        () => true
+      );
+      annotateCtx.bindKey("Escape", annotateCmd.id);
+
+      await manager.handleKeyDown(escapeEvent());
+
+      expect(annotateDeselect).toHaveBeenCalledOnce();
+      expect(modalClose).not.toHaveBeenCalled();
+    });
+
+    it("Modal Escape fires when ModalAnnotate has no Escape binding", async () => {
+      const modalClose = vi.fn();
+
+      const manager = CommandContextManager.instance();
+      const modalCtx = manager.getCommandContext(KnownContexts.Modal)!;
+
+      const modalCmd = modalCtx.registerCommand("fo.modal.close.test", modalClose, () => true);
+      modalCtx.bindKey("Escape", modalCmd.id);
+
+      await manager.handleKeyDown(escapeEvent());
+
+      expect(modalClose).toHaveBeenCalledOnce();
+    });
+
+    it("Modal Escape fires again after ModalAnnotate Escape binding is unregistered", async () => {
+      const modalClose = vi.fn();
+      const annotateDeselect = vi.fn();
+
+      const manager = CommandContextManager.instance();
+      const modalCtx = manager.getCommandContext(KnownContexts.Modal)!;
+      const annotateCtx = manager.getCommandContext(KnownContexts.ModalAnnotate)!;
+
+      const modalCmd = modalCtx.registerCommand("fo.modal.close.test", modalClose, () => true);
+      modalCtx.bindKey("Escape", modalCmd.id);
+
+      const annotateCmd = annotateCtx.registerCommand(
+        KnownCommands.ModalAnnotateDeselect,
+        annotateDeselect,
+        () => true
+      );
+      annotateCtx.bindKey("Escape", annotateCmd.id);
+
+      // Simulate Header mounting: annotate Escape fires
+      await manager.handleKeyDown(escapeEvent());
+      expect(annotateDeselect).toHaveBeenCalledOnce();
+      expect(modalClose).not.toHaveBeenCalled();
+
+      // Simulate Header unmounting: unregister the ModalAnnotate binding
+      annotateCtx.unbindKey("Escape");
+      annotateCtx.unregisterCommand(annotateCmd.id);
+
+      vi.clearAllMocks();
+
+      // Now Modal Escape takes over
+      await manager.handleKeyDown(escapeEvent());
+      expect(modalClose).toHaveBeenCalledOnce();
+      expect(annotateDeselect).not.toHaveBeenCalled();
+    });
+
+    it("Escape is blocked when an input element is focused", async () => {
+      const annotateDeselect = vi.fn();
+
+      const manager = CommandContextManager.instance();
+      const annotateCtx = manager.getCommandContext(KnownContexts.ModalAnnotate)!;
+
+      const annotateCmd = annotateCtx.registerCommand(
+        KnownCommands.ModalAnnotateDeselect,
+        annotateDeselect,
+        () => true
+      );
+      annotateCtx.bindKey("Escape", annotateCmd.id);
+
+      // Simulate focus on an input field
+      const input = document.createElement("input");
+      document.body.appendChild(input);
+      input.focus();
+
+      await manager.handleKeyDown(escapeEvent());
+
+      expect(annotateDeselect).not.toHaveBeenCalled();
+
+      input.remove();
+    });
+
+    it("ModalAnnotate Escape is skipped when its command is disabled", async () => {
+      const modalClose = vi.fn();
+      const annotateDeselect = vi.fn();
+
+      const manager = CommandContextManager.instance();
+      const modalCtx = manager.getCommandContext(KnownContexts.Modal)!;
+      const annotateCtx = manager.getCommandContext(KnownContexts.ModalAnnotate)!;
+
+      const modalCmd = modalCtx.registerCommand("fo.modal.close.test", modalClose, () => true);
+      modalCtx.bindKey("Escape", modalCmd.id);
+
+      // Register with enablement returning false
+      const annotateCmd = annotateCtx.registerCommand(
+        KnownCommands.ModalAnnotateDeselect,
+        annotateDeselect,
+        () => false
+      );
+      annotateCtx.bindKey("Escape", annotateCmd.id);
+
+      await manager.handleKeyDown(escapeEvent());
+
+      expect(annotateDeselect).not.toHaveBeenCalled();
+      expect(modalClose).toHaveBeenCalledOnce();
+    });
   });
 
   it("can perform undo/redo on an inherited context", async () => {

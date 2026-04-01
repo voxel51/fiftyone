@@ -22,7 +22,7 @@ import {
   useAnnotationContext,
 } from "./state";
 
-import { KnownCommands, KnownContexts, useCommand } from "@fiftyone/commands";
+import { KnownCommands, KnownContexts, useCommand, useKeyBindings } from "@fiftyone/commands";
 import useColor from "./useColor";
 import useExit from "./useExit";
 import { useQuickDraw } from "./useQuickDraw";
@@ -118,6 +118,16 @@ const Header = () => {
     onExit,
     disableQuickDraw,
     scene,
+  ]);
+
+  useKeyBindings(KnownContexts.ModalAnnotate, [
+    {
+      commandId: KnownCommands.ModalAnnotateDeselect,
+      sequence: "Escape",
+      handler: handleExit,
+      label: "Deselect",
+      description: "Deselect the current label and return to the label list.",
+    },
   ]);
 
   return (
