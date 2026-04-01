@@ -10,6 +10,7 @@ import { FloatingToolbar, Tooltip } from "@fiftyone/components";
 import React from "react";
 import { useSegmentationMasks } from "./useSegmentationMasks";
 import { useAISegment } from "./useAISegment";
+import { usePolylineTool } from "./usePolylineTool";
 
 // ---------------------------------------------------------------------------
 // Icons
@@ -27,6 +28,29 @@ const SelectIcon = () => (
   <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
     <title>Select</title>
     <path d="M7 2l12 11.2-5.8.5 3.3 7.3-2.2 1-3.2-7.4L7 18.5V2z" />
+  </svg>
+);
+
+const VertexIcon = () => (
+  <svg
+    viewBox="0 0 24 24"
+    width="18"
+    height="18"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <title>Vertex / Pen Tool</title>
+    {/* Pentagon shape representing polygon drawing */}
+    <polygon points="12,3 21,10 18,20 6,20 3,10" />
+    {/* Vertex dots */}
+    <circle cx="12" cy="3" r="1.5" fill="currentColor" stroke="none" />
+    <circle cx="21" cy="10" r="1.5" fill="currentColor" stroke="none" />
+    <circle cx="18" cy="20" r="1.5" fill="currentColor" stroke="none" />
+    <circle cx="6" cy="20" r="1.5" fill="currentColor" stroke="none" />
+    <circle cx="3" cy="10" r="1.5" fill="currentColor" stroke="none" />
   </svg>
 );
 
@@ -48,6 +72,22 @@ export const SegmentationToolbar: React.FC = () => {
     enter: enterAI,
     exit: exitAI,
   } = useAISegment();
+  const {
+    active: polylineActive,
+    enter: enterPolyline,
+    exit: exitPolyline,
+  } = usePolylineTool();
+
+  const activeTool = aiSegmentActive
+    ? "ai-segment"
+    : polylineActive
+    ? "polyline"
+    : "select";
+
+  const exitCurrentTool = () => {
+    if (aiSegmentActive) exitAI();
+    if (polylineActive) exitPolyline();
+  };
 
   return (
     <FloatingToolbar
@@ -56,31 +96,47 @@ export const SegmentationToolbar: React.FC = () => {
       visible={segmentationActive}
     >
       <FloatingToolbar.Group label="Tool">
-        {aiSegmentActive ? (
-          <Tooltip placement="right-center" text="Exit AI Segment">
-            <FloatingToolbar.Action onClick={exitAI}>
+        {activeTool !== "select" ? (
+          <Tooltip placement="right-center" text="Exit current tool">
+            <FloatingToolbar.Action onClick={exitCurrentTool}>
               <CloseIcon />
             </FloatingToolbar.Action>
           </Tooltip>
         ) : (
           <Tooltip placement="right-center" text="Select">
-            <FloatingToolbar.Action active={!aiSegmentActive}>
+            <FloatingToolbar.Action active={activeTool === "select"}>
               <SelectIcon />
             </FloatingToolbar.Action>
           </Tooltip>
         )}
         <Tooltip placement="right-center" text="AI Segment (A)">
           <FloatingToolbar.Action
-            active={aiSegmentActive}
+            active={activeTool === "ai-segment"}
             onClick={() => {
               if (aiSegmentActive) {
                 exitAI();
               } else {
+                exitCurrentTool();
                 enterAI();
               }
             }}
           >
             <AISegmentIcon />
+          </FloatingToolbar.Action>
+        </Tooltip>
+        <Tooltip placement="right-center" text="Vertex / Pen Tool (V)">
+          <FloatingToolbar.Action
+            active={activeTool === "polyline"}
+            onClick={() => {
+              if (polylineActive) {
+                exitPolyline();
+              } else {
+                exitCurrentTool();
+                enterPolyline();
+              }
+            }}
+          >
+            <VertexIcon />
           </FloatingToolbar.Action>
         </Tooltip>
       </FloatingToolbar.Group>

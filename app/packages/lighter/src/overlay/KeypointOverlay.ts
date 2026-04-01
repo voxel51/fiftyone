@@ -328,10 +328,13 @@ export class KeypointOverlay
 
     const regularPoints: Point[] = [];
     let selectedPoint: Point | undefined;
+    let highlightedFirstPoint: Point | undefined;
 
     for (let i = 0; i < absPoints.length; i++) {
       if (this.selectedPointIndex === i) {
         selectedPoint = absPoints[i];
+      } else if (i === 0 && this.firstPointHighlighted) {
+        highlightedFirstPoint = absPoints[i];
       } else {
         regularPoints.push(absPoints[i]);
       }
@@ -358,6 +361,24 @@ export class KeypointOverlay
         selectedPoint,
         KEYPOINT_RADIUS,
         { fillStyle: "#ffffff" },
+        this.containerId
+      );
+    }
+
+    // Draw highlighted first point (snap-to-close indicator)
+    if (highlightedFirstPoint) {
+      // Outer glow ring
+      renderer.drawPoint(
+        highlightedFirstPoint,
+        KEYPOINT_SELECTED_RADIUS + 2,
+        { fillStyle: strokeColor, opacity: 0.3 },
+        this.containerId
+      );
+      // Main point at larger size
+      renderer.drawPoint(
+        highlightedFirstPoint,
+        KEYPOINT_SELECTED_RADIUS,
+        { fillStyle: strokeColor, strokeStyle: "#ffffff", lineWidth: 2 },
         this.containerId
       );
     }
@@ -648,6 +669,44 @@ export class KeypointOverlay
    */
   getSelectedPointIndex(): number | null {
     return this.selectedPointIndex;
+  }
+
+  /**
+   * Whether the first point is currently highlighted for snap-to-close.
+   */
+  private firstPointHighlighted = false;
+
+  /**
+   * Checks whether a world-space point is within snap distance of the first point.
+   * Requires at least 3 points to allow closing.
+   */
+  isNearFirstPoint(worldPoint: Point): boolean {
+    const points = this.getAbsolutePoints();
+    if (points.length < 3) return false;
+
+    const scale = this.renderer?.getScale() ?? 1;
+    const first = points[0];
+    const hitRadius = KEYPOINT_HIT_RADIUS / scale;
+    const dx = worldPoint.x - first.x;
+    const dy = worldPoint.y - first.y;
+    return dx * dx + dy * dy <= hitRadius * hitRadius;
+  }
+
+  /**
+   * Sets the visual highlight state of the first point (for snap-to-close feedback).
+   */
+  setFirstPointHighlighted(highlighted: boolean): void {
+    if (this.firstPointHighlighted !== highlighted) {
+      this.firstPointHighlighted = highlighted;
+      this.markDirty();
+    }
+  }
+
+  /**
+   * Returns whether the first point is highlighted.
+   */
+  isFirstPointHighlighted(): boolean {
+    return this.firstPointHighlighted;
   }
 
   /**

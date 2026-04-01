@@ -20,6 +20,9 @@ export class InteractiveKeypointHandler implements InteractionHandler {
   readonly id = INTERACTIVE_KEYPOINT_HANDLER_ID;
   readonly cursor = "crosshair";
 
+  private lastClickTime = 0;
+  private static readonly DOUBLE_CLICK_MS = 300;
+
   constructor(
     public readonly overlay: KeypointOverlay,
     private readonly eventBus: EventDispatcher<LighterEventGroup>
@@ -68,6 +71,29 @@ export class InteractiveKeypointHandler implements InteractionHandler {
       return false;
     }
 
+    // Snap-to-close: if clicking near the first point with ≥3 points, close the polygon
+    if (this.overlay.isNearFirstPoint(worldPoint)) {
+      this.closeAndEstablish();
+      return true;
+    }
+
+    // Double-click detection (same pattern as 3D polyline SegmentPolylineRenderer):
+    // On the second quick click, remove the point added by the first click
+    // and close/establish the shape.
+    const now = Date.now();
+    const isDoubleClick =
+      now - this.lastClickTime < InteractiveKeypointHandler.DOUBLE_CLICK_MS;
+    this.lastClickTime = now;
+
+    if (isDoubleClick) {
+      const points = this.overlay.getRelativePoints();
+      if (points.length > 0) {
+        this.overlay.removePoint(points.length - 1);
+      }
+      this.closeAndEstablish();
+      return true;
+    }
+
     this.overlay.addPoint(worldPoint);
     return true;
   }
@@ -89,6 +115,12 @@ export class InteractiveKeypointHandler implements InteractionHandler {
 
   onMove(_point: Point, worldPoint: Point, _event: PointerEvent): boolean {
     this.overlay.setPreviewPoint(worldPoint);
+
+    // Highlight first point when cursor is near it (snap-to-close feedback)
+    this.overlay.setFirstPointHighlighted(
+      this.overlay.isNearFirstPoint(worldPoint)
+    );
+
     return true;
   }
 
@@ -98,9 +130,23 @@ export class InteractiveKeypointHandler implements InteractionHandler {
   }
 
   onDoubleClick(_point: Point, _event: PointerEvent): boolean {
-    // Finish creation by dispatching the same establish event used by
-    // InteractiveDetectionHandler (via InteractionManager). This triggers
-    // AddOverlayCommand to promote the overlay from interactive → scene.
+    this.closeAndEstablish();
+    return true;
+  }
+
+  /**
+   * Closes the polygon and dispatches the establish event.
+   * Used by both snap-to-close (click on first point) and double-click.
+   */
+  private closeAndEstablish(): void {
+    const points = this.overlay.getRelativePoints();
+    if (points.length >= 3) {
+      this.overlay.setClosed(true);
+    }
+
+    this.overlay.setPreviewPoint(null);
+    this.overlay.setFirstPointHighlighted(false);
+
     const bounds = this.overlay.bounds;
     this.eventBus.dispatch("lighter:overlay-establish", {
       id: this.overlay.id,
@@ -109,7 +155,6 @@ export class InteractiveKeypointHandler implements InteractionHandler {
       startPosition: { x: bounds.x, y: bounds.y },
       bounds,
     });
-    return true;
   }
 
   cleanup(): void {
