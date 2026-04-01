@@ -12,10 +12,10 @@ models**
 
 <!-- prettier-ignore -->
 <a href="https://voxel51.com/fiftyone">Website</a> •
-<a href="https://voxel51.com/docs/fiftyone">Docs</a> •
+<a href="https://docs.voxel51.com">Docs</a> •
 <a href="https://colab.research.google.com/github/voxel51/fiftyone-examples/blob/master/examples/quickstart.ipynb">Try it Now</a> •
-<a href="https://voxel51.com/docs/fiftyone/getting_started_guides/index.html">Getting Started Guides</a> •
-<a href="https://voxel51.com/docs/fiftyone/tutorials/index.html">Tutorials</a> •
+<a href="https://docs.voxel51.com/getting_started_guides/index.html">Getting Started Guides</a> •
+<a href="https://docs.voxel51.com/tutorials/index.html">Tutorials</a> •
 <a href="https://voxel51.com/blog/">Blog</a> •
 <a href="https://discord.gg/fiftyone-community">Community</a>
 
@@ -73,11 +73,11 @@ See the [prerequisites section](#prerequisites) for system-specific setup
 information.
 
 We strongly recommend that you install FiftyOne in a
-[virtual environment](https://voxel51.com/docs/fiftyone/installation/virtualenv.html)
+[virtual environment](https://docs.voxel51.com/installation/virtualenv.html)
 to maintain a clean workspace.
 
 Consult the
-[installation guide](https://voxel51.com/docs/fiftyone/installation/index.html)
+[installation guide](https://docs.voxel51.com/installation/index.html)
 for troubleshooting and other information about getting up-and-running with
 FiftyOne.
 
@@ -103,7 +103,7 @@ You'll need the following tools installed:
     `corepack enable`
 
 We strongly recommend that you install FiftyOne in a
-[virtual environment](https://voxel51.com/docs/fiftyone/installation/virtualenv.html)
+[virtual environment](https://docs.voxel51.com/installation/virtualenv.html)
 to maintain a clean workspace.
 
 If you are working in Google Colab,
@@ -376,7 +376,7 @@ FFmpeg's path (e.g., `C:\ffmpeg\bin`) to your `PATH` environmental variable.
 <br>
 
 Refer to
-[these instructions](https://voxel51.com/docs/fiftyone/environments/index.html#docker)
+[these instructions](https://docs.voxel51.com/environments/index.html#docker)
 to see how to build and run Docker images containing release or source builds
 of FiftyOne.
 
@@ -390,9 +390,9 @@ of FiftyOne.
 
 Dive right into FiftyOne by opening a Python shell and running the snippet
 below, which downloads a
-[small dataset](https://voxel51.com/docs/fiftyone/user_guide/dataset_zoo/datasets.html#quickstart)
+[small dataset](https://docs.voxel51.com/user_guide/dataset_zoo/datasets.html#quickstart)
 and launches the
-[FiftyOne App](https://voxel51.com/docs/fiftyone/user_guide/app.html) so you
+[FiftyOne App](https://docs.voxel51.com/user_guide/app.html) so you
 can explore it:
 
 ```py
@@ -409,7 +409,7 @@ to see some common workflows on the quickstart dataset.
 
 Note that if you are running the above code in a script, you must include
 `session.wait()` to block execution until you close the App. See
-[this page](https://voxel51.com/docs/fiftyone/user_guide/app.html#creating-a-session)
+[this page](https://docs.voxel51.com/user_guide/app.html#creating-a-session)
 for more information.
 
 <div id='key-features'>
@@ -438,6 +438,12 @@ https://github.com/user-attachments/assets/8c32d6c4-51e7-4fea-9a3c-2ffd9690f5d6
 
 https://github.com/user-attachments/assets/24fa1960-c2dd-46ae-ae5f-d58b3b84cfe4
 
+-   **[Annotation:](https://docs.voxel51.com/user_guide/annotation.html)**
+    Create and edit 2D and 3D labels directly in the App or integrate with your
+    favorite annotation tools — all in one platform.
+
+<!-- TODO: add annotation demo video here -->
+
 -   **[Rich Integrations:](https://docs.voxel51.com/integrations/index.html)**
     Works with popular deep learning libraries like PyTorch, Hugging Face,
     Ultralytics, and more.
@@ -455,7 +461,7 @@ https://github.com/user-attachments/assets/c7ed496d-0cf7-45d6-9853-e349f1abd6f8
 
 Check out these resources to get up and running with FiftyOne:
 
-| [Getting Started Guides](https://voxel51.com/docs/fiftyone/getting_started_guides/index.html) | [Tutorials](https://voxel51.com/docs/fiftyone/tutorials/index.html) | [Recipes](https://voxel51.com/docs/fiftyone/recipes/index.html) | [User Guide](https://voxel51.com/docs/fiftyone/user_guide/index.html) | [Examples](https://github.com/voxel51/fiftyone-examples) | [API Reference](https://voxel51.com/docs/fiftyone/api/fiftyone.html) | [CLI Reference](https://voxel51.com/docs/fiftyone/cli/index.html) |
+| [Getting Started Guides](https://docs.voxel51.com/getting_started_guides/index.html) | [Tutorials](https://docs.voxel51.com/tutorials/index.html) | [Recipes](https://docs.voxel51.com/recipes/index.html) | [User Guide](https://docs.voxel51.com/user_guide/index.html) | [Examples](https://github.com/voxel51/fiftyone-examples) | [API Reference](https://docs.voxel51.com/api/fiftyone.html) | [CLI Reference](https://docs.voxel51.com/cli/index.html) |
 | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | --------------------------------------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------------------- | ----------------------------------------------------------------- |
 
 Full documentation is available at [fiftyone.ai](https://fiftyone.ai).
