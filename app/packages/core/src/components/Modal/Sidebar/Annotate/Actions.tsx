@@ -465,9 +465,12 @@ const Actions = () => {
             <Redo />
           </ItemRight>
         </Row>
+        <SAM2Test />
       </ActionsDiv>
     </DeactivateAllContext.Provider>
   );
 };
 
 export default Actions;
+
+import { SAM2Test } from "./SAM2Test";
