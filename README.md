@@ -416,7 +416,7 @@ for more information.
 
 ## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> &nbsp; key features &nbsp; 🔑
 
--   **[Annotation:](https://docs.voxel51.com/user_guide/annotation.html)**
+-   **[Native Annotation:](https://docs.voxel51.com/user_guide/annotation.html)**
     Create and edit 2D and 3D labels directly in the App or integrate with your
     favorite annotation tools — then curate, QA, and interate all in one platform.
 
