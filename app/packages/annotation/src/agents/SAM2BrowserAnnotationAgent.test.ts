@@ -5,13 +5,22 @@ import {
   AgentTaskType,
   type AnnotationContext,
   InferenceCapability,
+  SampleDescriptor,
 } from "./types";
+
+const _DATASET_ID = "dataset-id";
+const _SAMPLE_ID = "sample-id";
+const _MEDIA_URL = "media-url";
 
 const makeContext = (
   overrides: Partial<AnnotationContext> = {}
 ): AnnotationContext => {
   return {
-    sampleDescriptor: { datasetId: "ds-1", sampleId: "s-1" },
+    sampleDescriptor: {
+      datasetId: _DATASET_ID,
+      sampleId: _SAMPLE_ID,
+      mediaUrl: _MEDIA_URL,
+    },
     taskType: AgentTaskType.SEGMENT,
     ...overrides,
   };
@@ -44,12 +53,10 @@ const makeProvider = () => {
 describe("SAM2BrowserAnnotationAgent", () => {
   let agent: SAM2BrowserAnnotationAgent;
   let provider: ReturnType<typeof makeProvider>;
-  const imageUrl = "https://media.test/sample.jpg";
 
   beforeEach(() => {
     provider = makeProvider();
     agent = new SAM2BrowserAnnotationAgent(provider);
-    agent.setImageUrl(imageUrl);
   });
 
   describe("infer", () => {
@@ -70,24 +77,27 @@ describe("SAM2BrowserAnnotationAgent", () => {
       expect(provider.initialize).toHaveBeenCalledOnce();
     });
 
-    it("should throw if imageUrl has not been set", async () => {
+    it("should throw if mediaUrl has not been set", async () => {
       const freshAgent = new SAM2BrowserAnnotationAgent(makeProvider());
 
-      await expect(freshAgent.infer(makeContext())).rejects.toThrow(
-        "Must set imageUrl before calling infer()"
-      );
+      await expect(
+        freshAgent.infer({
+          ...makeContext(),
+          sampleDescriptor: {
+            datasetId: _DATASET_ID,
+            sampleId: _SAMPLE_ID,
+          } as SampleDescriptor,
+        })
+      ).rejects.toThrow("Missing media url");
     });
 
-    it("should pass the imageUrl set via setImageUrl", async () => {
+    it("should pass the mediaUrl provided in the context", async () => {
       provider.infer.mockResolvedValue(makeProviderResult());
-
-      const newImageUrl = "https://media.test/other.jpg";
-      agent.setImageUrl(newImageUrl);
 
       await agent.infer(makeContext());
 
       expect(provider.infer).toHaveBeenCalledWith(
-        expect.objectContaining({ imageUrl: newImageUrl })
+        expect.objectContaining({ imageUrl: _MEDIA_URL })
       );
     });
 
@@ -105,7 +115,7 @@ describe("SAM2BrowserAnnotationAgent", () => {
       );
 
       expect(provider.infer).toHaveBeenCalledWith({
-        imageUrl,
+        imageUrl: _MEDIA_URL,
         points: [
           { x: 0.5, y: 0.3, label: PointLabel.POSITIVE },
           { x: 0.7, y: 0.1, label: PointLabel.POSITIVE },
@@ -120,7 +130,7 @@ describe("SAM2BrowserAnnotationAgent", () => {
       await agent.infer(makeContext());
 
       expect(provider.infer).toHaveBeenCalledWith({
-        imageUrl,
+        imageUrl: _MEDIA_URL,
         points: [],
       });
     });

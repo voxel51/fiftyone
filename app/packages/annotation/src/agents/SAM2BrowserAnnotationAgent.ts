@@ -28,7 +28,6 @@ export class SAM2BrowserAnnotationAgent
   implements AnnotationAgent<SegmentationInferenceResult>
 {
   private readonly provider: BrowserAnnotationProvider;
-  private imageUrl: string | null = null;
   private initialized = false;
   private initializing$: Promise<void> | null = null;
 
@@ -36,20 +35,11 @@ export class SAM2BrowserAnnotationAgent
     this.provider = provider;
   }
 
-  /**
-   * Set the image URL.
-   *
-   * @param url Image URL
-   */
-  setImageUrl(url: string) {
-    this.imageUrl = url;
-  }
-
   async infer(
     context: AnnotationContext
   ): Promise<InferenceResult<SegmentationInferenceResult>> {
-    if (!this.imageUrl) {
-      throw new Error("Must set imageUrl before calling infer()");
+    if (!context.sampleDescriptor.mediaUrl) {
+      throw new Error("Missing media url");
     }
 
     // lazily initialize on first inference call
@@ -58,7 +48,7 @@ export class SAM2BrowserAnnotationAgent
     const points = this.buildPromptPoints(context);
 
     const result = await this.provider.infer({
-      imageUrl: this.imageUrl,
+      imageUrl: context.sampleDescriptor.mediaUrl,
       points,
     });
 
