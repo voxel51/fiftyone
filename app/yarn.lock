@@ -2460,6 +2460,7 @@ __metadata:
     lodash: "npm:^4.17.23"
     notistack: "npm:^3.0.1"
     numeral: "npm:^2.0.6"
+    onnxruntime-web: "npm:^1.24.3"
     path-to-regexp: "npm:^8.0.0"
     react: "npm:18.2.0"
     react-dom: "npm:18.2.0"
