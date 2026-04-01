@@ -133,7 +133,14 @@ export class SAM2BrowserAnnotationAgent
       this.initializing$ = this.provider
         .initialize()
         .then(() => {
-          this.initialized = true;
+          // Defer initialization state to the provider.
+          // This handles potential race conditions with initialize/dispose and
+          //  any silent initialization failures.
+          this.initialized = this.provider.isInitialized();
+
+          if (!this.initialized) {
+            this.initializing$ = null;
+          }
         })
         .catch((err) => {
           this.initializing$ = null;

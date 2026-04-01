@@ -37,16 +37,31 @@ const makeProviderResult = (overrides: Record<string, unknown> = {}) => {
 };
 
 const makeProvider = () => {
-  return {
+  const mock = {
     initialize: vi.fn().mockResolvedValue(undefined),
     infer: vi.fn(),
     abort: vi.fn(),
     dispose: vi.fn(),
-  } as unknown as BrowserAnnotationProvider & {
+    isInitialized: vi.fn().mockReturnValue(false),
+  };
+
+  // wire up interactions between initialize/isInitialized
+  mock.initialize.mockImplementation(() => {
+    mock.isInitialized.mockReturnValue(true);
+    return Promise.resolve();
+  });
+
+  // wire up interactions between dispose/isInitialized
+  mock.dispose.mockImplementation(() => {
+    mock.isInitialized.mockReturnValue(false);
+  });
+
+  return mock as unknown as BrowserAnnotationProvider & {
     initialize: ReturnType<typeof vi.fn>;
     infer: ReturnType<typeof vi.fn>;
     abort: ReturnType<typeof vi.fn>;
     dispose: ReturnType<typeof vi.fn>;
+    isInitialized: ReturnType<typeof vi.fn>;
   };
 };
 
@@ -245,6 +260,60 @@ describe("SAM2BrowserAnnotationAgent", () => {
 
       await agent.infer(makeContext());
       agent.dispose();
+      await agent.infer(makeContext());
+
+      expect(provider.initialize).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe("dispose during initialization", () => {
+    it("should not mark as initialized if disposed before init resolves", async () => {
+      let resolveInit: () => void;
+      provider.initialize.mockReturnValue(
+        new Promise<void>((r) => {
+          resolveInit = r;
+        })
+      );
+      // Mirror real provider: infer throws when worker is gone
+      provider.infer.mockImplementation(() => {
+        if (!provider.isInitialized()) {
+          throw new Error("Provider is not initialized");
+        }
+        return Promise.resolve(makeProviderResult());
+      });
+
+      const inferPromise = agent.infer(makeContext());
+
+      // dispose while initialize() is still pending
+      agent.dispose();
+
+      // now let initialize resolve — provider is already disposed
+      resolveInit!();
+
+      // infer should fail because provider is disposed
+      await expect(inferPromise).rejects.toThrow("Provider is not initialized");
+    });
+
+    it("should re-initialize on next infer after dispose during init", async () => {
+      let resolveInit: () => void;
+      provider.initialize.mockReturnValueOnce(
+        new Promise<void>((r) => {
+          resolveInit = r;
+        })
+      );
+      provider.infer.mockResolvedValue(makeProviderResult());
+
+      const firstInfer = agent.infer(makeContext());
+
+      // dispose mid-init
+      agent.dispose();
+      resolveInit!();
+      await firstInfer.catch(() => {});
+
+      // restore provider to working state
+      provider.isInitialized.mockReturnValue(true);
+      provider.initialize.mockResolvedValue(undefined);
+
       await agent.infer(makeContext());
 
       expect(provider.initialize).toHaveBeenCalledTimes(2);
