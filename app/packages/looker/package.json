@@ -19,7 +19,7 @@
     ],
     "dependencies": {
         "@ungap/event-target": "^0.2.2",
-        "@xmldom/xmldom": "^0.8.6",
+        "@xmldom/xmldom": "^0.8.12",
         "copy-to-clipboard": "^3.3.1",
         "fast-png": "^6.2.0",
         "immutable": "^4.3.8",
