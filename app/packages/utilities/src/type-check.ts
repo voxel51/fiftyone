@@ -40,3 +40,12 @@ export type NumberKeyObjectType<V = unknown> = {
 };
 
 const PRIMITIVE_TYPES = ["string", "number", "boolean"];
+
+/**
+ * Return true if the provided data is an object.
+ *
+ * @param data Data to check
+ */
+export const isObject = (data: unknown): data is object => {
+  return data !== null && typeof data === "object" && !Array.isArray(data);
+};

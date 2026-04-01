@@ -12,6 +12,7 @@ import { fieldVisibilityStage, gridSortBy } from "@fiftyone/state";
 import { is3d } from "@fiftyone/utilities";
 import { DefaultValue, atomFamily, selector, selectorFamily } from "recoil";
 import { v4 as uuid } from "uuid";
+import { getGridCustomRendererFailoverForcedSubscription } from "../gridCustomRendererFailover";
 import * as atoms from "./atoms";
 import { config } from "./config";
 import { dataset as datasetAtom } from "./dataset";
@@ -65,6 +66,13 @@ export const isNotebook = selector<boolean>({
 export const stateSubscription = selector<string>({
   key: "stateSubscription",
   get: () => {
+    const forcedSubscription =
+      getGridCustomRendererFailoverForcedSubscription();
+
+    if (forcedSubscription) {
+      return forcedSubscription;
+    }
+
     const params = new URLSearchParams(window.location.search);
 
     return params.get("subscription") || uuid();

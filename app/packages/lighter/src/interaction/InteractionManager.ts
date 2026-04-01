@@ -148,7 +148,7 @@ export class InteractionManager {
   private readonly CLICK_THRESHOLD = 3; // pixels, dictates drag vs. click
   private readonly DRAG_TIME_THRESHOLD = 500; // ms, dictates drag vs. click
   private readonly DOUBLE_CLICK_TIME_THRESHOLD = 500; // ms
-  private readonly DOUBLE_CLICK_DISTANCE_THRESHOLD = 10; // pixels
+  private readonly DOUBLE_CLICK_DISTANCE_THRESHOLD = 3; // pixels
 
   private currentPixelCoordinates?: Point;
   private readonly eventBus: EventDispatcher<LighterEventGroup>;
@@ -234,10 +234,11 @@ export class InteractionManager {
 
       // QuickDraw: defer overlay creation until we confirm this is a drag.
       // If the user releases without dragging (a click), exit QuickDraw mode.
-      if (quickDrawBridge.isActive()) {
+      // Clicking on an existing overlay selects it normally instead.
+      if (quickDrawBridge.isQuickDrawActive()) {
         const isNonOverlay = !handler || handler.id === this.canonicalMediaId;
 
-        if (isNonOverlay || isUnselectedOverlay) {
+        if (isNonOverlay) {
           this.renderer.disableZoomPan();
 
           this.pendingQuickDraw = {
@@ -333,7 +334,7 @@ export class InteractionManager {
       TypeGuards.isSelectable(handler) &&
       !handler.isSelected()
     ) {
-      this.canvas.style.cursor = "crosshair";
+      this.canvas.style.cursor = "pointer";
     } else if (TypeGuards.isInteractionHandler(handler) && handler.getCursor) {
       this.canvas.style.cursor = handler.getCursor(worldPoint, scale);
     }

@@ -4827,6 +4827,74 @@ Using the custom component as the view for a Python operator field:
         def execute(self, ctx):
             return {}
 
+Custom sample renderers
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Plugins can register ``SampleRenderer`` components to provide custom rendering
+for non-native media types in the grid and modal. Native media types
+(``image``, ``video``, ``point-cloud``, ``3d``) continue
+to use the built-in media renderers.
+
+Each sample renderer declares ``sampleRendererOptions.supports``. The simplest
+form is a matcher object with ``extensions``, ``mimeTypes``, and
+``mediaTypes``. All specified matcher groups must match (AND), and values in a
+group are matched case-insensitively (OR). ``supports`` can also be a predicate
+function that receives the sample renderer match context.
+
+Grid rendering is opt-in. Set ``sampleRendererOptions.grid.enabled`` to
+``true`` to enable a renderer in the grid. If you need a different grid-only
+implementation, provide ``sampleRendererOptions.grid.overrideComponent``;
+otherwise the canonical renderer component is reused in both modal and grid.
+
+The sample renderer component receives a single ``ctx`` prop containing the
+sample renderer render context:
+
+-   ``sample`` and ``media``
+-   ``surface`` (``"modal"`` or ``"grid"``)
+-   ``dataset`` and ``schema``
+
+Here's an example of a hypothetical plugin config that renders PDF files in
+both the grid and modal:
+
+.. code-block:: jsx
+    :linenos:
+
+    import {
+      type SampleRendererProps,
+      PluginComponentType,
+      registerComponent,
+    } from "@fiftyone/plugins";
+
+    function PdfRenderer({ ctx }: SampleRendererProps) {
+      return (
+        <iframe
+          src={ctx.media.url ?? ""}
+          title={ctx.sample.sample.filepath}
+          style={{ width: "100%", height: "100%", border: 0 }}
+        />
+      );
+    }
+
+    registerComponent({
+      name: "PDFRenderer",
+      label: "PDF renderer",
+      component: PdfRenderer,
+      type: PluginComponentType.SampleRenderer,
+      activator: () => true,
+      sampleRendererOptions: {
+        priority: 100,
+        supports: {
+          extensions: [".pdf"],
+          mimeTypes: ["application/pdf"],
+          mediaTypes: ["unknown"],
+        },
+        grid: {
+          enabled: true,
+        },
+      },
+    });
+
+
 FiftyOne App state
 ------------------
 

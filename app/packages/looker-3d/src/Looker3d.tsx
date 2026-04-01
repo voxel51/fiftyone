@@ -26,6 +26,11 @@ export const Looker3d = () => {
   const mediaType = useRecoilValue(fos.mediaType);
   const has3dSlices = setContains3d(useRecoilValue(fos.groupMediaTypesSet));
   const isDynamicGroup = useRecoilValue(fos.isDynamicGroup);
+  const isGroup = useRecoilValue(fos.isGroup);
+  const modalMode = fos.useModalMode();
+  const isMain2DViewerVisible = useRecoilValue(
+    fos.groupMediaIsMain2DViewerVisible
+  );
   const parentMediaType = useRecoilValue(fos.parentMediaTypeSelector);
   const sample = useRecoilValue(fos.modalSample);
   const mediaField = useRecoilValue(fos.selectedMediaField(true));
@@ -67,10 +72,15 @@ export const Looker3d = () => {
 
   const { activeSampleMap: sampleMap, activeFo3dSlice } =
     fos.useRenderConfig3dState();
+  const renderContext =
+    modalMode === fos.ModalMode.ANNOTATE && !(isGroup && isMain2DViewerVisible)
+      ? "annotate-focused"
+      : "default";
 
   const looker3dSceneKey = getLooker3dRenderKey({
     modalSampleId: thisSampleId,
     activeFo3dSlice,
+    renderContext,
   });
 
   useHotkey(
