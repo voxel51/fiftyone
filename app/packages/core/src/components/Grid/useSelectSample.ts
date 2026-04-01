@@ -1,18 +1,10 @@
-import type { ID } from "@fiftyone/spotlight";
+import type { ThumbnailSelectionDetail } from "@fiftyone/looker/src/selection";
 import type { Sample } from "@fiftyone/state";
 import { selectedSampleObjects, selectedSamples } from "@fiftyone/state";
 import type { SelectionType } from "@fiftyone/state";
 import { useRef } from "react";
 import { useRecoilCallback } from "recoil";
 import type { Records } from "./useRecords";
-
-export interface SelectThumbnailData {
-  shiftKey: boolean;
-  altKey: boolean;
-  id: string;
-  sample: Sample;
-  symbol: ID;
-}
 
 export const addRange = (
   index: number,
@@ -99,10 +91,11 @@ export const removeRange = (
 };
 
 export default (records: Records) => {
-  const ref = useRef<(params: SelectThumbnailData) => Promise<void>>();
+  const ref =
+    useRef<(params: ThumbnailSelectionDetail<Sample>) => Promise<void>>();
   ref.current = useRecoilCallback(
     ({ set, snapshot }) =>
-      async (params: SelectThumbnailData) => {
+      async (params: ThumbnailSelectionDetail<Sample>) => {
         const { shiftKey, altKey, id: sampleId, sample, symbol } = params;
 
         const current = new Map(await snapshot.getPromise(selectedSamples));

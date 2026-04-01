@@ -3,6 +3,7 @@
  */
 
 import { SELECTION_TEXT } from "../../constants";
+import { getThumbnailSelectionModifiers } from "../../selection";
 import { BaseState } from "../../state";
 import { BaseElement, Events } from "../base";
 
@@ -55,10 +56,10 @@ export class ThumbnailSelectorElement<
           event.stopPropagation();
           event.preventDefault();
 
-          dispatchEvent("selectthumbnail", {
-            shiftKey: event.shiftKey,
-            altKey: event.altKey,
-          });
+          dispatchEvent(
+            "selectthumbnail",
+            getThumbnailSelectionModifiers(event)
+          );
 
           return { options: { selected: !selected } };
         });

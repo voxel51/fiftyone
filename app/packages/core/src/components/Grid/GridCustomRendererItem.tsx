@@ -1,3 +1,4 @@
+import { buildThumbnailSelectionDetail } from "@fiftyone/looker/src/selection";
 import {
   type SampleRendererProps,
   type SampleRendererRenderContext,
@@ -240,13 +241,12 @@ export class GridCustomRendererItem {
     const sampleId =
       sample?.id ?? sample?._id ?? this.config.symbol.description;
 
-    return {
-      shiftKey: event.shiftKey,
-      altKey: event.altKey,
+    return buildThumbnailSelectionDetail({
       id: sampleId,
       sample,
       symbol: this.config.symbol,
-    };
+      modifiers: event,
+    });
   }
 
   private handleSelectSampleClick = (
