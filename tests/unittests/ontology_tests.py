@@ -61,26 +61,28 @@ class OntologyDocumentTests(unittest.TestCase):
             version=1,
             type=OntologyType.CONDITIONAL_ATTRIBUTES,
             description="Vehicle damage condition attributes",
-            root=[
-                {
-                    "name": "damage_location",
-                    "when": {
-                        "equals": {
-                            "field": "damage_present",
-                            "value": True,
-                        }
+            root={
+                "attributes": [
+                    {
+                        "name": "damage_location",
+                        "when": {
+                            "equals": {
+                                "field": "damage_present",
+                                "value": True,
+                            }
+                        },
                     },
-                },
-                {
-                    "name": "damage_severity",
-                    "when": {
-                        "equals": {
-                            "field": "damage_present",
-                            "value": True,
-                        }
+                    {
+                        "name": "damage_severity",
+                        "when": {
+                            "equals": {
+                                "field": "damage_present",
+                                "value": True,
+                            }
+                        },
                     },
-                },
-            ],
+                ],
+            },
         )
         doc.save()
 
@@ -89,9 +91,11 @@ class OntologyDocumentTests(unittest.TestCase):
         )
         self.assertIsNotNone(loaded.created_at)
         self.assertEqual(loaded.type, OntologyType.CONDITIONAL_ATTRIBUTES)
-        self.assertIsInstance(loaded.root, list)
-        self.assertEqual(len(loaded.root), 2)
-        self.assertEqual(loaded.root[0]["name"], "damage_location")
+        self.assertIsInstance(loaded.root["attributes"], list)
+        self.assertEqual(len(loaded.root["attributes"]), 2)
+        self.assertEqual(
+            loaded.root["attributes"][0]["name"], "damage_location"
+        )
 
     def test_name_version_uniqueness(self):
         OntologyDocument(
@@ -193,7 +197,7 @@ class OntologyDocumentTests(unittest.TestCase):
             name="shared_name",
             version=2,
             type=OntologyType.CONDITIONAL_ATTRIBUTES,
-            root=[{"name": "attr"}],
+            root={"attributes": [{"name": "attr"}]},
         ).save()
 
         docs = OntologyDocument.objects(name="shared_name")
@@ -216,7 +220,7 @@ class OntologyDocumentTests(unittest.TestCase):
             name="ca1",
             version=1,
             type=OntologyType.CONDITIONAL_ATTRIBUTES,
-            root=[],
+            root={"attributes": []},
         ).save()
 
         taxonomies = OntologyDocument.objects(type=OntologyType.TAXONOMY)

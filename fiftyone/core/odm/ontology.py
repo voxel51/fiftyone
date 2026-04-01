@@ -9,10 +9,9 @@ Ontology documents.
 from enum import Enum
 from datetime import datetime, timezone
 
-from mongoengine.fields import DynamicField
-
 from fiftyone.core.fields import (
     DateTimeField,
+    DictField,
     IntField,
     StringField,
 )
@@ -54,7 +53,7 @@ class OntologyDocument(Document):
     version = IntField(required=True, default=1)
     type = StringField(required=True, choices=_ONTOLOGY_TYPE_VALUES)
     description = StringField(default=None)
-    root = DynamicField()
+    root = DictField()
     created_at = DateTimeField()
     last_modified_at = DateTimeField()
 
