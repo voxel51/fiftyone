@@ -1,11 +1,11 @@
 import { DETECTION } from "@fiftyone/utilities";
-import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { type PrimitiveAtom, atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { atomFamily, useAtomCallback } from "jotai/utils";
 import { countBy, maxBy } from "lodash";
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { fieldType, isFieldReadOnly, labelSchemaData } from "../state";
 import { labelsByPath } from "../useLabels";
-import { defaultField, useAnnotationContext } from "./state";
+import { currentType, defaultField, useAnnotationContext } from "./state";
 import {
   UNDEFINED_LIGHTER_SCENE_ID,
   useLighter,
@@ -29,14 +29,14 @@ export { quickDrawActiveAtom as _dangerousQuickDrawActiveAtom };
  * Examples: "ground_truth.detections", "predictions.detections"
  * Used to remember which detection field the user was annotating.
  */
-const lastUsedFieldAtom = atom<string | null>(null);
+const lastUsedFieldAtom = atom<string | null>(null) as PrimitiveAtom<string | null>;
 
 /**
  * Tracks the last-used label value (class) for each field path.
  * Used for auto-assignment when creating new labels in quick draw mode.
  */
 const lastUsedLabelAtom = atomFamily((_field: string) =>
-  atom<string | null>(null)
+  atom<string | null>(null) as PrimitiveAtom<string | null>
 );
 
 const detectionTypes = new Set(["Detection", "Detections"]);
@@ -53,6 +53,8 @@ const claimedEventsAtom = atom<Map<string, string>>(new Map());
  */
 export const useQuickDraw = () => {
   const [quickDrawActive, setQuickDrawActive] = useAtom(quickDrawActiveAtom);
+  const editingLabelType = useAtomValue(currentType);
+  const isEditingDetection = editingLabelType === DETECTION;
   const setLastUsedField = useSetAtom(lastUsedFieldAtom);
   const labelsMap = useAtomValue(labelsByPath);
   const defaultDetectionField = useAtomValue(defaultField(DETECTION));
@@ -68,6 +70,7 @@ export const useQuickDraw = () => {
   // Using refs to prevent shared closure contexts from retaining old Scene2D instances.
   const sceneRef = useRef(scene);
   sceneRef.current = scene;
+
   const selectedLabelRef = useRef(selectedLabel);
   selectedLabelRef.current = selectedLabel;
 
@@ -118,12 +121,15 @@ export const useQuickDraw = () => {
     setQuickDrawActive(false);
   }, [setQuickDrawActive]);
 
-  /**
-   * Toggle quick draw mode.
-   */
-  const toggleQuickDraw = useCallback(() => {
-    setQuickDrawActive((prev) => !prev);
-  }, [setQuickDrawActive]);
+  // Auto-enable QuickDraw when a detection is being edited,
+  // auto-disable when a different label type is selected.
+  useEffect(() => {
+    if (isEditingDetection && !quickDrawActive) {
+      setQuickDrawActive(true);
+    } else if (editingLabelType && !isEditingDetection && quickDrawActive) {
+      setQuickDrawActive(false);
+    }
+  }, [editingLabelType, isEditingDetection, quickDrawActive, setQuickDrawActive]);
 
   /**
    * Get the auto-assigned detection field path.
@@ -263,6 +269,24 @@ export const useQuickDraw = () => {
     scene?.exitInteractiveMode();
     onExit();
   }, [onExit, setLastUsedField, setLastUsedLabel]);
+
+  /**
+   * Toggle quick draw mode. When exiting, finalizes the current detection
+   * (caches field/label, exits interactive mode, closes edit form).
+   */
+  const toggleQuickDraw = useCallback(() => {
+    if (quickDrawActive) {
+      finalizeCurrentDetection();
+      disableQuickDraw();
+    } else {
+      enableQuickDraw();
+    }
+  }, [
+    quickDrawActive,
+    finalizeCurrentDetection,
+    disableQuickDraw,
+    enableQuickDraw,
+  ]);
 
   /**
    * Cache field/label for auto-assignment

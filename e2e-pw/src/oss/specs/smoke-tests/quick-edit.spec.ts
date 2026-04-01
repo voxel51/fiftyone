@@ -270,7 +270,7 @@ test.describe.serial("quick edit", () => {
       await modal.sampleCanvas.down();
       await modal.sampleCanvas.move(0.5, 0.5);
       await modal.sampleCanvas.up();
-      await modal.sampleCanvas.move(point.x, point.y, "default");
+      await modal.sampleCanvas.move(point.x, point.y, "crosshair");
       await modal.sidebar.edit.assert.undoIsEnabled();
       await modal.sampleCanvas.assert.hasScreenshot(
         `detection-lighter-selected-${point.name}.png`
@@ -299,7 +299,7 @@ test.describe.serial("quick edit", () => {
       await modal.sampleCanvas.down();
       await modal.sampleCanvas.move(point.x, point.y);
       await modal.sampleCanvas.up();
-      await modal.sampleCanvas.move(0.9, 0.9, "default");
+      await modal.sampleCanvas.move(0.9, 0.9, "crosshair");
       await modal.sampleCanvas.assert.hasScreenshot(
         "detection-lighter-selected-centered.png"
       );

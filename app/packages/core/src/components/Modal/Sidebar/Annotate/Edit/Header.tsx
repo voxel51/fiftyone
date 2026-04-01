@@ -1,6 +1,6 @@
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue } from "jotai";
 import { useCallback, useRef, useState } from "react";
-import { Redo, Round, Undo } from "../Actions";
+import { Round } from "../Actions";
 
 import { useLighter } from "@fiftyone/lighter";
 import { West as Back } from "@mui/icons-material";
@@ -14,7 +14,7 @@ import { labels } from "../useLabels";
 import * as fos from "@fiftyone/state";
 import { isGeneratedView } from "@fiftyone/state";
 import { useRecoilValue } from "recoil";
-import { showModal } from "../state";
+import { useSchemaManagerModal } from "../SchemaManager/hooks";
 import {
   currentFieldIsReadOnlyAtom,
   currentOverlay,
@@ -23,7 +23,6 @@ import {
 } from "./state";
 
 import { KnownCommands, KnownContexts, useCommand } from "@fiftyone/commands";
-import { useCurrent3dAnnotationMode } from "@fiftyone/looker-3d/src/state/accessors";
 import useColor from "./useColor";
 import useExit from "./useExit";
 import { useQuickDraw } from "./useQuickDraw";
@@ -41,11 +40,11 @@ const LabelHamburgerMenu = () => {
   // Permission and read-only state
   const canEditLabels = useRecoilValue(fos.canEditLabels);
   const currentFieldIsReadOnly = useAtomValue(currentFieldIsReadOnlyAtom);
-  const setShowSchemaManager = useSetAtom(showModal);
+  const { openSchemaManager } = useSchemaManagerModal();
   const isGenerated = useRecoilValue(isGeneratedView);
 
   const handleOpenSchemaManager = () => {
-    setShowSchemaManager(true);
+    openSchemaManager();
     setOpen(false);
   };
 
@@ -101,14 +100,9 @@ const Header = () => {
   const annotationContext = useAnnotationContext();
   const currentFieldIsReadOnly = useAtomValue(currentFieldIsReadOnlyAtom);
 
-  const current3dAnnotationMode = useCurrent3dAnnotationMode();
-  const isAnnotatingPolyline = current3dAnnotationMode === "polyline";
-  const isAnnotatingCuboid = current3dAnnotationMode === "cuboid";
-
   // In patches view with single label, clicking back should go to explore mode
   const isPatches = useRecoilValue(fos.isPatchesView);
   const labelCount = useAtomValue(labels).length;
-  const setModalMode = useSetAtom(fos.modalMode);
   const shouldExitToExplore = isPatches && labelCount === 1;
 
   const handleExit = useCallback(() => {
@@ -138,14 +132,6 @@ const Header = () => {
       {currentFieldIsReadOnly && <span>Read-only</span>}
       <ItemRight>
         <Stack direction="row" alignItems="center">
-          {!currentFieldIsReadOnly &&
-            !isAnnotatingPolyline &&
-            !isAnnotatingCuboid && (
-              <>
-                <Undo />
-                <Redo />
-              </>
-            )}
           {annotationContext.selectedLabel !== null && <LabelHamburgerMenu />}
         </Stack>
       </ItemRight>
