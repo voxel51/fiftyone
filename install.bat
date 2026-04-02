@@ -51,6 +51,30 @@ IF NOT ERRORLEVEL 1 (
   set PIP=pip
 )
 
+:: Check Python version (3.9 - 3.12 supported)
+for /f "tokens=*" %%v in ('python -c "import sys; print(f\"{sys.version_info.major}.{sys.version_info.minor}\")" 2^>nul') do set PY_VER=%%v
+if "%PY_VER%"=="" (
+  echo ERROR: Python not found in PATH.
+  exit /b 1
+)
+for /f "tokens=1,2 delims=." %%a in ("%PY_VER%") do (
+  set PY_MAJOR=%%a
+  set PY_MINOR=%%b
+)
+if %PY_MAJOR% NEQ 3 (
+  echo Python %PY_VER% is NOT supported. Please use Python 3.9 - 3.12.
+  exit /b 1
+)
+if %PY_MINOR% LSS 9 (
+  echo Python %PY_VER% is NOT supported. Please use Python 3.9 - 3.12.
+  exit /b 1
+)
+if %PY_MINOR% GTR 12 (
+  echo Python %PY_VER% is NOT supported. Please use Python 3.9 - 3.12.
+  exit /b 1
+)
+echo Python %PY_VER% is supported.
+
 :: Do this first so pip installs with a built app
 if %BUILD_APP%==true (
   echo ***** INSTALLING FIFTYONE-APP *****
