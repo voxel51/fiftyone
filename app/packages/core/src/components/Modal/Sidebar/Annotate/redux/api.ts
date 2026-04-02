@@ -7,9 +7,7 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
 const BACKEND_BASE = `http://127.0.0.1:${
-  (typeof import.meta !== "undefined" &&
-    import.meta.env?.FIFTYONE_DEFAULT_APP_PORT) ||
-  "5151"
+  import.meta.env.FIFTYONE_DEFAULT_APP_PORT || "5151"
 }/`;
 
 export const fiftyoneApi = createApi({

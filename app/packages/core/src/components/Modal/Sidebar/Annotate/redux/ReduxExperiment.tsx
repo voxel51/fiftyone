@@ -1,14 +1,104 @@
 /**
- * Hackday RTK Query experiment.
+ * Hackday RTK Query + Redux slice experiment.
  *
- * Fetches data via RTK Query and logs it to the console. Renders nothing
- * visible — the existing annotation UI is completely untouched.
+ * - Fetches data via RTK Query and logs it to the console
+ * - Bridges Jotai annotation state into a Redux slice for Redux DevTools
+ *
+ * Renders nothing visible — the existing annotation UI is untouched.
  */
 import { useCurrentDatasetName, useModalSample } from "@fiftyone/state";
+import { useAtomValue } from "jotai";
 import { useEffect } from "react";
-import { Provider } from "react-redux";
+import { Provider, useDispatch } from "react-redux";
+import {
+  current,
+  editing,
+  isEditing,
+  isNew,
+} from "../Edit/state";
+import {
+  activeLabelSchemas,
+  activeSchemaTab,
+  labelSchemasData,
+} from "../state";
+import { labels as labelsAtom } from "../useLabels";
+import {
+  setAnnotating,
+  setActiveSchemas,
+  setEditingLabel,
+  setIsNewLabel,
+  setLabels,
+  setSchemaTab,
+  type AnnotationLabel,
+} from "./annotationSlice";
 import { useGetAppInfoQuery, useGetSampleQuery, useGraphqlQuery } from "./api";
-import { annotationStore } from "./store";
+import { annotationStore, type AnnotationAppDispatch } from "./store";
+
+/** Bridges Jotai atoms → Redux slice so state is visible in Redux DevTools */
+function JotaiToReduxBridge() {
+  const dispatch = useDispatch<AnnotationAppDispatch>();
+
+  const isEditingValue = useAtomValue(isEditing);
+  const currentLabel = useAtomValue(current);
+  const isNewValue = useAtomValue(isNew);
+  const jotaiLabels = useAtomValue(labelsAtom);
+  const schemas = useAtomValue(activeLabelSchemas);
+  const schemaTab = useAtomValue(activeSchemaTab);
+
+  // Sync editing state
+  useEffect(() => {
+    dispatch(setAnnotating(isEditingValue));
+  }, [isEditingValue]);
+
+  // Sync current label
+  useEffect(() => {
+    if (currentLabel) {
+      const serialized: AnnotationLabel = {
+        id: currentLabel.data?._id ?? "unknown",
+        path: currentLabel.path,
+        type: currentLabel.type,
+        cls: currentLabel.data?._cls ?? "",
+        label: currentLabel.data?.label,
+        confidence: currentLabel.data?.confidence,
+        boundingBox: currentLabel.data?.bounding_box,
+      };
+      dispatch(setEditingLabel(serialized));
+    } else {
+      dispatch(setEditingLabel(null));
+    }
+  }, [currentLabel]);
+
+  // Sync isNew
+  useEffect(() => {
+    dispatch(setIsNewLabel(!!isNewValue));
+  }, [isNewValue]);
+
+  // Sync all labels
+  useEffect(() => {
+    const serialized: AnnotationLabel[] = jotaiLabels.map((l) => ({
+      id: l.data?._id ?? "unknown",
+      path: l.path,
+      type: l.type,
+      cls: l.data?._cls ?? "",
+      label: l.data?.label,
+      confidence: l.data?.confidence,
+      boundingBox: l.data?.bounding_box,
+    }));
+    dispatch(setLabels(serialized));
+  }, [jotaiLabels]);
+
+  // Sync active schemas
+  useEffect(() => {
+    dispatch(setActiveSchemas(schemas ?? []));
+  }, [schemas]);
+
+  // Sync schema tab
+  useEffect(() => {
+    dispatch(setSchemaTab(schemaTab));
+  }, [schemaTab]);
+
+  return null;
+}
 
 function ReduxLogger() {
   const appInfo = useGetAppInfoQuery();
@@ -21,16 +111,6 @@ function ReduxLogger() {
   const datasetName = useCurrentDatasetName();
   const modalSample = useModalSample();
   const sampleId = modalSample?.sample?._id as string | undefined;
-
-  // Debug: log what we're getting from Recoil
-  useEffect(() => {
-    console.log("[RTK hackday] Context from Recoil:", {
-      datasetName,
-      sampleId,
-      hasSample: !!modalSample,
-      sampleKeys: modalSample?.sample ? Object.keys(modalSample.sample) : null,
-    });
-  }, [datasetName, sampleId, modalSample]);
 
   // Fetch the same sample via RTK Query (independent of Relay)
   const sample = useGetSampleQuery(
@@ -77,6 +157,7 @@ function ReduxLogger() {
 export default function ReduxExperiment() {
   return (
     <Provider store={annotationStore}>
+      <JotaiToReduxBridge />
       <ReduxLogger />
     </Provider>
   );
