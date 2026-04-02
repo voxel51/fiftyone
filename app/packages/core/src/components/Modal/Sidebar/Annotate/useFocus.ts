@@ -75,7 +75,7 @@ export default function useFocus() {
 
           // If clicking on the same overlay that's already being edited, allow it
           // (needed for drag/resize interactions in patches view auto-edit)
-          if (currentLabel?.overlay?.id === payload.id) {
+          if (currentLabel?.overlayId === payload.id) {
             return;
           }
 

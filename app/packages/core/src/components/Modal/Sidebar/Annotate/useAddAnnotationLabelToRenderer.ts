@@ -11,6 +11,8 @@ export const useAddAnnotationLabelToRenderer = () => {
 
   return useCallback(
     (label: AnnotationLabel) => {
+      if (!label.overlay) return;
+
       if (label.type === CLASSIFICATION) {
         addOverlay(label.overlay);
       } else if (label.type === DETECTION) {

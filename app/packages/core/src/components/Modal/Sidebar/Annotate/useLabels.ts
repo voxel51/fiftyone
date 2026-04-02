@@ -119,7 +119,7 @@ export const addLabel = atom(
   (get, set, newLabel: AnnotationLabel) => {
     const existingLabels = get(labels);
     const alreadyHaveIt = existingLabels.some(
-      (label) => label.overlay.id === newLabel.overlay.id
+      (label) => label.overlayId === newLabel.overlayId
     );
 
     if (!alreadyHaveIt) {
@@ -156,7 +156,7 @@ export const labelsByPath = atom((get) => {
 
 export const labelMap = atom((get) => {
   const atoms = get(labelAtoms);
-  return Object.fromEntries(atoms.map((atom) => [get(atom).overlay.id, atom]));
+  return Object.fromEntries(atoms.map((atom) => [get(atom).overlayId, atom]));
 });
 
 export enum LabelsState {
@@ -289,6 +289,7 @@ export const useLabelsContext = (): LabelsContext => {
 const useSyncOverlayReadOnly = () => {
   const currentLabels = useAtomValue(labels);
   const schemas = useLabelSchemasData();
+  const { getOverlay } = useLighter();
 
   useEffect(() => {
     if (!schemas) return;
@@ -296,14 +297,14 @@ const useSyncOverlayReadOnly = () => {
     for (const label of currentLabels) {
       if (label.type !== DETECTION) continue;
 
-      const overlay = label.overlay;
+      const overlay = getOverlay(label.overlayId);
       if (!(overlay instanceof BoundingBoxOverlay)) continue;
 
       const readOnly = isFieldReadOnly(schemas[label.path]);
       overlay.setDraggable(!readOnly);
       overlay.setResizeable(!readOnly);
     }
-  }, [currentLabels, schemas]);
+  }, [currentLabels, schemas, getOverlay]);
 };
 
 export default function useLabels() {
@@ -351,7 +352,7 @@ export default function useLabels() {
   useEffect(() => {
     const resetOverlays = () => {
       currentLabels.forEach((label) => {
-        removeOverlay(label.overlay.id, false);
+        removeOverlay(label.overlayId, false);
       });
 
       setLabels([]);

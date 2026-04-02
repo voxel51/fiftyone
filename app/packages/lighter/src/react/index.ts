@@ -6,4 +6,5 @@ export { useLighter } from "./useLighter";
 export * from "./useLighterEventBus";
 export * from "./useLighterEventHandler";
 export { useLighterSetupWithPixi } from "./useLighterSetup";
+export { useOverlayById } from "./useOverlayById";
 export type { LighterOptions } from "./useLighterSetup";

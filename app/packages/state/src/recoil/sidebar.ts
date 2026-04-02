@@ -126,6 +126,8 @@ export interface PathEntry {
 export interface Label {
   path: string;
   isNew?: boolean;
+  /** Stable identifier for the overlay in the Lighter scene. */
+  overlayId: string;
 }
 
 interface GenericOverlay<T> {
@@ -140,25 +142,29 @@ interface GenericOverlay<T> {
 
 export interface ClassificationAnnotationLabel extends Label {
   data: ClassificationLabel;
-  overlay: ClassificationOverlay;
+  /** @deprecated Use `overlayId` + `scene.getOverlay(id)` instead. */
+  overlay?: ClassificationOverlay;
   type: "Classification";
 }
 
 export interface DetectionAnnotationLabel extends Label {
   data: DetectionLabel;
-  overlay: BoundingBoxOverlay;
+  /** @deprecated Use `overlayId` + `scene.getOverlay(id)` instead. */
+  overlay?: BoundingBoxOverlay;
   type: "Detection";
 }
 
 export interface Detection3DAnnotationLabel extends Label {
   data: DetectionLabel;
-  overlay: GenericOverlay<DetectionLabel>;
+  /** @deprecated Use `overlayId` + `scene.getOverlay(id)` instead. */
+  overlay?: GenericOverlay<DetectionLabel>;
   type: "Detection";
 }
 
 export interface PolylineAnnotationLabel extends Label {
   data: PolylineLabel;
-  overlay: GenericOverlay<PolylineLabel>;
+  /** @deprecated Use `overlayId` + `scene.getOverlay(id)` instead. */
+  overlay?: GenericOverlay<PolylineLabel>;
   type: "Polyline";
 }
 

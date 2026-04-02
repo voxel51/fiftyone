@@ -35,7 +35,7 @@ export const useCreateAnnotationLabel = () => {
           label: data,
         });
 
-        return { data, overlay, path: field, type };
+        return { data, overlay, overlayId: overlay.id, path: field, type };
       }
 
       if (type === DETECTION) {
@@ -65,7 +65,7 @@ export const useCreateAnnotationLabel = () => {
           },
         });
 
-        return { data, overlay, path: field, type };
+        return { data, overlay, overlayId: overlay.id, path: field, type };
       }
 
       if (type === POLYLINE) {
@@ -76,6 +76,7 @@ export const useCreateAnnotationLabel = () => {
             field,
             label: data as PolylineLabel,
           },
+          overlayId: data._id,
           type,
           path: field,
         };

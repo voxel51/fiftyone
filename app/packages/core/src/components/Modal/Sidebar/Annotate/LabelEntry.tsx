@@ -1,5 +1,5 @@
 import { useAnnotationEventBus } from "@fiftyone/annotation";
-import { useLighter } from "@fiftyone/lighter";
+import { useLighter, useOverlayById } from "@fiftyone/lighter";
 import { isDetection3dOverlay, isPolyline3dOverlay } from "@fiftyone/looker-3d";
 import type { AnnotationLabel } from "@fiftyone/state";
 import { animated } from "@react-spring/web";
@@ -61,28 +61,29 @@ const LabelEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
   const hoveringLabelIdsList = useAtomValue(hoveringLabelIds);
   const { scene } = useLighter();
 
-  const isHovering = hoveringLabelIdsList.includes(label.overlay.id);
+  const isHovering = hoveringLabelIdsList.includes(label.overlayId);
+  const overlay = useOverlayById(label.overlayId);
 
-  const color = useColor(label.overlay);
+  const color = useColor(overlay ?? undefined);
 
   const annotationEventBus = useAnnotationEventBus();
 
   const handleMouseEnter = useMemo(() => {
     return () => {
       annotationEventBus.dispatch("annotation:sidebarLabelHover", {
-        id: label.overlay.id,
+        id: label.overlayId,
         tooltip: false,
       });
     };
-  }, [annotationEventBus, label.overlay.id]);
+  }, [annotationEventBus, label.overlayId]);
 
   const handleMouseLeave = useMemo(() => {
     return () => {
       annotationEventBus.dispatch("annotation:sidebarLabelUnhover", {
-        id: label.overlay.id,
+        id: label.overlayId,
       });
     };
-  }, [annotationEventBus, label.overlay.id]);
+  }, [annotationEventBus, label.overlayId]);
 
   const is3DLabel =
     isDetection3dOverlay(label.data) || isPolyline3dOverlay(label.data);
@@ -90,16 +91,15 @@ const LabelEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
   return (
     <Container
       onClick={() => {
-        const store = getDefaultStore();
-        scene?.selectOverlay(store.get(atom).overlay.id);
+        scene?.selectOverlay(label.overlayId);
 
         annotationEventBus.dispatch("annotation:sidebarLabelSelected", {
-          id: label.overlay.id,
+          id: label.overlayId,
           type: label.type,
           data: {
             ...label.data,
             path: label.path,
-            id: label.overlay.id,
+            id: label.overlayId,
           },
         });
 

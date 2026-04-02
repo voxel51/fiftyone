@@ -36,7 +36,7 @@ const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
       }
       labelsByField[field].push({
         atom: atomItem,
-        id: labelData.overlay.id,
+        id: labelData.overlayId,
         label: labelData.data?.label ?? "",
       });
     }

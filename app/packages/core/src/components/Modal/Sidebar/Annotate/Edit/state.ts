@@ -1,3 +1,4 @@
+import { lighterSceneAtom } from "@fiftyone/lighter";
 import type { AnnotationLabel } from "@fiftyone/state";
 import {
   CLASSIFICATION,
@@ -119,8 +120,11 @@ export const currentField = atom(
     const data = buildNewLabelData(path, currentData._cls, currentData?._id);
     data.bounding_box = currentData?.bounding_box;
 
-    currentLabel.overlay?.updateField(path);
-    currentLabel.overlay?.updateLabel(data);
+    // Look up the live overlay from the scene by ID for imperative updates
+    const scene = get(lighterSceneAtom);
+    const overlay = scene?.getOverlay(currentLabel.overlayId);
+    overlay?.updateField?.(path);
+    overlay?.updateLabel?.(data);
 
     set(current, { ...currentLabel, path, data });
   }
@@ -142,7 +146,10 @@ export const currentFieldIsReadOnlyAtom = atom((get) => {
 });
 
 export const currentOverlay = atom((get) => {
-  return get(current)?.overlay;
+  const label = get(current);
+  if (!label) return undefined;
+  const scene = get(lighterSceneAtom);
+  return scene?.getOverlay(label.overlayId);
 });
 
 export const currentSchema = atom((get) => {
@@ -264,7 +271,7 @@ export const deleteValue = atom(null, (get, set) => {
 
   set(
     labels,
-    get(labels).filter((label) => label.overlay.id !== data.overlay.id)
+    get(labels).filter((label) => label.overlayId !== data.overlayId)
   );
   set(editing, null);
 });

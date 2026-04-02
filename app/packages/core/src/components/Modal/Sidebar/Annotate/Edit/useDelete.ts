@@ -67,7 +67,7 @@ export default function useDelete() {
           );
 
           removeLabelFromSidebar(label.data._id);
-          removeOverlay(label.overlay.id, false);
+          removeOverlay(label.overlayId, false);
           setNotification({
             msg: `Label "${label.data.label}" successfully deleted.`,
             variant: "success",
@@ -98,7 +98,9 @@ export default function useDelete() {
               return;
             }
 
-            scene?.addOverlay(label.overlay);
+            if (label.overlay) {
+              scene?.addOverlay(label.overlay);
+            }
             addLabelToSidebar(label);
           } catch (error) {
             console.error(error);
