@@ -60,7 +60,7 @@ class SkillDefinition(object):
     @property
     def content(self):
         """The full raw content of the skill file."""
-        with open(self._path, "r") as f:
+        with open(self._path, "r", encoding="utf-8") as f:
             return f.read()
 
     def to_dict(self):
@@ -142,7 +142,7 @@ def _iter_plugin_skills(plugin_definition):
 
 
 def _parse_skill_frontmatter(skill_path):
-    with open(skill_path, "r") as f:
+    with open(skill_path, "r", encoding="utf-8") as f:
         content = f.read()
 
     if not content.startswith("---"):

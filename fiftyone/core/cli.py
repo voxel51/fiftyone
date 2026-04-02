@@ -4491,14 +4491,16 @@ class PluginsSkillsListCommand(Command):
         parser.add_argument(
             "-p",
             "--plugin",
+            nargs="+",
             metavar="PLUGIN",
-            help="only show skills from this plugin",
+            help="only show skills from this plugin(s)",
         )
         parser.add_argument(
             "-c",
             "--category",
+            nargs="+",
             metavar="CATEGORY",
-            help="only show skills in this category",
+            help="only show skills in this category(s)",
         )
         parser.add_argument(
             "-n",
