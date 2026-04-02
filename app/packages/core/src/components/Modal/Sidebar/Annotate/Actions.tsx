@@ -22,15 +22,15 @@ import {
 } from "@fiftyone/utilities";
 import PolylineIcon from "@mui/icons-material/Timeline";
 import CuboidIcon from "@mui/icons-material/ViewInAr";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue } from "jotai";
 import { createContext, useCallback, useContext } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ItemLeft, ItemRight } from "./Components";
-import { editing } from "./Edit";
 import { useClassification } from "./Edit/useClassification";
 import { fieldsOfType } from "./Edit/state";
 import { useQuickDraw } from "./Edit/useQuickDraw";
+import { useStartEditingType } from "./redux/hooks";
 
 const ActionsDiv = styled.div`
   align-items: center;
@@ -319,7 +319,7 @@ export const Redo = () => {
 };
 
 export const ThreeDPolylines = () => {
-  const setEditing = useSetAtom(editing);
+  const startEditingType = useStartEditingType();
   const current3dAnnotationMode = useCurrent3dAnnotationMode();
   const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
   const deactivateAll = useDeactivateAll();
@@ -358,7 +358,7 @@ export const ThreeDPolylines = () => {
           if (isPolylineAnnotateActive) return;
 
           if (!hasPolylineFieldsInSchema) {
-            setEditing(POLYLINE);
+            startEditingType(POLYLINE);
             return;
           }
 
@@ -372,7 +372,7 @@ export const ThreeDPolylines = () => {
 };
 
 export const ThreeDCuboids = () => {
-  const setEditing = useSetAtom(editing);
+  const startEditingType = useStartEditingType();
   const current3dAnnotationMode = useCurrent3dAnnotationMode();
   const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
   const deactivateAll = useDeactivateAll();
@@ -410,7 +410,7 @@ export const ThreeDCuboids = () => {
           if (isCuboidAnnotateActive) return;
 
           if (!hasCuboidFieldsInSchema) {
-            setEditing(DETECTION);
+            startEditingType(DETECTION);
             return;
           }
 
