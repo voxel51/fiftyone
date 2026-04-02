@@ -3358,11 +3358,13 @@ class CVATBackend(foua.AnnotationBackend):
 
         return results
 
-    def download_annotations(self, results):
+    def download_annotations(self, results, coerce_text_attrs=False):
         api = self.connect_to_api()
 
         logger.info("Downloading labels from CVAT...")
-        annotations = api.download_annotations(results)
+        annotations = api.download_annotations(
+            results, coerce_text_attrs=coerce_text_attrs
+        )
         logger.info("Download complete")
 
         return annotations
@@ -4644,12 +4646,15 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         return results
 
-    def download_annotations(self, results):
+    def download_annotations(self, results, coerce_text_attrs=False):
         """Download the annotations from the CVAT server for the given results
         instance and parses them into the appropriate FiftyOne types.
 
         Args:
             results: a :class:`CVATAnnotationResults`
+            coerce_text_attrs (False): whether to coerce text attributes to
+                numeric types. By default, text attribute values are preserved
+                as strings
 
         Returns:
             the annotations dict
@@ -4722,6 +4727,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 attr_id_map, attr_type_map, _class_map_rev = (
                     self._get_attr_class_maps(task_id)
                 )
+
+                if coerce_text_attrs:
+                    attr_type_map = None
 
                 job_ids = self._get_job_ids(task_id)
                 for job_id in job_ids:
