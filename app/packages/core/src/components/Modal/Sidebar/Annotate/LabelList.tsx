@@ -71,9 +71,8 @@ export default function AnnotateSidebar() {
           }
 
           if (entry.kind === EntryKind.LABEL) {
-            const { kind: _kind, atom } = entry;
             return {
-              children: <LabelEntry atom={atom} />,
+              children: <LabelEntry overlayId={(entry as any).overlayId} />,
               disabled: true,
             };
           }

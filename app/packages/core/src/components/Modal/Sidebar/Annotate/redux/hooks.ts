@@ -1,23 +1,13 @@
 /**
- * Typed Redux hooks for the annotation store — hackday experiment.
+ * Typed Redux hooks for the annotation store.
  *
- * Read hooks pull from the Redux store.
- * Write hooks dual-write: dispatch to Redux AND set the Jotai atom,
- * so both systems stay in sync during the migration.
+ * Redux is the source of truth. No Jotai imports.
  */
-import type { AnnotationLabel as JotaiAnnotationLabel } from "@fiftyone/state";
-import { CLASSIFICATION, DETECTION, POLYLINE } from "@fiftyone/utilities";
-import { getDefaultStore, type PrimitiveAtom } from "jotai";
 import { useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { editing } from "../Edit/state";
-import type { LabelType } from "../Edit/state";
-import { activeLabelSchemas, activeSchemaTab } from "../state";
 import {
   hoverLabel,
   setActiveSchemas,
-  setAnnotating,
-  setEditingLabel,
   setSchemaTab,
 } from "./annotationSlice";
 import type { AnnotationLabel } from "./annotationSlice";
@@ -59,81 +49,61 @@ export const useHoveredLabelId = (): string | null =>
 export const useSchemaTab = (): "gui" | "json" =>
   useAnnotationSelector((s) => s.annotation.schemaTab);
 
-// ── Domain write hooks ─────────────────────────────────────────────────
-
-const LABEL_TYPES = new Set([CLASSIFICATION, DETECTION, POLYLINE]);
+// ── Domain write hooks (Redux-only, no Jotai) ─────────────────────────
 
 /**
  * Start editing a label type (creates a new label of that type).
- * Dual-writes to Redux and Jotai.
+ * Redux-only: dispatches startEditingNewType.
  */
 export const useStartEditingType = () => {
   const dispatch = useAnnotationDispatch();
-
   return useCallback(
-    (type: LabelType) => {
-      // Redux: mark as editing with the type info
-      dispatch(setAnnotating(true));
-      dispatch(
-        setEditingLabel({ id: "new", path: "", type, cls: type })
-      );
-
-      // Jotai: set the editing atom to the label type string
-      // (this triggers the "Add Schema" UI flow)
-      getDefaultStore().set(editing, type);
-    },
+    (type: LabelType) => dispatch(startEditingNewType(type)),
     [dispatch]
   );
 };
 
 /**
- * Start editing an existing label (by its Jotai atom reference).
- * Dual-writes to Redux and Jotai.
+ * Start editing an existing label by overlayId.
+ * Redux-only: dispatches startEditing (finds label in store).
  */
 export const useStartEditingLabel = () => {
   const dispatch = useAnnotationDispatch();
-
   return useCallback(
-    (atom: PrimitiveAtom<JotaiAnnotationLabel>) => {
-      const store = getDefaultStore();
-      const label = store.get(atom);
-
-      // Redux: set the serialized label
-      dispatch(setAnnotating(true));
-      dispatch(
-        setEditingLabel({
-          id: label.data?._id ?? "unknown",
-          overlayId: label.overlayId,
-          path: label.path,
-          type: label.type,
-          cls: label.data?._cls ?? "",
-          isNew: label.isNew,
-          label: label.data?.label,
-          confidence: label.data?.confidence,
-          boundingBox: label.data?.bounding_box,
-          data: label.data as unknown as Record<string, unknown>,
-        })
-      );
-
-      // Jotai: set the editing atom to the PrimitiveAtom reference
-      store.set(editing, atom);
-    },
+    (overlayId: string) => dispatch(startEditingAction(overlayId)),
     [dispatch]
   );
 };
 
 /**
  * Stop editing (clear the current edit).
- * Dual-writes to Redux and Jotai.
+ * Redux-only: dispatches clearEditing.
  */
 export const useStopEditing = () => {
   const dispatch = useAnnotationDispatch();
+  return useCallback(() => dispatch(clearEditing()), [dispatch]);
+};
 
-  return useCallback(() => {
-    dispatch(setAnnotating(false));
-    dispatch(setEditingLabel(null));
-    getDefaultStore().set(editing, null);
-  }, [dispatch]);
+/**
+ * Add a label to the Redux store.
+ */
+export const useAddLabel = () => {
+  const dispatch = useAnnotationDispatch();
+  return useCallback(
+    (label: ReduxAnnotationLabel) => dispatch(addLabelAction(label)),
+    [dispatch]
+  );
+};
+
+/**
+ * Remove a label from the Redux store by overlayId.
+ */
+export const useRemoveLabel = () => {
+  const dispatch = useAnnotationDispatch();
+  return useCallback(
+    (overlayId: string) => dispatch(removeLabelByOverlayId(overlayId)),
+    [dispatch]
+  );
 };
 
 /**
@@ -164,7 +134,6 @@ export const useSchemaTabState = (): [
   const setTab = useCallback(
     (value: "gui" | "json") => {
       dispatch(setSchemaTab(value));
-      getDefaultStore().set(activeSchemaTab, value);
     },
     [dispatch]
   );
@@ -173,7 +142,7 @@ export const useSchemaTabState = (): [
 };
 
 /**
- * Read+write active schemas. Dual-writes to Redux and Jotai.
+ * Read+write active schemas. Redux-only.
  */
 export const useActiveSchemasState = (): [
   string[],
@@ -185,7 +154,6 @@ export const useActiveSchemasState = (): [
   const setSchemas = useCallback(
     (value: string[] | null) => {
       dispatch(setActiveSchemas(value ?? []));
-      getDefaultStore().set(activeLabelSchemas, value);
     },
     [dispatch]
   );
@@ -200,6 +168,10 @@ export const useAnnotationLabelCount = (): number =>
 // ── Derived selector hooks (replace Jotai derived atoms) ───────────────
 
 import {
+  addLabel as addLabelAction,
+  clearEditing,
+  removeLabelByOverlayId,
+  setLabels as setLabelsAction,
   selectCurrentData,
   selectCurrentField,
   selectCurrentFieldIsReadOnly,
@@ -211,8 +183,13 @@ import {
   selectFieldTypes,
   selectFieldsOfType,
   selectInactiveLabelSchemas,
+  selectLabelByOverlayId,
+  selectLabelsByPath,
   selectVisibleLabelSchemas,
+  startEditing as startEditingAction,
+  startEditingNewType,
   updateEditingLabelData,
+  type AnnotationLabel as ReduxAnnotationLabel,
   type LabelType,
 } from "./annotationSlice";
 
@@ -270,7 +247,6 @@ export const useCurrentData = (): Record<string, unknown> | null =>
 
 /**
  * Update the data on the currently-editing label.
- * Dual-writes to Redux and syncs the overlay via Lighter.
  */
 export const useUpdateEditingData = () => {
   const dispatch = useAnnotationDispatch();
@@ -279,6 +255,24 @@ export const useUpdateEditingData = () => {
     (data: Record<string, unknown>) => {
       dispatch(updateEditingLabelData(data));
     },
+    [dispatch]
+  );
+};
+
+/** Labels grouped by field path. */
+export const useLabelsByPath = () =>
+  useAnnotationSelector(selectLabelsByPath);
+
+/** Look up a label by overlayId. */
+export const useLabelByOverlayId = (overlayId: string) =>
+  useAnnotationSelector(selectLabelByOverlayId(overlayId));
+
+/** Set the full labels array. */
+export const useSetLabels = () => {
+  const dispatch = useAnnotationDispatch();
+  return useCallback(
+    (labels: ReduxAnnotationLabel[]) =>
+      dispatch(setLabelsAction(labels)),
     [dispatch]
   );
 };

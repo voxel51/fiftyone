@@ -1,14 +1,16 @@
 import { EntryKind, type SidebarEntry } from "@fiftyone/state";
-import { getDefaultStore, useAtomValue } from "jotai";
+import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { LABELS_GROUP_NAME, labelsExpanded } from "./GroupEntry";
-import { useVisibleLabelSchemas } from "./redux/hooks";
-import { LabelsState, labelAtoms, labelsState } from "./useLabels";
+import {
+  useAnnotationLabels,
+  useVisibleLabelSchemas,
+} from "./redux/hooks";
+import { LabelsState, labelsState } from "./useLabels";
 import usePrimitiveEntries from "./usePrimitiveEntries";
-const store = getDefaultStore();
 
 const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
-  const atoms = useAtomValue(labelAtoms);
+  const labels = useAnnotationLabels();
   const activeFields = useVisibleLabelSchemas();
   const state = useAtomValue(labelsState);
   const primitiveEntries = usePrimitiveEntries(activeFields || []);
@@ -25,19 +27,16 @@ const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
 
     const labelsByField: Record<
       string,
-      Array<{ atom: typeof atoms[0]; id: string; label: string }>
+      Array<{ overlayId: string; label: string }>
     > = {};
 
-    for (const atomItem of atoms) {
-      const labelData = store.get(atomItem);
-      const field = labelData.path;
-      if (!labelsByField[field]) {
-        labelsByField[field] = [];
+    for (const l of labels) {
+      if (!labelsByField[l.path]) {
+        labelsByField[l.path] = [];
       }
-      labelsByField[field].push({
-        atom: atomItem,
-        id: labelData.overlayId,
-        label: labelData.data?.label ?? "",
+      labelsByField[l.path].push({
+        overlayId: l.overlayId,
+        label: l.label ?? "",
       });
     }
 
@@ -51,8 +50,12 @@ const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
       const fieldLabels = labelsByField[field];
       if (!fieldLabels?.length) continue;
 
-      for (const { atom, id } of fieldLabels) {
-        result.push({ kind: EntryKind.LABEL, atom, id });
+      for (const { overlayId } of fieldLabels) {
+        result.push({
+          kind: EntryKind.LABEL,
+          overlayId,
+          id: overlayId,
+        } as SidebarEntry);
       }
     }
 
@@ -61,7 +64,7 @@ const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
     }
 
     return result as SidebarEntry[];
-  }, [atoms, activeFields, state, expanded]);
+  }, [labels, activeFields, state, expanded]);
 
   return [
     [

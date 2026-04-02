@@ -4,15 +4,13 @@ import {
   useLighterEventHandler,
 } from "@fiftyone/lighter";
 import { isGeneratedView } from "@fiftyone/state";
-import { getDefaultStore } from "jotai";
 import { useCallback, useRef } from "react";
 import { useRecoilValue } from "recoil";
-import { editing } from "./Edit";
-import { current, savedLabel } from "./Edit/state";
 import useExit from "./Edit/useExit";
-import { labelMap } from "./useLabels";
-
-const STORE = getDefaultStore();
+import {
+  useAnnotationSelector,
+  useStartEditingLabel,
+} from "./redux/hooks";
 
 export default function useFocus() {
   const { scene } = useLighter();
@@ -22,36 +20,28 @@ export default function useFocus() {
   const selectId = useRef<string | null>(null);
   const onExit = useExit();
   const isGenerated = useRecoilValue(isGeneratedView);
+  const startEditing = useStartEditingLabel();
+
+  // Read editing state from Redux
+  const editingLabel = useAnnotationSelector(
+    (s) => s.annotation.editingLabel
+  );
 
   const select = useCallback(() => {
     const id = selectId.current;
-    if (!id) {
-      return;
-    }
+    if (!id) return;
 
-    const label = STORE.get(labelMap)[id];
-    if (id && label) {
-      STORE.set(savedLabel, STORE.get(label)?.data);
-      STORE.set(editing, label);
-      scene?.selectOverlay(id, { ignoreSideEffects: true });
-    }
+    startEditing(id);
+    scene?.selectOverlay(id, { ignoreSideEffects: true });
     selectId.current = null;
-  }, [scene]);
+  }, [scene, startEditing]);
 
   useEventHandler(
     "lighter:overlay-deselect",
     useCallback(
       (payload) => {
-        if (payload.ignoreSideEffects) {
-          return;
-        }
-
-        // In generated views (patches/clips/frames), don't exit edit mode on deselect
-        // The user should stay in edit mode for the single label
-        if (isGenerated) {
-          return;
-        }
-
+        if (payload.ignoreSideEffects) return;
+        if (isGenerated) return;
         onExit();
       },
       [isGenerated, onExit]
@@ -62,31 +52,26 @@ export default function useFocus() {
     "lighter:overlay-select",
     useCallback(
       (payload) => {
-        if (payload.ignoreSideEffects) {
-          return;
-        }
+        if (payload.ignoreSideEffects) return;
+
         selectId.current = payload.id;
 
-        if (STORE.get(editing)) {
-          // if it's a new label with no changes, discard it and allow the selection
-          const currentLabel = STORE.get(current);
+        if (editingLabel) {
+          const currentLabel = editingLabel;
 
-          if (currentLabel?.isNew) return;
+          if (currentLabel.isNew) return;
 
-          // If clicking on the same overlay that's already being edited, allow it
-          // (needed for drag/resize interactions in patches view auto-edit)
-          if (currentLabel?.overlayId === payload.id) {
-            return;
-          }
+          if (currentLabel.overlayId === payload.id) return;
 
-          // a label is already being edited, let the DESELECT event handle it
-          scene?.deselectOverlay(payload.id, { ignoreSideEffects: true });
+          // Exit current edit, then select the new label
+          onExit();
+          Promise.resolve().then(() => select());
           return;
         }
 
         select();
       },
-      [scene, select]
+      [scene, select, editingLabel, onExit]
     )
   );
 }

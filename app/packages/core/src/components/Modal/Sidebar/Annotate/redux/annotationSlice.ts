@@ -135,6 +135,51 @@ export const annotationSlice = createSlice({
         state.labels[idx] = { ...state.labels[idx], ...action.payload.changes };
       }
     },
+    /** Add a label to the list (deduped by overlayId). */
+    addLabel(state, action: PayloadAction<AnnotationLabel>) {
+      const exists = state.labels.some(
+        (l) => l.overlayId === action.payload.overlayId
+      );
+      if (!exists) {
+        state.labels.push(action.payload);
+      }
+    },
+    /** Remove a label by overlayId. */
+    removeLabelByOverlayId(state, action: PayloadAction<string>) {
+      state.labels = state.labels.filter(
+        (l) => l.overlayId !== action.payload
+      );
+    },
+    /** Start editing a label by its overlayId. */
+    startEditing(state, action: PayloadAction<string>) {
+      const label = state.labels.find(
+        (l) => l.overlayId === action.payload
+      );
+      if (label) {
+        state.editingLabel = label;
+        state.isAnnotating = true;
+        state.isNewLabel = false;
+      }
+    },
+    /** Start editing with a new label type (no existing label yet). */
+    startEditingNewType(state, action: PayloadAction<string>) {
+      state.editingLabel = {
+        id: "new",
+        overlayId: "",
+        path: "",
+        type: action.payload,
+        cls: action.payload,
+        isNew: true,
+      };
+      state.isAnnotating = true;
+      state.isNewLabel = true;
+    },
+    /** Clear editing state. */
+    clearEditing(state) {
+      state.editingLabel = null;
+      state.isAnnotating = false;
+      state.isNewLabel = false;
+    },
   },
 });
 
@@ -150,13 +195,17 @@ export const {
   setExploreActiveFields,
   updateEditingLabelData,
   updateLabelById,
+  addLabel,
+  removeLabelByOverlayId,
+  startEditing,
+  startEditingNewType,
+  clearEditing,
 } = annotationSlice.actions;
 
 // ── Selectors (replace Jotai derived atoms) ────────────────────────────
 
-/** Raw slice selector */
-const selectAnnotation = (state: { annotation: AnnotationUiState }) =>
-  state.annotation;
+const selectLabels = (state: { annotation: AnnotationUiState }) =>
+  state.annotation.labels;
 
 const selectActiveSchemas = (state: { annotation: AnnotationUiState }) =>
   state.annotation.activeSchemas;
@@ -166,6 +215,25 @@ const selectLabelSchemasData = (state: { annotation: AnnotationUiState }) =>
 
 const selectExploreActiveFields = (state: { annotation: AnnotationUiState }) =>
   state.annotation.exploreActiveFields;
+
+/** Labels grouped by field path. */
+export const selectLabelsByPath = createSelector(
+  [selectLabels],
+  (labels) => {
+    const byPath: Record<string, AnnotationLabel[]> = {};
+    for (const label of labels) {
+      if (!byPath[label.path]) byPath[label.path] = [];
+      byPath[label.path].push(label);
+    }
+    return byPath;
+  }
+);
+
+/** Look up a single label by overlayId. */
+export const selectLabelByOverlayId = (overlayId: string) =>
+  createSelector([selectLabels], (labels) =>
+    labels.find((l) => l.overlayId === overlayId) ?? null
+  );
 
 const selectEditingLabel = (state: { annotation: AnnotationUiState }) =>
   state.annotation.editingLabel;

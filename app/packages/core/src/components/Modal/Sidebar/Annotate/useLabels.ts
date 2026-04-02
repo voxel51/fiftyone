@@ -16,7 +16,14 @@ import { get } from "lodash";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { selector, useRecoilCallback, useRecoilValue } from "recoil";
 import type { LabelType } from "./Edit/state";
-import { useLabelSchemasData, useVisibleLabelSchemas } from "./redux/hooks";
+import {
+  useAddLabel,
+  useLabelSchemasData,
+  useRemoveLabel,
+  useSetLabels,
+  useVisibleLabelSchemas,
+} from "./redux/hooks";
+import type { AnnotationLabel as ReduxAnnotationLabel } from "./redux/annotationSlice";
 import { isFieldReadOnly } from "./state";
 import { useAddAnnotationLabelToRenderer } from "./useAddAnnotationLabelToRenderer";
 import { useSetActiveLabelId } from "./useAnnotationContextManager";
@@ -265,10 +272,15 @@ export const useLabelsContext = (): LabelsContext => {
     )
   );
 
+  const reduxRemoveLabel = useRemoveLabel();
   const removeLabelFromSidebar = useCallback(
-    (labelId: string) =>
-      setLabels((prev) => prev.filter((label) => label.data._id !== labelId)),
-    [setLabels]
+    (labelId: string) => {
+      setJotaiLabels((prev) =>
+        prev.filter((label) => label.data._id !== labelId)
+      );
+      reduxRemoveLabel(labelId);
+    },
+    [setJotaiLabels, reduxRemoveLabel]
   );
 
   return useMemo(
@@ -312,15 +324,51 @@ export default function useLabels() {
   const currentLabels = useAtomValue(labels);
   const modalSample = useModalSample();
   const currentSampleId = useCurrentSampleId();
-  const setLabels = useSetAtom(labels);
+  const setJotaiLabels = useSetAtom(labels);
   const setLoading = useSetAtom(labelsState);
   const active = useVisibleLabelSchemas();
   const addLabelToRenderer = useAddAnnotationLabelToRenderer();
-  const addLabelToStore = useSetAtom(addLabel);
+  const addLabelToJotaiStore = useSetAtom(addLabel);
   const createLabel = useCreateAnnotationLabel();
   const { scene, removeOverlay } = useLighter();
   const updateLabelAtom = useUpdateLabelAtom();
   const isPatches = useRecoilValue(isPatchesView);
+
+  // Redux writes
+  const reduxAddLabel = useAddLabel();
+  const reduxSetLabels = useSetLabels();
+
+  const toReduxLabel = useCallback(
+    (l: AnnotationLabel): ReduxAnnotationLabel => ({
+      id: l.data?._id ?? "unknown",
+      overlayId: l.overlayId,
+      path: l.path,
+      type: l.type,
+      cls: l.data?._cls ?? "",
+      isNew: l.isNew,
+      label: l.data?.label,
+      confidence: l.data?.confidence,
+      boundingBox: l.data?.bounding_box,
+      data: l.data as unknown as Record<string, unknown>,
+    }),
+    []
+  );
+
+  const setLabels = useCallback(
+    (result: AnnotationLabel[]) => {
+      setJotaiLabels(result);
+      reduxSetLabels(result.map(toReduxLabel));
+    },
+    [setJotaiLabels, reduxSetLabels, toReduxLabel]
+  );
+
+  const addLabelToStore = useCallback(
+    (label: AnnotationLabel) => {
+      addLabelToJotaiStore(label);
+      reduxAddLabel(toReduxLabel(label));
+    },
+    [addLabelToJotaiStore, reduxAddLabel, toReduxLabel]
+  );
   const setActiveLabelId = useSetActiveLabelId();
 
   // Use a ref for the loading state machine to avoid having it as an effect

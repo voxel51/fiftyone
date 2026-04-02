@@ -8,7 +8,9 @@ import {
 } from "@fiftyone/state";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect } from "react";
+import { useDispatch } from "react-redux";
 import { useRecoilValue } from "recoil";
+import { setExploreActiveFields as setExploreActiveFieldsAction } from "./Annotate/redux/annotationSlice";
 import ExploreSidebar from "../../Sidebar";
 import SidebarContainer from "../../Sidebar/SidebarContainer";
 import Annotate from "./Annotate";
@@ -42,11 +44,16 @@ const Sidebar = () => {
     activeFields({ modal: true, expanded: false })
   );
   const setExploreFields = useSetAtom(exploreActiveFields);
+  const dispatch = useDispatch();
 
   useEffect(() => {
     setExploreFields(exploreFields);
-    return () => setExploreFields(null);
-  }, [exploreFields, setExploreFields]);
+    dispatch(setExploreActiveFieldsAction(exploreFields));
+    return () => {
+      setExploreFields(null);
+      dispatch(setExploreActiveFieldsAction(null));
+    };
+  }, [exploreFields, setExploreFields, dispatch]);
 
   const loadSchemas = useLoadSchemas();
 
