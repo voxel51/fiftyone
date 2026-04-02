@@ -3142,6 +3142,9 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
 
             Note that this argument cannot be provided when uploading existing
             tracks
+        coerce_text_attrs (True): whether to coerce CVAT text attributes to
+            numeric types during annotation download. Set to False to preserve
+            text attribute values as strings
     """
 
     def __init__(
@@ -3173,6 +3176,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         frame_start=None,
         frame_stop=None,
         frame_step=None,
+        coerce_text_attrs=True,
         **kwargs,
     ):
         super().__init__(name, label_schema, media_field=media_field, **kwargs)
@@ -3196,6 +3200,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         self.frame_start = _validate_frame_arg(frame_start, "frame_start")
         self.frame_stop = _validate_frame_arg(frame_stop, "frame_stop")
         self.frame_step = _validate_frame_arg(frame_step, "frame_step")
+        self.coerce_text_attrs = coerce_text_attrs
 
         # store privately so these aren't serialized
         self._username = username
@@ -3358,8 +3363,12 @@ class CVATBackend(foua.AnnotationBackend):
 
         return results
 
-    def download_annotations(self, results, coerce_text_attrs=False):
+    def download_annotations(self, results):
         api = self.connect_to_api()
+
+        coerce_text_attrs = getattr(
+            results.config, "coerce_text_attrs", True
+        )
 
         logger.info("Downloading labels from CVAT...")
         annotations = api.download_annotations(
@@ -4646,14 +4655,14 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         return results
 
-    def download_annotations(self, results, coerce_text_attrs=False):
+    def download_annotations(self, results, coerce_text_attrs=True):
         """Download the annotations from the CVAT server for the given results
         instance and parses them into the appropriate FiftyOne types.
 
         Args:
             results: a :class:`CVATAnnotationResults`
-            coerce_text_attrs (False): whether to coerce text attributes to
-                numeric types. By default, text attribute values are preserved
+            coerce_text_attrs (True): whether to coerce text attributes to
+                numeric types. Set to False to preserve text attribute values
                 as strings
 
         Returns:
