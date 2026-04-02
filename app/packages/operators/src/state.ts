@@ -323,11 +323,15 @@ const useOperatorPromptSubmitOptions = (
     hasAvailableOrchestrators &&
     executionOptions.orchestratorRegistrationEnabled
   ) {
-    for (let orc of execDetails.executionOptions.availableOrchestrators) {
+    for (let [
+      index,
+      orc,
+    ] of execDetails.executionOptions.availableOrchestrators.entries()) {
       options.push({
         label: "Schedule",
         choiceLabel: `Schedule on ${orc.instanceID}`,
         id: orc.id,
+        default: defaultToSchedule && index === 0,
         description: `Run this operation on ${orc.instanceID}`,
         onSelect() {
           setSelectedID(orc.id);
