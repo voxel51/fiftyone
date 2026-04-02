@@ -27,6 +27,10 @@ from .core import (
 from .definitions import PluginDefinition
 from .context import PluginContext
 from .secrets import PluginSecretsResolver
+from .skills import (
+    install_skills,
+    list_skills,
+)
 
 # This enables Sphinx refs to directly use paths imported here
 __all__ = [
