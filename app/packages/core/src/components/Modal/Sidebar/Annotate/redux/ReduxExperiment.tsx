@@ -19,6 +19,7 @@ import {
 import {
   activeLabelSchemas,
   activeSchemaTab,
+  exploreActiveFields,
   labelSchemasData,
 } from "../state";
 import { labels as labelsAtom } from "../useLabels";
@@ -26,8 +27,10 @@ import {
   setAnnotating,
   setActiveSchemas,
   setEditingLabel,
+  setExploreActiveFields,
   setIsNewLabel,
   setLabels,
+  setLabelSchemasData,
   setSchemaTab,
   type AnnotationLabel,
 } from "./annotationSlice";
@@ -44,6 +47,8 @@ function JotaiToReduxBridge() {
   const jotaiLabels = useAtomValue(labelsAtom);
   const schemas = useAtomValue(activeLabelSchemas);
   const schemaTab = useAtomValue(activeSchemaTab);
+  const schemasData = useAtomValue(labelSchemasData);
+  const exploreFields = useAtomValue(exploreActiveFields);
 
   // Sync editing state
   useEffect(() => {
@@ -96,6 +101,16 @@ function JotaiToReduxBridge() {
   useEffect(() => {
     dispatch(setSchemaTab(schemaTab));
   }, [schemaTab]);
+
+  // Sync full schema data (needed by derived selectors)
+  useEffect(() => {
+    dispatch(setLabelSchemasData(schemasData));
+  }, [schemasData]);
+
+  // Sync explore active fields (needed by visibleLabelSchemas selector)
+  useEffect(() => {
+    dispatch(setExploreActiveFields(exploreFields));
+  }, [exploreFields]);
 
   return null;
 }

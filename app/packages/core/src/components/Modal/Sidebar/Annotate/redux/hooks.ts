@@ -193,3 +193,37 @@ export const useActiveSchemasState = (): [
 /** Label count from the Redux store. */
 export const useAnnotationLabelCount = (): number =>
   useAnnotationSelector((s) => s.annotation.labels.length);
+
+// ── Derived selector hooks (replace Jotai derived atoms) ───────────────
+
+import {
+  selectFieldAttributeCount,
+  selectFieldType,
+  selectFieldTypes,
+  selectInactiveLabelSchemas,
+  selectVisibleLabelSchemas,
+} from "./annotationSlice";
+
+/** visibleLabelSchemas — active ∩ explore, with primitives always visible. */
+export const useVisibleLabelSchemas = (): string[] =>
+  useAnnotationSelector(selectVisibleLabelSchemas);
+
+/** inactiveLabelSchemas — schema fields NOT in activeSchemas. */
+export const useInactiveLabelSchemas = (): string[] =>
+  useAnnotationSelector(selectInactiveLabelSchemas);
+
+/** fieldTypes — map of active field paths to their capitalized types. */
+export const useFieldTypes = (): Record<string, string> =>
+  useAnnotationSelector(selectFieldTypes);
+
+/** fieldType for a specific path. */
+export const useFieldType = (path: string): string | undefined =>
+  useAnnotationSelector(selectFieldType(path));
+
+/** fieldAttributeCount for a specific path. */
+export const useFieldAttributeCount = (path: string): number =>
+  useAnnotationSelector(selectFieldAttributeCount(path));
+
+/** Full label schemas data. */
+export const useLabelSchemasData = () =>
+  useAnnotationSelector((s) => s.annotation.labelSchemasData);
