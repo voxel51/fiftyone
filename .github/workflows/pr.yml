@@ -2,7 +2,7 @@ name: Pull Request
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, closed]
+    types: [opened, synchronize, reopened, closed, ready_for_review]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -72,7 +72,9 @@ jobs:
 
   enterprise-sync:
     needs: modified-files
-    if: needs.modified-files.outputs.docs-only != 'true'
+    if: |
+      github.event.action == 'closed' ||
+      (needs.modified-files.outputs.docs-only != 'true' && github.event.pull_request.draft != true)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/github-script@v7
