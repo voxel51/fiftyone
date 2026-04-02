@@ -200,8 +200,10 @@ import {
   selectFieldAttributeCount,
   selectFieldType,
   selectFieldTypes,
+  selectFieldsOfType,
   selectInactiveLabelSchemas,
   selectVisibleLabelSchemas,
+  type LabelType,
 } from "./annotationSlice";
 
 /** visibleLabelSchemas — active ∩ explore, with primitives always visible. */
@@ -227,3 +229,7 @@ export const useFieldAttributeCount = (path: string): number =>
 /** Full label schemas data. */
 export const useLabelSchemasData = () =>
   useAnnotationSelector((s) => s.annotation.labelSchemasData);
+
+/** Fields matching a label type (writable only). */
+export const useFieldsOfType = (type: LabelType): string[] =>
+  useAnnotationSelector(selectFieldsOfType(type));

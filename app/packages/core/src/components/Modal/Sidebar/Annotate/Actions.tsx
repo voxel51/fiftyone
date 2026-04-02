@@ -22,15 +22,13 @@ import {
 } from "@fiftyone/utilities";
 import PolylineIcon from "@mui/icons-material/Timeline";
 import CuboidIcon from "@mui/icons-material/ViewInAr";
-import { useAtomValue } from "jotai";
 import { createContext, useCallback, useContext } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ItemLeft, ItemRight } from "./Components";
 import { useClassification } from "./Edit/useClassification";
-import { fieldsOfType } from "./Edit/state";
 import { useQuickDraw } from "./Edit/useQuickDraw";
-import { useStartEditingType } from "./redux/hooks";
+import { useFieldsOfType, useStartEditingType } from "./redux/hooks";
 
 const ActionsDiv = styled.div`
   align-items: center;
@@ -224,7 +222,7 @@ const Detection = () => {
   const deactivateAll = useDeactivateAll();
   const isPatchView = useRecoilValue(isPatchesView);
 
-  const fields = useAtomValue(fieldsOfType(DETECTION));
+  const fields = useFieldsOfType(DETECTION);
   const disabled = isPatchView || fields.length === 0;
 
   const tooltip = isPatchView
@@ -323,7 +321,7 @@ export const ThreeDPolylines = () => {
   const current3dAnnotationMode = useCurrent3dAnnotationMode();
   const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
   const deactivateAll = useDeactivateAll();
-  const visibleFields = useAtomValue(fieldsOfType(POLYLINE));
+  const visibleFields = useFieldsOfType(POLYLINE);
 
   const polylineFields = use3dAnnotationFields(
     useCallback(
@@ -376,7 +374,7 @@ export const ThreeDCuboids = () => {
   const current3dAnnotationMode = useCurrent3dAnnotationMode();
   const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
   const deactivateAll = useDeactivateAll();
-  const visibleFields = useAtomValue(fieldsOfType(DETECTION));
+  const visibleFields = useFieldsOfType(DETECTION);
 
   const cuboidFields = use3dAnnotationFields(
     useCallback(

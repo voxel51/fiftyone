@@ -4,7 +4,8 @@ import { CLASSIFICATION } from "@fiftyone/utilities";
 import { useAtomValue } from "jotai";
 import { useCallback, useMemo } from "react";
 import { useRecoilValue } from "recoil";
-import { currentType, fieldsOfType } from "./state";
+import { useFieldsOfType } from "../redux/hooks";
+import { currentType } from "./state";
 import useCreate from "./useCreate";
 import useExit from "./useExit";
 
@@ -19,7 +20,7 @@ export const useClassification = () => {
   const onExit = useExit();
   const isPatchView = useRecoilValue(isPatchesView);
   const reset3dAnnotationMode = useReset3dAnnotationMode();
-  const fields = useAtomValue(fieldsOfType(CLASSIFICATION));
+  const fields = useFieldsOfType(CLASSIFICATION);
   const classificationActive = useAtomValue(currentType) === CLASSIFICATION;
 
   const disabled = isPatchView || fields.length === 0;

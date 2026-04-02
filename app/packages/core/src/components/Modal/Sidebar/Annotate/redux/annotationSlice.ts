@@ -6,6 +6,14 @@
  * into this slice; components read exclusively from Redux.
  */
 import { createSelector, createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import {
+  CLASSIFICATION,
+  CLASSIFICATIONS,
+  DETECTION,
+  DETECTIONS,
+  POLYLINE,
+  POLYLINES,
+} from "@fiftyone/utilities";
 import { capitalize } from "lodash";
 import { PRIMITIVE_FIELD_TYPES } from "../SchemaManager/constants";
 import type { LabelSchemaMeta } from "../useSchemaManager";
@@ -201,3 +209,42 @@ export const selectFieldAttributeCount = (path: string) =>
     const attrs = schemas?.[path]?.label_schema?.attributes;
     return Array.isArray(attrs) ? attrs.length : 0;
   });
+
+// ── Label type sets (mirrored from Edit/state.ts) ──────────────────────
+
+export type LabelType =
+  | typeof CLASSIFICATION
+  | typeof DETECTION
+  | typeof POLYLINE;
+
+const IS_CLASSIFICATION_SET = new Set([CLASSIFICATION, CLASSIFICATIONS]);
+const IS_DETECTION_SET = new Set([DETECTION, DETECTIONS]);
+const IS_POLYLINE_SET = new Set([POLYLINE, POLYLINES]);
+const IS: Record<string, Set<string>> = {
+  [CLASSIFICATION]: IS_CLASSIFICATION_SET,
+  [DETECTION]: IS_DETECTION_SET,
+  [POLYLINE]: IS_POLYLINE_SET,
+};
+
+/**
+ * fieldsOfType(type) — writable fields matching a label type.
+ * Replaces: `atomFamily((type) => atom((get) => visibleLabelSchemas.filter(...)))`
+ */
+export const selectFieldsOfType = (type: LabelType) =>
+  createSelector(
+    [selectVisibleLabelSchemas, selectLabelSchemasData],
+    (visible, schemas) => {
+      const typeSet = IS[type];
+      if (!typeSet || !schemas) return [];
+
+      return visible
+        .filter((field) => {
+          const data = schemas[field];
+          const fieldTypeCap = data?.type ? capitalize(data.type) : undefined;
+          if (!fieldTypeCap || !typeSet.has(fieldTypeCap)) return false;
+          // Exclude read-only fields
+          return !data?.label_schema?.read_only && !data?.read_only;
+        })
+        .sort();
+    }
+  );
