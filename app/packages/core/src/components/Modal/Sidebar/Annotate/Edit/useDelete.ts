@@ -11,17 +11,16 @@ import {
   KnownContexts,
   useKeyBindings,
 } from "@fiftyone/commands";
-import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
+import { useEditingLabel } from "../redux/hooks";
 import { useLabelsContext } from "../useLabels";
-import { current } from "./state";
 import useExit from "./useExit";
 
 export default function useDelete() {
   const commandBus = useCommandBus();
   const { scene, removeOverlay } = useLighter();
-  const label = useAtomValue(current);
+  const label = useEditingLabel();
   const schema = useRecoilValue(
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
   );
@@ -42,7 +41,7 @@ export default function useDelete() {
         if (label.isNew) {
           if (scene && !scene.isDestroyed && scene.renderLoopActive) {
             scene?.exitInteractiveMode();
-            removeOverlay(label?.data._id, true);
+            removeOverlay(label.overlayId, true);
           }
 
           exit();
@@ -50,12 +49,12 @@ export default function useDelete() {
         }
 
         try {
-          const fieldSchema = getFieldSchema(schema, label?.path);
+          const fieldSchema = getFieldSchema(schema, label.path);
 
           if (!fieldSchema) {
             setNotification({
               msg: `Unable to delete label: field schema not found for path "${
-                label?.path ?? "unknown"
+                label.path ?? "unknown"
               }".`,
               variant: "error",
             });
@@ -63,13 +62,13 @@ export default function useDelete() {
           }
 
           await commandBus.execute(
-            new DeleteAnnotationCommand(label, fieldSchema)
+            new DeleteAnnotationCommand(label as any, fieldSchema)
           );
 
-          removeLabelFromSidebar(label.data._id);
+          removeLabelFromSidebar(label.id);
           removeOverlay(label.overlayId, false);
           setNotification({
-            msg: `Label "${label.data.label}" successfully deleted.`,
+            msg: `Label "${label.label}" successfully deleted.`,
             variant: "success",
           });
 
@@ -78,7 +77,7 @@ export default function useDelete() {
           console.error(error);
           setNotification({
             msg: `Label "${
-              label.data.label ?? "Label"
+              label.label ?? "Label"
             }" not successfully deleted. Try again.`,
             variant: "error",
           });
@@ -98,10 +97,8 @@ export default function useDelete() {
               return;
             }
 
-            if (label.overlay) {
-              scene?.addOverlay(label.overlay);
-            }
-            addLabelToSidebar(label);
+            // TODO: undo for overlay re-add needs scene.getOverlayById
+            addLabelToSidebar(label as any);
           } catch (error) {
             console.error(error);
             setNotification({
@@ -140,8 +137,9 @@ export default function useDelete() {
             return false;
           }
 
+          const labelData = label.data ?? {};
           const is3dLabel =
-            isPolyline3dOverlay(label.data) || isDetection3dOverlay(label.data);
+            isPolyline3dOverlay(labelData) || isDetection3dOverlay(labelData);
 
           if (is3dLabel) {
             // Todo: handled in useAnnotationActions.tsx, reconcile

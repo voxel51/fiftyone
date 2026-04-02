@@ -10,11 +10,12 @@ import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import { SchemaType } from "../../../../../plugins/SchemaIO/utils/types";
 import { generatePrimitiveSchema } from "./schemaHelpers";
 import {
+  useCurrentData,
   useCurrentField,
   useCurrentOverlayId,
   useLabelSchemasData,
+  useUpdateEditingData,
 } from "../redux/hooks";
-import { currentData } from "./state";
 
 const useSchema = (readOnly: boolean) => {
   const field = useCurrentField();
@@ -91,7 +92,8 @@ export interface AnnotationSchemaProps {
 
 const AnnotationSchema = ({ readOnly = false }: AnnotationSchemaProps) => {
   const schema = useSchema(readOnly);
-  const [data, _save] = useAtom(currentData);
+  const data = useCurrentData();
+  const updateData = useUpdateEditingData();
   const overlay = useOverlayById(useCurrentOverlayId());
   const eventBus = useAnnotationEventBus();
   const handleChanges = useHandleChanges();

@@ -1,13 +1,9 @@
-import * as fos from "@fiftyone/state";
 import { Box, Typography } from "@mui/material";
-import { useAtomValue } from "jotai";
 import { useMemo } from "react";
-import { currentData } from "./state";
+import { useCurrentData } from "../redux/hooks";
 
 export const PolylineDetails = () => {
-  const currentDataValue = useAtomValue(
-    currentData
-  ) as fos.PolylineAnnotationLabel["data"];
+  const currentDataValue = useCurrentData() as any;
 
   const { segmentCount, vertexCount } = useMemo(() => {
     if (!currentDataValue?.points3d) {

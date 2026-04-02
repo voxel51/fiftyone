@@ -13,11 +13,12 @@ import {
   objectId,
   POLYLINE,
 } from "@fiftyone/utilities";
-import { atom, getDefaultStore, useSetAtom } from "jotai";
+import { getDefaultStore } from "jotai";
 import { useCallback } from "react";
+import { useAddLabel, useStartEditingLabel, useStartEditingType } from "../redux/hooks";
+import type { AnnotationLabel as ReduxAnnotationLabel } from "../redux/annotationSlice";
 import { isFieldReadOnly, labelSchemaData } from "../state";
 import type { LabelType } from "./state";
-import { defaultField, editing, savedLabel } from "./state";
 
 export interface CreateOptions {
   field?: string;
@@ -96,25 +97,35 @@ const useCreateAnnotationLabel = () => {
  *   a `field` and `labelValue` to override the defaults.
  */
 export default function useCreate(type: LabelType) {
-  const setEditing = useSetAtom(editing);
   const createAnnotationLabel = useCreateAnnotationLabel();
+  const addLabel = useAddLabel();
+  const startEditingLabel = useStartEditingLabel();
+  const startEditingType = useStartEditingType();
 
   return useCallback(
     (options?: CreateOptions) => {
       const label = createAnnotationLabel(type, options);
 
       if (label) {
-        setEditing(
-          atom<AnnotationLabel>({
-            isNew: true,
-            ...label,
-          })
-        );
+        const reduxLabel: ReduxAnnotationLabel = {
+          id: label.data?._id ?? "unknown",
+          overlayId: label.overlayId,
+          path: label.path,
+          type: label.type,
+          cls: label.data?._cls ?? "",
+          isNew: true,
+          label: label.data?.label,
+          confidence: label.data?.confidence,
+          boundingBox: label.data?.bounding_box,
+          data: label.data as unknown as Record<string, unknown>,
+        };
+        addLabel(reduxLabel);
+        startEditingLabel(label.overlayId);
       } else {
-        setEditing(type);
+        startEditingType(type);
       }
     },
-    [createAnnotationLabel, setEditing, type]
+    [createAnnotationLabel, addLabel, startEditingLabel, startEditingType, type]
   );
 }
 

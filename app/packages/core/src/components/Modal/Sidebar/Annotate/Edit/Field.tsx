@@ -11,18 +11,17 @@ import {
   useModalSampleSchema,
   useUnboundStateRef,
 } from "@fiftyone/state";
-import { useAtom, useAtomValue } from "jotai";
 import { useCallback, useMemo, useRef } from "react";
 import { useRecoilValue } from "recoil";
-import { useCurrentFields, useCurrentType, useEditingLabel } from "../redux/hooks";
+import {
+  useCurrentField,
+  useCurrentFields,
+  useCurrentType,
+  useEditingLabel,
+  useIsNewLabel,
+} from "../redux/hooks";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import AddSchema from "./AddSchema";
-import {
-  current,
-  currentDisabledFields,
-  currentField,
-  editing,
-} from "./state";
 
 const createSchema = (
   choices: string[],
@@ -55,8 +54,8 @@ const createSchema = (
 
 const Field = () => {
   const fields = useCurrentFields();
-  const disabled = useAtomValue(currentDisabledFields);
-  const [currentFieldValue, setCurrentField] = useAtom(currentField);
+  const disabled = useMemo(() => new Set<string>(), []); // TODO: Redux selector
+  const currentFieldValue = useCurrentField();
   const isPatches = useRecoilValue(isPatchesView);
   const currentLabel = useEditingLabel();
   const schema = useMemo(
@@ -64,7 +63,7 @@ const Field = () => {
     [disabled, fields, isPatches]
   );
   const type = useCurrentType();
-  const state = useAtomValue(editing);
+  const isNewType = useIsNewLabel();
   const modalSampleSchema = useModalSampleSchema();
   const commandBus = useCommandBus();
   const nextFieldValue = useRef(currentFieldValue);
@@ -90,7 +89,8 @@ const Field = () => {
           await commandBus.execute(
             new DeleteAnnotationCommand(currentLabel, fieldSchema)
           );
-          setCurrentField(newField);
+          // TODO: dispatch Redux action to update field
+          console.log("[RTK hackday] field change:", currentField, "→", newField);
         },
         // restore original value on undo
         async () => {
@@ -100,14 +100,14 @@ const Field = () => {
           await commandBus.execute(
             new DeleteAnnotationCommand(currentLabel, fieldSchema)
           );
-          setCurrentField(currentField);
+          // TODO: dispatch Redux action to restore field
+          console.log("[RTK hackday] field undo:", newField, "→", currentField);
         }
       );
     }, [
       modalSampleSchema,
       currentLabelRef,
       commandBus,
-      setCurrentField,
       labelId,
       currentFieldValue,
     ]),
@@ -132,7 +132,7 @@ const Field = () => {
       )}
       {/* Means the user wants to create a label but no schema fields exist for that type.
       Show AddSchema to let them create the required field. */}
-      {typeof state === "string" && <AddSchema type={type} />}
+      {isNewType && <AddSchema type={type} />}
     </>
   );
 };
