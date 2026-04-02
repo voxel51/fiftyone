@@ -249,7 +249,7 @@ class DatabaseService(MultiClientService):
 
         try:
             etau.ensure_dir(database_dir)
-        except:
+        except BaseException:
             raise PermissionError(
                 "Database directory `%s` cannot be written to" % database_dir
             )
@@ -259,7 +259,7 @@ class DatabaseService(MultiClientService):
 
             if not os.path.isfile(log_path):
                 etau.ensure_empty_file(log_path)
-        except:
+        except BaseException:
             raise PermissionError(
                 "Database log path `%s` cannot be written to" % log_path
             )
@@ -314,7 +314,7 @@ class ServerService(Service):
             server_version = requests.get(
                 "http://%s:%i/fiftyone" % (address, port), timeout=2
             ).json()["version"]
-        except:
+        except Exception:
             server_version = None
 
         if server_version is None:
