@@ -1,18 +1,17 @@
 import { useTheme } from "@fiftyone/components";
 import type { BaseOverlay } from "@fiftyone/lighter";
 import { getOverlayColor } from "@fiftyone/lighter";
-import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import useColorMappingContext from "../../../Lighter/useColorMappingContext";
-import { current } from "./state";
+import { useEditingLabel } from "../redux/hooks";
 
-export default function useColor(overlay?: BaseOverlay) {
+export default function useColor(overlay?: BaseOverlay | null) {
   const coloring = useColorMappingContext();
-  const refresh = useAtomValue(current);
+  const editingLabel = useEditingLabel(); // refresh trigger
   const brand = useTheme().primary.plainColor;
 
   return useMemo(() => {
-    refresh;
+    editingLabel; // referenced for dependency tracking
     return overlay ? getOverlayColor(overlay, coloring) : brand;
-  }, [brand, coloring, refresh, overlay]);
+  }, [brand, coloring, editingLabel, overlay]);
 }

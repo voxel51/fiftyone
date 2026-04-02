@@ -1,3 +1,4 @@
+import { useOverlayById } from "@fiftyone/lighter";
 import { useAtomValue } from "jotai";
 import { useCallback, useRef, useState } from "react";
 import { Round } from "../Actions";
@@ -11,14 +12,10 @@ import { ICONS } from "../Icons";
 import { Row } from "./Components";
 
 import * as fos from "@fiftyone/state";
-import { useAnnotationLabelCount, useCurrentFieldIsReadOnly, useCurrentType } from "../redux/hooks";
+import { useAnnotationLabelCount, useCurrentFieldIsReadOnly, useCurrentOverlayId, useCurrentType, useEditingLabel } from "../redux/hooks";
 import { isGeneratedView } from "@fiftyone/state";
 import { useRecoilValue } from "recoil";
 import { useSchemaManagerModal } from "../SchemaManager/hooks";
-import {
-  currentOverlay,
-  useAnnotationContext,
-} from "./state";
 
 import { KnownCommands, KnownContexts, useCommand } from "@fiftyone/commands";
 import useColor from "./useColor";
@@ -89,13 +86,13 @@ const LabelHamburgerMenu = () => {
 const Header = () => {
   const type = useCurrentType();
   const Icon = ICONS[type?.toLowerCase() ?? ""];
-  const color = useColor(useAtomValue(currentOverlay) ?? undefined);
+  const color = useColor(useOverlayById(useCurrentOverlayId()) ?? undefined);
 
   const { exitAnnotationMode } = useAnnotationController();
   const onExit = useExit();
   const { scene } = useLighter();
   const { disableQuickDraw } = useQuickDraw();
-  const annotationContext = useAnnotationContext();
+  const editingLabel = useEditingLabel();
   const currentFieldIsReadOnly = useCurrentFieldIsReadOnly();
 
   // In patches view with single label, clicking back should go to explore mode
@@ -130,7 +127,7 @@ const Header = () => {
       {currentFieldIsReadOnly && <span>Read-only</span>}
       <ItemRight>
         <Stack direction="row" alignItems="center">
-          {annotationContext.selectedLabel !== null && <LabelHamburgerMenu />}
+          {editingLabel !== null && <LabelHamburgerMenu />}
         </Stack>
       </ItemRight>
     </Row>

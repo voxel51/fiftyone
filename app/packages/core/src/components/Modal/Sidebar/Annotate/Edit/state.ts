@@ -276,21 +276,3 @@ export const deleteValue = atom(null, (get, set) => {
   set(editing, null);
 });
 
-/**
- * Public API for interacting with the active annotation context.
- */
-export interface AnnotationContext {
-  /**
-   * Currently-selected annotation label.
-   */
-  selectedLabel: AnnotationLabel | null;
-}
-
-/**
- * Hook which returns the current {@link AnnotationContext}.
- */
-export const useAnnotationContext = (): AnnotationContext => {
-  return {
-    selectedLabel: useAtomValue(current),
-  };
-};

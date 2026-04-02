@@ -3,13 +3,15 @@ import {
   TransformOverlayCommand,
   UNDEFINED_LIGHTER_SCENE_ID,
   useLighter,
+  useOverlayById,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
 import { useAtom, useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import { SchemaType } from "../../../../../plugins/SchemaIO/utils/types";
-import { currentData, currentOverlay } from "./state";
+import { useCurrentOverlayId } from "../redux/hooks";
+import { currentData } from "./state";
 
 const createInput = (name: string, readOnly?: boolean) => {
   return {
@@ -52,7 +54,7 @@ export default function Position({ readOnly = false }: PositionProps) {
     dimensions: {},
   });
 
-  const overlay = useAtomValue(currentOverlay);
+  const overlay = useOverlayById(useCurrentOverlayId());
   const [data, setData] = useAtom(currentData);
 
   const { scene } = useLighter();

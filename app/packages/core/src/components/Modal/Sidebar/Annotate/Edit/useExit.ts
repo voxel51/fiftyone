@@ -1,11 +1,11 @@
-import { useLighter } from "@fiftyone/lighter";
+import { useLighter, useOverlayById } from "@fiftyone/lighter";
 import { TypeGuards } from "@fiftyone/lighter/src/core/Scene2D";
 import { selectedLabelForAnnotationAtom } from "@fiftyone/looker-3d/src/state";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { useSetRecoilState } from "recoil";
-import { useStopEditing } from "../redux/hooks";
-import { current, currentOverlay, savedLabel } from "./state";
+import { useCurrentOverlayId, useEditingLabel, useStopEditing } from "../redux/hooks";
+import { savedLabel } from "./state";
 import useActivePrimitive from "./useActivePrimitive";
 
 export default function useExit() {
@@ -13,8 +13,8 @@ export default function useExit() {
   const [, setActivePrimitive] = useActivePrimitive();
   const setSaved = useSetAtom(savedLabel);
   const { scene, removeOverlay } = useLighter();
-  const overlay = useAtomValue(currentOverlay);
-  const label = useAtomValue(current);
+  const overlay = useOverlayById(useCurrentOverlayId());
+  const label = useEditingLabel();
 
   /**
    * 3D SPECIFIC IMPORTS
@@ -30,10 +30,10 @@ export default function useExit() {
 
   return useCallback(() => {
     // If this is an uncommitted dummy label with no value, remove it from the scene
-    if (label?.isNew && !label.data.label) {
+    if (label?.isNew && !label.label) {
       if (scene && !scene.isDestroyed && scene.renderLoopActive) {
         scene.exitInteractiveMode();
-        removeOverlay(label.data._id, true);
+        removeOverlay(label.overlayId, true);
       }
     } else if (overlay) {
       scene?.deselectOverlay(overlay.id, { ignoreSideEffects: true });

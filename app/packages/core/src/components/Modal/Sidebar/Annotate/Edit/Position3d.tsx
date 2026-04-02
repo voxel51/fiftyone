@@ -11,10 +11,12 @@ import {
 } from "@fiftyone/looker-3d";
 import { DETECTION } from "@fiftyone/utilities";
 import { Box, Stack, TextField } from "@mui/material";
+import { useOverlayById } from "@fiftyone/lighter";
 import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useState } from "react";
 import { Vector3Tuple } from "three";
-import { currentData, currentOverlay } from "./state";
+import { useCurrentOverlayId } from "../redux/hooks";
+import { currentData } from "./state";
 
 interface Coordinates3d {
   position: { x?: number; y?: number; z?: number };
@@ -58,7 +60,7 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
     rotation: {},
   });
   const data = useAtomValue<DetectionLabel>(currentData);
-  const overlay = useAtomValue(currentOverlay);
+  const overlay = useOverlayById(useCurrentOverlayId());
   const eventBus = useAnnotationEventBus();
   const labelId = data?._id ?? "";
 

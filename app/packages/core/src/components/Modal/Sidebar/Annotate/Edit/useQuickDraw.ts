@@ -3,10 +3,10 @@ import { type PrimitiveAtom, atom, useAtom, useAtomValue, useSetAtom } from "jot
 import { atomFamily, useAtomCallback } from "jotai/utils";
 import { countBy, maxBy } from "lodash";
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { useCurrentType } from "../redux/hooks";
+import { useCurrentType, useEditingLabel } from "../redux/hooks";
 import { fieldType, isFieldReadOnly, labelSchemaData } from "../state";
 import { labelsByPath } from "../useLabels";
-import { defaultField, useAnnotationContext } from "./state";
+import { defaultField } from "./state";
 import {
   UNDEFINED_LIGHTER_SCENE_ID,
   useLighter,
@@ -60,7 +60,7 @@ export const useQuickDraw = () => {
   const labelsMap = useAtomValue(labelsByPath);
   const defaultDetectionField = useAtomValue(defaultField(DETECTION));
   const { scene } = useLighter();
-  const { selectedLabel } = useAnnotationContext();
+  const selectedLabel = useEditingLabel();
   const createDetection = useCreate(DETECTION);
   const onExit = useExit();
 
@@ -262,8 +262,8 @@ export const useQuickDraw = () => {
     if (currentLabel) {
       setLastUsedField(currentLabel.path);
 
-      if (currentLabel.data.label) {
-        setLastUsedLabel(currentLabel.path, currentLabel.data.label);
+      if (currentLabel.label) {
+        setLastUsedLabel(currentLabel.path, currentLabel.label);
       }
     }
 

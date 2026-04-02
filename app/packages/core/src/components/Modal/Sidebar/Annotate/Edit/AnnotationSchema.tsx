@@ -1,6 +1,7 @@
 import { useAnnotationEventBus } from "@fiftyone/annotation";
 import { expandPath, field } from "@fiftyone/state";
 import { FLOAT_FIELD, INT_FIELD } from "@fiftyone/utilities";
+import { useOverlayById } from "@fiftyone/lighter";
 import { useAtom, useAtomValue } from "jotai";
 import { isEqual } from "lodash";
 import { useMemo } from "react";
@@ -8,10 +9,9 @@ import { useRecoilCallback } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import { SchemaType } from "../../../../../plugins/SchemaIO/utils/types";
 import { generatePrimitiveSchema } from "./schemaHelpers";
-import { useCurrentField } from "../redux/hooks";
+import { useCurrentField, useCurrentOverlayId } from "../redux/hooks";
 import {
   currentData,
-  currentOverlay,
   currentSchema,
 } from "./state";
 
@@ -89,7 +89,7 @@ export interface AnnotationSchemaProps {
 const AnnotationSchema = ({ readOnly = false }: AnnotationSchemaProps) => {
   const schema = useSchema(readOnly);
   const [data, _save] = useAtom(currentData);
-  const overlay = useAtomValue(currentOverlay);
+  const overlay = useOverlayById(useCurrentOverlayId());
   const eventBus = useAnnotationEventBus();
   const handleChanges = useHandleChanges();
   const field = useCurrentField();

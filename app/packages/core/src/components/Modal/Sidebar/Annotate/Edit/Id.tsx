@@ -1,7 +1,6 @@
-import { useAtomValue } from "jotai";
 import React from "react";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
-import { currentOverlay } from "./state";
+import { useCurrentOverlayId } from "../redux/hooks";
 
 const createId = () => {
   return {
@@ -25,15 +24,15 @@ const createSchema = () => ({
 });
 
 const Id = () => {
-  const overlay = useAtomValue(currentOverlay);
-  if (!overlay) {
+  const overlayId = useCurrentOverlayId();
+  if (!overlayId) {
     return null;
   }
 
   return (
     <>
       <div>
-        <SchemaIOComponent schema={createSchema()} data={{ id: overlay?.id }} />
+        <SchemaIOComponent schema={createSchema()} data={{ id: overlayId }} />
       </div>
     </>
   );

@@ -22,12 +22,16 @@ import type { LabelSchemaMeta } from "../useSchemaManager";
 
 export interface AnnotationLabel {
   id: string;
+  overlayId: string;
   path: string;
   type: string;
   cls: string;
+  isNew?: boolean;
   label?: string;
   confidence?: number;
   boundingBox?: number[];
+  /** Full label data blob (serializable subset) */
+  data?: Record<string, unknown>;
 }
 
 interface AnnotationUiState {
@@ -107,6 +111,30 @@ export const annotationSlice = createSlice({
     setExploreActiveFields(state, action: PayloadAction<string[] | null>) {
       state.exploreActiveFields = action.payload;
     },
+    /** Update the data on the label currently being edited. */
+    updateEditingLabelData(
+      state,
+      action: PayloadAction<Record<string, unknown>>
+    ) {
+      if (state.editingLabel) {
+        state.editingLabel.data = {
+          ...state.editingLabel.data,
+          ...action.payload,
+        };
+      }
+    },
+    /** Update a label in the labels array by ID. */
+    updateLabelById(
+      state,
+      action: PayloadAction<{ id: string; changes: Partial<AnnotationLabel> }>
+    ) {
+      const idx = state.labels.findIndex(
+        (l) => l.id === action.payload.id
+      );
+      if (idx !== -1) {
+        state.labels[idx] = { ...state.labels[idx], ...action.payload.changes };
+      }
+    },
   },
 });
 
@@ -120,6 +148,8 @@ export const {
   setSchemaTab,
   setLabelSchemasData,
   setExploreActiveFields,
+  updateEditingLabelData,
+  updateLabelById,
 } = annotationSlice.actions;
 
 // ── Selectors (replace Jotai derived atoms) ────────────────────────────
@@ -136,6 +166,12 @@ const selectLabelSchemasData = (state: { annotation: AnnotationUiState }) =>
 
 const selectExploreActiveFields = (state: { annotation: AnnotationUiState }) =>
   state.annotation.exploreActiveFields;
+
+const selectEditingLabel = (state: { annotation: AnnotationUiState }) =>
+  state.annotation.editingLabel;
+
+const selectIsNewLabel = (state: { annotation: AnnotationUiState }) =>
+  state.annotation.isNewLabel;
 
 /**
  * fieldType(path) — capitalize(schema.type) for a given field.
@@ -210,6 +246,24 @@ export const selectFieldAttributeCount = (path: string) =>
     return Array.isArray(attrs) ? attrs.length : 0;
   });
 
+/**
+ * currentData — the data blob of the label being edited.
+ * Replaces: `atom((get) => get(current)?.data ?? null)`
+ */
+export const selectCurrentData = createSelector(
+  [selectEditingLabel],
+  (label) => label?.data ?? null
+);
+
+/**
+ * currentOverlayId — the overlay ID of the label being edited.
+ * Components use `useOverlayById(id)` to resolve the live object.
+ */
+export const selectCurrentOverlayId = createSelector(
+  [selectEditingLabel],
+  (label) => label?.overlayId ?? null
+);
+
 // ── Label type sets (mirrored from Edit/state.ts) ──────────────────────
 
 export type LabelType =
@@ -250,12 +304,6 @@ export const selectFieldsOfType = (type: LabelType) =>
   );
 
 // ── Edit panel selectors ───────────────────────────────────────────────
-
-const selectEditingLabel = (state: { annotation: AnnotationUiState }) =>
-  state.annotation.editingLabel;
-
-const selectIsNewLabel = (state: { annotation: AnnotationUiState }) =>
-  state.annotation.isNewLabel;
 
 /**
  * currentType — the LabelType of whatever is being edited.

@@ -60,12 +60,15 @@ function JotaiToReduxBridge() {
     if (currentLabel) {
       const serialized: AnnotationLabel = {
         id: currentLabel.data?._id ?? "unknown",
+        overlayId: currentLabel.overlayId,
         path: currentLabel.path,
         type: currentLabel.type,
         cls: currentLabel.data?._cls ?? "",
+        isNew: currentLabel.isNew,
         label: currentLabel.data?.label,
         confidence: currentLabel.data?.confidence,
         boundingBox: currentLabel.data?.bounding_box,
+        data: currentLabel.data as unknown as Record<string, unknown>,
       };
       dispatch(setEditingLabel(serialized));
     } else {
@@ -82,12 +85,15 @@ function JotaiToReduxBridge() {
   useEffect(() => {
     const serialized: AnnotationLabel[] = jotaiLabels.map((l) => ({
       id: l.data?._id ?? "unknown",
+      overlayId: l.overlayId,
       path: l.path,
       type: l.type,
       cls: l.data?._cls ?? "",
+      isNew: l.isNew,
       label: l.data?.label,
       confidence: l.data?.confidence,
       boundingBox: l.data?.bounding_box,
+      data: l.data as unknown as Record<string, unknown>,
     }));
     dispatch(setLabels(serialized));
   }, [jotaiLabels]);

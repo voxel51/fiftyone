@@ -1,11 +1,11 @@
 import { DetectionLabel } from "@fiftyone/looker";
 import { useClearModal } from "@fiftyone/state";
 import { DETECTION, POLYLINE } from "@fiftyone/utilities";
-import { useAtomValue } from "jotai";
+import { useOverlayById } from "@fiftyone/lighter";
 import { useEffect } from "react";
 import styled from "styled-components";
 import { isDetection3d } from "../../../../../utils/labels";
-import { useCurrentField, useCurrentFieldIsReadOnly, useCurrentType } from "../redux/hooks";
+import { useCurrentField, useCurrentFieldIsReadOnly, useCurrentOverlayId, useCurrentType } from "../redux/hooks";
 import AnnotationSchema from "./AnnotationSchema";
 import Field from "./Field";
 import Header from "./Header";
@@ -13,7 +13,6 @@ import Id from "./Id";
 import { PolylineDetails } from "./PolylineDetails";
 import Position from "./Position";
 import Position3d from "./Position3d";
-import { currentOverlay } from "./state";
 import PrimitiveWrapper from "./PrimitiveWrapper";
 import useActivePrimitive from "./useActivePrimitive";
 import useExit from "./useExit";
@@ -40,7 +39,7 @@ const Content = styled.div`
 
 export default function Edit() {
   const field = useCurrentField();
-  const overlay = useAtomValue(currentOverlay);
+  const overlay = useOverlayById(useCurrentOverlayId());
   const type = useCurrentType();
   const isReadOnly = useCurrentFieldIsReadOnly();
   const [activePrimitivePath] = useActivePrimitive();

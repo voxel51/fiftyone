@@ -103,12 +103,15 @@ export const useStartEditingLabel = () => {
       dispatch(
         setEditingLabel({
           id: label.data?._id ?? "unknown",
+          overlayId: label.overlayId,
           path: label.path,
           type: label.type,
           cls: label.data?._cls ?? "",
+          isNew: label.isNew,
           label: label.data?.label,
           confidence: label.data?.confidence,
           boundingBox: label.data?.bounding_box,
+          data: label.data as unknown as Record<string, unknown>,
         })
       );
 
@@ -197,9 +200,11 @@ export const useAnnotationLabelCount = (): number =>
 // ── Derived selector hooks (replace Jotai derived atoms) ───────────────
 
 import {
+  selectCurrentData,
   selectCurrentField,
   selectCurrentFieldIsReadOnly,
   selectCurrentFields,
+  selectCurrentOverlayId,
   selectCurrentType,
   selectFieldAttributeCount,
   selectFieldType,
@@ -207,6 +212,7 @@ import {
   selectFieldsOfType,
   selectInactiveLabelSchemas,
   selectVisibleLabelSchemas,
+  updateEditingLabelData,
   type LabelType,
 } from "./annotationSlice";
 
@@ -253,3 +259,26 @@ export const useCurrentFieldIsReadOnly = (): boolean =>
 /** Writable fields for the current label type. */
 export const useCurrentFields = (): string[] =>
   useAnnotationSelector(selectCurrentFields);
+
+/** The overlay ID of the label being edited (use with useOverlayById). */
+export const useCurrentOverlayId = (): string | null =>
+  useAnnotationSelector(selectCurrentOverlayId);
+
+/** The data blob of the label being edited. */
+export const useCurrentData = (): Record<string, unknown> | null =>
+  useAnnotationSelector(selectCurrentData);
+
+/**
+ * Update the data on the currently-editing label.
+ * Dual-writes to Redux and syncs the overlay via Lighter.
+ */
+export const useUpdateEditingData = () => {
+  const dispatch = useAnnotationDispatch();
+
+  return useCallback(
+    (data: Record<string, unknown>) => {
+      dispatch(updateEditingLabelData(data));
+    },
+    [dispatch]
+  );
+};
