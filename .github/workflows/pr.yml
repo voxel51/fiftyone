@@ -46,12 +46,19 @@ jobs:
 
   build:
     needs: modified-files
-    if: ${{ github.event.action != 'closed' && (needs.modified-files.outputs.app-changes == 'true' || needs.modified-files.outputs.fiftyone-changes == 'true') }}
+    if: >-
+      github.event.action != 'closed' && (
+      needs.modified-files.outputs.app-changes == 'true' ||
+      needs.modified-files.outputs.fiftyone-changes == 'true')
     uses: ./.github/workflows/build.yml
 
   e2e:
     needs: modified-files
-    if: ${{ github.event.action != 'closed' && (needs.modified-files.outputs.app-changes == 'true' || needs.modified-files.outputs.e2e-changes == 'true' || needs.modified-files.outputs.fiftyone-changes == 'true') }}
+    if: >-
+      github.event.action != 'closed' && (
+      needs.modified-files.outputs.app-changes == 'true' ||
+      needs.modified-files.outputs.e2e-changes == 'true' ||
+      needs.modified-files.outputs.fiftyone-changes == 'true')
     uses: ./.github/workflows/e2e.yml
     secrets:
       docker-username: ${{ secrets.RO_DOCKERHUB_USERNAME }}
@@ -59,7 +66,10 @@ jobs:
 
   lint:
     needs: modified-files
-    if: ${{ github.event.action != 'closed' && (needs.modified-files.outputs.app-changes == 'true' || needs.modified-files.outputs.fiftyone-changes == 'true') }}
+    if: >-
+      github.event.action != 'closed' && (
+      needs.modified-files.outputs.app-changes == 'true' ||
+      needs.modified-files.outputs.fiftyone-changes == 'true')
     uses: ./.github/workflows/lint-app.yml
 
   enterprise-sync:
@@ -88,12 +98,17 @@ jobs:
 
   test:
     needs: modified-files
-    if: ${{ github.event.action != 'closed' && (needs.modified-files.outputs.app-changes == 'true' || needs.modified-files.outputs.fiftyone-changes == 'true') }}
+    if: >-
+      github.event.action != 'closed' && (
+      needs.modified-files.outputs.app-changes == 'true' ||
+      needs.modified-files.outputs.fiftyone-changes == 'true')
     uses: ./.github/workflows/test.yml
 
   test-windows:
     needs: modified-files
-    if: ${{ github.event.action != 'closed' && needs.modified-files.outputs.fiftyone-changes == 'true' }}
+    if: >-
+      github.event.action != 'closed' &&
+      needs.modified-files.outputs.fiftyone-changes == 'true'
     uses: ./.github/workflows/windows-test.yml
 
   all-tests:
