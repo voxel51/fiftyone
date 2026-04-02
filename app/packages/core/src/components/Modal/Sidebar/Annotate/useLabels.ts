@@ -16,11 +16,8 @@ import { get } from "lodash";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { selector, useRecoilCallback, useRecoilValue } from "recoil";
 import type { LabelType } from "./Edit/state";
-import {
-  isFieldReadOnly,
-  labelSchemasData,
-  visibleLabelSchemas,
-} from "./state";
+import { useLabelSchemasData, useVisibleLabelSchemas } from "./redux/hooks";
+import { isFieldReadOnly } from "./state";
 import { useAddAnnotationLabelToRenderer } from "./useAddAnnotationLabelToRenderer";
 import { useSetActiveLabelId } from "./useAnnotationContextManager";
 import { useCreateAnnotationLabel } from "./useCreateAnnotationLabel";
@@ -291,7 +288,7 @@ export const useLabelsContext = (): LabelsContext => {
  */
 const useSyncOverlayReadOnly = () => {
   const currentLabels = useAtomValue(labels);
-  const schemas = useAtomValue(labelSchemasData);
+  const schemas = useLabelSchemasData();
 
   useEffect(() => {
     if (!schemas) return;
@@ -316,7 +313,7 @@ export default function useLabels() {
   const currentSampleId = useCurrentSampleId();
   const setLabels = useSetAtom(labels);
   const setLoading = useSetAtom(labelsState);
-  const active = useAtomValue(visibleLabelSchemas);
+  const active = useVisibleLabelSchemas();
   const addLabelToRenderer = useAddAnnotationLabelToRenderer();
   const addLabelToStore = useSetAtom(addLabel);
   const createLabel = useCreateAnnotationLabel();

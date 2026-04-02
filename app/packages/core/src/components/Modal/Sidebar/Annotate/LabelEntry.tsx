@@ -9,9 +9,8 @@ import { useMemo } from "react";
 import styled from "styled-components";
 import { Column } from "./Components";
 import { savedLabel } from "./Edit/state";
-import { useStartEditingLabel } from "./redux/hooks";
+import { useFieldType, useStartEditingLabel } from "./redux/hooks";
 import { ICONS } from "./Icons";
-import { fieldType } from "./state";
 import useColor from "./useColor";
 import { hoveringLabelIds } from "./useHover";
 
@@ -56,7 +55,7 @@ const Line = styled.div<{ fill: string }>`
 
 const LabelEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
   const label = useAtomValue(atom);
-  const type = useAtomValue(fieldType(label.path ?? ""));
+  const type = useFieldType(label.path ?? "");
   const startEditingLabel = useStartEditingLabel();
   const Icon = ICONS[type] ?? (() => null);
   const hoveringLabelIdsList = useAtomValue(hoveringLabelIds);

@@ -24,6 +24,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   useActiveSchemas,
   useActiveSchemasState,
+  useFieldTypes,
+  useLabelSchemasData,
   useSchemaTabState,
 } from "../redux/hooks";
 import {
@@ -198,7 +200,7 @@ export const useActiveFieldsList = () => {
  * Hook to get active fields metadata (types, read-only states, attr counts)
  */
 export const useActiveFieldsMetadata = () => {
-  const types = useAtomValue(fieldTypes);
+  const types = useFieldTypes();
   return { types };
 };
 
@@ -235,9 +237,7 @@ export const useAddToExploreActiveFields = () => {
 /**
  * Hook to get a field's type
  */
-export const useFieldType = (field: string) => {
-  return useAtomValue(fieldType(field));
-};
+export { useFieldType } from "../redux/hooks";
 
 /**
  * Hook which returns a callback to dynamically get the field type for a path.
@@ -319,9 +319,7 @@ export const useFieldHasSchema = (field: string) => {
 /**
  * Hook to get a field's attribute count
  */
-export const useFieldAttributeCount = (field: string) => {
-  return useAtomValue(fieldAttributeCount(field));
-};
+export { useFieldAttributeCount } from "../redux/hooks";
 
 // =============================================================================
 // All Schemas Data Hooks
@@ -330,9 +328,7 @@ export const useFieldAttributeCount = (field: string) => {
 /**
  * Hook to get all label schemas data
  */
-export const useLabelSchemasData = () => {
-  return useAtomValue(labelSchemasData);
-};
+export { useLabelSchemasData } from "../redux/hooks";
 
 /**
  * Hook to set label schemas data
@@ -474,7 +470,7 @@ export const useDeactivateFields = () => {
  * Hook for managing the full schema JSON editor
  */
 export const useFullSchemaEditor = () => {
-  const schemasData = useAtomValue(labelSchemasData);
+  const schemasData = useLabelSchemasData();
   const [draftJson, setDraftJson] = useAtom(draftJsonContent);
   const [errors, setErrors] = useAtom(jsonValidationErrors);
   const [isValidating, setIsValidating] = useState(false);

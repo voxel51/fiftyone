@@ -20,9 +20,13 @@ import {
   Tooltip,
   Variant,
 } from "@voxel51/voodo";
-import { atom, useAtomValue } from "jotai";
+import { useAtomValue } from "jotai";
 import { useCallback, useMemo } from "react";
-import { fieldAttributeCount, fieldType } from "../state";
+import { useAnnotationSelector } from "../redux/hooks";
+import {
+  selectFieldAttributeCount,
+  selectFieldType,
+} from "../redux/annotationSlice";
 import { useSchemaManager } from "../useSchemaManager";
 import { Item } from "./Components";
 import {
@@ -75,15 +79,25 @@ const ActiveFieldsSection = () => {
   const { selected, setSelected } = useSelectedActiveFields();
   const { setSelected: setHiddenSelected } = useSelectedHiddenFields();
 
-  // Batch field data fetching
-  const fieldTypes = useAtomValue(
-    useMemo(
-      () =>
-        atom((get) =>
-          Object.fromEntries(fields.map((f) => [f, get(fieldType(f))]))
-        ),
-      [fields]
-    )
+  // Batch field data fetching via Redux selectors
+  const schemasData = useAnnotationSelector(
+    (s) => s.annotation.labelSchemasData
+  );
+
+  const fieldTypes = useMemo(
+    () =>
+      Object.fromEntries(
+        fields.map((f) => {
+          const data = schemasData?.[f];
+          return [
+            f,
+            data?.type
+              ? data.type.charAt(0).toUpperCase() + data.type.slice(1)
+              : undefined,
+          ];
+        })
+      ),
+    [fields, schemasData]
   );
 
   const fieldReadOnlyStates = useAtomValue(
@@ -96,16 +110,15 @@ const ActiveFieldsSection = () => {
     )
   );
 
-  const fieldAttrCounts = useAtomValue(
-    useMemo(
-      () =>
-        atom((get) =>
-          Object.fromEntries(
-            fields.map((f) => [f, get(fieldAttributeCount(f))])
-          )
-        ),
-      [fields]
-    )
+  const fieldAttrCounts = useMemo(
+    () =>
+      Object.fromEntries(
+        fields.map((f) => {
+          const attrs = schemasData?.[f]?.label_schema?.attributes;
+          return [f, Array.isArray(attrs) ? attrs.length : 0];
+        })
+      ),
+    [fields, schemasData]
   );
 
   const { setActiveSchemas } = useSchemaManager();

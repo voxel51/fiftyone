@@ -1,6 +1,5 @@
 import { LoadingSpinner } from "@fiftyone/components";
 import { Text, TextColor, TextVariant } from "@voxel51/voodo";
-import { useAtomValue } from "jotai";
 import React, { useEffect } from "react";
 import styled from "styled-components";
 import Actions from "./Actions";
@@ -8,8 +7,7 @@ import Edit from "./Edit";
 import ImportSchema, { useShowImportSchema } from "./ImportSchema";
 import SchemaManager from "./SchemaManager";
 import { useSchemaManagerModal } from "./SchemaManager/hooks";
-import { useIsEditing } from "./redux/hooks";
-import { labelSchemasData } from "./state";
+import { useIsEditing, useLabelSchemasData } from "./redux/hooks";
 import type { AnnotationDisabledReason } from "./useCanAnnotate";
 import useSourceFieldToActivate from "./useSourceFieldToActivate";
 import useLabels from "./useLabels";
@@ -67,7 +65,7 @@ interface AnnotateProps {
 
 const Annotate = ({ disabledReason }: AnnotateProps) => {
   const { schemaManagerDisplayed } = useSchemaManagerModal();
-  const loading = useAtomValue(labelSchemasData) === null;
+  const loading = useLabelSchemasData() === null;
   const isEditingValue = useIsEditing();
 
   const contextManager = useAnnotationContextManager();
@@ -93,11 +91,17 @@ const Annotate = ({ disabledReason }: AnnotateProps) => {
     disabledReason !== null ? DISABLED_MESSAGES[disabledReason] : undefined;
 
   if (!isDisabled && loading) {
-    return <Loading />;
+    return (
+      <>
+        <ReduxExperiment />
+        <Loading />
+      </>
+    );
   }
 
   return (
     <>
+      <ReduxExperiment />
       {!showSetup && <Actions key="actions" />}
       {isEditingValue && <Edit key="edit" />}
       {showSetup ? (
@@ -111,7 +115,6 @@ const Annotate = ({ disabledReason }: AnnotateProps) => {
         <LabelList key="annotate" />
       )}
       {schemaManagerDisplayed && <SchemaManager key="manage" />}
-      <ReduxExperiment />
     </>
   );
 };

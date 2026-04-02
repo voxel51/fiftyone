@@ -1,8 +1,6 @@
 import { getStageKwarg, isPatchesView, view } from "@fiftyone/state";
-import { useAtomValue } from "jotai";
 import { useRecoilValue } from "recoil";
-import { useActiveSchemas } from "./redux/hooks";
-import { labelSchemasData } from "./state";
+import { useActiveSchemas, useLabelSchemasData } from "./redux/hooks";
 
 export interface RequiredField {
   field: string;
@@ -55,7 +53,7 @@ export default function useSourceFieldToActivate(): RequiredField | null {
   const stages = useRecoilValue(view);
 
   // These reflect the schemas defined on the src dataset.
-  const schemas = useAtomValue(labelSchemasData);
+  const schemas = useLabelSchemasData();
   const active = useActiveSchemas();
 
   const sourceField = getSourceFieldFromStages(stages, { isPatches });
