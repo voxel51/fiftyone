@@ -119,7 +119,7 @@ class BrainRunConfig(RunConfig):
 
             if issubclass(fob.VisualizationConfig, etau.get_class(self.cls)):
                 return BrainRunType.visualization
-        except:
+        except Exception:
             pass
 
         return None
@@ -141,7 +141,7 @@ class BrainRunConfig(RunConfig):
                 embeddings_field=self.embeddings_field,
                 patches_field=self.patches_field,
             )
-        except:
+        except Exception:
             return None
 
 
@@ -517,7 +517,7 @@ class Query(fosa.AggregateQuery):
                 SavedView.from_doc(view_doc)
                 for view_doc in ds._doc.saved_views
             ]
-        except:
+        except Exception:
             return None
 
     @gql.field
@@ -618,7 +618,7 @@ async def serialize_dataset(
             if serialized_view:
                 for stage in serialized_view:
                     view = view.add_stage(fosg.ViewStage._from_dict(stage))
-        except:
+        except Exception:
             view: fov.DatasetView = fov.DatasetView._build(
                 dataset, serialized_view or []
             )
@@ -674,19 +674,19 @@ async def serialize_dataset(
         for brain_method in data.brain_methods:
             try:
                 type = brain_method.config.type().value
-            except:
+            except Exception:
                 type = None
 
             try:
                 max_k = brain_method.config.max_k()
-            except:
+            except Exception:
                 max_k = None
 
             try:
                 supports_least_similarity = (
                     brain_method.config.supports_least_similarity()
                 )
-            except:
+            except Exception:
                 supports_least_similarity = None
 
             setattr(brain_method.config, "type", type)
