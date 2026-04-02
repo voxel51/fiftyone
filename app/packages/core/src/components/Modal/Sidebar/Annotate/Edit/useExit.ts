@@ -1,17 +1,15 @@
 import { useLighter, useOverlayById } from "@fiftyone/lighter";
 import { TypeGuards } from "@fiftyone/lighter/src/core/Scene2D";
 import { selectedLabelForAnnotationAtom } from "@fiftyone/looker-3d/src/state";
-import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { useSetRecoilState } from "recoil";
-import { useCurrentOverlayId, useEditingLabel, useStopEditing } from "../redux/hooks";
-import { savedLabel } from "./state";
+import { useCurrentOverlayId, useEditingLabel, useSetSavedLabelData, useStopEditing } from "../redux/hooks";
 import useActivePrimitive from "./useActivePrimitive";
 
 export default function useExit() {
   const stopEditing = useStopEditing();
   const [, setActivePrimitive] = useActivePrimitive();
-  const setSaved = useSetAtom(savedLabel);
+  const setSaved = useSetSavedLabelData();
   const { scene, removeOverlay } = useLighter();
   const overlay = useOverlayById(useCurrentOverlayId());
   const label = useEditingLabel();

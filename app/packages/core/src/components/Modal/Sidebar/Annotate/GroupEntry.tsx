@@ -1,12 +1,17 @@
 import { LoadingDots } from "@fiftyone/components";
 import { Add, Remove } from "@mui/icons-material";
-import { atom, useAtom, useAtomValue } from "jotai";
 import React from "react";
 import styled, { useTheme } from "styled-components";
 import { Column } from "./Components";
 import { Container } from "./Icons";
-import { labels } from "./useLabels";
 import { IconProps } from "@mui/material";
+import {
+  useAnnotationLabelCount,
+  useAnnotationSelector,
+  useLabelsExpandedState,
+  usePrimitivesCount,
+  usePrimitivesExpandedState,
+} from "./redux/hooks";
 
 const PlusMinusButton = (props: PlusMinusButtonProps) => {
   const { expanded, toggle, ...otherProps } = props;
@@ -64,42 +69,33 @@ const Round = styled.div`
   }
 `;
 
+export const LABELS_GROUP_NAME = "Labels";
+export const PRIMITIVES_GROUP_NAME = "PRIMITIVES";
+
 const Toggle = ({ name }: { name: string }) => {
-  const [expanded, setExpanded] = useAtom(EXPANDED_ATOMS[name]);
+  const [labelsExpanded, setLabelsExpanded] = useLabelsExpandedState();
+  const [primitivesExpanded, setPrimitivesExpanded] = usePrimitivesExpandedState();
+
+  const isLabels = name === LABELS_GROUP_NAME;
+  const expanded = isLabels ? labelsExpanded : primitivesExpanded;
+  const setExpanded = isLabels ? setLabelsExpanded : setPrimitivesExpanded;
 
   return (
     <Round>
       <PlusMinusButton
         expanded={expanded}
-        toggle={() => setExpanded((cur) => !cur)}
+        toggle={() => setExpanded(!expanded)}
         data-cy={`sidebar-group-${name}-toggle`}
       />
     </Round>
   );
 };
 
-export const LABELS_GROUP_NAME = "Labels";
-export const PRIMITIVES_GROUP_NAME = "PRIMITIVES";
-
-export const labelsExpanded = atom(true);
-export const primitivesExpanded = atom(true);
-
-const EXPANDED_ATOMS: Record<string, typeof labelsExpanded> = {
-  [LABELS_GROUP_NAME]: labelsExpanded,
-  [PRIMITIVES_GROUP_NAME]: primitivesExpanded,
-};
-
-const labelsCount = atom((get) => get(labels).length);
-export const primitivesCount = atom(0);
-
-const COUNT_ATOMS: Record<string, typeof labelsCount> = {
-  [LABELS_GROUP_NAME]: labelsCount,
-  [PRIMITIVES_GROUP_NAME]: primitivesCount,
-};
-
 const Group = React.memo(({ name }: { name: string }) => {
   const theme = useTheme();
-  const count = useAtomValue(COUNT_ATOMS[name]);
+  const labelsCount = useAnnotationLabelCount();
+  const primCount = usePrimitivesCount();
+  const count = name === LABELS_GROUP_NAME ? labelsCount : primCount;
 
   return (
     <div

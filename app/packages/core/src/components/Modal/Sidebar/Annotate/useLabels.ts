@@ -17,11 +17,13 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { selector, useRecoilCallback, useRecoilValue } from "recoil";
 import type { LabelType } from "./Edit/state";
 import {
+  LabelsLoadingState,
   useAddLabel,
   useAnnotationLabels,
   useLabelSchemasData,
   useRemoveLabel,
   useSetLabels,
+  useSetLabelsLoadingState,
   useVisibleLabelSchemas,
 } from "./redux/hooks";
 import type { AnnotationLabel as ReduxAnnotationLabel } from "./redux/annotationSlice";
@@ -347,7 +349,7 @@ export default function useLabels() {
   reduxLabelsRef.current = reduxLabels;
   const modalSample = useModalSample();
   const currentSampleId = useCurrentSampleId();
-  const setLoading = useSetAtom(labelsState);
+  const _setLoading = useSetLabelsLoadingState();
   const active = useVisibleLabelSchemas();
   const addLabelToRenderer = useAddAnnotationLabelToRenderer();
   const createLabel = useCreateAnnotationLabel();
@@ -422,12 +424,12 @@ export default function useLabels() {
       });
 
       setLabels([]);
-      loadingRef.current = LabelsState.UNSET;
-      setLoading(LabelsState.UNSET);
+      loadingRef.current = LabelsLoadingState.UNSET;
+      _setLoading(LabelsLoadingState.UNSET);
     };
 
     resetOverlays();
-  }, [active, removeOverlay, setLabels, setLoading]); // omit: [currentLabels]
+  }, [active, removeOverlay, setLabels, _setLoading]); // omit: [currentLabels]
 
   useEffect(() => {
     // Flipped to `true` by the cleanup function so in-flight async work
@@ -445,11 +447,11 @@ export default function useLabels() {
         });
 
       if (loadingRef.current === LabelsState.UNSET) {
-        loadingRef.current = LabelsState.LOADING;
-        setLoading(LabelsState.LOADING);
+        loadingRef.current = LabelsLoadingState.LOADING;
+        _setLoading(LabelsLoadingState.LOADING);
         getLabelsFromSample().then((result) => {
           if (stale) {
-            loadingRef.current = LabelsState.UNSET;
+            loadingRef.current = LabelsLoadingState.UNSET;
             return;
           }
 
@@ -464,8 +466,8 @@ export default function useLabels() {
             setActiveLabelId(result[0].data._id);
           }
 
-          loadingRef.current = LabelsState.COMPLETE;
-          setLoading(LabelsState.COMPLETE);
+          loadingRef.current = LabelsLoadingState.COMPLETE;
+          _setLoading(LabelsLoadingState.COMPLETE);
         });
       } else if (loadingRef.current === LabelsState.COMPLETE) {
         // refresh label data
@@ -509,7 +511,7 @@ export default function useLabels() {
     scene,
     setActiveLabelId,
     setLabels,
-    setLoading,
+    _setLoading,
   ]);
 
   /**
@@ -520,10 +522,10 @@ export default function useLabels() {
   useEffect(() => {
     return () => {
       setLabels([]);
-      loadingRef.current = LabelsState.UNSET;
-      setLoading(LabelsState.UNSET);
+      loadingRef.current = LabelsLoadingState.UNSET;
+      _setLoading(LabelsLoadingState.UNSET);
     };
-  }, [currentSampleId, scene, setLabels, setLoading]);
+  }, [currentSampleId, scene, setLabels, _setLoading]);
 
   useSyncOverlayReadOnly();
   useHover();

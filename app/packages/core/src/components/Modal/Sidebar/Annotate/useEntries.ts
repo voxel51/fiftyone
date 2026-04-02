@@ -1,23 +1,25 @@
 import { EntryKind, type SidebarEntry } from "@fiftyone/state";
-import { useAtomValue } from "jotai";
 import { useMemo } from "react";
-import { LABELS_GROUP_NAME, labelsExpanded } from "./GroupEntry";
+import { LABELS_GROUP_NAME } from "./GroupEntry";
 import {
+  LabelsLoadingState,
   useAnnotationLabels,
+  useAnnotationSelector,
   useVisibleLabelSchemas,
 } from "./redux/hooks";
-import { LabelsState, labelsState } from "./useLabels";
 import usePrimitiveEntries from "./usePrimitiveEntries";
 
 const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
   const labels = useAnnotationLabels();
   const activeFields = useVisibleLabelSchemas();
-  const state = useAtomValue(labelsState);
+  const loadingState = useAnnotationSelector(
+    (s) => s.annotation.labelsLoadingState
+  );
   const primitiveEntries = usePrimitiveEntries(activeFields || []);
-  const expanded = useAtomValue(labelsExpanded);
+  const expanded = useAnnotationSelector((s) => s.annotation.labelsExpanded);
 
   const entries = useMemo(() => {
-    if (state !== LabelsState.COMPLETE) {
+    if (loadingState !== LabelsLoadingState.COMPLETE) {
       return [{ kind: EntryKind.LOADING }] as SidebarEntry[];
     }
 
@@ -64,7 +66,7 @@ const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
     }
 
     return result as SidebarEntry[];
-  }, [labels, activeFields, state, expanded]);
+  }, [labels, activeFields, loadingState, expanded]);
 
   return [
     [

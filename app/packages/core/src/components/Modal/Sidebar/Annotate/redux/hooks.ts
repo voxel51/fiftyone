@@ -276,3 +276,131 @@ export const useSetLabels = () => {
     [dispatch]
   );
 };
+
+// ── UI state hooks ─────────────────────────────────────────────────────
+
+import {
+  LabelsLoadingState,
+  setLabelsLoadingState,
+  setLabelsExpanded as setLabelsExpandedAction,
+  setPrimitivesExpanded as setPrimitivesExpandedAction,
+  setLabelsCount as setLabelsCountAction,
+  setPrimitivesCount as setPrimitivesCountAction,
+  setActivePrimitive as setActivePrimitiveAction,
+  setQuickDrawActive as setQuickDrawActiveAction,
+  setLastUsedField as setLastUsedFieldAction,
+  setSavedLabelData as setSavedLabelDataAction,
+  setSchemaManagerDisplayed as setSchemaManagerDisplayedAction,
+  setSchemaManagerField as setSchemaManagerFieldAction,
+} from "./annotationSlice";
+
+export { LabelsLoadingState };
+
+export const useLabelsLoadingState = () =>
+  useAnnotationSelector((s) => s.annotation.labelsLoadingState);
+
+export const useSetLabelsLoadingState = () => {
+  const dispatch = useAnnotationDispatch();
+  return useCallback(
+    (state: LabelsLoadingState) => dispatch(setLabelsLoadingState(state)),
+    [dispatch]
+  );
+};
+
+export const useLabelsExpandedState = (): [boolean, (v: boolean) => void] => {
+  const expanded = useAnnotationSelector((s) => s.annotation.labelsExpanded);
+  const dispatch = useAnnotationDispatch();
+  return [
+    expanded,
+    useCallback((v: boolean) => dispatch(setLabelsExpandedAction(v)), [dispatch]),
+  ];
+};
+
+export const usePrimitivesExpandedState = (): [boolean, (v: boolean) => void] => {
+  const expanded = useAnnotationSelector((s) => s.annotation.primitivesExpanded);
+  const dispatch = useAnnotationDispatch();
+  return [
+    expanded,
+    useCallback((v: boolean) => dispatch(setPrimitivesExpandedAction(v)), [dispatch]),
+  ];
+};
+
+export const useLabelsCount = () =>
+  useAnnotationSelector((s) => s.annotation.labelsCount);
+
+export const useSetLabelsCount = () => {
+  const dispatch = useAnnotationDispatch();
+  return useCallback(
+    (count: number) => dispatch(setLabelsCountAction(count)),
+    [dispatch]
+  );
+};
+
+export const usePrimitivesCount = () =>
+  useAnnotationSelector((s) => s.annotation.primitivesCount);
+
+export const useSetPrimitivesCount = () => {
+  const dispatch = useAnnotationDispatch();
+  return useCallback(
+    (count: number) => dispatch(setPrimitivesCountAction(count)),
+    [dispatch]
+  );
+};
+
+export const useActivePrimitiveState = (): [string | null, (v: string | null) => void] => {
+  const value = useAnnotationSelector((s) => s.annotation.activePrimitive);
+  const dispatch = useAnnotationDispatch();
+  return [
+    value,
+    useCallback((v: string | null) => dispatch(setActivePrimitiveAction(v)), [dispatch]),
+  ];
+};
+
+export const useQuickDrawActiveState = (): [boolean, (v: boolean) => void] => {
+  const value = useAnnotationSelector((s) => s.annotation.quickDrawActive);
+  const dispatch = useAnnotationDispatch();
+  return [
+    value,
+    useCallback((v: boolean) => dispatch(setQuickDrawActiveAction(v)), [dispatch]),
+  ];
+};
+
+export const useLastUsedField = () =>
+  useAnnotationSelector((s) => s.annotation.lastUsedField);
+
+export const useSetLastUsedField = () => {
+  const dispatch = useAnnotationDispatch();
+  return useCallback(
+    (field: string | null) => dispatch(setLastUsedFieldAction(field)),
+    [dispatch]
+  );
+};
+
+export const useSavedLabelData = () =>
+  useAnnotationSelector((s) => s.annotation.savedLabelData);
+
+export const useSetSavedLabelData = () => {
+  const dispatch = useAnnotationDispatch();
+  return useCallback(
+    (data: Record<string, unknown> | null) => dispatch(setSavedLabelDataAction(data)),
+    [dispatch]
+  );
+};
+
+export const useSchemaManagerDisplayedState = (): [boolean, (v: boolean) => void] => {
+  const value = useAnnotationSelector((s) => s.annotation.schemaManagerDisplayed);
+  const dispatch = useAnnotationDispatch();
+  return [
+    value,
+    useCallback((v: boolean) => dispatch(setSchemaManagerDisplayedAction(v)), [dispatch]),
+  ];
+};
+
+export const useSchemaManagerFieldState = (): [string | null, (v: string | null) => void] => {
+  const value = useAnnotationSelector((s) => s.annotation.schemaManagerField);
+  const dispatch = useAnnotationDispatch();
+  return [
+    value,
+    useCallback((v: string | null) => dispatch(setSchemaManagerFieldAction(v)), [dispatch]),
+  ];
+};

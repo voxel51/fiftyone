@@ -1,15 +1,15 @@
 import { EntryKind, type SidebarEntry } from "@fiftyone/state";
-import { useAtomValue } from "jotai";
 import { useMemo } from "react";
-import { primitivesExpanded } from "./GroupEntry";
+import { useAnnotationSelector } from "./redux/hooks";
 import useSamplePrimitives from "./useSamplePrimitives";
 
 const usePrimitiveEntries = (activeFields: string[]): SidebarEntry[] => {
   const samplePrimitives = useSamplePrimitives();
-  const primitivesExpandedState = useAtomValue(primitivesExpanded);
+  const primitivesExpandedState = useAnnotationSelector(
+    (s) => s.annotation.primitivesExpanded
+  );
 
   const primitiveEntries: SidebarEntry[] = useMemo(() => {
-    // Use Map for O(1) lookup instead of repeated indexOf calls
     const orderMap = new Map(
       activeFields.map((field, index) => [field, index])
     );

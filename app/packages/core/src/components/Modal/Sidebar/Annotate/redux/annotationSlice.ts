@@ -34,6 +34,12 @@ export interface AnnotationLabel {
   data?: Record<string, unknown>;
 }
 
+export enum LabelsLoadingState {
+  UNSET = "unset",
+  LOADING = "loading",
+  COMPLETE = "complete",
+}
+
 interface AnnotationUiState {
   /** Whether annotation mode is active */
   isAnnotating: boolean;
@@ -61,6 +67,41 @@ interface AnnotationUiState {
 
   /** Explore sidebar active fields (bridged from Recoil) */
   exploreActiveFields: string[] | null;
+
+  // ── UI state (previously local Jotai atoms) ──────────────────────────
+
+  /** Labels loading state */
+  labelsLoadingState: LabelsLoadingState;
+
+  /** Whether the labels group is expanded in the sidebar */
+  labelsExpanded: boolean;
+
+  /** Whether the primitives group is expanded in the sidebar */
+  primitivesExpanded: boolean;
+
+  /** Count of labels in the sidebar */
+  labelsCount: number;
+
+  /** Count of primitives in the sidebar */
+  primitivesCount: number;
+
+  /** Currently active primitive field path (for inline editing) */
+  activePrimitive: string | null;
+
+  /** Whether QuickDraw mode is active */
+  quickDrawActive: boolean;
+
+  /** Last used field for QuickDraw auto-assignment */
+  lastUsedField: string | null;
+
+  /** Saved label data snapshot for dirty tracking */
+  savedLabelData: Record<string, unknown> | null;
+
+  /** Whether the schema manager modal is displayed */
+  schemaManagerDisplayed: boolean;
+
+  /** Current field selected in schema manager */
+  schemaManagerField: string | null;
 }
 
 const initialState: AnnotationUiState = {
@@ -73,6 +114,17 @@ const initialState: AnnotationUiState = {
   schemaTab: "gui",
   labelSchemasData: null,
   exploreActiveFields: null,
+  labelsLoadingState: LabelsLoadingState.UNSET,
+  labelsExpanded: true,
+  primitivesExpanded: true,
+  labelsCount: 0,
+  primitivesCount: 0,
+  activePrimitive: null,
+  quickDrawActive: false,
+  lastUsedField: null,
+  savedLabelData: null,
+  schemaManagerDisplayed: false,
+  schemaManagerField: null,
 };
 
 // ── Slice ──────────────────────────────────────────────────────────────
@@ -180,6 +232,42 @@ export const annotationSlice = createSlice({
       state.isAnnotating = false;
       state.isNewLabel = false;
     },
+
+    // ── UI state reducers ────────────────────────────────────────────────
+
+    setLabelsLoadingState(state, action: PayloadAction<LabelsLoadingState>) {
+      state.labelsLoadingState = action.payload;
+    },
+    setLabelsExpanded(state, action: PayloadAction<boolean>) {
+      state.labelsExpanded = action.payload;
+    },
+    setPrimitivesExpanded(state, action: PayloadAction<boolean>) {
+      state.primitivesExpanded = action.payload;
+    },
+    setLabelsCount(state, action: PayloadAction<number>) {
+      state.labelsCount = action.payload;
+    },
+    setPrimitivesCount(state, action: PayloadAction<number>) {
+      state.primitivesCount = action.payload;
+    },
+    setActivePrimitive(state, action: PayloadAction<string | null>) {
+      state.activePrimitive = action.payload;
+    },
+    setQuickDrawActive(state, action: PayloadAction<boolean>) {
+      state.quickDrawActive = action.payload;
+    },
+    setLastUsedField(state, action: PayloadAction<string | null>) {
+      state.lastUsedField = action.payload;
+    },
+    setSavedLabelData(state, action: PayloadAction<Record<string, unknown> | null>) {
+      state.savedLabelData = action.payload;
+    },
+    setSchemaManagerDisplayed(state, action: PayloadAction<boolean>) {
+      state.schemaManagerDisplayed = action.payload;
+    },
+    setSchemaManagerField(state, action: PayloadAction<string | null>) {
+      state.schemaManagerField = action.payload;
+    },
   },
 });
 
@@ -200,6 +288,17 @@ export const {
   startEditing,
   startEditingNewType,
   clearEditing,
+  setLabelsLoadingState,
+  setLabelsExpanded,
+  setPrimitivesExpanded,
+  setLabelsCount,
+  setPrimitivesCount,
+  setActivePrimitive,
+  setQuickDrawActive,
+  setLastUsedField,
+  setSavedLabelData,
+  setSchemaManagerDisplayed,
+  setSchemaManagerField,
 } = annotationSlice.actions;
 
 // ── Selectors (replace Jotai derived atoms) ────────────────────────────

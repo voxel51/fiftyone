@@ -1,13 +1,12 @@
 import { useModalSample } from "@fiftyone/state";
-import { useSetAtom } from "jotai";
 import { useEffect } from "react";
-import { primitivesCount } from "./GroupEntry";
+import { useSetPrimitivesCount } from "./redux/hooks";
 import useSamplePrimitives from "./useSamplePrimitives";
 
 export const usePrimitivesCount = () => {
   const currentSample = useModalSample()?.sample;
   const samplePrimitives = useSamplePrimitives();
-  const setPrimitivesCount = useSetAtom(primitivesCount);
+  const setPrimitivesCount = useSetPrimitivesCount();
 
   useEffect(() => {
     if (!currentSample) {

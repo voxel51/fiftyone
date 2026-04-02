@@ -18,7 +18,6 @@ import {
   visibleLabelSchemas,
 } from "../state";
 import { addLabel, labels, labelsByPath } from "../useLabels";
-import { activePrimitiveAtom } from "./useActivePrimitive";
 import { buildNewLabelData } from "./useCreate";
 
 export const savedLabel = atom<AnnotationLabel["data"] | null>(null);
@@ -205,8 +204,8 @@ export const currentType = atom<LabelType | null>((get) => {
   return null;
 });
 
+/** @deprecated — use useIsEditing() from redux/hooks instead */
 export const isEditing = atom((get) => {
-  if (get(activePrimitiveAtom) !== null) return true;
   return get(editing) !== null;
 });
 

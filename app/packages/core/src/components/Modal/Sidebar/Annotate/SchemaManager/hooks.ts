@@ -26,6 +26,8 @@ import {
   useActiveSchemasState,
   useFieldTypes,
   useLabelSchemasData,
+  useSchemaManagerDisplayedState,
+  useSchemaManagerFieldState,
   useSchemaTabState,
 } from "../redux/hooks";
 import {
@@ -65,7 +67,7 @@ import { PRIMITIVE_FIELD_TYPES } from "./constants";
  * Hook to get and set the currently selected field for editing
  */
 export const useCurrentField = () => {
-  const [field, setField] = useAtom(currentField);
+  const [field, setField] = useSchemaManagerFieldState();
   return { field, setField };
 };
 
@@ -89,7 +91,7 @@ export const useSetCurrentField = () => {
  * Hook to control the schema manager modal visibility
  */
 export const useSchemaManagerModal = () => {
-  const [schemaManagerDisplayed, setSchemaManagerDisplayed] = useAtom(schemaManagerDisplayedAtom);
+  const [schemaManagerDisplayed, setSchemaManagerDisplayed] = useSchemaManagerDisplayedState();
 
   const openSchemaManager = useCallback(() => setSchemaManagerDisplayed(true), [setSchemaManagerDisplayed]);
   const closeSchemaManager = useCallback(() => setSchemaManagerDisplayed(false), [setSchemaManagerDisplayed]);
