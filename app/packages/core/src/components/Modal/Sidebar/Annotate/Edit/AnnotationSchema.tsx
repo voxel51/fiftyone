@@ -99,7 +99,7 @@ const AnnotationSchema = ({ readOnly = false }: AnnotationSchemaProps) => {
   }
 
   if (!overlay) {
-    throw new Error("no overlay");
+    return null;
   }
 
   // Transform data for read-only display: convert arrays to comma-separated strings
