@@ -13,9 +13,9 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       app-changes: ${{ steps.filter.outputs.app }}
+      docs-only: ${{ steps.docs-filter.outputs.docs-only }}
       e2e-changes: ${{ steps.filter.outputs.e2e-pw }}
       fiftyone-changes: ${{ steps.filter.outputs.fiftyone }}
-      docs-only: ${{ steps.docs-filter.outputs.docs-only }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
