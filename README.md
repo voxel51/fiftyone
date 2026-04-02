@@ -39,8 +39,9 @@ models**
 # 👋 hey there!
 
 We created **[FiftyOne](https://fiftyone.ai)** to supercharge your visual AI
-projects by enabling you to visualize datasets, analyze models, and improve
-data quality more efficiently than ever before 🤝
+development by enabling you to visualize and label your data, evaluate your
+models, and maximize data and model quality more efficiently than ever before
+🤝
 
 If you're looking to scale to production-grade, collaborative, cloud-native
 enterprise workloads, check out
@@ -73,12 +74,12 @@ See the [prerequisites section](#prerequisites) for system-specific setup
 information.
 
 We strongly recommend that you install FiftyOne in a
-[virtual environment](https://docs.voxel51.com/installation/virtualenv.html)
-to maintain a clean workspace.
+[virtual environment](https://docs.voxel51.com/installation/virtualenv.html) to
+maintain a clean workspace.
 
 Consult the
-[installation guide](https://docs.voxel51.com/installation/index.html)
-for troubleshooting and other information about getting up-and-running with
+[installation guide](https://docs.voxel51.com/installation/index.html) for
+troubleshooting and other information about getting up-and-running with
 FiftyOne.
 
 </details>
@@ -103,8 +104,8 @@ You'll need the following tools installed:
     `corepack enable`
 
 We strongly recommend that you install FiftyOne in a
-[virtual environment](https://docs.voxel51.com/installation/virtualenv.html)
-to maintain a clean workspace.
+[virtual environment](https://docs.voxel51.com/installation/virtualenv.html) to
+maintain a clean workspace.
 
 If you are working in Google Colab,
 [skip to here](#source-installs-in-google-colab).
@@ -391,9 +392,8 @@ of FiftyOne.
 Dive right into FiftyOne by opening a Python shell and running the snippet
 below, which downloads a
 [small dataset](https://docs.voxel51.com/user_guide/dataset_zoo/datasets.html#quickstart)
-and launches the
-[FiftyOne App](https://docs.voxel51.com/user_guide/app.html) so you
-can explore it:
+and launches the [FiftyOne App](https://docs.voxel51.com/user_guide/app.html)
+so you can explore it:
 
 ```py
 import fiftyone as fo
@@ -418,7 +418,8 @@ for more information.
 
 -   **[Native Annotation:](https://docs.voxel51.com/user_guide/annotation.html)**
     Create and edit 2D and 3D labels directly in the App or integrate with your
-    favorite annotation tools — then curate, QA, and iterate, all in one platform.
+    favorite annotation tools — then curate, QA, and iterate, all in one
+    platform.
 
 https://github.com/user-attachments/assets/b06bcdac-d64f-4465-8668-12007dc0eeaa
 
@@ -462,7 +463,7 @@ https://github.com/user-attachments/assets/c7ed496d-0cf7-45d6-9853-e349f1abd6f8
 Check out these resources to get up and running with FiftyOne:
 
 | [Getting Started Guides](https://docs.voxel51.com/getting_started_guides/index.html) | [Tutorials](https://docs.voxel51.com/tutorials/index.html) | [Recipes](https://docs.voxel51.com/recipes/index.html) | [User Guide](https://docs.voxel51.com/user_guide/index.html) | [Examples](https://github.com/voxel51/fiftyone-examples) | [API Reference](https://docs.voxel51.com/api/fiftyone.html) | [CLI Reference](https://docs.voxel51.com/cli/index.html) |
-| --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | --------------------------------------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| ------------------------------------------------------------------------------------ | ---------------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------ | -------------------------------------------------------- | ----------------------------------------------------------- | -------------------------------------------------------- |
 
 Full documentation is available at [fiftyone.ai](https://fiftyone.ai).
 
