@@ -275,12 +275,12 @@ export const useLabelsContext = (): LabelsContext => {
   const reduxRemoveLabel = useRemoveLabel();
   const removeLabelFromSidebar = useCallback(
     (labelId: string) => {
-      setJotaiLabels((prev) =>
+      setLabels((prev) =>
         prev.filter((label) => label.data._id !== labelId)
       );
       reduxRemoveLabel(labelId);
     },
-    [setJotaiLabels, reduxRemoveLabel]
+    [setLabels, reduxRemoveLabel]
   );
 
   return useMemo(

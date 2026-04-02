@@ -9,14 +9,17 @@ import { useRecoilCallback } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import { SchemaType } from "../../../../../plugins/SchemaIO/utils/types";
 import { generatePrimitiveSchema } from "./schemaHelpers";
-import { useCurrentField, useCurrentOverlayId } from "../redux/hooks";
 import {
-  currentData,
-  currentSchema,
-} from "./state";
+  useCurrentField,
+  useCurrentOverlayId,
+  useLabelSchemasData,
+} from "../redux/hooks";
+import { currentData } from "./state";
 
 const useSchema = (readOnly: boolean) => {
-  const config = useAtomValue(currentSchema);
+  const field = useCurrentField();
+  const schemas = useLabelSchemasData();
+  const config = field ? schemas?.[field]?.label_schema : undefined;
   const isLabelReadOnly = config?.read_only;
   // respect either the field OR the parent schema's readOnly flag
   const effectiveReadOnly = readOnly || isLabelReadOnly;
