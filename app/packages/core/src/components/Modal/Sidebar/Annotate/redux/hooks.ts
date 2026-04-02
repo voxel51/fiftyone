@@ -197,6 +197,10 @@ export const useAnnotationLabelCount = (): number =>
 // ── Derived selector hooks (replace Jotai derived atoms) ───────────────
 
 import {
+  selectCurrentField,
+  selectCurrentFieldIsReadOnly,
+  selectCurrentFields,
+  selectCurrentType,
   selectFieldAttributeCount,
   selectFieldType,
   selectFieldTypes,
@@ -233,3 +237,19 @@ export const useLabelSchemasData = () =>
 /** Fields matching a label type (writable only). */
 export const useFieldsOfType = (type: LabelType): string[] =>
   useAnnotationSelector(selectFieldsOfType(type));
+
+/** Current label type being edited (Classification/Detection/Polyline or null). */
+export const useCurrentType = (): LabelType | null =>
+  useAnnotationSelector(selectCurrentType);
+
+/** Current field path of the label being edited. */
+export const useCurrentField = (): string | null =>
+  useAnnotationSelector(selectCurrentField);
+
+/** Whether the current field is read-only. */
+export const useCurrentFieldIsReadOnly = (): boolean =>
+  useAnnotationSelector(selectCurrentFieldIsReadOnly);
+
+/** Writable fields for the current label type. */
+export const useCurrentFields = (): string[] =>
+  useAnnotationSelector(selectCurrentFields);

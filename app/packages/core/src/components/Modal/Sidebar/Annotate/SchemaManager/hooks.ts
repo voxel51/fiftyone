@@ -72,9 +72,7 @@ export const useCurrentField = () => {
 /**
  * Hook to get the current field (read-only)
  */
-export const useCurrentFieldValue = () => {
-  return useAtomValue(currentField);
-};
+export { useCurrentField as useCurrentFieldValue } from "../redux/hooks";
 
 /**
  * Hook to set the current field

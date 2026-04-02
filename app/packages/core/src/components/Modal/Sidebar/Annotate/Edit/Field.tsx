@@ -14,14 +14,13 @@ import {
 import { useAtom, useAtomValue } from "jotai";
 import { useCallback, useMemo, useRef } from "react";
 import { useRecoilValue } from "recoil";
+import { useCurrentFields, useCurrentType, useEditingLabel } from "../redux/hooks";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import AddSchema from "./AddSchema";
 import {
   current,
   currentDisabledFields,
   currentField,
-  currentFields,
-  currentType,
   editing,
 } from "./state";
 
@@ -55,21 +54,21 @@ const createSchema = (
 });
 
 const Field = () => {
-  const fields = useAtomValue(currentFields);
+  const fields = useCurrentFields();
   const disabled = useAtomValue(currentDisabledFields);
   const [currentFieldValue, setCurrentField] = useAtom(currentField);
   const isPatches = useRecoilValue(isPatchesView);
-  const currentLabel = useAtomValue(current);
+  const currentLabel = useEditingLabel();
   const schema = useMemo(
     () => createSchema(fields, disabled, isPatches),
     [disabled, fields, isPatches]
   );
-  const type = useAtomValue(currentType);
+  const type = useCurrentType();
   const state = useAtomValue(editing);
   const modalSampleSchema = useModalSampleSchema();
   const commandBus = useCommandBus();
   const nextFieldValue = useRef(currentFieldValue);
-  const labelId = currentLabel?.overlay?.id;
+  const labelId = currentLabel?.id;
   const currentLabelRef = useUnboundStateRef(currentLabel);
 
   const is3DAnnotationStagingInitialized = useIsWorkingInitialized();

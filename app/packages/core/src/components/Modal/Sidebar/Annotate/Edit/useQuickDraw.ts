@@ -3,9 +3,10 @@ import { type PrimitiveAtom, atom, useAtom, useAtomValue, useSetAtom } from "jot
 import { atomFamily, useAtomCallback } from "jotai/utils";
 import { countBy, maxBy } from "lodash";
 import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCurrentType } from "../redux/hooks";
 import { fieldType, isFieldReadOnly, labelSchemaData } from "../state";
 import { labelsByPath } from "../useLabels";
-import { currentType, defaultField, useAnnotationContext } from "./state";
+import { defaultField, useAnnotationContext } from "./state";
 import {
   UNDEFINED_LIGHTER_SCENE_ID,
   useLighter,
@@ -53,7 +54,7 @@ const claimedEventsAtom = atom<Map<string, string>>(new Map());
  */
 export const useQuickDraw = () => {
   const [quickDrawActive, setQuickDrawActive] = useAtom(quickDrawActiveAtom);
-  const editingLabelType = useAtomValue(currentType);
+  const editingLabelType = useCurrentType();
   const isEditingDetection = editingLabelType === DETECTION;
   const setLastUsedField = useSetAtom(lastUsedFieldAtom);
   const labelsMap = useAtomValue(labelsByPath);

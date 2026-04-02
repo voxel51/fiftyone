@@ -8,9 +8,9 @@ import { useRecoilCallback } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import { SchemaType } from "../../../../../plugins/SchemaIO/utils/types";
 import { generatePrimitiveSchema } from "./schemaHelpers";
+import { useCurrentField } from "../redux/hooks";
 import {
   currentData,
-  currentField,
   currentOverlay,
   currentSchema,
 } from "./state";
@@ -92,7 +92,7 @@ const AnnotationSchema = ({ readOnly = false }: AnnotationSchemaProps) => {
   const overlay = useAtomValue(currentOverlay);
   const eventBus = useAnnotationEventBus();
   const handleChanges = useHandleChanges();
-  const field = useAtomValue(currentField);
+  const field = useCurrentField();
 
   if (!field) {
     throw new Error("no field");

@@ -248,3 +248,77 @@ export const selectFieldsOfType = (type: LabelType) =>
         .sort();
     }
   );
+
+// ── Edit panel selectors ───────────────────────────────────────────────
+
+const selectEditingLabel = (state: { annotation: AnnotationUiState }) =>
+  state.annotation.editingLabel;
+
+const selectIsNewLabel = (state: { annotation: AnnotationUiState }) =>
+  state.annotation.isNewLabel;
+
+/**
+ * currentType — the LabelType of whatever is being edited.
+ * Replaces: `atom((get) => { ... IS[kind].has(type) ... })`
+ */
+export const selectCurrentType = createSelector(
+  [selectEditingLabel],
+  (label): LabelType | null => {
+    if (!label) return null;
+
+    const type = label.type || label.cls;
+    for (const [kind, values] of Object.entries(IS)) {
+      if (values.has(type)) {
+        return kind as LabelType;
+      }
+    }
+    // If the type IS a label type string directly (from startEditingType)
+    if (type in IS) return type as LabelType;
+
+    return null;
+  }
+);
+
+/**
+ * currentField — the field path of the label being edited.
+ * Replaces: `atom((get) => get(current)?.path)`
+ */
+export const selectCurrentField = createSelector(
+  [selectEditingLabel],
+  (label) => label?.path ?? null
+);
+
+/**
+ * currentFieldIsReadOnly — whether the current field's schema is read-only.
+ * Replaces: `atom((get) => isFieldReadOnly(get(labelSchemaData(field))))`
+ */
+export const selectCurrentFieldIsReadOnly = createSelector(
+  [selectEditingLabel, selectLabelSchemasData],
+  (label, schemas) => {
+    if (!label?.path || !schemas) return false;
+    const data = schemas[label.path];
+    return !!(data?.label_schema?.read_only || data?.read_only);
+  }
+);
+
+/**
+ * currentFields — writable fields for the current label type.
+ * Replaces: `atom((get) => get(fieldsOfType(get(currentType))))`
+ */
+export const selectCurrentFields = createSelector(
+  [selectCurrentType, selectVisibleLabelSchemas, selectLabelSchemasData],
+  (type, visible, schemas) => {
+    if (!type || !schemas) return [];
+    const typeSet = IS[type];
+    if (!typeSet) return [];
+
+    return visible
+      .filter((field) => {
+        const data = schemas[field];
+        const fieldTypeCap = data?.type ? capitalize(data.type) : undefined;
+        if (!fieldTypeCap || !typeSet.has(fieldTypeCap)) return false;
+        return !data?.label_schema?.read_only && !data?.read_only;
+      })
+      .sort();
+  }
+);

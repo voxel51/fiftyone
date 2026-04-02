@@ -1,11 +1,9 @@
 import { useReset3dAnnotationMode } from "@fiftyone/looker-3d/src/state/accessors";
 import { isPatchesView } from "@fiftyone/state";
 import { CLASSIFICATION } from "@fiftyone/utilities";
-import { useAtomValue } from "jotai";
 import { useCallback, useMemo } from "react";
 import { useRecoilValue } from "recoil";
-import { useFieldsOfType } from "../redux/hooks";
-import { currentType } from "./state";
+import { useCurrentType, useFieldsOfType } from "../redux/hooks";
 import useCreate from "./useCreate";
 import useExit from "./useExit";
 
@@ -21,7 +19,7 @@ export const useClassification = () => {
   const isPatchView = useRecoilValue(isPatchesView);
   const reset3dAnnotationMode = useReset3dAnnotationMode();
   const fields = useFieldsOfType(CLASSIFICATION);
-  const classificationActive = useAtomValue(currentType) === CLASSIFICATION;
+  const classificationActive = useCurrentType() === CLASSIFICATION;
 
   const disabled = isPatchView || fields.length === 0;
 

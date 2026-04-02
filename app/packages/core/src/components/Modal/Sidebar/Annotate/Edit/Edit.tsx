@@ -5,6 +5,7 @@ import { useAtomValue } from "jotai";
 import { useEffect } from "react";
 import styled from "styled-components";
 import { isDetection3d } from "../../../../../utils/labels";
+import { useCurrentField, useCurrentFieldIsReadOnly, useCurrentType } from "../redux/hooks";
 import AnnotationSchema from "./AnnotationSchema";
 import Field from "./Field";
 import Header from "./Header";
@@ -12,12 +13,7 @@ import Id from "./Id";
 import { PolylineDetails } from "./PolylineDetails";
 import Position from "./Position";
 import Position3d from "./Position3d";
-import {
-  currentField,
-  currentFieldIsReadOnlyAtom,
-  currentOverlay,
-  currentType,
-} from "./state";
+import { currentOverlay } from "./state";
 import PrimitiveWrapper from "./PrimitiveWrapper";
 import useActivePrimitive from "./useActivePrimitive";
 import useExit from "./useExit";
@@ -43,10 +39,10 @@ const Content = styled.div`
 `;
 
 export default function Edit() {
-  const field = useAtomValue(currentField);
+  const field = useCurrentField();
   const overlay = useAtomValue(currentOverlay);
-  const type = useAtomValue(currentType);
-  const isReadOnly = useAtomValue(currentFieldIsReadOnlyAtom);
+  const type = useCurrentType();
+  const isReadOnly = useCurrentFieldIsReadOnly();
   const [activePrimitivePath] = useActivePrimitive();
 
   const clear = useClearModal();

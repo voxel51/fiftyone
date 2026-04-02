@@ -11,14 +11,12 @@ import { ICONS } from "../Icons";
 import { Row } from "./Components";
 
 import * as fos from "@fiftyone/state";
-import { useAnnotationLabelCount } from "../redux/hooks";
+import { useAnnotationLabelCount, useCurrentFieldIsReadOnly, useCurrentType } from "../redux/hooks";
 import { isGeneratedView } from "@fiftyone/state";
 import { useRecoilValue } from "recoil";
 import { useSchemaManagerModal } from "../SchemaManager/hooks";
 import {
-  currentFieldIsReadOnlyAtom,
   currentOverlay,
-  currentType,
   useAnnotationContext,
 } from "./state";
 
@@ -39,7 +37,7 @@ const LabelHamburgerMenu = () => {
 
   // Permission and read-only state
   const canEditLabels = useRecoilValue(fos.canEditLabels);
-  const currentFieldIsReadOnly = useAtomValue(currentFieldIsReadOnlyAtom);
+  const currentFieldIsReadOnly = useCurrentFieldIsReadOnly();
   const { openSchemaManager } = useSchemaManagerModal();
   const isGenerated = useRecoilValue(isGeneratedView);
 
@@ -89,7 +87,7 @@ const LabelHamburgerMenu = () => {
 };
 
 const Header = () => {
-  const type = useAtomValue(currentType);
+  const type = useCurrentType();
   const Icon = ICONS[type?.toLowerCase() ?? ""];
   const color = useColor(useAtomValue(currentOverlay) ?? undefined);
 
@@ -98,7 +96,7 @@ const Header = () => {
   const { scene } = useLighter();
   const { disableQuickDraw } = useQuickDraw();
   const annotationContext = useAnnotationContext();
-  const currentFieldIsReadOnly = useAtomValue(currentFieldIsReadOnlyAtom);
+  const currentFieldIsReadOnly = useCurrentFieldIsReadOnly();
 
   // In patches view with single label, clicking back should go to explore mode
   const isPatches = useRecoilValue(fos.isPatchesView);

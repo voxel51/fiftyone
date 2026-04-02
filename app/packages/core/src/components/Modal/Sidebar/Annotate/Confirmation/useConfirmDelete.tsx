@@ -5,7 +5,7 @@ import { atomWithStorage } from "jotai/utils";
 import React, { useCallback } from "react";
 import styled from "styled-components";
 import { CheckboxView } from "../../../../../plugins/SchemaIO/components";
-import { currentType } from "../Edit/state";
+import { useCurrentType } from "../redux/hooks";
 import Modal from "./Modal";
 
 const showDeleteConfirmation = atom(false);
@@ -23,7 +23,7 @@ const Row = styled.div`
 
 function DeleteModal({ deleteAnnotation }: { deleteAnnotation: () => void }) {
   const [shown, show] = useAtom(showDeleteConfirmation);
-  const type = useAtomValue(currentType);
+  const type = useCurrentType();
   const [askAgain, setAskAgain] = useAtom(askForDeleteConfirmation);
 
   const close = useCallback(() => show(false), [show]);
