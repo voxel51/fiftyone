@@ -52,7 +52,7 @@ class SkillDefinition(object):
         """The name of the skill."""
         return self._metadata.get(
             "name",
-            os.path.splitext(os.path.basename(self._path))[0],
+            os.path.basename(os.path.dirname(self._path)),
         )
 
     @property
@@ -176,6 +176,13 @@ def install_skills(agents, plugin=None, global_=False):
     installed = []
 
     for skill in skills:
+        if (
+            not skill.name
+            or os.path.basename(skill.name) != skill.name
+            or skill.name in (".", "..")
+        ):
+            raise ValueError(f"Invalid skill name: {skill.name!r}")
+
         skill_central = os.path.join(central_dir, skill.name)
         os.makedirs(skill_central, exist_ok=True)
 
@@ -205,8 +212,22 @@ def install_skills(agents, plugin=None, global_=False):
 
 
 def _iter_plugin_skills(plugin_definition):
+    plugin_dir = os.path.realpath(plugin_definition.directory)
     for rel_path in plugin_definition.skills:
-        skill_path = os.path.join(plugin_definition.directory, rel_path)
+        skill_path = os.path.realpath(os.path.join(plugin_dir, rel_path))
+        try:
+            outside = (
+                os.path.commonpath([plugin_dir, skill_path]) != plugin_dir
+            )
+        except ValueError:
+            outside = True
+
+        if outside:
+            logger.warning(
+                "Ignoring skill path outside plugin directory: %s", rel_path
+            )
+            continue
+
         if not os.path.isfile(skill_path):
             logger.debug(f"Skill file not found: '{skill_path}'")
             continue

@@ -4594,7 +4594,7 @@ class PluginsSkillsInstallCommand(Command):
         parser.add_argument(
             "-n",
             "--plugin-names",
-            nargs="*",
+            nargs="+",
             default=None,
             metavar="PLUGIN_NAMES",
             help="a plugin name or list of plugin names to include",
