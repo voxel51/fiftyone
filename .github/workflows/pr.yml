@@ -73,7 +73,8 @@ jobs:
     uses: ./.github/workflows/lint-app.yml
 
   enterprise-sync:
-    needs: modified-files
+    enterprise-sync:
+      if: github.event.action == 'closed' || github.event.pull_request.draft != true
     if: github.event.action == 'closed' || github.event.pull_request.draft != true
     runs-on: ubuntu-latest
     steps:
