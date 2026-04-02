@@ -12,12 +12,10 @@ import {
   TextVariant,
   Variant,
 } from "@voxel51/voodo";
-import { useAtomValue } from "jotai";
 import React from "react";
 import styled from "styled-components";
-import { isEditing } from "./Edit";
 import RequiredFieldPrompt from "./RequiredFieldPrompt";
-import { activeLabelSchemas } from "./state";
+import { useActiveSchemas, useIsEditing } from "./redux/hooks";
 import useCanManageSchema from "./useCanManageSchema";
 import type { RequiredField } from "./useSourceFieldToActivate";
 import { useSchemaManagerModal } from "./SchemaManager/hooks";
@@ -60,8 +58,8 @@ export function useShowImportSchema(
   disabled: boolean,
   requiredField: RequiredField | null
 ): boolean {
-  const noActiveSchemas = !useAtomValue(activeLabelSchemas)?.length;
-  const isEditingValue = useAtomValue(isEditing);
+  const noActiveSchemas = !useActiveSchemas()?.length;
+  const isEditingValue = useIsEditing();
   return (
     noActiveSchemas || disabled || (requiredField != null && !isEditingValue)
   );

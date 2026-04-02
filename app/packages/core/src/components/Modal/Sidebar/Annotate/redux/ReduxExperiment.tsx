@@ -9,7 +9,7 @@
 import { useCurrentDatasetName, useModalSample } from "@fiftyone/state";
 import { useAtomValue } from "jotai";
 import { useEffect } from "react";
-import { Provider, useDispatch } from "react-redux";
+import { useDispatch } from "react-redux";
 import {
   current,
   editing,
@@ -32,7 +32,7 @@ import {
   type AnnotationLabel,
 } from "./annotationSlice";
 import { useGetAppInfoQuery, useGetSampleQuery, useGraphqlQuery } from "./api";
-import { annotationStore, type AnnotationAppDispatch } from "./store";
+import type { AnnotationAppDispatch } from "./store";
 
 /** Bridges Jotai atoms → Redux slice so state is visible in Redux DevTools */
 function JotaiToReduxBridge() {
@@ -156,9 +156,9 @@ function ReduxLogger() {
 
 export default function ReduxExperiment() {
   return (
-    <Provider store={annotationStore}>
+    <>
       <JotaiToReduxBridge />
       <ReduxLogger />
-    </Provider>
+    </>
   );
 }

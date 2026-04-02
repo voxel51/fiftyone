@@ -4,10 +4,11 @@ import { useAtomValue } from "jotai";
 import React, { useEffect } from "react";
 import styled from "styled-components";
 import Actions from "./Actions";
-import Edit, { isEditing } from "./Edit";
+import Edit from "./Edit";
 import ImportSchema, { useShowImportSchema } from "./ImportSchema";
 import SchemaManager from "./SchemaManager";
 import { useSchemaManagerModal } from "./SchemaManager/hooks";
+import { useIsEditing } from "./redux/hooks";
 import { labelSchemasData } from "./state";
 import type { AnnotationDisabledReason } from "./useCanAnnotate";
 import useSourceFieldToActivate from "./useSourceFieldToActivate";
@@ -15,8 +16,10 @@ import useLabels from "./useLabels";
 import { useAnnotationContextManager } from "./useAnnotationContextManager";
 import useDelete from "./Edit/useDelete";
 import { KnownContexts, useUndoRedo } from "@fiftyone/commands";
+import { Provider } from "react-redux";
 import LabelList from "./LabelList";
 import ReduxExperiment from "./redux/ReduxExperiment";
+import { annotationStore } from "./redux/store";
 
 const DISABLED_MESSAGES: Record<
   Exclude<AnnotationDisabledReason, null>,
@@ -64,10 +67,16 @@ interface AnnotateProps {
   disabledReason: AnnotationDisabledReason;
 }
 
-const Annotate = ({ disabledReason }: AnnotateProps) => {
+const Annotate = ({ disabledReason }: AnnotateProps) => (
+  <Provider store={annotationStore}>
+    <AnnotateInner disabledReason={disabledReason} />
+  </Provider>
+);
+
+const AnnotateInner = ({ disabledReason }: AnnotateProps) => {
   const { schemaManagerDisplayed } = useSchemaManagerModal();
   const loading = useAtomValue(labelSchemasData) === null;
-  const isEditingValue = useAtomValue(isEditing);
+  const isEditingValue = useIsEditing();
 
   const contextManager = useAnnotationContextManager();
   const { clear: clearUndo } = useUndoRedo(KnownContexts.ModalAnnotate);

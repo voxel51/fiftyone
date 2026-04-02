@@ -1,10 +1,9 @@
 import { Selector } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { useAtomValue } from "jotai";
 import React, { useCallback, useEffect, useMemo } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
-import { isEditing } from "./Edit";
+import { useIsEditing } from "./redux/hooks";
 import { useApplyAnnotationSliceVisibility } from "./useApplyAnnotationSliceVisibility";
 import { useGroupAnnotationSlices } from "./useGroupAnnotationSlices";
 
@@ -62,7 +61,7 @@ const SliceOption = ({ value, isDisabled, mediaType }: SliceOptionProps) => {
 export const AnnotationSliceSelector: React.FC<
   AnnotationSliceSelectorProps
 > = ({ onSliceSelected }) => {
-  const isEditing_ = useAtomValue(isEditing);
+  const isEditing_ = useIsEditing();
 
   const { allSlices, supportedSlices, preferredSlice, setPreferredSlice } =
     useGroupAnnotationSlices();
