@@ -156,7 +156,7 @@ def _update_runs(
     for run_id in runs.values():
         try:
             run_dict = db.runs.find_one({"_id": run_id})
-        except:
+        except Exception:
             continue
 
         config = run_dict.get("config", {})
@@ -173,7 +173,7 @@ def _update_runs(
                     run_dict["results"] = _update_run_results(
                         db, results_id, results_updates
                     )
-                except:
+                except Exception:
                     pass
 
             db.runs.replace_one({"_id": run_id}, run_dict)
@@ -196,7 +196,7 @@ def _update_run_results(db, results_id, updates):
     try:
         # Delete old run results
         fs.delete(results_id)
-    except:
+    except Exception:
         pass
 
     return new_results_id
