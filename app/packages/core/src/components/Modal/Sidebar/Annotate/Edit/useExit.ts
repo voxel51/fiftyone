@@ -4,12 +4,12 @@ import { selectedLabelForAnnotationAtom } from "@fiftyone/looker-3d/src/state";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { useSetRecoilState } from "recoil";
-import { editing } from ".";
+import { useStopEditing } from "../redux/hooks";
 import { current, currentOverlay, savedLabel } from "./state";
 import useActivePrimitive from "./useActivePrimitive";
 
 export default function useExit() {
-  const setEditing = useSetAtom(editing);
+  const stopEditing = useStopEditing();
   const [, setActivePrimitive] = useActivePrimitive();
   const setSaved = useSetAtom(savedLabel);
   const { scene, removeOverlay } = useLighter();
@@ -54,7 +54,7 @@ export default function useExit() {
 
     // reset editing state
     setSaved(null);
-    setEditing(null);
+    stopEditing();
     setActivePrimitive(null);
   }, [
     label,
@@ -62,7 +62,7 @@ export default function useExit() {
     removeOverlay,
     scene,
     setActivePrimitive,
-    setEditing,
+    stopEditing,
     setSaved,
   ]);
 }

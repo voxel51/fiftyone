@@ -22,6 +22,11 @@ import { useRecoilCallback, useRecoilValue } from "recoil";
 import { isEqual } from "lodash";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  useActiveSchemas,
+  useActiveSchemasState,
+  useSchemaTabState,
+} from "../redux/hooks";
+import {
   activeLabelSchemas,
   activePaths,
   activeSchemaTab,
@@ -100,7 +105,7 @@ export const useSchemaManagerModal = () => {
  * Hook to get and set the schema editor mode (gui/json toggle)
  */
 export const useSchemaEditorGUIJSONToggle = () => {
-  const [tab, setTab] = useAtom(activeSchemaTab);
+  const [tab, setTab] = useSchemaTabState();
   return { tab, setTab };
 };
 
@@ -172,7 +177,7 @@ export const useHiddenFieldsWithMetadata = () => {
  */
 export const useActiveFieldsList = () => {
   const [fieldsFromNew, setFieldsNew] = useAtom(activePaths);
-  const [fieldsFromLegacy, setFieldsLegacy] = useAtom(activeLabelSchemas);
+  const [fieldsFromLegacy, setFieldsLegacy] = useActiveSchemasState();
 
   // Use new system fields if available, fall back to legacy
   const fields = fieldsFromNew?.length ? fieldsFromNew : fieldsFromLegacy ?? [];
@@ -201,7 +206,7 @@ export const useActiveFieldsMetadata = () => {
  * Hook to check if a field is in active schemas
  */
 export const useIsFieldActive = (field: string) => {
-  const activeFields = useAtomValue(activeLabelSchemas);
+  const activeFields = useActiveSchemas();
   return activeFields?.includes(field) ?? false;
 };
 
@@ -353,7 +358,7 @@ export const useSetActiveLabelSchemas = () => {
 export const useToggleFieldVisibility = (field: string) => {
   const addToActive = useSetAtom(addToActiveSchemas);
   const removeFromActive = useSetAtom(removeFromActiveSchemas);
-  const activeFields = useAtomValue(activeLabelSchemas);
+  const activeFields = useActiveSchemas();
   const { activateSchemas, deactivateSchemas } = useSchemaManager();
 
   const isActive = activeFields?.includes(field) ?? false;

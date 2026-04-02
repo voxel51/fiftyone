@@ -9,8 +9,8 @@ import {
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { isEqual } from "lodash";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useActiveSchemas } from "../../redux/hooks";
 import {
-  activeLabelSchemas,
   addToActiveSchemas,
   currentField,
   labelSchemaData,
@@ -78,7 +78,7 @@ const useHasChanges = (one: unknown, two: unknown) => {
  * activate/deactivate operators.
  */
 const useVisibility = (field: string) => {
-  const activeSchemas = useAtomValue(activeLabelSchemas);
+  const activeSchemas = useActiveSchemas();
   const [toggled, setToggled] = useState(false);
 
   const savedVisible = (activeSchemas ?? []).includes(field);
@@ -146,7 +146,7 @@ const useSave = (field: string, visibilityChanged: boolean) => {
     useSchemaManager();
   const addToActive = useSetAtom(addToActiveSchemas);
   const removeFromActive = useSetAtom(removeFromActiveSchemas);
-  const activeSchemas = useAtomValue(activeLabelSchemas);
+  const activeSchemas = useActiveSchemas();
   const notify = useNotification();
   const [current] = useCurrentLabelSchema(field);
   const setCurrentField = useSetAtom(currentField);

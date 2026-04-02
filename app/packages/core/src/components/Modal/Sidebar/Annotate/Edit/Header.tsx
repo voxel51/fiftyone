@@ -10,8 +10,8 @@ import { ItemLeft, ItemRight } from "../Components";
 import { ICONS } from "../Icons";
 import { Row } from "./Components";
 
-import { labels } from "../useLabels";
 import * as fos from "@fiftyone/state";
+import { useAnnotationLabelCount } from "../redux/hooks";
 import { isGeneratedView } from "@fiftyone/state";
 import { useRecoilValue } from "recoil";
 import { useSchemaManagerModal } from "../SchemaManager/hooks";
@@ -102,7 +102,7 @@ const Header = () => {
 
   // In patches view with single label, clicking back should go to explore mode
   const isPatches = useRecoilValue(fos.isPatchesView);
-  const labelCount = useAtomValue(labels).length;
+  const labelCount = useAnnotationLabelCount();
   const shouldExitToExplore = isPatches && labelCount === 1;
 
   const handleExit = useCallback(() => {

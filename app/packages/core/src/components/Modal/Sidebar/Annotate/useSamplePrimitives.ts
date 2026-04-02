@@ -1,11 +1,10 @@
 import { State, fieldPaths } from "@fiftyone/state";
 import { DICT_FIELD, VALID_PRIMITIVE_TYPES } from "@fiftyone/utilities";
-import { useAtomValue } from "jotai";
 import { useRecoilValue } from "recoil";
-import { activeLabelSchemas } from "./state";
+import { useActiveSchemas } from "./redux/hooks";
 
 const useSamplePrimitives = (): string[] => {
-  const activeFields = useAtomValue(activeLabelSchemas);
+  const activeFields = useActiveSchemas();
   const primitivePaths = useRecoilValue(
     fieldPaths({
       space: State.SPACE.SAMPLE,

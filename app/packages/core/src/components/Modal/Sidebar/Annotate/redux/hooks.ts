@@ -12,7 +12,14 @@ import { useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { editing } from "../Edit/state";
 import type { LabelType } from "../Edit/state";
-import { hoverLabel, setAnnotating, setEditingLabel } from "./annotationSlice";
+import { activeLabelSchemas, activeSchemaTab } from "../state";
+import {
+  hoverLabel,
+  setActiveSchemas,
+  setAnnotating,
+  setEditingLabel,
+  setSchemaTab,
+} from "./annotationSlice";
 import type { AnnotationLabel } from "./annotationSlice";
 import type { AnnotationAppDispatch, AnnotationRootState } from "./store";
 
@@ -140,3 +147,49 @@ export const useSetHoveredLabel = () => {
     [dispatch]
   );
 };
+
+/**
+ * Read+write the schema tab (gui/json). Dual-writes to Redux and Jotai.
+ */
+export const useSchemaTabState = (): [
+  "gui" | "json",
+  (tab: "gui" | "json") => void,
+] => {
+  const tab = useSchemaTab();
+  const dispatch = useAnnotationDispatch();
+
+  const setTab = useCallback(
+    (value: "gui" | "json") => {
+      dispatch(setSchemaTab(value));
+      getDefaultStore().set(activeSchemaTab, value);
+    },
+    [dispatch]
+  );
+
+  return [tab, setTab];
+};
+
+/**
+ * Read+write active schemas. Dual-writes to Redux and Jotai.
+ */
+export const useActiveSchemasState = (): [
+  string[],
+  (schemas: string[] | null) => void,
+] => {
+  const schemas = useActiveSchemas();
+  const dispatch = useAnnotationDispatch();
+
+  const setSchemas = useCallback(
+    (value: string[] | null) => {
+      dispatch(setActiveSchemas(value ?? []));
+      getDefaultStore().set(activeLabelSchemas, value);
+    },
+    [dispatch]
+  );
+
+  return [schemas, setSchemas];
+};
+
+/** Label count from the Redux store. */
+export const useAnnotationLabelCount = (): number =>
+  useAnnotationSelector((s) => s.annotation.labels.length);

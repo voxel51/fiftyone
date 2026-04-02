@@ -46,6 +46,8 @@ import { Sidebar } from "./Sidebar";
 import SchemaManagementProvider from "./Sidebar/Annotate/SchemaManagementProvider";
 import useCanManageSchema from "./Sidebar/Annotate/useCanManageSchema";
 import { useAnnotationTracking } from "./Sidebar/Annotate/useAnnotationTracking";
+import { Provider as ReduxProvider } from "react-redux";
+import { annotationStore } from "./Sidebar/Annotate/redux/store";
 import { TooltipInfo } from "./TooltipInfo";
 import { useLookerHelpers, useTooltipEventHandler } from "./hooks";
 import { modalContext } from "./modal-context";
@@ -338,6 +340,7 @@ const Modal = () => {
   );
 
   return ReactDOM.createPortal(
+    <ReduxProvider store={annotationStore}>
     <modalContext.Provider
       value={{
         activeLookerRef,
@@ -389,7 +392,8 @@ const Modal = () => {
           </ReactErrorBoundary>
         </ModalContainer>
       </ModalWrapper>
-    </modalContext.Provider>,
+    </modalContext.Provider>
+    </ReduxProvider>,
     document.getElementById("modal") as HTMLDivElement
   );
 };

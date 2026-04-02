@@ -1,4 +1,5 @@
 import { atom, useAtom } from "jotai";
+import { useActiveSchemasState } from "./redux/hooks";
 import { atomFamily } from "jotai/utils";
 import { capitalize } from "lodash";
 import { LabelSchemaMeta } from "./useSchemaManager";
@@ -184,7 +185,7 @@ export const useAnnotationSchemaContext = (): AnnotationSchemaContext => {
     string,
     LabelSchemaMeta
   > | null>(labelSchemasData);
-  const [activeSchemaPaths, setActiveSchemaPaths] = useAtom(activeLabelSchemas);
+  const [activeSchemaPaths, setActiveSchemaPaths] = useActiveSchemasState();
 
   return useMemo(
     () => ({

@@ -16,10 +16,8 @@ import useLabels from "./useLabels";
 import { useAnnotationContextManager } from "./useAnnotationContextManager";
 import useDelete from "./Edit/useDelete";
 import { KnownContexts, useUndoRedo } from "@fiftyone/commands";
-import { Provider } from "react-redux";
 import LabelList from "./LabelList";
 import ReduxExperiment from "./redux/ReduxExperiment";
-import { annotationStore } from "./redux/store";
 
 const DISABLED_MESSAGES: Record<
   Exclude<AnnotationDisabledReason, null>,
@@ -67,13 +65,7 @@ interface AnnotateProps {
   disabledReason: AnnotationDisabledReason;
 }
 
-const Annotate = ({ disabledReason }: AnnotateProps) => (
-  <Provider store={annotationStore}>
-    <AnnotateInner disabledReason={disabledReason} />
-  </Provider>
-);
-
-const AnnotateInner = ({ disabledReason }: AnnotateProps) => {
+const Annotate = ({ disabledReason }: AnnotateProps) => {
   const { schemaManagerDisplayed } = useSchemaManagerModal();
   const loading = useAtomValue(labelSchemasData) === null;
   const isEditingValue = useIsEditing();
