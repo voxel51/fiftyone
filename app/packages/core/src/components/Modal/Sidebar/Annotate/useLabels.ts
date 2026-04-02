@@ -510,7 +510,6 @@ export default function useLabels() {
     setActiveLabelId,
     setLabels,
     setLoading,
-    updateLabelAtom,
   ]);
 
   /**
