@@ -6,7 +6,7 @@ import {
   modalMode,
   useModalExplorEntries,
 } from "@fiftyone/state";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue } from "jotai";
 import { useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { useRecoilValue } from "recoil";
@@ -16,7 +16,6 @@ import SidebarContainer from "../../Sidebar/SidebarContainer";
 import Annotate from "./Annotate";
 import { AnnotationSliceSelector } from "./Annotate/AnnotationSliceSelector";
 import { GroupModeTransitionManager } from "./Annotate/GroupModeTransitionManager";
-import { exploreActiveFields } from "./Annotate/state";
 import useCanAnnotate from "./Annotate/useCanAnnotate";
 import useLoadSchemas from "./Annotate/useLoadSchemas";
 import Mode from "./Mode";
@@ -43,17 +42,14 @@ const Sidebar = () => {
   const exploreFields = useRecoilValue(
     activeFields({ modal: true, expanded: false })
   );
-  const setExploreFields = useSetAtom(exploreActiveFields);
   const dispatch = useDispatch();
 
   useEffect(() => {
-    setExploreFields(exploreFields);
     dispatch(setExploreActiveFieldsAction(exploreFields));
     return () => {
-      setExploreFields(null);
       dispatch(setExploreActiveFieldsAction(null));
     };
-  }, [exploreFields, setExploreFields, dispatch]);
+  }, [exploreFields, dispatch]);
 
   const loadSchemas = useLoadSchemas();
 

@@ -18,6 +18,7 @@ import { selector, useRecoilCallback, useRecoilValue } from "recoil";
 import type { LabelType } from "./Edit/state";
 import {
   useAddLabel,
+  useAnnotationLabels,
   useLabelSchemasData,
   useRemoveLabel,
   useSetLabels,
@@ -260,27 +261,47 @@ export const useGetSidebarLabels = () => {
  * Hook which provides access to the current {@link LabelsContext}.
  */
 export const useLabelsContext = (): LabelsContext => {
-  const addLabelToSidebar = useSetAtom(addLabel);
-  const updateLabelData = useUpdateLabelAtom();
-  const setLabels = useSetAtom(labels);
+  const reduxAddLabel = useAddLabel();
+  const reduxRemoveLabel = useRemoveLabel();
+  const reduxLabels = useAnnotationLabels();
 
-  const getLabelById = useAtomCallback(
-    useCallback(
-      (get, _set, id: string) =>
-        get(labels).find((label) => label.data._id === id),
-      []
-    )
+  const addLabelToSidebar = useCallback(
+    (label: AnnotationLabel) => {
+      reduxAddLabel({
+        id: label.data?._id ?? "unknown",
+        overlayId: label.overlayId,
+        path: label.path,
+        type: label.type,
+        cls: label.data?._cls ?? "",
+        isNew: label.isNew,
+        label: label.data?.label,
+        confidence: label.data?.confidence,
+        boundingBox: label.data?.bounding_box,
+        data: label.data as unknown as Record<string, unknown>,
+      });
+    },
+    [reduxAddLabel]
   );
 
-  const reduxRemoveLabel = useRemoveLabel();
+  const getLabelById = useCallback(
+    (id: string) =>
+      // Return a minimal AnnotationLabel-compatible object from Redux data
+      reduxLabels.find((label) => label.id === id) as any,
+    [reduxLabels]
+  );
+
   const removeLabelFromSidebar = useCallback(
     (labelId: string) => {
-      setLabels((prev) =>
-        prev.filter((label) => label.data._id !== labelId)
-      );
       reduxRemoveLabel(labelId);
     },
-    [setLabels, reduxRemoveLabel]
+    [reduxRemoveLabel]
+  );
+
+  const updateLabelData = useCallback(
+    (_labelId: string, _data: AnnotationLabelData) => {
+      // TODO: dispatch updateLabelById
+    },
+    []
   );
 
   return useMemo(
@@ -299,7 +320,7 @@ export const useLabelsContext = (): LabelsContext => {
  * changes (e.g. user toggles read-only in Schema Manager).
  */
 const useSyncOverlayReadOnly = () => {
-  const currentLabels = useAtomValue(labels);
+  const currentLabels = useAnnotationLabels();
   const schemas = useLabelSchemasData();
   const { getOverlay } = useLighter();
 
@@ -321,20 +342,19 @@ const useSyncOverlayReadOnly = () => {
 
 export default function useLabels() {
   const paths = useRecoilValue(pathMap);
-  const currentLabels = useAtomValue(labels);
+  const reduxLabels = useAnnotationLabels();
+  const reduxLabelsRef = useRef(reduxLabels);
+  reduxLabelsRef.current = reduxLabels;
   const modalSample = useModalSample();
   const currentSampleId = useCurrentSampleId();
-  const setJotaiLabels = useSetAtom(labels);
   const setLoading = useSetAtom(labelsState);
   const active = useVisibleLabelSchemas();
   const addLabelToRenderer = useAddAnnotationLabelToRenderer();
-  const addLabelToJotaiStore = useSetAtom(addLabel);
   const createLabel = useCreateAnnotationLabel();
   const { scene, removeOverlay } = useLighter();
-  const updateLabelAtom = useUpdateLabelAtom();
   const isPatches = useRecoilValue(isPatchesView);
 
-  // Redux writes
+  // Redux-only writes
   const reduxAddLabel = useAddLabel();
   const reduxSetLabels = useSetLabels();
 
@@ -356,18 +376,16 @@ export default function useLabels() {
 
   const setLabels = useCallback(
     (result: AnnotationLabel[]) => {
-      setJotaiLabels(result);
       reduxSetLabels(result.map(toReduxLabel));
     },
-    [setJotaiLabels, reduxSetLabels, toReduxLabel]
+    [reduxSetLabels, toReduxLabel]
   );
 
   const addLabelToStore = useCallback(
     (label: AnnotationLabel) => {
-      addLabelToJotaiStore(label);
       reduxAddLabel(toReduxLabel(label));
     },
-    [addLabelToJotaiStore, reduxAddLabel, toReduxLabel]
+    [reduxAddLabel, toReduxLabel]
   );
   const setActiveLabelId = useSetActiveLabelId();
 
@@ -399,7 +417,7 @@ export default function useLabels() {
   // Reset labels when active schemas change to reload and update scene
   useEffect(() => {
     const resetOverlays = () => {
-      currentLabels.forEach((label) => {
+      reduxLabelsRef.current.forEach((label) => {
         removeOverlay(label.overlayId, false);
       });
 
@@ -461,14 +479,13 @@ export default function useLabels() {
                 annotationLabel.data;
             }
 
-            // update sidebar, or add if this is a new label
-            const updated = updateLabelAtom(
-              annotationLabel.data._id,
-              annotationLabel.data
+            // update sidebar via Redux, or add if this is a new label
+            const exists = reduxLabelsRef.current.some(
+              (l) => l.id === annotationLabel.data._id
             );
 
             // new label, add it
-            if (!updated) {
+            if (!exists) {
               addLabelToStore(annotationLabel);
               addLabelToRenderer(annotationLabel);
             }
