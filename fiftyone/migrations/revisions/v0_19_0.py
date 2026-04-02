@@ -91,7 +91,7 @@ def _down_runs(db, dataset_dict, runs_field):
         if isinstance(_id, ObjectId):
             try:
                 run_doc = db.runs.find_one({"_id": _id})
-            except:
+            except Exception:
                 continue
 
             db.runs.delete_one({"_id": _id})
@@ -108,24 +108,24 @@ def _down_runs(db, dataset_dict, runs_field):
 def _warn_legacy_3d_config(dataset_dict):
     try:
         config = dataset_dict["app_config"]["plugins"]["3d"]
-    except:
+    except Exception:
         return
 
     is_legacy = False
 
     try:
         is_legacy |= "itemRotation" in config["overlay"]
-    except:
+    except Exception:
         pass
 
     try:
         is_legacy |= "rotation" in config["overlay"]
-    except:
+    except Exception:
         pass
 
     try:
         is_legacy |= "rotation" in config["pointCloud"]
-    except:
+    except Exception:
         pass
 
     if is_legacy:
