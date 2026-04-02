@@ -4462,7 +4462,6 @@ class PluginsSkillsCommand(Command):
     def setup(parser):
         subparsers = parser.add_subparsers(title="available commands")
         _register_command(subparsers, "list", PluginsSkillsListCommand)
-        _register_command(subparsers, "install", PluginsSkillsInstallCommand)
 
     @staticmethod
     def execute(parser, args):
@@ -4539,86 +4538,6 @@ def _print_skills_list(plugin=None, category=None, names_only=False):
     records = [tuple(_format_cell(r[key]) for key in headers) for r in rows]
     table_str = tabulate(records, headers=headers, tablefmt=_TABLE_FORMAT)
     print(table_str)
-
-
-class PluginsSkillsInstallCommand(Command):
-    """Install plugin skills to AI agent directories.
-
-    Examples::
-
-        # Install skills for Claude Code
-        fiftyone plugins skills install --claude
-
-        # Install skills for Cursor
-        fiftyone plugins skills install --cursor
-
-        # Install skills for all supported agents
-        fiftyone plugins skills install --claude --cursor --codex --opencode
-
-        # Install skills globally
-        fiftyone plugins skills install --claude --global
-
-        # Install skills from a specific plugin only
-        fiftyone plugins skills install --claude --plugin-names @voxel51/my-plugin
-    """
-
-    @staticmethod
-    def setup(parser):
-        parser.add_argument(
-            "--claude",
-            action="store_true",
-            help="install skills for Claude Code",
-        )
-        parser.add_argument(
-            "--codex",
-            action="store_true",
-            help="install skills for Codex",
-        )
-        parser.add_argument(
-            "--cursor",
-            action="store_true",
-            help="install skills for Cursor",
-        )
-        parser.add_argument(
-            "--opencode",
-            action="store_true",
-            help="install skills for OpenCode",
-        )
-        parser.add_argument(
-            "-g",
-            "--global",
-            dest="global_",
-            action="store_true",
-            help="install to global user-level directories instead of local",
-        )
-        parser.add_argument(
-            "-n",
-            "--plugin-names",
-            nargs="+",
-            default=None,
-            metavar="PLUGIN_NAMES",
-            help="a plugin name or list of plugin names to include",
-        )
-
-    @staticmethod
-    def execute(parser, args):
-        agents = [
-            a
-            for a in ("claude", "codex", "cursor", "opencode")
-            if getattr(args, a)
-        ]
-
-        if not agents:
-            parser.error(
-                "at least one agent flag is required "
-                "(--claude, --codex, --cursor, --opencode)"
-            )
-
-        fop.install_skills(
-            agents=agents,
-            plugin=args.plugin_names,
-            global_=args.global_,
-        )
 
 
 class LabsCommand(Command):

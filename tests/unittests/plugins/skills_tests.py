@@ -141,69 +141,6 @@ def test_list_skills_missing_file_skipped(mocker, plugins_dir):
     assert fop.list_skills() == []
 
 
-def test_install_skills_unknown_agent(mocker, plugins_dir):
-    _make_plugin(plugins_dir, "plugin-a", "skill-a")
-    mocker.patch("fiftyone.config.plugins_dir", plugins_dir)
-
-    with pytest.raises(ValueError, match="Unsupported agent"):
-        fop.install_skills(agents="gemini")
-
-
-def test_install_skills_creates_central_copy(
-    mocker, plugins_dir, tmp_path_factory
-):
-    _make_plugin(plugins_dir, "plugin-a", "skill-a")
-    mocker.patch("fiftyone.config.plugins_dir", plugins_dir)
-
-    central = str(tmp_path_factory.mktemp("central"))
-    agent_dir = str(tmp_path_factory.mktemp("agent"))
-    mocker.patch("fiftyone.plugins.skills._CENTRAL_LOCAL", central)
-    mocker.patch(
-        "fiftyone.plugins.skills._LOCAL_TARGETS", {"claude": agent_dir}
-    )
-
-    fop.install_skills(agents="claude")
-
-    assert os.path.isfile(os.path.join(central, "skill-a", "SKILL.md"))
-
-
-def test_install_skills_creates_symlink(mocker, plugins_dir, tmp_path_factory):
-    _make_plugin(plugins_dir, "plugin-a", "skill-a")
-    mocker.patch("fiftyone.config.plugins_dir", plugins_dir)
-
-    central = str(tmp_path_factory.mktemp("central"))
-    agent_dir = str(tmp_path_factory.mktemp("agent"))
-    mocker.patch("fiftyone.plugins.skills._CENTRAL_LOCAL", central)
-    mocker.patch(
-        "fiftyone.plugins.skills._LOCAL_TARGETS", {"claude": agent_dir}
-    )
-
-    fop.install_skills(agents="claude")
-
-    link = os.path.join(agent_dir, "skill-a")
-    assert os.path.islink(link)
-    assert os.path.realpath(link) == os.path.realpath(
-        os.path.join(central, "skill-a")
-    )
-
-
-def test_install_skills_returns_names(mocker, plugins_dir, tmp_path_factory):
-    _make_plugin(plugins_dir, "plugin-a", "skill-a")
-    _make_plugin(plugins_dir, "plugin-b", "skill-b")
-    mocker.patch("fiftyone.config.plugins_dir", plugins_dir)
-
-    central = str(tmp_path_factory.mktemp("central"))
-    agent_dir = str(tmp_path_factory.mktemp("agent"))
-    mocker.patch("fiftyone.plugins.skills._CENTRAL_LOCAL", central)
-    mocker.patch(
-        "fiftyone.plugins.skills._LOCAL_TARGETS", {"claude": agent_dir}
-    )
-
-    installed = fop.install_skills(agents="claude")
-
-    assert set(installed) == {"skill-a", "skill-b"}
-
-
 def test_parse_skill_frontmatter_valid(tmp_path_factory):
     tmp = tmp_path_factory.mktemp("skills")
     skill_file = tmp / "SKILL.md"
