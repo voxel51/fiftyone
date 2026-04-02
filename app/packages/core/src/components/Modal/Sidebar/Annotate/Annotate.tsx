@@ -16,6 +16,7 @@ import { useAnnotationContextManager } from "./useAnnotationContextManager";
 import useDelete from "./Edit/useDelete";
 import { KnownContexts, useUndoRedo } from "@fiftyone/commands";
 import LabelList from "./LabelList";
+import ReduxExperiment from "./redux/ReduxExperiment";
 
 const DISABLED_MESSAGES: Record<
   Exclude<AnnotationDisabledReason, null>,
@@ -109,6 +110,7 @@ const Annotate = ({ disabledReason }: AnnotateProps) => {
         <LabelList key="annotate" />
       )}
       {schemaManagerDisplayed && <SchemaManager key="manage" />}
+      <ReduxExperiment />
     </>
   );
 };
