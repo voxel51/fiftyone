@@ -219,7 +219,7 @@ export class InteractionManager {
   private currentPixelCoordinates?: Point;
   private readonly eventBus: EventDispatcher<LighterEventGroup>;
 
-  private pendingQuickDraw?: {
+  private pendingDetection?: {
     point: Point;
     worldPoint: Point;
     scale: number;
@@ -299,8 +299,8 @@ export class InteractionManager {
         this.selectionManager.select(handler!.id);
       }
 
-      // QuickDraw: defer overlay creation until we confirm this is a drag.
-      // If the user releases without dragging (a click), exit QuickDraw mode.
+      // Detection mode: defer overlay creation until we confirm this is a drag.
+      // If the user releases without dragging (a click), exit detection mode.
       // Clicking on an existing overlay selects it normally instead.
       if (detectionModeBridge.isDetectionModeActive()) {
         const isNonOverlay = !handler || handler.id === this.canonicalMediaId;
@@ -308,7 +308,7 @@ export class InteractionManager {
         if (isNonOverlay) {
           this.renderer.disableZoomPan();
 
-          this.pendingQuickDraw = {
+          this.pendingDetection = {
             point,
             worldPoint,
             scale,
@@ -371,9 +371,9 @@ export class InteractionManager {
     }
   }
 
-  // Promote pending QuickDraw event once drag threshold is exceeded.
-  private quickDrawCreate = (event: PointerEvent): boolean => {
-    if (!this.pendingQuickDraw) return false;
+  // Promote pending detection mode event once drag threshold is exceeded.
+  private detectionModeCreate = (event: PointerEvent): boolean => {
+    if (!this.pendingDetection) return false;
 
     const point = this.getCanvasPoint(event);
     const worldPoint = this.renderer.screenToWorld(point);
@@ -381,15 +381,15 @@ export class InteractionManager {
     this.currentPixelCoordinates = point;
 
     const distance = Math.hypot(
-      point.x - this.pendingQuickDraw.point.x,
-      point.y - this.pendingQuickDraw.point.y
+      point.x - this.pendingDetection.point.x,
+      point.y - this.pendingDetection.point.y
     );
 
     if (distance > this.CLICK_THRESHOLD) {
-      const pending = this.pendingQuickDraw;
-      this.pendingQuickDraw = undefined;
+      const pending = this.pendingDetection;
+      this.pendingDetection = undefined;
 
-      // Signal QuickDraw to create a detection and register
+      // Signal detection mode to create a detection and register
       // an interactive handler. This relies on the event bus invoking
       // handlers synchronously so the handler is immediately available.
       this.eventBus.dispatch("lighter:overlay-create", {
@@ -434,8 +434,8 @@ export class InteractionManager {
   };
 
   private handlePointerMove = (event: PointerEvent): void => {
-    // short-circuit if pending QuickDraw operation kicks off
-    if (this.quickDrawCreate(event)) return;
+    // short-circuit if pending detection mode operation kicks off
+    if (this.detectionModeCreate(event)) return;
 
     const point = this.getCanvasPoint(event);
     const worldPoint = this.renderer.screenToWorld(point);
@@ -513,14 +513,14 @@ export class InteractionManager {
     }
   };
 
-  private quickDrawQuit = (event: PointerEvent): boolean => {
-    if (!this.pendingQuickDraw) return false;
+  private detectionModeQuit = (event: PointerEvent): boolean => {
+    if (!this.pendingDetection) return false;
 
-    this.eventBus.dispatch("lighter:quickdraw-quit", {
+    this.eventBus.dispatch("lighter:detection-mode-quit", {
       eventId: generateUUID(),
     });
 
-    this.pendingQuickDraw = undefined;
+    this.pendingDetection = undefined;
     this.renderer.enableZoomPan();
     this.canvas.releasePointerCapture(event.pointerId);
     this.clickStartPoint = undefined;
@@ -530,9 +530,9 @@ export class InteractionManager {
   };
 
   private handlePointerUp = (event: PointerEvent): void => {
-    // if we still have a pendingQuickDraw there was no significant movement
-    // the user clicked to exit QuickDraw
-    if (this.quickDrawQuit(event)) return;
+    // if we still have a pendingDetectionDraw there was no significant movement
+    // the user clicked to exit detection mode
+    if (this.detectionModeQuit(event)) return;
 
     const point = this.getCanvasPoint(event);
     const worldPoint = this.renderer.screenToWorld(point);
@@ -615,8 +615,8 @@ export class InteractionManager {
   };
 
   private handlePointerCancel = (event: PointerEvent): void => {
-    if (this.pendingQuickDraw) {
-      this.pendingQuickDraw = undefined;
+    if (this.pendingDetection) {
+      this.pendingDetection = undefined;
       this.renderer.enableZoomPan();
     }
 

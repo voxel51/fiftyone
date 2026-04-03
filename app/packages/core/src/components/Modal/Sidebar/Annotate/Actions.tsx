@@ -142,9 +142,8 @@ const Square = styled(Container)<{ $active?: boolean }>`
 const DeactivateAllContext = createContext<() => void>(() => {});
 
 /**
- * Returns a callback that deactivates all active annotation actions
- * (editing, QuickDraw, 3D modes). Action buttons should call this
- * before activating themselves.
+ * Returns a callback that deactivates any active annotation actions.
+ * Action buttons should call this before activating themselves.
  */
 export const useDeactivateAll = () => useContext(DeactivateAllContext);
 
@@ -233,7 +232,7 @@ const Detection = () => {
       <Square
         $active={detectionModeActive}
         className={disabled ? "disabled" : ""}
-        data-cy="quick-draw-detection"
+        data-cy="detection-mode"
         data-cy-active={detectionModeActive}
         onClick={() => {
           if (disabled) return;

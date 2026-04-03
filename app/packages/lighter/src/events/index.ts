@@ -53,7 +53,7 @@ export type LighterEventGroup = {
   // ============================================================================
   // USER INTERACTION EVENTS
   // ============================================================================
-  /** Emitted on "pointer down" to inform QuickDraw to create a new detection */
+  /** Emitted on "pointer down" to inform detection mode to create a new detection */
   "lighter:overlay-create": { eventId: string };
   /** Emitted when an overlay finishes being established */
   "lighter:overlay-establish": {
@@ -115,8 +115,8 @@ export type LighterEventGroup = {
   "lighter:overlay-all-unhover": { point: Point };
   /** Emitted when the mouse moves while hovering over an overlay */
   "lighter:overlay-hover-move": { id: string; point: Point };
-  /** Emitted when user clicks without dragging in QuickDraw mode to exit */
-  "lighter:quickdraw-quit": { eventId: string };
+  /** Emitted when user clicks without dragging in detection mode to exit */
+  "lighter:detection-mode-quit": { eventId: string };
 
   // ============================================================================
   // KEYPOINT EVENTS
