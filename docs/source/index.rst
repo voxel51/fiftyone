@@ -171,7 +171,7 @@ _________________
 
 .. customcalloutitem::
     :header: Visualizing embeddings
-    :description: Are you using embeddings to analyze your data and models? Use FiftyOne's embeddings visualization capabilities to reveal hidden structure in you data, mine hard samples, pre-annotate data, recommend new samples for annotation, and more.
+    :description: Are you using embeddings to analyze your data and models? Use FiftyOne's embeddings visualization capabilities to reveal hidden structure in your data, mine hard samples, pre-annotate data, recommend new samples for annotation, and more.
     :button_text: Experience the power of embeddings
     :button_link: tutorials/image_embeddings.html
     :image: _static/images/homepage_embeddings.gif
@@ -185,7 +185,7 @@ _________________
 
 .. customcalloutitem::
     :header: Finding annotation mistakes
-    :description: Annotations mistakes create an artificial ceiling on the performance of your model. However, finding these mistakes by hand is not feasible! Use FiftyOne to automatically identify possible label mistakes in your datasets.
+    :description: Annotation mistakes create an artificial ceiling on the performance of your model. However, finding these mistakes by hand is not feasible! Use FiftyOne to automatically identify possible label mistakes in your datasets.
     :button_text: Check out the label mistakes tutorial
     :button_link: tutorials/classification_mistakes.html
     :image: _static/images/homepage_mistakes.gif
@@ -321,7 +321,7 @@ Dataset Zoo
 The FiftyOne Dataset Zoo provides a powerful interface for downloading datasets
 and loading them into FiftyOne.
 
-It provides native access to dozens of popular benchmark datasets, and it als
+It provides native access to dozens of popular benchmark datasets, and it also
 supports downloading arbitrary public or private datasets whose
 download/preparation methods are provided via GitHub repositories or URLs.
 

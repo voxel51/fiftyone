@@ -124,7 +124,7 @@ update to show the corresponding samples:
 
 If you find a better threshold for a dataset, you can save it via the
 "Save Threshold" option under the settings menu. You can use
-"Reset Threshold" to the revert to the default threshold at any time.
+"Reset Threshold" to revert to the default threshold at any time.
 
 Once you've reviewed the potential issues in the grid, you can use the
 "Add Tags" button to take action on them. Clicking the button will display a

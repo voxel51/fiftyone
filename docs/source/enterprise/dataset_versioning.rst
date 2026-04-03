@@ -154,7 +154,7 @@ been re-materialized but kept in cold storage also).
 Snapshot archival
 -----------------
 
-Snapshot your datasets easier knowing your database won't be overrun!
+Snapshot your datasets more easily knowing your database won't be overrun!
 
 If your snapshots are important for historical significance but aren't used
 very often, then you can consider archiving snapshots. This is especially
