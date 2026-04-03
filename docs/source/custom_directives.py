@@ -319,33 +319,28 @@ class CustomImageLinkDirective(Directive):
         "image_link": directives.unchanged,
         "image_src": directives.unchanged,
         "image_title": directives.unchanged,
+        "class": directives.unchanged,
     }
 
     def run(self):
         image_link = self.options.get("image_link", "")
         image_src = self.options.get("image_src", "")
         image_title = self.options.get("image_title", "")
+        css_class = self.options.get("class", "")
 
-        callout_rst = _CUSTOM_IMAGE_LINK_TEMPLATE.format(
+        html = _CUSTOM_IMAGE_LINK_TEMPLATE.format(
             image_link=image_link,
             image_src=image_src,
             image_title=image_title,
+            css_class=(' class="' + css_class + '"') if css_class else '',
         )
 
-        image_list = StringList(callout_rst.split("\n"))
-        image = nodes.paragraph()
-        self.state.nested_parse(image_list, self.content_offset, image)
-        return [image]
+        return [nodes.raw("", html, format="html")]
 
 
-_CUSTOM_IMAGE_LINK_TEMPLATE = """
-.. raw:: html
-
-    <div>
-        <a href="{image_link}" title="{image_title}">
-          <img src="{image_src}" alt="{image_title}"/>
-        </a>
-    </div>
+_CUSTOM_IMAGE_LINK_TEMPLATE = """<a href="{image_link}" title="{image_title}"{css_class}>
+  <img src="{image_src}" alt="{image_title}"/>
+</a>
 """
 
 

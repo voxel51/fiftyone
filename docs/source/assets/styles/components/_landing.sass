@@ -1,6 +1,16 @@
 // ==============================================
 // Landing Page Redesign (Designer Mockup)
 // ==============================================
+//
+// Architecture notes:
+// - All styles are scoped to #fiftyone (the RST-generated section ID from
+//   the page title "FiftyOne") to avoid leaking to other docs pages.
+// - RST headings (Get Started, Capabilities, etc.) are visually hidden
+//   (height:0) but remain in the DOM as scroll anchors for the sidebar TOC.
+//   The visible section headings are HTML <h3> elements with class
+//   .section-descriptive-heading, rendered via raw HTML blocks.
+// - The customimagelink directive supports an optional :class: option for
+//   per-logo styling (e.g., :class: logo-gcloud for size overrides).
 
 // --- Variables ---
 
@@ -226,13 +236,18 @@ $arrow-icon-dark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/s
     margin: 0
     overflow: hidden
 
-  // Tighten spacing between pill and RST headings
+  // Hide RST headings visually (they exist only for sidebar TOC scroll targets)
   section
     margin-top: 0
 
     > h2:first-child
-      margin-top: 8px
-      margin-bottom: 16px
+      height: 0
+      margin: 0
+      padding: 0
+      overflow: hidden
+      font-size: 0
+      line-height: 0
+      border: 0
 
   // Hide permalink icons
   .headerlink
@@ -431,17 +446,9 @@ $arrow-icon-dark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/s
 
 // --- Section with heading + CTA side by side ---
 
-section#what-are-you-working-on
-  display: flex
-  flex-wrap: wrap
-  align-items: baseline
-  justify-content: space-between
-
-  > h2
-    margin-right: auto
-
+section#get-started
   > .use-case-section
-    flex-basis: 100%
+    width: 100%
 
 .section-header-cta
   margin-top: 0
@@ -657,24 +664,26 @@ section#what-are-you-working-on
 .integrations-tier1,
 .integrations-tier2
   display: grid !important
+  grid-template-columns: repeat(3, 1fr)
   justify-items: center
   align-items: center
+  overflow: hidden
 
-  > p
-    margin: 0
+  // customimagelink outputs <a> tags directly as grid children
+  > a
     display: flex
     align-items: center
     justify-content: center
+    width: 100%
 
 .integrations-tier1
-  grid-template-columns: repeat(5, 1fr)
   gap: 16px
   margin-top: 32px
   margin-bottom: 24px
   padding-bottom: 24px
   border-bottom: 1px solid var(--pst-color-border, $landing-surface)
 
-  > p
+  > a
     height: 80px
 
   img
@@ -683,11 +692,20 @@ section#what-are-you-working-on
     width: auto
     object-fit: contain
 
+  // Per-logo size adjustments via class option
+  .logo-gcloud img
+    max-height: 72px
+
+  .logo-azure
+    grid-column: 2
+
+  .logo-azure img
+    max-height: 36px
+
 .integrations-tier2
-  grid-template-columns: repeat(6, 1fr)
   gap: 8px
 
-  > p
+  > a
     height: 56px
 
   img
@@ -749,11 +767,9 @@ section#what-are-you-working-on
   .install-bar-right
     justify-content: center
 
-  .integrations-tier1
-    grid-template-columns: repeat(3, 1fr)
-
+  .integrations-tier1,
   .integrations-tier2
-    grid-template-columns: repeat(4, 1fr)
+    grid-template-columns: repeat(2, 1fr)
 
   .quickstart-cta-banner
     flex-direction: column
@@ -774,11 +790,9 @@ section#what-are-you-working-on
   .quick-link-item
     white-space: normal
 
-  .integrations-tier1
-    grid-template-columns: repeat(2, 1fr)
-
+  .integrations-tier1,
   .integrations-tier2
-    grid-template-columns: repeat(3, 1fr)
+    grid-template-columns: 1fr
 
   .quick-link-item
     white-space: normal

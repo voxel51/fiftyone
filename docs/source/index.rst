@@ -122,20 +122,19 @@ FiftyOne
 
 .. Section 2: Use-Case Cards --------------------------------------------------
 
-.. raw:: html
-
-  <div class="section-label-pill">Get Started</div>
-
 Get Started
 ___________
 
 .. raw:: html
 
-    <h3 class="section-descriptive-heading">What are you working on?</h3>
-    <a href="getting_started/index.html" class="capability-cta-v4 section-header-cta">
+    <div class="section-label-pill">Get Started</div>
+    <div class="section-header-row">
+      <h3 class="section-descriptive-heading">What are you working on?</h3>
+      <a href="getting_started/index.html" class="capability-cta-v4 section-header-cta">
       <span class="orange-arrow-circle"></span>
       Explore all getting started guides
     </a>
+    </div>
     <div class="use-case-section">
         <div class="row use-case-cards-grid">
 
@@ -195,15 +194,13 @@ ___________
 
 .. Section 3: Core Capabilities -----------------------------------------------
 
-.. raw:: html
-
-  <div class="section-label-pill">Capabilities</div>
-
 Capabilities
 ____________
 
 .. raw:: html
 
+    <div class="section-label-pill">Capabilities</div>
+    <h3 class="section-descriptive-heading">Explore FiftyOne's key features</h3>
     <p class="capability-subtitle">Everything you need to build, evaluate, and ship better computer vision models.</p>
 
     <div class="capability-section">
@@ -263,15 +260,12 @@ ____________
 
 .. Section 4: Integrations (tiered grid) --------------------------------------
 
-.. raw:: html
-
-  <div class="section-label-pill">Integrations</div>
-
 Integrations
 ____________
 
 .. raw:: html
 
+    <div class="section-label-pill">Integrations</div>
     <h3 class="section-descriptive-heading">Works with your favorite tools</h3>
     <div class="section-header-row integrations-subtitle-row">
       <p class="capability-subtitle integrations-subtitle">FiftyOne integrates natively with your favorite tools. Click on a logo to learn how.</p>
@@ -322,6 +316,7 @@ ____________
     :image_link: enterprise/installation.html#google-cloud-storage
     :image_src: https://voxel51.com/images/integrations/google-cloud-128.png
     :image_title: Google Cloud
+    :class: logo-gcloud
 
 .. customimagelink::
     :image_link: enterprise/installation.html#amazon-s3
@@ -332,6 +327,7 @@ ____________
     :image_link: enterprise/installation.html#microsoft-azure
     :image_src: https://voxel51.com/images/integrations/azure-128.png
     :image_title: Azure
+    :class: logo-azure
 
 .. raw:: html
 
@@ -466,16 +462,13 @@ ____________
 
 .. Section 5: Need Support? ---------------------------------------------------
 
-.. raw:: html
-
-  <div class="section-label-pill">Community</div>
-
 Community
 _________
 
 .. raw:: html
 
-  <h3 class="section-descriptive-heading">Need Support?</h3>
+  <div class="section-label-pill">Community</div>
+  <h3 class="section-descriptive-heading">Need support?</h3>
   <p class="capability-subtitle">If you run into any issues with FiftyOne or have any burning questions, feel free to connect with us</p>
   <div class="support-section">
     <div class="support-links">
