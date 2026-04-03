@@ -21,7 +21,7 @@ import styled from "styled-components";
 import {
   MAX_TOOL_SIZE,
   MIN_TOOL_SIZE,
-  useSegmentationMasks,
+  useSegmentationMode,
 } from "./useSegmentationMode";
 
 // ---------------------------------------------------------------------------
@@ -88,7 +88,7 @@ export const SegmentationToolbar: React.FC<SegmentationToolbarProps> = ({
     switchTool,
     switchToolShape,
     setToolSize,
-  } = useSegmentationMasks();
+  } = useSegmentationMode();
 
   return (
     <FloatingToolbar

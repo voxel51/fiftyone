@@ -31,7 +31,7 @@ import { editing } from "./Edit";
 import { useClassification } from "./Edit/useClassification";
 import { fieldsOfType } from "./Edit/state";
 import { useQuickDraw } from "./Edit/useQuickDraw";
-import { useSegmentationMasks } from "./Edit/useSegmentationMode";
+import { useSegmentationMode } from "./Edit/useSegmentationMode";
 
 const ActionsDiv = styled.div`
   align-items: center;
@@ -266,7 +266,7 @@ const Detection = () => {
 };
 
 const Segmentation = () => {
-  const { active, enter, exit } = useSegmentationMasks();
+  const { active, enter, exit } = useSegmentationMode();
   const deactivateAll = useDeactivateAll();
   const isPatchView = useRecoilValue(isPatchesView);
   const fields = useAtomValue(fieldsOfType(DETECTION));
@@ -493,7 +493,7 @@ const Actions = () => {
   const {
     active: segmentationMasksActive,
     exit: disableSegmentationMasks,
-  } = useSegmentationMasks();
+  } = useSegmentationMode();
   const current3dAnnotationMode = useCurrent3dAnnotationMode();
   const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
 

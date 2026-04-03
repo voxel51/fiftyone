@@ -63,7 +63,7 @@ const lastProcessedCreateIdAtom = atom<string | null>(null);
  * (editing atom in state.ts, SelectionManager in Lighter).
  * This hook only owns segmentation-specific tool state.
  */
-export const useSegmentationMasks = () => {
+export const useSegmentationMode = () => {
   const { scene, addOverlay } = useLighter();
   const { selectedLabel } = useAnnotationContext();
   const useEventHandler = useLighterEventHandler(
