@@ -38,7 +38,6 @@ fout = fou.lazy_import("fiftyone.utils.torch")
 foutr = fou.lazy_import("fiftyone.utils.transformers")
 fouu = fou.lazy_import("fiftyone.utils.ultralytics")
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -261,6 +260,7 @@ def apply_model(
                     skip_failures,
                     filename_maker,
                     progress,
+                    field_mapping=field_mapping,  # workaround until samples mixin is deprecated for all models
                 )
 
             return _apply_image_model_to_frames_single(
@@ -272,6 +272,7 @@ def apply_model(
                 skip_failures,
                 filename_maker,
                 progress,
+                field_mapping=field_mapping,  # workaround until samples mixin is deprecated for all models
             )
 
         if use_data_loader:
@@ -535,12 +536,13 @@ def _apply_image_model_to_frames_single(
     skip_failures,
     filename_maker,
     progress,
+    field_mapping=None,
 ):
     needs_samples = isinstance(model, SamplesMixin)
     frame_counts, total_frame_count = _get_frame_counts(samples)
     is_clips = samples._dataset._is_clips
 
-    samples = _select_fields_for_inference(samples, model)
+    samples = _select_fields_for_inference(samples, model, field_mapping)
 
     with contextlib.ExitStack() as context:
         pb = context.enter_context(
@@ -562,6 +564,44 @@ def _apply_image_model_to_frames_single(
                         if needs_samples:
                             frame = sample.frames[video_reader.frame_number]
                             labels = model.predict(img, sample=frame)
+                        elif field_mapping:
+                            # This will be removed in the future when GetItem/dataloaders support video readers.
+                            frame = sample.frames[video_reader.frame_number]
+
+                            _field_mapping = {
+                                k: v[len("frames.") :]
+                                if v.startswith("frames.")
+                                else v
+                                for k, v in field_mapping.items()
+                            }
+
+                            if hasattr(
+                                model.config, "get_item_cls"
+                            ) and not model.config.get_item_cls.endswith(
+                                "ForVideo"
+                            ):
+                                context.enter_context(
+                                    fou.SetAttributes(
+                                        model.config,
+                                        get_item_cls=model.config.get_item_cls
+                                        + "ForVideo",
+                                    )
+                                )
+                            get_item = model.build_get_item(
+                                field_mapping=_field_mapping
+                            )
+                            _field_mapping = get_item.field_mapping
+                            _ = _field_mapping.pop("image")
+
+                            sample_dict = fout.get_samples_dict_for_get_item(
+                                [frame],
+                                _field_mapping,
+                                skip_failures=skip_failures,
+                            )[0]
+                            if "image" in get_item.required_keys:
+                                sample_dict["image"] = img
+                            model_input = get_item(sample_dict)
+                            labels = model.predict(model_input)
                         else:
                             labels = model.predict(img)
 
@@ -600,12 +640,13 @@ def _apply_image_model_to_frames_batch(
     skip_failures,
     filename_maker,
     progress,
+    field_mapping=None,
 ):
     needs_samples = isinstance(model, SamplesMixin)
     frame_counts, total_frame_count = _get_frame_counts(samples)
     is_clips = samples._dataset._is_clips
 
-    samples = _select_fields_for_inference(samples, model)
+    samples = _select_fields_for_inference(samples, model, field_mapping)
 
     with contextlib.ExitStack() as context:
         pb = context.enter_context(
@@ -628,6 +669,50 @@ def _apply_image_model_to_frames_batch(
                             _frames = [sample.frames[fn] for fn in fns]
                             labels_batch = model.predict_all(
                                 imgs, samples=_frames
+                            )
+                        elif field_mapping:
+                            # This will be removed in the future when GetItem/dataloaders support video readers.
+                            _frames = [sample.frames[fn] for fn in fns]
+                            _field_mapping = {
+                                k: v[len("frames.") :]
+                                if v.startswith("frames.")
+                                else v
+                                for k, v in field_mapping.items()
+                            }
+
+                            if hasattr(
+                                model.config, "get_item_cls"
+                            ) and not model.config.get_item_cls.endswith(
+                                "ForVideo"
+                            ):
+                                context.enter_context(
+                                    fou.SetAttributes(
+                                        model.config,
+                                        get_item_cls=model.config.get_item_cls
+                                        + "ForVideo",
+                                    )
+                                )
+                            get_item = model.build_get_item(
+                                field_mapping=_field_mapping
+                            )
+                            _field_mapping = get_item.field_mapping
+                            _ = _field_mapping.pop("image")
+
+                            sample_dicts = fout.get_samples_dict_for_get_item(
+                                _frames,
+                                get_item.field_mapping,
+                                skip_failures=skip_failures,
+                            )
+                            if "image" in get_item.required_keys:
+                                for d_idx, sample_dict in enumerate(
+                                    sample_dicts
+                                ):
+                                    sample_dict["image"] = imgs[d_idx]
+                            labels_batch = model.predict_all(
+                                [
+                                    get_item(sample_dict)
+                                    for sample_dict in sample_dicts
+                                ]
                             )
                         else:
                             labels_batch = model.predict_all(imgs)
@@ -712,9 +797,13 @@ def _apply_video_model(
                 logger.warning("Sample: %s\nError: %s\n", sample.id, e)
 
 
-def _select_fields_for_inference(samples, model):
+def _select_fields_for_inference(samples, model, field_mapping=None):
     if isinstance(model, SamplesMixin):
         fields = list(model.needs_fields.values())
+        return samples.select_fields(fields)
+    elif field_mapping is not None:
+        # Workaround for applying image models (that use GetItem instead of SamplesMixin) to video frames
+        fields = list(field_mapping.values())
         return samples.select_fields(fields)
     else:
         return samples.select_fields()
@@ -903,8 +992,7 @@ def _make_data_loader(
             pin_memory = False
         elif not model._using_gpu:
             logger.warning(
-                "The provided model is not using a GPU, so `pin_memory` will be "
-                "disabled."
+                "The provided model is not using a GPU, so `pin_memory` will be disabled."
             )
             pin_memory = False
         else:

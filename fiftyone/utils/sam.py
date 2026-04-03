@@ -434,6 +434,60 @@ class SegmentAnythingImageGetItem(fout.GetItem):
             raise ValueError(f"Undefined required keys for {self.mode.name}")
 
 
+class SegmentAnythingImageGetItemForVideo(SegmentAnythingImageGetItem):
+    """Workaround for applying image model to video reader frames.
+
+    Frames are not stored on disk and therefore cannot be loaded.
+    """
+
+    def __call__(self, d):
+        """Prepares the model input for a given sample's data.
+
+        Args:
+            d: a dict mapping the :meth:`required_keys` to values from the
+                sample being processed
+
+        Returns:
+            the model input
+        """
+        item_dict = {}
+        img = d["image"]
+        if self.mode != SAMPromptMode.auto:
+            if self.transform is None:
+                raise ValueError(
+                    f"Transform cannot be None for {self.__class__.__name__}."
+                )
+            img, img_hw = self.transform(img)
+        else:
+            img_hw = img.shape[:2]
+        item_dict["image"] = img
+        item_dict["original_size"] = img_hw
+        prompts = self._preprocess_prompts(d, img_hw)
+        item_dict.update(prompts)
+
+        return item_dict
+
+    @property
+    def required_keys(self):
+        """The list of keys that must exist on the dicts provided to the
+        :meth:`__call__` method at runtime."""
+
+        common_keys = ["image"]
+        box_keys = ["box_prompt_field"]
+        point_keys = ["point_prompt_field"]
+
+        if self.mode == SAMPromptMode.auto:
+            return common_keys
+        elif self.mode == SAMPromptMode.box_only:
+            return common_keys + box_keys
+        elif self.mode == SAMPromptMode.point_only:
+            return common_keys + point_keys
+        elif self.mode == SAMPromptMode.box_point_combo:
+            return common_keys + box_keys + point_keys
+        else:
+            raise ValueError(f"Undefined required keys for {self.mode.name}")
+
+
 class SAMSegmenterOutputProcessor(fout.OutputProcessor):
     """Converts SAM model outputs to FiftyOne format.
 
@@ -702,8 +756,15 @@ class SegmentAnythingModel(fout.TorchImageModel):
     def predict_all(self, imgs, samples=None):
         """Performs prediction on multiple images.
 
+        To generate imgs dictionary and run prediction:
+
+            field_mapping = {"box_prompt_field": "ground-truth"}
+            get_item = model.build_get_item(field_mapping=field_mapping)
+            model_inputs = fout.get_model_inputs_from_get_item(samples, get_item)
+            outputs = model.predict_all(model_inputs)
+
         Args:
-            img: A dictionary containing images, original sizes, and prompts. See :class:`fiftyone.utils.sam.SegmentAnythingGetItem` for details.
+            imgs: a list of dictionary or a dictionary containing images, original sizes, and prompts. See :class:`fiftyone.utils.sam.SegmentAnythingGetItem` for details.
             samples (None): samples is no longer used. Available for backward compatibility.
 
         Returns:
