@@ -15,6 +15,7 @@ body,
   padding: 0;
   font-family: var(--fo-fontFamily-body);
   font-size: 14px;
+  letter-spacing: 0.02em;
 
   color: var(--fo-palette-text-primary);
   display: flex;
@@ -47,6 +48,7 @@ input,
 button {
   font-family: var(--fo-fontFamily-body);
   font-size: 14px;
+  letter-spacing: 0.02em;
   color: var(--fo-palette-text-primary);
 }
 

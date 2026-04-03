@@ -1,4 +1,4 @@
-import { LoadingDots, useTheme } from "@fiftyone/components";
+import { LoadingDots, Tooltip, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { isGroup as isGroupAtom } from "@fiftyone/state";
 import { Apps, ImageAspectRatio } from "@mui/icons-material";
@@ -23,18 +23,21 @@ const Spacing = () => {
   const theme = useTheme();
   const resetSpacing = useResetRecoilState(gridSpacing);
   return (
-    <SliderContainer>
-      <div style={{ flexGrow: 1 }}>
-        <Slider
-          valueAtom={gridSpacing}
-          boundsAtom={constSelector([0, 64])}
-          color={theme.primary.plainColor}
-          showBounds={false}
-          persistValue={false}
-          showValue={false}
-          style={{ padding: 0, margin: 0 }}
-        />
-      </div>
+    <SliderContainer style={{ width: "9rem" }}>
+      <Tooltip text="Spacing" placement="top-center">
+        <div style={{ flexGrow: 1 }}>
+          <Slider
+            valueAtom={gridSpacing}
+            boundsAtom={constSelector([0, 64])}
+            color={theme.primary.plainColor}
+            showBounds={false}
+            persistValue={false}
+            showValue={false}
+            onChange={true}
+            style={{ padding: 0, margin: 0 }}
+          />
+        </div>
+      </Tooltip>
       <IconButton title="Reset spacing" onClick={resetSpacing}>
         <Apps />
       </IconButton>
@@ -47,18 +50,21 @@ const Zoom = () => {
 
   const theme = useTheme();
   return (
-    <SliderContainer>
-      <div style={{ flexGrow: 1 }}>
-        <Slider
-          valueAtom={gridZoom}
-          boundsAtom={constSelector(ZOOM_RANGE)}
-          color={theme.primary.plainColor}
-          showBounds={false}
-          persistValue={false}
-          showValue={false}
-          style={{ padding: 0, margin: 0 }}
-        />
-      </div>
+    <SliderContainer style={{ width: "9rem" }}>
+      <Tooltip text="Image Zoom" placement="top-center">
+        <div style={{ flexGrow: 1 }}>
+          <Slider
+            valueAtom={gridZoom}
+            boundsAtom={constSelector(ZOOM_RANGE)}
+            color={theme.primary.plainColor}
+            showBounds={false}
+            persistValue={false}
+            showValue={false}
+            onChange={true}
+            style={{ padding: 0, margin: 0 }}
+          />
+        </div>
+      </Tooltip>
       <IconButton title="Reset zoom" onClick={resetZoom}>
         <ImageAspectRatio />
       </IconButton>

@@ -2,6 +2,7 @@ import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { makePseudoField } from "@fiftyone/utilities";
 import { Checkbox } from "@mui/material";
+import { animated, config, useSpring } from "@react-spring/web";
 import Color from "color";
 import React, { Suspense } from "react";
 import { useRecoilCallback, useRecoilValue, useSetRecoilState } from "recoil";
@@ -60,6 +61,37 @@ const FilterableEntry = ({
   const setExpanded = useSetRecoilState(
     fos.sidebarExpanded({ modal, path: expandedPath })
   );
+
+  const [shouldRender, setShouldRender] = React.useState(expanded);
+
+  const [springs, api] = useSpring(() => ({
+    height: expanded ? "auto" : 0,
+    overflow: "hidden",
+    config: { ...config.stiff, bounce: 0 },
+  }));
+
+  // Collapse: animate to 0 immediately, unmount only when spring is done
+  // Expand: mount content first, then animate to full height after it's in the DOM
+  React.useEffect(() => {
+    if (expanded) {
+      setShouldRender(true);
+    } else {
+      api.start({
+        height: 0,
+        onRest: ({ finished }) => {
+          if (finished) setShouldRender(false);
+        },
+      });
+    }
+  }, [expanded, api]);
+
+  // After content mounts on expand, animate to natural height
+  React.useLayoutEffect(() => {
+    if (shouldRender && expanded) {
+      api.start({ height: "auto" });
+    }
+  }, [shouldRender]);
+
   const onClick = useOnClick({ modal, path });
   const onToggleExpand = React.useCallback<React.MouseEventHandler>(
     () => setExpanded((v) => !v),
@@ -113,18 +145,20 @@ const FilterableEntry = ({
       }
       trigger={trigger}
     >
-      {expanded && (
-        <Suspense fallback={<Loading />}>
-          <FilterablePathEntries
-            {...{
-              modal,
-              onBlur,
-              onFocus,
-              path,
-            }}
-          />
-        </Suspense>
-      )}
+      <animated.div style={springs}>
+        {shouldRender && (
+          <Suspense fallback={<Loading />}>
+            <FilterablePathEntries
+              {...{
+                modal,
+                onBlur,
+                onFocus,
+                path,
+              }}
+            />
+          </Suspense>
+        )}
+      </animated.div>
     </RegularEntry>
   );
 };

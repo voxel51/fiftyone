@@ -1,7 +1,6 @@
-import { Tooltip, useTheme } from "@fiftyone/components";
+import { Tooltip } from "@fiftyone/components";
 import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
 import { TooltipProps } from "@mui/material";
-import { animated, useSpring } from "@react-spring/web";
 import React from "react";
 import styled from "styled-components";
 
@@ -22,17 +21,10 @@ const PillButton = React.forwardRef<
     tooltipPlacement,
     ...otherProps
   } = props;
-  const theme = useTheme();
-  const baseStyles = useSpring({
-    backgroundColor: !highlight
-      ? theme.background.button
-      : theme.primary.plainColor,
-    color: !highlight ? theme.text.secondary : theme.text.buttonHighlight,
-  });
-
   const children = (
     <PillButtonDiv
       {...otherProps}
+      $highlight={highlight}
       onClick={(e: MouseEvent) => {
         onClick(e);
       }}
@@ -41,7 +33,7 @@ const PillButton = React.forwardRef<
       }}
       id={id}
       ref={ref}
-      style={{ ...baseStyles, ...style }}
+      style={style}
     >
       {text && <span>{text}</span>}
       {icon}
@@ -69,25 +61,32 @@ type PillButtonProps = {
   title: string;
 };
 
-const PillButtonDiv = animated(styled.div.withConfig({
+const PillButtonDiv = styled.div.withConfig({
   shouldForwardProp: (prop) => {
-    // Don't forward non-DOM props
-    return !["variant", "color", "size"].includes(prop);
+    return !["variant", "color", "size", "$highlight"].includes(prop);
   },
-})`
+})<{ $highlight?: boolean }>`
   display: flex;
   align-items: center;
   line-height: 1.5rem;
   padding: 0.25rem 0.75rem;
   cursor: pointer;
-  background-color: ${({ theme }) => theme.divider};
+  background-color: ${({ theme, $highlight }) =>
+    $highlight ? theme.primary.plainColor : theme.background.button};
+  color: ${({ theme, $highlight }) =>
+    $highlight ? theme.text.buttonHighlight : theme.text.primary};
   border-radius: 1rem;
   border: none;
   font-weight: bold;
-  display: flex;
   justify-content: space-between;
   opacity: 1;
   gap: 0.25rem;
+  transition: background-color 150ms ease, color 150ms ease;
+
+  &:hover {
+    background-color: ${({ theme, $highlight }) =>
+      $highlight ? theme.primary.plainColor : theme.background.level1};
+  }
 
   & > span {
     text-align: center;
@@ -95,8 +94,13 @@ const PillButtonDiv = animated(styled.div.withConfig({
   & > svg {
     display: inline-block;
     height: 100%;
+    transition: transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
   }
-`);
+
+  &:hover > svg {
+    transform: translateY(-2px);
+  }
+`;
 
 PillButton.displayName = "PillButton";
 

@@ -6,20 +6,18 @@ import {
   IconButton,
   iconContainer,
 } from "@fiftyone/components";
-import { useTrackEvent } from "@fiftyone/analytics";
 import { SettingsModal, ViewBar, settingsOpenAtom } from "@fiftyone/core";
-import * as fos from "@fiftyone/state";
 import { useRefresh } from "@fiftyone/state";
-import { DarkMode, LightMode, Settings as SettingsIcon } from "@mui/icons-material";
-import { useColorScheme } from "@mui/material";
+import { Settings as SettingsIcon } from "@mui/icons-material";
 import { useAtom } from "jotai";
 import React, { Suspense, useMemo } from "react";
 import { useFragment, usePaginationFragment } from "react-relay";
 import { useDebounce } from "react-use";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { useRecoilValue } from "recoil";
 import { graphql } from "relay-runtime";
 import Analytics from "./Analytics";
 import DatasetSelector from "./DatasetSelector";
+import * as fos from "@fiftyone/state";
 import Teams from "./Teams";
 import type { NavDatasets$key } from "./__generated__/NavDatasets.graphql";
 import type { NavFragment$key } from "./__generated__/NavFragment.graphql";
@@ -81,9 +79,6 @@ const Nav: React.FC<
 
   const useSearch = getUseSearch(data);
   const refresh = useRefresh();
-  const { mode, setMode } = useColorScheme();
-  const setTheme = useSetRecoilState(fos.theme);
-  const trackEvent = useTrackEvent();
   const [settingsOpen, setSettingsOpen] = useAtom(settingsOpenAtom);
 
   return (
@@ -104,22 +99,6 @@ const Nav: React.FC<
           <Teams />
         </div>
         <div className={iconContainer}>
-          <IconButton
-            title={mode === "dark" ? "Light mode" : "Dark mode"}
-            onClick={() => {
-              const nextMode = mode === "dark" ? "light" : "dark";
-              setMode(nextMode);
-              setTheme(nextMode);
-              trackEvent("switch_app_theme", { theme: nextMode });
-            }}
-            sx={{
-              color: (theme) => theme.palette.text.secondary,
-              m: 0,
-              p: "0.5rem",
-            }}
-          >
-            {mode === "dark" ? <LightMode color="inherit" /> : <DarkMode />}
-          </IconButton>
           <IconButton
             title="Settings"
             onClick={() => setSettingsOpen(true)}

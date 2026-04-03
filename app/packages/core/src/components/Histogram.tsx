@@ -134,6 +134,9 @@ const makeData = (counts: readonly number[], values: readonly number[]) => {
 const HistogramRenderer: React.FC<{ path: string }> = ({ path }) => {
   const [ref, { height }] = useMeasure();
   const theme = useTheme();
+  const [tooltipPos, setTooltipPos] = React.useState<
+    { x: number; y: number } | undefined
+  >();
 
   const { data, ticks } = useData(path);
   const hasMore = data.length >= LIMIT;
@@ -180,12 +183,19 @@ const HistogramRenderer: React.FC<{ path: string }> = ({ path }) => {
   return data.length ? (
     <Container id={`histogram-${path}`} ref={ref}>
       {hasMore && <Title>{`First ${data?.length} results`}</Title>}
+      <div style={{ display: "flex", justifyContent: "center" }}>
       <BarChart
         height={height - 37}
         width={data.length * (barWidth + 4) + 50}
         barCategoryGap={"4px"}
         data={strData}
         margin={{ top: 0, left: 0, bottom: 5, right: 5 }}
+        onMouseMove={(state: any) => {
+          if (state?.chartX != null && state?.chartY != null) {
+            setTooltipPos({ x: state.chartX + 8, y: state.chartY - 10 });
+          }
+        }}
+        onMouseLeave={() => setTooltipPos(undefined)}
       >
         <XAxis
           dataKey="key"
@@ -203,6 +213,8 @@ const HistogramRenderer: React.FC<{ path: string }> = ({ path }) => {
         />
         <Tooltip
           cursor={false}
+          isAnimationActive={false}
+          position={tooltipPos}
           content={(point) => {
             const key = point?.payload[0]?.payload?.key;
             const count = point?.payload[0]?.payload?.count;
@@ -247,6 +259,7 @@ const HistogramRenderer: React.FC<{ path: string }> = ({ path }) => {
           isAnimationActive={false}
         />
       </BarChart>
+      </div>
     </Container>
   ) : (
     <Loading>No Data</Loading>
