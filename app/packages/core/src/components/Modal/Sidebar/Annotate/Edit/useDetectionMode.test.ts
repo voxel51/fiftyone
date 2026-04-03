@@ -23,6 +23,7 @@ const noopEventHook = (_event: string, _handler: unknown) => {};
 const defaultFieldAtom = atom<string | null>(null);
 const fieldTypeAtom = atom(null);
 const labelSchemaAtom = atom(null);
+const fieldsOfTypeAtom = atom<string[]>([]);
 
 vi.mock("@fiftyone/lighter", () => ({
   UNDEFINED_LIGHTER_SCENE_ID: "undefined-scene",
@@ -42,9 +43,20 @@ vi.mock("../useLabels", () => ({
 
 const currentTypeAtom = atom<string | null>(null);
 
+const isPatchesViewAtom = atom(false);
+
+vi.mock("recoil", () => ({
+  useRecoilValue: () => false,
+}));
+
+vi.mock("@fiftyone/state", () => ({
+  isPatchesView: isPatchesViewAtom,
+}));
+
 vi.mock("./state", () => ({
   currentType: currentTypeAtom,
   defaultField: () => defaultFieldAtom,
+  fieldsOfType: () => fieldsOfTypeAtom,
   useAnnotationContext: () => stableAnnotationContext,
 }));
 
