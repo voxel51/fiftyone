@@ -229,30 +229,6 @@ class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
             )
         return outputs
 
-    def _forward_pass_auto(self, args):
-        """Forward pass with no prompts.
-
-        Args:
-            imgs: a dictionary containing model input
-
-        Returns:
-            a :class:`fiftyone.core.labels.Detections` instance
-        """
-        outputs = []
-        images = args.pop("image")
-        for img in images:
-            detections = []
-            # TODO: Move this to post-processing op.
-            for data in self._sam_auto_generator.generate(img):
-                detection = fol.Detection.from_mask(
-                    mask=data["segmentation"],
-                    score=data["predicted_iou"],
-                    stability=data["stability_score"],
-                )
-                detections.append(detection)
-            outputs.append(fol.Detections(detections=detections))
-        return outputs
-
 
 # TODO: Refactor SAM2 Video Model to use GetItem
 class SegmentAnything2VideoModelConfig(
