@@ -2,7 +2,6 @@ import { useAnnotationEventBus } from "@fiftyone/annotation";
 import { expandPath, field } from "@fiftyone/state";
 import { FLOAT_FIELD, INT_FIELD } from "@fiftyone/utilities";
 import { useOverlayById } from "@fiftyone/lighter";
-import { useAtom, useAtomValue } from "jotai";
 import { isEqual } from "lodash";
 import { useMemo } from "react";
 import { useRecoilCallback } from "recoil";

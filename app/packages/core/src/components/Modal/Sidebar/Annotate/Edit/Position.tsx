@@ -6,7 +6,6 @@ import {
   useOverlayById,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
-import { useAtom, useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import { SchemaType } from "../../../../../plugins/SchemaIO/utils/types";

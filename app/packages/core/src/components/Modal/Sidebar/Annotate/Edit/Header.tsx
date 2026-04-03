@@ -1,5 +1,4 @@
 import { useOverlayById } from "@fiftyone/lighter";
-import { useAtomValue } from "jotai";
 import { useCallback, useRef, useState } from "react";
 import { Round } from "../Actions";
 

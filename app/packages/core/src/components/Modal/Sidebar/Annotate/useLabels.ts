@@ -10,8 +10,8 @@ import {
   useModalSample,
 } from "@fiftyone/state";
 import { DETECTION } from "@fiftyone/utilities";
-import { atom, getDefaultStore, useAtomValue, useSetAtom } from "jotai";
-import { splitAtom, useAtomCallback } from "jotai/utils";
+import { atom } from "jotai";
+import { splitAtom } from "jotai/utils";
 import { get } from "lodash";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { selector, useRecoilCallback, useRecoilValue } from "recoil";
@@ -255,8 +255,10 @@ export interface LabelsContext {
  * imperatively.
  */
 export const useGetSidebarLabels = () => {
-  const store = getDefaultStore();
-  return useCallback(() => store.get(labels), [store]);
+  return useCallback(
+    () => annotationStore.getState().annotation.labels as any,
+    []
+  );
 };
 
 /**
