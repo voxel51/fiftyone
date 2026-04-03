@@ -29,6 +29,8 @@ def test_wait_warning_suppressed_when_flag_set(capsys):
     )
     with patch("fiftyone.core.session.session._unregister_session"):
         session.__del__()
+    # Prevent GC from calling __del__ again and leaking output into the next test.
+    session._disable_wait_warning = True
     assert fos._WAIT_INSTRUCTIONS not in capsys.readouterr().out
 
 
@@ -40,6 +42,8 @@ def test_wait_warning_shown_on_fast_shutdown(capsys):
     )
     with patch("fiftyone.core.session.session._unregister_session"):
         session.__del__()
+    # Prevent GC from calling __del__ again and leaking output into the next test.
+    session._disable_wait_warning = True
     assert fos._WAIT_INSTRUCTIONS in capsys.readouterr().out
 
 
@@ -51,4 +55,6 @@ def test_no_warning_on_slow_shutdown(capsys):
     )
     with patch("fiftyone.core.session.session._unregister_session"):
         session.__del__()
+    # Prevent GC from calling __del__ again and leaking output into the next test.
+    session._disable_wait_warning = True
     assert fos._WAIT_INSTRUCTIONS not in capsys.readouterr().out
