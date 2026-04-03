@@ -1,4 +1,6 @@
 export * from "./ActivityToast";
+export { default as SettingsModal } from "./Settings/SettingsModal";
+export { settingsOpenAtom } from "./Settings/state";
 export { default as Checkbox } from "./Common/Checkbox";
 export { default as Dataset } from "./Dataset";
 export { default as EmptySamples } from "./EmptySamples";

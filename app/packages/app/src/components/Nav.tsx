@@ -7,11 +7,12 @@ import {
   iconContainer,
 } from "@fiftyone/components";
 import { useTrackEvent } from "@fiftyone/analytics";
-import { ViewBar } from "@fiftyone/core";
+import { SettingsModal, ViewBar, settingsOpenAtom } from "@fiftyone/core";
 import * as fos from "@fiftyone/state";
 import { useRefresh } from "@fiftyone/state";
-import { DarkMode, LightMode } from "@mui/icons-material";
+import { DarkMode, LightMode, Settings as SettingsIcon } from "@mui/icons-material";
 import { useColorScheme } from "@mui/material";
+import { useAtom } from "jotai";
 import React, { Suspense, useMemo } from "react";
 import { useFragment, usePaginationFragment } from "react-relay";
 import { useDebounce } from "react-use";
@@ -83,9 +84,11 @@ const Nav: React.FC<
   const { mode, setMode } = useColorScheme();
   const setTheme = useSetRecoilState(fos.theme);
   const trackEvent = useTrackEvent();
+  const [settingsOpen, setSettingsOpen] = useAtom(settingsOpenAtom);
 
   return (
     <>
+      {settingsOpen && <SettingsModal />}
       <Header
         title={"FiftyOne"}
         onRefresh={refresh}
@@ -116,6 +119,17 @@ const Nav: React.FC<
             }}
           >
             {mode === "dark" ? <LightMode color="inherit" /> : <DarkMode />}
+          </IconButton>
+          <IconButton
+            title="Settings"
+            onClick={() => setSettingsOpen(true)}
+            sx={{
+              color: (theme) => theme.palette.text.secondary,
+              m: 0,
+              p: "0.5rem",
+            }}
+          >
+            <SettingsIcon />
           </IconButton>
           <DiscordLink />
           <GitHubLink />

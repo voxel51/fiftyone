@@ -73,7 +73,6 @@ const Header = () => {
     () => isGroup && groupSlices.length > 1,
     [isGroup, groupSlices]
   );
-
   return (
     <SamplesHeader data-cy={"fo-grid-actions"}>
       <Actions key={"actions"} />

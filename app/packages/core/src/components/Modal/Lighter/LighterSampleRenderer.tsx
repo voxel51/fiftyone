@@ -6,6 +6,7 @@ import {
   ImageOverlay,
   KeypointOptions,
   KeypointOverlay,
+  lighterInitErrorAtom,
   overlayFactory,
   useLighter,
   useLighterSetupWithPixi,
@@ -15,6 +16,42 @@ import * as fos from "@fiftyone/state";
 import { getSampleSrc } from "@fiftyone/state";
 import { useAtomValue } from "jotai";
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import styled from "styled-components";
+
+const ErrorPanel = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  gap: 0.75rem;
+  padding: 2rem;
+  text-align: center;
+  color: ${({ theme }) => theme.text.secondary};
+`;
+
+const ErrorTitle = styled.p`
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.text.primary};
+`;
+
+const ErrorDetail = styled.pre`
+  margin: 0;
+  font-size: 0.75rem;
+  font-family: monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-width: 480px;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  background: ${({ theme }) => theme.background.level2};
+  border: 1px solid ${({ theme }) => theme.primary.softBorder};
+  color: ${({ theme }) => theme.text.secondary};
+  text-align: left;
+`;
 import { useRecoilValue } from "recoil";
 import { activeLabelSchemas } from "../Sidebar/Annotate/state";
 import { LighterToolbar } from "./LighterToolbar";
@@ -40,6 +77,7 @@ export const LighterSampleRenderer = ({
   const [sceneId, setSceneId] = useState<string | null>(null);
   const [isCanvasHovered, setIsCanvasHovered] = useState(false);
 
+  const initError = useAtomValue(lighterInitErrorAtom);
   const { scene, isReady, addOverlay } = useLighter();
 
   // use a ref for the sample data, effects do not run solely because the
@@ -152,6 +190,19 @@ export const LighterSampleRenderer = ({
       `${sample?.sample?._id}-${sample?.sample?.last_modified_at?.datetime}`
     );
   }, []);
+
+  if (initError) {
+    return (
+      <ErrorPanel>
+        <ErrorTitle>Annotation canvas failed to initialize</ErrorTitle>
+        <p style={{ margin: 0, fontSize: "0.85rem" }}>
+          WebGL could not be started. This is usually caused by a missing or
+          incompatible GPU driver.
+        </p>
+        <ErrorDetail>{initError}</ErrorDetail>
+      </ErrorPanel>
+    );
+  }
 
   return (
     <div
