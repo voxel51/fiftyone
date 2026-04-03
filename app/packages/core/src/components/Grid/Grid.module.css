@@ -1,19 +1,31 @@
 /* Back layer: small, dark, slow */
 @keyframes fallingBack {
-  0% { background-position: 0 0; }
-  100% { background-position: 0 20000px; }
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 0 20000px;
+  }
 }
 
 /* Mid layer: medium, lighter, medium speed */
 @keyframes fallingMid {
-  0% { background-position: 0 0; }
-  100% { background-position: 0 20000px; }
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 0 20000px;
+  }
 }
 
 /* Front layer: large, colorful, fast */
 @keyframes fallingFront {
-  0% { background-position: 0 0; }
-  100% { background-position: 0 20000px; }
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 0 20000px;
+  }
 }
 
 .gridContainer {
@@ -57,7 +69,7 @@
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1267 587'%3E%3Crect fill='%23a6a7a9' opacity='0.2' x='1226' y='0' width='36' height='36'/%3E%3Crect fill='%236c757d' opacity='0.24' x='0' y='336' width='36' height='36'/%3E%3Crect fill='%236c757d' opacity='0.34' x='40' y='41' width='36' height='36'/%3E%3Crect fill='%23a6a7a9' opacity='0.1' x='156' y='479' width='36' height='36'/%3E%3Crect fill='%23a6a7a9' opacity='0.2' x='470' y='506' width='36' height='36'/%3E%3Crect fill='%236c757d' opacity='0.24' x='815' y='418' width='36' height='36'/%3E%3Crect fill='%236c757d' opacity='0.08' x='855' y='459' width='36' height='36'/%3E%3Crect fill='%23a6a7a9' opacity='0.25' x='0' y='81' width='36' height='36'/%3E%3Crect fill='%236c757d' opacity='0.2' x='608' y='41' width='36' height='36'/%3E%3Crect fill='%23a6a7a9' opacity='0.05' x='913' y='0' width='36' height='36'/%3E%3Crect fill='%236c757d' opacity='0.08' x='1185' y='41' width='36' height='36'/%3E%3Crect fill='%236c757d' opacity='0.08' x='121' y='0' width='36' height='36'/%3E%3Crect fill='%236c757d' opacity='0.34' x='1145' y='506' width='36' height='36'/%3E%3Crect fill='%23a6a7a9' opacity='0.1' x='430' y='546' width='36' height='36'/%3E%3C/svg%3E");
   background-repeat: repeat-y;
   background-size: 100% auto;
-  animation: fallingMid 60s linear infinite;
+  animation: fallingMid 90s linear infinite;
 }
 
 /* Front layer — large colorful pixels, fastest */
@@ -71,12 +83,20 @@
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1267 587'%3E%3Crect fill='%23499cef' opacity='0.7' x='583' y='381' width='26' height='26' rx='2'/%3E%3Crect fill='%23ff6d04' opacity='0.7' x='1138' y='40' width='26' height='26' rx='2'/%3E%3Crect fill='%236d04ff' opacity='0.7' x='84' y='84' width='26' height='26' rx='2'/%3E%3Crect fill='%23499cef' opacity='0.55' x='310' y='260' width='26' height='26' rx='2'/%3E%3Crect fill='%23ff6d04' opacity='0.55' x='950' y='490' width='26' height='26' rx='2'/%3E%3Crect fill='%236d04ff' opacity='0.6' x='720' y='150' width='26' height='26' rx='2'/%3E%3Crect fill='%23499cef' opacity='0.5' x='1050' y='320' width='26' height='26' rx='2'/%3E%3C/svg%3E");
   background-repeat: repeat-y;
   background-size: 100% auto;
-  animation: fallingFront 35s linear infinite;
+  animation: fallingFront 60s linear infinite;
 }
 
 .fallingPixels.hidden {
   display: none;
   opacity: 0;
+}
+
+.fallingPixels.forceShow,
+.fallingPixels.forceShow.hidden {
+  display: block;
+  opacity: 1;
+  z-index: 10;
+  pointer-events: none;
 }
 
 .spotlightGrid {
