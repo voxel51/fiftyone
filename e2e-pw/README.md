@@ -136,6 +136,13 @@ await DatasetFactory.createBlankDataset({
         ground_truth: "Detection",
         uniqueness: "FloatField",
     },
+    // Optional: customize generated image size and fill color.
+    // Defaults to { fillColor: "white", width: 50, height: 50 }.
+    imageOptions: {
+        fillColor: "#ff0000",
+        width: 100,
+        height: 100,
+    },
     withSampleData: ({ _id, filepath, index }, { createId }) => ({
         // _id, filepath, index are already attached to the sample
         ground_truth: {
@@ -187,12 +194,17 @@ await modal.sampleCanvas.move(0.5, 0.5);
 // Optionally, assert a cursor value change on move
 await modal.sampleCanvas.move(0.9, 0.9, "grab");
 
+// Move the pointer by a pixel offset relative to its current position
+await modal.sampleCanvas.movePixels(10, -5);
+await modal.sampleCanvas.movePixels(10, -5, "grab"); // with optional cursor assertion
+
 // Press and release the mouse button
 await modal.sampleCanvas.down();
 await modal.sampleCanvas.up();
 
-// Click at a position
+// Click or double-click at a position
 await modal.sampleCanvas.click(0.9, 0.9);
+await modal.sampleCanvas.dblclick(0.9, 0.9);
 ```
 
 Since the canvas surface is opaque to the DOM, the only available signals for
@@ -206,11 +218,16 @@ await modal.sampleCanvas.assert.hasCursor("nwse-resize");
 
 // Assert the canvas state via screenshot
 await modal.sampleCanvas.assert.hasScreenshot("my-test-state.png");
+
+// Assert the canvas type
+import { SampleCanvasType } from "src/oss/poms/modal/sample-canvas";
+await modal.sampleCanvas.assert.is(SampleCanvasType.LIGHTER);
+await modal.sampleCanvas.assert.is(SampleCanvasType.LOOKER);
+await modal.sampleCanvas.assert.is(SampleCanvasType.LOOKER3D);
 ```
 
-When writing canvas tests, move the pointer to a neutral position (e.g. a
-corner of the canvas) before taking a screenshot to avoid hover states
-contaminating the baseline.
+When writing canvas tests, move the pointer to the right edge of the viewport
+before taking a screenshot to avoid hover states contaminating the baseline.
 
 ```ts
 await modal.sampleCanvas.moveMouseToViewportEdge();

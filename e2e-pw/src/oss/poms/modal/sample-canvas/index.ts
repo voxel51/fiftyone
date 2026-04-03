@@ -145,13 +145,6 @@ export class SampleCanvasPom {
   }
 
   /**
-   * Wait for the cursor to change
-   */
-  async waitForCursorChange() {
-    await this.eventUtils.getEventReceivedPromiseForPredicate("cursor-change");
-  }
-
-  /**
    * Move the mouse to the right edge of the viewport (e.g. to avoid tooltips in
    * screenshots).
    */
