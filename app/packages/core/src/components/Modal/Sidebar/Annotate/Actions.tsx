@@ -30,7 +30,7 @@ import { ItemLeft, ItemRight } from "./Components";
 import { editing } from "./Edit";
 import { useClassificationMode } from "./Edit/useClassificationMode";
 import { fieldsOfType } from "./Edit/state";
-import { useQuickDraw } from "./Edit/useQuickDraw";
+import { useQuickDraw } from "./Edit/useDetectionMode";
 
 const ActionsDiv = styled.div`
   align-items: center;

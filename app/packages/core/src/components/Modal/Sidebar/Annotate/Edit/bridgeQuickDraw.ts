@@ -3,7 +3,7 @@
  */
 
 import { getDefaultStore } from "jotai";
-import { _dangerousQuickDrawActiveAtom } from "./useQuickDraw";
+import { _dangerousQuickDrawActiveAtom } from "./useDetectionMode";
 
 /**
  * Quick draw bridge for non-React code.

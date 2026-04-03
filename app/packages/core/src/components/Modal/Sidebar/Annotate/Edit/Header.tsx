@@ -25,7 +25,7 @@ import {
 import { KnownCommands, KnownContexts, useCommand } from "@fiftyone/commands";
 import useColor from "./useColor";
 import useExit from "./useExit";
-import { useQuickDraw } from "./useQuickDraw";
+import { useQuickDraw } from "./useDetectionMode";
 import { useAnnotationController } from "@fiftyone/annotation";
 
 const LabelHamburgerMenu = () => {
