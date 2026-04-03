@@ -1,5 +1,4 @@
 import { useOperatorExecutor } from "@fiftyone/operators";
-import { atom, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo } from "react";
 import {
   type ListSchemasRequest,
@@ -37,46 +36,30 @@ const operatorAsPromise = <T, R>(
   });
 };
 
-/**
- * Schema management operations that require elevated permissions.
- */
 export type SchemaManagementOps = Pick<
   SchemaManager,
   "activateSchemas" | "initializeSchema"
 >;
 
-/**
- * Atom holding management operations. Populated by {@link useRegisterSchemaManagement}
- * when the user has schema management permissions.
- */
-export const schemaManagementOpsAtom = atom<SchemaManagementOps | null>(null);
+// Module-level holder for management ops (non-serializable — cannot go in Redux)
+let _schemaManagementOps: SchemaManagementOps | null = null;
 
-/**
- * Hook to register schema management operations into the shared atom.
- *
- * Must be called from a component that only renders when the user has
- * schema management permissions.
- *
- * @param schemaManager The full schema manager instance
- */
+export const getSchemaManagementOps = (): SchemaManagementOps | null =>
+  _schemaManagementOps;
+
 export const useRegisterSchemaManagement = (schemaManager: SchemaManager) => {
-  const setOps = useSetAtom(schemaManagementOpsAtom);
-
   useEffect(() => {
-    setOps({
+    _schemaManagementOps = {
       activateSchemas: schemaManager.activateSchemas,
       initializeSchema: schemaManager.initializeSchema,
-    });
+    };
 
-    return () => setOps(null);
-  }, [schemaManager, setOps]);
+    return () => {
+      _schemaManagementOps = null;
+    };
+  }, [schemaManager]);
 };
 
-/**
- * Read-only schema resolver for annotation context.
- *
- * Only resolves operators available to all roles (`get_label_schemas`).
- */
 export interface SchemaResolver {
   listSchemas: (request: ListSchemasRequest) => Promise<ListSchemasResponse>;
 }

@@ -102,6 +102,24 @@ interface AnnotationUiState {
 
   /** Current field selected in schema manager */
   schemaManagerField: string | null;
+
+  /** Active label ID for entrance editing (patches auto-edit) */
+  activeLabelId: string | null;
+
+  /** Whether to show the delete confirmation dialog */
+  showDeleteConfirmation: boolean;
+
+  /** Whether to ask for delete confirmation (persisted to localStorage) */
+  askForDeleteConfirmation: boolean;
+
+  /** Last used label value per field path (QuickDraw auto-assignment) */
+  lastUsedLabels: Record<string, string>;
+
+  /** Valid annotation fields cache: datasetId → field paths */
+  validAnnotationFields: Record<string, string[]>;
+
+  /** Whether valid fields have been resolved: datasetId → boolean */
+  validFieldsResolved: Record<string, boolean>;
 }
 
 const initialState: AnnotationUiState = {
@@ -125,6 +143,17 @@ const initialState: AnnotationUiState = {
   savedLabelData: null,
   schemaManagerDisplayed: false,
   schemaManagerField: null,
+  activeLabelId: null,
+  showDeleteConfirmation: false,
+  askForDeleteConfirmation:
+    typeof localStorage !== "undefined"
+      ? JSON.parse(
+          localStorage.getItem("HA.askForDeleteConfirmation") ?? "true"
+        )
+      : true,
+  lastUsedLabels: {},
+  validAnnotationFields: {},
+  validFieldsResolved: {},
 };
 
 // ── Slice ──────────────────────────────────────────────────────────────
@@ -268,6 +297,42 @@ export const annotationSlice = createSlice({
     setSchemaManagerField(state, action: PayloadAction<string | null>) {
       state.schemaManagerField = action.payload;
     },
+    setActiveLabelId(state, action: PayloadAction<string | null>) {
+      state.activeLabelId = action.payload;
+    },
+    setShowDeleteConfirmation(state, action: PayloadAction<boolean>) {
+      state.showDeleteConfirmation = action.payload;
+    },
+    setAskForDeleteConfirmation(state, action: PayloadAction<boolean>) {
+      state.askForDeleteConfirmation = action.payload;
+      // Persist to localStorage
+      if (typeof localStorage !== "undefined") {
+        localStorage.setItem(
+          "HA.askForDeleteConfirmation",
+          JSON.stringify(action.payload)
+        );
+      }
+    },
+    setLastUsedLabel(
+      state,
+      action: PayloadAction<{ field: string; label: string }>
+    ) {
+      state.lastUsedLabels[action.payload.field] = action.payload.label;
+    },
+    setValidAnnotationFields(
+      state,
+      action: PayloadAction<{ datasetId: string; fields: string[] }>
+    ) {
+      state.validAnnotationFields[action.payload.datasetId] =
+        action.payload.fields;
+    },
+    setValidFieldsResolved(
+      state,
+      action: PayloadAction<{ datasetId: string; resolved: boolean }>
+    ) {
+      state.validFieldsResolved[action.payload.datasetId] =
+        action.payload.resolved;
+    },
   },
 });
 
@@ -299,6 +364,12 @@ export const {
   setSavedLabelData,
   setSchemaManagerDisplayed,
   setSchemaManagerField,
+  setActiveLabelId,
+  setShowDeleteConfirmation,
+  setAskForDeleteConfirmation,
+  setLastUsedLabel,
+  setValidAnnotationFields,
+  setValidFieldsResolved,
 } = annotationSlice.actions;
 
 // ── Selectors (replace Jotai derived atoms) ────────────────────────────
@@ -468,6 +539,14 @@ export const selectFieldsOfType = (type: LabelType) =>
         })
         .sort();
     }
+  );
+
+/**
+ * defaultField(type) — first writable field of a given type.
+ */
+export const selectDefaultField = (type: LabelType) =>
+  createSelector([selectFieldsOfType(type)], (fields) =>
+    fields.length > 0 ? fields[0] : null
   );
 
 // ── Edit panel selectors ───────────────────────────────────────────────

@@ -2,8 +2,7 @@
  * Bridge for accessing quick draw state from non-React code.
  */
 
-import { getDefaultStore } from "jotai";
-import { _dangerousQuickDrawActiveAtom } from "./useQuickDraw";
+import { annotationStore } from "../redux/store";
 
 /**
  * Quick draw bridge for non-React code.
@@ -15,7 +14,6 @@ export const quickDrawBridge = {
    * @returns true if quick draw mode is active, false otherwise
    */
   isQuickDrawActive(): boolean {
-    const store = getDefaultStore();
-    return store.get(_dangerousQuickDrawActiveAtom);
+    return annotationStore.getState().annotation.quickDrawActive;
   },
 };

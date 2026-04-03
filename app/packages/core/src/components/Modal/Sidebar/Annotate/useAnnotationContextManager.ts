@@ -5,15 +5,17 @@ import {
   useActiveModalFields,
   useQueryPerformanceSampleLimit,
 } from "@fiftyone/state";
-import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
-import { jotaiStore } from "@fiftyone/state/src/jotai";
+import { useRef } from "react";
+import { useDispatch } from "react-redux";
+import { setActiveLabelId as setActiveLabelIdAction } from "./redux/annotationSlice";
+import { useAnnotationSelector } from "./redux/hooks";
 import { useCallback, useMemo } from "react";
 import { usePrimitiveController } from "./Edit/useActivePrimitive";
 import useSave from "./Edit/useSave";
 import { useAnnotationSchemaContext } from "./state";
 import useCanManageSchema from "./useCanManageSchema";
 import {
-  schemaManagementOpsAtom,
+  getSchemaManagementOps,
   useSchemaResolver,
 } from "./useSchemaResolver";
 
@@ -91,16 +93,21 @@ export interface AnnotationContextManager {
   clearEntranceLabelId: () => void;
 }
 
-const contextManagerAtom = atom<ContextManager>(new DefaultContextManager());
-
-const activeLabelIdAtom = atom<string | null>(null);
+// Context manager is a class instance — kept as a module-level singleton
+// (not in Redux since it's non-serializable)
+const defaultContextManager: ContextManager = new DefaultContextManager();
 
 /**
  * Hook which provides an {@link AnnotationContextManager}.
  */
 export const useAnnotationContextManager = (): AnnotationContextManager => {
-  const contextManager = useAtomValue(contextManagerAtom);
-  const [activeLabelId, setActiveLabelId] = useAtom(activeLabelIdAtom);
+  const contextManager = defaultContextManager;
+  const activeLabelId = useAnnotationSelector((s) => s.annotation.activeLabelId);
+  const dispatch = useDispatch();
+  const setActiveLabelId = useCallback(
+    (id: string | null) => dispatch(setActiveLabelIdAction(id)),
+    [dispatch]
+  );
   const saveChanges = useSave();
 
   const [activeFields, setActiveFields] = useActiveModalFields();
@@ -116,7 +123,7 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
       // Read management ops from the store at execution time to avoid
       // stale closure — the atom may be set by SchemaManagementProvider's
       // effect after this callback was created.
-      const mgmtOps = jotaiStore.get(schemaManagementOpsAtom);
+      const mgmtOps = getSchemaManagementOps();
 
       if (!canManageSchema || !mgmtOps) {
         return {
@@ -249,4 +256,10 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
  * {@link useRegisterRendererEventHandlers} which handles the actual overlay
  * selection, avoiding race conditions with scene/overlay initialization.
  */
-export const useSetActiveLabelId = () => useSetAtom(activeLabelIdAtom);
+export const useSetActiveLabelId = () => {
+  const dispatch = useDispatch();
+  return useCallback(
+    (id: string | null) => dispatch(setActiveLabelIdAction(id)),
+    [dispatch]
+  );
+};

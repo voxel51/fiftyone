@@ -1,19 +1,16 @@
 import { MuiButton } from "@fiftyone/components";
 import { Typography } from "@mui/material";
-import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
-import { atomWithStorage } from "jotai/utils";
 import React, { useCallback } from "react";
+import { useDispatch } from "react-redux";
 import styled from "styled-components";
 import { CheckboxView } from "../../../../../plugins/SchemaIO/components";
 import { useCurrentType } from "../redux/hooks";
+import {
+  setAskForDeleteConfirmation,
+  setShowDeleteConfirmation,
+} from "../redux/annotationSlice";
+import { useAnnotationSelector } from "../redux/hooks";
 import Modal from "./Modal";
-
-const showDeleteConfirmation = atom(false);
-
-const askForDeleteConfirmation = atomWithStorage(
-  "HA.askForDeleteConfirmation",
-  true
-);
 
 const Row = styled.div`
   padding-top: 1rem;
@@ -22,14 +19,22 @@ const Row = styled.div`
 `;
 
 function DeleteModal({ deleteAnnotation }: { deleteAnnotation: () => void }) {
-  const [shown, show] = useAtom(showDeleteConfirmation);
+  const shown = useAnnotationSelector(
+    (s) => s.annotation.showDeleteConfirmation
+  );
   const type = useCurrentType();
-  const [askAgain, setAskAgain] = useAtom(askForDeleteConfirmation);
+  const askAgain = useAnnotationSelector(
+    (s) => s.annotation.askForDeleteConfirmation
+  );
+  const dispatch = useDispatch();
 
-  const close = useCallback(() => show(false), [show]);
+  const close = useCallback(
+    () => dispatch(setShowDeleteConfirmation(false)),
+    [dispatch]
+  );
 
   return shown ? (
-    <Modal close={close} title={`Delete this ${type.toLowerCase()}?`}>
+    <Modal close={close} title={`Delete this ${type?.toLowerCase()}?`}>
       <Typography color="secondary" padding="1rem 0">
         This will delete the label and its attributes. The action is permanent
         and cannot be reversed.
@@ -37,7 +42,9 @@ function DeleteModal({ deleteAnnotation }: { deleteAnnotation: () => void }) {
 
       <CheckboxView
         data={!askAgain}
-        onChange={(_, checked) => setAskAgain(!checked)}
+        onChange={(_, checked) =>
+          dispatch(setAskForDeleteConfirmation(!checked))
+        }
         schema={{ view: { label: "Don't ask me again" } }}
       />
 
@@ -61,17 +68,23 @@ function DeleteModal({ deleteAnnotation }: { deleteAnnotation: () => void }) {
 }
 
 export const useConfirmDelete = (deleteAnnotation: () => void) => {
-  const askForConfirmation = useAtomValue(askForDeleteConfirmation);
-  const showConfirmation = useSetAtom(showDeleteConfirmation);
+  const askForConfirmation = useAnnotationSelector(
+    (s) => s.annotation.askForDeleteConfirmation
+  );
+  const dispatch = useDispatch();
+
   return {
     confirmDelete: useCallback(() => {
       if (askForConfirmation) {
-        showConfirmation(true);
+        dispatch(setShowDeleteConfirmation(true));
         return;
       }
-
       deleteAnnotation();
-    }, [askForConfirmation, deleteAnnotation, showConfirmation]),
-    DeleteModal: () => <DeleteModal deleteAnnotation={deleteAnnotation} />,
+    }, [askForConfirmation, deleteAnnotation, dispatch]),
+
+    DeleteConfirmationModal: useCallback(
+      () => <DeleteModal deleteAnnotation={deleteAnnotation} />,
+      [deleteAnnotation]
+    ),
   };
 };
