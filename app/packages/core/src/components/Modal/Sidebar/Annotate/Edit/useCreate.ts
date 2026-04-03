@@ -13,11 +13,11 @@ import {
   objectId,
   POLYLINE,
 } from "@fiftyone/utilities";
-import { getDefaultStore } from "jotai";
 import { useCallback } from "react";
-import { useAddLabel, useStartEditingLabel, useStartEditingType } from "../redux/hooks";
+import { useAddLabel, useSetSavedLabelData, useStartEditingLabel, useStartEditingType } from "../redux/hooks";
 import type { AnnotationLabel as ReduxAnnotationLabel } from "../redux/annotationSlice";
-import { isFieldReadOnly, labelSchemaData } from "../state";
+import { selectDefaultField, selectFieldsOfType } from "../redux/annotationSlice";
+import { annotationStore } from "../redux/store";
 import type { LabelType } from "./state";
 
 export interface CreateOptions {
@@ -31,9 +31,11 @@ const useCreateAnnotationLabel = () => {
   return useCallback(
     (type: LabelType, options?: CreateOptions): AnnotationLabel | undefined => {
       const id = objectId();
-      const store = getDefaultStore();
+      const state = annotationStore.getState();
 
-      const field = options?.field ?? store.get(defaultField(type));
+      const field =
+        options?.field ??
+        selectDefaultField(type)(state);
 
       if (!field) {
         return undefined;
@@ -41,11 +43,14 @@ const useCreateAnnotationLabel = () => {
 
       const labelValue = options?.labelValue;
 
-      // Extract default values from the label schema for new annotations
-      const fieldSchema = store.get(labelSchemaData(field));
+      const fieldSchema = state.annotation.labelSchemasData?.[field];
 
       // Build label data with defaults and quick draw values (if applicable)
       const data = buildNewLabelData(field, type, id, labelValue);
+
+      const isReadOnly = !!(
+        fieldSchema?.label_schema?.read_only || fieldSchema?.read_only
+      );
 
       if (type === CLASSIFICATION) {
         const overlay = overlayFactory.create<
@@ -58,14 +63,11 @@ const useCreateAnnotationLabel = () => {
         });
         addOverlay(overlay);
         scene?.selectOverlay(id, { ignoreSideEffects: true });
-        store.set(savedLabel, data);
 
-        return { data, overlay, path: field, type };
+        return { data, overlay, overlayId: id, path: field, type };
       }
 
       if (type === DETECTION) {
-        const readOnly = isFieldReadOnly(fieldSchema);
-
         const overlay = overlayFactory.create<
           BoundingBoxOptions,
           BoundingBoxOverlay
@@ -73,15 +75,14 @@ const useCreateAnnotationLabel = () => {
           field,
           id,
           label: data as DetectionLabel,
-          draggable: !readOnly,
-          resizeable: !readOnly,
+          draggable: !isReadOnly,
+          resizeable: !isReadOnly,
         });
         addOverlay(overlay);
 
         const handler = new InteractiveDetectionHandler(overlay);
         scene?.enterInteractiveMode(handler);
-        store.set(savedLabel, data);
-        return { data, overlay, path: field, type };
+        return { data, overlay, overlayId: id, path: field, type };
       }
 
       return undefined;
@@ -136,10 +137,10 @@ export function buildNewLabelData(
   label?: string
 ) {
   const labelId = id || objectId();
-  const store = getDefaultStore();
 
   // Extract default values from the label schema for new annotations
-  const fieldSchema = store.get(labelSchemaData(field));
+  const schemas = annotationStore.getState().annotation.labelSchemasData;
+  const fieldSchema = schemas?.[field];
   const labelSchema = fieldSchema?.label_schema;
   const defaults: Record<string, unknown> = {};
   const labelValue = label || labelSchema?.classes?.[0];
