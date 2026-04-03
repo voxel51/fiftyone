@@ -14,7 +14,7 @@ import useExit from "./useExit";
  * Encapsulates the disabled logic, field availability, and creation action
  * for the "Create new classification" button.
  */
-export const useClassification = () => {
+export const useClassificationMode = () => {
   const create = useCreate(CLASSIFICATION);
   const onExit = useExit();
   const isPatchView = useRecoilValue(isPatchesView);

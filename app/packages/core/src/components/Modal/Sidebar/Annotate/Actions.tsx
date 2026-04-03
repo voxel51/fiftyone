@@ -28,7 +28,7 @@ import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ItemLeft, ItemRight } from "./Components";
 import { editing } from "./Edit";
-import { useClassification } from "./Edit/useClassificationMode";
+import { useClassificationMode } from "./Edit/useClassificationMode";
 import { fieldsOfType } from "./Edit/state";
 import { useQuickDraw } from "./Edit/useQuickDraw";
 
@@ -185,7 +185,7 @@ const Classification = () => {
     disabled,
     tooltip,
     enableClassification,
-  } = useClassification();
+  } = useClassificationMode();
   const deactivateAll = useDeactivateAll();
 
   return (
@@ -429,7 +429,10 @@ const Actions = () => {
   // This checks if a 3d sample is pinned - is true when media type is `group` with a 3d slice pinned
   const { isPinned: is3dSamplePinned } = useRenderConfig3dState();
 
-  const { classificationActive, disableClassification } = useClassification();
+  const {
+    classificationActive,
+    disableClassification,
+  } = useClassificationMode();
   const { quickDrawActive, disableQuickDraw } = useQuickDraw();
   const current3dAnnotationMode = useCurrent3dAnnotationMode();
   const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
