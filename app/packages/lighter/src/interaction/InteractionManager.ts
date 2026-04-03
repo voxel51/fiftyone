@@ -2,7 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { quickDrawBridge } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/bridgeDetectionMode";
+import { detectionModeBridge } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/bridgeDetectionMode";
 import { EventDispatcher, getEventBus } from "@fiftyone/events";
 import { TypeGuards } from "../core/Scene2D";
 import type { LighterEventGroup } from "../events";
@@ -302,7 +302,7 @@ export class InteractionManager {
       // QuickDraw: defer overlay creation until we confirm this is a drag.
       // If the user releases without dragging (a click), exit QuickDraw mode.
       // Clicking on an existing overlay selects it normally instead.
-      if (quickDrawBridge.isQuickDrawActive()) {
+      if (detectionModeBridge.isQuickDrawActive()) {
         const isNonOverlay = !handler || handler.id === this.canonicalMediaId;
 
         if (isNonOverlay) {
@@ -360,7 +360,7 @@ export class InteractionManager {
     scale: number
   ): void {
     if (
-      quickDrawBridge.isQuickDrawActive() &&
+      detectionModeBridge.isQuickDrawActive() &&
       handler &&
       TypeGuards.isSelectable(handler) &&
       !handler.isSelected()
@@ -505,7 +505,7 @@ export class InteractionManager {
         event.preventDefault();
       }
       this.configureCursorStyle(handler, worldPoint, scale);
-    } else if (quickDrawBridge.isQuickDrawActive() && !interactiveHandler) {
+    } else if (detectionModeBridge.isQuickDrawActive() && !interactiveHandler) {
       this.canvas.style.cursor = "crosshair";
     }
   };

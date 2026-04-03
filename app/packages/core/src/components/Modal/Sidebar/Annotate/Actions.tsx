@@ -30,7 +30,7 @@ import { ItemLeft, ItemRight } from "./Components";
 import { editing } from "./Edit";
 import { useClassificationMode } from "./Edit/useClassificationMode";
 import { fieldsOfType } from "./Edit/state";
-import { useQuickDraw } from "./Edit/useDetectionMode";
+import { useDetectionMode } from "./Edit/useDetectionMode";
 
 const ActionsDiv = styled.div`
   align-items: center;
@@ -220,7 +220,7 @@ const Classification = () => {
 };
 
 const Detection = () => {
-  const { quickDrawActive, enableQuickDraw } = useQuickDraw();
+  const { quickDrawActive, enableQuickDraw } = useDetectionMode();
   const deactivateAll = useDeactivateAll();
   const isPatchView = useRecoilValue(isPatchesView);
 
@@ -433,7 +433,7 @@ const Actions = () => {
     classificationModeActive,
     deactivateClassificationMode,
   } = useClassificationMode();
-  const { quickDrawActive, disableQuickDraw } = useQuickDraw();
+  const { quickDrawActive, disableQuickDraw } = useDetectionMode();
   const current3dAnnotationMode = useCurrent3dAnnotationMode();
   const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
 

@@ -51,7 +51,7 @@ const claimedEventsAtom = atom<Map<string, string>>(new Map());
 /**
  * Centralized hook for managing quick draw mode state and operations.
  */
-export const useQuickDraw = () => {
+export const useDetectionMode = () => {
   const [quickDrawActive, setQuickDrawActive] = useAtom(quickDrawActiveAtom);
   const editingLabelType = useAtomValue(currentType);
   const isEditingDetection = editingLabelType === DETECTION;

@@ -9,7 +9,7 @@ import { _dangerousQuickDrawActiveAtom } from "./useDetectionMode";
  * Quick draw bridge for non-React code.
  * Provides read-only access to quick draw state.
  */
-export const quickDrawBridge = {
+export const detectionModeBridge = {
   /**
    * Check if quick draw mode is currently active.
    * @returns true if quick draw mode is active, false otherwise
