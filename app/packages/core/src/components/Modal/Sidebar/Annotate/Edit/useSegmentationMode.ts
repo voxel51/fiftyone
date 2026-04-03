@@ -5,6 +5,7 @@
 import { useCallback, useMemo, useRef } from "react";
 import { atom, useAtomValue, useSetAtom } from "jotai";
 import { useAtomCallback } from "jotai/utils";
+import { useRecoilValue } from "recoil";
 
 import {
   BaseOverlay,
@@ -12,9 +13,12 @@ import {
   useLighter,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
-import { useAnnotationContext } from "./state";
+import { isPatchesView } from "@fiftyone/state";
 import { DETECTION } from "@fiftyone/utilities";
+
+import { fieldsOfType, useAnnotationContext } from "./state";
 import useCreate from "./useCreate";
+import useExit from "./useExit";
 
 export const DEFAULT_TOOL_SIZE = 16;
 export const MIN_TOOL_SIZE = 1;
@@ -34,24 +38,24 @@ export interface SegmentationToolState {
 // Atoms (internal)
 // ---------------------------------------------------------------------------
 
-const segmentationActiveAtom = atom<boolean>(false);
+const segmentationModeActiveAtom = atom<boolean>(false);
 const toolAtom = atom<SegmentationTool>("select");
 const toolSizeAtom = atom<number>(DEFAULT_TOOL_SIZE);
 const toolShapeAtom = atom<SegmentationToolShape>("circle");
 
 /**
  * Tracks the last processed `lighter:overlay-create` event ID so that only one
- * `useSegmentationMasks` instance handles each event, even though the hook is
+ * `useSegmentationMode` instance handles each event, even though the hook is
  * called in multiple components.
  */
 const lastProcessedCreateIdAtom = atom<string | null>(null);
 
 // ---------------------------------------------------------------------------
 // Unsafe exports for non-React bridge access only.
-// Do not use directly in React components — use useSegmentationMasks() instead.
+// Do not use directly in React components — use useSegmentationMode() instead.
 // ---------------------------------------------------------------------------
 
-/** @internal */ export { segmentationActiveAtom as _unsafeSegmentationActiveAtom };
+/** @internal */ export { segmentationModeActiveAtom as _unsafeSegmentationModeActiveAtom };
 /** @internal */ export { toolAtom as _unsafeToolAtom };
 /** @internal */ export { toolSizeAtom as _unsafeToolSizeAtom };
 /** @internal */ export { toolShapeAtom as _unsafeToolShapeAtom };
@@ -66,6 +70,9 @@ const lastProcessedCreateIdAtom = atom<string | null>(null);
 export const useSegmentationMode = () => {
   const { scene, addOverlay } = useLighter();
   const { selectedLabel } = useAnnotationContext();
+  const onExit = useExit();
+  const isPatchView = useRecoilValue(isPatchesView);
+  const fields = useAtomValue(fieldsOfType(DETECTION));
   const useEventHandler = useLighterEventHandler(
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
   );
@@ -76,26 +83,55 @@ export const useSegmentationMode = () => {
   const selectedLabelRef = useRef(selectedLabel);
   selectedLabelRef.current = selectedLabel;
 
-  const segmentationActive = useAtomValue(segmentationActiveAtom);
+  const segmentationModeActive = useAtomValue(segmentationModeActiveAtom);
   const tool = useAtomValue(toolAtom);
   const toolSize = useAtomValue(toolSizeAtom);
   const toolShape = useAtomValue(toolShapeAtom);
 
-  const setActive = useSetAtom(segmentationActiveAtom);
+  const setActive = useSetAtom(segmentationModeActiveAtom);
   const setTool = useSetAtom(toolAtom);
   const setToolSizeRaw = useSetAtom(toolSizeAtom);
   const setToolShape = useSetAtom(toolShapeAtom);
 
   const createDetection = useCreate(DETECTION);
 
-  const enter = useCallback(() => {
+  const noActiveFields = fields.length === 0;
+  const disabled = isPatchView || noActiveFields;
+
+  const tooltip = isPatchView
+    ? "Creating masks is not supported in this view"
+    : noActiveFields
+    ? "No active fields"
+    : segmentationModeActive
+    ? "Exit mask creation"
+    : "Create new mask";
+
+  const activateSegmentationMode = useCallback(() => {
     setActive(true);
   }, [setActive]);
 
-  const exit = useCallback(() => {
+  /**
+   * Disable segmentation mode and gracefully close out any label being edited.
+   */
+  const deactivateSegmentationMode = useCallback(() => {
+    const currentScene = sceneRef.current;
+    currentScene?.exitInteractiveMode();
+    onExit();
     setActive(false);
     setTool("select");
-  }, [setActive, setTool]);
+  }, [onExit, setActive, setTool]);
+
+  const toggleSegmentationMode = useCallback(() => {
+    if (segmentationModeActive) {
+      deactivateSegmentationMode();
+    } else {
+      activateSegmentationMode();
+    }
+  }, [
+    segmentationModeActive,
+    deactivateSegmentationMode,
+    activateSegmentationMode,
+  ]);
 
   const switchTool = useCallback(
     (newTool: SegmentationTool) => {
@@ -153,7 +189,7 @@ export const useSegmentationMode = () => {
     "lighter:overlay-create",
     useCallback(
       (payload) => {
-        if (!segmentationActive || !claimCreateEvent(payload.eventId)) {
+        if (!segmentationModeActive || !claimCreateEvent(payload.eventId)) {
           return;
         }
 
@@ -179,18 +215,26 @@ export const useSegmentationMode = () => {
         // e.g. createDetection({ field, labelValue });
         createDetection();
       },
-      [claimCreateEvent, segmentationActive]
+      [claimCreateEvent, segmentationModeActive]
     )
   );
 
   return useMemo(
     () => ({
-      active: segmentationActive,
+      // State (read-only)
+      segmentationModeActive,
+      disabled,
+      tooltip,
+
+      // Mode control
+      activateSegmentationMode,
+      deactivateSegmentationMode,
+      toggleSegmentationMode,
+
+      // Tool state
       tool,
       toolSize,
       toolShape,
-      enter,
-      exit,
       switchTool,
       switchToolShape,
       increaseToolSize,
@@ -198,12 +242,15 @@ export const useSegmentationMode = () => {
       setToolSize,
     }),
     [
-      segmentationActive,
+      segmentationModeActive,
+      disabled,
+      tooltip,
+      activateSegmentationMode,
+      deactivateSegmentationMode,
+      toggleSegmentationMode,
       tool,
       toolSize,
       toolShape,
-      enter,
-      exit,
       switchTool,
       switchToolShape,
       increaseToolSize,

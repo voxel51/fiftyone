@@ -266,29 +266,25 @@ const Detection = () => {
 };
 
 const Segmentation = () => {
-  const { active, enter, exit } = useSegmentationMode();
+  const {
+    segmentationModeActive,
+    disabled,
+    tooltip,
+    activateSegmentationMode,
+  } = useSegmentationMode();
   const deactivateAll = useDeactivateAll();
-  const isPatchView = useRecoilValue(isPatchesView);
-  const fields = useAtomValue(fieldsOfType(DETECTION));
-  const disabled = isPatchView || fields.length === 0;
-
-  const tooltip = isPatchView
-    ? "Creating masks is not supported in this view"
-    : active
-    ? "Exit mask creation"
-    : "Create new mask";
 
   return (
     <Tooltip placement="top-center" text={tooltip}>
       <Square
-        $active={active}
+        $active={segmentationModeActive}
         className={disabled ? "disabled" : ""}
         onClick={() => {
           if (disabled) return;
           deactivateAll();
 
-          if (!active) {
-            enter();
+          if (!segmentationModeActive) {
+            activateSegmentationMode();
           }
         }}
       >
@@ -491,8 +487,8 @@ const Actions = () => {
   const { classificationActive, disableClassification } = useClassification();
   const { quickDrawActive, disableQuickDraw } = useQuickDraw();
   const {
-    active: segmentationMasksActive,
-    exit: disableSegmentationMasks,
+    segmentationModeActive,
+    deactivateSegmentationMode,
   } = useSegmentationMode();
   const current3dAnnotationMode = useCurrent3dAnnotationMode();
   const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
@@ -500,7 +496,7 @@ const Actions = () => {
   const noActiveActions =
     !classificationActive &&
     !quickDrawActive &&
-    !segmentationMasksActive &&
+    !segmentationModeActive &&
     !current3dAnnotationMode;
   const areThreeDActionsVisible = is3dDataset || is3dSamplePinned;
 
@@ -508,11 +504,11 @@ const Actions = () => {
     disableClassification();
     setCurrent3dAnnotationMode(null);
     disableQuickDraw();
-    disableSegmentationMasks();
+    deactivateSegmentationMode();
   }, [
     disableClassification,
     disableQuickDraw,
-    disableSegmentationMasks,
+    deactivateSegmentationMode,
     setCurrent3dAnnotationMode,
   ]);
 

@@ -13,7 +13,7 @@ import { getDefaultStore } from "jotai";
 import {
   _unsafeToolAtom,
   _unsafeToolSizeAtom,
-  _unsafeSegmentationActiveAtom,
+  _unsafeSegmentationModeActiveAtom,
   _unsafeToolShapeAtom,
 } from "./useSegmentationMode";
 import type {
@@ -31,7 +31,7 @@ export const segmentationMasksBridge = {
    * Whether segmentation mask mode is active.
    */
   isActive(): boolean {
-    return getDefaultStore().get(_unsafeSegmentationActiveAtom);
+    return getDefaultStore().get(_unsafeSegmentationModeActiveAtom);
   },
 
   /**

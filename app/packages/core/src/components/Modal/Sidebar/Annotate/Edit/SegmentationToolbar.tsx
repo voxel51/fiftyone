@@ -81,7 +81,7 @@ export const SegmentationToolbar: React.FC<SegmentationToolbarProps> = ({
   canRedo = false,
 }) => {
   const {
-    active,
+    segmentationModeActive,
     tool,
     toolSize,
     toolShape,
@@ -94,7 +94,7 @@ export const SegmentationToolbar: React.FC<SegmentationToolbarProps> = ({
     <FloatingToolbar
       orientation="vertical"
       defaultPosition={{ x: 5, y: 50 }}
-      visible={active}
+      visible={segmentationModeActive}
     >
       {/* ---- Tool selection ---- */}
       <FloatingToolbar.Group label="Tool">
