@@ -9,6 +9,9 @@ FiftyOne operator execution.
 import json
 
 from bson import json_util
+
+from fiftyone.core.session.constants import VALID_ICON_STYLES
+from fiftyone.core.session.utils import normalize_selected_samples
 from .categories import Categories
 
 
@@ -478,12 +481,38 @@ class Operations(object):
     def set_selected_samples(self, samples):
         """Select the specified samples in the App.
 
+        Despite its name, ``selected_samples`` represents whatever sample grid
+        items are in the current view: samples, patches, clips, or frames.
+
         Args:
-            samples: a list of sample IDs to select
+            samples: a list of IDs (strings) or dicts of the form
+                ``{"id": "...", "type": "default"|"alt"}``, where
+                type corresponds to a key in ``sample_selection_style``
         """
+        normalized = normalize_selected_samples(samples)
         return self._ctx.trigger(
-            "set_selected_samples", params={"samples": samples}
+            "set_selected_samples", params={"samples": normalized}
         )
+
+    def set_sample_selection_style(self, default="checkmark", alt="checkmark"):
+        """Set the sample grid selection style in the App.
+
+        Args:
+            default ("checkmark"): the default selection icon style. Supported
+                values are ``"checkmark"``, ``"green-checkmark"``,
+                ``"red-checkmark"``, ``"thumbsup"``, ``"thumbsdown"``,
+                ``"pin"``, ``"star"``, ``"x"``, ``"bookmark"``
+            alt ("checkmark"): the alt selection icon style
+        """
+        _validate_selection_style(default, alt)
+        return self._ctx.trigger(
+            "set_sample_selection_style",
+            params={"default": default, "alt": alt},
+        )
+
+    def clear_sample_selection_style(self):
+        """Clear the sample grid selection style in the App, reverting to default."""
+        return self._ctx.trigger("clear_sample_selection_style")
 
     def set_view(self, view=None, name=None):
         """Set the current view in the App.
@@ -719,3 +748,17 @@ class Operations(object):
 
 def _serialize_view(view):
     return json.loads(json_util.dumps(view._serialize()))
+
+
+def _validate_selection_style(default, alt) -> None:
+    if default is not None and default not in VALID_ICON_STYLES:
+        raise ValueError(
+            f"Invalid default icon style '{default}'. "
+            f"Must be one of {VALID_ICON_STYLES}"
+        )
+
+    if alt is not None and alt not in VALID_ICON_STYLES:
+        raise ValueError(
+            f"Invalid alt icon style '{alt}'. "
+            f"Must be one of {VALID_ICON_STYLES}"
+        )

@@ -16,7 +16,6 @@ import {
   Schema,
   withPath,
 } from "@fiftyone/utilities";
-import { buildThumbnailSelectionDetail } from "../selection";
 import { isEmpty } from "lodash";
 import { v4 as uuid } from "uuid";
 import { VideoLooker } from "..";
@@ -29,6 +28,7 @@ import {
   STROKE_WIDTH,
 } from "../constants";
 import { Events } from "../elements/base";
+import { buildThumbnailSelectionDetail } from "../selection";
 import { COMMON_SHORTCUTS, LookerElement } from "../elements/common";
 import { ClassificationsOverlay, loadOverlays } from "../overlays";
 import { CONTAINS, Overlay } from "../overlays/base";

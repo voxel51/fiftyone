@@ -22,6 +22,7 @@ import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
+from fiftyone.core.session.constants import DEFAULT_SELECTION_STYLE
 from fiftyone.operators import constants
 from fiftyone.operators.decorators import coroutine_timeout
 from fiftyone.operators.message import GeneratedMessage, MessageType
@@ -829,8 +830,42 @@ class ExecutionContext(contextlib.AbstractContextManager):
 
     @property
     def selected(self):
-        """The list of selected sample IDs (if any)."""
-        return self.request_params.get("selected", [])
+        """The list of selected IDs (if any).
+
+        Derived from :attr:`selected_samples` when available, otherwise
+        falls back to ``request_params["selected"]``.
+        """
+        selected_samples = self.request_params.get("selected_samples", None)
+        if selected_samples:
+            return [
+                s["id"] if isinstance(s, dict) else s for s in selected_samples
+            ]
+
+        return self.request_params.get("selected") or []
+
+    @property
+    def selected_samples(self):
+        """A list of selected sample dicts, if any.
+
+        Each dict has ``id`` and ``type`` (``"default"`` or ``"alt"``),
+        where type corresponds to a key in :attr:`sample_selection_style`.
+
+        Despite its name, ``selected_samples`` represents whatever sample grid
+        items are in the current view: samples, patches, clips, or frames.
+        """
+        return self.request_params.get("selected_samples") or []
+
+    @property
+    def sample_selection_style(self):
+        """The current sample grid selection style config, if any.
+
+        A dict with a ``default`` key and optional ``alt`` key specifying
+        icon styles.
+        """
+        return self.request_params.get(
+            "sample_selection_style",
+            dict(DEFAULT_SELECTION_STYLE),
+        )
 
     @property
     def selected_labels(self):

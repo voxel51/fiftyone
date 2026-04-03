@@ -74,6 +74,7 @@ const useItemUpdater = (
     modal: false,
   });
   const selected = useRecoilValue(fos.selectedSamples);
+  const style = useRecoilValue(fos.sampleSelectionStyle);
 
   return useCallback(
     (fontSize: number, lastColoringKey: string | null) => {
@@ -115,11 +116,22 @@ const useItemUpdater = (
         // we want to update looker settings, since async manager refs them
         // todo: decouple async manager from looker state and pass options in
         // handleNewOverlays / refreshSample
+        const sampleId = id.description;
+        const isSelected = selected.has(sampleId);
+        const { selectionType, selectionIcon } = fos.resolveSelectionIcon(
+          selected,
+          style,
+          sampleId,
+          isSelected
+        );
+
         entry.updateOptions(
           {
             ...options,
             fontSize,
-            selected: selected.has(id.description),
+            selected: isSelected,
+            selectionType,
+            selectionIcon,
           },
           shouldHardReload
         );
@@ -133,7 +145,7 @@ const useItemUpdater = (
         entry.updateOptions({}, shouldHardReload);
       };
     },
-    [cache, getNewFields, options, selected]
+    [cache, getNewFields, options, selected, style]
   );
 };
 

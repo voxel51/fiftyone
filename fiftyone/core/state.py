@@ -19,6 +19,7 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.core.clips as foc
 from fiftyone.core.config import AppConfig
+from fiftyone.core.session.constants import DEFAULT_SELECTION_STYLE
 import fiftyone.core.dataset as fod
 from fiftyone.core.odm.dataset import ColorScheme
 from fiftyone.core.odm.workspace import Space
@@ -43,8 +44,10 @@ class StateDescription(etas.Serializable):
         group_id (None): a :attr:`fiftyone.core.groups.Group.id`
         group_slice (None): a :attr:`fiftyone.core.groups.Group.name`
         sample_id (None): a :attr:`fiftyone.core.sample.Sample.id`
-        selected (None): the list of currently selected samples
         selected_labels (None): the list of currently selected labels
+        selected_samples (None): a list of dicts with sample selection info
+        sample_selection_style (None): a dict mapping selection types to
+            icon style names (e.g. ``{"default": "checkmark", "alt": "thumbsdown"}``)
         spaces (None): a :class:`fiftyone.core.odm.workspace.Space`
         view (None): the current :class:`fiftyone.core.view.DatasetView`
         view_name (None): the name of the view if the current view is a
@@ -62,6 +65,8 @@ class StateDescription(etas.Serializable):
         sample_id=None,
         selected=None,
         selected_labels=None,
+        selected_samples=None,
+        sample_selection_style=None,
         spaces=None,
         view=None,
         view_name=None,
@@ -81,14 +86,36 @@ class StateDescription(etas.Serializable):
         self.group_slice = group_slice
 
         self.sample_id = sample_id
-        self.selected = selected or []
         self.selected_labels = selected_labels or []
+
+        # If selected_samples provided, use it as source of truth.
+        # Otherwise, bootstrap from legacy `selected` (flat ID list).
+        if selected_samples:
+            self.selected_samples = selected_samples
+        elif selected:
+            self.selected_samples = [
+                {"id": s, "type": "default"} for s in selected
+            ]
+        else:
+            self.selected_samples = []
+
+        self.sample_selection_style = sample_selection_style or dict(
+            DEFAULT_SELECTION_STYLE
+        )
         self.spaces = spaces
 
         self.view = (
             dataset.load_saved_view(view_name)
             if dataset is not None and view_name
             else view
+        )
+
+    def attributes(self):
+        return list(
+            filter(
+                lambda a: a not in {"dataset", "view"},
+                vars(self),
+            )
         )
 
     def serialize(self, reflective=True):
@@ -143,13 +170,6 @@ class StateDescription(etas.Serializable):
 
             return d
 
-    def attributes(self):
-        return list(
-            filter(
-                lambda a: a not in {"dataset", "view"}, super().attributes()
-            )
-        )
-
     @classmethod
     def from_dict(cls, d):
         """Constructs a :class:`StateDescription` from a JSON dictionary.
@@ -202,6 +222,8 @@ class StateDescription(etas.Serializable):
             sample_id=d.get("sample_id", None),
             selected=d.get("selected", []),
             selected_labels=d.get("selected_labels", []),
+            selected_samples=d.get("selected_samples", None),
+            sample_selection_style=d.get("sample_selection_style", None),
             spaces=spaces,
             view=view,
         )

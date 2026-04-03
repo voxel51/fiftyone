@@ -64,7 +64,7 @@ export default function useSavedViews() {
               form: {
                 filters: await snapshot.getPromise(fos.filters),
                 sampleIds: Array.from(
-                  await snapshot.getPromise(fos.selectedSamples)
+                  (await snapshot.getPromise(fos.selectedSamples)).keys()
                 ),
                 slice: await snapshot.getPromise(fos.groupSlice),
                 extended: await snapshot.getPromise(fos.extendedStages),

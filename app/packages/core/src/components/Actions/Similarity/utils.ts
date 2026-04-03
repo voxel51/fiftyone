@@ -24,7 +24,7 @@ export const getQueryIds = async (
   }
 
   const selectedSamples = Array.from(
-    await snapshot.getPromise(fos.selectedSamples)
+    (await snapshot.getPromise(fos.selectedSamples)).keys()
   );
 
   if (selectedSamples.length) {

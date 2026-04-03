@@ -29,7 +29,9 @@ export default function useToPatches() {
           slice: await snapshot.getPromise(groupSlice),
           filters: await snapshot.getPromise(filters),
           extended: await snapshot.getPromise(extendedStages),
-          sampleIds: Array.from(await snapshot.getPromise(selectedSamples)),
+          sampleIds: Array.from(
+            (await snapshot.getPromise(selectedSamples)).keys()
+          ),
         });
         set(view, (v) => v);
 

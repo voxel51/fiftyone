@@ -560,10 +560,10 @@ export const selectedPatchIds = selectorFamily({
       const selectedSampleObjects = get(atoms.selectedSampleObjects);
 
       if (isPatches || modal) {
-        return selectedSamples;
+        return new Set(selectedSamples.keys());
       }
       let patchIds: string[] = [];
-      for (const sampleId of Array.from(selectedSamples)) {
+      for (const sampleId of Array.from(selectedSamples.keys())) {
         if (selectedSampleObjects.has(sampleId)) {
           const sample = selectedSampleObjects.get(sampleId);
           patchIds = [
@@ -589,7 +589,7 @@ export const selectedPatchSamples = selector({
 
     if (isPatches) {
       let sampleIds: string[] = [];
-      for (const patchId of Array.from(selectedPatches)) {
+      for (const patchId of Array.from(selectedPatches.keys())) {
         if (selectedSampleObjects.has(patchId)) {
           const sample = selectedSampleObjects.get(patchId);
           sampleIds = [...sampleIds, sample?._sample_id as unknown as string];

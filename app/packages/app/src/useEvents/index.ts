@@ -7,6 +7,7 @@ import useSetColorScheme from "./useSetColorScheme";
 import useSetFieldVisibilityStage from "./useSetFieldVisibilityStage";
 import useSetGroupSlice from "./useSetGroupSlice";
 import useSetSample from "./useSetSample";
+import useSetSampleSelectionStyle from "./useSetSampleSelectionStyle";
 import useSetSpaces from "./useSetSpaces";
 import useStateUpdate from "./useStateUpdate";
 
@@ -20,5 +21,6 @@ registerEvent("setSample", useSetSample);
 registerEvent("setSpaces", useSetSpaces);
 registerEvent("stateUpdate", useStateUpdate);
 registerEvent("setFieldVisibilityStage", useSetFieldVisibilityStage);
+registerEvent("setSampleSelectionStyle", useSetSampleSelectionStyle);
 
 export { default } from "./useEvents";
