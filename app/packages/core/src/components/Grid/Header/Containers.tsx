@@ -1,5 +1,9 @@
+import { Tooltip } from "@fiftyone/components";
+import { animated } from "@react-spring/web";
 import Color from "color";
+import React from "react";
 import styled from "styled-components";
+import { useHighlightHover } from "../../Actions/utils";
 
 export const SamplesHeader = styled.div`
   position: absolute;
@@ -42,3 +46,33 @@ export const SliderContainer = styled.div`
   width: 7.375rem;
   padding-right: 0.375rem;
 `;
+
+const IconButtonBase = animated(styled.div`
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem;
+`);
+
+export const IconButton = ({
+  children,
+  onClick,
+  title,
+}: React.PropsWithChildren<{ onClick: () => void; title: string }>) => {
+  const { style, onMouseEnter, onMouseLeave } = useHighlightHover(false);
+  return (
+    <Tooltip text={title} placement="top-center">
+      <IconButtonBase
+        onClick={onClick}
+        onKeyDown={() => null}
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
+        style={style}
+      >
+        {children}
+      </IconButtonBase>
+    </Tooltip>
+  );
+};

@@ -10,7 +10,7 @@ import React from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { ActionOption } from "../../Actions/Common";
 import { SORT_BY_INDEXED_FIELDS } from "../../../utils/links";
-import { RightDiv, SliderContainer } from "./Containers";
+import { IconButton, RightDiv, SliderContainer } from "./Containers";
 
 const Field = ({ value }: { className?: string; value: string }) => {
   return <>{value}</>;
@@ -70,7 +70,7 @@ export default function Sort() {
         />
       </RightDiv>
       {value !== null && (
-        <div
+        <IconButton
           title={value?.descending ? "Descending" : "Ascending"}
           onClick={() =>
             select((current) => ({
@@ -78,10 +78,9 @@ export default function Sort() {
               descending: !current.descending,
             }))
           }
-          style={{ cursor: "pointer", display: "flex" }}
         >
           {value?.descending ? <ArrowDownward /> : <ArrowUpward />}
-        </div>
+        </IconButton>
       )}
     </SliderContainer>
   );

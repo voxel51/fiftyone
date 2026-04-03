@@ -10,6 +10,7 @@ import Actions from "../Actions";
 import { gridSpacing, gridZoom } from "../recoil";
 import { ZOOM_RANGE } from "../useZoomSetting";
 import {
+  IconButton,
   RightContainer,
   RightDiv,
   SamplesHeader,
@@ -23,7 +24,7 @@ const Spacing = () => {
   const resetSpacing = useResetRecoilState(gridSpacing);
   return (
     <SliderContainer>
-      <div style={{ flexGrow: 1 }} title={"Spacing"}>
+      <div style={{ flexGrow: 1 }}>
         <Slider
           valueAtom={gridSpacing}
           boundsAtom={constSelector([0, 64])}
@@ -34,14 +35,9 @@ const Spacing = () => {
           style={{ padding: 0, margin: 0 }}
         />
       </div>
-      <div
-        title={"Reset spacing"}
-        onClick={resetSpacing}
-        onKeyDown={() => null}
-        style={{ cursor: "pointer", display: "flex" }}
-      >
+      <IconButton title="Reset spacing" onClick={resetSpacing}>
         <Apps />
-      </div>
+      </IconButton>
     </SliderContainer>
   );
 };
@@ -52,7 +48,7 @@ const Zoom = () => {
   const theme = useTheme();
   return (
     <SliderContainer>
-      <div style={{ flexGrow: 1 }} title={"Zoom"}>
+      <div style={{ flexGrow: 1 }}>
         <Slider
           valueAtom={gridZoom}
           boundsAtom={constSelector(ZOOM_RANGE)}
@@ -63,14 +59,9 @@ const Zoom = () => {
           style={{ padding: 0, margin: 0 }}
         />
       </div>
-      <div
-        title={"Reset zoom"}
-        onClick={resetZoom}
-        onKeyDown={() => null}
-        style={{ cursor: "pointer", display: "flex" }}
-      >
+      <IconButton title="Reset zoom" onClick={resetZoom}>
         <ImageAspectRatio />
-      </div>
+      </IconButton>
     </SliderContainer>
   );
 };

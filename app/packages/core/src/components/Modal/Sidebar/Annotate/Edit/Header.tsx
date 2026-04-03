@@ -4,13 +4,22 @@ import { Round } from "../Actions";
 
 import { useLighter } from "@fiftyone/lighter";
 import { West as Back } from "@mui/icons-material";
-import { Box, Menu, MenuItem, Stack } from "@mui/material";
-import { Clickable, Icon, IconName, Size, Text } from "@voxel51/voodo";
+import { Menu, MenuItem, Stack } from "@mui/material";
+import {
+  Anchor,
+  Icon,
+  IconName,
+  Size,
+  Text,
+  TextBadge,
+  TextColor,
+  TextVariant,
+  Tooltip,
+} from "@voxel51/voodo";
 import { ItemLeft, ItemRight } from "../Components";
 import { ICONS } from "../Icons";
 import { Row } from "./Components";
 
-import { labels } from "../useLabels";
 import * as fos from "@fiftyone/state";
 import { isGeneratedView } from "@fiftyone/state";
 import { useRecoilValue } from "recoil";
@@ -28,6 +37,8 @@ import useExit from "./useExit";
 import { useQuickDraw } from "./useQuickDraw";
 import { useAnnotationController } from "@fiftyone/annotation";
 
+import { labels } from "../useLabels";
+
 const LabelHamburgerMenu = () => {
   const [open, setOpen] = useState<boolean>(false);
   const anchor = useRef<HTMLElement | null>(null);
@@ -37,7 +48,6 @@ const LabelHamburgerMenu = () => {
     KnownContexts.ModalAnnotate
   );
 
-  // Permission and read-only state
   const canEditLabels = useRecoilValue(fos.canEditLabels);
   const currentFieldIsReadOnly = useAtomValue(currentFieldIsReadOnlyAtom);
   const { openSchemaManager } = useSchemaManagerModal();
@@ -58,11 +68,11 @@ const LabelHamburgerMenu = () => {
 
   return (
     <>
-      <Clickable onClick={() => setOpen(true)}>
-        <Box ref={anchor} sx={{ p: 0.5 }}>
+      <Tooltip content="More options" anchor={Anchor.Top} portal>
+        <Round ref={anchor} onClick={() => setOpen(true)}>
           <Icon name={IconName.MoreVertical} size={Size.Md} />
-        </Box>
-      </Clickable>
+        </Round>
+      </Tooltip>
 
       <Menu
         anchorEl={anchor.current}
@@ -73,14 +83,16 @@ const LabelHamburgerMenu = () => {
         {showDelete && (
           <MenuItem onClick={deleteCommand.callback}>
             <Stack direction="row" gap={1} alignItems="center">
-              <Icon name={IconName.Delete} size={Size.Md} />
-              <Text>{deleteCommand.descriptor.label}</Text>
+              <Icon name={IconName.Delete} size={Size.Sm} />
+              <Text variant={TextVariant.Sm}>
+                {deleteCommand.descriptor.label}
+              </Text>
             </Stack>
           </MenuItem>
         )}
         {showEditSchema && (
           <MenuItem onClick={handleOpenSchemaManager}>
-            Edit field schema
+            <Text variant={TextVariant.Sm}>Edit field schema</Text>
           </MenuItem>
         )}
       </Menu>
@@ -100,7 +112,6 @@ const Header = () => {
   const annotationContext = useAnnotationContext();
   const currentFieldIsReadOnly = useAtomValue(currentFieldIsReadOnlyAtom);
 
-  // In patches view with single label, clicking back should go to explore mode
   const isPatches = useRecoilValue(fos.isPatchesView);
   const labelCount = useAtomValue(labels).length;
   const shouldExitToExplore = isPatches && labelCount === 1;
@@ -123,13 +134,17 @@ const Header = () => {
   return (
     <Row>
       <ItemLeft style={{ columnGap: "0.5rem" }}>
-        <Round onClick={handleExit}>
-          <Back />
-        </Round>
+        <Tooltip content="Back" anchor={Anchor.Top} portal>
+          <Round onClick={handleExit}>
+            <Back />
+          </Round>
+        </Tooltip>
         {Icon && <Icon fill={color} />}
         <div>Edit {type}</div>
       </ItemLeft>
-      {currentFieldIsReadOnly && <span>Read-only</span>}
+      {currentFieldIsReadOnly && (
+        <TextBadge color={TextColor.Muted}>Read-only</TextBadge>
+      )}
       <ItemRight>
         <Stack direction="row" alignItems="center">
           {annotationContext.selectedLabel !== null && <LabelHamburgerMenu />}
