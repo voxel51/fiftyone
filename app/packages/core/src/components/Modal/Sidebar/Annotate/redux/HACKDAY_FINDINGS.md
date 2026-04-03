@@ -1,60 +1,96 @@
 # Hackday: Redux Toolkit in FiftyOne Annotation
 
-**Date:** 2026-04-02
+**Date:** 2026-04-02 — 2026-04-03
 **Scope:** Annotation sidebar (`app/packages/core/src/components/Modal/Sidebar/Annotate/`)
 
 ## What we did
 
 Installed Redux Toolkit alongside the existing Jotai/Recoil/Relay stack and
-progressively migrated the Annotation feature's state management to Redux,
-without breaking the running application.
+**fully migrated** the Annotation feature's core state management to Redux.
+The Jotai→Redux bridge that powered the initial migration was subsequently
+deleted; Redux is now the sole source of truth for annotation state.
+
+### Migration phases
+
+1. **RTK Query proof-of-concept** — fetched app info, datasets, and sample
+   data via RTK Query alongside the existing Relay/Recoil stack
+2. **Redux slice + bridge** — mirrored Jotai state into Redux via a
+   `useEffect`-based bridge; components read from Redux
+3. **Dual-write hooks** — components dispatched to Redux AND wrote to Jotai
+4. **Overlay isolation** — added `overlayId` to `AnnotationLabel`, created
+   `useOverlayById` hook in Lighter, replaced all `label.overlay.id` with
+   `label.overlayId`
+5. **Cold turkey** — deleted the bridge, made Redux the sole write target,
+   removed all Jotai dual-writes
+6. **Derived selectors** — replaced Jotai derived atoms with `createSelector`
+7. **Full sweep** — migrated all remaining UI atoms (loading state, expanded
+   toggles, counts, QuickDraw, hover, delete confirmation, context manager,
+   schema resolver, primitives, field validation cache)
 
 ### Stack
 
 - **RTK Query** — fetches from `/fiftyone` (REST) and `/graphql` (GraphQL)
-- **Redux slice** (`annotationSlice.ts`) — annotation UI state
-- **`createSelector`** — derived state replacing Jotai derived atoms
-- **Dual-write hooks** — dispatch to Redux AND set Jotai atoms during migration
-- **Jotai→Redux bridge** — syncs remaining Jotai atoms into the Redux store
+- **Redux slice** (`annotationSlice.ts`) — all annotation state (~30 fields)
+- **`createSelector`** — 15+ derived selectors replacing Jotai derived atoms
+- **Redux hooks** (`hooks.ts`) — 40+ typed hooks for reads and writes
+- **`useOverlayById`** — Lighter hook for resolving overlay IDs at render time
 
-### Migration scorecard
+### Final migration scorecard
 
-| State | Migrated to Redux | Still on Jotai | Why |
+| State | Redux | Jotai | Notes |
 |---|---|---|---|
-| `isEditing` | Yes (selector) | Bridge only | — |
-| `activeSchemas` | Yes (slice + selector) | Bridge only | — |
-| `schemaTab` | Yes (slice) | Bridge only | — |
-| `labelSchemasData` | Yes (slice) | Bridge only | — |
-| `exploreActiveFields` | Yes (slice) | Bridge only | — |
-| `visibleLabelSchemas` | Yes (`createSelector`) | Jotai atom still exists | Jotai version needed by internal atom graph |
-| `inactiveLabelSchemas` | Yes (`createSelector`) | Jotai atom still exists | Same |
-| `fieldType(path)` | Yes (`createSelector`) | Jotai atom still exists | Same |
-| `fieldTypes` | Yes (`createSelector`) | Jotai atom still exists | Same |
-| `fieldsOfType(type)` | Yes (`createSelector`) | Jotai atom still exists | Same |
-| `currentType` | Yes (`createSelector`) | Jotai atom still exists | Same |
-| `currentField` (read) | Yes (`createSelector`) | Jotai atom still exists | Write side needs overlay |
-| `currentFieldIsReadOnly` | Yes (`createSelector`) | Jotai atom still exists | Same |
-| `currentFields` | Yes (`createSelector`) | Jotai atom still exists | Same |
-| `labels` (list) | Yes (slice) | Bridge only | — |
-| `editingLabel` | Yes (serialized) | Full object in Jotai | Overlay refs |
-| `current` | No | Yes | Holds live overlay reference |
-| `currentOverlay` | No | Yes | Returns canvas renderer object |
-| `currentData` | No | Yes | Write side mutates overlay |
-| `editing` | No | Yes | Holds `PrimitiveAtom` reference |
+| `isAnnotating` | Slice | Dead | — |
+| `editingLabel` | Slice | Dead | Fully serializable with `overlayId` |
+| `isNewLabel` | Slice | Dead | — |
+| `labels` | Slice | Dead export | `useLabels.ts` exports atom for `looker-3d` compat |
+| `activeSchemas` | Slice | Dead | — |
+| `labelSchemasData` | Slice | Dead | Written directly by `useLoadSchemas` |
+| `exploreActiveFields` | Slice | Dead | Written directly by `Sidebar.tsx` |
+| `schemaTab` | Slice | Dead | — |
+| `labelsLoadingState` | Slice | Dead | — |
+| `labelsExpanded` | Slice | Dead | — |
+| `primitivesExpanded` | Slice | Dead | — |
+| `labelsCount` / `primitivesCount` | Slice | Dead | — |
+| `activePrimitive` | Slice | Dead | — |
+| `quickDrawActive` | Slice | Dead | — |
+| `lastUsedField` / `lastUsedLabels` | Slice | Dead | — |
+| `savedLabelData` | Slice | Dead | — |
+| `schemaManagerDisplayed` | Slice | Dead | — |
+| `schemaManagerField` | Slice | Dead | — |
+| `activeLabelId` | Slice | Dead | — |
+| `showDeleteConfirmation` | Slice | Dead | — |
+| `askForDeleteConfirmation` | Slice | Dead | With localStorage sync |
+| `hoveredLabelId` | Slice | Dead | `useHover.ts` fully rewritten |
+| `visibleLabelSchemas` | `createSelector` | Dead | — |
+| `inactiveLabelSchemas` | `createSelector` | Dead | — |
+| `fieldType(path)` | `createSelector` | Dead | — |
+| `fieldTypes` | `createSelector` | Dead | — |
+| `fieldsOfType(type)` | `createSelector` | Dead | — |
+| `defaultField(type)` | `createSelector` | Dead | — |
+| `currentType` | `createSelector` | Dead | — |
+| `currentField` | `createSelector` | Dead | — |
+| `currentFieldIsReadOnly` | `createSelector` | Dead | — |
+| `currentFields` | `createSelector` | Dead | — |
+| `currentData` | `createSelector` | Dead | — |
+| `currentOverlayId` | `createSelector` | Dead | Components use `useOverlayById` |
+| `labelsByPath` | `createSelector` | Dead | — |
 
-**~20 component files migrated** from `useAtomValue(someAtom)` to Redux hooks.
+### What's NOT on Redux yet
+
+| Area | Files | Jotai calls | Notes |
+|---|---|---|---|
+| Schema Manager modal | `SchemaManager/hooks.ts`, `state.ts`, `ActiveFieldsSection.tsx`, `useLabelSchema.ts` | ~20 | Self-contained modal; not part of core annotation flow |
+| Dead atom definitions | `state.ts`, `Edit/state.ts`, `useLabels.ts` | Exports only | Kept for `index.tsx` barrel export / `looker-3d` compat |
+
+**Everything outside the Schema Manager modal is Redux-only.**
 
 ---
 
-## Architectural finding: overlay leakage
-
-The single biggest obstacle to a full Redux migration is that **renderer objects
-leaked into the state layer**.
+## Architectural finding: overlay leakage (identified and fixed)
 
 ### The problem
 
-`AnnotationLabel` (defined in `@fiftyone/state`) bundles serializable data with
-a live overlay reference:
+`AnnotationLabel` bundled serializable data with a live overlay reference:
 
 ```ts
 interface AnnotationLabel {
@@ -62,145 +98,121 @@ interface AnnotationLabel {
   type: string;           // serializable
   data: AnnotationLabelData; // serializable
   overlay: BaseOverlay;   // NOT serializable — live canvas object
-  isNew?: boolean;        // serializable
 }
 ```
 
-This type flows into Jotai atoms:
+This prevented `editing`, `current`, `currentOverlay`, and `currentData` from
+moving to Redux.
 
-```
-editing  →  PrimitiveAtom<AnnotationLabel>  (holds overlay)
-current  →  derived from editing            (exposes overlay)
-currentOverlay  →  derived from current     (returns overlay)
-currentData     →  write side calls overlay.updateLabel()
-```
+### The fix (implemented)
 
-Because the overlay is embedded in the state object, these atoms **cannot** be
-moved to Redux (or any serializable store). Redux explicitly warns against
-non-serializable values in the store, and for good reason — they break
-DevTools, persistence, time-travel, and hydration.
+1. Added `overlayId: string` to the `Label` base interface (`@fiftyone/state`)
+2. Made `overlay` optional (deprecated) on all `AnnotationLabel` variants
+3. Created `useOverlayById(id)` hook in `@fiftyone/lighter`
+4. Updated `useCreateAnnotationLabel` and `useAddAnnotationLabel3dPolyline`
+   to set `overlayId`
+5. Replaced every `label.overlay.id` reference with `label.overlayId`
+6. Replaced every `useAtomValue(currentOverlay)` with
+   `useOverlayById(useCurrentOverlayId())`
+7. Rewrote `currentOverlay` Jotai atom to use `scene.getOverlay(label.overlayId)`
 
-### The fix: ID-based lookup
-
-State should hold **identifiers**, not **instances**. The renderer should own
-its objects and expose them via lookup.
-
-**Current (leaky):**
-```
-State:    { ..., overlay: <BoundingBoxOverlay instance> }
-Component:  const overlay = useAtomValue(currentOverlay);
-            overlay.setDraggable(true);
-```
-
-**Proposed (clean):**
-```
-State:    { ..., overlayId: "abc-123" }
-Component:  const overlayId = useCurrentOverlayId();       // from Redux
-            const overlay = useOverlayById(overlayId);      // from Lighter
-            overlay?.setDraggable(true);
-```
-
-Where `useOverlayById` is a thin Lighter hook:
-```ts
-// In @fiftyone/lighter
-export const useOverlayById = (id: string | null) => {
-  const { scene } = useLighter();
-  return id ? scene?.getOverlayById(id) ?? null : null;
-};
-```
-
-### What this enables
-
-1. **Full Redux migration** — every piece of annotation state becomes
-   serializable. No more Jotai bridge needed.
-
-2. **Redux DevTools for everything** — time-travel through annotation state
-   changes, including which label is selected, what field is active, etc.
-
-3. **Persistence / SSR** — state can be serialized to JSON for session restore,
-   URL deep-linking, or server-side rendering.
-
-4. **Cleaner Lighter API** — the renderer becomes a true "view layer" that
-   components query by ID, rather than a state store that leaks references.
-
-5. **Testability** — annotation logic can be tested with plain objects, without
-   mocking canvas renderers.
-
-6. **State management agnostic** — once overlays are looked up by ID, the state
-   layer doesn't care whether it's Redux, Jotai, Zustand, or signals. The
-   coupling is broken.
-
-### Scope of the refactor
-
-The overlay reference appears in:
-
-- `AnnotationLabel.overlay` (the root cause — `@fiftyone/state`)
-- `editing` atom (holds `PrimitiveAtom<AnnotationLabel>`)
-- `current`, `currentOverlay`, `currentData` (derived atoms in `Edit/state.ts`)
-- `LabelEntry.tsx` (reads `atom` for overlay ID)
-- `useLabels.ts` (creates labels with overlay refs)
-- `useCreateAnnotationLabel.ts` (factory that bundles overlay into label)
-- `useAddAnnotationLabelToRenderer.ts` (adds overlay to scene)
-- Several Edit panel components (Position, Id, AnnotationSchema, etc.)
-
-The fix would be:
-
-1. Add `overlayId: string` to `AnnotationLabel`, remove `overlay` field
-2. Add `scene.getOverlayById(id)` to Lighter's public API
-3. Create `useOverlayById(id)` hook in Lighter
-4. Update label creation to store ID instead of reference
-5. Update consumers to look up overlays at render time
-
-This is a focused refactor (~15-20 files) with a clear boundary. It doesn't
-require changing Lighter internals — just adding a lookup method and stopping
-the reference from leaking into state.
+**Result:** State holds IDs. The scene holds objects. Components resolve at
+render time. The overlay no longer leaks through the state layer.
 
 ---
 
-## Other observations
+## Key lessons
 
-### RTK Query works well with the existing backend
+### The bridge pattern is fragile — go cold turkey instead
 
-- REST endpoints (`/fiftyone`) work out of the box
-- GraphQL queries work via a generic `graphql` endpoint with `POST /graphql`
-- The operator RPC pattern (`useSchemaManager`) could be modeled as RTK Query
-  mutations with optimistic updates
+The Jotai→Redux bridge (`useEffect` / `useLayoutEffect` sync) caused:
+- **One-frame stale reads** — Redux lagged behind Jotai, causing the sidebar
+  to flash between states
+- **Loading deadlocks** — bridge couldn't mount because it was behind a
+  loading gate that read Redux (which the bridge hadn't populated yet)
+- **Duplicate key warnings** — `splitAtom` regenerating atoms during the sync
+  cycle produced duplicate entries
+- **Canvas selection bug** — `useFocus` set Jotai `editing` directly; the
+  bridge propagated the intermediate null state, closing the edit panel
 
-### The Jotai→Redux bridge pattern is viable but fragile
-
-- Uses `useEffect` to sync Jotai atoms into Redux — one-frame delay on mount
-- Caused a loading deadlock when `<ReduxExperiment>` was behind a loading gate
-  (fix: render bridge unconditionally)
-- Dual-write hooks work well for gradual migration but are easy to get wrong
-- A production migration would want to flip the source of truth (Redux-first)
-  rather than running two systems indefinitely
+**Going cold turkey (Redux writes at the source, no bridge) eliminated all of
+these.**
 
 ### Provider placement matters
 
 - Started with `<Provider>` inside `<Annotate>` — broke when hooks were used
   in `Modal.tsx` and `ModalNavigation.tsx`
 - Moved `<Provider>` to wrap the entire Modal portal — fixed all access issues
-- In a full migration, the Provider would go at the app root (like RecoilRoot)
+- In a full migration, the Provider would go at the app root
 
-### `createSelector` is a natural replacement for Jotai derived atoms
+### `createSelector` naturally replaces Jotai derived atoms
 
-- Same memoization semantics
+- Same memoization semantics (recompute only when inputs change)
 - Parameterized selectors (`selectFieldType(path)`) replace `atomFamily`
 - Composition works the same way (selectors reading other selectors)
-- Bonus: visible in Redux DevTools without extra setup
+- Visible in Redux DevTools without extra setup
+
+### RTK Query works well with the existing backend
+
+- REST endpoints (`/fiftyone`) work out of the box
+- GraphQL queries work via a generic `POST /graphql` endpoint
+- The operator RPC pattern (`useSchemaManager`) could be modeled as RTK Query
+  mutations with optimistic updates
+
+### Non-serializable objects need clear boundaries
+
+`overlay` (canvas renderer), `contextManager` (class instance), and
+`schemaManagementOps` (function callbacks) are non-serializable. Each needed
+a different strategy:
+
+| Object | Strategy |
+|---|---|
+| `overlay` | ID-based lookup via `useOverlayById` |
+| `contextManager` | Module-level singleton |
+| `schemaManagementOps` | Module-level variable with getter |
+
+The common principle: **state holds identifiers and data; instances live
+outside the store and are resolved at the boundary.**
 
 ---
 
-## Files created/modified
+## Files created
 
-### New files (in `Annotate/redux/`)
-- `store.ts` — Redux store with RTK Query + annotation slice
-- `api.ts` — RTK Query API (REST + GraphQL endpoints)
-- `annotationSlice.ts` — slice + `createSelector` derived state
-- `hooks.ts` — typed read hooks, write hooks (dual-write), derived selector hooks
-- `ReduxExperiment.tsx` — Jotai→Redux bridge + RTK Query logger
+| File | Purpose |
+|---|---|
+| `redux/store.ts` | Redux store (RTK Query + annotation slice) |
+| `redux/api.ts` | RTK Query API (REST + GraphQL endpoints) |
+| `redux/annotationSlice.ts` | Slice (~30 state fields) + 15 `createSelector` derivations |
+| `redux/hooks.ts` | 40+ typed hooks (reads, writes, derived selectors) |
+| `redux/ReduxExperiment.tsx` | RTK Query logger (bridge deleted) |
+| `lighter/src/react/useOverlayById.ts` | Overlay ID → instance resolver |
 
-### Modified files (~20)
-See migration scorecard above. Every `useAtomValue(someAtom)` call in the
-Annotation feature was evaluated. ~65% were migrated to Redux hooks; the
-remainder depend on non-serializable overlay references.
+## Files modified (~35)
+
+Core annotation flow (load → display → select → edit → delete):
+`Annotate.tsx`, `LabelList.tsx`, `LabelEntry.tsx`, `Actions.tsx`,
+`AnnotationSliceSelector.tsx`, `ImportSchema.tsx`, `useEntries.ts`,
+`useLabels.ts`, `useLoadSchemas.ts`, `useFocus.ts`, `useHover.ts`,
+`useCreateAnnotationLabel.ts`, `useAddAnnotationLabelToRenderer.ts`,
+`useAddAnnotationLabel3dPolyline.ts`, `useSamplePrimitives.ts`,
+`usePrimitiveEntries.ts`, `usePrimitivesCount.ts`,
+`useSourceFieldToActivate.ts`, `useAnnotationContextManager.ts`,
+`useSchemaResolver.ts`, `useValidAnnotationFields.ts`,
+`useCanAnnotate.ts` (import only)
+
+Edit panel:
+`Edit/Edit.tsx`, `Edit/Header.tsx`, `Edit/Field.tsx`, `Edit/Position.tsx`,
+`Edit/Position3d.tsx`, `Edit/Id.tsx`, `Edit/AnnotationSchema.tsx`,
+`Edit/PolylineDetails.tsx`, `Edit/useExit.ts`, `Edit/useDelete.ts`,
+`Edit/useCreate.ts`, `Edit/useClassification.ts`, `Edit/useQuickDraw.ts`,
+`Edit/useActivePrimitive.ts`, `Edit/useColor.ts`, `Edit/AddSchema.tsx`,
+`Edit/bridgeQuickDraw.ts`
+
+Other:
+`Confirmation/useConfirmDelete.tsx`, `GroupEntry.tsx`, `state.ts`,
+`SchemaManager/hooks.ts`, `SchemaManager/ActiveFieldsSection.tsx`,
+`Modal.tsx`, `Sidebar.tsx`,
+`Sidebar/InteractiveSidebar/utils.ts`
+
+Type changes:
+`@fiftyone/state` — `Label.overlayId` added, `overlay` made optional
