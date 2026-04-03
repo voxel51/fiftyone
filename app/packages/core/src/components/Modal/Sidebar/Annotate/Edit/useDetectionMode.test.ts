@@ -111,13 +111,14 @@ describe("useDetectionMode", () => {
       expect(result.current.detectionModeActive).toBe(false);
     });
 
-    it("does not call onExit", () => {
+    it("finalizes the current detection", () => {
       const { result } = renderHook(() => useDetectionMode());
 
       act(() => result.current.activateDetectionMode());
       act(() => result.current.deactivateDetectionMode());
 
-      expect(mockOnExit).not.toHaveBeenCalled();
+      expect(mockOnExit).toHaveBeenCalledOnce();
+      expect(mockExitInteractiveMode).toHaveBeenCalledOnce();
     });
   });
 

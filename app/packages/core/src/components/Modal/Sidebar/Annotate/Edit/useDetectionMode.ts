@@ -135,6 +135,26 @@ export const useDetectionMode = () => {
   );
 
   /**
+   * Cache field/label for auto-assignment, exit interactive mode,
+   * and close out the current label.
+   */
+  const finalizeCurrentDetection = useCallback(() => {
+    const scene = sceneRef.current;
+    const currentLabel = selectedLabelRef.current;
+
+    if (currentLabel) {
+      setLastUsedField(currentLabel.path);
+
+      if (currentLabel.data.label) {
+        setLastUsedLabel(currentLabel.path, currentLabel.data.label);
+      }
+    }
+
+    scene?.exitInteractiveMode();
+    onExit();
+  }, [onExit, setLastUsedField, setLastUsedLabel]);
+
+  /**
    * Enable detection mode for Detection annotations.
    * The actual overlay/label creation is deferred until the user mouses down in the scene.
    */
@@ -143,11 +163,12 @@ export const useDetectionMode = () => {
   }, [setDetectionModeActive]);
 
   /**
-   * Disable detection mode.
+   * Disable detection mode and gracefully close out any label being edited.
    */
   const deactivateDetectionMode = useCallback(() => {
+    finalizeCurrentDetection();
     setDetectionModeActive(false);
-  }, [setDetectionModeActive]);
+  }, [finalizeCurrentDetection, setDetectionModeActive]);
 
   // Auto-enable detection mode when a detection is being edited,
   // auto-disable when a different label type is selected.
@@ -284,39 +305,17 @@ export const useDetectionMode = () => {
   );
 
   /**
-   * Cache field/label for auto-assignment
-   * Close out previous label
-   */
-  const finalizeCurrentDetection = useCallback(() => {
-    const scene = sceneRef.current;
-    const currentLabel = selectedLabelRef.current;
-
-    if (currentLabel) {
-      setLastUsedField(currentLabel.path);
-
-      if (currentLabel.data.label) {
-        setLastUsedLabel(currentLabel.path, currentLabel.data.label);
-      }
-    }
-
-    scene?.exitInteractiveMode();
-    onExit();
-  }, [onExit, setLastUsedField, setLastUsedLabel]);
-
-  /**
-   * Toggle detection mode. When exiting, finalizes the current detection
-   * (caches field/label, exits interactive mode, closes edit form).
+   * Toggle detection mode. When exiting, deactivateDetectionMode handles
+   * finalization (caches field/label, exits interactive mode, closes edit form).
    */
   const toggleDetectionMode = useCallback(() => {
     if (detectionModeActive) {
-      finalizeCurrentDetection();
       deactivateDetectionMode();
     } else {
       activateDetectionMode();
     }
   }, [
     detectionModeActive,
-    finalizeCurrentDetection,
     deactivateDetectionMode,
     activateDetectionMode,
   ]);
@@ -354,9 +353,7 @@ export const useDetectionMode = () => {
   );
 
   /**
-   * Cache field/label for auto-assignment
-   * Close out previous label
-   * Exit detection mode
+   * Exit detection mode (triggered when user clicks without dragging).
    */
   useEventHandler(
     "lighter:detection-mode-quit",
@@ -366,10 +363,9 @@ export const useDetectionMode = () => {
           return;
         }
 
-        finalizeCurrentDetection();
         deactivateDetectionMode();
       },
-      [claimEvent, deactivateDetectionMode, finalizeCurrentDetection]
+      [claimEvent, deactivateDetectionMode]
     )
   );
 
