@@ -1,18 +1,29 @@
-import { DETECTION } from "@fiftyone/utilities";
-import { type PrimitiveAtom, atom, useAtom, useAtomValue, useSetAtom } from "jotai";
-import { atomFamily, useAtomCallback } from "jotai/utils";
-import { countBy, maxBy } from "lodash";
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { fieldType, isFieldReadOnly, labelSchemaData } from "../state";
-import { labelsByPath } from "../useLabels";
-import { currentType, defaultField, useAnnotationContext } from "./state";
+import { countBy, maxBy } from "lodash";
+import { atomFamily, useAtomCallback } from "jotai/utils";
+import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import type { PrimitiveAtom } from "jotai";
+import { useRecoilValue } from "recoil";
+
 import {
   UNDEFINED_LIGHTER_SCENE_ID,
   useLighter,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
+import { DETECTION } from "@fiftyone/utilities";
+
+import { labelsByPath } from "../useLabels";
 import useCreate from "./useCreate";
 import useExit from "./useExit";
+
+import { isPatchesView } from "@fiftyone/state";
+import { fieldType, isFieldReadOnly, labelSchemaData } from "../state";
+import {
+  currentType,
+  defaultField,
+  fieldsOfType,
+  useAnnotationContext,
+} from "./state";
 
 /**
  * Flag to track if quick draw mode is active.
@@ -29,14 +40,16 @@ export { detectionModeActiveAtom as _dangerousDetectionModeActiveAtom };
  * Examples: "ground_truth.detections", "predictions.detections"
  * Used to remember which detection field the user was annotating.
  */
-const lastUsedFieldAtom = atom<string | null>(null) as PrimitiveAtom<string | null>;
+const lastUsedFieldAtom = atom<string | null>(null) as PrimitiveAtom<
+  string | null
+>;
 
 /**
  * Tracks the last-used label value (class) for each field path.
  * Used for auto-assignment when creating new labels in quick draw mode.
  */
-const lastUsedLabelAtom = atomFamily((_field: string) =>
-  atom<string | null>(null) as PrimitiveAtom<string | null>
+const lastUsedLabelAtom = atomFamily(
+  (_field: string) => atom<string | null>(null) as PrimitiveAtom<string | null>
 );
 
 const detectionTypes = new Set(["Detection", "Detections"]);
@@ -52,9 +65,12 @@ const claimedEventsAtom = atom<Map<string, string>>(new Map());
  * Centralized hook for managing quick draw mode state and operations.
  */
 export const useDetectionMode = () => {
-  const [detectionModeActive, setDetectionModeActive] = useAtom(detectionModeActiveAtom);
+  const [detectionModeActive, setDetectionModeActive] = useAtom(
+    detectionModeActiveAtom
+  );
   const editingLabelType = useAtomValue(currentType);
   const isEditingDetection = editingLabelType === DETECTION;
+  const isPatchView = useRecoilValue(isPatchesView);
   const setLastUsedField = useSetAtom(lastUsedFieldAtom);
   const labelsMap = useAtomValue(labelsByPath);
   const defaultDetectionField = useAtomValue(defaultField(DETECTION));
@@ -62,6 +78,7 @@ export const useDetectionMode = () => {
   const { selectedLabel } = useAnnotationContext();
   const createDetection = useCreate(DETECTION);
   const onExit = useExit();
+  const fields = useAtomValue(fieldsOfType(DETECTION));
 
   const useEventHandler = useLighterEventHandler(
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
@@ -73,6 +90,14 @@ export const useDetectionMode = () => {
 
   const selectedLabelRef = useRef(selectedLabel);
   selectedLabelRef.current = selectedLabel;
+
+  const disabled = isPatchView || fields.length === 0;
+
+  const tooltip = isPatchView
+    ? "Creating detections is not supported in this view"
+    : detectionModeActive
+    ? "Exit detection creation"
+    : "Create new detections";
 
   /**
    * Getter which wraps {@link fieldType} atom family.
@@ -129,7 +154,12 @@ export const useDetectionMode = () => {
     } else if (editingLabelType && !isEditingDetection && detectionModeActive) {
       setDetectionModeActive(false);
     }
-  }, [editingLabelType, isEditingDetection, detectionModeActive, setDetectionModeActive]);
+  }, [
+    editingLabelType,
+    isEditingDetection,
+    detectionModeActive,
+    setDetectionModeActive,
+  ]);
 
   /**
    * Get the auto-assigned detection field path.
@@ -344,12 +374,21 @@ export const useDetectionMode = () => {
     () => ({
       // State (read-only)
       detectionModeActive,
+      disabled,
+      tooltip,
 
       // Mode control (for UI components)
       activateDetectionMode,
       deactivateDetectionMode,
       toggleDetectionMode,
     }),
-    [detectionModeActive, activateDetectionMode, deactivateDetectionMode, toggleDetectionMode]
+    [
+      activateDetectionMode,
+      deactivateDetectionMode,
+      detectionModeActive,
+      disabled,
+      toggleDetectionMode,
+      tooltip,
+    ]
   );
 };

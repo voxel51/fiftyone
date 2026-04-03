@@ -220,18 +220,13 @@ const Classification = () => {
 };
 
 const Detection = () => {
-  const { detectionModeActive, activateDetectionMode } = useDetectionMode();
+  const {
+    activateDetectionMode,
+    detectionModeActive,
+    disabled,
+    tooltip,
+  } = useDetectionMode();
   const deactivateAll = useDeactivateAll();
-  const isPatchView = useRecoilValue(isPatchesView);
-
-  const fields = useAtomValue(fieldsOfType(DETECTION));
-  const disabled = isPatchView || fields.length === 0;
-
-  const tooltip = isPatchView
-    ? "Creating detections is not supported in this view"
-    : detectionModeActive
-    ? "Exit detection creation"
-    : "Create new detections";
 
   return (
     <Tooltip placement="top-center" text={tooltip}>
