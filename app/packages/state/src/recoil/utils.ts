@@ -176,9 +176,12 @@ export function resolveSelectionIcon(
   style: SelectionStyle,
   sampleId: string,
   isSelected: boolean
-): { selectionType: SelectionType | null; selectionIcon: SelectionIconStyle } {
+): {
+  selectionType: SelectionType | null;
+  selectionIcon: SelectionIconStyle | null;
+} {
   if (!isSelected) {
-    return { selectionType: null, selectionIcon: style.default };
+    return { selectionType: null, selectionIcon: null };
   }
   const selectionType: SelectionType =
     selectedSamples.get(sampleId) || "default";

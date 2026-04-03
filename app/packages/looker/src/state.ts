@@ -209,7 +209,8 @@ export interface BaseOptions {
     | "pin"
     | "star"
     | "x"
-    | "bookmark";
+    | "bookmark"
+    | null;
   shouldHandleKeyEvents?: boolean;
   inSelectionMode: boolean;
   timeZone: string;
