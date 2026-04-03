@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 import fiftyone.core.session.session as fos
 
 
-def _make_session_shell(start_time, disable_warning):
+def _make_session_shell(start_time: float, disable_warning: bool) -> fos.Session:
     """Build a minimal Session-like object that exercises __del__ logic."""
     session = object.__new__(fos.Session)
     session._get_time = time.perf_counter
