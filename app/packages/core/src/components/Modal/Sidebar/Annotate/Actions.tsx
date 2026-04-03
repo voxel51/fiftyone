@@ -28,7 +28,7 @@ import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ItemLeft, ItemRight } from "./Components";
 import { editing } from "./Edit";
-import { useClassification } from "./Edit/useClassification";
+import { useClassification } from "./Edit/useClassificationMode";
 import { fieldsOfType } from "./Edit/state";
 import { useQuickDraw } from "./Edit/useQuickDraw";
 
@@ -154,11 +154,11 @@ const Select = ({ active }: { active: boolean }) => {
   return (
     <Tooltip placement="top-center" text="Select">
       <Square
-          $active={active}
-          data-cy="select-action"
-          data-cy-active={active}
-          onClick={active ? undefined : deactivateAll}
-        >
+        $active={active}
+        data-cy="select-action"
+        data-cy-active={active}
+        onClick={active ? undefined : deactivateAll}
+      >
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="19"
