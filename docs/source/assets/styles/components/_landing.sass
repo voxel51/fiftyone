@@ -283,7 +283,7 @@ $arrow-icon-dark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/s
     color: $landing-primary
     text-decoration: none
 
-.nav-pill-filled
+#fiftyone a.nav-pill-filled
   background: $landing-dark
   border: 1px solid $landing-dark
   color: #fff
@@ -656,32 +656,43 @@ section#what-are-you-working-on
 
 .integrations-tier1,
 .integrations-tier2
-  display: flex !important
-  flex-wrap: wrap
-  justify-content: center
+  display: grid !important
+  justify-items: center
   align-items: center
 
   > p
     margin: 0
+    display: flex
+    align-items: center
+    justify-content: center
 
 .integrations-tier1
-  gap: 12px 28px
+  grid-template-columns: repeat(5, 1fr)
+  gap: 16px
   margin-top: 32px
   margin-bottom: 24px
   padding-bottom: 24px
   border-bottom: 1px solid var(--pst-color-border, $landing-surface)
 
+  > p
+    height: 80px
+
   img
-    max-height: 60px
-    max-width: 180px
+    max-height: 48px
+    max-width: 160px
     width: auto
     object-fit: contain
 
 .integrations-tier2
-  gap: 6px 12px
+  grid-template-columns: repeat(6, 1fr)
+  gap: 8px
+
+  > p
+    height: 56px
 
   img
-    max-height: 32px
+    max-height: 28px
+    max-width: 120px
     width: auto
     opacity: 0.7
     transition: opacity 0.2s ease
@@ -707,6 +718,15 @@ section#what-are-you-working-on
     color: $landing-primary
     text-decoration: none
 
+// --- Section descriptive heading (below RST heading) ---
+
+.section-descriptive-heading
+  font-size: 1.6rem
+  font-weight: 600
+  margin: 0 0 16px
+  color: var(--pst-color-text-base)
+  font-family: $landing-font
+
 // --- Responsive ---
 
 @media (max-width: $tablet)
@@ -729,6 +749,12 @@ section#what-are-you-working-on
   .install-bar-right
     justify-content: center
 
+  .integrations-tier1
+    grid-template-columns: repeat(3, 1fr)
+
+  .integrations-tier2
+    grid-template-columns: repeat(4, 1fr)
+
   .quickstart-cta-banner
     flex-direction: column
     text-align: center
@@ -744,6 +770,15 @@ section#what-are-you-working-on
   .quick-links-grid
     grid-template-columns: 1fr 1fr
     max-width: 300px
+
+  .quick-link-item
+    white-space: normal
+
+  .integrations-tier1
+    grid-template-columns: repeat(2, 1fr)
+
+  .integrations-tier2
+    grid-template-columns: repeat(3, 1fr)
 
   .quick-link-item
     white-space: normal

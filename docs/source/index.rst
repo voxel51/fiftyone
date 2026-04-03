@@ -80,25 +80,25 @@ FiftyOne
       <span class="quick-link-icon"></span>
       Install FiftyOne
     </a>
-    <a href="user_guide/evaluation.html" class="quick-link-item">
+    <a href="user_guide/import_datasets.html" class="quick-link-item">
       <span class="quick-link-icon"></span>
-      Evaluate my model
+      Import my data
     </a>
     <a href="dataset_zoo/index.html" class="quick-link-item">
       <span class="quick-link-icon"></span>
       Load a zoo dataset
     </a>
-    <a href="user_guide/import_datasets.html" class="quick-link-item">
+    <a href="getting_started/annotation/index.html" class="quick-link-item">
       <span class="quick-link-icon"></span>
-      Import my data
+      Label my data <span class="new-badge">NEW</span>
+    </a>
+    <a href="user_guide/evaluation.html" class="quick-link-item">
+      <span class="quick-link-icon"></span>
+      Evaluate my model
     </a>
     <a href="plugins/index.html" class="quick-link-item">
       <span class="quick-link-icon"></span>
       Browse plugins
-    </a>
-    <a href="getting_started/annotation/index.html" class="quick-link-item">
-      <span class="quick-link-icon"></span>
-      Label my dataset <span class="new-badge">NEW</span>
     </a>
   </div>
 
@@ -126,11 +126,12 @@ FiftyOne
 
   <div class="section-label-pill">Get Started</div>
 
-What are you working on?
-________________________
+Get Started
+___________
 
 .. raw:: html
 
+    <h3 class="section-descriptive-heading">What are you working on?</h3>
     <a href="getting_started/index.html" class="capability-cta-v4 section-header-cta">
       <span class="orange-arrow-circle"></span>
       Explore all getting started guides
@@ -198,8 +199,8 @@ ________________________
 
   <div class="section-label-pill">Capabilities</div>
 
-Core Capabilities
-_________________
+Capabilities
+____________
 
 .. raw:: html
 
@@ -212,11 +213,37 @@ _________________
           <p>Explore your data in the FiftyOne App. Browse images, videos, and 3D data side-by-side with labels, metadata, and model predictions — all in one interactive view.</p>
           <a href="user_guide/app.html" class="capability-cta-v4">
             <span class="gray-arrow-circle"></span>
-            Explore the FiftyOne App
+            Explore the App
           </a>
         </div>
         <div class="capability-image">
           <img src="https://cdn.voxel51.com/images/capabilities/groups-modal.gif" alt="Visualize" loading="lazy" />
+        </div>
+      </div>
+      <div class="capability-row reverse">
+        <div class="capability-text">
+          <h3>Curate</h3>
+          <p>Reveal hidden structure in your data with embedding visualizations. Mine hard samples, find near-duplicates, and recommend the best data for annotation.</p>
+          <a href="tutorials/image_embeddings.html" class="capability-cta-v4">
+            <span class="gray-arrow-circle"></span>
+            Get embeddings
+          </a>
+        </div>
+        <div class="capability-image">
+          <img src="https://cdn.voxel51.com/images/capabilities/homepage_embeddings.gif" alt="Curate" loading="lazy" />
+        </div>
+      </div>
+      <div class="capability-row">
+        <div class="capability-text">
+          <h3>Annotate</h3>
+          <p>Annotation mistakes create an artificial ceiling on model performance. Use FiftyOne to automatically identify possible label mistakes and correct them in-app.</p>
+          <a href="getting_started/annotation/index.html" class="capability-cta-v4">
+            <span class="gray-arrow-circle"></span>
+            Annotate your data
+          </a>
+        </div>
+        <div class="capability-image">
+          <img src="https://cdn.voxel51.com/images/capabilities/homepage_mistakes.gif" alt="Annotate" loading="lazy" />
         </div>
       </div>
       <div class="capability-row reverse">
@@ -232,32 +259,6 @@ _________________
           <img src="https://cdn.voxel51.com/images/capabilities/homepage_evaluate.gif" alt="Evaluate" loading="lazy" />
         </div>
       </div>
-      <div class="capability-row">
-        <div class="capability-text">
-          <h3>Curate</h3>
-          <p>Reveal hidden structure in your data with embedding visualizations. Mine hard samples, find near-duplicates, and recommend the best data for annotation.</p>
-          <a href="tutorials/image_embeddings.html" class="capability-cta-v4">
-            <span class="gray-arrow-circle"></span>
-            Explore Embeddings
-          </a>
-        </div>
-        <div class="capability-image">
-          <img src="https://cdn.voxel51.com/images/capabilities/homepage_embeddings.gif" alt="Curate" loading="lazy" />
-        </div>
-      </div>
-      <div class="capability-row reverse">
-        <div class="capability-text">
-          <h3>Annotate</h3>
-          <p>Annotation mistakes create an artificial ceiling on model performance. Use FiftyOne to automatically identify possible label mistakes and correct them in-app.</p>
-          <a href="getting_started/annotation/index.html" class="capability-cta-v4">
-            <span class="gray-arrow-circle"></span>
-            Explore Annotations
-          </a>
-        </div>
-        <div class="capability-image">
-          <img src="https://cdn.voxel51.com/images/capabilities/homepage_mistakes.gif" alt="Annotate" loading="lazy" />
-        </div>
-      </div>
     </div>
 
 .. Section 4: Integrations (tiered grid) --------------------------------------
@@ -266,11 +267,12 @@ _________________
 
   <div class="section-label-pill">Integrations</div>
 
-Works with your favorite tools
-______________________________
+Integrations
+____________
 
 .. raw:: html
 
+    <h3 class="section-descriptive-heading">Works with your favorite tools</h3>
     <div class="section-header-row integrations-subtitle-row">
       <p class="capability-subtitle integrations-subtitle">FiftyOne integrates natively with your favorite tools. Click on a logo to learn how.</p>
       <a href="integrations/index.html" class="capability-cta-v4">
@@ -468,11 +470,12 @@ ______________________________
 
   <div class="section-label-pill">Community</div>
 
-Need Support?
-_____________
+Community
+_________
 
 .. raw:: html
 
+  <h3 class="section-descriptive-heading">Need Support?</h3>
   <p class="capability-subtitle">If you run into any issues with FiftyOne or have any burning questions, feel free to connect with us</p>
   <div class="support-section">
     <div class="support-links">
