@@ -5,13 +5,16 @@ Tests related to Session behavior.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import gc
 import time
 from unittest.mock import MagicMock, patch
 
 import fiftyone.core.session.session as fos
 
 
-def _make_session_shell(start_time: float, disable_warning: bool) -> fos.Session:
+def _make_session_shell(
+    start_time: float, disable_warning: bool
+) -> fos.Session:
     """Build a minimal Session-like object that exercises __del__ logic."""
     session = object.__new__(fos.Session)
     session._get_time = time.perf_counter
@@ -28,9 +31,8 @@ def test_wait_warning_suppressed_when_flag_set(capsys):
         disable_warning=True,
     )
     with patch("fiftyone.core.session.session._unregister_session"):
-        session.__del__()
-    # Prevent GC from calling __del__ again and leaking output into the next test.
-    session._disable_wait_warning = True
+        del session
+        gc.collect()
     assert fos._WAIT_INSTRUCTIONS not in capsys.readouterr().out
 
 
@@ -41,9 +43,8 @@ def test_wait_warning_shown_on_fast_shutdown(capsys):
         disable_warning=False,
     )
     with patch("fiftyone.core.session.session._unregister_session"):
-        session.__del__()
-    # Prevent GC from calling __del__ again and leaking output into the next test.
-    session._disable_wait_warning = True
+        del session
+        gc.collect()
     assert fos._WAIT_INSTRUCTIONS in capsys.readouterr().out
 
 
@@ -54,7 +55,6 @@ def test_no_warning_on_slow_shutdown(capsys):
         disable_warning=False,
     )
     with patch("fiftyone.core.session.session._unregister_session"):
-        session.__del__()
-    # Prevent GC from calling __del__ again and leaking output into the next test.
-    session._disable_wait_warning = True
+        del session
+        gc.collect()
     assert fos._WAIT_INSTRUCTIONS not in capsys.readouterr().out
