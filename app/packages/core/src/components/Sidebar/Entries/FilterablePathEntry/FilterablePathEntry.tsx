@@ -4,7 +4,7 @@ import { makePseudoField } from "@fiftyone/utilities";
 import { Checkbox } from "@mui/material";
 import Color from "color";
 import React, { Suspense } from "react";
-import { useRecoilCallback, useRecoilValue } from "recoil";
+import { useRecoilCallback, useRecoilValue, useSetRecoilState } from "recoil";
 import FieldLabelAndInfo from "../../../FieldLabelAndInfo";
 import RegularEntry from "../RegularEntry";
 import FilterablePathEntries from "./FilterablePathEntries";
@@ -57,7 +57,14 @@ const FilterableEntry = ({
   const expanded = useRecoilValue(
     fos.sidebarExpanded({ modal, path: expandedPath })
   );
+  const setExpanded = useSetRecoilState(
+    fos.sidebarExpanded({ modal, path: expandedPath })
+  );
   const onClick = useOnClick({ modal, path });
+  const onToggleExpand = React.useCallback<React.MouseEventHandler>(
+    () => setExpanded((v) => !v),
+    [setExpanded]
+  );
   const theme = useTheme();
   const color = disabled ? theme.background.paper : pathColor;
 
@@ -68,8 +75,10 @@ const FilterableEntry = ({
           ? Color(color).alpha(0.25).string()
           : theme.background.level1
       }
+      clickable
       color={color}
       entryKey={entryKey}
+      onHeaderClick={onToggleExpand}
       heading={
         <>
           {!disabled && !(modal && path === LABEL_TAGS) && (
@@ -84,6 +93,7 @@ const FilterableEntry = ({
               }}
               data-cy={`checkbox-${path}`}
               onClick={onClick}
+              onMouseUp={(e) => e.stopPropagation()}
             />
           )}
           {

@@ -124,8 +124,8 @@ const ScalarValueEntry = ({
 };
 
 const ListContainer = styled(ScalarDiv)`
-  background: ${({ theme }) => theme.background.level2};
-  border: 1px solid var(--fo-palette-divider);
+  background: ${({ theme }) => theme.background.level1};
+  border: 1px solid ${({ theme }) => theme.primary.softBorder};
   border-radius: 2px;
   color: ${({ theme }) => theme.text.secondary};
   margin-top: 0.25rem;

@@ -69,7 +69,7 @@ const PlusMinusButton = ({ expanded }: { expanded: boolean }) =>
   expanded ? <Remove /> : <Add />;
 
 const GroupHeader = styled.div`
-  border-bottom: 2px solid ${({ theme }) => theme.primary.softBorder};
+  border-bottom: 1px solid ${({ theme }) => theme.primary.softBorder};
   border-top-left-radius: 3px;
   border-top-right-radius: 3px;
   margin-left: 2px;
@@ -81,7 +81,7 @@ const GroupHeader = styled.div`
   align-items: center;
   font-weight: bold;
   color: ${({ theme }) => theme.text.secondary};
-  background: ${({ theme }) => theme.neutral.softBg};
+  background: transparent;
   user-select: text;
 
   svg {
