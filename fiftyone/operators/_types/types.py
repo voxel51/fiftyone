@@ -2541,7 +2541,7 @@ class TextFieldView(View):
     """
 
     def __init__(self, multiline=False, rows=None, **kwargs):
-        super().__init__(**kwargs)
+        super().__init__(multiline=multiline, rows=rows, **kwargs)
         self.multiline = multiline
         self.rows = rows
 
