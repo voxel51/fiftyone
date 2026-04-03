@@ -91,10 +91,13 @@ export const useDetectionMode = () => {
   const selectedLabelRef = useRef(selectedLabel);
   selectedLabelRef.current = selectedLabel;
 
-  const disabled = isPatchView || fields.length === 0;
+  const noActiveFields = fields.length === 0;
+  const disabled = isPatchView || noActiveFields;
 
   const tooltip = isPatchView
     ? "Creating detections is not supported in this view"
+    : noActiveFields
+    ? "No active fields"
     : detectionModeActive
     ? "Exit detection creation"
     : "Create new detections";

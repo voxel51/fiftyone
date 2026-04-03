@@ -22,10 +22,15 @@ export const useClassificationMode = () => {
   const fields = useAtomValue(fieldsOfType(CLASSIFICATION));
   const classificationModeActive = useAtomValue(currentType) === CLASSIFICATION;
 
-  const disabled = isPatchView || fields.length === 0;
+  const noActiveFields = fields.length === 0;
+  const disabled = isPatchView || noActiveFields;
 
   const tooltip = isPatchView
     ? "Creating classifications is not supported in this view"
+    : noActiveFields
+    ? "No active fields"
+    : classificationModeActive
+    ? "Exit classification creation"
     : "Create new classification";
 
   const activateClassificationMode = useCallback(() => {
