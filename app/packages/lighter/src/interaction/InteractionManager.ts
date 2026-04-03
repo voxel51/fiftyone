@@ -3,7 +3,7 @@
  */
 
 import { quickDrawBridge } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/bridgeQuickDraw";
-import { segmentationMasksBridge } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/bridgeSegmentationMasks";
+import { segmentationModeBridge } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/bridgeSegmentationMode";
 import { EventDispatcher, getEventBus } from "@fiftyone/events";
 import { TypeGuards } from "../core/Scene2D";
 import type { LighterEventGroup } from "../events";
@@ -235,7 +235,7 @@ export class InteractionManager {
       // QuickDraw: defer overlay creation until we confirm this is a drag.
       // If the user releases without dragging (a click), exit QuickDraw mode.
       // Clicking on an existing overlay selects it normally instead.
-      if (quickDrawBridge.isQuickDrawActive()) {
+      if (quickDrawBridge.isActive()) {
         const isNonOverlay = !handler || handler.id === this.canonicalMediaId;
 
         if (isNonOverlay) {
@@ -252,7 +252,7 @@ export class InteractionManager {
           event.preventDefault();
           return;
         }
-      } else if (segmentationMasksBridge.isActive()) {
+      } else if (segmentationModeBridge.isActive()) {
         const isNonOverlay = !handler || handler.id === this.canonicalMediaId;
 
         if (isNonOverlay || isUnselectedOverlay) {
@@ -285,7 +285,7 @@ export class InteractionManager {
         worldPoint,
         event,
         scale,
-        segmentationToolState: segmentationMasksBridge.getToolState(),
+        segmentationToolState: segmentationModeBridge.getToolState(),
       })
     ) {
       const cursor = handler.getCursor?.(worldPoint, scale);
@@ -324,9 +324,9 @@ export class InteractionManager {
     worldPoint: Point,
     scale: number
   ): void {
-    if (segmentationMasksBridge.isActive()) {
+    if (segmentationModeBridge.isActive()) {
       this.canvas.style.cursor = buildBrushCursor(
-        segmentationMasksBridge.getToolState(scale)!
+        segmentationModeBridge.getToolState(scale)!
       );
     } else if (
       quickDrawBridge.isActive() &&
@@ -444,7 +444,7 @@ export class InteractionManager {
         event,
         scale,
         maintainAspectRatio: this.maintainAspectRatio,
-        segmentationToolState: segmentationMasksBridge.getToolState(),
+        segmentationToolState: segmentationModeBridge.getToolState(),
       };
 
       // Handle drag move
@@ -471,9 +471,9 @@ export class InteractionManager {
         event.preventDefault();
       }
       this.configureCursorStyle(handler, worldPoint, scale);
-    } else if (segmentationMasksBridge.isActive() && !interactiveHandler) {
+    } else if (segmentationModeBridge.isActive() && !interactiveHandler) {
       this.canvas.style.cursor = buildBrushCursor(
-        segmentationMasksBridge.getToolState(scale)!
+        segmentationModeBridge.getToolState(scale)!
       );
     } else if (quickDrawBridge.isActive() && !interactiveHandler) {
       this.canvas.style.cursor = "crosshair";
@@ -527,7 +527,7 @@ export class InteractionManager {
         worldPoint,
         event,
         scale,
-        segmentationToolState: segmentationMasksBridge.getToolState(),
+        segmentationToolState: segmentationModeBridge.getToolState(),
       });
 
       if (interactiveHandler) {

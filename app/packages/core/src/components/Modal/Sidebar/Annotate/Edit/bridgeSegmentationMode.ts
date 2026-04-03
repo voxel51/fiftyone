@@ -26,7 +26,7 @@ import type {
  * Segmentation masks bridge for non-React code.
  * Provides read-only access to segmentation tool state.
  */
-export const segmentationMasksBridge = {
+export const segmentationModeBridge = {
   /**
    * Whether segmentation mask mode is active.
    */
