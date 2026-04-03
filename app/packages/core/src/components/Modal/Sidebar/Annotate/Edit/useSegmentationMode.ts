@@ -215,7 +215,7 @@ export const useSegmentationMode = () => {
         // e.g. createDetection({ field, labelValue });
         createDetection();
       },
-      [claimCreateEvent, segmentationModeActive]
+      [addOverlay, claimCreateEvent, createDetection, segmentationModeActive]
     )
   );
 
