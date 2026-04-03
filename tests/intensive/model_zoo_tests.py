@@ -9,6 +9,7 @@ All of these tests are designed to be run manually via::
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import random
 import unittest
 
@@ -235,8 +236,8 @@ def _apply_models(
             model, label_field=label_field, batch_size=batch_size, **kwargs
         )
 
-    session = fo.launch_app(dataset)
-    session.wait()
+    # session = fo.launch_app(dataset)
+    # session.wait()
 
 
 def _apply_video_models(
@@ -288,8 +289,8 @@ def _apply_video_models(
                 assert last_frame[label_field] is not None
                 assert len(last_frame[label_field].detections) > 0
 
-    session = fo.launch_app(dataset)
-    session.wait()
+    # session = fo.launch_app(dataset)
+    # session.wait()
 
 
 def _apply_models_with_logits(model_names, store_logits=True):
