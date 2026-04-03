@@ -77,16 +77,16 @@ test.afterEach(async ({ modal, page }) => {
 });
 
 test.describe.serial("canvas interactions and action state", () => {
-  test("drawing a detection keeps QuickDraw active and deactivates Select", async ({
+  test("drawing a detection keeps detection mode active and deactivates Select", async ({
     modal,
   }) => {
     await modal.assert.isOpen();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
 
-    // Activate QuickDraw
-    await modal.sidebar.annotate.quickDraw("Detections");
-    await modal.sidebar.annotate.assert.quickDrawIsActive();
+    // Activate detection mode
+    await modal.sidebar.annotate.detectionMode("Detections");
+    await modal.sidebar.annotate.assert.detectionModeIsActive();
     await modal.sidebar.annotate.assert.selectIsActive(false);
 
     // Draw a detection in the bottom-right (away from existing overlays)
@@ -95,8 +95,8 @@ test.describe.serial("canvas interactions and action state", () => {
     await modal.sampleCanvas.move(0.9, 0.9);
     await modal.sampleCanvas.up();
 
-    // QuickDraw should remain active, Select should remain inactive
-    await modal.sidebar.annotate.assert.quickDrawIsActive();
+    // detection mode should remain active, Select should remain inactive
+    await modal.sidebar.annotate.assert.detectionModeIsActive();
     await modal.sidebar.annotate.assert.selectIsActive(false);
   });
 
@@ -105,9 +105,9 @@ test.describe.serial("canvas interactions and action state", () => {
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
 
-    // Activate QuickDraw
-    await modal.sidebar.annotate.quickDraw("Detections");
-    await modal.sidebar.annotate.assert.quickDrawIsActive();
+    // Activate detection mode
+    await modal.sidebar.annotate.detectionMode("Detections");
+    await modal.sidebar.annotate.assert.detectionModeIsActive();
     await modal.sidebar.annotate.assert.selectIsActive(false);
 
     // Click empty space to quit
@@ -115,29 +115,29 @@ test.describe.serial("canvas interactions and action state", () => {
     await modal.sampleCanvas.down();
     await modal.sampleCanvas.up();
 
-    // QuickDraw should deactivate, Select should reactivate
-    await modal.sidebar.annotate.assert.quickDrawIsActive(false);
+    // detection mode should deactivate, Select should reactivate
+    await modal.sidebar.annotate.assert.detectionModeIsActive(false);
     await modal.sidebar.annotate.assert.selectIsActive();
   });
 
-  test("clicking an existing detection overlay in QuickDraw selects it", async ({
+  test("clicking an existing detection overlay in detection mode selects it", async ({
     modal,
   }) => {
     await modal.assert.isOpen();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
 
-    // Activate QuickDraw
-    await modal.sidebar.annotate.quickDraw("Detections");
-    await modal.sidebar.annotate.assert.quickDrawIsActive();
+    // Activate detection mode
+    await modal.sidebar.annotate.detectionMode("Detections");
+    await modal.sidebar.annotate.assert.detectionModeIsActive();
 
     // Click on the existing detection at (0.4-0.6, 0.4-0.6)
     await modal.sampleCanvas.move(0.5, 0.5, "pointer");
     await modal.sampleCanvas.down();
     await modal.sampleCanvas.up();
 
-    // QuickDraw should remain active (it's a detection being edited)
-    await modal.sidebar.annotate.assert.quickDrawIsActive();
+    // detection mode should remain active (it's a detection being edited)
+    await modal.sidebar.annotate.assert.detectionModeIsActive();
 
     // The label list should be hidden (edit form is showing)
     const labelListHeader = modal.sidebar.locator.getByText(
@@ -146,7 +146,7 @@ test.describe.serial("canvas interactions and action state", () => {
     await expect(labelListHeader).toBeHidden();
   });
 
-  test("clicking an existing detection overlay activates QuickDraw", async ({
+  test("clicking an existing detection overlay activates detection mode", async ({
     modal,
   }) => {
     await modal.assert.isOpen();
@@ -158,8 +158,8 @@ test.describe.serial("canvas interactions and action state", () => {
     await modal.sampleCanvas.down();
     await modal.sampleCanvas.up();
 
-    // QuickDraw should be active
-    await modal.sidebar.annotate.assert.quickDrawIsActive();
+    // detection mode should be active
+    await modal.sidebar.annotate.assert.detectionModeIsActive();
 
     // The label list should be hidden (edit form is showing)
     const labelListHeader = modal.sidebar.locator.getByText(
@@ -183,10 +183,10 @@ test.describe.serial("canvas interactions and action state", () => {
     // Classification action should be active, Select should be inactive
     await modal.sidebar.annotate.assert.classificationIsActive();
     await modal.sidebar.annotate.assert.selectIsActive(false);
-    await modal.sidebar.annotate.assert.quickDrawIsActive(false);
+    await modal.sidebar.annotate.assert.detectionModeIsActive(false);
   });
 
-  test("clicking a detection in sidebar activates QuickDraw", async ({
+  test("clicking a detection in sidebar activates detection mode", async ({
     modal,
   }) => {
     await modal.assert.isOpen();
@@ -198,8 +198,8 @@ test.describe.serial("canvas interactions and action state", () => {
     // Click a detection label in the sidebar
     await modal.sidebar.annotate.selectActiveLabel("cat", 0);
 
-    // QuickDraw should auto-activate (isEditingDetection triggers it)
-    await modal.sidebar.annotate.assert.quickDrawIsActive();
+    // detection mode should auto-activate (isEditingDetection triggers it)
+    await modal.sidebar.annotate.assert.detectionModeIsActive();
     await modal.sidebar.annotate.assert.selectIsActive(false);
     await modal.sidebar.annotate.assert.classificationIsActive(false);
   });
@@ -222,7 +222,7 @@ test.describe.serial("canvas interactions and action state", () => {
     // Classification action should be active
     await modal.sidebar.annotate.assert.classificationIsActive();
     await modal.sidebar.annotate.assert.selectIsActive(false);
-    await modal.sidebar.annotate.assert.quickDrawIsActive(false);
+    await modal.sidebar.annotate.assert.detectionModeIsActive(false);
   });
 
   test("full cycle: canvas interactions switch between all actions", async ({
@@ -240,17 +240,17 @@ test.describe.serial("canvas interactions and action state", () => {
     await modal.sampleCanvas.down();
     await modal.sampleCanvas.up();
     await modal.sidebar.annotate.assert.classificationIsActive();
-    await modal.sidebar.annotate.assert.quickDrawIsActive(false);
+    await modal.sidebar.annotate.assert.detectionModeIsActive(false);
 
     // 3. Click Select to return to default
     await modal.sidebar.annotate.selectAction();
     await modal.sidebar.annotate.assert.selectIsActive();
 
-    // 4. Click a detection overlay on canvas → QuickDraw active
+    // 4. Click a detection overlay on canvas → detection mode active
     await modal.sampleCanvas.move(0.5, 0.5, "pointer");
     await modal.sampleCanvas.down();
     await modal.sampleCanvas.up();
-    await modal.sidebar.annotate.assert.quickDrawIsActive();
+    await modal.sidebar.annotate.assert.detectionModeIsActive();
     await modal.sidebar.annotate.assert.classificationIsActive(false);
 
     // 5. Click-to-quit on empty space → back to Select
@@ -258,7 +258,7 @@ test.describe.serial("canvas interactions and action state", () => {
     await modal.sampleCanvas.down();
     await modal.sampleCanvas.up();
     await modal.sidebar.annotate.assert.selectIsActive();
-    await modal.sidebar.annotate.assert.quickDrawIsActive(false);
+    await modal.sidebar.annotate.assert.detectionModeIsActive(false);
     await modal.sidebar.annotate.assert.classificationIsActive(false);
   });
 
@@ -269,14 +269,14 @@ test.describe.serial("canvas interactions and action state", () => {
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
 
-    // Activate QuickDraw and draw a detection
-    await modal.sidebar.annotate.quickDraw("Detections");
+    // Activate detection mode and draw a detection
+    await modal.sidebar.annotate.detectionMode("Detections");
     await modal.sampleCanvas.move(0.8, 0.8, "crosshair");
     await modal.sampleCanvas.down();
     await modal.sampleCanvas.move(0.9, 0.9);
     await modal.sampleCanvas.up();
 
-    await modal.sidebar.annotate.assert.quickDrawIsActive();
+    await modal.sidebar.annotate.assert.detectionModeIsActive();
     await modal.sidebar.annotate.assert.selectIsActive(false);
 
     // Click-to-quit on empty space
@@ -285,7 +285,7 @@ test.describe.serial("canvas interactions and action state", () => {
     await modal.sampleCanvas.up();
 
     // Should return to Select
-    await modal.sidebar.annotate.assert.quickDrawIsActive(false);
+    await modal.sidebar.annotate.assert.detectionModeIsActive(false);
     await modal.sidebar.annotate.assert.selectIsActive();
   });
 });

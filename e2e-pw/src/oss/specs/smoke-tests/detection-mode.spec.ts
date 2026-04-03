@@ -15,7 +15,7 @@ const test = base.extend<{
   },
   datasetName: async ({ annotateSDK, datasetFactory }, use, testInfo) => {
     const name = getUniqueDatasetNameWithPrefix(
-      `quick-draw-${testInfo.title.replace(/\s+/g, "-")}`
+      `detection-mode-${testInfo.title.replace(/\s+/g, "-")}`
     );
 
     await datasetFactory.createBlankDataset({
@@ -45,7 +45,7 @@ test.beforeAll(async ({ foWebServer }) => {
   await foWebServer.startWebServer();
 });
 
-test.describe.serial("QuickDraw", () => {
+test.describe.serial("detection mode", () => {
   test.beforeEach(async ({ datasetName, fiftyoneLoader, modal, page }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
       searchParams: new URLSearchParams({ id: "000000000000000000000000" }),
@@ -56,10 +56,10 @@ test.describe.serial("QuickDraw", () => {
     await modal.sidebar.switchMode("annotate");
   });
 
-  test("toggle button deactivates QuickDraw", async ({ modal }) => {
-    // Activate QuickDraw
-    await modal.sidebar.annotate.quickDraw("Detections");
-    await modal.sidebar.annotate.assert.quickDrawIsActive();
+  test("toggle button deactivates detection mode", async ({ modal }) => {
+    // Activate detection mode
+    await modal.sidebar.annotate.detectionMode("Detections");
+    await modal.sidebar.annotate.assert.detectionModeIsActive();
 
     // hover over the canvas
     await modal.sampleCanvas.assert.hasCursor("pointer");
@@ -67,28 +67,28 @@ test.describe.serial("QuickDraw", () => {
     await modal.sampleCanvas.assert.hasCursor("crosshair");
 
     // Deactivate by clicking the button again
-    await modal.sidebar.annotate.quickDraw("Detections");
-    await modal.sidebar.annotate.assert.quickDrawIsActive(false);
+    await modal.sidebar.annotate.detectionMode("Detections");
+    await modal.sidebar.annotate.assert.detectionModeIsActive(false);
     await modal.sampleCanvas.assert.hasCursor("pointer");
   });
 
   test("click-to-quit", async ({ modal }) => {
-    // Activate QuickDraw
-    await modal.sidebar.annotate.quickDraw("Detections");
-    await modal.sidebar.annotate.assert.quickDrawIsActive();
+    // Activate detection mode
+    await modal.sidebar.annotate.detectionMode("Detections");
+    await modal.sidebar.annotate.assert.detectionModeIsActive();
 
     // Click-to-quit
     await modal.sampleCanvas.move(0.5, 0.5, "crosshair");
     await modal.sampleCanvas.down();
     await modal.sampleCanvas.up();
     await modal.sampleCanvas.assert.hasCursor("default");
-    await modal.sidebar.annotate.assert.quickDrawIsActive(false);
+    await modal.sidebar.annotate.assert.detectionModeIsActive(false);
   });
 
   test("click-to-quit threshold", async ({ modal }) => {
-    // Activate QuickDraw
-    await modal.sidebar.annotate.quickDraw("Detections");
-    await modal.sidebar.annotate.assert.quickDrawIsActive();
+    // Activate detection mode
+    await modal.sidebar.annotate.detectionMode("Detections");
+    await modal.sidebar.annotate.assert.detectionModeIsActive();
 
     // Click-to-quit with a shaky hand
     await modal.sampleCanvas.move(0.5, 0.5, "crosshair");
@@ -96,13 +96,13 @@ test.describe.serial("QuickDraw", () => {
     await modal.sampleCanvas.movePixels(2, 2);
     await modal.sampleCanvas.up();
     await modal.sampleCanvas.assert.hasCursor("default");
-    await modal.sidebar.annotate.assert.quickDrawIsActive(false);
+    await modal.sidebar.annotate.assert.detectionModeIsActive(false);
   });
 
   test("draw and click-to-quit", async ({ modal }) => {
-    // Activate QuickDraw
-    await modal.sidebar.annotate.quickDraw("Detections");
-    await modal.sidebar.annotate.assert.quickDrawIsActive();
+    // Activate detection mode
+    await modal.sidebar.annotate.detectionMode("Detections");
+    await modal.sidebar.annotate.assert.detectionModeIsActive();
 
     // Draw a detection
     await modal.sampleCanvas.move(0.4, 0.4, "crosshair");
@@ -118,17 +118,17 @@ test.describe.serial("QuickDraw", () => {
     await modal.sampleCanvas.move(0.1, 0.1);
     await modal.sampleCanvas.down();
     await modal.sampleCanvas.up();
-    await modal.sidebar.annotate.assert.quickDrawIsActive(false);
+    await modal.sidebar.annotate.assert.detectionModeIsActive(false);
     await modal.sampleCanvas.assert.hasCursor("default");
     await modal.sampleCanvas.assert.hasScreenshot(
-      "draw-and-quit-exited-quickdraw.png"
+      "draw-and-quit-exited-detection-mode.png"
     );
   });
 
   test("draw multiple detections", async ({ modal }) => {
-    // Activate QuickDraw
-    await modal.sidebar.annotate.quickDraw("Detections");
-    await modal.sidebar.annotate.assert.quickDrawIsActive();
+    // Activate detection mode
+    await modal.sidebar.annotate.detectionMode("Detections");
+    await modal.sidebar.annotate.assert.detectionModeIsActive();
 
     // Draw detection #1 (top-left quadrant)
     await modal.sampleCanvas.move(0.2, 0.2, "crosshair");
@@ -151,10 +151,10 @@ test.describe.serial("QuickDraw", () => {
     await modal.sampleCanvas.move(0.5, 0.5);
     await modal.sampleCanvas.down();
     await modal.sampleCanvas.up();
-    await modal.sidebar.annotate.assert.quickDrawIsActive(false);
+    await modal.sidebar.annotate.assert.detectionModeIsActive(false);
     await modal.sampleCanvas.assert.hasCursor("default");
     await modal.sampleCanvas.assert.hasScreenshot(
-      "multiple-detections-exited-quickdraw.png"
+      "multiple-detections-exited-detection-mode.png"
     );
   });
 });
