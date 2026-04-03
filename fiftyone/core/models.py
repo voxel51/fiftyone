@@ -564,7 +564,9 @@ def _apply_image_model_to_frames_single(
                         if needs_samples:
                             frame = sample.frames[video_reader.frame_number]
                             labels = model.predict(img, sample=frame)
-                        elif field_mapping:
+                        elif isinstance(
+                            model, fout.TorchImageModelWithPrompts
+                        ):
                             # This will be removed in the future when GetItem/dataloaders support video readers.
                             frame = sample.frames[video_reader.frame_number]
 
@@ -670,7 +672,9 @@ def _apply_image_model_to_frames_batch(
                             labels_batch = model.predict_all(
                                 imgs, samples=_frames
                             )
-                        elif field_mapping:
+                        elif isinstance(
+                            model, fout.TorchImageModelWithPrompts
+                        ):
                             # This will be removed in the future when GetItem/dataloaders support video readers.
                             _frames = [sample.frames[fn] for fn in fns]
                             _field_mapping = {

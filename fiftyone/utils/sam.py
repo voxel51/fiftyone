@@ -641,7 +641,7 @@ class SAMSegmenterOutputProcessor(fout.OutputProcessor):
         return fol.Detections(detections=detections)
 
 
-class SegmentAnythingModel(fout.TorchImageModel):
+class SegmentAnythingModel(fout.TorchImageModelWithPrompts):
     """Wrapper for running `Segment Anything <https://segment-anything.com>`_
     inference.
 

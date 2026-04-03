@@ -1098,6 +1098,21 @@ class TorchImageModel(
         return output_processor_cls(classes=self._classes, **kwargs)
 
 
+class TorchImageModelWithPrompts(TorchImageModel):
+    """A convenience class for identifying models that accept prompts.
+
+    NOTE: A subclass shouldn't inherit from both, :class:`TorchImageModelWithPrompts` and :class:`TorchSamplesMixin`.
+    """
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        if issubclass(cls, TorchSamplesMixin):
+            raise TypeError(
+                f"{cls.__name__} cannot inherit from both "
+                f"TorchImageModelWithPrompts and TorchSamplesMixin"
+            )
+
+
 class TorchSamplesMixin(fom.SamplesMixin):
     def predict(self, img, sample=None):
         if isinstance(img, torch.Tensor):
