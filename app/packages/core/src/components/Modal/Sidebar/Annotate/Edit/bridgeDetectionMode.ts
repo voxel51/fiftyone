@@ -3,7 +3,7 @@
  */
 
 import { getDefaultStore } from "jotai";
-import { _dangerousDetectionModeActiveAtom } from "./useDetectionMode";
+import { _unsafeDetectionModeActiveAtom } from "./useDetectionMode";
 
 /**
  * Detection mode bridge for non-React code.
@@ -16,6 +16,6 @@ export const detectionModeBridge = {
    */
   isDetectionModeActive(): boolean {
     const store = getDefaultStore();
-    return store.get(_dangerousDetectionModeActiveAtom);
+    return store.get(_unsafeDetectionModeActiveAtom);
   },
 };

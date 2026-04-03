@@ -33,7 +33,7 @@ import {
  * This atom should not be used in React code.
  */
 const detectionModeActiveAtom = atom<boolean>(false);
-export { detectionModeActiveAtom as _dangerousDetectionModeActiveAtom };
+export { detectionModeActiveAtom as _unsafeDetectionModeActiveAtom };
 
 /**
  * Tracks the last-used detection field path in detection mode.
@@ -314,11 +314,7 @@ export const useDetectionMode = () => {
     } else {
       activateDetectionMode();
     }
-  }, [
-    detectionModeActive,
-    deactivateDetectionMode,
-    activateDetectionMode,
-  ]);
+  }, [detectionModeActive, deactivateDetectionMode, activateDetectionMode]);
 
   /**
    * Cache field/label for auto-assignment
