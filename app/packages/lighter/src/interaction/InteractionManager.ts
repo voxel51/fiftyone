@@ -2,7 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { quickDrawBridge } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/bridgeQuickDraw";
+import { quickDrawBridge } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/bridgeDetectionMode";
 import { EventDispatcher, getEventBus } from "@fiftyone/events";
 import { TypeGuards } from "../core/Scene2D";
 import type { LighterEventGroup } from "../events";
