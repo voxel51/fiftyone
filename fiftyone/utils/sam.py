@@ -44,8 +44,13 @@ class SegmentAnythingModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
             ``get_item_cls(field_mapping=field_mapping, **kwargs)``
     """
 
-    def __init__(self, d):
-        d = self.init(d)
+    def __init__(self, cfg_dict):
+        """Initializes :class:`SegmentAnythingModelConfig`
+
+        Args:
+            cfg_dict: a dictionary with config parameters
+        """
+        d = self.init(cfg_dict)
         super().__init__(d)
 
         self.auto_kwargs = self.parse_dict(d, "auto_kwargs", default=None)
@@ -818,7 +823,6 @@ class SegmentAnythingModel(fout.TorchImageModelWithPrompts):
                 logger.debug("Moving prompt_field to point_prompt_field")
                 field_mapping["point_prompt_field"] = value
 
-        # TODO: Add an optional mode in GetItem which can be set via apply_model.
         return get_item(
             field_mapping=field_mapping,
             transform=get_item_args.pop(
@@ -942,6 +946,7 @@ class SegmentAnythingModel(fout.TorchImageModelWithPrompts):
                 box_prompts=boxes_xyxy,
                 labels=labels,
                 mask_index=self.config.points_mask_index,
+                classes=self.config.filter_classes,
             )
         return output
 
@@ -1022,9 +1027,15 @@ class SegmentAnythingModel(fout.TorchImageModelWithPrompts):
             detections = []
             # TODO: Move this to post-processing op.
             for data in self._sam_auto_generator.generate(img):
+                score = data["predicted_iou"]
+                if (
+                    self.config.confidence_thresh is not None
+                    and score < self.config.confidence_thresh
+                ):
+                    continue
                 detection = fol.Detection.from_mask(
                     mask=data["segmentation"],
-                    score=data["predicted_iou"],
+                    score=score,
                     stability=data["stability_score"],
                 )
                 detections.append(detection)
@@ -1033,6 +1044,10 @@ class SegmentAnythingModel(fout.TorchImageModelWithPrompts):
 
 
 def _get_sam_point_labels(keypoint):
+    if "sam_labels" in keypoint and "sam2_labels" in keypoint:
+        logger.warning(
+            "Found keypoint labels under sam_labels and sam2_labels. Using sam_labels."
+        )
     if "sam_labels" in keypoint and keypoint.sam_labels is not None:
         return keypoint.sam_labels
     if "sam2_labels" in keypoint and keypoint.sam2_labels is not None:
