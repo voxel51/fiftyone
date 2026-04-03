@@ -31,7 +31,7 @@ import { editing } from "./Edit";
 import { useClassification } from "./Edit/useClassification";
 import { fieldsOfType } from "./Edit/state";
 import { useQuickDraw } from "./Edit/useQuickDraw";
-import { useSegmentationMasks } from "./Edit/useSegmentationMasks";
+import { useSegmentationMasks } from "./Edit/useSegmentationMode";
 
 const ActionsDiv = styled.div`
   align-items: center;

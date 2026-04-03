@@ -22,7 +22,7 @@ import {
   MAX_TOOL_SIZE,
   MIN_TOOL_SIZE,
   useSegmentationMasks,
-} from "./useSegmentationMasks";
+} from "./useSegmentationMode";
 
 // ---------------------------------------------------------------------------
 // Local styled helpers (domain-specific, not in FloatingToolbar)

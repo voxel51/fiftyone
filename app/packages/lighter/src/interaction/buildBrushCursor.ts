@@ -7,8 +7,8 @@
 import {
   MAX_TOOL_SIZE,
   MIN_TOOL_SIZE,
-} from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useSegmentationMasks";
-import type { SegmentationToolData } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useSegmentationMasks";
+} from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useSegmentationMode";
+import type { SegmentationToolData } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useSegmentationMode";
 
 /**
  * Returns a CSS `cursor` value (data-URL SVG + hotspot) for the given brush

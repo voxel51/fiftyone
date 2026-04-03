@@ -7,7 +7,7 @@ import { segmentationMasksBridge } from "@fiftyone/core/src/components/Modal/Sid
 import { EventDispatcher, getEventBus } from "@fiftyone/events";
 import { TypeGuards } from "../core/Scene2D";
 import type { LighterEventGroup } from "../events";
-import type { SegmentationToolState } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useSegmentationMasks";
+import type { SegmentationToolState } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useSegmentationMode";
 import {
   DetectionOverlay,
   type InteractionState,

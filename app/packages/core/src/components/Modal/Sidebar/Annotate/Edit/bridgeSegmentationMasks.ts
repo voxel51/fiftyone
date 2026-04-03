@@ -15,12 +15,12 @@ import {
   _unsafeToolSizeAtom,
   _unsafeSegmentationActiveAtom,
   _unsafeToolShapeAtom,
-} from "./useSegmentationMasks";
+} from "./useSegmentationMode";
 import type {
   SegmentationTool,
   SegmentationToolShape,
   SegmentationToolState,
-} from "./useSegmentationMasks";
+} from "./useSegmentationMode";
 
 /**
  * Segmentation masks bridge for non-React code.

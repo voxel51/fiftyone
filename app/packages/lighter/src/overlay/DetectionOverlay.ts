@@ -27,7 +27,7 @@ import {
   getInstanceStrokeStyles,
   getSimpleStrokeStyles,
 } from "../utils/colorMapping";
-import type { SegmentationToolState } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useSegmentationMasks";
+import type { SegmentationToolState } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useSegmentationMode";
 import type { OverlayEvent } from "../interaction/InteractionManager";
 import { distanceFromLineSegment } from "../utils/geometry";
 import { decodeMask } from "../utils/maskDecoding";
