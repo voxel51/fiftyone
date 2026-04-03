@@ -39,6 +39,7 @@ class PluginDocGenerator:
     """Generates plugin documentation from the FiftyOne plugins repository."""
 
     _ecosystem_subdir = "plugins_ecosystem"
+    _docs_section = "plugins"
 
     def __init__(self, docs_source_dir: str):
         self.docs_source_dir = Path(docs_source_dir)
@@ -446,14 +447,14 @@ myst:
 
 .. raw:: html
 
-    <a href="../../plugins/{plugin_link}" target="_blank">
+    <a href="../../{self._docs_section}/{plugin_link}" target="_blank">
         <img src="https://img.shields.io/badge/Plugin-{safe_name}-orange" alt="From Plugin">
     </a>
 
 .. note::
 
     This is a :ref:`remotely-sourced model <model-zoo-remote>` from the
-    `{plugin_name} <../../plugins/{plugin_link}>`_ plugin, maintained by the community.
+    `{plugin_name} <../../{self._docs_section}/{plugin_link}>`_ plugin, maintained by the community.
     It is not part of FiftyOne core and may have special installation requirements.
     Please review the plugin documentation and license before use.
 
@@ -1031,7 +1032,7 @@ class LabsDocGenerator(PluginDocGenerator):
     """Generates Labs documentation from the fiftyone-labs repository."""
 
     _ecosystem_subdir = "labs_ecosystem"
-    _SKIP_NAMES = {"labs_panel"}
+    _docs_section = "labs"
 
     def __init__(self, docs_source_dir: str):
         super().__init__(docs_source_dir)
@@ -1053,10 +1054,6 @@ class LabsDocGenerator(PluginDocGenerator):
             if not section:
                 continue
             for plugin in self._parse_html_table(section, category):
-                slug = plugin.name.split("/")[-1].replace("`", "").strip()
-                if slug in self._SKIP_NAMES:
-                    logger.info(f"Skipping labs feature: {plugin.name}")
-                    continue
                 plugins.append(plugin)
         return plugins
 
