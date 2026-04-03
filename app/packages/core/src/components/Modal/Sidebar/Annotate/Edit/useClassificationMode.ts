@@ -20,7 +20,7 @@ export const useClassificationMode = () => {
   const isPatchView = useRecoilValue(isPatchesView);
   const reset3dAnnotationMode = useReset3dAnnotationMode();
   const fields = useAtomValue(fieldsOfType(CLASSIFICATION));
-  const classificationActive = useAtomValue(currentType) === CLASSIFICATION;
+  const classificationModeActive = useAtomValue(currentType) === CLASSIFICATION;
 
   const disabled = isPatchView || fields.length === 0;
 
@@ -28,41 +28,45 @@ export const useClassificationMode = () => {
     ? "Creating classifications is not supported in this view"
     : "Create new classification";
 
-  const enableClassification = useCallback(() => {
+  const activateClassificationMode = useCallback(() => {
     if (disabled) return;
 
     create();
     reset3dAnnotationMode();
   }, [create, disabled, reset3dAnnotationMode]);
 
-  const disableClassification = useCallback(() => {
+  const deactivateClassificationMode = useCallback(() => {
     onExit();
   }, [onExit]);
 
-  const toggleClassification = useCallback(() => {
-    if (classificationActive) {
-      disableClassification();
+  const toggleClassificationMode = useCallback(() => {
+    if (classificationModeActive) {
+      deactivateClassificationMode();
     } else {
-      enableClassification();
+      activateClassificationMode();
     }
-  }, [classificationActive, disableClassification, enableClassification]);
+  }, [
+    classificationModeActive,
+    deactivateClassificationMode,
+    activateClassificationMode,
+  ]);
 
   return useMemo(
     () => ({
-      classificationActive,
+      classificationModeActive,
       disabled,
       tooltip,
-      enableClassification,
-      disableClassification,
-      toggleClassification,
+      activateClassificationMode,
+      deactivateClassificationMode,
+      toggleClassificationMode,
     }),
     [
-      classificationActive,
+      classificationModeActive,
       disabled,
       tooltip,
-      enableClassification,
-      disableClassification,
-      toggleClassification,
+      activateClassificationMode,
+      deactivateClassificationMode,
+      toggleClassificationMode,
     ]
   );
 };

@@ -181,23 +181,23 @@ const Select = ({ active }: { active: boolean }) => {
 
 const Classification = () => {
   const {
-    classificationActive,
+    classificationModeActive,
     disabled,
     tooltip,
-    enableClassification,
+    activateClassificationMode,
   } = useClassificationMode();
   const deactivateAll = useDeactivateAll();
 
   return (
     <Tooltip placement="top-center" text={tooltip}>
       <Square
-        $active={classificationActive}
+        $active={classificationModeActive}
         data-cy="create-classification"
-        data-cy-active={classificationActive}
+        data-cy-active={classificationModeActive}
         onClick={() => {
           if (disabled) return;
           deactivateAll();
-          if (!classificationActive) enableClassification();
+          if (!classificationModeActive) activateClassificationMode();
         }}
         className={disabled ? "disabled" : ""}
       >
@@ -430,22 +430,26 @@ const Actions = () => {
   const { isPinned: is3dSamplePinned } = useRenderConfig3dState();
 
   const {
-    classificationActive,
-    disableClassification,
+    classificationModeActive,
+    deactivateClassificationMode,
   } = useClassificationMode();
   const { quickDrawActive, disableQuickDraw } = useQuickDraw();
   const current3dAnnotationMode = useCurrent3dAnnotationMode();
   const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
 
   const noActiveActions =
-    !classificationActive && !quickDrawActive && !current3dAnnotationMode;
+    !classificationModeActive && !quickDrawActive && !current3dAnnotationMode;
   const areThreeDActionsVisible = is3dDataset || is3dSamplePinned;
 
   const deactivateAll = useCallback(() => {
-    disableClassification();
+    deactivateClassificationMode();
     setCurrent3dAnnotationMode(null);
     disableQuickDraw();
-  }, [disableClassification, disableQuickDraw, setCurrent3dAnnotationMode]);
+  }, [
+    deactivateClassificationMode,
+    disableQuickDraw,
+    setCurrent3dAnnotationMode,
+  ]);
 
   return (
     <DeactivateAllContext.Provider value={deactivateAll}>
