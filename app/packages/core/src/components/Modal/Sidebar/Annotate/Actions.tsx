@@ -220,7 +220,7 @@ const Classification = () => {
 };
 
 const Detection = () => {
-  const { quickDrawActive, enableQuickDraw } = useDetectionMode();
+  const { detectionModeActive, activateDetectionMode } = useDetectionMode();
   const deactivateAll = useDeactivateAll();
   const isPatchView = useRecoilValue(isPatchesView);
 
@@ -229,21 +229,21 @@ const Detection = () => {
 
   const tooltip = isPatchView
     ? "Creating detections is not supported in this view"
-    : quickDrawActive
+    : detectionModeActive
     ? "Exit detection creation"
     : "Create new detections";
 
   return (
     <Tooltip placement="top-center" text={tooltip}>
       <Square
-        $active={quickDrawActive}
+        $active={detectionModeActive}
         className={disabled ? "disabled" : ""}
         data-cy="quick-draw-detection"
-        data-cy-active={quickDrawActive}
+        data-cy-active={detectionModeActive}
         onClick={() => {
           if (disabled) return;
           deactivateAll();
-          if (!quickDrawActive) enableQuickDraw();
+          if (!detectionModeActive) activateDetectionMode();
         }}
       >
         <svg
@@ -433,21 +433,23 @@ const Actions = () => {
     classificationModeActive,
     deactivateClassificationMode,
   } = useClassificationMode();
-  const { quickDrawActive, disableQuickDraw } = useDetectionMode();
+  const { detectionModeActive, deactivateDetectionMode } = useDetectionMode();
   const current3dAnnotationMode = useCurrent3dAnnotationMode();
   const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
 
   const noActiveActions =
-    !classificationModeActive && !quickDrawActive && !current3dAnnotationMode;
+    !classificationModeActive &&
+    !detectionModeActive &&
+    !current3dAnnotationMode;
   const areThreeDActionsVisible = is3dDataset || is3dSamplePinned;
 
   const deactivateAll = useCallback(() => {
     deactivateClassificationMode();
     setCurrent3dAnnotationMode(null);
-    disableQuickDraw();
+    deactivateDetectionMode();
   }, [
     deactivateClassificationMode,
-    disableQuickDraw,
+    deactivateDetectionMode,
     setCurrent3dAnnotationMode,
   ]);
 

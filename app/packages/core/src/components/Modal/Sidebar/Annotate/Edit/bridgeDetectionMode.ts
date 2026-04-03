@@ -3,7 +3,7 @@
  */
 
 import { getDefaultStore } from "jotai";
-import { _dangerousQuickDrawActiveAtom } from "./useDetectionMode";
+import { _dangerousDetectionModeActiveAtom } from "./useDetectionMode";
 
 /**
  * Quick draw bridge for non-React code.
@@ -14,8 +14,8 @@ export const detectionModeBridge = {
    * Check if quick draw mode is currently active.
    * @returns true if quick draw mode is active, false otherwise
    */
-  isQuickDrawActive(): boolean {
+  isDetectionModeActive(): boolean {
     const store = getDefaultStore();
-    return store.get(_dangerousQuickDrawActiveAtom);
+    return store.get(_dangerousDetectionModeActiveAtom);
   },
 };

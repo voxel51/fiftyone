@@ -21,8 +21,8 @@ import useExit from "./useExit";
  * This atom is exported to allow inspection from non-React code.
  * This atom should not be used in React code.
  */
-const quickDrawActiveAtom = atom<boolean>(false);
-export { quickDrawActiveAtom as _dangerousQuickDrawActiveAtom };
+const detectionModeActiveAtom = atom<boolean>(false);
+export { detectionModeActiveAtom as _dangerousDetectionModeActiveAtom };
 
 /**
  * Tracks the last-used detection field path in quick draw mode.
@@ -52,7 +52,7 @@ const claimedEventsAtom = atom<Map<string, string>>(new Map());
  * Centralized hook for managing quick draw mode state and operations.
  */
 export const useDetectionMode = () => {
-  const [quickDrawActive, setQuickDrawActive] = useAtom(quickDrawActiveAtom);
+  const [detectionModeActive, setDetectionModeActive] = useAtom(detectionModeActiveAtom);
   const editingLabelType = useAtomValue(currentType);
   const isEditingDetection = editingLabelType === DETECTION;
   const setLastUsedField = useSetAtom(lastUsedFieldAtom);
@@ -110,26 +110,26 @@ export const useDetectionMode = () => {
    * Enable quick draw mode for Detection annotations.
    * The actual overlay/label creation is deferred until the user mouses down in the scene.
    */
-  const enableQuickDraw = useCallback(() => {
-    setQuickDrawActive(true);
-  }, [setQuickDrawActive]);
+  const activateDetectionMode = useCallback(() => {
+    setDetectionModeActive(true);
+  }, [setDetectionModeActive]);
 
   /**
    * Disable quick draw mode.
    */
-  const disableQuickDraw = useCallback(() => {
-    setQuickDrawActive(false);
-  }, [setQuickDrawActive]);
+  const deactivateDetectionMode = useCallback(() => {
+    setDetectionModeActive(false);
+  }, [setDetectionModeActive]);
 
   // Auto-enable QuickDraw when a detection is being edited,
   // auto-disable when a different label type is selected.
   useEffect(() => {
-    if (isEditingDetection && !quickDrawActive) {
-      setQuickDrawActive(true);
-    } else if (editingLabelType && !isEditingDetection && quickDrawActive) {
-      setQuickDrawActive(false);
+    if (isEditingDetection && !detectionModeActive) {
+      setDetectionModeActive(true);
+    } else if (editingLabelType && !isEditingDetection && detectionModeActive) {
+      setDetectionModeActive(false);
     }
-  }, [editingLabelType, isEditingDetection, quickDrawActive, setQuickDrawActive]);
+  }, [editingLabelType, isEditingDetection, detectionModeActive, setDetectionModeActive]);
 
   /**
    * Get the auto-assigned detection field path.
@@ -274,18 +274,18 @@ export const useDetectionMode = () => {
    * Toggle quick draw mode. When exiting, finalizes the current detection
    * (caches field/label, exits interactive mode, closes edit form).
    */
-  const toggleQuickDraw = useCallback(() => {
-    if (quickDrawActive) {
+  const toggleDetectionMode = useCallback(() => {
+    if (detectionModeActive) {
       finalizeCurrentDetection();
-      disableQuickDraw();
+      deactivateDetectionMode();
     } else {
-      enableQuickDraw();
+      activateDetectionMode();
     }
   }, [
-    quickDrawActive,
+    detectionModeActive,
     finalizeCurrentDetection,
-    disableQuickDraw,
-    enableQuickDraw,
+    deactivateDetectionMode,
+    activateDetectionMode,
   ]);
 
   /**
@@ -334,22 +334,22 @@ export const useDetectionMode = () => {
         }
 
         finalizeCurrentDetection();
-        disableQuickDraw();
+        deactivateDetectionMode();
       },
-      [claimEvent, disableQuickDraw, finalizeCurrentDetection]
+      [claimEvent, deactivateDetectionMode, finalizeCurrentDetection]
     )
   );
 
   return useMemo(
     () => ({
       // State (read-only)
-      quickDrawActive,
+      detectionModeActive,
 
       // Mode control (for UI components)
-      enableQuickDraw,
-      disableQuickDraw,
-      toggleQuickDraw,
+      activateDetectionMode,
+      deactivateDetectionMode,
+      toggleDetectionMode,
     }),
-    [quickDrawActive, enableQuickDraw, disableQuickDraw, toggleQuickDraw]
+    [detectionModeActive, activateDetectionMode, deactivateDetectionMode, toggleDetectionMode]
   );
 };

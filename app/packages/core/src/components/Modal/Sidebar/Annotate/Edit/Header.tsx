@@ -96,7 +96,7 @@ const Header = () => {
   const { exitAnnotationMode } = useAnnotationController();
   const onExit = useExit();
   const { scene } = useLighter();
-  const { disableQuickDraw } = useDetectionMode();
+  const { deactivateDetectionMode } = useDetectionMode();
   const annotationContext = useAnnotationContext();
   const currentFieldIsReadOnly = useAtomValue(currentFieldIsReadOnlyAtom);
 
@@ -109,14 +109,14 @@ const Header = () => {
     if (shouldExitToExplore) {
       exitAnnotationMode();
     }
-    disableQuickDraw();
+    deactivateDetectionMode();
     scene?.exitInteractiveMode();
     onExit();
   }, [
     shouldExitToExplore,
     exitAnnotationMode,
     onExit,
-    disableQuickDraw,
+    deactivateDetectionMode,
     scene,
   ]);
 
