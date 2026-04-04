@@ -107,6 +107,13 @@ class SimilaritySearchOperator(foo.Operator):
 
             # Handle negative query IDs (alt-selected samples)
             negative_query_ids = ctx.params.get("negative_query_ids")
+            if not negative_query_ids:
+                # Derive from alt-selected samples in execution context
+                negative_query_ids = [
+                    s["id"]
+                    for s in ctx.selected_samples
+                    if isinstance(s, dict) and s.get("type") == "alt"
+                ]
             if negative_query_ids and isinstance(query, list):
                 # Vector arithmetic: mean(positive) - mean(negative)
                 query = self._compute_combined_query(
