@@ -217,9 +217,17 @@ class SimilaritySearchOperator(foo.Operator):
 
         if neg_embeddings:
             neg_mean = np.mean(neg_embeddings, axis=0)
-            return pos_mean - neg_mean
+            combined = pos_mean - neg_mean
         else:
-            return pos_mean
+            combined = pos_mean
+
+        # Normalize for backend-agnostic correctness (cosine doesn't
+        # need it, but dot-product and L2 backends do)
+        norm = np.linalg.norm(combined)
+        if norm > 0:
+            combined = combined / norm
+
+        return combined
 
 
 class InitSimilarityRunOperator(foo.Operator):
