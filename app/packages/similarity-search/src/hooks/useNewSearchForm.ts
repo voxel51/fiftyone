@@ -15,8 +15,14 @@ export const useNewSearchForm = (
   cloneConfig: CloneConfig | null | undefined,
   onSubmitted: () => void
 ) => {
-  const { selectedLabels, view, hasSamplesSelected, queryIds, hasView } =
-    useSearchSelection();
+  const {
+    selectedLabels,
+    view,
+    hasSamplesSelected,
+    queryIds,
+    negativeQueryIds,
+    hasView,
+  } = useSearchSelection();
 
   const firstTextKey = useMemo(
     () => brainKeys.find((bk) => bk.supports_prompts),
@@ -92,6 +98,7 @@ export const useNewSearchForm = (
     queryType,
     textQuery,
     queryIds,
+    negativeQueryIds,
     reverse,
     selectedConfig,
     searchScope,
@@ -140,6 +147,7 @@ export const useNewSearchForm = (
     supportsPrompts,
     supportsLeast,
     queryIds,
+    negativeQueryIds,
     selectedLabels,
     kError,
     canSubmit,

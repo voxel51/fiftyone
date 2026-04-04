@@ -186,13 +186,17 @@ export default function NewSearch({
                 form.selectedLabels.length > 0
                   ? "labels"
                   : "samples"
-              } selected (positive)`}
+              } selected (positive)${
+                form.negativeQueryIds.length > 0
+                  ? ` \u00B7 ${form.negativeQueryIds.length} negative`
+                  : ""
+              }`}
             </Text>
           </QuerySelectorBoxActive>
         ) : (
           <QuerySelectorBoxInactive>
             <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
-              Select samples in the grid
+              Select samples in the grid (Alt+click for negative)
             </Text>
           </QuerySelectorBoxInactive>
         )}
