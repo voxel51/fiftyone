@@ -36,7 +36,7 @@ export default function RunActions({
   onDelete,
   onToggleExpand,
 }: RunActionsProps) {
-  const isImage = run.query_type === "image";
+  const isImage = run.query_type === "image" && !run.patches_field;
 
   return (
     <Stack>
