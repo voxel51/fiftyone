@@ -188,6 +188,11 @@ class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
         kwargs = self.config.auto_kwargs or {}
         return samg.SAM2AutomaticMaskGenerator(self._model, **kwargs)
 
+    def _load_model(self, config):
+        if "device" not in config.entrypoint_args:
+            config.entrypoint_args["device"] = self._device
+        return super()._load_model(config)
+
     def _forward_pass(self, imgs):
         """Forward pass with prompts
 
