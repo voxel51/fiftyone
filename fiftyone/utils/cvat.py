@@ -3366,9 +3366,7 @@ class CVATBackend(foua.AnnotationBackend):
     def download_annotations(self, results):
         api = self.connect_to_api()
 
-        coerce_text_attrs = getattr(
-            results.config, "coerce_text_attrs", True
-        )
+        coerce_text_attrs = getattr(results.config, "coerce_text_attrs", True)
 
         logger.info("Downloading labels from CVAT...")
         annotations = api.download_annotations(
@@ -4733,9 +4731,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     frame_stop -= offset
 
                 # Download task data
-                attr_id_map, attr_type_map, _class_map_rev = (
-                    self._get_attr_class_maps(task_id)
-                )
+                (
+                    attr_id_map,
+                    attr_type_map,
+                    _class_map_rev,
+                ) = self._get_attr_class_maps(task_id)
 
                 if coerce_text_attrs:
                     attr_type_map = None
@@ -4918,8 +4918,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 i["name"]: i["id"] for i in label["attributes"]
             }
             attr_type_map[label["id"]] = {
-                i["id"]: i.get("input_type", None)
-                for i in label["attributes"]
+                i["id"]: i.get("input_type", None) for i in label["attributes"]
             }
 
         # AL: not sure why we didn't just reverse keys/vals initially
@@ -6069,9 +6068,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     attr_ind = 0
                     while label is None and attr_ind < num_attrs:
                         attr = anno["attributes"][attr_ind]
-                        attr_type = _attr_types.get(
-                            attr["spec_id"], None
-                        )
+                        attr_type = _attr_types.get(attr["spec_id"], None)
                         label = _parse_value(
                             attr["value"], attr_type=attr_type
                         )
@@ -6094,7 +6091,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             else:
                 label_type = "classifications"
                 cvat_tag = CVATTag(
-                    anno, class_map, attr_id_map, server_id_map,
+                    anno,
+                    class_map,
+                    attr_id_map,
+                    server_id_map,
                     attr_type_map=attr_type_map,
                 )
                 label = cvat_tag.to_classification()
@@ -7136,9 +7136,7 @@ class CVATLabel(object):
 
         # Parse attributes
         attr_id_map_rev = {v: k for k, v in attr_id_map[cvat_id].items()}
-        _attr_types = (
-            attr_type_map.get(cvat_id, {}) if attr_type_map else {}
-        )
+        _attr_types = attr_type_map.get(cvat_id, {}) if attr_type_map else {}
         for attr in attrs:
             name = attr_id_map_rev[attr["spec_id"]]
             attr_type = _attr_types.get(attr["spec_id"], None)
