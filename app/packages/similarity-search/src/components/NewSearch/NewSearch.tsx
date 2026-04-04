@@ -143,16 +143,6 @@ export default function NewSearch({
           <Stack orientation={Orientation.Row} spacing={Spacing.Xs}>
             <Button
               variant={
-                form.queryType === "text" ? Variant.Primary : Variant.Secondary
-              }
-              size={Size.Sm}
-              onClick={() => form.setQueryType("text")}
-              style={{ flex: 1 }}
-            >
-              Text Search
-            </Button>
-            <Button
-              variant={
                 form.queryType === "image" ? Variant.Primary : Variant.Secondary
               }
               size={Size.Sm}
@@ -160,6 +150,16 @@ export default function NewSearch({
               style={{ flex: 1 }}
             >
               Image Search
+            </Button>
+            <Button
+              variant={
+                form.queryType === "text" ? Variant.Primary : Variant.Secondary
+              }
+              size={Size.Sm}
+              onClick={() => form.setQueryType("text")}
+              style={{ flex: 1 }}
+            >
+              Text Search
             </Button>
           </Stack>
         )}

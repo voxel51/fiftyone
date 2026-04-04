@@ -24,24 +24,17 @@ export const useNewSearchForm = (
     hasView,
   } = useSearchSelection();
 
-  const firstTextKey = useMemo(
-    () => brainKeys.find((bk) => bk.supports_prompts),
-    [brainKeys]
-  );
-
   const defaultBrainKey = useMemo(() => {
     if (cloneConfig?.brain_key) return cloneConfig.brain_key;
     if (hasSamplesSelected) return brainKeys[0]?.key ?? "";
-    if (firstTextKey) return firstTextKey.key;
     return brainKeys[0]?.key ?? "";
-  }, [cloneConfig, hasSamplesSelected, firstTextKey, brainKeys]);
+  }, [cloneConfig, hasSamplesSelected, brainKeys]);
 
   const defaultQueryType = useMemo((): QueryType => {
     if (cloneConfig?.query_type) return cloneConfig.query_type;
     if (hasSamplesSelected) return "image";
-    if (firstTextKey) return "text";
     return "image";
-  }, [cloneConfig, hasSamplesSelected, firstTextKey]);
+  }, [cloneConfig, hasSamplesSelected]);
 
   // ─── Form fields ────────────────────────────────────────────────
 
