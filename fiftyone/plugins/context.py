@@ -10,6 +10,7 @@ import importlib
 import logging
 import os
 import re
+import shutil
 import sys
 import traceback
 import types
@@ -108,6 +109,60 @@ def _ensure_parent_modules(module_name, plugin_dir):
         parent = sys.modules[plugin_parent]
         if hasattr(parent, "__path__") and plugin_dir not in parent.__path__:
             parent.__path__.append(plugin_dir)
+
+
+def _purge_sys_modules_under_dir(plugin_dir):
+    """Removes cached modules whose ``__file__`` lives under ``plugin_dir``.
+
+    Ensures a subsequent import re-reads plugin sources from disk (including
+    submodules), which ``importlib`` would otherwise serve from ``sys.modules``.
+    """
+    try:
+        root = os.path.realpath(plugin_dir)
+    except (TypeError, OSError):
+        return
+
+    prefix = root + os.sep
+    for name in list(sys.modules):
+        mod = sys.modules[name]
+        mod_file = getattr(mod, "__file__", None)
+        if not mod_file:
+            continue
+        try:
+            mod_file = os.path.realpath(mod_file)
+        except (TypeError, OSError):
+            continue
+        if mod_file == root or mod_file.startswith(prefix):
+            del sys.modules[name]
+
+
+def _purge_pycache_under_dir(plugin_dir):
+    """Removes ``__pycache__`` trees under ``plugin_dir``.
+
+    After ``.py`` files change, bytecode in ``__pycache__`` can still be loaded
+    on the next ``exec_module`` unless those caches are cleared.
+    """
+    try:
+        root = os.path.realpath(plugin_dir)
+    except (TypeError, OSError):
+        return
+
+    if not os.path.isdir(root):
+        return
+
+    for dirpath, dirnames, _ in os.walk(root, followlinks=True):
+        if "__pycache__" in dirnames:
+            shutil.rmtree(
+                os.path.join(dirpath, "__pycache__"),
+                ignore_errors=True,
+            )
+            dirnames.remove("__pycache__")
+
+
+def _invalidate_plugin_python_caches(plugin_dir):
+    """Drop import caches for files under a plugin directory."""
+    _purge_sys_modules_under_dir(plugin_dir)
+    _purge_pycache_under_dir(plugin_dir)
 
 
 @plugins_cache
@@ -240,6 +295,8 @@ class PluginContext(object):
             # path-dependent naming issues (e.g., /sc/... becoming sc.home...)
             fallback_name = os.path.basename(module_dir)
             module_name = _get_plugin_module_name(self.name, fallback_name)
+
+            _invalidate_plugin_python_caches(real_module_dir)
 
             _ensure_parent_modules(module_name, module_dir)
 
