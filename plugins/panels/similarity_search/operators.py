@@ -215,9 +215,11 @@ class SimilaritySearchOperator(foo.Operator):
 
         pos_mean = np.mean(pos_embeddings, axis=0)
 
+        # Qdrant-style: query = avg(pos) + (avg(pos) - avg(neg))
+        #                    = 2 * avg(pos) - avg(neg)
         if neg_embeddings:
             neg_mean = np.mean(neg_embeddings, axis=0)
-            combined = pos_mean - neg_mean
+            combined = 2 * pos_mean - neg_mean
         else:
             combined = pos_mean
 
