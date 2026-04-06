@@ -56,16 +56,28 @@ class SharedPixiApplication {
   ): Promise<void> {
     this.app = new PIXI.Application();
 
-    await this.app.init({
-      canvas,
-      antialias: true,
-      resolution: window.devicePixelRatio || 1,
-      autoDensity: true,
-      backgroundAlpha: 0,
-      autoStart: false,
-      // note: webgpu is faster but not consistent across browsers and has random bugs
-      preference: "webgl",
-    });
+    try {
+      await this.app.init({
+        canvas,
+        antialias: true,
+        resolution: window.devicePixelRatio || 1,
+        autoDensity: true,
+        backgroundAlpha: 0,
+        autoStart: false,
+        // note: webgpu is faster but not consistent across browsers and has random bugs
+        preference: "webgl",
+      });
+    } catch (err) {
+      // Reset so a future call can attempt initialization again
+      this.app = null;
+      this.initPromise = null;
+
+      const message =
+        err instanceof Error ? err.message : "Unknown error during WebGL init";
+      throw new Error(
+        `Pixi.js failed to initialize a WebGL context. This is usually caused by a missing or incompatible GPU driver.\n\nDetails: ${message}`
+      );
+    }
 
     this.isInitialized = true;
   }
