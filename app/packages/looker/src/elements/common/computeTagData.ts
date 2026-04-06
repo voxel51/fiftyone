@@ -12,10 +12,12 @@ import {
   FRAME_NUMBER_FIELD,
   FRAME_SUPPORT_FIELD,
   INT_FIELD,
+  LABEL_LIST_PATH,
   LABELS_PATH,
   LIST_FIELD,
   OBJECT_ID_FIELD,
   REGRESSION,
+  type Schema,
   STRING_FIELD,
   TEMPORAL_DETECTION,
   TEMPORAL_DETECTIONS,
@@ -35,6 +37,69 @@ import { getBubbles, getField } from "./bubbles";
 import { getAssignedColor } from "./util";
 
 type Visibility = { values: string[]; exclude: boolean };
+
+const LABELS_PREFIX = LABELS_PATH + ".";
+
+/**
+ * Compute label tag counts from a sample's label data and field schema.
+ * Replaces the server-side `_add_labels_tags_counts` MongoDB aggregation
+ * with a lightweight client-side computation.
+ */
+export const computeLabelTagCounts = (
+  sample: Record<string, unknown>,
+  fieldSchema: Schema
+): Record<string, number> => {
+  const counts: Record<string, number> = {};
+
+  const collectFromData = (
+    data: Record<string, unknown>,
+    schema: Schema
+  ): void => {
+    for (const key in schema) {
+      const field = schema[key];
+      const docType = field.embeddedDocType;
+      if (!docType || !docType.startsWith(LABELS_PREFIX)) continue;
+
+      const fieldValue = data[field.dbField || key];
+      if (!fieldValue || typeof fieldValue !== "object") continue;
+
+      const listFieldName = LABEL_LIST_PATH[docType];
+
+      if (listFieldName) {
+        const items = (fieldValue as Record<string, unknown>)[listFieldName];
+        if (Array.isArray(items)) {
+          for (const item of items) {
+            const tags = (item as Record<string, unknown>)?.tags;
+            if (Array.isArray(tags)) {
+              for (const tag of tags) {
+                counts[tag as string] = (counts[tag as string] || 0) + 1;
+              }
+            }
+          }
+        }
+      } else {
+        const tags = (fieldValue as Record<string, unknown>).tags;
+        if (Array.isArray(tags)) {
+          for (const tag of tags) {
+            counts[tag as string] = (counts[tag as string] || 0) + 1;
+          }
+        }
+      }
+    }
+  };
+
+  collectFromData(sample, fieldSchema);
+
+  const framesField = fieldSchema.frames;
+  if (framesField?.fields && Array.isArray(sample.frames)) {
+    const firstFrame = sample.frames[0] as Record<string, unknown> | undefined;
+    if (firstFrame) {
+      collectFromData(firstFrame, framesField.fields);
+    }
+  }
+
+  return counts;
+};
 
 export interface TagData {
   color: string;
@@ -375,8 +440,10 @@ export const computeTagData = ({
         }
       }
     } else if (path === "_label_tags") {
-      const labelTags = ((sample as { _label_tags?: unknown })._label_tags ??
-        {}) as Record<string, number>;
+      const labelTags = computeLabelTagCounts(
+        sample as Record<string, unknown>,
+        fieldSchema
+      );
       for (const [tag, count] of Object.entries(labelTags)) {
         const value = `${tag}: ${count}`;
         const valuePath = coloring.by !== "field" ? tag : path;
