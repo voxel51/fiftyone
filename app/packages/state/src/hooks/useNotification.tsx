@@ -9,9 +9,10 @@ export default function useNotification(): (
   options: NotificationOption
 ) => void {
   return (options: NotificationOption) => {
-    const { msg, actions = [], ...otherOptions } = options;
+    const { msg, key, actions = [], ...otherOptions } = options;
+    const computedKey = key ?? msg;
     enqueueSnackbar({
-      key: msg,
+      key: computedKey,
       message: msg,
       anchorOrigin: { horizontal: "center", vertical: "bottom" },
       autoHideDuration: SNACKBAR_AUTO_HIDE_DURATION,
@@ -40,11 +41,12 @@ export default function useNotification(): (
             );
           })}
           <IconButton
+            aria-label="Close notification"
             onClick={() => {
-              closeSnackbar(msg);
+              closeSnackbar(computedKey);
             }}
           >
-            <Close fontSize="small" sx={{ color: "white" }} />
+            <Close fontSize="small" sx={{ color: "#FFFFFF" }} />
           </IconButton>
         </Stack>
       ),
