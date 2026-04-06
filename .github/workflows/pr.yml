@@ -74,8 +74,9 @@ jobs:
 
   enterprise-sync:
     if: >-
-      (github.event.action == 'closed' || github.event.pull_request.draft != true) &&
-      github.event.pull_request.head.repo.full_name == github.repository
+      github.event.pull_request.head.repo.full_name == github.repository && (
+      github.event.action == 'closed' ||
+      github.event.pull_request.draft != true)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/github-script@v7
