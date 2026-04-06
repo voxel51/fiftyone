@@ -1,60 +1,76 @@
-import { DETECTION } from "@fiftyone/utilities";
-import { type PrimitiveAtom, atom, useAtom, useAtomValue, useSetAtom } from "jotai";
-import { atomFamily, useAtomCallback } from "jotai/utils";
-import { countBy, maxBy } from "lodash";
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { fieldType, isFieldReadOnly, labelSchemaData } from "../state";
-import { labelsByPath } from "../useLabels";
-import { currentType, defaultField, useAnnotationContext } from "./state";
+import { countBy, maxBy } from "lodash";
+import { atomFamily, useAtomCallback } from "jotai/utils";
+import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import type { PrimitiveAtom } from "jotai";
+import { useRecoilValue } from "recoil";
+
 import {
   UNDEFINED_LIGHTER_SCENE_ID,
   useLighter,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
+import { DETECTION } from "@fiftyone/utilities";
+
+import { labelsByPath } from "../useLabels";
 import useCreate from "./useCreate";
 import useExit from "./useExit";
 
+import { isPatchesView } from "@fiftyone/state";
+import { fieldType, isFieldReadOnly, labelSchemaData } from "../state";
+import {
+  currentType,
+  defaultField,
+  fieldsOfType,
+  useAnnotationContext,
+} from "./state";
+
 /**
- * Flag to track if quick draw mode is active.
+ * Flag to track if detection mode is active.
  * When true, detection labels are created in quick succession without exiting after each save.
  *
  * This atom is exported to allow inspection from non-React code.
  * This atom should not be used in React code.
  */
-const quickDrawActiveAtom = atom<boolean>(false);
-export { quickDrawActiveAtom as _dangerousQuickDrawActiveAtom };
+const detectionModeActiveAtom = atom<boolean>(false);
+export { detectionModeActiveAtom as _unsafeDetectionModeActiveAtom };
 
 /**
- * Tracks the last-used detection field path in quick draw mode.
+ * Tracks the last-used detection field path in detection mode.
  * Examples: "ground_truth.detections", "predictions.detections"
  * Used to remember which detection field the user was annotating.
  */
-const lastUsedFieldAtom = atom<string | null>(null) as PrimitiveAtom<string | null>;
+const lastUsedFieldAtom = atom<string | null>(null) as PrimitiveAtom<
+  string | null
+>;
 
 /**
  * Tracks the last-used label value (class) for each field path.
- * Used for auto-assignment when creating new labels in quick draw mode.
+ * Used for auto-assignment when creating new labels in detection mode.
  */
-const lastUsedLabelAtom = atomFamily((_field: string) =>
-  atom<string | null>(null) as PrimitiveAtom<string | null>
+const lastUsedLabelAtom = atomFamily(
+  (_field: string) => atom<string | null>(null) as PrimitiveAtom<string | null>
 );
 
 const detectionTypes = new Set(["Detection", "Detections"]);
 
 /**
  * Tracks the last processed event ID for each event type so that only one
- * `useQuickDraw` instance handles each event, even though the hook is
+ * `useDetectionMode` instance handles each event, even though the hook is
  * called in multiple components.
  */
 const claimedEventsAtom = atom<Map<string, string>>(new Map());
 
 /**
- * Centralized hook for managing quick draw mode state and operations.
+ * Centralized hook for managing detection mode state and operations.
  */
-export const useQuickDraw = () => {
-  const [quickDrawActive, setQuickDrawActive] = useAtom(quickDrawActiveAtom);
+export const useDetectionMode = () => {
+  const [detectionModeActive, setDetectionModeActive] = useAtom(
+    detectionModeActiveAtom
+  );
   const editingLabelType = useAtomValue(currentType);
   const isEditingDetection = editingLabelType === DETECTION;
+  const isPatchView = useRecoilValue(isPatchesView);
   const setLastUsedField = useSetAtom(lastUsedFieldAtom);
   const labelsMap = useAtomValue(labelsByPath);
   const defaultDetectionField = useAtomValue(defaultField(DETECTION));
@@ -62,6 +78,7 @@ export const useQuickDraw = () => {
   const { selectedLabel } = useAnnotationContext();
   const createDetection = useCreate(DETECTION);
   const onExit = useExit();
+  const fields = useAtomValue(fieldsOfType(DETECTION));
 
   const useEventHandler = useLighterEventHandler(
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
@@ -73,6 +90,17 @@ export const useQuickDraw = () => {
 
   const selectedLabelRef = useRef(selectedLabel);
   selectedLabelRef.current = selectedLabel;
+
+  const noActiveFields = fields.length === 0;
+  const disabled = isPatchView || noActiveFields;
+
+  const tooltip = isPatchView
+    ? "Creating detections is not supported in this view"
+    : noActiveFields
+    ? "No active fields"
+    : detectionModeActive
+    ? "Exit detection creation"
+    : "Create new detections";
 
   /**
    * Getter which wraps {@link fieldType} atom family.
@@ -107,35 +135,61 @@ export const useQuickDraw = () => {
   );
 
   /**
-   * Enable quick draw mode for Detection annotations.
-   * The actual overlay/label creation is deferred until the user mouses down in the scene.
+   * Cache field/label for auto-assignment, exit interactive mode,
+   * and close out the current label.
    */
-  const enableQuickDraw = useCallback(() => {
-    setQuickDrawActive(true);
-  }, [setQuickDrawActive]);
+  const finalizeCurrentDetection = useCallback(() => {
+    const scene = sceneRef.current;
+    const currentLabel = selectedLabelRef.current;
+
+    if (currentLabel) {
+      setLastUsedField(currentLabel.path);
+
+      if (currentLabel.data.label) {
+        setLastUsedLabel(currentLabel.path, currentLabel.data.label);
+      }
+    }
+
+    scene?.exitInteractiveMode();
+    onExit();
+  }, [onExit, setLastUsedField, setLastUsedLabel]);
 
   /**
-   * Disable quick draw mode.
+   * Enable detection mode for Detection annotations.
+   * The actual overlay/label creation is deferred until the user mouses down in the scene.
    */
-  const disableQuickDraw = useCallback(() => {
-    setQuickDrawActive(false);
-  }, [setQuickDrawActive]);
+  const activateDetectionMode = useCallback(() => {
+    setDetectionModeActive(true);
+  }, [setDetectionModeActive]);
 
-  // Auto-enable QuickDraw when a detection is being edited,
+  /**
+   * Disable detection mode and gracefully close out any label being edited.
+   */
+  const deactivateDetectionMode = useCallback(() => {
+    finalizeCurrentDetection();
+    setDetectionModeActive(false);
+  }, [finalizeCurrentDetection, setDetectionModeActive]);
+
+  // Auto-enable detection mode when a detection is being edited,
   // auto-disable when a different label type is selected.
   useEffect(() => {
-    if (isEditingDetection && !quickDrawActive) {
-      setQuickDrawActive(true);
-    } else if (editingLabelType && !isEditingDetection && quickDrawActive) {
-      setQuickDrawActive(false);
+    if (isEditingDetection && !detectionModeActive) {
+      setDetectionModeActive(true);
+    } else if (editingLabelType && !isEditingDetection && detectionModeActive) {
+      setDetectionModeActive(false);
     }
-  }, [editingLabelType, isEditingDetection, quickDrawActive, setQuickDrawActive]);
+  }, [
+    editingLabelType,
+    isEditingDetection,
+    detectionModeActive,
+    setDetectionModeActive,
+  ]);
 
   /**
    * Get the auto-assigned detection field path.
    *
    * Auto-assignment priority:
-   * 1. Last-used detection field (if in quick draw mode and previously set)
+   * 1. Last-used detection field (if in detection mode and previously set)
    * 2. Field with the most detection labels
    * 3. Default detection field
    *
@@ -145,7 +199,7 @@ export const useQuickDraw = () => {
    * a field set by `trackLastUsedDetection` in the same synchronous call-stack
    * is visible immediately (avoids stale closure).
    */
-  const getQuickDrawDetectionField = useAtomCallback(
+  const getDetectionModeField = useAtomCallback(
     useCallback(
       (get): string | null => {
         const lastField = get(lastUsedFieldAtom);
@@ -187,16 +241,16 @@ export const useQuickDraw = () => {
 
   /**
    * Get the auto-assigned label value (class) for a detection field.
-   * Quick draw only works with Detection labels.
+   * Detection mode only works with Detection labels.
    *
    * Auto-assignment priority:
-   * 1. Last-used label for this field (if in quick draw mode)
+   * 1. Last-used label for this field (if in detection mode)
    * 2. Most common label for this specific field
    * 3. First class in the schema for the field
    *
    * Returns null if no label value can be determined.
    */
-  const getQuickDrawDetectionLabel = useCallback(
+  const getDetectionModeLabel = useCallback(
     (fieldPath: string): string | null => {
       const lastUsedLabel = getLastUsedLabel(fieldPath);
 
@@ -251,42 +305,16 @@ export const useQuickDraw = () => {
   );
 
   /**
-   * Cache field/label for auto-assignment
-   * Close out previous label
+   * Toggle detection mode. When exiting, deactivateDetectionMode handles
+   * finalization (caches field/label, exits interactive mode, closes edit form).
    */
-  const finalizeCurrentDetection = useCallback(() => {
-    const scene = sceneRef.current;
-    const currentLabel = selectedLabelRef.current;
-
-    if (currentLabel) {
-      setLastUsedField(currentLabel.path);
-
-      if (currentLabel.data.label) {
-        setLastUsedLabel(currentLabel.path, currentLabel.data.label);
-      }
-    }
-
-    scene?.exitInteractiveMode();
-    onExit();
-  }, [onExit, setLastUsedField, setLastUsedLabel]);
-
-  /**
-   * Toggle quick draw mode. When exiting, finalizes the current detection
-   * (caches field/label, exits interactive mode, closes edit form).
-   */
-  const toggleQuickDraw = useCallback(() => {
-    if (quickDrawActive) {
-      finalizeCurrentDetection();
-      disableQuickDraw();
+  const toggleDetectionMode = useCallback(() => {
+    if (detectionModeActive) {
+      deactivateDetectionMode();
     } else {
-      enableQuickDraw();
+      activateDetectionMode();
     }
-  }, [
-    quickDrawActive,
-    finalizeCurrentDetection,
-    disableQuickDraw,
-    enableQuickDraw,
-  ]);
+  }, [detectionModeActive, deactivateDetectionMode, activateDetectionMode]);
 
   /**
    * Cache field/label for auto-assignment
@@ -303,9 +331,9 @@ export const useQuickDraw = () => {
 
         finalizeCurrentDetection();
 
-        const field = getQuickDrawDetectionField() ?? undefined;
+        const field = getDetectionModeField() ?? undefined;
         const labelValue = field
-          ? getQuickDrawDetectionLabel(field) ?? undefined
+          ? getDetectionModeLabel(field) ?? undefined
           : undefined;
 
         createDetection({ field, labelValue });
@@ -314,42 +342,48 @@ export const useQuickDraw = () => {
         claimEvent,
         createDetection,
         finalizeCurrentDetection,
-        getQuickDrawDetectionField,
-        getQuickDrawDetectionLabel,
+        getDetectionModeField,
+        getDetectionModeLabel,
       ]
     )
   );
 
   /**
-   * Cache field/label for auto-assignment
-   * Close out previous label
-   * Exit QuickDraw
+   * Exit detection mode (triggered when user clicks without dragging).
    */
   useEventHandler(
-    "lighter:quickdraw-quit",
+    "lighter:detection-mode-quit",
     useCallback(
       (payload) => {
-        if (!claimEvent("quickdraw-quit", payload.eventId)) {
+        if (!claimEvent("detection-mode-quit", payload.eventId)) {
           return;
         }
 
-        finalizeCurrentDetection();
-        disableQuickDraw();
+        deactivateDetectionMode();
       },
-      [claimEvent, disableQuickDraw, finalizeCurrentDetection]
+      [claimEvent, deactivateDetectionMode]
     )
   );
 
   return useMemo(
     () => ({
       // State (read-only)
-      quickDrawActive,
+      detectionModeActive,
+      disabled,
+      tooltip,
 
       // Mode control (for UI components)
-      enableQuickDraw,
-      disableQuickDraw,
-      toggleQuickDraw,
+      activateDetectionMode,
+      deactivateDetectionMode,
+      toggleDetectionMode,
     }),
-    [quickDrawActive, enableQuickDraw, disableQuickDraw, toggleQuickDraw]
+    [
+      activateDetectionMode,
+      deactivateDetectionMode,
+      detectionModeActive,
+      disabled,
+      toggleDetectionMode,
+      tooltip,
+    ]
   );
 };

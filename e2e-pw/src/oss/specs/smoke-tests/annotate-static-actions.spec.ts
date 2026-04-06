@@ -3,7 +3,7 @@
  *
  * Tests that the Actions toolbar remains visible during annotation editing,
  * that the schema manager opens from the label list, and that exiting
- * QuickDraw closes the edit form.
+ * detection mode closes the edit form.
  */
 import { expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
@@ -88,16 +88,16 @@ test.describe.serial("static actions toolbar", () => {
     // Verify actions toolbar is visible before editing
     const sidebar = modal.sidebar.locator;
     const undoButton = sidebar.getByTestId("undo-button");
-    const quickDrawButton = page.getByTestId("quick-draw-detection");
+    const detectionModeButton = page.getByTestId("detection-mode");
     await expect(undoButton).toBeVisible();
-    await expect(quickDrawButton).toBeVisible();
+    await expect(detectionModeButton).toBeVisible();
 
     // Click a label to enter edit mode
     await modal.sidebar.annotate.selectActiveLabel("bird", 0);
 
     // Actions toolbar should still be visible
     await expect(undoButton).toBeVisible();
-    await expect(quickDrawButton).toBeVisible();
+    await expect(detectionModeButton).toBeVisible();
   });
 
   test("mode toggle remains visible while editing a label", async ({
@@ -136,7 +136,7 @@ test.describe.serial("static actions toolbar", () => {
     await schemaManager.assert.isClosed();
   });
 
-  test("exiting QuickDraw via toggle closes the edit form", async ({
+  test("exiting detection mode via toggle closes the edit form", async ({
     modal,
   }) => {
     await modal.assert.isOpen();
@@ -150,9 +150,9 @@ test.describe.serial("static actions toolbar", () => {
     // Label list is visible before editing
     await expect(labelListHeader).toBeVisible();
 
-    // Activate QuickDraw and draw a detection to open the edit form
-    await modal.sidebar.annotate.quickDraw("Detections");
-    await modal.sidebar.annotate.assert.quickDrawIsActive();
+    // Activate detection mode and draw a detection to open the edit form
+    await modal.sidebar.annotate.detectionMode("Detections");
+    await modal.sidebar.annotate.assert.detectionModeIsActive();
 
     await modal.sampleCanvas.move(0.1, 0.1, "crosshair");
     await modal.sampleCanvas.down();
@@ -163,9 +163,9 @@ test.describe.serial("static actions toolbar", () => {
     // Edit form is showing — label list is hidden during editing
     await expect(labelListHeader).toBeHidden();
 
-    // Exit QuickDraw via the toggle button
-    await modal.sidebar.annotate.quickDraw("Detections");
-    await modal.sidebar.annotate.assert.quickDrawIsActive(false);
+    // Exit detection mode via the toggle button
+    await modal.sidebar.annotate.detectionMode("Detections");
+    await modal.sidebar.annotate.assert.detectionModeIsActive(false);
 
     // Edit form should be closed — label list should reappear
     await expect(labelListHeader).toBeVisible();

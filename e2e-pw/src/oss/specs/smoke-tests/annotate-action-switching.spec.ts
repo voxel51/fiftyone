@@ -83,7 +83,7 @@ test.describe.serial("action switching", () => {
 
     await modal.sidebar.annotate.assert.selectIsActive();
     await modal.sidebar.annotate.assert.classificationIsActive(false);
-    await modal.sidebar.annotate.assert.quickDrawIsActive(false);
+    await modal.sidebar.annotate.assert.detectionModeIsActive(false);
   });
 
   test("activating Classification deactivates Select", async ({ modal }) => {
@@ -97,24 +97,24 @@ test.describe.serial("action switching", () => {
 
     await modal.sidebar.annotate.assert.classificationIsActive();
     await modal.sidebar.annotate.assert.selectIsActive(false);
-    await modal.sidebar.annotate.assert.quickDrawIsActive(false);
+    await modal.sidebar.annotate.assert.detectionModeIsActive(false);
   });
 
-  test("activating QuickDraw deactivates Select", async ({ modal }) => {
+  test("activating detection mode deactivates Select", async ({ modal }) => {
     await modal.assert.isOpen();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
 
     await modal.sidebar.annotate.assert.selectIsActive();
 
-    await modal.sidebar.annotate.quickDraw("Detections");
+    await modal.sidebar.annotate.detectionMode("Detections");
 
-    await modal.sidebar.annotate.assert.quickDrawIsActive();
+    await modal.sidebar.annotate.assert.detectionModeIsActive();
     await modal.sidebar.annotate.assert.selectIsActive(false);
     await modal.sidebar.annotate.assert.classificationIsActive(false);
   });
 
-  test("switching from Classification to QuickDraw deactivates Classification", async ({
+  test("switching from Classification to detection mode deactivates Classification", async ({
     modal,
   }) => {
     await modal.assert.isOpen();
@@ -124,27 +124,27 @@ test.describe.serial("action switching", () => {
     await modal.sidebar.annotate.createClassification();
     await modal.sidebar.annotate.assert.classificationIsActive();
 
-    await modal.sidebar.annotate.quickDraw("Detections");
+    await modal.sidebar.annotate.detectionMode("Detections");
 
-    await modal.sidebar.annotate.assert.quickDrawIsActive();
+    await modal.sidebar.annotate.assert.detectionModeIsActive();
     await modal.sidebar.annotate.assert.classificationIsActive(false);
     await modal.sidebar.annotate.assert.selectIsActive(false);
   });
 
-  test("switching from QuickDraw to Classification deactivates QuickDraw", async ({
+  test("switching from detection mode to Classification deactivates detection mode", async ({
     modal,
   }) => {
     await modal.assert.isOpen();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
 
-    await modal.sidebar.annotate.quickDraw("Detections");
-    await modal.sidebar.annotate.assert.quickDrawIsActive();
+    await modal.sidebar.annotate.detectionMode("Detections");
+    await modal.sidebar.annotate.assert.detectionModeIsActive();
 
     await modal.sidebar.annotate.createClassification();
 
     await modal.sidebar.annotate.assert.classificationIsActive();
-    await modal.sidebar.annotate.assert.quickDrawIsActive(false);
+    await modal.sidebar.annotate.assert.detectionModeIsActive(false);
     await modal.sidebar.annotate.assert.selectIsActive(false);
   });
 
@@ -160,33 +160,33 @@ test.describe.serial("action switching", () => {
 
     await modal.sidebar.annotate.assert.selectIsActive();
     await modal.sidebar.annotate.assert.classificationIsActive(false);
-    await modal.sidebar.annotate.assert.quickDrawIsActive(false);
+    await modal.sidebar.annotate.assert.detectionModeIsActive(false);
   });
 
-  test("Select button deactivates QuickDraw", async ({ modal }) => {
+  test("Select button deactivates detection mode", async ({ modal }) => {
     await modal.assert.isOpen();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
 
-    await modal.sidebar.annotate.quickDraw("Detections");
-    await modal.sidebar.annotate.assert.quickDrawIsActive();
+    await modal.sidebar.annotate.detectionMode("Detections");
+    await modal.sidebar.annotate.assert.detectionModeIsActive();
 
     await modal.sidebar.annotate.selectAction();
 
     await modal.sidebar.annotate.assert.selectIsActive();
-    await modal.sidebar.annotate.assert.quickDrawIsActive(false);
+    await modal.sidebar.annotate.assert.detectionModeIsActive(false);
     await modal.sidebar.annotate.assert.classificationIsActive(false);
   });
 
-  test("clicking overlay in QuickDraw shows pointer cursor", async ({
+  test("clicking overlay in detection mode shows pointer cursor", async ({
     modal,
   }) => {
     await modal.assert.isOpen();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
 
-    await modal.sidebar.annotate.quickDraw("Detections");
-    await modal.sidebar.annotate.assert.quickDrawIsActive();
+    await modal.sidebar.annotate.detectionMode("Detections");
+    await modal.sidebar.annotate.assert.detectionModeIsActive();
 
     // Move to empty space — should show crosshair
     await modal.sampleCanvas.move(0.09, 0.09, "crosshair");
