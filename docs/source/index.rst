@@ -283,11 +283,6 @@ ____________
     :image_title: PyTorch
 
 .. customimagelink::
-    :image_link: recipes/adding_detections.html
-    :image_src: https://voxel51.com/images/integrations/tensorflow-128.png
-    :image_title: TensorFlow
-
-.. customimagelink::
     :image_link: integrations/huggingface.html
     :image_src: https://voxel51.com/images/integrations/hugging-face-128.png
     :image_title: Hugging Face
@@ -336,9 +331,9 @@ ____________
     <div class="integrations-tier2">
 
 .. customimagelink::
-    :image_link: integrations/lightning_flash.html
-    :image_src: https://voxel51.com/images/integrations/pytorch-lightning-128.png
-    :image_title: PyTorch Lightning
+    :image_link: recipes/adding_detections.html
+    :image_src: https://voxel51.com/images/integrations/tensorflow-128.png
+    :image_title: TensorFlow
 
 .. customimagelink::
     :image_link: integrations/super_gradients.html
