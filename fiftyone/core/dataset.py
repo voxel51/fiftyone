@@ -1520,9 +1520,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 and target_frame == focam.DEFAULT_TRANSFORM_TARGET_FRAME
             ):
                 transform = copy.deepcopy(transform)
-                transform.target_frame = (
-                    focam.DEFAULT_TRANSFORM_TARGET_FRAME
-                )
+                transform.target_frame = focam.DEFAULT_TRANSFORM_TARGET_FRAME
 
             if "::" in key:
                 dataset_transforms[entry_key] = transform
@@ -1553,7 +1551,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """Resolve transform by chaining through intermediate frames."""
         frames = [source_frame] + list(chain_via) + [target_frame]
 
-        return self._resolve_transformation_chain_frames(frames, direct_transforms)
+        return self._resolve_transformation_chain_frames(
+            frames, direct_transforms
+        )
 
     def _resolve_transformation_auto_chain(
         self,

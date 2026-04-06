@@ -14,7 +14,7 @@ export const FO3D_CAMERA_LIFECYCLE = {
  * Union of all valid FO3D camera lifecycle states.
  */
 export type Fo3dCameraLifecycleState =
-  (typeof FO3D_CAMERA_LIFECYCLE)[keyof typeof FO3D_CAMERA_LIFECYCLE];
+  typeof FO3D_CAMERA_LIFECYCLE[keyof typeof FO3D_CAMERA_LIFECYCLE];
 
 /**
  * Reducer actions that advance the FO3D camera bootstrap flow.
@@ -27,7 +27,7 @@ export const FO3D_CAMERA_LIFECYCLE_ACTION = {
 } as const;
 
 type Fo3dCameraLifecycleActionType =
-  (typeof FO3D_CAMERA_LIFECYCLE_ACTION)[keyof typeof FO3D_CAMERA_LIFECYCLE_ACTION];
+  typeof FO3D_CAMERA_LIFECYCLE_ACTION[keyof typeof FO3D_CAMERA_LIFECYCLE_ACTION];
 
 /**
  * Action payload accepted by the FO3D camera lifecycle reducer.

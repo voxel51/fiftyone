@@ -554,7 +554,7 @@ export const SidePanel = ({
 
 function findByUserData(
   scene: THREE.Scene,
-  key: (typeof FO_USER_DATA)[keyof typeof FO_USER_DATA],
+  key: typeof FO_USER_DATA[keyof typeof FO_USER_DATA],
   value: unknown
 ): THREE.Object3D | null {
   let result: THREE.Object3D | null = null;

@@ -30,10 +30,7 @@ export class SampleCanvasPom {
   #mouseX = 0;
   #mouseY = 0;
 
-  constructor(
-    readonly page: Page,
-    readonly eventUtils: EventUtils
-  ) {
+  constructor(readonly page: Page, readonly eventUtils: EventUtils) {
     this.assert = new SampleCanvasAsserter(this);
   }
 

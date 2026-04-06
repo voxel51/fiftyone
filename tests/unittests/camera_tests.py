@@ -1269,7 +1269,9 @@ class DatasetIntegrationTests(unittest.TestCase):
         dataset.add_sample(sample)
 
         # Auto-chain should find camera -> ego -> world
-        resolved_auto = dataset.resolve_transformation(sample, "camera", "world")
+        resolved_auto = dataset.resolve_transformation(
+            sample, "camera", "world"
+        )
         self.assertIsNotNone(resolved_auto)
         nptest.assert_array_almost_equal(
             resolved_auto.translation, [1.0, 10.0, 0.0]
@@ -1334,7 +1336,9 @@ class DatasetIntegrationTests(unittest.TestCase):
         sample["ego_pose"] = ego_to_world
         dataset.add_sample(sample)
 
-        resolved_auto = dataset.resolve_transformation(sample, "camera", "world")
+        resolved_auto = dataset.resolve_transformation(
+            sample, "camera", "world"
+        )
         self.assertIsNotNone(resolved_auto)
 
         # Composed transform: [1, 0, 0] + [100, 50, 0] = [101, 50, 0]
@@ -1378,9 +1382,7 @@ class DatasetIntegrationTests(unittest.TestCase):
 
         resolved = dataset.resolve_transformation(sample, "camera", "world")
         self.assertIsNotNone(resolved)
-        nptest.assert_array_almost_equal(
-            resolved.translation, [1.0, 2.0, 3.0]
-        )
+        nptest.assert_array_almost_equal(resolved.translation, [1.0, 2.0, 3.0])
 
     @drop_datasets
     def test_resolve_transformation_auto_chain_max_intermediates_config(self):
@@ -1412,7 +1414,9 @@ class DatasetIntegrationTests(unittest.TestCase):
         dataset.add_sample(sample)
 
         with patch.object(fod, "_AUTO_TRANSFORMATION_MAX_INTERMEDIATES", 1):
-            resolved = dataset.resolve_transformation(sample, "camera", "world")
+            resolved = dataset.resolve_transformation(
+                sample, "camera", "world"
+            )
 
         self.assertIsNone(resolved)
 
@@ -1577,7 +1581,9 @@ class DatasetIntegrationTests(unittest.TestCase):
         )
 
     @drop_datasets
-    def test_resolve_transformation_direct_takes_priority_over_auto_chain(self):
+    def test_resolve_transformation_direct_takes_priority_over_auto_chain(
+        self,
+    ):
         """Test direct match is preferred over implicit auto-chain path."""
         dataset = fo.Dataset()
 
