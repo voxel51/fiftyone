@@ -2,7 +2,7 @@ import styles from "./Grid.module.css";
 
 import Spotlight from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useRecoilValue } from "recoil";
 import { useMemoOne } from "use-memo-one";
 import { v4 as uuid } from "uuid";
@@ -106,36 +106,6 @@ function Grid() {
     spacing,
     zoom,
   ]);
-
-  const [pixelfall, setPixelfall] = useState(false);
-
-  useEffect(() => {
-    const el = document.getElementById(pixels);
-    if (!el) return;
-
-    if (pixelfall) {
-      el.classList.remove(styles.hidden);
-      el.classList.add(styles.forceShow);
-    } else {
-      el.classList.remove(styles.forceShow);
-      el.classList.add(styles.hidden);
-    }
-  }, [pixelfall, pixels]);
-
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.code === "KeyP") {
-        e.preventDefault();
-        setPixelfall((prev) => !prev);
-      }
-    };
-
-    window.addEventListener("keydown", handler);
-
-    return () => {
-      window.removeEventListener("keydown", handler);
-    };
-  }, []);
 
   useEscape();
   useEvents({ id, cache, pixels, resizing, set, spotlight });
