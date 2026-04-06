@@ -7,6 +7,7 @@ FiftyOne plugin context tests.
 """
 
 import sys
+from textwrap import dedent
 from unittest import mock
 
 import pytest
@@ -142,12 +143,14 @@ class TestPluginRegistration:
 
         with open(plugin_dir / "__init__.py", "w") as f:
             f.write(
-                """
-from .utils import VALUE
+                dedent(
+                    """
+                    from .utils import VALUE
 
-def register(ctx):
-    ctx.test_value = VALUE
-"""
+                    def register(ctx):
+                        ctx.test_value = VALUE
+                    """
+                ).lstrip("\n")
             )
 
         metadata = {
@@ -180,16 +183,18 @@ def register(ctx):
 
         with open(plugin_dir / "__init__.py", "w") as f:
             f.write(
-                """
-import importlib
+                dedent(
+                    """
+                    import importlib
 
-def register(ctx):
-    # Import using absolute path
-    helpers = importlib.import_module(
-        "fiftyone.plugins.orgs.testorg.testplugin.helpers"
-    )
-    ctx.helper_value = helpers.HELPER_VALUE
-"""
+                    def register(ctx):
+                        # Import using absolute path
+                        helpers = importlib.import_module(
+                            "fiftyone.plugins.orgs.testorg.testplugin.helpers"
+                        )
+                        ctx.helper_value = helpers.HELPER_VALUE
+                    """
+                ).lstrip("\n")
             )
 
         metadata = {
@@ -209,3 +214,50 @@ def register(ctx):
             assert not ctx.has_errors(), f"Plugin had errors: {ctx.errors}"
             # pylint: disable=no-member
             assert ctx.helper_value == 99
+
+    def test_plugin_picks_up_submodule_changes_on_reregister(self, tmp_path):
+        """After dependency code on disk changes, register_all() should see new values."""
+        plugin_dir = tmp_path / "reload-plugin"
+        plugin_dir.mkdir(parents=True)
+
+        utils_dir = plugin_dir / "utils"
+        utils_dir.mkdir()
+        with open(utils_dir / "__init__.py", "w") as f:
+            f.write("VALUE = 1\n")
+
+        with open(plugin_dir / "__init__.py", "w") as f:
+            f.write(
+                dedent(
+                    """
+                    from .utils import VALUE
+
+                    def register(ctx):
+                        ctx.captured_value = VALUE
+                    """
+                ).lstrip("\n")
+            )
+
+        metadata = {
+            "name": "@reloadtest/reloadplugin",
+            "label": "Reload Plugin",
+            "version": "1.0.0",
+            "operators": ["DummyOp"],
+        }
+        with open(plugin_dir / "fiftyone.yml", "w") as f:
+            yaml.dump(metadata, f)
+
+        with mock.patch("fiftyone.config.plugins_dir", str(tmp_path)):
+            plugin_def = fpd.PluginDefinition(str(plugin_dir), metadata)
+            ctx = fpctx.PluginContext(plugin_def)
+            ctx.register_all()
+            assert not ctx.has_errors(), ctx.errors
+            # pylint: disable=no-member
+            assert ctx.captured_value == 1
+
+            with open(utils_dir / "__init__.py", "w") as f:
+                f.write("VALUE = 2\n")
+
+            ctx.register_all()
+            assert not ctx.has_errors(), ctx.errors
+            # pylint: disable=no-member
+            assert ctx.captured_value == 2
