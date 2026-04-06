@@ -213,12 +213,12 @@ const Modal = () => {
       async () => {
         const current = await snapshot.getPromise(fos.modalSelector);
         set(fos.selectedSamples, (selected) => {
-          const newSelected = new Set([...Array.from(selected)]);
+          const newSelected = new Map(selected);
           if (current?.id) {
             if (newSelected.has(current.id)) {
               newSelected.delete(current.id);
             } else {
-              newSelected.add(current.id);
+              newSelected.set(current.id, "default");
             }
           }
           return newSelected;

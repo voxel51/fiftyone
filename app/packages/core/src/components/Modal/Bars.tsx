@@ -26,7 +26,7 @@ const SelectableBar: React.FC<
       onMouseLeave={() => hoveringRef && (hoveringRef.current = false)}
       ref={headerRef}
       onClick={(event) =>
-        event.target === headerRef.current && select(sampleId)
+        event.target === headerRef.current && select(sampleId, event.altKey)
       }
       style={{ cursor: "pointer", ...style }}
       data-cy={"selectable-bar"}
@@ -36,7 +36,7 @@ const SelectableBar: React.FC<
           title={selected ? "Select sample" : "Selected"}
           checked={selected}
           style={{ color: theme.primary.plainColor }}
-          onClick={() => select(sampleId)}
+          onClick={(e) => select(sampleId, e.altKey)}
         />
       </div>
       {children}

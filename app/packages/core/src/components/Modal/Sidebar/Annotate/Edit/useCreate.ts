@@ -43,7 +43,7 @@ const useCreateAnnotationLabel = () => {
       // Extract default values from the label schema for new annotations
       const fieldSchema = store.get(labelSchemaData(field));
 
-      // Build label data with defaults and quick draw values (if applicable)
+      // Build label data with defaults and detection mode values (if applicable)
       const data = buildNewLabelData(field, type, id, labelValue);
 
       if (type === CLASSIFICATION) {

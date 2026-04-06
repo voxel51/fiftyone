@@ -136,7 +136,8 @@ const dispatchSideEffect = ({
   }
 
   session.selectedLabels = [];
-  session.selectedSamples = new Set();
+  session.selectedSamples = new Map();
+  session.sampleSelectionStyle = fos.DEFAULT_SELECTION_STYLE;
 
   const currentDataset: string | undefined =
     // @ts-ignore

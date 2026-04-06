@@ -37,7 +37,6 @@ import {
 } from "./operators";
 import { useShowOperatorIO } from "./state";
 import usePanelEvent from "./usePanelEvent";
-import { Clear } from "@mui/icons-material";
 
 //
 // BUILT-IN OPERATORS
@@ -80,6 +79,7 @@ class ClearSelectedSamples extends Operator {
   }
   async execute({ state }: ExecutionContext) {
     state.reset(fos.selectedSamples);
+    state.reset(fos.selectedSampleObjects);
   }
 }
 
@@ -423,7 +423,7 @@ class ShowSelectedSamples extends Operator {
       fos.selectedSamples
     );
     state.set(fos.extendedSelection, {
-      selection: Array.from(selectedSamples),
+      selection: Array.from(selectedSamples.keys()),
       scope: "global",
     });
   }
@@ -446,7 +446,12 @@ class ConvertExtendedSelectionToSelectedSamples extends Operator {
     const extendedSelection = await state.snapshot.getPromise(
       fos.extendedSelection
     );
-    state.set(fos.selectedSamples, new Set(extendedSelection.selection));
+    const map = new Map<string, fos.SelectionType>();
+    for (const id of extendedSelection.selection || []) {
+      map.set(id, "default");
+    }
+    state.set(fos.selectedSamples, map);
+    state.set(fos.selectedSampleObjects, new Map());
     state.set(fos.extendedSelection, { selection: null });
     hooks.resetExtended();
   }
@@ -467,11 +472,53 @@ class SetSelectedSamples extends Operator {
       setSelected: fos.useSetSelected(),
     };
   }
-  async execute({ hooks, params }: ExecutionContext) {
+  async execute({ hooks, params, state }: ExecutionContext) {
     const { samples } = params || {};
     if (!Array.isArray(samples))
-      throw new Error("param 'samples' must be an array of string");
-    hooks.setSelected(new Set(samples));
+      throw new Error("param 'samples' must be an array");
+    const map = new Map<string, fos.SelectionType>();
+    for (const item of samples) {
+      if (typeof item === "string") {
+        map.set(item, "default");
+      } else if (item && typeof item === "object") {
+        map.set(item.id, item.type || "default");
+      }
+    }
+    hooks.setSelected(map);
+    state.set(fos.selectedSampleObjects, new Map());
+  }
+}
+
+class SetSampleSelectionStyle extends Operator {
+  _builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "set_sample_selection_style",
+      label: "Set sample selection style",
+      unlisted: true,
+    });
+  }
+  async execute({ state, params }: ExecutionContext) {
+    const { default: defaultIcon, alt } = params || {};
+    const style = {
+      default: defaultIcon || fos.DEFAULT_SELECTION_STYLE.default,
+      alt: alt || fos.DEFAULT_SELECTION_STYLE.alt,
+    };
+    state.set(fos.sampleSelectionStyle, style);
+  }
+}
+
+class ClearSampleSelectionStyle extends Operator {
+  _builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "clear_sample_selection_style",
+      label: "Clear sample selection style",
+      unlisted: true,
+    });
+  }
+  async execute({ state }: ExecutionContext) {
+    state.set(fos.sampleSelectionStyle, fos.DEFAULT_SELECTION_STYLE);
   }
 }
 
@@ -1623,6 +1670,8 @@ export function registerBuiltInOperators() {
     _registerBuiltInOperator(ShowSelectedSamples);
     _registerBuiltInOperator(ConvertExtendedSelectionToSelectedSamples);
     _registerBuiltInOperator(SetSelectedSamples);
+    _registerBuiltInOperator(SetSampleSelectionStyle);
+    _registerBuiltInOperator(ClearSampleSelectionStyle);
     _registerBuiltInOperator(OpenPanel);
     _registerBuiltInOperator(ClosePanel);
     _registerBuiltInOperator(SetView);

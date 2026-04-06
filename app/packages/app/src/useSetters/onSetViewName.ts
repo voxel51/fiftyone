@@ -1,5 +1,9 @@
 import { setView, type setViewMutation } from "@fiftyone/relay";
-import { datasetName, stateSubscription } from "@fiftyone/state";
+import {
+  DEFAULT_SELECTION_STYLE,
+  datasetName,
+  stateSubscription,
+} from "@fiftyone/state";
 import { DefaultValue } from "recoil";
 import { commitMutation } from "relay-runtime";
 import { pendingEntry } from "../Renderer";
@@ -32,7 +36,8 @@ const onSetViewName: RegisteredSetter =
     });
 
     sessionRef.current.selectedLabels = [];
-    sessionRef.current.selectedSamples = new Set();
+    sessionRef.current.selectedSamples = new Map();
+    sessionRef.current.sampleSelectionStyle = DEFAULT_SELECTION_STYLE;
     sessionRef.current.fieldVisibilityStage = undefined;
     router.history.push(
       resolveURL({

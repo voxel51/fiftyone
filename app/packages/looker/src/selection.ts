@@ -15,8 +15,11 @@ export type ThumbnailSelectionModifiers = {
 
 export type ThumbnailSelectionDetail<TSample = unknown> =
   ThumbnailSelectionModifiers & {
+    /** FiftyOne sample ID (sample._id), used as key in selectedSamples state */
     id: string;
     sample: TSample;
+    /** Spotlight grid item identifier — holds the same sample ID string in
+     *  `description`, but used for grid position lookups (e.g. shift-click range) */
     symbol: SelectionSymbol;
   };
 

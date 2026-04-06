@@ -25,7 +25,7 @@ import {
 import { KnownCommands, KnownContexts, useCommand } from "@fiftyone/commands";
 import useColor from "./useColor";
 import useExit from "./useExit";
-import { useQuickDraw } from "./useQuickDraw";
+import { useDetectionMode } from "./useDetectionMode";
 import { useAnnotationController } from "@fiftyone/annotation";
 
 const LabelHamburgerMenu = () => {
@@ -96,7 +96,7 @@ const Header = () => {
   const { exitAnnotationMode } = useAnnotationController();
   const onExit = useExit();
   const { scene } = useLighter();
-  const { disableQuickDraw } = useQuickDraw();
+  const { deactivateDetectionMode } = useDetectionMode();
   const annotationContext = useAnnotationContext();
   const currentFieldIsReadOnly = useAtomValue(currentFieldIsReadOnlyAtom);
 
@@ -109,14 +109,14 @@ const Header = () => {
     if (shouldExitToExplore) {
       exitAnnotationMode();
     }
-    disableQuickDraw();
+    deactivateDetectionMode();
     scene?.exitInteractiveMode();
     onExit();
   }, [
     shouldExitToExplore,
     exitAnnotationMode,
     onExit,
-    disableQuickDraw,
+    deactivateDetectionMode,
     scene,
   ]);
 

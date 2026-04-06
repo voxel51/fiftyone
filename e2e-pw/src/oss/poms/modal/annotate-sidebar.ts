@@ -136,13 +136,13 @@ export class ModalAnnotateSidebarPom {
   }
 
   /**
-   * Activate quick draw mode for a label type (e.g. "Detections")
+   * Activate detection mode for a label type (e.g. "Detections")
    *
-   * @param labelType The label type to quick draw
+   * @param labelType The label type to activate detection mode for
    */
-  async quickDraw(labelType: "Detections") {
+  async detectionMode(labelType: "Detections") {
     if (labelType === "Detections") {
-      await this.page.getByTestId("quick-draw-detection").click();
+      await this.page.getByTestId("detection-mode").click();
     }
   }
 }
@@ -263,13 +263,13 @@ class ModalAnnotateSidebarAsserter {
   }
 
   /**
-   * Assert that quick draw mode is active or inactive
+   * Assert that detection mode is active or inactive
    *
-   * @param active Whether quick draw should be active (default true)
+   * @param active Whether detection mode should be active (default true)
    */
-  async quickDrawIsActive(active = true) {
+  async detectionModeIsActive(active = true) {
     const button = this.modalAnnotateSidebar.page.getByTestId(
-      "quick-draw-detection"
+      "detection-mode"
     );
     await expect(button).toHaveAttribute("data-cy-active", active.toString());
   }
