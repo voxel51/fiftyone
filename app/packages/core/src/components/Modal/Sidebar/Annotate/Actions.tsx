@@ -9,11 +9,7 @@ import {
   useCurrent3dAnnotationMode,
   useSetCurrent3dAnnotationMode,
 } from "@fiftyone/looker-3d/src/state/accessors";
-import {
-  is3DDataset,
-  isPatchesView,
-  useRenderConfig3dState,
-} from "@fiftyone/state";
+import { is3DDataset, useRenderConfig3dState } from "@fiftyone/state";
 import {
   DETECTION,
   DETECTIONS,
@@ -28,8 +24,8 @@ import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ItemLeft, ItemRight } from "./Components";
 import { editing } from "./Edit";
-import { useClassificationMode } from "./Edit/useClassificationMode";
 import { fieldsOfType } from "./Edit/state";
+import { useClassificationMode } from "./Edit/useClassificationMode";
 import { useDetectionMode } from "./Edit/useDetectionMode";
 import { useSegmentationMode } from "./Edit/useSegmentationMode";
 
