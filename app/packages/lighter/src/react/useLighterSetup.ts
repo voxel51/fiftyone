@@ -9,6 +9,7 @@ import {
   PixiRenderer2D,
   Scene2D,
   globalPixiResourceLoader,
+  lighterInitErrorAtom,
   lighterSceneAtom,
   useLighterEventBus,
   UNDEFINED_LIGHTER_SCENE_ID,
@@ -35,6 +36,7 @@ export const useLighterSetupWithPixi = (
   sceneId: string
 ) => {
   const [scene, setScene] = useAtom(lighterSceneAtom);
+  const [, setInitError] = useAtom(lighterInitErrorAtom);
 
   const rendererRef = useRef<PixiRenderer2D | null>(null);
 
@@ -70,15 +72,25 @@ export const useLighterSetupWithPixi = (
   useEffect(() => {
     if (!scene || scene.isDestroyed) return;
 
-    rendererRef.current?.initializePixiJS().then(() => {
-      scene.startRenderLoop();
-      eventBus.dispatch("lighter:renderer-ready", {});
-    });
+    setInitError(null);
+
+    rendererRef.current
+      ?.initializePixiJS()
+      .then(() => {
+        scene.startRenderLoop();
+        eventBus.dispatch("lighter:renderer-ready", {});
+      })
+      .catch((err: unknown) => {
+        const message =
+          err instanceof Error ? err.message : "An unknown error occurred";
+        console.error("[Lighter] Pixi initialization failed:", err);
+        setInitError(message);
+      });
 
     return () => {
       scene.destroy();
     };
-  }, [scene]);
+  }, [scene, setInitError]);
 
   useEffect(() => {
     if (scene && !scene.isDestroyed) {
