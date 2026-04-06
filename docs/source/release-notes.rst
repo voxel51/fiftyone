@@ -3,6 +3,28 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.17.1
+--------------------------
+*Released April 6, 2026*
+
+Includes all updates from :ref:`FiftyOne 1.14.1 <release-notes-v1.14.1>`, plus:
+
+- Added full support for the :ref:`Labeler <enterprise-labeler>` role in the
+  :ref:`Enterprise Management SDK <enterprise-management-sdk>`.
+
+.. _release-notes-v1.14.1:
+
+FiftyOne 1.14.1
+---------------
+*Released April 6, 2026*
+
+- Fixed: Now, if an :ref:`Operator <using-operators>` defines
+  `default_choice_to_delegated=True` and allows immediate execution, the UI
+  will not default to "Execute" but correctly default to "Schedule" and select
+  an :ref:`Orchestrator <enterprise-delegated-orchestrator>`.
+  `#7285 <https://github.com/voxel51/fiftyone/pull/7285>`_
+
+
 FiftyOne Enterprise 2.17.0
 --------------------------
 *Released March 31, 2026*
