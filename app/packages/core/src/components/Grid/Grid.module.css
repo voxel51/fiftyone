@@ -67,8 +67,6 @@
   width: 100%;
   height: 100%;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1267 587'%3E%3Crect fill='%23a6a7a9' opacity='0.2' x='1203' y='18' width='36' height='36'/%3E%3Crect fill='%236c757d' opacity='0.24' x='27' y='312' width='36' height='36'/%3E%3Crect fill='%236c757d' opacity='0.34' x='73' y='67' width='36' height='36'/%3E%3Crect fill='%23a6a7a9' opacity='0.1' x='189' y='453' width='36' height='36'/%3E%3Crect fill='%23a6a7a9' opacity='0.2' x='523' y='539' width='36' height='36'/%3E%3Crect fill='%236c757d' opacity='0.24' x='782' y='387' width='36' height='36'/%3E%3Crect fill='%236c757d' opacity='0.08' x='938' y='498' width='36' height='36'/%3E%3Crect fill='%23a6a7a9' opacity='0.25' x='351' y='142' width='36' height='36'/%3E%3Crect fill='%236c757d' opacity='0.2' x='641' y='13' width='36' height='36'/%3E%3Crect fill='%23a6a7a9' opacity='0.05' x='1067' y='221' width='36' height='36'/%3E%3Crect fill='%236c757d' opacity='0.08' x='1152' y='547' width='36' height='36'/%3E%3Crect fill='%236c757d' opacity='0.08' x='458' y='279' width='36' height='36'/%3E%3Crect fill='%236c757d' opacity='0.34' x='104' y='186' width='36' height='36'/%3E%3Crect fill='%23a6a7a9' opacity='0.1' x='867' y='109' width='36' height='36'/%3E%3C/svg%3E");
-  background-repeat: repeat-y;
-  background-size: 100% auto;
   animation: fallingMid 90s linear infinite;
 }
 
@@ -81,22 +79,12 @@
   width: 100%;
   height: 100%;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1267 587'%3E%3Crect fill='%23499cef' opacity='0.7' x='547' y='413' width='26' height='26' rx='2'/%3E%3Crect fill='%23ff6d04' opacity='0.7' x='1173' y='67' width='26' height='26' rx='2'/%3E%3Crect fill='%236d04ff' opacity='0.7' x='52' y='119' width='26' height='26' rx='2'/%3E%3Crect fill='%23499cef' opacity='0.55' x='283' y='537' width='26' height='26' rx='2'/%3E%3Crect fill='%23ff6d04' opacity='0.55' x='891' y='243' width='26' height='26' rx='2'/%3E%3Crect fill='%236d04ff' opacity='0.6' x='734' y='31' width='26' height='26' rx='2'/%3E%3Crect fill='%23499cef' opacity='0.5' x='1081' y='479' width='26' height='26' rx='2'/%3E%3C/svg%3E");
-  background-repeat: repeat-y;
-  background-size: 100% auto;
   animation: fallingFront 60s linear infinite;
 }
 
 .fallingPixels.hidden {
   display: none;
   opacity: 0;
-}
-
-.fallingPixels.forceShow,
-.fallingPixels.forceShow.hidden {
-  display: block;
-  opacity: 1;
-  z-index: 10;
-  pointer-events: none;
 }
 
 .spotlightGrid {
