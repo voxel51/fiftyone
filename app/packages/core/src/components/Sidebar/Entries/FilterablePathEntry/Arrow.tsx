@@ -1,6 +1,5 @@
 import { Tooltip } from "@fiftyone/components";
 import KeyboardArrowDown from "@mui/icons-material/KeyboardArrowDown";
-import KeyboardArrowUp from "@mui/icons-material/KeyboardArrowUp";
 import React from "react";
 import type { RecoilState } from "recoil";
 import { useRecoilState } from "recoil";
@@ -22,12 +21,19 @@ export default ({
   unindexed?: boolean;
 }) => {
   const [isExpanded, setExpanded] = useRecoilState(expanded);
-  const Arrow = isExpanded ? KeyboardArrowUp : KeyboardArrowDown;
   const theme = useTheme();
+
+  const iconStyle = {
+    margin: 0,
+    color: theme.text.secondary,
+    transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)",
+    transition: "transform 200ms ease",
+  };
+
   const arrow = (
-    <Arrow
+    <KeyboardArrowDown
       data-cy={`sidebar-field-arrow-disabled-${id}`}
-      style={{ margin: 0, color: theme.text.secondary }}
+      style={iconStyle}
     />
   );
 
@@ -52,13 +58,9 @@ export default ({
   }
 
   return (
-    <Arrow
+    <KeyboardArrowDown
       data-cy={`sidebar-field-arrow-enabled-${id}`}
-      style={{
-        cursor: "pointer",
-        margin: 0,
-        color: theme.text.secondary,
-      }}
+      style={{ cursor: "pointer", ...iconStyle }}
       onClick={(event) => {
         event.preventDefault();
         event.stopPropagation();

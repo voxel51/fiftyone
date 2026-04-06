@@ -80,7 +80,7 @@ const InteractiveSidebar = ({
               );
             }
           },
-          overflow: "visible",
+          overflow: "hidden",
         }),
         entry,
         active: false,
