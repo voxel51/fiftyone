@@ -98,7 +98,8 @@ def get_view(
             :class:`fiftyone.core.stages.ViewStage` instances
         filters (None): an optional ``dict`` of App defined filters
         pagination_data (False): whether process samples as pagination data
-            - excludes all :class:`fiftyone.core.fields.DictField` values
+            - excludes all :class:`fiftyone.core.fields.DictField` and
+              :class:`fiftyone.core.fields.DictField` values
             - filters label fields
         dynamic_group (None): an optional dynamic group value to select. Only
             applicable when a :class:`fiftyone.core.stages.GroupBy` stage is
@@ -237,7 +238,7 @@ def get_extended_view(
             )
 
     if pagination_data:
-        # omit all dict field values for performance, not needed by grid
+        # omit all dict and vector field values for performance, not needed by grid
         view = _project_pagination_paths(view, media_types)
         view = _add_labels_tags_counts(view)
 
