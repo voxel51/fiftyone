@@ -738,6 +738,79 @@ function initAIChatButtons() {
   });
 }
 
+function initScrollSpyFix() {
+  const tocNav = document.querySelector(".bd-toc-nav");
+  if (!tocNav) return;
+
+  const tocLinks = tocNav.querySelectorAll("a[href^='#']");
+  if (!tocLinks.length) return;
+
+  const sections = [];
+  tocLinks.forEach((link) => {
+    const id = decodeURIComponent(link.getAttribute("href").slice(1));
+    const el = document.getElementById(id);
+    if (el) sections.push({ el, link });
+  });
+  if (!sections.length) return;
+
+  const headerOffset =
+    parseInt(getComputedStyle(document.documentElement).scrollPaddingTop, 10) ||
+    80;
+
+  let ticking = false;
+
+  const updateActiveSection = () => {
+    const scrollPos = window.scrollY + headerOffset + 10;
+    let active = null;
+
+    for (let i = 0; i < sections.length; i++) {
+      if (sections[i].el.offsetTop <= scrollPos) {
+        active = sections[i];
+      } else {
+        break;
+      }
+    }
+
+    if (!active || active.link.classList.contains("active")) {
+      ticking = false;
+      return;
+    }
+
+    tocLinks.forEach((link) => {
+      link.classList.remove("active");
+      link.parentElement.classList.remove("active");
+    });
+
+    active.link.classList.add("active");
+    active.link.parentElement.classList.add("active");
+
+    let parent = active.link.parentElement.parentElement;
+    while (parent && parent !== tocNav) {
+      if (parent.tagName === "LI") parent.classList.add("active");
+      parent = parent.parentElement;
+    }
+
+    ticking = false;
+  };
+
+  if (typeof bootstrap !== "undefined" && bootstrap.ScrollSpy) {
+    const spy = bootstrap.ScrollSpy.getInstance(document.body);
+    if (spy) spy.dispose();
+  }
+
+  window.addEventListener(
+    "scroll",
+    () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(updateActiveSection);
+    },
+    { passive: true }
+  );
+
+  updateActiveSection();
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   initSidebarToggle();
   initSlidingNavBar();
@@ -750,4 +823,9 @@ document.addEventListener("DOMContentLoaded", () => {
   initDynamicCTAs();
   initDirectAgentAccess();
   initAIChatButtons();
+});
+
+/* ScrollSpy initializes on window.load, so we must run after it */
+window.addEventListener("load", () => {
+  initScrollSpyFix();
 });

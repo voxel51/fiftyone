@@ -1,0 +1,799 @@
+// ==============================================
+// Landing Page Redesign (Designer Mockup)
+// ==============================================
+//
+// Architecture notes:
+// - All styles are scoped to #fiftyone (the RST-generated section ID from
+//   the page title "FiftyOne") to avoid leaking to other docs pages.
+// - RST headings (Get Started, Capabilities, etc.) are visually hidden
+//   (height:0) but remain in the DOM as scroll anchors for the sidebar TOC.
+//   The visible section headings are HTML <h3> elements with class
+//   .section-descriptive-heading, rendered via raw HTML blocks.
+// - The customimagelink directive supports an optional :class: option for
+//   per-logo styling (e.g., :class: logo-gcloud for size overrides).
+
+// --- Variables ---
+
+$landing-primary: #FA5300
+$landing-primary-hover: #e04a00
+$landing-dark: #17191A
+$landing-dark-hover: #2a2d31
+$landing-surface: #F0EBE9
+$landing-muted: #68615D
+$landing-secondary: #99918D
+$landing-font: 'Geist', sans-serif
+$landing-font-mono: 'Geist Mono', monospace
+$landing-radius-pill: 48px
+$landing-radius-card: 16px
+$arrow-icon-white: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='5' y1='12' x2='19' y2='12'/%3E%3Cpolyline points='12 5 19 12 12 19'/%3E%3C/svg%3E")
+$arrow-icon-dark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2317191A' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='5' y1='12' x2='19' y2='12'/%3E%3Cpolyline points='12 5 19 12 12 19'/%3E%3C/svg%3E")
+
+// --- Base styles (previously in removed variants) ---
+
+.landing-hero
+  text-align: center
+  padding: 60px 20px 40px
+  max-width: 720px
+  margin: 0 auto
+
+  &.pills-only
+    padding: 20px 20px 12px
+    max-width: 680px
+
+    .quick-action-pills
+      margin: 0
+
+.hero-ai-search
+  width: 100%
+  display: flex
+  align-items: center
+  gap: 10px
+  padding: 12px 20px
+  border: 1px solid var(--pst-border-color)
+  border-radius: 8px
+  background: var(--pst-color-surface)
+  color: var(--pst-color-text-secondary)
+  font-size: 1rem
+  cursor: pointer
+  transition: border-color 0.2s ease, box-shadow 0.2s ease
+  height: auto
+
+  &:hover
+    border-color: $landing-primary
+    box-shadow: 0 0 0 2px rgba(250, 83, 0, 0.1)
+
+.hero-search-placeholder
+  flex: 1
+  text-align: left
+
+.hero-shortcut-badge
+  display: inline-block
+  padding: 2px 8px
+  border: 1px solid var(--pst-border-color)
+  border-radius: 4px
+  background: var(--color-background, $landing-surface)
+  color: var(--pst-color-text-secondary)
+  font-size: 0.75rem
+  font-family: $landing-font-mono
+  margin-left: auto
+  cursor: pointer
+
+.social-links #social-links-table
+  justify-content: center
+
+  tbody tr
+    justify-content: center
+
+#social-links-table th a
+  white-space: nowrap
+
+.onthispage
+  display: none
+
+// --- Capability base layout ---
+
+.capability-row
+  display: flex
+  align-items: center
+  gap: 40px
+  padding: 32px 0
+  border-bottom: 1px solid var(--pst-border-color)
+
+  &:last-child
+    border-bottom: none
+
+  &.reverse
+    flex-direction: row-reverse
+
+.capability-text
+  flex: 1
+
+  h3
+    font-size: 1.4rem
+    font-weight: 700
+    margin: 0 0 12px
+    color: var(--pst-color-text-base)
+
+  p
+    font-size: 0.95rem
+    color: var(--pst-color-text-secondary)
+    line-height: 1.6
+    margin: 0 0 16px
+
+.capability-image
+  flex: 1
+  max-width: 50%
+
+  img
+    width: 100%
+    border-radius: 8px
+    border: 1px solid var(--pst-border-color)
+
+@media (max-width: $tablet)
+  .capability-row,
+  .capability-row.reverse
+    flex-direction: column
+
+  .capability-image
+    max-width: 100%
+
+// --- Use case cards base ---
+
+.use-case-section
+  padding: 32px 0
+
+.use-case-cards-grid
+  display: flex
+  flex-wrap: wrap
+
+.use-case-card-container
+  padding: 10px
+  margin-bottom: 0
+
+.use-case-card
+  display: flex
+  flex-direction: column
+  border: 1px solid var(--pst-border-color)
+  border-radius: 10px
+  overflow: hidden
+  text-decoration: none
+  color: var(--pst-color-text-base)
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06)
+  transition: box-shadow 0.3s ease, transform 0.2s ease
+  height: 100%
+  background: var(--pst-color-surface)
+
+  &:hover
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1)
+    transform: translateY(-3px)
+    text-decoration: none
+    color: var(--pst-color-text-base)
+
+.use-case-card-image
+  width: 100%
+  height: 160px
+  overflow: hidden
+  background: var(--color-background)
+
+  img
+    width: 100%
+    height: 100%
+    object-fit: cover
+
+.use-case-card-body
+  padding: 14px 16px
+
+  h5
+    font-size: 1rem
+    font-weight: 700
+    margin: 0 0 6px
+
+  p
+    font-size: 0.85rem
+    color: var(--pst-color-text-secondary)
+    margin: 0
+    line-height: 1.4
+
+// --- Responsive banner ---
+
+@media (max-width: $tablet)
+  .use-case-card-container
+    flex: 0 0 50%
+    max-width: 50%
+
+@media (max-width: $mobile)
+  .use-case-card-container
+    flex: 0 0 100%
+    max-width: 100%
+
+  .hero-shortcut-badge
+    display: none
+
+// --- Landing page scoped token overrides ---
+
+#fiftyone
+  .bd-article
+    --pst-color-primary: #{$landing-primary}
+    --pst-color-link: #{$landing-primary}
+    --pst-color-link-hover: #{$landing-primary-hover}
+    --pst-color-surface: #{$landing-surface}
+    --pst-color-border: #{$landing-surface}
+    --pst-color-text-muted: #{$landing-muted}
+    --pst-color-secondary: #{$landing-secondary}
+    font-family: $landing-font
+
+    code, pre
+      font-family: $landing-font-mono
+
+    h2
+      font-size: 2.1rem
+      font-weight: 600
+
+  // Hide RST title
+  > h1:first-child
+    display: none
+    height: 0
+    margin: 0
+    overflow: hidden
+
+  // Hide RST headings visually (they exist only for sidebar TOC scroll targets)
+  section
+    margin-top: 0
+
+    > h2:first-child
+      height: 0
+      margin: 0
+      padding: 0
+      overflow: hidden
+      font-size: 0
+      line-height: 0
+      border: 0
+
+  // Hide permalink icons
+  .headerlink
+    display: none
+
+// --- Hero ---
+
+.hero-heading
+  font-size: 2.4rem !important
+  font-weight: 700 !important
+  margin-bottom: 24px !important
+  letter-spacing: -0.02em
+
+.hero-search-container
+  margin-top: 36px !important
+
+.hero-nav-pills
+  display: flex
+  gap: 12px
+  justify-content: center
+  flex-wrap: wrap
+  margin-bottom: 32px
+
+.nav-pill
+  display: inline-flex
+  align-items: center
+  gap: 8px
+  padding: 10px 24px
+  border-radius: $landing-radius-pill
+  font-size: 14px
+  font-weight: 500
+  font-family: $landing-font
+  text-decoration: none
+  transition: all 0.2s ease
+  white-space: nowrap
+
+  img, svg
+    width: 18px
+    height: 18px
+
+.nav-pill-outlined
+  background: transparent
+  border: 1px solid var(--pst-border-color)
+  color: var(--pst-color-text-base)
+
+  &:hover
+    border-color: $landing-primary
+    color: $landing-primary
+    text-decoration: none
+
+#fiftyone a.nav-pill-filled
+  background: $landing-dark
+  border: 1px solid $landing-dark
+  color: #fff
+
+  &:hover
+    background: $landing-dark-hover
+    border-color: $landing-dark-hover
+    color: #fff
+    text-decoration: none
+
+// --- Quick Links Grid ---
+
+.quick-links-grid
+  display: grid
+  grid-template-columns: repeat(3, 1fr)
+  gap: 12px 24px
+  max-width: 540px
+  margin: 0 auto 16px
+
+.quick-link-item
+  display: flex
+  align-items: center
+  gap: 10px
+  text-decoration: none
+  color: var(--pst-color-text-base)
+  font-size: 0.9rem
+  font-family: $landing-font
+  padding: 6px 0
+  white-space: nowrap
+  transition: color 0.2s ease
+
+  &:hover
+    color: $landing-primary
+    text-decoration: none
+
+.quick-link-icon
+  display: inline-flex
+  align-items: center
+  justify-content: center
+  width: 28px
+  height: 28px
+  border-radius: 50%
+  background: rgba(0, 0, 0, 0.08)
+  flex-shrink: 0
+  background-image: $arrow-icon-dark
+  background-repeat: no-repeat
+  background-position: center
+  background-size: 14px 14px
+
+.new-badge
+  font-size: 0.6rem
+  background: $landing-primary
+  color: #fff
+  padding: 1px 5px
+  border-radius: 4px
+  font-weight: 700
+  letter-spacing: 0.5px
+  margin-left: 4px
+  vertical-align: middle
+
+// --- Install Bar ---
+
+.install-bar
+  background: $landing-dark
+  border-radius: 8px
+  padding: 20px 28px
+  margin: 32px 0
+  display: flex
+  align-items: center
+  justify-content: space-between
+  gap: 20px
+  flex-wrap: wrap
+
+.install-bar-left
+  display: flex
+  flex-direction: column
+  gap: 4px
+
+.install-bar-title
+  color: #fff
+  font-size: 0.85rem
+  font-weight: 500
+  font-family: $landing-font
+
+.install-bar-command
+  color: #d4d4d4
+  font-size: 0.95rem
+  font-family: $landing-font-mono
+  background: transparent
+
+.install-bar-right
+  display: flex
+  align-items: center
+  gap: 10px
+
+.install-bar-copy
+  padding: 8px 18px
+  border: 1px solid rgba(255, 255, 255, 0.25)
+  border-radius: $landing-radius-pill
+  background: transparent
+  color: rgba(255, 255, 255, 0.8)
+  font-size: 0.8rem
+  font-family: $landing-font
+  cursor: pointer
+  transition: all 0.2s ease
+
+  &:hover
+    background: rgba(255, 255, 255, 0.1)
+    color: #fff
+
+.install-bar-guide
+  display: inline-flex
+  align-items: center
+  gap: 8px
+  padding: 8px 18px
+  border-radius: $landing-radius-pill
+  background: #fff
+  color: $landing-dark
+  font-size: 0.8rem
+  font-weight: 500
+  font-family: $landing-font
+  text-decoration: none
+  transition: all 0.2s ease
+
+  &:hover
+    background: #f0f0f0
+    text-decoration: none
+    color: $landing-dark
+
+// --- Section Label Pill ---
+
+.section-label-pill
+  display: inline-block
+  padding: 4px 14px
+  border: 1px solid var(--pst-border-color)
+  border-radius: $landing-radius-pill
+  font-size: 0.75rem
+  font-weight: 500
+  color: var(--pst-color-text-muted, $landing-muted)
+  text-transform: uppercase
+  letter-spacing: 0.5px
+  margin-top: 48px
+  margin-bottom: 8px
+  font-family: $landing-font
+
+// --- Section with heading + CTA side by side ---
+
+section#get-started
+  > .use-case-section
+    width: 100%
+
+.section-header-cta
+  margin-top: 0
+
+.section-header-row
+  display: flex
+  align-items: baseline
+  justify-content: space-between
+  gap: 24px
+
+.integrations-subtitle-row
+  margin-bottom: 24px
+
+.integrations-subtitle
+  margin: 0
+
+// --- Orange Arrow Circle (reusable CTA icon) ---
+
+.orange-arrow-circle
+  display: inline-flex
+  align-items: center
+  justify-content: center
+  width: 24px
+  height: 24px
+  border-radius: 50%
+  background-color: $landing-primary
+  background-image: $arrow-icon-white
+  background-repeat: no-repeat
+  background-position: center
+  background-size: 12px 12px
+  flex-shrink: 0
+
+// --- Capability Cards ---
+
+.capability-section
+  margin-top: 16px
+
+.capability-row
+  border-bottom: none !important
+  border-radius: $landing-radius-card
+  overflow: hidden
+  background: $landing-surface
+  margin-bottom: 24px
+  padding: 0 !important
+  gap: 0 !important
+
+  &:nth-child(even)
+    background: $landing-dark
+
+    .capability-text h3
+      color: #fff
+
+    .capability-text p
+      color: rgba(255, 255, 255, 0.7)
+
+    .capability-cta-v4
+      color: #fff
+
+      &:hover
+        color: rgba(255, 255, 255, 0.8)
+
+      .gray-arrow-circle
+        background-color: rgba(255, 255, 255, 0.2)
+
+  &:last-child
+    border-bottom: none !important
+    margin-bottom: 0
+
+.capability-text
+  padding: 32px 36px !important
+  display: flex
+  flex-direction: column
+  justify-content: center
+
+.capability-image
+  max-width: 58% !important
+  overflow: hidden
+
+  img
+    border-radius: 0 !important
+    border: none !important
+    width: 100%
+    height: 100%
+    object-fit: cover
+
+.capability-subtitle
+  font-size: 1rem
+  color: var(--pst-color-text-muted, $landing-muted)
+  margin-bottom: 32px
+  font-family: $landing-font
+
+// --- Capability CTA ---
+
+.capability-cta-v4
+  display: inline-flex
+  align-items: center
+  gap: 10px
+  font-size: 0.9rem
+  font-weight: 500
+  color: var(--pst-color-text-base)
+  text-decoration: none
+  font-family: $landing-font
+  white-space: nowrap
+  transition: color 0.2s ease
+
+  &:hover
+    color: $landing-primary
+    text-decoration: none
+
+  .gray-arrow-circle
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    width: 28px
+    height: 28px
+    border-radius: 50%
+    background-color: rgba(0, 0, 0, 0.15)
+    background-image: $arrow-icon-white
+    background-repeat: no-repeat
+    background-position: center
+    background-size: 14px 14px
+    flex-shrink: 0
+
+// --- Quickstart CTA Banner ---
+
+.quickstart-cta-banner
+  display: flex
+  align-items: center
+  justify-content: space-between
+  gap: 16px
+  padding: 20px 28px
+  margin: 32px 0 48px
+  border: 1px solid $landing-primary
+  border-radius: 10px
+  background: rgba(250, 83, 0, 0.05)
+  min-height: 64px
+
+.quickstart-cta-text
+  flex: 1
+  font-size: 0.95rem
+  color: var(--pst-color-text-base)
+  font-family: $landing-font
+
+  strong
+    font-weight: 600
+
+.quickstart-cta-btn
+  display: inline-flex
+  align-items: center
+  gap: 8px
+  padding: 8px 20px
+  border-radius: $landing-radius-pill
+  background: $landing-primary
+  color: #fff
+  text-decoration: none
+  font-size: 0.85rem
+  font-weight: 500
+  font-family: $landing-font
+  white-space: nowrap
+  transition: background 0.2s ease
+
+  &:hover
+    background: $landing-primary-hover
+    color: #fff
+    text-decoration: none
+
+// --- Support Section ---
+
+.support-section
+  padding: 0 0 32px
+
+.support-heading
+  font-size: 1.75rem
+  font-weight: 700
+  margin-top: 8px !important
+  margin-bottom: 8px
+  color: var(--pst-color-text-base)
+  font-family: $landing-font
+
+.support-subheading
+  font-size: 0.95rem
+  color: var(--pst-color-text-muted, $landing-muted)
+  margin-bottom: 28px
+  font-family: $landing-font
+
+.support-links
+  display: flex
+  flex-wrap: wrap
+  gap: 12px
+  justify-content: center
+  align-items: center
+
+.support-link
+  display: flex
+  align-items: center
+  gap: 8px
+  color: var(--pst-color-text-secondary)
+  text-decoration: none
+  font-size: 0.9rem
+  font-family: $landing-font
+  transition: color 0.2s ease
+
+  &:hover
+    color: $landing-primary
+    text-decoration: none
+
+  img, svg
+    width: 22px
+    height: 22px
+
+// --- Integrations Tiered Layout ---
+
+.integrations-tier1,
+.integrations-tier2
+  display: grid !important
+  grid-template-columns: repeat(3, 1fr)
+  justify-items: center
+  align-items: center
+  overflow: hidden
+
+  // customimagelink outputs <a> tags directly as grid children
+  > a
+    display: flex
+    align-items: center
+    justify-content: center
+    width: 100%
+
+.integrations-tier1
+  gap: 16px
+  margin-top: 32px
+  margin-bottom: 24px
+  padding-bottom: 24px
+  border-bottom: 1px solid var(--pst-color-border, $landing-surface)
+
+  > a
+    height: 80px
+
+  img
+    max-height: 48px
+    max-width: 160px
+    width: auto
+    object-fit: contain
+
+  // Per-logo size adjustments via class option
+  .logo-gcloud img
+    max-height: 72px
+
+  .logo-azure img
+    max-height: 36px
+
+.integrations-tier2
+  gap: 8px
+
+  > a
+    height: 56px
+
+  img
+    max-height: 28px
+    max-width: 120px
+    width: auto
+    opacity: 0.7
+    transition: opacity 0.2s ease
+
+    &:hover
+      opacity: 1
+
+// --- Integrations view-all CTA ---
+
+.integrations-view-all
+  display: inline-flex
+  align-items: center
+  gap: 8px
+  margin-top: 16px
+  font-size: 0.9rem
+  font-weight: 500
+  color: var(--pst-color-text-base)
+  text-decoration: none
+  font-family: $landing-font
+  transition: color 0.2s ease
+
+  &:hover
+    color: $landing-primary
+    text-decoration: none
+
+// --- Section descriptive heading (below RST heading) ---
+
+.section-descriptive-heading
+  font-size: 1.6rem
+  font-weight: 600
+  margin: 0 0 16px
+  color: var(--pst-color-text-base)
+  font-family: $landing-font
+
+// --- Responsive ---
+
+@media (max-width: $tablet)
+  .hero-nav-pills
+    gap: 8px
+
+  .nav-pill
+    padding: 8px 16px
+    font-size: 13px
+
+  .quick-links-grid
+    grid-template-columns: repeat(2, 1fr)
+    max-width: 360px
+
+  .install-bar
+    flex-direction: column
+    align-items: stretch
+    text-align: center
+
+  .install-bar-right
+    justify-content: center
+
+  .integrations-tier1,
+  .integrations-tier2
+    grid-template-columns: repeat(2, 1fr)
+
+  .quickstart-cta-banner
+    flex-direction: column
+    text-align: center
+
+  .support-links
+    gap: 16px
+
+@media (max-width: $mobile)
+  .hero-nav-pills
+    flex-direction: column
+    align-items: center
+
+  .quick-links-grid
+    grid-template-columns: 1fr 1fr
+    max-width: 300px
+
+  .quick-link-item
+    white-space: normal
+
+  .integrations-tier1,
+  .integrations-tier2
+    grid-template-columns: 1fr
+
+  .quick-link-item
+    white-space: normal
+
+  .support-links
+    flex-direction: column
+    gap: 12px
