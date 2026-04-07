@@ -5,15 +5,15 @@ import {
   QueryType,
   SearchScope,
 } from "./types";
-import { DAY_MS } from "./constants";
+import { DAY_MS, QUERY_TEXT, QUERY_IMAGE } from "./constants";
 
 export const formatQuery = (run: SimilarityRun): string => {
-  if (run.query_type === "text" && typeof run.query === "string") {
+  if (run.query_type === QUERY_TEXT && typeof run.query === "string") {
     return run.query.length > 50
       ? run.query.substring(0, 50) + "..."
       : run.query;
   }
-  if (run.query_type === "image") {
+  if (run.query_type === QUERY_IMAGE) {
     const count = Array.isArray(run.query) ? run.query.length : 0;
     const negCount = run.negative_query_ids?.length ?? 0;
     if (negCount > 0) {
@@ -100,8 +100,8 @@ export const canSubmitSearch = (
   queryIdCount: number
 ): boolean => {
   if (!brainKey) return false;
-  if (queryType === "text" && !textQuery.trim()) return false;
-  if (queryType === "image" && queryIdCount === 0) return false;
+  if (queryType === QUERY_TEXT && !textQuery.trim()) return false;
+  if (queryType === QUERY_IMAGE && queryIdCount === 0) return false;
   return true;
 };
 
@@ -147,7 +147,7 @@ export const buildExecutionParams = (
     negativeQueryIds,
   } = input;
 
-  const query = queryType === "text" ? textQuery.trim() : queryIds;
+  const query = queryType === QUERY_TEXT ? textQuery.trim() : queryIds;
 
   const params: Record<string, unknown> = {
     brain_key: brainKey,

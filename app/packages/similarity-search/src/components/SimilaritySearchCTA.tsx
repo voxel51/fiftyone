@@ -1,16 +1,16 @@
 import { PanelCTA, PanelCTAProps } from "@fiftyone/components";
-import { usePromptOperatorInput } from "@fiftyone/operators";
 import { Button, Size, Variant } from "@voxel51/voodo";
 import React from "react";
-import { BRAIN_COMPUTE_SIMILARITY_URI } from "../constants";
+import useComputeSimilarity from "../hooks/useComputeSimilarity";
 
 function Actions() {
-  const promptForInput = usePromptOperatorInput();
+  const computeSim = useComputeSimilarity();
+  if (!computeSim.isAvailable) return null;
   return (
     <Button
       variant={Variant.Primary}
       size={Size.Sm}
-      onClick={() => promptForInput(BRAIN_COMPUTE_SIMILARITY_URI)}
+      onClick={() => computeSim.prompt()}
     >
       Compute Similarity Index
     </Button>

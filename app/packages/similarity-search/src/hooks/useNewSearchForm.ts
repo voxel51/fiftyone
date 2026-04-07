@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { BrainKeyConfig, CloneConfig, QueryType, SearchScope } from "../types";
-import { SCOPE_VIEW, SCOPE_DATASET } from "../constants";
+import {
+  QUERY_IMAGE,
+  QUERY_TEXT,
+  SCOPE_VIEW,
+  SCOPE_DATASET,
+} from "../constants";
 import { useSearchSelection } from "./useSearchSelection";
 import { useSearchSubmission } from "./useSearchSubmission";
 
@@ -15,8 +20,14 @@ export const useNewSearchForm = (
   cloneConfig: CloneConfig | null | undefined,
   onSubmitted: () => void
 ) => {
-  const { selectedLabels, view, hasSamplesSelected, queryIds, hasView } =
-    useSearchSelection();
+  const {
+    selectedLabels,
+    view,
+    hasSamplesSelected,
+    queryIds,
+    negativeQueryIds,
+    hasView,
+  } = useSearchSelection();
 
   const firstTextKey = useMemo(
     () => brainKeys.find((bk) => bk.supports_prompts),
@@ -32,9 +43,9 @@ export const useNewSearchForm = (
 
   const defaultQueryType = useMemo((): QueryType => {
     if (cloneConfig?.query_type) return cloneConfig.query_type;
-    if (hasSamplesSelected) return "image";
-    if (firstTextKey) return "text";
-    return "image";
+    if (hasSamplesSelected) return QUERY_IMAGE;
+    if (firstTextKey) return QUERY_TEXT;
+    return QUERY_IMAGE;
   }, [cloneConfig, hasSamplesSelected, firstTextKey]);
 
   // ─── Form fields ────────────────────────────────────────────────
@@ -66,8 +77,8 @@ export const useNewSearchForm = (
   }, [brainKey, brainKeys]);
 
   useEffect(() => {
-    if (!supportsPrompts && queryType === "text") {
-      setQueryType("image");
+    if (!supportsPrompts && queryType === QUERY_TEXT) {
+      setQueryType(QUERY_IMAGE);
     }
   }, [supportsPrompts, queryType]);
 
@@ -92,6 +103,7 @@ export const useNewSearchForm = (
     queryType,
     textQuery,
     queryIds,
+    negativeQueryIds,
     reverse,
     selectedConfig,
     searchScope,
@@ -140,6 +152,7 @@ export const useNewSearchForm = (
     supportsPrompts,
     supportsLeast,
     queryIds,
+    negativeQueryIds,
     selectedLabels,
     kError,
     canSubmit,

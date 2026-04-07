@@ -7,15 +7,9 @@ import {
   Variant,
 } from "@voxel51/voodo";
 import React from "react";
-import {
-  ContentCopyIcon as ContentCopy,
-  GridViewIcon as GridView,
-} from "../../mui";
+import { QUERY_IMAGE } from "../../constants";
 import { SimilarityRun } from "../../types";
 import { tooltipTextStyle } from "../styled";
-
-const ApplyIcon = () => <GridView fontSize="small" />;
-const CloneIcon = () => <ContentCopy fontSize="small" />;
 
 const tip = (text: string) => <span style={tooltipTextStyle}>{text}</span>;
 
@@ -36,7 +30,7 @@ export default function RunActions({
   onDelete,
   onToggleExpand,
 }: RunActionsProps) {
-  const isImage = run.query_type === "image";
+  const isImage = run.query_type === QUERY_IMAGE && !run.patches_field;
 
   return (
     <Stack>
@@ -45,7 +39,7 @@ export default function RunActions({
           aria-label="Show results"
           size={Size.Md}
           variant={Variant.Borderless}
-          leadingIcon={ApplyIcon}
+          leadingIcon={IconName.GridView}
           onClick={() => onApply(run.run_id)}
           disabled={run.status !== "completed"}
         />
@@ -55,7 +49,7 @@ export default function RunActions({
           aria-label="Clone search"
           size={Size.Md}
           variant={Variant.Borderless}
-          leadingIcon={CloneIcon}
+          leadingIcon={IconName.ContentCopy}
           onClick={() => onClone(run.run_id)}
         />
       </Tooltip>
@@ -69,9 +63,9 @@ export default function RunActions({
         />
       </Tooltip>
       {isImage && (
-        <Tooltip content={isExpanded ? tip("Collapse") : tip("Show samples")}>
+        <Tooltip content={isExpanded ? tip("Collapse") : tip("Show prompts")}>
           <Button
-            aria-label={isExpanded ? "Collapse" : "Show samples"}
+            aria-label={isExpanded ? "Collapse" : "Show prompts"}
             size={Size.Md}
             variant={Variant.Borderless}
             leadingIcon={
