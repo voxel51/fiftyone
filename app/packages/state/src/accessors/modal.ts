@@ -1,17 +1,19 @@
-import { Schema } from "@fiftyone/utilities";
+import type { Schema } from "@fiftyone/utilities";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useMemo } from "react";
 import { useRecoilState, useRecoilValue, useRecoilValueLoadable } from "recoil";
 import { ModalMode, modalMode } from "../jotai";
 import { preferredGroupAnnotationSliceAtom } from "../jotai/group-annotation";
-import { __unsafeModalViewportAtom } from "../jotai/modal";
 import type { ModalViewportState } from "../jotai/modal";
+import { __unsafeModalViewportAtom } from "../jotai/modal";
+import type { ModalSample } from "../recoil";
 import {
+  State,
   activeFields,
+  cropToContent,
   currentSampleId,
   fieldSchema,
   lookerOptions,
-  ModalSample,
   modalSample,
   selectedMediaField,
   State,
@@ -121,6 +123,7 @@ export const useModalViewport = (): ModalViewportState | null =>
  * Setter for persisting the modal viewport (zoom/pan) state.
  */
 export const useSaveModalViewport = () => useSetAtom(__unsafeModalViewportAtom);
+export const useSaveModalViewport = () => useSetAtom(__unsafeModalViewportAtom);
 
 /**
  * Gets the looker options for the modal.
@@ -129,6 +132,15 @@ export const useSaveModalViewport = () => useSetAtom(__unsafeModalViewportAtom);
  */
 export const useModalLookerOptions = (withFilter = false) => {
   return useRecoilValue(lookerOptions({ modal: true, withFilter }));
+};
+
+/**
+ * Gets the current "Crop to content" setting in the modal when in a view
+ * "Patches" view
+ */
+export const useCropToContentSetting = () => {
+  const [value, set] = useRecoilState(cropToContent(true));
+  return [value, useCallback((value: boolean) => set(value), [set])];
 };
 
 /**

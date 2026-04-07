@@ -1,3 +1,4 @@
+import { KnownContexts, useUndoRedo } from "@fiftyone/commands";
 import { LoadingSpinner } from "@fiftyone/components";
 import { Text, TextColor, TextVariant } from "@voxel51/voodo";
 import { useAtomValue } from "jotai";
@@ -5,16 +6,16 @@ import React, { useEffect } from "react";
 import styled from "styled-components";
 import Actions from "./Actions";
 import Edit, { isEditing } from "./Edit";
+import useDelete from "./Edit/useDelete";
 import ImportSchema, { useShowImportSchema } from "./ImportSchema";
 import SchemaManager from "./SchemaManager";
 import { useSchemaManagerModal } from "./SchemaManager/hooks";
 import { labelSchemasData } from "./state";
-import type { AnnotationDisabledReason } from "./useCanAnnotate";
-import useSourceFieldToActivate from "./useSourceFieldToActivate";
-import useLabels from "./useLabels";
 import { useAnnotationContextManager } from "./useAnnotationContextManager";
-import useDelete from "./Edit/useDelete";
-import { KnownContexts, useUndoRedo } from "@fiftyone/commands";
+import type { AnnotationDisabledReason } from "./useCanAnnotate";
+import useLabels from "./useLabels";
+import useSourceFieldToActivate from "./useSourceFieldToActivate";
+import useViewport from "./useViewport";
 import LabelList from "./LabelList";
 
 const DISABLED_MESSAGES: Record<
@@ -75,7 +76,8 @@ const Annotate = ({ disabledReason }: AnnotateProps) => {
   const requiredField = useSourceFieldToActivate();
   const showSetup = useShowImportSchema(isDisabled, requiredField);
 
-  useLabels();
+  const initialIds = useLabels();
+  useViewport(initialIds);
   useDelete();
 
   useEffect(() => {
