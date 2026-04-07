@@ -1,6 +1,7 @@
 import {
   COLOR_BY,
   EMBEDDED_DOCUMENT_FIELD,
+  type Field,
   LIST_FIELD,
   STRING_FIELD,
   type Schema,
@@ -8,52 +9,36 @@ import {
 import { beforeAll, describe, expect, it } from "vitest";
 import { computeLabelTagCounts, computeTagData } from "./computeTagData";
 
+const makeField = (name: string, overrides: Partial<Field> = {}): Field => ({
+  dbField: name,
+  description: null,
+  embeddedDocType: null,
+  fields: {},
+  ftype: STRING_FIELD,
+  info: null,
+  name,
+  path: name,
+  subfield: null,
+  ...overrides,
+});
+
 const DETECTIONS_SCHEMA: Schema = {
-  filepath: {
-    dbField: "filepath",
-    description: null,
-    embeddedDocType: null,
-    fields: {},
-    ftype: STRING_FIELD,
-    info: null,
-    name: "filepath",
-    path: "filepath",
-    subfield: null,
-  },
-  str_list: {
-    dbField: "str_list",
-    description: null,
-    embeddedDocType: null,
-    fields: {},
+  filepath: makeField("filepath"),
+  str_list: makeField("str_list", {
     ftype: LIST_FIELD,
-    info: null,
-    name: "str_list",
-    path: "str_list",
     subfield: STRING_FIELD,
-  },
-  ground_truth: {
-    dbField: "ground_truth",
-    description: null,
+  }),
+  ground_truth: makeField("ground_truth", {
     embeddedDocType: "fiftyone.core.labels.Detections",
+    ftype: EMBEDDED_DOCUMENT_FIELD,
     fields: {
-      detections: {
-        dbField: "detections",
-        description: null,
-        embeddedDocType: null,
-        fields: {},
+      detections: makeField("detections", {
         ftype: LIST_FIELD,
-        info: null,
-        name: "detections",
         path: "ground_truth.detections",
         subfield: EMBEDDED_DOCUMENT_FIELD,
-      },
+      }),
     },
-    ftype: EMBEDDED_DOCUMENT_FIELD,
-    info: null,
-    name: "ground_truth",
-    path: "ground_truth",
-    subfield: null,
-  },
+  }),
 };
 
 const COLORING = {
@@ -154,19 +139,7 @@ describe("computeTagData", () => {
 
 describe("computeLabelTagCounts", () => {
   it("returns empty counts for samples with no label fields", () => {
-    const schema: Schema = {
-      filepath: {
-        dbField: "filepath",
-        description: null,
-        embeddedDocType: null,
-        fields: {},
-        ftype: STRING_FIELD,
-        info: null,
-        name: "filepath",
-        path: "filepath",
-        subfield: null,
-      },
-    };
+    const schema: Schema = { filepath: makeField("filepath") };
     const sample = { filepath: "/tmp/img.png", tags: [] };
     expect(computeLabelTagCounts(sample, schema)).toEqual({});
   });
@@ -190,17 +163,10 @@ describe("computeLabelTagCounts", () => {
 
   it("counts tags from a single Classification label field", () => {
     const schema: Schema = {
-      predictions: {
-        dbField: "predictions",
-        description: null,
+      predictions: makeField("predictions", {
         embeddedDocType: "fiftyone.core.labels.Classification",
-        fields: {},
         ftype: EMBEDDED_DOCUMENT_FIELD,
-        info: null,
-        name: "predictions",
-        path: "predictions",
-        subfield: null,
-      },
+      }),
     };
     const sample = {
       predictions: {
@@ -217,40 +183,21 @@ describe("computeLabelTagCounts", () => {
 
   it("accumulates tags across multiple label fields", () => {
     const schema: Schema = {
-      ground_truth: {
-        dbField: "ground_truth",
-        description: null,
+      ground_truth: makeField("ground_truth", {
         embeddedDocType: "fiftyone.core.labels.Detections",
+        ftype: EMBEDDED_DOCUMENT_FIELD,
         fields: {
-          detections: {
-            dbField: "detections",
-            description: null,
-            embeddedDocType: null,
-            fields: {},
+          detections: makeField("detections", {
             ftype: LIST_FIELD,
-            info: null,
-            name: "detections",
             path: "ground_truth.detections",
             subfield: EMBEDDED_DOCUMENT_FIELD,
-          },
+          }),
         },
-        ftype: EMBEDDED_DOCUMENT_FIELD,
-        info: null,
-        name: "ground_truth",
-        path: "ground_truth",
-        subfield: null,
-      },
-      predictions: {
-        dbField: "predictions",
-        description: null,
+      }),
+      predictions: makeField("predictions", {
         embeddedDocType: "fiftyone.core.labels.Classification",
-        fields: {},
         ftype: EMBEDDED_DOCUMENT_FIELD,
-        info: null,
-        name: "predictions",
-        path: "predictions",
-        subfield: null,
-      },
+      }),
     };
     const sample = {
       ground_truth: {
@@ -285,17 +232,11 @@ describe("computeLabelTagCounts", () => {
 
   it("uses dbField to access data when it differs from schema key", () => {
     const schema: Schema = {
-      my_labels: {
+      my_labels: makeField("my_labels", {
         dbField: "my_labels_db",
-        description: null,
         embeddedDocType: "fiftyone.core.labels.Classification",
-        fields: {},
         ftype: EMBEDDED_DOCUMENT_FIELD,
-        info: null,
-        name: "my_labels",
-        path: "my_labels",
-        subfield: null,
-      },
+      }),
     };
     const sample = {
       my_labels_db: { tags: ["found"] },
@@ -305,41 +246,25 @@ describe("computeLabelTagCounts", () => {
 
   it("counts tags from first frame only for video samples", () => {
     const schema: Schema = {
-      frames: {
-        dbField: "frames",
-        description: null,
+      frames: makeField("frames", {
         embeddedDocType: "fiftyone.core.frames.FrameSample",
+        ftype: LIST_FIELD,
+        subfield: EMBEDDED_DOCUMENT_FIELD,
         fields: {
-          detections: {
-            dbField: "detections",
-            description: null,
+          detections: makeField("detections", {
             embeddedDocType: "fiftyone.core.labels.Detections",
+            ftype: EMBEDDED_DOCUMENT_FIELD,
+            path: "frames.detections",
             fields: {
-              detections: {
-                dbField: "detections",
-                description: null,
-                embeddedDocType: null,
-                fields: {},
+              detections: makeField("detections", {
                 ftype: LIST_FIELD,
-                info: null,
-                name: "detections",
                 path: "frames.detections.detections",
                 subfield: EMBEDDED_DOCUMENT_FIELD,
-              },
+              }),
             },
-            ftype: EMBEDDED_DOCUMENT_FIELD,
-            info: null,
-            name: "detections",
-            path: "frames.detections",
-            subfield: null,
-          },
+          }),
         },
-        ftype: LIST_FIELD,
-        info: null,
-        name: "frames",
-        path: "frames",
-        subfield: EMBEDDED_DOCUMENT_FIELD,
-      },
+      }),
     };
     const sample = {
       frames: [
@@ -366,17 +291,10 @@ describe("computeLabelTagCounts", () => {
 
   it("ignores non-label embedded document fields", () => {
     const schema: Schema = {
-      metadata: {
-        dbField: "metadata",
-        description: null,
+      metadata: makeField("metadata", {
         embeddedDocType: "fiftyone.core.metadata.ImageMetadata",
-        fields: {},
         ftype: EMBEDDED_DOCUMENT_FIELD,
-        info: null,
-        name: "metadata",
-        path: "metadata",
-        subfield: null,
-      },
+      }),
     };
     const sample = {
       metadata: { width: 100, height: 200, tags: ["should-not-count"] },
