@@ -439,6 +439,7 @@ ____________
     :image_link: https://github.com/segments-ai/segments-voxel51-plugin
     :image_src: https://voxel51.com/images/integrations/segments-128.png
     :image_title: Segments
+    :class: logo-segments
 
 .. customimagelink::
     :image_link: integrations/labelbox.html
