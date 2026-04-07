@@ -1,9 +1,9 @@
 import { TextColor } from "@voxel51/voodo";
-import { OwnerFilter, RunStatus, SearchScope } from "./types";
+import { OwnerFilter, QueryType, RunStatus, SearchScope } from "./types";
 
 export const SEARCH_OPERATOR_URI = "@voxel51/panels/similarity_search";
 export const INIT_RUN_OPERATOR_URI = "@voxel51/panels/init_similarity_run";
-export const BRAIN_COMPUTE_SIMILARITY_URI = "@voxel51/brain/compute_similarity";
+export const COMPUTE_SIMILARITY_URI = "@voxel51/operators/compute_similarity";
 
 export const DAY_MS = 86_400_000;
 
@@ -36,6 +36,10 @@ export const THUMB_SINGLE_ROW_MAX = 10;
 // Owner filter values
 export const OWNER_ALL: OwnerFilter = "all";
 export const OWNER_MINE: OwnerFilter = "mine";
+
+// Query type values
+export const QUERY_IMAGE: QueryType = "image";
+export const QUERY_TEXT: QueryType = "text";
 
 // Search scope values
 export const SCOPE_VIEW: SearchScope = "view";
