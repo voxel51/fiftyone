@@ -12,6 +12,7 @@ export default function useComputeSimilarity() {
   const triggerEvent = usePanelEvent();
 
   const prompt = useCallback(() => {
+    if (!computeSimUri) return;
     triggerEvent(panelId, {
       params: { delegate: true },
       operator: computeSimUri,
