@@ -123,7 +123,6 @@ export const useModalViewport = (): ModalViewportState | null =>
  * Setter for persisting the modal viewport (zoom/pan) state.
  */
 export const useSaveModalViewport = () => useSetAtom(__unsafeModalViewportAtom);
-export const useSaveModalViewport = () => useSetAtom(__unsafeModalViewportAtom);
 
 /**
  * Gets the looker options for the modal.
