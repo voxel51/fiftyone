@@ -16,6 +16,9 @@ import {
 import { ContentDiv, ContentHeader } from "./utils";
 import { CategoricalChartState } from "recharts/types/chart/types";
 
+const TOOLTIP_OFFSET_X = 8;
+const TOOLTIP_OFFSET_Y = -10;
+
 const Container = styled.div`
   overflow-y: hidden;
   overflow-x: auto;
@@ -192,7 +195,7 @@ const HistogramRenderer: React.FC<{ path: string }> = ({ path }) => {
         margin={{ top: 0, left: 0, bottom: 5, right: 5 }}
         onMouseMove={(state: CategoricalChartState) => {
           if (state?.chartX != null && state?.chartY != null) {
-            setTooltipPos({ x: state.chartX + 8, y: state.chartY - 10 });
+            setTooltipPos({ x: state.chartX + TOOLTIP_OFFSET_X, y: state.chartY + TOOLTIP_OFFSET_Y});
           }
         }}
         onMouseLeave={() => setTooltipPos(undefined)}
