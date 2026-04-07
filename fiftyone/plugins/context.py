@@ -15,7 +15,7 @@ import sys
 import traceback
 import types
 
-import fiftyone.core.walk as fowalk
+import fiftyone.core.utils as fou
 import fiftyone.plugins as fop
 
 from fiftyone.operators.decorators import plugins_cache
@@ -149,7 +149,7 @@ def _purge_pycache_under_dir(plugin_dir):
     if not os.path.isdir(root):
         return
 
-    for dirpath, dirnames, _ in fowalk.walk_safe(root, follow_symlinks=True):
+    for dirpath, dirnames, _ in fou.walk_safe(root, follow_symlinks=True):
         if "__pycache__" in dirnames:
             shutil.rmtree(
                 os.path.join(dirpath, "__pycache__"),

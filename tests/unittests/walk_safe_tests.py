@@ -1,5 +1,5 @@
 """
-Tests for :mod:`fiftyone.core.walk`.
+Tests for :func:`fiftyone.core.utils.walk_safe`.
 
 | Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -10,7 +10,7 @@ import os
 
 import pytest
 
-from fiftyone.core.walk import walk_safe
+from fiftyone.core.utils import walk_safe
 
 
 def test_walk_safe_empty_directory(tmp_path):
