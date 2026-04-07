@@ -1,78 +1,13 @@
 import { cleanup, render, screen } from "@testing-library/react";
-import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import OperatorPromptFooter from "./OperatorPromptFooter";
-
-vi.mock("./RequiresOrchestrator", () => ({
-  default: () => <div data-testid="requires-orchestrator" />,
-}));
-
-vi.mock("@fiftyone/components", () => ({
-  Button: ({
-    children,
-    onClick,
-    onKeyDown,
-    disabled,
-    title,
-  }: React.ButtonHTMLAttributes<HTMLButtonElement> & { title?: string }) => (
-    <button
-      onClick={onClick}
-      onKeyDown={onKeyDown}
-      disabled={disabled}
-      title={title}
-    >
-      {children}
-    </button>
-  ),
-}));
-
-vi.mock("../styled-components", () => ({
-  BaseStylesProvider: ({ children }: { children: React.ReactNode }) => (
-    <>{children}</>
-  ),
-}));
-
-vi.mock("../SplitButton", () => ({
-  default: ({
-    options,
-    onSubmit,
-    disabled,
-  }: {
-    options: Array<{
-      id: string;
-      label: string;
-      selected?: boolean;
-      default?: boolean;
-    }>;
-    onSubmit: () => void;
-    disabled?: boolean;
-  }) => {
-    const hasMultipleOptions = options.length > 1;
-    const selectedItem =
-      options.find((option) => option.selected) ||
-      options.find((option) => option.default) ||
-      options[0];
-
-    return (
-      <button onClick={onSubmit} disabled={disabled} data-testid="split-button">
-        {hasMultipleOptions
-          ? `SplitButton (${selectedItem.label})`
-          : "SplitButton"}
-      </button>
-    );
-  },
-}));
-
-vi.mock("../utils", () => ({
-  onEnter: (fn: () => void) => fn,
-}));
 
 describe("OperatorPromptFooter", () => {
   const submitButtonOptions = [{ id: "execute-default", label: "Execute" }];
 
   afterEach(cleanup);
 
-  it("renders RequiresOrchestrator card when requiresOrchestratorSetup is true", () => {
+  it("renders orchestrator setup message when requiresOrchestratorSetup is true", () => {
     render(
       <OperatorPromptFooter
         requiresOrchestratorSetup
@@ -81,10 +16,13 @@ describe("OperatorPromptFooter", () => {
       />
     );
 
-    expect(screen.queryByTestId("requires-orchestrator")).not.toBeNull();
+    expect(
+      screen.queryByText("Background compute is not yet configured")
+    ).not.toBeNull();
+    expect(screen.queryByText("Set up now")).not.toBeNull();
   });
 
-  it("does not render RequiresOrchestrator card when requiresOrchestratorSetup is false", () => {
+  it("does not render orchestrator setup message when requiresOrchestratorSetup is false", () => {
     render(
       <OperatorPromptFooter
         requiresOrchestratorSetup={false}
@@ -93,7 +31,9 @@ describe("OperatorPromptFooter", () => {
       />
     );
 
-    expect(screen.queryByTestId("requires-orchestrator")).toBeNull();
+    expect(
+      screen.queryByText("Background compute is not yet configured")
+    ).toBeNull();
   });
 
   it("renders only the Close button when requiresOrchestratorSetup is true", () => {
@@ -106,7 +46,6 @@ describe("OperatorPromptFooter", () => {
     );
 
     expect(screen.queryByRole("button", { name: "Close" })).not.toBeNull();
-    expect(screen.queryAllByRole("button").length).toBe(1);
     expect(screen.queryByRole("button", { name: /execute/i })).toBeNull();
     expect(screen.queryByRole("button", { name: /cancel/i })).toBeNull();
   });
@@ -122,7 +61,7 @@ describe("OperatorPromptFooter", () => {
       />
     );
 
-    expect(screen.queryByTestId("split-button")).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Execute" })).not.toBeNull();
     expect(screen.queryByRole("button", { name: "Cancel" })).not.toBeNull();
   });
 
@@ -138,7 +77,6 @@ describe("OperatorPromptFooter", () => {
 
     expect(screen.queryByRole("button", { name: /execute/i })).not.toBeNull();
     expect(screen.queryByRole("button", { name: /cancel/i })).not.toBeNull();
-    expect(screen.queryByTestId("split-button")).toBeNull();
   });
 
   it("calls onCancel when Close button is clicked", () => {
@@ -232,7 +170,7 @@ describe("OperatorPromptFooter", () => {
       />
     );
 
-    expect(screen.queryByTestId("split-button")).toBeNull();
+    expect(screen.queryByRole("button", { name: /execute/i })).toBeNull();
     expect(screen.queryByRole("button", { name: /cancel/i })).not.toBeNull();
   });
 
@@ -263,7 +201,7 @@ describe("OperatorPromptFooter", () => {
       />
     );
 
-    screen.getByTestId("split-button").click();
+    screen.getByRole("button", { name: "Execute" }).click();
     expect(onSubmit).toHaveBeenCalledOnce();
   });
 });
