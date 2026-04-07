@@ -184,17 +184,14 @@ export class MaskCanvas {
     this.ensureCanvas(bounds);
 
     const updatedBounds = this.updateBounds(worldPoint, bounds, toolState);
-    console.log("[MaskCanvas][paintAt]", updatedBounds);
     const maskPoint = this.worldToMask(worldPoint, bounds);
 
     if (maskPoint) {
-      console.log("[MaskCanvas][paintAt]", maskPoint);
       const lastPoint = this.lastPoint;
       this.lastPoint = maskPoint;
 
       if (lastPoint) {
-        // TODO...
-        this.paint(maskPoint, toolState, style);
+        this.paintLine(lastPoint, maskPoint, toolState, style);
       } else {
         this.paint(maskPoint, toolState, style);
       }
@@ -224,7 +221,7 @@ export class MaskCanvas {
 
     for (let i = 0; i <= steps; i++) {
       const t = i / steps;
-      this.paintAt({ x: from.x + dx * t, y: from.y + dy * t }, tool, style);
+      this.paint({ x: from.x + dx * t, y: from.y + dy * t }, tool, style);
     }
   }
 
@@ -299,12 +296,6 @@ export class MaskCanvas {
       maxX: pxMaxX,
       maxY: pxMaxY,
     } = this.getBounds();
-    console.log("getBounds", {
-      pxMinX,
-      pxMinY,
-      pxMaxX,
-      pxMaxY,
-    });
 
     // Convert pixel content bounds to world space
     let worldMinX: number;
@@ -325,12 +316,6 @@ export class MaskCanvas {
       worldMaxX = -Infinity;
       worldMaxY = -Infinity;
     }
-    console.log("worldMax", {
-      worldMinX,
-      worldMinY,
-      worldMaxX,
-      worldMaxY,
-    });
 
     // For brush, include the dab extent
     if (toolState?.tool === "brush") {
@@ -341,16 +326,8 @@ export class MaskCanvas {
       worldMaxY = Math.max(worldMaxY, worldPoint.y + half);
     }
 
-    console.log("worldMax", {
-      worldMinX,
-      worldMinY,
-      worldMaxX,
-      worldMaxY,
-    });
-
     // No content and no dab — signal to clear
     if (worldMaxX <= worldMinX || worldMaxY <= worldMinY) {
-      console.log("ABORT");
       this.canvas = undefined;
       this.context = undefined;
       return undefined;
@@ -366,7 +343,6 @@ export class MaskCanvas {
       Math.abs(worldMinX - oldBounds.x) < 1e-6 &&
       Math.abs(worldMinY - oldBounds.y) < 1e-6
     ) {
-      console.log("OLD BOUNDS");
       return oldBounds;
     }
 
@@ -375,12 +351,6 @@ export class MaskCanvas {
     const offsetY = hasContent ? Math.round(oldBounds.y - worldMinY) : 0;
     this.updateCanvas(newWidth, newHeight, offsetX, offsetY);
 
-    console.log({
-      x: worldMinX,
-      y: worldMinY,
-      width: newWidth,
-      height: newHeight,
-    });
     return {
       x: worldMinX,
       y: worldMinY,
