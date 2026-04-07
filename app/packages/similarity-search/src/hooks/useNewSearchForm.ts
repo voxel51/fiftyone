@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { BrainKeyConfig, CloneConfig, QueryType, SearchScope } from "../types";
-import { SCOPE_VIEW, SCOPE_DATASET } from "../constants";
+import {
+  QUERY_IMAGE,
+  QUERY_TEXT,
+  SCOPE_VIEW,
+  SCOPE_DATASET,
+} from "../constants";
 import { useSearchSelection } from "./useSearchSelection";
 import { useSearchSubmission } from "./useSearchSubmission";
 
@@ -24,17 +29,24 @@ export const useNewSearchForm = (
     hasView,
   } = useSearchSelection();
 
+  const firstTextKey = useMemo(
+    () => brainKeys.find((bk) => bk.supports_prompts),
+    [brainKeys]
+  );
+
   const defaultBrainKey = useMemo(() => {
     if (cloneConfig?.brain_key) return cloneConfig.brain_key;
     if (hasSamplesSelected) return brainKeys[0]?.key ?? "";
+    if (firstTextKey) return firstTextKey.key;
     return brainKeys[0]?.key ?? "";
-  }, [cloneConfig, hasSamplesSelected, brainKeys]);
+  }, [cloneConfig, hasSamplesSelected, firstTextKey, brainKeys]);
 
   const defaultQueryType = useMemo((): QueryType => {
     if (cloneConfig?.query_type) return cloneConfig.query_type;
-    if (hasSamplesSelected) return "image";
-    return "image";
-  }, [cloneConfig, hasSamplesSelected]);
+    if (hasSamplesSelected) return QUERY_IMAGE;
+    if (firstTextKey) return QUERY_TEXT;
+    return QUERY_IMAGE;
+  }, [cloneConfig, hasSamplesSelected, firstTextKey]);
 
   // ─── Form fields ────────────────────────────────────────────────
 
@@ -65,8 +77,8 @@ export const useNewSearchForm = (
   }, [brainKey, brainKeys]);
 
   useEffect(() => {
-    if (!supportsPrompts && queryType === "text") {
-      setQueryType("image");
+    if (!supportsPrompts && queryType === QUERY_TEXT) {
+      setQueryType(QUERY_IMAGE);
     }
   }, [supportsPrompts, queryType]);
 

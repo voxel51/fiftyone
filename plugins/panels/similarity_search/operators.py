@@ -108,7 +108,7 @@ class SimilaritySearchOperator(foo.Operator):
             # Handle negative query IDs (alt-selected samples)
             negative_query_ids = ctx.params.get("negative_query_ids")
             if negative_query_ids and isinstance(query, list):
-                # Vector arithmetic: mean(positive) - mean(negative)
+                # Weighted vector arithmetic: 2 * mean(positive) - mean(negative)
                 query = self._compute_combined_query(
                     dataset,
                     brain_key,
@@ -181,7 +181,12 @@ class SimilaritySearchOperator(foo.Operator):
     ):
         """Compute a combined query vector from positive and negative samples.
 
-        Uses vector arithmetic: mean(positive_embeddings) - mean(negative_embeddings)
+        Uses weighted vector arithmetic:
+        2 * mean(positive_embeddings) - mean(negative_embeddings)
+
+        The 2x weight on positives ensures the query stays anchored in
+        the positive direction while gently steering away from negatives
+        (Qdrant-style recommendation formula).
 
         Args:
             dataset: the dataset

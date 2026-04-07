@@ -24,7 +24,13 @@ import {
 import React from "react";
 import { OperatorExecutionButton } from "@fiftyone/operators";
 import { BrainKeyConfig, CloneConfig, SearchScope } from "../../types";
-import { SEARCH_OPERATOR_URI, CHECK_MARK, CROSS_MARK } from "../../constants";
+import {
+  SEARCH_OPERATOR_URI,
+  CHECK_MARK,
+  CROSS_MARK,
+  QUERY_IMAGE,
+  QUERY_TEXT,
+} from "../../constants";
 import { useNewSearchForm } from "../../hooks/useNewSearchForm";
 import {
   NewSearchContainer,
@@ -143,20 +149,24 @@ export default function NewSearch({
           <Stack orientation={Orientation.Row} spacing={Spacing.Xs}>
             <Button
               variant={
-                form.queryType === "image" ? Variant.Primary : Variant.Secondary
+                form.queryType === QUERY_IMAGE
+                  ? Variant.Primary
+                  : Variant.Secondary
               }
               size={Size.Sm}
-              onClick={() => form.setQueryType("image")}
+              onClick={() => form.setQueryType(QUERY_IMAGE)}
               style={{ flex: 1 }}
             >
               Image Search
             </Button>
             <Button
               variant={
-                form.queryType === "text" ? Variant.Primary : Variant.Secondary
+                form.queryType === QUERY_TEXT
+                  ? Variant.Primary
+                  : Variant.Secondary
               }
               size={Size.Sm}
-              onClick={() => form.setQueryType("text")}
+              onClick={() => form.setQueryType(QUERY_TEXT)}
               style={{ flex: 1 }}
             >
               Text Search
@@ -165,7 +175,7 @@ export default function NewSearch({
         )}
 
         {/* Query input */}
-        {form.queryType === "text" ? (
+        {form.queryType === QUERY_TEXT ? (
           <FormField
             label="Text query"
             control={
@@ -204,7 +214,9 @@ export default function NewSearch({
         {/* Number of matches */}
         <FormField
           label="Number of matches"
-          error={form.kError ? "Exceeds maximum of 10,000" : undefined}
+          error={
+            form.kError ? "Number of results cannot exceed 10,000" : undefined
+          }
           control={
             <Input
               type={InputType.Number}

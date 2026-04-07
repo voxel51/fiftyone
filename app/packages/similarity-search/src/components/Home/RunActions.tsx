@@ -11,6 +11,7 @@ import {
   ContentCopyIcon as ContentCopy,
   GridViewIcon as GridView,
 } from "../../mui";
+import { QUERY_IMAGE } from "../../constants";
 import { SimilarityRun } from "../../types";
 import { tooltipTextStyle } from "../styled";
 
@@ -36,7 +37,7 @@ export default function RunActions({
   onDelete,
   onToggleExpand,
 }: RunActionsProps) {
-  const isImage = run.query_type === "image" && !run.patches_field;
+  const isImage = run.query_type === QUERY_IMAGE && !run.patches_field;
 
   return (
     <Stack>
