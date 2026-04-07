@@ -7,8 +7,6 @@ FiftyOne Server /tagging route
 """
 
 import asyncio
-import logging
-import time
 
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
@@ -21,8 +19,6 @@ import fiftyone.core.odm as foo
 from fiftyone.server.decorators import route
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
 import fiftyone.server.tags as fost
-
-logger = logging.getLogger(__name__)
 
 SAMPLES_PER_SLICE = 10_000
 MAX_SLICES = 8
@@ -71,8 +67,6 @@ class Tagging(HTTPEndpoint):
             or hidden_labels
         )
 
-        t0 = time.perf_counter()
-
         if target_labels:
             count, tags = await _aggregate_label_tags(view)
             items = None
@@ -82,22 +76,8 @@ class Tagging(HTTPEndpoint):
             )
             count = sum([v for k, v in tags.items() if k is not None])
 
-        t1 = time.perf_counter()
-        logger.warning(
-            "[tagging] view agg took %.3fs (target_labels=%s, is_filtered=%s, dataset=%s)",
-            t1 - t0,
-            target_labels,
-            is_filtered,
-            dataset,
-        )
-
         if is_filtered:
             all_tags = await _get_all_dataset_tags(dataset, target_labels)
-            t2 = time.perf_counter()
-            logger.warning(
-                "[tagging] all_tags (dataset scan) took %.3fs",
-                t2 - t1,
-            )
         else:
             all_tags = sorted(t for t in tags.keys() if t is not None)
 
