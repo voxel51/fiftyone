@@ -42,8 +42,6 @@ const LABELS_PREFIX = LABELS_PATH + ".";
 
 /**
  * Compute label tag counts from a sample's label data and field schema.
- * Replaces the server-side `_add_labels_tags_counts` MongoDB aggregation
- * with a lightweight client-side computation.
  */
 export const computeLabelTagCounts = (
   sample: Record<string, unknown>,
@@ -90,6 +88,7 @@ export const computeLabelTagCounts = (
 
   collectFromData(sample, fieldSchema);
 
+  // For video samples, get label tag counts of just the first frame
   const framesField = fieldSchema.frames;
   if (framesField?.fields && Array.isArray(sample.frames)) {
     const firstFrame = sample.frames[0] as Record<string, unknown> | undefined;

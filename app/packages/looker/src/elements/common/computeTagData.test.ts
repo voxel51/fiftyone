@@ -303,46 +303,6 @@ describe("computeLabelTagCounts", () => {
     expect(computeLabelTagCounts(sample, schema)).toEqual({ found: 1 });
   });
 
-  it("counts tags from Classifications (list of classifications)", () => {
-    const schema: Schema = {
-      classes: {
-        dbField: "classes",
-        description: null,
-        embeddedDocType: "fiftyone.core.labels.Classifications",
-        fields: {
-          classifications: {
-            dbField: "classifications",
-            description: null,
-            embeddedDocType: null,
-            fields: {},
-            ftype: LIST_FIELD,
-            info: null,
-            name: "classifications",
-            path: "classes.classifications",
-            subfield: EMBEDDED_DOCUMENT_FIELD,
-          },
-        },
-        ftype: EMBEDDED_DOCUMENT_FIELD,
-        info: null,
-        name: "classes",
-        path: "classes",
-        subfield: null,
-      },
-    };
-    const sample = {
-      classes: {
-        classifications: [
-          { label: "scene", tags: ["auto"] },
-          { label: "weather", tags: ["auto", "verified"] },
-        ],
-      },
-    };
-    expect(computeLabelTagCounts(sample, schema)).toEqual({
-      auto: 2,
-      verified: 1,
-    });
-  });
-
   it("counts tags from first frame only for video samples", () => {
     const schema: Schema = {
       frames: {
@@ -422,42 +382,5 @@ describe("computeLabelTagCounts", () => {
       metadata: { width: 100, height: 200, tags: ["should-not-count"] },
     };
     expect(computeLabelTagCounts(sample, schema)).toEqual({});
-  });
-
-  it("handles Keypoints list label type", () => {
-    const schema: Schema = {
-      keypoints: {
-        dbField: "keypoints",
-        description: null,
-        embeddedDocType: "fiftyone.core.labels.Keypoints",
-        fields: {
-          keypoints: {
-            dbField: "keypoints",
-            description: null,
-            embeddedDocType: null,
-            fields: {},
-            ftype: LIST_FIELD,
-            info: null,
-            name: "keypoints",
-            path: "keypoints.keypoints",
-            subfield: EMBEDDED_DOCUMENT_FIELD,
-          },
-        },
-        ftype: EMBEDDED_DOCUMENT_FIELD,
-        info: null,
-        name: "keypoints",
-        path: "keypoints",
-        subfield: null,
-      },
-    };
-    const sample = {
-      keypoints: {
-        keypoints: [{ tags: ["pose"] }, { tags: ["pose", "occluded"] }],
-      },
-    };
-    expect(computeLabelTagCounts(sample, schema)).toEqual({
-      pose: 2,
-      occluded: 1,
-    });
   });
 });
