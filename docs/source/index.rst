@@ -138,7 +138,7 @@ Ready to dive deeper into FiftyOne? Check out these resources:
   your current ML workflows
 * Check out the :doc:`cheat sheets <cheat_sheets/index>` for topics you may
   want to master quickly
-* Consult the :doc:`user guide <user_guide/index>` for detailed instructions on
+* Consult the :doc:`data-centric ML workflow guide <user_guide/index>` for detailed instructions on
   how to accomplish various tasks with FiftyOne
 
 .. _core-capabilities:
@@ -567,7 +567,7 @@ us at support@voxel51.com.
    Tutorials <tutorials/index>
    Recipes <recipes/index>
    Cheat Sheets <cheat_sheets/index>
-   User Guide <user_guide/index>
+   ML Workflow <user_guide/index>
    Dataset Zoo <dataset_zoo/index>
    Model Zoo <model_zoo/index>
    FiftyOne Brain <brain>

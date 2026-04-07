@@ -1,127 +1,88 @@
-FiftyOne User Guide
-===================
+.. _data-centric-ml-workflow:
 
-Each section in this guide provides an example-centric deep dive into a core
-feature of FiftyOne, with the goal of getting you up-and-running with FiftyOne
-on your data quickly and easily.
+Data-Centric ML Workflow
+========================
 
-.. Callout items --------------------------------------------------------------
+.. default-role:: code
 
-.. raw:: html
-
-    <div class="tutorials-callout-container">
-        <div class="row">
-
-.. Add callout items below this line
-
-.. customcalloutitem::
-    :header: FiftyOne basics
-    :description: Get up to speed with a quick overview of FiftyOne's basic concepts.
-    :button_text: Learn the basics
-    :button_link: basics.html
-
-.. customcalloutitem::
-    :header: Importing data
-    :description: Load data into FiftyOne using standard formats, custom formats, or the Dataset Zoo.
-    :button_text: Learn more about importing data
-    :button_link: import_datasets.html
-
-.. customcalloutitem::
-    :header: Using datasets
-    :description: Take a deep dive into FiftyOne datasets and how to use them to manage your data.
-    :button_text: Learn more about using datasets
-    :button_link: using_datasets.html
-
-.. customcalloutitem::
-    :header: Using the App
-    :description: Visualize your datasets in the FiftyOne App and interactively search, sort, and filter them.
-    :button_text: Learn more about the App
-    :button_link: app.html
-
-.. customcalloutitem::
-    :header: Dataset views
-    :description: Use FiftyOne's powerful dataset view interface to search, sort, and filter your data.
-    :button_text: Learn more about using dataset views
-    :button_link: using_views.html
-
-.. customcalloutitem::
-    :header: Grouped datasets
-    :description: Use grouped datasets to represent your multiview image, video, and point cloud data.
-    :button_text: Learn more about grouped datasets
-    :button_link: groups.html
-
-.. customcalloutitem::
-    :header: Annotating datasets __SUB_NEW__
-    :description: Use builtin or custom integrations to add or edit labels on your FiftyOne datasets.
-    :button_text: Learn more about annotations
-    :button_link: annotation.html
-
-.. customcalloutitem::
-    :header: Evaluating models  __SUB_NEW__
-    :description: Use FiftyOne's builtin methods to evaluate your models and analyze their strengths and weaknesses.
-    :button_text: Learn more about evaluating models
-    :button_link: evaluation.html
-
-.. customcalloutitem::
-    :header: Using aggregations
-    :description: Efficiently compute aggregate statistics about your FiftyOne datasets and views.
-    :button_text: Learn more about using aggregations
-    :button_link: using_aggregations.html
-
-.. customcalloutitem::
-    :header: Interactive plots
-    :description: Use FiftyOne's powerful interactive plotting features to uncover patterns and improve your data.
-    :button_text: Dive into interactive plotting
-    :button_link: plots.html
-
-.. customcalloutitem::
-    :header: Exporting datasets
-    :description: Export datasets to disk in any number of common formats, or in your own custom format.
-    :button_text: Learn more about exporting datasets
-    :button_link: export_datasets.html
-
-.. customcalloutitem::
-    :header: Drawing labels on samples
-    :description: Render labels on the samples in your FiftyOne dataset with a single line of code.
-    :button_text: Learn more about drawing labels
-    :button_link: draw_labels.html
-
-.. customcalloutitem::
-    :header: Using sample parsers
-    :description: Use sample parsers to add samples to your FiftyOne dataset from a stream of in-memory data.
-    :button_text: Learn how to use sample parsers
-    :button_link: sample_parsers.html
-
-.. customcalloutitem::
-    :header: Configuring FiftyOne
-    :description: Customize the default behavior of the FiftyOne library to suit your needs.
-    :button_text: Learn how to configure FiftyOne
-    :button_link: config.html
-
-.. End callouts ---------------------------------------------------------------
+FiftyOne is designed around the data-centric ML lifecycle — from ingesting raw
+data and curating it for annotation, through evaluating trained models and
+iteratively improving your dataset.
 
 .. raw:: html
 
+    <div id="tutorial-cards-container">
+
+    <nav class="navbar navbar-expand-lg navbar-light tutorials-nav col-12">
+        <div class="tutorial-tags-container">
+            <div id="dropdown-filter-tags">
+                <div class="tutorial-filter-menu">
+                    <div class="tutorial-filter filter-btn all-tag-selected" data-tag="all">All</div>
+                </div>
+            </div>
         </div>
+    </nav>
+
+    <hr class="tutorials-hr">
+
+    <div class="row">
+
+    <div id="tutorial-cards">
+    <div class="list">
+
+.. customcarditem::
+    :header: FiftyOne Fundamentals
+    :description: Get up to speed with FiftyOne's core concepts — datasets, samples, fields, labels, and tags — and learn how to manage your data programmatically.
+    :link: fundamentals_section.html
+    :tags: Fundamentals
+
+.. customcarditem::
+    :header: Data Ingestion
+    :description: Load data into FiftyOne from standard formats, custom sources, or the Dataset Zoo. Work with grouped datasets for multiview and multimodal data.
+    :link: data_ingestion_section.html
+    :tags: Data-Ingestion
+
+.. customcarditem::
+    :header: Explore & Curate
+    :description: Visualize datasets in the FiftyOne App, build dataset views, compute aggregations, and use interactive plots to understand and curate your data.
+    :link: explore_curate_section.html
+    :tags: Explore,Curate
+
+.. customcarditem::
+    :header: Annotation __SUB_NEW__
+    :description: Use built-in or custom integrations to add or edit labels on your FiftyOne datasets, closing the loop between data curation and model training.
+    :link: annotation_section.html
+    :tags: Annotation
+
+.. customcarditem::
+    :header: Model Evaluation __SUB_NEW__
+    :description: Use FiftyOne's built-in evaluation methods to assess your models, analyze failure modes, and understand performance across classes and splits.
+    :link: evaluation_section.html
+    :tags: Evaluation
+
+.. customcarditem::
+    :header: Utilities
+    :description: Export datasets to common formats, render labels on samples, and configure FiftyOne's default behavior to suit your needs.
+    :link: utilities_section.html
+    :tags: Utilities
+
+.. raw:: html
+
     </div>
 
-.. End of callout items -------------------------------------------------------
+    <div class="pagination d-flex justify-content-center"></div>
+
+    </div>
+
+    </div>
 
 .. toctree::
     :maxdepth: 1
     :hidden:
 
-    FiftyOne basics <basics>
-    Importing data <import_datasets>
-    Using datasets <using_datasets>
-    Using the App <app>
-    Dataset views <using_views>
-    Grouped datasets <groups>
-    Annotating datasets __SUB_NEW__ <annotation>
-    Evaluating models __SUB_NEW__ <evaluation>
-    Using aggregations <using_aggregations>
-    Interactive plots <plots>
-    Exporting datasets <export_datasets>
-    Drawing labels on samples <draw_labels>
-    Using sample parsers <sample_parsers>
-    Configuring FiftyOne <config>
+    FiftyOne Fundamentals <fundamentals_section>
+    Data Ingestion <data_ingestion_section>
+    Explore & Curate <explore_curate_section>
+    Annotation __SUB_NEW__ <annotation_section>
+    Model Evaluation __SUB_NEW__ <evaluation_section>
+    Utilities <utilities_section>
