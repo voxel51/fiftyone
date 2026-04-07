@@ -162,6 +162,7 @@ export function buildNewLabelData(
     _id: labelId,
     ...defaults,
     ...(labelValue && { label: labelValue }),
+    ...(options?.isEditingMask && { isEditingMask: true }),
   };
 
   if (type === POLYLINE) {

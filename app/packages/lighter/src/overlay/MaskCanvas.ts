@@ -5,7 +5,7 @@
 import type { SegmentationToolState } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useSegmentationMode";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { DrawStyle, Point, Rect } from "../types";
-import { createMaskCanvas, decodeMask, maskBounds } from "../utils";
+import { createMaskCanvas, decodeMask, encodeMask, maskBounds } from "../utils";
 
 /**
  * Manages mask decoding, rendering, and interactive painting for a
@@ -13,8 +13,11 @@ import { createMaskCanvas, decodeMask, maskBounds } from "../utils";
  * and all painting helpers.
  */
 export class MaskCanvas {
-  /** Cached decoded mask bitmap, keyed by the raw mask string to detect changes. */
+  // Cached decoded mask bitmap, keyed by the raw mask string to detect changes.
   private maskBitmap?: ImageBitmap;
+
+  // canvas contents encoded for persistence to backend
+  private pendingMask?: string;
 
   // ---- Editing canvas state ----
   private canvas?: HTMLCanvasElement;
@@ -22,18 +25,15 @@ export class MaskCanvas {
   private lastPoint?: Point;
 
   constructor(maskData?: string, color = "#FFFFFF") {
-    console.log("[MaskCanvas]", { maskData, color });
     if (maskData && typeof maskData === "string") {
       decodeMask(maskData, color)
         .then((bitmap) => {
           this.maskBitmap = bitmap;
-          console.log("[MaskCanvas] maskBitmap");
         })
         .catch((err) => {
           console.error("[MaskCanvas] mask decode failed:", err);
         });
     } else {
-      console.log("[MaskCanvas] like a virgin");
     }
   }
 
@@ -49,7 +49,6 @@ export class MaskCanvas {
    * Prefers the mutable editing canvas over the decoded bitmap.
    */
   draw(renderer: Renderer2D, bounds: Rect, containerId: string): void {
-    console.log("[MaskCanvas][draw]");
     if (!this.hasRenderable()) return;
 
     if (this.canvas) {
@@ -85,7 +84,6 @@ export class MaskCanvas {
    * Otherwise derives canvas size from the given absolute bounds (1:1 mapping).
    */
   ensureCanvas(bounds: Rect): void {
-    console.log("[MaskCanvas][ensureCanvas]");
     if (this.canvas) return;
 
     const width = this.maskBitmap
@@ -122,6 +120,13 @@ export class MaskCanvas {
     }
   }
 
+  getPendingMask(): string | undefined {
+    const mask = this.pendingMask;
+    this.pendingMask = undefined;
+
+    return mask;
+  }
+
   // ---------------------------------------------------------------------------
   // Painting
   // ---------------------------------------------------------------------------
@@ -130,7 +135,6 @@ export class MaskCanvas {
    * Converts a world-space point to mask-pixel coordinates.
    */
   worldToMask(worldPoint: Point, bounds: Rect): Point | undefined {
-    console.log("[MaskCanvas][worldToMask]");
     if (!bounds || bounds.width <= 0 || bounds.height <= 0) return undefined;
     if (!this.canvas) return undefined;
 
@@ -146,7 +150,6 @@ export class MaskCanvas {
     style: DrawStyle | undefined
   ) {
     if (!this.context) return;
-    console.log("[MaskCanvas][paint]");
 
     const size = toolState.size ?? 0;
     const shape = toolState.shape ?? "circle";
@@ -180,7 +183,6 @@ export class MaskCanvas {
     toolState: SegmentationToolState,
     style: DrawStyle | undefined
   ): Rect | undefined {
-    console.log("[MaskCanvas][paintAt]");
     this.ensureCanvas(bounds);
 
     const updatedBounds = this.updateBounds(worldPoint, bounds, toolState);
@@ -201,6 +203,9 @@ export class MaskCanvas {
   }
 
   paintEnd() {
+    if (!this.canvas) return;
+
+    encodeMask(this.canvas).then((encoded) => (this.pendingMask = encoded));
     this.lastPoint = undefined;
   }
 
@@ -242,7 +247,6 @@ export class MaskCanvas {
 
   // TODO: jsdoc
   getBounds() {
-    console.log("[MaskCanvas][getBounds]");
     if (!this.canvas || !this.context)
       return { minX: 0, minY: 0, maxX: 0, maxY: 0 };
 
@@ -285,7 +289,6 @@ export class MaskCanvas {
     oldBounds: Rect,
     toolState: SegmentationToolState | undefined
   ): Rect | undefined {
-    console.log("[MaskCanvas][updateBounds]");
     if (!this.canvas || !this.context) return oldBounds;
 
     const { width, height } = this.canvas;
@@ -364,7 +367,6 @@ export class MaskCanvas {
   // ---------------------------------------------------------------------------
 
   destroy(): void {
-    console.log("[MaskCanvas][destroy]");
     this.maskBitmap?.close();
     this.maskBitmap = undefined;
     this.canvas = undefined;

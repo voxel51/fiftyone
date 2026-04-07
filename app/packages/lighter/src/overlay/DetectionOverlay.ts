@@ -938,6 +938,14 @@ export class DetectionOverlay
   }
 
   /**
+   * Consumes and returns the pending encoded mask, if any.
+   * After calling, the pending mask is cleared.
+   */
+  getPendingMask(): string | undefined {
+    return this.mask?.getPendingMask();
+  }
+
+  /**
    * Returns the current mask editing canvas, if any.
    */
   // getMaskCanvas(): HTMLCanvasElement | undefined {

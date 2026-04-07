@@ -5,7 +5,10 @@
 |
 """
 import datetime
+import json
 from typing import Any, Union
+
+from bson import json_util
 
 import fiftyone.core.labels as fol
 import fiftyone.core.sample as fos
@@ -64,6 +67,16 @@ def deserialize(value: Any) -> Any:
                 )
 
             return cls.from_dict(value)
+
+        if "$binary" in value:
+            import fiftyone.core.utils as fou
+            binary = json_util.loads(json.dumps(value))
+            return fou.deserialize_numpy_array(binary)
+
+    elif isinstance(value, bytes):
+        import fiftyone.core.utils as fou
+        return fou.deserialize_numpy_array(value)
+
     elif isinstance(value, str):
         if parsed_dt := _try_parse_datetime(value):
             return parsed_dt

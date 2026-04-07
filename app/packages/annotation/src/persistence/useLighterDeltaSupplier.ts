@@ -32,9 +32,18 @@ const buildAnnotationLabel = (overlay: BaseOverlay): LabelProxy | undefined => {
     ];
 
     if (hasValidBounds(boundingBox)) {
+      // Strip transient editing flag and merge pending encoded mask
+      const { isEditingMask, ...data } = overlay.label as DetectionLabel & {
+        isEditingMask?: boolean;
+      };
+      const pendingMask = overlay.getPendingMask();
+
       return {
         type: "Detection",
-        data: overlay.label as DetectionLabel,
+        data: {
+          ...data,
+          ...(pendingMask && { mask: pendingMask }),
+        } as DetectionLabel,
         boundingBox,
         path: overlay.field,
       };
