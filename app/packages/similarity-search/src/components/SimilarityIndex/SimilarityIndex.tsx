@@ -2,6 +2,8 @@ import { constants } from "@fiftyone/utilities";
 import {
   Align,
   Button,
+  Icon,
+  IconColor,
   IconName,
   Justify,
   RichList,
@@ -55,10 +57,22 @@ export default function SimilarityIndex({
                   Backend: {bk.backend}
                 </Text>
               )}
-              <Text variant={TextVariant.Md} color={TextColor.Secondary}>
-                Supports text queries?{" "}
-                {bk.supports_prompts ? "\u2705" : "\u274C"}
-              </Text>
+              <Stack
+                orientation={Orientation.Row}
+                spacing={Spacing.Xs}
+                align={Align.Center}
+              >
+                <Text variant={TextVariant.Md} color={TextColor.Secondary}>
+                  Supports text queries?
+                </Text>
+                <Icon
+                  name={bk.supports_prompts ? IconName.Check : IconName.Close}
+                  size={Size.Sm}
+                  color={
+                    bk.supports_prompts ? IconColor.Success : IconColor.Error
+                  }
+                />
+              </Stack>
               {bk.embeddings_field && (
                 <Text variant={TextVariant.Md} color={TextColor.Secondary}>
                   Embeddings field: {bk.embeddings_field}
