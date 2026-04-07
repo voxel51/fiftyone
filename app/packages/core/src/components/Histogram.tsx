@@ -14,6 +14,7 @@ import {
   prettify,
 } from "../utils/generic";
 import { ContentDiv, ContentHeader } from "./utils";
+import { CategoricalChartState } from "recharts/types/chart/types";
 
 const Container = styled.div`
   overflow-y: hidden;
@@ -189,7 +190,7 @@ const HistogramRenderer: React.FC<{ path: string }> = ({ path }) => {
         barCategoryGap={"4px"}
         data={strData}
         margin={{ top: 0, left: 0, bottom: 5, right: 5 }}
-        onMouseMove={(state: any) => {
+        onMouseMove={(state: CategoricalChartState) => {
           if (state?.chartX != null && state?.chartY != null) {
             setTooltipPos({ x: state.chartX + 8, y: state.chartY - 10 });
           }
