@@ -2,7 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { atom, useAtomValue, useSetAtom } from "jotai";
 import { useAtomCallback } from "jotai/utils";
 import { useRecoilValue } from "recoil";
@@ -16,7 +16,7 @@ import {
 import { isPatchesView } from "@fiftyone/state";
 import { DETECTION } from "@fiftyone/utilities";
 
-import { fieldsOfType, useAnnotationContext } from "./state";
+import { currentType, fieldsOfType, useAnnotationContext } from "./state";
 import useCreate from "./useCreate";
 import useExit from "./useExit";
 
@@ -94,6 +94,11 @@ export const useSegmentationMode = () => {
   const setToolShape = useSetAtom(toolShapeAtom);
 
   const createDetection = useCreate(DETECTION);
+  const editingLabelType = useAtomValue(currentType);
+
+  const isEditingSegmentation =
+    editingLabelType === DETECTION &&
+    (!!selectedLabel?.data?.mask || !!selectedLabel?.data?.isEditingMask);
 
   const noActiveFields = fields.length === 0;
   const disabled = isPatchView || noActiveFields;
@@ -164,6 +169,29 @@ export const useSegmentationMode = () => {
     [setToolShape]
   );
 
+  // Auto-enable segmentation mode when a pre-existing mask detection is selected,
+  // auto-disable when a pre-existing label of a different type is selected.
+  // New labels are ignored — the mode was set intentionally via the toolbar button.
+  useEffect(() => {
+    if (selectedLabel?.isNew) return;
+
+    if (isEditingSegmentation && !segmentationModeActive) {
+      setActive(true);
+    } else if (
+      editingLabelType &&
+      !isEditingSegmentation &&
+      segmentationModeActive
+    ) {
+      setActive(false);
+    }
+  }, [
+    selectedLabel?.isNew,
+    editingLabelType,
+    isEditingSegmentation,
+    segmentationModeActive,
+    setActive,
+  ]);
+
   const claimCreateEvent = useAtomCallback(
     useCallback((get, set, eventId: string) => {
       if (get(lastProcessedCreateIdAtom) === eventId) {
@@ -212,8 +240,8 @@ export const useSegmentationMode = () => {
         }
 
         // TODO: assume previous `field` and `labelValue`
-        // e.g. createDetection({ field, labelValue });
-        createDetection();
+        // e.g. createDetection({ field, labelValue, isEditingMask: true });
+        createDetection({ isEditingMask: true });
       },
       [addOverlay, claimCreateEvent, createDetection, segmentationModeActive]
     )

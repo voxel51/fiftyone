@@ -69,7 +69,6 @@ export const useDetectionMode = () => {
     detectionModeActiveAtom
   );
   const editingLabelType = useAtomValue(currentType);
-  const isEditingDetection = editingLabelType === DETECTION;
   const isPatchView = useRecoilValue(isPatchesView);
   const setLastUsedField = useSetAtom(lastUsedFieldAtom);
   const labelsMap = useAtomValue(labelsByPath);
@@ -90,6 +89,12 @@ export const useDetectionMode = () => {
 
   const selectedLabelRef = useRef(selectedLabel);
   selectedLabelRef.current = selectedLabel;
+
+  const isEditingDetection =
+    editingLabelType === DETECTION &&
+    !selectedLabel?.isNew &&
+    !selectedLabel?.data?.mask &&
+    !selectedLabel?.data?.isEditingMask;
 
   const noActiveFields = fields.length === 0;
   const disabled = isPatchView || noActiveFields;
@@ -170,18 +175,22 @@ export const useDetectionMode = () => {
     setDetectionModeActive(false);
   }, [finalizeCurrentDetection, setDetectionModeActive]);
 
-  // Auto-enable detection mode when a detection is being edited,
-  // auto-disable when a different label type is selected.
+  // Auto-activate detection mode when a pre-existing bbox detection is selected,
+  // auto-deactivate when a pre-existing label of a different type is selected.
+  // New labels are ignored — the mode was set intentionally via the toolbar button.
   useEffect(() => {
+    if (selectedLabel?.isNew) return;
+
     if (isEditingDetection && !detectionModeActive) {
       setDetectionModeActive(true);
     } else if (editingLabelType && !isEditingDetection && detectionModeActive) {
       setDetectionModeActive(false);
     }
   }, [
+    detectionModeActive,
     editingLabelType,
     isEditingDetection,
-    detectionModeActive,
+    selectedLabel?.isNew,
     setDetectionModeActive,
   ]);
 

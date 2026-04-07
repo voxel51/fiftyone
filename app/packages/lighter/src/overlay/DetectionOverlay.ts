@@ -716,7 +716,7 @@ export class DetectionOverlay
     if (!this.moveStartPoint || !this.moveStartBounds) return false;
 
     this.interactionState = "NONE";
-    this.mask.paintEnd();
+    this.mask?.paintEnd();
     this.moveStartPoint = undefined;
     this.moveStartPosition = undefined;
     this.moveStartBounds = undefined;
