@@ -59,6 +59,11 @@ export default function SimilarityIndex({
                 Supports text queries?{" "}
                 {bk.supports_prompts ? "\u2705" : "\u274C"}
               </Text>
+              {bk.embeddings_field && (
+                <Text variant={TextVariant.Md} color={TextColor.Secondary}>
+                  Embeddings field: {bk.embeddings_field}
+                </Text>
+              )}
               {bk.patches_field && (
                 <Text variant={TextVariant.Md} color={TextColor.Muted}>
                   Patches field: {bk.patches_field}
