@@ -2888,6 +2888,7 @@ __metadata:
     prettier: "npm:2.2.1"
     typescript: "npm:4.2.4"
     vite: "npm:^5.4.21"
+    vite-plugin-relay: "npm:^2.0.0"
     vitest: "npm:^3.0.8"
   peerDependencies:
     "@mui/icons-material": "*"
