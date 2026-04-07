@@ -17,12 +17,24 @@ export function filterEmptyArrays(
   return filteredData;
 }
 
-function isJsonEditorWidgetPath(property: string, uiSchema: UiSchema): boolean {
+function isWidgetPath(
+  property: string,
+  uiSchema: UiSchema,
+  widget: string
+): boolean {
   if (!property) return false;
   // property is in RJSF form has a leading dot, remove it
   const propertyPath = property.replace(/^\./, "");
   const node = uiSchema[propertyPath];
-  return node && node["ui:widget"] === "JsonEditorWidget";
+  return node && node["ui:widget"] === widget;
+}
+
+function isJsonEditorWidgetPath(property: string, uiSchema: UiSchema): boolean {
+  return isWidgetPath(property, uiSchema, "JsonEditorWidget");
+}
+
+function isLabelValueWidgetPath(property: string, uiSchema: UiSchema): boolean {
+  return isWidgetPath(property, uiSchema, "LabelValueWidget");
 }
 
 export function transformErrors(
@@ -31,8 +43,15 @@ export function transformErrors(
 ) {
   const filteredErrors = errors.filter((error) => {
     if (!uiSchema) return true; // can't filter without the schema
+    // We don't need to show validation errors on read-only fields.
+    if (isLabelValueWidgetPath(error?.property ?? "", uiSchema)) {
+      return false;
+    }
     // JSON editor controls its own validation errors
-    return !isJsonEditorWidgetPath(error?.property ?? "", uiSchema);
+    if (isJsonEditorWidgetPath(error?.property ?? "", uiSchema)) {
+      return false;
+    }
+    return true;
   });
 
   return filteredErrors.map((error) => {

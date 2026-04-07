@@ -13,6 +13,11 @@ export type WaitUntilGridVisibleOptions = {
   searchParams?: URLSearchParams;
 
   /**
+   * Optional selector that indicates the dataset is ready for interaction.
+   */
+  readySelector?: string;
+
+  /**
    * Whether to wait for the grid to be visible.
    */
   withGrid?: boolean;

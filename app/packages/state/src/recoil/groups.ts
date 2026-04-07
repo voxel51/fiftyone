@@ -132,7 +132,7 @@ export const groupSlice = selector<string>({
         get(defaultGroupSlice) === slice ? new DefaultValue() : slice
       );
       set(selectedLabels, []);
-      set(selectedSamples, new Set());
+      set(selectedSamples, new Map());
 
       return;
     }
@@ -142,7 +142,7 @@ export const groupSlice = selector<string>({
       const session = getSessionRef();
       session.sessionGroupSlice =
         slice instanceof DefaultValue ? undefined : slice;
-      session.selectedSamples = new Set();
+      session.selectedSamples = new Map();
       session.selectedLabels = [];
 
       unsubscribe();

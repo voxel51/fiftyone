@@ -56,6 +56,8 @@ export type SampleDescriptor = {
   datasetId: string;
   /** The ID of the sample within the dataset. */
   sampleId: string;
+  /** The URL of the media being annotated. */
+  mediaUrl: string;
 };
 
 /**

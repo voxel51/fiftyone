@@ -64,11 +64,13 @@ export class OssLoader extends AbstractFiftyoneLoader {
     options?: WaitUntilGridVisibleOptions,
     isRetry?: boolean
   ): Promise<void> {
-    const { isEmptyDataset, searchParams, withGrid } = options ?? {
-      isEmptyDataset: false,
-      searchParams: undefined,
-      withGrid: true,
-    };
+    const { isEmptyDataset, readySelector, searchParams, withGrid } =
+      options ?? {
+        isEmptyDataset: false,
+        readySelector: undefined,
+        searchParams: undefined,
+        withGrid: true,
+      };
 
     await page.addInitScript(() => {
       // eslint-disable-next-line
@@ -193,6 +195,14 @@ export class OssLoader extends AbstractFiftyoneLoader {
     }
 
     if (isEmptyDataset) {
+      return;
+    }
+
+    if (readySelector) {
+      await page.waitForSelector(readySelector, {
+        state: "visible",
+        timeout: Duration.Seconds(10),
+      });
       return;
     }
 

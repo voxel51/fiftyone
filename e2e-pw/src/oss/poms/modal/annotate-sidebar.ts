@@ -122,13 +122,27 @@ export class ModalAnnotateSidebarPom {
   }
 
   /**
-   * Activate quick draw mode for a label type (e.g. "Detections")
-   *
-   * @param labelType The label type to quick draw
+   * Click the Select action button
    */
-  async quickDraw(labelType: "Detections") {
+  async selectAction() {
+    await this.page.getByTestId("select-action").click();
+  }
+
+  /**
+   * Click the Classification action button
+   */
+  async createClassification() {
+    await this.page.getByTestId("create-classification").click();
+  }
+
+  /**
+   * Activate detection mode for a label type (e.g. "Detections")
+   *
+   * @param labelType The label type to activate detection mode for
+   */
+  async detectionMode(labelType: "Detections") {
     if (labelType === "Detections") {
-      await this.page.getByTestId("quick-draw-detection").click();
+      await this.page.getByTestId("detection-mode").click();
     }
   }
 }
@@ -227,13 +241,35 @@ class ModalAnnotateSidebarAsserter {
   }
 
   /**
-   * Assert that quick draw mode is active or inactive
+   * Assert that the Select action is active or inactive
    *
-   * @param active Whether quick draw should be active (default true)
+   * @param active Whether the select action should be active (default true)
    */
-  async quickDrawIsActive(active = true) {
+  async selectIsActive(active = true) {
+    const button = this.modalAnnotateSidebar.page.getByTestId("select-action");
+    await expect(button).toHaveAttribute("data-cy-active", active.toString());
+  }
+
+  /**
+   * Assert that the Classification action is active or inactive
+   *
+   * @param active Whether the classification action should be active (default true)
+   */
+  async classificationIsActive(active = true) {
     const button = this.modalAnnotateSidebar.page.getByTestId(
-      "quick-draw-detection"
+      "create-classification"
+    );
+    await expect(button).toHaveAttribute("data-cy-active", active.toString());
+  }
+
+  /**
+   * Assert that detection mode is active or inactive
+   *
+   * @param active Whether detection mode should be active (default true)
+   */
+  async detectionModeIsActive(active = true) {
+    const button = this.modalAnnotateSidebar.page.getByTestId(
+      "detection-mode"
     );
     await expect(button).toHaveAttribute("data-cy-active", active.toString());
   }

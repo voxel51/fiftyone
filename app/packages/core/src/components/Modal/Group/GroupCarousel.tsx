@@ -106,7 +106,7 @@ const Column: React.FC = () => {
           looker.addEventListener(
             "selectthumbnail",
             ({ detail }: CustomEvent) => {
-              selectSample.current(detail.id);
+              selectSample.current(detail.id, detail.altKey);
             }
           );
 
@@ -140,16 +140,26 @@ const Column: React.FC = () => {
   }, [flashlight, id]);
 
   const selected = useRecoilValue(selectedSamples);
+  const style = useRecoilValue(fos.sampleSelectionStyle);
 
   const updateItem = useCallback(
     async (id: string) => {
+      const isSelected = selected.has(id);
+      const { selectionType, selectionIcon } = fos.resolveSelectionIcon(
+        selected,
+        style,
+        id,
+        isSelected
+      );
       store.lookers.get(id)?.updateOptions({
         ...opts,
-        selected: selected.has(id),
+        selected: isSelected,
+        selectionType,
+        selectionIcon,
         highlight: highlight(store.samples.get(id)!.sample as Sample),
       });
     },
-    [highlight, opts, selected, store]
+    [highlight, opts, selected, store, style]
   );
 
   const options = useRecoilValueLoadable(

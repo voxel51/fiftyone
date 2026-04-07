@@ -192,7 +192,7 @@ export class SampleCanvasPom {
  * Sample canvas asserter
  */
 class SampleCanvasAsserter {
-  constructor(private readonly sampleCanvasPom: SampleCanvasPom) { }
+  constructor(private readonly sampleCanvasPom: SampleCanvasPom) {}
 
   /**
    * Does the mouse have this cursor style

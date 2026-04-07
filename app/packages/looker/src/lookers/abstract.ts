@@ -28,6 +28,7 @@ import {
   STROKE_WIDTH,
 } from "../constants";
 import { Events } from "../elements/base";
+import { buildThumbnailSelectionDetail } from "../selection";
 import { COMMON_SHORTCUTS, LookerElement } from "../elements/common";
 import { ClassificationsOverlay, loadOverlays } from "../overlays";
 import { CONTAINS, Overlay } from "../overlays/base";
@@ -347,12 +348,15 @@ export abstract class AbstractLooker<
   protected getDispatchEvent(): (eventType: string, detail: any) => void {
     return (eventType: string, detail: any) => {
       if (eventType === "selectthumbnail") {
-        this.dispatchEvent(eventType, {
-          shiftKey: detail,
-          id: this.sample.id,
-          sample: this.sample,
-          symbol: this.state.config.symbol,
-        });
+        this.dispatchEvent(
+          eventType,
+          buildThumbnailSelectionDetail({
+            id: this.sample.id,
+            sample: this.sample,
+            symbol: this.state.config.symbol,
+            modifiers: detail,
+          })
+        );
         return;
       }
 
@@ -521,13 +525,13 @@ export abstract class AbstractLooker<
     const argsWithSignal: AddEventListenerOptions =
       typeof optionsOrUseCapture === "boolean"
         ? {
-          signal: this.abortController?.signal,
-          capture: optionsOrUseCapture,
-        }
+            signal: this.abortController?.signal,
+            capture: optionsOrUseCapture,
+          }
         : {
-          ...(optionsOrUseCapture ?? {}),
-          signal: this.abortController?.signal,
-        };
+            ...(optionsOrUseCapture ?? {}),
+            signal: this.abortController?.signal,
+          };
     this.eventTarget.addEventListener(eventType, handler, argsWithSignal);
   }
 
@@ -872,9 +876,9 @@ export abstract class AbstractLooker<
     ];
     this.state.relativeCoordinates = [
       (this.state.cursorCoordinates[0] - this.state.transformedMediaBBox[0]) /
-      this.state.transformedMediaBBox[2],
+        this.state.transformedMediaBBox[2],
       (this.state.cursorCoordinates[1] - this.state.transformedMediaBBox[1]) /
-      this.state.transformedMediaBBox[3],
+        this.state.transformedMediaBBox[3],
     ];
     this.state.pixelCoordinates = [
       this.state.relativeCoordinates[0] * this.state.dimensions[0],
@@ -898,10 +902,10 @@ export abstract class AbstractLooker<
   protected hasResized(): boolean {
     return Boolean(
       !this.previousState?.windowBBox ||
-      !this.state?.windowBBox ||
-      this.previousState.windowBBox.some(
-        (v, i) => v !== this.state.windowBBox[i]
-      )
+        !this.state?.windowBBox ||
+        this.previousState.windowBBox.some(
+          (v, i) => v !== this.state.windowBBox[i]
+        )
     );
   }
 

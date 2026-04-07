@@ -100,6 +100,7 @@ const globalContextSelector = selector({
     const extended = get(fos.extendedStages);
     const filters = get(fos.filters);
     const selectedSamples = get(fos.selectedSamples);
+    const sampleSelectionStyle = get(fos.sampleSelectionStyle);
     const selectedLabels = get(fos.selectedLabels);
     const viewName = get(fos.viewName);
     const extendedSelection = get(fos.extendedSelection);
@@ -115,6 +116,7 @@ const globalContextSelector = selector({
       extended,
       filters,
       selectedSamples,
+      sampleSelectionStyle,
       selectedLabels,
       viewName,
       extendedSelection,
@@ -158,6 +160,7 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     extended,
     filters,
     selectedSamples,
+    sampleSelectionStyle,
     params,
     selectedLabels,
     viewName,
@@ -180,6 +183,7 @@ const useExecutionContext = (operatorName, hooks = {}) => {
         extended,
         filters,
         selectedSamples,
+        sampleSelectionStyle,
         selectedLabels,
         currentSample,
         viewName,
@@ -201,6 +205,7 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     extended,
     filters,
     selectedSamples,
+    sampleSelectionStyle,
     selectedLabels,
     hooks,
     viewName,
@@ -323,11 +328,15 @@ const useOperatorPromptSubmitOptions = (
     hasAvailableOrchestrators &&
     executionOptions.orchestratorRegistrationEnabled
   ) {
-    for (let orc of execDetails.executionOptions.availableOrchestrators) {
+    for (let [
+      index,
+      orc,
+    ] of execDetails.executionOptions.availableOrchestrators.entries()) {
       options.push({
         label: "Schedule",
         choiceLabel: `Schedule on ${orc.instanceID}`,
         id: orc.id,
+        default: defaultToSchedule && index === 0,
         description: `Run this operation on ${orc.instanceID}`,
         onSelect() {
           setSelectedID(orc.id);
@@ -426,22 +435,21 @@ export const useOperatorExecutionOptions = ({
   onExecute,
 }: {
   operatorUri: string;
-  onExecute: (opts: OperatorExecutorOptions) => void;
+  onExecute: (options?: OperatorExecutorOptions) => void;
 }): {
   executionOptions: OperatorExecutionOption[];
+  requiresOrchestratorSetup: boolean;
 } => {
   const ctx = useExecutionContext(operatorUri);
   const { isRemote } = getLocalOrRemoteOperator(operatorUri);
   const execDetails = useExecutionOptions(operatorUri, ctx, isRemote);
-  const submitOptions = useOperatorPromptSubmitOptions(
+  const { options, requiresOrchestratorSetup } = useOperatorPromptSubmitOptions(
     operatorUri,
     execDetails,
     onExecute
   );
 
-  return {
-    executionOptions: submitOptions.options,
-  };
+  return { executionOptions: options, requiresOrchestratorSetup };
 };
 
 export const useOperatorPrompt = () => {
