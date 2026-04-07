@@ -30,8 +30,8 @@ import {
 import type { SegmentationToolState } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useSegmentationMode";
 import type { OverlayEvent } from "../interaction/InteractionManager";
 import { distanceFromLineSegment } from "../utils/geometry";
-import { decodeMask } from "../utils/maskDecoding";
 import { BaseOverlay } from "./BaseOverlay";
+import { MaskCanvas } from "./MaskCanvas";
 
 export type DetectionLabel = RawLookerLabel & {
   label: string;
@@ -93,27 +93,21 @@ export class DetectionOverlay
 
   private textBounds?: Rect;
 
-  /** Cached decoded mask bitmap, keyed by the raw mask string to detect changes. */
-  private maskBitmap?: ImageBitmap;
-  /** The mask string that was used to produce `maskBitmap`. */
-  private decodedMaskKey?: string;
-  /** True while an async decode is in flight. */
-  private maskDecoding = false;
-
-  // ---- Mask painting state ----
-  private maskCanvas?: HTMLCanvasElement;
-  private maskCtx?: CanvasRenderingContext2D;
-  private lastMaskPoint?: Point;
+  private mask: MaskCanvas; // = new MaskCanvas();
   private segmentationTool?: SegmentationToolState;
 
   public cursor = "pointer";
 
   constructor(options: DetectionOverlayOptions) {
     super(options.id, options.field, options.label);
+
     this.isDraggable = options.draggable !== false;
     this.isResizeable = options.resizeable !== false;
-
     this.#relativeBounds = options.relativeBounds || NO_BOUNDS;
+
+    if (this.label.mask) {
+      this.mask = new MaskCanvas(this.label.mask);
+    }
   }
 
   getOverlayType(): string {
@@ -169,15 +163,7 @@ export class DetectionOverlay
 
     if (!style) return;
 
-    const hasMask = this.maskCanvas != null || this.maskBitmap != null;
-
-    // Kick off async mask decode if needed
-    this.decodeMaskIfNeeded(style.strokeStyle || style.fillStyle || "#ffffff");
-
-    // Draw mask bitmap if available
-    if (hasMask) {
-      this.drawMask(renderer);
-    }
+    this.mask?.draw(renderer, this.bounds, this.containerId);
 
     // lightweight border when editing detection mask
     if (this.isSelected() && this.isPaintingActive()) {
@@ -231,7 +217,7 @@ export class DetectionOverlay
     delete mainStrokeStyle.dashPattern;
 
     // Hide bbox stroke by default when mask is present (only show on selection/hover)
-    if (!hasMask || this.isSelectedState || this.isHoveredState) {
+    if (!this.hasMask() || this.isSelectedState || this.isHoveredState) {
       renderer.drawRect(this.bounds, mainStrokeStyle, this.containerId);
     }
 
@@ -276,7 +262,7 @@ export class DetectionOverlay
       );
     }
 
-    const showLabel = !hasMask || hoverStrokeColor || overlayStrokeColor;
+    const showLabel = !this.hasMask() || hoverStrokeColor || overlayStrokeColor;
 
     if (this.label && this.label.label?.length > 0 && showLabel) {
       const offset = style.lineWidth
@@ -431,38 +417,11 @@ export class DetectionOverlay
 
     // Segmentation painting takes priority over drag/resize
     if (this.isPaintingActive()) {
-      if (!this.hasValidBounds()) {
-        // Bootstrap bounds from the brush dab so ensureMaskCanvas has a size
-        const size = segmentationToolState?.size ?? 0;
-        const half = size / 2;
-
-        this.bounds = {
-          x: worldPoint.x - half,
-          y: worldPoint.y - half,
-          width: size,
-          height: size,
-        };
-      }
-
-      this.ensureMaskCanvas();
-      this.updateMaskBounds(worldPoint);
-      const maskPoint = this.worldToMask(worldPoint);
-
-      if (maskPoint) {
-        this.interactionState = "PAINTING";
-        this.moveStartPoint = point;
-        this.moveStartPosition = {
-          x: this.bounds.x,
-          y: this.bounds.y,
-        };
-        this.moveStartBounds = { ...this.bounds };
-        this.lastMaskPoint = maskPoint;
-        this.paintAt(maskPoint);
-        this.markDirty();
-        this.renderer?.disableZoomPan();
-      }
-
-      return true;
+      return this.onSegmentationPointerDown(
+        point,
+        worldPoint,
+        segmentationToolState!
+      );
     }
 
     const resizeRegion = this.getResizeRegion(worldPoint, scale);
@@ -498,6 +457,53 @@ export class DetectionOverlay
     return true;
   }
 
+  private onSegmentationPointerDown(
+    point: Point,
+    worldPoint: Point,
+    toolState: SegmentationToolState
+  ): boolean {
+    if (!this.hasValidBounds()) {
+      // Bootstrap bounds from the brush dab so ensureMaskCanvas has a size
+      const size = toolState?.size ?? 0;
+      const half = size / 2;
+
+      this.bounds = {
+        x: worldPoint.x - half,
+        y: worldPoint.y - half,
+        width: size,
+        height: size,
+      };
+    }
+
+    // TODO...
+    this.mask = this.mask || new MaskCanvas();
+
+    const updatedBounds = this.mask.paintAt(
+      point,
+      worldPoint,
+      this.bounds,
+      toolState,
+      this.currentStyle
+    );
+
+    if (updatedBounds) {
+      this.bounds = updatedBounds;
+      this.interactionState = "PAINTING";
+      this.moveStartPoint = point;
+      this.moveStartPosition = {
+        x: this.bounds.x,
+        y: this.bounds.y,
+      };
+      this.moveStartBounds = { ...this.bounds };
+      this.markDirty();
+      this.renderer?.disableZoomPan();
+    } else {
+      this.bounds = undefined;
+    }
+
+    return true;
+  }
+
   onMove({
     point,
     worldPoint,
@@ -509,21 +515,14 @@ export class DetectionOverlay
     this.segmentationTool = segmentationToolState;
 
     if (this.interactionState === "PAINTING") {
-      this.updateMaskBounds(worldPoint);
-      const maskPoint = this.worldToMask(worldPoint);
-
-      if (maskPoint) {
-        if (this.lastMaskPoint) {
-          this.paintLine(this.lastMaskPoint, maskPoint);
-        } else {
-          this.paintAt(maskPoint);
-        }
-
-        this.lastMaskPoint = maskPoint;
-        this.markDirty();
-      }
-
-      return true;
+      return this.onSegmentationMove({
+        point,
+        worldPoint,
+        event,
+        scale,
+        maintainAspectRatio,
+        segmentationToolState,
+      });
     }
 
     if (this.interactionState === "DRAGGING") {
@@ -538,6 +537,37 @@ export class DetectionOverlay
     }
 
     return false;
+  }
+
+  private onSegmentationMove({
+    point,
+    worldPoint,
+    segmentationToolState,
+  }: OverlayEvent): boolean {
+    const updatedBounds = this.mask.paintAt(
+      point,
+      worldPoint,
+      this.bounds,
+      segmentationToolState!,
+      this.currentStyle
+    );
+
+    if (updatedBounds) {
+      this.bounds = updatedBounds;
+      this.interactionState = "PAINTING";
+      this.moveStartPoint = point;
+      this.moveStartPosition = {
+        x: this.bounds.x,
+        y: this.bounds.y,
+      };
+      this.moveStartBounds = { ...this.bounds };
+      this.markDirty();
+      this.renderer?.disableZoomPan();
+    } else {
+      this.bounds = undefined;
+    }
+
+    return true;
   }
 
   private onDrag(point: Point, _event: PointerEvent, scale: number): boolean {
@@ -686,7 +716,7 @@ export class DetectionOverlay
     if (!this.moveStartPoint || !this.moveStartBounds) return false;
 
     this.interactionState = "NONE";
-    this.lastMaskPoint = undefined;
+    this.mask.paintEnd();
     this.moveStartPoint = undefined;
     this.moveStartPosition = undefined;
     this.moveStartBounds = undefined;
@@ -892,69 +922,8 @@ export class DetectionOverlay
    * Returns true if this detection has a mask (inline, on-disk, or editing canvas).
    */
   hasMask(): boolean {
-    return !!this.maskCanvas || !!this.label?.mask; // TODO: || !!this.label?.mask_path;
+    return !!this.mask;
   }
-
-  /**
-   * Kicks off async mask decoding if the label has mask data that hasn't been
-   * decoded yet (or has changed since last decode).
-   */
-  private decodeMaskIfNeeded(color: string): void {
-    const maskData = this.label?.mask;
-
-    if (typeof maskData !== "string" || this.maskDecoding) {
-      return;
-    }
-
-    // Already decoded this exact mask
-    if (this.decodedMaskKey === maskData) {
-      return;
-    }
-
-    this.maskDecoding = true;
-
-    decodeMask(maskData, color)
-      .then((bitmap) => {
-        this.maskBitmap?.close();
-        this.maskBitmap = bitmap;
-        this.decodedMaskKey = maskData;
-        this.maskDecoding = false;
-        this.markDirty();
-      })
-      .catch((err) => {
-        console.error("[DetectionOverlay] mask decode failed:", err);
-        this.maskDecoding = false;
-      });
-  }
-
-  /**
-   * Draws the mask within the bounding box bounds.
-   * Prefers the mutable editing canvas over the decoded bitmap.
-   */
-  private drawMask(renderer: Renderer2D): void {
-    if (this.maskCanvas) {
-      renderer.drawImage(
-        { type: "canvas", canvas: this.maskCanvas },
-        this.bounds,
-        { opacity: 0.7 },
-        this.containerId
-      );
-      return;
-    }
-
-    if (!this.maskBitmap) return;
-
-    renderer.drawImage(
-      { type: "bitmap", bitmap: this.maskBitmap },
-      this.bounds,
-      { opacity: 0.7 },
-      this.containerId
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // Mask painting
-  // ---------------------------------------------------------------------------
 
   /**
    * Whether segmentation brush/eraser painting should intercept pointer events.
@@ -969,244 +938,22 @@ export class DetectionOverlay
   }
 
   /**
-   * Lazily creates (or reuses) the mask editing canvas.
-   * When seeding from a decoded bitmap, uses the bitmap dimensions.
-   * Otherwise derives canvas size from the current absolute bounds (1:1 mapping).
-   */
-  private ensureMaskCanvas(): void {
-    if (this.maskCanvas) return;
-
-    let w: number;
-    let h: number;
-
-    if (this.maskBitmap) {
-      w = this.maskBitmap.width;
-      h = this.maskBitmap.height;
-    } else {
-      const abs = this.bounds;
-      w = Math.max(1, Math.round(abs.width));
-      h = Math.max(1, Math.round(abs.height));
-    }
-
-    this.maskCanvas = document.createElement("canvas");
-    this.maskCanvas.width = w;
-    this.maskCanvas.height = h;
-    this.maskCtx = this.maskCanvas.getContext("2d")!;
-
-    if (this.maskBitmap) {
-      this.maskCtx.drawImage(this.maskBitmap, 0, 0);
-    }
-  }
-
-  /**
-   * Computes tight bounds around mask content and — for brush — the upcoming
-   * dab, then resizes the canvas and updates bounds to match.
-   *
-   * Works for both tools:
-   * - **Brush**: content bbox ∪ dab extent → may grow.
-   * - **Eraser**: content bbox only → may shrink.
-   *
-   * If no content remains (and no dab), clears the mask entirely.
-   */
-  private updateMaskBounds(worldPoint: Point): void {
-    if (!this.maskCanvas || !this.maskCtx) return;
-
-    const oldBounds = this.bounds;
-    const w = this.maskCanvas.width;
-    const h = this.maskCanvas.height;
-
-    // Scan for non-transparent pixel extent in world space
-    const data = this.maskCtx.getImageData(0, 0, w, h).data;
-    let pxMinX = w;
-    let pxMinY = h;
-    let pxMaxX = -1;
-    let pxMaxY = -1;
-
-    for (let py = 0; py < h; py++) {
-      for (let px = 0; px < w; px++) {
-        if (data[(py * w + px) * 4 + 3] > 0) {
-          if (px < pxMinX) pxMinX = px;
-          if (px > pxMaxX) pxMaxX = px;
-          if (py < pxMinY) pxMinY = py;
-          if (py > pxMaxY) pxMaxY = py;
-        }
-      }
-    }
-
-    // Convert pixel content bounds to world space
-    let worldMinX: number;
-    let worldMinY: number;
-    let worldMaxX: number;
-    let worldMaxY: number;
-
-    const hasContent = pxMaxX >= 0 || pxMaxY >= 0;
-
-    if (hasContent) {
-      worldMinX = oldBounds.x + (pxMinX / w) * oldBounds.width;
-      worldMinY = oldBounds.y + (pxMinY / h) * oldBounds.height;
-      worldMaxX = oldBounds.x + ((pxMaxX + 1) / w) * oldBounds.width;
-      worldMaxY = oldBounds.y + ((pxMaxY + 1) / h) * oldBounds.height;
-    } else {
-      worldMinX = Infinity;
-      worldMinY = Infinity;
-      worldMaxX = -Infinity;
-      worldMaxY = -Infinity;
-    }
-
-    // For brush, include the dab extent
-    const tool = this.segmentationTool?.tool;
-
-    if (tool === "brush") {
-      const half = (this.segmentationTool?.size ?? 0) / 2;
-      worldMinX = Math.min(worldMinX, worldPoint.x - half);
-      worldMinY = Math.min(worldMinY, worldPoint.y - half);
-      worldMaxX = Math.max(worldMaxX, worldPoint.x + half);
-      worldMaxY = Math.max(worldMaxY, worldPoint.y + half);
-    }
-
-    // No content and no dab — clear everything
-    if (worldMaxX <= worldMinX || worldMaxY <= worldMinY) {
-      this.maskCanvas = undefined;
-      this.maskCtx = undefined;
-      this.bounds = undefined;
-      return;
-    }
-
-    const newWidth = worldMaxX - worldMinX;
-    const newHeight = worldMaxY - worldMinY;
-
-    const newW = Math.max(1, Math.round(newWidth));
-    const newH = Math.max(1, Math.round(newHeight));
-
-    // Skip resize if bounds haven't changed
-    if (
-      newW === w &&
-      newH === h &&
-      Math.abs(worldMinX - oldBounds.x) < 1e-6 &&
-      Math.abs(worldMinY - oldBounds.y) < 1e-6
-    ) {
-      return;
-    }
-
-    // Allocate new canvas and copy over old pixels
-    const newCanvas = document.createElement("canvas");
-    newCanvas.width = newW;
-    newCanvas.height = newH;
-    const newCtx = newCanvas.getContext("2d")!;
-
-    if (hasContent && this.maskCtx) {
-      const offsetX = Math.round(oldBounds.x - worldMinX);
-      const offsetY = Math.round(oldBounds.y - worldMinY);
-      const oldData = this.maskCtx.getImageData(0, 0, w, h);
-
-      newCtx.putImageData(oldData, offsetX, offsetY);
-    }
-
-    this.maskCanvas = newCanvas;
-    this.maskCtx = newCtx;
-
-    this.bounds = {
-      x: worldMinX,
-      y: worldMinY,
-      width: newWidth,
-      height: newHeight,
-    };
-  }
-
-  /**
-   * Converts a world-space point to mask-pixel coordinates.
-   */
-  private worldToMask(worldPoint: Point): Point | undefined {
-    const bounds = this.bounds;
-    if (!bounds || bounds.width <= 0 || bounds.height <= 0) return undefined;
-    if (!this.maskCanvas) return undefined;
-
-    return {
-      x: ((worldPoint.x - bounds.x) / bounds.width) * this.maskCanvas.width,
-      y: ((worldPoint.y - bounds.y) / bounds.height) * this.maskCanvas.height,
-    };
-  }
-
-  /**
-   * Paints a single dab at the given mask-pixel coordinate.
-   */
-  private paintAt(point: Point): void {
-    if (!this.maskCtx) return;
-
-    const tool = this.segmentationTool?.tool;
-    const size = this.segmentationTool?.size ?? 0;
-    const shape = this.segmentationTool?.shape ?? "circle";
-    const radius = size / 2;
-
-    const ctx = this.maskCtx;
-
-    if (tool === "eraser") {
-      ctx.globalCompositeOperation = "destination-out";
-      ctx.fillStyle = "rgba(0,0,0,1)";
-    } else {
-      ctx.globalCompositeOperation = "source-over";
-      ctx.fillStyle =
-        this.currentStyle?.strokeStyle ||
-        this.currentStyle?.fillStyle ||
-        "#ffffff";
-    }
-
-    ctx.beginPath();
-    if (shape === "circle") {
-      ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
-    } else {
-      ctx.rect(point.x - radius, point.y - radius, size, size);
-    }
-    ctx.fill();
-  }
-
-  /**
-   * Interpolates between two mask-pixel points, painting a dab at each step
-   * to avoid gaps during fast mouse movement.
-   */
-  private paintLine(from: Point, to: Point): void {
-    const dx = to.x - from.x;
-    const dy = to.y - from.y;
-    const distance = Math.hypot(dx, dy);
-    const steps = Math.max(1, Math.ceil(distance));
-
-    for (let i = 0; i <= steps; i++) {
-      const t = i / steps;
-      this.paintAt({
-        x: from.x + dx * t,
-        y: from.y + dy * t,
-      });
-    }
-  }
-
-  /**
    * Returns the current mask editing canvas, if any.
    */
-  getMaskCanvas(): HTMLCanvasElement | undefined {
-    return this.maskCanvas;
-  }
+  // getMaskCanvas(): HTMLCanvasElement | undefined {
+  //   return this.mask.getCanvas();
+  // }
 
   /**
    * Clears the mask editing canvas.
    */
   clearMaskCanvas(): void {
-    if (this.maskCtx && this.maskCanvas) {
-      this.maskCtx.clearRect(
-        0,
-        0,
-        this.maskCanvas.width,
-        this.maskCanvas.height
-      );
-      this.markDirty();
-    }
+    this.mask?.clearCanvas();
+    this.markDirty();
   }
 
   override destroy(): void {
-    this.maskBitmap?.close();
-    this.maskBitmap = undefined;
-    this.maskCanvas = undefined;
-    this.maskCtx = undefined;
-    this.decodedMaskKey = undefined;
+    this.mask?.destroy();
     super.destroy();
   }
 }
