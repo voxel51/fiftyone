@@ -7,6 +7,7 @@ FiftyOne plugin context tests.
 """
 
 import sys
+import time
 from textwrap import dedent
 from unittest import mock
 
@@ -253,6 +254,10 @@ class TestPluginRegistration:
             assert not ctx.has_errors(), ctx.errors
             # pylint: disable=no-member
             assert ctx.captured_value == 1
+
+            # .pyc cache uses second-resolution mtime; sleep so the
+            # new write gets a distinct timestamp.
+            time.sleep(2)
 
             with open(utils_dir / "__init__.py", "w") as f:
                 f.write("VALUE = 2\n")

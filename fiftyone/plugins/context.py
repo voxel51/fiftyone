@@ -10,12 +10,10 @@ import importlib
 import logging
 import os
 import re
-import shutil
 import sys
 import traceback
 import types
 
-import fiftyone.core.utils as fou
 import fiftyone.plugins as fop
 
 from fiftyone.operators.decorators import plugins_cache
@@ -135,38 +133,16 @@ def _purge_sys_modules_under_dir(plugin_dir):
             del sys.modules[name]
 
 
-def _purge_pycache_under_dir(plugin_dir):
-    """Removes ``__pycache__`` trees under ``plugin_dir``.
-
-    After ``.py`` files change, bytecode in ``__pycache__`` can still be loaded
-    on the next ``exec_module`` unless those caches are cleared.
-    """
-    try:
-        root = os.path.realpath(plugin_dir)
-    except (TypeError, OSError):
-        return
-
-    if not os.path.isdir(root):
-        return
-
-    for dirpath, dirnames, _ in fou.walk_safe(root, follow_symlinks=True):
-        if "__pycache__" in dirnames:
-            shutil.rmtree(
-                os.path.join(dirpath, "__pycache__"),
-                ignore_errors=True,
-            )
-            dirnames.remove("__pycache__")
-
-
 def _invalidate_plugin_python_caches(plugin_dir):
     """Drop import caches for files under a plugin directory.
 
-    Also calls ``importlib.invalidate_caches()`` so path finders (e.g.
+    Purges ``sys.modules`` entries whose ``__file__`` lives under
+    ``plugin_dir`` so subsequent imports re-read sources from disk, and
+    calls ``importlib.invalidate_caches()`` so path finders (e.g.
     ``FileFinder``) drop cached directory listings after plugin files or
     subpackages are added, removed, or renamed on disk.
     """
     _purge_sys_modules_under_dir(plugin_dir)
-    _purge_pycache_under_dir(plugin_dir)
     importlib.invalidate_caches()
 
 
