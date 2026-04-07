@@ -978,51 +978,6 @@ export class Scene2D {
   }
 
   /**
-   * Queues a content-aware auto-zoom that fires once two async prerequisites
-   * are both satisfied:
-   *   - `lighter:resize`  — canvas has correct pixel dimensions (PixiJS ready)
-   *   - `lighter:canonical-media-bounds-changed` — image bounds are known
-   *
-   * These events can arrive in either order. The zoom is applied when the
-   * second one arrives, then `lighter:viewport-initialized` is dispatched so
-   * the React container can be revealed.
-   *
-   * @param target - Zoom target rect in normalized [0,1] image-relative coords.
-   * @param pad    - Fraction of the viewport to keep as padding on each side.
-   */
-  public queueInitialZoom(target: Rect, pad: number = 0): void {
-    let resized = false;
-    let boundsReady = false;
-
-    const tryApply = () => {
-      if (!resized || !boundsReady) return;
-      offResize();
-      offBounds();
-
-      const worldRect = this.coordinateSystem.relativeToAbsolute(target);
-      if (!worldRect.width || !worldRect.height) return;
-
-      this.config.renderer.fitToRect(worldRect, pad);
-      this.eventBus.dispatch("lighter:viewport-initialized", {});
-    };
-
-    const offResize = this.eventBus.on("lighter:resize", () => {
-      resized = true;
-      tryApply();
-    });
-    this.abortController.signal.addEventListener("abort", offResize);
-
-    const offBounds = this.eventBus.on(
-      "lighter:canonical-media-bounds-changed",
-      () => {
-        boundsReady = true;
-        tryApply();
-      }
-    );
-    this.abortController.signal.addEventListener("abort", offBounds);
-  }
-
-  /**
    * Gets whether the render loop is currently active.
    * @returns True if the render loop is active, false otherwise.
    */

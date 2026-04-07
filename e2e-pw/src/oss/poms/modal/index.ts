@@ -314,9 +314,11 @@ export class ModalPom {
   async waitForLighterReady() {
     return this.page.waitForFunction(
       () =>
-        document
-          .querySelector(`[data-cy=lighter-sample-renderer] canvas`)
-          ?.getAttribute("lighter-ready") === "true",
+        (
+          document.querySelector(
+            `[data-cy=lighter-sample-renderer]`
+          ) as HTMLElement | null
+        )?.style.visibility === "visible",
       undefined,
       { timeout: Duration.Seconds(20) }
     );
