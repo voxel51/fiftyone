@@ -159,9 +159,15 @@ def _purge_pycache_under_dir(plugin_dir):
 
 
 def _invalidate_plugin_python_caches(plugin_dir):
-    """Drop import caches for files under a plugin directory."""
+    """Drop import caches for files under a plugin directory.
+
+    Also calls ``importlib.invalidate_caches()`` so path finders (e.g.
+    ``FileFinder``) drop cached directory listings after plugin files or
+    subpackages are added, removed, or renamed on disk.
+    """
     _purge_sys_modules_under_dir(plugin_dir)
     _purge_pycache_under_dir(plugin_dir)
+    importlib.invalidate_caches()
 
 
 @plugins_cache
