@@ -20,6 +20,7 @@ export const tagStatistics = selectorFamily<
     count: number;
     items: number;
     tags: { [key: string]: number };
+    all_tags: string[];
   },
   { modal: boolean; labels: boolean }
 >({
@@ -86,19 +87,12 @@ export const tagStats = selectorFamily<
   get:
     ({ modal, labels }) =>
     ({ get }) => {
-      const data = modal
-        ? []
-        : Object.keys(
-            get(
-              labels
-                ? fos.labelTagCounts({ modal: false, extended: false })
-                : fos.sampleTagCounts({ modal: false, extended: false })
-            )
-          ).map((t) => [t, 0]);
+      const stats = get(tagStatistics({ modal, labels }));
+      const baseline = modal ? [] : stats.all_tags.map((t) => [t, 0]);
 
       return {
-        ...Object.fromEntries(data),
-        ...get(tagStatistics({ modal, labels })).tags,
+        ...Object.fromEntries(baseline),
+        ...stats.tags,
       };
     },
 });
