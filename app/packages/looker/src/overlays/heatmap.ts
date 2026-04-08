@@ -21,7 +21,7 @@ import {
   SelectData,
   isShown,
 } from "./base";
-import { strokeCanvasRect, t } from "./util";
+import { resolveLabelSelectionVisuals, strokeCanvasRect, t } from "./util";
 
 interface HeatmapLabel extends BaseLabel {
   map?: LabelMask;
@@ -92,6 +92,10 @@ export default class HeatmapOverlay<State extends BaseState>
     }
 
     if (this.isSelected(state)) {
+      const labelVisuals = resolveLabelSelectionVisuals(
+        this.label.id,
+        state.options
+      );
       strokeCanvasRect(
         ctx,
         state,
@@ -99,7 +103,8 @@ export default class HeatmapOverlay<State extends BaseState>
           state.options.coloring.pool,
           state.options.coloring.seed,
           this.field
-        )
+        ),
+        labelVisuals?.color
       );
     }
   }

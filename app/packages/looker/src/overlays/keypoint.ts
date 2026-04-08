@@ -13,7 +13,7 @@ import {
 } from "../state";
 import { distance, distanceFromLineSegment, multiply } from "../util";
 import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
-import { t } from "./util";
+import { resolveLabelSelectionVisuals, t } from "./util";
 import { isHoveringParticularLabelWithInstanceConfig } from "@fiftyone/state/src/jotai";
 
 interface KeypointLabel extends RegularLabel {
@@ -43,6 +43,10 @@ export default class KeypointOverlay<
   draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void {
     const color = this.getColor(state);
     const selected = this.isSelected(state);
+    const labelVisuals = selected
+      ? resolveLabelSelectionVisuals(this.label.id, state.options)
+      : null;
+    const selectionColor = labelVisuals?.color || INFO_COLOR;
     const doesInstanceMatch =
       this.label.instance?._id &&
       isHoveringParticularLabelWithInstanceConfig(this.label.instance._id);
@@ -56,7 +60,7 @@ export default class KeypointOverlay<
         this.strokePath(ctx, state, path, color);
 
         if (selected) {
-          this.strokePath(ctx, state, path, INFO_COLOR, state.dashLength);
+          this.strokePath(ctx, state, path, selectionColor, state.dashLength);
         }
       }
     }
@@ -88,7 +92,7 @@ export default class KeypointOverlay<
       ctx.fill();
 
       if (selected) {
-        ctx.fillStyle = INFO_COLOR;
+        ctx.fillStyle = selectionColor;
         ctx.beginPath();
         ctx.arc(x, y, state.pointRadius, 0, Math.PI * 2);
         ctx.fill();

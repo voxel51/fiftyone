@@ -19,7 +19,11 @@ import {
   PointInfo,
   RegularLabel,
 } from "./base";
-import { getInstanceStrokeStyles, t } from "./util";
+import {
+  getInstanceStrokeStyles,
+  resolveLabelSelectionVisuals,
+  t,
+} from "./util";
 
 let cache: Record<
   string,
@@ -117,6 +121,9 @@ export default class DetectionOverlay<
       this.label.instance?._id &&
       isHoveringParticularLabelWithInstanceConfig(this.label.instance._id);
     const isSelected = this.isSelected(state);
+    const labelVisuals = isSelected
+      ? resolveLabelSelectionVisuals(this.label.id, state.options)
+      : null;
 
     const { strokeColor, overlayStrokeColor, overlayDash } =
       getInstanceStrokeStyles({
@@ -124,6 +131,7 @@ export default class DetectionOverlay<
         getColor: () => this.getColor(state),
         isHoveringInstance: !!doesInstanceMatch,
         dashLength: state.dashLength,
+        labelSelectionColor: labelVisuals?.color,
       });
 
     if (

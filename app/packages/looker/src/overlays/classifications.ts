@@ -26,7 +26,7 @@ import {
   SelectData,
   isShown,
 } from "./base";
-import { getLabelColor } from "./util";
+import { getLabelColor, resolveLabelSelectionVisuals } from "./util";
 
 export type Classification = {
   _cls: "Classification";
@@ -265,11 +265,15 @@ export class ClassificationsOverlay<
     this.strokeBorder(ctx, state, [tlx, tly, w, h], color);
 
     if (this.isSelected(state, label)) {
+      const labelVisuals = resolveLabelSelectionVisuals(
+        label.id,
+        state.options
+      );
       this.strokeBorder(
         ctx,
         state,
         [tlx, tly, w, h],
-        INFO_COLOR,
+        labelVisuals?.color || INFO_COLOR,
         state.dashLength
       );
     }

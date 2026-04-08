@@ -6,6 +6,7 @@ import { COLOR_BY, REGRESSION, getColor } from "@fiftyone/utilities";
 import colorString from "color-string";
 import { INFO_COLOR, SELECTED_AND_HOVERED_COLOR } from "../constants";
 import type {
+  BaseOptions,
   BaseState,
   Coloring,
   Coordinates,
@@ -39,13 +40,14 @@ const strokeRect = (
 export const strokeCanvasRect = (
   ctx: CanvasRenderingContext2D,
   state: Readonly<BaseState>,
-  color: string
+  color: string,
+  selectionColor: string = INFO_COLOR
 ): void => {
   ctx.lineWidth = state.strokeWidth;
   ctx.setLineDash([]);
   strokeRect(ctx, state, color);
   ctx.setLineDash([state.dashLength]);
-  strokeRect(ctx, state, INFO_COLOR);
+  strokeRect(ctx, state, selectionColor);
   ctx.setLineDash([]);
 };
 
@@ -313,11 +315,13 @@ export function getInstanceStrokeStyles({
   getColor,
   isHoveringInstance,
   dashLength,
+  labelSelectionColor,
 }: {
   isSelected: boolean;
   getColor: () => string;
   isHoveringInstance: boolean;
   dashLength: number;
+  labelSelectionColor?: string;
 }) {
   // Main stroke color
   let strokeColor = getColor();
@@ -332,9 +336,46 @@ export function getInstanceStrokeStyles({
     overlayStrokeColor = SELECTED_AND_HOVERED_COLOR;
     overlayDash = dashLength;
   } else if (isSelected) {
-    overlayStrokeColor = INFO_COLOR;
+    overlayStrokeColor = labelSelectionColor || INFO_COLOR;
     overlayDash = dashLength;
   }
 
   return { strokeColor, overlayStrokeColor, overlayDash };
+}
+
+// Label selection visual style colors
+export const LABEL_SELECTION_GREEN = "#00ff00";
+export const LABEL_SELECTION_RED = "#ff0000";
+
+export interface LabelSelectionVisuals {
+  styleName: string;
+  color: string;
+}
+
+/**
+ * Resolves the visual style for a selected label based on its type and the
+ * configured label selection style. Returns null if the label is not selected.
+ */
+export function resolveLabelSelectionVisuals(
+  labelId: string,
+  options: BaseOptions
+): LabelSelectionVisuals | null {
+  const { selectedLabels, selectedLabelTypes, labelSelectionStyle } = options;
+
+  if (!selectedLabels.includes(labelId)) {
+    return null;
+  }
+
+  const labelType = selectedLabelTypes[labelId] || "default";
+  const styleName = labelSelectionStyle[labelType] || "dashed";
+
+  switch (styleName) {
+    case "dashed-green":
+      return { styleName, color: LABEL_SELECTION_GREEN };
+    case "dashed-red":
+      return { styleName, color: LABEL_SELECTION_RED };
+    case "dashed":
+    default:
+      return { styleName, color: INFO_COLOR };
+  }
 }
