@@ -20,10 +20,18 @@ from .document import Document
 
 
 class OntologyType(str, Enum):  # TODO - update to StrEnum
-    """Allowed values for :attr:`OntologyDocument.type` in storage and APIs."""
+    """Allowed values for :attr:`OntologyDocument.type` in storage and APIs.
+
+    ``TAXONOMY`` — a reusable hierarchical class tree. Multiple annotation
+    ontologies can reference the same taxonomy by name.
+
+    ``ANNOTATION_ONTOLOGY`` — a container that defines classes, attributes
+    (with optional conditional display logic), and references to taxonomies.
+    This is the document that gets connected to a label schema on a field.
+    """
 
     TAXONOMY = "taxonomy"
-    CONDITIONAL_ATTRIBUTES = "conditional_attributes"
+    ANNOTATION_ONTOLOGY = "annotation_ontology"
 
 
 _ONTOLOGY_TYPE_VALUES = tuple(t.value for t in OntologyType)

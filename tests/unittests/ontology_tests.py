@@ -55,16 +55,30 @@ class OntologyDocumentTests(unittest.TestCase):
         self.assertEqual(loaded.root["name"], "vehicle_type")
         self.assertEqual(len(loaded.root["values"]), 2)
 
-    def test_create_conditional_attributes(self):
+    def test_create_annotation_ontology(self):
         doc = OntologyDocument(
-            name="vehicle_damage_attributes",
+            name="vehicle_damage_ontology",
             version=1,
-            type=OntologyType.CONDITIONAL_ATTRIBUTES,
-            description="Vehicle damage condition attributes",
+            type=OntologyType.ANNOTATION_ONTOLOGY,
+            description="Vehicle damage annotation ontology",
             root={
+                "classes": ["car", "motorcycle", "truck"],
                 "attributes": [
                     {
+                        "name": "damage_present",
+                        "type": "bool",
+                        "component": "checkbox",
+                    },
+                    {
                         "name": "damage_location",
+                        "type": "str",
+                        "component": "dropdown",
+                        "values": [
+                            "front",
+                            "rear",
+                            "driver_side",
+                            "passenger_side",
+                        ],
                         "when": {
                             "equals": {
                                 "field": "damage_present",
@@ -74,6 +88,9 @@ class OntologyDocumentTests(unittest.TestCase):
                     },
                     {
                         "name": "damage_severity",
+                        "type": "str",
+                        "component": "radio",
+                        "values": ["minor", "moderate", "severe"],
                         "when": {
                             "equals": {
                                 "field": "damage_present",
@@ -82,20 +99,25 @@ class OntologyDocumentTests(unittest.TestCase):
                         },
                     },
                 ],
+                "taxonomies": ["vehicle_classes"],
             },
         )
         doc.save()
 
         loaded = OntologyDocument.objects.get(
-            name="vehicle_damage_attributes", version=1
+            name="vehicle_damage_ontology", version=1
         )
         self.assertIsNotNone(loaded.created_at)
-        self.assertEqual(loaded.type, OntologyType.CONDITIONAL_ATTRIBUTES)
+        self.assertEqual(loaded.type, OntologyType.ANNOTATION_ONTOLOGY)
+        self.assertIsInstance(loaded.root["classes"], list)
+        self.assertEqual(len(loaded.root["classes"]), 3)
         self.assertIsInstance(loaded.root["attributes"], list)
-        self.assertEqual(len(loaded.root["attributes"]), 2)
+        self.assertEqual(len(loaded.root["attributes"]), 3)
         self.assertEqual(
-            loaded.root["attributes"][0]["name"], "damage_location"
+            loaded.root["attributes"][1]["name"], "damage_location"
         )
+        self.assertIn("when", loaded.root["attributes"][1])
+        self.assertEqual(loaded.root["taxonomies"], ["vehicle_classes"])
 
     def test_name_version_uniqueness(self):
         OntologyDocument(
@@ -139,6 +161,16 @@ class OntologyDocumentTests(unittest.TestCase):
             name="bad_type",
             version=1,
             type="invalid_type",
+            root={},
+        )
+        with self.assertRaises(ValidationError):
+            doc.save()
+
+    def test_old_conditional_attributes_type_rejected(self):
+        doc = OntologyDocument(
+            name="old_type",
+            version=1,
+            type="conditional_attributes",
             root={},
         )
         with self.assertRaises(ValidationError):
@@ -196,8 +228,8 @@ class OntologyDocumentTests(unittest.TestCase):
         OntologyDocument(
             name="shared_name",
             version=2,
-            type=OntologyType.CONDITIONAL_ATTRIBUTES,
-            root={"attributes": [{"name": "attr"}]},
+            type=OntologyType.ANNOTATION_ONTOLOGY,
+            root={"classes": [], "attributes": [], "taxonomies": []},
         ).save()
 
         docs = OntologyDocument.objects(name="shared_name")
@@ -217,19 +249,19 @@ class OntologyDocumentTests(unittest.TestCase):
             root={"name": "root"},
         ).save()
         OntologyDocument(
-            name="ca1",
+            name="ao1",
             version=1,
-            type=OntologyType.CONDITIONAL_ATTRIBUTES,
-            root={"attributes": []},
+            type=OntologyType.ANNOTATION_ONTOLOGY,
+            root={"classes": [], "attributes": [], "taxonomies": []},
         ).save()
 
         taxonomies = OntologyDocument.objects(type=OntologyType.TAXONOMY)
         self.assertEqual(taxonomies.count(), 2)
 
-        conditionals = OntologyDocument.objects(
-            type=OntologyType.CONDITIONAL_ATTRIBUTES
+        annotation_ontologies = OntologyDocument.objects(
+            type=OntologyType.ANNOTATION_ONTOLOGY
         )
-        self.assertEqual(conditionals.count(), 1)
+        self.assertEqual(annotation_ontologies.count(), 1)
 
     def test_delete(self):
         doc = OntologyDocument(
