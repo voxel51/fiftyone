@@ -18,6 +18,7 @@ import { config } from "./config";
 import { dataset as datasetAtom } from "./dataset";
 import { modalSample, modalSelector } from "./modal";
 import { pathFilter } from "./pathFilters";
+import type { SelectionType } from "./types";
 import { State } from "./types";
 import { isPatchesView } from "./view";
 
@@ -291,14 +292,13 @@ export const selectedLabelIds = selector<Set<string>>({
   },
 });
 
-export const selectedLabelTypes = selector<Record<string, string>>({
+export const selectedLabelTypes = selector<Record<string, SelectionType>>({
   key: "selectedLabelTypes",
   get: ({ get }) => {
     const labels = get(atoms.selectedLabels);
-    const types: Record<string, string> = {};
+    const types: Record<string, SelectionType> = {};
     for (const label of labels) {
-      types[label.labelId] =
-        ((label as Record<string, unknown>).type as string) || "default";
+      types[label.labelId] = label.type === "alt" ? "alt" : "default";
     }
     return types;
   },

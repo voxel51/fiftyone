@@ -233,11 +233,12 @@ class Mutation(SetColorScheme):
         session: t.Optional[str],
         style: JSON,
     ) -> bool:
-        if not isinstance(style, dict):
-            style = dict(DEFAULT_LABEL_SELECTION_STYLE)
+        incoming = style if isinstance(style, dict) else {}
+        style = dict(DEFAULT_LABEL_SELECTION_STYLE)
         for key in ("default", "alt"):
-            if style.get(key) not in VALID_LABEL_SELECTION_STYLES:
-                style[key] = DEFAULT_LABEL_SELECTION_STYLE[key]
+            candidate = incoming.get(key)
+            if candidate in VALID_LABEL_SELECTION_STYLES:
+                style[key] = candidate
         await dispatch_event(
             subscription, fose.SetLabelSelectionStyle(style=style)
         )

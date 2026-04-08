@@ -10,7 +10,11 @@ const useSetLabelSelectionStyle: EventHandlerHook = () => {
 
   return useCallback(
     (payload) => {
-      const style = payload.style || DEFAULT_LABEL_SELECTION_STYLE;
+      const incoming = payload?.style;
+      const style =
+        incoming && typeof incoming === "object"
+          ? { ...DEFAULT_LABEL_SELECTION_STYLE, ...incoming }
+          : DEFAULT_LABEL_SELECTION_STYLE;
       setter("labelSelectionStyle", style);
     },
     [setter]

@@ -103,7 +103,10 @@ const resolveLabelSelectionStyle = (state: {
     return DEFAULT_LABEL_SELECTION_STYLE;
   }
 
-  return state.label_selection_style || DEFAULT_LABEL_SELECTION_STYLE;
+  return {
+    ...DEFAULT_LABEL_SELECTION_STYLE,
+    ...(state.label_selection_style || {}),
+  };
 };
 
 const resolveFieldVisibility = (state: {
