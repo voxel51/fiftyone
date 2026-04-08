@@ -23,13 +23,16 @@ import useExit from "./useExit";
 export const DEFAULT_TOOL_SIZE = 16;
 export const MIN_TOOL_SIZE = 1;
 export const MAX_TOOL_SIZE = 32;
+export const MIN_CURSOR_SIZE = 1;
+export const MAX_CURSOR_SIZE = 100;
 
 export type SegmentationTool = "select" | "brush" | "eraser"; // | "pen";
 export type SegmentationToolShape = "circle" | "square";
 
 export interface SegmentationToolState {
   active: boolean;
-  size: number;
+  size: number; // World-space dab size (for painting on the mask canvas)
+  cursorSize: number; // Screen-pixel cursor size, clamped to [MIN_CURSOR_SIZE, MAX_CURSOR_SIZE]
   tool: SegmentationTool;
   shape: SegmentationToolShape;
 }

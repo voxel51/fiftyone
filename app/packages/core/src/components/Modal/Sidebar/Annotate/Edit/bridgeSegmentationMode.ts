@@ -15,6 +15,8 @@ import {
   _unsafeToolSizeAtom,
   _unsafeSegmentationModeActiveAtom,
   _unsafeToolShapeAtom,
+  MIN_CURSOR_SIZE,
+  MAX_CURSOR_SIZE,
 } from "./useSegmentationMode";
 import type {
   SegmentationTool,
@@ -56,15 +58,24 @@ export const segmentationModeBridge = {
   },
 
   /**
-   * Returns the full segmentation tool state
-   * @param scale - Optional scale factor by which to multiply the tool size
+   * Returns the full segmentation tool state.
+   * @param scale - Viewport scale factor. `cursorSize` is the clamped
+   *   screen-pixel size for the CSS cursor. `size` is the corresponding
+   *   world-space value (`cursorSize / scale`) so the painted dab is
+   *   always 1:1 with the visual cursor.
    */
   getToolState(scale = 1): SegmentationToolState {
+    const cursorSize = Math.min(
+      MAX_CURSOR_SIZE,
+      Math.max(MIN_CURSOR_SIZE, Math.round(this.getToolSize() * scale))
+    );
+
     return {
       active: this.isActive(),
-      tool: this.getActiveTool(),
-      size: this.getToolSize() * scale,
+      cursorSize,
       shape: this.getToolShape(),
+      size: cursorSize / scale,
+      tool: this.getActiveTool(),
     };
   },
 };

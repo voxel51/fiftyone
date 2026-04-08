@@ -285,7 +285,7 @@ export class InteractionManager {
         worldPoint,
         event,
         scale,
-        segmentationToolState: segmentationModeBridge.getToolState(),
+        segmentationToolState: segmentationModeBridge.getToolState(scale),
       })
     ) {
       const cursor = handler.getCursor?.(worldPoint, scale);
@@ -444,7 +444,7 @@ export class InteractionManager {
         event,
         scale,
         maintainAspectRatio: this.maintainAspectRatio,
-        segmentationToolState: segmentationModeBridge.getToolState(),
+        segmentationToolState: segmentationModeBridge.getToolState(scale),
       };
 
       // Handle drag move
@@ -527,7 +527,7 @@ export class InteractionManager {
         worldPoint,
         event,
         scale,
-        segmentationToolState: segmentationModeBridge.getToolState(),
+        segmentationToolState: segmentationModeBridge.getToolState(scale),
       });
 
       if (interactiveHandler) {

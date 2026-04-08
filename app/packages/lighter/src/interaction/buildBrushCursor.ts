@@ -13,22 +13,22 @@ import type { SegmentationToolState } from "@fiftyone/core/src/components/Modal/
  */
 export function buildBrushCursor({
   tool,
-  size,
+  cursorSize,
   shape,
 }: SegmentationToolState): string {
   if (tool === "select") return "default";
 
-  const half = size / 2;
+  const half = cursorSize / 2;
   const pad = 2;
-  const svgSize = size + pad * 2;
+  const svgSize = cursorSize + pad * 2;
   const center = half + pad;
 
   let shapeMarkup: string;
 
   if (shape === "square") {
     shapeMarkup =
-      `<rect x="${pad}" y="${pad}" width="${size}" height="${size}" fill="none" stroke="white" stroke-width="1.5"/>` +
-      `<rect x="${pad}" y="${pad}" width="${size}" height="${size}" fill="none" stroke="black" stroke-width="1.5" stroke-dasharray="3,3"/>`;
+      `<rect x="${pad}" y="${pad}" width="${cursorSize}" height="${cursorSize}" fill="none" stroke="white" stroke-width="1.5"/>` +
+      `<rect x="${pad}" y="${pad}" width="${cursorSize}" height="${cursorSize}" fill="none" stroke="black" stroke-width="1.5" stroke-dasharray="3,3"/>`;
   } else {
     shapeMarkup =
       `<circle cx="${center}" cy="${center}" r="${half}" fill="none" stroke="white" stroke-width="1.5"/>` +
