@@ -72,6 +72,7 @@ export const useLighterSetupWithPixi = (
 
     rendererRef.current?.initializePixiJS().then(() => {
       scene.startRenderLoop();
+      eventBus.dispatch("lighter:renderer-ready", {});
     });
 
     return () => {

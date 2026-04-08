@@ -2,17 +2,15 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 import {
-  DEFAULT_ZOOM_PAD,
   ImageOptions,
   ImageOverlay,
-  Scene2D,
+  UNDEFINED_LIGHTER_SCENE_ID,
   overlayFactory,
   useLighter,
-  useLighterEventBus,
+  useLighterEventHandler,
   useLighterSetupWithPixi,
-  UNDEFINED_LIGHTER_SCENE_ID,
 } from "@fiftyone/lighter";
-import type { ModalViewportState, Sample } from "@fiftyone/state";
+import type { Sample } from "@fiftyone/state";
 import { getSampleSrc, useModalLookerOptions } from "@fiftyone/state";
 import { useAtomValue } from "jotai";
 import React, {
@@ -23,12 +21,11 @@ import React, {
   useState,
 } from "react";
 import { activeLabelSchemas } from "../Sidebar/Annotate/state";
-import { extractZoomTarget } from "./utils";
 import { LighterToolbar } from "./LighterToolbar";
 import { singletonCanvas } from "./SharedCanvas";
 import { useBridge } from "./useBridge";
-import useViewportInit from "./useViewportInit";
 import useRetrieveViewport from "./useRetrieveViewport";
+import useViewport from "./useViewport";
 
 export interface LighterSampleRendererProps {
   /** Custom CSS class name */
@@ -48,6 +45,7 @@ export const LighterSampleRenderer = ({
   // unique scene id allows us to destroy/recreate scenes reliably
   const [sceneId, setSceneId] = useState<string | null>(null);
   const [isCanvasHovered, setIsCanvasHovered] = useState(false);
+  const [isRevealed, setIsRevealed] = useState(false);
 
   const { scene, isReady, addOverlay } = useLighter();
 
@@ -56,25 +54,7 @@ export const LighterSampleRenderer = ({
   const sampleRef = useRef(sample);
   sampleRef.current = sample;
 
-  const sampleId = sample?.sample?._id;
-  const { effectiveZoom, initialViewport } = useViewportInit(sampleId);
-
-  // The container starts hidden only when we need to wait for queueInitialZoom
-  // (the zoomTarget path). For initialViewport and the default case the scene
-  // is immediately visible, so there is no latency regression.
-  const [isRevealed, setIsRevealed] = useState(!effectiveZoom);
-
-  const eventChannel = scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID;
-  const eventBus = useLighterEventBus(eventChannel);
-
-  useEffect(() => {
-    if (effectiveZoom) {
-      return eventBus.on("lighter:viewport-initialized", () => {
-        setIsRevealed(true);
-        console.log("viewport-initialized");
-      });
-    }
-  }, [effectiveZoom, eventBus]);
+  const onReveal = useCallback(() => setIsRevealed(true), []);
 
   /**
    * This effect is responsible for loading the sample and adding the overlays to the scene.
@@ -133,8 +113,7 @@ export const LighterSampleRenderer = ({
           containerRef={containerRef}
           sceneId={sceneId}
           sampleRef={sampleRef}
-          effectiveZoom={effectiveZoom}
-          initialViewport={initialViewport}
+          onReveal={onReveal}
         />
       )}
       {isCanvasHovered && <LighterToolbar />}
@@ -146,14 +125,11 @@ const LighterSetupImpl = (props: {
   containerRef: React.RefObject<HTMLDivElement>;
   sceneId: string;
   sampleRef: React.RefObject<Sample>;
-  effectiveZoom: boolean;
-  initialViewport: ModalViewportState | null;
+  onReveal: () => void;
 }) => {
-  const { containerRef, sceneId, sampleRef, effectiveZoom, initialViewport } =
-    props;
+  const { containerRef, sceneId, sampleRef, onReveal } = props;
 
   const sampleId = sampleRef.current?.sample?._id;
-  const sampleData = sampleRef.current?.sample;
 
   const options = useModalLookerOptions();
 
@@ -161,47 +137,28 @@ const LighterSetupImpl = (props: {
   // which strips newly created fields not yet in the GraphQL schema cache
   const jotaiActivePaths = useAtomValue(activeLabelSchemas);
 
-  const zoomTarget = useMemo(
-    () => (effectiveZoom && sampleData ? extractZoomTarget(sampleData) : null),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [effectiveZoom]
-  );
-
-  // Frozen at mount time — the viewport init values are stable for the entire
-  // lifetime of this component (scene is recreated when sceneId changes).
-  const onInitializedRef = useRef<((scene: Scene2D) => void) | undefined>(
-    undefined
-  );
-  if (!onInitializedRef.current) {
-    onInitializedRef.current = (scene: Scene2D) => {
-      if (initialViewport) {
-        // Restores exact scale/pan snapshot before the first rendered frame —
-        // no async prerequisites needed, so no reveal delay.
-        scene.setViewportState(initialViewport);
-      } else if (effectiveZoom && zoomTarget) {
-        // Queues the two-gate zoom; fires lighter:viewport-initialized when done.
-        scene.queueInitialZoom(zoomTarget, DEFAULT_ZOOM_PAD);
-      }
-    };
-  }
-
-  const onInitialized = useCallback(
-    (scene: Scene2D) => onInitializedRef.current?.(scene),
-    []
-  );
-
   const mergedOptions = useMemo(
     () => ({
       ...options,
       activePaths: jotaiActivePaths ?? options.activePaths,
-      onInitialized,
     }),
-    [options, jotaiActivePaths, onInitialized]
+    [options, jotaiActivePaths]
   );
 
-  const canvas = singletonCanvas.getCanvas(containerRef.current);
+  const canvas = singletonCanvas.getCanvas(containerRef.current ?? undefined);
 
   const { scene } = useLighterSetupWithPixi(canvas, mergedOptions, sceneId);
+
+  const useEventHandler = useLighterEventHandler(
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+  );
+  useEventHandler(
+    "lighter:viewport-init-complete",
+    useCallback(() => onReveal(), [onReveal]),
+    { once: true }
+  );
+
+  useViewport(sampleId);
 
   // This is the bridge between FiftyOne state management system and Lighter
   useBridge(scene);

@@ -15,7 +15,6 @@ import { useAnnotationContextManager } from "./useAnnotationContextManager";
 import type { AnnotationDisabledReason } from "./useCanAnnotate";
 import useLabels from "./useLabels";
 import useSourceFieldToActivate from "./useSourceFieldToActivate";
-import useViewport from "./useViewport";
 import LabelList from "./LabelList";
 
 const DISABLED_MESSAGES: Record<
@@ -76,8 +75,7 @@ const Annotate = ({ disabledReason }: AnnotateProps) => {
   const requiredField = useSourceFieldToActivate();
   const showSetup = useShowImportSchema(isDisabled, requiredField);
 
-  const initialIds = useLabels();
-  useViewport(initialIds);
+  useLabels();
   useDelete();
 
   useEffect(() => {
