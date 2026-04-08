@@ -5205,8 +5205,8 @@ def _print_dict_as_table(d, headers=None):
 
     records = []
     for k, v in d.items():
-        if isinstance(v, list) and v:
-            records.append((k, v[0]))
+        if isinstance(v, list):
+            records.append((k, v[0] if v else None))
             for e in v[1:]:
                 records.append(("", e))
         else:
