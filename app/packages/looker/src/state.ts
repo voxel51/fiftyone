@@ -185,6 +185,8 @@ export interface BaseOptions {
   colorscale: Colorscale;
   labelTagColors: CustomizeColor;
   selectedLabels: string[];
+  selectedLabelTypes: Record<string, string>;
+  labelSelectionStyle: { default: string; alt: string };
   selectedLabelTags?: string[];
   attributeVisibility: object;
   showConfidence: boolean;
@@ -464,6 +466,8 @@ export const DEFAULT_BASE_OPTIONS: BaseOptions = {
   isPointcloudDataset: false,
   activePaths: [],
   selectedLabels: [],
+  selectedLabelTypes: {},
+  labelSelectionStyle: { default: "dashed", alt: "dashed" },
   selectedLabelTags: undefined,
   showConfidence: false,
   showControls: false,

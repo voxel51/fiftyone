@@ -19,8 +19,12 @@ import { GRID_SPACES_DEFAULT, sessionAtom } from "../session";
 import { collapseFields } from "../utils";
 import { getBrowserStorageEffectForKey } from "./customEffects";
 import { groupMediaTypesSet } from "./groups";
-import type { SelectionType } from "./types";
-import { DEFAULT_SELECTION_STYLE, State } from "./types";
+import type { LabelSelectionStyle, SelectionType } from "./types";
+import {
+  DEFAULT_LABEL_SELECTION_STYLE,
+  DEFAULT_SELECTION_STYLE,
+  State,
+} from "./types";
 
 export const refresher = atom<number>({
   key: "refresher",
@@ -207,6 +211,11 @@ export const selectedSampleObjects = atom<Map<string, Sample>>({
 export const sampleSelectionStyle = sessionAtom({
   key: "sampleSelectionStyle",
   default: DEFAULT_SELECTION_STYLE,
+});
+
+export const labelSelectionStyle = sessionAtom<LabelSelectionStyle>({
+  key: "labelSelectionStyle",
+  default: DEFAULT_LABEL_SELECTION_STYLE,
 });
 
 // only used in extended view, for tagging purpose

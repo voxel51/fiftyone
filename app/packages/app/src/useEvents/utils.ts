@@ -1,8 +1,18 @@
 import type { ColorSchemeInput } from "@fiftyone/relay";
 import { subscribeBefore } from "@fiftyone/relay";
 import type { SpaceNodeJSON } from "@fiftyone/spaces";
-import type { SelectionStyle, SelectionType, Session, State } from "@fiftyone/state";
-import { DEFAULT_SELECTION_STYLE, ensureColorScheme } from "@fiftyone/state";
+import type {
+  LabelSelectionStyle,
+  SelectionStyle,
+  SelectionType,
+  Session,
+  State,
+} from "@fiftyone/state";
+import {
+  DEFAULT_LABEL_SELECTION_STYLE,
+  DEFAULT_SELECTION_STYLE,
+  ensureColorScheme,
+} from "@fiftyone/state";
 import { env, toCamelCase } from "@fiftyone/utilities";
 import { atom } from "recoil";
 import type { DatasetPageQuery } from "../pages/datasets/__generated__/DatasetPageQuery.graphql";
@@ -29,6 +39,7 @@ export const processState = (
     session.selectedLabels = resolveSelectedLabels(state);
     session.selectedSamples = resolveSelected(state);
     session.sampleSelectionStyle = resolveSampleSelectionStyle(state);
+    session.labelSelectionStyle = resolveLabelSelectionStyle(state);
     session.sessionSpaces = workspace;
     session.fieldVisibilityStage = fieldVisibility;
     session.modalSelector = modalSelector;
@@ -83,6 +94,16 @@ const resolveSampleSelectionStyle = (state: {
   }
 
   return state.sample_selection_style || DEFAULT_SELECTION_STYLE;
+};
+
+const resolveLabelSelectionStyle = (state: {
+  label_selection_style?: LabelSelectionStyle;
+}): LabelSelectionStyle => {
+  if (env().VITE_NO_STATE) {
+    return DEFAULT_LABEL_SELECTION_STYLE;
+  }
+
+  return state.label_selection_style || DEFAULT_LABEL_SELECTION_STYLE;
 };
 
 const resolveFieldVisibility = (state: {

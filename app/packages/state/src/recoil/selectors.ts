@@ -291,6 +291,19 @@ export const selectedLabelIds = selector<Set<string>>({
   },
 });
 
+export const selectedLabelTypes = selector<Record<string, string>>({
+  key: "selectedLabelTypes",
+  get: ({ get }) => {
+    const labels = get(atoms.selectedLabels);
+    const types: Record<string, string> = {};
+    for (const label of labels) {
+      types[label.labelId] =
+        ((label as Record<string, unknown>).type as string) || "default";
+    }
+    return types;
+  },
+});
+
 export const anyTagging = selector<boolean>({
   key: "anyTagging",
   get: ({ get }) => {
