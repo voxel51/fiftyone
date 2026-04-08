@@ -1,5 +1,8 @@
 name: "@voxel51/operators"
 description: Core FiftyOne operators
+tags:
+  - voxel51
+  - core
 version: 1.0.0
 fiftyone:
   version: "*"
