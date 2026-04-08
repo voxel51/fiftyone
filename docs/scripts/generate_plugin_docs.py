@@ -40,6 +40,7 @@ class PluginDocGenerator:
 
     _ecosystem_subdir = "plugins_ecosystem"
     _docs_section = "plugins"
+    _card_link_prefix = ""
 
     def __init__(self, docs_source_dir: str):
         self.docs_source_dir = Path(docs_source_dir)
@@ -995,7 +996,7 @@ Please review each plugin's documentation and license before use.
 .. customcarditem::
     :header: {header_text}
     :description: {description_with_author}
-    :link: {plugin_link}
+    :link: {self._card_link_prefix}{plugin_link}
     :image: {image_path}
     :tags: {tags_field}
 
@@ -1033,6 +1034,7 @@ class LabsDocGenerator(PluginDocGenerator):
 
     _ecosystem_subdir = "labs_ecosystem"
     _docs_section = "labs"
+    _card_link_prefix = "../labs/"
 
     def __init__(self, docs_source_dir: str):
         super().__init__(docs_source_dir)
@@ -1046,8 +1048,8 @@ class LabsDocGenerator(PluginDocGenerator):
         """Extract labs features from the fiftyone-labs README."""
         plugins = []
         sections = [
-            ("Machine Learning Lab", "machine-learning-lab"),
-            ("Visualization Lab", "visualization-lab"),
+            ("Machine Learning Lab", "51labs"),
+            ("Visualization Lab", "51labs"),
         ]
         for section_name, category in sections:
             section = self._extract_table_section(readme_content, section_name)

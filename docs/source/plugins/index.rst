@@ -60,6 +60,8 @@ will transform FiftyOne into your bespoke visual AI development workbench.
 
 .. include:: plugins_ecosystem/plugin_cards.rst
 
+.. include:: ../labs/labs_ecosystem/lab_cards.rst
+
 .. End of plugin cards
 
 .. raw:: html
