@@ -56,10 +56,17 @@ export const computeLabelTagCounts = (
     for (const key in schema) {
       const field = schema[key];
       const docType = field.embeddedDocType;
-      if (!docType || !docType.startsWith(LABELS_PREFIX)) continue;
 
       const fieldValue = data[field.dbField || key];
       if (!fieldValue || typeof fieldValue !== "object") continue;
+
+      if (!docType || !docType.startsWith(LABELS_PREFIX)) {
+        // Recurse into non-label embedded documents that have sub-fields
+        if (field.fields) {
+          collectFromData(fieldValue as Record<string, unknown>, field.fields);
+        }
+        continue;
+      }
 
       const listFieldName = LABEL_LIST_PATH[docType];
 

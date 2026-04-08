@@ -289,6 +289,90 @@ describe("computeLabelTagCounts", () => {
     });
   });
 
+  it("counts tags from labels nested inside embedded documents", () => {
+    const schema: Schema = {
+      embedded: makeField("embedded", {
+        embeddedDocType:
+          "fiftyone.core.odm.embedded_document.DynamicEmbeddedDocument",
+        ftype: EMBEDDED_DOCUMENT_FIELD,
+        fields: {
+          detections: makeField("detections", {
+            embeddedDocType: "fiftyone.core.labels.Detections",
+            ftype: EMBEDDED_DOCUMENT_FIELD,
+            path: "embedded.detections",
+            fields: {
+              detections: makeField("detections", {
+                ftype: LIST_FIELD,
+                path: "embedded.detections.detections",
+                subfield: EMBEDDED_DOCUMENT_FIELD,
+              }),
+            },
+          }),
+        },
+      }),
+    };
+    const sample = {
+      embedded: {
+        detections: {
+          detections: [
+            { _cls: "Detection", label: "cat", tags: ["hello"] },
+            { _cls: "Detection", label: "dog", tags: ["hello", "world"] },
+          ],
+        },
+      },
+    };
+    expect(computeLabelTagCounts(sample, schema)).toEqual({
+      hello: 2,
+      world: 1,
+    });
+  });
+
+  it("counts tags from labels nested inside embedded documents in video frames", () => {
+    const schema: Schema = {
+      frames: makeField("frames", {
+        embeddedDocType: "fiftyone.core.frames.FrameSample",
+        ftype: LIST_FIELD,
+        subfield: EMBEDDED_DOCUMENT_FIELD,
+        fields: {
+          embedded: makeField("embedded", {
+            embeddedDocType:
+              "fiftyone.core.odm.embedded_document.DynamicEmbeddedDocument",
+            ftype: EMBEDDED_DOCUMENT_FIELD,
+            path: "frames.embedded",
+            fields: {
+              detections: makeField("detections", {
+                embeddedDocType: "fiftyone.core.labels.Detections",
+                ftype: EMBEDDED_DOCUMENT_FIELD,
+                path: "frames.embedded.detections",
+                fields: {
+                  detections: makeField("detections", {
+                    ftype: LIST_FIELD,
+                    path: "frames.embedded.detections.detections",
+                    subfield: EMBEDDED_DOCUMENT_FIELD,
+                  }),
+                },
+              }),
+            },
+          }),
+        },
+      }),
+    };
+    const sample = {
+      frames: [
+        {
+          embedded: {
+            detections: {
+              detections: [{ _cls: "Detection", tags: ["hello"] }],
+            },
+          },
+        },
+      ],
+    };
+    expect(computeLabelTagCounts(sample, schema)).toEqual({
+      hello: 1,
+    });
+  });
+
   it("ignores non-label embedded document fields", () => {
     const schema: Schema = {
       metadata: makeField("metadata", {
