@@ -17,8 +17,10 @@ module.exports = {
   entryPointStrategy: "packages",
   exclude: ["**/node_modules/**", "**/test/**"],
   skipErrorChecking: true,
+  sort: ["kind", "instance-first", "alphabetical"],
   tsconfig: "tsconfig.json",
   packageOptions: {
     skipErrorChecking: true,
+    sort: ["kind", "instance-first", "alphabetical"],
   },
 };
