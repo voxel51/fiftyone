@@ -536,6 +536,7 @@ _________
    Model Zoo <model_zoo/index>
    FiftyOne Brain <brain>
    FiftyOne Labs <labs/index>
+   Data Agents <agents/index>
    Plugins <plugins/index>
    Integrations <integrations/index>
    CLI <cli/index>

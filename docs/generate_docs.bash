@@ -124,6 +124,9 @@ if [[ ${FAST_BUILD} = false ]]; then
     echo "Generating plugin documentation"
     python scripts/generate_plugin_docs.py &
 
+    echo "Generating skills documentation"
+    python scripts/generate_skills_docs.py &
+
     echo "Generating TypeScript API docs"
     cd ../app
     yarn doc

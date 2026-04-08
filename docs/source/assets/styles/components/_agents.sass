@@ -1,0 +1,122 @@
+// ==============================================
+// Data Agents Page
+// ==============================================
+//
+// Scoped to #data-agents (the RST-generated section ID from the page title).
+// Reuses .plugins-search-container, #tutorial-cards, .tutorial-filter-menu
+// and .tutorials-nav from the plugin ecosystem — no duplication.
+
+// --- Workflow capability cards ---
+
+.agents-workflow-grid
+  display: flex
+  flex-wrap: wrap
+  margin-bottom: 2rem
+
+.agents-workflow-card
+  border: 1px solid var(--pst-border-color)
+  border-radius: 8px
+  padding: 1.25rem
+  height: 100%
+  background: var(--pst-color-surface)
+  transition: box-shadow 0.2s ease, transform 0.2s ease
+
+  &:hover
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08)
+    transform: translateY(-2px)
+
+.agents-workflow-icon
+  font-size: 1.5rem
+  margin-bottom: 0.5rem
+  line-height: 1
+
+.agents-workflow-title
+  font-weight: 600
+  margin: 0 0 0.4rem
+  font-size: 1rem
+  color: var(--pst-color-text-base)
+
+.agents-workflow-desc
+  margin: 0
+  font-size: 0.875rem
+  color: var(--pst-color-text-secondary)
+  line-height: 1.5
+
+// --- Differentiator callout ---
+
+.agents-differentiator-callout
+  border-left: 4px solid #F97316
+  padding: 1rem 1.5rem
+  margin-bottom: 2rem
+  background: var(--pst-color-surface)
+  border-radius: 0 8px 8px 0
+
+// --- Differentiator star list ---
+
+.agents-star-grid
+  display: flex
+  flex-wrap: wrap
+  margin-bottom: 2.5rem
+
+.agents-star-item
+  padding: 1rem 0
+  display: flex
+  flex-direction: column
+  gap: 0.25rem
+
+.agents-star-heading
+  display: flex
+  align-items: center
+  gap: 0.5rem
+  font-weight: 600
+  font-size: 0.95rem
+  color: var(--pst-color-text-base)
+
+.agents-star-desc
+  margin: 0
+  font-size: 0.875rem
+  color: var(--pst-color-text-secondary)
+  line-height: 1.5
+  padding-left: 1.75rem
+
+// --- Video row ---
+
+.agents-video-row
+  display: flex
+  flex-wrap: wrap
+  gap: 1rem
+  margin-bottom: 2.5rem
+
+.agents-video-col
+  flex: 1
+  min-width: 280px
+
+.agents-video-wrapper
+  position: relative
+  padding-bottom: 177.78%
+  height: 0
+  overflow: hidden
+  border-radius: 8px
+
+  iframe
+    position: absolute
+    top: 0
+    left: 0
+    width: 100%
+    height: 100%
+    border: 0
+
+// --- Skills search (scoped ID for agents page) ---
+
+#skills-search-container
+  @extend .plugins-search-container
+
+  input#skill-search
+    @extend input#plugin-search
+
+// --- Responsive ---
+
+@media (max-width: 768px)
+  .agents-video-col
+    min-width: 100%
+    flex: 0 0 100%
