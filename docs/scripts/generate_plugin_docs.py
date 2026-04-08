@@ -1048,8 +1048,8 @@ class LabsDocGenerator(PluginDocGenerator):
         """Extract labs features from the fiftyone-labs README."""
         plugins = []
         sections = [
-            ("Machine Learning Lab", "51labs"),
-            ("Visualization Lab", "51labs"),
+            ("Machine Learning Lab", "labs"),
+            ("Visualization Lab", "labs"),
         ]
         for section_name, category in sections:
             section = self._extract_table_section(readme_content, section_name)
