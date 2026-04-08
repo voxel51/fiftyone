@@ -314,8 +314,7 @@ export const useDetectionMode = () => {
   );
 
   /**
-   * Toggle detection mode. When exiting, deactivateDetectionMode handles
-   * finalization (caches field/label, exits interactive mode, closes edit form).
+   * Toggle detection mode.
    */
   const toggleDetectionMode = useCallback(() => {
     if (detectionModeActive) {

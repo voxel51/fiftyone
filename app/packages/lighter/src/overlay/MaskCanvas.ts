@@ -15,6 +15,12 @@ import { createMaskCanvas, decodeMask, encodeMask, maskBounds } from "../utils";
 export class MaskCanvas {
   // Cached decoded mask bitmap, keyed by the raw mask string to detect changes.
   private maskBitmap?: ImageBitmap;
+  /** Raw mask data awaiting decode (deferred until color is known). */
+  private rawMaskData?: string;
+  /** True while an async decode is in flight. */
+  private decoding = false;
+  /** The color used for the current decoded bitmap, so we can re-decode on color change. */
+  private decodedColor?: string;
 
   // canvas contents encoded for persistence to backend
   private pendingMask?: string;
@@ -24,16 +30,9 @@ export class MaskCanvas {
   private context?: CanvasRenderingContext2D;
   private lastPoint?: Point;
 
-  constructor(maskData?: string, color = "#FFFFFF") {
+  constructor(maskData?: string) {
     if (maskData && typeof maskData === "string") {
-      decodeMask(maskData, color)
-        .then((bitmap) => {
-          this.maskBitmap = bitmap;
-        })
-        .catch((err) => {
-          console.error("[MaskCanvas] mask decode failed:", err);
-        });
-    } else {
+      this.rawMaskData = maskData;
     }
   }
 
@@ -45,10 +44,45 @@ export class MaskCanvas {
   }
 
   /**
+   * Kicks off async mask decoding if raw data is present and hasn't been
+   * decoded yet (or needs re-decoding due to color change).
+   */
+  private decodeMaskIfNeeded(color: string, onDecoded?: () => void): void {
+    if (!this.rawMaskData || this.decoding) return;
+
+    // Already decoded with this color
+    if (this.maskBitmap && this.decodedColor === color) return;
+
+    this.decoding = true;
+
+    decodeMask(this.rawMaskData, color)
+      .then((bitmap) => {
+        this.maskBitmap?.close();
+        this.maskBitmap = bitmap;
+        this.decodedColor = color;
+        this.decoding = false;
+        onDecoded?.();
+      })
+      .catch((err) => {
+        console.error("[MaskCanvas] mask decode failed:", err);
+        this.decoding = false;
+      });
+  }
+
+  /**
    * Draws the mask within the given bounds.
    * Prefers the mutable editing canvas over the decoded bitmap.
+   * Triggers lazy decode on first call when color is known.
    */
-  draw(renderer: Renderer2D, bounds: Rect, containerId: string): void {
+  draw(
+    renderer: Renderer2D,
+    bounds: Rect,
+    containerId: string,
+    color: string,
+    onDecoded?: () => void
+  ): void {
+    this.decodeMaskIfNeeded(color, onDecoded);
+
     if (!this.hasRenderable()) return;
 
     if (this.canvas) {

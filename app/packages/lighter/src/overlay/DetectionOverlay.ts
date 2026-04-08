@@ -93,7 +93,7 @@ export class DetectionOverlay
 
   private textBounds?: Rect;
 
-  private mask: MaskCanvas; // = new MaskCanvas();
+  private mask?: MaskCanvas;
   private segmentationTool?: SegmentationToolState;
 
   public cursor = "pointer";
@@ -163,7 +163,10 @@ export class DetectionOverlay
 
     if (!style) return;
 
-    this.mask?.draw(renderer, this.bounds, this.containerId);
+    const maskColor = style.strokeStyle || style.fillStyle || "#ffffff";
+    this.mask?.draw(renderer, this.bounds, this.containerId, maskColor, () =>
+      this.markDirty()
+    );
 
     // lightweight border when editing detection mask
     if (this.isSelected() && this.isPaintingActive()) {
@@ -475,8 +478,7 @@ export class DetectionOverlay
       };
     }
 
-    // TODO...
-    this.mask = this.mask || new MaskCanvas();
+    this.mask = this.mask || new MaskCanvas(this.label.mask);
 
     const updatedBounds = this.mask.paintAt(
       point,
