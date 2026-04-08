@@ -121,3 +121,26 @@ class OperationsTests(unittest.TestCase):
         mock_ctx.trigger.assert_called_once_with(
             "clear_sample_selection_style"
         )
+
+    def test_set_label_selection_style(self):
+        """ctx.ops.set_label_selection_style triggers correctly."""
+        mock_ctx = MagicMock()
+        ops = Operations(mock_ctx)
+
+        ops.set_label_selection_style(  # pylint: disable=no-member
+            default="dashed", alt="dashed-red"
+        )
+
+        mock_ctx.trigger.assert_called_once_with(
+            "set_label_selection_style",
+            params={"default": "dashed", "alt": "dashed-red"},
+        )
+
+    def test_clear_label_selection_style(self):
+        """ctx.ops.clear_label_selection_style triggers correctly."""
+        mock_ctx = MagicMock()
+        ops = Operations(mock_ctx)
+
+        ops.clear_label_selection_style()  # pylint: disable=no-member
+
+        mock_ctx.trigger.assert_called_once_with("clear_label_selection_style")

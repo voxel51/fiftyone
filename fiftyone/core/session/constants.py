@@ -31,8 +31,6 @@ VALID_LABEL_SELECTION_STYLES = {
     "dashed-red",
 }
 
-VALID_LABEL_SELECTION_TYPES = {"default", "alt"}
-
 DEFAULT_LABEL_SELECTION_STYLE = {
     "default": "dashed",
     "alt": "dashed",

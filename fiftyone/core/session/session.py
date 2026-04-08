@@ -1337,6 +1337,15 @@ def _attach_listeners(session: "Session"):
         "set_sample_selection_style", on_set_sample_selection_style
     )
 
+    def on_set_label_selection_style(
+        event: SetLabelSelectionStyle,
+    ) -> None:
+        session._state.label_selection_style = event.style
+
+    session._client.add_event_listener(
+        "set_label_selection_style", on_set_label_selection_style
+    )
+
     on_select_labels: t.Callable[
         [SelectLabels], None
     ] = lambda event: _on_select_labels(session._state, event)

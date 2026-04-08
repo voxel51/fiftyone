@@ -15,6 +15,7 @@ export type Optional<T> = {
 // vite won't import these from fou
 export type RGB = [number, number, number];
 export type RGBA = [number, number, number, number];
+export type LabelSelectionStyleName = "dashed" | "dashed-green" | "dashed-red";
 export interface Coloring {
   by: COLOR_BY.FIELD | COLOR_BY.INSTANCE | COLOR_BY.VALUE;
   pool: readonly string[];
@@ -186,7 +187,10 @@ export interface BaseOptions {
   labelTagColors: CustomizeColor;
   selectedLabels: string[];
   selectedLabelTypes: Record<string, string>;
-  labelSelectionStyle: { default: string; alt: string };
+  labelSelectionStyle: {
+    default: LabelSelectionStyleName;
+    alt: LabelSelectionStyleName;
+  };
   selectedLabelTags?: string[];
   attributeVisibility: object;
   showConfidence: boolean;

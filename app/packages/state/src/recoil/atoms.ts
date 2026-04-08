@@ -19,7 +19,11 @@ import { GRID_SPACES_DEFAULT, sessionAtom } from "../session";
 import { collapseFields } from "../utils";
 import { getBrowserStorageEffectForKey } from "./customEffects";
 import { groupMediaTypesSet } from "./groups";
-import type { LabelSelectionStyle, SelectionType } from "./types";
+import type {
+  LabelSelectionStyle,
+  SelectionStyle,
+  SelectionType,
+} from "./types";
 import {
   DEFAULT_LABEL_SELECTION_STYLE,
   DEFAULT_SELECTION_STYLE,
@@ -208,7 +212,7 @@ export const selectedSampleObjects = atom<Map<string, Sample>>({
   default: new Map(),
 });
 
-export const sampleSelectionStyle = sessionAtom({
+export const sampleSelectionStyle = sessionAtom<SelectionStyle>({
   key: "sampleSelectionStyle",
   default: DEFAULT_SELECTION_STYLE,
 });
