@@ -163,9 +163,12 @@ export class DetectionOverlay
 
     if (!style) return;
 
-    const maskColor = style.strokeStyle || style.fillStyle || "#ffffff";
-    this.mask?.draw(renderer, this.bounds, this.containerId, maskColor, () =>
-      this.markDirty()
+    this.mask?.draw(
+      renderer,
+      this.bounds,
+      this.containerId,
+      style.strokeStyle || style.fillStyle || "#ffffff",
+      () => this.markDirty()
     );
 
     // lightweight border when editing detection mask
