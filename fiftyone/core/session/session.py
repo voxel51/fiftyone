@@ -40,8 +40,10 @@ import fiftyone.core.view as fov
 
 import fiftyone.core.session.client as fosc
 from fiftyone.core.session.constants import (
+    DEFAULT_LABEL_SELECTION_STYLE,
     DEFAULT_SELECTION_STYLE,
     VALID_ICON_STYLES,
+    VALID_LABEL_SELECTION_STYLES,
     VALID_SELECTION_TYPES,
 )
 from fiftyone.core.session.events import (
@@ -56,6 +58,7 @@ from fiftyone.core.session.events import (
     SetColorScheme,
     SetDatasetColorScheme,
     SetSample,
+    SetLabelSelectionStyle,
     SetSampleSelectionStyle,
     SetSpaces,
     SetGroupSlice,
@@ -710,6 +713,7 @@ class Session(object):
         self._state.selected_samples = []
         self._state.selected_labels = []
         self._state.sample_selection_style = dict(DEFAULT_SELECTION_STYLE)
+        self._state.label_selection_style = dict(DEFAULT_LABEL_SELECTION_STYLE)
         self._state.view = None
 
     @property
@@ -755,6 +759,7 @@ class Session(object):
         self._state.selected_samples = []
         self._state.selected_labels = []
         self._state.sample_selection_style = dict(DEFAULT_SELECTION_STYLE)
+        self._state.label_selection_style = dict(DEFAULT_LABEL_SELECTION_STYLE)
 
     @property
     def has_plots(self) -> bool:
@@ -908,6 +913,45 @@ class Session(object):
         self._client.send_event(SetSampleSelectionStyle(style=style))
 
     @property
+    def label_selection_style(self) -> t.Dict:
+        """The current label selection style config.
+
+        A dict with a ``default`` key and optional ``alt`` key specifying
+        label selection visual styles.
+        """
+        return self._state.label_selection_style or dict(
+            DEFAULT_LABEL_SELECTION_STYLE
+        )
+
+    @label_selection_style.setter
+    def label_selection_style(self, style: t.Dict) -> None:
+        resolved = _resolve_label_selection_style(
+            style.get("default"), style.get("alt")
+        )
+        self._state.label_selection_style = resolved
+        self._client.send_event(SetLabelSelectionStyle(style=resolved))
+
+    def set_label_selection_style(
+        self, default: str = "dashed", alt: str = "dashed"
+    ) -> None:
+        """Sets the label selection style in the App.
+
+        Args:
+            default ("dashed"): the default label selection style. Supported
+                values are ``"dashed"``, ``"dashed-green"``, ``"dashed-red"``
+            alt ("dashed"): the alt label selection style
+        """
+        style = _resolve_label_selection_style(default, alt)
+        self._state.label_selection_style = style
+        self._client.send_event(SetLabelSelectionStyle(style=style))
+
+    def clear_label_selection_style(self) -> None:
+        """Clears the label selection style, reverting to default dashed."""
+        style = dict(DEFAULT_LABEL_SELECTION_STYLE)
+        self._state.label_selection_style = style
+        self._client.send_event(SetLabelSelectionStyle(style=style))
+
+    @property
     def selected_labels(self) -> t.List[dict]:
         """A list of labels currently selected in the App.
 
@@ -919,12 +963,15 @@ class Session(object):
         -   ``field``: the field name containing the label
         -   ``frame_number``: the frame number containing the label (only
             applicable to video samples)
+        -   ``type``: the selection type (``"default"`` or ``"alt"``), which
+            determines the visual style applied via :attr:`label_selection_style`
         """
         return list(self._state.selected_labels)
 
     @selected_labels.setter  # type: ignore
     def selected_labels(self, labels: dict) -> None:
-        self._state.selected_labels = list(labels) if labels else []
+        normalized = _normalize_selected_labels(list(labels) if labels else [])
+        self._state.selected_labels = normalized
         self._client.send_event(
             from_dict(SelectLabels, dict(labels=self._state.selected_labels))
         )
@@ -1435,6 +1482,49 @@ def _resolve_selection_style(
         raise ValueError(
             f"Invalid alt icon style '{alt}'. "
             f"Must be one of {VALID_ICON_STYLES}"
+        )
+
+    return {"default": default, "alt": alt}
+
+
+def _normalize_selected_labels(
+    labels: t.List,
+) -> t.List[t.Dict]:
+    normalized = []
+    for label in labels:
+        if isinstance(label, dict):
+            label.setdefault("type", "default")
+            sel_type = label["type"]
+            if sel_type not in VALID_SELECTION_TYPES:
+                raise ValueError(
+                    f"Invalid selection type '{sel_type}'. "
+                    f"Must be one of {VALID_SELECTION_TYPES}"
+                )
+            normalized.append(label)
+        else:
+            normalized.append(label)
+    return normalized
+
+
+def _resolve_label_selection_style(
+    default: t.Optional[str], alt: t.Optional[str]
+) -> t.Dict:
+    if default is None:
+        default = DEFAULT_LABEL_SELECTION_STYLE["default"]
+
+    if alt is None:
+        alt = DEFAULT_LABEL_SELECTION_STYLE["alt"]
+
+    if default not in VALID_LABEL_SELECTION_STYLES:
+        raise ValueError(
+            f"Invalid default label selection style '{default}'. "
+            f"Must be one of {VALID_LABEL_SELECTION_STYLES}"
+        )
+
+    if alt not in VALID_LABEL_SELECTION_STYLES:
+        raise ValueError(
+            f"Invalid alt label selection style '{alt}'. "
+            f"Must be one of {VALID_LABEL_SELECTION_STYLES}"
         )
 
     return {"default": default, "alt": alt}

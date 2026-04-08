@@ -35,6 +35,7 @@ EventType = t.Union[
     "SetColorScheme",
     "SetGroupSlice",
     "SetSample",
+    "SetLabelSelectionStyle",
     "SetSampleSelectionStyle",
     "SetSpaces",
     "StateUpdate",
@@ -94,6 +95,7 @@ class LabelData:
     sample_id: str
     frame_number: t.Optional[int] = None
     instance_id: t.Optional[str] = None
+    type: t.Optional[str] = None
 
 
 @dataclass
@@ -161,6 +163,18 @@ class SetSampleSelectionStyle(Event):
     Attributes:
         style: a dict with ``"default"`` and ``"alt"`` keys mapping to icon
             style names (e.g. ``"checkmark"``, ``"thumbsup"``, etc.)
+    """
+
+    style: t.Dict
+
+
+@dataclass
+class SetLabelSelectionStyle(Event):
+    """Set the label selection visual style.
+
+    Attributes:
+        style: a dict with ``"default"`` and ``"alt"`` keys mapping to label
+            selection style names (e.g. ``"dashed"``, ``"dashed-red"``, etc.)
     """
 
     style: t.Dict
