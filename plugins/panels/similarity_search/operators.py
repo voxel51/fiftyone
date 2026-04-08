@@ -6,6 +6,7 @@ Similarity search operators.
 |
 """
 
+import base64
 import logging
 from datetime import datetime, timezone
 
@@ -104,6 +105,11 @@ class SimilaritySearchOperator(foo.Operator):
                 view = dataset.view()
 
             ctx.set_progress(0.2, label="Preparing query...")
+
+            # Handle uploaded image: embed on-the-fly
+            query_type = ctx.params.get("query_type")
+            if query_type == "upload":
+                query = self._embed_query_image(ctx)
 
             # Handle negative query IDs (alt-selected samples)
             negative_query_ids = ctx.params.get("negative_query_ids")
@@ -235,6 +241,34 @@ class SimilaritySearchOperator(foo.Operator):
             combined = combined / norm
 
         return combined
+
+    @staticmethod
+    def _embed_query_image(ctx):
+        """Embed an uploaded query image on-the-fly using the index model.
+
+        Requires the brain key's config to have a zoo model name. Decodes
+        the base64 image content, loads the model, and returns the
+        embedding vector.
+
+        Args:
+            ctx: the execution context with params["brain_key"] and
+                params["query_image"] = {content: base64, name: str}
+
+        Returns:
+            numpy array representing the query embedding
+        """
+        import eta.core.image as etai
+        import fiftyone.zoo.models as fozm
+
+        brain_key = ctx.params["brain_key"]
+        info = ctx.dataset.get_brain_info(brain_key)
+        model = fozm.load_zoo_model(info.config.model)
+
+        query_image = ctx.params["query_image"]
+        img_bytes = base64.b64decode(query_image["content"])
+        img = etai.decode(img_bytes)
+
+        return model.embed(img)
 
 
 class InitSimilarityRunOperator(foo.Operator):

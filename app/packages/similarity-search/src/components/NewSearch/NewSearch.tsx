@@ -30,7 +30,12 @@ import {
   CROSS_MARK,
   QUERY_IMAGE,
   QUERY_TEXT,
+  QUERY_UPLOAD,
+  UPLOAD_ACCEPTED_TYPES,
+  UPLOAD_MAX_SIZE,
 } from "../../constants";
+import { fileToBase64 } from "../../utils";
+import { FileDrop } from "@fiftyone/core/src/plugins/SchemaIO/components";
 import { useNewSearchForm } from "../../hooks/useNewSearchForm";
 import {
   NewSearchContainer,
@@ -145,7 +150,7 @@ export default function NewSearch({
         />
 
         {/* Query type toggle */}
-        {form.supportsPrompts && (
+        {(form.supportsPrompts || form.supportsUpload) && (
           <Stack orientation={Orientation.Row} spacing={Spacing.Xs}>
             <Button
               variant={
@@ -159,18 +164,34 @@ export default function NewSearch({
             >
               Image Search
             </Button>
-            <Button
-              variant={
-                form.queryType === QUERY_TEXT
-                  ? Variant.Primary
-                  : Variant.Secondary
-              }
-              size={Size.Sm}
-              onClick={() => form.setQueryType(QUERY_TEXT)}
-              style={{ flex: 1 }}
-            >
-              Text Search
-            </Button>
+            {form.supportsUpload && (
+              <Button
+                variant={
+                  form.queryType === QUERY_UPLOAD
+                    ? Variant.Primary
+                    : Variant.Secondary
+                }
+                size={Size.Sm}
+                onClick={() => form.setQueryType(QUERY_UPLOAD)}
+                style={{ flex: 1 }}
+              >
+                Upload Image
+              </Button>
+            )}
+            {form.supportsPrompts && (
+              <Button
+                variant={
+                  form.queryType === QUERY_TEXT
+                    ? Variant.Primary
+                    : Variant.Secondary
+                }
+                size={Size.Sm}
+                onClick={() => form.setQueryType(QUERY_TEXT)}
+                style={{ flex: 1 }}
+              >
+                Text Search
+              </Button>
+            )}
           </Stack>
         )}
 
@@ -188,6 +209,43 @@ export default function NewSearch({
               />
             }
           />
+        ) : form.queryType === QUERY_UPLOAD ? (
+          form.uploadedImage ? (
+            <QuerySelectorBoxActive>
+              <Stack
+                orientation={Orientation.Row}
+                spacing={Spacing.Sm}
+                align={Align.Center}
+                justify={Justify.Between}
+              >
+                <Text variant={TextVariant.Sm} color={TextColor.Primary}>
+                  {form.uploadedImage.name}
+                </Text>
+                <Button
+                  variant={Variant.Secondary}
+                  size={Size.Xs}
+                  onClick={() => form.setUploadedImage(null)}
+                >
+                  Clear
+                </Button>
+              </Stack>
+            </QuerySelectorBoxActive>
+          ) : (
+            <FileDrop
+              types={UPLOAD_ACCEPTED_TYPES}
+              onChange={async (files: File[]) => {
+                if (!files?.length) return;
+                const file = files[0];
+                if (file.size > UPLOAD_MAX_SIZE) return;
+                const { result, error } = await fileToBase64(file);
+                if (error || !result) return;
+                form.setUploadedImage({
+                  content: result,
+                  name: file.name,
+                });
+              }}
+            />
+          )
         ) : form.queryIds.length > 0 ? (
           <QuerySelectorBoxActive>
             <Text variant={TextVariant.Sm} color={TextColor.Primary}>

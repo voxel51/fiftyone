@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useOperatorExecutor } from "@fiftyone/operators";
 import { BrainKeyConfig, QueryType, SearchScope } from "../types";
 import { INIT_RUN_OPERATOR_URI } from "../constants";
-import { canSubmitSearch, buildExecutionParams } from "../utils";
+import { canSubmitSearch, buildExecutionParams, UploadedImage } from "../utils";
 
 type UseSearchSubmissionInput = {
   brainKey: string;
@@ -10,6 +10,7 @@ type UseSearchSubmissionInput = {
   textQuery: string;
   queryIds: string[];
   negativeQueryIds: string[];
+  uploadedImage: UploadedImage | null;
   reverse: boolean;
   selectedConfig?: BrainKeyConfig;
   searchScope: SearchScope;
@@ -49,6 +50,7 @@ export const useSearchSubmission = (input: UseSearchSubmissionInput) => {
         distField: input.distField,
         runName: input.runName,
         negativeQueryIds: input.negativeQueryIds,
+        uploadedImage: input.uploadedImage,
         dynamicResults: input.dynamicResults,
       }),
     [
@@ -66,6 +68,7 @@ export const useSearchSubmission = (input: UseSearchSubmissionInput) => {
       input.hasView,
       input.queryIds,
       input.negativeQueryIds,
+      input.uploadedImage,
     ]
   );
 
@@ -106,7 +109,8 @@ export const useSearchSubmission = (input: UseSearchSubmissionInput) => {
       input.brainKey,
       input.queryType,
       input.textQuery,
-      input.queryIds.length
+      input.queryIds.length,
+      !!input.uploadedImage
     );
 
   return {

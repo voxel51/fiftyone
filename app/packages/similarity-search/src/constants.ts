@@ -40,6 +40,11 @@ export const OWNER_MINE: OwnerFilter = "mine";
 // Query type values
 export const QUERY_IMAGE: QueryType = "image";
 export const QUERY_TEXT: QueryType = "text";
+export const QUERY_UPLOAD: QueryType = "upload";
+
+// File upload constraints
+export const UPLOAD_MAX_SIZE = 10 * 1024 * 1024; // 10 MB
+export const UPLOAD_ACCEPTED_TYPES = ".png,.jpg,.jpeg,.webp,.bmp,.tiff";
 
 // Search scope values
 export const SCOPE_VIEW: SearchScope = "view";
