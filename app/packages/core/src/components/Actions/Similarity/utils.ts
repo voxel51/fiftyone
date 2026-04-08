@@ -1,10 +1,8 @@
 import type { Method } from "@fiftyone/state";
 import * as fos from "@fiftyone/state";
-import { selectedLabels, useBrowserStorage } from "@fiftyone/state";
-import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
-import { useMemo } from "react";
+import { selectedLabels } from "@fiftyone/state";
 import type { Snapshot } from "recoil";
-import { selectorFamily, useRecoilCallback } from "recoil";
+import { selectorFamily } from "recoil";
 
 export const getQueryIds = async (
   snapshot: Snapshot,
@@ -32,62 +30,6 @@ export const getQueryIds = async (
   }
 
   return await snapshot.getPromise(fos.modalSampleId);
-};
-
-export const useSortBySimilarity = (close) => {
-  const [lastUsedBrainkeys, setLastUsedBrainKeys] =
-    useBrowserStorage("lastUsedBrainKeys");
-  const current = useMemo(() => {
-    return lastUsedBrainkeys ? JSON.parse(lastUsedBrainkeys) : {};
-  }, [lastUsedBrainkeys]);
-
-  return useRecoilCallback(
-    ({ snapshot, set }) =>
-      async (parameters: fos.State.SortBySimilarityParameters) => {
-        set(fos.similaritySorting, true);
-        const dataset = await snapshot.getPromise(fos.dataset);
-        if (!dataset) {
-          throw new Error("dataset is not defined");
-        }
-
-        const queryIds = parameters.query
-          ? undefined
-          : await getQueryIds(snapshot, parameters.brainKey);
-
-        const view = await snapshot.getPromise(fos.view);
-        const subscription = await snapshot.getPromise(fos.stateSubscription);
-        const slice = await snapshot.getPromise(fos.sessionGroupSlice);
-
-        const { query, ...commonParams } = parameters;
-
-        const combinedParameters: fos.State.SortBySimilarityParameters = {
-          ...commonParams,
-        };
-
-        combinedParameters.query = query ?? queryIds;
-        const filters = await snapshot.getPromise(fos.filters);
-
-        // save the brainkey into local storage
-        setLastUsedBrainKeys(
-          JSON.stringify({
-            ...current,
-            [dataset.datasetId]: combinedParameters.brainKey,
-          })
-        );
-
-        const stage = await getFetchFunction()("POST", "/sort", {
-          dataset: dataset.name,
-          view,
-          subscription,
-          filters,
-          extended: toSnakeCase(combinedParameters),
-          slice,
-        });
-        set(fos.similarityParameters, Object.fromEntries(stage.kwargs));
-        close();
-      },
-    []
-  );
 };
 
 export const availableSimilarityKeys = selectorFamily<
@@ -161,22 +103,6 @@ const availablePatchesSimilarityKeys = selectorFamily<
     },
 });
 
-export const currentSimilarityKeys = selectorFamily<
-  { total: number; choices: string[] },
-  { modal: boolean; isImageSearch: boolean }
->({
-  key: "currentSimilarityKeys",
-  get:
-    ({ modal, isImageSearch }) =>
-    ({ get }) => {
-      const keys = get(availableSimilarityKeys({ modal, isImageSearch }));
-      return {
-        total: keys.length,
-        choices: keys,
-      };
-    },
-});
-
 export const sortType = selectorFamily<string, boolean>({
   key: "sortBySimilarityType",
   get:
@@ -193,23 +119,5 @@ export const sortType = selectorFamily<string, boolean>({
       }
 
       return "patches";
-    },
-});
-
-export const currentBrainConfig = selectorFamily<Method | undefined, string>({
-  key: "currenBrainConfig",
-  get:
-    (key) =>
-    ({ get }) => {
-      if (get(fos.isPatchesView)) {
-        const { patches } = get(fos.similarityMethods);
-        const patch = patches.find(([method, _]) => method.key === key);
-        if (patch) {
-          return patch[0];
-        }
-      }
-
-      const { samples: methods } = get(fos.similarityMethods);
-      return methods.find((method) => method.key === key);
     },
 });

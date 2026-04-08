@@ -4,7 +4,7 @@ import { Search, Wallpaper } from "@mui/icons-material";
 import React, { useCallback, useRef, useState } from "react";
 import type { ActionProps } from "../types";
 import { ActionDiv, getStringAndNumberProps } from "../utils";
-import SortBySimilarity from "./Similar";
+import SimilarityPopover from "./Similar";
 
 const Similarity = ({
   modal,
@@ -21,8 +21,8 @@ const Similarity = ({
     isImageSearch,
   });
 
-  const toggleSimilarity = useCallback(() => {
-    setOpen((open) => !open);
+  const togglePopover = useCallback(() => {
+    setOpen((o) => !o);
     setIsImageSearch(showImageSimilarityIcon);
   }, [showImageSimilarityIcon]);
 
@@ -36,7 +36,7 @@ const Similarity = ({
         icon={showImageSimilarityIcon ? <Wallpaper /> : <Search />}
         open={open}
         tooltipPlacement={modal ? "bottom" : "top"}
-        onClick={toggleSimilarity}
+        onClick={togglePopover}
         highlight={open}
         title={`Sort by ${
           showImageSimilarityIcon ? "image" : "text"
@@ -45,11 +45,10 @@ const Similarity = ({
         data-cy="action-sort-by-similarity"
       />
       {open && (
-        <SortBySimilarity
-          key={`similary-${showImageSimilarityIcon ? "image" : "text"}`}
+        <SimilarityPopover
           modal={modal}
-          close={() => setOpen(false)}
           isImageSearch={isImageSearch}
+          close={() => setOpen(false)}
           anchorRef={ref}
         />
       )}
