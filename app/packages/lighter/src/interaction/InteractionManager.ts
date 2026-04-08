@@ -787,6 +787,13 @@ export class InteractionManager {
     _event: LighterEventGroup["lighter:zoomed"]
   ): void => {
     this.handlers?.forEach((handler) => handler.markDirty());
+
+    if (segmentationModeBridge.isActive()) {
+      const scale = this.renderer.getScale();
+      this.canvas.style.cursor = buildBrushCursor(
+        segmentationModeBridge.getToolState(scale)!
+      );
+    }
   };
 
   private isDoubleClick(point: Point, now: number): boolean {

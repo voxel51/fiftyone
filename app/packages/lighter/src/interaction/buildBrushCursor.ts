@@ -4,35 +4,31 @@
  * Generates a CSS cursor data-URL for the segmentation brush/eraser tool.
  */
 
-import {
-  MAX_TOOL_SIZE,
-  MIN_TOOL_SIZE,
-} from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useSegmentationMode";
-import type { SegmentationToolData } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useSegmentationMode";
+import type { SegmentationToolState } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useSegmentationMode";
 
 /**
  * Returns a CSS `cursor` value (data-URL SVG + hotspot) for the given brush
  * configuration.  Falls back to `"crosshair"` when the computed size is too
  * small to render meaningfully.
  */
-export function buildBrushCursor(toolData: SegmentationToolData): string {
-  if (toolData.tool === "select") return "default";
+export function buildBrushCursor({
+  tool,
+  size,
+  shape,
+}: SegmentationToolState): string {
+  if (tool === "select") return "default";
 
-  const diameter = Math.round(
-    Math.min(MAX_TOOL_SIZE, Math.max(MIN_TOOL_SIZE, toolData.size))
-  );
-
-  const half = diameter / 2;
+  const half = size / 2;
   const pad = 2;
-  const svgSize = diameter + pad * 2;
+  const svgSize = size + pad * 2;
   const center = half + pad;
 
   let shapeMarkup: string;
 
-  if (toolData.shape === "square") {
+  if (shape === "square") {
     shapeMarkup =
-      `<rect x="${pad}" y="${pad}" width="${diameter}" height="${diameter}" fill="none" stroke="white" stroke-width="1.5"/>` +
-      `<rect x="${pad}" y="${pad}" width="${diameter}" height="${diameter}" fill="none" stroke="black" stroke-width="1.5" stroke-dasharray="3,3"/>`;
+      `<rect x="${pad}" y="${pad}" width="${size}" height="${size}" fill="none" stroke="white" stroke-width="1.5"/>` +
+      `<rect x="${pad}" y="${pad}" width="${size}" height="${size}" fill="none" stroke="black" stroke-width="1.5" stroke-dasharray="3,3"/>`;
   } else {
     shapeMarkup =
       `<circle cx="${center}" cy="${center}" r="${half}" fill="none" stroke="white" stroke-width="1.5"/>` +
@@ -41,7 +37,7 @@ export function buildBrushCursor(toolData: SegmentationToolData): string {
 
   let eraserMarkup = "";
 
-  if (toolData.tool === "eraser") {
+  if (tool === "eraser") {
     const offset = half * 0.5;
     eraserMarkup =
       `<line x1="${center - offset}" y1="${center - offset}" x2="${
