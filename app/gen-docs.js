@@ -4,6 +4,45 @@ const path = require("path");
 
 const docs = require("./docs.json");
 
+// typedoc 0.28 removed the `kindString` field from JSON output (schemaVersion "2.0").
+// This map restores the old string labels from numeric `kind` values so that
+// gen-docs.js fragment classes can continue to match reflections by kind name.
+// See: https://github.com/TypeStrong/typedoc/blob/master/src/lib/models/kind.ts
+const KIND_STRING_MAP = {
+  0x1: "Project",
+  0x2: "Module",
+  0x4: "Namespace",
+  0x8: "Enumeration",
+  0x10: "Enumeration Member",
+  0x20: "Variable",
+  0x40: "Function",
+  0x80: "Class",
+  0x100: "Interface",
+  0x200: "Constructor",
+  0x400: "Property",
+  0x800: "Method",
+  0x1000: "Call signature",
+  0x2000: "Index signature",
+  0x4000: "Constructor signature",
+  0x8000: "Parameter",
+  0x10000: "Type literal",
+  0x20000: "Type parameter",
+  0x40000: "Accessor",
+  0x80000: "Get signature",
+  0x100000: "Set signature",
+  0x200000: "Type alias",
+  0x400000: "Reference",
+  0x800000: "Document",
+};
+
+// Returns the kind string for a raw reflection object, falling back to
+// KIND_STRING_MAP when the pre-0.28 `kindString` field is absent.
+function getKindString(raw) {
+  if (!raw) return undefined;
+  if (raw.kindString) return raw.kindString;
+  return KIND_STRING_MAP[raw.kind] || undefined;
+}
+
 ////////
 /// RST
 ////////
@@ -864,6 +903,54 @@ class DocClass extends DocFragment {
   }
 }
 
+// Writes a function-style signature (params, return type, nested hook callbacks)
+// to a file. Shared by DocFunction.writeSignature and DocVar.writeContent so that
+// callable variables (typedoc 0.28 reclassifies `const x = selectorFamily(...)` as
+// Variable instead of Function) render identically to real functions.
+function writeSignatureAsFunction(
+  fragment,
+  file,
+  signature,
+  nested = false,
+  nameOverride
+) {
+  const funcName = nameOverride ? nameOverride : signature.toTextSignature();
+  const func = file.func(funcName);
+  if (nested) {
+    func.indent = fragment.depth() + 1;
+  }
+  const comment = signature.comment();
+  if (comment) {
+    comment.write(file);
+  }
+  const desc = new FragmentDescription();
+  for (const parameter of signature.parameters()) {
+    parameter.addToDescription(desc);
+  }
+  desc.writeTo(func);
+  const returnType = signature.returnType();
+  const retType = signature.returnType();
+  if (retType.isFunction()) {
+    const returnTypeFunctionSignature = retType.declaration().signatures()[0];
+    const returnFnName = signature.isReactHook()
+      ? lowerCaseFirstLetter(fragment.get("name").replace("use", ""))
+      : funcName;
+    func.returns(
+      returnTypeFunctionSignature.toTextSignature(returnFnName),
+      returnType.shortText()
+    );
+    writeSignatureAsFunction(
+      fragment,
+      file,
+      returnTypeFunctionSignature,
+      true,
+      returnFnName
+    );
+  } else {
+    func.returns(returnType, returnType.shortText());
+  }
+}
+
 class DocFunction extends DocFragment {
   static kind = () => "Function";
   toRefType() {
@@ -890,40 +977,7 @@ class DocFunction extends DocFragment {
     }
   }
   writeSignature(file, signature, nested = false, nameOverride) {
-    const funcName = nameOverride ? nameOverride : signature.toTextSignature();
-    const func = file.func(funcName);
-    if (nested) {
-      func.indent = this.depth() + 1;
-    }
-    const comment = signature.comment();
-    if (comment) {
-      comment.write(file);
-    }
-    const desc = new FragmentDescription();
-    for (const parameter of signature.parameters()) {
-      parameter.addToDescription(desc);
-    }
-    desc.writeTo(func);
-    const returnType = signature.returnType();
-    const retType = signature.returnType();
-    if (retType.isFunction()) {
-      const returnTypeFunctionSignature = retType.declaration().signatures()[0];
-      const returnFnName = signature.isReactHook()
-        ? lowerCaseFirstLetter(this.get("name").replace("use", ""))
-        : funcName;
-      func.returns(
-        returnTypeFunctionSignature.toTextSignature(returnFnName),
-        returnType.shortText()
-      );
-      this.writeSignature(
-        file,
-        returnTypeFunctionSignature,
-        true,
-        returnFnName
-      );
-    } else {
-      func.returns(returnType, returnType.shortText());
-    }
+    writeSignatureAsFunction(this, file, signature, nested, nameOverride);
   }
 }
 
@@ -1082,7 +1136,25 @@ class DocEnumerationMember extends DocFragment {
 }
 class DocVar extends DocFragment {
   static kind = () => "Variable";
+  isCallable() {
+    // typedoc 0.28 reclassifies `const x = selectorFamily(...)` etc. as Variables
+    // with callable type signatures instead of Functions (see v0.28.0 changelog:
+    // "Function-like variable exports will now only be automatically converted as
+    // function types if they are initialized with a function expression"). These
+    // can be detected by having signatures in type.declaration, and we render them
+    // as functions to preserve existing doc output.
+    const sigs = this.get("type.declaration.signatures", []);
+    return sigs.length > 0;
+  }
   group() {
+    if (this.isCallable()) {
+      const sig = new DocSignature(
+        this.get("type.declaration.signatures")[0],
+        this
+      );
+      if (sig.isReactHook()) return "Hooks";
+      return "Functions";
+    }
     if (this.type().isRecoil()) {
       return "State";
     }
@@ -1091,13 +1163,30 @@ class DocVar extends DocFragment {
   type() {
     return new DocType(this.get("type"), this);
   }
+  callableSignatures() {
+    return this.get("type.declaration.signatures", []).map(
+      (s) => new DocSignature(s, this)
+    );
+  }
   writeHeader(file) {
     const type = this.type();
     file.refLabel(this.fullPath());
     file.section(this.label(), 3);
-    file.typeLabel(type);
+    if (!this.isCallable()) {
+      file.typeLabel(type);
+    }
   }
   writeContent(file) {
+    if (this.isCallable()) {
+      file.refLabel(this.fullPath());
+      file.section(this.label(), 3, true);
+      for (const signature of this.callableSignatures()) {
+        // Use the variable name as the function name (signatures have __type)
+        const nameOverride = signature.toTextSignature(this.get("name"));
+        writeSignatureAsFunction(this, file, signature, false, nameOverride);
+      }
+      return;
+    }
     const type = this.type();
 
     if (type.isRecoil()) {
@@ -1202,7 +1291,12 @@ class DocType extends DocFragment {
     return this.isLiteral() || this.isIntrinsic();
   }
   isExternal() {
-    return this.has("package");
+    // Pre-0.28, only external references (e.g. from "typescript" or "recoil") had
+    // a "package" field. 0.28+ adds it to all references including internal ones
+    // like "@fiftyone/state", so we now check the package name explicitly.
+    const pkg = this.get("package");
+    if (!pkg) return false;
+    return !pkg.startsWith("@fiftyone/");
   }
   isLiteral() {
     return this.get("type") === "literal";
@@ -1231,7 +1325,7 @@ class DocType extends DocFragment {
   isFunction() {
     return (
       (this.get("type") === "reflection" &&
-        this.get("declaration.kindString") === "Function") ||
+        getKindString(this.get("declaration", {})) === "Function") ||
       this.declaration().isFunction()
     );
   }
@@ -1350,6 +1444,18 @@ class DocTypeAlias extends DocFragment {
     file.section(this.label(), 3);
   }
   writeContent(file) {
+    const typeRaw = this.get("type");
+    // typedoc 0.28 flattens object-literal type alias children to the top level
+    // (see v0.28.0 changelog: "Object literal type alias types will now be
+    // converted in a way which causes them to be rendered more similarly to how
+    // interfaces are rendered"). Handle by wrapping as a DocTypeLiteral.
+    if (!typeRaw && this.get("children", []).length > 0) {
+      const desc = new FragmentDescription();
+      const literal = new DocTypeLiteral(this.raw, this);
+      literal.addToDescription(desc, this.label());
+      file.desc(desc);
+      return;
+    }
     const type = this.type();
     if (type.isUnion()) {
       file.string(
@@ -1388,7 +1494,7 @@ class DocTypeLiteral extends DocFragment {
   }
   isFunction() {
     return (
-      this.get("kindString") === "Function" || this.signatures().length > 0
+      getKindString(this.raw) === "Function" || this.signatures().length > 0
     );
   }
   isObject() {
@@ -1493,7 +1599,12 @@ class DocSignature extends DocFragment {
     return this.get("name", "").startsWith("use");
   }
   toTextSignature(nameOverride) {
-    const name = nameOverride ? nameOverride : this.get("name", "");
+    let name = nameOverride ? nameOverride : this.get("name", "");
+    // typedoc 0.27+ changed constructor signature names from "new X" to "X"
+    // (see v0.27.0 changelog). Restore the prefix for RST output compatibility.
+    if (this.get("kind") === 16384 && !name.startsWith("new ")) {
+      name = "new " + name;
+    }
     const prefix = name === "__type" ? "" : name;
     return `${prefix}(${this.parameters()
       .map((p) => p.label())
@@ -1557,12 +1668,13 @@ function toFragment(raw, override, parent = null) {
   if (override) {
     return new override(raw, parent);
   }
+  const kindStr = getKindString(raw);
   for (const type of fragmentTypes) {
-    if (type.kind() === raw.kindString) {
+    if (type.kind() === kindStr) {
       return new type(raw, parent);
     }
   }
-  throw new Error(`Unknown fragment type: ${raw.kindString}`);
+  throw new Error(`Unknown fragment type: ${kindStr} (kind=${raw.kind})`);
 }
 
 // a function that replaces the last newline character if it is at the end of the string
