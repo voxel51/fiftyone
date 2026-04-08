@@ -3,7 +3,10 @@ import { test as base } from "src/oss/fixtures";
 import { Renderer3dPom } from "src/oss/poms/fo3d/renderer-3d";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
-import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
+import {
+  compareLocatorScreenshotToBuffer,
+  getUniqueDatasetNameWithPrefix,
+} from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix("modal-main-2d-slice");
 const groupSpecs = [1, 2].map((index) => ({
@@ -192,8 +195,10 @@ test.describe.serial("navigation slice integrity", () => {
       name: expectedFirstGroup.img1Name,
       scene: expectedFirstGroup.scene,
     });
-    const expectedMain2dScreenshot =
-      await modal.captureStableMain2DRendererScreenshot();
+    const expectedMain2dCanvas = modal.sampleCanvas.locator;
+    await modal.assert.verifyPrimary2dRendererVisible();
+    await modal.sampleCanvas.moveMouseToViewportEdge();
+    const expectedMain2dScreenshot = await expectedMain2dCanvas.screenshot();
 
     await modal.close();
     await grid.selectSlice("3d");
@@ -202,8 +207,15 @@ test.describe.serial("navigation slice integrity", () => {
 
     await grid.openFirstSample();
     await assertMain2dAnd3dAreVisible();
-    await modal.assert.verifyMain2RendererMatchesScreenshotBuffer(
-      expectedMain2dScreenshot
+    await compareLocatorScreenshotToBuffer(
+      modal.sampleCanvas.locator,
+      expectedMain2dScreenshot,
+      {
+        beforeScreenshot: async () => {
+          await modal.assert.verifyPrimary2dRendererVisible();
+          await modal.sampleCanvas.moveMouseToViewportEdge();
+        },
+      }
     );
   });
 });
