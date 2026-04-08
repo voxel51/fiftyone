@@ -42,9 +42,6 @@ const SimilarityPopover = ({
 }: SimilarityPopoverProps) => {
   const [textQuery, setTextQuery] = useState("");
 
-  const current = useRecoilValue(fos.similarityParameters);
-  const hasSorting = Boolean(current);
-
   const keys = useRecoilValue(
     availableSimilarityKeys({ modal, isImageSearch })
   );
@@ -76,14 +73,6 @@ const SimilarityPopover = ({
           ([method]) => method.key === brainKey
         );
         return match ? match[1] : undefined;
-      },
-    []
-  );
-
-  const reset = useRecoilCallback(
-    ({ reset }) =>
-      () => {
-        reset(fos.similarityParameters);
       },
     []
   );
@@ -130,13 +119,18 @@ const SimilarityPopover = ({
         executeOperator(SEARCH_OPERATOR_URI, params, {
           callback: (result) => {
             if (result?.delegated) {
-              const operatorRunId = result?.result?.id?.$oid;
-              executeOperator(INIT_RUN_OPERATOR_URI, {
-                ...params,
-                operator_run_id: operatorRunId,
-              });
+              const resultObj = result?.result as
+                | { id?: { $oid?: string } }
+                | undefined;
+              const operatorRunId = resultObj?.id?.$oid;
+              executeOperator(
+                INIT_RUN_OPERATOR_URI,
+                { ...params, operator_run_id: operatorRunId },
+                { callback: () => openPanel() }
+              );
+            } else {
+              openPanel();
             }
-            openPanel();
           },
         });
       },
@@ -167,7 +161,7 @@ const SimilarityPopover = ({
     },
   ];
 
-  if (!isImageSearch && !hasSorting) {
+  if (!isImageSearch) {
     groupButtons.unshift({
       icon: "SearchIcon",
       ariaLabel: "Search",
@@ -186,7 +180,7 @@ const SimilarityPopover = ({
             flexDirection: "row",
           }}
         >
-          {!isImageSearch && !hasSorting && (
+          {!isImageSearch && (
             <Input
               placeholder={"Type anything!"}
               value={textQuery}
@@ -194,22 +188,11 @@ const SimilarityPopover = ({
               onEnter={handleSearch}
             />
           )}
-          {isImageSearch && !hasSorting && (
+          {isImageSearch && (
             <Button
               text={"Show similar samples"}
               title={`Search by similarity to the selected ${type}`}
               onClick={handleSearch}
-              style={LONG_BUTTON_STYLE}
-            />
-          )}
-          {hasSorting && (
-            <Button
-              text={"Reset"}
-              title={"Clear sorting"}
-              onClick={() => {
-                close();
-                reset();
-              }}
               style={LONG_BUTTON_STYLE}
             />
           )}
