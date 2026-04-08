@@ -7,7 +7,7 @@
             }
         ],
         "module": "esnext",
-        "target": "es2022",
+        "target": "es2025",
         "types": ["node", "vite/client"],
         "lib": ["esnext", "dom", "dom.iterable"],
         "noImplicitReturns": true,
@@ -20,10 +20,11 @@
         "jsx": "react-jsx",
         "esModuleInterop": true,
         "isolatedModules": true,
+        "noUncheckedSideEffectImports": true,
         "moduleDetection": "force",
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
-        "moduleResolution": "node",
+        "moduleResolution": "bundler",
         "resolveJsonModule": true,
         "noEmit": true
     }

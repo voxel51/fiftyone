@@ -41,8 +41,8 @@
         "prettier": "^2.8.0",
         "relay-compiler": "^14.1.0",
         "relay-runtime": "^14.1.0",
-        "typedoc": "^0.23.21",
-        "typescript": "^4.9.5",
+        "typedoc": "^0.28.18",
+        "typescript": "^6.0.2",
         "typescript-plugin-css-modules": "^5.0.2",
         "vite": "^6.4.2",
         "vite-plugin-eslint": "^1.8.1",
@@ -64,7 +64,6 @@
         "react-plotly.js": "^2.6.0"
     },
     "resolutions": {
-        "brace-expansion": "^2.0.2",
         "three-stdlib": "^2.36.1",
         "@types/react": "18.2.0"
     }
