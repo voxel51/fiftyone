@@ -35,6 +35,11 @@ const useSceneEventBus = () => {
   );
 };
 
+/**
+ * Listens for the `lighter:canonical-media-bounds-changed` event
+ * and returns the bounds. We use this to know when the image has loaded
+ * and its bounds are known.
+ */
 const useCanonicalMediaBounds = () => {
   const [bounds, setBounds] = useState<Rect | null>(null);
 
