@@ -295,10 +295,10 @@ export const selectedLabelIds = selector<Set<string>>({
 export const selectedLabelTypes = selector<Record<string, SelectionType>>({
   key: "selectedLabelTypes",
   get: ({ get }) => {
-    const labels = get(atoms.selectedLabels);
+    const labels = get(selectedLabelMap);
     const types: Record<string, SelectionType> = {};
-    for (const label of labels) {
-      types[label.labelId] = label.type === "alt" ? "alt" : "default";
+    for (const [labelId, label] of Object.entries(labels)) {
+      types[labelId] = label.type === "alt" ? "alt" : "default";
     }
     return types;
   },
