@@ -5,7 +5,7 @@ FiftyOne Labs
 
 .. default-role:: code
 
-FiftyOne Labs brings research solutions and experimental features for machine
+`FiftyOne Labs <https://github.com/voxel51/fiftyone-labs>`_ brings research solutions and experimental features for machine
 learning. Here you'll find cutting-edge experiments, novel workflows, and
 advanced capabilities built using the
 :ref:`FiftyOne plugins ecosystem <plugins-ecosystem>`.

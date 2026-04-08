@@ -19,7 +19,6 @@ curate your data from an art into a measurable science.
 .. customanimatedcta::
     :button_text: Try experimental Brain features in FiftyOne Labs
     :button_link: labs/index.html
-    :align: right
 
 The FiftyOne Brain methods are useful across the stages of the machine learning
 workflow:
