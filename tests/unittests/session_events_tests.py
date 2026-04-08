@@ -12,14 +12,20 @@ import unittest
 from dacite import from_dict
 
 # pylint: disable=no-name-in-module,import-error
-from fiftyone.core.session.constants import VALID_ICON_STYLES
+from fiftyone.core.session.constants import (
+    DEFAULT_LABEL_SELECTION_STYLE,
+    VALID_ICON_STYLES,
+)
 from fiftyone.core.session.session import (
+    _normalize_selected_labels,
     _on_select_labels,
+    _resolve_label_selection_style,
     _resolve_selection_style,
 )
 from fiftyone.core.session.utils import normalize_selected_samples
 from fiftyone.core.session.events import (
     SelectLabels,
+    SetLabelSelectionStyle,
     SetSampleSelectionStyle,
 )
 
@@ -305,3 +311,111 @@ class SessionTests(unittest.TestCase):
         }
         state = StateDescription.from_dict(d)
         self.assertEqual(state.selected_samples, [])
+
+    # -------------------------------------------------------------------
+    # Label selection style
+    # -------------------------------------------------------------------
+
+    @drop_datasets
+    def test_set_label_selection_style(self):
+        state = StateDescription()
+        event = SetLabelSelectionStyle(
+            style={"default": "dashed-green", "alt": "dashed-red"}
+        )
+        state.label_selection_style = event.style
+        self.assertEqual(
+            state.label_selection_style["default"], "dashed-green"
+        )
+        self.assertEqual(state.label_selection_style["alt"], "dashed-red")
+
+    @drop_datasets
+    def test_clear_label_selection_style(self):
+        state = StateDescription()
+        state.label_selection_style = {
+            "default": "dashed-green",
+            "alt": "dashed-red",
+        }
+
+        clear_style = dict(DEFAULT_LABEL_SELECTION_STYLE)
+        event = SetLabelSelectionStyle(style=clear_style)
+        state.label_selection_style = event.style
+        self.assertEqual(state.label_selection_style, clear_style)
+
+    @drop_datasets
+    def test_resolve_label_selection_style_valid(self):
+        result = _resolve_label_selection_style("dashed-green", "dashed-red")
+        self.assertEqual(
+            result, {"default": "dashed-green", "alt": "dashed-red"}
+        )
+
+    @drop_datasets
+    def test_resolve_label_selection_style_defaults(self):
+        result = _resolve_label_selection_style(None, None)
+        self.assertEqual(result, {"default": "dashed", "alt": "dashed"})
+
+    @drop_datasets
+    def test_resolve_label_selection_style_invalid(self):
+        with self.assertRaises(ValueError):
+            _resolve_label_selection_style("invalid-style", "dashed")
+
+    @drop_datasets
+    def test_normalize_selected_labels_adds_type(self):
+        labels = [
+            {"label_id": "a", "sample_id": "s1", "field": "detections"},
+        ]
+        result = _normalize_selected_labels(labels)
+        self.assertEqual(result[0]["type"], "default")
+
+    @drop_datasets
+    def test_normalize_selected_labels_preserves_type(self):
+        labels = [
+            {
+                "label_id": "a",
+                "sample_id": "s1",
+                "field": "detections",
+                "type": "alt",
+            },
+        ]
+        result = _normalize_selected_labels(labels)
+        self.assertEqual(result[0]["type"], "alt")
+
+    @drop_datasets
+    def test_normalize_selected_labels_invalid_type(self):
+        labels = [
+            {
+                "label_id": "a",
+                "sample_id": "s1",
+                "field": "detections",
+                "type": "invalid",
+            },
+        ]
+        with self.assertRaises(ValueError):
+            _normalize_selected_labels(labels)
+
+    @drop_datasets
+    def test_state_from_dict_restores_label_selection_style(self):
+        d = {
+            "selected": [],
+            "selected_labels": [],
+            "label_selection_style": {
+                "default": "dashed-green",
+                "alt": "dashed-red",
+            },
+        }
+        state = StateDescription.from_dict(d)
+        self.assertEqual(
+            state.label_selection_style,
+            {"default": "dashed-green", "alt": "dashed-red"},
+        )
+
+    @drop_datasets
+    def test_state_from_dict_missing_label_style_uses_default(self):
+        d = {
+            "selected": [],
+            "selected_labels": [],
+        }
+        state = StateDescription.from_dict(d)
+        self.assertEqual(
+            state.label_selection_style,
+            {"default": "dashed", "alt": "dashed"},
+        )
