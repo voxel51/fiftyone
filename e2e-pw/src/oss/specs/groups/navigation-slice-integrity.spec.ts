@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { test as base } from "src/oss/fixtures";
+import { expect, test as base } from "src/oss/fixtures";
 import { Renderer3dPom } from "src/oss/poms/fo3d/renderer-3d";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
@@ -23,6 +23,14 @@ const TEMP_FILE_PATHS = groupSpecs.flatMap((spec) => [
   spec.img2Path,
   spec.pointCloudPath,
 ]);
+
+const ensureMain2dCanvasReadyForScreenshot = async (modal: ModalPom) => {
+  await modal.assert.verifyPrimary2dRendererVisible();
+  await expect(modal.sampleCanvas.checkbox).toBeHidden();
+  await modal.sampleCanvas.tooltip.assert.isVisible(false);
+  await modal.sampleCanvas.toolbar.assert.isVisible(false);
+  await modal.sampleCanvas.moveMouseToViewportEdge();
+};
 
 const test = base.extend<{
   grid: GridPom;
@@ -195,9 +203,8 @@ test.describe.serial("navigation slice integrity", () => {
       name: expectedFirstGroup.img1Name,
       scene: expectedFirstGroup.scene,
     });
-    const expectedMain2dCanvas = modal.sampleCanvas.locator;
-    await modal.assert.verifyPrimary2dRendererVisible();
-    await modal.sampleCanvas.moveMouseToViewportEdge();
+    const expectedMain2dCanvas = modal.groupLooker.locator("canvas");
+    await ensureMain2dCanvasReadyForScreenshot(modal);
     const expectedMain2dScreenshot = await expectedMain2dCanvas.screenshot();
 
     await modal.close();
@@ -208,13 +215,11 @@ test.describe.serial("navigation slice integrity", () => {
     await grid.openFirstSample();
     await assertMain2dAnd3dAreVisible();
     await compareLocatorScreenshotToBuffer(
-      modal.sampleCanvas.locator,
+      modal.groupLooker.locator("canvas"),
       expectedMain2dScreenshot,
       {
-        beforeScreenshot: async () => {
-          await modal.assert.verifyPrimary2dRendererVisible();
-          await modal.sampleCanvas.moveMouseToViewportEdge();
-        },
+        beforeScreenshot: async () =>
+          ensureMain2dCanvasReadyForScreenshot(modal),
       }
     );
   });
