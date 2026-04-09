@@ -8,28 +8,36 @@ export const getQueryIds = async (
   snapshot: Snapshot,
   brainKey?: string
 ): Promise<string[] | string | undefined> => {
-  const selectedLabelIds = await snapshot.getPromise(fos.selectedLabelIds);
-  const selectedLabels = await snapshot.getPromise(fos.selectedLabels);
+  const isModal = await snapshot.getPromise(fos.isModalActive);
 
-  if (selectedLabelIds.size) {
-    const methods = await snapshot.getPromise(fos.similarityMethods);
-    const labels_field = methods.patches
-      .filter(([method]) => method.key === brainKey)
-      .map(([_, value]) => value)[0];
-    return [...selectedLabelIds].filter(
-      (id) => selectedLabels[id].field === labels_field
-    );
+  // In modal: check selected labels for patch-based similarity
+  if (isModal) {
+    const selectedLabelIds = await snapshot.getPromise(fos.selectedLabelIds);
+    const selectedLabelMap = await snapshot.getPromise(fos.selectedLabelMap);
+
+    if (selectedLabelIds.size) {
+      const methods = await snapshot.getPromise(fos.similarityMethods);
+      const labels_field = methods.patches
+        .filter(([method]) => method.key === brainKey)
+        .map(([_, value]) => value)[0];
+      return [...selectedLabelIds].filter(
+        (id) => selectedLabelMap[id]?.field === labels_field
+      );
+    }
+
+    return await snapshot.getPromise(fos.modalSampleId);
   }
 
+  // Grid: use selected samples
   const selectedSamples = Array.from(
     (await snapshot.getPromise(fos.selectedSamples)).keys()
   );
 
   if (selectedSamples.length) {
-    return [...selectedSamples];
+    return selectedSamples;
   }
 
-  return await snapshot.getPromise(fos.modalSampleId);
+  return undefined;
 };
 
 export const availableSimilarityKeys = selectorFamily<

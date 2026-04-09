@@ -130,6 +130,11 @@ class SimilaritySearchOperator(foo.Operator):
 
             ctx.set_progress(0.3, label="Running similarity query...")
 
+            # For patches-based searches, ensure we're on a patches
+            # view before sorting (skip if already on patches)
+            if patches_field and not view._is_patches:
+                view = view.to_patches(patches_field)
+
             # Build kwargs, omitting None values
             kwargs = {"brain_key": brain_key}
             if k is not None:

@@ -1,3 +1,4 @@
+import { PopoutSectionTitle } from "@fiftyone/components";
 import { executeOperator } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
 import { useBrowserStorage } from "@fiftyone/state";
@@ -11,11 +12,7 @@ import { useRecoilCallback, useRecoilValue } from "recoil";
 import Input from "../../Common/Input";
 import { Button } from "../../utils";
 import Popout from "../Popout";
-import {
-  INIT_RUN_OPERATOR_URI,
-  PANEL_NAME,
-  SEARCH_OPERATOR_URI,
-} from "./constants";
+import { PANEL_NAME, SEARCH_OPERATOR_URI } from "./constants";
 import GroupButton, { type ButtonDetail } from "./GroupButton";
 import Helper from "./Helper";
 import { availableSimilarityKeys, getQueryIds, sortType } from "./utils";
@@ -48,6 +45,19 @@ const SimilarityPopover = ({
     availableSimilarityKeys({ modal, isImageSearch })
   );
   const hasSimilarityKeys = keys.length > 0;
+  const hasSelectedLabels = useRecoilValue(fos.hasSelectedLabels);
+  const selectedLabelsList = useRecoilValue(fos.selectedLabels);
+
+  // Detect if selected labels span multiple fields
+  const selectedLabelFields = useMemo(() => {
+    if (!modal || !hasSelectedLabels) return new Set<string>();
+    return new Set(selectedLabelsList.map((l) => l.field));
+  }, [modal, hasSelectedLabels, selectedLabelsList]);
+
+  const hasMixedFields = selectedLabelFields.size > 1;
+  const showMixedFieldWarning = modal && isImageSearch && hasMixedFields;
+  const showNoIndexWarning =
+    modal && isImageSearch && !hasMixedFields && !hasSimilarityKeys;
 
   const type = useRecoilValue(sortType(modal));
   const datasetId = fos.useAssertedRecoilValue(fos.datasetId);
@@ -88,7 +98,7 @@ const SimilarityPopover = ({
   }, []);
 
   const handleSearch = useRecoilCallback(
-    ({ snapshot }) =>
+    ({ snapshot, set }) =>
       async () => {
         if (!resolvedBrainKey) return;
 
@@ -99,7 +109,7 @@ const SimilarityPopover = ({
         if (isImageSearch && (!queryIds || queryIds.length === 0)) return;
         if (!isImageSearch && !textQuery.trim()) return;
 
-        const pf = await resolvePatchesField(resolvedBrainKey);
+        const patchesField = await resolvePatchesField(resolvedBrainKey);
 
         const params: Record<string, unknown> = {
           brain_key: resolvedBrainKey,
@@ -108,8 +118,8 @@ const SimilarityPopover = ({
           reverse: false,
           k: DEFAULT_K,
         };
-        if (pf) {
-          params.patches_field = pf;
+        if (patchesField) {
+          params.patches_field = patchesField;
         }
 
         const current = lastUsedBrainKeys ? JSON.parse(lastUsedBrainKeys) : {};
@@ -120,15 +130,27 @@ const SimilarityPopover = ({
         close();
 
         executeOperator(SEARCH_OPERATOR_URI, params, {
-          callback: (result) => {
-            if (result?.delegated) {
-              const resultObj = result?.result as
-                | { id?: { $oid?: string } }
-                | undefined;
-              const operatorRunId = resultObj?.id?.$oid;
+          callback: () => {
+            if (modal) {
+              set(fos.modalSelector, null);
+            }
+            executeOperator("clear_selected_samples");
+            executeOperator("clear_selected_labels");
+            set(fos.extendedSelection, { selection: [] });
+
+            if (patchesField) {
+              // Patches search completed: switch to patches view,
+              // then open panel
               executeOperator(
-                INIT_RUN_OPERATOR_URI,
-                { ...params, operator_run_id: operatorRunId },
+                "set_view",
+                {
+                  view: [
+                    {
+                      _cls: "fiftyone.core.stages.ToPatches",
+                      kwargs: [["field", patchesField]],
+                    },
+                  ],
+                },
                 { callback: () => openPanel() }
               );
             } else {
@@ -144,16 +166,24 @@ const SimilarityPopover = ({
       resolvePatchesField,
       close,
       openPanel,
+      modal,
       lastUsedBrainKeys,
       setLastUsedBrainKeys,
       datasetId,
     ]
   );
 
-  const handleOpenPanel = useCallback(() => {
-    close();
-    openPanel();
-  }, [close, openPanel]);
+  const handleOpenPanel = useRecoilCallback(
+    ({ set }) =>
+      () => {
+        close();
+        if (modal) {
+          set(fos.modalSelector, null);
+        }
+        openPanel();
+      },
+    [close, modal, openPanel]
+  );
 
   const groupButtons: ButtonDetail[] = [
     {
@@ -175,7 +205,17 @@ const SimilarityPopover = ({
 
   return (
     <Popout modal={modal} style={{ minWidth: 280 }} fixed anchorRef={anchorRef}>
-      {hasSimilarityKeys && (
+      {showMixedFieldWarning && (
+        <PopoutSectionTitle style={{ fontSize: 12 }}>
+          Selected labels must be from the same field to search by similarity
+        </PopoutSectionTitle>
+      )}
+      {showNoIndexWarning && (
+        <PopoutSectionTitle style={{ fontSize: 12 }}>
+          No similarity index found for the selected label field
+        </PopoutSectionTitle>
+      )}
+      {!showMixedFieldWarning && !showNoIndexWarning && hasSimilarityKeys && (
         <div
           style={{
             display: "flex",
@@ -193,7 +233,7 @@ const SimilarityPopover = ({
           )}
           {isImageSearch && (
             <Button
-              text={"Show similar samples"}
+              text={modal ? "Show similar patches" : "Show similar samples"}
               title={`Search by similarity to the selected ${type}`}
               onClick={handleSearch}
               style={LONG_BUTTON_STYLE}
@@ -202,7 +242,7 @@ const SimilarityPopover = ({
           <GroupButton buttons={groupButtons} />
         </div>
       )}
-      {!hasSimilarityKeys && (
+      {!showMixedFieldWarning && !showNoIndexWarning && !hasSimilarityKeys && (
         <Helper hasSimilarityKeys={false} isImageSearch={isImageSearch} />
       )}
     </Popout>

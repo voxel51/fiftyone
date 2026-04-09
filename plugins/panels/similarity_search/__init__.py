@@ -108,6 +108,8 @@ class SimilaritySearchPanel(Panel):
             else:
                 view = ctx.dataset.select(result_ids, ordered=True)
 
+            ctx.ops.clear_selected_samples()
+            ctx.ops.clear_selected_labels()
             ctx.ops.set_view(view)
             ctx.panel.set_state("applied_run_id", run_id)
 
