@@ -1,14 +1,10 @@
 /**
- * Centralized MUI imports for icons without voodo equivalents.
+ * Centralized MUI imports for components without voodo equivalents.
  *
- * Most icons have been migrated to voodo's IconName enum.
- * Only icons listed here have no voodo counterpart yet.
+ * All icons have been migrated to voodo's IconName strings (v0.0.22+).
+ * Only layout components remain here pending voodo equivalents.
  */
 
-// Icons without voodo equivalents (pending PRs in design-system now)
-export { default as ContentCopyIcon } from "@mui/icons-material/ContentCopy";
-export { default as GridViewIcon } from "@mui/icons-material/GridView";
-
-// Components (no voodo equivalent)
+// Components (pending voodo ImageList)
 export { default as ImageList } from "@mui/material/ImageList";
 export { default as ImageListItem } from "@mui/material/ImageListItem";

@@ -41,7 +41,9 @@ const getIndexIdFromInstanceIdForLabel = (
     cache = {};
   }
 
-  const key = `${currentModalUniqueId}-${label.label.toLocaleLowerCase()}`;
+  const key = `${currentModalUniqueId}-${(
+    label?.label ?? ""
+  ).toLocaleLowerCase()}`;
 
   if (
     cache[key] &&

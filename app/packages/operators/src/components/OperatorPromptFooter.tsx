@@ -1,16 +1,11 @@
 import { Button } from "@fiftyone/components";
-import { CircularProgress, Link, Stack } from "@mui/material";
-import {
-  IconName,
-  RichCard,
-  Variant,
-  Button as VoodoButton,
-} from "@voxel51/voodo";
+import { CircularProgress, Stack } from "@mui/material";
 import { useCallback } from "react";
 import { SubmitButtonOption } from "../OperatorPalette";
 import SplitButton from "../SplitButton";
 import { BaseStylesProvider } from "../styled-components";
 import { onEnter } from "../utils";
+import RequiresOrchestrator from "./RequiresOrchestrator";
 
 export default function OperatorPromptFooter(props: OperatorFooterProps) {
   const {
@@ -35,20 +30,7 @@ export default function OperatorPromptFooter(props: OperatorFooterProps) {
   if (requiresOrchestratorSetup) {
     return (
       <Stack sx={{ width: "100%", gap: 2 }}>
-        <RichCard
-          title="Background compute is not yet configured"
-          description="Production workflows require dedicated compute resources."
-          icon={IconName.Orchestrator}
-          compact
-          action={
-            <Link
-              href="https://docs.voxel51.com/plugins/using_plugins.html#delegated-operations"
-              target="_blank"
-            >
-              <VoodoButton variant={Variant.Secondary}>Set up now</VoodoButton>
-            </Link>
-          }
-        />
+        <RequiresOrchestrator />
         <Stack justifyContent="flex-end" direction="row">
           <Button onClick={onCancel} onKeyDown={onEnter(onCancel)}>
             Close

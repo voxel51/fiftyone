@@ -4,13 +4,12 @@ import { BrainKeyConfig, QueryType, SearchScope } from "../types";
 import { INIT_RUN_OPERATOR_URI } from "../constants";
 import { canSubmitSearch, buildExecutionParams } from "../utils";
 
-const EMPTY_NEGATIVE_IDS: string[] = [];
-
 type UseSearchSubmissionInput = {
   brainKey: string;
   queryType: QueryType;
   textQuery: string;
   queryIds: string[];
+  negativeQueryIds: string[];
   reverse: boolean;
   selectedConfig?: BrainKeyConfig;
   searchScope: SearchScope;
@@ -49,7 +48,7 @@ export const useSearchSubmission = (input: UseSearchSubmissionInput) => {
         k: input.k,
         distField: input.distField,
         runName: input.runName,
-        negativeQueryIds: EMPTY_NEGATIVE_IDS,
+        negativeQueryIds: input.negativeQueryIds,
         dynamicResults: input.dynamicResults,
       }),
     [
@@ -66,6 +65,7 @@ export const useSearchSubmission = (input: UseSearchSubmissionInput) => {
       input.searchScope,
       input.hasView,
       input.queryIds,
+      input.negativeQueryIds,
     ]
   );
 

@@ -23,10 +23,22 @@ export const useSearchSelection = () => {
       return selectedLabels.map((l: { label_id: string }) => l.label_id);
     }
     if (selectedSamples && selectedSamples.size > 0) {
-      return Array.from(selectedSamples);
+      // Only include "default" (positive) selections as query IDs
+      return Array.from(selectedSamples.entries())
+        .filter(([, type]) => type === "default")
+        .map(([id]) => id);
     }
     return [];
   }, [selectedSamples, selectedLabels]);
+
+  const negativeQueryIds = useMemo(() => {
+    if (selectedSamples && selectedSamples.size > 0) {
+      return Array.from(selectedSamples.entries())
+        .filter(([, type]) => type === "alt")
+        .map(([id]) => id);
+    }
+    return [];
+  }, [selectedSamples]);
 
   const hasView = Array.isArray(view) && view.length > 0;
 
@@ -36,6 +48,7 @@ export const useSearchSelection = () => {
     view,
     hasSamplesSelected,
     queryIds,
+    negativeQueryIds,
     hasView,
   };
 };
