@@ -63,7 +63,18 @@ export const computeLabelTagCounts = (
       if (!docType || !docType.startsWith(LABELS_PREFIX)) {
         // Recurse into non-label embedded documents that have sub-fields
         if (field.fields) {
-          collectFromData(fieldValue as Record<string, unknown>, field.fields);
+          if (Array.isArray(fieldValue)) {
+            for (const item of fieldValue) {
+              if (item && typeof item === "object") {
+                collectFromData(item as Record<string, unknown>, field.fields);
+              }
+            }
+          } else {
+            collectFromData(
+              fieldValue as Record<string, unknown>,
+              field.fields
+            );
+          }
         }
         continue;
       }

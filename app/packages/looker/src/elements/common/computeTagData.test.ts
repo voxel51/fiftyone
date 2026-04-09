@@ -373,6 +373,50 @@ describe("computeLabelTagCounts", () => {
     });
   });
 
+  it("counts tags from labels inside a list of embedded documents", () => {
+    const schema: Schema = {
+      items: makeField("items", {
+        ftype: LIST_FIELD,
+        subfield: EMBEDDED_DOCUMENT_FIELD,
+        embeddedDocType:
+          "fiftyone.core.odm.embedded_document.DynamicEmbeddedDocument",
+        fields: {
+          detections: makeField("detections", {
+            embeddedDocType: "fiftyone.core.labels.Detections",
+            ftype: EMBEDDED_DOCUMENT_FIELD,
+            path: "items.detections",
+            fields: {
+              detections: makeField("detections", {
+                ftype: LIST_FIELD,
+                path: "items.detections.detections",
+                subfield: EMBEDDED_DOCUMENT_FIELD,
+              }),
+            },
+          }),
+        },
+      }),
+    };
+    const sample = {
+      items: [
+        {
+          detections: {
+            detections: [{ tags: ["a", "b"] }],
+          },
+        },
+        {
+          detections: {
+            detections: [{ tags: ["b", "c"] }],
+          },
+        },
+      ],
+    };
+    expect(computeLabelTagCounts(sample, schema)).toEqual({
+      a: 1,
+      b: 2,
+      c: 1,
+    });
+  });
+
   it("ignores non-label embedded document fields", () => {
     const schema: Schema = {
       metadata: makeField("metadata", {
