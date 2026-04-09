@@ -108,15 +108,24 @@ export class SampleCanvasPom {
    *
    * @param x The x coordinate between [0, 1]
    * @param y The y coordinate between [0, 1]
-   * @param cursor An optional cursor value to expect after moving
+   * @param cursor An optional cursor value to expect after moving. When
+   *   provided, the move is retried until the cursor matches. This is
+   *   necessary because the cursor is event-driven — it only updates when a
+   *   mouse event fires — so the underlying state (e.g. detection mode) may
+   *   not have settled yet on the first move attempt.
    */
   async move(x: number, y: number, cursor?: string) {
     const xy = await this.#toScreenCoordinates(x, y);
     this.#mouseX = xy.x;
     this.#mouseY = xy.y;
-    await this.page.mouse.move(xy.x, xy.y);
+
     if (cursor) {
-      await this.assert.hasCursor(cursor);
+      await expect(async () => {
+        await this.page.mouse.move(xy.x, xy.y);
+        await this.assert.hasCursor(cursor);
+      }).toPass();
+    } else {
+      await this.page.mouse.move(xy.x, xy.y);
     }
   }
 
@@ -197,7 +206,7 @@ class SampleCanvasAsserter {
   /**
    * Does the mouse have this cursor style
    *
-   * @param name the cursor style
+   * @param cursor the cursor style
    */
   async hasCursor(cursor: string) {
     const value = await this.sampleCanvasPom.cursor;
