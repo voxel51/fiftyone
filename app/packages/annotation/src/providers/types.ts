@@ -89,4 +89,5 @@ export interface AnnotationProvider {
   infer(request: InferenceRequest): Promise<InferenceResult>;
   abort(): void;
   dispose(): void;
+  isInitialized(): boolean;
 }
