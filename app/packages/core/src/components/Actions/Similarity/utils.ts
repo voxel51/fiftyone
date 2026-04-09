@@ -4,10 +4,15 @@ import { selectedLabels } from "@fiftyone/state";
 import type { Snapshot } from "recoil";
 import { selectorFamily } from "recoil";
 
+export type QueryIds = {
+  queryIds: string[] | string | undefined;
+  negativeQueryIds?: string[];
+};
+
 export const getQueryIds = async (
   snapshot: Snapshot,
   brainKey?: string
-): Promise<string[] | string | undefined> => {
+): Promise<QueryIds> => {
   const isModal = await snapshot.getPromise(fos.isModalActive);
 
   // In modal: check selected labels for patch-based similarity
@@ -20,24 +25,49 @@ export const getQueryIds = async (
       const labels_field = methods.patches
         .filter(([method]) => method.key === brainKey)
         .map(([_, value]) => value)[0];
-      return [...selectedLabelIds].filter(
+
+      const matching = [...selectedLabelIds].filter(
         (id) => selectedLabelMap[id]?.field === labels_field
       );
+
+      // Separate positive (default) and negative (alt) labels
+      const positive = matching.filter(
+        (id) => selectedLabelMap[id]?.type !== "alt"
+      );
+      const negative = matching.filter(
+        (id) => selectedLabelMap[id]?.type === "alt"
+      );
+
+      return {
+        queryIds: positive.length > 0 ? positive : undefined,
+        negativeQueryIds: negative.length > 0 ? negative : undefined,
+      };
     }
 
-    return await snapshot.getPromise(fos.modalSampleId);
+    return { queryIds: await snapshot.getPromise(fos.modalSampleId) };
   }
 
   // Grid: use selected samples
-  const selectedSamples = Array.from(
-    (await snapshot.getPromise(fos.selectedSamples)).keys()
-  );
+  const selectedSamplesMap = await snapshot.getPromise(fos.selectedSamples);
+  const positive: string[] = [];
+  const negative: string[] = [];
 
-  if (selectedSamples.length) {
-    return selectedSamples;
+  for (const [id, type] of selectedSamplesMap.entries()) {
+    if (type === "alt") {
+      negative.push(id);
+    } else {
+      positive.push(id);
+    }
   }
 
-  return undefined;
+  if (positive.length > 0 || negative.length > 0) {
+    return {
+      queryIds: positive.length > 0 ? positive : undefined,
+      negativeQueryIds: negative.length > 0 ? negative : undefined,
+    };
+  }
+
+  return { queryIds: undefined };
 };
 
 export const availableSimilarityKeys = selectorFamily<
@@ -129,3 +159,31 @@ export const sortType = selectorFamily<string, boolean>({
       return "patches";
     },
 });
+
+export function buildRunName({
+  isImageSearch,
+  textQuery,
+  queryIds,
+  negativeQueryIds,
+  patchesField,
+}: {
+  isImageSearch: boolean;
+  textQuery: string;
+  queryIds: string[] | string | undefined;
+  negativeQueryIds?: string[];
+  patchesField?: string;
+}): string {
+  if (!isImageSearch) {
+    return `Text: "${textQuery}"`;
+  }
+
+  const positiveCount = Array.isArray(queryIds) ? queryIds.length : 1;
+  const negativeCount = negativeQueryIds?.length ?? 0;
+  const unit = patchesField ? "patches" : "samples";
+
+  if (negativeCount > 0) {
+    return `Image: ${positiveCount} prompt(s), ${negativeCount} negative`;
+  }
+
+  return `Image: ${positiveCount} ${unit}`;
+}

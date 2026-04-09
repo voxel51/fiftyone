@@ -4,7 +4,12 @@ import { useBrowserStorage } from "@fiftyone/state";
 import { useCallback, useMemo, useState } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { PANEL_NAME, SEARCH_OPERATOR_URI } from "./constants";
-import { availableSimilarityKeys, getQueryIds, sortType } from "./utils";
+import {
+  availableSimilarityKeys,
+  buildRunName,
+  getQueryIds,
+  sortType,
+} from "./utils";
 
 const DEFAULT_K = 25;
 
@@ -83,21 +88,25 @@ export default function useSimilarityPopover({
       async () => {
         if (!resolvedBrainKey) return;
 
-        const queryIds = isImageSearch
+        const queryResult = isImageSearch
           ? await getQueryIds(snapshot, resolvedBrainKey)
           : undefined;
+
+        const queryIds = queryResult?.queryIds;
+        const negativeQueryIds = queryResult?.negativeQueryIds;
 
         if (isImageSearch && (!queryIds || queryIds.length === 0)) return;
         if (!isImageSearch && !textQuery.trim()) return;
 
         const patchesField = await resolvePatchesField(resolvedBrainKey);
-        const currentView = await snapshot.getPromise(fos.view);
 
-        const runName = isImageSearch
-          ? `Image: ${Array.isArray(queryIds) ? queryIds.length : 1} ${
-              patchesField ? "patches" : "samples"
-            }`
-          : `Text: "${textQuery.trim()}"`;
+        const runName = buildRunName({
+          isImageSearch,
+          textQuery: textQuery.trim(),
+          queryIds,
+          negativeQueryIds,
+          patchesField,
+        });
 
         const params: Record<string, unknown> = {
           brain_key: resolvedBrainKey,
@@ -110,12 +119,8 @@ export default function useSimilarityPopover({
         if (patchesField) {
           params.patches_field = patchesField;
         }
-        if (
-          currentView &&
-          Array.isArray(currentView) &&
-          currentView.length > 0
-        ) {
-          params.source_view = currentView;
+        if (negativeQueryIds && negativeQueryIds.length > 0) {
+          params.negative_query_ids = negativeQueryIds;
         }
 
         setLastUsedBrainKeys({
