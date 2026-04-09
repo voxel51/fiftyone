@@ -79,7 +79,7 @@ Follow these steps to submit your plugin:
     on GitHub
 
 2.  **Add your plugin to the community table**: Edit the README and add a new
-    row with your plugin's name, description, and repository link
+    row that matches the content/formatting of the existing rows
 
 3.  **Submit a pull request**: Create a PR with:
 
