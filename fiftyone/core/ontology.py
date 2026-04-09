@@ -1,5 +1,5 @@
 """
-Ontology classes for defining reusable annotation structures.
+Ontology classes for defining reusable annotation and taxonomy structures.
 
 | Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -11,11 +11,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Optional
 
-from fiftyone.core.annotation.attributes import (
-    Attribute,
-    When,
-    WhenOperator,
-)  # noqa: F401
+from fiftyone.core.annotation.attributes import Attribute
 from fiftyone.core.odm.ontology import OntologyType
 
 
@@ -105,7 +101,7 @@ class Ontology:
 
 
 class AnnotationOntology(Ontology):
-    """A named, versioned annotation ontology.
+    """Ontology for defining annotation structures.
 
     Bundles typed attributes (with optional conditional display logic) and
     taxonomy references into a single document that gets connected to a

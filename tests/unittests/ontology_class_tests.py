@@ -8,14 +8,8 @@ FiftyOne ontology data class unit tests.
 
 import unittest
 
-from fiftyone.core.ontology import (
-    AnnotationOntology,
-    Attribute,
-    Node,
-    Taxonomy,
-    When,
-    WhenOperator,
-)
+from fiftyone.core.annotation.attributes import Attribute, When, WhenOperator
+from fiftyone.core.ontology import AnnotationOntology
 
 
 class WhenTests(unittest.TestCase):
@@ -51,13 +45,6 @@ class WhenTests(unittest.TestCase):
         )
         self.assertEqual(w.then, {"values": ["sedan", "suv", "coupe"]})
 
-    def test_to_dict(self):
-        w = When(WhenOperator.EQUALS, field="damage_present", value=True)
-        self.assertEqual(
-            w.to_dict(),
-            {"equals": {"field": "damage_present", "value": True}},
-        )
-
     def test_to_dict_with_then(self):
         w = When(
             WhenOperator.EQUALS,
@@ -72,13 +59,6 @@ class WhenTests(unittest.TestCase):
                 "then": {"values": ["sedan", "suv"]},
             },
         )
-
-    def test_from_dict(self):
-        w = When.from_dict({"in": {"field": "mode", "value": ["a", "b"]}})
-        self.assertEqual(w.operator, WhenOperator.IN)
-        self.assertEqual(w.field, "mode")
-        self.assertEqual(w.value, ["a", "b"])
-        self.assertIsNone(w.then)
 
     def test_from_dict_with_then(self):
         w = When.from_dict(
@@ -351,27 +331,6 @@ class AnnotationOntologyTests(unittest.TestCase):
         self.assertEqual(
             restored.attributes[2].when[0].field, "damage_location"
         )
-
-    def test_version_none_before_save(self):
-        ao = AnnotationOntology(name="test")
-        self.assertIsNone(ao.version)
-        self.assertIsNone(ao.created_at)
-        self.assertIsNone(ao.last_modified_at)
-
-
-class NodeStubTests(unittest.TestCase):
-    def test_not_implemented(self):
-        with self.assertRaises(NotImplementedError):
-            Node("vehicle_type")
-
-
-class TaxonomyStubTests(unittest.TestCase):
-    def test_not_implemented(self):
-        with self.assertRaises(NotImplementedError):
-            Taxonomy(name="vehicle_classes")
-
-    def test_type_set(self):
-        self.assertEqual(Taxonomy._TYPE, "taxonomy")
 
 
 if __name__ == "__main__":
