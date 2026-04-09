@@ -10,7 +10,10 @@ import json
 
 from bson import json_util
 
-from fiftyone.core.session.constants import VALID_ICON_STYLES
+from fiftyone.core.session.constants import (
+    VALID_ICON_STYLES,
+    VALID_LABEL_SELECTION_STYLES,
+)
 from fiftyone.core.session.utils import normalize_selected_samples
 from .categories import Categories
 
@@ -520,6 +523,24 @@ class Operations(object):
         """Clear the sample grid selection style in the App, reverting to default."""
         return self._ctx.trigger("clear_sample_selection_style")
 
+    def set_label_selection_style(self, default="dashed", alt="dashed"):
+        """Set the label selection style in the App.
+
+        Args:
+            default ("dashed"): the default label selection style. Supported
+                values are ``"dashed"``, ``"dashed-green"``, ``"dashed-red"``
+            alt ("dashed"): the alt label selection style
+        """
+        _validate_label_selection_style(default, alt)
+        return self._ctx.trigger(
+            "set_label_selection_style",
+            params={"default": default, "alt": alt},
+        )
+
+    def clear_label_selection_style(self):
+        """Clear the label selection style in the App, reverting to default."""
+        return self._ctx.trigger("clear_label_selection_style")
+
     def set_view(self, view=None, name=None):
         """Set the current view in the App.
 
@@ -767,4 +788,18 @@ def _validate_selection_style(default, alt) -> None:
         raise ValueError(
             f"Invalid alt icon style '{alt}'. "
             f"Must be one of {VALID_ICON_STYLES}"
+        )
+
+
+def _validate_label_selection_style(default, alt) -> None:
+    if default is not None and default not in VALID_LABEL_SELECTION_STYLES:
+        raise ValueError(
+            f"Invalid default label selection style '{default}'. "
+            f"Must be one of {VALID_LABEL_SELECTION_STYLES}"
+        )
+
+    if alt is not None and alt not in VALID_LABEL_SELECTION_STYLES:
+        raise ValueError(
+            f"Invalid alt label selection style '{alt}'. "
+            f"Must be one of {VALID_LABEL_SELECTION_STYLES}"
         )
