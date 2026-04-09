@@ -8,6 +8,9 @@ wrapper for the FiftyOne Model Zoo.
 """
 
 import logging
+import os
+import tempfile
+from typing import List, Optional
 
 import cv2
 import eta.core.utils as etau
@@ -19,6 +22,7 @@ import fiftyone.core.utils as fou
 import fiftyone.utils.sam as fosam
 import fiftyone.utils.torch as fout
 import fiftyone.zoo.models as fozm
+import fiftyone.core.media as focm
 
 fou.ensure_torch()
 import torch
@@ -110,11 +114,18 @@ class SegmentAnything2VideoModelConfig(
 
     See :class:`fiftyone.utils.torch.TorchImageModelConfig` for additional
     arguments.
+
+    Args:
+        media_mode (None): the media mode to use for the model (only "video" and "image" are supported). If None, defaults to "video"
     """
 
     def __init__(self, d):
         d = self.init(d)
         super().__init__(d)
+
+        self.media_mode = self.parse_string(d, "media_mode", default="video")
+        if self.media_mode not in ["video", "image"]:
+            raise ValueError("media_mode must be one of 'video' or 'image'")
 
 
 class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
@@ -403,14 +414,15 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
         self._download_model(config)
 
         try:
-            self.ctx = _load_video_frames_monkey_patch()
+            self.ctx = _load_video_frames_monkey_patches()
         except Exception as e:
-            logger.warning(
-                "Failed to monkey patch sam2.utils.misc.load_vide_frames: %s",
+            logger.error(
+                "Failed to monkey patch sam2.utils.misc.load_video_frames: %s",
                 e,
             )
 
         self.model = self._load_model(config)
+        self.media_mode = getattr(config, "media_mode", "video")
 
         self._curr_prompt_type = None
         self._curr_prompts = None
@@ -421,7 +433,12 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
 
     @property
     def media_type(self):
-        return "video"
+        return self.media_mode
+
+    @property
+    def ragged_batches(self):
+        # Frames are resized to a fixed size, so batching is safe
+        return False
 
     def _download_model(self, config):
         config.download_model_if_necessary()
@@ -450,8 +467,78 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
             )
         else:
             self._curr_negative_prompts = None
-
         return self._forward_pass(video_reader, sample)
+
+    def predict_all(
+        self, imgs: List[np.ndarray], samples: Optional[List] = None
+    ) -> List[fol.Detections]:
+        # Get the prompt field name from needs_fields (sample-level in this path)
+        if "prompt_field" in self.needs_fields:
+            prompt_field = self.needs_fields["prompt_field"]
+        else:
+            prompt_field = next(iter(self.needs_fields.values()), None)
+
+        if prompt_field is None:
+            raise AttributeError(
+                "Missing required argument 'prompt_field' for segment anything 2 video model"
+            )
+
+        # If there are no prompts anywhere in this sequence, do not call SAM2
+        has_prompt = False
+        for s in samples:
+            val = s.get_field(prompt_field)
+            if isinstance(val, fol.Detections) and len(val.detections) > 0:
+                has_prompt = True
+                break
+
+        if not has_prompt:
+            return [fol.Detections() for _ in samples]
+
+        class _ImageSamplesAsVideoFrames:
+            """Adapts a list of image samples to the video sample interface."""
+
+            media_type = focm.IMAGE
+
+            def __init__(self, frames):
+                self._frames = list(frames)
+
+            @property
+            def frames(self):
+                return {ii + 1: ff for ii, ff in enumerate(self._frames)}
+
+        mock_video_sample = _ImageSamplesAsVideoFrames(samples)
+
+        hh, ww = 0, 0
+        if len(imgs) > 0:
+            hh, ww = imgs[0].shape[0], imgs[0].shape[1]
+        mock_reader = type("_Reader", (), {"frame_size": (ww, hh)})()
+
+        # The existing video path will handle
+        # prompt extraction, registration, propagation, and detection construction
+        try:
+            sample_detections = self.predict(mock_reader, mock_video_sample)
+        except Exception as e:
+            if "mat1 and mat2 must have the same dtype" in str(e):
+                """
+                ------------------------------------------------------------
+                This error typically occurs due to a mixed-precision dtype mismatch in SAM2's
+                internal transformer layers. This is a known issue in SAM2's implementation
+                that is more likely to occur when propagating across
+                multiple sequences with different label sets, as this triggers
+                more complex memory attention paths in SAM2's tracking stack.
+                ------------------------------------------------------------
+                """
+                raise RuntimeError(
+                    f"Error propagating to all frames; \
+                please try with a shorter sequence with continuous frames and consistent labels."
+                )
+            else:
+                raise e
+
+        return [
+            sample_detections.get(i + 1, fol.Detections())
+            for i in range(len(samples))
+        ]
 
     def _get_field(self):
         if "prompt_field" in self.needs_fields:
@@ -459,27 +546,33 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
         else:
             prompt_field = next(iter(self.needs_fields.values()), None)
 
-        if not prompt_field.startswith("frames."):
-            raise ValueError(
-                "'prompt_field' should be a frame field for segment anything 2 video model"
-            )
-
         if prompt_field is None:
             raise AttributeError(
                 "Missing required argument 'prompt_field' for segment anything 2 video model"
             )
 
-        prompt_field = prompt_field[len("frames.") :]
+        # sample-level prompt_field for flattened frames
+        if getattr(self, "media_mode", "video") == "video":
+            if prompt_field.startswith("frames."):
+                prompt_field = prompt_field[len("frames.") :]
+            else:
+                raise ValueError(
+                    "'prompt_field' should be a frame field for segment anything 2 video model"
+                )
 
         # Get negative_prompt_field if provided
         negative_prompt_field = None
         if "negative_prompt_field" in self.needs_fields:
             negative_prompt_field = self.needs_fields["negative_prompt_field"]
-            if not negative_prompt_field.startswith("frames."):
-                raise ValueError(
-                    "'negative_prompt_field' should be a frame field for segment anything 2 video model"
-                )
-            negative_prompt_field = negative_prompt_field[len("frames.") :]
+            if getattr(self, "media_mode", "video") == "video":
+                if negative_prompt_field.startswith("frames."):
+                    negative_prompt_field = negative_prompt_field[
+                        len("frames.") :
+                    ]
+                else:
+                    raise ValueError(
+                        "'negative_prompt_field' should be a frame field for segment anything 2 video model"
+                    )
 
         return prompt_field, negative_prompt_field
 
@@ -490,7 +583,13 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
                 continue
 
             if isinstance(value, fol.Detections):
-                return "boxes"
+                if any(
+                    detection.mask is not None
+                    for detection in value.detections
+                ):
+                    return "masks"
+                else:
+                    return "boxes"
 
             if isinstance(value, fol.Keypoints):
                 return "points"
@@ -515,14 +614,18 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
         return prompts
 
     def _forward_pass(self, video_reader, sample):
-        if self._curr_prompt_type == "boxes":
+        if self._curr_prompt_type in ["boxes", "masks"]:
             return self._forward_pass_boxes(video_reader, sample)
         elif self._curr_prompt_type == "points":
             return self._forward_pass_points(video_reader, sample)
 
     def _forward_pass_boxes(self, video_reader, sample):
-        video_path = (sample, video_reader)
-        inference_state = self.model.init_state(video_path)
+        image_folder = getattr(video_reader, "image_folder", None)
+        if image_folder is not None:
+            inference_state = self.model.init_state(image_folder)
+        else:
+            video_path = (sample, video_reader)
+            inference_state = self.model.init_state(video_path)
 
         classes_obj_id_map = {}
         kp_idx_obj_id_map = {}
@@ -552,12 +655,29 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
                     chunk_size=1,
                 )
                 box = np.round(box_xyxy.squeeze(axis=0)).astype(int)
-                _, _, _ = self.model.add_new_points_or_box(
-                    inference_state=inference_state,
-                    frame_idx=frame_idx,
-                    obj_id=ann_obj_id,
-                    box=box,
-                )
+
+                if detection.mask is not None:
+                    # prevent SAM2 from running a segmentation inside the box
+                    # instead, use the prompted mask directly
+                    mask_array = fosam._to_abs_mask(
+                        detection.mask,
+                        box,
+                        self._curr_frame_width,
+                        self._curr_frame_height,
+                    )
+                    _, _, _ = self.model.add_new_mask(
+                        inference_state=inference_state,
+                        frame_idx=frame_idx,
+                        obj_id=ann_obj_id,
+                        mask=mask_array,
+                    )
+                else:
+                    _, _, _ = self.model.add_new_points_or_box(
+                        inference_state=inference_state,
+                        frame_idx=frame_idx,
+                        obj_id=ann_obj_id,
+                        box=box,
+                    )
 
         sample_detections = {}
         for (
@@ -600,7 +720,9 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
                     fol.Detection(
                         label=label,
                         bounding_box=bounding_box,
-                        mask=mask,
+                        mask=mask
+                        if self._curr_prompt_type == "masks"
+                        else None,
                         index=out_obj_id,
                     )
                 )
@@ -610,8 +732,12 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
         return sample_detections
 
     def _forward_pass_points(self, video_reader, sample):
-        video_path = (sample, video_reader)
-        inference_state = self.model.init_state(video_path)
+        image_folder = getattr(video_reader, "image_folder", None)
+        if image_folder is not None:
+            inference_state = self.model.init_state(image_folder)
+        else:
+            video_path = (sample, video_reader)
+            inference_state = self.model.init_state(video_path)
 
         classes_obj_id_map = {}
         kp_idx_obj_id_map = {}
@@ -720,19 +846,55 @@ def load_fiftyone_video_frames(
     img_mean=(0.485, 0.456, 0.406),
     img_std=(0.229, 0.224, 0.225),
     async_loading_frames=False,
-    compute_device=torch.device("cuda"),
+    compute_device=None,
 ):
-    sample, video_reader = video_path
+    """
+    The signature of this function matches
+    sam2.utils.misc.load_video_frames;
+    The argument `video_path` is a misnomer; we pass a tuple of (sample, reader) instead.
+    """
+    sample, reader = video_path
+    if sample.media_type == focm.VIDEO:
+        return load_fiftyone_video_frames_from_video_file(
+            sample=sample,
+            video_reader=reader,
+            image_size=image_size,
+            offload_video_to_cpu=offload_video_to_cpu,
+            img_mean=img_mean,
+            img_std=img_std,
+            compute_device=compute_device,
+        )
+    elif sample.media_type == focm.IMAGE:
+        return load_fiftyone_video_frames_from_image_files(
+            sample=sample,
+            image_size=image_size,
+            img_mean=img_mean,
+            img_std=img_std,
+            async_loading_frames=False,
+        )
+    else:
+        raise NotImplementedError("Unsupported media type")
+
+
+def load_fiftyone_video_frames_from_video_file(
+    sample,
+    video_reader,
+    image_size,
+    offload_video_to_cpu,
+    img_mean=(0.485, 0.456, 0.406),
+    img_std=(0.229, 0.224, 0.225),
+    compute_device=None,
+):
+    if compute_device is None:
+        compute_device = "cuda:0" if torch.cuda.is_available() else "cpu"
+
     img_mean = torch.tensor(img_mean, dtype=torch.float32)[:, None, None]
     img_std = torch.tensor(img_std, dtype=torch.float32)[:, None, None]
 
     num_frames = len(sample.frames)
-    try:
-        images = torch.zeros(
-            num_frames, 3, image_size, image_size, dtype=torch.float32
-        )
-    except Exception as e:
-        raise (e)
+    images = torch.zeros(
+        num_frames, 3, image_size, image_size, dtype=torch.float32
+    )
     for frame_number in range(num_frames):
         current_frame = video_reader.read()
         resized_frame = (
@@ -755,10 +917,41 @@ def load_fiftyone_video_frames(
     return images, video_height, video_width
 
 
-def _load_video_frames_monkey_patch():
-    entrypoint_module = smutil.load_video_frames
+def load_fiftyone_video_frames_from_image_files(
+    sample,
+    image_size,
+    img_mean=(0.485, 0.456, 0.406),
+    img_std=(0.229, 0.224, 0.225),
+    async_loading_frames=False,
+):
+    """Load video frames from FiftyOne frame samples via a temp dir of symlinks.
 
+    Creates a temp dir, symlinks each frame filepath as 00000.jpg, 00001.jpg, ...
+    (sorted by frame number), then calls the original SAM2 load_video_frames_from_jpg_images on
+    that path. Temp dir is removed on return.
+    """
+
+    with tempfile.TemporaryDirectory(prefix="fo_sam2_frames_") as tmpdir:
+        frame_filepaths = [
+            sample.frames[ii].filepath for ii in sorted(sample.frames.keys())
+        ]
+        for idx, frame_filepath in enumerate(frame_filepaths):
+            src = frame_filepath
+            dest = os.path.join(tmpdir, "%05d.jpg" % idx)
+            os.symlink(os.path.abspath(src), dest)
+
+        return smutil.load_video_frames_from_jpg_images(
+            tmpdir,
+            image_size=image_size,
+            offload_video_to_cpu=True,
+            img_mean=img_mean,
+            img_std=img_std,
+            async_loading_frames=async_loading_frames,
+        )
+
+
+def _load_video_frames_monkey_patches():
     return fou.MonkeyPatchFunction(
-        entrypoint_module,
+        smutil.load_video_frames,
         load_fiftyone_video_frames,
     )

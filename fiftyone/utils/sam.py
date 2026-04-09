@@ -956,6 +956,38 @@ def _to_abs_boxes(boxes, img_width, img_height, chunk_size=1e6):
     return boxes_xyxy
 
 
+def _to_abs_mask(mask, abs_box, img_width, img_height):
+    """
+    Args:
+        mask: numpy array relative to box
+        abs_box: [x1, y1, x2, y2]
+        img_width: width of the image
+        img_height: height of the image
+    Returns:
+        numpy array relative to the image
+    """
+    x1, y1, x2, y2 = abs_box
+    box_width = x2 - x1
+    box_height = y2 - y1
+    mask_fitted = np.pad(
+        mask,
+        [
+            (0, max(0, box_height - mask.shape[0])),
+            (0, max(0, box_width - mask.shape[1])),
+        ],
+    )[:box_height, :box_width]
+    mask_framed = np.zeros(
+        (
+            img_height,
+            img_width,
+        ),
+        bool,
+    )
+    mask_framed[y1:y2, x1:x2] = mask_fitted
+    mask_framed = mask_framed.astype(np.uint8)
+    return mask_framed
+
+
 def _mask_to_box(mask):
     if len(mask.shape) == 3:
         mask = np.squeeze(mask, axis=0)
