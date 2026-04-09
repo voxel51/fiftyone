@@ -20,6 +20,8 @@ import GroupButton, { type ButtonDetail } from "./GroupButton";
 import Helper from "./Helper";
 import { availableSimilarityKeys, getQueryIds, sortType } from "./utils";
 
+const DEFAULT_K = 25;
+
 const LONG_BUTTON_STYLE: React.CSSProperties = {
   margin: "0.5rem 0",
   height: "2rem",
@@ -104,6 +106,7 @@ const SimilarityPopover = ({
           query_type: isImageSearch ? "image" : "text",
           query: isImageSearch ? queryIds : textQuery.trim(),
           reverse: false,
+          k: DEFAULT_K,
         };
         if (pf) {
           params.patches_field = pf;
