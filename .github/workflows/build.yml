@@ -66,6 +66,8 @@ jobs:
       - name: Install app
         if: steps.app-static-cache.outputs.cache-hit != 'true' && steps.node-cache.outputs.cache-hit != 'true'
         run: cd app && yarn install
+      - name: Compile
+        run: cd app && yarn compile
       - name: Build app
         if: steps.app-static-cache.outputs.cache-hit != 'true'
         run: make app

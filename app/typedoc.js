@@ -16,5 +16,5 @@ module.exports = {
   entryPointStrategy: "packages",
   exclude: ["**/node_modules/**", "**/test/**"],
   skipErrorChecking: true,
-  tsconfig: "tsconfig.json",
+  tsconfig: "tsconfig.doc.json",
 };

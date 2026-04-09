@@ -1,15 +1,16 @@
 {
     "compilerOptions": {
+        "noEmit": true,
+        "noUncheckedIndexedAccess": false,
+        "strict": true,
         "module": "esnext",
-        "moduleResolution": "node",
         "skipLibCheck": true,
-        "target": "esnext"
+        "target": "esnext",
+        "moduleResolution": "node"
     },
-    "include": ["**/*"],
+    "types": ["jest"],
+    "include": ["**/*.test.ts", "**/*.spec.ts"],
     "exclude": [
-        "**/*.test.ts",
-        "**/*.spec.ts",
-        "__mocks__",
         "node_modules",
         "dist",
         "packages/aggregations/**/*",
