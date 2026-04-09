@@ -261,12 +261,47 @@ class SimilaritySearchOperator(foo.Operator):
         import fiftyone.zoo.models as fozm
 
         brain_key = ctx.params["brain_key"]
+        query_image = ctx.params.get("query_image") or {}
+        content = query_image.get("content")
+        name = query_image.get("name", "unknown")
+
+        if not isinstance(content, str) or not content:
+            raise ValueError(
+                "Missing uploaded image content for brain key '%s'" % brain_key
+            )
+
+        # Server-side size limit aligned with UI constraint (10 MB raw)
+        max_bytes = 10 * 1024 * 1024
+        if len(content) > ((max_bytes * 4) // 3) + 8:
+            raise ValueError(
+                "Uploaded image '%s' exceeds size limit for brain key '%s'"
+                % (name, brain_key)
+            )
+
+        try:
+            img_bytes = base64.b64decode(content)
+        except Exception:
+            raise ValueError(
+                "Invalid base64 content in uploaded image '%s' for brain "
+                "key '%s'" % (name, brain_key)
+            )
+
+        if len(img_bytes) > max_bytes:
+            raise ValueError(
+                "Uploaded image '%s' exceeds size limit for brain key '%s'"
+                % (name, brain_key)
+            )
+
+        try:
+            img = etai.decode(img_bytes)
+        except Exception:
+            raise ValueError(
+                "Failed to decode uploaded image '%s' for brain key '%s'"
+                % (name, brain_key)
+            )
+
         info = ctx.dataset.get_brain_info(brain_key)
         model = fozm.load_zoo_model(info.config.model)
-
-        query_image = ctx.params["query_image"]
-        img_bytes = base64.b64decode(query_image["content"])
-        img = etai.decode(img_bytes)
 
         return model.embed(img)
 

@@ -72,7 +72,9 @@ export const useNewSearchForm = (
   const selectedConfig = brainKeys.find((bk) => bk.key === brainKey);
   const supportsPrompts = selectedConfig?.supports_prompts ?? false;
   const supportsLeast = selectedConfig?.supports_least_similarity ?? false;
-  const supportsUpload = typeof selectedConfig?.model === "string";
+  const supportsUpload =
+    typeof selectedConfig?.model === "string" &&
+    selectedConfig.model.trim().length > 0;
 
   // ─── Auto-correct effects ───────────────────────────────────────
 
