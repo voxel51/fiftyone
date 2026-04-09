@@ -97,6 +97,20 @@ export class BoundingBoxOverlay
     return "BoundingBoxOverlay";
   }
 
+  updateLabel(label: BoundingBoxLabel) {
+    super.updateLabel(label);
+
+    if (label.bounding_box) {
+      const [x, y, w, h] = label.bounding_box;
+      this.#relativeBounds = { x, y, width: w, height: h };
+      this.markDirty();
+      this.eventBus.dispatch("lighter:overlay-bounds-changed", {
+        id: this.id,
+        bounds: this.bounds,
+      });
+    }
+  }
+
   getPosition() {
     const { x, y } = this.bounds;
     return {
