@@ -93,12 +93,19 @@ export default function useSimilarityPopover({
         const patchesField = await resolvePatchesField(resolvedBrainKey);
         const currentView = await snapshot.getPromise(fos.view);
 
+        const runName = isImageSearch
+          ? `Image: ${Array.isArray(queryIds) ? queryIds.length : 1} ${
+              patchesField ? "patches" : "samples"
+            }`
+          : `Text: "${textQuery.trim()}"`;
+
         const params: Record<string, unknown> = {
           brain_key: resolvedBrainKey,
           query_type: isImageSearch ? "image" : "text",
           query: isImageSearch ? queryIds : textQuery.trim(),
           reverse: false,
           k: DEFAULT_K,
+          run_name: runName,
         };
         if (patchesField) {
           params.patches_field = patchesField;
