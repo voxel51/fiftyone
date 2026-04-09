@@ -49,9 +49,6 @@ class SimilaritySearchPanel(Panel):
         current_user = str(ctx.user_id) if ctx.user_id else None
         ctx.panel.set_data("current_user", current_user)
 
-        view_state = ctx.panel.get_state("view") or {"page": "home"}
-        ctx.panel.set_state("view", view_state)
-
         # Enable alt-selection visual feedback for negative queries
         ctx.ops.set_sample_selection_style(
             default="green-checkmark", alt="red-checkmark"
