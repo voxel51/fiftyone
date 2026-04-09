@@ -104,10 +104,10 @@ export const computeLabelTagCounts = (
     }
   };
 
-  collectFromData(sample, fieldSchema);
+  const { frames: framesField, ...sampleFieldSchema } = fieldSchema;
+  collectFromData(sample, sampleFieldSchema);
 
   // For video samples, get label tag counts of just the first frame
-  const framesField = fieldSchema.frames;
   if (framesField?.fields && Array.isArray(sample.frames)) {
     const firstFrame = sample.frames[0] as Record<string, unknown> | undefined;
     if (firstFrame) {
