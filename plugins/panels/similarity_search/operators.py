@@ -284,7 +284,7 @@ class SimilaritySearchOperator(foo.Operator):
             )
 
         try:
-            img_bytes = base64.b64decode(content)
+            img_bytes = base64.b64decode(content, validate=True)
         except Exception:
             raise ValueError(
                 "Invalid base64 content in uploaded image '%s' for brain "
