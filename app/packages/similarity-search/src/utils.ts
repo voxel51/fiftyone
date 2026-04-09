@@ -5,15 +5,15 @@ import {
   QueryType,
   SearchScope,
 } from "./types";
-import { DAY_MS, QUERY_TEXT, QUERY_IMAGE, QUERY_UPLOAD } from "./constants";
+import { DAY_MS } from "./constants";
 
 export const formatQuery = (run: SimilarityRun): string => {
-  if (run.query_type === QUERY_TEXT && typeof run.query === "string") {
+  if (run.query_type === QueryType.Text && typeof run.query === "string") {
     return run.query.length > 50
       ? run.query.substring(0, 50) + "..."
       : run.query;
   }
-  if (run.query_type === QUERY_IMAGE) {
+  if (run.query_type === QueryType.Image) {
     const count = Array.isArray(run.query) ? run.query.length : 0;
     const negCount = run.negative_query_ids?.length ?? 0;
     if (negCount > 0) {
@@ -21,7 +21,7 @@ export const formatQuery = (run: SimilarityRun): string => {
     }
     return `Image similarity (${count} ${count === 1 ? "prompt" : "prompts"})`;
   }
-  if (run.query_type === QUERY_UPLOAD) {
+  if (run.query_type === QueryType.Upload) {
     const filename =
       typeof run.query === "string" ? run.query : "uploaded image";
     return `Uploaded: ${filename}`;
@@ -106,9 +106,9 @@ export const canSubmitSearch = (
   hasUploadedImage?: boolean
 ): boolean => {
   if (!brainKey) return false;
-  if (queryType === QUERY_TEXT && !textQuery.trim()) return false;
-  if (queryType === QUERY_IMAGE && queryIdCount === 0) return false;
-  if (queryType === QUERY_UPLOAD && !hasUploadedImage) return false;
+  if (queryType === QueryType.Text && !textQuery.trim()) return false;
+  if (queryType === QueryType.Image && queryIdCount === 0) return false;
+  if (queryType === QueryType.Upload && !hasUploadedImage) return false;
   return true;
 };
 
@@ -178,12 +178,16 @@ export const buildExecutionParams = (
     negativeQueryIds,
   } = input;
 
-  const isUpload = queryType === QUERY_UPLOAD;
-  const query = isUpload
-    ? input.uploadedImage?.name ?? "uploaded_image"
-    : queryType === QUERY_TEXT
-    ? textQuery.trim()
-    : queryIds;
+  let query: string | string[];
+  if (queryType === QueryType.Upload) {
+    query = input.uploadedImage?.name ?? "uploaded_image";
+  } else if (queryType === QueryType.Text) {
+    query = textQuery.trim();
+  } else {
+    query = queryIds;
+  }
+
+  const isUpload = queryType === QueryType.Upload;
 
   const params: Record<string, unknown> = {
     brain_key: brainKey,

@@ -91,7 +91,6 @@ class SimilaritySearchOperator(foo.Operator):
             ctx.set_progress(0.1, label="Loading similarity index...")
 
             brain_key = ctx.params["brain_key"]
-            query = ctx.params["query"]
             k = ctx.params.get("k")
             reverse = ctx.params.get("reverse", False)
             dist_field = ctx.params.get("dist_field")
@@ -114,6 +113,8 @@ class SimilaritySearchOperator(foo.Operator):
             query_type = ctx.params.get("query_type")
             if query_type == "upload":
                 query = self._embed_query_image(ctx)
+            else:
+                query = ctx.params["query"]
 
             # Handle negative query IDs (alt-selected samples)
             negative_query_ids = ctx.params.get("negative_query_ids")
@@ -305,7 +306,14 @@ class SimilaritySearchOperator(foo.Operator):
             )
 
         info = ctx.dataset.get_brain_info(brain_key)
-        model = fozm.load_zoo_model(info.config.model)
+        model_name = getattr(info.config, "model", None)
+        if not model_name:
+            raise ValueError(
+                "Upload query requires a brain run with a configured "
+                "model: '%s'" % brain_key
+            )
+
+        model = fozm.load_zoo_model(model_name)
 
         return model.embed(img)
 

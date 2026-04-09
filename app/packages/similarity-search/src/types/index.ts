@@ -6,7 +6,11 @@ export type RunStatus = "pending" | "running" | "completed" | "failed";
 /**
  * Type of similarity query.
  */
-export type QueryType = "text" | "image" | "upload";
+export enum QueryType {
+  Image = "image",
+  Text = "text",
+  Upload = "upload",
+}
 
 /**
  * Scope for a similarity search (full dataset or current view).

@@ -23,14 +23,17 @@ import {
 } from "@voxel51/voodo";
 import React from "react";
 import { OperatorExecutionButton } from "@fiftyone/operators";
-import { BrainKeyConfig, CloneConfig, SearchScope } from "../../types";
+import {
+  BrainKeyConfig,
+  CloneConfig,
+  QueryType,
+  SearchScope,
+} from "../../types";
 import {
   SEARCH_OPERATOR_URI,
   CHECK_MARK,
   CROSS_MARK,
-  QUERY_IMAGE,
-  QUERY_TEXT,
-  QUERY_UPLOAD,
+  MIDDLE_DOT,
   UPLOAD_ACCEPTED_TYPES,
   UPLOAD_MAX_SIZE,
 } from "../../constants";
@@ -154,12 +157,12 @@ export default function NewSearch({
           <Stack orientation={Orientation.Row} spacing={Spacing.Xs}>
             <Button
               variant={
-                form.queryType === QUERY_IMAGE
+                form.queryType === QueryType.Image
                   ? Variant.Primary
                   : Variant.Secondary
               }
               size={Size.Sm}
-              onClick={() => form.setQueryType(QUERY_IMAGE)}
+              onClick={() => form.setQueryType(QueryType.Image)}
               style={{ flex: 1 }}
             >
               Image Search
@@ -167,12 +170,12 @@ export default function NewSearch({
             {form.supportsUpload && (
               <Button
                 variant={
-                  form.queryType === QUERY_UPLOAD
+                  form.queryType === QueryType.Upload
                     ? Variant.Primary
                     : Variant.Secondary
                 }
                 size={Size.Sm}
-                onClick={() => form.setQueryType(QUERY_UPLOAD)}
+                onClick={() => form.setQueryType(QueryType.Upload)}
                 style={{ flex: 1 }}
               >
                 Upload Image
@@ -181,12 +184,12 @@ export default function NewSearch({
             {form.supportsPrompts && (
               <Button
                 variant={
-                  form.queryType === QUERY_TEXT
+                  form.queryType === QueryType.Text
                     ? Variant.Primary
                     : Variant.Secondary
                 }
                 size={Size.Sm}
-                onClick={() => form.setQueryType(QUERY_TEXT)}
+                onClick={() => form.setQueryType(QueryType.Text)}
                 style={{ flex: 1 }}
               >
                 Text Search
@@ -196,7 +199,7 @@ export default function NewSearch({
         )}
 
         {/* Query input */}
-        {form.queryType === QUERY_TEXT ? (
+        {form.queryType === QueryType.Text && (
           <FormField
             label="Text query"
             control={
@@ -209,8 +212,10 @@ export default function NewSearch({
               />
             }
           />
-        ) : form.queryType === QUERY_UPLOAD ? (
-          form.uploadedImage ? (
+        )}
+
+        {form.queryType === QueryType.Upload &&
+          (form.uploadedImage ? (
             <QuerySelectorBoxActive>
               <Stack
                 orientation={Orientation.Row}
@@ -245,29 +250,31 @@ export default function NewSearch({
                 });
               }}
             />
-          )
-        ) : form.queryIds.length > 0 ? (
-          <QuerySelectorBoxActive>
-            <Text variant={TextVariant.Sm} color={TextColor.Primary}>
-              {`${form.queryIds.length} ${
-                Array.isArray(form.selectedLabels) &&
-                form.selectedLabels.length > 0
-                  ? "labels"
-                  : "samples"
-              } selected (positive)${
-                form.negativeQueryIds.length > 0
-                  ? ` \u00B7 ${form.negativeQueryIds.length} negative`
-                  : ""
-              }`}
-            </Text>
-          </QuerySelectorBoxActive>
-        ) : (
-          <QuerySelectorBoxInactive>
-            <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
-              Select samples in the grid (Alt+click for negative)
-            </Text>
-          </QuerySelectorBoxInactive>
-        )}
+          ))}
+
+        {form.queryType === QueryType.Image &&
+          (form.queryIds.length > 0 ? (
+            <QuerySelectorBoxActive>
+              <Text variant={TextVariant.Sm} color={TextColor.Primary}>
+                {`${form.queryIds.length} ${
+                  Array.isArray(form.selectedLabels) &&
+                  form.selectedLabels.length > 0
+                    ? "labels"
+                    : "samples"
+                } selected (positive)${
+                  form.negativeQueryIds.length > 0
+                    ? ` ${MIDDLE_DOT} ${form.negativeQueryIds.length} negative`
+                    : ""
+                }`}
+              </Text>
+            </QuerySelectorBoxActive>
+          ) : (
+            <QuerySelectorBoxInactive>
+              <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+                Select samples in the grid (Alt+click for negative)
+              </Text>
+            </QuerySelectorBoxInactive>
+          ))}
 
         {/* Number of matches */}
         <FormField

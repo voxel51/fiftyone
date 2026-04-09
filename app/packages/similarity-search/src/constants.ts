@@ -1,5 +1,5 @@
 import { TextColor } from "@voxel51/voodo";
-import { OwnerFilter, QueryType, RunStatus, SearchScope } from "./types";
+import { OwnerFilter, RunStatus, SearchScope } from "./types";
 
 export const SEARCH_OPERATOR_URI = "@voxel51/panels/similarity_search";
 export const INIT_RUN_OPERATOR_URI = "@voxel51/panels/init_similarity_run";
@@ -36,11 +36,6 @@ export const THUMB_SINGLE_ROW_MAX = 10;
 // Owner filter values
 export const OWNER_ALL: OwnerFilter = "all";
 export const OWNER_MINE: OwnerFilter = "mine";
-
-// Query type values
-export const QUERY_IMAGE: QueryType = "image";
-export const QUERY_TEXT: QueryType = "text";
-export const QUERY_UPLOAD: QueryType = "upload";
 
 // File upload constraints
 export const UPLOAD_MAX_SIZE = 10 * 1024 * 1024; // 10 MB

@@ -1,12 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { BrainKeyConfig, CloneConfig, QueryType, SearchScope } from "../types";
-import {
-  QUERY_IMAGE,
-  QUERY_TEXT,
-  QUERY_UPLOAD,
-  SCOPE_VIEW,
-  SCOPE_DATASET,
-} from "../constants";
+import { SCOPE_VIEW, SCOPE_DATASET } from "../constants";
 import { UploadedImage } from "../utils";
 import { useSearchSelection } from "./useSearchSelection";
 import { useSearchSubmission } from "./useSearchSubmission";
@@ -45,9 +39,9 @@ export const useNewSearchForm = (
 
   const defaultQueryType = useMemo((): QueryType => {
     if (cloneConfig?.query_type) return cloneConfig.query_type;
-    if (hasSamplesSelected) return QUERY_IMAGE;
-    if (firstTextKey) return QUERY_TEXT;
-    return QUERY_IMAGE;
+    if (hasSamplesSelected) return QueryType.Image;
+    if (firstTextKey) return QueryType.Text;
+    return QueryType.Image;
   }, [cloneConfig, hasSamplesSelected, firstTextKey]);
 
   // ─── Form fields ────────────────────────────────────────────────
@@ -85,8 +79,8 @@ export const useNewSearchForm = (
   }, [brainKey, brainKeys]);
 
   useEffect(() => {
-    if (!supportsPrompts && queryType === QUERY_TEXT) {
-      setQueryType(QUERY_IMAGE);
+    if (!supportsPrompts && queryType === QueryType.Text) {
+      setQueryType(QueryType.Image);
     }
   }, [supportsPrompts, queryType]);
 
@@ -97,8 +91,8 @@ export const useNewSearchForm = (
   }, [supportsLeast, reverse]);
 
   useEffect(() => {
-    if (!supportsUpload && queryType === QUERY_UPLOAD) {
-      setQueryType(QUERY_IMAGE);
+    if (!supportsUpload && queryType === QueryType.Upload) {
+      setQueryType(QueryType.Image);
       setUploadedImage(null);
     }
   }, [supportsUpload, queryType]);
