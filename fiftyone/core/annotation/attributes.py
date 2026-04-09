@@ -82,6 +82,8 @@ class When:
         Returns:
             a :class:`When`
         """
+        # The only top level keys are operator and the then clause. So we
+        # just want to extract the operator.
         operator = next(k for k in d if k != "then")
         operand = d[operator]
         return cls(
@@ -114,7 +116,7 @@ class Attribute:
             ``"radio"``)
         values: optional list of allowed values
         when: optional list of :class:`When` conditions controlling when
-            this attribute is visible (implicit AND)
+            this attribute is visible or field overrides
 
     Example::
 
