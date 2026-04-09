@@ -100,7 +100,7 @@ export default function useCreate(type: LabelType) {
   const createAnnotationLabel = useCreateAnnotationLabel();
 
   return useCallback(
-    (options?: CreateOptions) => {
+    (options?: CreateOptions): AnnotationLabel | null => {
       const label = createAnnotationLabel(type, options);
 
       if (label) {
@@ -110,8 +110,11 @@ export default function useCreate(type: LabelType) {
             ...label,
           })
         );
+
+        return label;
       } else {
         setEditing(type);
+        return null;
       }
     },
     [createAnnotationLabel, setEditing, type]
