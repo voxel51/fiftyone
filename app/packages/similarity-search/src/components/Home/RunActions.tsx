@@ -7,8 +7,7 @@ import {
   Variant,
 } from "@voxel51/voodo";
 import React from "react";
-import { QUERY_IMAGE } from "../../constants";
-import { SimilarityRun } from "../../types";
+import { QueryType, SimilarityRun } from "../../types";
 import { tooltipTextStyle } from "../styled";
 
 const tip = (text: string) => <span style={tooltipTextStyle}>{text}</span>;
@@ -30,7 +29,7 @@ export default function RunActions({
   onDelete,
   onToggleExpand,
 }: RunActionsProps) {
-  const isImage = run.query_type === QUERY_IMAGE && !run.patches_field;
+  const isImage = run.query_type === QueryType.Image && !run.patches_field;
 
   return (
     <Stack>

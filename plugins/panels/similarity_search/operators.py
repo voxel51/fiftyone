@@ -6,6 +6,7 @@ Similarity search operators.
 |
 """
 
+import base64
 import logging
 from datetime import datetime, timezone
 
@@ -62,7 +63,9 @@ class SimilaritySearchOperator(foo.Operator):
         if not run_id:
             params = {**ctx.params}
             if ctx.user_id:
-                params["created_by"] = str(ctx.user_id)
+                params["created_by"] = getattr(ctx.user, "name", None) or str(
+                    ctx.user_id
+                )
             run_data = manager.create_run(params)
             run_id = run_data["run_id"]
 
@@ -74,7 +77,9 @@ class SimilaritySearchOperator(foo.Operator):
         if not run_data:
             params = {**ctx.params}
             if ctx.user_id:
-                params["created_by"] = str(ctx.user_id)
+                params["created_by"] = getattr(ctx.user, "name", None) or str(
+                    ctx.user_id
+                )
             run_data = manager.create_run(params)
             run_id = run_data["run_id"]
 
@@ -86,7 +91,6 @@ class SimilaritySearchOperator(foo.Operator):
             ctx.set_progress(0.1, label="Loading similarity index...")
 
             brain_key = ctx.params["brain_key"]
-            query = ctx.params["query"]
             k = ctx.params.get("k")
             reverse = ctx.params.get("reverse", False)
             dist_field = ctx.params.get("dist_field")
@@ -104,6 +108,13 @@ class SimilaritySearchOperator(foo.Operator):
                 view = dataset.view()
 
             ctx.set_progress(0.2, label="Preparing query...")
+
+            # Handle uploaded image: embed on-the-fly
+            query_type = ctx.params.get("query_type")
+            if query_type == "upload":
+                query = self._embed_query_image(ctx)
+            else:
+                query = ctx.params["query"]
 
             # Handle negative query IDs (alt-selected samples)
             negative_query_ids = ctx.params.get("negative_query_ids")
@@ -236,6 +247,76 @@ class SimilaritySearchOperator(foo.Operator):
 
         return combined
 
+    @staticmethod
+    def _embed_query_image(ctx):
+        """Embed an uploaded query image on-the-fly using the index model.
+
+        Requires the brain key's config to have a zoo model name. Decodes
+        the base64 image content, loads the model, and returns the
+        embedding vector.
+
+        Args:
+            ctx: the execution context with params["brain_key"] and
+                params["query_image"] = {content: base64, name: str}
+
+        Returns:
+            numpy array representing the query embedding
+        """
+        import eta.core.image as etai
+        import fiftyone.zoo.models as fozm
+
+        brain_key = ctx.params["brain_key"]
+        query_image = ctx.params.get("query_image") or {}
+        content = query_image.get("content")
+        name = query_image.get("name", "unknown")
+
+        if not isinstance(content, str) or not content:
+            raise ValueError(
+                "Missing uploaded image content for brain key '%s'" % brain_key
+            )
+
+        # Server-side size limit aligned with UI constraint (10 MB raw)
+        max_bytes = 10 * 1024 * 1024
+        if len(content) > ((max_bytes * 4) // 3) + 8:
+            raise ValueError(
+                "Uploaded image '%s' exceeds size limit for brain key '%s'"
+                % (name, brain_key)
+            )
+
+        try:
+            img_bytes = base64.b64decode(content, validate=True)
+        except Exception:
+            raise ValueError(
+                "Invalid base64 content in uploaded image '%s' for brain "
+                "key '%s'" % (name, brain_key)
+            )
+
+        if len(img_bytes) > max_bytes:
+            raise ValueError(
+                "Uploaded image '%s' exceeds size limit for brain key '%s'"
+                % (name, brain_key)
+            )
+
+        try:
+            img = etai.decode(img_bytes)
+        except Exception:
+            raise ValueError(
+                "Failed to decode uploaded image '%s' for brain key '%s'"
+                % (name, brain_key)
+            )
+
+        info = ctx.dataset.get_brain_info(brain_key)
+        model_name = getattr(info.config, "model", None)
+        if not model_name:
+            raise ValueError(
+                "Upload query requires a brain run with a configured "
+                "model: '%s'" % brain_key
+            )
+
+        model = fozm.load_zoo_model(model_name)
+
+        return model.embed(img)
+
 
 class InitSimilarityRunOperator(foo.Operator):
     """Creates a run record for a delegated similarity search.
@@ -257,7 +338,9 @@ class InitSimilarityRunOperator(foo.Operator):
         manager = RunManager(ctx)
         params = {**ctx.params}
         if ctx.user_id:
-            params["created_by"] = str(ctx.user_id)
+            params["created_by"] = getattr(ctx.user, "name", None) or str(
+                ctx.user_id
+            )
         run_data = manager.create_run(params)
         run_id = run_data["run_id"]
 
