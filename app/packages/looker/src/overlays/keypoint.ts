@@ -41,12 +41,13 @@ export default class KeypointOverlay<
   }
 
   draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void {
-    const color = this.getColor(state);
+    const baseColor = this.getColor(state);
     const selected = this.isSelected(state);
     const labelVisuals = selected
       ? resolveLabelSelectionVisuals(this.label.id, state.options)
       : null;
-    const selectionColor = labelVisuals?.color || INFO_COLOR;
+    // Override the label color when a selection style specifies a color
+    const color = labelVisuals?.color || baseColor;
     const doesInstanceMatch =
       this.label.instance?._id &&
       isHoveringParticularLabelWithInstanceConfig(this.label.instance._id);
@@ -60,13 +61,14 @@ export default class KeypointOverlay<
         this.strokePath(ctx, state, path, color);
 
         if (selected) {
-          this.strokePath(ctx, state, path, selectionColor, state.dashLength);
+          this.strokePath(ctx, state, path, INFO_COLOR, state.dashLength);
         }
       }
     }
 
     const pointColor = state.options.coloring.points
       ? (index: number) =>
+          labelVisuals?.color ||
           getColor(
             state.options.coloring.pool,
             state.options.coloring.seed,
@@ -92,7 +94,7 @@ export default class KeypointOverlay<
       ctx.fill();
 
       if (selected) {
-        ctx.fillStyle = selectionColor;
+        ctx.fillStyle = INFO_COLOR;
         ctx.beginPath();
         ctx.arc(x, y, state.pointRadius, 0, Math.PI * 2);
         ctx.fill();

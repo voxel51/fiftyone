@@ -99,12 +99,12 @@ export default class HeatmapOverlay<State extends BaseState>
       strokeCanvasRect(
         ctx,
         state,
-        getColor(
-          state.options.coloring.pool,
-          state.options.coloring.seed,
-          this.field
-        ),
-        labelVisuals?.color
+        labelVisuals?.color ||
+          getColor(
+            state.options.coloring.pool,
+            state.options.coloring.seed,
+            this.field
+          )
       );
     }
   }

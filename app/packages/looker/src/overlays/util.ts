@@ -4,7 +4,12 @@
 
 import { COLOR_BY, REGRESSION, getColor } from "@fiftyone/utilities";
 import colorString from "color-string";
-import { INFO_COLOR, SELECTED_AND_HOVERED_COLOR } from "../constants";
+import {
+  INFO_COLOR,
+  LABEL_SELECTION_GREEN,
+  LABEL_SELECTION_RED,
+  SELECTED_AND_HOVERED_COLOR,
+} from "../constants";
 import type {
   BaseOptions,
   BaseState,
@@ -40,14 +45,13 @@ const strokeRect = (
 export const strokeCanvasRect = (
   ctx: CanvasRenderingContext2D,
   state: Readonly<BaseState>,
-  color: string,
-  selectionColor: string = INFO_COLOR
+  color: string
 ): void => {
   ctx.lineWidth = state.strokeWidth;
   ctx.setLineDash([]);
   strokeRect(ctx, state, color);
   ctx.setLineDash([state.dashLength]);
-  strokeRect(ctx, state, selectionColor);
+  strokeRect(ctx, state, INFO_COLOR);
   ctx.setLineDash([]);
 };
 
@@ -321,10 +325,11 @@ export function getInstanceStrokeStyles({
   getColor: () => string;
   isHoveringInstance: boolean;
   dashLength: number;
-  labelSelectionColor?: string;
+  labelSelectionColor?: string | null;
 }) {
-  // Main stroke color
-  let strokeColor = getColor();
+  // Main stroke color — override with label selection color when selected
+  let strokeColor =
+    labelSelectionColor && isSelected ? labelSelectionColor : getColor();
   let overlayStrokeColor: string | null = null;
   let overlayDash: number | null = null;
 
@@ -336,20 +341,17 @@ export function getInstanceStrokeStyles({
     overlayStrokeColor = SELECTED_AND_HOVERED_COLOR;
     overlayDash = dashLength;
   } else if (isSelected) {
-    overlayStrokeColor = labelSelectionColor || INFO_COLOR;
+    overlayStrokeColor = INFO_COLOR;
     overlayDash = dashLength;
   }
 
   return { strokeColor, overlayStrokeColor, overlayDash };
 }
 
-// Label selection visual style colors
-export const LABEL_SELECTION_GREEN = "#00ff00";
-export const LABEL_SELECTION_RED = "#ff0000";
-
 export interface LabelSelectionVisuals {
   styleName: string;
-  color: string;
+  /** The override color for the label, or null to keep the field's color */
+  color: string | null;
 }
 
 /**
@@ -376,6 +378,6 @@ export function resolveLabelSelectionVisuals(
       return { styleName, color: LABEL_SELECTION_RED };
     case "dashed":
     default:
-      return { styleName, color: INFO_COLOR };
+      return { styleName, color: null };
   }
 }
