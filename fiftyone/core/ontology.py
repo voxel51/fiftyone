@@ -15,34 +15,55 @@ from typing import Any, Optional
 from fiftyone.core.odm.ontology import OntologyType
 
 
+_VALID_OPERATORS = frozenset({"equals", "in"})
+
+
 class WhenOperator(str, Enum):
-    """Supported operators for :class:`WhenCondition`."""
+    """Supported logical operators for :class:`When` conditions."""
 
     EQUALS = "equals"
     IN = "in"
 
 
-class WhenCondition:
-    """A visibility condition for an :class:`Attribute`.
+class When:
+    """A visibility/override condition for an :class:`Attribute`.
 
     Controls when an attribute is shown based on the value of another
-    attribute.
+    attribute. Multiple ``When`` conditions on a single attribute are
+    combined with implicit AND.
 
     Args:
-        operator: the comparison operator
-        field: the name of the field to evaluate
+        operator: the logical operator (:class:`WhenOperator` or its string
+            value)
+        field: the name of the attribute to evaluate
         value: the value (or values) to compare against
+        then: optional dict of attribute overrides applied when this
+            condition matches (e.g. ``{"values": ["a", "b"]}``)
+
+    Example::
+
+        When(WhenOperator.EQUALS, field="damage_present", value=True)
+        When(WhenOperator.IN, field="car_model", value=["camry", "corolla"])
+        When(
+            WhenOperator.EQUALS,
+            field="vehicle_type",
+            value="car",
+            then={"values": ["sedan", "suv", "coupe"]},
+        )
     """
 
     def __init__(
         self,
-        operator: WhenOperator,
+        operator: WhenOperator | str,
+        *,
         field: str,
         value: Any,
+        then: Optional[dict] = None,
     ):
         self.operator = WhenOperator(operator)
         self.field = field
         self.value = value
+        self.then = then
 
     def to_dict(self) -> dict:
         """Serializes this condition to a dict.
@@ -50,53 +71,87 @@ class WhenCondition:
         Returns:
             a dict
         """
-        return {
+        d: dict[str, Any] = {
             self.operator.value: {"field": self.field, "value": self.value}
         }
+        if self.then is not None:
+            d["then"] = self.then
+        return d
 
     @classmethod
-    def from_dict(cls, d: dict) -> WhenCondition:
-        """Creates a :class:`WhenCondition` from a dict.
+    def from_dict(cls, d: dict) -> When:
+        """Creates a :class:`When` from a dict.
 
         Args:
             d: a condition dict
 
         Returns:
-            a :class:`WhenCondition`
+            a :class:`When`
         """
-        operator = next(iter(d))
+        operator = next(k for k in d if k in _VALID_OPERATORS)
         operand = d[operator]
         return cls(
             operator=operator,
             field=operand["field"],
             value=operand["value"],
+            then=d.get("then"),
         )
 
     def __repr__(self) -> str:
-        return (
-            f"WhenCondition(operator={self.operator.value!r}, "
-            f"field={self.field!r}, value={self.value!r})"
+        parts = (
+            f"When({self.operator.value!r}, "
+            f"field={self.field!r}, value={self.value!r}"
         )
+        if self.then is not None:
+            parts += f", then={self.then!r}"
+        return parts + ")"
 
 
 class Attribute:
-    """A single attribute within a :class:`ConditionalAttributes` ontology.
+    """A single attribute within an :class:`AnnotationOntology`.
 
-    Attributes define conditional visibility rules only. Display concerns
-    (type, component, allowed values) belong on the label schema that
-    references this ontology, not here.
+    Attributes define typed annotation fields with optional conditional
+    visibility rules and display hints.
 
     Args:
         name: the attribute name
-        when: :class:`WhenCondition` controlling when this attribute is visible
+        type: the value type (e.g. ``"bool"``, ``"str"``)
+        component: the UI component (e.g. ``"checkbox"``, ``"dropdown"``,
+            ``"radio"``)
+        values: optional list of allowed values
+        when: optional list of :class:`When` conditions controlling when
+            this attribute is visible (implicit AND)
+
+    Example::
+
+        Attribute(
+            name="damage_location",
+            type="str",
+            component="dropdown",
+            values=["front", "rear", "driver_side", "passenger_side"],
+            when=[When(WhenOperator.EQUALS, field="damage_present", value=True)],
+        )
     """
 
     def __init__(
         self,
         name: str,
-        when: WhenCondition,
+        type: str,
+        component: str,
+        values: Optional[list] = None,
+        when: Optional[list[When]] = None,
     ):
+        if not name:
+            raise ValueError("Attribute 'name' is required")
+        if not type:
+            raise ValueError("Attribute 'type' is required")
+        if not component:
+            raise ValueError("Attribute 'component' is required")
+
         self.name = name
+        self.type = type
+        self.component = component
+        self.values = values
         self.when = when
 
     def to_dict(self) -> dict:
@@ -105,10 +160,16 @@ class Attribute:
         Returns:
             a dict
         """
-        return {
+        d: dict[str, Any] = {
             "name": self.name,
-            "when": self.when.to_dict(),
+            "type": self.type,
+            "component": self.component,
         }
+        if self.values is not None:
+            d["values"] = self.values
+        if self.when is not None:
+            d["when"] = [w.to_dict() for w in self.when]
+        return d
 
     @classmethod
     def from_dict(cls, d: dict) -> Attribute:
@@ -120,13 +181,20 @@ class Attribute:
         Returns:
             an :class:`Attribute`
         """
+        when = None
+        if "when" in d:
+            when = [When.from_dict(w) for w in d["when"]]
+
         return cls(
             name=d["name"],
-            when=WhenCondition.from_dict(d["when"]),
+            type=d["type"],
+            component=d["component"],
+            values=d.get("values"),
+            when=when,
         )
 
     def __repr__(self) -> str:
-        return f"Attribute(name={self.name!r})"
+        return f"Attribute(name={self.name!r}, type={self.type!r})"
 
 
 class Ontology:
@@ -143,7 +211,7 @@ class Ontology:
         description: optional description
     """
 
-    _TYPE = None
+    _TYPE: Optional[str] = None
 
     def __init__(
         self,
@@ -182,31 +250,15 @@ class Ontology:
 
         return None
 
-    def _get_root(self) -> Any:
-        """Returns the serialized root data for storage.
-
-        Subclasses must implement this.
-        """
-        raise NotImplementedError
-
-    @classmethod
-    def _from_root(cls, root: Any) -> Any:
-        """Deserializes root data from storage.
-
-        Subclasses must implement this.
-        """
-        raise NotImplementedError
-
     def to_dict(self) -> dict:
         """Serializes this ontology to a dict.
 
         Returns:
             a dict
         """
-        d = {
+        d: dict[str, Any] = {
             "name": self.name,
             "type": self._TYPE,
-            "root": self._get_root(),
         }
 
         if self.description is not None:
@@ -230,72 +282,124 @@ class Ontology:
         )
 
 
-class ConditionalAttributes(Ontology):
-    """A named, versioned set of attributes with conditional display logic.
+class AnnotationOntology(Ontology):
+    """A named, versioned annotation ontology.
 
-    Each attribute can optionally specify a ``when`` condition that controls
-    its visibility based on the value of another attribute. Display concerns
-    (type, component, allowed values) belong on the label schema that
-    references this ontology.
+    Bundles typed attributes (with optional conditional display logic) and
+    taxonomy references into a single document that gets connected to a
+    label schema on a field.
 
     Args:
         name: the ontology name
-        root: a list of :class:`Attribute` instances
         description: optional description
+        taxonomies: list of taxonomy names referenced by this ontology
+        attributes: list of :class:`Attribute` instances
 
     Example::
 
-        conditional = ConditionalAttributes(
-            name="vehicle_damage_attributes",
-            description="Vehicle damage condition attributes",
-            root=[
+        AnnotationOntology(
+            name="vehicle_damage_ontology",
+            description="Vehicle damage annotation",
+            taxonomies=["vehicle_classes"],
+            attributes=[
+                Attribute(
+                    name="damage_present",
+                    type="bool",
+                    component="checkbox",
+                ),
                 Attribute(
                     name="damage_location",
-                    when=WhenCondition("equals", "damage_present", True),
-                ),
-                Attribute(
-                    name="damage_severity",
-                    when=WhenCondition("equals", "damage_present", True),
-                ),
-                Attribute(
-                    name="airbags_deployed",
-                    when=WhenCondition("equals", "damage_location", "front"),
+                    type="str",
+                    component="dropdown",
+                    values=["front", "rear", "driver_side", "passenger_side"],
+                    when=[When(WhenOperator.EQUALS, field="damage_present", value=True)],
                 ),
             ],
         )
     """
 
-    _TYPE = OntologyType.CONDITIONAL_ATTRIBUTES.value
+    _TYPE = OntologyType.ANNOTATION_ONTOLOGY.value
 
     def __init__(
         self,
         name: str,
-        root: Optional[list[Attribute]] = None,
         description: Optional[str] = None,
+        taxonomies: Optional[list[str]] = None,
+        attributes: Optional[list[Attribute]] = None,
     ):
         super().__init__(name=name, description=description)
-        self.root = root or []
+        self.taxonomies = taxonomies or []
+        self.attributes = attributes or []
 
-    def _get_root(self) -> list[dict]:
-        return [attr.to_dict() for attr in self.root]
-
-    @classmethod
-    def _from_root(cls, root: list) -> list[Attribute]:
-        return [Attribute.from_dict(d) for d in root]
-
-    @classmethod
-    def from_dict(cls, d: dict) -> ConditionalAttributes:
-        """Creates a :class:`ConditionalAttributes` from a dict.
-
-        Args:
-            d: a conditional attributes dict
+    def to_dict(self) -> dict:
+        """Serializes this annotation ontology to a dict.
 
         Returns:
-            a :class:`ConditionalAttributes`
+            a dict
         """
-        root = cls._from_root(d.get("root", []))
+        d = super().to_dict()
+        d["root"] = {
+            "taxonomies": self.taxonomies,
+            "attributes": [attr.to_dict() for attr in self.attributes],
+        }
+        return d
+
+    @classmethod
+    def from_dict(cls, d: dict) -> AnnotationOntology:
+        """Creates an :class:`AnnotationOntology` from a dict.
+
+        Args:
+            d: an annotation ontology dict
+
+        Returns:
+            an :class:`AnnotationOntology`
+        """
+        root = d.get("root", {})
         return cls(
             name=d["name"],
-            root=root,
             description=d.get("description"),
+            taxonomies=root.get("taxonomies", []),
+            attributes=[
+                Attribute.from_dict(a) for a in root.get("attributes", [])
+            ],
+        )
+
+
+class Node:
+    """A node in a :class:`Taxonomy` hierarchy.
+
+    .. note::
+
+        Taxonomy support is not yet implemented. This class is a
+        placeholder for phase 2.
+
+    Raises:
+        NotImplementedError: always
+    """
+
+    def __init__(self, *args: Any, **kwargs: Any):
+        raise NotImplementedError(
+            "Node is not yet implemented; taxonomy support is planned for "
+            "phase 2"
+        )
+
+
+class Taxonomy(Ontology):
+    """A named, versioned, hierarchical class taxonomy.
+
+    .. note::
+
+        Taxonomy support is not yet implemented. This class is a
+        placeholder for phase 2.
+
+    Raises:
+        NotImplementedError: always
+    """
+
+    _TYPE = OntologyType.TAXONOMY.value
+
+    def __init__(self, *args: Any, **kwargs: Any):
+        raise NotImplementedError(
+            "Taxonomy is not yet implemented; taxonomy support is planned "
+            "for phase 2"
         )

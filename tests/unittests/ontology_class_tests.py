@@ -9,202 +9,369 @@ FiftyOne ontology data class unit tests.
 import unittest
 
 from fiftyone.core.ontology import (
+    AnnotationOntology,
     Attribute,
-    ConditionalAttributes,
-    WhenCondition,
+    Node,
+    Taxonomy,
+    When,
     WhenOperator,
 )
 
 
-class WhenConditionTests(unittest.TestCase):
+class WhenTests(unittest.TestCase):
     def test_create_equals(self):
-        wc = WhenCondition(WhenOperator.EQUALS, "damage_present", True)
-        self.assertEqual(wc.operator, WhenOperator.EQUALS)
-        self.assertEqual(wc.field, "damage_present")
-        self.assertEqual(wc.value, True)
+        w = When(WhenOperator.EQUALS, field="damage_present", value=True)
+        self.assertEqual(w.operator, WhenOperator.EQUALS)
+        self.assertEqual(w.field, "damage_present")
+        self.assertEqual(w.value, True)
+        self.assertIsNone(w.then)
 
     def test_create_in(self):
-        wc = WhenCondition(WhenOperator.IN, "car_model", ["camry", "corolla"])
-        self.assertEqual(wc.operator, WhenOperator.IN)
-        self.assertEqual(wc.field, "car_model")
-        self.assertEqual(wc.value, ["camry", "corolla"])
+        w = When(
+            WhenOperator.IN, field="car_model", value=["camry", "corolla"]
+        )
+        self.assertEqual(w.operator, WhenOperator.IN)
+        self.assertEqual(w.field, "car_model")
+        self.assertEqual(w.value, ["camry", "corolla"])
+
+    def test_create_with_string_operator(self):
+        w = When("equals", field="flag", value=True)
+        self.assertEqual(w.operator, WhenOperator.EQUALS)
 
     def test_invalid_operator(self):
         with self.assertRaises(ValueError):
-            WhenCondition("not_valid", "field", "value")
+            When("not_valid", field="f", value="v")
+
+    def test_with_then(self):
+        w = When(
+            WhenOperator.EQUALS,
+            field="vehicle_type",
+            value="car",
+            then={"values": ["sedan", "suv", "coupe"]},
+        )
+        self.assertEqual(w.then, {"values": ["sedan", "suv", "coupe"]})
 
     def test_to_dict(self):
-        wc = WhenCondition(WhenOperator.EQUALS, "damage_present", True)
+        w = When(WhenOperator.EQUALS, field="damage_present", value=True)
         self.assertEqual(
-            wc.to_dict(),
+            w.to_dict(),
             {"equals": {"field": "damage_present", "value": True}},
+        )
+
+    def test_to_dict_with_then(self):
+        w = When(
+            WhenOperator.EQUALS,
+            field="vehicle_type",
+            value="car",
+            then={"values": ["sedan", "suv"]},
+        )
+        self.assertEqual(
+            w.to_dict(),
+            {
+                "equals": {"field": "vehicle_type", "value": "car"},
+                "then": {"values": ["sedan", "suv"]},
+            },
         )
 
     def test_from_dict(self):
-        wc = WhenCondition.from_dict(
-            {"in": {"field": "mode", "value": ["a", "b"]}}
+        w = When.from_dict({"in": {"field": "mode", "value": ["a", "b"]}})
+        self.assertEqual(w.operator, WhenOperator.IN)
+        self.assertEqual(w.field, "mode")
+        self.assertEqual(w.value, ["a", "b"])
+        self.assertIsNone(w.then)
+
+    def test_from_dict_with_then(self):
+        w = When.from_dict(
+            {
+                "equals": {"field": "type", "value": "car"},
+                "then": {"values": ["sedan"]},
+            }
         )
-        self.assertEqual(wc.operator, WhenOperator.IN)
-        self.assertEqual(wc.field, "mode")
-        self.assertEqual(wc.value, ["a", "b"])
+        self.assertEqual(w.operator, WhenOperator.EQUALS)
+        self.assertEqual(w.then, {"values": ["sedan"]})
 
     def test_roundtrip(self):
-        original = WhenCondition(WhenOperator.EQUALS, "damage_present", True)
-        restored = WhenCondition.from_dict(original.to_dict())
+        original = When(
+            WhenOperator.EQUALS,
+            field="damage_present",
+            value=True,
+            then={"values": ["minor", "major"]},
+        )
+        restored = When.from_dict(original.to_dict())
         self.assertEqual(restored.operator, original.operator)
         self.assertEqual(restored.field, original.field)
         self.assertEqual(restored.value, original.value)
+        self.assertEqual(restored.then, original.then)
 
 
 class AttributeTests(unittest.TestCase):
-    def test_create(self):
-        when = WhenCondition(WhenOperator.EQUALS, "damage_present", True)
-        attr = Attribute(name="damage_location", when=when)
-        self.assertEqual(attr.name, "damage_location")
-        self.assertEqual(attr.when.operator, WhenOperator.EQUALS)
-        self.assertEqual(attr.when.field, "damage_present")
-
-    def test_to_dict(self):
+    def test_create_full(self):
         attr = Attribute(
             name="damage_location",
-            when=WhenCondition(WhenOperator.EQUALS, "damage_present", True),
+            type="str",
+            component="dropdown",
+            values=["front", "rear"],
+            when=[
+                When(WhenOperator.EQUALS, field="damage_present", value=True)
+            ],
+        )
+        self.assertEqual(attr.name, "damage_location")
+        self.assertEqual(attr.type, "str")
+        self.assertEqual(attr.component, "dropdown")
+        self.assertEqual(attr.values, ["front", "rear"])
+        self.assertEqual(len(attr.when), 1)
+
+    def test_create_unconditional(self):
+        attr = Attribute(
+            name="damage_present",
+            type="bool",
+            component="checkbox",
+        )
+        self.assertEqual(attr.name, "damage_present")
+        self.assertIsNone(attr.values)
+        self.assertIsNone(attr.when)
+
+    def test_missing_name_raises(self):
+        with self.assertRaises(ValueError):
+            Attribute(name="", type="str", component="dropdown")
+
+    def test_missing_type_raises(self):
+        with self.assertRaises(ValueError):
+            Attribute(name="attr", type="", component="dropdown")
+
+    def test_missing_component_raises(self):
+        with self.assertRaises(ValueError):
+            Attribute(name="attr", type="str", component="")
+
+    def test_to_dict_unconditional(self):
+        attr = Attribute(name="flag", type="bool", component="checkbox")
+        d = attr.to_dict()
+        self.assertEqual(
+            d, {"name": "flag", "type": "bool", "component": "checkbox"}
+        )
+        self.assertNotIn("values", d)
+        self.assertNotIn("when", d)
+
+    def test_to_dict_conditional(self):
+        attr = Attribute(
+            name="severity",
+            type="str",
+            component="radio",
+            values=["minor", "moderate", "severe"],
+            when=[
+                When(WhenOperator.EQUALS, field="damage_present", value=True)
+            ],
         )
         d = attr.to_dict()
-        self.assertEqual(d["name"], "damage_location")
-        self.assertEqual(
-            d["when"],
-            {"equals": {"field": "damage_present", "value": True}},
-        )
+        self.assertEqual(d["name"], "severity")
+        self.assertEqual(d["type"], "str")
+        self.assertEqual(d["component"], "radio")
+        self.assertEqual(d["values"], ["minor", "moderate", "severe"])
+        self.assertEqual(len(d["when"]), 1)
+        self.assertIn("equals", d["when"][0])
 
     def test_from_dict(self):
         d = {
             "name": "damage_location",
-            "when": {"in": {"field": "mode", "value": ["a", "b"]}},
+            "type": "str",
+            "component": "dropdown",
+            "values": ["front", "rear"],
+            "when": [
+                {"equals": {"field": "damage_present", "value": True}},
+            ],
         }
         attr = Attribute.from_dict(d)
         self.assertEqual(attr.name, "damage_location")
-        self.assertEqual(attr.when.operator, WhenOperator.IN)
-        self.assertEqual(attr.when.field, "mode")
+        self.assertEqual(attr.type, "str")
+        self.assertEqual(attr.component, "dropdown")
+        self.assertEqual(attr.values, ["front", "rear"])
+        self.assertEqual(len(attr.when), 1)
+        self.assertEqual(attr.when[0].operator, WhenOperator.EQUALS)
 
     def test_roundtrip(self):
         original = Attribute(
             name="damage_location",
-            when=WhenCondition(WhenOperator.EQUALS, "damage_present", True),
+            type="str",
+            component="dropdown",
+            values=["front", "rear"],
+            when=[
+                When(WhenOperator.EQUALS, field="damage_present", value=True)
+            ],
         )
         restored = Attribute.from_dict(original.to_dict())
         self.assertEqual(restored.name, original.name)
-        self.assertEqual(restored.when.to_dict(), original.when.to_dict())
+        self.assertEqual(restored.type, original.type)
+        self.assertEqual(restored.component, original.component)
+        self.assertEqual(restored.values, original.values)
+        self.assertEqual(len(restored.when), len(original.when))
+        self.assertEqual(
+            restored.when[0].to_dict(), original.when[0].to_dict()
+        )
 
 
-class ConditionalAttributesTests(unittest.TestCase):
-    def test_create_with_attributes(self):
-        ca = ConditionalAttributes(
-            name="vehicle_damage_attributes",
-            description="Vehicle damage condition attributes",
-            root=[
+class AnnotationOntologyTests(unittest.TestCase):
+    def test_create(self):
+        ao = AnnotationOntology(
+            name="vehicle_damage_ontology",
+            description="Vehicle damage annotation",
+            taxonomies=["vehicle_classes"],
+            attributes=[
+                Attribute(
+                    name="damage_present",
+                    type="bool",
+                    component="checkbox",
+                ),
                 Attribute(
                     name="damage_location",
-                    when=WhenCondition(
-                        WhenOperator.EQUALS, "damage_present", True
-                    ),
-                ),
-                Attribute(
-                    name="damage_severity",
-                    when=WhenCondition(
-                        WhenOperator.EQUALS, "damage_present", True
-                    ),
-                ),
-                Attribute(
-                    name="airbags_deployed",
-                    when=WhenCondition(
-                        WhenOperator.EQUALS, "damage_location", "front"
-                    ),
+                    type="str",
+                    component="dropdown",
+                    values=["front", "rear", "driver_side", "passenger_side"],
+                    when=[
+                        When(
+                            WhenOperator.EQUALS,
+                            field="damage_present",
+                            value=True,
+                        )
+                    ],
                 ),
             ],
         )
-        self.assertEqual(ca.name, "vehicle_damage_attributes")
-        self.assertEqual(len(ca.root), 3)
-        self.assertEqual(ca.root[0].name, "damage_location")
-        self.assertEqual(ca.root[2].name, "airbags_deployed")
+        self.assertEqual(ao.name, "vehicle_damage_ontology")
+        self.assertEqual(ao.description, "Vehicle damage annotation")
+        self.assertEqual(ao.taxonomies, ["vehicle_classes"])
+        self.assertEqual(len(ao.attributes), 2)
+        self.assertEqual(ao._TYPE, "annotation_ontology")
+
+    def test_create_empty(self):
+        ao = AnnotationOntology(name="empty")
+        self.assertEqual(ao.taxonomies, [])
+        self.assertEqual(ao.attributes, [])
 
     def test_to_dict(self):
-        ca = ConditionalAttributes(
-            name="test_ca",
+        ao = AnnotationOntology(
+            name="test_ao",
             description="A test",
-            root=[
+            taxonomies=["tax1"],
+            attributes=[
                 Attribute(
                     name="attr1",
-                    when=WhenCondition(WhenOperator.EQUALS, "enabled", True),
-                ),
-                Attribute(
-                    name="attr2",
-                    when=WhenCondition(WhenOperator.EQUALS, "attr1", "yes"),
+                    type="bool",
+                    component="checkbox",
                 ),
             ],
         )
-        d = ca.to_dict()
-        self.assertEqual(d["name"], "test_ca")
-        self.assertEqual(d["type"], "conditional_attributes")
+        d = ao.to_dict()
+        self.assertEqual(d["name"], "test_ao")
+        self.assertEqual(d["type"], "annotation_ontology")
         self.assertEqual(d["description"], "A test")
-        self.assertEqual(len(d["root"]), 2)
-        self.assertIn("when", d["root"][0])
-        self.assertIn("when", d["root"][1])
-        self.assertIsNone(d.get("version"))
-        self.assertIsNone(d.get("created_at"))
+        self.assertEqual(d["root"]["taxonomies"], ["tax1"])
+        self.assertEqual(len(d["root"]["attributes"]), 1)
+        self.assertEqual(d["root"]["attributes"][0]["name"], "attr1")
 
     def test_from_dict(self):
         d = {
-            "name": "test_ca",
-            "type": "conditional_attributes",
+            "name": "test_ao",
+            "type": "annotation_ontology",
             "description": "A test",
-            "root": [
-                {
-                    "name": "attr1",
-                    "when": {"equals": {"field": "enabled", "value": True}},
-                },
-                {
-                    "name": "attr2",
-                    "when": {"equals": {"field": "attr1", "value": "yes"}},
-                },
-            ],
+            "root": {
+                "taxonomies": ["tax1", "tax2"],
+                "attributes": [
+                    {
+                        "name": "attr1",
+                        "type": "bool",
+                        "component": "checkbox",
+                    },
+                    {
+                        "name": "attr2",
+                        "type": "str",
+                        "component": "dropdown",
+                        "values": ["a", "b"],
+                        "when": [
+                            {
+                                "equals": {
+                                    "field": "attr1",
+                                    "value": True,
+                                }
+                            }
+                        ],
+                    },
+                ],
+            },
         }
-        ca = ConditionalAttributes.from_dict(d)
-        self.assertEqual(ca.name, "test_ca")
-        self.assertEqual(ca.description, "A test")
-        self.assertEqual(len(ca.root), 2)
-        self.assertEqual(ca.root[0].when.field, "enabled")
-        self.assertEqual(ca.root[1].when.field, "attr1")
+        ao = AnnotationOntology.from_dict(d)
+        self.assertEqual(ao.name, "test_ao")
+        self.assertEqual(ao.description, "A test")
+        self.assertEqual(ao.taxonomies, ["tax1", "tax2"])
+        self.assertEqual(len(ao.attributes), 2)
+        self.assertEqual(ao.attributes[1].when[0].field, "attr1")
 
     def test_roundtrip(self):
-        original = ConditionalAttributes(
-            name="vehicle_damage_attributes",
-            description="Vehicle damage condition attributes",
-            root=[
+        original = AnnotationOntology(
+            name="vehicle_damage_ontology",
+            description="Vehicle damage annotation",
+            taxonomies=["vehicle_classes"],
+            attributes=[
                 Attribute(
-                    name="damage_location",
-                    when=WhenCondition(
-                        WhenOperator.EQUALS, "damage_present", True
-                    ),
+                    name="damage_present",
+                    type="bool",
+                    component="checkbox",
                 ),
                 Attribute(
-                    name="damage_severity",
-                    when=WhenCondition(
-                        WhenOperator.EQUALS, "damage_present", True
-                    ),
+                    name="damage_location",
+                    type="str",
+                    component="dropdown",
+                    values=["front", "rear"],
+                    when=[
+                        When(
+                            WhenOperator.EQUALS,
+                            field="damage_present",
+                            value=True,
+                        )
+                    ],
                 ),
                 Attribute(
                     name="airbags_deployed",
-                    when=WhenCondition(
-                        WhenOperator.EQUALS, "damage_location", "front"
-                    ),
+                    type="bool",
+                    component="checkbox",
+                    when=[
+                        When(
+                            WhenOperator.EQUALS,
+                            field="damage_location",
+                            value="front",
+                        )
+                    ],
                 ),
             ],
         )
-        restored = ConditionalAttributes.from_dict(original.to_dict())
+        restored = AnnotationOntology.from_dict(original.to_dict())
         self.assertEqual(restored.name, original.name)
         self.assertEqual(restored.description, original.description)
-        self.assertEqual(len(restored.root), 3)
-        self.assertEqual(restored.root[2].when.field, "damage_location")
+        self.assertEqual(restored.taxonomies, original.taxonomies)
+        self.assertEqual(len(restored.attributes), 3)
+        self.assertEqual(
+            restored.attributes[2].when[0].field, "damage_location"
+        )
+
+    def test_version_none_before_save(self):
+        ao = AnnotationOntology(name="test")
+        self.assertIsNone(ao.version)
+        self.assertIsNone(ao.created_at)
+        self.assertIsNone(ao.last_modified_at)
+
+
+class NodeStubTests(unittest.TestCase):
+    def test_not_implemented(self):
+        with self.assertRaises(NotImplementedError):
+            Node("vehicle_type")
+
+
+class TaxonomyStubTests(unittest.TestCase):
+    def test_not_implemented(self):
+        with self.assertRaises(NotImplementedError):
+            Taxonomy(name="vehicle_classes")
+
+    def test_type_set(self):
+        self.assertEqual(Taxonomy._TYPE, "taxonomy")
 
 
 if __name__ == "__main__":
