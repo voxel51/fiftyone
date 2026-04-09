@@ -147,7 +147,7 @@ export default function NewSearch({
               }
               value={form.searchScope}
               onChange={(value) => form.setSearchScope(value as SearchScope)}
-              size={Size.Sm}
+              size={Size.Md}
               style={{ display: "flex", flexDirection: "row", gap: "1rem" }}
             />
           }
