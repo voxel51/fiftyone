@@ -132,7 +132,10 @@ export default function useSimilarityPopover({
                   view: [
                     {
                       _cls: "fiftyone.core.stages.ToPatches",
-                      kwargs: [["field", patchesField]],
+                      kwargs: [
+                        ["field", patchesField],
+                        ["_state", null],
+                      ],
                     },
                   ],
                 },
