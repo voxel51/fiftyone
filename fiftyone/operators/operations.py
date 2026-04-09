@@ -275,6 +275,8 @@ class Operations(object):
         layout=None,
         force=False,
         force_duplicate=False,
+        state=None,
+        data=None,
     ):
         """Open a panel with the given name and layout options in the App.
 
@@ -288,12 +290,16 @@ class Operations(object):
                 declares ``allow_multiple=False``
             force_duplicate (False): whether to force open the panel even if it
                 is already open. Only applicable if force is ``True``
+            state (None): optional initial state to set for the panel
+            data (None): optional initial data to set for the panel
         """
         params = {
             "name": name,
             "isActive": is_active,
             "force": force,
             "forceDuplicate": force_duplicate,
+            "state": state,
+            "data": data,
         }
         if layout is not None:
             params["layout"] = layout
