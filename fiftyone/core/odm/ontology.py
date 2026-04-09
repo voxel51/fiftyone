@@ -66,7 +66,11 @@ class OntologyDocument(Document):
     last_modified_at = DateTimeField()
 
     def save(self, *args, **kwargs):
+        now = datetime.now(timezone.utc)
+
         if not self.in_db and self.created_at is None:
-            self.created_at = datetime.now(timezone.utc)
+            self.created_at = now
+
+        self.last_modified_at = now
 
         return super().save(*args, **kwargs)
