@@ -1,0 +1,271 @@
+import { Buffers } from "@fiftyone/utilities";
+import {
+  DEFAULT_TICK_RATE,
+  GLOBAL_TIMELINE_ID,
+  MIN_LOAD_RANGE_SIZE,
+} from "./constants";
+import type { BufferRange } from "@fiftyone/utilities";
+import type { TimelineConfig, TimeInt } from "./types";
+import { isSequenceConfig } from "./types";
+
+export const getTimelineNameFromSampleAndGroupId = (
+  sampleId?: string | null,
+  groupId?: string | null
+) => {
+  if (!sampleId && !groupId) {
+    return GLOBAL_TIMELINE_ID;
+  }
+
+  if (groupId) {
+    return `timeline-${groupId}`;
+  }
+
+  return `timeline-${sampleId}`;
+};
+
+export const convertFrameNumberToPercentage = (
+  frameNumber: number,
+  totalFrames: number
+) => {
+  // offset by -1 since frame indexing is 1-based
+  const numerator = frameNumber - 1;
+  const denominator = totalFrames - 1;
+
+  if (denominator <= 0) {
+    return 0;
+  }
+
+  return (numerator / denominator) * 100;
+};
+
+export const getLoadRangeForFrameNumber = (
+  frameNumber: TimeInt,
+  config: TimelineConfig
+): BufferRange => {
+  const totalFrames = isSequenceConfig(config) ? config.totalFrames : 0;
+  const { tickRate, speed } = config;
+
+  // we'll keep behind-buffer size fixed
+  const behindBuffer = MIN_LOAD_RANGE_SIZE;
+  // adaptive ahead-buffer: at minimum MIN_LOAD_RANGE_SIZE,
+  // but scales with speed and tick rate relative to a baseline
+
+  const baseAdaptiveBuffer =
+    MIN_LOAD_RANGE_SIZE *
+    (speed ?? 1) *
+    ((tickRate ?? DEFAULT_TICK_RATE) / DEFAULT_TICK_RATE);
+
+  // use weight = 2% of totalFrames to gently extend the buffer on larger timelines.
+  const totalFramesFactor = Math.ceil(totalFrames * 0.02);
+
+  const adaptiveAheadBuffer = Math.max(
+    MIN_LOAD_RANGE_SIZE,
+    Math.ceil(baseAdaptiveBuffer + totalFramesFactor)
+  );
+
+  // initial range centered on the current frame.
+  let min = frameNumber - behindBuffer;
+  let max = frameNumber + adaptiveAheadBuffer;
+
+  // if the range exceeds totalFrames at the end,
+  // pull extra frames from behind to maintain overall buffer size.
+  if (max > totalFrames) {
+    const extra = max - totalFrames;
+    min = Math.max(1, min - extra);
+    max = totalFrames;
+  }
+  // similarly, if the range goes below 1, extend the ahead buffer.
+  if (min < 1) {
+    const extra = 1 - min;
+    max = Math.min(totalFrames, max + extra);
+    min = 1;
+  }
+
+  return [min, max] as const;
+};
+
+/**
+ * Generates a CSS linear-gradient string for a seekbar based on buffered, loading, and current progress ranges.
+ *
+ * Runtime complexity = O(n log n), where n is the number of loaded ranges.
+ *
+ * This function calculates gradient stops for a seekbar component by considering the buffered ranges (`loadedRangesScaled`),
+ * the current loading range (`loadingRangeScaled`), and the user's current progress (`valueScaled`). It assigns colors
+ * to different segments of the seekbar according to their states and priorities defined in `colorMap`.
+ *
+ * **Color Priorities (Highest to Lowest):**
+ * 1. `currentProgress` - Represents the portion of the media that has been played.
+ * 2. `loading` - Represents the portion currently being loaded.
+ * 3. `buffered` - Represents the portions that are buffered and ready to play.
+ * 4. `unBuffered` - Represents the portions that are not yet buffered.
+ *
+ * @param {Buffers} loadedRangesScaled - An array of buffered ranges, each as a tuple `[start, end]` scaled between 0 and 100.
+ * @param {BufferRange} loadingRangeScaled - The current loading range as a tuple `[start, end]` scaled between 0 and 100.
+ * @param {number} valueScaled - The current progress value scaled between 0 and 100.
+ * @param {Object} colorMap - An object mapping state names to their corresponding color strings.
+ * @param {string} colorMap.unBuffered - Color for unbuffered segments.
+ * @param {string} colorMap.currentProgress - Color for the current progress segment.
+ * @param {string} colorMap.buffered - Color for buffered segments.
+ * @param {string} colorMap.loading - Color for the loading segment.
+ *
+ * @returns {string} A CSS `linear-gradient` string representing the seekbar's background.
+ *
+ * @example
+ * const loadedRanges = [[0, 30], [40, 70]]; // Buffered ranges from 0% to 30% and 40% to 70%
+ * const loadingRange = [30, 40];            // Currently loading from 30% to 40%
+ * const currentValue = 50;                  // Current progress at 50%
+ * const colors = {
+ *   unBuffered: 'gray',
+ *   currentProgress: 'blue',
+ *   buffered: 'green',
+ *   loading: 'red',
+ * };
+ *
+ * const gradient = getGradientStringForSeekbar(
+ *   loadedRanges,
+ *   loadingRange,
+ *   currentValue,
+ *   colors
+ * );
+ * // Returns:
+ * // "linear-gradient(to right, blue 0% 50%, green 50% 70%, gray 70% 100%)"
+ */
+
+export const getGradientStringForSeekbar = (
+  loadedRangesScaled: Buffers,
+  loadingRangeScaled: BufferRange,
+  valueScaled: number,
+  colorMap: {
+    unBuffered: string;
+    currentProgress: string;
+    buffered: string;
+    loading: string;
+  }
+) => {
+  const colorPriority = {
+    [colorMap.currentProgress]: 4,
+    [colorMap.loading]: 3,
+    [colorMap.unBuffered]: 2,
+    [colorMap.buffered]: 1,
+  };
+
+  const events = [];
+
+  // add loaded ranges
+  loadedRangesScaled.forEach((range) => {
+    events.push({
+      pos: range[0],
+      type: "start",
+      color: colorMap.buffered,
+      priority: colorPriority[colorMap.buffered],
+    });
+    events.push({
+      pos: range[1],
+      type: "end",
+      color: colorMap.buffered,
+      priority: colorPriority[colorMap.buffered],
+    });
+  });
+
+  // add loading range
+  events.push({
+    pos: loadingRangeScaled[0],
+    type: "start",
+    color: colorMap.loading,
+    priority: colorPriority[colorMap.loading],
+  });
+  events.push({
+    pos: loadingRangeScaled[1],
+    type: "end",
+    color: colorMap.loading,
+    priority: colorPriority[colorMap.loading],
+  });
+
+  // add current progress range
+  events.push({
+    pos: 0,
+    type: "start",
+    color: colorMap.currentProgress,
+    priority: colorPriority[colorMap.currentProgress],
+  });
+  events.push({
+    pos: valueScaled,
+    type: "end",
+    color: colorMap.currentProgress,
+    priority: colorPriority[colorMap.currentProgress],
+  });
+
+  events.sort((a, b) => {
+    if (a.pos !== b.pos) {
+      return a.pos - b.pos;
+    } else if (a.type !== b.type) {
+      return a.type === "start" ? -1 : 1;
+    } else {
+      return b.priority - a.priority;
+    }
+  });
+
+  const ranges = [];
+  const activeColors = [];
+  let prevPos = 0;
+  let prevColor = colorMap.unBuffered;
+
+  for (let i = 0; i < events.length; i++) {
+    const event = events[i];
+    const currPos = event.pos;
+
+    if (currPos > prevPos) {
+      // add range from prevPos to currPos with prevColor
+      ranges.push({ start: prevPos, end: currPos, color: prevColor });
+    }
+
+    // update active colors stack
+    if (event.type === "start") {
+      activeColors.push({
+        color: event.color,
+        priority: event.priority,
+      });
+      // sort lowest priority first
+      activeColors.sort((a, b) => a.priority - b.priority);
+    } else {
+      // remove color from activeColors
+      const index = activeColors.findIndex((c) => c.color === event.color);
+      if (index !== -1) {
+        activeColors.splice(index, 1);
+      }
+    }
+
+    // update prevColor to current highest priority color
+    const newColor =
+      activeColors.length > 0
+        ? activeColors[activeColors.length - 1].color
+        : colorMap.unBuffered;
+
+    prevPos = currPos;
+    prevColor = newColor;
+  }
+
+  // handle remaining range till 100%
+  if (prevPos < 100) {
+    ranges.push({ start: prevPos, end: 100, color: prevColor });
+  }
+
+  // merge adjacent ranges with same color
+  const mergedRanges = [];
+  for (let i = 0; i < ranges.length; i++) {
+    const last = mergedRanges[mergedRanges.length - 1];
+    const current = ranges[i];
+    if (last && last.color === current.color && last.end === current.start) {
+      // extend last range
+      last.end = current.end;
+    } else {
+      mergedRanges.push({ ...current });
+    }
+  }
+
+  const gradientStops = mergedRanges.map(
+    (range) => `${range.color} ${range.start}% ${range.end}%`
+  );
+
+  return `linear-gradient(to right, ${gradientStops.join(", ")})`;
+};
