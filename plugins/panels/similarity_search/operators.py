@@ -145,7 +145,7 @@ class SimilaritySearchOperator(foo.Operator):
 
             ctx.set_progress(0.7, label="Collecting results...")
 
-            dynamic_results = ctx.params.get("dynamic_results", False)
+            dynamic_results = ctx.params.get("dynamic_results", True)
 
             result_ids = []
             result_view_stages = None
