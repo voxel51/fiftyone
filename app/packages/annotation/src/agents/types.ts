@@ -118,7 +118,10 @@ export type AsyncInferenceResult = {
  * Inspect `result.type` to determine whether the result is immediately
  * available (`"sync"`) or will arrive later (`"async"`).
  */
-export type InferenceResult<T> = SyncInferenceResult<T> | AsyncInferenceResult;
+export type InferenceResult<T> = { labelId: string } & (
+  | SyncInferenceResult<T>
+  | AsyncInferenceResult
+);
 
 /**
  * Response type for synchronous classification inference tasks.
