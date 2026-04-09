@@ -19,6 +19,8 @@ interface SimilarityPopoverProps {
   isImageSearch: boolean;
   close: () => void;
   anchorRef?: MutableRefObject<HTMLElement>;
+  onSearchStart?: () => void;
+  onSearchEnd?: () => void;
 }
 
 const SimilarityPopover = ({
@@ -26,6 +28,8 @@ const SimilarityPopover = ({
   isImageSearch,
   close,
   anchorRef,
+  onSearchStart,
+  onSearchEnd,
 }: SimilarityPopoverProps) => {
   const {
     textQuery,
@@ -38,7 +42,13 @@ const SimilarityPopover = ({
     searchButtonText,
     handleSearch,
     handleOpenPanel,
-  } = useSimilarityPopover({ modal, isImageSearch, close });
+  } = useSimilarityPopover({
+    modal,
+    isImageSearch,
+    close,
+    onSearchStart,
+    onSearchEnd,
+  });
 
   const groupButtons: ButtonDetail[] = [
     {

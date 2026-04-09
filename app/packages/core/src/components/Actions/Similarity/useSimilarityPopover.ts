@@ -12,12 +12,16 @@ type UseSimilarityPopoverProps = {
   modal: boolean;
   isImageSearch: boolean;
   close: () => void;
+  onSearchStart?: () => void;
+  onSearchEnd?: () => void;
 };
 
 export default function useSimilarityPopover({
   modal,
   isImageSearch,
   close,
+  onSearchStart,
+  onSearchEnd,
 }: UseSimilarityPopoverProps) {
   const [textQuery, setTextQuery] = useState("");
 
@@ -113,9 +117,11 @@ export default function useSimilarityPopover({
         });
 
         close();
+        onSearchStart?.();
 
         executeOperator(SEARCH_OPERATOR_URI, params, {
           callback: (result) => {
+            onSearchEnd?.();
             if (result?.error) {
               console.error("Similarity search failed:", result.error);
               return;
@@ -161,6 +167,8 @@ export default function useSimilarityPopover({
       lastUsedBrainKeys,
       setLastUsedBrainKeys,
       datasetId,
+      onSearchStart,
+      onSearchEnd,
     ]
   );
 
@@ -171,9 +179,14 @@ export default function useSimilarityPopover({
         if (modal) {
           set(fos.modalSelector, null);
         }
-        openPanel();
+        executeOperator("open_panel", {
+          name: PANEL_NAME,
+          isActive: true,
+          layout: "horizontal",
+          data: { view: { page: "new_search" } },
+        });
       },
-    [close, modal, openPanel]
+    [close, modal]
   );
 
   const searchButtonText =
