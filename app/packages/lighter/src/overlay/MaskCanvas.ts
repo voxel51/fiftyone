@@ -7,6 +7,19 @@ import type { Renderer2D } from "../renderer/Renderer2D";
 import type { DrawStyle, Point, Rect } from "../types";
 import { createMaskCanvas, decodeMask, encodeMask, maskBounds } from "../utils";
 
+export interface MaskSnapshot {
+  imageData: ImageData;
+  width: number;
+  height: number;
+}
+
+export interface PaintStrokeData {
+  afterBounds: Rect | undefined;
+  afterSnapshot: MaskSnapshot | undefined;
+  beforeBounds: Rect | undefined;
+  beforeSnapshot: MaskSnapshot | undefined;
+}
+
 /**
  * Manages mask decoding, rendering, and interactive painting for a
  * detection overlay. Owns the decoded bitmap, the mutable editing canvas,
@@ -30,6 +43,12 @@ export class MaskCanvas {
   private context?: CanvasRenderingContext2D;
   private lastPoint?: Point;
 
+  // ---- snapshots for undo/redo ----
+  private preStrokeSnapshot?: MaskSnapshot;
+  private preStrokeBounds?: Rect;
+  private postStrokeSnapshot?: MaskSnapshot;
+  private postStrokeBounds?: Rect;
+
   constructor(maskData?: string) {
     if (maskData && typeof maskData === "string") {
       this.rawMaskData = maskData;
@@ -39,7 +58,7 @@ export class MaskCanvas {
   /**
    * Returns true if a mask is available for rendering (editing canvas or decoded bitmap).
    */
-  hasRenderable(): boolean {
+  private hasRenderable(): boolean {
     return this.canvas != null || this.maskBitmap != null;
   }
 
@@ -117,7 +136,7 @@ export class MaskCanvas {
    * When seeding from a decoded bitmap, uses the bitmap dimensions.
    * Otherwise derives canvas size from the given absolute bounds (1:1 mapping).
    */
-  ensureCanvas(bounds: Rect): void {
+  private ensureCanvas(bounds: Rect): void {
     if (this.canvas) return;
 
     const width = this.maskBitmap
@@ -136,13 +155,6 @@ export class MaskCanvas {
     if (this.maskBitmap) {
       this.context.drawImage(this.maskBitmap, 0, 0);
     }
-  }
-
-  /**
-   * Returns the current mask editing canvas, if any.
-   */
-  getCanvas(): HTMLCanvasElement | undefined {
-    return this.canvas;
   }
 
   /**
@@ -166,9 +178,17 @@ export class MaskCanvas {
   // ---------------------------------------------------------------------------
 
   /**
+   * Captures the canvas state and bounds before a stroke begins.
+   */
+  private paintStart(bounds: Rect): void {
+    this.preStrokeSnapshot = this.takeSnapshot();
+    this.preStrokeBounds = { ...bounds };
+  }
+
+  /**
    * Converts a world-space point to mask-pixel coordinates.
    */
-  worldToMask(worldPoint: Point, bounds: Rect): Point | undefined {
+  private worldToMask(worldPoint: Point, bounds: Rect): Point | undefined {
     if (!bounds || bounds.width <= 0 || bounds.height <= 0) return undefined;
     if (!this.canvas) return undefined;
 
@@ -211,7 +231,6 @@ export class MaskCanvas {
    * Paints a single dab at the given mask-pixel coordinate.
    */
   paintAt(
-    point: Point,
     worldPoint: Point,
     bounds: Rect,
     toolState: SegmentationToolState,
@@ -219,8 +238,12 @@ export class MaskCanvas {
   ): Rect | undefined {
     this.ensureCanvas(bounds);
 
+    if (!this.preStrokeSnapshot) {
+      this.paintStart(bounds);
+    }
+
     const updatedBounds = this.updateBounds(worldPoint, bounds, toolState);
-    const maskPoint = this.worldToMask(worldPoint, bounds);
+    const maskPoint = this.worldToMask(worldPoint, updatedBounds ?? bounds);
 
     if (maskPoint) {
       const lastPoint = this.lastPoint;
@@ -236,11 +259,30 @@ export class MaskCanvas {
     return updatedBounds;
   }
 
-  paintEnd() {
+  paintEnd(bounds: Rect) {
     if (!this.canvas) return;
 
-    encodeMask(this.canvas).then((encoded) => (this.pendingMask = encoded));
     this.lastPoint = undefined;
+    this.postStrokeBounds = { ...bounds };
+    this.postStrokeSnapshot = this.takeSnapshot();
+
+    encodeMask(this.canvas).then((encoded) => (this.pendingMask = encoded));
+  }
+
+  getPaintStrokeData(): PaintStrokeData {
+    const paintStrokeData = {
+      afterBounds: this.postStrokeBounds,
+      afterSnapshot: this.postStrokeSnapshot,
+      beforeBounds: this.preStrokeBounds,
+      beforeSnapshot: this.preStrokeSnapshot,
+    };
+
+    this.postStrokeBounds = undefined;
+    this.postStrokeSnapshot = undefined;
+    this.preStrokeBounds = undefined;
+    this.preStrokeSnapshot = undefined;
+
+    return paintStrokeData;
   }
 
   /**
@@ -264,28 +306,17 @@ export class MaskCanvas {
     }
   }
 
-  /**
-   * Stores the last painted point for line interpolation.
-   */
-  setLastPoint(point: Point | undefined): void {
-    this.lastPoint = point;
-  }
-
-  getLastPoint(): Point | undefined {
-    return this.lastPoint;
-  }
-
   // ---------------------------------------------------------------------------
   // Bounds recomputation
   // ---------------------------------------------------------------------------
 
   // TODO: jsdoc
-  getBounds() {
+  private getBounds() {
     if (!this.canvas || !this.context)
       return { minX: 0, minY: 0, maxX: 0, maxY: 0 };
 
     const { width, height } = this.canvas;
-    return maskBounds(this.context?.getImageData(0, 0, width, height));
+    return maskBounds(this.context.getImageData(0, 0, width, height));
   }
 
   // Allocate new canvas and copy over old pixels
@@ -318,7 +349,7 @@ export class MaskCanvas {
    * If no content remains (and no dab), returns `undefined` to signal the
    * caller should clear the detection bounds.
    */
-  updateBounds(
+  private updateBounds(
     worldPoint: Point,
     oldBounds: Rect,
     toolState: SegmentationToolState | undefined
@@ -394,6 +425,51 @@ export class MaskCanvas {
       width: newWidth,
       height: newHeight,
     };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Snapshots (for undo/redo)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Returns a copy of the current canvas pixel data, or `undefined` if the
+   * canvas has not been created yet.
+   */
+  private takeSnapshot(): MaskSnapshot | undefined {
+    if (!this.canvas || !this.context) return undefined;
+
+    const { width, height } = this.canvas;
+    return {
+      imageData: this.context.getImageData(0, 0, width, height),
+      width,
+      height,
+    };
+  }
+
+  /**
+   * Replaces the current canvas contents with a previously captured snapshot.
+   * If `snapshot` is `undefined`, clears the canvas entirely (restoring the
+   * "no mask" state). Kicks off `encodeMask` so `pendingMask` stays in sync.
+   */
+  restoreSnapshot(snapshot: MaskSnapshot | undefined): void {
+    if (!snapshot) {
+      this.canvas = undefined;
+      this.context = undefined;
+      this.lastPoint = undefined;
+      return;
+    }
+
+    const { maskCanvas, maskContext } = createMaskCanvas(
+      snapshot.width,
+      snapshot.height
+    );
+    maskContext.putImageData(snapshot.imageData, 0, 0);
+
+    this.canvas = maskCanvas;
+    this.context = maskContext;
+    this.lastPoint = undefined;
+
+    encodeMask(this.canvas).then((encoded) => (this.pendingMask = encoded));
   }
 
   // ---------------------------------------------------------------------------

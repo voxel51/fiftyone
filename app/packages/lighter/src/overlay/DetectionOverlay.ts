@@ -32,6 +32,7 @@ import type { OverlayEvent } from "../interaction/InteractionManager";
 import { distanceFromLineSegment } from "../utils/geometry";
 import { BaseOverlay } from "./BaseOverlay";
 import { MaskCanvas } from "./MaskCanvas";
+import type { MaskSnapshot, PaintStrokeData } from "./MaskCanvas";
 
 export type DetectionLabel = RawLookerLabel & {
   label: string;
@@ -481,10 +482,9 @@ export class DetectionOverlay
       };
     }
 
-    this.mask = this.mask || new MaskCanvas(this.label.mask);
+    this.mask ??= new MaskCanvas(this.label.mask);
 
     const updatedBounds = this.mask.paintAt(
-      point,
       worldPoint,
       this.bounds,
       toolState,
@@ -549,8 +549,7 @@ export class DetectionOverlay
     worldPoint,
     segmentationToolState,
   }: OverlayEvent): boolean {
-    const updatedBounds = this.mask.paintAt(
-      point,
+    const updatedBounds = this.mask?.paintAt(
       worldPoint,
       this.bounds,
       segmentationToolState!,
@@ -720,12 +719,21 @@ export class DetectionOverlay
 
     if (!this.moveStartPoint || !this.moveStartBounds) return false;
 
+    const wasPainting = this.interactionState === "PAINTING";
+
     this.interactionState = "NONE";
-    this.mask?.paintEnd();
+    this.mask?.paintEnd(this.bounds);
     this.moveStartPoint = undefined;
     this.moveStartPosition = undefined;
     this.moveStartBounds = undefined;
     this.renderer?.enableZoomPan();
+
+    if (wasPainting) {
+      this.eventBus.dispatch("lighter:overlay-paint-end", {
+        id: this.id,
+        paintStrokeData: this.mask?.getPaintStrokeData(),
+      });
+    }
 
     return true;
   }
@@ -950,18 +958,22 @@ export class DetectionOverlay
     return this.mask?.getPendingMask();
   }
 
-  /**
-   * Returns the current mask editing canvas, if any.
-   */
-  // getMaskCanvas(): HTMLCanvasElement | undefined {
-  //   return this.mask.getCanvas();
-  // }
+  // ---------------------------------------------------------------------------
+  // Segmentation undo/redo support
+  // ---------------------------------------------------------------------------
 
-  /**
-   * Clears the mask editing canvas.
-   */
-  clearMaskCanvas(): void {
-    this.mask?.clearCanvas();
+  getPaintStrokeData(): PaintStrokeData | undefined {
+    return this.mask?.getPaintStrokeData();
+  }
+
+  restoreMaskSnapshot(
+    snapshot: MaskSnapshot | undefined,
+    bounds: Rect | undefined
+  ): void {
+    this.mask ??= new MaskCanvas();
+
+    this.mask.restoreSnapshot(snapshot);
+    this.bounds = bounds;
     this.markDirty();
   }
 

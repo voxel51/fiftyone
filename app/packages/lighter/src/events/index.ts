@@ -2,9 +2,10 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import type { Command } from "../commands/Command";
+import type { Undoable } from "@fiftyone/commands";
 import type { InteractionHandler } from "../interaction/InteractionManager";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
+import type { PaintStrokeData } from "../overlay/MaskCanvas";
 import type { Point, Rect } from "../types";
 
 /**
@@ -35,7 +36,7 @@ export type LighterEventGroup = {
   "lighter:command-executed": {
     commandId: string;
     isUndoable: boolean;
-    command: Command;
+    command: Undoable;
   };
   /** Emitted when a command is undone (reversed) */
   "lighter:undo": { commandId: string };
@@ -115,6 +116,11 @@ export type LighterEventGroup = {
   "lighter:overlay-all-unhover": { point: Point };
   /** Emitted when the mouse moves while hovering over an overlay */
   "lighter:overlay-hover-move": { id: string; point: Point };
+  /** Emitted when a paint stroke (brush/eraser) ends */
+  "lighter:overlay-paint-end": {
+    id: string;
+    paintStrokeData: PaintStrokeData | undefined;
+  };
   /** Emitted when user clicks without dragging in detection mode to exit */
   "lighter:detection-mode-quit": { eventId: string };
 
