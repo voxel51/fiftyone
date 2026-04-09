@@ -10,13 +10,11 @@ import type { ModalSample } from "../recoil";
 import {
   State,
   activeFields,
-  cropToContent,
   currentSampleId,
   fieldSchema,
   lookerOptions,
   modalSample,
   selectedMediaField,
-  State,
 } from "../recoil";
 
 /**
@@ -131,15 +129,6 @@ export const useSaveModalViewport = () => useSetAtom(__unsafeModalViewportAtom);
  */
 export const useModalLookerOptions = (withFilter = false) => {
   return useRecoilValue(lookerOptions({ modal: true, withFilter }));
-};
-
-/**
- * Gets the current "Crop to content" setting in the modal when in a view
- * "Patches" view
- */
-export const useCropToContentSetting = () => {
-  const [value, set] = useRecoilState(cropToContent(true));
-  return [value, useCallback((value: boolean) => set(value), [set])];
 };
 
 /**
