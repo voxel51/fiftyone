@@ -32,16 +32,17 @@ export const useSearchSubmission = (input: UseSearchSubmissionInput) => {
   const { execute: initRun } = useOperatorExecutor(INIT_RUN_OPERATOR_URI);
   const [submitting, setSubmitting] = useState(false);
   const datasetId = fos.useAssertedRecoilValue(fos.datasetId);
-  const [lastUsedBrainKeys, setLastUsedBrainKeys] =
-    useBrowserStorage("lastUsedBrainKeys");
+  const [lastUsedBrainKeys, setLastUsedBrainKeys] = useBrowserStorage<
+    Record<string, string>
+  >("lastUsedBrainKeys", {});
 
   const handleOptionSelected = useCallback(() => {
     setSubmitting(true);
 
-    const current = lastUsedBrainKeys ? JSON.parse(lastUsedBrainKeys) : {};
-    setLastUsedBrainKeys(
-      JSON.stringify({ ...current, [datasetId]: input.brainKey })
-    );
+    setLastUsedBrainKeys({
+      ...(lastUsedBrainKeys || {}),
+      [datasetId]: input.brainKey,
+    });
   }, [lastUsedBrainKeys, setLastUsedBrainKeys, datasetId, input.brainKey]);
 
   const executionParams = useMemo(

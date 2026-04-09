@@ -46,6 +46,7 @@ const Similarity = ({
       />
       {open && (
         <SimilarityPopover
+          key={`similarity-${isImageSearch ? "image" : "text"}`}
           modal={modal}
           isImageSearch={isImageSearch}
           close={() => setOpen(false)}

@@ -150,6 +150,9 @@ class SimilaritySearchOperator(foo.Operator):
 
             dynamic_results = ctx.params.get("dynamic_results", False)
 
+            result_ids = []
+            result_view_stages = None
+
             if dynamic_results:
                 result_view_stages = result_view._serialize(
                     include_uuids=False
@@ -157,7 +160,6 @@ class SimilaritySearchOperator(foo.Operator):
                 result_count = len(result_view)
             else:
                 result_ids = [str(rid) for rid in result_view.values("id")]
-                result_view_stages = None
                 result_count = len(result_ids)
 
             ctx.set_progress(0.9, label="Saving results...")
