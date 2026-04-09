@@ -1,9 +1,6 @@
 import { getEventBus, type EventHandler } from "@fiftyone/events";
-import type {
-  CreateTimelineParams,
-  TimelineName,
-  TimelineStoreEventGroup,
-} from "../types";
+import type { TimelineStoreEventGroup } from "../events";
+import type { CreateTimelineParams, TimelineName } from "../types";
 import { TimelineManager } from "./TimelineManager";
 
 /**
