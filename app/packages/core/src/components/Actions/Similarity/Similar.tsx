@@ -34,6 +34,7 @@ const SimilarityPopover = ({
     hasSimilarityKeys,
     showMixedFieldWarning,
     showNoIndexWarning,
+    searchButtonText,
     handleSearch,
     handleOpenPanel,
   } = useSimilarityPopover({ modal, isImageSearch, close });
@@ -86,7 +87,7 @@ const SimilarityPopover = ({
           )}
           {isImageSearch && (
             <Button
-              text={modal ? "Show similar patches" : "Show similar samples"}
+              text={searchButtonText}
               title={`Search by similarity to the selected ${type}`}
               onClick={handleSearch}
               style={LONG_BUTTON_STYLE}

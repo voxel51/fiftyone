@@ -84,6 +84,7 @@ export default function useSimilarityPopover({
         if (!isImageSearch && !textQuery.trim()) return;
 
         const patchesField = await resolvePatchesField(resolvedBrainKey);
+        const currentView = await snapshot.getPromise(fos.view);
 
         const params: Record<string, unknown> = {
           brain_key: resolvedBrainKey,
@@ -94,6 +95,13 @@ export default function useSimilarityPopover({
         };
         if (patchesField) {
           params.patches_field = patchesField;
+        }
+        if (
+          currentView &&
+          Array.isArray(currentView) &&
+          currentView.length > 0
+        ) {
+          params.source_view = currentView;
         }
 
         setLastUsedBrainKeys({
@@ -162,6 +170,11 @@ export default function useSimilarityPopover({
     [close, modal, openPanel]
   );
 
+  const searchButtonText =
+    modal && hasSelectedLabels
+      ? "Show similar patches"
+      : "Show similar samples";
+
   return {
     textQuery,
     setTextQuery,
@@ -169,6 +182,7 @@ export default function useSimilarityPopover({
     hasSimilarityKeys,
     showMixedFieldWarning,
     showNoIndexWarning,
+    searchButtonText,
     handleSearch,
     handleOpenPanel,
   };
