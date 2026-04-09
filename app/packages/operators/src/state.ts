@@ -266,7 +266,7 @@ export type OperatorExecutionOption = {
   isDisabledSchedule?: boolean;
 };
 
-const useOperatorPromptSubmitOptions = (
+export const useOperatorPromptSubmitOptions = (
   operatorURI,
   execDetails,
   execute: (options?: OperatorExecutorOptions) => void,

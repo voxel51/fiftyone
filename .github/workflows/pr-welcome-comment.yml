@@ -29,6 +29,11 @@ jobs:
               return;
             }
 
+            if (pr.user.login.endsWith('[bot]')) {
+              console.log(`Skipping: ${pr.user.login} is a bot`);
+              return;
+            }
+
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,

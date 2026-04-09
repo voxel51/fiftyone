@@ -52,8 +52,14 @@ class SimilaritySearchPanel(Panel):
         view_state = ctx.panel.get_state("view") or {"page": "home"}
         ctx.panel.set_state("view", view_state)
 
+        # Enable alt-selection visual feedback for negative queries
+        ctx.ops.set_sample_selection_style(
+            default="green-checkmark", alt="red-checkmark"
+        )
+
     def on_unload(self, ctx):
         ctx.panel.set_state("applied_run_id", None)
+        ctx.ops.clear_sample_selection_style()
 
     # -- Panel methods exposed to frontend --
 
