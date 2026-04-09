@@ -759,6 +759,140 @@ class TestGroupStaticTransformsRoute:
         assert "results" in data
 
     @pytest.mark.asyncio
+    async def test_get_group_static_transforms_auto_chain_to_world(
+        self,
+        group_static_transforms_endpoint,
+        mock_group_request,
+        grouped_dataset,
+    ):
+        """Tests default world resolution via unique auto-chain."""
+        grouped_dataset.static_transforms = {
+            "left::ego": StaticTransform(
+                translation=[1.0, 0.0, 0.0],
+                quaternion=[0.0, 0.0, 0.0, 1.0],
+                source_frame="left",
+                target_frame="ego",
+            ),
+            "ego::world": StaticTransform(
+                translation=[0.0, 10.0, 0.0],
+                quaternion=[0.0, 0.0, 0.0, 1.0],
+                source_frame="ego",
+                target_frame="world",
+            ),
+        }
+
+        request = mock_group_request(query_params={"slices": "left"})
+        response = await group_static_transforms_endpoint.get(request)
+
+        assert response.status_code == 200
+        data = json.loads(response.body)
+        assert data["target_frame"] == "world"
+
+        transform = data["results"]["left"]["staticTransform"]
+        assert transform is not None
+        assert transform["source_frame"] == "left"
+        assert transform["target_frame"] == "world"
+        assert transform["translation"] == [1.0, 10.0, 0.0]
+
+    @pytest.mark.asyncio
+    async def test_get_group_static_transforms_auto_chain_two_intermediates(
+        self,
+        group_static_transforms_endpoint,
+        mock_group_request,
+        grouped_dataset,
+    ):
+        """Tests default world resolution via two-intermediate chain."""
+        grouped_dataset.static_transforms = {
+            "left::sensor": StaticTransform(
+                translation=[1.0, 0.0, 0.0],
+                quaternion=[0.0, 0.0, 0.0, 1.0],
+                source_frame="left",
+                target_frame="sensor",
+            ),
+            "sensor::ego": StaticTransform(
+                translation=[0.0, 2.0, 0.0],
+                quaternion=[0.0, 0.0, 0.0, 1.0],
+                source_frame="sensor",
+                target_frame="ego",
+            ),
+            "ego::world": StaticTransform(
+                translation=[0.0, 0.0, 3.0],
+                quaternion=[0.0, 0.0, 0.0, 1.0],
+                source_frame="ego",
+                target_frame="world",
+            ),
+        }
+
+        request = mock_group_request(query_params={"slices": "left"})
+        response = await group_static_transforms_endpoint.get(request)
+
+        assert response.status_code == 200
+        data = json.loads(response.body)
+        assert data["target_frame"] == "world"
+
+        transform = data["results"]["left"]["staticTransform"]
+        assert transform is not None
+        assert transform["source_frame"] == "left"
+        assert transform["target_frame"] == "world"
+        assert transform["translation"] == [1.0, 2.0, 3.0]
+
+    @pytest.mark.asyncio
+    async def test_get_group_static_transforms_world_fallback_best_target(
+        self,
+        group_static_transforms_endpoint,
+        mock_group_request,
+        grouped_dataset,
+    ):
+        """Tests fallback to best non-world target when world is unresolved."""
+        grouped_dataset.static_transforms = {
+            "left::ego": StaticTransform(
+                translation=[1.0, 0.0, 0.0],
+                quaternion=[0.0, 0.0, 0.0, 1.0],
+                source_frame="left",
+                target_frame="ego",
+            ),
+            "right::ego": StaticTransform(
+                translation=[-1.0, 0.0, 0.0],
+                quaternion=[0.0, 0.0, 0.0, 1.0],
+                source_frame="right",
+                target_frame="ego",
+            ),
+            "left::vehicle": StaticTransform(
+                translation=[2.0, 0.0, 0.0],
+                quaternion=[0.0, 0.0, 0.0, 1.0],
+                source_frame="left",
+                target_frame="vehicle",
+            ),
+            "left::sensor": StaticTransform(
+                translation=[3.0, 0.0, 0.0],
+                quaternion=[0.0, 0.0, 0.0, 1.0],
+                source_frame="left",
+                target_frame="sensor",
+            ),
+            "vehicle::world": StaticTransform(
+                translation=[0.0, 10.0, 0.0],
+                quaternion=[0.0, 0.0, 0.0, 1.0],
+                source_frame="vehicle",
+                target_frame="world",
+            ),
+            "sensor::world": StaticTransform(
+                translation=[0.0, 20.0, 0.0],
+                quaternion=[0.0, 0.0, 0.0, 1.0],
+                source_frame="sensor",
+                target_frame="world",
+            ),
+        }
+
+        request = mock_group_request(query_params={"slices": "left,right"})
+        response = await group_static_transforms_endpoint.get(request)
+
+        assert response.status_code == 200
+        data = json.loads(response.body)
+        assert data["target_frame"] == "ego"
+        assert data["results"]["left"]["staticTransform"] is not None
+        assert data["results"]["right"]["staticTransform"] is not None
+
+    @pytest.mark.asyncio
     async def test_get_group_static_transforms_slices_whitespace_handling(
         self,
         group_static_transforms_endpoint,

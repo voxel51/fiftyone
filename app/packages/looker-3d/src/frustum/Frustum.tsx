@@ -8,9 +8,11 @@ import {
   TextureLoader,
   Vector3,
 } from "three";
+import type { Texture } from "three";
 import { useFo3dContext } from "../fo3d/context";
-import { useFoLoader } from "../hooks/use-fo-loaders";
+import { useFoLoaderNoSuspense } from "../hooks/use-fo-loaders";
 import { formatNumber, quaternionToEuler } from "../utils";
+import { buildFrustumGeometry } from "./builders";
 import {
   FRUSTUM_AXES_LINE_WIDTH,
   FRUSTUM_AXES_SIZE,
@@ -29,7 +31,16 @@ import {
   FRUSTUM_TOP_MARKER_BASE_HALF_WIDTH,
   FRUSTUM_TOP_MARKER_HEIGHT,
 } from "./constants";
-import type { FrustumData, FrustumGeometry, StaticTransform } from "./types";
+import {
+  applyTextureDimensionsToIntrinsics,
+  getTextureDimensions,
+} from "./texture-utils";
+import type {
+  CameraIntrinsics,
+  FrustumData,
+  FrustumGeometry,
+  StaticTransform,
+} from "./types";
 
 // Module-level axis vectors
 // These are module-scoped and are stable across renders
@@ -60,16 +71,58 @@ function formatStaticTransformForTooltip(
 
 interface FrustumProps {
   frustumData: FrustumData;
-  geometry: FrustumGeometry;
+  depth: number;
 }
 
-export function Frustum({ frustumData, geometry }: FrustumProps) {
-  const { sliceName, intrinsics, imageUrl } = frustumData;
+/**
+ * Renders a single camera frustum for a grouped 2D slice.
+ *
+ * When both intrinsics and an image URL are available, the far plane can show
+ * the slice image as a texture. If the optional texture cannot be loaded, the
+ * frustum still renders as plain geometry so camera helpers remain visible.
+ */
+export function Frustum({ frustumData, depth }: FrustumProps) {
+  const { intrinsics, imageUrl, staticTransform } = frustumData;
+
+  if (!staticTransform) {
+    return null;
+  }
+
+  if (intrinsics && imageUrl) {
+    return (
+      <TexturedFrustum
+        depth={depth}
+        frustumData={frustumData}
+        imageUrl={imageUrl}
+        intrinsics={intrinsics}
+        staticTransform={staticTransform}
+      />
+    );
+  }
+
+  return (
+    <PlainFrustum
+      depth={depth}
+      frustumData={frustumData}
+      intrinsics={intrinsics}
+      staticTransform={staticTransform}
+    />
+  );
+}
+
+interface GeometryFrustumProps {
+  frustumData: FrustumData;
+  geometry: FrustumGeometry;
+  texture?: Texture;
+}
+
+function FrustumMesh({ frustumData, geometry, texture }: GeometryFrustumProps) {
+  const { sliceName } = frustumData;
   const { setHoverMetadata } = useFo3dContext();
   const [showTexture, setShowTexture] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
 
-  const canShowTexture = Boolean(intrinsics && imageUrl);
+  const canShowTexture = Boolean(texture);
   const wireframeColor = isHovered ? FRUSTUM_HOVER_COLOR : FRUSTUM_COLOR;
   const planeOpacity = isHovered
     ? FRUSTUM_HOVER_OPACITY
@@ -270,8 +323,8 @@ export function Frustum({ frustumData, geometry }: FrustumProps) {
         onClick={handleClick}
         renderOrder={isHovered && showTexture ? 1 : 0}
       >
-        {canShowTexture && showTexture && imageUrl ? (
-          <FrustumTextureMaterial imageUrl={imageUrl} isHovered={isHovered} />
+        {canShowTexture && showTexture && texture ? (
+          <FrustumTextureMaterial texture={texture} isHovered={isHovered} />
         ) : (
           <meshBasicMaterial
             color={wireframeColor}
@@ -286,14 +339,76 @@ export function Frustum({ frustumData, geometry }: FrustumProps) {
   );
 }
 
-function FrustumTextureMaterial({
+function PlainFrustum({
+  frustumData,
+  depth,
+  intrinsics,
+  staticTransform,
+}: FrustumProps & {
+  intrinsics: CameraIntrinsics | null;
+  staticTransform: StaticTransform;
+}) {
+  const geometry = useMemo(
+    () => buildFrustumGeometry(staticTransform, intrinsics, depth),
+    [depth, intrinsics, staticTransform]
+  );
+
+  return <FrustumMesh frustumData={frustumData} geometry={geometry} />;
+}
+
+function TexturedFrustum({
+  frustumData,
+  depth,
   imageUrl,
+  intrinsics,
+  staticTransform,
+}: FrustumProps & {
+  imageUrl: string;
+  intrinsics: CameraIntrinsics;
+  staticTransform: StaticTransform;
+}) {
+  const texture = useFoLoaderNoSuspense(TextureLoader, imageUrl);
+  const textureDimensions = useMemo(
+    () => getTextureDimensions(texture),
+    [texture]
+  );
+  const intrinsicsWithTextureDimensions = useMemo(
+    () => applyTextureDimensionsToIntrinsics(intrinsics, textureDimensions),
+    [intrinsics, textureDimensions]
+  );
+  const imageAspectRatio =
+    textureDimensions &&
+    intrinsicsWithTextureDimensions?.width == null &&
+    intrinsicsWithTextureDimensions?.height == null
+      ? textureDimensions.width / textureDimensions.height
+      : undefined;
+  const geometry = useMemo(
+    () =>
+      buildFrustumGeometry(
+        staticTransform,
+        intrinsicsWithTextureDimensions,
+        depth,
+        imageAspectRatio
+      ),
+    [depth, imageAspectRatio, intrinsicsWithTextureDimensions, staticTransform]
+  );
+
+  return (
+    <FrustumMesh
+      frustumData={frustumData}
+      geometry={geometry}
+      texture={texture}
+    />
+  );
+}
+
+function FrustumTextureMaterial({
+  texture,
   isHovered,
 }: {
-  imageUrl: string;
+  texture: Texture;
   isHovered: boolean;
 }) {
-  const texture = useFoLoader(TextureLoader, imageUrl);
   const opacity = isHovered
     ? FRUSTUM_TEXTURE_HOVER_OPACITY
     : FRUSTUM_TEXTURE_OPACITY;

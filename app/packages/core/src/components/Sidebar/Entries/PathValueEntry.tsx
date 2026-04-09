@@ -492,7 +492,7 @@ interface PrimitivesObject {
 
 type Primitives = Primitive | PrimitivesObject;
 
-const format = ({
+export const format = ({
   fields,
   ftype,
   timeZone,
@@ -503,15 +503,22 @@ const format = ({
   timeZone: string;
   value: Primitives;
 }) => {
-  if (ftype === EMBEDDED_DOCUMENT_FIELD && typeof value === "object") {
+  if (
+    ftype === EMBEDDED_DOCUMENT_FIELD &&
+    value !== null &&
+    typeof value === "object"
+  ) {
     return formatObject({ fields, timeZone, value: value as object });
   }
 
-  return formatPrimitiveOrURL({ ftype, value: value as Primitive, timeZone });
+  return formatPrimitiveOrURL({
+    ftype,
+    value: value as Primitive,
+    timeZone,
+  });
 };
 
 const formatPrimitiveOrURL = (params: {
-  fields?: Schema;
   ftype: string;
   timeZone: string;
   value: Primitive;
