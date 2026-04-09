@@ -21,15 +21,6 @@ const extensionDatasetNamePairs = ["mp4", "png"].map(
     ] as const
 );
 
-test.afterAll(async ({ foWebServer }) => {
-  await foWebServer.stopWebServer();
-});
-
-test.afterEach(async ({ modal, page }) => {
-  await modal.close({ ignoreError: true });
-  await page.reload();
-});
-
 test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
   await foWebServer.startWebServer();
   let pythonCode = `
@@ -65,6 +56,10 @@ test.afterEach(async ({ modal, page }) => {
   await page.reload();
 });
 
+test.afterAll(async ({ foWebServer }) => {
+  await foWebServer.stopWebServer();
+});
+
 test.describe.serial("sparse groups tests", () => {
   extensionDatasetNamePairs.forEach(([extension, datasetName]) => {
     test(`${extension} default slice`, async ({
@@ -90,6 +85,7 @@ test.describe.serial("sparse groups tests", () => {
       modal,
     }) => {
       await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+      await grid.selectSlice("first");
       await grid.assert.isEntryCountTextEqualTo("1 group with slice");
       await grid.selectSlice("shared");
       await grid.assert.isEntryCountTextEqualTo("2 groups with slice");
@@ -116,7 +112,8 @@ test.describe.serial("sparse groups tests", () => {
       modal,
     }) => {
       await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-      await grid.assert.isEntryCountTextEqualTo("2 groups with slice");
+      await grid.selectSlice("first");
+      await grid.assert.isEntryCountTextEqualTo("1 group with slice");
       await grid.selectSlice("second");
       await grid.assert.isEntryCountTextEqualTo("1 group with slice");
       await grid.openFirstSample();

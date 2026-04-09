@@ -175,6 +175,20 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
     return LABEL_ARCHETYPE_PRIORITY.CLASSIFICATION;
   }
 
+  getTooltipInfo(): {
+    color: string;
+    field: string;
+    label: any;
+    type: string;
+  } | null {
+    return {
+      color: this.getCurrentStyle()?.fillStyle ?? "#ffffff",
+      field: this.field || "unknown",
+      label: this.label,
+      type: "Classification",
+    };
+  }
+
   destroy(): void {
     const map = getChannelMap(this.channel);
     map.delete(this.id);

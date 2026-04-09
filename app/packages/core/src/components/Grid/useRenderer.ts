@@ -1,12 +1,13 @@
 import type { Hide, ID, Show } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import type { LookerCache } from "./types";
 import useFontSize from "./useFontSize";
+import { useGridCustomRendererItem } from "./useGridCustomRendererItem";
 import useSelectSample from "./useSelectSample";
 import type { SampleStore } from "./useSpotlightPager";
 
-export default function ({
+export default function useRenderer({
   cache,
   id,
   records,
@@ -21,6 +22,11 @@ export default function ({
   const createLooker = fos.useCreateLooker(false, true, lookerOptions);
   const getFontSize = useFontSize(id);
   const selectSample = useSelectSample(records);
+  const sampleRenderer = useGridCustomRendererItem(createLooker);
+
+  // `showItem` must stay stable even as the sample renderer hook refreshes.
+  const sampleRendererRef = useRef(sampleRenderer);
+  sampleRendererRef.current = sampleRenderer;
 
   const detachItem = useCallback(
     (id: ID) => cache.get(id.description)?.detach(),
@@ -54,30 +60,31 @@ export default function ({
 
       const result = store.get(id);
 
-      if (!createLooker.current || !result) {
-        throw new Error("bad data");
+      if (!result) {
+        throw new Error(
+          `Failed to retrieve sample from store: ${id.description}`
+        );
       }
 
-      const looker: fos.Lookers = createLooker.current?.(
-        { ...result, symbol: id },
-        {
-          fontSize: getFontSize(),
-        }
+      const item = sampleRendererRef.current.createItem(
+        result,
+        id,
+        getFontSize()
       );
 
-      looker.addEventListener("selectthumbnail", ({ detail }) =>
+      item.addEventListener("selectthumbnail", ({ detail }) =>
         selectSample.current?.(detail)
       );
-      looker.addEventListener("refresh", () => {
+      item.addEventListener("refresh", () => {
         cache.isShown(key) &&
-          spotlight.sizeChange(key, looker.getSizeBytesEstimate());
+          spotlight.sizeChange(key, item.getSizeBytesEstimate());
       });
 
-      cache.set(key, looker);
-      looker.attach(element, dimensions);
+      cache.set(key, item);
+      item.attach(element, dimensions);
       return cache.sizeOf(key);
     },
-    [cache, createLooker, getFontSize, selectSample, store]
+    [cache, getFontSize, selectSample, sampleRendererRef, store]
   );
 
   return {

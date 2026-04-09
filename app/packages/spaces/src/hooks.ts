@@ -1,6 +1,7 @@
 import {
-  PluginComponentRegistration,
+  type PanelRegistration,
   PluginComponentType,
+  type PlotRegistration,
   subscribeToRegistry,
   useActivePlugins,
 } from "@fiftyone/plugins";
@@ -40,6 +41,8 @@ import {
   SpaceNodeType,
 } from "./types";
 import { getNodes } from "./utils";
+
+type SpacePanelRegistration = PanelRegistration | PlotRegistration;
 
 export function useSpaces(id: string, defaultState?: SpaceNodeJSON) {
   const [state, setState] = useRecoilState(spaceSelector(id));
@@ -121,7 +124,7 @@ export function useSpaceNodes(spaceId: string) {
  * to be memoized using `useCallback` to avoid unnecessary re-renders.
  */
 export function usePanels(
-  predicate?: (panel: PluginComponentRegistration) => boolean
+  predicate?: (panel: SpacePanelRegistration) => boolean
 ) {
   const schema = useRecoilValue(
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
@@ -137,21 +140,21 @@ export function usePanels(
       return allPanels.filter(predicate);
     }
     return allPanels;
-  }, [plots, panels, predicate]) as PluginComponentRegistration[];
+  }, [plots, panels, predicate]) as SpacePanelRegistration[];
 
   return panelsToReturn;
 }
 
 export function usePanel(
   name: SpaceNodeType,
-  predicate?: (panel: PluginComponentRegistration) => boolean
+  predicate?: (panel: SpacePanelRegistration) => boolean
 ) {
   const combinedPredicate = useMemo(() => {
     if (predicate) {
-      return (panel: PluginComponentRegistration) =>
+      return (panel: SpacePanelRegistration) =>
         panel.name === name && predicate(panel);
     }
-    return (panel: PluginComponentRegistration) => panel.name === name;
+    return (panel: SpacePanelRegistration) => panel.name === name;
   }, [predicate]);
   const panels = usePanels(combinedPredicate);
   return panels.at(0);
@@ -165,7 +168,7 @@ export function useReactivePanel(name: SpaceNodeType) {
     });
   }, []);
   const predicate = useCallback(
-    (panel: PluginComponentRegistration) => {
+    (panel: SpacePanelRegistration) => {
       return panel.name === name;
     },
     [name]

@@ -3,10 +3,21 @@ import * as fos from "@fiftyone/state";
 import * as fou from "@fiftyone/utilities";
 import { getFetchFunction, getFetchParameters } from "@fiftyone/utilities";
 import * as _ from "lodash";
-import React, { FunctionComponent, useEffect, useMemo, useState } from "react";
+import React, {
+  FunctionComponent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import * as recoil from "recoil";
 import { wrapCustomComponent } from "./components";
 import "./externalize";
+import type {
+  SampleRendererOptions,
+  SampleRendererProps,
+} from "./sample-renderer";
+import { hasMatchMediaMatchers } from "./sample-renderer";
 import { pluginsLoaderAtom } from "./state";
 
 declare global {
@@ -26,8 +37,8 @@ function usingRegistry() {
  * Adds a plugin to the registry. This is called by the plugin itself.
  * @param registration The plugin registration
  */
-export function registerComponent<T>(
-  registration: PluginComponentRegistration<T>
+export function registerComponent<TType extends PluginComponentType>(
+  registration: PluginComponentRegistrationByType[TType]
 ) {
   if (!registration.activator) {
     registration.activator = () => true;
@@ -57,8 +68,13 @@ export function subscribeToRegistry(handler: RegistryEventHandler) {
  * @param type The type of plugin to list
  * @returns A list of plugins
  */
-export function getByType(type: PluginComponentType) {
+export function getByType<TType extends PluginComponentType>(type: TType) {
   return usingRegistry().getByType(type);
+}
+
+/** Returns the component registered under the given name. */
+export function getComponent<T>(name: string) {
+  return usingRegistry().getComponent<T>(name);
 }
 
 async function fetchPluginsMetadata(): Promise<PluginDefinition[]> {
@@ -145,7 +161,11 @@ async function loadScript(name, url) {
     };
     const script = document.createElement("script");
     script.type = "application/javascript";
-    script.src = url;
+    if (import.meta.env?.VITE_API && !url.startsWith("http")) {
+      script.src = `${import.meta.env?.VITE_API}${url}`;
+    } else {
+      script.src = url;
+    }
     script.async = true;
     document.head.prepend(script);
     script.addEventListener("load", onDone);
@@ -189,9 +209,9 @@ export function usePlugins() {
   };
 }
 
-export function usePlugin(
-  type: PluginComponentType
-): PluginComponentRegistration[] {
+export function usePlugin<TType extends PluginComponentType>(
+  type: TType
+): PluginComponentRegistrationByType[TType][] {
   return usingRegistry().getByType(type);
 }
 
@@ -245,6 +265,12 @@ export function safePluginActivator(
   return false;
 }
 
+function useGetDefaultPluginCtx() {
+  const dataset = fos.useCurrentDataset();
+  const schema = fos.useSampleSchema();
+  return useCallback(() => ({ schema, dataset }), [schema, dataset]);
+}
+
 /**
  * A react hook that returns a list of active plugins.
  *
@@ -252,30 +278,37 @@ export function safePluginActivator(
  * @param ctx Argument passed to the plugin's activator function
  * @returns A list of active plugins
  */
-export function useActivePlugins(type: PluginComponentType, ctx: any) {
-  const [plugins, setPlugins] = useState<PluginComponentRegistration[]>(
+export function useActivePlugins<TType extends PluginComponentType>(
+  type: TType,
+  ctx?: Record<string, unknown>
+) {
+  const getDefaultPluginCtx = useGetDefaultPluginCtx();
+
+  const resolvedCtx = useMemo(() => {
+    if (ctx) {
+      return ctx;
+    }
+
+    return getDefaultPluginCtx();
+  }, [ctx, getDefaultPluginCtx]);
+
+  const getActivePlugins = () =>
     usingRegistry()
       .getByType(type)
-      .filter((p) => {
-        return safePluginActivator(p, ctx);
-      })
-  );
+      .filter((plugin) => safePluginActivator(plugin, resolvedCtx));
+
+  const [plugins, setPlugins] =
+    useState<PluginComponentRegistrationByType[TType][]>(getActivePlugins);
 
   useEffect(() => {
     const unsubscribe = subscribeToRegistry(() => {
-      const refreshedPlugins = usingRegistry()
-        .getByType(type)
-        .filter((p) => {
-          return safePluginActivator(p, ctx);
-        });
-
-      setPlugins(refreshedPlugins);
+      setPlugins(getActivePlugins());
     });
 
     return () => {
       unsubscribe();
     };
-  }, [type, ctx]);
+  }, [type, resolvedCtx]);
 
   return plugins;
 }
@@ -296,11 +329,13 @@ export function usePluginComponent(name: string, ctx?: unknown) {
  *
  * - `Panel` - A panel that can be added to `@fiftyone/spaces`
  * - `Plot` - **deprecated** - A plot that can be added as a panel
+ * - `SampleRenderer` - A custom renderer for non-native sample media
  */
 export enum PluginComponentType {
   Plot = 1,
   Panel = 2,
   Component = 3,
+  SampleRenderer = 4,
 
   /**
    * DO NOT CHANGE THE VALUES OF THESE ENUMS for backward compatibility.
@@ -317,26 +352,9 @@ export enum Categories {
   Custom = "custom",
 }
 
-export function getCategoryLabel(category: CategoryID): string {
-  switch (category) {
-    case "import":
-      return "Import";
-    case "curate":
-      return "Curate";
-    case "analyze":
-      return "Analyze";
-    default:
-      return "Custom";
-  }
-}
+export type PluginActivator = (props: any) => boolean;
 
-export function getCategoryForPanel(panel: PluginComponentRegistration) {
-  return panel.panelOptions?.category || "custom";
-}
-
-type PluginActivator = (props: any) => boolean;
-
-type PanelOptions = {
+export type PanelOptions = {
   /**
    * Whether to allow multiple instances of the plugin.
    *
@@ -394,7 +412,7 @@ type PanelOptions = {
    *
    * Defaults to `false`.
    */
-  isNew: boolean;
+  isNew?: boolean;
 };
 
 type PluginComponentProps<T> = T & {
@@ -403,10 +421,10 @@ type PluginComponentProps<T> = T & {
   isModalPanel?: boolean;
 };
 
-/**
- * A plugin registration.
- */
-export interface PluginComponentRegistration<T extends {} = {}> {
+type BasePluginComponentRegistration<
+  TType extends PluginComponentType,
+  TComponentProps
+> = {
   /**
    * The name of the plugin
    */
@@ -425,20 +443,83 @@ export interface PluginComponentRegistration<T extends {} = {}> {
   /**
    * The React component to render for the plugin
    */
-  component: FunctionComponent<PluginComponentProps<T>>;
+  component: FunctionComponent<TComponentProps>;
 
   /** The plugin type */
-  type: PluginComponentType;
+  type: TType;
 
   /**
    * A function that returns true if the plugin should be active
    */
-  activator: PluginActivator;
+  activator?: PluginActivator;
+};
 
-  /**
-   * Options for the panel
-   */
-  panelOptions?: PanelOptions;
+export type PanelRegistration<T extends {} = {}> =
+  BasePluginComponentRegistration<
+    PluginComponentType.Panel,
+    PluginComponentProps<T>
+  > & {
+    panelOptions?: PanelOptions;
+    sampleRendererOptions?: never;
+  };
+
+export type ComponentRegistration<T extends {} = {}> =
+  BasePluginComponentRegistration<
+    PluginComponentType.Component,
+    PluginComponentProps<T>
+  > & {
+    panelOptions?: never;
+    sampleRendererOptions?: never;
+  };
+
+export type PlotRegistration<T extends {} = {}> =
+  BasePluginComponentRegistration<
+    PluginComponentType.Plot,
+    PluginComponentProps<T>
+  > & {
+    panelOptions?: never;
+    sampleRendererOptions?: never;
+  };
+
+type BaseSampleRendererRegistration<TSample = unknown> =
+  BasePluginComponentRegistration<
+    PluginComponentType.SampleRenderer,
+    SampleRendererProps<TSample>
+  > & {
+    panelOptions?: never;
+    sampleRendererOptions: SampleRendererOptions<TSample>;
+  };
+
+export type SampleRendererRegistration<TSample = unknown> =
+  BaseSampleRendererRegistration<TSample>;
+
+export interface PluginComponentRegistrationByType {
+  [PluginComponentType.Plot]: PlotRegistration;
+  [PluginComponentType.Panel]: PanelRegistration;
+  [PluginComponentType.Component]: ComponentRegistration;
+  [PluginComponentType.SampleRenderer]: SampleRendererRegistration;
+}
+
+export type PluginComponentRegistration =
+  PluginComponentRegistrationByType[keyof PluginComponentRegistrationByType];
+
+export function getCategoryLabel(category: CategoryID): string {
+  switch (category) {
+    case "import":
+      return "Import";
+    case "curate":
+      return "Curate";
+    case "analyze":
+      return "Analyze";
+    default:
+      return "Custom";
+  }
+}
+
+export function getCategoryForPanel(
+  panel: PanelRegistration | PlotRegistration
+) {
+  return panel.panelOptions?.category || "custom";
 }
 
 const DEFAULT_ACTIVATOR = () => true;
@@ -469,6 +550,9 @@ class PluginComponentRegistry {
   hasScript(name: string) {
     return this.scripts.has(name);
   }
+  getComponent<T>(name: string) {
+    return this.data.get(name).component as React.FunctionComponent<T>;
+  }
   register(registration: PluginComponentRegistration) {
     const { name } = registration;
 
@@ -476,7 +560,7 @@ class PluginComponentRegistry {
       registration.activator = DEFAULT_ACTIVATOR;
     }
 
-    for (let fieldName of REQUIRED) {
+    for (const fieldName of REQUIRED) {
       assert(
         registration[fieldName],
         `${fieldName} is required to register a Plugin Component`
@@ -491,9 +575,36 @@ class PluginComponentRegistry {
       `${name} is a Plot Plugin Component. This is deprecated. Please use "Panel" instead.`
     );
 
+    if (registration.type === PluginComponentType.SampleRenderer) {
+      assert(
+        registration.sampleRendererOptions,
+        `${name} declared SampleRenderer without sampleRendererOptions`
+      );
+
+      const { supports } = registration.sampleRendererOptions;
+
+      assert(
+        Boolean(supports),
+        `${name} declared SampleRenderer without sampleRendererOptions.supports`
+      );
+
+      if (supports && typeof supports !== "function") {
+        warn(
+          hasMatchMediaMatchers(supports),
+          `${name} declared sampleRendererOptions.supports without any matchers`
+        );
+      }
+    }
+
     const wrappedRegistration = {
       ...registration,
-      component: wrapCustomComponent(registration.component),
+      // Sample renderers provide their own grid/modal-specific fallbacks and
+      // should not inherit the generic plugin boundary, which clears the modal
+      // on error before local recovery can run.
+      component:
+        registration.type === PluginComponentType.SampleRenderer
+          ? registration.component
+          : wrapCustomComponent(registration.component),
     };
 
     this.data.set(name, wrappedRegistration);
@@ -504,11 +615,11 @@ class PluginComponentRegistry {
     this.notifyAllSubscribers("unregister");
     return this.data.delete(name);
   }
-  getByType(type: PluginComponentType) {
-    const results = [];
+  getByType<TType extends PluginComponentType>(type: TType) {
+    const results: PluginComponentRegistrationByType[TType][] = [];
     for (const registration of this.data.values()) {
       if (registration.type === type) {
-        results.push(registration);
+        results.push(registration as PluginComponentRegistrationByType[TType]);
       }
     }
 
@@ -555,6 +666,22 @@ export function usePluginSettings<T>(
 }
 
 export * from "./state";
+
+export {
+  createSampleRendererRenderContext,
+  getMatchingSampleRenderer,
+  getSampleRendererComponent,
+} from "./sample-renderer";
+export type {
+  GridConfig,
+  MatchMedia,
+  SampleRendererMatchContext,
+  SampleRendererMediaContext,
+  SampleRendererOptions,
+  SampleRendererProps,
+  SampleRendererRenderContext,
+  SampleRendererSampleLike,
+} from "./sample-renderer";
 
 type RegistryEvent = "register" | "unregister";
 type RegistryEventHandler = (event: RegistryEvent) => void;

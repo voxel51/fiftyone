@@ -36,6 +36,7 @@ export const getMetadataElements: GetElements<BaseState> = (params) => {
       { node: metadata.MetadataThumbnailElement },
       { node: common.CanvasElement },
       { node: common.ErrorElement },
+      { node: metadata.MetadataGridTagsElement },
       { node: common.ThumbnailSelectorElement },
     ],
   };

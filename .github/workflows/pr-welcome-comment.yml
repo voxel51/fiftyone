@@ -1,0 +1,55 @@
+name: PR Welcome Comment
+
+on:
+  pull_request_target:
+    types: [opened]
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  welcome:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Comment on PR
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
+          script: |
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+            });
+
+            const internal = ['MEMBER', 'OWNER', 'COLLABORATOR'];
+            if (internal.includes(pr.author_association)) {
+              console.log(`Skipping: ${pr.user.login} is ${pr.author_association}`);
+              return;
+            }
+
+            if (pr.user.login.endsWith('[bot]')) {
+              console.log(`Skipping: ${pr.user.login} is a bot`);
+              return;
+            }
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: [
+                `Thanks for opening this pull request, @${pr.user.login}! 🎉`,
+                '',
+                'A maintainer will review your changes soon. In the meantime, please ensure:',
+                '',
+                '- [ ] You filled out the PR template above, completely to the best of your knowledge',
+                '- [ ] You include tests (if applicable)',
+                '- [ ] You read the [contribution guide](https://github.com/voxel51/fiftyone/blob/develop/CONTRIBUTING.md)',
+                '',
+                '**Helpful resources:**',
+                '- 📖 [FiftyOne Documentation](https://docs.voxel51.com/)',
+                '- 💬 [Discord Community](https://discord.gg/fiftyone-community)',
+                '- 🎬 [YouTube Channel](https://www.youtube.com/@voxel51)',
+              ].join('\n'),
+            });

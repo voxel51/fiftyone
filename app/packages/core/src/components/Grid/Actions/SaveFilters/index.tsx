@@ -71,7 +71,7 @@ export default ({ adaptiveMenuItemProps }: ActionProps) => {
             ...v,
             {
               _cls: "fiftyone.core.stages.Select",
-              kwargs: [["sample_ids", [...selected]]],
+              kwargs: [["sample_ids", [...selected.keys()]]],
             } as fos.State.Stage,
           ]);
         } else {

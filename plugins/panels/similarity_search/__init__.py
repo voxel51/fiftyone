@@ -45,11 +45,21 @@ class SimilaritySearchPanel(Panel):
         ctx.panel.set_data("runs", runs)
         ctx.panel.set_data("brain_keys", brain_keys)
 
+        # None in OSS, populated by FiftyOne Teams
+        current_user = str(ctx.user_id) if ctx.user_id else None
+        ctx.panel.set_data("current_user", current_user)
+
         view_state = ctx.panel.get_state("view") or {"page": "home"}
         ctx.panel.set_state("view", view_state)
 
+        # Enable alt-selection visual feedback for negative queries
+        ctx.ops.set_sample_selection_style(
+            default="green-checkmark", alt="red-checkmark"
+        )
+
     def on_unload(self, ctx):
         ctx.panel.set_state("applied_run_id", None)
+        ctx.ops.clear_sample_selection_style()
 
     # -- Panel methods exposed to frontend --
 

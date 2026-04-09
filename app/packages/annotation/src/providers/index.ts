@@ -1,2 +1,2 @@
 export * from "./types";
-export { BrowserAnnotationProvider } from "./BrowserAnnotationProvider";
+export * from "./BrowserAnnotationProvider";

@@ -3,7 +3,7 @@
  */
 
 import type { Command } from "../commands/Command";
-import type { InteractiveDetectionHandler } from "../interaction/InteractiveDetectionHandler";
+import type { InteractionHandler } from "../interaction/InteractionManager";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
 import type { Point, Rect } from "../types";
 
@@ -53,12 +53,12 @@ export type LighterEventGroup = {
   // ============================================================================
   // USER INTERACTION EVENTS
   // ============================================================================
-  /** Emitted on "pointer down" to inform QuickDraw to create a new detection */
+  /** Emitted on "pointer down" to inform detection mode to create a new detection */
   "lighter:overlay-create": { eventId: string };
   /** Emitted when an overlay finishes being established */
   "lighter:overlay-establish": {
     id: string;
-    overlay: InteractiveDetectionHandler;
+    handler: InteractionHandler;
     startBounds: Rect;
     startPosition: Point;
     bounds: Rect;
@@ -115,6 +115,30 @@ export type LighterEventGroup = {
   "lighter:overlay-all-unhover": { point: Point };
   /** Emitted when the mouse moves while hovering over an overlay */
   "lighter:overlay-hover-move": { id: string; point: Point };
+  /** Emitted when user clicks without dragging in detection mode to exit */
+  "lighter:detection-mode-quit": { eventId: string };
+
+  // ============================================================================
+  // KEYPOINT EVENTS
+  // ============================================================================
+  /** Emitted when a keypoint is added during interactive creation */
+  "lighter:keypoint-point-added": {
+    id: string;
+    pointIndex: number;
+    /** Absolute (world-space) coordinates of the added point */
+    worldPoint: Point;
+  };
+  /** Emitted when a keypoint is moved via drag */
+  "lighter:keypoint-point-moved": {
+    id: string;
+    pointIndex: number;
+    /** Absolute (world-space) coordinates before the move */
+    worldFrom: Point;
+    /** Absolute (world-space) coordinates after the move */
+    worldTo: Point;
+  };
+  /** Emitted when a keypoint is deleted */
+  "lighter:keypoint-point-deleted": { id: string; pointIndex: number };
 
   // ============================================================================
   // SELECTION EVENTS

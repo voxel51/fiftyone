@@ -39,6 +39,11 @@ import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 
 import fiftyone.core.session.client as fosc
+from fiftyone.core.session.constants import (
+    DEFAULT_SELECTION_STYLE,
+    VALID_ICON_STYLES,
+    VALID_SELECTION_TYPES,
+)
 from fiftyone.core.session.events import (
     CaptureNotebookCell,
     CloseSession,
@@ -51,6 +56,7 @@ from fiftyone.core.session.events import (
     SetColorScheme,
     SetDatasetColorScheme,
     SetSample,
+    SetSampleSelectionStyle,
     SetSpaces,
     SetGroupSlice,
     StateUpdate,
@@ -701,8 +707,9 @@ class Session(object):
         self._state.group_id = None
         self._state.sample_id = None
         self._state.spaces = default_workspace_factory()
-        self._state.selected = []
+        self._state.selected_samples = []
         self._state.selected_labels = []
+        self._state.sample_selection_style = dict(DEFAULT_SELECTION_STYLE)
         self._state.view = None
 
     @property
@@ -745,8 +752,9 @@ class Session(object):
 
         self._state.group_id = None
         self._state.sample_id = None
-        self._state.selected = []
+        self._state.selected_samples = []
         self._state.selected_labels = []
+        self._state.sample_selection_style = dict(DEFAULT_SELECTION_STYLE)
 
     @property
     def has_plots(self) -> bool:
@@ -781,40 +789,123 @@ class Session(object):
 
     @property
     def selected(self) -> t.List[str]:
-        """A list of sample IDs of the currently selected samples in the App,
+        """A list of IDs of the currently selected samples in the App,
         if any.
         """
-        return list(self._state.selected)
+        return [
+            s["id"] if isinstance(s, dict) else s
+            for s in (self._state.selected_samples or [])
+        ]
 
     @selected.setter  # type: ignore
     def selected(self, sample_ids: t.List[str]) -> None:
-        self._state.selected = list(sample_ids) if sample_ids else []
-        self._client.send_event(SelectSamples(sample_ids))
+        # Preserve existing selection types; new IDs default to "default"
+        existing = {
+            s["id"]: s["type"]
+            for s in (self._state.selected_samples or [])
+            if isinstance(s, dict)
+        }
+        samples = [
+            {"id": sid, "type": existing.get(sid, "default")}
+            for sid in (sample_ids or [])
+        ]
+        normalized = _normalize_selected_samples(samples)
+        self._state.selected_samples = normalized
+        self._client.send_event(SelectSamples(samples=normalized))
+
+    @property
+    def selected_samples(self) -> t.List[t.Dict]:
+        """A list of selected sample dicts, each with ``id`` and ``type``
+        (``"default"`` or ``"alt"``), where type corresponds to a key in
+        :attr:`sample_selection_style`.
+
+        Despite its name, ``selected_samples`` represents whatever sample grid items are in
+        the current view: samples in a standard dataset view,
+        patches in a patches view, clips in a clips view, or frames in a
+        frames view.
+        """
+        return list(self._state.selected_samples or [])
+
+    @selected_samples.setter
+    def selected_samples(self, samples: t.List) -> None:
+        normalized = _normalize_selected_samples(samples)
+        self._state.selected_samples = normalized
+        self._client.send_event(SelectSamples(samples=normalized))
 
     def clear_selected(self) -> None:
         """Clears the currently selected samples, if any."""
-        self._state.selected = []
-        self._client.send_event(SelectSamples([]))
+        self._state.selected_samples = []
+        self._client.send_event(SelectSamples(samples=[]))
 
     def select_samples(
         self,
-        ids: t.Optional[t.Union[str, t.Iterable[str]]] = None,
+        ids: t.Optional[t.Union[str, t.Iterable]] = None,
         tags: t.Optional[t.Union[str, t.Iterable[str]]] = None,
     ) -> None:
-        """Selects the specified samples in the current view in the App,
+        """Selects the specified samples in the current view in the App.
+
+        Despite its name, this applies to whatever sample grid items are in
+        the current view: samples, patches, clips, or frames.
 
         Args:
-            ids (None): an ID or iterable of IDs of samples to select
-            tags (None): a tag or iterable of tags of samples to select
+            ids (None): an ID or iterable of IDs to select. Items can be
+                plain strings (all ``"default"`` type) or dicts of the form
+                ``{"id": "...", "type": "default"|"alt"}``, where type
+                corresponds to a key in :attr:`sample_selection_style`.
+            tags (None): a tag or iterable of tags to select
         """
         if tags is not None and self._collection:
             ids = self._collection.match_tags(tags).values("id")
 
         if ids is None:
             ids = []
+        elif isinstance(ids, str):
+            ids = [ids]
 
-        self._state.selected = list(ids)
-        self._client.send_event(SelectSamples(self._state.selected))
+        normalized = _normalize_selected_samples(list(ids))
+        self._state.selected_samples = normalized
+        self._client.send_event(SelectSamples(samples=normalized))
+
+    @property
+    def sample_selection_style(self) -> t.Dict:
+        """The current sample grid selection style config.
+
+        A dict with a ``default`` key and optional ``alt`` key specifying
+        icon styles.
+        """
+        return self._state.sample_selection_style or dict(
+            DEFAULT_SELECTION_STYLE
+        )
+
+    @sample_selection_style.setter
+    def sample_selection_style(self, style: t.Dict) -> None:
+        resolved = _resolve_selection_style(
+            style.get("default"), style.get("alt")
+        )
+        self._state.sample_selection_style = resolved
+        self._client.send_event(SetSampleSelectionStyle(style=resolved))
+
+    def set_sample_selection_style(
+        self, default: str = "checkmark", alt: str = "checkmark"
+    ) -> None:
+        """Sets the sample grid selection style in the App.
+
+        Args:
+            default ("checkmark"): the default selection icon style. Supported
+                values are ``"checkmark"``, ``"green-checkmark"``,
+                ``"red-checkmark"``, ``"thumbsup"``, ``"thumbsdown"``,
+                ``"pin"``, ``"star"``, ``"x"``, ``"bookmark"``
+            alt ("checkmark"): the alt selection icon style
+        """
+        style = _resolve_selection_style(default, alt)
+        self._state.sample_selection_style = style
+        self._client.send_event(SetSampleSelectionStyle(style=style))
+
+    def clear_sample_selection_style(self) -> None:
+        """Clears the sample grid selection style, reverting to default checkmark."""
+        style = dict(DEFAULT_SELECTION_STYLE)
+        self._state.sample_selection_style = style
+        self._client.send_event(SetSampleSelectionStyle(style=style))
 
     @property
     def selected_labels(self) -> t.List[dict]:
@@ -971,6 +1062,15 @@ class Session(object):
                 ("Selected %s:" % etype, len(self.selected)),
                 ("Selected labels:", len(self.selected_labels)),
             ]
+            style = self.sample_selection_style
+            if style != dict(DEFAULT_SELECTION_STYLE):
+                elements.append(
+                    (
+                        "Selection style:",
+                        "default=%s, alt=%s"
+                        % (style.get("default"), style.get("alt")),
+                    )
+                )
         else:
             elements = [("Dataset:", "-")]
 
@@ -1176,10 +1276,19 @@ def _attach_listeners(session: "Session"):
     )
     session._client.add_event_listener("state_update", on_state_update)
 
-    on_select_samples: t.Callable[
-        [SelectSamples], None
-    ] = lambda event: setattr(session._state, "selected", event.sample_ids)
+    def on_select_samples(event: SelectSamples):
+        session._state.selected_samples = event.samples
+
     session._client.add_event_listener("select_samples", on_select_samples)
+
+    def on_set_sample_selection_style(
+        event: SetSampleSelectionStyle,
+    ) -> None:
+        session._state.sample_selection_style = event.style
+
+    session._client.add_event_listener(
+        "set_sample_selection_style", on_set_sample_selection_style
+    )
 
     on_select_labels: t.Callable[
         [SelectLabels], None
@@ -1296,6 +1405,39 @@ def _on_refresh(session: Session, state: t.Optional[StateDescription]):
 
     if session.dataset is not None:
         session.dataset.reload()
+
+
+def _normalize_selected_samples(
+    samples: t.List,
+) -> t.List[t.Dict]:
+    # Backward-compat alias; canonical implementation lives in utils
+    from fiftyone.core.session.utils import normalize_selected_samples
+
+    return normalize_selected_samples(samples)
+
+
+def _resolve_selection_style(
+    default: t.Optional[str], alt: t.Optional[str]
+) -> t.Dict:
+    if default is None:
+        default = DEFAULT_SELECTION_STYLE["default"]
+
+    if alt is None:
+        alt = DEFAULT_SELECTION_STYLE["alt"]
+
+    if default not in VALID_ICON_STYLES:
+        raise ValueError(
+            f"Invalid default icon style '{default}'. "
+            f"Must be one of {VALID_ICON_STYLES}"
+        )
+
+    if alt not in VALID_ICON_STYLES:
+        raise ValueError(
+            f"Invalid alt icon style '{alt}'. "
+            f"Must be one of {VALID_ICON_STYLES}"
+        )
+
+    return {"default": default, "alt": alt}
 
 
 def _on_select_labels(state: StateDescription, event: SelectLabels):

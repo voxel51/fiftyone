@@ -11,6 +11,8 @@ import { ModalSidebarPom } from "./modal-sidebar";
 import { SampleCanvasPom } from "./sample-canvas";
 import { ModalVideoControlsPom } from "./video-controls";
 
+const SAMPLE_LOAD_TIMEOUT = Duration.Seconds(20);
+
 export class ModalPom {
   readonly assert: ModalAsserter;
 
@@ -124,6 +126,8 @@ export class ModalPom {
       }
 
       await this.page.keyboard.press("c");
+      // Controls take time to hide
+      // eslint-disable-next-line playwright/no-wait-for-timeout
       await this.page.waitForTimeout(300);
 
       attempts++;
@@ -238,7 +242,8 @@ export class ModalPom {
         )?.textContent;
         return slice !== currentSlice;
       },
-      { currentSlice, groupField }
+      { currentSlice, groupField },
+      { timeout: SAMPLE_LOAD_TIMEOUT }
     );
     return this.waitForSampleLoadDomAttribute(allowErrorInfo);
   }
@@ -302,7 +307,7 @@ export class ModalPom {
         );
       },
       allowErrorInfo,
-      { timeout: Duration.Seconds(20) }
+      { timeout: SAMPLE_LOAD_TIMEOUT }
     );
   }
 }
@@ -321,6 +326,12 @@ class ModalAsserter {
   async verifyModalOpenedSuccessfully() {
     await this.modalPom.waitForSampleLoadDomAttribute();
     await expect(this.modalPom.locator).toBeVisible();
+  }
+
+  async verifyHasNoViewerError() {
+    await expect(
+      this.modalPom.modalContainer.getByTestId("looker-error-info")
+    ).toHaveCount(0);
   }
 
   async verifySelectionCount(n: number) {
@@ -345,8 +356,10 @@ class ModalAsserter {
     title: string,
     { pinned }: { pinned: boolean } = { pinned: false }
   ) {
-    const actualTitle = await this.modalPom.modalSamplePluginTitle;
-    const expectedTitle = pinned ? `📌 ${title}` : title;
-    expect(actualTitle).toBe(expectedTitle);
+    await expect
+      .poll(async () => this.modalPom.modalSamplePluginTitle, {
+        timeout: 5000,
+      })
+      .toBe(pinned ? `📌 ${title}` : title);
   }
 }

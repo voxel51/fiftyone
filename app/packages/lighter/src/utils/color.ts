@@ -13,7 +13,21 @@
  * @param color - CSS color string (e.g., "#ff0000", "rgb(255,0,0)", "hsl(0,100%,50%)")
  * @returns Object containing color (as hex number) and alpha (0-1)
  */
+const colorCache = new Map<string, { color: number; alpha: number }>();
+
 export function parseColorWithAlpha(color: string): {
+  color: number;
+  alpha: number;
+} {
+  const cached = colorCache.get(color);
+  if (cached) return { ...cached };
+
+  const result = parseColorWithAlphaUncached(color);
+  colorCache.set(color, result);
+  return { ...result };
+}
+
+function parseColorWithAlphaUncached(color: string): {
   color: number;
   alpha: number;
 } {

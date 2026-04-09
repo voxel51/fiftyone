@@ -39,7 +39,7 @@ export class ModalGroupActionsPom {
         await this.modal.locator.getByTestId("checkbox-Carousel").click();
         break;
       case "viewer":
-        await this.modal.locator.getByTestId("checkbox-Viewer").click();
+        await this.modal.locator.getByTestId("checkbox-2D Viewer").click();
         break;
       default:
         throw new Error(`Unknown media type: ${media}`);

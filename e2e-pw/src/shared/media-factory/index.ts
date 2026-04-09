@@ -3,6 +3,7 @@
  */
 import { createBlankImage } from "./image";
 import { createPcd } from "./pcd";
+import { createPly } from "./ply";
 import { createBlankVideo } from "./video";
 
 /**
@@ -25,4 +26,5 @@ export const MediaFactory = {
   createBlankImage,
   /** Creates a PCD point cloud file with points arranged in a diagonal or cubic grid. See {@link createPcd}. */
   createPcd,
+  createPly,
 };

@@ -1,4 +1,8 @@
-import { setSelected, type setSelectedMutation } from "@fiftyone/relay";
+import {
+  setSelectedSamples,
+  type setSelectedSamplesMutation,
+} from "@fiftyone/relay";
+import type { SelectionType } from "@fiftyone/state";
 import { DefaultValue } from "recoil";
 import { commitMutation } from "relay-runtime";
 import type { RegisteredWriter } from "./registerWriter";
@@ -6,10 +10,23 @@ import type { RegisteredWriter } from "./registerWriter";
 const onSelectSamples: RegisteredWriter<"selectedSamples"> =
   ({ environment, subscription }) =>
   (selected) => {
-    commitMutation<setSelectedMutation>(environment, {
-      mutation: setSelected,
+    const selectedMap =
+      selected instanceof DefaultValue
+        ? new Map<string, SelectionType>()
+        : selected;
+
+    // Serialize Map to [{id, type}, ...] for the mutation
+    const selectedSamplesPayload = Array.from(selectedMap.entries()).map(
+      ([id, type]) => ({
+        id,
+        type,
+      })
+    );
+
+    commitMutation<setSelectedSamplesMutation>(environment, {
+      mutation: setSelectedSamples,
       variables: {
-        selected: selected instanceof DefaultValue ? [] : Array.from(selected),
+        selectedSamples: selectedSamplesPayload,
         subscription,
       },
     });
