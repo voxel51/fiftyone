@@ -13,8 +13,6 @@ export type ToolsContext = {
   negativePoints?: Vec2[];
   /** The current selection of region-of-interest prompts. */
   regionsOfInterest?: ROI[];
-  /** The current text prompt. */
-  textPrompt?: string;
 };
 
 /**
@@ -40,8 +38,6 @@ export interface ToolsState extends ToolsContext {
   removeNegativePoint(index: number): void;
   /** Replaces the full set of ROI prompts. */
   setRegionsOfInterest(rois: ROI[]): void;
-  /** Sets the free-text prompt. */
-  setTextPrompt(prompt: string): void;
   /** Clears all tool inputs back to their initial state. */
   reset(): void;
 }
@@ -49,7 +45,6 @@ export interface ToolsState extends ToolsContext {
 const positivePointsAtom = atom<Vec2[]>([]);
 const negativePointsAtom = atom<Vec2[]>([]);
 const regionsOfInterestAtom = atom<ROI[]>([]);
-const textPromptAtom = atom<string | null>(null);
 
 /**
  * Hook which returns the current {@link ToolsContext} (read-only).
@@ -61,7 +56,6 @@ export const useToolsContext = (): ToolsContext => {
   const positivePoints = useAtomValue(positivePointsAtom);
   const negativePoints = useAtomValue(negativePointsAtom);
   const regionsOfInterest = useAtomValue(regionsOfInterestAtom);
-  const textPrompt = useAtomValue(textPromptAtom);
 
   return useMemo(
     () => ({
@@ -69,9 +63,8 @@ export const useToolsContext = (): ToolsContext => {
       positivePoints,
       negativePoints,
       regionsOfInterest,
-      textPrompt,
     }),
-    [activeTask, positivePoints, negativePoints, regionsOfInterest, textPrompt]
+    [activeTask, positivePoints, negativePoints, regionsOfInterest]
   );
 };
 
@@ -87,7 +80,6 @@ export const useToolsState = (): ToolsState => {
   const [regionsOfInterest, setRegionsOfInterest] = useAtom(
     regionsOfInterestAtom
   );
-  const [textPrompt, setTextPrompt] = useAtom(textPromptAtom);
 
   const addPositivePoint = useCallback(
     (point: Vec2) => setPositivePoints((prev) => [...prev, point]),
@@ -115,13 +107,7 @@ export const useToolsState = (): ToolsState => {
     setPositivePoints([]);
     setNegativePoints([]);
     setRegionsOfInterest([]);
-    setTextPrompt(null);
-  }, [
-    setPositivePoints,
-    setNegativePoints,
-    setRegionsOfInterest,
-    setTextPrompt,
-  ]);
+  }, [setPositivePoints, setNegativePoints, setRegionsOfInterest]);
 
   return useMemo(
     () => ({
@@ -129,13 +115,11 @@ export const useToolsState = (): ToolsState => {
       positivePoints,
       negativePoints,
       regionsOfInterest,
-      textPrompt,
       addPositivePoint,
       removePositivePoint,
       addNegativePoint,
       removeNegativePoint,
       setRegionsOfInterest,
-      setTextPrompt,
       reset,
     }),
     [
@@ -143,13 +127,11 @@ export const useToolsState = (): ToolsState => {
       positivePoints,
       negativePoints,
       regionsOfInterest,
-      textPrompt,
       addPositivePoint,
       removePositivePoint,
       addNegativePoint,
       removeNegativePoint,
       setRegionsOfInterest,
-      setTextPrompt,
       reset,
     ]
   );

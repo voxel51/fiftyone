@@ -4,9 +4,8 @@
  * Hook for AI-assisted segmentation mode.
  *
  * Flow:
- *  1. User enters AI segment mode → point overlay created
- *  2. User types text prompt → interactive mode activated
- *  3. User clicks canvas → positive point placed → inference triggered
+ *  1. User enters AI segment mode → point overlay created, interactive mode activated
+ *  2. User clicks canvas → positive point placed → inference triggered
  *  4. First result → pending Detection overlay created with mask + bbox
  *  5. More points → inference re-triggered → same Detection overlay updated
  *  6. User configures field/class in sidebar → confirms label
@@ -160,28 +159,16 @@ export const useAISegment = () => {
     setPendingDetectionId,
   ]);
 
-  // ---- text prompt ----
-
-  const prompt = toolsState.textPrompt ?? "";
-
-  const setPrompt = useCallback(
-    (text: string) => {
-      toolsState.setTextPrompt(text);
-    },
-    [toolsState]
-  );
-
-  // ---- enter interactive mode only when prompt is non-empty ----
+  // ---- enter interactive mode as soon as the overlay is ready ----
 
   const interactiveModeRef = useRef(false);
 
   useEffect(() => {
     const currentScene = sceneRef.current;
-    if (!currentScene || currentScene.isDestroyed || !active) return;
+    if (!currentScene || currentScene.isDestroyed || !active || !overlayId)
+      return;
 
-    const hasPrompt = prompt.length > 0;
-
-    if (hasPrompt && !interactiveModeRef.current && overlayId) {
+    if (!interactiveModeRef.current) {
       const overlay = getOverlay?.(overlayId);
       if (overlay) {
         const eventBus = getEventBus<LighterEventGroup>(
@@ -194,11 +181,8 @@ export const useAISegment = () => {
         currentScene.enterInteractiveMode(handler);
         interactiveModeRef.current = true;
       }
-    } else if (!hasPrompt && interactiveModeRef.current) {
-      currentScene.exitInteractiveMode();
-      interactiveModeRef.current = false;
     }
-  }, [active, prompt, overlayId, getOverlay]);
+  }, [active, overlayId, getOverlay]);
 
   useEffect(() => {
     if (!active) {
@@ -267,7 +251,7 @@ export const useAISegment = () => {
           return;
         }
 
-        const labelValue = detection.label || toolsState.textPrompt || "object";
+        const labelValue = detection.label || "object";
 
         const labelData: DetectionLabel = {
           _id: id,
@@ -429,11 +413,9 @@ export const useAISegment = () => {
   return useMemo(
     () => ({
       active,
-      prompt,
-      setPrompt,
       enter,
       exit,
     }),
-    [active, prompt, setPrompt, enter, exit]
+    [active, enter, exit]
   );
 };

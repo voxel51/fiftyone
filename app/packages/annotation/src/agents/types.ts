@@ -27,13 +27,11 @@ export enum AgentTaskType {
  * - `"positivePoint"` - a set of positive point prompts indicating regions to include
  * - `"negativePoint"` - a set of negative point prompts indicating regions to exclude
  * - `"roi"` - a set of polygonal regions of interest to bound the labels
- * - `"textPrompt"` - a free-text description of the target object
  */
 export enum InferenceCapability {
   POSITIVE_POINT = "positivePoint",
   NEGATIVE_POINT = "negativePoint",
   ROI = "roi",
-  TEXT_PROMPT = "textPrompt",
 }
 
 /**
@@ -75,8 +73,6 @@ export type AnnotationContext = {
   negativePoints?: Vec2[];
   /** Polygonal regions of interest drawn by the user. */
   regionsOfInterest?: ROI[];
-  /** Free-text description of the target object. */
-  textPrompt?: string;
 };
 
 /**

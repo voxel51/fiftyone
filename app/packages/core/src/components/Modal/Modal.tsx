@@ -40,7 +40,6 @@ import {
 } from "react-error-boundary";
 import styled from "styled-components";
 import Actions from "./Actions";
-import { AISegmentBanner } from "./AISegmentBanner";
 import ModalNavigation from "./ModalNavigation";
 import { ModalSpace } from "./ModalSpace";
 import { Sidebar } from "./Sidebar";
@@ -354,7 +353,6 @@ const Modal = () => {
       >
         <Actions />
         <SegmentationToolbar />
-        <AISegmentBanner />
         {isAnnotationEnabled && <AnnotationHandlerRegistration />}
         <TooltipInfo />
         <ModalContainer style={{ ...screenParams }}>

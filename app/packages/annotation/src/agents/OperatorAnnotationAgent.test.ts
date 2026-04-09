@@ -92,7 +92,7 @@ describe("OperatorAnnotationAgent", () => {
 
     it("should send the correct request body", async () => {
       mockFetch.mockResolvedValue({ result: { result: {} } });
-      const ctx = makeContext({ textPrompt: "cat" });
+      const ctx = makeContext();
 
       await agent.infer(ctx);
 

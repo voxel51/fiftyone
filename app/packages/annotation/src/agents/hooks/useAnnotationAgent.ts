@@ -126,7 +126,6 @@ const useAgentContext = (): AnnotationContext | null => {
       selectedLabel && "bounding_box" in selectedLabel.data
         ? {
             taskType: AgentTaskType.SEGMENT,
-            textPrompt: selectedLabel.data.label,
             regionsOfInterest: [
               bboxToRoi(
                 (selectedLabel as DetectionAnnotationLabel).data.bounding_box
