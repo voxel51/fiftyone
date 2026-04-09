@@ -37,6 +37,9 @@ export default function useSimilarityPopover({
   const showMixedFieldWarning = modal && isImageSearch && hasMixedFields;
   const showNoIndexWarning =
     modal && isImageSearch && !hasMixedFields && !hasSimilarityKeys;
+  const noIndexWarningText = hasSelectedLabels
+    ? "No similarity index found for the selected label field"
+    : "No similarity index available";
 
   const type = useRecoilValue(sortType(modal));
   const datasetId = fos.useAssertedRecoilValue(fos.datasetId);
@@ -185,6 +188,7 @@ export default function useSimilarityPopover({
     hasSimilarityKeys,
     showMixedFieldWarning,
     showNoIndexWarning,
+    noIndexWarningText,
     searchButtonText,
     handleSearch,
     handleOpenPanel,

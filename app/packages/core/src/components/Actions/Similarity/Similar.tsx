@@ -34,6 +34,7 @@ const SimilarityPopover = ({
     hasSimilarityKeys,
     showMixedFieldWarning,
     showNoIndexWarning,
+    noIndexWarningText,
     searchButtonText,
     handleSearch,
     handleOpenPanel,
@@ -66,7 +67,7 @@ const SimilarityPopover = ({
       )}
       {showNoIndexWarning && (
         <PopoutSectionTitle style={{ fontSize: 12 }}>
-          No similarity index found for the selected label field
+          {noIndexWarningText}
         </PopoutSectionTitle>
       )}
       {!showMixedFieldWarning && !showNoIndexWarning && hasSimilarityKeys && (
