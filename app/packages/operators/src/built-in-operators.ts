@@ -150,6 +150,14 @@ class OpenPanel extends Operator {
       label: "Force (skips panel exists check)",
       default: false,
     });
+    inputs.obj("sessionState", {
+      label: "Initial session state",
+      view: new types.HiddenView({}),
+    });
+    inputs.obj("localState", {
+      label: "Initial local state",
+      view: new types.HiddenView({}),
+    });
     return new types.Property(inputs);
   }
   useHooks() {
@@ -157,7 +165,15 @@ class OpenPanel extends Operator {
     const availablePanels = usePanels();
     const { spaces } = useSpaces(FIFTYONE_GRID_SPACES_ID);
     const openedPanels = useSpaceNodes(FIFTYONE_GRID_SPACES_ID);
-    return { availablePanels, openedPanels, spaces };
+    const setPanelStateById = useSetPanelStateById();
+    const setPanelStateLocalById = useSetPanelStateById(true);
+    return {
+      availablePanels,
+      openedPanels,
+      spaces,
+      setPanelStateById,
+      setPanelStateLocalById,
+    };
   }
   findFirstPanelContainer(node: SpaceNode): SpaceNode | null {
     if (node.isPanelContainer()) {
@@ -171,8 +187,15 @@ class OpenPanel extends Operator {
     return null;
   }
   async execute({ hooks, params }: ExecutionContext) {
-    const { spaces, openedPanels, availablePanels } = hooks;
-    const { name, isActive, layout, force, forceDuplicate } = params;
+    const {
+      spaces,
+      openedPanels,
+      availablePanels,
+      setPanelStateById,
+      setPanelStateLocalById,
+    } = hooks;
+    const { name, isActive, layout, force, forceDuplicate, state, data } =
+      params;
     const targetSpace = this.findFirstPanelContainer(spaces.root);
     if (!targetSpace) {
       return console.error("No panel container found");
@@ -189,6 +212,12 @@ class OpenPanel extends Operator {
       return;
     }
     const newNode = new SpaceNode();
+    if (state) {
+      setPanelStateById(newNode.id, () => state);
+    }
+    if (data) {
+      setPanelStateLocalById(newNode.id, () => data);
+    }
     newNode.type = name;
     // add panel to the default space as an inactive panels
     spaces.addNodeAfter(targetSpace, newNode, isActive);
@@ -1714,7 +1743,6 @@ export function registerBuiltInOperators() {
     _registerBuiltInOperator(BrowserDownload);
     _registerBuiltInOperator(ClearActiveFields);
   } catch (e) {
-    console.error("Error registering built-in operators");
     console.error(e);
   }
 }
