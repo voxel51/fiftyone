@@ -98,14 +98,11 @@ class SimilaritySearchOperator(foo.Operator):
 
             dataset = ctx.dataset
 
-            # Reconstruct the source view if provided
-            source_view = ctx.params.get("source_view")
-            if source_view:
-                from fiftyone.core.view import DatasetView
-
-                view = DatasetView._build(dataset, source_view)
-            else:
-                view = dataset.view()
+            # Always sort against the base dataset view.
+            # source_view is stored in the run record for context
+            # but not used for the sort itself, because the brain
+            # index may have been computed on the base dataset.
+            view = dataset.view()
 
             ctx.set_progress(0.2, label="Preparing query...")
 
