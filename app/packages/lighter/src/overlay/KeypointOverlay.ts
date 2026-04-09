@@ -568,7 +568,7 @@ export class KeypointOverlay
     this.eventBus.dispatch("lighter:keypoint-point-added", {
       id: this.id,
       pointIndex: idx,
-      worldPoint,
+      point: { x: rp[0], y: rp[1] },
     });
 
     this.markDirty();

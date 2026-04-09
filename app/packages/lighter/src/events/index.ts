@@ -125,8 +125,8 @@ export type LighterEventGroup = {
   "lighter:keypoint-point-added": {
     id: string;
     pointIndex: number;
-    /** Absolute (world-space) coordinates of the added point */
-    worldPoint: Point;
+    /** Relative coordinates of the added point */
+    point: Point;
   };
   /** Emitted when a keypoint is moved via drag */
   "lighter:keypoint-point-moved": {
