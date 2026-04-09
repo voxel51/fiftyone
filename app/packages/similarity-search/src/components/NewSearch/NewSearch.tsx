@@ -21,7 +21,7 @@ import {
   Spacing,
   Variant,
 } from "@voxel51/voodo";
-import React from "react";
+import React, { useState } from "react";
 import { OperatorExecutionButton } from "@fiftyone/operators";
 import {
   BrainKeyConfig,
@@ -63,6 +63,7 @@ export default function NewSearch({
   onSubmitted,
 }: NewSearchProps) {
   const form = useNewSearchForm(brainKeys, cloneConfig, onSubmitted);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   return (
     <NewSearchContainer>
@@ -236,20 +237,36 @@ export default function NewSearch({
               </Stack>
             </QuerySelectorBoxActive>
           ) : (
-            <FileDrop
-              types={UPLOAD_ACCEPTED_TYPES}
-              onChange={async (files: File[]) => {
-                if (!files?.length) return;
-                const file = files[0];
-                if (file.size > UPLOAD_MAX_SIZE) return;
-                const { result, error } = await fileToBase64(file);
-                if (error || !result) return;
-                form.setUploadedImage({
-                  content: result,
-                  name: file.name,
-                });
-              }}
-            />
+            <>
+              <FileDrop
+                types={UPLOAD_ACCEPTED_TYPES}
+                onChange={async (files: File[]) => {
+                  if (!files?.length) return;
+                  const file = files[0];
+                  if (file.size > UPLOAD_MAX_SIZE) {
+                    setUploadError(
+                      `File exceeds the 10 MB size limit (${(file.size / 1024 / 1024).toFixed(1)} MB)`
+                    );
+                    return;
+                  }
+                  const { result, error } = await fileToBase64(file);
+                  if (error || !result) {
+                    setUploadError("Failed to read the image file. Please try again.");
+                    return;
+                  }
+                  setUploadError(null);
+                  form.setUploadedImage({
+                    content: result,
+                    name: file.name,
+                  });
+                }}
+              />
+              {uploadError && (
+                <Text variant={TextVariant.Sm} color={TextColor.Destructive}>
+                  {uploadError}
+                </Text>
+              )}
+            </>
           ))}
 
         {form.queryType === QueryType.Image &&
