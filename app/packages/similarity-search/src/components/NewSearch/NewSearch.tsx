@@ -245,13 +245,19 @@ export default function NewSearch({
                   const file = files[0];
                   if (file.size > UPLOAD_MAX_SIZE) {
                     setUploadError(
-                      `File exceeds the 10 MB size limit (${(file.size / 1024 / 1024).toFixed(1)} MB)`
+                      `File exceeds the 10 MB size limit (${(
+                        file.size /
+                        1024 /
+                        1024
+                      ).toFixed(1)} MB)`
                     );
                     return;
                   }
                   const { result, error } = await fileToBase64(file);
                   if (error || !result) {
-                    setUploadError("Failed to read the image file. Please try again.");
+                    setUploadError(
+                      "Failed to read the image file. Please try again."
+                    );
                     return;
                   }
                   setUploadError(null);
