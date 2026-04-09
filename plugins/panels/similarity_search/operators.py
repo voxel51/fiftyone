@@ -98,14 +98,11 @@ class SimilaritySearchOperator(foo.Operator):
 
             dataset = ctx.dataset
 
-            # Reconstruct the source view if provided
-            source_view = ctx.params.get("source_view")
-            if source_view:
-                from fiftyone.core.view import DatasetView
-
-                view = DatasetView._build(dataset, source_view)
-            else:
-                view = dataset.view()
+            # Always sort against the base dataset view.
+            # source_view is stored in the run record for context
+            # but not used for the sort itself, because the brain
+            # index may have been computed on the base dataset.
+            view = dataset.view()
 
             ctx.set_progress(0.2, label="Preparing query...")
 
@@ -130,6 +127,11 @@ class SimilaritySearchOperator(foo.Operator):
 
             ctx.set_progress(0.3, label="Running similarity query...")
 
+            # For patches-based searches, ensure we're on a patches
+            # view before sorting (skip if already on patches)
+            if patches_field and not view._is_patches:
+                view = view.to_patches(patches_field)
+
             # Build kwargs, omitting None values
             kwargs = {"brain_key": brain_key}
             if k is not None:
@@ -143,7 +145,10 @@ class SimilaritySearchOperator(foo.Operator):
 
             ctx.set_progress(0.7, label="Collecting results...")
 
-            dynamic_results = ctx.params.get("dynamic_results", False)
+            dynamic_results = ctx.params.get("dynamic_results", True)
+
+            result_ids = []
+            result_view_stages = None
 
             if dynamic_results:
                 result_view_stages = result_view._serialize(
@@ -152,7 +157,6 @@ class SimilaritySearchOperator(foo.Operator):
                 result_count = len(result_view)
             else:
                 result_ids = [str(rid) for rid in result_view.values("id")]
-                result_view_stages = None
                 result_count = len(result_ids)
 
             ctx.set_progress(0.9, label="Saving results...")
