@@ -10,6 +10,7 @@ import {
   Orientation,
   Pill,
   Size,
+  Spinner,
   Spacing,
   Stack,
   Text,
@@ -17,7 +18,13 @@ import {
   TextVariant,
 } from "@voxel51/voodo";
 import React from "react";
-import { getMcapRendererInfo } from "./renderer-utils";
+import {
+  formatMcapDuration,
+  getMcapCompactStreamLabels,
+  getMcapStreamCounts,
+} from "./scene-view-model";
+import { getMcapRendererInfo, getMcapSceneParams } from "./renderer-utils";
+import { useMcapScene } from "./useMcapScene";
 
 const ROOT_STYLES: React.CSSProperties = {
   width: "100%",
@@ -30,11 +37,10 @@ const CARD_STYLES: React.CSSProperties = {
   padding: "12px",
   borderRadius: "8px",
   overflow: "hidden",
-  background:
-    "linear-gradient(180deg, var(--fo-palette-background-level2) 0%, rgba(22, 22, 24, 0.96) 100%)",
 };
 
 const CONTENT_STYLES: React.CSSProperties = {
+  minWidth: 0,
   height: "100%",
 };
 
@@ -95,6 +101,17 @@ const MODAL_PILL_STYLES: React.CSSProperties = {
   flexShrink: 0,
 };
 
+const PILL_ROW_STYLES: React.CSSProperties = {
+  minWidth: 0,
+  flexWrap: "wrap",
+};
+
+const STATE_STYLES: React.CSSProperties = {
+  minWidth: 0,
+  minHeight: 0,
+  flex: 1,
+};
+
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div style={DETAIL_ROW_STYLES}>
@@ -117,9 +134,33 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+function SummaryPill({ children }: React.PropsWithChildren) {
+  return (
+    <Pill
+      size={Size.Xs}
+      backgroundColor={BackgroundColor.Muted}
+      color={TextColor.Secondary}
+    >
+      {children}
+    </Pill>
+  );
+}
+
+function formatStreamCount(value: number, label: string) {
+  return `${value} ${label}`;
+}
+
 /** Renders the built-in grid card for `.mcap` samples. */
 export const McapGridRenderer = React.memo(({ ctx }: SampleRendererProps) => {
   const info = getMcapRendererInfo(ctx);
+  const sceneParams = React.useMemo(() => getMcapSceneParams(ctx), [ctx]);
+  const { scene, isLoading, error } = useMcapScene(sceneParams);
+  const streamCounts = React.useMemo(() => {
+    return getMcapStreamCounts(scene?.streams ?? []);
+  }, [scene?.streams]);
+  const compactLabels = React.useMemo(() => {
+    return getMcapCompactStreamLabels(scene?.streams ?? []);
+  }, [scene?.streams]);
 
   return (
     <div data-testid="mcap-grid-renderer" style={ROOT_STYLES}>
@@ -164,15 +205,82 @@ export const McapGridRenderer = React.memo(({ ctx }: SampleRendererProps) => {
             >
               {info.basename}
             </Heading>
-
-            <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
-              <DetailRow label="Field" value={info.mediaField} />
-              <DetailRow
-                label="Path"
-                value={info.mediaPath ?? "Not available"}
-              />
-            </Stack>
           </Stack>
+
+          {isLoading && (
+            <Stack
+              data-testid="mcap-grid-loading"
+              orientation={Orientation.Column}
+              spacing={Spacing.Sm}
+              justify={Justify.Center}
+              align={Align.Center}
+              style={STATE_STYLES}
+            >
+              <Spinner size={Size.Sm} />
+              <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+                Loading inventory
+              </Text>
+            </Stack>
+          )}
+
+          {!isLoading && error && (
+            <Stack
+              data-testid="mcap-grid-error"
+              orientation={Orientation.Column}
+              spacing={Spacing.Sm}
+              justify={Justify.Center}
+              style={STATE_STYLES}
+            >
+              <Text variant={TextVariant.Sm} color={TextColor.Primary}>
+                Inventory unavailable
+              </Text>
+              <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
+                <DetailRow label="Field" value={info.mediaField} />
+                <DetailRow
+                  label="Path"
+                  value={info.mediaPath ?? "Not available"}
+                />
+              </Stack>
+            </Stack>
+          )}
+
+          {!isLoading && !error && scene && (
+            <Stack
+              data-testid="mcap-grid-summary"
+              orientation={Orientation.Column}
+              spacing={Spacing.Sm}
+              style={STATE_STYLES}
+            >
+              <Stack
+                orientation={Orientation.Row}
+                spacing={Spacing.Xs}
+                style={PILL_ROW_STYLES}
+              >
+                <SummaryPill>
+                  {formatStreamCount(streamCounts.image, "image")}
+                </SummaryPill>
+                <SummaryPill>
+                  {formatStreamCount(streamCounts.pointcloud, "pointcloud")}
+                </SummaryPill>
+                <SummaryPill>{formatMcapDuration(scene.timeRange)}</SummaryPill>
+              </Stack>
+              <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
+                <DetailRow label="Field" value={info.mediaField} />
+                <DetailRow
+                  label="Streams"
+                  value={`${streamCounts.total} supported`}
+                />
+                <DetailRow
+                  label="Topics"
+                  value={
+                    compactLabels.length
+                      ? compactLabels.join(", ")
+                      : "No supported streams"
+                  }
+                />
+              </Stack>
+            </Stack>
+          )}
 
           <Stack
             align={Align.Center}
