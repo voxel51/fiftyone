@@ -117,6 +117,15 @@ export class BoundingBoxOverlay
         bounds: this.bounds,
       });
     }
+
+    // invalidate cached mask with new label data
+    const newMaskSource = this.extractMaskB64(label.mask);
+    if (newMaskSource !== this.lastMaskSource) {
+      this.maskBitmap?.close();
+      this.maskBitmap = undefined;
+      this.lastMaskSource = undefined;
+      this.markDirty();
+    }
   }
 
   getPosition() {
