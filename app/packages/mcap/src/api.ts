@@ -2,10 +2,13 @@ import { getFetchFunction } from "@fiftyone/utilities";
 import type {
   FetchMcapBufferParams,
   FetchMcapSceneParams,
+  FetchMcapTimelineParams,
   McapBufferRequest,
   McapRawBufferResponse,
   McapRawBufferTransportResponse,
   McapSceneOpenResponse,
+  McapTimelineRequest,
+  McapTimelineResponse,
 } from "./types";
 
 function decodeBase64ToBytes(value: string) {
@@ -79,4 +82,19 @@ export async function fetchMcapBuffer(
   );
 
   return normalizeMcapRawBufferResponse(response);
+}
+
+/** Fetches the MCAP playback timeline index for the requested streams. */
+export async function fetchMcapTimeline(
+  params: FetchMcapTimelineParams
+): Promise<McapTimelineResponse> {
+  const fetch = getFetchFunction();
+
+  return fetch<McapTimelineRequest, McapTimelineResponse>(
+    "POST",
+    `/dataset/${encodeURIComponent(
+      params.datasetId
+    )}/sample/${encodeURIComponent(params.sampleId)}/mcap/timeline`,
+    params.request
+  );
 }

@@ -1,4 +1,5 @@
 import type { SampleRendererProps } from "@fiftyone/plugins";
+import { Timeline } from "@fiftyone/playback";
 import {
   Align,
   BackgroundColor,
@@ -35,6 +36,7 @@ import type {
   McapSceneOpenResponse,
   McapStreamDescriptor,
 } from "./types";
+import { useMcapImagePlayback } from "./useMcapImagePlayback";
 import { useMcapScene } from "./useMcapScene";
 
 const SHELL_STYLES: React.CSSProperties = {
@@ -122,6 +124,32 @@ const PANEL_CARD_STYLES: React.CSSProperties = {
   cursor: "pointer",
 };
 
+const PANEL_CARD_CONTENT_STYLES: React.CSSProperties = {
+  minWidth: 0,
+  minHeight: 0,
+  height: "100%",
+};
+
+const PANEL_VIEWPORT_STYLES: React.CSSProperties = {
+  minWidth: 0,
+  minHeight: 0,
+  flex: 1,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  overflow: "hidden",
+  borderRadius: "6px",
+  background: "var(--fo-palette-background-level3)",
+  padding: "12px",
+};
+
+const IMAGE_STYLES: React.CSSProperties = {
+  width: "100%",
+  height: "100%",
+  objectFit: "contain",
+  display: "block",
+};
+
 const NAV_CARD_STYLES: React.CSSProperties = {
   ...CARD_STYLES,
   padding: "12px",
@@ -172,6 +200,11 @@ const STATUS_STYLES: React.CSSProperties = {
 
 const NAV_LIST_STYLES: React.CSSProperties = {
   minWidth: 0,
+};
+
+const TIMELINE_CARD_STYLES: React.CSSProperties = {
+  ...CARD_STYLES,
+  padding: "14px 16px",
 };
 
 function InfoRow({ label, value }: { label: string; value: string }) {
@@ -246,6 +279,10 @@ function formatMessageCount(messageCount: number | null) {
     : new Intl.NumberFormat().format(messageCount);
 }
 
+function formatTimestampNs(timestampNs: number) {
+  return new Intl.NumberFormat().format(timestampNs);
+}
+
 function getPanelTypeLabel(panelType: McapPanelPlan["panelType"]) {
   return panelType === "2d" ? "2D Panel" : "3D Panel";
 }
@@ -316,17 +353,68 @@ function PanelNavigationCard({
 function PanelCard({
   isActive,
   panel,
+  playbackError,
+  playbackState,
+  playbackUnavailable,
   stream,
   onSelect,
 }: {
   isActive: boolean;
   panel: McapPanelPlan;
+  playbackError: Error | null;
+  playbackState?: {
+    status: "idle" | "loading" | "ready" | "error" | "empty";
+    frame: {
+      format: string;
+      logTimeNs: number;
+      objectUrl: string;
+    } | null;
+    error: Error | null;
+  };
+  playbackUnavailable: boolean;
   stream: McapStreamDescriptor | null;
   onSelect: () => void;
 }) {
   const title = stream
     ? getMcapStreamDisplayLabel(stream)
     : panel.streamId || "Unknown stream";
+  const isImagePanel = panel.contentType === "image";
+  const frame = playbackState?.frame ?? null;
+  const statusMessage = React.useMemo(() => {
+    if (!isImagePanel) {
+      return "Point cloud playback comes next in the following slice.";
+    }
+
+    if (playbackError) {
+      return playbackError.message;
+    }
+
+    if (playbackUnavailable) {
+      return "Playback is not ready for this scene yet.";
+    }
+
+    switch (playbackState?.status) {
+      case "ready":
+        return frame
+          ? `log time ${formatTimestampNs(frame.logTimeNs)} ns`
+          : "Frame ready";
+      case "error":
+        return playbackState.error?.message ?? "Frame decode failed";
+      case "empty":
+        return "No image frame is available at the current playback time.";
+      case "loading":
+        return "Loading frame data for the shared playback cursor.";
+      default:
+        return "Select this panel to inspect playback metadata.";
+    }
+  }, [
+    frame,
+    isImagePanel,
+    playbackError,
+    playbackState?.error,
+    playbackState?.status,
+    playbackUnavailable,
+  ]);
 
   return (
     <Card
@@ -343,7 +431,7 @@ function PanelCard({
         orientation={Orientation.Column}
         spacing={Spacing.Md}
         justify={Justify.Between}
-        style={CENTER_CONTENT_STYLES}
+        style={PANEL_CARD_CONTENT_STYLES}
       >
         <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
           <Stack align={Align.Center} justify={Justify.Between}>
@@ -363,6 +451,60 @@ function PanelCard({
             {title}
           </Heading>
         </Stack>
+        <div style={PANEL_VIEWPORT_STYLES}>
+          {!isImagePanel && (
+            <Stack
+              orientation={Orientation.Column}
+              spacing={Spacing.Xs}
+              align={Align.Center}
+            >
+              <Text variant={TextVariant.Sm} color={TextColor.Primary}>
+                Point cloud playback comes next
+              </Text>
+              <Text
+                variant={TextVariant.Caption}
+                color={TextColor.Secondary}
+                style={{ textAlign: "center" }}
+              >
+                This panel is already inventory-backed, but it is still using a
+                metadata placeholder in this slice.
+              </Text>
+            </Stack>
+          )}
+          {isImagePanel && playbackState?.status === "ready" && frame && (
+            <img
+              alt={title}
+              data-testid={`mcap-image-frame-${panel.panelId}`}
+              src={frame.objectUrl}
+              style={IMAGE_STYLES}
+            />
+          )}
+          {isImagePanel &&
+            (playbackUnavailable || playbackState?.status !== "ready") && (
+              <Stack
+                orientation={Orientation.Column}
+                spacing={Spacing.Xs}
+                align={Align.Center}
+              >
+                {(playbackState?.status === "loading" ||
+                  playbackUnavailable) && <Spinner size={Size.Sm} />}
+                <Text variant={TextVariant.Sm} color={TextColor.Primary}>
+                  {playbackState?.status === "error"
+                    ? "Playback error"
+                    : playbackState?.status === "empty"
+                    ? "No frame available"
+                    : "Image playback"}
+                </Text>
+                <Text
+                  variant={TextVariant.Caption}
+                  color={TextColor.Secondary}
+                  style={{ textAlign: "center" }}
+                >
+                  {statusMessage}
+                </Text>
+              </Stack>
+            )}
+        </div>
         <Stack
           orientation={Orientation.Row}
           spacing={Spacing.Xs}
@@ -378,6 +520,18 @@ function PanelCard({
             label="Schema"
             value={stream?.schemaName ?? "Not available"}
           />
+          {isImagePanel && (
+            <InfoRow
+              label="Frame"
+              value={
+                frame
+                  ? `${frame.format || "compressed"} @ ${formatTimestampNs(
+                      frame.logTimeNs
+                    )}`
+                  : statusMessage
+              }
+            />
+          )}
           <InfoRow
             label="Messages"
             value={formatMessageCount(stream?.messageCount ?? null)}
@@ -471,6 +625,7 @@ export const McapModalRenderer = React.memo(({ ctx }: SampleRendererProps) => {
   const sceneParams = React.useMemo(() => getMcapSceneParams(ctx), [ctx]);
   const { data, scene, playbackPlan, isLoading, error, refetch } =
     useMcapScene(sceneParams);
+  const playback = useMcapImagePlayback(scene, playbackPlan);
   const [activePanelId, setActivePanelId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
@@ -502,6 +657,10 @@ export const McapModalRenderer = React.memo(({ ctx }: SampleRendererProps) => {
       return [];
     }
 
+    const activePlaybackState = activePanelState.stream
+      ? playback.panelStates[activePanelState.stream.streamId]
+      : null;
+
     return [
       {
         label: "Panel",
@@ -516,8 +675,16 @@ export const McapModalRenderer = React.memo(({ ctx }: SampleRendererProps) => {
         value:
           activePanelState.stream?.topic ?? activePanelState.panel.streamId,
       },
+      ...(activePlaybackState?.frame
+        ? [
+            {
+              label: "Frame",
+              value: formatTimestampNs(activePlaybackState.frame.logTimeNs),
+            },
+          ]
+        : []),
     ];
-  }, [activePanelState.panel, activePanelState.stream]);
+  }, [activePanelState.panel, activePanelState.stream, playback.panelStates]);
 
   const activeStreamRows = React.useMemo(() => {
     if (!activePanelState.stream) {
@@ -578,6 +745,9 @@ export const McapModalRenderer = React.memo(({ ctx }: SampleRendererProps) => {
       },
     ];
   }, [data?.scene.sceneId, scene, sceneTopicLabels]);
+  const showTimelineStrip =
+    Boolean(playback.timelineName) &&
+    Object.keys(playback.panelStates).length > 0;
 
   return (
     <div data-testid="mcap-shell-root" style={SHELL_STYLES}>
@@ -721,6 +891,73 @@ export const McapModalRenderer = React.memo(({ ctx }: SampleRendererProps) => {
             !error &&
             playbackPlan &&
             playbackPlan.panels.length > 0 && (
+              <Card
+                background={CardBackground.Secondary}
+                outlined
+                style={TIMELINE_CARD_STYLES}
+              >
+                {playback.isLoading && (
+                  <Stack
+                    data-testid="mcap-playback-loading"
+                    orientation={Orientation.Row}
+                    spacing={Spacing.Sm}
+                    align={Align.Center}
+                  >
+                    <Spinner size={Size.Sm} />
+                    <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+                      Loading playback timeline
+                    </Text>
+                  </Stack>
+                )}
+                {!playback.isLoading && playback.error && (
+                  <Stack
+                    data-testid="mcap-playback-error"
+                    orientation={Orientation.Row}
+                    spacing={Spacing.Md}
+                    align={Align.Center}
+                    justify={Justify.Between}
+                  >
+                    <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+                      {playback.error.message}
+                    </Text>
+                    <Button
+                      size={Size.Sm}
+                      variant={Variant.Secondary}
+                      onClick={() => void playback.refetch()}
+                    >
+                      Retry
+                    </Button>
+                  </Stack>
+                )}
+                {!playback.isLoading &&
+                  !playback.error &&
+                  showTimelineStrip &&
+                  playback.timelineName &&
+                  playback.hasPlayback && (
+                    <Timeline
+                      name={playback.timelineName}
+                      style={{ width: "100%" }}
+                    />
+                  )}
+                {!playback.isLoading &&
+                  !playback.error &&
+                  showTimelineStrip &&
+                  !playback.hasPlayback && (
+                    <Text
+                      data-testid="mcap-playback-empty"
+                      variant={TextVariant.Sm}
+                      color={TextColor.Secondary}
+                    >
+                      No image playback timestamps were found for this scene.
+                    </Text>
+                  )}
+              </Card>
+            )}
+
+          {!isLoading &&
+            !error &&
+            playbackPlan &&
+            playbackPlan.panels.length > 0 && (
               <div data-testid="mcap-shell-panels" style={PANEL_GRID_STYLES}>
                 {playbackPlan.panels.map((panel) => {
                   const stream =
@@ -735,6 +972,13 @@ export const McapModalRenderer = React.memo(({ ctx }: SampleRendererProps) => {
                         panel.panelId === activePanelState.activePanelId
                       }
                       panel={panel}
+                      playbackError={playback.error}
+                      playbackState={
+                        stream
+                          ? playback.panelStates[stream.streamId]
+                          : undefined
+                      }
+                      playbackUnavailable={!playback.hasPlayback}
                       stream={stream}
                       onSelect={() => setActivePanelId(panel.panelId)}
                     />

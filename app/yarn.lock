@@ -2882,8 +2882,11 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/mcap@workspace:packages/mcap"
   dependencies:
+    "@fiftyone/playback": "workspace:^"
     "@fiftyone/plugins": "npm:*"
     "@fiftyone/utilities": "npm:*"
+    "@foxglove/rosmsg": "npm:^5.0.5"
+    "@foxglove/rosmsg2-serialization": "npm:^3.0.3"
     typescript: "npm:^4.7.4"
     vite: "npm:^6.4.2"
     vite-plugin-externals: "npm:^0.5.0"
@@ -2913,7 +2916,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@fiftyone/playback@workspace:packages/playback":
+"@fiftyone/playback@workspace:^, @fiftyone/playback@workspace:packages/playback":
   version: 0.0.0-use.local
   resolution: "@fiftyone/playback@workspace:packages/playback"
   dependencies:
@@ -3190,6 +3193,48 @@ __metadata:
   version: 0.2.10
   resolution: "@floating-ui/utils@npm:0.2.10"
   checksum: 10/b635ea865a8be2484b608b7157f5abf9ed439f351011a74b7e988439e2898199a9a8b790f52291e05bdcf119088160dc782d98cff45cc98c5a271bc6f51327ae
+  languageName: node
+  linkType: hard
+
+"@foxglove/cdr@npm:^3.4.0":
+  version: 3.5.0
+  resolution: "@foxglove/cdr@npm:3.5.0"
+  checksum: 10/769d72b47a89f3ce7e13a8230fe751f2272298d3e9168b3e441b092333bc1736bf3e63940138482e1848a88f0576b74e38d0214a5e8d8bb835c75803e33eaa0a
+  languageName: node
+  linkType: hard
+
+"@foxglove/message-definition@npm:0.5.0":
+  version: 0.5.0
+  resolution: "@foxglove/message-definition@npm:0.5.0"
+  checksum: 10/679ecc3416a153f4aee969e4031fdd4ccf0c63b04c46da74e9c8c78e72284a83dd2d4a3ee9786962f0394711635256dfc1bc69330206da7fec224447b2c7ff09
+  languageName: node
+  linkType: hard
+
+"@foxglove/rosmsg2-serialization@npm:^3.0.3":
+  version: 3.0.3
+  resolution: "@foxglove/rosmsg2-serialization@npm:3.0.3"
+  dependencies:
+    "@foxglove/cdr": "npm:^3.4.0"
+    "@foxglove/message-definition": "npm:0.5.0"
+    "@foxglove/rostime": "npm:^1.1.2"
+  checksum: 10/c836ac3dcb7f919f496215c8df517aa1feebb2420139f001427b6cdf5f3aa7bfb9d38932eaf46d92748312bb26f7d9f3924a361738382bcb22d2793e4b653fd4
+  languageName: node
+  linkType: hard
+
+"@foxglove/rosmsg@npm:^5.0.5":
+  version: 5.0.5
+  resolution: "@foxglove/rosmsg@npm:5.0.5"
+  dependencies:
+    "@foxglove/message-definition": "npm:0.5.0"
+    md5-typescript: "npm:^1.0.5"
+  checksum: 10/c5980ec59749525d79a8aed26c0e1de6bf315644490f2b8cb8df9055bbac1176a8f738c8a029d7c0911385a620839d88fc9a82224d57c8fd01fa7888a4979b1a
+  languageName: node
+  linkType: hard
+
+"@foxglove/rostime@npm:^1.1.2":
+  version: 1.1.2
+  resolution: "@foxglove/rostime@npm:1.1.2"
+  checksum: 10/92ff267f982fc2298dacdcae92a2afe765032480220ce7deef7e00d3cce8ae5e72e9975de4af80fa154efa485174cd37397643e455e58d170672d63a0e2ae49d
   languageName: node
   linkType: hard
 
@@ -14977,6 +15022,13 @@ __metadata:
   version: 1.0.1
   resolution: "math-log2@npm:1.0.1"
   checksum: 10/b9a9c746ec0b28157865b5b9e9bdba25d04b77112f45ec65eb129b07ae42b0f017d59919d21e409fb6bb6587da28e5c40b4e49e80b917fa00a74f7ea5446932e
+  languageName: node
+  linkType: hard
+
+"md5-typescript@npm:^1.0.5":
+  version: 1.0.5
+  resolution: "md5-typescript@npm:1.0.5"
+  checksum: 10/eb909a106bf830848e5f43bb7cffa6a9d100cf51964294e67753573feef6023761b4ca7fa8c0478c09b145bab698bf4fb8864369a37fe079f0ce810f70384a4a
   languageName: node
   linkType: hard
 

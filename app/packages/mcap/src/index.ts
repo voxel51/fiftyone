@@ -8,6 +8,7 @@ export const MCAP_SAMPLE_RENDERER_NAME = "McapSampleRenderer";
 export * from "./api";
 export { McapGridRenderer, McapModalRenderer };
 export * from "./types";
+export * from "./useMcapTimelineIndex";
 export * from "./useMcapScene";
 
 registerComponent({

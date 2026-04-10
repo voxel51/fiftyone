@@ -99,6 +99,38 @@ export type FetchMcapBufferParams = {
   request: McapBufferRequest;
 };
 
+/** Timestamp-only timeline request sent to the MCAP timeline endpoint. */
+export type McapTimelineRequest = {
+  mediaField: string;
+  streamIds: string[];
+};
+
+/** Per-stream playback timestamps returned by the MCAP timeline endpoint. */
+export type McapTimelineStream = {
+  streamId: string;
+  timestampsNs: number[];
+};
+
+/** Shared playback clock and per-stream indexes for an MCAP scene. */
+export type McapTimelineIndex = {
+  timestampSource: "log_time";
+  timestampsNs: number[];
+  streams: McapTimelineStream[];
+};
+
+/** Timeline payload returned by the sample-scoped MCAP timeline endpoint. */
+export type McapTimelineResponse = {
+  sceneId: string;
+  timeline: McapTimelineIndex;
+};
+
+/** Required sample-scoped inputs for fetching an MCAP timeline index. */
+export type FetchMcapTimelineParams = {
+  datasetId: string;
+  sampleId: string;
+  request: McapTimelineRequest;
+};
+
 /** Raw message transport record returned before payload normalization. */
 export type McapRawMessageTransport = {
   messageId: string;

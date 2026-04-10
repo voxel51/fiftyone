@@ -12,8 +12,11 @@
     ],
     "main": "src/index.ts",
     "dependencies": {
+        "@fiftyone/playback": "workspace:^",
         "@fiftyone/plugins": "*",
-        "@fiftyone/utilities": "*"
+        "@fiftyone/utilities": "*",
+        "@foxglove/rosmsg": "^5.0.5",
+        "@foxglove/rosmsg2-serialization": "^3.0.3"
     },
     "devDependencies": {
         "typescript": "^4.7.4",
