@@ -43,6 +43,14 @@ export enum InferenceCapability {
 export type Vec2 = [number, number];
 
 /**
+ * A uniquely-identified point.
+ */
+export type PointDescriptor = {
+  id: string;
+  point: Vec2;
+};
+
+/**
  * An ordered sequence of {@link Vec2} points that form a closed polygon.
  * Bounding boxes are represented by their four corners.
  */

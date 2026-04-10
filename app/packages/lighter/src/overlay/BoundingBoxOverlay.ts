@@ -88,6 +88,7 @@ export class BoundingBoxOverlay
   private textBounds?: Rect;
 
   private maskBitmap?: ImageBitmap;
+  private maskData?: { src: Uint8Array; width: number; height: number };
   private maskDecoding = false;
   private lastMaskSource?: string;
 
@@ -123,6 +124,7 @@ export class BoundingBoxOverlay
     if (newMaskSource !== this.lastMaskSource) {
       this.maskBitmap?.close();
       this.maskBitmap = undefined;
+      this.maskData = undefined;
       this.lastMaskSource = undefined;
       this.markDirty();
     }
@@ -754,6 +756,37 @@ export class BoundingBoxOverlay
     );
   }
 
+  /**
+   * Tests whether a point in relative coordinates falls on a non-zero mask
+   * pixel. Returns `false` when no mask is present or the point is outside the
+   * bounding box.
+   */
+  containsMaskPixel(relativePoint: Point): boolean {
+    if (!this.maskData) {
+      return false;
+    }
+
+    const rb = this.#relativeBounds;
+
+    // Check if point is inside the bounding box
+    if (
+      relativePoint.x < rb.x ||
+      relativePoint.y < rb.y ||
+      relativePoint.x > rb.x + rb.width ||
+      relativePoint.y > rb.y + rb.height
+    ) {
+      return false;
+    }
+
+    const { src, width, height } = this.maskData;
+    const px = Math.floor(((relativePoint.x - rb.x) / rb.width) * (width - 1));
+    const py = Math.floor(
+      ((relativePoint.y - rb.y) / rb.height) * (height - 1)
+    );
+
+    return src[py * width + px] > 0;
+  }
+
   private extractMaskB64(mask: SerializedMask | undefined): string | undefined {
     if (!mask) {
       return undefined;
@@ -797,6 +830,7 @@ export class BoundingBoxOverlay
       this.maskBitmap = await createImageBitmap(
         new ImageData(rgba, width, height)
       );
+      this.maskData = { src, width, height };
       this.markDirty();
     } catch (e) {
       console.error("[BoundingBoxOverlay] Failed to decode mask:", e);
@@ -808,6 +842,7 @@ export class BoundingBoxOverlay
   override destroy(): void {
     this.maskBitmap?.close();
     this.maskBitmap = undefined;
+    this.maskData = undefined;
     super.destroy();
   }
 

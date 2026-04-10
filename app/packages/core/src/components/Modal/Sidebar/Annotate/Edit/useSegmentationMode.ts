@@ -5,8 +5,10 @@ import {
   usePointSelection,
   useToolsState,
 } from "@fiftyone/annotation/src/agents";
-import { useCallback, useEffect, useMemo } from "react";
+import { BoundingBoxOverlay } from "@fiftyone/lighter";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { atom, useAtom } from "jotai";
+import { useAnnotationContext } from "./state";
 
 export interface SegmentationMode {
   activate(): void;
@@ -26,6 +28,7 @@ export const useSegmentationMode = (): SegmentationMode => {
   const [segmentationModeActive, setSegmentationModeActive] = useAtom(
     segmentationModeActiveAtom
   );
+  const { selectedLabel } = useAnnotationContext();
   const agentSelector = useAgentSelector();
   const { setActiveTask } = useActiveTask();
   const { reset: resetToolsState } = useToolsState();
@@ -39,11 +42,24 @@ export const useSegmentationMode = (): SegmentationMode => {
     }
   }, [agentSelector]);
 
+  const selectedLabelRef = useRef(selectedLabel);
+  selectedLabelRef.current = selectedLabel;
+
+  // check whether the point hits the mask of the current label
+  const maskHitTest = useCallback((relativePoint: { x: number; y: number }) => {
+    const label = selectedLabelRef.current;
+    if (!label || !(label.overlay instanceof BoundingBoxOverlay)) {
+      return false;
+    }
+
+    return label.overlay.containsMaskPixel(relativePoint);
+  }, []);
+
   const activate = useCallback(() => {
     setSegmentationModeActive(true);
     setActiveTask(AgentTaskType.SEGMENT);
-    pointSelection.activate();
-  }, [pointSelection, setActiveTask, setSegmentationModeActive]);
+    pointSelection.activate(maskHitTest);
+  }, [maskHitTest, pointSelection, setActiveTask, setSegmentationModeActive]);
 
   const deactivate = useCallback(() => {
     pointSelection.deactivate();

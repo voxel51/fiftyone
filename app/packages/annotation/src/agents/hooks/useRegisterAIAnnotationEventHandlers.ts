@@ -30,7 +30,9 @@ export const useRegisterAISegmentationEventHandlers = () => {
   const { scene } = useLighter();
   const {
     addPositivePoint,
+    addNegativePoint,
     removePositivePoint,
+    removeNegativePoint,
     reset: resetToolsState,
   } = useToolsState();
   const toolsContext = useToolsContext();
@@ -46,9 +48,18 @@ export const useRegisterAISegmentationEventHandlers = () => {
     "lighter:keypoint-point-added",
     useCallback(
       (payload) => {
-        addPositivePoint([payload.point.x, payload.point.y]);
+        const descriptor = {
+          id: payload.pointId,
+          point: [payload.point.x, payload.point.y] as [number, number],
+        };
+
+        if (payload.onMask) {
+          addNegativePoint(descriptor);
+        } else {
+          addPositivePoint(descriptor);
+        }
       },
-      [addPositivePoint]
+      [addNegativePoint, addPositivePoint]
     )
   );
 
@@ -56,9 +67,13 @@ export const useRegisterAISegmentationEventHandlers = () => {
     "lighter:keypoint-point-deleted",
     useCallback(
       (payload) => {
-        removePositivePoint(payload.pointIndex);
+        if (payload.onMask) {
+          removeNegativePoint(payload.pointId);
+        } else {
+          removePositivePoint(payload.pointId);
+        }
       },
-      [removePositivePoint]
+      [removeNegativePoint, removePositivePoint]
     )
   );
 

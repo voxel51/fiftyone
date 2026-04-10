@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import type { Point } from "@fiftyone/lighter";
 import {
   InteractiveKeypointHandler,
   KeypointOptions,
@@ -11,7 +12,7 @@ import { atom, useAtom } from "jotai";
 import { v4 as uuidv4 } from "uuid";
 
 export interface PointSelection {
-  activate(): void;
+  activate(hitTest?: (relativePoint: Point) => boolean): void;
   deactivate(): void;
   isActive: boolean;
 }
@@ -39,27 +40,30 @@ export const usePointSelection = (): PointSelection => {
   );
   const [isActive, setIsActive] = useAtom(pointSelectionActiveAtom);
 
-  const activate = useCallback(() => {
-    if (scene) {
-      const overlay = overlayFactory.create<KeypointOptions, KeypointOverlay>(
-        "keypoint",
-        {
-          id: uuidv4(),
-          label: { label: "", points: [] },
-          field: "",
-        }
-      );
+  const activate = useCallback(
+    (hitTest?: (relativePoint: Point) => boolean) => {
+      if (scene) {
+        const overlay = overlayFactory.create<KeypointOptions, KeypointOverlay>(
+          "keypoint",
+          {
+            id: uuidv4(),
+            label: { label: "", points: [] },
+            field: "",
+          }
+        );
 
-      setKeypointOverlayId(overlay.id);
-      scene.addOverlay(overlay);
+        setKeypointOverlayId(overlay.id);
+        scene.addOverlay(overlay);
 
-      scene.enterInteractiveMode(
-        new InteractiveKeypointHandler(overlay, eventBus)
-      );
+        scene.enterInteractiveMode(
+          new InteractiveKeypointHandler(overlay, eventBus, hitTest)
+        );
 
-      setIsActive(true);
-    }
-  }, [eventBus, overlayFactory, scene, setIsActive, setKeypointOverlayId]);
+        setIsActive(true);
+      }
+    },
+    [eventBus, overlayFactory, scene, setIsActive, setKeypointOverlayId]
+  );
 
   const deactivate = useCallback(() => {
     scene?.exitInteractiveMode();
