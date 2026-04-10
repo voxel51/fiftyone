@@ -1,0 +1,31 @@
+{
+    "name": "@fiftyone/mcap",
+    "version": "0.0.0",
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build",
+        "preview": "vite preview",
+        "watch": "nodemon --watch ./src --ext js,jsx,ts,tsx --exec 'yarn build'"
+    },
+    "files": [
+        "dist"
+    ],
+    "main": "src/index.ts",
+    "dependencies": {
+        "@fiftyone/plugins": "*"
+    },
+    "devDependencies": {
+        "typescript": "^4.7.4",
+        "vite": "^6.4.2",
+        "vite-plugin-externals": "^0.5.0"
+    },
+    "fiftyone": {
+        "script": "dist/index.umd.js"
+    },
+    "packageManager": "yarn@4.9.1",
+    "peerDependencies": {
+        "@voxel51/voodo": "*",
+        "react": "*",
+        "react-dom": "*"
+    }
+}
