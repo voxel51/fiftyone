@@ -296,7 +296,12 @@ export class KeypointOverlay
     }
 
     // 2. Draw preview line (during interactive creation — dashed, separate call)
-    if (this.previewPoint && absPoints.length > 0) {
+    //  Only shown for connected/closed keypoints, not standalone point selection.
+    if (
+      this.previewPoint &&
+      absPoints.length > 0 &&
+      (this.connections.length > 0 || this.closed)
+    ) {
       const lastPoint = absPoints[absPoints.length - 1];
       renderer.drawLine(
         lastPoint,
