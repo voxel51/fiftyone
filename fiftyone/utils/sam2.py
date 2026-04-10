@@ -43,9 +43,20 @@ class SegmentAnything2ImageModelConfig(fosam.SegmentAnythingModelConfig):
 
 
 class _SAM2Predictor(fosam._SAMPredictor):
+    """Wrapper for ``sam2.sam2_image_predictor.SAM2ImagePredictor``.
+
+    Args:
+        model: a :class:`sam2.modeling.sam2_base.SAM2Base` model
+    """
+
     def __init__(self, model):
         self.processor = smip.SAM2ImagePredictor(model)
         self._image_id = None
+        self.sam_transforms = (
+            self.processor._transforms
+            if hasattr(self.processor, "_transforms")
+            else smip.SAM2Transforms(model.image_size, mask_threshold=0)
+        )
 
     def image_transform(self, img):
         """Transforms image for SAM2 model input.
@@ -71,7 +82,7 @@ class _SAM2Predictor(fosam._SAMPredictor):
         Returns:
             resized boxes for SAM2 as a Bx4 tensor
         """
-        return self.processor._transforms.transform_boxes(
+        return self.sam_transforms.transform_boxes(
             torch.tensor(boxes_xyxy, dtype=torch.float),
             normalize=True,
             orig_hw=img_hw,
@@ -95,9 +106,7 @@ class _SAM2Predictor(fosam._SAMPredictor):
             width=1,
             point_labels=point_labels,
         )
-        unnorm_points = self.processor._transforms.transform_coords(
-            norm_points
-        )
+        unnorm_points = self.sam_transforms.transform_coords(norm_points)
         return torch.tensor(unnorm_points, dtype=torch.float64), torch.tensor(
             labels, dtype=torch.int
         )
@@ -190,8 +199,9 @@ class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
 
     def _load_model(self, config):
         if "device" not in config.entrypoint_args:
-            config.entrypoint_args["device"] = self._device
-        return super()._load_model(config)
+            config.entrypoint_args["device"] = str(self._device)
+        model = super()._load_model(config)
+        return model
 
     def _forward_pass(self, imgs):
         """Forward pass with prompts
