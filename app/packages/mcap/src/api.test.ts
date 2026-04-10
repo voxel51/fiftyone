@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fetchMcapBuffer, fetchMcapScene } from "./api";
+import { fetchMcapBuffer, fetchMcapScene, fetchMcapTimeline } from "./api";
 
 const { getFetchFunctionMock } = vi.hoisted(() => ({
   getFetchFunctionMock: vi.fn(),
@@ -106,5 +106,42 @@ describe("mcap api", () => {
     expect(response.streams[0].messages[0].payload).toEqual(
       new Uint8Array([1, 2, 3])
     );
+  });
+
+  it("fetches the shared playback timeline from the sample-scoped route", async () => {
+    const fetchSpy = vi.fn().mockResolvedValue({
+      sceneId: "scene-1",
+      timeline: {
+        timestampSource: "log_time",
+        timestampsNs: [10, 20],
+        streams: [
+          {
+            streamId: "/camera/front",
+            timestampsNs: [10, 20],
+          },
+        ],
+      },
+    });
+    getFetchFunctionMock.mockReturnValue(fetchSpy);
+
+    const response = await fetchMcapTimeline({
+      datasetId: "dataset/1",
+      sampleId: "sample/1",
+      request: {
+        mediaField: "mcap_path",
+        streamIds: ["/camera/front"],
+      },
+    });
+
+    expect(getFetchFunctionMock).toHaveBeenCalledWith();
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "POST",
+      "/dataset/dataset%2F1/sample/sample%2F1/mcap/timeline",
+      {
+        mediaField: "mcap_path",
+        streamIds: ["/camera/front"],
+      }
+    );
+    expect(response.timeline.timestampsNs).toEqual([10, 20]);
   });
 });

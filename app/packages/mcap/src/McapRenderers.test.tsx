@@ -22,9 +22,22 @@ import { McapModalRenderer } from "./McapModalRenderer";
 const { useMcapSceneMock } = vi.hoisted(() => ({
   useMcapSceneMock: vi.fn(),
 }));
+const { useMcapImagePlaybackMock } = vi.hoisted(() => ({
+  useMcapImagePlaybackMock: vi.fn(),
+}));
 
 vi.mock("./useMcapScene", () => ({
   useMcapScene: useMcapSceneMock,
+}));
+
+vi.mock("./useMcapImagePlayback", () => ({
+  useMcapImagePlayback: useMcapImagePlaybackMock,
+}));
+
+vi.mock("@fiftyone/playback", () => ({
+  Timeline: ({ name }: { name: string }) => (
+    <div data-testid="mcap-playback-timeline">{name}</div>
+  ),
 }));
 
 const dataset = {
@@ -140,6 +153,22 @@ function createHookState(
   };
 }
 
+function createPlaybackState(
+  overrides: Partial<ReturnType<typeof useMcapImagePlaybackMock>> = {}
+) {
+  return {
+    timelineName: null,
+    timeline: null,
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
+    isTimelineInitialized: false,
+    hasPlayback: false,
+    panelStates: {},
+    ...overrides,
+  };
+}
+
 function createCtx(surface: "grid" | "modal", sampleId = "sample-1") {
   return createSampleRendererRenderContext(
     {
@@ -160,6 +189,7 @@ function createCtx(surface: "grid" | "modal", sampleId = "sample-1") {
 describe("Mcap renderers", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    useMcapImagePlaybackMock.mockReturnValue(createPlaybackState());
   });
 
   afterEach(() => {
@@ -172,6 +202,7 @@ describe("Mcap renderers", () => {
         isLoading: true,
       })
     );
+    useMcapImagePlaybackMock.mockReturnValue(createPlaybackState());
 
     render(<McapModalRenderer ctx={createCtx("modal")} />);
 
@@ -190,6 +221,34 @@ describe("Mcap renderers", () => {
         playbackPlan: SCENE_RESPONSE.playbackPlan,
       })
     );
+    useMcapImagePlaybackMock.mockReturnValue(
+      createPlaybackState({
+        timelineName: "mcap:scene-1",
+        timeline: {
+          timestampSource: "log_time",
+          timestampsNs: [10, 20],
+          streams: [
+            {
+              streamId: "/camera/front",
+              timestampsNs: [10, 20],
+            },
+          ],
+        },
+        hasPlayback: true,
+        isTimelineInitialized: true,
+        panelStates: {
+          "/camera/front": {
+            status: "ready",
+            error: null,
+            frame: {
+              format: "jpeg",
+              logTimeNs: 10,
+              objectUrl: "blob:front",
+            },
+          },
+        },
+      })
+    );
 
     render(<McapModalRenderer ctx={createCtx("modal")} />);
 
@@ -205,6 +264,117 @@ describe("Mcap renderers", () => {
     );
     expect(within(panelCards[0]).getByText("camera/front")).toBeTruthy();
     expect(within(panelCards[1]).getByText("lidar/top")).toBeTruthy();
+  });
+
+  it("renders the first decoded image frame and shared timeline strip", () => {
+    useMcapSceneMock.mockReturnValue(
+      createHookState({
+        data: SCENE_RESPONSE,
+        scene: SCENE_RESPONSE.scene,
+        playbackPlan: SCENE_RESPONSE.playbackPlan,
+      })
+    );
+    useMcapImagePlaybackMock.mockReturnValue(
+      createPlaybackState({
+        timelineName: "mcap:scene-1",
+        timeline: {
+          timestampSource: "log_time",
+          timestampsNs: [10, 20],
+          streams: [
+            {
+              streamId: "/camera/front",
+              timestampsNs: [10, 20],
+            },
+          ],
+        },
+        hasPlayback: true,
+        isTimelineInitialized: true,
+        panelStates: {
+          "/camera/front": {
+            status: "ready",
+            error: null,
+            frame: {
+              format: "jpeg",
+              logTimeNs: 10,
+              objectUrl: "blob:front",
+            },
+          },
+        },
+      })
+    );
+
+    render(<McapModalRenderer ctx={createCtx("modal")} />);
+
+    expect(screen.getByTestId("mcap-playback-timeline").textContent).toContain(
+      "mcap:scene-1"
+    );
+    expect(
+      screen.getByTestId("mcap-image-frame-camera_front").getAttribute("src")
+    ).toBe("blob:front");
+  });
+
+  it("renders a pointcloud placeholder while image playback is active", () => {
+    useMcapSceneMock.mockReturnValue(
+      createHookState({
+        data: SCENE_RESPONSE,
+        scene: SCENE_RESPONSE.scene,
+        playbackPlan: SCENE_RESPONSE.playbackPlan,
+      })
+    );
+    useMcapImagePlaybackMock.mockReturnValue(
+      createPlaybackState({
+        panelStates: {
+          "/camera/front": {
+            status: "loading",
+            error: null,
+            frame: null,
+          },
+        },
+      })
+    );
+
+    render(<McapModalRenderer ctx={createCtx("modal")} />);
+
+    expect(screen.getByText("Point cloud playback comes next")).toBeTruthy();
+  });
+
+  it("renders a panel-local playback error when image decode fails", () => {
+    useMcapSceneMock.mockReturnValue(
+      createHookState({
+        data: SCENE_RESPONSE,
+        scene: SCENE_RESPONSE.scene,
+        playbackPlan: SCENE_RESPONSE.playbackPlan,
+      })
+    );
+    useMcapImagePlaybackMock.mockReturnValue(
+      createPlaybackState({
+        timelineName: "mcap:scene-1",
+        timeline: {
+          timestampSource: "log_time",
+          timestampsNs: [10],
+          streams: [
+            {
+              streamId: "/camera/front",
+              timestampsNs: [10],
+            },
+          ],
+        },
+        hasPlayback: true,
+        panelStates: {
+          "/camera/front": {
+            status: "error",
+            error: new Error("decode failed"),
+            frame: null,
+          },
+        },
+      })
+    );
+
+    render(<McapModalRenderer ctx={createCtx("modal")} />);
+
+    const imagePanel = screen.getByTestId("mcap-panel-card-camera_front");
+    expect(within(imagePanel).getByText("Playback error")).toBeTruthy();
+    expect(within(imagePanel).getAllByText("decode failed").length).toBe(2);
   });
 
   it("renders an empty modal state for scenes without supported streams", () => {
@@ -226,6 +396,7 @@ describe("Mcap renderers", () => {
         playbackPlan: emptyResponse.playbackPlan,
       })
     );
+    useMcapImagePlaybackMock.mockReturnValue(createPlaybackState());
 
     render(<McapModalRenderer ctx={createCtx("modal")} />);
 
@@ -243,6 +414,7 @@ describe("Mcap renderers", () => {
         refetch,
       })
     );
+    useMcapImagePlaybackMock.mockReturnValue(createPlaybackState());
 
     render(<McapModalRenderer ctx={createCtx("modal")} />);
 
@@ -261,6 +433,7 @@ describe("Mcap renderers", () => {
         playbackPlan: SCENE_RESPONSE.playbackPlan,
       })
     );
+    useMcapImagePlaybackMock.mockReturnValue(createPlaybackState());
 
     render(<McapModalRenderer ctx={createCtx("modal")} />);
 
@@ -279,6 +452,7 @@ describe("Mcap renderers", () => {
       playbackPlan: SCENE_RESPONSE.playbackPlan,
     });
     useMcapSceneMock.mockImplementation(() => hookState);
+    useMcapImagePlaybackMock.mockReturnValue(createPlaybackState());
 
     const { rerender } = render(<McapModalRenderer ctx={createCtx("modal")} />);
 
