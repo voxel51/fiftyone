@@ -2596,7 +2596,7 @@ __metadata:
     "@types/styled-components": "npm:^5.1.23"
     "@use-gesture/react": "npm:^10.3.0"
     "@vitejs/plugin-react-refresh": "npm:^1.3.3"
-    "@voxel51/voodo": "npm:^0.0.22"
+    "@voxel51/voodo": "npm:^0.0.23"
     "@xstate/react": "npm:1.3.3"
     classnames: "npm:^2.2.6"
     color: "npm:^4.2.3"
@@ -7488,9 +7488,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@voxel51/voodo@npm:^0.0.22":
-  version: 0.0.22
-  resolution: "@voxel51/voodo@npm:0.0.22"
+"@voxel51/voodo@npm:^0.0.23":
+  version: 0.0.23
+  resolution: "@voxel51/voodo@npm:0.0.23"
   dependencies:
     "@dnd-kit/core": "npm:^6.3.1"
     "@dnd-kit/sortable": "npm:^10.0.0"
@@ -7507,7 +7507,7 @@ __metadata:
     react: ^18.0.0
     react-dom: ^18.0.0
     react-is: ^18.0.0
-  checksum: 10/009bf8a98874fca595a09906bd0673f6e6ca21dc5d79956a43ea15e468fad29b972c1aa4ad69f3b4238d38503b8fd1cb7a3b32f5f0fde07e574a86a93f1357d2
+  checksum: 10/abf059745ac235e07697e245ff0d2f977208e16995f8c2670b28585579022a2405aa2edd9699e0e6938bb27c518226fb7e4ee553d7fd7ef8399b81a67c17ef88
   languageName: node
   linkType: hard
 
