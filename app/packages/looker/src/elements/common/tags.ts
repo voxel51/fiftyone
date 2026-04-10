@@ -2,64 +2,21 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 import type { COLOR_BY } from "@fiftyone/utilities";
-import {
-  BOOLEAN_FIELD,
-  CLASSIFICATION,
-  CLASSIFICATIONS,
-  DATE_FIELD,
-  DATE_TIME_FIELD,
-  DYNAMIC_EMBEDDED_DOCUMENT_PATH,
-  FLOAT_FIELD,
-  FRAME_NUMBER_FIELD,
-  FRAME_SUPPORT_FIELD,
-  INT_FIELD,
-  LABELS_PATH,
-  LIST_FIELD,
-  OBJECT_ID_FIELD,
-  REGRESSION,
-  STRING_FIELD,
-  TEMPORAL_DETECTION,
-  TEMPORAL_DETECTIONS,
-  formatDate,
-  formatDateTime,
-  getColor,
-  withPath,
-} from "@fiftyone/utilities";
 import { isEqual } from "lodash";
-import type {
-  Classification,
-  Regression,
-  TemporalDetectionLabel,
-} from "../../overlays/classifications";
-import { isValidColor, shouldShowLabelTag } from "../../overlays/util";
 import type {
   BaseState,
   CustomizeColor,
   LabelTagColor,
-  NONFINITE,
   Sample,
 } from "../../state";
 import { BaseElement } from "../base";
-import { getBubbles, getField } from "./bubbles";
+import { computeTagData } from "./computeTagData";
 import { lookerTags } from "./tags.module.css";
-import { getAssignedColor, prettify } from "./util";
-
-interface TagData {
-  color: string;
-  title: string;
-  path?: string;
-  value: string;
-}
+import { prettify } from "./util";
 
 const LINE_HEIGHT_COEFFICIENT = 1.15;
 const SPACING_COEFFICIENT = 0.1;
 
-type Renderer = (
-  path: string,
-  value: unknown
-) => { color: string; path: string; value: string; title: string };
-
-type Renderers = { [key: string]: Renderer };
 export class TagsElement<State extends BaseState> extends BaseElement<State> {
   private activePaths: string[] = [];
   private attributeVisibility: object;
@@ -118,403 +75,18 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
     ) {
       return this.element;
     }
-
-    const elements: TagData[] = [];
-
-    const PRIMITIVE_RENDERERS: Renderers = {
-      [BOOLEAN_FIELD]: (path, value: boolean) => {
-        let v: string;
-        if (Array.isArray(value)) {
-          v = value.map((v) => (v ? "True" : "False")).join(", ");
-        } else {
-          v = value ? "True" : "False";
-        }
-
-        return {
-          path,
-          value: v,
-          title: `${path}: ${v}`,
-          color: getAssignedColor({
-            coloring,
-            path,
-            value,
-            customizeColorSetting,
-            isValidColor,
-          }),
-        };
-      },
-      [INT_FIELD]: (path, value: number) => {
-        const v = prettyNumber(value);
-        return {
-          path,
-          value: v,
-          title: `${path}: ${v}`,
-          color: getAssignedColor({
-            coloring,
-            path,
-            value: v,
-            customizeColorSetting,
-            isValidColor,
-          }),
-        };
-      },
-      [DATE_FIELD]: (path, value: { datetime: number }) => {
-        const v = formatDate(value.datetime);
-
-        return {
-          path,
-          value: v,
-          title: `${path}: ${v}`,
-          color: getAssignedColor({
-            coloring,
-            path,
-            value: v,
-            customizeColorSetting,
-            isValidColor,
-          }),
-        };
-      },
-      [DATE_TIME_FIELD]: (path, value: { datetime: number }) => {
-        const v = formatDateTime(value.datetime, timeZone);
-
-        return {
-          path,
-          value: v,
-          title: `${path}: ${v}`,
-          color: getAssignedColor({
-            coloring,
-            path,
-            value: v,
-            customizeColorSetting,
-            isValidColor,
-          }),
-        };
-      },
-      [FLOAT_FIELD]: (path: string, value: number) => {
-        const v = prettyNumber(value);
-        return {
-          path,
-          value: v,
-          title: `${path}: ${value}`,
-          color: getAssignedColor({
-            coloring,
-            path,
-            value: v,
-            customizeColorSetting,
-            isValidColor,
-          }),
-        };
-      },
-      [FRAME_NUMBER_FIELD]: (path, value: number) => {
-        const v = prettyNumber(value);
-
-        return {
-          path,
-          value: v,
-          title: `${path}: ${v}`,
-          color: getAssignedColor({
-            coloring,
-            path,
-            value: v,
-            customizeColorSetting,
-            isValidColor,
-          }),
-        };
-      },
-      [FRAME_SUPPORT_FIELD]: (path, value: [number, number]) => {
-        const v = `[${value.join(", ")}]`;
-        return {
-          path,
-          value: v,
-          title: `${path}: ${v}`,
-          color: getAssignedColor({
-            coloring,
-            path,
-            value: v,
-            customizeColorSetting,
-            isValidColor,
-          }),
-        };
-      },
-      [OBJECT_ID_FIELD]: (path, value: string) => {
-        return {
-          path,
-          value,
-          title: `${path}: ${value}`,
-          color: getAssignedColor({
-            coloring,
-            path,
-            value,
-            customizeColorSetting,
-            isValidColor,
-          }),
-        };
-      },
-      [STRING_FIELD]: (path, value: string) => {
-        let v: string;
-        if (Array.isArray(value)) {
-          v = value.join(", ");
-        } else {
-          v = value;
-        }
-        return {
-          path,
-          value: v,
-          title: `${path}: ${v}`,
-          color: getAssignedColor({
-            coloring,
-            path,
-            value: v,
-            customizeColorSetting,
-            isValidColor,
-          }),
-        };
-      },
-    };
-
-    const CLASSIFICATION_RENDERER = (path, param: Classification) => {
-      const label = param.label ?? "null";
-
-      return {
-        path,
-        value: label,
-        title: `${path}: ${label}`,
-        color: getAssignedColor({
-          coloring,
-          path,
-          param,
-          isTagged: shouldShowLabelTag(selectedLabelTags, param.tags),
-          labelTagColors,
-          customizeColorSetting,
-          isValidColor,
-        }),
-      };
-    };
-
-    const TEMPORAL_DETECTION_RENDERER = (
-      path,
-      param: TemporalDetectionLabel
-    ) => {
-      if (!param.label) {
-        return null;
-      }
-
-      const support = param.support?.length
-        ? ` [${param.support[0]}, ${param.support[1]}]`
-        : "";
-
-      return {
-        path,
-        value: `${param.label}${support}`,
-        title: `${path}: ${param.label}${support}`,
-        color: getAssignedColor({
-          coloring,
-          path,
-          param,
-          isTagged: shouldShowLabelTag(selectedLabelTags, param.tags),
-          labelTagColors,
-          customizeColorSetting,
-          isValidColor,
-        }),
-      };
-    };
-
-    const EMBEDDED_DOCUMENT_RENDERER = (
-      path: string,
-      values: { [key: string]: unknown }
-    ) => {
-      const results = [];
-
-      const pathParts = path.split(".");
-      const requestedField = pathParts[pathParts.length - 1];
-
-      for (const [k, v] of Object.entries(values || {})) {
-        // Skip internal fields of embedded document
-        if (k === "_cls" || k === "_id") {
-          continue;
-        }
-        // If path references a specific field in the embedded doc,
-        // only render that field's value
-        if (requestedField in values && k !== requestedField) {
-          continue;
-        }
-
-        const field = getField([...pathParts, k], fieldSchema);
-
-        // Handle dynamic embedded document fields that don't define an explicit ftype
-        if (!field) {
-          if (
-            typeof v === "number" ||
-            typeof v === "string" ||
-            typeof v === "boolean"
-          ) {
-            // Render the value of the embedded doc field
-            results.push(String(v));
-          }
-          continue;
-        }
-        const renderer = PRIMITIVE_RENDERERS[field.ftype];
-
-        if (!renderer) {
-          continue;
-        }
-
-        results.push(`${k}:${renderer(path, v).value}`);
-      }
-
-      const value = results.join(",");
-      return {
-        color: getAssignedColor({
-          coloring,
-          path,
-          customizeColorSetting,
-          isValidColor,
-        }),
-        path,
-        title: `${path}: ${value}`,
-        value,
-      };
-    };
-
-    const LABEL_RENDERERS: Renderers = {
-      [DYNAMIC_EMBEDDED_DOCUMENT_PATH]: EMBEDDED_DOCUMENT_RENDERER,
-      [withPath(LABELS_PATH, CLASSIFICATION)]: CLASSIFICATION_RENDERER,
-      [withPath(LABELS_PATH, CLASSIFICATIONS)]: CLASSIFICATION_RENDERER,
-      [withPath(LABELS_PATH, REGRESSION)]: (path, param: Regression) => {
-        const v = prettyNumber(param.value);
-        return {
-          path,
-          value: v,
-          title: `${path}: ${v}`,
-          color: getAssignedColor({
-            coloring,
-            path,
-            param,
-            customizeColorSetting,
-            fallbackLabel: "value",
-            isValidColor,
-          }),
-        };
-      },
-      [withPath(LABELS_PATH, TEMPORAL_DETECTION)]: TEMPORAL_DETECTION_RENDERER,
-      [withPath(LABELS_PATH, TEMPORAL_DETECTIONS)]: TEMPORAL_DETECTION_RENDERER,
-    };
-
-    for (let index = 0; index < activePaths.length; index++) {
-      const path = activePaths[index];
-      if (path === "tags") {
-        if (Array.isArray(sample.tags)) {
-          for (const tag of sample.tags) {
-            if (filter(path, [tag])) {
-              const v = coloring.by !== "field" ? tag : "tags";
-              elements.push({
-                color: getAssignedColor({
-                  coloring,
-                  path,
-                  param: tag,
-                  customizeColorSetting,
-                  fallbackLabel: "value",
-                  isValidColor,
-                }),
-                title: tag,
-                value: tag,
-                path: v,
-              });
-            }
-          }
-        }
-      } else if (path === "_label_tags") {
-        for (const [tag, count] of Object.entries(sample._label_tags ?? {})) {
-          const value = `${tag}: ${count}`;
-          const v = coloring.by !== "field" ? tag : path;
-          if (shouldShowLabel(tag, attributeVisibility._label_tags)) {
-            elements.push({
-              color: getAssignedColor({
-                coloring,
-                path,
-                param: tag,
-                labelTagColors,
-                customizeColorSetting,
-                isValidColor,
-              }),
-              path: v,
-              title: value,
-              value: value,
-            });
-          }
-        }
-      } else {
-        const [field, values] = getBubbles(path, sample, fieldSchema);
-
-        if (field === null) {
-          continue;
-        }
-
-        const pushList = (renderer, value: unknown[]) => {
-          let count = 0;
-          let rest = 0;
-          for (let index = 0; index < value?.length; index++) {
-            const result = renderer(path, value[index]);
-
-            if (result && count < 3) {
-              count++;
-              elements.push(result);
-            } else {
-              rest++;
-            }
-          }
-
-          if (rest > 0) {
-            elements.push({
-              color: getColor(coloring.pool, coloring.seed, path),
-              title: `${path}: and ${rest} more`,
-              value: `and ${rest} more`,
-            });
-          }
-        };
-
-        if (field && LABEL_RENDERERS[field.embeddedDocType]) {
-          filter(path, values) &&
-            pushList(LABEL_RENDERERS[field.embeddedDocType], values);
-          continue;
-        }
-
-        if (
-          field &&
-          PRIMITIVE_RENDERERS[field.ftype] &&
-          field.ftype !== LIST_FIELD
-        ) {
-          // none-list field value is in ['value'] format
-          // need to convert to 'value' to pass in the filter
-
-          if (filter(path, values)) {
-            const toPush =
-              field.ftype === FRAME_SUPPORT_FIELD ? [values] : values;
-            pushList(PRIMITIVE_RENDERERS[field.ftype], toPush);
-          }
-
-          continue;
-        }
-
-        if (
-          field &&
-          field.ftype === LIST_FIELD &&
-          PRIMITIVE_RENDERERS[field.subfield]
-        ) {
-          // there may be visibility settings
-          const visibleValue = [];
-          if (values) {
-            for (const v of values) {
-              if (filter(path, v)) {
-                visibleValue.push(v);
-              }
-            }
-          }
-
-          pushList(PRIMITIVE_RENDERERS[field.subfield], visibleValue);
-        }
-      }
-    }
+    const elements = computeTagData({
+      activePaths,
+      attributeVisibility,
+      coloring,
+      customizeColorSetting,
+      filter,
+      fieldSchema,
+      labelTagColors,
+      sample,
+      selectedLabelTags,
+      timeZone,
+    });
 
     this.colorBy = coloring.by;
     this.colorSeed = coloring.seed;
@@ -558,7 +130,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
 
 export const applyTagValue = (
   color: string,
-  path: string,
+  path: string | undefined,
   title: string,
   value: string,
   spacing: string
@@ -578,9 +150,10 @@ export const applyTagValue = (
   div.style.backgroundColor = color;
 
   const tagValue = value.replace(/[\s.,/]/g, "-").toLowerCase();
-  const attribute = ["tags", "_label_tags"].includes(path)
-    ? `tag-${path}-${tagValue}`
-    : `tag-${path}`;
+  const pathValue = path ?? "undefined";
+  const attribute = ["tags", "_label_tags"].includes(pathValue)
+    ? `tag-${pathValue}-${tagValue}`
+    : `tag-${pathValue}`;
   div.setAttribute("data-cy", attribute);
   return div;
 };
@@ -594,27 +167,6 @@ const arraysAreEqual = <T>(a: T[], b: T[]): boolean => {
     if (a[i] !== b[i]) return false;
   }
   return true;
-};
-
-const prettyNumber = (value: number | NONFINITE): string => {
-  if (typeof value === "string") {
-    return value;
-  }
-  let string = null;
-
-  if (Array.isArray(value)) {
-    string = value.map((v) => prettyNumber(v)).join(", ");
-    return string;
-  }
-
-  if (value % 1 === 0) {
-    string = value.toFixed(0);
-  } else if (value < 0.001) {
-    string = value.toFixed(6);
-  } else {
-    string = value.toFixed(3);
-  }
-  return Number(string).toLocaleString();
 };
 
 const compareObjectArrays = (arr1, arr2) => {
@@ -671,16 +223,3 @@ function sortObjectArrays(a, b) {
   }
   return 0;
 }
-
-const shouldShowLabel = (
-  labelTag: string,
-  visibility: { values: string[]; exclude: boolean }
-) => {
-  if (!visibility) return true;
-
-  const values = visibility.values;
-  const exclude = visibility.exclude;
-
-  const contains = values.includes(labelTag);
-  return exclude ? !contains : contains;
-};

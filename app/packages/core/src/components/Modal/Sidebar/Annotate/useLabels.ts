@@ -4,26 +4,28 @@ import {
   AnnotationLabel,
   AnnotationLabelData,
   field,
-  modalGroupSlice,
+  isPatchesView,
   ModalSample,
+  useCurrentSampleId,
   useModalSample,
 } from "@fiftyone/state";
 import { DETECTION } from "@fiftyone/utilities";
-import { atom, useAtomValue, useSetAtom } from "jotai";
+import { atom, getDefaultStore, useAtomValue, useSetAtom } from "jotai";
 import { splitAtom, useAtomCallback } from "jotai/utils";
 import { get } from "lodash";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { selector, useRecoilCallback, useRecoilValue } from "recoil";
 import type { LabelType } from "./Edit/state";
 import {
-  activeLabelSchemas,
   isFieldReadOnly,
   labelSchemasData,
+  visibleLabelSchemas,
 } from "./state";
 import { useAddAnnotationLabelToRenderer } from "./useAddAnnotationLabelToRenderer";
+import { useSetActiveLabelId } from "./useAnnotationContextManager";
+import { useCreateAnnotationLabel } from "./useCreateAnnotationLabel";
 import useFocus from "./useFocus";
 import useHover from "./useHover";
-import { useCreateAnnotationLabel } from "./useCreateAnnotationLabel";
 
 /**
  * Map from plural label _cls to the list key and singular LabelType.
@@ -218,6 +220,14 @@ export interface LabelsContext {
   addLabelToSidebar: (label: AnnotationLabel) => void;
 
   /**
+   * Look up an annotation label by its `_id`.
+   *
+   * @param id The `_id` of the label to find
+   * @returns The matching label, or `undefined`
+   */
+  getLabelById: (id: string) => AnnotationLabel | undefined;
+
+  /**
    * Remove a label from the annotation sidebar.
    *
    * @param labelId ID of label to remove
@@ -234,12 +244,29 @@ export interface LabelsContext {
 }
 
 /**
+ * Hook which returns a getter function for reading the current sidebar labels
+ * imperatively.
+ */
+export const useGetSidebarLabels = () => {
+  const store = getDefaultStore();
+  return useCallback(() => store.get(labels), [store]);
+};
+
+/**
  * Hook which provides access to the current {@link LabelsContext}.
  */
 export const useLabelsContext = (): LabelsContext => {
   const addLabelToSidebar = useSetAtom(addLabel);
   const updateLabelData = useUpdateLabelAtom();
   const setLabels = useSetAtom(labels);
+
+  const getLabelById = useAtomCallback(
+    useCallback(
+      (get, _set, id: string) =>
+        get(labels).find((label) => label.data._id === id),
+      []
+    )
+  );
 
   const removeLabelFromSidebar = useCallback(
     (labelId: string) =>
@@ -248,8 +275,13 @@ export const useLabelsContext = (): LabelsContext => {
   );
 
   return useMemo(
-    () => ({ addLabelToSidebar, removeLabelFromSidebar, updateLabelData }),
-    [addLabelToSidebar, removeLabelFromSidebar, updateLabelData]
+    () => ({
+      addLabelToSidebar,
+      getLabelById,
+      removeLabelFromSidebar,
+      updateLabelData,
+    }),
+    [addLabelToSidebar, getLabelById, removeLabelFromSidebar, updateLabelData]
   );
 };
 
@@ -281,16 +313,17 @@ export default function useLabels() {
   const paths = useRecoilValue(pathMap);
   const currentLabels = useAtomValue(labels);
   const modalSample = useModalSample();
+  const currentSampleId = useCurrentSampleId();
   const setLabels = useSetAtom(labels);
   const setLoading = useSetAtom(labelsState);
-  const active = useAtomValue(activeLabelSchemas);
+  const active = useAtomValue(visibleLabelSchemas);
   const addLabelToRenderer = useAddAnnotationLabelToRenderer();
   const addLabelToStore = useSetAtom(addLabel);
   const createLabel = useCreateAnnotationLabel();
   const { scene, removeOverlay } = useLighter();
-  const currentSlice = useRecoilValue(modalGroupSlice);
-  const prevSliceRef = useRef(currentSlice);
   const updateLabelAtom = useUpdateLabelAtom();
+  const isPatches = useRecoilValue(isPatchesView);
+  const setActiveLabelId = useSetActiveLabelId();
 
   // Use a ref for the loading state machine to avoid having it as an effect
   // dependency. When loadingState was both a dep and mutated inside the effect,
@@ -300,31 +333,22 @@ export default function useLabels() {
   const loadingRef = useRef(LabelsState.UNSET);
 
   const getFieldType = useRecoilCallback(
-    ({ snapshot }) => async (path: string) => {
-      const loadable = await snapshot.getLoadable(field(path));
-      const type = loadable
-        .getValue()
-        ?.embeddedDocType?.split(".")
-        .slice(-1)[0];
+    ({ snapshot }) =>
+      async (path: string) => {
+        const loadable = await snapshot.getLoadable(field(path));
+        const type = loadable
+          .getValue()
+          ?.embeddedDocType?.split(".")
+          .slice(-1)[0];
 
-      if (!type) {
-        throw new Error("no type");
-      }
+        if (!type) {
+          throw new Error("no type");
+        }
 
-      return type as LabelType;
-    },
+        return type as LabelType;
+      },
     []
   );
-
-  // This effect resets labels when the annotation slice changes for grouped datasets
-  useEffect(() => {
-    if (prevSliceRef.current !== currentSlice && currentSlice) {
-      prevSliceRef.current = currentSlice;
-      setLabels([]);
-      loadingRef.current = LabelsState.UNSET;
-      setLoading(LabelsState.UNSET);
-    }
-  }, [currentSlice, setLabels, setLoading]);
 
   // Reset labels when active schemas change to reload and update scene
   useEffect(() => {
@@ -369,6 +393,13 @@ export default function useLabels() {
           result.forEach((annotationLabel) =>
             addLabelToRenderer(annotationLabel)
           );
+
+          // In patches view with a single label, activate it for editing
+          // via the entranceLabelId mechanism (reuses the quick-edit flow)
+          if (isPatches && result.length === 1) {
+            setActiveLabelId(result[0].data._id);
+          }
+
           loadingRef.current = LabelsState.COMPLETE;
           setLoading(LabelsState.COMPLETE);
         });
@@ -409,21 +440,28 @@ export default function useLabels() {
     addLabelToStore,
     createLabel,
     getFieldType,
+    isPatches,
     modalSample?.sample,
     paths,
     scene,
+    setActiveLabelId,
     setLabels,
     setLoading,
     updateLabelAtom,
   ]);
 
+  /**
+   * Resets label state when the sample ID or scene changes.
+   * Clears all labels and reverts loading state to UNSET so that the
+   * primary loading effect above can re-initialize for the new context.
+   */
   useEffect(() => {
     return () => {
       setLabels([]);
       loadingRef.current = LabelsState.UNSET;
       setLoading(LabelsState.UNSET);
     };
-  }, [scene, setLabels, setLoading]);
+  }, [currentSampleId, scene, setLabels, setLoading]);
 
   useSyncOverlayReadOnly();
   useHover();

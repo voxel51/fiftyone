@@ -2,13 +2,14 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { getEventBus, type EventDispatcher } from "@fiftyone/events";
+import { type EventDispatcher, getEventBus } from "@fiftyone/events";
 import { CONTAINS } from "../core/Scene2D";
 import type { LighterEventGroup } from "../events";
-import { InteractionHandler } from "../interaction/InteractionManager";
+import type { InteractionHandler } from "../interaction/InteractionManager";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { ResourceLoader } from "../resource/ResourceLoader";
 import type {
+  CoordinateSystem,
   DrawStyle,
   Point,
   RawLookerLabel,
@@ -33,6 +34,7 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
    */
   protected isDirty = false;
 
+  protected coordinateSystem?: CoordinateSystem;
   protected renderer?: Renderer2D;
   protected resourceLoader?: ResourceLoader;
   protected currentStyle?: DrawStyle;
@@ -81,6 +83,14 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
     return ["x", "y", "width", "height"].every(
       (prop) => !Number.isNaN(bounds[prop])
     );
+  }
+
+  /**
+   * Sets the coordinate system for this overlay.
+   * @param coordinateSystem - The coordinate system to use.
+   */
+  setCoordinateSystem(coordinateSystem: CoordinateSystem): void {
+    this.coordinateSystem = coordinateSystem;
   }
 
   /**
@@ -219,7 +229,8 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
    * Override this method in subclasses to perform specific cleanup.
    */
   destroy(): void {
-    // Base implementation - subclasses should override if needed
+    this._eventBus = undefined;
+    this._eventChannel = undefined;
   }
 
   // InteractionHandler interface implementation

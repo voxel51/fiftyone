@@ -5,13 +5,17 @@ import {
   useActiveModalFields,
   useQueryPerformanceSampleLimit,
 } from "@fiftyone/state";
-import { atom, useAtom, useAtomValue } from "jotai";
+import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { jotaiStore } from "@fiftyone/state/src/jotai";
 import { useCallback, useMemo } from "react";
 import { usePrimitiveController } from "./Edit/useActivePrimitive";
 import useSave from "./Edit/useSave";
 import { useAnnotationSchemaContext } from "./state";
 import useCanManageSchema from "./useCanManageSchema";
-import { useSchemaManager } from "./useSchemaManager";
+import {
+  schemaManagementOpsAtom,
+  useSchemaResolver,
+} from "./useSchemaResolver";
 
 /**
  * Status code when attempting to initialize annotation schema.
@@ -34,6 +38,17 @@ export type EnterResult = {
  * Manager which provides methods for stateful entry-into and exit-from annotation mode.
  */
 export interface AnnotationContextManager {
+  /**
+   * Initialize and activate a field's annotation schema within an
+   * already-active annotation context.
+   *
+   * Use this when the annotation context is already entered (e.g. the
+   * Annotate tab is mounted) and you need to activate a specific field.
+   *
+   * @param field The field name to initialize and activate
+   */
+  activateField: (field: string) => Promise<EnterResult>;
+
   /**
    * Enter annotation mode, performing any required setup for the specified `path`.
    *
@@ -77,6 +92,7 @@ export interface AnnotationContextManager {
 }
 
 const contextManagerAtom = atom<ContextManager>(new DefaultContextManager());
+
 const activeLabelIdAtom = atom<string | null>(null);
 
 /**
@@ -89,14 +105,25 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
 
   const [activeFields, setActiveFields] = useActiveModalFields();
   const { setLabelSchema, setActiveSchemaPaths } = useAnnotationSchemaContext();
-  const schemaManager = useSchemaManager();
   const sampleScanLimit = useQueryPerformanceSampleLimit();
   const canManageSchema = useCanManageSchema();
+  const schemaResolver = useSchemaResolver();
   const { isPrimitive, setActivePrimitive } = usePrimitiveController();
   const { reset: clearStaleMutations } = useSampleMutationManager();
 
-  const initializeFieldSchema = useCallback(
-    async (field: string) => {
+  const activateField = useCallback(
+    async (field: string): Promise<EnterResult> => {
+      // Read management ops from the store at execution time to avoid
+      // stale closure — the atom may be set by SchemaManagementProvider's
+      // effect after this callback was created.
+      const mgmtOps = jotaiStore.get(schemaManagementOpsAtom);
+
+      if (!canManageSchema || !mgmtOps) {
+        return {
+          status: InitializationStatus.InsufficientPermissions,
+        };
+      }
+
       // activate only the specified field
       setActiveFields([field]);
 
@@ -107,32 +134,28 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
       // create and activate the field schema
       try {
         // check for existing schema
-        let listSchemaResponse = await schemaManager.listSchemas({});
+        let listSchemaResponse = await schemaResolver.listSchemas({});
 
         // if it doesn't exist, create it
         if (!listSchemaResponse.label_schemas[field]?.label_schema) {
-          if (!canManageSchema) {
-            setLabelSchema(listSchemaResponse.label_schemas);
-            return {
-              status: InitializationStatus.InsufficientPermissions,
-            };
-          }
-
-          await schemaManager.initializeSchema({
+          await mgmtOps.initializeSchema({
             field,
             scan_samples: true,
             limit: sampleScanLimit,
           });
         }
 
-        if (canManageSchema) {
-          await schemaManager.activateSchemas({ fields: [field] });
-        }
+        await mgmtOps.activateSchemas({ fields: [field] });
 
         // refresh annotation state
-        listSchemaResponse = await schemaManager.listSchemas({});
+        listSchemaResponse = await schemaResolver.listSchemas({});
         setLabelSchema(listSchemaResponse.label_schemas);
         setActiveSchemaPaths(listSchemaResponse.active_label_schemas);
+
+        // if the field is a primitive, activate it directly
+        if (isPrimitive(field)) {
+          setActivePrimitive(field);
+        }
 
         return {
           status: InitializationStatus.Success,
@@ -147,9 +170,11 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
     },
     [
       canManageSchema,
+      isPrimitive,
       sampleScanLimit,
-      schemaManager,
+      schemaResolver,
       setActiveFields,
+      setActivePrimitive,
       setActiveSchemaPaths,
       setLabelSchema,
     ]
@@ -178,15 +203,7 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
 
       // initialize and activate field schema if specified
       if (field) {
-        result = await initializeFieldSchema(field);
-
-        // if the field is a primitive, activate it directly
-        if (
-          result.status === InitializationStatus.Success &&
-          isPrimitive(field)
-        ) {
-          setActivePrimitive(field);
-        }
+        result = await activateField(field);
       }
 
       if (labelId) {
@@ -196,13 +213,11 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
       return result;
     },
     [
+      activateField,
       activeFields,
       contextManager,
-      initializeFieldSchema,
-      isPrimitive,
       setActiveFields,
       setActiveLabelId,
-      setActivePrimitive,
     ]
   );
 
@@ -216,11 +231,22 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
 
   return useMemo(
     () => ({
+      activateField,
       clearEntranceLabelId: () => setActiveLabelId(null),
       enter,
       entranceLabelId: activeLabelId,
       exit,
     }),
-    [activeLabelId, enter, exit, setActiveLabelId]
+    [activateField, activeLabelId, enter, exit, setActiveLabelId]
   );
 };
+
+/**
+ * Hook that returns a setter for the entrance label ID.
+ *
+ * Use this to request that a label be activated for editing once its overlay
+ * is ready in the scene. This integrates with
+ * {@link useRegisterRendererEventHandlers} which handles the actual overlay
+ * selection, avoiding race conditions with scene/overlay initialization.
+ */
+export const useSetActiveLabelId = () => useSetAtom(activeLabelIdAtom);

@@ -1,4 +1,4 @@
-import { useCursor } from "@react-three/drei";
+import { useAnnotationEventBus } from "@fiftyone/annotation";
 import { useFrame } from "@react-three/fiber";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRecoilState, useSetRecoilState } from "recoil";
@@ -49,6 +49,7 @@ export const PolylinePointMarker = ({
   const meshRef = useRef<Mesh>(null);
   const transformControlsRef = useRef<any>(null);
   const [startMatrix, setStartMatrix] = useState<Matrix4 | null>(null);
+  const annotationEventBus = useAnnotationEventBus();
 
   const [hoveredVertex, setHoveredVertex] = useRecoilState(hoveredVertexAtom);
 
@@ -74,8 +75,6 @@ export const PolylinePointMarker = ({
     hoveredVertex?.segmentIndex === segmentIndex &&
     hoveredVertex?.pointIndex === pointIndex;
 
-  useCursor(isThisVertexHovered && isDraggable, "grab", "auto");
-
   const handlePointClick = useCallback(
     (event: any) => {
       if (!isDraggable) return;
@@ -98,12 +97,21 @@ export const PolylinePointMarker = ({
         isActive: false,
       }));
       setEditSegmentsMode(false);
+
+      annotationEventBus.dispatch("annotation:3dPolylineVertexSelected", {
+        labelId,
+        segmentIndex,
+        pointIndex,
+        position: [position.x, position.y, position.z],
+      });
     },
     [
+      annotationEventBus,
       isDraggable,
       labelId,
       segmentIndex,
       pointIndex,
+      position,
       setSelectedPoint,
       setCurrentArchetypeSelectedForTransform,
       setTransformMode,
@@ -173,6 +181,14 @@ export const PolylinePointMarker = ({
     endDragFn(labelId);
   }, [onPointMove, selectedPoint, position, startMatrix, endDragFn, labelId]);
 
+  // This effect resets the cursor to default when the component unmounts.
+  useEffect(() => {
+    return () => {
+      document.body.style.cursor = "default";
+    };
+  }, []);
+
+  // This effect clears the selected vertex when Escape is pressed.
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape" && selectedPoint) {
@@ -232,6 +248,15 @@ export const PolylinePointMarker = ({
       <group
         ref={groupRef}
         position={transientPolyline?.vertexDeltas?.[vertexKey] ?? [0, 0, 0]}
+        onPointerOver={() => {
+          setHoveredVertex({ labelId, segmentIndex, pointIndex });
+          document.body.style.cursor = "grab";
+        }}
+        onPointerOut={() => {
+          setHoveredVertex(null);
+          document.body.style.cursor = "default";
+        }}
+        onClick={handlePointClick}
       >
         <SphericalMarker
           ref={meshRef}
@@ -239,13 +264,6 @@ export const PolylinePointMarker = ({
           color={color}
           size={size}
           isSelected={isSelected}
-          onPointerOver={() => {
-            setHoveredVertex({ labelId, segmentIndex, pointIndex });
-          }}
-          onPointerOut={() => {
-            setHoveredVertex(null);
-          }}
-          onClick={handlePointClick}
         />
         {tooltipDescriptor && (
           <VertexTooltip

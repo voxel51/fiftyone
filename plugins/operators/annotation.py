@@ -265,13 +265,13 @@ class CreateAndActivateField(foo.Operator):
         classes = label_schema_config.get("classes")
 
         # Determine component based on number of classes
-        if classes:
-            if len(classes) > foac.CHECKBOXES_OR_RADIO_THRESHOLD:
-                component = foac.DROPDOWN
-            else:
-                component = foac.RADIO
+        if classes and len(classes) > foac.CHECKBOXES_OR_RADIO_THRESHOLD:
+            component = foac.DROPDOWN
+        elif classes is not None and len(classes) == 0:
+            # if the user provided no classes, default to empty dropdown
+            component = foac.DROPDOWN
         else:
-            component = foac.TEXT
+            component = foac.RADIO
 
         # Build label schema
         return {

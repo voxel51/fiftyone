@@ -2,11 +2,14 @@ import { Selector } from "@fiftyone/components";
 import {
   gridSortBy,
   gridSortFields,
+  queryPerformance,
   similarityParameters,
 } from "@fiftyone/state";
 import { ArrowDownward, ArrowUpward } from "@mui/icons-material";
 import React from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
+import { ActionOption } from "../../Actions/Common";
+import { SORT_BY_INDEXED_FIELDS } from "../../../utils/links";
 import { RightDiv, SliderContainer } from "./Containers";
 
 const Field = ({ value }: { className?: string; value: string }) => {
@@ -17,9 +20,20 @@ export default function Sort() {
   const fields = useRecoilValue(gridSortFields);
   const [value, select] = useRecoilState(gridSortBy);
   const similarity = useRecoilValue(similarityParameters);
+  const isQPEnabled = useRecoilValue(queryPerformance);
   if (!fields.length || similarity) {
     return null;
   }
+
+  const footer = isQPEnabled ? (
+    <ActionOption
+      text="Add additional fields"
+      href={SORT_BY_INDEXED_FIELDS}
+      title="More on sorting with Query Performance"
+      style={{ background: "unset", paddingTop: 0, paddingBottom: 0 }}
+      svgStyles={{ height: "1rem" }}
+    />
+  ) : undefined;
 
   return (
     <SliderContainer style={{ width: "auto" }}>
@@ -52,6 +66,7 @@ export default function Sort() {
           }}
           overflow={true}
           placeholder="Sort by"
+          footer={footer}
         />
       </RightDiv>
       {value !== null && (

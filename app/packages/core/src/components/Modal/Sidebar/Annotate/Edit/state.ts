@@ -1,4 +1,4 @@
-import { type AnnotationLabel } from "@fiftyone/state";
+import type { AnnotationLabel } from "@fiftyone/state";
 import {
   CLASSIFICATION,
   CLASSIFICATIONS,
@@ -11,13 +11,14 @@ import { atom, PrimitiveAtom, useAtomValue } from "jotai";
 import { atomFamily, atomWithReset } from "jotai/utils";
 import { capitalize } from "lodash";
 import {
-  activeLabelSchemas,
   fieldType,
   isFieldReadOnly,
   labelSchemaData,
+  visibleLabelSchemas,
 } from "../state";
 import { addLabel, labels, labelsByPath } from "../useLabels";
 import { activePrimitiveAtom } from "./useActivePrimitive";
+import { buildNewLabelData } from "./useCreate";
 
 export const savedLabel = atom<AnnotationLabel["data"] | null>(null);
 
@@ -107,13 +108,21 @@ export const currentField = atom(
     return get(current)?.path;
   },
   (get, set, path: string) => {
-    const label = get(current);
-    if (!label) {
+    const currentLabel = get(current);
+
+    // no label or label is already set to this field
+    if (!currentLabel || currentLabel.path === path) {
       return;
     }
-    label.overlay?.updateField(path);
-    label.overlay?.updateLabel({ _id: label.data._id });
-    set(current, { ...label, path, data: { _id: label.data._id } });
+
+    const currentData = currentLabel.data;
+    const data = buildNewLabelData(path, currentData._cls, currentData?._id);
+    data.bounding_box = currentData?.bounding_box;
+
+    currentLabel.overlay?.updateField(path);
+    currentLabel.overlay?.updateLabel(data);
+
+    set(current, { ...currentLabel, path, data });
   }
 );
 
@@ -198,11 +207,11 @@ export const isNew = atom((get) => {
   return typeof get(editing) === "string" || get(current)?.isNew;
 });
 
-const fieldsOfType = atomFamily((type: LabelType) =>
+export const fieldsOfType = atomFamily((type: LabelType) =>
   atom((get) => {
     const fields = new Array<string>();
 
-    for (const field of get(activeLabelSchemas) ?? []) {
+    for (const field of get(visibleLabelSchemas) ?? []) {
       if (type && IS[type].has(get(fieldType(field)))) {
         const fieldSchema = get(labelSchemaData(field));
         const fieldReadOnly = isFieldReadOnly(fieldSchema);
@@ -249,7 +258,8 @@ export const deleteValue = atom(null, (get, set) => {
   const data = get(current);
 
   if (!data) {
-    throw new Error("no current label");
+    // Label may have already been cleared in another view.
+    return;
   }
 
   set(

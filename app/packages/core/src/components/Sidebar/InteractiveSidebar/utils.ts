@@ -223,6 +223,10 @@ export const getEntryKey = (entry: fos.SidebarEntry) => {
   if (entry.kind === fos.EntryKind.EMPTY) {
     return JSON.stringify([entry.group, ""]);
   }
+  if (entry.kind === fos.EntryKind.EMPTY_ANNOTATIONS) {
+    return "empty-annotations";
+  }
+
   if (entry.kind === fos.EntryKind.INPUT) {
     return `input-${entry.type}`;
   }

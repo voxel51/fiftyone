@@ -69,7 +69,6 @@ export const lookerOptions = selectorFamily<
           showConfidence: get(
             selectors.appConfigOption({ modal: true, key: "showConfidence" })
           ),
-          showControls: true,
           showTooltip: get(
             selectors.appConfigOption({ modal: true, key: "showTooltip" })
           ),
@@ -98,6 +97,8 @@ export const lookerOptions = selectorFamily<
         colorscale: colorscale,
         attributeVisibility: activeVisibility,
         selectedLabels: [...get(selectors.selectedLabelIds)],
+        selectedLabelTypes: get(selectors.selectedLabelTypes),
+        labelSelectionStyle: get(atoms.labelSelectionStyle),
         selectedLabelTags: getActiveLabelTags(
           isLabelTagActive,
           activeFilter,

@@ -12,10 +12,10 @@ models**
 
 <!-- prettier-ignore -->
 <a href="https://voxel51.com/fiftyone">Website</a> •
-<a href="https://voxel51.com/docs/fiftyone">Docs</a> •
+<a href="https://docs.voxel51.com">Docs</a> •
 <a href="https://colab.research.google.com/github/voxel51/fiftyone-examples/blob/master/examples/quickstart.ipynb">Try it Now</a> •
-<a href="https://voxel51.com/docs/fiftyone/getting_started_guides/index.html">Getting Started Guides</a> •
-<a href="https://voxel51.com/docs/fiftyone/tutorials/index.html">Tutorials</a> •
+<a href="https://docs.voxel51.com/getting_started_guides/index.html">Getting Started Guides</a> •
+<a href="https://docs.voxel51.com/tutorials/index.html">Tutorials</a> •
 <a href="https://voxel51.com/blog/">Blog</a> •
 <a href="https://discord.gg/fiftyone-community">Community</a>
 
@@ -24,10 +24,14 @@ models**
 [![Downloads](https://static.pepy.tech/badge/fiftyone)](https://pepy.tech/project/fiftyone)
 [![Docker Pulls](https://badgen.net/docker/pulls/voxel51/fiftyone?icon=docker&label=pulls)](https://hub.docker.com/r/voxel51/fiftyone/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+
 [![Discord](https://img.shields.io/badge/Discord-7289DA?logo=discord&logoColor=white)](https://discord.gg/fiftyone-community)
+[![Hugging Face](https://img.shields.io/badge/Hugging_Face-purple?style=flat&logo=huggingface)](https://huggingface.co/Voxel51)
+[![Voxel51 Blog](https://img.shields.io/badge/Voxel51_Blog-ff6d04?style=flat)](https://voxel51.com/blog)
+[![Newsletter](https://img.shields.io/badge/Newsletter-BE5B25?logo=mail.ru&logoColor=white)](https://share.hsforms.com/1zpJ60ggaQtOoVeBqIZdaaA2ykyk)
+[![LinkedIn](https://img.shields.io/badge/In-white?style=flat&label=Linked&labelColor=blue)](https://www.linkedin.com/company/voxel51)
+[![Twitter](https://img.shields.io/badge/Twitter-000000?logo=x&logoColor=white)](https://x.com/voxel51)
 [![Medium](https://img.shields.io/badge/Medium-12100E?logo=medium&logoColor=white)](https://medium.com/voxel51)
-[![Mailing list](http://bit.ly/2Md9rxM)](https://share.hsforms.com/1zpJ60ggaQtOoVeBqIZdaaA2ykyk)
-[![Twitter](https://img.shields.io/twitter/follow/Voxel51?style=social)](https://twitter.com/voxel51)
 
 </p>
 </div>
@@ -35,8 +39,9 @@ models**
 # 👋 hey there!
 
 We created **[FiftyOne](https://fiftyone.ai)** to supercharge your visual AI
-projects by enabling you to visualize datasets, analyze models, and improve
-data quality more efficiently than ever before 🤝
+development by enabling you to visualize and label your data, evaluate your
+models, and maximize data and model quality more efficiently than ever before
+🤝
 
 If you're looking to scale to production-grade, collaborative, cloud-native
 enterprise workloads, check out
@@ -69,12 +74,12 @@ See the [prerequisites section](#prerequisites) for system-specific setup
 information.
 
 We strongly recommend that you install FiftyOne in a
-[virtual environment](https://voxel51.com/docs/fiftyone/installation/virtualenv.html)
-to maintain a clean workspace.
+[virtual environment](https://docs.voxel51.com/installation/virtualenv.html) to
+maintain a clean workspace.
 
 Consult the
-[installation guide](https://voxel51.com/docs/fiftyone/installation/index.html)
-for troubleshooting and other information about getting up-and-running with
+[installation guide](https://docs.voxel51.com/installation/index.html) for
+troubleshooting and other information about getting up-and-running with
 FiftyOne.
 
 </details>
@@ -99,8 +104,8 @@ You'll need the following tools installed:
     `corepack enable`
 
 We strongly recommend that you install FiftyOne in a
-[virtual environment](https://voxel51.com/docs/fiftyone/installation/virtualenv.html)
-to maintain a clean workspace.
+[virtual environment](https://docs.voxel51.com/installation/virtualenv.html) to
+maintain a clean workspace.
 
 If you are working in Google Colab,
 [skip to here](#source-installs-in-google-colab).
@@ -372,7 +377,7 @@ FFmpeg's path (e.g., `C:\ffmpeg\bin`) to your `PATH` environmental variable.
 <br>
 
 Refer to
-[these instructions](https://voxel51.com/docs/fiftyone/environments/index.html#docker)
+[these instructions](https://docs.voxel51.com/environments/index.html#docker)
 to see how to build and run Docker images containing release or source builds
 of FiftyOne.
 
@@ -386,10 +391,9 @@ of FiftyOne.
 
 Dive right into FiftyOne by opening a Python shell and running the snippet
 below, which downloads a
-[small dataset](https://voxel51.com/docs/fiftyone/user_guide/dataset_zoo/datasets.html#quickstart)
-and launches the
-[FiftyOne App](https://voxel51.com/docs/fiftyone/user_guide/app.html) so you
-can explore it:
+[small dataset](https://docs.voxel51.com/user_guide/dataset_zoo/datasets.html#quickstart)
+and launches the [FiftyOne App](https://docs.voxel51.com/user_guide/app.html)
+so you can explore it:
 
 ```py
 import fiftyone as fo
@@ -405,12 +409,19 @@ to see some common workflows on the quickstart dataset.
 
 Note that if you are running the above code in a script, you must include
 `session.wait()` to block execution until you close the App. See
-[this page](https://voxel51.com/docs/fiftyone/user_guide/app.html#creating-a-session)
+[this page](https://docs.voxel51.com/user_guide/app.html#creating-a-session)
 for more information.
 
 <div id='key-features'>
 
 ## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> &nbsp; key features &nbsp; 🔑
+
+-   **[Native Annotation:](https://docs.voxel51.com/user_guide/annotation.html)**
+    Create and edit 2D and 3D labels directly in the App or integrate with your
+    favorite annotation tools — then curate, QA, and iterate, all in one
+    platform.
+
+https://github.com/user-attachments/assets/b06bcdac-d64f-4465-8668-12007dc0eeaa
 
 -   **[Visualize Complex Datasets:](https://docs.voxel51.com/user_guide/app.html)**
     Easily explore images, videos, and associated labels in a powerful visual
@@ -451,8 +462,8 @@ https://github.com/user-attachments/assets/c7ed496d-0cf7-45d6-9853-e349f1abd6f8
 
 Check out these resources to get up and running with FiftyOne:
 
-| [Getting Started Guides](https://voxel51.com/docs/fiftyone/getting_started_guides/index.html) | [Tutorials](https://voxel51.com/docs/fiftyone/tutorials/index.html) | [Recipes](https://voxel51.com/docs/fiftyone/recipes/index.html) | [User Guide](https://voxel51.com/docs/fiftyone/user_guide/index.html) | [Examples](https://github.com/voxel51/fiftyone-examples) | [API Reference](https://voxel51.com/docs/fiftyone/api/fiftyone.html) | [CLI Reference](https://voxel51.com/docs/fiftyone/cli/index.html) |
-| --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | --------------------------------------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| [Getting Started Guides](https://docs.voxel51.com/getting_started_guides/index.html) | [Tutorials](https://docs.voxel51.com/tutorials/index.html) | [Recipes](https://docs.voxel51.com/recipes/index.html) | [User Guide](https://docs.voxel51.com/user_guide/index.html) | [Examples](https://github.com/voxel51/fiftyone-examples) | [API Reference](https://docs.voxel51.com/api/fiftyone.html) | [CLI Reference](https://docs.voxel51.com/cli/index.html) |
+| ------------------------------------------------------------------------------------ | ---------------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------ | -------------------------------------------------------- | ----------------------------------------------------------- | -------------------------------------------------------- |
 
 Full documentation is available at [fiftyone.ai](https://fiftyone.ai).
 
@@ -498,10 +509,10 @@ or contact us on [Discord](https://discord.gg/fiftyone-community).
 Connect with us through your preferred channels:
 
 [![Discord](https://img.shields.io/badge/Discord-7289DA?logo=discord&logoColor=white)](https://discord.gg/fiftyone-community)
+[![Hugging Face](https://img.shields.io/badge/Hugging_Face-purple?style=flat&logo=huggingface)](https://huggingface.co/Voxel51)
+[![Newsletter](https://img.shields.io/badge/Newsletter-BE5B25?logo=mail.ru&logoColor=white)](https://share.hsforms.com/1zpJ60ggaQtOoVeBqIZdaaA2ykyk)
+[![LinkedIn](https://img.shields.io/badge/In-white?style=flat&label=Linked&labelColor=blue)](https://www.linkedin.com/company/voxel51)
 [![Medium](https://img.shields.io/badge/Medium-12100E?logo=medium&logoColor=white)](https://medium.com/voxel51)
-[![Twitter](https://img.shields.io/badge/Twitter-1DA1F2?logo=twitter&logoColor=white)](https://twitter.com/voxel51)
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?logo=linkedin&logoColor=white)](https://www.linkedin.com/company/voxel51)
-[![Facebook](https://img.shields.io/badge/Facebook-1877F2?logo=facebook&logoColor=white)](https://www.facebook.com/voxel51)
 
 🎊 **Share how FiftyOne makes your visual AI projects a reality on social media
 and tag us with @Voxel51 and #FiftyOne** 🎊

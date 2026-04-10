@@ -37,7 +37,6 @@ import {
 } from "./operators";
 import { useShowOperatorIO } from "./state";
 import usePanelEvent from "./usePanelEvent";
-import { Clear } from "@mui/icons-material";
 
 //
 // BUILT-IN OPERATORS
@@ -80,6 +79,7 @@ class ClearSelectedSamples extends Operator {
   }
   async execute({ state }: ExecutionContext) {
     state.reset(fos.selectedSamples);
+    state.reset(fos.selectedSampleObjects);
   }
 }
 
@@ -150,6 +150,14 @@ class OpenPanel extends Operator {
       label: "Force (skips panel exists check)",
       default: false,
     });
+    inputs.obj("sessionState", {
+      label: "Initial session state",
+      view: new types.HiddenView({}),
+    });
+    inputs.obj("localState", {
+      label: "Initial local state",
+      view: new types.HiddenView({}),
+    });
     return new types.Property(inputs);
   }
   useHooks() {
@@ -157,7 +165,15 @@ class OpenPanel extends Operator {
     const availablePanels = usePanels();
     const { spaces } = useSpaces(FIFTYONE_GRID_SPACES_ID);
     const openedPanels = useSpaceNodes(FIFTYONE_GRID_SPACES_ID);
-    return { availablePanels, openedPanels, spaces };
+    const setPanelStateById = useSetPanelStateById();
+    const setPanelStateLocalById = useSetPanelStateById(true);
+    return {
+      availablePanels,
+      openedPanels,
+      spaces,
+      setPanelStateById,
+      setPanelStateLocalById,
+    };
   }
   findFirstPanelContainer(node: SpaceNode): SpaceNode | null {
     if (node.isPanelContainer()) {
@@ -171,8 +187,15 @@ class OpenPanel extends Operator {
     return null;
   }
   async execute({ hooks, params }: ExecutionContext) {
-    const { spaces, openedPanels, availablePanels } = hooks;
-    const { name, isActive, layout, force, forceDuplicate } = params;
+    const {
+      spaces,
+      openedPanels,
+      availablePanels,
+      setPanelStateById,
+      setPanelStateLocalById,
+    } = hooks;
+    const { name, isActive, layout, force, forceDuplicate, state, data } =
+      params;
     const targetSpace = this.findFirstPanelContainer(spaces.root);
     if (!targetSpace) {
       return console.error("No panel container found");
@@ -189,6 +212,12 @@ class OpenPanel extends Operator {
       return;
     }
     const newNode = new SpaceNode();
+    if (state) {
+      setPanelStateById(newNode.id, () => state);
+    }
+    if (data) {
+      setPanelStateLocalById(newNode.id, () => data);
+    }
     newNode.type = name;
     // add panel to the default space as an inactive panels
     spaces.addNodeAfter(targetSpace, newNode, isActive);
@@ -423,7 +452,7 @@ class ShowSelectedSamples extends Operator {
       fos.selectedSamples
     );
     state.set(fos.extendedSelection, {
-      selection: Array.from(selectedSamples),
+      selection: Array.from(selectedSamples.keys()),
       scope: "global",
     });
   }
@@ -446,7 +475,12 @@ class ConvertExtendedSelectionToSelectedSamples extends Operator {
     const extendedSelection = await state.snapshot.getPromise(
       fos.extendedSelection
     );
-    state.set(fos.selectedSamples, new Set(extendedSelection.selection));
+    const map = new Map<string, fos.SelectionType>();
+    for (const id of extendedSelection.selection || []) {
+      map.set(id, "default");
+    }
+    state.set(fos.selectedSamples, map);
+    state.set(fos.selectedSampleObjects, new Map());
     state.set(fos.extendedSelection, { selection: null });
     hooks.resetExtended();
   }
@@ -467,11 +501,86 @@ class SetSelectedSamples extends Operator {
       setSelected: fos.useSetSelected(),
     };
   }
-  async execute({ hooks, params }: ExecutionContext) {
+  async execute({ hooks, params, state }: ExecutionContext) {
     const { samples } = params || {};
     if (!Array.isArray(samples))
-      throw new Error("param 'samples' must be an array of string");
-    hooks.setSelected(new Set(samples));
+      throw new Error("param 'samples' must be an array");
+    const map = new Map<string, fos.SelectionType>();
+    for (const item of samples) {
+      if (typeof item === "string") {
+        map.set(item, "default");
+      } else if (item && typeof item === "object") {
+        map.set(item.id, item.type || "default");
+      }
+    }
+    hooks.setSelected(map);
+    state.set(fos.selectedSampleObjects, new Map());
+  }
+}
+
+class SetSampleSelectionStyle extends Operator {
+  _builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "set_sample_selection_style",
+      label: "Set sample selection style",
+      unlisted: true,
+    });
+  }
+  async execute({ state, params }: ExecutionContext) {
+    const { default: defaultIcon, alt } = params || {};
+    const style = {
+      default: defaultIcon || fos.DEFAULT_SELECTION_STYLE.default,
+      alt: alt || fos.DEFAULT_SELECTION_STYLE.alt,
+    };
+    state.set(fos.sampleSelectionStyle, style);
+  }
+}
+
+class ClearSampleSelectionStyle extends Operator {
+  _builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "clear_sample_selection_style",
+      label: "Clear sample selection style",
+      unlisted: true,
+    });
+  }
+  async execute({ state }: ExecutionContext) {
+    state.set(fos.sampleSelectionStyle, fos.DEFAULT_SELECTION_STYLE);
+  }
+}
+
+class SetLabelSelectionStyle extends Operator {
+  _builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "set_label_selection_style",
+      label: "Set label selection style",
+      unlisted: true,
+    });
+  }
+  async execute({ state, params }: ExecutionContext) {
+    const { default: defaultStyle, alt } = params || {};
+    const style = {
+      default: defaultStyle || fos.DEFAULT_LABEL_SELECTION_STYLE.default,
+      alt: alt || fos.DEFAULT_LABEL_SELECTION_STYLE.alt,
+    };
+    state.set(fos.labelSelectionStyle, style);
+  }
+}
+
+class ClearLabelSelectionStyle extends Operator {
+  _builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "clear_label_selection_style",
+      label: "Clear label selection style",
+      unlisted: true,
+    });
+  }
+  async execute({ state }: ExecutionContext) {
+    state.set(fos.labelSelectionStyle, fos.DEFAULT_LABEL_SELECTION_STYLE);
   }
 }
 
@@ -1623,6 +1732,10 @@ export function registerBuiltInOperators() {
     _registerBuiltInOperator(ShowSelectedSamples);
     _registerBuiltInOperator(ConvertExtendedSelectionToSelectedSamples);
     _registerBuiltInOperator(SetSelectedSamples);
+    _registerBuiltInOperator(SetSampleSelectionStyle);
+    _registerBuiltInOperator(ClearSampleSelectionStyle);
+    _registerBuiltInOperator(SetLabelSelectionStyle);
+    _registerBuiltInOperator(ClearLabelSelectionStyle);
     _registerBuiltInOperator(OpenPanel);
     _registerBuiltInOperator(ClosePanel);
     _registerBuiltInOperator(SetView);
@@ -1665,7 +1778,6 @@ export function registerBuiltInOperators() {
     _registerBuiltInOperator(BrowserDownload);
     _registerBuiltInOperator(ClearActiveFields);
   } catch (e) {
-    console.error("Error registering built-in operators");
     console.error(e);
   }
 }

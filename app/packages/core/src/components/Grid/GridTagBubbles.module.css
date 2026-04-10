@@ -1,0 +1,35 @@
+.gridTagBubbles {
+  position: absolute;
+  bottom: 0;
+  max-height: 100%;
+  overflow-y: auto;
+  scrollbar-width: none;
+  width: 100%;
+  pointer-events: none;
+}
+
+.gridTagBubbles::-webkit-scrollbar {
+  width: 0;
+  background: transparent;
+  display: none;
+}
+
+.gridTagBubbles::-webkit-scrollbar-thumb {
+  width: 0;
+  display: none;
+}
+
+.gridTagBubble {
+  display: inline-block;
+  box-sizing: content-box;
+  padding: 2px;
+  border-radius: 3px;
+  font-weight: bold;
+  text-align: center;
+  vertical-align: bottom;
+  white-space: nowrap;
+  pointer-events: auto;
+  max-width: calc(100% - 8px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

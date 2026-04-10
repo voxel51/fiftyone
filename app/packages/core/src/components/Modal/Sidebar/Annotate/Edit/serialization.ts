@@ -88,16 +88,6 @@ export function parseDatabaseValue(
   type: string,
   value: unknown
 ): Primitive | Date {
-  if (type === "dict") {
-    // If the value is null/undefined, initialize with empty JSON object
-    if (value === null || value === undefined) {
-      return "{}";
-    }
-    if (typeof value === "object") {
-      return JSON.stringify(value, null, 2);
-    }
-  }
-
   /**
    * from the backend we get: { datetime: number, '_cls': 'datetime' }
    */

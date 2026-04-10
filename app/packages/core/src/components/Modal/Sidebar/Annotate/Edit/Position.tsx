@@ -5,11 +5,15 @@ import {
   useLighter,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
+import { useAtom, useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
-import { currentData, currentOverlay } from "./state";
-import { useAtom, useAtomValue } from "jotai";
 import { SchemaType } from "../../../../../plugins/SchemaIO/utils/types";
+import {
+  imagePixelsToCanvasPixels,
+  relativeToImagePixels,
+} from "./coordinateConversion";
+import { currentData, currentOverlay } from "./state";
 
 const createInput = (name: string, readOnly?: boolean) => {
   return {
@@ -60,18 +64,38 @@ export default function Position({ readOnly = false }: PositionProps) {
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
   );
 
+  const toImagePixels = useCallback(
+    (relative: Parameters<typeof relativeToImagePixels>[0]) => {
+      const dims = scene
+        ?.getCanonicalMedia()
+        ?.getOriginalDimensions() ?? { width: 1, height: 1 };
+      return relativeToImagePixels(relative, dims);
+    },
+    [scene]
+  );
+
+  const toCanvasPixels = useCallback(
+    (imageRect: Parameters<typeof imagePixelsToCanvasPixels>[0]) => {
+      const canonicalMedia = scene?.getCanonicalMedia();
+      const dims = canonicalMedia?.getOriginalDimensions() ?? { width: 1, height: 1 };
+      const rendered = canonicalMedia?.getRenderedBounds() ?? { x: 0, y: 0, width: 1, height: 1 };
+      return imagePixelsToCanvasPixels(imageRect, dims, rendered);
+    },
+    [scene]
+  );
+
   useEffect(() => {
     if (!(overlay instanceof BoundingBoxOverlay) || !overlay.hasValidBounds()) {
       return;
     }
 
-    const rect = overlay.getAbsoluteBounds();
+    const rect = toImagePixels(overlay.relativeBounds);
 
     setState({
       position: { x: rect.x, y: rect.y },
       dimensions: { width: rect.width, height: rect.height },
     });
-  }, [overlay]);
+  }, [overlay, toImagePixels]);
 
   const handleBoundsChange = useCallback(
     (payload: { id: string }) => {
@@ -82,19 +106,20 @@ export default function Position({ readOnly = false }: PositionProps) {
       ) {
         return;
       }
-      const rect = overlay.getAbsoluteBounds();
+
+      const rect = toImagePixels(overlay.relativeBounds);
 
       setState({
         position: { x: rect.x, y: rect.y },
         dimensions: { width: rect.width, height: rect.height },
       });
 
-      const relative = overlay.getRelativeBounds();
+      const relative = overlay.relativeBounds;
       setData({
         bounding_box: [relative.x, relative.y, relative.width, relative.height],
       });
     },
-    [data?._id, overlay, setData]
+    [data?._id, overlay, toImagePixels, setData]
   );
 
   useEventHandler("lighter:overlay-bounds-changed", handleBoundsChange);
@@ -145,13 +170,16 @@ export default function Position({ readOnly = false }: PositionProps) {
             return;
           }
 
-          const oldBounds = overlay.getAbsoluteBounds();
+          const oldBounds = overlay.bounds;
+          const currentImagePixels = toImagePixels(overlay.relativeBounds);
+          const newImagePixels = {
+            ...currentImagePixels,
+            ...data.dimensions,
+            ...data.position,
+          };
+          const newCanvasBounds = toCanvasPixels(newImagePixels);
           scene?.executeCommand(
-            new TransformOverlayCommand(overlay, overlay.id, oldBounds, {
-              ...oldBounds,
-              ...data.dimensions,
-              ...data.position,
-            })
+            new TransformOverlayCommand(overlay, overlay.id, oldBounds, newCanvasBounds)
           );
         }}
       />

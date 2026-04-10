@@ -2,8 +2,8 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import * as _ from "lodash";
-import { isObject } from "./util";
+import { cloneDeep } from "lodash";
+import { isObject } from "@fiftyone/utilities";
 
 /**
  * DataTransformer implementations offer conversion from one record type to another.
@@ -26,7 +26,7 @@ export type FieldTransformer = {
  */
 const DateTimeTransformer: FieldTransformer = {
   canTransform: (data: unknown): boolean => {
-    return isObject(data) && "$date" in (data as object);
+    return isObject(data) && "$date" in data;
   },
   transform: (data: unknown): { _cls: "DateTime"; datetime: number } => {
     const date = new Date((data as { $date: string }).$date);
@@ -39,7 +39,7 @@ const DateTimeTransformer: FieldTransformer = {
  */
 const ObjectIdTransformer: FieldTransformer = {
   canTransform: (data: unknown): boolean => {
-    return isObject(data) && "$oid" in (data as object);
+    return isObject(data) && "$oid" in data;
   },
   transform: (data: unknown): string => {
     return (data as { $oid: string }).$oid;
@@ -76,7 +76,7 @@ const SampleTransformer: DataTransformer = {
     };
 
     // transformation happens in-place, so create a new copy of the data first
-    const result = _.cloneDeep(data);
+    const result = cloneDeep(data);
     transformInner(result);
     return result;
   },
@@ -92,4 +92,45 @@ export const transformSampleData = (
   sample: Record<string, unknown>
 ): Record<string, unknown> => {
   return SampleTransformer.transform(sample);
+};
+
+const OBJECT_ID_PATTERN = /^[0-9a-f]{24}$/;
+const OBJECT_ID_FIELDS = new Set(["_id", "_sample_id"]);
+
+/**
+ * Convert a value to MongoDB Extended JSON format.
+ *
+ * This is the inverse of the {@link ObjectIdTransformer}: it converts plain
+ * ObjectId hex strings back to `{ $oid: "..." }` so that the server can
+ * deserialize them as `bson.ObjectId` rather than storing them as strings.
+ *
+ * @param data Value to transform
+ * @param fieldName Name of the field containing the value (used to identify
+ *   ObjectId fields)
+ */
+export const toExtendedJson = (data: unknown, fieldName?: string): unknown => {
+  if (
+    typeof data === "string" &&
+    fieldName &&
+    OBJECT_ID_FIELDS.has(fieldName) &&
+    OBJECT_ID_PATTERN.test(data)
+  ) {
+    return { $oid: data };
+  }
+
+  if (Array.isArray(data)) {
+    return data.map((item) => toExtendedJson(item));
+  }
+
+  if (isObject(data)) {
+    const result: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(
+      data as Record<string, unknown>
+    )) {
+      result[key] = toExtendedJson(value, key);
+    }
+    return result;
+  }
+
+  return data;
 };

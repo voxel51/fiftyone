@@ -47,6 +47,18 @@ export class PixiRenderer2D implements Renderer2D {
   // Container tracking for visibility management
   private containers = new Map<string, PIXI.Container>();
 
+  /** Minimum zoom scale (10%). */
+  private static readonly ZOOM_MIN = 0.1;
+
+  /** Maximum zoom scale (1000%). */
+  private static readonly ZOOM_MAX = 10;
+
+  /** Zoom factor applied per zoom in/out step. */
+  private static readonly ZOOM_FACTOR = 1.2;
+
+  /** Baseline scale (100%). */
+  private static readonly BASELINE_SCALE = 1;
+
   constructor(private canvas: HTMLCanvasElement) {
     this.eventBus = getEventBus();
   }
@@ -87,16 +99,17 @@ export class PixiRenderer2D implements Renderer2D {
 
     // Activate drag, pinch, and wheel plugins.
     this.viewport.drag().pinch().wheel();
+    // Enforce zoom bounds so wheel/pinch cannot drive scale outside [ZOOM_MIN, ZOOM_MAX].
+    this.viewport.clampZoom({
+      minScale: PixiRenderer2D.ZOOM_MIN,
+      maxScale: PixiRenderer2D.ZOOM_MAX,
+    });
 
     // to re-render the scene with updated scaling
     // TODO: throttle?
     this.viewport.on("zoomed", (_data) => {
-      if (this.viewport) {
-        this.eventBus.dispatch("lighter:zoomed", {
-          scale: this.viewport.scaled,
-        });
-        this.emitViewportMoved();
-      }
+      this.emitViewportZoomed();
+      this.emitViewportMoved();
     });
 
     this.viewport.on("moved", () => {
@@ -242,7 +255,7 @@ export class PixiRenderer2D implements Renderer2D {
     if (style.strokeStyle) {
       const colorObj = parseColorWithAlpha(style.strokeStyle);
       const color = colorObj.color;
-      const alpha = colorObj.alpha * (style.opacity || 1);
+      const alpha = colorObj.alpha * (style.opacity ?? 1);
 
       if (style.dashPattern && style.dashPattern.length > 0) {
         const dashLine = new DashLine(graphics, {
@@ -520,6 +533,107 @@ export class PixiRenderer2D implements Renderer2D {
     return bg;
   }
 
+  drawPoint(
+    center: Point,
+    radius: number,
+    style: DrawStyle,
+    containerId: string
+  ): void {
+    const graphics = new PIXI.Graphics();
+    const scaledRadius = radius / this.getScale();
+
+    // PixiJS v8: fill() consumes the current path, so stroke needs its own
+    // circle() call. This is intentional — not a redundant draw.
+    if (style.fillStyle) {
+      const { color, alpha } = parseColorWithAlpha(style.fillStyle);
+      graphics.circle(center.x, center.y, scaledRadius);
+      graphics.fill({ color, alpha: alpha * (style.opacity ?? 1) });
+    }
+
+    if (style.strokeStyle) {
+      const { color, alpha } = parseColorWithAlpha(style.strokeStyle);
+      graphics.circle(center.x, center.y, scaledRadius);
+      graphics.setStrokeStyle({
+        width: (style.lineWidth || 1) / this.getScale(),
+        color,
+        alpha: alpha * (style.opacity ?? 1),
+      });
+      graphics.stroke();
+    }
+
+    this.addToContainer(graphics, containerId);
+  }
+
+  drawPoints(
+    centers: Point[],
+    radius: number,
+    style: DrawStyle,
+    containerId: string
+  ): void {
+    if (centers.length === 0) return;
+    const graphics = new PIXI.Graphics();
+    const scaledRadius = radius / this.getScale();
+
+    const fillParsed = style.fillStyle
+      ? parseColorWithAlpha(style.fillStyle)
+      : undefined;
+    const strokeParsed = style.strokeStyle
+      ? parseColorWithAlpha(style.strokeStyle)
+      : undefined;
+
+    // PixiJS v8: fill() consumes the current path, so fill and stroke each
+    // need their own batch of circle() calls.
+    if (fillParsed) {
+      for (const center of centers) {
+        graphics.circle(center.x, center.y, scaledRadius);
+      }
+      graphics.fill({
+        color: fillParsed.color,
+        alpha: fillParsed.alpha * (style.opacity ?? 1),
+      });
+    }
+
+    if (strokeParsed) {
+      for (const center of centers) {
+        graphics.circle(center.x, center.y, scaledRadius);
+      }
+      graphics.setStrokeStyle({
+        width: (style.lineWidth || 1) / this.getScale(),
+        color: strokeParsed.color,
+        alpha: strokeParsed.alpha * (style.opacity ?? 1),
+      });
+      graphics.stroke();
+    }
+
+    this.addToContainer(graphics, containerId);
+  }
+
+  drawLines(
+    segments: Array<[Point, Point]>,
+    style: DrawStyle,
+    containerId: string
+  ): void {
+    if (segments.length === 0) return;
+    const graphics = new PIXI.Graphics();
+    const { color, alpha } = parseColorWithAlpha(
+      style.strokeStyle || "#000000"
+    );
+
+    graphics.setStrokeStyle({
+      width: (style.lineWidth || 1) / this.getScale(),
+      color: color,
+      alpha: alpha * (style.opacity ?? 1),
+    });
+
+    for (const [start, end] of segments) {
+      graphics.moveTo(start.x, start.y);
+      graphics.lineTo(end.x, end.y);
+    }
+    graphics.stroke();
+
+    this.addToContainer(graphics, containerId);
+  }
+
   drawLine(
     start: Point,
     end: Point,
@@ -534,18 +648,18 @@ export class PixiRenderer2D implements Renderer2D {
     if (style.dashPattern && style.dashPattern.length > 0) {
       const dashLine = new DashLine(graphics, {
         dash: style.dashPattern,
-        width: style.lineWidth || 1,
+        width: (style.lineWidth || 1) / this.getScale(),
         color: color,
-        alpha: alpha * (style.opacity || 1),
+        alpha: alpha * (style.opacity ?? 1),
       });
       dashLine.moveTo(start.x, start.y);
       dashLine.lineTo(end.x, end.y);
     } else {
       // Use solid line implementation
       graphics.setStrokeStyle({
-        width: style.lineWidth || 1,
+        width: (style.lineWidth || 1) / this.getScale(),
         color: color,
-        alpha: alpha * (style.opacity || 1),
+        alpha: alpha * (style.opacity ?? 1),
       });
       graphics.moveTo(start.x, start.y);
       graphics.lineTo(end.x, end.y);
@@ -663,6 +777,57 @@ export class PixiRenderer2D implements Renderer2D {
   }
 
   /**
+   * Reset the viewport's zoom to 100% and clears any pan translation.
+   */
+  resetZoomPan(): void {
+    this.viewport?.setZoom(PixiRenderer2D.BASELINE_SCALE);
+    this.viewport?.moveCorner(0, 0);
+
+    this.emitViewportZoomed();
+    this.emitViewportMoved();
+  }
+
+  /**
+   * Applies a new zoom level if it differs from the current one, and emits
+   * viewport events. Caller must ensure viewport exists and compute `next`.
+   *
+   * @param current - Current zoom level (e.g. viewport.scaled).
+   * @param next - Target zoom level to apply.
+   */
+  private applyZoom(current: number, next: number): void {
+    if (!this.viewport || this.viewport.destroyed) return;
+    const clamped = Math.max(
+      PixiRenderer2D.ZOOM_MIN,
+      Math.min(PixiRenderer2D.ZOOM_MAX, next)
+    );
+    if (clamped !== current) {
+      this.viewport.setZoom(clamped, true);
+      this.emitViewportZoomed();
+      this.emitViewportMoved();
+    }
+  }
+
+  zoomIn(): void {
+    if (!this.viewport || this.viewport.destroyed) return;
+    const current = this.viewport.scaled;
+    const next = Math.min(
+      current * PixiRenderer2D.ZOOM_FACTOR,
+      PixiRenderer2D.ZOOM_MAX
+    );
+    this.applyZoom(current, next);
+  }
+
+  zoomOut(): void {
+    if (!this.viewport || this.viewport.destroyed) return;
+    const current = this.viewport.scaled;
+    const next = Math.max(
+      current / PixiRenderer2D.ZOOM_FACTOR,
+      PixiRenderer2D.ZOOM_MIN
+    );
+    this.applyZoom(current, next);
+  }
+
+  /**
    * Disables zoom and pan interactions (e.g., during overlay dragging).
    * This prevents viewport plugins from interfering with overlay interactions.
    */
@@ -708,7 +873,7 @@ export class PixiRenderer2D implements Renderer2D {
    */
   getScale(): number {
     if (!this.viewport || this.viewport.destroyed) {
-      return 1;
+      return PixiRenderer2D.BASELINE_SCALE;
     }
     return this.viewport.scaled;
   }
@@ -725,6 +890,18 @@ export class PixiRenderer2D implements Renderer2D {
       x: this.viewport.x,
       y: this.viewport.y,
     };
+  }
+
+  /**
+   * Emits a zoomed event with the current scale.
+   * @private
+   */
+  private emitViewportZoomed(): void {
+    if (this.viewport) {
+      this.eventBus.dispatch("lighter:zoomed", {
+        scale: this.viewport.scaled,
+      });
+    }
   }
 
   /**

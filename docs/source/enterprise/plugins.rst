@@ -26,6 +26,11 @@ ____________
 Admins can use the plugins page to upload, manage, and configure permissions
 for plugins that are made available to users of your Enterprise deployment.
 
+.. note::
+
+    Want to build your own plugin? See the
+    :ref:`Developing plugins <developing-plugins>` guide.
+
 Admins can access the plugins page under Settings > Plugins. It displays a
 list of all installed plugins and their operators, as well as the enablement
 and permissions of each.

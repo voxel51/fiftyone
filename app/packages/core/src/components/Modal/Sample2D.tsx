@@ -1,9 +1,11 @@
 import {
+  ModalMode,
   ModalSample,
   modalSample,
   modalSampleId,
   useHoveredSample,
   useKeyDown,
+  useModalMode,
 } from "@fiftyone/state";
 import React, { MutableRefObject, useCallback, useRef, useState } from "react";
 import { RecoilValueReadOnly, useRecoilValue } from "recoil";
@@ -21,10 +23,13 @@ const CheckboxWrapper = styled.div`
 export const SampleWrapper = ({
   children,
   sampleAtom = modalSample,
+  sample: providedSample,
 }: React.PropsWithChildren<{
   sampleAtom?: RecoilValueReadOnly<ModalSample>;
+  sample?: ModalSample;
 }>) => {
   const [hovering, setHovering] = useState(false);
+  const modalMode = useModalMode();
 
   const timeout: MutableRefObject<number | null> = useRef<number>(null);
 
@@ -48,18 +53,24 @@ export const SampleWrapper = ({
     };
   }, [clear, hovering]);
   const hoveringRef = useRef(false);
-  const sample = useRecoilValue(sampleAtom);
+  const recoilSample = useRecoilValue(sampleAtom);
+  const sample = providedSample ?? recoilSample;
   const { handlers: hoverEventHandlers } = useHoveredSample(sample.sample, {
     update,
     clear,
   });
+
+  if (modalMode === ModalMode.ANNOTATE) {
+    return <>{children}</>;
+  }
+
   return (
     <div
       style={{ width: "100%", height: "100%", position: "relative" }}
       {...hoverEventHandlers}
     >
       {hovering && (
-        <CheckboxWrapper>
+        <CheckboxWrapper data-cy="sample-canvas-checkbox">
           <SelectSampleCheckbox
             sampleId={sample.sample._id ?? sample.sample.id}
           />

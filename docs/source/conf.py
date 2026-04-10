@@ -23,6 +23,7 @@ from custom_directives import (
     CustomImageLinkDirective,
     CustomGuidesCardDirective,
     CustomAnimatedCTADirective,
+    CustomUseCaseCardDirective,
 )
 from redirects import generate_redirects, generate_api_redirects
 
@@ -78,6 +79,13 @@ extensions = [
     "sphinx_remove_toctrees",
     "sphinx_markdown_builder",
 ]
+
+teams_dir = os.environ.get("FIFTYONE_TEAMS_DIR")
+if teams_dir:
+    extensions.append("autoapi.extension")
+    autoapi_dirs = [os.path.join(teams_dir, "fiftyone")]
+    autoapi_generate_api_docs = False
+    autoapi_options = ["members", "undoc-members", "show-inheritance"]
 
 # Types of class members to generate documentation for.
 autodoc_default_options = {
@@ -292,3 +300,4 @@ def setup(app):
     app.add_directive("customimagelink", CustomImageLinkDirective)
     app.add_directive("customguidescard", CustomGuidesCardDirective)
     app.add_directive("customanimatedcta", CustomAnimatedCTADirective)
+    app.add_directive("customusecasecard", CustomUseCaseCardDirective)

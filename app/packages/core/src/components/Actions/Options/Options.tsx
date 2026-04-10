@@ -6,6 +6,7 @@ import {
 } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { groupStatistics } from "@fiftyone/state";
+import { useAtomValue } from "jotai";
 import type { RefObject } from "react";
 import { default as React, useMemo } from "react";
 import {
@@ -24,7 +25,6 @@ import RadioGroup from "../../Common/RadioGroup";
 import { gridAutosizing, maxGridItemsSizeBytes } from "../../Grid/recoil";
 import { ActionOption } from "../Common";
 import Popout from "../Popout";
-import { useAtomValue } from "jotai";
 
 const SortFilterResults = ({ modal }) => {
   const [{ count, asc }, setSortFilterResults] = useRecoilState(
@@ -423,20 +423,23 @@ const Options = ({ modal, anchorRef }: OptionsProps) => {
   const view = useRecoilValue(fos.view);
   const mode = useAtomValue(fos.modalMode);
 
+  const exploreWithModal = modal && mode === fos.EXPLORE;
+  const annotateWithModal = modal && mode === fos.ANNOTATE;
+
   return (
     <Popout modal={modal} fixed anchorRef={anchorRef}>
-      {modal && mode === fos.EXPLORE && <HideFieldSetting />}
+      {exploreWithModal && <HideFieldSetting />}
       {modal && <ShowModalNav />}
-      {mode === fos.EXPLORE && isDynamicGroup && (
+      {!annotateWithModal && isDynamicGroup && (
         <DynamicGroupsViewMode modal={!!modal} />
       )}
-      {mode === fos.EXPLORE && isGroup && !isDynamicGroup && (
+      {!annotateWithModal && isGroup && !isDynamicGroup && (
         <GroupStatistics modal={modal} />
       )}
-      {mode === fos.EXPLORE && <MediaFields modal={modal} />}
-      {mode === fos.EXPLORE && <Patches modal={!!modal} />}
-      {mode === fos.EXPLORE && !view?.length && <QueryPerformance />}
-      {mode === fos.EXPLORE && <SortFilterResults modal={modal} />}
+      {!annotateWithModal && <MediaFields modal={modal} />}
+      {!annotateWithModal && <Patches modal={!!modal} />}
+      {!annotateWithModal && !view?.length && <QueryPerformance />}
+      {!annotateWithModal && <SortFilterResults modal={modal} />}
       {!modal && <Grid />}
     </Popout>
   );

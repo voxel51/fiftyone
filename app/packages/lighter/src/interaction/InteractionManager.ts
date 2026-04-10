@@ -2,18 +2,38 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { quickDrawBridge } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/bridgeQuickDraw";
+import { detectionModeBridge } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/bridgeDetectionMode";
 import { EventDispatcher, getEventBus } from "@fiftyone/events";
 import { TypeGuards } from "../core/Scene2D";
 import type { LighterEventGroup } from "../events";
-import {
-  BoundingBoxOverlay,
-  type MoveState,
-} from "../overlay/BoundingBoxOverlay";
+import type { BaseOverlay } from "../overlay/BaseOverlay";
+import { type MoveState } from "../overlay/BoundingBoxOverlay";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { SelectionManager } from "../selection/SelectionManager";
 import type { Point, Rect } from "../types";
 import { InteractiveDetectionHandler } from "./InteractiveDetectionHandler";
+import { v4 as generateUUID } from "uuid";
+
+/**
+ * Interface for handlers that support sub-selecting and removing individual
+ * points (e.g. keypoint overlays).
+ */
+export interface KeypointMutationHandler {
+  getSelectedPointIndex(): number | null;
+  removePoint(index: number): void;
+}
+
+function hasKeypointMutation(
+  h: InteractionHandler
+): h is InteractionHandler & KeypointMutationHandler {
+  return (
+    "getSelectedPointIndex" in h &&
+    "removePoint" in h &&
+    typeof (h as Record<string, unknown>).getSelectedPointIndex ===
+      "function" &&
+    typeof (h as Record<string, unknown>).removePoint === "function"
+  );
+}
 
 /**
  * Interface for objects that can handle interaction events.
@@ -21,7 +41,7 @@ import { InteractiveDetectionHandler } from "./InteractiveDetectionHandler";
 export interface InteractionHandler {
   readonly id: string;
   readonly cursor?: string;
-  overlay?: BoundingBoxOverlay;
+  overlay?: BaseOverlay;
 
   /**
    * Returns true if the handler is being dragged or resized.
@@ -59,11 +79,6 @@ export interface InteractionHandler {
    * Returns the position from the start of handler movement
    */
   getMoveStartPosition?(): Point | undefined;
-
-  /**
-   * Returns the bounds of the handler
-   */
-  getAbsoluteBounds?(): Rect;
 
   /**
    * Returns the position from the start of handler movement
@@ -196,13 +211,21 @@ export class InteractionManager {
   private canonicalMediaId?: string;
 
   // Configuration
-  private readonly CLICK_THRESHOLD = 0.1;
-  private readonly CLICK_TIME_THRESHOLD = 300; // ms
+  private readonly CLICK_THRESHOLD = 3; // pixels, dictates drag vs. click
+  private readonly DRAG_TIME_THRESHOLD = 500; // ms, dictates drag vs. click
   private readonly DOUBLE_CLICK_TIME_THRESHOLD = 500; // ms
-  private readonly DOUBLE_CLICK_DISTANCE_THRESHOLD = 10; // pixels
+  private readonly DOUBLE_CLICK_DISTANCE_THRESHOLD = 3; // pixels
 
   private currentPixelCoordinates?: Point;
   private readonly eventBus: EventDispatcher<LighterEventGroup>;
+
+  private pendingDetection?: {
+    point: Point;
+    worldPoint: Point;
+    scale: number;
+    pointerId: number;
+  };
+
   constructor(
     private canvas: HTMLCanvasElement,
     private selectionManager: SelectionManager,
@@ -254,30 +277,47 @@ export class InteractionManager {
 
     let handler: InteractionHandler | undefined = undefined;
 
-    let interactiveHandler = this.getInteractiveHandler();
+    const interactiveHandler = this.getInteractiveHandler();
 
     if (interactiveHandler) {
       handler = interactiveHandler.getOverlay();
       this.selectionManager.select(handler.id);
     } else {
       handler = this.findHandlerAtPoint(point);
+      // Prevent pan/zoom when target is selectable
+      if (handler && TypeGuards.isSelectable(handler)) {
+        this.renderer.disableZoomPan();
+      }
 
-      // QuickDraw: clicking outside the selected overlay starts a new detection.
-      if (quickDrawBridge.isQuickDrawActive()) {
+      // If clicking an overlay, select it
+      const isUnselectedOverlay =
+        !!handler &&
+        TypeGuards.isSelectable(handler) &&
+        !this.selectionManager.isSelected(handler.id);
+
+      if (isUnselectedOverlay) {
+        this.selectionManager.select(handler!.id);
+      }
+
+      // Detection mode: defer overlay creation until we confirm this is a drag.
+      // If the user releases without dragging (a click), exit detection mode.
+      // Clicking on an existing overlay selects it normally instead.
+      if (detectionModeBridge.isDetectionModeActive()) {
         const isNonOverlay = !handler || handler.id === this.canonicalMediaId;
-        const isUnselectedOverlay =
-          !!handler &&
-          TypeGuards.isSelectable(handler) &&
-          !this.selectionManager.isSelected(handler.id);
 
-        if (isNonOverlay || isUnselectedOverlay) {
-          this.selectionManager.clearSelection();
+        if (isNonOverlay) {
+          this.renderer.disableZoomPan();
 
-          interactiveHandler = this.getInteractiveHandler();
-          if (interactiveHandler) {
-            handler = interactiveHandler.getOverlay();
-            this.selectionManager.select(handler.id);
-          }
+          this.pendingDetection = {
+            point,
+            worldPoint,
+            scale,
+            pointerId: event.pointerId,
+          };
+
+          this.canvas.setPointerCapture(event.pointerId);
+          event.preventDefault();
+          return;
         }
       }
     }
@@ -288,17 +328,24 @@ export class InteractionManager {
         this.canvas.style.cursor = cursor;
       }
 
-      // If this is a movable overlay, track move state
-      if (TypeGuards.isMovable(handler) && TypeGuards.isSpatial(handler)) {
+      // If this is a spatial overlay with move state, track drag/resize lifecycle.
+      // Handlers that manage their own drag events (e.g. KeypointOverlay point
+      // drags) don't provide getMoveStartBounds/getMoveStartPosition, so we skip
+      // dispatching to avoid stranded start events with no matching end.
+      // Capture move start state before the type guard narrows `handler` away
+      // from InteractionHandler (which defines these optional methods).
+      const startPosition = handler.getMoveStartPosition?.();
+      const startBounds = handler.getMoveStartBounds?.();
+
+      if (TypeGuards.isSpatial(handler) && startPosition && startBounds) {
         const type: keyof LighterEventGroup = handler.isDragging?.()
           ? "lighter:overlay-drag-start"
           : "lighter:overlay-resize-start";
 
         this.eventBus.dispatch(type, {
           id: handler.id,
-          startPosition: handler.getPosition(),
-          absoluteBounds: handler.getAbsoluteBounds(),
-          relativeBounds: handler.getRelativeBounds(),
+          startPosition,
+          bounds: startBounds,
         });
       }
 
@@ -313,18 +360,83 @@ export class InteractionManager {
     scale: number
   ): void {
     if (
-      quickDrawBridge.isQuickDrawActive() &&
+      detectionModeBridge.isDetectionModeActive() &&
       handler &&
       TypeGuards.isSelectable(handler) &&
       !handler.isSelected()
     ) {
-      this.canvas.style.cursor = "crosshair";
+      this.canvas.style.cursor = "pointer";
     } else if (TypeGuards.isInteractionHandler(handler) && handler.getCursor) {
       this.canvas.style.cursor = handler.getCursor(worldPoint, scale);
     }
   }
 
+  // Promote pending detection mode event once drag threshold is exceeded.
+  private detectionModeCreate = (event: PointerEvent): boolean => {
+    if (!this.pendingDetection) return false;
+
+    const point = this.getCanvasPoint(event);
+    const worldPoint = this.renderer.screenToWorld(point);
+    const scale = this.renderer.getScale();
+    this.currentPixelCoordinates = point;
+
+    const distance = Math.hypot(
+      point.x - this.pendingDetection.point.x,
+      point.y - this.pendingDetection.point.y
+    );
+
+    if (distance > this.CLICK_THRESHOLD) {
+      const pending = this.pendingDetection;
+      this.pendingDetection = undefined;
+
+      // Signal detection mode to create a detection and register
+      // an interactive handler. This relies on the event bus invoking
+      // handlers synchronously so the handler is immediately available.
+      this.eventBus.dispatch("lighter:overlay-create", {
+        eventId: generateUUID(),
+      });
+
+      const interactiveHandler = this.getInteractiveHandler();
+      if (interactiveHandler) {
+        const handler = interactiveHandler.getOverlay();
+        this.selectionManager.select(handler.id);
+
+        // Initialize the handler with the original pointerdown point
+        handler.onPointerDown?.(
+          pending.point,
+          pending.worldPoint,
+          event,
+          pending.scale
+        );
+
+        // Update with the current pointer position
+        handler.onMove?.(
+          point,
+          worldPoint,
+          event,
+          scale,
+          this.maintainAspectRatio
+        );
+
+        if (TypeGuards.isSpatial(handler)) {
+          this.eventBus.dispatch("lighter:overlay-drag-start", {
+            id: handler.id,
+            startPosition: handler.bounds,
+            bounds: handler.bounds,
+          });
+        }
+
+        this.configureCursorStyle(handler, worldPoint, scale);
+      }
+    }
+
+    return true;
+  };
+
   private handlePointerMove = (event: PointerEvent): void => {
+    // short-circuit if pending detection mode operation kicks off
+    if (this.detectionModeCreate(event)) return;
+
     const point = this.getCanvasPoint(event);
     const worldPoint = this.renderer.screenToWorld(point);
     const scale = this.renderer.getScale();
@@ -339,6 +451,22 @@ export class InteractionManager {
       this.handleHover(this.currentPixelCoordinates, event);
     }
 
+    // To determine drag behavior, we allow for two cases:
+    //  1. A spatial drag indicates that the pointer has moved a sufficient
+    //    distance from its starting point. We allow for some epsilon of
+    //    movement to allow for normal clicks to move a few pixels.
+    //  2. A temporal drag indicates that the pointer has been pressed for a
+    //    sufficient period of time.
+    //  By combining both spatial and temporal drags, we can prevent accidental
+    //  dragging behavior when clicking (via spatial gate), while still
+    //  allowing for pixel-level drag precision (via temporal gate).
+    // const isDrag = this.isTemporalDrag() || this.isSpatialDragEvent(event);
+    //
+    // todo - update handlers to be "sticky" - if a drag starts from a handler,
+    //  that handler should continue to process events even if the pointer
+    //  moves beyond its bounds.
+
+    // Apply drag gate to prevent accidental overlay dragging on click
     if (handler) {
       // Handle drag move
       if (!interactiveHandler) {
@@ -362,8 +490,6 @@ export class InteractionManager {
       }
 
       if (handler.isMoving?.()) {
-        this.renderer.disableZoomPan();
-
         // Emit move event with bounds information
         if (TypeGuards.isSpatial(handler)) {
           const type = handler.isDragging?.()
@@ -372,20 +498,42 @@ export class InteractionManager {
 
           this.eventBus.dispatch(type, {
             id: handler.id,
-            absoluteBounds: handler.getAbsoluteBounds(),
-            relativeBounds: handler.getRelativeBounds(),
+            bounds: handler.bounds,
           });
         }
 
         event.preventDefault();
       }
       this.configureCursorStyle(handler, worldPoint, scale);
-    } else if (quickDrawBridge.isQuickDrawActive() && !interactiveHandler) {
+    } else if (
+      detectionModeBridge.isDetectionModeActive() &&
+      !interactiveHandler
+    ) {
       this.canvas.style.cursor = "crosshair";
     }
   };
 
+  private detectionModeQuit = (event: PointerEvent): boolean => {
+    if (!this.pendingDetection) return false;
+
+    this.eventBus.dispatch("lighter:detection-mode-quit", {
+      eventId: generateUUID(),
+    });
+
+    this.pendingDetection = undefined;
+    this.renderer.enableZoomPan();
+    this.canvas.releasePointerCapture(event.pointerId);
+    this.clickStartPoint = undefined;
+    this.clickStartTime = 0;
+
+    return true;
+  };
+
   private handlePointerUp = (event: PointerEvent): void => {
+    // if we still have a pendingDetectionDraw there was no significant movement
+    // the user clicked to exit detection mode
+    if (this.detectionModeQuit(event)) return;
+
     const point = this.getCanvasPoint(event);
     const worldPoint = this.renderer.screenToWorld(point);
     const scale = this.renderer.getScale();
@@ -421,9 +569,8 @@ export class InteractionManager {
           id: handler.id,
           startBounds,
           startPosition,
-          endPosition: handler.getPosition(),
-          absoluteBounds: handler.getAbsoluteBounds(),
-          relativeBounds: handler.getRelativeBounds(),
+          endPosition: handler.bounds,
+          bounds: handler.bounds,
         };
 
         if (moveState === "SETTING") {
@@ -435,7 +582,7 @@ export class InteractionManager {
 
           this.eventBus.dispatch("lighter:overlay-establish", {
             ...detail,
-            overlay: interactiveHandler,
+            handler: interactiveHandler,
           });
         } else {
           const type =
@@ -447,8 +594,6 @@ export class InteractionManager {
       }
 
       this.canvas.releasePointerCapture(event.pointerId);
-      // Re-enable zoom/pan after overlay dragging ends
-      this.renderer.enableZoomPan();
       event.preventDefault();
     } else if (handler && !handler.isMoving?.()) {
       // This was a click, not a drag - handle as click for selection
@@ -462,11 +607,19 @@ export class InteractionManager {
       this.handleClick(point, event, now);
     }
 
+    this.renderer.enableZoomPan();
     this.canvas.style.cursor =
       handler?.getCursor?.(worldPoint, scale) || this.canvas.style.cursor;
+    this.clickStartPoint = undefined;
+    this.clickStartTime = 0;
   };
 
   private handlePointerCancel = (event: PointerEvent): void => {
+    if (this.pendingDetection) {
+      this.pendingDetection = undefined;
+      this.renderer.enableZoomPan();
+    }
+
     const movingHandler = this.findMovingHandler();
 
     if (movingHandler) {
@@ -512,6 +665,21 @@ export class InteractionManager {
       this.maintainAspectRatio = event.shiftKey;
       return;
     }
+
+    // Delete/Backspace: remove sub-selected keypoint
+    if (event.key === "Delete" || event.key === "Backspace") {
+      const selectedId = this.selectionManager.getSelectedIds()[0];
+      if (selectedId) {
+        const handler = this.handlers.find((h) => h.id === selectedId);
+        if (handler && hasKeypointMutation(handler)) {
+          const idx = handler.getSelectedPointIndex();
+          if (idx !== null && idx >= 0) {
+            handler.removePoint(idx);
+            event.preventDefault();
+          }
+        }
+      }
+    }
   };
 
   /**
@@ -536,17 +704,8 @@ export class InteractionManager {
   private handleClick(point: Point, event: PointerEvent, now: number): void {
     if (!this.clickStartPoint || !this.clickStartTime) return;
 
-    const distance = Math.sqrt(
-      Math.pow(point.x - this.clickStartPoint.x, 2) +
-        Math.pow(point.y - this.clickStartPoint.y, 2)
-    );
-    const duration = now - this.clickStartTime;
-
-    // Check if this is a valid click (not too much movement or time)
-    if (
-      distance <= this.CLICK_THRESHOLD &&
-      duration <= this.CLICK_TIME_THRESHOLD
-    ) {
+    // Check if this is a valid click (not a drag)
+    if (!this.isSpatialDragEvent(event)) {
       // Skip canonical media (background) when finding handler for clicks
       // This ensures clicking on empty space clears selection
       const handler = this.findHandlerAtPoint(point, true);
@@ -561,7 +720,6 @@ export class InteractionManager {
 
       // Handle selection if the handler is selectable
       if (handler && TypeGuards.isSelectable(handler)) {
-        this.selectionManager.toggle(handler.id, { event });
         event.preventDefault();
       }
       // Otherwise, handle regular click
@@ -708,9 +866,13 @@ export class InteractionManager {
     point: Point,
     skipCanonicalMedia: boolean = false
   ): InteractionHandler | undefined {
-    // Find handlers in reverse order (topmost first)
-    // Note: this is a hack, we need a better z-order logic
-    const candidates: InteractionHandler[] = [];
+    // Single-pass: find best handler at point using priority rules.
+    // Priority: selected > highest selectable priority > topmost (reverse order).
+    let bestSelected: InteractionHandler | undefined;
+    let bestSelectable: InteractionHandler | undefined;
+    let bestSelectablePriority = -1;
+    let topmost: InteractionHandler | undefined;
+
     for (let i = this.handlers.length - 1; i >= 0; i--) {
       const handler = this.handlers[i];
 
@@ -718,46 +880,25 @@ export class InteractionManager {
         continue;
       }
 
-      if (handler.containsPoint(point)) {
-        candidates.push(handler);
+      if (!handler.containsPoint(point)) {
+        continue;
       }
-    }
 
-    if (candidates.length === 0) return undefined;
-    if (candidates.length === 1) return candidates[0];
+      if (!topmost) topmost = handler;
 
-    // First, check if any candidates are selected - selected overlays override everything
-    const selectedCandidates = candidates.filter((handler) => {
       if (TypeGuards.isSelectable(handler)) {
-        return this.selectionManager.isSelected(handler.id);
+        if (!bestSelected && this.selectionManager.isSelected(handler.id)) {
+          bestSelected = handler;
+        }
+        const priority = handler.getSelectionPriority();
+        if (priority > bestSelectablePriority) {
+          bestSelectablePriority = priority;
+          bestSelectable = handler;
+        }
       }
-      return false;
-    });
-
-    if (selectedCandidates.length > 0) {
-      return selectedCandidates[0];
     }
 
-    // If multiple handlers found, prefer selectable ones with higher priority
-    const selectableCandidates = candidates.filter((handler) =>
-      TypeGuards.isSelectable(handler)
-    );
-
-    if (selectableCandidates.length > 0) {
-      // Choose the selectable candidate with highest selection priority
-      return selectableCandidates.reduce((best, current) => {
-        const bestPriority = TypeGuards.isSelectable(best)
-          ? best.getSelectionPriority()
-          : 0;
-        const currentPriority = TypeGuards.isSelectable(current)
-          ? current.getSelectionPriority()
-          : 0;
-        return currentPriority > bestPriority ? current : best;
-      });
-    }
-
-    // Fall back to the first candidate (topmost)
-    return candidates[0];
+    return bestSelected || bestSelectable || topmost;
   }
 
   private getCanvasPoint(event: PointerEvent): Point {
@@ -768,6 +909,45 @@ export class InteractionManager {
     };
 
     return screenPoint;
+  }
+
+  /**
+   * Returns whether the event should be considered a spatial drag.
+   *
+   * This method checks whether the event's position exceeds the spatial gate
+   * specified by {@link CLICK_THRESHOLD}.
+   *
+   * @param event Pointer event
+   * @private
+   */
+  private isSpatialDragEvent(event: PointerEvent): boolean {
+    if (this.clickStartPoint) {
+      const point = this.getCanvasPoint(event);
+      const distanceSquared =
+        Math.pow(point.x - this.clickStartPoint.x, 2) +
+        Math.pow(point.y - this.clickStartPoint.y, 2);
+
+      return distanceSquared > this.CLICK_THRESHOLD * this.CLICK_THRESHOLD;
+    }
+
+    return false;
+  }
+
+  /**
+   * Returns whether the current time should be considered a temporal drag.
+   *
+   * This method checks whether the delta between the current time and the
+   * initial pointerdown time exceeds the temporal gate specified by
+   * {@link DRAG_TIME_THRESHOLD}.
+   *
+   * @private
+   */
+  private isTemporalDrag(): boolean {
+    if (this.clickStartTime) {
+      return Date.now() - this.clickStartTime > this.DRAG_TIME_THRESHOLD;
+    }
+
+    return false;
   }
 
   /**
@@ -809,6 +989,9 @@ export class InteractionManager {
    * Clears all handlers.
    */
   clearHandlers(): void {
+    for (const handler of this.handlers) {
+      handler.cleanup?.();
+    }
     this.handlers = [];
     this.hoveredHandler = undefined;
   }
@@ -882,8 +1065,9 @@ export class InteractionManager {
     }
 
     // Add any remaining handlers that weren't in the overlay order
+    const overlayOrderSet = new Set(overlayOrder);
     for (const handler of this.handlers) {
-      if (!overlayOrder.includes(handler.id)) {
+      if (!overlayOrderSet.has(handler.id)) {
         reorderedHandlers.push(handler);
       }
     }

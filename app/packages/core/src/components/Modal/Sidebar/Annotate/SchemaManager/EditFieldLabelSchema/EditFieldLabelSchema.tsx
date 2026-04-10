@@ -19,7 +19,7 @@ import {
 import { useCallback, useState } from "react";
 import { TAB_GUI, TAB_IDS, TAB_JSON, TabId } from "../constants";
 import Footer from "../Footer";
-import { useIsLargeDataset, useToggleFieldVisibility } from "../hooks";
+import { useIsLargeDataset } from "../hooks";
 import { EditContainer, SchemaSection } from "../styled";
 import Errors from "./Errors";
 import GUIContent from "./GUIContent";
@@ -31,8 +31,6 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
   const labelSchema = useLabelSchema(field);
   const hasSavedSchema = !!labelSchema.savedLabelSchema;
   const [activeTab, setActiveTab] = useState<TabId>(TAB_GUI);
-  const { isActive: isFieldVisible, toggle: handleToggleVisibility } =
-    useToggleFieldVisibility(field);
   const { isLargeDataset, scanLimit } = useIsLargeDataset();
 
   const handleTabChange = useCallback(
@@ -162,8 +160,8 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
               <Toggle
                 data-cy={"toggle-visibility"}
                 size={Size.Md}
-                checked={isFieldVisible}
-                onChange={handleToggleVisibility}
+                checked={labelSchema.isFieldVisible}
+                onChange={labelSchema.toggleVisibility}
               />
               <Text variant={TextVariant.Lg}>Visible field</Text>
             </Stack>

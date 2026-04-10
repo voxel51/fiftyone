@@ -15,6 +15,7 @@ export type Optional<T> = {
 // vite won't import these from fou
 export type RGB = [number, number, number];
 export type RGBA = [number, number, number, number];
+export type LabelSelectionStyleName = "dashed" | "dashed-green" | "dashed-red";
 export interface Coloring {
   by: COLOR_BY.FIELD | COLOR_BY.INSTANCE | COLOR_BY.VALUE;
   pool: readonly string[];
@@ -96,7 +97,14 @@ export type Sample = {
   };
   tags: string[];
   _label_tags: string[];
-  _media_type: "image" | "video" | "point-cloud" | "3d";
+  _media_type:
+    | "image"
+    | "video"
+    | "pcd"
+    | "point_cloud"
+    | "point-cloud"
+    | "three_d"
+    | "3d";
   last_modified_at?: { datetime: number };
 } & GenericLabel;
 
@@ -178,6 +186,11 @@ export interface BaseOptions {
   colorscale: Colorscale;
   labelTagColors: CustomizeColor;
   selectedLabels: string[];
+  selectedLabelTypes: Record<string, string>;
+  labelSelectionStyle: {
+    default: LabelSelectionStyleName;
+    alt: LabelSelectionStyleName;
+  };
   selectedLabelTags?: string[];
   attributeVisibility: object;
   showConfidence: boolean;
@@ -192,6 +205,18 @@ export interface BaseOptions {
   smoothMasks: boolean;
   zoomPad: number;
   selected: boolean;
+  selectionType: "default" | "alt" | null;
+  selectionIcon:
+    | "checkmark"
+    | "green-checkmark"
+    | "red-checkmark"
+    | "thumbsup"
+    | "thumbsdown"
+    | "pin"
+    | "star"
+    | "x"
+    | "bookmark"
+    | null;
   shouldHandleKeyEvents?: boolean;
   inSelectionMode: boolean;
   timeZone: string;
@@ -445,9 +470,11 @@ export const DEFAULT_BASE_OPTIONS: BaseOptions = {
   isPointcloudDataset: false,
   activePaths: [],
   selectedLabels: [],
+  selectedLabelTypes: {},
+  labelSelectionStyle: { default: "dashed", alt: "dashed" },
   selectedLabelTags: undefined,
   showConfidence: false,
-  showControls: true,
+  showControls: false,
   showIndex: false,
   showJSON: false,
   showHelp: false,
@@ -469,6 +496,8 @@ export const DEFAULT_BASE_OPTIONS: BaseOptions = {
   smoothMasks: true,
   zoomPad: 0.2,
   selected: false,
+  selectionType: null,
+  selectionIcon: "checkmark",
   inSelectionMode: false,
   timeZone: "UTC",
   mimetype: "",

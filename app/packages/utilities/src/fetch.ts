@@ -263,7 +263,6 @@ export const mergeHeaders = (
 };
 
 export const getFetchOrigin = () => {
-  // window is not defined in the web worker
   if (hasWindow && window.FIFTYONE_SERVER_ADDRESS) {
     return window.FIFTYONE_SERVER_ADDRESS;
   }
@@ -337,8 +336,10 @@ export const setFetchFunction = (
       }${path}`;
     }
 
+    // set content type only if body is present, otherwise it can cause Bad Request
+    // errors for endpoints that don't expect a body
     headers = mergeHeaders(
-      { "Content-Type": "application/json" },
+      body ? { "Content-Type": "application/json" } : {},
       defaultHeaders,
       headers
     );

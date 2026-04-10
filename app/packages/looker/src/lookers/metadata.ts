@@ -13,7 +13,9 @@ import { getMetadataElements } from "../elements";
  * Looker which renders metadata for non-visual samples.
  */
 export class MetadataLooker extends AbstractLooker<BaseState> {
-  updateOptions(options: Partial<BaseOptions>): void {}
+  updateOptions(options: Partial<BaseOptions>, _disableReload = false): void {
+    this.updater({ options, disabled: false });
+  }
 
   protected hasDefaultZoom(
     state: BaseState,

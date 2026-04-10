@@ -39,7 +39,7 @@ export function usePlotSelection() {
     selectedResults,
     lassoPoints: { x: number[]; y: number[] }
   ) {
-    setSelectedSamples(new Set());
+    setSelectedSamples(new Map());
     setExtendedSelection({
       selection: selectedResults,
       scope: SELECTION_SCOPE,
@@ -56,10 +56,10 @@ export function usePlotSelection() {
   function clearSelection() {
     resetExtendedSelection();
     setPlotSelection(null);
-    setSelectedSamples(new Set());
+    setSelectedSamples(new Map());
   }
   let selectionStyle = null;
-  const selected = Array.from(selectedSamples);
+  const selected = Array.from(selectedSamples.keys());
   const selectedPatchIdsArr = Array.from(selectedPatchIds);
   const selectedPatchSampleIdsArr = Array.from(selectedPatchSampleIds);
   let resolvedSelection = null;

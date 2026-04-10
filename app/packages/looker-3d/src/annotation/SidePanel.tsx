@@ -1,5 +1,6 @@
 import { useAnnotationEventHandler } from "@fiftyone/annotation";
 import { useTheme } from "@fiftyone/components";
+import * as fos from "@fiftyone/state";
 import { ModalSample } from "@fiftyone/state";
 import FitScreenIcon from "@mui/icons-material/FitScreen";
 import { IconButton, MenuItem, Select } from "@mui/material";
@@ -19,6 +20,7 @@ import {
   FO_USER_DATA,
   getPanelElementId,
   getSidePanelGridArea,
+  PANEL_ID_SIDE_TOP,
   VIEW_TYPE_BACK,
   VIEW_TYPE_BOTTOM,
   VIEW_TYPE_FRONT,
@@ -28,8 +30,8 @@ import {
 } from "../constants";
 import { FoSceneComponent } from "../fo3d/FoScene";
 import { Gizmos } from "../fo3d/Gizmos";
+import { FoScene } from "../fo3d/render-types";
 import { Lights } from "../fo3d/scene-controls/lights/Lights";
-import { FoScene } from "../hooks";
 import { ThreeDLabels } from "../labels";
 import { RaycastService } from "../services/RaycastService";
 import type { SidePanelId, SidePanelViewType } from "../types";
@@ -38,6 +40,7 @@ import { AnnotationPlane } from "./AnnotationPlane";
 import { CreateCuboidRenderer } from "./CreateCuboidRenderer";
 import { Crosshair3D } from "./Crosshair3D";
 import {
+  decodeImageSliceView,
   encodeImageSliceView,
   ImageSlicePanel,
   isImageSliceView,
@@ -293,6 +296,43 @@ const calculateCameraUpForSidePanel = (
   }
 };
 
+/**
+ * Returns a dropdown value that is guaranteed to exist in the current side-panel
+ * options.
+ *
+ * Stored `slice_*` panel views can temporarily become invalid while image slices
+ * are loading or permanently invalid when the `/groups` lookup fails or no longer
+ * returns that slice. In those cases we fall back to a stable cardinal view so the
+ * select stays controlled and the rest of the side-panel can keep rendering.
+ */
+const getSafeSidePanelSelectValue = ({
+  panelId,
+  view,
+  imageSlices,
+  isLoadingImageSlices,
+}: {
+  panelId: SidePanelId;
+  view: SidePanelViewType;
+  imageSlices: string[];
+  isLoadingImageSlices: boolean;
+}) => {
+  if (!isImageSliceView(view)) {
+    return view;
+  }
+
+  if (isLoadingImageSlices) {
+    return panelId === PANEL_ID_SIDE_TOP ? VIEW_TYPE_TOP : VIEW_TYPE_LEFT;
+  }
+
+  const sliceName = decodeImageSliceView(view);
+
+  if (!sliceName || !imageSlices.includes(sliceName)) {
+    return panelId === PANEL_ID_SIDE_TOP ? VIEW_TYPE_TOP : VIEW_TYPE_LEFT;
+  }
+
+  return view;
+};
+
 export interface SidePanelProps {
   panelId: SidePanelId;
   view: SidePanelViewType;
@@ -316,30 +356,37 @@ export const SidePanel = ({
   isSceneInitialized,
   sample,
 }: SidePanelProps) => {
+  const { activeSampleMap: labelSampleMap } = fos.useRenderConfig3dState();
   const { imageSlices, resolveUrlForImageSlice, isLoadingImageSlices } =
     useImageSlicesIfAvailable(sample);
 
   const gridArea = getSidePanelGridArea(panelId);
+  const safeSelectValue = getSafeSidePanelSelectValue({
+    panelId,
+    view,
+    imageSlices,
+    isLoadingImageSlices,
+  });
 
   const position = useMemo(
     () =>
       upVector && lookAt
         ? calculateCameraPositionForSidePanel(
-            view,
+            safeSelectValue,
             upVector,
             lookAt,
             sceneBoundingBox
           )
         : new Vector3(0, 10, 0),
-    [view, upVector, lookAt, sceneBoundingBox]
+    [safeSelectValue, upVector, lookAt, sceneBoundingBox]
   );
 
   const cameraUp = useMemo(
     () =>
       upVector
-        ? calculateCameraUpForSidePanel(view, upVector)
+        ? calculateCameraUpForSidePanel(safeSelectValue, upVector)
         : new Vector3(0, 1, 0),
-    [view, upVector]
+    [safeSelectValue, upVector]
   );
 
   const theme = useTheme();
@@ -384,7 +431,8 @@ export const SidePanel = ({
     }
   }, [position, cameraUp, lookAt, upVector]);
 
-  const showImageSlicePanel = isImageSliceView(view) && imageSlices.length > 0;
+  const showImageSlicePanel =
+    isImageSliceView(view) && safeSelectValue === view;
 
   return (
     <SidePanelContainer id={getPanelElementId(panelId)} $area={gridArea}>
@@ -399,7 +447,7 @@ export const SidePanel = ({
         />
       ) : (
         <View
-          key={`${panelId}-${view}-${fitBoundsKey}`}
+          key={`${panelId}-${safeSelectValue}-${fitBoundsKey}`}
           style={{
             position: "absolute",
             top: 0,
@@ -429,16 +477,17 @@ export const SidePanel = ({
             </group>
             {isSceneInitialized && (
               <ThreeDLabels
-                sampleMap={{ fo3d: sample as any }}
+                sampleMap={labelSampleMap}
                 globalOpacity={0.5}
                 isMainPanel={false}
               />
             )}
+            {/* `safeSelectValue` is guaranteed to be a cardinal view here */}
             <AnnotationPlane
               showTransformControls={false}
               panelType="side"
               viewType={
-                view.toLowerCase() as
+                safeSelectValue.toLowerCase() as
                   | "top"
                   | "bottom"
                   | "right"
@@ -457,13 +506,7 @@ export const SidePanel = ({
       )}
       <ViewSelectorWrapper>
         <Select
-          value={
-            // While slices are loading, use a safe cardinal view to avoid validation errors
-            // The ImageSlicePanel component will validate once loading completes
-            isLoadingImageSlices && isImageSliceView(view)
-              ? VIEW_TYPE_LEFT
-              : view
-          }
+          value={safeSelectValue}
           onChange={(e) => {
             setView(e.target.value as SidePanelViewType);
             setFitBoundsKey((prev) => prev + 1);
@@ -524,11 +567,29 @@ function findByUserData(
 }
 
 const DEFAULT_CUBOID_CREATION_MARGIN = 50;
+const DEFAULT_POLYLINE_VERTEX_FOCUS_SIZE = 5;
+const MIN_POLYLINE_VERTEX_FOCUS_SIZE = 1;
+const MAX_POLYLINE_VERTEX_FOCUS_SIZE = 30;
 
 const BoundsSideEffectsComponent = () => {
   const api = useBounds();
 
   const { scene } = useThree();
+
+  const getVertexFocusBoxSize = () => {
+    const sceneBounds = new Box3().setFromObject(scene);
+    if (sceneBounds.isEmpty()) {
+      return DEFAULT_POLYLINE_VERTEX_FOCUS_SIZE;
+    }
+
+    const sceneSize = sceneBounds.getSize(new Vector3());
+    const maxSceneDimension = Math.max(sceneSize.x, sceneSize.y, sceneSize.z);
+    return THREE.MathUtils.clamp(
+      maxSceneDimension * 0.05,
+      MIN_POLYLINE_VERTEX_FOCUS_SIZE,
+      MAX_POLYLINE_VERTEX_FOCUS_SIZE
+    );
+  };
 
   useAnnotationEventHandler("annotation:3dLabelSelected", (payload) => {
     const { label } = payload;
@@ -587,6 +648,31 @@ const BoundsSideEffectsComponent = () => {
       boxGeometry.dispose();
     }, 0);
   });
+
+  useAnnotationEventHandler(
+    "annotation:3dPolylineVertexSelected",
+    (payload) => {
+      const { position } = payload;
+      const focusBoxSize = getVertexFocusBoxSize();
+
+      const boxGeometry = new THREE.BoxGeometry(
+        focusBoxSize,
+        focusBoxSize,
+        focusBoxSize
+      );
+      const helperMesh = new THREE.Mesh(boxGeometry);
+      helperMesh.position.set(position[0], position[1], position[2]);
+      helperMesh.visible = false;
+      scene.add(helperMesh);
+
+      api.refresh(helperMesh).reset().fit();
+
+      setTimeout(() => {
+        scene.remove(helperMesh);
+        boxGeometry.dispose();
+      }, 0);
+    }
+  );
 
   return null;
 };

@@ -4,6 +4,8 @@
 import {
   ImageOptions,
   ImageOverlay,
+  KeypointOptions,
+  KeypointOverlay,
   overlayFactory,
   useLighter,
   useLighterSetupWithPixi,
@@ -12,15 +14,10 @@ import type { Sample } from "@fiftyone/state";
 import * as fos from "@fiftyone/state";
 import { getSampleSrc } from "@fiftyone/state";
 import { useAtomValue } from "jotai";
-import React, {
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { activeLabelSchemas } from "../Sidebar/Annotate/state";
+import { LighterToolbar } from "./LighterToolbar";
 import { singletonCanvas } from "./SharedCanvas";
 import { useBridge } from "./useBridge";
 
@@ -41,16 +38,8 @@ export const LighterSampleRenderer = ({
   const containerRef = useRef<HTMLDivElement>(null);
   // unique scene id allows us to destroy/recreate scenes reliably
   const [sceneId, setSceneId] = useState<string | null>(null);
+  const [isCanvasHovered, setIsCanvasHovered] = useState(false);
 
-  // we have this hack to force a re-render on layout effect, so that containerRef.current is defined
-  // this is to allow stable singleton canvas to bind to new containers
-  const [, setReTrigger] = useState(0);
-
-  useLayoutEffect(() => {
-    setReTrigger((prev) => prev + 1);
-  }, []);
-
-  // Get access to the lighter instance
   const { scene, isReady, addOverlay } = useLighter();
 
   // use a ref for the sample data, effects do not run solely because the
@@ -82,6 +71,77 @@ export const LighterSampleRenderer = ({
 
       // Set the image overlay as canonical media for coordinate transformations
       scene.setCanonicalMedia(mediaOverlay);
+
+      // TODO: REMOVE — hardcoded test keypoints for visual verification
+      // const testKeypoints = overlayFactory.create<
+      //   KeypointOptions,
+      //   KeypointOverlay
+      // >("keypoint", {
+      //   id: "test-keypoints-skeleton",
+      //   field: "",
+      //   label: {
+      //     _id: "test-kp-1",
+      //     label: "person",
+      //     tags: [],
+      //     points: [
+      //       [0.3, 0.2], // head
+      //       [0.3, 0.4], // torso
+      //       [0.2, 0.35], // left hand
+      //       [0.4, 0.35], // right hand
+      //       [0.25, 0.6], // left foot
+      //       [0.35, 0.6], // right foot
+      //     ],
+      //   },
+      //   connections: [
+      //     [0, 1],    // head → torso
+      //     [2, 1, 3], // left hand → torso → right hand
+      //     [4, 1, 5], // left foot → torso → right foot
+      //   ],
+      //   closed: false,
+      // });
+      // addOverlay(testKeypoints, false);
+
+      // const testPoints = overlayFactory.create<
+      //   KeypointOptions,
+      //   KeypointOverlay
+      // >("keypoint", {
+      //   id: "test-keypoints-points-only",
+      //   field: "",
+      //   label: {
+      //     _id: "test-kp-2",
+      //     label: "prompts",
+      //     tags: [],
+      //     points: [
+      //       [0.6, 0.3],
+      //       [0.7, 0.5],
+      //       [0.65, 0.7],
+      //     ],
+      //   },
+      //   // No connections — just individual points
+      // });
+      // addOverlay(testPoints, false);
+
+      // const testPolygon = overlayFactory.create<
+      //   KeypointOptions,
+      //   KeypointOverlay
+      // >("keypoint", {
+      //   id: "test-keypoints-polygon",
+      //   field: "",
+      //   label: {
+      //     _id: "test-kp-3",
+      //     label: "ROI",
+      //     tags: [],
+      //     points: [
+      //       [0.5, 0.1],
+      //       [0.9, 0.1],
+      //       [0.9, 0.4],
+      //       [0.5, 0.4],
+      //     ],
+      //   },
+      //   connections: [[0, 1, 2, 3]],
+      //   closed: true,
+      // });
+      // addOverlay(testPolygon, false);
     }
   }, [isReady, addOverlay, scene]);
 
@@ -96,6 +156,8 @@ export const LighterSampleRenderer = ({
   return (
     <div
       ref={containerRef}
+      onMouseEnter={() => setIsCanvasHovered(true)}
+      onMouseLeave={() => setIsCanvasHovered(false)}
       className={`lighter-sample-renderer ${className}`}
       data-cy="lighter-sample-renderer"
       id="lighter-sample-renderer-container"
@@ -104,11 +166,13 @@ export const LighterSampleRenderer = ({
         height: "100%",
         display: "flex",
         flexDirection: "column",
+        minHeight: 0,
       }}
     >
       {containerRef.current && sceneId && (
         <LighterSetupImpl containerRef={containerRef} sceneId={sceneId} />
       )}
+      {isCanvasHovered && <LighterToolbar />}
     </div>
   );
 };

@@ -1,7 +1,8 @@
 import { DETECTION, POLYLINE } from "@fiftyone/utilities";
-import { TransformControlsProps } from "@react-three/drei";
+import type { TransformControlsProps } from "@react-three/drei";
+import type { ThreeEvent } from "@react-three/fiber";
 import type { RefObject } from "react";
-import * as THREE from "three";
+import type * as THREE from "three";
 import type {
   ReconciledDetection3D,
   ReconciledPolyline3D,
@@ -27,7 +28,9 @@ import type {
   VIEW_TYPE_RIGHT,
   VIEW_TYPE_TOP,
 } from "./constants";
-import { OverlayLabel } from "./labels/loader";
+import type { OverlayLabel } from "./labels/loader";
+
+export type RenderPath = "main" | "multi";
 
 export type Actions =
   | typeof ACTION_SHADE_BY
@@ -137,7 +140,6 @@ export interface BaseOverlayProps {
   rotation: THREE.Vector3Tuple;
   selected: boolean;
   onClick: (e: any) => void;
-  tooltip: any;
   label: OverlayLabel;
   color: string;
 }
@@ -158,7 +160,8 @@ export interface HoverState {
 export interface EventHandlers {
   onPointerOver: () => void;
   onPointerOut: () => void;
-  restEventHandlers: Record<string, any>;
+  onPointerMissed: () => void;
+  onPointerMove: (e: ThreeEvent<PointerEvent>) => void;
 }
 
 export type Archetype3d = "point" | "cuboid" | "polyline" | "annotation-plane";

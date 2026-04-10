@@ -1,0 +1,190 @@
+name: Bug Report 👾
+description: Use this template for reporting bugs encountered while using FiftyOne
+title: "[BUG] "
+labels:
+  - bug
+
+body:
+  - type: markdown
+    attributes:
+      value: 
+        Thank you for submitting an issue. Please refer to our [issue policy](https://www.github.com/voxel51/fiftyone/blob/develop/ISSUE_POLICY.md) 
+        for information on what types of issues we address.
+
+  - type: textarea
+    id: bug-description
+    validations:
+      required: true
+    attributes:
+      label: 🗃️ Describe the problem
+      description: |
+        Describe the problem clearly here. Include descriptions of the 
+        expected behavior and the actual behavior.
+      placeholder: 🕵 What is the bug and what were you expecting?
+
+  - type: checkboxes
+    id: reported-os
+    validations:
+      required: true
+    attributes:
+      label: 🖥️ Operating System Platform & Distribution
+      description: What Operating System (OS) was the bug found on? Select all that apply.
+      options:
+        - label: Linux
+        - label: MacOS
+        - label: Windows
+        - label: Other (please specify)
+
+  - type: textarea
+    id: system-detail
+    validations:
+      required: true
+    attributes:
+      label: |+
+        💻 System Details
+
+        ---
+
+      description: |
+        Provide additional details about the system the bug occurred on. Please include: 
+          - Additional OS details
+          - CPU Make & Model
+          - System memory (RAM) amount + type
+          - GPU make & model if applicable
+
+          <details><summary>Linux shell command</summary>
+          <code>
+            echo "---OS---" && uname -a && echo "---HWinfo---" && lshw -short -sanitize 2>/dev/null | grep -E "processor|memory|display|storage"
+          </code>
+          </details>
+
+      placeholder: |
+        - On MacOS: System Settings -> General -> About -> System Report -> Copy/Paste
+        - On Windows: Settings -> System -> About -> Copy/Paste
+        - On Linux: See shell command above if needed
+        - Details for 'Other' OS if selected
+
+  - type: dropdown
+    id: browsers
+    attributes:
+      label: 🌐 Browser
+      description: If the bug happens in a web browser, which browsers was it observed?
+      multiple: true
+      options:
+        - Firefox
+        - Chrome (or Chromium-based)
+        - Safari
+        - Microsoft Edge
+        - Not applicable
+      default: 4
+
+  - type: checkboxes
+    id: install
+    validations:
+      required: true
+    attributes:
+      label:  |+
+        ⤵️ Installation type
+
+        ---
+
+      description: What installation method for `fiftyone` was used?
+      options:
+        - label: Package (`pip`)
+        - label: Source (`git`)
+
+  - type: textarea
+    id: code
+    validations:
+      required: true
+    attributes:
+      label: |+
+        ⌨️ Code to reproduce issue
+
+        ---
+
+      description: |
+        Provide a reproducible test case that is the bare minimum necessary to generate 
+        the problem. Please avoid sharing code that relies on your local data or 
+        datasets. Include a short video or screenshot if the bug is in the App.
+      placeholder: |
+        ```
+        # your code goes here, don't forget the backticks (`)
+        ```
+  - type: input
+    id: python-ver
+    validations:
+      required: true
+    attributes:
+      label: |+
+        🐍 What version of Python?
+
+        ---
+
+      description: |
+        Which version of Python was the bug found on? `python --version`
+      placeholder: Python 3.11.14
+
+  - type: input
+    id: fiftyone-ver
+    validations:
+      required: true
+    attributes:
+      label: 🔖 What version of FiftyOne?
+      description: |
+        Which version of FiftyOne was the bug found on? `fiftyone --version` or `pip show fiftyone`
+      placeholder: FiftyOne 1.11.1
+
+  - type: textarea
+    id: additional-info
+    attributes:
+      label: |+
+        🪵 Other info/logs
+
+        ---
+
+      description: |
+        Include any logs or source code that would be helpful to diagnose the problem.
+        If including tracebacks, please include the full traceback. Large logs and
+        files should be attached. Please do not use screenshots for sharing text. Code
+        snippets should be used instead when providing tracebacks, logs, etc.
+      placeholder: 🧠 Add as much detail as possible
+
+  - type: dropdown
+    id: contribute
+    validations:
+      required: true
+    attributes:
+      label: |+
+        🚀 Willingness to contribute
+
+        ---
+
+      description: |
+        The FiftyOne Community encourages bug fix contributions. Would you or another 
+        member of your organization be willing to contribute a fix for this bug to the 
+        FiftyOne codebase?
+      options:
+        - Yes, I can contribute a fix for this bug independently
+        - Yes, I would be willing to contribute a fix for this bug with guidance from the FiftyOne community
+        - No, I cannot contribute a bug fix at this time
+
+  - type: upload
+    id: screenshots
+    attributes:
+      label: |+
+        📸 Upload screenshots
+
+        ---
+
+      description: If applicable, add screenshots to help explain your problem.
+    validations:
+      required: false
+
+  - type: markdown
+    attributes:
+      value: |
+        ### 📚 Helpful Resources
+        - 📖 [FiftyOne Documentation](https://docs.voxel51.com/)
+        - 💬 [Discord Community](https://discord.gg/fiftyone-community)
+        - 🎬 [YouTube Channel](https://www.youtube.com/@voxel51)

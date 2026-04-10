@@ -6,13 +6,7 @@ import { type EventDispatcher, getEventBus } from "@fiftyone/events";
 import { getSampleSrc } from "@fiftyone/state";
 import type { LighterEventGroup } from "../events";
 import type { Renderer2D } from "../renderer/Renderer2D";
-import type {
-  BoundedOverlay,
-  CanonicalMedia,
-  Dimensions,
-  Rect,
-  RenderMeta,
-} from "../types";
+import type { CanonicalMedia, Dimensions, Rect, RenderMeta } from "../types";
 import { BaseOverlay } from "./BaseOverlay";
 
 /**
@@ -36,15 +30,11 @@ const isRectNonEmpty = (bounds: Rect | undefined): boolean => {
  * Uses an HTML <img> element instead of Pixi textures to avoid CORS requirements.
  * Also implements CanonicalMedia for coordinate transformations.
  */
-export class ImageOverlay
-  extends BaseOverlay
-  implements BoundedOverlay, CanonicalMedia
-{
+export class ImageOverlay extends BaseOverlay implements CanonicalMedia {
   private imgElement?: HTMLImageElement;
   private originalDimensions?: Dimensions;
   private currentBounds?: Rect;
   private resizeObserver?: ResizeObserver;
-  private boundsChangeCallbacks: ((bounds: Rect) => void)[] = [];
   private viewportUnsubscribe?: () => void;
   private sceneEventBus?: EventDispatcher<LighterEventGroup>;
   private isImageLoaded = false;
@@ -136,6 +126,9 @@ export class ImageOverlay
     this.imgElement = document.createElement("img");
     this.imgElement.setAttribute("data-cy", "lighter-sample-image");
 
+    // We'll toggle to "show" in render
+    this.hide();
+
     // Note: No CORS requirement
     const src = getSampleSrc(this.options.src);
     if (!src) {
@@ -143,8 +136,10 @@ export class ImageOverlay
       this.emitError(new Error(`Invalid sample source: ${this.options.src}`));
       return;
     }
+
     this.imgElement.src = src;
 
+    this.imgElement.style.imageRendering = "pixelated";
     this.imgElement.style.position = "absolute";
     this.imgElement.style.top = "0";
     this.imgElement.style.left = "0";
@@ -291,6 +286,7 @@ export class ImageOverlay
     }
 
     this.notifyBoundsChanged();
+    this.show();
   }
 
   /**
@@ -360,26 +356,6 @@ export class ImageOverlay
   }
 
   /**
-   * Register a callback for bounds changes.
-   * @returns Unsubscribe function
-   */
-  onBoundsChanged(callback: (bounds: Rect) => void): () => void {
-    this.boundsChangeCallbacks.push(callback);
-
-    // Immediately call with current bounds if available
-    if (this.currentBounds) {
-      callback(this.currentBounds);
-    }
-
-    return () => {
-      const index = this.boundsChangeCallbacks.indexOf(callback);
-      if (index > -1) {
-        this.boundsChangeCallbacks.splice(index, 1);
-      }
-    };
-  }
-
-  /**
    * Force update the bounds calculation.
    */
   updateBounds(): void {
@@ -409,17 +385,13 @@ export class ImageOverlay
   }
 
   /**
-   * Notify all callbacks of bounds change.
+   * Emit canonical media bounds changed event.
    */
   private notifyBoundsChanged(): void {
-    if (!this.currentBounds) return;
+    if (!this.currentBounds || !this.sceneEventBus) return;
 
-    this.boundsChangeCallbacks.forEach((callback) => {
-      try {
-        callback(this.currentBounds!);
-      } catch (error) {
-        console.error("Error in bounds change callback:", error);
-      }
+    this.sceneEventBus.dispatch("lighter:canonical-media-bounds-changed", {
+      bounds: this.currentBounds,
     });
   }
 
@@ -488,6 +460,8 @@ export class ImageOverlay
    * Cleanup method to remove resize observer when overlay is destroyed.
    */
   destroy(): void {
+    super.destroy();
+
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
       this.resizeObserver = undefined;
@@ -504,7 +478,5 @@ export class ImageOverlay
       this.imgElement.remove();
       this.imgElement = undefined;
     }
-
-    this.boundsChangeCallbacks = [];
   }
 }

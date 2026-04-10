@@ -12,10 +12,15 @@ import {
   TextVariant,
   Variant,
 } from "@voxel51/voodo";
+import { useAtomValue } from "jotai";
 import React from "react";
 import styled from "styled-components";
+import { isEditing } from "./Edit";
+import RequiredFieldPrompt from "./RequiredFieldPrompt";
+import { activeLabelSchemas } from "./state";
 import useCanManageSchema from "./useCanManageSchema";
-import useShowModal from "./useShowModal";
+import type { RequiredField } from "./useSourceFieldToActivate";
+import { useSchemaManagerModal } from "./SchemaManager/hooks";
 
 const DISABLED_DEFAULT =
   "Annotation is not yet supported for this type of media or view.";
@@ -51,18 +56,66 @@ const AlertBox = styled.div`
   box-shadow: 0px 1px 2px 0px rgba(16, 24, 40, 0.05);
 `;
 
+export function useShowImportSchema(
+  disabled: boolean,
+  requiredField: RequiredField | null
+): boolean {
+  const noActiveSchemas = !useAtomValue(activeLabelSchemas)?.length;
+  const isEditingValue = useAtomValue(isEditing);
+  return (
+    noActiveSchemas || disabled || (requiredField != null && !isEditingValue)
+  );
+}
+
+interface SetupPromptProps {
+  disabled?: boolean;
+  canManage: boolean;
+  onAddSchema: () => void;
+}
+
+const SetupPrompt = ({
+  disabled,
+  canManage,
+  onAddSchema,
+}: SetupPromptProps) => (
+  <>
+    <Text variant={TextVariant.Xl} style={{ textAlign: "center" }}>
+      Annotate faster than ever
+    </Text>
+    <Text
+      color={TextColor.Secondary}
+      variant={TextVariant.Md}
+      style={{ textAlign: "center" }}
+    >
+      Import your dataset schema to access and edit labels, set up attributes,
+      and start annotating right away.
+    </Text>
+    <Button
+      variant={Variant.Primary}
+      data-cy="open-schema-manager"
+      disabled={disabled || !canManage}
+      onClick={onAddSchema}
+    >
+      Add schema
+    </Button>
+  </>
+);
+
 export interface ImportSchemaProps {
   disabled?: boolean;
   disabledMsg?: React.ReactNode;
+  requiredField?: RequiredField | null;
 }
 
 const ImportSchema = (
-  { disabled, disabledMsg }: ImportSchemaProps = {
+  { disabled, disabledMsg, requiredField }: ImportSchemaProps = {
     disabled: false,
   }
 ) => {
   const canManage = useCanManageSchema();
-  const showModal = useShowModal();
+  const { openSchemaManager } = useSchemaManagerModal();
+
+  const showRequiredFieldPrompt = requiredField != null && !disabled;
 
   const alertMessage = disabled
     ? disabledMsg || DISABLED_DEFAULT
@@ -83,27 +136,18 @@ const ImportSchema = (
               fontSize: 48,
               color: "var(--color-brand-accent)",
             }}
-            name={"draw"}
+            name="draw"
           />
-          <Text variant={TextVariant.Xl} style={{ textAlign: "center" }}>
-            Annotate faster than ever
-          </Text>
-          <Text
-            color={TextColor.Secondary}
-            variant={TextVariant.Md}
-            style={{ textAlign: "center" }}
-          >
-            Import your dataset schema to access and edit labels, set up
-            attributes, and start annotating right away.
-          </Text>
-          <Button
-            variant={Variant.Primary}
-            data-cy="open-schema-manager"
-            disabled={disabled || !canManage}
-            onClick={showModal}
-          >
-            Add schema
-          </Button>
+
+          {showRequiredFieldPrompt ? (
+            <RequiredFieldPrompt requiredField={requiredField!} />
+          ) : (
+            <SetupPrompt
+              disabled={disabled}
+              canManage={canManage}
+              onAddSchema={openSchemaManager}
+            />
+          )}
         </Stack>
       </ContentWrapper>
       {alertMessage && (

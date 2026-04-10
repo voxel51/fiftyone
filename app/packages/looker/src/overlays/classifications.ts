@@ -26,7 +26,7 @@ import {
   SelectData,
   isShown,
 } from "./base";
-import { getLabelColor } from "./util";
+import { getLabelColor, resolveLabelSelectionVisuals } from "./util";
 
 export type Classification = {
   _cls: "Classification";
@@ -262,9 +262,18 @@ export class ClassificationsOverlay<
     ctx.fillStyle = INFO_COLOR;
     ctx.fillText(text, tlx + state.textPad, tly + h - state.textPad);
 
-    this.strokeBorder(ctx, state, [tlx, tly, w, h], color);
-
     if (this.isSelected(state, label)) {
+      const labelVisuals = resolveLabelSelectionVisuals(
+        label.id,
+        state.options
+      );
+      // Override label color when selection style specifies one
+      this.strokeBorder(
+        ctx,
+        state,
+        [tlx, tly, w, h],
+        labelVisuals?.color || color
+      );
       this.strokeBorder(
         ctx,
         state,
@@ -272,6 +281,8 @@ export class ClassificationsOverlay<
         INFO_COLOR,
         state.dashLength
       );
+    } else {
+      this.strokeBorder(ctx, state, [tlx, tly, w, h], color);
     }
 
     tlx -= cx;

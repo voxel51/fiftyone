@@ -56,5 +56,13 @@ export default function useExit() {
     setSaved(null);
     setEditing(null);
     setActivePrimitive(null);
-  }, [label, overlay, removeOverlay, scene, setActivePrimitive, setEditing, setSaved]);
+  }, [
+    label,
+    overlay,
+    removeOverlay,
+    scene,
+    setActivePrimitive,
+    setEditing,
+    setSaved,
+  ]);
 }

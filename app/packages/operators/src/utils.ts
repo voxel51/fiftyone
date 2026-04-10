@@ -60,8 +60,8 @@ export function getOperatorPromptConfigs(operatorPrompt: OperatorPromptType) {
   const submitButtonOptions = operatorPrompt.submitOptions.options;
   const submitButtonLoading = operatorPrompt.submitOptions.isLoading;
   const hasSubmitButtonOptions = operatorPrompt.submitOptions.hasOptions;
-  const showWarning = operatorPrompt.submitOptions.showWarning;
-  const warningMessage = operatorPrompt.submitOptions.warningMessage;
+  const requiresOrchestratorSetup =
+    operatorPrompt.submitOptions.requiresOrchestratorSetup;
   let cancelButtonText = "Cancel";
   let onSubmit, onCancel;
 
@@ -106,8 +106,7 @@ export function getOperatorPromptConfigs(operatorPrompt: OperatorPromptType) {
     submitButtonOptions,
     submitButtonLoading,
     hasSubmitButtonOptions,
-    showWarning,
-    warningMessage,
+    requiresOrchestratorSetup,
     cancelButtonText,
     onSubmit,
     onCancel,

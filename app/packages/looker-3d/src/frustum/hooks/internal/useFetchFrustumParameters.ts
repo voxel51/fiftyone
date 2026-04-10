@@ -12,24 +12,6 @@ import type {
 } from "../../types";
 
 /**
- * Loads an image and returns its dimensions.
- */
-function loadImageDimensions(
-  url: string
-): Promise<{ width: number; height: number }> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      resolve({ width: img.naturalWidth, height: img.naturalHeight });
-    };
-    img.onerror = () => {
-      reject(new Error(`Failed to load image: ${url}`));
-    };
-    img.src = url;
-  });
-}
-
-/**
  * Fetches camera frustum data (static transforms and intrinsics) for all 2D slices
  * in a grouped dataset.
  *
@@ -40,12 +22,12 @@ export function useFetchFrustumParameters() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [fetchTrigger, setFetchTrigger] = useState(0);
+  const { activeFo3dSlice: currentFo3dSlice, non3dSlices: allNon3dSlices } =
+    fos.useRenderConfig3dState();
 
   const datasetId = useRecoilValue(fos.datasetId);
   const sampleId = useRecoilValue(fos.currentSampleId);
   const isGroup = useRecoilValue(fos.isGroup);
-  const currentFo3dSlice = useRecoilValue(fos.fo3dSlice);
-  const allNon3dSlices = useRecoilValue(fos.allNon3dSlices);
   const modalSample = useRecoilValue(fos.modalSample);
 
   const { resolveUrlForImageSlice, isLoadingImageSlices } =
@@ -142,30 +124,7 @@ export function useFetchFrustumParameters() {
 
         if (cancelled) return;
 
-        // Load image dimensions in parallel to get aspect ratios
-        const frustumsWithAspectRatios = await Promise.all(
-          frustums.map(async (frustum) => {
-            if (!frustum.imageUrl) {
-              return frustum;
-            }
-
-            try {
-              const { width, height } = await loadImageDimensions(
-                frustum.imageUrl
-              );
-              return {
-                ...frustum,
-                imageAspectRatio: width / height,
-              };
-            } catch {
-              return frustum;
-            }
-          })
-        );
-
-        if (!cancelled) {
-          setData(frustumsWithAspectRatios);
-        }
+        setData(frustums);
       } catch (err) {
         if (!cancelled) {
           console.error("Failed to fetch frustum data:", err);

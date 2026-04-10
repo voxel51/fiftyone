@@ -1,5 +1,4 @@
-import { test as base } from "src/oss/fixtures";
-import { GridPom } from "src/oss/poms/grid";
+import { test as base, expect } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { SchemaManagerPom } from "src/oss/poms/schema-manager";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
@@ -17,13 +16,9 @@ const videoId = "000000000000000000000001";
 const groupVideoId = "000000000000000000000003";
 
 const test = base.extend<{
-  grid: GridPom;
   modal: ModalPom;
   schemaManager: SchemaManagerPom;
 }>({
-  grid: async ({ page, eventUtils }, use) => {
-    await use(new GridPom(page, eventUtils));
-  },
   modal: async ({ page, eventUtils }, use) => {
     await use(new ModalPom(page, eventUtils));
   },
@@ -36,65 +31,55 @@ test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, mediaFactory, foWebServer }) => {
-  await foWebServer.startWebServer();
-  await mediaFactory.createBlankImage({
-    outputPath: "/tmp/blank.png",
-    width: 50,
-    height: 50,
-    fillColor: "#ffffff",
-    hideLogs: true,
-  });
+test.beforeAll(
+  async ({ fiftyoneLoader, datasetFactory, mediaFactory, foWebServer }) => {
+    await foWebServer.startWebServer();
+    await datasetFactory.createBlankDataset({
+      datasetName,
+      schema: {
+        classification: "Classification",
+      },
+      withSampleData: (_, { createId }) => ({
+        classification: { _id: createId(), label: "value" },
+      }),
+    });
 
-  await fiftyoneLoader.executePythonCode(`
-  from bson import ObjectId
-  import fiftyone as fo
+    await datasetFactory.createBlankDataset({
+      datasetName: detectionDatasetName,
+      schema: {
+        predictions: "Detections",
+      },
+      withSampleData: (_, { createId }) => {
+        return {
+          predictions: {
+            detections: [
+              {
+                _id: createId(id),
+                label: "cat",
+                bounding_box: [0.1, 0.1, 0.2, 0.2],
+              },
+              {
+                _id: createId(),
+                label: "dog",
+                bounding_box: [0.3, 0.3, 0.2, 0.2],
+              },
+            ],
+          },
+        };
+      },
+      savedViews: { patches: "dataset.to_patches('predictions')" },
+    });
 
-  dataset = fo.Dataset("${datasetName}")
+    await mediaFactory.createBlankVideo({
+      outputPath: "/tmp/blank-video.webm",
+      duration: 1,
+      width: 50,
+      height: 50,
+      frameRate: 5,
+      color: "#000000",
+    });
 
-  sample = fo.Sample(
-      _id=ObjectId("${id}"),
-      classification=fo.Classification(label="value"),
-      filepath="/tmp/blank.png"
-  )
-  dataset._sample_collection.insert_many(
-      [dataset._make_dict(sample, include_id=True)]
-  )
-
-  dataset.add_sample_field(
-      "classification",
-      fo.EmbeddedDocumentField,
-      embedded_doc_type=fo.Classification,
-  )
-  dataset.save()`);
-
-  await fiftyoneLoader.executePythonCode(`
-  import fiftyone as fo
-
-  dataset = fo.Dataset("${detectionDatasetName}")
-  sample = fo.Sample(
-      filepath="/tmp/blank.png",
-      predictions=fo.Detections(detections=[
-          fo.Detection(label="cat", bounding_box=[0.1, 0.1, 0.2, 0.2]),
-          fo.Detection(label="dog", bounding_box=[0.3, 0.3, 0.2, 0.2]),
-      ])
-  )
-  dataset.add_samples([sample])
-
-  # Save patches view for testing annotation disabled on generated views
-  patches = dataset.to_patches("predictions")
-  dataset.save_view("patches", patches)`);
-
-  await mediaFactory.createBlankVideo({
-    outputPath: "/tmp/blank-video.webm",
-    duration: 1,
-    width: 50,
-    height: 50,
-    frameRate: 5,
-    color: "#000000",
-  });
-
-  await fiftyoneLoader.executePythonCode(`
+    await fiftyoneLoader.executePythonCode(`
   from bson import ObjectId
   import fiftyone as fo
 
@@ -111,7 +96,7 @@ test.beforeAll(async ({ fiftyoneLoader, mediaFactory, foWebServer }) => {
   )
   dataset.save()`);
 
-  await fiftyoneLoader.executePythonCode(`
+    await fiftyoneLoader.executePythonCode(`
   from bson import ObjectId
   import fiftyone as fo
 
@@ -124,7 +109,8 @@ test.beforeAll(async ({ fiftyoneLoader, mediaFactory, foWebServer }) => {
       group=group.element("video1")
   )
   dataset.add_samples([sample])`);
-});
+  }
+);
 
 const DEFAULT_LABEL_SCHEMA = {
   attributes: [
@@ -241,36 +227,36 @@ test.describe.serial("schema manager", () => {
     await schemaManager.assert.isDisabled();
   });
 
-  test("annotation disabled for patches view", async ({
+  test("patches view required field prompt activates schema and enters edit mode", async ({
     fiftyoneLoader,
     page,
-    grid,
     modal,
-    schemaManager,
   }) => {
-    // Start on detection dataset - annotation should be enabled
-    await fiftyoneLoader.waitUntilGridVisible(page, detectionDatasetName);
-    await grid.openFirstSample();
-    await modal.assert.isOpen();
-    await modal.sidebar.switchMode("annotate");
-    await schemaManager.assert.isEnabled();
-
-    // Switch to patches view
-    await modal.close();
+    // Navigate to patches view
     await fiftyoneLoader.waitUntilGridVisible(page, detectionDatasetName, {
-      searchParams: new URLSearchParams({ view: "patches" }),
+      searchParams: new URLSearchParams({ view: "patches", id }),
+    });
+    await modal.waitForSampleLoadDomAttribute();
+    await modal.sidebar.switchMode("annotate");
+
+    // The required field prompt should appear since "predictions" has no active schema
+    await expect(page.getByText("Field not in label schema")).toBeVisible({
+      timeout: 5_000,
+    });
+    await expect(page.getByTestId("activate-field-schema")).toBeVisible();
+
+    // Click the activate button to initialize and activate the predictions schema
+    const activateButton = page.getByTestId("activate-field-schema");
+    await expect(activateButton).toBeEnabled();
+    await activateButton.click();
+
+    // After activation, the edit panel should appear with "Edit Detection"
+    await expect(page.getByText("Edit Detection")).toBeVisible({
+      timeout: 10_000,
     });
 
-    // Open first sample in the patches grid
-    await grid.openFirstSample();
-    await modal.assert.isOpen();
-    await modal.sidebar.switchMode("annotate");
-
-    // Annotation should be disabled for generated views
-    await modal.sidebar.assert.hasDisabledMessage(
-      "isn\u2019t supported for patches, frames, clips"
-    );
-    await schemaManager.assert.isDisabled();
+    // In patches view, the Schema button should not be visible
+    await expect(page.getByRole("button", { name: "Schema" })).toBeHidden();
   });
 
   test("annotation disabled for grouped dataset with no supported slices", async ({

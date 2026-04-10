@@ -958,6 +958,8 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         completed_doc.run_state = ExecutionRunState.COMPLETED
         completed_doc.result = ExecutionResult(result={"executed": True})
 
+        on_ping = mock.MagicMock(return_value="some log")
+
         with patch.object(
             self.svc, "get", side_effect=[running_doc, completed_doc]
         ), patch(
@@ -969,14 +971,27 @@ class DelegatedOperationServiceTests(unittest.TestCase):
                 operation=doc,
                 log=False,
                 monitor=True,
+                on_monitor_ping=on_ping,
             )
 
-            # Verify ping was called with the operation ID
-            mock_ping.assert_called_once_with(doc.id)
+            mock_ping.assert_called_once_with(doc.id, log_tail="some log")
 
         self.assertIsNotNone(result)
         self.assertIsNone(result.error)
         self.assertEqual(result.result, {"executed": True})
+
+        # Verify empty string log_tail is forwarded as-is
+        mock_process.is_alive.side_effect = [True, True, False]
+        with patch.object(
+            self.svc, "get", return_value=running_doc
+        ), patch.object(self.svc._repo, "ping") as mock_ping:
+            self.svc._monitor_operation(
+                mock_process,
+                doc.id,
+                check_interval_seconds=0,
+                on_monitor_ping=lambda pid: "",
+            )
+            mock_ping.assert_called_once_with(doc.id, log_tail="")
 
     @patch("psutil.Process")
     @patch("logging.handlers.QueueListener")
@@ -1036,7 +1051,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             )
 
             # This assertion will now pass
-            mock_ping.assert_called_once_with(doc.id)
+            mock_ping.assert_called_once_with(doc.id, log_tail=None)
 
         mock_psutil_process.assert_called_once_with(mock_process.pid)
         mock_psutil_parent.children.assert_called_once_with(recursive=True)
@@ -1108,7 +1123,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             )
 
             # Verify ping was called with the operation ID (before failure detected)
-            mock_ping.assert_called_once_with(doc.id)
+            mock_ping.assert_called_once_with(doc.id, log_tail=None)
 
         self.assertIsNotNone(result)
         self.assertIsNotNone(result.error)

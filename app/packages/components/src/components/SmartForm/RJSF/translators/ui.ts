@@ -63,6 +63,10 @@ export function translateToUISchema(
       uiSchema["ui:widget"] = "radio";
       break;
 
+    case SmartFormComponents.CheckboxesView:
+      uiSchema["ui:widget"] = "checkboxes";
+      break;
+
     case SmartFormComponents.AutocompleteView:
       uiSchema["ui:widget"] = "AutoComplete";
       uiSchema["ui:options"] = {
@@ -91,6 +95,9 @@ export function translateToUISchema(
 
     case SmartFormComponents.JsonEditorView:
       uiSchema["ui:widget"] = "JsonEditorWidget";
+      if (view.height != null) {
+        uiSchema["ui:options"] = { height: view.height };
+      }
       break;
 
     case SmartFormComponents.ColorView:

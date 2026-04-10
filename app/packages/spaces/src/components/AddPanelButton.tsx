@@ -1,6 +1,5 @@
 import { IconButton, Popout, scrollable, useTheme } from "@fiftyone/components";
 import {
-  Categories,
   getCategoryForPanel,
   getCategoryLabel,
   PluginComponentRegistration,

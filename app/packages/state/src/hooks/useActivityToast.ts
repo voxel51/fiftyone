@@ -3,6 +3,11 @@ import { atom, useAtom } from "jotai";
 import { IconName, Variant } from "@voxel51/voodo";
 
 /**
+ * Timeout value which will cause the activity toast to remain open indefinitely.
+ */
+export const INDEFINITE_TOAST_TIMEOUT = -1;
+
+/**
  * Configuration data which drives ActivityToast behavior.
  */
 export type ActivityToastConfig = {
@@ -26,6 +31,9 @@ export type ActivityToastConfig = {
    * the toast will disappear after this time has elapsed.
    *
    * This timeout is reset any time the toast configuration is modified.
+   *
+   * A negative timeout value will disable the timeout, causing
+   * the toast to remain visible indefinitely.
    */
   timeout?: number;
 };
@@ -102,12 +110,16 @@ export const useActivityToast = (): IActivityToast => {
       setOpen(true);
     }
 
-    const timeout = setTimeout(
-      () => setOpen(false),
-      config.timeout ?? DEFAULT_VISIBILITY_TIMEOUT
-    );
+    let onUnmount: () => void;
 
-    return () => clearTimeout(timeout);
+    const timeoutMs = config.timeout ?? DEFAULT_VISIBILITY_TIMEOUT;
+    if (timeoutMs > 0) {
+      const timeout = setTimeout(() => setOpen(false), timeoutMs);
+
+      onUnmount = () => clearTimeout(timeout);
+    }
+
+    return onUnmount;
   }, [config]);
 
   return useMemo(

@@ -1,28 +1,21 @@
 import { LoadingSpinner } from "@fiftyone/components";
-import { EntryKind } from "@fiftyone/state";
-import { Typography } from "@mui/material";
-import { atom, useAtomValue } from "jotai";
+import { Text, TextColor, TextVariant } from "@voxel51/voodo";
+import { useAtomValue } from "jotai";
 import React, { useEffect } from "react";
 import styled from "styled-components";
-import Sidebar from "../../../Sidebar";
 import Actions from "./Actions";
 import Edit, { isEditing } from "./Edit";
-import GroupEntry from "./GroupEntry";
-import ImportSchema from "./ImportSchema";
-import LabelEntry from "./LabelEntry";
-import LoadingEntry from "./LoadingEntry";
-import PrimitiveEntry from "./PrimitiveEntry";
+import ImportSchema, { useShowImportSchema } from "./ImportSchema";
 import SchemaManager from "./SchemaManager";
-import { activeLabelSchemas, labelSchemasData, showModal } from "./state";
+import { useSchemaManagerModal } from "./SchemaManager/hooks";
+import { labelSchemasData } from "./state";
 import type { AnnotationDisabledReason } from "./useCanAnnotate";
-import useEntries from "./useEntries";
+import useSourceFieldToActivate from "./useSourceFieldToActivate";
 import useLabels from "./useLabels";
-import { usePrimitivesCount } from "./usePrimitivesCount";
 import { useAnnotationContextManager } from "./useAnnotationContextManager";
 import useDelete from "./Edit/useDelete";
 import { KnownContexts, useUndoRedo } from "@fiftyone/commands";
-
-const showImportPage = atom((get) => !get(activeLabelSchemas)?.length);
+import LabelList from "./LabelList";
 
 const DISABLED_MESSAGES: Record<
   Exclude<AnnotationDisabledReason, null>,
@@ -30,8 +23,7 @@ const DISABLED_MESSAGES: Record<
 > = {
   generatedView: (
     <p>
-      Annotation isn&rsquo;t supported for patches, frames, clips, or
-      materialized views.
+      Annotation isn&rsquo;t supported for frames, clips, or materialized views.
     </p>
   ),
   groupedDatasetNoSupportedSlices: (
@@ -56,57 +48,14 @@ const Loading = () => {
   return (
     <Container>
       <LoadingSpinner />
-      <Typography color="secondary" padding="1rem 0">
+      <Text
+        color={TextColor.Secondary}
+        variant={TextVariant.Md}
+        style={{ padding: "1rem 0" }}
+      >
         Loading
-      </Typography>
+      </Text>
     </Container>
-  );
-};
-
-const AnnotateSidebar = () => {
-  usePrimitivesCount();
-  const editing = useAtomValue(isEditing);
-
-  if (editing) return null;
-
-  return (
-    <>
-      <Actions />
-      <Sidebar
-        isDisabled={() => true}
-        render={(key, group, entry) => {
-          if (entry.kind === EntryKind.GROUP) {
-            return { children: <GroupEntry name={entry.name} /> };
-          }
-
-          if (entry.kind === EntryKind.LABEL) {
-            const { kind: _, atom } = entry;
-            return {
-              children: <LabelEntry atom={atom} />,
-              disabled: true,
-            };
-          }
-
-          if (entry.kind === EntryKind.LOADING) {
-            return {
-              children: <LoadingEntry />,
-              disabled: true,
-            };
-          }
-
-          if (entry.kind === EntryKind.PATH) {
-            return {
-              children: <PrimitiveEntry path={entry.path} />,
-              disabled: false,
-            };
-          }
-
-          throw new Error("unexpected");
-        }}
-        useEntries={useEntries}
-        modal={true}
-      />
-    </>
   );
 };
 
@@ -115,12 +64,16 @@ interface AnnotateProps {
 }
 
 const Annotate = ({ disabledReason }: AnnotateProps) => {
-  const showSchemaModal = useAtomValue(showModal);
-  const showImport = useAtomValue(showImportPage);
+  const { schemaManagerDisplayed } = useSchemaManagerModal();
   const loading = useAtomValue(labelSchemasData) === null;
-  const editing = useAtomValue(isEditing);
+  const isEditingValue = useAtomValue(isEditing);
+
   const contextManager = useAnnotationContextManager();
   const { clear: clearUndo } = useUndoRedo(KnownContexts.ModalAnnotate);
+
+  const isDisabled = disabledReason !== null;
+  const requiredField = useSourceFieldToActivate();
+  const showSetup = useShowImportSchema(isDisabled, requiredField);
 
   useLabels();
   useDelete();
@@ -134,7 +87,6 @@ const Annotate = ({ disabledReason }: AnnotateProps) => {
     };
   }, []);
 
-  const isDisabled = disabledReason !== null;
   const disabledMsg =
     disabledReason !== null ? DISABLED_MESSAGES[disabledReason] : undefined;
 
@@ -144,17 +96,19 @@ const Annotate = ({ disabledReason }: AnnotateProps) => {
 
   return (
     <>
-      {editing && <Edit key="edit" />}
-      {showImport || isDisabled ? (
+      {!showSetup && <Actions key="actions" />}
+      {isEditingValue && <Edit key="edit" />}
+      {showSetup ? (
         <ImportSchema
           key="import"
           disabled={isDisabled}
           disabledMsg={disabledMsg}
+          requiredField={requiredField}
         />
       ) : (
-        <AnnotateSidebar key="annotate" />
+        <LabelList key="annotate" />
       )}
-      {showSchemaModal && <SchemaManager key="manage" />}
+      {schemaManagerDisplayed && <SchemaManager key="manage" />}
     </>
   );
 };
