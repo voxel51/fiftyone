@@ -12,7 +12,8 @@
     ],
     "main": "src/index.ts",
     "dependencies": {
-        "@fiftyone/plugins": "*"
+        "@fiftyone/plugins": "*",
+        "@fiftyone/utilities": "*"
     },
     "devDependencies": {
         "typescript": "^4.7.4",

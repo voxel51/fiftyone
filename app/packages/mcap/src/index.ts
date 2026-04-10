@@ -5,7 +5,10 @@ import { McapModalRenderer } from "./McapModalRenderer";
 /** Registry name for the built-in MCAP sample renderer. */
 export const MCAP_SAMPLE_RENDERER_NAME = "McapSampleRenderer";
 
+export * from "./api";
 export { McapGridRenderer, McapModalRenderer };
+export * from "./types";
+export * from "./useMcapScene";
 
 registerComponent({
   name: MCAP_SAMPLE_RENDERER_NAME,
