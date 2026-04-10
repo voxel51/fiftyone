@@ -29,11 +29,15 @@ import {
 } from "../utils/colorMapping";
 import { distanceFromLineSegment } from "../utils/geometry";
 import { BaseOverlay } from "./BaseOverlay";
+import { SerializedMask } from "@fiftyone/utilities";
+import { BASE_ALPHA } from "@fiftyone/looker/src/constants";
+import { deserialize } from "@fiftyone/looker/src/numpy";
 
 export type BoundingBoxLabel = RawLookerLabel & {
   label: string;
   bounding_box: number[];
   confidence?: number;
+  mask?: SerializedMask;
 };
 
 /**
@@ -82,6 +86,10 @@ export class BoundingBoxOverlay
   #relativeBounds: Rect;
 
   private textBounds?: Rect;
+
+  private maskBitmap?: ImageBitmap;
+  private maskDecoding = false;
+  private lastMaskSource?: string;
 
   public cursor = "pointer";
 
@@ -159,6 +167,18 @@ export class BoundingBoxOverlay
     const style = this.currentStyle;
 
     if (!style) return;
+
+    // Draw the segmentation mask beneath the box outline when available.
+    if (this.maskBitmap) {
+      renderer.drawImage(
+        { type: "bitmap", bitmap: this.maskBitmap },
+        this.bounds,
+        { opacity: style.opacity ?? BASE_ALPHA },
+        this.containerId
+      );
+    } else if (this.label?.mask && !this.maskDecoding) {
+      this.decodeMask();
+    }
 
     // Check if this label has an instance to determine stroke styling
     const hasInstance = this.label?.instance?._id !== undefined;
@@ -723,6 +743,63 @@ export class BoundingBoxOverlay
       point.x <= rect.x + rect.width &&
       point.y <= rect.y + rect.height
     );
+  }
+
+  private extractMaskB64(mask: SerializedMask | undefined): string | undefined {
+    if (!mask) {
+      return undefined;
+    } else if (typeof mask === "string") {
+      return mask;
+    } else {
+      return mask.$binary.base64;
+    }
+  }
+
+  private async decodeMask(): Promise<void> {
+    const b64 = this.extractMaskB64(this.label?.mask);
+    if (!b64 || b64 === this.lastMaskSource) return;
+
+    this.maskDecoding = true;
+    this.lastMaskSource = b64;
+
+    try {
+      const overlayMask = deserialize(b64);
+      const [height, width] = overlayMask.shape;
+      const src = new Uint8Array(overlayMask.buffer);
+      const rgba = new Uint8ClampedArray(width * height * 4);
+
+      const colorObj = parseColorWithAlpha(
+        this.currentStyle?.strokeStyle ?? "#ffffff"
+      );
+      const r = (colorObj.color >> 16) & 0xff;
+      const g = (colorObj.color >> 8) & 0xff;
+      const b = colorObj.color & 0xff;
+
+      for (let i = 0; i < width * height; i++) {
+        if (src[i] > 0) {
+          rgba[i * 4] = r;
+          rgba[i * 4 + 1] = g;
+          rgba[i * 4 + 2] = b;
+          rgba[i * 4 + 3] = 255;
+        }
+      }
+
+      this.maskBitmap?.close();
+      this.maskBitmap = await createImageBitmap(
+        new ImageData(rgba, width, height)
+      );
+      this.markDirty();
+    } catch (e) {
+      console.error("[BoundingBoxOverlay] Failed to decode mask:", e);
+    } finally {
+      this.maskDecoding = false;
+    }
+  }
+
+  override destroy(): void {
+    this.maskBitmap?.close();
+    this.maskBitmap = undefined;
+    super.destroy();
   }
 
   // Selectable interface implementation
