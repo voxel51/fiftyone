@@ -374,6 +374,7 @@ export class MaskCanvas {
       maxY = Math.max(maxY, worldPoint.y + half);
     }
 
+    // lower-right corner from before paint stroke
     const origMaxX = this.preStrokeBounds!.x + this.preStrokeBounds!.width;
     const origMaxY = this.preStrokeBounds!.y + this.preStrokeBounds!.height;
 
