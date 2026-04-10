@@ -1,6 +1,16 @@
 import { renderHook } from "@testing-library/react-hooks";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import useSetExpandedSample from "./useSetExpandedSample";
+import useSetExpandedSample, {
+  resolveModalMain2dSlice,
+  SET_EXPANDED_SAMPLE_SOURCE_NAVIGATION,
+} from "./useSetExpandedSample";
+
+const groupMediaTypes = [
+  { name: "image", mediaType: "image" },
+  { name: "pcd", mediaType: "point-cloud" },
+  { name: "ply", mediaType: "3d" },
+  { name: "right", mediaType: "image" },
+];
 
 const mockDynamicGroupAtoms = vi.hoisted(() => ({
   dynamicGroupIndex: { key: "dynamicGroupIndex" },
@@ -12,7 +22,6 @@ const mockDynamicGroupAtoms = vi.hoisted(() => ({
 const mockGroupAtoms = vi.hoisted(() => ({
   groupSlice: { key: "groupSlice" },
   modalGroupSlice: { key: "modalGroupSlice" },
-  groupMediaTypesMap: { key: "groupMediaTypesMap" },
   groupMediaTypes: { key: "groupMediaTypes" },
   groupHasSampleOnSlice: (params: { groupId: string; slice: string }) => ({
     key: "groupHasSampleOnSlice",
@@ -98,12 +107,6 @@ const setState = (values: Record<string, unknown>) => {
     groupSlice: "pcd",
     modalGroupSlice: "ply",
     modalSelector: { id: "current-id", groupId: "current-group-id" },
-    groupMediaTypesMap: {
-      image: "image",
-      pcd: "point-cloud",
-      ply: "3d",
-      right: "image",
-    },
     groupMediaTypes: [
       { name: "image", mediaType: "image" },
       { name: "pcd", mediaType: "point-cloud" },
@@ -125,7 +128,10 @@ describe("useSetExpandedSample", () => {
   it("preserves a pinned 3d slice when the destination group still has it", async () => {
     const { result } = renderHook(() => useSetExpandedSample());
 
-    await result.current({ id: "next-id", groupId: "next-group-id" });
+    await result.current(
+      { id: "next-id", groupId: "next-group-id" },
+      { source: SET_EXPANDED_SAMPLE_SOURCE_NAVIGATION }
+    );
 
     expect(stateStore.values.modalGroupSlice).toBe("ply");
     expect(stateStore.values.modalSelector).toEqual({
@@ -134,10 +140,28 @@ describe("useSetExpandedSample", () => {
     });
   });
 
-  it("keeps the 3d grid slice when opening the modal from a 3d group view", async () => {
+  it("falls back to the first non-3d slice when opening the modal from a 3d group view", async () => {
     setState({
       modalSelector: null,
       modalGroupSlice: "pcd",
+    });
+
+    const { result } = renderHook(() => useSetExpandedSample());
+
+    await result.current({ id: "next-id", groupId: "next-group-id" });
+
+    expect(stateStore.values.modalGroupSlice).toBe("image");
+    expect(stateStore.values.modalSelector).toEqual({
+      id: "next-id",
+      groupId: "next-group-id",
+    });
+  });
+
+  it("keeps the 3d baseline when opening a 3d-only destination group", async () => {
+    setState({
+      modalSelector: null,
+      modalGroupSlice: "pcd",
+      groupHasSampleOnSlice: () => false,
     });
 
     const { result } = renderHook(() => useSetExpandedSample());
@@ -159,7 +183,10 @@ describe("useSetExpandedSample", () => {
 
     const { result } = renderHook(() => useSetExpandedSample());
 
-    await result.current({ id: "next-id", groupId: "next-group-id" });
+    await result.current(
+      { id: "next-id", groupId: "next-group-id" },
+      { source: SET_EXPANDED_SAMPLE_SOURCE_NAVIGATION }
+    );
 
     expect(stateStore.values.modalGroupSlice).toBe("pcd");
     expect(stateStore.values.modalSelector).toEqual({
@@ -172,12 +199,16 @@ describe("useSetExpandedSample", () => {
     mockRenderConfig3d.getIsPinned.mockResolvedValue(false);
     setState({
       modalGroupSlice: "right",
-      groupHasSampleOnSlice: () => false,
+      groupHasSampleOnSlice: ({ slice }: { groupId: string; slice: string }) =>
+        slice === "image",
     });
 
     const { result } = renderHook(() => useSetExpandedSample());
 
-    await result.current({ id: "next-id", groupId: "next-group-id" });
+    await result.current(
+      { id: "next-id", groupId: "next-group-id" },
+      { source: SET_EXPANDED_SAMPLE_SOURCE_NAVIGATION }
+    );
 
     expect(stateStore.values.modalGroupSlice).toBe("image");
     expect(stateStore.values.modalSelector).toEqual({
@@ -195,12 +226,150 @@ describe("useSetExpandedSample", () => {
 
     const { result } = renderHook(() => useSetExpandedSample());
 
-    await result.current({ id: "next-id", groupId: "next-group-id" });
+    await result.current(
+      { id: "next-id", groupId: "next-group-id" },
+      { source: SET_EXPANDED_SAMPLE_SOURCE_NAVIGATION }
+    );
 
     expect(stateStore.values.modalGroupSlice).toBe("right");
     expect(stateStore.values.modalSelector).toEqual({
       id: "next-id",
       groupId: "next-group-id",
     });
+  });
+});
+
+describe("resolveModalMain2dSlice", () => {
+  it("keeps current modal slice when baseline slice is missing", () => {
+    expect(
+      resolveModalMain2dSlice({
+        groupSlice: null,
+        currentModalSlice: "right",
+        groupMediaTypes,
+        hasExistingModal: true,
+        baselineIs3d: false,
+        fallbackNon3dSlice: "image",
+        is3dPinned: true,
+        destinationHasCurrentModalSlice: null,
+      })
+    ).toBe("right");
+  });
+
+  it("falls back to the first non-3d slice for a fresh 3d modal open", () => {
+    expect(
+      resolveModalMain2dSlice({
+        groupSlice: "pcd",
+        currentModalSlice: "pcd",
+        groupMediaTypes,
+        hasExistingModal: false,
+        baselineIs3d: true,
+        fallbackNon3dSlice: "image",
+        is3dPinned: true,
+        destinationHasCurrentModalSlice: null,
+      })
+    ).toBe("image");
+  });
+
+  it("preserves current modal slice when destination confirms it exists", () => {
+    expect(
+      resolveModalMain2dSlice({
+        groupSlice: "pcd",
+        currentModalSlice: "right",
+        groupMediaTypes,
+        hasExistingModal: true,
+        baselineIs3d: true,
+        fallbackNon3dSlice: "image",
+        is3dPinned: true,
+        destinationHasCurrentModalSlice: true,
+      })
+    ).toBe("right");
+  });
+
+  it("keeps pinned 3d baseline when destination does not have current slice", () => {
+    expect(
+      resolveModalMain2dSlice({
+        groupSlice: "pcd",
+        currentModalSlice: "right",
+        groupMediaTypes,
+        hasExistingModal: true,
+        baselineIs3d: true,
+        fallbackNon3dSlice: "image",
+        is3dPinned: true,
+        destinationHasCurrentModalSlice: false,
+      })
+    ).toBe("pcd");
+  });
+
+  it("falls back to deterministic non-3d slice when unpinned and destination misses current slice", () => {
+    expect(
+      resolveModalMain2dSlice({
+        groupSlice: "pcd",
+        currentModalSlice: "right",
+        groupMediaTypes,
+        hasExistingModal: true,
+        baselineIs3d: true,
+        fallbackNon3dSlice: "image",
+        is3dPinned: false,
+        destinationHasCurrentModalSlice: false,
+      })
+    ).toBe("image");
+  });
+
+  it("uses baseline slice when baseline is non-3d", () => {
+    expect(
+      resolveModalMain2dSlice({
+        groupSlice: "right",
+        currentModalSlice: "pcd",
+        groupMediaTypes,
+        hasExistingModal: true,
+        baselineIs3d: false,
+        fallbackNon3dSlice: "image",
+        is3dPinned: true,
+        destinationHasCurrentModalSlice: false,
+      })
+    ).toBe("right");
+  });
+
+  it("does not preserve unknown current modal slices", () => {
+    expect(
+      resolveModalMain2dSlice({
+        groupSlice: "pcd",
+        currentModalSlice: "missing-slice",
+        groupMediaTypes,
+        hasExistingModal: true,
+        baselineIs3d: true,
+        fallbackNon3dSlice: "image",
+        is3dPinned: true,
+        destinationHasCurrentModalSlice: true,
+      })
+    ).toBe("pcd");
+  });
+
+  it("falls back to the 3d baseline when the destination has no non-3d slice", () => {
+    expect(
+      resolveModalMain2dSlice({
+        groupSlice: "pcd",
+        currentModalSlice: "pcd",
+        groupMediaTypes,
+        hasExistingModal: false,
+        baselineIs3d: true,
+        fallbackNon3dSlice: "image",
+        is3dPinned: true,
+        destinationHasCurrentModalSlice: null,
+      })
+    ).toBe("image");
+
+    expect(
+      resolveModalMain2dSlice({
+        groupSlice: "pcd",
+        currentModalSlice: "pcd",
+        groupMediaTypes: [{ name: "pcd", mediaType: "point-cloud" }],
+        hasExistingModal: false,
+        baselineIs3d: true,
+        fallbackNon3dSlice: null,
+        is3dPinned: true,
+        destinationHasCurrentModalSlice: null,
+      })
+    ).toBe("pcd");
   });
 });

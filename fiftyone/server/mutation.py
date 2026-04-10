@@ -15,8 +15,10 @@ import eta.core.utils as etau
 import fiftyone.core.dataset as fod
 import fiftyone.core.odm as foo
 from fiftyone.core.session.constants import (
+    DEFAULT_LABEL_SELECTION_STYLE,
     DEFAULT_SELECTION_STYLE,
     VALID_ICON_STYLES,
+    VALID_LABEL_SELECTION_STYLES,
 )
 import fiftyone.core.session.events as fose
 from fiftyone.core.session.utils import normalize_selected_samples
@@ -106,6 +108,7 @@ class Mutation(SetColorScheme):
         state.selected_labels = []
         state.selected_samples = []
         state.sample_selection_style = dict(DEFAULT_SELECTION_STYLE)
+        state.label_selection_style = dict(DEFAULT_LABEL_SELECTION_STYLE)
         state.spaces = foo.default_workspace_factory()
         state.view = None
 
@@ -224,6 +227,24 @@ class Mutation(SetColorScheme):
         return True
 
     @gql.mutation
+    async def set_label_selection_style(
+        self,
+        subscription: str,
+        session: t.Optional[str],
+        style: JSON,
+    ) -> bool:
+        incoming = style if isinstance(style, dict) else {}
+        style = dict(DEFAULT_LABEL_SELECTION_STYLE)
+        for key in ("default", "alt"):
+            candidate = incoming.get(key)
+            if candidate in VALID_LABEL_SELECTION_STYLES:
+                style[key] = candidate
+        await dispatch_event(
+            subscription, fose.SetLabelSelectionStyle(style=style)
+        )
+        return True
+
+    @gql.mutation
     async def set_selected_labels(
         self,
         subscription: str,
@@ -254,6 +275,7 @@ class Mutation(SetColorScheme):
         state.selected_labels = []
         state.selected_samples = []
         state.sample_selection_style = dict(DEFAULT_SELECTION_STYLE)
+        state.label_selection_style = dict(DEFAULT_LABEL_SELECTION_STYLE)
 
         if not dataset_name:
             state.dataset = None

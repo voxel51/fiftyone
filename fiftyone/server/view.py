@@ -99,7 +99,7 @@ def get_view(
         filters (None): an optional ``dict`` of App defined filters
         pagination_data (False): whether process samples as pagination data
             - excludes all :class:`fiftyone.core.fields.DictField` and
-              :class:`fiftyone.core.fields.DictField` values
+              :class:`fiftyone.core.fields.VectorField` values
             - filters label fields
         dynamic_group (None): an optional dynamic group value to select. Only
             applicable when a :class:`fiftyone.core.stages.GroupBy` stage is

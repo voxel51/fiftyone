@@ -1,4 +1,4 @@
-import { LoadingDots } from "@fiftyone/components";
+import { Loading, LoadingDots } from "@fiftyone/components";
 import useCanAnnotate from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useCanAnnotate";
 import { usePluginSettings } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
@@ -29,10 +29,11 @@ import type { Looker3dSettings } from "../settings";
 import { useCurrent3dAnnotationMode } from "../state/accessors";
 import { Annotation3d } from "./Annotation3d";
 import {
-  FO3D_CAMERA_LIFECYCLE_ACTION,
   FO3D_CAMERA_LIFECYCLE,
-  type Fo3dCameraLifecycleState,
+  FO3D_CAMERA_LIFECYCLE_ACTION,
   fo3dCameraLifecycleReducer,
+  isFo3dSceneReady,
+  type Fo3dCameraLifecycleState,
 } from "./camera-lifecycle";
 import { Fo3dSceneContext } from "./context";
 import { FoScene } from "./render-types";
@@ -41,7 +42,7 @@ interface Fo3dPanelsProps {
   shouldRenderMultiPanelView: boolean;
   upVector: Vector3 | null;
   assetsGroupRef: React.RefObject<Group>;
-  foScene: FoScene | null;
+  foScene: FoScene;
   interactionSample: fos.ModalSample;
   cameraRef: React.RefObject<PerspectiveCamera>;
   cameraControlsRef: React.RefObject<CameraControls>;
@@ -97,6 +98,21 @@ const Fo3dPanels = ({
   );
 };
 
+const Fo3dLoadErrorState = ({ error }: { error: Error | null }) => {
+  const message = error?.message
+    ? `Failed to load 3D scene: ${error.message}`
+    : "Failed to load 3D scene";
+
+  return (
+    <Loading
+      dataCy="looker3d"
+      wrapperStyle={{ textAlign: "center", maxWidth: 420 }}
+    >
+      <div data-cy="looker-error-info">{message}</div>
+    </Loading>
+  );
+};
+
 export const MediaTypeFo3dComponent = () => {
   const { interactionSample, sceneSample } = fos.useRenderConfig3dState();
   const settings = usePluginSettings<Looker3dSettings>("3d");
@@ -109,6 +125,7 @@ export const MediaTypeFo3dComponent = () => {
   const {
     foScene,
     isLoading: isParsingFo3d,
+    loadError,
     fo3dRoot,
     rootAssetCount,
   } = useFo3d(sceneSample);
@@ -117,7 +134,11 @@ export const MediaTypeFo3dComponent = () => {
     fo3dCameraLifecycleReducer,
     FO3D_CAMERA_LIFECYCLE.WAITING_FOR_SCENE
   );
-  const isSceneReady = cameraLifecycleState === FO3D_CAMERA_LIFECYCLE.READY;
+  const isSceneReady = isFo3dSceneReady({
+    cameraLifecycleState,
+    foScene,
+    rootAssetCount,
+  });
 
   // Reset camera initialization whenever the scene identity changes.
   useEffect(() => {
@@ -158,13 +179,14 @@ export const MediaTypeFo3dComponent = () => {
       fo3dRoot,
       loadingManager,
       cameraLifecycleState,
+      isSceneReady,
     });
 
   const { shouldRenderMultiPanelView, currentRenderPath } = useFo3dPanelRouting(
     {
       mode,
       canAnnotate,
-      cameraLifecycleState,
+      isSceneReady,
       recomputeBounds,
     }
   );
@@ -201,6 +223,10 @@ export const MediaTypeFo3dComponent = () => {
 
   if (isParsingFo3d) {
     return <LoadingDots />;
+  }
+
+  if (!foScene) {
+    return <Fo3dLoadErrorState error={loadError} />;
   }
 
   return (

@@ -2,17 +2,13 @@ import * as fos from "@fiftyone/state";
 import { isInMultiPanelViewAtom } from "@fiftyone/state";
 import { useEffect, useMemo } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
-import {
-  isFo3dCameraLifecycleReady,
-  type Fo3dCameraLifecycleState,
-} from "../fo3d/camera-lifecycle";
 import { annotationPlaneAtom } from "../state";
 import { RenderPath } from "../types";
 
 interface UseFo3dPanelRoutingArgs {
   mode: string;
   canAnnotate: boolean;
-  cameraLifecycleState: Fo3dCameraLifecycleState;
+  isSceneReady: boolean;
   recomputeBounds: () => void;
 }
 
@@ -22,7 +18,7 @@ interface UseFo3dPanelRoutingArgs {
 export const useFo3dPanelRouting = ({
   mode,
   canAnnotate,
-  cameraLifecycleState,
+  isSceneReady,
   recomputeBounds,
 }: UseFo3dPanelRoutingArgs) => {
   const is2DSampleViewerVisible = useRecoilValue(
@@ -31,8 +27,6 @@ export const useFo3dPanelRouting = ({
   const isGroup = useRecoilValue(fos.isGroup);
   const isAnnotationPlaneEnabled = useRecoilValue(annotationPlaneAtom).enabled;
   const setIsInMultiPanelView = useSetRecoilState(isInMultiPanelViewAtom);
-
-  const isSceneReady = isFo3dCameraLifecycleReady(cameraLifecycleState);
 
   const shouldRenderMultiPanelView = useMemo(
     () =>

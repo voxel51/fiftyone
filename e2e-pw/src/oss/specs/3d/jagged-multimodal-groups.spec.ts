@@ -2,6 +2,7 @@ import fs from "node:fs";
 import { test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
+import { SampleCanvasType } from "src/oss/poms/modal/sample-canvas";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix("jagged-multimodal-groups");
@@ -205,7 +206,7 @@ test.describe.serial("jagged multimodal groups", () => {
     await grid.assert.isEntryCountTextEqualTo("4 groups with slice");
 
     await grid.openFirstSample();
-    await modal.waitForSampleLoadDomAttribute(true);
+    await modal.assert.verify3dRendererVisible();
     await modal.looker3dControls.waitForAllAssetsLoaded();
     await modal.assert.verifyHasNoViewerError();
     await modal.sidebar.assert.waitUntilSidebarEntryTextEqualsMultiple({
@@ -230,11 +231,18 @@ test.describe.serial("jagged multimodal groups", () => {
   }) => {
     const assertModalHasNoViewerError = async ({
       is3dSlice,
+      mode,
     }: {
       is3dSlice: boolean;
+      mode: "annotate" | "explore";
     }) => {
       if (is3dSlice) {
+        await modal.assert.verify3dRendererVisible();
         await modal.looker3dControls.waitForAllAssetsLoaded();
+      } else if (mode === "annotate") {
+        await modal.sampleCanvas.assert.is(SampleCanvasType.LIGHTER);
+      } else {
+        await modal.waitForSampleLoadDomAttribute(true);
       }
 
       await modal.assert.verifyHasNoViewerError();
@@ -275,8 +283,10 @@ test.describe.serial("jagged multimodal groups", () => {
       await grid.assert.isEntryCountTextEqualTo(entryCount);
 
       await grid.openFirstSample();
-      await modal.waitForSampleLoadDomAttribute(true);
-      await assertModalHasNoViewerError({ is3dSlice: slice === "pcd" });
+      await assertModalHasNoViewerError({
+        is3dSlice: slice === "pcd",
+        mode: "explore",
+      });
       await modal.sidebar.assert.waitUntilSidebarEntryTextEqualsMultiple({
         "group.name": slice,
         name: expectedName,
@@ -288,10 +298,16 @@ test.describe.serial("jagged multimodal groups", () => {
         expectedAnnotationSlices
       );
       await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice(slice);
-      await assertModalHasNoViewerError({ is3dSlice: slice === "pcd" });
+      await assertModalHasNoViewerError({
+        is3dSlice: slice === "pcd",
+        mode: "annotate",
+      });
 
       await modal.sidebar.switchMode("explore");
-      await assertModalHasNoViewerError({ is3dSlice: slice === "pcd" });
+      await assertModalHasNoViewerError({
+        is3dSlice: slice === "pcd",
+        mode: "explore",
+      });
       await modal.sidebar.assert.waitUntilSidebarEntryTextEquals(
         "group.name",
         slice
@@ -302,10 +318,16 @@ test.describe.serial("jagged multimodal groups", () => {
         expectedAnnotationSlices
       );
       await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice(slice);
-      await assertModalHasNoViewerError({ is3dSlice: slice === "pcd" });
+      await assertModalHasNoViewerError({
+        is3dSlice: slice === "pcd",
+        mode: "annotate",
+      });
 
       await modal.sidebar.switchMode("explore");
-      await assertModalHasNoViewerError({ is3dSlice: slice === "pcd" });
+      await assertModalHasNoViewerError({
+        is3dSlice: slice === "pcd",
+        mode: "explore",
+      });
       await modal.sidebar.assert.waitUntilSidebarEntryTextEquals(
         "group.name",
         slice
