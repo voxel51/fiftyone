@@ -73,7 +73,36 @@ class McapBuffer(HTTPEndpoint):
         return JSONResponse(response)
 
 
+class McapTimeline(HTTPEndpoint):
+    """Returns timestamp indexes for supported MCAP playback streams."""
+
+    async def post(self, request):
+        try:
+            data = await request.json()
+        except Exception as error:
+            raise HTTPException(
+                status_code=400, detail="Invalid JSON request body"
+            ) from error
+
+        dataset, sample = _get_dataset_and_sample(request)
+
+        try:
+            response = fosm.read_sample_mcap_timeline_index(
+                dataset=dataset,
+                sample=sample,
+                media_field=data.get("mediaField"),
+                stream_ids=data.get("streamIds"),
+            )
+        except fosm.McapRouteError as error:
+            _raise_http_error(error)
+        except fosm.McapDependencyError as error:
+            raise HTTPException(status_code=500, detail=str(error)) from error
+
+        return JSONResponse(response)
+
+
 McapRoutes = [
     ("/dataset/{dataset_id}/sample/{sample_id}/mcap/scene", McapScene),
     ("/dataset/{dataset_id}/sample/{sample_id}/mcap/buffer", McapBuffer),
+    ("/dataset/{dataset_id}/sample/{sample_id}/mcap/timeline", McapTimeline),
 ]

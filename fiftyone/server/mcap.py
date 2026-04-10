@@ -163,6 +163,66 @@ def read_sample_mcap_window(
     }
 
 
+def read_sample_mcap_timeline_index(dataset, sample, media_field, stream_ids):
+    """Reads a timestamp-only playback index for the requested MCAP streams."""
+    stream_ids = _normalize_stream_ids(stream_ids, allow_empty=True)
+    media_path = _resolve_media_path(sample, media_field)
+    scene_id = _build_scene_id(dataset, sample, media_field)
+
+    if not stream_ids:
+        return _build_timeline_response(scene_id, [], [])
+
+    started_at = time.perf_counter()
+    with open(media_path, "rb") as stream:
+        reader = _get_mcap_reader_module().make_reader(stream)
+        supported_streams = _collect_supported_stream_metadata(reader)
+
+        unknown_stream_ids = [
+            stream_id
+            for stream_id in stream_ids
+            if stream_id not in supported_streams
+        ]
+        if unknown_stream_ids:
+            raise McapRouteError(
+                400,
+                "Unknown MCAP stream id(s): %s"
+                % ", ".join(sorted(unknown_stream_ids)),
+            )
+
+        timeline_streams = OrderedDict(
+            (stream_id, []) for stream_id in stream_ids
+        )
+        shared_timestamps = set()
+
+        for schema, channel, message in _iter_reader_messages(
+            reader, topics=stream_ids
+        ):
+            del schema
+            log_time = int(message.log_time)
+            timeline_streams[channel.topic].append(log_time)
+            shared_timestamps.add(log_time)
+
+    logger.debug(
+        "Read MCAP timeline %s in %.3f ms (%d streams, %d timestamps)",
+        media_path,
+        (time.perf_counter() - started_at) * 1000,
+        len(timeline_streams),
+        len(shared_timestamps),
+    )
+
+    return _build_timeline_response(
+        scene_id=scene_id,
+        timestamps_ns=sorted(shared_timestamps),
+        streams=[
+            {
+                "streamId": stream_id,
+                "timestampsNs": sorted(stream_timestamps),
+            }
+            for stream_id, stream_timestamps in timeline_streams.items()
+        ],
+    )
+
+
 def _inspect_reader(
     scene_id, dataset_id, sample_id, media_field, media_path, reader
 ):
@@ -291,6 +351,17 @@ def _build_playback_plan(scene_id, streams):
         "sidebars": {
             "left": "panel_config",
             "right": "stream_metadata",
+        },
+    }
+
+
+def _build_timeline_response(scene_id, timestamps_ns, streams):
+    return {
+        "sceneId": scene_id,
+        "timeline": {
+            "timestampSource": "log_time",
+            "timestampsNs": timestamps_ns,
+            "streams": streams,
         },
     }
 
@@ -486,8 +557,14 @@ def _resolve_sample_field(sample, field_path):
     return current_value
 
 
-def _normalize_stream_ids(stream_ids):
-    if not isinstance(stream_ids, list) or not stream_ids:
+def _normalize_stream_ids(stream_ids, allow_empty=False):
+    if not isinstance(stream_ids, list):
+        raise McapRouteError(400, "streamIds must be a non-empty list")
+
+    if not stream_ids:
+        if allow_empty:
+            return []
+
         raise McapRouteError(400, "streamIds must be a non-empty list")
 
     normalized_ids = []
