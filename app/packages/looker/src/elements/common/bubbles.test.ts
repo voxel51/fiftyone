@@ -30,7 +30,6 @@ const TEST_SAMPLE = {
   _id: "1",
   filepath: "/path",
   tags: ["foo"],
-  _label_tags: ["bar"],
   _media_type: "image" as const,
 };
 

@@ -96,7 +96,7 @@ export type Sample = {
     name: string;
   };
   tags: string[];
-  _label_tags: string[];
+  _label_tags?: Record<string, number>;
   _media_type:
     | "image"
     | "video"
