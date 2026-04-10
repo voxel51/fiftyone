@@ -150,6 +150,14 @@ class OpenPanel extends Operator {
       label: "Force (skips panel exists check)",
       default: false,
     });
+    inputs.obj("sessionState", {
+      label: "Initial session state",
+      view: new types.HiddenView({}),
+    });
+    inputs.obj("localState", {
+      label: "Initial local state",
+      view: new types.HiddenView({}),
+    });
     return new types.Property(inputs);
   }
   useHooks() {
@@ -157,7 +165,15 @@ class OpenPanel extends Operator {
     const availablePanels = usePanels();
     const { spaces } = useSpaces(FIFTYONE_GRID_SPACES_ID);
     const openedPanels = useSpaceNodes(FIFTYONE_GRID_SPACES_ID);
-    return { availablePanels, openedPanels, spaces };
+    const setPanelStateById = useSetPanelStateById();
+    const setPanelStateLocalById = useSetPanelStateById(true);
+    return {
+      availablePanels,
+      openedPanels,
+      spaces,
+      setPanelStateById,
+      setPanelStateLocalById,
+    };
   }
   findFirstPanelContainer(node: SpaceNode): SpaceNode | null {
     if (node.isPanelContainer()) {
@@ -171,8 +187,15 @@ class OpenPanel extends Operator {
     return null;
   }
   async execute({ hooks, params }: ExecutionContext) {
-    const { spaces, openedPanels, availablePanels } = hooks;
-    const { name, isActive, layout, force, forceDuplicate } = params;
+    const {
+      spaces,
+      openedPanels,
+      availablePanels,
+      setPanelStateById,
+      setPanelStateLocalById,
+    } = hooks;
+    const { name, isActive, layout, force, forceDuplicate, state, data } =
+      params;
     const targetSpace = this.findFirstPanelContainer(spaces.root);
     if (!targetSpace) {
       return console.error("No panel container found");
@@ -189,6 +212,12 @@ class OpenPanel extends Operator {
       return;
     }
     const newNode = new SpaceNode();
+    if (state) {
+      setPanelStateById(newNode.id, () => state);
+    }
+    if (data) {
+      setPanelStateLocalById(newNode.id, () => data);
+    }
     newNode.type = name;
     // add panel to the default space as an inactive panels
     spaces.addNodeAfter(targetSpace, newNode, isActive);
@@ -519,6 +548,39 @@ class ClearSampleSelectionStyle extends Operator {
   }
   async execute({ state }: ExecutionContext) {
     state.set(fos.sampleSelectionStyle, fos.DEFAULT_SELECTION_STYLE);
+  }
+}
+
+class SetLabelSelectionStyle extends Operator {
+  _builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "set_label_selection_style",
+      label: "Set label selection style",
+      unlisted: true,
+    });
+  }
+  async execute({ state, params }: ExecutionContext) {
+    const { default: defaultStyle, alt } = params || {};
+    const style = {
+      default: defaultStyle || fos.DEFAULT_LABEL_SELECTION_STYLE.default,
+      alt: alt || fos.DEFAULT_LABEL_SELECTION_STYLE.alt,
+    };
+    state.set(fos.labelSelectionStyle, style);
+  }
+}
+
+class ClearLabelSelectionStyle extends Operator {
+  _builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "clear_label_selection_style",
+      label: "Clear label selection style",
+      unlisted: true,
+    });
+  }
+  async execute({ state }: ExecutionContext) {
+    state.set(fos.labelSelectionStyle, fos.DEFAULT_LABEL_SELECTION_STYLE);
   }
 }
 
@@ -1672,6 +1734,8 @@ export function registerBuiltInOperators() {
     _registerBuiltInOperator(SetSelectedSamples);
     _registerBuiltInOperator(SetSampleSelectionStyle);
     _registerBuiltInOperator(ClearSampleSelectionStyle);
+    _registerBuiltInOperator(SetLabelSelectionStyle);
+    _registerBuiltInOperator(ClearLabelSelectionStyle);
     _registerBuiltInOperator(OpenPanel);
     _registerBuiltInOperator(ClosePanel);
     _registerBuiltInOperator(SetView);
@@ -1714,7 +1778,6 @@ export function registerBuiltInOperators() {
     _registerBuiltInOperator(BrowserDownload);
     _registerBuiltInOperator(ClearActiveFields);
   } catch (e) {
-    console.error("Error registering built-in operators");
     console.error(e);
   }
 }

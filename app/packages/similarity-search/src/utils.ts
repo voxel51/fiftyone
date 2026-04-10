@@ -5,21 +5,26 @@ import {
   QueryType,
   SearchScope,
 } from "./types";
-import { DAY_MS, QUERY_TEXT, QUERY_IMAGE } from "./constants";
+import { DAY_MS } from "./constants";
 
 export const formatQuery = (run: SimilarityRun): string => {
-  if (run.query_type === QUERY_TEXT && typeof run.query === "string") {
+  if (run.query_type === QueryType.Text && typeof run.query === "string") {
     return run.query.length > 50
       ? run.query.substring(0, 50) + "..."
       : run.query;
   }
-  if (run.query_type === QUERY_IMAGE) {
+  if (run.query_type === QueryType.Image) {
     const count = Array.isArray(run.query) ? run.query.length : 0;
     const negCount = run.negative_query_ids?.length ?? 0;
     if (negCount > 0) {
       return `Image similarity (${count} positive, ${negCount} negative)`;
     }
     return `Image similarity (${count} ${count === 1 ? "prompt" : "prompts"})`;
+  }
+  if (run.query_type === QueryType.Upload) {
+    const filename =
+      typeof run.query === "string" ? run.query : "uploaded image";
+    return `Uploaded: ${filename}`;
   }
   return run.query_type;
 };
@@ -97,12 +102,19 @@ export const canSubmitSearch = (
   brainKey: string,
   queryType: QueryType,
   textQuery: string,
-  queryIdCount: number
+  queryIdCount: number,
+  hasUploadedImage?: boolean
 ): boolean => {
   if (!brainKey) return false;
-  if (queryType === QUERY_TEXT && !textQuery.trim()) return false;
-  if (queryType === QUERY_IMAGE && queryIdCount === 0) return false;
+  if (queryType === QueryType.Text && !textQuery.trim()) return false;
+  if (queryType === QueryType.Image && queryIdCount === 0) return false;
+  if (queryType === QueryType.Upload && !hasUploadedImage) return false;
   return true;
+};
+
+export type UploadedImage = {
+  content: string;
+  name: string;
 };
 
 export type BuildExecutionParamsInput = {
@@ -120,12 +132,31 @@ export type BuildExecutionParamsInput = {
   runName: string;
   negativeQueryIds: string[];
   dynamicResults: boolean;
+  uploadedImage?: UploadedImage | null;
 };
 
 export function getMediaUrl(filepath: string): string {
   const params = getFetchParameters();
   const path = `${params.pathPrefix}/media`.replaceAll("//", "/");
   return `${params.origin}${path}?filepath=${encodeURIComponent(filepath)}`;
+}
+
+/**
+ * Convert a File to base64-encoded content string (without data URI prefix).
+ */
+export function fileToBase64(
+  file: File
+): Promise<{ result?: string; error?: ProgressEvent<EventTarget> }> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => {
+      const data = reader.result as string;
+      // Strip the "data:image/...;base64," prefix
+      resolve({ result: data.slice(data.indexOf(",") + 1) });
+    };
+    reader.onerror = (error) => resolve({ error });
+  });
 }
 
 export const buildExecutionParams = (
@@ -147,7 +178,16 @@ export const buildExecutionParams = (
     negativeQueryIds,
   } = input;
 
-  const query = queryType === QUERY_TEXT ? textQuery.trim() : queryIds;
+  let query: string | string[];
+  if (queryType === QueryType.Upload) {
+    query = input.uploadedImage?.name ?? "uploaded_image";
+  } else if (queryType === QueryType.Text) {
+    query = textQuery.trim();
+  } else {
+    query = queryIds;
+  }
+
+  const isUpload = queryType === QueryType.Upload;
 
   const params: Record<string, unknown> = {
     brain_key: brainKey,
@@ -156,6 +196,10 @@ export const buildExecutionParams = (
     reverse,
     patches_field: patchesField,
   };
+
+  if (isUpload && input.uploadedImage) {
+    params.query_image = input.uploadedImage;
+  }
 
   if (searchScope === "view" && hasView) {
     params.source_view = view;

@@ -253,6 +253,55 @@ async def test_delegate_operator(list_operators):
     dos.delete_operation(result.result["id"])
 
 
+class TestLabelSelectionStyle(unittest.TestCase):
+    def test_label_selection_style_from_params(self):
+        request_params = {
+            "dataset_name": "test_dataset",
+            "label_selection_style": {
+                "default": "dashed-green",
+                "alt": "dashed-red",
+            },
+        }
+        ctx = ExecutionContext(
+            operator_uri="test_operator",
+            request_params=request_params,
+        )
+        self.assertEqual(
+            ctx.label_selection_style,
+            {"default": "dashed-green", "alt": "dashed-red"},
+        )
+
+    def test_label_selection_style_default(self):
+        request_params = {"dataset_name": "test_dataset"}
+        ctx = ExecutionContext(
+            operator_uri="test_operator",
+            request_params=request_params,
+        )
+        self.assertEqual(
+            ctx.label_selection_style,
+            {"default": "dashed", "alt": "dashed"},
+        )
+
+    def test_selected_labels_with_type(self):
+        request_params = {
+            "dataset_name": "test_dataset",
+            "selected_labels": [
+                {
+                    "label_id": "abc",
+                    "sample_id": "xyz",
+                    "field": "detections",
+                    "type": "alt",
+                },
+            ],
+        }
+        ctx = ExecutionContext(
+            operator_uri="test_operator",
+            request_params=request_params,
+        )
+        self.assertEqual(len(ctx.selected_labels), 1)
+        self.assertEqual(ctx.selected_labels[0]["type"], "alt")
+
+
 @patch("fiftyone.operators.registry.OperatorRegistry.list_operators")
 class TestPipeline:
     PREFIX = "@voxel51/operators/"

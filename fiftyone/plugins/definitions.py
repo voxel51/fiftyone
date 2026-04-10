@@ -81,6 +81,11 @@ class PluginDefinition(object):
         return self._metadata.get("description", None)
 
     @property
+    def tags(self):
+        """The tags of the plugin."""
+        return self._metadata.get("tags", None) or []
+
+    @property
     def fiftyone_compatibility(self):
         """The FiftyOne compatibility version."""
         return self._metadata.get("fiftyone", {}).get("version", None)
@@ -221,6 +226,7 @@ class PluginDefinition(object):
             "url": self.url,
             "license": self.license,
             "description": self.description,
+            "tags": self.tags,
             "fiftyone_compatibility": self.fiftyone_compatibility,
             "operators": self._metadata.get("operators", []),
             "panels": self._metadata.get("panels", []),

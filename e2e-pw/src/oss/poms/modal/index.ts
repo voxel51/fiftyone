@@ -334,6 +334,13 @@ class ModalAsserter {
     ).toHaveCount(0);
   }
 
+  async verifyPrimary2dRendererVisible() {
+    await expect(this.modalPom.groupLooker).toBeVisible();
+  }
+
+  async verify3dRendererVisible() {
+    await expect(this.modalPom.looker3d).toBeVisible();
+  }
   async verifySelectionCount(n: number) {
     const action = this.modalPom.locator.getByTestId("action-manage-selected");
 

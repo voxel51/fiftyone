@@ -24,7 +24,7 @@ const ImageSliceImg = styled.img`
 `;
 
 // Image slice prefix to distinguish them from cardinal views
-const IMAGE_SLICE_PREFIX = "slice_";
+export const IMAGE_SLICE_PREFIX = "slice_";
 
 /**
  * Check if a view string represents an image slice (prefixed with "slice_")
@@ -46,7 +46,9 @@ export const encodeImageSliceView = (sliceName: string): string => {
  * Example: "slice_camera_01" -> "camera_01"
  * Returns null if the view is not an image slice.
  */
-const decodeImageSliceView = (view: SidePanelViewType): string | null => {
+export const decodeImageSliceView = (
+  view: SidePanelViewType
+): string | null => {
   if (!isImageSliceView(view)) {
     return null;
   }
