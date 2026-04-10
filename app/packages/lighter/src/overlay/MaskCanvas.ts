@@ -49,11 +49,6 @@ export class MaskCanvas {
   private postStrokeSnapshot?: MaskSnapshot;
   private postStrokeBounds?: Rect;
 
-  // Running total of pixel offset applied since stroke start.
-  // Avoids per-frame rounding drift.
-  private appliedOffsetX = 0;
-  private appliedOffsetY = 0;
-
   constructor(maskData?: string) {
     if (maskData && typeof maskData === "string") {
       this.rawMaskData = maskData;
@@ -188,8 +183,6 @@ export class MaskCanvas {
   private paintStart(bounds: Rect): void {
     this.preStrokeSnapshot = this.takeSnapshot();
     this.preStrokeBounds = { ...bounds };
-    this.appliedOffsetX = 0;
-    this.appliedOffsetY = 0;
   }
 
   /**
@@ -363,94 +356,44 @@ export class MaskCanvas {
   ): Rect | undefined {
     if (!this.canvas || !this.context) return oldBounds;
 
-    const { width, height } = this.canvas;
+    const { x: oldX, y: oldY, width: oldWidth, height: oldHeight } = oldBounds;
 
-    const {
-      minX: pxMinX,
-      minY: pxMinY,
-      maxX: pxMaxX,
-      maxY: pxMaxY,
-    } = this.getBounds();
-
-    // Convert pixel content bounds to world space
-    let worldMinX: number;
-    let worldMinY: number;
-    let worldMaxX: number;
-    let worldMaxY: number;
-
-    const hasContent = pxMaxX > 0 || pxMaxY > 0;
-
-    if (hasContent) {
-      worldMinX = oldBounds.x + (pxMinX / width) * oldBounds.width;
-      worldMinY = oldBounds.y + (pxMinY / height) * oldBounds.height;
-      worldMaxX = oldBounds.x + ((pxMaxX + 1) / width) * oldBounds.width;
-      worldMaxY = oldBounds.y + ((pxMaxY + 1) / height) * oldBounds.height;
-    } else {
-      worldMinX = Infinity;
-      worldMinY = Infinity;
-      worldMaxX = -Infinity;
-      worldMaxY = -Infinity;
-    }
+    // upper-left and lower-right corners
+    let minX = oldX;
+    let minY = oldY;
+    let maxX = oldX + oldWidth;
+    let maxY = oldY + oldHeight;
 
     // For brush, include the dab extent
+    // The erase tool can't expand the bounding box
     if (toolState?.tool === "brush") {
       const half = (toolState.size ?? 0) / 2;
-      worldMinX = Math.min(worldMinX, worldPoint.x - half);
-      worldMinY = Math.min(worldMinY, worldPoint.y - half);
-      worldMaxX = Math.max(worldMaxX, worldPoint.x + half);
-      worldMaxY = Math.max(worldMaxY, worldPoint.y + half);
+      minX = Math.min(minX, worldPoint.x - half);
+      minY = Math.min(minY, worldPoint.y - half);
+      maxX = Math.max(maxX, worldPoint.x + half);
+      maxY = Math.max(maxY, worldPoint.y + half);
     }
 
-    // No content and no dab — signal to clear
-    if (worldMaxX <= worldMinX || worldMaxY <= worldMinY) {
-      this.canvas = undefined;
-      this.context = undefined;
-      return undefined;
-    }
+    const origMaxX = this.preStrokeBounds!.x + this.preStrokeBounds!.width;
+    const origMaxY = this.preStrokeBounds!.y + this.preStrokeBounds!.height;
 
-    // Anchor the bottom-right to the pre-stroke edge so it never drifts.
-    // Only the top-left can move (when painting up/left).
-    const ref = this.preStrokeBounds ?? oldBounds;
-    const refRight = ref.x + ref.width;
-    const refBottom = ref.y + ref.height;
-    const refW = this.preStrokeSnapshot?.width ?? width;
-    const refH = this.preStrokeSnapshot?.height ?? height;
+    minX = Math.floor(Math.min(this.preStrokeBounds!.x, minX));
+    minY = Math.floor(Math.min(this.preStrokeBounds!.y, minY));
+    maxX = Math.max(origMaxX, maxX);
+    maxY = Math.max(origMaxY, maxY);
 
-    // The bottom-right is the max of the pre-stroke edge and the new content edge.
-    // The top-left is the min of the pre-stroke origin and the new content origin.
-    const anchoredMaxX = Math.max(refRight, worldMaxX);
-    const anchoredMaxY = Math.max(refBottom, worldMaxY);
+    const newWidth = Math.max(1, Math.ceil(maxX - minX));
+    const newHeight = Math.max(1, Math.ceil(maxY - minY));
 
-    // Floor the min so it always snaps to an integer boundary. This means
-    // the offset (oldBounds.x - anchoredMinX) is always exact when
-    // oldBounds.x was itself a floored value from the previous frame.
-    const anchoredMinX = Math.floor(Math.min(ref.x, worldMinX));
-    const anchoredMinY = Math.floor(Math.min(ref.y, worldMinY));
-
-    const newWidth = Math.max(1, Math.ceil(anchoredMaxX - anchoredMinX));
-    const newHeight = Math.max(1, Math.ceil(anchoredMaxY - anchoredMinY));
-
-    // Old canvas origin relative to new canvas origin. Both are integers
-    // (previous anchoredMin was floored, current anchoredMin is floored),
-    // so this is exact — no rounding needed.
-    const offsetX = hasContent ? Math.round(oldBounds.x - anchoredMinX) : 0;
-    const offsetY = hasContent ? Math.round(oldBounds.y - anchoredMinY) : 0;
-
-    // Skip resize if nothing changed
-    if (
-      newWidth === width &&
-      newHeight === height &&
-      offsetX === 0 &&
-      offsetY === 0
-    ) {
-      return oldBounds;
-    }
+    // offset to place old mask into resized canvas
+    const offsetX = Math.round(oldX - minX);
+    const offsetY = Math.round(oldY - minY);
 
     this.updateCanvas(newWidth, newHeight, offsetX, offsetY);
 
     return {
-      x: anchoredMinX,
-      y: anchoredMinY,
+      x: minX,
+      y: minY,
       width: newWidth,
       height: newHeight,
     };
