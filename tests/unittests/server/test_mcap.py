@@ -214,3 +214,98 @@ class TestMcapModule:
         ]
 
         assert [message.log_time for message in messages] == [10, 20]
+
+    def test_read_sample_mcap_timeline_index_builds_shared_clock(self):
+        """Timeline reads return sorted shared and per-stream timestamps."""
+
+        class _Sample(dict):
+            id = "sample-1"
+
+        dataset = SimpleNamespace(_doc=SimpleNamespace(id="dataset-1"))
+        sample = _Sample(filepath="/tmp/test.mcap")
+        image_schema = _make_schema(
+            1, "sensor_msgs/msg/CompressedImage", "ros2msg"
+        )
+        point_schema = _make_schema(2, "sensor_msgs/msg/PointCloud2")
+        image_channel = _make_channel(1, "/camera/front", 1)
+        point_channel = _make_channel(2, "/lidar/top", 2)
+        reader = _FakeReader(
+            summary=SimpleNamespace(
+                channels={
+                    1: image_channel,
+                    2: point_channel,
+                },
+                schemas={
+                    1: image_schema,
+                    2: point_schema,
+                },
+                statistics=SimpleNamespace(
+                    channel_message_counts={1: 2, 2: 2},
+                    message_start_time=10,
+                    message_end_time=30,
+                ),
+                chunk_indexes=[],
+            ),
+            messages=[
+                (
+                    image_schema,
+                    image_channel,
+                    _make_message(20, 20, b"image-2"),
+                ),
+                (
+                    point_schema,
+                    point_channel,
+                    _make_message(10, 10, b"cloud-1"),
+                ),
+                (
+                    image_schema,
+                    image_channel,
+                    _make_message(10, 10, b"image-1"),
+                ),
+                (
+                    point_schema,
+                    point_channel,
+                    _make_message(30, 30, b"cloud-2"),
+                ),
+            ],
+        )
+
+        original_open = open
+        original_reader_module = fosm._get_mcap_reader_module
+        original_exists = fosm.os.path.exists
+
+        try:
+            fosm.open = lambda *args, **kwargs: original_open(__file__, "rb")
+            fosm._get_mcap_reader_module = lambda: SimpleNamespace(
+                make_reader=lambda _stream: reader
+            )
+            fosm.os.path.exists = lambda _path: True
+
+            result = fosm.read_sample_mcap_timeline_index(
+                dataset=dataset,
+                sample=sample,
+                media_field="filepath",
+                stream_ids=["/camera/front", "/lidar/top"],
+            )
+        finally:
+            fosm.open = original_open
+            fosm._get_mcap_reader_module = original_reader_module
+            fosm.os.path.exists = original_exists
+
+        assert result == {
+            "sceneId": "dataset-1:sample-1:filepath",
+            "timeline": {
+                "timestampSource": "log_time",
+                "timestampsNs": [10, 20, 30],
+                "streams": [
+                    {
+                        "streamId": "/camera/front",
+                        "timestampsNs": [10, 20],
+                    },
+                    {
+                        "streamId": "/lidar/top",
+                        "timestampsNs": [10, 30],
+                    },
+                ],
+            },
+        }

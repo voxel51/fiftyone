@@ -131,6 +131,14 @@ def fixture_buffer_endpoint():
     )
 
 
+@pytest.fixture(name="timeline_endpoint")
+def fixture_timeline_endpoint():
+    """Returns the timeline endpoint instance."""
+    return form.McapTimeline(
+        scope={"type": "http"}, receive=AsyncMock(), send=AsyncMock()
+    )
+
+
 @pytest.fixture(name="mock_scene_request")
 def fixture_mock_scene_request(dataset_id, sample_id):
     """Builds a mock scene request."""
@@ -150,6 +158,24 @@ def fixture_mock_scene_request(dataset_id, sample_id):
 @pytest.fixture(name="mock_buffer_request")
 def fixture_mock_buffer_request(dataset_id, sample_id):
     """Builds a mock buffer request."""
+
+    def _make_request(payload):
+        request = MagicMock()
+        request.path_params = {
+            "dataset_id": dataset_id,
+            "sample_id": sample_id,
+        }
+        request.headers = {"Content-Type": "application/json"}
+        request.json = AsyncMock(return_value=payload)
+        request.body = AsyncMock(return_value=_json_payload(payload))
+        return request
+
+    return _make_request
+
+
+@pytest.fixture(name="mock_timeline_request")
+def fixture_mock_timeline_request(dataset_id, sample_id):
+    """Builds a mock timeline request."""
 
     def _make_request(payload):
         request = MagicMock()
@@ -413,3 +439,133 @@ class TestMcapBufferRoute:
                 )
 
         assert exc_info.value.status_code == 501
+
+
+class TestMcapTimelineRoute:
+    """Tests for the MCAP timeline endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_timeline_open_happy_path(
+        self, sample, timeline_endpoint, mock_timeline_request
+    ):
+        """The timeline endpoint returns shared and per-stream timestamps."""
+        with tempfile.NamedTemporaryFile(suffix=".mcap") as handle:
+            sample["mcap_path"] = handle.name
+            sample.save()
+
+            schema = _make_schema(
+                1, "sensor_msgs/msg/CompressedImage", "ros2msg"
+            )
+            channel = _make_channel(1, "/camera/front", 1)
+            reader = _FakeReader(
+                summary=SimpleNamespace(
+                    channels={1: channel},
+                    schemas={1: schema},
+                    statistics=SimpleNamespace(
+                        channel_message_counts={1: 2},
+                        message_start_time=10,
+                        message_end_time=20,
+                    ),
+                    chunk_indexes=[],
+                ),
+                messages=[
+                    (schema, channel, _make_message(20, 20, b"two")),
+                    (schema, channel, _make_message(10, 10, b"one")),
+                ],
+            )
+
+            with patch.object(
+                form.fosm,
+                "_get_mcap_reader_module",
+                return_value=SimpleNamespace(
+                    make_reader=lambda _stream: reader
+                ),
+            ):
+                response = await timeline_endpoint.post(
+                    mock_timeline_request(
+                        {
+                            "mediaField": "mcap_path",
+                            "streamIds": ["/camera/front"],
+                        }
+                    )
+                )
+
+        assert response.status_code == 200
+        data = json.loads(response.body)
+        assert data["sceneId"].endswith(":mcap_path")
+        assert data["timeline"]["timestampSource"] == "log_time"
+        assert data["timeline"]["timestampsNs"] == [10, 20]
+        assert data["timeline"]["streams"] == [
+            {
+                "streamId": "/camera/front",
+                "timestampsNs": [10, 20],
+            }
+        ]
+
+    @pytest.mark.asyncio
+    async def test_timeline_returns_empty_for_empty_stream_request(
+        self, sample, timeline_endpoint, mock_timeline_request
+    ):
+        """An empty stream request returns an empty timeline payload."""
+        with tempfile.NamedTemporaryFile(suffix=".mcap") as handle:
+            sample["mcap_path"] = handle.name
+            sample.save()
+
+            response = await timeline_endpoint.post(
+                mock_timeline_request(
+                    {
+                        "mediaField": "mcap_path",
+                        "streamIds": [],
+                    }
+                )
+            )
+
+        assert response.status_code == 200
+        data = json.loads(response.body)
+        assert data["timeline"]["timestampsNs"] == []
+        assert data["timeline"]["streams"] == []
+
+    @pytest.mark.asyncio
+    async def test_timeline_rejects_unknown_stream_id(
+        self, sample, timeline_endpoint, mock_timeline_request
+    ):
+        """Unknown stream IDs are rejected with 400."""
+        with tempfile.NamedTemporaryFile(suffix=".mcap") as handle:
+            sample["mcap_path"] = handle.name
+            sample.save()
+
+            schema = _make_schema(
+                1, "sensor_msgs/msg/CompressedImage", "ros2msg"
+            )
+            channel = _make_channel(1, "/camera/front", 1)
+            reader = _FakeReader(
+                summary=SimpleNamespace(
+                    channels={1: channel},
+                    schemas={1: schema},
+                    statistics=SimpleNamespace(
+                        channel_message_counts={1: 1},
+                        message_start_time=10,
+                        message_end_time=10,
+                    ),
+                    chunk_indexes=[],
+                )
+            )
+
+            with patch.object(
+                form.fosm,
+                "_get_mcap_reader_module",
+                return_value=SimpleNamespace(
+                    make_reader=lambda _stream: reader
+                ),
+            ):
+                with pytest.raises(HTTPException) as exc_info:
+                    await timeline_endpoint.post(
+                        mock_timeline_request(
+                            {
+                                "mediaField": "mcap_path",
+                                "streamIds": ["/nope"],
+                            }
+                        )
+                    )
+
+        assert exc_info.value.status_code == 400
