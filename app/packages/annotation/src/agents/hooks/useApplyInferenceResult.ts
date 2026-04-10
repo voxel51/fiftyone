@@ -6,7 +6,7 @@ import {
 } from "../types";
 import { useCallback } from "react";
 import { useLighter } from "@fiftyone/lighter";
-import { AnnotationLabel } from "@fiftyone/state";
+import { DetectionAnnotationLabel } from "@fiftyone/state";
 
 /**
  * Method which applies the provided {@link InferenceResult} to the current
@@ -19,9 +19,11 @@ export type InferenceResultHandler = (
 /**
  * Hook which returns a {@link InferenceResultHandler} bound to the current
  * annotation session.
+ *
+ * @param createDetection Callback which creates a new detection overlay
  */
 export const useApplyInferenceResult = (
-  createLabel: () => AnnotationLabel | null
+  createDetection: () => DetectionAnnotationLabel | null
 ): InferenceResultHandler => {
   const { getOverlay, scene } = useLighter();
 
@@ -36,7 +38,7 @@ export const useApplyInferenceResult = (
             let overlay = getOverlay(result.labelId);
             if (!overlay) {
               // if there is no overlay yet, this is a new label
-              overlay = createLabel()?.overlay;
+              overlay = createDetection()?.overlay;
             }
 
             if (overlay) {
@@ -57,9 +59,9 @@ export const useApplyInferenceResult = (
           console.warn(`Unsupported task type: ${result.taskType}`);
         }
       } else {
-        // todo async handling
+        console.warn(`Unsupported result type: ${result.type}`);
       }
     },
-    [createLabel, getOverlay, scene]
+    [createDetection, getOverlay, scene]
   );
 };
