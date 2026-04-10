@@ -1,8 +1,8 @@
 
 .. _data-agents-skills-guide:
 
-FiftyOne Skills
-===============
+Develop Skills
+==============
 
 .. default-role:: code
 

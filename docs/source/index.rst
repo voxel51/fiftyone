@@ -293,17 +293,17 @@ ____________
     :image_title: Ultralytics
 
 .. customimagelink::
-    :image_link: https://platform.openai.com/
+    :image_link: agents/index.html
     :image_src: https://cdn.voxel51.com/images/integrations/openai-128.png
     :image_title: OpenAI
 
 .. customimagelink::
-    :image_link: https://docs.anthropic.com/
+    :image_link: agents/index.html
     :image_src: https://cdn.voxel51.com/images/integrations/anthropic-128.png
     :image_title: Anthropic
 
 .. customimagelink::
-    :image_link: https://github.com/features/copilot
+    :image_link: agents/index.html
     :image_src: https://cdn.voxel51.com/images/integrations/github-copilot-128.png
     :image_title: GitHub Copilot
 

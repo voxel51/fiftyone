@@ -15,19 +15,18 @@ that makes FiftyOne infinitely extensible.
 
     <div class="hero-nav-pills">
       <a target="_blank" href="https://claude.ai/code" class="nav-pill nav-pill-outlined">
-        <img alt="Claude" src="https://cdn.voxel51.com/agent-logos/claude.png" width="18" height="18">
+        <img alt="Claude" src="https://cdn.voxel51.com/images/integrations/anthropic-128.png" width="18" height="18">
         Claude Code
       </a>
       <a target="_blank" href="https://cursor.com" class="nav-pill nav-pill-outlined">
-        <img alt="Cursor" src="https://cdn.voxel51.com/agent-logos/cursor.png" width="18" height="18">
         Cursor
       </a>
       <a target="_blank" href="https://github.com/features/copilot" class="nav-pill nav-pill-outlined">
-        <img alt="GitHub Copilot" src="https://cdn.voxel51.com/agent-logos/copilot.png" width="18" height="18">
+        <img alt="GitHub Copilot" src="https://cdn.voxel51.com/images/integrations/github-copilot-128.png" width="18" height="18">
         GitHub Copilot
       </a>
       <a target="_blank" href="https://platform.openai.com/docs/codex" class="nav-pill nav-pill-outlined">
-        <img alt="Codex" src="https://cdn.voxel51.com/agent-logos/openai.png" width="18" height="18">
+        <img alt="Codex" src="https://cdn.voxel51.com/images/integrations/openai-128.png" width="18" height="18">
         Codex
       </a>
       <a target="_blank" href="https://github.com/sst/opencode" class="nav-pill nav-pill-outlined">
@@ -38,22 +37,16 @@ that makes FiftyOne infinitely extensible.
     <div class="agents-video-row">
       <div class="agents-video-col">
         <div class="agents-video-wrapper">
-          <iframe
-            src="https://www.youtube.com/embed/WmGGgny9Vsk"
-            title="FiftyOne Data Agent demo"
-            allow="autoplay; encrypted-media"
-            allowfullscreen>
-          </iframe>
+          <video autoplay loop muted playsinline style="width: 100%; border-radius: 8px;">
+            <source src="https://cdn.voxel51.com/agents/import_dataset_video.webm" type="video/webm">
+          </video>
         </div>
       </div>
       <div class="agents-video-col">
         <div class="agents-video-wrapper">
-          <iframe
-            src="https://www.youtube.com/embed/jt5sq8rTII8"
-            title="FiftyOne Skills demo"
-            allow="autoplay; encrypted-media"
-            allowfullscreen>
-          </iframe>
+          <video autoplay loop muted playsinline style="width: 100%; border-radius: 8px;">
+            <source src="https://cdn.voxel51.com/agents/develop_plugins_video.webm" type="video/webm">
+          </video>
         </div>
       </div>
     </div>
@@ -183,90 +176,10 @@ Why FiftyOne for data agents
 
     </div>
 
-.. _data-agents-skills:
-
-Skills
-------
-
-FiftyOne Skills are pre-built, agent-ready instructions that teach coding
-agents how to perform data-centric ML workflows on your datasets.
-Skills live in your project alongside your code — agents can run them,
-chain them, and adapt them to your specific needs.
-
-`See the full skills guide <skills.html>`_ to install and configure them.
-
-.. raw:: html
-
-    <div class="plugins-search-container">
-        <div class="plugins-search-box">
-            <input type="text" id="plugin-search" placeholder="Search skills by name, description, or category...">
-            <div class="plugins-search-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <path d="m21 21-4.35-4.35"></path>
-                </svg>
-            </div>
-        </div>
-    </div>
-
-.. customanimatedcta::
-    :button_text: Browse all skills on GitHub
-    :button_link: https://github.com/voxel51/fiftyone-skills
-    :align: right
-
-.. raw:: html
-
-    <div id="plugin-cards-container">
-
-    <nav class="navbar navbar-expand-lg navbar-light tutorials-nav col-12">
-        <div class="tutorial-tags-container">
-            <div id="dropdown-filter-tags">
-                <div class="tutorial-filter-menu">
-                    <div class="tutorial-filter filter-btn all-tag-selected" data-tag="all">All</div>
-                </div>
-            </div>
-        </nav>
-
-    <hr class="tutorials-hr">
-
-    <div class="row">
-
-    <div id="tutorial-cards">
-    <div class="list">
-
-.. include:: skills_cards/skill_cards.rst
-
-.. raw:: html
-
-    </div>
-
-    <div class="pagination d-flex justify-content-center"></div>
-
-    </div>
-
-    </div>
-
-.. _data-agents-mcp:
-
-MCP Server
-----------
-
-The FiftyOne MCP server gives any MCP-compatible AI assistant live control
-of the FiftyOne App. Load datasets, manage views, run operators, and control
-the UI through natural language conversation.
-
-`See the full MCP guide <mcp.html>`_ for installation and per-client setup.
-
-.. customcarditem::
-    :header: FiftyOne MCP Server
-    :description: Connect Claude, Cursor, or any MCP-compatible client to the FiftyOne App with 45+ tools for dataset management, real-time UI control, and operator execution.
-    :link: mcp.html
-    :tags: MCP
-
 .. toctree::
    :maxdepth: 1
    :hidden:
 
-   Skills <skills>
+   Skill Ecosystem <skills_ecosystem>
+   Develop Skills <skills>
    MCP Server <mcp>
-   skills_cards/skill_cards
