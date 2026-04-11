@@ -11561,6 +11561,8 @@ class SampleCollection(object):
                 collection, compiled_facet_aggs
             )
 
+            _t0 = timeit.default_timer()
+
             if n_partitions > 1:
                 raw_result = await self._run_parallel_consolidated(
                     collection,
@@ -11577,6 +11579,14 @@ class SampleCollection(object):
                 cursor = collection.aggregate(consolidated, **kwargs)
                 raw_docs = [doc async for doc in cursor]
                 raw_result = raw_docs[0] if raw_docs else {}
+
+            _elapsed = timeit.default_timer() - _t0
+            logger.info(
+                "async aggregate: %.3fs (%d partitions, %d aggs)",
+                _elapsed,
+                n_partitions,
+                len(compiled_facet_aggs),
+            )
 
             # Parse results by reconstructing each aggregation's expected
             # result from the consolidated facet output

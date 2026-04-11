@@ -811,7 +811,17 @@ class CountValues(Aggregation):
             if "count" in d:
                 total_count += d["count"]
 
-        doc = {"result": [{"k": k, "count": v} for k, v in merged.items()]}
+        result = [{"k": k, "count": v} for k, v in merged.items()]
+
+        if self._first is not None:
+            # Re-apply the sort/limit that the pipeline used per-partition
+            reverse = not self._asc
+            sort_key = self._sort_by  # "count" or "_id"
+            key_field = "count" if sort_key == "count" else "k"
+            result.sort(key=lambda x: x[key_field], reverse=reverse)
+            result = result[: self._first]
+
+        doc = {"result": result}
         if self._first is not None:
             doc["count"] = total_count
         return [doc]
