@@ -13,7 +13,7 @@ import requests
 import logging
 from pathlib import Path
 from typing import List, Optional, Tuple
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from urllib.parse import urlparse, urljoin
 from datetime import datetime
 
@@ -33,6 +33,7 @@ class Plugin:
     readme_url: str
     category: str
     icon: Optional[str] = None
+    tags: List[str] = field(default_factory=list)
 
 
 class PluginDocGenerator:
@@ -95,7 +96,7 @@ class PluginDocGenerator:
             r"## {}\s*\n\n(.*?)(?=\n## |\n$)", re.DOTALL
         )
         self.table_row_pattern = re.compile(
-            r"<tr>\s*<td[^>]*>(.*?)</td>\s*<td[^>]*>(.*?)</td>\s*</tr>",
+            r"<tr>\s*<td[^>]*>(.*?)</td>\s*<td[^>]*>(.*?)</td>\s*<td[^>]*>(.*?)</td>\s*</tr>",
             re.DOTALL,
         )
         self.link_pattern = re.compile(
@@ -566,9 +567,9 @@ myst:
         plugins = []
         rows = self.table_row_pattern.findall(table_content)
 
-        for name_cell, description_cell in rows:
+        for name_cell, tags_cell, description_cell in rows:
             plugin = self._create_plugin_from_row(
-                name_cell, description_cell, category
+                name_cell, tags_cell, description_cell, category
             )
             if plugin:
                 plugins.append(plugin)
@@ -576,7 +577,11 @@ myst:
         return plugins
 
     def _create_plugin_from_row(
-        self, name_cell: str, description_cell: str, category: str
+        self,
+        name_cell: str,
+        tags_cell: str,
+        description_cell: str,
+        category: str,
     ) -> Optional[Plugin]:
         """Create a Plugin object from table row data."""
         name_match = self.link_pattern.search(name_cell)
@@ -599,6 +604,9 @@ myst:
         if "Name" in plugin_name or "Description" in clean_description:
             return None
 
+        tags_text = self.html_tag_pattern.sub("", tags_cell).strip()
+        tags = [t.strip("`") for t in tags_text.split() if t.strip("`")]
+
         return Plugin(
             name=plugin_name,
             description=clean_description,
@@ -606,6 +614,7 @@ myst:
             readme_url=f"{github_url}/README.md",
             category=category,
             icon=icon,
+            tags=tags,
         )
 
     def _convert_relative_url(self, url: str, github_url: str) -> str:
@@ -990,7 +999,7 @@ Please review each plugin's documentation and license before use.
                 ]
                 if condition
             ]
-            tags_field = ",".join([category_tag] + extra_tags)
+            tags_field = ",".join([category_tag] + plugin.tags + extra_tags)
 
             rst_content += f"""
 .. customcarditem::
@@ -1055,8 +1064,7 @@ class LabsDocGenerator(PluginDocGenerator):
             section = self._extract_table_section(readme_content, section_name)
             if not section:
                 continue
-            for plugin in self._parse_html_table(section, category):
-                plugins.append(plugin)
+            plugins.extend(self._parse_html_table(section, category))
         return plugins
 
     def generate_all_docs(self, readme_content: str):
