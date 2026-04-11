@@ -26,6 +26,7 @@ class MapperFactory:
 
     _BATCH_CLASSES: Dict[str, Type[fomb.SampleBatch]] = {
         "id": fomb.SampleIdBatch,
+        "id_range": fomb.SampleIdRangeBatch,
         "slice": fomb.SampleSliceBatch,
     }
 

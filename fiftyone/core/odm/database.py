@@ -476,6 +476,26 @@ async def _do_async_aggregate(collection, pipeline, hint, **kwargs):
     return [i async for i in collection.aggregate(pipeline, **next_kwargs)]
 
 
+def get_id_boundaries_sync(collection, n_partitions):
+    """Gets evenly distributed _id boundaries for splitting a collection.
+
+    Uses ``$bucketAuto`` on the ``_id`` index for even distribution.
+
+    Args:
+        collection: a ``pymongo.collection.Collection``
+        n_partitions: the number of partitions to create
+
+    Returns:
+        a list of ``n_partitions - 1`` boundary ObjectIds
+    """
+    pipeline = [
+        {"$project": {"_id": 1}},
+        {"$bucketAuto": {"groupBy": "$_id", "buckets": n_partitions}},
+    ]
+    buckets = list(collection.aggregate(pipeline, hint={"_id": 1}))
+    return [b["_id"]["min"] for b in buckets[1:]]
+
+
 async def get_id_boundaries(collection, n_partitions):
     """Gets evenly distributed _id boundaries for splitting a collection.
 
@@ -495,6 +515,28 @@ async def get_id_boundaries(collection, n_partitions):
     cursor = collection.aggregate(pipeline, hint={"_id": 1})
     buckets = [doc async for doc in cursor]
     return [b["_id"]["min"] for b in buckets[1:]]
+
+
+def make_id_range_filter(lo=None, hi=None):
+    """Builds a ``$match`` stage that filters by an ``_id`` range.
+
+    Args:
+        lo (None): the inclusive lower bound ``ObjectId``, or None
+        hi (None): the exclusive upper bound ``ObjectId``, or None
+
+    Returns:
+        a ``{"$match": {"_id": ...}}`` dict, or None if unbounded
+    """
+    id_filter = {}
+    if lo is not None:
+        id_filter["$gte"] = lo
+    if hi is not None:
+        id_filter["$lt"] = hi
+
+    if not id_filter:
+        return None
+
+    return {"$match": {"_id": id_filter}}
 
 
 def ensure_connection():

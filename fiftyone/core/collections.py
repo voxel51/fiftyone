@@ -4598,8 +4598,11 @@ class SampleCollection(object):
                 :meth:`fiftyone.core.utils.recommend_process_pool_workers`
                 workers are used. If this value is <= 1, all work is done in
                 the main process
-            batch_method (None): whether to use IDs (``"id"``) or slices
-                (``"slice"``) to assign samples to workers
+            batch_method (None): the method used to assign samples to
+                workers. Supported values are ``("id", "id_range",
+                "slice")``. The default is ``"id"``. Use ``"id_range"``
+                to partition by _id range boundaries without materializing
+                all sample IDs
             batch_size (None): an optional number of samples to distribute to
                 each worker at a time. By default, samples are evenly
                 distributed to workers with one batch per worker
@@ -4681,8 +4684,11 @@ class SampleCollection(object):
                 :meth:`fiftyone.core.utils.recommend_process_pool_workers`
                 workers are used. If this value is <= 1, all work is done in
                 the main process
-            batch_method (None): whether to use IDs (``"id"``) or slices
-                (``"slice"``) to assign samples to workers
+            batch_method (None): the method used to assign samples to
+                workers. Supported values are ``("id", "id_range",
+                "slice")``. The default is ``"id"``. Use ``"id_range"``
+                to partition by _id range boundaries without materializing
+                all sample IDs
             batch_size (None): an optional number of samples to distribute to
                 each worker at a time. By default, samples are evenly
                 distributed to workers with one batch per worker
@@ -11719,13 +11725,8 @@ class SampleCollection(object):
             kwargs["maxTimeMS"] = maxTimeMS
 
         async def run_partition(lo, hi):
-            id_filter = {}
-            if lo is not None:
-                id_filter["$gte"] = lo
-            if hi is not None:
-                id_filter["$lt"] = hi
-            match = {"$match": {"_id": id_filter}}
-            pipeline = [match] + consolidated_pipeline
+            match = foo.make_id_range_filter(lo, hi)
+            pipeline = ([match] if match else []) + consolidated_pipeline
             cursor = collection.aggregate(pipeline, hint={"_id": 1}, **kwargs)
             docs = [doc async for doc in cursor]
             return docs[0] if docs else {}
