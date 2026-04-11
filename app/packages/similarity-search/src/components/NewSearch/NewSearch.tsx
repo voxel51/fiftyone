@@ -21,6 +21,7 @@ import {
   Spacing,
   Variant,
 } from "@voxel51/voodo";
+import FileUploadOutlined from "@mui/icons-material/FileUploadOutlined";
 import React, { useState } from "react";
 import { OperatorExecutionButton } from "@fiftyone/operators";
 import {
@@ -163,6 +164,7 @@ export default function NewSearch({
                   : Variant.Secondary
               }
               size={Size.Sm}
+              leadingIcon={IconName.ImageSearch}
               onClick={() => form.setQueryType(QueryType.Image)}
               style={{ flex: 1 }}
             >
@@ -176,6 +178,7 @@ export default function NewSearch({
                     : Variant.Secondary
                 }
                 size={Size.Sm}
+                leadingIcon={() => <FileUploadOutlined sx={{ fontSize: 16 }} />}
                 onClick={() => form.setQueryType(QueryType.Upload)}
                 style={{ flex: 1 }}
               >
@@ -190,6 +193,7 @@ export default function NewSearch({
                     : Variant.Secondary
                 }
                 size={Size.Sm}
+                leadingIcon={IconName.Search}
                 onClick={() => form.setQueryType(QueryType.Text)}
                 style={{ flex: 1 }}
               >
@@ -330,7 +334,7 @@ export default function NewSearch({
           />
         )}
 
-        {/* Dynamic results */}
+        {/* Dynamic results — commented out; all searches use cached (static) results for now
         <Toggle
           checked={form.dynamicResults}
           onChange={(checked) => form.setDynamicResults(checked)}
@@ -341,6 +345,7 @@ export default function NewSearch({
           }
           size={Size.Sm}
         />
+        */}
 
         {/* Distance field */}
         <FormField

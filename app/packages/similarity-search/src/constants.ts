@@ -1,5 +1,5 @@
 import { TextColor } from "@voxel51/voodo";
-import { OwnerFilter, RunStatus, SearchScope } from "./types";
+import { DateFilterPreset, OwnerFilter, RunStatus, SearchScope } from "./types";
 
 export const SEARCH_OPERATOR_URI = "@voxel51/panels/similarity_search";
 export const INIT_RUN_OPERATOR_URI = "@voxel51/panels/init_similarity_run";
@@ -36,7 +36,8 @@ export const THUMB_SIZE = 36;
 export const THUMB_GAP = 4;
 export const THUMB_SINGLE_ROW_MAX = 10;
 
-// Owner filter values
+// Filter defaults
+export const DEFAULT_DATE_PRESET: DateFilterPreset = "last_30_days";
 export const OWNER_ALL: OwnerFilter = "all";
 export const OWNER_MINE: OwnerFilter = "mine";
 

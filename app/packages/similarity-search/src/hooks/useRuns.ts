@@ -45,9 +45,13 @@ export const useRuns = (): UseRunsResult => {
     "@voxel51/panels/list_similarity_runs"
   );
   const fetchingRef = useRef(false);
+  const pendingRefreshRef = useRef(false);
 
   const refreshRuns = useCallback(() => {
+    // If a fetch is already in flight, queue a follow-up refresh
+    // instead of silently dropping this request.
     if (fetchingRef.current) {
+      pendingRefreshRef.current = true;
       return Promise.resolve();
     }
     fetchingRef.current = true;
@@ -76,12 +80,24 @@ export const useRuns = (): UseRunsResult => {
             } catch (e) {
               console.error("Error processing runs callback:", e);
               reject(e instanceof Error ? e : new Error(String(e)));
+            } finally {
+              // If another refresh was requested while we were fetching,
+              // fire it now so we don't miss SSE updates.
+              if (pendingRefreshRef.current) {
+                pendingRefreshRef.current = false;
+                refreshRuns();
+              }
             }
           },
         }
       ).catch((error: unknown) => {
         fetchingRef.current = false;
         console.error("Operator execution failed for fetchRuns:", error);
+        // Also drain pending refresh on error
+        if (pendingRefreshRef.current) {
+          pendingRefreshRef.current = false;
+          refreshRuns();
+        }
         reject(error instanceof Error ? error : new Error(String(error)));
       });
     });

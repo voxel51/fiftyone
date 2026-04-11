@@ -1,11 +1,12 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { atom, useAtom } from "jotai";
 import { SimilarityRun, RunFilterState } from "../types";
+import { DEFAULT_DATE_PRESET, OWNER_ALL, OWNER_MINE } from "../constants";
 
 const filterStateAtom = atom<RunFilterState>({
   searchText: "",
-  datePreset: "all",
-  ownerFilter: "all",
+  datePreset: DEFAULT_DATE_PRESET,
+  ownerFilter: OWNER_ALL,
 });
 import { getDateRange, matchesText, matchesDate } from "../utils";
 
@@ -18,6 +19,18 @@ export const useFilteredRuns = (
   setFilterState: (state: RunFilterState) => void;
 } => {
   const [filterState, setFilterState] = useAtom(filterStateAtom);
+  const defaultsApplied = useRef(false);
+
+  // In FOE (currentUser is set), default ownerFilter to "mine"
+  useEffect(() => {
+    if (!defaultsApplied.current && currentUser) {
+      defaultsApplied.current = true;
+      setFilterState((prev) => ({
+        ...prev,
+        ownerFilter: OWNER_MINE,
+      }));
+    }
+  }, [currentUser, setFilterState]);
 
   const filteredRuns = useMemo(() => {
     const { searchText, datePreset, ownerFilter } = filterState;

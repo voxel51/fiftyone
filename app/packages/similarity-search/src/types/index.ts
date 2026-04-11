@@ -57,6 +57,25 @@ export type SimilarityRun = {
 };
 
 /**
+ * Parameters sent to the similarity_search operator.
+ * Shared between the panel's buildExecutionParams and the popover.
+ */
+export type SimilaritySearchParams = {
+  brain_key: string;
+  query_type: QueryType;
+  query: string | string[];
+  reverse: boolean;
+  search_scope: SearchScope;
+  patches_field?: string;
+  k?: number;
+  dist_field?: string;
+  run_name?: string;
+  negative_query_ids?: string[];
+  dynamic_results?: boolean;
+  query_image?: { content: string; name: string };
+};
+
+/**
  * Clone config returned when cloning a run.
  */
 export type CloneConfig = {

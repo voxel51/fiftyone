@@ -1,6 +1,7 @@
 import { getFetchParameters } from "@fiftyone/utilities";
 import {
   SimilarityRun,
+  SimilaritySearchParams,
   DateFilterPreset,
   QueryType,
   SearchScope,
@@ -161,7 +162,7 @@ export function fileToBase64(
 
 export const buildExecutionParams = (
   input: BuildExecutionParamsInput
-): Record<string, unknown> => {
+): SimilaritySearchParams => {
   const {
     brainKey,
     queryType,
@@ -170,8 +171,6 @@ export const buildExecutionParams = (
     reverse,
     patchesField,
     searchScope,
-    hasView,
-    view,
     k,
     distField,
     runName,
@@ -187,22 +186,17 @@ export const buildExecutionParams = (
     query = queryIds;
   }
 
-  const isUpload = queryType === QueryType.Upload;
-
-  const params: Record<string, unknown> = {
+  const params: SimilaritySearchParams = {
     brain_key: brainKey,
     query_type: queryType,
     query,
     reverse,
+    search_scope: searchScope,
     patches_field: patchesField,
   };
 
-  if (isUpload && input.uploadedImage) {
+  if (queryType === QueryType.Upload && input.uploadedImage) {
     params.query_image = input.uploadedImage;
-  }
-
-  if (searchScope === "view" && hasView) {
-    params.source_view = view;
   }
 
   if (k !== "") params.k = k;
