@@ -45,8 +45,13 @@ class SimilaritySearchPanel(Panel):
         ctx.panel.set_data("runs", runs)
         ctx.panel.set_data("brain_keys", brain_keys)
 
-        # None in OSS, populated by FiftyOne Teams
-        current_user = str(ctx.user_id) if ctx.user_id else None
+        # None in OSS, populated by FiftyOne Teams.
+        # Must match the created_by format used by operators.py.
+        current_user = (
+            (getattr(ctx.user, "name", None) or str(ctx.user_id))
+            if ctx.user_id
+            else None
+        )
         ctx.panel.set_data("current_user", current_user)
 
         # Enable alt-selection visual feedback for negative queries

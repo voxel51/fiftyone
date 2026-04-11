@@ -4,6 +4,8 @@ import {
   Checkbox,
   Heading,
   HeadingLevel,
+  Icon,
+  IconColor,
   IconName,
   Justify,
   RichList,
@@ -17,8 +19,14 @@ import {
   Spacing,
   Variant,
 } from "@voxel51/voodo";
+import FileUploadOutlined from "@mui/icons-material/FileUploadOutlined";
 import { useCallback, useMemo, useState } from "react";
-import { BrainKeyConfig, SimilarityRun, RunFilterState } from "../../types";
+import {
+  BrainKeyConfig,
+  QueryType,
+  SimilarityRun,
+  RunFilterState,
+} from "../../types";
 import { useSampleMedia } from "../../hooks/useSampleMedia";
 import { MIDDLE_DOT } from "../../constants";
 import { formatQuery, formatTime } from "../../utils";
@@ -28,6 +36,21 @@ import ExpandedThumbnails from "./ExpandedThumbnails";
 import FilterBar from "./FilterBar";
 import BulkActionBar from "./BulkActionBar";
 import { SelectAllRow, tooltipTextStyle } from "../styled";
+
+function QueryTypeIcon({ queryType }: { queryType: string }) {
+  if (queryType === QueryType.Upload) {
+    return <FileUploadOutlined sx={{ fontSize: 18, opacity: 0.7 }} />;
+  }
+  return (
+    <Icon
+      name={
+        queryType === QueryType.Text ? IconName.Search : IconName.ImageSearch
+      }
+      size={Size.Sm}
+      color={IconColor.Subtle}
+    />
+  );
+}
 
 type SelectionState = {
   selectMode: boolean;
@@ -147,6 +170,14 @@ export default function RunList({
         id: run.run_id,
         data: {
           canSelect: selectMode,
+          onClick:
+            !selectMode && run.status === "completed"
+              ? () => onApply(run.run_id)
+              : undefined,
+          style:
+            !selectMode && run.status === "completed"
+              ? { cursor: "pointer" }
+              : undefined,
           primaryContent: (
             <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
               <Stack
@@ -154,6 +185,7 @@ export default function RunList({
                 spacing={Spacing.Sm}
                 align={Align.Center}
               >
+                <QueryTypeIcon queryType={run.query_type} />
                 <Text variant={TextVariant.Md} style={{ fontWeight: "bold" }}>
                   {run.run_name}
                 </Text>
