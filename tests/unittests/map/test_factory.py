@@ -46,6 +46,13 @@ def fixture_id_batcher():
     return mock.create_autospec(fomb.SampleIdBatch)
 
 
+@pytest.fixture(name="id_range_batcher")
+def fixture_id_range_batcher():
+    """mock id range batcher"""
+
+    return mock.create_autospec(fomb.SampleIdRangeBatch)
+
+
 @pytest.fixture(name="slice_batcher")
 def fixture_slice_batcher():
     """mock slice batcher"""
@@ -62,7 +69,11 @@ def fixture_default_batcher(id_batcher):
 
 @pytest.fixture(autouse=True)
 def fixture_mapper_factory(
-    process_mapper_cls, thread_mapper_cls, id_batcher, slice_batcher
+    process_mapper_cls,
+    thread_mapper_cls,
+    id_batcher,
+    id_range_batcher,
+    slice_batcher,
 ):
     """patch mapper factory"""
 
@@ -75,6 +86,7 @@ def fixture_mapper_factory(
         mappers["thread"] = thread_mapper_cls
 
         batchers["id"] = id_batcher
+        batchers["id_range"] = id_range_batcher
         batchers["slice"] = slice_batcher
 
         yield
@@ -98,12 +110,15 @@ class TestCreate:
                 )
                 #####
 
-        @pytest.mark.parametrize("batch_method", ("id", "slice", None))
+        @pytest.mark.parametrize(
+            "batch_method", ("id", "id_range", "slice", None)
+        )
         def test_valid(
             self,
             config,
             batch_method,
             id_batcher,
+            id_range_batcher,
             slice_batcher,
             thread_mapper_cls,
         ):
@@ -112,6 +127,8 @@ class TestCreate:
             expected_batch_cls = None
             if batch_method in ("id", None):
                 expected_batch_cls = id_batcher
+            elif batch_method == "id_range":
+                expected_batch_cls = id_range_batcher
             elif batch_method == "slice":
                 expected_batch_cls = slice_batcher
 

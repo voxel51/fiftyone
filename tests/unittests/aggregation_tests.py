@@ -13,6 +13,7 @@ import numpy as np
 import unittest
 
 import fiftyone as fo
+import fiftyone.core.aggregations as foa
 import fiftyone.core.fields as fof
 from fiftyone import ViewField as F
 
@@ -1613,6 +1614,193 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(len(labels), 5)
         self.assertDictEqual(counts, {True: 1, False: 4})
         self.assertEqual(len(filepaths), 5)
+
+
+class MergePartitionResultsTests(unittest.TestCase):
+    def test_count_sums(self):
+        agg = foa.Count()
+        result = agg._merge_partition_results(
+            [[{"count": 10}], [{"count": 20}], [{"count": 5}]]
+        )
+        self.assertEqual(result, [{"count": 35}])
+
+    def test_count_skips_empty(self):
+        agg = foa.Count()
+        result = agg._merge_partition_results(
+            [[{"count": 10}], [], [{"count": 5}]]
+        )
+        self.assertEqual(result, [{"count": 15}])
+
+    def test_sum(self):
+        agg = foa.Sum("field")
+        result = agg._merge_partition_results(
+            [[{"sum": 1.5}], [{"sum": 2.5}], [{"sum": 3.0}]]
+        )
+        self.assertEqual(result, [{"sum": 7.0}])
+
+    def test_bounds(self):
+        agg = foa.Bounds("field")
+        result = agg._merge_partition_results(
+            [
+                [{"min": 5, "max": 20}],
+                [{"min": 1, "max": 15}],
+                [{"min": 10, "max": 30}],
+            ]
+        )
+        self.assertEqual(result, [{"min": 1, "max": 30}])
+
+    def test_bounds_with_none(self):
+        agg = foa.Bounds("field")
+        result = agg._merge_partition_results(
+            [[{"min": None, "max": None}], [{"min": 5, "max": 10}]]
+        )
+        self.assertEqual(result, [{"min": 5, "max": 10}])
+
+    def test_distinct(self):
+        agg = foa.Distinct("field")
+        result = agg._merge_partition_results(
+            [
+                [{"values": ["a", "c"]}],
+                [{"values": ["b", "c"]}],
+                [{"values": ["a", "d"]}],
+            ]
+        )
+        self.assertEqual(result, [{"values": ["a", "b", "c", "d"]}])
+
+    def test_count_values_sums_per_key(self):
+        agg = foa.CountValues("field")
+        result = agg._merge_partition_results(
+            [
+                [{"result": [{"k": "a", "count": 3}, {"k": "b", "count": 2}]}],
+                [{"result": [{"k": "a", "count": 1}, {"k": "c", "count": 5}]}],
+            ]
+        )
+        counts = {item["k"]: item["count"] for item in result[0]["result"]}
+        self.assertEqual(counts, {"a": 4, "b": 2, "c": 5})
+
+    def test_count_values_sorted_ascending_with_first(self):
+        agg = foa.CountValues("field", _first=3)
+        result = agg._merge_partition_results(
+            [
+                [
+                    {
+                        "result": [
+                            {"k": "rare", "count": 1},
+                            {"k": "common", "count": 10},
+                        ],
+                        "count": 2,
+                    }
+                ],
+                [
+                    {
+                        "result": [
+                            {"k": "rare", "count": 2},
+                            {"k": "medium", "count": 5},
+                        ],
+                        "count": 2,
+                    }
+                ],
+            ]
+        )
+        counts = [item["count"] for item in result[0]["result"]]
+        self.assertEqual(counts, [3, 5, 10])
+        self.assertEqual(result[0]["count"], 4)
+
+    def test_count_values_sorted_descending_with_first(self):
+        agg = foa.CountValues("field", _first=3, _asc=False)
+        result = agg._merge_partition_results(
+            [
+                [
+                    {
+                        "result": [
+                            {"k": "rare", "count": 1},
+                            {"k": "common", "count": 10},
+                        ],
+                        "count": 2,
+                    }
+                ],
+                [
+                    {
+                        "result": [
+                            {"k": "rare", "count": 2},
+                            {"k": "medium", "count": 5},
+                        ],
+                        "count": 2,
+                    }
+                ],
+            ]
+        )
+        counts = [item["count"] for item in result[0]["result"]]
+        self.assertEqual(counts, [10, 5, 3])
+
+    def test_count_values_first_limits(self):
+        agg = foa.CountValues("field", _first=2, _asc=False)
+        result = agg._merge_partition_results(
+            [
+                [
+                    {
+                        "result": [
+                            {"k": "a", "count": 10},
+                            {"k": "b", "count": 5},
+                            {"k": "c", "count": 1},
+                        ],
+                        "count": 3,
+                    }
+                ],
+            ]
+        )
+        self.assertEqual(len(result[0]["result"]), 2)
+        self.assertEqual(result[0]["result"][0]["k"], "a")
+        self.assertEqual(result[0]["result"][1]["k"], "b")
+
+    def test_count_values_ascending_sort(self):
+        agg = foa.CountValues("field", _first=10, _asc=True)
+        result = agg._merge_partition_results(
+            [
+                [
+                    {
+                        "result": [
+                            {"k": "a", "count": 10},
+                            {"k": "b", "count": 1},
+                        ],
+                        "count": 2,
+                    }
+                ],
+            ]
+        )
+        counts = [item["count"] for item in result[0]["result"]]
+        self.assertEqual(counts, [1, 10])
+
+    def test_histogram_auto_returns_none(self):
+        agg = foa.HistogramValues("field", bins=10)
+        agg._auto = True
+        self.assertIsNone(agg._merge_partition_results([]))
+
+    def test_histogram_sums_bins(self):
+        agg = foa.HistogramValues("field", range=(0, 100), bins=3)
+        agg._auto = False
+        result = agg._merge_partition_results(
+            [
+                [{"bins": [{"_id": 0, "count": 5}, {"_id": 50, "count": 3}]}],
+                [{"bins": [{"_id": 0, "count": 2}, {"_id": 50, "count": 7}]}],
+            ]
+        )
+        bins = {b["_id"]: b["count"] for b in result[0]["bins"]}
+        self.assertEqual(bins, {0: 7, 50: 10})
+
+    def test_base_returns_none(self):
+        class CustomAgg(foa.Aggregation):
+            def default_result(self):
+                return None
+
+            def parse_result(self, d):
+                return d
+
+            def to_mongo(self, sample_collection, context=None):
+                return []
+
+        agg = CustomAgg("field")
+        self.assertIsNone(agg._merge_partition_results([]))
 
 
 if __name__ == "__main__":
