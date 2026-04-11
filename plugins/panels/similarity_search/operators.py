@@ -149,6 +149,15 @@ class SimilaritySearchOperator(foo.Operator):
 
             ctx.set_progress(0.7, label="Collecting results...")
 
+            # dynamic_results controls how results are persisted:
+            #   True  → save the serialized SortBySimilarity view stages;
+            #           results are recomputed on apply, always reflecting
+            #           the latest dataset state (slower to load).
+            #   False → save a static list of result IDs; results are
+            #           fixed at search time (faster to load).
+            # The UI toggle for this is currently commented out in
+            # NewSearch.tsx — awaiting user feedback before deciding
+            # whether to remove it entirely.
             dynamic_results = ctx.params.get("dynamic_results", False)
 
             result_ids = []

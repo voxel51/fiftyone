@@ -174,16 +174,21 @@ export function buildRunName({
   patchesField?: string;
 }): string {
   if (!isImageSearch) {
-    return `Text: "${textQuery}"`;
+    return textQuery.trim();
   }
 
-  const positiveCount = Array.isArray(queryIds) ? queryIds.length : 1;
-  const negativeCount = negativeQueryIds?.length ?? 0;
-  const unit = patchesField ? "patches" : "samples";
+  const count = Array.isArray(queryIds) ? queryIds.length : 1;
+  const negCount = negativeQueryIds?.length ?? 0;
+  const unit = patchesField ? "patch" : "sample";
+  const pluralize = (n: number, u: string) =>
+    `${n} ${n === 1 ? u : u + (u === "patch" ? "es" : "s")}`;
 
-  if (negativeCount > 0) {
-    return `Image: ${positiveCount} prompt(s), ${negativeCount} negative`;
+  if (negCount > 0) {
+    return `${pluralize(count, unit)} positive, ${pluralize(
+      negCount,
+      unit
+    )} negative`;
   }
 
-  return `Image: ${positiveCount} ${unit}`;
+  return pluralize(count, unit);
 }

@@ -8,3 +8,6 @@
 // Components (pending voodo ImageList)
 export { default as ImageList } from "@mui/material/ImageList";
 export { default as ImageListItem } from "@mui/material/ImageListItem";
+
+// Icons (no voodo equivalent yet)
+export { default as FileUploadOutlined } from "@mui/icons-material/FileUploadOutlined";

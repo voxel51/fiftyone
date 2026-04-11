@@ -5,7 +5,6 @@ import {
   Heading,
   HeadingLevel,
   Icon,
-  IconColor,
   IconName,
   Justify,
   RichList,
@@ -19,7 +18,7 @@ import {
   Spacing,
   Variant,
 } from "@voxel51/voodo";
-import FileUploadOutlined from "@mui/icons-material/FileUploadOutlined";
+import { FileUploadOutlined } from "../../mui";
 import { useCallback, useMemo, useState } from "react";
 import {
   BrainKeyConfig,
@@ -39,17 +38,41 @@ import { SelectAllRow, tooltipTextStyle } from "../styled";
 
 function QueryTypeIcon({ queryType }: { queryType: string }) {
   if (queryType === QueryType.Upload) {
-    return <FileUploadOutlined sx={{ fontSize: 18, opacity: 0.7 }} />;
+    return <FileUploadOutlined sx={{ fontSize: 18 }} />;
   }
   return (
     <Icon
       name={
         queryType === QueryType.Text ? IconName.Search : IconName.ImageSearch
       }
-      size={Size.Sm}
-      color={IconColor.Subtle}
+      size={Size.Xl}
+      color={TextColor.Primary}
     />
   );
+}
+
+const MAX_RUN_NAME_LENGTH = 40;
+
+function RunName({ name }: { name: string }) {
+  const isTruncated = name.length > MAX_RUN_NAME_LENGTH;
+  const displayName = isTruncated
+    ? name.slice(0, MAX_RUN_NAME_LENGTH) + "..."
+    : name;
+
+  const content = (
+    <Text
+      variant={TextVariant.Md}
+      style={{ fontWeight: "bold", whiteSpace: "nowrap" }}
+    >
+      {displayName}
+    </Text>
+  );
+
+  if (isTruncated) {
+    return <Tooltip content={name}>{content}</Tooltip>;
+  }
+
+  return content;
 }
 
 type SelectionState = {
@@ -186,9 +209,7 @@ export default function RunList({
                 align={Align.Center}
               >
                 <QueryTypeIcon queryType={run.query_type} />
-                <Text variant={TextVariant.Md} style={{ fontWeight: "bold" }}>
-                  {run.run_name}
-                </Text>
+                <RunName name={run.run_name} />
                 <StatusBadge status={run.status} />
                 {run.status === "completed" && (
                   <Text variant={TextVariant.Md} color={TextColor.Muted}>
