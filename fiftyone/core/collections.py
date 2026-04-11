@@ -61,6 +61,9 @@ foos = fou.lazy_import("fiftyone.operators.store")
 
 logger = logging.getLogger(__name__)
 
+_PARALLEL_SAMPLES_PER_PARTITION = 10_000
+_PARALLEL_MAX_PARTITIONS = 8
+
 
 def _make_registrar():
     registry = {}
@@ -11554,15 +11557,15 @@ class SampleCollection(object):
                 compiled_facet_aggs, facet_pipelines
             )
 
-            n_slices = await self._get_parallel_slices(
+            n_partitions = await self._get_num_partitions(
                 collection, compiled_facet_aggs
             )
 
-            if n_slices > 1:
+            if n_partitions > 1:
                 raw_result = await self._run_parallel_consolidated(
                     collection,
                     consolidated,
-                    n_slices,
+                    n_partitions,
                     branch_map,
                     compiled_facet_aggs,
                     maxTimeMS=maxTimeMS,
@@ -11651,8 +11654,8 @@ class SampleCollection(object):
         consolidated = view_pipeline + [{"$facet": all_branches}]
         return consolidated, branch_map
 
-    async def _get_parallel_slices(self, collection, compiled_aggs):
-        """Determines how many parallel slices to use.
+    async def _get_num_partitions(self, collection, compiled_aggs):
+        """Determines how many parallel partitions to use.
 
         Returns 1 (no parallelism) if:
         - The collection is small
@@ -11664,8 +11667,8 @@ class SampleCollection(object):
         """
         for agg in compiled_aggs.values():
             if (
-                agg._merge_raw_results.__func__
-                is foa.Aggregation._merge_raw_results
+                agg._merge_partition_results.__func__
+                is foa.Aggregation._merge_partition_results
             ):
                 return 1
 
@@ -11679,35 +11682,33 @@ class SampleCollection(object):
             if isinstance(id_filter, dict) and "$in" in id_filter:
                 return 1
 
-        import fiftyone as fo
-
-        samples_per_slice = fo.config.aggregation_parallel_samples_per_slice
-        max_slices = fo.config.aggregation_parallel_max_slices
-
         estimated = await collection.estimated_document_count()
-        return min(max(1, estimated // samples_per_slice), max_slices)
+        return min(
+            max(1, estimated // _PARALLEL_SAMPLES_PER_PARTITION),
+            _PARALLEL_MAX_PARTITIONS,
+        )
 
     async def _run_parallel_consolidated(
         self,
         collection,
         consolidated_pipeline,
-        n_slices,
+        n_partitions,
         branch_map,
         compiled_aggs,
         maxTimeMS=None,
     ):
-        """Runs a consolidated $facet pipeline in parallel across _id slices.
+        """Runs a consolidated $facet pipeline in parallel across _id partitions.
 
         Returns a merged facet result document.
         """
-        boundaries = await foo.get_id_boundaries(collection, n_slices)
+        boundaries = await foo.get_id_boundaries(collection, n_partitions)
         all_bounds = [None] + boundaries + [None]
 
         kwargs = dict(allowDiskUse=True)
         if maxTimeMS:
             kwargs["maxTimeMS"] = maxTimeMS
 
-        async def run_slice(lo, hi):
+        async def run_partition(lo, hi):
             id_filter = {}
             if lo is not None:
                 id_filter["$gte"] = lo
@@ -11719,14 +11720,14 @@ class SampleCollection(object):
             docs = [doc async for doc in cursor]
             return docs[0] if docs else {}
 
-        slice_results = await asyncio.gather(
+        partition_results = await asyncio.gather(
             *[
-                run_slice(all_bounds[i], all_bounds[i + 1])
+                run_partition(all_bounds[i], all_bounds[i + 1])
                 for i in range(len(all_bounds) - 1)
             ]
         )
 
-        # Merge each branch's results across slices
+        # Merge each branch's results across partitions
         merged = {}
         all_branch_names = set()
         for agg_idx, names in branch_map.items():
@@ -11748,10 +11749,10 @@ class SampleCollection(object):
                         owner_agg = agg
                     break
 
-            partials = [doc.get(bname, []) for doc in slice_results]
+            partials = [doc.get(bname, []) for doc in partition_results]
 
             if owner_agg is not None:
-                sub_merged = owner_agg._merge_raw_results(partials)
+                sub_merged = owner_agg._merge_partition_results(partials)
                 if sub_merged is not None:
                     merged[bname] = sub_merged
                     continue

@@ -476,21 +476,21 @@ async def _do_async_aggregate(collection, pipeline, hint, **kwargs):
     return [i async for i in collection.aggregate(pipeline, **next_kwargs)]
 
 
-async def get_id_boundaries(collection, n_slices):
+async def get_id_boundaries(collection, n_partitions):
     """Gets evenly distributed _id boundaries for splitting a collection.
 
     Uses ``$bucketAuto`` on the ``_id`` index for even distribution.
 
     Args:
         collection: an ``AsyncIOMotorCollection``
-        n_slices: the number of slices to create
+        n_partitions: the number of partitions to create
 
     Returns:
-        a list of ``n_slices - 1`` boundary ObjectIds
+        a list of ``n_partitions - 1`` boundary ObjectIds
     """
     pipeline = [
         {"$project": {"_id": 1}},
-        {"$bucketAuto": {"groupBy": "$_id", "buckets": n_slices}},
+        {"$bucketAuto": {"groupBy": "$_id", "buckets": n_partitions}},
     ]
     cursor = collection.aggregate(pipeline, hint={"_id": 1})
     buckets = [doc async for doc in cursor]

@@ -167,15 +167,15 @@ class Aggregation(object):
         """
         raise NotImplementedError("subclasses must implement default_result()")
 
-    def _merge_raw_results(self, partial_results):
-        """Merges raw MongoDB results from parallel _id-range slices.
+    def _merge_partition_results(self, partial_results):
+        """Merges raw MongoDB results from parallel _id-range partitions.
 
         Subclasses that support parallel execution should override this to
         combine partial raw results into a single result suitable for
         :meth:`parse_result`.
 
         Args:
-            partial_results: list of raw result lists, one per slice. Each
+            partial_results: list of raw result lists, one per partition. Each
                 entry is the result list for one _id range (typically a
                 single-element list containing the aggregation output document)
 
@@ -416,7 +416,7 @@ class Bounds(Aggregation):
 
         return bounds
 
-    def _merge_raw_results(self, partial_results):
+    def _merge_partition_results(self, partial_results):
         docs = [r[0] for r in partial_results if r]
         if not docs:
             return []
@@ -607,7 +607,7 @@ class Count(Aggregation):
         """
         return d["count"]
 
-    def _merge_raw_results(self, partial_results):
+    def _merge_partition_results(self, partial_results):
         total = sum(r[0]["count"] for r in partial_results if r)
         return [{"count": total}]
 
@@ -798,7 +798,7 @@ class CountValues(Aggregation):
 
         return {p(i["k"]): i["count"] for i in d["result"]}
 
-    def _merge_raw_results(self, partial_results):
+    def _merge_partition_results(self, partial_results):
         merged = {}
         total_count = 0
         for result in partial_results:
@@ -1019,7 +1019,7 @@ class Distinct(Aggregation):
 
         return values
 
-    def _merge_raw_results(self, partial_results):
+    def _merge_partition_results(self, partial_results):
         all_values = set()
         for result in partial_results:
             if result:
@@ -1213,12 +1213,12 @@ class FacetAggregations(Aggregation):
 
         return pipeline
 
-    def _merge_raw_results(self, partial_results):
+    def _merge_partition_results(self, partial_results):
         # Check all sub-aggregations support merging
         for agg in self._aggregations.values():
             if (
-                agg._merge_raw_results.__func__
-                is Aggregation._merge_raw_results
+                agg._merge_partition_results.__func__
+                is Aggregation._merge_partition_results
             ):
                 return None
 
@@ -1226,7 +1226,7 @@ class FacetAggregations(Aggregation):
         for key, agg in self._aggregations.items():
             facet_key = self._get_key(key, agg)
             partials = [r[0].get(facet_key, []) for r in partial_results if r]
-            sub_merged = agg._merge_raw_results(partials)
+            sub_merged = agg._merge_partition_results(partials)
             if sub_merged is None:
                 return None
             merged[facet_key] = sub_merged
@@ -1488,9 +1488,9 @@ class HistogramValues(Aggregation):
 
         return pipeline
 
-    def _merge_raw_results(self, partial_results):
+    def _merge_partition_results(self, partial_results):
         if self._auto:
-            # $bucketAuto produces data-dependent bin boundaries per slice
+            # $bucketAuto produces data-dependent bin boundaries per partition
             return None
 
         merged_bins = {}
@@ -2780,7 +2780,7 @@ class Sum(Aggregation):
         """
         return d["sum"]
 
-    def _merge_raw_results(self, partial_results):
+    def _merge_partition_results(self, partial_results):
         total = sum(r[0]["sum"] for r in partial_results if r)
         return [{"sum": total}]
 
