@@ -160,6 +160,54 @@ export function fileToBase64(
   });
 }
 
+/**
+ * Generate a default run name when the user doesn't provide one.
+ *
+ * - Text: the raw query string (rendering handles truncation/tooltip)
+ * - Image: "X samples" or "X patches" (singular/plural)
+ * - Upload: "X images" (singular/plural)
+ */
+export function buildDefaultRunName({
+  queryType,
+  textQuery,
+  queryIds,
+  negativeQueryIds,
+  patchesField,
+  uploadedImage,
+}: {
+  queryType: QueryType;
+  textQuery?: string;
+  queryIds?: string[];
+  negativeQueryIds?: string[];
+  patchesField?: string;
+  uploadedImage?: UploadedImage | null;
+}): string {
+  if (queryType === QueryType.Text) {
+    return textQuery?.trim() || "text query";
+  }
+
+  if (queryType === QueryType.Upload) {
+    const count = uploadedImage ? 1 : 0;
+    return `${count} ${count === 1 ? "image" : "images"}`;
+  }
+
+  // Image query
+  const count = queryIds?.length ?? 0;
+  const negCount = negativeQueryIds?.length ?? 0;
+  const unit = patchesField ? "patch" : "sample";
+  const pluralize = (n: number, u: string) =>
+    `${n} ${n === 1 ? u : u + (u === "patch" ? "es" : "s")}`;
+
+  if (negCount > 0) {
+    return `${pluralize(count, unit)} positive, ${pluralize(
+      negCount,
+      unit
+    )} negative`;
+  }
+
+  return pluralize(count, unit);
+}
+
 export const buildExecutionParams = (
   input: BuildExecutionParamsInput
 ): SimilaritySearchParams => {
@@ -201,7 +249,16 @@ export const buildExecutionParams = (
 
   if (k !== "") params.k = k;
   if (distField.trim()) params.dist_field = distField.trim();
-  if (runName.trim()) params.run_name = runName.trim();
+  params.run_name =
+    runName.trim() ||
+    buildDefaultRunName({
+      queryType,
+      textQuery,
+      queryIds,
+      negativeQueryIds,
+      patchesField,
+      uploadedImage: input.uploadedImage,
+    });
 
   if (negativeQueryIds.length > 0) {
     params.negative_query_ids = negativeQueryIds;

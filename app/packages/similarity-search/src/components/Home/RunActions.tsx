@@ -1,6 +1,8 @@
 import {
+  Align,
   Button,
   IconName,
+  Orientation,
   Size,
   Stack,
   Tooltip,
@@ -32,47 +34,55 @@ export default function RunActions({
   const isImage = run.query_type === QueryType.Image && !run.patches_field;
 
   return (
-    <Stack>
-      <Tooltip content={tip("Show results")}>
-        <Button
-          aria-label="Show results"
-          size={Size.Md}
-          variant={Variant.Borderless}
-          leadingIcon={IconName.GridView}
-          onClick={() => onApply(run.run_id)}
-          disabled={run.status !== "completed"}
-        />
-      </Tooltip>
-      <Tooltip content={tip("Clone search")}>
-        <Button
-          aria-label="Clone search"
-          size={Size.Md}
-          variant={Variant.Borderless}
-          leadingIcon={IconName.ContentCopy}
-          onClick={() => onClone(run.run_id)}
-        />
-      </Tooltip>
-      <Tooltip content={tip("Delete")}>
-        <Button
-          aria-label="Delete"
-          size={Size.Md}
-          variant={Variant.Borderless}
-          leadingIcon={IconName.Delete}
-          onClick={() => onDelete(run.run_id)}
-        />
-      </Tooltip>
-      {isImage && (
-        <Tooltip content={isExpanded ? tip("Collapse") : tip("Show prompts")}>
+    <Stack
+      orientation={Orientation.Column}
+      align={Align.End}
+      style={{ gap: "2rem" }}
+    >
+      <Stack>
+        <Tooltip content={tip("Show results")}>
           <Button
-            aria-label={isExpanded ? "Collapse" : "Show prompts"}
+            aria-label="Show results"
             size={Size.Md}
             variant={Variant.Borderless}
-            leadingIcon={
-              isExpanded ? IconName.ChevronTop : IconName.ChevronBottom
-            }
-            onClick={() => onToggleExpand(run)}
+            leadingIcon={IconName.GridView}
+            onClick={() => onApply(run.run_id)}
+            disabled={run.status !== "completed"}
           />
         </Tooltip>
+        <Tooltip content={tip("Clone search")}>
+          <Button
+            aria-label="Clone search"
+            size={Size.Md}
+            variant={Variant.Borderless}
+            leadingIcon={IconName.ContentCopy}
+            onClick={() => onClone(run.run_id)}
+          />
+        </Tooltip>
+        <Tooltip content={tip("Delete")}>
+          <Button
+            aria-label="Delete"
+            size={Size.Md}
+            variant={Variant.Borderless}
+            leadingIcon={IconName.Delete}
+            onClick={() => onDelete(run.run_id)}
+          />
+        </Tooltip>
+      </Stack>
+      {isImage && (
+        <Stack>
+          <Tooltip content={isExpanded ? tip("Collapse") : tip("Show prompts")}>
+            <Button
+              aria-label={isExpanded ? "Collapse" : "Show prompts"}
+              size={Size.Md}
+              variant={Variant.Borderless}
+              leadingIcon={
+                isExpanded ? IconName.ChevronTop : IconName.ChevronBottom
+              }
+              onClick={() => onToggleExpand(run)}
+            />
+          </Tooltip>
+        </Stack>
       )}
     </Stack>
   );

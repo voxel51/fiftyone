@@ -21,7 +21,7 @@ import {
   Spacing,
   Variant,
 } from "@voxel51/voodo";
-import FileUploadOutlined from "@mui/icons-material/FileUploadOutlined";
+import { FileUploadOutlined } from "../../mui";
 import React, { useState } from "react";
 import { OperatorExecutionButton } from "@fiftyone/operators";
 import {
