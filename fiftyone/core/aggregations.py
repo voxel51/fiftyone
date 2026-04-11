@@ -167,6 +167,23 @@ class Aggregation(object):
         """
         raise NotImplementedError("subclasses must implement default_result()")
 
+    def _merge_raw_results(self, partial_results):
+        """Merges raw MongoDB results from parallel _id-range slices.
+
+        Subclasses that support parallel execution should override this to
+        combine partial raw results into a single result suitable for
+        :meth:`parse_result`.
+
+        Args:
+            partial_results: list of raw result lists, one per slice. Each
+                entry is the result list for one _id range (typically a
+                single-element list containing the aggregation output document)
+
+        Returns:
+            a merged raw result list, or None if merging is not supported
+        """
+        return None
+
     def _needs_frames(self, sample_collection):
         """Whether the aggregation requires frame labels of video samples to be
         attached.
@@ -399,6 +416,23 @@ class Bounds(Aggregation):
 
         return bounds
 
+    def _merge_raw_results(self, partial_results):
+        docs = [r[0] for r in partial_results if r]
+        if not docs:
+            return []
+
+        mins = [d["min"] for d in docs if d.get("min") is not None]
+        maxs = [d["max"] for d in docs if d.get("max") is not None]
+        merged = {
+            "min": min(mins) if mins else None,
+            "max": max(maxs) if maxs else None,
+        }
+        if self._count_nonfinites:
+            merged["inf"] = sum(d.get("inf", 0) for d in docs)
+            merged["-inf"] = sum(d.get("-inf", 0) for d in docs)
+            merged["nan"] = sum(d.get("nan", 0) for d in docs)
+        return [merged]
+
     def to_mongo(self, sample_collection, context=None):
         path, pipeline, _, id_to_str, field_type = _parse_field_and_expr(
             sample_collection,
@@ -572,6 +606,10 @@ class Count(Aggregation):
             the count
         """
         return d["count"]
+
+    def _merge_raw_results(self, partial_results):
+        total = sum(r[0]["count"] for r in partial_results if r)
+        return [{"count": total}]
 
     def to_mongo(self, sample_collection, context=None):
         if self._field_name is None and self._expr is None:
@@ -759,6 +797,24 @@ class CountValues(Aggregation):
             )
 
         return {p(i["k"]): i["count"] for i in d["result"]}
+
+    def _merge_raw_results(self, partial_results):
+        merged = {}
+        total_count = 0
+        for result in partial_results:
+            if not result:
+                continue
+            d = result[0]
+            for item in d.get("result", []):
+                k = item["k"]
+                merged[k] = merged.get(k, 0) + item["count"]
+            if "count" in d:
+                total_count += d["count"]
+
+        doc = {"result": [{"k": k, "count": v} for k, v in merged.items()]}
+        if self._first is not None:
+            doc["count"] = total_count
+        return [doc]
 
     def to_mongo(self, sample_collection, context=None):
         path, pipeline, _, id_to_str, field_type = _parse_field_and_expr(
@@ -963,6 +1019,13 @@ class Distinct(Aggregation):
 
         return values
 
+    def _merge_raw_results(self, partial_results):
+        all_values = set()
+        for result in partial_results:
+            if result:
+                all_values.update(result[0].get("values", []))
+        return [{"values": sorted(all_values)}]
+
     def to_mongo(self, sample_collection, context=None):
         path, pipeline, _, id_to_str, field_type = _parse_field_and_expr(
             sample_collection,
@@ -1149,6 +1212,26 @@ class FacetAggregations(Aggregation):
         pipeline += [{"$facet": facets}]
 
         return pipeline
+
+    def _merge_raw_results(self, partial_results):
+        # Check all sub-aggregations support merging
+        for agg in self._aggregations.values():
+            if (
+                agg._merge_raw_results.__func__
+                is Aggregation._merge_raw_results
+            ):
+                return None
+
+        merged = {}
+        for key, agg in self._aggregations.items():
+            facet_key = self._get_key(key, agg)
+            partials = [r[0].get(facet_key, []) for r in partial_results if r]
+            sub_merged = agg._merge_raw_results(partials)
+            if sub_merged is None:
+                return None
+            merged[facet_key] = sub_merged
+
+        return [merged]
 
     @staticmethod
     def _get_key(key, agg):
@@ -1404,6 +1487,22 @@ class HistogramValues(Aggregation):
         pipeline.append({"$group": {"_id": None, "bins": {"$push": "$$ROOT"}}})
 
         return pipeline
+
+    def _merge_raw_results(self, partial_results):
+        if self._auto:
+            # $bucketAuto produces data-dependent bin boundaries per slice
+            return None
+
+        merged_bins = {}
+        for result in partial_results:
+            if not result:
+                continue
+            for bin_doc in result[0].get("bins", []):
+                key = bin_doc["_id"]
+                merged_bins[key] = merged_bins.get(key, 0) + bin_doc["count"]
+
+        bins = [{"_id": k, "count": v} for k, v in merged_bins.items()]
+        return [{"bins": bins}]
 
     def _parse_args(self):
         if self._range is not None:
@@ -2680,6 +2779,10 @@ class Sum(Aggregation):
             the sum
         """
         return d["sum"]
+
+    def _merge_raw_results(self, partial_results):
+        total = sum(r[0]["sum"] for r in partial_results if r)
+        return [{"sum": total}]
 
     def to_mongo(self, sample_collection, context=None):
         path, pipeline, _, id_to_str, _ = _parse_field_and_expr(

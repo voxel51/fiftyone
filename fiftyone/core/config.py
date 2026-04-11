@@ -300,6 +300,18 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_MAX_PROCESS_POOL_WORKERS",
             default=None,
         )
+        self.aggregation_parallel_samples_per_slice = self.parse_int(
+            d,
+            "aggregation_parallel_samples_per_slice",
+            env_var="FIFTYONE_AGGREGATION_PARALLEL_SAMPLES_PER_SLICE",
+            default=10_000,
+        )
+        self.aggregation_parallel_max_slices = self.parse_int(
+            d,
+            "aggregation_parallel_max_slices",
+            env_var="FIFTYONE_AGGREGATION_PARALLEL_MAX_SLICES",
+            default=8,
+        )
         self.execution_cache_enabled = self.parse_bool(
             d,
             "execution_cache_enabled",

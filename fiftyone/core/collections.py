@@ -6,6 +6,7 @@ Interface for sample collections.
 |
 """
 
+import asyncio
 from collections import defaultdict, deque
 from concurrent.futures import ThreadPoolExecutor
 from copy import copy
@@ -11538,39 +11539,230 @@ class SampleCollection(object):
         # Placeholder to store results
         results = [None] * len(aggregations)
 
-        idx_map = {}
-        pipelines = []
-
         if facet_aggs:
             # Build facet-able pipelines
             compiled_facet_aggs, facet_pipelines, hints = self._build_facets(
                 facet_aggs
             )
-            for idx, pipeline in facet_pipelines.items():
-                idx_map[idx] = len(pipelines)
-                pipelines.append(pipeline)
 
-            # Run all aggregations
             coll_name = self._dataset._sample_collection_name
             collection = foo.get_async_db_conn()[coll_name]
-            _results = await foo.aggregate(
-                collection, pipelines, hints, maxTimeMS=maxTimeMS
+
+            # Consolidate all pipelines into a single $facet and
+            # optionally parallelize across _id ranges
+            consolidated, branch_map = self._consolidate_facet_pipelines(
+                compiled_facet_aggs, facet_pipelines
             )
 
-            # Parse facet-able results
-            for idx, aggregation in compiled_facet_aggs.items():
-                result = list(_results[idx_map[idx]])
-                data = self._parse_faceted_result(aggregation, result)
+            n_slices = await self._get_parallel_slices(
+                collection, compiled_facet_aggs
+            )
+
+            if n_slices > 1:
+                raw_result = await self._run_parallel_consolidated(
+                    collection,
+                    consolidated,
+                    n_slices,
+                    branch_map,
+                    compiled_facet_aggs,
+                    maxTimeMS=maxTimeMS,
+                )
+            else:
+                kwargs = dict(allowDiskUse=True)
+                if maxTimeMS:
+                    kwargs["maxTimeMS"] = maxTimeMS
+                cursor = collection.aggregate(consolidated, **kwargs)
+                raw_docs = [doc async for doc in cursor]
+                raw_result = raw_docs[0] if raw_docs else {}
+
+            # Parse results by reconstructing each aggregation's expected
+            # result from the consolidated facet output
+            for agg_idx, aggregation in compiled_facet_aggs.items():
+                branches = branch_map[agg_idx]
                 if (
                     isinstance(aggregation, foa.FacetAggregations)
                     and aggregation._compiled
                 ):
+                    # Reconstruct the facet document that parse_result expects
+                    facet_doc = {
+                        bname: raw_result.get(bname, []) for bname in branches
+                    }
+                    data = aggregation.parse_result(facet_doc)
                     for idx, d in data.items():
                         results[idx] = d
                 else:
-                    results[idx] = data
+                    bname = branches[0]
+                    branch_result = raw_result.get(bname, [])
+                    if branch_result:
+                        results[agg_idx] = aggregation.parse_result(
+                            branch_result[0]
+                        )
+                    else:
+                        results[agg_idx] = aggregation.default_result()
 
         return results[0] if scalar_result else results
+
+    def _consolidate_facet_pipelines(self, compiled_aggs, facet_pipelines):
+        """Consolidates multiple facet pipelines into a single $facet.
+
+        Instead of N separate pipelines (each scanning the collection),
+        produces ONE pipeline with all branches in a single $facet stage.
+        Unwind stages from individual pipelines are moved inside each
+        branch so they can coexist in one $facet.
+
+        Returns:
+            (consolidated_pipeline, branch_map) where branch_map maps
+            each compiled aggregation index to its branch name(s) in the
+            consolidated $facet.
+        """
+        view_pipeline = self._pipeline()
+        all_branches = {}
+        branch_map = {}  # agg_idx -> list of branch names
+
+        for agg_idx, pipeline in facet_pipelines.items():
+            aggregation = compiled_aggs[agg_idx]
+
+            # Extract the portion of the pipeline after the view prefix.
+            # The view pipeline is the shared prefix; everything after it
+            # is the aggregation-specific stages (unwinds, $facet, etc.)
+            agg_stages = pipeline[len(view_pipeline) :]
+
+            if (
+                isinstance(aggregation, foa.FacetAggregations)
+                and agg_stages
+                and "$facet" in agg_stages[-1]
+            ):
+                # FacetAggregations: prefix stages are unwinds,
+                # last stage is $facet with branches.
+                # Move the prefix into each branch.
+                prefix = agg_stages[:-1]
+                facet_stage = agg_stages[-1]["$facet"]
+                names = []
+                for bname, bpipeline in facet_stage.items():
+                    all_branches[bname] = prefix + bpipeline
+                    names.append(bname)
+                branch_map[agg_idx] = names
+            else:
+                # Standalone aggregation — wrap as a single branch
+                bname = f"__standalone_{agg_idx}"
+                all_branches[bname] = agg_stages
+                branch_map[agg_idx] = [bname]
+
+        consolidated = view_pipeline + [{"$facet": all_branches}]
+        return consolidated, branch_map
+
+    async def _get_parallel_slices(self, collection, compiled_aggs):
+        """Determines how many parallel slices to use.
+
+        Returns 1 (no parallelism) if:
+        - The collection is small
+        - Any aggregation doesn't support result merging
+        - The view pipeline contains stages that change document identity
+          (e.g. ``$group`` from ``GroupBy``) which would produce incorrect
+          partial results when split by _id range
+        - The view selects specific sample IDs (already index-backed)
+        """
+        for agg in compiled_aggs.values():
+            if (
+                agg._merge_raw_results.__func__
+                is foa.Aggregation._merge_raw_results
+            ):
+                return 1
+
+        view_pipeline = self._pipeline()
+        for stage in view_pipeline:
+            if "$group" in stage:
+                return 1
+
+            match = stage.get("$match", {})
+            id_filter = match.get("_id", {})
+            if isinstance(id_filter, dict) and "$in" in id_filter:
+                return 1
+
+        import fiftyone as fo
+
+        samples_per_slice = fo.config.aggregation_parallel_samples_per_slice
+        max_slices = fo.config.aggregation_parallel_max_slices
+
+        estimated = await collection.estimated_document_count()
+        return min(max(1, estimated // samples_per_slice), max_slices)
+
+    async def _run_parallel_consolidated(
+        self,
+        collection,
+        consolidated_pipeline,
+        n_slices,
+        branch_map,
+        compiled_aggs,
+        maxTimeMS=None,
+    ):
+        """Runs a consolidated $facet pipeline in parallel across _id slices.
+
+        Returns a merged facet result document.
+        """
+        boundaries = await foo.get_id_boundaries(collection, n_slices)
+        all_bounds = [None] + boundaries + [None]
+
+        kwargs = dict(allowDiskUse=True)
+        if maxTimeMS:
+            kwargs["maxTimeMS"] = maxTimeMS
+
+        async def run_slice(lo, hi):
+            id_filter = {}
+            if lo is not None:
+                id_filter["$gte"] = lo
+            if hi is not None:
+                id_filter["$lt"] = hi
+            match = {"$match": {"_id": id_filter}}
+            pipeline = [match] + consolidated_pipeline
+            cursor = collection.aggregate(pipeline, hint={"_id": 1}, **kwargs)
+            docs = [doc async for doc in cursor]
+            return docs[0] if docs else {}
+
+        slice_results = await asyncio.gather(
+            *[
+                run_slice(all_bounds[i], all_bounds[i + 1])
+                for i in range(len(all_bounds) - 1)
+            ]
+        )
+
+        # Merge each branch's results across slices
+        merged = {}
+        all_branch_names = set()
+        for agg_idx, names in branch_map.items():
+            all_branch_names.update(names)
+
+        for bname in all_branch_names:
+            # Find which aggregation owns this branch to use its merge
+            owner_agg = None
+            for agg_idx, names in branch_map.items():
+                if bname in names:
+                    agg = compiled_aggs[agg_idx]
+                    if isinstance(agg, foa.FacetAggregations):
+                        # Find the sub-aggregation for this branch
+                        for key, sub_agg in agg._aggregations.items():
+                            if agg._get_key(key, sub_agg) == bname:
+                                owner_agg = sub_agg
+                                break
+                    else:
+                        owner_agg = agg
+                    break
+
+            partials = [doc.get(bname, []) for doc in slice_results]
+
+            if owner_agg is not None:
+                sub_merged = owner_agg._merge_raw_results(partials)
+                if sub_merged is not None:
+                    merged[bname] = sub_merged
+                    continue
+
+            # Fallback: concatenate
+            combined = []
+            for p in partials:
+                combined.extend(p)
+            merged[bname] = combined
+
+        return merged
 
     def _parse_aggregations(self, aggregations, allow_big=True):
         big_aggs = {}

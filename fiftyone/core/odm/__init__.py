@@ -17,6 +17,7 @@ from .database import (
     get_db_version,
     get_async_db_client,
     get_async_db_conn,
+    get_id_boundaries,
     drop_database,
     sync_database,
     list_datasets,
