@@ -299,25 +299,31 @@ describe("buildExecutionParams", () => {
     expect(params.run_name).toBe("My search");
   });
 
-  it("includes source_view when searching within view", () => {
-    const viewStages = [{ _cls: "FilterField" }];
+  it("sets search_scope to 'view' when searching within view", () => {
     const params = buildExecutionParams({
       ...baseInput,
       searchScope: "view",
       hasView: true,
-      view: viewStages,
+      view: [{ _cls: "FilterField" }],
     });
-    expect(params.source_view).toEqual(viewStages);
+    expect(params.search_scope).toBe("view");
+    expect(params.source_view).toBeUndefined();
   });
 
-  it("excludes source_view when searching full dataset", () => {
+  it("sets search_scope to 'dataset' when searching full dataset", () => {
     const params = buildExecutionParams({
       ...baseInput,
       searchScope: "dataset",
       hasView: true,
       view: [{ _cls: "FilterField" }],
     });
+    expect(params.search_scope).toBe("dataset");
     expect(params.source_view).toBeUndefined();
+  });
+
+  it("defaults search_scope to 'dataset'", () => {
+    const params = buildExecutionParams(baseInput);
+    expect(params.search_scope).toBe("dataset");
   });
 
   it("includes negative_query_ids when present", () => {
