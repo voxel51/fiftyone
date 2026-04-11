@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import * as fos from "@fiftyone/state";
 import { SimilaritySearchViewProps, SimilarityRun } from "../types";
@@ -274,6 +274,27 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
     clearAndExit,
   });
 
+  // Auto-highlight the most recently completed run
+  const [highlightedRunId, setHighlightedRunId] = useState<
+    string | undefined
+  >();
+  const prevRunStatusesRef = useRef<Map<string, string>>(new Map());
+
+  useEffect(() => {
+    const prev = prevRunStatusesRef.current;
+    const next = new Map(state.runs.map((r) => [r.run_id, r.status]));
+
+    // Find runs that just transitioned to "completed"
+    for (const [id, status] of next) {
+      if (status === "completed" && prev.get(id) !== "completed") {
+        setHighlightedRunId(id);
+        break;
+      }
+    }
+
+    prevRunStatusesRef.current = next;
+  }, [state.runs]);
+
   const selection = useMemo(
     () => ({
       selectMode,
@@ -304,6 +325,8 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
     brainKeys: state.brainKeys,
     isPatchesView: state.isPatchesView,
     appliedRunId: state.appliedRunId,
+    highlightedRunId,
+    setHighlightedRunId,
     sampleMedia: state.sampleMedia,
     cloneConfig,
     filterState: state.filterState,
@@ -312,6 +335,13 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
 
     // actions
     ...actions,
+    handleApply: useCallback(
+      (runId: string) => {
+        setHighlightedRunId(runId);
+        actions.handleApply(runId);
+      },
+      [actions.handleApply, setHighlightedRunId]
+    ),
     refreshRuns: state.refreshRuns,
     setFilterState: state.setFilterState,
     navigateHome,
