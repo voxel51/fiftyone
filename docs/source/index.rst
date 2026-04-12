@@ -535,6 +535,7 @@ _________
    Dataset Zoo <dataset_zoo/index>
    Model Zoo <model_zoo/index>
    FiftyOne Brain <brain>
+   FiftyOne Labs <labs/index>
    Plugins <plugins/index>
    Integrations <integrations/index>
    CLI <cli/index>
