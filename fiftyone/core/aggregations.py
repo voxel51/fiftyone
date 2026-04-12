@@ -11,6 +11,7 @@ from copy import deepcopy
 from datetime import date, datetime
 import inspect
 import logging
+import math
 import reprlib
 import uuid
 
@@ -2791,7 +2792,10 @@ class Sum(Aggregation):
         return d["sum"]
 
     def _merge_partition_results(self, partial_results):
-        total = sum(r[0]["sum"] for r in partial_results if r)
+        # Use math.fsum (compensated summation) instead of sum() so that
+        # adding partition subtotals in Python produces the same float as
+        # MongoDB's single-pass $sum over the full collection.
+        total = math.fsum(r[0]["sum"] for r in partial_results if r)
         return [{"sum": total}]
 
     def to_mongo(self, sample_collection, context=None):
