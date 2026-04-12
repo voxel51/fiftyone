@@ -110,25 +110,35 @@ class TestCreateSubset:
         sample_collection.mongo.assert_not_called()
 
     def test_bounded_applies_id_range_filter(self, sample_collection):
-        """test that a bounded batch calls mongo with the correct
-        _id range $match stage"""
+        """test that a bounded batch sets _prefix with the correct
+        _id range $match stage on the view"""
         lo = bson.ObjectId()
         hi = bson.ObjectId()
+
+        view = mock.Mock()
+        view._pipeline.return_value = []
+        sample_collection.view.return_value = view
 
         batch = fomr.SampleIdRangeBatch(lo, hi, 32)
         result = batch.create_subset(sample_collection)
 
         expected = {"$match": {"_id": {"$gte": lo, "$lt": hi}}}
-        sample_collection.mongo.assert_called_once_with([expected])
-        assert result == sample_collection.mongo.return_value
+        assert result is view
+        assert view._prefix == [expected]
+        assert view._hint == {"_id": 1}
 
     def test_last_partition_has_no_upper_bound(self, sample_collection):
         """test the last partition (lower bound only, no upper bound)
         produces a $gte-only filter"""
         lower = bson.ObjectId()
 
+        view = mock.Mock()
+        view._pipeline.return_value = []
+        sample_collection.view.return_value = view
+
         batch = fomr.SampleIdRangeBatch(lower, None, 32)
         result = batch.create_subset(sample_collection)
 
         expected = {"$match": {"_id": {"$gte": lower}}}
-        sample_collection.mongo.assert_called_once_with([expected])
+        assert result is view
+        assert view._prefix == [expected]

@@ -1790,13 +1790,14 @@ class DatasetView(foc.SampleCollection):
             post_pipeline=post_pipeline,
         )
 
-        if self._prefix:
-            _pipeline = self._prefix + _pipeline
+        _prefix = getattr(self, "_prefix", None)
+        if _prefix:
+            _pipeline = _prefix + _pipeline
 
         return foo.aggregate(
             self._dataset._sample_collection,
             _pipeline,
-            hints=self._hint,
+            hints=getattr(self, "_hint", None),
         )
 
     def _serialize(self, include_uuids=True):
