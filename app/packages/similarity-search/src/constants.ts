@@ -5,6 +5,7 @@ export const SEARCH_OPERATOR_URI = "@voxel51/panels/similarity_search";
 export const INIT_RUN_OPERATOR_URI = "@voxel51/panels/init_similarity_run";
 export const COMPUTE_SIMILARITY_URI = "@voxel51/operators/compute_similarity";
 export const PANEL_NAME = "similarity_search_panel";
+export const LIST_RUNS_OPERATOR_URI = "@voxel51/panels/list_similarity_runs";
 export const SSE_OPERATOR_URI =
   "@voxel51/panels/get_similarity_search_subscription_notifier";
 

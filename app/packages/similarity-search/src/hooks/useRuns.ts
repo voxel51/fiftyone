@@ -8,7 +8,7 @@ import {
   datasetId as datasetIdAtom,
   datasetName as datasetNameAtom,
 } from "@fiftyone/state";
-import { SSE_OPERATOR_URI } from "../constants";
+import { LIST_RUNS_OPERATOR_URI, SSE_OPERATOR_URI } from "../constants";
 import { SimilarityRun } from "../types";
 
 const runsAtom = atom<SimilarityRun[]>([]);
@@ -41,41 +41,31 @@ export const useRuns = (): UseRunsResult => {
   const panelId = usePanelId();
   const datasetName = useRecoilValue(datasetNameAtom);
   const datasetId = useRecoilValue(datasetIdAtom);
-  const { execute: fetchRuns } = useOperatorExecutor(
-    "@voxel51/panels/list_similarity_runs"
-  );
+  const { execute: fetchRuns } = useOperatorExecutor(LIST_RUNS_OPERATOR_URI);
+
+  // ── Coalescing refresh mechanism ───────────────────────────────
+  // SSE events and user actions can trigger refreshRuns() at any
+  // time, including while a fetch is already in flight.  Instead of
+  // dropping those requests or firing concurrent fetches, we
+  // coalesce them: when a refresh is requested during an in-flight
+  // fetch, we set a "pending" flag.  Once the current fetch settles,
+  // we automatically fire one more refresh to pick up whatever
+  // changed.  A consecutive-error counter (max 5) prevents runaway
+  // retries when the backend is persistently failing.
   const fetchingRef = useRef(false);
-  const pendingRefreshRef = useRef(false);
+  const pendingRef = useRef(false);
   const inFlightRef = useRef<Promise<void> | null>(null);
-  const consecutiveErrorsRef = useRef(0);
+  const errorCountRef = useRef(0);
   const MAX_RETRY = 5;
 
   const refreshRuns = useCallback(() => {
     // If a fetch is already in flight, queue a follow-up refresh
     // and return the in-flight promise so callers can still await.
     if (fetchingRef.current) {
-      pendingRefreshRef.current = true;
+      pendingRef.current = true;
       return inFlightRef.current ?? Promise.resolve();
     }
     fetchingRef.current = true;
-
-    const drainPending = (isError: boolean) => {
-      if (isError) {
-        consecutiveErrorsRef.current += 1;
-      } else {
-        consecutiveErrorsRef.current = 0;
-      }
-
-      if (
-        pendingRefreshRef.current &&
-        consecutiveErrorsRef.current < MAX_RETRY
-      ) {
-        pendingRefreshRef.current = false;
-        refreshRuns();
-      } else {
-        pendingRefreshRef.current = false;
-      }
-    };
 
     const promise = new Promise<void>((resolve, reject) => {
       fetchRuns(
@@ -83,13 +73,14 @@ export const useRuns = (): UseRunsResult => {
         {
           callback: (result?: Record<string, unknown>) => {
             fetchingRef.current = false;
-            try {
-              if (result?.error) {
-                console.error("Error fetching similarity runs:", result.error);
-                reject(new Error(String(result.error)));
-                return;
-              }
 
+            if (result?.error) {
+              console.error("Error fetching similarity runs:", result.error);
+              reject(new Error(String(result.error)));
+              return;
+            }
+
+            try {
               const response = result?.result as
                 | { runs?: SimilarityRun[] }
                 | undefined;
@@ -101,22 +92,36 @@ export const useRuns = (): UseRunsResult => {
             } catch (e) {
               console.error("Error processing runs callback:", e);
               reject(e instanceof Error ? e : new Error(String(e)));
-            } finally {
-              drainPending(false);
             }
           },
         }
       ).catch((error: unknown) => {
         fetchingRef.current = false;
         console.error("Operator execution failed for fetchRuns:", error);
-        drainPending(true);
         reject(error instanceof Error ? error : new Error(String(error)));
       });
     });
 
-    inFlightRef.current = promise.finally(() => {
-      inFlightRef.current = null;
-    });
+    // After each attempt settles, check whether a refresh was
+    // requested while we were busy.  On success the error counter
+    // resets; on failure it increments, and we stop retrying after
+    // MAX_RETRY consecutive failures.
+    inFlightRef.current = promise
+      .then(() => {
+        errorCountRef.current = 0;
+      })
+      .catch(() => {
+        errorCountRef.current += 1;
+      })
+      .finally(() => {
+        inFlightRef.current = null;
+        if (pendingRef.current && errorCountRef.current < MAX_RETRY) {
+          pendingRef.current = false;
+          refreshRuns();
+        } else {
+          pendingRef.current = false;
+        }
+      });
 
     return inFlightRef.current;
   }, [fetchRuns, setRuns]);
