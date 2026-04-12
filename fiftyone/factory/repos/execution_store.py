@@ -7,6 +7,7 @@ Execution store repository interface and implementations.
 """
 
 import logging
+import re
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional
@@ -660,7 +661,7 @@ class MongoExecutionStoreRepo(ExecutionStoreRepo):
             "dataset_id": self._dataset_id,
         }
         if key_prefix:
-            query["key"] = {"$regex": f"^{key_prefix}"}
+            query["key"]["$regex"] = f"^{re.escape(key_prefix)}"
 
         # Build MongoDB projection to exclude heavy fields at the DB level.
         # We always exclude Mongo internals; additionally exclude any
@@ -900,6 +901,32 @@ class InMemoryExecutionStoreRepo(ExecutionStoreRepo):
             for (s, k, ds) in self._docs.keys()
             if s == store_name and ds == self._dataset_id and k != "__store__"
         ]
+
+    def list_values(
+        self,
+        store_name: str,
+        key_prefix: Optional[str] = None,
+        exclude_fields: Optional[List[str]] = None,
+    ) -> List[Dict[str, Any]]:
+        values = []
+        for (s, k, ds), doc in self._docs.items():
+            if s != store_name or ds != self._dataset_id or k == "__store__":
+                continue
+            if key_prefix and not k.startswith(key_prefix):
+                continue
+
+            value = doc.get("value")
+            if value is None:
+                continue
+
+            if exclude_fields and isinstance(value, dict):
+                value = {
+                    f: v for f, v in value.items() if f not in exclude_fields
+                }
+
+            values.append(value)
+
+        return values
 
     def count_keys(self, store_name: str) -> int:
         return len(self.list_keys(store_name))
