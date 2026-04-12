@@ -41,6 +41,10 @@ class SampleIdRangeBatch(fomb.SampleBatch):
             return []
 
         if batch_size is not None:
+            if batch_size <= 0:
+                raise ValueError(
+                    f"batch_size must be positive; got {batch_size}"
+                )
             num_batches = max(1, -(-n // batch_size))  # ceil division
         else:
             num_batches = num_workers

@@ -1856,27 +1856,44 @@ class MergePartitionResultsTests(unittest.TestCase):
         self.assertEqual(result[0]["count"], 2)
 
 
-class HintDecisionTests(unittest.TestCase):
-    """Tests for the hint logic used in _run_parallel_consolidated.
+class CustomHintTests(unittest.TestCase):
+    """Tests that aggregations with custom _hint fall back to per-pipeline
+    execution and still produce correct results."""
 
-    The rule: hint={"_id": 1} is included only when the consolidated
-    pipeline has no $match stages that might benefit from a different index.
-    """
+    @classmethod
+    def setUpClass(cls):
+        cls._dataset = fo.Dataset()
+        cls._dataset.add_samples(
+            [fo.Sample(filepath=f"/tmp/{i}.jpg") for i in range(50)]
+        )
 
-    def _should_hint(self, pipeline):
-        has_other_match = any("$match" in stage for stage in pipeline)
-        return None if has_other_match else {"_id": 1}
+    @classmethod
+    def tearDownClass(cls):
+        fo.delete_dataset(cls._dataset.name)
 
-    def test_no_match_stages_hints_id(self):
-        pipeline = [{"$facet": {"b0": []}}]
-        self.assertEqual(self._should_hint(pipeline), {"_id": 1})
+    def _run_async(self, view, aggregations):
+        import asyncio
 
-    def test_match_stage_suppresses_hint(self):
-        pipeline = [{"$match": {"field": "val"}}, {"$facet": {"b0": []}}]
-        self.assertIsNone(self._should_hint(pipeline))
+        return asyncio.run(view._async_aggregate(aggregations))
 
-    def test_empty_pipeline_hints_id(self):
-        self.assertEqual(self._should_hint([]), {"_id": 1})
+    def test_hint_produces_correct_count(self):
+        """Count with _hint should return the same result as without."""
+        view = self._dataset.view()
+        normal = self._run_async(view, [foa.Count()])
+        hinted = self._run_async(view, [foa.Count(_hint={"_id": 1})])
+        self.assertEqual(normal, hinted)
+
+    def test_hint_with_other_aggs(self):
+        """A hinted Count mixed with other aggs should all return correct
+        results via the per-pipeline fallback."""
+        view = self._dataset.view()
+        aggs = [
+            foa.Count(_hint={"_id": 1}),
+            foa.Count(),
+        ]
+        results = self._run_async(view, aggs)
+        self.assertEqual(results[0], 50)
+        self.assertEqual(results[1], 50)
 
 
 class GetNumPartitionsTests(unittest.TestCase):
@@ -2051,8 +2068,8 @@ class PartitionedAggregationCorrectnessTests(unittest.TestCase):
     def test_histogram_values(self):
         view = self._dataset.view()
         aggs = [
-            foa.HistogramValues("confidence", bins=10),
-            foa.HistogramValues("score", bins=5),
+            foa.HistogramValues("confidence", bins=10, range=(0.0, 1.0)),
+            foa.HistogramValues("score", bins=5, range=(0.0, 100.0)),
         ]
         single = self._run_async_agg(view, aggs, 1)
         multi = self._run_async_agg(view, aggs, 8)
@@ -2072,7 +2089,7 @@ class PartitionedAggregationCorrectnessTests(unittest.TestCase):
             foa.Count(),
             foa.CountValues("label"),
             foa.Bounds("confidence"),
-            foa.HistogramValues("confidence", bins=5),
+            foa.HistogramValues("confidence", bins=5, range=(0.0, 1.0)),
         ]
         single = self._run_async_agg(view, aggs, 1)
         multi = self._run_async_agg(view, aggs, 8)

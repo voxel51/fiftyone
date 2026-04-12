@@ -1139,6 +1139,8 @@ class DatasetMixin(object):
 
             num_workers = fo.config.max_thread_pool_workers or 8
 
+        num_workers = max(num_workers, 1)
+
         boundaries = get_id_boundaries(coll, num_workers)
 
         if not boundaries:

@@ -824,7 +824,7 @@ class CountValues(Aggregation):
 
         doc = {"result": result}
         if self._first is not None:
-            doc["count"] = len(merged)
+            doc["count"] = len(result)
         return [doc]
 
     def to_mongo(self, sample_collection, context=None):

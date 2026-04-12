@@ -14,7 +14,6 @@ from starlette.requests import Request
 
 import fiftyone.core.aggregations as foa
 import fiftyone.core.collections as foc
-import fiftyone.core.dataset as fod
 import fiftyone.core.labels as fol
 import fiftyone.core.odm as foo
 from fiftyone.server.decorators import route
@@ -71,7 +70,7 @@ class Tagging(HTTPEndpoint):
             if is_filtered:
                 view_result, all_tags = await asyncio.gather(
                     view._async_aggregate(count_aggs + tag_aggs),
-                    _get_all_dataset_tags(dataset, target_labels),
+                    _get_all_dataset_tags(view._dataset, target_labels),
                 )
                 results = view_result
             else:
@@ -96,7 +95,7 @@ class Tagging(HTTPEndpoint):
                     view._async_aggregate(
                         [foa.CountValues("tags"), foa.Count()]
                     ),
-                    _get_all_dataset_tags(dataset, target_labels),
+                    _get_all_dataset_tags(view._dataset, target_labels),
                 )
             else:
                 tags, items = await view._async_aggregate(
@@ -130,23 +129,22 @@ def build_label_tag_aggregations(sample_collection: foc.SampleCollection):
     return counts, tags
 
 
-async def _get_all_dataset_tags(dataset_name, target_labels):
+async def _get_all_dataset_tags(dataset, target_labels):
     """Returns all distinct tag names from the unfiltered dataset.
 
-    For sample tags, uses the indexed ``distinct`` command.
-    For label tags, uses ``_async_aggregate`` with parallelization.
+    Args:
+        dataset: a :class:`fiftyone.core.dataset.Dataset`
+        target_labels: whether to target label tags
     """
-    ds = fod.load_dataset(dataset_name, reload=False)
-
     if target_labels:
-        _, tag_aggs = build_label_tag_aggregations(ds)
-        results = await ds._async_aggregate(tag_aggs)
+        _, tag_aggs = build_label_tag_aggregations(dataset)
+        results = await dataset._async_aggregate(tag_aggs)
         all_tags = set()
         for result in results:
             all_tags.update(tag for tag in result.keys() if tag is not None)
         return sorted(all_tags)
     else:
-        coll_name = ds._sample_collection_name
+        coll_name = dataset._sample_collection_name
         collection = foo.get_async_db_conn()[coll_name]
         result = await collection.distinct("tags")
         return sorted(v for v in result if v is not None)

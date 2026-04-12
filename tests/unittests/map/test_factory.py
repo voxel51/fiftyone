@@ -111,7 +111,7 @@ class TestCreate:
                 #####
 
         @pytest.mark.parametrize(
-            "batch_method", ("id", "id_range", "slice", None)
+            "batch_method", ["id", "id_range", "slice", None]
         )
         def test_valid(
             self,

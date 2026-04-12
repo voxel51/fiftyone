@@ -45,7 +45,7 @@ import fiftyone.core.media as fom
 import fiftyone.core.metadata as fomt
 import fiftyone.core.models as fomo
 import fiftyone.core.odm as foo
-from fiftyone.core.odm.database import _make_id_range_filter
+import fiftyone.core.odm.database as food
 import fiftyone.core.runs as fors
 import fiftyone.core.sample as fosa
 import fiftyone.core.storage as fost
@@ -11565,34 +11565,81 @@ class SampleCollection(object):
             coll_name = self._dataset._sample_collection_name
             collection = foo.get_async_db_conn()[coll_name]
 
-            # Consolidate all pipelines into a single $facet and
-            # optionally parallelize across _id ranges
-            consolidated, branch_map = self._consolidate_facet_pipelines(
-                compiled_facet_aggs, facet_pipelines
-            )
-
-            n_partitions = await self._get_num_partitions(
-                collection, compiled_facet_aggs
-            )
+            # If any aggregation requests a specific index hint, run
+            # per-pipeline to honor the hint instead of consolidating
+            has_custom_hints = any(h is not None for h in hints)
 
             _t0 = timeit.default_timer()
 
-            if n_partitions > 1:
-                raw_result = await self._run_parallel_consolidated(
-                    collection,
-                    consolidated,
-                    n_partitions,
-                    branch_map,
-                    compiled_facet_aggs,
-                    maxTimeMS=maxTimeMS,
-                )
-            else:
+            if has_custom_hints:
+                # Run each pipeline separately with its hint
+                n_partitions = 1
                 kwargs = dict(allowDiskUse=True)
                 if maxTimeMS:
                     kwargs["maxTimeMS"] = maxTimeMS
-                cursor = collection.aggregate(consolidated, **kwargs)
-                raw_docs = [doc async for doc in cursor]
-                raw_result = raw_docs[0] if raw_docs else {}
+
+                _results = await food._do_async_pooled_aggregate(
+                    collection,
+                    list(facet_pipelines.values()),
+                    hints,
+                    **kwargs,
+                )
+                # Parse results directly from individual pipeline outputs
+                for (agg_idx, aggregation), result in zip(
+                    compiled_facet_aggs.items(), _results
+                ):
+                    if result:
+                        data = self._parse_faceted_result(aggregation, result)
+                        if (
+                            isinstance(aggregation, foa.FacetAggregations)
+                            and aggregation._compiled
+                        ):
+                            for idx, d in data.items():
+                                results[idx] = d
+                        else:
+                            results[agg_idx] = data
+                    else:
+                        if (
+                            isinstance(aggregation, foa.FacetAggregations)
+                            and aggregation._compiled
+                        ):
+                            for idx in aggregation._aggregations:
+                                results[idx] = aggregation._aggregations[
+                                    idx
+                                ].default_result()
+                        else:
+                            results[agg_idx] = aggregation.default_result()
+            else:
+                # Consolidate all pipelines into a single $facet and
+                # optionally parallelize across _id ranges
+                (
+                    consolidated,
+                    branch_map,
+                    branch_name_map,
+                ) = self._consolidate_facet_pipelines(
+                    compiled_facet_aggs, facet_pipelines
+                )
+
+                n_partitions = await self._get_num_partitions(
+                    collection, compiled_facet_aggs
+                )
+
+                if n_partitions > 1:
+                    raw_result = await self._run_parallel_consolidated(
+                        collection,
+                        consolidated,
+                        n_partitions,
+                        branch_map,
+                        compiled_facet_aggs,
+                        maxTimeMS=maxTimeMS,
+                    )
+                else:
+                    kwargs = dict(allowDiskUse=True)
+                    if maxTimeMS:
+                        kwargs["maxTimeMS"] = maxTimeMS
+                    cursor = collection.aggregate(consolidated, **kwargs)
+                    raw_docs = [doc async for doc in cursor]
+                    raw_result = raw_docs[0] if raw_docs else {}
 
             _elapsed = timeit.default_timer() - _t0
             logger.info(
@@ -11602,30 +11649,34 @@ class SampleCollection(object):
                 len(compiled_facet_aggs),
             )
 
-            # Parse results by reconstructing each aggregation's expected
-            # result from the consolidated facet output
-            for agg_idx, aggregation in compiled_facet_aggs.items():
-                branches = branch_map[agg_idx]
-                if (
-                    isinstance(aggregation, foa.FacetAggregations)
-                    and aggregation._compiled
-                ):
-                    # Reconstruct the facet document that parse_result expects
-                    facet_doc = {
-                        bname: raw_result.get(bname, []) for bname in branches
-                    }
-                    data = aggregation.parse_result(facet_doc)
-                    for idx, d in data.items():
-                        results[idx] = d
-                else:
-                    bname = branches[0]
-                    branch_result = raw_result.get(bname, [])
-                    if branch_result:
-                        results[agg_idx] = aggregation.parse_result(
-                            branch_result[0]
-                        )
+            if not has_custom_hints:
+                # Parse results by reconstructing each aggregation's
+                # expected result from the consolidated facet output
+                for agg_idx, aggregation in compiled_facet_aggs.items():
+                    branches = branch_map[agg_idx]
+                    if (
+                        isinstance(aggregation, foa.FacetAggregations)
+                        and aggregation._compiled
+                    ):
+                        # Reconstruct the facet document parse_result
+                        # expects, mapping namespaced names back
+                        nmap = branch_name_map.get(agg_idx, {})
+                        facet_doc = {
+                            nmap.get(bname, bname): raw_result.get(bname, [])
+                            for bname in branches
+                        }
+                        data = aggregation.parse_result(facet_doc)
+                        for idx, d in data.items():
+                            results[idx] = d
                     else:
-                        results[agg_idx] = aggregation.default_result()
+                        bname = branches[0]
+                        branch_result = raw_result.get(bname, [])
+                        if branch_result:
+                            results[agg_idx] = aggregation.parse_result(
+                                branch_result[0]
+                            )
+                        else:
+                            results[agg_idx] = aggregation.default_result()
 
         return results[0] if scalar_result else results
 
@@ -11645,6 +11696,7 @@ class SampleCollection(object):
         view_pipeline = self._pipeline()
         all_branches = {}
         branch_map = {}  # agg_idx -> list of branch names
+        branch_name_map = {}  # agg_idx -> {namespaced: original}
 
         for agg_idx, pipeline in facet_pipelines.items():
             aggregation = compiled_aggs[agg_idx]
@@ -11662,13 +11714,19 @@ class SampleCollection(object):
                 # FacetAggregations: prefix stages are unwinds,
                 # last stage is $facet with branches.
                 # Move the prefix into each branch.
+                # Namespace branch names with agg_idx to avoid collisions
+                # when multiple FacetAggregations share the same sub-agg keys.
                 prefix = agg_stages[:-1]
                 facet_stage = agg_stages[-1]["$facet"]
                 names = []
+                name_map = {}
                 for bname, bpipeline in facet_stage.items():
-                    all_branches[bname] = prefix + bpipeline
-                    names.append(bname)
+                    namespaced = f"__{agg_idx}_{bname}"
+                    all_branches[namespaced] = prefix + bpipeline
+                    names.append(namespaced)
+                    name_map[namespaced] = bname
                 branch_map[agg_idx] = names
+                branch_name_map[agg_idx] = name_map
             else:
                 # Standalone aggregation — wrap as a single branch
                 bname = f"__standalone_{agg_idx}"
@@ -11676,7 +11734,7 @@ class SampleCollection(object):
                 branch_map[agg_idx] = [bname]
 
         consolidated = view_pipeline + [{"$facet": all_branches}]
-        return consolidated, branch_map
+        return consolidated, branch_map, branch_name_map
 
     async def _get_num_partitions(self, collection, compiled_aggs):
         """Determines how many parallel partitions to use.
@@ -11700,6 +11758,8 @@ class SampleCollection(object):
             "$group",
             "$sample",
             "$geoNear",
+            "$replaceRoot",
+            "$replaceWith",
         }
 
         view_pipeline = self._pipeline()
@@ -11707,12 +11767,22 @@ class SampleCollection(object):
             if _PARTITION_UNSAFE_STAGES & stage.keys():
                 return 1
 
-            # $limit is only worth parallelizing when the limit is large
-            # enough that the post-limit work benefits from partitioning;
-            # otherwise every partition redundantly scans to the same limit
+            # Small $limit isn't worth parallelizing — each partition
+            # redundantly scans to the same limit for little post-limit work
             if "$limit" in stage:
                 if stage["$limit"] < _PARALLEL_SAMPLES_PER_PARTITION:
                     return 1
+
+            # $project/_id:0 or $unset:_id drops the _id field
+            project = stage.get("$project", {})
+            if project.get("_id") == 0 or project.get("_id") is False:
+                return 1
+
+            unset = stage.get("$unset", [])
+            if isinstance(unset, str):
+                unset = [unset]
+            if "_id" in unset:
+                return 1
 
             match = stage.get("$match", {})
             id_filter = match.get("_id", {})
@@ -11762,7 +11832,7 @@ class SampleCollection(object):
             kwargs["hint"] = {"_id": 1}
 
         async def run_partition(lo, hi):
-            match = _make_id_range_filter(lo, hi)
+            match = food._make_id_range_filter(lo, hi)
             if match:
                 pipeline = (
                     consolidated_pipeline[:insert_idx]
