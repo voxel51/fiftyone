@@ -816,7 +816,9 @@ myst:
                 return (0, -repo_info.get("stars", 0))
         return (0, -repo_info.get("stars", 0) if repo_info else 0)
 
-    def generate_plugins_ecosystem_rst(self, all_plugins: List[Plugin]) -> str:
+    def generate_plugins_ecosystem_rst(
+        self, all_plugins: List[Plugin], include_category_tag: bool = True
+    ) -> str:
         """Generate the plugins_ecosystem.rst file with all plugin cards."""
         rst_content = ""
 
@@ -937,7 +939,9 @@ Please review each plugin's documentation and license before use.
                 else fallback_images[idx % len(fallback_images)]
             )
 
-            category_tag = plugin.category.title()
+            category_tag = (
+                plugin.category.title() if include_category_tag else ""
+            )
             stars = repo_info.get("stars") if repo_info else None
 
             header_text = (
@@ -999,7 +1003,9 @@ Please review each plugin's documentation and license before use.
                 ]
                 if condition
             ]
-            tags_field = ",".join([category_tag] + plugin.tags + extra_tags)
+            tags_field = ",".join(
+                filter(None, [category_tag] + plugin.tags + extra_tags)
+            )
 
             rst_content += f"""
 .. customcarditem::
@@ -1076,9 +1082,17 @@ class LabsDocGenerator(PluginDocGenerator):
 
         logger.info(f"Found {len(plugins)} labs features")
 
-        labs_content = self.generate_plugins_ecosystem_rst(plugins)
+        labs_content = self.generate_plugins_ecosystem_rst(
+            plugins, include_category_tag=False
+        )
         with open(self.labs_ecosystem_dir / "lab_cards.rst", "w") as f:
             f.write(labs_content)
+
+        plugins_content = self.generate_plugins_ecosystem_rst(
+            plugins, include_category_tag=True
+        )
+        with open(self.labs_ecosystem_dir / "lab_cards_plugins.rst", "w") as f:
+            f.write(plugins_content)
 
         logger.info("Labs documentation generated successfully!")
 
