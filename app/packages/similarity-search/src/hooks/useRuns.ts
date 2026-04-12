@@ -46,17 +46,38 @@ export const useRuns = (): UseRunsResult => {
   );
   const fetchingRef = useRef(false);
   const pendingRefreshRef = useRef(false);
+  const inFlightRef = useRef<Promise<void> | null>(null);
+  const consecutiveErrorsRef = useRef(0);
+  const MAX_RETRY = 5;
 
   const refreshRuns = useCallback(() => {
     // If a fetch is already in flight, queue a follow-up refresh
-    // instead of silently dropping this request.
+    // and return the in-flight promise so callers can still await.
     if (fetchingRef.current) {
       pendingRefreshRef.current = true;
-      return Promise.resolve();
+      return inFlightRef.current ?? Promise.resolve();
     }
     fetchingRef.current = true;
 
-    return new Promise<void>((resolve, reject) => {
+    const drainPending = (isError: boolean) => {
+      if (isError) {
+        consecutiveErrorsRef.current += 1;
+      } else {
+        consecutiveErrorsRef.current = 0;
+      }
+
+      if (
+        pendingRefreshRef.current &&
+        consecutiveErrorsRef.current < MAX_RETRY
+      ) {
+        pendingRefreshRef.current = false;
+        refreshRuns();
+      } else {
+        pendingRefreshRef.current = false;
+      }
+    };
+
+    const promise = new Promise<void>((resolve, reject) => {
       fetchRuns(
         {},
         {
@@ -81,26 +102,23 @@ export const useRuns = (): UseRunsResult => {
               console.error("Error processing runs callback:", e);
               reject(e instanceof Error ? e : new Error(String(e)));
             } finally {
-              // If another refresh was requested while we were fetching,
-              // fire it now so we don't miss SSE updates.
-              if (pendingRefreshRef.current) {
-                pendingRefreshRef.current = false;
-                refreshRuns();
-              }
+              drainPending(false);
             }
           },
         }
       ).catch((error: unknown) => {
         fetchingRef.current = false;
         console.error("Operator execution failed for fetchRuns:", error);
-        // Also drain pending refresh on error
-        if (pendingRefreshRef.current) {
-          pendingRefreshRef.current = false;
-          refreshRuns();
-        }
+        drainPending(true);
         reject(error instanceof Error ? error : new Error(String(error)));
       });
     });
+
+    inFlightRef.current = promise.finally(() => {
+      inFlightRef.current = null;
+    });
+
+    return inFlightRef.current;
   }, [fetchRuns, setRuns]);
 
   useEffect(() => {

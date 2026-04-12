@@ -2,35 +2,40 @@ import { useEffect, useMemo, useRef } from "react";
 import { atom, useAtom } from "jotai";
 import { SimilarityRun, RunFilterState } from "../types";
 import { DEFAULT_DATE_PRESET, OWNER_ALL, OWNER_MINE } from "../constants";
+import { getDateRange, matchesText, matchesDate } from "../utils";
 
-const filterStateAtom = atom<RunFilterState>({
+const makeDefaultFilterState = (
+  currentUser?: string | null
+): RunFilterState => ({
   searchText: "",
   datePreset: DEFAULT_DATE_PRESET,
-  ownerFilter: OWNER_ALL,
+  ownerFilter: currentUser ? OWNER_MINE : OWNER_ALL,
 });
-import { getDateRange, matchesText, matchesDate } from "../utils";
+
+const filterStateAtom = atom<RunFilterState>(makeDefaultFilterState());
 
 export const useFilteredRuns = (
   runs: SimilarityRun[],
-  currentUser?: string | null
+  currentUser?: string | null,
+  datasetName?: string | null
 ): {
   filteredRuns: SimilarityRun[];
   filterState: RunFilterState;
   setFilterState: (state: RunFilterState) => void;
 } => {
   const [filterState, setFilterState] = useAtom(filterStateAtom);
-  const defaultsApplied = useRef(false);
+  const prevDatasetRef = useRef<string | null | undefined>(undefined);
 
-  // In FOE (currentUser is set), default ownerFilter to "mine"
+  // Reset filter state when dataset changes or on first mount
   useEffect(() => {
-    if (!defaultsApplied.current && currentUser) {
-      defaultsApplied.current = true;
-      setFilterState((prev) => ({
-        ...prev,
-        ownerFilter: OWNER_MINE,
-      }));
+    if (
+      prevDatasetRef.current !== undefined &&
+      prevDatasetRef.current !== datasetName
+    ) {
+      setFilterState(makeDefaultFilterState(currentUser));
     }
-  }, [currentUser, setFilterState]);
+    prevDatasetRef.current = datasetName;
+  }, [datasetName, currentUser, setFilterState]);
 
   const filteredRuns = useMemo(() => {
     const { searchText, datePreset, ownerFilter } = filterState;

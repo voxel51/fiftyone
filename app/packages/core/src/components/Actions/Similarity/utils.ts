@@ -160,35 +160,45 @@ export const sortType = selectorFamily<string, boolean>({
     },
 });
 
+const pluralizeUnit = (n: number, u: string) =>
+  `${n} ${n === 1 ? u : u + (u === "patch" ? "es" : "s")}`;
+
 export function buildRunName({
   isImageSearch,
+  isUpload,
   textQuery,
   queryIds,
   negativeQueryIds,
   patchesField,
+  hasUploadedImage,
 }: {
   isImageSearch: boolean;
-  textQuery: string;
-  queryIds: string[] | string | undefined;
+  isUpload?: boolean;
+  textQuery?: string;
+  queryIds?: string[] | string;
   negativeQueryIds?: string[];
   patchesField?: string;
+  hasUploadedImage?: boolean;
 }): string {
-  if (!isImageSearch) {
-    return textQuery.trim();
+  if (isUpload) {
+    const count = hasUploadedImage ? 1 : 0;
+    return `${count} ${count === 1 ? "image" : "images"}`;
   }
 
-  const count = Array.isArray(queryIds) ? queryIds.length : 1;
+  if (!isImageSearch) {
+    return textQuery?.trim() || "text query";
+  }
+
+  const count = Array.isArray(queryIds) ? queryIds.length : queryIds ? 1 : 0;
   const negCount = negativeQueryIds?.length ?? 0;
   const unit = patchesField ? "patch" : "sample";
-  const pluralize = (n: number, u: string) =>
-    `${n} ${n === 1 ? u : u + (u === "patch" ? "es" : "s")}`;
 
   if (negCount > 0) {
-    return `${pluralize(count, unit)} positive, ${pluralize(
+    return `${pluralizeUnit(count, unit)} positive, ${pluralizeUnit(
       negCount,
       unit
     )} negative`;
   }
 
-  return pluralize(count, unit);
+  return pluralizeUnit(count, unit);
 }
