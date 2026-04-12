@@ -198,10 +198,7 @@ export default function RunList({
         data: {
           canSelect: selectMode,
           onClick: !selectMode
-            ? (e: MouseEvent) => {
-                // Ignore clicks on interactive descendants (action buttons)
-                const target = e.target as HTMLElement;
-                if (target.closest("button, a, [role='button']")) return;
+            ? () => {
                 onHighlight(run.run_id);
                 if (run.status === "completed") onApply(run.run_id);
               }

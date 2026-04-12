@@ -14,6 +14,14 @@ import { tooltipTextStyle } from "../styled";
 
 const tip = (text: string) => <span style={tooltipTextStyle}>{text}</span>;
 
+/** Wrap a handler to stop propagation so card-level onClick doesn't fire. */
+const stop =
+  (fn: () => void): React.MouseEventHandler =>
+  (e) => {
+    e.stopPropagation();
+    fn();
+  };
+
 type RunActionsProps = {
   run: SimilarityRun;
   isExpanded: boolean;
@@ -56,7 +64,7 @@ export default function RunActions({
             size={Size.Md}
             variant={Variant.Borderless}
             leadingIcon={IconName.ContentCopy}
-            onClick={() => onClone(run.run_id)}
+            onClick={stop(() => onClone(run.run_id))}
           />
         </Tooltip>
         <Tooltip content={tip("Delete")}>
@@ -65,7 +73,7 @@ export default function RunActions({
             size={Size.Md}
             variant={Variant.Borderless}
             leadingIcon={IconName.Delete}
-            onClick={() => onDelete(run.run_id)}
+            onClick={stop(() => onDelete(run.run_id))}
           />
         </Tooltip>
       </Stack>
@@ -79,7 +87,7 @@ export default function RunActions({
               leadingIcon={
                 isExpanded ? IconName.ChevronTop : IconName.ChevronBottom
               }
-              onClick={() => onToggleExpand(run)}
+              onClick={stop(() => onToggleExpand(run))}
             />
           </Tooltip>
         </Stack>
