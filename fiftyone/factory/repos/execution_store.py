@@ -208,6 +208,31 @@ class AbstractExecutionStoreRepo(ABC):
         pass
 
     @abstractmethod
+    def list_values(
+        self,
+        store_name: str,
+        key_prefix: Optional[str] = None,
+        exclude_fields: Optional[List[str]] = None,
+    ) -> List[Dict[str, Any]]:
+        """List all values in a store in a single query.
+
+        This is more efficient than calling :meth:`list_keys` followed by
+        individual :meth:`get_key` calls for each key.
+
+        Args:
+            store_name: the name of the store
+            key_prefix: optional key prefix to filter by (e.g. ``"run:"``)
+            exclude_fields: optional list of top-level fields to exclude
+                from each value dict (e.g. ``["result_ids"]``). The
+                exclusion is applied at the database level so heavy
+                fields are never transferred over the wire.
+
+        Returns:
+            a list of value dicts
+        """
+        pass
+
+    @abstractmethod
     def count_keys(self, store_name: str) -> int:
         """Count the number of keys in a store.
 
@@ -622,6 +647,39 @@ class MongoExecutionStoreRepo(ExecutionStoreRepo):
             {"key": 1},
         )
         return [d["key"] for d in result]
+
+    def list_values(
+        self,
+        store_name: str,
+        key_prefix: Optional[str] = None,
+        exclude_fields: Optional[List[str]] = None,
+    ) -> List[Dict[str, Any]]:
+        query: Dict[str, Any] = {
+            "store_name": store_name,
+            "key": {"$ne": "__store__"},
+            "dataset_id": self._dataset_id,
+        }
+        if key_prefix:
+            query["key"] = {"$regex": f"^{key_prefix}"}
+
+        # Build MongoDB projection to exclude heavy fields at the DB level.
+        # We always exclude Mongo internals; additionally exclude any
+        # requested value sub-fields via dot-notation on the ``value`` dict.
+        projection: Dict[str, int] = {
+            "_id": 0,
+            "store_name": 0,
+            "dataset_id": 0,
+            "policy": 0,
+            "created_at": 0,
+            "updated_at": 0,
+            "expires_at": 0,
+        }
+        if exclude_fields:
+            for field in exclude_fields:
+                projection[f"value.{field}"] = 0
+
+        result = self._collection.find(query, projection)
+        return [d.get("value") for d in result if d.get("value") is not None]
 
     def count_keys(self, store_name: str) -> int:
         return self._collection.count_documents(

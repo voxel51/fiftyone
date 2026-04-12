@@ -249,6 +249,32 @@ class ExecutionStoreService(object):
         """
         return self._repo.list_keys(store_name)
 
+    def list_values(
+        self,
+        store_name: str,
+        key_prefix: Optional[str] = None,
+        exclude_fields: Optional[list[str]] = None,
+    ) -> list[dict[str, Any]]:
+        """Lists all values in the specified store in a single query.
+
+        This is more efficient than calling :meth:`list_keys` followed by
+        individual :meth:`get_key` calls for each key.
+
+        Args:
+            store_name: the name of the store
+            key_prefix: optional key prefix to filter by
+            exclude_fields: optional list of top-level fields to exclude
+                from each value dict at the database level
+
+        Returns:
+            a list of value dicts
+        """
+        return self._repo.list_values(
+            store_name,
+            key_prefix=key_prefix,
+            exclude_fields=exclude_fields,
+        )
+
     def count_keys(self, store_name: str) -> int:
         """Counts the keys in the specified store.
 

@@ -210,6 +210,33 @@ class ExecutionStore(object):
         """
         return self._store_service.list_keys(self.store_name)
 
+    def list_values(
+        self,
+        key_prefix: Optional[str] = None,
+        exclude_fields: Optional[list[str]] = None,
+    ) -> list[dict]:
+        """Lists all values in the store in a single query.
+
+        This is more efficient than calling :meth:`list_keys` followed by
+        individual :meth:`get` calls for each key.
+
+        Args:
+            key_prefix (None): optional key prefix to filter by
+                (e.g. ``"run:"`` to only return run records)
+            exclude_fields (None): optional list of top-level fields
+                to exclude from each value dict. The exclusion is applied
+                at the database level so heavy fields are never
+                transferred over the wire.
+
+        Returns:
+            a list of value dicts
+        """
+        return self._store_service.list_values(
+            self.store_name,
+            key_prefix=key_prefix,
+            exclude_fields=exclude_fields,
+        )
+
     def subscribe(self, callback: Callable[[MessageData], None]) -> str:
         """Subscribes to changes in the store.
 

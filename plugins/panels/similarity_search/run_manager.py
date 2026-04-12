@@ -146,21 +146,10 @@ class RunManager:
         Returns:
             list of run data dicts
         """
-        keys = self._store.list_keys()
-        runs = []
-        for key in keys:
-            if key.startswith(self._RUN_PREFIX):
-                run = self._store.get(key)
-                if run:
-                    # Strip heavy fields for listing
-                    runs.append(
-                        {
-                            k: v
-                            for k, v in run.items()
-                            if k not in self._HEAVY_FIELDS
-                        }
-                    )
-
+        runs = self._store.list_values(
+            key_prefix=self._RUN_PREFIX,
+            exclude_fields=list(self._HEAVY_FIELDS),
+        )
         runs.sort(key=lambda r: r.get("creation_time", ""), reverse=True)
         return runs
 
