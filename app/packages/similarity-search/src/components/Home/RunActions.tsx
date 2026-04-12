@@ -54,7 +54,7 @@ export default function RunActions({
             size={Size.Md}
             variant={Variant.Borderless}
             leadingIcon={IconName.GridView}
-            onClick={() => onApply(run.run_id)}
+            onClick={stop(() => onApply(run.run_id))}
             disabled={run.status !== "completed"}
           />
         </Tooltip>

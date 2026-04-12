@@ -25,8 +25,9 @@ export const useFilteredRuns = (
 } => {
   const [filterState, setFilterState] = useAtom(filterStateAtom);
   const prevDatasetRef = useRef<string | null | undefined>(undefined);
+  const defaultsApplied = useRef(false);
 
-  // Reset filter state when dataset changes or on first mount
+  // Reset filter state when dataset changes
   useEffect(() => {
     if (
       prevDatasetRef.current !== undefined &&
@@ -36,6 +37,19 @@ export const useFilteredRuns = (
     }
     prevDatasetRef.current = datasetName;
   }, [datasetName, currentUser, setFilterState]);
+
+  // On first mount, fix up ownerFilter for logged-in users
+  // (module-level atom initializes without currentUser)
+  useEffect(() => {
+    if (!defaultsApplied.current && currentUser) {
+      defaultsApplied.current = true;
+      setFilterState((prev) =>
+        prev.ownerFilter === OWNER_ALL
+          ? { ...prev, ownerFilter: OWNER_MINE }
+          : prev
+      );
+    }
+  }, [currentUser, setFilterState]);
 
   const filteredRuns = useMemo(() => {
     const { searchText, datePreset, ownerFilter } = filterState;
