@@ -11630,6 +11630,7 @@ class SampleCollection(object):
                         consolidated,
                         n_partitions,
                         branch_map,
+                        branch_name_map,
                         compiled_facet_aggs,
                         maxTimeMS=maxTimeMS,
                     )
@@ -11801,6 +11802,7 @@ class SampleCollection(object):
         consolidated_pipeline,
         n_partitions,
         branch_map,
+        branch_name_map,
         compiled_aggs,
         maxTimeMS=None,
     ):
@@ -11865,9 +11867,11 @@ class SampleCollection(object):
                 if bname in names:
                     agg = compiled_aggs[agg_idx]
                     if isinstance(agg, foa.FacetAggregations):
-                        # Find the sub-aggregation for this branch
+                        # Map namespaced name back to original for lookup
+                        nmap = branch_name_map.get(agg_idx, {})
+                        orig_name = nmap.get(bname, bname)
                         for key, sub_agg in agg._aggregations.items():
-                            if agg._get_key(key, sub_agg) == bname:
+                            if agg._get_key(key, sub_agg) == orig_name:
                                 owner_agg = sub_agg
                                 break
                     else:
