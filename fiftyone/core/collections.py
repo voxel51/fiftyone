@@ -63,7 +63,14 @@ foos = fou.lazy_import("fiftyone.operators.store")
 logger = logging.getLogger(__name__)
 
 _PARALLEL_SAMPLES_PER_PARTITION = 10_000
-_PARALLEL_MAX_PARTITIONS = 8
+
+from fiftyone.internal.features.registry import (
+    is_feature_enabled as _is_feature_enabled,
+)
+
+_PARALLEL_MAX_PARTITIONS = (
+    1 if _is_feature_enabled("DISABLE_PARALLEL_AGGREGATIONS") else 16
+)
 
 
 def _make_registrar():
