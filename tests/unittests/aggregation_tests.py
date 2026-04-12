@@ -1880,88 +1880,255 @@ class HintDecisionTests(unittest.TestCase):
 
 
 class GetNumPartitionsTests(unittest.TestCase):
-    """Tests for _get_num_partitions partition-safety checks."""
+    """Tests for _get_num_partitions partition-safety checks.
 
-    def _make_view(self, pipeline_stages):
-        """Create a mock view with the given pipeline stages."""
-        from unittest import mock
+    Temporarily lowers _PARALLEL_SAMPLES_PER_PARTITION so a small
+    dataset is enough to trigger partitioning.
+    """
 
-        view = mock.Mock()
-        view._pipeline.return_value = pipeline_stages
-
-        # All aggs support merging (not the base class impl)
-        agg = mock.Mock(spec=foa.Count)
-        agg._merge_partition_results = foa.Count._merge_partition_results
-        compiled_aggs = {0: agg}
-
-        return view, compiled_aggs
-
-    def _run(self, view, compiled_aggs, estimated=100_000):
-        """Run _get_num_partitions synchronously."""
-        import asyncio
-        from unittest import mock
-
-        collection = mock.AsyncMock()
-        collection.estimated_document_count.return_value = estimated
-
-        # Call the unbound method with our mock view as self
-        import fiftyone.core.collections as foc
-
-        return asyncio.run(
-            foc.SampleCollection._get_num_partitions(
-                view, collection, compiled_aggs
-            )
+    @classmethod
+    def setUpClass(cls):
+        cls._dataset = fo.Dataset()
+        cls._dataset.add_samples(
+            [fo.Sample(filepath=f"/tmp/{i}.jpg") for i in range(100)]
         )
+
+    @classmethod
+    def tearDownClass(cls):
+        fo.delete_dataset(cls._dataset.name)
+
+    def _get_num_partitions(self, view):
+        import asyncio
+
+        import fiftyone.core.collections as foc
+        import fiftyone.core.odm as foo
+
+        coll_name = view._dataset._sample_collection_name
+        collection = foo.get_async_db_conn()[coll_name]
+        compiled_aggs = {0: foa.Count()}
+
+        orig = foc._PARALLEL_SAMPLES_PER_PARTITION
+        try:
+            foc._PARALLEL_SAMPLES_PER_PARTITION = 10
+            return asyncio.run(
+                view._get_num_partitions(collection, compiled_aggs)
+            )
+        finally:
+            foc._PARALLEL_SAMPLES_PER_PARTITION = orig
 
     def test_small_limit_prevents_partitioning(self):
-        view, aggs = self._make_view([{"$limit": 100}])
-        self.assertEqual(self._run(view, aggs), 1)
+        view = self._dataset.limit(5)
+        self.assertEqual(self._get_num_partitions(view), 1)
 
     def test_large_limit_allows_partitioning(self):
-        view, aggs = self._make_view([{"$limit": 50_000}])
-        result = self._run(view, aggs)
-        self.assertGreater(result, 1)
+        view = self._dataset.limit(50)
+        self.assertGreater(self._get_num_partitions(view), 1)
 
     def test_skip_allows_partitioning(self):
-        view, aggs = self._make_view([{"$skip": 50}])
-        result = self._run(view, aggs)
-        self.assertGreater(result, 1)
+        view = self._dataset.skip(50)
+        self.assertGreater(self._get_num_partitions(view), 1)
 
-    def test_sample_prevents_partitioning(self):
-        view, aggs = self._make_view([{"$sample": {"size": 100}}])
-        self.assertEqual(self._run(view, aggs), 1)
+    def test_match_allows_partitioning(self):
+        view = self._dataset.match(F("filepath").starts_with("/tmp/1"))
+        self.assertGreater(self._get_num_partitions(view), 1)
 
-    def test_geoNear_prevents_partitioning(self):
-        view, aggs = self._make_view(
-            [{"$geoNear": {"near": [0, 0], "distanceField": "dist"}}]
+    def test_empty_view_allows_partitioning(self):
+        view = self._dataset.view()
+        self.assertGreater(self._get_num_partitions(view), 1)
+
+    def test_select_prevents_partitioning(self):
+        sample = self._dataset.first()
+        view = self._dataset.select(sample.id)
+        self.assertEqual(self._get_num_partitions(view), 1)
+
+
+class PartitionedAggregationCorrectnessTests(unittest.TestCase):
+    """Verifies that partitioned (8 partitions) aggregation results match
+    non-partitioned (1 partition) results exactly, including order."""
+
+    @classmethod
+    def setUpClass(cls):
+        import random
+
+        random.seed(51)
+        np.random.seed(51)
+
+        labels = ["cat", "dog", "bird", "fish", "horse"]
+        cls._dataset = fo.Dataset()
+        samples = []
+        for i in range(200):
+            s = fo.Sample(filepath=f"/tmp/{i}.jpg")
+            s["label"] = labels[i % len(labels)]
+            s["confidence"] = round(random.uniform(0.0, 1.0), 4)
+            s["score"] = round(np.random.normal(50, 15), 2)
+            samples.append(s)
+
+        cls._dataset.add_samples(samples)
+
+    @classmethod
+    def tearDownClass(cls):
+        fo.delete_dataset(cls._dataset.name)
+
+    def _run_async_agg(self, view, aggregations, max_partitions):
+        import asyncio
+
+        import fiftyone.core.collections as foc
+
+        orig = foc._PARALLEL_MAX_PARTITIONS
+        orig_spp = foc._PARALLEL_SAMPLES_PER_PARTITION
+        try:
+            foc._PARALLEL_MAX_PARTITIONS = max_partitions
+            foc._PARALLEL_SAMPLES_PER_PARTITION = 10
+            return asyncio.run(view._async_aggregate(aggregations))
+        finally:
+            foc._PARALLEL_MAX_PARTITIONS = orig
+            foc._PARALLEL_SAMPLES_PER_PARTITION = orig_spp
+
+    def _assert_results_equal(self, view, aggregations):
+        single = self._run_async_agg(view, aggregations, 1)
+        multi = self._run_async_agg(view, aggregations, 8)
+        self.assertEqual(len(single), len(multi))
+        for i, (s, m) in enumerate(zip(single, multi)):
+            self.assertEqual(
+                type(s),
+                type(m),
+                f"agg {i}: type mismatch {type(s)} vs {type(m)}",
+            )
+            if isinstance(s, dict):
+                self.assertEqual(
+                    sorted(s.keys()),
+                    sorted(m.keys()),
+                    f"agg {i}: key mismatch",
+                )
+                for k in s:
+                    self.assertEqual(s[k], m[k], f"agg {i}: key {k}")
+            elif isinstance(s, (list, tuple)):
+                self.assertEqual(list(s), list(m), f"agg {i}: list mismatch")
+            else:
+                self.assertEqual(s, m, f"agg {i}: value mismatch")
+
+    @drop_datasets
+    def test_count_and_count_values(self):
+        view = self._dataset.view()
+        aggs = [
+            foa.Count(),
+            foa.Count("label"),
+            foa.CountValues("label"),
+        ]
+        self._assert_results_equal(view, aggs)
+
+    @drop_datasets
+    def test_count_values_order(self):
+        """Verify CountValues returns the same key-count pairs."""
+        view = self._dataset.view()
+        aggs = [foa.CountValues("label")]
+
+        single = self._run_async_agg(view, aggs, 1)
+        multi = self._run_async_agg(view, aggs, 8)
+
+        # Sort both by key to compare deterministically
+        single_sorted = dict(sorted(single[0].items()))
+        multi_sorted = dict(sorted(multi[0].items()))
+        self.assertEqual(single_sorted, multi_sorted)
+
+    @drop_datasets
+    def test_bounds_and_sum(self):
+        view = self._dataset.view()
+        aggs = [
+            foa.Bounds("confidence"),
+            foa.Bounds("score"),
+            foa.Sum("confidence"),
+            foa.Sum("score"),
+        ]
+        self._assert_results_equal(view, aggs)
+
+    @drop_datasets
+    def test_distinct(self):
+        view = self._dataset.view()
+        aggs = [foa.Distinct("label")]
+
+        single = self._run_async_agg(view, aggs, 1)
+        multi = self._run_async_agg(view, aggs, 8)
+
+        self.assertEqual(sorted(single[0]), sorted(multi[0]))
+
+    @drop_datasets
+    def test_histogram_values(self):
+        view = self._dataset.view()
+        aggs = [
+            foa.HistogramValues("confidence", bins=10),
+            foa.HistogramValues("score", bins=5),
+        ]
+        single = self._run_async_agg(view, aggs, 1)
+        multi = self._run_async_agg(view, aggs, 8)
+
+        for i in range(len(aggs)):
+            s_counts, s_edges, _ = single[i]
+            m_counts, m_edges, _ = multi[i]
+            self.assertEqual(s_counts, m_counts, f"histogram {i}: counts")
+            self.assertEqual(
+                list(s_edges), list(m_edges), f"histogram {i}: edges"
+            )
+
+    @drop_datasets
+    def test_match_filtered_view(self):
+        """Test with a match that filters the dataset down."""
+        view = self._dataset.match(F("label") == "cat")
+        aggs = [
+            foa.Count(),
+            foa.CountValues("label"),
+            foa.Bounds("confidence"),
+            foa.HistogramValues("confidence", bins=5),
+        ]
+        single = self._run_async_agg(view, aggs, 1)
+        multi = self._run_async_agg(view, aggs, 8)
+
+        # Count
+        self.assertEqual(single[0], multi[0])
+        # CountValues
+        self.assertEqual(
+            dict(sorted(single[1].items())),
+            dict(sorted(multi[1].items())),
         )
-        self.assertEqual(self._run(view, aggs), 1)
+        # Bounds
+        self.assertEqual(single[2], multi[2])
+        # Histogram
+        s_counts, s_edges, _ = single[3]
+        m_counts, m_edges, _ = multi[3]
+        self.assertEqual(s_counts, m_counts)
+        self.assertEqual(list(s_edges), list(m_edges))
 
-    def test_group_prevents_partitioning(self):
-        view, aggs = self._make_view(
-            [{"$group": {"_id": "$field", "count": {"$sum": 1}}}]
-        )
-        self.assertEqual(self._run(view, aggs), 1)
+    @drop_datasets
+    def test_skip_filtered_view(self):
+        """Test with skip to verify partition insertion point is correct."""
+        view = self._dataset.skip(50)
+        aggs = [
+            foa.Count(),
+            foa.CountValues("label"),
+        ]
+        self._assert_results_equal(view, aggs)
 
-    def test_match_only_allows_partitioning(self):
-        view, aggs = self._make_view([{"$match": {"field": "value"}}])
-        result = self._run(view, aggs, estimated=100_000)
-        self.assertGreater(result, 1)
+    @drop_datasets
+    def test_limit_filtered_view(self):
+        """Test with a large limit that still allows partitioning."""
+        view = self._dataset.limit(150)
+        aggs = [
+            foa.Count(),
+            foa.CountValues("label"),
+            foa.Bounds("confidence"),
+        ]
+        self._assert_results_equal(view, aggs)
 
-    def test_empty_pipeline_allows_partitioning(self):
-        view, aggs = self._make_view([])
-        result = self._run(view, aggs, estimated=100_000)
-        self.assertGreater(result, 1)
-
-    def test_small_collection_returns_one(self):
-        view, aggs = self._make_view([])
-        self.assertEqual(self._run(view, aggs, estimated=5_000), 1)
-
-    def test_id_in_filter_prevents_partitioning(self):
-        view, aggs = self._make_view(
-            [{"$match": {"_id": {"$in": [ObjectId()]}}}]
-        )
-        self.assertEqual(self._run(view, aggs), 1)
+    @drop_datasets
+    def test_match_and_skip(self):
+        """Test combined match + skip."""
+        view = self._dataset.match(F("label").is_in(["cat", "dog"])).skip(10)
+        aggs = [
+            foa.Count(),
+            foa.CountValues("label"),
+            foa.Bounds("confidence"),
+        ]
+        self._assert_results_equal(view, aggs)
 
 
 if __name__ == "__main__":
