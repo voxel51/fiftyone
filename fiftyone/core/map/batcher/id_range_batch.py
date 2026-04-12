@@ -12,6 +12,7 @@ from bson import ObjectId
 
 import fiftyone.core.map.batcher.batch as fomb
 import fiftyone.core.odm as foo
+from fiftyone.core.odm.database import _make_id_range_filter
 from fiftyone.core.map.typing import SampleCollection
 
 T = TypeVar("T")
@@ -49,7 +50,7 @@ class SampleIdRangeBatch(fomb.SampleBatch):
 
         coll_name = sample_collection._dataset._sample_collection_name
         collection = foo.get_db_conn()[coll_name]
-        boundaries = foo.get_id_boundaries_sync(collection, num_batches)
+        boundaries = foo.get_id_boundaries(collection, num_batches)
 
         if not boundaries:
             return [cls(None, None, n)]
@@ -83,7 +84,7 @@ class SampleIdRangeBatch(fomb.SampleBatch):
     def create_subset(
         self, sample_collection: SampleCollection[T]
     ) -> SampleCollection[T]:
-        match = foo.make_id_range_filter(self.lo, self.hi)
+        match = _make_id_range_filter(self.lo, self.hi)
         if match is None:
             return sample_collection
 

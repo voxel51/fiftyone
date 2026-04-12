@@ -66,7 +66,10 @@ class DatasetMixin(object):
 
     def __setattr__(self, name, value):
         if name in self._fields and value is not None:
-            self._fields[name].validate(value)
+            try:
+                self._fields[name].validate(value)
+            except Exception as e:
+                raise ValueError("Error validating field '%s': %s" % (name, e))
 
         super().__setattr__(name, value)
 

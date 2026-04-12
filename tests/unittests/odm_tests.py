@@ -12,7 +12,7 @@ from bson import ObjectId
 import fiftyone as fo
 import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
-from fiftyone.core.odm.database import make_id_range_filter
+from fiftyone.core.odm.database import _make_id_range_filter
 
 
 class ColorSchemeTests(unittest.TestCase):
@@ -173,19 +173,19 @@ class MakeIdRangeFilterTests(unittest.TestCase):
     def test_both_bounds(self):
         lo = ObjectId()
         hi = ObjectId()
-        result = make_id_range_filter(lo, hi)
+        result = _make_id_range_filter(lo, hi)
         self.assertEqual(result, {"$match": {"_id": {"$gte": lo, "$lt": hi}}})
 
     def test_lo_only(self):
         lo = ObjectId()
-        result = make_id_range_filter(lo=lo)
+        result = _make_id_range_filter(lo=lo)
         self.assertEqual(result, {"$match": {"_id": {"$gte": lo}}})
 
     def test_hi_only(self):
         hi = ObjectId()
-        result = make_id_range_filter(hi=hi)
+        result = _make_id_range_filter(hi=hi)
         self.assertEqual(result, {"$match": {"_id": {"$lt": hi}}})
 
     def test_no_bounds(self):
-        result = make_id_range_filter()
+        result = _make_id_range_filter()
         self.assertIsNone(result)

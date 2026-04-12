@@ -18,8 +18,6 @@ from .database import (
     get_async_db_client,
     get_async_db_conn,
     get_id_boundaries,
-    get_id_boundaries_sync,
-    make_id_range_filter,
     drop_database,
     sync_database,
     list_datasets,

@@ -12,27 +12,6 @@ import pytest
 import fiftyone.core.map.batcher.id_range_batch as fomr
 
 
-@pytest.fixture(name="get_id_boundaries_sync")
-def patch_get_id_boundaries_sync():
-    """Patch get_id_boundaries_sync"""
-    with mock.patch.object(fomr, "foo") as m:
-        yield m.get_id_boundaries_sync
-
-
-@pytest.fixture(name="make_id_range_filter")
-def patch_make_id_range_filter():
-    """Patch make_id_range_filter"""
-    with mock.patch.object(fomr, "foo") as m:
-        yield m.make_id_range_filter
-
-
-@pytest.fixture(name="db_conn")
-def patch_db_conn():
-    """Patch get_db_conn"""
-    with mock.patch.object(fomr, "foo") as m:
-        yield m.get_db_conn
-
-
 class TestSplit:
     """Test splitting a sample collection into id range batches"""
 
@@ -54,11 +33,12 @@ class TestSplit:
         assert result[0].total == 128
 
     def test_split_uses_boundaries(self, sample_collection):
-        """test that split calls get_id_boundaries_sync and creates batches"""
+        """test that split calls get_id_boundaries and creates batches
+        with correct lo/hi from the returned boundaries"""
         boundaries = [bson.ObjectId() for _ in range(3)]
 
         with mock.patch.object(fomr, "foo") as foo_mock:
-            foo_mock.get_id_boundaries_sync.return_value = boundaries
+            foo_mock.get_id_boundaries.return_value = boundaries
             foo_mock.get_db_conn.return_value = {
                 sample_collection._dataset._sample_collection_name: (
                     mock.Mock()
@@ -67,6 +47,7 @@ class TestSplit:
 
             result = fomr.SampleIdRangeBatch.split(sample_collection, 4)
 
+        # 3 boundaries -> 4 partitions: [None, b0), [b0, b1), [b1, b2), [b2, None)
         assert len(result) == 4
         assert result[0].lo is None
         assert result[0].hi == boundaries[0]
@@ -80,29 +61,29 @@ class TestSplit:
         total = sum(b.total for b in result)
         assert total == 128
 
-    def test_split_with_batch_size(self, sample_collection):
-        """test that batch_size controls number of partitions"""
+    def test_batch_size_controls_num_partitions(self, sample_collection):
+        """test that batch_size determines how many partitions are requested"""
         boundaries = [bson.ObjectId() for _ in range(3)]
 
         with mock.patch.object(fomr, "foo") as foo_mock:
-            foo_mock.get_id_boundaries_sync.return_value = boundaries
+            foo_mock.get_id_boundaries.return_value = boundaries
+            collection_mock = mock.Mock()
             foo_mock.get_db_conn.return_value = {
                 sample_collection._dataset._sample_collection_name: (
-                    mock.Mock()
+                    collection_mock
                 )
             }
 
-            # 128 samples / batch_size 32 = 4 batches
-            result = fomr.SampleIdRangeBatch.split(
-                sample_collection, 8, batch_size=32
-            )
+            # 128 samples / batch_size 32 = 4 partitions
+            fomr.SampleIdRangeBatch.split(sample_collection, 8, batch_size=32)
 
-        assert len(result) == 4
+        # Verify get_id_boundaries was called with n_partitions=4
+        foo_mock.get_id_boundaries.assert_called_once_with(collection_mock, 4)
 
-    def test_no_boundaries_returned(self, sample_collection):
-        """test fallback when get_id_boundaries_sync returns empty list"""
+    def test_no_boundaries_falls_back_to_single(self, sample_collection):
+        """test fallback to single partition when DB returns no boundaries"""
         with mock.patch.object(fomr, "foo") as foo_mock:
-            foo_mock.get_id_boundaries_sync.return_value = []
+            foo_mock.get_id_boundaries.return_value = []
             foo_mock.get_db_conn.return_value = {
                 sample_collection._dataset._sample_collection_name: (
                     mock.Mock()
@@ -119,28 +100,35 @@ class TestSplit:
 class TestCreateSubset:
     """Test creating a subset from an id range batch"""
 
-    def test_unbounded(self, sample_collection):
-        """test unbounded batch returns collection unchanged"""
-        with mock.patch.object(fomr, "foo") as foo_mock:
-            foo_mock.make_id_range_filter.return_value = None
-
-            batch = fomr.SampleIdRangeBatch(None, None, 128)
-            result = batch.create_subset(sample_collection)
+    def test_unbounded_returns_collection(self, sample_collection):
+        """test that an unbounded batch (lo=None, hi=None) returns the
+        original collection without calling mongo()"""
+        batch = fomr.SampleIdRangeBatch(None, None, 128)
+        result = batch.create_subset(sample_collection)
 
         assert result is sample_collection
+        sample_collection.mongo.assert_not_called()
 
-    def test_bounded(self, sample_collection):
-        """test bounded batch calls mongo with id range filter"""
+    def test_bounded_applies_id_range_filter(self, sample_collection):
+        """test that a bounded batch calls mongo with the correct
+        _id range $match stage"""
         lo = bson.ObjectId()
         hi = bson.ObjectId()
-        match_stage = {"$match": {"_id": {"$gte": lo, "$lt": hi}}}
 
-        with mock.patch.object(fomr, "foo") as foo_mock:
-            foo_mock.make_id_range_filter.return_value = match_stage
+        batch = fomr.SampleIdRangeBatch(lo, hi, 32)
+        result = batch.create_subset(sample_collection)
 
-            batch = fomr.SampleIdRangeBatch(lo, hi, 32)
-            result = batch.create_subset(sample_collection)
-
-        foo_mock.make_id_range_filter.assert_called_once_with(lo, hi)
-        sample_collection.mongo.assert_called_once_with([match_stage])
+        expected = {"$match": {"_id": {"$gte": lo, "$lt": hi}}}
+        sample_collection.mongo.assert_called_once_with([expected])
         assert result == sample_collection.mongo.return_value
+
+    def test_last_partition_has_no_upper_bound(self, sample_collection):
+        """test the last partition (lower bound only, no upper bound)
+        produces a $gte-only filter"""
+        lower = bson.ObjectId()
+
+        batch = fomr.SampleIdRangeBatch(lower, None, 32)
+        result = batch.create_subset(sample_collection)
+
+        expected = {"$match": {"_id": {"$gte": lower}}}
+        sample_collection.mongo.assert_called_once_with([expected])

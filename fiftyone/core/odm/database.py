@@ -476,48 +476,39 @@ async def _do_async_aggregate(collection, pipeline, hint, **kwargs):
     return [i async for i in collection.aggregate(pipeline, **next_kwargs)]
 
 
-def get_id_boundaries_sync(collection, n_partitions):
+def get_id_boundaries(collection, n_partitions):
     """Gets evenly distributed _id boundaries for splitting a collection.
 
     Uses ``$bucketAuto`` on the ``_id`` index for even distribution.
 
     Args:
-        collection: a ``pymongo.collection.Collection``
+        collection: a ``pymongo.collection.Collection`` or
+            ``motor.motor_asyncio.AsyncIOMotorCollection``
         n_partitions: the number of partitions to create
 
     Returns:
-        a list of ``n_partitions - 1`` boundary ObjectIds
+        a list of ``n_partitions - 1`` boundary ObjectIds, or a
+        coroutine that resolves to one if an async collection is given
     """
     pipeline = [
         {"$project": {"_id": 1}},
         {"$bucketAuto": {"groupBy": "$_id", "buckets": n_partitions}},
     ]
+
+    if isinstance(collection, mtr.AsyncIOMotorCollection):
+        return _get_id_boundaries_async(collection, pipeline)
+
     buckets = list(collection.aggregate(pipeline, hint={"_id": 1}))
     return [b["_id"]["min"] for b in buckets[1:]]
 
 
-async def get_id_boundaries(collection, n_partitions):
-    """Gets evenly distributed _id boundaries for splitting a collection.
-
-    Uses ``$bucketAuto`` on the ``_id`` index for even distribution.
-
-    Args:
-        collection: an ``AsyncIOMotorCollection``
-        n_partitions: the number of partitions to create
-
-    Returns:
-        a list of ``n_partitions - 1`` boundary ObjectIds
-    """
-    pipeline = [
-        {"$project": {"_id": 1}},
-        {"$bucketAuto": {"groupBy": "$_id", "buckets": n_partitions}},
-    ]
+async def _get_id_boundaries_async(collection, pipeline):
     cursor = collection.aggregate(pipeline, hint={"_id": 1})
     buckets = [doc async for doc in cursor]
     return [b["_id"]["min"] for b in buckets[1:]]
 
 
-def make_id_range_filter(lo=None, hi=None):
+def _make_id_range_filter(lo=None, hi=None):
     """Builds a ``$match`` stage that filters by an ``_id`` range.
 
     Args:

@@ -603,9 +603,25 @@ class DatasetView(foc.SampleCollection):
                     filtered_fields=filtered_fields,
                 )
             except Exception as e:
+                sample_id = d.get("_id", "unknown")
+                from mongoengine.errors import ValidationError
+
+                if isinstance(e.__cause__, ValidationError) or isinstance(
+                    e, ValidationError
+                ):
+                    hint = (
+                        "The sample's stored data may be incompatible "
+                        "with the field's schema"
+                    )
+                else:
+                    hint = (
+                        "This is likely due to an invalid stage in "
+                        "the DatasetView"
+                    )
+
                 raise ValueError(
-                    "Failed to load sample from the database. This is likely "
-                    "due to an invalid stage in the DatasetView"
+                    "Failed to load sample %s from the database. "
+                    "%s: %s" % (sample_id, hint, e)
                 ) from e
 
         return make_sample

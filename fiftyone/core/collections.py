@@ -45,6 +45,7 @@ import fiftyone.core.media as fom
 import fiftyone.core.metadata as fomt
 import fiftyone.core.models as fomo
 import fiftyone.core.odm as foo
+from fiftyone.core.odm.database import _make_id_range_filter
 import fiftyone.core.runs as fors
 import fiftyone.core.sample as fosa
 import fiftyone.core.storage as fost
@@ -11725,7 +11726,7 @@ class SampleCollection(object):
             kwargs["maxTimeMS"] = maxTimeMS
 
         async def run_partition(lo, hi):
-            match = foo.make_id_range_filter(lo, hi)
+            match = _make_id_range_filter(lo, hi)
             pipeline = ([match] if match else []) + consolidated_pipeline
             cursor = collection.aggregate(pipeline, hint={"_id": 1}, **kwargs)
             docs = [doc async for doc in cursor]
