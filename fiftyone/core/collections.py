@@ -11725,10 +11725,17 @@ class SampleCollection(object):
         if maxTimeMS:
             kwargs["maxTimeMS"] = maxTimeMS
 
+        # Only hint _id when the pipeline has no other $match stages
+        # that might benefit from a different index
+        has_other_match = any(
+            "$match" in stage for stage in consolidated_pipeline
+        )
+        hint = None if has_other_match else {"_id": 1}
+
         async def run_partition(lo, hi):
             match = _make_id_range_filter(lo, hi)
             pipeline = ([match] if match else []) + consolidated_pipeline
-            cursor = collection.aggregate(pipeline, hint={"_id": 1}, **kwargs)
+            cursor = collection.aggregate(pipeline, hint=hint, **kwargs)
             docs = [doc async for doc in cursor]
             return docs[0] if docs else {}
 

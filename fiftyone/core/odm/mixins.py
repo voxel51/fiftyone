@@ -19,7 +19,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 
-from .database import get_db_conn
+from .database import get_db_conn, get_id_boundaries, _make_id_range_filter
 from .dataset import SampleFieldDocument
 from .embedded_document import DynamicEmbeddedDocument
 from .utils import (
@@ -1124,7 +1124,7 @@ class DatasetMixin(object):
         view.save(field_roots)
 
     @classmethod
-    def _delete_fields_simple(cls, paths):
+    def _delete_fields_simple(cls, paths, num_workers=None):
         if not paths:
             return
 
@@ -1132,9 +1132,37 @@ class DatasetMixin(object):
         now = datetime.utcnow()
 
         coll = get_db_conn()[cls.__name__]
-        coll.update_many(
-            {}, [{"$unset": _paths}, {"$set": {"last_modified_at": now}}]
-        )
+        pipeline = [{"$unset": _paths}, {"$set": {"last_modified_at": now}}]
+
+        if num_workers is None:
+            import fiftyone as fo
+
+            num_workers = fo.config.max_thread_pool_workers or 8
+
+        boundaries = get_id_boundaries(coll, num_workers)
+
+        if not boundaries:
+            coll.update_many({}, pipeline)
+            return
+
+        all_bounds = [None] + boundaries + [None]
+
+        def _update_range(lo, hi):
+            match = _make_id_range_filter(lo, hi)
+            query = match["$match"] if match else {}
+            coll.update_many(query, pipeline)
+
+        from concurrent.futures import ThreadPoolExecutor
+
+        with ThreadPoolExecutor(max_workers=num_workers) as executor:
+            futures = [
+                executor.submit(
+                    _update_range, all_bounds[i], all_bounds[i + 1]
+                )
+                for i in range(len(all_bounds) - 1)
+            ]
+            for f in futures:
+                f.result()
 
     @classmethod
     def _handle_db_field(cls, path, new_path=None):

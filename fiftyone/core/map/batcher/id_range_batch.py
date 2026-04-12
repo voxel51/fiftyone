@@ -88,4 +88,14 @@ class SampleIdRangeBatch(fomb.SampleBatch):
         if match is None:
             return sample_collection
 
-        return sample_collection.mongo([match])
+        view = sample_collection.view()
+        view._prefix = [match]
+
+        # Only hint _id when the view has no other $match stages that
+        # might benefit from a different index
+        pipeline = view._pipeline()
+        has_other_match = any("$match" in stage for stage in pipeline)
+        if not has_other_match:
+            view._hint = {"_id": 1}
+
+        return view

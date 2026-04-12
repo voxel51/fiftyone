@@ -67,6 +67,8 @@ class DatasetView(foc.SampleCollection):
         "__name",
         "_make_sample_fcn",
         "_make_frame_fcn",
+        "_hint",
+        "_prefix",
     )
 
     def __init__(
@@ -85,6 +87,8 @@ class DatasetView(foc.SampleCollection):
         self.__media_type = _media_type
         self.__group_slice = _group_slice
         self.__name = _name
+        self._hint = None
+        self._prefix = None
 
     def __eq__(self, other):
         if type(other) != type(self):
@@ -1786,7 +1790,14 @@ class DatasetView(foc.SampleCollection):
             post_pipeline=post_pipeline,
         )
 
-        return foo.aggregate(self._dataset._sample_collection, _pipeline)
+        if self._prefix:
+            _pipeline = self._prefix + _pipeline
+
+        return foo.aggregate(
+            self._dataset._sample_collection,
+            _pipeline,
+            hints=self._hint,
+        )
 
     def _serialize(self, include_uuids=True):
         return [
