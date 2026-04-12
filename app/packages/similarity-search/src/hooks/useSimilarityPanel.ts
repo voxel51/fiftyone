@@ -38,6 +38,8 @@ const useDerivedPanelState = (props: SimilaritySearchViewProps) => {
       string
     >) ?? {};
 
+  const datasetName = useRecoilValue(fos.datasetName);
+
   // Detect patches view and filter brain keys accordingly
   const isPatchesView = useRecoilValue(fos.isPatchesView);
   const viewStages = useRecoilValue(fos.view);
@@ -76,7 +78,8 @@ const useDerivedPanelState = (props: SimilaritySearchViewProps) => {
   const canFilterByOwner = !!currentUser;
   const { filteredRuns, filterState, setFilterState } = useFilteredRuns(
     runs,
-    currentUser
+    currentUser,
+    datasetName
   );
 
   return {
@@ -295,6 +298,14 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
     prevRunStatusesRef.current = next;
   }, [state.runs]);
 
+  const handleApplyWithHighlight = useCallback(
+    (runId: string) => {
+      setHighlightedRunId(runId);
+      actions.handleApply(runId);
+    },
+    [actions, setHighlightedRunId]
+  );
+
   const selection = useMemo(
     () => ({
       selectMode,
@@ -335,13 +346,7 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
 
     // actions
     ...actions,
-    handleApply: useCallback(
-      (runId: string) => {
-        setHighlightedRunId(runId);
-        actions.handleApply(runId);
-      },
-      [actions.handleApply, setHighlightedRunId]
-    ),
+    handleApply: handleApplyWithHighlight,
     refreshRuns: state.refreshRuns,
     setFilterState: state.setFilterState,
     navigateHome,
