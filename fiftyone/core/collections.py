@@ -11689,10 +11689,23 @@ class SampleCollection(object):
             ):
                 return 1
 
+        _PARTITION_UNSAFE_STAGES = {
+            "$group",
+            "$sample",
+            "$geoNear",
+        }
+
         view_pipeline = self._pipeline()
         for stage in view_pipeline:
-            if "$group" in stage:
+            if _PARTITION_UNSAFE_STAGES & stage.keys():
                 return 1
+
+            # $limit is only worth parallelizing when the limit is large
+            # enough that the post-limit work benefits from partitioning;
+            # otherwise every partition redundantly scans to the same limit
+            if "$limit" in stage:
+                if stage["$limit"] < _PARALLEL_SAMPLES_PER_PARTITION:
+                    return 1
 
             match = stage.get("$match", {})
             id_filter = match.get("_id", {})
@@ -11725,17 +11738,33 @@ class SampleCollection(object):
         if maxTimeMS:
             kwargs["maxTimeMS"] = maxTimeMS
 
-        # Only hint _id when the pipeline has no other $match stages
-        # that might benefit from a different index
+        # Find insertion point for id range match: after any $skip/$limit
+        # stages so they apply globally, but before $facet
+        _INSERT_AFTER = {"$skip", "$limit"}
+        insert_idx = 0
+        for i, stage in enumerate(consolidated_pipeline):
+            if _INSERT_AFTER & stage.keys():
+                insert_idx = i + 1
+
+        # Only hint _id when stages after the insertion point have no
+        # $match that might benefit from a different index
         has_other_match = any(
-            "$match" in stage for stage in consolidated_pipeline
+            "$match" in stage for stage in consolidated_pipeline[insert_idx:]
         )
-        hint = None if has_other_match else {"_id": 1}
+        if not has_other_match:
+            kwargs["hint"] = {"_id": 1}
 
         async def run_partition(lo, hi):
             match = _make_id_range_filter(lo, hi)
-            pipeline = ([match] if match else []) + consolidated_pipeline
-            cursor = collection.aggregate(pipeline, hint=hint, **kwargs)
+            if match:
+                pipeline = (
+                    consolidated_pipeline[:insert_idx]
+                    + [match]
+                    + consolidated_pipeline[insert_idx:]
+                )
+            else:
+                pipeline = consolidated_pipeline
+            cursor = collection.aggregate(pipeline, **kwargs)
             docs = [doc async for doc in cursor]
             return docs[0] if docs else {}
 

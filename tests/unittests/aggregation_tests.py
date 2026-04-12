@@ -1704,7 +1704,8 @@ class MergePartitionResultsTests(unittest.TestCase):
         )
         counts = [item["count"] for item in result[0]["result"]]
         self.assertEqual(counts, [3, 5, 10])
-        self.assertEqual(result[0]["count"], 4)
+        # count reflects distinct keys after dedup, not sum of partition counts
+        self.assertEqual(result[0]["count"], 3)
 
     def test_count_values_sorted_descending_with_first(self):
         agg = foa.CountValues("field", _first=3, _asc=False)
@@ -1801,6 +1802,166 @@ class MergePartitionResultsTests(unittest.TestCase):
 
         agg = CustomAgg("field")
         self.assertIsNone(agg._merge_partition_results([]))
+
+    def test_count_values_count_reflects_distinct_keys(self):
+        """count should be the number of distinct keys after merging,
+        not the sum of per-partition counts which overcounts duplicates."""
+        agg = foa.CountValues("field", _first=10)
+        result = agg._merge_partition_results(
+            [
+                [
+                    {
+                        "result": [
+                            {"k": "a", "count": 5},
+                            {"k": "b", "count": 3},
+                        ],
+                        "count": 2,
+                    }
+                ],
+                [
+                    {
+                        "result": [
+                            {"k": "a", "count": 2},
+                            {"k": "c", "count": 1},
+                        ],
+                        "count": 2,
+                    }
+                ],
+                [
+                    {
+                        "result": [
+                            {"k": "a", "count": 1},
+                            {"k": "b", "count": 4},
+                        ],
+                        "count": 2,
+                    }
+                ],
+            ]
+        )
+        # "a" appears in all 3 partitions but is only 1 distinct key
+        # Total distinct keys: a, b, c = 3 (not 2+2+2=6)
+        self.assertEqual(result[0]["count"], 3)
+        merged = {item["k"]: item["count"] for item in result[0]["result"]}
+        self.assertEqual(merged, {"a": 8, "b": 7, "c": 1})
+
+    def test_count_values_count_no_overlap(self):
+        """When partitions have no overlapping keys, count equals the sum."""
+        agg = foa.CountValues("field", _first=10)
+        result = agg._merge_partition_results(
+            [
+                [{"result": [{"k": "x", "count": 1}], "count": 1}],
+                [{"result": [{"k": "y", "count": 2}], "count": 1}],
+            ]
+        )
+        self.assertEqual(result[0]["count"], 2)
+
+
+class HintDecisionTests(unittest.TestCase):
+    """Tests for the hint logic used in _run_parallel_consolidated.
+
+    The rule: hint={"_id": 1} is included only when the consolidated
+    pipeline has no $match stages that might benefit from a different index.
+    """
+
+    def _should_hint(self, pipeline):
+        has_other_match = any("$match" in stage for stage in pipeline)
+        return None if has_other_match else {"_id": 1}
+
+    def test_no_match_stages_hints_id(self):
+        pipeline = [{"$facet": {"b0": []}}]
+        self.assertEqual(self._should_hint(pipeline), {"_id": 1})
+
+    def test_match_stage_suppresses_hint(self):
+        pipeline = [{"$match": {"field": "val"}}, {"$facet": {"b0": []}}]
+        self.assertIsNone(self._should_hint(pipeline))
+
+    def test_empty_pipeline_hints_id(self):
+        self.assertEqual(self._should_hint([]), {"_id": 1})
+
+
+class GetNumPartitionsTests(unittest.TestCase):
+    """Tests for _get_num_partitions partition-safety checks."""
+
+    def _make_view(self, pipeline_stages):
+        """Create a mock view with the given pipeline stages."""
+        from unittest import mock
+
+        view = mock.Mock()
+        view._pipeline.return_value = pipeline_stages
+
+        # All aggs support merging (not the base class impl)
+        agg = mock.Mock(spec=foa.Count)
+        agg._merge_partition_results = foa.Count._merge_partition_results
+        compiled_aggs = {0: agg}
+
+        return view, compiled_aggs
+
+    def _run(self, view, compiled_aggs, estimated=100_000):
+        """Run _get_num_partitions synchronously."""
+        import asyncio
+        from unittest import mock
+
+        collection = mock.AsyncMock()
+        collection.estimated_document_count.return_value = estimated
+
+        # Call the unbound method with our mock view as self
+        import fiftyone.core.collections as foc
+
+        return asyncio.run(
+            foc.SampleCollection._get_num_partitions(
+                view, collection, compiled_aggs
+            )
+        )
+
+    def test_small_limit_prevents_partitioning(self):
+        view, aggs = self._make_view([{"$limit": 100}])
+        self.assertEqual(self._run(view, aggs), 1)
+
+    def test_large_limit_allows_partitioning(self):
+        view, aggs = self._make_view([{"$limit": 50_000}])
+        result = self._run(view, aggs)
+        self.assertGreater(result, 1)
+
+    def test_skip_allows_partitioning(self):
+        view, aggs = self._make_view([{"$skip": 50}])
+        result = self._run(view, aggs)
+        self.assertGreater(result, 1)
+
+    def test_sample_prevents_partitioning(self):
+        view, aggs = self._make_view([{"$sample": {"size": 100}}])
+        self.assertEqual(self._run(view, aggs), 1)
+
+    def test_geoNear_prevents_partitioning(self):
+        view, aggs = self._make_view(
+            [{"$geoNear": {"near": [0, 0], "distanceField": "dist"}}]
+        )
+        self.assertEqual(self._run(view, aggs), 1)
+
+    def test_group_prevents_partitioning(self):
+        view, aggs = self._make_view(
+            [{"$group": {"_id": "$field", "count": {"$sum": 1}}}]
+        )
+        self.assertEqual(self._run(view, aggs), 1)
+
+    def test_match_only_allows_partitioning(self):
+        view, aggs = self._make_view([{"$match": {"field": "value"}}])
+        result = self._run(view, aggs, estimated=100_000)
+        self.assertGreater(result, 1)
+
+    def test_empty_pipeline_allows_partitioning(self):
+        view, aggs = self._make_view([])
+        result = self._run(view, aggs, estimated=100_000)
+        self.assertGreater(result, 1)
+
+    def test_small_collection_returns_one(self):
+        view, aggs = self._make_view([])
+        self.assertEqual(self._run(view, aggs, estimated=5_000), 1)
+
+    def test_id_in_filter_prevents_partitioning(self):
+        view, aggs = self._make_view(
+            [{"$match": {"_id": {"$in": [ObjectId()]}}}]
+        )
+        self.assertEqual(self._run(view, aggs), 1)
 
 
 if __name__ == "__main__":
