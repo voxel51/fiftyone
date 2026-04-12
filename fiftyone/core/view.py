@@ -138,13 +138,16 @@ class DatasetView(foc.SampleCollection):
             )
 
     def __copy__(self):
-        return self.__class__(
+        view = self.__class__(
             self.__dataset,
             _stages=deepcopy(self.__stages),
             _media_type=self.__media_type,
             _group_slice=self.__group_slice,
             _name=self.__name,
         )
+        view._hint = self._hint
+        view._prefix = self._prefix
+        return view
 
     @property
     def _base_view(self):
