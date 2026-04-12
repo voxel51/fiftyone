@@ -2007,7 +2007,6 @@ class PartitionedAggregationCorrectnessTests(unittest.TestCase):
             else:
                 self.assertEqual(s, m, f"agg {i}: value mismatch")
 
-    @drop_datasets
     def test_count_and_count_values(self):
         view = self._dataset.view()
         aggs = [
@@ -2017,7 +2016,6 @@ class PartitionedAggregationCorrectnessTests(unittest.TestCase):
         ]
         self._assert_results_equal(view, aggs)
 
-    @drop_datasets
     def test_count_values_order(self):
         """Verify CountValues returns the same key-count pairs."""
         view = self._dataset.view()
@@ -2031,7 +2029,6 @@ class PartitionedAggregationCorrectnessTests(unittest.TestCase):
         multi_sorted = dict(sorted(multi[0].items()))
         self.assertEqual(single_sorted, multi_sorted)
 
-    @drop_datasets
     def test_bounds_and_sum(self):
         view = self._dataset.view()
         aggs = [
@@ -2042,7 +2039,6 @@ class PartitionedAggregationCorrectnessTests(unittest.TestCase):
         ]
         self._assert_results_equal(view, aggs)
 
-    @drop_datasets
     def test_distinct(self):
         view = self._dataset.view()
         aggs = [foa.Distinct("label")]
@@ -2052,7 +2048,6 @@ class PartitionedAggregationCorrectnessTests(unittest.TestCase):
 
         self.assertEqual(sorted(single[0]), sorted(multi[0]))
 
-    @drop_datasets
     def test_histogram_values(self):
         view = self._dataset.view()
         aggs = [
@@ -2070,7 +2065,6 @@ class PartitionedAggregationCorrectnessTests(unittest.TestCase):
                 list(s_edges), list(m_edges), f"histogram {i}: edges"
             )
 
-    @drop_datasets
     def test_match_filtered_view(self):
         """Test with a match that filters the dataset down."""
         view = self._dataset.match(F("label") == "cat")
@@ -2098,7 +2092,6 @@ class PartitionedAggregationCorrectnessTests(unittest.TestCase):
         self.assertEqual(s_counts, m_counts)
         self.assertEqual(list(s_edges), list(m_edges))
 
-    @drop_datasets
     def test_skip_filtered_view(self):
         """Test with skip to verify partition insertion point is correct."""
         view = self._dataset.skip(50)
@@ -2108,7 +2101,6 @@ class PartitionedAggregationCorrectnessTests(unittest.TestCase):
         ]
         self._assert_results_equal(view, aggs)
 
-    @drop_datasets
     def test_limit_filtered_view(self):
         """Test with a large limit that still allows partitioning."""
         view = self._dataset.limit(150)
@@ -2119,7 +2111,6 @@ class PartitionedAggregationCorrectnessTests(unittest.TestCase):
         ]
         self._assert_results_equal(view, aggs)
 
-    @drop_datasets
     def test_match_and_skip(self):
         """Test combined match + skip."""
         view = self._dataset.match(F("label").is_in(["cat", "dog"])).skip(10)
