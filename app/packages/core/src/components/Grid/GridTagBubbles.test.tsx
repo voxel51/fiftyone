@@ -1,4 +1,10 @@
-import { COLOR_BY, STRING_FIELD, type Schema } from "@fiftyone/utilities";
+import {
+  COLOR_BY,
+  EMBEDDED_DOCUMENT_FIELD,
+  LIST_FIELD,
+  STRING_FIELD,
+  type Schema,
+} from "@fiftyone/utilities";
 import { cleanup, render, screen } from "@testing-library/react";
 import React from "react";
 import {
@@ -32,6 +38,29 @@ const SCHEMA: Schema = {
     path: "filepath",
     subfield: null,
   },
+  ground_truth: {
+    dbField: "ground_truth",
+    description: null,
+    embeddedDocType: "fiftyone.core.labels.Detections",
+    fields: {
+      detections: {
+        dbField: "detections",
+        description: null,
+        embeddedDocType: null,
+        fields: {},
+        ftype: LIST_FIELD,
+        info: null,
+        name: "detections",
+        path: "ground_truth.detections",
+        subfield: EMBEDDED_DOCUMENT_FIELD,
+      },
+    },
+    ftype: EMBEDDED_DOCUMENT_FIELD,
+    info: null,
+    name: "ground_truth",
+    path: "ground_truth",
+    subfield: null,
+  },
 };
 
 const COLORING = {
@@ -48,8 +77,12 @@ const COLORING = {
 const SAMPLE = {
   filepath: "/tmp/example.pdf",
   tags: ["grid-tag"],
-  _label_tags: {
-    "has-label": 2,
+  ground_truth: {
+    _cls: "Detections",
+    detections: [
+      { _cls: "Detection", label: "cat", tags: ["has-label"] },
+      { _cls: "Detection", label: "dog", tags: ["has-label"] },
+    ],
   },
 };
 

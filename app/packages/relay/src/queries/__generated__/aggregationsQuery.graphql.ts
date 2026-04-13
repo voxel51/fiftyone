@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<5a55f8ce32baf2bf03c11c2954afdaaf>>
+ * @generated SignedSource<<c1ad9100dbb55acd80bd9978cb72e735>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -34,6 +34,7 @@ export type SelectedLabel = {
   instanceId?: string | null;
   labelId: string;
   sampleId: string;
+  type?: string | null;
 };
 export type aggregationsQuery$variables = {
   form: AggregationForm;

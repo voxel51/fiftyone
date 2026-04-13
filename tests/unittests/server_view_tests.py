@@ -184,8 +184,7 @@ class ServerViewTests(unittest.TestCase):
                 view._pipeline(),
             )
         )
-        self.assertIn("_label_tags", sample)
-        self.assertDictEqual(sample["_label_tags"], {"one": 1, "two": 2})
+        self.assertNotIn("_label_tags", sample)
 
         filters = {
             "_label_tags": {
@@ -216,8 +215,7 @@ class ServerViewTests(unittest.TestCase):
                 view._pipeline(),
             )
         )
-        self.assertIn("_label_tags", sample)
-        self.assertDictEqual(sample["_label_tags"], {"one": 1, "two": 1})
+        self.assertNotIn("_label_tags", sample)
 
         filters = {
             "_label_tags": {
@@ -250,8 +248,7 @@ class ServerViewTests(unittest.TestCase):
                 view._pipeline(),
             )
         )
-        self.assertIn("_label_tags", sample)
-        self.assertDictEqual(sample["_label_tags"], {"two": 1})
+        self.assertNotIn("_label_tags", sample)
 
         filters = {
             "_label_tags": {
@@ -321,8 +318,7 @@ class ServerViewTests(unittest.TestCase):
                 view._pipeline(),
             )
         )
-        self.assertIn("_label_tags", sample)
-        self.assertDictEqual(sample["_label_tags"], {"one": 1, "two": 2})
+        self.assertNotIn("_label_tags", sample)
 
         filters = {
             "_label_tags": {
@@ -353,8 +349,7 @@ class ServerViewTests(unittest.TestCase):
                 view._pipeline(),
             )
         )
-        self.assertIn("_label_tags", sample)
-        self.assertDictEqual(sample["_label_tags"], {"one": 1, "two": 1})
+        self.assertNotIn("_label_tags", sample)
 
         filters = {
             "_label_tags": {
@@ -388,8 +383,7 @@ class ServerViewTests(unittest.TestCase):
                 view._pipeline(),
             )
         )
-        self.assertIn("_label_tags", sample)
-        self.assertDictEqual(sample["_label_tags"], {"two": 1})
+        self.assertNotIn("_label_tags", sample)
 
         filters = {
             "_label_tags": {
@@ -549,8 +543,7 @@ class ServerViewTests(unittest.TestCase):
                 view._pipeline(),
             )
         )
-        self.assertIn("_label_tags", sample)
-        self.assertDictEqual(sample["_label_tags"], {"one": 1, "two": 2})
+        self.assertNotIn("_label_tags", sample)
 
         filters = {
             "_label_tags": {
@@ -581,8 +574,7 @@ class ServerViewTests(unittest.TestCase):
                 view._pipeline(),
             )
         )
-        self.assertIn("_label_tags", sample)
-        self.assertDictEqual(sample["_label_tags"], {"one": 1, "two": 1})
+        self.assertNotIn("_label_tags", sample)
 
         filters = {
             "_label_tags": {
@@ -615,8 +607,7 @@ class ServerViewTests(unittest.TestCase):
                 view._pipeline(),
             )
         )
-        self.assertIn("_label_tags", sample)
-        self.assertDictEqual(sample["_label_tags"], {"two": 1})
+        self.assertNotIn("_label_tags", sample)
 
         filters = {
             "_label_tags": {
