@@ -47,11 +47,11 @@ const toolSizeAtom = atom<number>(DEFAULT_TOOL_SIZE);
 const toolShapeAtom = atom<SegmentationToolShape>("circle");
 
 /**
- * Tracks the last processed `lighter:overlay-create` event ID so that only one
+ * Tracks the last processed event ID for each event type so that only one
  * `useSegmentationMode` instance handles each event, even though the hook is
  * called in multiple components.
  */
-const lastProcessedCreateIdAtom = atom<string | null>(null);
+const claimedEventsAtom = atom<Map<string, string>>(new Map());
 
 // ---------------------------------------------------------------------------
 // Unsafe exports for non-React bridge access only.
@@ -195,13 +195,16 @@ export const useSegmentationMode = () => {
     setActive,
   ]);
 
-  const claimCreateEvent = useAtomCallback(
-    useCallback((get, set, eventId: string) => {
-      if (get(lastProcessedCreateIdAtom) === eventId) {
+  const claimEvent = useAtomCallback(
+    useCallback((get, set, eventType: string, eventId: string) => {
+      const claimedEvents = get(claimedEventsAtom);
+      if (claimedEvents.get(eventType) === eventId) {
         return false;
       }
 
-      set(lastProcessedCreateIdAtom, eventId);
+      const updatedEvents = new Map(claimedEvents);
+      updatedEvents.set(eventType, eventId);
+      set(claimedEventsAtom, updatedEvents);
 
       return true;
     }, [])
@@ -220,7 +223,10 @@ export const useSegmentationMode = () => {
     "lighter:overlay-create",
     useCallback(
       (payload) => {
-        if (!segmentationModeActive || !claimCreateEvent(payload.eventId)) {
+        if (
+          !segmentationModeActive ||
+          !claimEvent("overlay-create", payload.eventId)
+        ) {
           return;
         }
 
@@ -246,7 +252,7 @@ export const useSegmentationMode = () => {
         // e.g. createDetection({ field, labelValue, isEditingMask: true });
         createDetection({ isEditingMask: true });
       },
-      [addOverlay, claimCreateEvent, createDetection, segmentationModeActive]
+      [addOverlay, claimEvent, createDetection, segmentationModeActive]
     )
   );
 
