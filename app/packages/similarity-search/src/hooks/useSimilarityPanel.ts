@@ -284,11 +284,7 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
     const next = new Map(state.runs.map((r) => [r.run_id, r.status]));
 
     for (const run of state.runs) {
-      if (
-        run.status === "completed" &&
-        prev.get(run.run_id) !== "completed" &&
-        !run.operator_run_id
-      ) {
+      if (run.status === "completed" && prev.get(run.run_id) !== "completed") {
         actions.handleApply(run.run_id);
         break;
       }
