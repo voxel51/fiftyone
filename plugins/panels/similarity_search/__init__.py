@@ -23,6 +23,25 @@ from .run_manager import RunManager
 logger = logging.getLogger(__name__)
 
 
+def _has_edit_permission(ctx):
+    """Returns whether the current user has at least edit permissions."""
+    if ctx.user is None:
+        return True
+    return ctx.user.dataset_permission in ["EDIT", "MANAGE"]
+
+
+def _has_manage_permission(ctx):
+    """Returns whether the current user has manage permissions."""
+    if ctx.user is None:
+        return True
+    return ctx.user.dataset_permission == "MANAGE"
+
+
+def _is_snapshot(ctx):
+    """Returns whether the current dataset is a snapshot."""
+    return ctx.dataset.name.startswith("_snapshot")
+
+
 class SimilaritySearchPanel(Panel):
     """Panel for running and managing similarity search queries."""
 
@@ -48,6 +67,13 @@ class SimilaritySearchPanel(Panel):
         # None in OSS, populated by FiftyOne Teams
         current_user = str(ctx.user_id) if ctx.user_id else None
         ctx.panel.set_data("current_user", current_user)
+
+        can_manage = _has_manage_permission(ctx)
+        can_edit = _has_edit_permission(ctx)
+        is_snapshot = _is_snapshot(ctx)
+        ctx.panel.set_data("can_manage", can_manage)
+        ctx.panel.set_data("can_edit", can_edit)
+        ctx.panel.set_data("is_snapshot", is_snapshot)
 
         # Enable alt-selection visual feedback for negative queries
         ctx.ops.set_sample_selection_style(

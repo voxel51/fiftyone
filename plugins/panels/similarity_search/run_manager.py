@@ -11,6 +11,10 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
+from bson import ObjectId
+
+from fiftyone.operators.store import ExecutionStore
+
 from .constants import STORE_NAME, RunStatus
 
 logger = logging.getLogger(__name__)
@@ -26,7 +30,15 @@ class RunManager:
     _HEAVY_FIELDS = {"result_ids", "result_view", "source_view"}
 
     def __init__(self, ctx):
-        self._store = ctx.store(STORE_NAME)
+        dataset_id = str(ctx.dataset._doc.id)
+
+        # --- TEAMS-ONLY START ---
+        name = ctx.dataset.name
+        if name.startswith("_snapshot"):
+            dataset_id = name.split("_")[3]
+        # --- TEAMS-ONLY END ---
+
+        self._store = ExecutionStore.create(STORE_NAME, ObjectId(dataset_id))
 
     def create_run(self, run_params: Dict[str, Any]) -> Dict[str, Any]:
         """Create a new run entry.

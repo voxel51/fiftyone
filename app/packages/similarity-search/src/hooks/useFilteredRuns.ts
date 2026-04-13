@@ -11,7 +11,8 @@ import { getDateRange, matchesText, matchesDate } from "../utils";
 
 export const useFilteredRuns = (
   runs: SimilarityRun[],
-  currentUser?: string | null
+  currentUser?: string | null,
+  canManage = true
 ): {
   filteredRuns: SimilarityRun[];
   filterState: RunFilterState;
@@ -23,18 +24,22 @@ export const useFilteredRuns = (
     const { searchText, datePreset, ownerFilter } = filterState;
     const { start, end } = getDateRange(datePreset);
 
+    // Users without manage permission can only see their own searches
+    const effectiveOwnerFilter =
+      !canManage && currentUser ? "mine" : ownerFilter;
+
     return runs.filter((run) => {
       if (searchText && !matchesText(run, searchText)) return false;
       if (!matchesDate(run, start, end)) return false;
       if (
-        ownerFilter === "mine" &&
+        effectiveOwnerFilter === "mine" &&
         currentUser &&
         run.created_by !== currentUser
       )
         return false;
       return true;
     });
-  }, [runs, filterState, currentUser]);
+  }, [runs, filterState, currentUser, canManage]);
 
   return { filteredRuns, filterState, setFilterState };
 };

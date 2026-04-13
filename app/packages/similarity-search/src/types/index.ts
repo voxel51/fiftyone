@@ -75,6 +75,10 @@ export type SimilaritySearchPanelData = {
   runs?: SimilarityRun[];
   brain_keys?: BrainKeyConfig[];
   clone_config?: CloneConfig;
+  current_user?: string;
+  can_manage?: boolean;
+  can_edit?: boolean;
+  is_snapshot?: boolean;
 };
 
 /**

@@ -73,10 +73,22 @@ const useDerivedPanelState = (props: SimilaritySearchViewProps) => {
   // currentUser is null in OSS, populated by FOE via panel data
   const currentUser =
     ((panelData as Record<string, unknown>).current_user as string) ?? null;
-  const canFilterByOwner = !!currentUser;
+  const canManage = Boolean(
+    (panelData as Record<string, unknown>).can_manage ?? true
+  );
+  const canEdit = Boolean(
+    (panelData as Record<string, unknown>).can_edit ?? true
+  );
+  const isSnapshot = Boolean(
+    (panelData as Record<string, unknown>).is_snapshot
+  );
+
+  // Only show All|Mine toggle for users with manage permissions
+  const canFilterByOwner = !!currentUser && canManage;
   const { filteredRuns, filterState, setFilterState } = useFilteredRuns(
     runs,
-    currentUser
+    currentUser,
+    canManage
   );
 
   return {
@@ -90,6 +102,8 @@ const useDerivedPanelState = (props: SimilaritySearchViewProps) => {
     sampleMedia,
     filterState,
     canFilterByOwner,
+    canEdit,
+    isSnapshot,
     refreshRuns,
     removeRun,
     removeRuns,
@@ -308,6 +322,8 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
     cloneConfig,
     filterState: state.filterState,
     canFilterByOwner: state.canFilterByOwner,
+    canEdit: state.canEdit,
+    isSnapshot: state.isSnapshot,
     selection,
 
     // actions
