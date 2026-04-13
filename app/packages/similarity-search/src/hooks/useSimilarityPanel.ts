@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import * as fos from "@fiftyone/state";
 import { SimilaritySearchViewProps, SimilarityRun } from "../types";
@@ -273,6 +273,29 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
     clearCloneConfig,
     clearAndExit,
   });
+
+  // Auto-apply immediate execution runs when they complete.
+  // Delegated runs (operator_run_id is set) are excluded — there's no
+  // completion event for those, so the user applies them manually.
+  const prevRunStatusesRef = useRef<Map<string, string>>(new Map());
+
+  useEffect(() => {
+    const prev = prevRunStatusesRef.current;
+    const next = new Map(state.runs.map((r) => [r.run_id, r.status]));
+
+    for (const run of state.runs) {
+      if (
+        run.status === "completed" &&
+        prev.get(run.run_id) !== "completed" &&
+        !run.operator_run_id
+      ) {
+        actions.handleApply(run.run_id);
+        break;
+      }
+    }
+
+    prevRunStatusesRef.current = next;
+  }, [state.runs, actions]);
 
   const selection = useMemo(
     () => ({
