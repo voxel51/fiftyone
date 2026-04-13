@@ -406,32 +406,42 @@ export const useAnnotationActions = () => {
       },
     ];
 
-    if (
-      (selectedPoint && currentArchetypeSelectedForTransform === "point") ||
-      currentArchetypeSelectedForTransform === "annotation-plane" ||
-      currentArchetypeSelectedForTransform === "cuboid"
-    ) {
-      const coordinateInputAction: AnnotationAction = {
-        id: "coordinate-inputs-component",
-        label: "Coordinates",
-        icon: <Typography variant="caption">XYZ</Typography>,
-        tooltip: "Edit coordinates",
-        isActive: false,
-        isDisabled: false,
-        isVisible: true,
-        // No-op since this is a custom component
-        onClick: () => {},
-        customComponent:
-          currentArchetypeSelectedForTransform === "annotation-plane" ? (
-            <PlaneCoordinateInputs hideRotation={false} />
-          ) : (
-            <VertexCoordinateInputs />
-          ),
-      };
-
+    if (currentArchetypeSelectedForTransform === "annotation-plane") {
       baseActions.push({
         id: "coordinate-inputs",
-        actions: [coordinateInputAction],
+        actions: [
+          {
+            id: "coordinate-inputs-component",
+            label: "Coordinates",
+            icon: <Typography variant="caption">XYZ</Typography>,
+            tooltip: "Edit coordinates",
+            isActive: false,
+            isDisabled: false,
+            isVisible: true,
+            onClick: () => {},
+            customComponent: <PlaneCoordinateInputs hideRotation={false} />,
+          },
+        ],
+      });
+    } else if (
+      selectedPoint &&
+      currentArchetypeSelectedForTransform === "point"
+    ) {
+      baseActions.push({
+        id: "coordinate-inputs",
+        actions: [
+          {
+            id: "coordinate-inputs-component",
+            label: "Coordinates",
+            icon: <Typography variant="caption">XYZ</Typography>,
+            tooltip: "Edit coordinates",
+            isActive: false,
+            isDisabled: false,
+            isVisible: true,
+            onClick: () => {},
+            customComponent: <VertexCoordinateInputs />,
+          },
+        ],
       });
     }
 
@@ -454,6 +464,8 @@ export const useAnnotationActions = () => {
     editing,
     isPolylineAnnotateActive,
     isCuboidAnnotateActive,
+    isCreatingCuboid,
+    handleToggleCreateCuboid,
     onExit,
   ]);
 
