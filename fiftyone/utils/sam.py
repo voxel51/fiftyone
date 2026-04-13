@@ -344,6 +344,7 @@ class SegmentAnythingImageGetItem(fout.GetItem):
                 "prompt_type": name of the prompt type
                 "boxes": boxes for SAM model input
                 "boxes_xyxy": boxes in XYXY original image space
+                "boxes_labels": positive / negative labels for boxes
                 "point_coords": points for SAM model input
                 "point_labels": positive / negative labels for points
                 "classes": class labels for prompts
@@ -371,7 +372,12 @@ class SegmentAnythingImageGetItem(fout.GetItem):
             keypoints = None
 
         # Pre-process box prompts
-        boxes, boxes_xyxy, box_classes = preprocess_detections_to_sam(
+        (
+            boxes,
+            boxes_xyxy,
+            box_classes,
+            box_labels,
+        ) = preprocess_detections_to_sam(
             detections, img_hw, self.box_transform
         )
 
@@ -416,6 +422,8 @@ class SegmentAnythingImageGetItem(fout.GetItem):
         if has_boxes:
             item_dict["boxes"] = boxes
             item_dict["boxes_xyxy"] = boxes_xyxy
+            item_dict["boxes_labels"] = box_labels  # only used in SAM3
+
         if has_points:
             item_dict["point_coords"] = points
             item_dict["point_labels"] = point_type_labels
@@ -512,9 +520,10 @@ def preprocess_detections_to_sam(detections, img_hw, box_transform):
         a torch tensor of boxes for SAM model prompts
         a numpy array of boxes in XYXY pixels in original image space
         a list class labels for the boxes
+        a list of positive/negative labels for the boxes
     """
     if detections is None:
-        return None, None, None
+        return None, None, None, None
     if len(detections.detections) == 0:
         raise AssertionError("No box prompts found for sample.")
 
@@ -524,12 +533,14 @@ def preprocess_detections_to_sam(detections, img_hw, box_transform):
         )
     boxes = []
     box_classes = []
+    sam_labels = []
     for d in detections.detections:
         boxes.append(d.bounding_box)
         box_classes.append(d.label)
+        sam_labels.append(_get_sam_box_labels(d))
     boxes_xyxy = _to_abs_boxes(np.array(boxes), img_hw[1], img_hw[0])
     sam_boxes = box_transform(boxes_xyxy, img_hw)
-    return sam_boxes, boxes_xyxy, box_classes
+    return sam_boxes, boxes_xyxy, box_classes, sam_labels
 
 
 def preprocess_keypoints_to_sam(keypoints, img_hw, point_transform):
@@ -860,7 +871,7 @@ class SegmentAnythingModel(fout.TorchImageModelWithPrompts):
                 use_numpy=True,
                 force_rgb=True,
             )
-            return self._forward_pass_auto(imgs={"image": [img]})[0]
+            return self._forward_pass_auto({"image": [img]})[0]
 
         if boxes is not None and points is not None:
             if len(boxes) != len(points):
@@ -1046,6 +1057,7 @@ class SegmentAnythingModel(fout.TorchImageModelWithPrompts):
                 "image": a list of torch tensor of (1 x C X H X W) shape or HWC numpy arrays
                 "boxes": a list of B X 4 boxes for SAM model input
                 "boxes_xyxy: a list of B x 4 boxes in XYXY pixels in original image space
+                "boxes_labels": a list of B x N positive / negative labels for boxes
                 "point_coords": a list of B X N x 2 point coordinates, padded as needed
                 "point_labels": a list of B X N point positive/negative labels, padded as needed
                 "prompt_type": name of prompt type for the batch
@@ -1289,3 +1301,16 @@ def _mask_to_box(mask):
     y1 = np.min(pos_indices[0])
     y2 = np.max(pos_indices[0])
     return [x1, y1, x2, y2]
+
+
+def _get_sam_box_labels(detection):
+    # NOTE: Positive / negative bounding box labels are only used in SAM3.
+    if "sam_label" in detection and "sam3_label" in detection:
+        logger.warning(
+            "Found detection label under sam_label and sam3_label. Using sam_label."
+        )
+    if "sam_label" in detection and detection.sam_label is not None:
+        return detection.sam_label
+    if "sam3_label" in detection and detection.sam3_label is not None:
+        return detection.sam3_labels
+    return True
