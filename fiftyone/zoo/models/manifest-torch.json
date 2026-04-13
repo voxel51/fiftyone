@@ -130,8 +130,7 @@
                 "type": "fiftyone.utils.sam.SegmentAnythingModel",
                 "config": {
                     "entrypoint_fcn": "segment_anything.build_sam.build_sam_vit_b",
-                    "entrypoint_args": {},
-                    "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
+                    "entrypoint_args": {}
                 }
             },
             "requirements": {
@@ -178,8 +177,7 @@
                 "type": "fiftyone.utils.sam.SegmentAnythingModel",
                 "config": {
                     "entrypoint_fcn": "segment_anything.build_sam.build_sam_vit_h",
-                    "entrypoint_args": {},
-                    "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
+                    "entrypoint_args": {}
                 }
             },
             "requirements": {
@@ -226,8 +224,7 @@
                 "type": "fiftyone.utils.sam.SegmentAnythingModel",
                 "config": {
                     "entrypoint_fcn": "segment_anything.build_sam.build_sam_vit_l",
-                    "entrypoint_args": {},
-                    "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
+                    "entrypoint_args": {}
                 }
             },
             "requirements": {
@@ -746,7 +743,13 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "transformer", "official"],
+            "tags": [
+                "segment-anything",
+                "torch",
+                "zero-shot",
+                "transformer",
+                "official"
+            ],
             "training_data": [
                 {
                     "name": "SA-V",
@@ -2414,7 +2417,14 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "retinanet", "resnet", "official"],
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "retinanet",
+                "resnet",
+                "official"
+            ],
             "training_data": [
                 { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
             ],
@@ -2573,7 +2583,13 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "imagenet", "torch", "squeezenet", "official"],
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "squeezenet",
+                "official"
+            ],
             "training_data": [
                 {
                     "name": "ImageNet-1K",
@@ -3993,7 +4009,12 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers>=4.51", "timm"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers>=4.51",
+                    "timm"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -6106,7 +6127,10 @@
             },
             "tags": ["classification", "imagenet", "torch", "yolo", "official"],
             "training_data": [
-                { "name": "ImageNet-1K", "url": "https://www.image-net.org/download.php" }
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
             ],
             "date_added": "2026-01-15 12:00:00"
         },
@@ -6149,7 +6173,10 @@
             },
             "tags": ["classification", "imagenet", "torch", "yolo", "official"],
             "training_data": [
-                { "name": "ImageNet-1K", "url": "https://www.image-net.org/download.php" }
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
             ],
             "date_added": "2026-01-15 12:00:00"
         },
@@ -6192,7 +6219,10 @@
             },
             "tags": ["classification", "imagenet", "torch", "yolo", "official"],
             "training_data": [
-                { "name": "ImageNet-1K", "url": "https://www.image-net.org/download.php" }
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
             ],
             "date_added": "2026-01-15 12:00:00"
         },
@@ -6235,7 +6265,10 @@
             },
             "tags": ["classification", "imagenet", "torch", "yolo", "official"],
             "training_data": [
-                { "name": "ImageNet-1K", "url": "https://www.image-net.org/download.php" }
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
             ],
             "date_added": "2026-01-15 12:00:00"
         },
@@ -6278,7 +6311,10 @@
             },
             "tags": ["classification", "imagenet", "torch", "yolo", "official"],
             "training_data": [
-                { "name": "ImageNet-1K", "url": "https://www.image-net.org/download.php" }
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
             ],
             "date_added": "2026-01-15 12:00:00"
         },
@@ -9733,7 +9769,13 @@
                 "cpu": { "support": true },
                 "gpu": { "support": true }
             },
-            "tags": ["detection", "torch", "transformers", "zero-shot", "official"],
+            "tags": [
+                "detection",
+                "torch",
+                "transformers",
+                "zero-shot",
+                "official"
+            ],
             "date_added": "2025-08-11 15:00:08"
         },
         {
@@ -9756,7 +9798,13 @@
                 "cpu": { "support": true },
                 "gpu": { "support": true }
             },
-            "tags": ["detection", "torch", "transformers", "zero-shot", "official"],
+            "tags": [
+                "detection",
+                "torch",
+                "transformers",
+                "zero-shot",
+                "official"
+            ],
             "date_added": "2025-08-11 15:00:08"
         },
         {
@@ -9779,7 +9827,13 @@
                 "cpu": { "support": true },
                 "gpu": { "support": true }
             },
-            "tags": ["detection", "torch", "transformers", "zero-shot", "official"],
+            "tags": [
+                "detection",
+                "torch",
+                "transformers",
+                "zero-shot",
+                "official"
+            ],
             "date_added": "2025-08-11 15:00:08"
         },
         {
@@ -9799,7 +9853,13 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers>=4.51.0", "accelerate", "qwen-vl-utils"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers>=4.51.0",
+                    "accelerate",
+                    "qwen-vl-utils"
+                ],
                 "cpu": { "support": true },
                 "gpu": { "support": true }
             },
@@ -9824,7 +9884,13 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers>=4.51.0", "accelerate", "qwen-vl-utils"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers>=4.51.0",
+                    "accelerate",
+                    "qwen-vl-utils"
+                ],
                 "cpu": { "support": true },
                 "gpu": { "support": true }
             },
@@ -9849,7 +9915,13 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers>=4.51.0", "accelerate", "qwen-vl-utils"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers>=4.51.0",
+                    "accelerate",
+                    "qwen-vl-utils"
+                ],
                 "cpu": { "support": true },
                 "gpu": { "support": true }
             },
@@ -9873,7 +9945,13 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers>=4.57.0", "accelerate", "qwen-vl-utils"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers>=4.57.0",
+                    "accelerate",
+                    "qwen-vl-utils"
+                ],
                 "cpu": { "support": true },
                 "gpu": { "support": true }
             },
@@ -9897,7 +9975,13 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers>=4.57.0", "accelerate", "qwen-vl-utils"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers>=4.57.0",
+                    "accelerate",
+                    "qwen-vl-utils"
+                ],
                 "cpu": { "support": true },
                 "gpu": { "support": true }
             },
@@ -9929,7 +10013,13 @@
                     "support": true
                 }
             },
-            "tags": ["3d", "gaussian-splatting", "novel-view", "torch", "transformer"],
+            "tags": [
+                "3d",
+                "gaussian-splatting",
+                "novel-view",
+                "torch",
+                "transformer"
+            ],
             "training_data": [],
             "date_added": "2026-01-28 12:00:00"
         }
