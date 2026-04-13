@@ -32,8 +32,6 @@ function SimilaritySearchReady(props: SimilaritySearchViewProps) {
           filteredRuns={panel.filteredRuns}
           brainKeys={panel.brainKeys}
           appliedRunId={panel.appliedRunId}
-          highlightedRunId={panel.highlightedRunId}
-          onHighlight={panel.setHighlightedRunId}
           sampleMedia={panel.sampleMedia}
           onApply={panel.handleApply}
           onClone={panel.handleClone}

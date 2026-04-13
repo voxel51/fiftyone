@@ -90,8 +90,6 @@ type RunListProps = {
   filteredRuns: SimilarityRun[];
   brainKeys: BrainKeyConfig[];
   appliedRunId?: string;
-  highlightedRunId?: string;
-  onHighlight: (runId: string | undefined) => void;
   sampleMedia: Record<string, string>;
   onApply: (runId: string) => void;
   onClone: (runId: string) => void;
@@ -114,8 +112,6 @@ export default function RunList({
   filteredRuns,
   brainKeys,
   appliedRunId,
-  highlightedRunId,
-  onHighlight,
   sampleMedia,
   onApply,
   onClone,
@@ -197,15 +193,13 @@ export default function RunList({
         id: run.run_id,
         data: {
           canSelect: selectMode,
-          onClick: !selectMode
-            ? () => {
-                onHighlight(run.run_id);
-                if (run.status === "completed") onApply(run.run_id);
-              }
-            : undefined,
+          onClick:
+            !selectMode && run.status === "completed"
+              ? () => onApply(run.run_id)
+              : undefined,
           style: {
-            ...(!selectMode ? POINTER_STYLE : {}),
-            ...(highlightedRunId === run.run_id ? HIGHLIGHT_STYLE : {}),
+            ...(!selectMode && run.status === "completed" ? POINTER_STYLE : {}),
+            ...(appliedRunId === run.run_id ? HIGHLIGHT_STYLE : {}),
           },
           primaryContent: (
             <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
@@ -262,8 +256,7 @@ export default function RunList({
       selectMode,
       expandedRunIds,
       mergedMedia,
-      highlightedRunId,
-      onHighlight,
+      appliedRunId,
       onApply,
       onClone,
       onDelete,
