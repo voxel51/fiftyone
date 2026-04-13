@@ -11681,7 +11681,8 @@ class SampleCollection(object):
                 names = []
                 name_map = {}
                 for bname, bpipeline in facet_stage.items():
-                    namespaced = f"__{agg_idx}_{bname}"
+                    safe_idx = str(agg_idx).replace(".", "_")
+                    namespaced = f"__{safe_idx}_{bname}"
                     all_branches[namespaced] = prefix + bpipeline
                     names.append(namespaced)
                     name_map[namespaced] = bname
