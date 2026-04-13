@@ -51,8 +51,7 @@ type NewSearchProps = {
   brainKeys: BrainKeyConfig[];
   cloneConfig?: CloneConfig | null;
   isPatchesView?: boolean;
-  canEdit?: boolean;
-  isSnapshot?: boolean;
+  isReadOnly?: boolean;
   onBack: () => void;
   onSubmitted: () => void;
 };
@@ -61,8 +60,7 @@ export default function NewSearch({
   brainKeys,
   cloneConfig,
   isPatchesView = false,
-  canEdit = true,
-  isSnapshot = false,
+  isReadOnly = false,
   onBack,
   onSubmitted,
 }: NewSearchProps) {
@@ -346,8 +344,8 @@ export default function NewSearch({
           size={Size.Sm}
         />
 
-        {/* Distance field — hidden for view-only users and on snapshots */}
-        {canEdit && !isSnapshot && (
+        {/* Distance field — hidden in read-only mode */}
+        {!isReadOnly && (
           <FormField
             label="Distance field (optional)"
             description="Store distances as a sample field"
