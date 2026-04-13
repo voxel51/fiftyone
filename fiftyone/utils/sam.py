@@ -162,6 +162,14 @@ class _SAMPredictor:
         self.image_id = None
 
     def valid_image(self, curr_id):
+        """Checks whether the set image has the current input image id.
+
+        Args:
+            curr_id: Identifier for the current image being
+
+        Returns:
+            True if the set image id and current image id match
+        """
         if self.processor.is_image_set:
             return curr_id == self.image_id
         return False
@@ -490,6 +498,8 @@ class SegmentAnythingImageGetItemForVideo(SegmentAnythingImageGetItem):
             return common_keys + box_keys + point_keys
         else:
             raise ValueError(f"Undefined required keys for {self.mode.name}")
+
+
 def preprocess_detections_to_sam(detections, img_hw, box_transform):
     """Pre-processes boxes from :class:`fiftyone.core.labels.Detections`.
 
