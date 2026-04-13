@@ -294,6 +294,10 @@ class TestSAMParity(unittest.TestCase):
                 scores.append(_scores[None, ...])
                 labels.append(PLACEHOLDER_LABEL)
 
+            if not masks:
+                sample[direct_field] = Detections()
+                continue
+
             outputs = {
                 "masks": torch.as_tensor(np.concatenate(masks, axis=0)),
                 "iou_predictions": torch.as_tensor(
@@ -472,6 +476,10 @@ class TestSAM2Parity(unittest.TestCase):
                 masks.append(_masks[None, ...])
                 scores.append(_scores[None, ...])
                 labels.append(PLACEHOLDER_LABEL)
+
+            if not masks:
+                sample[direct_field] = Detections()
+                continue
 
             outputs = {
                 "masks": torch.as_tensor(np.concatenate(masks, axis=0)),

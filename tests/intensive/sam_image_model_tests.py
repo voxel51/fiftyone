@@ -16,8 +16,7 @@ import numpy as np
 
 import fiftyone as fo
 import fiftyone.zoo as foz
-from fiftyone.core.labels import Detections, Keypoint, Keypoints
-from fiftyone import ViewField as F
+from fiftyone.core.labels import Detections
 
 
 PLACEHOLDER_LABEL = "mask"
