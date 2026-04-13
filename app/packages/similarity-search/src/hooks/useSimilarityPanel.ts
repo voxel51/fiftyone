@@ -38,8 +38,6 @@ const useDerivedPanelState = (props: SimilaritySearchViewProps) => {
       string
     >) ?? {};
 
-  const datasetName = useRecoilValue(fos.datasetName);
-
   // Detect patches view and filter brain keys accordingly
   const isPatchesView = useRecoilValue(fos.isPatchesView);
   const viewStages = useRecoilValue(fos.view);
@@ -78,8 +76,7 @@ const useDerivedPanelState = (props: SimilaritySearchViewProps) => {
   const canFilterByOwner = !!currentUser;
   const { filteredRuns, filterState, setFilterState } = useFilteredRuns(
     runs,
-    currentUser,
-    datasetName
+    currentUser
   );
 
   return {

@@ -27,7 +27,7 @@ import {
   RunFilterState,
 } from "../../types";
 import { useSampleMedia } from "../../hooks/useSampleMedia";
-import { MIDDLE_DOT } from "../../constants";
+import { HIGHLIGHT_STYLE, MIDDLE_DOT, POINTER_STYLE } from "../../constants";
 import { formatQuery, formatTime } from "../../utils";
 import StatusBadge from "./StatusBadge";
 import RunActions from "./RunActions";
@@ -204,13 +204,8 @@ export default function RunList({
               }
             : undefined,
           style: {
-            ...(!selectMode ? { cursor: "pointer" } : {}),
-            ...(highlightedRunId === run.run_id
-              ? {
-                  boxShadow: "0 0 8px 2px rgba(255, 109, 4, 0.4)",
-                  borderRadius: 6,
-                }
-              : {}),
+            ...(!selectMode ? POINTER_STYLE : {}),
+            ...(highlightedRunId === run.run_id ? HIGHLIGHT_STYLE : {}),
           },
           primaryContent: (
             <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>

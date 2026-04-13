@@ -1,8 +1,9 @@
 /**
- * Centralized MUI imports for components without voodo equivalents.
+ * Centralized MUI imports for components and icons without voodo equivalents.
  *
- * All icons have been migrated to voodo's IconName strings (v0.0.22+).
- * Only layout components remain here pending voodo equivalents.
+ * Most icons have been migrated to voodo's IconName strings (v0.0.22+).
+ * Remaining here: layout components pending voodo equivalents, plus
+ * individual icons that voodo doesn't yet provide.
  */
 
 // Components (pending voodo ImageList)

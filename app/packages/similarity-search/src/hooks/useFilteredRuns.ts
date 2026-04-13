@@ -1,55 +1,24 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useMemo } from "react";
 import { atom, useAtom } from "jotai";
 import { SimilarityRun, RunFilterState } from "../types";
-import { DEFAULT_DATE_PRESET, OWNER_ALL, OWNER_MINE } from "../constants";
+import { DEFAULT_DATE_PRESET, OWNER_MINE } from "../constants";
 import { getDateRange, matchesText, matchesDate } from "../utils";
 
-const makeDefaultFilterState = (
-  currentUser?: string | null
-): RunFilterState => ({
+const filterStateAtom = atom<RunFilterState>({
   searchText: "",
   datePreset: DEFAULT_DATE_PRESET,
-  ownerFilter: currentUser ? OWNER_MINE : OWNER_ALL,
+  ownerFilter: OWNER_MINE,
 });
-
-const filterStateAtom = atom<RunFilterState>(makeDefaultFilterState());
 
 export const useFilteredRuns = (
   runs: SimilarityRun[],
-  currentUser?: string | null,
-  datasetName?: string | null
+  currentUser?: string | null
 ): {
   filteredRuns: SimilarityRun[];
   filterState: RunFilterState;
   setFilterState: (state: RunFilterState) => void;
 } => {
   const [filterState, setFilterState] = useAtom(filterStateAtom);
-  const prevDatasetRef = useRef<string | null | undefined>(undefined);
-  const defaultsApplied = useRef(false);
-
-  // Reset filter state when dataset changes
-  useEffect(() => {
-    if (
-      prevDatasetRef.current !== undefined &&
-      prevDatasetRef.current !== datasetName
-    ) {
-      setFilterState(makeDefaultFilterState(currentUser));
-    }
-    prevDatasetRef.current = datasetName;
-  }, [datasetName, currentUser, setFilterState]);
-
-  // On first mount, fix up ownerFilter for logged-in users
-  // (module-level atom initializes without currentUser)
-  useEffect(() => {
-    if (!defaultsApplied.current && currentUser) {
-      defaultsApplied.current = true;
-      setFilterState((prev) =>
-        prev.ownerFilter === OWNER_ALL
-          ? { ...prev, ownerFilter: OWNER_MINE }
-          : prev
-      );
-    }
-  }, [currentUser, setFilterState]);
 
   const filteredRuns = useMemo(() => {
     const { searchText, datePreset, ownerFilter } = filterState;

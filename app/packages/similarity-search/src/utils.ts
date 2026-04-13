@@ -1,5 +1,5 @@
 import { getFetchParameters } from "@fiftyone/utilities";
-import { buildRunName } from "@fiftyone/core/src/components/Actions/Similarity/utils";
+import { buildSimilarityRunName } from "@fiftyone/utilities";
 import {
   SimilarityRun,
   SimilaritySearchParams,
@@ -204,7 +204,7 @@ export const buildExecutionParams = (
   if (distField.trim()) params.dist_field = distField.trim();
   params.run_name =
     runName.trim() ||
-    buildRunName({
+    buildSimilarityRunName({
       isImageSearch: queryType === QueryType.Image,
       isUpload: queryType === QueryType.Upload,
       textQuery,
