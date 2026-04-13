@@ -1029,6 +1029,7 @@ class TestSAM2InteractiveParity(unittest.TestCase):
                 boxes,
                 boxes_xyxy,
                 box_classes,
+                _,
             ) = fo.utils.sam.preprocess_detections_to_sam(
                 gt, (h, w), self.fo_model._sam_predictor.box_transform
             )
@@ -1192,6 +1193,7 @@ class TestSAM2InteractiveParity(unittest.TestCase):
                 boxes,
                 boxes_xyxy,
                 box_classes,
+                _,
             ) = fo.utils.sam.preprocess_detections_to_sam(
                 gt, (h, w), self.fo_model._sam_predictor.box_transform
             )
