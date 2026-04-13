@@ -1,8 +1,25 @@
-import { PopoutSectionTitle, useTheme } from "@fiftyone/components";
-import { useSimilarityType } from "@fiftyone/state";
-import React from "react";
-import { SORT_BY_SIMILARITY } from "../../../utils/links";
-import { ActionOption } from "../Common";
+import { PopoutSectionTitle } from "@fiftyone/components";
+import { executeOperator } from "@fiftyone/operators";
+import SettingsIcon from "@mui/icons-material/Settings";
+import React, { useCallback } from "react";
+import styled from "styled-components";
+import { PANEL_NAME } from "./constants";
+
+const ActionRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  cursor: pointer;
+  border-radius: 4px;
+  color: ${({ theme }) => theme.text.secondary};
+  font-size: 13px;
+
+  &:hover {
+    background-color: ${({ theme }) => theme.background.level1};
+    color: ${({ theme }) => theme.text.primary};
+  }
+`;
 
 interface Props {
   hasSimilarityKeys: boolean;
@@ -10,34 +27,31 @@ interface Props {
 }
 
 const Helper = (props: Props) => {
-  const theme = useTheme();
   const { isImageSearch } = props;
-  const { text } = useSimilarityType({ isImageSearch });
+
+  const openPanel = useCallback(() => {
+    executeOperator("open_panel", {
+      name: PANEL_NAME,
+      isActive: true,
+      layout: "horizontal",
+      data: { view: { page: "similarity_index" } },
+    });
+  }, []);
 
   return (
     <>
-      {!props.hasSimilarityKeys && (
-        <PopoutSectionTitle style={{ fontSize: 12 }}>
-          {isImageSearch
-            ? "No available brain keys"
-            : "No brain keys support text prompts"}
-        </PopoutSectionTitle>
-      )}
-      <PopoutSectionTitle>
-        <ActionOption
-          id="sort-by-similarity"
-          href={SORT_BY_SIMILARITY}
-          text={text}
-          title={"About sorting by similarity"}
-          style={{
-            background: "unset",
-            color: theme.text.primary,
-            paddingTop: 0,
-            paddingBottom: 0,
-          }}
-          svgStyles={{ height: "1rem", marginTop: 7.5 }}
-        />
+      <PopoutSectionTitle style={{ fontSize: 12 }}>
+        {isImageSearch
+          ? "No available brain keys"
+          : "No brain keys support text prompts"}
       </PopoutSectionTitle>
+      <ActionRow
+        onClick={openPanel}
+        title="Open similarity panel to manage indexes"
+      >
+        <SettingsIcon style={{ fontSize: 16 }} />
+        Manage similarity indexes
+      </ActionRow>
     </>
   );
 };

@@ -9,6 +9,7 @@ All of these tests are designed to be run manually via::
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import random
 import unittest
 

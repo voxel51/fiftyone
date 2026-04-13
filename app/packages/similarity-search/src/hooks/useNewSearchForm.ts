@@ -1,11 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { BrainKeyConfig, CloneConfig, QueryType, SearchScope } from "../types";
-import {
-  QUERY_IMAGE,
-  QUERY_TEXT,
-  SCOPE_VIEW,
-  SCOPE_DATASET,
-} from "../constants";
+import { SCOPE_VIEW, SCOPE_DATASET } from "../constants";
+import { UploadedImage } from "../utils";
 import { useSearchSelection } from "./useSearchSelection";
 import { useSearchSubmission } from "./useSearchSubmission";
 
@@ -43,9 +39,9 @@ export const useNewSearchForm = (
 
   const defaultQueryType = useMemo((): QueryType => {
     if (cloneConfig?.query_type) return cloneConfig.query_type;
-    if (hasSamplesSelected) return QUERY_IMAGE;
-    if (firstTextKey) return QUERY_TEXT;
-    return QUERY_IMAGE;
+    if (hasSamplesSelected) return QueryType.Image;
+    if (firstTextKey) return QueryType.Text;
+    return QueryType.Image;
   }, [cloneConfig, hasSamplesSelected, firstTextKey]);
 
   // ─── Form fields ────────────────────────────────────────────────
@@ -58,6 +54,9 @@ export const useNewSearchForm = (
   const [distField, setDistField] = useState(cloneConfig?.dist_field ?? "");
   const [runName, setRunName] = useState("");
   const [dynamicResults, setDynamicResults] = useState(false);
+  const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(
+    null
+  );
   const [searchScope, setSearchScope] = useState<SearchScope>(
     hasView ? SCOPE_VIEW : SCOPE_DATASET
   );
@@ -67,6 +66,9 @@ export const useNewSearchForm = (
   const selectedConfig = brainKeys.find((bk) => bk.key === brainKey);
   const supportsPrompts = selectedConfig?.supports_prompts ?? false;
   const supportsLeast = selectedConfig?.supports_least_similarity ?? false;
+  const supportsUpload =
+    typeof selectedConfig?.model === "string" &&
+    selectedConfig.model.trim().length > 0;
 
   // ─── Auto-correct effects ───────────────────────────────────────
 
@@ -77,8 +79,8 @@ export const useNewSearchForm = (
   }, [brainKey, brainKeys]);
 
   useEffect(() => {
-    if (!supportsPrompts && queryType === QUERY_TEXT) {
-      setQueryType(QUERY_IMAGE);
+    if (!supportsPrompts && queryType === QueryType.Text) {
+      setQueryType(QueryType.Image);
     }
   }, [supportsPrompts, queryType]);
 
@@ -87,6 +89,13 @@ export const useNewSearchForm = (
       setReverse(false);
     }
   }, [supportsLeast, reverse]);
+
+  useEffect(() => {
+    if (!supportsUpload && queryType === QueryType.Upload) {
+      setQueryType(QueryType.Image);
+      setUploadedImage(null);
+    }
+  }, [supportsUpload, queryType]);
 
   // ─── Submission ─────────────────────────────────────────────────
 
@@ -104,6 +113,7 @@ export const useNewSearchForm = (
     textQuery,
     queryIds,
     negativeQueryIds,
+    uploadedImage,
     reverse,
     selectedConfig,
     searchScope,
@@ -146,11 +156,14 @@ export const useNewSearchForm = (
     setSearchScope,
     dynamicResults,
     setDynamicResults,
+    uploadedImage,
+    setUploadedImage,
 
     // derived
     selectedConfig,
     supportsPrompts,
     supportsLeast,
+    supportsUpload,
     queryIds,
     negativeQueryIds,
     selectedLabels,

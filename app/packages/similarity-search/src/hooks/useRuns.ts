@@ -2,8 +2,13 @@ import { atom, useAtom } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { useOperatorExecutor } from "@fiftyone/operators";
+import { useExecutionStoreSubscribe } from "@fiftyone/core/src/subscription/useExecutionStoreSubscribe";
 import { usePanelId } from "@fiftyone/spaces";
-import { datasetName as datasetNameAtom } from "@fiftyone/state";
+import {
+  datasetId as datasetIdAtom,
+  datasetName as datasetNameAtom,
+} from "@fiftyone/state";
+import { SSE_OPERATOR_URI } from "../constants";
 import { SimilarityRun } from "../types";
 
 const runsAtom = atom<SimilarityRun[]>([]);
@@ -35,6 +40,7 @@ export const useRuns = (): UseRunsResult => {
   const lastDatasetName = useRef<string | null | undefined>();
   const panelId = usePanelId();
   const datasetName = useRecoilValue(datasetNameAtom);
+  const datasetId = useRecoilValue(datasetIdAtom);
   const { execute: fetchRuns } = useOperatorExecutor(
     "@voxel51/panels/list_similarity_runs"
   );
@@ -98,6 +104,17 @@ export const useRuns = (): UseRunsResult => {
       refreshRuns();
     }
   }, [refreshRuns, panelId, datasetName]);
+
+  // Subscribe to execution store changes via SSE for auto-refresh
+  const onStoreChange = useCallback(() => {
+    refreshRuns();
+  }, [refreshRuns]);
+
+  useExecutionStoreSubscribe({
+    operatorUri: SSE_OPERATOR_URI,
+    callback: onStoreChange,
+    datasetId: datasetId ?? undefined,
+  });
 
   const updateRun = useCallback(
     (run: SimilarityRun) => {

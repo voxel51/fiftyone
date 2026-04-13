@@ -7,7 +7,11 @@ import { TOLERANCE } from "../constants";
 import { BaseState, Coordinates } from "../state";
 import { distanceFromLineSegment, getRenderedScale } from "../util";
 import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
-import { getInstanceStrokeStyles, t } from "./util";
+import {
+  getInstanceStrokeStyles,
+  resolveLabelSelectionVisuals,
+  t,
+} from "./util";
 
 export type PolylineLabel = RegularLabel & {
   _cls: "Polyline";
@@ -43,6 +47,9 @@ export default class PolylineOverlay<
   draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void {
     const color = this.getColor(state);
     const selected = this.isSelected(state);
+    const labelVisuals = selected
+      ? resolveLabelSelectionVisuals(this.label.id, state.options)
+      : null;
     const doesInstanceMatch =
       this.label.instance?._id &&
       isHoveringParticularLabelWithInstanceConfig(this.label.instance._id);
@@ -53,6 +60,7 @@ export default class PolylineOverlay<
         getColor: () => color,
         isHoveringInstance: !!doesInstanceMatch,
         dashLength: state.dashLength,
+        labelSelectionColor: labelVisuals?.color,
       });
 
     for (const path of this.label.points || []) {

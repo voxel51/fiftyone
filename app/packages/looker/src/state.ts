@@ -15,6 +15,7 @@ export type Optional<T> = {
 // vite won't import these from fou
 export type RGB = [number, number, number];
 export type RGBA = [number, number, number, number];
+export type LabelSelectionStyleName = "dashed" | "dashed-green" | "dashed-red";
 export interface Coloring {
   by: COLOR_BY.FIELD | COLOR_BY.INSTANCE | COLOR_BY.VALUE;
   pool: readonly string[];
@@ -95,7 +96,7 @@ export type Sample = {
     name: string;
   };
   tags: string[];
-  _label_tags: string[];
+  _label_tags?: Record<string, number>;
   _media_type:
     | "image"
     | "video"
@@ -185,6 +186,11 @@ export interface BaseOptions {
   colorscale: Colorscale;
   labelTagColors: CustomizeColor;
   selectedLabels: string[];
+  selectedLabelTypes: Record<string, string>;
+  labelSelectionStyle: {
+    default: LabelSelectionStyleName;
+    alt: LabelSelectionStyleName;
+  };
   selectedLabelTags?: string[];
   attributeVisibility: object;
   showConfidence: boolean;
@@ -464,6 +470,8 @@ export const DEFAULT_BASE_OPTIONS: BaseOptions = {
   isPointcloudDataset: false,
   activePaths: [],
   selectedLabels: [],
+  selectedLabelTypes: {},
+  labelSelectionStyle: { default: "dashed", alt: "dashed" },
   selectedLabelTags: undefined,
   showConfidence: false,
   showControls: false,

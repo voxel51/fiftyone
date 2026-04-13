@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<00c120fb7c871bcb719ef2818321c36a>>
+ * @generated SignedSource<<31187d4b2d41ee28f6c6910288477900>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,37 +9,29 @@
 // @ts-nocheck
 
 import { ConcreteRequest, Mutation } from 'relay-runtime';
-export type SelectedLabel = {
-  field: string;
-  frameNumber?: number | null;
-  instanceId?: string | null;
-  labelId: string;
-  sampleId: string;
-  type?: string | null;
-};
-export type setSelectedLabelsMutation$variables = {
-  selectedLabels: ReadonlyArray<SelectedLabel>;
+export type setLabelSelectionStyleMutation$variables = {
   session?: string | null;
+  style: object;
   subscription: string;
 };
-export type setSelectedLabelsMutation$data = {
-  readonly setSelectedLabels: boolean;
+export type setLabelSelectionStyleMutation$data = {
+  readonly setLabelSelectionStyle: boolean;
 };
-export type setSelectedLabelsMutation = {
-  response: setSelectedLabelsMutation$data;
-  variables: setSelectedLabelsMutation$variables;
+export type setLabelSelectionStyleMutation = {
+  response: setLabelSelectionStyleMutation$data;
+  variables: setLabelSelectionStyleMutation$variables;
 };
 
 const node: ConcreteRequest = (function(){
 var v0 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "selectedLabels"
+  "name": "session"
 },
 v1 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "session"
+  "name": "style"
 },
 v2 = {
   "defaultValue": null,
@@ -52,13 +44,13 @@ v3 = [
     "args": [
       {
         "kind": "Variable",
-        "name": "selectedLabels",
-        "variableName": "selectedLabels"
+        "name": "session",
+        "variableName": "session"
       },
       {
         "kind": "Variable",
-        "name": "session",
-        "variableName": "session"
+        "name": "style",
+        "variableName": "style"
       },
       {
         "kind": "Variable",
@@ -67,7 +59,7 @@ v3 = [
       }
     ],
     "kind": "ScalarField",
-    "name": "setSelectedLabels",
+    "name": "setLabelSelectionStyle",
     "storageKey": null
   }
 ];
@@ -80,7 +72,7 @@ return {
     ],
     "kind": "Fragment",
     "metadata": null,
-    "name": "setSelectedLabelsMutation",
+    "name": "setLabelSelectionStyleMutation",
     "selections": (v3/*: any*/),
     "type": "Mutation",
     "abstractKey": null
@@ -89,24 +81,24 @@ return {
   "operation": {
     "argumentDefinitions": [
       (v2/*: any*/),
-      (v1/*: any*/),
-      (v0/*: any*/)
+      (v0/*: any*/),
+      (v1/*: any*/)
     ],
     "kind": "Operation",
-    "name": "setSelectedLabelsMutation",
+    "name": "setLabelSelectionStyleMutation",
     "selections": (v3/*: any*/)
   },
   "params": {
-    "cacheID": "bf598288c8d46b7377f6a78b34cf0126",
+    "cacheID": "a5266141a097f7e07237cd4bdb25947d",
     "id": null,
     "metadata": {},
-    "name": "setSelectedLabelsMutation",
+    "name": "setLabelSelectionStyleMutation",
     "operationKind": "mutation",
-    "text": "mutation setSelectedLabelsMutation(\n  $subscription: String!\n  $session: String\n  $selectedLabels: [SelectedLabel!]!\n) {\n  setSelectedLabels(subscription: $subscription, session: $session, selectedLabels: $selectedLabels)\n}\n"
+    "text": "mutation setLabelSelectionStyleMutation(\n  $subscription: String!\n  $session: String\n  $style: JSON!\n) {\n  setLabelSelectionStyle(subscription: $subscription, session: $session, style: $style)\n}\n"
   }
 };
 })();
 
-(node as any).hash = "fae0cda0b0e2376ff1e9c65cc3c9e03f";
+(node as any).hash = "0af10f28cba0b8fdc44b6db5e83919fa";
 
 export default node;
