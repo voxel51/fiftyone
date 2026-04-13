@@ -1895,6 +1895,50 @@ class CustomHintTests(unittest.TestCase):
         self.assertEqual(results[0], 50)
         self.assertEqual(results[1], 50)
 
+    def test_hint_with_facetable_aggs(self):
+        """Hinted Count mixed with aggregations that _build_facets merges
+        into a FacetAggregations. Exercises the idx_map alignment that
+        the zip(compiled_facet_aggs, _results) pattern gets wrong."""
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath=f"/tmp/hint_{i}.jpg",
+                    ground_truth=fo.Detections(
+                        detections=[
+                            fo.Detection(label="cat", confidence=0.9),
+                            fo.Detection(label="dog", confidence=0.5),
+                        ]
+                    ),
+                )
+                for i in range(5)
+            ]
+        )
+        try:
+            view = dataset.view()
+
+            # These aggs on the same list field get merged by _build_facets
+            # into a single FacetAggregations, so compiled_facet_aggs has
+            # fewer entries than facet_pipelines
+            aggs = [
+                foa.Count(_hint={"_id": 1}),
+                foa.Count("ground_truth.detections"),
+                foa.CountValues("ground_truth.detections.label"),
+                foa.Bounds("ground_truth.detections.confidence"),
+            ]
+            sync_results = view.aggregate(aggs)
+            async_results = self._run_async(view, aggs)
+
+            self.assertEqual(async_results[0], sync_results[0])
+            self.assertEqual(async_results[1], sync_results[1])
+            self.assertEqual(
+                dict(sorted(async_results[2].items())),
+                dict(sorted(sync_results[2].items())),
+            )
+            self.assertEqual(async_results[3], sync_results[3])
+        finally:
+            fo.delete_dataset(dataset.name)
+
 
 class GetNumPartitionsTests(unittest.TestCase):
     """Tests for _get_num_partitions partition-safety checks.
@@ -1978,6 +2022,18 @@ class PartitionedAggregationCorrectnessTests(unittest.TestCase):
             s["label"] = labels[i % len(labels)]
             s["confidence"] = round(random.uniform(0.0, 1.0), 4)
             s["score"] = round(np.random.normal(50, 15), 2)
+            s["ground_truth"] = fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label=labels[i % len(labels)],
+                        confidence=round(random.uniform(0.0, 1.0), 4),
+                    ),
+                    fo.Detection(
+                        label=labels[(i + 1) % len(labels)],
+                        confidence=round(random.uniform(0.0, 1.0), 4),
+                    ),
+                ]
+            )
             samples.append(s)
 
         cls._dataset.add_samples(samples)
@@ -2135,6 +2191,41 @@ class PartitionedAggregationCorrectnessTests(unittest.TestCase):
             foa.Count(),
             foa.CountValues("label"),
             foa.Bounds("confidence"),
+        ]
+        self._assert_results_equal(view, aggs)
+
+    def test_detection_label_aggregations(self):
+        """Test aggregations on detection labels — exercises _build_facets
+        merging multiple aggs into FacetAggregations."""
+        view = self._dataset.view()
+        aggs = [
+            foa.Count("ground_truth.detections"),
+            foa.CountValues("ground_truth.detections.label"),
+            foa.Bounds("ground_truth.detections.confidence"),
+        ]
+        self._assert_results_equal(view, aggs)
+
+    def test_detection_labels_with_match(self):
+        """Detection label aggs on a filtered view."""
+        view = self._dataset.match(F("label") == "cat")
+        aggs = [
+            foa.Count(),
+            foa.Count("ground_truth.detections"),
+            foa.CountValues("ground_truth.detections.label"),
+            foa.Bounds("ground_truth.detections.confidence"),
+        ]
+        self._assert_results_equal(view, aggs)
+
+    def test_mixed_scalar_and_detection_aggs(self):
+        """Mix of scalar field aggs and detection label aggs."""
+        view = self._dataset.view()
+        aggs = [
+            foa.Count(),
+            foa.CountValues("label"),
+            foa.Bounds("confidence"),
+            foa.Count("ground_truth.detections"),
+            foa.CountValues("ground_truth.detections.label"),
+            foa.Bounds("ground_truth.detections.confidence"),
         ]
         self._assert_results_equal(view, aggs)
 

@@ -11565,82 +11565,45 @@ class SampleCollection(object):
             coll_name = self._dataset._sample_collection_name
             collection = foo.get_async_db_conn()[coll_name]
 
-            # If any aggregation requests a specific index hint, run
-            # per-pipeline to honor the hint instead of consolidating
+            # If any aggregation requests a specific index hint, skip
+            # parallelization but still consolidate
             has_custom_hints = any(h is not None for h in hints)
 
-            _t0 = timeit.default_timer()
+            # Consolidate all pipelines into a single $facet
+            (
+                consolidated,
+                branch_map,
+                branch_name_map,
+            ) = self._consolidate_facet_pipelines(
+                compiled_facet_aggs, facet_pipelines
+            )
 
             if has_custom_hints:
-                # Run each pipeline separately with its hint
                 n_partitions = 1
-                kwargs = dict(allowDiskUse=True)
-                if maxTimeMS:
-                    kwargs["maxTimeMS"] = maxTimeMS
-
-                _results = await food._do_async_pooled_aggregate(
-                    collection,
-                    list(facet_pipelines.values()),
-                    hints,
-                    **kwargs,
-                )
-                # Parse results directly from individual pipeline outputs
-                for (agg_idx, aggregation), result in zip(
-                    compiled_facet_aggs.items(), _results
-                ):
-                    if result:
-                        data = self._parse_faceted_result(aggregation, result)
-                        if (
-                            isinstance(aggregation, foa.FacetAggregations)
-                            and aggregation._compiled
-                        ):
-                            for idx, d in data.items():
-                                results[idx] = d
-                        else:
-                            results[agg_idx] = data
-                    else:
-                        if (
-                            isinstance(aggregation, foa.FacetAggregations)
-                            and aggregation._compiled
-                        ):
-                            for idx in aggregation._aggregations:
-                                results[idx] = aggregation._aggregations[
-                                    idx
-                                ].default_result()
-                        else:
-                            results[agg_idx] = aggregation.default_result()
             else:
-                # Consolidate all pipelines into a single $facet and
-                # optionally parallelize across _id ranges
-                (
-                    consolidated,
-                    branch_map,
-                    branch_name_map,
-                ) = self._consolidate_facet_pipelines(
-                    compiled_facet_aggs, facet_pipelines
-                )
-
                 n_partitions = await self._get_num_partitions(
                     collection, compiled_facet_aggs
                 )
 
-                if n_partitions > 1:
-                    raw_result = await self._run_parallel_consolidated(
-                        collection,
-                        consolidated,
-                        n_partitions,
-                        branch_map,
-                        branch_name_map,
-                        compiled_facet_aggs,
-                        maxTimeMS=maxTimeMS,
-                    )
-                else:
-                    kwargs = dict(allowDiskUse=True)
-                    if maxTimeMS:
-                        kwargs["maxTimeMS"] = maxTimeMS
-                    cursor = collection.aggregate(consolidated, **kwargs)
-                    raw_docs = [doc async for doc in cursor]
-                    raw_result = raw_docs[0] if raw_docs else {}
+            _t0 = timeit.default_timer()
+
+            if n_partitions > 1:
+                raw_result = await self._run_parallel_consolidated(
+                    collection,
+                    consolidated,
+                    n_partitions,
+                    branch_map,
+                    branch_name_map,
+                    compiled_facet_aggs,
+                    maxTimeMS=maxTimeMS,
+                )
+            else:
+                kwargs = dict(allowDiskUse=True)
+                if maxTimeMS:
+                    kwargs["maxTimeMS"] = maxTimeMS
+                cursor = collection.aggregate(consolidated, **kwargs)
+                raw_docs = [doc async for doc in cursor]
+                raw_result = raw_docs[0] if raw_docs else {}
 
             _elapsed = timeit.default_timer() - _t0
             logger.info(
@@ -11650,34 +11613,30 @@ class SampleCollection(object):
                 len(compiled_facet_aggs),
             )
 
-            if not has_custom_hints:
-                # Parse results by reconstructing each aggregation's
-                # expected result from the consolidated facet output
-                for agg_idx, aggregation in compiled_facet_aggs.items():
-                    branches = branch_map[agg_idx]
-                    if (
-                        isinstance(aggregation, foa.FacetAggregations)
-                        and aggregation._compiled
-                    ):
-                        # Reconstruct the facet document parse_result
-                        # expects, mapping namespaced names back
-                        nmap = branch_name_map.get(agg_idx, {})
-                        facet_doc = {
-                            nmap.get(bname, bname): raw_result.get(bname, [])
-                            for bname in branches
-                        }
-                        data = aggregation.parse_result(facet_doc)
-                        for idx, d in data.items():
-                            results[idx] = d
+            # Parse results from the consolidated facet output
+            for agg_idx, aggregation in compiled_facet_aggs.items():
+                branches = branch_map[agg_idx]
+                if (
+                    isinstance(aggregation, foa.FacetAggregations)
+                    and aggregation._compiled
+                ):
+                    nmap = branch_name_map.get(agg_idx, {})
+                    facet_doc = {
+                        nmap.get(bname, bname): raw_result.get(bname, [])
+                        for bname in branches
+                    }
+                    data = aggregation.parse_result(facet_doc)
+                    for idx, d in data.items():
+                        results[idx] = d
+                else:
+                    bname = branches[0]
+                    branch_result = raw_result.get(bname, [])
+                    if branch_result:
+                        results[agg_idx] = aggregation.parse_result(
+                            branch_result[0]
+                        )
                     else:
-                        bname = branches[0]
-                        branch_result = raw_result.get(bname, [])
-                        if branch_result:
-                            results[agg_idx] = aggregation.parse_result(
-                                branch_result[0]
-                            )
-                        else:
-                            results[agg_idx] = aggregation.default_result()
+                        results[agg_idx] = aggregation.default_result()
 
         return results[0] if scalar_result else results
 
@@ -11748,6 +11707,9 @@ class SampleCollection(object):
           partial results when split by _id range
         - The view selects specific sample IDs (already index-backed)
         """
+        if _PARALLEL_MAX_PARTITIONS <= 1:
+            return 1
+
         for agg in compiled_aggs.values():
             if (
                 agg._merge_partition_results.__func__
