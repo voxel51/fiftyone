@@ -8,7 +8,8 @@ import FieldWrapper from "./FieldWrapper";
 export default function TextFieldView(props: ViewPropsType<NumberSchemaType>) {
   const { schema, onChange, path, data } = props;
   const { type, view = {}, min, max, multipleOf = 1 } = schema;
-  const { readOnly, placeholder, compact, label, color, variant } = view;
+  const { readOnly, placeholder, compact, label, color, variant, multiline, rows } =
+    view;
 
   const { inputProps = {}, ...fieldProps } = getComponentProps(props, "field", {
     sx: getFieldSx({ color, variant }),
@@ -27,6 +28,8 @@ export default function TextFieldView(props: ViewPropsType<NumberSchemaType>) {
         fullWidth
         placeholder={compact ? placeholder || label : placeholder}
         type={type}
+        multiline={multiline}
+        rows={rows}
         onChange={(e) => {
           const value = e.target.value;
           onChange(path, type === "number" ? parseFloat(value) : value);

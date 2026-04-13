@@ -2533,10 +2533,24 @@ class TextFieldView(View):
     .. note::
 
         Must be used with :class:`String` or :class:`Number` properties.
+
+    Args:
+        multiline (False): whether to render a multiline text area
+        rows (None): optional number of visible text rows when ``multiline``
+            is enabled
     """
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, multiline=False, rows=None, **kwargs):
+        super().__init__(multiline=multiline, rows=rows, **kwargs)
+        self.multiline = multiline
+        self.rows = rows
+
+    def to_json(self):
+        return {
+            **super().to_json(),
+            "multiline": self.multiline,
+            "rows": self.rows,
+        }
 
 
 class FieldView(View):
