@@ -20,6 +20,19 @@ from .constants import STORE_NAME, RunStatus
 logger = logging.getLogger(__name__)
 
 
+def get_head_dataset_id(dataset):
+    """Get the head dataset ID for a given dataset or a snapshot.
+
+    Args:
+        dataset: the dataset instance
+
+    Returns:
+        the head dataset ID as a string
+    """
+    dataset_id = str(dataset._doc.id)
+    return dataset_id
+
+
 class RunManager:
     """Manager class for persisting and retrieving similarity search runs."""
 
@@ -30,14 +43,7 @@ class RunManager:
     _HEAVY_FIELDS = {"result_ids", "result_view", "source_view"}
 
     def __init__(self, ctx):
-        dataset_id = str(ctx.dataset._doc.id)
-
-        # --- TEAMS-ONLY START ---
-        name = ctx.dataset.name
-        if name.startswith("_snapshot"):
-            dataset_id = name.split("_")[3]
-        # --- TEAMS-ONLY END ---
-
+        dataset_id = get_head_dataset_id(ctx.dataset)
         self._store = ExecutionStore.create(STORE_NAME, ObjectId(dataset_id))
 
     def create_run(self, run_params: Dict[str, Any]) -> Dict[str, Any]:
