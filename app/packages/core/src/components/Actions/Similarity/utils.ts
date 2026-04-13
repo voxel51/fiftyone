@@ -160,45 +160,5 @@ export const sortType = selectorFamily<string, boolean>({
     },
 });
 
-const pluralizeUnit = (n: number, u: string) =>
-  `${n} ${n === 1 ? u : u + (u === "patch" ? "es" : "s")}`;
-
-export function buildRunName({
-  isImageSearch,
-  isUpload,
-  textQuery,
-  queryIds,
-  negativeQueryIds,
-  patchesField,
-  hasUploadedImage,
-}: {
-  isImageSearch: boolean;
-  isUpload?: boolean;
-  textQuery?: string;
-  queryIds?: string[] | string;
-  negativeQueryIds?: string[];
-  patchesField?: string;
-  hasUploadedImage?: boolean;
-}): string {
-  if (isUpload) {
-    const count = hasUploadedImage ? 1 : 0;
-    return `${count} ${count === 1 ? "image" : "images"}`;
-  }
-
-  if (!isImageSearch) {
-    return textQuery?.trim() || "text query";
-  }
-
-  const count = Array.isArray(queryIds) ? queryIds.length : queryIds ? 1 : 0;
-  const negCount = negativeQueryIds?.length ?? 0;
-  const unit = patchesField ? "patch" : "sample";
-
-  if (negCount > 0) {
-    return `${pluralizeUnit(count, unit)} positive, ${pluralizeUnit(
-      negCount,
-      unit
-    )} negative`;
-  }
-
-  return pluralizeUnit(count, unit);
-}
+// Re-export from utilities so existing callers within core still work.
+export { buildSimilarityRunName as buildRunName } from "@fiftyone/utilities";

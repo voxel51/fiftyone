@@ -106,7 +106,10 @@ export const useRuns = (): UseRunsResult => {
     // requested while we were busy.  On success the error counter
     // resets; on failure it increments, and we stop retrying after
     // MAX_RETRY consecutive failures.
-    inFlightRef.current = promise
+    //
+    // We use a separate chain for coalescing so the original promise's
+    // rejection propagates to callers (e.g. handleSubmitted's await).
+    promise
       .then(() => {
         errorCountRef.current = 0;
       })
@@ -123,7 +126,8 @@ export const useRuns = (): UseRunsResult => {
         }
       });
 
-    return inFlightRef.current;
+    inFlightRef.current = promise;
+    return promise;
   }, [fetchRuns, setRuns]);
 
   useEffect(() => {

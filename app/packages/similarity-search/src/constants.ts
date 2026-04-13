@@ -33,6 +33,13 @@ export const STATUS_LABELS: Record<RunStatus, string> = {
   failed: "Failed",
 };
 
+// Run list styles
+export const POINTER_STYLE = { cursor: "pointer" } as const;
+export const HIGHLIGHT_STYLE = {
+  boxShadow: "0 0 8px 2px rgba(255, 109, 4, 0.4)",
+  borderRadius: 6,
+} as const;
+
 export const THUMB_SIZE = 36;
 export const THUMB_GAP = 4;
 export const THUMB_SINGLE_ROW_MAX = 10;
