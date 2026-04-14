@@ -16,7 +16,10 @@
         "@fiftyone/plugins": "*",
         "@fiftyone/utilities": "*",
         "@foxglove/rosmsg": "^5.0.5",
-        "@foxglove/rosmsg2-serialization": "^3.0.3"
+        "@foxglove/rosmsg2-serialization": "^3.0.3",
+        "@react-three/drei": "^10.7.6",
+        "@react-three/fiber": "^8.18.0",
+        "three": "^0.182.0"
     },
     "devDependencies": {
         "typescript": "^4.7.4",
