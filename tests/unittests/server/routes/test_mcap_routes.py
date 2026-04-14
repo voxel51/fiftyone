@@ -86,7 +86,7 @@ def fixture_dataset():
     dataset.persistent = True
     dataset.add_sample_field("mcap_path", fo.StringField)
 
-    sample = fo.Sample(filepath="/tmp/not-mcap.jpg", mcap_path="")
+    sample = fo.Sample(filepath="/tmp/not-mcap.mcap", mcap_path="")
     dataset.add_sample(sample)
 
     try:
@@ -123,6 +123,14 @@ def fixture_scene_endpoint():
     )
 
 
+@pytest.fixture(name="ingest_endpoint")
+def fixture_ingest_endpoint():
+    """Returns the ingest endpoint instance."""
+    return form.McapIngest(
+        scope={"type": "http"}, receive=AsyncMock(), send=AsyncMock()
+    )
+
+
 @pytest.fixture(name="buffer_endpoint")
 def fixture_buffer_endpoint():
     """Returns the buffer endpoint instance."""
@@ -150,6 +158,24 @@ def fixture_mock_scene_request(dataset_id, sample_id):
             "sample_id": sample_id,
         }
         request.query_params = {"media_field": media_field}
+        return request
+
+    return _make_request
+
+
+@pytest.fixture(name="mock_ingest_request")
+def fixture_mock_ingest_request(dataset_id, sample_id):
+    """Builds a mock ingest request."""
+
+    def _make_request(payload):
+        request = MagicMock()
+        request.path_params = {
+            "dataset_id": dataset_id,
+            "sample_id": sample_id,
+        }
+        request.headers = {"Content-Type": "application/json"}
+        request.json = AsyncMock(return_value=payload)
+        request.body = AsyncMock(return_value=_json_payload(payload))
         return request
 
     return _make_request
@@ -200,7 +226,7 @@ class TestMcapSceneRoute:
     ):
         """The scene endpoint returns inventory and playback-plan data."""
         with tempfile.NamedTemporaryFile(suffix=".mcap") as handle:
-            sample["mcap_path"] = handle.name
+            sample["filepath"] = handle.name
             sample.save()
 
             schema = _make_schema(
@@ -229,12 +255,12 @@ class TestMcapSceneRoute:
                 ),
             ):
                 response = await scene_endpoint.get(
-                    mock_scene_request("mcap_path")
+                    mock_scene_request("filepath")
                 )
 
         assert response.status_code == 200
         data = json.loads(response.body)
-        assert data["scene"]["mediaField"] == "mcap_path"
+        assert data["scene"]["mediaField"] == "filepath"
         assert data["scene"]["streams"][0]["streamId"] == "/camera/front"
         assert data["playbackPlan"]["panels"][0]["panelType"] == "2d"
 
@@ -244,7 +270,7 @@ class TestMcapSceneRoute:
     ):
         """A valid MCAP with unsupported schemas returns empty stream inventory."""
         with tempfile.NamedTemporaryFile(suffix=".mcap") as handle:
-            sample["mcap_path"] = handle.name
+            sample["filepath"] = handle.name
             sample.save()
 
             schema = _make_schema(1, "std_msgs/msg/String", "ros2msg")
@@ -270,7 +296,7 @@ class TestMcapSceneRoute:
                 ),
             ):
                 response = await scene_endpoint.get(
-                    mock_scene_request("mcap_path")
+                    mock_scene_request("filepath")
                 )
 
         data = json.loads(response.body)
@@ -294,11 +320,11 @@ class TestMcapSceneRoute:
         self, sample, scene_endpoint, mock_scene_request
     ):
         """Missing MCAP files return 404."""
-        sample["mcap_path"] = "/tmp/does-not-exist-test-route.mcap"
+        sample["filepath"] = "/tmp/does-not-exist-test-route.mcap"
         sample.save()
 
         with pytest.raises(HTTPException) as exc_info:
-            await scene_endpoint.get(mock_scene_request("mcap_path"))
+            await scene_endpoint.get(mock_scene_request("filepath"))
 
         assert exc_info.value.status_code == 404
 
@@ -316,6 +342,61 @@ class TestMcapSceneRoute:
         assert exc_info.value.status_code == 400
 
 
+class TestMcapIngestRoute:
+    """Tests for the MCAP ingest endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_ingest_happy_path(
+        self, sample, ingest_endpoint, mock_ingest_request
+    ):
+        """The ingest endpoint persists and returns scene state."""
+        with tempfile.NamedTemporaryFile(suffix=".mcap") as handle:
+            sample["filepath"] = handle.name
+            sample.save()
+
+            schema = _make_schema(
+                1, "sensor_msgs/msg/CompressedImage", "ros2msg"
+            )
+            channel = _make_channel(1, "/camera/front", 1)
+            reader = _FakeReader(
+                summary=SimpleNamespace(
+                    channels={1: channel},
+                    schemas={1: schema},
+                    statistics=SimpleNamespace(
+                        channel_message_counts={1: 1},
+                        message_start_time=10,
+                        message_end_time=10,
+                    ),
+                    chunk_indexes=[],
+                ),
+                messages=[(schema, channel, _make_message(10, 11, b"frame"))],
+            )
+
+            with patch.object(
+                form.fosm,
+                "_get_mcap_reader_module",
+                return_value=SimpleNamespace(
+                    make_reader=lambda _stream: reader
+                ),
+            ):
+                response = await ingest_endpoint.post(
+                    mock_ingest_request(
+                        {
+                            "mediaField": "filepath",
+                            "overwrite": False,
+                        }
+                    )
+                )
+
+        assert response.status_code == 200
+        data = json.loads(response.body)
+        assert data["scene"]["mediaField"] == "filepath"
+        assert data["playbackPlan"]["panels"][0]["streamId"] == (
+            "/camera/front"
+        )
+        assert sample.dataset.has_sample_field("rendering_plan")
+
+
 class TestMcapBufferRoute:
     """Tests for the MCAP buffer endpoint."""
 
@@ -325,7 +406,7 @@ class TestMcapBufferRoute:
     ):
         """The buffer endpoint returns raw-mode message payloads."""
         with tempfile.NamedTemporaryFile(suffix=".mcap") as handle:
-            sample["mcap_path"] = handle.name
+            sample["filepath"] = handle.name
             sample.save()
 
             schema = _make_schema(1, "sensor_msgs/msg/PointCloud2", "ros2msg")
@@ -356,7 +437,7 @@ class TestMcapBufferRoute:
                 response = await buffer_endpoint.post(
                     mock_buffer_request(
                         {
-                            "mediaField": "mcap_path",
+                            "mediaField": "filepath",
                             "streamIds": ["/lidar/top"],
                             "window": {"startNs": 10, "endNs": 10},
                             "mode": "raw",
@@ -376,7 +457,7 @@ class TestMcapBufferRoute:
     ):
         """Unknown stream IDs are rejected with 400."""
         with tempfile.NamedTemporaryFile(suffix=".mcap") as handle:
-            sample["mcap_path"] = handle.name
+            sample["filepath"] = handle.name
             sample.save()
 
             schema = _make_schema(
@@ -407,7 +488,7 @@ class TestMcapBufferRoute:
                     await buffer_endpoint.post(
                         mock_buffer_request(
                             {
-                                "mediaField": "mcap_path",
+                                "mediaField": "filepath",
                                 "streamIds": ["/nope"],
                                 "window": {"startNs": 10, "endNs": 12},
                                 "mode": "raw",
@@ -423,14 +504,14 @@ class TestMcapBufferRoute:
     ):
         """Decoded mode is reserved but not implemented."""
         with tempfile.NamedTemporaryFile(suffix=".mcap") as handle:
-            sample["mcap_path"] = handle.name
+            sample["filepath"] = handle.name
             sample.save()
 
             with pytest.raises(HTTPException) as exc_info:
                 await buffer_endpoint.post(
                     mock_buffer_request(
                         {
-                            "mediaField": "mcap_path",
+                            "mediaField": "filepath",
                             "streamIds": ["/camera/front"],
                             "window": {"startNs": 1, "endNs": 2},
                             "mode": "decoded",
@@ -450,7 +531,7 @@ class TestMcapTimelineRoute:
     ):
         """The timeline endpoint returns shared and per-stream timestamps."""
         with tempfile.NamedTemporaryFile(suffix=".mcap") as handle:
-            sample["mcap_path"] = handle.name
+            sample["filepath"] = handle.name
             sample.save()
 
             schema = _make_schema(
@@ -484,7 +565,7 @@ class TestMcapTimelineRoute:
                 response = await timeline_endpoint.post(
                     mock_timeline_request(
                         {
-                            "mediaField": "mcap_path",
+                            "mediaField": "filepath",
                             "streamIds": ["/camera/front"],
                         }
                     )
@@ -492,7 +573,7 @@ class TestMcapTimelineRoute:
 
         assert response.status_code == 200
         data = json.loads(response.body)
-        assert data["sceneId"].endswith(":mcap_path")
+        assert data["sceneId"].endswith(":filepath")
         assert data["timeline"]["timestampSource"] == "log_time"
         assert data["timeline"]["timestampsNs"] == [10, 20]
         assert data["timeline"]["streams"] == [
@@ -508,17 +589,27 @@ class TestMcapTimelineRoute:
     ):
         """An empty stream request returns an empty timeline payload."""
         with tempfile.NamedTemporaryFile(suffix=".mcap") as handle:
-            sample["mcap_path"] = handle.name
+            sample["filepath"] = handle.name
             sample.save()
 
-            response = await timeline_endpoint.post(
-                mock_timeline_request(
-                    {
-                        "mediaField": "mcap_path",
-                        "streamIds": [],
-                    }
+            with patch.object(
+                form.fosm,
+                "_get_mcap_reader_module",
+                return_value=SimpleNamespace(
+                    make_reader=lambda _stream: _FakeReader(
+                        summary=None,
+                        messages=[],
+                    )
+                ),
+            ):
+                response = await timeline_endpoint.post(
+                    mock_timeline_request(
+                        {
+                            "mediaField": "filepath",
+                            "streamIds": [],
+                        }
+                    )
                 )
-            )
 
         assert response.status_code == 200
         data = json.loads(response.body)
@@ -531,7 +622,7 @@ class TestMcapTimelineRoute:
     ):
         """Unknown stream IDs are rejected with 400."""
         with tempfile.NamedTemporaryFile(suffix=".mcap") as handle:
-            sample["mcap_path"] = handle.name
+            sample["filepath"] = handle.name
             sample.save()
 
             schema = _make_schema(
@@ -562,7 +653,7 @@ class TestMcapTimelineRoute:
                     await timeline_endpoint.post(
                         mock_timeline_request(
                             {
-                                "mediaField": "mcap_path",
+                                "mediaField": "filepath",
                                 "streamIds": ["/nope"],
                             }
                         )

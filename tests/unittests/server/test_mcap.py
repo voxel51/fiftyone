@@ -1,13 +1,19 @@
 """
-FiftyOne Server MCAP adapter unit tests.
+FiftyOne Server MCAP adapter and service unit tests.
 
 | Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 
+import tempfile
 from types import SimpleNamespace
 
+import pytest
+
+import fiftyone as fo
+import fiftyone.core.metadata as fom
+import fiftyone.core.rendering as fopr
 import fiftyone.server.mcap as fosm
 
 
@@ -43,6 +49,41 @@ class _FakeReader:
             yield schema, channel, message
 
 
+class _FakeAdapter(fosm.MultimodalSourceAdapter):
+    def __init__(self, metadata, window_response=None, timeline_response=None):
+        self.metadata = metadata
+        self.window_response = window_response or {}
+        self.timeline_response = timeline_response or {
+            "timestamps_ns": [],
+            "streams": {},
+        }
+        self.catalog_calls = 0
+
+    def get_scene_catalog(self, scene_id, media_field, media_path):
+        del scene_id, media_field, media_path
+        self.catalog_calls += 1
+        return self.metadata
+
+    def read_stream_window(self, media_path, stream_ids, start_ns, end_ns):
+        del media_path, stream_ids, start_ns, end_ns
+        return self.window_response
+
+    def read_timeline_index(self, media_path, stream_ids):
+        del media_path, stream_ids
+        return self.timeline_response
+
+
+class _FakePlanner(fosm.RenderingPlanner):
+    def __init__(self, rendering_plan):
+        self.rendering_plan = rendering_plan
+        self.calls = 0
+
+    def build_rendering_plan(self, metadata):
+        del metadata
+        self.calls += 1
+        return self.rendering_plan
+
+
 def _make_schema(schema_id, name, encoding="ros2msg"):
     return SimpleNamespace(id=schema_id, name=name, encoding=encoding)
 
@@ -68,6 +109,68 @@ def _make_message(log_time, publish_time, data=b"payload", sequence=0):
     )
 
 
+def _make_stream(
+    stream_id,
+    role,
+    schema_name="sensor_msgs/msg/CompressedImage",
+    schema_id=1,
+    channel_id=1,
+    start_ns=10,
+    end_ns=20,
+    message_count=2,
+):
+    return fom.McapStreamMetadata(
+        stream_id=stream_id,
+        topic=stream_id,
+        schema_name=schema_name,
+        schema_encoding="ros2msg",
+        message_encoding="cdr",
+        role=role,
+        channel_id=channel_id,
+        schema_id=schema_id,
+        time_range=fom.McapTimeRange(start_ns=start_ns, end_ns=end_ns),
+        message_count=message_count,
+    )
+
+
+def _make_rendering_plan(scene_id, media_field, panels):
+    return fopr.McapRenderingPlan(
+        scene_id=scene_id,
+        media_field=media_field,
+        sync=fopr.McapSyncConfig(
+            timestamp_source="header.stamp",
+            fallback="log_time",
+            mode="nearest",
+        ),
+        panels=panels,
+        sidebars=fopr.McapSidebarConfig(
+            left="panel_config",
+            right="stream_metadata",
+        ),
+    )
+
+
+@pytest.fixture(name="dataset")
+def fixture_dataset():
+    """Creates a persistent dataset for testing."""
+    dataset = fo.Dataset()
+    dataset.persistent = True
+    dataset.add_sample_field("mcap_path", fo.StringField)
+    dataset.add_sample(fo.Sample(filepath="/tmp/not-mcap.mcap", mcap_path=""))
+
+    try:
+        yield dataset
+    finally:
+        if fo.dataset_exists(dataset.name):
+            fo.delete_dataset(dataset.name)
+
+
+@pytest.fixture(name="sample")
+def fixture_sample(dataset):
+    """Returns the dataset sample used by the tests."""
+    return dataset.first()
+
+
 class TestMcapModule:
     """Tests for the internal MCAP adapter helpers."""
 
@@ -83,40 +186,36 @@ class TestMcapModule:
         )
         assert fosm._resolve_stream_role("std_msgs/msg/String") is None
 
-    def test_build_playback_plan(self):
-        """Playback plans map supported stream roles to panel defaults."""
-        plan = fosm._build_playback_plan(
-            "scene-1",
-            [
-                {
-                    "streamId": "/camera/front",
-                    "role": "image_stream",
-                },
-                {
-                    "streamId": "/lidar/top",
-                    "role": "pointcloud_stream",
-                },
+    def test_build_rendering_plan(self):
+        """Rendering plans map supported stream roles to panel defaults."""
+        metadata = fom.McapMetadata(
+            scene_id="scene-1",
+            media_field="filepath",
+            streams=[
+                _make_stream("/camera/front", "image_stream"),
+                _make_stream(
+                    "/lidar/top",
+                    "pointcloud_stream",
+                    schema_name="sensor_msgs/msg/PointCloud2",
+                    schema_id=2,
+                    channel_id=2,
+                ),
             ],
         )
 
-        assert plan["sceneId"] == "scene-1"
-        assert plan["sync"]["timestampSource"] == "header.stamp"
-        assert plan["panels"] == [
-            {
-                "panelId": "camera_front",
-                "panelType": "2d",
-                "contentType": "image",
-                "streamId": "/camera/front",
-            },
-            {
-                "panelId": "lidar_top",
-                "panelType": "3d",
-                "contentType": "pointcloud",
-                "streamId": "/lidar/top",
-            },
-        ]
+        plan = fosm.HeuristicMcapRenderingPlanner().build_rendering_plan(
+            metadata
+        )
 
-    def test_inspect_reader_without_summary(self):
+        assert plan.scene_id == "scene-1"
+        assert plan.sync.timestamp_source == "header.stamp"
+        assert [panel.panel_id for panel in plan.panels] == [
+            "camera_front",
+            "lidar_top",
+        ]
+        assert [panel.panel_type for panel in plan.panels] == ["2d", "3d"]
+
+    def test_catalog_reader_without_summary(self):
         """Summary-less readers fall back to a full message scan."""
         supported_schema = _make_schema(
             1, "sensor_msgs/msg/CompressedImage", "ros2msg"
@@ -146,30 +245,20 @@ class TestMcapModule:
             ],
         )
 
-        result = fosm._inspect_reader(
-            reader=reader,
-            scene_id="scene-1",
-            dataset_id="dataset-1",
-            sample_id="sample-1",
-            media_field="filepath",
-            media_path="/tmp/test.mcap",
-        )
+        with tempfile.NamedTemporaryFile(suffix=".mcap") as handle:
+            metadata = fosm._catalog_reader_without_summary(
+                reader=reader,
+                scene_id="scene-1",
+                media_field="filepath",
+                media_path=handle.name,
+            )
 
-        assert result["scene"]["timeRange"] == {"startNs": 5, "endNs": 20}
-        assert result["scene"]["streams"] == [
-            {
-                "streamId": "/camera/front",
-                "topic": "/camera/front",
-                "schemaName": "sensor_msgs/msg/CompressedImage",
-                "schemaEncoding": "ros2msg",
-                "messageEncoding": "cdr",
-                "role": "image_stream",
-                "channelId": 1,
-                "schemaId": 1,
-                "timeRange": {"startNs": 10, "endNs": 20},
-                "messageCount": 2,
-            }
-        ]
+        assert metadata.scene_id == "scene-1"
+        assert metadata.time_range.start_ns == 5
+        assert metadata.time_range.end_ns == 20
+        assert len(metadata.streams) == 1
+        assert metadata.streams[0].stream_id == "/camera/front"
+        assert metadata.streams[0].message_count == 2
 
     def test_iter_reader_messages_uses_inclusive_end(self):
         """Window iteration includes messages at the requested end time."""
@@ -215,97 +304,239 @@ class TestMcapModule:
 
         assert [message.log_time for message in messages] == [10, 20]
 
-    def test_read_sample_mcap_timeline_index_builds_shared_clock(self):
-        """Timeline reads return sorted shared and per-stream timestamps."""
 
-        class _Sample(dict):
-            id = "sample-1"
+class TestSampleMcapSceneRepository:
+    """Tests for the sample-backed repository."""
 
-        dataset = SimpleNamespace(_doc=SimpleNamespace(id="dataset-1"))
-        sample = _Sample(filepath="/tmp/test.mcap")
-        image_schema = _make_schema(
-            1, "sensor_msgs/msg/CompressedImage", "ros2msg"
-        )
-        point_schema = _make_schema(2, "sensor_msgs/msg/PointCloud2")
-        image_channel = _make_channel(1, "/camera/front", 1)
-        point_channel = _make_channel(2, "/lidar/top", 2)
-        reader = _FakeReader(
-            summary=SimpleNamespace(
-                channels={
-                    1: image_channel,
-                    2: point_channel,
-                },
-                schemas={
-                    1: image_schema,
-                    2: point_schema,
-                },
-                statistics=SimpleNamespace(
-                    channel_message_counts={1: 2, 2: 2},
-                    message_start_time=10,
-                    message_end_time=30,
-                ),
-                chunk_indexes=[],
-            ),
-            messages=[
-                (
-                    image_schema,
-                    image_channel,
-                    _make_message(20, 20, b"image-2"),
-                ),
-                (
-                    point_schema,
-                    point_channel,
-                    _make_message(10, 10, b"cloud-1"),
-                ),
-                (
-                    image_schema,
-                    image_channel,
-                    _make_message(10, 10, b"image-1"),
-                ),
-                (
-                    point_schema,
-                    point_channel,
-                    _make_message(30, 30, b"cloud-2"),
-                ),
-            ],
-        )
+    def test_save_and_load_round_trip(self, dataset, sample):
+        """MCAP metadata and rendering plans round-trip via the sample."""
+        repository = fosm.SampleMcapSceneRepository()
 
-        original_open = open
-        original_reader_module = fosm._get_mcap_reader_module
-        original_exists = fosm.os.path.exists
+        with tempfile.NamedTemporaryFile(suffix=".mcap") as handle:
+            sample["filepath"] = handle.name
+            sample.save()
 
-        try:
-            fosm.open = lambda *args, **kwargs: original_open(__file__, "rb")
-            fosm._get_mcap_reader_module = lambda: SimpleNamespace(
-                make_reader=lambda _stream: reader
-            )
-            fosm.os.path.exists = lambda _path: True
-
-            result = fosm.read_sample_mcap_timeline_index(
-                dataset=dataset,
-                sample=sample,
+            metadata = fom.McapMetadata.build_for(
+                scene_id="scene-1",
                 media_field="filepath",
-                stream_ids=["/camera/front", "/lidar/top"],
+                media_path=handle.name,
+                time_range=fom.McapTimeRange(start_ns=10, end_ns=20),
+                streams=[_make_stream("/camera/front", "image_stream")],
             )
-        finally:
-            fosm.open = original_open
-            fosm._get_mcap_reader_module = original_reader_module
-            fosm.os.path.exists = original_exists
-
-        assert result == {
-            "sceneId": "dataset-1:sample-1:filepath",
-            "timeline": {
-                "timestampSource": "log_time",
-                "timestampsNs": [10, 20, 30],
-                "streams": [
-                    {
-                        "streamId": "/camera/front",
-                        "timestampsNs": [10, 20],
-                    },
-                    {
-                        "streamId": "/lidar/top",
-                        "timestampsNs": [10, 30],
-                    },
+            rendering_plan = _make_rendering_plan(
+                "scene-1",
+                "filepath",
+                [
+                    fopr.McapPanelPlan(
+                        panel_id="camera_front",
+                        panel_type="2d",
+                        content_type="image",
+                        stream_id="/camera/front",
+                    )
                 ],
-            },
-        }
+            )
+
+            repository.save(dataset, sample, metadata, rendering_plan)
+            reloaded_sample = dataset.first()
+            state = repository.load(reloaded_sample)
+
+        assert dataset.has_sample_field("rendering_plan")
+        assert isinstance(state.metadata, fom.McapMetadata)
+        assert isinstance(state.rendering_plan, fopr.McapRenderingPlan)
+        assert state.metadata.media_field == "filepath"
+        assert state.rendering_plan.panels[0].stream_id == "/camera/front"
+
+
+class TestMcapSceneService:
+    """Tests for read-through ingest and persistence behavior."""
+
+    def test_cache_hit_reuses_persisted_scene_state(self, dataset, sample):
+        """Fresh persisted state is reused without re-ingesting."""
+        repository = fosm.SampleMcapSceneRepository()
+
+        with tempfile.NamedTemporaryFile(suffix=".mcap") as handle:
+            sample["filepath"] = handle.name
+            sample.save()
+
+            metadata = fom.McapMetadata.build_for(
+                scene_id="scene-1",
+                media_field="filepath",
+                media_path=handle.name,
+                time_range=fom.McapTimeRange(start_ns=10, end_ns=20),
+                streams=[_make_stream("/camera/front", "image_stream")],
+            )
+            rendering_plan = _make_rendering_plan(
+                "scene-1",
+                "filepath",
+                [
+                    fopr.McapPanelPlan(
+                        panel_id="camera_front",
+                        panel_type="2d",
+                        content_type="image",
+                        stream_id="/camera/front",
+                    )
+                ],
+            )
+            repository.save(dataset, sample, metadata, rendering_plan)
+
+            adapter = _FakeAdapter(metadata)
+            planner = _FakePlanner(rendering_plan)
+            service = fosm.McapSceneService(adapter, planner, repository)
+
+            state = service.ingest_scene(dataset, sample, "filepath")
+
+        assert adapter.catalog_calls == 0
+        assert planner.calls == 0
+        assert state.metadata.scene_id == "scene-1"
+        assert state.rendering_plan.media_field == "filepath"
+
+    def test_cache_miss_ingests_and_persists(self, dataset, sample):
+        """Missing persisted state triggers ingest and persistence."""
+        repository = fosm.SampleMcapSceneRepository()
+
+        with tempfile.NamedTemporaryFile(suffix=".mcap") as handle:
+            sample["filepath"] = handle.name
+            sample.save()
+
+            metadata = fom.McapMetadata.build_for(
+                scene_id="scene-1",
+                media_field="filepath",
+                media_path=handle.name,
+                time_range=fom.McapTimeRange(start_ns=10, end_ns=20),
+                streams=[_make_stream("/camera/front", "image_stream")],
+            )
+            rendering_plan = _make_rendering_plan(
+                "scene-1",
+                "filepath",
+                [
+                    fopr.McapPanelPlan(
+                        panel_id="camera_front",
+                        panel_type="2d",
+                        content_type="image",
+                        stream_id="/camera/front",
+                    )
+                ],
+            )
+            adapter = _FakeAdapter(metadata)
+            planner = _FakePlanner(rendering_plan)
+            service = fosm.McapSceneService(adapter, planner, repository)
+
+            state = service.ingest_scene(dataset, sample, "filepath")
+
+        reloaded_sample = dataset.first()
+        assert adapter.catalog_calls == 1
+        assert planner.calls == 1
+        assert isinstance(reloaded_sample.metadata, fom.McapMetadata)
+        assert isinstance(
+            reloaded_sample["rendering_plan"], fopr.McapRenderingPlan
+        )
+        assert state.metadata.scene_id == "scene-1"
+
+    def test_stale_fingerprint_forces_reingest(self, dataset, sample):
+        """A changed source fingerprint invalidates persisted scene state."""
+        repository = fosm.SampleMcapSceneRepository()
+
+        with tempfile.NamedTemporaryFile(suffix=".mcap") as handle:
+            handle.write(b"old")
+            handle.flush()
+            sample["filepath"] = handle.name
+            sample.save()
+
+            stale_metadata = fom.McapMetadata.build_for(
+                scene_id="scene-1",
+                media_field="filepath",
+                media_path=handle.name,
+                time_range=fom.McapTimeRange(start_ns=10, end_ns=20),
+                streams=[_make_stream("/camera/front", "image_stream")],
+            )
+            stale_plan = _make_rendering_plan(
+                "scene-1",
+                "filepath",
+                [
+                    fopr.McapPanelPlan(
+                        panel_id="camera_front",
+                        panel_type="2d",
+                        content_type="image",
+                        stream_id="/camera/front",
+                    )
+                ],
+            )
+            repository.save(dataset, sample, stale_metadata, stale_plan)
+
+            handle.seek(0)
+            handle.write(b"newer-payload")
+            handle.truncate()
+            handle.flush()
+
+            fresh_metadata = fom.McapMetadata.build_for(
+                scene_id="scene-2",
+                media_field="filepath",
+                media_path=handle.name,
+                time_range=fom.McapTimeRange(start_ns=30, end_ns=40),
+                streams=[_make_stream("/lidar/top", "pointcloud_stream")],
+            )
+            fresh_plan = _make_rendering_plan(
+                "scene-2",
+                "filepath",
+                [
+                    fopr.McapPanelPlan(
+                        panel_id="lidar_top",
+                        panel_type="3d",
+                        content_type="pointcloud",
+                        stream_id="/lidar/top",
+                    )
+                ],
+            )
+            adapter = _FakeAdapter(fresh_metadata)
+            planner = _FakePlanner(fresh_plan)
+            service = fosm.McapSceneService(adapter, planner, repository)
+
+            state = service.ingest_scene(dataset, sample, "filepath")
+
+        assert adapter.catalog_calls == 1
+        assert planner.calls == 1
+        assert state.metadata.scene_id == "scene-2"
+        assert state.rendering_plan.panels[0].stream_id == "/lidar/top"
+
+    def test_overwrite_forces_reingest(self, dataset, sample):
+        """Explicit overwrite bypasses fresh persisted scene state."""
+        repository = fosm.SampleMcapSceneRepository()
+
+        with tempfile.NamedTemporaryFile(suffix=".mcap") as handle:
+            sample["filepath"] = handle.name
+            sample.save()
+
+            metadata = fom.McapMetadata.build_for(
+                scene_id="scene-1",
+                media_field="filepath",
+                media_path=handle.name,
+                time_range=fom.McapTimeRange(start_ns=10, end_ns=20),
+                streams=[_make_stream("/camera/front", "image_stream")],
+            )
+            rendering_plan = _make_rendering_plan(
+                "scene-1",
+                "filepath",
+                [
+                    fopr.McapPanelPlan(
+                        panel_id="camera_front",
+                        panel_type="2d",
+                        content_type="image",
+                        stream_id="/camera/front",
+                    )
+                ],
+            )
+            repository.save(dataset, sample, metadata, rendering_plan)
+
+            adapter = _FakeAdapter(metadata)
+            planner = _FakePlanner(rendering_plan)
+            service = fosm.McapSceneService(adapter, planner, repository)
+
+            service.ingest_scene(
+                dataset,
+                sample,
+                "filepath",
+                overwrite=True,
+            )
+
+        assert adapter.catalog_calls == 1
+        assert planner.calls == 1
