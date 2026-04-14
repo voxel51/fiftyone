@@ -22,16 +22,29 @@ import { McapModalRenderer } from "./McapModalRenderer";
 const { useMcapSceneMock } = vi.hoisted(() => ({
   useMcapSceneMock: vi.fn(),
 }));
-const { useMcapImagePlaybackMock } = vi.hoisted(() => ({
-  useMcapImagePlaybackMock: vi.fn(),
+const { useMcapPlaybackControllerMock } = vi.hoisted(() => ({
+  useMcapPlaybackControllerMock: vi.fn(),
 }));
 
 vi.mock("./useMcapScene", () => ({
   useMcapScene: useMcapSceneMock,
 }));
 
-vi.mock("./useMcapImagePlayback", () => ({
-  useMcapImagePlayback: useMcapImagePlaybackMock,
+vi.mock("./useMcapPlaybackController", () => ({
+  useMcapPlaybackController: useMcapPlaybackControllerMock,
+}));
+
+vi.mock("./archetypes", () => ({
+  Image2dView: ({
+    alt,
+    frame,
+  }: {
+    alt?: string;
+    frame: { src: string } | null;
+  }) => <img alt={alt} data-testid="image2d-view" src={frame?.src} />,
+  Points3dView: ({ frame }: { frame: { pointCount: number } | null }) => (
+    <div data-testid="points3d-view">{frame?.pointCount ?? 0}</div>
+  ),
 }));
 
 vi.mock("@fiftyone/playback", () => ({
@@ -154,7 +167,7 @@ function createHookState(
 }
 
 function createPlaybackState(
-  overrides: Partial<ReturnType<typeof useMcapImagePlaybackMock>> = {}
+  overrides: Partial<ReturnType<typeof useMcapPlaybackControllerMock>> = {}
 ) {
   return {
     timelineName: null,
@@ -189,7 +202,7 @@ function createCtx(surface: "grid" | "modal", sampleId = "sample-1") {
 describe("Mcap renderers", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    useMcapImagePlaybackMock.mockReturnValue(createPlaybackState());
+    useMcapPlaybackControllerMock.mockReturnValue(createPlaybackState());
   });
 
   afterEach(() => {
@@ -202,7 +215,6 @@ describe("Mcap renderers", () => {
         isLoading: true,
       })
     );
-    useMcapImagePlaybackMock.mockReturnValue(createPlaybackState());
 
     render(<McapModalRenderer ctx={createCtx("modal")} />);
 
@@ -221,7 +233,7 @@ describe("Mcap renderers", () => {
         playbackPlan: SCENE_RESPONSE.playbackPlan,
       })
     );
-    useMcapImagePlaybackMock.mockReturnValue(
+    useMcapPlaybackControllerMock.mockReturnValue(
       createPlaybackState({
         timelineName: "mcap:scene-1",
         timeline: {
@@ -232,18 +244,47 @@ describe("Mcap renderers", () => {
               streamId: "/camera/front",
               timestampsNs: [10, 20],
             },
+            {
+              streamId: "/lidar/top",
+              timestampsNs: [10, 20],
+            },
           ],
         },
         hasPlayback: true,
         isTimelineInitialized: true,
         panelStates: {
-          "/camera/front": {
+          camera_front: {
             status: "ready",
+            archetype: "image2d",
+            messageId: "frame-1",
+            logTimeNs: 10,
+            publishTimeNs: 10,
             error: null,
             frame: {
+              id: "frame-1",
+              src: "blob:front",
+              timestampNs: 10,
               format: "jpeg",
               logTimeNs: 10,
               objectUrl: "blob:front",
+            },
+          },
+          lidar_top: {
+            status: "ready",
+            archetype: "points3d",
+            messageId: "cloud-1",
+            logTimeNs: 15,
+            publishTimeNs: 15,
+            error: null,
+            frame: {
+              id: "cloud-1",
+              pointCount: 2,
+              positions: new Float32Array([0, 0, 0, 1, 1, 1]),
+              intensity: null,
+              bounds: {
+                min: [0, 0, 0],
+                max: [1, 1, 1],
+              },
             },
           },
         },
@@ -252,9 +293,11 @@ describe("Mcap renderers", () => {
 
     render(<McapModalRenderer ctx={createCtx("modal")} />);
 
-    const panelCards = within(
-      screen.getByTestId("mcap-shell-panels")
-    ).getAllByRole("button");
+    const panelCards = Array.from(
+      screen
+        .getByTestId("mcap-shell-panels")
+        .querySelectorAll('[data-testid^="mcap-panel-card-"]')
+    ) as HTMLElement[];
 
     expect(panelCards[0].getAttribute("data-testid")).toBe(
       "mcap-panel-card-camera_front"
@@ -266,7 +309,7 @@ describe("Mcap renderers", () => {
     expect(within(panelCards[1]).getByText("lidar/top")).toBeTruthy();
   });
 
-  it("renders the first decoded image frame and shared timeline strip", () => {
+  it("renders the first image frame, point cloud frame, and shared timeline strip", () => {
     useMcapSceneMock.mockReturnValue(
       createHookState({
         data: SCENE_RESPONSE,
@@ -274,7 +317,7 @@ describe("Mcap renderers", () => {
         playbackPlan: SCENE_RESPONSE.playbackPlan,
       })
     );
-    useMcapImagePlaybackMock.mockReturnValue(
+    useMcapPlaybackControllerMock.mockReturnValue(
       createPlaybackState({
         timelineName: "mcap:scene-1",
         timeline: {
@@ -285,18 +328,47 @@ describe("Mcap renderers", () => {
               streamId: "/camera/front",
               timestampsNs: [10, 20],
             },
+            {
+              streamId: "/lidar/top",
+              timestampsNs: [10, 20],
+            },
           ],
         },
         hasPlayback: true,
         isTimelineInitialized: true,
         panelStates: {
-          "/camera/front": {
+          camera_front: {
             status: "ready",
+            archetype: "image2d",
+            messageId: "frame-1",
+            logTimeNs: 10,
+            publishTimeNs: 10,
             error: null,
             frame: {
+              id: "frame-1",
+              src: "blob:front",
+              timestampNs: 10,
               format: "jpeg",
               logTimeNs: 10,
               objectUrl: "blob:front",
+            },
+          },
+          lidar_top: {
+            status: "ready",
+            archetype: "points3d",
+            messageId: "cloud-1",
+            logTimeNs: 15,
+            publishTimeNs: 15,
+            error: null,
+            frame: {
+              id: "cloud-1",
+              pointCount: 2,
+              positions: new Float32Array([0, 0, 0, 1, 1, 1]),
+              intensity: null,
+              bounds: {
+                min: [0, 0, 0],
+                max: [1, 1, 1],
+              },
             },
           },
         },
@@ -309,11 +381,18 @@ describe("Mcap renderers", () => {
       "mcap:scene-1"
     );
     expect(
-      screen.getByTestId("mcap-image-frame-camera_front").getAttribute("src")
+      within(screen.getByTestId("mcap-image-frame-camera_front"))
+        .getByTestId("image2d-view")
+        .getAttribute("src")
     ).toBe("blob:front");
+    expect(
+      within(screen.getByTestId("mcap-points3d-frame-lidar_top")).getByTestId(
+        "points3d-view"
+      ).textContent
+    ).toBe("2");
   });
 
-  it("renders a pointcloud placeholder while image playback is active", () => {
+  it("renders a pointcloud loading fallback while shared playback warms up", () => {
     useMcapSceneMock.mockReturnValue(
       createHookState({
         data: SCENE_RESPONSE,
@@ -321,11 +400,25 @@ describe("Mcap renderers", () => {
         playbackPlan: SCENE_RESPONSE.playbackPlan,
       })
     );
-    useMcapImagePlaybackMock.mockReturnValue(
+    useMcapPlaybackControllerMock.mockReturnValue(
       createPlaybackState({
+        hasPlayback: true,
         panelStates: {
-          "/camera/front": {
+          camera_front: {
             status: "loading",
+            archetype: "image2d",
+            messageId: null,
+            logTimeNs: null,
+            publishTimeNs: null,
+            error: null,
+            frame: null,
+          },
+          lidar_top: {
+            status: "loading",
+            archetype: "points3d",
+            messageId: null,
+            logTimeNs: null,
+            publishTimeNs: null,
             error: null,
             frame: null,
           },
@@ -335,7 +428,13 @@ describe("Mcap renderers", () => {
 
     render(<McapModalRenderer ctx={createCtx("modal")} />);
 
-    expect(screen.getByText("Point cloud playback comes next")).toBeTruthy();
+    expect(screen.getByText("Point cloud playback")).toBeTruthy();
+    const pointPanel = screen.getByTestId("mcap-panel-card-lidar_top");
+    expect(
+      within(pointPanel).getAllByText(
+        "Loading point data for the shared playback cursor."
+      ).length
+    ).toBeGreaterThan(0);
   });
 
   it("renders a panel-local playback error when image decode fails", () => {
@@ -346,7 +445,7 @@ describe("Mcap renderers", () => {
         playbackPlan: SCENE_RESPONSE.playbackPlan,
       })
     );
-    useMcapImagePlaybackMock.mockReturnValue(
+    useMcapPlaybackControllerMock.mockReturnValue(
       createPlaybackState({
         timelineName: "mcap:scene-1",
         timeline: {
@@ -361,8 +460,12 @@ describe("Mcap renderers", () => {
         },
         hasPlayback: true,
         panelStates: {
-          "/camera/front": {
+          camera_front: {
             status: "error",
+            archetype: "image2d",
+            messageId: null,
+            logTimeNs: null,
+            publishTimeNs: null,
             error: new Error("decode failed"),
             frame: null,
           },
@@ -396,7 +499,6 @@ describe("Mcap renderers", () => {
         playbackPlan: emptyResponse.playbackPlan,
       })
     );
-    useMcapImagePlaybackMock.mockReturnValue(createPlaybackState());
 
     render(<McapModalRenderer ctx={createCtx("modal")} />);
 
@@ -414,7 +516,6 @@ describe("Mcap renderers", () => {
         refetch,
       })
     );
-    useMcapImagePlaybackMock.mockReturnValue(createPlaybackState());
 
     render(<McapModalRenderer ctx={createCtx("modal")} />);
 
@@ -433,7 +534,6 @@ describe("Mcap renderers", () => {
         playbackPlan: SCENE_RESPONSE.playbackPlan,
       })
     );
-    useMcapImagePlaybackMock.mockReturnValue(createPlaybackState());
 
     render(<McapModalRenderer ctx={createCtx("modal")} />);
 
@@ -452,7 +552,6 @@ describe("Mcap renderers", () => {
       playbackPlan: SCENE_RESPONSE.playbackPlan,
     });
     useMcapSceneMock.mockImplementation(() => hookState);
-    useMcapImagePlaybackMock.mockReturnValue(createPlaybackState());
 
     const { rerender } = render(<McapModalRenderer ctx={createCtx("modal")} />);
 
