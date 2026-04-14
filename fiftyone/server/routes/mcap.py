@@ -43,6 +43,34 @@ class McapScene(HTTPEndpoint):
         return JSONResponse(response)
 
 
+class McapIngest(HTTPEndpoint):
+    """Persists MCAP scene inventory and rendering-plan data."""
+
+    async def post(self, request):
+        try:
+            data = await request.json()
+        except Exception as error:
+            raise HTTPException(
+                status_code=400, detail="Invalid JSON request body"
+            ) from error
+
+        dataset, sample = _get_dataset_and_sample(request)
+
+        try:
+            response = fosm.ingest_sample_mcap_scene(
+                dataset=dataset,
+                sample=sample,
+                media_field=data.get("mediaField"),
+                overwrite=bool(data.get("overwrite", False)),
+            )
+        except fosm.McapRouteError as error:
+            _raise_http_error(error)
+        except fosm.McapDependencyError as error:
+            raise HTTPException(status_code=500, detail=str(error)) from error
+
+        return JSONResponse(response)
+
+
 class McapBuffer(HTTPEndpoint):
     """Returns raw MCAP message windows for supported streams."""
 
@@ -102,6 +130,7 @@ class McapTimeline(HTTPEndpoint):
 
 
 McapRoutes = [
+    ("/dataset/{dataset_id}/sample/{sample_id}/mcap/ingest", McapIngest),
     ("/dataset/{dataset_id}/sample/{sample_id}/mcap/scene", McapScene),
     ("/dataset/{dataset_id}/sample/{sample_id}/mcap/buffer", McapBuffer),
     ("/dataset/{dataset_id}/sample/{sample_id}/mcap/timeline", McapTimeline),
