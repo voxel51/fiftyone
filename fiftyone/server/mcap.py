@@ -1,11 +1,12 @@
 """
-FiftyOne Server MCAP adapter helpers.
+FiftyOne Server MCAP ingest, persistence, and adapter helpers.
 
 | Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 
+from abc import ABC, abstractmethod
 import base64
 from collections import OrderedDict
 import importlib
@@ -13,9 +14,14 @@ import logging
 import os
 import time
 
+import fiftyone.core.fields as fof
+import fiftyone.core.metadata as fom
+import fiftyone.core.rendering as fopr
+
 
 logger = logging.getLogger(__name__)
 
+_CATALOG_VERSION = "mcap-poc-v1"
 _SUPPORTED_SCHEMA_ROLES = {
     "sensor_msgs/msg/CompressedImage": "image_stream",
     "sensor_msgs/msg/PointCloud2": "pointcloud_stream",
@@ -23,8 +29,13 @@ _SUPPORTED_SCHEMA_ROLES = {
 
 _ROLE_PANEL_CONFIG = {
     "image_stream": {"panel_type": "2d", "content_type": "image"},
-    "pointcloud_stream": {"panel_type": "3d", "content_type": "pointcloud"},
+    "pointcloud_stream": {
+        "panel_type": "3d",
+        "content_type": "pointcloud",
+    },
 }
+
+_MCAP_SERVICE = None
 
 
 class McapError(Exception):
@@ -44,197 +55,438 @@ class McapRouteError(McapError):
         self.detail = detail
 
 
-def inspect_sample_mcap_scene(dataset, sample, media_field):
-    """Builds scene inventory and playback-plan data for an MCAP sample."""
-    media_path = _resolve_media_path(sample, media_field)
-    scene_id = _build_scene_id(dataset, sample, media_field)
+class PersistedMcapSceneState(object):
+    """Persisted MCAP scene state loaded from a sample."""
 
-    started_at = time.perf_counter()
-    with open(media_path, "rb") as stream:
-        reader = _get_mcap_reader_module().make_reader(stream)
-        result = _inspect_reader(
-            reader=reader,
+    def __init__(self, metadata=None, rendering_plan=None):
+        self.metadata = metadata
+        self.rendering_plan = rendering_plan
+
+
+class MultimodalSourceAdapter(ABC):
+    """Abstract adapter for reading multimodal scene data."""
+
+    @abstractmethod
+    def get_scene_catalog(self, scene_id, media_field, media_path):
+        """Builds a persisted scene catalog for the given MCAP file."""
+
+    @abstractmethod
+    def read_stream_window(self, media_path, stream_ids, start_ns, end_ns):
+        """Reads raw message payloads for the requested MCAP streams."""
+
+    @abstractmethod
+    def read_timeline_index(self, media_path, stream_ids):
+        """Reads timestamp indexes for the requested MCAP streams."""
+
+
+class McapSourceAdapter(MultimodalSourceAdapter):
+    """MCAP source adapter backed by ``mcap.reader``."""
+
+    def get_scene_catalog(self, scene_id, media_field, media_path):
+        with open(media_path, "rb") as stream:
+            reader = _get_mcap_reader_module().make_reader(stream)
+            return _catalog_reader(
+                reader=reader,
+                scene_id=scene_id,
+                media_field=media_field,
+                media_path=media_path,
+            )
+
+    def read_stream_window(self, media_path, stream_ids, start_ns, end_ns):
+        response_streams = OrderedDict(
+            (stream_id, []) for stream_id in stream_ids
+        )
+        message_indexes = {stream_id: 0 for stream_id in stream_ids}
+
+        with open(media_path, "rb") as stream:
+            reader = _get_mcap_reader_module().make_reader(stream)
+            for _schema, channel, message in _iter_reader_messages(
+                reader,
+                topics=stream_ids,
+                start_ns=start_ns,
+                end_ns=end_ns,
+            ):
+                stream_id = channel.topic
+                message_index = message_indexes[stream_id]
+                message_indexes[stream_id] += 1
+                response_streams[stream_id].append(
+                    {
+                        "message_id": _build_message_id(
+                            stream_id, message, message_index
+                        ),
+                        "log_time_ns": int(message.log_time),
+                        "publish_time_ns": int(message.publish_time),
+                        "payload_b64": base64.b64encode(message.data).decode(
+                            "ascii"
+                        ),
+                    }
+                )
+
+        return response_streams
+
+    def read_timeline_index(self, media_path, stream_ids):
+        timeline_streams = OrderedDict(
+            (stream_id, []) for stream_id in stream_ids
+        )
+        shared_timestamps = set()
+
+        with open(media_path, "rb") as stream:
+            reader = _get_mcap_reader_module().make_reader(stream)
+            for _schema, channel, message in _iter_reader_messages(
+                reader, topics=stream_ids
+            ):
+                log_time = int(message.log_time)
+                timeline_streams[channel.topic].append(log_time)
+                shared_timestamps.add(log_time)
+
+        return {
+            "timestamps_ns": sorted(shared_timestamps),
+            "streams": OrderedDict(
+                (
+                    stream_id,
+                    sorted(stream_timestamps),
+                )
+                for stream_id, stream_timestamps in timeline_streams.items()
+            ),
+        }
+
+
+class RenderingPlanner(ABC):
+    """Abstract builder for persisted rendering plans."""
+
+    @abstractmethod
+    def build_rendering_plan(self, metadata):
+        """Builds a rendering plan for the given scene catalog."""
+
+
+class HeuristicMcapRenderingPlanner(RenderingPlanner):
+    """Heuristic rendering planner for the experimental MCAP slice."""
+
+    def build_rendering_plan(self, metadata):
+        panels = []
+        for stream in metadata.streams:
+            panel_config = _ROLE_PANEL_CONFIG.get(stream.role)
+            if panel_config is None:
+                continue
+
+            panels.append(
+                fopr.McapPanelPlan(
+                    panel_id=_build_panel_id(stream.stream_id),
+                    panel_type=panel_config["panel_type"],
+                    content_type=panel_config["content_type"],
+                    stream_id=stream.stream_id,
+                )
+            )
+
+        return fopr.McapRenderingPlan(
+            media_field=metadata.media_field,
+            scene_id=metadata.scene_id,
+            sync=fopr.McapSyncConfig(
+                timestamp_source="header.stamp",
+                fallback="log_time",
+                mode="nearest",
+            ),
+            panels=panels,
+            sidebars=fopr.McapSidebarConfig(
+                left="panel_config",
+                right="stream_metadata",
+            ),
+        )
+
+
+class SceneStateRepository(ABC):
+    """Abstract repository for persisted MCAP scene state."""
+
+    @abstractmethod
+    def ensure_schema(self, dataset):
+        """Ensures the dataset can persist MCAP rendering plans."""
+
+    @abstractmethod
+    def load(self, sample):
+        """Loads persisted MCAP scene state from the sample."""
+
+    @abstractmethod
+    def save(self, dataset, sample, metadata, rendering_plan):
+        """Persists MCAP scene state on the sample."""
+
+
+class SampleMcapSceneRepository(SceneStateRepository):
+    """Sample-backed repository for MCAP scene state."""
+
+    def ensure_schema(self, dataset):
+        if dataset.has_sample_field("rendering_plan"):
+            return
+
+        dataset.add_sample_field(
+            "rendering_plan",
+            fof.EmbeddedDocumentField,
+            embedded_doc_type=fopr.RenderingPlan,
+        )
+
+    def load(self, sample):
+        metadata = sample.metadata
+        if not isinstance(metadata, fom.McapMetadata):
+            metadata = None
+
+        rendering_plan = None
+        if sample.has_field("rendering_plan"):
+            rendering_plan = sample["rendering_plan"]
+
+        if not isinstance(rendering_plan, fopr.McapRenderingPlan):
+            rendering_plan = None
+
+        return PersistedMcapSceneState(
+            metadata=metadata,
+            rendering_plan=rendering_plan,
+        )
+
+    def save(self, dataset, sample, metadata, rendering_plan):
+        self.ensure_schema(dataset)
+        sample.metadata = metadata
+        sample["rendering_plan"] = rendering_plan
+        sample.save()
+        return PersistedMcapSceneState(
+            metadata=sample.metadata,
+            rendering_plan=sample["rendering_plan"],
+        )
+
+
+class McapSceneService(object):
+    """Service that owns MCAP ingest and sample-backed reads."""
+
+    def __init__(self, adapter, planner, repository):
+        self._adapter = adapter
+        self._planner = planner
+        self._repository = repository
+
+    def ingest_scene(self, dataset, sample, media_field, overwrite=False):
+        media_path = _resolve_media_path(sample, media_field)
+        scene_id = _build_scene_id(dataset, sample, media_field)
+        state = self._repository.load(sample)
+
+        if not overwrite and not _requires_ingest(
+            state.metadata,
+            state.rendering_plan,
+            media_field,
+            media_path,
+        ):
+            return state
+
+        started_at = time.perf_counter()
+        metadata = self._adapter.get_scene_catalog(
             scene_id=scene_id,
-            dataset_id=str(dataset._doc.id),
-            sample_id=str(sample.id),
             media_field=media_field,
             media_path=media_path,
         )
+        rendering_plan = self._planner.build_rendering_plan(metadata)
+        persisted_state = self._repository.save(
+            dataset=dataset,
+            sample=sample,
+            metadata=metadata,
+            rendering_plan=rendering_plan,
+        )
+        logger.debug(
+            "Ingested MCAP scene %s in %.3f ms (%d supported streams)",
+            media_path,
+            (time.perf_counter() - started_at) * 1000,
+            len(metadata.streams),
+        )
+        return persisted_state
 
-    logger.debug(
-        "Inspected MCAP scene %s in %.3f ms (%d supported streams)",
-        media_path,
-        (time.perf_counter() - started_at) * 1000,
-        len(result["scene"]["streams"]),
+    def inspect_scene(self, dataset, sample, media_field):
+        state = self.ingest_scene(
+            dataset=dataset,
+            sample=sample,
+            media_field=media_field,
+            overwrite=False,
+        )
+        return _build_scene_response(
+            dataset=dataset,
+            sample=sample,
+            metadata=state.metadata,
+            rendering_plan=state.rendering_plan,
+        )
+
+    def read_window(
+        self, dataset, sample, media_field, stream_ids, window, mode="raw"
+    ):
+        if mode is None:
+            mode = "raw"
+
+        if mode == "decoded":
+            raise McapRouteError(
+                501, "Decoded MCAP buffers are not implemented yet"
+            )
+
+        if mode != "raw":
+            raise McapRouteError(400, f"Unsupported MCAP buffer mode '{mode}'")
+
+        stream_ids = _normalize_stream_ids(stream_ids)
+        start_ns, end_ns = _normalize_window(window)
+        state = self.ingest_scene(
+            dataset=dataset,
+            sample=sample,
+            media_field=media_field,
+            overwrite=False,
+        )
+        stream_lookup = _build_stream_lookup(state.metadata)
+        _validate_known_stream_ids(stream_ids, stream_lookup)
+
+        started_at = time.perf_counter()
+        raw_messages = self._adapter.read_stream_window(
+            media_path=state.metadata.source_path,
+            stream_ids=stream_ids,
+            start_ns=start_ns,
+            end_ns=end_ns,
+        )
+        logger.debug(
+            "Read MCAP raw window %s [%s, %s] in %.3f ms (%d streams)",
+            state.metadata.source_path,
+            start_ns,
+            end_ns,
+            (time.perf_counter() - started_at) * 1000,
+            len(raw_messages),
+        )
+
+        return {
+            "mode": "raw",
+            "sceneId": state.metadata.scene_id,
+            "window": _serialize_time_range(
+                _make_time_range_document(start_ns, end_ns)
+            ),
+            "streams": [
+                {
+                    "streamId": stream_id,
+                    "schemaName": stream_lookup[stream_id].schema_name,
+                    "messageEncoding": stream_lookup[
+                        stream_id
+                    ].message_encoding,
+                    "messages": [
+                        {
+                            "messageId": message["message_id"],
+                            "logTimeNs": message["log_time_ns"],
+                            "publishTimeNs": message["publish_time_ns"],
+                            "payloadB64": message["payload_b64"],
+                        }
+                        for message in raw_messages[stream_id]
+                    ],
+                }
+                for stream_id in stream_ids
+            ],
+        }
+
+    def read_timeline_index(self, dataset, sample, media_field, stream_ids):
+        stream_ids = _normalize_stream_ids(stream_ids, allow_empty=True)
+        state = self.ingest_scene(
+            dataset=dataset,
+            sample=sample,
+            media_field=media_field,
+            overwrite=False,
+        )
+
+        if not stream_ids:
+            return _build_timeline_response(state.metadata.scene_id, [], [])
+
+        stream_lookup = _build_stream_lookup(state.metadata)
+        _validate_known_stream_ids(stream_ids, stream_lookup)
+
+        started_at = time.perf_counter()
+        timeline_index = self._adapter.read_timeline_index(
+            media_path=state.metadata.source_path,
+            stream_ids=stream_ids,
+        )
+        logger.debug(
+            "Read MCAP timeline %s in %.3f ms (%d streams, %d timestamps)",
+            state.metadata.source_path,
+            (time.perf_counter() - started_at) * 1000,
+            len(stream_ids),
+            len(timeline_index["timestamps_ns"]),
+        )
+
+        return _build_timeline_response(
+            scene_id=state.metadata.scene_id,
+            timestamps_ns=timeline_index["timestamps_ns"],
+            streams=[
+                {
+                    "streamId": stream_id,
+                    "timestampsNs": timeline_index["streams"][stream_id],
+                }
+                for stream_id in stream_ids
+            ],
+        )
+
+
+def ingest_sample_mcap_scene(dataset, sample, media_field, overwrite=False):
+    """Persists the scene catalog and rendering plan for an MCAP sample."""
+    service = _get_mcap_service()
+    state = service.ingest_scene(
+        dataset=dataset,
+        sample=sample,
+        media_field=media_field,
+        overwrite=overwrite,
     )
-    return result
+    return _build_scene_response(
+        dataset=dataset,
+        sample=sample,
+        metadata=state.metadata,
+        rendering_plan=state.rendering_plan,
+    )
+
+
+def inspect_sample_mcap_scene(dataset, sample, media_field):
+    """Builds scene inventory and playback-plan data for an MCAP sample."""
+    return _get_mcap_service().inspect_scene(
+        dataset=dataset,
+        sample=sample,
+        media_field=media_field,
+    )
 
 
 def read_sample_mcap_window(
     dataset, sample, media_field, stream_ids, window, mode="raw"
 ):
     """Reads a raw message window for the requested MCAP streams."""
-    if mode is None:
-        mode = "raw"
-
-    if mode == "decoded":
-        raise McapRouteError(
-            501, "Decoded MCAP buffers are not implemented yet"
-        )
-
-    if mode != "raw":
-        raise McapRouteError(400, f"Unsupported MCAP buffer mode '{mode}'")
-
-    stream_ids = _normalize_stream_ids(stream_ids)
-    start_ns, end_ns = _normalize_window(window)
-    media_path = _resolve_media_path(sample, media_field)
-    scene_id = _build_scene_id(dataset, sample, media_field)
-
-    started_at = time.perf_counter()
-    with open(media_path, "rb") as stream:
-        reader = _get_mcap_reader_module().make_reader(stream)
-        supported_streams = _collect_supported_stream_metadata(reader)
-
-        unknown_stream_ids = [
-            stream_id
-            for stream_id in stream_ids
-            if stream_id not in supported_streams
-        ]
-        if unknown_stream_ids:
-            raise McapRouteError(
-                400,
-                "Unknown MCAP stream id(s): %s"
-                % ", ".join(sorted(unknown_stream_ids)),
-            )
-
-        response_streams = OrderedDict(
-            (
-                stream_id,
-                {
-                    "streamId": stream_id,
-                    "schemaName": supported_streams[stream_id]["schemaName"],
-                    "messageEncoding": supported_streams[stream_id][
-                        "messageEncoding"
-                    ],
-                    "messages": [],
-                },
-            )
-            for stream_id in stream_ids
-        )
-        message_indexes = {stream_id: 0 for stream_id in stream_ids}
-
-        for schema, channel, message in _iter_reader_messages(
-            reader,
-            topics=stream_ids,
-            start_ns=start_ns,
-            end_ns=end_ns,
-        ):
-            del schema
-            stream_id = channel.topic
-            message_index = message_indexes[stream_id]
-            message_indexes[stream_id] += 1
-            response_streams[stream_id]["messages"].append(
-                {
-                    "messageId": _build_message_id(
-                        stream_id, message, message_index
-                    ),
-                    "logTimeNs": int(message.log_time),
-                    "publishTimeNs": int(message.publish_time),
-                    "payloadB64": base64.b64encode(message.data).decode(
-                        "ascii"
-                    ),
-                }
-            )
-
-    logger.debug(
-        "Read MCAP raw window %s [%s, %s] in %.3f ms (%d streams)",
-        media_path,
-        start_ns,
-        end_ns,
-        (time.perf_counter() - started_at) * 1000,
-        len(response_streams),
+    return _get_mcap_service().read_window(
+        dataset=dataset,
+        sample=sample,
+        media_field=media_field,
+        stream_ids=stream_ids,
+        window=window,
+        mode=mode,
     )
-
-    return {
-        "mode": "raw",
-        "sceneId": scene_id,
-        "window": {"startNs": start_ns, "endNs": end_ns},
-        "streams": list(response_streams.values()),
-    }
 
 
 def read_sample_mcap_timeline_index(dataset, sample, media_field, stream_ids):
-    """Reads a timestamp-only playback index for the requested MCAP streams."""
-    stream_ids = _normalize_stream_ids(stream_ids, allow_empty=True)
-    media_path = _resolve_media_path(sample, media_field)
-    scene_id = _build_scene_id(dataset, sample, media_field)
+    """Reads a timestamp-only playback index for the requested streams."""
+    return _get_mcap_service().read_timeline_index(
+        dataset=dataset,
+        sample=sample,
+        media_field=media_field,
+        stream_ids=stream_ids,
+    )
 
-    if not stream_ids:
-        return _build_timeline_response(scene_id, [], [])
 
-    started_at = time.perf_counter()
-    with open(media_path, "rb") as stream:
-        reader = _get_mcap_reader_module().make_reader(stream)
-        supported_streams = _collect_supported_stream_metadata(reader)
+def _get_mcap_service():
+    global _MCAP_SERVICE
 
-        unknown_stream_ids = [
-            stream_id
-            for stream_id in stream_ids
-            if stream_id not in supported_streams
-        ]
-        if unknown_stream_ids:
-            raise McapRouteError(
-                400,
-                "Unknown MCAP stream id(s): %s"
-                % ", ".join(sorted(unknown_stream_ids)),
-            )
-
-        timeline_streams = OrderedDict(
-            (stream_id, []) for stream_id in stream_ids
+    if _MCAP_SERVICE is None:
+        _MCAP_SERVICE = McapSceneService(
+            adapter=McapSourceAdapter(),
+            planner=HeuristicMcapRenderingPlanner(),
+            repository=SampleMcapSceneRepository(),
         )
-        shared_timestamps = set()
 
-        for schema, channel, message in _iter_reader_messages(
-            reader, topics=stream_ids
-        ):
-            del schema
-            log_time = int(message.log_time)
-            timeline_streams[channel.topic].append(log_time)
-            shared_timestamps.add(log_time)
-
-    logger.debug(
-        "Read MCAP timeline %s in %.3f ms (%d streams, %d timestamps)",
-        media_path,
-        (time.perf_counter() - started_at) * 1000,
-        len(timeline_streams),
-        len(shared_timestamps),
-    )
-
-    return _build_timeline_response(
-        scene_id=scene_id,
-        timestamps_ns=sorted(shared_timestamps),
-        streams=[
-            {
-                "streamId": stream_id,
-                "timestampsNs": sorted(stream_timestamps),
-            }
-            for stream_id, stream_timestamps in timeline_streams.items()
-        ],
-    )
+    return _MCAP_SERVICE
 
 
-def _inspect_reader(
-    scene_id, dataset_id, sample_id, media_field, media_path, reader
-):
+def _catalog_reader(reader, scene_id, media_field, media_path):
     summary = reader.get_summary()
     overall_range = _get_summary_scene_time_range(summary)
 
     if summary is None:
-        return _inspect_reader_without_summary(
+        return _catalog_reader_without_summary(
             reader=reader,
             scene_id=scene_id,
-            dataset_id=dataset_id,
-            sample_id=sample_id,
             media_field=media_field,
             media_path=media_path,
         )
@@ -247,21 +499,17 @@ def _inspect_reader(
     if overall_range is None:
         overall_range = _scan_overall_time_range(reader)
 
-    streams = _finalize_streams(supported_streams)
-    return _build_scene_response(
+    return fom.McapMetadata.build_for(
         scene_id=scene_id,
-        dataset_id=dataset_id,
-        sample_id=sample_id,
         media_field=media_field,
         media_path=media_path,
-        overall_range=overall_range,
-        streams=streams,
+        time_range=_make_time_range_document(*overall_range),
+        streams=_finalize_streams(supported_streams),
+        catalog_version=_CATALOG_VERSION,
     )
 
 
-def _inspect_reader_without_summary(
-    reader, scene_id, dataset_id, sample_id, media_field, media_path
-):
+def _catalog_reader_without_summary(reader, scene_id, media_field, media_path):
     supported_streams = OrderedDict()
     overall_start = None
     overall_end = None
@@ -290,67 +538,68 @@ def _inspect_reader_without_summary(
         _increment_stream_count(stream)
         _update_stream_range(stream, log_time)
 
-    return _build_scene_response(
+    return fom.McapMetadata.build_for(
         scene_id=scene_id,
-        dataset_id=dataset_id,
-        sample_id=sample_id,
         media_field=media_field,
         media_path=media_path,
-        overall_range=(overall_start, overall_end),
+        time_range=_make_time_range_document(overall_start, overall_end),
         streams=_finalize_streams(supported_streams),
+        catalog_version=_CATALOG_VERSION,
     )
 
 
-def _build_scene_response(
-    scene_id,
-    dataset_id,
-    sample_id,
-    media_field,
-    media_path,
-    overall_range,
-    streams,
-):
+def _build_scene_response(dataset, sample, metadata, rendering_plan):
     return {
         "scene": {
-            "sceneId": scene_id,
-            "datasetId": dataset_id,
-            "sampleId": sample_id,
-            "mediaField": media_field,
-            "mediaPath": media_path,
-            "timeRange": _make_time_range(*overall_range),
-            "streams": streams,
+            "sceneId": metadata.scene_id,
+            "datasetId": str(dataset._doc.id),
+            "sampleId": str(sample.id),
+            "mediaField": metadata.media_field,
+            "mediaPath": metadata.source_path,
+            "timeRange": _serialize_time_range(metadata.time_range),
+            "streams": [
+                _serialize_stream(stream) for stream in metadata.streams
+            ],
         },
-        "playbackPlan": _build_playback_plan(scene_id, streams),
+        "playbackPlan": _serialize_rendering_plan(rendering_plan),
     }
 
 
-def _build_playback_plan(scene_id, streams):
-    panels = []
-    for stream in streams:
-        panel_config = _ROLE_PANEL_CONFIG.get(stream["role"])
-        if panel_config is None:
-            continue
-
-        panels.append(
-            {
-                "panelId": _build_panel_id(stream["streamId"]),
-                "panelType": panel_config["panel_type"],
-                "contentType": panel_config["content_type"],
-                "streamId": stream["streamId"],
-            }
-        )
-
+def _serialize_stream(stream):
     return {
-        "sceneId": scene_id,
+        "streamId": stream.stream_id,
+        "topic": stream.topic,
+        "schemaName": stream.schema_name,
+        "schemaEncoding": stream.schema_encoding,
+        "messageEncoding": stream.message_encoding,
+        "role": stream.role,
+        "channelId": stream.channel_id,
+        "schemaId": stream.schema_id,
+        "timeRange": _serialize_time_range(stream.time_range),
+        "messageCount": stream.message_count,
+    }
+
+
+def _serialize_rendering_plan(rendering_plan):
+    return {
+        "sceneId": rendering_plan.scene_id,
         "sync": {
-            "timestampSource": "header.stamp",
-            "fallback": "log_time",
-            "mode": "nearest",
+            "timestampSource": rendering_plan.sync.timestamp_source,
+            "fallback": rendering_plan.sync.fallback,
+            "mode": rendering_plan.sync.mode,
         },
-        "panels": panels,
+        "panels": [
+            {
+                "panelId": panel.panel_id,
+                "panelType": panel.panel_type,
+                "contentType": panel.content_type,
+                "streamId": panel.stream_id,
+            }
+            for panel in rendering_plan.panels
+        ],
         "sidebars": {
-            "left": "panel_config",
-            "right": "stream_metadata",
+            "left": rendering_plan.sidebars.left,
+            "right": rendering_plan.sidebars.right,
         },
     }
 
@@ -364,29 +613,6 @@ def _build_timeline_response(scene_id, timestamps_ns, streams):
             "streams": streams,
         },
     }
-
-
-def _collect_supported_stream_metadata(reader):
-    summary = reader.get_summary()
-    if summary is not None:
-        return _build_supported_streams_from_summary(summary)
-
-    supported_streams = OrderedDict()
-    for schema, channel, message in _iter_reader_messages(reader):
-        del message
-        role = _resolve_stream_role(getattr(schema, "name", None))
-        if not role or channel.topic in supported_streams:
-            continue
-
-        supported_streams[channel.topic] = _build_stream_descriptor(
-            channel=channel,
-            schema=schema,
-            role=role,
-            message_count=None,
-            message_count_known=False,
-        )
-
-    return supported_streams
 
 
 def _build_supported_streams_from_summary(summary):
@@ -428,13 +654,12 @@ def _populate_stream_ranges_from_messages(reader, supported_streams):
         return
 
     topics = list(supported_streams.keys())
-    for schema, channel, message in _iter_reader_messages(
+    for _schema, channel, message in _iter_reader_messages(
         reader, topics=topics
     ):
-        del schema
         stream = supported_streams[channel.topic]
         _update_stream_range(stream, int(message.log_time))
-        if not stream["_messageCountKnown"]:
+        if not stream["_message_count_known"]:
             _increment_stream_count(stream)
 
 
@@ -442,8 +667,7 @@ def _scan_overall_time_range(reader):
     start_ns = None
     end_ns = None
 
-    for schema, channel, message in _iter_reader_messages(reader):
-        del schema, channel
+    for _schema, _channel, message in _iter_reader_messages(reader):
         start_ns, end_ns = _update_bounds(
             start_ns, end_ns, int(message.log_time)
         )
@@ -468,18 +692,18 @@ def _build_stream_descriptor(
         message_count = int(message_count)
 
     return {
-        "streamId": channel.topic,
+        "stream_id": channel.topic,
         "topic": channel.topic,
-        "schemaName": schema.name,
-        "schemaEncoding": schema.encoding,
-        "messageEncoding": channel.message_encoding,
+        "schema_name": schema.name,
+        "schema_encoding": schema.encoding,
+        "message_encoding": channel.message_encoding,
         "role": role,
-        "channelId": int(channel.id),
-        "schemaId": int(schema.id),
-        "timeRange": _make_time_range(None, None),
-        "messageCount": message_count,
-        "_hasTimeRange": False,
-        "_messageCountKnown": bool(message_count_known),
+        "channel_id": int(channel.id),
+        "schema_id": int(schema.id),
+        "time_range": _make_time_range_document(None, None),
+        "message_count": message_count,
+        "_has_time_range": False,
+        "_message_count_known": bool(message_count_known),
     }
 
 
@@ -487,12 +711,20 @@ def _finalize_streams(streams):
     finalized = []
     for stream in streams.values():
         finalized.append(
-            {
-                key: value
-                for key, value in stream.items()
-                if not key.startswith("_")
-            }
+            fom.McapStreamMetadata(
+                stream_id=stream["stream_id"],
+                topic=stream["topic"],
+                schema_name=stream["schema_name"],
+                schema_encoding=stream["schema_encoding"],
+                message_encoding=stream["message_encoding"],
+                role=stream["role"],
+                channel_id=stream["channel_id"],
+                schema_id=stream["schema_id"],
+                time_range=stream["time_range"],
+                message_count=stream["message_count"],
+            )
         )
+
     return finalized
 
 
@@ -599,14 +831,24 @@ def _normalize_window(window):
     return start_ns, end_ns
 
 
-def _make_time_range(start_ns, end_ns):
+def _make_time_range_document(start_ns, end_ns):
     if start_ns is None:
         start_ns = 0
 
     if end_ns is None:
         end_ns = start_ns
 
-    return {"startNs": int(start_ns), "endNs": int(end_ns)}
+    return fom.McapTimeRange(
+        start_ns=int(start_ns),
+        end_ns=int(end_ns),
+    )
+
+
+def _serialize_time_range(time_range):
+    return {
+        "startNs": int(time_range.start_ns),
+        "endNs": int(time_range.end_ns),
+    }
 
 
 def _update_bounds(start_ns, end_ns, value):
@@ -620,33 +862,32 @@ def _update_bounds(start_ns, end_ns, value):
 
 
 def _update_stream_range(stream, log_time):
-    current_range = stream["timeRange"]
     start_ns = None
     end_ns = None
 
-    if stream["_hasTimeRange"]:
-        start_ns = current_range["startNs"]
-        end_ns = current_range["endNs"]
+    if stream["_has_time_range"]:
+        start_ns = stream["time_range"].start_ns
+        end_ns = stream["time_range"].end_ns
 
     start_ns, end_ns = _update_bounds(start_ns, end_ns, log_time)
-    stream["timeRange"] = _make_time_range(start_ns, end_ns)
-    stream["_hasTimeRange"] = True
+    stream["time_range"] = _make_time_range_document(start_ns, end_ns)
+    stream["_has_time_range"] = True
 
 
 def _merge_stream_message_count(stream, message_count):
     message_count = int(message_count)
-    if stream["messageCount"] is None:
-        stream["messageCount"] = 0
+    if stream["message_count"] is None:
+        stream["message_count"] = 0
 
-    stream["messageCount"] += message_count
-    stream["_messageCountKnown"] = True
+    stream["message_count"] += message_count
+    stream["_message_count_known"] = True
 
 
 def _increment_stream_count(stream):
-    if stream["messageCount"] is None:
-        stream["messageCount"] = 0
+    if stream["message_count"] is None:
+        stream["message_count"] = 0
 
-    stream["messageCount"] += 1
+    stream["message_count"] += 1
 
 
 def _get_summary_scene_time_range(summary):
@@ -675,6 +916,46 @@ def _get_summary_scene_time_range(summary):
         return None
 
     return start_ns, end_ns
+
+
+def _build_stream_lookup(metadata):
+    return {stream.stream_id: stream for stream in metadata.streams}
+
+
+def _validate_known_stream_ids(stream_ids, stream_lookup):
+    unknown_stream_ids = [
+        stream_id for stream_id in stream_ids if stream_id not in stream_lookup
+    ]
+    if unknown_stream_ids:
+        raise McapRouteError(
+            400,
+            "Unknown MCAP stream id(s): %s"
+            % ", ".join(sorted(unknown_stream_ids)),
+        )
+
+
+def _requires_ingest(metadata, rendering_plan, media_field, media_path):
+    if metadata is None or rendering_plan is None:
+        return True
+
+    if metadata.media_field != media_field:
+        return True
+
+    if rendering_plan.media_field != media_field:
+        return True
+
+    fingerprint = metadata.source_fingerprint
+    if fingerprint is None:
+        return True
+
+    stat = os.stat(media_path)
+    return any(
+        (
+            fingerprint.path != media_path,
+            int(fingerprint.size_bytes) != int(stat.st_size),
+            int(fingerprint.mtime_ns) != int(stat.st_mtime_ns),
+        )
+    )
 
 
 def _get_mcap_reader_module():
