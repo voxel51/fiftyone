@@ -79,7 +79,7 @@ export function getMcapRendererInfo(
     basename: getBasename(mediaPath),
     datasetId: getFirstStringValue(
       [getRecord(ctx.dataset)],
-      ["id", "datasetId"]
+      ["datasetId", "id"]
     ),
     datasetName: ctx.dataset?.name ?? "dataset",
     mediaExtension: getMediaExtension(ctx.media.extension),
