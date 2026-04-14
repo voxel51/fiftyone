@@ -14,6 +14,7 @@ and iterate on.
 import logging
 
 import fiftyone.operators.types as types
+from fiftyone.core.brain import BrainMethod
 from fiftyone.operators.categories import Categories
 from fiftyone.operators.panel import Panel, PanelConfig
 
@@ -245,6 +246,17 @@ class SimilaritySearchPanel(Panel):
         except Exception as e:
             logger.warning("Failed to list brain runs: %s", e)
             brain_keys = []
+
+        # Filter out brain keys whose runs didn't produce results
+        try:
+            run_docs = BrainMethod._get_run_docs(dataset)
+            brain_keys = [
+                key
+                for key in brain_keys
+                if key in run_docs and run_docs[key].results
+            ]
+        except Exception as e:
+            logger.warning("Failed to filter brain runs by results: %s", e)
 
         result = []
         for key in brain_keys:
