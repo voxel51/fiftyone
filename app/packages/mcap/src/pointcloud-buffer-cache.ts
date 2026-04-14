@@ -1,40 +1,35 @@
-import type { Image2dFrame } from "./archetypes";
+import type { Points3dFrame } from "./archetypes";
 import {
-  decodeCompressedImageInWorker,
-  disposeCompressedImageWorkerClient,
-} from "./compressed-image-worker-client";
-import { getCompressedImageMimeType } from "./compressed-image-decoder";
+  disposePointCloud2WorkerClient,
+  decodePointCloud2InWorker,
+} from "./pointcloud2-worker-client";
 import {
   McapRawMessageWindowCache,
   type RawMessageWindowCacheOptions,
 } from "./raw-message-window-cache";
 import type { McapRawMessage } from "./types";
 
-/** Decoded image frame metadata cached for one raw MCAP message. */
-export type McapDecodedImageFrame = Image2dFrame & {
-  format: string;
+/** Decoded point-cloud frame metadata cached for one raw MCAP message. */
+export type McapDecodedPointCloudFrame = Points3dFrame & {
+  messageId: string;
   logTimeNs: number;
   publishTimeNs: number;
-  objectUrl: string;
 };
 
-/** Small per-stream cache for buffered raw MCAP windows and decoded images. */
-export class McapImageBufferCache {
+/** Small per-stream cache for buffered raw MCAP windows and decoded point frames. */
+export class McapPointCloudBufferCache {
   private readonly rawWindowCache: McapRawMessageWindowCache;
   private readonly decodedFrames = new Map<
     string,
-    Promise<McapDecodedImageFrame>
+    Promise<McapDecodedPointCloudFrame>
   >();
-  private readonly objectUrls = new Map<string, string>();
 
   constructor(options: RawMessageWindowCacheOptions) {
     this.rawWindowCache = new McapRawMessageWindowCache(options);
   }
 
   /** Ensures all fixed fetch windows covering the requested range are buffered. */
-  async ensureRange(
-    range: RawMessageWindowCacheOptions["sceneRange"]
-  ): Promise<void> {
+  async ensureRange(range: RawMessageWindowCacheOptions["sceneRange"]) {
     await this.rawWindowCache.ensureRange(range);
   }
 
@@ -43,31 +38,25 @@ export class McapImageBufferCache {
     return this.rawWindowCache.getMessageForLogTime(logTimeNs);
   }
 
-  /** Decodes one raw MCAP image message and returns a cached object URL frame. */
-  async decodeMessage(message: McapRawMessage): Promise<McapDecodedImageFrame> {
+  /** Decodes one raw MCAP point-cloud message and returns a cached frame. */
+  async decodeMessage(
+    message: McapRawMessage
+  ): Promise<McapDecodedPointCloudFrame> {
     const existingFrame = this.decodedFrames.get(message.messageId);
     if (existingFrame) {
       return existingFrame;
     }
 
-    const decodePromise = decodeCompressedImageInWorker({
+    const decodePromise = decodePointCloud2InWorker({
       messageId: message.messageId,
       payload: this.copyPayloadBuffer(message.payload),
     }).then((decoded) => {
-      const mimeType = getCompressedImageMimeType(decoded.format);
-      const blob = new Blob([decoded.compressedBytes], { type: mimeType });
-      const objectUrl = URL.createObjectURL(blob);
-      this.objectUrls.set(message.messageId, objectUrl);
-
       return {
+        ...decoded.frame,
         id: message.messageId,
         messageId: message.messageId,
-        format: decoded.format,
-        src: objectUrl,
-        timestampNs: message.logTimeNs,
         logTimeNs: message.logTimeNs,
         publishTimeNs: message.publishTimeNs,
-        objectUrl,
       };
     });
 
@@ -75,13 +64,11 @@ export class McapImageBufferCache {
     return decodePromise;
   }
 
-  /** Disposes decoded image URLs and the shared worker client resources. */
+  /** Disposes decoded point-cloud frames and shared worker resources. */
   dispose() {
     this.decodedFrames.clear();
     this.rawWindowCache.dispose();
-    this.objectUrls.forEach((objectUrl) => URL.revokeObjectURL(objectUrl));
-    this.objectUrls.clear();
-    disposeCompressedImageWorkerClient();
+    disposePointCloud2WorkerClient();
   }
 
   private copyPayloadBuffer(payload: Uint8Array) {

@@ -22,6 +22,7 @@ import {
   Variant,
 } from "@voxel51/voodo";
 import React from "react";
+import { Image2dView, Points3dView } from "./archetypes";
 import {
   formatMcapDuration,
   formatMcapTimeRange,
@@ -36,7 +37,10 @@ import type {
   McapSceneOpenResponse,
   McapStreamDescriptor,
 } from "./types";
-import { useMcapImagePlayback } from "./useMcapImagePlayback";
+import {
+  type McapPlaybackPanelState,
+  useMcapPlaybackController,
+} from "./useMcapPlaybackController";
 import { useMcapScene } from "./useMcapScene";
 
 const SHELL_STYLES: React.CSSProperties = {
@@ -131,6 +135,7 @@ const PANEL_CARD_CONTENT_STYLES: React.CSSProperties = {
 };
 
 const PANEL_VIEWPORT_STYLES: React.CSSProperties = {
+  position: "relative",
   minWidth: 0,
   minHeight: 0,
   flex: 1,
@@ -148,6 +153,18 @@ const IMAGE_STYLES: React.CSSProperties = {
   height: "100%",
   objectFit: "contain",
   display: "block",
+};
+
+const POINTS_VIEWPORT_STYLES: React.CSSProperties = {
+  ...PANEL_VIEWPORT_STYLES,
+  padding: 0,
+};
+
+const VIEWPORT_ACTION_STYLES: React.CSSProperties = {
+  position: "absolute",
+  top: "10px",
+  right: "10px",
+  zIndex: 1,
 };
 
 const NAV_CARD_STYLES: React.CSSProperties = {
@@ -356,22 +373,16 @@ function PanelCard({
   playbackError,
   playbackState,
   playbackUnavailable,
+  sceneId,
   stream,
   onSelect,
 }: {
   isActive: boolean;
   panel: McapPanelPlan;
   playbackError: Error | null;
-  playbackState?: {
-    status: "idle" | "loading" | "ready" | "error" | "empty";
-    frame: {
-      format: string;
-      logTimeNs: number;
-      objectUrl: string;
-    } | null;
-    error: Error | null;
-  };
+  playbackState?: McapPlaybackPanelState;
   playbackUnavailable: boolean;
+  sceneId: string | null;
   stream: McapStreamDescriptor | null;
   onSelect: () => void;
 }) {
@@ -379,12 +390,34 @@ function PanelCard({
     ? getMcapStreamDisplayLabel(stream)
     : panel.streamId || "Unknown stream";
   const isImagePanel = panel.contentType === "image";
-  const frame = playbackState?.frame ?? null;
-  const statusMessage = React.useMemo(() => {
-    if (!isImagePanel) {
-      return "Point cloud playback comes next in the following slice.";
-    }
+  const isPointCloudPanel = panel.contentType === "pointcloud";
+  const imageFrame =
+    isImagePanel && playbackState?.status === "ready"
+      ? (playbackState.frame as Extract<
+          NonNullable<McapPlaybackPanelState["frame"]>,
+          { src: string }
+        >)
+      : null;
+  const pointCloudFrame =
+    isPointCloudPanel && playbackState?.status === "ready"
+      ? (playbackState.frame as Extract<
+          NonNullable<McapPlaybackPanelState["frame"]>,
+          { positions: Float32Array }
+        >)
+      : null;
+  const imageFormat =
+    isImagePanel && imageFrame && "format" in imageFrame
+      ? String(imageFrame.format || "")
+      : "";
+  const [resetViewVersion, setResetViewVersion] = React.useState(0);
 
+  React.useEffect(() => {
+    if (isPointCloudPanel && isActive) {
+      setResetViewVersion((current) => current + 1);
+    }
+  }, [isActive, isPointCloudPanel]);
+
+  const statusMessage = React.useMemo(() => {
     if (playbackError) {
       return playbackError.message;
     }
@@ -395,25 +428,44 @@ function PanelCard({
 
     switch (playbackState?.status) {
       case "ready":
-        return frame
-          ? `log time ${formatTimestampNs(frame.logTimeNs)} ns`
-          : "Frame ready";
+        if (isImagePanel && imageFrame && playbackState.logTimeNs != null) {
+          return `log time ${formatTimestampNs(playbackState.logTimeNs)} ns`;
+        }
+
+        if (
+          isPointCloudPanel &&
+          pointCloudFrame &&
+          playbackState.logTimeNs != null
+        ) {
+          return `${formatMessageCount(
+            pointCloudFrame.pointCount
+          )} points @ ${formatTimestampNs(playbackState.logTimeNs)} ns`;
+        }
+
+        return "Frame ready";
       case "error":
         return playbackState.error?.message ?? "Frame decode failed";
       case "empty":
-        return "No image frame is available at the current playback time.";
+        return isImagePanel
+          ? "No image frame is available at the current playback time."
+          : "No renderable point cloud is available at the current playback time.";
       case "loading":
-        return "Loading frame data for the shared playback cursor.";
+        return isImagePanel
+          ? "Loading frame data for the shared playback cursor."
+          : "Loading point data for the shared playback cursor.";
       default:
         return "Select this panel to inspect playback metadata.";
     }
   }, [
-    frame,
+    imageFrame,
     isImagePanel,
+    isPointCloudPanel,
+    playbackState?.logTimeNs,
     playbackError,
     playbackState?.error,
     playbackState?.status,
     playbackUnavailable,
+    pointCloudFrame,
   ]);
 
   return (
@@ -451,33 +503,80 @@ function PanelCard({
             {title}
           </Heading>
         </Stack>
-        <div style={PANEL_VIEWPORT_STYLES}>
-          {!isImagePanel && (
-            <Stack
-              orientation={Orientation.Column}
-              spacing={Spacing.Xs}
-              align={Align.Center}
-            >
-              <Text variant={TextVariant.Sm} color={TextColor.Primary}>
-                Point cloud playback comes next
-              </Text>
-              <Text
-                variant={TextVariant.Caption}
-                color={TextColor.Secondary}
-                style={{ textAlign: "center" }}
+        <div
+          style={
+            isPointCloudPanel && playbackState?.status === "ready"
+              ? POINTS_VIEWPORT_STYLES
+              : PANEL_VIEWPORT_STYLES
+          }
+        >
+          {isPointCloudPanel && playbackState?.status === "ready" && (
+            <div style={VIEWPORT_ACTION_STYLES}>
+              <Button
+                size={Size.Sm}
+                variant={Variant.Secondary}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setResetViewVersion((current) => current + 1);
+                }}
               >
-                This panel is already inventory-backed, but it is still using a
-                metadata placeholder in this slice.
-              </Text>
-            </Stack>
+                Reset View
+              </Button>
+            </div>
           )}
-          {isImagePanel && playbackState?.status === "ready" && frame && (
-            <img
-              alt={title}
+          {isPointCloudPanel &&
+            playbackState?.status === "ready" &&
+            pointCloudFrame && (
+              <div
+                data-testid={`mcap-points3d-frame-${panel.panelId}`}
+                style={POINTS_VIEWPORT_STYLES}
+                onClick={
+                  isActive ? (event) => event.stopPropagation() : undefined
+                }
+                onPointerDown={
+                  isActive ? (event) => event.stopPropagation() : undefined
+                }
+              >
+                <Points3dView
+                  colorMode={pointCloudFrame.intensity ? "intensity" : "solid"}
+                  frame={pointCloudFrame}
+                  preserveViewOnFrameChange
+                  resetViewToken={`${sceneId ?? "scene"}:${resetViewVersion}`}
+                />
+              </div>
+            )}
+          {isPointCloudPanel &&
+            (playbackUnavailable || playbackState?.status !== "ready") && (
+              <Stack
+                orientation={Orientation.Column}
+                spacing={Spacing.Xs}
+                align={Align.Center}
+              >
+                {(playbackState?.status === "loading" ||
+                  playbackUnavailable) && <Spinner size={Size.Sm} />}
+                <Text variant={TextVariant.Sm} color={TextColor.Primary}>
+                  {playbackState?.status === "error"
+                    ? "Playback error"
+                    : playbackState?.status === "empty"
+                    ? "No point cloud available"
+                    : "Point cloud playback"}
+                </Text>
+                <Text
+                  variant={TextVariant.Caption}
+                  color={TextColor.Secondary}
+                  style={{ textAlign: "center" }}
+                >
+                  {statusMessage}
+                </Text>
+              </Stack>
+            )}
+          {isImagePanel && playbackState?.status === "ready" && imageFrame && (
+            <div
               data-testid={`mcap-image-frame-${panel.panelId}`}
-              src={frame.objectUrl}
               style={IMAGE_STYLES}
-            />
+            >
+              <Image2dView alt={title} frame={imageFrame} />
+            </div>
           )}
           {isImagePanel &&
             (playbackUnavailable || playbackState?.status !== "ready") && (
@@ -524,13 +623,33 @@ function PanelCard({
             <InfoRow
               label="Frame"
               value={
-                frame
-                  ? `${frame.format || "compressed"} @ ${formatTimestampNs(
-                      frame.logTimeNs
+                imageFrame && playbackState?.logTimeNs != null
+                  ? `${imageFormat || "compressed"} @ ${formatTimestampNs(
+                      playbackState.logTimeNs
                     )}`
                   : statusMessage
               }
             />
+          )}
+          {isPointCloudPanel && (
+            <>
+              <InfoRow
+                label="Frame"
+                value={
+                  playbackState?.logTimeNs != null
+                    ? formatTimestampNs(playbackState.logTimeNs)
+                    : statusMessage
+                }
+              />
+              <InfoRow
+                label="Points"
+                value={
+                  pointCloudFrame
+                    ? formatMessageCount(pointCloudFrame.pointCount)
+                    : "Not available"
+                }
+              />
+            </>
           )}
           <InfoRow
             label="Messages"
@@ -625,7 +744,7 @@ export const McapModalRenderer = React.memo(({ ctx }: SampleRendererProps) => {
   const sceneParams = React.useMemo(() => getMcapSceneParams(ctx), [ctx]);
   const { data, scene, playbackPlan, isLoading, error, refetch } =
     useMcapScene(sceneParams);
-  const playback = useMcapImagePlayback(scene, playbackPlan);
+  const playback = useMcapPlaybackController(scene, playbackPlan);
   const [activePanelId, setActivePanelId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
@@ -658,7 +777,7 @@ export const McapModalRenderer = React.memo(({ ctx }: SampleRendererProps) => {
     }
 
     const activePlaybackState = activePanelState.stream
-      ? playback.panelStates[activePanelState.stream.streamId]
+      ? playback.panelStates[activePanelState.panel?.panelId ?? ""]
       : null;
 
     return [
@@ -675,11 +794,11 @@ export const McapModalRenderer = React.memo(({ ctx }: SampleRendererProps) => {
         value:
           activePanelState.stream?.topic ?? activePanelState.panel.streamId,
       },
-      ...(activePlaybackState?.frame
+      ...(activePlaybackState?.logTimeNs != null
         ? [
             {
               label: "Frame",
-              value: formatTimestampNs(activePlaybackState.frame.logTimeNs),
+              value: formatTimestampNs(activePlaybackState.logTimeNs),
             },
           ]
         : []),
@@ -948,7 +1067,7 @@ export const McapModalRenderer = React.memo(({ ctx }: SampleRendererProps) => {
                       variant={TextVariant.Sm}
                       color={TextColor.Secondary}
                     >
-                      No image playback timestamps were found for this scene.
+                      No playback timestamps were found for this scene.
                     </Text>
                   )}
               </Card>
@@ -973,12 +1092,9 @@ export const McapModalRenderer = React.memo(({ ctx }: SampleRendererProps) => {
                       }
                       panel={panel}
                       playbackError={playback.error}
-                      playbackState={
-                        stream
-                          ? playback.panelStates[stream.streamId]
-                          : undefined
-                      }
+                      playbackState={playback.panelStates[panel.panelId]}
                       playbackUnavailable={!playback.hasPlayback}
+                      sceneId={scene?.sceneId ?? null}
                       stream={stream}
                       onSelect={() => setActivePanelId(panel.panelId)}
                     />
