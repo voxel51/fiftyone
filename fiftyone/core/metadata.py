@@ -313,6 +313,94 @@ class SceneMetadata(Metadata):
         raise ValueError("Scene URLs are not currently supported")
 
 
+class McapTimeRange(DynamicEmbeddedDocument):
+    """Nanosecond time bounds for an MCAP scene or stream."""
+
+    start_ns = fof.IntField()
+    end_ns = fof.IntField()
+
+
+class McapSourceFingerprint(DynamicEmbeddedDocument):
+    """Cheap source fingerprint used to detect stale MCAP scene state."""
+
+    path = fof.StringField()
+    size_bytes = fof.IntField()
+    mtime_ns = fof.IntField()
+
+
+class McapStreamMetadata(DynamicEmbeddedDocument):
+    """Metadata describing a supported MCAP stream."""
+
+    stream_id = fof.StringField()
+    topic = fof.StringField()
+    schema_name = fof.StringField()
+    schema_encoding = fof.StringField()
+    message_encoding = fof.StringField()
+    role = fof.StringField()
+    channel_id = fof.IntField()
+    schema_id = fof.IntField()
+    time_range = fof.EmbeddedDocumentField(McapTimeRange)
+    message_count = fof.IntField(null=True)
+
+
+class McapMetadata(Metadata):
+    """Metadata stored for an MCAP-backed sample."""
+
+    source_format = fof.StringField(default="mcap")
+    catalog_version = fof.StringField()
+    media_field = fof.StringField()
+    scene_id = fof.StringField()
+    source_path = fof.StringField()
+    time_range = fof.EmbeddedDocumentField(McapTimeRange)
+    source_fingerprint = fof.EmbeddedDocumentField(McapSourceFingerprint)
+    streams = fof.ListField(fof.EmbeddedDocumentField(McapStreamMetadata))
+
+    @classmethod
+    def build_for(
+        cls,
+        scene_id,
+        media_field,
+        media_path,
+        time_range,
+        streams,
+        catalog_version="mcap-poc-v1",
+        mime_type="application/octet-stream",
+    ):
+        """Builds :class:`McapMetadata` for the given MCAP file.
+
+        Args:
+            scene_id: the resolved scene identifier
+            media_field: the sample field that references the MCAP
+            media_path: the resolved MCAP path
+            time_range: an :class:`McapTimeRange`
+            streams: a list of :class:`McapStreamMetadata`
+            catalog_version ("mcap-poc-v1"): the catalog schema version
+            mime_type ("application/octet-stream"): the MIME type to store
+
+        Returns:
+            an :class:`McapMetadata`
+        """
+        stat = os.stat(media_path)
+        size_bytes = int(stat.st_size)
+
+        return cls(
+            size_bytes=size_bytes,
+            mime_type=mime_type,
+            source_format="mcap",
+            catalog_version=catalog_version,
+            media_field=media_field,
+            scene_id=scene_id,
+            source_path=media_path,
+            time_range=time_range,
+            source_fingerprint=McapSourceFingerprint(
+                path=media_path,
+                size_bytes=size_bytes,
+                mtime_ns=int(stat.st_mtime_ns),
+            ),
+            streams=streams,
+        )
+
+
 def _parse_assets(
     scene, scene_path, cache=None, skip_failures=True, warn_failures=True
 ):

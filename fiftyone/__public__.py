@@ -131,6 +131,11 @@ from .core.metadata import (
     ImageMetadata,
     VideoMetadata,
     SceneMetadata,
+    McapMetadata,
+)
+from .core.rendering import (
+    RenderingPlan,
+    McapRenderingPlan,
 )
 from .core.models import (
     apply_model,
