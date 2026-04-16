@@ -2200,6 +2200,27 @@ The Embeddings panel supports the following `state` parameters:
 -   **colorByField**: an optional sample field (or label attribute, for patches
     embeddings) to color the points by
 
+.. _app-similarity-search-panel:
+
+Similarity Search panel
+_______________________
+
+The Similarity Search panel provides a full-featured interface for creating,
+managing, and revisiting similarity searches on datasets that have been
+:ref:`indexed by similarity <brain-similarity>`.
+
+Refer to the :ref:`Similarity Search panel documentation <app-similarity-panel>`
+for details on all available features, including run management, advanced search
+options, and delegated execution.
+
+When configuring spaces :ref:`in Python <app-spaces-python>`, you can create a
+Similarity Search panel as follows:
+
+.. code-block:: python
+    :linenos:
+
+    similarity_panel = fo.Panel(type="Similarity Search")
+
 .. _app-model-evaluation-panel:
 
 Model Evaluation panel __SUB_NEW__
@@ -3407,10 +3428,17 @@ to their labels) will not affect the sample tags of the underlying |Sample|.
 Sorting by similarity
 _____________________
 
-Whenever you select samples, patches, or labels in the App in a |Dataset| that
-has been :ref:`indexed by similarity <brain-similarity>`, you can use the
-similarity menu in the App to sort or filter your current view based on
-similarity to the chosen image or object.
+Whenever you have a |Dataset| that has been
+:ref:`indexed by similarity <brain-similarity>`, the App provides two ways to
+search by similarity:
+
+-   **Similarity popover**: a lightweight menu in the grid toolbar for quick
+    searches. Select samples, patches, or labels and click the similarity icon
+    to instantly sort by similarity or enter a text query.
+-   **Similarity Search panel**: a full-featured panel for creating, managing,
+    and revisiting similarity searches. Open it from the popover's settings
+    button or from the App's panels menu. See
+    :ref:`Similarity Search panel <app-similarity-panel>` for details.
 
 .. note::
 
@@ -3423,24 +3451,19 @@ similarity to the chosen image or object.
 Image similarity
 ----------------
 
-Whenever one or more images are selected in the App, the similarity menu icon
+Whenever one or more images are selected in the App, the similarity icon
 appears above the grid. If you have indexed the dataset by
-:ref:`image similarity <brain-image-similarity>`, then you will be able to sort
-by similarity to your current selection.
+:ref:`image similarity <brain-image-similarity>`, you can click the icon to
+sort by similarity to your current selection.
 
-You can use the advanced settings menu to choose between multiple brain keys
-and optionally specify a maximum number of matches to return (`k`) and whether
-to query by greatest or least similarity (if supported).
+The popover lets you choose a brain key and quickly run a search. After the
+search completes, the :ref:`Similarity Search panel <app-similarity-panel>`
+opens to display the results, where you can further refine your query or manage
+past searches.
 
 .. image:: /images/brain/brain-image-similarity.gif
     :alt: image-similarity
     :align: center
-
-.. note::
-
-    For large datasets, you may notice longer load times the first time you use
-    a similarity index in a session. Subsequent similarity searches will use
-    cached results and will be faster!
 
 .. _app-object-similarity:
 
@@ -3448,20 +3471,16 @@ Object similarity
 -----------------
 
 Whenever one or more labels or patches are selected in the App, the similarity
-menu icon appears above the sample grid. If you have indexed the dataset by
-:ref:`object similarity <brain-object-similarity>`, then you will be able to
-sort by similarity to your current selection.
+icon appears above the sample grid. If you have indexed the dataset by
+:ref:`object similarity <brain-object-similarity>`, you can sort by similarity
+to your current selection.
 
 The typical workflow for object similarity is to first switch to
 :ref:`object patches view <app-object-patches>` for the label field of
-interest. In this view, the similarity menu icon will appear whenever you have
+interest. In this view, the similarity icon will appear whenever you have
 selected one or more patches from the grid, and the resulting view will sort
 the patches according to the similarity of their objects with respect to the
 objects in the query patches.
-
-You can use the advanced settings menu to choose between multiple brain keys
-and optionally specify a maximum number of matches to return (`k`) and whether
-to query by greatest or least similarity (if supported).
 
 .. image:: /images/brain/brain-object-similarity.gif
     :alt: object-similarity
@@ -3476,25 +3495,16 @@ in the upper-right corner of the modal:
     :alt: object-similarity-modal
     :align: center
 
-.. note::
-
-    For large datasets, you may notice longer load times the first time you use
-    a similarity index in a session. Subsequent similarity searches will use
-    cached results and will be faster!
-
 .. _app-text-similarity:
 
 Text similarity
 ---------------
 
 If you have indexed your dataset with a model that
-:ref:`supports text queries <brain-similarity-text>`, you can use the text
-similarity menu in the App to search for images (or object patches) of interest
-via arbitrary text queries!
-
-You can use the advanced settings menu to choose between multiple brain keys
-and optionally specify a maximum number of matches to return (`k`) and whether
-to query by greatest or least similarity (if supported).
+:ref:`supports text queries <brain-similarity-text>`, you can use the
+similarity popover to search for images (or object patches) of interest via
+arbitrary text queries. Simply type your query into the text input field and
+press search.
 
 .. image:: /images/brain/brain-text-similarity.gif
    :alt: text-similarity
@@ -3505,6 +3515,70 @@ to query by greatest or least similarity (if supported).
     Did you know? You can also perform text queries
     :ref:`via the SDK <brain-similarity-text>` by passing a prompt directly to
     :meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`!
+
+.. _app-similarity-panel:
+
+Similarity Search panel
+-----------------------
+
+The Similarity Search panel provides a full-featured interface for creating,
+managing, and revisiting similarity searches. You can open it from the
+popover's settings button, or from the App's panels menu.
+
+.. image:: /images/app/app-similarity-panel.gif
+    :alt: similarity-search-panel
+    :align: center
+
+Home page
+~~~~~~~~~
+
+The panel's home page displays a list of all past similarity search runs. Each
+run shows its name, query type, status (pending, running, completed, or
+failed), and creation time. Click any completed run to apply its results to the
+current view.
+
+You can filter the run list by:
+
+-   **Date range**: Today, Last 7 days, Last 30 days, or Older
+-   **Search text**: filter by query content or run name
+-   **Owner**: show all runs or only your own (Enterprise only)
+
+Run management actions include cloning and deleting individual runs,
+as well as bulk deletion of multiple runs at once.
+
+Creating a new search
+~~~~~~~~~~~~~~~~~~~~~
+
+Click the **New search** button to open the search form. The form provides the
+following options:
+
+-   **Query type**: choose between image similarity (using selected samples),
+    text similarity (natural language query), or image upload
+-   **Brain key**: select which similarity index to use. The panel shows which
+    indexes support text queries
+-   **K**: the maximum number of results to return
+-   **Reverse**: toggle to find the least similar results instead of the most
+    similar
+-   **Distance field**: optionally specify a field name to store the computed
+    distances on each result sample
+-   **Scope**: search against the current view or the entire dataset
+-   **Negative queries**: use alt-selected samples as negative examples to find
+    results that are similar to your selected samples but dissimilar to the
+    alt-selected ones
+
+.. note::
+
+    For image queries, first select one or more samples in the grid, then open
+    the panel and click **New search**. The selected samples will be used as
+    the query.
+
+Delegated execution
+~~~~~~~~~~~~~~~~~~~
+
+By default, similarity searches run immediately on the App server. If your
+deployment supports :ref:`delegated operations <delegated-operations>`, you can
+choose to run the search on a worker pod instead by selecting **Delegate** as
+the execution mode. This is useful for large results number on large datasets.
 
 .. _app-multiple-media-fields:
 
