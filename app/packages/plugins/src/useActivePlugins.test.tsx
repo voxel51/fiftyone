@@ -1,5 +1,4 @@
-import { act, renderHook } from "@testing-library/react-hooks";
-import React from "react";
+import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   PluginActivator,
@@ -8,9 +7,9 @@ import {
   unregisterComponent,
   useActivePlugins,
   usePluginComponent,
-} from ".";
+} from "./registry";
 
-const NullComponent: React.FC = () => null;
+const NullComponent = () => null;
 
 const registered: string[] = [];
 
@@ -26,6 +25,10 @@ const register = (name: string, activator?: PluginActivator) => {
 };
 
 afterEach(() => {
+  // Unmount all mounted hooks first — otherwise their active subscriptions
+  // see the unregister-loop below and call activators from this test
+  // against state belonging to a prior test.
+  cleanup();
   while (registered.length) {
     const name = registered.pop();
     if (name) unregisterComponent(name);
