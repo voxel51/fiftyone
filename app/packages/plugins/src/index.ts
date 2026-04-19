@@ -3,13 +3,7 @@ import * as fos from "@fiftyone/state";
 import * as fou from "@fiftyone/utilities";
 import { getFetchFunction, getFetchParameters } from "@fiftyone/utilities";
 import * as _ from "lodash";
-import React, {
-  FunctionComponent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import React, { FunctionComponent, useEffect, useMemo, useState } from "react";
 import * as recoil from "recoil";
 import { wrapCustomComponent } from "./components";
 import "./externalize";
@@ -265,37 +259,30 @@ export function safePluginActivator(
   return false;
 }
 
-function useGetDefaultPluginCtx() {
-  const dataset = fos.useCurrentDataset();
-  const schema = fos.useSampleSchema();
-  return useCallback(() => ({ schema, dataset }), [schema, dataset]);
-}
-
 /**
- * A react hook that returns a list of active plugins.
+ * Returns active plugins of the given type, filtered by each plugin's
+ * `activator(ctx)`.
+ *
+ * `ctx` must be supplied by the caller; the hook reads no recoil state of
+ * its own. An implicit subscription would couple this shared hook to a
+ * specific host app's state layout, hide a re-render dependency from every
+ * call site, force every caller to pay the subscription cost (severe in
+ * schema-driven UIs where this hook is invoked per node), and guess at a
+ * default ctx the hook can't know is right for any given caller. Pass
+ * `{}` if activation doesn't depend on app state.
  *
  * @param type The type of plugin to list
- * @param ctx Argument passed to the plugin's activator function
+ * @param ctx Passed to each plugin's activator
  * @returns A list of active plugins
  */
 export function useActivePlugins<TType extends PluginComponentType>(
   type: TType,
-  ctx?: Record<string, unknown>
+  ctx: Record<string, unknown>
 ) {
-  const getDefaultPluginCtx = useGetDefaultPluginCtx();
-
-  const resolvedCtx = useMemo(() => {
-    if (ctx) {
-      return ctx;
-    }
-
-    return getDefaultPluginCtx();
-  }, [ctx, getDefaultPluginCtx]);
-
   const getActivePlugins = () =>
     usingRegistry()
       .getByType(type)
-      .filter((plugin) => safePluginActivator(plugin, resolvedCtx));
+      .filter((plugin) => safePluginActivator(plugin, ctx));
 
   const [plugins, setPlugins] =
     useState<PluginComponentRegistrationByType[TType][]>(getActivePlugins);
@@ -308,18 +295,18 @@ export function useActivePlugins<TType extends PluginComponentType>(
     return () => {
       unsubscribe();
     };
-  }, [type, resolvedCtx]);
+  }, [type, ctx]);
 
   return plugins;
 }
 
 /**
- * A react hook that returns a component plugin by name if exist.
+ * Returns a component plugin by name if it's available for the given `ctx`.
  * @param name The name of the plugin
  * @param ctx Argument passed to the plugin's activator function
  * @returns The plugin component or `undefined`
  */
-export function usePluginComponent(name: string, ctx?: unknown) {
+export function usePluginComponent(name: string, ctx: Record<string, unknown>) {
   const plugins = useActivePlugins(PluginComponentType.Component, ctx);
   return plugins.find((p) => p.name === name);
 }

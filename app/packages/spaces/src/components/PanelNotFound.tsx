@@ -4,7 +4,10 @@ import { PanelProps } from "../types";
 
 export default function PanelNotFound(props: PanelNotFoundPropsType) {
   const { panelName } = props;
-  const CustomPanelNotFound = usePluginComponent("PanelNotFound")?.component;
+  const CustomPanelNotFound = usePluginComponent(
+    "PanelNotFound",
+    {}
+  )?.component;
 
   if (CustomPanelNotFound) {
     return <CustomPanelNotFound {...props} />;
