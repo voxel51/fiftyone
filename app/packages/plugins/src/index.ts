@@ -263,12 +263,10 @@ export function safePluginActivator(
  * Returns active plugins of the given type, filtered by each plugin's
  * `activator(ctx)`.
  *
- * `ctx` must be supplied by the caller; the hook reads no recoil state of
- * its own. An implicit subscription would couple this shared hook to a
- * specific host app's state layout, hide a re-render dependency from every
- * call site, force every caller to pay the subscription cost (severe in
- * schema-driven UIs where this hook is invoked per node), and guess at a
- * default ctx the hook can't know is right for any given caller. Pass
+ * `ctx` must be supplied by the caller — deriving it implicitly would
+ * make a stateless filter stateful (silently subscribing to state the
+ * caller never sees), fan out re-renders across every node in schema
+ * renderers, and pick a default the hook can't choose correctly. Pass
  * `{}` if activation doesn't depend on app state.
  *
  * @param type The type of plugin to list
