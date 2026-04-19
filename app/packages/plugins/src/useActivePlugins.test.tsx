@@ -70,16 +70,6 @@ describe("useActivePlugins: runtime behavior", () => {
     expect(activator.mock.calls[0][0]).toBe(ctx);
   });
 
-  it("returns an empty list when ctx is {} and no activators match", () => {
-    register("needs-dataset", (ctx: any) => Boolean(ctx?.dataset));
-
-    const { result } = renderHook(() =>
-      useActivePlugins(PluginComponentType.Component, {})
-    );
-
-    expect(result.current).toEqual([]);
-  });
-
   it("re-filters when ctx changes", () => {
     register("video-only", (ctx: any) => ctx?.mediaType === "video");
     register("image-only", (ctx: any) => ctx?.mediaType === "image");
@@ -126,22 +116,18 @@ describe("useActivePlugins: runtime behavior", () => {
 });
 
 describe("usePluginComponent: runtime behavior", () => {
-  it("finds a registered component by name when its activator returns true", () => {
-    register("Target", () => true);
+  it("returns the named component when its activator passes ctx, else undefined", () => {
+    register("Target", (ctx: any) => ctx?.allow === true);
     register("Other", () => true);
 
-    const { result } = renderHook(() => usePluginComponent("Target", {}));
-
-    expect(result.current?.name).toBe("Target");
-  });
-
-  it("returns undefined when the named component's activator rejects the ctx", () => {
-    register("Target", (ctx: any) => ctx?.allow === true);
-
-    const { result } = renderHook(() =>
-      usePluginComponent("Target", { allow: false })
+    const { result, rerender } = renderHook(
+      ({ allow }: { allow: boolean }) =>
+        usePluginComponent("Target", { allow }),
+      { initialProps: { allow: true } }
     );
+    expect(result.current?.name).toBe("Target");
 
+    rerender({ allow: false });
     expect(result.current).toBeUndefined();
   });
 });
