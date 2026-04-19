@@ -8,6 +8,7 @@ FiftyOne plugin skills.
 
 import logging
 import os
+import re
 
 import yaml
 
@@ -105,13 +106,13 @@ def list_skills(enabled=True, plugin=None, category=None):
 
     skills = []
     for pd in plugin_defs:
-        try:
-            for skill in _iter_plugin_skills(pd):
+        for skill in _iter_plugin_skills(pd):
+            try:
                 if category is not None and skill.category not in category:
                     continue
                 skills.append(skill)
-        except:
-            logger.info(f"Failed to load skills from plugin '{pd.name}'")
+            except:
+                logger.info(f"Failed to load skill from plugin '{pd.name}'")
 
     return skills
 
@@ -145,10 +146,7 @@ def _parse_skill_frontmatter(skill_path):
     with open(skill_path, "r", encoding="utf-8") as f:
         content = f.read()
 
-    if not content.startswith("---"):
-        return {}
-
-    parts = content.split("---", 2)
+    parts = re.split(r"^---\s*$", content, maxsplit=2, flags=re.MULTILINE)
     if len(parts) < 3:
         return {}
 
