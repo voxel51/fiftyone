@@ -47,9 +47,10 @@ describe("useActivePlugins: required ctx (type contract)", () => {
 
 describe("useActivePlugins: runtime behavior", () => {
   it("returns plugins whose activator returns true for the supplied ctx", () => {
+    type Ctx = { dataset?: { mediaType?: string } };
     register("always-active", () => true);
-    register("video-only", (ctx: any) => ctx?.dataset?.mediaType === "video");
-    register("image-only", (ctx: any) => ctx?.dataset?.mediaType === "image");
+    register("video-only", (ctx: Ctx) => ctx.dataset?.mediaType === "video");
+    register("image-only", (ctx: Ctx) => ctx.dataset?.mediaType === "image");
 
     const { result } = renderHook(() =>
       useActivePlugins(PluginComponentType.Component, {
@@ -62,7 +63,7 @@ describe("useActivePlugins: runtime behavior", () => {
   });
 
   it("passes the caller-supplied ctx straight through to each activator", () => {
-    const activator = vi.fn(() => true);
+    const activator = vi.fn((_ctx: Record<string, unknown>) => true);
     register("probe", activator);
 
     const ctx = { foo: "bar", nested: { value: 42 } };
@@ -74,8 +75,9 @@ describe("useActivePlugins: runtime behavior", () => {
   });
 
   it("re-filters when ctx changes", () => {
-    register("video-only", (ctx: any) => ctx?.mediaType === "video");
-    register("image-only", (ctx: any) => ctx?.mediaType === "image");
+    type Ctx = { mediaType?: string };
+    register("video-only", (ctx: Ctx) => ctx.mediaType === "video");
+    register("image-only", (ctx: Ctx) => ctx.mediaType === "image");
 
     const { result, rerender } = renderHook(
       ({ ctx }: { ctx: Record<string, unknown> }) =>
@@ -120,7 +122,7 @@ describe("useActivePlugins: runtime behavior", () => {
 
 describe("usePluginComponent: runtime behavior", () => {
   it("returns the named component when its activator passes ctx, else undefined", () => {
-    register("Target", (ctx: any) => ctx?.allow === true);
+    register("Target", (ctx: { allow?: boolean }) => ctx.allow === true);
     register("Other", () => true);
 
     const { result, rerender } = renderHook(

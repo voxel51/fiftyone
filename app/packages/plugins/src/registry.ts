@@ -1,4 +1,4 @@
-import React, { FunctionComponent, useEffect, useMemo, useState } from "react";
+import React, { FunctionComponent, useMemo, useSyncExternalStore } from "react";
 import { wrapCustomComponent } from "./components";
 import type {
   SampleRendererOptions,
@@ -98,17 +98,21 @@ export function safePluginActivator(
  * @param ctx Passed to each plugin's activator
  * @returns A list of active plugins
  */
+// Defined at module scope so useSyncExternalStore doesn't re-subscribe on
+// every render.
+const subscribeRegistry = (onChange: () => void) =>
+  subscribeToRegistry(() => onChange());
+
+const getRegistryVersion = () => usingRegistry().getVersion();
+
 export function useActivePlugins<TType extends PluginComponentType>(
   type: TType,
   ctx: Record<string, unknown>
 ) {
-  // Version counter invalidates the memo on register/unregister. ctx and type
-  // invalidate it directly. Using useState+subscription here (instead of
-  // useSyncExternalStore) keeps the hook renderable with no Recoil / Writer
-  // context — callers depend on that.
-  const [version, setVersion] = useState(0);
-
-  useEffect(() => subscribeToRegistry(() => setVersion((v) => v + 1)), []);
+  // useSyncExternalStore reads the snapshot synchronously during render and
+  // atomically subscribes, so a register/unregister event that fires between
+  // the snapshot and the subscription can't be dropped.
+  const version = useSyncExternalStore(subscribeRegistry, getRegistryVersion);
 
   return useMemo(
     () =>
@@ -345,6 +349,10 @@ export class PluginComponentRegistry {
   private pluginDefinitions = new Map<string, PluginDefinitionLike>();
   private scripts = new Set<string>();
   private subscribers = new Set<RegistryEventHandler>();
+  private version = 0;
+  getVersion() {
+    return this.version;
+  }
   registerScript(name: string) {
     this.scripts.add(name);
   }
@@ -358,7 +366,11 @@ export class PluginComponentRegistry {
     return this.scripts.has(name);
   }
   getComponent<T>(name: string) {
-    return this.data.get(name).component as React.FunctionComponent<T>;
+    const registration = this.data.get(name);
+    if (!registration) {
+      throw new Error(`No plugin component registered with name "${name}"`);
+    }
+    return registration.component as React.FunctionComponent<T>;
   }
   register(registration: PluginComponentRegistration) {
     const { name } = registration;
@@ -415,12 +427,17 @@ export class PluginComponentRegistry {
     };
 
     this.data.set(name, wrappedRegistration);
+    this.version++;
 
     this.notifyAllSubscribers("register");
   }
   unregister(name: string): boolean {
-    this.notifyAllSubscribers("unregister");
-    return this.data.delete(name);
+    const deleted = this.data.delete(name);
+    if (deleted) {
+      this.version++;
+      this.notifyAllSubscribers("unregister");
+    }
+    return deleted;
   }
   getByType<TType extends PluginComponentType>(type: TType) {
     const results: PluginComponentRegistrationByType[TType][] = [];
