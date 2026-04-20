@@ -79,6 +79,8 @@ export interface InteractionHandler {
   isDragging?(): boolean;
   /** Returns true if the handler is being resized. */
   isResizing?(): boolean;
+  /** Returns true if the handler is selected. */
+  isSelected?(): boolean;
   /** Returns true if a new DetectionOverlay is being created. */
   isSetting?(): boolean;
 
@@ -322,54 +324,47 @@ export class InteractionManager {
     const scale = this.renderer.getScale();
     this.currentPixelCoordinates = point;
 
-    const distance = Math.hypot(
-      point.x - this.pendingAction.point.x,
-      point.y - this.pendingAction.point.y
-    );
+    const pending = this.pendingAction;
+    this.pendingAction = undefined;
 
-    if (distance > this.CLICK_THRESHOLD) {
-      const pending = this.pendingAction;
-      this.pendingAction = undefined;
+    // Signal detection mode to create a detection and register
+    // an interactive handler. This relies on the event bus invoking
+    // handlers synchronously so the handler is immediately available.
+    this.eventBus.dispatch("lighter:overlay-create", {
+      eventId: generateUUID(),
+    });
 
-      // Signal detection mode to create a detection and register
-      // an interactive handler. This relies on the event bus invoking
-      // handlers synchronously so the handler is immediately available.
-      this.eventBus.dispatch("lighter:overlay-create", {
-        eventId: generateUUID(),
+    const interactiveHandler = this.getInteractiveHandler();
+    if (interactiveHandler) {
+      const handler = interactiveHandler.getOverlay();
+      this.selectionManager.select(handler.id);
+
+      // Initialize the handler with the original pointerdown point
+      handler.onPointerDown?.({
+        point: pending.point,
+        worldPoint: pending.worldPoint,
+        event,
+        scale: pending.scale,
       });
 
-      const interactiveHandler = this.getInteractiveHandler();
-      if (interactiveHandler) {
-        const handler = interactiveHandler.getOverlay();
-        this.selectionManager.select(handler.id);
+      // Update with the current pointer position
+      handler.onMove?.({
+        point,
+        worldPoint,
+        event,
+        scale,
+        maintainAspectRatio: this.maintainAspectRatio,
+      });
 
-        // Initialize the handler with the original pointerdown point
-        handler.onPointerDown?.({
-          point: pending.point,
-          worldPoint: pending.worldPoint,
-          event,
-          scale: pending.scale,
+      if (TypeGuards.isSpatial(handler)) {
+        this.eventBus.dispatch("lighter:overlay-drag-start", {
+          id: handler.id,
+          startPosition: handler.bounds,
+          bounds: handler.bounds,
         });
-
-        // Update with the current pointer position
-        handler.onMove?.({
-          point,
-          worldPoint,
-          event,
-          scale,
-          maintainAspectRatio: this.maintainAspectRatio,
-        });
-
-        if (TypeGuards.isSpatial(handler)) {
-          this.eventBus.dispatch("lighter:overlay-drag-start", {
-            id: handler.id,
-            startPosition: handler.bounds,
-            bounds: handler.bounds,
-          });
-        }
-
-        this.configureCursorStyle(handler, worldPoint, scale);
       }
+
+      this.configureCursorStyle(handler, worldPoint, scale);
     }
 
     return true;
@@ -380,10 +375,7 @@ export class InteractionManager {
    * pointer has moved beyond the click threshold, forward the deferred
    * pointer-down to the handler to start painting.
    */
-  private segmentationModePaint = (
-    event: PointerEvent,
-    forcePaint = false
-  ): boolean => {
+  private segmentationModePaint = (event: PointerEvent): boolean => {
     if (!this.pendingAction) return false;
 
     const point = this.getCanvasPoint(event);
@@ -391,79 +383,88 @@ export class InteractionManager {
     const scale = this.renderer.getScale();
     this.currentPixelCoordinates = point;
 
-    const distance = Math.hypot(
-      point.x - this.pendingAction.point.x,
-      point.y - this.pendingAction.point.y
-    );
+    const pending = this.pendingAction;
+    this.pendingAction = undefined;
 
-    if (forcePaint || distance > this.CLICK_THRESHOLD) {
-      const pending = this.pendingAction;
-      this.pendingAction = undefined;
+    const editingSegmentation =
+      segmentationModeBridge.isActive() &&
+      this.selectionManager.getSelectionCount() > 0;
 
-      const editingSegmentation =
-        segmentationModeBridge.isActive() &&
-        this.selectionManager.getSelectionCount() > 0;
+    if (!editingSegmentation) {
+      this.eventBus.dispatch("lighter:overlay-create", {
+        eventId: generateUUID(),
+      });
+    }
 
-      if (!editingSegmentation) {
-        this.eventBus.dispatch("lighter:overlay-create", {
-          eventId: generateUUID(),
+    const interactiveHandler = this.getInteractiveHandler();
+    const handler =
+      interactiveHandler?.getOverlay() || this.findSelectedHandler();
+
+    if (handler) {
+      this.selectionManager.select(handler.id);
+
+      // Forward the deferred pointer-down to start painting
+      handler.onPointerDown?.({
+        point: pending.point,
+        worldPoint: pending.worldPoint,
+        event,
+        scale: pending.scale,
+        segmentationToolState: segmentationModeBridge.getToolState(
+          pending.scale
+        ),
+      });
+
+      // Apply the current move
+      handler.onMove?.({
+        point,
+        worldPoint,
+        event,
+        scale,
+        maintainAspectRatio: this.maintainAspectRatio,
+        segmentationToolState: segmentationModeBridge.getToolState(scale),
+      });
+
+      if (TypeGuards.isSpatial(handler)) {
+        this.eventBus.dispatch("lighter:overlay-drag-start", {
+          id: handler.id,
+          startPosition: handler.bounds,
+          bounds: handler.bounds,
         });
       }
 
-      const interactiveHandler = this.getInteractiveHandler();
-      const handler =
-        interactiveHandler?.getOverlay() || this.findSelectedHandler();
-
-      if (handler) {
-        this.selectionManager.select(handler.id);
-
-        // Forward the deferred pointer-down to start painting
-        handler.onPointerDown?.({
-          point: pending.point,
-          worldPoint: pending.worldPoint,
-          event,
-          scale: pending.scale,
-          segmentationToolState: segmentationModeBridge.getToolState(
-            pending.scale
-          ),
-        });
-
-        // Apply the current move
-        handler.onMove?.({
-          point,
-          worldPoint,
-          event,
-          scale,
-          maintainAspectRatio: this.maintainAspectRatio,
-          segmentationToolState: segmentationModeBridge.getToolState(scale),
-        });
-
-        if (TypeGuards.isSpatial(handler)) {
-          this.eventBus.dispatch("lighter:overlay-drag-start", {
-            id: handler.id,
-            startPosition: handler.bounds,
-            bounds: handler.bounds,
-          });
-        }
-
-        this.configureCursorStyle(handler, worldPoint, scale);
-      }
+      this.configureCursorStyle(handler, worldPoint, scale);
     }
 
     return true;
   };
 
-  private handlePendingAction = (event: PointerEvent): boolean => {
-    if (detectionModeBridge.isActive()) return this.detectionModeCreate(event);
-    if (segmentationModeBridge.isActive())
-      return this.segmentationModePaint(event);
+  private handlePendingMove = (event: PointerEvent): boolean => {
+    if (!this.pendingAction) return false;
+
+    const point = this.getCanvasPoint(event);
+    this.currentPixelCoordinates = point;
+
+    const distance = Math.hypot(
+      point.x - this.pendingAction.point.x,
+      point.y - this.pendingAction.point.y
+    );
+
+    if (distance > this.CLICK_THRESHOLD) {
+      if (detectionModeBridge.isActive()) {
+        return this.detectionModeCreate(event);
+      }
+
+      if (segmentationModeBridge.isActive()) {
+        return this.segmentationModePaint(event);
+      }
+    }
 
     return false;
   };
 
   private handlePointerMove = (event: PointerEvent): void => {
     // short-circuit if pending segmentation or detection mode operation kicks off
-    if (this.handlePendingAction(event)) return;
+    if (this.handlePendingMove(event)) return;
 
     const point = this.getCanvasPoint(event);
     const worldPoint = this.renderer.screenToWorld(point);
@@ -555,7 +556,7 @@ export class InteractionManager {
     return true;
   };
 
-  private segmentationModeQuit = (event: PointerEvent): boolean => {
+  private segmentationEditDone = (event: PointerEvent): boolean => {
     if (!this.pendingAction) return false;
 
     this.selectionManager.clearSelection();
@@ -574,7 +575,7 @@ export class InteractionManager {
    * significant movement), the user clicked to quit — establish the overlay
    * and remove the interactive handler.
    */
-  private handleActionQuit = (event: PointerEvent): boolean => {
+  private handlePendingUp = (event: PointerEvent): boolean => {
     if (!this.pendingAction) return false;
 
     if (detectionModeBridge.isActive()) {
@@ -582,11 +583,14 @@ export class InteractionManager {
     }
 
     if (segmentationModeBridge.isActive()) {
+      // if we are not currently editing
+      // the click should create a new detection
+      // else quit editing the current detection
       if (this.selectionManager.getSelectionCount() === 0) {
-        this.segmentationModePaint(event, true);
+        this.segmentationModePaint(event);
         return false;
       } else {
-        return this.segmentationModeQuit(event);
+        return this.segmentationEditDone(event);
       }
     }
 
@@ -594,7 +598,7 @@ export class InteractionManager {
   };
 
   private handlePointerUp = (event: PointerEvent): void => {
-    if (this.handleActionQuit(event)) return;
+    if (this.handlePendingUp(event)) return;
 
     const point = this.getCanvasPoint(event);
     const worldPoint = this.renderer.screenToWorld(point);
