@@ -299,17 +299,12 @@ export class InteractionManager {
     worldPoint: Point,
     scale: number
   ): void {
-    if (segmentationModeBridge.isActive()) {
+    if (TypeGuards.isSelectable(handler) && !handler.isSelected?.()) {
+      this.canvas.style.cursor = "pointer";
+    } else if (segmentationModeBridge.isActive()) {
       this.canvas.style.cursor = buildBrushCursor(
         segmentationModeBridge.getToolState(scale)!
       );
-    } else if (
-      detectionModeBridge.isActive() &&
-      handler &&
-      TypeGuards.isSelectable(handler) &&
-      !handler.isSelected()
-    ) {
-      this.canvas.style.cursor = "pointer";
     } else if (TypeGuards.isInteractionHandler(handler) && handler.getCursor) {
       this.canvas.style.cursor = handler.getCursor(worldPoint, scale);
     }
