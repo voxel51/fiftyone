@@ -17,9 +17,9 @@ import fiftyone.operators.types as types
 from fiftyone.operators.categories import Categories
 from fiftyone.operators.panel import Panel, PanelConfig
 
+from .brain_keys import list_similarity_brain_keys
 from .constants import STORE_NAME, RunStatus
 from .run_manager import RunManager
-from fiftyone.core.brain import BrainMethod
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +41,7 @@ class SimilaritySearchPanel(Panel):
     def on_load(self, ctx):
         manager = RunManager(ctx)
         runs = manager.list_runs()
-        brain_keys = self._get_brain_keys(ctx)
+        brain_keys = list_similarity_brain_keys(ctx.dataset)
 
         ctx.panel.set_data("runs", runs)
         ctx.panel.set_data("brain_keys", brain_keys)
@@ -68,7 +68,7 @@ class SimilaritySearchPanel(Panel):
 
     def get_brain_keys(self, ctx):
         """Refresh available similarity brain keys."""
-        brain_keys = self._get_brain_keys(ctx)
+        brain_keys = list_similarity_brain_keys(ctx.dataset)
         ctx.panel.set_data("brain_keys", brain_keys)
 
     def list_runs(self, ctx):
@@ -239,56 +239,3 @@ class SimilaritySearchPanel(Panel):
                 get_sample_media=self.get_sample_media,
             ),
         )
-
-    # -- Helpers --
-
-    def _get_brain_keys(self, ctx):
-        """Return available similarity brain keys with config metadata."""
-        dataset = ctx.dataset
-
-        try:
-            run_docs = BrainMethod._get_run_docs(dataset)
-            brain_keys = dataset.list_brain_runs(type="similarity")
-        except Exception as e:
-            logger.warning("Failed to list similarity brain runs: %s", e)
-            run_docs, brain_keys = {}, []
-
-        result = []
-        for key in brain_keys:
-            # Skip failed runs (brain key registered but no results)
-            run_doc = run_docs.get(key)
-            if run_doc is None or not run_doc.results:
-                continue
-
-            try:
-                config = dataset.get_brain_info(key).config
-                supports_least = getattr(
-                    config, "supports_least_similarity", None
-                )
-                result.append(
-                    {
-                        "key": key,
-                        "supports_prompts": bool(
-                            getattr(config, "supports_prompts", False)
-                        ),
-                        "supports_least_similarity": bool(
-                            supports_least()
-                            if callable(supports_least)
-                            else supports_least
-                        ),
-                        "patches_field": getattr(
-                            config, "patches_field", None
-                        ),
-                        "model": getattr(config, "model", None),
-                        "backend": getattr(config, "method", None),
-                        "embeddings_field": getattr(
-                            config, "embeddings_field", None
-                        ),
-                    }
-                )
-            except Exception as e:
-                logger.warning(
-                    "Failed to load brain info for key %s: %s", key, e
-                )
-
-        return result
