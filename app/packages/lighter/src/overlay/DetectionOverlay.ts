@@ -945,6 +945,26 @@ export class DetectionOverlay
   }
 
   /**
+   * Initializes an empty MaskCanvas so the overlay is treated as a mask
+   * detection (finer outline, no resize handles) before any paint occurs.
+   */
+  initMask(): void {
+    if (!this.mask) {
+      this.mask = new MaskCanvas();
+      this.markDirty();
+    }
+  }
+
+  /**
+   * Removes the mask from this detection, destroying the MaskCanvas.
+   */
+  removeMask(): void {
+    this.mask?.destroy();
+    this.mask = undefined;
+    this.markDirty();
+  }
+
+  /**
    * Whether segmentation brush/eraser painting should intercept pointer events.
    */
   private isPaintingActive(): boolean {
