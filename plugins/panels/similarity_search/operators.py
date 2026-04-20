@@ -98,6 +98,18 @@ class SimilaritySearchOperator(foo.Operator):
 
             dataset = ctx.dataset
 
+            # Drop dist_field when the dataset is read-only (snapshot)
+            # or when the user lacks edit permission
+            # This is a guard for clone case
+            if dist_field:
+                is_snapshot = dataset.name.startswith("_snapshot")
+                can_edit = ctx.user is None or ctx.user.dataset_permission in (
+                    "EDIT",
+                    "MANAGE",
+                )
+                if is_snapshot or not can_edit:
+                    dist_field = None
+
             # Always sort against the base dataset view.
             # source_view is stored in the run record for context
             # but not used for the sort itself, because the brain
@@ -322,7 +334,7 @@ class SimilaritySearchOperator(foo.Operator):
         return model.embed(img)
 
 
-class InitSimilarityRunOperator(foo.Operator):
+class InitSimilarityRunOperator(foo.Operator):  #
     """Creates a run record for a delegated similarity search.
 
     Called by the frontend after a delegated operation is queued, so
