@@ -18,6 +18,9 @@ export function buildBrushCursor({
 }: SegmentationToolState): string {
   if (tool === "select") return "default";
 
+  const isEraser = tool === "eraser";
+  const dashColor = isEraser ? "red" : "black";
+
   const half = cursorSize / 2;
   const pad = 2;
   const svgSize = cursorSize + pad * 2;
@@ -28,28 +31,33 @@ export function buildBrushCursor({
   if (shape === "square") {
     shapeMarkup =
       `<rect x="${pad}" y="${pad}" width="${cursorSize}" height="${cursorSize}" fill="none" stroke="white" stroke-width="1.5"/>` +
-      `<rect x="${pad}" y="${pad}" width="${cursorSize}" height="${cursorSize}" fill="none" stroke="black" stroke-width="1.5" stroke-dasharray="3,3"/>`;
+      `<rect x="${pad}" y="${pad}" width="${cursorSize}" height="${cursorSize}" fill="none" stroke="${dashColor}" stroke-width="1.5" stroke-dasharray="3,3"/>`;
   } else {
     shapeMarkup =
       `<circle cx="${center}" cy="${center}" r="${half}" fill="none" stroke="white" stroke-width="1.5"/>` +
-      `<circle cx="${center}" cy="${center}" r="${half}" fill="none" stroke="black" stroke-width="1.5" stroke-dasharray="3,3"/>`;
+      `<circle cx="${center}" cy="${center}" r="${half}" fill="none" stroke="${dashColor}" stroke-width="1.5" stroke-dasharray="3,3"/>`;
   }
 
   let eraserMarkup = "";
 
-  if (tool === "eraser") {
-    const offset = half * 0.5;
+  if (isEraser) {
+    // Slash from bottom-left to top-right, edge to edge
+    let x1: number, y1: number, x2: number, y2: number;
+    if (shape === "square") {
+      x1 = pad;
+      y1 = pad + cursorSize;
+      x2 = pad + cursorSize;
+      y2 = pad;
+    } else {
+      const diag = half * Math.SQRT1_2;
+      x1 = center - diag;
+      y1 = center + diag;
+      x2 = center + diag;
+      y2 = center - diag;
+    }
     eraserMarkup =
-      `<line x1="${center - offset}" y1="${center - offset}" x2="${
-        center + offset
-      }" y2="${
-        center + offset
-      }" stroke="white" stroke-width="2.5" stroke-linecap="round"/>` +
-      `<line x1="${center - offset}" y1="${center - offset}" x2="${
-        center + offset
-      }" y2="${
-        center + offset
-      }" stroke="red" stroke-width="1.5" stroke-linecap="round"/>`;
+      `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="white" stroke-width="1.5" stroke-dasharray="3,3" stroke-dashoffset="3"/>` +
+      `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="red" stroke-width="1.5" stroke-dasharray="3,3"/>`;
   }
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${svgSize}" height="${svgSize}">${shapeMarkup}${eraserMarkup}</svg>`;
