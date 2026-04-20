@@ -173,7 +173,7 @@ export class DetectionOverlay
     );
 
     // lightweight border when editing detection mask
-    if (this.isSelected() && this.isPaintingActive()) {
+    if (this.isSelected() && this.hasMask()) {
       renderer.drawScrim(
         this.bounds,
         _renderMeta.canonicalMediaBounds,
@@ -376,6 +376,7 @@ export class DetectionOverlay
     if (!this.hasValidBounds()) return "crosshair";
     if (this.isPaintingActive()) return "crosshair";
     if (!this.isSelected()) return "pointer";
+    if (this.hasMask()) return "default";
 
     if (!this.isDraggable && !this.isResizeable) {
       return "default";
@@ -430,6 +431,9 @@ export class DetectionOverlay
         segmentationToolState!
       );
     }
+
+    // Mask detections are painted, not dragged/resized
+    if (this.hasMask()) return false;
 
     const resizeRegion = this.getResizeRegion(worldPoint, scale);
     const cursorState = !this.hasValidBounds()
