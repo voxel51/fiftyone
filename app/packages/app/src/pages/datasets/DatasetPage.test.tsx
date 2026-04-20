@@ -1,8 +1,8 @@
 import type React from "react";
 import { describe, expect, it, vi } from "vitest";
 
-const { mcapImportSpy } = vi.hoisted(() => ({
-  mcapImportSpy: vi.fn(),
+const { multimodalImportSpy } = vi.hoisted(() => ({
+  multimodalImportSpy: vi.fn(),
 }));
 
 vi.mock("@fiftyone/core", () => ({
@@ -16,9 +16,9 @@ vi.mock("@fiftyone/core", () => ({
 vi.mock("@fiftyone/embeddings", () => ({}));
 vi.mock("@fiftyone/map", () => ({}));
 vi.mock(
-  "@fiftyone/mcap",
+  "@fiftyone/multimodal",
   () => {
-    mcapImportSpy();
+    multimodalImportSpy();
     return {};
   },
   { virtual: true }
@@ -53,9 +53,9 @@ vi.mock("./DatasetGridRendererFailover", () => ({
 }));
 
 describe("DatasetPage", () => {
-  it("loads the MCAP package on dataset pages", async () => {
+  it("loads the multimodal package on dataset pages", async () => {
     await import("./DatasetPage");
 
-    expect(mcapImportSpy).toHaveBeenCalledTimes(1);
+    expect(multimodalImportSpy).toHaveBeenCalledTimes(1);
   });
 });

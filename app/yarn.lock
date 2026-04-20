@@ -2443,7 +2443,7 @@ __metadata:
     "@fiftyone/analytics": "npm:*"
     "@fiftyone/components": "npm:*"
     "@fiftyone/core": "npm:*"
-    "@fiftyone/mcap": "npm:*"
+    "@fiftyone/multimodal": "npm:*"
     "@fiftyone/relay": "npm:*"
     "@fiftyone/state": "npm:*"
     "@fiftyone/utilities": "npm:*"
@@ -2878,9 +2878,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@fiftyone/mcap@npm:*, @fiftyone/mcap@workspace:packages/mcap":
+"@fiftyone/multimodal@npm:*, @fiftyone/multimodal@workspace:packages/mcap":
   version: 0.0.0-use.local
-  resolution: "@fiftyone/mcap@workspace:packages/mcap"
+  resolution: "@fiftyone/multimodal@workspace:packages/mcap"
   dependencies:
     "@fiftyone/playback": "workspace:^"
     "@fiftyone/plugins": "npm:*"

@@ -7,7 +7,7 @@ import {
 } from "@fiftyone/core";
 import "@fiftyone/embeddings";
 import "@fiftyone/map";
-import "@fiftyone/mcap";
+import "@fiftyone/multimodal";
 import { OperatorCore } from "@fiftyone/operators";
 import "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
