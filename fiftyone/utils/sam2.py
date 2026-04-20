@@ -42,6 +42,31 @@ class SegmentAnything2ImageModelConfig(fosam.SegmentAnythingModelConfig):
     pass
 
 
+class _SAM2TransformsProxy:
+    """Picklable stand-in for SAM2Transforms used in DataLoader worker processes.
+
+    SAM2Transforms contains a ``torch.jit.script`` Sequential that cannot be
+    pickled by the standard ForkingPickler. Workers only need the coordinate
+    math, which depends solely on the scalar ``resolution``.
+    """
+
+    def __init__(self, resolution):
+        self.resolution = resolution
+
+    def transform_boxes(self, boxes, normalize=False, orig_hw=None):
+        return self.transform_coords(
+            boxes.reshape(-1, 2, 2), normalize, orig_hw
+        )
+
+    def transform_coords(self, coords, normalize=False, orig_hw=None):
+        if normalize:
+            h, w = orig_hw
+            coords = coords.clone()
+            coords[..., 0] = coords[..., 0] / w
+            coords[..., 1] = coords[..., 1] / h
+        return coords * self.resolution
+
+
 class _SAM2Predictor(fosam._SAMPredictor):
     """Wrapper for ``sam2.sam2_image_predictor.SAM2ImagePredictor``.
 
@@ -57,6 +82,22 @@ class _SAM2Predictor(fosam._SAMPredictor):
             if hasattr(self.processor, "_transforms")
             else smip.SAM2Transforms(model.image_size, mask_threshold=0)
         )
+
+    def __getstate__(self):
+        return {
+            "resolution": self.sam_transforms.resolution,
+            "_image_id": self._image_id,
+        }
+
+    def __setstate__(self, state):
+        self._image_id = state["_image_id"]
+        # Reconstruct just enough for workers to call box/point transforms
+        class _Processor:
+            pass
+
+        self.processor = _Processor()
+        self.sam_transforms = _SAM2TransformsProxy(state["resolution"])
+        self.processor._transforms = self.sam_transforms
 
     def image_transform(self, img):
         """Transforms image for SAM2 model input.
