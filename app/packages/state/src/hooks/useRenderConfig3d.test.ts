@@ -2,9 +2,27 @@ import { renderHook } from "@testing-library/react-hooks";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ModalSample } from "../recoil/modal";
 import {
+  useActive3dSamplesMap,
+  useActive3dSlices,
+  useActiveDirect3dSlices,
+  useActiveFo3dSlice,
+  useAll3dSamplesMap,
+  useAll3dSlices,
+  useFo3dContent,
+  useHas3dSlice,
+  useHasFo3dSlice,
+  useHasMultiple3dSlices,
+  useInteraction3dSample,
+  useInteraction3dSlice,
+  useIs3dPinned,
+  useIs3dVisible,
+  useIs3dVisibleSetting,
+  useNon3dSlices,
+  usePinned3dSlice,
+  useRealFo3dSlices,
   useRenderConfig3dActions,
   useRenderConfig3dImperativeState,
-  useRenderConfig3dState,
+  useScene3dSample,
 } from "./useRenderConfig3d";
 
 const mockInternals = vi.hoisted(() => ({
@@ -163,7 +181,27 @@ const setState = (values: Record<string, unknown>) => {
 };
 
 const useRenderConfig3dHooks = () => {
-  const state = useRenderConfig3dState();
+  const state = {
+    is3dVisible: useIs3dVisible(),
+    is3dVisibleSetting: useIs3dVisibleSetting(),
+    isPinned: useIs3dPinned(),
+    has3dSlice: useHas3dSlice(),
+    hasFo3dSlice: useHasFo3dSlice(),
+    pinnedSlice: usePinned3dSlice(),
+    activeSlices: useActive3dSlices(),
+    allSlices: useAll3dSlices(),
+    non3dSlices: useNon3dSlices(),
+    hasMultipleSlices: useHasMultiple3dSlices(),
+    realFo3dSlices: useRealFo3dSlices(),
+    activeFo3dSlice: useActiveFo3dSlice(),
+    activeDirectSlices: useActiveDirect3dSlices(),
+    interactionSample: useInteraction3dSample(),
+    interactionSlice: useInteraction3dSlice(),
+    sceneSample: useScene3dSample(),
+    fo3dContent: useFo3dContent(),
+    activeSampleMap: useActive3dSamplesMap(),
+    allSampleMap: useAll3dSamplesMap(),
+  };
   const actions = useRenderConfig3dActions();
   const query = useRenderConfig3dImperativeState();
 
@@ -193,7 +231,7 @@ describe("useRenderConfig3d split hooks", () => {
     });
   });
 
-  it("returns the public 3d render config state bundle", () => {
+  it("returns the focused 3d render config selectors", () => {
     const interactionSample = buildModalSample("lidar-id", "/tmp/lidar.pcd");
     const sceneSample = buildModalSample("scene-id", "/tmp/scene.fo3d");
 
@@ -207,16 +245,45 @@ describe("useRenderConfig3d split hooks", () => {
       interaction3dSlice: "lidar",
       sceneSample,
       fo3dContent: { name: "scene" },
+      active3dSlicesToSampleMap: {
+        lidar: interactionSample,
+        scene: sceneSample,
+      },
+      all3dSlicesToSampleMap: {
+        lidar: interactionSample,
+        scene: sceneSample,
+      },
     });
 
     const { result } = renderHook(() => useRenderConfig3dHooks());
 
+    expect(result.current.state.is3dVisible).toBe(true);
+    expect(result.current.state.is3dVisibleSetting).toBe(true);
+    expect(result.current.state.isPinned).toBe(true);
+    expect(result.current.state.has3dSlice).toBe(true);
+    expect(result.current.state.hasFo3dSlice).toBe(false);
     expect(result.current.state.pinnedSlice).toBe("lidar");
+    expect(result.current.state.activeSlices).toEqual(["lidar", "scene"]);
+    expect(result.current.state.allSlices).toEqual([
+      "lidar",
+      "scene",
+      "scene-b",
+    ]);
+    expect(result.current.state.non3dSlices).toEqual(["image"]);
+    expect(result.current.state.hasMultipleSlices).toBe(true);
+    expect(result.current.state.realFo3dSlices).toEqual(["scene", "scene-b"]);
     expect(result.current.state.activeFo3dSlice).toBe("scene");
     expect(result.current.state.activeDirectSlices).toEqual(["lidar"]);
     expect(result.current.state.interactionSample).toBe(interactionSample);
+    expect(result.current.state.interactionSlice).toBe("lidar");
     expect(result.current.state.sceneSample).toBe(sceneSample);
     expect(result.current.state.fo3dContent).toEqual({ name: "scene" });
+    expect(result.current.state.activeSampleMap).toMatchObject({
+      scene: sceneSample,
+    });
+    expect(result.current.state.allSampleMap).toMatchObject({
+      scene: sceneSample,
+    });
   });
 
   it("exposes imperative querying via query.getIsPinned", async () => {

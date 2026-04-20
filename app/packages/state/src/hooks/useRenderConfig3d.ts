@@ -16,47 +16,136 @@ import * as internals from "../recoil/renderConfig3d.atoms";
 type RenderConfig3dSampleMap = Record<string, ModalSample>;
 
 /**
- * Derived 3D modal state exposed by {@link useRenderConfig3dState}.
+ * Returns the active 3D slice names without subscribing to the full render state.
  */
-export type RenderConfig3dState = {
-  /** Active non-FO3D 3D slices rendered alongside the scene. */
-  activeDirectSlices: string[];
-  /** Active FO3D slice currently driving the scene, if one is selected. */
-  activeFo3dSlice: string | null;
-  /** Resolved samples for the currently active 3D slices. */
-  activeSampleMap: RenderConfig3dSampleMap;
-  /** Slice names currently participating in 3D rendering. */
-  activeSlices: string[];
-  /** Resolved samples for every available 3D slice in the current modal context. */
-  allSampleMap: RenderConfig3dSampleMap;
-  /** All available 3D slice names. */
-  allSlices: string[];
-  /** Parsed FO3D scene content cached for the active scene sample. */
-  fo3dContent: unknown | null;
-  /** Whether the current modal context exposes any 3D slice. */
-  has3dSlice: boolean;
-  /** Whether any available 3D slice resolves to an FO3D asset. */
-  hasFo3dSlice: boolean;
-  /** Whether more than one 3D slice is available. */
-  hasMultipleSlices: boolean;
-  /** Representative sample used for 3D interaction-driven behavior. */
-  interactionSample: ModalSample;
-  /** Slice corresponding to {@link RenderConfig3dState.interactionSample}. */
-  interactionSlice: string | null;
-  /** Whether the 3D viewer should currently be shown. */
-  is3dVisible: boolean;
-  /** Persisted user preference for showing the 3D viewer. */
-  is3dVisibleSetting: boolean;
-  /** Whether the 3D selection is pinned to a specific slice. */
-  isPinned: boolean;
-  /** All available non-3D slice names. */
-  non3dSlices: string[];
-  /** Slice name currently pinned for 3D rendering, if any. */
-  pinnedSlice: string | null;
-  /** Available 3D slices whose media resolves to FO3D files. */
-  realFo3dSlices: string[];
-  /** Sample currently used to render the visible 3D scene. */
-  sceneSample: ModalSample;
+export const useActive3dSlices = (): string[] => {
+  return useRecoilValue(internals.active3dSlices);
+};
+
+/**
+ * Returns the resolved samples for the active 3D slices only.
+ */
+export const useActive3dSamplesMap = (): RenderConfig3dSampleMap => {
+  return useRecoilValue(internals.active3dSlicesToSampleMap);
+};
+
+/**
+ * Returns whether the 3D viewer should currently be shown.
+ */
+export const useIs3dVisible = (): boolean => {
+  return useRecoilValue(internals.groupMediaIs3dVisible);
+};
+
+/**
+ * Returns the persisted user preference for showing the 3D viewer.
+ */
+export const useIs3dVisibleSetting = (): boolean => {
+  return useRecoilValue(internals.groupMedia3dVisibleSetting);
+};
+
+/**
+ * Returns whether the current 3D selection is pinned.
+ */
+export const useIs3dPinned = (): boolean => {
+  return useRecoilValue(internals.is3dPinned);
+};
+
+/**
+ * Returns whether the current modal context exposes any 3D slice.
+ */
+export const useHas3dSlice = (): boolean => {
+  return useRecoilValue(internals.has3dSlice);
+};
+
+/**
+ * Returns whether any available 3D slice resolves to an FO3D asset.
+ */
+export const useHasFo3dSlice = (): boolean => {
+  return useRecoilValue(internals.hasFo3dSlice);
+};
+
+/**
+ * Returns the slice currently pinned for 3D rendering, if any.
+ */
+export const usePinned3dSlice = (): string | null => {
+  return useRecoilValue(internals.pinned3DSampleSlice);
+};
+
+/**
+ * Returns every available 3D slice in the current modal context.
+ */
+export const useAll3dSlices = (): string[] => {
+  return useRecoilValue(internals.all3dSlices);
+};
+
+/**
+ * Returns every available non-3D slice in the current modal context.
+ */
+export const useNon3dSlices = (): string[] => {
+  return useRecoilValue(internals.allNon3dSlices);
+};
+
+/**
+ * Returns whether multiple 3D slices are available.
+ */
+export const useHasMultiple3dSlices = (): boolean => {
+  return useRecoilValue(internals.hasMultiple3dSlices);
+};
+
+/**
+ * Returns the subset of 3D slices whose media resolves to FO3D assets.
+ */
+export const useRealFo3dSlices = (): string[] => {
+  return useRecoilValue(internals.realFo3dSlices);
+};
+
+/**
+ * Returns the active FO3D slice that currently drives the scene, if any.
+ */
+export const useActiveFo3dSlice = (): string | null => {
+  return useRecoilValue(internals.activeFo3dSlice);
+};
+
+/**
+ * Returns the active non-FO3D 3D slices rendered alongside the scene.
+ */
+export const useActiveDirect3dSlices = (): string[] => {
+  return useRecoilValue(internals.activeNonFo3d3dSlices);
+};
+
+/**
+ * Returns the sample currently used for interaction-driven behavior.
+ */
+export const useInteraction3dSample = (): ModalSample => {
+  return useRecoilValue(internals.interaction3dSample);
+};
+
+/**
+ * Returns the slice corresponding to the current interaction sample.
+ */
+export const useInteraction3dSlice = (): string | null => {
+  return useRecoilValue(internals.interaction3dSlice);
+};
+
+/**
+ * Returns the sample currently used to render the visible 3D scene.
+ */
+export const useScene3dSample = (): ModalSample => {
+  return useRecoilValue(internals.sceneSample);
+};
+
+/**
+ * Returns the parsed FO3D content cached for the active scene sample.
+ */
+export const useFo3dContent = (): unknown | null => {
+  return useRecoilValue(internals.fo3dContent);
+};
+
+/**
+ * Returns resolved samples for every available 3D slice.
+ */
+export const useAll3dSamplesMap = (): RenderConfig3dSampleMap => {
+  return useRecoilValue(internals.all3dSlicesToSampleMap);
 };
 
 /**
@@ -85,78 +174,6 @@ export type RenderConfig3dActions = {
 export type RenderConfig3dImperativeState = {
   /** Resolves the latest pinned status */
   getIsPinned: () => Promise<boolean>;
-};
-
-/**
- * Suspense-compatible 3D render state for React rendering.
- */
-export const useRenderConfig3dState = (): RenderConfig3dState => {
-  const is3dVisible = useRecoilValue(internals.groupMediaIs3dVisible);
-  const is3dVisibleSetting = useRecoilValue(
-    internals.groupMedia3dVisibleSetting
-  );
-  const isPinned = useRecoilValue(internals.is3dPinned);
-  const has3dSlice = useRecoilValue(internals.has3dSlice);
-  const hasFo3dSlice = useRecoilValue(internals.hasFo3dSlice);
-  const pinnedSlice = useRecoilValue(internals.pinned3DSampleSlice);
-  const activeSlices = useRecoilValue(internals.active3dSlices);
-  const allSlices = useRecoilValue(internals.all3dSlices);
-  const non3dSlices = useRecoilValue(internals.allNon3dSlices);
-  const hasMultipleSlices = useRecoilValue(internals.hasMultiple3dSlices);
-  const realFo3dSlices = useRecoilValue(internals.realFo3dSlices);
-  const activeFo3dSlice = useRecoilValue(internals.activeFo3dSlice);
-  const activeDirectSlices = useRecoilValue(internals.activeNonFo3d3dSlices);
-  const interactionSample = useRecoilValue(internals.interaction3dSample);
-  const interactionSlice = useRecoilValue(internals.interaction3dSlice);
-  const sceneSample = useRecoilValue(internals.sceneSample);
-  const fo3dContent = useRecoilValue(internals.fo3dContent);
-  const activeSampleMap = useRecoilValue(internals.active3dSlicesToSampleMap);
-  const allSampleMap = useRecoilValue(internals.all3dSlicesToSampleMap);
-
-  return useMemo<RenderConfig3dState>(
-    () => ({
-      is3dVisible,
-      is3dVisibleSetting,
-      isPinned,
-      has3dSlice,
-      hasFo3dSlice,
-      pinnedSlice,
-      activeSlices,
-      allSlices,
-      non3dSlices,
-      hasMultipleSlices,
-      realFo3dSlices,
-      activeFo3dSlice,
-      activeDirectSlices,
-      activeSampleMap,
-      allSampleMap,
-      interactionSample,
-      interactionSlice,
-      sceneSample,
-      fo3dContent,
-    }),
-    [
-      activeDirectSlices,
-      activeFo3dSlice,
-      activeSampleMap,
-      activeSlices,
-      allSampleMap,
-      allSlices,
-      fo3dContent,
-      has3dSlice,
-      hasFo3dSlice,
-      hasMultipleSlices,
-      interactionSample,
-      interactionSlice,
-      is3dVisible,
-      is3dVisibleSetting,
-      isPinned,
-      non3dSlices,
-      pinnedSlice,
-      realFo3dSlices,
-      sceneSample,
-    ]
-  );
 };
 
 /**

@@ -2,8 +2,9 @@
  * Internal 3D render config atoms and selectors.
  *
  * Keep this module unexported from package barrels. React consumers should use
- * `useRenderConfig3dState`, `useRenderConfig3dActions`, and
- * `useRenderConfig3dImperativeState` from `src/hooks/useRenderConfig3d.ts`.
+ * the focused hooks, `useRenderConfig3dActions`,
+ * and `useRenderConfig3dImperativeState` from
+ * `src/hooks/useRenderConfig3d.ts`.
  */
 import { is3d, isFo3dSamplePath, setContains3d } from "@fiftyone/utilities";
 import { get as getPath } from "lodash";
