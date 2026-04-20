@@ -14,8 +14,6 @@ import {
   clearTransformStateSelector,
   currentHoveredPointAtom,
   isActivelySegmentingSelector,
-  isCurrentlyTransformingAtom,
-  selectedPolylineVertexAtom,
 } from "../state";
 import { useZoomToSelected } from "./use-zoom-to-selected";
 
@@ -66,8 +64,6 @@ export const useFo3dInteractionLifecycle = ({
         set(activeNodeAtom, null);
         set(currentHoveredPointAtom, null);
         set(clearTransformStateSelector, null);
-        set(selectedPolylineVertexAtom, null);
-        set(isCurrentlyTransformingAtom, false);
         setAutoRotateRef.current(false);
       },
     []
