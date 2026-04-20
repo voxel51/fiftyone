@@ -131,11 +131,21 @@ from .core.metadata import (
     ImageMetadata,
     VideoMetadata,
     SceneMetadata,
-    McapMetadata,
+    MultimodalFrameDescriptor,
+    MultimodalLocationTopicDescriptor,
+    MultimodalMetadata,
+    MultimodalSourceFingerprint,
+    MultimodalStreamDescriptor,
+    MultimodalTimeRange,
+    MultimodalTransformEdge,
 )
 from .core.rendering import (
     RenderingPlan,
-    McapRenderingPlan,
+    MultimodalRenderingPlan,
+    PanelFrameConfig,
+    PanelPlan,
+    PanelSceneConfig,
+    SyncConfig,
 )
 from .core.models import (
     apply_model,

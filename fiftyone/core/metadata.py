@@ -313,47 +313,89 @@ class SceneMetadata(Metadata):
         raise ValueError("Scene URLs are not currently supported")
 
 
-class McapTimeRange(DynamicEmbeddedDocument):
-    """Nanosecond time bounds for an MCAP scene or stream."""
+class MultimodalTimeRange(DynamicEmbeddedDocument):
+    """Nanosecond time bounds for a multimodal scene or stream."""
 
     start_ns = fof.IntField()
     end_ns = fof.IntField()
 
 
-class McapSourceFingerprint(DynamicEmbeddedDocument):
-    """Cheap source fingerprint used to detect stale MCAP scene state."""
+class McapTimeRange(MultimodalTimeRange):
+    """Legacy MCAP alias for :class:`MultimodalTimeRange`."""
+
+
+class MultimodalSourceFingerprint(DynamicEmbeddedDocument):
+    """Cheap source fingerprint used to detect stale multimodal state."""
 
     path = fof.StringField()
     size_bytes = fof.IntField()
     mtime_ns = fof.IntField()
 
 
-class McapStreamMetadata(DynamicEmbeddedDocument):
-    """Metadata describing a supported MCAP stream."""
+class MultimodalStreamDescriptor(DynamicEmbeddedDocument):
+    """Metadata describing an inventoried multimodal stream."""
 
     stream_id = fof.StringField()
     topic = fof.StringField()
     schema_name = fof.StringField()
     schema_encoding = fof.StringField()
     message_encoding = fof.StringField()
-    role = fof.StringField()
+    kind = fof.StringField()
+    frame_id = fof.StringField(null=True)
+    affordances = fof.ListField(fof.StringField())
+    compatible_panels = fof.ListField(fof.StringField())
     channel_id = fof.IntField()
     schema_id = fof.IntField()
-    time_range = fof.EmbeddedDocumentField(McapTimeRange)
+    time_range = fof.EmbeddedDocumentField(MultimodalTimeRange)
     message_count = fof.IntField(null=True)
 
 
-class McapMetadata(Metadata):
-    """Metadata stored for an MCAP-backed sample."""
+class MultimodalFrameDescriptor(DynamicEmbeddedDocument):
+    """Metadata describing one discovered multimodal frame id."""
 
-    source_format = fof.StringField(default="mcap")
+    frame_id = fof.StringField()
+
+
+class MultimodalTransformEdge(DynamicEmbeddedDocument):
+    """Metadata describing one discovered transform edge."""
+
+    topic = fof.StringField()
+    parent_frame_id = fof.StringField()
+    child_frame_id = fof.StringField()
+    is_static = fof.BooleanField(default=False)
+
+
+class MultimodalLocationTopicDescriptor(DynamicEmbeddedDocument):
+    """Metadata describing one discovered location/follow topic."""
+
+    stream_id = fof.StringField()
+    topic = fof.StringField()
+    mode = fof.StringField()
+    frame_id = fof.StringField(null=True)
+
+
+class MultimodalMetadata(Metadata):
+    """Metadata stored for a multimodal-backed sample."""
+
+    source_kind = fof.StringField(default="mcap")
     catalog_version = fof.StringField()
     media_field = fof.StringField()
     scene_id = fof.StringField()
     source_path = fof.StringField()
-    time_range = fof.EmbeddedDocumentField(McapTimeRange)
-    source_fingerprint = fof.EmbeddedDocumentField(McapSourceFingerprint)
-    streams = fof.ListField(fof.EmbeddedDocumentField(McapStreamMetadata))
+    time_range = fof.EmbeddedDocumentField(MultimodalTimeRange)
+    source_fingerprint = fof.EmbeddedDocumentField(MultimodalSourceFingerprint)
+    streams = fof.ListField(
+        fof.EmbeddedDocumentField(MultimodalStreamDescriptor)
+    )
+    frames = fof.ListField(
+        fof.EmbeddedDocumentField(MultimodalFrameDescriptor)
+    )
+    transforms = fof.ListField(
+        fof.EmbeddedDocumentField(MultimodalTransformEdge)
+    )
+    location_topics = fof.ListField(
+        fof.EmbeddedDocumentField(MultimodalLocationTopicDescriptor)
+    )
 
     @classmethod
     def build_for(
@@ -363,22 +405,33 @@ class McapMetadata(Metadata):
         media_path,
         time_range,
         streams,
-        catalog_version="mcap-poc-v1",
+        frames=None,
+        transforms=None,
+        location_topics=None,
+        source_kind="mcap",
+        catalog_version="multimodal-catalog-v1",
         mime_type="application/octet-stream",
     ):
-        """Builds :class:`McapMetadata` for the given MCAP file.
+        """Builds :class:`MultimodalMetadata` for the given source.
 
         Args:
             scene_id: the resolved scene identifier
-            media_field: the sample field that references the MCAP
-            media_path: the resolved MCAP path
-            time_range: an :class:`McapTimeRange`
-            streams: a list of :class:`McapStreamMetadata`
-            catalog_version ("mcap-poc-v1"): the catalog schema version
+            media_field: the sample field that references the source file
+            media_path: the resolved multimodal source path
+            time_range: a :class:`MultimodalTimeRange`
+            streams: a list of :class:`MultimodalStreamDescriptor`
+            frames (None): a list of :class:`MultimodalFrameDescriptor`
+            transforms (None): a list of
+                :class:`MultimodalTransformEdge`
+            location_topics (None): a list of
+                :class:`MultimodalLocationTopicDescriptor`
+            source_kind ("mcap"): the built-in source kind
+            catalog_version ("multimodal-catalog-v1"): the catalog schema
+                version
             mime_type ("application/octet-stream"): the MIME type to store
 
         Returns:
-            an :class:`McapMetadata`
+            a :class:`MultimodalMetadata`
         """
         stat = os.stat(media_path)
         size_bytes = int(stat.st_size)
@@ -386,19 +439,46 @@ class McapMetadata(Metadata):
         return cls(
             size_bytes=size_bytes,
             mime_type=mime_type,
-            source_format="mcap",
+            source_kind=source_kind,
             catalog_version=catalog_version,
             media_field=media_field,
             scene_id=scene_id,
             source_path=media_path,
             time_range=time_range,
-            source_fingerprint=McapSourceFingerprint(
+            source_fingerprint=MultimodalSourceFingerprint(
                 path=media_path,
                 size_bytes=size_bytes,
                 mtime_ns=int(stat.st_mtime_ns),
             ),
             streams=streams,
+            frames=frames or [],
+            transforms=transforms or [],
+            location_topics=location_topics or [],
         )
+
+
+class McapSourceFingerprint(MultimodalSourceFingerprint):
+    """Legacy MCAP alias for :class:`MultimodalSourceFingerprint`."""
+
+
+class McapStreamMetadata(MultimodalStreamDescriptor):
+    """Legacy MCAP alias for :class:`MultimodalStreamDescriptor`."""
+
+
+class McapFrameDescriptor(MultimodalFrameDescriptor):
+    """Legacy MCAP alias for :class:`MultimodalFrameDescriptor`."""
+
+
+class McapTransformEdgeMetadata(MultimodalTransformEdge):
+    """Legacy MCAP alias for :class:`MultimodalTransformEdge`."""
+
+
+class McapLocationTopicMetadata(MultimodalLocationTopicDescriptor):
+    """Legacy MCAP alias for :class:`MultimodalLocationTopicDescriptor`."""
+
+
+class McapMetadata(MultimodalMetadata):
+    """Legacy MCAP alias for :class:`MultimodalMetadata`."""
 
 
 def _parse_assets(
