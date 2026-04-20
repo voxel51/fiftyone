@@ -16,7 +16,7 @@ import { useRecoilState } from "recoil";
  */
 export function useGroupAnnotationModeController() {
   const mode = useModalMode();
-  const { is3dVisibleSetting: threeDVisible } = fos.useRenderConfig3dState();
+  const threeDVisible = fos.useIs3dVisibleSetting();
   const { setVisible } = fos.useRenderConfig3dActions();
   const [modalGroupSliceValue, setModalGroupSliceValue] = useRecoilState(
     fos.modalGroupSlice

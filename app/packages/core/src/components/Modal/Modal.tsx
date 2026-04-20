@@ -146,7 +146,7 @@ const Modal = () => {
   const pointerDownTargetRef = useRef<EventTarget | null>(null);
   const { enabled: isAnnotationEnabled } = useRecoilValue(canAnnotate);
   const clearModal = fos.useClearModal();
-  const { is3dVisible } = fos.useRenderConfig3dState();
+  const is3dVisible = fos.useIs3dVisible();
   const groupSlice = useRecoilValue(fos.groupSlice);
   const modalGroupSlice = useRecoilValue(fos.modalGroupSlice);
   const modalSelector = useRecoilValue(fos.modalSelector);

@@ -9,11 +9,7 @@ import {
   useCurrent3dAnnotationMode,
   useSetCurrent3dAnnotationMode,
 } from "@fiftyone/looker-3d/src/state/accessors";
-import {
-  is3DDataset,
-  isPatchesView,
-  useRenderConfig3dState,
-} from "@fiftyone/state";
+import { is3DDataset, isPatchesView, useIs3dPinned } from "@fiftyone/state";
 import {
   DETECTION,
   DETECTIONS,
@@ -219,12 +215,8 @@ const Classification = () => {
 };
 
 const Detection = () => {
-  const {
-    activateDetectionMode,
-    detectionModeActive,
-    disabled,
-    tooltip,
-  } = useDetectionMode();
+  const { activateDetectionMode, detectionModeActive, disabled, tooltip } =
+    useDetectionMode();
   const deactivateAll = useDeactivateAll();
 
   return (
@@ -421,12 +413,10 @@ const Actions = () => {
   // This checks if media type of the dataset resolved to 3d
   const is3dDataset = useRecoilValue(is3DDataset);
   // This checks if a 3d sample is pinned - is true when media type is `group` with a 3d slice pinned
-  const { isPinned: is3dSamplePinned } = useRenderConfig3dState();
+  const is3dSamplePinned = useIs3dPinned();
 
-  const {
-    classificationModeActive,
-    deactivateClassificationMode,
-  } = useClassificationMode();
+  const { classificationModeActive, deactivateClassificationMode } =
+    useClassificationMode();
   const { detectionModeActive, deactivateDetectionMode } = useDetectionMode();
   const current3dAnnotationMode = useCurrent3dAnnotationMode();
   const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();

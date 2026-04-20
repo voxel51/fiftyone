@@ -8,7 +8,8 @@ import { GroupSampleWrapper } from "./GroupSampleWrapper";
 import { GroupSuspense } from "./GroupSuspense";
 
 const Sample3dWrapper = () => {
-  const { interactionSample, isPinned } = fos.useRenderConfig3dState();
+  const interactionSample = fos.useInteraction3dSample();
+  const isPinned = fos.useIs3dPinned();
   const actions = fos.useRenderConfig3dActions();
 
   const hover = fos.useHoveredSample(interactionSample.sample);
@@ -31,8 +32,9 @@ const Sample3dWrapper = () => {
 };
 
 export default () => {
-  const { activeSlices, allSampleMap, pinnedSlice } =
-    fos.useRenderConfig3dState();
+  const activeSlices = fos.useActive3dSlices();
+  const allSampleMap = fos.useAll3dSamplesMap();
+  const pinnedSlice = fos.usePinned3dSlice();
   const actions = fos.useRenderConfig3dActions();
   const modalId = useRecoilValue(fos.modalSampleId);
   const sampleMapKey = useMemo(
