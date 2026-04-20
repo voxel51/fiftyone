@@ -134,10 +134,10 @@ export type LighterEventGroup = {
   "lighter:keypoint-point-moved": {
     id: string;
     pointId: string;
-    /** Absolute (world-space) coordinates before the move */
-    worldFrom: Point;
-    /** Absolute (world-space) coordinates after the move */
-    worldTo: Point;
+    /** Relative coordinates before the move */
+    from: Point;
+    /** Relative coordinates after the move */
+    to: Point;
   };
   /** Emitted when a keypoint is deleted */
   "lighter:keypoint-point-deleted": {

@@ -38,6 +38,8 @@ export interface ToolsState extends ToolsContext {
   addNegativePoint(descriptor: PointDescriptor): void;
   /** Removes a negative point prompt by its ID. */
   removeNegativePoint(id: string): void;
+  /** Updates a point prompt. */
+  updatePoint(descriptor: PointDescriptor): void;
   /** Replaces the full set of ROI prompts. */
   setRegionsOfInterest(rois: ROI[]): void;
   /** Sets the free-text prompt. */
@@ -113,6 +115,29 @@ export const useToolsState = (): ToolsState => {
     [setNegativePoints]
   );
 
+  const updatePoint = useCallback(
+    (descriptor: PointDescriptor) => {
+      const findIndex = (arr: PointDescriptor[]): number =>
+        arr.findIndex((p) => p.id === descriptor.id);
+
+      const replacePoint = (arr: PointDescriptor[]): PointDescriptor[] => {
+        const newArr = [...arr];
+        const idx = findIndex(newArr);
+        if (idx >= 0) {
+          newArr.splice(idx, 1, descriptor);
+        }
+        return newArr;
+      };
+
+      if (findIndex(positivePoints) >= 0) {
+        setPositivePoints((prev) => replacePoint(prev));
+      } else {
+        setNegativePoints((prev) => replacePoint(prev));
+      }
+    },
+    [positivePoints, setNegativePoints, setPositivePoints]
+  );
+
   const reset = useCallback(() => {
     setPositivePoints([]);
     setNegativePoints([]);
@@ -136,6 +161,7 @@ export const useToolsState = (): ToolsState => {
       removePositivePoint,
       addNegativePoint,
       removeNegativePoint,
+      updatePoint,
       setRegionsOfInterest,
       setTextPrompt,
       reset,
@@ -150,6 +176,7 @@ export const useToolsState = (): ToolsState => {
       removePositivePoint,
       addNegativePoint,
       removeNegativePoint,
+      updatePoint,
       setRegionsOfInterest,
       setTextPrompt,
       reset,

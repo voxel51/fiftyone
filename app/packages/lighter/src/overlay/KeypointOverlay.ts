@@ -559,12 +559,11 @@ export class KeypointOverlay
     this.renderer?.enableZoomPan();
 
     if (from && to && (from[0] !== to[0] || from[1] !== to[1])) {
-      const absPoint = this.relativePointToAbsolute(to);
       this.eventBus.dispatch("lighter:keypoint-point-moved", {
         id: this.id,
         pointId: entry.id,
-        worldFrom: this.relativePointToAbsolute(from),
-        worldTo: absPoint,
+        from: { x: from[0], y: from[1] },
+        to: { x: to[0], y: to[1] },
       });
     }
 

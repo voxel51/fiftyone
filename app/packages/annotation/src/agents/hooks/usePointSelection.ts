@@ -24,6 +24,10 @@ export interface PointSelection {
  * point selection is deactivated.
  */
 const keypointOverlayIdAtom = atom<string | null>(null);
+/**
+ * Maintains a boolean flag to indicate whether the point selection mode is
+ * currently active.
+ */
 const pointSelectionActiveAtom = atom(false);
 
 /**
