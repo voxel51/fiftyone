@@ -540,6 +540,14 @@ export class InteractionManager {
     }
   };
 
+  private clearPendingAction = (event: PointerEvent) => {
+    this.pendingAction = undefined;
+    this.renderer.enableZoomPan();
+    this.canvas.releasePointerCapture(event.pointerId);
+    this.clickStartPoint = undefined;
+    this.clickStartTime = 0;
+  };
+
   private detectionModeQuit = (event: PointerEvent): boolean => {
     if (!this.pendingAction) return false;
 
@@ -547,11 +555,7 @@ export class InteractionManager {
       eventId: generateUUID(),
     });
 
-    this.pendingAction = undefined;
-    this.renderer.enableZoomPan();
-    this.canvas.releasePointerCapture(event.pointerId);
-    this.clickStartPoint = undefined;
-    this.clickStartTime = 0;
+    this.clearPendingAction(event);
 
     return true;
   };
@@ -561,11 +565,7 @@ export class InteractionManager {
 
     this.selectionManager.clearSelection();
 
-    this.pendingAction = undefined;
-    this.renderer.enableZoomPan();
-    this.canvas.releasePointerCapture(event.pointerId);
-    this.clickStartPoint = undefined;
-    this.clickStartTime = 0;
+    this.clearPendingAction(event);
 
     return true;
   };
@@ -583,14 +583,29 @@ export class InteractionManager {
     }
 
     if (segmentationModeBridge.isActive()) {
+      // No brush selected — click exits segmentation mode entirely
+      if (segmentationModeBridge.getActiveTool() === "select") {
+        this.eventBus.dispatch("lighter:segmentation-mode-quit", {
+          eventId: generateUUID(),
+        });
+
+        this.clearPendingAction(event);
+
+        return true;
+      }
+
+      // a detection is being edited but this click is outside its bounds
+      // close out the current detection
+      if (this.selectionManager.getSelectionCount() >= 0) {
+        return this.segmentationEditDone(event);
+      }
+
       // if we are not currently editing
       // the click should create a new detection
-      // else quit editing the current detection
+      // return false so the rest of handlePointerUp executes
       if (this.selectionManager.getSelectionCount() === 0) {
         this.segmentationModePaint(event);
         return false;
-      } else {
-        return this.segmentationEditDone(event);
       }
     }
 

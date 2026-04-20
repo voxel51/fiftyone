@@ -254,6 +254,28 @@ export const useSegmentationMode = () => {
     )
   );
 
+  /**
+   * Handles the `lighter:segmentation-mode-quit` event fired by
+   * `InteractionManager` when the user clicks with the "select" tool active.
+   * Deactivates segmentation mode entirely.
+   */
+  useEventHandler(
+    "lighter:segmentation-mode-quit",
+    useCallback(
+      (payload) => {
+        if (
+          !segmentationModeActive ||
+          !claimEvent("segmentation-mode-exit", payload.eventId)
+        ) {
+          return;
+        }
+
+        deactivateSegmentationMode();
+      },
+      [claimEvent, deactivateSegmentationMode, segmentationModeActive]
+    )
+  );
+
   return useMemo(
     () => ({
       // State (read-only)
