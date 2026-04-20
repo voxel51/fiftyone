@@ -35,6 +35,7 @@ describe("compressed image decoder", () => {
     const decoded = decodeCompressedImagePayload(payload);
 
     expect(decoded.format).toBe("jpeg");
+    expect(decoded.frameId).toBe("camera");
     expect(decoded.compressedBytes).toEqual(Uint8Array.from([1, 2, 3, 4]));
   });
 

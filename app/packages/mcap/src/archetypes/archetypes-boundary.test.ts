@@ -45,7 +45,10 @@ describe("archetypes boundary", () => {
           continue;
         }
 
-        expect(specifier.startsWith("@fiftyone/"), specifier).toBe(false);
+        expect(specifier.startsWith("@fiftyone/multimodal"), specifier).toBe(
+          false
+        );
+        expect(specifier.startsWith("@fiftyone/mcap"), specifier).toBe(false);
         expect(specifier.includes("/mcap"), specifier).toBe(false);
       }
     }

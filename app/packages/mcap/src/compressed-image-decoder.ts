@@ -14,6 +14,9 @@ int32 sec
 uint32 nanosec`;
 
 type CompressedImageMessage = {
+  header: {
+    frame_id: string;
+  };
   format: string;
   data: Uint8Array;
 };
@@ -22,29 +25,31 @@ const compressedImageReader = new MessageReader<CompressedImageMessage>(
   parse(COMPRESSED_IMAGE_DEFINITION, { ros2: true })
 );
 
-/** Worker request payload for one raw `CompressedImage` MCAP message. */
-export type McapCompressedImageDecodeRequest = {
+/** Worker request payload for one raw `CompressedImage` Multimodal message. */
+export type MultimodalCompressedImageDecodeRequest = {
   messageId: string;
   payload: ArrayBuffer;
 };
 
 /** Worker response payload for one decoded `CompressedImage` message. */
-export type McapCompressedImageDecodeResponse = {
+export type MultimodalCompressedImageDecodeResponse = {
   messageId: string;
   format: string;
+  frameId: string;
   compressedBytes: Uint8Array;
 };
 
 /** Decodes one ROS2 CDR `sensor_msgs/msg/CompressedImage` payload. */
 export function decodeCompressedImagePayload(
   payload: Uint8Array
-): McapCompressedImageDecodeResponse {
+): MultimodalCompressedImageDecodeResponse {
   const message =
     compressedImageReader.readMessage<CompressedImageMessage>(payload);
 
   return {
     messageId: "",
     format: message.format || "",
+    frameId: message.header?.frame_id || "",
     compressedBytes:
       message.data instanceof Uint8Array
         ? message.data

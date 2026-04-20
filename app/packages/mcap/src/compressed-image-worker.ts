@@ -1,11 +1,11 @@
 import {
   decodeCompressedImagePayload,
-  type McapCompressedImageDecodeRequest,
+  type MultimodalCompressedImageDecodeRequest,
 } from "./compressed-image-decoder";
 
 type WorkerRequest = {
   requestId: number;
-  request: McapCompressedImageDecodeRequest;
+  request: MultimodalCompressedImageDecodeRequest;
 };
 
 type WorkerSuccessResponse = {
@@ -14,6 +14,7 @@ type WorkerSuccessResponse = {
   result: {
     messageId: string;
     format: string;
+    frameId: string;
     compressedBytes: ArrayBuffer;
   };
 };
@@ -41,6 +42,7 @@ workerContext.onmessage = (event: MessageEvent<WorkerRequest>): void => {
       result: {
         messageId: request.messageId,
         format: decoded.format,
+        frameId: decoded.frameId,
         compressedBytes: compressedBytes.buffer,
       },
     };

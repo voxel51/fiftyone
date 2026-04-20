@@ -1,11 +1,6 @@
+import { TexturedImageView } from "@fiftyone/playback/experimental/views/TexturedImageView";
 import React from "react";
 import type { Image2dViewProps } from "./types";
-
-const IMAGE_STYLES: React.CSSProperties = {
-  width: "100%",
-  height: "100%",
-  display: "block",
-};
 
 /** Pure visual image surface for render-ready 2D frames. */
 export function Image2dView({
@@ -18,14 +13,11 @@ export function Image2dView({
   }
 
   return (
-    <img
+    <TexturedImageView
       alt={alt}
-      data-testid="image2d-view"
+      objectFit={objectFit}
       src={frame.src}
-      style={{
-        ...IMAGE_STYLES,
-        objectFit,
-      }}
+      testId="image2d-view"
     />
   );
 }

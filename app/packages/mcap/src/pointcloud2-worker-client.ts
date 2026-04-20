@@ -1,13 +1,13 @@
 import type { Points3dFrame } from "./archetypes";
 import type {
-  McapPointCloud2DecodeRequest,
-  McapPointCloud2DecodeResponse,
+  MultimodalPointCloud2DecodeRequest,
+  MultimodalPointCloud2DecodeResponse,
 } from "./pointcloud2-decoder";
 import { decodePointCloud2Payload } from "./pointcloud2-decoder";
 import PointCloud2Worker from "./pointcloud2-worker.ts?worker&inline";
 
 type PendingDecode = {
-  resolve: (value: McapPointCloud2DecodeResponse) => void;
+  resolve: (value: MultimodalPointCloud2DecodeResponse) => void;
   reject: (reason?: unknown) => void;
 };
 
@@ -20,6 +20,7 @@ type WorkerResponse =
         pointCount: number;
         positions: ArrayBuffer;
         intensity: ArrayBuffer | null;
+        frameId: string | null;
         bounds: Points3dFrame["bounds"];
       };
     }
@@ -57,11 +58,23 @@ class PointCloud2DecoderClient {
           frame: {
             id: response.result.messageId,
             pointCount: response.result.pointCount,
-            positions: new Float32Array(response.result.positions),
-            intensity: response.result.intensity
-              ? new Float32Array(response.result.intensity)
-              : null,
             bounds: response.result.bounds,
+            frameId: response.result.frameId,
+            primitives: [
+              {
+                kind: "points",
+                id: "points",
+                frameId: response.result.frameId,
+                pointCount: response.result.pointCount,
+                positions: new Float32Array(response.result.positions),
+                intensity: response.result.intensity
+                  ? new Float32Array(response.result.intensity)
+                  : null,
+                colors: null,
+                solidColor: null,
+                pointSize: null,
+              },
+            ],
           },
         });
       };
@@ -79,8 +92,8 @@ class PointCloud2DecoderClient {
   }
 
   async decode(
-    request: McapPointCloud2DecodeRequest
-  ): Promise<McapPointCloud2DecodeResponse> {
+    request: MultimodalPointCloud2DecodeRequest
+  ): Promise<MultimodalPointCloud2DecodeResponse> {
     if (typeof Worker === "undefined") {
       const decoded = decodePointCloud2Payload(new Uint8Array(request.payload));
       return {
@@ -96,19 +109,21 @@ class PointCloud2DecoderClient {
     const requestId = this.nextRequestId++;
     const payload = request.payload.slice(0);
 
-    return new Promise<McapPointCloud2DecodeResponse>((resolve, reject) => {
-      this.pending.set(requestId, { resolve, reject });
-      worker.postMessage(
-        {
-          requestId,
-          request: {
-            messageId: request.messageId,
-            payload,
+    return new Promise<MultimodalPointCloud2DecodeResponse>(
+      (resolve, reject) => {
+        this.pending.set(requestId, { resolve, reject });
+        worker.postMessage(
+          {
+            requestId,
+            request: {
+              messageId: request.messageId,
+              payload,
+            },
           },
-        },
-        [payload]
-      );
-    });
+          [payload]
+        );
+      }
+    );
   }
 
   dispose() {
@@ -125,8 +140,8 @@ const decoderClient = new PointCloud2DecoderClient();
 
 /** Decodes one raw `PointCloud2` payload in a worker when available. */
 export function decodePointCloud2InWorker(
-  request: McapPointCloud2DecodeRequest
-): Promise<McapPointCloud2DecodeResponse> {
+  request: MultimodalPointCloud2DecodeRequest
+): Promise<MultimodalPointCloud2DecodeResponse> {
   return decoderClient.decode(request);
 }
 

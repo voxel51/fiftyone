@@ -1,6 +1,5 @@
 import type { BufferReadiness } from "@fiftyone/playback/experimental/types";
-import type { Image2dFrame } from "./archetypes";
-import { getCompressedImageMimeType } from "./compressed-image-decoder";
+import type { Scene3dFrame } from "./archetypes";
 import {
   MultimodalRawMessageWindowCache,
   type RawMessageWindowCacheOptions,
@@ -8,39 +7,39 @@ import {
 import { BUILTIN_SCHEMA_CODEC_REGISTRY } from "./schema-codec-registry";
 import type { MultimodalRawMessage } from "./types";
 
-/** Decoded image frame metadata cached for one raw Multimodal message. */
-export type MultimodalDecodedImageFrame = Image2dFrame & {
-  format: string;
-  frameId: string;
-  logTimeNs: number;
-  publishTimeNs: number;
-  objectUrl: string;
-};
-
 type WarmDecodeOptions = {
   behindCount?: number;
   aheadCount?: number;
 };
 
-/** Small per-stream cache for buffered raw Multimodal windows and decoded images. */
-export class MultimodalImageBufferCache {
+/** Decoded 3D scene frame metadata cached for one raw Multimodal message. */
+export type MultimodalDecodedScene3dFrame = Scene3dFrame & {
+  messageId: string;
+  logTimeNs: number;
+  publishTimeNs: number;
+  schemaName: string;
+};
+
+type Renderable3dBufferCacheOptions = RawMessageWindowCacheOptions & {
+  schemaName: string;
+};
+
+/** Small per-stream cache for buffered raw Multimodal windows and decoded 3D frames. */
+export class MultimodalRenderable3dBufferCache {
   private readonly rawWindowCache: MultimodalRawMessageWindowCache;
   private readonly schemaName: string;
   private readonly decodedFrames = new Map<
     string,
-    Promise<MultimodalDecodedImageFrame>
+    Promise<MultimodalDecodedScene3dFrame>
   >();
-  private readonly objectUrls = new Map<string, string>();
 
-  constructor(options: RawMessageWindowCacheOptions & { schemaName?: string }) {
+  constructor(options: Renderable3dBufferCacheOptions) {
     this.rawWindowCache = new MultimodalRawMessageWindowCache(options);
-    this.schemaName = options.schemaName ?? "sensor_msgs/msg/CompressedImage";
+    this.schemaName = options.schemaName;
   }
 
   /** Ensures all fixed fetch windows covering the requested range are buffered. */
-  async ensureRange(
-    range: RawMessageWindowCacheOptions["sceneRange"]
-  ): Promise<void> {
+  async ensureRange(range: RawMessageWindowCacheOptions["sceneRange"]) {
     await this.rawWindowCache.ensureRange(range);
   }
 
@@ -67,34 +66,27 @@ export class MultimodalImageBufferCache {
     return this.rawWindowCache.getTimeReadiness(logTimeNs);
   }
 
-  /** Decodes one raw Multimodal image message and returns a cached object URL frame. */
+  /** Decodes one raw Multimodal 3D message and returns a cached frame. */
   async decodeMessage(
     message: MultimodalRawMessage
-  ): Promise<MultimodalDecodedImageFrame> {
+  ): Promise<MultimodalDecodedScene3dFrame> {
     const existingFrame = this.decodedFrames.get(message.messageId);
     if (existingFrame) {
       return existingFrame;
     }
 
-    const decodePromise = BUILTIN_SCHEMA_CODEC_REGISTRY.decodeImageMessage(
-      this.schemaName,
-      message
-    ).then((decoded) => {
-      const mimeType = getCompressedImageMimeType(decoded.format);
-      const blob = new Blob([decoded.compressedBytes], { type: mimeType });
-      const objectUrl = URL.createObjectURL(blob);
-      this.objectUrls.set(message.messageId, objectUrl);
-
+    const decodePromise = this.decodeBySchema(message).then((decoded) => {
       return {
+        ...decoded.frame,
         id: message.messageId,
+        primitives: decoded.frame.primitives.map((primitive, index) => ({
+          ...primitive,
+          id: `${message.messageId}:${primitive.id || index}`,
+        })),
         messageId: message.messageId,
-        format: decoded.format,
-        frameId: decoded.frameId,
-        src: objectUrl,
-        timestampNs: message.logTimeNs,
         logTimeNs: message.logTimeNs,
         publishTimeNs: message.publishTimeNs,
-        objectUrl,
+        schemaName: this.schemaName,
       };
     });
 
@@ -102,13 +94,13 @@ export class MultimodalImageBufferCache {
     return decodePromise;
   }
 
-  /** Warms cached image decodes around one playback timestamp. */
+  /** Warms cached 3D decodes around one playback timestamp. */
   async warmMessagesAroundLogTime(
     logTimeNs: number,
     options: WarmDecodeOptions = {}
   ): Promise<void> {
     const messages = this.rawWindowCache.getMessagesAroundLogTime(logTimeNs, {
-      aheadCount: options.aheadCount ?? 2,
+      aheadCount: options.aheadCount ?? 1,
       behindCount: options.behindCount ?? 0,
     });
 
@@ -117,12 +109,17 @@ export class MultimodalImageBufferCache {
     );
   }
 
-  /** Disposes decoded image URLs and the shared worker client resources. */
+  /** Disposes decoded 3D frames and shared worker resources. */
   dispose() {
     this.decodedFrames.clear();
     this.rawWindowCache.dispose();
-    this.objectUrls.forEach((objectUrl) => URL.revokeObjectURL(objectUrl));
-    this.objectUrls.clear();
-    BUILTIN_SCHEMA_CODEC_REGISTRY.disposeImageResources(this.schemaName);
+    BUILTIN_SCHEMA_CODEC_REGISTRY.disposeScene3dResources(this.schemaName);
+  }
+
+  private async decodeBySchema(message: MultimodalRawMessage) {
+    return BUILTIN_SCHEMA_CODEC_REGISTRY.decodeScene3dMessage(
+      this.schemaName,
+      message
+    );
   }
 }

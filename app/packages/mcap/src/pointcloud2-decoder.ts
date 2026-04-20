@@ -42,6 +42,9 @@ type PointFieldMessage = {
 };
 
 type PointCloud2Message = {
+  header: {
+    frame_id: string;
+  };
   height: number;
   width: number;
   fields: PointFieldMessage[];
@@ -104,14 +107,14 @@ function toPointsArray(values: Float32Array, usedValues: number) {
   return values.slice(0, usedValues);
 }
 
-/** Worker request payload for one raw `PointCloud2` MCAP message. */
-export type McapPointCloud2DecodeRequest = {
+/** Worker request payload for one raw `PointCloud2` Multimodal message. */
+export type MultimodalPointCloud2DecodeRequest = {
   messageId: string;
   payload: ArrayBuffer;
 };
 
 /** Worker response payload for one decoded `PointCloud2` message. */
-export type McapPointCloud2DecodeResponse = {
+export type MultimodalPointCloud2DecodeResponse = {
   messageId: string;
   frame: Points3dFrame;
 };
@@ -119,7 +122,7 @@ export type McapPointCloud2DecodeResponse = {
 /** Decodes one ROS2 CDR `sensor_msgs/msg/PointCloud2` payload. */
 export function decodePointCloud2Payload(
   payload: Uint8Array
-): McapPointCloud2DecodeResponse {
+): MultimodalPointCloud2DecodeResponse {
   const message = pointCloud2Reader.readMessage<PointCloud2Message>(payload);
   const xField = message.fields.find((field) => field.name === "x");
   const yField = message.fields.find((field) => field.name === "y");
@@ -218,11 +221,23 @@ export function decodePointCloud2Payload(
     frame: {
       id: "",
       pointCount: validPointCount,
-      positions: toPointsArray(positions, validPointCount * 3),
-      intensity: intensities
-        ? toPointsArray(intensities, validPointCount)
-        : null,
       bounds: validPointCount > 0 ? bounds : createEmptyBounds(),
+      frameId: message.header?.frame_id || "",
+      primitives: [
+        {
+          kind: "points",
+          id: "points",
+          frameId: message.header?.frame_id || "",
+          pointCount: validPointCount,
+          positions: toPointsArray(positions, validPointCount * 3),
+          intensity: intensities
+            ? toPointsArray(intensities, validPointCount)
+            : null,
+          colors: null,
+          solidColor: null,
+          pointSize: null,
+        },
+      ],
     },
   };
 }

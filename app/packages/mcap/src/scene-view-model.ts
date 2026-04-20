@@ -1,54 +1,45 @@
+import {
+  isImageRenderableStream,
+  isRenderableStream,
+  isScene3dRenderableStream,
+} from "./panel-binding-registry";
 import type {
-  McapPanelPlan,
-  McapSceneOpenResponse,
-  McapStreamDescriptor,
-  McapTimeRange,
+  MultimodalCatalog,
+  MultimodalStreamDescriptor,
+  MultimodalTimeRange,
 } from "./types";
 
-type McapStreamCounts = {
+type MultimodalStreamCounts = {
   total: number;
   image: number;
-  pointcloud: number;
-};
-
-type McapActivePanelState = {
-  activePanelId: string | null;
-  panel: McapPanelPlan | null;
-  stream: McapStreamDescriptor | null;
+  threeD: number;
 };
 
 function formatNumber(value: number) {
   return new Intl.NumberFormat().format(value);
 }
 
-function formatFallbackRole(role: McapStreamDescriptor["role"]) {
-  return role.replace("_", " ");
-}
-
-/** Returns compact stream counts grouped by supported MCAP role. */
-export function getMcapStreamCounts(
-  streams: McapStreamDescriptor[]
-): McapStreamCounts {
-  return streams.reduce<McapStreamCounts>(
+export function getMultimodalStreamCounts(
+  streams: MultimodalStreamDescriptor[]
+): MultimodalStreamCounts {
+  return streams.reduce<MultimodalStreamCounts>(
     (counts, stream) => {
       counts.total += 1;
-
-      if (stream.role === "image_stream") {
+      if (isImageRenderableStream(stream)) {
         counts.image += 1;
       }
-
-      if (stream.role === "pointcloud_stream") {
-        counts.pointcloud += 1;
+      if (isScene3dRenderableStream(stream)) {
+        counts.threeD += 1;
       }
-
       return counts;
     },
-    { total: 0, image: 0, pointcloud: 0 }
+    { total: 0, image: 0, threeD: 0 }
   );
 }
 
-/** Formats an MCAP scene or stream duration from nanoseconds. */
-export function formatMcapDuration(timeRange: McapTimeRange): string {
+export function formatMultimodalDuration(
+  timeRange: MultimodalTimeRange
+): string {
   const durationNs = Math.max(0, timeRange.endNs - timeRange.startNs);
   const durationMs = durationNs / 1_000_000;
   const durationSeconds = durationNs / 1_000_000_000;
@@ -58,28 +49,43 @@ export function formatMcapDuration(timeRange: McapTimeRange): string {
   }
 
   if (durationSeconds < 60) {
-    const seconds =
-      durationSeconds >= 10 || Number.isInteger(durationSeconds)
+    return `${
+      durationSeconds >= 10
         ? durationSeconds.toFixed(0)
-        : durationSeconds.toFixed(1);
-    return `${seconds} s`;
+        : durationSeconds.toFixed(1)
+    } s`;
   }
 
   const minutes = Math.floor(durationSeconds / 60);
   const seconds = Math.round(durationSeconds % 60);
-
-  if (durationSeconds < 3600) {
-    return `${minutes}m ${seconds}s`;
-  }
-
-  const hours = Math.floor(minutes / 60);
-  const remainingMinutes = minutes % 60;
-
-  return `${hours}h ${remainingMinutes}m`;
+  return `${minutes}m ${seconds}s`;
 }
 
-/** Formats an MCAP time range using raw nanosecond bounds. */
-export function formatMcapTimeRange(timeRange: McapTimeRange): string {
+export function getMultimodalStreamDisplayLabel(
+  stream: Pick<MultimodalStreamDescriptor, "topic" | "kind">
+): string {
+  const segments = stream.topic.split("/").filter(Boolean);
+  if (!segments.length) {
+    return stream.kind;
+  }
+  return segments.length <= 2
+    ? segments.join("/")
+    : segments.slice(-2).join("/");
+}
+
+export function getMultimodalCompactStreamLabels(
+  streams: MultimodalStreamDescriptor[],
+  maxCount = 2
+): string[] {
+  return streams
+    .filter((stream) => isRenderableStream(stream))
+    .slice(0, maxCount)
+    .map((stream) => getMultimodalStreamDisplayLabel(stream));
+}
+
+export function formatMultimodalTimeRange(
+  timeRange: MultimodalTimeRange
+): string {
   if (timeRange.startNs === timeRange.endNs) {
     return formatNumber(timeRange.startNs);
   }
@@ -89,51 +95,13 @@ export function formatMcapTimeRange(timeRange: McapTimeRange): string {
   )}`;
 }
 
-/** Builds a compact label for a stream topic for grid cards and panel pills. */
-export function getMcapStreamDisplayLabel(
-  stream: Pick<McapStreamDescriptor, "topic" | "role">
-): string {
-  const segments = stream.topic.split("/").filter(Boolean);
-
-  if (!segments.length) {
-    return formatFallbackRole(stream.role);
+export function getStreamById(
+  catalog: MultimodalCatalog,
+  streamId: string | null
+) {
+  if (!streamId) {
+    return null;
   }
 
-  if (segments.length <= 2) {
-    return segments.join("/");
-  }
-
-  return segments.slice(-2).join("/");
-}
-
-/** Returns the first compact stream labels that should be surfaced in the UI. */
-export function getMcapCompactStreamLabels(
-  streams: McapStreamDescriptor[],
-  maxCount = 2
-): string[] {
-  return streams.slice(0, maxCount).map((stream) => {
-    return getMcapStreamDisplayLabel(stream);
-  });
-}
-
-/** Resolves the active playback-plan panel and its matched stream descriptor. */
-export function getMcapActivePanelState(
-  data: McapSceneOpenResponse,
-  activePanelId: string | null
-): McapActivePanelState {
-  const panels = data.playbackPlan.panels;
-  const panel =
-    panels.find((candidate) => candidate.panelId === activePanelId) ??
-    panels[0] ??
-    null;
-  const stream =
-    data.scene.streams.find((candidate) => {
-      return candidate.streamId === panel?.streamId;
-    }) ?? null;
-
-  return {
-    activePanelId: panel?.panelId ?? null,
-    panel,
-    stream,
-  };
+  return catalog.streams.find((stream) => stream.streamId === streamId) ?? null;
 }

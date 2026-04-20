@@ -1,31 +1,37 @@
+import type { BufferReadiness } from "@fiftyone/playback/experimental/types";
 import type { Points3dFrame } from "./archetypes";
 import {
   disposePointCloud2WorkerClient,
   decodePointCloud2InWorker,
 } from "./pointcloud2-worker-client";
 import {
-  McapRawMessageWindowCache,
+  MultimodalRawMessageWindowCache,
   type RawMessageWindowCacheOptions,
 } from "./raw-message-window-cache";
-import type { McapRawMessage } from "./types";
+import type { MultimodalRawMessage } from "./types";
 
-/** Decoded point-cloud frame metadata cached for one raw MCAP message. */
-export type McapDecodedPointCloudFrame = Points3dFrame & {
+/** Decoded point-cloud frame metadata cached for one raw Multimodal message. */
+export type MultimodalDecodedPointCloudFrame = Points3dFrame & {
   messageId: string;
   logTimeNs: number;
   publishTimeNs: number;
 };
 
-/** Small per-stream cache for buffered raw MCAP windows and decoded point frames. */
-export class McapPointCloudBufferCache {
-  private readonly rawWindowCache: McapRawMessageWindowCache;
+type WarmDecodeOptions = {
+  behindCount?: number;
+  aheadCount?: number;
+};
+
+/** Small per-stream cache for buffered raw Multimodal windows and decoded point frames. */
+export class MultimodalPointCloudBufferCache {
+  private readonly rawWindowCache: MultimodalRawMessageWindowCache;
   private readonly decodedFrames = new Map<
     string,
-    Promise<McapDecodedPointCloudFrame>
+    Promise<MultimodalDecodedPointCloudFrame>
   >();
 
   constructor(options: RawMessageWindowCacheOptions) {
-    this.rawWindowCache = new McapRawMessageWindowCache(options);
+    this.rawWindowCache = new MultimodalRawMessageWindowCache(options);
   }
 
   /** Ensures all fixed fetch windows covering the requested range are buffered. */
@@ -34,14 +40,19 @@ export class McapPointCloudBufferCache {
   }
 
   /** Returns the raw cached message matching the requested log time. */
-  getMessageForLogTime(logTimeNs: number): McapRawMessage | null {
+  getMessageForLogTime(logTimeNs: number): MultimodalRawMessage | null {
     return this.rawWindowCache.getMessageForLogTime(logTimeNs);
   }
 
-  /** Decodes one raw MCAP point-cloud message and returns a cached frame. */
+  /** Reports whether the raw message window containing this timestamp is ready. */
+  getMessageReadiness(logTimeNs: number): BufferReadiness {
+    return this.rawWindowCache.getTimeReadiness(logTimeNs);
+  }
+
+  /** Decodes one raw Multimodal point-cloud message and returns a cached frame. */
   async decodeMessage(
-    message: McapRawMessage
-  ): Promise<McapDecodedPointCloudFrame> {
+    message: MultimodalRawMessage
+  ): Promise<MultimodalDecodedPointCloudFrame> {
     const existingFrame = this.decodedFrames.get(message.messageId);
     if (existingFrame) {
       return existingFrame;
@@ -62,6 +73,21 @@ export class McapPointCloudBufferCache {
 
     this.decodedFrames.set(message.messageId, decodePromise);
     return decodePromise;
+  }
+
+  /** Warms cached point-cloud decodes around one playback timestamp. */
+  async warmMessagesAroundLogTime(
+    logTimeNs: number,
+    options: WarmDecodeOptions = {}
+  ): Promise<void> {
+    const messages = this.rawWindowCache.getMessagesAroundLogTime(logTimeNs, {
+      aheadCount: options.aheadCount ?? 1,
+      behindCount: options.behindCount ?? 0,
+    });
+
+    await Promise.allSettled(
+      messages.map((message) => this.decodeMessage(message))
+    );
   }
 
   /** Disposes decoded point-cloud frames and shared worker resources. */

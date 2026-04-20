@@ -99,10 +99,15 @@ function createPointCloudPayload({
 describe("decodePointCloud2Payload", () => {
   it("extracts XYZ, intensity, and bounds", () => {
     const decoded = decodePointCloud2Payload(createPointCloudPayload({}));
+    const pointsPrimitive = decoded.frame.primitives[0];
 
     expect(decoded.frame.pointCount).toBe(2);
-    expect(Array.from(decoded.frame.positions)).toEqual([1, 2, 3, 4, 5, 6]);
-    expect(Array.from(decoded.frame.intensity ?? [])).toEqual([0.25, 0.75]);
+    expect(decoded.frame.frameId).toBe("map");
+    expect(pointsPrimitive?.kind).toBe("points");
+    expect(Array.from(pointsPrimitive?.positions ?? [])).toEqual([
+      1, 2, 3, 4, 5, 6,
+    ]);
+    expect(Array.from(pointsPrimitive?.intensity ?? [])).toEqual([0.25, 0.75]);
     expect(decoded.frame.bounds).toEqual({
       min: [1, 2, 3],
       max: [4, 5, 6],
@@ -114,7 +119,8 @@ describe("decodePointCloud2Payload", () => {
       createPointCloudPayload({ includeIntensity: false })
     );
 
-    expect(decoded.frame.intensity).toBeNull();
+    expect(decoded.frame.primitives[0]?.kind).toBe("points");
+    expect(decoded.frame.primitives[0]?.intensity).toBeNull();
     expect(decoded.frame.pointCount).toBe(2);
   });
 
@@ -122,10 +128,11 @@ describe("decodePointCloud2Payload", () => {
     const decoded = decodePointCloud2Payload(
       createPointCloudPayload({ includeInvalidPoint: true })
     );
+    const pointsPrimitive = decoded.frame.primitives[0];
 
     expect(decoded.frame.pointCount).toBe(1);
-    expect(Array.from(decoded.frame.positions)).toEqual([1, 2, 3]);
-    expect(Array.from(decoded.frame.intensity ?? [])).toEqual([0.25]);
+    expect(Array.from(pointsPrimitive?.positions ?? [])).toEqual([1, 2, 3]);
+    expect(Array.from(pointsPrimitive?.intensity ?? [])).toEqual([0.25]);
   });
 
   it("rejects payloads without XYZ fields", () => {

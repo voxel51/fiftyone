@@ -1,11 +1,11 @@
 import {
   decodePointCloud2Payload,
-  type McapPointCloud2DecodeRequest,
+  type MultimodalPointCloud2DecodeRequest,
 } from "./pointcloud2-decoder";
 
 type WorkerRequest = {
   requestId: number;
-  request: McapPointCloud2DecodeRequest;
+  request: MultimodalPointCloud2DecodeRequest;
 };
 
 type WorkerSuccessResponse = {
@@ -16,6 +16,7 @@ type WorkerSuccessResponse = {
     pointCount: number;
     positions: ArrayBuffer;
     intensity: ArrayBuffer | null;
+    frameId: string | null;
     bounds: {
       min: [number, number, number];
       max: [number, number, number];
@@ -37,9 +38,14 @@ workerContext.onmessage = (event: MessageEvent<WorkerRequest>): void => {
 
   try {
     const decoded = decodePointCloud2Payload(new Uint8Array(request.payload));
-    const positions = Float32Array.from(decoded.frame.positions);
-    const intensity = decoded.frame.intensity
-      ? Float32Array.from(decoded.frame.intensity)
+    const pointsPrimitive = decoded.frame.primitives[0];
+    if (!pointsPrimitive || pointsPrimitive.kind !== "points") {
+      throw new Error("PointCloud2 decoder did not return a points primitive");
+    }
+
+    const positions = Float32Array.from(pointsPrimitive.positions);
+    const intensity = pointsPrimitive.intensity
+      ? Float32Array.from(pointsPrimitive.intensity)
       : null;
     const transferables: Transferable[] = [positions.buffer];
 
@@ -55,6 +61,7 @@ workerContext.onmessage = (event: MessageEvent<WorkerRequest>): void => {
         pointCount: decoded.frame.pointCount,
         positions: positions.buffer,
         intensity: intensity ? intensity.buffer : null,
+        frameId: pointsPrimitive.frameId ?? decoded.frame.frameId ?? null,
         bounds: decoded.frame.bounds,
       },
     };

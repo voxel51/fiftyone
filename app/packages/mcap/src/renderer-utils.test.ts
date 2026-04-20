@@ -3,7 +3,10 @@ import {
   type SampleRendererRenderContext,
 } from "@fiftyone/plugins";
 import { describe, expect, it } from "vitest";
-import { getMcapRendererInfo, getMcapSceneParams } from "./renderer-utils";
+import {
+  getMultimodalRendererInfo,
+  getMultimodalSceneParams,
+} from "./renderer-utils";
 
 const dataset = {
   id: "dataset-1",
@@ -31,16 +34,17 @@ function createCtx() {
 describe("renderer utils", () => {
   it("extracts stable renderer info and scene-open request params", () => {
     const ctx = createCtx();
-    const info = getMcapRendererInfo(ctx);
+    const info = getMultimodalRendererInfo(ctx);
 
     expect(info.datasetId).toBe("dataset-1");
     expect(info.sampleId).toBe("sample-1");
     expect(info.mediaField).toBe("filepath");
     expect(info.mediaPath).toBe("/tmp/sensors/drive.mcap");
-    expect(getMcapSceneParams(ctx)).toEqual({
+    expect(getMultimodalSceneParams(ctx)).toEqual({
       datasetId: "dataset-1",
       sampleId: "sample-1",
       mediaField: "filepath",
+      sourceKind: "mcap",
     });
   });
 });

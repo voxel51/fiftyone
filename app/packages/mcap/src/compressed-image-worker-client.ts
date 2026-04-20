@@ -1,12 +1,12 @@
 import type {
-  McapCompressedImageDecodeRequest,
-  McapCompressedImageDecodeResponse,
+  MultimodalCompressedImageDecodeRequest,
+  MultimodalCompressedImageDecodeResponse,
 } from "./compressed-image-decoder";
 import { decodeCompressedImagePayload } from "./compressed-image-decoder";
 import CompressedImageWorker from "./compressed-image-worker.ts?worker&inline";
 
 type PendingDecode = {
-  resolve: (value: McapCompressedImageDecodeResponse) => void;
+  resolve: (value: MultimodalCompressedImageDecodeResponse) => void;
   reject: (reason?: unknown) => void;
 };
 
@@ -17,6 +17,7 @@ type WorkerResponse =
       result: {
         messageId: string;
         format: string;
+        frameId: string;
         compressedBytes: ArrayBuffer;
       };
     }
@@ -52,6 +53,7 @@ class CompressedImageDecoderClient {
         pending.resolve({
           messageId: response.result.messageId,
           format: response.result.format,
+          frameId: response.result.frameId,
           compressedBytes: new Uint8Array(response.result.compressedBytes),
         });
       };
@@ -71,8 +73,8 @@ class CompressedImageDecoderClient {
   }
 
   async decode(
-    request: McapCompressedImageDecodeRequest
-  ): Promise<McapCompressedImageDecodeResponse> {
+    request: MultimodalCompressedImageDecodeRequest
+  ): Promise<MultimodalCompressedImageDecodeResponse> {
     if (typeof Worker === "undefined") {
       const decoded = decodeCompressedImagePayload(
         new Uint8Array(request.payload)
@@ -80,6 +82,7 @@ class CompressedImageDecoderClient {
       return {
         messageId: request.messageId,
         format: decoded.format,
+        frameId: decoded.frameId,
         compressedBytes: decoded.compressedBytes,
       };
     }
@@ -88,19 +91,21 @@ class CompressedImageDecoderClient {
     const requestId = this.nextRequestId++;
     const payload = request.payload.slice(0);
 
-    return new Promise<McapCompressedImageDecodeResponse>((resolve, reject) => {
-      this.pending.set(requestId, { resolve, reject });
-      worker.postMessage(
-        {
-          requestId,
-          request: {
-            messageId: request.messageId,
-            payload,
+    return new Promise<MultimodalCompressedImageDecodeResponse>(
+      (resolve, reject) => {
+        this.pending.set(requestId, { resolve, reject });
+        worker.postMessage(
+          {
+            requestId,
+            request: {
+              messageId: request.messageId,
+              payload,
+            },
           },
-        },
-        [payload]
-      );
-    });
+          [payload]
+        );
+      }
+    );
   }
 
   dispose() {
@@ -117,8 +122,8 @@ const decoderClient = new CompressedImageDecoderClient();
 
 /** Decodes one raw `CompressedImage` payload in a worker when available. */
 export function decodeCompressedImageInWorker(
-  request: McapCompressedImageDecodeRequest
-): Promise<McapCompressedImageDecodeResponse> {
+  request: MultimodalCompressedImageDecodeRequest
+): Promise<MultimodalCompressedImageDecodeResponse> {
   return decoderClient.decode(request);
 }
 

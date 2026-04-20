@@ -1,9 +1,10 @@
 import type { SampleRendererRenderContext } from "@fiftyone/plugins";
-import type { FetchMcapSceneParams } from "./types";
+import { withInferredSourceKind } from "./source-registry";
+import type { FetchMultimodalWorkspaceParams } from "./types";
 
 type SampleRecord = Record<string, unknown>;
 
-type McapRendererInfo = {
+type MultimodalRendererInfo = {
   basename: string;
   datasetId: string | null;
   datasetName: string;
@@ -48,7 +49,7 @@ function getFirstStringValue(
 
 function getBasename(path: string | null) {
   if (!path) {
-    return "sample.mcap";
+    return "sample.multimodal";
   }
 
   const normalizedPath = path.split(/[?#]/)[0];
@@ -64,10 +65,10 @@ function getMediaExtension(extension: string | null) {
   return extension.startsWith(".") ? extension.slice(1) : extension;
 }
 
-/** Builds stable display data for MCAP sample renderers. */
-export function getMcapRendererInfo(
+/** Builds stable display data for Multimodal sample renderers. */
+export function getMultimodalRendererInfo(
   ctx: SampleRendererRenderContext
-): McapRendererInfo {
+): MultimodalRendererInfo {
   const { nestedSampleRecord, rootRecord } = getSampleRecords(ctx.sample);
   const samplePath = getFirstStringValue(
     [nestedSampleRecord, rootRecord],
@@ -96,26 +97,30 @@ export function getMcapRendererInfo(
 }
 
 /** Resolves the scene-open request parameters from a renderer context. */
-export function getMcapSceneParams(
+export function getMultimodalSceneParams(
   ctx: SampleRendererRenderContext
-): FetchMcapSceneParams {
-  const info = getMcapRendererInfo(ctx);
+): FetchMultimodalWorkspaceParams {
+  const info = getMultimodalRendererInfo(ctx);
 
   if (!info.datasetId) {
-    throw new Error("MCAP renderer requires a dataset id");
+    throw new Error("multimodal renderer requires a dataset id");
   }
 
   if (!info.sampleId) {
-    throw new Error("MCAP renderer requires a sample id");
+    throw new Error("multimodal renderer requires a sample id");
   }
 
   if (!info.mediaField) {
-    throw new Error("MCAP renderer requires a media field");
+    throw new Error("multimodal renderer requires a media field");
   }
 
-  return {
-    datasetId: info.datasetId,
-    sampleId: info.sampleId,
-    mediaField: info.mediaField,
-  };
+  return withInferredSourceKind(
+    {
+      datasetId: info.datasetId,
+      sampleId: info.sampleId,
+      mediaField: info.mediaField,
+    },
+    info.mediaExtension,
+    info.mediaPath
+  );
 }
