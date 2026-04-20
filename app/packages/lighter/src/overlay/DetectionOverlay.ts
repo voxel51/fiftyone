@@ -927,6 +927,8 @@ export class DetectionOverlay
     label: any;
     type: string;
   } | null {
+    if (this.isSelected()) return null;
+
     return {
       color: this.currentStyle?.strokeStyle ?? "#ffffff",
       field: this.field || "unknown",
