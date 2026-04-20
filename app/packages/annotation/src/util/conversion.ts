@@ -1,5 +1,18 @@
 import pako from "pako";
 
+const validateArrayShape = (arr: Float32Array, shape: number[]): void => {
+  if (shape.length === 0 || shape.some((d) => !Number.isInteger(d) || d < 0)) {
+    throw new Error(`Invalid numpy shape: ${JSON.stringify(shape)}`);
+  }
+
+  const expectedSize = shape.reduce((size, d) => size * d, 1);
+  if (expectedSize !== arr.length) {
+    throw new Error(
+      `Shape ${JSON.stringify(shape)} does not match array length ${arr.length}`
+    );
+  }
+};
+
 const createNumpyHeader = (shape: number[]) => {
   let header =
     "{'descr': '|u1', 'fortran_order': False, 'shape': (" +
@@ -33,10 +46,21 @@ const createNumpyHeader = (shape: number[]) => {
   return out;
 };
 
+/**
+ * Convert a {@link Float32Array} to a b64-encoded compressed uint8 numpy array.
+ *
+ * This method is consistent with the format produced by server-side
+ * mask serialization.
+ *
+ * @param arr Array to convert
+ * @param shape Shape of array
+ */
 export const float32ToCompressedNumpy = (
   arr: Float32Array,
   shape: number[]
 ): string => {
+  validateArrayShape(arr, shape);
+
   // cast to uint8
   const intArray = new Uint8Array(arr.length);
 
