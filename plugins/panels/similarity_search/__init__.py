@@ -19,6 +19,7 @@ from fiftyone.operators.panel import Panel, PanelConfig
 
 from .constants import STORE_NAME, RunStatus
 from .run_manager import RunManager
+from fiftyone.core.brain import BrainMethod
 
 logger = logging.getLogger(__name__)
 
@@ -246,48 +247,43 @@ class SimilaritySearchPanel(Panel):
         dataset = ctx.dataset
 
         try:
+            run_docs = BrainMethod._get_run_docs(dataset)
             brain_keys = dataset.list_brain_runs(type="similarity")
         except Exception as e:
-            logger.warning("Failed to list brain runs: %s", e)
-            brain_keys = []
+            logger.warning("Failed to list similarity brain runs: %s", e)
+            run_docs, brain_keys = {}, []
 
         result = []
         for key in brain_keys:
+            # Skip failed runs (brain key registered but no results)
+            run_doc = run_docs.get(key)
+            if run_doc is None or not run_doc.results:
+                continue
+
             try:
-                info = dataset.get_brain_info(key)
-                config = info.config
-
-                supports_prompts = getattr(config, "supports_prompts", False)
-                patches_field = getattr(config, "patches_field", None)
-                model = getattr(config, "model", None)
-                backend = getattr(config, "method", None)
-                embeddings_field = getattr(config, "embeddings_field", None)
-
-                supports_least = False
-                try:
-                    sl = getattr(config, "supports_least_similarity", None)
-                    supports_least = (
-                        sl()
-                        if callable(sl)
-                        else (sl if sl is not None else False)
-                    )
-                except Exception as e:
-                    logger.warning(
-                        "Failed to probe supports_least_similarity for key %s: %s",
-                        key,
-                        e,
-                    )
-                    supports_least = False
-
+                config = dataset.get_brain_info(key).config
+                supports_least = getattr(
+                    config, "supports_least_similarity", None
+                )
                 result.append(
                     {
                         "key": key,
-                        "supports_prompts": bool(supports_prompts),
-                        "supports_least_similarity": bool(supports_least),
-                        "patches_field": patches_field,
-                        "model": model,
-                        "backend": backend,
-                        "embeddings_field": embeddings_field,
+                        "supports_prompts": bool(
+                            getattr(config, "supports_prompts", False)
+                        ),
+                        "supports_least_similarity": bool(
+                            supports_least()
+                            if callable(supports_least)
+                            else supports_least
+                        ),
+                        "patches_field": getattr(
+                            config, "patches_field", None
+                        ),
+                        "model": getattr(config, "model", None),
+                        "backend": getattr(config, "method", None),
+                        "embeddings_field": getattr(
+                            config, "embeddings_field", None
+                        ),
                     }
                 )
             except Exception as e:
