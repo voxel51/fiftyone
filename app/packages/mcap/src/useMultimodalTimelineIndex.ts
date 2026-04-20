@@ -1,34 +1,52 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { fetchMcapScene } from "./api";
-import type { FetchMcapSceneParams, McapSceneOpenResponse } from "./types";
+import { fetchMultimodalTimeline } from "./api";
+import type {
+  FetchMultimodalTimelineParams,
+  MultimodalTimelineIndexResponse,
+} from "./types";
 
 function normalizeError(error: unknown) {
   return error instanceof Error ? error : new Error(String(error));
 }
 
-type UseMcapSceneResult = {
-  data: McapSceneOpenResponse | null;
-  scene: McapSceneOpenResponse["scene"] | null;
-  playbackPlan: McapSceneOpenResponse["playbackPlan"] | null;
+type UseMultimodalTimelineIndexResult = {
+  data: MultimodalTimelineIndexResponse | null;
+  timeline: MultimodalTimelineIndexResponse | null;
   isLoading: boolean;
   error: Error | null;
-  refetch: () => Promise<McapSceneOpenResponse | null>;
+  refetch: () => Promise<MultimodalTimelineIndexResponse | null>;
   reset: () => void;
 };
 
-/** Loads and tracks the scene-open payload for the active MCAP sample. */
-export function useMcapScene(
-  params: FetchMcapSceneParams | null | undefined
-): UseMcapSceneResult {
+export function useMultimodalTimelineIndex(
+  params: FetchMultimodalTimelineParams | null | undefined
+): UseMultimodalTimelineIndexResult {
+  const streamIdsKey = useMemo(() => {
+    return params?.request?.streamIds?.join("\n") ?? "";
+  }, [params?.request?.streamIds]);
+
   const resolvedParams = useMemo(() => {
-    if (!params?.datasetId || !params?.sampleId || !params?.mediaField) {
+    if (
+      !params?.datasetId ||
+      !params?.sampleId ||
+      !params?.request?.mediaField
+    ) {
       return null;
     }
 
     return params;
-  }, [params?.datasetId, params?.mediaField, params?.sampleId]);
+  }, [
+    params?.datasetId,
+    params?.request?.mediaField,
+    params?.request?.fallback,
+    params?.sampleId,
+    streamIdsKey,
+    params?.request?.timestampSource,
+  ]);
 
-  const [data, setData] = useState<McapSceneOpenResponse | null>(null);
+  const [data, setData] = useState<MultimodalTimelineIndexResponse | null>(
+    null
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
@@ -48,7 +66,7 @@ export function useMcapScene(
     setError(null);
 
     try {
-      const response = await fetchMcapScene(resolvedParams);
+      const response = await fetchMultimodalTimeline(resolvedParams);
       setData(response);
       return response;
     } catch (fetchError) {
@@ -73,7 +91,7 @@ export function useMcapScene(
     setError(null);
     setIsLoading(true);
 
-    fetchMcapScene(resolvedParams)
+    fetchMultimodalTimeline(resolvedParams)
       .then((response) => {
         if (!isCurrent) {
           return;
@@ -104,8 +122,7 @@ export function useMcapScene(
 
   return {
     data,
-    scene: data?.scene ?? null,
-    playbackPlan: data?.playbackPlan ?? null,
+    timeline: data,
     isLoading,
     error,
     refetch,

@@ -1,46 +1,58 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { fetchMcapTimeline } from "./api";
-import type { FetchMcapTimelineParams, McapTimelineResponse } from "./types";
+import { fetchMultimodalWorkspace } from "./api";
+import type {
+  FetchMultimodalWorkspaceParams,
+  MultimodalCatalog,
+  MultimodalRenderingPlan,
+  MultimodalWorkspaceResponse,
+} from "./types";
 
 function normalizeError(error: unknown) {
   return error instanceof Error ? error : new Error(String(error));
 }
 
-type UseMcapTimelineIndexResult = {
-  data: McapTimelineResponse | null;
-  timeline: McapTimelineResponse["timeline"] | null;
+function markPerformance(name: string) {
+  if (typeof performance === "undefined" || !performance.mark) {
+    return;
+  }
+
+  performance.mark(name);
+}
+
+function measurePerformance(name: string, startMark: string, endMark: string) {
+  if (typeof performance === "undefined" || !performance.measure) {
+    return;
+  }
+
+  try {
+    performance.measure(name, startMark, endMark);
+  } catch {
+    // no-op in tests or partial boot flows
+  }
+}
+
+type UseMultimodalWorkspaceResult = {
+  data: MultimodalWorkspaceResponse | null;
+  catalog: MultimodalCatalog | null;
+  renderingPlan: MultimodalRenderingPlan | null;
   isLoading: boolean;
   error: Error | null;
-  refetch: () => Promise<McapTimelineResponse | null>;
+  refetch: () => Promise<MultimodalWorkspaceResponse | null>;
   reset: () => void;
 };
 
-/** Loads and tracks the MCAP timeline index for the requested streams. */
-export function useMcapTimelineIndex(
-  params: FetchMcapTimelineParams | null | undefined
-): UseMcapTimelineIndexResult {
-  const streamIdsKey = useMemo(() => {
-    return params?.request?.streamIds?.join("\n") ?? "";
-  }, [params?.request?.streamIds]);
-
+export function useMultimodalWorkspace(
+  params: FetchMultimodalWorkspaceParams | null | undefined
+): UseMultimodalWorkspaceResult {
   const resolvedParams = useMemo(() => {
-    if (
-      !params?.datasetId ||
-      !params?.sampleId ||
-      !params?.request?.mediaField
-    ) {
+    if (!params?.datasetId || !params?.sampleId || !params?.mediaField) {
       return null;
     }
 
     return params;
-  }, [
-    params?.datasetId,
-    params?.request?.mediaField,
-    params?.sampleId,
-    streamIdsKey,
-  ]);
+  }, [params?.datasetId, params?.mediaField, params?.sampleId]);
 
-  const [data, setData] = useState<McapTimelineResponse | null>(null);
+  const [data, setData] = useState<MultimodalWorkspaceResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
@@ -60,7 +72,7 @@ export function useMcapTimelineIndex(
     setError(null);
 
     try {
-      const response = await fetchMcapTimeline(resolvedParams);
+      const response = await fetchMultimodalWorkspace(resolvedParams);
       setData(response);
       return response;
     } catch (fetchError) {
@@ -84,14 +96,21 @@ export function useMcapTimelineIndex(
     setData(null);
     setError(null);
     setIsLoading(true);
+    markPerformance("multimodal:workspace-fetch:start");
 
-    fetchMcapTimeline(resolvedParams)
+    fetchMultimodalWorkspace(resolvedParams)
       .then((response) => {
         if (!isCurrent) {
           return;
         }
 
         setData(response);
+        markPerformance("multimodal:workspace-fetch:end");
+        measurePerformance(
+          "multimodal:workspace-fetch",
+          "multimodal:workspace-fetch:start",
+          "multimodal:workspace-fetch:end"
+        );
       })
       .catch((fetchError) => {
         if (!isCurrent) {
@@ -116,7 +135,8 @@ export function useMcapTimelineIndex(
 
   return {
     data,
-    timeline: data?.timeline ?? null,
+    catalog: data?.catalog ?? null,
+    renderingPlan: data?.renderingPlan ?? null,
     isLoading,
     error,
     refetch,

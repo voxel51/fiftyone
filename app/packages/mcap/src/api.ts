@@ -1,14 +1,16 @@
 import { getFetchFunction } from "@fiftyone/utilities";
 import type {
-  FetchMcapBufferParams,
-  FetchMcapSceneParams,
-  FetchMcapTimelineParams,
-  McapBufferRequest,
-  McapRawBufferResponse,
-  McapRawBufferTransportResponse,
-  McapSceneOpenResponse,
-  McapTimelineRequest,
-  McapTimelineResponse,
+  FetchMultimodalBootstrapWindowParams,
+  FetchMultimodalBufferParams,
+  FetchMultimodalTimelineParams,
+  FetchMultimodalWorkspaceParams,
+  MultimodalBootstrapWindowRequest,
+  MultimodalRawBufferResponse,
+  MultimodalRawBufferTransportResponse,
+  MultimodalTimelineIndexRequest,
+  MultimodalTimelineIndexResponse,
+  MultimodalWorkspaceResponse,
+  MultimodalStreamWindowRequest,
 } from "./types";
 
 function decodeBase64ToBytes(value: string) {
@@ -30,10 +32,9 @@ function decodeBase64ToBytes(value: string) {
   return bytes;
 }
 
-/** Normalizes the raw MCAP buffer response into transferable browser buffers. */
-export function normalizeMcapRawBufferResponse(
-  response: McapRawBufferTransportResponse
-): McapRawBufferResponse {
+export function normalizeMultimodalRawBufferResponse(
+  response: MultimodalRawBufferTransportResponse
+): MultimodalRawBufferResponse {
   return {
     ...response,
     streams: response.streams.map((stream) => ({
@@ -46,55 +47,79 @@ export function normalizeMcapRawBufferResponse(
   };
 }
 
-/** Fetches the cached scene-open payload for a sample-backed MCAP file. */
-export async function fetchMcapScene(
-  params: FetchMcapSceneParams
-): Promise<McapSceneOpenResponse> {
+export async function fetchMultimodalWorkspace(
+  params: FetchMultimodalWorkspaceParams
+): Promise<MultimodalWorkspaceResponse> {
   const fetch = getFetchFunction({ cache: true });
+  const query = new URLSearchParams({
+    mediaField: params.mediaField,
+  });
 
-  return fetch<void, McapSceneOpenResponse>(
+  if (params.sourceKind) {
+    query.set("sourceKind", params.sourceKind);
+  }
+
+  return fetch<void, MultimodalWorkspaceResponse>(
     "GET",
     `/dataset/${encodeURIComponent(
       params.datasetId
     )}/sample/${encodeURIComponent(
       params.sampleId
-    )}/mcap/scene?media_field=${encodeURIComponent(params.mediaField)}`
+    )}/multimodal/workspace?${query.toString()}`
   );
 }
 
-/** Fetches a raw MCAP message window and decodes payload bytes for workers. */
-export async function fetchMcapBuffer(
-  params: FetchMcapBufferParams
-): Promise<McapRawBufferResponse> {
+export async function fetchMultimodalBuffer(
+  params: FetchMultimodalBufferParams
+): Promise<MultimodalRawBufferResponse> {
   const fetch = getFetchFunction();
   const response = await fetch<
-    McapBufferRequest,
-    McapRawBufferTransportResponse
+    MultimodalStreamWindowRequest,
+    MultimodalRawBufferTransportResponse
   >(
     "POST",
     `/dataset/${encodeURIComponent(
       params.datasetId
-    )}/sample/${encodeURIComponent(params.sampleId)}/mcap/buffer`,
+    )}/sample/${encodeURIComponent(params.sampleId)}/multimodal/stream-window`,
     {
       ...params.request,
-      mode: params.request.mode ?? "raw",
+      mode: "raw",
     }
   );
 
-  return normalizeMcapRawBufferResponse(response);
+  return normalizeMultimodalRawBufferResponse(response);
 }
 
-/** Fetches the MCAP playback timeline index for the requested streams. */
-export async function fetchMcapTimeline(
-  params: FetchMcapTimelineParams
-): Promise<McapTimelineResponse> {
+export async function fetchMultimodalBootstrapWindow(
+  params: FetchMultimodalBootstrapWindowParams
+): Promise<MultimodalRawBufferResponse> {
   const fetch = getFetchFunction();
-
-  return fetch<McapTimelineRequest, McapTimelineResponse>(
+  const response = await fetch<
+    MultimodalBootstrapWindowRequest,
+    MultimodalRawBufferTransportResponse
+  >(
     "POST",
     `/dataset/${encodeURIComponent(
       params.datasetId
-    )}/sample/${encodeURIComponent(params.sampleId)}/mcap/timeline`,
+    )}/sample/${encodeURIComponent(
+      params.sampleId
+    )}/multimodal/bootstrap-window`,
+    params.request
+  );
+
+  return normalizeMultimodalRawBufferResponse(response);
+}
+
+export async function fetchMultimodalTimeline(
+  params: FetchMultimodalTimelineParams
+): Promise<MultimodalTimelineIndexResponse> {
+  const fetch = getFetchFunction({ cache: true });
+
+  return fetch<MultimodalTimelineIndexRequest, MultimodalTimelineIndexResponse>(
+    "POST",
+    `/dataset/${encodeURIComponent(
+      params.datasetId
+    )}/sample/${encodeURIComponent(params.sampleId)}/multimodal/timeline-index`,
     params.request
   );
 }

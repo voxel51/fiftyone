@@ -1,171 +1,251 @@
 /**
- * Shared transport and client-side types for the experimental MCAP backend.
+ * Shared transport and client-side types for the multimodal workspace renderer.
  */
 
-/** Supported MCAP stream roles recognized by the first backend adapter slice. */
-export type McapStreamRole = "image_stream" | "pointcloud_stream";
+export type MultimodalPanelArchetype = "image" | "3d";
+export type MultimodalStreamKind =
+  | "image"
+  | "3d"
+  | "transform"
+  | "location"
+  | "other";
+export type MultimodalLocationMode = "position" | "pose" | "navsat";
+export type MultimodalFollowMode = "off" | "position" | "pose";
+export type MultimodalUpAxis = "x" | "y" | "z";
+export type MultimodalBufferMode = "raw";
+export type MultimodalSyncTimestampSource =
+  | "header.stamp"
+  | "publish_time"
+  | "log_time";
+export type MultimodalSyncFallback = "publish_time" | "log_time";
+export type MultimodalSyncMode = "nearest" | "strict" | "latest";
 
-/** Supported panel surface types for MCAP playback panels. */
-export type McapPanelType = "2d" | "3d";
-
-/** Supported content types rendered inside MCAP playback panels. */
-export type McapContentType = "image" | "pointcloud";
-
-/** Supported sidebar identifiers returned by the MCAP playback plan. */
-export type McapSidebarType = "panel_config" | "stream_metadata";
-
-/** Transport modes supported by the MCAP buffer contract. */
-export type McapBufferMode = "raw" | "decoded";
-
-/** Nanosecond time bounds for a scene, stream, or buffer window. */
-export type McapTimeRange = {
+export type MultimodalTimeRange = {
   startNs: number;
   endNs: number;
 };
 
-/** Describes a single supported MCAP topic exposed by the backend adapter. */
-export type McapStreamDescriptor = {
+export type MultimodalStreamDescriptor = {
   streamId: string;
   topic: string;
   schemaName: string;
   schemaEncoding: string;
   messageEncoding: string;
-  role: McapStreamRole;
+  kind: MultimodalStreamKind;
+  frameId: string | null;
+  affordances: string[];
+  compatiblePanels: MultimodalPanelArchetype[];
   channelId: number;
   schemaId: number;
-  timeRange: McapTimeRange;
+  timeRange: MultimodalTimeRange;
   messageCount: number | null;
 };
 
-/** Describes how a supported MCAP stream should be opened as a panel. */
-export type McapPanelPlan = {
-  panelId: string;
-  panelType: McapPanelType;
-  contentType: McapContentType;
-  streamId: string;
+export type MultimodalFrameDescriptor = {
+  frameId: string;
 };
 
-/** Describes a sample-backed MCAP scene resolved by the backend. */
-export type McapSceneDescriptor = {
+export type MultimodalTransformDescriptor = {
+  topic: string;
+  parentFrameId: string;
+  childFrameId: string;
+  isStatic: boolean;
+};
+
+export type MultimodalLocationTopicDescriptor = {
+  streamId: string;
+  topic: string;
+  mode: MultimodalLocationMode;
+  frameId: string | null;
+};
+
+export type MultimodalCatalog = {
   sceneId: string;
   datasetId: string;
   sampleId: string;
   mediaField: string;
   mediaPath: string;
-  timeRange: McapTimeRange;
-  streams: McapStreamDescriptor[];
+  sourceKind: string;
+  catalogVersion: string;
+  timeRange: MultimodalTimeRange;
+  streams: MultimodalStreamDescriptor[];
+  frames: MultimodalFrameDescriptor[];
+  transforms: MultimodalTransformDescriptor[];
+  locationTopics: MultimodalLocationTopicDescriptor[];
 };
 
-/** Describes default synchronization and panel layout for an MCAP scene. */
-export type McapPlaybackPlan = {
+export type MultimodalSyncConfig = {
+  timestampSource: MultimodalSyncTimestampSource;
+  fallback: MultimodalSyncFallback;
+  mode: MultimodalSyncMode;
+};
+
+export type MultimodalFrameConfig = {
+  fixedFrameId: string | null;
+  displayFrameId: string | null;
+  followMode: MultimodalFollowMode;
+  locationStreamId: string | null;
+  enuFrameId: string | null;
+};
+
+export type MultimodalSceneConfig = {
+  upAxis: MultimodalUpAxis;
+  backgroundColor: string;
+};
+
+/** Default grid placement for one multimodal workspace panel. */
+export type MultimodalPanelLayout = {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+};
+
+export type MultimodalPanelPlan = {
+  panelId: string;
+  archetype: MultimodalPanelArchetype;
+  title: string;
+  renderStreamId: string | null;
+  visibleStreamIds: string[];
+  frameConfig: MultimodalFrameConfig;
+  sceneConfig: MultimodalSceneConfig;
+  layout: MultimodalPanelLayout;
+};
+
+export type MultimodalRenderingPlan = {
   sceneId: string;
-  sync: {
-    timestampSource: "header.stamp";
-    fallback: "log_time";
-    mode: "nearest";
-  };
-  panels: McapPanelPlan[];
-  sidebars: {
-    left: McapSidebarType;
-    right: McapSidebarType;
-  };
+  mediaField: string;
+  sourceKind: string;
+  sync: MultimodalSyncConfig;
+  panels: MultimodalPanelPlan[];
 };
 
-/** Full scene-open payload returned by the MCAP scene endpoint. */
-export type McapSceneOpenResponse = {
-  scene: McapSceneDescriptor;
-  playbackPlan: McapPlaybackPlan;
+export type MultimodalWorkspaceResponse = {
+  catalog: MultimodalCatalog;
+  renderingPlan: MultimodalRenderingPlan;
 };
 
-/** Required sample-scoped inputs for fetching an MCAP scene document. */
-export type FetchMcapSceneParams = {
+export type MultimodalWorkspaceState = {
+  sceneId: string;
+  sync: MultimodalSyncConfig;
+  activePanelId: string | null;
+  maximizedPanelId: string | null;
+  sidebarCollapsed: boolean;
+  panels: MultimodalPanelLayoutState[];
+};
+
+export type MultimodalPanelLayoutState = MultimodalPanelPlan;
+
+export type FetchMultimodalWorkspaceParams = {
   datasetId: string;
   sampleId: string;
   mediaField: string;
+  sourceKind?: string;
 };
 
-/** Buffer request envelope sent to the MCAP buffer endpoint. */
-export type McapBufferRequest = {
+export type MultimodalStreamWindowRequest = {
   mediaField: string;
+  sourceKind?: string;
   streamIds: string[];
-  window: McapTimeRange;
-  mode: McapBufferMode;
+  startTimeNs: number;
+  endTimeNs: number;
+  maxMessagesPerStream?: number;
+  mode?: MultimodalBufferMode;
 };
 
-/** Required sample-scoped inputs for fetching an MCAP message window. */
-export type FetchMcapBufferParams = {
+export type FetchMultimodalBufferParams = {
   datasetId: string;
   sampleId: string;
-  request: McapBufferRequest;
+  request: MultimodalStreamWindowRequest;
 };
 
-/** Timestamp-only timeline request sent to the MCAP timeline endpoint. */
-export type McapTimelineRequest = {
+/** Request payload for the small boot-time raw window used for first paint. */
+export type MultimodalBootstrapWindowRequest = {
   mediaField: string;
-  streamIds: string[];
+  sourceKind?: string;
+  anchorTimeNs: number;
+  renderStreamIds: string[];
+  transformStreamIds: string[];
+  locationStreamIds: string[];
+  transformWindowNs?: number;
 };
 
-/** Per-stream playback timestamps returned by the MCAP timeline endpoint. */
-export type McapTimelineStream = {
+/** Route params for one boot-time raw window fetch. */
+export type FetchMultimodalBootstrapWindowParams = {
+  datasetId: string;
+  sampleId: string;
+  request: MultimodalBootstrapWindowRequest;
+};
+
+export type MultimodalTimelineIndexRequest = {
+  mediaField: string;
+  sourceKind?: string;
+  streamIds?: string[];
+  timestampSource?: MultimodalSyncTimestampSource;
+  fallback?: MultimodalSyncFallback;
+};
+
+export type MultimodalTimelineSample = {
+  timestampNs: number;
+  logTimeNs: number;
+  publishTimeNs: number;
+};
+
+export type MultimodalTimelineStream = {
   streamId: string;
-  timestampsNs: number[];
+  samples: MultimodalTimelineSample[];
 };
 
-/** Shared playback clock and per-stream indexes for an MCAP scene. */
-export type McapTimelineIndex = {
-  timestampSource: "log_time";
-  timestampsNs: number[];
-  streams: McapTimelineStream[];
-};
-
-/** Timeline payload returned by the sample-scoped MCAP timeline endpoint. */
-export type McapTimelineResponse = {
+export type MultimodalTimelineIndexResponse = {
   sceneId: string;
-  timeline: McapTimelineIndex;
+  timestampSource: MultimodalSyncTimestampSource;
+  timestampsNs: number[];
+  streams: MultimodalTimelineStream[];
 };
 
-/** Required sample-scoped inputs for fetching an MCAP timeline index. */
-export type FetchMcapTimelineParams = {
+export type FetchMultimodalTimelineParams = {
   datasetId: string;
   sampleId: string;
-  request: McapTimelineRequest;
+  request: MultimodalTimelineIndexRequest;
 };
 
-/** Raw message transport record returned before payload normalization. */
-export type McapRawMessageTransport = {
+export type MultimodalRawMessageTransport = {
   messageId: string;
+  syncTimestampNs: number;
   logTimeNs: number;
   publishTimeNs: number;
   payloadB64: string;
 };
 
-/** Raw-mode transport response returned directly by the backend. */
-export type McapRawBufferTransportResponse = {
-  mode: "raw";
+export type MultimodalRawMessage = Omit<
+  MultimodalRawMessageTransport,
+  "payloadB64"
+> & {
+  payload: Uint8Array;
+};
+
+export type MultimodalRawBufferTransportResponse = {
   sceneId: string;
-  window: McapTimeRange;
+  window: {
+    startTimeNs: number;
+    endTimeNs: number;
+  };
   streams: {
     streamId: string;
     schemaName: string;
     messageEncoding: string;
-    messages: McapRawMessageTransport[];
+    messages: MultimodalRawMessageTransport[];
   }[];
 };
 
-/** Raw message record with decoded payload bytes for worker consumers. */
-export type McapRawMessage = Omit<McapRawMessageTransport, "payloadB64"> & {
-  payload: Uint8Array;
-};
-
-/** Normalized raw buffer response exposed by the frontend client. */
-export type McapRawBufferResponse = Omit<
-  McapRawBufferTransportResponse,
+export type MultimodalRawBufferResponse = Omit<
+  MultimodalRawBufferTransportResponse,
   "streams"
 > & {
   streams: {
     streamId: string;
     schemaName: string;
     messageEncoding: string;
-    messages: McapRawMessage[];
+    messages: MultimodalRawMessage[];
   }[];
 };
