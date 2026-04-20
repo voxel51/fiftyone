@@ -13,6 +13,7 @@ import { PolylineDetails } from "./PolylineDetails";
 import Position from "./Position";
 import Position3d from "./Position3d";
 import {
+  currentData,
   currentField,
   currentFieldIsReadOnlyAtom,
   currentOverlay,
@@ -46,7 +47,9 @@ export default function Edit() {
   const field = useAtomValue(currentField);
   const overlay = useAtomValue(currentOverlay);
   const type = useAtomValue(currentType);
+  const data = useAtomValue(currentData);
   const isReadOnly = useAtomValue(currentFieldIsReadOnlyAtom);
+  const isMaskDetection = !!(data?.mask || data?.isEditingMask);
   const [activePrimitivePath] = useActivePrimitive();
 
   const clear = useClearModal();
@@ -91,7 +94,7 @@ export default function Edit() {
         {!primitiveEditingActive && <Field />}
         {primitiveEditingActive && <PrimitiveWrapper />}
         {type === DETECTION && overlay && !is3dDetection && (
-          <Position readOnly={isReadOnly} />
+          <Position readOnly={isReadOnly || isMaskDetection} />
         )}
         {type === DETECTION && overlay && is3dDetection && (
           <Position3d readOnly={isReadOnly} />
