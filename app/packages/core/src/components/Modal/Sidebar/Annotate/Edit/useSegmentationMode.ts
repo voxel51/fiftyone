@@ -234,17 +234,15 @@ export const useSegmentationMode = () => {
         const currentScene = sceneRef.current;
         const currentLabel = selectedLabelRef.current;
 
-        if (currentLabel) {
-          if (
-            currentScene &&
-            !currentScene.isDestroyed &&
-            currentScene.renderLoopActive
-          ) {
-            currentScene.exitInteractiveMode();
+        if (
+          currentScene &&
+          !currentScene.isDestroyed &&
+          currentScene.renderLoopActive
+        ) {
+          currentScene.exitInteractiveMode();
 
-            if (currentLabel.overlay) {
-              addOverlay(currentLabel.overlay as BaseOverlay);
-            }
+          if (currentLabel?.overlay) {
+            addOverlay(currentLabel.overlay as BaseOverlay);
           }
         }
 

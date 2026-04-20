@@ -8,10 +8,7 @@ import { EventDispatcher, getEventBus } from "@fiftyone/events";
 import { TypeGuards } from "../core/Scene2D";
 import type { LighterEventGroup } from "../events";
 import type { SegmentationToolState } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useSegmentationMode";
-import {
-  DetectionOverlay,
-  type InteractionState,
-} from "../overlay/DetectionOverlay";
+import type { InteractionState } from "../overlay/DetectionOverlay";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { SelectionManager } from "../selection/SelectionManager";
@@ -153,7 +150,7 @@ export class InteractionManager {
   private currentPixelCoordinates?: Point;
   private readonly eventBus: EventDispatcher<LighterEventGroup>;
 
-  private pendingDetection?: {
+  private pendingAction?: {
     point: Point;
     worldPoint: Point;
     scale: number;
@@ -210,7 +207,7 @@ export class InteractionManager {
     this.clickStartPoint = point;
 
     let handler: InteractionHandler | undefined = undefined;
-    let interactiveHandler = this.getInteractiveHandler();
+    const interactiveHandler = this.getInteractiveHandler();
 
     if (interactiveHandler) {
       handler = interactiveHandler.getOverlay();
@@ -235,13 +232,13 @@ export class InteractionManager {
       // Detection mode: defer overlay creation until we confirm this is a drag.
       // If the user releases without dragging (a click), exit detection mode.
       // Clicking on an existing overlay selects it normally instead.
-      if (detectionModeBridge.isActive()) {
+      if (detectionModeBridge.isActive() || segmentationModeBridge.isActive()) {
         const isNonOverlay = !handler || handler.id === this.canonicalMediaId;
 
         if (isNonOverlay) {
           this.renderer.disableZoomPan();
 
-          this.pendingDetection = {
+          this.pendingAction = {
             point,
             worldPoint,
             scale,
@@ -251,30 +248,6 @@ export class InteractionManager {
           this.canvas.setPointerCapture(event.pointerId);
           event.preventDefault();
           return;
-        }
-      } else if (segmentationModeBridge.isActive()) {
-        const isNonOverlay = !handler || handler.id === this.canonicalMediaId;
-
-        if (isNonOverlay || isUnselectedOverlay) {
-          this.renderer.disableZoomPan();
-          this.selectionManager.clearSelection();
-
-          interactiveHandler = this.getInteractiveHandler();
-          if (!interactiveHandler) {
-            // Ask QuickDraw (via React) to create a detection and register
-            // an interactive handler. This relies on the event bus invoking
-            // handlers synchronously so the handler is available immediately
-            // after dispatch returns.
-            this.eventBus.dispatch("lighter:overlay-create", {
-              eventId: generateUUID(),
-            });
-            interactiveHandler = this.getInteractiveHandler();
-          }
-
-          if (interactiveHandler) {
-            handler = interactiveHandler.getOverlay();
-            this.selectionManager.select(handler.id);
-          }
         }
       }
     }
@@ -342,7 +315,7 @@ export class InteractionManager {
 
   // Promote pending detection mode event once drag threshold is exceeded.
   private detectionModeCreate = (event: PointerEvent): boolean => {
-    if (!this.pendingDetection) return false;
+    if (!this.pendingAction) return false;
 
     const point = this.getCanvasPoint(event);
     const worldPoint = this.renderer.screenToWorld(point);
@@ -350,13 +323,13 @@ export class InteractionManager {
     this.currentPixelCoordinates = point;
 
     const distance = Math.hypot(
-      point.x - this.pendingDetection.point.x,
-      point.y - this.pendingDetection.point.y
+      point.x - this.pendingAction.point.x,
+      point.y - this.pendingAction.point.y
     );
 
     if (distance > this.CLICK_THRESHOLD) {
-      const pending = this.pendingDetection;
-      this.pendingDetection = undefined;
+      const pending = this.pendingAction;
+      this.pendingAction = undefined;
 
       // Signal detection mode to create a detection and register
       // an interactive handler. This relies on the event bus invoking
@@ -402,9 +375,95 @@ export class InteractionManager {
     return true;
   };
 
+  /**
+   * Called from handlePointerMove. If a segmentation action is pending and the
+   * pointer has moved beyond the click threshold, forward the deferred
+   * pointer-down to the handler to start painting.
+   */
+  private segmentationModePaint = (
+    event: PointerEvent,
+    forcePaint = false
+  ): boolean => {
+    if (!this.pendingAction) return false;
+
+    const point = this.getCanvasPoint(event);
+    const worldPoint = this.renderer.screenToWorld(point);
+    const scale = this.renderer.getScale();
+    this.currentPixelCoordinates = point;
+
+    const distance = Math.hypot(
+      point.x - this.pendingAction.point.x,
+      point.y - this.pendingAction.point.y
+    );
+
+    if (forcePaint || distance > this.CLICK_THRESHOLD) {
+      const pending = this.pendingAction;
+      this.pendingAction = undefined;
+
+      const editingSegmentation =
+        segmentationModeBridge.isActive() &&
+        this.selectionManager.getSelectionCount() > 0;
+
+      if (!editingSegmentation) {
+        this.eventBus.dispatch("lighter:overlay-create", {
+          eventId: generateUUID(),
+        });
+      }
+
+      const interactiveHandler = this.getInteractiveHandler();
+      const handler =
+        interactiveHandler?.getOverlay() || this.findSelectedHandler();
+
+      if (handler) {
+        this.selectionManager.select(handler.id);
+
+        // Forward the deferred pointer-down to start painting
+        handler.onPointerDown?.({
+          point: pending.point,
+          worldPoint: pending.worldPoint,
+          event,
+          scale: pending.scale,
+          segmentationToolState: segmentationModeBridge.getToolState(
+            pending.scale
+          ),
+        });
+
+        // Apply the current move
+        handler.onMove?.({
+          point,
+          worldPoint,
+          event,
+          scale,
+          maintainAspectRatio: this.maintainAspectRatio,
+          segmentationToolState: segmentationModeBridge.getToolState(scale),
+        });
+
+        if (TypeGuards.isSpatial(handler)) {
+          this.eventBus.dispatch("lighter:overlay-drag-start", {
+            id: handler.id,
+            startPosition: handler.bounds,
+            bounds: handler.bounds,
+          });
+        }
+
+        this.configureCursorStyle(handler, worldPoint, scale);
+      }
+    }
+
+    return true;
+  };
+
+  private handlePendingAction = (event: PointerEvent): boolean => {
+    if (detectionModeBridge.isActive()) return this.detectionModeCreate(event);
+    if (segmentationModeBridge.isActive())
+      return this.segmentationModePaint(event);
+
+    return false;
+  };
+
   private handlePointerMove = (event: PointerEvent): void => {
-    // short-circuit if pending detection mode operation kicks off
-    if (this.detectionModeCreate(event)) return;
+    // short-circuit if pending segmentation or detection mode operation kicks off
+    if (this.handlePendingAction(event)) return;
 
     const point = this.getCanvasPoint(event);
     const worldPoint = this.renderer.screenToWorld(point);
@@ -481,13 +540,13 @@ export class InteractionManager {
   };
 
   private detectionModeQuit = (event: PointerEvent): boolean => {
-    if (!this.pendingDetection) return false;
+    if (!this.pendingAction) return false;
 
     this.eventBus.dispatch("lighter:detection-mode-quit", {
       eventId: generateUUID(),
     });
 
-    this.pendingDetection = undefined;
+    this.pendingAction = undefined;
     this.renderer.enableZoomPan();
     this.canvas.releasePointerCapture(event.pointerId);
     this.clickStartPoint = undefined;
@@ -496,10 +555,46 @@ export class InteractionManager {
     return true;
   };
 
+  private segmentationModeQuit = (event: PointerEvent): boolean => {
+    if (!this.pendingAction) return false;
+
+    this.selectionManager.clearSelection();
+
+    this.pendingAction = undefined;
+    this.renderer.enableZoomPan();
+    this.canvas.releasePointerCapture(event.pointerId);
+    this.clickStartPoint = undefined;
+    this.clickStartTime = 0;
+
+    return true;
+  };
+
+  /**
+   * Called from handlePointerUp. If an action is still pending (no
+   * significant movement), the user clicked to quit — establish the overlay
+   * and remove the interactive handler.
+   */
+  private handleActionQuit = (event: PointerEvent): boolean => {
+    if (!this.pendingAction) return false;
+
+    if (detectionModeBridge.isActive()) {
+      return this.detectionModeQuit(event);
+    }
+
+    if (segmentationModeBridge.isActive()) {
+      if (this.selectionManager.getSelectionCount() === 0) {
+        this.segmentationModePaint(event, true);
+        return false;
+      } else {
+        return this.segmentationModeQuit(event);
+      }
+    }
+
+    return false;
+  };
+
   private handlePointerUp = (event: PointerEvent): void => {
-    // if we still have a pendingDetectionDraw there was no significant movement
-    // the user clicked to exit detection mode
-    if (this.detectionModeQuit(event)) return;
+    if (this.handleActionQuit(event)) return;
 
     const point = this.getCanvasPoint(event);
     const worldPoint = this.renderer.screenToWorld(point);
@@ -584,8 +679,8 @@ export class InteractionManager {
   };
 
   private handlePointerCancel = (event: PointerEvent): void => {
-    if (this.pendingDetection) {
-      this.pendingDetection = undefined;
+    if (this.pendingAction) {
+      this.pendingAction = undefined;
       this.renderer.enableZoomPan();
     }
 
@@ -995,6 +1090,14 @@ export class InteractionManager {
    */
   findHandlerById(id: string): InteractionHandler | undefined {
     return this.handlers.find((handler) => handler.id === id);
+  }
+
+  /**
+   * Finds the first selected handler
+   * @returns The handler if found, undefined otherwise.
+   */
+  findSelectedHandler(): InteractionHandler | undefined {
+    return this.handlers.find((handler) => handler.isSelected?.());
   }
 
   /**
