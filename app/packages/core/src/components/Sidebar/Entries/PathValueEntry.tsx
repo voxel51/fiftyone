@@ -8,7 +8,7 @@ import {
 } from "@fiftyone/utilities";
 import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
 import { useSpring } from "@react-spring/core";
-import React, { Suspense, useMemo, useState } from "react";
+import React, { Suspense, useMemo, useRef, useState } from "react";
 import {
   atomFamily,
   selectorFamily,
@@ -358,7 +358,8 @@ const SlicesLoadable = ({ path }: { path: string }) => {
 
 const useSlicesData = <T,>(path: string) => {
   const keys = path.split(".");
-  const { activeSampleMap, activeSlices } = fos.useRenderConfig3dState();
+  const activeSampleMap = fos.useActive3dSamplesMap();
+  const activeSlices = fos.useActive3dSlices();
   const slices = Array.from(activeSlices || []).sort();
 
   if (!slices.every((slice) => activeSampleMap[slice])) {
@@ -382,17 +383,26 @@ const useSlicesData = <T,>(path: string) => {
 };
 
 const Loadable = ({ path }: { path: string }) => {
-  const value = useData<string | number | null>(path);
+  const resolved = useDataLoadable<string | number | null>(path);
+  const stickyValue = useStickyResolvedValue(resolved);
+  const value = stickyValue.hasValue ? stickyValue.value : null;
   const none = value === null || value === undefined;
   const { fields, ftype } =
     useRecoilValue(fos.field(path)) ?? makePseudoField(path);
   const color = useRecoilValue(fos.pathColor(path));
   const timeZone = useRecoilValue(fos.timeZone);
 
-  const formatted = useMemo(
-    () => format({ fields, ftype, timeZone, value }),
-    [fields, ftype, timeZone, value]
-  );
+  const formatted = useMemo(() => {
+    if (!stickyValue.hasValue) {
+      return null;
+    }
+
+    return format({ fields, ftype, timeZone, value });
+  }, [fields, ftype, stickyValue.hasValue, timeZone, value]);
+
+  if (!stickyValue.hasValue) {
+    return <LoadingDots text="" />;
+  }
 
   return (
     <div
@@ -405,6 +415,56 @@ const Loadable = ({ path }: { path: string }) => {
       {none ? "None" : formatted}
     </div>
   );
+};
+
+type ResolvedValue<T> = { state: "loading" } | { state: "hasValue"; value: T };
+
+type StickyResolvedValue<T> =
+  | { hasValue: false }
+  | { hasValue: true; value: T };
+
+/**
+ * Holds onto the last resolved sidebar value so navigation can update in place
+ * instead of flashing a loading state for unchanged values.
+ */
+const useStickyResolvedValue = <T,>(
+  resolved: ResolvedValue<T>
+): StickyResolvedValue<T> => {
+  const ref = useRef<StickyResolvedValue<T>>({ hasValue: false });
+
+  if (resolved.state === "hasValue") {
+    ref.current = { hasValue: true, value: resolved.value };
+  }
+
+  return ref.current;
+};
+
+const useDataLoadable = <T,>(path: string): ResolvedValue<T> => {
+  const keys = path.split(".");
+  const loadable = useRecoilValueLoadable(fos.activeModalSidebarSample);
+  const field = fos.useAssertedRecoilValue(fos.field(keys[0]));
+  const isList = useRecoilValue(fos.isOfDocumentFieldList(path));
+
+  if (loadable.state === "loading") {
+    return { state: "loading" };
+  }
+
+  if (loadable.state === "hasError") {
+    if (loadable.contents instanceof fos.GroupSampleNotFound) {
+      return { state: "hasValue", value: null as T };
+    }
+
+    if (loadable.contents instanceof fos.SampleNotFound) {
+      return { state: "loading" };
+    }
+
+    throw loadable.contents;
+  }
+
+  return {
+    state: "hasValue",
+    value: fos.pullSidebarValue(field, keys, loadable.contents, isList) as T,
+  };
 };
 
 const useData = <T,>(path: string): T => {
@@ -455,8 +515,8 @@ const PathValueEntry = ({
   ) => void;
 }) => {
   const [hovering, setHovering] = useState<boolean>(false);
-  const { activeSlices: active3dSlices, isPinned } =
-    fos.useRenderConfig3dState();
+  const active3dSlices = fos.useActive3dSlices();
+  const isPinned = fos.useIs3dPinned();
   const slices = isPinned && (active3dSlices?.length || 1) > 1;
 
   const isScalar = useRecoilValue(isScalarValue(path));
