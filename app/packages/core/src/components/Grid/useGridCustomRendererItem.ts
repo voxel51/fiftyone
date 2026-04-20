@@ -11,7 +11,7 @@ import {
 import type { ID } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import type React from "react";
-import { useCallback, useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { useRecoilBridgeAcrossReactRoots_UNSTABLE } from "recoil";
 import { GridCustomRendererItem } from "./GridCustomRendererItem";
 
@@ -25,7 +25,11 @@ export function useGridCustomRendererItem(
   const schema = fos.useSampleSchema();
   const trackEvent = useTrackEvent();
 
-  const sampleRenderers = useActivePlugins(PluginComponentType.SampleRenderer);
+  const activatorCtx = useMemo(() => ({ dataset, schema }), [dataset, schema]);
+  const sampleRenderers = useActivePlugins(
+    PluginComponentType.SampleRenderer,
+    activatorCtx
+  );
   const { isDisabled: isDatasetRendererDisabled } =
     fos.useGridCustomRendererFailover(dataset?.name);
 
