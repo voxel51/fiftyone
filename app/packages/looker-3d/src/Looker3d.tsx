@@ -70,8 +70,8 @@ export const Looker3d = () => {
     [mediaType, hasDirect3dPath, has3dSlices, isDynamicGroup, parentMediaType]
   );
 
-  const { activeSampleMap: sampleMap, activeFo3dSlice } =
-    fos.useRenderConfig3dState();
+  const sampleMap = fos.useActive3dSamplesMap();
+  const activeFo3dSlice = fos.useActiveFo3dSlice();
   const renderContext =
     modalMode === fos.ModalMode.ANNOTATE && !(isGroup && isMain2DViewerVisible)
       ? "annotate-focused"

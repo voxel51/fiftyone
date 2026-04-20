@@ -123,7 +123,12 @@ type UseFo3dReturnType = {
 export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
   const mediaField = useRecoilValue(fos.selectedMediaField(true));
   const isGroup = useRecoilValue(fos.isGroup);
-  const group3dState = fos.useRenderConfig3dState();
+  const activeFo3dSlice = fos.useActiveFo3dSlice();
+  const activeDirectSlices = fos.useActiveDirect3dSlices();
+  const activeSlices = fos.useActive3dSlices();
+  const activeSampleMap = fos.useActive3dSamplesMap();
+  const allSampleMap = fos.useAll3dSamplesMap();
+  const realFo3dSlices = fos.useRealFo3dSlices();
   const { setFo3dContent } = fos.useRenderConfig3dActions();
   const fetchFo3d = useFo3dFetcher();
 
@@ -160,35 +165,26 @@ export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
       return undefined;
     }
 
-    if (group3dState.activeSlices.length) {
-      return getSampleMapForSlices(
-        group3dState.allSampleMap,
-        group3dState.activeDirectSlices
-      );
+    if (activeSlices.length) {
+      return getSampleMapForSlices(allSampleMap, activeDirectSlices);
     }
 
-    const realFo3dSliceSet = new Set(group3dState.realFo3dSlices);
+    const realFo3dSliceSet = new Set(realFo3dSlices);
     return Object.fromEntries(
-      Object.entries(group3dState.allSampleMap).filter(
+      Object.entries(allSampleMap).filter(
         ([slice]) => !realFo3dSliceSet.has(slice)
       )
     );
-  }, [
-    group3dState.activeDirectSlices,
-    group3dState.activeSlices,
-    group3dState.allSampleMap,
-    isGroup,
-    group3dState.realFo3dSlices,
-  ]);
+  }, [activeDirectSlices, activeSlices, allSampleMap, isGroup, realFo3dSlices]);
   const syntheticRawData = useMemo(() => {
-    if (group3dState.activeFo3dSlice || !isWrappableDirectAsset) {
+    if (activeFo3dSlice || !isWrappableDirectAsset) {
       return null;
     }
 
     const groupedSampleMap =
-      isGroup && group3dState.activeSlices.length === 0
+      isGroup && activeSlices.length === 0
         ? groupedDirectSampleMap
-        : group3dState.activeSampleMap;
+        : activeSampleMap;
 
     return buildSyntheticSceneForDirect3dSamples({
       sample,
@@ -196,9 +192,9 @@ export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
       sampleMap: groupedSampleMap,
     });
   }, [
-    group3dState.activeFo3dSlice,
-    group3dState.activeSampleMap,
-    group3dState.activeSlices,
+    activeFo3dSlice,
+    activeSampleMap,
+    activeSlices,
     isWrappableDirectAsset,
     isGroup,
     groupedDirectSampleMap,

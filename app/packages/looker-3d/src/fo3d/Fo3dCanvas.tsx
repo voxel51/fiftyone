@@ -107,7 +107,7 @@ export const Fo3dSceneContent = ({
   cameraRef,
 }: Fo3dSceneContentProps) => {
   const mode = useAtomValue(fos.modalMode);
-  const { activeSampleMap: labelSampleMap } = fos.useRenderConfig3dState();
+  const labelSampleMap = fos.useActive3dSamplesMap();
 
   useCameraViews({
     cameraRef,

@@ -11,7 +11,7 @@ export const ViewFo3d = (props: {
   jsonPanel: ReturnType<typeof useJSONPanel>;
 }) => {
   const { jsonPanel } = props;
-  const { fo3dContent } = fos.useRenderConfig3dState();
+  const fo3dContent = fos.useFo3dContent();
 
   const [isJsonPanelOpen, setIsJsonPanelOpen] = useState(false);
 

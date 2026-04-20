@@ -104,8 +104,8 @@ const CustomColorSpace = () => {
     config: { duration: 400 },
   });
 
-  const { activeSlices: activePcdSlices, pinnedSlice: defaultPcdSlice } =
-    fos.useRenderConfig3dState();
+  const activePcdSlices = fos.useActive3dSlices();
+  const defaultPcdSlice = fos.usePinned3dSlice();
   const [customColorMap, setCustomColorMap] =
     useRecoilState(customColorMapAtom);
   const [isColorPickerOn, setIsColorPickerOn] = useState(false);

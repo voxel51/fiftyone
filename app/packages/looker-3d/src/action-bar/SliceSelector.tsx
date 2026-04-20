@@ -33,7 +33,8 @@ const SliceSelectorLabel = styled.div`
  * Toggles the grouped 3D slice picker and summarizes the current selection.
  */
 export const SliceSelector = () => {
-  const { activeSlices, allSlices } = fos.useRenderConfig3dState();
+  const activeSlices = fos.useActive3dSlices();
+  const allSlices = fos.useAll3dSlices();
   const [currentAction, setAction] = useRecoilState(currentActionAtom);
 
   const activeSlicesLabel = useMemo(() => {
@@ -80,8 +81,9 @@ export const SliceSelector = () => {
 };
 
 const PcdsSelector = () => {
-  const { activeSlices, allSampleMap, allSlices } =
-    fos.useRenderConfig3dState();
+  const activeSlices = fos.useActive3dSlices();
+  const allSampleMap = fos.useAll3dSamplesMap();
+  const allSlices = fos.useAll3dSlices();
   const actions = fos.useRenderConfig3dActions();
   const setCurrentAction = useSetRecoilState(currentActionAtom);
   const availableSlices = allSlices.filter((slice) =>

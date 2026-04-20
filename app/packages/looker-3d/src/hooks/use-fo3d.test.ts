@@ -33,7 +33,12 @@ vi.mock("@fiftyone/state", () => ({
   selectedMediaField: () => mockAtoms.selectedMediaField,
   isGroup: mockAtoms.isGroup,
   getSampleSrc: mockState.getSampleSrc,
-  useRenderConfig3dState: () => mockState.group3dState,
+  useActiveFo3dSlice: () => mockState.group3dState.activeFo3dSlice,
+  useActiveDirect3dSlices: () => mockState.group3dState.activeDirectSlices,
+  useActive3dSlices: () => mockState.group3dState.activeSlices,
+  useActive3dSamplesMap: () => mockState.group3dState.activeSampleMap,
+  useAll3dSamplesMap: () => mockState.group3dState.allSampleMap,
+  useRealFo3dSlices: () => mockState.group3dState.realFo3dSlices,
   useRenderConfig3dActions: () => ({
     setFo3dContent: mockState.setFo3dContent,
   }),

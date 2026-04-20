@@ -114,7 +114,8 @@ const Fo3dLoadErrorState = ({ error }: { error: Error | null }) => {
 };
 
 export const MediaTypeFo3dComponent = () => {
-  const { interactionSample, sceneSample } = fos.useRenderConfig3dState();
+  const interactionSample = fos.useInteraction3dSample();
+  const sceneSample = fos.useScene3dSample();
   const settings = usePluginSettings<Looker3dSettings>("3d");
   const mode = fos.useModalMode();
   const canAnnotate = useCanAnnotate().showAnnotationTab;

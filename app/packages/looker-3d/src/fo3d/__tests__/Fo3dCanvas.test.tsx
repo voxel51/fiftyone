@@ -11,7 +11,7 @@ const threeDLabelsMock = vi.fn(() => null);
 
 vi.mock("@fiftyone/state", () => ({
   modalMode: { key: "modalMode" },
-  useRenderConfig3dState: vi.fn(),
+  useActive3dSamplesMap: vi.fn(),
 }));
 
 vi.mock("recoil", () => ({}));
@@ -103,9 +103,7 @@ describe("Fo3dSceneContent", () => {
       },
     };
 
-    vi.mocked(fos.useRenderConfig3dState).mockReturnValue({
-      activeSampleMap: labelSampleMap,
-    });
+    vi.mocked(fos.useActive3dSamplesMap).mockReturnValue(labelSampleMap);
 
     const foScene: FoScene = {
       position: new Vector3(0, 0, 0),
