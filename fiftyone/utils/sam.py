@@ -37,18 +37,38 @@ class SegmentAnythingModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
             ``segment_anything.SamAutomaticMaskGenerator(model, **auto_kwargs)``
         points_mask_index (None): an optional mask index to use for each
             keypoint output
+        get_item_cls (None): a string like
+            ``"fiftyone.utils.sam.SegmentAnythingImageGetItem"`` specifying the
+            :class:`GetItem` to use for SAM
+        get_item_args (None): a dictionary of arguments for
+            ``get_item_cls(field_mapping=field_mapping, **kwargs)``
     """
 
-    def __init__(self, d):
-        d = self.init(d)
+    def __init__(self, cfg_dict):
+        """Initializes :class:`SegmentAnythingModelConfig`
+
+        Args:
+            cfg_dict: a dictionary with config parameters
+        """
+        d = self.init(cfg_dict)
         super().__init__(d)
 
         self.auto_kwargs = self.parse_dict(d, "auto_kwargs", default=None)
+        # For each point prompt, three masks are generated. Mask index is used to select
+        # which one of the three masks to choose. When not provided, mask with the
+        # highest score is chosen.
         self.points_mask_index = self.parse_int(
             d, "points_mask_index", default=None
         )
         if self.points_mask_index and not 0 <= self.points_mask_index <= 2:
             raise ValueError("mask_index must be 0, 1, or 2")
+
+        self.get_item_cls = self.parse_string(
+            d,
+            "get_item_cls",
+            default="fiftyone.utils.sam.SegmentAnythingImageGetItem",
+        )
+        self.get_item_args = self.parse_dict(d, "get_item_args", default=None)
 
 
 class _SAMPredictor:
@@ -419,6 +439,60 @@ class SegmentAnythingImageGetItem(fout.GetItem):
             raise ValueError(f"Undefined required keys for {self.mode.name}")
 
 
+class SegmentAnythingImageGetItemForVideo(SegmentAnythingImageGetItem):
+    """Workaround for applying image model to video reader frames.
+
+    Frames are not stored on disk and therefore cannot be loaded.
+    """
+
+    def __call__(self, d):
+        """Prepares the model input for a given sample's data.
+
+        Args:
+            d: a dict mapping the :meth:`required_keys` to values from the
+                sample being processed
+
+        Returns:
+            the model input
+        """
+        item_dict = {}
+        img = d["image"]
+        if self.mode != SAMPromptMode.auto:
+            if self.transform is None:
+                raise ValueError(
+                    f"Transform cannot be None for {self.__class__.__name__}."
+                )
+            img, img_hw = self.transform(img)
+        else:
+            img_hw = img.shape[:2]
+        item_dict["image"] = img
+        item_dict["original_size"] = img_hw
+        prompts = self._preprocess_prompts(d, img_hw)
+        item_dict.update(prompts)
+
+        return item_dict
+
+    @property
+    def required_keys(self):
+        """The list of keys that must exist on the dicts provided to the
+        :meth:`__call__` method at runtime."""
+
+        common_keys = ["image"]
+        box_keys = ["box_prompt_field"]
+        point_keys = ["point_prompt_field"]
+
+        if self.mode == SAMPromptMode.auto:
+            return common_keys
+        elif self.mode == SAMPromptMode.box_only:
+            return common_keys + box_keys
+        elif self.mode == SAMPromptMode.point_only:
+            return common_keys + point_keys
+        elif self.mode == SAMPromptMode.box_point_combo:
+            return common_keys + box_keys + point_keys
+        else:
+            raise ValueError(f"Undefined required keys for {self.mode.name}")
+
+
 class SAMSegmenterOutputProcessor(fout.OutputProcessor):
     """Converts SAM model outputs to FiftyOne format.
 
@@ -572,7 +646,7 @@ class SAMSegmenterOutputProcessor(fout.OutputProcessor):
         return fol.Detections(detections=detections)
 
 
-class SegmentAnythingModel(fout.TorchSamplesMixin, fout.TorchImageModel):
+class SegmentAnythingModel(fout.TorchImageModelWithPrompts):
     """Wrapper for running `Segment Anything <https://segment-anything.com>`_
     inference.
 
@@ -591,7 +665,7 @@ class SegmentAnythingModel(fout.TorchSamplesMixin, fout.TorchImageModel):
         dataset.apply_model(
             model,
             label_field="segmentations",
-            prompt_field="ground_truth",
+            box_prompt_field="ground_truth",
         )
 
         session = fo.launch_app(dataset)
@@ -621,7 +695,7 @@ class SegmentAnythingModel(fout.TorchSamplesMixin, fout.TorchImageModel):
         dataset.apply_model(
             model,
             label_field="segmentations",
-            prompt_field="gt_keypoints",
+            point_prompt_field="gt_keypoints",
         )
 
         session = fo.launch_app(dataset)
@@ -647,271 +721,333 @@ class SegmentAnythingModel(fout.TorchSamplesMixin, fout.TorchImageModel):
     """
 
     def __init__(self, config):
-        fout.TorchSamplesMixin.__init__(self)
-        fout.TorchImageModel.__init__(self, config)
+        if config.output_processor_cls is None:
+            config.output_processor_cls = (
+                "fiftyone.utils.sam.SAMSegmenterOutputProcessor"
+            )
 
-        self._curr_prompt_type = None
-        self._curr_prompts = None
-        self._curr_classes = None
+        if config.entrypoint_args is None:
+            config.entrypoint_args = {}
+        if "checkpoint" not in config.entrypoint_args:
+            config.entrypoint_args["checkpoint"] = config.model_path
+
+        fout.TorchImageModel.__init__(self, config)
+        self._sam_auto_generator = self._load_auto_generator()
+        self._sam_predictor = self._load_predictor()
 
     def _download_model(self, config):
         config.download_model_if_necessary()
 
-    def _load_model(self, config):
-        entrypoint = etau.get_function(config.entrypoint_fcn)
-        model = entrypoint(checkpoint=config.model_path)
-
-        model = model.to(self._device)
-        if self.using_half_precision:
-            model = model.half()
-
-        model.eval()
-
-        return model
-
-    def predict_all(self, imgs, samples=None):
-        field_name = self._get_field()
-        if field_name is not None and samples is not None:
-            prompt_type, prompts, classes = self._parse_samples(
-                samples, field_name
-            )
-        else:
-            prompt_type, prompts, classes = None, None, None
-
-        self._curr_prompt_type = prompt_type
-        self._curr_prompts = prompts
-        self._curr_classes = classes
-
-        return self._predict_all(imgs)
-
-    def _get_field(self):
-        if "prompt_field" in self.needs_fields:
-            prompt_field = self.needs_fields["prompt_field"]
-        else:
-            prompt_field = next(iter(self.needs_fields.values()), None)
-
-        if prompt_field is not None and prompt_field.startswith("frames."):
-            prompt_field = prompt_field[len("frames.") :]
-
-        return prompt_field
-
-    def _parse_samples(self, samples, field_name):
-        prompt_type = self._get_prompt_type(samples, field_name)
-        prompts = self._get_prompts(samples, field_name)
-        classes = self._get_classes(samples, field_name)
-        return prompt_type, prompts, classes
-
-    def _get_prompt_type(self, samples, field_name):
-        for sample in samples:
-            value = sample.get_field(field_name)
-            if value is None:
-                continue
-
-            if isinstance(value, fol.Detections):
-                return "boxes"
-
-            if isinstance(value, fol.Keypoints):
-                return "points"
-
-            raise ValueError(
-                "Unsupported prompt type %s. The supported field types are %s"
-                % (type(value), (fol.Detections, fol.Keypoints))
-            )
-
-        return None
-
-    def _get_prompts(self, samples, field_name):
-        prompts = []
-        for sample in samples:
-            value = sample.get_field(field_name)
-            if value is not None:
-                prompts.append(value)
-            else:
-                raise ValueError(
-                    "Sample %s is missing a prompt in field '%s'"
-                    % (sample.id, field_name)
-                )
-
-        return prompts
-
-    def _get_classes(self, samples, field_name):
-        classes = set()
-        for sample in samples:
-            value = sample.get_field(field_name)
-            if isinstance(value, fol.Detections):
-                classes.update(det.label for det in value.detections)
-
-            if isinstance(value, fol.Keypoints):
-                classes.update(kp.label for kp in value.keypoints)
-
-        return sorted(classes)
-
-    def _forward_pass(self, imgs):
-        forward_methods = {
-            "boxes": self._forward_pass_boxes,
-            "points": self._forward_pass_points,
-            None: self._forward_pass_auto,
-        }
-        return forward_methods.get(
-            self._curr_prompt_type, self._forward_pass_auto
-        )(imgs)
-
     def _load_predictor(self):
-        return sam.SamPredictor(self._model)
-
-    def _forward_pass_boxes(self, imgs):
-        sam_predictor = self._load_predictor()
-        self._output_processor = fout.InstanceSegmenterOutputProcessor(
-            self._curr_classes
-        )
-
-        outputs = []
-        for img, detections in zip(imgs, self._curr_prompts):
-            ## If no detections, return empty tensors instead of running SAM
-            if detections is None or len(detections.detections) == 0:
-                h, w = img.shape[1], img.shape[2]
-                outputs.append(
-                    {
-                        "boxes": torch.tensor([[]]),
-                        "labels": torch.empty([0, 4]),
-                        "masks": torch.empty([0, 1, h, w]),
-                    }
-                )
-                continue
-            inp = _to_sam_input(img)
-            sam_predictor.set_image(inp)
-            h, w = img.size(1), img.size(2)
-
-            boxes = np.array([d.bounding_box for d in detections.detections])
-            boxes_xyxy = _to_abs_boxes(boxes, w, h)
-            sam_boxes = np.round(boxes_xyxy).astype(int)
-            input_boxes = torch.tensor(sam_boxes, device=sam_predictor.device)
-            transformed_boxes = sam_predictor.transform.apply_boxes_torch(
-                input_boxes, (h, w)
-            )
-
-            labels = torch.tensor(
-                [
-                    self._curr_classes.index(d.label)
-                    for d in detections.detections
-                ],
-                device=sam_predictor.device,
-            )
-
-            masks, scores, _ = sam_predictor.predict_torch(
-                point_coords=None,
-                point_labels=None,
-                boxes=transformed_boxes,
-                multimask_output=False,
-            )
-            outputs.append(
-                {
-                    "boxes": torch.tensor(boxes_xyxy),
-                    "labels": labels,
-                    "masks": masks,
-                    "scores": scores,
-                }
-            )
-
-        return outputs
-
-    def _forward_pass_points(self, imgs):
-        sam_predictor = self._load_predictor()
-        self._output_processor = fout.InstanceSegmenterOutputProcessor(
-            self._curr_classes
-        )
-
-        outputs = []
-        for img, keypoints in zip(imgs, self._curr_prompts):
-            inp = _to_sam_input(img)
-            sam_predictor.set_image(inp)
-            h, w = img.size(1), img.size(2)
-
-            boxes, labels, scores, masks = [], [], [], []
-
-            ## If no keypoints, return empty tensors instead of running SAM
-            if keypoints is None or len(keypoints.keypoints) == 0:
-                outputs.append(
-                    {
-                        "boxes": torch.tensor([[]]),
-                        "labels": torch.empty([0, 4]),
-                        "masks": torch.empty([0, 1, h, w]),
-                    }
-                )
-                continue
-
-            for kp in keypoints.keypoints:
-                sam_points, sam_labels = _to_sam_points(
-                    kp.points,
-                    width=w,
-                    height=h,
-                    point_labels=_get_sam_point_labels(kp),
-                )
-
-                multi_mask, mask_scores, _ = sam_predictor.predict(
-                    point_coords=sam_points,
-                    point_labels=sam_labels,
-                    multimask_output=True,
-                )
-
-                mask_index = self.config.points_mask_index
-                if mask_index is None:
-                    mask_index = np.argmax(mask_scores)
-
-                mask = multi_mask[mask_index].astype(int)
-                if mask.any():
-                    boxes.append(_mask_to_box(mask))
-                    labels.append(self._curr_classes.index(kp.label))
-                    scores.append(min(1.0, np.max(mask_scores)))
-                    masks.append(mask)
-
-            outputs.append(
-                {
-                    "boxes": torch.tensor(boxes, device=sam_predictor.device),
-                    "labels": torch.tensor(
-                        labels, device=sam_predictor.device
-                    ),
-                    "scores": torch.tensor(
-                        scores, device=sam_predictor.device
-                    ),
-                    "masks": torch.tensor(
-                        np.array(masks), device=sam_predictor.device
-                    ).unsqueeze(1),
-                }
-            )
-
-        return outputs
+        return _SAMPredictor(model=self._model)
 
     def _load_auto_generator(self):
         kwargs = self.config.auto_kwargs or {}
         return sam.SamAutomaticMaskGenerator(self._model, **kwargs)
 
-    def _forward_pass_auto(self, imgs):
-        mask_generator = self._load_auto_generator()
-        self._output_processor = None
+    def predict(self, img, sample=None):
+        """Performs prediction a single image.
+
+        Args:
+            img: a dictionary containing image, original size, and prompts. See :class:`fiftyone.utils.sam.SegmentAnythingGetItem` for details.
+            sample (None): sample is no longer used. Available for backward compatibility.
+
+        Returns:
+            a :class:`fiftyone.core.labels.Detections` instance or a dict
+            containing the "masks", "iou_predictions", "low_res_logits" from SAM model output.
+        """
+        return self.predict_all(img, sample)[0]
+
+    def predict_all(self, imgs, samples=None):
+        """Performs prediction on multiple images.
+
+        To generate imgs dictionary and run prediction:
+
+            field_mapping = {"box_prompt_field": "ground-truth"}
+            get_item = model.build_get_item(field_mapping=field_mapping)
+            model_inputs = fout.get_model_inputs_from_get_item(samples, get_item)
+            outputs = model.predict_all(model_inputs)
+
+        Args:
+            imgs: a list of dictionary or a dictionary containing images, original sizes, and prompts. See :class:`fiftyone.utils.sam.SegmentAnythingGetItem` for details.
+            samples (None): samples is no longer used. Available for backward compatibility.
+
+        Returns:
+            a list of :class:`fiftyone.core.labels.Detections` instances or a list of dict
+            containing the "masks", "iou_predictions", "low_res_logits" from SAM model output.
+        """
+        if samples is not None:
+            raise RuntimeError(
+                "Use of SamplesMixin has been deprecated. "
+                "Use SegmentAnythingGetItem to get inputs for the predict_all method."
+            )
+
+        return self._predict_all(imgs)
+
+    def build_get_item(self, field_mapping=None):
+        """Builds a :class:`SegmentAnythingImageGetItem` for loading model input from samples.
+
+        Args:
+            field_mapping (None): a dict mapping required keys to sample fields
+
+        Returns:
+            a :class:`SegmentAnythingImageGetItem` instance
+        """
+        get_item_cls = self.config.get_item_cls
+        if get_item_cls is None:
+            raise ValueError("GetItem class is set to None")
+
+        if not etau.is_str(self.config.get_item_cls):
+            raise TypeError(
+                f"Expected class string. GetItem class can't be initialized from {get_item_cls}"
+            )
+        get_item = etau.get_class(get_item_cls)
+        get_item_args = dict(self.config.get_item_args or {})
+        field_mapping = {} if field_mapping is None else dict(field_mapping)
+
+        if "prompt_field" in field_mapping:
+            # Maintain backward compability of prompt_field.
+            if (
+                "box_prompt_field" in field_mapping
+                and "point_prompt_field" in field_mapping
+            ):
+                raise ValueError(
+                    "The generic prompt_field cannot be used when both box_prompt_field and point_prompt_field are present."
+                )
+            value = field_mapping["prompt_field"]
+            # Copy to box and/or point fields since prompt type is unknown.
+            if "box_prompt_field" not in field_mapping:
+                logger.debug("Moving prompt_field to box_prompt_field")
+                field_mapping["box_prompt_field"] = value
+            if "point_prompt_field" not in field_mapping:
+                logger.debug("Moving prompt_field to point_prompt_field")
+                field_mapping["point_prompt_field"] = value
+
+        return get_item(
+            field_mapping=field_mapping,
+            transform=get_item_args.pop(
+                "transform", self._sam_predictor.image_transform
+            ),
+            use_numpy=get_item_args.pop("use_numpy", True),
+            box_transform=get_item_args.pop(
+                "box_transform", self._sam_predictor.box_transform
+            ),
+            point_transform=get_item_args.pop(
+                "point_transform", self._sam_predictor.point_transform
+            ),
+            **get_item_args,
+        )
+
+    @property
+    def ragged_batches(self):
+        # Ragged image batches are not allowed. All image tensors fed to the model
+        # forward pass must be of the same size.
+        return False
+
+    @property
+    def has_collate_fn(self):
+        return True
+
+    @staticmethod
+    def collate_fn(batch):
+        """Collates a batch of inputs where each input is generated from :class:`SegmentAnythingImageGetItem`.
+
+        Args:
+            batch: a list of dict containing model input from :class:`SegmentAnythingImageGetItem`
+
+        Returns:
+            a collated dictionary of model input for the batch. Expected keys are:
+                "image": a list of torch tensor or numpy arrays of (B X C X H X W) shape
+                "boxes": a list of B X 4 boxes for SAM model input
+                "boxes_xyxy: a list of B x 4 boxes in XYXY pixels in original image space
+                "point_coords": a list of B X N x 2 point coordinates, padded as needed
+                "point_labels": a list of B X N point positive/negative labels, padded as needed
+                "prompt_type": name of prompt type for the batch
+                "classes": a list of classes for each prompt
+        """
+        results = {}
+        for key in batch[0]:
+            results[key] = []
+
+        for item in batch:
+            for key, val in item.items():
+                if key == "point_labels":
+                    continue
+                elif key == "point_coords":
+                    # Pad point prompts and point labels
+                    point_labels = item["point_labels"]
+
+                    max_points = max([pts.shape[0] for pts in val])
+                    padded_points = []
+                    padded_labels = []
+                    for pts, pts_labels in zip(val, point_labels, strict=True):
+                        pad_amount = max_points - pts.shape[0]
+                        padded_pts = torch.nn.functional.pad(
+                            pts, (0, 0, 0, pad_amount), value=0.0
+                        )
+                        padded_lbls = torch.nn.functional.pad(
+                            pts_labels.int(), (0, pad_amount), value=-1
+                        )
+
+                        padded_points.append(padded_pts)  # BxNx2
+                        padded_labels.append(padded_lbls)  # BxN
+
+                    results[key].append(torch.stack(padded_points))
+                    results["point_labels"].append(torch.stack(padded_labels))
+                else:
+                    results[key].append(val)
+
+        # Collapse prompt type
+        prompt_types = results["prompt_type"]
+        if not all(pt == prompt_types[0] for pt in prompt_types):
+            raise ValueError(
+                "All samples in a batch must have the same prompt_type"
+            )
+        results["prompt_type"] = results["prompt_type"][0]
+
+        return results
+
+    def _predict_all(self, args):
+        if self._preprocess and self.has_collate_fn:
+            # Pre-processing only applies collate. Args are expected to have the model transformations applied.
+            if isinstance(args, dict):
+                args = [args]
+            args = self.collate_fn(args)
+
+        prompt_type = args["prompt_type"]
+        if prompt_type == "auto":
+            return self._forward_pass_auto(args)
+
+        orig_image_sizes = args.get("original_size")
+        # Only preserve boxes when using prompts with boxes.
+        boxes_xyxy = (
+            args.get("boxes_xyxy")
+            if prompt_type in ["box_only", "box_point_combo"]
+            else None
+        )
+        labels = args["classes"]
+        for key in args:
+            if isinstance(args[key], torch.Tensor):
+                args[key] = args[key].to(self.device)
+            elif (
+                isinstance(args[key], list)
+                and args[key]
+                and isinstance(args[key][0], torch.Tensor)
+            ):
+                args[key] = [v.to(self.device) for v in args[key]]
+
+        output = self._forward_pass(args)
+
+        if self._output_processor is not None:
+            return self._output_processor(
+                output,
+                orig_image_sizes,
+                confidence_thresh=self.config.confidence_thresh,
+                box_prompts=boxes_xyxy,
+                labels=labels,
+                mask_index=self.config.points_mask_index,
+                classes=self.config.filter_classes,
+            )
+        return output
+
+    def _forward_pass(self, imgs):
+        """Forward pass with prompts
+
+        Args:
+            imgs: a dict containing model input
+
+        Returns:
+            a dict containing model output
+        """
+        images = imgs["image"]
+
+        # Adapted from segment-anything.modeling.sam.SAM.forward.
+        input_images = torch.cat(
+            [self._model.preprocess(img) for img in images], dim=0
+        )
+        image_embeddings = self._model.image_encoder(input_images)
+
+        point_coords = imgs.get("point_coords")
+        point_labels = imgs.get("point_labels")
+        boxes = imgs.get("boxes")
+        mask_inputs = imgs.get("mask_inputs")  # Not used currently
+        multimask_output = boxes is None and point_coords is not None
 
         outputs = []
-        for img in imgs:
-            inp = _to_sam_input(img)
+        for img_idx, img_embedding in enumerate(image_embeddings):
+            if point_coords is not None:
+                points = (
+                    point_coords[img_idx],
+                    point_labels[img_idx],
+                )
+            else:
+                points = None
+            sparse_embeddings, dense_embeddings = self._model.prompt_encoder(
+                points=points,
+                boxes=boxes[img_idx] if boxes is not None else None,
+                masks=mask_inputs[img_idx]
+                if mask_inputs is not None
+                else None,
+            )
+
+            low_res_masks, iou_predictions = self._model.mask_decoder(
+                image_embeddings=img_embedding.unsqueeze(0),
+                image_pe=self._model.prompt_encoder.get_dense_pe(),
+                sparse_prompt_embeddings=sparse_embeddings,
+                dense_prompt_embeddings=dense_embeddings,
+                multimask_output=multimask_output,
+            )
+            masks = self._model.postprocess_masks(
+                low_res_masks,
+                input_size=images[img_idx].shape[-2:],
+                original_size=imgs["original_size"][img_idx],
+            )
+            masks = masks > self._model.mask_threshold
+            outputs.append(
+                {
+                    "masks": masks.float(),
+                    "iou_predictions": iou_predictions.float(),
+                    "low_res_logits": low_res_masks,
+                }
+            )
+        return outputs
+
+    def _forward_pass_auto(self, imgs):
+        """Forward pass with no prompts.
+
+        Args:
+            imgs: a dictionary containing model input
+
+        Returns:
+            a :class:`fiftyone.core.labels.Detections` instance
+        """
+        outputs = []
+        images = imgs["image"]
+        for img in images:
             detections = []
-            for data in mask_generator.generate(inp):
+            # TODO: Move this to post-processing op.
+            for data in self._sam_auto_generator.generate(img):
+                score = data["predicted_iou"]
+                if (
+                    self.config.confidence_thresh is not None
+                    and score < self.config.confidence_thresh
+                ):
+                    continue
                 detection = fol.Detection.from_mask(
                     mask=data["segmentation"],
-                    score=data["predicted_iou"],
+                    score=score,
                     stability=data["stability_score"],
                 )
                 detections.append(detection)
-            detections = fol.Detections(detections=detections)
-            outputs.append(detections)
-
+            outputs.append(fol.Detections(detections=detections))
         return outputs
 
 
-def _to_sam_input(tensor):
-    return (255 * tensor.cpu().numpy()).astype("uint8").transpose(1, 2, 0)
-
-
 def _get_sam_point_labels(keypoint):
+    if "sam_labels" in keypoint and "sam2_labels" in keypoint:
+        logger.warning(
+            "Found keypoint labels under sam_labels and sam2_labels. Using sam_labels."
+        )
     if "sam_labels" in keypoint and keypoint.sam_labels is not None:
         return keypoint.sam_labels
     if "sam2_labels" in keypoint and keypoint.sam2_labels is not None:
