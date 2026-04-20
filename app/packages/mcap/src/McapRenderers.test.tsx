@@ -11,28 +11,40 @@ import {
   render,
   screen,
   waitFor,
-  within,
 } from "@testing-library/react";
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { McapSceneOpenResponse } from "./types";
-import { McapGridRenderer } from "./McapGridRenderer";
-import { McapModalRenderer } from "./McapModalRenderer";
+import { MultimodalGridRenderer } from "./MultimodalGridRenderer";
+import { MultimodalModalRenderer } from "./MultimodalModalRenderer";
 
-const { useMcapSceneMock } = vi.hoisted(() => ({
-  useMcapSceneMock: vi.fn(),
+const { useMultimodalWorkspaceMock } = vi.hoisted(() => ({
+  useMultimodalWorkspaceMock: vi.fn(),
 }));
-const { useMcapPlaybackControllerMock } = vi.hoisted(() => ({
-  useMcapPlaybackControllerMock: vi.fn(),
+const { useMultimodalPlaybackControllerMock } = vi.hoisted(() => ({
+  useMultimodalPlaybackControllerMock: vi.fn(),
 }));
-
-vi.mock("./useMcapScene", () => ({
-  useMcapScene: useMcapSceneMock,
+const { useKeyBindingsMock } = vi.hoisted(() => ({
+  useKeyBindingsMock: vi.fn(),
 }));
 
-vi.mock("./useMcapPlaybackController", () => ({
-  useMcapPlaybackController: useMcapPlaybackControllerMock,
+vi.mock("./useMultimodalWorkspace", () => ({
+  useMultimodalWorkspace: useMultimodalWorkspaceMock,
 }));
+
+vi.mock("./useMultimodalPlaybackController", () => ({
+  useMultimodalPlaybackController: useMultimodalPlaybackControllerMock,
+}));
+
+vi.mock("@fiftyone/commands", async () => {
+  const actual = await vi.importActual<typeof import("@fiftyone/commands")>(
+    "@fiftyone/commands"
+  );
+
+  return {
+    ...actual,
+    useKeyBindings: useKeyBindingsMock,
+  };
+});
 
 vi.mock("./archetypes", () => ({
   Image2dView: ({
@@ -47,6 +59,23 @@ vi.mock("./archetypes", () => ({
   ),
 }));
 
+vi.mock(
+  "@fiftyone/playback/experimental/views/DurationTimelineControls",
+  () => ({
+    DurationTimelineControls: ({
+      currentTime,
+      duration,
+    }: {
+      currentTime: number;
+      duration: number;
+    }) => (
+      <div data-testid="duration-timeline-controls">
+        {currentTime} / {duration}
+      </div>
+    ),
+  })
+);
+
 vi.mock("@fiftyone/playback", () => ({
   Timeline: ({ name }: { name: string }) => (
     <div data-testid="mcap-playback-timeline">{name}</div>
@@ -59,13 +88,15 @@ const dataset = {
 } as const;
 const schema = { filepath: { ftype: "StringField" } } as const;
 
-const SCENE_RESPONSE: McapSceneOpenResponse = {
-  scene: {
+const WORKSPACE_RESPONSE = {
+  catalog: {
     sceneId: "scene-1",
     datasetId: "dataset-1",
     sampleId: "sample-1",
     mediaField: "filepath",
     mediaPath: "/tmp/sensors/drive.mcap",
+    sourceKind: "mcap",
+    catalogVersion: "multimodal-workspace-v1",
     timeRange: { startNs: 10, endNs: 20_000_000_010 },
     streams: [
       {
@@ -74,9 +105,42 @@ const SCENE_RESPONSE: McapSceneOpenResponse = {
         schemaName: "sensor_msgs/msg/CompressedImage",
         schemaEncoding: "ros2msg",
         messageEncoding: "cdr",
-        role: "image_stream",
+        kind: "image",
+        frameId: "camera_front",
+        affordances: ["image"],
+        compatiblePanels: ["image"],
         channelId: 1,
         schemaId: 1,
+        timeRange: { startNs: 10, endNs: 20_000_000_010 },
+        messageCount: 3,
+      },
+      {
+        streamId: "/camera/left",
+        topic: "/camera/left",
+        schemaName: "sensor_msgs/msg/CompressedImage",
+        schemaEncoding: "ros2msg",
+        messageEncoding: "cdr",
+        kind: "image",
+        frameId: "camera_left",
+        affordances: ["image"],
+        compatiblePanels: ["image"],
+        channelId: 4,
+        schemaId: 4,
+        timeRange: { startNs: 10, endNs: 20_000_000_010 },
+        messageCount: 3,
+      },
+      {
+        streamId: "/camera/right",
+        topic: "/camera/right",
+        schemaName: "sensor_msgs/msg/CompressedImage",
+        schemaEncoding: "ros2msg",
+        messageEncoding: "cdr",
+        kind: "image",
+        frameId: "camera_right",
+        affordances: ["image"],
+        compatiblePanels: ["image"],
+        channelId: 5,
+        schemaId: 5,
         timeRange: { startNs: 10, endNs: 20_000_000_010 },
         messageCount: 3,
       },
@@ -86,16 +150,45 @@ const SCENE_RESPONSE: McapSceneOpenResponse = {
         schemaName: "sensor_msgs/msg/PointCloud2",
         schemaEncoding: "ros2msg",
         messageEncoding: "cdr",
-        role: "pointcloud_stream",
+        kind: "3d",
+        frameId: "map",
+        affordances: ["pointcloud", "3d"],
+        compatiblePanels: ["3d"],
         channelId: 2,
         schemaId: 2,
         timeRange: { startNs: 15, endNs: 20_000_000_010 },
         messageCount: 2,
       },
+      {
+        streamId: "/tf",
+        topic: "/tf",
+        schemaName: "tf2_msgs/msg/TFMessage",
+        schemaEncoding: "ros2msg",
+        messageEncoding: "cdr",
+        kind: "transform",
+        frameId: null,
+        affordances: ["transforms"],
+        compatiblePanels: [],
+        channelId: 3,
+        schemaId: 3,
+        timeRange: { startNs: 10, endNs: 20_000_000_010 },
+        messageCount: 4,
+      },
     ],
+    frames: [{ frameId: "camera_front" }, { frameId: "map" }],
+    transforms: [
+      {
+        topic: "/tf",
+        parentFrameId: "map",
+        childFrameId: "camera_front",
+        isStatic: false,
+      },
+    ],
+    locationTopics: [],
   },
-  playbackPlan: {
+  renderingPlan: {
     sceneId: "scene-1",
+    mediaField: "filepath",
     sync: {
       timestampSource: "header.stamp",
       fallback: "log_time",
@@ -103,61 +196,78 @@ const SCENE_RESPONSE: McapSceneOpenResponse = {
     },
     panels: [
       {
-        panelId: "camera_front",
-        panelType: "2d",
-        contentType: "image",
-        streamId: "/camera/front",
+        panelId: "panel_3d_1",
+        archetype: "3d",
+        title: "3D panel",
+        renderStreamId: null,
+        visibleStreamIds: ["/lidar/top"],
+        frameConfig: {
+          fixedFrameId: "map",
+          displayFrameId: "map",
+          followMode: "off",
+          locationStreamId: null,
+          enuFrameId: null,
+        },
+        sceneConfig: { upAxis: "z", backgroundColor: "#10151d" },
+        layout: { x: 0, y: 0, w: 12, h: 2 },
       },
       {
-        panelId: "lidar_top",
-        panelType: "3d",
-        contentType: "pointcloud",
-        streamId: "/lidar/top",
+        panelId: "image_panel_1",
+        archetype: "image",
+        title: "Image panel 1",
+        renderStreamId: "/camera/front",
+        visibleStreamIds: [],
+        frameConfig: {
+          fixedFrameId: null,
+          displayFrameId: null,
+          followMode: "off",
+          locationStreamId: null,
+          enuFrameId: null,
+        },
+        sceneConfig: { upAxis: "z", backgroundColor: "#10151d" },
+        layout: { x: 0, y: 2, w: 4, h: 1 },
+      },
+      {
+        panelId: "image_panel_2",
+        archetype: "image",
+        title: "Image panel 2",
+        renderStreamId: "/camera/left",
+        visibleStreamIds: [],
+        frameConfig: {
+          fixedFrameId: null,
+          displayFrameId: null,
+          followMode: "off",
+          locationStreamId: null,
+          enuFrameId: null,
+        },
+        sceneConfig: { upAxis: "z", backgroundColor: "#10151d" },
+        layout: { x: 4, y: 2, w: 4, h: 1 },
+      },
+      {
+        panelId: "image_panel_3",
+        archetype: "image",
+        title: "Image panel 3",
+        renderStreamId: "/camera/right",
+        visibleStreamIds: [],
+        frameConfig: {
+          fixedFrameId: null,
+          displayFrameId: null,
+          followMode: "off",
+          locationStreamId: null,
+          enuFrameId: null,
+        },
+        sceneConfig: { upAxis: "z", backgroundColor: "#10151d" },
+        layout: { x: 8, y: 2, w: 4, h: 1 },
       },
     ],
-    sidebars: {
-      left: "panel_config",
-      right: "stream_metadata",
-    },
   },
-};
+} as const;
 
-const SECOND_SCENE_RESPONSE: McapSceneOpenResponse = {
-  scene: {
-    ...SCENE_RESPONSE.scene,
-    sceneId: "scene-2",
-    sampleId: "sample-2",
-    streams: [
-      {
-        ...SCENE_RESPONSE.scene.streams[0],
-        streamId: "/camera/rear",
-        topic: "/camera/rear",
-      },
-      SCENE_RESPONSE.scene.streams[1],
-    ],
-  },
-  playbackPlan: {
-    ...SCENE_RESPONSE.playbackPlan,
-    sceneId: "scene-2",
-    panels: [
-      {
-        panelId: "camera_rear",
-        panelType: "2d",
-        contentType: "image",
-        streamId: "/camera/rear",
-      },
-      SCENE_RESPONSE.playbackPlan.panels[1],
-    ],
-  },
-};
-
-function createHookState(
-  overrides: Partial<ReturnType<typeof useMcapSceneMock>> = {}
-) {
+function createWorkspaceHookState(overrides = {}) {
   return {
-    data: null,
-    scene: null,
-    playbackPlan: null,
+    data: WORKSPACE_RESPONSE,
+    catalog: WORKSPACE_RESPONSE.catalog,
+    renderingPlan: WORKSPACE_RESPONSE.renderingPlan,
     isLoading: false,
     error: null,
     refetch: vi.fn(),
@@ -166,18 +276,197 @@ function createHookState(
   };
 }
 
-function createPlaybackState(
-  overrides: Partial<ReturnType<typeof useMcapPlaybackControllerMock>> = {}
-) {
+function createPlaybackState(overrides = {}) {
   return {
-    timelineName: null,
-    timeline: null,
+    timelineName: "multimodal:scene-1",
+    timeline: {
+      sceneId: "scene-1",
+      timestampSource: "header.stamp",
+      timestampsNs: [10, 20],
+      streams: [
+        {
+          streamId: "/camera/front",
+          timestampsNs: [10, 20],
+          samples: [
+            {
+              timestampNs: 10,
+              logTimeNs: 10,
+              publishTimeNs: 11,
+            },
+            {
+              timestampNs: 20,
+              logTimeNs: 20,
+              publishTimeNs: 21,
+            },
+          ],
+        },
+        {
+          streamId: "/lidar/top",
+          timestampsNs: [10, 20],
+          samples: [
+            {
+              timestampNs: 10,
+              logTimeNs: 10,
+              publishTimeNs: 11,
+            },
+            {
+              timestampNs: 20,
+              logTimeNs: 20,
+              publishTimeNs: 21,
+            },
+          ],
+        },
+        {
+          streamId: "/camera/left",
+          timestampsNs: [10, 20],
+          samples: [
+            {
+              timestampNs: 10,
+              logTimeNs: 10,
+              publishTimeNs: 11,
+            },
+            {
+              timestampNs: 20,
+              logTimeNs: 20,
+              publishTimeNs: 21,
+            },
+          ],
+        },
+        {
+          streamId: "/camera/right",
+          timestampsNs: [10, 20],
+          samples: [
+            {
+              timestampNs: 10,
+              logTimeNs: 10,
+              publishTimeNs: 11,
+            },
+            {
+              timestampNs: 20,
+              logTimeNs: 20,
+              publishTimeNs: 21,
+            },
+          ],
+        },
+      ],
+    },
     isLoading: false,
     error: null,
     refetch: vi.fn(),
-    isTimelineInitialized: false,
-    hasPlayback: false,
-    panelStates: {},
+    isTimelineInitialized: true,
+    hasPlayback: true,
+    timelineState: {
+      name: "multimodal:scene-1",
+      isInitialized: true,
+      hasPlayback: true,
+      playState: "paused",
+      currentTimeNs: 10,
+      durationNs: 20,
+      speed: 1,
+      loaded: [],
+      loading: [0, 0],
+      play: vi.fn(),
+      pause: vi.fn(),
+      togglePlay: vi.fn(),
+      setSpeed: vi.fn(),
+      seekToPercentage: vi.fn(async () => {}),
+      seekToTime: vi.fn(async () => {}),
+      notifySeekStart: vi.fn(),
+      notifySeekEnd: vi.fn(),
+      stepForward: vi.fn(async () => {}),
+      stepBackward: vi.fn(async () => {}),
+    },
+    panelStates: {
+      image_panel_1: {
+        status: "ready",
+        archetype: "image",
+        statusDetail: null,
+        imageFrame: {
+          id: "frame-1",
+          src: "blob:frame-1",
+          timestampNs: 10,
+        },
+        sceneFrame: null,
+        colorMode: "rgb",
+        followPose: null,
+        messageIds: ["frame-1"],
+        logTimeNs: 10,
+        publishTimeNs: 10,
+        warnings: [],
+        error: null,
+      },
+      image_panel_2: {
+        status: "ready",
+        archetype: "image",
+        statusDetail: null,
+        imageFrame: {
+          id: "frame-2",
+          src: "blob:frame-2",
+          timestampNs: 10,
+        },
+        sceneFrame: null,
+        colorMode: "rgb",
+        followPose: null,
+        messageIds: ["frame-2"],
+        logTimeNs: 10,
+        publishTimeNs: 10,
+        warnings: [],
+        error: null,
+      },
+      image_panel_3: {
+        status: "ready",
+        archetype: "image",
+        statusDetail: null,
+        imageFrame: {
+          id: "frame-3",
+          src: "blob:frame-3",
+          timestampNs: 10,
+        },
+        sceneFrame: null,
+        colorMode: "rgb",
+        followPose: null,
+        messageIds: ["frame-3"],
+        logTimeNs: 10,
+        publishTimeNs: 10,
+        warnings: [],
+        error: null,
+      },
+      panel_3d_1: {
+        status: "ready",
+        archetype: "3d",
+        statusDetail: null,
+        imageFrame: null,
+        sceneFrame: {
+          id: "cloud-1",
+          pointCount: 2,
+          bounds: {
+            min: [0, 0, 0] as [number, number, number],
+            max: [1, 1, 1] as [number, number, number],
+          },
+          frameId: "map",
+          primitives: [
+            {
+              kind: "points",
+              id: "points",
+              frameId: "map",
+              pointCount: 2,
+              positions: new Float32Array([0, 0, 0, 1, 1, 1]),
+              intensity: null,
+              colors: null,
+              solidColor: null,
+              pointSize: null,
+            },
+          ],
+        },
+        colorMode: "rgb",
+        followPose: null,
+        messageIds: ["cloud-1"],
+        logTimeNs: 10,
+        publishTimeNs: 10,
+        warnings: [],
+        error: null,
+      },
+    },
     ...overrides,
   };
 }
@@ -199,446 +488,245 @@ function createCtx(surface: "grid" | "modal", sampleId = "sample-1") {
   ) as SampleRendererRenderContext;
 }
 
-describe("Mcap renderers", () => {
+describe("Multimodal renderers", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    useMcapPlaybackControllerMock.mockReturnValue(createPlaybackState());
+    useMultimodalWorkspaceMock.mockReturnValue(createWorkspaceHookState());
+    useMultimodalPlaybackControllerMock.mockReturnValue(createPlaybackState());
   });
 
   afterEach(() => {
     cleanup();
   });
 
-  it("renders the modal loading state inside the shell", () => {
-    useMcapSceneMock.mockReturnValue(
-      createHookState({
+  it("renders the modal loading state inside the workspace shell", () => {
+    useMultimodalWorkspaceMock.mockReturnValue(
+      createWorkspaceHookState({
+        data: null,
+        catalog: null,
+        renderingPlan: null,
         isLoading: true,
       })
     );
 
-    render(<McapModalRenderer ctx={createCtx("modal")} />);
+    render(<MultimodalModalRenderer ctx={createCtx("modal")} />);
 
-    expect(screen.getByTestId("mcap-shell-left")).toBeTruthy();
-    expect(screen.getByTestId("mcap-shell-center")).toBeTruthy();
-    expect(screen.getByTestId("mcap-shell-right")).toBeTruthy();
-    expect(screen.getByTestId("mcap-shell-loading")).toBeTruthy();
-    expect(screen.getByText("Loading scene")).toBeTruthy();
+    expect(screen.getByTestId("multimodal-shell-loading")).toBeTruthy();
+    expect(screen.getByText("Loading workspace")).toBeTruthy();
   });
 
-  it("renders modal panel cards in playback-plan order", () => {
-    useMcapSceneMock.mockReturnValue(
-      createHookState({
-        data: SCENE_RESPONSE,
-        scene: SCENE_RESPONSE.scene,
-        playbackPlan: SCENE_RESPONSE.playbackPlan,
-      })
-    );
-    useMcapPlaybackControllerMock.mockReturnValue(
-      createPlaybackState({
-        timelineName: "mcap:scene-1",
-        timeline: {
-          timestampSource: "log_time",
-          timestampsNs: [10, 20],
-          streams: [
-            {
-              streamId: "/camera/front",
-              timestampsNs: [10, 20],
-            },
-            {
-              streamId: "/lidar/top",
-              timestampsNs: [10, 20],
-            },
-          ],
-        },
-        hasPlayback: true,
-        isTimelineInitialized: true,
-        panelStates: {
-          camera_front: {
-            status: "ready",
-            archetype: "image2d",
-            messageId: "frame-1",
-            logTimeNs: 10,
-            publishTimeNs: 10,
-            error: null,
-            frame: {
-              id: "frame-1",
-              src: "blob:front",
-              timestampNs: 10,
-              format: "jpeg",
-              logTimeNs: 10,
-              objectUrl: "blob:front",
-            },
-          },
-          lidar_top: {
-            status: "ready",
-            archetype: "points3d",
-            messageId: "cloud-1",
-            logTimeNs: 15,
-            publishTimeNs: 15,
-            error: null,
-            frame: {
-              id: "cloud-1",
-              pointCount: 2,
-              positions: new Float32Array([0, 0, 0, 1, 1, 1]),
-              intensity: null,
-              bounds: {
-                min: [0, 0, 0],
-                max: [1, 1, 1],
-              },
-            },
-          },
-        },
-      })
-    );
+  it("renders the foxglove-style shell with toolbar and floating timeline", () => {
+    render(<MultimodalModalRenderer ctx={createCtx("modal")} />);
 
-    render(<McapModalRenderer ctx={createCtx("modal")} />);
-
-    const panelCards = Array.from(
-      screen
-        .getByTestId("mcap-shell-panels")
-        .querySelectorAll('[data-testid^="mcap-panel-card-"]')
-    ) as HTMLElement[];
-
-    expect(panelCards[0].getAttribute("data-testid")).toBe(
-      "mcap-panel-card-camera_front"
-    );
-    expect(panelCards[1].getAttribute("data-testid")).toBe(
-      "mcap-panel-card-lidar_top"
-    );
-    expect(within(panelCards[0]).getByText("camera/front")).toBeTruthy();
-    expect(within(panelCards[1]).getByText("lidar/top")).toBeTruthy();
+    expect(screen.getByTestId("multimodal-workspace-shell")).toBeTruthy();
+    expect(screen.getByTestId("multimodal-workspace-sidebar")).toBeTruthy();
+    expect(screen.getByTestId("multimodal-workspace-main")).toBeTruthy();
+    expect(screen.getByTestId("multimodal-workspace-grid")).toBeTruthy();
+    expect(screen.getByTestId("multimodal-workspace-timeline")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Image" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "3D" })).toBeTruthy();
   });
 
-  it("renders the first image frame, point cloud frame, and shared timeline strip", () => {
-    useMcapSceneMock.mockReturnValue(
-      createHookState({
-        data: SCENE_RESPONSE,
-        scene: SCENE_RESPONSE.scene,
-        playbackPlan: SCENE_RESPONSE.playbackPlan,
-      })
-    );
-    useMcapPlaybackControllerMock.mockReturnValue(
-      createPlaybackState({
-        timelineName: "mcap:scene-1",
-        timeline: {
-          timestampSource: "log_time",
-          timestampsNs: [10, 20],
-          streams: [
-            {
-              streamId: "/camera/front",
-              timestampsNs: [10, 20],
-            },
-            {
-              streamId: "/lidar/top",
-              timestampsNs: [10, 20],
-            },
-          ],
-        },
-        hasPlayback: true,
-        isTimelineInitialized: true,
-        panelStates: {
-          camera_front: {
-            status: "ready",
-            archetype: "image2d",
-            messageId: "frame-1",
-            logTimeNs: 10,
-            publishTimeNs: 10,
-            error: null,
-            frame: {
-              id: "frame-1",
-              src: "blob:front",
-              timestampNs: 10,
-              format: "jpeg",
-              logTimeNs: 10,
-              objectUrl: "blob:front",
-            },
-          },
-          lidar_top: {
-            status: "ready",
-            archetype: "points3d",
-            messageId: "cloud-1",
-            logTimeNs: 15,
-            publishTimeNs: 15,
-            error: null,
-            frame: {
-              id: "cloud-1",
-              pointCount: 2,
-              positions: new Float32Array([0, 0, 0, 1, 1, 1]),
-              intensity: null,
-              bounds: {
-                min: [0, 0, 0],
-                max: [1, 1, 1],
-              },
-            },
-          },
-        },
-      })
-    );
+  it("lays out the default workspace with a 3d hero row above three image tiles", () => {
+    render(<MultimodalModalRenderer ctx={createCtx("modal")} />);
 
-    render(<McapModalRenderer ctx={createCtx("modal")} />);
-
-    expect(screen.getByTestId("mcap-playback-timeline").textContent).toContain(
-      "mcap:scene-1"
-    );
     expect(
-      within(screen.getByTestId("mcap-image-frame-camera_front"))
-        .getByTestId("image2d-view")
-        .getAttribute("src")
-    ).toBe("blob:front");
+      screen.getByTestId("multimodal-panel-card-panel_3d_1").style.gridColumn
+    ).toBe("1 / span 12");
     expect(
-      within(screen.getByTestId("mcap-points3d-frame-lidar_top")).getByTestId(
-        "points3d-view"
-      ).textContent
-    ).toBe("2");
+      screen.getByTestId("multimodal-panel-card-panel_3d_1").style.gridRow
+    ).toBe("1 / span 2");
+    expect(
+      screen.getByTestId("multimodal-panel-card-image_panel_1").style.gridColumn
+    ).toBe("1 / span 4");
+    expect(
+      screen.getByTestId("multimodal-panel-card-image_panel_2").style.gridColumn
+    ).toBe("5 / span 4");
+    expect(
+      screen.getByTestId("multimodal-panel-card-image_panel_3").style.gridColumn
+    ).toBe("9 / span 4");
+    expect(
+      screen.getByTestId("multimodal-panel-card-image_panel_1").style.gridRow
+    ).toBe("3 / span 1");
   });
 
-  it("renders a pointcloud loading fallback while shared playback warms up", () => {
-    useMcapSceneMock.mockReturnValue(
-      createHookState({
-        data: SCENE_RESPONSE,
-        scene: SCENE_RESPONSE.scene,
-        playbackPlan: SCENE_RESPONSE.playbackPlan,
-      })
-    );
-    useMcapPlaybackControllerMock.mockReturnValue(
+  it("shows stream schemas in the sidebar instead of internal stream kinds", async () => {
+    render(<MultimodalModalRenderer ctx={createCtx("modal")} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Streams" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("sensor_msgs/msg/PointCloud2")).toBeTruthy();
+    });
+
+    expect(screen.queryByText("other")).toBeNull();
+  });
+
+  it("starts dense config sections collapsed and expands them on demand", async () => {
+    render(<MultimodalModalRenderer ctx={createCtx("modal")} />);
+
+    const frameConfigButton = screen.getByRole("button", {
+      name: "Frame config",
+    });
+
+    expect(frameConfigButton.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByText("Fixed frame")).toBeNull();
+
+    fireEvent.click(frameConfigButton);
+
+    await waitFor(() => {
+      expect(frameConfigButton.getAttribute("aria-expanded")).toBe("true");
+    });
+
+    expect(screen.getByText("Fixed frame")).toBeTruthy();
+  });
+
+  it("adds an unbound image panel from the toolbar", async () => {
+    render(<MultimodalModalRenderer ctx={createCtx("modal")} />);
+
+    fireEvent.click(screen.getByText("Image"));
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Image panel").length).toBeGreaterThan(1);
+    });
+  });
+
+  it("collapses the left sidebar from the toolbar", async () => {
+    render(<MultimodalModalRenderer ctx={createCtx("modal")} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Hide sidebar" }));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("multimodal-workspace-sidebar")).toBeNull();
+    });
+
+    expect(screen.getByRole("button", { name: "Show sidebar" })).toBeTruthy();
+  });
+
+  it("keeps rendering the last 3d frame while playback updates in the background", () => {
+    const playbackState = createPlaybackState();
+    useMultimodalPlaybackControllerMock.mockReturnValue(
       createPlaybackState({
-        hasPlayback: true,
         panelStates: {
-          camera_front: {
+          ...playbackState.panelStates,
+          panel_3d_1: {
+            ...playbackState.panelStates.panel_3d_1,
             status: "loading",
-            archetype: "image2d",
-            messageId: null,
-            logTimeNs: null,
-            publishTimeNs: null,
-            error: null,
-            frame: null,
-          },
-          lidar_top: {
-            status: "loading",
-            archetype: "points3d",
-            messageId: null,
-            logTimeNs: null,
-            publishTimeNs: null,
-            error: null,
-            frame: null,
           },
         },
       })
     );
 
-    render(<McapModalRenderer ctx={createCtx("modal")} />);
+    render(<MultimodalModalRenderer ctx={createCtx("modal")} />);
 
-    expect(screen.getByText("Point cloud playback")).toBeTruthy();
-    const pointPanel = screen.getByTestId("mcap-panel-card-lidar_top");
+    expect(screen.getByTestId("points3d-view")).toBeTruthy();
+    expect(screen.queryByText("Buffering panel data")).toBeNull();
+  });
+
+  it("renders a more informative initial panel loading state", () => {
+    const playbackState = createPlaybackState();
+    useMultimodalPlaybackControllerMock.mockReturnValue(
+      createPlaybackState({
+        isLoading: true,
+        panelStates: {
+          ...playbackState.panelStates,
+          image_panel_1: {
+            ...playbackState.panelStates.image_panel_1,
+            status: "idle",
+            statusDetail: "Waiting for synchronized timeline",
+            imageFrame: null,
+            messageIds: [],
+          },
+          panel_3d_1: {
+            ...playbackState.panelStates.panel_3d_1,
+            status: "idle",
+            statusDetail: "Waiting for synchronized timeline",
+            sceneFrame: null,
+            messageIds: [],
+          },
+        },
+      })
+    );
+
+    render(<MultimodalModalRenderer ctx={createCtx("modal")} />);
+
+    expect(screen.getAllByText("Loading synchronized timeline").length).toBe(2);
     expect(
-      within(pointPanel).getAllByText(
-        "Loading point data for the shared playback cursor."
+      screen.getAllByText(
+        "Aligning stream timestamps for synchronized playback"
       ).length
-    ).toBeGreaterThan(0);
-  });
-
-  it("renders a panel-local playback error when image decode fails", () => {
-    useMcapSceneMock.mockReturnValue(
-      createHookState({
-        data: SCENE_RESPONSE,
-        scene: SCENE_RESPONSE.scene,
-        playbackPlan: SCENE_RESPONSE.playbackPlan,
-      })
-    );
-    useMcapPlaybackControllerMock.mockReturnValue(
-      createPlaybackState({
-        timelineName: "mcap:scene-1",
-        timeline: {
-          timestampSource: "log_time",
-          timestampsNs: [10],
-          streams: [
-            {
-              streamId: "/camera/front",
-              timestampsNs: [10],
-            },
-          ],
-        },
-        hasPlayback: true,
-        panelStates: {
-          camera_front: {
-            status: "error",
-            archetype: "image2d",
-            messageId: null,
-            logTimeNs: null,
-            publishTimeNs: null,
-            error: new Error("decode failed"),
-            frame: null,
-          },
-        },
-      })
-    );
-
-    render(<McapModalRenderer ctx={createCtx("modal")} />);
-
-    const imagePanel = screen.getByTestId("mcap-panel-card-camera_front");
-    expect(within(imagePanel).getByText("Playback error")).toBeTruthy();
-    expect(within(imagePanel).getAllByText("decode failed").length).toBe(2);
-  });
-
-  it("renders an empty modal state for scenes without supported streams", () => {
-    const emptyResponse: McapSceneOpenResponse = {
-      ...SCENE_RESPONSE,
-      scene: {
-        ...SCENE_RESPONSE.scene,
-        streams: [],
-      },
-      playbackPlan: {
-        ...SCENE_RESPONSE.playbackPlan,
-        panels: [],
-      },
-    };
-    useMcapSceneMock.mockReturnValue(
-      createHookState({
-        data: emptyResponse,
-        scene: emptyResponse.scene,
-        playbackPlan: emptyResponse.playbackPlan,
-      })
-    );
-
-    render(<McapModalRenderer ctx={createCtx("modal")} />);
-
-    const emptyState = screen.getByTestId("mcap-shell-empty");
-
-    expect(emptyState).toBeTruthy();
-    expect(within(emptyState).getByText("No supported streams")).toBeTruthy();
-  });
-
-  it("renders a modal error state and retries locally", () => {
-    const refetch = vi.fn();
-    useMcapSceneMock.mockReturnValue(
-      createHookState({
-        error: new Error("boom"),
-        refetch,
-      })
-    );
-
-    render(<McapModalRenderer ctx={createCtx("modal")} />);
-
-    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
-
-    expect(screen.getByTestId("mcap-shell-error")).toBeTruthy();
-    expect(screen.getByText("Scene unavailable")).toBeTruthy();
-    expect(refetch).toHaveBeenCalledTimes(1);
-  });
-
-  it("updates right-sidebar metadata when the active panel changes", () => {
-    useMcapSceneMock.mockReturnValue(
-      createHookState({
-        data: SCENE_RESPONSE,
-        scene: SCENE_RESPONSE.scene,
-        playbackPlan: SCENE_RESPONSE.playbackPlan,
-      })
-    );
-
-    render(<McapModalRenderer ctx={createCtx("modal")} />);
-
-    const rightSidebar = screen.getByTestId("mcap-shell-right");
-    expect(within(rightSidebar).getAllByText("/camera/front").length).toBe(2);
-
-    fireEvent.click(screen.getByTestId("mcap-panel-nav-lidar_top"));
-
-    expect(within(rightSidebar).getAllByText("/lidar/top").length).toBe(2);
-  });
-
-  it("resets the active panel when the scene changes", async () => {
-    let hookState = createHookState({
-      data: SCENE_RESPONSE,
-      scene: SCENE_RESPONSE.scene,
-      playbackPlan: SCENE_RESPONSE.playbackPlan,
-    });
-    useMcapSceneMock.mockImplementation(() => hookState);
-
-    const { rerender } = render(<McapModalRenderer ctx={createCtx("modal")} />);
-
-    fireEvent.click(screen.getByTestId("mcap-panel-nav-lidar_top"));
-    expect(
-      within(screen.getByTestId("mcap-shell-right")).getAllByText("/lidar/top")
-        .length
     ).toBe(2);
+  });
 
-    hookState = createHookState({
-      data: SECOND_SCENE_RESPONSE,
-      scene: SECOND_SCENE_RESPONSE.scene,
-      playbackPlan: SECOND_SCENE_RESPONSE.playbackPlan,
-    });
-    rerender(<McapModalRenderer ctx={createCtx("modal", "sample-2")} />);
+  it("registers playback transport key bindings", async () => {
+    const playbackState = createPlaybackState();
+    useMultimodalPlaybackControllerMock.mockReturnValue(playbackState);
+
+    render(<MultimodalModalRenderer ctx={createCtx("modal")} />);
+
+    const bindings = useKeyBindingsMock.mock.calls.at(-1)?.[1] ?? [];
+    const byId = Object.fromEntries(
+      bindings.map((binding: { commandId: string }) => [
+        binding.commandId,
+        binding,
+      ])
+    );
+
+    expect(byId["fo.modal.multimodal.playback.toggle"]?.sequence).toBe("space");
+    expect(byId["fo.modal.multimodal.playback.step-forward"]?.sequence).toBe(
+      "."
+    );
+    expect(byId["fo.modal.multimodal.playback.step-backward"]?.sequence).toBe(
+      "\\,"
+    );
+
+    await byId["fo.modal.multimodal.playback.toggle"].handler();
+    await byId["fo.modal.multimodal.playback.step-forward"].handler();
+    await byId["fo.modal.multimodal.playback.step-backward"].handler();
+
+    expect(playbackState.timelineState.togglePlay).toHaveBeenCalled();
+    expect(playbackState.timelineState.stepForward).toHaveBeenCalled();
+    expect(playbackState.timelineState.stepBackward).toHaveBeenCalled();
+  });
+
+  it("maximizes a panel from the meatball menu", async () => {
+    render(<MultimodalModalRenderer ctx={createCtx("modal")} />);
+
+    fireEvent.click(
+      screen.getByTestId("multimodal-panel-menu-button-panel_3d_1")
+    );
+    fireEvent.click(screen.getByText("Maximize panel"));
 
     await waitFor(() => {
       expect(
-        within(screen.getByTestId("mcap-shell-right")).getAllByText(
-          "/camera/rear"
-        ).length
-      ).toBe(2);
+        screen.queryByTestId("multimodal-panel-card-image_panel_1")
+      ).toBeNull();
     });
+
+    expect(screen.getByTestId("multimodal-panel-card-panel_3d_1")).toBeTruthy();
   });
 
-  it("renders a compact grid loading state", () => {
-    useMcapSceneMock.mockReturnValue(
-      createHookState({
-        isLoading: true,
-      })
+  it("closes a panel from the meatball menu", async () => {
+    render(<MultimodalModalRenderer ctx={createCtx("modal")} />);
+
+    fireEvent.click(
+      screen.getByTestId("multimodal-panel-menu-button-image_panel_1")
     );
+    fireEvent.click(screen.getByText("Close panel"));
 
-    render(<McapGridRenderer ctx={createCtx("grid")} />);
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("multimodal-panel-card-image_panel_1")
+      ).toBeNull();
+    });
 
-    expect(screen.getByTestId("mcap-grid-loading")).toBeTruthy();
-    expect(screen.getByText("Loading inventory")).toBeTruthy();
+    expect(screen.getByTestId("multimodal-panel-card-panel_3d_1")).toBeTruthy();
   });
 
-  it("renders grid inventory summary data", () => {
-    useMcapSceneMock.mockReturnValue(
-      createHookState({
-        data: SCENE_RESPONSE,
-        scene: SCENE_RESPONSE.scene,
-      })
-    );
+  it("renders the grid summary against the workspace catalog", () => {
+    render(<MultimodalGridRenderer ctx={createCtx("grid")} />);
 
-    render(<McapGridRenderer ctx={createCtx("grid")} />);
-
-    expect(screen.getByTestId("mcap-grid-summary")).toBeTruthy();
-    expect(screen.getByText("1 image")).toBeTruthy();
-    expect(screen.getByText("1 pointcloud")).toBeTruthy();
-    expect(screen.getByText("20 s")).toBeTruthy();
-    expect(screen.getByText("camera/front, lidar/top")).toBeTruthy();
-  });
-
-  it("renders a grid summary for empty supported streams", () => {
-    const emptyResponse: McapSceneOpenResponse = {
-      ...SCENE_RESPONSE,
-      scene: {
-        ...SCENE_RESPONSE.scene,
-        streams: [],
-      },
-    };
-    useMcapSceneMock.mockReturnValue(
-      createHookState({
-        data: emptyResponse,
-        scene: emptyResponse.scene,
-      })
-    );
-
-    render(<McapGridRenderer ctx={createCtx("grid")} />);
-
-    expect(screen.getByTestId("mcap-grid-summary")).toBeTruthy();
-    expect(screen.getByText("No supported streams")).toBeTruthy();
-  });
-
-  it("renders a grid error fallback without crashing", () => {
-    useMcapSceneMock.mockReturnValue(
-      createHookState({
-        error: new Error("inventory unavailable"),
-      })
-    );
-
-    render(<McapGridRenderer ctx={createCtx("grid")} />);
-
-    expect(screen.getByTestId("mcap-grid-error")).toBeTruthy();
-    expect(screen.getByText("Inventory unavailable")).toBeTruthy();
-    expect(screen.getByText("/tmp/sensors/drive.mcap")).toBeTruthy();
+    expect(screen.getByTestId("multimodal-grid-summary")).toBeTruthy();
+    expect(screen.getByText("3 image")).toBeTruthy();
   });
 });

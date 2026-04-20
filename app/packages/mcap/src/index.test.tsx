@@ -21,17 +21,17 @@ function createSample(path: string) {
   } as const;
 }
 
-describe("@fiftyone/mcap registration", () => {
-  it("registers a sample renderer that matches `.mcap` media in modal and grid", async () => {
+describe("@fiftyone/multimodal registration", () => {
+  it("registers a multimodal renderer that matches `.mcap` media in modal and grid", async () => {
     const module = await import("./index");
     const registration = getByType(PluginComponentType.SampleRenderer).find(
-      (entry) => entry.name === module.MCAP_SAMPLE_RENDERER_NAME
+      (entry) => entry.name === module.MULTIMODAL_SAMPLE_RENDERER_NAME
     );
 
     expect(registration).toBeDefined();
 
     const modalCtx = createSampleRendererRenderContext(
-      createSample("/tmp/run.MCAP"),
+      createSample("/tmp/run.mcap"),
       "filepath",
       dataset as any,
       schema as any,
@@ -53,10 +53,10 @@ describe("@fiftyone/mcap registration", () => {
     );
 
     expect(getMatchingSampleRenderer([registration!], modalCtx)?.name).toBe(
-      module.MCAP_SAMPLE_RENDERER_NAME
+      module.MULTIMODAL_SAMPLE_RENDERER_NAME
     );
     expect(getMatchingSampleRenderer([registration!], gridCtx)?.name).toBe(
-      module.MCAP_SAMPLE_RENDERER_NAME
+      module.MULTIMODAL_SAMPLE_RENDERER_NAME
     );
     expect(getMatchingSampleRenderer([registration!], nonMcapCtx)).toBeNull();
   });
@@ -64,16 +64,18 @@ describe("@fiftyone/mcap registration", () => {
   it("uses the modal renderer as canonical and the grid renderer as the override", async () => {
     const module = await import("./index");
     const registration = getByType(PluginComponentType.SampleRenderer).find(
-      (entry) => entry.name === module.MCAP_SAMPLE_RENDERER_NAME
+      (entry) => entry.name === module.MULTIMODAL_SAMPLE_RENDERER_NAME
     );
 
     expect(registration).toBeDefined();
 
-    const canonicalRenderer = getComponent(module.MCAP_SAMPLE_RENDERER_NAME);
+    const canonicalRenderer = getComponent(
+      module.MULTIMODAL_SAMPLE_RENDERER_NAME
+    );
 
-    expect(canonicalRenderer).toBe(module.McapModalRenderer);
+    expect(canonicalRenderer).toBe(module.MultimodalModalRenderer);
     expect(
       getSampleRendererComponent(registration!, "grid", canonicalRenderer)
-    ).toBe(module.McapGridRenderer);
+    ).toBe(module.MultimodalGridRenderer);
   });
 });
