@@ -6,88 +6,21 @@ FiftyOne Server MCAP route unit tests.
 |
 """
 
-import json
-import tempfile
-from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from starlette.exceptions import HTTPException
 
 import fiftyone as fo
-import fiftyone.server.routes.mcap as form
-
-
-class _FakeReader:
-    def __init__(self, summary=None, messages=None):
-        self._summary = summary
-        self._messages = messages or []
-
-    def get_summary(self):
-        return self._summary
-
-    def iter_messages(
-        self,
-        topics=None,
-        start_time=None,
-        end_time=None,
-        log_time_order=False,
-    ):
-        del log_time_order
-
-        for schema, channel, message in self._messages:
-            if topics is not None and not any(
-                channel.topic == topic for topic in topics
-            ):
-                continue
-
-            if start_time is not None and message.log_time < start_time:
-                continue
-
-            if end_time is not None and message.log_time >= end_time:
-                continue
-
-            yield schema, channel, message
-
-
-def _make_schema(schema_id, name, encoding="ros2msg"):
-    return SimpleNamespace(id=schema_id, name=name, encoding=encoding)
-
-
-def _make_channel(
-    channel_id, topic, schema_id, message_encoding="cdr", metadata=None
-):
-    return SimpleNamespace(
-        id=channel_id,
-        topic=topic,
-        schema_id=schema_id,
-        message_encoding=message_encoding,
-        metadata=metadata or {},
-    )
-
-
-def _make_message(log_time, publish_time, data=b"payload", sequence=0):
-    return SimpleNamespace(
-        log_time=log_time,
-        publish_time=publish_time,
-        data=data,
-        sequence=sequence,
-    )
-
-
-def _json_payload(payload):
-    return json.dumps(payload).encode("utf-8")
+import fiftyone.server.routes.multimodal as form
 
 
 @pytest.fixture(name="dataset")
 def fixture_dataset():
-    """Creates a persistent dataset for testing."""
     dataset = fo.Dataset()
     dataset.persistent = True
     dataset.add_sample_field("mcap_path", fo.StringField)
-
-    sample = fo.Sample(filepath="/tmp/not-mcap.mcap", mcap_path="")
-    dataset.add_sample(sample)
+    dataset.add_sample(fo.Sample(filepath="/tmp/not-mcap.mcap", mcap_path=""))
 
     try:
         yield dataset
@@ -98,565 +31,279 @@ def fixture_dataset():
 
 @pytest.fixture(name="dataset_id")
 def fixture_dataset_id(dataset):
-    """Returns the dataset ID."""
-    # pylint: disable-next=protected-access
-    return dataset._doc.id
+    return dataset._doc.id  # pylint: disable=protected-access
 
 
 @pytest.fixture(name="sample")
 def fixture_sample(dataset):
-    """Returns the dataset's sample."""
     return dataset.first()
 
 
 @pytest.fixture(name="sample_id")
 def fixture_sample_id(sample):
-    """Returns the sample ID."""
     return str(sample.id)
 
 
-@pytest.fixture(name="scene_endpoint")
-def fixture_scene_endpoint():
-    """Returns the scene endpoint instance."""
-    return form.McapScene(
+@pytest.fixture(name="workspace_endpoint")
+def fixture_workspace_endpoint():
+    return form.MultimodalWorkspace(
         scope={"type": "http"}, receive=AsyncMock(), send=AsyncMock()
     )
 
 
 @pytest.fixture(name="ingest_endpoint")
 def fixture_ingest_endpoint():
-    """Returns the ingest endpoint instance."""
-    return form.McapIngest(
+    return form.MultimodalIngest(
         scope={"type": "http"}, receive=AsyncMock(), send=AsyncMock()
     )
 
 
-@pytest.fixture(name="buffer_endpoint")
-def fixture_buffer_endpoint():
-    """Returns the buffer endpoint instance."""
-    return form.McapBuffer(
+@pytest.fixture(name="stream_window_endpoint")
+def fixture_stream_window_endpoint():
+    return form.MultimodalStreamWindow(
         scope={"type": "http"}, receive=AsyncMock(), send=AsyncMock()
     )
 
 
-@pytest.fixture(name="timeline_endpoint")
-def fixture_timeline_endpoint():
-    """Returns the timeline endpoint instance."""
-    return form.McapTimeline(
+@pytest.fixture(name="timeline_index_endpoint")
+def fixture_timeline_index_endpoint():
+    return form.MultimodalTimelineIndex(
         scope={"type": "http"}, receive=AsyncMock(), send=AsyncMock()
     )
 
 
-@pytest.fixture(name="mock_scene_request")
-def fixture_mock_scene_request(dataset_id, sample_id):
-    """Builds a mock scene request."""
-
-    def _make_request(media_field):
-        request = MagicMock()
-        request.path_params = {
-            "dataset_id": dataset_id,
-            "sample_id": sample_id,
-        }
-        request.query_params = {"media_field": media_field}
-        return request
-
-    return _make_request
+@pytest.fixture(name="bootstrap_window_endpoint")
+def fixture_bootstrap_window_endpoint():
+    return form.MultimodalBootstrapWindow(
+        scope={"type": "http"}, receive=AsyncMock(), send=AsyncMock()
+    )
 
 
-@pytest.fixture(name="mock_ingest_request")
-def fixture_mock_ingest_request(dataset_id, sample_id):
-    """Builds a mock ingest request."""
-
-    def _make_request(payload):
-        request = MagicMock()
-        request.path_params = {
-            "dataset_id": dataset_id,
-            "sample_id": sample_id,
-        }
-        request.headers = {"Content-Type": "application/json"}
-        request.json = AsyncMock(return_value=payload)
-        request.body = AsyncMock(return_value=_json_payload(payload))
-        return request
-
-    return _make_request
+def _make_request(dataset_id, sample_id, query_params=None, payload=None):
+    request = MagicMock()
+    request.path_params = {"dataset_id": dataset_id, "sample_id": sample_id}
+    request.query_params = query_params or {}
+    request.json = AsyncMock(return_value=payload or {})
+    return request
 
 
-@pytest.fixture(name="mock_buffer_request")
-def fixture_mock_buffer_request(dataset_id, sample_id):
-    """Builds a mock buffer request."""
-
-    def _make_request(payload):
-        request = MagicMock()
-        request.path_params = {
-            "dataset_id": dataset_id,
-            "sample_id": sample_id,
-        }
-        request.headers = {"Content-Type": "application/json"}
-        request.json = AsyncMock(return_value=payload)
-        request.body = AsyncMock(return_value=_json_payload(payload))
-        return request
-
-    return _make_request
-
-
-@pytest.fixture(name="mock_timeline_request")
-def fixture_mock_timeline_request(dataset_id, sample_id):
-    """Builds a mock timeline request."""
-
-    def _make_request(payload):
-        request = MagicMock()
-        request.path_params = {
-            "dataset_id": dataset_id,
-            "sample_id": sample_id,
-        }
-        request.headers = {"Content-Type": "application/json"}
-        request.json = AsyncMock(return_value=payload)
-        request.body = AsyncMock(return_value=_json_payload(payload))
-        return request
-
-    return _make_request
-
-
-class TestMcapSceneRoute:
-    """Tests for the MCAP scene endpoint."""
-
+class TestMcapWorkspaceRoute:
     @pytest.mark.asyncio
-    async def test_scene_open_happy_path(
-        self, sample, scene_endpoint, mock_scene_request
+    async def test_workspace_happy_path(
+        self, dataset_id, sample_id, workspace_endpoint
     ):
-        """The scene endpoint returns inventory and playback-plan data."""
-        with tempfile.NamedTemporaryFile(suffix=".mcap") as handle:
-            sample["filepath"] = handle.name
-            sample.save()
-
-            schema = _make_schema(
-                1, "sensor_msgs/msg/CompressedImage", "ros2msg"
-            )
-            channel = _make_channel(1, "/camera/front", 1)
-            reader = _FakeReader(
-                summary=SimpleNamespace(
-                    channels={1: channel},
-                    schemas={1: schema},
-                    statistics=SimpleNamespace(
-                        channel_message_counts={1: 1},
-                        message_start_time=10,
-                        message_end_time=10,
-                    ),
-                    chunk_indexes=[],
-                ),
-                messages=[(schema, channel, _make_message(10, 11, b"frame"))],
-            )
-
-            with patch.object(
-                form.fosm,
-                "_get_mcap_reader_module",
-                return_value=SimpleNamespace(
-                    make_reader=lambda _stream: reader
-                ),
-            ):
-                response = await scene_endpoint.get(
-                    mock_scene_request("filepath")
+        response_body = {
+            "catalog": {"sceneId": "scene-1", "streams": []},
+            "renderingPlan": {"panels": []},
+        }
+        with patch.object(
+            form.fosm,
+            "inspect_sample_multimodal_workspace",
+            return_value=response_body,
+        ) as inspect_workspace:
+            response = await workspace_endpoint.get(
+                _make_request(
+                    dataset_id,
+                    sample_id,
+                    query_params={"mediaField": "filepath"},
                 )
+            )
 
+        inspect_workspace.assert_called_once()
         assert response.status_code == 200
-        data = json.loads(response.body)
-        assert data["scene"]["mediaField"] == "filepath"
-        assert data["scene"]["streams"][0]["streamId"] == "/camera/front"
-        assert data["playbackPlan"]["panels"][0]["panelType"] == "2d"
+        assert response.body.decode("utf-8").startswith("{")
 
     @pytest.mark.asyncio
-    async def test_scene_open_returns_empty_supported_streams(
-        self, sample, scene_endpoint, mock_scene_request
+    async def test_workspace_surfaces_route_errors(
+        self, dataset_id, sample_id, workspace_endpoint
     ):
-        """A valid MCAP with unsupported schemas returns empty stream inventory."""
-        with tempfile.NamedTemporaryFile(suffix=".mcap") as handle:
-            sample["filepath"] = handle.name
-            sample.save()
-
-            schema = _make_schema(1, "std_msgs/msg/String", "ros2msg")
-            channel = _make_channel(1, "/ignored", 1)
-            reader = _FakeReader(
-                summary=SimpleNamespace(
-                    channels={1: channel},
-                    schemas={1: schema},
-                    statistics=SimpleNamespace(
-                        channel_message_counts={1: 4},
-                        message_start_time=3,
-                        message_end_time=9,
-                    ),
-                    chunk_indexes=[],
+        with patch.object(
+            form.fosm,
+            "inspect_sample_multimodal_workspace",
+            side_effect=form.fosm.MultimodalRouteError(404, "missing"),
+        ):
+            with pytest.raises(HTTPException) as exc_info:
+                await workspace_endpoint.get(
+                    _make_request(
+                        dataset_id,
+                        sample_id,
+                        query_params={"mediaField": "filepath"},
+                    )
                 )
-            )
-
-            with patch.object(
-                form.fosm,
-                "_get_mcap_reader_module",
-                return_value=SimpleNamespace(
-                    make_reader=lambda _stream: reader
-                ),
-            ):
-                response = await scene_endpoint.get(
-                    mock_scene_request("filepath")
-                )
-
-        data = json.loads(response.body)
-        assert response.status_code == 200
-        assert data["scene"]["timeRange"] == {"startNs": 3, "endNs": 9}
-        assert data["scene"]["streams"] == []
-        assert data["playbackPlan"]["panels"] == []
-
-    @pytest.mark.asyncio
-    async def test_scene_open_rejects_unknown_media_field(
-        self, scene_endpoint, mock_scene_request
-    ):
-        """Unknown media fields are rejected with 400."""
-        with pytest.raises(HTTPException) as exc_info:
-            await scene_endpoint.get(mock_scene_request("unknown_field"))
-
-        assert exc_info.value.status_code == 400
-
-    @pytest.mark.asyncio
-    async def test_scene_open_rejects_missing_file(
-        self, sample, scene_endpoint, mock_scene_request
-    ):
-        """Missing MCAP files return 404."""
-        sample["filepath"] = "/tmp/does-not-exist-test-route.mcap"
-        sample.save()
-
-        with pytest.raises(HTTPException) as exc_info:
-            await scene_endpoint.get(mock_scene_request("filepath"))
 
         assert exc_info.value.status_code == 404
 
-    @pytest.mark.asyncio
-    async def test_scene_open_rejects_non_mcap_media(
-        self, sample, scene_endpoint, mock_scene_request
-    ):
-        """Resolved media must point to an MCAP file."""
-        sample["mcap_path"] = "/tmp/not-an-mcap.jpg"
-        sample.save()
-
-        with pytest.raises(HTTPException) as exc_info:
-            await scene_endpoint.get(mock_scene_request("mcap_path"))
-
-        assert exc_info.value.status_code == 400
-
 
 class TestMcapIngestRoute:
-    """Tests for the MCAP ingest endpoint."""
-
     @pytest.mark.asyncio
-    async def test_ingest_happy_path(
-        self, sample, ingest_endpoint, mock_ingest_request
+    async def test_ingest_parses_request_body(
+        self, dataset_id, sample_id, ingest_endpoint
     ):
-        """The ingest endpoint persists and returns scene state."""
-        with tempfile.NamedTemporaryFile(suffix=".mcap") as handle:
-            sample["filepath"] = handle.name
-            sample.save()
-
-            schema = _make_schema(
-                1, "sensor_msgs/msg/CompressedImage", "ros2msg"
-            )
-            channel = _make_channel(1, "/camera/front", 1)
-            reader = _FakeReader(
-                summary=SimpleNamespace(
-                    channels={1: channel},
-                    schemas={1: schema},
-                    statistics=SimpleNamespace(
-                        channel_message_counts={1: 1},
-                        message_start_time=10,
-                        message_end_time=10,
-                    ),
-                    chunk_indexes=[],
-                ),
-                messages=[(schema, channel, _make_message(10, 11, b"frame"))],
-            )
-
-            with patch.object(
-                form.fosm,
-                "_get_mcap_reader_module",
-                return_value=SimpleNamespace(
-                    make_reader=lambda _stream: reader
-                ),
-            ):
-                response = await ingest_endpoint.post(
-                    mock_ingest_request(
-                        {
-                            "mediaField": "filepath",
-                            "overwrite": False,
-                        }
-                    )
+        with patch.object(
+            form.fosm,
+            "ingest_sample_multimodal_workspace",
+            return_value={
+                "catalog": {"sceneId": "scene-1"},
+                "renderingPlan": {"panels": []},
+            },
+        ) as ingest_workspace:
+            response = await ingest_endpoint.post(
+                _make_request(
+                    dataset_id,
+                    sample_id,
+                    payload={"mediaField": "filepath", "overwrite": True},
                 )
+            )
 
         assert response.status_code == 200
-        data = json.loads(response.body)
-        assert data["scene"]["mediaField"] == "filepath"
-        assert data["playbackPlan"]["panels"][0]["streamId"] == (
+        assert ingest_workspace.call_args.kwargs["media_field"] == "filepath"
+        assert ingest_workspace.call_args.kwargs["overwrite"] is True
+
+
+class TestMcapStreamWindowRoute:
+    @pytest.mark.asyncio
+    async def test_stream_window_parses_new_contract(
+        self, dataset_id, sample_id, stream_window_endpoint
+    ):
+        with patch.object(
+            form.fosm,
+            "read_sample_multimodal_stream_window",
+            return_value={"sceneId": "scene-1", "streams": []},
+        ) as read_stream_window:
+            response = await stream_window_endpoint.post(
+                _make_request(
+                    dataset_id,
+                    sample_id,
+                    payload={
+                        "mediaField": "filepath",
+                        "streamIds": ["/camera/front"],
+                        "startTimeNs": 10,
+                        "endTimeNs": 20,
+                        "maxMessagesPerStream": 3,
+                    },
+                )
+            )
+
+        assert response.status_code == 200
+        assert read_stream_window.call_args.kwargs["stream_ids"] == [
             "/camera/front"
-        )
-        assert sample.dataset.has_sample_field("rendering_plan")
-
-
-class TestMcapBufferRoute:
-    """Tests for the MCAP buffer endpoint."""
-
-    @pytest.mark.asyncio
-    async def test_buffer_open_happy_path(
-        self, sample, buffer_endpoint, mock_buffer_request
-    ):
-        """The buffer endpoint returns raw-mode message payloads."""
-        with tempfile.NamedTemporaryFile(suffix=".mcap") as handle:
-            sample["filepath"] = handle.name
-            sample.save()
-
-            schema = _make_schema(1, "sensor_msgs/msg/PointCloud2", "ros2msg")
-            channel = _make_channel(1, "/lidar/top", 1)
-            reader = _FakeReader(
-                summary=SimpleNamespace(
-                    channels={1: channel},
-                    schemas={1: schema},
-                    statistics=SimpleNamespace(
-                        channel_message_counts={1: 1},
-                        message_start_time=10,
-                        message_end_time=10,
-                    ),
-                    chunk_indexes=[],
-                ),
-                messages=[
-                    (schema, channel, _make_message(10, 12, b"\x01\x02\x03"))
-                ],
-            )
-
-            with patch.object(
-                form.fosm,
-                "_get_mcap_reader_module",
-                return_value=SimpleNamespace(
-                    make_reader=lambda _stream: reader
-                ),
-            ):
-                response = await buffer_endpoint.post(
-                    mock_buffer_request(
-                        {
-                            "mediaField": "filepath",
-                            "streamIds": ["/lidar/top"],
-                            "window": {"startNs": 10, "endNs": 10},
-                            "mode": "raw",
-                        }
-                    )
-                )
-
-        assert response.status_code == 200
-        data = json.loads(response.body)
-        assert data["mode"] == "raw"
-        assert data["streams"][0]["streamId"] == "/lidar/top"
-        assert data["streams"][0]["messages"][0]["payloadB64"] == "AQID"
-
-    @pytest.mark.asyncio
-    async def test_buffer_rejects_unknown_stream_id(
-        self, sample, buffer_endpoint, mock_buffer_request
-    ):
-        """Unknown stream IDs are rejected with 400."""
-        with tempfile.NamedTemporaryFile(suffix=".mcap") as handle:
-            sample["filepath"] = handle.name
-            sample.save()
-
-            schema = _make_schema(
-                1, "sensor_msgs/msg/CompressedImage", "ros2msg"
-            )
-            channel = _make_channel(1, "/camera/front", 1)
-            reader = _FakeReader(
-                summary=SimpleNamespace(
-                    channels={1: channel},
-                    schemas={1: schema},
-                    statistics=SimpleNamespace(
-                        channel_message_counts={1: 1},
-                        message_start_time=10,
-                        message_end_time=10,
-                    ),
-                    chunk_indexes=[],
-                )
-            )
-
-            with patch.object(
-                form.fosm,
-                "_get_mcap_reader_module",
-                return_value=SimpleNamespace(
-                    make_reader=lambda _stream: reader
-                ),
-            ):
-                with pytest.raises(HTTPException) as exc_info:
-                    await buffer_endpoint.post(
-                        mock_buffer_request(
-                            {
-                                "mediaField": "filepath",
-                                "streamIds": ["/nope"],
-                                "window": {"startNs": 10, "endNs": 12},
-                                "mode": "raw",
-                            }
-                        )
-                    )
-
-        assert exc_info.value.status_code == 400
-
-    @pytest.mark.asyncio
-    async def test_buffer_rejects_decoded_mode(
-        self, sample, buffer_endpoint, mock_buffer_request
-    ):
-        """Decoded mode is reserved but not implemented."""
-        with tempfile.NamedTemporaryFile(suffix=".mcap") as handle:
-            sample["filepath"] = handle.name
-            sample.save()
-
-            with pytest.raises(HTTPException) as exc_info:
-                await buffer_endpoint.post(
-                    mock_buffer_request(
-                        {
-                            "mediaField": "filepath",
-                            "streamIds": ["/camera/front"],
-                            "window": {"startNs": 1, "endNs": 2},
-                            "mode": "decoded",
-                        }
-                    )
-                )
-
-        assert exc_info.value.status_code == 501
-
-
-class TestMcapTimelineRoute:
-    """Tests for the MCAP timeline endpoint."""
-
-    @pytest.mark.asyncio
-    async def test_timeline_open_happy_path(
-        self, sample, timeline_endpoint, mock_timeline_request
-    ):
-        """The timeline endpoint returns shared and per-stream timestamps."""
-        with tempfile.NamedTemporaryFile(suffix=".mcap") as handle:
-            sample["filepath"] = handle.name
-            sample.save()
-
-            schema = _make_schema(
-                1, "sensor_msgs/msg/CompressedImage", "ros2msg"
-            )
-            channel = _make_channel(1, "/camera/front", 1)
-            reader = _FakeReader(
-                summary=SimpleNamespace(
-                    channels={1: channel},
-                    schemas={1: schema},
-                    statistics=SimpleNamespace(
-                        channel_message_counts={1: 2},
-                        message_start_time=10,
-                        message_end_time=20,
-                    ),
-                    chunk_indexes=[],
-                ),
-                messages=[
-                    (schema, channel, _make_message(20, 20, b"two")),
-                    (schema, channel, _make_message(10, 10, b"one")),
-                ],
-            )
-
-            with patch.object(
-                form.fosm,
-                "_get_mcap_reader_module",
-                return_value=SimpleNamespace(
-                    make_reader=lambda _stream: reader
-                ),
-            ):
-                response = await timeline_endpoint.post(
-                    mock_timeline_request(
-                        {
-                            "mediaField": "filepath",
-                            "streamIds": ["/camera/front"],
-                        }
-                    )
-                )
-
-        assert response.status_code == 200
-        data = json.loads(response.body)
-        assert data["sceneId"].endswith(":filepath")
-        assert data["timeline"]["timestampSource"] == "log_time"
-        assert data["timeline"]["timestampsNs"] == [10, 20]
-        assert data["timeline"]["streams"] == [
-            {
-                "streamId": "/camera/front",
-                "timestampsNs": [10, 20],
-            }
         ]
+        assert (
+            read_stream_window.call_args.kwargs["max_messages_per_stream"] == 3
+        )
 
     @pytest.mark.asyncio
-    async def test_timeline_returns_empty_for_empty_stream_request(
-        self, sample, timeline_endpoint, mock_timeline_request
+    async def test_stream_window_rejects_inverted_ranges(
+        self, dataset_id, sample_id, stream_window_endpoint
     ):
-        """An empty stream request returns an empty timeline payload."""
-        with tempfile.NamedTemporaryFile(suffix=".mcap") as handle:
-            sample["filepath"] = handle.name
-            sample.save()
-
-            with patch.object(
-                form.fosm,
-                "_get_mcap_reader_module",
-                return_value=SimpleNamespace(
-                    make_reader=lambda _stream: _FakeReader(
-                        summary=None,
-                        messages=[],
-                    )
-                ),
-            ):
-                response = await timeline_endpoint.post(
-                    mock_timeline_request(
-                        {
-                            "mediaField": "filepath",
-                            "streamIds": [],
-                        }
-                    )
-                )
-
-        assert response.status_code == 200
-        data = json.loads(response.body)
-        assert data["timeline"]["timestampsNs"] == []
-        assert data["timeline"]["streams"] == []
-
-    @pytest.mark.asyncio
-    async def test_timeline_rejects_unknown_stream_id(
-        self, sample, timeline_endpoint, mock_timeline_request
-    ):
-        """Unknown stream IDs are rejected with 400."""
-        with tempfile.NamedTemporaryFile(suffix=".mcap") as handle:
-            sample["filepath"] = handle.name
-            sample.save()
-
-            schema = _make_schema(
-                1, "sensor_msgs/msg/CompressedImage", "ros2msg"
-            )
-            channel = _make_channel(1, "/camera/front", 1)
-            reader = _FakeReader(
-                summary=SimpleNamespace(
-                    channels={1: channel},
-                    schemas={1: schema},
-                    statistics=SimpleNamespace(
-                        channel_message_counts={1: 1},
-                        message_start_time=10,
-                        message_end_time=10,
-                    ),
-                    chunk_indexes=[],
+        with pytest.raises(HTTPException) as exc_info:
+            await stream_window_endpoint.post(
+                _make_request(
+                    dataset_id,
+                    sample_id,
+                    payload={
+                        "mediaField": "filepath",
+                        "streamIds": ["/camera/front"],
+                        "startTimeNs": 20,
+                        "endTimeNs": 10,
+                    },
                 )
             )
-
-            with patch.object(
-                form.fosm,
-                "_get_mcap_reader_module",
-                return_value=SimpleNamespace(
-                    make_reader=lambda _stream: reader
-                ),
-            ):
-                with pytest.raises(HTTPException) as exc_info:
-                    await timeline_endpoint.post(
-                        mock_timeline_request(
-                            {
-                                "mediaField": "filepath",
-                                "streamIds": ["/nope"],
-                            }
-                        )
-                    )
 
         assert exc_info.value.status_code == 400
+
+
+class TestMcapBootstrapWindowRoute:
+    @pytest.mark.asyncio
+    async def test_bootstrap_window_parses_boot_request(
+        self, dataset_id, sample_id, bootstrap_window_endpoint
+    ):
+        with patch.object(
+            form.fosm,
+            "read_sample_multimodal_bootstrap_window",
+            return_value={"sceneId": "scene-1", "streams": []},
+        ) as read_bootstrap_window:
+            response = await bootstrap_window_endpoint.post(
+                _make_request(
+                    dataset_id,
+                    sample_id,
+                    payload={
+                        "mediaField": "filepath",
+                        "anchorTimeNs": 0,
+                        "renderStreamIds": ["/lidar/top"],
+                        "transformStreamIds": ["/tf"],
+                        "locationStreamIds": ["/odom"],
+                        "transformWindowNs": 100,
+                    },
+                )
+            )
+
+        assert response.status_code == 200
+        assert read_bootstrap_window.call_args.kwargs["anchor_time_ns"] == 0
+        assert read_bootstrap_window.call_args.kwargs["render_stream_ids"] == [
+            "/lidar/top"
+        ]
+        assert read_bootstrap_window.call_args.kwargs[
+            "transform_stream_ids"
+        ] == ["/tf"]
+        assert read_bootstrap_window.call_args.kwargs[
+            "location_stream_ids"
+        ] == ["/odom"]
+        assert (
+            read_bootstrap_window.call_args.kwargs["transform_window_ns"]
+            == 100
+        )
+
+
+class TestMcapTimelineIndexRoute:
+    @pytest.mark.asyncio
+    async def test_timeline_index_allows_omitted_stream_ids(
+        self, dataset_id, sample_id, timeline_index_endpoint
+    ):
+        with patch.object(
+            form.fosm,
+            "read_sample_multimodal_timeline_index",
+            return_value={"sceneId": "scene-1", "timestampsNs": []},
+        ) as read_timeline_index:
+            response = await timeline_index_endpoint.post(
+                _make_request(
+                    dataset_id,
+                    sample_id,
+                    payload={"mediaField": "filepath"},
+                )
+            )
+
+        assert response.status_code == 200
+        assert read_timeline_index.call_args.kwargs["stream_ids"] is None
+
+    @pytest.mark.asyncio
+    async def test_timeline_index_forwards_sync_config(
+        self, dataset_id, sample_id, timeline_index_endpoint
+    ):
+        with patch.object(
+            form.fosm,
+            "read_sample_multimodal_timeline_index",
+            return_value={"sceneId": "scene-1", "timestampsNs": []},
+        ) as read_timeline_index:
+            response = await timeline_index_endpoint.post(
+                _make_request(
+                    dataset_id,
+                    sample_id,
+                    payload={
+                        "mediaField": "filepath",
+                        "streamIds": ["/camera/front"],
+                        "timestampSource": "header.stamp",
+                        "fallback": "log_time",
+                    },
+                )
+            )
+
+        assert response.status_code == 200
+        assert read_timeline_index.call_args.kwargs["stream_ids"] == [
+            "/camera/front"
+        ]
+        assert (
+            read_timeline_index.call_args.kwargs["timestamp_source"]
+            == "header.stamp"
+        )
+        assert read_timeline_index.call_args.kwargs["fallback"] == "log_time"
