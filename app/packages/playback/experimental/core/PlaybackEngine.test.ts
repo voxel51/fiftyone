@@ -3,6 +3,7 @@ import { TimeIndex } from "./TimeIndex";
 import { createInitialSnapshot } from "./TimeSnapshot";
 import { PlaybackEngine, type PlaybackEngineOptions } from "./PlaybackEngine";
 import type {
+  DurationTimelineConfig,
   Subscriber,
   SequenceTimelineConfig,
   TimelineConfig,
@@ -25,6 +26,7 @@ function createMockOptions(
     getConfig: () => config,
     getRange: () => [1, 100] as const,
     getSnapshot: () => createInitialSnapshot("test", 1),
+    getPlayState: () => "playing",
     getSubscribers: () => new Map(),
     getTimeIndex: () => new TimeIndex(),
     commitSnapshot: vi.fn(),
@@ -178,6 +180,40 @@ describe("PlaybackEngine", () => {
     });
   });
 
+  describe("tick — duration timeline", () => {
+    it("uses real elapsed time for duration playback without speeding up the draw interval", () => {
+      let currentSnapshot = createInitialSnapshot("test", 0);
+      const commitSnapshot = vi.fn((snap: TimeSnapshot) => {
+        currentSnapshot = snap;
+      });
+      const config: DurationTimelineConfig = {
+        type: "duration",
+        duration: 1_000_000_000,
+        speed: 2,
+        tickRate: 60,
+        loop: false,
+      };
+
+      const engine = new PlaybackEngine(
+        createMockOptions({
+          getConfig: () => config,
+          getRange: () => [0, 1_000_000_000] as const,
+          getSnapshot: () => currentSnapshot,
+          commitSnapshot,
+          timelineType: "duration",
+        })
+      );
+
+      engine.start();
+      flushRaf(10);
+      expect(commitSnapshot).not.toHaveBeenCalled();
+
+      flushRaf(10);
+      expect(commitSnapshot).toHaveBeenCalledTimes(1);
+      expect(commitSnapshot.mock.calls[0][0].timeInt).toBe(40_000_000);
+    });
+  });
+
   describe("end-of-range behavior", () => {
     it("pauses at end when loop is disabled", () => {
       const onPlayStateChange = vi.fn();
@@ -321,6 +357,50 @@ describe("PlaybackEngine", () => {
       flushRaf(50);
 
       expect(commitSnapshot).toHaveBeenCalled();
+    });
+
+    it("returns to playing after buffering resolves", () => {
+      const onPlayStateChange = vi.fn();
+      let currentPlayState: "playing" | "buffering" = "playing";
+      let readiness: "loading" | "ready" = "loading";
+
+      const subs = new Map<string, Subscriber>();
+      subs.set("critical-sub", {
+        id: "critical-sub",
+        renderAt: vi.fn(),
+        bufferState: () => readiness,
+        prefetch: vi.fn(() => {
+          readiness = "ready";
+          return Promise.resolve();
+        }),
+        capabilities: { critical: true },
+      });
+
+      let currentSnapshot = createInitialSnapshot("test", 1);
+
+      const engine = new PlaybackEngine(
+        createMockOptions({
+          getSnapshot: () => currentSnapshot,
+          getPlayState: () => currentPlayState,
+          getSubscribers: () => subs,
+          commitSnapshot: (snap) => {
+            currentSnapshot = snap;
+          },
+          onPlayStateChange: (state) => {
+            onPlayStateChange(state);
+            if (state === "playing" || state === "buffering") {
+              currentPlayState = state;
+            }
+          },
+        })
+      );
+
+      engine.start();
+      flushRaf(50);
+      expect(onPlayStateChange).toHaveBeenCalledWith("buffering");
+
+      flushRaf(50);
+      expect(onPlayStateChange).toHaveBeenCalledWith("playing");
     });
 
     it("does not block on non-critical subscriber reporting loading", () => {

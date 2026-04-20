@@ -8,6 +8,7 @@ export const DEFAULT_TICK_RATE_DURATION = 60;
 export const DEFAULT_USE_TIME_INDICATOR = false;
 export const GLOBAL_TIMELINE_ID = "fo-timeline-global";
 export const MIN_LOAD_RANGE_SIZE = 350;
+export const MIN_LOAD_RANGE_DURATION_NS = 2_000_000_000;
 export const SEEK_BAR_DEBOUNCE = 10;
 
 export const PLAY_STATE_PLAYING: PlayState = "playing";

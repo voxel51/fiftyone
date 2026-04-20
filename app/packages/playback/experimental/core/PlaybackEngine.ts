@@ -12,12 +12,17 @@ import type {
   TimeRange,
   TimeSnapshot,
 } from "../types";
-import { DEFAULT_SPEED, DEFAULT_TICK_RATE } from "../constants";
+import {
+  DEFAULT_SPEED,
+  DEFAULT_TICK_RATE,
+  MIN_LOAD_RANGE_DURATION_NS,
+} from "../constants";
 
 export interface PlaybackEngineOptions {
   getConfig: () => TimelineConfig;
   getRange: () => TimeRange;
   getSnapshot: () => TimeSnapshot;
+  getPlayState: () => PlayState;
   getSubscribers: () => Map<string, Subscriber>;
   getTimeIndex: () => TimeIndex;
   commitSnapshot: (snapshot: TimeSnapshot) => void;
@@ -78,7 +83,10 @@ export class PlaybackEngine {
     const config = this.opts.getConfig();
     const speed = config.speed ?? DEFAULT_SPEED;
     const tickRate = config.tickRate ?? DEFAULT_TICK_RATE;
-    const updateInterval = 1000 / (tickRate * speed);
+    const updateInterval =
+      this.opts.timelineType === "duration"
+        ? 1000 / tickRate
+        : 1000 / (tickRate * speed);
 
     const elapsed = now - this._lastDrawTime;
     if (elapsed < updateInterval) {
@@ -129,10 +137,22 @@ export class PlaybackEngine {
         if (readiness !== "ready") {
           // Enter buffering — request prefetch from all subscribers
           this.opts.onPlayStateChange("buffering");
-          const prefetchRange: TimeRange = [
-            targetTimeInt,
-            Math.min(targetTimeInt + 100, range[1]),
-          ];
+          const prefetchRange: TimeRange =
+            type === "duration"
+              ? ([
+                  Math.max(
+                    range[0],
+                    targetTimeInt - MIN_LOAD_RANGE_DURATION_NS / 2
+                  ),
+                  Math.min(
+                    range[1],
+                    targetTimeInt + MIN_LOAD_RANGE_DURATION_NS
+                  ),
+                ] as const)
+              : ([
+                  targetTimeInt,
+                  Math.min(targetTimeInt + 100, range[1]),
+                ] as const);
           this.opts.onBufferRequest(prefetchRange);
 
           for (const s of subscribers.values()) {
@@ -147,6 +167,10 @@ export class PlaybackEngine {
     }
 
     // --- PHASE 2: COMMIT ---
+    if (this.opts.getPlayState() === "buffering") {
+      this.opts.onPlayStateChange("playing");
+    }
+
     const timeReal =
       type === "sequence"
         ? targetTimeInt

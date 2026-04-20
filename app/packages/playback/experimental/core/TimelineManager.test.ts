@@ -40,10 +40,12 @@ function createDurationParams(
 describe("TimelineManager", () => {
   let rafCallbacks: Map<number, FrameRequestCallback>;
   let nextRafId: number;
+  let mockNow: number;
 
   beforeEach(() => {
     rafCallbacks = new Map();
     nextRafId = 1;
+    mockNow = 0;
 
     vi.stubGlobal(
       "requestAnimationFrame",
@@ -59,12 +61,19 @@ describe("TimelineManager", () => {
         rafCallbacks.delete(id);
       })
     );
-    vi.spyOn(performance, "now").mockReturnValue(0);
+    vi.spyOn(performance, "now").mockImplementation(() => mockNow);
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
+
+  function flushRaf(advanceMs = 50) {
+    mockNow += advanceMs;
+    const callbacks = Array.from(rafCallbacks.values());
+    rafCallbacks.clear();
+    callbacks.forEach((callback) => callback(mockNow));
+  }
 
   describe("constructor", () => {
     it("creates a manager with the given name", () => {
@@ -279,6 +288,254 @@ describe("TimelineManager", () => {
       mgr.subscribe({ id: "sub", renderAt: vi.fn(), prefetch });
       await mgr.setTime(50);
       expect(prefetch).toHaveBeenCalled();
+    });
+
+    it("uses subscriber-reported buffered ranges as loaded coverage", async () => {
+      const mgr = new TimelineManager(createParams());
+      mgr.initialize(createParams());
+      let bufferedRanges: ReadonlyArray<readonly [number, number]> = [];
+      const prefetch = vi.fn(async () => {
+        bufferedRanges = [[10, 20]];
+      });
+
+      mgr.subscribe({
+        id: "sub",
+        renderAt: vi.fn(),
+        prefetch,
+        reportBufferedRanges: () => bufferedRanges,
+      });
+
+      await mgr.setTime(50);
+
+      expect(mgr.loadedBuffers).toEqual([[10, 20]]);
+    });
+
+    it("keeps loading tied to the requested range while loaded comes from reported coverage", async () => {
+      const mgr = new TimelineManager(createParams());
+      mgr.initialize(createParams());
+      let resolvePrefetch: (() => void) | null = null;
+      let bufferedRanges: ReadonlyArray<readonly [number, number]> = [];
+      const prefetch = vi.fn(
+        () =>
+          new Promise<void>((resolve) => {
+            resolvePrefetch = () => {
+              bufferedRanges = [[10, 20]];
+              resolve();
+            };
+          })
+      );
+
+      mgr.subscribe({
+        id: "sub",
+        renderAt: vi.fn(),
+        prefetch,
+        reportBufferedRanges: () => bufferedRanges,
+      });
+
+      const setTimePromise = mgr.setTime(50);
+
+      expect(mgr.currentBufferingRange).not.toEqual([0, 0]);
+      expect(mgr.loadedBuffers).toEqual([]);
+
+      resolvePrefetch?.();
+      await setTimePromise;
+
+      expect(mgr.loadedBuffers).toEqual([[10, 20]]);
+      expect(mgr.currentBufferingRange).toEqual([0, 0]);
+    });
+  });
+
+  describe("playable coverage", () => {
+    it("intersects critical subscriber buffers for loaded coverage", () => {
+      const mgr = new TimelineManager(createDurationParams());
+      mgr.initialize(createDurationParams());
+
+      mgr.subscribe({
+        id: "critical-a",
+        renderAt: vi.fn(),
+        reportBufferedRanges: () => [[0, 120]],
+        capabilities: { critical: true },
+      });
+      mgr.subscribe({
+        id: "critical-b",
+        renderAt: vi.fn(),
+        reportBufferedRanges: () => [[50, 160]],
+        capabilities: { critical: true },
+      });
+      mgr.subscribe({
+        id: "non-critical",
+        renderAt: vi.fn(),
+        reportBufferedRanges: () => [[0, 200]],
+      });
+
+      expect(mgr.loadedBuffers).toEqual([[50, 120]]);
+    });
+  });
+
+  describe("proactive prefetch", () => {
+    const windowNs = 3_000_000_000;
+
+    function createGoal(time: number, duration: number, speed = 1) {
+      const maintainStart = Math.max(0, time - windowNs);
+      const maintainEnd = Math.min(duration, time + windowNs * speed);
+      const refillEnd = Math.min(duration, time + windowNs * speed * 2);
+
+      return {
+        maintain: [maintainStart, maintainEnd] as const,
+        refillTo: [maintainStart, refillEnd] as const,
+      };
+    }
+
+    it("requests only the missing forward tail while playing", () => {
+      const mgr = new TimelineManager(
+        createDurationParams({
+          config: {
+            type: "duration",
+            duration: 9_000_000_000,
+            loop: false,
+            speed: 1,
+            tickRate: 60,
+          },
+        })
+      );
+      mgr.initialize(
+        createDurationParams({
+          config: {
+            type: "duration",
+            duration: 9_000_000_000,
+            loop: false,
+            speed: 1,
+            tickRate: 60,
+          },
+        })
+      );
+
+      const bufferedRanges = [[0, windowNs]] as const;
+      const prefetch = vi.fn().mockResolvedValue(undefined);
+
+      mgr.subscribe({
+        id: "critical",
+        renderAt: vi.fn(),
+        prefetch,
+        bufferState: (time) => {
+          return bufferedRanges.some(
+            (range) => range[0] <= time && range[1] >= time
+          )
+            ? "ready"
+            : "missing";
+        },
+        reportBufferedRanges: () => bufferedRanges,
+        getBufferGoal: (time, info) => createGoal(time, info.range[1]),
+        capabilities: { critical: true },
+      });
+
+      mgr.play();
+      flushRaf(50);
+
+      expect(prefetch).toHaveBeenCalledWith([windowNs + 1, 6_050_000_000]);
+      expect(mgr.playState).toBe("playing");
+    });
+
+    it("does not proactively prefetch while paused or buffering", async () => {
+      const mgr = new TimelineManager(
+        createDurationParams({
+          config: {
+            type: "duration",
+            duration: 9_000_000_000,
+            loop: false,
+            speed: 1,
+            tickRate: 60,
+          },
+        })
+      );
+      mgr.initialize(
+        createDurationParams({
+          config: {
+            type: "duration",
+            duration: 9_000_000_000,
+            loop: false,
+            speed: 1,
+            tickRate: 60,
+          },
+        })
+      );
+
+      const bufferedRanges = [[0, windowNs]] as const;
+      const prefetch = vi.fn().mockResolvedValue(undefined);
+
+      mgr.subscribe({
+        id: "critical",
+        renderAt: vi.fn(),
+        prefetch,
+        bufferState: () => "ready",
+        reportBufferedRanges: () => bufferedRanges,
+        getBufferGoal: (time, info) => createGoal(time, info.range[1]),
+        capabilities: { critical: true },
+      });
+
+      await mgr.setTime(0);
+      mgr.setPlayState("buffering");
+      await mgr.setTime(10);
+
+      expect(prefetch).not.toHaveBeenCalled();
+    });
+
+    it("does not enqueue duplicate proactive requests while one is in flight", async () => {
+      const mgr = new TimelineManager(
+        createDurationParams({
+          config: {
+            type: "duration",
+            duration: 9_000_000_000,
+            loop: false,
+            speed: 1,
+            tickRate: 60,
+          },
+        })
+      );
+      mgr.initialize(
+        createDurationParams({
+          config: {
+            type: "duration",
+            duration: 9_000_000_000,
+            loop: false,
+            speed: 1,
+            tickRate: 60,
+          },
+        })
+      );
+
+      const bufferedRanges = [[0, windowNs]] as const;
+      let resolvePrefetch: (() => void) | null = null;
+      const prefetch = vi.fn(
+        () =>
+          new Promise<void>((resolve) => {
+            resolvePrefetch = resolve;
+          })
+      );
+
+      mgr.subscribe({
+        id: "critical",
+        renderAt: vi.fn(),
+        prefetch,
+        bufferState: (time) => {
+          return bufferedRanges.some(
+            (range) => range[0] <= time && range[1] >= time
+          )
+            ? "ready"
+            : "missing";
+        },
+        reportBufferedRanges: () => bufferedRanges,
+        getBufferGoal: (time, info) => createGoal(time, info.range[1]),
+        capabilities: { critical: true },
+      });
+
+      mgr.play();
+      flushRaf(50);
+      await mgr.setTime(100_000_000);
+
+      expect(prefetch).toHaveBeenCalledTimes(1);
+
+      resolvePrefetch?.();
     });
   });
 

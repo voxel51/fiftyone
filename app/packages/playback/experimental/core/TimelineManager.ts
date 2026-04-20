@@ -32,6 +32,109 @@ import type {
 } from "../types";
 import { isDurationConfig, isSequenceConfig } from "../types";
 
+function buffersEqual(left: Buffers, right: Buffers) {
+  if (left === right) {
+    return true;
+  }
+
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  for (let index = 0; index < left.length; index += 1) {
+    if (
+      left[index][0] !== right[index][0] ||
+      left[index][1] !== right[index][1]
+    ) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function mergeBuffers(buffers: Buffers): Buffers {
+  if (!buffers.length) {
+    return [];
+  }
+
+  const manager = new BufferManager();
+  buffers.forEach((range) => manager.addNewRange(range));
+  return manager.buffers.map((range) => [range[0], range[1]] as const);
+}
+
+function intersectBuffers(left: Buffers, right: Buffers): Buffers {
+  if (!left.length || !right.length) {
+    return [];
+  }
+
+  const intersections: BufferRange[] = [];
+  let leftIndex = 0;
+  let rightIndex = 0;
+
+  while (leftIndex < left.length && rightIndex < right.length) {
+    const leftRange = left[leftIndex];
+    const rightRange = right[rightIndex];
+    const start = Math.max(leftRange[0], rightRange[0]);
+    const end = Math.min(leftRange[1], rightRange[1]);
+
+    if (start <= end) {
+      intersections.push([start, end]);
+    }
+
+    if (leftRange[1] < rightRange[1]) {
+      leftIndex += 1;
+    } else {
+      rightIndex += 1;
+    }
+  }
+
+  return intersections;
+}
+
+function getContainingBufferRange(
+  buffers: Buffers,
+  value: number
+): BufferRange | null {
+  return (
+    buffers.find((range) => range[0] <= value && range[1] >= value) ?? null
+  );
+}
+
+function rangesTouchOrOverlap(
+  left: Readonly<BufferRange>,
+  right: Readonly<BufferRange>
+) {
+  return left[0] <= right[1] + 1 && right[0] <= left[1] + 1;
+}
+
+function getLoadedBuffers(subscribers: Iterable<Subscriber>): Buffers {
+  const criticalBuffers: Buffers[] = [];
+  const allBuffers = new BufferManager();
+
+  for (const subscriber of subscribers) {
+    const mergedBuffers = mergeBuffers(
+      subscriber.reportBufferedRanges?.() ?? []
+    );
+
+    mergedBuffers.forEach((range) => {
+      allBuffers.addNewRange([range[0], range[1]]);
+    });
+
+    if (subscriber.capabilities?.critical) {
+      criticalBuffers.push(mergedBuffers);
+    }
+  }
+
+  if (!criticalBuffers.length) {
+    return allBuffers.buffers;
+  }
+
+  return criticalBuffers.reduce<Buffers>((accumulator, nextBuffers) => {
+    return intersectBuffers(accumulator, nextBuffers);
+  });
+}
+
 /**
  * Single source of truth for a timeline.
  */
@@ -51,6 +154,7 @@ export class TimelineManager {
   #subscribers = new Map<string, Subscriber>();
   #bufferManager = new BufferManager();
   #currentBufferingRange: BufferRange = [0, 0];
+  #inFlightProactivePrefetches = new Map<string, BufferRange>();
   #useExternalClock = false;
 
   constructor(params: CreateTimelineParams) {
@@ -62,15 +166,10 @@ export class TimelineManager {
       getConfig: () => this.#config,
       getRange: () => this.getRange(),
       getSnapshot: () => this.#snapshot,
+      getPlayState: () => this.#playState,
       getSubscribers: () => this.#subscribers,
       getTimeIndex: () => this.#timeIndex,
-      commitSnapshot: (snap) => {
-        this.#snapshot = snap;
-        this.#events.dispatch("timeline:timeChange", {
-          ...this.meta,
-          snapshot: snap,
-        });
-      },
+      commitSnapshot: (snap) => this.commitSnapshot(snap),
       onPlayStateChange: (state) => this.setPlayState(state),
       onBufferRequest: (range) => this.setCurrentBufferingRange(range),
       timelineName: this.name,
@@ -106,6 +205,10 @@ export class TimelineManager {
 
   get updateFrequency(): number {
     const tickRate = this.#config.tickRate ?? DEFAULT_TICK_RATE;
+    if (isDurationConfig(this.#config)) {
+      return 1000 / tickRate;
+    }
+
     const speed = this.#config.speed ?? DEFAULT_SPEED;
     return 1000 / (tickRate * speed);
   }
@@ -190,6 +293,7 @@ export class TimelineManager {
     this.#subscribers = new Map();
     this.#bufferManager = new BufferManager();
     this.#playState = PLAY_STATE_PAUSED;
+    this.#inFlightProactivePrefetches.clear();
     this.#useExternalClock = params.useExternalClock ?? false;
 
     // Rebuild engine with correct timeline type
@@ -197,15 +301,10 @@ export class TimelineManager {
       getConfig: () => this.#config,
       getRange: () => this.getRange(),
       getSnapshot: () => this.#snapshot,
+      getPlayState: () => this.#playState,
       getSubscribers: () => this.#subscribers,
       getTimeIndex: () => this.#timeIndex,
-      commitSnapshot: (snap) => {
-        this.#snapshot = snap;
-        this.#events.dispatch("timeline:timeChange", {
-          ...this.meta,
-          snapshot: snap,
-        });
-      },
+      commitSnapshot: (snap) => this.commitSnapshot(snap),
       onPlayStateChange: (state) => this.setPlayState(state),
       onBufferRequest: (range) => this.setCurrentBufferingRange(range),
       timelineName: this.name,
@@ -221,6 +320,7 @@ export class TimelineManager {
   destroy(): void {
     this.#engine.destroy();
     this.#subscribers.clear();
+    this.#inFlightProactivePrefetches.clear();
     this.#timeIndex.clear();
     this.#events.dispatch("timeline:destroyed", this.meta);
     clearChannel(this.name);
@@ -282,7 +382,7 @@ export class TimelineManager {
       if (isCurrentValueNotInBuffer) {
         try {
           await allSettled;
-          this.#bufferManager.addNewRange(newLoadRange);
+          this.refreshBufferedRanges();
         } catch (e) {
           console.error(e);
         } finally {
@@ -290,7 +390,7 @@ export class TimelineManager {
         }
       } else {
         allSettled.then(() => {
-          this.#bufferManager.addNewRange(newLoadRange);
+          this.refreshBufferedRanges();
           this.setCurrentBufferingRange([0, 0]);
         });
       }
@@ -308,6 +408,8 @@ export class TimelineManager {
       ...this.meta,
       snapshot: this.#snapshot,
     });
+
+    this.maybePrefetchAhead(this.#snapshot.timeInt);
   }
 
   /**
@@ -404,6 +506,8 @@ export class TimelineManager {
       prefetch: sub.prefetch ?? (async () => {}),
       bufferState: sub.bufferState ?? (() => "ready"),
       reportCoverage: sub.reportCoverage ?? (() => []),
+      reportBufferedRanges: sub.reportBufferedRanges ?? (() => []),
+      getBufferGoal: sub.getBufferGoal,
       capabilities: {
         critical: sub.capabilities?.critical ?? false,
         timelines: sub.capabilities?.timelines ?? [this.name],
@@ -413,18 +517,17 @@ export class TimelineManager {
 
     this.#subscribers.set(sub.id, enriched);
     this.#bufferManager.reset();
-
-    // Collect coverage from new subscriber
-    const coverage = enriched.reportCoverage!();
-    if (coverage.length > 0) {
-      this.#timeIndex.addTimes(coverage);
-    }
+    this.refreshCoverage();
+    this.refreshBufferedRanges();
 
     return () => this.unsubscribe(sub.id);
   }
 
   unsubscribe(id: string): void {
     this.#subscribers.delete(id);
+    this.#inFlightProactivePrefetches.delete(id);
+    this.refreshCoverage();
+    this.refreshBufferedRanges();
   }
 
   // --- Seek notifications ---
@@ -484,10 +587,63 @@ export class TimelineManager {
     }
   }
 
+  refreshBufferedRanges(): void {
+    const nextBufferManager = new BufferManager(
+      getLoadedBuffers(this.#subscribers.values())
+    );
+
+    const previousLoaded = this.#bufferManager.buffers;
+    const previousLoading = this.#currentBufferingRange;
+    this.#bufferManager = nextBufferManager;
+
+    if (
+      this.#currentBufferingRange[1] >= this.#currentBufferingRange[0] &&
+      (this.#currentBufferingRange[0] !== 0 ||
+        this.#currentBufferingRange[1] !== 0) &&
+      this.#bufferManager.containsRange(this.#currentBufferingRange)
+    ) {
+      this.#currentBufferingRange = [0, 0];
+    }
+
+    if (
+      buffersEqual(previousLoaded, this.#bufferManager.buffers) &&
+      previousLoading[0] === this.#currentBufferingRange[0] &&
+      previousLoading[1] === this.#currentBufferingRange[1]
+    ) {
+      return;
+    }
+
+    this.#events.dispatch("timeline:bufferChange", {
+      ...this.meta,
+      loaded: this.#bufferManager.buffers,
+      loading: this.#currentBufferingRange,
+    });
+  }
+
+  refreshCoverage(): void {
+    this.#timeIndex.clear();
+    this.#subscribers.forEach((subscriber) => {
+      const coverage = subscriber.reportCoverage?.() ?? [];
+      if (coverage.length) {
+        this.#timeIndex.addTimes(coverage);
+      }
+    });
+  }
+
   // --- Private helpers ---
 
   private get meta(): TimelineEventMeta {
     return { timeline: this.name, type: this.#config.type ?? "sequence" };
+  }
+
+  private commitSnapshot(snap: TimeSnapshot) {
+    this.#snapshot = snap;
+    this.#events.dispatch("timeline:timeChange", {
+      ...this.meta,
+      snapshot: snap,
+    });
+
+    this.maybePrefetchAhead(snap.timeInt);
   }
 
   private getRange(): TimeRange {
@@ -516,6 +672,89 @@ export class TimelineManager {
       ...this.meta,
       loaded: this.#bufferManager.buffers,
       loading: this.#currentBufferingRange,
+    });
+  }
+
+  private maybePrefetchAhead(time: TimeInt) {
+    if (this.#playState !== PLAY_STATE_PLAYING) {
+      return;
+    }
+
+    const info = {
+      config: this.#config,
+      range: this.getRange(),
+    };
+
+    this.#subscribers.forEach((subscriber) => {
+      if (!subscriber.capabilities?.critical || !subscriber.getBufferGoal) {
+        return;
+      }
+
+      const goal = subscriber.getBufferGoal(time, info);
+      if (!goal) {
+        return;
+      }
+
+      const bufferedRanges = mergeBuffers(
+        subscriber.reportBufferedRanges?.() ?? []
+      );
+      const containingRange = getContainingBufferRange(bufferedRanges, time);
+      if (!containingRange || containingRange[1] >= goal.maintain[1]) {
+        return;
+      }
+
+      const requestedRange = [
+        Math.max(info.range[0], containingRange[1] + 1),
+        Math.min(info.range[1], goal.refillTo[1]),
+      ] as const;
+
+      if (requestedRange[1] < requestedRange[0]) {
+        return;
+      }
+
+      const inFlightRange = this.#inFlightProactivePrefetches.get(
+        subscriber.id
+      );
+      if (
+        inFlightRange &&
+        rangesTouchOrOverlap(inFlightRange, requestedRange)
+      ) {
+        return;
+      }
+
+      if (inFlightRange) {
+        return;
+      }
+
+      this.#inFlightProactivePrefetches.set(subscriber.id, requestedRange);
+
+      void subscriber
+        .prefetch?.(requestedRange)
+        .catch((error) => {
+          console.error(
+            `Background prefetch failed for subscriber "${subscriber.id}"`,
+            error
+          );
+        })
+        .finally(() => {
+          const activeRange = this.#inFlightProactivePrefetches.get(
+            subscriber.id
+          );
+
+          if (
+            activeRange &&
+            activeRange[0] === requestedRange[0] &&
+            activeRange[1] === requestedRange[1]
+          ) {
+            this.#inFlightProactivePrefetches.delete(subscriber.id);
+          }
+
+          if (!this.#subscribers.has(subscriber.id)) {
+            return;
+          }
+
+          this.refreshBufferedRanges();
+        });
     });
   }
 }

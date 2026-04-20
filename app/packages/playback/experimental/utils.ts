@@ -1,12 +1,14 @@
 import { Buffers } from "@fiftyone/utilities";
 import {
   DEFAULT_TICK_RATE,
+  DEFAULT_TICK_RATE_DURATION,
   GLOBAL_TIMELINE_ID,
   MIN_LOAD_RANGE_SIZE,
+  MIN_LOAD_RANGE_DURATION_NS,
 } from "./constants";
 import type { BufferRange } from "@fiftyone/utilities";
 import type { TimelineConfig, TimeInt } from "./types";
-import { isSequenceConfig } from "./types";
+import { isDurationConfig, isSequenceConfig } from "./types";
 
 export const getTimelineNameFromSampleAndGroupId = (
   sampleId?: string | null,
@@ -42,6 +44,26 @@ export const getLoadRangeForFrameNumber = (
   frameNumber: TimeInt,
   config: TimelineConfig
 ): BufferRange => {
+  if (isDurationConfig(config)) {
+    const totalDuration = config.duration;
+    const tickRate = config.tickRate ?? DEFAULT_TICK_RATE_DURATION;
+    const speed = config.speed ?? 1;
+    const behindBufferNs = MIN_LOAD_RANGE_DURATION_NS / 2;
+    const aheadBufferNs = Math.max(
+      MIN_LOAD_RANGE_DURATION_NS,
+      Math.ceil(
+        MIN_LOAD_RANGE_DURATION_NS *
+          speed *
+          (tickRate / DEFAULT_TICK_RATE_DURATION)
+      )
+    );
+
+    const min = Math.max(0, frameNumber - behindBufferNs);
+    const max = Math.min(totalDuration, frameNumber + aheadBufferNs);
+
+    return [min, max] as const;
+  }
+
   const totalFrames = isSequenceConfig(config) ? config.totalFrames : 0;
   const { tickRate, speed } = config;
 

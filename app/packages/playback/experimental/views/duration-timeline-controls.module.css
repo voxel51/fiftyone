@@ -1,0 +1,43 @@
+.root {
+  width: 100%;
+  min-width: 0;
+}
+
+.seekbar {
+  width: 100%;
+  min-width: 0;
+}
+
+.seekbar::-webkit-slider-thumb {
+  width: 0;
+  height: 0;
+  -webkit-appearance: none;
+}
+
+.seekbar::-moz-range-thumb {
+  width: 0;
+  height: 0;
+  border: none;
+}
+
+.controlsRow {
+  align-items: center;
+}
+
+.statusIndicator {
+  margin-left: auto;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.secondaryText,
+.secondaryText {
+  font-size: 0.72rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.56);
+}

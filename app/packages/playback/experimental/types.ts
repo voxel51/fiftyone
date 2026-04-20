@@ -1,3 +1,5 @@
+import type { Buffers } from "@fiftyone/utilities";
+
 // --- Time primitives ---
 
 /** The kind of timeline. "timestamp" is stubbed for future use. */
@@ -41,6 +43,22 @@ export type SelectionPolicy = "latestAt" | "nearest" | "exact" | "interpolate";
 
 export type BufferReadiness = "ready" | "loading" | "missing";
 
+/** Proactive buffer headroom targets for a subscriber at the current time. */
+export interface BufferGoal {
+  /** The minimum playable range the subscriber wants to keep covered. */
+  maintain: TimeRange;
+  /** The farther range the subscriber wants background top-up to refill to. */
+  refillTo: TimeRange;
+}
+
+/** Context provided when a subscriber computes a proactive buffer goal. */
+export interface BufferGoalInfo {
+  /** Current immutable timeline config. */
+  config: Readonly<TimelineConfig>;
+  /** Full clamped playback range for the active timeline. */
+  range: TimeRange;
+}
+
 // --- Subscriber ---
 
 export interface SubscriberCapabilities {
@@ -73,6 +91,12 @@ export interface Subscriber {
 
   /** Report all event times this subscriber covers. Default: []. */
   reportCoverage?(): TimeInt[];
+
+  /** Report loaded/play-ready coverage ranges. Default: []. */
+  reportBufferedRanges?(): Buffers;
+
+  /** Report proactive keep-ahead targets for the current playback time. */
+  getBufferGoal?(time: TimeInt, info: BufferGoalInfo): BufferGoal | null;
 
   /** Called when the timeline config or identity changes. Default: no-op. */
   onTimelineChanged?(info: TimelineInfo): void;

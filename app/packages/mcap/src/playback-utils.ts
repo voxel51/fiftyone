@@ -1,8 +1,8 @@
 import type { BufferRange } from "@fiftyone/utilities";
-import type { McapTimeRange } from "./types";
+import type { MultimodalTimeRange } from "./types";
 
-/** Default frontend MCAP buffer window size in nanoseconds. */
-export const MCAP_BUFFER_WINDOW_SIZE_NS = 3_000_000_000;
+/** Default frontend Multimodal buffer window size in nanoseconds. */
+export const MULTIMODAL_BUFFER_WINDOW_SIZE_NS = 3_000_000_000;
 
 /** Finds the nearest timestamp at or before the target timestamp. */
 export function findNearestTimestampAtOrBefore(
@@ -60,11 +60,31 @@ export function findNearestTimestampAtOrAfter(
   return matchIndex >= 0 ? timestampsNs[matchIndex] : null;
 }
 
+/**
+ * Resolves the playback timestamp for `nearest` sync mode.
+ *
+ * This follows the multimodal architecture semantics: choose the most recent
+ * sample at or before the playback clock, and only fall forward if playback is
+ * earlier than the first sample.
+ */
+export function findPlaybackTimestampForNearestSync(
+  timestampsNs: number[],
+  targetNs: number
+): number | null {
+  const before = findNearestTimestampAtOrBefore(timestampsNs, targetNs);
+
+  if (before === null) {
+    return findNearestTimestampAtOrAfter(timestampsNs, targetNs);
+  }
+
+  return before;
+}
+
 /** Maps a 1-indexed playback frame range to its shared timeline timestamps. */
 export function getTimelineTimestampRangeForFrames(
   timestampsNs: number[],
   frameRange: BufferRange
-): McapTimeRange | null {
+): MultimodalTimeRange | null {
   const startTimestamp = timestampsNs[frameRange[0] - 1];
   const endTimestamp = timestampsNs[frameRange[1] - 1];
 
@@ -78,8 +98,10 @@ export function getTimelineTimestampRangeForFrames(
   };
 }
 
-/** Infers a reasonable playback frame rate from shared MCAP timestamps. */
-export function inferMcapTimelineFrameRate(timestampsNs: number[]): number {
+/** Infers a reasonable playback frame rate from shared Multimodal timestamps. */
+export function inferMultimodalTimelineFrameRate(
+  timestampsNs: number[]
+): number {
   if (timestampsNs.length < 2) {
     return 1;
   }
@@ -95,12 +117,12 @@ export function inferMcapTimelineFrameRate(timestampsNs: number[]): number {
   return Math.max(1, Math.min(30, Number(estimatedFrameRate.toFixed(2))));
 }
 
-/** Builds fixed-size MCAP fetch windows relative to the scene time range. */
-export function getMcapWindowsForRange(
-  sceneRange: McapTimeRange,
-  requestedRange: McapTimeRange,
-  windowSizeNs = MCAP_BUFFER_WINDOW_SIZE_NS
-): McapTimeRange[] {
+/** Builds fixed-size Multimodal fetch windows relative to the scene time range. */
+export function getMultimodalWindowsForRange(
+  sceneRange: MultimodalTimeRange,
+  requestedRange: MultimodalTimeRange,
+  windowSizeNs = MULTIMODAL_BUFFER_WINDOW_SIZE_NS
+): MultimodalTimeRange[] {
   if (requestedRange.endNs < requestedRange.startNs) {
     return [];
   }
@@ -116,7 +138,7 @@ export function getMcapWindowsForRange(
     (boundedStart - sceneRange.startNs) / windowSizeNs
   );
   const endIndex = Math.floor((boundedEnd - sceneRange.startNs) / windowSizeNs);
-  const windows: McapTimeRange[] = [];
+  const windows: MultimodalTimeRange[] = [];
 
   for (let index = startIndex; index <= endIndex; index += 1) {
     const startNs = sceneRange.startNs + index * windowSizeNs;
