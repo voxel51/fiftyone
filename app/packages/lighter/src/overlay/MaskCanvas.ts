@@ -133,19 +133,15 @@ export class MaskCanvas {
 
   /**
    * Lazily creates (or reuses) the mask editing canvas.
-   * When seeding from a decoded bitmap, uses the bitmap dimensions.
-   * Otherwise derives canvas size from the given absolute bounds (1:1 mapping).
+   * Always sizes the canvas to match the world-space bounds so that
+   * canvas pixels map 1:1 with world coordinates. When seeding from a
+   * decoded bitmap, the bitmap is drawn scaled to fill the canvas.
    */
   private ensureCanvas(bounds: Rect): void {
     if (this.canvas) return;
 
-    const width = this.maskBitmap
-      ? this.maskBitmap.width
-      : Math.max(1, Math.round(bounds.width));
-
-    const height = this.maskBitmap
-      ? this.maskBitmap.height
-      : Math.max(1, Math.round(bounds.height));
+    const width = Math.max(1, Math.round(bounds.width));
+    const height = Math.max(1, Math.round(bounds.height));
 
     const { maskCanvas, maskContext } = createMaskCanvas(width, height);
 
@@ -153,7 +149,7 @@ export class MaskCanvas {
     this.context = maskContext;
 
     if (this.maskBitmap) {
-      this.context.drawImage(this.maskBitmap, 0, 0);
+      this.context.drawImage(this.maskBitmap, 0, 0, width, height);
     }
   }
 
