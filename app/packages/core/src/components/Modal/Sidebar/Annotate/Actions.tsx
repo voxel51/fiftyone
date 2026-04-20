@@ -28,6 +28,7 @@ import { fieldsOfType } from "./Edit/state";
 import { useDetectionMode } from "./Edit/useDetectionMode";
 import { Anchor, Icon, IconName, Text, Tooltip } from "@voxel51/voodo";
 import { useSegmentationMode } from "./Edit/useSegmentationMode";
+import { FeatureFlag, FeatureFlagged } from "@fiftyone/feature-flags";
 
 const ActionsDiv = styled.div`
   align-items: center;
@@ -491,7 +492,9 @@ const Actions = () => {
             ) : (
               <>
                 <Detection />
-                <Segmentation />
+                <FeatureFlagged feature={FeatureFlag.VFF_AI_SEGMENTATION}>
+                  <Segmentation />
+                </FeatureFlagged>
               </>
             )}
           </ItemLeft>
