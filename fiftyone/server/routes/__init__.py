@@ -19,7 +19,7 @@ from .frames import Frames
 from .geo import GeoPoints
 from .get_similar_labels_frames import GetSimilarLabelsFrameCollection
 from .groups import GroupsRoutes
-from .mcap import McapRoutes
+from .multimodal import MultimodalRoutes
 from .media import Media
 from .plugins import Plugins
 from .sample import SampleRoutes
@@ -34,7 +34,7 @@ routes = (
     CameraRoutes
     + EmbeddingsRoutes
     + GroupsRoutes
-    + McapRoutes
+    + MultimodalRoutes
     + OperatorRoutes
     + SampleRoutes
     + [
