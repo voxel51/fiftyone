@@ -806,6 +806,16 @@ export class BoundingBoxOverlay
 
     try {
       const overlayMask = deserialize(b64);
+      if (
+        overlayMask.arrayType !== "Uint8Array" &&
+        overlayMask.arrayType !== "Uint8ClampedArray"
+      ) {
+        console.warn(
+          `[BoundingBoxOverlay] Unsupported mask dtype: ${overlayMask.arrayType}, expected Uint8Array`
+        );
+        return;
+      }
+
       const [height, width] = overlayMask.shape;
       const src = new Uint8Array(overlayMask.buffer);
       const rgba = new Uint8ClampedArray(width * height * 4);
