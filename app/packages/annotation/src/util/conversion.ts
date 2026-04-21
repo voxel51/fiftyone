@@ -72,7 +72,7 @@ export const float32ToCompressedNumpy = (
     }
 
     // threshold values at 0.5
-    intArray[i] = v < 0 ? 0 : v > 255 ? 255 : v > 0.5 ? 1 : 0;
+    intArray[i] = v < 0 ? 0 : v > 0.5 ? 1 : 0;
   }
 
   // construct full array
