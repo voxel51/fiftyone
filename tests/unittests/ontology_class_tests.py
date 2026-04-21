@@ -8,7 +8,11 @@ FiftyOne ontology data class unit tests.
 
 import unittest
 
-from fiftyone.core.annotation.attributes import Attribute, When, WhenOperator
+from fiftyone.core.annotation.attributes import (
+    AttributeSpec,
+    When,
+    WhenOperator,
+)
 from fiftyone.core.ontology import AnnotationOntology
 
 
@@ -55,7 +59,9 @@ class WhenTests(unittest.TestCase):
         self.assertEqual(
             w.to_dict(),
             {
-                "equals": {"field": "vehicle_type", "value": "car"},
+                "operator": "equals",
+                "field": "vehicle_type",
+                "value": "car",
                 "then": {"values": ["sedan", "suv"]},
             },
         )
@@ -63,7 +69,9 @@ class WhenTests(unittest.TestCase):
     def test_from_dict_with_then(self):
         w = When.from_dict(
             {
-                "equals": {"field": "type", "value": "car"},
+                "operator": "equals",
+                "field": "type",
+                "value": "car",
                 "then": {"values": ["sedan"]},
             }
         )
@@ -84,9 +92,9 @@ class WhenTests(unittest.TestCase):
         self.assertEqual(restored.then, original.then)
 
 
-class AttributeTests(unittest.TestCase):
+class AttributeSpecTests(unittest.TestCase):
     def test_create_full(self):
-        attr = Attribute(
+        attr = AttributeSpec(
             name="damage_location",
             type="str",
             component="dropdown",
@@ -102,7 +110,7 @@ class AttributeTests(unittest.TestCase):
         self.assertEqual(len(attr.when), 1)
 
     def test_create_unconditional(self):
-        attr = Attribute(
+        attr = AttributeSpec(
             name="damage_present",
             type="bool",
             component="checkbox",
@@ -113,18 +121,18 @@ class AttributeTests(unittest.TestCase):
 
     def test_missing_name_raises(self):
         with self.assertRaises(ValueError):
-            Attribute(name="", type="str", component="dropdown")
+            AttributeSpec(name="", type="str", component="dropdown")
 
     def test_missing_type_raises(self):
         with self.assertRaises(ValueError):
-            Attribute(name="attr", type="", component="dropdown")
+            AttributeSpec(name="attr", type="", component="dropdown")
 
     def test_missing_component_raises(self):
         with self.assertRaises(ValueError):
-            Attribute(name="attr", type="str", component="")
+            AttributeSpec(name="attr", type="str", component="")
 
     def test_to_dict_unconditional(self):
-        attr = Attribute(name="flag", type="bool", component="checkbox")
+        attr = AttributeSpec(name="flag", type="bool", component="checkbox")
         d = attr.to_dict()
         self.assertEqual(
             d, {"name": "flag", "type": "bool", "component": "checkbox"}
@@ -133,7 +141,7 @@ class AttributeTests(unittest.TestCase):
         self.assertNotIn("when", d)
 
     def test_to_dict_conditional(self):
-        attr = Attribute(
+        attr = AttributeSpec(
             name="severity",
             type="str",
             component="radio",
@@ -148,7 +156,7 @@ class AttributeTests(unittest.TestCase):
         self.assertEqual(d["component"], "radio")
         self.assertEqual(d["values"], ["minor", "moderate", "severe"])
         self.assertEqual(len(d["when"]), 1)
-        self.assertIn("equals", d["when"][0])
+        self.assertEqual(d["when"][0]["operator"], "equals")
 
     def test_from_dict(self):
         d = {
@@ -157,10 +165,14 @@ class AttributeTests(unittest.TestCase):
             "component": "dropdown",
             "values": ["front", "rear"],
             "when": [
-                {"equals": {"field": "damage_present", "value": True}},
+                {
+                    "operator": "equals",
+                    "field": "damage_present",
+                    "value": True,
+                },
             ],
         }
-        attr = Attribute.from_dict(d)
+        attr = AttributeSpec.from_dict(d)
         self.assertEqual(attr.name, "damage_location")
         self.assertEqual(attr.type, "str")
         self.assertEqual(attr.component, "dropdown")
@@ -169,7 +181,7 @@ class AttributeTests(unittest.TestCase):
         self.assertEqual(attr.when[0].operator, WhenOperator.EQUALS)
 
     def test_roundtrip(self):
-        original = Attribute(
+        original = AttributeSpec(
             name="damage_location",
             type="str",
             component="dropdown",
@@ -178,7 +190,7 @@ class AttributeTests(unittest.TestCase):
                 When(WhenOperator.EQUALS, field="damage_present", value=True)
             ],
         )
-        restored = Attribute.from_dict(original.to_dict())
+        restored = AttributeSpec.from_dict(original.to_dict())
         self.assertEqual(restored.name, original.name)
         self.assertEqual(restored.type, original.type)
         self.assertEqual(restored.component, original.component)
@@ -196,12 +208,12 @@ class AnnotationOntologyTests(unittest.TestCase):
             description="Vehicle damage annotation",
             taxonomies=["vehicle_classes"],
             attributes=[
-                Attribute(
+                AttributeSpec(
                     name="damage_present",
                     type="bool",
                     component="checkbox",
                 ),
-                Attribute(
+                AttributeSpec(
                     name="damage_location",
                     type="str",
                     component="dropdown",
@@ -233,7 +245,7 @@ class AnnotationOntologyTests(unittest.TestCase):
             description="A test",
             taxonomies=["tax1"],
             attributes=[
-                Attribute(
+                AttributeSpec(
                     name="attr1",
                     type="bool",
                     component="checkbox",
@@ -268,10 +280,9 @@ class AnnotationOntologyTests(unittest.TestCase):
                         "values": ["a", "b"],
                         "when": [
                             {
-                                "equals": {
-                                    "field": "attr1",
-                                    "value": True,
-                                }
+                                "operator": "equals",
+                                "field": "attr1",
+                                "value": True,
                             }
                         ],
                     },
@@ -291,12 +302,12 @@ class AnnotationOntologyTests(unittest.TestCase):
             description="Vehicle damage annotation",
             taxonomies=["vehicle_classes"],
             attributes=[
-                Attribute(
+                AttributeSpec(
                     name="damage_present",
                     type="bool",
                     component="checkbox",
                 ),
-                Attribute(
+                AttributeSpec(
                     name="damage_location",
                     type="str",
                     component="dropdown",
@@ -309,7 +320,7 @@ class AnnotationOntologyTests(unittest.TestCase):
                         )
                     ],
                 ),
-                Attribute(
+                AttributeSpec(
                     name="airbags_deployed",
                     type="bool",
                     component="checkbox",

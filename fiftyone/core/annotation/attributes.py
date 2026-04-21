@@ -6,10 +6,19 @@ Annotation attribute primitives for label schemas and ontologies.
 |
 """
 
-from __future__ import annotations
-
+from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Optional
+from typing import Any, Optional, Union
+
+
+def _attr_insert_to_dict(d: dict, name: str, obj: object) -> dict:
+    """Inserts ``obj.<name>`` into ``d`` under key ``name`` if it is set
+    (i.e. not ``None``).
+    """
+    value = getattr(obj, name, None)
+    if value is not None:
+        d[name] = value
+    return d
 
 
 class WhenOperator(str, Enum):
@@ -19,8 +28,9 @@ class WhenOperator(str, Enum):
     IN = "in"
 
 
+@dataclass(repr=False)
 class When:
-    """A visibility/override condition for an :class:`Attribute`.
+    """A visibility/override condition for an :class:`AttributeSpec`.
 
     Controls when an attribute is shown based on the value of another
     attribute. Multiple ``When`` conditions on a single attribute are
@@ -46,18 +56,13 @@ class When:
         )
     """
 
-    def __init__(
-        self,
-        operator: WhenOperator | str,
-        *,
-        field: str,
-        value: Any,
-        then: Optional[dict] = None,
-    ):
-        self.operator = WhenOperator(operator)
-        self.field = field
-        self.value = value
-        self.then = then
+    operator: Union[WhenOperator, str]
+    field: str
+    value: Any
+    then: Optional[dict] = None
+
+    def __post_init__(self) -> None:
+        self.operator = WhenOperator(self.operator)
 
     def to_dict(self) -> dict:
         """Serializes this condition to a dict.
@@ -66,14 +71,15 @@ class When:
             a dict
         """
         d: dict[str, Any] = {
-            self.operator.value: {"field": self.field, "value": self.value}
+            "operator": self.operator.value,
+            "field": self.field,
+            "value": self.value,
         }
-        if self.then is not None:
-            d["then"] = self.then
+        _attr_insert_to_dict(d, "then", self)
         return d
 
     @classmethod
-    def from_dict(cls, d: dict) -> When:
+    def from_dict(cls, d: dict) -> "When":
         """Creates a :class:`When` from a dict.
 
         Args:
@@ -82,14 +88,10 @@ class When:
         Returns:
             a :class:`When`
         """
-        # The only top level keys are operator and the then clause. So we
-        # just want to extract the operator.
-        operator = next(k for k in d if k != "then")
-        operand = d[operator]
         return cls(
-            operator=operator,
-            field=operand["field"],
-            value=operand["value"],
+            operator=d["operator"],
+            field=d["field"],
+            value=d["value"],
             then=d.get("then"),
         )
 
@@ -103,7 +105,8 @@ class When:
         return parts + ")"
 
 
-class Attribute:
+@dataclass(repr=False)
+class AttributeSpec:
     """A typed annotation attribute with optional conditional visibility.
 
     Used in label schemas and annotation ontologies to define annotation
@@ -120,7 +123,7 @@ class Attribute:
 
     Example::
 
-        Attribute(
+        AttributeSpec(
             name="damage_location",
             type="str",
             component="dropdown",
@@ -129,26 +132,21 @@ class Attribute:
         )
     """
 
-    def __init__(
-        self,
-        name: str,
-        type: str,
-        component: str,
-        values: Optional[list] = None,
-        when: Optional[list[When]] = None,
-    ):
-        if not name:
-            raise ValueError("Attribute 'name' is required")
-        if not type:
-            raise ValueError("Attribute 'type' is required")
-        if not component:
-            raise ValueError("Attribute 'component' is required")
+    name: str
+    type: str
+    component: str
+    values: Optional[list] = None
+    when: Optional[list[When]] = None
 
-        self.name = name
-        self.type = type
-        self.component = component
-        self.values = values
-        self.when = when
+    def __post_init__(self) -> None:
+        missing = [
+            k for k in ("name", "type", "component") if not getattr(self, k)
+        ]
+        if missing:
+            raise ValueError(
+                f"AttributeSpec missing required field(s): "
+                f"{', '.join(missing)}"
+            )
 
     def to_dict(self) -> dict:
         """Serializes this attribute to a dict.
@@ -161,21 +159,20 @@ class Attribute:
             "type": self.type,
             "component": self.component,
         }
-        if self.values is not None:
-            d["values"] = self.values
+        _attr_insert_to_dict(d, "values", self)
         if self.when is not None:
             d["when"] = [w.to_dict() for w in self.when]
         return d
 
     @classmethod
-    def from_dict(cls, d: dict) -> Attribute:
-        """Creates an :class:`Attribute` from a dict.
+    def from_dict(cls, d: dict) -> "AttributeSpec":
+        """Creates an :class:`AttributeSpec` from a dict.
 
         Args:
             d: an attribute dict
 
         Returns:
-            an :class:`Attribute`
+            an :class:`AttributeSpec`
         """
         when = None
         if "when" in d:
@@ -190,4 +187,4 @@ class Attribute:
         )
 
     def __repr__(self) -> str:
-        return f"Attribute(name={self.name!r}, type={self.type!r})"
+        return f"AttributeSpec(name={self.name!r}, type={self.type!r})"

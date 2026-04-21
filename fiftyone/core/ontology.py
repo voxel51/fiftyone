@@ -6,16 +6,18 @@ Ontology classes for defining reusable annotation and taxonomy structures.
 |
 """
 
-from __future__ import annotations
-
+import abc
 from datetime import datetime
 from typing import Any, Optional
 
-from fiftyone.core.annotation.attributes import Attribute
+from fiftyone.core.annotation.attributes import (
+    AttributeSpec,
+    _attr_insert_to_dict,
+)
 from fiftyone.core.odm.ontology import OntologyType
 
 
-class Ontology:
+class Ontology(abc.ABC):
     """Abstract base class for ontology types.
 
     Ontologies are global, named, versioned resources that define reusable
@@ -23,6 +25,13 @@ class Ontology:
 
     Subclasses must set :attr:`_TYPE` to the corresponding
     :class:`fiftyone.core.odm.ontology.OntologyType` value.
+
+    The :attr:`_doc` attribute holds the backing
+    :class:`fiftyone.core.odm.ontology.OntologyDocument` once the ontology
+    has been persisted via ``save()`` or loaded via ``load()``, which
+    populate fields like :attr:`version`, :attr:`created_at`, and
+    :attr:`last_modified_at`. On this branch ``save()``/``load()`` are not
+    yet wired up, so :attr:`_doc` remains ``None`` until those land.
 
     Args:
         name: the ontology name
@@ -78,20 +87,26 @@ class Ontology:
             "name": self.name,
             "type": self._TYPE,
         }
-
-        if self.description is not None:
-            d["description"] = self.description
-
-        if self.version is not None:
-            d["version"] = self.version
-
-        if self.created_at is not None:
-            d["created_at"] = self.created_at
-
-        if self.last_modified_at is not None:
-            d["last_modified_at"] = self.last_modified_at
-
+        for attr in (
+            "description",
+            "version",
+            "created_at",
+            "last_modified_at",
+        ):
+            _attr_insert_to_dict(d, attr, self)
         return d
+
+    @classmethod
+    @abc.abstractmethod
+    def from_dict(cls, d: dict) -> "Ontology":
+        """Creates an ontology from a dict.
+
+        Args:
+            d: an ontology dict
+
+        Returns:
+            an :class:`Ontology`
+        """
 
     def __repr__(self) -> str:
         return (
@@ -111,7 +126,7 @@ class AnnotationOntology(Ontology):
         name: the ontology name
         description: optional description
         taxonomies: list of taxonomy names referenced by this ontology
-        attributes: list of :class:`Attribute` instances
+        attributes: list of :class:`AttributeSpec` instances
 
     Example::
 
@@ -120,12 +135,12 @@ class AnnotationOntology(Ontology):
             description="Vehicle damage annotation",
             taxonomies=["vehicle_classes"],
             attributes=[
-                Attribute(
+                AttributeSpec(
                     name="damage_present",
                     type="bool",
                     component="checkbox",
                 ),
-                Attribute(
+                AttributeSpec(
                     name="damage_location",
                     type="str",
                     component="dropdown",
@@ -143,7 +158,7 @@ class AnnotationOntology(Ontology):
         name: str,
         description: Optional[str] = None,
         taxonomies: Optional[list[str]] = None,
-        attributes: Optional[list[Attribute]] = None,
+        attributes: Optional[list[AttributeSpec]] = None,
     ):
         super().__init__(name=name, description=description)
         self.taxonomies = taxonomies or []
@@ -163,7 +178,7 @@ class AnnotationOntology(Ontology):
         return d
 
     @classmethod
-    def from_dict(cls, d: dict) -> AnnotationOntology:
+    def from_dict(cls, d: dict) -> "AnnotationOntology":
         """Creates an :class:`AnnotationOntology` from a dict.
 
         Args:
@@ -172,13 +187,13 @@ class AnnotationOntology(Ontology):
         Returns:
             an :class:`AnnotationOntology`
         """
-        root = d.get("root", {})
+        root = d.get("root") or {}
         return cls(
             name=d["name"],
             description=d.get("description"),
             taxonomies=root.get("taxonomies", []),
             attributes=[
-                Attribute.from_dict(a) for a in root.get("attributes", [])
+                AttributeSpec.from_dict(a) for a in root.get("attributes", [])
             ],
         )
 
@@ -217,6 +232,13 @@ class Taxonomy(Ontology):
     _TYPE = OntologyType.TAXONOMY.value
 
     def __init__(self, *args: Any, **kwargs: Any):
+        raise NotImplementedError(
+            "Taxonomy is not yet implemented; taxonomy support is planned "
+            "for phase 2"
+        )
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "Taxonomy":
         raise NotImplementedError(
             "Taxonomy is not yet implemented; taxonomy support is planned "
             "for phase 2"
