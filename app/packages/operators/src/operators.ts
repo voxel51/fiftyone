@@ -368,7 +368,7 @@ export class Operator {
     }
     return false;
   }
-  useHooks(): object {
+  useHooks(): unknown {
     // This can be overridden to use hooks in the execute function
     return {};
   }
@@ -388,10 +388,10 @@ export class Operator {
     }
     return null;
   }
-  async resolvePlacement(): Promise<void | types.Placement> {
+  async resolvePlacement(): Promise<void | null | types.Placement> {
     return null;
   }
-  async execute(ctx: ExecutionContext) {
+  async execute(ctx: ExecutionContext): Promise<unknown> {
     ctx;
     throw new Error(`Operator ${this.uri} does not implement execute`);
   }
