@@ -2,6 +2,8 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import { CommandContextManager } from "@fiftyone/commands";
+import { MoveKeypointPointCommand } from "../commands/MoveKeypointPointCommand";
 import {
   EDGE_THRESHOLD,
   KEYPOINT_HIT_RADIUS,
@@ -140,7 +142,7 @@ export class KeypointOverlay
   // Coordinate helpers
   // ---------------------------------------------------------------------------
 
-  private relativePointToAbsolute(rp: [number, number]): Point {
+  relativePointToAbsolute(rp: [number, number]): Point {
     const t = this.getCoordinateSystem().getTransform();
     return {
       x: t.offsetX + rp[0] * t.scaleX,
@@ -571,20 +573,24 @@ export class KeypointOverlay
     const movedIdx = this.dragPointIndex;
     const from = this.moveStartRelativePoint;
     const entry = this.#points[movedIdx];
-    const to = entry.position;
+    const to: [number, number] = [entry.position[0], entry.position[1]];
 
     this.dragPointIndex = null;
     this.moveStartScreenPoint = undefined;
     this.moveStartRelativePoint = undefined;
     this.renderer?.enableZoomPan();
 
-    if (from && to && (from[0] !== to[0] || from[1] !== to[1])) {
+    if (from && (from[0] !== to[0] || from[1] !== to[1])) {
       this.eventBus.dispatch("lighter:keypoint-point-moved", {
         id: this.id,
         pointId: entry.id,
         from: { x: from[0], y: from[1] },
         to: { x: to[0], y: to[1] },
       });
+
+      CommandContextManager.instance()
+        .getActiveContext()
+        .pushUndoable(new MoveKeypointPointCommand(this, entry.id, from, to));
     }
 
     return true;
@@ -598,11 +604,13 @@ export class KeypointOverlay
    * Adds a point at the given absolute (world) position.
    *
    * @param variant - Optional variant key used to determine render style.
+   * @param id - Optional ID. When provided, reuses this id instead of
+   *             generating one. Useful when referential integrity is desired.
    * @returns The id of the new point.
    */
-  addPoint(worldPoint: Point, variant?: string): string {
+  addPoint(worldPoint: Point, variant?: string, id?: string): string {
     const position = this.absolutePointToRelative(worldPoint);
-    const entry: KeypointEntry = { id: uuidv4(), position, variant };
+    const entry: KeypointEntry = { id: id ?? uuidv4(), position, variant };
     this.#points.push(entry);
 
     this.eventBus.dispatch("lighter:keypoint-point-added", {
@@ -614,6 +622,45 @@ export class KeypointOverlay
 
     this.markDirty();
     return entry.id;
+  }
+
+  /**
+   * Removes the point with the given ID.
+   *
+   * @param pointId - The ID of the point to remove
+   */
+  removePointById(pointId: string): void {
+    const index = this.#points.findIndex((p) => p.id === pointId);
+    if (index === -1) {
+      return;
+    }
+
+    this.removePoint(index);
+  }
+
+  /**
+   * Sets a point's position by ID.
+   *
+   * @param pointId - ID of the point to move
+   * @param to - [x, y] destination coordinates
+   */
+  movePointById(pointId: string, to: [number, number]): void {
+    const entry = this.#points.find((p) => p.id === pointId);
+    if (!entry) {
+      return;
+    }
+
+    const from: [number, number] = entry.position;
+    entry.position = [to[0], to[1]];
+
+    this.eventBus.dispatch("lighter:keypoint-point-moved", {
+      id: this.id,
+      pointId,
+      from: { x: from[0], y: from[1] },
+      to: { x: to[0], y: to[1] },
+    });
+
+    this.markDirty();
   }
 
   /**

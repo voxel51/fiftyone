@@ -2,7 +2,9 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import { CommandContextManager } from "@fiftyone/commands";
 import type { EventDispatcher } from "@fiftyone/events";
+import { AddKeypointPointCommand } from "../commands/AddKeypointPointCommand";
 import type { LighterEventGroup } from "../events";
 import { KeypointOverlay } from "../overlay/KeypointOverlay";
 import type { Point } from "../types";
@@ -81,7 +83,14 @@ export class InteractiveKeypointHandler implements InteractionHandler {
         metaKey: event.metaKey,
       }
     );
-    this.overlay.addPoint(worldPoint, variant);
+    const pointId = this.overlay.addPoint(worldPoint, variant);
+
+    CommandContextManager.instance()
+      .getActiveContext()
+      .pushUndoable(
+        new AddKeypointPointCommand(this.overlay, pointId, rp, variant)
+      );
+
     return true;
   }
 
