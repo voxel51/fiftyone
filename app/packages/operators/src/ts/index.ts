@@ -1,5 +1,7 @@
 import { ExecutionContext, OperatorResult } from "../operators";
 
+export type * from "./built-in-operators.types";
+
 export type ExecutionCallbackOptions = { ctx: ExecutionContext };
 export type ExecutionCallback = (
   result: OperatorResult,
