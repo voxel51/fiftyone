@@ -1,5 +1,9 @@
 import { useCallback } from "react";
-import type { DrawStyle, Point } from "@fiftyone/lighter";
+import type {
+  DrawStyle,
+  KeypointVariantResolverContext,
+  Point,
+} from "@fiftyone/lighter";
 import {
   InteractiveKeypointHandler,
   KeypointOptions,
@@ -38,7 +42,10 @@ export interface PointSelection {
    * placed point and should return the variant key to associate with it.
    */
   activate(
-    resolveVariant?: (relativePoint: Point) => PointSelectionVariant
+    resolveVariant?: (
+      relativePoint: Point,
+      ctx: KeypointVariantResolverContext
+    ) => PointSelectionVariant
   ): void;
 
   /**
@@ -79,7 +86,12 @@ export const usePointSelection = (): PointSelection => {
   const [isActive, setIsActive] = useAtom(pointSelectionActiveAtom);
 
   const activate = useCallback(
-    (resolveVariant?: (relativePoint: Point) => PointSelectionVariant) => {
+    (
+      resolveVariant?: (
+        relativePoint: Point,
+        ctx: KeypointVariantResolverContext
+      ) => PointSelectionVariant
+    ) => {
       if (isActive) {
         return;
       }

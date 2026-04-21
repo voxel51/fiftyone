@@ -11,6 +11,18 @@ import type { InteractionHandler } from "./InteractionManager";
 const INTERACTIVE_KEYPOINT_HANDLER_ID = "interactive-keypoint-handler";
 
 /**
+ * Modifier flags forwarded to the variant resolver from the triggering
+ * pointer event. Resolver consumers can branch on these to implement
+ * hold-to-modify behaviors (e.g. shift to invert semantics).
+ */
+export interface KeypointVariantResolverContext {
+  shiftKey: boolean;
+  altKey: boolean;
+  ctrlKey: boolean;
+  metaKey: boolean;
+}
+
+/**
  * Interactive keypoint handler for creating keypoint annotations.
  *
  * Each click places a new point. Double-click or external signal to finish.
@@ -24,7 +36,8 @@ export class InteractiveKeypointHandler implements InteractionHandler {
     public readonly overlay: KeypointOverlay,
     private readonly eventBus: EventDispatcher<LighterEventGroup>,
     private readonly resolveVariant?: (
-      relativePoint: Point
+      relativePoint: Point,
+      ctx: KeypointVariantResolverContext
     ) => string | undefined
   ) {}
 
@@ -56,10 +69,18 @@ export class InteractiveKeypointHandler implements InteractionHandler {
   onPointerDown(
     _point: Point,
     worldPoint: Point,
-    _event: PointerEvent
+    event: PointerEvent
   ): boolean {
     const rp = this.overlay.absolutePointToRelative(worldPoint);
-    const variant = this.resolveVariant?.({ x: rp[0], y: rp[1] });
+    const variant = this.resolveVariant?.(
+      { x: rp[0], y: rp[1] },
+      {
+        shiftKey: event.shiftKey,
+        altKey: event.altKey,
+        ctrlKey: event.ctrlKey,
+        metaKey: event.metaKey,
+      }
+    );
     this.overlay.addPoint(worldPoint, variant);
     return true;
   }
