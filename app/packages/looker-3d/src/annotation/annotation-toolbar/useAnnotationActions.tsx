@@ -46,6 +46,23 @@ import {
 } from "./CoordinateInputs";
 import { FieldSelection } from "./FieldSelection";
 
+const createCoordinateAction = (customComponent: React.ReactNode) => ({
+  id: "coordinate-inputs",
+  actions: [
+    {
+      id: "coordinate-inputs-component",
+      label: "Coordinates",
+      icon: <Typography variant="caption">XYZ</Typography>,
+      tooltip: "Edit coordinates",
+      isActive: false,
+      isDisabled: false,
+      isVisible: true,
+      onClick: () => {},
+      customComponent,
+    },
+  ],
+});
+
 export const useAnnotationActions = () => {
   const selectedLabelForAnnotation = useRecoilValue(
     selectedLabelForAnnotationAtom
@@ -407,42 +424,12 @@ export const useAnnotationActions = () => {
     ];
 
     if (currentArchetypeSelectedForTransform === "annotation-plane") {
-      baseActions.push({
-        id: "coordinate-inputs",
-        actions: [
-          {
-            id: "coordinate-inputs-component",
-            label: "Coordinates",
-            icon: <Typography variant="caption">XYZ</Typography>,
-            tooltip: "Edit coordinates",
-            isActive: false,
-            isDisabled: false,
-            isVisible: true,
-            onClick: () => {},
-            customComponent: <PlaneCoordinateInputs hideRotation={false} />,
-          },
-        ],
-      });
+      baseActions.push(createCoordinateAction(<PlaneCoordinateInputs />));
     } else if (
       selectedPoint &&
       currentArchetypeSelectedForTransform === "point"
     ) {
-      baseActions.push({
-        id: "coordinate-inputs",
-        actions: [
-          {
-            id: "coordinate-inputs-component",
-            label: "Coordinates",
-            icon: <Typography variant="caption">XYZ</Typography>,
-            tooltip: "Edit coordinates",
-            isActive: false,
-            isDisabled: false,
-            isVisible: true,
-            onClick: () => {},
-            customComponent: <VertexCoordinateInputs />,
-          },
-        ],
-      });
+      baseActions.push(createCoordinateAction(<VertexCoordinateInputs />));
     }
 
     return baseActions;
