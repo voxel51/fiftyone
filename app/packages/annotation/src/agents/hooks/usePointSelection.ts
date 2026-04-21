@@ -15,7 +15,7 @@ import { v4 as uuidv4 } from "uuid";
 export const POSITIVE_POINT_VARIANT = "positive" as const;
 export const NEGATIVE_POINT_VARIANT = "negative" as const;
 
-type PointSelectionVariant =
+export type PointSelectionVariant =
   | typeof POSITIVE_POINT_VARIANT
   | typeof NEGATIVE_POINT_VARIANT;
 
@@ -37,7 +37,9 @@ export interface PointSelection {
    * Activates point selection. The optional resolver is invoked for each
    * placed point and should return the variant key to associate with it.
    */
-  activate(resolveVariant?: (relativePoint: Point) => string | undefined): void;
+  activate(
+    resolveVariant?: (relativePoint: Point) => PointSelectionVariant
+  ): void;
 
   /**
    * Deactivates point selection. Disables interactivity with the point
@@ -77,7 +79,7 @@ export const usePointSelection = (): PointSelection => {
   const [isActive, setIsActive] = useAtom(pointSelectionActiveAtom);
 
   const activate = useCallback(
-    (resolveVariant?: (relativePoint: Point) => string | undefined) => {
+    (resolveVariant?: (relativePoint: Point) => PointSelectionVariant) => {
       if (isActive) {
         return;
       }

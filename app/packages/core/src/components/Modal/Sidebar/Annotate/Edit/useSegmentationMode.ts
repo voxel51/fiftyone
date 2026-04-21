@@ -1,6 +1,7 @@
 import {
   AgentTaskType,
   NEGATIVE_POINT_VARIANT,
+  PointSelectionVariant,
   POSITIVE_POINT_VARIANT,
   useActiveTask,
   useAgentSelector,
@@ -50,7 +51,7 @@ export const useSegmentationMode = (): SegmentationMode => {
   // Points placed on the current label's mask are interpreted as negative;
   // points placed off-mask are positive
   const resolvePointVariant = useCallback(
-    (relativePoint: { x: number; y: number }): string | undefined => {
+    (relativePoint: { x: number; y: number }): PointSelectionVariant => {
       const label = selectedLabelRef.current;
       if (!label || !(label.overlay instanceof BoundingBoxOverlay)) {
         return POSITIVE_POINT_VARIANT;
