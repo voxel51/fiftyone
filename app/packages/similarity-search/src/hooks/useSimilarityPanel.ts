@@ -186,6 +186,13 @@ const useSimilarityPanelActions = (deps: PanelActionsDeps) => {
     [runs, setCloneConfig, navigateNewSearch]
   );
 
+  const handleRename = useCallback(
+    (runId: string, newName: string) => {
+      triggers.renameRun({ run_id: runId, new_name: newName });
+    },
+    [triggers]
+  );
+
   const handleNewSearch = useCallback(() => {
     clearCloneConfig();
     navigateNewSearch();
@@ -207,6 +214,7 @@ const useSimilarityPanelActions = (deps: PanelActionsDeps) => {
     handleDelete,
     handleBulkDelete,
     handleNewSearch,
+    handleRename,
     handleSubmitted,
   };
 };

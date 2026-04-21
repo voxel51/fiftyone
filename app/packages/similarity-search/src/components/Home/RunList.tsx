@@ -18,6 +18,7 @@ import {
   Spacing,
   Variant,
 } from "@voxel51/voodo";
+import { EditableLabel } from "@fiftyone/components";
 import { FileUploadOutlined } from "../../mui";
 import { useCallback, useMemo, useState } from "react";
 import {
@@ -53,26 +54,49 @@ function QueryTypeIcon({ queryType }: { queryType: string }) {
 
 const MAX_RUN_NAME_LENGTH = 40;
 
-function RunName({ name }: { name: string }) {
-  const isTruncated = name.length > MAX_RUN_NAME_LENGTH;
-  const displayName = isTruncated
-    ? name.slice(0, MAX_RUN_NAME_LENGTH) + "..."
-    : name;
+function RunName({
+  name,
+  onRename,
+}: {
+  name: string;
+  onRename: (newName: string) => void;
+}) {
+  const [hovering, setHovering] = useState(false);
+  const isLong = name.length > MAX_RUN_NAME_LENGTH;
 
-  const content = (
-    <Text
-      variant={TextVariant.Md}
-      style={{ fontWeight: "bold", whiteSpace: "nowrap" }}
+  const handleSave = (newName: string) => {
+    const trimmed = newName?.trim();
+    if (trimmed && trimmed !== name) {
+      onRename(trimmed);
+    }
+  };
+
+  const label = (
+    <div
+      onMouseEnter={() => setHovering(true)}
+      onMouseLeave={() => setHovering(false)}
+      style={{ minWidth: 0 }}
     >
-      {displayName}
-    </Text>
+      <EditableLabel
+        label={name}
+        onSave={handleSave}
+        showEditIcon={hovering}
+        labelProps={{
+          sx: {
+            fontWeight: "bold",
+            fontSize: "0.9rem",
+            maxWidth: `${MAX_RUN_NAME_LENGTH}ch`,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          },
+        }}
+        title="Rename"
+      />
+    </div>
   );
 
-  if (isTruncated) {
-    return <Tooltip content={name}>{content}</Tooltip>;
-  }
-
-  return content;
+  return isLong ? <Tooltip content={name}>{label}</Tooltip> : label;
 }
 
 type SelectionState = {
@@ -95,6 +119,7 @@ type RunListProps = {
   onClone: (runId: string) => void;
   onDelete: (runId: string) => void;
   onBulkDelete: (runIds: string[]) => void;
+  onRename: (runId: string, newName: string) => void;
   onRefresh: () => void;
   onNewSearch: () => void;
   onSettings: () => void;
@@ -117,6 +142,7 @@ export default function RunList({
   onClone,
   onDelete,
   onBulkDelete,
+  onRename,
   onRefresh,
   onNewSearch,
   onSettings,
@@ -209,7 +235,10 @@ export default function RunList({
                 align={Align.Center}
               >
                 <QueryTypeIcon queryType={run.query_type} />
-                <RunName name={run.run_name} />
+                <RunName
+                  name={run.run_name}
+                  onRename={(newName) => onRename(run.run_id, newName)}
+                />
                 <StatusBadge status={run.status} />
                 {run.status === "completed" && (
                   <Text variant={TextVariant.Md} color={TextColor.Muted}>
@@ -260,6 +289,7 @@ export default function RunList({
       onApply,
       onClone,
       onDelete,
+      onRename,
       handleToggleExpand,
     ]
   );
