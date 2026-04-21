@@ -8,6 +8,10 @@ import {
 import { SetterOrUpdater } from "recoil";
 import { ExecutionContext as EC } from "../operators";
 
+/*
+ * Common
+ */
+
 export type ExecutionContext<
   PARAMS = Record<string, unknown>,
   HOOKS = Record<string, unknown>
@@ -15,6 +19,10 @@ export type ExecutionContext<
   params: PARAMS;
   hooks: HOOKS;
 };
+
+/*
+ * ColorScheme
+ */
 
 export type SetColorSchemeParams = {
   color_by?: string;
@@ -38,8 +46,12 @@ export type ResetColorSchemeHooks = {
   resetColorScheme: () => void;
 };
 
-type SetPanelStateByIdType = ReturnType<typeof useSetPanelStateById>;
-type AvailablePanelType = ReturnType<typeof usePanels>;
+/*
+ * Spaces
+ */
+
+export type SetPanelStateByIdType = ReturnType<typeof useSetPanelStateById>;
+export type AvailablePanelType = ReturnType<typeof usePanels>;
 
 export type OpenPanelHooks = {
   availablePanels: AvailablePanelType;
@@ -61,4 +73,30 @@ export type OpenPanelParams = {
   name: string;
   sessionState?: object;
   state?: object;
+};
+
+export type ListPanelsHooks = {
+  panels: AvailablePanelType;
+};
+
+export type ListPanelsParams = {
+  surface?: "grid" | "modal";
+};
+
+export type ListOpenPanelsHooks = {
+  isModalOpen: boolean;
+  openedGridPanels: SpaceNode[];
+  openedModalPanels: SpaceNode[];
+  panels: AvailablePanelType;
+};
+
+export type ListPanelItemType = {
+  name: string;
+  label?: string;
+  panelOptions?: Record<string, unknown>;
+};
+
+export type ListOpenPanelsItemType = ListPanelItemType & {
+  id?: string;
+  pinned?: boolean;
 };
