@@ -11,7 +11,7 @@ import { float32ToCompressedNumpy } from "../util/conversion";
 
 const _DATASET_ID = "dataset-id";
 const _SAMPLE_ID = "sample-id";
-const _MEDIA_URL = "media-url";
+const _MEDIA_URL = "https://image-host.com/media-path";
 
 const makeContext = (
   overrides: Partial<AnnotationContext> = {}

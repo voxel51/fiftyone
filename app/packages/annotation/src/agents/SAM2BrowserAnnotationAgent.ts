@@ -14,6 +14,7 @@ import {
   type PromptPoint,
 } from "../providers";
 import { float32ToCompressedNumpy } from "../util/conversion";
+import { getSampleSrc } from "@fiftyone/state/src/recoil/utils";
 
 /**
  * Browser-side annotation agent backed by SAM2 Tiny (ONNX, runs in a web
@@ -49,7 +50,7 @@ export class SAM2BrowserAnnotationAgent
     const points = this.buildPromptPoints(context);
 
     const result = await this.provider.infer({
-      imageUrl: context.sampleDescriptor.mediaUrl,
+      imageUrl: getSampleSrc(context.sampleDescriptor.mediaUrl),
       points,
     });
 
