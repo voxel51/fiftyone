@@ -28,6 +28,8 @@ export type BrainKeyConfig = {
   model?: string;
   backend?: string;
   embeddings_field?: string;
+  metric?: string;
+  identifiers?: { label: string; value: string }[];
 };
 
 /**

@@ -57,6 +57,20 @@ export default function SimilarityIndex({
                   Backend: {bk.backend}
                 </Text>
               )}
+              {bk.metric && (
+                <Text variant={TextVariant.Md} color={TextColor.Secondary}>
+                  Metric: {bk.metric}
+                </Text>
+              )}
+              {bk.identifiers?.map((id) => (
+                <Text
+                  key={id.label}
+                  variant={TextVariant.Md}
+                  color={TextColor.Secondary}
+                >
+                  {id.label}: {id.value}
+                </Text>
+              ))}
               <Stack
                 orientation={Orientation.Row}
                 spacing={Spacing.Xs}
