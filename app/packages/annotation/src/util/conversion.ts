@@ -20,7 +20,7 @@ const createNumpyHeader = (shape: number[]) => {
     (shape.length === 1 ? "," : "") +
     "), }";
 
-  const padLen = 16 - ((10 + header.length) % 16);
+  const padLen = (64 - ((10 + header.length + 1) % 64)) % 64;
   header += " ".repeat(padLen) + "\n";
 
   const enc = new TextEncoder();
