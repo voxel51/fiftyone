@@ -1,0 +1,34 @@
+import { ExecutionContext, OperatorResult } from "../operators";
+
+export type ExecutionCallbackOptions = { ctx: ExecutionContext };
+export type ExecutionCallback = (
+  result: OperatorResult,
+  options: ExecutionCallbackOptions
+) => void;
+export type ExecutionErrorCallback = (
+  error: OperatorResult,
+  options: ExecutionCallbackOptions
+) => void;
+
+export type OperatorExecutorOptions = {
+  delegationTarget?: string;
+  requestDelegation?: boolean;
+  skipOutput?: boolean;
+  callback?: ExecutionCallback;
+  skipErrorNotification?: boolean;
+};
+
+export type ParamsType = Record<string, any>;
+
+export type ResolvablePropertyOptions = {
+  resolver: string;
+  debounce?: boolean;
+  throttle?: boolean;
+  wait?: number;
+  auto_update?: boolean;
+  dependencies?: string[];
+  params?: ParamsType;
+  validate?: boolean;
+  leading?: boolean;
+  trailing?: boolean;
+};
