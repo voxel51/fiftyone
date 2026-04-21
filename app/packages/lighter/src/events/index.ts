@@ -127,8 +127,8 @@ export type LighterEventGroup = {
     pointId: string;
     /** Relative coordinates of the added point */
     point: Point;
-    /** True when the point was placed on an existing mask pixel */
-    onMask: boolean;
+    /** Optional keypoint variant. */
+    variant?: string;
   };
   /** Emitted when a keypoint is moved via drag */
   "lighter:keypoint-point-moved": {
@@ -143,8 +143,8 @@ export type LighterEventGroup = {
   "lighter:keypoint-point-deleted": {
     id: string;
     pointId: string;
-    /** True when the deleted point was on an existing mask pixel */
-    onMask: boolean;
+    /** Optional keypoint variant. */
+    variant?: string;
   };
 
   // ============================================================================

@@ -4,7 +4,7 @@ import {
   useLighterEventHandler,
 } from "@fiftyone/lighter";
 import { useToolsState } from "./useToolsContext";
-import { usePointSelection } from "./usePointSelection";
+import { NEGATIVE_POINT_VARIANT, usePointSelection } from "./usePointSelection";
 import { useCallback } from "react";
 
 /**
@@ -39,7 +39,7 @@ export const useRegisterPointSelectionEventHandlers = () => {
             point: [payload.point.x, payload.point.y] as [number, number],
           };
 
-          if (payload.onMask) {
+          if (payload.variant === NEGATIVE_POINT_VARIANT) {
             addNegativePoint(descriptor);
           } else {
             addPositivePoint(descriptor);
@@ -55,7 +55,7 @@ export const useRegisterPointSelectionEventHandlers = () => {
     useCallback(
       (payload) => {
         if (isPointSelectionActive) {
-          if (payload.onMask) {
+          if (payload.variant === NEGATIVE_POINT_VARIANT) {
             removeNegativePoint(payload.pointId);
           } else {
             removePositivePoint(payload.pointId);

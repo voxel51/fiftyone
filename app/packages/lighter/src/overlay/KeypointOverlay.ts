@@ -59,6 +59,11 @@ export interface KeypointOptions {
   draggable?: boolean;
   deletable?: boolean;
   selectable?: boolean;
+  /**
+   * Per-variant style overrides. Points whose variant key is absent from
+   * this map (or who have no variant) render with the overlay's currentStyle.
+   */
+  variantStyles?: Record<string, DrawStyle>;
 }
 
 /**
@@ -67,7 +72,7 @@ export interface KeypointOptions {
 type KeypointEntry = {
   id: string;
   position: [number, number];
-  onMask: boolean;
+  variant?: string;
 };
 
 /**
@@ -89,6 +94,7 @@ export class KeypointOverlay
   private isSelectable: boolean;
   private connections: number[][];
   private closed: boolean;
+  private readonly variantStyles: Record<string, DrawStyle>;
   private isSelectedState = false;
 
   #points: KeypointEntry[];
@@ -117,10 +123,10 @@ export class KeypointOverlay
     this.#points = (options.label?.points ?? []).map((p) => ({
       id: uuidv4(),
       position: [...p] as [number, number],
-      onMask: false,
     }));
     this.connections = options.connections ?? [];
     this.closed = options.closed ?? false;
+    this.variantStyles = options.variantStyles ?? {};
     this.isDraggable = options.draggable !== false;
     this.isDeletable = options.deletable !== false;
     this.isSelectable = options.selectable !== false;
@@ -329,31 +335,49 @@ export class KeypointOverlay
       );
     }
 
-    // 3. Batch all regular points into a single draw call
-    const pointStyle: DrawStyle = {
+    // 3. Batch points by variant. Points without a matching variant style fall
+    //   back to the overlay's defaults.
+    const defaultPointStyle: DrawStyle = {
       fillStyle: strokeColor,
       strokeStyle: "#ffffff",
       lineWidth,
     };
 
-    const regularPoints: Point[] = [];
+    const resolvePointStyle = (variant: string | undefined): DrawStyle => {
+      const override = variant ? this.variantStyles[variant] : undefined;
+      if (!override) {
+        return defaultPointStyle;
+      }
+
+      return {
+        fillStyle: override.fillStyle ?? defaultPointStyle.fillStyle,
+        strokeStyle: override.strokeStyle ?? defaultPointStyle.strokeStyle,
+        lineWidth: override.lineWidth ?? defaultPointStyle.lineWidth,
+      };
+    };
+
+    const buckets = new Map<string | undefined, Point[]>();
     let selectedPoint: Point | undefined;
+    let selectedVariant: string | undefined;
 
     for (let i = 0; i < absPoints.length; i++) {
       if (this.selectedPointIndex === i) {
         selectedPoint = absPoints[i];
+        selectedVariant = this.#points[i].variant;
+        continue;
+      }
+      const v = this.#points[i].variant;
+      const bucket = buckets.get(v);
+      if (bucket) {
+        bucket.push(absPoints[i]);
       } else {
-        regularPoints.push(absPoints[i]);
+        buckets.set(v, [absPoints[i]]);
       }
     }
 
-    if (regularPoints.length > 0) {
-      renderer.drawPoints(
-        regularPoints,
-        KEYPOINT_RADIUS,
-        pointStyle,
-        this.containerId
-      );
+    for (const [variant, pts] of buckets) {
+      const pointStyle = resolvePointStyle(variant);
+      renderer.drawPoints(pts, KEYPOINT_RADIUS, pointStyle, this.containerId);
     }
 
     // Draw selected point at larger radius + inner highlight (separate calls)
@@ -361,7 +385,7 @@ export class KeypointOverlay
       renderer.drawPoint(
         selectedPoint,
         KEYPOINT_SELECTED_RADIUS,
-        pointStyle,
+        resolvePointStyle(selectedVariant),
         this.containerId
       );
       renderer.drawPoint(
@@ -576,19 +600,20 @@ export class KeypointOverlay
 
   /**
    * Adds a point at the given absolute (world) position.
-   * @param onMask - Whether the point was placed on an existing mask pixel.
-   * @returns The index of the new point.
+   *
+   * @param variant - Optional variant key used to determine render style.
+   * @returns The id of the new point.
    */
-  addPoint(worldPoint: Point, onMask = false): string {
+  addPoint(worldPoint: Point, variant?: string): string {
     const position = this.absolutePointToRelative(worldPoint);
-    const entry: KeypointEntry = { id: uuidv4(), position, onMask };
+    const entry: KeypointEntry = { id: uuidv4(), position, variant };
     this.#points.push(entry);
 
     this.eventBus.dispatch("lighter:keypoint-point-added", {
       id: this.id,
       pointId: entry.id,
       point: { x: position[0], y: position[1] },
-      onMask,
+      variant,
     });
 
     this.markDirty();
@@ -602,7 +627,7 @@ export class KeypointOverlay
     if (!this.isDeletable) return;
     if (index < 0 || index >= this.#points.length) return;
 
-    const { id: pointId, onMask } = this.#points[index];
+    const { id: pointId, variant } = this.#points[index];
     this.#points.splice(index, 1);
 
     // Update connections: remove references to deleted index, shift higher indices
@@ -625,7 +650,7 @@ export class KeypointOverlay
     this.eventBus.dispatch("lighter:keypoint-point-deleted", {
       id: this.id,
       pointId,
-      onMask,
+      variant,
     });
 
     this.markDirty();
