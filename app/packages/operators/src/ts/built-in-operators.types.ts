@@ -7,6 +7,7 @@ import {
 } from "@fiftyone/spaces";
 import { SetterOrUpdater } from "recoil";
 import { ExecutionContext as EC } from "../operators";
+import * as fos from "@fiftyone/state";
 
 /*
  * Common
@@ -18,6 +19,14 @@ export type ExecutionContext<
 > = EC & {
   params: PARAMS;
   hooks: HOOKS;
+};
+
+export type ListBrainRunsHooks = {
+  dataset: fos.State.Dataset;
+};
+
+export type ListBrainRunsParams = {
+  type: "visualization" | "similarity";
 };
 
 /*
