@@ -37,6 +37,7 @@ import {
 } from "./operators";
 import { useShowOperatorIO } from "./state";
 import usePanelEvent from "./usePanelEvent";
+import "./builtin";
 
 //
 // BUILT-IN OPERATORS
