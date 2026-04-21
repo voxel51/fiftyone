@@ -7,6 +7,7 @@ import {
   InferenceCapability,
   SampleDescriptor,
 } from "./types";
+import { float32ToCompressedNumpy } from "../util/conversion";
 
 const _DATASET_ID = "dataset-id";
 const _SAMPLE_ID = "sample-id";
@@ -162,7 +163,10 @@ describe("SAM2BrowserAnnotationAgent", () => {
         response: {
           detections: [
             {
-              mask: providerResult.mask,
+              mask: float32ToCompressedNumpy(providerResult.mask, [
+                providerResult.maskHeight,
+                providerResult.maskWidth,
+              ]),
               mask_width: 2,
               mask_height: 2,
               bounding_box: [0.1, 0.2, 0.3, 0.4],
