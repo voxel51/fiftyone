@@ -345,14 +345,10 @@ export class KeypointOverlay
 
     const resolvePointStyle = (variant: string | undefined): DrawStyle => {
       const override = variant ? this.variantStyles[variant] : undefined;
-      if (!override) {
-        return defaultPointStyle;
-      }
 
       return {
-        fillStyle: override.fillStyle ?? defaultPointStyle.fillStyle,
-        strokeStyle: override.strokeStyle ?? defaultPointStyle.strokeStyle,
-        lineWidth: override.lineWidth ?? defaultPointStyle.lineWidth,
+        ...defaultPointStyle,
+        ...override,
       };
     };
 
