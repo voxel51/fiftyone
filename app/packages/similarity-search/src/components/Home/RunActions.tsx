@@ -4,6 +4,7 @@ import {
   IconName,
   Orientation,
   Size,
+  Spacing,
   Stack,
   Tooltip,
   Variant,
@@ -45,7 +46,7 @@ export default function RunActions({
     <Stack
       orientation={Orientation.Column}
       align={Align.End}
-      style={{ gap: "2rem" }}
+      spacing={Spacing.Xl}
     >
       <Stack>
         <Tooltip content={tip("Show results")}>
