@@ -46,6 +46,10 @@ export const usePointSelection = (): PointSelection => {
 
   const activate = useCallback(
     (hitTest?: (relativePoint: Point) => boolean) => {
+      if (isActive) {
+        return;
+      }
+
       if (scene) {
         const overlay = overlayFactory.create<KeypointOptions, KeypointOverlay>(
           "keypoint",
@@ -66,10 +70,21 @@ export const usePointSelection = (): PointSelection => {
         setIsActive(true);
       }
     },
-    [eventBus, overlayFactory, scene, setIsActive, setKeypointOverlayId]
+    [
+      eventBus,
+      isActive,
+      overlayFactory,
+      scene,
+      setIsActive,
+      setKeypointOverlayId,
+    ]
   );
 
   const deactivate = useCallback(() => {
+    if (!isActive) {
+      return;
+    }
+
     scene?.exitInteractiveMode();
 
     if (keypointOverlayId) {
@@ -78,7 +93,7 @@ export const usePointSelection = (): PointSelection => {
     }
 
     setIsActive(false);
-  }, [keypointOverlayId, scene, setIsActive, setKeypointOverlayId]);
+  }, [isActive, keypointOverlayId, scene, setIsActive, setKeypointOverlayId]);
 
   return { activate, deactivate, isActive };
 };
