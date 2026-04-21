@@ -7,11 +7,7 @@ import { getFetchFunction, isNullish, ServerError } from "@fiftyone/utilities";
 import { CallbackInterface } from "recoil";
 import { QueueItemStatus } from "./constants";
 import * as types from "./types";
-import {
-  ExecutionCallback,
-  OperatorExecutorOptions,
-  RiskLevel,
-} from "./types-internal";
+import { ExecutionCallback, OperatorExecutorOptions, RiskLevel } from "./ts";
 import { stringifyError } from "./utils";
 import { ValidationContext, ValidationError } from "./validation";
 
