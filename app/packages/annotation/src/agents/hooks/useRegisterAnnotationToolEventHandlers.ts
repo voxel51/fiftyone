@@ -22,6 +22,13 @@ const isToolsContextValid = (context: ToolsContext): boolean => {
   );
 };
 
+/**
+ * Hook which registers event handlers related to AI-assisted annotation tools,
+ * e.g. point selection.
+ *
+ * **Note: this hook must only be invoked in a single top-level component;
+ * reuse will cause duplicate event handler registration.**
+ */
 export const useRegisterAnnotationToolEventHandlers = () => {
   const toolsContext = useToolsContext();
   const { reset: resetToolsState } = useToolsState();
