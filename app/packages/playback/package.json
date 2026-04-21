@@ -9,7 +9,6 @@
         "eslint-plugin-react-hooks": "rc",
         "globals": "^15.8.0",
         "prettier": "^3.3.3",
-        "typescript": "^5.5.4",
         "typescript-eslint": "^7.17.0",
         "vite": "^6.4.2"
     },

@@ -169,6 +169,81 @@ const componentsMap = {
       {children}
     </Typography>
   ),
+  ul: ({ children, className, ...props }) => {
+    // using checkboxes instead of bullets
+    const isTaskList = className?.includes("contains-task-list");
+
+    return (
+      <Box
+        component="ul"
+        className={className}
+        sx={{
+          listStyle: isTaskList ? "none" : "disc",
+          pl: isTaskList ? 0 : 5,
+          my: 2,
+          color: "inherit",
+          // further indent nested lists
+          "& ul, & ol": {
+            my: 0.5,
+            pl: 3,
+          },
+        }}
+        {...props}
+      >
+        {children}
+      </Box>
+    );
+  },
+  ol: ({ children, className, ...props }) => {
+    // using checkboxes instead of numbers
+    const isTaskList = className?.includes("contains-task-list");
+
+    return (
+      <Box
+        component="ol"
+        className={className}
+        sx={{
+          listStyle: isTaskList ? "none" : "decimal",
+          pl: isTaskList ? 0 : 5,
+          my: 2,
+          color: "inherit",
+          // further indent nested lists
+          "& ul, & ol": {
+            my: 0.5,
+            pl: 3,
+          },
+        }}
+        {...props}
+      >
+        {children}
+      </Box>
+    );
+  },
+  li: ({ children, className, ...props }) => {
+    // using checkboxes instead of bullets
+    const isTaskItem = className?.includes("task-list-item");
+
+    return (
+      <Box
+        component="li"
+        className={className}
+        sx={{
+          display: "list-item",
+          color: "inherit",
+          ...(isTaskItem && {
+            listStyle: "none",
+            "& > input[type='checkbox']": {
+              mr: 1,
+              verticalAlign: "middle",
+            },
+          }),
+        }}
+        {...props}
+      >
+        {children}
+      </Box>
+    );
+  },
 };
 
 export default function Markdown(props: ReactMarkdownOptions) {

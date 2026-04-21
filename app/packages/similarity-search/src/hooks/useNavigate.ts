@@ -16,9 +16,11 @@ type NavigateResult = {
  * Hook for panel page navigation.
  */
 export const useNavigate = (): NavigateResult => {
-  const [viewState, setViewState] = usePanelStatePartial<ViewState>("view", {
-    page: "home",
-  });
+  const [viewState, setViewState] = usePanelStatePartial<ViewState>(
+    "view",
+    { page: "home" },
+    true // local-only — no server round-trip on navigation, since we don't want grid to update
+  );
 
   const navigateHome = useCallback(() => {
     setViewState({ page: "home" });

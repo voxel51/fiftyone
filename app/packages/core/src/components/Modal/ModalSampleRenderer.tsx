@@ -8,7 +8,7 @@ import {
   useActivePlugins,
 } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
-import React from "react";
+import React, { useMemo } from "react";
 import { MetadataLooker } from "./MetadataLooker";
 
 type ModalSampleRendererProps = {
@@ -60,8 +60,13 @@ export const ModalSampleRenderer = React.memo(
     const { isDisabled: isDatasetRendererDisabled } =
       fos.useGridCustomRendererFailover(dataset?.name);
 
+    const activatorCtx = useMemo(
+      () => ({ dataset, schema }),
+      [dataset, schema]
+    );
     const sampleRenderers = useActivePlugins(
-      PluginComponentType.SampleRenderer
+      PluginComponentType.SampleRenderer,
+      activatorCtx
     );
 
     if (!dataset) {

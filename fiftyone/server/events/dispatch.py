@@ -24,6 +24,7 @@ from fiftyone.core.session.events import (
     SetColorScheme,
     SetGroupSlice,
     SetSample,
+    SetLabelSelectionStyle,
     SetSampleSelectionStyle,
     SetSpaces,
     StateUpdate,
@@ -73,6 +74,9 @@ async def dispatch_event(
 
     if isinstance(event, SetSampleSelectionStyle):
         state.sample_selection_style = event.style
+
+    if isinstance(event, SetLabelSelectionStyle):
+        state.label_selection_style = event.style
 
     if isinstance(event, SetGroupSlice):
         state.group_slice = event.slice or state.dataset.default_group_slice

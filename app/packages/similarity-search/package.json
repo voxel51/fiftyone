@@ -19,7 +19,6 @@
         "@fiftyone/state": "*"
     },
     "devDependencies": {
-        "typescript": "^4.7.4",
         "vite": "^6.4.2",
         "vite-plugin-externals": "^0.5.0"
     },

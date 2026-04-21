@@ -459,6 +459,7 @@ def create_plugin(
     from_files=None,
     outdir=None,
     description=None,
+    tags=None,
     version=None,
     overwrite=False,
     **kwargs,
@@ -479,6 +480,7 @@ def create_plugin(
             not provided, the plugin is created within your
             ``fo_config.plugins_dir``
         description (None): a description for the plugin
+        tags (None): a tag or list of tags for the plugin
         version (None): an optional FiftyOne version requirement string
         overwrite (False): whether to overwrite a local plugin with the same
             name if one exists
@@ -537,8 +539,15 @@ def create_plugin(
         yaml_path = os.path.join(plugin_dir, PLUGIN_METADATA_FILENAMES[0])
 
     pd = {"name": plugin_name}
+
     if description:
-        pd[description] = description
+        pd["description"] = description
+
+    if tags:
+        if etau.is_str(tags):
+            tags = [tags]
+
+        pd["tags"] = tags
 
     pd.update(kwargs)
 

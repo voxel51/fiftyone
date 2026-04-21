@@ -19,7 +19,10 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.core.clips as foc
 from fiftyone.core.config import AppConfig
-from fiftyone.core.session.constants import DEFAULT_SELECTION_STYLE
+from fiftyone.core.session.constants import (
+    DEFAULT_LABEL_SELECTION_STYLE,
+    DEFAULT_SELECTION_STYLE,
+)
 import fiftyone.core.dataset as fod
 from fiftyone.core.odm.dataset import ColorScheme
 from fiftyone.core.odm.workspace import Space
@@ -48,6 +51,8 @@ class StateDescription(etas.Serializable):
         selected_samples (None): a list of dicts with sample selection info
         sample_selection_style (None): a dict mapping selection types to
             icon style names (e.g. ``{"default": "checkmark", "alt": "thumbsdown"}``)
+        label_selection_style (None): a dict mapping selection types to
+            label selection style names (e.g. ``{"default": "dashed", "alt": "dashed-red"}``)
         spaces (None): a :class:`fiftyone.core.odm.workspace.Space`
         view (None): the current :class:`fiftyone.core.view.DatasetView`
         view_name (None): the name of the view if the current view is a
@@ -67,6 +72,7 @@ class StateDescription(etas.Serializable):
         selected_labels=None,
         selected_samples=None,
         sample_selection_style=None,
+        label_selection_style=None,
         spaces=None,
         view=None,
         view_name=None,
@@ -101,6 +107,9 @@ class StateDescription(etas.Serializable):
 
         self.sample_selection_style = sample_selection_style or dict(
             DEFAULT_SELECTION_STYLE
+        )
+        self.label_selection_style = label_selection_style or dict(
+            DEFAULT_LABEL_SELECTION_STYLE
         )
         self.spaces = spaces
 
@@ -224,6 +233,7 @@ class StateDescription(etas.Serializable):
             selected_labels=d.get("selected_labels", []),
             selected_samples=d.get("selected_samples", None),
             sample_selection_style=d.get("sample_selection_style", None),
+            label_selection_style=d.get("label_selection_style", None),
             spaces=spaces,
             view=view,
         )

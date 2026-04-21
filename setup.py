@@ -121,5 +121,5 @@ setup(
         "Programming Language :: Python :: 3.12",
     ],
     entry_points={"console_scripts": ["fiftyone=fiftyone.core.cli:main"]},
-    python_requires=">=3.9",
+    python_requires=">=3.9,<3.13",
 )
