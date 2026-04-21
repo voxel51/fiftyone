@@ -1,4 +1,4 @@
-import { ExecutionContext, OperatorResult } from "./operators";
+import { ExecutionContext, OperatorResult } from "../operators";
 
 export type ExecutionCallbackOptions = { ctx: ExecutionContext };
 export type ExecutionCallback = (
