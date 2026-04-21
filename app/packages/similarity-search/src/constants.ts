@@ -20,17 +20,17 @@ export const DATE_PRESET_OPTIONS = [
 ];
 
 export const STATUS_COLORS: Record<RunStatus, TextColor> = {
-  pending: TextColor.Muted,
-  running: TextColor.Info,
-  completed: TextColor.Success,
-  failed: TextColor.Destructive,
+  [RunStatus.Pending]: TextColor.Muted,
+  [RunStatus.Running]: TextColor.Info,
+  [RunStatus.Completed]: TextColor.Success,
+  [RunStatus.Failed]: TextColor.Destructive,
 };
 
 export const STATUS_LABELS: Record<RunStatus, string> = {
-  pending: "Pending",
-  running: "Running",
-  completed: "Completed",
-  failed: "Failed",
+  [RunStatus.Pending]: "Pending",
+  [RunStatus.Running]: "Running",
+  [RunStatus.Completed]: "Completed",
+  [RunStatus.Failed]: "Failed",
 };
 
 // Run list styles

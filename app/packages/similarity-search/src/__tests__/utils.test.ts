@@ -8,14 +8,14 @@ import {
   matchesDate,
   canSubmitSearch,
 } from "../utils";
-import { SimilarityRun, QueryType } from "../types";
+import { SimilarityRun, QueryType, RunStatus } from "../types";
 import { DAY_MS } from "../constants";
 
 function makeRun(overrides: Partial<SimilarityRun> = {}): SimilarityRun {
   return {
     run_id: "r1",
     run_name: "Test Run",
-    status: "completed",
+    status: RunStatus.Completed,
     brain_key: "clip",
     query_type: QueryType.Text,
     query: "a dog",

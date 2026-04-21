@@ -1,7 +1,12 @@
 /**
  * Status of a similarity search run.
  */
-export type RunStatus = "pending" | "running" | "completed" | "failed";
+export enum RunStatus {
+  Pending = "pending",
+  Running = "running",
+  Completed = "completed",
+  Failed = "failed",
+}
 
 /**
  * Type of similarity query.

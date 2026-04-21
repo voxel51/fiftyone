@@ -24,6 +24,7 @@ import { useCallback, useMemo, useState } from "react";
 import {
   BrainKeyConfig,
   QueryType,
+  RunStatus,
   SimilarityRun,
   RunFilterState,
 } from "../../types";
@@ -220,11 +221,13 @@ export default function RunList({
         data: {
           canSelect: selectMode,
           onClick:
-            !selectMode && run.status === "completed"
+            !selectMode && run.status === RunStatus.Completed
               ? () => onApply(run.run_id)
               : undefined,
           style: {
-            ...(!selectMode && run.status === "completed" ? POINTER_STYLE : {}),
+            ...(!selectMode && run.status === RunStatus.Completed
+              ? POINTER_STYLE
+              : {}),
             ...(appliedRunId === run.run_id ? HIGHLIGHT_STYLE : {}),
           },
           primaryContent: (
@@ -240,7 +243,7 @@ export default function RunList({
                   onRename={(newName) => onRename(run.run_id, newName)}
                 />
                 <StatusBadge status={run.status} />
-                {run.status === "completed" && (
+                {run.status === RunStatus.Completed && (
                   <Text variant={TextVariant.Md} color={TextColor.Muted}>
                     {run.result_count} results
                   </Text>
@@ -255,7 +258,7 @@ export default function RunList({
                 {formatTime(run.creation_time)}
                 {run.created_by ? ` by ${run.created_by}` : ""}
               </Text>
-              {run.status === "failed" && run.status_details && (
+              {run.status === RunStatus.Failed && run.status_details && (
                 <Text variant={TextVariant.Md} color={TextColor.Destructive}>
                   {run.status_details}
                 </Text>

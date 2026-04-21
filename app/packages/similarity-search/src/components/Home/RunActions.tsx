@@ -10,7 +10,7 @@ import {
   Variant,
 } from "@voxel51/voodo";
 import React from "react";
-import { QueryType, SimilarityRun } from "../../types";
+import { QueryType, RunStatus, SimilarityRun } from "../../types";
 import { tooltipTextStyle } from "../styled";
 
 const tip = (text: string) => <span style={tooltipTextStyle}>{text}</span>;
@@ -56,7 +56,7 @@ export default function RunActions({
             variant={Variant.Borderless}
             leadingIcon={IconName.GridView}
             onClick={stop(() => onApply(run.run_id))}
-            disabled={run.status !== "completed"}
+            disabled={run.status !== RunStatus.Completed}
           />
         </Tooltip>
         <Tooltip content={tip("Clone search")}>

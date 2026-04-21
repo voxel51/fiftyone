@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import * as fos from "@fiftyone/state";
-import { SimilaritySearchViewProps, SimilarityRun } from "../types";
+import { RunStatus, SimilaritySearchViewProps, SimilarityRun } from "../types";
 import { useNavigate } from "./useNavigate";
 import { useRuns } from "./useRuns";
 import { useFilteredRuns } from "./useFilteredRuns";
@@ -292,7 +292,10 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
     const next = new Map(state.runs.map((r) => [r.run_id, r.status]));
 
     for (const run of state.runs) {
-      if (run.status === "completed" && prev.get(run.run_id) !== "completed") {
+      if (
+        run.status === RunStatus.Completed &&
+        prev.get(run.run_id) !== RunStatus.Completed
+      ) {
         actions.handleApply(run.run_id);
         break;
       }
