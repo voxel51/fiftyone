@@ -34,11 +34,7 @@ import {
   usePolylineOperations,
   useWorkingDoc,
 } from "../store";
-import type {
-  AnnotationAction,
-  AnnotationActionGroup,
-  TransformMode,
-} from "../types";
+import type { AnnotationActionGroup, TransformMode } from "../types";
 import { AnnotationPlaneTooltip } from "./AnnotationPlaneTooltip";
 import {
   PlaneCoordinateInputs,
