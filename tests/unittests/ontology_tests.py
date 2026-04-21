@@ -263,6 +263,70 @@ class OntologyDocumentTests(unittest.TestCase):
         )
         self.assertEqual(annotation_ontologies.count(), 1)
 
+    def test_slug_populated_on_save(self):
+        doc = OntologyDocument(
+            name="Vehicle Classes",
+            version=1,
+            type=OntologyType.TAXONOMY,
+            root={"name": "root"},
+        )
+        doc.save()
+
+        self.assertEqual(doc.slug, "vehicle-classes")
+
+        loaded = OntologyDocument.objects.get(
+            slug="vehicle-classes", version=1
+        )
+        self.assertEqual(loaded.name, "Vehicle Classes")
+
+    def test_slug_sanitizes_name(self):
+        doc = OntologyDocument(
+            name="My_Ontology.v1!",
+            version=1,
+            type=OntologyType.TAXONOMY,
+            root={"name": "root"},
+        ).save()
+
+        self.assertEqual(doc.slug, "my-ontology-v1")
+
+    def test_case_insensitive_uniqueness(self):
+        OntologyDocument(
+            name="Cars",
+            version=1,
+            type=OntologyType.TAXONOMY,
+            root={"name": "root"},
+        ).save()
+
+        with self.assertRaises(DuplicateKeyError):
+            OntologyDocument(
+                name="CARS",
+                version=1,
+                type=OntologyType.TAXONOMY,
+                root={"name": "root"},
+            ).save()
+
+    def test_slug_differs_across_versions(self):
+        for v in range(1, 4):
+            OntologyDocument(
+                name="My Ontology",
+                version=v,
+                type=OntologyType.TAXONOMY,
+                root={"name": "root"},
+            ).save()
+
+        docs = OntologyDocument.objects(slug="my-ontology")
+        self.assertEqual(docs.count(), 3)
+
+    def test_invalid_name_rejected(self):
+        doc = OntologyDocument(
+            name="!!!",
+            version=1,
+            type=OntologyType.TAXONOMY,
+            root={"name": "root"},
+        )
+        with self.assertRaises(ValueError):
+            doc.save()
+
     def test_delete(self):
         doc = OntologyDocument(
             name="to_delete",

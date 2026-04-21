@@ -9,6 +9,7 @@ Ontology documents.
 from enum import Enum
 from datetime import datetime, timezone
 
+import fiftyone.core.utils as fou
 from fiftyone.core.fields import (
     DateTimeField,
     DictField,
@@ -42,7 +43,8 @@ class OntologyDocument(Document):
 
     Ontologies are global resources not scoped to any single dataset.
     Multiple datasets can reference the same ontology by name. Each
-    save creates a new versioned document; ``(name, version)`` is unique.
+    save creates a new versioned document; ``(slug, version)`` is unique,
+    so names differing only in case or punctuation collide on save.
     """
 
     meta = {
@@ -50,14 +52,16 @@ class OntologyDocument(Document):
         "strict": False,
         "indexes": [
             {
-                "fields": ["name", "version"],
+                "fields": ["slug", "version"],
                 "unique": True,
             },
+            "name",
             "type",
         ],
     }
 
     name = StringField(required=True)
+    slug = StringField(required=True)
     version = IntField(required=True, default=1)
     type = StringField(required=True, choices=_ONTOLOGY_TYPE_VALUES)
     description = StringField(default=None)
@@ -67,6 +71,9 @@ class OntologyDocument(Document):
 
     def save(self, *args, **kwargs):
         now = datetime.now(timezone.utc)
+
+        if self.name is not None:
+            self.slug = fou.to_slug(self.name)
 
         if not self.in_db and self.created_at is None:
             self.created_at = now
