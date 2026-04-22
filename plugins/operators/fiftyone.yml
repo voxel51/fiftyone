@@ -48,6 +48,7 @@ operators:
   - download_file
   - model_evaluation_configure_scenario
   - mes_plot_resolver
+  - list_me_scenarios
 
   # view stages
   - load_group_by
