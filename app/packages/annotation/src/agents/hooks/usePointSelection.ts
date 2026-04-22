@@ -54,6 +54,13 @@ export interface PointSelection {
    */
   deactivate(): void;
 
+  /**
+   * Clears all placed points while keeping point selection active. The
+   * overlay and interactive handler remain in place — the user can continue
+   * placing new points on an empty canvas.
+   */
+  clearPoints(): void;
+
   /** The current activation status of the point selection tool. */
   isActive: boolean;
 }
@@ -75,7 +82,7 @@ const pointSelectionActiveAtom = atom(false);
  * Hook which provides activation/deactivation functions for point selection.
  */
 export const usePointSelection = (): PointSelection => {
-  const { scene, overlayFactory } = useLighter();
+  const { getOverlay, scene, overlayFactory } = useLighter();
   const eventBus = useLighterEventBus(
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
   );
@@ -142,5 +149,15 @@ export const usePointSelection = (): PointSelection => {
     setIsActive(false);
   }, [isActive, keypointOverlayId, scene, setIsActive, setKeypointOverlayId]);
 
-  return { activate, deactivate, isActive };
+  const clearPoints = useCallback(() => {
+    if (!keypointOverlayId) {
+      return;
+    }
+    const overlay = getOverlay(keypointOverlayId);
+    if (overlay instanceof KeypointOverlay) {
+      overlay.clearPoints();
+    }
+  }, [getOverlay, keypointOverlayId]);
+
+  return { activate, clearPoints, deactivate, isActive };
 };
