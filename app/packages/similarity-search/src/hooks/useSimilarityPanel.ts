@@ -305,11 +305,22 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
   // Auto-apply immediate execution runs when they complete.
   // Delegated runs (operator_run_id is set) are excluded — there's no
   // completion event for those, so the user applies them manually.
+  //
+  // On the very first effect run we only *seed* the status map so
+  // already-completed runs aren't auto-applied when the panel mounts.
   const prevRunStatusesRef = useRef<Map<string, string>>(new Map());
+  const statusesInitializedRef = useRef(false);
 
   useEffect(() => {
-    const prev = prevRunStatusesRef.current;
     const next = new Map(state.runs.map((r) => [r.run_id, r.status]));
+
+    if (!statusesInitializedRef.current) {
+      prevRunStatusesRef.current = next;
+      statusesInitializedRef.current = true;
+      return;
+    }
+
+    const prev = prevRunStatusesRef.current;
 
     for (const run of state.runs) {
       if (
