@@ -85,6 +85,20 @@ class SimilaritySearchPanel(Panel):
 
     # -- Lifecycle --
 
+    def _current_user_id(self, ctx):
+        """The current user's id — source of truth for ownership
+        checks. None in OSS.
+        """
+        return str(ctx.user_id) if ctx.user_id else None
+
+    def _current_user_name(self, ctx):
+        """The current user's display name — used for UI. Falls back to
+        the user id string so the UI always has something to show.
+        """
+        if not ctx.user_id:
+            return None
+        return getattr(ctx.user, "name", None) or str(ctx.user_id)
+
     def on_load(self, ctx):
         manager = RunManager(ctx)
         runs = manager.list_runs()
@@ -93,14 +107,9 @@ class SimilaritySearchPanel(Panel):
         ctx.panel.set_data("runs", runs)
         ctx.panel.set_data("brain_keys", brain_keys)
 
-        # None in OSS, populated by FiftyOne Teams.
-        # Must match the created_by format used by operators.py.
-        current_user = (
-            (getattr(ctx.user, "name", None) or str(ctx.user_id))
-            if ctx.user_id
-            else None
-        )
-        ctx.panel.set_data("current_user", current_user)
+        # FE only needs a truthy value for `canFilterByOwner`; displaying
+        # the name is nicer than the id when we have one.
+        ctx.panel.set_data("current_user", self._current_user_name(ctx))
 
         # Enable alt-selection visual feedback for negative queries
         ctx.ops.set_sample_selection_style(
@@ -119,9 +128,17 @@ class SimilaritySearchPanel(Panel):
         ctx.panel.set_data("brain_keys", brain_keys)
 
     def list_runs(self, ctx):
-        """Refresh the runs list."""
+        """Refresh the runs list.
+
+        Accepts an optional ``owner`` param (``"mine"`` or ``"all"``) to
+        filter runs server-side.
+        """
+        owner = ctx.params.get("owner")
         manager = RunManager(ctx)
-        runs = manager.list_runs()
+        runs = manager.list_runs(
+            owner=owner,
+            current_user_id=self._current_user_id(ctx),
+        )
         ctx.panel.set_data("runs", runs)
 
     def apply_run(self, ctx):

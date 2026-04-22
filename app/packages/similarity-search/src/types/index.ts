@@ -61,6 +61,7 @@ export type SimilarityRun = {
   operator_run_id?: string;
   status_details?: string;
   created_by?: string;
+  created_by_name?: string;
 };
 
 /**

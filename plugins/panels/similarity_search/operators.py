@@ -63,8 +63,9 @@ class SimilaritySearchOperator(foo.Operator):
         if not run_id:
             params = {**ctx.params}
             if ctx.user_id:
-                params["created_by"] = getattr(ctx.user, "name", None) or str(
-                    ctx.user_id
+                params["created_by"] = str(ctx.user_id)
+                params["created_by_name"] = (
+                    getattr(ctx.user, "name", None) or ""
                 )
             run_data = manager.create_run(params)
             run_id = run_data["run_id"]
@@ -77,8 +78,9 @@ class SimilaritySearchOperator(foo.Operator):
         if not run_data:
             params = {**ctx.params}
             if ctx.user_id:
-                params["created_by"] = getattr(ctx.user, "name", None) or str(
-                    ctx.user_id
+                params["created_by"] = str(ctx.user_id)
+                params["created_by_name"] = (
+                    getattr(ctx.user, "name", None) or ""
                 )
             run_data = manager.create_run(params)
             run_id = run_data["run_id"]
@@ -370,7 +372,13 @@ class InitSimilarityRunOperator(foo.Operator):
 
 
 class ListSimilarityRunsOperator(foo.Operator):
-    """Returns all similarity search runs for the current dataset."""
+    """Returns similarity search runs for the current dataset.
+
+    Accepts an optional ``owner`` param:
+
+    - ``"mine"`` — only runs created by the current user
+    - ``"all"`` or missing — every run
+    """
 
     @property
     def config(self):
@@ -381,8 +389,14 @@ class ListSimilarityRunsOperator(foo.Operator):
         )
 
     def execute(self, ctx):
+        owner = ctx.params.get("owner")
         manager = RunManager(ctx)
-        return {"runs": manager.list_runs()}
+        return {
+            "runs": manager.list_runs(
+                owner=owner,
+                current_user_id=str(ctx.user_id) if ctx.user_id else None,
+            )
+        }
 
 
 class SimilaritySearchSubscriptionOperator(foo.SseOperator):
