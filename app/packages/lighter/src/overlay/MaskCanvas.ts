@@ -238,7 +238,21 @@ export class MaskCanvas {
       this.paintStart(bounds);
     }
 
-    const updatedBounds = this.updateBounds(worldPoint, bounds, toolState);
+    // Compute dab extent: brush expands bounds, eraser does not
+    let minX = bounds.x;
+    let minY = bounds.y;
+    let maxX = bounds.x + bounds.width;
+    let maxY = bounds.y + bounds.height;
+
+    if (toolState.tool === "brush") {
+      const half = (toolState.size ?? 0) / 2;
+      minX = Math.min(minX, worldPoint.x - half);
+      minY = Math.min(minY, worldPoint.y - half);
+      maxX = Math.max(maxX, worldPoint.x + half);
+      maxY = Math.max(maxY, worldPoint.y + half);
+    }
+
+    const updatedBounds = this.updateBounds(bounds, { minX, minY, maxX, maxY });
     const maskPoint = this.worldToMask(worldPoint, updatedBounds ?? bounds);
 
     if (maskPoint) {
@@ -274,40 +288,22 @@ export class MaskCanvas {
       this.paintStart(bounds);
     }
 
-    // Expand bounds to contain all polygon points (paint mode only)
-    let updatedBounds: Rect | undefined = { ...bounds };
-    if (toolState.tool !== "eraser") {
-      let minX = bounds.x;
-      let minY = bounds.y;
-      let maxX = bounds.x + bounds.width;
-      let maxY = bounds.y + bounds.height;
+    // Compute polygon extent: non-eraser expands to contain all points
+    let minX = bounds.x;
+    let minY = bounds.y;
+    let maxX = bounds.x + bounds.width;
+    let maxY = bounds.y + bounds.height;
 
+    if (toolState.tool !== "eraser") {
       for (const wp of worldPoints) {
         minX = Math.min(minX, wp.x);
         minY = Math.min(minY, wp.y);
         maxX = Math.max(maxX, wp.x);
         maxY = Math.max(maxY, wp.y);
       }
-
-      const origMaxX = this.preStrokeBounds!.x + this.preStrokeBounds!.width;
-      const origMaxY = this.preStrokeBounds!.y + this.preStrokeBounds!.height;
-
-      minX = Math.floor(Math.min(this.preStrokeBounds!.x, minX));
-      minY = Math.floor(Math.min(this.preStrokeBounds!.y, minY));
-      maxX = Math.max(origMaxX, maxX);
-      maxY = Math.max(origMaxY, maxY);
-
-      const newWidth = Math.max(1, Math.ceil(maxX - minX));
-      const newHeight = Math.max(1, Math.ceil(maxY - minY));
-
-      const offsetX = Math.round(bounds.x - minX);
-      const offsetY = Math.round(bounds.y - minY);
-
-      this.updateCanvas(newWidth, newHeight, offsetX, offsetY);
-
-      updatedBounds = { x: minX, y: minY, width: newWidth, height: newHeight };
     }
 
+    const updatedBounds = this.updateBounds(bounds, { minX, minY, maxX, maxY });
     const activeBounds = updatedBounds ?? bounds;
 
     // Convert world points to mask-pixel coords
@@ -417,56 +413,32 @@ export class MaskCanvas {
   }
 
   /**
-   * Computes tight bounds around mask content and — for brush — the upcoming
-   * dab, then resizes the canvas and updates bounds to match.
+   * Clamps the caller-supplied extent against preStrokeBounds, resizes the
+   * canvas to fit, and returns the new world-space bounds.
    *
-   * Works for both tools:
-   * - **Brush**: content bounding box + dab extent → may grow.
-   * - **Eraser**: content bounding box only → may shrink.
-   *
-   * If no content remains (and no dab), returns `undefined` to signal the
-   * caller should clear the detection bounds.
+   * Each caller is responsible for computing its own extent (e.g. dab extent
+   * for paintAt, polygon extent for fillPolygon) before calling this method.
    */
   private updateBounds(
-    worldPoint: Point,
     oldBounds: Rect,
-    toolState: SegmentationToolState | undefined
+    extent: { minX: number; minY: number; maxX: number; maxY: number }
   ): Rect | undefined {
-    if (!this.canvas || !this.context) return oldBounds;
+    if (!this.canvas || !this.context) return undefined;
 
-    const { x: oldX, y: oldY, width: oldWidth, height: oldHeight } = oldBounds;
-
-    // upper-left and lower-right corners
-    let minX = oldX;
-    let minY = oldY;
-    let maxX = oldX + oldWidth;
-    let maxY = oldY + oldHeight;
-
-    // For brush, include the dab extent
-    // The erase tool can't expand the bounding box
-    if (toolState?.tool === "brush") {
-      const half = (toolState.size ?? 0) / 2;
-      minX = Math.min(minX, worldPoint.x - half);
-      minY = Math.min(minY, worldPoint.y - half);
-      maxX = Math.max(maxX, worldPoint.x + half);
-      maxY = Math.max(maxY, worldPoint.y + half);
-    }
-
-    // lower-right corner from before paint stroke
     const origMaxX = this.preStrokeBounds!.x + this.preStrokeBounds!.width;
     const origMaxY = this.preStrokeBounds!.y + this.preStrokeBounds!.height;
 
-    minX = Math.floor(Math.min(this.preStrokeBounds!.x, minX));
-    minY = Math.floor(Math.min(this.preStrokeBounds!.y, minY));
-    maxX = Math.max(origMaxX, maxX);
-    maxY = Math.max(origMaxY, maxY);
+    const minX = Math.floor(Math.min(this.preStrokeBounds!.x, extent.minX));
+    const minY = Math.floor(Math.min(this.preStrokeBounds!.y, extent.minY));
+    const maxX = Math.max(origMaxX, extent.maxX);
+    const maxY = Math.max(origMaxY, extent.maxY);
 
     const newWidth = Math.max(1, Math.ceil(maxX - minX));
     const newHeight = Math.max(1, Math.ceil(maxY - minY));
 
-    // offset to place old mask into resized canvas
-    const offsetX = Math.round(oldX - minX);
-    const offsetY = Math.round(oldY - minY);
+    // offset to place old mask in new canvas
+    const offsetX = Math.round(oldBounds.x - minX);
+    const offsetY = Math.round(oldBounds.y - minY);
 
     this.updateCanvas(newWidth, newHeight, offsetX, offsetY);
 
