@@ -1,4 +1,4 @@
-import { atom, getDefaultStore, useAtom } from "jotai";
+import { atom, useAtom } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { useOperatorExecutor } from "@fiftyone/operators";
@@ -14,7 +14,7 @@ import {
   SSE_OPERATOR_URI,
 } from "../constants";
 import { SimilarityRun } from "../types";
-import { filterStateAtom } from "./useFilteredRuns";
+import { usePanelFilterState } from "./useFilteredRuns";
 
 const runsAtom = atom<SimilarityRun[]>([]);
 const loadedAtom = atom(false);
@@ -62,6 +62,15 @@ export const useRuns = (): UseRunsResult => {
   const inFlightRef = useRef<Promise<void> | null>(null);
   const errorCountRef = useRef(0);
 
+  // Subscribe to the panel's filter state via the shared hook, and
+  // mirror the owner value into a ref so refreshRuns() can read it
+  // synchronously from SSE callbacks and other non-React contexts.
+  // useFilteredRuns subscribes via the same hook; both consumers share
+  // the underlying panel-local Recoil state.
+  const [filterState] = usePanelFilterState();
+  const ownerFilterRef = useRef(filterState.ownerFilter);
+  ownerFilterRef.current = filterState.ownerFilter;
+
   const refreshRuns = useCallback(() => {
     // If a fetch is already in flight, queue a follow-up refresh
     // and return the in-flight promise so callers can still await.
@@ -71,10 +80,7 @@ export const useRuns = (): UseRunsResult => {
     }
     fetchingRef.current = true;
 
-    // Owner filter is applied server-side. Read the latest value at
-    // call time so SSE-driven refreshes always pick up the current
-    // selection without needing to live in React state.
-    const { ownerFilter } = getDefaultStore().get(filterStateAtom);
+    const ownerFilter = ownerFilterRef.current;
 
     const promise = new Promise<void>((resolve, reject) => {
       fetchRuns(
