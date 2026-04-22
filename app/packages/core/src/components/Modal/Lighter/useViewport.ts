@@ -128,7 +128,17 @@ const useInitializeViewport = (
 
     const complete = () => {
       appliedRef.current = true;
-      eventBus.dispatch("lighter:viewport-init-complete", {});
+
+      // Defer the reveal signal until after the next Pixi render tick so
+      // the canvas has actually painted all pending overlays before the
+      // container flips to visible.
+      const unregister = scene.registerRenderCallback({
+        phase: "after",
+        callback: () => {
+          unregister();
+          eventBus.dispatch("lighter:viewport-init-complete", {});
+        },
+      });
     };
 
     if (savedViewport) {
