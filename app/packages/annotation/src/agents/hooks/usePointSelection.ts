@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import type { Point } from "@fiftyone/lighter";
+import type { DrawStyle, Point } from "@fiftyone/lighter";
 import {
   InteractiveKeypointHandler,
   KeypointOptions,
@@ -11,9 +11,43 @@ import {
 import { atom, useAtom } from "jotai";
 import { v4 as uuidv4 } from "uuid";
 
+/** Variant keys used by point selection. */
+export const POSITIVE_POINT_VARIANT = "positive" as const;
+export const NEGATIVE_POINT_VARIANT = "negative" as const;
+
+export type PointSelectionVariant =
+  | typeof POSITIVE_POINT_VARIANT
+  | typeof NEGATIVE_POINT_VARIANT;
+
+/** Mapping of supported variant styles to draw styles. */
+const POINT_SELECTION_VARIANT_STYLES: Record<PointSelectionVariant, DrawStyle> =
+  {
+    [POSITIVE_POINT_VARIANT]: {
+      fillStyle: "#1e7d45", // todo reference from voodo
+      strokeStyle: "#ffffff",
+    },
+    [NEGATIVE_POINT_VARIANT]: {
+      fillStyle: "#c33636", // todo reference from voodo
+      strokeStyle: "#ffffff",
+    },
+  };
+
 export interface PointSelection {
-  activate(hitTest?: (relativePoint: Point) => boolean): void;
+  /**
+   * Activates point selection. The optional resolver is invoked for each
+   * placed point and should return the variant key to associate with it.
+   */
+  activate(
+    resolveVariant?: (relativePoint: Point) => PointSelectionVariant
+  ): void;
+
+  /**
+   * Deactivates point selection. Disables interactivity with the point
+   * selection business logic.
+   */
   deactivate(): void;
+
+  /** The current activation status of the point selection tool. */
   isActive: boolean;
 }
 
@@ -45,7 +79,7 @@ export const usePointSelection = (): PointSelection => {
   const [isActive, setIsActive] = useAtom(pointSelectionActiveAtom);
 
   const activate = useCallback(
-    (hitTest?: (relativePoint: Point) => boolean) => {
+    (resolveVariant?: (relativePoint: Point) => PointSelectionVariant) => {
       if (isActive) {
         return;
       }
@@ -57,6 +91,7 @@ export const usePointSelection = (): PointSelection => {
             id: uuidv4(),
             label: { label: "", points: [] },
             field: "",
+            variantStyles: POINT_SELECTION_VARIANT_STYLES,
           }
         );
 
@@ -64,7 +99,7 @@ export const usePointSelection = (): PointSelection => {
         scene.addOverlay(overlay);
 
         scene.enterInteractiveMode(
-          new InteractiveKeypointHandler(overlay, eventBus, hitTest)
+          new InteractiveKeypointHandler(overlay, eventBus, resolveVariant)
         );
 
         setIsActive(true);

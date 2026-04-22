@@ -1,5 +1,8 @@
 import {
   AgentTaskType,
+  NEGATIVE_POINT_VARIANT,
+  PointSelectionVariant,
+  POSITIVE_POINT_VARIANT,
   useActiveTask,
   useAgentSelector,
   usePointSelection,
@@ -45,21 +48,32 @@ export const useSegmentationMode = (): SegmentationMode => {
   const selectedLabelRef = useRef(selectedLabel);
   selectedLabelRef.current = selectedLabel;
 
-  // check whether the point hits the mask of the current label
-  const maskHitTest = useCallback((relativePoint: { x: number; y: number }) => {
-    const label = selectedLabelRef.current;
-    if (!label || !(label.overlay instanceof BoundingBoxOverlay)) {
-      return false;
-    }
+  // Points placed on the current label's mask are interpreted as negative;
+  // points placed off-mask are positive
+  const resolvePointVariant = useCallback(
+    (relativePoint: { x: number; y: number }): PointSelectionVariant => {
+      const label = selectedLabelRef.current;
+      if (!label || !(label.overlay instanceof BoundingBoxOverlay)) {
+        return POSITIVE_POINT_VARIANT;
+      }
 
-    return label.overlay.containsMaskPixel(relativePoint);
-  }, []);
+      return label.overlay.containsMaskPixel(relativePoint)
+        ? NEGATIVE_POINT_VARIANT
+        : POSITIVE_POINT_VARIANT;
+    },
+    []
+  );
 
   const activate = useCallback(() => {
     setSegmentationModeActive(true);
     setActiveTask(AgentTaskType.SEGMENT);
-    pointSelection.activate(maskHitTest);
-  }, [maskHitTest, pointSelection, setActiveTask, setSegmentationModeActive]);
+    pointSelection.activate(resolvePointVariant);
+  }, [
+    pointSelection,
+    resolvePointVariant,
+    setActiveTask,
+    setSegmentationModeActive,
+  ]);
 
   const deactivate = useCallback(() => {
     pointSelection.deactivate();

@@ -23,7 +23,9 @@ export class InteractiveKeypointHandler implements InteractionHandler {
   constructor(
     public readonly overlay: KeypointOverlay,
     private readonly eventBus: EventDispatcher<LighterEventGroup>,
-    private readonly hitTest?: (relativePoint: Point) => boolean
+    private readonly resolveVariant?: (
+      relativePoint: Point
+    ) => string | undefined
   ) {}
 
   containsPoint(): boolean {
@@ -57,8 +59,8 @@ export class InteractiveKeypointHandler implements InteractionHandler {
     _event: PointerEvent
   ): boolean {
     const rp = this.overlay.absolutePointToRelative(worldPoint);
-    const onMask = this.hitTest?.({ x: rp[0], y: rp[1] }) ?? false;
-    this.overlay.addPoint(worldPoint, onMask);
+    const variant = this.resolveVariant?.({ x: rp[0], y: rp[1] });
+    this.overlay.addPoint(worldPoint, variant);
     return true;
   }
 
