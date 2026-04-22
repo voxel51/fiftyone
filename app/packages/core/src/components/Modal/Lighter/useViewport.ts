@@ -10,6 +10,8 @@ import {
   useLighterEventHandler,
 } from "@fiftyone/lighter";
 import { modalBridge, useModalLookerOptions } from "@fiftyone/state";
+import { useAtomValue } from "jotai";
+import { LabelsState, labelsState } from "../Sidebar/Annotate/useLabels";
 import type { ModalViewportState } from "@fiftyone/state";
 import {
   useCallback,
@@ -123,8 +125,17 @@ const useInitializeViewport = (
 
   const hasContent = useHasContent(effectiveZoom);
 
+  const labelsLoaded = useAtomValue(labelsState) === LabelsState.COMPLETE;
+
   useEffect(() => {
-    if (!mediaBounds || !scene || !rendererReady || appliedRef.current) return;
+    if (
+      !mediaBounds ||
+      !scene ||
+      !rendererReady ||
+      !labelsLoaded ||
+      appliedRef.current
+    )
+      return;
 
     const complete = () => {
       appliedRef.current = true;
@@ -154,6 +165,7 @@ const useInitializeViewport = (
     mediaBounds,
     scene,
     rendererReady,
+    labelsLoaded,
     savedViewport,
     effectiveZoom,
     hasContent,
