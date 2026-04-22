@@ -5,20 +5,14 @@ import {
   PluginComponentType,
   registerComponent,
 } from "@fiftyone/plugins";
-import { usePanelTitle } from "@fiftyone/spaces";
-import { datasetName, distributionPaths, field } from "@fiftyone/state";
+import { usePanelStatePartial, usePanelTitle } from "@fiftyone/spaces";
+import { distributionPaths } from "@fiftyone/state";
+import { BUILT_IN_PANEL_PRIORITY_CONST } from "@fiftyone/utilities";
 import { BarChart } from "@mui/icons-material";
-import React, { useEffect } from "react";
-import {
-  DefaultValue,
-  atomFamily,
-  selector,
-  useRecoilState,
-  useRecoilValue,
-} from "recoil";
+import { useEffect } from "react";
+import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import Histogram from "../components/Histogram";
-import { BUILT_IN_PANEL_PRIORITY_CONST } from "@fiftyone/utilities";
 
 const HistogramsContainer = styled.div`
   position: relative;
@@ -37,32 +31,17 @@ const ControlsContainer = styled.div`
   margin: 1rem;
 `;
 
-const plotPaths = atomFamily<string | null, string>({
-  key: "plotPaths",
-  default: null,
-});
+function usePlotPath() {
+  const paths = useRecoilValue(distributionPaths);
+  const [path, setPath] = usePanelStatePartial("path", paths[0]);
 
-const plotPath = selector<string>({
-  key: "plotPath",
-  get: ({ get }) => {
-    const plotPath = plotPaths(get(datasetName));
-    const path = get(plotPath);
-
-    if (!path || !get(field(path))) return get(distributionPaths)[0];
-
-    return path;
-  },
-  set: ({ get, set }, newValue) => {
-    set(
-      plotPaths(get(datasetName)),
-      newValue instanceof DefaultValue ? null : newValue
-    );
-  },
-});
+  return { path, setPath };
+}
 
 const PlotSelector = () => {
   const paths = useRecoilValue(distributionPaths);
-  const [path, setPath] = useRecoilState(plotPath);
+  const { path, setPath } = usePlotPath();
+
   return (
     <Selector
       component={({ value }) => <>{value}</>}
@@ -83,7 +62,8 @@ const PlotSelector = () => {
 
 function Plots() {
   const [_, setTitle] = usePanelTitle();
-  const path = useRecoilValue(plotPath);
+  const { path } = usePlotPath();
+
   useEffect(() => {
     setTitle(path);
   }, [path]);
