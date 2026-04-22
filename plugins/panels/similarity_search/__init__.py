@@ -22,6 +22,54 @@ from .run_manager import RunManager
 
 logger = logging.getLogger(__name__)
 
+# Persisted identifier fields per similarity backend. These are names of
+# remote collections/indexes/tables the user has configured — safe to
+# surface to users so they can recognize which remote resource this run
+# is backed by. Not all backends have identifiers (e.g. sklearn).
+_IDENTIFIER_FIELDS_BY_BACKEND = {
+    "qdrant": [("collection_name", "Collection")],
+    "milvus": [("collection_name", "Collection")],
+    "pinecone": [
+        ("index_name", "Index"),
+        ("namespace", "Namespace"),
+    ],
+    "mosaic": [("index_name", "Index")],
+    "mongodb": [("index_name", "Index")],
+    "elasticsearch": [("index_name", "Index")],
+    "redis": [("index_name", "Index")],
+    "pgvector": [
+        ("index_name", "Index"),
+        ("table_name", "Table"),
+    ],
+    "lancedb": [("table_name", "Table")],
+}
+
+
+def _extract_identifiers(config, backend):
+    """Return a list of ``{"label", "value"}`` dicts for the backend's
+    persisted identifier fields. Returns an empty list if the backend is
+    unknown, or if the config doesn't expose any of the expected fields.
+    """
+    if not backend or config is None:
+        return []
+    spec = _IDENTIFIER_FIELDS_BY_BACKEND.get(backend.lower())
+    if not spec:
+        return []
+
+    identifiers = []
+    for field, label in spec:
+        try:
+            value = getattr(config, field, None)
+        except Exception:
+            value = None
+        if value is None:
+            continue
+        value_str = str(value).strip()
+        if not value_str:
+            continue
+        identifiers.append({"label": label, "value": value_str})
+    return identifiers
+
 
 class SimilaritySearchPanel(Panel):
     """Panel for running and managing similarity search queries."""
@@ -45,8 +93,13 @@ class SimilaritySearchPanel(Panel):
         ctx.panel.set_data("runs", runs)
         ctx.panel.set_data("brain_keys", brain_keys)
 
-        # None in OSS, populated by FiftyOne Teams
-        current_user = str(ctx.user_id) if ctx.user_id else None
+        # None in OSS, populated by FiftyOne Teams.
+        # Must match the created_by format used by operators.py.
+        current_user = (
+            (getattr(ctx.user, "name", None) or str(ctx.user_id))
+            if ctx.user_id
+            else None
+        )
         ctx.panel.set_data("current_user", current_user)
 
         # Enable alt-selection visual feedback for negative queries
@@ -257,6 +310,16 @@ class SimilaritySearchPanel(Panel):
                 model = getattr(config, "model", None)
                 backend = getattr(config, "method", None)
                 embeddings_field = getattr(config, "embeddings_field", None)
+                metric = getattr(config, "metric", None)
+                try:
+                    identifiers = _extract_identifiers(config, backend)
+                except Exception as e:
+                    logger.warning(
+                        "Failed to extract identifiers for key %s: %s",
+                        key,
+                        e,
+                    )
+                    identifiers = []
 
                 supports_least = False
                 try:
@@ -283,6 +346,8 @@ class SimilaritySearchPanel(Panel):
                         "model": model,
                         "backend": backend,
                         "embeddings_field": embeddings_field,
+                        "metric": metric,
+                        "identifiers": identifiers,
                     }
                 )
             except Exception as e:

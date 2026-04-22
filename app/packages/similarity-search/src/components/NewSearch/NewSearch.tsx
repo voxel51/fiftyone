@@ -21,6 +21,7 @@ import {
   Spacing,
   Variant,
 } from "@voxel51/voodo";
+import { FileUploadOutlined } from "../../mui";
 import React, { useState } from "react";
 import { OperatorExecutionButton } from "@fiftyone/operators";
 import {
@@ -112,6 +113,20 @@ export default function NewSearch({
                   Backend: {form.selectedConfig.backend}
                 </Text>
               )}
+              {form.selectedConfig.metric && (
+                <Text variant={TextVariant.Md} color={TextColor.Secondary}>
+                  Metric: {form.selectedConfig.metric}
+                </Text>
+              )}
+              {form.selectedConfig.identifiers?.map((id) => (
+                <Text
+                  key={id.label}
+                  variant={TextVariant.Md}
+                  color={TextColor.Secondary}
+                >
+                  {id.label}: {id.value}
+                </Text>
+              ))}
               <Text variant={TextVariant.Md} color={TextColor.Secondary}>
                 Supports text queries?{" "}
                 {form.selectedConfig.supports_prompts ? CHECK_MARK : CROSS_MARK}
@@ -163,6 +178,7 @@ export default function NewSearch({
                   : Variant.Secondary
               }
               size={Size.Sm}
+              leadingIcon={IconName.ImageSearch}
               onClick={() => form.setQueryType(QueryType.Image)}
               style={{ flex: 1 }}
             >
@@ -176,6 +192,7 @@ export default function NewSearch({
                     : Variant.Secondary
                 }
                 size={Size.Sm}
+                leadingIcon={() => <FileUploadOutlined sx={{ fontSize: 16 }} />}
                 onClick={() => form.setQueryType(QueryType.Upload)}
                 style={{ flex: 1 }}
               >
@@ -190,6 +207,7 @@ export default function NewSearch({
                     : Variant.Secondary
                 }
                 size={Size.Sm}
+                leadingIcon={IconName.Search}
                 onClick={() => form.setQueryType(QueryType.Text)}
                 style={{ flex: 1 }}
               >
@@ -330,7 +348,7 @@ export default function NewSearch({
           />
         )}
 
-        {/* Dynamic results */}
+        {/* Dynamic results — commented out; all searches use cached (static) results for now
         <Toggle
           checked={form.dynamicResults}
           onChange={(checked) => form.setDynamicResults(checked)}
@@ -341,6 +359,7 @@ export default function NewSearch({
           }
           size={Size.Sm}
         />
+        */}
 
         {/* Distance field */}
         <FormField

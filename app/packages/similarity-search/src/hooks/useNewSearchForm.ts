@@ -57,9 +57,7 @@ export const useNewSearchForm = (
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(
     null
   );
-  const [searchScope, setSearchScope] = useState<SearchScope>(
-    hasView ? SCOPE_VIEW : SCOPE_DATASET
-  );
+  const [searchScope, setSearchScope] = useState<SearchScope>(SCOPE_DATASET);
 
   // ─── Derived config ─────────────────────────────────────────────
 

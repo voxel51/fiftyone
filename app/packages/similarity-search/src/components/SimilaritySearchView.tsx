@@ -37,6 +37,7 @@ function SimilaritySearchReady(props: SimilaritySearchViewProps) {
           onClone={panel.handleClone}
           onDelete={panel.handleDelete}
           onBulkDelete={panel.handleBulkDelete}
+          onRename={panel.handleRename}
           onRefresh={panel.refreshRuns}
           onNewSearch={panel.handleNewSearch}
           onSettings={panel.navigateSimilarityIndex}

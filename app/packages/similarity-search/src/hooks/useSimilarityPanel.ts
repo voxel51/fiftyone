@@ -1,7 +1,7 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import * as fos from "@fiftyone/state";
-import { SimilaritySearchViewProps, SimilarityRun } from "../types";
+import { RunStatus, SimilaritySearchViewProps, SimilarityRun } from "../types";
 import { useNavigate } from "./useNavigate";
 import { useRuns } from "./useRuns";
 import { useFilteredRuns } from "./useFilteredRuns";
@@ -28,7 +28,10 @@ const useDerivedPanelState = (props: SimilaritySearchViewProps) => {
   } = useRuns();
   const [submitting, setSubmitting] = useState(false);
 
-  const allBrainKeys = panelData.brain_keys ?? [];
+  const allBrainKeys = useMemo(
+    () => panelData.brain_keys ?? [],
+    [panelData.brain_keys]
+  );
   const appliedRunId = (panelData as Record<string, unknown>).applied_run_id as
     | string
     | undefined;
@@ -174,7 +177,7 @@ const useSimilarityPanelActions = (deps: PanelActionsDeps) => {
       if (run) {
         setCloneConfig({
           brain_key: run.brain_key,
-          query_type: run.query_type,
+          query_type: run.query_type as "text" | "image",
           query: typeof run.query === "string" ? run.query : undefined,
           k: run.k,
           reverse: run.reverse,
@@ -184,6 +187,13 @@ const useSimilarityPanelActions = (deps: PanelActionsDeps) => {
       }
     },
     [runs, setCloneConfig, navigateNewSearch]
+  );
+
+  const handleRename = useCallback(
+    (runId: string, newName: string) => {
+      triggers.renameRun({ run_id: runId, new_name: newName });
+    },
+    [triggers]
   );
 
   const handleNewSearch = useCallback(() => {
@@ -207,6 +217,7 @@ const useSimilarityPanelActions = (deps: PanelActionsDeps) => {
     handleDelete,
     handleBulkDelete,
     handleNewSearch,
+    handleRename,
     handleSubmitted,
   };
 };
@@ -274,6 +285,28 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
     clearAndExit,
   });
 
+  // Auto-apply immediate execution runs when they complete.
+  // Delegated runs (operator_run_id is set) are excluded — there's no
+  // completion event for those, so the user applies them manually.
+  const prevRunStatusesRef = useRef<Map<string, string>>(new Map());
+
+  useEffect(() => {
+    const prev = prevRunStatusesRef.current;
+    const next = new Map(state.runs.map((r) => [r.run_id, r.status]));
+
+    for (const run of state.runs) {
+      if (
+        run.status === RunStatus.Completed &&
+        prev.get(run.run_id) !== RunStatus.Completed
+      ) {
+        actions.handleApply(run.run_id);
+        break;
+      }
+    }
+
+    prevRunStatusesRef.current = next;
+  }, [state.runs, actions]);
+
   const selection = useMemo(
     () => ({
       selectMode,
@@ -312,6 +345,7 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
 
     // actions
     ...actions,
+    handleApply: actions.handleApply,
     refreshRuns: state.refreshRuns,
     setFilterState: state.setFilterState,
     navigateHome,

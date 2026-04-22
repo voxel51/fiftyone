@@ -13,10 +13,55 @@ import {
   Spacing,
   Variant,
 } from "@voxel51/voodo";
-import React from "react";
+import React, { useState } from "react";
 import { RunFilterState, DateFilterPreset } from "../../types";
 import { DATE_PRESET_OPTIONS, OWNER_ALL, OWNER_MINE } from "../../constants";
 import { FilterBarSearchCol, FilterBarDateCol } from "../styled";
+
+/**
+ * Local-state search input. Commits to the parent only on blur or Enter,
+ * so typing doesn't re-filter on every keystroke. Parent should pass a
+ * `key={committed}` to remount the input when the committed value is
+ * reset externally.
+ */
+function SearchInput({
+  initial,
+  onCommit,
+}: {
+  initial: string;
+  onCommit: (value: string) => void;
+}) {
+  const [value, setValue] = useState(initial);
+
+  const commit = () => {
+    if (value !== initial) {
+      onCommit(value);
+    }
+  };
+
+  return (
+    <Input
+      type={InputType.Search}
+      placeholder="Filter by name, query, or brain key..."
+      value={value}
+      onChange={(e) => {
+        const next = e.target.value;
+        setValue(next);
+        // commit immediately when clicking reset
+        if (next === "" && initial !== "") {
+          onCommit("");
+        }
+      }}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          commit();
+        }
+      }}
+      size={Size.Sm}
+    />
+  );
+}
 
 type FilterBarProps = {
   filterState: RunFilterState;
@@ -50,14 +95,10 @@ export default function FilterBar({
         align={Align.Center}
       >
         <FilterBarSearchCol>
-          <Input
-            type={InputType.Search}
-            placeholder="Filter by name, query, or brain key..."
-            value={filterState.searchText}
-            onChange={(e) =>
-              onChange({ ...filterState, searchText: e.target.value })
-            }
-            size={Size.Sm}
+          <SearchInput
+            key={filterState.searchText}
+            initial={filterState.searchText}
+            onCommit={(v) => onChange({ ...filterState, searchText: v })}
           />
         </FilterBarSearchCol>
         <FilterBarDateCol>

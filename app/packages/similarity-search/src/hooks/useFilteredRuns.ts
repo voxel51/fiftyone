@@ -1,13 +1,14 @@
 import { useMemo } from "react";
 import { atom, useAtom } from "jotai";
 import { SimilarityRun, RunFilterState } from "../types";
+import { DEFAULT_DATE_PRESET, OWNER_MINE } from "../constants";
+import { getDateRange, matchesText, matchesDate } from "../utils";
 
 const filterStateAtom = atom<RunFilterState>({
   searchText: "",
-  datePreset: "all",
-  ownerFilter: "all",
+  datePreset: DEFAULT_DATE_PRESET,
+  ownerFilter: OWNER_MINE,
 });
-import { getDateRange, matchesText, matchesDate } from "../utils";
 
 export const useFilteredRuns = (
   runs: SimilarityRun[],
@@ -27,7 +28,7 @@ export const useFilteredRuns = (
       if (searchText && !matchesText(run, searchText)) return false;
       if (!matchesDate(run, start, end)) return false;
       if (
-        ownerFilter === "mine" &&
+        ownerFilter === OWNER_MINE &&
         currentUser &&
         run.created_by !== currentUser
       )

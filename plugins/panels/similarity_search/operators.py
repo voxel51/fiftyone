@@ -98,11 +98,15 @@ class SimilaritySearchOperator(foo.Operator):
 
             dataset = ctx.dataset
 
-            # Always sort against the base dataset view.
-            # source_view is stored in the run record for context
-            # but not used for the sort itself, because the brain
-            # index may have been computed on the base dataset.
-            view = dataset.view()
+            # Determine the base view for the search.
+            # "view" uses ctx.view (includes view stages, sidebar
+            # filters, and extended stages from the app).
+            # "dataset" (default) uses the bare dataset view.
+            search_scope = ctx.params.get("search_scope", "dataset")
+            if search_scope == "view":
+                view = ctx.view
+            else:
+                view = dataset.view()
 
             ctx.set_progress(0.2, label="Preparing query...")
 
@@ -145,7 +149,16 @@ class SimilaritySearchOperator(foo.Operator):
 
             ctx.set_progress(0.7, label="Collecting results...")
 
-            dynamic_results = ctx.params.get("dynamic_results", True)
+            # dynamic_results controls how results are persisted:
+            #   True  → save the serialized SortBySimilarity view stages;
+            #           results are recomputed on apply, always reflecting
+            #           the latest dataset state (slower to load).
+            #   False → save a static list of result IDs; results are
+            #           fixed at search time (faster to load).
+            # The UI toggle for this is currently commented out in
+            # NewSearch.tsx — awaiting user feedback before deciding
+            # whether to remove it entirely.
+            dynamic_results = ctx.params.get("dynamic_results", False)
 
             result_ids = []
             result_view_stages = None
