@@ -3,7 +3,6 @@ import { useRecoilValue } from "recoil";
 import * as fos from "@fiftyone/state";
 import {
   CloneConfig,
-  QueryType,
   RunStatus,
   SimilaritySearchViewProps,
   SimilarityRun,
@@ -213,14 +212,9 @@ const useSimilarityPanelActions = (deps: PanelActionsDeps) => {
     (runId: string) => {
       const run = runs.find((r) => r.run_id === runId);
       if (!run) return;
-      // Upload queries can't be re-run without the original image; fall
-      // back to Image search so the form prompts the user to select
-      // samples rather than silently coercing to the wrong query_type.
-      const queryType =
-        run.query_type === QueryType.Upload ? QueryType.Image : run.query_type;
       setCloneConfig({
         brain_key: run.brain_key,
-        query_type: queryType,
+        query_type: run.query_type,
         query: typeof run.query === "string" ? run.query : undefined,
         k: run.k,
         reverse: run.reverse,
