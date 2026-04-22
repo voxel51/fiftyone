@@ -1,4 +1,4 @@
-import { atom, useAtom } from "jotai";
+import { atom, getDefaultStore, useAtom } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { useOperatorExecutor } from "@fiftyone/operators";
@@ -10,6 +10,7 @@ import {
 } from "@fiftyone/state";
 import { LIST_RUNS_OPERATOR_URI, SSE_OPERATOR_URI } from "../constants";
 import { SimilarityRun } from "../types";
+import { filterStateAtom } from "./useFilteredRuns";
 
 const runsAtom = atom<SimilarityRun[]>([]);
 const loadedAtom = atom(false);
@@ -67,9 +68,14 @@ export const useRuns = (): UseRunsResult => {
     }
     fetchingRef.current = true;
 
+    // Owner filter is applied server-side. Read the latest value at
+    // call time so SSE-driven refreshes always pick up the current
+    // selection without needing to live in React state.
+    const { ownerFilter } = getDefaultStore().get(filterStateAtom);
+
     const promise = new Promise<void>((resolve, reject) => {
       fetchRuns(
-        {},
+        { owner: ownerFilter },
         {
           callback: (result?: Record<string, unknown>) => {
             fetchingRef.current = false;

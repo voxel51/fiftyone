@@ -106,9 +106,26 @@ class SimilaritySearchPanel(Panel):
             return None
         return getattr(ctx.user, "name", None) or str(ctx.user_id)
 
-    def on_load(self, ctx):
+    def _list_runs(self, ctx, owner=None, can_manage=None):
+        """Permission-aware wrapper over :class:`RunManager.list_runs`.
+
+        Resolves ``can_manage`` from the context when not provided so
+        callers inside the panel don't have to repeat the lookup.
+        """
+        if can_manage is None:
+            can_manage = _has_manage_permission(ctx)
         manager = RunManager(ctx)
-        runs = manager.list_runs()
+        return manager.list_runs(
+            owner=owner,
+            current_user_id=self._current_user_id(ctx),
+            can_manage=can_manage,
+        )
+
+    def on_load(self, ctx):
+        can_manage = _has_manage_permission(ctx)
+        # Match the FE's default `ownerFilter` (OWNER_MINE) so we don't
+        # flash all runs before the FE's first refresh.
+        runs = self._list_runs(ctx, owner="mine", can_manage=can_manage)
         brain_keys = self._get_brain_keys(ctx)
 
         ctx.panel.set_data("runs", runs)
@@ -118,7 +135,6 @@ class SimilaritySearchPanel(Panel):
         # the name is nicer than the id when we have one.
         ctx.panel.set_data("current_user", self._current_user_name(ctx))
 
-        can_manage = _has_manage_permission(ctx)
         ctx.panel.set_data("can_manage", can_manage)
 
         # Enable alt-selection visual feedback for negative queries
@@ -141,14 +157,10 @@ class SimilaritySearchPanel(Panel):
         """Refresh the runs list.
 
         Accepts an optional ``owner`` param (``"mine"`` or ``"all"``) to
-        filter runs server-side.
+        filter runs server-side. Non-managers are always restricted to
+        their own runs regardless of the requested filter.
         """
-        owner = ctx.params.get("owner")
-        manager = RunManager(ctx)
-        runs = manager.list_runs(
-            owner=owner,
-            current_user_id=self._current_user_id(ctx),
-        )
+        runs = self._list_runs(ctx, owner=ctx.params.get("owner"))
         ctx.panel.set_data("runs", runs)
 
     def apply_run(self, ctx):

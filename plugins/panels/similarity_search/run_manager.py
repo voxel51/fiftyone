@@ -163,6 +163,7 @@ class RunManager:
         self,
         owner: Optional[str] = None,
         current_user_id: Optional[str] = None,
+        can_manage: bool = True,
     ) -> List[Dict]:
         """List runs sorted by creation time (newest first).
 
@@ -172,10 +173,17 @@ class RunManager:
                 every run.
             current_user_id: the current user's id. Required when
                 ``owner == "mine"``; ignored otherwise.
+            can_manage: whether the current user has manage
+                permissions. Non-managers are always restricted to
+                their own runs regardless of ``owner``.
 
         Returns:
             list of run data dicts
         """
+        # Users without manage permission can only see their own runs
+        if not can_manage:
+            owner = "mine"
+
         filter_mine = owner == "mine" and bool(current_user_id)
 
         keys = self._store.list_keys()

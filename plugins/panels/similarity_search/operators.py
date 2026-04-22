@@ -16,6 +16,7 @@ import fiftyone.operators as foo
 
 from .constants import STORE_NAME, RunStatus
 from .run_manager import RunManager
+from . import _has_manage_permission
 
 logger = logging.getLogger(__name__)
 
@@ -401,12 +402,15 @@ class ListSimilarityRunsOperator(foo.Operator):
         )
 
     def execute(self, ctx):
+        # Import locally to avoid a circular import at module load
+
         owner = ctx.params.get("owner")
         manager = RunManager(ctx)
         return {
             "runs": manager.list_runs(
                 owner=owner,
                 current_user_id=str(ctx.user_id) if ctx.user_id else None,
+                can_manage=_has_manage_permission(ctx),
             )
         }
 
