@@ -6,7 +6,6 @@ import {
   ImageOverlay,
   UNDEFINED_LIGHTER_SCENE_ID,
   overlayFactory,
-  useLighter,
   useLighterEventHandler,
   useLighterSetupWithPixi,
 } from "@fiftyone/lighter";
@@ -47,41 +46,12 @@ export const LighterSampleRenderer = ({
   const [isCanvasHovered, setIsCanvasHovered] = useState(false);
   const [isRevealed, setIsRevealed] = useState(false);
 
-  const { scene, isReady, addOverlay } = useLighter();
-
   // use a ref for the sample data, effects do not run solely because the
   // sample changed
   const sampleRef = useRef(sample);
   sampleRef.current = sample;
 
   const onReveal = useCallback(() => setIsRevealed(true), []);
-
-  /**
-   * This effect is responsible for loading the sample and adding the overlays to the scene.
-   */
-  useEffect(() => {
-    if (!isReady || !scene) return;
-
-    const sample = sampleRef.current;
-    const mediaUrl =
-      sample.urls.length > 0 && sample.urls[0].url
-        ? getSampleSrc(sample.urls[0].url)
-        : null;
-
-    if (mediaUrl) {
-      const mediaOverlay = overlayFactory.create<ImageOptions, ImageOverlay>(
-        "image",
-        {
-          src: mediaUrl,
-          maintainAspectRatio: true,
-        }
-      );
-      addOverlay(mediaOverlay, false);
-
-      // Set the image overlay as canonical media for coordinate transformations
-      scene.setCanonicalMedia(mediaOverlay);
-    }
-  }, [isReady, addOverlay, scene]);
 
   useEffect(() => {
     // sceneId should be deterministic, but unique for a given sample snapshot
@@ -148,6 +118,33 @@ const LighterSetupImpl = (props: {
   const canvas = singletonCanvas.getCanvas(containerRef.current ?? undefined);
 
   const { scene } = useLighterSetupWithPixi(canvas, mergedOptions, sceneId);
+
+  // Add the canonical image overlay to the scene that belongs to *this* mount.
+  // The identity guard prevents firing against a stale scene that the
+  // lighterSceneAtom may still hold from a previous mount
+  useEffect(() => {
+    if (!scene || scene.getSceneId() !== sceneId) return;
+
+    const sample = sampleRef.current;
+    const mediaUrl =
+      sample.urls.length > 0 && sample.urls[0].url
+        ? getSampleSrc(sample.urls[0].url)
+        : null;
+
+    if (!mediaUrl) return;
+
+    const mediaOverlay = overlayFactory.create<ImageOptions, ImageOverlay>(
+      "image",
+      {
+        src: mediaUrl,
+        maintainAspectRatio: true,
+      }
+    );
+    scene.addOverlay(mediaOverlay);
+
+    // Set the image overlay as canonical media for coordinate transformations
+    scene.setCanonicalMedia(mediaOverlay);
+  }, [scene, sceneId]);
 
   const useEventHandler = useLighterEventHandler(
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
