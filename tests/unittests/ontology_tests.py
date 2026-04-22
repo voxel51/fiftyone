@@ -357,6 +357,27 @@ class OntologyDocumentTests(unittest.TestCase):
         )
         self.assertEqual(latest.description, "updated")
 
+    def test_save_bumps_version_across_case_only_rename(self):
+        doc = OntologyDocument(
+            name="My Ontology",
+            version=1,
+            type="taxonomy",
+            root={"name": "root"},
+        )
+        doc.save()
+        original_slug = doc.slug
+
+        # Renaming to a case variant of the original name keeps the same slug;
+        # the next version should chain off the existing slug, not restart at 1.
+        doc.name = "my ontology"
+        new_doc = doc.save()
+
+        self.assertEqual(new_doc.slug, original_slug)
+        self.assertEqual(new_doc.version, 2)
+        self.assertEqual(
+            OntologyDocument.objects(slug=original_slug).count(), 2
+        )
+
 
 if __name__ == "__main__":
     fo_unittest = unittest.TestLoader().loadTestsFromTestCase(

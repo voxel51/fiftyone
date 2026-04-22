@@ -79,7 +79,7 @@ class OntologyDocument(Document):
             self.slug = fou.to_slug(self.name)
 
         # If this document already exists in MongoDB, don't update it in-place;
-        # create and save a new (name, version) document instead.
+        # create and save a new (slug, version) document instead.
         if self.in_db:
             return self._save_as_new_version(now, *args, **kwargs)
 
@@ -96,7 +96,7 @@ class OntologyDocument(Document):
         # Append-only versioning: create a new document instead of updating the
         # existing one.
         latest = (
-            OntologyDocument.objects(name=self.name)
+            OntologyDocument.objects(slug=self.slug)
             .order_by("-version")
             .only("version")
             .first()
