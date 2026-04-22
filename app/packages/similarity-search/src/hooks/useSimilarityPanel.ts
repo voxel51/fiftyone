@@ -1,13 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import * as fos from "@fiftyone/state";
-import { RunStatus, SimilaritySearchViewProps, SimilarityRun } from "../types";
+import {
+  CloneConfig,
+  QueryType,
+  RunStatus,
+  SimilaritySearchViewProps,
+  SimilarityRun,
+} from "../types";
 import { useNavigate } from "./useNavigate";
 import { useRuns } from "./useRuns";
 import { useFilteredRuns } from "./useFilteredRuns";
 import { useMultiSelect } from "./useMultiSelect";
 import { useCloneConfig } from "./useCloneConfig";
-import useTriggers from "./useTriggers";
+import useTriggers, { TriggerOptions } from "./useTriggers";
 
 // ─── Derived State ──────────────────────────────────────────────────
 
@@ -117,18 +123,18 @@ type PanelActionsDeps = {
   navigateHome: () => void;
   navigateNewSearch: () => void;
   triggers: {
-    applyRun: (payload: { run_id: string }) => void;
-    deleteRun: (payload: { run_id: string }) => void;
-    bulkDeleteRuns: (payload: { run_ids: string[] }) => void;
+    applyRun: (payload: { run_id: string }, options?: TriggerOptions) => void;
+    deleteRun: (payload: { run_id: string }, options?: TriggerOptions) => void;
+    bulkDeleteRuns: (
+      payload: { run_ids: string[] },
+      options?: TriggerOptions
+    ) => void;
+    renameRun: (
+      payload: { run_id: string; new_name: string },
+      options?: TriggerOptions
+    ) => void;
   };
-  setCloneConfig: (config: {
-    brain_key: string;
-    query_type: "text" | "image";
-    query?: string;
-    k?: number;
-    reverse: boolean;
-    dist_field?: string;
-  }) => void;
+  setCloneConfig: (config: CloneConfig) => void;
   clearCloneConfig: () => void;
   clearAndExit: () => void;
 };
@@ -160,35 +166,67 @@ const useSimilarityPanelActions = (deps: PanelActionsDeps) => {
 
   const handleDelete = useCallback(
     (runId: string) => {
-      triggers.deleteRun({ run_id: runId });
+      // Optimistic remove; on backend failure we re-sync from truth.
       removeRun(runId);
+      triggers.deleteRun(
+        { run_id: runId },
+        {
+          onSettled: (result) => {
+            if (result?.error) {
+              console.error(
+                "Delete run failed; reconciling from server:",
+                result.error
+              );
+              refreshRuns();
+            }
+          },
+        }
+      );
     },
-    [triggers, removeRun]
+    [triggers, removeRun, refreshRuns]
   );
 
   const handleBulkDelete = useCallback(
     (runIds: string[]) => {
-      triggers.bulkDeleteRuns({ run_ids: runIds });
+      // Optimistic remove; on backend failure we re-sync from truth.
       removeRuns(runIds);
       clearAndExit();
+      triggers.bulkDeleteRuns(
+        { run_ids: runIds },
+        {
+          onSettled: (result) => {
+            if (result?.error) {
+              console.error(
+                "Bulk delete failed; reconciling from server:",
+                result.error
+              );
+              refreshRuns();
+            }
+          },
+        }
+      );
     },
-    [triggers, removeRuns, clearAndExit]
+    [triggers, removeRuns, clearAndExit, refreshRuns]
   );
 
   const handleClone = useCallback(
     (runId: string) => {
       const run = runs.find((r) => r.run_id === runId);
-      if (run) {
-        setCloneConfig({
-          brain_key: run.brain_key,
-          query_type: run.query_type as "text" | "image",
-          query: typeof run.query === "string" ? run.query : undefined,
-          k: run.k,
-          reverse: run.reverse,
-          dist_field: run.dist_field,
-        });
-        navigateNewSearch();
-      }
+      if (!run) return;
+      // Upload queries can't be re-run without the original image; fall
+      // back to Image search so the form prompts the user to select
+      // samples rather than silently coercing to the wrong query_type.
+      const queryType =
+        run.query_type === QueryType.Upload ? QueryType.Image : run.query_type;
+      setCloneConfig({
+        brain_key: run.brain_key,
+        query_type: queryType,
+        query: typeof run.query === "string" ? run.query : undefined,
+        k: run.k,
+        reverse: run.reverse,
+        dist_field: run.dist_field,
+      });
+      navigateNewSearch();
     },
     [runs, setCloneConfig, navigateNewSearch]
   );
@@ -253,23 +291,29 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
     deselectAll,
   } = useMultiSelect();
 
+  // Only the triggers that the frontend actually invokes are declared
+  // here. clone/list/getBrainKeys schema entries are handled without
+  // round-tripping through the panel event bus.
   const triggers = useTriggers<{
-    applyRun: (payload: { run_id: string }) => void;
-    deleteRun: (payload: { run_id: string }) => void;
-    bulkDeleteRuns: (payload: { run_ids: string[] }) => void;
-    cloneRun: (payload: { run_id: string }) => void;
-    renameRun: (payload: { run_id: string; new_name: string }) => void;
-    listRuns: (payload?: { owner?: string }) => void;
-    getBrainKeys: () => void;
-    getSampleMedia: (payload: { sample_ids: string[] }) => void;
+    applyRun: (payload: { run_id: string }, options?: TriggerOptions) => void;
+    deleteRun: (payload: { run_id: string }, options?: TriggerOptions) => void;
+    bulkDeleteRuns: (
+      payload: { run_ids: string[] },
+      options?: TriggerOptions
+    ) => void;
+    renameRun: (
+      payload: { run_id: string; new_name: string },
+      options?: TriggerOptions
+    ) => void;
+    getSampleMedia: (
+      payload: { sample_ids: string[] },
+      options?: TriggerOptions
+    ) => void;
   }>({
     applyRun: view.apply_run,
     deleteRun: view.delete_run,
     bulkDeleteRuns: view.bulk_delete_runs,
-    cloneRun: view.clone_run,
     renameRun: view.rename_run,
-    listRuns: view.list_runs,
-    getBrainKeys: view.get_brain_keys,
     getSampleMedia: view.get_sample_media,
   });
 

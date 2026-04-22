@@ -29,7 +29,12 @@ import {
   RunFilterState,
 } from "../../types";
 import { useSampleMedia } from "../../hooks/useSampleMedia";
-import { HIGHLIGHT_STYLE, MIDDLE_DOT, POINTER_STYLE } from "../../constants";
+import {
+  HIGHLIGHT_STYLE,
+  MAX_RUN_NAME_LENGTH,
+  MIDDLE_DOT,
+  POINTER_STYLE,
+} from "../../constants";
 import { formatQuery, formatTime } from "../../utils";
 import StatusBadge from "./StatusBadge";
 import RunActions from "./RunActions";
@@ -52,8 +57,6 @@ function QueryTypeIcon({ queryType }: { queryType: string }) {
     />
   );
 }
-
-const MAX_RUN_NAME_LENGTH = 40;
 
 function RunName({
   name,
