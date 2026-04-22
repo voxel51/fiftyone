@@ -2,12 +2,12 @@ import { _registerBuiltInOperator } from "../operators";
 
 import * as colorSchemeOps from "./color-scheme";
 import * as spaces from "./spaces";
-import * as common from "./common";
+import * as dataset from "./dataset";
 
 const builtInOperators = {
   ...colorSchemeOps,
   ...spaces,
-  ...common,
+  ...dataset,
 };
 
 for (const [name, op] of Object.entries(builtInOperators)) {
