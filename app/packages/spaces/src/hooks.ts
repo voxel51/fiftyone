@@ -533,3 +533,27 @@ export function usePanelAreaRenderer(areaId: string) {
 
   return { setRenderer, unsetRenderer, currentRendererId, CurrentRenderer };
 }
+
+export function useInitializePanel() {
+  return useRecoilCallback(
+    ({ set, snapshot }) =>
+      async (
+        panelId: string,
+        scope?: string,
+        state?: Record<string, unknown>,
+        data?: Record<string, unknown>
+      ) => {
+        const currentIdToScope = await snapshot.getPromise(panelIdToScopeAtom);
+        set(panelIdToScopeAtom, {
+          ...currentIdToScope,
+          [panelId]: scope as string,
+        });
+        if (state) {
+          set(panelStateSelector({ panelId, local: false, scope }), state);
+        }
+        if (data) {
+          set(panelStateSelector({ panelId, local: true, scope }), data);
+        }
+      }
+  );
+}

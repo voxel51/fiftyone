@@ -1,6 +1,7 @@
 import {
   Layout,
   SpaceNode,
+  useInitializePanel,
   usePanelTitle,
   usePanels,
   useSetPanelStateById,
@@ -40,7 +41,8 @@ import usePanelEvent from "./usePanelEvent";
 
 import type { ExecutionContext, OpenPanelHooks, OpenPanelParams } from "./ts";
 
-const { FIFTYONE_GRID_SPACES_ID, FIFTYONE_MODAL_SPACES_ID } = fos.constants;
+const { FIFTYONE_GRID_SPACES_ID, FIFTYONE_MODAL_SPACES_ID, PANEL_SURFACE } =
+  fos.constants;
 
 //
 // BUILT-IN OPERATORS
@@ -150,8 +152,7 @@ class OpenPanel extends Operator {
     const modalSpaces = useSpaces(FIFTYONE_MODAL_SPACES_ID).spaces;
     const openedGridPanels = useSpaceNodes(FIFTYONE_GRID_SPACES_ID);
     const openedModalPanels = useSpaceNodes(FIFTYONE_MODAL_SPACES_ID);
-    const setPanelStateById = useSetPanelStateById();
-    const setPanelStateLocalById = useSetPanelStateById(true);
+    const initializePanel = useInitializePanel();
 
     return {
       availablePanels,
@@ -160,8 +161,7 @@ class OpenPanel extends Operator {
       modalSpaces,
       openedGridPanels,
       openedModalPanels,
-      setPanelStateById,
-      setPanelStateLocalById,
+      initializePanel,
     };
   }
   findFirstPanelContainer(node: SpaceNode): SpaceNode | null {
@@ -184,8 +184,7 @@ class OpenPanel extends Operator {
       modalSpaces,
       openedGridPanels,
       openedModalPanels,
-      setPanelStateById,
-      setPanelStateLocalById,
+      initializePanel,
     } = hooks;
     const {
       data,
@@ -206,8 +205,8 @@ class OpenPanel extends Operator {
     if (!panel && !force) {
       throw new Error(`Panel with name ${name} does not exist`);
     }
-    const surfaces = panel?.panelOptions?.surfaces || "grid";
-    if (isModalOpen && !surfaces.includes("modal")) {
+    const surfaces = panel?.panelOptions?.surfaces || PANEL_SURFACE.GRID;
+    if (isModalOpen && !surfaces.includes(PANEL_SURFACE.MODAL)) {
       throw new Error(`Panel with name ${name} cannot be opened in a modal`);
     }
     const openedPanel = openedPanels.find(({ type }) => type === name);
@@ -219,12 +218,8 @@ class OpenPanel extends Operator {
       return;
     }
     const newNode = new SpaceNode();
-    if (state) {
-      setPanelStateById(newNode.id, () => state);
-    }
-    if (data) {
-      setPanelStateLocalById(newNode.id, () => data);
-    }
+    const scope = isModalOpen ? PANEL_SURFACE.MODAL : PANEL_SURFACE.GRID;
+    await initializePanel(newNode.id, scope, state, data);
     newNode.type = name;
     spaces.addNodeAfter(targetSpace, newNode, isActive);
     if (layout) {
@@ -1010,11 +1005,15 @@ function useUpdatePanelStatePartial(local?: boolean) {
     targetParam = targetParam || targetPartial;
     setTimeout(() => {
       const panelId = ctx.getCurrentPanelId();
+      const fullMerge = ctx.params.fullMerge ?? ctx.params.full_merge ?? false;
       setPanelStateById(panelId, (current = {}) => {
         const currentCustomPanelState = current?.[targetPartial] || {};
         let updatedState;
         const providedData = ctx.params[targetParam];
-        if (set) {
+        if (fullMerge) {
+          // fullMerge = deep merge at root level
+          return merge({}, current, providedData);
+        } else if (set) {
           // set = replace entire state
           updatedState = providedData;
         } else if (deepMerge) {
