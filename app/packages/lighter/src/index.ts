@@ -47,6 +47,7 @@ export { InteractionManager } from "./interaction/InteractionManager";
 export type { InteractionHandler } from "./interaction/InteractionManager";
 export { InteractiveDetectionHandler } from "./interaction/InteractiveDetectionHandler";
 export { InteractiveKeypointHandler } from "./interaction/InteractiveKeypointHandler";
+export type { KeypointVariantResolverContext } from "./interaction/InteractiveKeypointHandler";
 
 // Selection exports
 export type { Selectable } from "./selection/Selectable";

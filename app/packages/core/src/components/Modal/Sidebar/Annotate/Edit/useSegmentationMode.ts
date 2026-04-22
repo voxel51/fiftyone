@@ -8,7 +8,11 @@ import {
   usePointSelection,
   useToolsState,
 } from "@fiftyone/annotation/src/agents";
-import { BoundingBoxOverlay } from "@fiftyone/lighter";
+import {
+  BoundingBoxOverlay,
+  KeypointVariantResolverContext,
+  Point,
+} from "@fiftyone/lighter";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { atom, useAtom } from "jotai";
 import { useAnnotationContext } from "./state";
@@ -49,15 +53,26 @@ export const useSegmentationMode = (): SegmentationMode => {
   selectedLabelRef.current = selectedLabel;
 
   // Points placed on the current label's mask are interpreted as negative;
-  // points placed off-mask are positive
+  // points placed off-mask are positive.
+  // Holding shift inverts the result.
   const resolvePointVariant = useCallback(
-    (relativePoint: { x: number; y: number }): PointSelectionVariant => {
+    (
+      relativePoint: Point,
+      { shiftKey }: KeypointVariantResolverContext
+    ): PointSelectionVariant => {
       const label = selectedLabelRef.current;
-      if (!label || !(label.overlay instanceof BoundingBoxOverlay)) {
-        return POSITIVE_POINT_VARIANT;
-      }
+      const onMask =
+        label && label.overlay instanceof BoundingBoxOverlay
+          ? label.overlay.containsMaskPixel(relativePoint)
+          : false;
 
-      return label.overlay.containsMaskPixel(relativePoint)
+      const variant = onMask ? NEGATIVE_POINT_VARIANT : POSITIVE_POINT_VARIANT;
+
+      return !shiftKey
+        ? // normal variant if shift key is not pressed
+          variant
+        : // otherwise invert the variant
+        variant === POSITIVE_POINT_VARIANT
         ? NEGATIVE_POINT_VARIANT
         : POSITIVE_POINT_VARIANT;
     },
