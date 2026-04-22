@@ -8,7 +8,11 @@ import {
   datasetId as datasetIdAtom,
   datasetName as datasetNameAtom,
 } from "@fiftyone/state";
-import { LIST_RUNS_OPERATOR_URI, SSE_OPERATOR_URI } from "../constants";
+import {
+  LIST_RUNS_OPERATOR_URI,
+  RUNS_REFRESH_MAX_RETRY,
+  SSE_OPERATOR_URI,
+} from "../constants";
 import { SimilarityRun } from "../types";
 import { filterStateAtom } from "./useFilteredRuns";
 
@@ -57,7 +61,6 @@ export const useRuns = (): UseRunsResult => {
   const pendingRef = useRef(false);
   const inFlightRef = useRef<Promise<void> | null>(null);
   const errorCountRef = useRef(0);
-  const MAX_RETRY = 5;
 
   const refreshRuns = useCallback(() => {
     // If a fetch is already in flight, queue a follow-up refresh
@@ -82,6 +85,9 @@ export const useRuns = (): UseRunsResult => {
 
             if (result?.error) {
               console.error("Error fetching similarity runs:", result.error);
+              // Still mark the panel as loaded so the UI can render an
+              // empty/error state instead of spinning forever.
+              setLoaded(true);
               reject(new Error(String(result.error)));
               return;
             }
@@ -104,6 +110,7 @@ export const useRuns = (): UseRunsResult => {
       ).catch((error: unknown) => {
         fetchingRef.current = false;
         console.error("Operator execution failed for fetchRuns:", error);
+        setLoaded(true);
         reject(error instanceof Error ? error : new Error(String(error)));
       });
     });
@@ -124,7 +131,10 @@ export const useRuns = (): UseRunsResult => {
       })
       .finally(() => {
         inFlightRef.current = null;
-        if (pendingRef.current && errorCountRef.current < MAX_RETRY) {
+        if (
+          pendingRef.current &&
+          errorCountRef.current < RUNS_REFRESH_MAX_RETRY
+        ) {
           pendingRef.current = false;
           refreshRuns();
         } else {

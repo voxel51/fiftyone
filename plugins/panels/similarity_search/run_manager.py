@@ -40,7 +40,7 @@ class RunManager:
     _OPID_PREFIX = "opid:"
 
     # Fields too large for listing — only needed by get_run / apply_run
-    _HEAVY_FIELDS = {"result_ids", "result_view", "source_view"}
+    _HEAVY_FIELDS = {"result_ids", "result_view"}
 
     def __init__(self, ctx):
         dataset_id = get_head_dataset_id(ctx.dataset)
@@ -75,7 +75,6 @@ class RunManager:
             "creation_time": now,
             "start_time": None,
             "end_time": None,
-            "source_view": run_params.get("source_view"),
             "negative_query_ids": run_params.get("negative_query_ids"),
             "operator_run_id": None,
             "status_details": None,

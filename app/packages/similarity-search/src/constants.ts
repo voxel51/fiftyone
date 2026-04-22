@@ -44,6 +44,21 @@ export const THUMB_SIZE = 36;
 export const THUMB_GAP = 4;
 export const THUMB_SINGLE_ROW_MAX = 10;
 
+// Maximum characters to display in a run name before truncation +
+// tooltip fallback. Used in the run list and the rename tooltip.
+export const MAX_RUN_NAME_LENGTH = 40;
+
+// Maximum entries held by the sample-media LRU cache.
+export const SAMPLE_MEDIA_CACHE_MAX_ENTRIES = 500;
+
+// Consecutive fetch failures after which we stop auto-retrying
+// list_similarity_runs. The user can still manually refresh.
+export const RUNS_REFRESH_MAX_RETRY = 5;
+
+// Bounds on the `k` (number of matches) input on the new-search form.
+export const K_MIN = 1;
+export const K_MAX = 10_000;
+
 // Filter defaults
 export const DEFAULT_DATE_PRESET: DateFilterPreset = "last_30_days";
 export const OWNER_ALL: OwnerFilter = "all";
