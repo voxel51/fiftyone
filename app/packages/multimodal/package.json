@@ -1,0 +1,10 @@
+{
+    "name": "@fiftyone/multimodal",
+    "version": "0.0.0",
+    "private": true,
+    "main": "./src/index.ts",
+    "scripts": {
+        "lint": "yarn check:deps",
+        "check:deps": "cd ../.. && yarn exec depcruise --config packages/multimodal/.dependency-cruiser.cjs packages/multimodal"
+    }
+}
