@@ -7,6 +7,7 @@ wrapper for the FiftyOne Model Zoo.
 |
 """
 
+import functools
 import logging
 
 import cv2
@@ -45,9 +46,46 @@ class SegmentAnything2ImageModelConfig(fosam.SegmentAnythingModelConfig):
 class _SAM2Predictor(fosam._SAMPredictor):
     """Wrapper for ``sam2.sam2_image_predictor.SAM2ImagePredictor``.
 
+    Prompt preprocessing is implemented as ``@staticmethod`` helpers
+    (``_sam2_*``) so :meth:`SegmentAnything2ImageModel.build_get_item` can
+    pass the same callables to workers without pickling TorchScript
+    ``SAM2Transforms`` (required when multiprocessing uses ``spawn``).
+
     Args:
         model: a :class:`sam2.modeling.sam2_base.SAM2Base` model
     """
+
+    @staticmethod
+    def _sam2_image_transform(img):
+        """Pass-through image and ``(H, W)``; SAM2 resizes in ``set_image``."""
+        return img, img.shape[:2]
+
+    @staticmethod
+    def _sam2_boxes_transform(boxes_xyxy, orig_hw, *, resolution):
+        """Normalize XYXY boxes to ``[0,1]`` then scale by ``resolution`` (SAM2-aligned)."""
+        boxes = torch.as_tensor(boxes_xyxy, dtype=torch.float32)
+        h, w = orig_hw
+        coords = boxes.reshape(-1, 2, 2).clone()
+        coords[..., 0] = coords[..., 0] / w
+        coords[..., 1] = coords[..., 1] / h
+        return coords * resolution
+
+    @staticmethod
+    def _sam2_point_transform(
+        points, img_hw, point_labels=None, *, resolution
+    ):
+        """Normalize keypoints then scale by ``resolution`` (SAM2-aligned)."""
+        _ = img_hw
+        norm_points, labels = fosam._to_sam_points(
+            points,
+            height=1,
+            width=1,
+            point_labels=point_labels,
+        )
+        unnorm_points = (
+            torch.as_tensor(norm_points, dtype=torch.float32) * resolution
+        )
+        return unnorm_points, torch.tensor(labels, dtype=torch.int)
 
     def __init__(self, model):
         self.processor = smip.SAM2ImagePredictor(model)
@@ -57,6 +95,11 @@ class _SAM2Predictor(fosam._SAMPredictor):
             if hasattr(self.processor, "_transforms")
             else smip.SAM2Transforms(model.image_size, mask_threshold=0)
         )
+
+    @property
+    def _sam2_resolution(self):
+        """Input resolution scale from ``SAM2Transforms`` (shared by picklable helpers)."""
+        return float(self.sam_transforms.resolution)
 
     def image_transform(self, img):
         """Transforms image for SAM2 model input.
@@ -68,9 +111,7 @@ class _SAM2Predictor(fosam._SAMPredictor):
             a uint8 numpy array containing image in HWC format
             a tuple containing original image dimensions
         """
-        # SAM2 does image pre-processing when it calls SAM2ImagePredictor.set_image.
-        # No straight-forward way to decouple them other than extracting the functionality.
-        return img, img.shape[:2]
+        return self._sam2_image_transform(img)
 
     def box_transform(self, boxes_xyxy, img_hw):
         """Transforms boxes for SAM2 model prompts.
@@ -82,10 +123,8 @@ class _SAM2Predictor(fosam._SAMPredictor):
         Returns:
             resized boxes for SAM2 as a Bx4 tensor
         """
-        return self.sam_transforms.transform_boxes(
-            torch.tensor(boxes_xyxy, dtype=torch.float),
-            normalize=True,
-            orig_hw=img_hw,
+        return self._sam2_boxes_transform(
+            boxes_xyxy, img_hw, resolution=self._sam2_resolution
         )
 
     def point_transform(self, points, img_hw, point_labels=None):
@@ -100,15 +139,11 @@ class _SAM2Predictor(fosam._SAMPredictor):
             a torch tensor containing points in XYXY pixels for SAM2 model
             a torch tensor containing positive and negative labels
         """
-        norm_points, labels = fosam._to_sam_points(
+        return self._sam2_point_transform(
             points,
-            height=1,
-            width=1,
-            point_labels=point_labels,
-        )
-        unnorm_points = self.sam_transforms.transform_coords(norm_points)
-        return torch.tensor(unnorm_points, dtype=torch.float64), torch.tensor(
-            labels, dtype=torch.int
+            img_hw,
+            point_labels,
+            resolution=self._sam2_resolution,
         )
 
 
@@ -192,6 +227,38 @@ class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
 
     def _load_predictor(self):
         return _SAM2Predictor(self._model)
+
+    def build_get_item(self, field_mapping=None):
+        """Same as :meth:`fosam.SegmentAnythingModel.build_get_item` but uses picklable
+        transform callables so ``FiftyOneTorchDataset`` works with ``spawn`` workers.
+
+        Bound methods on :class:`_SAM2Predictor` would pull in ``SAM2Transforms``
+        (TorchScript) and break pickling on platforms that use the ``spawn``
+        multiprocessing start method.
+        """
+        resolution = self._sam_predictor._sam2_resolution
+        merged_args = dict(self.config.get_item_args or {})
+        merged_args.setdefault(
+            "transform", _SAM2Predictor._sam2_image_transform
+        )
+        merged_args.setdefault(
+            "box_transform",
+            functools.partial(
+                _SAM2Predictor._sam2_boxes_transform, resolution=resolution
+            ),
+        )
+        merged_args.setdefault(
+            "point_transform",
+            functools.partial(
+                _SAM2Predictor._sam2_point_transform, resolution=resolution
+            ),
+        )
+        prev_args = self.config.get_item_args
+        self.config.get_item_args = merged_args
+        try:
+            return super().build_get_item(field_mapping=field_mapping)
+        finally:
+            self.config.get_item_args = prev_args
 
     def _load_auto_generator(self):
         kwargs = self.config.auto_kwargs or {}
