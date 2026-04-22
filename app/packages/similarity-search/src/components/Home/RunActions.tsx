@@ -42,7 +42,7 @@ export default function RunActions({
 }: RunActionsProps) {
   const isImage = run.query_type === QueryType.Image && !run.patches_field;
   // Upload runs can't be cloned — the original image isn't persisted.
-  const canClone = run.query_type !== QueryType.Upload;
+  const isUpload = run.query_type === QueryType.Upload;
 
   return (
     <Stack
@@ -61,17 +61,26 @@ export default function RunActions({
             disabled={run.status !== RunStatus.Completed}
           />
         </Tooltip>
-        {canClone && (
-          <Tooltip content={tip("Clone search")}>
+        <Tooltip
+          content={tip(
+            isUpload
+              ? "Clone is not supported for file upload searches"
+              : "Clone search"
+          )}
+        >
+          {/* span wrapper lets the tooltip still fire on hover when the
+              underlying button is disabled */}
+          <span>
             <Button
               aria-label="Clone search"
               size={Size.Md}
               variant={Variant.Borderless}
               leadingIcon={IconName.ContentCopy}
               onClick={stop(() => onClone(run.run_id))}
+              disabled={isUpload}
             />
-          </Tooltip>
-        )}
+          </span>
+        </Tooltip>
         <Tooltip content={tip("Delete")}>
           <Button
             aria-label="Delete"
