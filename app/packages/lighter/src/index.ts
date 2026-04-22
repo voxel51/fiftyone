@@ -55,6 +55,8 @@ export { SelectionManager } from "./selection/SelectionManager";
 export type { SelectionOptions } from "./selection/SelectionManager";
 
 // Command exports
+export { AddKeypointPointCommand } from "./commands/AddKeypointPointCommand";
+export { MoveKeypointPointCommand } from "./commands/MoveKeypointPointCommand";
 export { MoveOverlayCommand } from "./commands/MoveOverlayCommand";
 export { TransformOverlayCommand } from "./commands/TransformOverlayCommand";
 export { UpdateLabelCommand } from "./commands/UpdateLabelCommand";
