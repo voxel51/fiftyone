@@ -13,6 +13,12 @@ export { default as EditableLabel } from "./EditableLabel";
 export { default as ErrorBoundary, ErrorDisplayMarkup } from "./ErrorBoundary";
 export { default as ExternalLink, useExternalLink } from "./ExternalLink";
 export { default as FilterAndSelectionIndicator } from "./FilterAndSelectionIndicator";
+export { ActionToolbar } from "./ActionToolbar";
+export type {
+  ActionToolbarProps,
+  AnnotationAction,
+  AnnotationActionGroup,
+} from "./ActionToolbar";
 export { FloatingToolbar } from "./FloatingToolbar";
 export type {
   FloatingToolbarActionProps,
