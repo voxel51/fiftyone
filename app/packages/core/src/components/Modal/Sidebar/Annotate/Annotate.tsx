@@ -16,6 +16,7 @@ import { useAnnotationContextManager } from "./useAnnotationContextManager";
 import useDelete from "./Edit/useDelete";
 import { KnownContexts, useUndoRedo } from "@fiftyone/commands";
 import LabelList from "./LabelList";
+import { useRegisterAISegmentationEventHandlers } from "@fiftyone/annotation/src/agents/hooks/useRegisterAIAnnotationEventHandlers";
 
 const DISABLED_MESSAGES: Record<
   Exclude<AnnotationDisabledReason, null>,
@@ -64,6 +65,8 @@ interface AnnotateProps {
 }
 
 const Annotate = ({ disabledReason }: AnnotateProps) => {
+  useRegisterAISegmentationEventHandlers();
+
   const { schemaManagerDisplayed } = useSchemaManagerModal();
   const loading = useAtomValue(labelSchemasData) === null;
   const isEditingValue = useAtomValue(isEditing);

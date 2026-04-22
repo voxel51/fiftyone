@@ -5,4 +5,5 @@ export * from "./useAgentSelector";
 export * from "./useAnnotationAgent";
 export * from "./useApplyInferenceResult";
 export * from "./useSampleDescriptor";
+export * from "./usePointSelection";
 export * from "./useToolsContext";

@@ -13,6 +13,8 @@ import {
   PointLabel,
   type PromptPoint,
 } from "../providers";
+import { float32ToCompressedNumpy } from "../util/conversion";
+import { getSampleSrc } from "@fiftyone/state/src/recoil/utils";
 
 /**
  * Browser-side annotation agent backed by SAM2 Tiny (ONNX, runs in a web
@@ -48,7 +50,7 @@ export class SAM2BrowserAnnotationAgent
     const points = this.buildPromptPoints(context);
 
     const result = await this.provider.infer({
-      imageUrl: context.sampleDescriptor.mediaUrl,
+      imageUrl: getSampleSrc(context.sampleDescriptor.mediaUrl),
       points,
     });
 
@@ -58,7 +60,11 @@ export class SAM2BrowserAnnotationAgent
       response: {
         detections: [
           {
-            mask: result.mask,
+            mask: this.normalizeMask(
+              result.mask,
+              result.maskWidth,
+              result.maskHeight
+            ),
             mask_width: result.maskWidth,
             mask_height: result.maskHeight,
             bounding_box: [
@@ -170,5 +176,13 @@ export class SAM2BrowserAnnotationAgent
 
   private vec2ToPoint(vec: Vec2, label: PointLabel): PromptPoint {
     return { x: vec[0], y: vec[1], label };
+  }
+
+  private normalizeMask(
+    mask: Float32Array,
+    width: number,
+    height: number
+  ): string {
+    return float32ToCompressedNumpy(mask, [height, width]);
   }
 }
