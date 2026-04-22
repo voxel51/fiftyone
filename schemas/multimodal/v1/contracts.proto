@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package fiftyone.multimodal.schemas.v1;
+
+// Inventory entry describing a single multimodal stream.
+message StreamInventory {
+  // Stable stream identifier within the scene inventory.
+  string stream_id = 1;
+
+  // Upstream schema or message name for the stream payload.
+  string schema_name = 3;
+
+  // Todo
+}
+
+// Inventory document describing the streams available in a scene.
+message SceneInventory {
+  // Stable scene identifier used across multimodal subsystems.
+  string scene_id = 1;
+
+  // Inclusive start timestamp for the scene in nanoseconds.
+  int64 start_ns = 2 [jstype = JS_STRING];
+
+  // Inclusive end timestamp for the scene in nanoseconds.
+  int64 end_ns = 3 [jstype = JS_STRING];
+
+  // Streams discovered in the source scene.
+  repeated StreamInventory streams = 4;
+
+  // Todo
+}
+
+// Playback plan resolved for a scene inventory.
+message PlaybackPlan {
+  // Stable scene identifier for the plan.
+  string scene_id = 1;
+
+  // Todo
+}
