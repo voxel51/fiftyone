@@ -41,6 +41,8 @@ export default function RunActions({
   onToggleExpand,
 }: RunActionsProps) {
   const isImage = run.query_type === QueryType.Image && !run.patches_field;
+  // Upload runs can't be cloned — the original image isn't persisted.
+  const canClone = run.query_type !== QueryType.Upload;
 
   return (
     <Stack
@@ -59,15 +61,17 @@ export default function RunActions({
             disabled={run.status !== RunStatus.Completed}
           />
         </Tooltip>
-        <Tooltip content={tip("Clone search")}>
-          <Button
-            aria-label="Clone search"
-            size={Size.Md}
-            variant={Variant.Borderless}
-            leadingIcon={IconName.ContentCopy}
-            onClick={stop(() => onClone(run.run_id))}
-          />
-        </Tooltip>
+        {canClone && (
+          <Tooltip content={tip("Clone search")}>
+            <Button
+              aria-label="Clone search"
+              size={Size.Md}
+              variant={Variant.Borderless}
+              leadingIcon={IconName.ContentCopy}
+              onClick={stop(() => onClone(run.run_id))}
+            />
+          </Tooltip>
+        )}
         <Tooltip content={tip("Delete")}>
           <Button
             aria-label="Delete"
