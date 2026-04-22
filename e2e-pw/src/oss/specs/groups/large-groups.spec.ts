@@ -76,27 +76,27 @@ test.describe.serial("group carousel", () => {
       await modal.sidebar.toggleSidebarGroup("GROUP");
       await modal.sidebar.assert.verifySidebarEntryText("group.name", "0");
       await modal.waitForCarouselToLoad();
-      await modal.scrollCarousel();
+      await modal.scrollCarouselTo("19");
       await modal.navigateSlice("group.name", "19", true);
       await modal.sidebar.assert.verifySidebarEntryText("group.name", "19");
 
-      await modal.scrollCarousel();
+      await modal.scrollCarouselTo("39");
       await modal.navigateSlice("group.name", "39", true);
       await modal.sidebar.assert.verifySidebarEntryText("group.name", "39");
 
-      await modal.scrollCarousel();
+      await modal.scrollCarouselTo("59");
       await modal.navigateSlice("group.name", "59", true);
       await modal.sidebar.assert.verifySidebarEntryText("group.name", "59");
 
-      await modal.scrollCarousel();
+      await modal.scrollCarouselTo("79");
       await modal.navigateSlice("group.name", "79", true);
       await modal.sidebar.assert.verifySidebarEntryText("group.name", "79");
 
-      await modal.scrollCarousel();
+      await modal.scrollCarouselTo("99");
       await modal.navigateSlice("group.name", "99", true);
       await modal.sidebar.assert.verifySidebarEntryText("group.name", "99");
 
-      await modal.scrollCarousel(0);
+      await modal.scrollCarouselTo("0");
       await modal.navigateSlice("group.name", "0", true);
       await modal.sidebar.assert.verifySidebarEntryText("group.name", "0");
       await modal.close();

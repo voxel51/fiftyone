@@ -29,7 +29,6 @@
         "@testing-library/react-hooks": "latest",
         "babel-plugin-relay": "^14.1.0",
         "prettier": "^2.7.1",
-        "typescript": "^4.7.4",
         "vite": "^6.4.2"
     },
     "dependencies": {
