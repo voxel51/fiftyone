@@ -19,6 +19,7 @@ from fiftyone.operators.panel import Panel, PanelConfig
 
 from .constants import STORE_NAME, RunStatus
 from .run_manager import RunManager
+from fiftyone.core.brain import BrainMethod
 
 logger = logging.getLogger(__name__)
 
@@ -329,7 +330,13 @@ class SimilaritySearchPanel(Panel):
     # -- Helpers --
 
     def _get_brain_keys(self, ctx):
-        """Return available similarity brain keys with config metadata."""
+        """Return available similarity brain keys with config metadata.
+
+        Only brain keys whose runs have persisted results are returned;
+        keys from failed/incomplete runs (no ``results`` on the run doc)
+        are pruned so we skip the expensive ``get_brain_info`` call for
+        them and don't surface them in the UI.
+        """
         dataset = ctx.dataset
 
         try:
@@ -337,6 +344,18 @@ class SimilaritySearchPanel(Panel):
         except Exception as e:
             logger.warning("Failed to list brain runs: %s", e)
             brain_keys = []
+
+        # Prune brain keys whose runs have no persisted results.
+        if brain_keys:
+            try:
+                run_docs = BrainMethod._get_run_docs(dataset)
+                brain_keys = [
+                    key
+                    for key in brain_keys
+                    if key in run_docs and run_docs[key].results
+                ]
+            except Exception as e:
+                logger.warning("Failed to filter brain keys by results: %s", e)
 
         result = []
         for key in brain_keys:
