@@ -93,7 +93,7 @@ export class MaskCanvas {
    * Prefers the mutable editing canvas over the decoded bitmap.
    * Triggers lazy decode on first call when color is known.
    */
-  draw(
+  render(
     renderer: Renderer2D,
     bounds: Rect,
     containerId: string,
@@ -251,6 +251,88 @@ export class MaskCanvas {
         this.paint(maskPoint, toolState, style);
       }
     }
+
+    return updatedBounds;
+  }
+
+  /**
+   * Fills a closed polygon region on the mask canvas.
+   * Uses the current tool's composite operation (brush paints, eraser removes).
+   */
+  fillPolygon(
+    worldPoints: Point[],
+    bounds: Rect,
+    toolState: SegmentationToolState,
+    style: DrawStyle | undefined
+  ): Rect | undefined {
+    if (worldPoints.length < 3) return undefined;
+
+    this.ensureCanvas(bounds);
+    if (!this.context) return undefined;
+
+    if (!this.preStrokeSnapshot) {
+      this.paintStart(bounds);
+    }
+
+    // Expand bounds to contain all polygon points (paint mode only)
+    let updatedBounds: Rect | undefined = { ...bounds };
+    if (toolState.tool !== "eraser") {
+      let minX = bounds.x;
+      let minY = bounds.y;
+      let maxX = bounds.x + bounds.width;
+      let maxY = bounds.y + bounds.height;
+
+      for (const wp of worldPoints) {
+        minX = Math.min(minX, wp.x);
+        minY = Math.min(minY, wp.y);
+        maxX = Math.max(maxX, wp.x);
+        maxY = Math.max(maxY, wp.y);
+      }
+
+      const origMaxX = this.preStrokeBounds!.x + this.preStrokeBounds!.width;
+      const origMaxY = this.preStrokeBounds!.y + this.preStrokeBounds!.height;
+
+      minX = Math.floor(Math.min(this.preStrokeBounds!.x, minX));
+      minY = Math.floor(Math.min(this.preStrokeBounds!.y, minY));
+      maxX = Math.max(origMaxX, maxX);
+      maxY = Math.max(origMaxY, maxY);
+
+      const newWidth = Math.max(1, Math.ceil(maxX - minX));
+      const newHeight = Math.max(1, Math.ceil(maxY - minY));
+
+      const offsetX = Math.round(bounds.x - minX);
+      const offsetY = Math.round(bounds.y - minY);
+
+      this.updateCanvas(newWidth, newHeight, offsetX, offsetY);
+
+      updatedBounds = { x: minX, y: minY, width: newWidth, height: newHeight };
+    }
+
+    const activeBounds = updatedBounds ?? bounds;
+
+    // Convert world points to mask-pixel coords
+    const maskPoints = worldPoints
+      .map((wp) => this.worldToMask(wp, activeBounds))
+      .filter((p): p is Point => p !== undefined);
+
+    if (maskPoints.length < 3) return undefined;
+
+    if (toolState.tool === "eraser") {
+      this.context.globalCompositeOperation = "destination-out";
+      this.context.fillStyle = "rgba(0,0,0,1)";
+    } else {
+      this.context.globalCompositeOperation = "source-over";
+      this.context.fillStyle =
+        style?.strokeStyle || style?.fillStyle || "#ffffff";
+    }
+
+    this.context.beginPath();
+    this.context.moveTo(maskPoints[0].x, maskPoints[0].y);
+    for (let i = 1; i < maskPoints.length; i++) {
+      this.context.lineTo(maskPoints[i].x, maskPoints[i].y);
+    }
+    this.context.closePath();
+    this.context.fill();
 
     return updatedBounds;
   }

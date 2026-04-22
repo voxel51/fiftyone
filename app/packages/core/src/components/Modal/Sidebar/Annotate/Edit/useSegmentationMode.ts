@@ -26,7 +26,7 @@ export const MAX_TOOL_SIZE = 32;
 export const MIN_CURSOR_SIZE = 1;
 export const MAX_CURSOR_SIZE = 100;
 
-export type SegmentationTool = "select" | "brush" | "eraser"; // | "pen";
+export type SegmentationTool = "select" | "brush" | "eraser" | "pen";
 export type SegmentationToolShape = "circle" | "square";
 
 export interface SegmentationToolState {

@@ -17,6 +17,7 @@ export function buildBrushCursor({
   shape,
 }: SegmentationToolState): string {
   if (tool === "select") return "default";
+  if (tool === "pen") return "crosshair";
 
   const isEraser = tool === "eraser";
   const dashColor = isEraser ? "red" : "black";

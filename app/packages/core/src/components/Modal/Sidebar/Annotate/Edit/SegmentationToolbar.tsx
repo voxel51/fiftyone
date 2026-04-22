@@ -14,6 +14,7 @@ import {
   CropSquare,
   FormatColorReset,
   Redo,
+  Timeline,
   Undo,
 } from "@mui/icons-material";
 import React from "react";
@@ -112,6 +113,14 @@ export const SegmentationToolbar: React.FC<SegmentationToolbarProps> = ({
             onClick={() => switchTool("eraser")}
           >
             <EraserIcon />
+          </FloatingToolbar.Action>
+        </Tooltip>
+        <Tooltip placement="left-center" text="Pen (P)">
+          <FloatingToolbar.Action
+            active={tool === "pen"}
+            onClick={() => switchTool("pen")}
+          >
+            <Timeline />
           </FloatingToolbar.Action>
         </Tooltip>
       </FloatingToolbar.Group>
