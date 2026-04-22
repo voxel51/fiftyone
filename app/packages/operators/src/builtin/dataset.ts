@@ -2,8 +2,9 @@ import * as fos from "@fiftyone/state";
 import { useRecoilValue } from "recoil";
 import { Operator, OperatorConfig } from "../operators";
 import {
+  DataObject,
+  DatasetHooks,
   ExecutionContext,
-  ListBrainRunsHooks,
   ListBrainRunsParams,
 } from "../ts";
 import * as types from "../types";
@@ -28,14 +29,10 @@ export class ListBrainRuns extends Operator {
   }
 
   useHooks() {
-    const dataset = useRecoilValue(fos.dataset);
-
-    return { dataset };
+    return { dataset: useRecoilValue(fos.dataset) };
   }
 
-  async execute(
-    ctx: ExecutionContext<ListBrainRunsParams, ListBrainRunsHooks>
-  ) {
+  async execute(ctx: ExecutionContext<ListBrainRunsParams, DatasetHooks>) {
     const { hooks, params } = ctx;
     const { dataset } = hooks;
     const { type } = params;
@@ -55,8 +52,26 @@ export class ListBrainRuns extends Operator {
       });
     }
 
-    console.log(">>> result", result);
-
     return result;
+  }
+}
+
+export class ListEvaluations extends Operator {
+  _builtIn = true;
+
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "list_evaluations",
+      label: "List evaluations",
+      unlisted: true,
+    });
+  }
+
+  useHooks() {
+    return { dataset: useRecoilValue(fos.dataset) };
+  }
+
+  async execute(ctx: ExecutionContext<DataObject, DatasetHooks>) {
+    return ctx.hooks.dataset.evaluations;
   }
 }

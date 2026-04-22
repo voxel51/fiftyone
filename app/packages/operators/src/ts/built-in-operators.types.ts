@@ -13,20 +13,11 @@ import * as fos from "@fiftyone/state";
  * Common
  */
 
-export type ExecutionContext<
-  PARAMS = Record<string, unknown>,
-  HOOKS = Record<string, unknown>
-> = EC & {
+export type DataObject = Record<string, unknown>;
+
+export type ExecutionContext<PARAMS = DataObject, HOOKS = DataObject> = EC & {
   params: PARAMS;
   hooks: HOOKS;
-};
-
-export type ListBrainRunsHooks = {
-  dataset: fos.State.Dataset;
-};
-
-export type ListBrainRunsParams = {
-  type: "visualization" | "similarity";
 };
 
 /*
@@ -108,4 +99,16 @@ export type ListPanelItemType = {
 export type ListOpenPanelsItemType = ListPanelItemType & {
   id?: string;
   pinned?: boolean;
+};
+
+/**
+ * Dataset
+ */
+
+export type DatasetHooks = {
+  dataset: fos.State.Dataset;
+};
+
+export type ListBrainRunsParams = {
+  type: "visualization" | "similarity";
 };
