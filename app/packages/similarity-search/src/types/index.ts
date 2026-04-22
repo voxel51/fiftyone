@@ -61,6 +61,7 @@ export type SimilarityRun = {
   operator_run_id?: string;
   status_details?: string;
   created_by?: string;
+  created_by_name?: string;
 };
 
 /**
@@ -101,6 +102,10 @@ export type SimilaritySearchPanelData = {
   runs?: SimilarityRun[];
   brain_keys?: BrainKeyConfig[];
   clone_config?: CloneConfig;
+  current_user?: string;
+  can_manage?: boolean;
+  can_edit?: boolean;
+  is_snapshot?: boolean;
 };
 
 /**

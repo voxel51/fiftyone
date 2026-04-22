@@ -52,6 +52,7 @@ type NewSearchProps = {
   brainKeys: BrainKeyConfig[];
   cloneConfig?: CloneConfig | null;
   isPatchesView?: boolean;
+  isReadOnly?: boolean;
   onBack: () => void;
   onSubmitted: () => void;
 };
@@ -60,6 +61,7 @@ export default function NewSearch({
   brainKeys,
   cloneConfig,
   isPatchesView = false,
+  isReadOnly = false,
   onBack,
   onSubmitted,
 }: NewSearchProps) {
@@ -361,19 +363,21 @@ export default function NewSearch({
         />
         */}
 
-        {/* Distance field */}
-        <FormField
-          label="Distance field (optional)"
-          description="Store distances as a sample field"
-          control={
-            <Input
-              placeholder="e.g., similarity_dist"
-              value={form.distField}
-              onChange={(e) => form.setDistField(e.target.value)}
-              size={Size.Sm}
-            />
-          }
-        />
+        {/* Distance field — hidden in read-only mode */}
+        {!isReadOnly && (
+          <FormField
+            label="Distance field (optional)"
+            description="Store distances as a sample field"
+            control={
+              <Input
+                placeholder="e.g., similarity_dist"
+                value={form.distField}
+                onChange={(e) => form.setDistField(e.target.value)}
+                size={Size.Sm}
+              />
+            }
+          />
+        )}
 
         {/* Search name */}
         <FormField

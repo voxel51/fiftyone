@@ -53,6 +53,7 @@ function SimilaritySearchReady(props: SimilaritySearchViewProps) {
           brainKeys={panel.brainKeys}
           cloneConfig={panel.cloneConfig}
           isPatchesView={panel.isPatchesView}
+          isReadOnly={panel.isReadOnly}
           onBack={panel.navigateHome}
           onSubmitted={panel.handleSubmitted}
         />

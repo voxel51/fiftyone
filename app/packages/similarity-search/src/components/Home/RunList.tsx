@@ -256,7 +256,9 @@ export default function RunList({
               </Text>
               <Text variant={TextVariant.Md} color={TextColor.Muted}>
                 {formatTime(run.creation_time)}
-                {run.created_by ? ` by ${run.created_by}` : ""}
+                {run.created_by_name || run.created_by
+                  ? ` by ${run.created_by_name || run.created_by}`
+                  : ""}
               </Text>
               {run.status === RunStatus.Failed && run.status_details && (
                 <Text variant={TextVariant.Md} color={TextColor.Destructive}>

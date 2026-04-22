@@ -16,6 +16,7 @@ import fiftyone.operators as foo
 
 from .constants import STORE_NAME, RunStatus
 from .run_manager import RunManager
+from . import _has_manage_permission
 
 logger = logging.getLogger(__name__)
 
@@ -63,8 +64,9 @@ class SimilaritySearchOperator(foo.Operator):
         if not run_id:
             params = {**ctx.params}
             if ctx.user_id:
-                params["created_by"] = getattr(ctx.user, "name", None) or str(
-                    ctx.user_id
+                params["created_by"] = str(ctx.user_id)
+                params["created_by_name"] = (
+                    getattr(ctx.user, "name", None) or ""
                 )
             run_data = manager.create_run(params)
             run_id = run_data["run_id"]
@@ -77,8 +79,9 @@ class SimilaritySearchOperator(foo.Operator):
         if not run_data:
             params = {**ctx.params}
             if ctx.user_id:
-                params["created_by"] = getattr(ctx.user, "name", None) or str(
-                    ctx.user_id
+                params["created_by"] = str(ctx.user_id)
+                params["created_by_name"] = (
+                    getattr(ctx.user, "name", None) or ""
                 )
             run_data = manager.create_run(params)
             run_id = run_data["run_id"]
@@ -97,6 +100,18 @@ class SimilaritySearchOperator(foo.Operator):
             patches_field = ctx.params.get("patches_field")
 
             dataset = ctx.dataset
+
+            # Drop dist_field when the dataset is read-only (snapshot)
+            # or when the user lacks edit permission
+            # This is a guard for clone case
+            if dist_field:
+                is_snapshot = dataset.name.startswith("_snapshot")
+                can_edit = ctx.user is None or ctx.user.dataset_permission in (
+                    "EDIT",
+                    "MANAGE",
+                )
+                if is_snapshot or not can_edit:
+                    dist_field = None
 
             # Determine the base view for the search.
             # "view" uses ctx.view (includes view stages, sidebar
@@ -370,7 +385,13 @@ class InitSimilarityRunOperator(foo.Operator):
 
 
 class ListSimilarityRunsOperator(foo.Operator):
-    """Returns all similarity search runs for the current dataset."""
+    """Returns similarity search runs for the current dataset.
+
+    Accepts an optional ``owner`` param:
+
+    - ``"mine"`` — only runs created by the current user
+    - ``"all"`` or missing — every run
+    """
 
     @property
     def config(self):
@@ -381,8 +402,17 @@ class ListSimilarityRunsOperator(foo.Operator):
         )
 
     def execute(self, ctx):
+        # Import locally to avoid a circular import at module load
+
+        owner = ctx.params.get("owner")
         manager = RunManager(ctx)
-        return {"runs": manager.list_runs()}
+        return {
+            "runs": manager.list_runs(
+                owner=owner,
+                current_user_id=str(ctx.user_id) if ctx.user_id else None,
+                can_manage=_has_manage_permission(ctx),
+            )
+        }
 
 
 class SimilaritySearchSubscriptionOperator(foo.SseOperator):
