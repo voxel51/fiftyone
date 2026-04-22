@@ -140,14 +140,36 @@ const useInitializeViewport = (
     const complete = () => {
       appliedRef.current = true;
 
-      // Defer the reveal signal until after the next Pixi render tick so
-      // the canvas has actually painted all pending overlays before the
-      // container flips to visible.
-      const unregister = scene.registerRenderCallback({
+      /*
+       * The goal is to reveal after the image AND all overlays have been painted to the canvas.
+       * On the first tick, Pixi renders the canvas from the current state of its scene graph.
+       * Because renderFrame is async, the renderOverlay() calls that mutate the scene graph (adding
+       * bounding box Graphics objects to the Pixi stage) haven't run yet by the time Pixi renders,
+       * they're suspended in a pending microtask. So the first canvas paint shows nothing (or whatever
+       * was there before). On the second tick, Pixi renders the now-mutated scene graph and the overlays appear.
+       *
+       * HACK: We use a double-tick pattern to ensure the reveal is after the image and all overlays
+       * have been painted to the canvas. A cleaner solution may be to make Scene2D.renderFrame
+       * synchronous which would cause scene graph mutations to happen in the same tick as
+       * Pixi's per-tick render.
+       *
+       * Tick N: wait for the render loop to finish mutating the scene graph
+       * (renderOverlay calls) before registering a second callback.
+       */
+      const unregister1 = scene.registerRenderCallback({
         phase: "after",
         callback: () => {
-          unregister();
-          eventBus.dispatch("lighter:viewport-init-complete", {});
+          unregister1();
+
+          // Tick N+1: by the time this fires, Pixi has composited the scene
+          // graph mutations from tick N to the canvas. Now it is safe to reveal.
+          const unregister2 = scene.registerRenderCallback({
+            phase: "after",
+            callback: () => {
+              unregister2();
+              eventBus.dispatch("lighter:viewport-init-complete", {});
+            },
+          });
         },
       });
     };
