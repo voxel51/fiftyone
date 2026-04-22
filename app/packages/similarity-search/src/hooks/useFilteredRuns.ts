@@ -28,7 +28,7 @@ export const useFilteredRuns = (
       if (searchText && !matchesText(run, searchText)) return false;
       if (!matchesDate(run, start, end)) return false;
       if (
-        ownerFilter === "mine" &&
+        ownerFilter === OWNER_MINE &&
         currentUser &&
         run.created_by !== currentUser
       )

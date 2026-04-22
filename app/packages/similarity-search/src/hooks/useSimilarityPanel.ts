@@ -28,7 +28,10 @@ const useDerivedPanelState = (props: SimilaritySearchViewProps) => {
   } = useRuns();
   const [submitting, setSubmitting] = useState(false);
 
-  const allBrainKeys = panelData.brain_keys ?? [];
+  const allBrainKeys = useMemo(
+    () => panelData.brain_keys ?? [],
+    [panelData.brain_keys]
+  );
   const appliedRunId = (panelData as Record<string, unknown>).applied_run_id as
     | string
     | undefined;
@@ -174,7 +177,7 @@ const useSimilarityPanelActions = (deps: PanelActionsDeps) => {
       if (run) {
         setCloneConfig({
           brain_key: run.brain_key,
-          query_type: run.query_type,
+          query_type: run.query_type as "text" | "image",
           query: typeof run.query === "string" ? run.query : undefined,
           k: run.k,
           reverse: run.reverse,
