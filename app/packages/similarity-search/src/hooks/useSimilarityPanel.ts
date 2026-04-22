@@ -1,7 +1,7 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import * as fos from "@fiftyone/state";
-import { SimilaritySearchViewProps, SimilarityRun } from "../types";
+import { RunStatus, SimilaritySearchViewProps, SimilarityRun } from "../types";
 import { useNavigate } from "./useNavigate";
 import { useRuns } from "./useRuns";
 import { useFilteredRuns } from "./useFilteredRuns";
@@ -28,7 +28,10 @@ const useDerivedPanelState = (props: SimilaritySearchViewProps) => {
   } = useRuns();
   const [submitting, setSubmitting] = useState(false);
 
-  const allBrainKeys = panelData.brain_keys ?? [];
+  const allBrainKeys = useMemo(
+    () => panelData.brain_keys ?? [],
+    [panelData.brain_keys]
+  );
   const appliedRunId = (panelData as Record<string, unknown>).applied_run_id as
     | string
     | undefined;
@@ -73,11 +76,14 @@ const useDerivedPanelState = (props: SimilaritySearchViewProps) => {
   // currentUser is null in OSS, populated by FOE via panel data
   const currentUser =
     ((panelData as Record<string, unknown>).current_user as string) ?? null;
-  const canFilterByOwner = !!currentUser;
-  const { filteredRuns, filterState, setFilterState } = useFilteredRuns(
-    runs,
-    currentUser
+  const canManage = Boolean(
+    (panelData as Record<string, unknown>).can_manage ?? true
   );
+  const isReadOnly = useRecoilValue(fos.readOnly) as boolean;
+
+  // Only show All|Mine toggle for users with manage permissions
+  const canFilterByOwner = !!currentUser && canManage;
+  const { filteredRuns, filterState, setFilterState } = useFilteredRuns(runs);
 
   return {
     loaded: loaded && !submitting,
@@ -90,6 +96,7 @@ const useDerivedPanelState = (props: SimilaritySearchViewProps) => {
     sampleMedia,
     filterState,
     canFilterByOwner,
+    isReadOnly,
     refreshRuns,
     removeRun,
     removeRuns,
@@ -174,7 +181,7 @@ const useSimilarityPanelActions = (deps: PanelActionsDeps) => {
       if (run) {
         setCloneConfig({
           brain_key: run.brain_key,
-          query_type: run.query_type,
+          query_type: run.query_type as "text" | "image",
           query: typeof run.query === "string" ? run.query : undefined,
           k: run.k,
           reverse: run.reverse,
@@ -184,6 +191,13 @@ const useSimilarityPanelActions = (deps: PanelActionsDeps) => {
       }
     },
     [runs, setCloneConfig, navigateNewSearch]
+  );
+
+  const handleRename = useCallback(
+    (runId: string, newName: string) => {
+      triggers.renameRun({ run_id: runId, new_name: newName });
+    },
+    [triggers]
   );
 
   const handleNewSearch = useCallback(() => {
@@ -207,6 +221,7 @@ const useSimilarityPanelActions = (deps: PanelActionsDeps) => {
     handleDelete,
     handleBulkDelete,
     handleNewSearch,
+    handleRename,
     handleSubmitted,
   };
 };
@@ -244,7 +259,7 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
     bulkDeleteRuns: (payload: { run_ids: string[] }) => void;
     cloneRun: (payload: { run_id: string }) => void;
     renameRun: (payload: { run_id: string; new_name: string }) => void;
-    listRuns: () => void;
+    listRuns: (payload?: { owner?: string }) => void;
     getBrainKeys: () => void;
     getSampleMedia: (payload: { sample_ids: string[] }) => void;
   }>({
@@ -273,6 +288,41 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
     clearCloneConfig,
     clearAndExit,
   });
+
+  // Re-fetch runs whenever the owner filter changes — it's applied
+  // server-side. Skip the initial render so we don't double-fetch
+  // alongside the panel's initial load.
+  const ownerFilter = state.filterState.ownerFilter;
+  const ownerInitRef = useRef(true);
+  useEffect(() => {
+    if (ownerInitRef.current) {
+      ownerInitRef.current = false;
+      return;
+    }
+    state.refreshRuns();
+  }, [ownerFilter, state.refreshRuns]);
+
+  // Auto-apply immediate execution runs when they complete.
+  // Delegated runs (operator_run_id is set) are excluded — there's no
+  // completion event for those, so the user applies them manually.
+  const prevRunStatusesRef = useRef<Map<string, string>>(new Map());
+
+  useEffect(() => {
+    const prev = prevRunStatusesRef.current;
+    const next = new Map(state.runs.map((r) => [r.run_id, r.status]));
+
+    for (const run of state.runs) {
+      if (
+        run.status === RunStatus.Completed &&
+        prev.get(run.run_id) !== RunStatus.Completed
+      ) {
+        actions.handleApply(run.run_id);
+        break;
+      }
+    }
+
+    prevRunStatusesRef.current = next;
+  }, [state.runs, actions]);
 
   const selection = useMemo(
     () => ({
@@ -308,10 +358,12 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
     cloneConfig,
     filterState: state.filterState,
     canFilterByOwner: state.canFilterByOwner,
+    isReadOnly: state.isReadOnly,
     selection,
 
     // actions
     ...actions,
+    handleApply: actions.handleApply,
     refreshRuns: state.refreshRuns,
     setFilterState: state.setFilterState,
     navigateHome,

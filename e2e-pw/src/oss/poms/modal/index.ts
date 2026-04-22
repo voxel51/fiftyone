@@ -171,6 +171,30 @@ export class ModalPom {
     }, left);
   }
 
+  async scrollCarouselTo(slice: string) {
+    await this.groupCarousel
+      .getByTestId("flashlight")
+      .evaluate(async (el, targetText) => {
+        const hasTarget = () => {
+          for (const t of el.querySelectorAll('[data-cy="thumbnail-title"]')) {
+            if (t.textContent === targetText) return true;
+          }
+          return false;
+        };
+
+        if (hasTarget()) return;
+
+        // 384ms is the debounce time for Flashlight's zooming plus two frames of margin
+        const ZOOMING_DEBOUNCE_MS = 384;
+        const step = Math.max(el.clientWidth, 200);
+        for (let pos = 0; pos <= el.scrollWidth; pos += step) {
+          el.scrollTo({ left: pos });
+          await new Promise((r) => setTimeout(r, ZOOMING_DEBOUNCE_MS));
+          if (hasTarget()) return;
+        }
+      }, slice);
+  }
+
   async navigateCarousel(index: number, allowErrorInfo = false) {
     const looker = this.groupCarousel.getByTestId("looker").nth(index);
 

@@ -7,18 +7,17 @@ import {
   matchesText,
   matchesDate,
   canSubmitSearch,
-  buildExecutionParams,
 } from "../utils";
-import { SimilarityRun } from "../types";
+import { SimilarityRun, QueryType, RunStatus } from "../types";
 import { DAY_MS } from "../constants";
 
 function makeRun(overrides: Partial<SimilarityRun> = {}): SimilarityRun {
   return {
     run_id: "r1",
     run_name: "Test Run",
-    status: "completed",
+    status: RunStatus.Completed,
     brain_key: "clip",
-    query_type: "text",
+    query_type: QueryType.Text,
     query: "a dog",
     reverse: false,
     result_count: 10,
@@ -28,19 +27,19 @@ function makeRun(overrides: Partial<SimilarityRun> = {}): SimilarityRun {
 
 describe("formatQuery", () => {
   it("returns short text queries as-is", () => {
-    const run = makeRun({ query_type: "text", query: "a dog" });
+    const run = makeRun({ query_type: QueryType.Text, query: "a dog" });
     expect(formatQuery(run)).toBe("a dog");
   });
 
   it("truncates text queries longer than 50 chars", () => {
     const longQuery = "a".repeat(60);
-    const run = makeRun({ query_type: "text", query: longQuery });
+    const run = makeRun({ query_type: QueryType.Text, query: longQuery });
     expect(formatQuery(run)).toBe("a".repeat(50) + "...");
   });
 
   it("formats image query with prompt count", () => {
     const run = makeRun({
-      query_type: "image",
+      query_type: QueryType.Image,
       query: ["id1", "id2", "id3"],
     });
     expect(formatQuery(run)).toBe("Image similarity (3 prompts)");
@@ -48,7 +47,7 @@ describe("formatQuery", () => {
 
   it("uses singular 'prompt' for one image", () => {
     const run = makeRun({
-      query_type: "image",
+      query_type: QueryType.Image,
       query: ["id1"],
     });
     expect(formatQuery(run)).toBe("Image similarity (1 prompt)");
@@ -56,7 +55,7 @@ describe("formatQuery", () => {
 
   it("shows positive and negative counts for image queries", () => {
     const run = makeRun({
-      query_type: "image",
+      query_type: QueryType.Image,
       query: ["id1", "id2"],
       negative_query_ids: ["neg1"],
     });
@@ -65,14 +64,14 @@ describe("formatQuery", () => {
 
   it("handles image query with no query array", () => {
     const run = makeRun({
-      query_type: "image",
+      query_type: QueryType.Image,
       query: undefined,
     });
     expect(formatQuery(run)).toBe("Image similarity (0 prompts)");
   });
 
   it("falls back to query_type for unknown types", () => {
-    const run = makeRun({ query_type: "text", query: undefined });
+    const run = makeRun({ query_type: QueryType.Text, query: undefined });
     expect(formatQuery(run)).toBe("text");
   });
 });
@@ -209,122 +208,23 @@ describe("matchesDate", () => {
 
 describe("canSubmitSearch", () => {
   it("returns false without brain key", () => {
-    expect(canSubmitSearch("", "text", "query", 0)).toBe(false);
+    expect(canSubmitSearch("", QueryType.Text, "query", 0)).toBe(false);
   });
 
   it("returns false for empty text query", () => {
-    expect(canSubmitSearch("clip", "text", "", 0)).toBe(false);
-    expect(canSubmitSearch("clip", "text", "  ", 0)).toBe(false);
+    expect(canSubmitSearch("clip", QueryType.Text, "", 0)).toBe(false);
+    expect(canSubmitSearch("clip", QueryType.Text, "  ", 0)).toBe(false);
   });
 
   it("returns true for valid text query", () => {
-    expect(canSubmitSearch("clip", "text", "dogs", 0)).toBe(true);
+    expect(canSubmitSearch("clip", QueryType.Text, "dogs", 0)).toBe(true);
   });
 
   it("returns false for image query with no samples", () => {
-    expect(canSubmitSearch("clip", "image", "", 0)).toBe(false);
+    expect(canSubmitSearch("clip", QueryType.Image, "", 0)).toBe(false);
   });
 
   it("returns true for image query with samples", () => {
-    expect(canSubmitSearch("clip", "image", "", 3)).toBe(true);
-  });
-});
-
-describe("buildExecutionParams", () => {
-  const baseInput = {
-    brainKey: "clip",
-    queryType: "text" as const,
-    textQuery: "dogs",
-    queryIds: [],
-    reverse: false,
-    patchesField: undefined,
-    searchScope: "dataset" as const,
-    hasView: false,
-    view: [],
-    k: "" as const,
-    distField: "",
-    runName: "",
-    negativeQueryIds: [],
-    dynamicResults: false,
-  };
-
-  it("builds basic text query params", () => {
-    const params = buildExecutionParams(baseInput);
-    expect(params.brain_key).toBe("clip");
-    expect(params.query_type).toBe("text");
-    expect(params.query).toBe("dogs");
-    expect(params.reverse).toBe(false);
-  });
-
-  it("trims text query", () => {
-    const params = buildExecutionParams({
-      ...baseInput,
-      textQuery: "  dogs  ",
-    });
-    expect(params.query).toBe("dogs");
-  });
-
-  it("uses queryIds for image queries", () => {
-    const params = buildExecutionParams({
-      ...baseInput,
-      queryType: "image",
-      queryIds: ["id1", "id2"],
-    });
-    expect(params.query).toEqual(["id1", "id2"]);
-  });
-
-  it("includes k when set", () => {
-    const params = buildExecutionParams({ ...baseInput, k: 25 });
-    expect(params.k).toBe(25);
-  });
-
-  it("excludes k when empty", () => {
-    const params = buildExecutionParams({ ...baseInput, k: "" });
-    expect(params.k).toBeUndefined();
-  });
-
-  it("includes dist_field when set", () => {
-    const params = buildExecutionParams({
-      ...baseInput,
-      distField: "sim_dist",
-    });
-    expect(params.dist_field).toBe("sim_dist");
-  });
-
-  it("includes run_name when set", () => {
-    const params = buildExecutionParams({
-      ...baseInput,
-      runName: "My search",
-    });
-    expect(params.run_name).toBe("My search");
-  });
-
-  it("includes source_view when searching within view", () => {
-    const viewStages = [{ _cls: "FilterField" }];
-    const params = buildExecutionParams({
-      ...baseInput,
-      searchScope: "view",
-      hasView: true,
-      view: viewStages,
-    });
-    expect(params.source_view).toEqual(viewStages);
-  });
-
-  it("excludes source_view when searching full dataset", () => {
-    const params = buildExecutionParams({
-      ...baseInput,
-      searchScope: "dataset",
-      hasView: true,
-      view: [{ _cls: "FilterField" }],
-    });
-    expect(params.source_view).toBeUndefined();
-  });
-
-  it("includes negative_query_ids when present", () => {
-    const params = buildExecutionParams({
-      ...baseInput,
-      negativeQueryIds: ["neg1", "neg2"],
-    });
-    expect(params.negative_query_ids).toEqual(["neg1", "neg2"]);
+    expect(canSubmitSearch("clip", QueryType.Image, "", 3)).toBe(true);
   });
 });

@@ -1,4 +1,4 @@
-import { atom, useAtom } from "jotai";
+import { atom, getDefaultStore, useAtom } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { useOperatorExecutor } from "@fiftyone/operators";
@@ -8,8 +8,9 @@ import {
   datasetId as datasetIdAtom,
   datasetName as datasetNameAtom,
 } from "@fiftyone/state";
-import { SSE_OPERATOR_URI } from "../constants";
+import { LIST_RUNS_OPERATOR_URI, SSE_OPERATOR_URI } from "../constants";
 import { SimilarityRun } from "../types";
+import { filterStateAtom } from "./useFilteredRuns";
 
 const runsAtom = atom<SimilarityRun[]>([]);
 const loadedAtom = atom(false);
@@ -41,30 +42,51 @@ export const useRuns = (): UseRunsResult => {
   const panelId = usePanelId();
   const datasetName = useRecoilValue(datasetNameAtom);
   const datasetId = useRecoilValue(datasetIdAtom);
-  const { execute: fetchRuns } = useOperatorExecutor(
-    "@voxel51/panels/list_similarity_runs"
-  );
+  const { execute: fetchRuns } = useOperatorExecutor(LIST_RUNS_OPERATOR_URI);
+
+  // ── Coalescing refresh mechanism ───────────────────────────────
+  // SSE events and user actions can trigger refreshRuns() at any
+  // time, including while a fetch is already in flight.  Instead of
+  // dropping those requests or firing concurrent fetches, we
+  // coalesce them: when a refresh is requested during an in-flight
+  // fetch, we set a "pending" flag.  Once the current fetch settles,
+  // we automatically fire one more refresh to pick up whatever
+  // changed.  A consecutive-error counter (max 5) prevents runaway
+  // retries when the backend is persistently failing.
   const fetchingRef = useRef(false);
+  const pendingRef = useRef(false);
+  const inFlightRef = useRef<Promise<void> | null>(null);
+  const errorCountRef = useRef(0);
+  const MAX_RETRY = 5;
 
   const refreshRuns = useCallback(() => {
+    // If a fetch is already in flight, queue a follow-up refresh
+    // and return the in-flight promise so callers can still await.
     if (fetchingRef.current) {
-      return Promise.resolve();
+      pendingRef.current = true;
+      return inFlightRef.current ?? Promise.resolve();
     }
     fetchingRef.current = true;
 
-    return new Promise<void>((resolve, reject) => {
+    // Owner filter is applied server-side. Read the latest value at
+    // call time so SSE-driven refreshes always pick up the current
+    // selection without needing to live in React state.
+    const { ownerFilter } = getDefaultStore().get(filterStateAtom);
+
+    const promise = new Promise<void>((resolve, reject) => {
       fetchRuns(
-        {},
+        { owner: ownerFilter },
         {
           callback: (result?: Record<string, unknown>) => {
             fetchingRef.current = false;
-            try {
-              if (result?.error) {
-                console.error("Error fetching similarity runs:", result.error);
-                reject(new Error(String(result.error)));
-                return;
-              }
 
+            if (result?.error) {
+              console.error("Error fetching similarity runs:", result.error);
+              reject(new Error(String(result.error)));
+              return;
+            }
+
+            try {
               const response = result?.result as
                 | { runs?: SimilarityRun[] }
                 | undefined;
@@ -85,6 +107,33 @@ export const useRuns = (): UseRunsResult => {
         reject(error instanceof Error ? error : new Error(String(error)));
       });
     });
+
+    // After each attempt settles, check whether a refresh was
+    // requested while we were busy.  On success the error counter
+    // resets; on failure it increments, and we stop retrying after
+    // MAX_RETRY consecutive failures.
+    //
+    // We use a separate chain for coalescing so the original promise's
+    // rejection propagates to callers (e.g. handleSubmitted's await).
+    promise
+      .then(() => {
+        errorCountRef.current = 0;
+      })
+      .catch(() => {
+        errorCountRef.current += 1;
+      })
+      .finally(() => {
+        inFlightRef.current = null;
+        if (pendingRef.current && errorCountRef.current < MAX_RETRY) {
+          pendingRef.current = false;
+          refreshRuns();
+        } else {
+          pendingRef.current = false;
+        }
+      });
+
+    inFlightRef.current = promise;
+    return promise;
   }, [fetchRuns, setRuns]);
 
   useEffect(() => {
