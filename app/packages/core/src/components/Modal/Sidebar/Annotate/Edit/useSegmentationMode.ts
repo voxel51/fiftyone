@@ -46,7 +46,30 @@ export const useSegmentationMode = (): SegmentationMode => {
   }, [agentSelector]);
 
   const selectedLabelRef = useRef(selectedLabel);
+  const previousSelectedLabelIdRef = useRef<string | null>(
+    selectedLabel?.overlay?.id ?? null
+  );
   selectedLabelRef.current = selectedLabel;
+
+  // When the user commits/exits a label (selected label transitions away
+  // from a populated overlay), wipe the inference prompt points so the next
+  // label starts from a clean slate. We stay in segmentation mode.
+  useEffect(() => {
+    if (!segmentationModeActive) {
+      previousSelectedLabelIdRef.current = selectedLabel?.overlay?.id ?? null;
+      return;
+    }
+
+    const previousId = previousSelectedLabelIdRef.current;
+    const currentId = selectedLabel?.overlay?.id ?? null;
+
+    if (previousId && previousId !== currentId) {
+      pointSelection.clearPoints();
+      resetToolsState();
+    }
+
+    previousSelectedLabelIdRef.current = currentId;
+  }, [pointSelection, resetToolsState, segmentationModeActive, selectedLabel]);
 
   // Points placed on the current label's mask are interpreted as negative;
   // points placed off-mask are positive
