@@ -33,7 +33,7 @@ import { distanceFromLineSegment } from "../utils/geometry";
 import { BaseOverlay } from "./BaseOverlay";
 import { MaskCanvas } from "./MaskCanvas";
 import type { MaskSnapshot, PaintStrokeData } from "./MaskCanvas";
-import { KeypointOverlay } from "./KeypointOverlay";
+import { MaskKeypoints } from "./MaskKeypoints";
 
 export type DetectionLabel = RawLookerLabel & {
   label: string;
@@ -101,7 +101,7 @@ export class DetectionOverlay
   private segmentationTool?: SegmentationToolState;
 
   // Pen tool state
-  private keypointOverlay?: KeypointOverlay;
+  private keypointOverlay?: MaskKeypoints;
   private lastKeypoint?: Point;
 
   public cursor = "pointer";
@@ -534,7 +534,7 @@ export class DetectionOverlay
     worldPoint: Point,
     _toolState: SegmentationToolState
   ): boolean {
-    this.keypointOverlay ??= new KeypointOverlay({
+    this.keypointOverlay ??= new MaskKeypoints({
       id: this.id,
       label: { label: "", points: [] },
       field: "",

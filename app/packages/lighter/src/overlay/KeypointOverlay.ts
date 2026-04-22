@@ -55,7 +55,6 @@ export interface KeypointOptions {
   connections?: number[][];
   /** Whether to auto-close the polygon (connect last point to first). */
   closed?: boolean;
-  closeConnections?: boolean;
   draggable?: boolean;
   deletable?: boolean;
   selectable?: boolean;
@@ -78,15 +77,14 @@ export class KeypointOverlay
   private isDraggable: boolean;
   private isDeletable: boolean;
   private isSelectable: boolean;
-  private connections: number[][];
+  protected connections: number[][];
   private closed: boolean;
-  private closeConnections: boolean;
   private isSelectedState = false;
 
   #relativePoints: [number, number][];
 
   // Per-point sub-selection
-  private selectedPointIndex: number | null = null;
+  protected selectedPointIndex: number | null = null;
 
   // Drag state for individual points
   private dragPointIndex: number | null = null;
@@ -94,7 +92,7 @@ export class KeypointOverlay
   private moveStartRelativePoint?: [number, number];
 
   // Preview point for interactive creation (cursor tracking)
-  private previewPoint?: Point | null = null;
+  protected previewPoint?: Point | null = null;
 
   // Caches — invalidated in markDirty()
   private _absPointsCache: Point[] | null = null;
@@ -111,7 +109,6 @@ export class KeypointOverlay
       : [];
     this.connections = options.connections ?? [];
     this.closed = options.closed ?? false;
-    this.closeConnections = options.closeConnections ?? false;
     this.isDraggable = options.draggable !== false;
     this.isDeletable = options.deletable !== false;
     this.isSelectable = options.selectable !== false;
@@ -136,6 +133,14 @@ export class KeypointOverlay
   private absolutePointToRelative(ap: Point): [number, number] {
     const t = this.getCoordinateSystem().getTransform();
     return [(ap.x - t.offsetX) / t.scaleX, (ap.y - t.offsetY) / t.scaleY];
+  }
+
+  protected getAbsolutePoints(): Point[] {
+    if (this._absPointsCache) return this._absPointsCache;
+    this._absPointsCache = this.#relativePoints.map((p) =>
+      this.relativePointToAbsolute(p)
+    );
+    return this._absPointsCache;
   }
 
   override markDirty(): void {
@@ -245,10 +250,9 @@ export class KeypointOverlay
   /**
    * Collects edge segments from connections with bounds-checked indices.
    */
-  private collectEdgeSegments(absPoints: Point[]): Array<[Point, Point]> {
+  protected collectEdgeSegments(absPoints: Point[]): Array<[Point, Point]> {
     const segments: Array<[Point, Point]> = [];
     const len = absPoints.length;
-
     for (const path of this.connections) {
       for (let i = 1; i < path.length; i++) {
         const fromIdx = path[i - 1];
@@ -266,21 +270,12 @@ export class KeypointOverlay
         }
       }
     }
-
-    if (this.closeConnections) {
-      segments.push([absPoints[0], absPoints[absPoints.length - 1]]);
-    }
-
     return segments;
   }
   // ---------------------------------------------------------------------------
 
-  protected renderImpl(renderer: Renderer2D, renderMeta: RenderMeta): void {
-    // if rendered as a child of another overlay
-    // preserve what has been drawn so far
-    if (!renderMeta.preserveContainer) {
-      renderer.dispose(this.containerId);
-    }
+  protected renderImpl(renderer: Renderer2D, _renderMeta: RenderMeta): void {
+    renderer.dispose(this.containerId);
 
     const style = this.currentStyle;
     if (!style) return;
@@ -314,21 +309,6 @@ export class KeypointOverlay
         },
         this.containerId
       );
-
-      if (this.closeConnections && absPoints.length >= 2) {
-        const firstPoint = absPoints[0];
-        renderer.drawLine(
-          firstPoint,
-          this.previewPoint,
-          {
-            strokeStyle: strokeColor,
-            lineWidth,
-            dashPattern: [6, 4],
-            opacity: PREVIEW_LINE_OPACITY,
-          },
-          this.containerId
-        );
-      }
     }
 
     // 3. Batch all regular points into a single draw call
@@ -580,10 +560,7 @@ export class KeypointOverlay
    * Adds a point at the given absolute (world) position.
    * @returns The index of the new point.
    */
-  addPoint(
-    worldPoint: Point,
-    options: { connectToLast?: boolean } = {}
-  ): number {
+  addPoint(worldPoint: Point): number {
     const rp = this.absolutePointToRelative(worldPoint);
     this.#relativePoints.push(rp);
     const idx = this.#relativePoints.length - 1;
@@ -593,10 +570,6 @@ export class KeypointOverlay
       pointIndex: idx,
       worldPoint,
     });
-
-    if (options.connectToLast && this.#relativePoints.length > 1) {
-      this.addConnection([idx - 1, idx]);
-    }
 
     this.markDirty();
     return idx;
@@ -663,19 +636,6 @@ export class KeypointOverlay
   }
 
   /**
-   * Returns a copy of points in world space.
-   */
-  getAbsolutePoints(): Point[] {
-    if (this._absPointsCache) return this._absPointsCache;
-
-    this._absPointsCache = this.#relativePoints.map((p) =>
-      this.relativePointToAbsolute(p)
-    );
-
-    return this._absPointsCache;
-  }
-
-  /**
    * Returns the currently sub-selected point index, or null.
    */
   getSelectedPointIndex(): number | null {
@@ -688,13 +648,6 @@ export class KeypointOverlay
   setConnections(connections: number[][]): void {
     this.connections = connections;
     this.markDirty();
-  }
-
-  /**
-   * Adds new connection to the configuration.
-   */
-  addConnection(connection: number[]): void {
-    this.setConnections([...this.connections, connection]);
   }
 
   /**
