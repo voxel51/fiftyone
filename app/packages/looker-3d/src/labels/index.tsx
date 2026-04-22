@@ -1,4 +1,5 @@
 import { activeLabelSchemas } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/state";
+import useExit from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useExit";
 import {
   FO_LABEL_TOGGLED_EVENT,
   LabelToggledEvent,
@@ -17,7 +18,7 @@ import { useAtomValue } from "jotai";
 import { folder, useControls } from "leva";
 import { get as _get } from "lodash";
 import { useCallback, useEffect, useMemo } from "react";
-import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import { useIsWorkingInitialized, useRenderModel } from "../annotation/store";
 import type {
   ReconciledDetection3D,
@@ -33,7 +34,6 @@ import { usePathFilter, useSelect3DLabelForAnnotation } from "../hooks";
 import { type Looker3dSettings, defaultPluginSettings } from "../settings";
 import {
   cuboidLabelLineWidthAtom,
-  editSegmentsModeAtom,
   isActivelySegmentingSelector,
   polylineLabelLineWidthAtom,
   selectedLabelForAnnotationAtom,
@@ -84,9 +84,10 @@ export const ThreeDLabels = ({
   const selectedLabels = useRecoilValue(fos.selectedLabelMap);
   const labelAlpha = globalOpacity ?? colorScheme.opacity;
 
-  const [selectedLabelForAnnotation, setSelectedLabelForAnnotation] =
-    useRecoilState(selectedLabelForAnnotationAtom);
-  const setEditSegmentsMode = useSetRecoilState(editSegmentsModeAtom);
+  const selectedLabelForAnnotation = useRecoilValue(
+    selectedLabelForAnnotationAtom
+  );
+  const onExit = useExit();
 
   const select3DLabelForAnnotation = useSelect3DLabelForAnnotation();
 
@@ -155,8 +156,7 @@ export const ThreeDLabels = ({
         mode === "annotate" &&
         selectedLabelForAnnotation
       ) {
-        setSelectedLabelForAnnotation(null);
-        setEditSegmentsMode(false);
+        onExit();
 
         event.stopImmediatePropagation();
         event.preventDefault();
@@ -168,7 +168,7 @@ export const ThreeDLabels = ({
     return () => {
       document.removeEventListener("keydown", handler);
     };
-  }, [setSelectedLabelForAnnotation, mode, selectedLabelForAnnotation]);
+  }, [onExit, mode, selectedLabelForAnnotation]);
 
   const [overlayRotation, itemRotation] = useMemo(
     () => [

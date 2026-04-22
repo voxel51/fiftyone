@@ -3,6 +3,7 @@ import { DatasetFactory } from "src/shared/dataset-factory";
 import { EventUtils } from "src/shared/event-utils";
 import { MediaFactory } from "src/shared/media-factory";
 import { AbstractFiftyoneLoader } from "../../shared/abstract-loader";
+import { AggregationWatcher } from "./aggregation-watcher";
 import { AnnotateSDK } from "./annotate-sdk";
 import { FoWebServer } from "./fo-server";
 import { OssLoader } from "./loader";
@@ -22,6 +23,7 @@ export type CustomFixturesWithoutPage = {
 // these fixtures have access to the {page} fixture
 export type CustomFixturesWithPage = {
   eventUtils: EventUtils;
+  aggregationWatcher: AggregationWatcher;
 };
 
 const customFixtures = base.extend<object, CustomFixturesWithoutPage>({
@@ -76,6 +78,9 @@ const customFixtures = base.extend<object, CustomFixturesWithoutPage>({
 export const test = customFixtures.extend<CustomFixturesWithPage>({
   eventUtils: async ({ page }, use) => {
     await use(new EventUtils(page));
+  },
+  aggregationWatcher: async ({ page }, use) => {
+    await use(new AggregationWatcher(page));
   },
   baseURL: async ({ fiftyoneServerPort }, use) => {
     if (process.env.USE_DEV_BUILD?.toLocaleLowerCase() === "true") {

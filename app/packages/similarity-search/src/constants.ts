@@ -1,10 +1,11 @@
 import { TextColor } from "@voxel51/voodo";
-import { OwnerFilter, RunStatus, SearchScope } from "./types";
+import { DateFilterPreset, OwnerFilter, RunStatus, SearchScope } from "./types";
 
 export const SEARCH_OPERATOR_URI = "@voxel51/panels/similarity_search";
 export const INIT_RUN_OPERATOR_URI = "@voxel51/panels/init_similarity_run";
 export const COMPUTE_SIMILARITY_URI = "@voxel51/operators/compute_similarity";
 export const PANEL_NAME = "similarity_search_panel";
+export const LIST_RUNS_OPERATOR_URI = "@voxel51/panels/list_similarity_runs";
 export const SSE_OPERATOR_URI =
   "@voxel51/panels/get_similarity_search_subscription_notifier";
 
@@ -19,24 +20,32 @@ export const DATE_PRESET_OPTIONS = [
 ];
 
 export const STATUS_COLORS: Record<RunStatus, TextColor> = {
-  pending: TextColor.Muted,
-  running: TextColor.Info,
-  completed: TextColor.Success,
-  failed: TextColor.Destructive,
+  [RunStatus.Pending]: TextColor.Muted,
+  [RunStatus.Running]: TextColor.Info,
+  [RunStatus.Completed]: TextColor.Success,
+  [RunStatus.Failed]: TextColor.Destructive,
 };
 
 export const STATUS_LABELS: Record<RunStatus, string> = {
-  pending: "Pending",
-  running: "Running",
-  completed: "Completed",
-  failed: "Failed",
+  [RunStatus.Pending]: "Pending",
+  [RunStatus.Running]: "Running",
+  [RunStatus.Completed]: "Completed",
+  [RunStatus.Failed]: "Failed",
 };
+
+// Run list styles
+export const POINTER_STYLE = { cursor: "pointer" } as const;
+export const HIGHLIGHT_STYLE = {
+  boxShadow: "0 0 8px 2px rgba(255, 109, 4, 0.4)",
+  borderRadius: 6,
+} as const;
 
 export const THUMB_SIZE = 36;
 export const THUMB_GAP = 4;
 export const THUMB_SINGLE_ROW_MAX = 10;
 
-// Owner filter values
+// Filter defaults
+export const DEFAULT_DATE_PRESET: DateFilterPreset = "last_30_days";
 export const OWNER_ALL: OwnerFilter = "all";
 export const OWNER_MINE: OwnerFilter = "mine";
 

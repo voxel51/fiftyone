@@ -11,9 +11,26 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
+from bson import ObjectId
+
+from fiftyone.operators.store import ExecutionStore
+
 from .constants import STORE_NAME, RunStatus
 
 logger = logging.getLogger(__name__)
+
+
+def get_head_dataset_id(dataset):
+    """Get the head dataset ID for a given dataset or a snapshot.
+
+    Args:
+        dataset: the dataset instance
+
+    Returns:
+        the head dataset ID as a string
+    """
+    dataset_id = str(dataset._doc.id)
+    return dataset_id
 
 
 class RunManager:
@@ -26,7 +43,8 @@ class RunManager:
     _HEAVY_FIELDS = {"result_ids", "result_view", "source_view"}
 
     def __init__(self, ctx):
-        self._store = ctx.store(STORE_NAME)
+        dataset_id = get_head_dataset_id(ctx.dataset)
+        self._store = ExecutionStore.create(STORE_NAME, ObjectId(dataset_id))
 
     def create_run(self, run_params: Dict[str, Any]) -> Dict[str, Any]:
         """Create a new run entry.
@@ -62,6 +80,7 @@ class RunManager:
             "operator_run_id": None,
             "status_details": None,
             "created_by": run_params.get("created_by"),
+            "created_by_name": run_params.get("created_by_name"),
         }
         self.set_run(run_id, run_data)
         return run_data
@@ -140,26 +159,47 @@ class RunManager:
             self._store.delete(f"{self._OPID_PREFIX}{run['operator_run_id']}")
         self._store.delete(self._key(run_id))
 
-    def list_runs(self) -> List[Dict]:
-        """List all runs sorted by creation time (newest first).
+    def list_runs(
+        self,
+        owner: Optional[str] = None,
+        current_user_id: Optional[str] = None,
+        can_manage: bool = True,
+    ) -> List[Dict]:
+        """List runs sorted by creation time (newest first).
+
+        Args:
+            owner: "mine" to restrict to runs whose ``created_by``
+                matches ``current_user_id``; "all" or ``None`` returns
+                every run.
+            current_user_id: the current user's id. Required when
+                ``owner == "mine"``; ignored otherwise.
+            can_manage: whether the current user has manage
+                permissions. Non-managers are always restricted to
+                their own runs regardless of ``owner``.
 
         Returns:
             list of run data dicts
         """
+        # Users without manage permission can only see their own runs
+        if not can_manage:
+            owner = "mine"
+
+        filter_mine = owner == "mine" and bool(current_user_id)
+
         keys = self._store.list_keys()
         runs = []
         for key in keys:
-            if key.startswith(self._RUN_PREFIX):
-                run = self._store.get(key)
-                if run:
-                    # Strip heavy fields for listing
-                    runs.append(
-                        {
-                            k: v
-                            for k, v in run.items()
-                            if k not in self._HEAVY_FIELDS
-                        }
-                    )
+            if not key.startswith(self._RUN_PREFIX):
+                continue
+            run = self._store.get(key)
+            if not run:
+                continue
+            if filter_mine and run.get("created_by") != current_user_id:
+                continue
+            # Strip heavy fields for listing
+            runs.append(
+                {k: v for k, v in run.items() if k not in self._HEAVY_FIELDS}
+            )
 
         runs.sort(key=lambda r: r.get("creation_time", ""), reverse=True)
         return runs

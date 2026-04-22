@@ -22,6 +22,61 @@ from .run_manager import RunManager
 
 logger = logging.getLogger(__name__)
 
+# Persisted identifier fields per similarity backend. These are names of
+# remote collections/indexes/tables the user has configured — safe to
+# surface to users so they can recognize which remote resource this run
+# is backed by. Not all backends have identifiers (e.g. sklearn).
+_IDENTIFIER_FIELDS_BY_BACKEND = {
+    "qdrant": [("collection_name", "Collection")],
+    "milvus": [("collection_name", "Collection")],
+    "pinecone": [
+        ("index_name", "Index"),
+        ("namespace", "Namespace"),
+    ],
+    "mosaic": [("index_name", "Index")],
+    "mongodb": [("index_name", "Index")],
+    "elasticsearch": [("index_name", "Index")],
+    "redis": [("index_name", "Index")],
+    "pgvector": [
+        ("index_name", "Index"),
+        ("table_name", "Table"),
+    ],
+    "lancedb": [("table_name", "Table")],
+}
+
+
+def _extract_identifiers(config, backend):
+    """Return a list of ``{"label", "value"}`` dicts for the backend's
+    persisted identifier fields. Returns an empty list if the backend is
+    unknown, or if the config doesn't expose any of the expected fields.
+    """
+    if not backend or config is None:
+        return []
+    spec = _IDENTIFIER_FIELDS_BY_BACKEND.get(backend.lower())
+    if not spec:
+        return []
+
+    identifiers = []
+    for field, label in spec:
+        try:
+            value = getattr(config, field, None)
+        except Exception:
+            value = None
+        if value is None:
+            continue
+        value_str = str(value).strip()
+        if not value_str:
+            continue
+        identifiers.append({"label": label, "value": value_str})
+    return identifiers
+
+
+def _has_manage_permission(ctx):
+    """Returns whether the current user has manage permissions."""
+    if ctx.user is None:
+        return True
+    return getattr(ctx.user, "dataset_permission", None) == "MANAGE"
+
 
 class SimilaritySearchPanel(Panel):
     """Panel for running and managing similarity search queries."""
@@ -37,17 +92,50 @@ class SimilaritySearchPanel(Panel):
 
     # -- Lifecycle --
 
-    def on_load(self, ctx):
+    def _current_user_id(self, ctx):
+        """The current user's id — source of truth for ownership
+        checks. None in OSS.
+        """
+        return str(ctx.user_id) if ctx.user_id else None
+
+    def _current_user_name(self, ctx):
+        """The current user's display name — used for UI. Falls back to
+        the user id string so the UI always has something to show.
+        """
+        if not ctx.user_id:
+            return None
+        return getattr(ctx.user, "name", None) or str(ctx.user_id)
+
+    def _list_runs(self, ctx, owner=None, can_manage=None):
+        """Permission-aware wrapper over :class:`RunManager.list_runs`.
+
+        Resolves ``can_manage`` from the context when not provided so
+        callers inside the panel don't have to repeat the lookup.
+        """
+        if can_manage is None:
+            can_manage = _has_manage_permission(ctx)
         manager = RunManager(ctx)
-        runs = manager.list_runs()
+        return manager.list_runs(
+            owner=owner,
+            current_user_id=self._current_user_id(ctx),
+            can_manage=can_manage,
+        )
+
+    def on_load(self, ctx):
+        can_manage = _has_manage_permission(ctx)
+        # Match the FE's default `ownerFilter` (OWNER_MINE) so we don't
+        # flash all runs before the FE's first refresh.
+        runs = self._list_runs(ctx, owner="mine", can_manage=can_manage)
         brain_keys = self._get_brain_keys(ctx)
 
         ctx.panel.set_data("runs", runs)
         ctx.panel.set_data("brain_keys", brain_keys)
 
-        # None in OSS, populated by FiftyOne Teams
-        current_user = str(ctx.user_id) if ctx.user_id else None
-        ctx.panel.set_data("current_user", current_user)
+        # FE only needs a truthy value for `canFilterByOwner`; displaying
+        # the name is nicer than the id when we have one.
+        ctx.panel.set_data("current_user", self._current_user_name(ctx))
+
+        ctx.panel.set_data("can_manage", can_manage)
 
         # Enable alt-selection visual feedback for negative queries
         ctx.ops.set_sample_selection_style(
@@ -66,9 +154,13 @@ class SimilaritySearchPanel(Panel):
         ctx.panel.set_data("brain_keys", brain_keys)
 
     def list_runs(self, ctx):
-        """Refresh the runs list."""
-        manager = RunManager(ctx)
-        runs = manager.list_runs()
+        """Refresh the runs list.
+
+        Accepts an optional ``owner`` param (``"mine"`` or ``"all"``) to
+        filter runs server-side. Non-managers are always restricted to
+        their own runs regardless of the requested filter.
+        """
+        runs = self._list_runs(ctx, owner=ctx.params.get("owner"))
         ctx.panel.set_data("runs", runs)
 
     def apply_run(self, ctx):
@@ -257,6 +349,16 @@ class SimilaritySearchPanel(Panel):
                 model = getattr(config, "model", None)
                 backend = getattr(config, "method", None)
                 embeddings_field = getattr(config, "embeddings_field", None)
+                metric = getattr(config, "metric", None)
+                try:
+                    identifiers = _extract_identifiers(config, backend)
+                except Exception as e:
+                    logger.warning(
+                        "Failed to extract identifiers for key %s: %s",
+                        key,
+                        e,
+                    )
+                    identifiers = []
 
                 supports_least = False
                 try:
@@ -283,6 +385,8 @@ class SimilaritySearchPanel(Panel):
                         "model": model,
                         "backend": backend,
                         "embeddings_field": embeddings_field,
+                        "metric": metric,
+                        "identifiers": identifiers,
                     }
                 )
             except Exception as e:
