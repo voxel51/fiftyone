@@ -1,7 +1,8 @@
 import { useCallback } from "react";
 import type {
   DrawStyle,
-  KeypointVariantResolverContext,
+  KeypointPointHitAction,
+  KeypointPointHitContext,
   Point,
 } from "@fiftyone/lighter";
 import {
@@ -14,11 +15,14 @@ import {
 } from "@fiftyone/lighter";
 import { atom, useAtom } from "jotai";
 import { v4 as uuidv4 } from "uuid";
+import { ClickEventModifiers } from "@fiftyone/utilities";
 
-/** Variant keys used by point selection. */
+/** Positive points are explicitly *included* in inference results. */
 export const POSITIVE_POINT_VARIANT = "positive" as const;
+/** Negative points are explicitly *excluded* from inference results. */
 export const NEGATIVE_POINT_VARIANT = "negative" as const;
 
+/** Union of supported point selection variants. */
 export type PointSelectionVariant =
   | typeof POSITIVE_POINT_VARIANT
   | typeof NEGATIVE_POINT_VARIANT;
@@ -38,14 +42,22 @@ const POINT_SELECTION_VARIANT_STYLES: Record<PointSelectionVariant, DrawStyle> =
 
 export interface PointSelection {
   /**
-   * Activates point selection. The optional resolver is invoked for each
-   * placed point and should return the variant key to associate with it.
+   * Activates point selection.
+   *
+   * @param resolveVariant Invoked for each new point placement; returns
+   *   the variant key to associate with the point.
+   * @param resolvePointHit Invoked when a click lands on an existing
+   *   point; returning an action (e.g. "delete") overrides the default
+   *   behavior.
    */
   activate(
     resolveVariant?: (
       relativePoint: Point,
-      ctx: KeypointVariantResolverContext
-    ) => PointSelectionVariant
+      ctx: ClickEventModifiers
+    ) => PointSelectionVariant,
+    resolvePointHit?: (
+      ctx: KeypointPointHitContext
+    ) => KeypointPointHitAction | undefined
   ): void;
 
   /**
@@ -96,8 +108,11 @@ export const usePointSelection = (): PointSelection => {
     (
       resolveVariant?: (
         relativePoint: Point,
-        ctx: KeypointVariantResolverContext
-      ) => PointSelectionVariant
+        ctx: ClickEventModifiers
+      ) => PointSelectionVariant,
+      resolvePointHit?: (
+        ctx: KeypointPointHitContext
+      ) => KeypointPointHitAction | undefined
     ) => {
       if (isActive) {
         return;
@@ -118,7 +133,12 @@ export const usePointSelection = (): PointSelection => {
         scene.addOverlay(overlay);
 
         scene.enterInteractiveMode(
-          new InteractiveKeypointHandler(overlay, eventBus, resolveVariant)
+          new InteractiveKeypointHandler(
+            overlay,
+            eventBus,
+            resolveVariant,
+            resolvePointHit
+          )
         );
 
         setIsActive(true);
