@@ -2,12 +2,12 @@ import { ColorSchemeInput } from "@fiftyone/relay";
 import {
   SpaceNode,
   SpaceTree,
+  useInitializePanel,
   usePanels,
-  useSetPanelStateById,
 } from "@fiftyone/spaces";
+import * as fos from "@fiftyone/state";
 import { SetterOrUpdater } from "recoil";
 import { ExecutionContext as EC } from "../operators";
-import * as fos from "@fiftyone/state";
 
 /*
  * Common
@@ -50,8 +50,8 @@ export type ResetColorSchemeHooks = {
  * Spaces
  */
 
-export type SetPanelStateByIdType = ReturnType<typeof useSetPanelStateById>;
 export type AvailablePanelType = ReturnType<typeof usePanels>;
+export type InitializePanelType = ReturnType<typeof useInitializePanel>;
 
 export type OpenPanelHooks = {
   availablePanels: AvailablePanelType;
@@ -60,19 +60,17 @@ export type OpenPanelHooks = {
   modalSpaces: SpaceTree;
   openedGridPanels: SpaceNode[];
   openedModalPanels: SpaceNode[];
-  setPanelStateById: SetPanelStateByIdType;
-  setPanelStateLocalById: SetPanelStateByIdType;
+  initializePanel: InitializePanelType;
 };
 
 export type OpenPanelParams = {
-  data?: object;
+  data?: Record<string, unknown>;
   force?: boolean;
   forceDuplicate?: boolean;
   isActive?: boolean;
   layout?: string;
   name: string;
-  sessionState?: object;
-  state?: object;
+  state?: Record<string, unknown>;
 };
 
 export type ListPanelsHooks = {

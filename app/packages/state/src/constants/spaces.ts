@@ -14,3 +14,8 @@ export const COLOR_BLIND_FRIENDLY_PALETTE = [
   "#d55e00", // vermillion
   "#cc79a7", // reddish purple
 ];
+
+export enum PANEL_SURFACE {
+  GRID = "grid",
+  MODAL = "modal",
+}
