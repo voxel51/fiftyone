@@ -75,7 +75,7 @@ def _has_manage_permission(ctx):
     """Returns whether the current user has manage permissions."""
     if ctx.user is None:
         return True
-    return ctx.user.dataset_permission == "MANAGE"
+    return getattr(ctx.user, "dataset_permission", None) == "MANAGE"
 
 
 class SimilaritySearchPanel(Panel):

@@ -350,7 +350,7 @@ class SimilaritySearchOperator(foo.Operator):
         return model.embed(img)
 
 
-class InitSimilarityRunOperator(foo.Operator):  #
+class InitSimilarityRunOperator(foo.Operator):
     """Creates a run record for a delegated similarity search.
 
     Called by the frontend after a delegated operation is queued, so
