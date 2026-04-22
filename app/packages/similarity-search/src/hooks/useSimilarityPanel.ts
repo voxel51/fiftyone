@@ -83,11 +83,7 @@ const useDerivedPanelState = (props: SimilaritySearchViewProps) => {
 
   // Only show All|Mine toggle for users with manage permissions
   const canFilterByOwner = !!currentUser && canManage;
-  const { filteredRuns, filterState, setFilterState } = useFilteredRuns(
-    runs,
-    currentUser,
-    canManage
-  );
+  const { filteredRuns, filterState, setFilterState } = useFilteredRuns(runs);
 
   return {
     loaded: loaded && !submitting,
@@ -263,7 +259,7 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
     bulkDeleteRuns: (payload: { run_ids: string[] }) => void;
     cloneRun: (payload: { run_id: string }) => void;
     renameRun: (payload: { run_id: string; new_name: string }) => void;
-    listRuns: () => void;
+    listRuns: (payload?: { owner?: string }) => void;
     getBrainKeys: () => void;
     getSampleMedia: (payload: { sample_ids: string[] }) => void;
   }>({
@@ -292,6 +288,19 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
     clearCloneConfig,
     clearAndExit,
   });
+
+  // Re-fetch runs whenever the owner filter changes — it's applied
+  // server-side. Skip the initial render so we don't double-fetch
+  // alongside the panel's initial load.
+  const ownerFilter = state.filterState.ownerFilter;
+  const ownerInitRef = useRef(true);
+  useEffect(() => {
+    if (ownerInitRef.current) {
+      ownerInitRef.current = false;
+      return;
+    }
+    state.refreshRuns();
+  }, [ownerFilter, state.refreshRuns]);
 
   // Auto-apply immediate execution runs when they complete.
   // Delegated runs (operator_run_id is set) are excluded — there's no

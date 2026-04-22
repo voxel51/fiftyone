@@ -4,16 +4,16 @@ import { SimilarityRun, RunFilterState } from "../types";
 import { DEFAULT_DATE_PRESET, OWNER_MINE } from "../constants";
 import { getDateRange, matchesText, matchesDate } from "../utils";
 
-const filterStateAtom = atom<RunFilterState>({
+// Exported so non-React callers (e.g. `useRuns.refreshRuns`) can read
+// the current filter state at call time via `getDefaultStore().get(...)`.
+export const filterStateAtom = atom<RunFilterState>({
   searchText: "",
   datePreset: DEFAULT_DATE_PRESET,
   ownerFilter: OWNER_MINE,
 });
 
 export const useFilteredRuns = (
-  runs: SimilarityRun[],
-  currentUser?: string | null,
-  canManage = true
+  runs: SimilarityRun[]
 ): {
   filteredRuns: SimilarityRun[];
   filterState: RunFilterState;
@@ -21,26 +21,18 @@ export const useFilteredRuns = (
 } => {
   const [filterState, setFilterState] = useAtom(filterStateAtom);
 
+  // Owner filter is applied server-side by
+  // plugins/panels/similarity_search. Only date + search are applied here.
   const filteredRuns = useMemo(() => {
-    const { searchText, datePreset, ownerFilter } = filterState;
+    const { searchText, datePreset } = filterState;
     const { start, end } = getDateRange(datePreset);
-
-    // Users without manage permission can only see their own searches
-    const effectiveOwnerFilter =
-      !canManage && currentUser ? OWNER_MINE : ownerFilter;
 
     return runs.filter((run) => {
       if (searchText && !matchesText(run, searchText)) return false;
       if (!matchesDate(run, start, end)) return false;
-      if (
-        ownerFilter === OWNER_MINE &&
-        currentUser &&
-        run.created_by !== currentUser
-      )
-        return false;
       return true;
     });
-  }, [runs, filterState, currentUser, canManage]);
+  }, [runs, filterState]);
 
   return { filteredRuns, filterState, setFilterState };
 };

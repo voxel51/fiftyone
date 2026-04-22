@@ -80,6 +80,7 @@ class RunManager:
             "operator_run_id": None,
             "status_details": None,
             "created_by": run_params.get("created_by"),
+            "created_by_name": run_params.get("created_by_name"),
         }
         self.set_run(run_id, run_data)
         return run_data
@@ -158,26 +159,39 @@ class RunManager:
             self._store.delete(f"{self._OPID_PREFIX}{run['operator_run_id']}")
         self._store.delete(self._key(run_id))
 
-    def list_runs(self) -> List[Dict]:
-        """List all runs sorted by creation time (newest first).
+    def list_runs(
+        self,
+        owner: Optional[str] = None,
+        current_user_id: Optional[str] = None,
+    ) -> List[Dict]:
+        """List runs sorted by creation time (newest first).
+
+        Args:
+            owner: "mine" to restrict to runs whose ``created_by``
+                matches ``current_user_id``; "all" or ``None`` returns
+                every run.
+            current_user_id: the current user's id. Required when
+                ``owner == "mine"``; ignored otherwise.
 
         Returns:
             list of run data dicts
         """
+        filter_mine = owner == "mine" and bool(current_user_id)
+
         keys = self._store.list_keys()
         runs = []
         for key in keys:
-            if key.startswith(self._RUN_PREFIX):
-                run = self._store.get(key)
-                if run:
-                    # Strip heavy fields for listing
-                    runs.append(
-                        {
-                            k: v
-                            for k, v in run.items()
-                            if k not in self._HEAVY_FIELDS
-                        }
-                    )
+            if not key.startswith(self._RUN_PREFIX):
+                continue
+            run = self._store.get(key)
+            if not run:
+                continue
+            if filter_mine and run.get("created_by") != current_user_id:
+                continue
+            # Strip heavy fields for listing
+            runs.append(
+                {k: v for k, v in run.items() if k not in self._HEAVY_FIELDS}
+            )
 
         runs.sort(key=lambda r: r.get("creation_time", ""), reverse=True)
         return runs
