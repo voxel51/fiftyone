@@ -178,7 +178,9 @@ describe("WebGpuCanvas", () => {
 
     unmount();
 
-    expect(unmountRootMock).toHaveBeenCalledTimes(1);
-    expect(webGpuRendererDisposeMock).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(unmountRootMock).toHaveBeenCalledTimes(1);
+      expect(webGpuRendererDisposeMock).toHaveBeenCalledTimes(1);
+    });
   });
 });
