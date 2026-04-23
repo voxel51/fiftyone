@@ -9,29 +9,43 @@ import {
   STROKE_WIDTH,
 } from "../constants";
 import type { Renderer2D } from "../renderer/Renderer2D";
-import type { DrawStyle, Point, RenderMeta } from "../types";
-import { BaseOverlay } from "./BaseOverlay";
-import { KeypointOverlay, type KeypointOptions } from "./KeypointOverlay";
+import type { CoordinateSystem, DrawStyle, Point, Rect } from "../types";
+import { NO_BOUNDS } from "./DetectionOverlay";
+import { KeypointOverlay } from "./KeypointOverlay";
+import { v4 as generateUUID } from "uuid";
 
-export interface MaskKeypointOptions extends KeypointOptions {
-  closeConnections?: boolean;
+export interface MaskKeypointsOptions {
+  id?: string;
+  coordinateSystem: CoordinateSystem;
+  renderer: Renderer2D;
+  keypointThreshold?: number;
 }
+
+const KEYPOINT_THRESHOLD = 5;
 
 /**
  * Extended keypoint overlay for mask pen-tool polygon drawing.
  *
  * Adds:
- * - `closeConnections`: draws a segment connecting the first and last points
- * - `connectToLast` option on `addPoint`: auto-connects sequential points
- * - `preserveContainer` support in rendering (for compositing inside a parent overlay)
- * - Close-connections preview line from the first point to the cursor
+ * - exposes absolute points
+ * - provides bounds without padding
+ * - provides a minimum threshold for point distance
+ * - `addPoint`: auto-connects new additions to the last point
  */
 export class MaskKeypoints extends KeypointOverlay {
-  private closeConnections: boolean;
+  private lastKeypoint?: Point;
+  private keypointThreshold: number;
 
-  constructor(options: MaskKeypointOptions) {
-    super(options);
-    this.closeConnections = options.closeConnections ?? false;
+  constructor(options: MaskKeypointsOptions) {
+    super({
+      id: options.id ?? generateUUID(),
+      label: { label: "", points: [] },
+      field: "",
+    });
+
+    this.coordinateSystem = options.coordinateSystem;
+    this.renderer = options.renderer;
+    this.keypointThreshold = options.keypointThreshold ?? KEYPOINT_THRESHOLD;
   }
 
   /**
@@ -42,20 +56,54 @@ export class MaskKeypoints extends KeypointOverlay {
   }
 
   /**
-   * Adds a point at the given absolute (world) position.
-   * Optionally connects the new point to the previous one.
+   * Tight bounds around the points with no padding.
    */
-  override addPoint(
-    worldPoint: Point,
-    options: { connectToLast?: boolean } = {}
-  ): number {
-    const idx = super.addPoint(worldPoint);
+  override get bounds(): Rect {
+    const pts = this.getAbsolutePoints();
+    if (pts.length === 0) return NO_BOUNDS;
 
-    if (options.connectToLast && idx > 0) {
-      this.addConnection([idx - 1, idx]);
+    let minX = Infinity,
+      minY = Infinity,
+      maxX = -Infinity,
+      maxY = -Infinity;
+
+    for (const p of pts) {
+      if (p.x < minX) minX = p.x;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.y > maxY) maxY = p.y;
     }
 
-    return idx;
+    return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+  }
+
+  /**
+   * Adds a point and connects it to any prior point.
+   */
+  override addPoint(worldPoint: Point): number {
+    let shouldAddPoint = true;
+
+    if (this.lastKeypoint) {
+      const dist = Math.hypot(
+        worldPoint.x - this.lastKeypoint.x,
+        worldPoint.y - this.lastKeypoint.y
+      );
+
+      shouldAddPoint = dist >= this.keypointThreshold;
+    }
+
+    if (shouldAddPoint) {
+      const idx = super.addPoint(worldPoint);
+
+      if (idx > 0) {
+        this.addConnection([idx - 1, idx]);
+      }
+
+      this.lastKeypoint = { ...worldPoint };
+      return idx;
+    }
+
+    return -1;
   }
 
   /**
@@ -70,22 +118,16 @@ export class MaskKeypoints extends KeypointOverlay {
   ): Array<[Point, Point]> {
     const segments = super.collectEdgeSegments(absPoints);
 
-    if (this.closeConnections && absPoints.length >= 2) {
-      segments.push([absPoints[0], absPoints[absPoints.length - 1]]);
+    // close our polygon, last point to first
+    if (absPoints.length >= 2) {
+      segments.push([absPoints[absPoints.length - 1], absPoints[0]]);
     }
 
     return segments;
   }
 
-  protected override renderImpl(
-    renderer: Renderer2D,
-    renderMeta: RenderMeta
-  ): void {
-    // When rendered as a child of another overlay, preserve what has been
-    // drawn so far in the shared container.
-    if (!renderMeta.preserveContainer) {
-      renderer.dispose(this.containerId);
-    }
+  protected override renderImpl(renderer: Renderer2D): void {
+    renderer.dispose(this.containerId);
 
     const style = this.currentStyle;
     if (!style) return;
@@ -120,7 +162,8 @@ export class MaskKeypoints extends KeypointOverlay {
         this.containerId
       );
 
-      if (this.closeConnections && absPoints.length >= 2) {
+      // a second preview line to the first point
+      if (absPoints.length >= 2) {
         const firstPoint = absPoints[0];
         renderer.drawLine(
           firstPoint,
@@ -179,22 +222,11 @@ export class MaskKeypoints extends KeypointOverlay {
       );
     }
 
-    // 4. Draw label text (reuses cached bounds)
-    if (this.label && this.label.label?.length > 0) {
-      const labelBounds = this.bounds;
-      if (BaseOverlay.validBounds(labelBounds)) {
-        renderer.drawText(
-          this.label.label,
-          { x: labelBounds.x, y: labelBounds.y },
-          {
-            fontColor: "#ffffff",
-            backgroundColor: style.fillStyle || style.strokeStyle || "#000",
-          },
-          this.containerId
-        );
-      }
-    }
-
     this.emitLoaded();
+  }
+
+  override destroy(): void {
+    super.destroy();
+    this.renderer?.dispose(this.id);
   }
 }
