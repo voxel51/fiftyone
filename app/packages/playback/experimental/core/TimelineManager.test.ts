@@ -212,6 +212,44 @@ describe("TimelineManager", () => {
       expect(mgr.playState).toBe("paused");
     });
 
+    it("restarts from the beginning when play resumes from the end", () => {
+      const mgr = new TimelineManager(createParams());
+      mgr.initialize(
+        createParams({
+          config: {
+            totalFrames: 100,
+            defaultFrameNumber: 100,
+            loop: false,
+            speed: 1,
+            tickRate: 30,
+          },
+        })
+      );
+
+      mgr.play();
+      flushRaf(50);
+
+      expect(mgr.playState).toBe("playing");
+      expect(mgr.snapshot.timeInt).toBe(1);
+    });
+
+    it("restarts duration playback from the beginning when play resumes from the end", async () => {
+      const mgr = new TimelineManager(createDurationParams());
+      mgr.initialize(createDurationParams());
+      await mgr.setTime(1_000_000_000);
+
+      mgr.play();
+      flushRaf(20);
+
+      expect(mgr.playState).toBe("playing");
+      expect(mgr.snapshot.timeInt).toBe(0);
+
+      flushRaf(20);
+
+      expect(mgr.playState).toBe("playing");
+      expect(mgr.snapshot.timeInt).toBeGreaterThan(0);
+    });
+
     it("fires play state change event", () => {
       const mgr = new TimelineManager(createParams());
       mgr.initialize(createParams());

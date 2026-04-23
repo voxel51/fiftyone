@@ -42,6 +42,7 @@ export class PlaybackEngine {
   private _animationId = -1;
   private _isRunning = false;
   private _lastDrawTime = -1;
+  private _hasCommittedSinceStart = false;
 
   private readonly opts: PlaybackEngineOptions;
 
@@ -59,6 +60,7 @@ export class PlaybackEngine {
     if (this._isRunning) return;
     this._isRunning = true;
     this._lastDrawTime = performance.now();
+    this._hasCommittedSinceStart = false;
     this._animationId = requestAnimationFrame(this.tick);
   }
 
@@ -68,6 +70,7 @@ export class PlaybackEngine {
     cancelAnimationFrame(this._animationId);
     this._isRunning = false;
     this._lastDrawTime = -1;
+    this._hasCommittedSinceStart = false;
   }
 
   /** Stop and release resources. */
@@ -102,22 +105,36 @@ export class PlaybackEngine {
 
     // Compute target time
     let targetTimeInt: TimeInt;
+    let targetTimeReal: TimeInt;
     if (type === "sequence") {
+      targetTimeReal = currentSnapshot.timeReal + 1;
       targetTimeInt = currentSnapshot.timeInt + 1;
     } else {
       // duration: advance by elapsed real time scaled by speed
       const elapsedNanos = elapsed * speed * 1e6;
-      targetTimeInt = quantize(currentSnapshot.timeReal + elapsedNanos, type);
+      targetTimeReal = currentSnapshot.timeReal + elapsedNanos;
+      targetTimeInt = quantize(targetTimeReal, type);
     }
 
     // End-of-range handling
     if (targetTimeInt > range[1]) {
       const loopMode = normalizeLoopMode(config.loop);
-      if (loopMode === "loop") {
+      const shouldCommitEndBeforeStopping = currentSnapshot.timeInt < range[1];
+      const shouldRestartFromBeginning =
+        loopMode === "none" &&
+        !this._hasCommittedSinceStart &&
+        currentSnapshot.timeInt >= range[1];
+
+      if (loopMode === "loop" || shouldRestartFromBeginning) {
         targetTimeInt = range[0];
+        targetTimeReal = range[0];
       } else if (loopMode === "ping-pong") {
         // Stub: for now treat like loop
         targetTimeInt = range[0];
+        targetTimeReal = range[0];
+      } else if (shouldCommitEndBeforeStopping) {
+        targetTimeInt = range[1];
+        targetTimeReal = range[1];
       } else {
         // No loop — pause
         this.stop();
@@ -171,19 +188,15 @@ export class PlaybackEngine {
       this.opts.onPlayStateChange("playing");
     }
 
-    const timeReal =
-      type === "sequence"
-        ? targetTimeInt
-        : currentSnapshot.timeReal + elapsed * speed * 1e6;
-
     const snapshot = createSnapshot(
       this.opts.timelineName,
       targetTimeInt,
-      timeReal
+      targetTimeReal
     );
 
     // Commit snapshot to manager state
     this.opts.commitSnapshot(snapshot);
+    this._hasCommittedSinceStart = true;
 
     // Notify all subscribers
     for (const sub of subscribers.values()) {

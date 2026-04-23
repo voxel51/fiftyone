@@ -216,12 +216,17 @@ describe("PlaybackEngine", () => {
 
   describe("end-of-range behavior", () => {
     it("pauses at end when loop is disabled", () => {
+      let currentSnapshot = createInitialSnapshot("test", 99);
+      const commitSnapshot = vi.fn((snap: TimeSnapshot) => {
+        currentSnapshot = snap;
+      });
       const onPlayStateChange = vi.fn();
 
       const engine = new PlaybackEngine(
         createMockOptions({
-          getSnapshot: () => createInitialSnapshot("test", 100),
+          getSnapshot: () => currentSnapshot,
           getRange: () => [1, 100] as const,
+          commitSnapshot,
           onPlayStateChange,
           getConfig: () => ({
             totalFrames: 100,
@@ -234,9 +239,114 @@ describe("PlaybackEngine", () => {
 
       engine.start();
       flushRaf(50);
+      expect(commitSnapshot).toHaveBeenCalledTimes(1);
+      expect(currentSnapshot.timeInt).toBe(100);
+
+      flushRaf(50);
 
       expect(onPlayStateChange).toHaveBeenCalledWith("paused");
       expect(engine.isRunning).toBe(false);
+    });
+
+    it("restarts from the beginning when playback is resumed from the end", () => {
+      let currentSnapshot = createInitialSnapshot("test", 100);
+      const commitSnapshot = vi.fn((snap: TimeSnapshot) => {
+        currentSnapshot = snap;
+      });
+
+      const engine = new PlaybackEngine(
+        createMockOptions({
+          getSnapshot: () => currentSnapshot,
+          getRange: () => [1, 100] as const,
+          commitSnapshot,
+          getConfig: () => ({
+            totalFrames: 100,
+            loop: false,
+            speed: 1,
+            tickRate: 30,
+          }),
+        })
+      );
+
+      engine.start();
+      flushRaf(50);
+
+      expect(commitSnapshot).toHaveBeenCalledTimes(1);
+      const committed = commitSnapshot.mock.calls[0][0] as TimeSnapshot;
+      expect(committed.timeInt).toBe(1);
+      expect(engine.isRunning).toBe(true);
+    });
+
+    it("commits the final duration timestamp before pausing when playback overshoots the end", () => {
+      let currentSnapshot = createInitialSnapshot("test", 990_000_000);
+      const commitSnapshot = vi.fn((snap: TimeSnapshot) => {
+        currentSnapshot = snap;
+      });
+      const onPlayStateChange = vi.fn();
+
+      const engine = new PlaybackEngine(
+        createMockOptions({
+          getConfig: () => ({
+            type: "duration",
+            duration: 1_000_000_000,
+            loop: false,
+            speed: 2,
+            tickRate: 60,
+          }),
+          getRange: () => [0, 1_000_000_000] as const,
+          getSnapshot: () => currentSnapshot,
+          commitSnapshot,
+          onPlayStateChange,
+          timelineType: "duration",
+        })
+      );
+
+      engine.start();
+      flushRaf(20);
+
+      expect(commitSnapshot).toHaveBeenCalledTimes(1);
+      expect(currentSnapshot.timeInt).toBe(1_000_000_000);
+      expect(engine.isRunning).toBe(true);
+
+      flushRaf(20);
+
+      expect(onPlayStateChange).toHaveBeenCalledWith("paused");
+      expect(engine.isRunning).toBe(false);
+    });
+
+    it("restarts duration playback from the beginning when resumed from the end", () => {
+      let currentSnapshot = createInitialSnapshot("test", 1_000_000_000);
+      const commitSnapshot = vi.fn((snap: TimeSnapshot) => {
+        currentSnapshot = snap;
+      });
+
+      const engine = new PlaybackEngine(
+        createMockOptions({
+          getConfig: () => ({
+            type: "duration",
+            duration: 1_000_000_000,
+            loop: false,
+            speed: 1,
+            tickRate: 60,
+          }),
+          getRange: () => [0, 1_000_000_000] as const,
+          getSnapshot: () => currentSnapshot,
+          commitSnapshot,
+          timelineType: "duration",
+        })
+      );
+
+      engine.start();
+      flushRaf(20);
+
+      expect(commitSnapshot).toHaveBeenCalledTimes(1);
+      expect(currentSnapshot.timeInt).toBe(0);
+
+      flushRaf(20);
+
+      expect(commitSnapshot).toHaveBeenCalledTimes(2);
+      expect(currentSnapshot.timeInt).toBeGreaterThan(0);
+      expect(engine.isRunning).toBe(true);
     });
 
     it("wraps to start when loop is enabled", () => {
