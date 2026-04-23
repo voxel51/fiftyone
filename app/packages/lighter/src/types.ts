@@ -203,4 +203,5 @@ export class BoundingBoxPersistence {
 
 export interface RenderMeta {
   canonicalMediaBounds: Rect;
+  preserveContainer?: boolean;
 }

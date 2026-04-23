@@ -195,12 +195,16 @@ export class InteractionManager {
     this.canvas.addEventListener("pointercancel", this.handlePointerCancel);
     this.canvas.addEventListener("pointerleave", this.handlePointerLeave);
     this.canvas.addEventListener("wheel", this.handleWheel, { passive: false });
+    this.canvas.addEventListener("contextmenu", this.handleRightClick);
     document.addEventListener("keydown", this.handleKeyDown);
     document.addEventListener("keyup", this.handleKeyUp);
     this.eventBus.on("lighter:zoomed", this.handleZoomed);
   }
 
   private handlePointerDown = (event: PointerEvent): void => {
+    // ignore right click, handled by `handleRightClick`
+    if (event.button === 2) return;
+
     const point = this.getCanvasPoint(event);
     const worldPoint = this.renderer.screenToWorld(point);
     const scale = this.renderer.getScale();
@@ -391,9 +395,7 @@ export class InteractionManager {
       });
     }
 
-    const interactiveHandler = this.getInteractiveHandler();
-    const handler =
-      interactiveHandler?.getOverlay() || this.findSelectedHandler();
+    const handler = this.getActiveHandler();
 
     if (handler) {
       this.selectionManager.select(handler.id);
@@ -587,6 +589,12 @@ export class InteractionManager {
         this.clearPendingAction(event);
 
         return true;
+      }
+
+      // Pen tool: forward click to the overlay to add a point.
+      if (segmentationModeBridge.getActiveTool() === "pen") {
+        this.segmentationModePaint(event);
+        return false;
       }
 
       // a detection is being edited but this click is outside its bounds
@@ -813,6 +821,41 @@ export class InteractionManager {
       this.lastClickPoint = point;
     }
   }
+
+  private handleRightClick = (event: PointerEvent) => {
+    event.preventDefault();
+
+    const point = this.getCanvasPoint(event);
+    const worldPoint = this.renderer.screenToWorld(point);
+    const scale = this.renderer.getScale();
+    const segmentationToolState = segmentationModeBridge.getToolState(scale);
+
+    const interactiveHandler = this.getInteractiveHandler();
+    const handler =
+      interactiveHandler?.getOverlay() || this.findSelectedHandler();
+
+    if (handler && segmentationToolState.active) {
+      handler?.commitPenPolygon({
+        point,
+        worldPoint,
+        event,
+        scale,
+        segmentationToolState,
+      });
+
+      if (interactiveHandler) {
+        this.removeHandler(interactiveHandler);
+
+        this.eventBus.dispatch("lighter:overlay-establish", {
+          id: handler.id,
+          handler: interactiveHandler,
+          startBounds: handler.bounds,
+          startPosition: { x: handler.bounds.x, y: handler.bounds.y },
+          bounds: handler.bounds,
+        });
+      }
+    }
+  };
 
   private handleHover(point: Point, event: PointerEvent): void {
     const worldPoint = this.renderer.screenToWorld(point);
@@ -1120,6 +1163,18 @@ export class InteractionManager {
    */
   findInteractingHandler(): InteractionHandler | undefined {
     return this.handlers.find((handler) => handler.isInteracting?.());
+  }
+
+  /**
+   * Returns the current active handler.
+   * @returns The active handler if found, undefined otherwise.
+   */
+  getActiveHandler(): InteractionHandler | undefined {
+    const interactiveHandler = this.getInteractiveHandler();
+    const handler =
+      interactiveHandler?.getOverlay() || this.findSelectedHandler();
+
+    return handler;
   }
 
   /**

@@ -9,6 +9,7 @@ import {
   CropSquare,
   FormatColorReset,
   Redo,
+  Timeline,
   Undo,
 } from "@mui/icons-material";
 import { useMemo } from "react";
@@ -87,6 +88,15 @@ export const useSegmentationActions = ({
             tooltip: "Eraser",
             isActive: tool === "eraser",
             onClick: () => switchTool("eraser"),
+          },
+          {
+            id: "pen",
+            label: "Pen",
+            icon: <Timeline />,
+            shortcut: "P",
+            tooltip: "Pen",
+            isActive: tool === "pen",
+            onClick: () => switchTool("pen"),
           },
         ],
       },
