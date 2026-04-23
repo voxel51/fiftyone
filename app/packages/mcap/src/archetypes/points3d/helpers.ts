@@ -1,8 +1,9 @@
 import * as THREE from "three";
 import type { Points3dBounds } from "./types";
 
-const DEFAULT_BOUNDS_PADDING = 1.7;
+const DEFAULT_BOUNDS_PADDING = 1.08;
 const DEFAULT_CAMERA_DIRECTION = new THREE.Vector3(1, -1, 0.8).normalize();
+const DEFAULT_CAMERA_UP = new THREE.Vector3(0, 0, 1);
 const MIN_CAMERA_DISTANCE = 1.5;
 const MIN_POINT_SIZE = 0.025;
 const MAX_POINT_SIZE = 0.18;
@@ -26,6 +27,71 @@ export function createBoundsSize(bounds: Points3dBounds) {
 
 export function createBoundsRadius(bounds: Points3dBounds) {
   return Math.max(createBoundsSize(bounds).length() * 0.5, 0.001);
+}
+
+function createBoundsCorners(bounds: Points3dBounds) {
+  const { min, max } = createBoundsVectors(bounds);
+
+  return [
+    new THREE.Vector3(min.x, min.y, min.z),
+    new THREE.Vector3(min.x, min.y, max.z),
+    new THREE.Vector3(min.x, max.y, min.z),
+    new THREE.Vector3(min.x, max.y, max.z),
+    new THREE.Vector3(max.x, min.y, min.z),
+    new THREE.Vector3(max.x, min.y, max.z),
+    new THREE.Vector3(max.x, max.y, min.z),
+    new THREE.Vector3(max.x, max.y, max.z),
+  ];
+}
+
+function createCameraFitAxes(camera: THREE.PerspectiveCamera) {
+  const viewDirection = DEFAULT_CAMERA_DIRECTION.clone().normalize();
+  const upHint = camera.up.lengthSq()
+    ? camera.up.clone().normalize()
+    : DEFAULT_CAMERA_UP.clone();
+  let right = upHint.clone().cross(viewDirection);
+
+  if (right.lengthSq() < 1e-6) {
+    right = DEFAULT_CAMERA_UP.clone().cross(viewDirection);
+  }
+
+  if (right.lengthSq() < 1e-6) {
+    right = new THREE.Vector3(1, 0, 0).cross(viewDirection);
+  }
+
+  right.normalize();
+
+  return {
+    right,
+    up: viewDirection.clone().cross(right).normalize(),
+    viewDirection,
+  };
+}
+
+function measureBoundsInViewSpace(
+  bounds: Points3dBounds,
+  center: THREE.Vector3,
+  axes: ReturnType<typeof createCameraFitAxes>
+) {
+  let halfDepth = 0;
+  let halfHeight = 0;
+  let halfWidth = 0;
+
+  createBoundsCorners(bounds).forEach((corner) => {
+    const relativeCorner = corner.sub(center);
+    halfWidth = Math.max(halfWidth, Math.abs(relativeCorner.dot(axes.right)));
+    halfHeight = Math.max(halfHeight, Math.abs(relativeCorner.dot(axes.up)));
+    halfDepth = Math.max(
+      halfDepth,
+      Math.abs(relativeCorner.dot(axes.viewDirection))
+    );
+  });
+
+  return {
+    halfDepth,
+    halfHeight,
+    halfWidth,
+  };
 }
 
 export function computePointSize(bounds: Points3dBounds) {
@@ -78,19 +144,32 @@ export function fitPerspectiveCameraToBounds(
   bounds: Points3dBounds
 ) {
   const center = createBoundsCenter(bounds);
-  const radius = createBoundsRadius(bounds);
-  const fov = THREE.MathUtils.degToRad(camera.fov || 50);
+  const verticalFov = THREE.MathUtils.degToRad(camera.fov || 50);
+  const aspect =
+    Number.isFinite(camera.aspect) && camera.aspect > 0 ? camera.aspect : 1;
+  const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * aspect);
+  const fitAxes = createCameraFitAxes(camera);
+  const { halfDepth, halfHeight, halfWidth } = measureBoundsInViewSpace(
+    bounds,
+    center,
+    fitAxes
+  );
   const distance = Math.max(
     MIN_CAMERA_DISTANCE,
-    (radius / Math.tan(fov / 2)) * DEFAULT_BOUNDS_PADDING
+    halfDepth +
+      Math.max(
+        halfHeight / Math.tan(verticalFov / 2),
+        halfWidth / Math.tan(horizontalFov / 2)
+      ) *
+        DEFAULT_BOUNDS_PADDING
   );
 
   const nextPosition = center
     .clone()
-    .add(DEFAULT_CAMERA_DIRECTION.clone().multiplyScalar(distance));
+    .add(fitAxes.viewDirection.clone().multiplyScalar(distance));
 
   camera.position.copy(nextPosition);
-  camera.near = Math.max(distance / 100, 0.01);
+  camera.near = Math.max((distance - halfDepth) / 100, 0.01);
   camera.far = distance * 20;
   camera.lookAt(center);
   camera.updateProjectionMatrix();
