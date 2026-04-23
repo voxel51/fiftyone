@@ -32,6 +32,47 @@ type ImageBufferCacheOptions = RawMessageWindowCacheOptions & {
 const DEFAULT_MAX_DECODED_IMAGE_FRAME_ENTRIES = 48;
 const DEFAULT_MAX_DECODED_IMAGE_FRAME_BYTES = 64 * 1024 * 1024;
 
+function getDecodedImageFrameBytes(image: HTMLImageElement) {
+  const width = image.naturalWidth || image.width || 1;
+  const height = image.naturalHeight || image.height || 1;
+  return width * height * 4;
+}
+
+async function preloadRenderableImage(
+  objectUrl: string
+): Promise<HTMLImageElement> {
+  if (typeof Image === "undefined") {
+    throw new Error("Image preload is unavailable in this environment");
+  }
+
+  const image = new Image();
+  image.decoding = "async";
+
+  const loadPromise = new Promise<HTMLImageElement>((resolve, reject) => {
+    image.onload = () => resolve(image);
+    image.onerror = () =>
+      reject(new Error(`Failed to load image frame from ${objectUrl}`));
+  });
+
+  image.src = objectUrl;
+
+  if (image.complete && (image.naturalWidth || image.width)) {
+    return image;
+  }
+
+  if (typeof image.decode === "function") {
+    try {
+      await image.decode();
+      return image;
+    } catch {
+      // Fall back to the load event for environments that reject decode()
+      // while still populating onload for blob-backed images.
+    }
+  }
+
+  return loadPromise;
+}
+
 /** Small per-stream cache for buffered raw Multimodal windows and decoded images. */
 export class MultimodalImageBufferCache {
   private readonly rawWindowCache: MultimodalRawMessageWindowCache;
@@ -90,6 +131,11 @@ export class MultimodalImageBufferCache {
     return this.rawWindowCache.getSyncTimestamps();
   }
 
+  /** Returns the raw-window version so playback bookkeeping can memoize cheaply. */
+  getVersion() {
+    return this.rawWindowCache.getVersion();
+  }
+
   /** Reports whether the raw message window containing this timestamp is ready. */
   getMessageReadiness(logTimeNs: number): BufferReadiness {
     return this.rawWindowCache.getTimeReadiness(logTimeNs);
@@ -113,29 +159,39 @@ export class MultimodalImageBufferCache {
       this.schemaName,
       message
     )
-      .then((decoded) => {
+      .then(async (decoded) => {
         const mimeType = getCompressedImageMimeType(decoded.format);
         const blob = new Blob([decoded.compressedBytes], { type: mimeType });
         const objectUrl = URL.createObjectURL(blob);
-        const frame = {
-          id: message.messageId,
-          messageId: message.messageId,
-          format: decoded.format,
-          frameId: decoded.frameId,
-          src: objectUrl,
-          timestampNs: message.logTimeNs,
-          logTimeNs: message.logTimeNs,
-          publishTimeNs: message.publishTimeNs,
-          objectUrl,
-        };
+        try {
+          const imageSource = await preloadRenderableImage(objectUrl);
+          const frame = {
+            id: message.messageId,
+            messageId: message.messageId,
+            format: decoded.format,
+            frameId: decoded.frameId,
+            src: objectUrl,
+            imageSource,
+            timestampNs: message.logTimeNs,
+            logTimeNs: message.logTimeNs,
+            publishTimeNs: message.publishTimeNs,
+            objectUrl,
+          };
 
-        this.decodedFrames.set(
-          message.messageId,
-          frame,
-          decoded.compressedBytes.byteLength
-        );
+          this.decodedFrames.set(
+            message.messageId,
+            frame,
+            Math.max(
+              decoded.compressedBytes.byteLength,
+              getDecodedImageFrameBytes(imageSource)
+            )
+          );
 
-        return frame;
+          return frame;
+        } catch (error) {
+          URL.revokeObjectURL(objectUrl);
+          throw error;
+        }
       })
       .finally(() => {
         this.pendingFrames.delete(message.messageId);

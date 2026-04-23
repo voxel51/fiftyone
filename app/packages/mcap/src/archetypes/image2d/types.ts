@@ -51,11 +51,15 @@ export type Image2dOverlayPrimitive =
   | Image2dOverlayPolyline
   | Image2dOverlayText;
 
+/** Predecoded browser image source that can back a 2D playback texture. */
+export type Image2dRenderableSource = HTMLImageElement | ImageBitmap;
+
 /** One render-ready 2D image frame for a transport-agnostic archetype. */
 export type Image2dFrame = {
   id: string;
   src: string;
   timestampNs: number;
+  imageSource?: Image2dRenderableSource;
   overlays?: Image2dOverlayPrimitive[];
   warnings?: string[];
 };

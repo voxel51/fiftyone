@@ -2,10 +2,11 @@ import { OrbitControls } from "@react-three/drei";
 import { useFrame, useLoader, useThree } from "@react-three/fiber";
 import React from "react";
 import * as THREE from "three";
-import { WebGpuCanvas } from "../../WebGpuCanvas";
+import { WebGpuCanvas } from "../shared/WebGpuCanvas";
 import type {
   Image2dOverlayPrimitive,
   Image2dOverlayPolyline,
+  Image2dRenderableSource,
   Image2dViewProps,
 } from "./types";
 
@@ -42,7 +43,11 @@ type OverlayRect = {
   imageHeight: number;
 };
 
-function TexturedImageControls() {
+function TexturedImageControls({
+  onCameraChange,
+}: {
+  onCameraChange?: () => void;
+}) {
   return (
     <OrbitControls
       dampingFactor={0.08}
@@ -53,6 +58,7 @@ function TexturedImageControls() {
       makeDefault
       maxZoom={800}
       minZoom={20}
+      onChange={onCameraChange}
       mouseButtons={{
         LEFT: THREE.MOUSE.PAN,
         MIDDLE: THREE.MOUSE.DOLLY,
@@ -139,7 +145,52 @@ function TexturedImagePlane({
   src: string;
 }) {
   const texture = useLoader(THREE.TextureLoader, src);
+  return (
+    <TextureBackedImagePlane
+      image={texture.image}
+      objectFit={objectFit}
+      onPlaneLayout={onPlaneLayout}
+      texture={texture}
+      textureKey={src}
+    />
+  );
+}
+
+function getRenderableImageDimensions(imageSource: Image2dRenderableSource) {
+  if ("naturalWidth" in imageSource) {
+    return {
+      width: imageSource.naturalWidth || imageSource.width || 1,
+      height: imageSource.naturalHeight || imageSource.height || 1,
+    };
+  }
+
+  return {
+    width: imageSource.width || 1,
+    height: imageSource.height || 1,
+  };
+}
+
+function TextureBackedImagePlane({
+  image,
+  objectFit,
+  onPlaneLayout,
+  texture,
+  textureKey,
+}: {
+  image: {
+    height?: number;
+    naturalHeight?: number;
+    naturalWidth?: number;
+    width?: number;
+  };
+  objectFit: NonNullable<Image2dViewProps["objectFit"]>;
+  onPlaneLayout: (layout: PlaneLayout) => void;
+  texture: THREE.Texture;
+  textureKey: string;
+}) {
   const { invalidate, viewport } = useThree();
+  const imageWidth = image.naturalWidth ?? image.width ?? 1;
+  const imageHeight = image.naturalHeight ?? image.height ?? 1;
 
   React.useEffect(() => {
     texture.colorSpace = THREE.SRGBColorSpace;
@@ -152,33 +203,28 @@ function TexturedImagePlane({
 
   const planeScale = React.useMemo(() => {
     return getPlaneScale({
-      imageWidth: texture.image?.width ?? 1,
-      imageHeight: texture.image?.height ?? 1,
+      imageWidth,
+      imageHeight,
       viewportWidth: viewport.width,
       viewportHeight: viewport.height,
       objectFit,
     });
-  }, [
-    objectFit,
-    texture.image?.height,
-    texture.image?.width,
-    viewport.height,
-    viewport.width,
-  ]);
+  }, [imageHeight, imageWidth, objectFit, viewport.height, viewport.width]);
 
   React.useEffect(() => {
     onPlaneLayout({
-      imageWidth: texture.image?.width ?? 1,
-      imageHeight: texture.image?.height ?? 1,
+      imageWidth,
+      imageHeight,
       planeWidth: planeScale.width,
       planeHeight: planeScale.height,
     });
   }, [
+    imageHeight,
+    imageWidth,
     onPlaneLayout,
     planeScale.height,
     planeScale.width,
-    texture.image?.height,
-    texture.image?.width,
+    textureKey,
   ]);
 
   return (
@@ -189,17 +235,65 @@ function TexturedImagePlane({
   );
 }
 
+function PredecodedImagePlane({
+  imageSource,
+  objectFit,
+  onPlaneLayout,
+  src,
+}: {
+  imageSource: Image2dRenderableSource;
+  objectFit: NonNullable<Image2dViewProps["objectFit"]>;
+  onPlaneLayout: (layout: PlaneLayout) => void;
+  src: string;
+}) {
+  const texture = React.useMemo(() => {
+    const nextTexture = new THREE.Texture(imageSource);
+    nextTexture.colorSpace = THREE.SRGBColorSpace;
+    nextTexture.generateMipmaps = false;
+    nextTexture.minFilter = THREE.LinearFilter;
+    nextTexture.magFilter = THREE.LinearFilter;
+    nextTexture.needsUpdate = true;
+    return nextTexture;
+  }, [imageSource, src]);
+
+  React.useEffect(() => {
+    return () => {
+      texture.dispose();
+    };
+  }, [texture]);
+
+  const dimensions = React.useMemo(
+    () => getRenderableImageDimensions(imageSource),
+    [imageSource]
+  );
+
+  return (
+    <TextureBackedImagePlane
+      image={{
+        width: dimensions.width,
+        height: dimensions.height,
+      }}
+      objectFit={objectFit}
+      onPlaneLayout={onPlaneLayout}
+      texture={texture}
+      textureKey={src}
+    />
+  );
+}
+
 function OverlaySyncProbe({
   layout,
   onRectChange,
+  syncRef,
 }: {
   layout: PlaneLayout | null;
   onRectChange: (rect: OverlayRect) => void;
+  syncRef: React.MutableRefObject<(() => void) | null>;
 }) {
   const { camera, size } = useThree();
   const lastRectRef = React.useRef<OverlayRect | null>(null);
 
-  useFrame(() => {
+  const syncRect = React.useCallback(() => {
     if (!layout) {
       return;
     }
@@ -240,7 +334,21 @@ function OverlaySyncProbe({
       lastRectRef.current = nextRect;
       onRectChange(nextRect);
     }
-  });
+  }, [camera, layout, onRectChange, size]);
+
+  React.useLayoutEffect(() => {
+    syncRect();
+  }, [syncRect]);
+
+  React.useEffect(() => {
+    syncRef.current = syncRect;
+
+    return () => {
+      syncRef.current = null;
+    };
+  }, [syncRect, syncRef]);
+
+  useFrame(syncRect);
 
   return null;
 }
@@ -440,6 +548,7 @@ function ImageOverlaySvg({
   );
 }
 
+/** Renders a 2D MCAP image frame with projected annotation overlays. */
 export function Image2dView({
   alt = "",
   frame,
@@ -452,11 +561,22 @@ export function Image2dView({
   const [overlayRect, setOverlayRect] = React.useState<OverlayRect | null>(
     null
   );
+  const overlaySyncRef = React.useRef<(() => void) | null>(null);
+  const handlePlaneLayout = React.useCallback((nextLayout: PlaneLayout) => {
+    setPlaneLayout((currentLayout) => {
+      if (
+        currentLayout &&
+        currentLayout.imageWidth === nextLayout.imageWidth &&
+        currentLayout.imageHeight === nextLayout.imageHeight &&
+        currentLayout.planeWidth === nextLayout.planeWidth &&
+        currentLayout.planeHeight === nextLayout.planeHeight
+      ) {
+        return currentLayout;
+      }
 
-  React.useEffect(() => {
-    setPlaneLayout(null);
-    setOverlayRect(null);
-  }, [frame?.id]);
+      return nextLayout;
+    });
+  }, []);
 
   if (!frame) {
     return null;
@@ -478,13 +598,28 @@ export function Image2dView({
         orthographic
         style={CANVAS_STYLES}
       >
-        <TexturedImageControls />
-        <TexturedImagePlane
-          objectFit={objectFit}
-          onPlaneLayout={setPlaneLayout}
-          src={frame.src}
+        <TexturedImageControls
+          onCameraChange={() => overlaySyncRef.current?.()}
         />
-        <OverlaySyncProbe layout={planeLayout} onRectChange={setOverlayRect} />
+        {frame.imageSource ? (
+          <PredecodedImagePlane
+            imageSource={frame.imageSource}
+            objectFit={objectFit}
+            onPlaneLayout={handlePlaneLayout}
+            src={frame.src}
+          />
+        ) : (
+          <TexturedImagePlane
+            objectFit={objectFit}
+            onPlaneLayout={handlePlaneLayout}
+            src={frame.src}
+          />
+        )}
+        <OverlaySyncProbe
+          layout={planeLayout}
+          onRectChange={setOverlayRect}
+          syncRef={overlaySyncRef}
+        />
       </WebGpuCanvas>
       <ImageOverlaySvg
         overlays={frame.overlays ?? []}

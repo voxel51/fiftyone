@@ -26,6 +26,24 @@ describe("MultimodalImageBufferCache", () => {
       createObjectURL: vi.fn(() => "blob:frame"),
       revokeObjectURL: vi.fn(),
     });
+    vi.stubGlobal(
+      "Image",
+      class MockImage {
+        complete = true;
+        decoding = "";
+        height = 480;
+        naturalHeight = 480;
+        naturalWidth = 640;
+        onerror: (() => void) | null = null;
+        onload: (() => void) | null = null;
+        src = "";
+        width = 640;
+
+        async decode() {
+          return undefined;
+        }
+      }
+    );
   });
 
   it("reuses buffered windows across overlapping range requests", async () => {
@@ -127,6 +145,7 @@ describe("MultimodalImageBufferCache", () => {
       payload: expect.any(ArrayBuffer),
     });
     expect(firstFrame.objectUrl).toBe("blob:frame");
+    expect("naturalWidth" in firstFrame.imageSource).toBe(true);
     expect(secondFrame.objectUrl).toBe("blob:frame");
   });
 
