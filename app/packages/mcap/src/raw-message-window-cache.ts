@@ -1,3 +1,4 @@
+import type { Buffers } from "@fiftyone/utilities";
 import type { BufferReadiness } from "@fiftyone/playback/experimental/types";
 import { fetchMultimodalBuffer } from "./api";
 import { getMultimodalWindowsForRange } from "./playback-utils";
@@ -30,6 +31,47 @@ type MessageNeighborhoodOptions = {
 
 function getWindowKey(window: MultimodalTimeRange) {
   return `${window.startNs}:${window.endNs}`;
+}
+
+function parseWindowKey(key: string): MultimodalTimeRange | null {
+  const [startNsRaw, endNsRaw] = key.split(":");
+  const startNs = Number(startNsRaw);
+  const endNs = Number(endNsRaw);
+
+  if (!Number.isFinite(startNs) || !Number.isFinite(endNs)) {
+    return null;
+  }
+
+  return {
+    startNs,
+    endNs,
+  };
+}
+
+function mergeWindowRanges(ranges: Array<Readonly<[number, number]>>): Buffers {
+  if (!ranges.length) {
+    return [];
+  }
+
+  const merged: Array<[number, number]> = [];
+  const sortedRanges = [...ranges].sort((left, right) => left[0] - right[0]);
+
+  sortedRanges.forEach((range) => {
+    const previousRange = merged[merged.length - 1];
+    if (!previousRange) {
+      merged.push([range[0], range[1]]);
+      return;
+    }
+
+    if (range[0] <= previousRange[1] + 1) {
+      previousRange[1] = Math.max(previousRange[1], range[1]);
+      return;
+    }
+
+    merged.push([range[0], range[1]]);
+  });
+
+  return merged;
 }
 
 /** Shared raw-message window cache for one Multimodal stream. */
@@ -72,6 +114,7 @@ export class MultimodalRawMessageWindowCache {
     if (!messages.length) {
       if (window) {
         this.windows.set(getWindowKey(window), { window, messages: [] });
+        this.markReadinessChanged();
       }
       return;
     }
@@ -181,6 +224,24 @@ export class MultimodalRawMessageWindowCache {
     return this.version;
   }
 
+  getBufferedWindowRanges(): Buffers {
+    return mergeWindowRanges(
+      Array.from(this.windows.values()).map(({ window }) => [
+        window.startNs,
+        window.endNs,
+      ])
+    );
+  }
+
+  getLoadingWindowRanges(): Buffers {
+    return mergeWindowRanges(
+      Array.from(this.windowPromises.keys())
+        .map(parseWindowKey)
+        .filter((window): window is MultimodalTimeRange => Boolean(window))
+        .map((window) => [window.startNs, window.endNs])
+    );
+  }
+
   getMessagesAroundLogTime(
     logTimeNs: number,
     options: MessageNeighborhoodOptions = {}
@@ -222,6 +283,9 @@ export class MultimodalRawMessageWindowCache {
       return pending;
     }
 
+    this.windowPromises.set(key, Promise.resolve());
+    this.markReadinessChanged();
+
     const loadPromise = fetchMultimodalBuffer({
       datasetId: this.datasetId,
       sampleId: this.sampleId,
@@ -241,6 +305,9 @@ export class MultimodalRawMessageWindowCache {
       })
       .finally(() => {
         this.windowPromises.delete(key);
+        if (!this.windows.has(key)) {
+          this.markReadinessChanged();
+        }
       });
 
     this.windowPromises.set(key, loadPromise);
@@ -316,5 +383,9 @@ export class MultimodalRawMessageWindowCache {
     this.messageByLogTimeCache = null;
     this.syncSamplesCache = null;
     this.syncTimestampsCache = null;
+  }
+
+  private markReadinessChanged() {
+    this.version += 1;
   }
 }

@@ -170,7 +170,10 @@ const {
   const rawCacheInstance = {
     ensureRange: vi.fn(async () => {}),
     getMessageForLogTime: vi.fn(() => null),
+    getTimeReadiness: vi.fn(() => "missing"),
     getMessages: vi.fn(() => []),
+    getBufferedWindowRanges: vi.fn(() => []),
+    getLoadingWindowRanges: vi.fn(() => []),
     primeMessages: vi.fn(),
     getSyncSamples: vi.fn(() => []),
     getSyncTimestamps: vi.fn(() => []),
@@ -495,6 +498,9 @@ describe("useMultimodalPlaybackController", () => {
     rawCacheInstance.ensureRange.mockImplementation(async () => {});
     rawCacheInstance.getMessages.mockReturnValue([]);
     rawCacheInstance.getMessageForLogTime.mockReturnValue(null);
+    rawCacheInstance.getTimeReadiness.mockReturnValue("missing");
+    rawCacheInstance.getBufferedWindowRanges.mockReturnValue([]);
+    rawCacheInstance.getLoadingWindowRanges.mockReturnValue([]);
     rawCacheInstance.getSyncSamples.mockReturnValue([]);
     rawCacheInstance.getSyncTimestamps.mockReturnValue([]);
     rawCacheInstance.getVersion.mockImplementation(
@@ -1890,6 +1896,89 @@ describe("useMultimodalPlaybackController", () => {
     expect(
       imageCacheInstance.getMessageReadiness.mock.calls.length
     ).toBeGreaterThan(firstImageReadinessCalls);
+  });
+
+  it("tracks transform loading with an incremental shared buffer ledger", async () => {
+    const catalog = {
+      ...CATALOG,
+      streams: [
+        ...CATALOG.streams,
+        {
+          streamId: "/tf",
+          topic: "/tf",
+          schemaName: "foxglove.FrameTransform",
+          schemaEncoding: "protobuf",
+          messageEncoding: "protobuf",
+          kind: "transform",
+          frameId: null,
+          affordances: ["transforms"],
+          compatiblePanels: [],
+          channelId: 3,
+          schemaId: 3,
+          timeRange: { startNs: 10, endNs: 30 },
+          messageCount: 1,
+        },
+      ],
+    };
+
+    imageBufferedRef.current = true;
+    renderable3dBufferedRef.current = true;
+    rawCacheInstance.getVersion.mockReturnValue(1);
+    rawCacheInstance.getBufferedWindowRanges.mockReturnValue([]);
+    rawCacheInstance.getLoadingWindowRanges.mockReturnValue([[10, 30]]);
+
+    renderHook(() =>
+      useMultimodalPlaybackController(catalog as any, WORKSPACE as any)
+    );
+
+    await waitFor(() => {
+      expect(experimentalTimelineOptionsRef.current?.name).toBe(
+        "multimodal:scene-1"
+      );
+    });
+
+    imageCacheInstance.getMessageReadiness.mockClear();
+    renderable3dCacheInstance.getMessageReadiness.mockClear();
+    rawCacheInstance.getBufferedWindowRanges.mockClear();
+    rawCacheInstance.getLoadingWindowRanges.mockClear();
+
+    expect(experimentalTimelineOptionsRef.current?.getBufferReadiness(20)).toBe(
+      "loading"
+    );
+
+    const imageReadinessCalls =
+      imageCacheInstance.getMessageReadiness.mock.calls.length;
+    const renderableReadinessCalls =
+      renderable3dCacheInstance.getMessageReadiness.mock.calls.length;
+    const bufferedWindowCalls =
+      rawCacheInstance.getBufferedWindowRanges.mock.calls.length;
+    const loadingWindowCalls =
+      rawCacheInstance.getLoadingWindowRanges.mock.calls.length;
+
+    expect(experimentalTimelineOptionsRef.current?.getBufferReadiness(25)).toBe(
+      "loading"
+    );
+    expect(imageCacheInstance.getMessageReadiness.mock.calls).toHaveLength(
+      imageReadinessCalls
+    );
+    expect(
+      renderable3dCacheInstance.getMessageReadiness.mock.calls
+    ).toHaveLength(renderableReadinessCalls);
+    expect(rawCacheInstance.getBufferedWindowRanges.mock.calls).toHaveLength(
+      bufferedWindowCalls
+    );
+    expect(rawCacheInstance.getLoadingWindowRanges.mock.calls).toHaveLength(
+      loadingWindowCalls
+    );
+
+    rawCacheInstance.getVersion.mockReturnValue(2);
+
+    expect(experimentalTimelineOptionsRef.current?.getBufferReadiness(25)).toBe(
+      "loading"
+    );
+    expect(
+      rawCacheInstance.getLoadingWindowRanges.mock.calls.length
+    ).toBeGreaterThan(loadingWindowCalls);
   });
 
   it("renders image and 3d panels from the shared playback cursor", async () => {

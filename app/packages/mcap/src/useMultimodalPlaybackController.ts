@@ -105,10 +105,18 @@ type UseMultimodalPlaybackControllerResult = {
 };
 
 type TimelineBufferedRangesSnapshot = {
-  hasFullTimeline: boolean;
   ranges: Buffers;
-  streamIdsKey: string;
-  timelineTimestamps: number[] | null;
+  loadingRanges: Buffers;
+  planKey: string;
+  sampleSourceVersion: number;
+  timelineDurationNs: number;
+  versionKey: string;
+};
+
+type StreamBufferLedgerSnapshot = {
+  hasSamples: boolean;
+  loadingRanges: Buffers;
+  readyRanges: Buffers;
   versionKey: string;
 };
 
@@ -598,7 +606,7 @@ function areRangesContinuous(
   left: readonly [number, number],
   right: readonly [number, number]
 ) {
-  return right[0] <= left[1];
+  return right[0] <= left[1] + 1;
 }
 
 function getMergedBufferedRanges(
@@ -627,6 +635,39 @@ function getMergedBufferedRanges(
   });
 
   return merged;
+}
+
+function intersectBufferedRanges(left: Buffers, right: Buffers): Buffers {
+  if (!left.length || !right.length) {
+    return [];
+  }
+
+  const intersections: Array<readonly [number, number]> = [];
+  let leftIndex = 0;
+  let rightIndex = 0;
+
+  while (leftIndex < left.length && rightIndex < right.length) {
+    const leftRange = left[leftIndex];
+    const rightRange = right[rightIndex];
+    const startNs = Math.max(leftRange[0], rightRange[0]);
+    const endNs = Math.min(leftRange[1], rightRange[1]);
+
+    if (startNs <= endNs) {
+      intersections.push([startNs, endNs]);
+    }
+
+    if (leftRange[1] < rightRange[1]) {
+      leftIndex += 1;
+    } else {
+      rightIndex += 1;
+    }
+  }
+
+  return getMergedBufferedRanges(intersections);
+}
+
+function getFullBufferedRange(durationNs: number): Buffers {
+  return [[0, Math.max(0, durationNs)]];
 }
 
 function findPlaybackSampleForNearestSync(
@@ -660,13 +701,83 @@ function findPlaybackSampleForNearestSync(
   return samples[0] ?? null;
 }
 
+function buildSampleBufferedRanges(
+  samples: MultimodalTimelineSample[],
+  timelineDurationNs: number,
+  getSampleReadiness: (sample: MultimodalTimelineSample) => BufferReadiness
+): StreamBufferLedgerSnapshot {
+  if (!samples.length) {
+    return {
+      hasSamples: false,
+      loadingRanges: [],
+      readyRanges: [],
+      versionKey: "",
+    };
+  }
+
+  const readyRanges: Array<readonly [number, number]> = [];
+  const loadingRanges: Array<readonly [number, number]> = [];
+
+  samples.forEach((sample, index) => {
+    const startNs = index === 0 ? 0 : sample.timestampNs;
+    const nextTimestampNs = samples[index + 1]?.timestampNs;
+    const endNs =
+      nextTimestampNs === undefined ? timelineDurationNs : nextTimestampNs - 1;
+
+    if (endNs < startNs) {
+      return;
+    }
+
+    const range: readonly [number, number] = [startNs, endNs];
+    const readiness = getSampleReadiness(sample);
+
+    if (readiness === "ready") {
+      readyRanges.push(range);
+      return;
+    }
+
+    if (readiness === "loading") {
+      loadingRanges.push(range);
+    }
+  });
+
+  return {
+    hasSamples: true,
+    loadingRanges: getMergedBufferedRanges(loadingRanges),
+    readyRanges: getMergedBufferedRanges(readyRanges),
+    versionKey: "",
+  };
+}
+
+function findContainingBufferRangeIndex(buffers: Buffers, timestampNs: number) {
+  let left = 0;
+  let right = buffers.length - 1;
+
+  while (left <= right) {
+    const middle = Math.floor((left + right) / 2);
+    const range = buffers[middle];
+
+    if (timestampNs < range[0]) {
+      right = middle - 1;
+      continue;
+    }
+
+    if (timestampNs > range[1]) {
+      left = middle + 1;
+      continue;
+    }
+
+    return middle;
+  }
+
+  return -1;
+}
+
 function isTimestampCoveredByBuffers(
   buffers: Buffers,
   timestampNs: number
 ): boolean {
-  return buffers.some((range) => {
-    return range[0] <= timestampNs && timestampNs <= range[1];
-  });
+  return findContainingBufferRangeIndex(buffers, timestampNs) >= 0;
 }
 
 function markPerformance(name: string) {
@@ -705,12 +816,16 @@ const EMPTY_TRANSFORM_GRAPH_SNAPSHOT: TransformGraphSnapshot = {
   resolveMatrix: () => null,
 };
 const EMPTY_BUFFER_SNAPSHOT: TimelineBufferedRangesSnapshot = {
-  hasFullTimeline: false,
   ranges: [],
-  streamIdsKey: "",
-  timelineTimestamps: null,
+  loadingRanges: [],
+  planKey: "",
+  sampleSourceVersion: -1,
+  timelineDurationNs: 0,
   versionKey: "",
 };
+const EMPTY_PANELS: MultimodalPanelLayoutState[] = [];
+const EMPTY_STREAM_IDS: string[] = [];
+const EMPTY_TIMESTAMPS: number[] = [];
 const STALE_RENDER_ABORT = new Error("stale multimodal render");
 
 function isStaleRenderAbort(error: unknown) {
@@ -721,7 +836,7 @@ export function useMultimodalPlaybackController(
   catalog: MultimodalCatalog | null,
   workspaceState: MultimodalWorkspaceState | null
 ): UseMultimodalPlaybackControllerResult {
-  const panels = workspaceState?.panels ?? [];
+  const panels = workspaceState?.panels ?? EMPTY_PANELS;
   const visiblePanelsKey = React.useMemo(
     () => getPanelVisibilityKey(workspaceState),
     [workspaceState]
@@ -788,10 +903,28 @@ export function useMultimodalPlaybackController(
     () => getBootstrapPlan(catalog, workspaceState),
     [catalog, workspaceState]
   );
-  const timelineRenderStreamIds = bootstrapPlan?.criticalRenderStreamIds ?? [];
+  const timelineRenderStreamIds =
+    bootstrapPlan?.criticalRenderStreamIds ?? EMPTY_STREAM_IDS;
   const timelineRenderStreamIdsKey = React.useMemo(() => {
     return timelineRenderStreamIds.join("\n");
   }, [timelineRenderStreamIds]);
+  const readinessAnchorStreamIds =
+    bootstrapPlan?.criticalRenderStreamIds ?? EMPTY_STREAM_IDS;
+  const readinessSupportStreamIds =
+    bootstrapPlan?.criticalSupportStreamIds ?? EMPTY_STREAM_IDS;
+  const readinessTransformStreamIds =
+    bootstrapPlan?.transformStreamIds ?? EMPTY_STREAM_IDS;
+  const readinessPlanKey = React.useMemo(() => {
+    return [
+      readinessAnchorStreamIds.join("\n"),
+      readinessSupportStreamIds.join("\n"),
+      readinessTransformStreamIds.join("\n"),
+    ].join("::");
+  }, [
+    readinessAnchorStreamIds,
+    readinessSupportStreamIds,
+    readinessTransformStreamIds,
+  ]);
   const criticalTrackedStreamIds = React.useMemo(() => {
     return dedupeStrings([
       ...timelineRenderStreamIds,
@@ -834,6 +967,7 @@ export function useMultimodalPlaybackController(
   const { timeline, isLoading, error, refetch } =
     useMultimodalTimelineIndex(timelineParams);
   const hasFullTimeline = Boolean(timeline?.timestampsNs.length);
+  const timelineCoverage = timeline?.timestampsNs ?? EMPTY_TIMESTAMPS;
   const timelineDurationNs = React.useMemo(() => {
     const lastTimelineTimestamp =
       timeline?.timestampsNs[timeline.timestampsNs.length - 1] ?? 0;
@@ -841,10 +975,8 @@ export function useMultimodalPlaybackController(
   }, [catalog?.timeRange.endNs, timeline?.timestampsNs]);
   const targetFrameRate = React.useMemo(
     () =>
-      hasFullTimeline
-        ? inferMultimodalTimelineFrameRate(timeline?.timestampsNs ?? [])
-        : 30,
-    [hasFullTimeline, timeline?.timestampsNs]
+      hasFullTimeline ? inferMultimodalTimelineFrameRate(timelineCoverage) : 30,
+    [hasFullTimeline, timelineCoverage]
   );
   const bootstrapPlanKey = React.useMemo(() => {
     if (!bootstrapPlan) {
@@ -902,7 +1034,11 @@ export function useMultimodalPlaybackController(
   const streamSamplesRef = React.useRef(
     new Map<string, MultimodalTimelineSample[]>()
   );
+  const streamSampleSourceVersionRef = React.useRef(0);
   const streamTimestampsRef = React.useRef(new Map<string, number[]>());
+  const streamBufferLedgersRef = React.useRef(
+    new Map<string, StreamBufferLedgerSnapshot>()
+  );
   const bufferedRangesSnapshotRef =
     React.useRef<TimelineBufferedRangesSnapshot>(EMPTY_BUFFER_SNAPSHOT);
   const transformGraphCacheRef =
@@ -944,6 +1080,7 @@ export function useMultimodalPlaybackController(
       rawCachesRef.current.forEach((cache) => cache.dispose());
       decodedImageAnnotationsCacheRef.current.clear();
       decodedCameraCalibrationCacheRef.current.clear();
+      streamBufferLedgersRef.current.clear();
       framePlanCacheRef.current = null;
       preparedFrameRef.current = null;
       latestPreparedFrameTokenRef.current += 1;
@@ -979,7 +1116,9 @@ export function useMultimodalPlaybackController(
     decodedCameraCalibrationCacheRef.current.clear();
     navSatAnchorRef.current.clear();
     streamSamplesRef.current.clear();
+    streamSampleSourceVersionRef.current += 1;
     streamTimestampsRef.current.clear();
+    streamBufferLedgersRef.current.clear();
     bufferedRangesSnapshotRef.current = EMPTY_BUFFER_SNAPSHOT;
     transformGraphCacheRef.current = null;
     framePlanCacheRef.current = null;
@@ -1011,6 +1150,9 @@ export function useMultimodalPlaybackController(
 
     streamSamplesRef.current = streamSamples;
     streamTimestampsRef.current = streamTimestamps;
+    streamSampleSourceVersionRef.current += 1;
+    streamBufferLedgersRef.current.clear();
+    bufferedRangesSnapshotRef.current = EMPTY_BUFFER_SNAPSHOT;
   }, [timeline]);
 
   const getOrCreateImageCache = React.useCallback((streamId: string) => {
@@ -1646,197 +1788,203 @@ export function useMultimodalPlaybackController(
     [backgroundTrackedStreamIds, criticalTrackedStreamIds, ensureStreamRange]
   );
 
-  const computeBufferReadinessDirect = React.useCallback(
-    (targetTimestampNs: number): BufferReadiness => {
-      const currentCatalog = catalogRef.current;
-      const framePlan = getPlaybackFramePlan(targetTimestampNs);
-      if (!currentCatalog || !framePlan) {
-        return "ready";
+  const getOrCreateSampleBufferLedger = React.useCallback(
+    (
+      streamId: string,
+      getSampleReadiness: (sample: MultimodalTimelineSample) => BufferReadiness
+    ): StreamBufferLedgerSnapshot => {
+      const sampleSourceVersion = streamSamplesRef.current.has(streamId)
+        ? streamSampleSourceVersionRef.current
+        : -1;
+      const versionKey = [
+        getStreamBufferVersion(streamId),
+        sampleSourceVersion,
+        timelineDurationNs,
+      ].join("::");
+      const ledgerCacheKey = `sample:${streamId}`;
+      const cachedLedger = streamBufferLedgersRef.current.get(ledgerCacheKey);
+
+      if (cachedLedger?.versionKey === versionKey) {
+        return cachedLedger;
       }
 
-      const streamLookup = new Map(
-        currentCatalog.streams.map((stream) => [stream.streamId, stream])
+      const nextLedger = buildSampleBufferedRanges(
+        getCachedSyncSamples(streamId),
+        timelineDurationNs,
+        getSampleReadiness
       );
-      let sawMissing = false;
-
-      for (const streamId of framePlan.anchorRenderStreamIds) {
-        const stream = streamLookup.get(streamId);
-        if (!stream) {
-          continue;
-        }
-
-        const selectedSample = findPlaybackSampleForNearestSync(
-          getCachedSyncSamples(streamId),
-          targetTimestampNs
-        );
-        if (!selectedSample) {
-          sawMissing = true;
-          continue;
-        }
-
-        const readiness = isImageStream(stream)
-          ? getOrCreateImageCache(streamId)?.getMessageReadiness(
-              selectedSample.logTimeNs
-            ) ?? "missing"
-          : is3dStream(stream)
-          ? getOrCreateRenderable3dCache(streamId)?.getMessageReadiness(
-              selectedSample.logTimeNs
-            ) ?? "missing"
-          : "ready";
-
-        if (readiness === "loading") {
-          return "loading";
-        }
-
-        if (readiness === "missing") {
-          sawMissing = true;
-        }
-      }
-
-      for (const streamId of framePlan.criticalSupportStreamIds) {
-        const stream = streamLookup.get(streamId);
-        if (!stream) {
-          continue;
-        }
-
-        const selectedSample = findPlaybackSampleForNearestSync(
-          getCachedSyncSamples(streamId),
-          targetTimestampNs
-        );
-        if (!selectedSample) {
-          continue;
-        }
-
-        const readiness = is3dStream(stream)
-          ? getOrCreateRenderable3dCache(streamId)?.getMessageReadiness(
-              selectedSample.logTimeNs
-            ) ?? "missing"
-          : getOrCreateRawCache(streamId)?.getTimeReadiness(
-              selectedSample.logTimeNs
-            ) ?? "missing";
-
-        if (readiness === "loading") {
-          return "loading";
-        }
-
-        if (readiness === "missing") {
-          sawMissing = true;
-        }
-      }
-
-      for (const streamId of framePlan.transformStreamIds) {
-        const readiness =
-          getOrCreateRawCache(streamId)?.getTimeReadiness(targetTimestampNs) ??
-          "missing";
-        if (readiness === "loading") {
-          return "loading";
-        }
-        if (readiness === "missing") {
-          sawMissing = true;
-        }
-      }
-
-      return sawMissing ? "missing" : "ready";
+      const ledger = {
+        ...nextLedger,
+        versionKey,
+      };
+      streamBufferLedgersRef.current.set(ledgerCacheKey, ledger);
+      return ledger;
     },
-    [
-      getPlaybackFramePlan,
-      getCachedSyncSamples,
-      getOrCreateImageCache,
-      getOrCreateRawCache,
-      getOrCreateRenderable3dCache,
-    ]
+    [getCachedSyncSamples, getStreamBufferVersion, timelineDurationNs]
+  );
+
+  const getOrCreateTransformBufferLedger = React.useCallback(
+    (streamId: string): StreamBufferLedgerSnapshot => {
+      const versionKey = [
+        getStreamBufferVersion(streamId),
+        timelineDurationNs,
+      ].join("::");
+      const ledgerCacheKey = `window:${streamId}`;
+      const cachedLedger = streamBufferLedgersRef.current.get(ledgerCacheKey);
+
+      if (cachedLedger?.versionKey === versionKey) {
+        return cachedLedger;
+      }
+
+      const cache = getOrCreateRawCache(streamId);
+      const ledger = {
+        hasSamples: true,
+        loadingRanges: cache?.getLoadingWindowRanges() ?? [],
+        readyRanges: cache?.getBufferedWindowRanges() ?? [],
+        versionKey,
+      };
+      streamBufferLedgersRef.current.set(ledgerCacheKey, ledger);
+      return ledger;
+    },
+    [getOrCreateRawCache, getStreamBufferVersion, timelineDurationNs]
   );
 
   const getBufferedRangesSnapshot = React.useCallback(() => {
-    if (!timelineRenderStreamIds.length) {
-      return EMPTY_BUFFER_SNAPSHOT;
-    }
-
-    const versionKey = timelineRenderStreamIds
+    const relevantStreamIds = dedupeStrings([
+      ...readinessAnchorStreamIds,
+      ...readinessSupportStreamIds,
+      ...readinessTransformStreamIds,
+    ]);
+    const versionKey = relevantStreamIds
       .map((streamId) => `${streamId}:${getStreamBufferVersion(streamId)}`)
       .join("::");
-    const timelineTimestamps = hasFullTimeline
-      ? timeline?.timestampsNs ?? []
-      : null;
+    const sampleSourceVersion = streamSampleSourceVersionRef.current;
     const cachedSnapshot = bufferedRangesSnapshotRef.current;
     if (
-      cachedSnapshot.streamIdsKey === timelineRenderStreamIdsKey &&
-      cachedSnapshot.versionKey === versionKey &&
-      cachedSnapshot.hasFullTimeline === hasFullTimeline &&
-      cachedSnapshot.timelineTimestamps === timelineTimestamps
+      cachedSnapshot.planKey === readinessPlanKey &&
+      cachedSnapshot.sampleSourceVersion === sampleSourceVersion &&
+      cachedSnapshot.timelineDurationNs === timelineDurationNs &&
+      cachedSnapshot.versionKey === versionKey
     ) {
       return cachedSnapshot;
     }
 
-    const timestampsNs = hasFullTimeline
-      ? timelineTimestamps ?? []
-      : Array.from(
-          new Set(
-            timelineRenderStreamIds.flatMap((streamId) =>
-              getCachedSyncTimestamps(streamId)
-            )
+    let readyRanges = getFullBufferedRange(timelineDurationNs);
+    const loadingRanges: Array<readonly [number, number]> = [];
+
+    readinessAnchorStreamIds.forEach((streamId) => {
+      const stream = getStreamDescriptor(streamId);
+      if (!stream) {
+        return;
+      }
+
+      const ledger = isImageStream(stream)
+        ? getOrCreateSampleBufferLedger(
+            streamId,
+            (sample) =>
+              getOrCreateImageCache(streamId)?.getMessageReadiness(
+                sample.logTimeNs
+              ) ?? "missing"
           )
-        ).sort((left, right) => left - right);
+        : is3dStream(stream)
+        ? getOrCreateSampleBufferLedger(
+            streamId,
+            (sample) =>
+              getOrCreateRenderable3dCache(streamId)?.getMessageReadiness(
+                sample.logTimeNs
+              ) ?? "missing"
+          )
+        : getOrCreateSampleBufferLedger(
+            streamId,
+            (sample) =>
+              getOrCreateRawCache(streamId)?.getTimeReadiness(
+                sample.logTimeNs
+              ) ?? "missing"
+          );
 
-    let ranges: Buffers;
-    if (!timestampsNs.length) {
-      ranges =
-        computeBufferReadinessDirect(0) === "ready"
-          ? ([[0, timelineDurationNs]] as Buffers)
-          : [];
-    } else {
-      const readyRanges: Array<readonly [number, number]> = [];
-      const segmentStarts = [0, ...timestampsNs];
+      loadingRanges.push(...ledger.loadingRanges);
+      readyRanges = ledger.hasSamples
+        ? intersectBufferedRanges(readyRanges, ledger.readyRanges)
+        : [];
+    });
 
-      segmentStarts.forEach((segmentStartNs, index) => {
-        const segmentEndNs =
-          timestampsNs[index] ?? Math.max(timelineDurationNs, segmentStartNs);
-        if (segmentEndNs < segmentStartNs) {
-          return;
-        }
+    readinessSupportStreamIds.forEach((streamId) => {
+      const stream = getStreamDescriptor(streamId);
+      if (!stream) {
+        return;
+      }
 
-        if (computeBufferReadinessDirect(segmentStartNs) === "ready") {
-          readyRanges.push([segmentStartNs, segmentEndNs]);
-        }
-      });
+      const ledger = is3dStream(stream)
+        ? getOrCreateSampleBufferLedger(
+            streamId,
+            (sample) =>
+              getOrCreateRenderable3dCache(streamId)?.getMessageReadiness(
+                sample.logTimeNs
+              ) ?? "missing"
+          )
+        : getOrCreateSampleBufferLedger(
+            streamId,
+            (sample) =>
+              getOrCreateRawCache(streamId)?.getTimeReadiness(
+                sample.logTimeNs
+              ) ?? "missing"
+          );
 
-      ranges = getMergedBufferedRanges(readyRanges);
-    }
+      if (!ledger.hasSamples) {
+        return;
+      }
+
+      loadingRanges.push(...ledger.loadingRanges);
+      readyRanges = intersectBufferedRanges(readyRanges, ledger.readyRanges);
+    });
+
+    readinessTransformStreamIds.forEach((streamId) => {
+      const ledger = getOrCreateTransformBufferLedger(streamId);
+      loadingRanges.push(...ledger.loadingRanges);
+      readyRanges = intersectBufferedRanges(readyRanges, ledger.readyRanges);
+    });
 
     const snapshot = {
-      hasFullTimeline,
-      ranges,
-      streamIdsKey: timelineRenderStreamIdsKey,
-      timelineTimestamps,
+      loadingRanges: getMergedBufferedRanges(loadingRanges),
+      planKey: readinessPlanKey,
+      ranges: readyRanges,
+      sampleSourceVersion,
+      timelineDurationNs,
       versionKey,
     };
     bufferedRangesSnapshotRef.current = snapshot;
     return snapshot;
   }, [
-    computeBufferReadinessDirect,
-    getCachedSyncTimestamps,
+    getOrCreateImageCache,
+    getOrCreateRawCache,
+    getOrCreateRenderable3dCache,
+    getOrCreateSampleBufferLedger,
+    getOrCreateTransformBufferLedger,
+    getStreamDescriptor,
     getStreamBufferVersion,
-    hasFullTimeline,
-    timeline?.timestampsNs,
+    readinessAnchorStreamIds,
+    readinessPlanKey,
+    readinessSupportStreamIds,
+    readinessTransformStreamIds,
     timelineDurationNs,
-    timelineRenderStreamIds,
-    timelineRenderStreamIdsKey,
   ]);
 
   const getBufferReadiness = React.useCallback(
     (targetTimestampNs: number): BufferReadiness => {
-      if (
-        isTimestampCoveredByBuffers(
-          getBufferedRangesSnapshot().ranges,
-          targetTimestampNs
-        )
-      ) {
+      const snapshot = getBufferedRangesSnapshot();
+      if (isTimestampCoveredByBuffers(snapshot.ranges, targetTimestampNs)) {
         return "ready";
       }
 
-      return computeBufferReadinessDirect(targetTimestampNs);
+      if (
+        isTimestampCoveredByBuffers(snapshot.loadingRanges, targetTimestampNs)
+      ) {
+        return "loading";
+      }
+
+      return "missing";
     },
-    [computeBufferReadinessDirect, getBufferedRangesSnapshot]
+    [getBufferedRangesSnapshot]
   );
 
   const getBufferedRanges = React.useCallback((): Buffers => {
@@ -2587,6 +2735,22 @@ export function useMultimodalPlaybackController(
     },
     [buildPreparedFrame, commitPanelStates]
   );
+  const handlePrepareTime = React.useCallback(
+    (timeNs: number, context: { abortSignal: AbortSignal }) =>
+      prepareRenderFrame(timeNs, context.abortSignal),
+    [prepareRenderFrame]
+  );
+  const handlePreviewTime = React.useCallback(
+    (timeNs: number, context: { abortSignal: AbortSignal }) =>
+      previewRenderFrame(timeNs, context.abortSignal),
+    [previewRenderFrame]
+  );
+  const handleRenderTime = React.useCallback(
+    (timeNs: number) => {
+      commitPreparedFrame(timeNs);
+    },
+    [commitPreparedFrame]
+  );
 
   const requestRenderFrame = React.useCallback(
     async (targetTimestampNs: number) => {
@@ -2799,27 +2963,41 @@ export function useMultimodalPlaybackController(
     }
   }, [panelStates]);
 
-  const timelineState = useMultimodalExperimentalTimeline(
-    timelineName
-      ? {
-          name: timelineName,
-          durationNs: timelineDurationNs,
-          tickRate: targetFrameRate,
-          coverage: timeline?.timestampsNs ?? [],
-          onPrefetchRange: ensurePlaybackRange,
-          onPrepareTime: (timeNs, context) =>
-            prepareRenderFrame(timeNs, context.abortSignal),
-          onPreviewTime: (timeNs, context) =>
-            previewRenderFrame(timeNs, context.abortSignal),
-          getBufferReadiness,
-          getBufferedRanges,
-          isBufferingCritical:
-            hasFullTimeline && timelineRenderStreamIds.length > 0,
-          canControlPlayback: hasFullTimeline,
-          onRenderTime: (timeNs) => commitPreparedFrame(timeNs),
-        }
-      : null
+  const timelineOptions = React.useMemo(
+    () =>
+      timelineName
+        ? {
+            name: timelineName,
+            durationNs: timelineDurationNs,
+            tickRate: targetFrameRate,
+            coverage: timelineCoverage,
+            onPrefetchRange: ensurePlaybackRange,
+            onPrepareTime: handlePrepareTime,
+            onPreviewTime: handlePreviewTime,
+            getBufferReadiness,
+            getBufferedRanges,
+            isBufferingCritical:
+              hasFullTimeline && timelineRenderStreamIds.length > 0,
+            canControlPlayback: hasFullTimeline,
+            onRenderTime: handleRenderTime,
+          }
+        : null,
+    [
+      ensurePlaybackRange,
+      getBufferReadiness,
+      getBufferedRanges,
+      handlePrepareTime,
+      handlePreviewTime,
+      handleRenderTime,
+      hasFullTimeline,
+      timelineCoverage,
+      timelineDurationNs,
+      timelineName,
+      timelineRenderStreamIds.length,
+      targetFrameRate,
+    ]
   );
+  const timelineState = useMultimodalExperimentalTimeline(timelineOptions);
 
   return {
     timelineName,

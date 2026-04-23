@@ -35,7 +35,7 @@ interface StatusIndicatorProps {
 export const Playhead = React.forwardRef<
   HTMLDivElement,
   PlayheadProps & React.HTMLProps<HTMLDivElement>
->(({ status, play, pause, ...props }, ref) => {
+>(({ status, timelineName: _timelineName, play, pause, ...props }, ref) => {
   const { className, ...otherProps } = props;
 
   return (
