@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
 import * as THREE from "three";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -41,7 +41,7 @@ vi.mock("@react-three/fiber", () => ({
   }),
 }));
 
-vi.mock("../../WebGpuCanvas", () => ({
+vi.mock("../shared/WebGpuCanvas", () => ({
   WebGpuCanvas: ({
     children,
     ...props
@@ -53,6 +53,14 @@ vi.mock("../../WebGpuCanvas", () => ({
 }));
 
 vi.mock("@react-three/drei", () => ({
+  Billboard: ({
+    children,
+    ...props
+  }: React.PropsWithChildren<Record<string, unknown>>) => (
+    <div data-testid="points3d-billboard" data-props={JSON.stringify(props)}>
+      {children}
+    </div>
+  ),
   GizmoHelper: ({
     children,
     ...props
@@ -69,6 +77,14 @@ vi.mock("@react-three/drei", () => ({
   ),
   Grid: (props: Record<string, unknown>) => (
     <div data-testid="points3d-grid" data-props={JSON.stringify(props)} />
+  ),
+  Html: ({
+    children,
+    ...props
+  }: React.PropsWithChildren<Record<string, unknown>>) => (
+    <div data-testid="points3d-html" data-props={JSON.stringify(props)}>
+      {children}
+    </div>
   ),
   OrbitControls: React.forwardRef((_props, ref) => {
     const controls = controlsRef.current ?? {
@@ -107,6 +123,32 @@ const FRAME = {
       colors: null,
       solidColor: null,
       pointSize: null,
+    },
+  ],
+};
+
+const ANNOTATED_FRAME = {
+  id: "scene-update-1",
+  pointCount: 2,
+  bounds: {
+    min: [0, 0, 0] as [number, number, number],
+    max: [2, 1, 0] as [number, number, number],
+  },
+  primitives: [
+    {
+      kind: "line-strip" as const,
+      id: "annotation",
+      frameId: "map",
+      positions: new Float32Array([0, 0, 0, 2, 1, 0]),
+      colors: null,
+      semantic: {
+        title: "car",
+        entries: [
+          { label: "id", value: "vehicle-1" },
+          { label: "frame", value: "map" },
+        ],
+      },
+      solidColor: "hsl(21deg 74% 60%)",
     },
   ],
 };
@@ -326,5 +368,26 @@ describe("Points3dView", () => {
     expect(cameraRef.current.position.y).toBeCloseTo(1);
     expect(cameraRef.current.position.z).toBeCloseTo(4);
     expect(controlsRef.current?.target.toArray()).toEqual([5, 1, 0]);
+  });
+
+  it("shows semantic hover metadata for SceneUpdate annotations", () => {
+    const { container } = render(
+      <Points3dView colorMode="rgb" frame={ANNOTATED_FRAME} />
+    );
+    const annotation = container.querySelector("line");
+
+    expect(annotation).not.toBeNull();
+    expect(screen.queryByTestId("points3d-hover-tooltip")).toBeNull();
+
+    fireEvent.pointerOver(annotation!);
+
+    const tooltip = screen.getByTestId("points3d-hover-tooltip");
+    expect(tooltip.textContent).toContain("car");
+    expect(tooltip.textContent).toContain("vehicle-1");
+    expect(tooltip.textContent).toContain("map");
+
+    fireEvent.pointerOut(annotation!);
+
+    expect(screen.queryByTestId("points3d-hover-tooltip")).toBeNull();
   });
 });

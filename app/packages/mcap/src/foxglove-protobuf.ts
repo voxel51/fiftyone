@@ -280,6 +280,11 @@ export type FoxgloveColor = {
   a?: number;
 };
 
+export type FoxgloveKeyValuePair = {
+  key?: string;
+  value?: string;
+};
+
 type FoxglovePackedElementField = {
   name?: string;
   offset?: number;
@@ -395,6 +400,7 @@ type FoxgloveSceneEntityMessage = {
   id?: string;
   lifetime?: FoxgloveDuration;
   frameLocked?: boolean;
+  metadata?: FoxgloveKeyValuePair[];
   arrows?: FoxgloveArrowPrimitiveMessage[];
   cubes?: FoxgloveCubePrimitiveMessage[];
   spheres?: FoxgloveSpherePrimitiveMessage[];

@@ -1,6 +1,5 @@
 import * as THREE from "three";
-import type { Scene3dPrimitive } from "./archetypes";
-import { foxgloveColorToCss, foxgloveColorToRgbaArray } from "./foxglove-color";
+import type { Scene3dPrimitive, Scene3dPrimitiveSemantic } from "./archetypes";
 import {
   decodeFoxgloveSceneUpdateMessage,
   type FoxgloveArrowPrimitiveMessage,
@@ -14,6 +13,27 @@ import {
 const LINE_TYPE_STRIP = 0;
 const LINE_TYPE_LOOP = 1;
 const LINE_TYPE_LIST = 2;
+const SCENE_UPDATE_COLOR_KEY_KEYS = [
+  ".label",
+  "label",
+  ".category",
+  "category",
+];
+const SCENE_UPDATE_TITLE_KEYS = [
+  ...SCENE_UPDATE_COLOR_KEY_KEYS,
+  "class",
+  "type",
+  "name",
+  "namespace",
+  "ns",
+];
+const MAX_SCENE_UPDATE_SEMANTIC_ENTRIES = 4;
+
+type SceneEntityMetadataEntry = {
+  label: string;
+  normalizedLabel: string;
+  value: string;
+};
 
 export type DecodedFoxgloveSceneEntityState = {
   frameId: string | null;
@@ -21,6 +41,8 @@ export type DecodedFoxgloveSceneEntityState = {
   timestampNs: number;
   expiresAtNs: number | null;
   frameLocked: boolean;
+  semantic: Scene3dPrimitiveSemantic;
+  semanticColor: string;
   primitives: Scene3dPrimitive[];
   warnings: string[];
 };
@@ -121,21 +143,14 @@ function transformPoints(points: number[], matrix: THREE.Matrix4) {
   return transformed;
 }
 
-function toLineColorArray(colors: Array<unknown> | null | undefined) {
-  if (!colors?.length) {
-    return null;
+function hashString(value: string) {
+  let hash = 0;
+
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
   }
 
-  const values = new Float32Array(colors.length * 3);
-  colors.forEach((color, index) => {
-    const [r, g, b] = foxgloveColorToRgbaArray(color as never);
-    const offset = index * 3;
-    values[offset] = r;
-    values[offset + 1] = g;
-    values[offset + 2] = b;
-  });
-
-  return values;
+  return hash;
 }
 
 function decodeIndexedLinePoints(message: FoxgloveLinePrimitiveMessage) {
@@ -164,6 +179,140 @@ function decodeIndexedLinePoints(message: FoxgloveLinePrimitiveMessage) {
       .filter((value): value is NonNullable<typeof sourceColors>[number] =>
         Boolean(value)
       ),
+  };
+}
+
+function decodeMetadataEntries(entity: FoxgloveSceneEntityMessage) {
+  return (entity.metadata ?? [])
+    .map((entry) => {
+      const label = (entry.key ?? "").trim();
+      const value = (entry.value ?? "").trim();
+      if (!label || !value) {
+        return null;
+      }
+
+      return {
+        label,
+        normalizedLabel: label.toLocaleLowerCase(),
+        value,
+      };
+    })
+    .filter((value): value is SceneEntityMetadataEntry => Boolean(value));
+}
+
+function getMetadataValue(
+  entries: SceneEntityMetadataEntry[],
+  candidateKeys: string[]
+) {
+  for (const key of candidateKeys) {
+    const match = entries.find((entry) => entry.normalizedLabel === key);
+    if (match) {
+      return match.value;
+    }
+  }
+
+  return null;
+}
+
+function getSceneEntitySemanticKey(
+  entityId: string,
+  frameId: string | null,
+  metadataEntries: SceneEntityMetadataEntry[]
+) {
+  return (
+    getMetadataValue(metadataEntries, SCENE_UPDATE_COLOR_KEY_KEYS) ??
+    (entityId || frameId || "annotation")
+  );
+}
+
+function createSceneEntitySemantic(
+  entityId: string,
+  frameId: string | null,
+  metadataEntries: SceneEntityMetadataEntry[]
+): Scene3dPrimitiveSemantic {
+  const title =
+    getMetadataValue(metadataEntries, SCENE_UPDATE_TITLE_KEYS) ??
+    getSceneEntitySemanticKey(entityId, frameId, metadataEntries);
+  const entries: Scene3dPrimitiveSemantic["entries"] = [];
+
+  if (entityId && entityId !== title) {
+    entries.push({ label: "id", value: entityId });
+  }
+
+  if (frameId && frameId !== title) {
+    entries.push({ label: "frame", value: frameId });
+  }
+
+  metadataEntries.forEach((entry) => {
+    if (entries.length >= MAX_SCENE_UPDATE_SEMANTIC_ENTRIES) {
+      return;
+    }
+
+    if (
+      entry.value === title &&
+      SCENE_UPDATE_TITLE_KEYS.includes(entry.normalizedLabel)
+    ) {
+      return;
+    }
+
+    if (entry.normalizedLabel === "id" && entry.value === entityId) {
+      return;
+    }
+
+    if (
+      (entry.normalizedLabel === "frame" ||
+        entry.normalizedLabel === "frame_id") &&
+      entry.value === frameId
+    ) {
+      return;
+    }
+
+    entries.push({
+      label: entry.label,
+      value: entry.value,
+    });
+  });
+
+  if (!entries.length && entityId) {
+    entries.push({ label: "id", value: entityId });
+  }
+
+  return {
+    title,
+    entries,
+  };
+}
+
+function getSceneEntitySemanticColor(colorKey: string) {
+  const hash = hashString(colorKey);
+  const hue = hash % 360;
+  const saturation = 68 + (hash % 10);
+  const lightness = 58 + ((hash >> 9) % 8);
+
+  return `#${new THREE.Color()
+    .setHSL(hue / 360, saturation / 100, lightness / 100)
+    .getHexString()}`;
+}
+
+function applySceneEntitySemantic(
+  primitive: Scene3dPrimitive,
+  entity: Pick<DecodedFoxgloveSceneEntityState, "semantic" | "semanticColor">
+): Scene3dPrimitive {
+  if (primitive.kind === "points") {
+    return {
+      ...primitive,
+      intensity: null,
+      colors: null,
+      semantic: entity.semantic,
+      solidColor: entity.semanticColor,
+    };
+  }
+
+  return {
+    ...primitive,
+    colors: null,
+    semantic: entity.semantic,
+    solidColor: entity.semanticColor,
   };
 }
 
@@ -210,14 +359,17 @@ function decodeArrowPrimitive(
     poseMatrix
   );
 
-  return {
-    kind: "line-list",
-    id: `${entity.id}:arrow:${index}`,
-    frameId: entity.frameId,
-    positions,
-    colors: null,
-    solidColor: foxgloveColorToCss(primitive.color, "rgba(255, 122, 89, 1)"),
-  };
+  return applySceneEntitySemantic(
+    {
+      kind: "line-list",
+      id: `${entity.id}:arrow:${index}`,
+      frameId: entity.frameId,
+      positions,
+      colors: null,
+      solidColor: null,
+    },
+    entity
+  );
 }
 
 function decodeCubePrimitive(
@@ -229,29 +381,32 @@ function decodeCubePrimitive(
   const rotation = normalizeQuaternion(primitive.pose?.orientation);
   const size = primitive.size ?? null;
 
-  return {
-    kind: "cube-list",
-    id: `${entity.id}:cube:${index}`,
-    frameId: entity.frameId,
-    positions: new Float32Array([
-      Number(position?.x ?? 0),
-      Number(position?.y ?? 0),
-      Number(position?.z ?? 0),
-    ]),
-    scales: new Float32Array([
-      Number(size?.x ?? 1),
-      Number(size?.y ?? 1),
-      Number(size?.z ?? 1),
-    ]),
-    rotations: new Float32Array([
-      rotation.x,
-      rotation.y,
-      rotation.z,
-      rotation.w,
-    ]),
-    colors: null,
-    solidColor: foxgloveColorToCss(primitive.color, "rgba(255, 207, 90, 0.92)"),
-  };
+  return applySceneEntitySemantic(
+    {
+      kind: "cube-list",
+      id: `${entity.id}:cube:${index}`,
+      frameId: entity.frameId,
+      positions: new Float32Array([
+        Number(position?.x ?? 0),
+        Number(position?.y ?? 0),
+        Number(position?.z ?? 0),
+      ]),
+      scales: new Float32Array([
+        Number(size?.x ?? 1),
+        Number(size?.y ?? 1),
+        Number(size?.z ?? 1),
+      ]),
+      rotations: new Float32Array([
+        rotation.x,
+        rotation.y,
+        rotation.z,
+        rotation.w,
+      ]),
+      colors: null,
+      solidColor: null,
+    },
+    entity
+  );
 }
 
 function decodeSpherePrimitive(
@@ -263,29 +418,32 @@ function decodeSpherePrimitive(
   const rotation = normalizeQuaternion(primitive.pose?.orientation);
   const size = primitive.size ?? null;
 
-  return {
-    kind: "sphere-list",
-    id: `${entity.id}:sphere:${index}`,
-    frameId: entity.frameId,
-    positions: new Float32Array([
-      Number(position?.x ?? 0),
-      Number(position?.y ?? 0),
-      Number(position?.z ?? 0),
-    ]),
-    scales: new Float32Array([
-      Number(size?.x ?? 1),
-      Number(size?.y ?? 1),
-      Number(size?.z ?? 1),
-    ]),
-    rotations: new Float32Array([
-      rotation.x,
-      rotation.y,
-      rotation.z,
-      rotation.w,
-    ]),
-    colors: null,
-    solidColor: foxgloveColorToCss(primitive.color, "rgba(94, 194, 255, 0.9)"),
-  };
+  return applySceneEntitySemantic(
+    {
+      kind: "sphere-list",
+      id: `${entity.id}:sphere:${index}`,
+      frameId: entity.frameId,
+      positions: new Float32Array([
+        Number(position?.x ?? 0),
+        Number(position?.y ?? 0),
+        Number(position?.z ?? 0),
+      ]),
+      scales: new Float32Array([
+        Number(size?.x ?? 1),
+        Number(size?.y ?? 1),
+        Number(size?.z ?? 1),
+      ]),
+      rotations: new Float32Array([
+        rotation.x,
+        rotation.y,
+        rotation.z,
+        rotation.w,
+      ]),
+      colors: null,
+      solidColor: null,
+    },
+    entity
+  );
 }
 
 function decodeLinePrimitive(
@@ -293,36 +451,32 @@ function decodeLinePrimitive(
   primitive: FoxgloveLinePrimitiveMessage,
   index: number
 ): Scene3dPrimitive | null {
-  const { points, colors } = decodeIndexedLinePoints(primitive);
+  const { points } = decodeIndexedLinePoints(primitive);
   if (!points.length) {
     return null;
   }
 
   if ((primitive.type ?? LINE_TYPE_STRIP) === LINE_TYPE_LOOP) {
     points.push(points[0]);
-    if (colors.length) {
-      colors.push(colors[0]);
-    }
   }
 
   const poseMatrix = createPoseMatrix(primitive.pose);
   const flattenedPoints = points.flat();
-  const colorArray =
-    colors.length === points.length ? toLineColorArray(colors) : null;
 
-  return {
-    kind:
-      (primitive.type ?? LINE_TYPE_STRIP) === LINE_TYPE_LIST
-        ? "line-list"
-        : "line-strip",
-    id: `${entity.id}:line:${index}`,
-    frameId: entity.frameId,
-    positions: transformPoints(flattenedPoints, poseMatrix),
-    colors: colorArray,
-    solidColor: colorArray
-      ? null
-      : foxgloveColorToCss(primitive.color, "rgba(149, 223, 114, 1)"),
-  };
+  return applySceneEntitySemantic(
+    {
+      kind:
+        (primitive.type ?? LINE_TYPE_STRIP) === LINE_TYPE_LIST
+          ? "line-list"
+          : "line-strip",
+      id: `${entity.id}:line:${index}`,
+      frameId: entity.frameId,
+      positions: transformPoints(flattenedPoints, poseMatrix),
+      colors: null,
+      solidColor: null,
+    },
+    entity
+  );
 }
 
 function decodeEntityWarnings(entity: FoxgloveSceneEntityMessage) {
@@ -351,12 +505,22 @@ function decodeEntity(entity: FoxgloveSceneEntityMessage) {
   }
 
   const lifetimeNs = decodeDurationNs(entity.lifetime);
+  const entityId = entity.id ?? "";
+  const frameId = entity.frameId ?? null;
+  const metadataEntries = decodeMetadataEntries(entity);
+  const semanticKey = getSceneEntitySemanticKey(
+    entityId,
+    frameId,
+    metadataEntries
+  );
   const decodedEntity: DecodedFoxgloveSceneEntityState = {
-    frameId: entity.frameId ?? null,
-    id: entity.id ?? "",
+    frameId,
+    id: entityId,
     timestampNs,
     expiresAtNs: lifetimeNs > 0 ? timestampNs + lifetimeNs : null,
     frameLocked: Boolean(entity.frameLocked),
+    semantic: createSceneEntitySemantic(entityId, frameId, metadataEntries),
+    semanticColor: getSceneEntitySemanticColor(semanticKey),
     primitives: [],
     warnings: decodeEntityWarnings(entity),
   };

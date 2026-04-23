@@ -4,11 +4,27 @@ export type Points3dBounds = {
   max: [number, number, number];
 };
 
-/** One render-ready points primitive within a 3D scene frame. */
-export type Scene3dPointsPrimitive = {
-  kind: "points";
+/** One labeled metadata row for a semantic 3D hover card. */
+export type Scene3dPrimitiveSemanticEntry = {
+  label: string;
+  value: string;
+};
+
+/** Semantic hover metadata for an interactive 3D primitive. */
+export type Scene3dPrimitiveSemantic = {
+  title: string;
+  entries: Scene3dPrimitiveSemanticEntry[];
+};
+
+type Scene3dPrimitiveBase = {
   id: string;
   frameId?: string | null;
+  semantic?: Scene3dPrimitiveSemantic | null;
+};
+
+/** One render-ready points primitive within a 3D scene frame. */
+export type Scene3dPointsPrimitive = Scene3dPrimitiveBase & {
+  kind: "points";
   pointCount: number;
   positions: Float32Array;
   intensity: Float32Array | null;
@@ -18,20 +34,16 @@ export type Scene3dPointsPrimitive = {
 };
 
 /** One render-ready line primitive within a 3D scene frame. */
-export type Scene3dLinePrimitive = {
+export type Scene3dLinePrimitive = Scene3dPrimitiveBase & {
   kind: "line-list" | "line-strip";
-  id: string;
-  frameId?: string | null;
   positions: Float32Array;
   colors?: Float32Array | null;
   solidColor?: string | null;
 };
 
 /** One render-ready instanced glyph primitive within a 3D scene frame. */
-export type Scene3dInstancePrimitive = {
+export type Scene3dInstancePrimitive = Scene3dPrimitiveBase & {
   kind: "sphere-list" | "cube-list";
-  id: string;
-  frameId?: string | null;
   positions: Float32Array;
   scales: Float32Array;
   rotations?: Float32Array | null;

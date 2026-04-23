@@ -1,13 +1,15 @@
 import {
+  Billboard,
   GizmoHelper,
   GizmoViewport,
   Grid,
+  Html,
   OrbitControls,
 } from "@react-three/drei";
-import { useThree } from "@react-three/fiber";
+import { useThree, type ThreeEvent } from "@react-three/fiber";
 import React from "react";
 import * as THREE from "three";
-import { WebGpuCanvas } from "../../WebGpuCanvas";
+import { WebGpuCanvas } from "../shared/WebGpuCanvas";
 import {
   computePointSize,
   createIntensityColorBuffer,
@@ -33,12 +35,67 @@ const CANVAS_STYLES: React.CSSProperties = {
   height: "100%",
 };
 
+const TOOLTIP_CARD_STYLES: React.CSSProperties = {
+  minWidth: 140,
+  maxWidth: 220,
+  borderRadius: 10,
+  padding: "10px 12px",
+  color: "#f8fafc",
+  background: "rgba(17, 24, 39, 0.92)",
+  border: "1px solid rgba(148, 163, 184, 0.28)",
+  boxShadow: "0 14px 32px rgba(15, 23, 42, 0.38)",
+  pointerEvents: "none",
+};
+
+const TOOLTIP_TITLE_ROW_STYLES: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  marginBottom: 6,
+};
+
+const TOOLTIP_SWATCH_STYLES: React.CSSProperties = {
+  width: 9,
+  height: 9,
+  borderRadius: "999px",
+  flexShrink: 0,
+};
+
+const TOOLTIP_TITLE_STYLES: React.CSSProperties = {
+  fontSize: 12,
+  fontWeight: 600,
+  lineHeight: 1.3,
+};
+
+const TOOLTIP_ENTRY_STYLES: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "max-content 1fr",
+  columnGap: 8,
+  rowGap: 3,
+  fontSize: 11,
+  lineHeight: 1.35,
+};
+
+const TOOLTIP_LABEL_STYLES: React.CSSProperties = {
+  color: "rgba(226, 232, 240, 0.72)",
+  textTransform: "lowercase",
+};
+
+const TOOLTIP_VALUE_STYLES: React.CSSProperties = {
+  color: "#ffffff",
+  wordBreak: "break-word",
+};
+
 type ControlsHandle = {
   target: THREE.Vector3;
   update: () => void;
 };
 
 type FollowPoseSnapshot = NonNullable<Points3dViewProps["followPose"]>;
+type PrimitiveHoverHandlers = {
+  onPointerOut?: (event: ThreeEvent<PointerEvent>) => void;
+  onPointerOver?: (event: ThreeEvent<PointerEvent>) => void;
+};
 
 const GRID_CELL_SIZE = 1;
 const GRID_CELL_COLOR = "#314252";
@@ -129,6 +186,38 @@ function getMaxPlaneSpan(bounds: Points3dBounds, upAxis: ViewUpAxis) {
   }
 
   return Math.max(xSpan, zSpan);
+}
+
+function getPrimitiveAnchorPosition(primitive: Scene3dPrimitive) {
+  if (!primitive.positions.length) {
+    return null;
+  }
+
+  let minX = primitive.positions[0];
+  let minY = primitive.positions[1];
+  let minZ = primitive.positions[2];
+  let maxX = primitive.positions[0];
+  let maxY = primitive.positions[1];
+  let maxZ = primitive.positions[2];
+
+  for (let index = 3; index < primitive.positions.length; index += 3) {
+    const x = primitive.positions[index];
+    const y = primitive.positions[index + 1];
+    const z = primitive.positions[index + 2];
+
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
+    minZ = Math.min(minZ, z);
+    maxX = Math.max(maxX, x);
+    maxY = Math.max(maxY, y);
+    maxZ = Math.max(maxZ, z);
+  }
+
+  return [(minX + maxX) / 2, (minY + maxY) / 2, (minZ + maxZ) / 2] as [
+    number,
+    number,
+    number
+  ];
 }
 
 function SceneGrid({
@@ -363,14 +452,60 @@ function Points3dCameraController({
   return <OrbitControls makeDefault ref={controlsRef as never} />;
 }
 
+function SceneAnnotationTooltip({
+  primitive,
+}: {
+  primitive: Scene3dPrimitive;
+}) {
+  const position = React.useMemo(() => {
+    return getPrimitiveAnchorPosition(primitive);
+  }, [primitive]);
+
+  if (!primitive.semantic || !position) {
+    return null;
+  }
+
+  return (
+    <Billboard position={position}>
+      <Html center pointerEvents="none">
+        <div data-testid="points3d-hover-tooltip" style={TOOLTIP_CARD_STYLES}>
+          <div style={TOOLTIP_TITLE_ROW_STYLES}>
+            <span
+              style={{
+                ...TOOLTIP_SWATCH_STYLES,
+                background: primitive.solidColor ?? "#ffffff",
+              }}
+            />
+            <span style={TOOLTIP_TITLE_STYLES}>{primitive.semantic.title}</span>
+          </div>
+          {primitive.semantic.entries.length ? (
+            <div style={TOOLTIP_ENTRY_STYLES}>
+              {primitive.semantic.entries.map((entry) => (
+                <React.Fragment key={`${entry.label}:${entry.value}`}>
+                  <span style={TOOLTIP_LABEL_STYLES}>{entry.label}</span>
+                  <span style={TOOLTIP_VALUE_STYLES}>{entry.value}</span>
+                </React.Fragment>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      </Html>
+    </Billboard>
+  );
+}
+
 function PointsPrimitive({
   colorMode,
   frameBounds,
+  hoverHandlers,
+  isHovered,
   primitive,
   solidColor,
 }: {
   colorMode: NonNullable<Points3dViewProps["colorMode"]>;
   frameBounds: Scene3dFrame["bounds"];
+  hoverHandlers?: PrimitiveHoverHandlers;
+  isHovered: boolean;
   primitive: Scene3dPointsPrimitive;
   solidColor: string;
 }) {
@@ -400,13 +535,7 @@ function PointsPrimitive({
 
     nextGeometry.computeBoundingSphere();
     return nextGeometry;
-  }, [
-    colorMode,
-    primitive.colors,
-    primitive.id,
-    primitive.intensity,
-    primitive.positions,
-  ]);
+  }, [colorMode, primitive.colors, primitive.intensity, primitive.positions]);
 
   React.useEffect(() => {
     return () => {
@@ -415,11 +544,14 @@ function PointsPrimitive({
   }, [geometry]);
 
   return (
-    <points geometry={geometry}>
+    <points geometry={geometry} {...hoverHandlers}>
       <pointsMaterial
         color={primitive.solidColor ?? solidColor}
-        opacity={1}
-        size={primitive.pointSize ?? computePointSize(frameBounds)}
+        opacity={isHovered ? 1 : 0.95}
+        size={
+          (primitive.pointSize ?? computePointSize(frameBounds)) *
+          (isHovered ? 1.2 : 1)
+        }
         sizeAttenuation
         transparent
         vertexColors={Boolean(
@@ -431,7 +563,15 @@ function PointsPrimitive({
   );
 }
 
-function LinePrimitive({ primitive }: { primitive: Scene3dLinePrimitive }) {
+function LinePrimitive({
+  hoverHandlers,
+  isHovered,
+  primitive,
+}: {
+  hoverHandlers?: PrimitiveHoverHandlers;
+  isHovered: boolean;
+  primitive: Scene3dLinePrimitive;
+}) {
   const geometry = React.useMemo(() => {
     const nextGeometry = new THREE.BufferGeometry();
     nextGeometry.setAttribute(
@@ -448,7 +588,7 @@ function LinePrimitive({ primitive }: { primitive: Scene3dLinePrimitive }) {
 
     nextGeometry.computeBoundingSphere();
     return nextGeometry;
-  }, [primitive.colors, primitive.id, primitive.positions]);
+  }, [primitive.colors, primitive.positions]);
 
   React.useEffect(() => {
     return () => {
@@ -458,16 +598,20 @@ function LinePrimitive({ primitive }: { primitive: Scene3dLinePrimitive }) {
 
   const element =
     primitive.kind === "line-strip" ? (
-      <line geometry={geometry}>
+      <line geometry={geometry} {...hoverHandlers}>
         <lineBasicMaterial
           color={primitive.solidColor ?? "#ffcf5a"}
+          opacity={isHovered ? 1 : 0.88}
+          transparent
           vertexColors={Boolean(primitive.colors?.length)}
         />
       </line>
     ) : (
-      <lineSegments geometry={geometry}>
+      <lineSegments geometry={geometry} {...hoverHandlers}>
         <lineBasicMaterial
           color={primitive.solidColor ?? "#ffcf5a"}
+          opacity={isHovered ? 1 : 0.88}
+          transparent
           vertexColors={Boolean(primitive.colors?.length)}
         />
       </lineSegments>
@@ -477,8 +621,12 @@ function LinePrimitive({ primitive }: { primitive: Scene3dLinePrimitive }) {
 }
 
 function InstancePrimitive({
+  hoverHandlers,
+  isHovered,
   primitive,
 }: {
+  hoverHandlers?: PrimitiveHoverHandlers;
+  isHovered: boolean;
   primitive: Scene3dInstancePrimitive;
 }) {
   const meshRef = React.useRef<THREE.InstancedMesh>(null);
@@ -551,7 +699,11 @@ function InstancePrimitive({
   ]);
 
   return (
-    <instancedMesh ref={meshRef} args={[undefined, undefined, instanceCount]}>
+    <instancedMesh
+      ref={meshRef}
+      args={[undefined, undefined, instanceCount]}
+      {...hoverHandlers}
+    >
       {primitive.kind === "sphere-list" ? (
         <sphereGeometry args={[0.5, 14, 14]} />
       ) : (
@@ -559,6 +711,9 @@ function InstancePrimitive({
       )}
       <meshStandardMaterial
         color={primitive.solidColor ?? "#f58fb0"}
+        emissive={primitive.solidColor ?? "#f58fb0"}
+        emissiveIntensity={isHovered ? 0.18 : 0}
+        opacity={isHovered ? 1 : 0.92}
         transparent
         vertexColors={Boolean(primitive.colors?.length)}
       />
@@ -569,19 +724,39 @@ function InstancePrimitive({
 function ScenePrimitive({
   colorMode,
   frameBounds,
+  hoveredPrimitiveId,
+  onHoverChange,
   primitive,
   solidColor,
 }: {
   colorMode: NonNullable<Points3dViewProps["colorMode"]>;
   frameBounds: Scene3dFrame["bounds"];
+  hoveredPrimitiveId: string | null;
+  onHoverChange: (primitiveId: string | null) => void;
   primitive: Scene3dPrimitive;
   solidColor: string;
 }) {
+  const hoverHandlers = primitive.semantic
+    ? {
+        onPointerOver: (event: ThreeEvent<PointerEvent>) => {
+          event.stopPropagation();
+          onHoverChange(primitive.id);
+        },
+        onPointerOut: (event: ThreeEvent<PointerEvent>) => {
+          event.stopPropagation();
+          onHoverChange(null);
+        },
+      }
+    : undefined;
+  const isHovered = hoveredPrimitiveId === primitive.id;
+
   if (primitive.kind === "points") {
     return (
       <PointsPrimitive
         colorMode={colorMode}
         frameBounds={frameBounds}
+        hoverHandlers={hoverHandlers}
+        isHovered={isHovered}
         primitive={primitive}
         solidColor={solidColor}
       />
@@ -589,10 +764,22 @@ function ScenePrimitive({
   }
 
   if (primitive.kind === "line-list" || primitive.kind === "line-strip") {
-    return <LinePrimitive primitive={primitive} />;
+    return (
+      <LinePrimitive
+        hoverHandlers={hoverHandlers}
+        isHovered={isHovered}
+        primitive={primitive}
+      />
+    );
   }
 
-  return <InstancePrimitive primitive={primitive} />;
+  return (
+    <InstancePrimitive
+      hoverHandlers={hoverHandlers}
+      isHovered={isHovered}
+      primitive={primitive}
+    />
+  );
 }
 
 /** Pure visual 3D scene surface for render-ready 3D frames. */
@@ -607,6 +794,30 @@ export function Points3dView({
   solidColor = "#6ac7ff",
   upAxis = "z",
 }: Points3dViewProps) {
+  const [hoveredPrimitiveId, setHoveredPrimitiveId] = React.useState<
+    string | null
+  >(null);
+
+  React.useEffect(() => {
+    setHoveredPrimitiveId(null);
+  }, [frame?.id]);
+
+  const hoveredPrimitive = React.useMemo(() => {
+    return (
+      frame?.primitives.find((primitive) => {
+        return primitive.id === hoveredPrimitiveId && primitive.semantic;
+      }) ?? null
+    );
+  }, [frame, hoveredPrimitiveId]);
+
+  React.useEffect(() => {
+    if (!hoveredPrimitiveId || hoveredPrimitive) {
+      return;
+    }
+
+    setHoveredPrimitiveId(null);
+  }, [hoveredPrimitive, hoveredPrimitiveId]);
+
   if (!frame || !frame.primitives.length) {
     return null;
   }
@@ -636,11 +847,16 @@ export function Points3dView({
           resetViewToken={resetViewToken}
           upAxis={upAxis}
         />
+        {hoveredPrimitive ? (
+          <SceneAnnotationTooltip primitive={hoveredPrimitive} />
+        ) : null}
         {frame.primitives.map((primitive) => (
           <ScenePrimitive
             key={primitive.id}
             colorMode={colorMode}
             frameBounds={frame.bounds}
+            hoveredPrimitiveId={hoveredPrimitiveId}
+            onHoverChange={setHoveredPrimitiveId}
             primitive={primitive}
             solidColor={solidColor}
           />
