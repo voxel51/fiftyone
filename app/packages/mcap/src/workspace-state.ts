@@ -31,6 +31,8 @@ export const MIN_MULTIMODAL_SIDEBAR_WIDTH_PX = 176;
 /** Largest supported width in pixels for the multimodal sidebar. */
 export const MAX_MULTIMODAL_SIDEBAR_WIDTH_PX = 420;
 
+type MultimodalMosaicDropTargetPosition = "top" | "bottom" | "left" | "right";
+
 function getTopicPrefix(topic: string) {
   const lastSlashIndex = topic.lastIndexOf("/");
   return lastSlashIndex >= 0 ? topic.slice(0, lastSlashIndex) : topic;
@@ -287,6 +289,51 @@ function replaceLeafWithSplit(
   };
 }
 
+function createDropTargetSplit(
+  layoutNode: MultimodalLayoutNode,
+  position: MultimodalMosaicDropTargetPosition,
+  nextPanelId: string
+): MultimodalLayoutNode {
+  const nextLeaf = createLayoutLeaf(nextPanelId);
+  const direction =
+    position === "left" || position === "right" ? "row" : "column";
+  const insertBefore = position === "left" || position === "top";
+
+  return createLayoutSplit(
+    direction,
+    insertBefore ? nextLeaf : layoutNode,
+    insertBefore ? layoutNode : nextLeaf
+  );
+}
+
+function replaceNodeAtLayoutPath(
+  layoutTree: MultimodalLayoutNode,
+  path: Array<"first" | "second">,
+  replacer: (layoutNode: MultimodalLayoutNode) => MultimodalLayoutNode
+): MultimodalLayoutNode {
+  if (path.length === 0) {
+    return replacer(layoutTree);
+  }
+
+  if (layoutTree.type === "leaf") {
+    return replacer(layoutTree);
+  }
+
+  const [branch, ...rest] = path;
+
+  if (branch === "first") {
+    return {
+      ...layoutTree,
+      first: replaceNodeAtLayoutPath(layoutTree.first, rest, replacer),
+    };
+  }
+
+  return {
+    ...layoutTree,
+    second: replaceNodeAtLayoutPath(layoutTree.second, rest, replacer),
+  };
+}
+
 function removeLeafFromLayoutTree(
   layoutTree: MultimodalLayoutNode | null,
   panelId: string
@@ -479,6 +526,38 @@ export function addPanelToWorkspaceState(
       nextPanel.panelId
     );
   }
+
+  return {
+    ...state,
+    activePanelId: nextPanel.panelId,
+    maximizedPanelId: state.maximizedPanelId ? nextPanel.panelId : null,
+    layoutTree: nextLayoutTree,
+    panels: nextPanels,
+    panelsById: createPanelLookup(nextPanels),
+  };
+}
+
+/**
+ * Adds a new panel at the requested Mosaic drop target.
+ */
+export function insertPanelAtMosaicDropTargetInWorkspaceState(
+  state: MultimodalWorkspaceState,
+  archetype: MultimodalPanelArchetype,
+  options: {
+    path?: Array<"first" | "second"> | null;
+    position: MultimodalMosaicDropTargetPosition;
+  }
+): MultimodalWorkspaceState {
+  const nextPanel = createUnboundPanel(state.panels, archetype);
+  const nextPanels = [...state.panels, nextPanel];
+  const nextLayoutTree = state.layoutTree
+    ? replaceNodeAtLayoutPath(
+        cloneLayoutTree(state.layoutTree)!,
+        [...(options.path ?? [])],
+        (layoutNode) =>
+          createDropTargetSplit(layoutNode, options.position, nextPanel.panelId)
+      )
+    : createLayoutLeaf(nextPanel.panelId);
 
   return {
     ...state,

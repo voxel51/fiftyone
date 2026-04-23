@@ -140,12 +140,14 @@ vi.mock("react-mosaic-component", async () => {
 
   return {
     Mosaic: ({
+      className,
       onChange,
       onRelease,
       renderTile,
       value,
       zeroStateView,
     }: {
+      className?: string;
       onChange?: (nextNode: unknown) => void;
       onRelease?: (nextNode: unknown) => void;
       renderTile: (
@@ -158,7 +160,7 @@ vi.mock("react-mosaic-component", async () => {
       mosaicHarness.lastProps = { value, onChange, onRelease };
 
       return (
-        <div data-testid="multimodal-workspace-mosaic">
+        <div className={className} data-testid="multimodal-workspace-mosaic">
           {value ? renderMosaicNode(value, renderTile) : zeroStateView ?? null}
         </div>
       );
@@ -449,7 +451,26 @@ const WORKSPACE_RESPONSE = {
   },
 } as const;
 
-function createWorkspaceHookState(overrides = {}) {
+type WorkspaceHookState = {
+  data: {
+    catalog: unknown;
+    renderingPlan: unknown;
+  } | null;
+  catalog: unknown;
+  renderingPlan: unknown;
+  isLoading: boolean;
+  isSaving: boolean;
+  error: Error | null;
+  saveError: Error | null;
+  refetch: ReturnType<typeof vi.fn>;
+  save: ReturnType<typeof vi.fn>;
+  clearSaveError: ReturnType<typeof vi.fn>;
+  reset: ReturnType<typeof vi.fn>;
+};
+
+function createWorkspaceHookState(
+  overrides: Partial<WorkspaceHookState> = {}
+): WorkspaceHookState {
   const catalog = overrides.catalog ?? WORKSPACE_RESPONSE.catalog;
   const renderingPlan =
     overrides.renderingPlan ?? WORKSPACE_RESPONSE.renderingPlan;
@@ -883,6 +904,114 @@ describe("Multimodal renderers", () => {
     });
   });
 
+  it("shows 3d sceneupdate overlay streams in overlays instead of streams", async () => {
+    vi.useFakeTimers();
+    const sceneOverlayCatalog = {
+      ...WORKSPACE_RESPONSE.catalog,
+      streams: [
+        ...WORKSPACE_RESPONSE.catalog.streams,
+        {
+          streamId: "/scene/overlays",
+          topic: "/scene/overlays",
+          schemaName: "foxglove.SceneUpdate",
+          schemaEncoding: "protobuf",
+          messageEncoding: "protobuf",
+          kind: "other" as const,
+          frameId: "map",
+          affordances: ["sceneupdate", "overlay", "3d"],
+          compatiblePanels: ["3d" as const, "image" as const],
+          channelId: 6,
+          schemaId: 6,
+          timeRange: { startNs: 10, endNs: 20_000_000_010 },
+          messageCount: 3,
+        },
+      ],
+    };
+    const sceneOverlayRenderingPlan = {
+      ...WORKSPACE_RESPONSE.renderingPlan,
+      panels: [
+        {
+          ...WORKSPACE_RESPONSE.renderingPlan.panels[0],
+        },
+      ],
+      layoutTree: {
+        type: "leaf" as const,
+        panelId: "panel_3d_1",
+      },
+    };
+    const save = vi.fn().mockResolvedValue(sceneOverlayRenderingPlan);
+    useMultimodalWorkspaceMock.mockReturnValue(
+      createWorkspaceHookState({
+        catalog: sceneOverlayCatalog,
+        renderingPlan: sceneOverlayRenderingPlan,
+        save,
+      })
+    );
+
+    render(<MultimodalModalRenderer ctx={createCtx("modal")} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Overlays" }));
+    fireEvent.click(screen.getByRole("button", { name: "Streams" }));
+
+    const streamsSection = screen.getByRole("button", {
+      name: "Streams",
+    }).parentElement as HTMLElement;
+    expect(within(streamsSection).queryByText("/scene/overlays")).toBeNull();
+
+    const overlaysSection = screen.getByRole("button", {
+      name: "Overlays",
+    }).parentElement as HTMLElement;
+    expect(within(overlaysSection).getByText("/scene/overlays")).toBeTruthy();
+
+    const overlayToggle = within(overlaysSection).getByRole(
+      "checkbox"
+    ) as HTMLInputElement;
+    expect(overlayToggle.checked).toBe(false);
+
+    fireEvent.click(overlayToggle);
+    expect(overlayToggle.checked).toBe(true);
+
+    await vi.advanceTimersByTimeAsync(250);
+
+    expect(save).toHaveBeenCalledTimes(1);
+
+    expect(save.mock.calls.at(-1)?.[0]).toMatchObject({
+      panels: [
+        expect.objectContaining({
+          panelId: "panel_3d_1",
+          visibleStreamIds: ["/lidar/top", "/scene/overlays"],
+        }),
+      ],
+    });
+  });
+
+  it("arms mosaic placement affordances on add-panel mousedown", async () => {
+    render(<MultimodalModalRenderer ctx={createCtx("modal")} />);
+
+    fireEvent.mouseDown(screen.getByRole("button", { name: "Image" }));
+
+    expect(
+      screen.getByText(
+        "Release on a highlighted zone to place the new image panel"
+      )
+    ).toBeTruthy();
+    expect(
+      screen
+        .getByTestId("multimodal-workspace-mosaic")
+        .className.includes("is-placement-armed")
+    ).toBe(true);
+
+    fireEvent.mouseUp(window);
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText(
+          "Release on a highlighted zone to place the new image panel"
+        )
+      ).toBeNull();
+    });
+  });
+
   it("adds an unbound image panel from the toolbar and schedules a save", async () => {
     vi.useFakeTimers();
     const save = vi.fn().mockResolvedValue(WORKSPACE_RESPONSE.renderingPlan);
@@ -901,6 +1030,38 @@ describe("Multimodal renderers", () => {
       screen.getByTestId("multimodal-panel-card-image_panel_4")
     ).toBeTruthy();
     expect(save).toHaveBeenCalledTimes(1);
+  });
+
+  it("adds a panel at the released placement zone from the toolbar", async () => {
+    const save = vi.fn().mockResolvedValue(WORKSPACE_RESPONSE.renderingPlan);
+    useMultimodalWorkspaceMock.mockReturnValue(
+      createWorkspaceHookState({
+        save,
+      })
+    );
+
+    render(<MultimodalModalRenderer ctx={createCtx("modal")} />);
+
+    fireEvent.mouseDown(screen.getByRole("button", { name: "Image" }));
+    fireEvent.mouseUp(
+      screen.getByTestId("multimodal-placement-target-image_panel_2-left")
+    );
+
+    await waitFor(() => {
+      expect(save).toHaveBeenCalledTimes(1);
+    });
+
+    expect(
+      screen.getByTestId("multimodal-panel-card-image_panel_4")
+    ).toBeTruthy();
+    expect(save.mock.calls.at(-1)?.[0]).toMatchObject({
+      panels: expect.arrayContaining([
+        expect.objectContaining({
+          panelId: "image_panel_4",
+          archetype: "image",
+        }),
+      ]),
+    });
   });
 
   it("collapses the left sidebar from the sidebar header", async () => {

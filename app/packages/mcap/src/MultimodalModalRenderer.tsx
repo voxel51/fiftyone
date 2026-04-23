@@ -71,6 +71,7 @@ import {
   getActivePanel,
   getDefaultImageSupportStreamIds,
   getSuggestedPanelTitle,
+  insertPanelAtMosaicDropTargetInWorkspaceState,
   removePanelFromWorkspaceState,
   reconcileImageSupportStreamIds,
   retitleGenericPanelsInWorkspaceState,
@@ -219,6 +220,16 @@ const DEFAULT_SIDEBAR_SECTION_STATE: Record<SidebarSectionId, boolean> = {
   streams: true,
 };
 
+const MULTIMODAL_MOSAIC_ID = "multimodal-workspace-mosaic";
+const MOSAIC_PLACEMENT_POSITIONS = ["top", "left", "right", "bottom"] as const;
+
+type MultimodalMosaicDropTarget = {
+  path?: MosaicBranch[];
+  position?: "top" | "bottom" | "left" | "right";
+};
+
+type MultimodalMosaicDropPosition = typeof MOSAIC_PLACEMENT_POSITIONS[number];
+
 type PersistenceMode = "none" | "debounced" | "immediate";
 
 function formatPlaybackTimestampNs(timestampNs: number) {
@@ -298,6 +309,15 @@ function isImageAnnotationOverlayStream(
   return stream.schemaName === "foxglove.ImageAnnotations";
 }
 
+function isScene3dOverlayStream(
+  stream: Pick<MultimodalStreamDescriptor, "affordances">
+) {
+  return (
+    stream.affordances.includes("sceneupdate") &&
+    stream.affordances.includes("overlay")
+  );
+}
+
 function shouldIncludeImageSupportFrameForPanel(
   panel: MultimodalPanelLayoutState,
   stream: MultimodalStreamDescriptor | null | undefined
@@ -356,6 +376,25 @@ function fromMosaicNode(
     first: fromMosaicNode(mosaicNode.first)!,
     second: fromMosaicNode(mosaicNode.second)!,
   };
+}
+
+function findPanelPathInLayoutTree(
+  layoutTree: MultimodalLayoutNode | null,
+  panelId: string,
+  path: MosaicBranch[] = []
+): MosaicBranch[] | null {
+  if (!layoutTree) {
+    return null;
+  }
+
+  if (layoutTree.type === "leaf") {
+    return layoutTree.panelId === panelId ? path : null;
+  }
+
+  return (
+    findPanelPathInLayoutTree(layoutTree.first, panelId, [...path, "first"]) ??
+    findPanelPathInLayoutTree(layoutTree.second, panelId, [...path, "second"])
+  );
 }
 
 function getPanelStreamLabel(
@@ -726,6 +765,92 @@ const PanelViewport = React.memo(
 
 PanelViewport.displayName = "PanelViewport";
 
+function getPlacementTargetLabel(position: MultimodalMosaicDropPosition) {
+  switch (position) {
+    case "top":
+      return "Place above";
+    case "left":
+      return "Place left";
+    case "right":
+      return "Place right";
+    case "bottom":
+      return "Place below";
+  }
+}
+
+function PanelPlacementTargets({
+  panelId,
+  onPlace,
+}: {
+  panelId: string;
+  onPlace: (position: MultimodalMosaicDropPosition) => void;
+}) {
+  return (
+    <div className="mcap-placement-targets">
+      <div className="mcap-placement-targets-copy">
+        Release on a highlighted zone to place the new panel
+      </div>
+      {MOSAIC_PLACEMENT_POSITIONS.map((position) => (
+        <div
+          key={position}
+          aria-label={getPlacementTargetLabel(position)}
+          className={`mcap-placement-target mcap-placement-target-${position}`}
+          data-testid={`multimodal-placement-target-${panelId}-${position}`}
+          onMouseUp={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            onPlace(position);
+          }}
+          role="presentation"
+        >
+          <span className="mcap-placement-target-label">
+            {getPlacementTargetLabel(position)}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function AddPanelButton({
+  archetype,
+  label,
+  onAddPanel,
+  onArm,
+  onDisarm,
+}: {
+  archetype: MultimodalPanelArchetype;
+  label: string;
+  onAddPanel: (archetype: MultimodalPanelArchetype) => void;
+  onArm: (archetype: MultimodalPanelArchetype) => void;
+  onDisarm: () => void;
+}) {
+  return (
+    <span
+      className="mcap-add-panel-button-shell"
+      onMouseDown={(event) => {
+        if (event.button !== 0) {
+          return;
+        }
+
+        onArm(archetype);
+      }}
+    >
+      <Button
+        leadingIcon={IconName.Add}
+        onClick={() => {
+          onDisarm();
+          onAddPanel(archetype);
+        }}
+        size={Size.Sm}
+        variant={Variant.Secondary}
+      >
+        {label}
+      </Button>
+    </span>
+  );
+}
+
 function renderPanelToolbar({
   active,
   isMaximized,
@@ -840,6 +965,8 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
     startWidth: number;
   } | null>(null);
   const saveTimeoutRef = React.useRef<number | null>(null);
+  const [armedPanelArchetype, setArmedPanelArchetype] =
+    React.useState<MultimodalPanelArchetype | null>(null);
   const hasSearchQuery = deferredSearchQuery.trim().length > 0;
 
   React.useEffect(() => {
@@ -891,6 +1018,22 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
       }
     };
   }, []);
+
+  React.useEffect(() => {
+    if (!armedPanelArchetype) {
+      return;
+    }
+
+    const handleMouseUp = () => {
+      setArmedPanelArchetype(null);
+    };
+
+    window.addEventListener("mouseup", handleMouseUp);
+
+    return () => {
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [armedPanelArchetype]);
 
   const persistWorkspaceState = React.useCallback(
     async (nextState: MultimodalWorkspaceState) => {
@@ -1212,6 +1355,57 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
     [updateActivePanel]
   );
 
+  const toggleActiveScene3dStream = React.useCallback(
+    (streamId: string) => {
+      if (!catalog || !activePanel || activePanel.archetype !== "3d") {
+        return;
+      }
+
+      applyWorkspaceState(
+        (current) =>
+          updatePanelInWorkspaceState(current, activePanel.panelId, (panel) => {
+            if (panel.archetype !== "3d") {
+              return panel;
+            }
+
+            const nextVisibleStreamIds = panel.visibleStreamIds.includes(
+              streamId
+            )
+              ? panel.visibleStreamIds.filter(
+                  (visibleStreamId) => visibleStreamId !== streamId
+                )
+              : [...panel.visibleStreamIds, streamId];
+            const currentAutoTitle = getSuggestedPanelTitle(
+              catalog,
+              panel,
+              current.panels
+            );
+            const nextPanel = {
+              ...panel,
+              visibleStreamIds: nextVisibleStreamIds,
+            };
+
+            if (
+              !shouldSyncPanelTitleToStreams(
+                panel.title,
+                panel.archetype,
+                currentAutoTitle
+              )
+            ) {
+              return nextPanel;
+            }
+
+            return {
+              ...nextPanel,
+              title: getSuggestedPanelTitle(catalog, nextPanel, current.panels),
+            };
+          }),
+        "debounced"
+      );
+    },
+    [activePanel, applyWorkspaceState, catalog]
+  );
+
   const toggleSidebarSection = React.useCallback(
     (sectionId: SidebarSectionId) => {
       setCollapsedSections((current) => ({
@@ -1254,6 +1448,37 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
       });
     },
     [applyWorkspaceState, inferActiveSplitDirection]
+  );
+
+  const addPanelAtDropTarget = React.useCallback(
+    (
+      archetype: MultimodalPanelArchetype,
+      dropTarget: MultimodalMosaicDropTarget
+    ) => {
+      if (!dropTarget.position) {
+        return;
+      }
+
+      setArmedPanelArchetype(null);
+      applyWorkspaceState((current) => {
+        const resolvedPath = current.maximizedPanelId
+          ? findPanelPathInLayoutTree(
+              current.layoutTree,
+              current.maximizedPanelId
+            ) ?? []
+          : dropTarget.path ?? [];
+
+        return insertPanelAtMosaicDropTargetInWorkspaceState(
+          current,
+          archetype,
+          {
+            path: resolvedPath,
+            position: dropTarget.position,
+          }
+        );
+      }, "immediate");
+    },
+    [applyWorkspaceState]
   );
 
   const visibleFrameIds = React.useMemo(() => {
@@ -1313,6 +1538,17 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
       (stream) => !isImageAnnotationOverlayStream(stream)
     );
   }, [activeImageSupportStreams]);
+  const activeScene3dOverlayStreams = React.useMemo(() => {
+    if (!catalog || activePanel?.archetype !== "3d") {
+      return [];
+    }
+
+    return catalog.streams.filter((stream) => {
+      return (
+        canBindStreamToPanel(stream, "3d") && isScene3dOverlayStream(stream)
+      );
+    });
+  }, [activePanel?.archetype, catalog]);
 
   const filteredPrimaryImageStreams = React.useMemo(() => {
     return activeImagePrimaryStreams.filter((stream) =>
@@ -1386,16 +1622,60 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
     deferredSearchQuery,
   ]);
 
+  const filteredScene3dOverlayStreams = React.useMemo(() => {
+    return [...activeScene3dOverlayStreams]
+      .filter((stream) =>
+        matchesSearch(deferredSearchQuery, [
+          "overlay",
+          "overlays",
+          "sceneupdate",
+          stream.topic,
+          stream.schemaName,
+          ...stream.affordances,
+        ])
+      )
+      .sort((left, right) => left.topic.localeCompare(right.topic));
+  }, [activeScene3dOverlayStreams, deferredSearchQuery]);
+
   const filteredPanelStreams = React.useMemo(() => {
-    return catalog?.streams.filter((stream) =>
-      matchesSearch(deferredSearchQuery, [
+    return catalog?.streams.filter((stream) => {
+      if (
+        activePanel?.archetype === "3d" &&
+        canBindStreamToPanel(stream, "3d") &&
+        isScene3dOverlayStream(stream)
+      ) {
+        return false;
+      }
+
+      return matchesSearch(deferredSearchQuery, [
         "streams",
         stream.topic,
         stream.schemaName,
         ...stream.affordances,
-      ])
-    );
-  }, [catalog?.streams, deferredSearchQuery]);
+      ]);
+    });
+  }, [activePanel?.archetype, catalog?.streams, deferredSearchQuery]);
+
+  const activePanelOverlayStreams =
+    activePanel?.archetype === "image"
+      ? activeImageOverlayStreams
+      : activePanel?.archetype === "3d"
+      ? activeScene3dOverlayStreams
+      : [];
+  const filteredPanelOverlayStreams =
+    activePanel?.archetype === "image"
+      ? filteredImageOverlayStreams
+      : activePanel?.archetype === "3d"
+      ? filteredScene3dOverlayStreams
+      : [];
+  const overlaySectionLabel =
+    activePanel?.archetype === "image"
+      ? "Annotation streams"
+      : "SceneUpdate overlays";
+  const overlaySectionEmptyState =
+    activePanel?.archetype === "image"
+      ? "No annotation overlays match the current filter"
+      : "No 3D overlays match the current filter";
 
   const relevantTransforms = React.useMemo(() => {
     if (!catalog || !activePanel) {
@@ -1512,10 +1792,25 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
               panelState={panelState}
             />
           </MosaicWindow>
+          {armedPanelArchetype ? (
+            <PanelPlacementTargets
+              panelId={panel.panelId}
+              onPlace={(position) =>
+                addPanelAtDropTarget(armedPanelArchetype, { path, position })
+              }
+            />
+          ) : null}
         </div>
       );
     },
-    [applyWorkspaceState, catalog, playback.isLoading, playback.panelStates]
+    [
+      addPanelAtDropTarget,
+      applyWorkspaceState,
+      armedPanelArchetype,
+      catalog,
+      playback.isLoading,
+      playback.panelStates,
+    ]
   );
 
   if (isLoading || !catalog || !workspaceState) {
@@ -1746,11 +2041,11 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
                   "overlay",
                   "annotation",
                   "annotations",
-                  ...activeImageOverlayStreams.map((stream) => stream.topic),
-                  ...activeImageOverlayStreams.map(
+                  ...activePanelOverlayStreams.map((stream) => stream.topic),
+                  ...activePanelOverlayStreams.map(
                     (stream) => stream.schemaName
                   ),
-                ]) && activePanel.archetype === "image" ? (
+                ]) ? (
                   <SidebarSection
                     collapsed={collapsedSections.overlays}
                     forceExpanded={hasSearchQuery}
@@ -1765,17 +2060,17 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
                         variant={TextVariant.Caption}
                         color={TextColor.Secondary}
                       >
-                        Annotation streams
+                        {overlaySectionLabel}
                       </Text>
-                      {filteredImageOverlayStreams.length === 0 ? (
+                      {filteredPanelOverlayStreams.length === 0 ? (
                         <Text
                           variant={TextVariant.Caption}
                           color={TextColor.Secondary}
                         >
-                          No annotation overlays match the current filter
+                          {overlaySectionEmptyState}
                         </Text>
                       ) : null}
-                      {filteredImageOverlayStreams.map((stream) => (
+                      {filteredPanelOverlayStreams.map((stream) => (
                         <StreamRow
                           key={stream.streamId}
                           activePanel={activePanel}
@@ -1784,7 +2079,9 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
                           )}
                           disabled={false}
                           onToggle={() =>
-                            toggleActiveImageSupportStream(stream.streamId)
+                            activePanel.archetype === "image"
+                              ? toggleActiveImageSupportStream(stream.streamId)
+                              : toggleActiveScene3dStream(stream.streamId)
                           }
                           stream={stream}
                         />
@@ -2079,58 +2376,7 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
                                   return;
                                 }
 
-                                applyWorkspaceState(
-                                  (current) =>
-                                    updatePanelInWorkspaceState(
-                                      current,
-                                      activePanel.panelId,
-                                      (panel) => {
-                                        const nextVisibleStreamIds =
-                                          panel.visibleStreamIds.includes(
-                                            stream.streamId
-                                          )
-                                            ? panel.visibleStreamIds.filter(
-                                                (streamId) =>
-                                                  streamId !== stream.streamId
-                                              )
-                                            : [
-                                                ...panel.visibleStreamIds,
-                                                stream.streamId,
-                                              ];
-                                        const currentAutoTitle =
-                                          getSuggestedPanelTitle(
-                                            catalog,
-                                            panel,
-                                            current.panels
-                                          );
-                                        const nextPanel = {
-                                          ...panel,
-                                          visibleStreamIds:
-                                            nextVisibleStreamIds,
-                                        };
-
-                                        if (
-                                          !shouldSyncPanelTitleToStreams(
-                                            panel.title,
-                                            panel.archetype,
-                                            currentAutoTitle
-                                          )
-                                        ) {
-                                          return nextPanel;
-                                        }
-
-                                        return {
-                                          ...nextPanel,
-                                          title: getSuggestedPanelTitle(
-                                            catalog,
-                                            nextPanel,
-                                            current.panels
-                                          ),
-                                        };
-                                      }
-                                    ),
-                                  "debounced"
-                                );
+                                toggleActiveScene3dStream(stream.streamId);
                               }}
                               stream={stream}
                             />
@@ -2251,30 +2497,49 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
                   </Stack>
                 ) : null}
               </Stack>
-              <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
-                <Button
-                  leadingIcon={IconName.Add}
-                  onClick={() => addPanel("image")}
-                  size={Size.Sm}
-                  variant={Variant.Secondary}
-                >
-                  Image
-                </Button>
-                <Button
-                  leadingIcon={IconName.Add}
-                  onClick={() => addPanel("3d")}
-                  size={Size.Sm}
-                  variant={Variant.Secondary}
-                >
-                  3D
-                </Button>
+              <Stack
+                orientation={Orientation.Row}
+                spacing={Spacing.Sm}
+                align={Align.Center}
+              >
+                <AddPanelButton
+                  archetype="image"
+                  label="Image"
+                  onAddPanel={addPanel}
+                  onArm={setArmedPanelArchetype}
+                  onDisarm={() => {
+                    setArmedPanelArchetype(null);
+                  }}
+                />
+                <AddPanelButton
+                  archetype="3d"
+                  label="3D"
+                  onAddPanel={addPanel}
+                  onArm={setArmedPanelArchetype}
+                  onDisarm={() => {
+                    setArmedPanelArchetype(null);
+                  }}
+                />
+                {armedPanelArchetype ? (
+                  <Text
+                    variant={TextVariant.Caption}
+                    color={TextColor.Secondary}
+                  >
+                    {`Release on a highlighted zone to place the new ${
+                      armedPanelArchetype === "image" ? "image" : "3D"
+                    } panel`}
+                  </Text>
+                ) : null}
               </Stack>
             </Stack>
           </div>
 
           <div style={MOSAIC_CONTAINER_STYLES}>
             <Mosaic<string>
-              className="multimodal-mosaic"
+              className={`multimodal-mosaic${
+                armedPanelArchetype ? " is-placement-armed" : ""
+              }`}
+              mosaicId={MULTIMODAL_MOSAIC_ID}
               onChange={(nextNode) => {
                 React.startTransition(() => {
                   applyWorkspaceState(
@@ -2302,11 +2567,24 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
               value={mosaicValue}
               zeroStateView={
                 <Stack
+                  className={`mcap-empty-workspace${
+                    armedPanelArchetype ? " is-placement-armed" : ""
+                  }`}
                   data-testid="multimodal-workspace-empty"
                   orientation={Orientation.Column}
                   spacing={Spacing.Sm}
                   justify={Justify.Center}
                   align={Align.Center}
+                  onMouseUp={() => {
+                    if (!armedPanelArchetype) {
+                      return;
+                    }
+
+                    addPanelAtDropTarget(armedPanelArchetype, {
+                      path: [],
+                      position: "right",
+                    });
+                  }}
                   style={{
                     height: "100%",
                     border: "1px dashed rgba(255,255,255,0.12)",
@@ -2321,7 +2599,11 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
                     variant={TextVariant.Caption}
                     color={TextColor.Secondary}
                   >
-                    Add an image or 3D panel from the toolbar to keep exploring.
+                    {armedPanelArchetype
+                      ? `Release anywhere in this workspace to add a new ${
+                          armedPanelArchetype === "image" ? "image" : "3D"
+                        } panel`
+                      : "Add an image or 3D panel from the toolbar to keep exploring."}
                   </Text>
                 </Stack>
               }

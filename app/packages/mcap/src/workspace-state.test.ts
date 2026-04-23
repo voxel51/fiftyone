@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { MultimodalRenderingPlan } from "./types";
 import {
   DEFAULT_MULTIMODAL_SIDEBAR_WIDTH_PX,
   addPanelToWorkspaceState,
@@ -6,6 +7,7 @@ import {
   createRenderingPlanFromWorkspaceState,
   createWorkspaceStateFromRenderingPlan,
   getDefaultImageSupportStreamIds,
+  insertPanelAtMosaicDropTargetInWorkspaceState,
   retitleGenericPanelsInWorkspaceState,
   reconcileImageSupportStreamIds,
   removePanelFromWorkspaceState,
@@ -152,6 +154,146 @@ describe("workspace-state", () => {
     });
   });
 
+  it("inserts a panel at a nested mosaic drop target", () => {
+    const initialState = createWorkspaceStateFromRenderingPlan({
+      sceneId: "scene-1",
+      mediaField: "filepath",
+      sourceKind: "mcap",
+      sync: {
+        timestampSource: "header.stamp",
+        fallback: "log_time",
+        mode: "nearest",
+      },
+      panels: [
+        {
+          panelId: "image_panel_1",
+          archetype: "image",
+          title: "Image panel 1",
+          renderStreamId: null,
+          visibleStreamIds: [],
+          frameConfig: {
+            fixedFrameId: null,
+            displayFrameId: null,
+            followMode: "off",
+            locationStreamId: null,
+            enuFrameId: null,
+          },
+          sceneConfig: {
+            upAxis: "z",
+            backgroundColor: "#10151d",
+            showGrid: true,
+          },
+        },
+        {
+          panelId: "panel_3d_1",
+          archetype: "3d",
+          title: "3D panel 1",
+          renderStreamId: null,
+          visibleStreamIds: [],
+          frameConfig: {
+            fixedFrameId: null,
+            displayFrameId: null,
+            followMode: "off",
+            locationStreamId: null,
+            enuFrameId: null,
+          },
+          sceneConfig: {
+            upAxis: "z",
+            backgroundColor: "#10151d",
+            showGrid: true,
+          },
+        },
+      ],
+      layoutTree: {
+        type: "split",
+        direction: "row",
+        splitPercentage: 50,
+        first: { type: "leaf", panelId: "image_panel_1" },
+        second: { type: "leaf", panelId: "panel_3d_1" },
+      },
+    });
+
+    const nextState = insertPanelAtMosaicDropTargetInWorkspaceState(
+      initialState,
+      "image",
+      {
+        path: ["second"],
+        position: "left",
+      }
+    );
+
+    expect(nextState.activePanelId).toBe("image_panel_2");
+    expect(nextState.layoutTree).toEqual({
+      type: "split",
+      direction: "row",
+      splitPercentage: 50,
+      first: { type: "leaf", panelId: "image_panel_1" },
+      second: {
+        type: "split",
+        direction: "row",
+        splitPercentage: 50,
+        first: { type: "leaf", panelId: "image_panel_2" },
+        second: { type: "leaf", panelId: "panel_3d_1" },
+      },
+    });
+  });
+
+  it("inserts a panel at the root mosaic drop target", () => {
+    const initialState = createWorkspaceStateFromRenderingPlan({
+      sceneId: "scene-1",
+      mediaField: "filepath",
+      sourceKind: "mcap",
+      sync: {
+        timestampSource: "header.stamp",
+        fallback: "log_time",
+        mode: "nearest",
+      },
+      panels: [
+        {
+          panelId: "image_panel_1",
+          archetype: "image",
+          title: "Image panel 1",
+          renderStreamId: null,
+          visibleStreamIds: [],
+          frameConfig: {
+            fixedFrameId: null,
+            displayFrameId: null,
+            followMode: "off",
+            locationStreamId: null,
+            enuFrameId: null,
+          },
+          sceneConfig: {
+            upAxis: "z",
+            backgroundColor: "#10151d",
+            showGrid: true,
+          },
+        },
+      ],
+      layoutTree: {
+        type: "leaf",
+        panelId: "image_panel_1",
+      },
+    });
+
+    const nextState = insertPanelAtMosaicDropTargetInWorkspaceState(
+      initialState,
+      "3d",
+      {
+        path: [],
+        position: "top",
+      }
+    );
+
+    expect(nextState.activePanelId).toBe("panel_3d_1");
+    expect(nextState.layoutTree).toEqual({
+      type: "split",
+      direction: "column",
+      splitPercentage: 50,
+      first: { type: "leaf", panelId: "panel_3d_1" },
+      second: { type: "leaf", panelId: "image_panel_1" },
+    });
+  });
+
   it("removes a panel and collapses the remaining tree", () => {
     const initialState = createWorkspaceStateFromRenderingPlan({
       sceneId: "scene-1",
@@ -294,7 +436,7 @@ describe("workspace-state", () => {
   });
 
   it("round-trips image overlay config through the rendering plan", () => {
-    const renderingPlan = {
+    const renderingPlan: MultimodalRenderingPlan = {
       sceneId: "scene-1",
       mediaField: "filepath",
       sourceKind: "mcap",
