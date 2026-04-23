@@ -77,6 +77,9 @@ export class KeySequence {
       }
       if (this.key === " ") {
         ret += "space";
+      } else if (this.key === ",") {
+        // Preserve the escape so reparsing doesn't treat this as a sequence delimiter.
+        ret += "\\,";
       } else {
         ret += this.key;
       }

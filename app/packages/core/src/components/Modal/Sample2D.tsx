@@ -84,9 +84,5 @@ export const SampleWrapper = ({
 export const Sample2D = () => {
   const id = useRecoilValue(modalSampleId);
 
-  return (
-    <SampleWrapper>
-      <ModalLooker key={`looker-${id}`} />
-    </SampleWrapper>
-  );
+  return <ModalLooker key={`looker-${id}`} />;
 };

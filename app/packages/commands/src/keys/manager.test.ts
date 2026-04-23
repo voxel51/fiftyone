@@ -75,6 +75,25 @@ describe("KeyManager", () => {
     expect(state.full).toBeDefined();
   });
 
+  it("can match an escaped comma key binding", async () => {
+    const keyEvent = new KeyboardEvent("keydown", { key: "," });
+    const command = commandRegistry.registerCommand(
+      "fo.test.command",
+      async () => {
+        return;
+      },
+      () => {
+        return true;
+      }
+    );
+    expect(command).toBeDefined();
+    expect(() => {
+      keyManager.bindKey("\\,", "fo.test.command");
+    }).not.toThrow();
+    const state = keyManager.match(keyEvent);
+    expect(state.full).toBeDefined();
+  });
+
   it("can match a single sequence command binding alt+space", async () => {
     const keyEvent = new KeyboardEvent("keydown", {
       altKey: true,
