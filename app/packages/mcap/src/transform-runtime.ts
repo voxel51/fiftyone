@@ -18,42 +18,45 @@ import type {
 
 export type TransformSample = DecodedTransform & {
   timestampNs: number;
+  cacheKey: string;
 };
 
-export type FrameGraph = Map<
-  string,
-  Array<{ targetFrameId: string; matrix: THREE.Matrix4 }>
->;
+export type FrameGraph = Map<string, Map<string, THREE.Matrix4>>;
+
+/** Applies the latest value for one transform edge into the bidirectional graph. */
+export function upsertTransformGraphSample(
+  graph: FrameGraph,
+  sample: Pick<
+    TransformSample,
+    "parentFrameId" | "childFrameId" | "translation" | "rotation"
+  >
+) {
+  if (!sample.parentFrameId || !sample.childFrameId) {
+    return;
+  }
+
+  const matrix = toTransformMatrix(sample);
+  const inverseMatrix = matrix.clone().invert();
+  setTransformGraphEdge(
+    graph,
+    sample.parentFrameId,
+    sample.childFrameId,
+    inverseMatrix
+  );
+  setTransformGraphEdge(
+    graph,
+    sample.childFrameId,
+    sample.parentFrameId,
+    matrix
+  );
+}
 
 export function buildTransformGraph(
   transformSamples: TransformSample[]
 ): FrameGraph {
-  const latestByEdge = new Map<string, TransformSample>();
-  transformSamples.forEach((sample) => {
-    if (!sample.parentFrameId || !sample.childFrameId) {
-      return;
-    }
-
-    latestByEdge.set(`${sample.parentFrameId}->${sample.childFrameId}`, sample);
-  });
-
   const graph: FrameGraph = new Map();
-  latestByEdge.forEach((sample) => {
-    const matrix = toTransformMatrix(sample);
-    const inverseMatrix = matrix.clone().invert();
-    // TF samples map child-frame points into the parent frame.
-    const parentNeighbors = graph.get(sample.parentFrameId) ?? [];
-    parentNeighbors.push({
-      targetFrameId: sample.childFrameId,
-      matrix: inverseMatrix,
-    });
-    graph.set(sample.parentFrameId, parentNeighbors);
-    const childNeighbors = graph.get(sample.childFrameId) ?? [];
-    childNeighbors.push({
-      targetFrameId: sample.parentFrameId,
-      matrix,
-    });
-    graph.set(sample.childFrameId, childNeighbors);
+  transformSamples.forEach((sample) => {
+    upsertTransformGraphSample(graph, sample);
   });
 
   return graph;
@@ -72,24 +75,28 @@ export function resolveTransformMatrix(
     { frameId: sourceFrameId, matrix: new THREE.Matrix4().identity() },
   ];
   const visited = new Set<string>([sourceFrameId]);
+  let queueIndex = 0;
 
-  while (queue.length) {
-    const current = queue.shift()!;
-    const neighbors = graph.get(current.frameId) ?? [];
+  while (queueIndex < queue.length) {
+    const current = queue[queueIndex++]!;
+    const neighbors = graph.get(current.frameId);
+    if (!neighbors) {
+      continue;
+    }
 
-    for (const neighbor of neighbors) {
-      if (visited.has(neighbor.targetFrameId)) {
+    for (const [targetNeighborFrameId, neighborMatrix] of neighbors.entries()) {
+      if (visited.has(targetNeighborFrameId)) {
         continue;
       }
 
-      const nextMatrix = current.matrix.clone().premultiply(neighbor.matrix);
-      if (neighbor.targetFrameId === targetFrameId) {
+      const nextMatrix = current.matrix.clone().premultiply(neighborMatrix);
+      if (targetNeighborFrameId === targetFrameId) {
         return nextMatrix;
       }
 
-      visited.add(neighbor.targetFrameId);
+      visited.add(targetNeighborFrameId);
       queue.push({
-        frameId: neighbor.targetFrameId,
+        frameId: targetNeighborFrameId,
         matrix: nextMatrix,
       });
     }
@@ -441,6 +448,18 @@ function toTransformMatrix(transform: DecodedTransform) {
   const matrix = new THREE.Matrix4();
   matrix.compose(position, quaternion, new THREE.Vector3(1, 1, 1));
   return matrix;
+}
+
+function setTransformGraphEdge(
+  graph: FrameGraph,
+  sourceFrameId: string,
+  targetFrameId: string,
+  matrix: THREE.Matrix4
+) {
+  const neighbors =
+    graph.get(sourceFrameId) ?? new Map<string, THREE.Matrix4>();
+  neighbors.set(targetFrameId, matrix);
+  graph.set(sourceFrameId, neighbors);
 }
 
 function geodeticToEcef(sample: DecodedNavSatFixSample) {

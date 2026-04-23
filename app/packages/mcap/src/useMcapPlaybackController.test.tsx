@@ -72,6 +72,7 @@ const {
         publishTimeNs: 31,
       },
     ]),
+    getSyncTimestamps: vi.fn(() => [10, 30]),
     dispose: vi.fn(),
   };
   const renderable3dCacheInstance = {
@@ -122,6 +123,32 @@ const {
       logTimeNs: 20,
       publishTimeNs: 21,
     })),
+    decodeMessageInFrame: vi.fn(async () => ({
+      id: "cloud-1",
+      messageId: "cloud-1",
+      pointCount: 2,
+      bounds: {
+        min: [0, 0, 0] as [number, number, number],
+        max: [1, 1, 1] as [number, number, number],
+      },
+      frameId: "map",
+      primitives: [
+        {
+          kind: "points",
+          id: "points",
+          frameId: "map",
+          pointCount: 2,
+          positions: new Float32Array([0, 0, 0, 1, 1, 1]),
+          intensity: new Float32Array([0.1, 0.9]),
+          colors: null,
+          solidColor: null,
+          pointSize: null,
+        },
+      ],
+      logTimeNs: 20,
+      publishTimeNs: 21,
+      warnings: [],
+    })),
     primeMessages: vi.fn(),
     getSyncSamples: vi.fn(() => [
       {
@@ -135,6 +162,7 @@ const {
         publishTimeNs: 31,
       },
     ]),
+    getSyncTimestamps: vi.fn(() => [20, 30]),
     dispose: vi.fn(),
   };
   const rawCacheInstance = {
@@ -143,6 +171,8 @@ const {
     getMessages: vi.fn(() => []),
     primeMessages: vi.fn(),
     getSyncSamples: vi.fn(() => []),
+    getSyncTimestamps: vi.fn(() => []),
+    getVersion: vi.fn(() => 0),
     dispose: vi.fn(),
   };
   const schemaCodecRegistryMock = {
@@ -436,6 +466,10 @@ describe("useMultimodalPlaybackController", () => {
     rawCacheInstance.getMessages.mockReturnValue([]);
     rawCacheInstance.getMessageForLogTime.mockReturnValue(null);
     rawCacheInstance.getSyncSamples.mockReturnValue([]);
+    rawCacheInstance.getSyncTimestamps.mockReturnValue([]);
+    rawCacheInstance.getVersion.mockImplementation(
+      () => rawCacheInstance.getMessages().length
+    );
     renderable3dCacheInstance.decodeMessage.mockImplementation(async () => ({
       id: "cloud-1",
       messageId: "cloud-1",
@@ -462,6 +496,9 @@ describe("useMultimodalPlaybackController", () => {
       publishTimeNs: 21,
       warnings: [],
     }));
+    renderable3dCacheInstance.decodeMessageInFrame.mockImplementation(
+      async (message: any) => renderable3dCacheInstance.decodeMessage(message)
+    );
     renderable3dCacheInstance.getMessageForLogTime.mockImplementation(
       (timestampNs: number) => {
         if (timestampNs === 20) {
@@ -488,6 +525,7 @@ describe("useMultimodalPlaybackController", () => {
         publishTimeNs: 31,
       },
     ]);
+    renderable3dCacheInstance.getSyncTimestamps.mockReturnValue([20, 30]);
     imageCacheInstance.getMessageForLogTime.mockImplementation(
       (timestampNs: number) => {
         if (timestampNs === 10) {
@@ -514,6 +552,7 @@ describe("useMultimodalPlaybackController", () => {
         publishTimeNs: 31,
       },
     ]);
+    imageCacheInstance.getSyncTimestamps.mockReturnValue([10, 30]);
     imageCacheInstance.decodeMessage.mockImplementation(async () => ({
       id: "frame-1",
       messageId: "frame-1",
@@ -586,7 +625,7 @@ describe("useMultimodalPlaybackController", () => {
     expect(result.current.hasPlayback).toBe(true);
   });
 
-  it("requests the shared timeline only for render streams", async () => {
+  it("requests the shared timeline only for the active playback stream", async () => {
     const catalog = {
       ...CATALOG,
       streams: [
@@ -660,11 +699,52 @@ describe("useMultimodalPlaybackController", () => {
       sampleId: "sample-1",
       request: {
         mediaField: "filepath",
-        streamIds: ["/camera/front", "/lidar/top"],
+        streamIds: ["/camera/front"],
         timestampSource: "header.stamp",
         fallback: "log_time",
       },
     });
+  });
+
+  it("does not wait for background render streams before resolving playback prefetch", async () => {
+    let resolveBackgroundFetch: (() => void) | null = null;
+    const backgroundFetchPromise = new Promise<void>((resolve) => {
+      resolveBackgroundFetch = resolve;
+    });
+
+    renderable3dCacheInstance.ensureRange.mockImplementation(
+      async () => backgroundFetchPromise
+    );
+
+    renderHook(() =>
+      useMultimodalPlaybackController(CATALOG as any, WORKSPACE as any)
+    );
+
+    await waitFor(() => {
+      expect(
+        experimentalTimelineOptionsRef.current?.onPrefetchRange
+      ).toBeTypeOf("function");
+    });
+
+    let didResolvePrefetch = false;
+    const prefetchPromise =
+      experimentalTimelineOptionsRef.current.onPrefetchRange([10, 10]);
+    void prefetchPromise.then(() => {
+      didResolvePrefetch = true;
+    });
+
+    await waitFor(() => {
+      expect(imageCacheInstance.ensureRange).toHaveBeenCalled();
+    });
+    await waitFor(() => {
+      expect(renderable3dCacheInstance.ensureRange).toHaveBeenCalled();
+    });
+    await waitFor(() => {
+      expect(didResolvePrefetch).toBe(true);
+    });
+
+    resolveBackgroundFetch?.();
+    await backgroundFetchPromise;
   });
 
   it("projects SceneUpdate overlays into image panels without adding support streams to the timeline", async () => {
@@ -1577,6 +1657,33 @@ describe("useMultimodalPlaybackController", () => {
       logTimeNs: 20,
       publishTimeNs: 21,
     });
+    renderable3dCacheInstance.decodeMessageInFrame.mockImplementation(
+      async (_message: any, options: any) => {
+        const decoded = await renderable3dCacheInstance.decodeMessage(_message);
+        const matrix = options.resolveTransformMatrix(
+          "LIDAR_TOP",
+          options.targetFrameId
+        );
+
+        if (!matrix) {
+          return {
+            ...decoded,
+            frameId: options.targetFrameId,
+            pointCount: 0,
+            primitives: [],
+            warnings: [
+              `No transform from LIDAR_TOP to ${options.targetFrameId} for ${options.warningContext}`,
+            ],
+          };
+        }
+
+        return {
+          ...decoded,
+          frameId: options.targetFrameId,
+          warnings: [],
+        };
+      }
+    );
     rawCacheInstance.getMessages.mockImplementation(() => transformMessages);
     schemaCodecRegistryMock.decodeTransformPayload.mockImplementation(
       (_schemaName: string, payload: Uint8Array) => {

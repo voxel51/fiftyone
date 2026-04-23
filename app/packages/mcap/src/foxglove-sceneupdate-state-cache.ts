@@ -1,4 +1,5 @@
 import type { Scene3dFrame } from "./archetypes";
+import { BoundedLruCache } from "./bounded-lru-cache";
 import { decodeFoxgloveSceneUpdatePayload } from "./foxglove-sceneupdate-decoder";
 import { composeScene3dFrame } from "./transform-runtime";
 import type { MultimodalRawMessage, MultimodalTimeRange } from "./types";
@@ -23,6 +24,13 @@ type SceneStateCheckpoint = {
 export type DecodedFoxgloveSceneFrame = {
   frame: Scene3dFrame;
   warnings: string[];
+};
+
+type FoxgloveSceneUpdateStateCacheOptions = ConstructorParameters<
+  typeof MultimodalRawMessageWindowCache
+>[0] & {
+  maxDecodedUpdateEntries?: number;
+  maxCheckpointEntries?: number;
 };
 
 function cloneEntityMap(entities: Map<string, SceneEntityRecord>) {
@@ -95,17 +103,25 @@ function applySceneUpdate(
 export class FoxgloveSceneUpdateStateCache {
   private readonly rawWindowCache: MultimodalRawMessageWindowCache;
   private readonly sceneRange: MultimodalTimeRange;
-  private readonly decodedUpdates = new Map<
+  private readonly decodedUpdates: BoundedLruCache<
+    string,
+    DecodedSceneUpdateResult
+  >;
+  private readonly pendingUpdates = new Map<
     string,
     Promise<DecodedSceneUpdateResult>
   >();
-  private readonly checkpoints = new Map<number, SceneStateCheckpoint>();
+  private readonly checkpoints: BoundedLruCache<number, SceneStateCheckpoint>;
 
-  constructor(
-    options: ConstructorParameters<typeof MultimodalRawMessageWindowCache>[0]
-  ) {
+  constructor(options: FoxgloveSceneUpdateStateCacheOptions) {
     this.rawWindowCache = new MultimodalRawMessageWindowCache(options);
     this.sceneRange = options.sceneRange;
+    this.decodedUpdates = new BoundedLruCache({
+      maxEntries: options.maxDecodedUpdateEntries ?? 128,
+    });
+    this.checkpoints = new BoundedLruCache({
+      maxEntries: options.maxCheckpointEntries ?? 64,
+    });
   }
 
   async ensureRange(range: MultimodalTimeRange) {
@@ -125,6 +141,10 @@ export class FoxgloveSceneUpdateStateCache {
 
   getSyncSamples() {
     return this.rawWindowCache.getSyncSamples();
+  }
+
+  getSyncTimestamps() {
+    return this.rawWindowCache.getSyncTimestamps();
   }
 
   getMessageReadiness(logTimeNs: number) {
@@ -198,21 +218,34 @@ export class FoxgloveSceneUpdateStateCache {
   }
 
   dispose() {
+    this.pendingUpdates.clear();
     this.decodedUpdates.clear();
     this.checkpoints.clear();
     this.rawWindowCache.dispose();
   }
 
   private decodeUpdate(message: MultimodalRawMessage) {
-    const existingUpdate = this.decodedUpdates.get(message.messageId);
+    const cachedUpdate = this.decodedUpdates.get(message.messageId);
+    if (cachedUpdate) {
+      return Promise.resolve(cachedUpdate);
+    }
+
+    const existingUpdate = this.pendingUpdates.get(message.messageId);
     if (existingUpdate) {
       return existingUpdate;
     }
 
     const decodePromise = Promise.resolve(
       decodeFoxgloveSceneUpdatePayload(message.payload)
-    );
-    this.decodedUpdates.set(message.messageId, decodePromise);
+    )
+      .then((decodedUpdate) => {
+        this.decodedUpdates.set(message.messageId, decodedUpdate);
+        return decodedUpdate;
+      })
+      .finally(() => {
+        this.pendingUpdates.delete(message.messageId);
+      });
+    this.pendingUpdates.set(message.messageId, decodePromise);
     return decodePromise;
   }
 

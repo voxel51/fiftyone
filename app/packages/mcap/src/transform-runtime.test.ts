@@ -12,6 +12,7 @@ describe("transform-runtime", () => {
   it("resolves FrameTransform matrices from child to parent", () => {
     const graph = buildTransformGraph([
       {
+        cacheKey: "tf-1",
         timestampNs: 10,
         parentFrameId: "base_link",
         childFrameId: "lidar",
@@ -47,6 +48,7 @@ describe("transform-runtime", () => {
     );
     const graph = buildTransformGraph([
       {
+        cacheKey: "tf-1",
         timestampNs: 10,
         parentFrameId: "base_link",
         childFrameId: "lidar",

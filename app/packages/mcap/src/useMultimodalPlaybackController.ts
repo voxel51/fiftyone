@@ -40,17 +40,18 @@ import {
 } from "./playback-utils";
 import {
   applyTransformToScene3dFrame,
-  applyTransformToScene3dPrimitive,
-  buildTransformGraph,
-  composeScene3dFrame,
   createFollowPoseFromNavSat,
   createFollowPoseFromPose,
   getStreamColor,
   mergeScene3dFrames,
-  resolveTransformMatrix,
   transformPoseSample,
   type TransformSample,
 } from "./transform-runtime";
+import {
+  MultimodalTransformGraphCache,
+  type TransformGraphSnapshot,
+  type TransformSampleSet,
+} from "./transform-graph-cache";
 import type {
   MultimodalCatalog,
   MultimodalPanelLayoutState,
@@ -84,6 +85,7 @@ type MultimodalPlaybackPanelState = {
   messageIds: string[];
   logTimeNs: number | null;
   publishTimeNs: number | null;
+  transformRevision: number | null;
   warnings: string[];
   error: Error | null;
 };
@@ -118,7 +120,7 @@ const PREFERRED_EGO_FOLLOW_FRAME_IDS = [
 
 type MultimodalBootstrapPlan = {
   anchorTimeNs: number;
-  heroPanelId: string | null;
+  playbackPanelId: string | null;
   criticalRenderStreamIds: string[];
   criticalSupportStreamIds: string[];
   nonCriticalRenderStreamIds: string[];
@@ -141,6 +143,7 @@ function createInitialPanelState(
     messageIds: [],
     logTimeNs: null,
     publishTimeNs: null,
+    transformRevision: null,
     warnings: [],
     error: null,
   };
@@ -228,6 +231,13 @@ function getActivePanel(
   panelId: string | null
 ) {
   return panels.find((panel) => panel.panelId === panelId) ?? null;
+}
+
+function getPlaybackPanel(
+  panels: MultimodalPanelLayoutState[],
+  activePanelId: string | null
+) {
+  return getActivePanel(panels, activePanelId) ?? getHeroPanel(panels);
 }
 
 function getPanelAggregationFrameId(panel: MultimodalPanelLayoutState) {
@@ -324,11 +334,14 @@ function getBootstrapPlan(
     return null;
   }
 
-  const heroPanel = getHeroPanel(workspaceState.panels);
-  if (!heroPanel) {
+  const playbackPanel = getPlaybackPanel(
+    workspaceState.panels,
+    workspaceState.activePanelId
+  );
+  if (!playbackPanel) {
     return {
       anchorTimeNs: 0,
-      heroPanelId: null,
+      playbackPanelId: null,
       criticalRenderStreamIds: [],
       criticalSupportStreamIds: [],
       nonCriticalRenderStreamIds: [],
@@ -338,10 +351,6 @@ function getBootstrapPlan(
     };
   }
 
-  const activePanel = getActivePanel(
-    workspaceState.panels,
-    workspaceState.activePanelId
-  );
   const imageRenderStreamIds = workspaceState.panels
     .filter((panel) => panel.archetype === "image")
     .map((panel) => panel.renderStreamId)
@@ -349,16 +358,13 @@ function getBootstrapPlan(
   const imageSupportStreamIds = workspaceState.panels
     .filter((panel) => panel.archetype === "image")
     .flatMap((panel) => getTrackedImageSupportStreamIds(catalog, panel));
-  const heroRenderStreamIds =
-    heroPanel.archetype === "3d"
-      ? heroPanel.visibleStreamIds.slice(0, 1)
-      : heroPanel.renderStreamId
-      ? [heroPanel.renderStreamId]
+  const criticalRenderStreamIds =
+    playbackPanel.archetype === "3d"
+      ? playbackPanel.visibleStreamIds.slice(0, 1)
+      : playbackPanel.renderStreamId
+      ? [playbackPanel.renderStreamId]
       : [];
-  const criticalSupportStreamIds =
-    activePanel?.archetype === "image"
-      ? getTrackedImageSupportStreamIds(catalog, activePanel)
-      : [];
+  const criticalSupportStreamIds: string[] = [];
   const nonCriticalRenderStreamIds = Array.from(
     new Set(
       [
@@ -366,7 +372,7 @@ function getBootstrapPlan(
         ...workspaceState.panels
           .filter((panel) => panel.archetype === "3d")
           .flatMap((panel) => panel.visibleStreamIds),
-      ].filter((streamId) => !heroRenderStreamIds.includes(streamId))
+      ].filter((streamId) => !criticalRenderStreamIds.includes(streamId))
     )
   );
   const nonCriticalSupportStreamIds = Array.from(
@@ -378,28 +384,25 @@ function getBootstrapPlan(
   );
 
   const needsTransforms =
-    heroPanel.archetype === "3d"
-      ? Boolean(getPanelAggregationFrameId(heroPanel)) ||
-        heroPanel.visibleStreamIds.some((streamId) => {
+    playbackPanel.archetype === "3d"
+      ? Boolean(getPanelAggregationFrameId(playbackPanel)) ||
+        Boolean(getPanelDisplayFrameId(playbackPanel)) ||
+        playbackPanel.frameConfig.followMode !== "off" ||
+        playbackPanel.visibleStreamIds.some((streamId) => {
           const stream = catalog.streams.find(
             (candidate) => candidate.streamId === streamId
           );
           return Boolean(stream?.frameId);
         })
-      : criticalSupportStreamIds.some((streamId) => {
-          const stream = catalog.streams.find(
-            (candidate) => candidate.streamId === streamId
-          );
-          return stream?.schemaName === "foxglove.SceneUpdate";
-        });
-  const locationStreamIds = heroPanel.frameConfig.locationStreamId
-    ? [heroPanel.frameConfig.locationStreamId]
+      : false;
+  const locationStreamIds = playbackPanel.frameConfig.locationStreamId
+    ? [playbackPanel.frameConfig.locationStreamId]
     : [];
 
   return {
     anchorTimeNs: 0,
-    heroPanelId: heroPanel.panelId,
-    criticalRenderStreamIds: heroRenderStreamIds,
+    playbackPanelId: playbackPanel.panelId,
+    criticalRenderStreamIds,
     criticalSupportStreamIds,
     nonCriticalRenderStreamIds,
     nonCriticalSupportStreamIds,
@@ -445,13 +448,10 @@ function panelStateEqual(
     arraysEqual(left.messageIds, right.messageIds) &&
     left.logTimeNs === right.logTimeNs &&
     left.publishTimeNs === right.publishTimeNs &&
+    left.transformRevision === right.transformRevision &&
     arraysEqual(left.warnings, right.warnings) &&
     (left.error?.message ?? null) === (right.error?.message ?? null)
   );
-}
-
-function getTransformEdgeKey(sample: TransformSample) {
-  return `${sample.parentFrameId}->${sample.childFrameId}`;
 }
 
 function expandPrefetchRange(
@@ -566,6 +566,12 @@ function decodeLocationPayload(
   );
 }
 
+const EMPTY_TRANSFORM_GRAPH_SNAPSHOT: TransformGraphSnapshot = {
+  graph: new Map(),
+  revision: 0,
+  resolveMatrix: () => null,
+};
+
 export function useMultimodalPlaybackController(
   catalog: MultimodalCatalog | null,
   workspaceState: MultimodalWorkspaceState | null
@@ -599,9 +605,6 @@ export function useMultimodalPlaybackController(
       )
     );
   }, [catalog, panels]);
-  const renderStreamIdsKey = React.useMemo(() => {
-    return renderStreamIds.join("\n");
-  }, [renderStreamIds]);
   const transformStreamIds = React.useMemo(() => {
     return (catalog?.streams ?? [])
       .filter((stream) => stream.kind === "transform")
@@ -631,10 +634,31 @@ export function useMultimodalPlaybackController(
     supportStreamIds,
     transformStreamIds,
   ]);
-  const trackedStreamIdsKey = React.useMemo(() => {
-    return trackedStreamIds.join("\n");
-  }, [trackedStreamIds]);
   const timelineName = catalog ? `multimodal:${catalog.sceneId}` : null;
+  const bootstrapPlan = React.useMemo(
+    () => getBootstrapPlan(catalog, workspaceState),
+    [catalog, workspaceState]
+  );
+  const timelineRenderStreamIds = bootstrapPlan?.criticalRenderStreamIds ?? [];
+  const timelineRenderStreamIdsKey = React.useMemo(() => {
+    return timelineRenderStreamIds.join("\n");
+  }, [timelineRenderStreamIds]);
+  const criticalTrackedStreamIds = React.useMemo(() => {
+    return dedupeStrings([
+      ...timelineRenderStreamIds,
+      ...(bootstrapPlan?.transformStreamIds ?? []),
+      ...(bootstrapPlan?.locationStreamIds ?? []),
+    ]);
+  }, [
+    bootstrapPlan?.locationStreamIds,
+    bootstrapPlan?.transformStreamIds,
+    timelineRenderStreamIds,
+  ]);
+  const backgroundTrackedStreamIds = React.useMemo(() => {
+    return trackedStreamIds.filter(
+      (streamId) => !criticalTrackedStreamIds.includes(streamId)
+    );
+  }, [criticalTrackedStreamIds, trackedStreamIds]);
   const timelineParams = React.useMemo(() => {
     if (!catalog) {
       return null;
@@ -645,14 +669,14 @@ export function useMultimodalPlaybackController(
       sampleId: catalog.sampleId,
       request: {
         mediaField: catalog.mediaField,
-        streamIds: renderStreamIds,
+        streamIds: timelineRenderStreamIds,
         timestampSource: workspaceState?.sync.timestampSource,
         fallback: workspaceState?.sync.fallback,
       },
     };
   }, [
     catalog,
-    renderStreamIdsKey,
+    timelineRenderStreamIdsKey,
     workspaceState?.sync.fallback,
     workspaceState?.sync.timestampSource,
   ]);
@@ -671,17 +695,13 @@ export function useMultimodalPlaybackController(
         : 30,
     [hasFullTimeline, timeline?.timestampsNs]
   );
-  const bootstrapPlan = React.useMemo(
-    () => getBootstrapPlan(catalog, workspaceState),
-    [catalog, workspaceState]
-  );
   const bootstrapPlanKey = React.useMemo(() => {
     if (!bootstrapPlan) {
       return "";
     }
 
     return [
-      bootstrapPlan.heroPanelId ?? "",
+      bootstrapPlan.playbackPanelId ?? "",
       bootstrapPlan.anchorTimeNs,
       bootstrapPlan.criticalRenderStreamIds.join("\n"),
       bootstrapPlan.criticalSupportStreamIds.join("\n"),
@@ -713,6 +733,9 @@ export function useMultimodalPlaybackController(
     new Map<string, MultimodalRawMessageWindowCache>()
   );
   const decodedTfCacheRef = React.useRef(new Map<string, DecodedTransform[]>());
+  const decodedTransformSampleSetsRef = React.useRef(
+    new Map<string, TransformSampleSet>()
+  );
   const decodedLocationCacheRef = React.useRef(
     new Map<string, DecodedPoseSample | DecodedNavSatFixSample | null>()
   );
@@ -728,6 +751,9 @@ export function useMultimodalPlaybackController(
   const streamSamplesRef = React.useRef(
     new Map<string, MultimodalTimelineSample[]>()
   );
+  const streamTimestampsRef = React.useRef(new Map<string, number[]>());
+  const transformGraphCacheRef =
+    React.useRef<MultimodalTransformGraphCache | null>(null);
   const renderGenerationRef = React.useRef(0);
   const currentRenderTimeRef = React.useRef(0);
   const didMarkFirstPanelRenderRef = React.useRef(false);
@@ -768,11 +794,14 @@ export function useMultimodalPlaybackController(
     renderable3dCachesRef.current.clear();
     rawCachesRef.current.clear();
     decodedTfCacheRef.current.clear();
+    decodedTransformSampleSetsRef.current.clear();
     decodedLocationCacheRef.current.clear();
     decodedImageAnnotationsCacheRef.current.clear();
     decodedCameraCalibrationCacheRef.current.clear();
     navSatAnchorRef.current.clear();
     streamSamplesRef.current.clear();
+    streamTimestampsRef.current.clear();
+    transformGraphCacheRef.current = null;
     setIsBootstrapping(false);
     didMarkFirstPanelRenderRef.current = false;
     didMarkFirstUsefulPaintRef.current = false;
@@ -783,12 +812,19 @@ export function useMultimodalPlaybackController(
 
   React.useEffect(() => {
     const streamSamples = new Map<string, MultimodalTimelineSample[]>();
+    const streamTimestamps = new Map<string, number[]>();
 
     (timeline?.streams ?? []).forEach((stream) => {
       streamSamples.set(stream.streamId, stream.samples);
+      streamTimestamps.set(
+        stream.streamId,
+        stream.timestampsNs ??
+          stream.samples.map((sample) => sample.timestampNs)
+      );
     });
 
     streamSamplesRef.current = streamSamples;
+    streamTimestampsRef.current = streamTimestamps;
   }, [timeline]);
 
   const getOrCreateImageCache = React.useCallback((streamId: string) => {
@@ -917,6 +953,38 @@ export function useMultimodalPlaybackController(
     ]
   );
 
+  const getCachedSyncTimestamps = React.useCallback(
+    (streamId: string): number[] => {
+      const timelineTimestamps = streamTimestampsRef.current.get(streamId);
+      if (timelineTimestamps?.length) {
+        return timelineTimestamps;
+      }
+
+      const descriptor = getStreamDescriptor(streamId);
+      if (!descriptor) {
+        return [];
+      }
+
+      if (isImageStream(descriptor)) {
+        return getOrCreateImageCache(streamId)?.getSyncTimestamps() ?? [];
+      }
+
+      if (is3dStream(descriptor)) {
+        return (
+          getOrCreateRenderable3dCache(streamId)?.getSyncTimestamps() ?? []
+        );
+      }
+
+      return getOrCreateRawCache(streamId)?.getSyncTimestamps() ?? [];
+    },
+    [
+      getOrCreateImageCache,
+      getOrCreateRawCache,
+      getOrCreateRenderable3dCache,
+      getStreamDescriptor,
+    ]
+  );
+
   const primeBootstrapResponse = React.useCallback(
     (response: MultimodalRawBufferResponse) => {
       response.streams.forEach((stream) => {
@@ -955,14 +1023,22 @@ export function useMultimodalPlaybackController(
     ]
   );
 
-  const getDecodedTransformSamples = React.useCallback(
-    (streamId: string) => {
+  const getTransformSampleSet = React.useCallback(
+    (streamId: string): TransformSampleSet => {
       const descriptor = getStreamDescriptor(streamId);
       if (!descriptor) {
-        return [];
+        return { version: 0, samples: [] };
       }
 
-      const rawMessages = getOrCreateRawCache(streamId)?.getMessages() ?? [];
+      const rawCache = getOrCreateRawCache(streamId);
+      const cacheVersion = rawCache?.getVersion() ?? 0;
+      const cachedSampleSet =
+        decodedTransformSampleSetsRef.current.get(streamId);
+      if (cachedSampleSet && cachedSampleSet.version === cacheVersion) {
+        return cachedSampleSet;
+      }
+
+      const rawMessages = rawCache?.getMessages() ?? [];
       const transformSamples: TransformSample[] = [];
 
       rawMessages.forEach((message) => {
@@ -976,46 +1052,45 @@ export function useMultimodalPlaybackController(
         }
 
         transformSamples.push(
-          ...decoded.map((transform) => ({
+          ...decoded.map((transform, index) => ({
             ...transform,
             timestampNs: message.syncTimestampNs,
+            cacheKey: `${message.messageId}:${index}`,
           }))
         );
       });
 
       transformSamples.sort(
-        (left, right) => left.timestampNs - right.timestampNs
+        (left, right) =>
+          left.timestampNs - right.timestampNs ||
+          left.cacheKey.localeCompare(right.cacheKey)
       );
 
-      return transformSamples;
+      const sampleSet = {
+        version: cacheVersion,
+        samples: transformSamples,
+      };
+      decodedTransformSampleSetsRef.current.set(streamId, sampleSet);
+      return sampleSet;
     },
     [getOrCreateRawCache, getStreamDescriptor]
   );
 
-  const getTransformGraph = React.useCallback(
+  const getTransformGraphSnapshot = React.useCallback(
     (targetTimestampNs: number) => {
       if (!transformStreamIds.length) {
-        return new Map();
+        return EMPTY_TRANSFORM_GRAPH_SNAPSHOT;
       }
 
-      const latestByEdge = new Map<string, TransformSample>();
-      transformStreamIds.forEach((streamId) => {
-        const transformSamples = getDecodedTransformSamples(streamId);
-        for (const sample of transformSamples) {
-          if (sample.timestampNs > targetTimestampNs) {
-            break;
-          }
-          if (!sample.parentFrameId || !sample.childFrameId) {
-            continue;
-          }
-
-          latestByEdge.set(getTransformEdgeKey(sample), sample);
-        }
-      });
-
-      return buildTransformGraph(Array.from(latestByEdge.values()));
+      const cache =
+        transformGraphCacheRef.current ??
+        new MultimodalTransformGraphCache({
+          getTransformSampleSet,
+        });
+      transformGraphCacheRef.current = cache;
+      return cache.getSnapshot(transformStreamIds, targetTimestampNs);
     },
-    [getDecodedTransformSamples, transformStreamIds]
+    [getTransformSampleSet, transformStreamIds]
   );
 
   const commitPanelStates = React.useCallback(
@@ -1073,8 +1148,16 @@ export function useMultimodalPlaybackController(
     []
   );
 
-  const ensureTrackedRange = React.useCallback(
-    async (timeRange: [number, number], options: { expand?: boolean } = {}) => {
+  const ensureStreamRange = React.useCallback(
+    async (
+      streamIds: string[],
+      timeRange: [number, number],
+      options: { expand?: boolean } = {}
+    ) => {
+      if (!streamIds.length) {
+        return;
+      }
+
       const currentCatalog = catalogRef.current;
       if (!currentCatalog) {
         return;
@@ -1097,15 +1180,13 @@ export function useMultimodalPlaybackController(
       );
 
       await Promise.all(
-        trackedStreamIds.map(async (streamId) => {
+        streamIds.map(async (streamId) => {
           const descriptor = streamLookup.get(streamId);
           if (!descriptor) {
             return;
           }
 
-          const streamTimestamps = getCachedSyncSamples(streamId).map(
-            (sample) => sample.timestampNs
-          );
+          const streamTimestamps = getCachedSyncTimestamps(streamId);
 
           if (isImageStream(descriptor) || is3dStream(descriptor)) {
             const startNs =
@@ -1172,18 +1253,34 @@ export function useMultimodalPlaybackController(
     },
     [
       getCachedSyncSamples,
+      getCachedSyncTimestamps,
       getOrCreateImageCache,
       getOrCreateRenderable3dCache,
       getOrCreateRawCache,
-      trackedStreamIds,
-      trackedStreamIdsKey,
     ]
+  );
+
+  const ensurePlaybackRange = React.useCallback(
+    async (timeRange: [number, number], options: { expand?: boolean } = {}) => {
+      await ensureStreamRange(criticalTrackedStreamIds, timeRange, options);
+      void ensureStreamRange(
+        backgroundTrackedStreamIds,
+        timeRange,
+        options
+      ).catch((prefetchError) => {
+        console.error(
+          "Failed to prefetch background multimodal streams",
+          prefetchError
+        );
+      });
+    },
+    [backgroundTrackedStreamIds, criticalTrackedStreamIds, ensureStreamRange]
   );
 
   const getBufferReadiness = React.useCallback(
     (targetTimestampNs: number): BufferReadiness => {
       const currentCatalog = catalogRef.current;
-      if (!currentCatalog || !renderStreamIds.length) {
+      if (!currentCatalog || !timelineRenderStreamIds.length) {
         return "ready";
       }
 
@@ -1192,12 +1289,7 @@ export function useMultimodalPlaybackController(
       );
       let sawMissing = false;
 
-      const readinessStreamIds =
-        timeline?.timestampsNs.length && renderStreamIds.length
-          ? renderStreamIds
-          : bootstrapPlan?.criticalRenderStreamIds ?? renderStreamIds;
-
-      for (const streamId of readinessStreamIds) {
+      for (const streamId of timelineRenderStreamIds) {
         const stream = streamLookup.get(streamId);
         if (!stream) {
           continue;
@@ -1235,20 +1327,14 @@ export function useMultimodalPlaybackController(
       return sawMissing ? "missing" : "ready";
     },
     [
-      bootstrapPlan?.criticalRenderStreamIds,
       getCachedSyncSamples,
       getOrCreateImageCache,
       getOrCreateRenderable3dCache,
-      renderStreamIds,
-      timeline?.timestampsNs.length,
+      timelineRenderStreamIds,
     ]
   );
   const getBufferedRanges = React.useCallback((): Buffers => {
-    const readinessStreamIds =
-      hasFullTimeline && renderStreamIds.length
-        ? renderStreamIds
-        : bootstrapPlan?.criticalRenderStreamIds ?? renderStreamIds;
-    if (!readinessStreamIds.length) {
+    if (!timelineRenderStreamIds.length) {
       return [];
     }
 
@@ -1256,8 +1342,8 @@ export function useMultimodalPlaybackController(
       ? timeline?.timestampsNs ?? []
       : Array.from(
           new Set(
-            readinessStreamIds.flatMap((streamId) =>
-              getCachedSyncSamples(streamId).map((sample) => sample.timestampNs)
+            timelineRenderStreamIds.flatMap((streamId) =>
+              getCachedSyncTimestamps(streamId)
             )
           )
         ).sort((left, right) => left - right);
@@ -1285,11 +1371,10 @@ export function useMultimodalPlaybackController(
 
     return getMergedBufferedRanges(readyRanges);
   }, [
-    bootstrapPlan?.criticalRenderStreamIds,
-    getCachedSyncSamples,
+    getCachedSyncTimestamps,
     getBufferReadiness,
     hasFullTimeline,
-    renderStreamIds,
+    timelineRenderStreamIds,
     timeline?.timestampsNs,
     timelineDurationNs,
   ]);
@@ -1325,10 +1410,11 @@ export function useMultimodalPlaybackController(
           );
         }
       );
-      const transformGraph =
+      const transformGraphSnapshot =
         shouldBuildTransformGraph && transformStreamIds.length
-          ? getTransformGraph(targetTimestamp)
-          : new Map();
+          ? getTransformGraphSnapshot(targetTimestamp)
+          : EMPTY_TRANSFORM_GRAPH_SNAPSHOT;
+      const resolveTransform = transformGraphSnapshot.resolveMatrix;
 
       const nextPanelStates = Object.fromEntries(
         await Promise.all(
@@ -1348,6 +1434,7 @@ export function useMultimodalPlaybackController(
                       followPose: null,
                       logTimeNs: null,
                       publishTimeNs: null,
+                      transformRevision: null,
                     },
                   ] as const;
                 }
@@ -1369,6 +1456,7 @@ export function useMultimodalPlaybackController(
                       messageIds: [],
                       warnings: [],
                       followPose: null,
+                      transformRevision: null,
                     },
                   ] as const;
                 }
@@ -1393,6 +1481,7 @@ export function useMultimodalPlaybackController(
                       messageIds: [],
                       warnings: [],
                       followPose: null,
+                      transformRevision: null,
                     },
                   ] as const;
                 }
@@ -1533,68 +1622,24 @@ export function useMultimodalPlaybackController(
                       continue;
                     }
 
-                    const decodedScene = await supportCache.decodeMessage(
-                      selectedSceneUpdate.message
-                    );
-                    warnings.push(...(decodedScene.warnings ?? []));
-
-                    let projectedScene = decodedScene;
                     const calibrationFrameId = calibration.frameId || null;
-                    if (calibrationFrameId) {
-                      const transformedPrimitives = [];
-
-                      for (const primitive of decodedScene.primitives) {
-                        const sourceFrameId =
-                          primitive.frameId ?? decodedScene.frameId ?? null;
-                        if (!sourceFrameId) {
-                          warnings.push(
-                            `Missing frame id for ${selectedSceneUpdate.streamId} while projecting into ${calibrationFrameId}`
-                          );
-                          continue;
-                        }
-
-                        if (sourceFrameId === calibrationFrameId) {
-                          transformedPrimitives.push({
-                            ...primitive,
-                            frameId: calibrationFrameId,
-                          });
-                          continue;
-                        }
-
-                        const matrix = resolveTransformMatrix(
-                          transformGraph,
-                          sourceFrameId,
-                          calibrationFrameId
+                    const projectedScene = calibrationFrameId
+                      ? await supportCache.decodeMessageInFrame(
+                          selectedSceneUpdate.message,
+                          {
+                            targetFrameId: calibrationFrameId,
+                            transformRevision: transformGraphSnapshot.revision,
+                            resolveTransformMatrix: resolveTransform,
+                            warningContext: selectedSceneUpdate.streamId,
+                          }
+                        )
+                      : await supportCache.decodeMessage(
+                          selectedSceneUpdate.message
                         );
-                        if (!matrix) {
-                          warnings.push(
-                            `No transform from ${sourceFrameId} to ${calibrationFrameId} for ${selectedSceneUpdate.streamId}`
-                          );
-                          continue;
-                        }
+                    warnings.push(...(projectedScene.warnings ?? []));
 
-                        transformedPrimitives.push(
-                          applyTransformToScene3dPrimitive(
-                            primitive,
-                            matrix,
-                            calibrationFrameId
-                          )
-                        );
-                      }
-
-                      if (!transformedPrimitives.length) {
-                        continue;
-                      }
-
-                      projectedScene = {
-                        ...decodedScene,
-                        ...composeScene3dFrame({
-                          id: decodedScene.id,
-                          frameId: calibrationFrameId,
-                          primitives: transformedPrimitives,
-                        }),
-                        frameId: calibrationFrameId,
-                      };
+                    if (!projectedScene.primitives.length) {
+                      continue;
                     }
 
                     overlays.push(
@@ -1637,6 +1682,9 @@ export function useMultimodalPlaybackController(
                     followPose: null,
                     logTimeNs: selectedSample.logTimeNs,
                     publishTimeNs: selectedSample.publishTimeNs,
+                    transformRevision: shouldProject3dOverlays
+                      ? transformGraphSnapshot.revision
+                      : 0,
                     error: null,
                   },
                 ] as const;
@@ -1705,6 +1753,8 @@ export function useMultimodalPlaybackController(
                 arraysEqual(currentPanelState.messageIds, selectedMessageIds) &&
                 currentPanelState.logTimeNs === logTimeNs &&
                 currentPanelState.publishTimeNs === publishTimeNs &&
+                currentPanelState.transformRevision ===
+                  transformGraphSnapshot.revision &&
                 (currentPanelState.sceneFrame.frameId ?? null) ===
                   (displayFrameId ?? null) &&
                 currentPanelState.followPose === null &&
@@ -1731,68 +1781,18 @@ export function useMultimodalPlaybackController(
                 const decoded = await cache.decodeMessage(
                   selectedMessage.message
                 );
-                warnings.push(...(decoded.warnings ?? []));
-                if (!decoded.primitives.length) {
-                  continue;
-                }
-
-                let frame = decoded;
                 const aggregationFrameId = getPanelAggregationFrameId(panel);
-                if (aggregationFrameId) {
-                  const transformedPrimitives = [];
-
-                  for (const primitive of decoded.primitives) {
-                    const sourceFrameId =
-                      primitive.frameId ?? decoded.frameId ?? null;
-                    if (!sourceFrameId) {
-                      warnings.push(
-                        `Missing frame id for ${selectedMessage.streamId} while targeting ${aggregationFrameId}`
-                      );
-                      continue;
-                    }
-
-                    if (sourceFrameId === aggregationFrameId) {
-                      transformedPrimitives.push({
-                        ...primitive,
-                        frameId: aggregationFrameId,
-                      });
-                      continue;
-                    }
-
-                    const matrix = resolveTransformMatrix(
-                      transformGraph,
-                      sourceFrameId,
-                      aggregationFrameId
-                    );
-                    if (!matrix) {
-                      warnings.push(
-                        `No transform from ${sourceFrameId} to ${aggregationFrameId} for ${selectedMessage.streamId}`
-                      );
-                      continue;
-                    }
-
-                    transformedPrimitives.push(
-                      applyTransformToScene3dPrimitive(
-                        primitive,
-                        matrix,
-                        aggregationFrameId
-                      )
-                    );
-                  }
-
-                  if (!transformedPrimitives.length) {
-                    continue;
-                  }
-
-                  frame = {
-                    ...decoded,
-                    ...composeScene3dFrame({
-                      id: decoded.id,
-                      frameId: aggregationFrameId,
-                      primitives: transformedPrimitives,
-                    }),
-                    frameId: aggregationFrameId,
-                  };
+                const frame = aggregationFrameId
+                  ? await cache.decodeMessageInFrame(selectedMessage.message, {
+                      targetFrameId: aggregationFrameId,
+                      transformRevision: transformGraphSnapshot.revision,
+                      resolveTransformMatrix: resolveTransform,
+                      warningContext: selectedMessage.streamId,
+                    })
+                  : decoded;
+                warnings.push(...(frame.warnings ?? []));
+                if (!frame.primitives.length) {
+                  continue;
                 }
 
                 resolvedFrames.push({
@@ -1824,6 +1824,7 @@ export function useMultimodalPlaybackController(
                     followPose: null,
                     logTimeNs,
                     publishTimeNs,
+                    transformRevision: transformGraphSnapshot.revision,
                   },
                 ] as const;
               }
@@ -1888,8 +1889,7 @@ export function useMultimodalPlaybackController(
                       normalizedLocation.frameId &&
                       normalizedLocation.frameId !== aggregationFrameId
                     ) {
-                      const matrix = resolveTransformMatrix(
-                        transformGraph,
+                      const matrix = resolveTransform(
                         normalizedLocation.frameId,
                         aggregationFrameId
                       );
@@ -1908,8 +1908,7 @@ export function useMultimodalPlaybackController(
                       normalizedLocation.frameId &&
                       normalizedLocation.frameId !== displayFrameId
                     ) {
-                      const matrix = resolveTransformMatrix(
-                        transformGraph,
+                      const matrix = resolveTransform(
                         normalizedLocation.frameId,
                         displayFrameId
                       );
@@ -1940,8 +1939,7 @@ export function useMultimodalPlaybackController(
                     ? getPanelFollowFrameId(catalog, panel)
                     : null;
                 if (displayFrameId && followFrameId) {
-                  const matrix = resolveTransformMatrix(
-                    transformGraph,
+                  const matrix = resolveTransform(
                     followFrameId,
                     displayFrameId
                   );
@@ -1972,8 +1970,7 @@ export function useMultimodalPlaybackController(
                 sceneFrame.frameId &&
                 sceneFrame.frameId !== displayFrameId
               ) {
-                const matrix = resolveTransformMatrix(
-                  transformGraph,
+                const matrix = resolveTransform(
                   sceneFrame.frameId,
                   displayFrameId
                 );
@@ -2005,6 +2002,7 @@ export function useMultimodalPlaybackController(
                   followPose,
                   logTimeNs,
                   publishTimeNs,
+                  transformRevision: transformGraphSnapshot.revision,
                   error: null,
                 },
               ] as const;
@@ -2014,6 +2012,7 @@ export function useMultimodalPlaybackController(
                 {
                   status: "error",
                   statusDetail: null,
+                  transformRevision: null,
                   error: normalizeError(renderError),
                 },
               ] as const;
@@ -2037,7 +2036,7 @@ export function useMultimodalPlaybackController(
       getOrCreateImageCache,
       getOrCreateRenderable3dCache,
       getOrCreateRawCache,
-      getTransformGraph,
+      getTransformGraphSnapshot,
       locationStreamIds,
       transformStreamIds,
     ]
@@ -2115,7 +2114,7 @@ export function useMultimodalPlaybackController(
         }
 
         setIsBootstrapping(false);
-        void ensureTrackedRange(
+        void ensurePlaybackRange(
           [bootstrapPlan.anchorTimeNs, bootstrapPlan.anchorTimeNs],
           { expand: false }
         ).then(() => renderFrame(currentRenderTimeRef.current));
@@ -2148,8 +2147,7 @@ export function useMultimodalPlaybackController(
     catalog?.datasetId,
     catalog?.mediaField,
     catalog?.sampleId,
-    ensureTrackedRange,
-    getStreamDescriptor,
+    ensurePlaybackRange,
     primeBootstrapResponse,
     renderFrame,
   ]);
@@ -2175,7 +2173,7 @@ export function useMultimodalPlaybackController(
       "multimodal:timeline-ready"
     );
     const currentTimeNs = currentRenderTimeRef.current;
-    void ensureTrackedRange(
+    void ensurePlaybackRange(
       [
         currentTimeNs,
         Math.min(timelineDurationNs, currentTimeNs + 1_000_000_000),
@@ -2184,7 +2182,7 @@ export function useMultimodalPlaybackController(
         expand: true,
       }
     ).then(() => renderFrame(currentTimeNs));
-  }, [ensureTrackedRange, hasFullTimeline, renderFrame, timelineDurationNs]);
+  }, [ensurePlaybackRange, hasFullTimeline, renderFrame, timelineDurationNs]);
 
   React.useEffect(() => {
     const panelStateList = Object.values(panelStates);
@@ -2239,10 +2237,11 @@ export function useMultimodalPlaybackController(
           durationNs: timelineDurationNs,
           tickRate: targetFrameRate,
           coverage: timeline?.timestampsNs ?? [],
-          onPrefetchRange: ensureTrackedRange,
+          onPrefetchRange: ensurePlaybackRange,
           getBufferReadiness,
           getBufferedRanges,
-          isBufferingCritical: hasFullTimeline && renderStreamIds.length > 0,
+          isBufferingCritical:
+            hasFullTimeline && timelineRenderStreamIds.length > 0,
           canControlPlayback: hasFullTimeline,
           onRenderTime: renderFrame,
         }

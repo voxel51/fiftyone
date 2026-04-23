@@ -1,11 +1,17 @@
+import type * as THREE from "three";
 import type { BufferReadiness } from "@fiftyone/playback/experimental/types";
-import type { Scene3dFrame } from "./archetypes";
+import type { Scene3dFrame, Scene3dPrimitive } from "./archetypes";
+import { BoundedLruCache } from "./bounded-lru-cache";
 import { FoxgloveSceneUpdateStateCache } from "./foxglove-sceneupdate-state-cache";
 import {
   MultimodalRawMessageWindowCache,
   type RawMessageWindowCacheOptions,
 } from "./raw-message-window-cache";
 import { BUILTIN_SCHEMA_CODEC_REGISTRY } from "./schema-codec-registry";
+import {
+  applyTransformToScene3dPrimitive,
+  composeScene3dFrame,
+} from "./transform-runtime";
 import type { MultimodalRawMessage } from "./types";
 
 type WarmDecodeOptions = {
@@ -24,6 +30,20 @@ export type MultimodalDecodedScene3dFrame = Scene3dFrame & {
 
 type Renderable3dBufferCacheOptions = RawMessageWindowCacheOptions & {
   schemaName: string;
+  maxDecodedFrameEntries?: number;
+  maxDecodedFrameBytes?: number;
+  maxSceneUpdateDecodedEntries?: number;
+  maxSceneUpdateCheckpointEntries?: number;
+};
+
+type DecodeInFrameOptions = {
+  targetFrameId: string;
+  transformRevision: number;
+  resolveTransformMatrix: (
+    sourceFrameId: string | null | undefined,
+    targetFrameId: string | null | undefined
+  ) => THREE.Matrix4 | null;
+  warningContext: string;
 };
 
 /** Small per-stream cache for buffered raw Multimodal windows and decoded 3D frames. */
@@ -31,7 +51,19 @@ export class MultimodalRenderable3dBufferCache {
   private readonly rawWindowCache: MultimodalRawMessageWindowCache;
   private readonly schemaName: string;
   private readonly sceneUpdateCache: FoxgloveSceneUpdateStateCache | null;
-  private readonly decodedFrames = new Map<
+  private readonly decodedFrames: BoundedLruCache<
+    string,
+    MultimodalDecodedScene3dFrame
+  >;
+  private readonly pendingFrames = new Map<
+    string,
+    Promise<MultimodalDecodedScene3dFrame>
+  >();
+  private readonly transformedFrames: BoundedLruCache<
+    string,
+    MultimodalDecodedScene3dFrame
+  >;
+  private readonly pendingTransformedFrames = new Map<
     string,
     Promise<MultimodalDecodedScene3dFrame>
   >();
@@ -39,9 +71,26 @@ export class MultimodalRenderable3dBufferCache {
   constructor(options: Renderable3dBufferCacheOptions) {
     this.rawWindowCache = new MultimodalRawMessageWindowCache(options);
     this.schemaName = options.schemaName;
+    const maxDecodedFrameEntries = options.maxDecodedFrameEntries ?? 24;
+    const maxDecodedFrameBytes =
+      options.maxDecodedFrameBytes ?? 256 * 1024 * 1024;
+    this.decodedFrames = new BoundedLruCache({
+      maxEntries: maxDecodedFrameEntries,
+      maxBytes: maxDecodedFrameBytes,
+      getSizeBytes: estimateScene3dFrameSize,
+    });
+    this.transformedFrames = new BoundedLruCache({
+      maxEntries: maxDecodedFrameEntries,
+      maxBytes: maxDecodedFrameBytes,
+      getSizeBytes: estimateScene3dFrameSize,
+    });
     this.sceneUpdateCache =
       options.schemaName === "foxglove.SceneUpdate"
-        ? new FoxgloveSceneUpdateStateCache(options)
+        ? new FoxgloveSceneUpdateStateCache({
+            ...options,
+            maxDecodedUpdateEntries: options.maxSceneUpdateDecodedEntries,
+            maxCheckpointEntries: options.maxSceneUpdateCheckpointEntries,
+          })
         : null;
   }
 
@@ -86,6 +135,15 @@ export class MultimodalRenderable3dBufferCache {
     return this.rawWindowCache.getSyncSamples();
   }
 
+  /** Returns cached sync timestamps derived from the current raw message set. */
+  getSyncTimestamps() {
+    if (this.sceneUpdateCache) {
+      return this.sceneUpdateCache.getSyncTimestamps();
+    }
+
+    return this.rawWindowCache.getSyncTimestamps();
+  }
+
   /** Reports whether the raw message window containing this timestamp is ready. */
   getMessageReadiness(logTimeNs: number): BufferReadiness {
     if (this.sceneUpdateCache) {
@@ -99,29 +157,129 @@ export class MultimodalRenderable3dBufferCache {
   async decodeMessage(
     message: MultimodalRawMessage
   ): Promise<MultimodalDecodedScene3dFrame> {
-    const existingFrame = this.decodedFrames.get(message.messageId);
+    const cachedFrame = this.decodedFrames.get(message.messageId);
+    if (cachedFrame) {
+      return cachedFrame;
+    }
+
+    const existingFrame = this.pendingFrames.get(message.messageId);
     if (existingFrame) {
       return existingFrame;
     }
 
-    const decodePromise = this.decodeBySchema(message).then((decoded) => {
-      return {
-        ...decoded.frame,
-        id: message.messageId,
-        primitives: decoded.frame.primitives.map((primitive, index) => ({
-          ...primitive,
-          id: `${message.messageId}:${primitive.id || index}`,
-        })),
-        messageId: message.messageId,
-        logTimeNs: message.logTimeNs,
-        publishTimeNs: message.publishTimeNs,
-        schemaName: this.schemaName,
-        warnings: "warnings" in decoded ? decoded.warnings ?? [] : [],
-      };
-    });
+    const decodePromise = this.decodeBySchema(message)
+      .then((decoded) => {
+        const frame = {
+          ...decoded.frame,
+          id: message.messageId,
+          primitives: decoded.frame.primitives.map((primitive, index) => ({
+            ...primitive,
+            id: `${message.messageId}:${primitive.id || index}`,
+          })),
+          messageId: message.messageId,
+          logTimeNs: message.logTimeNs,
+          publishTimeNs: message.publishTimeNs,
+          schemaName: this.schemaName,
+          warnings: "warnings" in decoded ? decoded.warnings ?? [] : [],
+        };
 
-    this.decodedFrames.set(message.messageId, decodePromise);
+        this.decodedFrames.set(message.messageId, frame);
+        return frame;
+      })
+      .finally(() => {
+        this.pendingFrames.delete(message.messageId);
+      });
+
+    this.pendingFrames.set(message.messageId, decodePromise);
     return decodePromise;
+  }
+
+  /** Decodes one raw message into a requested target frame and memoizes it by TF revision. */
+  async decodeMessageInFrame(
+    message: MultimodalRawMessage,
+    options: DecodeInFrameOptions
+  ): Promise<MultimodalDecodedScene3dFrame> {
+    const cacheKey = [
+      message.messageId,
+      options.targetFrameId,
+      options.transformRevision,
+    ].join("::");
+    const cachedFrame = this.transformedFrames.get(cacheKey);
+    if (cachedFrame) {
+      return cachedFrame;
+    }
+
+    const existingFrame = this.pendingTransformedFrames.get(cacheKey);
+    if (existingFrame) {
+      return existingFrame;
+    }
+
+    const decoded = await this.decodeMessage(message);
+    if (canReuseFrameInTargetFrame(decoded, options.targetFrameId)) {
+      return decoded;
+    }
+
+    const transformPromise = Promise.resolve()
+      .then(() => {
+        const warnings = [...(decoded.warnings ?? [])];
+        const transformedPrimitives = [];
+
+        for (const primitive of decoded.primitives) {
+          const sourceFrameId = primitive.frameId ?? decoded.frameId ?? null;
+          if (!sourceFrameId) {
+            warnings.push(
+              `Missing frame id for ${options.warningContext} while targeting ${options.targetFrameId}`
+            );
+            continue;
+          }
+
+          if (sourceFrameId === options.targetFrameId) {
+            transformedPrimitives.push({
+              ...primitive,
+              frameId: options.targetFrameId,
+            });
+            continue;
+          }
+
+          const matrix = options.resolveTransformMatrix(
+            sourceFrameId,
+            options.targetFrameId
+          );
+          if (!matrix) {
+            warnings.push(
+              `No transform from ${sourceFrameId} to ${options.targetFrameId} for ${options.warningContext}`
+            );
+            continue;
+          }
+
+          transformedPrimitives.push(
+            applyTransformToScene3dPrimitive(
+              primitive,
+              matrix,
+              options.targetFrameId
+            )
+          );
+        }
+
+        const frame = {
+          ...decoded,
+          ...composeScene3dFrame({
+            id: decoded.id,
+            frameId: options.targetFrameId,
+            primitives: transformedPrimitives,
+          }),
+          frameId: options.targetFrameId,
+          warnings,
+        };
+        this.transformedFrames.set(cacheKey, frame);
+        return frame;
+      })
+      .finally(() => {
+        this.pendingTransformedFrames.delete(cacheKey);
+      });
+
+    this.pendingTransformedFrames.set(cacheKey, transformPromise);
+    return transformPromise;
   }
 
   /** Warms cached 3D decodes around one playback timestamp. */
@@ -146,7 +304,10 @@ export class MultimodalRenderable3dBufferCache {
 
   /** Disposes decoded 3D frames and shared worker resources. */
   dispose() {
+    this.pendingFrames.clear();
+    this.pendingTransformedFrames.clear();
     this.decodedFrames.clear();
+    this.transformedFrames.clear();
     this.rawWindowCache.dispose();
     this.sceneUpdateCache?.dispose();
     BUILTIN_SCHEMA_CODEC_REGISTRY.disposeScene3dResources(this.schemaName);
@@ -161,5 +322,50 @@ export class MultimodalRenderable3dBufferCache {
       this.schemaName,
       message
     );
+  }
+}
+
+function canReuseFrameInTargetFrame(
+  frame: MultimodalDecodedScene3dFrame,
+  targetFrameId: string
+) {
+  if ((frame.frameId ?? targetFrameId) !== targetFrameId) {
+    return false;
+  }
+
+  return frame.primitives.every((primitive) => {
+    return (primitive.frameId ?? frame.frameId ?? null) === targetFrameId;
+  });
+}
+
+function estimateScene3dFrameSize(frame: Scene3dFrame) {
+  return frame.primitives.reduce((totalBytes, primitive) => {
+    return totalBytes + estimateScene3dPrimitiveSize(primitive);
+  }, 0);
+}
+
+function estimateScene3dPrimitiveSize(primitive: Scene3dPrimitive) {
+  switch (primitive.kind) {
+    case "points":
+      return (
+        primitive.positions.byteLength +
+        (primitive.intensity?.byteLength ?? 0) +
+        (primitive.colors?.byteLength ?? 0)
+      );
+    case "line-list":
+    case "line-strip":
+      return (
+        primitive.positions.byteLength + (primitive.colors?.byteLength ?? 0)
+      );
+    case "sphere-list":
+    case "cube-list":
+      return (
+        primitive.positions.byteLength +
+        primitive.scales.byteLength +
+        (primitive.rotations?.byteLength ?? 0) +
+        (primitive.colors?.byteLength ?? 0)
+      );
+    default:
+      return 0;
   }
 }

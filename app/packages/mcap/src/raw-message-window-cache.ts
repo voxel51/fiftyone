@@ -46,6 +46,9 @@ export class MultimodalRawMessageWindowCache {
   private sortedMessagesCache: MultimodalRawMessage[] | null = null;
   private messageByLogTimeCache: Map<number, MultimodalRawMessage> | null =
     null;
+  private syncSamplesCache: MultimodalTimelineSample[] | null = null;
+  private syncTimestampsCache: number[] | null = null;
+  private version = 0;
 
   constructor(options: RawMessageWindowCacheOptions) {
     this.datasetId = options.datasetId;
@@ -93,8 +96,7 @@ export class MultimodalRawMessageWindowCache {
       window: resolvedWindow,
       messages: Array.from(deduped.values()),
     });
-    this.sortedMessagesCache = null;
-    this.messageByLogTimeCache = null;
+    this.invalidateCaches();
   }
 
   getMessageForLogTime(logTimeNs: number): MultimodalRawMessage | null {
@@ -144,7 +146,11 @@ export class MultimodalRawMessageWindowCache {
   }
 
   getSyncSamples(): MultimodalTimelineSample[] {
-    return this.getMessages()
+    if (this.syncSamplesCache) {
+      return this.syncSamplesCache;
+    }
+
+    this.syncSamplesCache = this.getMessages()
       .map((message) => ({
         timestampNs: message.syncTimestampNs,
         logTimeNs: message.logTimeNs,
@@ -155,6 +161,24 @@ export class MultimodalRawMessageWindowCache {
           left.timestampNs - right.timestampNs ||
           left.logTimeNs - right.logTimeNs
       );
+
+    return this.syncSamplesCache;
+  }
+
+  getSyncTimestamps(): number[] {
+    if (this.syncTimestampsCache) {
+      return this.syncTimestampsCache;
+    }
+
+    this.syncTimestampsCache = this.getSyncSamples().map(
+      (sample) => sample.timestampNs
+    );
+
+    return this.syncTimestampsCache;
+  }
+
+  getVersion() {
+    return this.version;
   }
 
   getMessagesAroundLogTime(
@@ -180,8 +204,11 @@ export class MultimodalRawMessageWindowCache {
   dispose() {
     this.windowPromises.clear();
     this.windows.clear();
+    this.version = 0;
     this.sortedMessagesCache = null;
     this.messageByLogTimeCache = null;
+    this.syncSamplesCache = null;
+    this.syncTimestampsCache = null;
   }
 
   private async ensureWindow(window: MultimodalTimeRange): Promise<void> {
@@ -210,8 +237,7 @@ export class MultimodalRawMessageWindowCache {
       .then((response) => {
         const messages = response.streams[0]?.messages ?? [];
         this.windows.set(key, { window, messages });
-        this.sortedMessagesCache = null;
-        this.messageByLogTimeCache = null;
+        this.invalidateCaches();
       })
       .finally(() => {
         this.windowPromises.delete(key);
@@ -282,5 +308,13 @@ export class MultimodalRawMessageWindowCache {
     }
 
     return messages.length - 1;
+  }
+
+  private invalidateCaches() {
+    this.version += 1;
+    this.sortedMessagesCache = null;
+    this.messageByLogTimeCache = null;
+    this.syncSamplesCache = null;
+    this.syncTimestampsCache = null;
   }
 }
