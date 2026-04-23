@@ -14,7 +14,12 @@ import {
   SelectData,
   isShown,
 } from "./base";
-import { isRgbMaskTargets, strokeCanvasRect, t } from "./util";
+import {
+  isRgbMaskTargets,
+  resolveLabelSelectionVisuals,
+  strokeCanvasRect,
+  t,
+} from "./util";
 
 interface SegmentationLabel extends BaseLabel {
   mask?: LabelMask;
@@ -91,14 +96,19 @@ export default class SegmentationOverlay<State extends BaseState>
     }
 
     if (this.isSelected(state)) {
+      const labelVisuals = resolveLabelSelectionVisuals(
+        this.label.id,
+        state.options
+      );
       strokeCanvasRect(
         ctx,
         state,
-        getColor(
-          state.options.coloring.pool,
-          state.options.coloring.seed,
-          this.field
-        )
+        labelVisuals?.color ||
+          getColor(
+            state.options.coloring.pool,
+            state.options.coloring.seed,
+            this.field
+          )
       );
     }
   }

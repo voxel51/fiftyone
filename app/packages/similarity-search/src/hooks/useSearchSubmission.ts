@@ -1,8 +1,10 @@
 import { useCallback, useMemo, useState } from "react";
 import { useOperatorExecutor } from "@fiftyone/operators";
+import * as fos from "@fiftyone/state";
+import { useBrowserStorage } from "@fiftyone/state";
 import { BrainKeyConfig, QueryType, SearchScope } from "../types";
-import { INIT_RUN_OPERATOR_URI } from "../constants";
-import { canSubmitSearch, buildExecutionParams } from "../utils";
+import { INIT_RUN_OPERATOR_URI, K_MAX, K_MIN } from "../constants";
+import { canSubmitSearch, buildExecutionParams, UploadedImage } from "../utils";
 
 type UseSearchSubmissionInput = {
   brainKey: string;
@@ -10,6 +12,7 @@ type UseSearchSubmissionInput = {
   textQuery: string;
   queryIds: string[];
   negativeQueryIds: string[];
+  uploadedImage: UploadedImage | null;
   reverse: boolean;
   selectedConfig?: BrainKeyConfig;
   searchScope: SearchScope;
@@ -28,10 +31,19 @@ type UseSearchSubmissionInput = {
 export const useSearchSubmission = (input: UseSearchSubmissionInput) => {
   const { execute: initRun } = useOperatorExecutor(INIT_RUN_OPERATOR_URI);
   const [submitting, setSubmitting] = useState(false);
+  const datasetId = fos.useAssertedRecoilValue(fos.datasetId);
+  const [lastUsedBrainKeys, setLastUsedBrainKeys] = useBrowserStorage<
+    Record<string, string>
+  >("lastUsedBrainKeys", {});
 
   const handleOptionSelected = useCallback(() => {
     setSubmitting(true);
-  }, []);
+
+    setLastUsedBrainKeys({
+      ...(lastUsedBrainKeys || {}),
+      [datasetId]: input.brainKey,
+    });
+  }, [lastUsedBrainKeys, setLastUsedBrainKeys, datasetId, input.brainKey]);
 
   const executionParams = useMemo(
     () =>
@@ -49,6 +61,7 @@ export const useSearchSubmission = (input: UseSearchSubmissionInput) => {
         distField: input.distField,
         runName: input.runName,
         negativeQueryIds: input.negativeQueryIds,
+        uploadedImage: input.uploadedImage,
         dynamicResults: input.dynamicResults,
       }),
     [
@@ -66,6 +79,7 @@ export const useSearchSubmission = (input: UseSearchSubmissionInput) => {
       input.hasView,
       input.queryIds,
       input.negativeQueryIds,
+      input.uploadedImage,
     ]
   );
 
@@ -97,8 +111,8 @@ export const useSearchSubmission = (input: UseSearchSubmissionInput) => {
     input.k !== "" &&
     (!Number.isFinite(input.k) ||
       !Number.isInteger(input.k) ||
-      input.k < 1 ||
-      input.k > 10000);
+      input.k < K_MIN ||
+      input.k > K_MAX);
 
   const canSubmit =
     !kError &&
@@ -106,7 +120,8 @@ export const useSearchSubmission = (input: UseSearchSubmissionInput) => {
       input.brainKey,
       input.queryType,
       input.textQuery,
-      input.queryIds.length
+      input.queryIds.length,
+      !!input.uploadedImage
     );
 
   return {

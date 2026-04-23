@@ -1,12 +1,21 @@
 /**
  * Status of a similarity search run.
  */
-export type RunStatus = "pending" | "running" | "completed" | "failed";
+export enum RunStatus {
+  Pending = "pending",
+  Running = "running",
+  Completed = "completed",
+  Failed = "failed",
+}
 
 /**
  * Type of similarity query.
  */
-export type QueryType = "text" | "image";
+export enum QueryType {
+  Image = "image",
+  Text = "text",
+  Upload = "upload",
+}
 
 /**
  * Scope for a similarity search (full dataset or current view).
@@ -24,6 +33,8 @@ export type BrainKeyConfig = {
   model?: string;
   backend?: string;
   embeddings_field?: string;
+  metric?: string;
+  identifiers?: { label: string; value: string }[];
 };
 
 /**
@@ -46,10 +57,29 @@ export type SimilarityRun = {
   creation_time?: string;
   start_time?: string;
   end_time?: string;
-  source_view?: Record<string, unknown>[];
   operator_run_id?: string;
   status_details?: string;
   created_by?: string;
+  created_by_name?: string;
+};
+
+/**
+ * Parameters sent to the similarity_search operator.
+ * Shared between the panel's buildExecutionParams and the popover.
+ */
+export type SimilaritySearchParams = {
+  brain_key: string;
+  query_type: QueryType;
+  query: string | string[];
+  reverse: boolean;
+  search_scope: SearchScope;
+  patches_field?: string;
+  k?: number;
+  dist_field?: string;
+  run_name?: string;
+  negative_query_ids?: string[];
+  dynamic_results?: boolean;
+  query_image?: { content: string; name: string };
 };
 
 /**
@@ -71,6 +101,10 @@ export type SimilaritySearchPanelData = {
   runs?: SimilarityRun[];
   brain_keys?: BrainKeyConfig[];
   clone_config?: CloneConfig;
+  current_user?: string;
+  can_manage?: boolean;
+  can_edit?: boolean;
+  is_snapshot?: boolean;
 };
 
 /**

@@ -24,3 +24,14 @@ DEFAULT_SELECTION_STYLE = {
     "default": "checkmark",
     "alt": "checkmark",
 }
+
+VALID_LABEL_SELECTION_STYLES = {
+    "dashed",
+    "dashed-green",
+    "dashed-red",
+}
+
+DEFAULT_LABEL_SELECTION_STYLE = {
+    "default": "dashed",
+    "alt": "dashed",
+}

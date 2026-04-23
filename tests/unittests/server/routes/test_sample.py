@@ -5,6 +5,7 @@ FiftyOne Server mutation endpoint unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import datetime
 
 # pylint: disable=no-value-for-parameter
@@ -21,6 +22,9 @@ import fiftyone as fo
 import fiftyone.core.labels as fol
 import fiftyone.server.routes.sample as fors
 from fiftyone import DynamicEmbeddedDocument
+import numpy as np
+
+import fiftyone.core.utils as fou
 
 
 def _create_dummy_instance(cls_type: type) -> dict:
@@ -797,6 +801,141 @@ class TestHandleJsonPatch:
         # Verify the successful operations were applied before the errors were raised
         assert target.label == "dog"
         assert target.bounding_box == [0.1, 0.2, 0.3, 0.4]
+
+
+class TestArrayFieldMaskPatches:
+    """Tests for ArrayField handling of base64-encoded mask data through
+    the JSON patch endpoint.
+
+    The patch endpoint masks as base64-encoded compressed numpy
+    arrays (the same wire format the server uses when serializing masks
+    for the frontend). These tests verify that ArrayField correctly
+    decodes such strings in both the to_mongo (field-level patch) and
+    to_python (from_dict / full-object patch) paths.
+    """
+
+    @staticmethod
+    def _make_mask_b64(mask_array):
+        """Create a base64-encoded compressed numpy string from an array,"""
+        return fou.serialize_numpy_array(np.asarray(mask_array), ascii=True)
+
+    def test_array_field_to_mongo_decodes_b64_string(self):
+        """ArrayField.to_mongo must decode a base64 string into a proper
+        numpy array before serializing, rather than wrapping the raw
+        string with np.asarray (which produces a unicode dtype)."""
+        mask = np.array([[0, 1], [1, 0]], dtype=np.uint8)
+        mask_b64 = self._make_mask_b64(mask)
+
+        field = fo.ArrayField()
+        mongo_value = field.to_mongo(mask_b64)
+
+        # to_mongo returns Binary bytes; round-trip through to_python
+        # to verify the stored data decodes back to the original array
+        result = field.to_python(mongo_value)
+        assert isinstance(result, np.ndarray)
+        np.testing.assert_array_equal(result, mask)
+
+    def test_array_field_to_python_decodes_b64_string(self):
+        """ArrayField.to_python must decode a base64 string into a numpy
+        array.  This path is exercised when Detection.from_dict is
+        called with a mask value from the annotation client."""
+        mask = np.array([[0, 1], [1, 0]], dtype=np.uint8)
+        mask_b64 = self._make_mask_b64(mask)
+
+        field = fo.ArrayField()
+        result = field.to_python(mask_b64)
+
+        assert isinstance(result, np.ndarray)
+        np.testing.assert_array_equal(result, mask)
+
+    def test_handle_json_patch_add_detection_with_mask(self):
+        """Full-object patch: add a new detection (with _cls) that
+        includes a base64 mask.  Verifies that to_python (via
+        Detection.from_dict) decodes the string correctly."""
+        mask = np.array([[1, 0, 1], [0, 1, 0]], dtype=np.uint8)
+        mask_b64 = self._make_mask_b64(mask)
+
+        target = fo.Detections(detections=[])
+        new_detection = {
+            "_cls": "Detection",
+            "label": "dog",
+            "bounding_box": [0.5, 0.5, 0.2, 0.2],
+            "mask": mask_b64,
+        }
+        patch_list = [
+            {"op": "add", "path": "/detections/-", "value": new_detection},
+        ]
+
+        result = fors.handle_json_patch(target, patch_list)
+
+        assert len(result.detections) == 1
+        assert result.detections[0].label == "dog"
+        assert isinstance(result.detections[0].mask, np.ndarray)
+        np.testing.assert_array_equal(result.detections[0].mask, mask)
+
+    @pytest.fixture(name="sample_with_detection")
+    def fixture_sample_with_detection(self, dataset):
+        """Creates a sample with a detection that has no mask."""
+        sample = fo.Sample(filepath="/tmp/test_mask.jpg")
+        sample["ground_truth"] = fol.Detections(
+            detections=[
+                fol.Detection(
+                    label="cat",
+                    bounding_box=[0.1, 0.1, 0.2, 0.2],
+                )
+            ]
+        )
+        dataset.add_sample(sample)
+        sample.save()
+        sample.reload()
+        return sample
+
+    @pytest.fixture(name="mutator")
+    def fixture_mutator(self):
+        return fors.Sample(
+            scope={"type": "http"}, receive=AsyncMock(), send=AsyncMock()
+        )
+
+    @pytest.fixture(name="mock_request")
+    def fixture_mock_request(self, dataset_id, sample_with_detection):
+        mock_request = MagicMock()
+        mock_request.path_params = {
+            "dataset_id": dataset_id,
+            "sample_id": str(sample_with_detection.id),
+        }
+        mock_request.headers = {
+            "Content-Type": "application/json-patch+json",
+            "If-Match": fors.generate_sample_etag(sample_with_detection),
+        }
+        mock_request.body = AsyncMock(return_value=json_payload({}))
+        return mock_request
+
+    @pytest.mark.asyncio
+    async def test_patch_add_mask_persists_as_numpy(
+        self, mutator, mock_request, sample_with_detection
+    ):
+        """End-to-end: patch a detection's mask via the Sample endpoint,
+        save, reload, and verify the mask survives the round-trip as a
+        numpy array with the correct dtype and values."""
+        mask = np.array([[1, 0], [0, 1]], dtype=np.uint8)
+        mask_b64 = self._make_mask_b64(mask)
+
+        patch_payload = [
+            {
+                "op": "add",
+                "path": "/ground_truth/detections/0/mask",
+                "value": mask_b64,
+            },
+        ]
+        mock_request.body.return_value = json_payload(patch_payload)
+
+        await mutator.patch(mock_request)
+
+        sample_with_detection.reload()
+        persisted_mask = sample_with_detection.ground_truth.detections[0].mask
+        assert isinstance(persisted_mask, np.ndarray)
+        assert persisted_mask.dtype == np.uint8
+        np.testing.assert_array_equal(persisted_mask, mask)
 
 
 class TestSampleFieldRoute:

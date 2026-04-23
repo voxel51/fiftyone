@@ -16,6 +16,7 @@ import type { AnnotationDisabledReason } from "./useCanAnnotate";
 import useLabels from "./useLabels";
 import useSourceFieldToActivate from "./useSourceFieldToActivate";
 import LabelList from "./LabelList";
+import { useRegisterAIAnnotationEventHandlers } from "@fiftyone/annotation/src/agents/hooks/useRegisterAIAnnotationEventHandlers";
 
 const DISABLED_MESSAGES: Record<
   Exclude<AnnotationDisabledReason, null>,
@@ -64,6 +65,8 @@ interface AnnotateProps {
 }
 
 const Annotate = ({ disabledReason }: AnnotateProps) => {
+  useRegisterAIAnnotationEventHandlers();
+
   const { schemaManagerDisplayed } = useSchemaManagerModal();
   const loading = useAtomValue(labelSchemasData) === null;
   const isEditingValue = useAtomValue(isEditing);

@@ -1,6 +1,9 @@
 import { useLighter } from "@fiftyone/lighter";
 import { TypeGuards } from "@fiftyone/lighter/src/core/Scene2D";
-import { selectedLabelForAnnotationAtom } from "@fiftyone/looker-3d/src/state";
+import {
+  clearTransformStateSelector,
+  selectedLabelForAnnotationAtom,
+} from "@fiftyone/looker-3d/src/state";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { useSetRecoilState } from "recoil";
@@ -24,6 +27,7 @@ export default function useExit() {
   const setSelectedLabelForAnnotation = useSetRecoilState(
     selectedLabelForAnnotationAtom
   );
+  const clearTransformState = useSetRecoilState(clearTransformStateSelector);
   /**
    * 3D SPECIFIC IMPORTS ENDS HERE.
    */
@@ -48,6 +52,7 @@ export default function useExit() {
      * COUPLED TO LIGHTER OR LOOKER-3D.
      */
     setSelectedLabelForAnnotation(null);
+    clearTransformState(null);
     /**
      * 3D SPECIFIC LOGIC ENDS HERE.
      */
@@ -57,6 +62,7 @@ export default function useExit() {
     setEditing(null);
     setActivePrimitive(null);
   }, [
+    clearTransformState,
     label,
     overlay,
     removeOverlay,

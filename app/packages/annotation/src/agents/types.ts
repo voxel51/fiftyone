@@ -43,6 +43,14 @@ export enum InferenceCapability {
 export type Vec2 = [number, number];
 
 /**
+ * A uniquely-identified point.
+ */
+export type PointDescriptor = {
+  id: string;
+  point: Vec2;
+};
+
+/**
  * An ordered sequence of {@link Vec2} points that form a closed polygon.
  * Bounding boxes are represented by their four corners.
  */
@@ -118,7 +126,10 @@ export type AsyncInferenceResult = {
  * Inspect `result.type` to determine whether the result is immediately
  * available (`"sync"`) or will arrive later (`"async"`).
  */
-export type InferenceResult<T> = SyncInferenceResult<T> | AsyncInferenceResult;
+export type InferenceResult<T> = { labelId: string } & (
+  | SyncInferenceResult<T>
+  | AsyncInferenceResult
+);
 
 /**
  * Response type for synchronous classification inference tasks.

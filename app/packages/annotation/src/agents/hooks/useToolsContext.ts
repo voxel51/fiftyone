@@ -1,4 +1,4 @@
-import { AgentTaskType, ROI, Vec2 } from "../types";
+import { AgentTaskType, PointDescriptor, ROI, Vec2 } from "../types";
 import { atom, useAtom, useAtomValue } from "jotai";
 import { useCallback, useMemo } from "react";
 import { useActiveTask } from "./useActiveTask";
@@ -31,13 +31,15 @@ export type ToolsContext = {
  */
 export interface ToolsState extends ToolsContext {
   /** Adds a positive point prompt to the current set. */
-  addPositivePoint(point: Vec2): void;
-  /** Removes a positive point prompt by index. */
-  removePositivePoint(index: number): void;
+  addPositivePoint(descriptor: PointDescriptor): void;
+  /** Removes a positive point prompt by its ID. */
+  removePositivePoint(id: string): void;
   /** Adds a negative point prompt to the current set. */
-  addNegativePoint(point: Vec2): void;
-  /** Removes a negative point prompt by index. */
-  removeNegativePoint(index: number): void;
+  addNegativePoint(descriptor: PointDescriptor): void;
+  /** Removes a negative point prompt by its ID. */
+  removeNegativePoint(id: string): void;
+  /** Updates a point prompt. */
+  updatePoint(descriptor: PointDescriptor): void;
   /** Replaces the full set of ROI prompts. */
   setRegionsOfInterest(rois: ROI[]): void;
   /** Sets the free-text prompt. */
@@ -46,8 +48,8 @@ export interface ToolsState extends ToolsContext {
   reset(): void;
 }
 
-const positivePointsAtom = atom<Vec2[]>([]);
-const negativePointsAtom = atom<Vec2[]>([]);
+const positivePointsAtom = atom<PointDescriptor[]>([]);
+const negativePointsAtom = atom<PointDescriptor[]>([]);
 const regionsOfInterestAtom = atom<ROI[]>([]);
 const textPromptAtom = atom<string | null>(null);
 
@@ -66,8 +68,8 @@ export const useToolsContext = (): ToolsContext => {
   return useMemo(
     () => ({
       taskType: activeTask,
-      positivePoints,
-      negativePoints,
+      positivePoints: positivePoints.map((d) => d.point),
+      negativePoints: negativePoints.map((d) => d.point),
       regionsOfInterest,
       textPrompt,
     }),
@@ -90,25 +92,50 @@ export const useToolsState = (): ToolsState => {
   const [textPrompt, setTextPrompt] = useAtom(textPromptAtom);
 
   const addPositivePoint = useCallback(
-    (point: Vec2) => setPositivePoints((prev) => [...prev, point]),
+    (descriptor: PointDescriptor) =>
+      setPositivePoints((prev) => [...prev, descriptor]),
     [setPositivePoints]
   );
 
   const removePositivePoint = useCallback(
-    (index: number) =>
-      setPositivePoints((prev) => prev.filter((_, i) => i !== index)),
+    (id: string) =>
+      setPositivePoints((prev) => prev.filter((d) => d.id !== id)),
     [setPositivePoints]
   );
 
   const addNegativePoint = useCallback(
-    (point: Vec2) => setNegativePoints((prev) => [...prev, point]),
+    (descriptor: PointDescriptor) =>
+      setNegativePoints((prev) => [...prev, descriptor]),
     [setNegativePoints]
   );
 
   const removeNegativePoint = useCallback(
-    (index: number) =>
-      setNegativePoints((prev) => prev.filter((_, i) => i !== index)),
+    (id: string) =>
+      setNegativePoints((prev) => prev.filter((d) => d.id !== id)),
     [setNegativePoints]
+  );
+
+  const updatePoint = useCallback(
+    (descriptor: PointDescriptor) => {
+      const findIndex = (arr: PointDescriptor[]): number =>
+        arr.findIndex((p) => p.id === descriptor.id);
+
+      const replacePoint = (arr: PointDescriptor[]): PointDescriptor[] => {
+        const newArr = [...arr];
+        const idx = findIndex(newArr);
+        if (idx >= 0) {
+          newArr.splice(idx, 1, descriptor);
+        }
+        return newArr;
+      };
+
+      if (findIndex(positivePoints) >= 0) {
+        setPositivePoints((prev) => replacePoint(prev));
+      } else {
+        setNegativePoints((prev) => replacePoint(prev));
+      }
+    },
+    [positivePoints, setNegativePoints, setPositivePoints]
   );
 
   const reset = useCallback(() => {
@@ -126,14 +153,15 @@ export const useToolsState = (): ToolsState => {
   return useMemo(
     () => ({
       taskType: activeTask,
-      positivePoints,
-      negativePoints,
+      positivePoints: positivePoints.map((d) => d.point),
+      negativePoints: negativePoints.map((d) => d.point),
       regionsOfInterest,
       textPrompt,
       addPositivePoint,
       removePositivePoint,
       addNegativePoint,
       removeNegativePoint,
+      updatePoint,
       setRegionsOfInterest,
       setTextPrompt,
       reset,
@@ -148,6 +176,7 @@ export const useToolsState = (): ToolsState => {
       removePositivePoint,
       addNegativePoint,
       removeNegativePoint,
+      updatePoint,
       setRegionsOfInterest,
       setTextPrompt,
       reset,

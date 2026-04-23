@@ -1,13 +1,18 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import * as fos from "@fiftyone/state";
-import { SimilaritySearchViewProps, SimilarityRun } from "../types";
+import {
+  CloneConfig,
+  RunStatus,
+  SimilaritySearchViewProps,
+  SimilarityRun,
+} from "../types";
 import { useNavigate } from "./useNavigate";
 import { useRuns } from "./useRuns";
 import { useFilteredRuns } from "./useFilteredRuns";
 import { useMultiSelect } from "./useMultiSelect";
 import { useCloneConfig } from "./useCloneConfig";
-import useTriggers from "./useTriggers";
+import useTriggers, { TriggerOptions } from "./useTriggers";
 
 // ─── Derived State ──────────────────────────────────────────────────
 
@@ -28,7 +33,10 @@ const useDerivedPanelState = (props: SimilaritySearchViewProps) => {
   } = useRuns();
   const [submitting, setSubmitting] = useState(false);
 
-  const allBrainKeys = panelData.brain_keys ?? [];
+  const allBrainKeys = useMemo(
+    () => panelData.brain_keys ?? [],
+    [panelData.brain_keys]
+  );
   const appliedRunId = (panelData as Record<string, unknown>).applied_run_id as
     | string
     | undefined;
@@ -73,11 +81,14 @@ const useDerivedPanelState = (props: SimilaritySearchViewProps) => {
   // currentUser is null in OSS, populated by FOE via panel data
   const currentUser =
     ((panelData as Record<string, unknown>).current_user as string) ?? null;
-  const canFilterByOwner = !!currentUser;
-  const { filteredRuns, filterState, setFilterState } = useFilteredRuns(
-    runs,
-    currentUser
+  const canManage = Boolean(
+    (panelData as Record<string, unknown>).can_manage ?? true
   );
+  const isReadOnly = useRecoilValue(fos.readOnly) as boolean;
+
+  // Only show All|Mine toggle for users with manage permissions
+  const canFilterByOwner = !!currentUser && canManage;
+  const { filteredRuns, filterState, setFilterState } = useFilteredRuns(runs);
 
   return {
     loaded: loaded && !submitting,
@@ -90,6 +101,7 @@ const useDerivedPanelState = (props: SimilaritySearchViewProps) => {
     sampleMedia,
     filterState,
     canFilterByOwner,
+    isReadOnly,
     refreshRuns,
     removeRun,
     removeRuns,
@@ -110,18 +122,18 @@ type PanelActionsDeps = {
   navigateHome: () => void;
   navigateNewSearch: () => void;
   triggers: {
-    applyRun: (payload: { run_id: string }) => void;
-    deleteRun: (payload: { run_id: string }) => void;
-    bulkDeleteRuns: (payload: { run_ids: string[] }) => void;
+    applyRun: (payload: { run_id: string }, options?: TriggerOptions) => void;
+    deleteRun: (payload: { run_id: string }, options?: TriggerOptions) => void;
+    bulkDeleteRuns: (
+      payload: { run_ids: string[] },
+      options?: TriggerOptions
+    ) => void;
+    renameRun: (
+      payload: { run_id: string; new_name: string },
+      options?: TriggerOptions
+    ) => void;
   };
-  setCloneConfig: (config: {
-    brain_key: string;
-    query_type: "text" | "image";
-    query?: string;
-    k?: number;
-    reverse: boolean;
-    dist_field?: string;
-  }) => void;
+  setCloneConfig: (config: CloneConfig) => void;
   clearCloneConfig: () => void;
   clearAndExit: () => void;
 };
@@ -153,37 +165,71 @@ const useSimilarityPanelActions = (deps: PanelActionsDeps) => {
 
   const handleDelete = useCallback(
     (runId: string) => {
-      triggers.deleteRun({ run_id: runId });
+      // Optimistic remove; on backend failure we re-sync from truth.
       removeRun(runId);
+      triggers.deleteRun(
+        { run_id: runId },
+        {
+          onSettled: (result) => {
+            if (result?.error) {
+              console.error(
+                "Delete run failed; reconciling from server:",
+                result.error
+              );
+              refreshRuns();
+            }
+          },
+        }
+      );
     },
-    [triggers, removeRun]
+    [triggers, removeRun, refreshRuns]
   );
 
   const handleBulkDelete = useCallback(
     (runIds: string[]) => {
-      triggers.bulkDeleteRuns({ run_ids: runIds });
+      // Optimistic remove; on backend failure we re-sync from truth.
       removeRuns(runIds);
       clearAndExit();
+      triggers.bulkDeleteRuns(
+        { run_ids: runIds },
+        {
+          onSettled: (result) => {
+            if (result?.error) {
+              console.error(
+                "Bulk delete failed; reconciling from server:",
+                result.error
+              );
+              refreshRuns();
+            }
+          },
+        }
+      );
     },
-    [triggers, removeRuns, clearAndExit]
+    [triggers, removeRuns, clearAndExit, refreshRuns]
   );
 
   const handleClone = useCallback(
     (runId: string) => {
       const run = runs.find((r) => r.run_id === runId);
-      if (run) {
-        setCloneConfig({
-          brain_key: run.brain_key,
-          query_type: run.query_type,
-          query: typeof run.query === "string" ? run.query : undefined,
-          k: run.k,
-          reverse: run.reverse,
-          dist_field: run.dist_field,
-        });
-        navigateNewSearch();
-      }
+      if (!run) return;
+      setCloneConfig({
+        brain_key: run.brain_key,
+        query_type: run.query_type,
+        query: typeof run.query === "string" ? run.query : undefined,
+        k: run.k,
+        reverse: run.reverse,
+        dist_field: run.dist_field,
+      });
+      navigateNewSearch();
     },
     [runs, setCloneConfig, navigateNewSearch]
+  );
+
+  const handleRename = useCallback(
+    (runId: string, newName: string) => {
+      triggers.renameRun({ run_id: runId, new_name: newName });
+    },
+    [triggers]
   );
 
   const handleNewSearch = useCallback(() => {
@@ -207,6 +253,7 @@ const useSimilarityPanelActions = (deps: PanelActionsDeps) => {
     handleDelete,
     handleBulkDelete,
     handleNewSearch,
+    handleRename,
     handleSubmitted,
   };
 };
@@ -238,23 +285,29 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
     deselectAll,
   } = useMultiSelect();
 
+  // Only the triggers that the frontend actually invokes are declared
+  // here. clone/list/getBrainKeys schema entries are handled without
+  // round-tripping through the panel event bus.
   const triggers = useTriggers<{
-    applyRun: (payload: { run_id: string }) => void;
-    deleteRun: (payload: { run_id: string }) => void;
-    bulkDeleteRuns: (payload: { run_ids: string[] }) => void;
-    cloneRun: (payload: { run_id: string }) => void;
-    renameRun: (payload: { run_id: string; new_name: string }) => void;
-    listRuns: () => void;
-    getBrainKeys: () => void;
-    getSampleMedia: (payload: { sample_ids: string[] }) => void;
+    applyRun: (payload: { run_id: string }, options?: TriggerOptions) => void;
+    deleteRun: (payload: { run_id: string }, options?: TriggerOptions) => void;
+    bulkDeleteRuns: (
+      payload: { run_ids: string[] },
+      options?: TriggerOptions
+    ) => void;
+    renameRun: (
+      payload: { run_id: string; new_name: string },
+      options?: TriggerOptions
+    ) => void;
+    getSampleMedia: (
+      payload: { sample_ids: string[] },
+      options?: TriggerOptions
+    ) => void;
   }>({
     applyRun: view.apply_run,
     deleteRun: view.delete_run,
     bulkDeleteRuns: view.bulk_delete_runs,
-    cloneRun: view.clone_run,
     renameRun: view.rename_run,
-    listRuns: view.list_runs,
-    getBrainKeys: view.get_brain_keys,
     getSampleMedia: view.get_sample_media,
   });
 
@@ -273,6 +326,48 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
     clearCloneConfig,
     clearAndExit,
   });
+
+  // Re-fetch runs whenever the owner filter changes — it's applied
+  // server-side. Skip the initial render so we don't double-fetch
+  // alongside the panel's initial load.
+
+  const ownerFilter = state.filterState.ownerFilter;
+  const ownerInitRef = useRef(true);
+  const refreshRunsRef = useRef(state.refreshRuns);
+  refreshRunsRef.current = state.refreshRuns;
+
+  useEffect(() => {
+    if (ownerInitRef.current) {
+      ownerInitRef.current = false;
+      return;
+    }
+    refreshRunsRef.current();
+  }, [ownerFilter]);
+
+  // Auto-apply any run that just transitioned to Completed, regardless
+  // of whether it was executed immediately or delegated — in both cases
+  // the status flip from RUNNING/PENDING → Completed arrives via the
+  // same refreshRuns path (immediate: operator return; delegated: SSE
+  // from the worker's set_run write), and we want the result view to
+  // show automatically once the run finishes.
+  const prevRunStatusesRef = useRef<Map<string, string>>(new Map());
+
+  useEffect(() => {
+    const prev = prevRunStatusesRef.current;
+    const next = new Map(state.runs.map((r) => [r.run_id, r.status]));
+
+    for (const run of state.runs) {
+      if (
+        run.status === RunStatus.Completed &&
+        prev.get(run.run_id) !== RunStatus.Completed
+      ) {
+        actions.handleApply(run.run_id);
+        break;
+      }
+    }
+
+    prevRunStatusesRef.current = next;
+  }, [state.runs, actions]);
 
   const selection = useMemo(
     () => ({
@@ -308,10 +403,12 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
     cloneConfig,
     filterState: state.filterState,
     canFilterByOwner: state.canFilterByOwner,
+    isReadOnly: state.isReadOnly,
     selection,
 
     // actions
     ...actions,
+    handleApply: actions.handleApply,
     refreshRuns: state.refreshRuns,
     setFilterState: state.setFilterState,
     navigateHome,
