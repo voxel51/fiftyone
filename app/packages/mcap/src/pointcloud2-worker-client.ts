@@ -3,8 +3,8 @@ import type {
   MultimodalPointCloud2DecodeRequest,
   MultimodalPointCloud2DecodeResponse,
 } from "./pointcloud2-decoder";
-import { decodePointCloud2Payload } from "./pointcloud2-decoder";
 import PointCloud2Worker from "./pointcloud2-worker.ts?worker&inline";
+import { decodeMultimodalPointCloudRequest } from "./pointcloud2-worker";
 
 type PendingDecode = {
   resolve: (value: MultimodalPointCloud2DecodeResponse) => void;
@@ -19,7 +19,11 @@ type WorkerResponse =
         messageId: string;
         pointCount: number;
         positions: ArrayBuffer;
+        positionsByteOffset: number;
+        positionsByteLength: number;
         intensity: ArrayBuffer | null;
+        intensityByteOffset: number;
+        intensityByteLength: number;
         frameId: string | null;
         bounds: Scene3dFrame["bounds"];
       };
@@ -31,29 +35,38 @@ type WorkerResponse =
     };
 
 class PointCloud2DecoderClient {
-  private worker: Worker | null = null;
+  private workers: Array<{
+    worker: Worker;
+    pending: Map<number, PendingDecode>;
+  } | null> = [];
   private nextRequestId = 0;
-  private pending = new Map<number, PendingDecode>();
+  private nextWorkerIndex = 0;
 
-  private getWorker() {
-    if (!this.worker) {
-      this.worker = new PointCloud2Worker();
-      this.worker.onmessage = (event: MessageEvent<WorkerResponse>) => {
+  private getWorkerEntries() {
+    for (let workerIndex = 0; workerIndex < 2; workerIndex += 1) {
+      if (this.workers[workerIndex]) {
+        continue;
+      }
+
+      const worker = new PointCloud2Worker();
+      const pending = new Map<number, PendingDecode>();
+      worker.onmessage = (event: MessageEvent<WorkerResponse>) => {
         const response = event.data;
-        const pending = this.pending.get(response.requestId);
+        const workerEntry = this.workers[workerIndex];
+        const nextPending = workerEntry?.pending.get(response.requestId);
 
-        if (!pending) {
+        if (!nextPending) {
           return;
         }
 
-        this.pending.delete(response.requestId);
+        workerEntry.pending.delete(response.requestId);
 
         if (!response.success) {
-          pending.reject(new Error(response.error));
+          nextPending.reject(new Error(response.error));
           return;
         }
 
-        pending.resolve({
+        nextPending.resolve({
           messageId: response.result.messageId,
           frame: {
             id: response.result.messageId,
@@ -66,9 +79,19 @@ class PointCloud2DecoderClient {
                 id: "points",
                 frameId: response.result.frameId,
                 pointCount: response.result.pointCount,
-                positions: new Float32Array(response.result.positions),
+                positions: new Float32Array(
+                  response.result.positions,
+                  response.result.positionsByteOffset,
+                  response.result.positionsByteLength /
+                    Float32Array.BYTES_PER_ELEMENT
+                ),
                 intensity: response.result.intensity
-                  ? new Float32Array(response.result.intensity)
+                  ? new Float32Array(
+                      response.result.intensity,
+                      response.result.intensityByteOffset,
+                      response.result.intensityByteLength /
+                        Float32Array.BYTES_PER_ELEMENT
+                    )
                   : null,
                 colors: null,
                 solidColor: null,
@@ -79,66 +102,82 @@ class PointCloud2DecoderClient {
         });
       };
 
-      this.worker.onerror = (event) => {
+      worker.onerror = (event) => {
         const error = new Error(event.message || "PointCloud2 worker failed");
-        this.pending.forEach(({ reject }) => reject(error));
-        this.pending.clear();
-        this.worker?.terminate();
-        this.worker = null;
+        const workerEntry = this.workers[workerIndex];
+        workerEntry?.pending.forEach(({ reject }) => reject(error));
+        workerEntry?.pending.clear();
+        worker.terminate();
+        this.workers[workerIndex] = null;
+      };
+
+      this.workers[workerIndex] = {
+        worker,
+        pending,
       };
     }
 
-    return this.worker;
+    return this.workers.filter(
+      (
+        workerEntry
+      ): workerEntry is {
+        worker: Worker;
+        pending: Map<number, PendingDecode>;
+      } => workerEntry !== null
+    );
   }
 
   async decode(
     request: MultimodalPointCloud2DecodeRequest
   ): Promise<MultimodalPointCloud2DecodeResponse> {
     if (typeof Worker === "undefined") {
-      const decoded = decodePointCloud2Payload(new Uint8Array(request.payload));
-      return {
-        messageId: request.messageId,
-        frame: {
-          ...decoded.frame,
-          id: request.messageId,
-        },
-      };
+      return decodeMultimodalPointCloudRequest(request);
     }
 
-    const worker = this.getWorker();
+    const workerEntries = this.getWorkerEntries();
+    const workerEntry =
+      workerEntries[this.nextWorkerIndex++ % workerEntries.length];
     const requestId = this.nextRequestId++;
-    const payload = request.payload.slice(0);
 
     return new Promise<MultimodalPointCloud2DecodeResponse>(
       (resolve, reject) => {
-        this.pending.set(requestId, { resolve, reject });
-        worker.postMessage(
+        workerEntry.pending.set(requestId, { resolve, reject });
+        workerEntry.worker.postMessage(
           {
             requestId,
             request: {
               messageId: request.messageId,
-              payload,
+              schemaName: request.schemaName,
+              payload: request.payload,
             },
           },
-          [payload]
+          [request.payload]
         );
       }
     );
   }
 
   dispose() {
-    this.pending.forEach(({ reject }) => {
-      reject(new Error("PointCloud2 worker disposed"));
+    this.workers.forEach((workerEntry) => {
+      if (!workerEntry) {
+        return;
+      }
+
+      const { pending, worker } = workerEntry;
+      pending.forEach(({ reject }) => {
+        reject(new Error("PointCloud2 worker disposed"));
+      });
+      pending.clear();
+      worker.terminate();
     });
-    this.pending.clear();
-    this.worker?.terminate();
-    this.worker = null;
+    this.workers = [];
+    this.nextWorkerIndex = 0;
   }
 }
 
 const decoderClient = new PointCloud2DecoderClient();
 
-/** Decodes one raw `PointCloud2` payload in a worker when available. */
+/** Decodes one raw supported point-cloud payload in a worker when available. */
 export function decodePointCloud2InWorker(
   request: MultimodalPointCloud2DecodeRequest
 ): Promise<MultimodalPointCloud2DecodeResponse> {

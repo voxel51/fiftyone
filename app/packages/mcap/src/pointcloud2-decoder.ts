@@ -107,9 +107,10 @@ function toPointsArray(values: Float32Array, usedValues: number) {
   return values.slice(0, usedValues);
 }
 
-/** Worker request payload for one raw `PointCloud2` Multimodal message. */
+/** Worker request payload for one raw supported point-cloud message. */
 export type MultimodalPointCloud2DecodeRequest = {
   messageId: string;
+  schemaName: string;
   payload: ArrayBuffer;
 };
 

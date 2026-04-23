@@ -3,9 +3,7 @@ import {
   decodeCompressedImageInWorker,
   disposeCompressedImageWorkerClient,
 } from "./compressed-image-worker-client";
-import { decodeFoxgloveCompressedImagePayload } from "./foxglove-compressed-image-decoder";
 import { decodeFoxgloveFrameTransformPayload } from "./foxglove-frame-transform-decoder";
-import { decodeFoxglovePointCloudPayload } from "./foxglove-pointcloud-decoder";
 import { decodeLaserScanPayload } from "./laserscan-decoder";
 import { decodeMarkerArrayPayload } from "./markerarray-decoder";
 import {
@@ -120,6 +118,7 @@ function createBuiltinSchemaCodecRegistry() {
     async decode(message) {
       const decoded = await decodeCompressedImageInWorker({
         messageId: message.messageId,
+        schemaName: "sensor_msgs/msg/CompressedImage",
         payload: copyPayloadBuffer(message.payload),
       });
 
@@ -133,7 +132,11 @@ function createBuiltinSchemaCodecRegistry() {
   });
   registry.registerImage("foxglove.CompressedImage", {
     async decode(message) {
-      const decoded = decodeFoxgloveCompressedImagePayload(message.payload);
+      const decoded = await decodeCompressedImageInWorker({
+        messageId: message.messageId,
+        schemaName: "foxglove.CompressedImage",
+        payload: copyPayloadBuffer(message.payload),
+      });
 
       return {
         format: decoded.format,
@@ -141,12 +144,14 @@ function createBuiltinSchemaCodecRegistry() {
         compressedBytes: decoded.compressedBytes,
       };
     },
+    dispose: disposeCompressedImageWorkerClient,
   });
 
   registry.registerScene3d("sensor_msgs/msg/PointCloud2", {
     async decode(message) {
       const decoded = await decodePointCloud2InWorker({
         messageId: message.messageId,
+        schemaName: "sensor_msgs/msg/PointCloud2",
         payload: copyPayloadBuffer(message.payload),
       });
 
@@ -158,12 +163,17 @@ function createBuiltinSchemaCodecRegistry() {
   });
   registry.registerScene3d("foxglove.PointCloud", {
     async decode(message) {
-      const decoded = decodeFoxglovePointCloudPayload(message.payload);
+      const decoded = await decodePointCloud2InWorker({
+        messageId: message.messageId,
+        schemaName: "foxglove.PointCloud",
+        payload: copyPayloadBuffer(message.payload),
+      });
 
       return {
         frame: decoded.frame,
       };
     },
+    dispose: disposePointCloud2WorkerClient,
   });
   registry.registerScene3d("sensor_msgs/msg/LaserScan", {
     async decode(message) {

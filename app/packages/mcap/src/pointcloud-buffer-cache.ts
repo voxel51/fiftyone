@@ -25,13 +25,19 @@ type WarmDecodeOptions = {
 /** Small per-stream cache for buffered raw Multimodal windows and decoded point frames. */
 export class MultimodalPointCloudBufferCache {
   private readonly rawWindowCache: MultimodalRawMessageWindowCache;
+  private readonly schemaName: string;
   private readonly decodedFrames = new Map<
     string,
     Promise<MultimodalDecodedPointCloudFrame>
   >();
 
-  constructor(options: RawMessageWindowCacheOptions) {
+  constructor(
+    options: RawMessageWindowCacheOptions & {
+      schemaName?: string;
+    }
+  ) {
     this.rawWindowCache = new MultimodalRawMessageWindowCache(options);
+    this.schemaName = options.schemaName ?? "sensor_msgs/msg/PointCloud2";
   }
 
   /** Ensures all fixed fetch windows covering the requested range are buffered. */
@@ -60,6 +66,7 @@ export class MultimodalPointCloudBufferCache {
 
     const decodePromise = decodePointCloud2InWorker({
       messageId: message.messageId,
+      schemaName: this.schemaName,
       payload: this.copyPayloadBuffer(message.payload),
     }).then((decoded) => {
       return {

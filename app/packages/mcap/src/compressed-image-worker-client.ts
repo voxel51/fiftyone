@@ -2,8 +2,8 @@ import type {
   MultimodalCompressedImageDecodeRequest,
   MultimodalCompressedImageDecodeResponse,
 } from "./compressed-image-decoder";
-import { decodeCompressedImagePayload } from "./compressed-image-decoder";
 import CompressedImageWorker from "./compressed-image-worker.ts?worker&inline";
+import { decodeMultimodalCompressedImageRequest } from "./compressed-image-worker";
 
 type PendingDecode = {
   resolve: (value: MultimodalCompressedImageDecodeResponse) => void;
@@ -19,6 +19,8 @@ type WorkerResponse =
         format: string;
         frameId: string;
         compressedBytes: ArrayBuffer;
+        compressedBytesByteOffset: number;
+        compressedBytesByteLength: number;
       };
     }
   | {
@@ -54,7 +56,11 @@ class CompressedImageDecoderClient {
           messageId: response.result.messageId,
           format: response.result.format,
           frameId: response.result.frameId,
-          compressedBytes: new Uint8Array(response.result.compressedBytes),
+          compressedBytes: new Uint8Array(
+            response.result.compressedBytes,
+            response.result.compressedBytesByteOffset,
+            response.result.compressedBytesByteLength
+          ),
         });
       };
 
@@ -76,20 +82,11 @@ class CompressedImageDecoderClient {
     request: MultimodalCompressedImageDecodeRequest
   ): Promise<MultimodalCompressedImageDecodeResponse> {
     if (typeof Worker === "undefined") {
-      const decoded = decodeCompressedImagePayload(
-        new Uint8Array(request.payload)
-      );
-      return {
-        messageId: request.messageId,
-        format: decoded.format,
-        frameId: decoded.frameId,
-        compressedBytes: decoded.compressedBytes,
-      };
+      return decodeMultimodalCompressedImageRequest(request);
     }
 
     const worker = this.getWorker();
     const requestId = this.nextRequestId++;
-    const payload = request.payload.slice(0);
 
     return new Promise<MultimodalCompressedImageDecodeResponse>(
       (resolve, reject) => {
@@ -99,10 +96,11 @@ class CompressedImageDecoderClient {
             requestId,
             request: {
               messageId: request.messageId,
-              payload,
+              schemaName: request.schemaName,
+              payload: request.payload,
             },
           },
-          [payload]
+          [request.payload]
         );
       }
     );
@@ -120,7 +118,7 @@ class CompressedImageDecoderClient {
 
 const decoderClient = new CompressedImageDecoderClient();
 
-/** Decodes one raw `CompressedImage` payload in a worker when available. */
+/** Decodes one raw supported compressed-image payload in a worker when available. */
 export function decodeCompressedImageInWorker(
   request: MultimodalCompressedImageDecodeRequest
 ): Promise<MultimodalCompressedImageDecodeResponse> {

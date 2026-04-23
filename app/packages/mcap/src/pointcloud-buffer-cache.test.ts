@@ -127,6 +127,11 @@ describe("MultimodalPointCloudBufferCache", () => {
     const secondFrame = await cache.decodeMessage(message!);
 
     expect(decodePointCloud2InWorkerMock).toHaveBeenCalledTimes(1);
+    expect(decodePointCloud2InWorkerMock).toHaveBeenCalledWith({
+      messageId: "cloud-1",
+      schemaName: "sensor_msgs/msg/PointCloud2",
+      payload: expect.any(ArrayBuffer),
+    });
     expect(firstFrame.pointCount).toBe(2);
     expect(secondFrame.messageId).toBe("cloud-1");
   });
@@ -190,10 +195,12 @@ describe("MultimodalPointCloudBufferCache", () => {
     expect(decodePointCloud2InWorkerMock).toHaveBeenCalledTimes(2);
     expect(decodePointCloud2InWorkerMock).toHaveBeenNthCalledWith(1, {
       messageId: "cloud-1",
+      schemaName: "sensor_msgs/msg/PointCloud2",
       payload: expect.any(ArrayBuffer),
     });
     expect(decodePointCloud2InWorkerMock).toHaveBeenNthCalledWith(2, {
       messageId: "cloud-2",
+      schemaName: "sensor_msgs/msg/PointCloud2",
       payload: expect.any(ArrayBuffer),
     });
   });

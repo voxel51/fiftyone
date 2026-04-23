@@ -25,9 +25,10 @@ const compressedImageReader = new MessageReader<CompressedImageMessage>(
   parse(COMPRESSED_IMAGE_DEFINITION, { ros2: true })
 );
 
-/** Worker request payload for one raw `CompressedImage` Multimodal message. */
+/** Worker request payload for one raw supported compressed-image message. */
 export type MultimodalCompressedImageDecodeRequest = {
   messageId: string;
+  schemaName: string;
   payload: ArrayBuffer;
 };
 
