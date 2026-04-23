@@ -10,12 +10,13 @@ import {
 } from "@fiftyone/annotation/src/agents";
 import {
   BoundingBoxOverlay,
-  KeypointVariantResolverContext,
+  KeypointPointHitAction,
   Point,
 } from "@fiftyone/lighter";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { atom, useAtom } from "jotai";
 import { useAnnotationContext } from "./state";
+import { ClickEventModifiers } from "@fiftyone/utilities";
 
 export interface SegmentationMode {
   activate(): void;
@@ -73,7 +74,7 @@ export const useSegmentationMode = (): SegmentationMode => {
     }
 
     previousSelectedLabelIdRef.current = currentId;
-  }, [pointSelection, resetToolsState, segmentationModeActive, selectedLabel]);
+  }, [selectedLabel]);
 
   // Points placed on the current label's mask are interpreted as negative;
   // points placed off-mask are positive.
@@ -81,7 +82,7 @@ export const useSegmentationMode = (): SegmentationMode => {
   const resolvePointVariant = useCallback(
     (
       relativePoint: Point,
-      { shiftKey }: KeypointVariantResolverContext
+      { shiftKey }: ClickEventModifiers
     ): PointSelectionVariant => {
       const label = selectedLabelRef.current;
       const onMask =
@@ -102,12 +103,16 @@ export const useSegmentationMode = (): SegmentationMode => {
     []
   );
 
+  // Clicking an existing point deletes it
+  const resolvePointHit = useCallback(() => KeypointPointHitAction.DELETE, []);
+
   const activate = useCallback(() => {
     setSegmentationModeActive(true);
     setActiveTask(AgentTaskType.SEGMENT);
-    pointSelection.activate(resolvePointVariant);
+    pointSelection.activate(resolvePointVariant, resolvePointHit);
   }, [
     pointSelection,
+    resolvePointHit,
     resolvePointVariant,
     setActiveTask,
     setSegmentationModeActive,

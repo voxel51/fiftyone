@@ -664,6 +664,38 @@ export class KeypointOverlay
   }
 
   /**
+   * Returns the ID of the point at the given absolute (world) position, or
+   * null if no point is within hit range.
+   *
+   * @param worldPoint Point in absolute coordinates
+   */
+  findPointIdAt(worldPoint: Point): string | null {
+    const scale = this.renderer?.getScale() ?? 1;
+    const index = this.findNearestPointIndex(worldPoint, scale);
+    return index >= 0 ? this.#points[index].id : null;
+  }
+
+  /**
+   * Returns a snapshot of the point with the given ID, or `null` if none.
+   * Returns copies so callers can safely retain the data.
+   *
+   * @param pointId Point ID
+   */
+  getPointById(
+    pointId: string
+  ): { position: [number, number]; variant?: string } | null {
+    const entry = this.#points.find((p) => p.id === pointId);
+    if (!entry) {
+      return null;
+    }
+
+    return {
+      position: [entry.position[0], entry.position[1]],
+      variant: entry.variant,
+    };
+  }
+
+  /**
    * Removes the point at the given index.
    */
   removePoint(index: number): void {

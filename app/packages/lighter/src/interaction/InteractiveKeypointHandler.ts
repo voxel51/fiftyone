@@ -5,24 +5,33 @@
 import { CommandContextManager } from "@fiftyone/commands";
 import type { EventDispatcher } from "@fiftyone/events";
 import { AddKeypointPointCommand } from "../commands/AddKeypointPointCommand";
+import { RemoveKeypointPointCommand } from "../commands/RemoveKeypointPointCommand";
 import type { LighterEventGroup } from "../events";
 import { KeypointOverlay } from "../overlay/KeypointOverlay";
 import type { Point } from "../types";
 import type { InteractionHandler } from "./InteractionManager";
+import { ClickEventModifiers, getClickModifiers } from "@fiftyone/utilities";
 
 const INTERACTIVE_KEYPOINT_HANDLER_ID = "interactive-keypoint-handler";
 
 /**
- * Modifier flags forwarded to the variant resolver from the triggering
- * pointer event. Resolver consumers can branch on these to implement
- * hold-to-modify behaviors (e.g. shift to invert semantics).
+ * Action returned by a point-hit resolver.
+ *
+ * Callers returning `undefined` fall through to the default click behavior.
  */
-export interface KeypointVariantResolverContext {
-  shiftKey: boolean;
-  altKey: boolean;
-  ctrlKey: boolean;
-  metaKey: boolean;
+export enum KeypointPointHitAction {
+  DELETE = "delete",
 }
+
+/**
+ * Context passed to a point-hit resolver when a click lands on an existing
+ * point.
+ */
+export type KeypointPointHitContext = {
+  pointId: string;
+  relativePoint: Point;
+  modifiers: ClickEventModifiers;
+};
 
 /**
  * Interactive keypoint handler for creating keypoint annotations.
@@ -39,8 +48,11 @@ export class InteractiveKeypointHandler implements InteractionHandler {
     private readonly eventBus: EventDispatcher<LighterEventGroup>,
     private readonly resolveVariant?: (
       relativePoint: Point,
-      ctx: KeypointVariantResolverContext
-    ) => string | undefined
+      ctx: ClickEventModifiers
+    ) => string | undefined,
+    private readonly resolvePointHit?: (
+      ctx: KeypointPointHitContext
+    ) => KeypointPointHitAction | undefined
   ) {}
 
   containsPoint(): boolean {
@@ -74,15 +86,30 @@ export class InteractiveKeypointHandler implements InteractionHandler {
     event: PointerEvent
   ): boolean {
     const rp = this.overlay.absolutePointToRelative(worldPoint);
-    const variant = this.resolveVariant?.(
-      { x: rp[0], y: rp[1] },
-      {
-        shiftKey: event.shiftKey,
-        altKey: event.altKey,
-        ctrlKey: event.ctrlKey,
-        metaKey: event.metaKey,
+    const modifiers = getClickModifiers(event);
+
+    // Click landed on an existing point;
+    // check whether the resolver should override the default behavior.
+    const hitId = this.overlay.findPointIdAt(worldPoint);
+    if (hitId && this.resolvePointHit) {
+      const action = this.resolvePointHit({
+        pointId: hitId,
+        relativePoint: { x: rp[0], y: rp[1] },
+        modifiers,
+      });
+
+      if (action === KeypointPointHitAction.DELETE) {
+        const command = new RemoveKeypointPointCommand(this.overlay, hitId);
+        command.execute();
+        CommandContextManager.instance()
+          .getActiveContext()
+          .pushUndoable(command);
+        return true;
       }
-    );
+      // else fall through to default behavior
+    }
+
+    const variant = this.resolveVariant?.({ x: rp[0], y: rp[1] }, modifiers);
     const pointId = this.overlay.addPoint(worldPoint, variant);
 
     CommandContextManager.instance()
