@@ -1,5 +1,5 @@
 import type { BufferReadiness } from "@fiftyone/playback/experimental/types";
-import type { Points3dFrame } from "./archetypes";
+import type { Scene3dFrame } from "./archetypes";
 import {
   disposePointCloud2WorkerClient,
   decodePointCloud2InWorker,
@@ -11,7 +11,7 @@ import {
 import type { MultimodalRawMessage } from "./types";
 
 /** Decoded point-cloud frame metadata cached for one raw Multimodal message. */
-export type MultimodalDecodedPointCloudFrame = Points3dFrame & {
+export type MultimodalDecodedPointCloudFrame = Scene3dFrame & {
   messageId: string;
   logTimeNs: number;
   publishTimeNs: number;

@@ -1,6 +1,6 @@
 import { parse } from "@foxglove/rosmsg";
 import { MessageReader } from "@foxglove/rosmsg2-serialization";
-import type { Points3dBounds, Points3dFrame } from "./archetypes";
+import type { Points3dBounds, Scene3dFrame } from "./archetypes";
 
 const POINT_CLOUD2_DEFINITION = `sensor_msgs/msg/Header header
 uint32 height
@@ -116,7 +116,7 @@ export type MultimodalPointCloud2DecodeRequest = {
 /** Worker response payload for one decoded `PointCloud2` message. */
 export type MultimodalPointCloud2DecodeResponse = {
   messageId: string;
-  frame: Points3dFrame;
+  frame: Scene3dFrame;
 };
 
 /** Decodes one ROS2 CDR `sensor_msgs/msg/PointCloud2` payload. */

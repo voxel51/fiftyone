@@ -54,9 +54,6 @@ export type Scene3dFrame = {
   frameId?: string | null;
 };
 
-/** Backwards-compatible alias for the current 3D archetype naming. */
-export type Points3dFrame = Scene3dFrame;
-
 /** Visual props for the transport-agnostic `points3d` archetype. */
 export type Points3dViewProps = {
   frame: Scene3dFrame | null;

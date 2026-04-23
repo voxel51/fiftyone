@@ -16,7 +16,7 @@ const AUTO_IMAGE_SUPPORT_SCHEMA_NAMES = new Set([
   "foxglove.CameraCalibration",
   "foxglove.ImageAnnotations",
 ]);
-const LEGACY_PANEL_TITLE_PATTERNS: Record<MultimodalPanelArchetype, RegExp[]> =
+const GENERIC_PANEL_TITLE_PATTERNS: Record<MultimodalPanelArchetype, RegExp[]> =
   {
     image: [/^image panel(?: \d+)?$/i, /^image(?: \d+)?$/i],
     "3d": [/^3d panel(?: \d+)?$/i, /^3d(?: \d+)?$/i],
@@ -146,12 +146,12 @@ function getPanelTitleBase(
   );
 }
 
-function isLegacyPanelTitle(
+function isGenericPanelTitle(
   title: string,
   archetype: MultimodalPanelArchetype
 ) {
   const normalizedTitle = title.trim();
-  return LEGACY_PANEL_TITLE_PATTERNS[archetype].some((pattern) =>
+  return GENERIC_PANEL_TITLE_PATTERNS[archetype].some((pattern) =>
     pattern.test(normalizedTitle)
   );
 }
@@ -646,7 +646,7 @@ export function shouldSyncPanelTitleToStreams(
 ) {
   const normalizedTitle = title.trim();
   return (
-    isLegacyPanelTitle(normalizedTitle, archetype) ||
+    isGenericPanelTitle(normalizedTitle, archetype) ||
     normalizedTitle === currentAutoTitle
   );
 }
@@ -659,7 +659,7 @@ export function retitleGenericPanelsInWorkspaceState(
   const nextPanels: MultimodalPanelLayoutState[] = [];
 
   state.panels.forEach((panel, index) => {
-    if (!isLegacyPanelTitle(panel.title, panel.archetype)) {
+    if (!isGenericPanelTitle(panel.title, panel.archetype)) {
       nextPanels.push(panel);
       return;
     }

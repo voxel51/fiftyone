@@ -1,4 +1,4 @@
-import type { Points3dFrame } from "./archetypes";
+import type { Scene3dFrame } from "./archetypes";
 import type {
   MultimodalPointCloud2DecodeRequest,
   MultimodalPointCloud2DecodeResponse,
@@ -21,7 +21,7 @@ type WorkerResponse =
         positions: ArrayBuffer;
         intensity: ArrayBuffer | null;
         frameId: string | null;
-        bounds: Points3dFrame["bounds"];
+        bounds: Scene3dFrame["bounds"];
       };
     }
   | {

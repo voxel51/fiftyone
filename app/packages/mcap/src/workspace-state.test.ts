@@ -372,7 +372,7 @@ describe("workspace-state", () => {
     ).toBeUndefined();
   });
 
-  it("retitles legacy generic panels from their bound stream prefixes", () => {
+  it("retitles generic panels from their bound stream prefixes", () => {
     const catalog = {
       streams: [
         {

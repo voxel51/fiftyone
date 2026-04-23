@@ -52,13 +52,6 @@ class PanelLayout(DynamicEmbeddedDocument):
     h = fof.IntField(default=1)
 
 
-class SidebarConfig(DynamicEmbeddedDocument):
-    """Legacy sidebar state kept for stale document hydration."""
-
-    left = fof.StringField(null=True)
-    right = fof.StringField(null=True)
-
-
 class PanelPlan(DynamicEmbeddedDocument):
     """Default panel state for one multimodal workspace panel."""
 
@@ -80,31 +73,3 @@ class MultimodalRenderingPlan(RenderingPlan):
     panels = fof.ListField(fof.EmbeddedDocumentField(PanelPlan))
     sidebar_width = fof.IntField(default=208)
     layout_tree = fof.DictField(null=True)
-
-
-class McapSyncConfig(SyncConfig):
-    """Legacy MCAP alias for :class:`SyncConfig`."""
-
-
-class McapFrameConfig(PanelFrameConfig):
-    """Legacy MCAP alias for :class:`PanelFrameConfig`."""
-
-
-class McapSceneConfig(PanelSceneConfig):
-    """Legacy MCAP alias for :class:`PanelSceneConfig`."""
-
-
-class McapPanelLayout(PanelLayout):
-    """Legacy MCAP alias for :class:`PanelLayout`."""
-
-
-class McapSidebarConfig(SidebarConfig):
-    """Legacy MCAP alias for :class:`SidebarConfig`."""
-
-
-class McapPanelPlan(PanelPlan):
-    """Legacy MCAP alias for :class:`PanelPlan`."""
-
-
-class McapRenderingPlan(MultimodalRenderingPlan):
-    """Legacy MCAP alias for :class:`MultimodalRenderingPlan`."""

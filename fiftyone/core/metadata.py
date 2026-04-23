@@ -320,10 +320,6 @@ class MultimodalTimeRange(DynamicEmbeddedDocument):
     end_ns = fof.IntField()
 
 
-class McapTimeRange(MultimodalTimeRange):
-    """Legacy MCAP alias for :class:`MultimodalTimeRange`."""
-
-
 class MultimodalSourceFingerprint(DynamicEmbeddedDocument):
     """Cheap source fingerprint used to detect stale multimodal state."""
 
@@ -455,30 +451,6 @@ class MultimodalMetadata(Metadata):
             transforms=transforms or [],
             location_topics=location_topics or [],
         )
-
-
-class McapSourceFingerprint(MultimodalSourceFingerprint):
-    """Legacy MCAP alias for :class:`MultimodalSourceFingerprint`."""
-
-
-class McapStreamMetadata(MultimodalStreamDescriptor):
-    """Legacy MCAP alias for :class:`MultimodalStreamDescriptor`."""
-
-
-class McapFrameDescriptor(MultimodalFrameDescriptor):
-    """Legacy MCAP alias for :class:`MultimodalFrameDescriptor`."""
-
-
-class McapTransformEdgeMetadata(MultimodalTransformEdge):
-    """Legacy MCAP alias for :class:`MultimodalTransformEdge`."""
-
-
-class McapLocationTopicMetadata(MultimodalLocationTopicDescriptor):
-    """Legacy MCAP alias for :class:`MultimodalLocationTopicDescriptor`."""
-
-
-class McapMetadata(MultimodalMetadata):
-    """Legacy MCAP alias for :class:`MultimodalMetadata`."""
 
 
 def _parse_assets(

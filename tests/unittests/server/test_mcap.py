@@ -1060,7 +1060,7 @@ def _make_stream(
         compatible_panels=compatible_panels or [],
         channel_id=channel_id,
         schema_id=schema_id,
-        time_range=fom.McapTimeRange(start_ns=start_ns, end_ns=end_ns),
+        time_range=fom.MultimodalTimeRange(start_ns=start_ns, end_ns=end_ns),
         message_count=message_count,
     )
 
@@ -1084,7 +1084,7 @@ def _make_metadata(media_path, media_field="filepath"):
         scene_id="scene-1",
         media_field=media_field,
         media_path=media_path,
-        time_range=fom.McapTimeRange(start_ns=10, end_ns=20),
+        time_range=fom.MultimodalTimeRange(start_ns=10, end_ns=20),
         streams=[
             _make_stream(
                 "/camera/front",
@@ -2090,58 +2090,36 @@ class TestMcapModule:
 
         assert adapter.catalog_calls == 1
 
-    def test_workspace_service_reingests_legacy_persisted_workspace_state(
+    def test_workspace_service_reingests_outdated_persisted_workspace_state(
         self, dataset, sample
     ):
         with tempfile.NamedTemporaryFile(suffix=".mcap") as handle:
             sample["filepath"] = handle.name
             sample.save()
 
-            legacy_metadata = _make_metadata(handle.name)
-            legacy_metadata.catalog_version = "mcap-poc-v1"
-
-            dataset._sample_collection.update_one(
-                {"_id": sample._doc.id},
-                {
-                    "$set": {
-                        "metadata": legacy_metadata.to_mongo(),
-                        "rendering_plan": {
-                            "_cls": "MultimodalRenderingPlan",
-                            "scene_id": legacy_metadata.scene_id,
-                            "media_field": "filepath",
-                            "sync": {
-                                "_cls": "SyncConfig",
-                                "timestamp_source": "header.stamp",
-                                "fallback": "log_time",
-                                "mode": "nearest",
-                            },
-                            "panels": [
-                                {
-                                    "_cls": "PanelPlan",
-                                    "panel_id": "legacy_image_panel",
-                                    "panel_type": "2d",
-                                    "content_type": "image",
-                                    "stream_id": "/camera/front",
-                                }
-                            ],
-                            "sidebars": {
-                                "_cls": "McapSidebarConfig",
-                                "left": "panel_config",
-                                "right": "stream_metadata",
-                            },
-                        },
-                    }
-                },
+            persisted_metadata = _make_metadata(handle.name)
+            persisted_metadata.catalog_version = "multimodal-workspace-v1"
+            persisted_rendering_plan = (
+                fosm.DefaultMultimodalRenderingPlanner().build_rendering_plan(
+                    persisted_metadata
+                )
+            )
+            repository = fosm.SampleMultimodalSceneRepository()
+            repository.save(
+                dataset,
+                sample,
+                persisted_metadata,
+                persisted_rendering_plan,
             )
 
             adapter = _FakeAdapter(
                 metadata=_make_metadata(handle.name),
-                fingerprint=legacy_metadata.source_fingerprint,
+                fingerprint=persisted_metadata.source_fingerprint,
             )
             service = fosm.MultimodalWorkspaceService(
                 adapter=adapter,
                 planner=fosm.DefaultMultimodalRenderingPlanner(),
-                repository=fosm.SampleMultimodalSceneRepository(),
+                repository=repository,
             )
 
             state = service.get_workspace(dataset, dataset.first(), "filepath")
@@ -2150,67 +2128,36 @@ class TestMcapModule:
         assert state.metadata.catalog_version == "multimodal-workspace-v4"
         assert state.rendering_plan.panels[0].archetype == "3d"
 
-    def test_workspace_service_reingests_v3_layout_documents_without_layout_tree(
+    def test_workspace_service_reingests_persisted_workspace_without_layout_tree(
         self, dataset, sample
     ):
         with tempfile.NamedTemporaryFile(suffix=".mcap") as handle:
             sample["filepath"] = handle.name
             sample.save()
 
-            legacy_metadata = _make_metadata(handle.name)
-            legacy_metadata.catalog_version = "multimodal-workspace-v3"
-            legacy_rendering_plan = {
-                "_cls": "MultimodalRenderingPlan",
-                "scene_id": legacy_metadata.scene_id,
-                "media_field": legacy_metadata.media_field,
-                "source_kind": legacy_metadata.source_kind,
-                "sync": {
-                    "_cls": "SyncConfig",
-                    "timestamp_source": "header.stamp",
-                    "fallback": "log_time",
-                    "mode": "nearest",
-                },
-                "panels": [
-                    {
-                        "_cls": "PanelPlan",
-                        "panel_id": "panel_3d_1",
-                        "archetype": "3d",
-                        "title": "3D panel",
-                        "visible_stream_ids": ["/lidar/top"],
-                        "frame_config": {
-                            "_cls": "PanelFrameConfig",
-                            "fixed_frame_id": "lidar_top",
-                            "display_frame_id": "lidar_top",
-                            "follow_mode": "off",
-                        },
-                        "scene_config": {
-                            "_cls": "PanelSceneConfig",
-                            "up_axis": "z",
-                            "background_color": "#10151d",
-                            "show_grid": True,
-                        },
-                    }
-                ],
-            }
-
-            dataset._sample_collection.update_one(
-                {"_id": sample._doc.id},
-                {
-                    "$set": {
-                        "metadata": legacy_metadata.to_mongo(),
-                        "rendering_plan": legacy_rendering_plan,
-                    }
-                },
+            persisted_metadata = _make_metadata(handle.name)
+            persisted_rendering_plan = (
+                fosm.DefaultMultimodalRenderingPlanner().build_rendering_plan(
+                    persisted_metadata
+                )
+            )
+            persisted_rendering_plan.layout_tree = None
+            repository = fosm.SampleMultimodalSceneRepository()
+            repository.save(
+                dataset,
+                sample,
+                persisted_metadata,
+                persisted_rendering_plan,
             )
 
             adapter = _FakeAdapter(
                 metadata=_make_metadata(handle.name),
-                fingerprint=legacy_metadata.source_fingerprint,
+                fingerprint=persisted_metadata.source_fingerprint,
             )
             service = fosm.MultimodalWorkspaceService(
                 adapter=adapter,
                 planner=fosm.DefaultMultimodalRenderingPlanner(),
-                repository=fosm.SampleMultimodalSceneRepository(),
+                repository=repository,
             )
 
             state = service.get_workspace(dataset, dataset.first(), "filepath")
@@ -2229,7 +2176,9 @@ class TestMcapModule:
                 scene_id="scene-1",
                 media_field="filepath",
                 media_path=handle.name,
-                time_range=fom.McapTimeRange(start_ns=1_000, end_ns=2_000),
+                time_range=fom.MultimodalTimeRange(
+                    start_ns=1_000, end_ns=2_000
+                ),
                 streams=[
                     _make_stream(
                         "/camera/front",
