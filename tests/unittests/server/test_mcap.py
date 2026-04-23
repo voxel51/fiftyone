@@ -8,6 +8,7 @@ FiftyOne Server MCAP adapter and service unit tests.
 
 # pylint: disable=no-member
 
+import json
 import struct
 import tempfile
 from types import SimpleNamespace
@@ -170,6 +171,15 @@ def _make_message(log_time, publish_time, data=b"payload", sequence=0):
         data=data,
         sequence=sequence,
     )
+
+
+def _decode_binary_window_response(payload):
+    assert payload[:4] == b"MMRB"
+    assert payload[4] == 1
+    manifest_size = struct.unpack("<I", payload[5:9])[0]
+    manifest_end = 9 + manifest_size
+    manifest = json.loads(payload[9:manifest_end].decode("utf-8"))
+    return manifest, payload[manifest_end:]
 
 
 def _add_proto_field(
@@ -2356,7 +2366,7 @@ class TestMcapModule:
                             "sync_timestamp_ns": 10,
                             "log_time_ns": 10,
                             "publish_time_ns": 11,
-                            "payload_b64": "AQID",
+                            "payload_bytes": b"\x01\x02\x03",
                         }
                     ]
                 },
@@ -2367,7 +2377,7 @@ class TestMcapModule:
                 repository=fosm.SampleMultimodalSceneRepository(),
             )
 
-            response = service.read_stream_window(
+            response = service.read_stream_window_binary(
                 dataset=dataset,
                 sample=sample,
                 media_field="filepath",
@@ -2377,9 +2387,10 @@ class TestMcapModule:
             )
 
         assert adapter.catalog_calls == 1
-        assert response["streams"][0]["streamId"] == "/camera/front"
-        assert response["streams"][0]["messages"][0]["payloadB64"] == "AQID"
-        assert response["streams"][0]["messages"][0]["syncTimestampNs"] == 0
+        manifest, payload_bytes = _decode_binary_window_response(response)
+        assert manifest["streams"][0]["streamId"] == "/camera/front"
+        assert manifest["streams"][0]["messages"][0]["syncTimestampNs"] == 0
+        assert payload_bytes == b"\x01\x02\x03"
 
     def test_workspace_service_reads_bootstrap_window(self, dataset, sample):
         with tempfile.NamedTemporaryFile(suffix=".mcap") as handle:
@@ -2396,7 +2407,7 @@ class TestMcapModule:
                             "sync_timestamp_ns": 10,
                             "log_time_ns": 10,
                             "publish_time_ns": 12,
-                            "payload_b64": "AQID",
+                            "payload_bytes": b"\x01\x02\x03",
                         }
                     ],
                     "/tf": [
@@ -2405,7 +2416,7 @@ class TestMcapModule:
                             "sync_timestamp_ns": 11,
                             "log_time_ns": 11,
                             "publish_time_ns": 11,
-                            "payload_b64": "BAUG",
+                            "payload_bytes": b"\x04\x05\x06",
                         }
                     ],
                 },
@@ -2416,7 +2427,7 @@ class TestMcapModule:
                 repository=fosm.SampleMultimodalSceneRepository(),
             )
 
-            response = service.read_bootstrap_window(
+            response = service.read_bootstrap_window_binary(
                 dataset=dataset,
                 sample=sample,
                 media_field="filepath",
@@ -2427,12 +2438,14 @@ class TestMcapModule:
                 transform_window_ns=100,
             )
 
-        assert response["window"] == {"startTimeNs": 0, "endTimeNs": 100}
-        assert [stream["streamId"] for stream in response["streams"]] == [
+        manifest, payload_bytes = _decode_binary_window_response(response)
+        assert manifest["window"] == {"startTimeNs": 0, "endTimeNs": 100}
+        assert [stream["streamId"] for stream in manifest["streams"]] == [
             "/lidar/top",
             "/tf",
         ]
-        assert response["streams"][0]["messages"][0]["syncTimestampNs"] == 0
+        assert manifest["streams"][0]["messages"][0]["syncTimestampNs"] == 0
+        assert payload_bytes == b"\x01\x02\x03\x04\x05\x06"
 
     def test_workspace_service_reingests_when_fingerprint_changes(
         self, dataset, sample
@@ -2581,7 +2594,7 @@ class TestMcapModule:
                             "sync_timestamp_ns": 1_100,
                             "log_time_ns": 1_100,
                             "publish_time_ns": 1_150,
-                            "payload_b64": "AQID",
+                            "payload_bytes": b"\x01\x02\x03",
                         }
                     ]
                 },
@@ -2610,7 +2623,7 @@ class TestMcapModule:
             )
 
             workspace = service.get_workspace(dataset, sample, "filepath")
-            window = service.read_stream_window(
+            window = service.read_stream_window_binary(
                 dataset=dataset,
                 sample=sample,
                 media_field="filepath",
@@ -2625,11 +2638,23 @@ class TestMcapModule:
                 stream_ids=["/camera/front"],
             )
 
+        window_manifest, payload_bytes = _decode_binary_window_response(window)
+
         assert workspace.metadata.time_range.start_ns == 1_000
-        assert window["window"] == {"startTimeNs": 0, "endTimeNs": 200}
-        assert window["streams"][0]["messages"][0]["syncTimestampNs"] == 100
-        assert window["streams"][0]["messages"][0]["logTimeNs"] == 100
-        assert window["streams"][0]["messages"][0]["publishTimeNs"] == 150
+        assert window_manifest["window"] == {
+            "startTimeNs": 0,
+            "endTimeNs": 200,
+        }
+        assert (
+            window_manifest["streams"][0]["messages"][0]["syncTimestampNs"]
+            == 100
+        )
+        assert window_manifest["streams"][0]["messages"][0]["logTimeNs"] == 100
+        assert (
+            window_manifest["streams"][0]["messages"][0]["publishTimeNs"]
+            == 150
+        )
+        assert payload_bytes == b"\x01\x02\x03"
         assert timeline["timestampsNs"] == [100, 300]
         assert "timestampsNs" not in timeline["streams"][0]
         assert timeline["streams"][0]["samples"] == [

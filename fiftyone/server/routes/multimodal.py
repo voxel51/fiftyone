@@ -9,6 +9,7 @@ FiftyOne Server multimodal routes.
 import anyio
 from starlette.endpoints import HTTPEndpoint
 from starlette.exceptions import HTTPException
+from starlette.responses import Response
 
 import fiftyone.server.multimodal as fosm
 from fiftyone.server.utils.datasets import get_dataset, get_sample_from_dataset
@@ -96,8 +97,8 @@ class MultimodalIngest(HTTPEndpoint):
         return JSONResponse(response)
 
 
-class MultimodalStreamWindow(HTTPEndpoint):
-    """Returns raw multimodal message windows for requested streams."""
+class MultimodalStreamWindowBinary(HTTPEndpoint):
+    """Returns binary raw multimodal message windows for requested streams."""
 
     async def post(self, request):
         data = await _read_request_json(request)
@@ -116,7 +117,7 @@ class MultimodalStreamWindow(HTTPEndpoint):
                     400, "startTimeNs must be <= endTimeNs"
                 )
 
-            response = fosm.read_sample_multimodal_stream_window(
+            response = fosm.read_sample_multimodal_stream_window_binary(
                 dataset=dataset,
                 sample=sample,
                 media_field=data.get("mediaField"),
@@ -133,18 +134,21 @@ class MultimodalStreamWindow(HTTPEndpoint):
         except fosm.MultimodalDependencyError as error:
             raise HTTPException(status_code=500, detail=str(error)) from error
 
-        return JSONResponse(response)
+        return Response(
+            response,
+            media_type=fosm.MULTIMODAL_RAW_BUFFER_BINARY_CONTENT_TYPE,
+        )
 
 
-class MultimodalBootstrapWindow(HTTPEndpoint):
-    """Returns the small raw-message bundle used for first paint."""
+class MultimodalBootstrapWindowBinary(HTTPEndpoint):
+    """Returns the small binary raw-message bundle used for first paint."""
 
     async def post(self, request):
         data = await _read_request_json(request)
         dataset, sample = _get_dataset_and_sample(request)
 
         try:
-            response = fosm.read_sample_multimodal_bootstrap_window(
+            response = fosm.read_sample_multimodal_bootstrap_window_binary(
                 dataset=dataset,
                 sample=sample,
                 media_field=data.get("mediaField"),
@@ -183,7 +187,10 @@ class MultimodalBootstrapWindow(HTTPEndpoint):
         except fosm.MultimodalDependencyError as error:
             raise HTTPException(status_code=500, detail=str(error)) from error
 
-        return JSONResponse(response)
+        return Response(
+            response,
+            media_type=fosm.MULTIMODAL_RAW_BUFFER_BINARY_CONTENT_TYPE,
+        )
 
 
 class MultimodalTimelineIndex(HTTPEndpoint):
@@ -228,12 +235,12 @@ MultimodalRoutes = [
         MultimodalWorkspace,
     ),
     (
-        "/dataset/{dataset_id}/sample/{sample_id}/multimodal/stream-window",
-        MultimodalStreamWindow,
+        "/dataset/{dataset_id}/sample/{sample_id}/multimodal/stream-window-binary",
+        MultimodalStreamWindowBinary,
     ),
     (
-        "/dataset/{dataset_id}/sample/{sample_id}/multimodal/bootstrap-window",
-        MultimodalBootstrapWindow,
+        "/dataset/{dataset_id}/sample/{sample_id}/multimodal/bootstrap-window-binary",
+        MultimodalBootstrapWindowBinary,
     ),
     (
         "/dataset/{dataset_id}/sample/{sample_id}/multimodal/timeline-index",

@@ -7,12 +7,13 @@ FiftyOne Server multimodal ingest and workspace helpers.
 """
 
 from abc import ABC, abstractmethod
-import base64
 from collections import OrderedDict, deque
 import importlib
+import json
 import logging
 import os
 import re
+import struct
 import time
 
 import cachetools
@@ -58,6 +59,11 @@ _DEFAULT_BOOTSTRAP_TRANSFORM_WINDOW_NS = 1_000_000_000
 _DEFAULT_BOOTSTRAP_RENDER_MESSAGE_COUNT = 2
 _TIMELINE_INDEX_CACHE_MAX_ENTRIES = 4
 _TIMELINE_INDEX_CACHE_TTL_SECONDS = 300
+MULTIMODAL_RAW_BUFFER_BINARY_CONTENT_TYPE = (
+    "application/x-fiftyone-multimodal-raw-buffer"
+)
+_MULTIMODAL_RAW_BUFFER_BINARY_MAGIC = b"MMRB"
+_MULTIMODAL_RAW_BUFFER_BINARY_VERSION = 1
 
 
 class MultimodalError(Exception):
@@ -1243,7 +1249,30 @@ class MultimodalWorkspaceService:
             rendering_plan=normalized_rendering_plan,
         )
 
-    def read_stream_window(
+    def read_stream_window_binary(
+        self,
+        dataset,
+        sample,
+        media_field,
+        stream_ids,
+        start_time_ns,
+        end_time_ns,
+        max_messages_per_stream=None,
+        source_kind=None,
+    ):
+        window_data = self._read_stream_window_data(
+            dataset=dataset,
+            sample=sample,
+            media_field=media_field,
+            stream_ids=stream_ids,
+            start_time_ns=start_time_ns,
+            end_time_ns=end_time_ns,
+            max_messages_per_stream=max_messages_per_stream,
+            source_kind=source_kind,
+        )
+        return _build_stream_window_binary_response(**window_data)
+
+    def _read_stream_window_data(
         self,
         dataset,
         sample,
@@ -1288,17 +1317,42 @@ class MultimodalWorkspaceService:
             (time.perf_counter() - started_at) * 1000,
             len(raw_messages),
         )
-        return _build_stream_window_response(
-            scene_id=state.metadata.scene_id,
-            start_time_ns=absolute_start_time_ns,
-            end_time_ns=absolute_end_time_ns,
-            stream_lookup=stream_lookup,
-            stream_ids=stream_ids,
-            raw_messages=raw_messages,
-            scene_start_ns=scene_start_ns,
-        )
+        return {
+            "scene_id": state.metadata.scene_id,
+            "start_time_ns": absolute_start_time_ns,
+            "end_time_ns": absolute_end_time_ns,
+            "stream_lookup": stream_lookup,
+            "stream_ids": stream_ids,
+            "raw_messages": raw_messages,
+            "scene_start_ns": scene_start_ns,
+        }
 
-    def read_bootstrap_window(
+    def read_bootstrap_window_binary(
+        self,
+        dataset,
+        sample,
+        media_field,
+        anchor_time_ns,
+        render_stream_ids,
+        transform_stream_ids,
+        location_stream_ids,
+        transform_window_ns=None,
+        source_kind=None,
+    ):
+        window_data = self._read_bootstrap_window_data(
+            dataset=dataset,
+            sample=sample,
+            media_field=media_field,
+            anchor_time_ns=anchor_time_ns,
+            render_stream_ids=render_stream_ids,
+            transform_stream_ids=transform_stream_ids,
+            location_stream_ids=location_stream_ids,
+            transform_window_ns=transform_window_ns,
+            source_kind=source_kind,
+        )
+        return _build_stream_window_binary_response(**window_data)
+
+    def _read_bootstrap_window_data(
         self,
         dataset,
         sample,
@@ -1365,15 +1419,15 @@ class MultimodalWorkspaceService:
         absolute_end_time_ns = (
             absolute_anchor_time_ns + absolute_transform_window_ns
         )
-        return _build_stream_window_response(
-            scene_id=state.metadata.scene_id,
-            start_time_ns=absolute_start_time_ns,
-            end_time_ns=absolute_end_time_ns,
-            stream_lookup=stream_lookup,
-            stream_ids=requested_stream_ids,
-            raw_messages=raw_messages,
-            scene_start_ns=scene_start_ns,
-        )
+        return {
+            "scene_id": state.metadata.scene_id,
+            "start_time_ns": absolute_start_time_ns,
+            "end_time_ns": absolute_end_time_ns,
+            "stream_lookup": stream_lookup,
+            "stream_ids": requested_stream_ids,
+            "raw_messages": raw_messages,
+            "scene_start_ns": scene_start_ns,
+        }
 
     def read_timeline_index(
         self,
@@ -1496,7 +1550,7 @@ def update_sample_multimodal_workspace(dataset, sample, rendering_plan):
     return _serialize_rendering_plan(state.rendering_plan)
 
 
-def read_sample_multimodal_stream_window(
+def read_sample_multimodal_stream_window_binary(
     dataset,
     sample,
     media_field,
@@ -1506,8 +1560,8 @@ def read_sample_multimodal_stream_window(
     max_messages_per_stream=None,
     source_kind=None,
 ):
-    """Reads a raw message window for the requested multimodal streams."""
-    return _get_multimodal_service().read_stream_window(
+    """Reads a binary raw message window for the requested multimodal streams."""
+    return _get_multimodal_service().read_stream_window_binary(
         dataset=dataset,
         sample=sample,
         media_field=media_field,
@@ -1540,7 +1594,7 @@ def read_sample_multimodal_timeline_index(
     )
 
 
-def read_sample_multimodal_bootstrap_window(
+def read_sample_multimodal_bootstrap_window_binary(
     dataset,
     sample,
     media_field,
@@ -1551,8 +1605,8 @@ def read_sample_multimodal_bootstrap_window(
     transform_window_ns=None,
     source_kind=None,
 ):
-    """Reads a first-paint bootstrap raw window for the requested streams."""
-    return _get_multimodal_service().read_bootstrap_window(
+    """Reads a binary first-paint bootstrap raw window."""
+    return _get_multimodal_service().read_bootstrap_window_binary(
         dataset=dataset,
         sample=sample,
         media_field=media_field,
@@ -1746,7 +1800,7 @@ def _build_workspace_response(dataset, sample, metadata, rendering_plan):
     }
 
 
-def _build_stream_window_response(
+def _build_stream_window_binary_response(
     scene_id,
     start_time_ns,
     end_time_ns,
@@ -1755,37 +1809,64 @@ def _build_stream_window_response(
     raw_messages,
     scene_start_ns,
 ):
-    return {
+    payload_chunks = []
+    payload_offset = 0
+    manifest = {
         "sceneId": scene_id,
-        "window": {
-            "startTimeNs": _to_relative_ns(start_time_ns, scene_start_ns),
-            "endTimeNs": _to_relative_ns(end_time_ns, scene_start_ns),
-        },
-        "streams": [
+        "window": _serialize_window_range(
+            start_time_ns, end_time_ns, scene_start_ns
+        ),
+        "streams": [],
+    }
+
+    for stream_id in stream_ids:
+        manifest_messages = []
+
+        for message in raw_messages.get(stream_id, []):
+            payload_bytes = _get_raw_message_payload_bytes(message)
+            payload_length = len(payload_bytes)
+            manifest_messages.append(
+                {
+                    "messageId": message["message_id"],
+                    "syncTimestampNs": _to_relative_ns(
+                        message["sync_timestamp_ns"], scene_start_ns
+                    ),
+                    "logTimeNs": _to_relative_ns(
+                        message["log_time_ns"], scene_start_ns
+                    ),
+                    "publishTimeNs": _to_relative_ns(
+                        message["publish_time_ns"], scene_start_ns
+                    ),
+                    "payloadOffset": payload_offset,
+                    "payloadLength": payload_length,
+                }
+            )
+            payload_offset += payload_length
+            if payload_length:
+                payload_chunks.append(payload_bytes)
+
+        manifest["streams"].append(
             {
                 "streamId": stream_id,
                 "schemaName": stream_lookup[stream_id].schema_name,
                 "messageEncoding": stream_lookup[stream_id].message_encoding,
-                "messages": [
-                    {
-                        "messageId": message["message_id"],
-                        "syncTimestampNs": _to_relative_ns(
-                            message["sync_timestamp_ns"], scene_start_ns
-                        ),
-                        "logTimeNs": _to_relative_ns(
-                            message["log_time_ns"], scene_start_ns
-                        ),
-                        "publishTimeNs": _to_relative_ns(
-                            message["publish_time_ns"], scene_start_ns
-                        ),
-                        "payloadB64": message["payload_b64"],
-                    }
-                    for message in raw_messages.get(stream_id, [])
-                ],
+                "messages": manifest_messages,
             }
-            for stream_id in stream_ids
-        ],
-    }
+        )
+
+    manifest_bytes = json.dumps(
+        manifest, separators=(",", ":"), ensure_ascii=False
+    ).encode("utf-8")
+
+    return b"".join(
+        (
+            _MULTIMODAL_RAW_BUFFER_BINARY_MAGIC,
+            bytes([_MULTIMODAL_RAW_BUFFER_BINARY_VERSION]),
+            struct.pack("<I", len(manifest_bytes)),
+            manifest_bytes,
+            b"".join(payload_chunks),
+        )
+    )
 
 
 def _build_timeline_index_response(
@@ -2539,8 +2620,26 @@ def _build_raw_message_record(
         "sync_timestamp_ns": int(sync_timestamp_ns),
         "log_time_ns": int(message.log_time),
         "publish_time_ns": int(message.publish_time),
-        "payload_b64": base64.b64encode(message.data).decode("ascii"),
+        "payload_bytes": bytes(message.data),
     }
+
+
+def _serialize_window_range(start_time_ns, end_time_ns, scene_start_ns):
+    return {
+        "startTimeNs": _to_relative_ns(start_time_ns, scene_start_ns),
+        "endTimeNs": _to_relative_ns(end_time_ns, scene_start_ns),
+    }
+
+
+def _get_raw_message_payload_bytes(message):
+    payload_bytes = message.get("payload_bytes")
+    if payload_bytes is not None:
+        if isinstance(payload_bytes, memoryview):
+            return payload_bytes.tobytes()
+
+        return bytes(payload_bytes)
+
+    raise KeyError("Missing raw message payload bytes")
 
 
 def _resolve_media_path(sample, media_field):
