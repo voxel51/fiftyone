@@ -8,6 +8,8 @@ import { useMultimodalPlaybackController } from "./useMultimodalPlaybackControll
 const {
   useMultimodalExperimentalTimelineMock,
   experimentalTimelineOptionsRef,
+  experimentalTimelineCurrentTimeRef,
+  experimentalTimelineSeekToTimeMock,
   useMultimodalTimelineIndexMock,
   imageCacheConstructorMock,
   renderable3dCacheConstructorMock,
@@ -201,6 +203,12 @@ const {
   }));
   const projectSceneFrameToImageOverlaysMock = vi.fn(() => []);
   const experimentalTimelineOptionsRef = { current: null as any };
+  const experimentalTimelineCurrentTimeRef = {
+    current: null as number | null,
+  };
+  const experimentalTimelineSeekToTimeMock = vi.fn(async (timeNs: number) => {
+    experimentalTimelineCurrentTimeRef.current = timeNs;
+  });
   const bootstrapFetchMock = vi.fn(async () => ({
     sceneId: "scene-1",
     window: { startTimeNs: 0, endTimeNs: 0 },
@@ -217,7 +225,10 @@ const {
         canControlPlayback:
           options?.canControlPlayback ?? Boolean(options?.name),
         playState: "paused",
-        currentTimeNs: 0,
+        currentTimeNs:
+          experimentalTimelineCurrentTimeRef.current ??
+          options?.initialTimeNs ??
+          0,
         durationNs: options?.durationNs ?? 0,
         speed: 1,
         loaded: [],
@@ -227,7 +238,7 @@ const {
         togglePlay: vi.fn(),
         setSpeed: vi.fn(),
         seekToPercentage: vi.fn(async () => {}),
-        seekToTime: vi.fn(async () => {}),
+        seekToTime: experimentalTimelineSeekToTimeMock,
         notifySeekStart: vi.fn(),
         notifySeekEnd: vi.fn(),
         stepForward: vi.fn(async () => {}),
@@ -235,6 +246,8 @@ const {
       };
     }),
     experimentalTimelineOptionsRef,
+    experimentalTimelineCurrentTimeRef,
+    experimentalTimelineSeekToTimeMock,
     useMultimodalTimelineIndexMock: vi.fn(),
     imageCacheConstructorMock: vi.fn(() => imageCacheInstance),
     renderable3dCacheConstructorMock: vi.fn(() => renderable3dCacheInstance),
@@ -463,6 +476,7 @@ describe("useMultimodalPlaybackController", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     experimentalTimelineOptionsRef.current = null;
+    experimentalTimelineCurrentTimeRef.current = null;
     imageBufferedRef.current = false;
     renderable3dBufferedRef.current = false;
     bootstrapFetchMock.mockClear();
@@ -669,6 +683,117 @@ describe("useMultimodalPlaybackController", () => {
 
     expect(result.current.timelineName).toBe("multimodal:scene-1");
     expect(result.current.hasPlayback).toBe(true);
+  });
+
+  it("initializes playback from the first visible timestamp", async () => {
+    renderHook(() =>
+      useMultimodalPlaybackController(CATALOG as any, WORKSPACE as any)
+    );
+
+    await waitFor(() => {
+      expect(bootstrapFetchMock).toHaveBeenCalled();
+    });
+
+    expect(bootstrapFetchMock).toHaveBeenLastCalledWith({
+      datasetId: "dataset-1",
+      sampleId: "sample-1",
+      request: {
+        mediaField: "filepath",
+        sourceKind: "mcap",
+        anchorTimeNs: 10,
+        renderStreamIds: ["/camera/front", "/lidar/top"],
+        transformStreamIds: [],
+        locationStreamIds: [],
+        transformWindowNs: 1_000_000_000,
+      },
+    });
+    expect(experimentalTimelineOptionsRef.current?.initialTimeNs).toBe(10);
+  });
+
+  it("realigns playback when the full timeline starts later than the fallback anchor", async () => {
+    const delayedTimelineRef = {
+      current: {
+        timeline: null,
+        isLoading: true,
+        error: null,
+        refetch: vi.fn(),
+      },
+    };
+    useMultimodalTimelineIndexMock.mockImplementation(
+      () => delayedTimelineRef.current
+    );
+
+    const { rerender } = renderHook(
+      ({ catalog, workspace }) =>
+        useMultimodalPlaybackController(catalog, workspace),
+      {
+        initialProps: {
+          catalog: CATALOG as any,
+          workspace: WORKSPACE as any,
+        },
+      }
+    );
+
+    await waitFor(() => {
+      expect(experimentalTimelineOptionsRef.current?.initialTimeNs).toBe(10);
+    });
+
+    delayedTimelineRef.current = {
+      timeline: {
+        sceneId: "scene-1",
+        timestampSource: "header.stamp",
+        timestampsNs: [20, 30],
+        streams: [
+          {
+            streamId: "/camera/front",
+            timestampsNs: [20, 30],
+            samples: [
+              {
+                timestampNs: 20,
+                logTimeNs: 10,
+                publishTimeNs: 11,
+              },
+              {
+                timestampNs: 30,
+                logTimeNs: 30,
+                publishTimeNs: 31,
+              },
+            ],
+          },
+          {
+            streamId: "/lidar/top",
+            timestampsNs: [20, 30],
+            samples: [
+              {
+                timestampNs: 20,
+                logTimeNs: 20,
+                publishTimeNs: 21,
+              },
+              {
+                timestampNs: 30,
+                logTimeNs: 30,
+                publishTimeNs: 31,
+              },
+            ],
+          },
+        ],
+      },
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    };
+
+    rerender({
+      catalog: CATALOG as any,
+      workspace: WORKSPACE as any,
+    });
+
+    await waitFor(() => {
+      expect(experimentalTimelineOptionsRef.current?.initialTimeNs).toBe(20);
+    });
+    await waitFor(() => {
+      expect(experimentalTimelineSeekToTimeMock).toHaveBeenCalledWith(20);
+    });
   });
 
   it("requests the shared timeline for all visible playback streams", async () => {

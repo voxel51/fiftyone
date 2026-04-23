@@ -12,6 +12,7 @@ import { MULTIMODAL_BUFFER_WINDOW_SIZE_NS } from "./playback-utils";
 type MultimodalExperimentalTimelineOptions = {
   name: string | null;
   durationNs: number;
+  initialTimeNs?: number;
   tickRate: number;
   coverage: number[];
   onPrefetchRange: (range: [number, number]) => Promise<void>;
@@ -122,7 +123,7 @@ export function useMultimodalExperimentalTimeline(
         defaultTime:
           existingManager?.name === options.name
             ? existingManager.snapshot.timeInt
-            : 0,
+            : Math.max(0, options.initialTimeNs ?? 0),
         speed:
           existingManager?.name === options.name ? existingManager.speed : 1,
         tickRate: options.tickRate,

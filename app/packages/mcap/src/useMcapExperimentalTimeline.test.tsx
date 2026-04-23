@@ -215,4 +215,26 @@ describe("useMultimodalExperimentalTimeline", () => {
     );
     expect(onRenderTime).not.toHaveBeenCalled();
   });
+
+  it("initializes a new timeline at the provided starting timestamp", async () => {
+    const initialTimeNs = 2_000_000_000;
+
+    const { result } = renderHook(() =>
+      useMultimodalExperimentalTimeline({
+        name: "multimodal:scene-4",
+        durationNs: 10_000_000_000,
+        initialTimeNs,
+        tickRate: 1,
+        coverage: [initialTimeNs, 3_000_000_000, 4_000_000_000],
+        onPrefetchRange: vi.fn(async () => {}),
+        onRenderTime: vi.fn(),
+      })
+    );
+
+    await waitFor(() => {
+      expect(result.current.isInitialized).toBe(true);
+    });
+
+    expect(result.current.currentTimeNs).toBe(initialTimeNs);
+  });
 });

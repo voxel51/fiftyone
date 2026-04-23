@@ -135,7 +135,6 @@ const PREFERRED_EGO_FOLLOW_FRAME_IDS = [
 ] as const;
 
 type MultimodalBootstrapPlan = {
-  anchorTimeNs: number;
   playbackPanelId: string | null;
   criticalRenderStreamIds: string[];
   criticalSupportStreamIds: string[];
@@ -430,7 +429,6 @@ function getBootstrapPlan(
   const visiblePanels = getVisiblePanels(workspaceState);
   if (!playbackPanel) {
     return {
-      anchorTimeNs: 0,
       playbackPanelId: null,
       criticalRenderStreamIds: [],
       criticalSupportStreamIds: [],
@@ -532,7 +530,6 @@ function getBootstrapPlan(
   );
 
   return {
-    anchorTimeNs: 0,
     playbackPanelId: playbackPanel.panelId,
     criticalRenderStreamIds,
     criticalSupportStreamIds,
@@ -584,6 +581,34 @@ function panelStateEqual(
     arraysEqual(left.warnings, right.warnings) &&
     (left.error?.message ?? null) === (right.error?.message ?? null)
   );
+}
+
+function getFirstStreamStartTimeNs(
+  catalog: MultimodalCatalog | null,
+  streamIds: readonly string[]
+) {
+  if (!catalog || !streamIds.length) {
+    return null;
+  }
+
+  const streamLookup = new Map(
+    catalog.streams.map((stream) => [stream.streamId, stream])
+  );
+  let earliestStartTimeNs: number | null = null;
+
+  streamIds.forEach((streamId) => {
+    const startTimeNs = streamLookup.get(streamId)?.timeRange.startNs;
+    if (typeof startTimeNs !== "number") {
+      return;
+    }
+
+    earliestStartTimeNs =
+      earliestStartTimeNs === null
+        ? startTimeNs
+        : Math.min(earliestStartTimeNs, startTimeNs);
+  });
+
+  return earliestStartTimeNs;
 }
 
 function expandPrefetchRange(
@@ -903,6 +928,22 @@ export function useMultimodalPlaybackController(
     () => getBootstrapPlan(catalog, workspaceState),
     [catalog, workspaceState]
   );
+  const initialPlaybackStreamIds = React.useMemo(() => {
+    const playbackPanel = workspaceState
+      ? getPlaybackPanel(workspaceState.panels, workspaceState.activePanelId)
+      : null;
+    if (!playbackPanel) {
+      return EMPTY_STREAM_IDS;
+    }
+
+    if (playbackPanel.archetype === "image") {
+      return playbackPanel.renderStreamId
+        ? [playbackPanel.renderStreamId]
+        : EMPTY_STREAM_IDS;
+    }
+
+    return playbackPanel.visibleStreamIds;
+  }, [panels, workspaceState]);
   const timelineRenderStreamIds =
     bootstrapPlan?.criticalRenderStreamIds ?? EMPTY_STREAM_IDS;
   const timelineRenderStreamIdsKey = React.useMemo(() => {
@@ -978,6 +1019,35 @@ export function useMultimodalPlaybackController(
       hasFullTimeline ? inferMultimodalTimelineFrameRate(timelineCoverage) : 30,
     [hasFullTimeline, timelineCoverage]
   );
+  const initialPlaybackTimeNs = React.useMemo(() => {
+    const firstTimelineTimestampNs = timeline?.timestampsNs[0];
+    if (typeof firstTimelineTimestampNs === "number") {
+      return Math.max(0, firstTimelineTimestampNs);
+    }
+
+    const firstPlaybackStreamStartTimeNs = getFirstStreamStartTimeNs(
+      catalog,
+      initialPlaybackStreamIds
+    );
+    if (typeof firstPlaybackStreamStartTimeNs === "number") {
+      return Math.max(0, firstPlaybackStreamStartTimeNs);
+    }
+
+    const firstCriticalStreamStartTimeNs = getFirstStreamStartTimeNs(
+      catalog,
+      bootstrapPlan?.criticalRenderStreamIds ?? EMPTY_STREAM_IDS
+    );
+    if (typeof firstCriticalStreamStartTimeNs === "number") {
+      return Math.max(0, firstCriticalStreamStartTimeNs);
+    }
+
+    return Math.max(0, catalog?.timeRange.startNs ?? 0);
+  }, [
+    bootstrapPlan?.criticalRenderStreamIds,
+    catalog,
+    initialPlaybackStreamIds,
+    timeline?.timestampsNs,
+  ]);
   const bootstrapPlanKey = React.useMemo(() => {
     if (!bootstrapPlan) {
       return "";
@@ -985,7 +1055,7 @@ export function useMultimodalPlaybackController(
 
     return [
       bootstrapPlan.playbackPanelId ?? "",
-      bootstrapPlan.anchorTimeNs,
+      initialPlaybackTimeNs,
       bootstrapPlan.criticalRenderStreamIds.join("\n"),
       bootstrapPlan.criticalSupportStreamIds.join("\n"),
       bootstrapPlan.nonCriticalRenderStreamIds.join("\n"),
@@ -993,7 +1063,7 @@ export function useMultimodalPlaybackController(
       bootstrapPlan.transformStreamIds.join("\n"),
       bootstrapPlan.locationStreamIds.join("\n"),
     ].join("::");
-  }, [bootstrapPlan]);
+  }, [bootstrapPlan, initialPlaybackTimeNs]);
   const [panelStates, setPanelStates] = React.useState<
     Record<string, MultimodalPlaybackPanelState>
   >({});
@@ -1070,6 +1140,9 @@ export function useMultimodalPlaybackController(
   const didMarkFirstUsefulPaintRef = React.useRef(false);
   const didMarkFullTimelineReadyRef = React.useRef(false);
   const didMarkHydratedPanelsRef = React.useRef(false);
+  const lastResetSceneIdRef = React.useRef<string | null>(null);
+  const lastInitialPlaybackTimeRef = React.useRef(0);
+  const initialTimelineAlignmentKeyRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {
     mountedRef.current = true;
@@ -1103,6 +1176,15 @@ export function useMultimodalPlaybackController(
   }, [workspaceState?.sceneId, panels]);
 
   React.useEffect(() => {
+    const sceneId = catalog?.sceneId ?? null;
+    if (sceneId === lastResetSceneIdRef.current) {
+      return;
+    }
+
+    lastResetSceneIdRef.current = sceneId;
+    currentRenderTimeRef.current = initialPlaybackTimeNs;
+    lastInitialPlaybackTimeRef.current = initialPlaybackTimeNs;
+    initialTimelineAlignmentKeyRef.current = null;
     imageCachesRef.current.forEach((cache) => cache.dispose());
     renderable3dCachesRef.current.forEach((cache) => cache.dispose());
     rawCachesRef.current.forEach((cache) => cache.dispose());
@@ -1133,7 +1215,7 @@ export function useMultimodalPlaybackController(
     didMarkFullTimelineReadyRef.current = false;
     didMarkHydratedPanelsRef.current = false;
     markPerformance("multimodal:workspace-ready");
-  }, [catalog?.sceneId]);
+  }, [catalog?.sceneId, initialPlaybackTimeNs]);
 
   React.useEffect(() => {
     const streamSamples = new Map<string, MultimodalTimelineSample[]>();
@@ -2687,6 +2769,7 @@ export function useMultimodalPlaybackController(
 
   const prepareRenderFrame = React.useCallback(
     async (targetTimestampNs: number, abortSignal: AbortSignal) => {
+      latestDirectRenderTokenRef.current += 1;
       const prepareToken = latestPreparedFrameTokenRef.current + 1;
       latestPreparedFrameTokenRef.current = prepareToken;
       const preparedFrame = await buildPreparedFrame(targetTimestampNs, {
@@ -2723,6 +2806,7 @@ export function useMultimodalPlaybackController(
 
   const previewRenderFrame = React.useCallback(
     async (targetTimestampNs: number, abortSignal: AbortSignal) => {
+      latestDirectRenderTokenRef.current += 1;
       const preparedFrame = await buildPreparedFrame(targetTimestampNs, {
         abortSignal,
       });
@@ -2754,6 +2838,8 @@ export function useMultimodalPlaybackController(
 
   const requestRenderFrame = React.useCallback(
     async (targetTimestampNs: number) => {
+      latestPreparedFrameTokenRef.current += 1;
+      preparedFrameRef.current = null;
       const renderToken = latestDirectRenderTokenRef.current + 1;
       latestDirectRenderTokenRef.current = renderToken;
       const preparedFrame = await buildPreparedFrame(targetTimestampNs);
@@ -2770,12 +2856,85 @@ export function useMultimodalPlaybackController(
     [buildPreparedFrame, commitPanelStates]
   );
 
+  const timelineOptions = React.useMemo(
+    () =>
+      timelineName
+        ? {
+            name: timelineName,
+            durationNs: timelineDurationNs,
+            initialTimeNs: initialPlaybackTimeNs,
+            tickRate: targetFrameRate,
+            coverage: timelineCoverage,
+            onPrefetchRange: ensurePlaybackRange,
+            onPrepareTime: handlePrepareTime,
+            onPreviewTime: handlePreviewTime,
+            getBufferReadiness,
+            getBufferedRanges,
+            isBufferingCritical:
+              hasFullTimeline && timelineRenderStreamIds.length > 0,
+            canControlPlayback: hasFullTimeline,
+            onRenderTime: handleRenderTime,
+          }
+        : null,
+    [
+      ensurePlaybackRange,
+      getBufferReadiness,
+      getBufferedRanges,
+      handlePrepareTime,
+      handlePreviewTime,
+      handleRenderTime,
+      hasFullTimeline,
+      initialPlaybackTimeNs,
+      timelineCoverage,
+      timelineDurationNs,
+      timelineName,
+      timelineRenderStreamIds.length,
+      targetFrameRate,
+    ]
+  );
+  const timelineState = useMultimodalExperimentalTimeline(timelineOptions);
+
+  React.useEffect(() => {
+    if (!catalog?.sceneId || !hasFullTimeline) {
+      return;
+    }
+
+    const alignmentKey = `${catalog.sceneId}:${initialPlaybackTimeNs}`;
+    if (initialTimelineAlignmentKeyRef.current === alignmentKey) {
+      return;
+    }
+
+    const previousInitialTimeNs = lastInitialPlaybackTimeRef.current;
+    lastInitialPlaybackTimeRef.current = initialPlaybackTimeNs;
+    initialTimelineAlignmentKeyRef.current = alignmentKey;
+    if (currentRenderTimeRef.current !== previousInitialTimeNs) {
+      return;
+    }
+
+    if (
+      currentRenderTimeRef.current === initialPlaybackTimeNs &&
+      timelineState.currentTimeNs === initialPlaybackTimeNs
+    ) {
+      return;
+    }
+
+    currentRenderTimeRef.current = initialPlaybackTimeNs;
+    void timelineState.seekToTime(initialPlaybackTimeNs);
+  }, [
+    catalog?.sceneId,
+    hasFullTimeline,
+    initialPlaybackTimeNs,
+    timelineState.currentTimeNs,
+    timelineState.seekToTime,
+  ]);
+
   React.useEffect(() => {
     if (!catalog || !workspaceState || !bootstrapPlan) {
       return;
     }
 
     let isCurrent = true;
+    const bootstrapAnchorTimeNs = currentRenderTimeRef.current;
     const criticalBootstrapStreamIds = dedupeStrings([
       ...bootstrapPlan.criticalRenderStreamIds,
       ...bootstrapPlan.criticalSupportStreamIds,
@@ -2798,7 +2957,7 @@ export function useMultimodalPlaybackController(
             request: {
               mediaField: catalog.mediaField,
               sourceKind: catalog.sourceKind,
-              anchorTimeNs: bootstrapPlan.anchorTimeNs,
+              anchorTimeNs: bootstrapAnchorTimeNs,
               renderStreamIds: criticalBootstrapStreamIds,
               transformStreamIds: bootstrapPlan.transformStreamIds,
               locationStreamIds: bootstrapPlan.locationStreamIds,
@@ -2813,7 +2972,7 @@ export function useMultimodalPlaybackController(
           request: {
             mediaField: catalog.mediaField,
             sourceKind: catalog.sourceKind,
-            anchorTimeNs: bootstrapPlan.anchorTimeNs,
+            anchorTimeNs: bootstrapAnchorTimeNs,
             renderStreamIds: backgroundBootstrapStreamIds,
             transformStreamIds: [],
             locationStreamIds: [],
@@ -2843,8 +3002,10 @@ export function useMultimodalPlaybackController(
 
         setIsBootstrapping(false);
         void ensurePlaybackRange(
-          [bootstrapPlan.anchorTimeNs, bootstrapPlan.anchorTimeNs],
-          { expand: false }
+          [currentRenderTimeRef.current, currentRenderTimeRef.current],
+          {
+            expand: false,
+          }
         ).then(() => requestRenderFrame(currentRenderTimeRef.current));
       })
       .catch((bootError) => {
@@ -2962,42 +3123,6 @@ export function useMultimodalPlaybackController(
       );
     }
   }, [panelStates]);
-
-  const timelineOptions = React.useMemo(
-    () =>
-      timelineName
-        ? {
-            name: timelineName,
-            durationNs: timelineDurationNs,
-            tickRate: targetFrameRate,
-            coverage: timelineCoverage,
-            onPrefetchRange: ensurePlaybackRange,
-            onPrepareTime: handlePrepareTime,
-            onPreviewTime: handlePreviewTime,
-            getBufferReadiness,
-            getBufferedRanges,
-            isBufferingCritical:
-              hasFullTimeline && timelineRenderStreamIds.length > 0,
-            canControlPlayback: hasFullTimeline,
-            onRenderTime: handleRenderTime,
-          }
-        : null,
-    [
-      ensurePlaybackRange,
-      getBufferReadiness,
-      getBufferedRanges,
-      handlePrepareTime,
-      handlePreviewTime,
-      handleRenderTime,
-      hasFullTimeline,
-      timelineCoverage,
-      timelineDurationNs,
-      timelineName,
-      timelineRenderStreamIds.length,
-      targetFrameRate,
-    ]
-  );
-  const timelineState = useMultimodalExperimentalTimeline(timelineOptions);
 
   return {
     timelineName,
