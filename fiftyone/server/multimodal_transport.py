@@ -26,12 +26,12 @@ from fiftyone.server.multimodal_codecs import (
     _SCHEMA_CODEC_REGISTRY,
     _get_schema_name,
 )
+
 from fiftyone.server.multimodal_common import (
-    _CATALOG_VERSION,
-    _MULTIMODAL_RAW_BUFFER_BINARY_MAGIC,
-    _MULTIMODAL_RAW_BUFFER_BINARY_VERSION,
-    _TIMELINE_INDEX_ARTIFACTS_SUBDIR,
-    MULTIMODAL_RAW_BUFFER_BINARY_CONTENT_TYPE,
+    CATALOG_VERSION,
+    MULTIMODAL_RAW_BUFFER_BINARY_MAGIC,
+    MULTIMODAL_RAW_BUFFER_BINARY_VERSION,
+    TIMELINE_INDEX_ARTIFACTS_SUBDIR,
     MultimodalIngestArtifacts,
     MultimodalRouteError,
 )
@@ -132,8 +132,8 @@ def _build_stream_window_binary_response(
 
     return b"".join(
         (
-            _MULTIMODAL_RAW_BUFFER_BINARY_MAGIC,
-            bytes([_MULTIMODAL_RAW_BUFFER_BINARY_VERSION]),
+            MULTIMODAL_RAW_BUFFER_BINARY_MAGIC,
+            bytes([MULTIMODAL_RAW_BUFFER_BINARY_VERSION]),
             struct.pack("<I", len(manifest_bytes)),
             manifest_bytes,
             b"".join(payload_chunks),
@@ -191,7 +191,7 @@ def _make_timeline_index_cache_key(
         )
 
     return (
-        _CATALOG_VERSION,
+        CATALOG_VERSION,
         metadata.scene_id,
         metadata.media_field,
         metadata.source_kind,
@@ -222,7 +222,7 @@ def _make_stream_window_binary_cache_key(
         )
 
     return (
-        _CATALOG_VERSION,
+        CATALOG_VERSION,
         metadata.scene_id,
         metadata.media_field,
         metadata.source_kind,
@@ -397,7 +397,7 @@ def _resolve_message_sync_timestamp_from_components(
 
 def _get_timeline_index_artifacts_dir():
     return os.path.join(
-        foc.FIFTYONE_CONFIG_DIR, _TIMELINE_INDEX_ARTIFACTS_SUBDIR
+        foc.FIFTYONE_CONFIG_DIR, TIMELINE_INDEX_ARTIFACTS_SUBDIR
     )
 
 
@@ -429,7 +429,7 @@ def _get_timeline_index_artifact_path(
     artifact_prefix = _get_timeline_index_artifact_prefix(source_path)
     filename = "%s.%s.%s.%s.%s.json" % (
         artifact_prefix,
-        _CATALOG_VERSION,
+        CATALOG_VERSION,
         int(fingerprint.size_bytes),
         int(fingerprint.mtime_ns),
         policy_suffix,
@@ -800,7 +800,7 @@ def _ingest_reader(
         frames=frames,
         transforms=list(transform_records.values()),
         location_topics=location_topics,
-        catalog_version=_CATALOG_VERSION,
+        catalog_version=CATALOG_VERSION,
     )
 
     return MultimodalIngestArtifacts(

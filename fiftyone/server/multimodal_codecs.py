@@ -18,7 +18,7 @@ from fiftyone.server.mcap_foxglove import (
 from fiftyone.server.mcap_foxglove import (
     decode_sync_timestamp_ns as decode_foxglove_sync_timestamp_ns,
 )
-from fiftyone.server.multimodal_common import _DEFAULT_STREAM
+from fiftyone.server.multimodal_common import DEFAULT_STREAM
 
 
 def _get_schema_name(schema):
@@ -108,7 +108,7 @@ class SchemaCodecRegistry:
     def classify_stream(self, schema_name):
         codec = self.get(schema_name)
         if codec is None:
-            return dict(_DEFAULT_STREAM)
+            return dict(DEFAULT_STREAM)
 
         return codec.describe_stream()
 

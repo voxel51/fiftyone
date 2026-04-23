@@ -1223,7 +1223,7 @@ def _make_metadata(media_path, media_field="filepath"):
                 frame_id="odom",
             )
         ],
-        catalog_version=fosm._CATALOG_VERSION,
+        catalog_version=fosm.CATALOG_VERSION,
     )
 
 
@@ -1316,7 +1316,7 @@ def _make_camera_rig_metadata(
         frames=frames,
         transforms=[],
         location_topics=[],
-        catalog_version=fosm._CATALOG_VERSION,
+        catalog_version=fosm.CATALOG_VERSION,
     )
 
 
@@ -1455,7 +1455,7 @@ class TestMcapModule:
                 media_field="filepath",
             )
 
-        assert metadata.catalog_version == fosm._CATALOG_VERSION
+        assert metadata.catalog_version == fosm.CATALOG_VERSION
         assert [stream.stream_id for stream in metadata.streams] == [
             "/camera/front",
             "/tf",
@@ -2094,7 +2094,7 @@ class TestMcapModule:
                 media_field="filepath",
             )
 
-        assert metadata.catalog_version == fosm._CATALOG_VERSION
+        assert metadata.catalog_version == fosm.CATALOG_VERSION
         assert [stream.kind for stream in metadata.streams] == [
             "image",
             "3d",
@@ -2720,7 +2720,7 @@ class TestMcapModule:
             state = service.get_workspace(dataset, dataset.first(), "filepath")
 
         assert adapter.catalog_calls == 1
-        assert state.metadata.catalog_version == fosm._CATALOG_VERSION
+        assert state.metadata.catalog_version == fosm.CATALOG_VERSION
         assert state.rendering_plan.panels[0].archetype == "3d"
 
     def test_workspace_service_reingests_persisted_workspace_without_layout_tree(
@@ -2758,7 +2758,7 @@ class TestMcapModule:
             state = service.get_workspace(dataset, dataset.first(), "filepath")
 
         assert adapter.catalog_calls == 1
-        assert state.metadata.catalog_version == fosm._CATALOG_VERSION
+        assert state.metadata.catalog_version == fosm.CATALOG_VERSION
         assert state.rendering_plan.layout_tree is not None
 
     def test_workspace_service_serializes_scene_relative_timestamps(
@@ -2787,7 +2787,7 @@ class TestMcapModule:
                         compatible_panels=["image"],
                     )
                 ],
-                catalog_version=fosm._CATALOG_VERSION,
+                catalog_version=fosm.CATALOG_VERSION,
             )
             adapter = _FakeAdapter(
                 metadata=metadata,

@@ -12,13 +12,13 @@ import re
 
 import fiftyone.core.rendering as fopr
 from fiftyone.server.multimodal_common import (
-    _DEFAULT_IMAGE_PANEL_LIMIT,
-    _DEFAULT_SIDEBAR_WIDTH,
-    _MAX_SIDEBAR_WIDTH,
-    _MIN_SIDEBAR_WIDTH,
-    _PREFERRED_EGO_FRAME_IDS,
-    _PREFERRED_GLOBAL_FRAME_IDS,
-    _PREFERRED_IMAGE_PANEL_TOKENS,
+    DEFAULT_IMAGE_PANEL_LIMIT,
+    DEFAULT_SIDEBAR_WIDTH,
+    MAX_SIDEBAR_WIDTH,
+    MIN_SIDEBAR_WIDTH,
+    PREFERRED_EGO_FRAME_IDS,
+    PREFERRED_GLOBAL_FRAME_IDS,
+    PREFERRED_IMAGE_PANEL_TOKENS,
     MultimodalRouteError,
 )
 
@@ -142,7 +142,7 @@ class DefaultMultimodalRenderingPlanner(MultimodalRenderingPlanner):
                 mode="nearest",
             ),
             panels=panels,
-            sidebar_width=_DEFAULT_SIDEBAR_WIDTH,
+            sidebar_width=DEFAULT_SIDEBAR_WIDTH,
             layout_tree=_build_default_rendering_plan_layout_tree(
                 [panel.panel_id for panel in panels],
                 has_three_d_panel=bool(three_d_streams),
@@ -159,7 +159,7 @@ def _get_topic_tokens(topic):
 def _get_preferred_image_panel_slot(stream):
     topic_tokens = _get_topic_tokens(getattr(stream, "topic", None))
 
-    for token in _PREFERRED_IMAGE_PANEL_TOKENS:
+    for token in PREFERRED_IMAGE_PANEL_TOKENS:
         if token in topic_tokens:
             return token
 
@@ -175,9 +175,9 @@ def _select_default_image_streams(image_streams):
     selected_streams = []
     selected_stream_ids = set()
 
-    for token in _PREFERRED_IMAGE_PANEL_TOKENS:
+    for token in PREFERRED_IMAGE_PANEL_TOKENS:
         for stream in image_streams:
-            if len(selected_streams) >= _DEFAULT_IMAGE_PANEL_LIMIT:
+            if len(selected_streams) >= DEFAULT_IMAGE_PANEL_LIMIT:
                 return selected_streams
 
             if stream.stream_id in selected_stream_ids:
@@ -191,7 +191,7 @@ def _select_default_image_streams(image_streams):
             break
 
     for stream in image_streams:
-        if len(selected_streams) >= _DEFAULT_IMAGE_PANEL_LIMIT:
+        if len(selected_streams) >= DEFAULT_IMAGE_PANEL_LIMIT:
             break
 
         if stream.stream_id in selected_stream_ids:
@@ -530,8 +530,8 @@ def _serialize_rendering_plan(rendering_plan):
             for panel in rendering_plan.panels
         ],
         "sidebarWidth": int(
-            getattr(rendering_plan, "sidebar_width", _DEFAULT_SIDEBAR_WIDTH)
-            or _DEFAULT_SIDEBAR_WIDTH
+            getattr(rendering_plan, "sidebar_width", DEFAULT_SIDEBAR_WIDTH)
+            or DEFAULT_SIDEBAR_WIDTH
         ),
         "layoutTree": _normalize_layout_tree(rendering_plan.layout_tree),
     }
@@ -560,7 +560,7 @@ def _normalize_optional_string(value, field_name):
 
 def _normalize_sidebar_width(value):
     if value is None:
-        return _DEFAULT_SIDEBAR_WIDTH
+        return DEFAULT_SIDEBAR_WIDTH
 
     try:
         width = int(value)
@@ -569,11 +569,11 @@ def _normalize_sidebar_width(value):
             400, "sidebarWidth must be an integer"
         ) from error
 
-    if width < _MIN_SIDEBAR_WIDTH or width > _MAX_SIDEBAR_WIDTH:
+    if width < MIN_SIDEBAR_WIDTH or width > MAX_SIDEBAR_WIDTH:
         raise MultimodalRouteError(
             400,
             "sidebarWidth must be between %d and %d"
-            % (_MIN_SIDEBAR_WIDTH, _MAX_SIDEBAR_WIDTH),
+            % (MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH),
         )
 
     return width
@@ -874,10 +874,10 @@ def _normalize_rendering_plan_payload(
                     getattr(
                         current_rendering_plan,
                         "sidebar_width",
-                        _DEFAULT_SIDEBAR_WIDTH,
+                        DEFAULT_SIDEBAR_WIDTH,
                     )
                     if current_rendering_plan is not None
-                    else _DEFAULT_SIDEBAR_WIDTH
+                    else DEFAULT_SIDEBAR_WIDTH
                 ),
             )
         ),
@@ -915,11 +915,11 @@ def _choose_default_fixed_frame(metadata, streams):
         candidate_frame_id.lower(): candidate_frame_id
         for candidate_frame_id in connected_candidate_frame_ids
     }
-    for preferred_frame_id in _PREFERRED_GLOBAL_FRAME_IDS:
+    for preferred_frame_id in PREFERRED_GLOBAL_FRAME_IDS:
         if preferred_frame_id in normalized_candidates:
             return normalized_candidates[preferred_frame_id]
 
-    for preferred_frame_id in _PREFERRED_EGO_FRAME_IDS:
+    for preferred_frame_id in PREFERRED_EGO_FRAME_IDS:
         if preferred_frame_id in normalized_candidates:
             return normalized_candidates[preferred_frame_id]
 
@@ -950,7 +950,7 @@ def _choose_default_follow_frame(metadata, fixed_frame_id):
         )
     }
 
-    for preferred_frame_id in _PREFERRED_EGO_FRAME_IDS:
+    for preferred_frame_id in PREFERRED_EGO_FRAME_IDS:
         if preferred_frame_id in normalized_candidates:
             return normalized_candidates[preferred_frame_id]
 

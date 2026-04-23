@@ -6,11 +6,11 @@ FiftyOne Server multimodal ingest and workspace helpers.
 |
 """
 
-from abc import ABC, abstractmethod
 import importlib
 import logging
 import os
 import time
+from abc import ABC, abstractmethod
 
 import cachetools
 
@@ -19,77 +19,45 @@ import fiftyone.core.metadata as fom
 import fiftyone.core.rendering as fopr
 from fiftyone.server.multimodal_codecs import (
     _SCHEMA_CODEC_REGISTRY,
-    FoxgloveSchemaCodec,
-    RosSchemaCodec,
-    SchemaCodec,
-    SchemaCodecRegistry,
-    _get_schema_name,
 )
 from fiftyone.server.multimodal_common import (
-    _CATALOG_VERSION,
-    _DEFAULT_BOOTSTRAP_RENDER_MESSAGE_COUNT,
-    _DEFAULT_BOOTSTRAP_TRANSFORM_WINDOW_NS,
-    _DEFAULT_SOURCE_KIND,
-    _STREAM_WINDOW_BINARY_CACHE_MAX_ENTRIES,
-    _STREAM_WINDOW_BINARY_CACHE_TTL_SECONDS,
-    _TIMELINE_INDEX_CACHE_MAX_ENTRIES,
-    _TIMELINE_INDEX_CACHE_TTL_SECONDS,
-    MULTIMODAL_RAW_BUFFER_BINARY_CONTENT_TYPE,
+    CATALOG_VERSION,
+    DEFAULT_BOOTSTRAP_RENDER_MESSAGE_COUNT,
+    DEFAULT_BOOTSTRAP_TRANSFORM_WINDOW_NS,
+    DEFAULT_SOURCE_KIND,
+    STREAM_WINDOW_BINARY_CACHE_MAX_ENTRIES,
+    STREAM_WINDOW_BINARY_CACHE_TTL_SECONDS,
+    TIMELINE_INDEX_CACHE_MAX_ENTRIES,
+    TIMELINE_INDEX_CACHE_TTL_SECONDS,
     MultimodalDependencyError,
-    MultimodalError,
-    MultimodalIngestArtifacts,
     MultimodalRouteError,
     PersistedMultimodalWorkspaceState,
 )
 from fiftyone.server.multimodal_rendering import (
     DefaultMultimodalRenderingPlanner,
-    MultimodalRenderingPlanner,
-    _build_default_layout_tree,
-    _build_default_rendering_plan_layout_tree,
     _normalize_rendering_plan_payload,
-    _select_default_image_streams,
     _serialize_rendering_plan,
     _validate_layout_tree,
 )
 from fiftyone.server.multimodal_transport import (
-    _build_message_id,
     _build_raw_message_record,
     _build_scene_id,
     _build_stream_lookup,
-    _build_stream_record,
     _build_stream_window_binary_response,
-    _build_timeline_index_policy_key,
     _build_timeline_index_response,
     _build_workspace_response,
-    _decode_catalog_details,
-    _finalize_location_topics,
-    _finalize_streams,
-    _get_raw_message_payload_bytes,
     _get_scene_start_ns,
-    _get_summary_scene_time_range,
     _has_persisted_timeline_index_artifacts,
     _ingest_reader,
-    _init_timeline_index_accumulators,
     _iter_reader_messages,
-    _iter_timeline_index_policies,
     _load_persisted_timeline_index,
     _make_stream_window_binary_cache_key,
-    _make_time_range_document,
     _make_timeline_index_cache_key,
-    _normalize_max_messages_per_stream,
-    _normalize_stream_ids,
-    _normalize_time_value,
     _normalize_timestamp_fallback,
     _normalize_timestamp_source,
     _persist_timeline_index_artifacts,
     _resolve_media_path,
     _resolve_message_sync_timestamp_ns,
-    _resolve_sample_field,
-    _serialize_frame,
-    _serialize_location_topic,
-    _serialize_stream,
-    _serialize_time_range,
-    _serialize_transform,
     _to_absolute_ns,
     _validate_known_stream_ids,
 )
@@ -279,10 +247,10 @@ class McapSourceAdapter(MultimodalSourceAdapter):
         location_stream_ids = list(location_stream_ids or [])
         auxiliary_stream_ids = transform_stream_ids + location_stream_ids
         render_message_count = int(
-            render_message_count or _DEFAULT_BOOTSTRAP_RENDER_MESSAGE_COUNT
+            render_message_count or DEFAULT_BOOTSTRAP_RENDER_MESSAGE_COUNT
         )
         transform_window_ns = int(
-            transform_window_ns or _DEFAULT_BOOTSTRAP_TRANSFORM_WINDOW_NS
+            transform_window_ns or DEFAULT_BOOTSTRAP_TRANSFORM_WINDOW_NS
         )
         response_streams = {}
         message_indexes = {}
@@ -500,7 +468,7 @@ class MultimodalWorkspaceService:
 
         if adapter is not None:
             adapter_registry.register(
-                _DEFAULT_SOURCE_KIND,
+                DEFAULT_SOURCE_KIND,
                 adapter,
                 extensions=[".mcap"],
             )
@@ -509,12 +477,12 @@ class MultimodalWorkspaceService:
         self._planner = planner or DefaultMultimodalRenderingPlanner()
         self._repository = repository or SampleMultimodalSceneRepository()
         self._timeline_index_cache = cachetools.TTLCache(
-            maxsize=_TIMELINE_INDEX_CACHE_MAX_ENTRIES,
-            ttl=_TIMELINE_INDEX_CACHE_TTL_SECONDS,
+            maxsize=TIMELINE_INDEX_CACHE_MAX_ENTRIES,
+            ttl=TIMELINE_INDEX_CACHE_TTL_SECONDS,
         )
         self._stream_window_binary_cache = cachetools.TTLCache(
-            maxsize=_STREAM_WINDOW_BINARY_CACHE_MAX_ENTRIES,
-            ttl=_STREAM_WINDOW_BINARY_CACHE_TTL_SECONDS,
+            maxsize=STREAM_WINDOW_BINARY_CACHE_MAX_ENTRIES,
+            ttl=STREAM_WINDOW_BINARY_CACHE_TTL_SECONDS,
         )
 
     def ingest_workspace(
@@ -744,7 +712,7 @@ class MultimodalWorkspaceService:
             state.rendering_plan.sync.fallback
         )
         absolute_transform_window_ns = int(
-            transform_window_ns or _DEFAULT_BOOTSTRAP_TRANSFORM_WINDOW_NS
+            transform_window_ns or DEFAULT_BOOTSTRAP_TRANSFORM_WINDOW_NS
         )
         adapter = self._adapter_registry.get(state.metadata.source_kind)
 
@@ -756,7 +724,7 @@ class MultimodalWorkspaceService:
             transform_stream_ids=transform_stream_ids,
             location_stream_ids=location_stream_ids,
             transform_window_ns=absolute_transform_window_ns,
-            render_message_count=_DEFAULT_BOOTSTRAP_RENDER_MESSAGE_COUNT,
+            render_message_count=DEFAULT_BOOTSTRAP_RENDER_MESSAGE_COUNT,
             timestamp_source=timestamp_source,
             fallback=fallback,
         )
@@ -1018,7 +986,7 @@ def _requires_ingest(
     if metadata is None or rendering_plan is None:
         return True
 
-    if metadata.catalog_version != _CATALOG_VERSION:
+    if metadata.catalog_version != CATALOG_VERSION:
         return True
 
     if metadata.source_kind != source_kind:
