@@ -43,34 +43,43 @@ export interface ActionToolbarProps {
   className?: string;
 }
 
-const ActionButton = ({ action }: { action: ToolbarActionItem }) => (
-  <Tooltip
-    portal
-    content={
-      <Box>
-        {typeof action.tooltip === "string" ? (
-          <Typography variant="body2">{action.tooltip}</Typography>
-        ) : (
-          action.tooltip
-        )}
-        {action.shortcut && (
-          <Typography variant="caption" sx={{ opacity: 0.7 }}>
-            {action.shortcut}
-          </Typography>
-        )}
-      </Box>
-    }
-    anchor={Anchor.Right}
-  >
+const ActionButton = ({ action }: { action: ToolbarActionItem }) => {
+  const button = (
     <ToolbarAction
       active={action.isActive}
       disabled={action.isDisabled}
       onClick={action.onClick}
+      aria-label={action.label}
     >
       {action.icon}
     </ToolbarAction>
-  </Tooltip>
-);
+  );
+
+  if (!action.tooltip && !action.shortcut) return button;
+
+  return (
+    <Tooltip
+      portal
+      content={
+        <Box>
+          {typeof action.tooltip === "string" ? (
+            <Typography variant="body2">{action.tooltip}</Typography>
+          ) : (
+            action.tooltip
+          )}
+          {action.shortcut && (
+            <Typography variant="caption" sx={{ opacity: 0.7 }}>
+              {action.shortcut}
+            </Typography>
+          )}
+        </Box>
+      }
+      anchor={Anchor.Right}
+    >
+      {button}
+    </Tooltip>
+  );
+};
 
 export const ActionToolbar = ({
   groups,
