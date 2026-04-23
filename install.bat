@@ -54,13 +54,12 @@ IF NOT ERRORLEVEL 1 (
 )
 
 for /f %%v in ('%PYTHON_CMD% -c "import sys; print(""{}.{}"".format(sys.version_info[0], sys.version_info[1]))"') do set PY_VER=%%v
-%PYTHON_CMD% -c "import sys; raise SystemExit(0 if sys.version_info[0] == 3 and %MINOR_MIN% <= sys.version_info[1] <= %MINOR_MAX% else 1)"
-IF ERRORLEVEL 1 (
-  echo Python %PY_VER% is NOT supported. Please use Python 3.%MINOR_MIN% - 3.%MINOR_MAX%.
-  exit /b 1
+for /f %%s in ('%PYTHON_CMD% -c "import sys; print('SUPPORTED' if (sys.version_info[0] == 3 and %MINOR_MIN% <= sys.version_info[1] <= %MINOR_MAX%) else 'UNSUPPORTED')"') do set PY_STATUS=%%s
+IF /I "%PY_STATUS%"=="UNSUPPORTED" (
+  echo Warning: Python %PY_VER% is not officially supported. It is recommended to use Python 3.%MINOR_MIN% - 3.%MINOR_MAX%.
+) else (
+  echo Python %PY_VER% is supported.
 )
-
-echo Python %PY_VER% is supported.
 
 :: Resolve pip backend
 where uv >nul 2>&1
