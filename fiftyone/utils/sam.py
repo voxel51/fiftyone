@@ -687,7 +687,9 @@ class SAMSegmenterOutputProcessor(fout.OutputProcessor):
         labels = [None] * len(masks) if not labels else labels
         detections = []
 
-        for box, label, mask, score in zip(boxes, labels, masks, scores):
+        for box, label, mask, score in zip(
+            boxes, labels, masks, scores, strict=True
+        ):
             if (
                 confidence_thresh is not None
                 and score is not None
