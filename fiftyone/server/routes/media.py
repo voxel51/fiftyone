@@ -27,7 +27,7 @@ async def ranged(
     file: AsyncBufferedReader,
     start: int = 0,
     end: int = None,
-    block_size: int = 8192,
+    block_size: int = 131072,
 ) -> t.AsyncGenerator:
     consumed = 0
 
@@ -92,6 +92,7 @@ class Media(HTTPEndpoint):
         file_size = (await aio_stat(path)).st_size
         content_range = request.headers.get("range")
         content_length = file_size
+        file_response = ranged(file, start=0, end=file_size)
         status_code = 200
         headers = {}
 
