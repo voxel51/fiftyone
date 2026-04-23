@@ -123,6 +123,47 @@ describe("Image2dView", () => {
     );
   });
 
+  it("reuses the same predecoded texture across frame updates", () => {
+    const disposeSpy = vi.spyOn(THREE.Texture.prototype, "dispose");
+    const { rerender, unmount } = render(
+      <Image2dView
+        frame={{
+          id: "frame-1",
+          src: "blob:frame-1",
+          timestampNs: 10,
+          imageSource: {
+            naturalWidth: 640,
+            naturalHeight: 480,
+            width: 640,
+            height: 480,
+          } as HTMLImageElement,
+        }}
+      />
+    );
+
+    rerender(
+      <Image2dView
+        frame={{
+          id: "frame-2",
+          src: "blob:frame-2",
+          timestampNs: 20,
+          imageSource: {
+            naturalWidth: 640,
+            naturalHeight: 480,
+            width: 640,
+            height: 480,
+          } as HTMLImageElement,
+        }}
+      />
+    );
+
+    expect(disposeSpy).not.toHaveBeenCalled();
+
+    unmount();
+
+    expect(disposeSpy).toHaveBeenCalledTimes(1);
+  });
+
   it("renders nothing when there is no frame", () => {
     const { container } = render(<Image2dView frame={null} />);
     expect(container.firstChild).toBeNull();
@@ -253,5 +294,53 @@ describe("Image2dView", () => {
       expect(overlay.style.width).toBe("640px");
       expect(overlay.style.height).toBe("480px");
     });
+  });
+
+  it("renders per-segment stroke colors for polyline overlays", () => {
+    const { container } = render(
+      <Image2dView
+        frame={{
+          id: "frame-1",
+          src: "blob:frame-1",
+          timestampNs: 10,
+          overlays: [
+            {
+              kind: "polyline",
+              id: "polyline:0",
+              points: [
+                { x: 10, y: 10 },
+                { x: 30, y: 10 },
+                { x: 30, y: 30 },
+                { x: 10, y: 30 },
+              ],
+              closed: true,
+              fillColor: "rgba(255, 255, 255, 0.15)",
+              mode: "line-loop",
+              segmentColors: [
+                "rgba(255, 0, 0, 1)",
+                "rgba(0, 255, 0, 1)",
+                "rgba(255, 255, 0, 1)",
+                "rgba(255, 0, 255, 1)",
+              ],
+              strokeColor: "rgba(0, 0, 255, 1)",
+              strokeWidth: 2,
+            },
+          ],
+        }}
+      />
+    );
+
+    const lines = Array.from(container.querySelectorAll("line"));
+    expect(lines).toHaveLength(4);
+    expect(lines.map((line) => line.getAttribute("stroke"))).toEqual([
+      "rgba(255, 0, 0, 1)",
+      "rgba(0, 255, 0, 1)",
+      "rgba(255, 255, 0, 1)",
+      "rgba(255, 0, 255, 1)",
+    ]);
+
+    const polygon = container.querySelector("polygon");
+    expect(polygon?.getAttribute("fill")).toBe("rgba(255, 255, 255, 0.15)");
+    expect(polygon?.getAttribute("stroke")).toBe("none");
   });
 });

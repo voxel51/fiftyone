@@ -135,6 +135,13 @@ function projectPlanePoint(
   };
 }
 
+function configureTexture(texture: THREE.Texture) {
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.generateMipmaps = false;
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+}
+
 function TexturedImagePlane({
   objectFit,
   onPlaneLayout,
@@ -193,13 +200,10 @@ function TextureBackedImagePlane({
   const imageHeight = image.naturalHeight ?? image.height ?? 1;
 
   React.useEffect(() => {
-    texture.colorSpace = THREE.SRGBColorSpace;
-    texture.generateMipmaps = false;
-    texture.minFilter = THREE.LinearFilter;
-    texture.magFilter = THREE.LinearFilter;
+    configureTexture(texture);
     texture.needsUpdate = true;
     invalidate();
-  }, [invalidate, texture]);
+  }, [invalidate, texture, textureKey]);
 
   const planeScale = React.useMemo(() => {
     return getPlaneScale({
@@ -247,14 +251,15 @@ function PredecodedImagePlane({
   src: string;
 }) {
   const texture = React.useMemo(() => {
-    const nextTexture = new THREE.Texture(imageSource);
-    nextTexture.colorSpace = THREE.SRGBColorSpace;
-    nextTexture.generateMipmaps = false;
-    nextTexture.minFilter = THREE.LinearFilter;
-    nextTexture.magFilter = THREE.LinearFilter;
-    nextTexture.needsUpdate = true;
+    const nextTexture = new THREE.Texture();
+    configureTexture(nextTexture);
     return nextTexture;
-  }, [imageSource, src]);
+  }, []);
+
+  React.useLayoutEffect(() => {
+    texture.image = imageSource;
+    texture.needsUpdate = true;
+  }, [imageSource, texture]);
 
   React.useEffect(() => {
     return () => {
@@ -390,9 +395,12 @@ function getOverlayBounds(overlays: Image2dOverlayPrimitive[]) {
   };
 }
 
-function renderPolyline(overlay: Image2dOverlayPolyline) {
+function getPolylineSegments(overlay: Image2dOverlayPolyline) {
   if (overlay.mode === "line-list") {
-    const segments: React.ReactNode[] = [];
+    const segments: Array<{
+      start: Image2dOverlayPolyline["points"][number];
+      end: Image2dOverlayPolyline["points"][number];
+    }> = [];
 
     for (let index = 0; index < overlay.points.length; index += 2) {
       const start = overlay.points[index];
@@ -401,20 +409,72 @@ function renderPolyline(overlay: Image2dOverlayPolyline) {
         continue;
       }
 
-      segments.push(
-        <line
-          key={`${overlay.id}:${index}`}
-          x1={start.x}
-          x2={end.x}
-          y1={start.y}
-          y2={end.y}
-          stroke={overlay.strokeColor ?? "rgba(255,255,255,1)"}
-          strokeWidth={overlay.strokeWidth ?? 2}
-        />
-      );
+      segments.push({ start, end });
     }
 
     return segments;
+  }
+
+  const segments: Array<{
+    start: Image2dOverlayPolyline["points"][number];
+    end: Image2dOverlayPolyline["points"][number];
+  }> = [];
+
+  for (let index = 0; index < overlay.points.length - 1; index += 1) {
+    const start = overlay.points[index];
+    const end = overlay.points[index + 1];
+    if (!start || !end) {
+      continue;
+    }
+
+    segments.push({ start, end });
+  }
+
+  if (overlay.closed && overlay.points.length > 1) {
+    const start = overlay.points[overlay.points.length - 1];
+    const end = overlay.points[0];
+    if (start && end) {
+      segments.push({ start, end });
+    }
+  }
+
+  return segments;
+}
+
+function renderPolyline(overlay: Image2dOverlayPolyline) {
+  const segments = getPolylineSegments(overlay);
+  const shouldRenderPerSegmentColors =
+    overlay.mode === "line-list" || Boolean(overlay.segmentColors?.length);
+
+  if (shouldRenderPerSegmentColors) {
+    return (
+      <>
+        {overlay.closed && overlay.fillColor ? (
+          <polygon
+            fill={overlay.fillColor}
+            points={overlay.points
+              .map((point) => `${point.x},${point.y}`)
+              .join(" ")}
+            stroke="none"
+          />
+        ) : null}
+        {segments.map((segment, index) => (
+          <line
+            key={`${overlay.id}:${index}`}
+            x1={segment.start.x}
+            x2={segment.end.x}
+            y1={segment.start.y}
+            y2={segment.end.y}
+            stroke={
+              overlay.segmentColors?.[index] ??
+              overlay.strokeColor ??
+              "rgba(255,255,255,1)"
+            }
+            strokeWidth={overlay.strokeWidth ?? 2}
+          />
+        ))}
+      </>
+    );
   }
 
   const points = overlay.points
@@ -437,6 +497,29 @@ function renderPolyline(overlay: Image2dOverlayPolyline) {
       points={points}
       stroke={overlay.strokeColor ?? "rgba(255,255,255,1)"}
       strokeWidth={overlay.strokeWidth ?? 2}
+    />
+  );
+}
+
+function PointOverlayCircle({
+  index,
+  overlay,
+  point,
+}: {
+  index: number;
+  overlay: Extract<Image2dOverlayPrimitive, { kind: "points" }>;
+  point: Extract<Image2dOverlayPrimitive, { kind: "points" }>["points"][number];
+}) {
+  const pointColor = overlay.pointColors?.[index] ?? null;
+
+  return (
+    <circle
+      cx={point.x}
+      cy={point.y}
+      fill={pointColor ?? overlay.fillColor ?? overlay.strokeColor ?? "white"}
+      r={overlay.pointRadius ?? 3}
+      stroke={pointColor ?? overlay.strokeColor ?? "transparent"}
+      strokeWidth={overlay.strokeWidth ?? 0}
     />
   );
 }
@@ -491,14 +574,11 @@ function ImageOverlaySvg({
           return (
             <g key={overlay.id}>
               {overlay.points.map((point, index) => (
-                <circle
+                <PointOverlayCircle
                   key={`${overlay.id}:${index}`}
-                  cx={point.x}
-                  cy={point.y}
-                  fill={overlay.fillColor ?? overlay.strokeColor ?? "white"}
-                  r={overlay.pointRadius ?? 3}
-                  stroke={overlay.strokeColor ?? "transparent"}
-                  strokeWidth={overlay.strokeWidth ?? 0}
+                  index={index}
+                  overlay={overlay}
+                  point={point}
                 />
               ))}
             </g>

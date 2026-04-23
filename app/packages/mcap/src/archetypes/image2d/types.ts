@@ -19,6 +19,7 @@ export type Image2dOverlayPoints = {
   id: string;
   points: Image2dOverlayPoint[];
   fillColor?: string | null;
+  pointColors?: Array<string | null> | null;
   strokeColor?: string | null;
   strokeWidth?: number | null;
   pointRadius?: number | null;
@@ -30,6 +31,7 @@ export type Image2dOverlayPolyline = {
   points: Image2dOverlayPoint[];
   closed?: boolean;
   strokeColor?: string | null;
+  segmentColors?: Array<string | null> | null;
   fillColor?: string | null;
   strokeWidth?: number | null;
   mode?: "line-strip" | "line-loop" | "line-list";

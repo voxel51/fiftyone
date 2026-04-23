@@ -85,6 +85,50 @@ describe("decodeFoxgloveImageAnnotationsPayload", () => {
     expect(pedestrianText?.textColor).toBe("rgba(255,255,255,1)");
   });
 
+  it("uses explicit outlineColors for polyline segment strokes", () => {
+    decodeFoxgloveImageAnnotationsMessageMock.mockReturnValue({
+      timestamp: { seconds: 1, nanos: 0 },
+      metadata: [{ key: ".category", value: "vehicle" }],
+      circles: [],
+      points: [
+        {
+          type: 2,
+          points: [
+            { x: 10, y: 10 },
+            { x: 30, y: 10 },
+            { x: 30, y: 30 },
+            { x: 10, y: 30 },
+          ],
+          outlineColor: { r: 0, g: 0, b: 1, a: 1 },
+          outlineColors: [
+            { r: 1, g: 0, b: 0, a: 1 },
+            { r: 0, g: 1, b: 0, a: 1 },
+            { r: 1, g: 1, b: 0, a: 1 },
+            { r: 1, g: 0, b: 1, a: 1 },
+          ],
+          fillColor: { r: 0.2, g: 0.2, b: 0.2, a: 0.2 },
+          metadata: [{ key: ".category", value: "vehicle" }],
+        },
+      ],
+      texts: [],
+    });
+
+    const decoded = decodeFoxgloveImageAnnotationsPayload(new Uint8Array([1]));
+    const [polyline] = decoded.overlays;
+
+    expect(polyline).toMatchObject({
+      kind: "polyline",
+      fillColor: "rgba(51, 51, 51, 0.2)",
+      strokeColor: "rgba(0, 0, 255, 1)",
+      segmentColors: [
+        "rgba(255, 0, 0, 1)",
+        "rgba(0, 255, 0, 1)",
+        "rgba(255, 255, 0, 1)",
+        "rgba(255, 0, 255, 1)",
+      ],
+    });
+  });
+
   it("preserves explicit foxglove colors when semantic metadata is absent", () => {
     decodeFoxgloveImageAnnotationsMessageMock.mockReturnValue({
       timestamp: { seconds: 1, nanos: 0 },

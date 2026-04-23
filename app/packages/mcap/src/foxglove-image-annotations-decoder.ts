@@ -141,6 +141,27 @@ function resolveAnnotationSemanticColors(
   return getImageAnnotationSemanticColors(colorKey);
 }
 
+function decodeOutlineColors(
+  colors:
+    | ReturnType<
+        typeof decodeFoxgloveImageAnnotationsMessage
+      >["points"][number]["outlineColors"]
+    | null
+    | undefined
+) {
+  if (!colors?.length) {
+    return null;
+  }
+
+  return colors.map((color) => {
+    if (!color) {
+      return null;
+    }
+
+    return foxgloveColorToCss(color);
+  });
+}
+
 function buildPointsAnnotationOverlays(
   annotation: ReturnType<
     typeof decodeFoxgloveImageAnnotationsMessage
@@ -149,21 +170,27 @@ function buildPointsAnnotationOverlays(
   messageMetadataEntries: ImageAnnotationMetadataEntry[]
 ): Image2dOverlayPrimitive[] {
   const points = (annotation.points ?? []).map(decodePoint);
+  const annotationMetadataEntries = decodeMetadataEntries(annotation.metadata);
   const strokeWidth = Math.max(1, Number(annotation.thickness ?? 1));
-  const defaultStrokeColor = foxgloveColorToCss(
-    annotation.outlineColor,
-    "rgba(57, 198, 255, 1)"
-  );
-  const defaultFillColor = foxgloveColorToCss(
-    annotation.fillColor,
-    "rgba(57, 198, 255, 0.18)"
-  );
+  const explicitStrokeColor = annotation.outlineColor
+    ? foxgloveColorToCss(annotation.outlineColor)
+    : null;
+  const explicitFillColor = annotation.fillColor
+    ? foxgloveColorToCss(annotation.fillColor)
+    : null;
   const semanticColors = resolveAnnotationSemanticColors(
-    decodeMetadataEntries(annotation.metadata),
+    annotationMetadataEntries,
     messageMetadataEntries
   );
-  const strokeColor = semanticColors?.strokeColor ?? defaultStrokeColor;
-  const fillColor = semanticColors?.fillColor ?? defaultFillColor;
+  const strokeColor =
+    explicitStrokeColor ??
+    semanticColors?.strokeColor ??
+    "rgba(57, 198, 255, 1)";
+  const fillColor =
+    explicitFillColor ??
+    semanticColors?.fillColor ??
+    "rgba(57, 198, 255, 0.18)";
+  const outlineColors = decodeOutlineColors(annotation.outlineColors);
 
   if (!points.length) {
     return [];
@@ -178,6 +205,7 @@ function buildPointsAnnotationOverlays(
         id: `points:${index}`,
         points,
         fillColor,
+        pointColors: outlineColors,
         strokeColor,
         strokeWidth,
         pointRadius: Math.max(2, strokeWidth * 0.75),
@@ -201,6 +229,7 @@ function buildPointsAnnotationOverlays(
       points,
       closed: mode === "line-loop",
       fillColor,
+      segmentColors: outlineColors,
       strokeColor,
       strokeWidth,
       mode,
@@ -231,11 +260,15 @@ export function decodeFoxgloveImageAnnotationsPayload(
       center: decodePoint(circle.position),
       radius: Math.max(0, Number(circle.diameter ?? 0) / 2),
       fillColor:
+        (circle.fillColor ? foxgloveColorToCss(circle.fillColor) : null) ??
         semanticColors?.fillColor ??
-        foxgloveColorToCss(circle.fillColor, "rgba(57, 198, 255, 0.16)"),
+        "rgba(57, 198, 255, 0.16)",
       strokeColor:
+        (circle.outlineColor
+          ? foxgloveColorToCss(circle.outlineColor)
+          : null) ??
         semanticColors?.strokeColor ??
-        foxgloveColorToCss(circle.outlineColor, "rgba(57, 198, 255, 1)"),
+        "rgba(57, 198, 255, 1)",
       strokeWidth: Math.max(1, Number(circle.thickness ?? 1)),
     });
   });
@@ -270,11 +303,15 @@ export function decodeFoxgloveImageAnnotationsPayload(
       text: text.text ?? "",
       fontSize: Math.max(10, Number(text.fontSize ?? 14)),
       textColor:
+        (text.textColor ? foxgloveColorToCss(text.textColor) : null) ??
         semanticColors?.textColor ??
-        foxgloveColorToCss(text.textColor, "rgba(255,255,255,1)"),
+        "rgba(255,255,255,1)",
       backgroundColor:
+        (text.backgroundColor
+          ? foxgloveColorToCss(text.backgroundColor)
+          : null) ??
         semanticColors?.backgroundColor ??
-        foxgloveColorToCss(text.backgroundColor, "rgba(11, 18, 29, 0.82)"),
+        "rgba(11, 18, 29, 0.82)",
     });
   });
 
