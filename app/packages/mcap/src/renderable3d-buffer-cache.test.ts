@@ -96,6 +96,41 @@ describe("MultimodalRenderable3dBufferCache", () => {
     cache.dispose();
   });
 
+  it("derives stable primitive ids from the stream instead of the message id", async () => {
+    const cache = new MultimodalRenderable3dBufferCache({
+      datasetId: "dataset-1",
+      sampleId: "sample-1",
+      sceneId: "scene-1",
+      streamId: "/lidar/top",
+      schemaName: "sensor_msgs/msg/PointCloud2",
+      mediaField: "filepath",
+      sourceKind: "mcap",
+      sceneRange: { startNs: 0, endNs: 100 },
+    });
+    const firstMessage = {
+      messageId: "cloud-1",
+      logTimeNs: 10,
+      publishTimeNs: 10,
+      syncTimestampNs: 10,
+      payload: new Uint8Array([1]),
+    };
+    const secondMessage = {
+      messageId: "cloud-2",
+      logTimeNs: 20,
+      publishTimeNs: 20,
+      syncTimestampNs: 20,
+      payload: new Uint8Array([2]),
+    };
+
+    const firstFrame = await cache.decodeMessage(firstMessage as any);
+    const secondFrame = await cache.decodeMessage(secondMessage as any);
+
+    expect(firstFrame.primitives[0].id).toBe("/lidar/top:points:0");
+    expect(secondFrame.primitives[0].id).toBe("/lidar/top:points:0");
+
+    cache.dispose();
+  });
+
   it("evicts least-recently-used decoded frames when the cache reaches capacity", async () => {
     decodeScene3dMessageMock.mockImplementation(
       async (_schemaName: string, message: { messageId: string }) => ({

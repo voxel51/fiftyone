@@ -300,6 +300,60 @@ describe("Points3dView", () => {
     expect(fitPerspectiveCameraToBoundsMock).toHaveBeenCalledTimes(1);
   });
 
+  it("reuses primitive geometry when the vertex buffer size stays stable", () => {
+    const disposeSpy = vi.spyOn(THREE.BufferGeometry.prototype, "dispose");
+    const { rerender, unmount } = render(<Points3dView frame={FRAME} />);
+
+    rerender(
+      <Points3dView
+        frame={{
+          ...FRAME,
+          id: "cloud-2",
+          primitives: [
+            {
+              ...FRAME.primitives[0],
+              positions: new Float32Array([4, 5, 6, 7, 8, 9]),
+            },
+          ],
+        }}
+      />
+    );
+
+    expect(disposeSpy).not.toHaveBeenCalled();
+
+    unmount();
+
+    expect(disposeSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("recreates primitive geometry when the vertex buffer size changes", () => {
+    const disposeSpy = vi.spyOn(THREE.BufferGeometry.prototype, "dispose");
+    const { rerender, unmount } = render(<Points3dView frame={FRAME} />);
+
+    rerender(
+      <Points3dView
+        frame={{
+          ...FRAME,
+          id: "cloud-2",
+          primitives: [
+            {
+              ...FRAME.primitives[0],
+              pointCount: 3,
+              intensity: new Float32Array([0.1, 0.5, 0.9]),
+              positions: new Float32Array([0, 0, 0, 2, 3, 4, 5, 6, 7]),
+            },
+          ],
+        }}
+      />
+    );
+
+    expect(disposeSpy).toHaveBeenCalledTimes(1);
+
+    unmount();
+
+    expect(disposeSpy).toHaveBeenCalledTimes(2);
+  });
+
   it("refits the camera when the reset token changes", () => {
     const { rerender } = render(
       <Points3dView frame={FRAME} resetViewToken="reset-1" />
@@ -308,6 +362,65 @@ describe("Points3dView", () => {
     rerender(<Points3dView frame={FRAME} resetViewToken="reset-2" />);
 
     expect(fitPerspectiveCameraToBoundsMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("seeds pose follow with a closer chase offset", () => {
+    render(
+      <Points3dView
+        followPose={{
+          position: [10, 0, 0],
+          orientation: [0, 0, 0, 1],
+        }}
+        frame={FRAME}
+      />
+    );
+
+    expect(cameraRef.current.position.toArray()).toEqual([7, -3, 2]);
+    expect(controlsRef.current?.target.toArray()).toEqual([10, 0, 0]);
+  });
+
+  it("seeds position follow with the closer chase offset", () => {
+    render(
+      <Points3dView
+        followPose={{
+          position: [4, 5, 6],
+          orientation: null,
+        }}
+        frame={FRAME}
+      />
+    );
+
+    expect(cameraRef.current.position.toArray()).toEqual([1, 2, 8]);
+    expect(controlsRef.current?.target.toArray()).toEqual([4, 5, 6]);
+  });
+
+  it("reseeds the closer chase offset when the reset token changes", () => {
+    const followPose = {
+      position: [10, 0, 0] as [number, number, number],
+      orientation: [0, 0, 0, 1] as [number, number, number, number],
+    };
+    const { rerender } = render(
+      <Points3dView
+        followPose={followPose}
+        frame={FRAME}
+        resetViewToken="reset-1"
+      />
+    );
+
+    expect(controlsRef.current).not.toBeNull();
+    cameraRef.current.position.set(18, 0, 10);
+    controlsRef.current?.target.set(10, 0, 0);
+
+    rerender(
+      <Points3dView
+        followPose={followPose}
+        frame={FRAME}
+        resetViewToken="reset-2"
+      />
+    );
+
+    expect(cameraRef.current.position.toArray()).toEqual([7, -3, 2]);
+    expect(controlsRef.current?.target.toArray()).toEqual([10, 0, 0]);
   });
 
   it("preserves the user's zoom while follow pose updates", () => {

@@ -106,6 +106,7 @@ const GRID_FADE_MULTIPLIER = 12;
 const GRID_MIN_FADE_DISTANCE = 80;
 const GRID_MIN_SIZE = 16;
 const GIZMO_MARGIN = [52, 50] as const;
+const DEFAULT_EGO_FOLLOW_SEED_OFFSET = new THREE.Vector3(-3, -3, 2);
 
 type ViewUpAxis = NonNullable<Points3dViewProps["upAxis"]>;
 
@@ -218,6 +219,42 @@ function getPrimitiveAnchorPosition(primitive: Scene3dPrimitive) {
     number,
     number
   ];
+}
+
+function setGeometryAttribute(
+  geometry: THREE.BufferGeometry,
+  attributeName: string,
+  array: Float32Array,
+  itemSize: number
+) {
+  const existingAttribute = geometry.getAttribute(attributeName);
+
+  if (
+    existingAttribute instanceof THREE.BufferAttribute &&
+    existingAttribute.itemSize === itemSize &&
+    existingAttribute.array instanceof Float32Array &&
+    existingAttribute.array.length === array.length
+  ) {
+    existingAttribute.array.set(array);
+    existingAttribute.needsUpdate = true;
+    return;
+  }
+
+  const nextAttribute = new THREE.BufferAttribute(
+    new Float32Array(array),
+    itemSize
+  );
+  nextAttribute.setUsage(THREE.DynamicDrawUsage);
+  geometry.setAttribute(attributeName, nextAttribute);
+}
+
+function clearGeometryAttribute(
+  geometry: THREE.BufferGeometry,
+  attributeName: string
+) {
+  if (geometry.getAttribute(attributeName)) {
+    geometry.deleteAttribute(attributeName);
+  }
 }
 
 function SceneGrid({
@@ -364,6 +401,7 @@ function Points3dCameraController({
   const lastResetTokenRef =
     React.useRef<Points3dViewProps["resetViewToken"]>(undefined);
   const lastFollowPoseRef = React.useRef<FollowPoseSnapshot | null>(null);
+  const needsFreshFollowSeedRef = React.useRef(false);
   const upVector = React.useMemo(() => {
     const [x, y, z] = getUpVectorTuple(upAxis);
     return new THREE.Vector3(x, y, z);
@@ -384,6 +422,7 @@ function Points3dCameraController({
       lastFrameKeyRef.current === null ||
       resetViewToken !== lastResetTokenRef.current ||
       (!preserveViewOnFrameChange && lastFrameKeyRef.current !== frameKey);
+    needsFreshFollowSeedRef.current = shouldReset;
 
     if (!shouldReset) {
       controlsRef.current?.update();
@@ -420,24 +459,28 @@ function Points3dCameraController({
     }
 
     const target = new THREE.Vector3(...followPose.position);
-    const defaultOffset = new THREE.Vector3(-6, -6, 4);
     const previousTarget = controlsRef.current.target.clone();
     const currentOffset = camera.position.clone().sub(previousTarget);
-    let nextOffset = currentOffset.lengthSq()
-      ? currentOffset
-      : defaultOffset.clone();
     const previousFollowPose = lastFollowPoseRef.current;
+    const shouldSeedFromDefault =
+      previousFollowPose === null || needsFreshFollowSeedRef.current;
+    let nextOffset = shouldSeedFromDefault
+      ? DEFAULT_EGO_FOLLOW_SEED_OFFSET.clone()
+      : currentOffset.lengthSq()
+      ? currentOffset
+      : DEFAULT_EGO_FOLLOW_SEED_OFFSET.clone();
 
     if (followPose.orientation) {
       const currentOrientation = new THREE.Quaternion(
         ...followPose.orientation
       );
-      const localOffset =
-        previousFollowPose?.orientation && currentOffset.lengthSq()
-          ? currentOffset.applyQuaternion(
-              new THREE.Quaternion(...previousFollowPose.orientation).invert()
-            )
-          : defaultOffset.clone();
+      const localOffset = shouldSeedFromDefault
+        ? DEFAULT_EGO_FOLLOW_SEED_OFFSET.clone()
+        : previousFollowPose?.orientation && currentOffset.lengthSq()
+        ? currentOffset.applyQuaternion(
+            new THREE.Quaternion(...previousFollowPose.orientation).invert()
+          )
+        : DEFAULT_EGO_FOLLOW_SEED_OFFSET.clone();
       nextOffset = localOffset.applyQuaternion(currentOrientation);
     }
 
@@ -446,8 +489,9 @@ function Points3dCameraController({
     controlsRef.current.target.copy(target);
     controlsRef.current.update();
     lastFollowPoseRef.current = followPose;
+    needsFreshFollowSeedRef.current = false;
     invalidate();
-  }, [camera, followPose, invalidate, upVector]);
+  }, [camera, followPose, frameKey, invalidate, resetViewToken, upVector]);
 
   return <OrbitControls makeDefault ref={controlsRef as never} />;
 }
@@ -509,33 +553,37 @@ function PointsPrimitive({
   primitive: Scene3dPointsPrimitive;
   solidColor: string;
 }) {
-  const geometry = React.useMemo(() => {
-    const nextGeometry = new THREE.BufferGeometry();
-    nextGeometry.setAttribute(
-      "position",
-      new THREE.BufferAttribute(primitive.positions, 3)
-    );
-
+  const colorBuffer = React.useMemo(() => {
     if (colorMode === "intensity" && primitive.intensity?.length) {
-      nextGeometry.setAttribute(
-        "color",
-        new THREE.BufferAttribute(
-          createIntensityColorBuffer(primitive.intensity),
-          3
-        )
-      );
+      return createIntensityColorBuffer(primitive.intensity);
     }
 
     if (colorMode !== "intensity" && primitive.colors?.length) {
-      nextGeometry.setAttribute(
-        "color",
-        new THREE.BufferAttribute(primitive.colors, 3)
-      );
+      return primitive.colors;
     }
 
-    nextGeometry.computeBoundingSphere();
-    return nextGeometry;
-  }, [colorMode, primitive.colors, primitive.intensity, primitive.positions]);
+    return null;
+  }, [colorMode, primitive.colors, primitive.intensity]);
+  const geometryShapeKey = React.useMemo(() => {
+    return `${primitive.positions.length}:${colorBuffer?.length ?? 0}`;
+  }, [colorBuffer?.length, primitive.positions.length]);
+  const geometry = React.useMemo(() => {
+    return new THREE.BufferGeometry();
+  }, [geometryShapeKey]);
+
+  React.useLayoutEffect(() => {
+    // Three/WebGPU can update a vertex buffer in place, but it cannot safely
+    // grow the bound GPU buffer without recreating the geometry/attribute.
+    setGeometryAttribute(geometry, "position", primitive.positions, 3);
+
+    if (colorBuffer?.length) {
+      setGeometryAttribute(geometry, "color", colorBuffer, 3);
+    } else {
+      clearGeometryAttribute(geometry, "color");
+    }
+
+    geometry.computeBoundingSphere();
+  }, [colorBuffer, geometry, primitive.positions]);
 
   React.useEffect(() => {
     return () => {
@@ -572,23 +620,24 @@ function LinePrimitive({
   isHovered: boolean;
   primitive: Scene3dLinePrimitive;
 }) {
+  const geometryShapeKey = React.useMemo(() => {
+    return `${primitive.positions.length}:${primitive.colors?.length ?? 0}`;
+  }, [primitive.colors?.length, primitive.positions.length]);
   const geometry = React.useMemo(() => {
-    const nextGeometry = new THREE.BufferGeometry();
-    nextGeometry.setAttribute(
-      "position",
-      new THREE.BufferAttribute(primitive.positions, 3)
-    );
+    return new THREE.BufferGeometry();
+  }, [geometryShapeKey]);
+
+  React.useLayoutEffect(() => {
+    setGeometryAttribute(geometry, "position", primitive.positions, 3);
 
     if (primitive.colors?.length) {
-      nextGeometry.setAttribute(
-        "color",
-        new THREE.BufferAttribute(primitive.colors, 3)
-      );
+      setGeometryAttribute(geometry, "color", primitive.colors, 3);
+    } else {
+      clearGeometryAttribute(geometry, "color");
     }
 
-    nextGeometry.computeBoundingSphere();
-    return nextGeometry;
-  }, [primitive.colors, primitive.positions]);
+    geometry.computeBoundingSphere();
+  }, [geometry, primitive.colors, primitive.positions]);
 
   React.useEffect(() => {
     return () => {

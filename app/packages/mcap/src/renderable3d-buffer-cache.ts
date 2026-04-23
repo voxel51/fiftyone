@@ -43,10 +43,19 @@ type DecodeInFrameOptions = {
   warningContext: string;
 };
 
+function getRenderablePrimitiveId(
+  streamId: string,
+  primitiveId: string | null | undefined,
+  index: number
+) {
+  return `${streamId}:${primitiveId?.trim() || "primitive"}:${index}`;
+}
+
 /** Small per-stream cache for buffered raw Multimodal windows and decoded 3D frames. */
 export class MultimodalRenderable3dBufferCache {
   private readonly rawWindowCache: MultimodalRawMessageWindowCache;
   private readonly schemaName: string;
+  private readonly streamId: string;
   private readonly sceneUpdateCache: FoxgloveSceneUpdateStateCache | null;
   private readonly decodedFrames: BoundedLruCache<
     string,
@@ -68,6 +77,7 @@ export class MultimodalRenderable3dBufferCache {
   constructor(options: Renderable3dBufferCacheOptions) {
     this.rawWindowCache = new MultimodalRawMessageWindowCache(options);
     this.schemaName = options.schemaName;
+    this.streamId = options.streamId;
     const maxDecodedFrameEntries = options.maxDecodedFrameEntries ?? 24;
     const maxDecodedFrameBytes =
       options.maxDecodedFrameBytes ?? 256 * 1024 * 1024;
@@ -180,7 +190,9 @@ export class MultimodalRenderable3dBufferCache {
           id: message.messageId,
           primitives: decoded.frame.primitives.map((primitive, index) => ({
             ...primitive,
-            id: `${message.messageId}:${primitive.id || index}`,
+            // Keep primitive identities stable across playback frames so the
+            // viewport can preserve GPU resources instead of remounting per message.
+            id: getRenderablePrimitiveId(this.streamId, primitive.id, index),
           })),
           messageId: message.messageId,
           logTimeNs: message.logTimeNs,
