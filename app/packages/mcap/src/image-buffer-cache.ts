@@ -1,5 +1,6 @@
 import type { BufferReadiness } from "@fiftyone/playback/experimental/types";
 import type { Image2dFrame } from "./archetypes";
+import { BoundedLruCache } from "./bounded-lru-cache";
 import { getCompressedImageMimeType } from "./compressed-image-decoder";
 import {
   MultimodalRawMessageWindowCache,
@@ -22,19 +23,41 @@ type WarmDecodeOptions = {
   aheadCount?: number;
 };
 
+type ImageBufferCacheOptions = RawMessageWindowCacheOptions & {
+  schemaName?: string;
+  maxDecodedFrameEntries?: number;
+  maxDecodedFrameBytes?: number;
+};
+
+const DEFAULT_MAX_DECODED_IMAGE_FRAME_ENTRIES = 48;
+const DEFAULT_MAX_DECODED_IMAGE_FRAME_BYTES = 64 * 1024 * 1024;
+
 /** Small per-stream cache for buffered raw Multimodal windows and decoded images. */
 export class MultimodalImageBufferCache {
   private readonly rawWindowCache: MultimodalRawMessageWindowCache;
   private readonly schemaName: string;
-  private readonly decodedFrames = new Map<
+  private readonly decodedFrames: BoundedLruCache<
+    string,
+    MultimodalDecodedImageFrame
+  >;
+  private readonly pendingFrames = new Map<
     string,
     Promise<MultimodalDecodedImageFrame>
   >();
-  private readonly objectUrls = new Map<string, string>();
 
-  constructor(options: RawMessageWindowCacheOptions & { schemaName?: string }) {
+  constructor(options: ImageBufferCacheOptions) {
     this.rawWindowCache = new MultimodalRawMessageWindowCache(options);
     this.schemaName = options.schemaName ?? "sensor_msgs/msg/CompressedImage";
+    this.decodedFrames = new BoundedLruCache({
+      maxEntries:
+        options.maxDecodedFrameEntries ??
+        DEFAULT_MAX_DECODED_IMAGE_FRAME_ENTRIES,
+      maxBytes:
+        options.maxDecodedFrameBytes ?? DEFAULT_MAX_DECODED_IMAGE_FRAME_BYTES,
+      onEvict: (frame) => {
+        URL.revokeObjectURL(frame.objectUrl);
+      },
+    });
   }
 
   /** Ensures all fixed fetch windows covering the requested range are buffered. */
@@ -62,6 +85,11 @@ export class MultimodalImageBufferCache {
     return this.rawWindowCache.getSyncSamples();
   }
 
+  /** Returns cached sync timestamps derived from the current raw message set. */
+  getSyncTimestamps() {
+    return this.rawWindowCache.getSyncTimestamps();
+  }
+
   /** Reports whether the raw message window containing this timestamp is ready. */
   getMessageReadiness(logTimeNs: number): BufferReadiness {
     return this.rawWindowCache.getTimeReadiness(logTimeNs);
@@ -71,7 +99,12 @@ export class MultimodalImageBufferCache {
   async decodeMessage(
     message: MultimodalRawMessage
   ): Promise<MultimodalDecodedImageFrame> {
-    const existingFrame = this.decodedFrames.get(message.messageId);
+    const cachedFrame = this.decodedFrames.get(message.messageId);
+    if (cachedFrame) {
+      return cachedFrame;
+    }
+
+    const existingFrame = this.pendingFrames.get(message.messageId);
     if (existingFrame) {
       return existingFrame;
     }
@@ -79,26 +112,36 @@ export class MultimodalImageBufferCache {
     const decodePromise = BUILTIN_SCHEMA_CODEC_REGISTRY.decodeImageMessage(
       this.schemaName,
       message
-    ).then((decoded) => {
-      const mimeType = getCompressedImageMimeType(decoded.format);
-      const blob = new Blob([decoded.compressedBytes], { type: mimeType });
-      const objectUrl = URL.createObjectURL(blob);
-      this.objectUrls.set(message.messageId, objectUrl);
+    )
+      .then((decoded) => {
+        const mimeType = getCompressedImageMimeType(decoded.format);
+        const blob = new Blob([decoded.compressedBytes], { type: mimeType });
+        const objectUrl = URL.createObjectURL(blob);
+        const frame = {
+          id: message.messageId,
+          messageId: message.messageId,
+          format: decoded.format,
+          frameId: decoded.frameId,
+          src: objectUrl,
+          timestampNs: message.logTimeNs,
+          logTimeNs: message.logTimeNs,
+          publishTimeNs: message.publishTimeNs,
+          objectUrl,
+        };
 
-      return {
-        id: message.messageId,
-        messageId: message.messageId,
-        format: decoded.format,
-        frameId: decoded.frameId,
-        src: objectUrl,
-        timestampNs: message.logTimeNs,
-        logTimeNs: message.logTimeNs,
-        publishTimeNs: message.publishTimeNs,
-        objectUrl,
-      };
-    });
+        this.decodedFrames.set(
+          message.messageId,
+          frame,
+          decoded.compressedBytes.byteLength
+        );
 
-    this.decodedFrames.set(message.messageId, decodePromise);
+        return frame;
+      })
+      .finally(() => {
+        this.pendingFrames.delete(message.messageId);
+      });
+
+    this.pendingFrames.set(message.messageId, decodePromise);
     return decodePromise;
   }
 
@@ -119,10 +162,9 @@ export class MultimodalImageBufferCache {
 
   /** Disposes decoded image URLs and the shared worker client resources. */
   dispose() {
+    this.pendingFrames.clear();
     this.decodedFrames.clear();
     this.rawWindowCache.dispose();
-    this.objectUrls.forEach((objectUrl) => URL.revokeObjectURL(objectUrl));
-    this.objectUrls.clear();
     BUILTIN_SCHEMA_CODEC_REGISTRY.disposeImageResources(this.schemaName);
   }
 }
