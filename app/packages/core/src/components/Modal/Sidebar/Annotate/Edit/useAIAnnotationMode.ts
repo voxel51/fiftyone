@@ -18,24 +18,22 @@ import { atom, useAtom } from "jotai";
 import { useAnnotationContext } from "./state";
 import { ClickEventModifiers } from "@fiftyone/utilities";
 
-export interface SegmentationMode {
+export interface AIAnnotationMode {
   activate(): void;
   deactivate(): void;
   isActive: boolean;
 }
 
 /**
- * Maintains the activation status of segmentation mode.
+ * Maintains the activation status of AI annotation mode.
  */
-const segmentationModeActiveAtom = atom(false);
+const isActiveAtom = atom(false);
 
 /**
- * Hook which provides control over activation/deactivation of segmentation mode.
+ * Hook which provides control over activation/deactivation of AI annotation mode.
  */
-export const useSegmentationMode = (): SegmentationMode => {
-  const [segmentationModeActive, setSegmentationModeActive] = useAtom(
-    segmentationModeActiveAtom
-  );
+export const useAIAnnotationMode = (): AIAnnotationMode => {
+  const [isActive, setIsActive] = useAtom(isActiveAtom);
   const { selectedLabel } = useAnnotationContext();
   const agentSelector = useAgentSelector();
   const { setActiveTask } = useActiveTask();
@@ -60,7 +58,7 @@ export const useSegmentationMode = (): SegmentationMode => {
   // from a populated overlay), wipe the inference prompt points so the next
   // label starts from a clean slate. We stay in segmentation mode.
   useEffect(() => {
-    if (!segmentationModeActive) {
+    if (!isActive) {
       previousSelectedLabelIdRef.current = selectedLabel?.overlay?.id ?? null;
       return;
     }
@@ -107,7 +105,7 @@ export const useSegmentationMode = (): SegmentationMode => {
   const resolvePointHit = useCallback(() => KeypointPointHitAction.DELETE, []);
 
   const activate = useCallback(() => {
-    setSegmentationModeActive(true);
+    setIsActive(true);
     setActiveTask(AgentTaskType.SEGMENT);
     pointSelection.activate(resolvePointVariant, resolvePointHit);
   }, [
@@ -115,27 +113,22 @@ export const useSegmentationMode = (): SegmentationMode => {
     resolvePointHit,
     resolvePointVariant,
     setActiveTask,
-    setSegmentationModeActive,
+    setIsActive,
   ]);
 
   const deactivate = useCallback(() => {
     pointSelection.deactivate();
     resetToolsState();
     setActiveTask(null);
-    setSegmentationModeActive(false);
-  }, [
-    pointSelection,
-    resetToolsState,
-    setActiveTask,
-    setSegmentationModeActive,
-  ]);
+    setIsActive(false);
+  }, [pointSelection, resetToolsState, setActiveTask, setIsActive]);
 
   return useMemo(
     () => ({
       activate,
       deactivate,
-      isActive: segmentationModeActive,
+      isActive: isActive,
     }),
-    [activate, deactivate, segmentationModeActive]
+    [activate, deactivate, isActive]
   );
 };
