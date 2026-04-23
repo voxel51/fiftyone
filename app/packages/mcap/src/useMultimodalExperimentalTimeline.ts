@@ -286,11 +286,9 @@ export function useMultimodalExperimentalTimeline(
     async (percentage: number) => {
       const clampedPercentage = Math.max(0, Math.min(percentage, 100));
       const durationNs = options?.durationNs ?? 0;
-      await managerRef.current?.setTime(
-        Math.round((clampedPercentage / 100) * durationNs)
-      );
+      await seekToTime(Math.round((clampedPercentage / 100) * durationNs));
     },
-    [options?.durationNs]
+    [options?.durationNs, seekToTime]
   );
 
   const notifySeekStart = React.useCallback(() => {

@@ -172,4 +172,47 @@ describe("useMultimodalExperimentalTimeline", () => {
 
     expect(result.current.playState).toBe("playing");
   });
+
+  it("updates the exported current time while scrubbing by percentage", async () => {
+    const durationNs = 10_000_000_000;
+    const targetTimeNs = durationNs / 2;
+    const coverage = [0, targetTimeNs, durationNs];
+    const onPrefetchRange = vi.fn(async () => {});
+    const onPreviewTime = vi.fn();
+    const onRenderTime = vi.fn();
+
+    const { result } = renderHook(() =>
+      useMultimodalExperimentalTimeline({
+        name: "multimodal:scene-3",
+        durationNs,
+        tickRate: 1,
+        coverage,
+        onPrefetchRange,
+        onPreviewTime,
+        onRenderTime,
+      })
+    );
+
+    await waitFor(() => {
+      expect(result.current.isInitialized).toBe(true);
+    });
+
+    act(() => {
+      result.current.notifySeekStart();
+    });
+
+    await act(async () => {
+      await result.current.seekToPercentage(50);
+    });
+
+    expect(result.current.currentTimeNs).toBe(targetTimeNs);
+    expect(onPreviewTime).toHaveBeenCalledTimes(1);
+    expect(onPreviewTime).toHaveBeenCalledWith(
+      targetTimeNs,
+      expect.objectContaining({
+        reason: "scrub-preview",
+      })
+    );
+    expect(onRenderTime).not.toHaveBeenCalled();
+  });
 });
