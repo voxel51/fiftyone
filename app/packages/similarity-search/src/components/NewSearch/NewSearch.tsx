@@ -22,7 +22,7 @@ import {
   Variant,
 } from "@voxel51/voodo";
 import { FileUploadOutlined } from "../../mui";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { OperatorExecutionButton } from "@fiftyone/operators";
 import {
   BrainKeyConfig,
@@ -34,6 +34,7 @@ import {
   SEARCH_OPERATOR_URI,
   CHECK_MARK,
   CROSS_MARK,
+  K_MAX,
   MIDDLE_DOT,
   UPLOAD_ACCEPTED_TYPES,
   UPLOAD_MAX_SIZE,
@@ -67,6 +68,15 @@ export default function NewSearch({
 }: NewSearchProps) {
   const form = useNewSearchForm(brainKeys, cloneConfig, onSubmitted);
   const [uploadError, setUploadError] = useState<string | null>(null);
+
+  // Guard against setting state after unmount — `fileToBase64` resolves
+  // asynchronously and the user can navigate away mid-read.
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   return (
     <NewSearchContainer>
@@ -274,6 +284,7 @@ export default function NewSearch({
                     return;
                   }
                   const { result, error } = await fileToBase64(file);
+                  if (!mountedRef.current) return;
                   if (error || !result) {
                     setUploadError(
                       "Failed to read the image file. Please try again."
@@ -323,7 +334,9 @@ export default function NewSearch({
         <FormField
           label="Number of matches"
           error={
-            form.kError ? "Number of results cannot exceed 10,000" : undefined
+            form.kError
+              ? `Number of results cannot exceed ${K_MAX.toLocaleString()}`
+              : undefined
           }
           control={
             <Input
