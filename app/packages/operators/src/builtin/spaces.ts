@@ -1,4 +1,8 @@
 import { usePanels, useSpaceNodes } from "@fiftyone/spaces";
+import {
+  panelsLocalStateAtom,
+  panelsStateAtom,
+} from "@fiftyone/spaces/src/state";
 import { constants, isModalActive } from "@fiftyone/state";
 import { useRecoilValue } from "recoil";
 import { Operator, OperatorConfig } from "../operators";
@@ -6,6 +10,10 @@ import * as types from "../types";
 
 import type {
   ExecutionContext,
+  GetPanelDataHooks,
+  GetPanelDataParams,
+  GetPanelStateHooks,
+  GetPanelStateParams,
   ListOpenPanelsHooks,
   ListOpenPanelsItemType,
   ListPanelItemType,
@@ -112,5 +120,105 @@ export class ListOpenPanels extends Operator {
           pinned: Boolean(panel.pinned),
         };
       });
+  }
+}
+
+export class GetPanelState extends Operator {
+  _builtIn = true;
+
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "get_panel_state",
+      label: "Get panel state",
+      unlisted: true,
+    });
+  }
+
+  async resolveInput() {
+    const inputs = new types.Object();
+
+    inputs.str("id", { label: "Panel ID" });
+    inputs.str("name", { label: "Panel Name" });
+
+    return new types.Property(inputs);
+  }
+
+  useHooks(): GetPanelStateHooks {
+    const openedGridPanels = useSpaceNodes(FIFTYONE_GRID_SPACES_ID);
+    const openedModalPanels = useSpaceNodes(FIFTYONE_MODAL_SPACES_ID);
+    const panelsState = useRecoilValue(panelsStateAtom);
+
+    const openedPanels = [...openedGridPanels, ...openedModalPanels];
+
+    return { openedPanels, panelsState };
+  }
+
+  async execute(
+    ctx: ExecutionContext<GetPanelStateParams, GetPanelStateHooks>
+  ) {
+    const { hooks, params } = ctx;
+    const { openedPanels, panelsState } = hooks;
+    const { id, name } = params;
+
+    let computedId = id;
+
+    if (!computedId) {
+      computedId = openedPanels.find((panel) => panel.type === name)?.id;
+    }
+
+    if (!computedId) {
+      throw new Error("Panel not found");
+    }
+
+    return panelsState.get(computedId);
+  }
+}
+
+export class GetPanelData extends Operator {
+  _builtIn = true;
+
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "get_panel_data",
+      label: "Get panel data",
+      unlisted: true,
+    });
+  }
+
+  async resolveInput() {
+    const inputs = new types.Object();
+
+    inputs.str("id", { label: "Panel ID" });
+    inputs.str("name", { label: "Panel Name" });
+
+    return new types.Property(inputs);
+  }
+
+  useHooks(): GetPanelDataHooks {
+    const openedGridPanels = useSpaceNodes(FIFTYONE_GRID_SPACES_ID);
+    const openedModalPanels = useSpaceNodes(FIFTYONE_MODAL_SPACES_ID);
+    const panelsData = useRecoilValue(panelsLocalStateAtom);
+
+    const openedPanels = [...openedGridPanels, ...openedModalPanels];
+
+    return { openedPanels, panelsData };
+  }
+
+  async execute(ctx: ExecutionContext<GetPanelDataParams, GetPanelDataHooks>) {
+    const { hooks, params } = ctx;
+    const { openedPanels, panelsData } = hooks;
+    const { id, name } = params;
+
+    let computedId = id;
+
+    if (!computedId) {
+      computedId = openedPanels.find((panel) => panel.type === name)?.id;
+    }
+
+    if (!computedId) {
+      throw new Error("Panel not found");
+    }
+
+    return panelsData.get(computedId);
   }
 }
