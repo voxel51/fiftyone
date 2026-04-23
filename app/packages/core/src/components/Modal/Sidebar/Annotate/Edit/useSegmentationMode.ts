@@ -3,18 +3,30 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { atom, useAtomValue, useSetAtom } from "jotai";
+import { atom, useAtom, useAtomValue } from "jotai";
 import { useAtomCallback } from "jotai/utils";
 import { useRecoilValue } from "recoil";
 
 import {
+  AgentTaskType,
+  NEGATIVE_POINT_VARIANT,
+  PointSelectionVariant,
+  POSITIVE_POINT_VARIANT,
+  useActiveTask,
+  useAgentSelector,
+  usePointSelection,
+  useToolsState,
+} from "@fiftyone/annotation/src/agents";
+import {
   BaseOverlay,
+  KeypointPointHitAction,
+  Point,
   UNDEFINED_LIGHTER_SCENE_ID,
   useLighter,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
 import { isPatchesView } from "@fiftyone/state";
-import { DETECTION } from "@fiftyone/utilities";
+import { DETECTION, ClickEventModifiers } from "@fiftyone/utilities";
 
 import { currentType, fieldsOfType, useAnnotationContext } from "./state";
 import useCreate from "./useCreate";
@@ -80,24 +92,89 @@ export const useSegmentationMode = () => {
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
   );
 
-  // Using refs to prevent shared closure contexts from retaining old Scene2D instances.
-  const sceneRef = useRef(scene);
-  sceneRef.current = scene;
-  const selectedLabelRef = useRef(selectedLabel);
-  selectedLabelRef.current = selectedLabel;
+  const [segmentationModeActive, setSegmentationModeActive] = useAtom(
+    segmentationModeActiveAtom
+  );
+  const [tool, setTool] = useAtom(toolAtom);
+  const [toolSize, setToolSizeRaw] = useAtom(toolSizeAtom);
+  const [toolShape, setToolShape] = useAtom(toolShapeAtom);
 
-  const segmentationModeActive = useAtomValue(segmentationModeActiveAtom);
-  const tool = useAtomValue(toolAtom);
-  const toolSize = useAtomValue(toolSizeAtom);
-  const toolShape = useAtomValue(toolShapeAtom);
-
-  const setActive = useSetAtom(segmentationModeActiveAtom);
-  const setTool = useSetAtom(toolAtom);
-  const setToolSizeRaw = useSetAtom(toolSizeAtom);
-  const setToolShape = useSetAtom(toolShapeAtom);
+  // AI detection
+  const agentSelector = useAgentSelector();
+  const { setActiveTask } = useActiveTask();
+  const { reset: resetToolsState } = useToolsState();
+  const pointSelection = usePointSelection();
 
   const createDetection = useCreate(DETECTION);
   const editingLabelType = useAtomValue(currentType);
+
+  const sceneRef = useRef(scene);
+  sceneRef.current = scene;
+
+  const selectedLabelRef = useRef(selectedLabel);
+  selectedLabelRef.current = selectedLabel;
+
+  const previousSelectedLabelIdRef = useRef<string | null>(
+    selectedLabel?.overlay?.id ?? null
+  );
+
+  // We don't currently expose agent selection capabilities in the UX.
+  // Select the first available agent once the agents have resolved.
+  useEffect(() => {
+    if (agentSelector.isResolved && !agentSelector.activeAgent) {
+      agentSelector.setActiveAgent(agentSelector.agents[0]);
+    }
+  }, [agentSelector]);
+
+  // When the user commits/exits a label (selected label transitions away
+  // from a populated overlay), wipe the inference prompt points so the next
+  // label starts from a clean slate. We stay in segmentation mode.
+  useEffect(() => {
+    if (!segmentationModeActive) {
+      previousSelectedLabelIdRef.current = selectedLabel?.overlay?.id ?? null;
+      return;
+    }
+
+    const previousId = previousSelectedLabelIdRef.current;
+    const currentId = selectedLabel?.overlay?.id ?? null;
+
+    if (previousId && previousId !== currentId) {
+      pointSelection.clearPoints();
+      resetToolsState();
+    }
+
+    previousSelectedLabelIdRef.current = currentId;
+  }, [selectedLabel]);
+
+  // Points placed on the current label's mask are interpreted as negative;
+  // points placed off-mask are positive.
+  // Holding shift inverts the result.
+  const resolvePointVariant = useCallback(
+    (
+      relativePoint: Point,
+      { shiftKey }: ClickEventModifiers
+    ): PointSelectionVariant => {
+      const label = selectedLabelRef.current;
+      const onMask =
+        label && label.overlay instanceof DetectionOverlay
+          ? label.overlay.containsMaskPixel(relativePoint)
+          : false;
+
+      const variant = onMask ? NEGATIVE_POINT_VARIANT : POSITIVE_POINT_VARIANT;
+
+      return !shiftKey
+        ? // normal variant if shift key is not pressed
+          variant
+        : // otherwise invert the variant
+        variant === POSITIVE_POINT_VARIANT
+        ? NEGATIVE_POINT_VARIANT
+        : POSITIVE_POINT_VARIANT;
+    },
+    []
+  );
+
+  // Clicking an existing point deletes it
+  const resolvePointHit = useCallback(() => KeypointPointHitAction.DELETE, []);
 
   const isEditingSegmentation =
     editingLabelType === DETECTION &&
@@ -115,8 +192,16 @@ export const useSegmentationMode = () => {
     : "Create new mask";
 
   const activateSegmentationMode = useCallback(() => {
-    setActive(true);
-  }, [setActive]);
+    setSegmentationModeActive(true);
+    setActiveTask(AgentTaskType.SEGMENT);
+    pointSelection.activate(resolvePointVariant, resolvePointHit);
+  }, [
+    pointSelection,
+    resolvePointHit,
+    resolvePointVariant,
+    setActiveTask,
+    setSegmentationModeActive,
+  ]);
 
   /**
    * Disable segmentation mode and gracefully close out any label being edited.
@@ -125,9 +210,21 @@ export const useSegmentationMode = () => {
     const currentScene = sceneRef.current;
     currentScene?.exitInteractiveMode();
     onExit();
-    setActive(false);
+
+    setSegmentationModeActive(false);
     setTool("select");
-  }, [onExit, setActive, setTool]);
+
+    pointSelection.deactivate();
+    resetToolsState();
+    setActiveTask(null);
+  }, [
+    onExit,
+    pointSelection,
+    resetToolsState,
+    setActiveTask,
+    setSegmentationModeActive,
+    setTool,
+  ]);
 
   const toggleSegmentationMode = useCallback(() => {
     if (segmentationModeActive) {
@@ -179,20 +276,20 @@ export const useSegmentationMode = () => {
     if (selectedLabel?.isNew) return;
 
     if (isEditingSegmentation && !segmentationModeActive) {
-      setActive(true);
+      setSegmentationModeActive(true);
     } else if (
       editingLabelType &&
       !isEditingSegmentation &&
       segmentationModeActive
     ) {
-      setActive(false);
+      setSegmentationModeActive(false);
     }
   }, [
     selectedLabel?.isNew,
     editingLabelType,
     isEditingSegmentation,
     segmentationModeActive,
-    setActive,
+    setSegmentationModeActive,
   ]);
 
   const claimEvent = useAtomCallback(

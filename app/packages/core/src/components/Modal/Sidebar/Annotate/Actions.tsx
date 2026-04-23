@@ -1,5 +1,4 @@
 import { useUndoRedo } from "@fiftyone/commands";
-import { Tooltip } from "@fiftyone/components";
 import { use3dAnnotationFields } from "@fiftyone/looker-3d/src/annotation/use3dAnnotationFields";
 import {
   ANNOTATION_CUBOID,
@@ -28,6 +27,8 @@ import { fieldsOfType } from "./Edit/state";
 import { useClassificationMode } from "./Edit/useClassificationMode";
 import { useDetectionMode } from "./Edit/useDetectionMode";
 import { useSegmentationMode } from "./Edit/useSegmentationMode";
+import { Anchor, Icon, IconName, Text, Tooltip } from "@voxel51/voodo";
+import { FeatureFlag, FeatureFlagged } from "@fiftyone/feature-flags";
 
 const ActionsDiv = styled.div`
   align-items: center;
@@ -148,7 +149,7 @@ const Select = ({ active }: { active: boolean }) => {
   const deactivateAll = useDeactivateAll();
 
   return (
-    <Tooltip placement="top-center" text="Select">
+    <Tooltip anchor={Anchor.Top} content={<Text>Select</Text>} portal>
       <Square
         $active={active}
         data-cy="select-action"
@@ -185,7 +186,7 @@ const Classification = () => {
   const deactivateAll = useDeactivateAll();
 
   return (
-    <Tooltip placement="top-center" text={tooltip}>
+    <Tooltip anchor={Anchor.Top} content={<Text>{tooltip}</Text>} portal>
       <Square
         $active={classificationModeActive}
         data-cy="create-classification"
@@ -225,7 +226,7 @@ const Detection = () => {
   const deactivateAll = useDeactivateAll();
 
   return (
-    <Tooltip placement="top-center" text={tooltip}>
+    <Tooltip anchor={Anchor.Top} content={<Text>{tooltip}</Text>} portal>
       <Square
         $active={detectionModeActive}
         className={disabled ? "disabled" : ""}
@@ -265,10 +266,12 @@ const Segmentation = () => {
   const deactivateAll = useDeactivateAll();
 
   return (
-    <Tooltip placement="top-center" text={tooltip}>
+    <Tooltip anchor={Anchor.Top} content={<Text>{tooltip}</Text>} portal>
       <Square
         $active={segmentationModeActive}
         className={disabled ? "disabled" : ""}
+        data-cy="segmentation-mode"
+        data-cy-active={segmentationModeActive}
         onClick={() => {
           if (disabled) return;
           deactivateAll();
@@ -313,25 +316,27 @@ export const Undo = () => {
   const { undo, undoEnabled } = useUndoRedo();
 
   return (
-    <Round
-      onClick={undo}
-      className={undoEnabled ? "" : "disabled"}
-      data-cy="undo-button"
-    >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="13"
-        height="12"
-        viewBox="0 0 13 12"
-        fill="none"
+    <Tooltip anchor={Anchor.Top} content={<Text>Undo</Text>} portal>
+      <Round
+        onClick={undo}
+        className={undoEnabled ? "" : "disabled"}
+        data-cy="undo-button"
       >
-        <title>Undo</title>
-        <path
-          d="M2.98395 12C2.74746 12 2.54922 11.9211 2.38925 11.7633C2.22927 11.6055 2.14928 11.4099 2.14928 11.1767C2.14928 10.9434 2.22927 10.7479 2.38925 10.5901C2.54922 10.4322 2.74746 10.3533 2.98395 10.3533H8.07544C8.95185 10.3533 9.71348 10.0789 10.3604 9.53002C11.0072 8.98113 11.3307 8.29503 11.3307 7.4717C11.3307 6.64837 11.0072 5.96226 10.3604 5.41338C9.71348 4.86449 8.95185 4.59005 8.07544 4.59005H2.81701L4.40289 6.15437C4.55591 6.30532 4.63242 6.49743 4.63242 6.7307C4.63242 6.96398 4.55591 7.15609 4.40289 7.30703C4.24987 7.45798 4.05511 7.53345 3.81862 7.53345C3.58213 7.53345 3.38737 7.45798 3.23435 7.30703L0.229535 4.34305C0.146067 4.26072 0.0869449 4.17153 0.0521669 4.07547C0.017389 3.97942 0 3.8765 0 3.76672C0 3.65695 0.017389 3.55403 0.0521669 3.45798C0.0869449 3.36192 0.146067 3.27273 0.229535 3.19039L3.23435 0.226415C3.38737 0.0754717 3.58213 0 3.81862 0C4.05511 0 4.24987 0.0754717 4.40289 0.226415C4.55591 0.377358 4.63242 0.569468 4.63242 0.802744C4.63242 1.03602 4.55591 1.22813 4.40289 1.37907L2.81701 2.9434H8.07544C9.42483 2.9434 10.5829 3.37564 11.5498 4.24014C12.5166 5.10463 13 6.18182 13 7.4717C13 8.76158 12.5166 9.83877 11.5498 10.7033C10.5829 11.5678 9.42483 12 8.07544 12H2.98395Z"
-          fill="currentColor"
-        />
-      </svg>
-    </Round>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="13"
+          height="12"
+          viewBox="0 0 13 12"
+          fill="none"
+        >
+          <title>Undo</title>
+          <path
+            d="M2.98395 12C2.74746 12 2.54922 11.9211 2.38925 11.7633C2.22927 11.6055 2.14928 11.4099 2.14928 11.1767C2.14928 10.9434 2.22927 10.7479 2.38925 10.5901C2.54922 10.4322 2.74746 10.3533 2.98395 10.3533H8.07544C8.95185 10.3533 9.71348 10.0789 10.3604 9.53002C11.0072 8.98113 11.3307 8.29503 11.3307 7.4717C11.3307 6.64837 11.0072 5.96226 10.3604 5.41338C9.71348 4.86449 8.95185 4.59005 8.07544 4.59005H2.81701L4.40289 6.15437C4.55591 6.30532 4.63242 6.49743 4.63242 6.7307C4.63242 6.96398 4.55591 7.15609 4.40289 7.30703C4.24987 7.45798 4.05511 7.53345 3.81862 7.53345C3.58213 7.53345 3.38737 7.45798 3.23435 7.30703L0.229535 4.34305C0.146067 4.26072 0.0869449 4.17153 0.0521669 4.07547C0.017389 3.97942 0 3.8765 0 3.76672C0 3.65695 0.017389 3.55403 0.0521669 3.45798C0.0869449 3.36192 0.146067 3.27273 0.229535 3.19039L3.23435 0.226415C3.38737 0.0754717 3.58213 0 3.81862 0C4.05511 0 4.24987 0.0754717 4.40289 0.226415C4.55591 0.377358 4.63242 0.569468 4.63242 0.802744C4.63242 1.03602 4.55591 1.22813 4.40289 1.37907L2.81701 2.9434H8.07544C9.42483 2.9434 10.5829 3.37564 11.5498 4.24014C12.5166 5.10463 13 6.18182 13 7.4717C13 8.76158 12.5166 9.83877 11.5498 10.7033C10.5829 11.5678 9.42483 12 8.07544 12H2.98395Z"
+            fill="currentColor"
+          />
+        </svg>
+      </Round>
+    </Tooltip>
   );
 };
 
@@ -339,7 +344,7 @@ export const Redo = () => {
   const { redo, redoEnabled } = useUndoRedo();
 
   return (
-    <Tooltip placement="top-center" text="Redo">
+    <Tooltip anchor={Anchor.Top} content={<Text>Redo</Text>} portal>
       <Round
         onClick={redo}
         className={redoEnabled ? "" : "disabled"}
@@ -386,12 +391,15 @@ export const ThreeDPolylines = () => {
 
   return (
     <Tooltip
-      placement="top-center"
-      text={
-        isPolylineAnnotateActive
-          ? "Exit polyline annotation mode"
-          : "Enter polyline annotation mode"
+      anchor={Anchor.Top}
+      content={
+        <Text>
+          {isPolylineAnnotateActive
+            ? "Exit polyline annotation mode"
+            : "Enter polyline annotation mode"}
+        </Text>
       }
+      portal
     >
       <Square
         $active={isPolylineAnnotateActive}
@@ -438,12 +446,15 @@ export const ThreeDCuboids = () => {
 
   return (
     <Tooltip
-      placement="top-center"
-      text={
-        isCuboidAnnotateActive
-          ? "Exit cuboid annotation mode"
-          : "Enter cuboid annotation mode"
+      anchor={Anchor.Top}
+      content={
+        <Text>
+          {isCuboidAnnotateActive
+            ? "Exit cuboid annotation mode"
+            : "Enter cuboid annotation mode"}
+        </Text>
       }
+      portal
     >
       <Square
         $active={isCuboidAnnotateActive}
@@ -520,7 +531,9 @@ const Actions = () => {
             ) : (
               <>
                 <Detection />
-                <Segmentation />
+                <FeatureFlagged feature={FeatureFlag.VFF_AI_SEGMENTATION}>
+                  <Segmentation />
+                </FeatureFlagged>
               </>
             )}
           </ItemLeft>

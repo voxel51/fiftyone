@@ -51,7 +51,11 @@ export type {
   OverlayEvent,
 } from "./interaction/InteractionManager";
 export { InteractiveDetectionHandler } from "./interaction/InteractiveDetectionHandler";
-export { InteractiveKeypointHandler } from "./interaction/InteractiveKeypointHandler";
+export {
+  InteractiveKeypointHandler,
+  KeypointPointHitAction,
+} from "./interaction/InteractiveKeypointHandler";
+export type { KeypointPointHitContext } from "./interaction/InteractiveKeypointHandler";
 
 // Selection exports
 export type { Selectable } from "./selection/Selectable";
@@ -59,7 +63,10 @@ export { SelectionManager } from "./selection/SelectionManager";
 export type { SelectionOptions } from "./selection/SelectionManager";
 
 // Command exports
+export { AddKeypointPointCommand } from "./commands/AddKeypointPointCommand";
+export { MoveKeypointPointCommand } from "./commands/MoveKeypointPointCommand";
 export { MoveOverlayCommand } from "./commands/MoveOverlayCommand";
+export { RemoveKeypointPointCommand } from "./commands/RemoveKeypointPointCommand";
 export { TransformOverlayCommand } from "./commands/TransformOverlayCommand";
 export { UpdateLabelCommand } from "./commands/UpdateLabelCommand";
 

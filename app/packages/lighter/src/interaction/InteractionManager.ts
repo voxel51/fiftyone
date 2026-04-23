@@ -15,6 +15,7 @@ import type { SelectionManager } from "../selection/SelectionManager";
 import type { Point, Rect } from "../types";
 import { buildBrushCursor } from "./buildBrushCursor";
 import { InteractiveDetectionHandler } from "./InteractiveDetectionHandler";
+import { InteractiveKeypointHandler } from "./InteractiveKeypointHandler";
 import { v4 as generateUUID } from "uuid";
 
 /**
@@ -216,8 +217,13 @@ export class InteractionManager {
     const interactiveHandler = this.getInteractiveHandler();
 
     if (interactiveHandler) {
-      handler = interactiveHandler.getOverlay();
-      this.selectionManager.select(handler.id);
+      handler =
+        interactiveHandler instanceof InteractiveKeypointHandler
+          ? // keypoint handlers manage their own placement
+            interactiveHandler
+          : // otherwise defer to the handler's overlay
+            interactiveHandler.getOverlay();
+      this.selectionManager.select(interactiveHandler.getOverlay().id);
     } else {
       handler = this.findHandlerAtPoint(point);
       // Prevent pan/zoom when target is selectable
@@ -508,7 +514,13 @@ export class InteractionManager {
       if (!interactiveHandler) {
         handler.onMove?.(moveParams);
       } else {
-        handler = interactiveHandler.getOverlay();
+        handler =
+          interactiveHandler instanceof InteractiveKeypointHandler
+            ? // keypoint handlers manage their own points
+              interactiveHandler
+            : // otherwise defer to the handler's overlay
+              interactiveHandler.getOverlay();
+
         handler.onMove?.(moveParams);
       }
 
@@ -628,7 +640,12 @@ export class InteractionManager {
     const interactiveHandler = this.getInteractiveHandler();
 
     if (interactiveHandler) {
-      handler = interactiveHandler.getOverlay();
+      handler =
+        interactiveHandler instanceof InteractiveKeypointHandler
+          ? // keypoint handlers manage their own points
+            interactiveHandler
+          : // otherwise defer to the handler's overlay
+            interactiveHandler.getOverlay();
     } else {
       handler = this.findInteractingHandler() || this.findHandlerAtPoint(point);
     }
@@ -963,8 +980,15 @@ export class InteractionManager {
     );
   }
 
-  private getInteractiveHandler(): InteractiveDetectionHandler | undefined {
-    return this.handlers.find((h) => h instanceof InteractiveDetectionHandler);
+  private getInteractiveHandler():
+    | InteractiveKeypointHandler
+    | InteractiveDetectionHandler
+    | undefined {
+    // keypoint handlers take precedence to allow placing points on top of detections
+    return (
+      this.handlers.find((h) => h instanceof InteractiveKeypointHandler) ??
+      this.handlers.find((h) => h instanceof InteractiveDetectionHandler)
+    );
   }
 
   /**

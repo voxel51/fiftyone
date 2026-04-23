@@ -1,4 +1,4 @@
-import { atom, getDefaultStore, useAtom } from "jotai";
+import { atom, useAtom } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { useOperatorExecutor } from "@fiftyone/operators";
@@ -8,9 +8,13 @@ import {
   datasetId as datasetIdAtom,
   datasetName as datasetNameAtom,
 } from "@fiftyone/state";
-import { LIST_RUNS_OPERATOR_URI, SSE_OPERATOR_URI } from "../constants";
+import {
+  LIST_RUNS_OPERATOR_URI,
+  RUNS_REFRESH_MAX_RETRY,
+  SSE_OPERATOR_URI,
+} from "../constants";
 import { SimilarityRun } from "../types";
-import { filterStateAtom } from "./useFilteredRuns";
+import { usePanelFilterState } from "./useFilteredRuns";
 
 const runsAtom = atom<SimilarityRun[]>([]);
 const loadedAtom = atom(false);
@@ -57,7 +61,15 @@ export const useRuns = (): UseRunsResult => {
   const pendingRef = useRef(false);
   const inFlightRef = useRef<Promise<void> | null>(null);
   const errorCountRef = useRef(0);
-  const MAX_RETRY = 5;
+
+  // Subscribe to the panel's filter state via the shared hook, and
+  // mirror the owner value into a ref so refreshRuns() can read it
+  // synchronously from SSE callbacks and other non-React contexts.
+  // useFilteredRuns subscribes via the same hook; both consumers share
+  // the underlying panel-local Recoil state.
+  const [filterState] = usePanelFilterState();
+  const ownerFilterRef = useRef(filterState.ownerFilter);
+  ownerFilterRef.current = filterState.ownerFilter;
 
   const refreshRuns = useCallback(() => {
     // If a fetch is already in flight, queue a follow-up refresh
@@ -68,10 +80,7 @@ export const useRuns = (): UseRunsResult => {
     }
     fetchingRef.current = true;
 
-    // Owner filter is applied server-side. Read the latest value at
-    // call time so SSE-driven refreshes always pick up the current
-    // selection without needing to live in React state.
-    const { ownerFilter } = getDefaultStore().get(filterStateAtom);
+    const ownerFilter = ownerFilterRef.current;
 
     const promise = new Promise<void>((resolve, reject) => {
       fetchRuns(
@@ -93,7 +102,6 @@ export const useRuns = (): UseRunsResult => {
               if (response?.runs) {
                 setRuns([...response.runs].sort(sortFn));
               }
-              setLoaded(true);
               resolve();
             } catch (e) {
               console.error("Error processing runs callback:", e);
@@ -123,8 +131,14 @@ export const useRuns = (): UseRunsResult => {
         errorCountRef.current += 1;
       })
       .finally(() => {
+        // Mark loaded once the attempt settles regardless of outcome —
+        // lets the UI drop its spinner even on error / parse failure.
+        setLoaded(true);
         inFlightRef.current = null;
-        if (pendingRef.current && errorCountRef.current < MAX_RETRY) {
+        if (
+          pendingRef.current &&
+          errorCountRef.current < RUNS_REFRESH_MAX_RETRY
+        ) {
           pendingRef.current = false;
           refreshRuns();
         } else {
@@ -154,10 +168,16 @@ export const useRuns = (): UseRunsResult => {
     }
   }, [refreshRuns, panelId, datasetName]);
 
-  // Subscribe to execution store changes via SSE for auto-refresh
+  // Subscribe to execution store changes via SSE for auto-refresh.
+  // Use a ref for refreshRuns so this callback is stable across
+  // fetchRuns identity churn (useOperatorExecutor re-memoizes `execute`
+  // whenever any recoil state read by useExecutionContext changes —
+  // view, filters, selectedSamples, etc).
+  const refreshRunsRef = useRef(refreshRuns);
+  refreshRunsRef.current = refreshRuns;
   const onStoreChange = useCallback(() => {
-    refreshRuns();
-  }, [refreshRuns]);
+    refreshRunsRef.current();
+  }, []);
 
   useExecutionStoreSubscribe({
     operatorUri: SSE_OPERATOR_URI,
