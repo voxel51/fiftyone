@@ -47,12 +47,6 @@ class _CdrReader:
     def read_uint32(self):
         return self._unpack("I", 4)
 
-    def read_uint16(self):
-        return self._unpack("H", 2)
-
-    def read_int8(self):
-        return self._unpack("b", 1)
-
     def read_uint8(self):
         return self._unpack("B", 1)
 
@@ -76,12 +70,6 @@ class _CdrReader:
         value = self._payload[self._offset : self._offset + length - 1]
         self._offset += length
         return value.tobytes().decode("utf-8", errors="replace")
-
-    def skip_bytes(self, count):
-        if count < 0 or self._offset + count > len(self._payload):
-            raise McapCdrDecodeError("Invalid ROS2 CDR byte skip")
-
-        self._offset += count
 
 
 def _to_timestamp_ns(sec, nanosec):
@@ -127,11 +115,6 @@ def _skip_duration(reader):
 def _skip_pose(reader):
     _parse_vector3(reader)
     _parse_quaternion(reader)
-
-
-def _skip_covariance(reader):
-    for _index in range(36):
-        reader.read_float64()
 
 
 def _decode_header_frame_id(payload):

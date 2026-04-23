@@ -86,6 +86,10 @@ export class MultimodalRenderable3dBufferCache {
     this.rawWindowCache = new MultimodalRawMessageWindowCache({
       ...options,
       loadWindow: async (window) => {
+        if (options.loadWindow) {
+          return options.loadWindow(window);
+        }
+
         const response = await fetchMultimodalBuffer({
           datasetId: options.datasetId,
           sampleId: options.sampleId,
@@ -100,8 +104,9 @@ export class MultimodalRenderable3dBufferCache {
         });
         return response.streams[0] ?? null;
       },
-      onStreamLoaded: (stream) => {
+      onStreamLoaded: (stream, window) => {
         this.primePrefetchedSceneFrames(stream);
+        options.onStreamLoaded?.(stream, window);
       },
     });
     this.schemaName = options.schemaName;

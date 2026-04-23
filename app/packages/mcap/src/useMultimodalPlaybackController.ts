@@ -70,6 +70,7 @@ import {
   BUILTIN_SCHEMA_CODEC_REGISTRY,
   type DecodedLocationSample,
 } from "./schema-codec-registry";
+import { createMultimodalStreamWindowBatchLoader } from "./stream-window-batch-loader";
 
 type MultimodalPlaybackPanelState = {
   status: "idle" | "loading" | "ready" | "error" | "empty";
@@ -127,6 +128,7 @@ const MULTIMODAL_PREFETCH_WINDOW_PADDING_AHEAD_NS =
 const MULTIMODAL_IMAGE_DECODE_LOOKAHEAD_COUNT = 2;
 const MULTIMODAL_POINTCLOUD_DECODE_LOOKAHEAD_COUNT = 1;
 const MULTIMODAL_BOOTSTRAP_TRANSFORM_WINDOW_NS = 1_000_000_000;
+const MAX_PREPARED_FRAME_CACHE_ENTRIES = 24;
 const PREFERRED_EGO_FOLLOW_FRAME_IDS = [
   "base_link",
   "ego_vehicle",
@@ -181,6 +183,11 @@ type PreparedPlaybackFrame = {
   panelStates: Record<string, Partial<MultimodalPlaybackPanelState>>;
 };
 
+type PreparedPlaybackPanelEntry = {
+  cacheable: boolean;
+  entry: readonly [string, Partial<MultimodalPlaybackPanelState>];
+};
+
 function createInitialPanelState(
   panel: MultimodalPanelLayoutState
 ): MultimodalPlaybackPanelState {
@@ -224,6 +231,17 @@ function isPanelHydrated(panelState: MultimodalPlaybackPanelState | undefined) {
         panelState.status === "empty" ||
         panelState.status === "error")
   );
+}
+
+function makePreparedPanelEntry(
+  panelId: string,
+  panelState: Partial<MultimodalPlaybackPanelState>,
+  cacheable = true
+): PreparedPlaybackPanelEntry {
+  return {
+    cacheable,
+    entry: [panelId, panelState] as const,
+  };
 }
 
 function arraysEqual<T>(left: T[], right: T[]) {
@@ -1115,6 +1133,9 @@ export function useMultimodalPlaybackController(
     React.useRef<MultimodalTransformGraphCache | null>(null);
   const framePlanCacheRef = React.useRef<PlaybackFramePlan | null>(null);
   const preparedFrameRef = React.useRef<PreparedPlaybackFrame | null>(null);
+  const preparedFrameCacheRef = React.useRef(
+    new Map<string, PreparedPlaybackFrame>()
+  );
   const latestPreparedFrameTokenRef = React.useRef(0);
   const mergedSceneFrameCacheRef = React.useRef(
     new Map<
@@ -1136,6 +1157,10 @@ export function useMultimodalPlaybackController(
   );
   const currentRenderTimeRef = React.useRef(0);
   const latestDirectRenderTokenRef = React.useRef(0);
+  const streamWindowBatchLoaderKeyRef = React.useRef<string | null>(null);
+  const streamWindowBatchLoaderRef = React.useRef<ReturnType<
+    typeof createMultimodalStreamWindowBatchLoader
+  > | null>(null);
   const didMarkFirstPanelRenderRef = React.useRef(false);
   const didMarkFirstUsefulPaintRef = React.useRef(false);
   const didMarkFullTimelineReadyRef = React.useRef(false);
@@ -1156,9 +1181,12 @@ export function useMultimodalPlaybackController(
       streamBufferLedgersRef.current.clear();
       framePlanCacheRef.current = null;
       preparedFrameRef.current = null;
+      preparedFrameCacheRef.current.clear();
       latestPreparedFrameTokenRef.current += 1;
       mergedSceneFrameCacheRef.current.clear();
       projectedSceneOverlayCacheRef.current.clear();
+      streamWindowBatchLoaderKeyRef.current = null;
+      streamWindowBatchLoaderRef.current = null;
     };
   }, []);
 
@@ -1205,10 +1233,13 @@ export function useMultimodalPlaybackController(
     transformGraphCacheRef.current = null;
     framePlanCacheRef.current = null;
     preparedFrameRef.current = null;
+    preparedFrameCacheRef.current.clear();
     latestPreparedFrameTokenRef.current += 1;
     mergedSceneFrameCacheRef.current.clear();
     projectedSceneOverlayCacheRef.current.clear();
     latestDirectRenderTokenRef.current += 1;
+    streamWindowBatchLoaderKeyRef.current = null;
+    streamWindowBatchLoaderRef.current = null;
     setIsBootstrapping(false);
     didMarkFirstPanelRenderRef.current = false;
     didMarkFirstUsefulPaintRef.current = false;
@@ -1237,93 +1268,158 @@ export function useMultimodalPlaybackController(
     bufferedRangesSnapshotRef.current = EMPTY_BUFFER_SNAPSHOT;
   }, [timeline]);
 
-  const getOrCreateImageCache = React.useCallback((streamId: string) => {
-    const currentCatalog = catalogRef.current;
-    if (!currentCatalog) {
-      return null;
-    }
+  const rememberPreparedFrame = React.useCallback(
+    (cacheKey: string, preparedFrame: PreparedPlaybackFrame) => {
+      const cache = preparedFrameCacheRef.current;
+      cache.delete(cacheKey);
+      cache.set(cacheKey, preparedFrame);
 
-    const existing = imageCachesRef.current.get(streamId);
-    if (existing) {
-      return existing;
-    }
+      while (cache.size > MAX_PREPARED_FRAME_CACHE_ENTRIES) {
+        const oldestKey = cache.keys().next().value;
+        if (oldestKey === undefined) {
+          break;
+        }
 
-    const streamDescriptor =
-      currentCatalog.streams.find((stream) => stream.streamId === streamId) ??
-      null;
-    if (!streamDescriptor) {
-      return null;
-    }
+        cache.delete(oldestKey);
+      }
+    },
+    []
+  );
 
-    const cache = new MultimodalImageBufferCache({
-      datasetId: currentCatalog.datasetId,
-      sampleId: currentCatalog.sampleId,
-      sceneId: currentCatalog.sceneId,
-      streamId,
-      schemaName: streamDescriptor.schemaName,
-      mediaField: currentCatalog.mediaField,
-      sourceKind: currentCatalog.sourceKind,
-      sceneRange: currentCatalog.timeRange,
-    });
-    imageCachesRef.current.set(streamId, cache);
-    return cache;
-  }, []);
+  const getOrCreateStreamWindowBatchLoader = React.useCallback(
+    (currentCatalog: MultimodalCatalog) => {
+      const loaderKey = [
+        currentCatalog.datasetId,
+        currentCatalog.sampleId,
+        currentCatalog.sceneId,
+        currentCatalog.mediaField,
+        currentCatalog.sourceKind ?? "",
+      ].join("::");
 
-  const getOrCreateRenderable3dCache = React.useCallback((streamId: string) => {
-    const currentCatalog = catalogRef.current;
-    if (!currentCatalog) {
-      return null;
-    }
+      if (
+        !streamWindowBatchLoaderRef.current ||
+        streamWindowBatchLoaderKeyRef.current !== loaderKey
+      ) {
+        streamWindowBatchLoaderKeyRef.current = loaderKey;
+        streamWindowBatchLoaderRef.current =
+          createMultimodalStreamWindowBatchLoader({
+            datasetId: currentCatalog.datasetId,
+            sampleId: currentCatalog.sampleId,
+            mediaField: currentCatalog.mediaField,
+            sourceKind: currentCatalog.sourceKind,
+          });
+      }
 
-    const existing = renderable3dCachesRef.current.get(streamId);
-    if (existing) {
-      return existing;
-    }
+      return streamWindowBatchLoaderRef.current;
+    },
+    []
+  );
 
-    const streamDescriptor =
-      currentCatalog.streams.find((stream) => stream.streamId === streamId) ??
-      null;
-    if (!streamDescriptor) {
-      return null;
-    }
+  const getOrCreateImageCache = React.useCallback(
+    (streamId: string) => {
+      const currentCatalog = catalogRef.current;
+      if (!currentCatalog) {
+        return null;
+      }
 
-    const cache = new MultimodalRenderable3dBufferCache({
-      datasetId: currentCatalog.datasetId,
-      sampleId: currentCatalog.sampleId,
-      sceneId: currentCatalog.sceneId,
-      streamId,
-      schemaName: streamDescriptor.schemaName,
-      mediaField: currentCatalog.mediaField,
-      sourceKind: currentCatalog.sourceKind,
-      sceneRange: currentCatalog.timeRange,
-    });
-    renderable3dCachesRef.current.set(streamId, cache);
-    return cache;
-  }, []);
+      const existing = imageCachesRef.current.get(streamId);
+      if (existing) {
+        return existing;
+      }
 
-  const getOrCreateRawCache = React.useCallback((streamId: string) => {
-    const currentCatalog = catalogRef.current;
-    if (!currentCatalog) {
-      return null;
-    }
+      const streamDescriptor =
+        currentCatalog.streams.find((stream) => stream.streamId === streamId) ??
+        null;
+      if (!streamDescriptor) {
+        return null;
+      }
 
-    const existing = rawCachesRef.current.get(streamId);
-    if (existing) {
-      return existing;
-    }
+      const batchWindowLoader =
+        getOrCreateStreamWindowBatchLoader(currentCatalog);
+      const cache = new MultimodalImageBufferCache({
+        datasetId: currentCatalog.datasetId,
+        sampleId: currentCatalog.sampleId,
+        sceneId: currentCatalog.sceneId,
+        streamId,
+        schemaName: streamDescriptor.schemaName,
+        mediaField: currentCatalog.mediaField,
+        sourceKind: currentCatalog.sourceKind,
+        sceneRange: currentCatalog.timeRange,
+        loadWindow: (window) => batchWindowLoader(streamId, window),
+      });
+      imageCachesRef.current.set(streamId, cache);
+      return cache;
+    },
+    [getOrCreateStreamWindowBatchLoader]
+  );
 
-    const cache = new MultimodalRawMessageWindowCache({
-      datasetId: currentCatalog.datasetId,
-      sampleId: currentCatalog.sampleId,
-      sceneId: currentCatalog.sceneId,
-      streamId,
-      mediaField: currentCatalog.mediaField,
-      sourceKind: currentCatalog.sourceKind,
-      sceneRange: currentCatalog.timeRange,
-    });
-    rawCachesRef.current.set(streamId, cache);
-    return cache;
-  }, []);
+  const getOrCreateRenderable3dCache = React.useCallback(
+    (streamId: string) => {
+      const currentCatalog = catalogRef.current;
+      if (!currentCatalog) {
+        return null;
+      }
+
+      const existing = renderable3dCachesRef.current.get(streamId);
+      if (existing) {
+        return existing;
+      }
+
+      const streamDescriptor =
+        currentCatalog.streams.find((stream) => stream.streamId === streamId) ??
+        null;
+      if (!streamDescriptor) {
+        return null;
+      }
+
+      const batchWindowLoader =
+        getOrCreateStreamWindowBatchLoader(currentCatalog);
+      const cache = new MultimodalRenderable3dBufferCache({
+        datasetId: currentCatalog.datasetId,
+        sampleId: currentCatalog.sampleId,
+        sceneId: currentCatalog.sceneId,
+        streamId,
+        schemaName: streamDescriptor.schemaName,
+        mediaField: currentCatalog.mediaField,
+        sourceKind: currentCatalog.sourceKind,
+        sceneRange: currentCatalog.timeRange,
+        loadWindow: (window) => batchWindowLoader(streamId, window),
+      });
+      renderable3dCachesRef.current.set(streamId, cache);
+      return cache;
+    },
+    [getOrCreateStreamWindowBatchLoader]
+  );
+
+  const getOrCreateRawCache = React.useCallback(
+    (streamId: string) => {
+      const currentCatalog = catalogRef.current;
+      if (!currentCatalog) {
+        return null;
+      }
+
+      const existing = rawCachesRef.current.get(streamId);
+      if (existing) {
+        return existing;
+      }
+
+      const batchWindowLoader =
+        getOrCreateStreamWindowBatchLoader(currentCatalog);
+      const cache = new MultimodalRawMessageWindowCache({
+        datasetId: currentCatalog.datasetId,
+        sampleId: currentCatalog.sampleId,
+        sceneId: currentCatalog.sceneId,
+        streamId,
+        mediaField: currentCatalog.mediaField,
+        sourceKind: currentCatalog.sourceKind,
+        sceneRange: currentCatalog.timeRange,
+        loadWindow: (window) => batchWindowLoader(streamId, window),
+      });
+      rawCachesRef.current.set(streamId, cache);
+      return cache;
+    },
+    [getOrCreateStreamWindowBatchLoader]
+  );
 
   const getStreamDescriptor = React.useCallback((streamId: string) => {
     return (
@@ -2096,6 +2192,13 @@ export function useMultimodalPlaybackController(
       };
 
       throwIfRenderStale();
+      const cachedPreparedFrame = preparedFrameCacheRef.current.get(
+        framePlan.key
+      );
+      if (cachedPreparedFrame) {
+        return cachedPreparedFrame;
+      }
+
       const streamLookup = new Map(
         currentCatalog.streams.map((stream) => [stream.streamId, stream])
       );
@@ -2113,39 +2216,32 @@ export function useMultimodalPlaybackController(
             if (panelPlan.type === "image") {
               const panel = panelPlan.panel;
               if (!panelPlan.render || !panel.renderStreamId) {
-                return [
-                  panel.panelId,
-                  {
-                    status: "empty",
-                    statusDetail: null,
-                    imageFrame: null,
-                    sceneFrame: null,
-                    messageIds: [],
-                    warnings: [],
-                    followPose: null,
-                    logTimeNs: null,
-                    publishTimeNs: null,
-                    transformRevision: null,
-                  },
-                ] as const;
+                return makePreparedPanelEntry(panel.panelId, {
+                  status: "empty",
+                  statusDetail: null,
+                  imageFrame: null,
+                  sceneFrame: null,
+                  messageIds: [],
+                  warnings: [],
+                  followPose: null,
+                  logTimeNs: null,
+                  publishTimeNs: null,
+                  transformRevision: null,
+                });
               }
 
               const selectedSample = panelPlan.render.sample;
               if (!selectedSample) {
-                return [
-                  panel.panelId,
-                  {
-                    status: "empty",
-                    statusDetail:
-                      "No synchronized image frame is available yet",
-                    imageFrame: null,
-                    sceneFrame: null,
-                    messageIds: [],
-                    warnings: [],
-                    followPose: null,
-                    transformRevision: null,
-                  },
-                ] as const;
+                return makePreparedPanelEntry(panel.panelId, {
+                  status: "empty",
+                  statusDetail: "No synchronized image frame is available yet",
+                  imageFrame: null,
+                  sceneFrame: null,
+                  messageIds: [],
+                  warnings: [],
+                  followPose: null,
+                  transformRevision: null,
+                });
               }
 
               const currentPanelState = panelStatesRef.current[panel.panelId];
@@ -2155,22 +2251,19 @@ export function useMultimodalPlaybackController(
               );
               if (!cache || !message) {
                 if (hasRenderableContent(currentPanelState)) {
-                  return [panel.panelId, {}] as const;
+                  return makePreparedPanelEntry(panel.panelId, {}, false);
                 }
 
-                return [
-                  panel.panelId,
-                  {
-                    status: "loading",
-                    statusDetail: `Buffering image stream ${panelPlan.render.streamId}`,
-                    imageFrame: null,
-                    sceneFrame: null,
-                    messageIds: [],
-                    warnings: [],
-                    followPose: null,
-                    transformRevision: null,
-                  },
-                ] as const;
+                return makePreparedPanelEntry(panel.panelId, {
+                  status: "loading",
+                  statusDetail: `Buffering image stream ${panelPlan.render.streamId}`,
+                  imageFrame: null,
+                  sceneFrame: null,
+                  messageIds: [],
+                  warnings: [],
+                  followPose: null,
+                  transformRevision: null,
+                });
               }
 
               void cache.warmMessagesAroundLogTime(message.logTimeNs, {
@@ -2287,6 +2380,26 @@ export function useMultimodalPlaybackController(
                 );
               }
 
+              const nextMessageIds = dedupeStrings([
+                message.messageId,
+                ...supportMessageIds,
+              ]);
+              const nextTransformRevision = shouldProject3dOverlays
+                ? transformGraphSnapshot.revision
+                : 0;
+              if (
+                currentPanelState?.status === "ready" &&
+                currentPanelState.imageFrame &&
+                arraysEqual(currentPanelState.messageIds, nextMessageIds) &&
+                currentPanelState.logTimeNs === selectedSample.logTimeNs &&
+                currentPanelState.publishTimeNs ===
+                  selectedSample.publishTimeNs &&
+                currentPanelState.transformRevision === nextTransformRevision &&
+                currentPanelState.error === null
+              ) {
+                return makePreparedPanelEntry(panel.panelId, {}, false);
+              }
+
               const projectedSceneUpdatePromise =
                 shouldProject3dOverlays && calibration
                   ? Promise.all(
@@ -2395,28 +2508,20 @@ export function useMultimodalPlaybackController(
                     }
                   : frame;
 
-              return [
-                panel.panelId,
-                {
-                  status: "ready",
-                  statusDetail: null,
-                  imageFrame,
-                  sceneFrame: null,
-                  colorMode: "rgb",
-                  messageIds: dedupeStrings([
-                    message.messageId,
-                    ...supportMessageIds,
-                  ]),
-                  warnings: nextWarnings,
-                  followPose: null,
-                  logTimeNs: selectedSample.logTimeNs,
-                  publishTimeNs: selectedSample.publishTimeNs,
-                  transformRevision: shouldProject3dOverlays
-                    ? transformGraphSnapshot.revision
-                    : 0,
-                  error: null,
-                },
-              ] as const;
+              return makePreparedPanelEntry(panel.panelId, {
+                status: "ready",
+                statusDetail: null,
+                imageFrame,
+                sceneFrame: null,
+                colorMode: "rgb",
+                messageIds: nextMessageIds,
+                warnings: nextWarnings,
+                followPose: null,
+                logTimeNs: selectedSample.logTimeNs,
+                publishTimeNs: selectedSample.publishTimeNs,
+                transformRevision: nextTransformRevision,
+                error: null,
+              });
             }
 
             const panel = panelPlan.panel;
@@ -2490,7 +2595,7 @@ export function useMultimodalPlaybackController(
               panel.frameConfig.followMode === "off" &&
               !currentPanelState.warnings.length
             ) {
-              return [panel.panelId, {}] as const;
+              return makePreparedPanelEntry(panel.panelId, {}, false);
             }
 
             selectedMessages.forEach((selectedMessage) => {
@@ -2573,7 +2678,7 @@ export function useMultimodalPlaybackController(
 
             if (!resolvedFrames.length) {
               const nextWarnings = dedupeStrings(warnings);
-              return [
+              return makePreparedPanelEntry(
                 panel.panelId,
                 {
                   status: hasRenderableContent(currentPanelState)
@@ -2595,7 +2700,8 @@ export function useMultimodalPlaybackController(
                   publishTimeNs,
                   transformRevision: transformGraphSnapshot.revision,
                 },
-              ] as const;
+                !hasRenderableContent(currentPanelState)
+              );
             }
 
             let followPose = null;
@@ -2718,45 +2824,52 @@ export function useMultimodalPlaybackController(
             }
 
             const nextWarnings = dedupeStrings(warnings);
-            return [
-              panel.panelId,
-              {
-                status: merged.frame ? "ready" : "empty",
-                statusDetail: null,
-                sceneFrame: merged.frame,
-                imageFrame: null,
-                colorMode: merged.colorMode,
-                messageIds: resolvedFrames.map(({ frame }) => frame.messageId),
-                warnings: nextWarnings,
-                followPose,
-                logTimeNs,
-                publishTimeNs,
-                transformRevision: transformGraphSnapshot.revision,
-                error: null,
-              },
-            ] as const;
+            return makePreparedPanelEntry(panel.panelId, {
+              status: merged.frame ? "ready" : "empty",
+              statusDetail: null,
+              sceneFrame: merged.frame,
+              imageFrame: null,
+              colorMode: merged.colorMode,
+              messageIds: resolvedFrames.map(({ frame }) => frame.messageId),
+              warnings: nextWarnings,
+              followPose,
+              logTimeNs,
+              publishTimeNs,
+              transformRevision: transformGraphSnapshot.revision,
+              error: null,
+            });
           } catch (renderError) {
             if (isStaleRenderAbort(renderError)) {
               throw renderError;
             }
 
-            return [
-              panelPlan.panel.panelId,
-              {
-                status: "error",
-                statusDetail: null,
-                transformRevision: null,
-                error: normalizeError(renderError),
-              },
-            ] as const;
+            return makePreparedPanelEntry(panelPlan.panel.panelId, {
+              status: "error",
+              statusDetail: null,
+              transformRevision: null,
+              error: normalizeError(renderError),
+            });
           }
         })
       );
 
-      return {
+      const preparedFrame = {
         snapshotTimeNs: targetTimestampNs,
-        panelStates: Object.fromEntries(nextPanelEntries),
+        panelStates: Object.fromEntries(
+          nextPanelEntries.map((preparedPanelEntry) => preparedPanelEntry.entry)
+        ),
       };
+      if (
+        nextPanelEntries.every(
+          (preparedPanelEntry) =>
+            preparedPanelEntry.cacheable &&
+            preparedPanelEntry.entry[1].status !== "loading"
+        )
+      ) {
+        rememberPreparedFrame(framePlan.key, preparedFrame);
+      }
+
+      return preparedFrame;
     },
     [
       getPlaybackFramePlan,
@@ -2764,6 +2877,7 @@ export function useMultimodalPlaybackController(
       getOrCreateRawCache,
       getOrCreateRenderable3dCache,
       getTransformGraphSnapshot,
+      rememberPreparedFrame,
     ]
   );
 

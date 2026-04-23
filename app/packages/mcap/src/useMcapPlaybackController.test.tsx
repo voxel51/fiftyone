@@ -21,6 +21,7 @@ const {
   decodeFoxgloveCameraCalibrationPayloadMock,
   decodeFoxgloveImageAnnotationsPayloadMock,
   bootstrapFetchMock,
+  fetchMultimodalBufferMock,
   imageBufferedRef,
   projectSceneFrameToImageOverlaysMock,
   renderable3dBufferedRef,
@@ -214,6 +215,22 @@ const {
     window: { startTimeNs: 0, endTimeNs: 0 },
     streams: [],
   }));
+  const fetchMultimodalBufferMock = vi.fn(async (params: any) => ({
+    sceneId: "scene-1",
+    window: {
+      startTimeNs: params.request.startTimeNs,
+      endTimeNs: params.request.endTimeNs,
+    },
+    streams: params.request.streamIds.map((streamId: string) => ({
+      streamId,
+      schemaName:
+        streamId === "/camera/front"
+          ? "sensor_msgs/msg/CompressedImage"
+          : "sensor_msgs/msg/PointCloud2",
+      messageEncoding: "cdr",
+      messages: [],
+    })),
+  }));
 
   return {
     useMultimodalExperimentalTimelineMock: vi.fn((options) => {
@@ -256,6 +273,7 @@ const {
     decodeFoxgloveCameraCalibrationPayloadMock,
     decodeFoxgloveImageAnnotationsPayloadMock,
     bootstrapFetchMock,
+    fetchMultimodalBufferMock,
     imageCacheInstance,
     projectSceneFrameToImageOverlaysMock,
     renderable3dCacheInstance,
@@ -287,6 +305,7 @@ vi.mock("./raw-message-window-cache", () => ({
 
 vi.mock("./api", () => ({
   fetchMultimodalBootstrapWindow: bootstrapFetchMock,
+  fetchMultimodalBuffer: fetchMultimodalBufferMock,
 }));
 
 vi.mock("./schema-codec-registry", () => ({
@@ -480,6 +499,7 @@ describe("useMultimodalPlaybackController", () => {
     imageBufferedRef.current = false;
     renderable3dBufferedRef.current = false;
     bootstrapFetchMock.mockClear();
+    fetchMultimodalBufferMock.mockClear();
     schemaCodecRegistryMock.decodeTransformPayload.mockClear();
     schemaCodecRegistryMock.decodeTransformPayload.mockReturnValue([]);
     schemaCodecRegistryMock.decodeLocationPayload.mockClear();
@@ -683,6 +703,41 @@ describe("useMultimodalPlaybackController", () => {
 
     expect(result.current.timelineName).toBe("multimodal:scene-1");
     expect(result.current.hasPlayback).toBe(true);
+  });
+
+  it("passes a shared same-window batch loader to render caches", async () => {
+    renderHook(() =>
+      useMultimodalPlaybackController(CATALOG as any, WORKSPACE as any)
+    );
+
+    await experimentalTimelineOptionsRef.current.onPrefetchRange([10, 20]);
+
+    const imageOptions = imageCacheConstructorMock.mock.calls[0][0];
+    const renderOptions = renderable3dCacheConstructorMock.mock.calls[0][0];
+    expect(imageOptions.loadWindow).toEqual(expect.any(Function));
+    expect(renderOptions.loadWindow).toEqual(expect.any(Function));
+
+    fetchMultimodalBufferMock.mockClear();
+    const [imageStream, renderStream] = await Promise.all([
+      imageOptions.loadWindow({ startNs: 10, endNs: 20 }),
+      renderOptions.loadWindow({ startNs: 10, endNs: 20 }),
+    ]);
+
+    expect(fetchMultimodalBufferMock).toHaveBeenCalledTimes(1);
+    expect(fetchMultimodalBufferMock).toHaveBeenCalledWith({
+      datasetId: "dataset-1",
+      sampleId: "sample-1",
+      request: {
+        mediaField: "filepath",
+        sourceKind: "mcap",
+        streamIds: ["/camera/front", "/lidar/top"],
+        startTimeNs: 10,
+        endTimeNs: 20,
+        mode: "raw",
+      },
+    });
+    expect(imageStream?.streamId).toBe("/camera/front");
+    expect(renderStream?.streamId).toBe("/lidar/top");
   });
 
   it("initializes playback from the first visible timestamp", async () => {
@@ -2414,6 +2469,8 @@ describe("useMultimodalPlaybackController", () => {
     const firstPanelStates = result.current.panelStates;
     const firstImagePanelState = result.current.panelStates.image_panel_1;
     const firstPointPanelState = result.current.panelStates.panel_3d_1;
+    const imageDecodeCallCount =
+      imageCacheInstance.decodeMessage.mock.calls.length;
     const decodeCallCount =
       renderable3dCacheInstance.decodeMessage.mock.calls.length;
 
@@ -2427,6 +2484,9 @@ describe("useMultimodalPlaybackController", () => {
     expect(result.current.panelStates).toBe(firstPanelStates);
     expect(result.current.panelStates.image_panel_1).toBe(firstImagePanelState);
     expect(result.current.panelStates.panel_3d_1).toBe(firstPointPanelState);
+    expect(imageCacheInstance.decodeMessage).toHaveBeenCalledTimes(
+      imageDecodeCallCount
+    );
     expect(renderable3dCacheInstance.decodeMessage).toHaveBeenCalledTimes(
       decodeCallCount
     );

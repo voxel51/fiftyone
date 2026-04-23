@@ -72,12 +72,40 @@ class _FakeAdapter(fosm.MultimodalSourceAdapter):
             "streams": {},
         }
         self.catalog_calls = 0
+        self.window_calls = 0
         self.timeline_calls = 0
 
     def build_catalog(self, source_path, media_field, scene_id):
         del source_path, media_field, scene_id
         self.catalog_calls += 1
         return self.metadata
+
+    def ingest_source(self, source_path, media_field, scene_id):
+        del source_path, media_field, scene_id
+        self.catalog_calls += 1
+        timeline_indexes = {}
+        for timestamp_source, fallback in fosm._iter_timeline_index_policies():
+            policy_key = fosm._build_timeline_index_policy_key(
+                timestamp_source, fallback
+            )
+            timeline_indexes[policy_key] = {
+                "timestamp_source": timestamp_source,
+                "fallback": fallback,
+                "timestamps_ns": list(
+                    self.timeline_response.get("timestamps_ns", [])
+                ),
+                "streams": {
+                    stream_id: [dict(sample) for sample in samples]
+                    for stream_id, samples in self.timeline_response.get(
+                        "streams", {}
+                    ).items()
+                },
+            }
+
+        return fosm.MultimodalIngestArtifacts(
+            metadata=self.metadata,
+            timeline_indexes=timeline_indexes,
+        )
 
     def read_stream_window(
         self,
@@ -91,6 +119,7 @@ class _FakeAdapter(fosm.MultimodalSourceAdapter):
     ):
         del source_path, stream_ids, start_time_ns, end_time_ns
         del max_messages_per_stream, timestamp_source, fallback
+        self.window_calls += 1
         return {
             stream_id: [
                 {
@@ -1156,7 +1185,7 @@ def _make_metadata(media_path, media_field="filepath"):
                 frame_id="odom",
             )
         ],
-        catalog_version="multimodal-workspace-v4",
+        catalog_version=fosm._CATALOG_VERSION,
     )
 
 
@@ -1249,7 +1278,7 @@ def _make_camera_rig_metadata(
         frames=frames,
         transforms=[],
         location_topics=[],
-        catalog_version="multimodal-workspace-v4",
+        catalog_version=fosm._CATALOG_VERSION,
     )
 
 
@@ -1265,6 +1294,40 @@ def fixture_dataset():
     finally:
         if fo.dataset_exists(dataset.name):
             fo.delete_dataset(dataset.name)
+
+
+@pytest.fixture(autouse=True)
+def fixture_timeline_index_artifacts_dir(tmp_path, monkeypatch):
+    artifacts_dir = tmp_path / "timeline_indexes"
+    monkeypatch.setattr(
+        fosm,
+        "_get_timeline_index_artifacts_dir",
+        lambda: str(artifacts_dir),
+    )
+    yield
+
+
+def _make_empty_timeline_indexes():
+    timeline_indexes = {}
+    for timestamp_source, fallback in fosm._iter_timeline_index_policies():
+        policy_key = fosm._build_timeline_index_policy_key(
+            timestamp_source, fallback
+        )
+        timeline_indexes[policy_key] = {
+            "timestamp_source": timestamp_source,
+            "fallback": fallback,
+            "timestamps_ns": [],
+            "streams": {},
+        }
+
+    return timeline_indexes
+
+
+def _persist_test_timeline_index_artifacts(metadata, timeline_indexes=None):
+    fosm._persist_timeline_index_artifacts(
+        metadata,
+        timeline_indexes or _make_empty_timeline_indexes(),
+    )
 
 
 @pytest.fixture(name="sample")
@@ -1337,7 +1400,7 @@ class TestMcapModule:
                 source_path=handle.name,
             )
 
-        assert metadata.catalog_version == "multimodal-workspace-v4"
+        assert metadata.catalog_version == fosm._CATALOG_VERSION
         assert [stream.stream_id for stream in metadata.streams] == [
             "/camera/front",
             "/tf",
@@ -1395,6 +1458,56 @@ class TestMcapModule:
         assert metadata.time_range.end_ns == 20
         assert metadata.streams[0].message_count == 2
         assert metadata.streams[0].frame_id == "camera"
+
+    def test_ingest_reader_builds_timeline_indexes_for_sync_policies(
+        self, monkeypatch
+    ):
+        image_schema = _make_schema(
+            1, "sensor_msgs/msg/CompressedImage", "ros2msg"
+        )
+        image_channel = _make_channel(1, "/camera/front", 1)
+        reader = _FakeReader(
+            summary=None,
+            messages=[
+                (
+                    image_schema,
+                    image_channel,
+                    _make_message(100, 120, b"frame"),
+                )
+            ],
+        )
+        monkeypatch.setattr(fosm, "decode_catalog_details", lambda *_: {})
+        monkeypatch.setattr(
+            fosm,
+            "decode_sync_timestamp_ns",
+            lambda schema_name, payload: (
+                150
+                if schema_name == "sensor_msgs/msg/CompressedImage"
+                and payload == b"frame"
+                else None
+            ),
+        )
+
+        with tempfile.NamedTemporaryFile(suffix=".mcap") as handle:
+            artifacts = fosm._ingest_reader(
+                reader=reader,
+                scene_id="scene-1",
+                media_field="filepath",
+                source_path=handle.name,
+            )
+
+        assert artifacts.timeline_indexes["header.stamp|log_time"][
+            "timestamps_ns"
+        ] == [150]
+        assert artifacts.timeline_indexes["header.stamp|publish_time"][
+            "timestamps_ns"
+        ] == [150]
+        assert artifacts.timeline_indexes["publish_time|log_time"][
+            "timestamps_ns"
+        ] == [120]
+        assert artifacts.timeline_indexes["log_time|log_time"][
+            "timestamps_ns"
+        ] == [100]
 
     def test_build_rendering_plan(self):
         metadata = _make_camera_rig_metadata(
@@ -1906,7 +2019,7 @@ class TestMcapModule:
                 codec_registry=fosm._SCHEMA_CODEC_REGISTRY,
             )
 
-        assert metadata.catalog_version == "multimodal-workspace-v4"
+        assert metadata.catalog_version == fosm._CATALOG_VERSION
         assert [stream.kind for stream in metadata.streams] == [
             "image",
             "3d",
@@ -1977,6 +2090,7 @@ class TestMcapModule:
             )
             repository = fosm.SampleMultimodalSceneRepository()
             repository.save(dataset, sample, metadata, rendering_plan)
+            _persist_test_timeline_index_artifacts(metadata)
             adapter = _FakeAdapter(
                 metadata=metadata,
                 fingerprint=metadata.source_fingerprint,
@@ -2082,6 +2196,7 @@ class TestMcapModule:
             repository.save(
                 dataset, sample, metadata, persisted_rendering_plan
             )
+            _persist_test_timeline_index_artifacts(metadata)
             adapter = _FakeAdapter(
                 metadata=metadata,
                 fingerprint=metadata.source_fingerprint,
@@ -2385,12 +2500,26 @@ class TestMcapModule:
                 start_time_ns=10,
                 end_time_ns=20,
             )
+            second = service.read_stream_window_binary(
+                dataset=dataset,
+                sample=sample,
+                media_field="filepath",
+                stream_ids=["/camera/front"],
+                start_time_ns=10,
+                end_time_ns=20,
+            )
 
         assert adapter.catalog_calls == 1
+        assert adapter.window_calls == 1
         manifest, payload_bytes = _decode_binary_window_response(response)
+        second_manifest, second_payload_bytes = _decode_binary_window_response(
+            second
+        )
         assert manifest["streams"][0]["streamId"] == "/camera/front"
         assert manifest["streams"][0]["messages"][0]["syncTimestampNs"] == 0
         assert payload_bytes == b"\x01\x02\x03"
+        assert second_manifest == manifest
+        assert second_payload_bytes == payload_bytes
 
     def test_workspace_service_reads_bootstrap_window(self, dataset, sample):
         with tempfile.NamedTemporaryFile(suffix=".mcap") as handle:
@@ -2461,6 +2590,7 @@ class TestMcapModule:
             )
             repository = fosm.SampleMultimodalSceneRepository()
             repository.save(dataset, sample, metadata, rendering_plan)
+            _persist_test_timeline_index_artifacts(metadata)
             stale_fingerprint = fom.MultimodalSourceFingerprint(
                 path=handle.name,
                 size_bytes=metadata.size_bytes,
@@ -2515,7 +2645,7 @@ class TestMcapModule:
             state = service.get_workspace(dataset, dataset.first(), "filepath")
 
         assert adapter.catalog_calls == 1
-        assert state.metadata.catalog_version == "multimodal-workspace-v4"
+        assert state.metadata.catalog_version == fosm._CATALOG_VERSION
         assert state.rendering_plan.panels[0].archetype == "3d"
 
     def test_workspace_service_reingests_persisted_workspace_without_layout_tree(
@@ -2553,7 +2683,7 @@ class TestMcapModule:
             state = service.get_workspace(dataset, dataset.first(), "filepath")
 
         assert adapter.catalog_calls == 1
-        assert state.metadata.catalog_version == "multimodal-workspace-v4"
+        assert state.metadata.catalog_version == fosm._CATALOG_VERSION
         assert state.rendering_plan.layout_tree is not None
 
     def test_workspace_service_serializes_scene_relative_timestamps(
@@ -2582,7 +2712,7 @@ class TestMcapModule:
                         compatible_panels=["image"],
                     )
                 ],
-                catalog_version="multimodal-workspace-v4",
+                catalog_version=fosm._CATALOG_VERSION,
             )
             adapter = _FakeAdapter(
                 metadata=metadata,
@@ -2722,7 +2852,7 @@ class TestMcapModule:
         assert first["timestampsNs"] == [0, 10]
         assert second["timestampsNs"] == [0, 10]
         assert adapter.catalog_calls == 1
-        assert adapter.timeline_calls == 1
+        assert adapter.timeline_calls == 0
 
     def test_resolve_message_sync_timestamp_uses_header_stamp_fallbacks(self):
         with pytest.MonkeyPatch.context() as monkeypatch:

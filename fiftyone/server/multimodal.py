@@ -8,6 +8,7 @@ FiftyOne Server multimodal ingest and workspace helpers.
 
 from abc import ABC, abstractmethod
 from collections import OrderedDict, deque
+import hashlib
 import importlib
 import json
 import logging
@@ -17,6 +18,7 @@ import struct
 import time
 
 import cachetools
+import fiftyone.constants as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.metadata as fom
 import fiftyone.core.rendering as fopr
@@ -33,7 +35,7 @@ from fiftyone.server.mcap_foxglove import (
 
 logger = logging.getLogger(__name__)
 
-_CATALOG_VERSION = "multimodal-workspace-v4"
+_CATALOG_VERSION = "multimodal-workspace-v5"
 _DEFAULT_SIDEBAR_WIDTH = 208
 _MIN_SIDEBAR_WIDTH = 176
 _MAX_SIDEBAR_WIDTH = 420
@@ -59,6 +61,11 @@ _DEFAULT_BOOTSTRAP_TRANSFORM_WINDOW_NS = 1_000_000_000
 _DEFAULT_BOOTSTRAP_RENDER_MESSAGE_COUNT = 2
 _TIMELINE_INDEX_CACHE_MAX_ENTRIES = 4
 _TIMELINE_INDEX_CACHE_TTL_SECONDS = 300
+_STREAM_WINDOW_BINARY_CACHE_MAX_ENTRIES = 16
+_STREAM_WINDOW_BINARY_CACHE_TTL_SECONDS = 120
+_TIMELINE_INDEX_ARTIFACTS_SUBDIR = os.path.join(
+    "var", "multimodal", "timeline_indexes"
+)
 MULTIMODAL_RAW_BUFFER_BINARY_CONTENT_TYPE = (
     "application/x-fiftyone-multimodal-raw-buffer"
 )
@@ -89,6 +96,14 @@ class PersistedMultimodalWorkspaceState:
     def __init__(self, metadata=None, rendering_plan=None):
         self.metadata = metadata
         self.rendering_plan = rendering_plan
+
+
+class MultimodalIngestArtifacts:
+    """Catalog and persisted ingest artifacts for a multimodal source."""
+
+    def __init__(self, metadata, timeline_indexes):
+        self.metadata = metadata
+        self.timeline_indexes = timeline_indexes
 
 
 class MultimodalSourceAdapter(ABC):
@@ -139,6 +154,31 @@ class MultimodalSourceAdapter(ABC):
     @abstractmethod
     def get_source_fingerprint(self, source_path):
         """Builds a cheap fingerprint for the source file."""
+
+    def ingest_source(self, source_path, media_field, scene_id):
+        """Builds persisted ingest artifacts for the given source."""
+        metadata = self.build_catalog(source_path, media_field, scene_id)
+        timeline_indexes = OrderedDict()
+        stream_ids = [stream.stream_id for stream in metadata.streams]
+        for timestamp_source, fallback in _iter_timeline_index_policies():
+            policy_key = _build_timeline_index_policy_key(
+                timestamp_source, fallback
+            )
+            timeline_indexes[policy_key] = {
+                "timestamp_source": timestamp_source,
+                "fallback": fallback,
+                **self.read_timeline_index(
+                    source_path=source_path,
+                    stream_ids=stream_ids,
+                    timestamp_source=timestamp_source,
+                    fallback=fallback,
+                ),
+            }
+
+        return MultimodalIngestArtifacts(
+            metadata=metadata,
+            timeline_indexes=timeline_indexes,
+        )
 
 
 class SchemaCodec(ABC):
@@ -414,9 +454,16 @@ class McapSourceAdapter(MultimodalSourceAdapter):
         self._codec_registry = codec_registry or _SCHEMA_CODEC_REGISTRY
 
     def build_catalog(self, source_path, media_field, scene_id):
+        return self.ingest_source(
+            source_path=source_path,
+            media_field=media_field,
+            scene_id=scene_id,
+        ).metadata
+
+    def ingest_source(self, source_path, media_field, scene_id):
         with open(source_path, "rb") as stream:
             reader = _get_mcap_reader_module().make_reader(stream)
-            return _catalog_reader(
+            return _ingest_reader(
                 reader=reader,
                 scene_id=scene_id,
                 media_field=media_field,
@@ -1164,6 +1211,10 @@ class MultimodalWorkspaceService:
             maxsize=_TIMELINE_INDEX_CACHE_MAX_ENTRIES,
             ttl=_TIMELINE_INDEX_CACHE_TTL_SECONDS,
         )
+        self._stream_window_binary_cache = cachetools.TTLCache(
+            maxsize=_STREAM_WINDOW_BINARY_CACHE_MAX_ENTRIES,
+            ttl=_STREAM_WINDOW_BINARY_CACHE_TTL_SECONDS,
+        )
 
     def ingest_workspace(
         self,
@@ -1195,12 +1246,17 @@ class MultimodalWorkspaceService:
             return state
 
         started_at = time.perf_counter()
-        metadata = adapter.build_catalog(
+        ingest_artifacts = adapter.ingest_source(
             scene_id=scene_id,
             media_field=media_field,
             source_path=source_path,
         )
+        metadata = ingest_artifacts.metadata
         rendering_plan = self._planner.build_rendering_plan(metadata)
+        _persist_timeline_index_artifacts(
+            metadata=metadata,
+            timeline_indexes=ingest_artifacts.timeline_indexes,
+        )
         persisted_state = self._repository.save(
             dataset=dataset,
             sample=sample,
@@ -1260,29 +1316,6 @@ class MultimodalWorkspaceService:
         max_messages_per_stream=None,
         source_kind=None,
     ):
-        window_data = self._read_stream_window_data(
-            dataset=dataset,
-            sample=sample,
-            media_field=media_field,
-            stream_ids=stream_ids,
-            start_time_ns=start_time_ns,
-            end_time_ns=end_time_ns,
-            max_messages_per_stream=max_messages_per_stream,
-            source_kind=source_kind,
-        )
-        return _build_stream_window_binary_response(**window_data)
-
-    def _read_stream_window_data(
-        self,
-        dataset,
-        sample,
-        media_field,
-        stream_ids,
-        start_time_ns,
-        end_time_ns,
-        max_messages_per_stream=None,
-        source_kind=None,
-    ):
         state = self.get_workspace(
             dataset, sample, media_field, source_kind=source_kind
         )
@@ -1297,8 +1330,27 @@ class MultimodalWorkspaceService:
         fallback = _normalize_timestamp_fallback(
             state.rendering_plan.sync.fallback
         )
-        adapter = self._adapter_registry.get(state.metadata.source_kind)
+        cache_key = _make_stream_window_binary_cache_key(
+            metadata=state.metadata,
+            stream_ids=stream_ids,
+            start_time_ns=absolute_start_time_ns,
+            end_time_ns=absolute_end_time_ns,
+            max_messages_per_stream=max_messages_per_stream,
+            timestamp_source=timestamp_source,
+            fallback=fallback,
+        )
+        cached_response = self._stream_window_binary_cache.get(cache_key)
+        if cached_response is not None:
+            logger.debug(
+                "Stream-window cache hit for %s [%s, %s] (%d streams)",
+                state.metadata.source_path,
+                absolute_start_time_ns,
+                absolute_end_time_ns,
+                len(stream_ids),
+            )
+            return cached_response
 
+        adapter = self._adapter_registry.get(state.metadata.source_kind)
         started_at = time.perf_counter()
         raw_messages = adapter.read_stream_window(
             source_path=state.metadata.source_path,
@@ -1317,15 +1369,17 @@ class MultimodalWorkspaceService:
             (time.perf_counter() - started_at) * 1000,
             len(raw_messages),
         )
-        return {
-            "scene_id": state.metadata.scene_id,
-            "start_time_ns": absolute_start_time_ns,
-            "end_time_ns": absolute_end_time_ns,
-            "stream_lookup": stream_lookup,
-            "stream_ids": stream_ids,
-            "raw_messages": raw_messages,
-            "scene_start_ns": scene_start_ns,
-        }
+        response = _build_stream_window_binary_response(
+            scene_id=state.metadata.scene_id,
+            start_time_ns=absolute_start_time_ns,
+            end_time_ns=absolute_end_time_ns,
+            stream_lookup=stream_lookup,
+            stream_ids=stream_ids,
+            raw_messages=raw_messages,
+            scene_start_ns=scene_start_ns,
+        )
+        self._stream_window_binary_cache[cache_key] = response
+        return response
 
     def read_bootstrap_window_binary(
         self,
@@ -1469,15 +1523,34 @@ class MultimodalWorkspaceService:
             )
             return cached_response
 
-        adapter = self._adapter_registry.get(state.metadata.source_kind)
-
         started_at = time.perf_counter()
-        timeline_index = adapter.read_timeline_index(
-            source_path=state.metadata.source_path,
-            stream_ids=stream_ids,
+        timeline_index = _load_persisted_timeline_index(
+            metadata=state.metadata,
             timestamp_source=timestamp_source,
             fallback=fallback,
         )
+        if timeline_index is None:
+            state = self.ingest_workspace(
+                dataset=dataset,
+                sample=sample,
+                media_field=media_field,
+                overwrite=True,
+                source_kind=source_kind,
+            )
+            stream_lookup = _build_stream_lookup(state.metadata)
+            scene_start_ns = _get_scene_start_ns(state.metadata)
+            timeline_index = _load_persisted_timeline_index(
+                metadata=state.metadata,
+                timestamp_source=timestamp_source,
+                fallback=fallback,
+            )
+
+        if timeline_index is None:
+            raise MultimodalRouteError(
+                500,
+                "Persisted multimodal timeline index is unavailable after ingest",
+            )
+
         logger.debug(
             "Read multimodal timeline index %s in %.3f ms (%d streams, %d timestamps)",
             state.metadata.source_path,
@@ -1638,12 +1711,7 @@ def _get_multimodal_service():
     return _MULTIMODAL_SERVICE
 
 
-def _classify_stream(schema_name, codec_registry=None):
-    resolved_codec_registry = codec_registry or _SCHEMA_CODEC_REGISTRY
-    return resolved_codec_registry.classify_stream(schema_name)
-
-
-def _catalog_reader(
+def _ingest_reader(
     reader,
     scene_id,
     media_field,
@@ -1661,6 +1729,7 @@ def _catalog_reader(
     overall_range = _get_summary_scene_time_range(summary)
     transform_records = OrderedDict()
     extra_frame_ids = OrderedDict()
+    timeline_indexes = _init_timeline_index_accumulators()
 
     for schema, channel, message in _iter_reader_messages(reader):
         if schema is None:
@@ -1678,10 +1747,22 @@ def _catalog_reader(
             streams[channel.topic] = stream
 
         log_time_ns = int(message.log_time)
+        publish_time_ns = int(message.publish_time)
         overall_range = _update_overall_range(overall_range, log_time_ns)
         _update_stream_range(stream, log_time_ns)
         if not stream["_message_count_known"]:
             _increment_stream_count(stream)
+
+        _accumulate_timeline_index_samples(
+            timeline_indexes=timeline_indexes,
+            stream_id=channel.topic,
+            schema_name=stream["schema_name"],
+            schema=schema,
+            payload=message.data,
+            log_time_ns=log_time_ns,
+            publish_time_ns=publish_time_ns,
+            codec_registry=resolved_codec_registry,
+        )
 
         try:
             details = _decode_catalog_details(
@@ -1754,7 +1835,7 @@ def _catalog_reader(
         finalized_streams, resolved_codec_registry
     )
 
-    return fom.MultimodalMetadata.build_for(
+    metadata = fom.MultimodalMetadata.build_for(
         scene_id=scene_id,
         media_field=media_field,
         media_path=source_path,
@@ -1765,6 +1846,13 @@ def _catalog_reader(
         transforms=list(transform_records.values()),
         location_topics=location_topics,
         catalog_version=_CATALOG_VERSION,
+    )
+
+    return MultimodalIngestArtifacts(
+        metadata=metadata,
+        timeline_indexes=_finalize_timeline_index_accumulators(
+            timeline_indexes
+        ),
     )
 
 
@@ -1905,6 +1993,9 @@ def _build_timeline_index_response(
 def _make_timeline_index_cache_key(
     metadata, stream_ids, timestamp_source, fallback
 ):
+    timestamp_source, fallback = _canonicalize_timeline_index_policy(
+        timestamp_source, fallback
+    )
     fingerprint = metadata.source_fingerprint
     if fingerprint is None:
         fingerprint_key = None
@@ -1925,6 +2016,325 @@ def _make_timeline_index_cache_key(
         fallback,
         fingerprint_key,
     )
+
+
+def _make_stream_window_binary_cache_key(
+    metadata,
+    stream_ids,
+    start_time_ns,
+    end_time_ns,
+    max_messages_per_stream,
+    timestamp_source,
+    fallback,
+):
+    fingerprint = metadata.source_fingerprint
+    if fingerprint is None:
+        fingerprint_key = None
+    else:
+        fingerprint_key = (
+            fingerprint.path,
+            int(fingerprint.size_bytes),
+            int(fingerprint.mtime_ns),
+        )
+
+    return (
+        _CATALOG_VERSION,
+        metadata.scene_id,
+        metadata.media_field,
+        metadata.source_kind,
+        tuple(stream_ids or ()),
+        int(start_time_ns),
+        int(end_time_ns),
+        (
+            None
+            if max_messages_per_stream is None
+            else int(max_messages_per_stream)
+        ),
+        timestamp_source,
+        fallback,
+        fingerprint_key,
+    )
+
+
+def _init_timeline_index_accumulators():
+    timeline_indexes = OrderedDict()
+    for timestamp_source, fallback in _iter_timeline_index_policies():
+        policy_key = _build_timeline_index_policy_key(
+            timestamp_source, fallback
+        )
+        timeline_indexes[policy_key] = {
+            "timestamp_source": timestamp_source,
+            "fallback": fallback,
+            "timestamps_ns": set(),
+            "streams": OrderedDict(),
+        }
+
+    return timeline_indexes
+
+
+def _accumulate_timeline_index_samples(
+    timeline_indexes,
+    stream_id,
+    schema_name,
+    schema,
+    payload,
+    log_time_ns,
+    publish_time_ns,
+    codec_registry,
+):
+    decoded_timestamp_ns = _decode_message_sync_timestamp_ns(
+        schema_name=schema_name,
+        payload=payload,
+        codec_registry=codec_registry,
+        schema=schema,
+    )
+    for timestamp_source, fallback in _iter_timeline_index_policies():
+        policy_key = _build_timeline_index_policy_key(
+            timestamp_source, fallback
+        )
+        sync_timestamp_ns = _resolve_message_sync_timestamp_from_components(
+            decoded_timestamp_ns=decoded_timestamp_ns,
+            log_time_ns=log_time_ns,
+            publish_time_ns=publish_time_ns,
+            timestamp_source=timestamp_source,
+            fallback=fallback,
+        )
+        policy_index = timeline_indexes[policy_key]
+        policy_stream = policy_index["streams"].setdefault(stream_id, [])
+        policy_stream.append(
+            {
+                "timestamp_ns": sync_timestamp_ns,
+                "log_time_ns": int(log_time_ns),
+                "publish_time_ns": int(publish_time_ns),
+            }
+        )
+        policy_index["timestamps_ns"].add(sync_timestamp_ns)
+
+
+def _finalize_timeline_index_accumulators(timeline_indexes):
+    finalized_indexes = OrderedDict()
+    for policy_key, timeline_index in timeline_indexes.items():
+        finalized_indexes[policy_key] = {
+            "timestamp_source": timeline_index["timestamp_source"],
+            "fallback": timeline_index["fallback"],
+            "timestamps_ns": sorted(timeline_index["timestamps_ns"]),
+            "streams": OrderedDict(
+                (
+                    stream_id,
+                    sorted(
+                        stream_timestamps,
+                        key=lambda sample: (
+                            sample["timestamp_ns"],
+                            sample["log_time_ns"],
+                        ),
+                    ),
+                )
+                for stream_id, stream_timestamps in timeline_index[
+                    "streams"
+                ].items()
+            ),
+        }
+
+    return finalized_indexes
+
+
+def _iter_timeline_index_policies():
+    return (
+        ("header.stamp", "log_time"),
+        ("header.stamp", "publish_time"),
+        ("publish_time", "log_time"),
+        ("log_time", "log_time"),
+    )
+
+
+def _canonicalize_timeline_index_policy(timestamp_source, fallback):
+    timestamp_source = _normalize_timestamp_source(timestamp_source)
+    fallback = _normalize_timestamp_fallback(fallback)
+    if timestamp_source != "header.stamp":
+        fallback = "log_time"
+
+    return timestamp_source, fallback
+
+
+def _build_timeline_index_policy_key(timestamp_source, fallback):
+    timestamp_source, fallback = _canonicalize_timeline_index_policy(
+        timestamp_source, fallback
+    )
+    return "%s|%s" % (timestamp_source, fallback)
+
+
+def _decode_message_sync_timestamp_ns(
+    schema_name, payload, codec_registry=None, schema=None
+):
+    schema_name = schema_name or _get_schema_name(schema)
+    try:
+        if codec_registry is None:
+            return decode_sync_timestamp_ns(schema_name, payload)
+
+        return codec_registry.decode_sync_timestamp_ns(
+            schema or schema_name, payload
+        )
+    except (McapCdrDecodeError, McapFoxgloveDecodeError):
+        logger.debug(
+            "Falling back to non-header timestamp for %s",
+            schema_name,
+            exc_info=True,
+        )
+        return None
+
+
+def _resolve_message_sync_timestamp_from_components(
+    decoded_timestamp_ns,
+    log_time_ns,
+    publish_time_ns,
+    timestamp_source,
+    fallback,
+):
+    timestamp_source = _normalize_timestamp_source(timestamp_source)
+    fallback = _normalize_timestamp_fallback(fallback)
+
+    if timestamp_source == "log_time":
+        return int(log_time_ns)
+
+    if timestamp_source == "publish_time":
+        if publish_time_ns:
+            return int(publish_time_ns)
+
+        return int(log_time_ns)
+
+    if decoded_timestamp_ns:
+        return int(decoded_timestamp_ns)
+
+    if fallback == "publish_time" and publish_time_ns:
+        return int(publish_time_ns)
+
+    return int(log_time_ns)
+
+
+def _get_timeline_index_artifacts_dir():
+    return os.path.join(
+        foc.FIFTYONE_CONFIG_DIR, _TIMELINE_INDEX_ARTIFACTS_SUBDIR
+    )
+
+
+def _get_timeline_index_artifact_prefix(source_path):
+    basename = os.path.basename(source_path) or "multimodal"
+    safe_basename = re.sub(r"[^A-Za-z0-9._-]+", "_", basename)[:64]
+    source_digest = hashlib.sha1(
+        os.path.abspath(source_path).encode("utf-8")
+    ).hexdigest()[:16]
+    return "%s-%s" % (safe_basename, source_digest)
+
+
+def _get_timeline_index_artifact_path(
+    source_path, fingerprint, timestamp_source, fallback
+):
+    timestamp_source, fallback = _canonicalize_timeline_index_policy(
+        timestamp_source, fallback
+    )
+    fingerprint = fingerprint or fom.MultimodalSourceFingerprint(
+        path=source_path,
+        size_bytes=0,
+        mtime_ns=0,
+    )
+    policy_suffix = (
+        _build_timeline_index_policy_key(timestamp_source, fallback)
+        .replace(".", "_")
+        .replace("|", "__")
+    )
+    artifact_prefix = _get_timeline_index_artifact_prefix(source_path)
+    filename = "%s.%s.%s.%s.%s.json" % (
+        artifact_prefix,
+        _CATALOG_VERSION,
+        int(fingerprint.size_bytes),
+        int(fingerprint.mtime_ns),
+        policy_suffix,
+    )
+    return os.path.join(_get_timeline_index_artifacts_dir(), filename)
+
+
+def _persist_timeline_index_artifacts(metadata, timeline_indexes):
+    artifacts_dir = _get_timeline_index_artifacts_dir()
+    os.makedirs(artifacts_dir, exist_ok=True)
+    _prune_timeline_index_artifacts(metadata.source_path)
+    for timeline_index in timeline_indexes.values():
+        artifact_path = _get_timeline_index_artifact_path(
+            source_path=metadata.source_path,
+            fingerprint=metadata.source_fingerprint,
+            timestamp_source=timeline_index["timestamp_source"],
+            fallback=timeline_index["fallback"],
+        )
+        payload = {
+            "scene_id": metadata.scene_id,
+            "timestamp_source": timeline_index["timestamp_source"],
+            "fallback": timeline_index["fallback"],
+            "timestamps_ns": timeline_index["timestamps_ns"],
+            "streams": timeline_index["streams"],
+        }
+        temp_path = "%s.tmp" % artifact_path
+        with open(temp_path, "w", encoding="utf-8") as stream:
+            json.dump(payload, stream, separators=(",", ":"))
+        os.replace(temp_path, artifact_path)
+
+
+def _prune_timeline_index_artifacts(source_path):
+    artifacts_dir = _get_timeline_index_artifacts_dir()
+    if not os.path.isdir(artifacts_dir):
+        return
+
+    artifact_prefix = "%s." % _get_timeline_index_artifact_prefix(source_path)
+    for filename in os.listdir(artifacts_dir):
+        if not filename.startswith(artifact_prefix):
+            continue
+
+        artifact_path = os.path.join(artifacts_dir, filename)
+        try:
+            os.remove(artifact_path)
+        except OSError:
+            logger.debug(
+                "Failed to remove stale multimodal timeline artifact %s",
+                artifact_path,
+                exc_info=True,
+            )
+
+
+def _has_persisted_timeline_index_artifacts(metadata):
+    fingerprint = metadata.source_fingerprint
+    for timestamp_source, fallback in _iter_timeline_index_policies():
+        artifact_path = _get_timeline_index_artifact_path(
+            source_path=metadata.source_path,
+            fingerprint=fingerprint,
+            timestamp_source=timestamp_source,
+            fallback=fallback,
+        )
+        if not os.path.exists(artifact_path):
+            return False
+
+    return True
+
+
+def _load_persisted_timeline_index(metadata, timestamp_source, fallback):
+    timestamp_source, fallback = _canonicalize_timeline_index_policy(
+        timestamp_source, fallback
+    )
+    artifact_path = _get_timeline_index_artifact_path(
+        source_path=metadata.source_path,
+        fingerprint=metadata.source_fingerprint,
+        timestamp_source=timestamp_source,
+        fallback=fallback,
+    )
+    if not os.path.exists(artifact_path):
+        return None
+
+    with open(artifact_path, "r", encoding="utf-8") as stream:
+        payload = json.load(stream)
+
+    return {
+        "timestamp_source": payload["timestamp_source"],
+        "fallback": payload["fallback"],
+        "timestamps_ns": payload["timestamps_ns"],
+        "streams": payload["streams"],
+    }
 
 
 def _serialize_stream(stream, scene_start_ns):
@@ -2768,43 +3178,22 @@ def _resolve_message_sync_timestamp_ns(
     schema=None,
 ):
     schema_name = schema_name or _get_schema_name(schema)
-    timestamp_source = _normalize_timestamp_source(timestamp_source)
-    fallback = _normalize_timestamp_fallback(fallback)
-
-    if timestamp_source == "log_time":
-        return int(log_time_ns)
-
-    if timestamp_source == "publish_time":
-        if publish_time_ns:
-            return int(publish_time_ns)
-
-        return int(log_time_ns)
-
-    try:
-        if codec_registry is None:
-            decoded_timestamp_ns = decode_sync_timestamp_ns(
-                schema_name, payload
-            )
-        else:
-            decoded_timestamp_ns = codec_registry.decode_sync_timestamp_ns(
-                schema or schema_name, payload
-            )
-    except (McapCdrDecodeError, McapFoxgloveDecodeError):
-        logger.debug(
-            "Falling back to %s timestamp for %s",
-            fallback,
-            schema_name,
-            exc_info=True,
+    decoded_timestamp_ns = None
+    if _normalize_timestamp_source(timestamp_source) == "header.stamp":
+        decoded_timestamp_ns = _decode_message_sync_timestamp_ns(
+            schema_name=schema_name,
+            payload=payload,
+            codec_registry=codec_registry,
+            schema=schema,
         )
-        decoded_timestamp_ns = None
 
-    if decoded_timestamp_ns:
-        return int(decoded_timestamp_ns)
-
-    if fallback == "publish_time" and publish_time_ns:
-        return int(publish_time_ns)
-
-    return int(log_time_ns)
+    return _resolve_message_sync_timestamp_from_components(
+        decoded_timestamp_ns=decoded_timestamp_ns,
+        log_time_ns=log_time_ns,
+        publish_time_ns=publish_time_ns,
+        timestamp_source=timestamp_source,
+        fallback=fallback,
+    )
 
 
 def _make_time_range_document(start_ns, end_ns):
@@ -2962,13 +3351,16 @@ def _requires_ingest(
     if fingerprint is None:
         return True
 
-    return any(
+    if any(
         (
             fingerprint.path != source_fingerprint.path,
             int(fingerprint.size_bytes) != int(source_fingerprint.size_bytes),
             int(fingerprint.mtime_ns) != int(source_fingerprint.mtime_ns),
         )
-    )
+    ):
+        return True
+
+    return not _has_persisted_timeline_index_artifacts(metadata)
 
 
 def _get_mcap_reader_module():
