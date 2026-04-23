@@ -9,7 +9,7 @@
 
 import type { ReactNode } from "react";
 
-export interface AnnotationAction {
+export interface ToolbarActionItem {
   id: string;
   label: string;
   icon: ReactNode;
@@ -23,9 +23,9 @@ export interface AnnotationAction {
   customComponent?: ReactNode;
 }
 
-export interface AnnotationActionGroup {
+export interface ToolbarActionGroup {
   id: string;
   label?: string;
   isHidden?: boolean;
-  actions: AnnotationAction[];
+  actions: ToolbarActionItem[];
 }

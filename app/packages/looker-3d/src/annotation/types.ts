@@ -1,8 +1,8 @@
 import type { OverlayLabel } from "../labels/loader";
 
 export type {
-  AnnotationAction,
-  AnnotationActionGroup,
+  ToolbarActionItem,
+  ToolbarActionGroup,
 } from "@fiftyone/components";
 
 export interface AnnotationToolbarProps {

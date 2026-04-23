@@ -16,8 +16,8 @@ export { default as FilterAndSelectionIndicator } from "./FilterAndSelectionIndi
 export { ActionToolbar } from "./ActionToolbar";
 export type {
   ActionToolbarProps,
-  AnnotationAction,
-  AnnotationActionGroup,
+  ToolbarActionItem,
+  ToolbarActionGroup,
 } from "./ActionToolbar";
 export { FloatingToolbar } from "./FloatingToolbar";
 export type {

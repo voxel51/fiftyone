@@ -3,14 +3,10 @@
  *
  * Domain-agnostic renderer for a data-driven Voodo toolbar.
  *
- * Accepts a list of AnnotationActionGroup objects and renders them using the
+ * Accepts a list of ToolbarActionGroup objects and renders them using the
  * Voodo Toolbar/ToolbarGroup/ToolbarAction primitives. Owns NO portal logic,
  * NO domain state, and NO visibility gating — callers are responsible for
  * those concerns.
- *
- * Used by:
- *  - AnnotationToolbar  (@fiftyone/looker-3d) — 3D annotation tools
- *  - SegmentationToolbar (@fiftyone/core)     — 2D segmentation brush tools
  */
 
 import { Box, Typography, styled } from "@mui/material";
@@ -23,7 +19,7 @@ import {
   Tooltip,
   ZIndex,
 } from "@voxel51/voodo";
-import type { AnnotationAction, AnnotationActionGroup } from "./types";
+import type { ToolbarActionItem, ToolbarActionGroup } from "./types";
 
 const GroupLabel = styled(Typography)(({ theme }) => ({
   fontSize: "9px",
@@ -36,7 +32,7 @@ const GroupLabel = styled(Typography)(({ theme }) => ({
 }));
 
 export interface ActionToolbarProps {
-  groups: AnnotationActionGroup[];
+  groups: ToolbarActionGroup[];
   orientation?: Orientation;
   lockX?: boolean;
   lockY?: boolean;
@@ -47,7 +43,7 @@ export interface ActionToolbarProps {
   className?: string;
 }
 
-const ActionButton = ({ action }: { action: AnnotationAction }) => (
+const ActionButton = ({ action }: { action: ToolbarActionItem }) => (
   <Tooltip
     portal
     content={

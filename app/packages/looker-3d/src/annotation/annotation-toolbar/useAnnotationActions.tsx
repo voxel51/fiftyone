@@ -34,7 +34,7 @@ import {
   usePolylineOperations,
   useWorkingDoc,
 } from "../store";
-import type { AnnotationActionGroup, TransformMode } from "../types";
+import type { ToolbarActionGroup, TransformMode } from "../types";
 import { AnnotationPlaneTooltip } from "./AnnotationPlaneTooltip";
 import {
   PlaneCoordinateInputs,
@@ -265,8 +265,8 @@ export const useAnnotationActions = () => {
 
   const onExit = useExit();
 
-  const actions: AnnotationActionGroup[] = useMemo(() => {
-    const baseActions: AnnotationActionGroup[] = [
+  const actions: ToolbarActionGroup[] = useMemo(() => {
+    const baseActions: ToolbarActionGroup[] = [
       {
         id: "edit-actions",
         label: "",

@@ -2,7 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { EraserIcon, type AnnotationActionGroup } from "@fiftyone/components";
+import { EraserIcon, type ToolbarActionGroup } from "@fiftyone/components";
 import {
   Brush,
   CircleOutlined,
@@ -51,7 +51,7 @@ export const useSegmentationActions = ({
   canUndo = false,
   canRedo = false,
 }: UseSegmentationActionsArgs): {
-  groups: AnnotationActionGroup[];
+  groups: ToolbarActionGroup[];
   visible: boolean;
 } => {
   const {
@@ -64,7 +64,7 @@ export const useSegmentationActions = ({
     setToolSize,
   } = useSegmentationMode();
 
-  const groups: AnnotationActionGroup[] = useMemo(
+  const groups: ToolbarActionGroup[] = useMemo(
     () => [
       {
         id: "tool",
