@@ -12,6 +12,7 @@ const {
   mockEventBusDispatch,
   mockGetModalViewport,
   mockUseModalLookerOptions,
+  mockRenderCallbacks,
 } = vi.hoisted(() => {
   const map = new Map<string, Set<(...args: any[]) => any>>();
 
@@ -39,6 +40,8 @@ const {
 
   const clearAll = () => map.clear();
 
+  const renderCallbacks: Array<() => void> = [];
+
   return {
     mockBus: { on, off, once, dispatch, clearAll },
     mockSetViewportState: vi.fn(),
@@ -47,6 +50,7 @@ const {
     mockEventBusDispatch: vi.fn(),
     mockGetModalViewport: vi.fn<() => any>(() => null),
     mockUseModalLookerOptions: vi.fn<() => any>(() => ({})),
+    mockRenderCallbacks: renderCallbacks,
   };
 });
 
@@ -59,6 +63,18 @@ vi.mock("@fiftyone/lighter", async () => {
         setViewportState: mockSetViewportState,
         fitToContent: mockFitToContent,
         getContentBounds: mockGetContentBounds,
+        registerRenderCallback: ({
+          callback,
+        }: {
+          phase: string;
+          callback: () => void;
+        }) => {
+          mockRenderCallbacks.push(callback);
+          return () => {
+            const idx = mockRenderCallbacks.indexOf(callback);
+            if (idx >= 0) mockRenderCallbacks.splice(idx, 1);
+          };
+        },
       },
     }),
     useLighterEventHandler:
@@ -89,7 +105,24 @@ vi.mock("@fiftyone/state", () => ({
   },
 }));
 
+vi.mock("../Sidebar/Annotate/useLabels", async () => {
+  const { atom } = await import("jotai");
+  return {
+    LabelsState: { UNSET: "unset", LOADING: "loading", COMPLETE: "complete" },
+    labelsState: atom("complete"),
+  };
+});
+
 // --- Event helpers ---
+
+/** Drains all pending render callbacks (handles the nested double-tick pattern). */
+const flushRenderCallbacks = () =>
+  act(() => {
+    while (mockRenderCallbacks.length > 0) {
+      const callback = mockRenderCallbacks.shift()!;
+      callback();
+    }
+  });
 
 const BOUNDS = { x: 0, y: 0, width: 100, height: 100 };
 const CONTENT_BOUNDS = { x: 0, y: 0, width: 50, height: 50 };
@@ -110,6 +143,7 @@ const fireOverlayAdded = () =>
 describe("useViewport", () => {
   beforeEach(() => {
     mockBus.clearAll();
+    mockRenderCallbacks.length = 0;
     mockSetViewportState.mockClear();
     mockFitToContent.mockClear();
     mockEventBusDispatch.mockClear();
@@ -132,6 +166,7 @@ describe("useViewport", () => {
 
       await fireMediaBoundsChanged();
       await fireRendererReady();
+      await flushRenderCallbacks();
 
       expect(mockSetViewportState).toHaveBeenCalledWith(savedViewport);
     });
@@ -149,6 +184,7 @@ describe("useViewport", () => {
 
       await fireMediaBoundsChanged();
       await fireRendererReady();
+      await flushRenderCallbacks();
 
       expect(mockSetViewportState).not.toHaveBeenCalled();
     });
@@ -161,6 +197,7 @@ describe("useViewport", () => {
 
       await fireMediaBoundsChanged();
       await fireRendererReady();
+      await flushRenderCallbacks();
 
       expect(mockFitToContent).toHaveBeenCalledWith(0.1);
       expect(mockSetViewportState).not.toHaveBeenCalled();
@@ -179,6 +216,7 @@ describe("useViewport", () => {
       // Spatial overlay arrives
       mockGetContentBounds.mockReturnValue(CONTENT_BOUNDS);
       await fireOverlayAdded();
+      await flushRenderCallbacks();
       expect(mockFitToContent).toHaveBeenCalledWith(0.1);
     });
 
@@ -187,6 +225,7 @@ describe("useViewport", () => {
 
       await fireMediaBoundsChanged();
       await fireRendererReady();
+      await flushRenderCallbacks();
 
       expect(mockSetViewportState).not.toHaveBeenCalled();
       expect(mockFitToContent).not.toHaveBeenCalled();
@@ -231,11 +270,14 @@ describe("useViewport", () => {
 
       await fireMediaBoundsChanged();
       await fireRendererReady();
+      await flushRenderCallbacks();
       // Dispatch init-complete conditions again — should not re-initialize
       await fireMediaBoundsChanged();
       await fireRendererReady();
+      await flushRenderCallbacks();
 
       expect(mockSetViewportState).toHaveBeenCalledTimes(1);
+      expect(mockEventBusDispatch).toHaveBeenCalledTimes(1);
     });
   });
 });
