@@ -772,6 +772,75 @@ describe("Multimodal renderers", () => {
     expect(screen.getByRole("button", { name: "3D" })).toBeTruthy();
   });
 
+  it("shows sync controls and saves updated workspace clock settings", async () => {
+    vi.useFakeTimers();
+    const save = vi.fn().mockResolvedValue(WORKSPACE_RESPONSE.renderingPlan);
+    useMultimodalWorkspaceMock.mockReturnValue(
+      createWorkspaceHookState({
+        save,
+      })
+    );
+
+    render(<MultimodalModalRenderer ctx={createCtx("modal")} />);
+
+    const syncSectionButton = screen.getByRole("button", { name: "Sync" });
+    expect(syncSectionButton.getAttribute("aria-expanded")).toBe("true");
+
+    const timestampSourceSelect = screen.getByLabelText(
+      "Timestamp source"
+    ) as HTMLSelectElement;
+    const fallbackClockSelect = screen.getByLabelText(
+      "Fallback clock"
+    ) as HTMLSelectElement;
+
+    expect(timestampSourceSelect.value).toBe("header.stamp");
+    expect(fallbackClockSelect.value).toBe("log_time");
+    expect(fallbackClockSelect.disabled).toBe(false);
+
+    fireEvent.change(fallbackClockSelect, {
+      target: { value: "publish_time" },
+    });
+
+    expect(
+      useMultimodalPlaybackControllerMock.mock.calls.at(-1)?.[1]
+    ).toMatchObject({
+      sync: {
+        timestampSource: "header.stamp",
+        fallback: "publish_time",
+        mode: "nearest",
+      },
+    });
+
+    fireEvent.change(timestampSourceSelect, {
+      target: { value: "log_time" },
+    });
+
+    expect(
+      useMultimodalPlaybackControllerMock.mock.calls.at(-1)?.[1]
+    ).toMatchObject({
+      sync: {
+        timestampSource: "log_time",
+        fallback: "publish_time",
+        mode: "nearest",
+      },
+    });
+
+    expect(
+      (screen.getByLabelText("Fallback clock") as HTMLSelectElement).disabled
+    ).toBe(true);
+
+    await vi.advanceTimersByTimeAsync(250);
+
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(save.mock.calls.at(-1)?.[0]).toMatchObject({
+      sync: {
+        timestampSource: "log_time",
+        fallback: "publish_time",
+        mode: "nearest",
+      },
+    });
+  });
+
   it("shows stream schemas in the sidebar instead of internal stream kinds", async () => {
     render(<MultimodalModalRenderer ctx={createCtx("modal")} />);
 

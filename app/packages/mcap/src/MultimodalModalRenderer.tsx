@@ -204,6 +204,7 @@ const PANEL_VIEWPORT_STYLES: React.CSSProperties = {
 };
 
 type SidebarSectionId =
+  | "sync"
   | "panelTitle"
   | "frameConfig"
   | "overlays"
@@ -212,6 +213,7 @@ type SidebarSectionId =
   | "streams";
 
 const DEFAULT_SIDEBAR_SECTION_STATE: Record<SidebarSectionId, boolean> = {
+  sync: false,
   panelTitle: false,
   frameConfig: true,
   overlays: true,
@@ -219,6 +221,17 @@ const DEFAULT_SIDEBAR_SECTION_STATE: Record<SidebarSectionId, boolean> = {
   transforms: true,
   streams: true,
 };
+
+const SYNC_TIMESTAMP_SOURCE_OPTIONS = [
+  { value: "header.stamp", label: "Header stamp" },
+  { value: "publish_time", label: "Publish time" },
+  { value: "log_time", label: "Log time" },
+];
+
+const SYNC_FALLBACK_OPTIONS = [
+  { value: "publish_time", label: "Publish time" },
+  { value: "log_time", label: "Log time" },
+];
 
 const MULTIMODAL_MOSAIC_ID = "multimodal-workspace-mosaic";
 const MOSAIC_PLACEMENT_POSITIONS = ["top", "left", "right", "bottom"] as const;
@@ -437,6 +450,7 @@ function SelectField({
         {label}
       </Text>
       <select
+        aria-label={label}
         disabled={disabled}
         style={{
           width: "100%",
@@ -692,8 +706,8 @@ function PanelViewportInner({
         data-testid="multimodal-panel-empty"
         orientation={Orientation.Column}
         spacing={Spacing.Sm}
-        justify={Justify.Center}
-        align={Align.Center}
+        justify={Justify.End}
+        align={Align.End}
         style={{ ...PANEL_VIEWPORT_STYLES, padding: "16px" }}
       >
         <Text variant={TextVariant.Sm} color={TextColor.Primary}>
@@ -1267,6 +1281,32 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
     ];
   }, [catalog?.locationTopics]);
 
+  const updateSyncConfig = React.useCallback(
+    (updates: Partial<MultimodalWorkspaceState["sync"]>) => {
+      React.startTransition(() => {
+        applyWorkspaceState((current) => {
+          const nextSync = {
+            ...current.sync,
+            ...updates,
+          };
+          if (
+            nextSync.timestampSource === current.sync.timestampSource &&
+            nextSync.fallback === current.sync.fallback &&
+            nextSync.mode === current.sync.mode
+          ) {
+            return current;
+          }
+
+          return {
+            ...current,
+            sync: nextSync,
+          };
+        }, "debounced");
+      });
+    },
+    [applyWorkspaceState]
+  );
+
   const updateActivePanel = React.useCallback(
     (
       updater: (panel: MultimodalPanelLayoutState) => MultimodalPanelLayoutState
@@ -1700,6 +1740,8 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
           }px ${SIDEBAR_RESIZER_WIDTH_PX}px minmax(0, 1fr)`,
     };
   }, [workspaceState?.sidebarCollapsed, workspaceState?.sidebarWidth]);
+  const isHeaderStampSyncSource =
+    workspaceState?.sync.timestampSource === "header.stamp";
 
   const displayedLayoutTree = React.useMemo(() => {
     if (!workspaceState) {
@@ -1913,6 +1955,61 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
             />
+
+            {matchesSearch(deferredSearchQuery, [
+              "sync",
+              "clock",
+              "timestamp source",
+              "header stamp",
+              "header.stamp",
+              "publish time",
+              "publish_time",
+              "log time",
+              "log_time",
+              "fallback",
+              workspaceState.sync.timestampSource,
+              workspaceState.sync.fallback,
+            ]) ? (
+              <SidebarSection
+                collapsed={collapsedSections.sync}
+                forceExpanded={hasSearchQuery}
+                onToggle={() => toggleSidebarSection("sync")}
+                title="Sync"
+              >
+                <Text variant={TextVariant.Caption} color={TextColor.Secondary}>
+                  Choose the shared clock used to align playback across visible
+                  panels.
+                </Text>
+                <SelectField
+                  label="Timestamp source"
+                  options={SYNC_TIMESTAMP_SOURCE_OPTIONS}
+                  value={workspaceState.sync.timestampSource}
+                  onChange={(nextValue) =>
+                    updateSyncConfig({
+                      timestampSource: (nextValue ??
+                        "header.stamp") as MultimodalWorkspaceState["sync"]["timestampSource"],
+                    })
+                  }
+                />
+                <SelectField
+                  disabled={!isHeaderStampSyncSource}
+                  label="Fallback clock"
+                  options={SYNC_FALLBACK_OPTIONS}
+                  value={workspaceState.sync.fallback}
+                  onChange={(nextValue) =>
+                    updateSyncConfig({
+                      fallback: (nextValue ??
+                        "log_time") as MultimodalWorkspaceState["sync"]["fallback"],
+                    })
+                  }
+                />
+                <Text variant={TextVariant.Caption} color={TextColor.Secondary}>
+                  {isHeaderStampSyncSource
+                    ? "Fallback is used when header timestamps are missing or cannot be decoded."
+                    : "Fallback applies only when the timestamp source is Header stamp."}
+                </Text>
+              </SidebarSection>
+            ) : null}
 
             {activePanel ? (
               <>

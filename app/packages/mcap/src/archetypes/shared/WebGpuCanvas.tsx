@@ -24,6 +24,8 @@ type WebGpuCanvasProps = Pick<
     fallback?: React.ReactNode;
   };
 
+type RootStore = ReturnType<ReturnType<typeof createRoot>["render"]>;
+
 async function loadWebGpuRenderer() {
   const module = await import("three/webgpu");
   return module.WebGPURenderer;
@@ -113,6 +115,18 @@ function useElementSize(element: HTMLDivElement | null) {
   return size;
 }
 
+function isSameSizeSnapshot(
+  currentSize: SizeSnapshot | null,
+  nextSize: SizeSnapshot
+) {
+  return (
+    currentSize?.width === nextSize.width &&
+    currentSize?.height === nextSize.height &&
+    currentSize?.top === nextSize.top &&
+    currentSize?.left === nextSize.left
+  );
+}
+
 /** Renders MCAP Three.js content through Three's WebGPU renderer. */
 export const WebGpuCanvas = React.forwardRef<
   HTMLCanvasElement,
@@ -133,7 +147,9 @@ export const WebGpuCanvas = React.forwardRef<
   const [containerElement, setContainerElement] =
     React.useState<HTMLDivElement | null>(null);
   const rootRef = React.useRef<ReturnType<typeof createRoot> | null>(null);
+  const rootStoreRef = React.useRef<RootStore | null>(null);
   const rendererRef = React.useRef<WebGPURenderer | null>(null);
+  const appliedSizeRef = React.useRef<SizeSnapshot | null>(null);
   const [isReady, setIsReady] = React.useState(false);
   const [mountError, setMountError] = React.useState<Error | null>(null);
   const size = useElementSize(containerElement);
@@ -202,6 +218,7 @@ export const WebGpuCanvas = React.forwardRef<
           updateStyle: false,
         },
       });
+      appliedSizeRef.current = size;
       setIsReady(true);
     };
 
@@ -233,13 +250,33 @@ export const WebGpuCanvas = React.forwardRef<
       return;
     }
 
-    root.render(children);
+    rootStoreRef.current = root.render(children);
   }, [children, isReady]);
+
+  React.useEffect(() => {
+    const rootStore = rootStoreRef.current;
+    if (
+      !rootStore ||
+      !isReady ||
+      size.width <= 0 ||
+      size.height <= 0 ||
+      isSameSizeSnapshot(appliedSizeRef.current, size)
+    ) {
+      return;
+    }
+
+    const { invalidate, setSize } = rootStore.getState();
+    setSize(size.width, size.height, false, size.top, size.left);
+    appliedSizeRef.current = size;
+    invalidate();
+  }, [isReady, size]);
 
   React.useEffect(() => {
     return () => {
       setIsReady(false);
+      appliedSizeRef.current = null;
       rootRef.current?.unmount();
+      rootStoreRef.current = null;
       rendererRef.current?.dispose();
       rootRef.current = null;
       rendererRef.current = null;
