@@ -253,7 +253,7 @@ const Detection = () => {
 };
 
 const Segmentation = () => {
-  const { isActive, activate } = useAIAnnotationMode();
+  const { isActive, activate, deactivate } = useAIAnnotationMode();
   const deactivateAll = useDeactivateAll();
 
   return (
@@ -266,10 +266,12 @@ const Segmentation = () => {
           deactivateAll();
           if (!isActive) {
             activate();
+          } else {
+            deactivate();
           }
         }}
       >
-        <Icon name={IconName.AI} />
+        <Icon name={IconName.Workspaces} />
       </Square>
     </Tooltip>
   );
