@@ -93,14 +93,14 @@ export class MaskKeypoints extends KeypointOverlay {
     }
 
     if (shouldAddPoint) {
-      const idx = super.addPoint(worldPoint);
+      const index = super.addPoint(worldPoint);
 
-      if (idx > 0) {
-        this.addConnection([idx - 1, idx]);
+      if (index > 0) {
+        this.addConnection([index - 1, index]);
       }
 
       this.lastKeypoint = { ...worldPoint };
-      return idx;
+      return index;
     }
 
     return -1;
