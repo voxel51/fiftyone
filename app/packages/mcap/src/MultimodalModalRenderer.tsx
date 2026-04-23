@@ -25,9 +25,21 @@ import {
   Variant,
 } from "@voxel51/voodo";
 import React from "react";
+import {
+  Mosaic,
+  MosaicWindow,
+  type MosaicBranch,
+  type MosaicNode,
+} from "react-mosaic-component";
+import "react-mosaic-component/react-mosaic-component.css";
 import { Image2dView, Points3dView } from "./archetypes";
-import { canBindStreamToPanel } from "./panel-binding-registry";
-import { formatMultimodalDuration, getStreamById } from "./scene-view-model";
+import "./multimodal-mosaic.css";
+import {
+  canBindStreamToPanel,
+  isImageRenderableStream,
+  isImageSupportStream,
+} from "./panel-binding-registry";
+import { getStreamById } from "./scene-view-model";
 import {
   getMultimodalRendererInfo,
   getMultimodalSceneParams,
@@ -36,6 +48,7 @@ import { getRelevantTransforms } from "./transform-runtime";
 import type {
   MultimodalCatalog,
   MultimodalFrameConfig,
+  MultimodalLayoutNode,
   MultimodalPanelArchetype,
   MultimodalPanelLayoutState,
   MultimodalSceneConfig,
@@ -50,10 +63,21 @@ import type { MultimodalExperimentalTimelineState } from "./useMultimodalExperim
 import { useMultimodalWorkspace } from "./useMultimodalWorkspace";
 import {
   addPanelToWorkspaceState,
+  DEFAULT_MULTIMODAL_SIDEBAR_WIDTH_PX,
+  MAX_MULTIMODAL_SIDEBAR_WIDTH_PX,
+  MIN_MULTIMODAL_SIDEBAR_WIDTH_PX,
+  createRenderingPlanFromWorkspaceState,
   createWorkspaceStateFromRenderingPlan,
   getActivePanel,
+  getDefaultImageSupportStreamIds,
+  getSuggestedPanelTitle,
   removePanelFromWorkspaceState,
+  reconcileImageSupportStreamIds,
+  retitleGenericPanelsInWorkspaceState,
   selectPanelInWorkspaceState,
+  setLayoutTreeInWorkspaceState,
+  setSidebarWidthInWorkspaceState,
+  shouldSyncPanelTitleToStreams,
   togglePanelMaximizedInWorkspaceState,
   toggleSidebarInWorkspaceState,
   updatePanelInWorkspaceState,
@@ -65,88 +89,75 @@ const ROOT_STYLES: React.CSSProperties = {
   minWidth: 0,
   minHeight: 0,
   display: "grid",
-  gridTemplateColumns: "272px minmax(0, 1fr)",
+  gridTemplateColumns: `${DEFAULT_MULTIMODAL_SIDEBAR_WIDTH_PX}px minmax(0, 1fr)`,
   background:
-    "linear-gradient(180deg, rgba(11,18,29,1) 0%, rgba(15,23,36,1) 100%)",
+    "radial-gradient(circle at top left, rgba(33, 52, 74, 0.48), transparent 38%), linear-gradient(180deg, #09111a 0%, #101924 100%)",
 };
 
 const SIDEBAR_STYLES: React.CSSProperties = {
   minWidth: 0,
   minHeight: 0,
-  borderRight: "1px solid rgba(255,255,255,0.08)",
-  background: "rgba(6, 11, 18, 0.88)",
+  background: "rgba(6, 11, 18, 0.92)",
   padding: "8px",
   overflow: "auto",
 };
 
-const WORKSPACE_STYLES: React.CSSProperties = {
+const SIDEBAR_RESIZER_WIDTH_PX = 8;
+const MIN_MAIN_WIDTH_PX = 320;
+
+const SIDEBAR_RESIZER_STYLES: React.CSSProperties = {
+  position: "relative",
+  minWidth: `${SIDEBAR_RESIZER_WIDTH_PX}px`,
+  cursor: "col-resize",
+  background: "rgba(255,255,255,0.04)",
+};
+
+const SIDEBAR_RESIZER_GRIP_STYLES: React.CSSProperties = {
+  position: "absolute",
+  top: "50%",
+  left: "50%",
+  width: "2px",
+  height: "40px",
+  borderRadius: "999px",
+  background: "rgba(255,255,255,0.28)",
+  transform: "translate(-50%, -50%)",
+};
+
+const MAIN_STYLES: React.CSSProperties = {
   position: "relative",
   minWidth: 0,
   minHeight: 0,
-  padding: "0 0 72px",
   overflow: "hidden",
+  paddingBottom: "72px",
 };
 
 const TOOLBAR_STYLES: React.CSSProperties = {
   width: "100%",
   padding: "6px 8px",
-  borderRadius: 0,
-  borderWidth: "0 0 1px",
-  borderStyle: "solid",
-  borderColor: "rgba(255,255,255,0.08)",
-  background: "rgba(9, 15, 24, 0.74)",
+  borderBottom: "1px solid rgba(255,255,255,0.08)",
+  background: "rgba(9, 15, 24, 0.72)",
 };
 
-const GRID_STYLES: React.CSSProperties = {
+const MOSAIC_CONTAINER_STYLES: React.CSSProperties = {
+  width: "100%",
+  height: "100%",
   minWidth: 0,
   minHeight: 0,
-  display: "grid",
-  gridTemplateColumns: "repeat(12, minmax(0, 1fr))",
-  gridAutoRows: "minmax(156px, 1fr)",
-  gridAutoFlow: "dense",
-  gap: "4px",
-  height: "100%",
-  overflow: "auto",
-  alignContent: "start",
   padding: "4px",
-};
-
-const PANEL_CARD_STYLES: React.CSSProperties = {
-  height: "100%",
-  minHeight: 0,
-  borderRadius: 0,
-  padding: "6px",
-  overflow: "hidden",
-  cursor: "pointer",
-  border: "1px solid rgba(255,255,255,0.08)",
-};
-
-const PANEL_VIEWPORT_STYLES: React.CSSProperties = {
-  minWidth: 0,
-  minHeight: 0,
-  flex: 1,
-  borderRadius: 0,
-  overflow: "hidden",
-  background: "rgba(255,255,255,0.03)",
-  border: "1px solid rgba(255,255,255,0.04)",
 };
 
 const TIMELINE_DOCK_STYLES: React.CSSProperties = {
   position: "absolute",
-  left: "0",
-  right: "0",
-  bottom: "0",
+  left: 0,
+  right: 0,
+  bottom: 0,
   padding: "10px 12px",
-  borderRadius: 0,
-  borderWidth: "1px 0 0",
-  borderStyle: "solid",
-  borderColor: "rgba(255,255,255,0.1)",
+  borderTop: "1px solid rgba(255,255,255,0.1)",
   background: "rgba(8, 13, 20, 0.9)",
   backdropFilter: "blur(10px)",
 };
 
 const SECTION_CARD_STYLES: React.CSSProperties = {
-  borderRadius: 0,
   padding: 0,
   border: "1px solid rgba(255,255,255,0.08)",
   background: "rgba(255,255,255,0.03)",
@@ -160,7 +171,6 @@ const SECTION_HEADER_BUTTON_STYLES: React.CSSProperties = {
   gap: "8px",
   padding: "8px 10px",
   border: "none",
-  borderRadius: 0,
   background: "transparent",
   color: "inherit",
   cursor: "pointer",
@@ -183,42 +193,13 @@ const SECTION_CARET_STYLES: React.CSSProperties = {
   transition: "transform 120ms ease",
 };
 
-const PANEL_MENU_WRAPPER_STYLES: React.CSSProperties = {
-  position: "relative",
-};
-
-const PANEL_MENU_STYLES: React.CSSProperties = {
-  position: "absolute",
-  top: "calc(100% + 8px)",
-  right: 0,
-  zIndex: 5,
-  minWidth: "160px",
-  padding: "8px",
-  borderRadius: 0,
-  border: "1px solid rgba(255,255,255,0.08)",
-  background: "rgba(8, 13, 20, 0.96)",
-  boxShadow: "0 18px 40px rgba(0, 0, 0, 0.35)",
-};
-
-const PANEL_MENU_ITEM_STYLES: React.CSSProperties = {
-  width: "100%",
-  border: "none",
-  borderRadius: 0,
-  padding: "8px 10px",
-  background: "transparent",
-  color: "white",
-  textAlign: "left",
-  cursor: "pointer",
-};
-
-const GRID_EMPTY_STYLES: React.CSSProperties = {
+const PANEL_VIEWPORT_STYLES: React.CSSProperties = {
+  minWidth: 0,
   minHeight: 0,
   height: "100%",
-  gridColumn: "1 / -1",
   borderRadius: 0,
-  border: "1px dashed rgba(255,255,255,0.12)",
+  overflow: "hidden",
   background: "rgba(255,255,255,0.03)",
-  padding: "14px",
 };
 
 type SidebarSectionId =
@@ -235,6 +216,8 @@ const DEFAULT_SIDEBAR_SECTION_STATE: Record<SidebarSectionId, boolean> = {
   transforms: true,
   streams: true,
 };
+
+type PersistenceMode = "none" | "debounced" | "immediate";
 
 function formatPlaybackTimestampNs(timestampNs: number) {
   const totalMilliseconds = Math.max(0, Math.round(timestampNs / 1_000_000));
@@ -277,20 +260,6 @@ function arraysEqual<T>(left: T[], right: T[]) {
   return true;
 }
 
-function getPanelGridStyle(
-  panel: MultimodalPanelLayoutState,
-  maximizedPanelId: string | null
-): React.CSSProperties {
-  if (maximizedPanelId) {
-    return {};
-  }
-
-  return {
-    gridColumn: `${panel.layout.x + 1} / span ${panel.layout.w}`,
-    gridRow: `${panel.layout.y + 1} / span ${panel.layout.h}`,
-  };
-}
-
 function frameConfigEqual(
   left: MultimodalFrameConfig,
   right: MultimodalFrameConfig
@@ -310,8 +279,96 @@ function sceneConfigEqual(
 ) {
   return (
     left.upAxis === right.upAxis &&
-    left.backgroundColor === right.backgroundColor
+    left.backgroundColor === right.backgroundColor &&
+    (left.showGrid ?? true) === (right.showGrid ?? true)
   );
+}
+
+function isImage3dOverlayProjectionEnabled(panel: MultimodalPanelLayoutState) {
+  return panel.archetype === "image"
+    ? panel.imageConfig?.project3dOverlays ?? false
+    : false;
+}
+
+function shouldIncludeImageSupportFrameForPanel(
+  panel: MultimodalPanelLayoutState,
+  stream: MultimodalStreamDescriptor | null | undefined
+) {
+  if (!stream || panel.archetype !== "image" || !isImageSupportStream(stream)) {
+    return false;
+  }
+
+  if (
+    stream.schemaName === "foxglove.CameraCalibration" ||
+    canBindStreamToPanel(stream, "3d")
+  ) {
+    return isImage3dOverlayProjectionEnabled(panel);
+  }
+
+  return true;
+}
+
+function toMosaicNode(
+  layoutTree: MultimodalLayoutNode | null
+): MosaicNode<string> | null {
+  if (!layoutTree) {
+    return null;
+  }
+
+  if (layoutTree.type === "leaf") {
+    return layoutTree.panelId;
+  }
+
+  return {
+    direction: layoutTree.direction,
+    splitPercentage: layoutTree.splitPercentage,
+    first: toMosaicNode(layoutTree.first)!,
+    second: toMosaicNode(layoutTree.second)!,
+  };
+}
+
+function fromMosaicNode(
+  mosaicNode: MosaicNode<string> | null
+): MultimodalLayoutNode | null {
+  if (!mosaicNode) {
+    return null;
+  }
+
+  if (typeof mosaicNode === "string" || typeof mosaicNode === "number") {
+    return {
+      type: "leaf",
+      panelId: String(mosaicNode),
+    };
+  }
+
+  return {
+    type: "split",
+    direction: mosaicNode.direction,
+    splitPercentage: mosaicNode.splitPercentage ?? 50,
+    first: fromMosaicNode(mosaicNode.first)!,
+    second: fromMosaicNode(mosaicNode.second)!,
+  };
+}
+
+function getPanelStreamLabel(
+  catalog: MultimodalCatalog,
+  panel: MultimodalPanelLayoutState
+) {
+  if (panel.archetype === "image") {
+    return getStreamById(catalog, panel.renderStreamId)?.topic ?? "Unbound";
+  }
+
+  if (panel.visibleStreamIds.length === 0) {
+    return "Unbound";
+  }
+
+  if (panel.visibleStreamIds.length === 1) {
+    return (
+      getStreamById(catalog, panel.visibleStreamIds[0])?.topic ?? "1 stream"
+    );
+  }
+
+  return `${panel.visibleStreamIds.length} streams`;
 }
 
 function SelectField({
@@ -336,8 +393,8 @@ function SelectField({
         disabled={disabled}
         style={{
           width: "100%",
-          borderRadius: "8px",
-          padding: "8px 10px",
+          borderRadius: "6px",
+          padding: "6px 8px",
           background: "rgba(12, 18, 29, 0.9)",
           color: "white",
           border: "1px solid rgba(255,255,255,0.12)",
@@ -408,13 +465,17 @@ function SidebarSection({
 function StreamRow({
   activePanel,
   checked,
+  controlType = "checkbox",
   disabled,
+  groupName,
   onToggle,
   stream,
 }: {
   activePanel: MultimodalPanelLayoutState;
   checked: boolean;
+  controlType?: "checkbox" | "radio";
   disabled: boolean;
+  groupName?: string;
   onToggle: () => void;
   stream: MultimodalStreamDescriptor;
 }) {
@@ -457,41 +518,11 @@ function StreamRow({
         aria-label={`${activePanel.title}-${stream.topic}-toggle`}
         checked={checked}
         disabled={disabled}
+        name={groupName}
         onChange={onToggle}
-        type="checkbox"
+        type={controlType}
       />
     </Stack>
-  );
-}
-
-function PanelActionMenu({
-  isMaximized,
-  onClosePanel,
-  onToggleMaximize,
-}: {
-  isMaximized: boolean;
-  onClosePanel: () => void;
-  onToggleMaximize: () => void;
-}) {
-  return (
-    <div style={PANEL_MENU_STYLES} onClick={(event) => event.stopPropagation()}>
-      <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
-        <button
-          style={PANEL_MENU_ITEM_STYLES}
-          type="button"
-          onClick={onToggleMaximize}
-        >
-          {isMaximized ? "Restore panel" : "Maximize panel"}
-        </button>
-        <button
-          style={PANEL_MENU_ITEM_STYLES}
-          type="button"
-          onClick={onClosePanel}
-        >
-          Close panel
-        </button>
-      </Stack>
-    </div>
   );
 }
 
@@ -530,7 +561,7 @@ function MultimodalTimelineDock({
       speed={timelineState.speed}
       subtitle={`${
         timestampSource ?? "log_time"
-      } clock aligned across all visible panels`}
+      } clock aligned across visible panels`}
       title=""
     />
   );
@@ -651,6 +682,7 @@ function PanelViewportInner({
         frame={panelState.sceneFrame}
         preserveViewOnFrameChange
         resetViewToken={`${catalog.sceneId}:${panel.panelId}`}
+        showGrid={panel.sceneConfig.showGrid ?? true}
         solidColor="#6ac7ff"
         upAxis={panel.sceneConfig.upAxis}
       />
@@ -686,11 +718,92 @@ const PanelViewport = React.memo(
 
 PanelViewport.displayName = "PanelViewport";
 
+function renderPanelToolbar({
+  active,
+  isMaximized,
+  panel,
+  panelState,
+  streamLabel,
+  onClosePanel,
+  onToggleMaximize,
+}: {
+  active: boolean;
+  isMaximized: boolean;
+  panel: MultimodalPanelLayoutState;
+  panelState: MultimodalPlaybackPanelState | undefined;
+  streamLabel: string;
+  onClosePanel: () => void;
+  onToggleMaximize: () => void;
+}) {
+  return (
+    <div className="mcap-panel-toolbar">
+      <div className="mcap-panel-toolbar-left">
+        <div className="mcap-panel-toolbar-copy">
+          <div
+            className="mcap-panel-toolbar-title"
+            title={panel.title}
+            data-active={active ? "true" : "false"}
+          >
+            {panel.title}
+          </div>
+          <div className="mcap-panel-toolbar-stream" title={streamLabel}>
+            {streamLabel}
+          </div>
+        </div>
+      </div>
+      <div className="mcap-panel-toolbar-right">
+        <span className="mcap-panel-archetype-badge">
+          {panel.archetype === "image" ? "2D" : "3D"}
+        </span>
+        {panelState && panelState.status !== "ready" ? (
+          <span className="mcap-panel-status-chip">{panelState.status}</span>
+        ) : null}
+        <button
+          aria-label={
+            isMaximized ? "Restore panel" : `Maximize panel ${panel.title}`
+          }
+          className="mcap-panel-toolbar-button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onToggleMaximize();
+          }}
+          type="button"
+        >
+          {isMaximized ? "Restore" : "Max"}
+        </button>
+        <button
+          aria-label={`Close panel ${panel.title}`}
+          className="mcap-panel-toolbar-button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onClosePanel();
+          }}
+          type="button"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Expert-first multimodal modal renderer with Mosaic tiling and persisted layout.
+ */
 export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
   const info = getMultimodalRendererInfo(ctx);
   const params = React.useMemo(() => getMultimodalSceneParams(ctx), [ctx]);
-  const { catalog, renderingPlan, isLoading, error, refetch } =
-    useMultimodalWorkspace(params);
+  const {
+    catalog,
+    renderingPlan,
+    isLoading,
+    isSaving,
+    error,
+    saveError,
+    refetch,
+    save,
+    clearSaveError,
+  } = useMultimodalWorkspace(params);
   const renderingPlanKey = React.useMemo(() => {
     if (!renderingPlan) {
       return null;
@@ -704,31 +817,226 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
         ? createWorkspaceStateFromRenderingPlan(renderingPlan)
         : null
     );
-  const [openPanelMenuId, setOpenPanelMenuId] = React.useState<string | null>(
-    null
+  const workspaceStateRef = React.useRef<MultimodalWorkspaceState | null>(
+    workspaceState
   );
   const [collapsedSections, setCollapsedSections] = React.useState<
     Record<SidebarSectionId, boolean>
   >(() => DEFAULT_SIDEBAR_SECTION_STATE);
   const [searchQuery, setSearchQuery] = React.useState("");
   const deferredSearchQuery = React.useDeferredValue(searchQuery);
+  const panelElementRefs = React.useRef(new Map<string, HTMLDivElement>());
+  const workspaceShellRef = React.useRef<HTMLDivElement | null>(null);
+  const sidebarResizeRef = React.useRef<{
+    startX: number;
+    startWidth: number;
+  } | null>(null);
+  const saveTimeoutRef = React.useRef<number | null>(null);
   const hasSearchQuery = deferredSearchQuery.trim().length > 0;
 
   React.useEffect(() => {
+    workspaceStateRef.current = workspaceState;
+  }, [workspaceState]);
+
+  React.useEffect(() => {
     if (!renderingPlan) {
+      workspaceStateRef.current = null;
       setWorkspaceState(null);
       return;
     }
 
     setWorkspaceState((current) => {
-      if (current?.sceneId === renderingPlan.sceneId) {
+      if (
+        current?.sceneId === renderingPlan.sceneId &&
+        current?.mediaField === renderingPlan.mediaField
+      ) {
+        workspaceStateRef.current = current;
         return current;
       }
 
-      return createWorkspaceStateFromRenderingPlan(renderingPlan);
+      const nextState = createWorkspaceStateFromRenderingPlan(renderingPlan);
+      workspaceStateRef.current = nextState;
+      return nextState;
     });
-    setOpenPanelMenuId(null);
   }, [renderingPlan, renderingPlanKey]);
+
+  React.useEffect(() => {
+    if (!catalog) {
+      return;
+    }
+
+    setWorkspaceState((current) => {
+      if (!current) {
+        return current;
+      }
+
+      const nextState = retitleGenericPanelsInWorkspaceState(current, catalog);
+      workspaceStateRef.current = nextState;
+      return nextState;
+    });
+  }, [catalog, renderingPlanKey]);
+
+  React.useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current !== null) {
+        window.clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const persistWorkspaceState = React.useCallback(
+    async (nextState: MultimodalWorkspaceState) => {
+      await save(createRenderingPlanFromWorkspaceState(nextState));
+    },
+    [save]
+  );
+
+  const scheduleSave = React.useCallback(
+    (nextState: MultimodalWorkspaceState, delayMs = 220) => {
+      clearSaveError();
+      if (saveTimeoutRef.current !== null) {
+        window.clearTimeout(saveTimeoutRef.current);
+      }
+
+      saveTimeoutRef.current = window.setTimeout(() => {
+        saveTimeoutRef.current = null;
+        void persistWorkspaceState(nextState);
+      }, delayMs);
+    },
+    [clearSaveError, persistWorkspaceState]
+  );
+
+  const applyWorkspaceState = React.useCallback(
+    (
+      updater: (current: MultimodalWorkspaceState) => MultimodalWorkspaceState,
+      persistenceMode: PersistenceMode
+    ) => {
+      const current = workspaceStateRef.current;
+      if (!current) {
+        return;
+      }
+
+      const nextState = updater(current);
+      workspaceStateRef.current = nextState;
+      setWorkspaceState(nextState);
+
+      if (persistenceMode === "debounced") {
+        scheduleSave(nextState);
+      }
+
+      if (persistenceMode === "immediate") {
+        clearSaveError();
+        if (saveTimeoutRef.current !== null) {
+          window.clearTimeout(saveTimeoutRef.current);
+          saveTimeoutRef.current = null;
+        }
+
+        void persistWorkspaceState(nextState);
+      }
+    },
+    [clearSaveError, persistWorkspaceState, scheduleSave]
+  );
+
+  const clampSidebarWidth = React.useCallback((width: number) => {
+    const shellWidth = workspaceShellRef.current?.clientWidth ?? 0;
+    const maxWidthFromShell =
+      shellWidth > 0
+        ? Math.max(
+            MIN_MULTIMODAL_SIDEBAR_WIDTH_PX,
+            shellWidth - MIN_MAIN_WIDTH_PX - SIDEBAR_RESIZER_WIDTH_PX
+          )
+        : MAX_MULTIMODAL_SIDEBAR_WIDTH_PX;
+
+    return Math.max(
+      MIN_MULTIMODAL_SIDEBAR_WIDTH_PX,
+      Math.min(
+        Math.min(MAX_MULTIMODAL_SIDEBAR_WIDTH_PX, maxWidthFromShell),
+        Math.round(width)
+      )
+    );
+  }, []);
+
+  const commitSidebarWidth = React.useCallback(() => {
+    const currentWidth = workspaceStateRef.current?.sidebarWidth;
+    if (currentWidth == null) {
+      return;
+    }
+
+    applyWorkspaceState(
+      (current) =>
+        setSidebarWidthInWorkspaceState(
+          current,
+          clampSidebarWidth(currentWidth)
+        ),
+      "immediate"
+    );
+  }, [applyWorkspaceState, clampSidebarWidth]);
+
+  const startSidebarResize = React.useCallback((clientX: number) => {
+    const currentState = workspaceStateRef.current;
+    if (!currentState || currentState.sidebarCollapsed) {
+      return;
+    }
+
+    sidebarResizeRef.current = {
+      startX: clientX,
+      startWidth: currentState.sidebarWidth,
+    };
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  }, []);
+
+  const updateSidebarResize = React.useCallback(
+    (clientX: number) => {
+      const resizeState = sidebarResizeRef.current;
+      if (!resizeState) {
+        return;
+      }
+
+      const nextWidth = clampSidebarWidth(
+        resizeState.startWidth + clientX - resizeState.startX
+      );
+
+      applyWorkspaceState(
+        (current) => setSidebarWidthInWorkspaceState(current, nextWidth),
+        "none"
+      );
+    },
+    [applyWorkspaceState, clampSidebarWidth]
+  );
+
+  const finishSidebarResize = React.useCallback(() => {
+    if (!sidebarResizeRef.current) {
+      return;
+    }
+
+    sidebarResizeRef.current = null;
+    document.body.style.cursor = "";
+    document.body.style.userSelect = "";
+    commitSidebarWidth();
+  }, [commitSidebarWidth]);
+
+  React.useEffect(() => {
+    function handlePointerMove(event: PointerEvent) {
+      updateSidebarResize(event.clientX);
+    }
+
+    function handlePointerUp() {
+      finishSidebarResize();
+    }
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+    window.addEventListener("pointercancel", handlePointerUp);
+
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("pointercancel", handlePointerUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+  }, [finishSidebarResize, updateSidebarResize]);
 
   const activePanel = React.useMemo(() => {
     return getActivePanel(workspaceState);
@@ -797,6 +1105,7 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
       })),
     ];
   }, [catalog?.frames]);
+
   const locationOptions = React.useMemo(() => {
     return [
       { value: "", label: "None" },
@@ -811,19 +1120,106 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
     (
       updater: (panel: MultimodalPanelLayoutState) => MultimodalPanelLayoutState
     ) => {
-      if (!workspaceState || !activePanel) {
+      if (!activePanel) {
         return;
       }
 
-      setWorkspaceState(
-        updatePanelInWorkspaceState(
-          workspaceState,
-          activePanel.panelId,
-          updater
-        )
+      applyWorkspaceState(
+        (current) =>
+          updatePanelInWorkspaceState(current, activePanel.panelId, updater),
+        "debounced"
       );
     },
-    [activePanel, workspaceState]
+    [activePanel, applyWorkspaceState]
+  );
+
+  const setActiveImagePrimaryStream = React.useCallback(
+    (streamId: string | null) => {
+      if (!catalog || !activePanel) {
+        return;
+      }
+
+      applyWorkspaceState(
+        (current) =>
+          updatePanelInWorkspaceState(current, activePanel.panelId, (panel) => {
+            if (panel.archetype !== "image") {
+              return panel;
+            }
+
+            const currentAutoTitle = getSuggestedPanelTitle(
+              catalog,
+              panel,
+              current.panels
+            );
+            const nextPanel = {
+              ...panel,
+              renderStreamId: streamId,
+              visibleStreamIds: reconcileImageSupportStreamIds(
+                catalog,
+                streamId,
+                panel.visibleStreamIds
+              ),
+            };
+
+            if (
+              !shouldSyncPanelTitleToStreams(
+                panel.title,
+                panel.archetype,
+                currentAutoTitle
+              )
+            ) {
+              return nextPanel;
+            }
+
+            return {
+              ...nextPanel,
+              title: getSuggestedPanelTitle(catalog, nextPanel, current.panels),
+            };
+          }),
+        "debounced"
+      );
+    },
+    [activePanel, applyWorkspaceState, catalog]
+  );
+
+  const setActiveImageProject3dOverlays = React.useCallback(
+    (project3dOverlays: boolean) => {
+      updateActivePanel((panel) => {
+        if (panel.archetype !== "image") {
+          return panel;
+        }
+
+        return {
+          ...panel,
+          imageConfig: {
+            project3dOverlays,
+          },
+        };
+      });
+    },
+    [updateActivePanel]
+  );
+
+  const toggleActiveImageSupportStream = React.useCallback(
+    (streamId: string) => {
+      updateActivePanel((panel) => {
+        if (panel.archetype !== "image") {
+          return panel;
+        }
+
+        const nextVisibleStreamIds = panel.visibleStreamIds.includes(streamId)
+          ? panel.visibleStreamIds.filter(
+              (visibleStreamId) => visibleStreamId !== streamId
+            )
+          : [...panel.visibleStreamIds, streamId];
+
+        return {
+          ...panel,
+          visibleStreamIds: Array.from(new Set(nextVisibleStreamIds)),
+        };
+      });
+    },
+    [updateActivePanel]
   );
 
   const toggleSidebarSection = React.useCallback(
@@ -836,17 +1232,38 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
     []
   );
 
+  const inferActiveSplitDirection = React.useCallback(() => {
+    const current = workspaceStateRef.current;
+    const activePanelId =
+      current?.activePanelId ?? current?.panels[0]?.panelId ?? null;
+    if (!activePanelId) {
+      return "row" as const;
+    }
+
+    const panelElement = panelElementRefs.current.get(activePanelId);
+    if (!panelElement) {
+      return "row" as const;
+    }
+
+    return panelElement.clientWidth >= panelElement.clientHeight
+      ? ("row" as const)
+      : ("column" as const);
+  }, []);
+
   const addPanel = React.useCallback(
     (archetype: MultimodalPanelArchetype) => {
-      if (!workspaceState) {
-        return;
-      }
-
       React.startTransition(() => {
-        setWorkspaceState(addPanelToWorkspaceState(workspaceState, archetype));
+        applyWorkspaceState(
+          (current) =>
+            addPanelToWorkspaceState(current, archetype, {
+              targetPanelId: current.activePanelId,
+              direction: inferActiveSplitDirection(),
+            }),
+          "debounced"
+        );
       });
     },
-    [workspaceState]
+    [applyWorkspaceState, inferActiveSplitDirection]
   );
 
   const visibleFrameIds = React.useMemo(() => {
@@ -855,13 +1272,105 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
     }
 
     if (activePanel.archetype === "image") {
-      return [getStreamById(catalog, activePanel.renderStreamId)?.frameId];
+      return [
+        getStreamById(catalog, activePanel.renderStreamId)?.frameId,
+        ...activePanel.visibleStreamIds
+          .map((streamId) => {
+            const stream = getStreamById(catalog, streamId);
+            return shouldIncludeImageSupportFrameForPanel(activePanel, stream)
+              ? stream?.frameId ?? null
+              : null;
+          })
+          .filter((frameId): frameId is string => Boolean(frameId)),
+      ];
     }
 
     return activePanel.visibleStreamIds.map(
       (streamId) => getStreamById(catalog, streamId)?.frameId
     );
   }, [activePanel, catalog]);
+
+  const activeImagePrimaryStreams = React.useMemo(() => {
+    if (!catalog || activePanel?.archetype !== "image") {
+      return [];
+    }
+
+    return catalog.streams.filter((stream) => isImageRenderableStream(stream));
+  }, [activePanel?.archetype, catalog]);
+
+  const activeImageSupportStreams = React.useMemo(() => {
+    if (!catalog || activePanel?.archetype !== "image") {
+      return [];
+    }
+
+    return catalog.streams.filter((stream) => isImageSupportStream(stream));
+  }, [activePanel?.archetype, catalog]);
+
+  const activeImageAutoSupportStreamIds = React.useMemo(() => {
+    if (!catalog || activePanel?.archetype !== "image") {
+      return [];
+    }
+
+    return getDefaultImageSupportStreamIds(catalog, activePanel.renderStreamId);
+  }, [activePanel?.archetype, activePanel?.renderStreamId, catalog]);
+  const activeImageProject3dOverlays = React.useMemo(() => {
+    return activePanel?.archetype === "image"
+      ? isImage3dOverlayProjectionEnabled(activePanel)
+      : false;
+  }, [activePanel]);
+
+  const filteredPrimaryImageStreams = React.useMemo(() => {
+    return activeImagePrimaryStreams.filter((stream) =>
+      matchesSearch(deferredSearchQuery, [
+        "streams",
+        "image",
+        stream.topic,
+        stream.schemaName,
+        ...stream.affordances,
+      ])
+    );
+  }, [activeImagePrimaryStreams, deferredSearchQuery]);
+
+  const filteredImageSupportStreams = React.useMemo(() => {
+    const autoBoundStreamIds = new Set(activeImageAutoSupportStreamIds);
+
+    return [...activeImageSupportStreams]
+      .filter((stream) =>
+        matchesSearch(deferredSearchQuery, [
+          "streams",
+          "support",
+          "overlay",
+          stream.topic,
+          stream.schemaName,
+          ...stream.affordances,
+        ])
+      )
+      .sort((left, right) => {
+        const autoBoundDelta =
+          Number(autoBoundStreamIds.has(right.streamId)) -
+          Number(autoBoundStreamIds.has(left.streamId));
+        if (autoBoundDelta !== 0) {
+          return autoBoundDelta;
+        }
+
+        return left.topic.localeCompare(right.topic);
+      });
+  }, [
+    activeImageAutoSupportStreamIds,
+    activeImageSupportStreams,
+    deferredSearchQuery,
+  ]);
+
+  const filteredPanelStreams = React.useMemo(() => {
+    return catalog?.streams.filter((stream) =>
+      matchesSearch(deferredSearchQuery, [
+        "streams",
+        stream.topic,
+        stream.schemaName,
+        ...stream.affordances,
+      ])
+    );
+  }, [catalog?.streams, deferredSearchQuery]);
 
   const relevantTransforms = React.useMemo(() => {
     if (!catalog || !activePanel) {
@@ -881,41 +1390,108 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
       ...ROOT_STYLES,
       gridTemplateColumns: workspaceState?.sidebarCollapsed
         ? "minmax(0, 1fr)"
-        : ROOT_STYLES.gridTemplateColumns,
+        : `${
+            workspaceState?.sidebarWidth ?? DEFAULT_MULTIMODAL_SIDEBAR_WIDTH_PX
+          }px ${SIDEBAR_RESIZER_WIDTH_PX}px minmax(0, 1fr)`,
     };
-  }, [workspaceState?.sidebarCollapsed]);
+  }, [workspaceState?.sidebarCollapsed, workspaceState?.sidebarWidth]);
 
-  const gridStyles = React.useMemo(() => {
-    return {
-      ...GRID_STYLES,
-      gridTemplateColumns: workspaceState?.maximizedPanelId
-        ? "minmax(0, 1fr)"
-        : GRID_STYLES.gridTemplateColumns,
-      gridAutoRows: workspaceState?.maximizedPanelId
-        ? "minmax(0, 1fr)"
-        : GRID_STYLES.gridAutoRows,
-    };
-  }, [workspaceState?.maximizedPanelId]);
-
-  const displayedPanels = React.useMemo(() => {
+  const displayedLayoutTree = React.useMemo(() => {
     if (!workspaceState) {
-      return [];
+      return null;
     }
 
     if (!workspaceState.maximizedPanelId) {
-      return workspaceState.panels;
+      return workspaceState.layoutTree;
     }
 
-    return workspaceState.panels.filter(
-      (panel) => panel.panelId === workspaceState.maximizedPanelId
-    );
+    const maximizedLayoutTree: MultimodalLayoutNode = {
+      type: "leaf",
+      panelId: workspaceState.maximizedPanelId,
+    };
+
+    return maximizedLayoutTree;
   }, [workspaceState]);
 
-  const activePanelHeading = activePanel
-    ? activePanel.archetype === "image"
-      ? "Image panel"
-      : "3D panel"
-    : "No panel selected";
+  const mosaicValue = React.useMemo(
+    () => toMosaicNode(displayedLayoutTree),
+    [displayedLayoutTree]
+  );
+
+  const renderTile = React.useCallback(
+    (panelId: string, path: MosaicBranch[]) => {
+      const currentState = workspaceStateRef.current;
+      const panel = currentState?.panelsById[panelId];
+      if (!catalog || !panel) {
+        return null;
+      }
+
+      const panelState = playback.panelStates[panel.panelId];
+      const streamLabel = getPanelStreamLabel(catalog, panel);
+      const isActive = currentState?.activePanelId === panel.panelId;
+      const isMaximized = currentState?.maximizedPanelId === panel.panelId;
+
+      return (
+        <div
+          ref={(element) => {
+            if (element) {
+              panelElementRefs.current.set(panel.panelId, element);
+            } else {
+              panelElementRefs.current.delete(panel.panelId);
+            }
+          }}
+          className={`mcap-panel-shell${isActive ? " is-active" : ""}`}
+          data-testid={`multimodal-panel-card-${panel.panelId}`}
+          onMouseDown={() => {
+            applyWorkspaceState(
+              (current) => selectPanelInWorkspaceState(current, panel.panelId),
+              "none"
+            );
+          }}
+        >
+          <MosaicWindow<string>
+            path={path}
+            title={panel.title}
+            toolbarControls={<></>}
+            renderToolbar={() =>
+              renderPanelToolbar({
+                active: isActive,
+                isMaximized: Boolean(isMaximized),
+                panel,
+                panelState,
+                streamLabel,
+                onClosePanel: () => {
+                  applyWorkspaceState(
+                    (current) =>
+                      removePanelFromWorkspaceState(current, panel.panelId),
+                    "debounced"
+                  );
+                },
+                onToggleMaximize: () => {
+                  applyWorkspaceState(
+                    (current) =>
+                      togglePanelMaximizedInWorkspaceState(
+                        current,
+                        panel.panelId
+                      ),
+                    "none"
+                  );
+                },
+              })
+            }
+          >
+            <PanelViewport
+              catalog={catalog}
+              isTimelineLoading={playback.isLoading}
+              panel={panel}
+              panelState={panelState}
+            />
+          </MosaicWindow>
+        </div>
+      );
+    },
+    [applyWorkspaceState, catalog, playback.isLoading, playback.panelStates]
+  );
 
   if (isLoading || !catalog || !workspaceState) {
     return (
@@ -926,7 +1502,7 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
           spacing={Spacing.Sm}
           justify={Justify.Center}
           align={Align.Center}
-          style={WORKSPACE_STYLES}
+          style={MAIN_STYLES}
         >
           <Spinner size={Size.Md} />
           <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
@@ -945,7 +1521,7 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
           orientation={Orientation.Column}
           spacing={Spacing.Sm}
           justify={Justify.Center}
-          style={WORKSPACE_STYLES}
+          style={MAIN_STYLES}
         >
           <Heading level={HeadingLevel.H3}>Workspace unavailable</Heading>
           <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
@@ -962,20 +1538,54 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
   return (
     <div
       data-testid="multimodal-workspace-shell"
+      ref={workspaceShellRef}
       style={rootStyles}
-      onClick={() => setOpenPanelMenuId(null)}
     >
-      {!workspaceState.sidebarCollapsed && (
+      {!workspaceState.sidebarCollapsed ? (
         <div data-testid="multimodal-workspace-sidebar" style={SIDEBAR_STYLES}>
           <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
-            <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
-              <Heading level={HeadingLevel.H3}>{activePanelHeading}</Heading>
-              <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
-                {`${
-                  catalog.streams.length
-                } streams · ${formatMultimodalDuration(catalog.timeRange)}`}
-              </Text>
+            <Stack orientation={Orientation.Row} align={Align.Center}>
+              <Button
+                aria-label="Hide sidebar"
+                leadingIcon={IconName.ChevronLeft}
+                onClick={() =>
+                  applyWorkspaceState(toggleSidebarInWorkspaceState, "none")
+                }
+                size={Size.Sm}
+                title="Hide sidebar"
+                variant={Variant.Icon}
+              />
             </Stack>
+            {activePanel ? (
+              <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
+                <Stack
+                  orientation={Orientation.Row}
+                  spacing={Spacing.Xs}
+                  align={Align.Center}
+                >
+                  <Pill
+                    size={Size.Xs}
+                    backgroundColor={BackgroundColor.Muted}
+                    color={TextColor.Secondary}
+                  >
+                    {activePanel.archetype === "image" ? "2D" : "3D"}
+                  </Pill>
+                  <Text
+                    variant={TextVariant.Caption}
+                    color={TextColor.Secondary}
+                  >
+                    {getPanelStreamLabel(catalog, activePanel)}
+                  </Text>
+                </Stack>
+                <Text variant={TextVariant.Sm} color={TextColor.Primary}>
+                  {activePanel.title}
+                </Text>
+              </Stack>
+            ) : (
+              <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+                No panel selected
+              </Text>
+            )}
 
             <Input
               placeholder="Search panel settings"
@@ -984,12 +1594,12 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
               onChange={(event) => setSearchQuery(event.target.value)}
             />
 
-            {activePanel && (
+            {activePanel ? (
               <>
                 {matchesSearch(deferredSearchQuery, [
                   "panel title",
                   activePanel.title,
-                ]) && (
+                ]) ? (
                   <SidebarSection
                     collapsed={collapsedSections.panelTitle}
                     forceExpanded={hasSearchQuery}
@@ -1006,7 +1616,7 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
                       }
                     />
                   </SidebarSection>
-                )}
+                ) : null}
 
                 {matchesSearch(deferredSearchQuery, [
                   "frame config",
@@ -1015,7 +1625,7 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
                   "follow mode",
                   "location topic",
                   "enu frame",
-                ]) && (
+                ]) ? (
                   <SidebarSection
                     collapsed={collapsedSections.frameConfig}
                     forceExpanded={hasSearchQuery}
@@ -1104,13 +1714,15 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
                       }
                     />
                   </SidebarSection>
-                )}
+                ) : null}
 
                 {matchesSearch(deferredSearchQuery, [
                   "scene config",
                   "up axis",
                   "background color",
-                ]) && (
+                  "grid",
+                  "show grid",
+                ]) ? (
                   <SidebarSection
                     collapsed={collapsedSections.sceneConfig}
                     forceExpanded={hasSearchQuery}
@@ -1161,8 +1773,36 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
                         }
                       />
                     </Stack>
+                    {activePanel.archetype === "3d" ? (
+                      <Stack
+                        orientation={Orientation.Row}
+                        justify={Justify.Between}
+                        align={Align.Center}
+                      >
+                        <Text
+                          variant={TextVariant.Caption}
+                          color={TextColor.Secondary}
+                        >
+                          Show grid
+                        </Text>
+                        <input
+                          aria-label="show-grid"
+                          checked={activePanel.sceneConfig.showGrid ?? true}
+                          onChange={(event) =>
+                            updateActivePanel((panel) => ({
+                              ...panel,
+                              sceneConfig: {
+                                ...panel.sceneConfig,
+                                showGrid: event.target.checked,
+                              },
+                            }))
+                          }
+                          type="checkbox"
+                        />
+                      </Stack>
+                    ) : null}
                   </SidebarSection>
-                )}
+                ) : null}
 
                 {matchesSearch(deferredSearchQuery, [
                   "transforms",
@@ -1173,7 +1813,7 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
                   ...relevantTransforms.map(
                     (transform) => transform.childFrameId
                   ),
-                ]) && (
+                ]) ? (
                   <SidebarSection
                     collapsed={collapsedSections.transforms}
                     forceExpanded={hasSearchQuery}
@@ -1184,14 +1824,14 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
                       orientation={Orientation.Column}
                       spacing={Spacing.Xs}
                     >
-                      {relevantTransforms.length === 0 && (
+                      {relevantTransforms.length === 0 ? (
                         <Text
                           variant={TextVariant.Caption}
                           color={TextColor.Secondary}
                         >
                           No relevant transforms for the active panel
                         </Text>
-                      )}
+                      ) : null}
                       {relevantTransforms.map((transform) => (
                         <Stack
                           key={`${transform.topic}:${transform.parentFrameId}:${transform.childFrameId}`}
@@ -1240,12 +1880,14 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
                       ))}
                     </Stack>
                   </SidebarSection>
-                )}
+                ) : null}
 
                 {matchesSearch(deferredSearchQuery, [
                   "streams",
+                  "project 3d overlays",
+                  "projected overlays",
                   ...catalog.streams.map((stream) => stream.topic),
-                ]) && (
+                ]) ? (
                   <SidebarSection
                     collapsed={collapsedSections.streams}
                     forceExpanded={hasSearchQuery}
@@ -1256,102 +1898,317 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
                       orientation={Orientation.Column}
                       spacing={Spacing.Xs}
                     >
-                      {catalog.streams
-                        .filter((stream) =>
-                          matchesSearch(deferredSearchQuery, [
-                            "streams",
-                            stream.topic,
-                            stream.schemaName,
-                            ...stream.affordances,
-                          ])
-                        )
-                        .map((stream) => {
+                      {activePanel.archetype === "image" ? (
+                        <>
+                          <Stack
+                            orientation={Orientation.Column}
+                            spacing={Spacing.Xs}
+                          >
+                            <Text
+                              variant={TextVariant.Caption}
+                              color={TextColor.Secondary}
+                            >
+                              Primary image
+                            </Text>
+                            {filteredPrimaryImageStreams.length === 0 ? (
+                              <Text
+                                variant={TextVariant.Caption}
+                                color={TextColor.Secondary}
+                              >
+                                No image streams match the current filter
+                              </Text>
+                            ) : null}
+                            {filteredPrimaryImageStreams.map((stream) => (
+                              <StreamRow
+                                key={stream.streamId}
+                                activePanel={activePanel}
+                                checked={
+                                  activePanel.renderStreamId === stream.streamId
+                                }
+                                controlType="radio"
+                                disabled={false}
+                                groupName={`${activePanel.panelId}:image-primary`}
+                                onToggle={() =>
+                                  setActiveImagePrimaryStream(
+                                    activePanel.renderStreamId ===
+                                      stream.streamId
+                                      ? null
+                                      : stream.streamId
+                                  )
+                                }
+                                stream={stream}
+                              />
+                            ))}
+                          </Stack>
+
+                          <Stack
+                            orientation={Orientation.Column}
+                            spacing={Spacing.Xs}
+                            style={{
+                              marginTop: "8px",
+                              paddingTop: "8px",
+                              borderTop: "1px solid rgba(255,255,255,0.06)",
+                            }}
+                          >
+                            <Text
+                              variant={TextVariant.Caption}
+                              color={TextColor.Secondary}
+                            >
+                              Support overlays
+                            </Text>
+                            <Stack
+                              orientation={Orientation.Row}
+                              justify={Justify.Between}
+                              align={Align.Center}
+                            >
+                              <Text
+                                variant={TextVariant.Caption}
+                                color={TextColor.Secondary}
+                              >
+                                Project 3D overlays
+                              </Text>
+                              <input
+                                aria-label="project-3d-overlays"
+                                checked={activeImageProject3dOverlays}
+                                onChange={(event) =>
+                                  setActiveImageProject3dOverlays(
+                                    event.target.checked
+                                  )
+                                }
+                                type="checkbox"
+                              />
+                            </Stack>
+                            <Text
+                              variant={TextVariant.Caption}
+                              color={TextColor.Secondary}
+                            >
+                              Matching annotations and camera info auto-bind
+                              when the primary image changes. `SceneUpdate`
+                              stays manual.
+                            </Text>
+                            <Text
+                              variant={TextVariant.Caption}
+                              color={TextColor.Secondary}
+                            >
+                              Projected 3D support streams honor this toggle.
+                            </Text>
+                            {filteredImageSupportStreams.length === 0 ? (
+                              <Text
+                                variant={TextVariant.Caption}
+                                color={TextColor.Secondary}
+                              >
+                                No support streams match the current filter
+                              </Text>
+                            ) : null}
+                            {filteredImageSupportStreams.map((stream) => (
+                              <StreamRow
+                                key={stream.streamId}
+                                activePanel={activePanel}
+                                checked={activePanel.visibleStreamIds.includes(
+                                  stream.streamId
+                                )}
+                                disabled={false}
+                                onToggle={() =>
+                                  toggleActiveImageSupportStream(
+                                    stream.streamId
+                                  )
+                                }
+                                stream={stream}
+                              />
+                            ))}
+                          </Stack>
+                        </>
+                      ) : (
+                        filteredPanelStreams?.map((stream) => {
                           const isCompatible = canBindStreamToPanel(
                             stream,
                             activePanel.archetype
                           );
-                          const checked =
-                            activePanel.archetype === "image"
-                              ? activePanel.renderStreamId === stream.streamId
-                              : activePanel.visibleStreamIds.includes(
-                                  stream.streamId
-                                );
 
                           return (
                             <StreamRow
                               key={stream.streamId}
                               activePanel={activePanel}
-                              checked={checked}
+                              checked={activePanel.visibleStreamIds.includes(
+                                stream.streamId
+                              )}
                               disabled={!isCompatible}
                               onToggle={() => {
                                 if (!isCompatible) {
                                   return;
                                 }
 
-                                updateActivePanel((panel) => {
-                                  if (panel.archetype === "image") {
-                                    return {
-                                      ...panel,
-                                      renderStreamId:
-                                        panel.renderStreamId === stream.streamId
-                                          ? null
-                                          : stream.streamId,
-                                    };
-                                  }
+                                applyWorkspaceState(
+                                  (current) =>
+                                    updatePanelInWorkspaceState(
+                                      current,
+                                      activePanel.panelId,
+                                      (panel) => {
+                                        const nextVisibleStreamIds =
+                                          panel.visibleStreamIds.includes(
+                                            stream.streamId
+                                          )
+                                            ? panel.visibleStreamIds.filter(
+                                                (streamId) =>
+                                                  streamId !== stream.streamId
+                                              )
+                                            : [
+                                                ...panel.visibleStreamIds,
+                                                stream.streamId,
+                                              ];
+                                        const currentAutoTitle =
+                                          getSuggestedPanelTitle(
+                                            catalog,
+                                            panel,
+                                            current.panels
+                                          );
+                                        const nextPanel = {
+                                          ...panel,
+                                          visibleStreamIds:
+                                            nextVisibleStreamIds,
+                                        };
 
-                                  const nextVisibleStreamIds =
-                                    panel.visibleStreamIds.includes(
-                                      stream.streamId
-                                    )
-                                      ? panel.visibleStreamIds.filter(
-                                          (streamId) =>
-                                            streamId !== stream.streamId
-                                        )
-                                      : [
-                                          ...panel.visibleStreamIds,
-                                          stream.streamId,
-                                        ];
+                                        if (
+                                          !shouldSyncPanelTitleToStreams(
+                                            panel.title,
+                                            panel.archetype,
+                                            currentAutoTitle
+                                          )
+                                        ) {
+                                          return nextPanel;
+                                        }
 
-                                  return {
-                                    ...panel,
-                                    visibleStreamIds: nextVisibleStreamIds,
-                                  };
-                                });
+                                        return {
+                                          ...nextPanel,
+                                          title: getSuggestedPanelTitle(
+                                            catalog,
+                                            nextPanel,
+                                            current.panels
+                                          ),
+                                        };
+                                      }
+                                    ),
+                                  "debounced"
+                                );
                               }}
                               stream={stream}
                             />
                           );
-                        })}
+                        })
+                      )}
                     </Stack>
                   </SidebarSection>
-                )}
+                ) : null}
               </>
-            )}
+            ) : null}
           </Stack>
         </div>
-      )}
+      ) : null}
+      {!workspaceState.sidebarCollapsed ? (
+        <div
+          aria-label="Resize sidebar"
+          aria-orientation="vertical"
+          data-testid="multimodal-workspace-sidebar-resizer"
+          onPointerDown={(event) => {
+            event.preventDefault();
+            startSidebarResize(event.clientX);
+          }}
+          onPointerMove={(event) => {
+            updateSidebarResize(event.clientX);
+          }}
+          onPointerUp={() => {
+            finishSidebarResize();
+          }}
+          onMouseDown={(event) => {
+            event.preventDefault();
+            startSidebarResize(event.clientX);
+          }}
+          onMouseMove={(event) => {
+            updateSidebarResize(event.clientX);
+          }}
+          onMouseUp={() => {
+            finishSidebarResize();
+          }}
+          role="separator"
+          style={SIDEBAR_RESIZER_STYLES}
+        >
+          <div aria-hidden="true" style={SIDEBAR_RESIZER_GRIP_STYLES} />
+        </div>
+      ) : null}
 
-      <div data-testid="multimodal-workspace-main" style={WORKSPACE_STYLES}>
+      <div data-testid="multimodal-workspace-main" style={MAIN_STYLES}>
         <Stack
           orientation={Orientation.Column}
           spacing={Spacing.Xs}
           style={{ height: "100%" }}
         >
-          <Card
-            background={CardBackground.Secondary}
-            outlined
-            style={TOOLBAR_STYLES}
-          >
+          <div style={TOOLBAR_STYLES}>
             <Stack
               orientation={Orientation.Row}
               justify={Justify.Between}
               align={Align.Center}
             >
-              <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
-                <Heading level={HeadingLevel.H3}>{info.basename}</Heading>
-                <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
-                  {`${catalog.streams.length} streams · ${catalog.frames.length} frames · ${catalog.locationTopics.length} location topics`}
+              <Stack
+                orientation={Orientation.Row}
+                spacing={Spacing.Sm}
+                align={Align.Center}
+                style={{ minWidth: 0 }}
+              >
+                {workspaceState.sidebarCollapsed ? (
+                  <Button
+                    aria-label="Show sidebar"
+                    leadingIcon={IconName.ChevronRight}
+                    onClick={() =>
+                      applyWorkspaceState(toggleSidebarInWorkspaceState, "none")
+                    }
+                    size={Size.Sm}
+                    title="Show sidebar"
+                    variant={Variant.Icon}
+                  />
+                ) : null}
+                <Text variant={TextVariant.Sm} color={TextColor.Primary}>
+                  {info.basename}
                 </Text>
+                <Text variant={TextVariant.Caption} color={TextColor.Secondary}>
+                  {`${catalog.streams.length} streams · ${catalog.frames.length} frames · ${workspaceState.panels.length} panels`}
+                </Text>
+                {isSaving ? (
+                  <Text
+                    data-testid="multimodal-workspace-saving"
+                    variant={TextVariant.Caption}
+                    color={TextColor.Secondary}
+                  >
+                    Saving layout
+                  </Text>
+                ) : null}
+                {saveError ? (
+                  <Stack
+                    orientation={Orientation.Row}
+                    spacing={Spacing.Xs}
+                    align={Align.Center}
+                  >
+                    <Text
+                      data-testid="multimodal-workspace-save-error"
+                      variant={TextVariant.Caption}
+                      color={TextColor.Secondary}
+                    >
+                      Save failed
+                    </Text>
+                    <button
+                      className="mcap-panel-toolbar-button"
+                      onClick={() => {
+                        const current = workspaceStateRef.current;
+                        if (current) {
+                          clearSaveError();
+                          void persistWorkspaceState(current);
+                        }
+                      }}
+                      type="button"
+                    >
+                      Retry
+                    </button>
+                  </Stack>
+                ) : null}
               </Stack>
               <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
                 <Button
@@ -1370,192 +2227,68 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
                 >
                   3D
                 </Button>
-                <Button
-                  aria-label={
-                    workspaceState.sidebarCollapsed
-                      ? "Show sidebar"
-                      : "Hide sidebar"
-                  }
-                  title={
-                    workspaceState.sidebarCollapsed
-                      ? "Show sidebar"
-                      : "Hide sidebar"
-                  }
-                  leadingIcon={
-                    workspaceState.sidebarCollapsed
-                      ? IconName.ChevronRight
-                      : IconName.ChevronLeft
-                  }
-                  onClick={() =>
-                    setWorkspaceState((current) =>
-                      current ? toggleSidebarInWorkspaceState(current) : current
-                    )
-                  }
-                  size={Size.Sm}
-                  variant={Variant.Icon}
-                />
               </Stack>
             </Stack>
-          </Card>
+          </div>
 
-          <div data-testid="multimodal-workspace-grid" style={gridStyles}>
-            {displayedPanels.length === 0 && (
-              <Stack
-                data-testid="multimodal-workspace-empty"
-                orientation={Orientation.Column}
-                spacing={Spacing.Sm}
-                justify={Justify.Center}
-                align={Align.Center}
-                style={GRID_EMPTY_STYLES}
-              >
-                <Text variant={TextVariant.Sm} color={TextColor.Primary}>
-                  No panels open
-                </Text>
-                <Text variant={TextVariant.Caption} color={TextColor.Secondary}>
-                  Add an image or 3D panel from the toolbar to keep exploring.
-                </Text>
-              </Stack>
-            )}
-            {displayedPanels.map((panel) => {
-              const panelState = playback.panelStates[panel.panelId];
-              const streamLabel =
-                panel.archetype === "image"
-                  ? getStreamById(catalog, panel.renderStreamId)?.topic ??
-                    "Unbound"
-                  : panel.visibleStreamIds.length
-                  ? `${panel.visibleStreamIds.length} streams`
-                  : "Unbound";
-
-              return (
-                <Card
-                  key={panel.panelId}
-                  data-testid={`multimodal-panel-card-${panel.panelId}`}
-                  background={CardBackground.Secondary}
-                  outlined
-                  style={{
-                    ...PANEL_CARD_STYLES,
-                    ...getPanelGridStyle(
-                      panel,
-                      workspaceState.maximizedPanelId
+          <div style={MOSAIC_CONTAINER_STYLES}>
+            <Mosaic<string>
+              className="multimodal-mosaic"
+              onChange={(nextNode) => {
+                React.startTransition(() => {
+                  applyWorkspaceState(
+                    (current) =>
+                      setLayoutTreeInWorkspaceState(
+                        current,
+                        fromMosaicNode(nextNode)
+                      ),
+                    "none"
+                  );
+                });
+              }}
+              onRelease={(nextNode) => {
+                applyWorkspaceState(
+                  (current) =>
+                    setLayoutTreeInWorkspaceState(
+                      current,
+                      fromMosaicNode(nextNode)
                     ),
-                    boxShadow:
-                      workspaceState.activePanelId === panel.panelId
-                        ? "0 0 0 1px rgba(94, 194, 255, 0.7)"
-                        : "none",
+                  "immediate"
+                );
+              }}
+              renderTile={renderTile}
+              resize={{ minimumPaneSizePercentage: 12 }}
+              value={mosaicValue}
+              zeroStateView={
+                <Stack
+                  data-testid="multimodal-workspace-empty"
+                  orientation={Orientation.Column}
+                  spacing={Spacing.Sm}
+                  justify={Justify.Center}
+                  align={Align.Center}
+                  style={{
+                    height: "100%",
+                    border: "1px dashed rgba(255,255,255,0.12)",
+                    background: "rgba(255,255,255,0.03)",
+                    padding: "14px",
                   }}
-                  onClick={() =>
-                    setWorkspaceState((current) =>
-                      current
-                        ? selectPanelInWorkspaceState(current, panel.panelId)
-                        : current
-                    )
-                  }
                 >
-                  <Stack
-                    orientation={Orientation.Column}
-                    spacing={Spacing.Xs}
-                    style={{ height: "100%" }}
+                  <Text variant={TextVariant.Sm} color={TextColor.Primary}>
+                    No panels open
+                  </Text>
+                  <Text
+                    variant={TextVariant.Caption}
+                    color={TextColor.Secondary}
                   >
-                    <Stack
-                      orientation={Orientation.Row}
-                      justify={Justify.Between}
-                      align={Align.Center}
-                    >
-                      <Stack
-                        orientation={Orientation.Column}
-                        spacing={Spacing.Xs}
-                      >
-                        <Text
-                          variant={TextVariant.Sm}
-                          color={TextColor.Primary}
-                        >
-                          {panel.title}
-                        </Text>
-                        <Text
-                          variant={TextVariant.Caption}
-                          color={TextColor.Secondary}
-                        >
-                          {streamLabel}
-                        </Text>
-                      </Stack>
-                      <Stack orientation={Orientation.Row} spacing={Spacing.Xs}>
-                        <Pill
-                          size={Size.Xs}
-                          backgroundColor={BackgroundColor.Muted}
-                          color={TextColor.Secondary}
-                        >
-                          {panel.archetype === "image" ? "2D" : "3D"}
-                        </Pill>
-                        <Pill
-                          size={Size.Xs}
-                          backgroundColor={BackgroundColor.Secondary}
-                          color={TextColor.Primary}
-                        >
-                          {panelState?.status ?? "idle"}
-                        </Pill>
-                        <div style={PANEL_MENU_WRAPPER_STYLES}>
-                          <Button
-                            aria-label={`Panel actions for ${panel.title}`}
-                            data-testid={`multimodal-panel-menu-button-${panel.panelId}`}
-                            leadingIcon={IconName.MoreVertical}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setOpenPanelMenuId((current) =>
-                                current === panel.panelId ? null : panel.panelId
-                              );
-                            }}
-                            size={Size.Sm}
-                            title="Panel actions"
-                            variant={Variant.Icon}
-                          />
-                          {openPanelMenuId === panel.panelId && (
-                            <PanelActionMenu
-                              isMaximized={
-                                workspaceState.maximizedPanelId ===
-                                panel.panelId
-                              }
-                              onClosePanel={() => {
-                                setOpenPanelMenuId(null);
-                                setWorkspaceState((current) =>
-                                  current
-                                    ? removePanelFromWorkspaceState(
-                                        current,
-                                        panel.panelId
-                                      )
-                                    : current
-                                );
-                              }}
-                              onToggleMaximize={() => {
-                                setOpenPanelMenuId(null);
-                                setWorkspaceState((current) =>
-                                  current
-                                    ? togglePanelMaximizedInWorkspaceState(
-                                        current,
-                                        panel.panelId
-                                      )
-                                    : current
-                                );
-                              }}
-                            />
-                          )}
-                        </div>
-                      </Stack>
-                    </Stack>
-
-                    <PanelViewport
-                      catalog={catalog}
-                      isTimelineLoading={playback.isLoading}
-                      panel={panel}
-                      panelState={panelState}
-                    />
-                  </Stack>
-                </Card>
-              );
-            })}
+                    Add an image or 3D panel from the toolbar to keep exploring.
+                  </Text>
+                </Stack>
+              }
+            />
           </div>
         </Stack>
 
-        {playback.timelineName && playback.hasPlayback && (
+        {playback.timelineName && playback.hasPlayback ? (
           <div
             data-testid="multimodal-workspace-timeline"
             style={TIMELINE_DOCK_STYLES}
@@ -1565,7 +2298,7 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
               timestampSource={playback.timeline?.timestampSource ?? null}
             />
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

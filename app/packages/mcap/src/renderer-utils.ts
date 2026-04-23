@@ -8,6 +8,7 @@ type MultimodalRendererInfo = {
   basename: string;
   datasetId: string | null;
   datasetName: string;
+  fileSizeBytes: number | null;
   mediaExtension: string;
   mediaField: string;
   mediaPath: string | null;
@@ -47,6 +48,22 @@ function getFirstStringValue(
   return null;
 }
 
+function getFirstNumberValue(
+  records: Array<SampleRecord | null>,
+  keys: string[]
+) {
+  for (const record of records) {
+    for (const key of keys) {
+      const value = record?.[key];
+      if (typeof value === "number" && Number.isFinite(value)) {
+        return value;
+      }
+    }
+  }
+
+  return null;
+}
+
 function getBasename(path: string | null) {
   if (!path) {
     return "sample.multimodal";
@@ -70,6 +87,10 @@ export function getMultimodalRendererInfo(
   ctx: SampleRendererRenderContext
 ): MultimodalRendererInfo {
   const { nestedSampleRecord, rootRecord } = getSampleRecords(ctx.sample);
+  const metadataRecords = [
+    getRecord(nestedSampleRecord?.metadata),
+    getRecord(rootRecord?.metadata),
+  ];
   const samplePath = getFirstStringValue(
     [nestedSampleRecord, rootRecord],
     ["filepath"]
@@ -83,6 +104,10 @@ export function getMultimodalRendererInfo(
       ["datasetId", "id"]
     ),
     datasetName: ctx.dataset?.name ?? "dataset",
+    fileSizeBytes: getFirstNumberValue(
+      [nestedSampleRecord, rootRecord, ...metadataRecords],
+      ["size_bytes", "sizeBytes"]
+    ),
     mediaExtension: getMediaExtension(ctx.media.extension),
     mediaField: ctx.media.field,
     mediaPath,

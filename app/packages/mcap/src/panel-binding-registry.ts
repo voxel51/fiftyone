@@ -13,18 +13,23 @@ export function canBindStreamToPanel(
 
 /** Returns whether the given stream is renderable in any built-in panel. */
 export function isRenderableStream(
-  stream: Pick<MultimodalStreamDescriptor, "compatiblePanels">
+  stream: Pick<MultimodalStreamDescriptor, "compatiblePanels" | "kind">
 ) {
-  return (
-    canBindStreamToPanel(stream, "image") || canBindStreamToPanel(stream, "3d")
-  );
+  return isImageRenderableStream(stream) || isScene3dRenderableStream(stream);
 }
 
 /** Returns whether the given stream can render inside a built-in image panel. */
 export function isImageRenderableStream(
-  stream: Pick<MultimodalStreamDescriptor, "compatiblePanels">
+  stream: Pick<MultimodalStreamDescriptor, "compatiblePanels" | "kind">
 ) {
-  return canBindStreamToPanel(stream, "image");
+  return stream.kind === "image" && canBindStreamToPanel(stream, "image");
+}
+
+/** Returns whether the given stream can be used as an image support overlay. */
+export function isImageSupportStream(
+  stream: Pick<MultimodalStreamDescriptor, "compatiblePanels" | "kind">
+) {
+  return stream.kind !== "image" && canBindStreamToPanel(stream, "image");
 }
 
 /** Returns whether the given stream can render inside a built-in 3D panel. */

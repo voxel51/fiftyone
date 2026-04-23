@@ -1,42 +1,16 @@
-import {
-  isImageRenderableStream,
-  isRenderableStream,
-  isScene3dRenderableStream,
-} from "./panel-binding-registry";
-import type {
-  MultimodalCatalog,
-  MultimodalStreamDescriptor,
-  MultimodalTimeRange,
-} from "./types";
+import { isImageRenderableStream } from "./panel-binding-registry";
+import type { MultimodalCatalog, MultimodalTimeRange } from "./types";
 
-type MultimodalStreamCounts = {
-  total: number;
-  image: number;
-  threeD: number;
-};
+const PREVIEWABLE_COMPRESSED_IMAGE_SCHEMA_NAMES = new Set([
+  "sensor_msgs/msg/CompressedImage",
+  "foxglove.CompressedImage",
+]);
 
 function formatNumber(value: number) {
   return new Intl.NumberFormat().format(value);
 }
 
-export function getMultimodalStreamCounts(
-  streams: MultimodalStreamDescriptor[]
-): MultimodalStreamCounts {
-  return streams.reduce<MultimodalStreamCounts>(
-    (counts, stream) => {
-      counts.total += 1;
-      if (isImageRenderableStream(stream)) {
-        counts.image += 1;
-      }
-      if (isScene3dRenderableStream(stream)) {
-        counts.threeD += 1;
-      }
-      return counts;
-    },
-    { total: 0, image: 0, threeD: 0 }
-  );
-}
-
+/** Formats a multimodal scene duration into a compact grid-friendly label. */
 export function formatMultimodalDuration(
   timeRange: MultimodalTimeRange
 ): string {
@@ -61,26 +35,59 @@ export function formatMultimodalDuration(
   return `${minutes}m ${seconds}s`;
 }
 
-export function getMultimodalStreamDisplayLabel(
-  stream: Pick<MultimodalStreamDescriptor, "topic" | "kind">
-): string {
-  const segments = stream.topic.split("/").filter(Boolean);
-  if (!segments.length) {
-    return stream.kind;
+/** Formats a byte size into a compact grid-friendly file-size label. */
+export function formatMultimodalFileSize(bytes: number | null | undefined) {
+  if (!Number.isFinite(bytes) || bytes === null || bytes === undefined) {
+    return "Unknown";
   }
-  return segments.length <= 2
-    ? segments.join("/")
-    : segments.slice(-2).join("/");
+
+  const absoluteBytes = Math.max(0, bytes);
+  if (absoluteBytes < 1024) {
+    return `${formatNumber(absoluteBytes)} B`;
+  }
+
+  const units = ["KB", "MB", "GB", "TB"];
+  let value = absoluteBytes / 1024;
+  let unitIndex = 0;
+
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+
+  const formattedValue =
+    value >= 100
+      ? value.toFixed(0)
+      : value >= 10
+      ? value.toFixed(1)
+      : value.toFixed(2);
+
+  return `${formattedValue.replace(/\.0+$|(\.\d*[1-9])0+$/, "$1")} ${
+    units[unitIndex]
+  }`;
 }
 
-export function getMultimodalCompactStreamLabels(
-  streams: MultimodalStreamDescriptor[],
-  maxCount = 2
-): string[] {
-  return streams
-    .filter((stream) => isRenderableStream(stream))
-    .slice(0, maxCount)
-    .map((stream) => getMultimodalStreamDisplayLabel(stream));
+function isPreviewableCompressedImageStream(
+  stream: Pick<
+    MultimodalCatalog["streams"][number],
+    "compatiblePanels" | "kind" | "schemaName"
+  >
+) {
+  return (
+    isImageRenderableStream(stream) &&
+    PREVIEWABLE_COMPRESSED_IMAGE_SCHEMA_NAMES.has(stream.schemaName)
+  );
+}
+
+/** Returns the first grid-hover previewable compressed-image stream, if any. */
+export function getMultimodalGridPreviewStream(
+  catalog: Pick<MultimodalCatalog, "streams"> | null | undefined
+) {
+  return (
+    catalog?.streams.find((stream) =>
+      isPreviewableCompressedImageStream(stream)
+    ) ?? null
+  );
 }
 
 export function formatMultimodalTimeRange(

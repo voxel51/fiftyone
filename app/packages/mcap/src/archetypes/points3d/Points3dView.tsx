@@ -1,4 +1,9 @@
-import { Grid, OrbitControls } from "@react-three/drei";
+import {
+  GizmoHelper,
+  GizmoViewport,
+  Grid,
+  OrbitControls,
+} from "@react-three/drei";
 import { Canvas, useThree } from "@react-three/fiber";
 import React from "react";
 import * as THREE from "three";
@@ -32,13 +37,21 @@ type ControlsHandle = {
   update: () => void;
 };
 
+type FollowPoseSnapshot = NonNullable<Points3dViewProps["followPose"]>;
+
 const GRID_CELL_SIZE = 1;
-const GRID_SECTION_SIZE = 10;
-const GRID_FADE_DISTANCE = 240;
 const GRID_CELL_COLOR = "#314252";
 const GRID_SECTION_COLOR = "#6f8aa5";
+const GRID_CELL_TARGET_DIVISOR = 20;
+const GRID_SECTION_MULTIPLIER = 10;
+const GRID_FADE_MULTIPLIER = 12;
+const GRID_MIN_FADE_DISTANCE = 80;
+const GRID_MIN_SIZE = 16;
+const GIZMO_MARGIN = [52, 50] as const;
 
-function getAxisIndex(upAxis: NonNullable<Points3dViewProps["upAxis"]>) {
+type ViewUpAxis = NonNullable<Points3dViewProps["upAxis"]>;
+
+function getAxisIndex(upAxis: ViewUpAxis) {
   if (upAxis === "x") {
     return 0;
   }
@@ -50,11 +63,34 @@ function getAxisIndex(upAxis: NonNullable<Points3dViewProps["upAxis"]>) {
   return 1;
 }
 
-function getSnappedGridLevel(value: number) {
-  return Math.floor(value / GRID_SECTION_SIZE) * GRID_SECTION_SIZE;
+function getNiceGridStep(target: number) {
+  if (!Number.isFinite(target) || target <= 0) {
+    return GRID_CELL_SIZE;
+  }
+
+  const magnitude = 10 ** Math.floor(Math.log10(target));
+  const normalized = target / magnitude;
+
+  if (normalized > 5) {
+    return 10 * magnitude;
+  }
+
+  if (normalized > 2) {
+    return 5 * magnitude;
+  }
+
+  if (normalized > 1) {
+    return 2 * magnitude;
+  }
+
+  return magnitude;
 }
 
-function getGridRotation(upAxis: NonNullable<Points3dViewProps["upAxis"]>) {
+function getSnappedGridLevel(value: number, sectionSize: number) {
+  return Math.floor(value / sectionSize) * sectionSize;
+}
+
+function getGridRotation(upAxis: ViewUpAxis) {
   if (upAxis === "x") {
     return [0, 0, Math.PI / 2] as const;
   }
@@ -66,21 +102,117 @@ function getGridRotation(upAxis: NonNullable<Points3dViewProps["upAxis"]>) {
   return [0, 0, 0] as const;
 }
 
+function getUpVectorTuple(upAxis: ViewUpAxis) {
+  if (upAxis === "x") {
+    return [1, 0, 0] as const;
+  }
+
+  if (upAxis === "z") {
+    return [0, 0, 1] as const;
+  }
+
+  return [0, 1, 0] as const;
+}
+
+function getMaxPlaneSpan(bounds: Points3dBounds, upAxis: ViewUpAxis) {
+  const xSpan = bounds.max[0] - bounds.min[0];
+  const ySpan = bounds.max[1] - bounds.min[1];
+  const zSpan = bounds.max[2] - bounds.min[2];
+
+  if (upAxis === "x") {
+    return Math.max(ySpan, zSpan);
+  }
+
+  if (upAxis === "z") {
+    return Math.max(xSpan, ySpan);
+  }
+
+  return Math.max(xSpan, zSpan);
+}
+
 function SceneGrid({
   bounds,
-  followPose,
+  anchorToken,
   upAxis,
 }: {
   bounds: Points3dBounds;
-  followPose: Points3dViewProps["followPose"];
-  upAxis: NonNullable<Points3dViewProps["upAxis"]>;
+  anchorToken: Points3dViewProps["resetViewToken"];
+  upAxis: ViewUpAxis;
 }) {
+  const currentMaxPlaneSpan = React.useMemo(
+    () => getMaxPlaneSpan(bounds, upAxis),
+    [bounds, upAxis]
+  );
+  const axisIndex = React.useMemo(() => getAxisIndex(upAxis), [upAxis]);
+  const gridAnchorKey = React.useMemo(() => {
+    return `${String(anchorToken ?? "default")}:${upAxis}`;
+  }, [anchorToken, upAxis]);
+  const gridAnchorRef = React.useRef<{
+    gridAnchorKey: string;
+    maxPlaneSpan: number;
+    snappedLevel: number;
+  } | null>(null);
+
+  const gridAnchor = React.useMemo(() => {
+    const previousGridAnchor = gridAnchorRef.current;
+
+    if (
+      !previousGridAnchor ||
+      previousGridAnchor.gridAnchorKey !== gridAnchorKey
+    ) {
+      const initialCellSize = getNiceGridStep(
+        currentMaxPlaneSpan / GRID_CELL_TARGET_DIVISOR
+      );
+      const initialSectionSize = initialCellSize * GRID_SECTION_MULTIPLIER;
+      const nextGridAnchor = {
+        gridAnchorKey,
+        maxPlaneSpan: currentMaxPlaneSpan,
+        snappedLevel: getSnappedGridLevel(
+          bounds.min[axisIndex],
+          initialSectionSize
+        ),
+      };
+
+      gridAnchorRef.current = nextGridAnchor;
+      return nextGridAnchor;
+    }
+
+    const nextMaxPlaneSpan = Math.max(
+      previousGridAnchor.maxPlaneSpan,
+      currentMaxPlaneSpan
+    );
+
+    if (nextMaxPlaneSpan === previousGridAnchor.maxPlaneSpan) {
+      return previousGridAnchor;
+    }
+
+    const nextGridAnchor = {
+      ...previousGridAnchor,
+      maxPlaneSpan: nextMaxPlaneSpan,
+    };
+
+    gridAnchorRef.current = nextGridAnchor;
+    return nextGridAnchor;
+  }, [axisIndex, bounds.min, currentMaxPlaneSpan, gridAnchorKey]);
+
+  const cellSize = React.useMemo(() => {
+    return getNiceGridStep(gridAnchor.maxPlaneSpan / GRID_CELL_TARGET_DIVISOR);
+  }, [gridAnchor.maxPlaneSpan]);
+  const sectionSize = React.useMemo(() => {
+    return cellSize * GRID_SECTION_MULTIPLIER;
+  }, [cellSize]);
+  const fadeDistance = React.useMemo(() => {
+    return Math.max(
+      sectionSize * GRID_FADE_MULTIPLIER,
+      gridAnchor.maxPlaneSpan * 4,
+      GRID_MIN_FADE_DISTANCE
+    );
+  }, [gridAnchor.maxPlaneSpan, sectionSize]);
+  const gridSize = React.useMemo(() => {
+    return Math.max(sectionSize * GRID_MIN_SIZE, gridAnchor.maxPlaneSpan * 2);
+  }, [gridAnchor.maxPlaneSpan, sectionSize]);
   const position = React.useMemo(() => {
-    const axisIndex = getAxisIndex(upAxis);
-    const anchorLevel = followPose
-      ? followPose.position[axisIndex]
-      : bounds.min[axisIndex];
-    const snappedLevel = getSnappedGridLevel(anchorLevel);
+    const snappedLevel = gridAnchor.snappedLevel;
 
     if (upAxis === "x") {
       return [snappedLevel, 0, 0] as const;
@@ -91,23 +223,35 @@ function SceneGrid({
     }
 
     return [0, snappedLevel, 0] as const;
-  }, [bounds.min, followPose, upAxis]);
+  }, [gridAnchor.snappedLevel, upAxis]);
 
   const rotation = React.useMemo(() => getGridRotation(upAxis), [upAxis]);
 
   return (
     <Grid
+      args={[gridSize, gridSize]}
       cellColor={GRID_CELL_COLOR}
-      cellSize={GRID_CELL_SIZE}
-      fadeDistance={GRID_FADE_DISTANCE}
+      cellSize={cellSize}
+      cellThickness={0.5}
+      fadeDistance={fadeDistance}
+      fadeFrom={0.4}
       fadeStrength={1}
-      followCamera
       infiniteGrid
       position={position}
       rotation={rotation}
       sectionColor={GRID_SECTION_COLOR}
-      sectionSize={GRID_SECTION_SIZE}
+      sectionSize={sectionSize}
+      sectionThickness={0.9}
+      side={THREE.DoubleSide}
     />
+  );
+}
+
+function SceneViewportGizmo() {
+  return (
+    <GizmoHelper alignment="top-left" margin={GIZMO_MARGIN}>
+      <GizmoViewport />
+    </GizmoHelper>
   );
 }
 
@@ -122,13 +266,18 @@ function Points3dCameraController({
   followPose: Points3dViewProps["followPose"];
   preserveViewOnFrameChange: boolean;
   resetViewToken: Points3dViewProps["resetViewToken"];
-  upAxis: NonNullable<Points3dViewProps["upAxis"]>;
+  upAxis: ViewUpAxis;
 }) {
   const { camera, invalidate } = useThree();
   const controlsRef = React.useRef<ControlsHandle | null>(null);
   const lastFrameKeyRef = React.useRef<string | null>(null);
   const lastResetTokenRef =
     React.useRef<Points3dViewProps["resetViewToken"]>(undefined);
+  const lastFollowPoseRef = React.useRef<FollowPoseSnapshot | null>(null);
+  const upVector = React.useMemo(() => {
+    const [x, y, z] = getUpVectorTuple(upAxis);
+    return new THREE.Vector3(x, y, z);
+  }, [upAxis]);
 
   const frameKey = React.useMemo(() => {
     return `${bounds.min.join(",")}:${bounds.max.join(",")}`;
@@ -139,12 +288,15 @@ function Points3dCameraController({
       return;
     }
 
+    camera.up.copy(upVector);
+
     const shouldReset =
       lastFrameKeyRef.current === null ||
       resetViewToken !== lastResetTokenRef.current ||
       (!preserveViewOnFrameChange && lastFrameKeyRef.current !== frameKey);
 
     if (!shouldReset) {
+      controlsRef.current?.update();
       lastFrameKeyRef.current = frameKey;
       return;
     }
@@ -160,9 +312,15 @@ function Points3dCameraController({
     invalidate,
     preserveViewOnFrameChange,
     resetViewToken,
+    upVector,
   ]);
 
   React.useEffect(() => {
+    if (!followPose) {
+      lastFollowPoseRef.current = null;
+      return;
+    }
+
     if (
       !(camera instanceof THREE.PerspectiveCamera) ||
       !controlsRef.current ||
@@ -172,25 +330,34 @@ function Points3dCameraController({
     }
 
     const target = new THREE.Vector3(...followPose.position);
-    const upVector =
-      upAxis === "x"
-        ? new THREE.Vector3(1, 0, 0)
-        : upAxis === "y"
-        ? new THREE.Vector3(0, 1, 0)
-        : new THREE.Vector3(0, 0, 1);
     const defaultOffset = new THREE.Vector3(-6, -6, 4);
+    const previousTarget = controlsRef.current.target.clone();
+    const currentOffset = camera.position.clone().sub(previousTarget);
+    let nextOffset = currentOffset.lengthSq()
+      ? currentOffset
+      : defaultOffset.clone();
+    const previousFollowPose = lastFollowPoseRef.current;
+
     if (followPose.orientation) {
-      defaultOffset.applyQuaternion(
-        new THREE.Quaternion(...followPose.orientation)
+      const currentOrientation = new THREE.Quaternion(
+        ...followPose.orientation
       );
+      const localOffset =
+        previousFollowPose?.orientation && currentOffset.lengthSq()
+          ? currentOffset.applyQuaternion(
+              new THREE.Quaternion(...previousFollowPose.orientation).invert()
+            )
+          : defaultOffset.clone();
+      nextOffset = localOffset.applyQuaternion(currentOrientation);
     }
 
     camera.up.copy(upVector);
-    camera.position.copy(target.clone().add(defaultOffset));
+    camera.position.copy(target.clone().add(nextOffset));
     controlsRef.current.target.copy(target);
     controlsRef.current.update();
+    lastFollowPoseRef.current = followPose;
     invalidate();
-  }, [camera, followPose, invalidate, upAxis]);
+  }, [camera, followPose, invalidate, upVector]);
 
   return <OrbitControls makeDefault ref={controlsRef as never} />;
 }
@@ -455,12 +622,12 @@ export function Points3dView({
         <directionalLight intensity={0.85} position={[4, -6, 8]} />
         {showGrid ? (
           <SceneGrid
+            anchorToken={resetViewToken}
             bounds={frame.bounds}
-            followPose={followPose}
             upAxis={upAxis}
           />
         ) : null}
-        <axesHelper args={[1.5]} />
+        <SceneViewportGizmo />
         <Points3dCameraController
           bounds={frame.bounds}
           followPose={followPose}
