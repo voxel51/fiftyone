@@ -1,22 +1,13 @@
 import {
   AgentTaskType,
-  NEGATIVE_POINT_VARIANT,
-  PointSelectionVariant,
-  POSITIVE_POINT_VARIANT,
   useActiveTask,
   useAgentSelector,
   usePointSelection,
   useToolsState,
 } from "@fiftyone/annotation/src/agents";
-import {
-  BoundingBoxOverlay,
-  KeypointPointHitAction,
-  Point,
-} from "@fiftyone/lighter";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { atom, useAtom } from "jotai";
 import { useAnnotationContext } from "./state";
-import { ClickEventModifiers } from "@fiftyone/utilities";
 
 export interface AIAnnotationMode {
   activate(): void;
@@ -30,15 +21,10 @@ export interface AIAnnotationMode {
 const isActiveAtom = atom(false);
 
 /**
- * Hook which provides control over activation/deactivation of AI annotation mode.
+ * Helper hook which configures a default {@link AnnotationAgent}.
  */
-export const useAIAnnotationMode = (): AIAnnotationMode => {
-  const [isActive, setIsActive] = useAtom(isActiveAtom);
-  const { selectedLabel } = useAnnotationContext();
+const useDefaultAgent = () => {
   const agentSelector = useAgentSelector();
-  const { setActiveTask } = useActiveTask();
-  const { reset: resetToolsState } = useToolsState();
-  const pointSelection = usePointSelection();
 
   // We don't currently expose agent selection capabilities in the UX.
   // Select the first available agent once the agents have resolved.
@@ -47,16 +33,25 @@ export const useAIAnnotationMode = (): AIAnnotationMode => {
       agentSelector.setActiveAgent(agentSelector.agents[0]);
     }
   }, [agentSelector]);
+};
 
+/**
+ * Helper hook which resets state when the label selection changes.
+ *
+ * @param isActive Flag indicating whether AI annotation mode is active
+ * @param reset Callback invoked when label selection state changes
+ */
+const useLabelReset = (isActive: boolean, reset: () => void) => {
+  const { selectedLabel } = useAnnotationContext();
   const selectedLabelRef = useRef(selectedLabel);
   const previousSelectedLabelIdRef = useRef<string | null>(
     selectedLabel?.overlay?.id ?? null
   );
+
   selectedLabelRef.current = selectedLabel;
 
-  // When the user commits/exits a label (selected label transitions away
-  // from a populated overlay), wipe the inference prompt points so the next
-  // label starts from a clean slate. We stay in segmentation mode.
+  // When the selected label changes,
+  // reset state to ensure a clean starting point for the next label
   useEffect(() => {
     if (!isActive) {
       previousSelectedLabelIdRef.current = selectedLabel?.overlay?.id ?? null;
@@ -67,67 +62,59 @@ export const useAIAnnotationMode = (): AIAnnotationMode => {
     const currentId = selectedLabel?.overlay?.id ?? null;
 
     if (previousId && previousId !== currentId) {
-      pointSelection.clearPoints();
-      resetToolsState();
+      reset();
     }
 
     previousSelectedLabelIdRef.current = currentId;
   }, [selectedLabel]);
+};
 
-  // Points placed on the current label's mask are interpreted as negative;
-  // points placed off-mask are positive.
-  // Holding shift inverts the result.
-  const resolvePointVariant = useCallback(
-    (
-      relativePoint: Point,
-      { shiftKey }: ClickEventModifiers
-    ): PointSelectionVariant => {
-      const label = selectedLabelRef.current;
-      const onMask =
-        label && label.overlay instanceof BoundingBoxOverlay
-          ? label.overlay.containsMaskPixel(relativePoint)
-          : false;
+/**
+ * Hook which provides control over activation/deactivation of AI annotation mode.
+ */
+export const useAIAnnotationMode = (): AIAnnotationMode => {
+  const [isActive, setIsActive] = useAtom(isActiveAtom);
 
-      const variant = onMask ? NEGATIVE_POINT_VARIANT : POSITIVE_POINT_VARIANT;
+  const { setActiveTask } = useActiveTask();
+  const { reset: resetToolsState } = useToolsState();
+  const pointSelection = usePointSelection();
 
-      return !shiftKey
-        ? // normal variant if shift key is not pressed
-          variant
-        : // otherwise invert the variant
-        variant === POSITIVE_POINT_VARIANT
-        ? NEGATIVE_POINT_VARIANT
-        : POSITIVE_POINT_VARIANT;
-    },
-    []
-  );
+  // bootstrap AI annotation capabilities
+  useDefaultAgent();
 
-  // Clicking an existing point deletes it
-  const resolvePointHit = useCallback(() => KeypointPointHitAction.DELETE, []);
+  const resetTools = useCallback(() => {
+    pointSelection.deactivate();
+    pointSelection.clearPoints();
+    resetToolsState();
+  }, [pointSelection, resetToolsState]);
+
+  useLabelReset(isActive, resetTools);
 
   const activate = useCallback(() => {
+    if (isActive) {
+      return;
+    }
+
     setIsActive(true);
     setActiveTask(AgentTaskType.SEGMENT);
-    pointSelection.activate(resolvePointVariant, resolvePointHit);
-  }, [
-    pointSelection,
-    resolvePointHit,
-    resolvePointVariant,
-    setActiveTask,
-    setIsActive,
-  ]);
+  }, [isActive, setActiveTask, setIsActive]);
 
   const deactivate = useCallback(() => {
-    pointSelection.deactivate();
-    resetToolsState();
+    if (!isActive) {
+      return;
+    }
+
+    resetTools();
+
     setActiveTask(null);
     setIsActive(false);
-  }, [pointSelection, resetToolsState, setActiveTask, setIsActive]);
+  }, [isActive, resetTools, setActiveTask, setIsActive]);
 
   return useMemo(
     () => ({
       activate,
       deactivate,
-      isActive: isActive,
+      isActive,
     }),
     [activate, deactivate, isActive]
   );
