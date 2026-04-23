@@ -344,9 +344,12 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
     refreshRunsRef.current();
   }, [ownerFilter]);
 
-  // Auto-apply immediate execution runs when they complete.
-  // Delegated runs (operator_run_id is set) are excluded — there's no
-  // completion event for those, so the user applies them manually.
+  // Auto-apply any run that just transitioned to Completed, regardless
+  // of whether it was executed immediately or delegated — in both cases
+  // the status flip from RUNNING/PENDING → Completed arrives via the
+  // same refreshRuns path (immediate: operator return; delegated: SSE
+  // from the worker's set_run write), and we want the result view to
+  // show automatically once the run finishes.
   const prevRunStatusesRef = useRef<Map<string, string>>(new Map());
 
   useEffect(() => {
