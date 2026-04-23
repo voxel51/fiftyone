@@ -40,6 +40,7 @@ class PanelSceneConfig(DynamicEmbeddedDocument):
 
     up_axis = fof.StringField(default="z")
     background_color = fof.StringField(default="#10151d")
+    show_grid = fof.BooleanField(default=True)
 
 
 class PanelLayout(DynamicEmbeddedDocument):
@@ -68,7 +69,7 @@ class PanelPlan(DynamicEmbeddedDocument):
     visible_stream_ids = fof.ListField(fof.StringField())
     frame_config = fof.EmbeddedDocumentField(PanelFrameConfig)
     scene_config = fof.EmbeddedDocumentField(PanelSceneConfig)
-    layout = fof.EmbeddedDocumentField(PanelLayout)
+    layout = fof.EmbeddedDocumentField(PanelLayout, null=True)
 
 
 class MultimodalRenderingPlan(RenderingPlan):
@@ -77,6 +78,8 @@ class MultimodalRenderingPlan(RenderingPlan):
     source_kind = fof.StringField(default="mcap")
     sync = fof.EmbeddedDocumentField(SyncConfig)
     panels = fof.ListField(fof.EmbeddedDocumentField(PanelPlan))
+    sidebar_width = fof.IntField(default=208)
+    layout_tree = fof.DictField(null=True)
 
 
 class McapSyncConfig(SyncConfig):

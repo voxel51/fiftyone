@@ -23,11 +23,18 @@ from fiftyone.server.mcap_cdr import (
     decode_catalog_details,
     decode_sync_timestamp_ns,
 )
-
+from fiftyone.server.mcap_foxglove import (
+    McapFoxgloveDecodeError,
+    decode_catalog_details as decode_foxglove_catalog_details,
+    decode_sync_timestamp_ns as decode_foxglove_sync_timestamp_ns,
+)
 
 logger = logging.getLogger(__name__)
 
-_CATALOG_VERSION = "multimodal-workspace-v1"
+_CATALOG_VERSION = "multimodal-workspace-v4"
+_DEFAULT_SIDEBAR_WIDTH = 208
+_MIN_SIDEBAR_WIDTH = 176
+_MAX_SIDEBAR_WIDTH = 420
 _DEFAULT_SOURCE_KIND = "mcap"
 _DEFAULT_STREAM = {
     "kind": "other",
@@ -35,6 +42,13 @@ _DEFAULT_STREAM = {
     "compatible_panels": [],
     "location_mode": None,
 }
+_PREFERRED_GLOBAL_FRAME_IDS = ("odom", "map", "world")
+_PREFERRED_EGO_FRAME_IDS = (
+    "base_link",
+    "ego_vehicle",
+    "ego",
+    "vehicle",
+)
 
 _MULTIMODAL_SERVICE = None
 _DEFAULT_BOOTSTRAP_TRANSFORM_WINDOW_NS = 1_000_000_000
@@ -145,22 +159,34 @@ class SchemaCodec(ABC):
         }
 
     @abstractmethod
-    def decode_catalog_details(self, payload):
+    def decode_catalog_details(self, schema, payload):
         """Decodes stream inventory details from one raw payload."""
 
     @abstractmethod
-    def decode_sync_timestamp_ns(self, payload):
+    def decode_sync_timestamp_ns(self, schema, payload):
         """Decodes the preferred sync timestamp from one raw payload."""
 
 
 class RosSchemaCodec(SchemaCodec):
     """ROS2 CDR-backed codec for one multimodal message schema."""
 
-    def decode_catalog_details(self, payload):
+    def decode_catalog_details(self, schema, payload):
+        del schema
         return decode_catalog_details(self.schema_name, payload)
 
-    def decode_sync_timestamp_ns(self, payload):
+    def decode_sync_timestamp_ns(self, schema, payload):
+        del schema
         return decode_sync_timestamp_ns(self.schema_name, payload)
+
+
+class FoxgloveSchemaCodec(SchemaCodec):
+    """Foxglove protobuf-backed codec for one multimodal message schema."""
+
+    def decode_catalog_details(self, schema, payload):
+        return decode_foxglove_catalog_details(schema, payload)
+
+    def decode_sync_timestamp_ns(self, schema, payload):
+        return decode_foxglove_sync_timestamp_ns(schema, payload)
 
 
 class SchemaCodecRegistry:
@@ -180,6 +206,9 @@ class SchemaCodecRegistry:
 
         return self._codecs.get(schema_name)
 
+    def _get_codec(self, schema):
+        return self.get(_get_schema_name(schema))
+
     def classify_stream(self, schema_name):
         codec = self.get(schema_name)
         if codec is None:
@@ -187,19 +216,19 @@ class SchemaCodecRegistry:
 
         return codec.describe_stream()
 
-    def decode_catalog_details(self, schema_name, payload):
-        codec = self.get(schema_name)
+    def decode_catalog_details(self, schema, payload):
+        codec = self._get_codec(schema)
         if codec is None:
             return {}
 
-        return codec.decode_catalog_details(payload)
+        return codec.decode_catalog_details(schema, payload)
 
-    def decode_sync_timestamp_ns(self, schema_name, payload):
-        codec = self.get(schema_name)
+    def decode_sync_timestamp_ns(self, schema, payload):
+        codec = self._get_codec(schema)
         if codec is None:
             return None
 
-        return codec.decode_sync_timestamp_ns(payload)
+        return codec.decode_sync_timestamp_ns(schema, payload)
 
 
 class SourceAdapterRegistry:
@@ -235,7 +264,41 @@ class SourceAdapterRegistry:
         return source_kind
 
 
-def _build_builtin_ros_codec_registry():
+def _get_schema_name(schema):
+    if isinstance(schema, str):
+        return schema
+
+    return getattr(schema, "name", None)
+
+
+def _get_first_topic_segment(topic):
+    if not topic:
+        return None
+
+    for segment in str(topic).split("/"):
+        segment = segment.strip()
+        if segment:
+            return segment
+
+    return None
+
+
+def _build_unique_panel_title(base_title, used_titles):
+    normalized_base_title = (base_title or "panel").strip() or "panel"
+    if normalized_base_title not in used_titles:
+        used_titles.add(normalized_base_title)
+        return normalized_base_title
+
+    suffix = 2
+    while "%s %d" % (normalized_base_title, suffix) in used_titles:
+        suffix += 1
+
+    title = "%s %d" % (normalized_base_title, suffix)
+    used_titles.add(title)
+    return title
+
+
+def _build_builtin_schema_codec_registry():
     registry = SchemaCodecRegistry()
     for codec in (
         RosSchemaCodec(
@@ -291,13 +354,48 @@ def _build_builtin_ros_codec_registry():
             affordances=["location", "position", "navsat"],
             location_mode="navsat",
         ),
+        FoxgloveSchemaCodec(
+            "foxglove.CompressedImage",
+            kind="image",
+            affordances=["image"],
+            compatible_panels=["image"],
+        ),
+        FoxgloveSchemaCodec(
+            "foxglove.PointCloud",
+            kind="3d",
+            affordances=["pointcloud", "3d"],
+            compatible_panels=["3d"],
+        ),
+        FoxgloveSchemaCodec(
+            "foxglove.SceneUpdate",
+            kind="3d",
+            affordances=["sceneupdate", "overlay", "3d"],
+            compatible_panels=["3d", "image"],
+        ),
+        FoxgloveSchemaCodec(
+            "foxglove.ImageAnnotations",
+            kind="other",
+            affordances=["image-annotations", "overlay"],
+            compatible_panels=["image"],
+        ),
+        FoxgloveSchemaCodec(
+            "foxglove.CameraCalibration",
+            kind="other",
+            affordances=["camera", "calibration"],
+            compatible_panels=["image"],
+        ),
+        FoxgloveSchemaCodec(
+            "foxglove.FrameTransform",
+            kind="transform",
+            affordances=["transforms"],
+        ),
     ):
         registry.register(codec)
 
     return registry
 
 
-_SCHEMA_CODEC_REGISTRY = _build_builtin_ros_codec_registry()
+_SCHEMA_CODEC_REGISTRY = _build_builtin_schema_codec_registry()
 
 
 class McapSourceAdapter(MultimodalSourceAdapter):
@@ -409,6 +507,7 @@ class McapSourceAdapter(MultimodalSourceAdapter):
                 sync_timestamp_ns = _resolve_message_sync_timestamp_ns(
                     codec_registry=self._codec_registry,
                     schema_name=(schema.name if schema is not None else None),
+                    schema=schema,
                     payload=message.data,
                     log_time_ns=int(message.log_time),
                     publish_time_ns=int(message.publish_time),
@@ -492,6 +591,7 @@ class McapSourceAdapter(MultimodalSourceAdapter):
                     schema_name=(
                         _schema.name if _schema is not None else None
                     ),
+                    schema=_schema,
                     payload=message.data,
                     log_time_ns=log_time_ns,
                     publish_time_ns=publish_time_ns,
@@ -549,10 +649,9 @@ class DefaultMultimodalRenderingPlanner(MultimodalRenderingPlanner):
 
     def build_rendering_plan(self, metadata):
         panels = []
+        used_titles = set()
         image_streams = [
-            stream
-            for stream in metadata.streams
-            if "image" in (stream.compatible_panels or [])
+            stream for stream in metadata.streams if stream.kind == "image"
         ]
         three_d_streams = [
             stream
@@ -564,11 +663,20 @@ class DefaultMultimodalRenderingPlanner(MultimodalRenderingPlanner):
             fixed_frame_id = _choose_default_fixed_frame(
                 metadata, three_d_streams
             )
+            follow_frame_id = _choose_default_follow_frame(
+                metadata, fixed_frame_id
+            )
             panels.append(
                 fopr.PanelPlan(
                     panel_id="panel_3d_1",
                     archetype="3d",
-                    title="3D panel",
+                    title=_build_unique_panel_title(
+                        _get_first_topic_segment(
+                            getattr(three_d_streams[0], "topic", None)
+                        )
+                        or "3d",
+                        used_titles,
+                    ),
                     render_stream_id=None,
                     visible_stream_ids=[
                         stream.stream_id for stream in three_d_streams
@@ -576,32 +684,37 @@ class DefaultMultimodalRenderingPlanner(MultimodalRenderingPlanner):
                     frame_config=fopr.PanelFrameConfig(
                         fixed_frame_id=fixed_frame_id,
                         display_frame_id=fixed_frame_id,
-                        follow_mode="off",
+                        follow_mode=(
+                            "pose" if follow_frame_id is not None else "off"
+                        ),
                     ),
                     scene_config=fopr.PanelSceneConfig(
                         up_axis="z",
                         background_color="#10151d",
+                        show_grid=True,
                     ),
-                    layout=fopr.PanelLayout(x=0, y=0, w=12, h=2),
                 )
             )
 
-        for index, image_stream in enumerate(image_streams[:3], 1):
+        for index, image_stream in enumerate(image_streams, 1):
+            image_support_stream_ids = _get_default_image_support_stream_ids(
+                metadata, image_stream
+            )
             panels.append(
                 fopr.PanelPlan(
                     panel_id="image_panel_%d" % index,
                     archetype="image",
-                    title="Image panel %d" % index,
+                    title=_build_unique_panel_title(
+                        _get_first_topic_segment(
+                            getattr(image_stream, "topic", None)
+                        )
+                        or "image",
+                        used_titles,
+                    ),
                     render_stream_id=image_stream.stream_id,
-                    visible_stream_ids=[],
+                    visible_stream_ids=image_support_stream_ids,
                     frame_config=fopr.PanelFrameConfig(),
                     scene_config=fopr.PanelSceneConfig(),
-                    layout=fopr.PanelLayout(
-                        x=(index - 1) * 4,
-                        y=2 if three_d_streams else 0,
-                        w=4,
-                        h=1,
-                    ),
                 )
             )
 
@@ -615,7 +728,234 @@ class DefaultMultimodalRenderingPlanner(MultimodalRenderingPlanner):
                 mode="nearest",
             ),
             panels=panels,
+            sidebar_width=_DEFAULT_SIDEBAR_WIDTH,
+            layout_tree=_build_default_layout_tree(
+                [panel.panel_id for panel in panels]
+            ),
         )
+
+
+def _build_layout_leaf(panel_id):
+    return {"type": "leaf", "panelId": panel_id}
+
+
+def _normalize_split_percentage(value):
+    try:
+        normalized = float(value)
+    except Exception as error:
+        raise MultimodalRouteError(
+            400, "layoutTree splitPercentage must be a number"
+        ) from error
+
+    if normalized <= 0 or normalized >= 100:
+        raise MultimodalRouteError(
+            400, "layoutTree splitPercentage must be between 0 and 100"
+        )
+
+    normalized = round(normalized, 3)
+    if normalized.is_integer():
+        return int(normalized)
+
+    return normalized
+
+
+def _count_layout_leaves(layout_tree):
+    if layout_tree is None:
+        return 0
+
+    if layout_tree.get("type") == "leaf":
+        return 1
+
+    return _count_layout_leaves(
+        layout_tree.get("first")
+    ) + _count_layout_leaves(layout_tree.get("second"))
+
+
+def _build_layout_split(direction, first, second):
+    split_percentage = (100.0 * _count_layout_leaves(first)) / (
+        _count_layout_leaves(first) + _count_layout_leaves(second)
+    )
+    return {
+        "type": "split",
+        "direction": direction,
+        "splitPercentage": int(round(split_percentage)),
+        "first": first,
+        "second": second,
+    }
+
+
+def _build_default_layout_tree(panel_ids, depth=0):
+    panel_ids = list(panel_ids or [])
+    panel_count = len(panel_ids)
+    if panel_count == 0:
+        return None
+
+    if depth == 0:
+        if panel_count == 1:
+            return _build_layout_leaf(panel_ids[0])
+
+        if panel_count == 2:
+            return {
+                "type": "split",
+                "direction": "row",
+                "splitPercentage": 50,
+                "first": _build_layout_leaf(panel_ids[0]),
+                "second": _build_layout_leaf(panel_ids[1]),
+            }
+
+        if panel_count == 3:
+            return {
+                "type": "split",
+                "direction": "row",
+                "splitPercentage": 33,
+                "first": _build_layout_leaf(panel_ids[0]),
+                "second": {
+                    "type": "split",
+                    "direction": "column",
+                    "splitPercentage": 50,
+                    "first": _build_layout_leaf(panel_ids[1]),
+                    "second": _build_layout_leaf(panel_ids[2]),
+                },
+            }
+
+        if panel_count == 4:
+            return {
+                "type": "split",
+                "direction": "column",
+                "splitPercentage": 50,
+                "first": {
+                    "type": "split",
+                    "direction": "row",
+                    "splitPercentage": 50,
+                    "first": _build_layout_leaf(panel_ids[0]),
+                    "second": _build_layout_leaf(panel_ids[1]),
+                },
+                "second": {
+                    "type": "split",
+                    "direction": "row",
+                    "splitPercentage": 50,
+                    "first": _build_layout_leaf(panel_ids[2]),
+                    "second": _build_layout_leaf(panel_ids[3]),
+                },
+            }
+
+    if panel_count == 1:
+        return _build_layout_leaf(panel_ids[0])
+
+    split_index = panel_count // 2
+    direction = "row" if depth % 2 == 0 else "column"
+    return _build_layout_split(
+        direction,
+        _build_default_layout_tree(panel_ids[:split_index], depth + 1),
+        _build_default_layout_tree(panel_ids[split_index:], depth + 1),
+    )
+
+
+def _normalize_layout_tree(layout_tree):
+    if layout_tree is None:
+        return None
+
+    if not isinstance(layout_tree, dict):
+        raise MultimodalRouteError(
+            400, "layoutTree must be a layout node object"
+        )
+
+    node_type = layout_tree.get("type")
+    if node_type == "leaf":
+        panel_id = layout_tree.get("panelId")
+        if not isinstance(panel_id, str) or not panel_id:
+            raise MultimodalRouteError(
+                400, "layoutTree leaf panelId must be a non-empty string"
+            )
+
+        return {"type": "leaf", "panelId": panel_id}
+
+    if node_type != "split":
+        raise MultimodalRouteError(
+            400, "layoutTree nodes must be leaf or split nodes"
+        )
+
+    direction = layout_tree.get("direction")
+    if direction not in ("row", "column"):
+        raise MultimodalRouteError(
+            400, "layoutTree split direction must be row or column"
+        )
+
+    return {
+        "type": "split",
+        "direction": direction,
+        "splitPercentage": _normalize_split_percentage(
+            layout_tree.get("splitPercentage")
+        ),
+        "first": _normalize_layout_tree(layout_tree.get("first")),
+        "second": _normalize_layout_tree(layout_tree.get("second")),
+    }
+
+
+def _collect_layout_leaf_panel_ids(layout_tree):
+    if layout_tree is None:
+        return []
+
+    if layout_tree.get("type") == "leaf":
+        return [layout_tree["panelId"]]
+
+    return _collect_layout_leaf_panel_ids(
+        layout_tree["first"]
+    ) + _collect_layout_leaf_panel_ids(layout_tree["second"])
+
+
+def _validate_layout_tree(layout_tree, panels):
+    panel_ids = [panel.panel_id for panel in panels]
+    if not panel_ids:
+        if layout_tree is not None:
+            raise MultimodalRouteError(
+                400, "layoutTree must be null when there are no panels"
+            )
+
+        return None
+
+    if layout_tree is None:
+        raise MultimodalRouteError(
+            400, "layoutTree is required when panels are present"
+        )
+
+    normalized_layout_tree = _normalize_layout_tree(layout_tree)
+    leaf_panel_ids = _collect_layout_leaf_panel_ids(normalized_layout_tree)
+    panel_id_counts = OrderedDict()
+    for panel_id in leaf_panel_ids:
+        panel_id_counts[panel_id] = panel_id_counts.get(panel_id, 0) + 1
+
+    duplicate_panel_ids = [
+        panel_id for panel_id, count in panel_id_counts.items() if count > 1
+    ]
+    if duplicate_panel_ids:
+        raise MultimodalRouteError(
+            400,
+            "layoutTree contains duplicate panel ids: %s"
+            % ", ".join(duplicate_panel_ids),
+        )
+
+    unknown_panel_ids = [
+        panel_id for panel_id in leaf_panel_ids if panel_id not in panel_ids
+    ]
+    if unknown_panel_ids:
+        raise MultimodalRouteError(
+            400,
+            "layoutTree references unknown panel ids: %s"
+            % ", ".join(sorted(set(unknown_panel_ids))),
+        )
+
+    missing_panel_ids = [
+        panel_id for panel_id in panel_ids if panel_id not in leaf_panel_ids
+    ]
+    if missing_panel_ids:
+        raise MultimodalRouteError(
+            400,
+            "layoutTree is missing panel ids: %s"
+            % ", ".join(missing_panel_ids),
+        )
+
+    return normalized_layout_tree
 
 
 class SceneStateRepository(ABC):
@@ -760,6 +1100,31 @@ class MultimodalWorkspaceService:
             media_field=media_field,
             overwrite=False,
             source_kind=source_kind,
+        )
+
+    def update_workspace(self, dataset, sample, rendering_plan):
+        if not isinstance(rendering_plan, dict):
+            raise MultimodalRouteError(
+                400, "Workspace request body must be a rendering plan object"
+            )
+
+        media_field = rendering_plan.get("mediaField")
+        state = self.get_workspace(
+            dataset=dataset,
+            sample=sample,
+            media_field=media_field,
+            source_kind=rendering_plan.get("sourceKind"),
+        )
+        normalized_rendering_plan = _normalize_rendering_plan_payload(
+            rendering_plan,
+            metadata=state.metadata,
+            current_rendering_plan=state.rendering_plan,
+        )
+        return self._repository.save(
+            dataset=dataset,
+            sample=sample,
+            metadata=state.metadata,
+            rendering_plan=normalized_rendering_plan,
         )
 
     def read_stream_window(
@@ -1005,6 +1370,16 @@ def inspect_sample_multimodal_workspace(
     )
 
 
+def update_sample_multimodal_workspace(dataset, sample, rendering_plan):
+    """Persists the updated rendering plan for a multimodal sample."""
+    state = _get_multimodal_service().update_workspace(
+        dataset=dataset,
+        sample=sample,
+        rendering_plan=rendering_plan,
+    )
+    return _serialize_rendering_plan(state.rendering_plan)
+
+
 def read_sample_multimodal_stream_window(
     dataset,
     sample,
@@ -1109,6 +1484,7 @@ def _catalog_reader(
     resolved_codec_registry = codec_registry or _SCHEMA_CODEC_REGISTRY
     source_kind = source_kind or _DEFAULT_SOURCE_KIND
     summary = reader.get_summary()
+    summary_schemas = getattr(summary, "schemas", {}) or {}
     streams = _build_stream_records_from_summary(
         summary, resolved_codec_registry
     )
@@ -1117,6 +1493,9 @@ def _catalog_reader(
     extra_frame_ids = OrderedDict()
 
     for schema, channel, message in _iter_reader_messages(reader):
+        if schema is None:
+            schema = summary_schemas.get(channel.schema_id)
+
         stream = streams.get(channel.topic)
         if stream is None:
             stream = _build_stream_record(
@@ -1137,10 +1516,11 @@ def _catalog_reader(
         try:
             details = _decode_catalog_details(
                 schema_name=stream["schema_name"],
+                schema=schema,
                 payload=message.data,
-                codec_registry=codec_registry,
+                codec_registry=resolved_codec_registry,
             )
-        except McapCdrDecodeError:
+        except (McapCdrDecodeError, McapFoxgloveDecodeError):
             logger.debug(
                 "Skipping multimodal catalog decode for %s (%s)",
                 stream["topic"],
@@ -1419,17 +1799,344 @@ def _serialize_rendering_plan(rendering_plan):
                 "sceneConfig": {
                     "upAxis": panel.scene_config.up_axis,
                     "backgroundColor": panel.scene_config.background_color,
-                },
-                "layout": {
-                    "x": int(panel.layout.x),
-                    "y": int(panel.layout.y),
-                    "w": int(panel.layout.w),
-                    "h": int(panel.layout.h),
+                    "showGrid": bool(panel.scene_config.show_grid),
                 },
             }
             for panel in rendering_plan.panels
         ],
+        "sidebarWidth": int(
+            getattr(rendering_plan, "sidebar_width", _DEFAULT_SIDEBAR_WIDTH)
+            or _DEFAULT_SIDEBAR_WIDTH
+        ),
+        "layoutTree": _normalize_layout_tree(rendering_plan.layout_tree),
     }
+
+
+def _normalize_required_string(value, field_name):
+    if not isinstance(value, str) or not value:
+        raise MultimodalRouteError(
+            400, "%s must be a non-empty string" % field_name
+        )
+
+    return value
+
+
+def _normalize_optional_string(value, field_name):
+    if value is None or value == "":
+        return None
+
+    if not isinstance(value, str):
+        raise MultimodalRouteError(
+            400, "%s must be a string or null" % field_name
+        )
+
+    return value
+
+
+def _normalize_sidebar_width(value):
+    if value is None:
+        return _DEFAULT_SIDEBAR_WIDTH
+
+    width = _normalize_time_value(value, "sidebarWidth")
+    if width < _MIN_SIDEBAR_WIDTH or width > _MAX_SIDEBAR_WIDTH:
+        raise MultimodalRouteError(
+            400,
+            "sidebarWidth must be between %d and %d"
+            % (_MIN_SIDEBAR_WIDTH, _MAX_SIDEBAR_WIDTH),
+        )
+
+    return width
+
+
+def _normalize_boolean(value, field_name, default):
+    if value is None:
+        return default
+
+    if not isinstance(value, bool):
+        raise MultimodalRouteError(
+            400, "%s must be true or false" % field_name
+        )
+
+    return value
+
+
+def _normalize_frame_config(data, frame_ids, location_stream_ids):
+    if data is None:
+        data = {}
+
+    if not isinstance(data, dict):
+        raise MultimodalRouteError(400, "frameConfig must be an object")
+
+    fixed_frame_id = _normalize_optional_string(
+        data.get("fixedFrameId"), "frameConfig.fixedFrameId"
+    )
+    display_frame_id = _normalize_optional_string(
+        data.get("displayFrameId"), "frameConfig.displayFrameId"
+    )
+    enu_frame_id = _normalize_optional_string(
+        data.get("enuFrameId"), "frameConfig.enuFrameId"
+    )
+    location_stream_id = _normalize_optional_string(
+        data.get("locationStreamId"), "frameConfig.locationStreamId"
+    )
+    follow_mode = data.get("followMode") or "off"
+    if follow_mode not in ("off", "position", "pose"):
+        raise MultimodalRouteError(
+            400,
+            "frameConfig.followMode must be one of off, position, or pose",
+        )
+
+    for field_name, frame_id in (
+        ("frameConfig.fixedFrameId", fixed_frame_id),
+        ("frameConfig.displayFrameId", display_frame_id),
+        ("frameConfig.enuFrameId", enu_frame_id),
+    ):
+        if frame_id and frame_id not in frame_ids:
+            raise MultimodalRouteError(
+                400, "Unknown frame id for %s: %s" % (field_name, frame_id)
+            )
+
+    if (
+        location_stream_id is not None
+        and location_stream_id not in location_stream_ids
+    ):
+        raise MultimodalRouteError(
+            400,
+            "Unknown location stream id for frameConfig.locationStreamId: %s"
+            % location_stream_id,
+        )
+
+    return fopr.PanelFrameConfig(
+        fixed_frame_id=fixed_frame_id,
+        display_frame_id=display_frame_id,
+        follow_mode=follow_mode,
+        location_stream_id=location_stream_id,
+        enu_frame_id=enu_frame_id,
+    )
+
+
+def _normalize_scene_config(data):
+    if data is None:
+        data = {}
+
+    if not isinstance(data, dict):
+        raise MultimodalRouteError(400, "sceneConfig must be an object")
+
+    up_axis = data.get("upAxis") or "z"
+    if up_axis not in ("x", "y", "z"):
+        raise MultimodalRouteError(
+            400, "sceneConfig.upAxis must be x, y, or z"
+        )
+
+    background_color = (
+        data.get("backgroundColor")
+        if data.get("backgroundColor") is not None
+        else "#10151d"
+    )
+    if not isinstance(background_color, str) or not background_color:
+        raise MultimodalRouteError(
+            400, "sceneConfig.backgroundColor must be a non-empty string"
+        )
+
+    return fopr.PanelSceneConfig(
+        up_axis=up_axis,
+        background_color=background_color,
+        show_grid=_normalize_boolean(
+            data.get("showGrid"), "sceneConfig.showGrid", True
+        ),
+    )
+
+
+def _validate_panel_stream_ids(
+    panel_id, archetype, render_stream_id, visible_stream_ids, stream_lookup
+):
+    stream_ids = []
+    if render_stream_id is not None:
+        stream_ids.append(render_stream_id)
+
+    stream_ids.extend(visible_stream_ids)
+    _validate_known_stream_ids(stream_ids, stream_lookup)
+
+    incompatible_stream_ids = [
+        stream_id
+        for stream_id in stream_ids
+        if archetype not in (stream_lookup[stream_id].compatible_panels or [])
+    ]
+    if incompatible_stream_ids:
+        raise MultimodalRouteError(
+            400,
+            "Panel %s contains streams incompatible with %s: %s"
+            % (
+                panel_id,
+                archetype,
+                ", ".join(sorted(incompatible_stream_ids)),
+            ),
+        )
+
+
+def _normalize_panel_plan_payload(
+    panel_data, stream_lookup, frame_ids, location_stream_ids
+):
+    if not isinstance(panel_data, dict):
+        raise MultimodalRouteError(400, "Each panel must be an object")
+
+    panel_id = _normalize_required_string(panel_data.get("panelId"), "panelId")
+    archetype = panel_data.get("archetype")
+    if archetype not in ("image", "3d"):
+        raise MultimodalRouteError(400, "panel archetype must be image or 3d")
+
+    title = _normalize_required_string(panel_data.get("title"), "title")
+    render_stream_id = _normalize_optional_string(
+        panel_data.get("renderStreamId"), "renderStreamId"
+    )
+    visible_stream_ids = _normalize_stream_ids(
+        panel_data.get("visibleStreamIds", []),
+        allow_empty=True,
+    )
+    _validate_panel_stream_ids(
+        panel_id,
+        archetype,
+        render_stream_id,
+        visible_stream_ids,
+        stream_lookup,
+    )
+
+    return fopr.PanelPlan(
+        panel_id=panel_id,
+        archetype=archetype,
+        title=title,
+        render_stream_id=render_stream_id,
+        visible_stream_ids=visible_stream_ids,
+        frame_config=_normalize_frame_config(
+            panel_data.get("frameConfig"),
+            frame_ids=frame_ids,
+            location_stream_ids=location_stream_ids,
+        ),
+        scene_config=_normalize_scene_config(panel_data.get("sceneConfig")),
+    )
+
+
+def _normalize_rendering_plan_payload(
+    rendering_plan, metadata, current_rendering_plan=None
+):
+    scene_id = _normalize_required_string(
+        rendering_plan.get("sceneId"), "sceneId"
+    )
+    media_field = _normalize_required_string(
+        rendering_plan.get("mediaField"), "mediaField"
+    )
+    source_kind = _normalize_required_string(
+        rendering_plan.get("sourceKind") or metadata.source_kind,
+        "sourceKind",
+    )
+    if scene_id != metadata.scene_id:
+        raise MultimodalRouteError(
+            400, "sceneId does not match the current sample workspace"
+        )
+
+    if media_field != metadata.media_field:
+        raise MultimodalRouteError(
+            400, "mediaField does not match the current sample workspace"
+        )
+
+    if source_kind != metadata.source_kind:
+        raise MultimodalRouteError(
+            400, "sourceKind does not match the current sample workspace"
+        )
+
+    sync_data = rendering_plan.get("sync") or {}
+    if not isinstance(sync_data, dict):
+        raise MultimodalRouteError(400, "sync must be an object")
+
+    current_sync = (
+        current_rendering_plan.sync
+        if current_rendering_plan is not None
+        else None
+    )
+    sync = fopr.SyncConfig(
+        timestamp_source=_normalize_timestamp_source(
+            sync_data.get(
+                "timestampSource",
+                (
+                    current_sync.timestamp_source
+                    if current_sync is not None
+                    else "header.stamp"
+                ),
+            )
+        ),
+        fallback=_normalize_timestamp_fallback(
+            sync_data.get(
+                "fallback",
+                (
+                    current_sync.fallback
+                    if current_sync is not None
+                    else "log_time"
+                ),
+            )
+        ),
+        mode=sync_data.get(
+            "mode",
+            current_sync.mode if current_sync is not None else "nearest",
+        ),
+    )
+    if sync.mode not in ("nearest", "strict", "latest"):
+        raise MultimodalRouteError(
+            400, "sync.mode must be one of nearest, strict, or latest"
+        )
+
+    panels_data = rendering_plan.get("panels")
+    if not isinstance(panels_data, list):
+        raise MultimodalRouteError(400, "panels must be a list")
+
+    stream_lookup = _build_stream_lookup(metadata)
+    frame_ids = {frame.frame_id for frame in metadata.frames}
+    location_stream_ids = {
+        topic.stream_id for topic in metadata.location_topics
+    }
+    panels = [
+        _normalize_panel_plan_payload(
+            panel_data,
+            stream_lookup=stream_lookup,
+            frame_ids=frame_ids,
+            location_stream_ids=location_stream_ids,
+        )
+        for panel_data in panels_data
+    ]
+    panel_ids = [panel.panel_id for panel in panels]
+    duplicate_panel_ids = [
+        panel_id for panel_id in panel_ids if panel_ids.count(panel_id) > 1
+    ]
+    if duplicate_panel_ids:
+        raise MultimodalRouteError(
+            400,
+            "panels contains duplicate panel ids: %s"
+            % ", ".join(sorted(set(duplicate_panel_ids))),
+        )
+
+    return fopr.MultimodalRenderingPlan(
+        source_kind=source_kind,
+        media_field=media_field,
+        scene_id=scene_id,
+        sync=sync,
+        panels=panels,
+        sidebar_width=_normalize_sidebar_width(
+            rendering_plan.get(
+                "sidebarWidth",
+                (
+                    getattr(
+                        current_rendering_plan,
+                        "sidebar_width",
+                        _DEFAULT_SIDEBAR_WIDTH,
+                    )
+                    if current_rendering_plan is not None
+                    else _DEFAULT_SIDEBAR_WIDTH
+                ),
+            )
+        ),
+        layout_tree=_validate_layout_tree(
+            rendering_plan.get("layoutTree"), panels
+        ),
+    )
 
 
 def _build_stream_records_from_summary(summary, codec_registry):
@@ -1544,7 +2251,9 @@ def _choose_default_fixed_frame(metadata, streams):
     if not candidate_frame_ids:
         return frame_ids[0]
 
-    for candidate_frame_id in candidate_frame_ids:
+    connected_candidate_frame_ids = [
+        candidate_frame_id
+        for candidate_frame_id in candidate_frame_ids
         if all(
             _frames_are_connected(
                 metadata.transforms,
@@ -1552,10 +2261,98 @@ def _choose_default_fixed_frame(metadata, streams):
                 candidate_frame_id,
             )
             for stream_frame_id in frame_ids
-        ):
-            return candidate_frame_id
+        )
+    ]
+    if not connected_candidate_frame_ids:
+        return frame_ids[0]
 
-    return frame_ids[0]
+    normalized_candidates = {
+        candidate_frame_id.lower(): candidate_frame_id
+        for candidate_frame_id in connected_candidate_frame_ids
+    }
+    for preferred_frame_id in _PREFERRED_GLOBAL_FRAME_IDS:
+        if preferred_frame_id in normalized_candidates:
+            return normalized_candidates[preferred_frame_id]
+
+    for preferred_frame_id in _PREFERRED_EGO_FRAME_IDS:
+        if preferred_frame_id in normalized_candidates:
+            return normalized_candidates[preferred_frame_id]
+
+    extra_candidate_frame_ids = [
+        candidate_frame_id
+        for candidate_frame_id in connected_candidate_frame_ids
+        if candidate_frame_id not in frame_ids
+    ]
+    if extra_candidate_frame_ids:
+        return extra_candidate_frame_ids[0]
+
+    return connected_candidate_frame_ids[0]
+
+
+def _choose_default_follow_frame(metadata, fixed_frame_id):
+    if not fixed_frame_id:
+        return None
+
+    normalized_candidates = {
+        frame.frame_id.lower(): frame.frame_id
+        for frame in metadata.frames
+        if frame.frame_id
+        and frame.frame_id != fixed_frame_id
+        and _frames_are_connected(
+            metadata.transforms,
+            frame.frame_id,
+            fixed_frame_id,
+        )
+    }
+
+    for preferred_frame_id in _PREFERRED_EGO_FRAME_IDS:
+        if preferred_frame_id in normalized_candidates:
+            return normalized_candidates[preferred_frame_id]
+
+    return None
+
+
+def _get_stream_topic_prefix(topic):
+    if not topic:
+        return None
+
+    if "/" not in topic:
+        return topic
+
+    prefix, _separator, _suffix = topic.rpartition("/")
+    return prefix or topic
+
+
+def _get_default_image_support_stream_ids(metadata, image_stream):
+    image_topic = getattr(image_stream, "topic", "")
+    image_topic_prefix = _get_stream_topic_prefix(image_topic)
+    if not image_topic and not image_topic_prefix:
+        return []
+
+    support_stream_ids = []
+    for stream in metadata.streams:
+        if stream.stream_id == image_stream.stream_id:
+            continue
+
+        if stream.schema_name not in (
+            "foxglove.ImageAnnotations",
+            "foxglove.CameraCalibration",
+        ):
+            continue
+
+        stream_topic_prefix = _get_stream_topic_prefix(stream.topic)
+        if not (
+            (image_topic and stream.topic.startswith(image_topic + "/"))
+            or (
+                image_topic_prefix
+                and stream_topic_prefix == image_topic_prefix
+            )
+        ):
+            continue
+
+        support_stream_ids.append(stream.stream_id)
+
+    return support_stream_ids
 
 
 def _frames_are_connected(transforms, source_frame_id, target_frame_id):
@@ -1613,6 +2410,7 @@ def _build_raw_message_record(
         sync_timestamp_ns = _resolve_message_sync_timestamp_ns(
             codec_registry=codec_registry,
             schema_name=(schema.name if schema is not None else None),
+            schema=schema,
             payload=message.data,
             log_time_ns=int(message.log_time),
             publish_time_ns=int(message.publish_time),
@@ -1732,11 +2530,16 @@ def _normalize_timestamp_fallback(value):
     return value
 
 
-def _decode_catalog_details(schema_name, payload, codec_registry=None):
+def _decode_catalog_details(
+    schema_name, payload, codec_registry=None, schema=None
+):
+    schema_name = schema_name or _get_schema_name(schema)
     if codec_registry is None:
         return decode_catalog_details(schema_name, payload)
 
-    return codec_registry.decode_catalog_details(schema_name, payload)
+    return codec_registry.decode_catalog_details(
+        schema or schema_name, payload
+    )
 
 
 def _resolve_message_sync_timestamp_ns(
@@ -1747,7 +2550,9 @@ def _resolve_message_sync_timestamp_ns(
     timestamp_source,
     fallback,
     codec_registry=None,
+    schema=None,
 ):
+    schema_name = schema_name or _get_schema_name(schema)
     timestamp_source = _normalize_timestamp_source(timestamp_source)
     fallback = _normalize_timestamp_fallback(fallback)
 
@@ -1767,9 +2572,9 @@ def _resolve_message_sync_timestamp_ns(
             )
         else:
             decoded_timestamp_ns = codec_registry.decode_sync_timestamp_ns(
-                schema_name, payload
+                schema or schema_name, payload
             )
-    except McapCdrDecodeError:
+    except (McapCdrDecodeError, McapFoxgloveDecodeError):
         logger.debug(
             "Falling back to %s timestamp for %s",
             fallback,
@@ -1930,7 +2735,12 @@ def _requires_ingest(
     if rendering_plan.source_kind != source_kind:
         return True
 
-    if any(panel.layout is None for panel in rendering_plan.panels or []):
+    try:
+        _validate_layout_tree(
+            rendering_plan.layout_tree,
+            rendering_plan.panels or [],
+        )
+    except MultimodalRouteError:
         return True
 
     fingerprint = metadata.source_fingerprint

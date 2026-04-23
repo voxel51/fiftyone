@@ -6,9 +6,15 @@ FiftyOne Server MCAP adapter and service unit tests.
 |
 """
 
+# pylint: disable=no-member
+
+import struct
 import tempfile
 from types import SimpleNamespace
 
+from google.protobuf import descriptor_pb2
+from google.protobuf import descriptor_pool
+from google.protobuf import message_factory
 import pytest
 
 import fiftyone as fo
@@ -142,8 +148,10 @@ class _FakeAdapter(fosm.MultimodalSourceAdapter):
         return self.fingerprint
 
 
-def _make_schema(schema_id, name, encoding="ros2msg"):
-    return SimpleNamespace(id=schema_id, name=name, encoding=encoding)
+def _make_schema(schema_id, name, encoding="ros2msg", data=b""):
+    return SimpleNamespace(
+        id=schema_id, name=name, encoding=encoding, data=data
+    )
 
 
 def _make_channel(channel_id, topic, schema_id, message_encoding="cdr"):
@@ -162,6 +170,869 @@ def _make_message(log_time, publish_time, data=b"payload", sequence=0):
         data=data,
         sequence=sequence,
     )
+
+
+def _add_proto_field(
+    message_descriptor,
+    name,
+    number,
+    field_type,
+    label=descriptor_pb2.FieldDescriptorProto.LABEL_OPTIONAL,
+    type_name=None,
+):
+    field = message_descriptor.field.add()
+    field.name = name
+    field.number = number
+    field.type = field_type
+    field.label = label
+    if type_name is not None:
+        field.type_name = type_name
+
+
+def _build_foxglove_descriptor_set():
+    descriptor_set = descriptor_pb2.FileDescriptorSet()
+
+    timestamp_file = descriptor_set.file.add()
+    timestamp_file.name = "google/protobuf/timestamp.proto"
+    timestamp_file.package = "google.protobuf"
+    timestamp_file.syntax = "proto3"
+    timestamp_message = timestamp_file.message_type.add()
+    timestamp_message.name = "Timestamp"
+    _add_proto_field(
+        timestamp_message,
+        "seconds",
+        1,
+        descriptor_pb2.FieldDescriptorProto.TYPE_INT64,
+    )
+    _add_proto_field(
+        timestamp_message,
+        "nanos",
+        2,
+        descriptor_pb2.FieldDescriptorProto.TYPE_INT32,
+    )
+
+    duration_file = descriptor_set.file.add()
+    duration_file.name = "google/protobuf/duration.proto"
+    duration_file.package = "google.protobuf"
+    duration_file.syntax = "proto3"
+    duration_message = duration_file.message_type.add()
+    duration_message.name = "Duration"
+    _add_proto_field(
+        duration_message,
+        "seconds",
+        1,
+        descriptor_pb2.FieldDescriptorProto.TYPE_INT64,
+    )
+    _add_proto_field(
+        duration_message,
+        "nanos",
+        2,
+        descriptor_pb2.FieldDescriptorProto.TYPE_INT32,
+    )
+
+    vector3_file = descriptor_set.file.add()
+    vector3_file.name = "foxglove/Vector3.proto"
+    vector3_file.package = "foxglove"
+    vector3_file.syntax = "proto3"
+    vector3_message = vector3_file.message_type.add()
+    vector3_message.name = "Vector3"
+    _add_proto_field(
+        vector3_message,
+        "x",
+        1,
+        descriptor_pb2.FieldDescriptorProto.TYPE_DOUBLE,
+    )
+    _add_proto_field(
+        vector3_message,
+        "y",
+        2,
+        descriptor_pb2.FieldDescriptorProto.TYPE_DOUBLE,
+    )
+    _add_proto_field(
+        vector3_message,
+        "z",
+        3,
+        descriptor_pb2.FieldDescriptorProto.TYPE_DOUBLE,
+    )
+
+    quaternion_file = descriptor_set.file.add()
+    quaternion_file.name = "foxglove/Quaternion.proto"
+    quaternion_file.package = "foxglove"
+    quaternion_file.syntax = "proto3"
+    quaternion_message = quaternion_file.message_type.add()
+    quaternion_message.name = "Quaternion"
+    _add_proto_field(
+        quaternion_message,
+        "x",
+        1,
+        descriptor_pb2.FieldDescriptorProto.TYPE_DOUBLE,
+    )
+    _add_proto_field(
+        quaternion_message,
+        "y",
+        2,
+        descriptor_pb2.FieldDescriptorProto.TYPE_DOUBLE,
+    )
+    _add_proto_field(
+        quaternion_message,
+        "z",
+        3,
+        descriptor_pb2.FieldDescriptorProto.TYPE_DOUBLE,
+    )
+    _add_proto_field(
+        quaternion_message,
+        "w",
+        4,
+        descriptor_pb2.FieldDescriptorProto.TYPE_DOUBLE,
+    )
+
+    pose_file = descriptor_set.file.add()
+    pose_file.name = "foxglove/Pose.proto"
+    pose_file.package = "foxglove"
+    pose_file.syntax = "proto3"
+    pose_file.dependency.extend(
+        ["foxglove/Vector3.proto", "foxglove/Quaternion.proto"]
+    )
+    pose_message = pose_file.message_type.add()
+    pose_message.name = "Pose"
+    _add_proto_field(
+        pose_message,
+        "position",
+        1,
+        descriptor_pb2.FieldDescriptorProto.TYPE_MESSAGE,
+        type_name=".foxglove.Vector3",
+    )
+    _add_proto_field(
+        pose_message,
+        "orientation",
+        2,
+        descriptor_pb2.FieldDescriptorProto.TYPE_MESSAGE,
+        type_name=".foxglove.Quaternion",
+    )
+
+    point2_file = descriptor_set.file.add()
+    point2_file.name = "foxglove/Point2.proto"
+    point2_file.package = "foxglove"
+    point2_file.syntax = "proto3"
+    point2_message = point2_file.message_type.add()
+    point2_message.name = "Point2"
+    _add_proto_field(
+        point2_message,
+        "x",
+        1,
+        descriptor_pb2.FieldDescriptorProto.TYPE_DOUBLE,
+    )
+    _add_proto_field(
+        point2_message,
+        "y",
+        2,
+        descriptor_pb2.FieldDescriptorProto.TYPE_DOUBLE,
+    )
+
+    color_file = descriptor_set.file.add()
+    color_file.name = "foxglove/Color.proto"
+    color_file.package = "foxglove"
+    color_file.syntax = "proto3"
+    color_message = color_file.message_type.add()
+    color_message.name = "Color"
+    for number, name in ((1, "r"), (2, "g"), (3, "b"), (4, "a")):
+        _add_proto_field(
+            color_message,
+            name,
+            number,
+            descriptor_pb2.FieldDescriptorProto.TYPE_DOUBLE,
+        )
+
+    key_value_file = descriptor_set.file.add()
+    key_value_file.name = "foxglove/KeyValuePair.proto"
+    key_value_file.package = "foxglove"
+    key_value_file.syntax = "proto3"
+    key_value_message = key_value_file.message_type.add()
+    key_value_message.name = "KeyValuePair"
+    _add_proto_field(
+        key_value_message,
+        "key",
+        1,
+        descriptor_pb2.FieldDescriptorProto.TYPE_STRING,
+    )
+    _add_proto_field(
+        key_value_message,
+        "value",
+        2,
+        descriptor_pb2.FieldDescriptorProto.TYPE_STRING,
+    )
+
+    packed_field_file = descriptor_set.file.add()
+    packed_field_file.name = "foxglove/PackedElementField.proto"
+    packed_field_file.package = "foxglove"
+    packed_field_file.syntax = "proto3"
+    packed_field_message = packed_field_file.message_type.add()
+    packed_field_message.name = "PackedElementField"
+    numeric_type = packed_field_message.enum_type.add()
+    numeric_type.name = "NumericType"
+    for number, name in (
+        (0, "UNKNOWN"),
+        (1, "UINT8"),
+        (2, "INT8"),
+        (3, "UINT16"),
+        (4, "INT16"),
+        (5, "UINT32"),
+        (6, "INT32"),
+        (7, "FLOAT32"),
+        (8, "FLOAT64"),
+    ):
+        value = numeric_type.value.add()
+        value.number = number
+        value.name = name
+
+    _add_proto_field(
+        packed_field_message,
+        "name",
+        1,
+        descriptor_pb2.FieldDescriptorProto.TYPE_STRING,
+    )
+    _add_proto_field(
+        packed_field_message,
+        "offset",
+        2,
+        descriptor_pb2.FieldDescriptorProto.TYPE_UINT32,
+    )
+    _add_proto_field(
+        packed_field_message,
+        "type",
+        3,
+        descriptor_pb2.FieldDescriptorProto.TYPE_ENUM,
+        type_name=".foxglove.PackedElementField.NumericType",
+    )
+
+    compressed_image_file = descriptor_set.file.add()
+    compressed_image_file.name = "foxglove/CompressedImage.proto"
+    compressed_image_file.package = "foxglove"
+    compressed_image_file.syntax = "proto3"
+    compressed_image_file.dependency.append("google/protobuf/timestamp.proto")
+    compressed_image_message = compressed_image_file.message_type.add()
+    compressed_image_message.name = "CompressedImage"
+    _add_proto_field(
+        compressed_image_message,
+        "timestamp",
+        1,
+        descriptor_pb2.FieldDescriptorProto.TYPE_MESSAGE,
+        type_name=".google.protobuf.Timestamp",
+    )
+    _add_proto_field(
+        compressed_image_message,
+        "data",
+        2,
+        descriptor_pb2.FieldDescriptorProto.TYPE_BYTES,
+    )
+    _add_proto_field(
+        compressed_image_message,
+        "format",
+        3,
+        descriptor_pb2.FieldDescriptorProto.TYPE_STRING,
+    )
+    _add_proto_field(
+        compressed_image_message,
+        "frame_id",
+        4,
+        descriptor_pb2.FieldDescriptorProto.TYPE_STRING,
+    )
+
+    pointcloud_file = descriptor_set.file.add()
+    pointcloud_file.name = "foxglove/PointCloud.proto"
+    pointcloud_file.package = "foxglove"
+    pointcloud_file.syntax = "proto3"
+    pointcloud_file.dependency.extend(
+        [
+            "google/protobuf/timestamp.proto",
+            "foxglove/Pose.proto",
+            "foxglove/PackedElementField.proto",
+        ]
+    )
+    pointcloud_message = pointcloud_file.message_type.add()
+    pointcloud_message.name = "PointCloud"
+    _add_proto_field(
+        pointcloud_message,
+        "timestamp",
+        1,
+        descriptor_pb2.FieldDescriptorProto.TYPE_MESSAGE,
+        type_name=".google.protobuf.Timestamp",
+    )
+    _add_proto_field(
+        pointcloud_message,
+        "frame_id",
+        2,
+        descriptor_pb2.FieldDescriptorProto.TYPE_STRING,
+    )
+    _add_proto_field(
+        pointcloud_message,
+        "pose",
+        3,
+        descriptor_pb2.FieldDescriptorProto.TYPE_MESSAGE,
+        type_name=".foxglove.Pose",
+    )
+    _add_proto_field(
+        pointcloud_message,
+        "point_stride",
+        4,
+        descriptor_pb2.FieldDescriptorProto.TYPE_UINT32,
+    )
+    _add_proto_field(
+        pointcloud_message,
+        "fields",
+        5,
+        descriptor_pb2.FieldDescriptorProto.TYPE_MESSAGE,
+        label=descriptor_pb2.FieldDescriptorProto.LABEL_REPEATED,
+        type_name=".foxglove.PackedElementField",
+    )
+    _add_proto_field(
+        pointcloud_message,
+        "data",
+        6,
+        descriptor_pb2.FieldDescriptorProto.TYPE_BYTES,
+    )
+
+    frame_transform_file = descriptor_set.file.add()
+    frame_transform_file.name = "foxglove/FrameTransform.proto"
+    frame_transform_file.package = "foxglove"
+    frame_transform_file.syntax = "proto3"
+    frame_transform_file.dependency.extend(
+        [
+            "google/protobuf/timestamp.proto",
+            "foxglove/Vector3.proto",
+            "foxglove/Quaternion.proto",
+        ]
+    )
+    frame_transform_message = frame_transform_file.message_type.add()
+    frame_transform_message.name = "FrameTransform"
+    _add_proto_field(
+        frame_transform_message,
+        "timestamp",
+        1,
+        descriptor_pb2.FieldDescriptorProto.TYPE_MESSAGE,
+        type_name=".google.protobuf.Timestamp",
+    )
+    _add_proto_field(
+        frame_transform_message,
+        "parent_frame_id",
+        2,
+        descriptor_pb2.FieldDescriptorProto.TYPE_STRING,
+    )
+    _add_proto_field(
+        frame_transform_message,
+        "child_frame_id",
+        3,
+        descriptor_pb2.FieldDescriptorProto.TYPE_STRING,
+    )
+    _add_proto_field(
+        frame_transform_message,
+        "translation",
+        4,
+        descriptor_pb2.FieldDescriptorProto.TYPE_MESSAGE,
+        type_name=".foxglove.Vector3",
+    )
+    _add_proto_field(
+        frame_transform_message,
+        "rotation",
+        5,
+        descriptor_pb2.FieldDescriptorProto.TYPE_MESSAGE,
+        type_name=".foxglove.Quaternion",
+    )
+
+    camera_calibration_file = descriptor_set.file.add()
+    camera_calibration_file.name = "foxglove/CameraCalibration.proto"
+    camera_calibration_file.package = "foxglove"
+    camera_calibration_file.syntax = "proto3"
+    camera_calibration_file.dependency.append(
+        "google/protobuf/timestamp.proto"
+    )
+    camera_calibration_message = camera_calibration_file.message_type.add()
+    camera_calibration_message.name = "CameraCalibration"
+    _add_proto_field(
+        camera_calibration_message,
+        "timestamp",
+        1,
+        descriptor_pb2.FieldDescriptorProto.TYPE_MESSAGE,
+        type_name=".google.protobuf.Timestamp",
+    )
+    _add_proto_field(
+        camera_calibration_message,
+        "width",
+        2,
+        descriptor_pb2.FieldDescriptorProto.TYPE_UINT32,
+    )
+    _add_proto_field(
+        camera_calibration_message,
+        "height",
+        3,
+        descriptor_pb2.FieldDescriptorProto.TYPE_UINT32,
+    )
+    _add_proto_field(
+        camera_calibration_message,
+        "frame_id",
+        9,
+        descriptor_pb2.FieldDescriptorProto.TYPE_STRING,
+    )
+
+    circle_annotation_file = descriptor_set.file.add()
+    circle_annotation_file.name = "foxglove/CircleAnnotation.proto"
+    circle_annotation_file.package = "foxglove"
+    circle_annotation_file.syntax = "proto3"
+    circle_annotation_file.dependency.extend(
+        [
+            "foxglove/Color.proto",
+            "foxglove/KeyValuePair.proto",
+            "foxglove/Point2.proto",
+            "google/protobuf/timestamp.proto",
+        ]
+    )
+    circle_annotation_message = circle_annotation_file.message_type.add()
+    circle_annotation_message.name = "CircleAnnotation"
+    _add_proto_field(
+        circle_annotation_message,
+        "timestamp",
+        1,
+        descriptor_pb2.FieldDescriptorProto.TYPE_MESSAGE,
+        type_name=".google.protobuf.Timestamp",
+    )
+    _add_proto_field(
+        circle_annotation_message,
+        "position",
+        2,
+        descriptor_pb2.FieldDescriptorProto.TYPE_MESSAGE,
+        type_name=".foxglove.Point2",
+    )
+    _add_proto_field(
+        circle_annotation_message,
+        "diameter",
+        3,
+        descriptor_pb2.FieldDescriptorProto.TYPE_DOUBLE,
+    )
+    _add_proto_field(
+        circle_annotation_message,
+        "thickness",
+        4,
+        descriptor_pb2.FieldDescriptorProto.TYPE_DOUBLE,
+    )
+    _add_proto_field(
+        circle_annotation_message,
+        "fill_color",
+        5,
+        descriptor_pb2.FieldDescriptorProto.TYPE_MESSAGE,
+        type_name=".foxglove.Color",
+    )
+    _add_proto_field(
+        circle_annotation_message,
+        "outline_color",
+        6,
+        descriptor_pb2.FieldDescriptorProto.TYPE_MESSAGE,
+        type_name=".foxglove.Color",
+    )
+
+    points_annotation_file = descriptor_set.file.add()
+    points_annotation_file.name = "foxglove/PointsAnnotation.proto"
+    points_annotation_file.package = "foxglove"
+    points_annotation_file.syntax = "proto3"
+    points_annotation_file.dependency.extend(
+        [
+            "foxglove/Color.proto",
+            "foxglove/KeyValuePair.proto",
+            "foxglove/Point2.proto",
+            "google/protobuf/timestamp.proto",
+        ]
+    )
+    points_annotation_message = points_annotation_file.message_type.add()
+    points_annotation_message.name = "PointsAnnotation"
+    points_annotation_type = points_annotation_message.enum_type.add()
+    points_annotation_type.name = "Type"
+    for number, name in (
+        (0, "UNKNOWN"),
+        (1, "POINTS"),
+        (2, "LINE_LOOP"),
+        (3, "LINE_STRIP"),
+        (4, "LINE_LIST"),
+    ):
+        value = points_annotation_type.value.add()
+        value.number = number
+        value.name = name
+
+    _add_proto_field(
+        points_annotation_message,
+        "timestamp",
+        1,
+        descriptor_pb2.FieldDescriptorProto.TYPE_MESSAGE,
+        type_name=".google.protobuf.Timestamp",
+    )
+    _add_proto_field(
+        points_annotation_message,
+        "type",
+        2,
+        descriptor_pb2.FieldDescriptorProto.TYPE_ENUM,
+        type_name=".foxglove.PointsAnnotation.Type",
+    )
+    _add_proto_field(
+        points_annotation_message,
+        "points",
+        3,
+        descriptor_pb2.FieldDescriptorProto.TYPE_MESSAGE,
+        label=descriptor_pb2.FieldDescriptorProto.LABEL_REPEATED,
+        type_name=".foxglove.Point2",
+    )
+
+    text_annotation_file = descriptor_set.file.add()
+    text_annotation_file.name = "foxglove/TextAnnotation.proto"
+    text_annotation_file.package = "foxglove"
+    text_annotation_file.syntax = "proto3"
+    text_annotation_file.dependency.extend(
+        [
+            "foxglove/Color.proto",
+            "foxglove/KeyValuePair.proto",
+            "foxglove/Point2.proto",
+            "google/protobuf/timestamp.proto",
+        ]
+    )
+    text_annotation_message = text_annotation_file.message_type.add()
+    text_annotation_message.name = "TextAnnotation"
+    _add_proto_field(
+        text_annotation_message,
+        "timestamp",
+        1,
+        descriptor_pb2.FieldDescriptorProto.TYPE_MESSAGE,
+        type_name=".google.protobuf.Timestamp",
+    )
+    _add_proto_field(
+        text_annotation_message,
+        "position",
+        2,
+        descriptor_pb2.FieldDescriptorProto.TYPE_MESSAGE,
+        type_name=".foxglove.Point2",
+    )
+    _add_proto_field(
+        text_annotation_message,
+        "text",
+        3,
+        descriptor_pb2.FieldDescriptorProto.TYPE_STRING,
+    )
+
+    image_annotations_file = descriptor_set.file.add()
+    image_annotations_file.name = "foxglove/ImageAnnotations.proto"
+    image_annotations_file.package = "foxglove"
+    image_annotations_file.syntax = "proto3"
+    image_annotations_file.dependency.extend(
+        [
+            "foxglove/CircleAnnotation.proto",
+            "foxglove/PointsAnnotation.proto",
+            "foxglove/TextAnnotation.proto",
+            "google/protobuf/timestamp.proto",
+        ]
+    )
+    image_annotations_message = image_annotations_file.message_type.add()
+    image_annotations_message.name = "ImageAnnotations"
+    _add_proto_field(
+        image_annotations_message,
+        "circles",
+        1,
+        descriptor_pb2.FieldDescriptorProto.TYPE_MESSAGE,
+        label=descriptor_pb2.FieldDescriptorProto.LABEL_REPEATED,
+        type_name=".foxglove.CircleAnnotation",
+    )
+    _add_proto_field(
+        image_annotations_message,
+        "points",
+        2,
+        descriptor_pb2.FieldDescriptorProto.TYPE_MESSAGE,
+        label=descriptor_pb2.FieldDescriptorProto.LABEL_REPEATED,
+        type_name=".foxglove.PointsAnnotation",
+    )
+    _add_proto_field(
+        image_annotations_message,
+        "texts",
+        3,
+        descriptor_pb2.FieldDescriptorProto.TYPE_MESSAGE,
+        label=descriptor_pb2.FieldDescriptorProto.LABEL_REPEATED,
+        type_name=".foxglove.TextAnnotation",
+    )
+    _add_proto_field(
+        image_annotations_message,
+        "timestamp",
+        5,
+        descriptor_pb2.FieldDescriptorProto.TYPE_MESSAGE,
+        type_name=".google.protobuf.Timestamp",
+    )
+
+    scene_deletion_file = descriptor_set.file.add()
+    scene_deletion_file.name = "foxglove/SceneEntityDeletion.proto"
+    scene_deletion_file.package = "foxglove"
+    scene_deletion_file.syntax = "proto3"
+    scene_deletion_file.dependency.append("google/protobuf/timestamp.proto")
+    scene_deletion_message = scene_deletion_file.message_type.add()
+    scene_deletion_message.name = "SceneEntityDeletion"
+    scene_deletion_type = scene_deletion_message.enum_type.add()
+    scene_deletion_type.name = "Type"
+    for number, name in ((0, "MATCHING_ID"), (1, "ALL")):
+        value = scene_deletion_type.value.add()
+        value.number = number
+        value.name = name
+
+    _add_proto_field(
+        scene_deletion_message,
+        "timestamp",
+        1,
+        descriptor_pb2.FieldDescriptorProto.TYPE_MESSAGE,
+        type_name=".google.protobuf.Timestamp",
+    )
+    _add_proto_field(
+        scene_deletion_message,
+        "type",
+        2,
+        descriptor_pb2.FieldDescriptorProto.TYPE_ENUM,
+        type_name=".foxglove.SceneEntityDeletion.Type",
+    )
+    _add_proto_field(
+        scene_deletion_message,
+        "id",
+        3,
+        descriptor_pb2.FieldDescriptorProto.TYPE_STRING,
+    )
+
+    scene_entity_file = descriptor_set.file.add()
+    scene_entity_file.name = "foxglove/SceneEntity.proto"
+    scene_entity_file.package = "foxglove"
+    scene_entity_file.syntax = "proto3"
+    scene_entity_file.dependency.extend(
+        [
+            "google/protobuf/duration.proto",
+            "google/protobuf/timestamp.proto",
+        ]
+    )
+    scene_entity_message = scene_entity_file.message_type.add()
+    scene_entity_message.name = "SceneEntity"
+    _add_proto_field(
+        scene_entity_message,
+        "timestamp",
+        1,
+        descriptor_pb2.FieldDescriptorProto.TYPE_MESSAGE,
+        type_name=".google.protobuf.Timestamp",
+    )
+    _add_proto_field(
+        scene_entity_message,
+        "frame_id",
+        2,
+        descriptor_pb2.FieldDescriptorProto.TYPE_STRING,
+    )
+    _add_proto_field(
+        scene_entity_message,
+        "id",
+        3,
+        descriptor_pb2.FieldDescriptorProto.TYPE_STRING,
+    )
+    _add_proto_field(
+        scene_entity_message,
+        "lifetime",
+        4,
+        descriptor_pb2.FieldDescriptorProto.TYPE_MESSAGE,
+        type_name=".google.protobuf.Duration",
+    )
+
+    scene_update_file = descriptor_set.file.add()
+    scene_update_file.name = "foxglove/SceneUpdate.proto"
+    scene_update_file.package = "foxglove"
+    scene_update_file.syntax = "proto3"
+    scene_update_file.dependency.extend(
+        [
+            "foxglove/SceneEntity.proto",
+            "foxglove/SceneEntityDeletion.proto",
+        ]
+    )
+    scene_update_message = scene_update_file.message_type.add()
+    scene_update_message.name = "SceneUpdate"
+    _add_proto_field(
+        scene_update_message,
+        "deletions",
+        1,
+        descriptor_pb2.FieldDescriptorProto.TYPE_MESSAGE,
+        label=descriptor_pb2.FieldDescriptorProto.LABEL_REPEATED,
+        type_name=".foxglove.SceneEntityDeletion",
+    )
+    _add_proto_field(
+        scene_update_message,
+        "entities",
+        2,
+        descriptor_pb2.FieldDescriptorProto.TYPE_MESSAGE,
+        label=descriptor_pb2.FieldDescriptorProto.LABEL_REPEATED,
+        type_name=".foxglove.SceneEntity",
+    )
+
+    return descriptor_set
+
+
+def _build_foxglove_message_classes(descriptor_set):
+    pool = descriptor_pool.DescriptorPool()
+    for file_descriptor in descriptor_set.file:
+        pool.AddSerializedFile(file_descriptor.SerializeToString())
+
+    return {
+        name: message_factory.GetMessageClass(pool.FindMessageTypeByName(name))
+        for name in (
+            "foxglove.CompressedImage",
+            "foxglove.PointCloud",
+            "foxglove.FrameTransform",
+            "foxglove.CameraCalibration",
+            "foxglove.ImageAnnotations",
+            "foxglove.SceneUpdate",
+        )
+    }
+
+
+_FOXGLOVE_DESCRIPTOR_SET = _build_foxglove_descriptor_set()
+_FOXGLOVE_DESCRIPTOR_SET_BYTES = _FOXGLOVE_DESCRIPTOR_SET.SerializeToString()
+_FOXGLOVE_MESSAGE_CLASSES = _build_foxglove_message_classes(
+    _FOXGLOVE_DESCRIPTOR_SET
+)
+
+
+def _make_foxglove_schema(schema_id, name):
+    return _make_schema(
+        schema_id,
+        name,
+        encoding="protobuf",
+        data=_FOXGLOVE_DESCRIPTOR_SET_BYTES,
+    )
+
+
+def _make_foxglove_compressed_image_payload(
+    seconds=1,
+    nanos=2,
+    frame_id="camera",
+    image_format="jpeg",
+    image_bytes=b"\x01\x02\x03",
+):
+    message = _FOXGLOVE_MESSAGE_CLASSES["foxglove.CompressedImage"]()
+    message.timestamp.seconds = seconds
+    message.timestamp.nanos = nanos
+    message.frame_id = frame_id
+    message.format = image_format
+    message.data = image_bytes
+    return message.SerializeToString()
+
+
+def _make_foxglove_pointcloud_payload(seconds=1, nanos=2, frame_id="lidar"):
+    message = _FOXGLOVE_MESSAGE_CLASSES["foxglove.PointCloud"]()
+    message.timestamp.seconds = seconds
+    message.timestamp.nanos = nanos
+    message.frame_id = frame_id
+    message.point_stride = 12
+
+    for offset, name in ((0, "x"), (4, "y"), (8, "z")):
+        field = message.fields.add()
+        field.name = name
+        field.offset = offset
+        field.type = 7
+
+    message.data = struct.pack("<fff", 1.0, 2.0, 3.0)
+    return message.SerializeToString()
+
+
+def _make_foxglove_frame_transform_payload(
+    seconds=1,
+    nanos=2,
+    parent_frame_id="map",
+    child_frame_id="lidar",
+):
+    message = _FOXGLOVE_MESSAGE_CLASSES["foxglove.FrameTransform"]()
+    message.timestamp.seconds = seconds
+    message.timestamp.nanos = nanos
+    message.parent_frame_id = parent_frame_id
+    message.child_frame_id = child_frame_id
+    message.translation.x = 1.0
+    message.translation.y = 2.0
+    message.translation.z = 3.0
+    message.rotation.w = 1.0
+    return message.SerializeToString()
+
+
+def _make_foxglove_camera_calibration_payload(
+    seconds=1,
+    nanos=2,
+    frame_id="camera",
+    width=1920,
+    height=1080,
+):
+    message = _FOXGLOVE_MESSAGE_CLASSES["foxglove.CameraCalibration"]()
+    message.timestamp.seconds = seconds
+    message.timestamp.nanos = nanos
+    message.frame_id = frame_id
+    message.width = width
+    message.height = height
+    return message.SerializeToString()
+
+
+def _make_foxglove_image_annotations_payload(
+    root_timestamp=None,
+    circle_timestamp=None,
+    point_timestamp=None,
+    text_timestamp=None,
+):
+    message = _FOXGLOVE_MESSAGE_CLASSES["foxglove.ImageAnnotations"]()
+
+    if root_timestamp is not None:
+        seconds, nanos = root_timestamp
+        message.timestamp.seconds = seconds
+        message.timestamp.nanos = nanos
+
+    if circle_timestamp is not None:
+        seconds, nanos = circle_timestamp
+        annotation = message.circles.add()
+        annotation.timestamp.seconds = seconds
+        annotation.timestamp.nanos = nanos
+
+    if point_timestamp is not None:
+        seconds, nanos = point_timestamp
+        annotation = message.points.add()
+        annotation.timestamp.seconds = seconds
+        annotation.timestamp.nanos = nanos
+
+    if text_timestamp is not None:
+        seconds, nanos = text_timestamp
+        annotation = message.texts.add()
+        annotation.timestamp.seconds = seconds
+        annotation.timestamp.nanos = nanos
+
+    return message.SerializeToString()
+
+
+def _make_foxglove_scene_update_payload(
+    entity_timestamps=None,
+    entity_frame_ids=None,
+    deletion_timestamps=None,
+):
+    message = _FOXGLOVE_MESSAGE_CLASSES["foxglove.SceneUpdate"]()
+
+    entity_timestamps = entity_timestamps or []
+    entity_frame_ids = entity_frame_ids or []
+    deletion_timestamps = deletion_timestamps or []
+
+    for index, timestamp in enumerate(entity_timestamps):
+        seconds, nanos = timestamp
+        entity = message.entities.add()
+        entity.timestamp.seconds = seconds
+        entity.timestamp.nanos = nanos
+        entity.id = "entity-%d" % index
+        entity.frame_id = (
+            entity_frame_ids[index]
+            if index < len(entity_frame_ids)
+            else "frame-%d" % index
+        )
+
+    for index, timestamp in enumerate(deletion_timestamps):
+        seconds, nanos = timestamp
+        deletion = message.deletions.add()
+        deletion.timestamp.seconds = seconds
+        deletion.timestamp.nanos = nanos
+        deletion.id = "entity-%d" % index
+        deletion.type = 0
+
+    return message.SerializeToString()
 
 
 def _make_stream(
@@ -192,6 +1063,20 @@ def _make_stream(
         time_range=fom.McapTimeRange(start_ns=start_ns, end_ns=end_ns),
         message_count=message_count,
     )
+
+
+def _leaf(panel_id):
+    return {"type": "leaf", "panelId": panel_id}
+
+
+def _split(direction, split_percentage, first, second):
+    return {
+        "type": "split",
+        "direction": direction,
+        "splitPercentage": split_percentage,
+        "first": first,
+        "second": second,
+    }
 
 
 def _make_metadata(media_path, media_field="filepath"):
@@ -261,7 +1146,7 @@ def _make_metadata(media_path, media_field="filepath"):
                 frame_id="odom",
             )
         ],
-        catalog_version="multimodal-workspace-v1",
+        catalog_version="multimodal-workspace-v4",
     )
 
 
@@ -349,7 +1234,7 @@ class TestMcapModule:
                 source_path=handle.name,
             )
 
-        assert metadata.catalog_version == "multimodal-workspace-v1"
+        assert metadata.catalog_version == "multimodal-workspace-v4"
         assert [stream.stream_id for stream in metadata.streams] == [
             "/camera/front",
             "/tf",
@@ -434,6 +1319,25 @@ class TestMcapModule:
                     compatible_panels=["image"],
                 ),
                 _make_stream(
+                    "/camera/front/annotations",
+                    "other",
+                    "foxglove.ImageAnnotations",
+                    channel_id=6,
+                    schema_id=6,
+                    affordances=["image-annotations", "overlay"],
+                    compatible_panels=["image"],
+                ),
+                _make_stream(
+                    "/camera/front/camera_info",
+                    "other",
+                    "foxglove.CameraCalibration",
+                    channel_id=7,
+                    schema_id=7,
+                    frame_id="camera_front",
+                    affordances=["camera", "calibration"],
+                    compatible_panels=["image"],
+                ),
+                _make_stream(
                     "/camera/left",
                     "image",
                     "sensor_msgs/msg/CompressedImage",
@@ -484,25 +1388,181 @@ class TestMcapModule:
             "image_panel_1",
             "image_panel_2",
             "image_panel_3",
+            "image_panel_4",
+        ]
+        assert [panel.title for panel in plan.panels] == [
+            "lidar",
+            "camera",
+            "camera 2",
+            "camera 3",
+            "camera 4",
         ]
         assert plan.panels[0].visible_stream_ids == ["/lidar/top"]
         assert plan.panels[0].frame_config.display_frame_id == "lidar_top"
-        assert plan.panels[0].layout.x == 0
-        assert plan.panels[0].layout.y == 0
-        assert plan.panels[0].layout.w == 12
-        assert plan.panels[0].layout.h == 2
         assert [panel.render_stream_id for panel in plan.panels[1:]] == [
             "/camera/front",
             "/camera/left",
             "/camera/right",
+            "/camera/rear",
         ]
-        assert [
-            (panel.layout.x, panel.layout.y) for panel in plan.panels[1:]
-        ] == [
-            (0, 2),
-            (4, 2),
-            (8, 2),
+        assert plan.panels[1].visible_stream_ids == [
+            "/camera/front/annotations",
+            "/camera/front/camera_info",
         ]
+        assert plan.panels[2].visible_stream_ids == []
+        assert plan.layout_tree == _split(
+            "row",
+            40,
+            _split(
+                "column",
+                50,
+                _leaf("panel_3d_1"),
+                _leaf("image_panel_1"),
+            ),
+            _split(
+                "column",
+                33,
+                _leaf("image_panel_2"),
+                _split(
+                    "row",
+                    50,
+                    _leaf("image_panel_3"),
+                    _leaf("image_panel_4"),
+                ),
+            ),
+        )
+
+    def test_build_rendering_plan_prefers_map_and_tf_follow_defaults(self):
+        metadata = fom.MultimodalMetadata(
+            scene_id="scene-1",
+            media_field="filepath",
+            streams=[
+                _make_stream(
+                    "/lidar/top",
+                    "3d",
+                    "sensor_msgs/msg/PointCloud2",
+                    channel_id=1,
+                    schema_id=1,
+                    frame_id="LIDAR_TOP",
+                    affordances=["pointcloud", "3d"],
+                    compatible_panels=["3d"],
+                ),
+                _make_stream(
+                    "/radar/front",
+                    "3d",
+                    "foxglove.PointCloud",
+                    channel_id=2,
+                    schema_id=2,
+                    frame_id="RADAR_FRONT",
+                    affordances=["pointcloud", "3d"],
+                    compatible_panels=["3d"],
+                ),
+            ],
+            frames=[
+                fom.MultimodalFrameDescriptor(frame_id="RADAR_FRONT"),
+                fom.MultimodalFrameDescriptor(frame_id="LIDAR_TOP"),
+                fom.MultimodalFrameDescriptor(frame_id="map"),
+                fom.MultimodalFrameDescriptor(frame_id="base_link"),
+            ],
+            transforms=[
+                fom.MultimodalTransformEdge(
+                    topic="/tf",
+                    parent_frame_id="map",
+                    child_frame_id="base_link",
+                ),
+                fom.MultimodalTransformEdge(
+                    topic="/tf",
+                    parent_frame_id="base_link",
+                    child_frame_id="RADAR_FRONT",
+                ),
+                fom.MultimodalTransformEdge(
+                    topic="/tf",
+                    parent_frame_id="base_link",
+                    child_frame_id="LIDAR_TOP",
+                ),
+            ],
+            location_topics=[],
+        )
+
+        plan = fosm.DefaultMultimodalRenderingPlanner().build_rendering_plan(
+            metadata
+        )
+
+        assert plan.panels[0].frame_config.fixed_frame_id == "map"
+        assert plan.panels[0].frame_config.display_frame_id == "map"
+        assert plan.panels[0].frame_config.follow_mode == "pose"
+
+    @pytest.mark.parametrize(
+        ("panel_ids", "expected_layout_tree"),
+        [
+            (["panel_1"], _leaf("panel_1")),
+            (
+                ["panel_1", "panel_2"],
+                _split("row", 50, _leaf("panel_1"), _leaf("panel_2")),
+            ),
+            (
+                ["panel_1", "panel_2", "panel_3"],
+                _split(
+                    "row",
+                    33,
+                    _leaf("panel_1"),
+                    _split(
+                        "column",
+                        50,
+                        _leaf("panel_2"),
+                        _leaf("panel_3"),
+                    ),
+                ),
+            ),
+            (
+                ["panel_1", "panel_2", "panel_3", "panel_4"],
+                _split(
+                    "column",
+                    50,
+                    _split(
+                        "row",
+                        50,
+                        _leaf("panel_1"),
+                        _leaf("panel_2"),
+                    ),
+                    _split(
+                        "row",
+                        50,
+                        _leaf("panel_3"),
+                        _leaf("panel_4"),
+                    ),
+                ),
+            ),
+            (
+                ["panel_1", "panel_2", "panel_3", "panel_4", "panel_5"],
+                _split(
+                    "row",
+                    40,
+                    _split(
+                        "column",
+                        50,
+                        _leaf("panel_1"),
+                        _leaf("panel_2"),
+                    ),
+                    _split(
+                        "column",
+                        33,
+                        _leaf("panel_3"),
+                        _split(
+                            "row",
+                            50,
+                            _leaf("panel_4"),
+                            _leaf("panel_5"),
+                        ),
+                    ),
+                ),
+            ),
+        ],
+    )
+    def test_build_default_layout_tree(self, panel_ids, expected_layout_tree):
+        assert (
+            fosm._build_default_layout_tree(panel_ids) == expected_layout_tree
+        )
 
     def test_classify_stream_supports_additional_3d_schemas(self):
         laser_scan = fosm._classify_stream("sensor_msgs/msg/LaserScan")
@@ -517,6 +1577,206 @@ class TestMcapModule:
         assert marker_array["kind"] == "3d"
         assert marker_array["compatible_panels"] == ["3d"]
         assert "markerarray" in marker_array["affordances"]
+
+    def test_classify_stream_supports_foxglove_schemas(self):
+        compressed_image = fosm._classify_stream("foxglove.CompressedImage")
+        pointcloud = fosm._classify_stream("foxglove.PointCloud")
+        scene_update = fosm._classify_stream("foxglove.SceneUpdate")
+        image_annotations = fosm._classify_stream("foxglove.ImageAnnotations")
+        camera_calibration = fosm._classify_stream(
+            "foxglove.CameraCalibration"
+        )
+        frame_transform = fosm._classify_stream("foxglove.FrameTransform")
+
+        assert compressed_image["kind"] == "image"
+        assert compressed_image["compatible_panels"] == ["image"]
+        assert pointcloud["kind"] == "3d"
+        assert pointcloud["compatible_panels"] == ["3d"]
+        assert scene_update["kind"] == "3d"
+        assert scene_update["compatible_panels"] == ["3d", "image"]
+        assert "sceneupdate" in scene_update["affordances"]
+        assert image_annotations["kind"] == "other"
+        assert image_annotations["compatible_panels"] == ["image"]
+        assert "overlay" in image_annotations["affordances"]
+        assert camera_calibration["kind"] == "other"
+        assert camera_calibration["compatible_panels"] == ["image"]
+        assert "calibration" in camera_calibration["affordances"]
+        assert frame_transform["kind"] == "transform"
+        assert frame_transform["affordances"] == ["transforms"]
+
+    def test_catalog_reader_supports_foxglove_schemas(self):
+        image_schema = _make_foxglove_schema(1, "foxglove.CompressedImage")
+        pointcloud_schema = _make_foxglove_schema(2, "foxglove.PointCloud")
+        transform_schema = _make_foxglove_schema(3, "foxglove.FrameTransform")
+        scene_update_schema = _make_foxglove_schema(4, "foxglove.SceneUpdate")
+        image_annotations_schema = _make_foxglove_schema(
+            5, "foxglove.ImageAnnotations"
+        )
+        camera_calibration_schema = _make_foxglove_schema(
+            6, "foxglove.CameraCalibration"
+        )
+        image_channel = _make_channel(1, "/camera/front", 1, "protobuf")
+        pointcloud_channel = _make_channel(2, "/lidar/top", 2, "protobuf")
+        transform_channel = _make_channel(3, "/tf", 3, "protobuf")
+        scene_update_channel = _make_channel(4, "/semantic_map", 4, "protobuf")
+        image_annotations_channel = _make_channel(
+            5, "/camera/front/annotations", 5, "protobuf"
+        )
+        camera_calibration_channel = _make_channel(
+            6, "/camera/front/camera_info", 6, "protobuf"
+        )
+        summary = SimpleNamespace(
+            channels={
+                1: image_channel,
+                2: pointcloud_channel,
+                3: transform_channel,
+                4: scene_update_channel,
+                5: image_annotations_channel,
+                6: camera_calibration_channel,
+            },
+            schemas={
+                1: image_schema,
+                2: pointcloud_schema,
+                3: transform_schema,
+                4: scene_update_schema,
+                5: image_annotations_schema,
+                6: camera_calibration_schema,
+            },
+            statistics=SimpleNamespace(
+                channel_message_counts={1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1},
+                message_start_time=10,
+                message_end_time=50,
+            ),
+            chunk_indexes=[],
+        )
+        reader = _FakeReader(
+            summary=summary,
+            messages=[
+                (
+                    image_schema,
+                    image_channel,
+                    _make_message(
+                        10,
+                        10,
+                        _make_foxglove_compressed_image_payload(
+                            seconds=11,
+                            nanos=12,
+                            frame_id="camera",
+                        ),
+                    ),
+                ),
+                (
+                    pointcloud_schema,
+                    pointcloud_channel,
+                    _make_message(
+                        20,
+                        20,
+                        _make_foxglove_pointcloud_payload(
+                            seconds=21,
+                            nanos=22,
+                            frame_id="lidar",
+                        ),
+                    ),
+                ),
+                (
+                    transform_schema,
+                    transform_channel,
+                    _make_message(
+                        30,
+                        30,
+                        _make_foxglove_frame_transform_payload(
+                            seconds=31,
+                            nanos=32,
+                            parent_frame_id="map",
+                            child_frame_id="lidar",
+                        ),
+                    ),
+                ),
+                (
+                    scene_update_schema,
+                    scene_update_channel,
+                    _make_message(
+                        35,
+                        35,
+                        _make_foxglove_scene_update_payload(
+                            entity_timestamps=[(35, 36), (35, 37)],
+                            entity_frame_ids=["map", "base_link"],
+                        ),
+                    ),
+                ),
+                (
+                    image_annotations_schema,
+                    image_annotations_channel,
+                    _make_message(
+                        40,
+                        40,
+                        _make_foxglove_image_annotations_payload(
+                            circle_timestamp=(41, 42)
+                        ),
+                    ),
+                ),
+                (
+                    camera_calibration_schema,
+                    camera_calibration_channel,
+                    _make_message(
+                        45,
+                        45,
+                        _make_foxglove_camera_calibration_payload(
+                            seconds=46,
+                            nanos=47,
+                            frame_id="camera_front",
+                        ),
+                    ),
+                ),
+            ],
+        )
+
+        with tempfile.NamedTemporaryFile(suffix=".mcap") as handle:
+            metadata = fosm._catalog_reader(
+                reader=reader,
+                scene_id="scene-1",
+                media_field="filepath",
+                source_path=handle.name,
+                codec_registry=fosm._SCHEMA_CODEC_REGISTRY,
+            )
+
+        assert metadata.catalog_version == "multimodal-workspace-v4"
+        assert [stream.kind for stream in metadata.streams] == [
+            "image",
+            "3d",
+            "transform",
+            "3d",
+            "other",
+            "other",
+        ]
+        assert metadata.streams[0].frame_id == "camera"
+        assert metadata.streams[1].frame_id == "lidar"
+        assert metadata.streams[3].frame_id is None
+        assert metadata.streams[5].frame_id == "camera_front"
+        assert {frame.frame_id for frame in metadata.frames} == {
+            "camera",
+            "lidar",
+            "map",
+            "base_link",
+            "camera_front",
+        }
+        assert len(metadata.transforms) == 1
+        assert metadata.transforms[0].parent_frame_id == "map"
+        assert metadata.transforms[0].child_frame_id == "lidar"
+
+        plan = fosm.DefaultMultimodalRenderingPlanner().build_rendering_plan(
+            metadata
+        )
+        assert [panel.archetype for panel in plan.panels] == ["3d", "image"]
+        assert plan.panels[0].visible_stream_ids == [
+            "/lidar/top",
+            "/semantic_map",
+        ]
+        assert plan.panels[1].render_stream_id == "/camera/front"
+        assert plan.panels[1].visible_stream_ids == [
+            "/camera/front/annotations",
+            "/camera/front/camera_info",
+        ]
 
     def test_repository_round_trip(self, dataset, sample):
         with tempfile.NamedTemporaryFile(suffix=".mcap") as handle:
@@ -537,6 +1797,7 @@ class TestMcapModule:
         assert isinstance(loaded.metadata, fom.MultimodalMetadata)
         assert isinstance(loaded.rendering_plan, fopr.MultimodalRenderingPlan)
         assert loaded.rendering_plan.panels[0].archetype == "3d"
+        assert loaded.rendering_plan.layout_tree == rendering_plan.layout_tree
 
     def test_workspace_service_uses_cached_state(self, dataset, sample):
         with tempfile.NamedTemporaryFile(suffix=".mcap") as handle:
@@ -564,6 +1825,142 @@ class TestMcapModule:
 
         assert state.metadata.scene_id == "scene-1"
         assert adapter.catalog_calls == 0
+
+    def test_workspace_service_updates_rendering_plan(self, dataset, sample):
+        with tempfile.NamedTemporaryFile(suffix=".mcap") as handle:
+            sample["filepath"] = handle.name
+            sample.save()
+            metadata = _make_metadata(handle.name)
+            adapter = _FakeAdapter(
+                metadata=metadata,
+                fingerprint=metadata.source_fingerprint,
+            )
+            service = fosm.MultimodalWorkspaceService(
+                adapter=adapter,
+                planner=fosm.DefaultMultimodalRenderingPlanner(),
+                repository=fosm.SampleMultimodalSceneRepository(),
+            )
+
+            current_state = service.get_workspace(dataset, sample, "filepath")
+            rendering_plan = fosm._serialize_rendering_plan(
+                current_state.rendering_plan
+            )
+            rendering_plan["layoutTree"] = _split(
+                "row",
+                50,
+                _leaf("image_panel_1"),
+                _leaf("panel_3d_1"),
+            )
+            rendering_plan["sidebarWidth"] = 312
+            rendering_plan["panels"][0]["title"] = "Primary 3D"
+
+            updated_state = service.update_workspace(
+                dataset=dataset,
+                sample=sample,
+                rendering_plan=rendering_plan,
+            )
+
+        assert adapter.catalog_calls == 1
+        assert updated_state.rendering_plan.layout_tree == _split(
+            "row",
+            50,
+            _leaf("image_panel_1"),
+            _leaf("panel_3d_1"),
+        )
+        assert updated_state.rendering_plan.sidebar_width == 312
+        assert updated_state.rendering_plan.panels[0].title == "Primary 3D"
+
+    def test_workspace_service_rejects_invalid_sidebar_width(
+        self, dataset, sample
+    ):
+        with tempfile.NamedTemporaryFile(suffix=".mcap") as handle:
+            sample["filepath"] = handle.name
+            sample.save()
+            metadata = _make_metadata(handle.name)
+            adapter = _FakeAdapter(
+                metadata=metadata,
+                fingerprint=metadata.source_fingerprint,
+            )
+            service = fosm.MultimodalWorkspaceService(
+                adapter=adapter,
+                planner=fosm.DefaultMultimodalRenderingPlanner(),
+                repository=fosm.SampleMultimodalSceneRepository(),
+            )
+
+            current_state = service.get_workspace(dataset, sample, "filepath")
+            rendering_plan = fosm._serialize_rendering_plan(
+                current_state.rendering_plan
+            )
+            rendering_plan["sidebarWidth"] = 600
+
+            with pytest.raises(fosm.MultimodalRouteError) as error_info:
+                service.update_workspace(
+                    dataset=dataset,
+                    sample=sample,
+                    rendering_plan=rendering_plan,
+                )
+
+        assert error_info.value.status_code == 400
+        assert "sidebarWidth must be between 176 and 420" in (
+            error_info.value.detail
+        )
+
+    @pytest.mark.parametrize(
+        ("layout_tree", "expected_detail"),
+        [
+            (
+                _split(
+                    "row",
+                    50,
+                    _leaf("panel_3d_1"),
+                    _leaf("panel_3d_1"),
+                ),
+                "duplicate panel ids",
+            ),
+            (
+                _split(
+                    "row",
+                    50,
+                    _leaf("panel_3d_1"),
+                    _leaf("missing_panel"),
+                ),
+                "unknown panel ids",
+            ),
+            (_leaf("panel_3d_1"), "missing panel ids"),
+        ],
+    )
+    def test_workspace_service_rejects_invalid_layout_tree(
+        self, dataset, sample, layout_tree, expected_detail
+    ):
+        with tempfile.NamedTemporaryFile(suffix=".mcap") as handle:
+            sample["filepath"] = handle.name
+            sample.save()
+            metadata = _make_metadata(handle.name)
+            adapter = _FakeAdapter(
+                metadata=metadata,
+                fingerprint=metadata.source_fingerprint,
+            )
+            service = fosm.MultimodalWorkspaceService(
+                adapter=adapter,
+                planner=fosm.DefaultMultimodalRenderingPlanner(),
+                repository=fosm.SampleMultimodalSceneRepository(),
+            )
+
+            current_state = service.get_workspace(dataset, sample, "filepath")
+            rendering_plan = fosm._serialize_rendering_plan(
+                current_state.rendering_plan
+            )
+            rendering_plan["layoutTree"] = layout_tree
+
+            with pytest.raises(fosm.MultimodalRouteError) as error_info:
+                service.update_workspace(
+                    dataset=dataset,
+                    sample=sample,
+                    rendering_plan=rendering_plan,
+                )
+
+        assert error_info.value.status_code == 400
+        assert expected_detail in error_info.value.detail
 
     def test_workspace_service_ingests_and_reads_stream_window(
         self, dataset, sample
@@ -750,8 +2147,77 @@ class TestMcapModule:
             state = service.get_workspace(dataset, dataset.first(), "filepath")
 
         assert adapter.catalog_calls == 1
-        assert state.metadata.catalog_version == "multimodal-workspace-v1"
+        assert state.metadata.catalog_version == "multimodal-workspace-v4"
         assert state.rendering_plan.panels[0].archetype == "3d"
+
+    def test_workspace_service_reingests_v3_layout_documents_without_layout_tree(
+        self, dataset, sample
+    ):
+        with tempfile.NamedTemporaryFile(suffix=".mcap") as handle:
+            sample["filepath"] = handle.name
+            sample.save()
+
+            legacy_metadata = _make_metadata(handle.name)
+            legacy_metadata.catalog_version = "multimodal-workspace-v3"
+            legacy_rendering_plan = {
+                "_cls": "MultimodalRenderingPlan",
+                "scene_id": legacy_metadata.scene_id,
+                "media_field": legacy_metadata.media_field,
+                "source_kind": legacy_metadata.source_kind,
+                "sync": {
+                    "_cls": "SyncConfig",
+                    "timestamp_source": "header.stamp",
+                    "fallback": "log_time",
+                    "mode": "nearest",
+                },
+                "panels": [
+                    {
+                        "_cls": "PanelPlan",
+                        "panel_id": "panel_3d_1",
+                        "archetype": "3d",
+                        "title": "3D panel",
+                        "visible_stream_ids": ["/lidar/top"],
+                        "frame_config": {
+                            "_cls": "PanelFrameConfig",
+                            "fixed_frame_id": "lidar_top",
+                            "display_frame_id": "lidar_top",
+                            "follow_mode": "off",
+                        },
+                        "scene_config": {
+                            "_cls": "PanelSceneConfig",
+                            "up_axis": "z",
+                            "background_color": "#10151d",
+                            "show_grid": True,
+                        },
+                    }
+                ],
+            }
+
+            dataset._sample_collection.update_one(
+                {"_id": sample._doc.id},
+                {
+                    "$set": {
+                        "metadata": legacy_metadata.to_mongo(),
+                        "rendering_plan": legacy_rendering_plan,
+                    }
+                },
+            )
+
+            adapter = _FakeAdapter(
+                metadata=_make_metadata(handle.name),
+                fingerprint=legacy_metadata.source_fingerprint,
+            )
+            service = fosm.MultimodalWorkspaceService(
+                adapter=adapter,
+                planner=fosm.DefaultMultimodalRenderingPlanner(),
+                repository=fosm.SampleMultimodalSceneRepository(),
+            )
+
+            state = service.get_workspace(dataset, dataset.first(), "filepath")
+
+        assert adapter.catalog_calls == 1
+        assert state.metadata.catalog_version == "multimodal-workspace-v4"
+        assert state.rendering_plan.layout_tree is not None
 
     def test_workspace_service_serializes_scene_relative_timestamps(
         self, dataset, sample
@@ -777,7 +2243,7 @@ class TestMcapModule:
                         compatible_panels=["image"],
                     )
                 ],
-                catalog_version="multimodal-workspace-v1",
+                catalog_version="multimodal-workspace-v4",
             )
             adapter = _FakeAdapter(
                 metadata=metadata,
@@ -967,3 +2433,97 @@ class TestMcapModule:
                 )
                 == 500
             )
+
+    def test_resolve_message_sync_timestamp_supports_foxglove_schemas(self):
+        schema = _make_foxglove_schema(1, "foxglove.CompressedImage")
+        payload = _make_foxglove_compressed_image_payload(
+            seconds=123,
+            nanos=456,
+            frame_id="camera",
+        )
+
+        assert (
+            fosm._resolve_message_sync_timestamp_ns(
+                schema_name=schema.name,
+                schema=schema,
+                payload=payload,
+                log_time_ns=500,
+                publish_time_ns=450,
+                timestamp_source="header.stamp",
+                fallback="log_time",
+                codec_registry=fosm._SCHEMA_CODEC_REGISTRY,
+            )
+            == 123_000_000_456
+        )
+
+    def test_resolve_message_sync_timestamp_supports_image_annotations(self):
+        schema = _make_foxglove_schema(1, "foxglove.ImageAnnotations")
+
+        assert (
+            fosm._resolve_message_sync_timestamp_ns(
+                schema_name=schema.name,
+                schema=schema,
+                payload=_make_foxglove_image_annotations_payload(
+                    root_timestamp=(10, 11),
+                    circle_timestamp=(20, 21),
+                ),
+                log_time_ns=500,
+                publish_time_ns=450,
+                timestamp_source="header.stamp",
+                fallback="log_time",
+                codec_registry=fosm._SCHEMA_CODEC_REGISTRY,
+            )
+            == 10_000_000_011
+        )
+
+        assert (
+            fosm._resolve_message_sync_timestamp_ns(
+                schema_name=schema.name,
+                schema=schema,
+                payload=_make_foxglove_image_annotations_payload(
+                    circle_timestamp=(20, 21)
+                ),
+                log_time_ns=500,
+                publish_time_ns=450,
+                timestamp_source="header.stamp",
+                fallback="log_time",
+                codec_registry=fosm._SCHEMA_CODEC_REGISTRY,
+            )
+            == 20_000_000_021
+        )
+
+    def test_resolve_message_sync_timestamp_supports_scene_update(self):
+        schema = _make_foxglove_schema(1, "foxglove.SceneUpdate")
+
+        assert (
+            fosm._resolve_message_sync_timestamp_ns(
+                schema_name=schema.name,
+                schema=schema,
+                payload=_make_foxglove_scene_update_payload(
+                    entity_timestamps=[(30, 31)],
+                    entity_frame_ids=["map"],
+                ),
+                log_time_ns=500,
+                publish_time_ns=450,
+                timestamp_source="header.stamp",
+                fallback="log_time",
+                codec_registry=fosm._SCHEMA_CODEC_REGISTRY,
+            )
+            == 30_000_000_031
+        )
+
+        assert (
+            fosm._resolve_message_sync_timestamp_ns(
+                schema_name=schema.name,
+                schema=schema,
+                payload=_make_foxglove_scene_update_payload(
+                    deletion_timestamps=[(40, 41)]
+                ),
+                log_time_ns=500,
+                publish_time_ns=450,
+                timestamp_source="header.stamp",
+                fallback="log_time",
+                codec_registry=fosm._SCHEMA_CODEC_REGISTRY,
+            )
+            == 40_000_000_041
+        )

@@ -91,15 +91,29 @@ export type MultimodalFrameConfig = {
 export type MultimodalSceneConfig = {
   upAxis: MultimodalUpAxis;
   backgroundColor: string;
+  showGrid?: boolean;
 };
 
-/** Default grid placement for one multimodal workspace panel. */
-export type MultimodalPanelLayout = {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
+export type MultimodalImageConfig = {
+  project3dOverlays: boolean;
 };
+
+export type MultimodalLayoutDirection = "row" | "column";
+
+export type MultimodalLayoutLeaf = {
+  type: "leaf";
+  panelId: string;
+};
+
+export type MultimodalLayoutSplit = {
+  type: "split";
+  direction: MultimodalLayoutDirection;
+  splitPercentage: number;
+  first: MultimodalLayoutNode;
+  second: MultimodalLayoutNode;
+};
+
+export type MultimodalLayoutNode = MultimodalLayoutLeaf | MultimodalLayoutSplit;
 
 export type MultimodalPanelPlan = {
   panelId: string;
@@ -109,7 +123,7 @@ export type MultimodalPanelPlan = {
   visibleStreamIds: string[];
   frameConfig: MultimodalFrameConfig;
   sceneConfig: MultimodalSceneConfig;
-  layout: MultimodalPanelLayout;
+  imageConfig?: MultimodalImageConfig;
 };
 
 export type MultimodalRenderingPlan = {
@@ -118,6 +132,8 @@ export type MultimodalRenderingPlan = {
   sourceKind: string;
   sync: MultimodalSyncConfig;
   panels: MultimodalPanelPlan[];
+  sidebarWidth?: number;
+  layoutTree: MultimodalLayoutNode | null;
 };
 
 export type MultimodalWorkspaceResponse = {
@@ -127,11 +143,16 @@ export type MultimodalWorkspaceResponse = {
 
 export type MultimodalWorkspaceState = {
   sceneId: string;
+  mediaField: string;
+  sourceKind: string;
   sync: MultimodalSyncConfig;
   activePanelId: string | null;
   maximizedPanelId: string | null;
   sidebarCollapsed: boolean;
+  sidebarWidth: number;
+  layoutTree: MultimodalLayoutNode | null;
   panels: MultimodalPanelLayoutState[];
+  panelsById: Record<string, MultimodalPanelLayoutState>;
 };
 
 export type MultimodalPanelLayoutState = MultimodalPanelPlan;
@@ -141,6 +162,12 @@ export type FetchMultimodalWorkspaceParams = {
   sampleId: string;
   mediaField: string;
   sourceKind?: string;
+};
+
+export type SaveMultimodalWorkspaceParams = {
+  datasetId: string;
+  sampleId: string;
+  renderingPlan: MultimodalRenderingPlan;
 };
 
 export type MultimodalStreamWindowRequest = {

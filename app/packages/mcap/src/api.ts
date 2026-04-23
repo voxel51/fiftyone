@@ -7,9 +7,11 @@ import type {
   MultimodalBootstrapWindowRequest,
   MultimodalRawBufferResponse,
   MultimodalRawBufferTransportResponse,
+  MultimodalRenderingPlan,
   MultimodalTimelineIndexRequest,
   MultimodalTimelineIndexResponse,
   MultimodalWorkspaceResponse,
+  SaveMultimodalWorkspaceParams,
   MultimodalStreamWindowRequest,
 } from "./types";
 
@@ -66,6 +68,20 @@ export async function fetchMultimodalWorkspace(
     )}/sample/${encodeURIComponent(
       params.sampleId
     )}/multimodal/workspace?${query.toString()}`
+  );
+}
+
+export async function saveMultimodalWorkspace(
+  params: SaveMultimodalWorkspaceParams
+): Promise<MultimodalRenderingPlan> {
+  const fetch = getFetchFunction();
+
+  return fetch<MultimodalRenderingPlan, MultimodalRenderingPlan>(
+    "PATCH",
+    `/dataset/${encodeURIComponent(
+      params.datasetId
+    )}/sample/${encodeURIComponent(params.sampleId)}/multimodal/workspace`,
+    params.renderingPlan
   );
 }
 

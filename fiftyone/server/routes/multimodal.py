@@ -55,6 +55,23 @@ class MultimodalWorkspace(HTTPEndpoint):
 
         return JSONResponse(response)
 
+    async def patch(self, request):
+        data = await _read_request_json(request)
+        dataset, sample = _get_dataset_and_sample(request)
+
+        try:
+            response = fosm.update_sample_multimodal_workspace(
+                dataset=dataset,
+                sample=sample,
+                rendering_plan=data,
+            )
+        except fosm.MultimodalRouteError as error:
+            _raise_http_error(error)
+        except fosm.MultimodalDependencyError as error:
+            raise HTTPException(status_code=500, detail=str(error)) from error
+
+        return JSONResponse(response)
+
 
 class MultimodalIngest(HTTPEndpoint):
     """Persists multimodal catalog and rendering-plan data."""

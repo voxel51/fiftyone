@@ -7,6 +7,7 @@ import {
   fetchMultimodalBuffer,
   fetchMultimodalTimeline,
   fetchMultimodalWorkspace,
+  saveMultimodalWorkspace,
 } from "./api";
 
 const { getFetchFunctionMock } = vi.hoisted(() => ({
@@ -31,7 +32,7 @@ describe("mcap api", () => {
         mediaField: "mcap_path",
         mediaPath: "/tmp/test.mcap",
         sourceKind: "mcap",
-        catalogVersion: "multimodal-workspace-v1",
+        catalogVersion: "multimodal-workspace-v4",
         timeRange: { startNs: 1, endNs: 2 },
         streams: [],
         frames: [],
@@ -41,12 +42,14 @@ describe("mcap api", () => {
       renderingPlan: {
         sceneId: "scene-1",
         mediaField: "mcap_path",
+        sourceKind: "mcap",
         sync: {
           timestampSource: "header.stamp",
           fallback: "log_time",
           mode: "nearest",
         },
         panels: [],
+        layoutTree: null,
       },
     });
     getFetchFunctionMock.mockReturnValue(fetchSpy);
@@ -63,6 +66,48 @@ describe("mcap api", () => {
       "/dataset/dataset%2F1/sample/sample%2F1/multimodal/workspace?mediaField=mcap_path"
     );
     expect(response.catalog.sceneId).toBe("scene-1");
+  });
+
+  it("saves the rendering plan to the sample-scoped workspace route", async () => {
+    const fetchSpy = vi.fn().mockResolvedValue({
+      sceneId: "scene-1",
+      mediaField: "mcap_path",
+      sourceKind: "mcap",
+      sync: {
+        timestampSource: "header.stamp",
+        fallback: "log_time",
+        mode: "nearest",
+      },
+      panels: [],
+      layoutTree: null,
+    });
+    getFetchFunctionMock.mockReturnValue(fetchSpy);
+
+    const renderingPlan = {
+      sceneId: "scene-1",
+      mediaField: "mcap_path",
+      sourceKind: "mcap",
+      sync: {
+        timestampSource: "header.stamp",
+        fallback: "log_time",
+        mode: "nearest",
+      },
+      panels: [],
+      layoutTree: null,
+    } as const;
+
+    const response = await saveMultimodalWorkspace({
+      datasetId: "dataset/1",
+      sampleId: "sample/1",
+      renderingPlan,
+    });
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "PATCH",
+      "/dataset/dataset%2F1/sample/sample%2F1/multimodal/workspace",
+      renderingPlan
+    );
+    expect(response.layoutTree).toBeNull();
   });
 
   it("normalizes raw buffer payloads into Uint8Array values", async () => {
