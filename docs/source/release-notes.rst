@@ -3,6 +3,33 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.17.2
+--------------------------
+*Released April 22, 2026*
+
+App
+
+- Fixed a bug where signed URLs for point cloud assets in FO3D scenes could be
+  stripped before rendering, causing some cloud-backed 3D scenes to fail to
+  load.
+
+Cloud Media
+
+- Fixed a bug where HTTP-backed media could hang or fail to load when the
+  media cache performed unauthenticated server-side access checks.
+
+Auth and Users
+
+- Improved unauthenticated redirect handling on the sign-in page.
+
+.. _release-notes-v1.14.2:
+
+FiftyOne 1.14.2
+---------------
+*Released April 22, 2026*
+
+This release does not include any open-source updates.
+
 FiftyOne Enterprise 2.17.1
 --------------------------
 *Released April 6, 2026*
