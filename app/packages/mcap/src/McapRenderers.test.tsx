@@ -798,8 +798,29 @@ describe("Multimodal renderers", () => {
     });
   });
 
-  it("persists the image-panel projected 3d overlay toggle from the sidebar", async () => {
+  it("shows image annotation streams in overlays instead of streams", async () => {
     vi.useFakeTimers();
+    const imageOnlyCatalog = {
+      ...WORKSPACE_RESPONSE.catalog,
+      streams: [
+        ...WORKSPACE_RESPONSE.catalog.streams,
+        {
+          streamId: "/camera/front/annotations",
+          topic: "/camera/front/annotations",
+          schemaName: "foxglove.ImageAnnotations",
+          schemaEncoding: "protobuf",
+          messageEncoding: "protobuf",
+          kind: "other" as const,
+          frameId: "camera_front",
+          affordances: ["annotations", "overlay"],
+          compatiblePanels: ["image" as const],
+          channelId: 6,
+          schemaId: 6,
+          timeRange: { startNs: 10, endNs: 20_000_000_010 },
+          messageCount: 3,
+        },
+      ],
+    };
     const imageOnlyRenderingPlan = {
       ...WORKSPACE_RESPONSE.renderingPlan,
       panels: [
@@ -815,6 +836,7 @@ describe("Multimodal renderers", () => {
     const save = vi.fn().mockResolvedValue(imageOnlyRenderingPlan);
     useMultimodalWorkspaceMock.mockReturnValue(
       createWorkspaceHookState({
+        catalog: imageOnlyCatalog,
         renderingPlan: imageOnlyRenderingPlan,
         save,
       })
@@ -822,16 +844,30 @@ describe("Multimodal renderers", () => {
 
     render(<MultimodalModalRenderer ctx={createCtx("modal")} />);
 
+    fireEvent.click(screen.getByRole("button", { name: "Overlays" }));
     fireEvent.click(screen.getByRole("button", { name: "Streams" }));
-    const overlayToggle = screen.getByLabelText(
-      "project-3d-overlays"
+
+    const streamsSection = screen.getByRole("button", {
+      name: "Streams",
+    }).parentElement as HTMLElement;
+    expect(
+      within(streamsSection).queryByText("/camera/front/annotations")
+    ).toBeNull();
+
+    const overlaysSection = screen.getByRole("button", {
+      name: "Overlays",
+    }).parentElement as HTMLElement;
+    expect(
+      within(overlaysSection).getByText("/camera/front/annotations")
+    ).toBeTruthy();
+
+    const overlayToggle = within(overlaysSection).getByRole(
+      "checkbox"
     ) as HTMLInputElement;
     expect(overlayToggle.checked).toBe(false);
 
     fireEvent.click(overlayToggle);
-    expect(
-      (screen.getByLabelText("project-3d-overlays") as HTMLInputElement).checked
-    ).toBe(true);
+    expect(overlayToggle.checked).toBe(true);
 
     await vi.advanceTimersByTimeAsync(250);
 
@@ -841,9 +877,7 @@ describe("Multimodal renderers", () => {
       panels: [
         expect.objectContaining({
           panelId: "image_panel_1",
-          imageConfig: {
-            project3dOverlays: true,
-          },
+          visibleStreamIds: ["/camera/front/annotations"],
         }),
       ],
     });

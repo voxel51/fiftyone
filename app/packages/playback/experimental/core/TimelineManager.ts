@@ -27,10 +27,15 @@ import type {
   TimeInt,
   TimelineConfig,
   TimelineName,
+  TimelineRenderContext,
   TimeRange,
   TimeSnapshot,
 } from "../types";
 import { isDurationConfig, isSequenceConfig } from "../types";
+
+function isPromiseLike<T>(value: Promise<T> | T | void): value is Promise<T> {
+  return Boolean(value && typeof (value as Promise<T>).then === "function");
+}
 
 function buffersEqual(left: Buffers, right: Buffers) {
   if (left === right) {
@@ -156,6 +161,7 @@ export class TimelineManager {
   #currentBufferingRange: BufferRange = [0, 0];
   #inFlightProactivePrefetches = new Map<string, BufferRange>();
   #useExternalClock = false;
+  #previewAbortController: AbortController | null = null;
 
   constructor(params: CreateTimelineParams) {
     this.name = params.name;
@@ -318,6 +324,7 @@ export class TimelineManager {
   }
 
   destroy(): void {
+    this.#previewAbortController?.abort();
     this.#engine.destroy();
     this.#subscribers.clear();
     this.#inFlightProactivePrefetches.clear();
@@ -337,6 +344,8 @@ export class TimelineManager {
 
   pause(): void {
     this.setPlayState(PLAY_STATE_PAUSED);
+    this.#previewAbortController?.abort();
+    this.#previewAbortController = null;
     this.#engine.stop();
   }
 
@@ -353,9 +362,10 @@ export class TimelineManager {
   async setTime(time: TimeInt): Promise<void> {
     const range = this.getRange();
     const clamped = clampTime(time, range);
+    const snapshot = createSnapshot(this.name, clamped, clamped);
 
     if (!this.#subscribers || this.#subscribers.size === 0) {
-      this.#snapshot = createSnapshot(this.name, clamped, clamped);
+      this.#snapshot = snapshot;
       this.#events.dispatch("timeline:timeChange", {
         ...this.meta,
         snapshot: this.#snapshot,
@@ -363,53 +373,41 @@ export class TimelineManager {
       return;
     }
 
+    this.#engine.stop();
     const newLoadRange = getLoadRangeForFrameNumber(clamped, this.#config);
     const isCurrentValueNotInBuffer =
       !this.#bufferManager.isValueInBuffer(clamped);
 
     if (!this.#bufferManager.containsRange(newLoadRange)) {
-      const prefetchPromises: Promise<void>[] = [];
-      this.#subscribers.forEach((subscriber) => {
-        if (subscriber.prefetch) {
-          prefetchPromises.push(subscriber.prefetch(newLoadRange));
-        }
-      });
+      const prefetchPromises = Array.from(this.#subscribers.values()).map(
+        (subscriber) => subscriber.prefetch?.(newLoadRange) ?? Promise.resolve()
+      );
 
       this.setCurrentBufferingRange(newLoadRange);
-
       const allSettled = Promise.allSettled(prefetchPromises);
 
       if (isCurrentValueNotInBuffer) {
         try {
           await allSettled;
           this.refreshBufferedRanges();
-        } catch (e) {
-          console.error(e);
+        } catch (error) {
+          console.error(error);
         } finally {
           this.setCurrentBufferingRange([0, 0]);
         }
       } else {
-        allSettled.then(() => {
+        void allSettled.then(() => {
           this.refreshBufferedRanges();
           this.setCurrentBufferingRange([0, 0]);
         });
       }
     }
 
-    // Commit the new snapshot
-    this.#snapshot = createSnapshot(this.name, clamped, clamped);
-
-    // Ask all subscribers to render
-    this.#subscribers.forEach((subscriber) => {
-      subscriber.renderAt(this.#snapshot);
+    await this.ensureSubscribersBuffered(clamped, true);
+    await this.prepareAndCommitSnapshot(snapshot, {
+      reason: "seek",
+      allowStaleDrop: false,
     });
-
-    this.#events.dispatch("timeline:timeChange", {
-      ...this.meta,
-      snapshot: this.#snapshot,
-    });
-
-    this.maybePrefetchAhead(this.#snapshot.timeInt);
   }
 
   /**
@@ -538,6 +536,49 @@ export class TimelineManager {
 
   notifySeekEnd(): void {
     this.#events.dispatch("timeline:seekEnd", this.meta);
+  }
+
+  async previewTime(time: TimeInt): Promise<void> {
+    const range = this.getRange();
+    const clamped = clampTime(time, range);
+    const snapshot = createSnapshot(this.name, clamped, clamped);
+    this.#previewAbortController?.abort();
+    const abortController = new AbortController();
+    this.#previewAbortController = abortController;
+    const context: TimelineRenderContext = {
+      reason: "scrub-preview",
+      abortSignal: abortController.signal,
+      allowStaleDrop: true,
+    };
+
+    const previewPromises: Promise<void>[] = [];
+    this.#subscribers.forEach((subscriber) => {
+      try {
+        const result = subscriber.previewAt
+          ? subscriber.previewAt(snapshot, context)
+          : subscriber.renderAt(snapshot, context);
+        if (isPromiseLike(result)) {
+          previewPromises.push(result);
+        }
+      } catch (error) {
+        console.error(
+          `Subscriber "${subscriber.id}" previewAt/renderAt error:`,
+          error
+        );
+      }
+    });
+
+    if (!previewPromises.length) {
+      return;
+    }
+
+    try {
+      await Promise.allSettled(previewPromises);
+    } finally {
+      if (this.#previewAbortController === abortController) {
+        this.#previewAbortController = null;
+      }
+    }
   }
 
   // --- Event subscription ---
@@ -672,6 +713,104 @@ export class TimelineManager {
       ...this.meta,
       loaded: this.#bufferManager.buffers,
       loading: this.#currentBufferingRange,
+    });
+  }
+
+  private buildPrefetchRange(time: TimeInt): TimeRange {
+    const range = this.getRange();
+    if (isDurationConfig(this.#config)) {
+      return [
+        Math.max(range[0], time - MIN_LOAD_RANGE_DURATION_NS / 2),
+        Math.min(range[1], time + MIN_LOAD_RANGE_DURATION_NS),
+      ] as const;
+    }
+
+    return [time, Math.min(time + 100, range[1])] as const;
+  }
+
+  private async ensureSubscribersBuffered(
+    time: TimeInt,
+    waitForReady: boolean
+  ): Promise<boolean> {
+    const criticalSubscribers = Array.from(this.#subscribers.values()).filter(
+      (subscriber) =>
+        subscriber.capabilities?.critical && subscriber.bufferState
+    );
+    if (!criticalSubscribers.length) {
+      return true;
+    }
+
+    const allReady = criticalSubscribers.every((subscriber) => {
+      return subscriber.bufferState?.(time) === "ready";
+    });
+    if (allReady) {
+      return true;
+    }
+
+    const prefetchRange = this.buildPrefetchRange(time);
+    this.setCurrentBufferingRange(prefetchRange);
+    const prefetchPromises = Array.from(this.#subscribers.values()).map(
+      (subscriber) => subscriber.prefetch?.(prefetchRange) ?? Promise.resolve()
+    );
+
+    if (!waitForReady) {
+      this.setPlayState("buffering");
+      return false;
+    }
+
+    const previousPlayState = this.#playState;
+    this.setPlayState("buffering");
+    try {
+      await Promise.allSettled(prefetchPromises);
+      this.refreshBufferedRanges();
+      return criticalSubscribers.every((subscriber) => {
+        return subscriber.bufferState?.(time) === "ready";
+      });
+    } finally {
+      this.setCurrentBufferingRange([0, 0]);
+      if (previousPlayState !== "buffering") {
+        this.setPlayState(previousPlayState);
+      }
+    }
+  }
+
+  private async prepareAndCommitSnapshot(
+    snapshot: TimeSnapshot,
+    contextInput: Pick<TimelineRenderContext, "reason" | "allowStaleDrop">
+  ): Promise<void> {
+    const abortController = new AbortController();
+    const context: TimelineRenderContext = {
+      ...contextInput,
+      abortSignal: abortController.signal,
+    };
+    const preparePromises: Promise<void>[] = [];
+
+    this.#subscribers.forEach((subscriber) => {
+      if (!subscriber.capabilities?.critical || !subscriber.prepareAt) {
+        return;
+      }
+
+      try {
+        const result = subscriber.prepareAt(snapshot, context);
+        if (isPromiseLike(result)) {
+          preparePromises.push(result);
+        }
+      } catch (error) {
+        console.error(`Subscriber "${subscriber.id}" prepareAt error:`, error);
+      }
+    });
+
+    if (preparePromises.length) {
+      await Promise.all(preparePromises);
+    }
+
+    this.commitSnapshot(snapshot);
+    this.#subscribers.forEach((subscriber) => {
+      try {
+        subscriber.renderAt(snapshot, context);
+      } catch (error) {
+        console.error(`Subscriber "${subscriber.id}" renderAt error:`, error);
+      }
     });
   }
 

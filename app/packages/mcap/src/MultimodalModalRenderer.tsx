@@ -205,6 +205,7 @@ const PANEL_VIEWPORT_STYLES: React.CSSProperties = {
 type SidebarSectionId =
   | "panelTitle"
   | "frameConfig"
+  | "overlays"
   | "sceneConfig"
   | "transforms"
   | "streams";
@@ -212,6 +213,7 @@ type SidebarSectionId =
 const DEFAULT_SIDEBAR_SECTION_STATE: Record<SidebarSectionId, boolean> = {
   panelTitle: false,
   frameConfig: true,
+  overlays: true,
   sceneConfig: true,
   transforms: true,
   streams: true,
@@ -288,6 +290,12 @@ function isImage3dOverlayProjectionEnabled(panel: MultimodalPanelLayoutState) {
   return panel.archetype === "image"
     ? panel.imageConfig?.project3dOverlays ?? false
     : false;
+}
+
+function isImageAnnotationOverlayStream(
+  stream: Pick<MultimodalStreamDescriptor, "schemaName">
+) {
+  return stream.schemaName === "foxglove.ImageAnnotations";
 }
 
 function shouldIncludeImageSupportFrameForPanel(
@@ -1182,24 +1190,6 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
     [activePanel, applyWorkspaceState, catalog]
   );
 
-  const setActiveImageProject3dOverlays = React.useCallback(
-    (project3dOverlays: boolean) => {
-      updateActivePanel((panel) => {
-        if (panel.archetype !== "image") {
-          return panel;
-        }
-
-        return {
-          ...panel,
-          imageConfig: {
-            project3dOverlays,
-          },
-        };
-      });
-    },
-    [updateActivePanel]
-  );
-
   const toggleActiveImageSupportStream = React.useCallback(
     (streamId: string) => {
       updateActivePanel((panel) => {
@@ -1313,11 +1303,16 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
 
     return getDefaultImageSupportStreamIds(catalog, activePanel.renderStreamId);
   }, [activePanel?.archetype, activePanel?.renderStreamId, catalog]);
-  const activeImageProject3dOverlays = React.useMemo(() => {
-    return activePanel?.archetype === "image"
-      ? isImage3dOverlayProjectionEnabled(activePanel)
-      : false;
-  }, [activePanel]);
+  const activeImageOverlayStreams = React.useMemo(() => {
+    return activeImageSupportStreams.filter((stream) =>
+      isImageAnnotationOverlayStream(stream)
+    );
+  }, [activeImageSupportStreams]);
+  const activeImageNonOverlaySupportStreams = React.useMemo(() => {
+    return activeImageSupportStreams.filter(
+      (stream) => !isImageAnnotationOverlayStream(stream)
+    );
+  }, [activeImageSupportStreams]);
 
   const filteredPrimaryImageStreams = React.useMemo(() => {
     return activeImagePrimaryStreams.filter((stream) =>
@@ -1331,15 +1326,16 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
     );
   }, [activeImagePrimaryStreams, deferredSearchQuery]);
 
-  const filteredImageSupportStreams = React.useMemo(() => {
+  const filteredImageOverlayStreams = React.useMemo(() => {
     const autoBoundStreamIds = new Set(activeImageAutoSupportStreamIds);
 
-    return [...activeImageSupportStreams]
+    return [...activeImageOverlayStreams]
       .filter((stream) =>
         matchesSearch(deferredSearchQuery, [
-          "streams",
-          "support",
           "overlay",
+          "overlays",
+          "annotation",
+          "annotations",
           stream.topic,
           stream.schemaName,
           ...stream.affordances,
@@ -1357,7 +1353,36 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
       });
   }, [
     activeImageAutoSupportStreamIds,
-    activeImageSupportStreams,
+    activeImageOverlayStreams,
+    deferredSearchQuery,
+  ]);
+
+  const filteredImageSupportStreams = React.useMemo(() => {
+    const autoBoundStreamIds = new Set(activeImageAutoSupportStreamIds);
+
+    return [...activeImageNonOverlaySupportStreams]
+      .filter((stream) =>
+        matchesSearch(deferredSearchQuery, [
+          "streams",
+          "support",
+          stream.topic,
+          stream.schemaName,
+          ...stream.affordances,
+        ])
+      )
+      .sort((left, right) => {
+        const autoBoundDelta =
+          Number(autoBoundStreamIds.has(right.streamId)) -
+          Number(autoBoundStreamIds.has(left.streamId));
+        if (autoBoundDelta !== 0) {
+          return autoBoundDelta;
+        }
+
+        return left.topic.localeCompare(right.topic);
+      });
+  }, [
+    activeImageAutoSupportStreamIds,
+    activeImageNonOverlaySupportStreams,
     deferredSearchQuery,
   ]);
 
@@ -1717,6 +1742,58 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
                 ) : null}
 
                 {matchesSearch(deferredSearchQuery, [
+                  "overlays",
+                  "overlay",
+                  "annotation",
+                  "annotations",
+                  ...activeImageOverlayStreams.map((stream) => stream.topic),
+                  ...activeImageOverlayStreams.map(
+                    (stream) => stream.schemaName
+                  ),
+                ]) && activePanel.archetype === "image" ? (
+                  <SidebarSection
+                    collapsed={collapsedSections.overlays}
+                    forceExpanded={hasSearchQuery}
+                    onToggle={() => toggleSidebarSection("overlays")}
+                    title="Overlays"
+                  >
+                    <Stack
+                      orientation={Orientation.Column}
+                      spacing={Spacing.Xs}
+                    >
+                      <Text
+                        variant={TextVariant.Caption}
+                        color={TextColor.Secondary}
+                      >
+                        Annotation streams
+                      </Text>
+                      {filteredImageOverlayStreams.length === 0 ? (
+                        <Text
+                          variant={TextVariant.Caption}
+                          color={TextColor.Secondary}
+                        >
+                          No annotation overlays match the current filter
+                        </Text>
+                      ) : null}
+                      {filteredImageOverlayStreams.map((stream) => (
+                        <StreamRow
+                          key={stream.streamId}
+                          activePanel={activePanel}
+                          checked={activePanel.visibleStreamIds.includes(
+                            stream.streamId
+                          )}
+                          disabled={false}
+                          onToggle={() =>
+                            toggleActiveImageSupportStream(stream.streamId)
+                          }
+                          stream={stream}
+                        />
+                      ))}
+                    </Stack>
+                  </SidebarSection>
+                ) : null}
+
+                {matchesSearch(deferredSearchQuery, [
                   "scene config",
                   "up axis",
                   "background color",
@@ -1884,8 +1961,6 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
 
                 {matchesSearch(deferredSearchQuery, [
                   "streams",
-                  "project 3d overlays",
-                  "projected overlays",
                   ...catalog.streams.map((stream) => stream.topic),
                 ]) ? (
                   <SidebarSection
@@ -1941,82 +2016,48 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
                             ))}
                           </Stack>
 
-                          <Stack
-                            orientation={Orientation.Column}
-                            spacing={Spacing.Xs}
-                            style={{
-                              marginTop: "8px",
-                              paddingTop: "8px",
-                              borderTop: "1px solid rgba(255,255,255,0.06)",
-                            }}
-                          >
-                            <Text
-                              variant={TextVariant.Caption}
-                              color={TextColor.Secondary}
-                            >
-                              Support overlays
-                            </Text>
+                          {activeImageNonOverlaySupportStreams.length > 0 ? (
                             <Stack
-                              orientation={Orientation.Row}
-                              justify={Justify.Between}
-                              align={Align.Center}
+                              orientation={Orientation.Column}
+                              spacing={Spacing.Xs}
+                              style={{
+                                marginTop: "8px",
+                                paddingTop: "8px",
+                                borderTop: "1px solid rgba(255,255,255,0.06)",
+                              }}
                             >
                               <Text
                                 variant={TextVariant.Caption}
                                 color={TextColor.Secondary}
                               >
-                                Project 3D overlays
+                                Support streams
                               </Text>
-                              <input
-                                aria-label="project-3d-overlays"
-                                checked={activeImageProject3dOverlays}
-                                onChange={(event) =>
-                                  setActiveImageProject3dOverlays(
-                                    event.target.checked
-                                  )
-                                }
-                                type="checkbox"
-                              />
-                            </Stack>
-                            <Text
-                              variant={TextVariant.Caption}
-                              color={TextColor.Secondary}
-                            >
-                              Matching annotations and camera info auto-bind
-                              when the primary image changes. `SceneUpdate`
-                              stays manual.
-                            </Text>
-                            <Text
-                              variant={TextVariant.Caption}
-                              color={TextColor.Secondary}
-                            >
-                              Projected 3D support streams honor this toggle.
-                            </Text>
-                            {filteredImageSupportStreams.length === 0 ? (
-                              <Text
-                                variant={TextVariant.Caption}
-                                color={TextColor.Secondary}
-                              >
-                                No support streams match the current filter
-                              </Text>
-                            ) : null}
-                            {filteredImageSupportStreams.map((stream) => (
-                              <StreamRow
-                                key={stream.streamId}
-                                activePanel={activePanel}
-                                checked={activePanel.visibleStreamIds.includes(
-                                  stream.streamId
-                                )}
-                                disabled={false}
-                                onToggle={() =>
-                                  toggleActiveImageSupportStream(
+                              {filteredImageSupportStreams.length === 0 ? (
+                                <Text
+                                  variant={TextVariant.Caption}
+                                  color={TextColor.Secondary}
+                                >
+                                  No support streams match the current filter
+                                </Text>
+                              ) : null}
+                              {filteredImageSupportStreams.map((stream) => (
+                                <StreamRow
+                                  key={stream.streamId}
+                                  activePanel={activePanel}
+                                  checked={activePanel.visibleStreamIds.includes(
                                     stream.streamId
-                                  )
-                                }
-                                stream={stream}
-                              />
-                            ))}
-                          </Stack>
+                                  )}
+                                  disabled={false}
+                                  onToggle={() =>
+                                    toggleActiveImageSupportStream(
+                                      stream.streamId
+                                    )
+                                  }
+                                  stream={stream}
+                                />
+                              ))}
+                            </Stack>
+                          ) : null}
                         </>
                       ) : (
                         filteredPanelStreams?.map((stream) => {

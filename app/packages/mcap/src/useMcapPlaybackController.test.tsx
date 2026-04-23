@@ -73,6 +73,7 @@ const {
       },
     ]),
     getSyncTimestamps: vi.fn(() => [10, 30]),
+    getVersion: vi.fn(() => 0),
     dispose: vi.fn(),
   };
   const renderable3dCacheInstance = {
@@ -163,6 +164,7 @@ const {
       },
     ]),
     getSyncTimestamps: vi.fn(() => [20, 30]),
+    getVersion: vi.fn(() => 0),
     dispose: vi.fn(),
   };
   const rawCacheInstance = {
@@ -433,6 +435,27 @@ const WORKSPACE = {
   },
 } as const;
 
+function createDeferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((nextResolve, nextReject) => {
+    resolve = nextResolve;
+    reject = nextReject;
+  });
+
+  return { promise, resolve, reject };
+}
+
+async function renderTimelineTime(timeNs: number) {
+  const context = {
+    reason: "play" as const,
+    abortSignal: new AbortController().signal,
+    allowStaleDrop: true,
+  };
+  await experimentalTimelineOptionsRef.current.onPrepareTime?.(timeNs, context);
+  await experimentalTimelineOptionsRef.current.onRenderTime(timeNs, context);
+}
+
 describe("useMultimodalPlaybackController", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -463,12 +486,29 @@ describe("useMultimodalPlaybackController", () => {
       overlays: [],
     });
     projectSceneFrameToImageOverlaysMock.mockReturnValue([]);
+    imageCacheInstance.ensureRange.mockImplementation(async () => {
+      imageBufferedRef.current = true;
+    });
+    renderable3dCacheInstance.ensureRange.mockImplementation(async () => {
+      renderable3dBufferedRef.current = true;
+    });
+    rawCacheInstance.ensureRange.mockImplementation(async () => {});
     rawCacheInstance.getMessages.mockReturnValue([]);
     rawCacheInstance.getMessageForLogTime.mockReturnValue(null);
     rawCacheInstance.getSyncSamples.mockReturnValue([]);
     rawCacheInstance.getSyncTimestamps.mockReturnValue([]);
     rawCacheInstance.getVersion.mockImplementation(
       () => rawCacheInstance.getMessages().length
+    );
+    imageCacheInstance.getVersion.mockImplementation(
+      () =>
+        imageCacheInstance.getSyncSamples().length +
+        Number(imageBufferedRef.current)
+    );
+    renderable3dCacheInstance.getVersion.mockImplementation(
+      () =>
+        renderable3dCacheInstance.getSyncSamples().length +
+        Number(renderable3dBufferedRef.current)
     );
     renderable3dCacheInstance.decodeMessage.mockImplementation(async () => ({
       id: "cloud-1",
@@ -625,7 +665,7 @@ describe("useMultimodalPlaybackController", () => {
     expect(result.current.hasPlayback).toBe(true);
   });
 
-  it("requests the shared timeline only for the active playback stream", async () => {
+  it("requests the shared timeline for all visible playback streams", async () => {
     const catalog = {
       ...CATALOG,
       streams: [
@@ -699,14 +739,14 @@ describe("useMultimodalPlaybackController", () => {
       sampleId: "sample-1",
       request: {
         mediaField: "filepath",
-        streamIds: ["/camera/front"],
+        streamIds: ["/camera/front", "/lidar/top"],
         timestampSource: "header.stamp",
         fallback: "log_time",
       },
     });
   });
 
-  it("does not wait for background render streams before resolving playback prefetch", async () => {
+  it("waits for all visible render streams before resolving playback prefetch", async () => {
     let resolveBackgroundFetch: (() => void) | null = null;
     const backgroundFetchPromise = new Promise<void>((resolve) => {
       resolveBackgroundFetch = resolve;
@@ -739,12 +779,12 @@ describe("useMultimodalPlaybackController", () => {
     await waitFor(() => {
       expect(renderable3dCacheInstance.ensureRange).toHaveBeenCalled();
     });
+    expect(didResolvePrefetch).toBe(false);
+    resolveBackgroundFetch?.();
+    await backgroundFetchPromise;
     await waitFor(() => {
       expect(didResolvePrefetch).toBe(true);
     });
-
-    resolveBackgroundFetch?.();
-    await backgroundFetchPromise;
   });
 
   it("projects SceneUpdate overlays into image panels without adding support streams to the timeline", async () => {
@@ -969,7 +1009,7 @@ describe("useMultimodalPlaybackController", () => {
     );
 
     await experimentalTimelineOptionsRef.current.onPrefetchRange([20, 20]);
-    await experimentalTimelineOptionsRef.current.onRenderTime(20);
+    await renderTimelineTime(20);
 
     await waitFor(() => {
       expect(result.current.panelStates.image_panel_1.status).toBe("ready");
@@ -1164,7 +1204,7 @@ describe("useMultimodalPlaybackController", () => {
     );
 
     await experimentalTimelineOptionsRef.current.onPrefetchRange([20, 20]);
-    await experimentalTimelineOptionsRef.current.onRenderTime(20);
+    await renderTimelineTime(20);
 
     await waitFor(() => {
       expect(result.current.panelStates.image_panel_1.status).toBe("ready");
@@ -1353,7 +1393,7 @@ describe("useMultimodalPlaybackController", () => {
     );
 
     await experimentalTimelineOptionsRef.current.onPrefetchRange([20, 20]);
-    await experimentalTimelineOptionsRef.current.onRenderTime(20);
+    await renderTimelineTime(20);
 
     await waitFor(() => {
       expect(result.current.panelStates.image_panel_1.status).toBe("ready");
@@ -1562,7 +1602,7 @@ describe("useMultimodalPlaybackController", () => {
     );
 
     await experimentalTimelineOptionsRef.current.onPrefetchRange([10, 20]);
-    await experimentalTimelineOptionsRef.current.onRenderTime(20);
+    await renderTimelineTime(20);
 
     await waitFor(() => {
       expect(result.current.panelStates.panel_3d_1.status).toBe("ready");
@@ -1717,7 +1757,7 @@ describe("useMultimodalPlaybackController", () => {
     );
 
     await experimentalTimelineOptionsRef.current.onPrefetchRange([10, 20]);
-    await experimentalTimelineOptionsRef.current.onRenderTime(20);
+    await renderTimelineTime(20);
 
     await waitFor(() => {
       expect(result.current.panelStates.panel_3d_1.warnings).toContain(
@@ -1736,7 +1776,7 @@ describe("useMultimodalPlaybackController", () => {
       },
     ];
 
-    await experimentalTimelineOptionsRef.current.onRenderTime(20);
+    await renderTimelineTime(20);
 
     await waitFor(() => {
       expect(result.current.panelStates.panel_3d_1.status).toBe("ready");
@@ -1758,17 +1798,17 @@ describe("useMultimodalPlaybackController", () => {
     expect(experimentalTimelineOptionsRef.current?.isBufferingCritical).toBe(
       true
     );
+    expect(experimentalTimelineOptionsRef.current?.getBufferReadiness(20)).toBe(
+      "ready"
+    );
+
+    await experimentalTimelineOptionsRef.current.onPrefetchRange([10, 20]);
+
     await waitFor(() => {
       expect(
         experimentalTimelineOptionsRef.current?.getBufferReadiness(20)
       ).toBe("ready");
     });
-
-    await experimentalTimelineOptionsRef.current.onPrefetchRange([10, 20]);
-
-    expect(experimentalTimelineOptionsRef.current?.getBufferReadiness(20)).toBe(
-      "ready"
-    );
   });
 
   it("prefetches an expanded stream range and warms nearby decodes", async () => {
@@ -1799,9 +1839,57 @@ describe("useMultimodalPlaybackController", () => {
     expect(
       renderable3dCacheInstance.warmMessagesAroundLogTime
     ).toHaveBeenCalledWith(20, { aheadCount: 1 });
+    await waitFor(() => {
+      expect(
+        experimentalTimelineOptionsRef.current?.getBufferedRanges()
+      ).toEqual([[0, 30]]);
+    });
+  });
+
+  it("reuses buffered-range snapshots until tracked stream versions change", async () => {
+    renderHook(() =>
+      useMultimodalPlaybackController(CATALOG as any, WORKSPACE as any)
+    );
+
+    await waitFor(() => {
+      expect(experimentalTimelineOptionsRef.current?.name).toBe(
+        "multimodal:scene-1"
+      );
+    });
+
+    await experimentalTimelineOptionsRef.current.onPrefetchRange([10, 20]);
+
+    imageCacheInstance.getMessageReadiness.mockClear();
+    renderable3dCacheInstance.getMessageReadiness.mockClear();
+
+    await waitFor(() => {
+      expect(
+        experimentalTimelineOptionsRef.current?.getBufferedRanges()
+      ).toEqual([[0, 30]]);
+    });
+    const firstImageReadinessCalls =
+      imageCacheInstance.getMessageReadiness.mock.calls.length;
+    const first3dReadinessCalls =
+      renderable3dCacheInstance.getMessageReadiness.mock.calls.length;
+
     expect(experimentalTimelineOptionsRef.current?.getBufferedRanges()).toEqual(
       [[0, 30]]
     );
+    expect(imageCacheInstance.getMessageReadiness.mock.calls).toHaveLength(
+      firstImageReadinessCalls
+    );
+    expect(
+      renderable3dCacheInstance.getMessageReadiness.mock.calls
+    ).toHaveLength(first3dReadinessCalls);
+
+    imageCacheInstance.getVersion.mockReturnValue(999);
+
+    expect(experimentalTimelineOptionsRef.current?.getBufferedRanges()).toEqual(
+      [[0, 30]]
+    );
+    expect(
+      imageCacheInstance.getMessageReadiness.mock.calls.length
+    ).toBeGreaterThan(firstImageReadinessCalls);
   });
 
   it("renders image and 3d panels from the shared playback cursor", async () => {
@@ -1810,7 +1898,7 @@ describe("useMultimodalPlaybackController", () => {
     );
 
     await experimentalTimelineOptionsRef.current.onPrefetchRange([10, 20]);
-    await experimentalTimelineOptionsRef.current.onRenderTime(20);
+    await renderTimelineTime(20);
 
     await waitFor(() => {
       expect(result.current.panelStates.image_panel_1.status).toBe("ready");
@@ -1856,7 +1944,7 @@ describe("useMultimodalPlaybackController", () => {
     );
 
     await experimentalTimelineOptionsRef.current.onPrefetchRange([10, 20]);
-    await experimentalTimelineOptionsRef.current.onRenderTime(20);
+    await renderTimelineTime(20);
 
     await waitFor(() => {
       expect(result.current.panelStates.image_panel_1.status).toBe("ready");
@@ -1980,7 +2068,7 @@ describe("useMultimodalPlaybackController", () => {
     );
 
     await experimentalTimelineOptionsRef.current.onPrefetchRange([10, 20]);
-    await experimentalTimelineOptionsRef.current.onRenderTime(20);
+    await renderTimelineTime(20);
 
     await waitFor(() => {
       expect(result.current.panelStates.panel_3d_1.sceneFrame?.frameId).toBe(
@@ -1995,7 +2083,7 @@ describe("useMultimodalPlaybackController", () => {
     ).toEqual([1, 0, 0]);
 
     rerender({ workspace: updatedWorkspace });
-    await experimentalTimelineOptionsRef.current.onRenderTime(20);
+    await renderTimelineTime(20);
 
     await waitFor(() => {
       expect(result.current.panelStates.panel_3d_1.sceneFrame?.frameId).toBe(
@@ -2074,7 +2162,7 @@ describe("useMultimodalPlaybackController", () => {
     );
 
     await experimentalTimelineOptionsRef.current.onPrefetchRange([10, 20]);
-    await experimentalTimelineOptionsRef.current.onRenderTime(20);
+    await renderTimelineTime(20);
 
     await waitFor(() => {
       expect(result.current.panelStates.panel_3d_1.followPose).not.toBeNull();
@@ -2102,7 +2190,7 @@ describe("useMultimodalPlaybackController", () => {
     );
 
     await experimentalTimelineOptionsRef.current.onPrefetchRange([10, 20]);
-    await experimentalTimelineOptionsRef.current.onRenderTime(20);
+    await renderTimelineTime(20);
 
     await waitFor(() => {
       expect(result.current.panelStates.image_panel_1.status).toBe("ready");
@@ -2115,8 +2203,7 @@ describe("useMultimodalPlaybackController", () => {
     const decodeCallCount =
       renderable3dCacheInstance.decodeMessage.mock.calls.length;
 
-    const renderPromise =
-      experimentalTimelineOptionsRef.current.onRenderTime(20);
+    const renderPromise = renderTimelineTime(20);
 
     expect(result.current.panelStates.image_panel_1.status).toBe("ready");
     expect(result.current.panelStates.panel_3d_1.status).toBe("ready");
@@ -2129,6 +2216,98 @@ describe("useMultimodalPlaybackController", () => {
     expect(renderable3dCacheInstance.decodeMessage).toHaveBeenCalledTimes(
       decodeCallCount
     );
+  });
+
+  it("coalesces overlapping render ticks onto the latest image frame", async () => {
+    const firstFrame = createDeferred<any>();
+    let allowMessages = false;
+    imageCacheInstance.getMessageForLogTime.mockImplementation(
+      (timestampNs: number) => {
+        if (!allowMessages) {
+          return null;
+        }
+
+        if (timestampNs === 10) {
+          return {
+            messageId: "frame-1",
+            logTimeNs: 10,
+            publishTimeNs: 11,
+            payload: new Uint8Array([1]),
+          };
+        }
+
+        if (timestampNs === 30) {
+          return {
+            messageId: "frame-2",
+            logTimeNs: 30,
+            publishTimeNs: 31,
+            payload: new Uint8Array([3]),
+          };
+        }
+
+        return null;
+      }
+    );
+    imageCacheInstance.decodeMessage.mockImplementation(
+      async (message: any) => {
+        if (message.messageId === "frame-1") {
+          return firstFrame.promise;
+        }
+
+        return {
+          id: "frame-2",
+          messageId: "frame-2",
+          src: "blob:frame-2",
+          timestampNs: 30,
+          format: "jpeg",
+          frameId: "camera",
+          logTimeNs: 30,
+          publishTimeNs: 31,
+          objectUrl: "blob:frame-2",
+        };
+      }
+    );
+
+    const { result } = renderHook(() =>
+      useMultimodalPlaybackController(CATALOG as any, WORKSPACE as any)
+    );
+
+    await waitFor(() => {
+      expect(experimentalTimelineOptionsRef.current?.name).toBe(
+        "multimodal:scene-1"
+      );
+    });
+
+    allowMessages = true;
+    await experimentalTimelineOptionsRef.current.onPrefetchRange([10, 30]);
+
+    const firstRenderPromise = renderTimelineTime(10);
+    await waitFor(() => {
+      expect(imageCacheInstance.decodeMessage).toHaveBeenCalledWith(
+        expect.objectContaining({ messageId: "frame-1" })
+      );
+    });
+
+    const secondRenderPromise = renderTimelineTime(30);
+    firstFrame.resolve({
+      id: "frame-1",
+      messageId: "frame-1",
+      src: "blob:frame-1",
+      timestampNs: 10,
+      format: "jpeg",
+      frameId: "camera",
+      logTimeNs: 10,
+      publishTimeNs: 11,
+      objectUrl: "blob:frame-1",
+    });
+
+    await Promise.all([firstRenderPromise, secondRenderPromise]);
+
+    await waitFor(() => {
+      expect(result.current.panelStates.image_panel_1.imageFrame?.id).toBe(
+        "frame-2"
+      );
+    });
   });
 
   it("snaps to the nearest stream frame when the shared timeline starts earlier", async () => {
@@ -2182,7 +2361,7 @@ describe("useMultimodalPlaybackController", () => {
     );
 
     await experimentalTimelineOptionsRef.current.onPrefetchRange([0, 20]);
-    await experimentalTimelineOptionsRef.current.onRenderTime(0);
+    await renderTimelineTime(0);
 
     await waitFor(() => {
       expect(result.current.panelStates.image_panel_1.status).toBe("ready");

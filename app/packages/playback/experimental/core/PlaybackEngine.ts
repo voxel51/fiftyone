@@ -8,6 +8,7 @@ import type {
   TimeInt,
   TimelineConfig,
   TimelineName,
+  TimelineRenderContext,
   TimelineType,
   TimeRange,
   TimeSnapshot,
@@ -43,6 +44,11 @@ export class PlaybackEngine {
   private _isRunning = false;
   private _lastDrawTime = -1;
   private _hasCommittedSinceStart = false;
+  private _activeRequest: {
+    snapshot: TimeSnapshot;
+    abortController: AbortController;
+  } | null = null;
+  private _queuedRequest: TimeSnapshot | null = null;
 
   private readonly opts: PlaybackEngineOptions;
 
@@ -71,6 +77,9 @@ export class PlaybackEngine {
     this._isRunning = false;
     this._lastDrawTime = -1;
     this._hasCommittedSinceStart = false;
+    this._queuedRequest = null;
+    this._activeRequest?.abortController.abort();
+    this._activeRequest = null;
   }
 
   /** Stop and release resources. */
@@ -183,32 +192,112 @@ export class PlaybackEngine {
       }
     }
 
-    // --- PHASE 2: COMMIT ---
-    if (this.opts.getPlayState() === "buffering") {
-      this.opts.onPlayStateChange("playing");
-    }
-
     const snapshot = createSnapshot(
       this.opts.timelineName,
       targetTimeInt,
       targetTimeReal
     );
-
-    // Commit snapshot to manager state
-    this.opts.commitSnapshot(snapshot);
-    this._hasCommittedSinceStart = true;
-
-    // Notify all subscribers
-    for (const sub of subscribers.values()) {
-      try {
-        sub.renderAt(snapshot);
-      } catch (err) {
-        console.error(`Subscriber "${sub.id}" renderAt error:`, err);
-      }
-    }
+    this.enqueueCommit(snapshot);
 
     this._animationId = requestAnimationFrame(this.tick);
   };
+
+  private enqueueCommit(snapshot: TimeSnapshot) {
+    if (!this._activeRequest) {
+      this.startCommit(snapshot);
+      return;
+    }
+
+    if (!this._queuedRequest) {
+      this._queuedRequest = snapshot;
+      return;
+    }
+
+    this._queuedRequest = snapshot;
+    this._activeRequest.abortController.abort();
+  }
+
+  private startCommit(snapshot: TimeSnapshot) {
+    const abortController = new AbortController();
+    this._activeRequest = {
+      snapshot,
+      abortController,
+    };
+    const subscribers = this.opts.getSubscribers();
+    const context: TimelineRenderContext = {
+      reason: "play",
+      abortSignal: abortController.signal,
+      allowStaleDrop: true,
+    };
+
+    const finalize = () => {
+      const queuedRequest = this._queuedRequest;
+      this._activeRequest = null;
+      this._queuedRequest = null;
+      if (queuedRequest && this._isRunning) {
+        this.startCommit(queuedRequest);
+      }
+    };
+
+    const commitSnapshot = () => {
+      if (abortController.signal.aborted) {
+        finalize();
+        return;
+      }
+
+      if (this.opts.getPlayState() === "buffering") {
+        this.opts.onPlayStateChange("playing");
+      }
+
+      this.opts.commitSnapshot(snapshot);
+      this._hasCommittedSinceStart = true;
+
+      for (const sub of subscribers.values()) {
+        try {
+          sub.renderAt(snapshot, context);
+        } catch (err) {
+          console.error(`Subscriber "${sub.id}" renderAt error:`, err);
+        }
+      }
+
+      finalize();
+    };
+
+    const asyncPrepares: Promise<void>[] = [];
+    for (const sub of subscribers.values()) {
+      if (!sub.capabilities?.critical || !sub.prepareAt) {
+        continue;
+      }
+
+      try {
+        const result = sub.prepareAt(snapshot, context);
+        if (
+          result &&
+          typeof (result as PromiseLike<void>).then === "function"
+        ) {
+          asyncPrepares.push(Promise.resolve(result));
+        }
+      } catch (err) {
+        console.error(`Subscriber "${sub.id}" prepareAt error:`, err);
+      }
+    }
+
+    if (!asyncPrepares.length) {
+      commitSnapshot();
+      return;
+    }
+
+    void Promise.all(asyncPrepares)
+      .then(() => {
+        commitSnapshot();
+      })
+      .catch((error) => {
+        if (!abortController.signal.aborted) {
+          console.error("Failed to prepare playback snapshot", error);
+        }
+        finalize();
+      });
+  }
 }
 
 function normalizeLoopMode(loop: boolean | LoopMode | undefined): LoopMode {

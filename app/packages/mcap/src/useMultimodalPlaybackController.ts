@@ -104,6 +104,14 @@ type UseMultimodalPlaybackControllerResult = {
   panelStates: Record<string, MultimodalPlaybackPanelState>;
 };
 
+type TimelineBufferedRangesSnapshot = {
+  hasFullTimeline: boolean;
+  ranges: Buffers;
+  streamIdsKey: string;
+  timelineTimestamps: number[] | null;
+  versionKey: string;
+};
+
 const MULTIMODAL_PREFETCH_WINDOW_PADDING_BEHIND_NS =
   MULTIMODAL_BUFFER_WINDOW_SIZE_NS;
 const MULTIMODAL_PREFETCH_WINDOW_PADDING_AHEAD_NS =
@@ -127,6 +135,43 @@ type MultimodalBootstrapPlan = {
   nonCriticalSupportStreamIds: string[];
   transformStreamIds: string[];
   locationStreamIds: string[];
+};
+
+type PlaybackRenderStreamPlan = {
+  streamId: string;
+  sample: MultimodalTimelineSample | null;
+};
+
+type PlaybackImagePanelPlan = {
+  type: "image";
+  panel: MultimodalPanelLayoutState;
+  render: PlaybackRenderStreamPlan | null;
+  support: PlaybackRenderStreamPlan[];
+};
+
+type PlaybackScenePanelPlan = {
+  type: "3d";
+  panel: MultimodalPanelLayoutState;
+  render: PlaybackRenderStreamPlan[];
+  location: PlaybackRenderStreamPlan | null;
+  targetFrameId: string | null;
+};
+
+type PlaybackFramePlan = {
+  key: string;
+  targetTimestampNs: number;
+  visiblePanels: MultimodalPanelLayoutState[];
+  anchorRenderStreamIds: string[];
+  criticalSupportStreamIds: string[];
+  criticalDependencyStreamIds: string[];
+  transformStreamIds: string[];
+  requiresTransformGraph: boolean;
+  panels: Array<PlaybackImagePanelPlan | PlaybackScenePanelPlan>;
+};
+
+type PreparedPlaybackFrame = {
+  snapshotTimeNs: number;
+  panelStates: Record<string, Partial<MultimodalPlaybackPanelState>>;
 };
 
 function createInitialPanelState(
@@ -240,6 +285,42 @@ function getPlaybackPanel(
   return getActivePanel(panels, activePanelId) ?? getHeroPanel(panels);
 }
 
+function getVisiblePanels(
+  workspaceState: MultimodalWorkspaceState | null
+): MultimodalPanelLayoutState[] {
+  if (!workspaceState) {
+    return [];
+  }
+
+  if (workspaceState.maximizedPanelId) {
+    const maximizedPanel =
+      workspaceState.panelsById[workspaceState.maximizedPanelId] ?? null;
+    return maximizedPanel ? [maximizedPanel] : [];
+  }
+
+  return workspaceState.panels;
+}
+
+function getPanelVisibilityKey(
+  workspaceState: MultimodalWorkspaceState | null
+): string {
+  return getVisiblePanels(workspaceState)
+    .map((panel) => {
+      return [
+        panel.panelId,
+        panel.archetype,
+        panel.renderStreamId ?? "",
+        panel.visibleStreamIds.join(","),
+        panel.frameConfig.fixedFrameId ?? "",
+        panel.frameConfig.displayFrameId ?? "",
+        panel.frameConfig.followMode,
+        panel.frameConfig.locationStreamId ?? "",
+        panel.imageConfig?.project3dOverlays ? "project-3d" : "no-project-3d",
+      ].join("|");
+    })
+    .join("\n");
+}
+
 function getPanelAggregationFrameId(panel: MultimodalPanelLayoutState) {
   return panel.frameConfig.fixedFrameId ?? panel.frameConfig.displayFrameId;
 }
@@ -338,6 +419,7 @@ function getBootstrapPlan(
     workspaceState.panels,
     workspaceState.activePanelId
   );
+  const visiblePanels = getVisiblePanels(workspaceState);
   if (!playbackPanel) {
     return {
       anchorTimeNs: 0,
@@ -358,13 +440,26 @@ function getBootstrapPlan(
   const imageSupportStreamIds = workspaceState.panels
     .filter((panel) => panel.archetype === "image")
     .flatMap((panel) => getTrackedImageSupportStreamIds(catalog, panel));
-  const criticalRenderStreamIds =
-    playbackPanel.archetype === "3d"
-      ? playbackPanel.visibleStreamIds.slice(0, 1)
-      : playbackPanel.renderStreamId
-      ? [playbackPanel.renderStreamId]
-      : [];
-  const criticalSupportStreamIds: string[] = [];
+  const criticalRenderStreamIds = Array.from(
+    new Set(
+      visiblePanels.flatMap((panel) =>
+        panel.archetype === "image"
+          ? panel.renderStreamId
+            ? [panel.renderStreamId]
+            : []
+          : panel.visibleStreamIds
+      )
+    )
+  );
+  const criticalSupportStreamIds = Array.from(
+    new Set(
+      visiblePanels.flatMap((panel) =>
+        panel.archetype === "image"
+          ? getTrackedImageSupportStreamIds(catalog, panel)
+          : []
+      )
+    )
+  );
   const nonCriticalRenderStreamIds = Array.from(
     new Set(
       [
@@ -383,21 +478,50 @@ function getBootstrapPlan(
     )
   );
 
-  const needsTransforms =
-    playbackPanel.archetype === "3d"
-      ? Boolean(getPanelAggregationFrameId(playbackPanel)) ||
-        Boolean(getPanelDisplayFrameId(playbackPanel)) ||
-        playbackPanel.frameConfig.followMode !== "off" ||
-        playbackPanel.visibleStreamIds.some((streamId) => {
-          const stream = catalog.streams.find(
-            (candidate) => candidate.streamId === streamId
-          );
-          return Boolean(stream?.frameId);
-        })
-      : false;
-  const locationStreamIds = playbackPanel.frameConfig.locationStreamId
-    ? [playbackPanel.frameConfig.locationStreamId]
-    : [];
+  const streamLookup = new Map(
+    catalog.streams.map((stream) => [stream.streamId, stream])
+  );
+  const needsTransforms = visiblePanels.some((panel) => {
+    if (
+      panel.archetype === "3d" &&
+      (Boolean(getPanelAggregationFrameId(panel)) ||
+        Boolean(getPanelDisplayFrameId(panel)) ||
+        panel.frameConfig.followMode !== "off")
+    ) {
+      return true;
+    }
+
+    if (
+      panel.archetype === "image" &&
+      isImage3dOverlayProjectionEnabled(panel) &&
+      panel.visibleStreamIds.some((streamId) => {
+        return (
+          streamLookup.get(streamId)?.schemaName === "foxglove.SceneUpdate"
+        );
+      })
+    ) {
+      return true;
+    }
+
+    const trackedStreamIds =
+      panel.archetype === "image"
+        ? [
+            ...(panel.renderStreamId ? [panel.renderStreamId] : []),
+            ...getTrackedImageSupportStreamIds(catalog, panel),
+          ]
+        : panel.visibleStreamIds;
+
+    return trackedStreamIds.some((streamId) => {
+      return Boolean(streamLookup.get(streamId)?.frameId);
+    });
+  });
+  const locationStreamIds = Array.from(
+    new Set(
+      visiblePanels
+        .map((panel) => panel.frameConfig.locationStreamId)
+        .filter((value): value is string => Boolean(value))
+    )
+  );
 
   return {
     anchorTimeNs: 0,
@@ -536,6 +660,15 @@ function findPlaybackSampleForNearestSync(
   return samples[0] ?? null;
 }
 
+function isTimestampCoveredByBuffers(
+  buffers: Buffers,
+  timestampNs: number
+): boolean {
+  return buffers.some((range) => {
+    return range[0] <= timestampNs && timestampNs <= range[1];
+  });
+}
+
 function markPerformance(name: string) {
   if (typeof performance === "undefined" || !performance.mark) {
     return;
@@ -571,12 +704,28 @@ const EMPTY_TRANSFORM_GRAPH_SNAPSHOT: TransformGraphSnapshot = {
   revision: 0,
   resolveMatrix: () => null,
 };
+const EMPTY_BUFFER_SNAPSHOT: TimelineBufferedRangesSnapshot = {
+  hasFullTimeline: false,
+  ranges: [],
+  streamIdsKey: "",
+  timelineTimestamps: null,
+  versionKey: "",
+};
+const STALE_RENDER_ABORT = new Error("stale multimodal render");
+
+function isStaleRenderAbort(error: unknown) {
+  return error === STALE_RENDER_ABORT;
+}
 
 export function useMultimodalPlaybackController(
   catalog: MultimodalCatalog | null,
   workspaceState: MultimodalWorkspaceState | null
 ): UseMultimodalPlaybackControllerResult {
   const panels = workspaceState?.panels ?? [];
+  const visiblePanelsKey = React.useMemo(
+    () => getPanelVisibilityKey(workspaceState),
+    [workspaceState]
+  );
   const renderStreamIds = React.useMemo(() => {
     return Array.from(
       new Set(
@@ -646,10 +795,12 @@ export function useMultimodalPlaybackController(
   const criticalTrackedStreamIds = React.useMemo(() => {
     return dedupeStrings([
       ...timelineRenderStreamIds,
+      ...(bootstrapPlan?.criticalSupportStreamIds ?? []),
       ...(bootstrapPlan?.transformStreamIds ?? []),
       ...(bootstrapPlan?.locationStreamIds ?? []),
     ]);
   }, [
+    bootstrapPlan?.criticalSupportStreamIds,
     bootstrapPlan?.locationStreamIds,
     bootstrapPlan?.transformStreamIds,
     timelineRenderStreamIds,
@@ -752,10 +903,33 @@ export function useMultimodalPlaybackController(
     new Map<string, MultimodalTimelineSample[]>()
   );
   const streamTimestampsRef = React.useRef(new Map<string, number[]>());
+  const bufferedRangesSnapshotRef =
+    React.useRef<TimelineBufferedRangesSnapshot>(EMPTY_BUFFER_SNAPSHOT);
   const transformGraphCacheRef =
     React.useRef<MultimodalTransformGraphCache | null>(null);
-  const renderGenerationRef = React.useRef(0);
+  const framePlanCacheRef = React.useRef<PlaybackFramePlan | null>(null);
+  const preparedFrameRef = React.useRef<PreparedPlaybackFrame | null>(null);
+  const latestPreparedFrameTokenRef = React.useRef(0);
+  const mergedSceneFrameCacheRef = React.useRef(
+    new Map<
+      string,
+      {
+        frame: Scene3dFrame | null;
+        colorMode: "intensity" | "rgb";
+      }
+    >()
+  );
+  const projectedSceneOverlayCacheRef = React.useRef(
+    new Map<
+      string,
+      {
+        overlays: Image2dOverlayPrimitive[];
+        warnings: string[];
+      }
+    >()
+  );
   const currentRenderTimeRef = React.useRef(0);
+  const latestDirectRenderTokenRef = React.useRef(0);
   const didMarkFirstPanelRenderRef = React.useRef(false);
   const didMarkFirstUsefulPaintRef = React.useRef(false);
   const didMarkFullTimelineReadyRef = React.useRef(false);
@@ -770,6 +944,11 @@ export function useMultimodalPlaybackController(
       rawCachesRef.current.forEach((cache) => cache.dispose());
       decodedImageAnnotationsCacheRef.current.clear();
       decodedCameraCalibrationCacheRef.current.clear();
+      framePlanCacheRef.current = null;
+      preparedFrameRef.current = null;
+      latestPreparedFrameTokenRef.current += 1;
+      mergedSceneFrameCacheRef.current.clear();
+      projectedSceneOverlayCacheRef.current.clear();
     };
   }, []);
 
@@ -801,7 +980,14 @@ export function useMultimodalPlaybackController(
     navSatAnchorRef.current.clear();
     streamSamplesRef.current.clear();
     streamTimestampsRef.current.clear();
+    bufferedRangesSnapshotRef.current = EMPTY_BUFFER_SNAPSHOT;
     transformGraphCacheRef.current = null;
+    framePlanCacheRef.current = null;
+    preparedFrameRef.current = null;
+    latestPreparedFrameTokenRef.current += 1;
+    mergedSceneFrameCacheRef.current.clear();
+    projectedSceneOverlayCacheRef.current.clear();
+    latestDirectRenderTokenRef.current += 1;
     setIsBootstrapping(false);
     didMarkFirstPanelRenderRef.current = false;
     didMarkFirstUsefulPaintRef.current = false;
@@ -985,6 +1171,31 @@ export function useMultimodalPlaybackController(
     ]
   );
 
+  const getStreamBufferVersion = React.useCallback(
+    (streamId: string) => {
+      const descriptor = getStreamDescriptor(streamId);
+      if (!descriptor) {
+        return 0;
+      }
+
+      if (isImageStream(descriptor)) {
+        return getOrCreateImageCache(streamId)?.getVersion() ?? 0;
+      }
+
+      if (is3dStream(descriptor)) {
+        return getOrCreateRenderable3dCache(streamId)?.getVersion() ?? 0;
+      }
+
+      return getOrCreateRawCache(streamId)?.getVersion() ?? 0;
+    },
+    [
+      getOrCreateImageCache,
+      getOrCreateRawCache,
+      getOrCreateRenderable3dCache,
+      getStreamDescriptor,
+    ]
+  );
+
   const primeBootstrapResponse = React.useCallback(
     (response: MultimodalRawBufferResponse) => {
       response.streams.forEach((stream) => {
@@ -1091,6 +1302,164 @@ export function useMultimodalPlaybackController(
       return cache.getSnapshot(transformStreamIds, targetTimestampNs);
     },
     [getTransformSampleSet, transformStreamIds]
+  );
+
+  const getPlaybackFramePlan = React.useCallback(
+    (targetTimestampNs: number): PlaybackFramePlan | null => {
+      const currentCatalog = catalogRef.current;
+      const currentWorkspaceState = workspaceStateRef.current;
+      if (!currentCatalog || !currentWorkspaceState) {
+        return null;
+      }
+
+      const nextVisiblePanels = getVisiblePanels(currentWorkspaceState);
+      const anchorRenderStreamIds = dedupeStrings(
+        nextVisiblePanels.flatMap((panel) =>
+          panel.archetype === "image"
+            ? panel.renderStreamId
+              ? [panel.renderStreamId]
+              : []
+            : panel.visibleStreamIds
+        )
+      );
+      const criticalSupportStreamIds = dedupeStrings(
+        nextVisiblePanels.flatMap((panel) =>
+          panel.archetype === "image"
+            ? getTrackedImageSupportStreamIds(currentCatalog, panel)
+            : []
+        )
+      );
+      const locationStreamIds = dedupeStrings(
+        nextVisiblePanels
+          .map((panel) => panel.frameConfig.locationStreamId)
+          .filter((value): value is string => Boolean(value))
+      );
+      const streamLookup = new Map(
+        currentCatalog.streams.map((stream) => [stream.streamId, stream])
+      );
+      const requiresTransformGraph = nextVisiblePanels.some((panel) => {
+        if (
+          panel.archetype === "3d" &&
+          (Boolean(getPanelDisplayFrameId(panel)) ||
+            panel.frameConfig.followMode !== "off")
+        ) {
+          return true;
+        }
+
+        if (
+          panel.archetype === "image" &&
+          isImage3dOverlayProjectionEnabled(panel)
+        ) {
+          return panel.visibleStreamIds.some((streamId) => {
+            return (
+              streamLookup.get(streamId)?.schemaName === "foxglove.SceneUpdate"
+            );
+          });
+        }
+
+        return false;
+      });
+      const frameTransformStreamIds =
+        requiresTransformGraph && transformStreamIds.length
+          ? transformStreamIds
+          : [];
+      const relevantVersionStreamIds = dedupeStrings([
+        ...anchorRenderStreamIds,
+        ...criticalSupportStreamIds,
+        ...locationStreamIds,
+        ...frameTransformStreamIds,
+      ]);
+      const versionKey = relevantVersionStreamIds
+        .map((streamId) => `${streamId}:${getStreamBufferVersion(streamId)}`)
+        .join("::");
+      const cacheKey = [visiblePanelsKey, targetTimestampNs, versionKey].join(
+        "::"
+      );
+      const cachedPlan = framePlanCacheRef.current;
+      if (cachedPlan?.key === cacheKey) {
+        return cachedPlan;
+      }
+
+      const panels: Array<PlaybackImagePanelPlan | PlaybackScenePanelPlan> =
+        nextVisiblePanels.map((panel) => {
+          if (panel.archetype === "image") {
+            const render =
+              panel.renderStreamId !== null
+                ? {
+                    streamId: panel.renderStreamId,
+                    sample: findPlaybackSampleForNearestSync(
+                      getCachedSyncSamples(panel.renderStreamId),
+                      targetTimestampNs
+                    ),
+                  }
+                : null;
+            const support = getTrackedImageSupportStreamIds(
+              currentCatalog,
+              panel
+            ).map((streamId) => ({
+              streamId,
+              sample: findPlaybackSampleForNearestSync(
+                getCachedSyncSamples(streamId),
+                targetTimestampNs
+              ),
+            }));
+
+            return {
+              type: "image",
+              panel,
+              render,
+              support,
+            };
+          }
+
+          return {
+            type: "3d",
+            panel,
+            render: panel.visibleStreamIds.map((streamId) => ({
+              streamId,
+              sample: findPlaybackSampleForNearestSync(
+                getCachedSyncSamples(streamId),
+                targetTimestampNs
+              ),
+            })),
+            location: panel.frameConfig.locationStreamId
+              ? {
+                  streamId: panel.frameConfig.locationStreamId,
+                  sample: findPlaybackSampleForNearestSync(
+                    getCachedSyncSamples(panel.frameConfig.locationStreamId),
+                    targetTimestampNs
+                  ),
+                }
+              : null,
+            targetFrameId: getPanelDisplayFrameId(panel),
+          };
+        });
+
+      const plan = {
+        key: cacheKey,
+        targetTimestampNs,
+        visiblePanels: nextVisiblePanels,
+        anchorRenderStreamIds,
+        criticalSupportStreamIds,
+        criticalDependencyStreamIds: dedupeStrings([
+          ...anchorRenderStreamIds,
+          ...criticalSupportStreamIds,
+          ...locationStreamIds,
+          ...frameTransformStreamIds,
+        ]),
+        transformStreamIds: frameTransformStreamIds,
+        requiresTransformGraph,
+        panels,
+      };
+      framePlanCacheRef.current = plan;
+      return plan;
+    },
+    [
+      getCachedSyncSamples,
+      getStreamBufferVersion,
+      transformStreamIds,
+      visiblePanelsKey,
+    ]
   );
 
   const commitPanelStates = React.useCallback(
@@ -1277,10 +1646,11 @@ export function useMultimodalPlaybackController(
     [backgroundTrackedStreamIds, criticalTrackedStreamIds, ensureStreamRange]
   );
 
-  const getBufferReadiness = React.useCallback(
+  const computeBufferReadinessDirect = React.useCallback(
     (targetTimestampNs: number): BufferReadiness => {
       const currentCatalog = catalogRef.current;
-      if (!currentCatalog || !timelineRenderStreamIds.length) {
+      const framePlan = getPlaybackFramePlan(targetTimestampNs);
+      if (!currentCatalog || !framePlan) {
         return "ready";
       }
 
@@ -1289,15 +1659,14 @@ export function useMultimodalPlaybackController(
       );
       let sawMissing = false;
 
-      for (const streamId of timelineRenderStreamIds) {
+      for (const streamId of framePlan.anchorRenderStreamIds) {
         const stream = streamLookup.get(streamId);
         if (!stream) {
           continue;
         }
 
-        const samples = getCachedSyncSamples(streamId);
         const selectedSample = findPlaybackSampleForNearestSync(
-          samples,
+          getCachedSyncSamples(streamId),
           targetTimestampNs
         );
         if (!selectedSample) {
@@ -1324,22 +1693,83 @@ export function useMultimodalPlaybackController(
         }
       }
 
+      for (const streamId of framePlan.criticalSupportStreamIds) {
+        const stream = streamLookup.get(streamId);
+        if (!stream) {
+          continue;
+        }
+
+        const selectedSample = findPlaybackSampleForNearestSync(
+          getCachedSyncSamples(streamId),
+          targetTimestampNs
+        );
+        if (!selectedSample) {
+          continue;
+        }
+
+        const readiness = is3dStream(stream)
+          ? getOrCreateRenderable3dCache(streamId)?.getMessageReadiness(
+              selectedSample.logTimeNs
+            ) ?? "missing"
+          : getOrCreateRawCache(streamId)?.getTimeReadiness(
+              selectedSample.logTimeNs
+            ) ?? "missing";
+
+        if (readiness === "loading") {
+          return "loading";
+        }
+
+        if (readiness === "missing") {
+          sawMissing = true;
+        }
+      }
+
+      for (const streamId of framePlan.transformStreamIds) {
+        const readiness =
+          getOrCreateRawCache(streamId)?.getTimeReadiness(targetTimestampNs) ??
+          "missing";
+        if (readiness === "loading") {
+          return "loading";
+        }
+        if (readiness === "missing") {
+          sawMissing = true;
+        }
+      }
+
       return sawMissing ? "missing" : "ready";
     },
     [
+      getPlaybackFramePlan,
       getCachedSyncSamples,
       getOrCreateImageCache,
+      getOrCreateRawCache,
       getOrCreateRenderable3dCache,
-      timelineRenderStreamIds,
     ]
   );
-  const getBufferedRanges = React.useCallback((): Buffers => {
+
+  const getBufferedRangesSnapshot = React.useCallback(() => {
     if (!timelineRenderStreamIds.length) {
-      return [];
+      return EMPTY_BUFFER_SNAPSHOT;
+    }
+
+    const versionKey = timelineRenderStreamIds
+      .map((streamId) => `${streamId}:${getStreamBufferVersion(streamId)}`)
+      .join("::");
+    const timelineTimestamps = hasFullTimeline
+      ? timeline?.timestampsNs ?? []
+      : null;
+    const cachedSnapshot = bufferedRangesSnapshotRef.current;
+    if (
+      cachedSnapshot.streamIdsKey === timelineRenderStreamIdsKey &&
+      cachedSnapshot.versionKey === versionKey &&
+      cachedSnapshot.hasFullTimeline === hasFullTimeline &&
+      cachedSnapshot.timelineTimestamps === timelineTimestamps
+    ) {
+      return cachedSnapshot;
     }
 
     const timestampsNs = hasFullTimeline
-      ? timeline?.timestampsNs ?? []
+      ? timelineTimestamps ?? []
       : Array.from(
           new Set(
             timelineRenderStreamIds.flatMap((streamId) =>
@@ -1348,698 +1778,832 @@ export function useMultimodalPlaybackController(
           )
         ).sort((left, right) => left - right);
 
+    let ranges: Buffers;
     if (!timestampsNs.length) {
-      return getBufferReadiness(0) === "ready"
-        ? ([[0, timelineDurationNs]] as Buffers)
-        : [];
+      ranges =
+        computeBufferReadinessDirect(0) === "ready"
+          ? ([[0, timelineDurationNs]] as Buffers)
+          : [];
+    } else {
+      const readyRanges: Array<readonly [number, number]> = [];
+      const segmentStarts = [0, ...timestampsNs];
+
+      segmentStarts.forEach((segmentStartNs, index) => {
+        const segmentEndNs =
+          timestampsNs[index] ?? Math.max(timelineDurationNs, segmentStartNs);
+        if (segmentEndNs < segmentStartNs) {
+          return;
+        }
+
+        if (computeBufferReadinessDirect(segmentStartNs) === "ready") {
+          readyRanges.push([segmentStartNs, segmentEndNs]);
+        }
+      });
+
+      ranges = getMergedBufferedRanges(readyRanges);
     }
 
-    const readyRanges: Array<readonly [number, number]> = [];
-    const segmentStarts = [0, ...timestampsNs];
-
-    segmentStarts.forEach((segmentStartNs, index) => {
-      const segmentEndNs =
-        timestampsNs[index] ?? Math.max(timelineDurationNs, segmentStartNs);
-      if (segmentEndNs < segmentStartNs) {
-        return;
-      }
-
-      if (getBufferReadiness(segmentStartNs) === "ready") {
-        readyRanges.push([segmentStartNs, segmentEndNs]);
-      }
-    });
-
-    return getMergedBufferedRanges(readyRanges);
+    const snapshot = {
+      hasFullTimeline,
+      ranges,
+      streamIdsKey: timelineRenderStreamIdsKey,
+      timelineTimestamps,
+      versionKey,
+    };
+    bufferedRangesSnapshotRef.current = snapshot;
+    return snapshot;
   }, [
+    computeBufferReadinessDirect,
     getCachedSyncTimestamps,
-    getBufferReadiness,
+    getStreamBufferVersion,
     hasFullTimeline,
-    timelineRenderStreamIds,
     timeline?.timestampsNs,
     timelineDurationNs,
+    timelineRenderStreamIds,
+    timelineRenderStreamIdsKey,
   ]);
 
-  const renderFrame = React.useCallback(
-    async (targetTimestamp: number) => {
-      const currentCatalog = catalogRef.current;
-      const currentWorkspaceState = workspaceStateRef.current;
-      if (!currentCatalog || !currentWorkspaceState) {
-        return;
+  const getBufferReadiness = React.useCallback(
+    (targetTimestampNs: number): BufferReadiness => {
+      if (
+        isTimestampCoveredByBuffers(
+          getBufferedRangesSnapshot().ranges,
+          targetTimestampNs
+        )
+      ) {
+        return "ready";
       }
 
-      currentRenderTimeRef.current = targetTimestamp;
-      const renderGeneration = renderGenerationRef.current + 1;
-      renderGenerationRef.current = renderGeneration;
+      return computeBufferReadinessDirect(targetTimestampNs);
+    },
+    [computeBufferReadinessDirect, getBufferedRangesSnapshot]
+  );
 
+  const getBufferedRanges = React.useCallback((): Buffers => {
+    return getBufferedRangesSnapshot().ranges;
+  }, [getBufferedRangesSnapshot]);
+
+  const buildPreparedFrame = React.useCallback(
+    async (
+      targetTimestampNs: number,
+      options: {
+        abortSignal?: AbortSignal;
+      } = {}
+    ): Promise<PreparedPlaybackFrame> => {
+      const currentCatalog = catalogRef.current;
+      const framePlan = getPlaybackFramePlan(targetTimestampNs);
+      if (!currentCatalog || !framePlan) {
+        return {
+          snapshotTimeNs: targetTimestampNs,
+          panelStates: {},
+        };
+      }
+
+      const throwIfRenderStale = () => {
+        if (!mountedRef.current || options.abortSignal?.aborted) {
+          throw STALE_RENDER_ABORT;
+        }
+      };
+
+      throwIfRenderStale();
       const streamLookup = new Map(
         currentCatalog.streams.map((stream) => [stream.streamId, stream])
       );
-      const shouldBuildTransformGraph = currentWorkspaceState.panels.some(
-        (panel) => {
-          return (
-            (panel.archetype === "3d" &&
-              (Boolean(getPanelAggregationFrameId(panel)) ||
-                Boolean(getPanelDisplayFrameId(panel)) ||
-                panel.frameConfig.followMode !== "off")) ||
-            (panel.archetype === "image" &&
-              isImage3dOverlayProjectionEnabled(panel) &&
-              panel.visibleStreamIds.some((streamId) => {
-                const stream = streamLookup.get(streamId);
-                return stream?.schemaName === "foxglove.SceneUpdate";
-              }))
-          );
-        }
-      );
       const transformGraphSnapshot =
-        shouldBuildTransformGraph && transformStreamIds.length
-          ? getTransformGraphSnapshot(targetTimestamp)
+        framePlan.requiresTransformGraph && framePlan.transformStreamIds.length
+          ? getTransformGraphSnapshot(targetTimestampNs)
           : EMPTY_TRANSFORM_GRAPH_SNAPSHOT;
       const resolveTransform = transformGraphSnapshot.resolveMatrix;
 
-      const nextPanelStates = Object.fromEntries(
-        await Promise.all(
-          currentWorkspaceState.panels.map(async (panel) => {
-            try {
-              if (panel.archetype === "image") {
-                if (!panel.renderStreamId) {
-                  return [
-                    panel.panelId,
-                    {
-                      status: "empty",
-                      statusDetail: null,
-                      imageFrame: null,
-                      sceneFrame: null,
-                      messageIds: [],
-                      warnings: [],
-                      followPose: null,
-                      logTimeNs: null,
-                      publishTimeNs: null,
-                      transformRevision: null,
-                    },
-                  ] as const;
+      const nextPanelEntries = await Promise.all(
+        framePlan.panels.map(async (panelPlan) => {
+          try {
+            throwIfRenderStale();
+
+            if (panelPlan.type === "image") {
+              const panel = panelPlan.panel;
+              if (!panelPlan.render || !panel.renderStreamId) {
+                return [
+                  panel.panelId,
+                  {
+                    status: "empty",
+                    statusDetail: null,
+                    imageFrame: null,
+                    sceneFrame: null,
+                    messageIds: [],
+                    warnings: [],
+                    followPose: null,
+                    logTimeNs: null,
+                    publishTimeNs: null,
+                    transformRevision: null,
+                  },
+                ] as const;
+              }
+
+              const selectedSample = panelPlan.render.sample;
+              if (!selectedSample) {
+                return [
+                  panel.panelId,
+                  {
+                    status: "empty",
+                    statusDetail:
+                      "No synchronized image frame is available yet",
+                    imageFrame: null,
+                    sceneFrame: null,
+                    messageIds: [],
+                    warnings: [],
+                    followPose: null,
+                    transformRevision: null,
+                  },
+                ] as const;
+              }
+
+              const currentPanelState = panelStatesRef.current[panel.panelId];
+              const cache = getOrCreateImageCache(panelPlan.render.streamId);
+              const message = cache?.getMessageForLogTime(
+                selectedSample.logTimeNs
+              );
+              if (!cache || !message) {
+                if (hasRenderableContent(currentPanelState)) {
+                  return [panel.panelId, {}] as const;
                 }
 
-                const samples = getCachedSyncSamples(panel.renderStreamId);
-                const selectedSample = findPlaybackSampleForNearestSync(
-                  samples,
-                  targetTimestamp
-                );
-                if (!selectedSample) {
-                  return [
-                    panel.panelId,
-                    {
-                      status: "empty",
-                      statusDetail:
-                        "No synchronized image frame is available yet",
-                      imageFrame: null,
-                      sceneFrame: null,
-                      messageIds: [],
-                      warnings: [],
-                      followPose: null,
-                      transformRevision: null,
-                    },
-                  ] as const;
+                return [
+                  panel.panelId,
+                  {
+                    status: "loading",
+                    statusDetail: `Buffering image stream ${panelPlan.render.streamId}`,
+                    imageFrame: null,
+                    sceneFrame: null,
+                    messageIds: [],
+                    warnings: [],
+                    followPose: null,
+                    transformRevision: null,
+                  },
+                ] as const;
+              }
+
+              void cache.warmMessagesAroundLogTime(message.logTimeNs, {
+                aheadCount: MULTIMODAL_IMAGE_DECODE_LOOKAHEAD_COUNT,
+              });
+              const framePromise = cache.decodeMessage(message);
+              const overlays: Image2dOverlayPrimitive[] = [];
+              const warnings: string[] = [];
+              const supportMessageIds: string[] = [];
+              const shouldProject3dOverlays =
+                isImage3dOverlayProjectionEnabled(panel);
+              const selectedSceneUpdates: Array<{
+                message: MultimodalRawMessage;
+                streamId: string;
+              }> = [];
+              let calibration: DecodedFoxgloveCameraCalibration | null = null;
+              let calibrationMessageId: string | null = null;
+
+              for (const supportPlan of panelPlan.support) {
+                const descriptor = streamLookup.get(supportPlan.streamId);
+                if (!descriptor || !supportPlan.sample) {
+                  continue;
                 }
 
-                const currentPanelState = panelStatesRef.current[panel.panelId];
-                const cache = getOrCreateImageCache(panel.renderStreamId);
-                const message = cache?.getMessageForLogTime(
-                  selectedSample.logTimeNs
-                );
-                if (!cache || !message) {
-                  if (hasRenderableContent(currentPanelState)) {
-                    return [panel.panelId, {}] as const;
-                  }
-
-                  return [
-                    panel.panelId,
-                    {
-                      status: "loading",
-                      statusDetail: `Buffering image stream ${panel.renderStreamId}`,
-                      imageFrame: null,
-                      sceneFrame: null,
-                      messageIds: [],
-                      warnings: [],
-                      followPose: null,
-                      transformRevision: null,
-                    },
-                  ] as const;
-                }
-
-                void cache.warmMessagesAroundLogTime(message.logTimeNs, {
-                  aheadCount: MULTIMODAL_IMAGE_DECODE_LOOKAHEAD_COUNT,
-                });
-                const frame = await cache.decodeMessage(message);
-                const overlays: Image2dOverlayPrimitive[] = [];
-                const warnings: string[] = [];
-                const supportMessageIds: string[] = [];
-                const shouldProject3dOverlays =
-                  isImage3dOverlayProjectionEnabled(panel);
-                const selectedSceneUpdates: Array<{
-                  message: MultimodalRawMessage;
-                  streamId: string;
-                }> = [];
-                let calibration: DecodedFoxgloveCameraCalibration | null = null;
-
-                for (const supportStreamId of panel.visibleStreamIds) {
-                  const descriptor = streamLookup.get(supportStreamId);
-                  if (
-                    !descriptor ||
-                    !shouldTrackImageSupportStream(panel, descriptor)
-                  ) {
-                    continue;
-                  }
-
-                  const supportSamples = getCachedSyncSamples(supportStreamId);
-                  const selectedSupportSample =
-                    findPlaybackSampleForNearestSync(
-                      supportSamples,
-                      targetTimestamp
-                    );
-                  if (!selectedSupportSample) {
-                    continue;
-                  }
-
-                  if (is3dStream(descriptor)) {
-                    const supportCache =
-                      getOrCreateRenderable3dCache(supportStreamId);
-                    const supportMessage = supportCache?.getMessageForLogTime(
-                      selectedSupportSample.logTimeNs
-                    );
-                    if (!supportCache || !supportMessage) {
-                      continue;
-                    }
-
-                    supportMessageIds.push(supportMessage.messageId);
-                    void supportCache.warmMessagesAroundLogTime(
-                      supportMessage.logTimeNs,
-                      {
-                        aheadCount:
-                          MULTIMODAL_POINTCLOUD_DECODE_LOOKAHEAD_COUNT,
-                      }
-                    );
-
-                    if (descriptor.schemaName === "foxglove.SceneUpdate") {
-                      selectedSceneUpdates.push({
-                        message: supportMessage,
-                        streamId: supportStreamId,
-                      });
-                    }
-
-                    continue;
-                  }
-
-                  const supportCache = getOrCreateRawCache(supportStreamId);
+                if (is3dStream(descriptor)) {
+                  const supportCache = getOrCreateRenderable3dCache(
+                    supportPlan.streamId
+                  );
                   const supportMessage = supportCache?.getMessageForLogTime(
-                    selectedSupportSample.logTimeNs
+                    supportPlan.sample.logTimeNs
                   );
                   if (!supportCache || !supportMessage) {
                     continue;
                   }
 
                   supportMessageIds.push(supportMessage.messageId);
-
-                  if (descriptor.schemaName === "foxglove.CameraCalibration") {
-                    let decodedCalibration =
-                      decodedCameraCalibrationCacheRef.current.get(
-                        supportMessage.messageId
-                      );
-                    if (!decodedCalibration) {
-                      decodedCalibration =
-                        decodeFoxgloveCameraCalibrationPayload(
-                          supportMessage.payload
-                        );
-                      decodedCameraCalibrationCacheRef.current.set(
-                        supportMessage.messageId,
-                        decodedCalibration
-                      );
+                  void supportCache.warmMessagesAroundLogTime(
+                    supportMessage.logTimeNs,
+                    {
+                      aheadCount: MULTIMODAL_POINTCLOUD_DECODE_LOOKAHEAD_COUNT,
                     }
-                    calibration = decodedCalibration;
-                    continue;
+                  );
+
+                  if (descriptor.schemaName === "foxglove.SceneUpdate") {
+                    selectedSceneUpdates.push({
+                      message: supportMessage,
+                      streamId: supportPlan.streamId,
+                    });
                   }
 
-                  if (descriptor.schemaName === "foxglove.ImageAnnotations") {
-                    let decodedAnnotations =
-                      decodedImageAnnotationsCacheRef.current.get(
-                        supportMessage.messageId
-                      );
-                    if (!decodedAnnotations) {
-                      decodedAnnotations =
-                        decodeFoxgloveImageAnnotationsPayload(
-                          supportMessage.payload
-                        );
-                      decodedImageAnnotationsCacheRef.current.set(
-                        supportMessage.messageId,
-                        decodedAnnotations
-                      );
-                    }
-
-                    overlays.push(
-                      ...prefixImageOverlays(
-                        decodedAnnotations.overlays,
-                        `${supportStreamId}:${supportMessage.messageId}`
-                      )
-                    );
-                  }
+                  continue;
                 }
 
-                if (
-                  shouldProject3dOverlays &&
-                  selectedSceneUpdates.length > 0 &&
-                  !calibration
-                ) {
-                  warnings.push(
-                    "SceneUpdate overlays require a camera calibration support stream"
+                const supportCache = getOrCreateRawCache(supportPlan.streamId);
+                const supportMessage = supportCache?.getMessageForLogTime(
+                  supportPlan.sample.logTimeNs
+                );
+                if (!supportCache || !supportMessage) {
+                  continue;
+                }
+
+                supportMessageIds.push(supportMessage.messageId);
+
+                if (descriptor.schemaName === "foxglove.CameraCalibration") {
+                  let decodedCalibration =
+                    decodedCameraCalibrationCacheRef.current.get(
+                      supportMessage.messageId
+                    );
+                  if (!decodedCalibration) {
+                    decodedCalibration = decodeFoxgloveCameraCalibrationPayload(
+                      supportMessage.payload
+                    );
+                    decodedCameraCalibrationCacheRef.current.set(
+                      supportMessage.messageId,
+                      decodedCalibration
+                    );
+                  }
+                  calibration = decodedCalibration;
+                  calibrationMessageId = supportMessage.messageId;
+                  continue;
+                }
+
+                if (descriptor.schemaName === "foxglove.ImageAnnotations") {
+                  let decodedAnnotations =
+                    decodedImageAnnotationsCacheRef.current.get(
+                      supportMessage.messageId
+                    );
+                  if (!decodedAnnotations) {
+                    decodedAnnotations = decodeFoxgloveImageAnnotationsPayload(
+                      supportMessage.payload
+                    );
+                    decodedImageAnnotationsCacheRef.current.set(
+                      supportMessage.messageId,
+                      decodedAnnotations
+                    );
+                  }
+
+                  overlays.push(
+                    ...prefixImageOverlays(
+                      decodedAnnotations.overlays,
+                      `${supportPlan.streamId}:${supportMessage.messageId}`
+                    )
                   );
                 }
-
-                if (shouldProject3dOverlays && calibration) {
-                  for (const selectedSceneUpdate of selectedSceneUpdates) {
-                    const supportCache = getOrCreateRenderable3dCache(
-                      selectedSceneUpdate.streamId
-                    );
-                    if (!supportCache) {
-                      continue;
-                    }
-
-                    const calibrationFrameId = calibration.frameId || null;
-                    const projectedScene = calibrationFrameId
-                      ? await supportCache.decodeMessageInFrame(
-                          selectedSceneUpdate.message,
-                          {
-                            targetFrameId: calibrationFrameId,
-                            transformRevision: transformGraphSnapshot.revision,
-                            resolveTransformMatrix: resolveTransform,
-                            warningContext: selectedSceneUpdate.streamId,
-                          }
-                        )
-                      : await supportCache.decodeMessage(
-                          selectedSceneUpdate.message
-                        );
-                    warnings.push(...(projectedScene.warnings ?? []));
-
-                    if (!projectedScene.primitives.length) {
-                      continue;
-                    }
-
-                    overlays.push(
-                      ...prefixImageOverlays(
-                        projectSceneFrameToImageOverlays(
-                          projectedScene,
-                          calibration
-                        ),
-                        `${selectedSceneUpdate.streamId}:${selectedSceneUpdate.message.messageId}`
-                      )
-                    );
-                  }
-                }
-
-                const nextWarnings = dedupeStrings(warnings);
-                const imageFrame: Image2dFrame =
-                  overlays.length || nextWarnings.length
-                    ? {
-                        ...frame,
-                        overlays: overlays.length ? overlays : undefined,
-                        warnings: nextWarnings.length
-                          ? nextWarnings
-                          : undefined,
-                      }
-                    : frame;
-
-                return [
-                  panel.panelId,
-                  {
-                    status: "ready",
-                    statusDetail: null,
-                    imageFrame,
-                    sceneFrame: null,
-                    colorMode: "rgb",
-                    messageIds: dedupeStrings([
-                      message.messageId,
-                      ...supportMessageIds,
-                    ]),
-                    warnings: nextWarnings,
-                    followPose: null,
-                    logTimeNs: selectedSample.logTimeNs,
-                    publishTimeNs: selectedSample.publishTimeNs,
-                    transformRevision: shouldProject3dOverlays
-                      ? transformGraphSnapshot.revision
-                      : 0,
-                    error: null,
-                  },
-                ] as const;
               }
 
-              const warnings: string[] = [];
-              const currentPanelState = panelStatesRef.current[panel.panelId];
-              const missingBufferedStreams: string[] = [];
-              const selectedMessages: Array<{
-                streamId: string;
-                color: string;
-                sample: MultimodalTimelineSample;
-                message: ReturnType<
-                  MultimodalRenderable3dBufferCache["getMessageForLogTime"]
-                >;
-              }> = [];
-              const resolvedFrames: Array<{
-                frame: MultimodalDecodedScene3dFrame;
-                streamId: string;
-                color: string;
-              }> = [];
-              let logTimeNs: number | null = null;
-              let publishTimeNs: number | null = null;
-
-              for (const streamId of panel.visibleStreamIds) {
-                const samples = getCachedSyncSamples(streamId);
-                const selectedSample = findPlaybackSampleForNearestSync(
-                  samples,
-                  targetTimestamp
-                );
-                if (!selectedSample) {
-                  warnings.push(`No frame available for ${streamId}`);
-                  continue;
-                }
-
-                const cache = getOrCreateRenderable3dCache(streamId);
-                const message = cache?.getMessageForLogTime(
-                  selectedSample.logTimeNs
-                );
-                if (!cache || !message) {
-                  warnings.push(`No buffered frame available for ${streamId}`);
-                  missingBufferedStreams.push(streamId);
-                  continue;
-                }
-
-                selectedMessages.push({
-                  streamId,
-                  color: getStreamColor(streamId),
-                  sample: selectedSample,
-                  message,
-                });
-                logTimeNs = Math.max(logTimeNs ?? 0, selectedSample.logTimeNs);
-                publishTimeNs = Math.max(
-                  publishTimeNs ?? 0,
-                  selectedSample.publishTimeNs
-                );
-              }
-
-              const selectedMessageIds = selectedMessages.map(
-                ({ message }) => message!.messageId
-              );
-              const displayFrameId = getPanelDisplayFrameId(panel);
               if (
-                currentPanelState?.status === "ready" &&
-                currentPanelState.sceneFrame &&
-                arraysEqual(currentPanelState.messageIds, selectedMessageIds) &&
-                currentPanelState.logTimeNs === logTimeNs &&
-                currentPanelState.publishTimeNs === publishTimeNs &&
-                currentPanelState.transformRevision ===
-                  transformGraphSnapshot.revision &&
-                (currentPanelState.sceneFrame.frameId ?? null) ===
-                  (displayFrameId ?? null) &&
-                currentPanelState.followPose === null &&
-                panel.frameConfig.followMode === "off" &&
-                !currentPanelState.warnings.length
+                shouldProject3dOverlays &&
+                selectedSceneUpdates.length > 0 &&
+                !calibration
               ) {
-                return [panel.panelId, {}] as const;
+                warnings.push(
+                  "SceneUpdate overlays require a camera calibration support stream"
+                );
               }
 
-              for (const selectedMessage of selectedMessages) {
+              const projectedSceneUpdatePromise =
+                shouldProject3dOverlays && calibration
+                  ? Promise.all(
+                      selectedSceneUpdates.map(async (selectedSceneUpdate) => {
+                        const supportCache = getOrCreateRenderable3dCache(
+                          selectedSceneUpdate.streamId
+                        );
+                        if (!supportCache) {
+                          return null;
+                        }
+
+                        const overlayCacheKey = [
+                          selectedSceneUpdate.streamId,
+                          selectedSceneUpdate.message.messageId,
+                          calibrationMessageId ?? "",
+                          transformGraphSnapshot.revision,
+                          calibration.frameId ?? "",
+                        ].join("::");
+                        const cachedOverlay =
+                          projectedSceneOverlayCacheRef.current.get(
+                            overlayCacheKey
+                          );
+                        if (cachedOverlay) {
+                          return cachedOverlay;
+                        }
+
+                        const calibrationFrameId = calibration.frameId || null;
+                        const projectedScene = calibrationFrameId
+                          ? await supportCache.decodeMessageInFrame(
+                              selectedSceneUpdate.message,
+                              {
+                                targetFrameId: calibrationFrameId,
+                                transformRevision:
+                                  transformGraphSnapshot.revision,
+                                resolveTransformMatrix: resolveTransform,
+                                warningContext: selectedSceneUpdate.streamId,
+                              }
+                            )
+                          : await supportCache.decodeMessage(
+                              selectedSceneUpdate.message
+                            );
+                        throwIfRenderStale();
+
+                        const normalizedProjectedScene =
+                          calibrationFrameId &&
+                          projectedScene.frameId &&
+                          projectedScene.frameId !== calibrationFrameId
+                            ? (() => {
+                                const matrix = resolveTransform(
+                                  projectedScene.frameId,
+                                  calibrationFrameId
+                                );
+                                return matrix
+                                  ? applyTransformToScene3dFrame(
+                                      projectedScene,
+                                      matrix,
+                                      calibrationFrameId
+                                    )
+                                  : projectedScene;
+                              })()
+                            : projectedScene;
+
+                        const result = {
+                          overlays: normalizedProjectedScene.primitives.length
+                            ? prefixImageOverlays(
+                                projectSceneFrameToImageOverlays(
+                                  normalizedProjectedScene,
+                                  calibration
+                                ),
+                                `${selectedSceneUpdate.streamId}:${selectedSceneUpdate.message.messageId}`
+                              )
+                            : [],
+                          warnings: projectedScene.warnings ?? [],
+                        };
+                        projectedSceneOverlayCacheRef.current.set(
+                          overlayCacheKey,
+                          result
+                        );
+                        return result;
+                      })
+                    )
+                  : Promise.resolve([]);
+
+              const [frame, projectedSceneUpdateResults] = await Promise.all([
+                framePromise,
+                projectedSceneUpdatePromise,
+              ]);
+              throwIfRenderStale();
+
+              projectedSceneUpdateResults.forEach((result) => {
+                if (!result) {
+                  return;
+                }
+
+                warnings.push(...result.warnings);
+                overlays.push(...result.overlays);
+              });
+
+              const nextWarnings = dedupeStrings(warnings);
+              const imageFrame: Image2dFrame =
+                overlays.length || nextWarnings.length
+                  ? {
+                      ...frame,
+                      overlays: overlays.length ? overlays : undefined,
+                      warnings: nextWarnings.length ? nextWarnings : undefined,
+                    }
+                  : frame;
+
+              return [
+                panel.panelId,
+                {
+                  status: "ready",
+                  statusDetail: null,
+                  imageFrame,
+                  sceneFrame: null,
+                  colorMode: "rgb",
+                  messageIds: dedupeStrings([
+                    message.messageId,
+                    ...supportMessageIds,
+                  ]),
+                  warnings: nextWarnings,
+                  followPose: null,
+                  logTimeNs: selectedSample.logTimeNs,
+                  publishTimeNs: selectedSample.publishTimeNs,
+                  transformRevision: shouldProject3dOverlays
+                    ? transformGraphSnapshot.revision
+                    : 0,
+                  error: null,
+                },
+              ] as const;
+            }
+
+            const panel = panelPlan.panel;
+            const warnings: string[] = [];
+            const currentPanelState = panelStatesRef.current[panel.panelId];
+            const missingBufferedStreams: string[] = [];
+            const selectedMessages: Array<{
+              streamId: string;
+              color: string;
+              sample: MultimodalTimelineSample;
+              message: NonNullable<
+                ReturnType<
+                  MultimodalRenderable3dBufferCache["getMessageForLogTime"]
+                >
+              >;
+            }> = [];
+            const resolvedFrames: Array<{
+              frame: MultimodalDecodedScene3dFrame;
+              streamId: string;
+              color: string;
+            }> = [];
+            let logTimeNs: number | null = null;
+            let publishTimeNs: number | null = null;
+
+            for (const streamPlan of panelPlan.render) {
+              if (!streamPlan.sample) {
+                warnings.push(`No frame available for ${streamPlan.streamId}`);
+                continue;
+              }
+
+              const cache = getOrCreateRenderable3dCache(streamPlan.streamId);
+              const message = cache?.getMessageForLogTime(
+                streamPlan.sample.logTimeNs
+              );
+              if (!cache || !message) {
+                warnings.push(
+                  `No buffered frame available for ${streamPlan.streamId}`
+                );
+                missingBufferedStreams.push(streamPlan.streamId);
+                continue;
+              }
+
+              selectedMessages.push({
+                streamId: streamPlan.streamId,
+                color: getStreamColor(streamPlan.streamId),
+                sample: streamPlan.sample,
+                message,
+              });
+              logTimeNs = Math.max(logTimeNs ?? 0, streamPlan.sample.logTimeNs);
+              publishTimeNs = Math.max(
+                publishTimeNs ?? 0,
+                streamPlan.sample.publishTimeNs
+              );
+            }
+
+            const selectedMessageIds = selectedMessages.map(
+              ({ message }) => message.messageId
+            );
+            const targetFrameId = panelPlan.targetFrameId;
+            if (
+              currentPanelState?.status === "ready" &&
+              currentPanelState.sceneFrame &&
+              arraysEqual(currentPanelState.messageIds, selectedMessageIds) &&
+              currentPanelState.logTimeNs === logTimeNs &&
+              currentPanelState.publishTimeNs === publishTimeNs &&
+              currentPanelState.transformRevision ===
+                transformGraphSnapshot.revision &&
+              (currentPanelState.sceneFrame.frameId ?? null) ===
+                (targetFrameId ?? null) &&
+              currentPanelState.followPose === null &&
+              panel.frameConfig.followMode === "off" &&
+              !currentPanelState.warnings.length
+            ) {
+              return [panel.panelId, {}] as const;
+            }
+
+            selectedMessages.forEach((selectedMessage) => {
+              const cache = getOrCreateRenderable3dCache(
+                selectedMessage.streamId
+              );
+              if (!cache) {
+                return;
+              }
+
+              void cache.warmMessagesAroundLogTime(
+                selectedMessage.message.logTimeNs,
+                {
+                  aheadCount: MULTIMODAL_POINTCLOUD_DECODE_LOOKAHEAD_COUNT,
+                }
+              );
+            });
+
+            const resolvedFrameResults = await Promise.all(
+              selectedMessages.map(async (selectedMessage) => {
                 const cache = getOrCreateRenderable3dCache(
                   selectedMessage.streamId
                 );
-                if (!cache || !selectedMessage.message) {
-                  continue;
+                if (!cache) {
+                  return null;
                 }
 
-                void cache.warmMessagesAroundLogTime(
-                  selectedMessage.message.logTimeNs,
-                  {
-                    aheadCount: MULTIMODAL_POINTCLOUD_DECODE_LOOKAHEAD_COUNT,
-                  }
-                );
-                const decoded = await cache.decodeMessage(
-                  selectedMessage.message
-                );
-                const aggregationFrameId = getPanelAggregationFrameId(panel);
-                const frame = aggregationFrameId
+                const frame = targetFrameId
                   ? await cache.decodeMessageInFrame(selectedMessage.message, {
-                      targetFrameId: aggregationFrameId,
+                      targetFrameId,
                       transformRevision: transformGraphSnapshot.revision,
                       resolveTransformMatrix: resolveTransform,
                       warningContext: selectedMessage.streamId,
                     })
-                  : decoded;
-                warnings.push(...(frame.warnings ?? []));
-                if (!frame.primitives.length) {
-                  continue;
-                }
+                  : await cache.decodeMessage(selectedMessage.message);
+                throwIfRenderStale();
 
-                resolvedFrames.push({
-                  frame,
+                const normalizedFrame =
+                  targetFrameId &&
+                  frame.frameId &&
+                  frame.frameId !== targetFrameId
+                    ? (() => {
+                        const matrix = resolveTransform(
+                          frame.frameId,
+                          targetFrameId
+                        );
+                        return matrix
+                          ? {
+                              ...frame,
+                              ...applyTransformToScene3dFrame(
+                                frame,
+                                matrix,
+                                targetFrameId
+                              ),
+                            }
+                          : frame;
+                      })()
+                    : frame;
+
+                return {
+                  frame: normalizedFrame,
                   streamId: selectedMessage.streamId,
                   color: selectedMessage.color,
-                });
+                };
+              })
+            );
+
+            resolvedFrameResults.forEach((resolvedFrame) => {
+              if (!resolvedFrame) {
+                return;
               }
 
-              if (!resolvedFrames.length) {
-                const nextWarnings = dedupeStrings(warnings);
-                return [
-                  panel.panelId,
-                  {
-                    status: hasRenderableContent(currentPanelState)
-                      ? "ready"
-                      : missingBufferedStreams.length
-                      ? "loading"
-                      : "empty",
-                    statusDetail: missingBufferedStreams.length
-                      ? `Buffering 3D streams ${missingBufferedStreams.join(
-                          ", "
-                        )}`
-                      : null,
-                    sceneFrame: currentPanelState?.sceneFrame ?? null,
-                    imageFrame: null,
-                    messageIds: [],
-                    warnings: nextWarnings,
-                    followPose: null,
-                    logTimeNs,
-                    publishTimeNs,
-                    transformRevision: transformGraphSnapshot.revision,
-                  },
-                ] as const;
+              warnings.push(...(resolvedFrame.frame.warnings ?? []));
+              if (!resolvedFrame.frame.primitives.length) {
+                return;
               }
 
-              let followPose = null;
-              const locationStreamId = panel.frameConfig.locationStreamId;
-              if (
-                panel.frameConfig.followMode !== "off" &&
-                locationStreamId &&
-                locationStreamIds.includes(locationStreamId)
-              ) {
-                const locationSamples = getCachedSyncSamples(locationStreamId);
-                const selectedLocationSample = findPlaybackSampleForNearestSync(
-                  locationSamples,
-                  targetTimestamp
-                );
-                const rawCache = getOrCreateRawCache(locationStreamId);
-                const message =
-                  selectedLocationSample !== null
-                    ? rawCache?.getMessageForLogTime(
-                        selectedLocationSample.logTimeNs
-                      )
-                    : null;
-                const streamDescriptor = streamLookup.get(locationStreamId);
-                if (streamDescriptor && message) {
-                  let decodedLocation = decodedLocationCacheRef.current.get(
-                    message.messageId
-                  );
-                  if (decodedLocation === undefined) {
-                    decodedLocation = decodeLocationPayload(
-                      streamDescriptor.schemaName,
-                      message.payload
-                    );
-                    decodedLocationCacheRef.current.set(
-                      message.messageId,
-                      decodedLocation
-                    );
-                  }
+              resolvedFrames.push(resolvedFrame);
+            });
 
-                  if (
-                    decodedLocation &&
-                    "latitude" in decodedLocation &&
-                    panel.frameConfig.enuFrameId
-                  ) {
-                    if (!navSatAnchorRef.current.has(locationStreamId)) {
-                      navSatAnchorRef.current.set(
-                        locationStreamId,
-                        decodedLocation
-                      );
-                    }
-
-                    followPose = createFollowPoseFromNavSat(
-                      decodedLocation,
-                      navSatAnchorRef.current.get(locationStreamId)
-                    );
-                  } else if (decodedLocation && "position" in decodedLocation) {
-                    let normalizedLocation = decodedLocation;
-                    const aggregationFrameId =
-                      getPanelAggregationFrameId(panel);
-                    if (
-                      aggregationFrameId &&
-                      normalizedLocation.frameId &&
-                      normalizedLocation.frameId !== aggregationFrameId
-                    ) {
-                      const matrix = resolveTransform(
-                        normalizedLocation.frameId,
-                        aggregationFrameId
-                      );
-                      if (matrix) {
-                        normalizedLocation = transformPoseSample(
-                          normalizedLocation,
-                          matrix,
-                          aggregationFrameId
-                        );
-                      }
-                    }
-
-                    const displayFrameId = getPanelDisplayFrameId(panel);
-                    if (
-                      displayFrameId &&
-                      normalizedLocation.frameId &&
-                      normalizedLocation.frameId !== displayFrameId
-                    ) {
-                      const matrix = resolveTransform(
-                        normalizedLocation.frameId,
-                        displayFrameId
-                      );
-                      if (matrix) {
-                        normalizedLocation = transformPoseSample(
-                          normalizedLocation,
-                          matrix,
-                          displayFrameId
-                        );
-                      }
-                    }
-                    followPose = applyFollowMode(
-                      createFollowPoseFromPose(normalizedLocation),
-                      panel.frameConfig.followMode
-                    );
-                  }
-                }
-              }
-
-              if (
-                followPose === null &&
-                panel.frameConfig.followMode !== "off" &&
-                !panel.frameConfig.locationStreamId
-              ) {
-                const displayFrameId = getPanelDisplayFrameId(panel);
-                const followFrameId =
-                  catalog && displayFrameId
-                    ? getPanelFollowFrameId(catalog, panel)
-                    : null;
-                if (displayFrameId && followFrameId) {
-                  const matrix = resolveTransform(
-                    followFrameId,
-                    displayFrameId
-                  );
-                  if (matrix) {
-                    followPose = applyFollowMode(
-                      createFollowPoseFromPose(
-                        transformPoseSample(
-                          {
-                            frameId: followFrameId,
-                            position: [0, 0, 0],
-                            orientation: [0, 0, 0, 1],
-                          },
-                          matrix,
-                          displayFrameId
-                        )
-                      ),
-                      panel.frameConfig.followMode
-                    );
-                  }
-                }
-              }
-
-              const merged = mergeScene3dFrames(resolvedFrames);
-              let sceneFrame = merged.frame;
-              if (
-                sceneFrame &&
-                displayFrameId &&
-                sceneFrame.frameId &&
-                sceneFrame.frameId !== displayFrameId
-              ) {
-                const matrix = resolveTransform(
-                  sceneFrame.frameId,
-                  displayFrameId
-                );
-                if (matrix) {
-                  sceneFrame = applyTransformToScene3dFrame(
-                    sceneFrame,
-                    matrix,
-                    displayFrameId
-                  );
-                } else {
-                  warnings.push(
-                    `No transform from ${sceneFrame.frameId} to ${displayFrameId} for ${panel.panelId}`
-                  );
-                }
-              }
+            if (!resolvedFrames.length) {
               const nextWarnings = dedupeStrings(warnings);
               return [
                 panel.panelId,
                 {
-                  status: sceneFrame ? "ready" : "empty",
-                  statusDetail: null,
-                  sceneFrame,
+                  status: hasRenderableContent(currentPanelState)
+                    ? "ready"
+                    : missingBufferedStreams.length
+                    ? "loading"
+                    : "empty",
+                  statusDetail: missingBufferedStreams.length
+                    ? `Buffering 3D streams ${missingBufferedStreams.join(
+                        ", "
+                      )}`
+                    : null,
+                  sceneFrame: currentPanelState?.sceneFrame ?? null,
                   imageFrame: null,
-                  colorMode: merged.colorMode,
-                  messageIds: resolvedFrames.map(
-                    ({ frame }) => frame.messageId
-                  ),
+                  messageIds: [],
                   warnings: nextWarnings,
-                  followPose,
+                  followPose: null,
                   logTimeNs,
                   publishTimeNs,
                   transformRevision: transformGraphSnapshot.revision,
-                  error: null,
-                },
-              ] as const;
-            } catch (renderError) {
-              return [
-                panel.panelId,
-                {
-                  status: "error",
-                  statusDetail: null,
-                  transformRevision: null,
-                  error: normalizeError(renderError),
                 },
               ] as const;
             }
-          })
-        )
+
+            let followPose = null;
+            if (
+              panel.frameConfig.followMode !== "off" &&
+              panelPlan.location?.sample &&
+              panelPlan.location.streamId
+            ) {
+              const rawCache = getOrCreateRawCache(panelPlan.location.streamId);
+              const message = rawCache?.getMessageForLogTime(
+                panelPlan.location.sample.logTimeNs
+              );
+              const streamDescriptor = streamLookup.get(
+                panelPlan.location.streamId
+              );
+              if (streamDescriptor && message) {
+                let decodedLocation = decodedLocationCacheRef.current.get(
+                  message.messageId
+                );
+                if (decodedLocation === undefined) {
+                  decodedLocation = decodeLocationPayload(
+                    streamDescriptor.schemaName,
+                    message.payload
+                  );
+                  decodedLocationCacheRef.current.set(
+                    message.messageId,
+                    decodedLocation
+                  );
+                }
+
+                if (
+                  decodedLocation &&
+                  "latitude" in decodedLocation &&
+                  panel.frameConfig.enuFrameId
+                ) {
+                  if (
+                    !navSatAnchorRef.current.has(panelPlan.location.streamId)
+                  ) {
+                    navSatAnchorRef.current.set(
+                      panelPlan.location.streamId,
+                      decodedLocation
+                    );
+                  }
+
+                  followPose = createFollowPoseFromNavSat(
+                    decodedLocation,
+                    navSatAnchorRef.current.get(panelPlan.location.streamId)
+                  );
+                } else if (decodedLocation && "position" in decodedLocation) {
+                  let normalizedLocation = decodedLocation;
+                  if (
+                    targetFrameId &&
+                    normalizedLocation.frameId &&
+                    normalizedLocation.frameId !== targetFrameId
+                  ) {
+                    const matrix = resolveTransform(
+                      normalizedLocation.frameId,
+                      targetFrameId
+                    );
+                    if (matrix) {
+                      normalizedLocation = transformPoseSample(
+                        normalizedLocation,
+                        matrix,
+                        targetFrameId
+                      );
+                    }
+                  }
+                  followPose = applyFollowMode(
+                    createFollowPoseFromPose(normalizedLocation),
+                    panel.frameConfig.followMode
+                  );
+                }
+              }
+            }
+
+            if (
+              followPose === null &&
+              panel.frameConfig.followMode !== "off" &&
+              !panel.frameConfig.locationStreamId
+            ) {
+              const followFrameId = getPanelFollowFrameId(
+                currentCatalog,
+                panel
+              );
+              if (targetFrameId && followFrameId) {
+                const matrix = resolveTransform(followFrameId, targetFrameId);
+                if (matrix) {
+                  followPose = applyFollowMode(
+                    createFollowPoseFromPose(
+                      transformPoseSample(
+                        {
+                          frameId: followFrameId,
+                          position: [0, 0, 0],
+                          orientation: [0, 0, 0, 1],
+                        },
+                        matrix,
+                        targetFrameId
+                      )
+                    ),
+                    panel.frameConfig.followMode
+                  );
+                }
+              }
+            }
+
+            const mergedSceneCacheKey = [
+              resolvedFrames
+                .map(({ frame, streamId, color }) => {
+                  return `${streamId}:${color}:${frame.messageId}`;
+                })
+                .join("|"),
+              targetFrameId ?? "",
+              transformGraphSnapshot.revision,
+            ].join("::");
+            let merged =
+              mergedSceneFrameCacheRef.current.get(mergedSceneCacheKey) ?? null;
+            if (!merged) {
+              merged = mergeScene3dFrames(resolvedFrames);
+              mergedSceneFrameCacheRef.current.set(mergedSceneCacheKey, merged);
+            }
+
+            const nextWarnings = dedupeStrings(warnings);
+            return [
+              panel.panelId,
+              {
+                status: merged.frame ? "ready" : "empty",
+                statusDetail: null,
+                sceneFrame: merged.frame,
+                imageFrame: null,
+                colorMode: merged.colorMode,
+                messageIds: resolvedFrames.map(({ frame }) => frame.messageId),
+                warnings: nextWarnings,
+                followPose,
+                logTimeNs,
+                publishTimeNs,
+                transformRevision: transformGraphSnapshot.revision,
+                error: null,
+              },
+            ] as const;
+          } catch (renderError) {
+            if (isStaleRenderAbort(renderError)) {
+              throw renderError;
+            }
+
+            return [
+              panelPlan.panel.panelId,
+              {
+                status: "error",
+                statusDetail: null,
+                transformRevision: null,
+                error: normalizeError(renderError),
+              },
+            ] as const;
+          }
+        })
       );
 
+      return {
+        snapshotTimeNs: targetTimestampNs,
+        panelStates: Object.fromEntries(nextPanelEntries),
+      };
+    },
+    [
+      getPlaybackFramePlan,
+      getOrCreateImageCache,
+      getOrCreateRawCache,
+      getOrCreateRenderable3dCache,
+      getTransformGraphSnapshot,
+    ]
+  );
+
+  const prepareRenderFrame = React.useCallback(
+    async (targetTimestampNs: number, abortSignal: AbortSignal) => {
+      const prepareToken = latestPreparedFrameTokenRef.current + 1;
+      latestPreparedFrameTokenRef.current = prepareToken;
+      const preparedFrame = await buildPreparedFrame(targetTimestampNs, {
+        abortSignal,
+      });
       if (
-        !mountedRef.current ||
-        renderGeneration !== renderGenerationRef.current
+        abortSignal.aborted ||
+        prepareToken !== latestPreparedFrameTokenRef.current
       ) {
         return;
       }
 
-      commitPanelStates(nextPanelStates);
+      preparedFrameRef.current = preparedFrame;
     },
-    [
-      commitPanelStates,
-      getCachedSyncSamples,
-      getOrCreateImageCache,
-      getOrCreateRenderable3dCache,
-      getOrCreateRawCache,
-      getTransformGraphSnapshot,
-      locationStreamIds,
-      transformStreamIds,
-    ]
+    [buildPreparedFrame]
+  );
+
+  const commitPreparedFrame = React.useCallback(
+    (targetTimestampNs: number) => {
+      const preparedFrame = preparedFrameRef.current;
+      if (
+        !preparedFrame ||
+        preparedFrame.snapshotTimeNs !== targetTimestampNs
+      ) {
+        return;
+      }
+
+      currentRenderTimeRef.current = targetTimestampNs;
+      commitPanelStates(preparedFrame.panelStates);
+      preparedFrameRef.current = null;
+    },
+    [commitPanelStates]
+  );
+
+  const previewRenderFrame = React.useCallback(
+    async (targetTimestampNs: number, abortSignal: AbortSignal) => {
+      const preparedFrame = await buildPreparedFrame(targetTimestampNs, {
+        abortSignal,
+      });
+      if (abortSignal.aborted) {
+        return;
+      }
+
+      currentRenderTimeRef.current = targetTimestampNs;
+      commitPanelStates(preparedFrame.panelStates);
+    },
+    [buildPreparedFrame, commitPanelStates]
+  );
+
+  const requestRenderFrame = React.useCallback(
+    async (targetTimestampNs: number) => {
+      const renderToken = latestDirectRenderTokenRef.current + 1;
+      latestDirectRenderTokenRef.current = renderToken;
+      const preparedFrame = await buildPreparedFrame(targetTimestampNs);
+      if (
+        !mountedRef.current ||
+        renderToken !== latestDirectRenderTokenRef.current
+      ) {
+        return;
+      }
+
+      currentRenderTimeRef.current = targetTimestampNs;
+      commitPanelStates(preparedFrame.panelStates);
+    },
+    [buildPreparedFrame, commitPanelStates]
   );
 
   React.useEffect(() => {
@@ -2108,7 +2672,7 @@ export function useMultimodalPlaybackController(
             "multimodal:bootstrap-fetch:end"
           );
         }
-        await renderFrame(currentRenderTimeRef.current);
+        await requestRenderFrame(currentRenderTimeRef.current);
         if (!isCurrent) {
           return;
         }
@@ -2117,7 +2681,7 @@ export function useMultimodalPlaybackController(
         void ensurePlaybackRange(
           [bootstrapPlan.anchorTimeNs, bootstrapPlan.anchorTimeNs],
           { expand: false }
-        ).then(() => renderFrame(currentRenderTimeRef.current));
+        ).then(() => requestRenderFrame(currentRenderTimeRef.current));
       })
       .catch((bootError) => {
         console.error("Failed to bootstrap multimodal workspace", bootError);
@@ -2133,7 +2697,7 @@ export function useMultimodalPlaybackController(
         }
 
         primeBootstrapResponse(response);
-        await renderFrame(currentRenderTimeRef.current);
+        await requestRenderFrame(currentRenderTimeRef.current);
       })
       .catch((bootError) => {
         console.error("Failed to bootstrap Multimodal image panels", bootError);
@@ -2149,7 +2713,7 @@ export function useMultimodalPlaybackController(
     catalog?.sampleId,
     ensurePlaybackRange,
     primeBootstrapResponse,
-    renderFrame,
+    requestRenderFrame,
   ]);
 
   React.useEffect(() => {
@@ -2157,8 +2721,8 @@ export function useMultimodalPlaybackController(
       return;
     }
 
-    void renderFrame(currentRenderTimeRef.current);
-  }, [catalog, panels, renderFrame, workspaceState]);
+    void requestRenderFrame(currentRenderTimeRef.current);
+  }, [catalog, panels, requestRenderFrame, workspaceState]);
 
   React.useEffect(() => {
     if (!hasFullTimeline || didMarkFullTimelineReadyRef.current) {
@@ -2181,8 +2745,13 @@ export function useMultimodalPlaybackController(
       {
         expand: true,
       }
-    ).then(() => renderFrame(currentTimeNs));
-  }, [ensurePlaybackRange, hasFullTimeline, renderFrame, timelineDurationNs]);
+    ).then(() => requestRenderFrame(currentTimeNs));
+  }, [
+    ensurePlaybackRange,
+    hasFullTimeline,
+    requestRenderFrame,
+    timelineDurationNs,
+  ]);
 
   React.useEffect(() => {
     const panelStateList = Object.values(panelStates);
@@ -2238,12 +2807,16 @@ export function useMultimodalPlaybackController(
           tickRate: targetFrameRate,
           coverage: timeline?.timestampsNs ?? [],
           onPrefetchRange: ensurePlaybackRange,
+          onPrepareTime: (timeNs, context) =>
+            prepareRenderFrame(timeNs, context.abortSignal),
+          onPreviewTime: (timeNs, context) =>
+            previewRenderFrame(timeNs, context.abortSignal),
           getBufferReadiness,
           getBufferedRanges,
           isBufferingCritical:
             hasFullTimeline && timelineRenderStreamIds.length > 0,
           canControlPlayback: hasFullTimeline,
-          onRenderTime: renderFrame,
+          onRenderTime: (timeNs) => commitPreparedFrame(timeNs),
         }
       : null
   );

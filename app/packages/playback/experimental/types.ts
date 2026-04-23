@@ -43,6 +43,14 @@ export type SelectionPolicy = "latestAt" | "nearest" | "exact" | "interpolate";
 
 export type BufferReadiness = "ready" | "loading" | "missing";
 
+export type TimelineRenderReason = "play" | "seek" | "scrub-preview";
+
+export interface TimelineRenderContext {
+  reason: TimelineRenderReason;
+  abortSignal: AbortSignal;
+  allowStaleDrop: boolean;
+}
+
 /** Proactive buffer headroom targets for a subscriber at the current time. */
 export interface BufferGoal {
   /** The minimum playable range the subscriber wants to keep covered. */
@@ -78,7 +86,24 @@ export interface Subscriber {
    * Called on every committed tick. The subscriber should render at the
    * given snapshot's timeInt. This is the only required callback.
    */
-  renderAt(snapshot: TimeSnapshot): void;
+  renderAt(snapshot: TimeSnapshot, context?: TimelineRenderContext): void;
+
+  /**
+   * Optional async prepare barrier. Critical subscribers block commit until
+   * this resolves for the target snapshot.
+   */
+  prepareAt?(
+    snapshot: TimeSnapshot,
+    context: TimelineRenderContext
+  ): Promise<void> | void;
+
+  /**
+   * Optional best-effort preview callback used during scrub dragging.
+   */
+  previewAt?(
+    snapshot: TimeSnapshot,
+    context: TimelineRenderContext
+  ): Promise<void> | void;
 
   /** Optional capabilities declaration. */
   capabilities?: SubscriberCapabilities;

@@ -315,7 +315,8 @@ describe("TimelineManager", () => {
       mgr.subscribe({ id: "sub", renderAt });
       await mgr.setTime(25);
       expect(renderAt).toHaveBeenCalledWith(
-        expect.objectContaining({ timeInt: 25 })
+        expect.objectContaining({ timeInt: 25 }),
+        expect.objectContaining({ reason: "seek", allowStaleDrop: false })
       );
     });
 
@@ -859,7 +860,8 @@ describe("TimelineManager", () => {
 
       await mgr.refresh();
       expect(renderAt).toHaveBeenCalledWith(
-        expect.objectContaining({ timeInt: 10 })
+        expect.objectContaining({ timeInt: 10 }),
+        expect.objectContaining({ reason: "seek", allowStaleDrop: false })
       );
     });
   });

@@ -111,14 +111,21 @@ export function applyTransformToScene3dFrame(
   matrix: THREE.Matrix4,
   targetFrameId?: string | null
 ): Scene3dFrame {
-  const transformedPrimitives = frame.primitives.map((primitive) =>
-    applyTransformToScene3dPrimitive(primitive, matrix, targetFrameId)
-  );
+  const frameAccumulator = createScene3dFrameAccumulator();
+  const transformedPrimitives = frame.primitives.map((primitive) => {
+    return applyTransformToScene3dPrimitive(
+      primitive,
+      matrix,
+      targetFrameId,
+      frameAccumulator
+    );
+  });
 
-  return composeScene3dFrame({
+  return finalizeScene3dFrame({
     id: frame.id,
     frameId: targetFrameId ?? frame.frameId ?? null,
     primitives: transformedPrimitives,
+    accumulator: frameAccumulator,
   });
 }
 
@@ -145,16 +152,29 @@ export function mergeScene3dFrames(
   }
 
   const sharedFrameId = getSharedFrameId(frames.map(({ frame }) => frame));
+  const frameAccumulator = createScene3dFrameAccumulator();
+  const mergedPrimitives = frames.flatMap(({ frame, color }) => {
+    if (hasFrameBounds(frame)) {
+      mergeBounds(
+        frameAccumulator.bounds,
+        frame.bounds,
+        !frameAccumulator.hasBounds
+      );
+      frameAccumulator.hasBounds = true;
+    }
+    frameAccumulator.pointCount += frame.pointCount;
+    return frame.primitives.map((primitive) =>
+      applySolidColorToPrimitive(primitive, color)
+    );
+  });
+
   return {
     colorMode: "rgb",
-    frame: composeScene3dFrame({
+    frame: finalizeScene3dFrame({
       id: frames.map(({ frame }) => frame.id).join("|"),
       frameId: sharedFrameId,
-      primitives: frames.flatMap(({ frame, color }) =>
-        frame.primitives.map((primitive) =>
-          applySolidColorToPrimitive(primitive, color)
-        )
-      ),
+      primitives: mergedPrimitives,
+      accumulator: frameAccumulator,
     }),
   };
 }
@@ -290,41 +310,31 @@ export function composeScene3dFrame({
   frameId?: string | null;
   primitives: Scene3dPrimitive[];
 }): Scene3dFrame {
-  const bounds = createEmptyBounds();
-  let didInitializeBounds = false;
-  let pointCount = 0;
+  const frameAccumulator = createScene3dFrameAccumulator();
 
   primitives.forEach((primitive) => {
-    const positions = primitive.positions;
-    pointCount +=
-      primitive.kind === "points" ? primitive.pointCount : positions.length / 3;
-
-    for (let index = 0; index < positions.length; index += 3) {
-      updateBounds(
-        bounds,
-        positions[index],
-        positions[index + 1],
-        positions[index + 2],
-        !didInitializeBounds
-      );
-      didInitializeBounds = true;
-    }
+    accumulatePrimitiveStats(frameAccumulator, primitive);
   });
 
-  return {
+  return finalizeScene3dFrame({
     id,
-    pointCount,
+    frameId,
     primitives,
-    bounds: didInitializeBounds ? bounds : createEmptyBounds(),
-    frameId: frameId ?? null,
-  };
+    accumulator: frameAccumulator,
+  });
 }
 
 function transformPositions(
   positions: Float32Array,
   matrix: THREE.Matrix4
-): Float32Array {
+): {
+  positions: Float32Array;
+  bounds: Points3dBounds;
+  hasBounds: boolean;
+} {
   const transformed = new Float32Array(positions.length);
+  const bounds = createEmptyBounds();
+  let hasBounds = false;
   const point = new THREE.Vector3();
 
   for (let index = 0; index < positions.length; index += 3) {
@@ -333,9 +343,15 @@ function transformPositions(
     transformed[index] = point.x;
     transformed[index + 1] = point.y;
     transformed[index + 2] = point.z;
+    updateBounds(bounds, point.x, point.y, point.z, !hasBounds);
+    hasBounds = true;
   }
 
-  return transformed;
+  return {
+    positions: transformed,
+    bounds,
+    hasBounds,
+  };
 }
 
 function transformInstanceRotations(
@@ -383,13 +399,33 @@ function transformInstanceRotations(
 export function applyTransformToScene3dPrimitive(
   primitive: Scene3dPrimitive,
   matrix: THREE.Matrix4,
-  targetFrameId?: string | null
+  targetFrameId?: string | null,
+  accumulator?: {
+    bounds: Points3dBounds;
+    hasBounds: boolean;
+    pointCount: number;
+  }
 ): Scene3dPrimitive {
+  const transformedPositions = transformPositions(primitive.positions, matrix);
+  if (accumulator) {
+    mergeBounds(
+      accumulator.bounds,
+      transformedPositions.bounds,
+      !accumulator.hasBounds
+    );
+    accumulator.hasBounds =
+      accumulator.hasBounds || transformedPositions.hasBounds;
+    accumulator.pointCount +=
+      primitive.kind === "points"
+        ? primitive.pointCount
+        : transformedPositions.positions.length / 3;
+  }
+
   if (primitive.kind === "sphere-list" || primitive.kind === "cube-list") {
     return {
       ...primitive,
       frameId: targetFrameId ?? primitive.frameId ?? null,
-      positions: transformPositions(primitive.positions, matrix),
+      positions: transformedPositions.positions,
       rotations: transformInstanceRotations(primitive, matrix),
     };
   }
@@ -397,7 +433,7 @@ export function applyTransformToScene3dPrimitive(
   return {
     ...primitive,
     frameId: targetFrameId ?? primitive.frameId ?? null,
-    positions: transformPositions(primitive.positions, matrix),
+    positions: transformedPositions.positions,
   };
 }
 
@@ -405,6 +441,10 @@ function applySolidColorToPrimitive(
   primitive: Scene3dPrimitive,
   color: string
 ): Scene3dPrimitive {
+  if (primitive.semantic) {
+    return primitive;
+  }
+
   if (primitive.kind === "points") {
     return {
       ...primitive,
@@ -419,6 +459,103 @@ function applySolidColorToPrimitive(
     colors: null,
     solidColor: color,
   };
+}
+
+type Scene3dFrameAccumulator = {
+  bounds: Points3dBounds;
+  hasBounds: boolean;
+  pointCount: number;
+};
+
+function createScene3dFrameAccumulator(): Scene3dFrameAccumulator {
+  return {
+    bounds: createEmptyBounds(),
+    hasBounds: false,
+    pointCount: 0,
+  };
+}
+
+function finalizeScene3dFrame({
+  id,
+  frameId,
+  primitives,
+  accumulator,
+}: {
+  id: string;
+  frameId?: string | null;
+  primitives: Scene3dPrimitive[];
+  accumulator: Scene3dFrameAccumulator;
+}): Scene3dFrame {
+  return {
+    id,
+    pointCount: accumulator.pointCount,
+    primitives,
+    bounds: accumulator.hasBounds ? accumulator.bounds : createEmptyBounds(),
+    frameId: frameId ?? null,
+  };
+}
+
+function accumulatePrimitiveStats(
+  accumulator: Scene3dFrameAccumulator,
+  primitive: Scene3dPrimitive
+) {
+  mergeBoundsFromPositions(
+    accumulator,
+    primitive.positions,
+    primitive.kind === "points"
+      ? primitive.pointCount
+      : primitive.positions.length / 3
+  );
+}
+
+function mergeBoundsFromPositions(
+  accumulator: Scene3dFrameAccumulator,
+  positions: Float32Array,
+  pointCount: number
+) {
+  accumulator.pointCount += pointCount;
+
+  for (let index = 0; index < positions.length; index += 3) {
+    updateBounds(
+      accumulator.bounds,
+      positions[index],
+      positions[index + 1],
+      positions[index + 2],
+      !accumulator.hasBounds
+    );
+    accumulator.hasBounds = true;
+  }
+}
+
+function mergeBounds(
+  targetBounds: Points3dBounds,
+  sourceBounds: Points3dBounds,
+  initialize: boolean
+) {
+  if (initialize) {
+    targetBounds.min = [...sourceBounds.min] as [number, number, number];
+    targetBounds.max = [...sourceBounds.max] as [number, number, number];
+    return;
+  }
+
+  updateBounds(
+    targetBounds,
+    sourceBounds.min[0],
+    sourceBounds.min[1],
+    sourceBounds.min[2],
+    false
+  );
+  updateBounds(
+    targetBounds,
+    sourceBounds.max[0],
+    sourceBounds.max[1],
+    sourceBounds.max[2],
+    false
+  );
+}
+
+function hasFrameBounds(frame: Scene3dFrame) {
+  return frame.pointCount > 0;
 }
 
 function updateBounds(

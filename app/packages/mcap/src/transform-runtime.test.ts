@@ -135,4 +135,59 @@ describe("transform-runtime", () => {
 
     expect(merged.frame?.frameId).toBe("base_link");
   });
+
+  it("preserves semantic SceneUpdate colors when merging multiple streams", () => {
+    const merged = mergeScene3dFrames([
+      {
+        frame: {
+          id: "scene-update",
+          pointCount: 2,
+          bounds: { min: [0, 0, 0], max: [1, 0, 0] },
+          frameId: "map",
+          primitives: [
+            {
+              kind: "line-strip",
+              id: "annotation-1",
+              frameId: "map",
+              positions: new Float32Array([0, 0, 0, 1, 0, 0]),
+              colors: null,
+              semantic: {
+                title: "car",
+                entries: [{ label: "id", value: "entity-1" }],
+              },
+              solidColor: "hsl(21deg 74% 60%)",
+            },
+          ],
+        },
+        streamId: "/annotations",
+        color: "#ff7a59",
+      },
+      {
+        frame: {
+          id: "points",
+          pointCount: 1,
+          bounds: { min: [0, 0, 0], max: [0, 0, 0] },
+          frameId: "map",
+          primitives: [
+            {
+              kind: "points",
+              id: "cloud",
+              frameId: "map",
+              pointCount: 1,
+              positions: new Float32Array([0, 0, 0]),
+              intensity: null,
+              colors: null,
+              pointSize: null,
+              solidColor: null,
+            },
+          ],
+        },
+        streamId: "/lidar",
+        color: "#5ec2ff",
+      },
+    ]);
+
+    expect(merged.frame?.primitives[0].solidColor).toBe("hsl(21deg 74% 60%)");
+    expect(merged.frame?.primitives[1].solidColor).toBe("#5ec2ff");
+  });
 });

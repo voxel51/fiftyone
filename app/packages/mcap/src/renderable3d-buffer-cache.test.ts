@@ -158,4 +158,68 @@ describe("MultimodalRenderable3dBufferCache", () => {
 
     cache.dispose();
   });
+
+  it("preserves bounds and point counts when primitives already match the target frame", async () => {
+    decodeScene3dMessageMock.mockResolvedValue({
+      frame: {
+        id: "cloud-1",
+        pointCount: 2,
+        bounds: {
+          min: [1, 2, 3] as [number, number, number],
+          max: [4, 5, 6] as [number, number, number],
+        },
+        frameId: "map",
+        primitives: [
+          {
+            kind: "points",
+            id: "points",
+            frameId: "map",
+            pointCount: 2,
+            positions: new Float32Array([1, 2, 3, 4, 5, 6]),
+            intensity: null,
+            colors: null,
+            solidColor: null,
+            pointSize: null,
+          },
+        ],
+      },
+      warnings: [],
+    });
+    const cache = new MultimodalRenderable3dBufferCache({
+      datasetId: "dataset-1",
+      sampleId: "sample-1",
+      sceneId: "scene-1",
+      streamId: "/lidar/top",
+      schemaName: "sensor_msgs/msg/PointCloud2",
+      mediaField: "filepath",
+      sourceKind: "mcap",
+      sceneRange: { startNs: 0, endNs: 100 },
+    });
+    const resolveTransformMatrix = vi.fn(() =>
+      new THREE.Matrix4().makeTranslation(10, 0, 0)
+    );
+    const message = {
+      messageId: "cloud-1",
+      logTimeNs: 10,
+      publishTimeNs: 10,
+      syncTimestampNs: 10,
+      payload: new Uint8Array([1]),
+    };
+
+    const frame = await cache.decodeMessageInFrame(message as any, {
+      targetFrameId: "map",
+      transformRevision: 1,
+      resolveTransformMatrix,
+      warningContext: "/lidar/top",
+    });
+
+    expect(frame.pointCount).toBe(2);
+    expect(frame.bounds).toEqual({
+      min: [1, 2, 3],
+      max: [4, 5, 6],
+    });
+    expect(resolveTransformMatrix).not.toHaveBeenCalled();
+
+    cache.dispose();
+  });
 });

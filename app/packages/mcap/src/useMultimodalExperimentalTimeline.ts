@@ -4,6 +4,7 @@ import type {
   BufferGoalInfo,
   BufferReadiness,
   PlayState,
+  TimelineRenderContext,
 } from "@fiftyone/playback/experimental/types";
 import React from "react";
 import { MULTIMODAL_BUFFER_WINDOW_SIZE_NS } from "./playback-utils";
@@ -14,7 +15,15 @@ type MultimodalExperimentalTimelineOptions = {
   tickRate: number;
   coverage: number[];
   onPrefetchRange: (range: [number, number]) => Promise<void>;
-  onRenderTime: (timeNs: number) => Promise<void> | void;
+  onPrepareTime?: (
+    timeNs: number,
+    context: TimelineRenderContext
+  ) => Promise<void> | void;
+  onRenderTime: (timeNs: number, context: TimelineRenderContext) => void;
+  onPreviewTime?: (
+    timeNs: number,
+    context: TimelineRenderContext
+  ) => Promise<void> | void;
   getBufferReadiness?: (timeNs: number) => BufferReadiness;
   getBufferedRanges?: () => Buffers;
   isBufferingCritical?: boolean;
@@ -57,6 +66,8 @@ export function useMultimodalExperimentalTimeline(
   const [speed, setSpeedState] = React.useState(1);
   const [loaded, setLoaded] = React.useState<Buffers>(EMPTY_BUFFERS);
   const [loading, setLoading] = React.useState<BufferRange>(EMPTY_BUFFER_RANGE);
+  const isScrubbingRef = React.useRef(false);
+  const scrubPreviewTimeRef = React.useRef<number | null>(null);
   const canControlPlayback =
     options?.canControlPlayback ?? Boolean(options?.coverage.length);
   const getBufferGoal = React.useCallback(
@@ -89,6 +100,8 @@ export function useMultimodalExperimentalTimeline(
       setSpeedState(1);
       setLoaded(EMPTY_BUFFERS);
       setLoading(EMPTY_BUFFER_RANGE);
+      isScrubbingRef.current = false;
+      scrubPreviewTimeRef.current = null;
       return;
     }
 
@@ -128,7 +141,9 @@ export function useMultimodalExperimentalTimeline(
     const unsubscribeTimeChange = manager.on(
       "timeline:timeChange",
       ({ snapshot }) => {
-        setCurrentTimeNs(snapshot.timeInt);
+        if (!isScrubbingRef.current) {
+          setCurrentTimeNs(snapshot.timeInt);
+        }
       }
     );
     const unsubscribePlayStateChange = manager.on(
@@ -178,9 +193,25 @@ export function useMultimodalExperimentalTimeline(
 
     const unsubscribeSubscriber = manager.subscribe({
       id: `${options.name}:multimodal-workspace`,
-      renderAt: (snapshot) => {
-        void options.onRenderTime(snapshot.timeInt);
+      prepareAt: options.onPrepareTime
+        ? (snapshot, context) => {
+            return options.onPrepareTime?.(snapshot.timeInt, context);
+          }
+        : undefined,
+      renderAt: (snapshot, context) => {
+        options.onRenderTime(
+          snapshot.timeInt,
+          context as TimelineRenderContext
+        );
       },
+      previewAt: options.onPreviewTime
+        ? (snapshot, context) => {
+            return options.onPreviewTime?.(
+              snapshot.timeInt,
+              context as TimelineRenderContext
+            );
+          }
+        : undefined,
       prefetch: async (range) => {
         await options.onPrefetchRange(range as [number, number]);
         manager.refreshBufferedRanges();
@@ -208,6 +239,8 @@ export function useMultimodalExperimentalTimeline(
     options?.isBufferingCritical,
     options?.name,
     options?.onPrefetchRange,
+    options?.onPrepareTime,
+    options?.onPreviewTime,
     options?.onRenderTime,
   ]);
 
@@ -234,7 +267,19 @@ export function useMultimodalExperimentalTimeline(
   }, []);
 
   const seekToTime = React.useCallback(async (timeNs: number) => {
-    await managerRef.current?.setTime(timeNs);
+    const manager = managerRef.current;
+    if (!manager) {
+      return;
+    }
+
+    if (isScrubbingRef.current) {
+      scrubPreviewTimeRef.current = timeNs;
+      setCurrentTimeNs(timeNs);
+      await manager.previewTime(timeNs);
+      return;
+    }
+
+    await manager.setTime(timeNs);
   }, []);
 
   const seekToPercentage = React.useCallback(
@@ -249,11 +294,19 @@ export function useMultimodalExperimentalTimeline(
   );
 
   const notifySeekStart = React.useCallback(() => {
+    isScrubbingRef.current = true;
+    scrubPreviewTimeRef.current = managerRef.current?.snapshot.timeInt ?? null;
     managerRef.current?.notifySeekStart();
   }, []);
 
   const notifySeekEnd = React.useCallback(() => {
-    managerRef.current?.notifySeekEnd();
+    const manager = managerRef.current;
+    const targetTimeNs =
+      scrubPreviewTimeRef.current ?? managerRef.current?.snapshot.timeInt ?? 0;
+    isScrubbingRef.current = false;
+    scrubPreviewTimeRef.current = null;
+    manager?.notifySeekEnd();
+    void manager?.setTime(targetTimeNs);
   }, []);
 
   const stepForward = React.useCallback(async () => {

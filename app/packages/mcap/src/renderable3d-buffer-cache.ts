@@ -8,10 +8,7 @@ import {
   type RawMessageWindowCacheOptions,
 } from "./raw-message-window-cache";
 import { BUILTIN_SCHEMA_CODEC_REGISTRY } from "./schema-codec-registry";
-import {
-  applyTransformToScene3dPrimitive,
-  composeScene3dFrame,
-} from "./transform-runtime";
+import { applyTransformToScene3dPrimitive } from "./transform-runtime";
 import type { MultimodalRawMessage } from "./types";
 
 type WarmDecodeOptions = {
@@ -144,6 +141,15 @@ export class MultimodalRenderable3dBufferCache {
     return this.rawWindowCache.getSyncTimestamps();
   }
 
+  /** Returns the raw-window version so playback bookkeeping can memoize cheaply. */
+  getVersion() {
+    if (this.sceneUpdateCache) {
+      return this.sceneUpdateCache.getVersion();
+    }
+
+    return this.rawWindowCache.getVersion();
+  }
+
   /** Reports whether the raw message window containing this timestamp is ready. */
   getMessageReadiness(logTimeNs: number): BufferReadiness {
     if (this.sceneUpdateCache) {
@@ -214,14 +220,22 @@ export class MultimodalRenderable3dBufferCache {
       return existingFrame;
     }
 
-    const decoded = await this.decodeMessage(message);
-    if (canReuseFrameInTargetFrame(decoded, options.targetFrameId)) {
-      return decoded;
-    }
+    const transformPromise = (async () => {
+      const decoded = await this.decodeMessage(message);
+      if (canReuseFrameInTargetFrame(decoded, options.targetFrameId)) {
+        return decoded;
+      }
 
-    const transformPromise = Promise.resolve()
-      .then(() => {
+      try {
         const warnings = [...(decoded.warnings ?? [])];
+        const frameAccumulator = {
+          bounds: {
+            min: [0, 0, 0] as [number, number, number],
+            max: [0, 0, 0] as [number, number, number],
+          },
+          hasBounds: false,
+          pointCount: 0,
+        };
         const transformedPrimitives = [];
 
         for (const primitive of decoded.primitives) {
@@ -234,6 +248,7 @@ export class MultimodalRenderable3dBufferCache {
           }
 
           if (sourceFrameId === options.targetFrameId) {
+            accumulatePrimitiveStats(frameAccumulator, primitive);
             transformedPrimitives.push({
               ...primitive,
               frameId: options.targetFrameId,
@@ -256,27 +271,32 @@ export class MultimodalRenderable3dBufferCache {
             applyTransformToScene3dPrimitive(
               primitive,
               matrix,
-              options.targetFrameId
+              options.targetFrameId,
+              frameAccumulator
             )
           );
         }
 
         const frame = {
           ...decoded,
-          ...composeScene3dFrame({
-            id: decoded.id,
-            frameId: options.targetFrameId,
-            primitives: transformedPrimitives,
-          }),
+          id: decoded.id,
+          pointCount: frameAccumulator.pointCount,
+          bounds: frameAccumulator.hasBounds
+            ? frameAccumulator.bounds
+            : {
+                min: [0, 0, 0] as [number, number, number],
+                max: [0, 0, 0] as [number, number, number],
+              },
+          primitives: transformedPrimitives,
           frameId: options.targetFrameId,
           warnings,
         };
         this.transformedFrames.set(cacheKey, frame);
         return frame;
-      })
-      .finally(() => {
+      } finally {
         this.pendingTransformedFrames.delete(cacheKey);
-      });
+      }
+    })();
 
     this.pendingTransformedFrames.set(cacheKey, transformPromise);
     return transformPromise;
@@ -367,5 +387,42 @@ function estimateScene3dPrimitiveSize(primitive: Scene3dPrimitive) {
       );
     default:
       return 0;
+  }
+}
+
+function accumulatePrimitiveStats(
+  accumulator: {
+    bounds: {
+      min: [number, number, number];
+      max: [number, number, number];
+    };
+    hasBounds: boolean;
+    pointCount: number;
+  },
+  primitive: Scene3dPrimitive
+) {
+  accumulator.pointCount +=
+    primitive.kind === "points"
+      ? primitive.pointCount
+      : primitive.positions.length / 3;
+
+  for (let index = 0; index < primitive.positions.length; index += 3) {
+    const x = primitive.positions[index];
+    const y = primitive.positions[index + 1];
+    const z = primitive.positions[index + 2];
+
+    if (!accumulator.hasBounds) {
+      accumulator.bounds.min = [x, y, z];
+      accumulator.bounds.max = [x, y, z];
+      accumulator.hasBounds = true;
+      continue;
+    }
+
+    accumulator.bounds.min[0] = Math.min(accumulator.bounds.min[0], x);
+    accumulator.bounds.min[1] = Math.min(accumulator.bounds.min[1], y);
+    accumulator.bounds.min[2] = Math.min(accumulator.bounds.min[2], z);
+    accumulator.bounds.max[0] = Math.max(accumulator.bounds.max[0], x);
+    accumulator.bounds.max[1] = Math.max(accumulator.bounds.max[1], y);
+    accumulator.bounds.max[2] = Math.max(accumulator.bounds.max[2], z);
   }
 }

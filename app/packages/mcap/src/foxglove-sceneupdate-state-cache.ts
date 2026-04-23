@@ -112,6 +112,17 @@ export class FoxgloveSceneUpdateStateCache {
     Promise<DecodedSceneUpdateResult>
   >();
   private readonly checkpoints: BoundedLruCache<number, SceneStateCheckpoint>;
+  private indexedMessagesVersion = -1;
+  private indexedMessages: MultimodalRawMessage[] = [];
+  private messageIndexById = new Map<string, number>();
+  private ensuredThroughNs = Number.NEGATIVE_INFINITY;
+  private currentReplayState: SceneStateCheckpoint & {
+    messageId: string | null;
+  } = {
+    entities: new Map<string, SceneEntityRecord>(),
+    messageId: null,
+    messageIndex: -1,
+  };
 
   constructor(options: FoxgloveSceneUpdateStateCacheOptions) {
     this.rawWindowCache = new MultimodalRawMessageWindowCache(options);
@@ -147,6 +158,10 @@ export class FoxgloveSceneUpdateStateCache {
     return this.rawWindowCache.getSyncTimestamps();
   }
 
+  getVersion() {
+    return this.rawWindowCache.getVersion();
+  }
+
   getMessageReadiness(logTimeNs: number) {
     return this.rawWindowCache.getTimeReadiness(logTimeNs);
   }
@@ -161,15 +176,10 @@ export class FoxgloveSceneUpdateStateCache {
   async decodeMessage(
     message: MultimodalRawMessage
   ): Promise<DecodedFoxgloveSceneFrame> {
-    await this.rawWindowCache.ensureRange({
-      startNs: this.sceneRange.startNs,
-      endNs: Math.max(this.sceneRange.startNs, message.syncTimestampNs),
-    });
+    await this.ensureReplayRange(message.syncTimestampNs);
 
-    const messages = this.rawWindowCache.getMessages();
-    const targetIndex = messages.findIndex(
-      (candidate) => candidate.messageId === message.messageId
-    );
+    const { messageIndexById, messages } = this.getIndexedMessages();
+    const targetIndex = messageIndexById.get(message.messageId) ?? -1;
     if (targetIndex < 0) {
       return {
         frame: composeScene3dFrame({
@@ -181,11 +191,9 @@ export class FoxgloveSceneUpdateStateCache {
       };
     }
 
-    const checkpoint = this.getNearestCheckpoint(targetIndex);
-    const entities = checkpoint
-      ? cloneEntityMap(checkpoint.entities)
-      : new Map<string, SceneEntityRecord>();
-    const startIndex = checkpoint ? checkpoint.messageIndex + 1 : 0;
+    const replayState = this.getReplayState(targetIndex);
+    const entities = cloneEntityMap(replayState.entities);
+    const startIndex = replayState.messageIndex + 1;
 
     for (let index = startIndex; index <= targetIndex; index += 1) {
       const currentMessage = messages[index];
@@ -196,6 +204,8 @@ export class FoxgloveSceneUpdateStateCache {
         entities: cloneEntityMap(entities),
       });
     }
+
+    this.maybeAdvanceReplayState(targetIndex, message.messageId, entities);
 
     const activeEntities = Array.from(entities.values()).filter((entity) => {
       return (
@@ -221,6 +231,15 @@ export class FoxgloveSceneUpdateStateCache {
     this.pendingUpdates.clear();
     this.decodedUpdates.clear();
     this.checkpoints.clear();
+    this.indexedMessagesVersion = -1;
+    this.indexedMessages = [];
+    this.messageIndexById.clear();
+    this.ensuredThroughNs = Number.NEGATIVE_INFINITY;
+    this.currentReplayState = {
+      entities: new Map<string, SceneEntityRecord>(),
+      messageId: null,
+      messageIndex: -1,
+    };
     this.rawWindowCache.dispose();
   }
 
@@ -266,5 +285,79 @@ export class FoxgloveSceneUpdateStateCache {
     });
 
     return nearestCheckpoint;
+  }
+
+  private async ensureReplayRange(targetTimestampNs: number) {
+    const clampedTimestampNs = Math.max(
+      this.sceneRange.startNs,
+      targetTimestampNs
+    );
+    if (clampedTimestampNs <= this.ensuredThroughNs) {
+      return;
+    }
+
+    await this.rawWindowCache.ensureRange({
+      startNs:
+        this.ensuredThroughNs > Number.NEGATIVE_INFINITY
+          ? this.ensuredThroughNs
+          : this.sceneRange.startNs,
+      endNs: clampedTimestampNs,
+    });
+    this.ensuredThroughNs = clampedTimestampNs;
+  }
+
+  private getIndexedMessages() {
+    const nextVersion = this.rawWindowCache.getVersion();
+    if (nextVersion !== this.indexedMessagesVersion) {
+      this.indexedMessages = this.rawWindowCache.getMessages();
+      this.messageIndexById = new Map(
+        this.indexedMessages.map((message, index) => [message.messageId, index])
+      );
+      this.indexedMessagesVersion = nextVersion;
+      this.currentReplayState = {
+        ...this.currentReplayState,
+        messageIndex: this.currentReplayState.messageId
+          ? this.messageIndexById.get(this.currentReplayState.messageId) ?? -1
+          : -1,
+      };
+    }
+
+    return {
+      messages: this.indexedMessages,
+      messageIndexById: this.messageIndexById,
+    };
+  }
+
+  private getReplayState(targetIndex: number) {
+    if (
+      this.currentReplayState.messageIndex >= 0 &&
+      targetIndex >= this.currentReplayState.messageIndex
+    ) {
+      return this.currentReplayState;
+    }
+
+    return (
+      this.getNearestCheckpoint(targetIndex) ?? {
+        entities: new Map<string, SceneEntityRecord>(),
+        messageId: null,
+        messageIndex: -1,
+      }
+    );
+  }
+
+  private maybeAdvanceReplayState(
+    targetIndex: number,
+    messageId: string,
+    entities: Map<string, SceneEntityRecord>
+  ) {
+    if (targetIndex < this.currentReplayState.messageIndex) {
+      return;
+    }
+
+    this.currentReplayState = {
+      entities: cloneEntityMap(entities),
+      messageId,
+      messageIndex: targetIndex,
+    };
   }
 }
