@@ -194,6 +194,17 @@ const SECTION_CARET_STYLES: React.CSSProperties = {
   transition: "transform 120ms ease",
 };
 
+const SIDEBAR_TAB_LIST_STYLES: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "1fr 1fr",
+  gap: "4px",
+  flex: 1,
+  minWidth: 0,
+  padding: "2px",
+  borderRadius: "8px",
+  background: "rgba(255,255,255,0.04)",
+};
+
 const PANEL_VIEWPORT_STYLES: React.CSSProperties = {
   minWidth: 0,
   minHeight: 0,
@@ -211,6 +222,8 @@ type SidebarSectionId =
   | "sceneConfig"
   | "transforms"
   | "streams";
+
+type SidebarTabId = "panel" | "workspace";
 
 const DEFAULT_SIDEBAR_SECTION_STATE: Record<SidebarSectionId, boolean> = {
   sync: false,
@@ -521,6 +534,21 @@ function SidebarSection({
       ) : null}
     </Card>
   );
+}
+
+function getSidebarTabButtonStyles(selected: boolean): React.CSSProperties {
+  return {
+    border: "none",
+    borderRadius: "6px",
+    padding: "5px 8px",
+    background: selected ? "rgba(255,255,255,0.12)" : "transparent",
+    color: selected ? "white" : "rgba(255,255,255,0.7)",
+    fontSize: "12px",
+    fontWeight: 600,
+    cursor: "pointer",
+    minWidth: 0,
+    textAlign: "center",
+  };
 }
 
 function StreamRow({
@@ -981,6 +1009,7 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
   const saveTimeoutRef = React.useRef<number | null>(null);
   const [armedPanelArchetype, setArmedPanelArchetype] =
     React.useState<MultimodalPanelArchetype | null>(null);
+  const [sidebarTab, setSidebarTab] = React.useState<SidebarTabId>("panel");
   const hasSearchQuery = deferredSearchQuery.trim().length > 0;
 
   React.useEffect(() => {
@@ -1917,62 +1946,72 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
                 title="Hide sidebar"
                 variant={Variant.Icon}
               />
-            </Stack>
-            {activePanel ? (
-              <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
-                <Stack
-                  orientation={Orientation.Row}
-                  spacing={Spacing.Xs}
-                  align={Align.Center}
+              <div role="tablist" style={SIDEBAR_TAB_LIST_STYLES}>
+                <button
+                  aria-selected={sidebarTab === "panel"}
+                  onClick={() => setSidebarTab("panel")}
+                  role="tab"
+                  style={getSidebarTabButtonStyles(sidebarTab === "panel")}
+                  type="button"
                 >
-                  <Pill
-                    size={Size.Xs}
-                    backgroundColor={BackgroundColor.Muted}
-                    color={TextColor.Secondary}
-                  >
-                    {activePanel.archetype === "image" ? "2D" : "3D"}
-                  </Pill>
-                  <Text
-                    variant={TextVariant.Caption}
-                    color={TextColor.Secondary}
-                  >
-                    {getPanelStreamLabel(catalog, activePanel)}
+                  Panel
+                </button>
+                <button
+                  aria-selected={sidebarTab === "workspace"}
+                  onClick={() => setSidebarTab("workspace")}
+                  role="tab"
+                  style={getSidebarTabButtonStyles(sidebarTab === "workspace")}
+                  type="button"
+                >
+                  Workspace
+                </button>
+              </div>
+            </Stack>
+            {sidebarTab === "panel" ? (
+              <>
+                {activePanel ? (
+                  <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
+                    <Stack
+                      orientation={Orientation.Row}
+                      spacing={Spacing.Xs}
+                      align={Align.Center}
+                    >
+                      <Pill
+                        size={Size.Xs}
+                        backgroundColor={BackgroundColor.Muted}
+                        color={TextColor.Secondary}
+                      >
+                        {activePanel.archetype === "image" ? "2D" : "3D"}
+                      </Pill>
+                      <Text
+                        variant={TextVariant.Caption}
+                        color={TextColor.Secondary}
+                      >
+                        {getPanelStreamLabel(catalog, activePanel)}
+                      </Text>
+                    </Stack>
+                  </Stack>
+                ) : (
+                  <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+                    No panel selected
                   </Text>
-                </Stack>
-                <Text variant={TextVariant.Sm} color={TextColor.Primary}>
-                  {activePanel.title}
-                </Text>
-              </Stack>
-            ) : (
-              <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
-                No panel selected
-              </Text>
-            )}
+                )}
 
-            <Input
-              placeholder="Search panel settings"
-              type={InputType.Search}
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-            />
+                {activePanel ? (
+                  <Input
+                    placeholder="Search panel settings"
+                    type={InputType.Search}
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                  />
+                ) : null}
+              </>
+            ) : null}
 
-            {matchesSearch(deferredSearchQuery, [
-              "sync",
-              "clock",
-              "timestamp source",
-              "header stamp",
-              "header.stamp",
-              "publish time",
-              "publish_time",
-              "log time",
-              "log_time",
-              "fallback",
-              workspaceState.sync.timestampSource,
-              workspaceState.sync.fallback,
-            ]) ? (
+            {sidebarTab === "workspace" ? (
               <SidebarSection
                 collapsed={collapsedSections.sync}
-                forceExpanded={hasSearchQuery}
+                forceExpanded={false}
                 onToggle={() => toggleSidebarSection("sync")}
                 title="Sync"
               >
@@ -2011,7 +2050,7 @@ export function MultimodalModalRenderer({ ctx }: SampleRendererProps) {
               </SidebarSection>
             ) : null}
 
-            {activePanel ? (
+            {sidebarTab === "panel" && activePanel ? (
               <>
                 {matchesSearch(deferredSearchQuery, [
                   "panel title",

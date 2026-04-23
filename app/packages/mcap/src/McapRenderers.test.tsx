@@ -770,9 +770,25 @@ describe("Multimodal renderers", () => {
     expect(screen.getByTestId("multimodal-workspace-timeline")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Image" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "3D" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Panel" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Workspace" })).toBeTruthy();
   });
 
-  it("shows sync controls and saves updated workspace clock settings", async () => {
+  it("switches the sidebar between panel and workspace settings", () => {
+    render(<MultimodalModalRenderer ctx={createCtx("modal")} />);
+
+    expect(screen.getByRole("button", { name: "Frame config" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Sync" })).toBeNull();
+    expect(screen.getByPlaceholderText("Search panel settings")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Workspace" }));
+
+    expect(screen.getByRole("button", { name: "Sync" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Frame config" })).toBeNull();
+    expect(screen.queryByPlaceholderText("Search panel settings")).toBeNull();
+  });
+
+  it("shows sync controls in the workspace tab and saves updated clock settings", async () => {
     vi.useFakeTimers();
     const save = vi.fn().mockResolvedValue(WORKSPACE_RESPONSE.renderingPlan);
     useMultimodalWorkspaceMock.mockReturnValue(
@@ -782,6 +798,8 @@ describe("Multimodal renderers", () => {
     );
 
     render(<MultimodalModalRenderer ctx={createCtx("modal")} />);
+
+    fireEvent.click(screen.getByRole("tab", { name: "Workspace" }));
 
     const syncSectionButton = screen.getByRole("button", { name: "Sync" });
     expect(syncSectionButton.getAttribute("aria-expanded")).toBe("true");
