@@ -41,16 +41,17 @@ export function buildTransformGraph(
   latestByEdge.forEach((sample) => {
     const matrix = toTransformMatrix(sample);
     const inverseMatrix = matrix.clone().invert();
+    // TF samples map child-frame points into the parent frame.
     const parentNeighbors = graph.get(sample.parentFrameId) ?? [];
     parentNeighbors.push({
       targetFrameId: sample.childFrameId,
-      matrix,
+      matrix: inverseMatrix,
     });
     graph.set(sample.parentFrameId, parentNeighbors);
     const childNeighbors = graph.get(sample.childFrameId) ?? [];
     childNeighbors.push({
       targetFrameId: sample.parentFrameId,
-      matrix: inverseMatrix,
+      matrix,
     });
     graph.set(sample.childFrameId, childNeighbors);
   });
@@ -136,11 +137,12 @@ export function mergeScene3dFrames(
     };
   }
 
+  const sharedFrameId = getSharedFrameId(frames.map(({ frame }) => frame));
   return {
     colorMode: "rgb",
     frame: composeScene3dFrame({
       id: frames.map(({ frame }) => frame.id).join("|"),
-      frameId: null,
+      frameId: sharedFrameId,
       primitives: frames.flatMap(({ frame, color }) =>
         frame.primitives.map((primitive) =>
           applySolidColorToPrimitive(primitive, color)
@@ -194,7 +196,8 @@ export function createFollowPoseFromPose(
 
 export function transformPoseSample(
   pose: DecodedPoseSample,
-  matrix: THREE.Matrix4
+  matrix: THREE.Matrix4,
+  targetFrameId?: string | null
 ): DecodedPoseSample {
   const position = new THREE.Vector3(...pose.position).applyMatrix4(matrix);
   let orientation = pose.orientation;
@@ -208,7 +211,7 @@ export function transformPoseSample(
   }
 
   return {
-    frameId: pose.frameId,
+    frameId: targetFrameId ?? pose.frameId,
     position: [position.x, position.y, position.z],
     orientation,
   };
@@ -253,6 +256,21 @@ function hasIntensityPrimitives(frame: Scene3dFrame) {
     (primitive) =>
       primitive.kind === "points" && Boolean(primitive.intensity?.length)
   );
+}
+
+function getSharedFrameId(frames: Scene3dFrame[]) {
+  if (!frames.length) {
+    return null;
+  }
+
+  const firstFrameId = frames[0].frameId ?? null;
+  if (!firstFrameId) {
+    return null;
+  }
+
+  return frames.every((frame) => (frame.frameId ?? null) === firstFrameId)
+    ? firstFrameId
+    : null;
 }
 
 /** Recomputes a stable 3D scene frame from a collection of primitives. */

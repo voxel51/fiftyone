@@ -3,6 +3,9 @@ import {
   decodeCompressedImageInWorker,
   disposeCompressedImageWorkerClient,
 } from "./compressed-image-worker-client";
+import { decodeFoxgloveCompressedImagePayload } from "./foxglove-compressed-image-decoder";
+import { decodeFoxgloveFrameTransformPayload } from "./foxglove-frame-transform-decoder";
+import { decodeFoxglovePointCloudPayload } from "./foxglove-pointcloud-decoder";
 import { decodeLaserScanPayload } from "./laserscan-decoder";
 import { decodeMarkerArrayPayload } from "./markerarray-decoder";
 import {
@@ -128,6 +131,17 @@ function createBuiltinSchemaCodecRegistry() {
     },
     dispose: disposeCompressedImageWorkerClient,
   });
+  registry.registerImage("foxglove.CompressedImage", {
+    async decode(message) {
+      const decoded = decodeFoxgloveCompressedImagePayload(message.payload);
+
+      return {
+        format: decoded.format,
+        frameId: decoded.frameId,
+        compressedBytes: decoded.compressedBytes,
+      };
+    },
+  });
 
   registry.registerScene3d("sensor_msgs/msg/PointCloud2", {
     async decode(message) {
@@ -141,6 +155,15 @@ function createBuiltinSchemaCodecRegistry() {
       };
     },
     dispose: disposePointCloud2WorkerClient,
+  });
+  registry.registerScene3d("foxglove.PointCloud", {
+    async decode(message) {
+      const decoded = decodeFoxglovePointCloudPayload(message.payload);
+
+      return {
+        frame: decoded.frame,
+      };
+    },
   });
   registry.registerScene3d("sensor_msgs/msg/LaserScan", {
     async decode(message) {
@@ -181,6 +204,9 @@ function createBuiltinSchemaCodecRegistry() {
 
   registry.registerTransform("tf2_msgs/msg/TFMessage", {
     decode: decodeTfMessagePayload,
+  });
+  registry.registerTransform("foxglove.FrameTransform", {
+    decode: decodeFoxgloveFrameTransformPayload,
   });
 
   return registry;

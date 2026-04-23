@@ -19,6 +19,8 @@
         "@foxglove/rosmsg2-serialization": "^3.0.3",
         "@react-three/drei": "^10.7.6",
         "@react-three/fiber": "^8.18.0",
+        "protobufjs": "^7.5.4",
+        "react-mosaic-component": "6.1.1",
         "three": "^0.182.0"
     },
     "devDependencies": {
