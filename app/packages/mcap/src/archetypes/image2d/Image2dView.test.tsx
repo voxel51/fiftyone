@@ -6,25 +6,29 @@ import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Image2dView } from "./Image2dView";
 
-vi.mock("@fiftyone/playback/experimental/views/TexturedImageView", () => ({
-  TexturedImageView: ({
-    alt,
-    objectFit,
-    src,
-    testId,
-  }: {
-    alt?: string;
-    objectFit?: string;
-    src: string;
-    testId?: string;
-  }) => (
-    <div
-      aria-label={alt}
-      data-object-fit={objectFit}
-      data-src={src}
-      data-testid={testId ?? "textured-image-view"}
-    />
+vi.mock("@react-three/drei", () => ({
+  OrbitControls: () => null,
+}));
+
+vi.mock("@react-three/fiber", () => ({
+  Canvas: ({ children }: { children?: React.ReactNode }) => (
+    <div data-testid="image2d-canvas">{children}</div>
   ),
+  useFrame: () => {},
+  useLoader: () => ({
+    image: { width: 640, height: 480 },
+    colorSpace: "",
+    generateMipmaps: false,
+    minFilter: 0,
+    magFilter: 0,
+    needsUpdate: false,
+  }),
+  useThree: () => ({
+    camera: {},
+    invalidate: vi.fn(),
+    size: { width: 640, height: 480 },
+    viewport: { width: 12, height: 9 },
+  }),
 }));
 
 describe("Image2dView", () => {
@@ -48,6 +52,7 @@ describe("Image2dView", () => {
     expect(image.getAttribute("data-src")).toBe("blob:frame-1");
     expect(image.getAttribute("aria-label")).toBe("Front camera");
     expect(image.getAttribute("data-object-fit")).toBe("contain");
+    expect(screen.getByTestId("image2d-canvas")).toBeTruthy();
   });
 
   it("renders nothing when there is no frame", () => {

@@ -1,5 +1,6 @@
 import type { BufferReadiness } from "@fiftyone/playback/experimental/types";
 import type { Scene3dFrame } from "./archetypes";
+import { FoxgloveSceneUpdateStateCache } from "./foxglove-sceneupdate-state-cache";
 import {
   MultimodalRawMessageWindowCache,
   type RawMessageWindowCacheOptions,
@@ -18,6 +19,7 @@ export type MultimodalDecodedScene3dFrame = Scene3dFrame & {
   logTimeNs: number;
   publishTimeNs: number;
   schemaName: string;
+  warnings: string[];
 };
 
 type Renderable3dBufferCacheOptions = RawMessageWindowCacheOptions & {
@@ -28,6 +30,7 @@ type Renderable3dBufferCacheOptions = RawMessageWindowCacheOptions & {
 export class MultimodalRenderable3dBufferCache {
   private readonly rawWindowCache: MultimodalRawMessageWindowCache;
   private readonly schemaName: string;
+  private readonly sceneUpdateCache: FoxgloveSceneUpdateStateCache | null;
   private readonly decodedFrames = new Map<
     string,
     Promise<MultimodalDecodedScene3dFrame>
@@ -36,10 +39,19 @@ export class MultimodalRenderable3dBufferCache {
   constructor(options: Renderable3dBufferCacheOptions) {
     this.rawWindowCache = new MultimodalRawMessageWindowCache(options);
     this.schemaName = options.schemaName;
+    this.sceneUpdateCache =
+      options.schemaName === "foxglove.SceneUpdate"
+        ? new FoxgloveSceneUpdateStateCache(options)
+        : null;
   }
 
   /** Ensures all fixed fetch windows covering the requested range are buffered. */
   async ensureRange(range: RawMessageWindowCacheOptions["sceneRange"]) {
+    if (this.sceneUpdateCache) {
+      await this.sceneUpdateCache.ensureRange(range);
+      return;
+    }
+
     await this.rawWindowCache.ensureRange(range);
   }
 
@@ -48,21 +60,38 @@ export class MultimodalRenderable3dBufferCache {
     messages: MultimodalRawMessage[],
     window?: RawMessageWindowCacheOptions["sceneRange"]
   ) {
+    if (this.sceneUpdateCache) {
+      this.sceneUpdateCache.primeMessages(messages, window);
+      return;
+    }
+
     this.rawWindowCache.primeMessages(messages, window);
   }
 
   /** Returns the raw cached message matching the requested log time. */
   getMessageForLogTime(logTimeNs: number): MultimodalRawMessage | null {
+    if (this.sceneUpdateCache) {
+      return this.sceneUpdateCache.getMessageForLogTime(logTimeNs);
+    }
+
     return this.rawWindowCache.getMessageForLogTime(logTimeNs);
   }
 
   /** Returns cached sync samples derived from the current raw message set. */
   getSyncSamples() {
+    if (this.sceneUpdateCache) {
+      return this.sceneUpdateCache.getSyncSamples();
+    }
+
     return this.rawWindowCache.getSyncSamples();
   }
 
   /** Reports whether the raw message window containing this timestamp is ready. */
   getMessageReadiness(logTimeNs: number): BufferReadiness {
+    if (this.sceneUpdateCache) {
+      return this.sceneUpdateCache.getMessageReadiness(logTimeNs);
+    }
+
     return this.rawWindowCache.getTimeReadiness(logTimeNs);
   }
 
@@ -87,6 +116,7 @@ export class MultimodalRenderable3dBufferCache {
         logTimeNs: message.logTimeNs,
         publishTimeNs: message.publishTimeNs,
         schemaName: this.schemaName,
+        warnings: "warnings" in decoded ? decoded.warnings ?? [] : [],
       };
     });
 
@@ -99,10 +129,15 @@ export class MultimodalRenderable3dBufferCache {
     logTimeNs: number,
     options: WarmDecodeOptions = {}
   ): Promise<void> {
-    const messages = this.rawWindowCache.getMessagesAroundLogTime(logTimeNs, {
-      aheadCount: options.aheadCount ?? 1,
-      behindCount: options.behindCount ?? 0,
-    });
+    const messages = this.sceneUpdateCache
+      ? this.sceneUpdateCache.getMessagesAroundLogTime(logTimeNs, {
+          aheadCount: options.aheadCount ?? 1,
+          behindCount: options.behindCount ?? 0,
+        })
+      : this.rawWindowCache.getMessagesAroundLogTime(logTimeNs, {
+          aheadCount: options.aheadCount ?? 1,
+          behindCount: options.behindCount ?? 0,
+        });
 
     await Promise.allSettled(
       messages.map((message) => this.decodeMessage(message))
@@ -113,10 +148,15 @@ export class MultimodalRenderable3dBufferCache {
   dispose() {
     this.decodedFrames.clear();
     this.rawWindowCache.dispose();
+    this.sceneUpdateCache?.dispose();
     BUILTIN_SCHEMA_CODEC_REGISTRY.disposeScene3dResources(this.schemaName);
   }
 
   private async decodeBySchema(message: MultimodalRawMessage) {
+    if (this.sceneUpdateCache) {
+      return this.sceneUpdateCache.decodeMessage(message);
+    }
+
     return BUILTIN_SCHEMA_CODEC_REGISTRY.decodeScene3dMessage(
       this.schemaName,
       message
