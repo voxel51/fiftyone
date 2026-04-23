@@ -63,6 +63,8 @@ vi.mock("@fiftyone/lighter", async () => {
         setViewportState: mockSetViewportState,
         fitToContent: mockFitToContent,
         getContentBounds: mockGetContentBounds,
+        getAllOverlays: () => [],
+        getCanonicalMediaId: () => undefined,
         registerRenderCallback: ({
           callback,
         }: {
@@ -110,6 +112,15 @@ vi.mock("../Sidebar/Annotate/useLabels", async () => {
   return {
     LabelsState: { UNSET: "unset", LOADING: "loading", COMPLETE: "complete" },
     labelsState: atom("complete"),
+  };
+});
+
+vi.mock("../Sidebar/Annotate/state", async () => {
+  const { atom } = await import("jotai");
+  // Non-null default so `schemasLoaded` is true in existing tests, which
+  // assume the reveal gate depends only on mediaBounds/rendererReady/labels.
+  return {
+    activeLabelSchemas: atom<string[] | null>([]),
   };
 });
 

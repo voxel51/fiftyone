@@ -11,6 +11,7 @@ import {
 } from "@fiftyone/lighter";
 import { modalBridge, useModalLookerOptions } from "@fiftyone/state";
 import { useAtomValue } from "jotai";
+import { activeLabelSchemas } from "../Sidebar/Annotate/state";
 import { LabelsState, labelsState } from "../Sidebar/Annotate/useLabels";
 import type { ModalViewportState } from "@fiftyone/state";
 import {
@@ -84,6 +85,22 @@ const useHasContent = (enabled: boolean) => {
 };
 
 /**
+ * Returns `true` once label schemas have been fetched from the backend
+ * (`activeLabelSchemas` is non-null) AND the initial label-load cycle has
+ * completed (`labelsState === COMPLETE`).
+ *
+ * Both conditions are necessary: schemas arrive asynchronously via the
+ * `get_label_schemas` operator, so `labelsState` can transiently reach
+ * COMPLETE with zero results while schemas are still loading. Requiring
+ * non-null schemas ensures that COMPLETE reflects a real, schema-aware fetch.
+ */
+const useLabelsReady = () => {
+  const schemasLoaded = useAtomValue(activeLabelSchemas) !== null;
+  const labelsComplete = useAtomValue(labelsState) === LabelsState.COMPLETE;
+  return schemasLoaded && labelsComplete;
+};
+
+/**
  * Returns `true` once the PixiJS renderer has finished async initialization
  * and the render loop has started. This gates viewport operations that require
  * the pixi-viewport to exist (e.g. setViewportState, fitToRect).
@@ -125,7 +142,7 @@ const useInitializeViewport = (
 
   const hasContent = useHasContent(effectiveZoom);
 
-  const labelsLoaded = useAtomValue(labelsState) === LabelsState.COMPLETE;
+  const labelsLoaded = useLabelsReady();
 
   useEffect(() => {
     if (
