@@ -390,7 +390,7 @@ export const useAnnotationActions = () => {
             icon: <OpenWith />,
             tooltip: "Translate or move object",
             isActive:
-              currentArchetypeSelectedForTransform &&
+              !!currentArchetypeSelectedForTransform &&
               transformMode === "translate",
             isDisabled: !currentArchetypeSelectedForTransform,
             onClick: () => handleTransformModeChange("translate"),

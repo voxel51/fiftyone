@@ -94,9 +94,10 @@ export const ActionToolbar = ({
     visible={visible}
   >
     {groups
-      .filter((group) => !group.isHidden)
-      .filter((group) =>
-        group.actions.some((action) => action.isVisible !== false)
+      .filter(
+        (group) =>
+          !group.isHidden &&
+          group.actions.some((action) => action.isVisible !== false)
       )
       .map((group) => (
         <ToolbarGroup key={group.id}>
