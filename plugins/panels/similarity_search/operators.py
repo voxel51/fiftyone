@@ -418,5 +418,4 @@ class SimilaritySearchSubscriptionOperator(foo.SseOperator):
             name="get_similarity_search_subscription_notifier",
             label="Similarity Search Subscription Notifications",
             store_name=STORE_NAME,
-            unlisted=True,
         )
