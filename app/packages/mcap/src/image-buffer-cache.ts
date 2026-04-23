@@ -1,5 +1,6 @@
 import type { BufferReadiness } from "@fiftyone/playback/experimental/types";
 import type { Image2dFrame } from "./archetypes";
+import { fetchMultimodalBuffer } from "./api";
 import { BoundedLruCache } from "./bounded-lru-cache";
 import { getCompressedImageMimeType } from "./compressed-image-decoder";
 import {
@@ -7,7 +8,10 @@ import {
   type RawMessageWindowCacheOptions,
 } from "./raw-message-window-cache";
 import { BUILTIN_SCHEMA_CODEC_REGISTRY } from "./schema-codec-registry";
-import type { MultimodalRawMessage } from "./types";
+import type {
+  MultimodalRawBufferResponseStream,
+  MultimodalRawMessage,
+} from "./types";
 
 /** Decoded image frame metadata cached for one raw Multimodal message. */
 export type MultimodalDecodedImageFrame = Image2dFrame & {
@@ -81,14 +85,43 @@ export class MultimodalImageBufferCache {
     string,
     MultimodalDecodedImageFrame
   >;
+  private readonly prefetchedImages = new Map<
+    string,
+    {
+      format: string;
+      frameId: string;
+      compressedBytes: Uint8Array;
+    }
+  >();
   private readonly pendingFrames = new Map<
     string,
     Promise<MultimodalDecodedImageFrame>
   >();
 
   constructor(options: ImageBufferCacheOptions) {
-    this.rawWindowCache = new MultimodalRawMessageWindowCache(options);
-    this.schemaName = options.schemaName ?? "sensor_msgs/msg/CompressedImage";
+    const schemaName = options.schemaName ?? "sensor_msgs/msg/CompressedImage";
+    this.rawWindowCache = new MultimodalRawMessageWindowCache({
+      ...options,
+      loadWindow: async (window) => {
+        const response = await fetchMultimodalBuffer({
+          datasetId: options.datasetId,
+          sampleId: options.sampleId,
+          request: {
+            mediaField: options.mediaField,
+            sourceKind: options.sourceKind,
+            streamIds: [options.streamId],
+            startTimeNs: window.startNs,
+            endTimeNs: window.endNs,
+            mode: "raw",
+          },
+        });
+        return response.streams[0] ?? null;
+      },
+      onStreamLoaded: (stream) => {
+        this.primePrefetchedImages(stream);
+      },
+    });
+    this.schemaName = schemaName;
     this.decodedFrames = new BoundedLruCache({
       maxEntries:
         options.maxDecodedFrameEntries ??
@@ -114,6 +147,15 @@ export class MultimodalImageBufferCache {
     window?: RawMessageWindowCacheOptions["sceneRange"]
   ) {
     this.rawWindowCache.primeMessages(messages, window);
+  }
+
+  /** Seeds the raw cache and prefetched image decodes for one buffered stream window. */
+  primeStream(
+    stream: MultimodalRawBufferResponseStream,
+    window?: RawMessageWindowCacheOptions["sceneRange"]
+  ) {
+    this.primePrefetchedImages(stream);
+    this.rawWindowCache.primeMessages(stream.messages, window);
   }
 
   /** Returns the raw cached message matching the requested log time. */
@@ -155,9 +197,14 @@ export class MultimodalImageBufferCache {
       return existingFrame;
     }
 
-    const decodePromise = BUILTIN_SCHEMA_CODEC_REGISTRY.decodeImageMessage(
-      this.schemaName,
-      message
+    const prefetched = this.prefetchedImages.get(message.messageId);
+    const decodePromise = (
+      prefetched
+        ? Promise.resolve(prefetched)
+        : BUILTIN_SCHEMA_CODEC_REGISTRY.decodeImageMessage(
+            this.schemaName,
+            message
+          )
     )
       .then(async (decoded) => {
         const mimeType = getCompressedImageMimeType(decoded.format);
@@ -219,8 +266,19 @@ export class MultimodalImageBufferCache {
   /** Disposes decoded image URLs and the shared worker client resources. */
   dispose() {
     this.pendingFrames.clear();
+    this.prefetchedImages.clear();
     this.decodedFrames.clear();
     this.rawWindowCache.dispose();
     BUILTIN_SCHEMA_CODEC_REGISTRY.disposeImageResources(this.schemaName);
+  }
+
+  private primePrefetchedImages(stream: MultimodalRawBufferResponseStream) {
+    stream.prefetchedImageMessages?.forEach((message) => {
+      this.prefetchedImages.set(message.messageId, {
+        format: message.format,
+        frameId: message.frameId,
+        compressedBytes: message.compressedBytes,
+      });
+    });
   }
 }

@@ -287,14 +287,14 @@ function useMultimodalGridHoverPreview(
       },
     })
       .then(async (response) => {
-        const messages = response.streams[0]?.messages ?? [];
-        if (!messages.length) {
+        const stream = response.streams[0];
+        if (!stream?.messages.length) {
           return [];
         }
 
-        cache.primeMessages(messages, previewWindow);
+        cache.primeStream(stream, previewWindow);
         const decodedFrames = await Promise.allSettled(
-          messages.map((message) => cache.decodeMessage(message))
+          stream.messages.map((message) => cache.decodeMessage(message))
         );
 
         return decodedFrames.flatMap((result) =>

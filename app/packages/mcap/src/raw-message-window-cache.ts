@@ -4,6 +4,7 @@ import { fetchMultimodalBuffer } from "./api";
 import { getMultimodalWindowsForRange } from "./playback-utils";
 import type {
   MultimodalRawMessage,
+  MultimodalRawBufferResponseStream,
   MultimodalTimeRange,
   MultimodalTimelineSample,
 } from "./types";
@@ -17,6 +18,13 @@ export type RawMessageWindowCacheOptions = {
   mediaField: string;
   sourceKind?: string;
   sceneRange: MultimodalTimeRange;
+  loadWindow?: (
+    window: MultimodalTimeRange
+  ) => Promise<MultimodalRawBufferResponseStream | null>;
+  onStreamLoaded?: (
+    stream: MultimodalRawBufferResponseStream,
+    window: MultimodalTimeRange
+  ) => void;
 };
 
 type MessageWindow = {
@@ -83,6 +91,17 @@ export class MultimodalRawMessageWindowCache {
   private readonly mediaField: string;
   private readonly sourceKind: string | undefined;
   private readonly sceneRange: MultimodalTimeRange;
+  private readonly loadWindow:
+    | ((
+        window: MultimodalTimeRange
+      ) => Promise<MultimodalRawBufferResponseStream | null>)
+    | undefined;
+  private readonly onStreamLoaded:
+    | ((
+        stream: MultimodalRawBufferResponseStream,
+        window: MultimodalTimeRange
+      ) => void)
+    | undefined;
   private readonly windows = new Map<string, MessageWindow>();
   private readonly windowPromises = new Map<string, Promise<void>>();
   private sortedMessagesCache: MultimodalRawMessage[] | null = null;
@@ -100,6 +119,8 @@ export class MultimodalRawMessageWindowCache {
     this.mediaField = options.mediaField;
     this.sourceKind = options.sourceKind;
     this.sceneRange = options.sceneRange;
+    this.loadWindow = options.loadWindow;
+    this.onStreamLoaded = options.onStreamLoaded;
   }
 
   async ensureRange(range: MultimodalTimeRange): Promise<void> {
@@ -286,20 +307,27 @@ export class MultimodalRawMessageWindowCache {
     this.windowPromises.set(key, Promise.resolve());
     this.markReadinessChanged();
 
-    const loadPromise = fetchMultimodalBuffer({
-      datasetId: this.datasetId,
-      sampleId: this.sampleId,
-      request: {
-        mediaField: this.mediaField,
-        sourceKind: this.sourceKind,
-        streamIds: [this.streamId],
-        startTimeNs: window.startNs,
-        endTimeNs: window.endNs,
-        mode: "raw",
-      },
-    })
-      .then((response) => {
-        const messages = response.streams[0]?.messages ?? [];
+    const loadPromise = (
+      this.loadWindow
+        ? this.loadWindow(window)
+        : fetchMultimodalBuffer({
+            datasetId: this.datasetId,
+            sampleId: this.sampleId,
+            request: {
+              mediaField: this.mediaField,
+              sourceKind: this.sourceKind,
+              streamIds: [this.streamId],
+              startTimeNs: window.startNs,
+              endTimeNs: window.endNs,
+              mode: "raw",
+            },
+          }).then((response) => response.streams[0] ?? null)
+    )
+      .then((streamResponse) => {
+        const messages = streamResponse?.messages ?? [];
+        if (streamResponse) {
+          this.onStreamLoaded?.(streamResponse, window);
+        }
         this.windows.set(key, { window, messages });
         this.invalidateCaches();
       })

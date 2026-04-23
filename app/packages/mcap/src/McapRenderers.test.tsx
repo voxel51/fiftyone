@@ -39,6 +39,7 @@ const { imageBufferCacheHarness } = vi.hoisted(() => ({
     instances: [] as unknown[],
     lastConstructorArgs: null as Record<string, unknown> | null,
     primeMessages: vi.fn(),
+    primeStream: vi.fn(),
     warmMessagesAroundLogTime: vi.fn(),
   },
 }));
@@ -92,6 +93,10 @@ vi.mock("./image-buffer-cache", () => ({
 
     primeMessages(...args: unknown[]) {
       return imageBufferCacheHarness.primeMessages(...args);
+    }
+
+    primeStream(...args: unknown[]) {
+      return imageBufferCacheHarness.primeStream(...args);
     }
 
     warmMessagesAroundLogTime(...args: unknown[]) {
@@ -705,6 +710,7 @@ describe("Multimodal renderers", () => {
       objectUrl: "blob:preview-frame-1",
     });
     imageBufferCacheHarness.primeMessages.mockReturnValue(undefined);
+    imageBufferCacheHarness.primeStream.mockReturnValue(undefined);
     imageBufferCacheHarness.warmMessagesAroundLogTime.mockResolvedValue(
       undefined
     );

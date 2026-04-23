@@ -149,6 +149,54 @@ describe("MultimodalImageBufferCache", () => {
     expect(secondFrame.objectUrl).toBe("blob:frame");
   });
 
+  it("uses prefetched image decodes from binary transport without invoking the worker again", async () => {
+    const cache = new MultimodalImageBufferCache({
+      datasetId: "dataset-1",
+      sampleId: "sample-1",
+      sceneId: "scene-1",
+      streamId: "/camera/front",
+      mediaField: "filepath",
+      sceneRange: { startNs: 0, endNs: 9_000_000_000 },
+    });
+    const stream = {
+      streamId: "/camera/front",
+      schemaName: "sensor_msgs/msg/CompressedImage",
+      messageEncoding: "cdr",
+      messages: [
+        {
+          messageId: "frame-1",
+          syncTimestampNs: 1_000_000_000,
+          logTimeNs: 1_000_000_000,
+          publishTimeNs: 1_000_000_010,
+          payload: new Uint8Array(),
+        },
+      ],
+      prefetchedImageMessages: [
+        {
+          messageId: "frame-1",
+          format: "jpeg",
+          frameId: "camera",
+          compressedBytes: Uint8Array.from([1, 2, 3]),
+        },
+      ],
+    };
+
+    cache.primeStream(stream, {
+      startNs: 1_000_000_000,
+      endNs: 2_000_000_000,
+    });
+
+    const message = cache.getMessageForLogTime(1_000_000_000);
+    expect(message).toBeTruthy();
+
+    const frame = await cache.decodeMessage(message!);
+
+    expect(decodeCompressedImageInWorkerMock).not.toHaveBeenCalled();
+    expect(frame.objectUrl).toBe("blob:frame");
+
+    cache.dispose();
+  });
+
   it("warms nearby decoded image frames after buffering", async () => {
     fetchMultimodalBufferMock.mockResolvedValue({
       sceneId: "scene-1",

@@ -131,6 +131,69 @@ describe("MultimodalRenderable3dBufferCache", () => {
     cache.dispose();
   });
 
+  it("reuses prefetched point-cloud frames from binary transport without re-decoding them", async () => {
+    const cache = new MultimodalRenderable3dBufferCache({
+      datasetId: "dataset-1",
+      sampleId: "sample-1",
+      sceneId: "scene-1",
+      streamId: "/lidar/top",
+      schemaName: "sensor_msgs/msg/PointCloud2",
+      mediaField: "filepath",
+      sourceKind: "mcap",
+      sceneRange: { startNs: 0, endNs: 100 },
+    });
+    const stream = {
+      streamId: "/lidar/top",
+      schemaName: "sensor_msgs/msg/PointCloud2",
+      messageEncoding: "cdr",
+      messages: [
+        {
+          messageId: "cloud-1",
+          logTimeNs: 10,
+          publishTimeNs: 10,
+          syncTimestampNs: 10,
+          payload: new Uint8Array(),
+        },
+      ],
+      prefetchedSceneMessages: [
+        {
+          messageId: "cloud-1",
+          frame: {
+            id: "cloud-1",
+            pointCount: 1,
+            bounds: {
+              min: [0, 0, 0] as [number, number, number],
+              max: [0, 0, 0] as [number, number, number],
+            },
+            frameId: "lidar",
+            primitives: [
+              {
+                kind: "points",
+                id: "points",
+                frameId: "lidar",
+                pointCount: 1,
+                positions: new Float32Array([0, 0, 0]),
+                intensity: null,
+                colors: null,
+                solidColor: null,
+                pointSize: null,
+              },
+            ],
+          },
+        },
+      ],
+    };
+
+    cache.primeStream(stream, { startNs: 0, endNs: 100 });
+
+    const frame = await cache.decodeMessage(stream.messages[0] as any);
+
+    expect(decodeScene3dMessageMock).not.toHaveBeenCalled();
+    expect(frame.primitives[0].id).toBe("/lidar/top:points:0");
+
+    cache.dispose();
+  });
+
   it("evicts least-recently-used decoded frames when the cache reaches capacity", async () => {
     decodeScene3dMessageMock.mockImplementation(
       async (_schemaName: string, message: { messageId: string }) => ({

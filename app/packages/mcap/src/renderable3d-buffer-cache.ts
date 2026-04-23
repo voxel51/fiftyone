@@ -1,6 +1,7 @@
 import type * as THREE from "three";
 import type { BufferReadiness } from "@fiftyone/playback/experimental/types";
 import type { Scene3dFrame, Scene3dPrimitive } from "./archetypes";
+import { fetchMultimodalBuffer } from "./api";
 import { BoundedLruCache } from "./bounded-lru-cache";
 import { FoxgloveSceneUpdateStateCache } from "./foxglove-sceneupdate-state-cache";
 import {
@@ -9,7 +10,10 @@ import {
 } from "./raw-message-window-cache";
 import { BUILTIN_SCHEMA_CODEC_REGISTRY } from "./schema-codec-registry";
 import { applyTransformToScene3dPrimitive } from "./transform-runtime";
-import type { MultimodalRawMessage } from "./types";
+import type {
+  MultimodalRawBufferResponseStream,
+  MultimodalRawMessage,
+} from "./types";
 
 type WarmDecodeOptions = {
   behindCount?: number;
@@ -61,6 +65,10 @@ export class MultimodalRenderable3dBufferCache {
     string,
     MultimodalDecodedScene3dFrame
   >;
+  private readonly prefetchedFrames = new Map<
+    string,
+    MultimodalDecodedScene3dFrame
+  >();
   private readonly pendingFrames = new Map<
     string,
     Promise<MultimodalDecodedScene3dFrame>
@@ -75,7 +83,27 @@ export class MultimodalRenderable3dBufferCache {
   >();
 
   constructor(options: Renderable3dBufferCacheOptions) {
-    this.rawWindowCache = new MultimodalRawMessageWindowCache(options);
+    this.rawWindowCache = new MultimodalRawMessageWindowCache({
+      ...options,
+      loadWindow: async (window) => {
+        const response = await fetchMultimodalBuffer({
+          datasetId: options.datasetId,
+          sampleId: options.sampleId,
+          request: {
+            mediaField: options.mediaField,
+            sourceKind: options.sourceKind,
+            streamIds: [options.streamId],
+            startTimeNs: window.startNs,
+            endTimeNs: window.endNs,
+            mode: "raw",
+          },
+        });
+        return response.streams[0] ?? null;
+      },
+      onStreamLoaded: (stream) => {
+        this.primePrefetchedSceneFrames(stream);
+      },
+    });
     this.schemaName = options.schemaName;
     this.streamId = options.streamId;
     const maxDecodedFrameEntries = options.maxDecodedFrameEntries ?? 24;
@@ -122,6 +150,20 @@ export class MultimodalRenderable3dBufferCache {
     }
 
     this.rawWindowCache.primeMessages(messages, window);
+  }
+
+  /** Seeds the raw cache and any prefetched decoded scene frames for one window. */
+  primeStream(
+    stream: MultimodalRawBufferResponseStream,
+    window?: RawMessageWindowCacheOptions["sceneRange"]
+  ) {
+    if (this.sceneUpdateCache) {
+      this.sceneUpdateCache.primeMessages(stream.messages, window);
+      return;
+    }
+
+    this.primePrefetchedSceneFrames(stream);
+    this.rawWindowCache.primeMessages(stream.messages, window);
   }
 
   /** Returns the raw cached message matching the requested log time. */
@@ -176,6 +218,12 @@ export class MultimodalRenderable3dBufferCache {
     const cachedFrame = this.decodedFrames.get(message.messageId);
     if (cachedFrame) {
       return cachedFrame;
+    }
+
+    const prefetchedFrame = this.prefetchedFrames.get(message.messageId);
+    if (prefetchedFrame) {
+      this.decodedFrames.set(message.messageId, prefetchedFrame);
+      return prefetchedFrame;
     }
 
     const existingFrame = this.pendingFrames.get(message.messageId);
@@ -338,6 +386,7 @@ export class MultimodalRenderable3dBufferCache {
   dispose() {
     this.pendingFrames.clear();
     this.pendingTransformedFrames.clear();
+    this.prefetchedFrames.clear();
     this.decodedFrames.clear();
     this.transformedFrames.clear();
     this.rawWindowCache.dispose();
@@ -354,6 +403,33 @@ export class MultimodalRenderable3dBufferCache {
       this.schemaName,
       message
     );
+  }
+
+  private primePrefetchedSceneFrames(
+    stream: MultimodalRawBufferResponseStream
+  ) {
+    const messageById = new Map(
+      stream.messages.map((message) => [message.messageId, message] as const)
+    );
+
+    stream.prefetchedSceneMessages?.forEach((message) => {
+      const rawMessage = messageById.get(message.messageId);
+      const frame = {
+        ...message.frame,
+        primitives: message.frame.primitives.map((primitive, index) => ({
+          ...primitive,
+          id: getRenderablePrimitiveId(this.streamId, primitive.id, index),
+        })),
+        messageId: message.messageId,
+        logTimeNs: rawMessage?.logTimeNs ?? 0,
+        publishTimeNs: rawMessage?.publishTimeNs ?? 0,
+        schemaName: this.schemaName,
+        warnings: [],
+      };
+
+      this.prefetchedFrames.set(message.messageId, frame);
+      this.decodedFrames.set(message.messageId, frame);
+    });
   }
 }
 

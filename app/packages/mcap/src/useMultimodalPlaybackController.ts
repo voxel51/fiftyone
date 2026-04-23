@@ -1347,16 +1347,16 @@ export function useMultimodalPlaybackController(
         }
 
         if (isImageStream(descriptor)) {
-          getOrCreateImageCache(stream.streamId)?.primeMessages(
-            stream.messages,
+          getOrCreateImageCache(stream.streamId)?.primeStream(
+            stream,
             response.window
           );
           return;
         }
 
         if (is3dStream(descriptor)) {
-          getOrCreateRenderable3dCache(stream.streamId)?.primeMessages(
-            stream.messages,
+          getOrCreateRenderable3dCache(stream.streamId)?.primeStream(
+            stream,
             response.window
           );
           return;
