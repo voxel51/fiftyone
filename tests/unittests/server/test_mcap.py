@@ -1150,6 +1150,99 @@ def _make_metadata(media_path, media_field="filepath"):
     )
 
 
+def _make_camera_rig_metadata(
+    media_path,
+    image_topics=None,
+    include_three_d=True,
+    include_front_support=False,
+):
+    image_topics = list(
+        image_topics
+        or [
+            "/camera/front",
+            "/camera/left",
+            "/camera/right",
+            "/camera/rear",
+        ]
+    )
+    streams = []
+    frames = []
+    channel_id = 1
+    schema_id = 1
+
+    if include_three_d:
+        streams.append(
+            _make_stream(
+                "/lidar/top",
+                "3d",
+                "sensor_msgs/msg/PointCloud2",
+                channel_id=channel_id,
+                schema_id=schema_id,
+                frame_id="lidar_top",
+                affordances=["pointcloud", "3d"],
+                compatible_panels=["3d"],
+            )
+        )
+        frames.append(fom.MultimodalFrameDescriptor(frame_id="lidar_top"))
+        channel_id += 1
+        schema_id += 1
+
+    for topic in image_topics:
+        frame_id = topic.strip("/").replace("/", "_").replace("-", "_")
+        streams.append(
+            _make_stream(
+                topic,
+                "image",
+                "sensor_msgs/msg/CompressedImage",
+                channel_id=channel_id,
+                schema_id=schema_id,
+                frame_id=frame_id,
+                affordances=["image"],
+                compatible_panels=["image"],
+            )
+        )
+        frames.append(fom.MultimodalFrameDescriptor(frame_id=frame_id))
+        channel_id += 1
+        schema_id += 1
+
+    if include_front_support and "/camera/front" in image_topics:
+        streams.extend(
+            [
+                _make_stream(
+                    "/camera/front/annotations",
+                    "other",
+                    "foxglove.ImageAnnotations",
+                    channel_id=channel_id,
+                    schema_id=schema_id,
+                    affordances=["image-annotations", "overlay"],
+                    compatible_panels=["image"],
+                ),
+                _make_stream(
+                    "/camera/front/camera_info",
+                    "other",
+                    "foxglove.CameraCalibration",
+                    channel_id=channel_id + 1,
+                    schema_id=schema_id + 1,
+                    frame_id="camera_front",
+                    affordances=["camera", "calibration"],
+                    compatible_panels=["image"],
+                ),
+            ]
+        )
+
+    return fom.MultimodalMetadata.build_for(
+        scene_id="scene-1",
+        media_field="filepath",
+        media_path=media_path,
+        time_range=fom.MultimodalTimeRange(start_ns=10, end_ns=20),
+        streams=streams,
+        frames=frames,
+        transforms=[],
+        location_topics=[],
+        catalog_version="multimodal-workspace-v4",
+    )
+
+
 @pytest.fixture(name="dataset")
 def fixture_dataset():
     dataset = fo.Dataset()
@@ -1294,89 +1387,9 @@ class TestMcapModule:
         assert metadata.streams[0].frame_id == "camera"
 
     def test_build_rendering_plan(self):
-        metadata = fom.MultimodalMetadata(
-            scene_id="scene-1",
-            media_field="filepath",
-            streams=[
-                _make_stream(
-                    "/lidar/top",
-                    "3d",
-                    "sensor_msgs/msg/PointCloud2",
-                    channel_id=2,
-                    schema_id=2,
-                    frame_id="lidar_top",
-                    affordances=["pointcloud", "3d"],
-                    compatible_panels=["3d"],
-                ),
-                _make_stream(
-                    "/camera/front",
-                    "image",
-                    "sensor_msgs/msg/CompressedImage",
-                    channel_id=1,
-                    schema_id=1,
-                    frame_id="camera_front",
-                    affordances=["image"],
-                    compatible_panels=["image"],
-                ),
-                _make_stream(
-                    "/camera/front/annotations",
-                    "other",
-                    "foxglove.ImageAnnotations",
-                    channel_id=6,
-                    schema_id=6,
-                    affordances=["image-annotations", "overlay"],
-                    compatible_panels=["image"],
-                ),
-                _make_stream(
-                    "/camera/front/camera_info",
-                    "other",
-                    "foxglove.CameraCalibration",
-                    channel_id=7,
-                    schema_id=7,
-                    frame_id="camera_front",
-                    affordances=["camera", "calibration"],
-                    compatible_panels=["image"],
-                ),
-                _make_stream(
-                    "/camera/left",
-                    "image",
-                    "sensor_msgs/msg/CompressedImage",
-                    channel_id=3,
-                    schema_id=3,
-                    frame_id="camera_left",
-                    affordances=["image"],
-                    compatible_panels=["image"],
-                ),
-                _make_stream(
-                    "/camera/right",
-                    "image",
-                    "sensor_msgs/msg/CompressedImage",
-                    channel_id=4,
-                    schema_id=4,
-                    frame_id="camera_right",
-                    affordances=["image"],
-                    compatible_panels=["image"],
-                ),
-                _make_stream(
-                    "/camera/rear",
-                    "image",
-                    "sensor_msgs/msg/CompressedImage",
-                    channel_id=5,
-                    schema_id=5,
-                    frame_id="camera_rear",
-                    affordances=["image"],
-                    compatible_panels=["image"],
-                ),
-            ],
-            frames=[
-                fom.MultimodalFrameDescriptor(frame_id="lidar_top"),
-                fom.MultimodalFrameDescriptor(frame_id="camera_front"),
-                fom.MultimodalFrameDescriptor(frame_id="camera_left"),
-                fom.MultimodalFrameDescriptor(frame_id="camera_right"),
-                fom.MultimodalFrameDescriptor(frame_id="camera_rear"),
-            ],
-            transforms=[],
-            location_topics=[],
+        metadata = _make_camera_rig_metadata(
+            __file__,
+            include_front_support=True,
         )
 
         plan = fosm.DefaultMultimodalRenderingPlanner().build_rendering_plan(
@@ -1388,14 +1401,12 @@ class TestMcapModule:
             "image_panel_1",
             "image_panel_2",
             "image_panel_3",
-            "image_panel_4",
         ]
         assert [panel.title for panel in plan.panels] == [
             "lidar",
             "camera",
             "camera 2",
             "camera 3",
-            "camera 4",
         ]
         assert plan.panels[0].visible_stream_ids == ["/lidar/top"]
         assert plan.panels[0].frame_config.display_frame_id == "lidar_top"
@@ -1403,34 +1414,115 @@ class TestMcapModule:
             "/camera/front",
             "/camera/left",
             "/camera/right",
-            "/camera/rear",
         ]
         assert plan.panels[1].visible_stream_ids == [
             "/camera/front/annotations",
             "/camera/front/camera_info",
         ]
         assert plan.panels[2].visible_stream_ids == []
+        assert plan.panels[3].visible_stream_ids == []
         assert plan.layout_tree == _split(
-            "row",
-            40,
+            "column",
+            60,
+            _leaf("panel_3d_1"),
             _split(
-                "column",
-                50,
-                _leaf("panel_3d_1"),
-                _leaf("image_panel_1"),
-            ),
-            _split(
-                "column",
+                "row",
                 33,
-                _leaf("image_panel_2"),
+                _leaf("image_panel_1"),
                 _split(
                     "row",
                     50,
+                    _leaf("image_panel_2"),
                     _leaf("image_panel_3"),
-                    _leaf("image_panel_4"),
                 ),
             ),
         )
+
+    def test_build_rendering_plan_caps_image_only_defaults_at_three(self):
+        metadata = _make_camera_rig_metadata(
+            __file__,
+            image_topics=[
+                "/camera/rear",
+                "/camera/fisheye",
+                "/camera/front",
+                "/camera/left",
+            ],
+            include_three_d=False,
+        )
+
+        plan = fosm.DefaultMultimodalRenderingPlanner().build_rendering_plan(
+            metadata
+        )
+
+        assert [panel.panel_id for panel in plan.panels] == [
+            "image_panel_1",
+            "image_panel_2",
+            "image_panel_3",
+        ]
+        assert [panel.render_stream_id for panel in plan.panels] == [
+            "/camera/front",
+            "/camera/left",
+            "/camera/rear",
+        ]
+        assert plan.layout_tree == _split(
+            "row",
+            33,
+            _leaf("image_panel_1"),
+            _split(
+                "column",
+                50,
+                _leaf("image_panel_2"),
+                _leaf("image_panel_3"),
+            ),
+        )
+
+    def test_select_default_image_streams_uses_first_matched_slot(self):
+        image_streams = [
+            _make_stream(
+                "/camera/left",
+                "image",
+                "sensor_msgs/msg/CompressedImage",
+                channel_id=1,
+                schema_id=1,
+                affordances=["image"],
+                compatible_panels=["image"],
+            ),
+            _make_stream(
+                "/camera/right-left",
+                "image",
+                "sensor_msgs/msg/CompressedImage",
+                channel_id=2,
+                schema_id=2,
+                affordances=["image"],
+                compatible_panels=["image"],
+            ),
+            _make_stream(
+                "/camera/right",
+                "image",
+                "sensor_msgs/msg/CompressedImage",
+                channel_id=3,
+                schema_id=3,
+                affordances=["image"],
+                compatible_panels=["image"],
+            ),
+            _make_stream(
+                "/camera/rear",
+                "image",
+                "sensor_msgs/msg/CompressedImage",
+                channel_id=4,
+                schema_id=4,
+                affordances=["image"],
+                compatible_panels=["image"],
+            ),
+        ]
+
+        selected_streams = fosm._select_default_image_streams(image_streams)
+
+        assert [stream.stream_id for stream in selected_streams] == [
+            "/camera/left",
+            "/camera/right",
+            "/camera/right-left",
+        ]
 
     def test_build_rendering_plan_prefers_map_and_tf_follow_defaults(self):
         metadata = fom.MultimodalMetadata(
@@ -1488,9 +1580,73 @@ class TestMcapModule:
             metadata
         )
 
+        assert plan.layout_tree == _leaf("panel_3d_1")
         assert plan.panels[0].frame_config.fixed_frame_id == "map"
         assert plan.panels[0].frame_config.display_frame_id == "map"
         assert plan.panels[0].frame_config.follow_mode == "pose"
+
+    @pytest.mark.parametrize(
+        ("panel_ids", "expected_layout_tree"),
+        [
+            (["panel_3d_1"], _leaf("panel_3d_1")),
+            (
+                ["panel_3d_1", "image_panel_1"],
+                _split(
+                    "column",
+                    60,
+                    _leaf("panel_3d_1"),
+                    _leaf("image_panel_1"),
+                ),
+            ),
+            (
+                ["panel_3d_1", "image_panel_1", "image_panel_2"],
+                _split(
+                    "column",
+                    60,
+                    _leaf("panel_3d_1"),
+                    _split(
+                        "row",
+                        50,
+                        _leaf("image_panel_1"),
+                        _leaf("image_panel_2"),
+                    ),
+                ),
+            ),
+            (
+                [
+                    "panel_3d_1",
+                    "image_panel_1",
+                    "image_panel_2",
+                    "image_panel_3",
+                ],
+                _split(
+                    "column",
+                    60,
+                    _leaf("panel_3d_1"),
+                    _split(
+                        "row",
+                        33,
+                        _leaf("image_panel_1"),
+                        _split(
+                            "row",
+                            50,
+                            _leaf("image_panel_2"),
+                            _leaf("image_panel_3"),
+                        ),
+                    ),
+                ),
+            ),
+        ],
+    )
+    def test_build_default_rendering_plan_layout_tree_with_3d_panel(
+        self, panel_ids, expected_layout_tree
+    ):
+        assert (
+            fosm._build_default_rendering_plan_layout_tree(
+                panel_ids, has_three_d_panel=True
+            )
+            == expected_layout_tree
+        )
 
     @pytest.mark.parametrize(
         ("panel_ids", "expected_layout_tree"),
@@ -1825,6 +1981,227 @@ class TestMcapModule:
 
         assert state.metadata.scene_id == "scene-1"
         assert adapter.catalog_calls == 0
+
+    def test_workspace_service_preserves_cached_rendering_plans(
+        self, dataset, sample
+    ):
+        with tempfile.NamedTemporaryFile(suffix=".mcap") as handle:
+            sample["filepath"] = handle.name
+            sample.save()
+            metadata = _make_camera_rig_metadata(
+                handle.name, include_front_support=True
+            )
+            repository = fosm.SampleMultimodalSceneRepository()
+            persisted_rendering_plan = fopr.MultimodalRenderingPlan(
+                source_kind=metadata.source_kind,
+                media_field=metadata.media_field,
+                scene_id=metadata.scene_id,
+                sync=fopr.SyncConfig(
+                    timestamp_source="header.stamp",
+                    fallback="log_time",
+                    mode="nearest",
+                ),
+                panels=[
+                    fopr.PanelPlan(
+                        panel_id="panel_3d_1",
+                        archetype="3d",
+                        title="lidar",
+                        render_stream_id=None,
+                        visible_stream_ids=["/lidar/top"],
+                        frame_config=fopr.PanelFrameConfig(
+                            fixed_frame_id="lidar_top",
+                            display_frame_id="lidar_top",
+                        ),
+                        scene_config=fopr.PanelSceneConfig(
+                            up_axis="z",
+                            background_color="#10151d",
+                            show_grid=True,
+                        ),
+                    ),
+                    fopr.PanelPlan(
+                        panel_id="image_panel_1",
+                        archetype="image",
+                        title="camera",
+                        render_stream_id="/camera/front",
+                        visible_stream_ids=[
+                            "/camera/front/annotations",
+                            "/camera/front/camera_info",
+                        ],
+                        frame_config=fopr.PanelFrameConfig(),
+                        scene_config=fopr.PanelSceneConfig(),
+                    ),
+                    fopr.PanelPlan(
+                        panel_id="image_panel_2",
+                        archetype="image",
+                        title="camera 2",
+                        render_stream_id="/camera/left",
+                        visible_stream_ids=[],
+                        frame_config=fopr.PanelFrameConfig(),
+                        scene_config=fopr.PanelSceneConfig(),
+                    ),
+                    fopr.PanelPlan(
+                        panel_id="image_panel_3",
+                        archetype="image",
+                        title="camera 3",
+                        render_stream_id="/camera/right",
+                        visible_stream_ids=[],
+                        frame_config=fopr.PanelFrameConfig(),
+                        scene_config=fopr.PanelSceneConfig(),
+                    ),
+                    fopr.PanelPlan(
+                        panel_id="image_panel_4",
+                        archetype="image",
+                        title="camera 4",
+                        render_stream_id="/camera/rear",
+                        visible_stream_ids=[],
+                        frame_config=fopr.PanelFrameConfig(),
+                        scene_config=fopr.PanelSceneConfig(),
+                    ),
+                ],
+                sidebar_width=208,
+                layout_tree=fosm._build_default_layout_tree(
+                    [
+                        "panel_3d_1",
+                        "image_panel_1",
+                        "image_panel_2",
+                        "image_panel_3",
+                        "image_panel_4",
+                    ]
+                ),
+            )
+            repository.save(
+                dataset, sample, metadata, persisted_rendering_plan
+            )
+            adapter = _FakeAdapter(
+                metadata=metadata,
+                fingerprint=metadata.source_fingerprint,
+            )
+            service = fosm.MultimodalWorkspaceService(
+                adapter=adapter,
+                planner=fosm.DefaultMultimodalRenderingPlanner(),
+                repository=repository,
+            )
+
+            state = service.get_workspace(dataset, sample, "filepath")
+
+        assert adapter.catalog_calls == 0
+        assert [panel.panel_id for panel in state.rendering_plan.panels] == [
+            "panel_3d_1",
+            "image_panel_1",
+            "image_panel_2",
+            "image_panel_3",
+            "image_panel_4",
+        ]
+
+    def test_workspace_service_overwrite_rebuilds_cached_rendering_plans(
+        self, dataset, sample
+    ):
+        with tempfile.NamedTemporaryFile(suffix=".mcap") as handle:
+            sample["filepath"] = handle.name
+            sample.save()
+            metadata = _make_camera_rig_metadata(
+                handle.name, include_front_support=True
+            )
+            repository = fosm.SampleMultimodalSceneRepository()
+            legacy_rendering_plan = fopr.MultimodalRenderingPlan(
+                source_kind=metadata.source_kind,
+                media_field=metadata.media_field,
+                scene_id=metadata.scene_id,
+                sync=fopr.SyncConfig(
+                    timestamp_source="header.stamp",
+                    fallback="log_time",
+                    mode="nearest",
+                ),
+                panels=[
+                    fopr.PanelPlan(
+                        panel_id="panel_3d_1",
+                        archetype="3d",
+                        title="lidar",
+                        render_stream_id=None,
+                        visible_stream_ids=["/lidar/top"],
+                        frame_config=fopr.PanelFrameConfig(
+                            fixed_frame_id="lidar_top",
+                            display_frame_id="lidar_top",
+                        ),
+                        scene_config=fopr.PanelSceneConfig(
+                            up_axis="z",
+                            background_color="#10151d",
+                            show_grid=True,
+                        ),
+                    ),
+                    fopr.PanelPlan(
+                        panel_id="image_panel_1",
+                        archetype="image",
+                        title="camera",
+                        render_stream_id="/camera/front",
+                        visible_stream_ids=[],
+                        frame_config=fopr.PanelFrameConfig(),
+                        scene_config=fopr.PanelSceneConfig(),
+                    ),
+                    fopr.PanelPlan(
+                        panel_id="image_panel_2",
+                        archetype="image",
+                        title="camera 2",
+                        render_stream_id="/camera/left",
+                        visible_stream_ids=[],
+                        frame_config=fopr.PanelFrameConfig(),
+                        scene_config=fopr.PanelSceneConfig(),
+                    ),
+                    fopr.PanelPlan(
+                        panel_id="image_panel_3",
+                        archetype="image",
+                        title="camera 3",
+                        render_stream_id="/camera/right",
+                        visible_stream_ids=[],
+                        frame_config=fopr.PanelFrameConfig(),
+                        scene_config=fopr.PanelSceneConfig(),
+                    ),
+                    fopr.PanelPlan(
+                        panel_id="image_panel_4",
+                        archetype="image",
+                        title="camera 4",
+                        render_stream_id="/camera/rear",
+                        visible_stream_ids=[],
+                        frame_config=fopr.PanelFrameConfig(),
+                        scene_config=fopr.PanelSceneConfig(),
+                    ),
+                ],
+                sidebar_width=208,
+                layout_tree=fosm._build_default_layout_tree(
+                    [
+                        "panel_3d_1",
+                        "image_panel_1",
+                        "image_panel_2",
+                        "image_panel_3",
+                        "image_panel_4",
+                    ]
+                ),
+            )
+            repository.save(dataset, sample, metadata, legacy_rendering_plan)
+            adapter = _FakeAdapter(
+                metadata=metadata,
+                fingerprint=metadata.source_fingerprint,
+            )
+            service = fosm.MultimodalWorkspaceService(
+                adapter=adapter,
+                planner=fosm.DefaultMultimodalRenderingPlanner(),
+                repository=repository,
+            )
+
+            state = service.ingest_workspace(
+                dataset=dataset,
+                sample=sample,
+                media_field="filepath",
+                overwrite=True,
+            )
+
+        assert adapter.catalog_calls == 1
+        assert [panel.panel_id for panel in state.rendering_plan.panels] == [
+            "panel_3d_1",
+            "image_panel_1",
+            "image_panel_2",
+            "image_panel_3",
+        ]
 
     def test_workspace_service_updates_rendering_plan(self, dataset, sample):
         with tempfile.NamedTemporaryFile(suffix=".mcap") as handle:

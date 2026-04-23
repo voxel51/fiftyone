@@ -12,6 +12,7 @@ from collections import OrderedDict, deque
 import importlib
 import logging
 import os
+import re
 import time
 
 import cachetools
@@ -42,6 +43,8 @@ _DEFAULT_STREAM = {
     "compatible_panels": [],
     "location_mode": None,
 }
+_DEFAULT_IMAGE_PANEL_LIMIT = 3
+_PREFERRED_IMAGE_PANEL_TOKENS = ("front", "left", "right")
 _PREFERRED_GLOBAL_FRAME_IDS = ("odom", "map", "world")
 _PREFERRED_EGO_FRAME_IDS = (
     "base_link",
@@ -650,9 +653,9 @@ class DefaultMultimodalRenderingPlanner(MultimodalRenderingPlanner):
     def build_rendering_plan(self, metadata):
         panels = []
         used_titles = set()
-        image_streams = [
-            stream for stream in metadata.streams if stream.kind == "image"
-        ]
+        image_streams = _select_default_image_streams(
+            [stream for stream in metadata.streams if stream.kind == "image"]
+        )
         three_d_streams = [
             stream
             for stream in metadata.streams
@@ -729,10 +732,64 @@ class DefaultMultimodalRenderingPlanner(MultimodalRenderingPlanner):
             ),
             panels=panels,
             sidebar_width=_DEFAULT_SIDEBAR_WIDTH,
-            layout_tree=_build_default_layout_tree(
-                [panel.panel_id for panel in panels]
+            layout_tree=_build_default_rendering_plan_layout_tree(
+                [panel.panel_id for panel in panels],
+                has_three_d_panel=bool(three_d_streams),
             ),
         )
+
+
+def _get_topic_tokens(topic):
+    return [
+        token for token in re.split(r"[/_-]+", (topic or "").lower()) if token
+    ]
+
+
+def _get_preferred_image_panel_slot(stream):
+    topic_tokens = _get_topic_tokens(getattr(stream, "topic", None))
+
+    for token in _PREFERRED_IMAGE_PANEL_TOKENS:
+        if token in topic_tokens:
+            return token
+
+    return None
+
+
+def _select_default_image_streams(image_streams):
+    image_streams = list(image_streams or [])
+    preferred_slots = {
+        stream.stream_id: _get_preferred_image_panel_slot(stream)
+        for stream in image_streams
+    }
+    selected_streams = []
+    selected_stream_ids = set()
+
+    for token in _PREFERRED_IMAGE_PANEL_TOKENS:
+        for stream in image_streams:
+            if len(selected_streams) >= _DEFAULT_IMAGE_PANEL_LIMIT:
+                return selected_streams
+
+            if stream.stream_id in selected_stream_ids:
+                continue
+
+            if preferred_slots[stream.stream_id] != token:
+                continue
+
+            selected_streams.append(stream)
+            selected_stream_ids.add(stream.stream_id)
+            break
+
+    for stream in image_streams:
+        if len(selected_streams) >= _DEFAULT_IMAGE_PANEL_LIMIT:
+            break
+
+        if stream.stream_id in selected_stream_ids:
+            continue
+
+        selected_streams.append(stream)
+        selected_stream_ids.add(stream.stream_id)
+
+    return selected_streams
 
 
 def _build_layout_leaf(panel_id):
@@ -849,6 +906,65 @@ def _build_default_layout_tree(panel_ids, depth=0):
         _build_default_layout_tree(panel_ids[:split_index], depth + 1),
         _build_default_layout_tree(panel_ids[split_index:], depth + 1),
     )
+
+
+def _build_default_rendering_plan_layout_tree(
+    panel_ids, has_three_d_panel=False
+):
+    panel_ids = list(panel_ids or [])
+    panel_count = len(panel_ids)
+    if not has_three_d_panel or panel_count == 0:
+        return _build_default_layout_tree(panel_ids)
+
+    if panel_count == 1:
+        return _build_layout_leaf(panel_ids[0])
+
+    if panel_count == 2:
+        return {
+            "type": "split",
+            "direction": "column",
+            "splitPercentage": 60,
+            "first": _build_layout_leaf(panel_ids[0]),
+            "second": _build_layout_leaf(panel_ids[1]),
+        }
+
+    if panel_count == 3:
+        return {
+            "type": "split",
+            "direction": "column",
+            "splitPercentage": 60,
+            "first": _build_layout_leaf(panel_ids[0]),
+            "second": {
+                "type": "split",
+                "direction": "row",
+                "splitPercentage": 50,
+                "first": _build_layout_leaf(panel_ids[1]),
+                "second": _build_layout_leaf(panel_ids[2]),
+            },
+        }
+
+    if panel_count == 4:
+        return {
+            "type": "split",
+            "direction": "column",
+            "splitPercentage": 60,
+            "first": _build_layout_leaf(panel_ids[0]),
+            "second": {
+                "type": "split",
+                "direction": "row",
+                "splitPercentage": 33,
+                "first": _build_layout_leaf(panel_ids[1]),
+                "second": {
+                    "type": "split",
+                    "direction": "row",
+                    "splitPercentage": 50,
+                    "first": _build_layout_leaf(panel_ids[2]),
+                    "second": _build_layout_leaf(panel_ids[3]),
+                },
+            },
+        }
+
+    return _build_default_layout_tree(panel_ids)
 
 
 def _normalize_layout_tree(layout_tree):
