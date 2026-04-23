@@ -22,6 +22,7 @@ import fiftyone as fo
 import fiftyone.core.metadata as fom
 import fiftyone.core.rendering as fopr
 import fiftyone.server.multimodal as fosm
+import fiftyone.server.multimodal_transport as fosmt
 
 
 class _FakeReader:
@@ -176,6 +177,43 @@ class _FakeAdapter(fosm.MultimodalSourceAdapter):
     def get_source_fingerprint(self, source_path):
         del source_path
         return self.fingerprint
+
+
+class _StaticCodec(fosm.SchemaCodec):
+    def __init__(
+        self,
+        schema_name,
+        kind,
+        details=None,
+        affordances=None,
+        compatible_panels=None,
+        location_mode=None,
+        sync_timestamp_ns=None,
+    ):
+        super().__init__(
+            schema_name=schema_name,
+            kind=kind,
+            affordances=affordances,
+            compatible_panels=compatible_panels,
+            location_mode=location_mode,
+        )
+        self._details = details or {}
+        self._sync_timestamp_ns = sync_timestamp_ns
+
+    def decode_catalog_details(self, schema, payload):
+        del schema, payload
+        return dict(self._details)
+
+    def decode_sync_timestamp_ns(self, schema, payload):
+        del schema, payload
+        return self._sync_timestamp_ns
+
+
+def _make_mcap_source_adapter(reader, codec_registry=None):
+    return fosm.McapSourceAdapter(
+        codec_registry=codec_registry or fosm._SCHEMA_CODEC_REGISTRY,
+        reader_factory=lambda _stream: reader,
+    )
 
 
 def _make_schema(schema_id, name, encoding="ros2msg", data=b""):
@@ -1300,7 +1338,7 @@ def fixture_dataset():
 def fixture_timeline_index_artifacts_dir(tmp_path, monkeypatch):
     artifacts_dir = tmp_path / "timeline_indexes"
     monkeypatch.setattr(
-        fosm,
+        fosmt,
         "_get_timeline_index_artifacts_dir",
         lambda: str(artifacts_dir),
     )
@@ -1336,7 +1374,9 @@ def fixture_sample(dataset):
 
 
 class TestMcapModule:
-    def test_catalog_reader_inventories_summary_streams(self, monkeypatch):
+    def test_mcap_source_adapter_build_catalog_inventories_summary_streams(
+        self,
+    ):
         image_schema = _make_schema(
             1, "sensor_msgs/msg/CompressedImage", "ros2msg"
         )
@@ -1377,27 +1417,42 @@ class TestMcapModule:
             ],
         )
 
-        monkeypatch.setattr(
-            fosm,
-            "decode_catalog_details",
-            lambda schema_name, _payload: {
-                "sensor_msgs/msg/CompressedImage": {"frame_id": "camera"},
-                "tf2_msgs/msg/TFMessage": {
-                    "transform_edges": [("base_link", "camera")]
-                },
-                "nav_msgs/msg/Odometry": {
-                    "frame_id": "odom",
-                    "child_frame_id": "base_link",
-                },
-            }.get(schema_name, {}),
+        codec_registry = fosm.SchemaCodecRegistry(
+            [
+                _StaticCodec(
+                    "sensor_msgs/msg/CompressedImage",
+                    kind="image",
+                    affordances=["image"],
+                    compatible_panels=["image"],
+                    details={"frame_id": "camera"},
+                ),
+                _StaticCodec(
+                    "tf2_msgs/msg/TFMessage",
+                    kind="transform",
+                    affordances=["transforms"],
+                    details={"transform_edges": [("base_link", "camera")]},
+                ),
+                _StaticCodec(
+                    "nav_msgs/msg/Odometry",
+                    kind="location",
+                    affordances=["location", "position", "pose"],
+                    location_mode="pose",
+                    details={
+                        "frame_id": "odom",
+                        "child_frame_id": "base_link",
+                    },
+                ),
+            ]
         )
 
         with tempfile.NamedTemporaryFile(suffix=".mcap") as handle:
-            metadata = fosm._catalog_reader(
+            metadata = _make_mcap_source_adapter(
                 reader=reader,
+                codec_registry=codec_registry,
+            ).build_catalog(
+                source_path=handle.name,
                 scene_id="scene-1",
                 media_field="filepath",
-                source_path=handle.name,
             )
 
         assert metadata.catalog_version == fosm._CATALOG_VERSION
@@ -1421,7 +1476,9 @@ class TestMcapModule:
         assert metadata.location_topics[0].stream_id == "/odom"
         assert metadata.location_topics[0].mode == "pose"
 
-    def test_catalog_reader_without_summary_counts_messages(self, monkeypatch):
+    def test_mcap_source_adapter_build_catalog_counts_messages_without_summary(
+        self,
+    ):
         image_schema = _make_schema(
             1, "sensor_msgs/msg/CompressedImage", "ros2msg"
         )
@@ -1436,22 +1493,26 @@ class TestMcapModule:
                 (other_schema, other_channel, _make_message(20, 20, b"x")),
             ],
         )
-        monkeypatch.setattr(
-            fosm,
-            "decode_catalog_details",
-            lambda schema_name, _payload: (
-                {"frame_id": "camera"}
-                if "CompressedImage" in schema_name
-                else {}
-            ),
+        codec_registry = fosm.SchemaCodecRegistry(
+            [
+                _StaticCodec(
+                    "sensor_msgs/msg/CompressedImage",
+                    kind="image",
+                    affordances=["image"],
+                    compatible_panels=["image"],
+                    details={"frame_id": "camera"},
+                )
+            ]
         )
 
         with tempfile.NamedTemporaryFile(suffix=".mcap") as handle:
-            metadata = fosm._catalog_reader(
+            metadata = _make_mcap_source_adapter(
                 reader=reader,
+                codec_registry=codec_registry,
+            ).build_catalog(
+                source_path=handle.name,
                 scene_id="scene-1",
                 media_field="filepath",
-                source_path=handle.name,
             )
 
         assert metadata.time_range.start_ns == 5
@@ -1459,9 +1520,7 @@ class TestMcapModule:
         assert metadata.streams[0].message_count == 2
         assert metadata.streams[0].frame_id == "camera"
 
-    def test_ingest_reader_builds_timeline_indexes_for_sync_policies(
-        self, monkeypatch
-    ):
+    def test_ingest_reader_builds_timeline_indexes_for_sync_policies(self):
         image_schema = _make_schema(
             1, "sensor_msgs/msg/CompressedImage", "ros2msg"
         )
@@ -1476,16 +1535,16 @@ class TestMcapModule:
                 )
             ],
         )
-        monkeypatch.setattr(fosm, "decode_catalog_details", lambda *_: {})
-        monkeypatch.setattr(
-            fosm,
-            "decode_sync_timestamp_ns",
-            lambda schema_name, payload: (
-                150
-                if schema_name == "sensor_msgs/msg/CompressedImage"
-                and payload == b"frame"
-                else None
-            ),
+        codec_registry = fosm.SchemaCodecRegistry(
+            [
+                _StaticCodec(
+                    "sensor_msgs/msg/CompressedImage",
+                    kind="image",
+                    affordances=["image"],
+                    compatible_panels=["image"],
+                    sync_timestamp_ns=150,
+                )
+            ]
         )
 
         with tempfile.NamedTemporaryFile(suffix=".mcap") as handle:
@@ -1494,6 +1553,7 @@ class TestMcapModule:
                 scene_id="scene-1",
                 media_field="filepath",
                 source_path=handle.name,
+                codec_registry=codec_registry,
             )
 
         assert artifacts.timeline_indexes["header.stamp|log_time"][
@@ -1844,8 +1904,10 @@ class TestMcapModule:
         )
 
     def test_classify_stream_supports_additional_3d_schemas(self):
-        laser_scan = fosm._classify_stream("sensor_msgs/msg/LaserScan")
-        marker_array = fosm._classify_stream(
+        laser_scan = fosm._SCHEMA_CODEC_REGISTRY.classify_stream(
+            "sensor_msgs/msg/LaserScan"
+        )
+        marker_array = fosm._SCHEMA_CODEC_REGISTRY.classify_stream(
             "visualization_msgs/msg/MarkerArray"
         )
 
@@ -1858,14 +1920,24 @@ class TestMcapModule:
         assert "markerarray" in marker_array["affordances"]
 
     def test_classify_stream_supports_foxglove_schemas(self):
-        compressed_image = fosm._classify_stream("foxglove.CompressedImage")
-        pointcloud = fosm._classify_stream("foxglove.PointCloud")
-        scene_update = fosm._classify_stream("foxglove.SceneUpdate")
-        image_annotations = fosm._classify_stream("foxglove.ImageAnnotations")
-        camera_calibration = fosm._classify_stream(
+        compressed_image = fosm._SCHEMA_CODEC_REGISTRY.classify_stream(
+            "foxglove.CompressedImage"
+        )
+        pointcloud = fosm._SCHEMA_CODEC_REGISTRY.classify_stream(
+            "foxglove.PointCloud"
+        )
+        scene_update = fosm._SCHEMA_CODEC_REGISTRY.classify_stream(
+            "foxglove.SceneUpdate"
+        )
+        image_annotations = fosm._SCHEMA_CODEC_REGISTRY.classify_stream(
+            "foxglove.ImageAnnotations"
+        )
+        camera_calibration = fosm._SCHEMA_CODEC_REGISTRY.classify_stream(
             "foxglove.CameraCalibration"
         )
-        frame_transform = fosm._classify_stream("foxglove.FrameTransform")
+        frame_transform = fosm._SCHEMA_CODEC_REGISTRY.classify_stream(
+            "foxglove.FrameTransform"
+        )
 
         assert compressed_image["kind"] == "image"
         assert compressed_image["compatible_panels"] == ["image"]
@@ -1883,7 +1955,9 @@ class TestMcapModule:
         assert frame_transform["kind"] == "transform"
         assert frame_transform["affordances"] == ["transforms"]
 
-    def test_catalog_reader_supports_foxglove_schemas(self):
+    def test_mcap_source_adapter_build_catalog_supports_foxglove_schemas(
+        self,
+    ):
         image_schema = _make_foxglove_schema(1, "foxglove.CompressedImage")
         pointcloud_schema = _make_foxglove_schema(2, "foxglove.PointCloud")
         transform_schema = _make_foxglove_schema(3, "foxglove.FrameTransform")
@@ -2011,12 +2085,13 @@ class TestMcapModule:
         )
 
         with tempfile.NamedTemporaryFile(suffix=".mcap") as handle:
-            metadata = fosm._catalog_reader(
+            metadata = _make_mcap_source_adapter(
                 reader=reader,
+                codec_registry=fosm._SCHEMA_CODEC_REGISTRY,
+            ).build_catalog(
+                source_path=handle.name,
                 scene_id="scene-1",
                 media_field="filepath",
-                source_path=handle.name,
-                codec_registry=fosm._SCHEMA_CODEC_REGISTRY,
             )
 
         assert metadata.catalog_version == fosm._CATALOG_VERSION
@@ -2855,65 +2930,79 @@ class TestMcapModule:
         assert adapter.timeline_calls == 0
 
     def test_resolve_message_sync_timestamp_uses_header_stamp_fallbacks(self):
-        with pytest.MonkeyPatch.context() as monkeypatch:
-            monkeypatch.setattr(
-                fosm,
-                "decode_sync_timestamp_ns",
-                lambda schema_name, payload: 123 if schema_name else None,
-            )
+        codec_registry = fosm.SchemaCodecRegistry(
+            [
+                _StaticCodec(
+                    "sensor_msgs/msg/CompressedImage",
+                    kind="image",
+                    affordances=["image"],
+                    compatible_panels=["image"],
+                    sync_timestamp_ns=123,
+                )
+            ]
+        )
 
-            assert (
-                fosm._resolve_message_sync_timestamp_ns(
-                    schema_name="sensor_msgs/msg/CompressedImage",
-                    payload=b"payload",
-                    log_time_ns=500,
-                    publish_time_ns=450,
-                    timestamp_source="header.stamp",
-                    fallback="log_time",
-                )
-                == 123
+        assert (
+            fosm._resolve_message_sync_timestamp_ns(
+                schema_name="sensor_msgs/msg/CompressedImage",
+                payload=b"payload",
+                log_time_ns=500,
+                publish_time_ns=450,
+                timestamp_source="header.stamp",
+                fallback="log_time",
+                codec_registry=codec_registry,
             )
-            assert (
-                fosm._resolve_message_sync_timestamp_ns(
-                    schema_name="sensor_msgs/msg/CompressedImage",
-                    payload=b"payload",
-                    log_time_ns=500,
-                    publish_time_ns=450,
-                    timestamp_source="publish_time",
-                    fallback="log_time",
-                )
-                == 450
+            == 123
+        )
+        assert (
+            fosm._resolve_message_sync_timestamp_ns(
+                schema_name="sensor_msgs/msg/CompressedImage",
+                payload=b"payload",
+                log_time_ns=500,
+                publish_time_ns=450,
+                timestamp_source="publish_time",
+                fallback="log_time",
+                codec_registry=codec_registry,
             )
+            == 450
+        )
 
-        with pytest.MonkeyPatch.context() as monkeypatch:
-            monkeypatch.setattr(
-                fosm,
-                "decode_sync_timestamp_ns",
-                lambda schema_name, payload: None,
-            )
+        empty_codec_registry = fosm.SchemaCodecRegistry(
+            [
+                _StaticCodec(
+                    "sensor_msgs/msg/CompressedImage",
+                    kind="image",
+                    affordances=["image"],
+                    compatible_panels=["image"],
+                    sync_timestamp_ns=None,
+                )
+            ]
+        )
 
-            assert (
-                fosm._resolve_message_sync_timestamp_ns(
-                    schema_name="sensor_msgs/msg/CompressedImage",
-                    payload=b"payload",
-                    log_time_ns=500,
-                    publish_time_ns=450,
-                    timestamp_source="header.stamp",
-                    fallback="publish_time",
-                )
-                == 450
+        assert (
+            fosm._resolve_message_sync_timestamp_ns(
+                schema_name="sensor_msgs/msg/CompressedImage",
+                payload=b"payload",
+                log_time_ns=500,
+                publish_time_ns=450,
+                timestamp_source="header.stamp",
+                fallback="publish_time",
+                codec_registry=empty_codec_registry,
             )
-            assert (
-                fosm._resolve_message_sync_timestamp_ns(
-                    schema_name="sensor_msgs/msg/CompressedImage",
-                    payload=b"payload",
-                    log_time_ns=500,
-                    publish_time_ns=0,
-                    timestamp_source="header.stamp",
-                    fallback="publish_time",
-                )
-                == 500
+            == 450
+        )
+        assert (
+            fosm._resolve_message_sync_timestamp_ns(
+                schema_name="sensor_msgs/msg/CompressedImage",
+                payload=b"payload",
+                log_time_ns=500,
+                publish_time_ns=0,
+                timestamp_source="header.stamp",
+                fallback="publish_time",
+                codec_registry=empty_codec_registry,
             )
+            == 500
+        )
 
     def test_resolve_message_sync_timestamp_supports_foxglove_schemas(self):
         schema = _make_foxglove_schema(1, "foxglove.CompressedImage")

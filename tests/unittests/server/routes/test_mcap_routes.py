@@ -60,7 +60,7 @@ def fixture_ingest_endpoint():
 
 @pytest.fixture(name="stream_window_endpoint")
 def fixture_stream_window_endpoint():
-    return form.MultimodalStreamWindow(
+    return form.MultimodalStreamWindowBinary(
         scope={"type": "http"}, receive=AsyncMock(), send=AsyncMock()
     )
 
@@ -74,7 +74,7 @@ def fixture_timeline_index_endpoint():
 
 @pytest.fixture(name="bootstrap_window_endpoint")
 def fixture_bootstrap_window_endpoint():
-    return form.MultimodalBootstrapWindow(
+    return form.MultimodalBootstrapWindowBinary(
         scope={"type": "http"}, receive=AsyncMock(), send=AsyncMock()
     )
 
@@ -167,8 +167,8 @@ class TestMcapStreamWindowRoute:
     ):
         with patch.object(
             form.fosm,
-            "read_sample_multimodal_stream_window",
-            return_value={"sceneId": "scene-1", "streams": []},
+            "read_sample_multimodal_stream_window_binary",
+            return_value=b"window",
         ) as read_stream_window:
             response = await stream_window_endpoint.post(
                 _make_request(
@@ -185,6 +185,7 @@ class TestMcapStreamWindowRoute:
             )
 
         assert response.status_code == 200
+        assert response.body == b"window"
         assert read_stream_window.call_args.kwargs["stream_ids"] == [
             "/camera/front"
         ]
@@ -220,8 +221,8 @@ class TestMcapBootstrapWindowRoute:
     ):
         with patch.object(
             form.fosm,
-            "read_sample_multimodal_bootstrap_window",
-            return_value={"sceneId": "scene-1", "streams": []},
+            "read_sample_multimodal_bootstrap_window_binary",
+            return_value=b"bootstrap",
         ) as read_bootstrap_window:
             response = await bootstrap_window_endpoint.post(
                 _make_request(
@@ -239,6 +240,7 @@ class TestMcapBootstrapWindowRoute:
             )
 
         assert response.status_code == 200
+        assert response.body == b"bootstrap"
         assert read_bootstrap_window.call_args.kwargs["anchor_time_ns"] == 0
         assert read_bootstrap_window.call_args.kwargs["render_stream_ids"] == [
             "/lidar/top"
