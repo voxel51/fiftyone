@@ -1,7 +1,9 @@
 export {
   Close,
   Copy,
+  DiscordLink,
   DocsLink,
+  EraserIcon,
   GitHubLink,
   HelpIcon,
   IconButton,
@@ -12,5 +14,4 @@ export {
   KeyboardArrowUp,
   LookerArrowLeftIcon,
   LookerArrowRightIcon,
-  DiscordLink,
 } from "./Icons";
