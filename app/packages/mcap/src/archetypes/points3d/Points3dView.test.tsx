@@ -35,7 +35,14 @@ vi.mock("./helpers", async () => {
 });
 
 vi.mock("@react-three/fiber", () => ({
-  Canvas: ({
+  useThree: () => ({
+    camera: cameraRef.current as THREE.PerspectiveCamera,
+    invalidate: invalidateMock,
+  }),
+}));
+
+vi.mock("../../WebGpuCanvas", () => ({
+  WebGpuCanvas: ({
     children,
     ...props
   }: React.PropsWithChildren<Record<string, unknown>>) => (
@@ -43,10 +50,6 @@ vi.mock("@react-three/fiber", () => ({
       {children}
     </div>
   ),
-  useThree: () => ({
-    camera: cameraRef.current as THREE.PerspectiveCamera,
-    invalidate: invalidateMock,
-  }),
 }));
 
 vi.mock("@react-three/drei", () => ({

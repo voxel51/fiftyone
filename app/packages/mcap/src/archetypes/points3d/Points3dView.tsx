@@ -4,9 +4,10 @@ import {
   Grid,
   OrbitControls,
 } from "@react-three/drei";
-import { Canvas, useThree } from "@react-three/fiber";
+import { useThree } from "@react-three/fiber";
 import React from "react";
 import * as THREE from "three";
+import { WebGpuCanvas } from "../../WebGpuCanvas";
 import {
   computePointSize,
   createIntensityColorBuffer,
@@ -612,7 +613,7 @@ export function Points3dView({
 
   return (
     <div data-testid="points3d-view" style={VIEWPORT_STYLES}>
-      <Canvas
+      <WebGpuCanvas
         camera={{ fov: 50, near: 0.01, far: 1000 }}
         frameloop="demand"
         style={CANVAS_STYLES}
@@ -644,7 +645,7 @@ export function Points3dView({
             solidColor={solidColor}
           />
         ))}
-      </Canvas>
+      </WebGpuCanvas>
     </div>
   );
 }

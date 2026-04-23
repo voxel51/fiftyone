@@ -1,7 +1,8 @@
 import { OrbitControls } from "@react-three/drei";
-import { Canvas, useFrame, useLoader, useThree } from "@react-three/fiber";
+import { useFrame, useLoader, useThree } from "@react-three/fiber";
 import React from "react";
 import * as THREE from "three";
+import { WebGpuCanvas } from "../../WebGpuCanvas";
 import type {
   Image2dOverlayPrimitive,
   Image2dOverlayPolyline,
@@ -335,9 +336,11 @@ function renderPolyline(overlay: Image2dOverlayPolyline) {
 function ImageOverlaySvg({
   overlays,
   rect,
+  showTextOverlays,
 }: {
   overlays: Image2dOverlayPrimitive[];
   rect: OverlayRect | null;
+  showTextOverlays: boolean;
 }) {
   if (!overlays.length) {
     return null;
@@ -398,6 +401,10 @@ function ImageOverlaySvg({
           return <g key={overlay.id}>{renderPolyline(overlay)}</g>;
         }
 
+        if (!showTextOverlays) {
+          return null;
+        }
+
         const textWidth = Math.max(
           overlay.text.length * (overlay.fontSize ?? 14) * 0.6,
           28
@@ -438,6 +445,7 @@ export function Image2dView({
   frame,
   objectFit = "contain",
 }: Image2dViewProps) {
+  const [isHovered, setIsHovered] = React.useState(false);
   const [planeLayout, setPlaneLayout] = React.useState<PlaneLayout | null>(
     null
   );
@@ -460,12 +468,13 @@ export function Image2dView({
       data-object-fit={objectFit}
       data-src={frame.src}
       data-testid="image2d-view"
+      onPointerEnter={() => setIsHovered(true)}
+      onPointerLeave={() => setIsHovered(false)}
       style={ROOT_STYLES}
     >
-      <Canvas
+      <WebGpuCanvas
         camera={{ far: 1000, near: 0.1, position: [0, 0, 10], zoom: 100 }}
         frameloop="demand"
-        gl={{ alpha: true }}
         orthographic
         style={CANVAS_STYLES}
       >
@@ -476,8 +485,12 @@ export function Image2dView({
           src={frame.src}
         />
         <OverlaySyncProbe layout={planeLayout} onRectChange={setOverlayRect} />
-      </Canvas>
-      <ImageOverlaySvg overlays={frame.overlays ?? []} rect={overlayRect} />
+      </WebGpuCanvas>
+      <ImageOverlaySvg
+        overlays={frame.overlays ?? []}
+        rect={overlayRect}
+        showTextOverlays={isHovered}
+      />
     </div>
   );
 }

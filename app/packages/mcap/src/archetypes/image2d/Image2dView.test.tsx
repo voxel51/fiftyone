@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Image2dView } from "./Image2dView";
@@ -11,9 +11,6 @@ vi.mock("@react-three/drei", () => ({
 }));
 
 vi.mock("@react-three/fiber", () => ({
-  Canvas: ({ children }: { children?: React.ReactNode }) => (
-    <div data-testid="image2d-canvas">{children}</div>
-  ),
   useFrame: () => {},
   useLoader: () => ({
     image: { width: 640, height: 480 },
@@ -29,6 +26,12 @@ vi.mock("@react-three/fiber", () => ({
     size: { width: 640, height: 480 },
     viewport: { width: 12, height: 9 },
   }),
+}));
+
+vi.mock("../../WebGpuCanvas", () => ({
+  WebGpuCanvas: ({ children }: { children?: React.ReactNode }) => (
+    <div data-testid="image2d-canvas">{children}</div>
+  ),
 }));
 
 describe("Image2dView", () => {
@@ -58,5 +61,35 @@ describe("Image2dView", () => {
   it("renders nothing when there is no frame", () => {
     const { container } = render(<Image2dView frame={null} />);
     expect(container.firstChild).toBeNull();
+  });
+
+  it("shows text overlays only while the image view is hovered", () => {
+    render(
+      <Image2dView
+        frame={{
+          id: "frame-1",
+          src: "blob:frame-1",
+          timestampNs: 10,
+          overlays: [
+            {
+              kind: "text",
+              id: "text:0",
+              position: { x: 32, y: 48 },
+              text: "Front camera",
+            },
+          ],
+        }}
+      />
+    );
+
+    const imageView = screen.getByTestId("image2d-view");
+
+    expect(screen.queryByText("Front camera")).toBeNull();
+
+    fireEvent.pointerEnter(imageView);
+    expect(screen.getByText("Front camera")).toBeTruthy();
+
+    fireEvent.pointerLeave(imageView);
+    expect(screen.queryByText("Front camera")).toBeNull();
   });
 });
