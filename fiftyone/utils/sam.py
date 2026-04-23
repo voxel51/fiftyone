@@ -846,7 +846,7 @@ class SegmentAnythingModel(fout.TorchImageModelWithPrompts):
 
         Args:
             sample (None): a FiftyOne Sample with image media
-            boxes (None): a tensor of Bx4 pre-processed boxes in XYXY pixels
+            boxes (None): a tensor of Bx4 pre-processed SAM transformed boxes in XYXY pixels
             points (None): a tensor of BxNx2 or a list of B tensors with pre-processed points in XY pixels
             point_labels (None): a BxN tensor or a list of B tensors of labels for the point prompts
             prompt_classes (None): a list of B class labels
