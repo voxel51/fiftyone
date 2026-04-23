@@ -91,9 +91,6 @@ export const useRuns = (): UseRunsResult => {
 
             if (result?.error) {
               console.error("Error fetching similarity runs:", result.error);
-              // Still mark the panel as loaded so the UI can render an
-              // empty/error state instead of spinning forever.
-              setLoaded(true);
               reject(new Error(String(result.error)));
               return;
             }
@@ -105,7 +102,6 @@ export const useRuns = (): UseRunsResult => {
               if (response?.runs) {
                 setRuns([...response.runs].sort(sortFn));
               }
-              setLoaded(true);
               resolve();
             } catch (e) {
               console.error("Error processing runs callback:", e);
@@ -116,7 +112,6 @@ export const useRuns = (): UseRunsResult => {
       ).catch((error: unknown) => {
         fetchingRef.current = false;
         console.error("Operator execution failed for fetchRuns:", error);
-        setLoaded(true);
         reject(error instanceof Error ? error : new Error(String(error)));
       });
     });
@@ -136,6 +131,9 @@ export const useRuns = (): UseRunsResult => {
         errorCountRef.current += 1;
       })
       .finally(() => {
+        // Mark loaded once the attempt settles regardless of outcome —
+        // lets the UI drop its spinner even on error / parse failure.
+        setLoaded(true);
         inFlightRef.current = null;
         if (
           pendingRef.current &&
@@ -170,10 +168,16 @@ export const useRuns = (): UseRunsResult => {
     }
   }, [refreshRuns, panelId, datasetName]);
 
-  // Subscribe to execution store changes via SSE for auto-refresh
+  // Subscribe to execution store changes via SSE for auto-refresh.
+  // Use a ref for refreshRuns so this callback is stable across
+  // fetchRuns identity churn (useOperatorExecutor re-memoizes `execute`
+  // whenever any recoil state read by useExecutionContext changes —
+  // view, filters, selectedSamples, etc).
+  const refreshRunsRef = useRef(refreshRuns);
+  refreshRunsRef.current = refreshRuns;
   const onStoreChange = useCallback(() => {
-    refreshRuns();
-  }, [refreshRuns]);
+    refreshRunsRef.current();
+  }, []);
 
   useExecutionStoreSubscribe({
     operatorUri: SSE_OPERATOR_URI,

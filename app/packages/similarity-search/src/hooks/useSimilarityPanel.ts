@@ -330,15 +330,19 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
   // Re-fetch runs whenever the owner filter changes — it's applied
   // server-side. Skip the initial render so we don't double-fetch
   // alongside the panel's initial load.
+
   const ownerFilter = state.filterState.ownerFilter;
   const ownerInitRef = useRef(true);
+  const refreshRunsRef = useRef(state.refreshRuns);
+  refreshRunsRef.current = state.refreshRuns;
+
   useEffect(() => {
     if (ownerInitRef.current) {
       ownerInitRef.current = false;
       return;
     }
-    state.refreshRuns();
-  }, [ownerFilter, state.refreshRuns]);
+    refreshRunsRef.current();
+  }, [ownerFilter]);
 
   // Auto-apply immediate execution runs when they complete.
   // Delegated runs (operator_run_id is set) are excluded — there's no
