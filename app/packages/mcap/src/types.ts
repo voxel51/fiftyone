@@ -2,6 +2,8 @@
  * Shared transport and client-side types for the multimodal workspace renderer.
  */
 
+import type { Scene3dFrame } from "./archetypes";
+
 export type MultimodalPanelArchetype = "image" | "3d";
 export type MultimodalStreamKind =
   | "image"
@@ -236,43 +238,103 @@ export type FetchMultimodalTimelineParams = {
   request: MultimodalTimelineIndexRequest;
 };
 
-export type MultimodalRawMessageTransport = {
+export type MultimodalRawMessage = {
   messageId: string;
   syncTimestampNs: number;
   logTimeNs: number;
   publishTimeNs: number;
-  payloadB64: string;
-};
-
-export type MultimodalRawMessage = Omit<
-  MultimodalRawMessageTransport,
-  "payloadB64"
-> & {
   payload: Uint8Array;
 };
 
-export type MultimodalRawBufferTransportResponse = {
+export type MultimodalPrefetchedImageMessage = {
+  messageId: string;
+  format: string;
+  frameId: string;
+  compressedBytes: Uint8Array;
+};
+
+export type MultimodalPrefetchedSceneMessage = {
+  messageId: string;
+  frame: Scene3dFrame;
+};
+
+export type MultimodalRawBufferResponseStream = {
+  streamId: string;
+  schemaName: string;
+  messageEncoding: string;
+  messages: MultimodalRawMessage[];
+  prefetchedImageMessages?: MultimodalPrefetchedImageMessage[];
+  prefetchedSceneMessages?: MultimodalPrefetchedSceneMessage[];
+};
+
+export type MultimodalRawBufferResponse = {
   sceneId: string;
   window: {
     startTimeNs: number;
     endTimeNs: number;
   };
-  streams: {
-    streamId: string;
-    schemaName: string;
-    messageEncoding: string;
-    messages: MultimodalRawMessageTransport[];
-  }[];
+  streams: MultimodalRawBufferResponseStream[];
 };
 
-export type MultimodalRawBufferResponse = Omit<
-  MultimodalRawBufferTransportResponse,
-  "streams"
-> & {
-  streams: {
-    streamId: string;
-    schemaName: string;
-    messageEncoding: string;
-    messages: MultimodalRawMessage[];
-  }[];
+export type MultimodalEncodedMessage = {
+  messageId: string;
+  syncTimestampNs: number;
+  logTimeNs: number;
+  publishTimeNs: number;
+  payloadOffset: number;
+  payloadLength: number;
+};
+
+export type MultimodalEncodedStreamBatch = {
+  streamId: string;
+  schemaName: string;
+  messageEncoding: string;
+  messages: MultimodalEncodedMessage[];
+};
+
+export type MultimodalBinaryManifest = {
+  sceneId: string;
+  window: {
+    startTimeNs: number;
+    endTimeNs: number;
+  };
+  streams: MultimodalEncodedStreamBatch[];
+};
+
+export type MultimodalEncodedWindowBatch = MultimodalBinaryManifest & {
+  payloadBuffer: ArrayBuffer;
+  payloadBaseOffset: number;
+};
+
+export type MultimodalDecodedBatchImage = {
+  messageId: string;
+  format: string;
+  frameId: string;
+  compressedBytes: ArrayBuffer;
+  compressedBytesByteOffset: number;
+  compressedBytesByteLength: number;
+};
+
+export type MultimodalDecodedBatchScene = {
+  messageId: string;
+  pointCount: number;
+  positions: ArrayBuffer;
+  positionsByteOffset: number;
+  positionsByteLength: number;
+  intensity: ArrayBuffer | null;
+  intensityByteOffset: number;
+  intensityByteLength: number;
+  frameId: string | null;
+  bounds: Scene3dFrame["bounds"];
+};
+
+export type DecodeBatchRequest = {
+  batch: Omit<MultimodalEncodedWindowBatch, "payloadBuffer">;
+  payloadBuffer: ArrayBuffer;
+};
+
+export type DecodeBatchResponse = {
+  payloadBuffer: ArrayBuffer;
+  decodedImages: MultimodalDecodedBatchImage[];
+  decodedScenes: MultimodalDecodedBatchScene[];
 };

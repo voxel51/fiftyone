@@ -1,52 +1,53 @@
-import { getFetchFunction } from "@fiftyone/utilities";
+import {
+  getFetchFunction,
+  getFetchFunctionExtended,
+} from "@fiftyone/utilities";
+import { decodeRawBufferBatchInWorker } from "./raw-buffer-batch-worker-client";
+import {
+  materializeRawBufferResponse,
+  MULTIMODAL_RAW_BUFFER_BINARY_CONTENT_TYPE,
+  MultimodalBinaryTransportUnsupportedError,
+  parseEncodedWindowBatch,
+} from "./raw-buffer-binary";
 import type {
   FetchMultimodalBootstrapWindowParams,
   FetchMultimodalBufferParams,
   FetchMultimodalTimelineParams,
   FetchMultimodalWorkspaceParams,
-  MultimodalBootstrapWindowRequest,
   MultimodalRawBufferResponse,
-  MultimodalRawBufferTransportResponse,
   MultimodalRenderingPlan,
   MultimodalTimelineIndexRequest,
   MultimodalTimelineIndexResponse,
   MultimodalWorkspaceResponse,
   SaveMultimodalWorkspaceParams,
-  MultimodalStreamWindowRequest,
 } from "./types";
 
-function decodeBase64ToBytes(value: string) {
-  if (typeof Buffer !== "undefined") {
-    return Uint8Array.from(Buffer.from(value, "base64"));
+async function fetchBinaryRawBuffer<A>(
+  path: string,
+  body: A
+): Promise<MultimodalRawBufferResponse> {
+  const fetch = getFetchFunctionExtended();
+  const { headers, response } = await fetch<A, ArrayBuffer>({
+    method: "POST",
+    path,
+    body,
+    result: "arrayBuffer",
+  });
+  const contentType = headers?.get("content-type")?.toLowerCase() ?? "";
+  if (!contentType.includes(MULTIMODAL_RAW_BUFFER_BINARY_CONTENT_TYPE)) {
+    throw new MultimodalBinaryTransportUnsupportedError(
+      `Unexpected binary raw buffer content type: ${contentType || "missing"}`
+    );
   }
 
-  if (typeof globalThis.atob !== "function") {
-    throw new Error("No base64 decoder is available in this environment");
-  }
+  const encodedBatch = parseEncodedWindowBatch(response);
+  const { payloadBuffer, ...batchWithoutPayload } = encodedBatch;
+  const decodedBatch = await decodeRawBufferBatchInWorker({
+    batch: batchWithoutPayload,
+    payloadBuffer,
+  });
 
-  const binary = globalThis.atob(value);
-  const bytes = new Uint8Array(binary.length);
-
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index);
-  }
-
-  return bytes;
-}
-
-export function normalizeMultimodalRawBufferResponse(
-  response: MultimodalRawBufferTransportResponse
-): MultimodalRawBufferResponse {
-  return {
-    ...response,
-    streams: response.streams.map((stream) => ({
-      ...stream,
-      messages: stream.messages.map(({ payloadB64, ...message }) => ({
-        ...message,
-        payload: decodeBase64ToBytes(payloadB64),
-      })),
-    })),
-  };
+  return materializeRawBufferResponse(batchWithoutPayload, decodedBatch);
 }
 
 export async function fetchMultimodalWorkspace(
@@ -88,42 +89,30 @@ export async function saveMultimodalWorkspace(
 export async function fetchMultimodalBuffer(
   params: FetchMultimodalBufferParams
 ): Promise<MultimodalRawBufferResponse> {
-  const fetch = getFetchFunction();
-  const response = await fetch<
-    MultimodalStreamWindowRequest,
-    MultimodalRawBufferTransportResponse
-  >(
-    "POST",
+  return fetchBinaryRawBuffer(
     `/dataset/${encodeURIComponent(
       params.datasetId
-    )}/sample/${encodeURIComponent(params.sampleId)}/multimodal/stream-window`,
+    )}/sample/${encodeURIComponent(
+      params.sampleId
+    )}/multimodal/stream-window-binary`,
     {
       ...params.request,
       mode: "raw",
     }
   );
-
-  return normalizeMultimodalRawBufferResponse(response);
 }
 
 export async function fetchMultimodalBootstrapWindow(
   params: FetchMultimodalBootstrapWindowParams
 ): Promise<MultimodalRawBufferResponse> {
-  const fetch = getFetchFunction();
-  const response = await fetch<
-    MultimodalBootstrapWindowRequest,
-    MultimodalRawBufferTransportResponse
-  >(
-    "POST",
+  return fetchBinaryRawBuffer(
     `/dataset/${encodeURIComponent(
       params.datasetId
     )}/sample/${encodeURIComponent(
       params.sampleId
-    )}/multimodal/bootstrap-window`,
+    )}/multimodal/bootstrap-window-binary`,
     params.request
   );
-
-  return normalizeMultimodalRawBufferResponse(response);
 }
 
 export async function fetchMultimodalTimeline(
