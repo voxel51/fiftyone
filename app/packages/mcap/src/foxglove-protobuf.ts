@@ -334,6 +334,7 @@ type FoxgloveCircleAnnotationMessage = {
   thickness?: number;
   fillColor?: FoxgloveColor;
   outlineColor?: FoxgloveColor;
+  metadata?: FoxgloveKeyValuePair[];
 };
 
 type FoxglovePointsAnnotationMessage = {
@@ -344,6 +345,7 @@ type FoxglovePointsAnnotationMessage = {
   outlineColors?: FoxgloveColor[];
   fillColor?: FoxgloveColor;
   thickness?: number;
+  metadata?: FoxgloveKeyValuePair[];
 };
 
 type FoxgloveTextAnnotationMessage = {
@@ -353,6 +355,7 @@ type FoxgloveTextAnnotationMessage = {
   fontSize?: number;
   textColor?: FoxgloveColor;
   backgroundColor?: FoxgloveColor;
+  metadata?: FoxgloveKeyValuePair[];
 };
 
 type FoxgloveImageAnnotationsMessage = {
@@ -360,6 +363,7 @@ type FoxgloveImageAnnotationsMessage = {
   circles?: FoxgloveCircleAnnotationMessage[];
   points?: FoxglovePointsAnnotationMessage[];
   texts?: FoxgloveTextAnnotationMessage[];
+  metadata?: FoxgloveKeyValuePair[];
 };
 
 export type FoxgloveArrowPrimitiveMessage = {
