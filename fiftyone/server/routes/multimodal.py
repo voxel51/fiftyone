@@ -12,6 +12,14 @@ from starlette.exceptions import HTTPException
 from starlette.responses import Response
 
 import fiftyone.server.multimodal as fosm
+from fiftyone.server.multimodal_common import (
+    MULTIMODAL_RAW_BUFFER_BINARY_CONTENT_TYPE,
+)
+from fiftyone.server.multimodal_transport import (
+    _normalize_max_messages_per_stream,
+    _normalize_stream_ids,
+    _normalize_time_value,
+)
 from fiftyone.server.utils.datasets import get_dataset, get_sample_from_dataset
 from fiftyone.server.utils.json import JSONResponse
 
@@ -105,11 +113,11 @@ class MultimodalStreamWindowBinary(HTTPEndpoint):
         dataset, sample = _get_dataset_and_sample(request)
 
         try:
-            stream_ids = fosm._normalize_stream_ids(data.get("streamIds"))
-            start_time_ns = fosm._normalize_time_value(
+            stream_ids = _normalize_stream_ids(data.get("streamIds"))
+            start_time_ns = _normalize_time_value(
                 data.get("startTimeNs"), "startTimeNs"
             )
-            end_time_ns = fosm._normalize_time_value(
+            end_time_ns = _normalize_time_value(
                 data.get("endTimeNs"), "endTimeNs"
             )
             if start_time_ns > end_time_ns:
@@ -124,7 +132,7 @@ class MultimodalStreamWindowBinary(HTTPEndpoint):
                 stream_ids=stream_ids,
                 start_time_ns=start_time_ns,
                 end_time_ns=end_time_ns,
-                max_messages_per_stream=fosm._normalize_max_messages_per_stream(
+                max_messages_per_stream=_normalize_max_messages_per_stream(
                     data.get("maxMessagesPerStream")
                 ),
                 source_kind=data.get("sourceKind"),
@@ -136,7 +144,7 @@ class MultimodalStreamWindowBinary(HTTPEndpoint):
 
         return Response(
             response,
-            media_type=fosm.MULTIMODAL_RAW_BUFFER_BINARY_CONTENT_TYPE,
+            media_type=MULTIMODAL_RAW_BUFFER_BINARY_CONTENT_TYPE,
         )
 
 
@@ -152,29 +160,29 @@ class MultimodalBootstrapWindowBinary(HTTPEndpoint):
                 dataset=dataset,
                 sample=sample,
                 media_field=data.get("mediaField"),
-                anchor_time_ns=fosm._normalize_time_value(
+                anchor_time_ns=_normalize_time_value(
                     data.get("anchorTimeNs"), "anchorTimeNs"
                 ),
-                render_stream_ids=fosm._normalize_stream_ids(
+                render_stream_ids=_normalize_stream_ids(
                     data.get("renderStreamIds"),
                     allow_none=True,
                     allow_empty=True,
                 )
                 or [],
-                transform_stream_ids=fosm._normalize_stream_ids(
+                transform_stream_ids=_normalize_stream_ids(
                     data.get("transformStreamIds"),
                     allow_none=True,
                     allow_empty=True,
                 )
                 or [],
-                location_stream_ids=fosm._normalize_stream_ids(
+                location_stream_ids=_normalize_stream_ids(
                     data.get("locationStreamIds"),
                     allow_none=True,
                     allow_empty=True,
                 )
                 or [],
                 transform_window_ns=(
-                    fosm._normalize_time_value(
+                    _normalize_time_value(
                         data.get("transformWindowNs"), "transformWindowNs"
                     )
                     if data.get("transformWindowNs") is not None
@@ -189,7 +197,7 @@ class MultimodalBootstrapWindowBinary(HTTPEndpoint):
 
         return Response(
             response,
-            media_type=fosm.MULTIMODAL_RAW_BUFFER_BINARY_CONTENT_TYPE,
+            media_type=MULTIMODAL_RAW_BUFFER_BINARY_CONTENT_TYPE,
         )
 
 
@@ -199,7 +207,7 @@ class MultimodalTimelineIndex(HTTPEndpoint):
     async def post(self, request):
         data = await _read_request_json(request)
         dataset, sample = _get_dataset_and_sample(request)
-        stream_ids = fosm._normalize_stream_ids(
+        stream_ids = _normalize_stream_ids(
             data.get("streamIds"),
             allow_none=True,
             allow_empty=True,
