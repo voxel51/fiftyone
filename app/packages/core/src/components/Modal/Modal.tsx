@@ -352,7 +352,6 @@ const Modal = () => {
         data-cy="modal"
       >
         <Actions />
-        <SegmentationToolbar />
         {isAnnotationEnabled && <AnnotationHandlerRegistration />}
         <TooltipInfo />
         <ModalContainer style={{ ...screenParams }}>
@@ -367,6 +366,7 @@ const Modal = () => {
           >
             <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_LEFT} />
             <ModalNavigation closePanels={closePanels} />
+            <SegmentationToolbar />
             <SpacesContainer>
               <ModalSpace />
             </SpacesContainer>

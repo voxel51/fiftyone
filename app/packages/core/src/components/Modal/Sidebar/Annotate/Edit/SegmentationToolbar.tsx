@@ -34,8 +34,8 @@ export const SegmentationToolbar = ({
     <ActionToolbar
       groups={groups}
       orientation={Orientation.Column}
-      xOffset={5}
-      yOffset={50}
+      xOffset={60}
+      yOffset={200}
       visible={visible}
     />
   );
