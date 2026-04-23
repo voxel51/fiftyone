@@ -2207,11 +2207,64 @@ _______________________
 
 The Similarity Search panel provides a full-featured interface for creating,
 managing, and revisiting similarity searches on datasets that have been
-:ref:`indexed by similarity <brain-similarity>`.
+:ref:`indexed by similarity <brain-similarity>`. You can open it from the
+:ref:`similarity popover's <app-similarity>` settings button, or from the App's
+panels menu.
 
-Refer to the :ref:`Similarity Search panel documentation <app-similarity-panel>`
-for details on all available features, including run management, advanced search
-options, and delegated execution.
+.. image:: /images/app/app-similarity-panel.gif
+    :alt: similarity-search-panel
+    :align: center
+
+Home page
+---------
+
+The panel's home page displays a list of all past similarity search runs. Each
+run shows its name, query type, status (pending, running, completed, or
+failed), and creation time. Click any completed run to apply its results to the
+current view.
+
+You can filter the run list by:
+
+-   **Date range**: Today, Last 7 days, Last 30 days, or Older
+-   **Search text**: filter by query content or run name
+-   **Owner**: show all runs or only your own (Enterprise only)
+
+Run management actions include cloning, renaming, and deleting individual runs,
+as well as bulk deletion of multiple runs at once.
+
+Creating a new search
+---------------------
+
+Click the **New search** button to open the search form. The form provides the
+following options:
+
+-   **Query type**: choose between image similarity (using selected samples),
+    text similarity (natural language query), or image upload
+-   **Brain key**: select which similarity index to use. The panel shows which
+    indexes support text queries
+-   **K**: the maximum number of results to return
+-   **Reverse**: toggle to find the least similar results instead of the most
+    similar
+-   **Distance field**: optionally specify a field name to store the computed
+    distances on each result sample
+-   **Scope**: search against the current view or the entire dataset
+-   **Negative queries**: use alt-selected samples as negative examples to find
+    results that are similar to your selected samples but dissimilar to the
+    alt-selected ones
+
+.. note::
+
+    For image queries, first select one or more samples in the grid, then open
+    the panel and click **New search**. The selected samples will be used as
+    the query.
+
+Delegated execution
+-------------------
+
+By default, similarity searches run immediately on the App server. If your
+deployment supports :ref:`delegated operations <delegated-operations>`, you can
+choose to run the search on a worker pod instead by selecting **Delegate** as
+the execution mode. This is useful for long-running searches on large datasets.
 
 When configuring spaces :ref:`in Python <app-spaces-python>`, you can create a
 Similarity Search panel as follows:
@@ -3515,70 +3568,6 @@ press search.
     Did you know? You can also perform text queries
     :ref:`via the SDK <brain-similarity-text>` by passing a prompt directly to
     :meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`!
-
-.. _app-similarity-panel:
-
-Similarity Search panel
------------------------
-
-The Similarity Search panel provides a full-featured interface for creating,
-managing, and revisiting similarity searches. You can open it from the
-popover's settings button, or from the App's panels menu.
-
-.. image:: /images/app/app-similarity-panel.gif
-    :alt: similarity-search-panel
-    :align: center
-
-Home page
-~~~~~~~~~
-
-The panel's home page displays a list of all past similarity search runs. Each
-run shows its name, query type, status (pending, running, completed, or
-failed), and creation time. Click any completed run to apply its results to the
-current view.
-
-You can filter the run list by:
-
--   **Date range**: Today, Last 7 days, Last 30 days, or Older
--   **Search text**: filter by query content or run name
--   **Owner**: show all runs or only your own (Enterprise only)
-
-Run management actions include cloning and deleting individual runs,
-as well as bulk deletion of multiple runs at once.
-
-Creating a new search
-~~~~~~~~~~~~~~~~~~~~~
-
-Click the **New search** button to open the search form. The form provides the
-following options:
-
--   **Query type**: choose between image similarity (using selected samples),
-    text similarity (natural language query), or image upload
--   **Brain key**: select which similarity index to use. The panel shows which
-    indexes support text queries
--   **K**: the maximum number of results to return
--   **Reverse**: toggle to find the least similar results instead of the most
-    similar
--   **Distance field**: optionally specify a field name to store the computed
-    distances on each result sample
--   **Scope**: search against the current view or the entire dataset
--   **Negative queries**: use alt-selected samples as negative examples to find
-    results that are similar to your selected samples but dissimilar to the
-    alt-selected ones
-
-.. note::
-
-    For image queries, first select one or more samples in the grid, then open
-    the panel and click **New search**. The selected samples will be used as
-    the query.
-
-Delegated execution
-~~~~~~~~~~~~~~~~~~~
-
-By default, similarity searches run immediately on the App server. If your
-deployment supports :ref:`delegated operations <delegated-operations>`, you can
-choose to run the search on a worker pod instead by selecting **Delegate** as
-the execution mode. This is useful for large results number on large datasets.
 
 .. _app-multiple-media-fields:
 
