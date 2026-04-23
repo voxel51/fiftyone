@@ -30,7 +30,7 @@ const KEYPOINT_THRESHOLD = 5;
  * - exposes absolute points
  * - provides bounds without padding
  * - provides a minimum threshold for point distance
- * - `addPoint`: auto-connects new additions to the last point
+ * - `addPoint`: auto-connects all points
  */
 export class MaskKeypoints extends KeypointOverlay {
   private lastKeypoint?: Point;
@@ -59,19 +59,19 @@ export class MaskKeypoints extends KeypointOverlay {
    * Tight bounds around the points with no padding.
    */
   override get bounds(): Rect {
-    const pts = this.getAbsolutePoints();
-    if (pts.length === 0) return NO_BOUNDS;
+    const points = this.getAbsolutePoints();
+    if (points.length === 0) return NO_BOUNDS;
 
     let minX = Infinity,
       minY = Infinity,
       maxX = -Infinity,
       maxY = -Infinity;
 
-    for (const p of pts) {
-      if (p.x < minX) minX = p.x;
-      if (p.x > maxX) maxX = p.x;
-      if (p.y < minY) minY = p.y;
-      if (p.y > maxY) maxY = p.y;
+    for (const point of points) {
+      if (point.x < minX) minX = point.x;
+      if (point.x > maxX) maxX = point.x;
+      if (point.y < minY) minY = point.y;
+      if (point.y > maxY) maxY = point.y;
     }
 
     return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
@@ -80,7 +80,7 @@ export class MaskKeypoints extends KeypointOverlay {
   /**
    * Adds a point and connects it to any prior point.
    */
-  override addPoint(worldPoint: Point): number {
+  override addPoint(worldPoint: Point): string {
     let shouldAddPoint = true;
 
     if (this.lastKeypoint) {
@@ -93,37 +93,26 @@ export class MaskKeypoints extends KeypointOverlay {
     }
 
     if (shouldAddPoint) {
-      const index = super.addPoint(worldPoint);
+      const pointID = super.addPoint(worldPoint);
+      const points = this.getAbsolutePoints();
 
-      if (index > 0) {
-        this.addConnection([index - 1, index]);
-      }
+      const connections = points.reduce(
+        (memo, _point, index) =>
+          index === 0
+            ? memo
+            : index === points.length - 1
+            ? [...memo, [index - 1, index], [index, 0]]
+            : [...memo, [index - 1, index]],
+        []
+      );
+
+      this.setConnections(connections);
 
       this.lastKeypoint = { ...worldPoint };
-      return index;
+      return pointID;
     }
 
-    return -1;
-  }
-
-  /**
-   * Adds a new connection to the configuration.
-   */
-  addConnection(connection: number[]): void {
-    this.setConnections([...this.connections, connection]);
-  }
-
-  protected override collectEdgeSegments(
-    absPoints: Point[]
-  ): Array<[Point, Point]> {
-    const segments = super.collectEdgeSegments(absPoints);
-
-    // close our polygon, last point to first
-    if (absPoints.length >= 2) {
-      segments.push([absPoints[absPoints.length - 1], absPoints[0]]);
-    }
-
-    return segments;
+    return "";
   }
 
   protected override renderImpl(renderer: Renderer2D): void {

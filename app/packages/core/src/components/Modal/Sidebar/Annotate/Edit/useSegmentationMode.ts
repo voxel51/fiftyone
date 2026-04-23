@@ -19,6 +19,7 @@ import {
 } from "@fiftyone/annotation/src/agents";
 import {
   BaseOverlay,
+  DetectionOverlay,
   KeypointPointHitAction,
   Point,
   UNDEFINED_LIGHTER_SCENE_ID,
@@ -193,8 +194,10 @@ export const useSegmentationMode = () => {
 
   const activateSegmentationMode = useCallback(() => {
     setSegmentationModeActive(true);
-    setActiveTask(AgentTaskType.SEGMENT);
-    pointSelection.activate(resolvePointVariant, resolvePointHit);
+
+    // TODO: Make AI Great Again
+    // setActiveTask(AgentTaskType.SEGMENT);
+    // pointSelection.activate(resolvePointVariant, resolvePointHit);
   }, [
     pointSelection,
     resolvePointHit,
@@ -214,9 +217,10 @@ export const useSegmentationMode = () => {
     setSegmentationModeActive(false);
     setTool("select");
 
-    pointSelection.deactivate();
-    resetToolsState();
-    setActiveTask(null);
+    // TODO: Make AI Great Again
+    // pointSelection.deactivate();
+    // resetToolsState();
+    // setActiveTask(null);
   }, [
     onExit,
     pointSelection,
