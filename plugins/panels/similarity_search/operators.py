@@ -271,12 +271,6 @@ class SimilaritySearchOperator(foo.Operator):
         else:
             combined = pos_mean
 
-        # Normalize for backend-agnostic correctness (cosine doesn't
-        # need it, but dot-product and L2 backends do)
-        norm = np.linalg.norm(combined)
-        if norm > 0:
-            combined = combined / norm
-
         return combined
 
     @staticmethod
@@ -424,4 +418,5 @@ class SimilaritySearchSubscriptionOperator(foo.SseOperator):
             name="get_similarity_search_subscription_notifier",
             label="Similarity Search Subscription Notifications",
             store_name=STORE_NAME,
+            unlisted=True,
         )
