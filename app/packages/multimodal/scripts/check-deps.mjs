@@ -1,12 +1,14 @@
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
+import { bin } from "./process.mjs";
+
 console.log("Checking dependencies integrity for multimodal");
 
 const appRoot = fileURLToPath(new URL("../../..", import.meta.url));
 
 execFileSync(
-  "yarn",
+  bin("yarn"),
   [
     "exec",
     "depcruise",

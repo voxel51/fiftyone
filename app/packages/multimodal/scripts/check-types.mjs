@@ -1,17 +1,19 @@
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
+import { bin } from "./process.mjs";
+
 console.log("Checking types for multimodal");
 
 const localDiagnosticPattern =
-  /^(packages\/multimodal|node_modules\/@fiftyone\/multimodal)\//;
+  /^(packages[\\/]multimodal|node_modules[\\/]@fiftyone[\\/]multimodal)[\\/]/;
 const appRoot = fileURLToPath(new URL("../../..", import.meta.url));
 
 let output = "";
 
 try {
   execFileSync(
-    "yarn",
+    bin("yarn"),
     [
       "exec",
       "tsc",
