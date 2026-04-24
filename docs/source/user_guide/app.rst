@@ -2202,8 +2202,8 @@ The Embeddings panel supports the following `state` parameters:
 
 .. _app-similarity-search-panel:
 
-Similarity Search panel
-_______________________
+Similarity Search panel __SUB_NEW__
+___________________________________
 
 When you load a dataset in the App that has one or more
 :ref:`similarity indexes <brain-similarity>`, you can open the Similarity
@@ -2257,7 +2257,8 @@ You can filter the run list by:
 
 -   **Date range**: Today, Last 7 days, Last 30 days, or Older
 -   **Search text**: filter by query content or run name
--   **Owner**: show all runs or only your own (Enterprise dataset manager only)
+-   **Owner**: show all runs or only your own (Enterprise only, for users with
+    manage permissions)
 
 Managing runs
 ~~~~~~~~~~~~~
@@ -2275,8 +2276,8 @@ Checking similarity indexes
 
 From the home page, you can also navigate to the **Similarity Index** page to
 view the similarity indexes available on your dataset, along with their
-configurations (e.g., brain key, model, metric, and whether the index supports
-text queries).
+configurations (e.g., similarity index name, model, metric, and whether the
+index supports text queries).
 
 .. image:: /images/app/app-similarity-panel-index-page.gif
     :alt: similarity-panel-index-page
@@ -2290,49 +2291,49 @@ following options:
 
 -   **Query type**: choose between image similarity (using selected samples),
     text similarity (natural language query), or image upload
--   **Brain key**: select which similarity index to use. The panel shows which
-    indexes support text queries
--   **K**: the maximum number of results to return
+-   **Similarity index** (brain key): select which similarity index to use. The
+    panel shows which indexes support text queries
+-   **Number of results**: the maximum number of results to return
 -   **Reverse**: toggle to find the least similar results instead of the most
     similar
 -   **Distance field**: optionally specify a field name to store the computed
     distances on each result sample
 -   **Scope**: search against the current view or the entire dataset
--   **Negative queries**: use alt-selected samples as negative examples to find
-    results that are similar to your selected samples but dissimilar to the
-    alt-selected ones
 
-In **image mode**, you can click samples in the grid to select them as
-**positive** examples (shown with a green check), and alt-click (option-click)
-to select them as **negative** examples (shown with a red mark). The search
-will return results similar to the positive samples but dissimilar to the
-negative ones.
+.. note::
+
+    In **image mode**, you can click samples in the grid to select them as
+    **positive** examples (shown with a green check), and alt-click
+    (option-click) to select them as **negative** examples (shown with a red
+    mark). The search will return results similar to the positive samples but
+    dissimilar to the negative ones. Using negative samples is not recommended
+    when your similarity index uses the Euclidean distance metric.
 
 .. image:: /images/app/app-similarity-panel-new-search.png
     :alt: similarity-panel-new-search-positive-negative
     :align: center
 
-.. note::
-
-    Using negative samples is not recommended when your similarity index uses
-    the Euclidean distance metric.
-
 In **upload mode**, you can upload a local image (under 10MB) to use as the
 query. The uploaded image is used only for the search and will **not** be
 added to your dataset.
 
+If the selected similarity index was built on
+:ref:`object patches <brain-object-similarity>` (e.g., Detections or Polylines),
+the search will return patch results; otherwise it returns sample results.
+
 Delegated execution
 -------------------
 
-Triggered from the popover, similarity searches run immediately on the App server by default.If your
-deployment supports :ref:`delegated operations <delegated-operations>`, you can
-choose to run the search on a worker pod instead by selecting **Delegate** as
-the execution mode. This is useful for large number of results and large datasets.
+Triggered from the popover, similarity searches run immediately on the App
+server by default. If your deployment supports
+:ref:`delegated operations <delegated-operations>`, you can choose to run the
+search on a worker pod instead by selecting **Delegate** as the execution mode.
+This is useful for a large number of results or large datasets.
 
 .. _app-similarity:
 
-Easy trigger from grid
--------------------------------
+Triggering from the grid
+------------------------
 
 In addition to opening the panel from the panels menu, you can also trigger
 similarity searches directly from the sample grid via the **similarity
@@ -2343,6 +2344,12 @@ by similarity or enter a text query.
 .. image:: /images/app/app-similarity-popover.gif
     :alt: similarity-popover-open-panel
     :align: center
+
+All popover workflows below share a settings icon that opens the full
+:ref:`Similarity Search panel <app-similarity-search-panel>`, where you can
+specify a larger number of results, query by greatest or least similarity (if
+supported), choose a different similarity index, or optionally save the
+computed distances as a new sample field.
 
 .. note::
 
@@ -2361,7 +2368,7 @@ appears above the grid. If you have indexed the dataset by
 :ref:`image similarity <brain-image-similarity>`, you can click the icon to
 sort by similarity to your current selection.
 
-The popover lets you choose a brain key and quickly run a search. After the
+The popover lets you choose a similarity index and quickly run a search. After the
 search completes, the :ref:`Similarity Search panel <app-similarity-search-panel>`
 opens to display the results, where you can further refine your query or manage
 past searches.
@@ -2400,12 +2407,6 @@ in the upper-right corner of the modal:
     :alt: object-similarity-modal
     :align: center
 
-Click the settings icon in the popover to open the
-:ref:`Similarity Search panel <app-similarity-search-panel>`, where you can
-specify a larger number of results, query by greatest or least similarity
-(if supported), choose a different brain key, or optionally save the computed
-distances as a new sample field.
-
 .. _app-text-similarity:
 
 Text similarity
@@ -2420,18 +2421,6 @@ press search.
 .. image:: /images/brain/brain-text-similarity.gif
    :alt: text-similarity
    :align: center
-
-Click the settings icon in the popover to open the
-:ref:`Similarity Search panel <app-similarity-search-panel>`, where you can
-specify a larger number of results, query by greatest or least similarity
-(if supported), choose a different brain key, or optionally save the computed
-distances as a new sample field.
-
-.. note::
-
-    Did you know? You can also perform text queries
-    :ref:`via the SDK <brain-similarity-text>` by passing a prompt directly to
-    :meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`!
 
 .. _app-model-evaluation-panel:
 
