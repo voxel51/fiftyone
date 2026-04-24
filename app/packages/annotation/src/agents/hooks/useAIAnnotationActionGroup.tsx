@@ -1,6 +1,6 @@
 import { ToolbarActionGroup } from "@fiftyone/components";
 import { usePointSelection } from "./usePointSelection";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { Icon, IconName } from "@voxel51/voodo";
 import { useAgentSelector } from "./useAgentSelector";
 import { useAnnotationAgent } from "./useAnnotationAgent";
@@ -15,13 +15,6 @@ export const useAIAnnotationActionGroup = (): ToolbarActionGroup => {
   const { inferenceCapabilities } = useAnnotationAgent(
     useAgentSelector()?.activeAgent?.agent
   );
-
-  // Deactivate all tools on unmount
-  useEffect(() => {
-    return () => {
-      pointSelection.deactivate();
-    };
-  }, []);
 
   return useMemo(
     () => ({
