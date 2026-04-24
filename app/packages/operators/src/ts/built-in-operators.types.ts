@@ -146,3 +146,13 @@ export type OpenSampleParams = {
   group_id?: string;
   mode: "explore" | "annotate";
 };
+
+/**
+ * Sidebar
+ */
+
+export type SetFiltersHooks = {
+  setFilters: SetterOrUpdater<fos.State.Filters>;
+};
+
+export type SetFiltersParams = fos.State.Filters;
