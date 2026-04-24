@@ -2329,6 +2329,109 @@ deployment supports :ref:`delegated operations <delegated-operations>`, you can
 choose to run the search on a worker pod instead by selecting **Delegate** as
 the execution mode. This is useful for large number of results and large datasets.
 
+.. _app-similarity:
+
+Easy trigger from grid
+-------------------------------
+
+In addition to opening the panel from the panels menu, you can also trigger
+similarity searches directly from the sample grid via the **similarity
+popover**: a lightweight menu in the grid toolbar for quick searches. Select
+samples, patches, or labels and click the similarity icon to instantly sort
+by similarity or enter a text query.
+
+.. image:: /images/app/app-similarity-popover.gif
+    :alt: similarity-popover-open-panel
+    :align: center
+
+.. note::
+
+    Refer to the :ref:`Brain guide <brain-similarity>` for more information
+    about indexing datasets by image/object similarity via
+    :meth:`compute_similarity() <fiftyone.brain.compute_similarity>` for use
+    with this feature.
+
+.. _app-image-similarity:
+
+Image similarity
+~~~~~~~~~~~~~~~~
+
+Whenever one or more images are selected in the App, the similarity icon
+appears above the grid. If you have indexed the dataset by
+:ref:`image similarity <brain-image-similarity>`, you can click the icon to
+sort by similarity to your current selection.
+
+The popover lets you choose a brain key and quickly run a search. After the
+search completes, the :ref:`Similarity Search panel <app-similarity-search-panel>`
+opens to display the results, where you can further refine your query or manage
+past searches.
+
+.. image:: /images/brain/brain-image-similarity.gif
+    :alt: image-similarity
+    :align: center
+
+.. _app-object-similarity:
+
+Object similarity
+~~~~~~~~~~~~~~~~~
+
+Whenever one or more labels or patches are selected in the App, the similarity
+icon appears above the sample grid. If you have indexed the dataset by
+:ref:`object similarity <brain-object-similarity>`, you can sort by similarity
+to your current selection.
+
+The typical workflow for object similarity is to first switch to
+:ref:`object patches view <app-object-patches>` for the label field of
+interest. In this view, the similarity icon will appear whenever you have
+selected one or more patches from the grid, and the resulting view will sort
+the patches according to the similarity of their objects with respect to the
+objects in the query patches.
+
+.. image:: /images/brain/brain-object-similarity.gif
+    :alt: object-similarity
+    :align: center
+
+|br|
+You can also sort by similarity to an object from the expanded sample view in
+the App by selecting an object and then using the similarity menu that appears
+in the upper-right corner of the modal:
+
+.. image:: /images/brain/brain-object-similarity-modal.gif
+    :alt: object-similarity-modal
+    :align: center
+
+Click the settings icon in the popover to open the
+:ref:`Similarity Search panel <app-similarity-search-panel>`, where you can
+specify a larger number of results, query by greatest or least similarity
+(if supported), choose a different brain key, or optionally save the computed
+distances as a new sample field.
+
+.. _app-text-similarity:
+
+Text similarity
+~~~~~~~~~~~~~~~
+
+If you have indexed your dataset with a model that
+:ref:`supports text queries <brain-similarity-text>`, you can use the
+similarity popover to search for images (or object patches) of interest via
+arbitrary text queries. Simply type your query into the text input field and
+press search.
+
+.. image:: /images/brain/brain-text-similarity.gif
+   :alt: text-similarity
+   :align: center
+
+Click the settings icon in the popover to open the
+:ref:`Similarity Search panel <app-similarity-search-panel>`, where you can
+specify a larger number of results, query by greatest or least similarity
+(if supported), choose a different brain key, or optionally save the computed
+distances as a new sample field.
+
+.. note::
+
+    Did you know? You can also perform text queries
+    :ref:`via the SDK <brain-similarity-text>` by passing a prompt directly to
+    :meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`!
 
 .. _app-model-evaluation-panel:
 
@@ -3531,104 +3634,6 @@ to their labels) will not affect the sample tags of the underlying |Sample|.
 
     Did you know? You can construct clip views programmatically via
     :ref:`dataset views <clip-views>`!
-
-.. _app-similarity:
-
-Sorting by similarity
-_____________________
-
-Whenever you have a |Dataset| that has been
-:ref:`indexed by similarity <brain-similarity>`, the App provides two ways to
-search by similarity:
-
--   **Similarity popover**: a lightweight menu in the grid toolbar for quick
-    searches. Select samples, patches, or labels and click the similarity icon
-    to instantly sort by similarity or enter a text query.
--   **Similarity Search panel**: a full-featured panel for creating, managing,
-    and revisiting similarity searches. Open it from the popover's settings
-    button or from the App's panels menu. See
-    :ref:`Similarity Search panel <app-similarity-search-panel>` for details.
-
-.. image:: /images/app/app-similarity-popover.gif
-    :alt: similarity-popover-open-panel
-    :align: center
-
-.. note::
-
-    Refer to the :ref:`Brain guide <brain-similarity>` for more information
-    about indexing datasets by image/object similarity via
-    :meth:`compute_similarity() <fiftyone.brain.compute_similarity>` for use
-    with this feature.
-
-.. _app-image-similarity:
-
-Image similarity
-----------------
-
-Whenever one or more images are selected in the App, the similarity icon
-appears above the grid. If you have indexed the dataset by
-:ref:`image similarity <brain-image-similarity>`, you can click the icon to
-sort by similarity to your current selection.
-
-The popover lets you choose a brain key and quickly run a search. After the
-search completes, the :ref:`Similarity Search panel <app-similarity-search-panel>`
-opens to display the results, where you can further refine your query or manage
-past searches.
-
-.. image:: /images/brain/brain-image-similarity.gif
-    :alt: image-similarity
-    :align: center
-
-.. _app-object-similarity:
-
-Object similarity
------------------
-
-Whenever one or more labels or patches are selected in the App, the similarity
-icon appears above the sample grid. If you have indexed the dataset by
-:ref:`object similarity <brain-object-similarity>`, you can sort by similarity
-to your current selection.
-
-The typical workflow for object similarity is to first switch to
-:ref:`object patches view <app-object-patches>` for the label field of
-interest. In this view, the similarity icon will appear whenever you have
-selected one or more patches from the grid, and the resulting view will sort
-the patches according to the similarity of their objects with respect to the
-objects in the query patches.
-
-.. image:: /images/brain/brain-object-similarity.gif
-    :alt: object-similarity
-    :align: center
-
-|br|
-You can also sort by similarity to an object from the expanded sample view in
-the App by selecting an object and then using the similarity menu that appears
-in the upper-right corner of the modal:
-
-.. image:: /images/brain/brain-object-similarity-modal.gif
-    :alt: object-similarity-modal
-    :align: center
-
-.. _app-text-similarity:
-
-Text similarity
----------------
-
-If you have indexed your dataset with a model that
-:ref:`supports text queries <brain-similarity-text>`, you can use the
-similarity popover to search for images (or object patches) of interest via
-arbitrary text queries. Simply type your query into the text input field and
-press search.
-
-.. image:: /images/brain/brain-text-similarity.gif
-   :alt: text-similarity
-   :align: center
-
-.. note::
-
-    Did you know? You can also perform text queries
-    :ref:`via the SDK <brain-similarity-text>` by passing a prompt directly to
-    :meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`!
 
 .. _app-multiple-media-fields:
 
