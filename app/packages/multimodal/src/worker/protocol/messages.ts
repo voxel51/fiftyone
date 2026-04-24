@@ -1,4 +1,4 @@
-import type { DecodeContext } from "../../decoders";
+import type { DecodeContext, PayloadDescriptor } from "../../decoders";
 
 export const WORKER_MESSAGE_TYPE = Object.freeze({
   DECODE: "multimodal.worker.decode",
@@ -41,8 +41,7 @@ export interface WorkerMessageEnvelope {
 export interface WorkerDecodePayload {
   readonly bytes: Uint8Array;
   readonly context: DecodeContext;
-  readonly messageEncoding: string;
-  readonly schemaName: string;
+  readonly payload: PayloadDescriptor;
 }
 
 export interface WorkerDecodeMessage {

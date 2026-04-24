@@ -1,12 +1,9 @@
 import type { RenderArchetypeKind } from "../archetypes";
+import type { PayloadDescriptor as ContractPayloadDescriptor } from "../schemas/v1";
 
 /**
- * Render buffer archetypes emitted by multimodal decoders.
- */
-export type RenderArchetypeKind;
-
-/**
- * Broad decoded value shape until per-schema field contracts are finalized.
+ * Broad decoded value shape until renderer-specific field contracts are
+ * finalized.
  */
 export type DecodedFieldValue =
   | string
@@ -30,13 +27,41 @@ export interface RenderBuffers {
 }
 
 /**
+ * Encoded payload identity used by frontend decoder selection.
+ */
+export type PayloadDescriptor = Readonly<
+  Pick<ContractPayloadDescriptor, "encoding" | "schema" | "schemaEncoding">
+>;
+
+/**
+ * Time range for decoded data. Point samples may omit endNs; interval or
+ * segment outputs can provide a natural end.
+ */
+export interface DecodedTimeRange {
+  readonly startNs: bigint;
+  readonly endNs?: bigint;
+}
+
+/**
+ * Named timestamps preserved from the source container or message payload.
+ */
+export type DecodedSourceTimestamps = Readonly<Record<string, bigint>>;
+
+/**
+ * Generic timing metadata for playback, synchronization, and provenance.
+ */
+export interface DecodedTiming {
+  readonly timeRange?: DecodedTimeRange;
+  readonly sourceTimestamps?: DecodedSourceTimestamps;
+}
+
+/**
  * Structured decoder output for downstream playback and rendering.
  */
 export interface DecodedOutput {
   readonly fields: Record<string, DecodedFieldValue>;
   readonly render: RenderBuffers;
-  readonly headerStampNs?: bigint;
-  readonly publishTimeNs?: bigint;
+  readonly timing?: DecodedTiming;
 }
 
 /**
@@ -44,15 +69,14 @@ export interface DecodedOutput {
  */
 export interface DecodeContext {
   readonly streamId: string;
-  readonly frameId?: string;
+  readonly coordinateFrameId?: string;
 }
 
 /**
- * Message decoder implementation for a specific schema and encoding pair.
+ * Frontend decoder implementation for a specific encoded payload.
  */
 export interface Decoder {
-  readonly schemaName: string;
-  readonly messageEncoding: string;
+  readonly payload: PayloadDescriptor;
 
   decode(bytes: Uint8Array, ctx: DecodeContext): DecodedOutput;
 }

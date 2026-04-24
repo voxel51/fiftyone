@@ -1,4 +1,8 @@
-import type { DecodedOutput, DecodeContext } from "../../decoders";
+import type {
+  DecodedOutput,
+  DecodeContext,
+  PayloadDescriptor,
+} from "../../decoders";
 
 // TODO: implement the decoder pool.
 
@@ -8,8 +12,7 @@ import type { DecodedOutput, DecodeContext } from "../../decoders";
 export interface DecodeJob {
   readonly bytes: Uint8Array;
   readonly context: DecodeContext;
-  readonly messageEncoding: string;
-  readonly schemaName: string;
+  readonly payload: PayloadDescriptor;
 }
 
 /**

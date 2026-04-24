@@ -5,10 +5,11 @@ export type {
   DecodedFieldValue,
   DecodedOutput,
   DecodedSourceTimestamps,
-  DecodedTimelineSpan,
+  DecodedTimeRange,
   DecodedTiming,
   Decoder,
   DecoderKey,
+  PayloadDescriptor,
   RenderBuffers,
 } from "./decoders";
 export { WORKER_MESSAGE_TYPE } from "./worker/protocol/messages";

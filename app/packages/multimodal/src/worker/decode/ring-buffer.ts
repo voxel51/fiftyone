@@ -1,4 +1,4 @@
-import type { DecodedOutput } from "../../decoders";
+import type { DecodedOutput, DecodedTimeRange } from "../../decoders";
 
 // TODO: implement the decoded frame ring buffer.
 
@@ -8,7 +8,7 @@ import type { DecodedOutput } from "../../decoders";
 export interface BufferedDecodedFrame {
   readonly output: DecodedOutput;
   readonly streamId: string;
-  readonly timestampNs: bigint;
+  readonly timeRange: DecodedTimeRange;
 }
 
 /**

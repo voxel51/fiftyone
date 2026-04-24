@@ -1,59 +1,57 @@
-import { Decoder } from "./types";
+import type { Decoder, PayloadDescriptor } from "./types";
 
 /**
  * Lookup key for a registered decoder.
  */
-export type DecoderKey = Readonly<
-  Pick<Decoder, "messageEncoding" | "schemaName">
->;
-
-type MessageEncoding = Decoder["messageEncoding"];
-type SchemaName = Decoder["schemaName"];
-type DecodersBySchemaName = Map<SchemaName, Decoder>;
-type DecodersByMessageEncoding = Map<MessageEncoding, DecodersBySchemaName>;
+export type DecoderKey = PayloadDescriptor;
 
 /**
- * Runtime registry of decoders keyed by schema and message encoding.
+ * Runtime registry of decoders keyed by encoded payload identity.
  */
 export class DecoderRegistry {
-  private readonly decodersByMessageEncoding: DecodersByMessageEncoding =
-    new Map();
+  private readonly decodersByPayloadKey = new Map<string, Decoder>();
 
   /**
    * Registers a decoder instance.
    */
   register(decoder: Decoder): void {
-    let decodersBySchemaName = this.decodersByMessageEncoding.get(
-      decoder.messageEncoding
-    );
-
-    if (!decodersBySchemaName) {
-      decodersBySchemaName = new Map();
-      this.decodersByMessageEncoding.set(
-        decoder.messageEncoding,
-        decodersBySchemaName
-      );
-    }
-
-    const existingDecoder = decodersBySchemaName.get(decoder.schemaName);
+    const key = payloadKey(decoder.payload);
+    const existingDecoder = this.decodersByPayloadKey.get(key);
 
     if (existingDecoder) {
       throw new Error(
-        `Decoder already registered for ${decoder.messageEncoding}/${decoder.schemaName}`
+        `Decoder already registered for ${formatDecoderKey(decoder.payload)}`
       );
     }
 
-    decodersBySchemaName.set(decoder.schemaName, decoder);
+    this.decodersByPayloadKey.set(key, decoder);
   }
 
   /**
    * Returns the decoder registered for a key when one exists.
    */
   find(key: DecoderKey): Decoder | undefined {
-    return this.decodersByMessageEncoding
-      .get(key.messageEncoding)
-      ?.get(key.schemaName);
+    return this.decodersByPayloadKey.get(payloadKey(key));
   }
 }
 
 // Todo: construct registry manager, or global singleton registry
+
+function payloadKey(payload: PayloadDescriptor): string {
+  return JSON.stringify([
+    payload.encoding,
+    payload.schemaEncoding ?? null,
+    payload.schema ?? null,
+  ]);
+}
+
+function formatDecoderKey(payload: PayloadDescriptor): string {
+  const parts = [payload.encoding];
+  if (payload.schemaEncoding) {
+    parts.push(payload.schemaEncoding);
+  }
+  if (payload.schema) {
+    parts.push(payload.schema);
+  }
+  return parts.join("/");
+}
