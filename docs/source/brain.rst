@@ -571,7 +571,7 @@ an active selection in the App, a :ref:`similarity icon <app-image-similarity>`
 will appear above the grid, enabling you to sort by similarity to your current
 selection.
 
-You can use the :ref:`Similarity Search panel <app-similarity-panel>` for
+You can use the :ref:`Similarity Search panel <app-similarity-search-panel>` for
 advanced search options, run management, and search history.
 
 .. code-block:: python
@@ -666,7 +666,7 @@ Now whenever you have selected one or more patches in the App, a
 :ref:`similarity icon <app-object-similarity>` will appear above the grid,
 enabling you to sort by similarity to your current selection.
 
-You can also use the :ref:`Similarity Search panel <app-similarity-panel>` for
+You can also use the :ref:`Similarity Search panel <app-similarity-search-panel>` for
 advanced search options, run management, and search history.
 
 .. code-block:: python
@@ -743,7 +743,7 @@ When you create a similarity index powered by the
 :ref:`CLIP model <model-zoo-clip-vit-base32-torch>`, you can also search by
 arbitrary natural language queries
 :ref:`natively in the App <app-text-similarity>`, including via the
-:ref:`Similarity Search panel <app-similarity-panel>`!
+:ref:`Similarity Search panel <app-similarity-search-panel>`!
 
 .. tabs::
 

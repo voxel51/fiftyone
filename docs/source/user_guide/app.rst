@@ -2205,32 +2205,82 @@ The Embeddings panel supports the following `state` parameters:
 Similarity Search panel
 _______________________
 
-The Similarity Search panel provides a full-featured interface for creating,
-managing, and revisiting similarity searches on datasets that have been
-:ref:`indexed by similarity <brain-similarity>`. You can open it from the
+When you load a dataset in the App that has one or more
+:ref:`similarity indexes <brain-similarity>`, you can open the Similarity
+Search panel to create, manage, and revisit similarity searches on the dataset.
+
+To get started, compute a similarity index on your dataset using
+:meth:`compute_similarity() <fiftyone.brain.compute_similarity>`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.brain as fob
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # Index images by similarity using the default sklearn backend
+    # with a cosine distance metric
+    fob.compute_similarity(
+        dataset,
+        model="clip-vit-base32-torch",
+        backend="sklearn",
+        metric="cosine",
+        brain_key="img_sim",
+    )
+
+    session = fo.launch_app(dataset)
+
+Once the dataset is indexed, you can open the Similarity Search panel from the
 :ref:`similarity popover's <app-similarity>` settings button, or from the App's
 panels menu.
 
-.. image:: /images/app/app-similarity-panel.gif
-    :alt: similarity-search-panel
-    :align: center
+.. note::
+
+    Refer to the :ref:`Brain guide <brain-similarity>` for more information on
+    supported backends (sklearn, Qdrant, Pinecone, MongoDB, etc.), distance
+    metrics, and using custom or precomputed embeddings.
 
 Home page
 ---------
 
-The panel's home page displays a list of all past similarity search runs. Each
-run shows its name, query type, status (pending, running, completed, or
-failed), and creation time. Click any completed run to apply its results to the
-current view.
+The panel's home page displays a list of all past similarity search runs.
+Click any completed run to apply its results to the current view.
+
+.. image:: /images/app/app-similarity-panel-home.png
+    :alt: similarity-panel-home-page
+    :align: center
 
 You can filter the run list by:
 
 -   **Date range**: Today, Last 7 days, Last 30 days, or Older
 -   **Search text**: filter by query content or run name
--   **Owner**: show all runs or only your own (Enterprise only)
+-   **Owner**: show all runs or only your own (Enterprise dataset manager only)
 
-Run management actions include cloning, renaming, and deleting individual runs,
-as well as bulk deletion of multiple runs at once.
+Managing runs
+~~~~~~~~~~~~~
+
+From the home page, you can manage individual runs by cloning, renaming, or
+deleting them. You can also select multiple runs to delete in bulk — for
+example, filter by **Older** and bulk-delete stale runs.
+
+.. image:: /images/app/app-similarity-panel-manage-runs.gif
+    :alt: similarity-panel-manage-runs
+    :align: center
+
+Checking similarity indexes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+From the home page, you can also navigate to the **Similarity Index** page to
+view the similarity indexes available on your dataset, along with their
+configurations (e.g., brain key, model, metric, and whether the index supports
+text queries).
+
+.. image:: /images/app/app-similarity-panel-index-page.gif
+    :alt: similarity-panel-index-page
+    :align: center
 
 Creating a new search
 ---------------------
@@ -2252,27 +2302,33 @@ following options:
     results that are similar to your selected samples but dissimilar to the
     alt-selected ones
 
+In **image mode**, you can click samples in the grid to select them as
+**positive** examples (shown with a green check), and alt-click (option-click)
+to select them as **negative** examples (shown with a red mark). The search
+will return results similar to the positive samples but dissimilar to the
+negative ones.
+
+.. image:: /images/app/app-similarity-panel-new-search.png
+    :alt: similarity-panel-new-search-positive-negative
+    :align: center
+
 .. note::
 
-    For image queries, first select one or more samples in the grid, then open
-    the panel and click **New search**. The selected samples will be used as
-    the query.
+    Using negative samples is not recommended when your similarity index uses
+    the Euclidean distance metric.
+
+In **upload mode**, you can upload a local image (under 10MB) to use as the
+query. The uploaded image is used only for the search and will **not** be
+added to your dataset.
 
 Delegated execution
 -------------------
 
-By default, similarity searches run immediately on the App server. If your
+Triggered from the popover, similarity searches run immediately on the App server by default.If your
 deployment supports :ref:`delegated operations <delegated-operations>`, you can
 choose to run the search on a worker pod instead by selecting **Delegate** as
-the execution mode. This is useful for long-running searches on large datasets.
+the execution mode. This is useful for large number of results and large datasets.
 
-When configuring spaces :ref:`in Python <app-spaces-python>`, you can create a
-Similarity Search panel as follows:
-
-.. code-block:: python
-    :linenos:
-
-    similarity_panel = fo.Panel(type="Similarity Search")
 
 .. _app-model-evaluation-panel:
 
@@ -3491,13 +3547,18 @@ search by similarity:
 -   **Similarity Search panel**: a full-featured panel for creating, managing,
     and revisiting similarity searches. Open it from the popover's settings
     button or from the App's panels menu. See
-    :ref:`Similarity Search panel <app-similarity-panel>` for details.
+    :ref:`Similarity Search panel <app-similarity-search-panel>` for details.
+
+.. image:: /images/app/app-similarity-popover.gif
+    :alt: similarity-popover-open-panel
+    :align: center
 
 .. note::
 
     Refer to the :ref:`Brain guide <brain-similarity>` for more information
-    about indexing datasets by image/object similarity for use with this
-    feature.
+    about indexing datasets by image/object similarity via
+    :meth:`compute_similarity() <fiftyone.brain.compute_similarity>` for use
+    with this feature.
 
 .. _app-image-similarity:
 
@@ -3510,7 +3571,7 @@ appears above the grid. If you have indexed the dataset by
 sort by similarity to your current selection.
 
 The popover lets you choose a brain key and quickly run a search. After the
-search completes, the :ref:`Similarity Search panel <app-similarity-panel>`
+search completes, the :ref:`Similarity Search panel <app-similarity-search-panel>`
 opens to display the results, where you can further refine your query or manage
 past searches.
 
