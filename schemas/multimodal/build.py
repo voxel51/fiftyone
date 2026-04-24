@@ -105,7 +105,7 @@ def get_local_toolchain() -> Toolchain:
             f"Unable to parse protoc version from: {protoc_version}"
         )
 
-    if protoc_version_parts <= MINIMUM_PROTOC_VERSION:
+    if protoc_version_parts < MINIMUM_PROTOC_VERSION:
         raise RuntimeError(
             "Unsupported protoc version "
             f"{protoc_version} at {protoc_path}. Expected libprotoc > 33.0."
