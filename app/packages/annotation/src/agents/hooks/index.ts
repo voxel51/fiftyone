@@ -2,6 +2,7 @@ export * from "./useActiveCapabilities";
 export * from "./useActiveTask";
 export * from "./useAgentRegistry";
 export * from "./useAgentSelector";
+export * from "./useAIAnnotationActionGroup";
 export * from "./useAnnotationAgent";
 export * from "./useApplyInferenceResult";
 export * from "./useSampleDescriptor";
