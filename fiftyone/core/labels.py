@@ -516,7 +516,7 @@ class Detection(_HasAttributesDict, _HasID, _HasMedia, _HasInstance, Label):
             if update:
                 self.mask_path = None
 
-    def export_mask(self, outpath, update=False):
+    def export_mask(self, outpath, update=False, overwrite_path=False):
         """Exports this instance's mask to the given path.
 
         Args:
@@ -524,15 +524,22 @@ class Detection(_HasAttributesDict, _HasID, _HasMedia, _HasInstance, Label):
             update (False): whether to clear this instance's :attr:`mask`
                 attribute and set its :attr:`mask_path` attribute when
                 exporting in-database segmentations
+            overwrite_path (False): whether to write the in-database
+                :attr:`mask` to disk even when :attr:`mask_path` is
+                already set. Use this when an in-app edit has produced a
+                new in-database mask that should overwrite the file at the
+                original on-disk path
         """
-        if self.mask_path is not None:
+        if self.mask_path is not None and not overwrite_path:
             etau.copy_file(self.mask_path, outpath)
-        else:
+        elif self.mask is not None:
             _write_mask(self.mask, outpath)
 
             if update:
                 self.mask = None
                 self.mask_path = outpath
+        else:
+            raise ValueError("Detection has no mask or mask_path to export")
 
     def to_polyline(self, tolerance=2, filled=True):
         """Returns a :class:`Polyline` representation of this instance.
@@ -1193,7 +1200,7 @@ class Segmentation(_HasID, _HasMedia, Label):
             if update:
                 self.mask_path = None
 
-    def export_mask(self, outpath, update=False):
+    def export_mask(self, outpath, update=False, overwrite_path=False):
         """Exports this instance's mask to the given path.
 
         Args:
@@ -1201,15 +1208,22 @@ class Segmentation(_HasID, _HasMedia, Label):
             update (False): whether to clear this instance's :attr:`mask`
                 attribute and set its :attr:`mask_path` attribute when
                 exporting in-database segmentations
+            overwrite_path (False): whether to write the in-database
+                :attr:`mask` to disk even when :attr:`mask_path` is
+                already set. Use this when an in-app edit has produced a
+                new in-database mask that should overwrite the file at the
+                original on-disk path
         """
-        if self.mask_path is not None:
+        if self.mask_path is not None and not overwrite_path:
             etau.copy_file(self.mask_path, outpath)
-        else:
+        elif self.mask is not None:
             _write_mask(self.mask, outpath)
 
             if update:
                 self.mask = None
                 self.mask_path = outpath
+        else:
+            raise ValueError("Detection has no mask or mask_path to export")
 
     def transform_mask(self, targets_map, outpath=None, update=False):
         """Transforms this instance's mask according to the provided targets
