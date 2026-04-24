@@ -22,7 +22,7 @@ It uses:
 
 -   `v1/contracts.proto` as the current schema source of truth
 -   project-local `protoc-gen-es` from `app/package.json`
--   a local `protoc` binary on `PATH`
+-   a local `protoc` binary on `PATH`. See [these instructions](https://protobuf.dev/installation/) on installing for your platform.
 
 `protoc` generates the Python output natively. TypeScript generation is not a
 built-in `protoc` feature, so it uses the external `protoc-gen-es` plugin.
