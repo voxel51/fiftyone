@@ -71,7 +71,7 @@ setup(
         "Pillow>=6.2,!=11.2.*",  # Pillow 11.2.0 introduced CVE 2025-48379 that is fixed in 11.3.0
         "plotly>=6.1.1,<7",
         "pprintpp>=0.1,<0.5",
-        "protobuf==6.33.4",
+        "protobuf==6.33.5",
         "psutil>=5,<8",
         "pydash>=6,<9",
         "pymongo~=4.9.2",  # Keep small bounds on mongo-related libraries
