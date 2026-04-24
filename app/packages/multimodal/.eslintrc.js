@@ -3,6 +3,16 @@ module.exports = {
     browser: true,
     es6: true,
   },
+  overrides: [
+    {
+      files: ["src/worker/**/*.ts"],
+      env: {
+        browser: false,
+        es6: true,
+        worker: true,
+      },
+    },
+  ],
   extends: [
     "eslint:recommended",
     "plugin:react/recommended",

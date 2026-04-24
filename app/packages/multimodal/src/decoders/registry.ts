@@ -3,10 +3,9 @@ import { Decoder } from "./types";
 /**
  * Lookup key for a registered decoder.
  */
-export interface DecoderKey {
-  readonly messageEncoding: string;
-  readonly schemaName: string;
-}
+export type DecoderKey = Readonly<
+  Pick<Decoder, "messageEncoding" | "schemaName">
+>;
 
 type MessageEncoding = Decoder["messageEncoding"];
 type SchemaName = Decoder["schemaName"];

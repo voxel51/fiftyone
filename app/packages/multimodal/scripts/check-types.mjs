@@ -12,7 +12,15 @@ let output = "";
 try {
   execFileSync(
     "yarn",
-    ["exec", "tsc", "--noEmit", "-p", "packages/multimodal/tsconfig.json"],
+    [
+      "exec",
+      "tsc",
+      "--noEmit",
+      "-p",
+      "packages/multimodal/tsconfig.json",
+      "--pretty",
+      "false",
+    ],
     {
       cwd: appRoot,
       encoding: "utf8",

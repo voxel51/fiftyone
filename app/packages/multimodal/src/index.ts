@@ -8,4 +8,15 @@ export type {
   DecoderKey,
   RenderBuffers,
 } from "./decoders";
-export * from "./worker";
+export { WORKER_MESSAGE_TYPE } from "./worker/protocol/messages";
+export type {
+  MainToWorkerMessage,
+  WorkerErrorMessage,
+  WorkerMessageCandidate,
+  WorkerMessageEnvelope,
+  WorkerMessageType,
+  WorkerPayload,
+  WorkerPayloadValue,
+  WorkerToMainMessage,
+  WorkerUnhandledMessage,
+} from "./worker/protocol/messages";

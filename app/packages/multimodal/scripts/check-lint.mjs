@@ -10,6 +10,8 @@ execFileSync(
   [
     "exec",
     "eslint",
+    // Top level eslint has too-liberal rules and plugins like "only-warn"
+    // that we want to supersede
     "--no-eslintrc",
     "--config",
     "packages/multimodal/.eslintrc.js",

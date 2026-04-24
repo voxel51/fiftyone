@@ -22,13 +22,20 @@ def register_decoder(
     """Registers a multimodal decoder by name."""
 
     with _DECODERS_LOCK:
-        if name in _DECODERS:
+        decoder_name = decoder.name
+        if name != decoder_name:
             raise ValueError(
-                f"Decoder {name!r} is already registered: "
-                f"{_DECODERS[name]!r}"
+                f"Decoder registry key {name!r} does not match decoder.name "
+                f"{decoder_name!r}"
             )
 
-        _DECODERS[name] = decoder
+        if decoder_name in _DECODERS:
+            raise ValueError(
+                f"Decoder {decoder_name!r} is already registered: "
+                f"{_DECODERS[decoder_name]!r}"
+            )
+
+        _DECODERS[decoder_name] = decoder
 
     return decoder
 
