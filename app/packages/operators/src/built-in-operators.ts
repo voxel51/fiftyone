@@ -39,7 +39,13 @@ import {
 import { useShowOperatorIO } from "./state";
 import usePanelEvent from "./usePanelEvent";
 
-import type { ExecutionContext, OpenPanelHooks, OpenPanelParams } from "./ts";
+import type {
+  ExecutionContext,
+  OpenPanelHooks,
+  OpenPanelParams,
+  OpenSampleHooks,
+  OpenSampleParams,
+} from "./ts";
 
 const { FIFTYONE_GRID_SPACES_ID, FIFTYONE_MODAL_SPACES_ID, PANEL_SURFACE } =
   fos.constants;
@@ -847,7 +853,7 @@ class TestOperator extends Operator {
   }
   async execute({ params }: ExecutionContext) {
     const parsedParams = JSON.parse(params.raw_params.trim());
-    executeOperator(params.operator, parsedParams);
+    executeOperator(params.operator, parsedParams, { callback: console.log });
   }
 }
 
@@ -1513,21 +1519,33 @@ class OpenSample extends Operator {
   }
   async resolveInput(): Promise<types.Property> {
     const inputs = new types.Object();
+
     inputs.str("id", { label: "Sample ID" });
     inputs.str("group_id", { label: "Group ID" });
+    inputs.enum("mode", ["explore", "annotate"]);
 
     return new types.Property(inputs);
   }
-  useHooks(): object {
+  useHooks(): OpenSampleHooks {
+    const { activateAnnotateMode, activateExploreMode } =
+      fos.useModalModeController();
+
     return {
       setExpanded: fos.useSetExpandedSample(),
+      activateAnnotateMode,
+      activateExploreMode,
     };
   }
-  async execute({ hooks, params }: ExecutionContext) {
-    hooks.setExpanded({
-      id: params.id,
-      group_id: params.group_id,
-    });
+  async execute(ctx: ExecutionContext<OpenSampleParams, OpenSampleHooks>) {
+    const { hooks, params } = ctx;
+    const { setExpanded, activateAnnotateMode, activateExploreMode } = hooks;
+    const { id, group_id, mode } = params;
+    if (mode === "annotate") {
+      activateAnnotateMode();
+    } else {
+      activateExploreMode();
+    }
+    setExpanded({ id, groupId: group_id });
   }
 }
 
@@ -1545,7 +1563,7 @@ class CloseSample extends Operator {
       close: fos.useClearModal(),
     };
   }
-  async execute({ hooks, params }: ExecutionContext) {
+  async execute({ hooks }: ExecutionContext) {
     hooks.close();
   }
 }

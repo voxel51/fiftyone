@@ -130,3 +130,19 @@ export type DatasetHooks = {
 export type ListBrainRunsParams = {
   type: "visualization" | "similarity";
 };
+
+/**
+ * Sample
+ */
+
+export type OpenSampleHooks = {
+  setExpanded: ReturnType<typeof fos.useSetExpandedSample>;
+  activateAnnotateMode: () => void;
+  activateExploreMode: () => void;
+};
+
+export type OpenSampleParams = {
+  id?: string;
+  group_id?: string;
+  mode: "explore" | "annotate";
+};
