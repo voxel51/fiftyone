@@ -102,6 +102,15 @@ Snapshots
    :members:
    :undoc-members:
 
+.. _enterprise-sdk-service-account-management:
+
+Service account management
+--------------------------
+
+.. autoapimodule:: fiftyone.management.service_account
+   :members:
+   :undoc-members:
+
 .. _enterprise-sdk-user-management:
 
 User management
