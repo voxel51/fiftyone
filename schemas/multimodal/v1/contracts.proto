@@ -8,7 +8,7 @@ message StreamInventory {
   string stream_id = 1;
 
   // Upstream schema or message name for the stream payload.
-  string schema_name = 3;
+  string schema_name = 2;
 
   // Todo
 }

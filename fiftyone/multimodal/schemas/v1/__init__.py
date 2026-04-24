@@ -6,7 +6,7 @@ Multimodal schema contracts for v1.
 |
 """
 
-from .__generated import (
+from .__generated__.contracts_pb2 import (  # pylint: disable=no-name-in-module
     PlaybackPlan,
     SceneInventory,
     StreamInventory,

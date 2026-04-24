@@ -6,12 +6,34 @@ Generate multimodal protobuf contracts for Python and TypeScript.
 |
 """
 
+from __future__ import annotations
+
+from collections.abc import Sequence
 import os
 from pathlib import Path
 import re
 import shutil
 import subprocess
 import sys
+from typing import TypedDict
+
+
+class Toolchain(TypedDict):
+    """Resolved protobuf codegen toolchain."""
+
+    protoc_path: str
+    protoc_version: str
+    ts_plugin_path: str
+    ts_plugin_version: str
+
+
+class GeneratedOutput(TypedDict):
+    """Generated files for a versioned multimodal schema."""
+
+    schema: Path
+    python: Path
+    typescript: Path
+
 
 BUILD_FILE = Path(__file__).resolve()
 SCHEMA_ROOT = BUILD_FILE.parent
@@ -22,7 +44,7 @@ TS_ROOT = (
     REPO_ROOT / "app" / "packages" / "multimodal" / "src" / "types" / "shared"
 )
 TS_PLUGIN_PATH = APP_ROOT / "node_modules" / ".bin" / "protoc-gen-es"
-MINIMUM_PROTOC_VERSION = (33,)
+MINIMUM_PROTOC_VERSION = (33, 0)
 TS_PLUGIN_NAME = "protoc-gen-es"
 TS_PLUGIN_OPTION = "target=ts"
 PROTO_NAME = "contracts.proto"
@@ -31,13 +53,13 @@ TS_GENERATED_NAME = "contracts_pb.ts"
 VERSION_SPECS = {
     "v1": {
         "schema_subdir": Path("v1"),
-        "python_out_subdir": Path("schemas") / "v1" / "__generated",
-        "ts_out_subdir": Path("schemas") / "v1" / "__generated",
+        "python_out_subdir": Path("schemas") / "v1" / "__generated__",
+        "ts_out_subdir": Path("schemas") / "v1" / "__generated__",
     }
 }
 
 
-def _run(command):
+def _run(command: Sequence[str]) -> str:
     try:
         result = subprocess.run(
             command,
@@ -51,26 +73,26 @@ def _run(command):
         if output:
             raise RuntimeError(output) from error
 
-        raise RuntimeError("Command failed: %s" % " ".join(command)) from error
+        raise RuntimeError(f"Command failed: {' '.join(command)}") from error
     except FileNotFoundError as error:
-        raise RuntimeError("Missing command: %s" % command[0]) from error
+        raise RuntimeError(f"Missing command: {command[0]}") from error
 
     return result.stdout.strip()
 
 
-def get_local_toolchain():
+def get_local_toolchain() -> Toolchain:
     """Gets the local protobuf codegen toolchain."""
 
     protoc_path = os.environ.get("PROTOC") or shutil.which("protoc")
     if not protoc_path:
-        raise RuntimeError("Missing protoc. Install libprotoc > 33 first.")
+        raise RuntimeError("Missing protoc. Install libprotoc > 33.0 first.")
 
     # Parse protoc's human-readable --version output into a comparable tuple.
     protoc_output = _run([protoc_path, "--version"])
     protoc_match = re.search(r"libprotoc (\S+)", protoc_output)
     if not protoc_match:
         raise RuntimeError(
-            "Unable to parse protoc version from: %s" % protoc_output
+            f"Unable to parse protoc version from: {protoc_output}"
         )
 
     protoc_version = protoc_match.group(1)
@@ -80,22 +102,19 @@ def get_local_toolchain():
 
     if not protoc_version_parts:
         raise RuntimeError(
-            "Unable to parse protoc version from: %s" % protoc_version
+            f"Unable to parse protoc version from: {protoc_version}"
         )
 
     if protoc_version_parts <= MINIMUM_PROTOC_VERSION:
         raise RuntimeError(
-            "Unsupported protoc version %s at %s. Expected libprotoc > 33."
-            % (
-                protoc_version,
-                protoc_path,
-            )
+            "Unsupported protoc version "
+            f"{protoc_version} at {protoc_path}. Expected libprotoc > 33.0."
         )
 
     if not TS_PLUGIN_PATH.is_file():
         raise RuntimeError(
-            "Unable to find %s in app dependencies. "
-            "Run `cd app && yarn install`." % TS_PLUGIN_NAME
+            f"Unable to find {TS_PLUGIN_NAME} in app dependencies. "
+            "Run `cd app && yarn install`."
         )
 
     ts_plugin_path = str(TS_PLUGIN_PATH)
@@ -115,14 +134,20 @@ def get_local_toolchain():
     }
 
 
-def build_contracts(schema_root, python_root, ts_root):
+def build_contracts(
+    schema_root: Path,
+    python_root: Path,
+    ts_root: Path,
+    toolchain: Toolchain | None = None,
+) -> dict[str, GeneratedOutput]:
     """Generates all known multimodal protobuf contract versions."""
 
-    toolchain = get_local_toolchain()
-    generated = {}
+    if toolchain is None:
+        toolchain = get_local_toolchain()
 
-    for version in VERSION_SPECS:
-        spec = VERSION_SPECS[version]
+    generated: dict[str, GeneratedOutput] = {}
+
+    for version, spec in VERSION_SPECS.items():
         schema_dir = (
             Path(schema_root).resolve() / spec["schema_subdir"]
         ).resolve()
@@ -135,7 +160,7 @@ def build_contracts(schema_root, python_root, ts_root):
         ).resolve()
 
         if not proto_path.exists():
-            raise FileNotFoundError("Missing protobuf schema: %s" % proto_path)
+            raise FileNotFoundError(f"Missing protobuf schema: {proto_path}")
 
         python_out_dir.mkdir(parents=True, exist_ok=True)
         ts_out_dir.mkdir(parents=True, exist_ok=True)
@@ -144,10 +169,10 @@ def build_contracts(schema_root, python_root, ts_root):
         _run(
             [
                 toolchain["protoc_path"],
-                "--plugin=protoc-gen-es=%s" % toolchain["ts_plugin_path"],
-                "--proto_path=%s" % schema_dir,
-                "--python_out=%s" % python_out_dir,
-                "--es_out=%s:%s" % (TS_PLUGIN_OPTION, ts_out_dir),
+                f"--plugin=protoc-gen-es={toolchain['ts_plugin_path']}",
+                f"--proto_path={schema_dir}",
+                f"--python_out={python_out_dir}",
+                f"--es_out={TS_PLUGIN_OPTION}:{ts_out_dir}",
                 str(proto_path),
             ]
         )
@@ -156,27 +181,24 @@ def build_contracts(schema_root, python_root, ts_root):
         ts_generated = ts_out_dir / TS_GENERATED_NAME
         if not python_generated.exists():
             raise FileNotFoundError(
-                "Missing generated Python protobuf module: %s"
-                % python_generated
+                f"Missing generated Python protobuf module: {python_generated}"
             )
 
         if not ts_generated.exists():
             raise FileNotFoundError(
-                "Missing generated TypeScript protobuf module: %s"
-                % ts_generated
+                f"Missing generated TypeScript protobuf module: {ts_generated}"
             )
 
         generated[version] = {
             "schema": proto_path,
             "python": python_generated,
             "typescript": ts_generated,
-            "toolchain": toolchain,
         }
 
     return generated
 
 
-def main(argv=None):
+def main(argv: Sequence[str] | None = None) -> int:
     """CLI entrypoint."""
 
     argv = list(argv or [])
@@ -185,42 +207,29 @@ def main(argv=None):
         return 2
 
     try:
+        toolchain = get_local_toolchain()
         generated = build_contracts(
             SCHEMA_ROOT,
             PYTHON_ROOT,
             TS_ROOT,
+            toolchain,
         )
     except Exception as error:
         print(str(error), file=sys.stderr)
         return 1
 
-    toolchain = next(iter(generated.values()))["toolchain"]
     print("Validated multimodal codegen toolchain")
     print(
-        "protoc: %s (libprotoc %s)"
-        % (
-            toolchain["protoc_path"],
-            toolchain["protoc_version"],
-        )
+        f"protoc: {toolchain['protoc_path']} (libprotoc {toolchain['protoc_version']})"
     )
     print(
-        "%s: %s (v%s)"
-        % (
-            TS_PLUGIN_NAME,
-            toolchain["ts_plugin_path"],
-            toolchain["ts_plugin_version"],
-        )
+        f"{TS_PLUGIN_NAME}: {toolchain['ts_plugin_path']} "
+        f"(v{toolchain['ts_plugin_version']})"
     )
     for version, outputs in generated.items():
-        print("Schema (%s): %s" % (version, outputs["schema"]))
-        print("Generated Python (%s): %s" % (version, outputs["python"]))
-        print(
-            "Generated TypeScript (%s): %s"
-            % (
-                version,
-                outputs["typescript"],
-            )
-        )
+        print(f"Schema ({version}): {outputs['schema']}")
+        print(f"Generated Python ({version}): {outputs['python']}")
+        print(f"Generated TypeScript ({version}): {outputs['typescript']}")
     return 0
 
 

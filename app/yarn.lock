@@ -1523,6 +1523,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@bufbuild/protobuf@npm:^2.11.0":
+  version: 2.12.0
+  resolution: "@bufbuild/protobuf@npm:2.12.0"
+  checksum: 10/a21ee54b053672827f52e3525477972f7ea75ce82150d6599ee3544f00b442a49093608b7557581bc8846d066193220bece20cf4712bb44d8aba5067a8eeb035
+  languageName: node
+  linkType: hard
+
 "@bufbuild/protoc-gen-es@npm:^2.11.0":
   version: 2.11.0
   resolution: "@bufbuild/protoc-gen-es@npm:2.11.0"
@@ -2475,6 +2482,7 @@ __metadata:
     "@fiftyone/analytics": "npm:*"
     "@fiftyone/components": "npm:*"
     "@fiftyone/core": "npm:*"
+    "@fiftyone/feature-flags": "npm:*"
     "@fiftyone/multimodal": "npm:*"
     "@fiftyone/relay": "npm:*"
     "@fiftyone/state": "npm:*"
@@ -2893,6 +2901,9 @@ __metadata:
 "@fiftyone/multimodal@npm:*, @fiftyone/multimodal@workspace:packages/multimodal":
   version: 0.0.0-use.local
   resolution: "@fiftyone/multimodal@workspace:packages/multimodal"
+  dependencies:
+    "@bufbuild/protobuf": "npm:^2.11.0"
+    "@fiftyone/plugins": "npm:*"
   languageName: unknown
   linkType: soft
 

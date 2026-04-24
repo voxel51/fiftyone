@@ -1,20 +1,28 @@
+import type { DecodedOutput, DecodeContext } from "../../decoders";
+
 // TODO: implement the decoder pool.
+
+/**
+ * Decode request shape for worker-backed decoder pools.
+ */
+export interface DecodeJob {
+  readonly bytes: Uint8Array;
+  readonly context: DecodeContext;
+  readonly messageEncoding: string;
+  readonly schemaName: string;
+}
 
 /**
  * Scaffold for pooled decode execution.
  */
-export class DecoderPool {
+export abstract class DecoderPool {
   /**
-   * Decodes an opaque message payload.
+   * Decodes a typed message payload.
    */
-  decode(_message: unknown): unknown {
-    throw new Error("Not implemented");
-  }
+  abstract decode(message: DecodeJob): DecodedOutput | Promise<DecodedOutput>;
 
   /**
    * Releases decoder pool resources.
    */
-  dispose(): void {
-    throw new Error("Not implemented");
-  }
+  abstract dispose(): void;
 }

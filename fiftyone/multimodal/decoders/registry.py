@@ -6,30 +6,49 @@ Registry helpers for multimodal decoders.
 |
 """
 
+from __future__ import annotations
 
-_DECODERS = {}
+from threading import RLock
+
+from .base import MultimodalDecoder
+
+_DECODERS: dict[str, MultimodalDecoder] = {}
+_DECODERS_LOCK = RLock()
 
 
-def register_decoder(name, decoder):
+def register_decoder(
+    name: str, decoder: MultimodalDecoder
+) -> MultimodalDecoder:
     """Registers a multimodal decoder by name."""
 
-    _DECODERS[name] = decoder
+    with _DECODERS_LOCK:
+        if name in _DECODERS:
+            raise ValueError(
+                f"Decoder {name!r} is already registered: "
+                f"{_DECODERS[name]!r}"
+            )
+
+        _DECODERS[name] = decoder
+
     return decoder
 
 
-def get_decoder(name):
+def get_decoder(name: str) -> MultimodalDecoder | None:
     """Returns a registered decoder by name, if present."""
 
-    return _DECODERS.get(name)
+    with _DECODERS_LOCK:
+        return _DECODERS.get(name)
 
 
-def list_decoders():
+def list_decoders() -> dict[str, MultimodalDecoder]:
     """Returns a copy of the registered decoder mapping."""
 
-    return dict(_DECODERS)
+    with _DECODERS_LOCK:
+        return _DECODERS.copy()
 
 
-def clear_decoders():
+def clear_decoders() -> None:
     """Clears all registered decoder entries."""
 
-    _DECODERS.clear()
+    with _DECODERS_LOCK:
+        _DECODERS.clear()

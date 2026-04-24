@@ -1,27 +1,34 @@
+import type { DecodedOutput } from "../../decoders";
+
 // TODO: implement the decoded frame ring buffer.
 
 /**
- * Scaffold for buffering decoded multimodal frames.
+ * Buffered decoded frame shape.
  */
-export class RingBuffer {
+export interface BufferedDecodedFrame {
+  readonly output: DecodedOutput;
+  readonly streamId: string;
+  readonly timestampNs: bigint;
+}
+
+/**
+ * Contract for buffering decoded multimodal frames.
+ *
+ * The concrete implementation is deferred until playback requirements settle.
+ */
+export abstract class RingBuffer {
   /**
-   * Pushes an opaque decoded frame into the buffer.
+   * Pushes a decoded frame into the buffer.
    */
-  push(_frame: unknown): void {
-    throw new Error("Not implemented");
-  }
+  abstract push(frame: BufferedDecodedFrame): void;
 
   /**
    * Drains buffered frames.
    */
-  drain(): readonly unknown[] {
-    throw new Error("Not implemented");
-  }
+  abstract drain(): readonly BufferedDecodedFrame[];
 
   /**
    * Clears buffered frames.
    */
-  clear(): void {
-    throw new Error("Not implemented");
-  }
+  abstract clear(): void;
 }

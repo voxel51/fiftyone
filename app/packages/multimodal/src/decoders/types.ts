@@ -1,9 +1,24 @@
-import { RENDER_ARCHETYPE } from "../archetypes";
+import type { RenderArchetypeKind as ArchetypeKind } from "../archetypes";
 
 /**
  * Render buffer archetypes emitted by multimodal decoders.
  */
-export type RenderArchetypeKind = keyof typeof RENDER_ARCHETYPE;
+export type RenderArchetypeKind = ArchetypeKind;
+
+/**
+ * Broad decoded value shape until per-schema field contracts are finalized.
+ */
+export type DecodedFieldValue =
+  | string
+  | number
+  | boolean
+  | bigint
+  | null
+  | Uint8Array
+  | Float32Array
+  | ArrayBuffer
+  | readonly DecodedFieldValue[]
+  | { readonly [field: string]: DecodedFieldValue };
 
 /**
  * Decoder-owned render data passed to format-agnostic renderers.
@@ -11,14 +26,14 @@ export type RenderArchetypeKind = keyof typeof RENDER_ARCHETYPE;
 export interface RenderBuffers {
   readonly kind: RenderArchetypeKind;
   readonly data: Uint8Array | Float32Array | ArrayBuffer;
-  readonly metadata?: Record<string, unknown>;
+  readonly metadata?: Record<string, DecodedFieldValue>;
 }
 
 /**
  * Structured decoder output for downstream playback and rendering.
  */
 export interface DecodedOutput {
-  readonly fields: Record<string, unknown>;
+  readonly fields: Record<string, DecodedFieldValue>;
   readonly render: RenderBuffers;
   readonly headerStampNs?: bigint;
   readonly publishTimeNs?: bigint;

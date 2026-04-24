@@ -1,4 +1,10 @@
 {
     "extends": "../../tsconfig.base.json",
-    "include": ["./src/**/*"]
+    "compilerOptions": {
+        "strict": true,
+        "noImplicitAny": true,
+        "noImplicitThis": true,
+        "strictNullChecks": true
+    },
+    "include": ["./src"]
 }

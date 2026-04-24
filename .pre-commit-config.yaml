@@ -12,7 +12,7 @@ repos:
       - id: black
         language_version: python3
         args: ["-l 79"]
-        exclude: ^docs/theme/
+        exclude: (^docs/theme/|(^|.*/)__generated__/)
   - repo: local
     hooks:
       - id: pylint
@@ -21,7 +21,7 @@ repos:
         files: \.py$
         entry: pylint
         args: ["--errors-only"]
-        exclude: ^(docs/theme/|app/)
+        exclude: ^(docs/theme/|app/|.*__generated__/)
   - repo: local
     hooks:
       - id: ipynb-strip
