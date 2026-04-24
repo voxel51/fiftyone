@@ -28,7 +28,9 @@ try {
     }
   );
 } catch (error) {
-  output = `${error.stdout || ""}${error.stderr || ""}`;
+  const stdout = typeof error.stdout === "string" ? error.stdout : "";
+  const stderr = typeof error.stderr === "string" ? error.stderr : "";
+  output = [stdout, stderr].filter(Boolean).join("\n");
   if (!output) {
     throw error;
   }
