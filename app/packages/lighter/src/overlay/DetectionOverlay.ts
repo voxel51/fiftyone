@@ -1087,13 +1087,6 @@ export class DetectionOverlay
     }
   }
 
-  override destroy(): void {
-    this.maskBitmap?.close();
-    this.maskBitmap = undefined;
-    this.maskData = undefined;
-    super.destroy();
-  }
-
   // Selectable interface implementation
   isSelected(): boolean {
     return this.isSelectedState;
@@ -1268,6 +1261,10 @@ export class DetectionOverlay
 
   override destroy(): void {
     this.mask?.destroy();
+    this.maskKeypoints?.destroy();
+    this.maskBitmap?.close();
+    this.maskBitmap = undefined;
+    this.maskData = undefined;
     super.destroy();
   }
 }
