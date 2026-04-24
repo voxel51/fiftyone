@@ -6,8 +6,14 @@ Multimodal decoder scaffolding.
 |
 """
 
-from .base import MultimodalDecoder
+from .base import (
+    DecodedIngestFields,
+    DecodedIngestValue,
+    MultimodalDecoder,
+    MultimodalPayload,
+)
 from .registry import (
+    PayloadDescriptorKey,
     clear_decoders,
     get_decoder,
     list_decoders,
@@ -16,7 +22,11 @@ from .registry import (
 
 
 __all__ = [
+    "DecodedIngestFields",
+    "DecodedIngestValue",
     "MultimodalDecoder",
+    "MultimodalPayload",
+    "PayloadDescriptorKey",
     "clear_decoders",
     "get_decoder",
     "list_decoders",

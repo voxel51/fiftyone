@@ -10,24 +10,28 @@ from __future__ import annotations
 
 import abc
 from collections.abc import Mapping
-from typing import Union, Any
+from typing import Any, Union
+
+from fiftyone.multimodal.schemas.v1 import PayloadDescriptor
 
 MultimodalPayload = Union[bytes, bytearray, memoryview]
-"""Encoded payload accepted by scaffold decoder implementations."""
+"""Encoded payload accepted by SDK decoder implementations."""
 
-DecodedFieldValue = Any
-DecodedMessage = Mapping[str, DecodedFieldValue]
-"""Broad decoded message shape until schema-specific outputs are finalized."""
+DecodedIngestValue = Any
+DecodedIngestFields = Mapping[str, DecodedIngestValue]
+"""Decoded fields emitted by SDK decoders for cold-path ingest."""
 
 
 class MultimodalDecoder(abc.ABC):
-    """Abstract decoder interface for multimodal stream payloads."""
+    """Abstract SDK decoder interface for cold-path ingest."""
 
     @property
     @abc.abstractmethod
-    def name(self) -> str:
-        """Returns the stable decoder name."""
+    def payload(self) -> PayloadDescriptor:
+        """Returns the encoded payload descriptor this decoder accepts."""
 
     @abc.abstractmethod
-    def decode_message(self, message: MultimodalPayload) -> DecodedMessage:
-        """Decodes a single multimodal payload."""
+    def decode_payload(
+        self, payload: MultimodalPayload
+    ) -> DecodedIngestFields:
+        """Decodes a single payload into ingestable fields."""
