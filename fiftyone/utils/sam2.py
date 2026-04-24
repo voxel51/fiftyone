@@ -51,12 +51,12 @@ class _SAM2Predictor(fosam._SAMPredictor):
 
     def __init__(self, model):
         self.processor = smip.SAM2ImagePredictor(model)
-        self._image_id = None
         self.sam_transforms = (
             self.processor._transforms
             if hasattr(self.processor, "_transforms")
             else smip.SAM2Transforms(model.image_size, mask_threshold=0)
         )
+        self.image_id = None
 
     def image_transform(self, img):
         """Transforms image for SAM2 model input.
@@ -109,6 +109,44 @@ class _SAM2Predictor(fosam._SAMPredictor):
         unnorm_points = self.sam_transforms.transform_coords(norm_points)
         return torch.tensor(unnorm_points, dtype=torch.float64), torch.tensor(
             labels, dtype=torch.int
+        )
+
+    def valid_image(self, curr_id):
+        if self.processor._is_image_set:
+            return curr_id == self.image_id
+        return False
+
+    @property
+    def original_size(self):
+        return self.processor._orig_hw[0]
+
+    def predict(
+        self,
+        boxes=None,
+        point_coords=None,
+        point_labels=None,
+        multimask_output=False,
+    ):
+        """Wrapper for ``sam2.sam2_image_predictor.Sam2ImagePredictor._predict``
+
+        Args:
+          point_coords (None): a BxNx2 array of point prompts in (X,Y) pixels
+          point_labels (None): a BxN array of labels for the
+            point prompts. 1 indicates a foreground point and 0 indicates a
+            background point.
+          boxes (None): a Bx4 array of box prompts in XYXY format.
+          multimask_output (False): if true, the model will return three masks.
+
+        Returns:
+          the output masks in BxCxHxW format where C is the number of masks
+          model's prediction in BxC
+          low resolution logits in BxCxHxW where H=W=256
+        """
+        return self.processor._predict(
+            point_coords=point_coords,
+            point_labels=point_labels,
+            boxes=boxes,
+            multimask_output=multimask_output,
         )
 
 
@@ -220,18 +258,12 @@ class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
         point_labels = imgs.get("point_labels")
         boxes = imgs.get("boxes")
         mask_inputs = imgs.get("mask_inputs")  # Not used currently
-        multimask_output = (
-            True if (boxes is None and point_coords is not None) else False
-        )
+        multimask_output = True if (boxes is None and point_coords is not None) else False
         outputs = []
         for img_idx in range(len(images)):
             out_masks, iou_pred, _ = self._sam_predictor.processor._predict(
-                point_coords=point_coords[img_idx]
-                if point_coords is not None
-                else None,
-                point_labels=point_labels[img_idx]
-                if point_labels is not None
-                else None,
+                point_coords=point_coords[img_idx] if point_coords is not None else None,
+                point_labels=point_labels[img_idx] if point_labels is not None else None,
                 boxes=boxes[img_idx] if boxes is not None else None,
                 mask_input=mask_inputs[img_idx] if mask_inputs else None,
                 multimask_output=multimask_output,
@@ -246,9 +278,7 @@ class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
 
 
 # TODO: Refactor SAM2 Video Model to use GetItem
-class SegmentAnything2VideoModelConfig(
-    fout.TorchImageModelConfig, fozm.HasZooModel
-):
+class SegmentAnything2VideoModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
     """Configuration for running a :class:`SegmentAnything2VideoModel`.
 
     See :class:`fiftyone.utils.torch.TorchImageModelConfig` for additional
@@ -416,10 +446,7 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
         kp_idx_obj_id_map = {}
         current_obj_idx = 0
         for frame_idx, frame_detections in enumerate(self._curr_prompts):
-            if (
-                len(frame_detections) == 0
-                or len(frame_detections.detections) == 0
-            ):
+            if len(frame_detections) == 0 or len(frame_detections.detections) == 0:
                 continue
             for detection in frame_detections.detections:
                 if detection.index is not None:
@@ -455,9 +482,7 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
         ) in self.model.propagate_in_video(inference_state):
             detections = []
             for i, out_obj_id in enumerate(out_obj_ids):
-                mask = np.squeeze(
-                    (out_mask_logits[i] > 0.0).cpu().numpy(), axis=0
-                )
+                mask = np.squeeze((out_mask_logits[i] > 0.0).cpu().numpy(), axis=0)
 
                 box = fosam._mask_to_box(mask)
                 if box is None:
@@ -495,10 +520,7 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
         kp_idx_obj_id_map = {}
         current_obj_idx = 0
         for frame_idx, frame_keypoints in enumerate(self._curr_prompts):
-            if (
-                len(frame_keypoints) == 0
-                or len(frame_keypoints.keypoints) == 0
-            ):
+            if len(frame_keypoints) == 0 or len(frame_keypoints.keypoints) == 0:
                 continue
             for keypoint in frame_keypoints.keypoints:
                 if keypoint.index is not None:
@@ -535,9 +557,7 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
         ) in self.model.propagate_in_video(inference_state):
             detections = []
             for i, out_obj_id in enumerate(out_obj_ids):
-                mask = np.squeeze(
-                    (out_mask_logits[i] > 0.0).cpu().numpy(), axis=0
-                )
+                mask = np.squeeze((out_mask_logits[i] > 0.0).cpu().numpy(), axis=0)
                 box = fosam._mask_to_box(mask)
                 if box is None:
                     continue
@@ -582,16 +602,12 @@ def load_fiftyone_video_frames(
 
     num_frames = len(sample.frames)
     try:
-        images = torch.zeros(
-            num_frames, 3, image_size, image_size, dtype=torch.float32
-        )
+        images = torch.zeros(num_frames, 3, image_size, image_size, dtype=torch.float32)
     except Exception as e:
         raise (e)
     for frame_number in range(num_frames):
         current_frame = video_reader.read()
-        resized_frame = (
-            cv2.resize(current_frame, (image_size, image_size)) / 255.0
-        )
+        resized_frame = cv2.resize(current_frame, (image_size, image_size)) / 255.0
         img = torch.from_numpy(resized_frame).permute(2, 0, 1)
         images[frame_number] = img
 
