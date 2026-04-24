@@ -12,7 +12,11 @@ function isWorkerPayload(
   message: WorkerMessageCandidate
 ): message is WorkerPayload {
   return (
-    typeof message === "object" && message !== null && !Array.isArray(message)
+    typeof message === "object" &&
+    message !== null &&
+    !Array.isArray(message) &&
+    !(message instanceof ArrayBuffer) &&
+    !ArrayBuffer.isView(message)
   );
 }
 
