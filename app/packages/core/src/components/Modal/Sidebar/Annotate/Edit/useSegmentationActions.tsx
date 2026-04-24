@@ -4,6 +4,7 @@
 
 import { EraserIcon, type ToolbarActionGroup } from "@fiftyone/components";
 import {
+  AutoAwesome,
   Brush,
   CircleOutlined,
   CropSquare,
@@ -98,11 +99,21 @@ export const useSegmentationActions = ({
             isActive: tool === "pen",
             onClick: () => switchTool("pen"),
           },
+          {
+            id: "ai",
+            label: "AI",
+            icon: <AutoAwesome />,
+            shortcut: "A",
+            tooltip: "AI",
+            isActive: tool === "ai",
+            onClick: () => switchTool("ai"),
+          },
         ],
       },
       {
         id: "size",
         label: "Size",
+        isHidden: ["ai", "pen"].includes(tool),
         actions: [
           {
             id: "size-input",
@@ -124,6 +135,7 @@ export const useSegmentationActions = ({
       {
         id: "shape",
         label: "Shape",
+        isHidden: ["ai", "pen"].includes(tool),
         actions: [
           {
             id: "circle",

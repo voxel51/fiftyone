@@ -9,7 +9,7 @@ import { RemoveKeypointPointCommand } from "../commands/RemoveKeypointPointComma
 import type { LighterEventGroup } from "../events";
 import { KeypointOverlay } from "../overlay/KeypointOverlay";
 import type { Point } from "../types";
-import type { InteractionHandler } from "./InteractionManager";
+import type { InteractionHandler, OverlayEvent } from "./InteractionManager";
 import { ClickEventModifiers, getClickModifiers } from "@fiftyone/utilities";
 
 const INTERACTIVE_KEYPOINT_HANDLER_ID = "interactive-keypoint-handler";
@@ -80,11 +80,7 @@ export class InteractiveKeypointHandler implements InteractionHandler {
     return false;
   }
 
-  onPointerDown(
-    _point: Point,
-    worldPoint: Point,
-    event: PointerEvent
-  ): boolean {
+  onPointerDown({ worldPoint, event }: OverlayEvent): boolean {
     const rp = this.overlay.absolutePointToRelative(worldPoint);
     const modifiers = getClickModifiers(event);
 
@@ -121,12 +117,12 @@ export class InteractiveKeypointHandler implements InteractionHandler {
     return true;
   }
 
-  onMove(_point: Point, worldPoint: Point, _event: PointerEvent): boolean {
+  onMove({ worldPoint }: OverlayEvent): boolean {
     this.overlay.setPreviewPoint(worldPoint);
     return true;
   }
 
-  onPointerUp(_point: Point, _event: PointerEvent): boolean {
+  onPointerUp(): boolean {
     // No-op — points are placed on pointer down, not release
     return true;
   }

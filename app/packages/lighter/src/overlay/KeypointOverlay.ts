@@ -15,6 +15,7 @@ import {
 } from "../constants";
 import { CONTAINS } from "../core/Scene2D";
 import type { Renderer2D } from "../renderer/Renderer2D";
+import type { OverlayEvent } from "../interaction/InteractionManager";
 import type { Selectable } from "../selection/Selectable";
 import type {
   DrawStyle,
@@ -515,12 +516,7 @@ export class KeypointOverlay
     return "default";
   }
 
-  onPointerDown(
-    point: Point,
-    worldPoint: Point,
-    _event: PointerEvent,
-    scale: number
-  ): boolean {
+  onPointerDown({ point, worldPoint, scale }: OverlayEvent): boolean {
     const nearestIdx = this.findNearestPointIndex(worldPoint, scale);
 
     if (nearestIdx >= 0) {
@@ -543,12 +539,7 @@ export class KeypointOverlay
     return false;
   }
 
-  onMove(
-    _point: Point,
-    worldPoint: Point,
-    _event: PointerEvent,
-    _scale: number
-  ): boolean {
+  onMove({ worldPoint }: OverlayEvent): boolean {
     if (
       this.dragPointIndex === null ||
       !this.moveStartScreenPoint ||
@@ -567,7 +558,7 @@ export class KeypointOverlay
     return true;
   }
 
-  onPointerUp(_point: Point, _event: PointerEvent): boolean {
+  onPointerUp(): boolean {
     if (this.dragPointIndex === null) return false;
 
     const movedIdx = this.dragPointIndex;

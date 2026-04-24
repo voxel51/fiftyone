@@ -39,7 +39,7 @@ export const MAX_TOOL_SIZE = 32;
 export const MIN_CURSOR_SIZE = 1;
 export const MAX_CURSOR_SIZE = 100;
 
-export type SegmentationTool = "select" | "brush" | "eraser" | "pen";
+export type SegmentationTool = "select" | "brush" | "eraser" | "pen" | "ai";
 export type SegmentationToolShape = "circle" | "square";
 
 export interface SegmentationToolState {
@@ -194,17 +194,7 @@ export const useSegmentationMode = () => {
 
   const activateSegmentationMode = useCallback(() => {
     setSegmentationModeActive(true);
-
-    // TODO: Make AI Great Again
-    // setActiveTask(AgentTaskType.SEGMENT);
-    // pointSelection.activate(resolvePointVariant, resolvePointHit);
-  }, [
-    pointSelection,
-    resolvePointHit,
-    resolvePointVariant,
-    setActiveTask,
-    setSegmentationModeActive,
-  ]);
+  }, [setSegmentationModeActive]);
 
   /**
    * Disable segmentation mode and gracefully close out any label being edited.
@@ -214,20 +204,17 @@ export const useSegmentationMode = () => {
     currentScene?.exitInteractiveMode();
     onExit();
 
-    setSegmentationModeActive(false);
-    setTool("select");
+    pointSelection.deactivate();
+    resetToolsState();
+    setActiveTask(null);
 
-    // TODO: Make AI Great Again
-    // pointSelection.deactivate();
-    // resetToolsState();
-    // setActiveTask(null);
+    setSegmentationModeActive(false);
   }, [
     onExit,
     pointSelection,
     resetToolsState,
     setActiveTask,
     setSegmentationModeActive,
-    setTool,
   ]);
 
   const toggleSegmentationMode = useCallback(() => {
@@ -294,6 +281,28 @@ export const useSegmentationMode = () => {
     isEditingSegmentation,
     segmentationModeActive,
     setSegmentationModeActive,
+  ]);
+
+  // Activate/deactivate AI point selection when switching to/from the AI tool.
+  useEffect(() => {
+    if (!segmentationModeActive) return;
+
+    if (tool === "ai") {
+      setActiveTask(AgentTaskType.SEGMENT);
+      pointSelection.activate(resolvePointVariant, resolvePointHit);
+    } else if (pointSelection.isActive) {
+      pointSelection.deactivate();
+      resetToolsState();
+      setActiveTask(null);
+    }
+  }, [
+    tool,
+    segmentationModeActive,
+    pointSelection,
+    resolvePointVariant,
+    resolvePointHit,
+    setActiveTask,
+    resetToolsState,
   ]);
 
   const claimEvent = useAtomCallback(

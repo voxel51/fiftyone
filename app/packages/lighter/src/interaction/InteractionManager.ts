@@ -603,6 +603,13 @@ export class InteractionManager {
         return true;
       }
 
+      // AI tool: point selection handles clicks via InteractiveKeypointHandler;
+      // if a pending action somehow reaches here, discard it.
+      if (segmentationModeBridge.getActiveTool() === "ai") {
+        this.clearPendingAction(event);
+        return true;
+      }
+
       // Pen tool: forward click to the overlay to add a point.
       if (segmentationModeBridge.getActiveTool() === "pen") {
         this.segmentationModePaint(event);
@@ -851,7 +858,11 @@ export class InteractionManager {
     const handler =
       interactiveHandler?.getOverlay() || this.findSelectedHandler();
 
-    if (handler && segmentationToolState.active) {
+    if (
+      handler &&
+      segmentationToolState.active &&
+      segmentationToolState.tool === "pen"
+    ) {
       handler?.commitPenPolygon({
         point,
         worldPoint,
