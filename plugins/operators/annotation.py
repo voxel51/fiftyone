@@ -8,6 +8,9 @@ Annotation label schemas operators
 
 import fiftyone.core.annotation.constants as foac
 import fiftyone.core.annotation.utils as foau
+from fiftyone.core.annotation.hydrate_label_schemas import (
+    hydrate_applied_ontology,
+)
 from fiftyone.core.annotation.validate_label_schemas import (
     ValidationErrors,
     validate_label_schemas,
@@ -136,7 +139,9 @@ class GetLabelSchemas(foo.Operator):
             }
 
             if field in label_schemas:
-                result[field]["label_schema"] = label_schemas[field]
+                result[field]["label_schema"] = hydrate_applied_ontology(
+                    label_schemas[field]
+                )
 
         return {
             "active_label_schemas": ctx.dataset.active_label_schemas,
