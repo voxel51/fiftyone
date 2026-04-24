@@ -1,13 +1,15 @@
 import { _registerBuiltInOperator } from "../operators";
 
 import * as colorSchemeOps from "./color-scheme";
-import * as spaces from "./spaces";
 import * as dataset from "./dataset";
+import * as sidebar from "./sidebar";
+import * as spaces from "./spaces";
 
 const builtInOperators = {
   ...colorSchemeOps,
-  ...spaces,
   ...dataset,
+  ...sidebar,
+  ...spaces,
 };
 
 for (const [name, op] of Object.entries(builtInOperators)) {
