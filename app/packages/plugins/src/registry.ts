@@ -418,13 +418,13 @@ export class PluginComponentRegistry {
     // Sample renderers provide their own grid/modal-specific fallbacks and
     // should not inherit the generic plugin boundary, which clears the modal
     // on error before local recovery can run.
-    const wrappedRegistration: PluginComponentRegistration =
-      registration.type === PluginComponentType.SampleRenderer
-        ? registration
-        : {
-            ...registration,
-            component: wrapCustomComponent(registration.component),
-          };
+    const wrappedRegistration: PluginComponentRegistration = {
+      ...registration,
+      component:
+        registration.type === PluginComponentType.SampleRenderer
+          ? registration.component
+          : wrapCustomComponent(registration.component),
+    };
 
     this.data.set(name, wrappedRegistration);
     this.version++;
