@@ -12,8 +12,9 @@ from exceptiongroup import ExceptionGroup
 
 import fiftyone as fo
 import fiftyone.core.labels as fol
+from fiftyone.core.ontology import AnnotationOntology, apply_ontology
 
-from decorators import drop_datasets
+from decorators import drop_datasets, drop_ontologies
 
 
 class DatasetAnnotationTests(unittest.TestCase):
@@ -374,3 +375,88 @@ class DatasetAnnotationTests(unittest.TestCase):
                 }
             )
         dataset.delete_sample_field("labels")
+
+    @drop_datasets
+    @drop_ontologies
+    def test_apply_ontology_apply(self):
+        dataset = _make_applied_ontology_test_dataset()
+        dataset.set_label_schemas({"detections": {"type": "detections"}})
+
+        schemas = apply_ontology(
+            dataset.label_schemas, "detections", "my_ontology"
+        )
+        dataset.set_label_schemas(schemas)
+
+        self.assertEqual(
+            dataset.label_schemas["detections"].get("applied_ontology"),
+            "my_ontology",
+        )
+        # other keys are preserved
+        self.assertEqual(
+            dataset.label_schemas["detections"]["type"], "detections"
+        )
+
+    @drop_datasets
+    @drop_ontologies
+    def test_apply_ontology_unset(self):
+        dataset = _make_applied_ontology_test_dataset()
+        dataset.set_label_schemas({"detections": {"type": "detections"}})
+
+        dataset.set_label_schemas(
+            apply_ontology(dataset.label_schemas, "detections", "my_ontology")
+        )
+        dataset.set_label_schemas(
+            apply_ontology(dataset.label_schemas, "detections", None)
+        )
+        self.assertNotIn(
+            "applied_ontology", dataset.label_schemas["detections"]
+        )
+
+        # idempotent: unsetting again is a no-op
+        dataset.set_label_schemas(
+            apply_ontology(dataset.label_schemas, "detections", None)
+        )
+
+    @drop_datasets
+    @drop_ontologies
+    def test_apply_ontology_invalid_reference_raises(self):
+        dataset = _make_applied_ontology_test_dataset()
+        dataset.set_label_schemas({"detections": {"type": "detections"}})
+
+        schemas = apply_ontology(
+            dataset.label_schemas, "detections", "nonexistent_ontology_xyz"
+        )
+        with self.assertRaises(ExceptionGroup):
+            dataset.set_label_schemas(schemas)
+
+    @drop_datasets
+    @drop_ontologies
+    def test_apply_ontology_does_not_mutate_input(self):
+        original = {"detections": {"type": "detections"}}
+        result = apply_ontology(original, "detections", "my_ontology")
+
+        self.assertNotIn("applied_ontology", original["detections"])
+        self.assertEqual(
+            result["detections"]["applied_ontology"], "my_ontology"
+        )
+
+
+def _make_applied_ontology_test_dataset(ontology_name: str = "my_ontology"):
+    """Dataset with a `detections` label field and a `str_field`, with a real
+    `AnnotationOntology` named ``ontology_name`` persisted to the `ontologies`
+    collection so the validator can resolve the reference.
+
+    Duplicated from `validate_label_schemas_tests.py`; consolidate later.
+    """
+    AnnotationOntology(name=ontology_name).save()
+
+    dataset = fo.Dataset()
+    dataset.add_sample(
+        fo.Sample(
+            filepath="image.png",
+            detections=fo.Detections(detections=[fo.Detection(label="one")]),
+        )
+    )
+    dataset.add_sample_field("str_field", fo.StringField)
+
+    return dataset

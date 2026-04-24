@@ -18,6 +18,7 @@ import os
 import random
 import string
 from datetime import datetime
+from typing import Optional
 
 import cachetools
 import eta.core.serial as etas
