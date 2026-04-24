@@ -57,4 +57,4 @@ export class DecoderRegistry {
   }
 }
 
-// Todo: construct registry manager, or global sigleton registry
+// Todo: construct registry manager, or global singleton registry
