@@ -1,8 +1,8 @@
 -r test.txt
 
 numpy
-pydicom>=2.2.0
-shapely>=1.7.1
+pydicom>=2.4.4
+shapely>=2.0.7
 tensorflow
 tensorflow-datasets
 torch
