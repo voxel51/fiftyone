@@ -119,6 +119,56 @@ export const useSegmentationMode = () => {
     selectedLabel?.overlay?.id ?? null
   );
 
+  const isEditingSegmentation =
+    editingLabelType === DETECTION &&
+    (!!selectedLabel?.data?.mask || !!selectedLabel?.data?.isEditingMask);
+
+  const noActiveFields = fields.length === 0;
+  const disabled = isPatchView || noActiveFields;
+
+  const tooltip = isPatchView
+    ? "Creating masks is not supported in this view"
+    : noActiveFields
+    ? "No active fields"
+    : segmentationModeActive
+    ? "Exit mask creation"
+    : "Create new mask";
+
+  // -----------------------  Manual segmentation tools  ------------------- //
+
+  const switchTool = useCallback(
+    (newTool: SegmentationTool) => {
+      setTool(newTool);
+    },
+    [setTool]
+  );
+
+  const increaseToolSize = useCallback(() => {
+    setToolSizeRaw((prev) => Math.min(prev + 1, MAX_TOOL_SIZE));
+  }, [setToolSizeRaw]);
+
+  const decreaseToolSize = useCallback(() => {
+    setToolSizeRaw((prev) => Math.max(prev - 1, MIN_TOOL_SIZE));
+  }, [setToolSizeRaw]);
+
+  const setToolSize = useCallback(
+    (size: number) => {
+      const n = Number(size);
+      if (Number.isNaN(n)) return;
+      setToolSizeRaw(Math.max(MIN_TOOL_SIZE, Math.min(n, MAX_TOOL_SIZE)));
+    },
+    [setToolSizeRaw]
+  );
+
+  const switchToolShape = useCallback(
+    (shape: SegmentationToolShape) => {
+      setToolShape(shape);
+    },
+    [setToolShape]
+  );
+
+  // ------------------------  AI segmentation handling  ------------------- //
+
   // We don't currently expose agent selection capabilities in the UX.
   // Select the first available agent once the agents have resolved.
   useEffect(() => {
@@ -177,20 +227,29 @@ export const useSegmentationMode = () => {
   // Clicking an existing point deletes it
   const resolvePointHit = useCallback(() => KeypointPointHitAction.DELETE, []);
 
-  const isEditingSegmentation =
-    editingLabelType === DETECTION &&
-    (!!selectedLabel?.data?.mask || !!selectedLabel?.data?.isEditingMask);
+  // Activate/deactivate AI point selection when switching to/from the AI tool.
+  useEffect(() => {
+    if (!segmentationModeActive) return;
 
-  const noActiveFields = fields.length === 0;
-  const disabled = isPatchView || noActiveFields;
+    if (tool === "ai") {
+      setActiveTask(AgentTaskType.SEGMENT);
+      pointSelection.activate(resolvePointVariant, resolvePointHit);
+    } else if (pointSelection.isActive) {
+      pointSelection.deactivate();
+      resetToolsState();
+      setActiveTask(null);
+    }
+  }, [
+    tool,
+    segmentationModeActive,
+    pointSelection,
+    resolvePointVariant,
+    resolvePointHit,
+    setActiveTask,
+    resetToolsState,
+  ]);
 
-  const tooltip = isPatchView
-    ? "Creating masks is not supported in this view"
-    : noActiveFields
-    ? "No active fields"
-    : segmentationModeActive
-    ? "Exit mask creation"
-    : "Create new mask";
+  // ---------------  Segmentation mode activation / deactivation  --------- //
 
   const activateSegmentationMode = useCallback(() => {
     setSegmentationModeActive(true);
@@ -229,37 +288,6 @@ export const useSegmentationMode = () => {
     activateSegmentationMode,
   ]);
 
-  const switchTool = useCallback(
-    (newTool: SegmentationTool) => {
-      setTool(newTool);
-    },
-    [setTool]
-  );
-
-  const increaseToolSize = useCallback(() => {
-    setToolSizeRaw((prev) => Math.min(prev + 1, MAX_TOOL_SIZE));
-  }, [setToolSizeRaw]);
-
-  const decreaseToolSize = useCallback(() => {
-    setToolSizeRaw((prev) => Math.max(prev - 1, MIN_TOOL_SIZE));
-  }, [setToolSizeRaw]);
-
-  const setToolSize = useCallback(
-    (size: number) => {
-      const n = Number(size);
-      if (Number.isNaN(n)) return;
-      setToolSizeRaw(Math.max(MIN_TOOL_SIZE, Math.min(n, MAX_TOOL_SIZE)));
-    },
-    [setToolSizeRaw]
-  );
-
-  const switchToolShape = useCallback(
-    (shape: SegmentationToolShape) => {
-      setToolShape(shape);
-    },
-    [setToolShape]
-  );
-
   // Auto-enable segmentation mode when a pre-existing mask detection is selected,
   // auto-disable when a pre-existing label of a different type is selected.
   // New labels are ignored — the mode was set intentionally via the toolbar button.
@@ -283,27 +311,7 @@ export const useSegmentationMode = () => {
     setSegmentationModeActive,
   ]);
 
-  // Activate/deactivate AI point selection when switching to/from the AI tool.
-  useEffect(() => {
-    if (!segmentationModeActive) return;
-
-    if (tool === "ai") {
-      setActiveTask(AgentTaskType.SEGMENT);
-      pointSelection.activate(resolvePointVariant, resolvePointHit);
-    } else if (pointSelection.isActive) {
-      pointSelection.deactivate();
-      resetToolsState();
-      setActiveTask(null);
-    }
-  }, [
-    tool,
-    segmentationModeActive,
-    pointSelection,
-    resolvePointVariant,
-    resolvePointHit,
-    setActiveTask,
-    resetToolsState,
-  ]);
+  // -----------------------------  Event handling  ------------------------ //
 
   const claimEvent = useAtomCallback(
     useCallback((get, set, eventType: string, eventId: string) => {
@@ -385,6 +393,8 @@ export const useSegmentationMode = () => {
       [claimEvent, deactivateSegmentationMode, segmentationModeActive]
     )
   );
+
+  // ----------------------------  Public interface  ----------------------- //
 
   return useMemo(
     () => ({
