@@ -1099,16 +1099,8 @@ class TestCommitMask:
                 400,
                 "non-Detections field",
             ),
-            (
-                {"field": "ground_truth", "det_kwargs": {
-                    "mask": np.ones((5, 5), dtype=np.uint8),
-                    "mask_path": "/nonexistent/dir/mask.png",
-                }},
-                500,
-                "write failure (bad path)",
-            ),
         ],
-        ids=["no_mask_path", "no_inline_mask", "non_detections", "write_fail"],
+        ids=["no_mask_path", "no_inline_mask", "non_detections"],
     )
     async def test_commit_mask_error_custom_sample(
         self,
@@ -1120,6 +1112,8 @@ class TestCommitMask:
         description,
     ):
         """Parametrized error cases that need custom sample setup."""
+        det_kwargs = setup.get("det_kwargs", {})
+
         if setup.get("classification"):
             sample = fo.Sample(filepath="/tmp/test_err.jpg")
             sample[setup["field"]] = fol.Classification(label="dog")
@@ -1131,7 +1125,7 @@ class TestCommitMask:
             sample = self._make_sample(
                 dataset,
                 field_name=setup["field"],
-                **setup.get("det_kwargs", {}),
+                **det_kwargs,
             )
             det_id = str(
                 sample[setup["field"]].detections[0].id
@@ -1143,6 +1137,29 @@ class TestCommitMask:
         with pytest.raises(HTTPException) as exc_info:
             await commit_endpoint.post(request)
         assert exc_info.value.status_code == status, description
+
+    @pytest.mark.asyncio
+    async def test_commit_mask_write_failure(
+        self, commit_endpoint, dataset, dataset_id
+    ):
+        """export_mask raising an error returns 500."""
+        sample = self._make_sample(
+            dataset,
+            mask=np.ones((5, 5), dtype=np.uint8),
+            mask_path="/tmp/_write_fail.png",
+        )
+        det_id = str(sample.ground_truth.detections[0].id)
+        request = self._make_commit_request(
+            dataset_id, sample.id, "ground_truth", det_id
+        )
+
+        with patch(
+            "fiftyone.core.labels.Detection.export_mask",
+            side_effect=OSError("disk full"),
+        ):
+            with pytest.raises(HTTPException) as exc_info:
+                await commit_endpoint.post(request)
+            assert exc_info.value.status_code == 500
 
 
 class TestSampleFieldRoute:
