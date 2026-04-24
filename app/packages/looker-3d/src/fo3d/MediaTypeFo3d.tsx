@@ -244,7 +244,7 @@ export const MediaTypeFo3dComponent = () => {
         cameraLifecycleState={cameraLifecycleState}
         mode={mode}
       />
-      {shouldShowAnnotationToolbar && <AnnotationToolbar />}
+      <AnnotationToolbar visible={shouldShowAnnotationToolbar} />
     </Fo3dSceneContext.Provider>
   );
 };

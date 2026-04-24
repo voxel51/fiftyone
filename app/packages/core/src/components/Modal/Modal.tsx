@@ -353,7 +353,7 @@ const Modal = () => {
         <Actions />
         {isAnnotationEnabled && <AnnotationHandlerRegistration />}
         <TooltipInfo />
-        <ModalContainer style={{ ...screenParams }}>
+        <ModalContainer id="modal-container" style={{ ...screenParams }}>
           <ReactErrorBoundary
             FallbackComponent={ModalErrorFallback}
             resetKeys={[

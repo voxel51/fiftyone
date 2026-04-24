@@ -23,6 +23,7 @@ export interface AnnotationActionGroup {
 
 export interface AnnotationToolbarProps {
   className?: string;
+  visible?: boolean;
 }
 
 // Hover state for specific polyline points/segments

@@ -55,7 +55,10 @@ const ActionButton = ({ action }: { action: AnnotationAction }) => (
   </Tooltip>
 );
 
-export const AnnotationToolbar = ({ className }: AnnotationToolbarProps) => {
+export const AnnotationToolbar = ({
+  className,
+  visible = true,
+}: AnnotationToolbarProps) => {
   const { actions } = useAnnotationActions();
   const canAnnotate = useCanAnnotate();
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(
@@ -63,20 +66,10 @@ export const AnnotationToolbar = ({ className }: AnnotationToolbarProps) => {
   );
   const isFullscreen = useRecoilValue(fos.fullscreen);
 
-  // Find the modal container to render the toolbar in the same stacking context as navigation arrows
   useEffect(() => {
-    if (!canAnnotate) {
-      setPortalContainer(null);
-      return;
-    }
-
-    const modalElement = document.getElementById("modal");
-    if (modalElement) {
-      setPortalContainer(modalElement);
-    } else {
-      setPortalContainer(document.body);
-    }
-  }, [canAnnotate]);
+    const modalContainerElement = document.getElementById("modal-container");
+    setPortalContainer(modalContainerElement ?? document.body);
+  }, []);
 
   if (!canAnnotate || !portalContainer) {
     return null;
@@ -86,10 +79,10 @@ export const AnnotationToolbar = ({ className }: AnnotationToolbarProps) => {
     <Toolbar
       className={className}
       orientation={Orientation.Column}
-      lockX
       xOffset={isFullscreen ? 8 : 50}
       yOffset={isFullscreen ? 55 : 100}
       zIndex={ZIndex.AboveModal}
+      visible={visible}
     >
       {actions
         .filter((group) => !group.isHidden)
