@@ -11,9 +11,10 @@ from unittest.mock import MagicMock, patch
 
 from fiftyone.core.annotation.attributes import AttributeSpec
 from fiftyone.core.annotation.hydrate_label_schemas import (
+    dehydrate_applied_ontology,
     hydrate_applied_ontology,
 )
-from fiftyone.core.ontology import AnnotationOntology, create_ontology
+from fiftyone.core.ontology import AnnotationOntology
 
 from decorators import drop_datasets, drop_ontologies
 
@@ -34,19 +35,17 @@ class HydrateLabelSchemasTests(unittest.TestCase):
     @drop_datasets
     @drop_ontologies
     def test_ontology_attributes_merged_into_empty_attributes(self):
-        create_ontology(
-            AnnotationOntology(
-                name="my_ontology",
-                attributes=[
-                    AttributeSpec(
-                        name="damage_location",
-                        type="str",
-                        component="dropdown",
-                        values=["front", "rear"],
-                    ),
-                ],
-            )
-        )
+        AnnotationOntology(
+            name="my_ontology",
+            attributes=[
+                AttributeSpec(
+                    name="damage_location",
+                    type="str",
+                    component="dropdown",
+                    values=["front", "rear"],
+                ),
+            ],
+        ).save()
 
         schema = {
             "type": "detections",
@@ -61,19 +60,17 @@ class HydrateLabelSchemasTests(unittest.TestCase):
     @drop_datasets
     @drop_ontologies
     def test_ontology_wins_on_name_collision(self):
-        create_ontology(
-            AnnotationOntology(
-                name="my_ontology",
-                attributes=[
-                    AttributeSpec(
-                        name="color",
-                        type="str",
-                        component="dropdown",
-                        values=["red", "blue"],
-                    ),
-                ],
-            )
-        )
+        AnnotationOntology(
+            name="my_ontology",
+            attributes=[
+                AttributeSpec(
+                    name="color",
+                    type="str",
+                    component="dropdown",
+                    values=["red", "blue"],
+                ),
+            ],
+        ).save()
 
         schema = {
             "type": "detections",
@@ -92,16 +89,14 @@ class HydrateLabelSchemasTests(unittest.TestCase):
     @drop_datasets
     @drop_ontologies
     def test_ontology_and_local_attrs_both_preserved(self):
-        create_ontology(
-            AnnotationOntology(
-                name="my_ontology",
-                attributes=[
-                    AttributeSpec(
-                        name="damage", type="bool", component="checkbox"
-                    ),
-                ],
-            )
-        )
+        AnnotationOntology(
+            name="my_ontology",
+            attributes=[
+                AttributeSpec(
+                    name="damage", type="bool", component="checkbox"
+                ),
+            ],
+        ).save()
 
         schema = {
             "type": "detections",
@@ -153,3 +148,113 @@ class HydrateLabelSchemasTests(unittest.TestCase):
         ):
             result = hydrate_applied_ontology(schema)
         self.assertEqual(result, schema)
+
+
+class DehydrateLabelSchemasTests(unittest.TestCase):
+    @drop_datasets
+    @drop_ontologies
+    def test_no_applied_ontology_returns_schema_unchanged(self):
+        schema = {
+            "type": "detections",
+            "attributes": [
+                {
+                    "name": "color",
+                    "type": "str",
+                    "component": "text",
+                    "_source": "stray",
+                }
+            ],
+        }
+        result = dehydrate_applied_ontology(schema)
+        self.assertEqual(result, schema)
+
+    @drop_datasets
+    @drop_ontologies
+    def test_ontology_owned_attributes_dropped(self):
+        AnnotationOntology(
+            name="my_ontology",
+            attributes=[
+                AttributeSpec(name="owned", type="bool", component="checkbox"),
+            ],
+        ).save()
+
+        schema = {
+            "type": "detections",
+            "applied_ontology": "my_ontology",
+            "attributes": [
+                {
+                    "name": "owned",
+                    "type": "bool",
+                    "component": "checkbox",
+                    "_source": "my_ontology",
+                },
+                {"name": "local", "type": "str", "component": "text"},
+            ],
+        }
+        result = dehydrate_applied_ontology(schema)
+        names = [a["name"] for a in result["attributes"]]
+        self.assertEqual(names, ["local"])
+
+    @drop_datasets
+    @drop_ontologies
+    def test_source_stripped_from_local_attributes(self):
+        AnnotationOntology(
+            name="my_ontology",
+            attributes=[
+                AttributeSpec(name="owned", type="bool", component="checkbox"),
+            ],
+        ).save()
+
+        schema = {
+            "type": "detections",
+            "applied_ontology": "my_ontology",
+            "attributes": [
+                {
+                    "name": "local",
+                    "type": "str",
+                    "component": "text",
+                    "_source": "forged",
+                },
+            ],
+        }
+        result = dehydrate_applied_ontology(schema)
+        self.assertNotIn("_source", result["attributes"][0])
+
+    @drop_datasets
+    @drop_ontologies
+    def test_dangling_reference_returns_schema_unchanged(self):
+        schema = {
+            "type": "detections",
+            "applied_ontology": "nonexistent_ontology_xyz",
+            "attributes": [
+                {
+                    "name": "local",
+                    "type": "str",
+                    "component": "text",
+                    "_source": "stray",
+                }
+            ],
+        }
+        result = dehydrate_applied_ontology(schema)
+        self.assertEqual(result, schema)
+
+    @drop_datasets
+    @drop_ontologies
+    def test_roundtrip_hydrate_then_dehydrate_matches_original(self):
+        AnnotationOntology(
+            name="my_ontology",
+            attributes=[
+                AttributeSpec(name="owned", type="bool", component="checkbox"),
+            ],
+        ).save()
+
+        original = {
+            "type": "detections",
+            "applied_ontology": "my_ontology",
+            "attributes": [
+                {"name": "local", "type": "str", "component": "text"},
+            ],
+        }
+        hydrated = hydrate_applied_ontology(original)
+        dehydrated = dehydrate_applied_ontology(hydrated)
+        self.assertEqual(dehydrated["attributes"], original["attributes"])

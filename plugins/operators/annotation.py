@@ -9,6 +9,7 @@ Annotation label schemas operators
 import fiftyone.core.annotation.constants as foac
 import fiftyone.core.annotation.utils as foau
 from fiftyone.core.annotation.hydrate_label_schemas import (
+    dehydrate_applied_ontology,
     hydrate_applied_ontology,
 )
 from fiftyone.core.annotation.validate_label_schemas import (
@@ -187,10 +188,16 @@ class ValidateLabelSchemas(foo.Operator):
 
     def execute(self, ctx):
         errors = []
+        # Mirror update_label_schema: dehydrate before validating so the
+        # pre-save check sees the same shape that will actually be saved.
+        label_schemas = {
+            field: dehydrate_applied_ontology(schema)
+            for field, schema in ctx.params.get("label_schemas", {}).items()
+        }
         try:
             validate_label_schemas(
                 ctx.dataset,
-                ctx.params.get("label_schemas", {}),
+                label_schemas,
                 allow_new_attrs=True,
                 allow_new_fields=True,
             )

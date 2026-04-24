@@ -69,9 +69,61 @@ def hydrate_applied_ontology(label_schema: dict) -> dict:
             ontology_name,
         )
         # do not cause app failure on mis-configuration
+
         return label_schema
 
     return _merge(label_schema, ontology)
+
+
+def dehydrate_applied_ontology(label_schema: dict) -> dict:
+    """Strips hydration artifacts from a label schema before it is saved.
+
+    Companion to :func:`hydrate_applied_ontology`. When the schema has an
+    ``applied_ontology`` that resolves to an annotation ontology, drops
+    any attribute whose ``name`` matches an ontology-owned attribute and
+    strips the ``_source`` marker from the remaining attributes.
+
+    Otherwise (no reference, dangling reference, or non-annotation
+    reference) the schema is returned unchanged — the validator will
+    surface the reference-level problem.
+
+    Args:
+        label_schema: a label schema dict, possibly carrying hydration
+            artifacts from :func:`hydrate_applied_ontology`
+
+    Returns:
+        a deep-copied schema with hydration artifacts removed, or
+        ``label_schema`` unchanged when there is nothing to dehydrate
+    """
+    ontology_name = label_schema.get(foac.APPLIED_ONTOLOGY)
+    if ontology_name is None:
+        return label_schema
+
+    # Late import to avoid a circular import with the ontology SDK.
+    from fiftyone.core.ontology import load_ontology
+
+    try:
+        ontology = load_ontology(ontology_name)
+    except ValueError:
+        return label_schema
+
+    if not ontology.is_annotation_ontology:
+        return label_schema
+
+    ontology_owned_names = {a.name for a in ontology.attributes}
+
+    cleaned = copy.deepcopy(label_schema)
+    kept = []
+    for attr in cleaned.get(foac.ATTRIBUTES, []):
+        # ontology-owned attrs get dropped entirely, so their _source goes
+        # with them; only the kept (local) attrs need _source popped
+        if attr.get(foac.NAME) in ontology_owned_names:
+            continue
+        attr.pop(_SOURCE, None)
+        kept.append(attr)
+
+    cleaned[foac.ATTRIBUTES] = kept
+    return cleaned
 
 
 def _merge(label_schema: dict, ontology: Any) -> dict:
