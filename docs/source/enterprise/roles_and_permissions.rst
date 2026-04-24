@@ -174,10 +174,14 @@ and cannot receive invitations.
 
 **Roles**
 
-Service accounts support the same five roles as human users: Admin, Member,
-Collaborator, Labeler, and Guest. The chosen role determines what the service
-account can do, such as which datasets it can access by default and whether it
-can create new datasets.
+Service accounts must be assigned a role that has API key access enabled, since
+API keys are their only authentication mechanism. Which roles have this
+permission depends on your deployment's license configuration. You can check
+which roles support API keys by navigating to the
+"Settings > Security > Roles" page.
+
+The assigned role determines what the service account can do, such as which
+datasets it can access by default and whether it can create new datasets.
 
 **Groups**
 
