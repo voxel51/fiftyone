@@ -210,7 +210,7 @@ export class DetectionOverlay
       this.bounds,
       this.containerId,
       style.strokeStyle || style.fillStyle || "#ffffff",
-      () => this.markDirty()
+      this.markDirty
     );
 
     // lightweight border when editing detection mask
@@ -820,7 +820,7 @@ export class DetectionOverlay
     const wasPainting = this.interactionState === "PAINTING";
 
     this.interactionState = "NONE";
-    this.mask?.paintEnd(this.bounds);
+    this.mask?.paintEnd(this.bounds, this.markDirty);
     this.moveStartPoint = undefined;
     this.moveStartPosition = undefined;
     this.moveStartBounds = undefined;
@@ -1191,7 +1191,7 @@ export class DetectionOverlay
       this.bounds = updatedBounds;
     }
 
-    this.mask.paintEnd(this.bounds);
+    this.mask.paintEnd(this.bounds, this.markDirty);
 
     this.eventBus.dispatch("lighter:overlay-paint-end", {
       id: this.id,

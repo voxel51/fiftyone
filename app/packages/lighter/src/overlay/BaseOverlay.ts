@@ -160,9 +160,9 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
   /**
    * Marks the overlay as dirty, indicating it needs to be re-rendered.
    */
-  markDirty(): void {
+  markDirty = (): void => {
     this.isDirty = true;
-  }
+  };
 
   /**
    * Marks the overlay as clean, indicating it doesn't need to be re-rendered.

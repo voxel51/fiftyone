@@ -5,6 +5,7 @@
 import type { SegmentationToolState } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useSegmentationMode";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { DrawStyle, Point, Rect } from "../types";
+import { parseColorWithAlpha } from "../utils/color";
 import { createMaskCanvas, decodeMask, encodeMask, maskBounds } from "../utils";
 
 export interface MaskSnapshot {
@@ -42,6 +43,8 @@ export class MaskCanvas {
   private canvas?: HTMLCanvasElement;
   private context?: CanvasRenderingContext2D;
   private lastPoint?: Point;
+  private currentColor?: string;
+  private lastColor?: string;
 
   // ---- snapshots for undo/redo ----
   private preStrokeSnapshot?: MaskSnapshot;
@@ -100,11 +103,18 @@ export class MaskCanvas {
     color: string,
     onDecoded?: () => void
   ): void {
+    this.currentColor = color;
     this.decodeMaskIfNeeded(color, onDecoded);
 
     if (!this.hasRenderable()) return;
 
     if (this.canvas) {
+      // When the overlay color first becomes available or changes, rebuild the
+      // canvas so every pixel is recolored and alpha-thresholded in one pass.
+      if (this.currentColor !== this.lastColor) {
+        this.updateCanvas(this.canvas.width, this.canvas.height);
+      }
+
       renderer.drawImage(
         { type: "canvas", canvas: this.canvas },
         bounds,
@@ -211,7 +221,10 @@ export class MaskCanvas {
     } else {
       this.context.globalCompositeOperation = "source-over";
       this.context.fillStyle =
-        style?.strokeStyle || style?.fillStyle || "#ffffff";
+        style?.strokeStyle ||
+        style?.fillStyle ||
+        this.currentColor ||
+        "#ffffff";
     }
 
     this.context.beginPath();
@@ -319,7 +332,10 @@ export class MaskCanvas {
     } else {
       this.context.globalCompositeOperation = "source-over";
       this.context.fillStyle =
-        style?.strokeStyle || style?.fillStyle || "#ffffff";
+        style?.strokeStyle ||
+        style?.fillStyle ||
+        this.currentColor ||
+        "#ffffff";
     }
 
     this.context.beginPath();
@@ -333,14 +349,22 @@ export class MaskCanvas {
     return updatedBounds;
   }
 
-  paintEnd(bounds: Rect) {
+  paintEnd(bounds: Rect, onEncoded?: () => void) {
     if (!this.canvas) return;
 
     this.lastPoint = undefined;
+
+    // Rebuild the canvas to recolor + threshold anti-aliased edge pixels
+    // before the snapshot and encode.
+    this.updateCanvas(this.canvas.width, this.canvas.height);
+
     this.postStrokeBounds = { ...bounds };
     this.postStrokeSnapshot = this.takeSnapshot();
 
-    encodeMask(this.canvas).then((encoded) => (this.pendingMask = encoded));
+    encodeMask(this.canvas).then((encoded) => {
+      this.pendingMask = encoded;
+      onEncoded?.();
+    });
   }
 
   getPaintStrokeData(): PaintStrokeData {
@@ -393,7 +417,15 @@ export class MaskCanvas {
     return maskBounds(this.context.getImageData(0, 0, width, height));
   }
 
-  // Allocate new canvas and copy over old pixels
+  /**
+   * Allocates a new canvas, copies existing pixels into it, and recolors
+   * every non-transparent pixel to {@link currentColor} while snapping alpha
+   * to 0 or 255.  This serves double duty:
+   *
+   * 1. Resizing the canvas when the mask bounds expand during painting.
+   * 2. Correcting wrong-colored pixels and eliminating anti-aliased edges
+   *    produced by Canvas 2D path drawing (arc/fill always anti-alias).
+   */
   private updateCanvas(
     width: number,
     height: number,
@@ -404,8 +436,31 @@ export class MaskCanvas {
 
     if (this.canvas && this.context) {
       const { width, height } = this.canvas;
-      const mask = this.context.getImageData(0, 0, width, height);
-      maskContext.putImageData(mask, offsetX, offsetY);
+      const imageData = this.context.getImageData(0, 0, width, height);
+
+      // Recolor + threshold: snap every non-transparent pixel to the
+      // overlay color with full alpha, eliminating anti-aliased fringes
+      // and correcting any pixels painted before the color was known.
+      if (this.currentColor) {
+        const { color: hex } = parseColorWithAlpha(this.currentColor);
+        const r = (hex >> 16) & 0xff;
+        const g = (hex >> 8) & 0xff;
+        const b = hex & 0xff;
+        const data = imageData.data;
+
+        for (let i = 0; i < data.length; i += 4) {
+          if (data[i + 3] > 0) {
+            data[i] = r;
+            data[i + 1] = g;
+            data[i + 2] = b;
+            data[i + 3] = 255;
+          }
+        }
+
+        this.lastColor = this.currentColor;
+      }
+
+      maskContext.putImageData(imageData, offsetX, offsetY);
     }
 
     this.canvas = maskCanvas;
