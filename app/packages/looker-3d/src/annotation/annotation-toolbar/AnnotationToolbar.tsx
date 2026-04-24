@@ -64,7 +64,6 @@ export const AnnotationToolbar = ({
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(
     null
   );
-  const isFullscreen = useRecoilValue(fos.fullscreen);
 
   useEffect(() => {
     const modalContainerElement = document.getElementById("modal-container");
@@ -79,8 +78,8 @@ export const AnnotationToolbar = ({
     <Toolbar
       className={className}
       orientation={Orientation.Column}
-      xOffset={isFullscreen ? 8 : 50}
-      yOffset={isFullscreen ? 55 : 100}
+      xOffset={56}
+      yOffset={175}
       zIndex={ZIndex.AboveModal}
       visible={visible}
     >
