@@ -22,10 +22,12 @@ It uses:
 
 -   `v1/contracts.proto` as the current schema source of truth
 -   project-local `protoc-gen-es` from `app/package.json`
--   a local `protoc` binary on `PATH`. See [these instructions](https://protobuf.dev/installation/) on installing for your platform.
+-   local `protoc` matching the Python protobuf runtime pinned in `setup.py`
 
 `protoc` generates the Python output natively. TypeScript generation is not a
-built-in `protoc` feature, so it uses the external `protoc-gen-es` plugin.
+built-in `protoc` feature, so it uses the external `protoc-gen-es` plugin. The
+script intentionally rejects different `protoc` versions because the generated
+files embed protobuf runtime version check.
 
 ```bash
 cd app && yarn install
@@ -34,4 +36,11 @@ protoc --version
 
 # activate FO environment
 python schemas/multimodal/build.py
+```
+
+If your default `protoc` does not match the `setup.py` protobuf pin,
+install/select the matching version and point the build at it:
+
+```bash
+PROTOC=/path/to/protoc python schemas/multimodal/build.py
 ```

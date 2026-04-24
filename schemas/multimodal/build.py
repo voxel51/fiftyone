@@ -44,7 +44,6 @@ TS_ROOT = (
     REPO_ROOT / "app" / "packages" / "multimodal" / "src" / "types" / "shared"
 )
 TS_PLUGIN_PATH = APP_ROOT / "node_modules" / ".bin" / "protoc-gen-es"
-MINIMUM_PROTOC_VERSION = (33, 0)
 TS_PLUGIN_NAME = "protoc-gen-es"
 TS_PLUGIN_OPTION = "target=ts"
 PROTO_NAME = "contracts.proto"
@@ -83,11 +82,24 @@ def _run(command: Sequence[str]) -> str:
 def get_local_toolchain() -> Toolchain:
     """Gets the local protobuf codegen toolchain."""
 
+    # setup.py owns the Python protobuf runtime pin. Match protoc to it so
+    # generated Python code does not drift across local environments.
+    python_protobuf_version = re.search(
+        r"protobuf==([\d.]+)",
+        (REPO_ROOT / "setup.py").read_text(),
+    ).group(1)
+    required_libprotoc_version = ".".join(
+        python_protobuf_version.split(".")[1:]
+    )
     protoc_path = os.environ.get("PROTOC") or shutil.which("protoc")
     if not protoc_path:
-        raise RuntimeError("Missing protoc. Install libprotoc > 33.0 first.")
+        raise RuntimeError(
+            "Missing protoc. Install or select libprotoc "
+            f"{required_libprotoc_version}, or set "
+            f"PROTOC=/path/to/protoc-{required_libprotoc_version}."
+        )
 
-    # Parse protoc's human-readable --version output into a comparable tuple.
+    # Keep Python gencode deterministic and aligned with setup.py's protobuf pin.
     protoc_output = _run([protoc_path, "--version"])
     protoc_match = re.search(r"libprotoc (\S+)", protoc_output)
     if not protoc_match:
@@ -96,19 +108,14 @@ def get_local_toolchain() -> Toolchain:
         )
 
     protoc_version = protoc_match.group(1)
-    protoc_version_parts = tuple(
-        int(part) for part in re.findall(r"\d+", protoc_version)
-    )
-
-    if not protoc_version_parts:
-        raise RuntimeError(
-            f"Unable to parse protoc version from: {protoc_version}"
-        )
-
-    if protoc_version_parts < MINIMUM_PROTOC_VERSION:
+    if protoc_version != required_libprotoc_version:
         raise RuntimeError(
             "Unsupported protoc version "
-            f"{protoc_version} at {protoc_path}. Expected libprotoc > 33.0."
+            f"{protoc_version} at {protoc_path}. Expected libprotoc "
+            f"{required_libprotoc_version} so generated Python matches "
+            f"protobuf=={python_protobuf_version}. Install/select that "
+            "protoc version or rerun with "
+            f"PROTOC=/path/to/protoc-{required_libprotoc_version}."
         )
 
     if not TS_PLUGIN_PATH.is_file():
