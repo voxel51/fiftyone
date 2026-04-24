@@ -9032,6 +9032,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _expand_schema(self, sample, dynamic):
         expanded = False
+        schema = None
 
         schema = None
         if not dynamic:
