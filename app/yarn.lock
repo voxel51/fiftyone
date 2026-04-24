@@ -2482,7 +2482,6 @@ __metadata:
     "@fiftyone/analytics": "npm:*"
     "@fiftyone/components": "npm:*"
     "@fiftyone/core": "npm:*"
-    "@fiftyone/feature-flags": "npm:*"
     "@fiftyone/multimodal": "npm:*"
     "@fiftyone/relay": "npm:*"
     "@fiftyone/state": "npm:*"
