@@ -47,7 +47,7 @@ export type SampleRendererMediaContext = {
 /**
  * Context used to evaluate whether a sample renderer supports a sample.
  */
-export type SampleRendererMatchContext<TSample = unknown> = {
+export type SampleRendererMatchContext<TSample = SampleRendererSampleLike> = {
   sample: TSample;
   media: SampleRendererMediaContext;
   surface: SampleRendererSurface;
@@ -56,7 +56,7 @@ export type SampleRendererMatchContext<TSample = unknown> = {
 /**
  * Full context passed to sample renderer components at render time.
  */
-export type SampleRendererRenderContext<TSample = unknown> =
+export type SampleRendererRenderContext<TSample = SampleRendererSampleLike> =
   SampleRendererMatchContext<TSample> & {
     dataset: fos.State.Dataset;
     schema: Schema;
@@ -65,32 +65,32 @@ export type SampleRendererRenderContext<TSample = unknown> =
 /**
  * Props shape received by sample renderer React components.
  */
-export type SampleRendererProps<TSample = unknown> = {
-  ctx: SampleRendererRenderContext<TSample>;
+export type SampleRendererProps = {
+  ctx: SampleRendererRenderContext<SampleRendererSampleLike>;
 };
 
 /**
  * Grid-specific renderer behavior, including enablement and optional override.
  */
-export type GridConfig<TSample = unknown> = {
+export type GridConfig = {
   enabled?: boolean;
-  overrideComponent?: React.FunctionComponent<SampleRendererProps<TSample>>;
+  overrideComponent?: React.FunctionComponent<SampleRendererProps>;
 };
 
 /**
  * Configuration for registering and selecting a sample renderer.
  */
-export type SampleRendererOptions<TSample = unknown> = {
+export type SampleRendererOptions<TSample = SampleRendererSampleLike> = {
   priority?: number;
   supports:
     | MatchMedia
     | ((ctx: SampleRendererMatchContext<TSample>) => boolean);
-  grid?: GridConfig<TSample>;
+  grid?: GridConfig;
 };
 
-type SampleRendererRegistrationLike<TSample = unknown> = {
+type SampleRendererRegistrationLike<TSample = SampleRendererSampleLike> = {
   name: string;
-  component: React.FunctionComponent<SampleRendererProps<TSample>>;
+  component: React.FunctionComponent<SampleRendererProps>;
   sampleRendererOptions: SampleRendererOptions<TSample>;
 };
 
@@ -307,9 +307,9 @@ export function isSampleRendererGridEnabled(
 /**
  * Evaluates whether a renderer registration supports the provided match context.
  */
-export function supportsSampleRenderer<TSample = unknown>(
-  registration: SampleRendererRegistrationLike<TSample>,
-  ctx: SampleRendererMatchContext<TSample>
+export function supportsSampleRenderer(
+  registration: SampleRendererRegistrationLike<SampleRendererSampleLike>,
+  ctx: SampleRendererMatchContext<SampleRendererSampleLike>
 ) {
   if (ctx.media.isNative) {
     return false;
@@ -372,7 +372,7 @@ export function getMatchingSampleRenderer<
 export function getSampleRendererComponent<TSample = unknown>(
   registration: SampleRendererRegistrationLike<TSample>,
   surface: SampleRendererSurface,
-  canonicalComponent: React.FunctionComponent<SampleRendererProps<TSample>>
+  canonicalComponent: React.FunctionComponent<SampleRendererProps>
 ) {
   if (surface === "grid") {
     return (
