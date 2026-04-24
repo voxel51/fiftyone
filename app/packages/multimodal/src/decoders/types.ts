@@ -1,9 +1,9 @@
-import type { RenderArchetypeKind as ArchetypeKind } from "../archetypes";
+import type { RenderArchetypeKind } from "../archetypes";
 
 /**
  * Render buffer archetypes emitted by multimodal decoders.
  */
-export type RenderArchetypeKind = ArchetypeKind;
+export type RenderArchetypeKind;
 
 /**
  * Broad decoded value shape until per-schema field contracts are finalized.
