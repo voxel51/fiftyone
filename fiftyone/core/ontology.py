@@ -11,6 +11,7 @@ import fnmatch
 from datetime import datetime
 from typing import Any, Optional
 
+import fiftyone.core.utils as fou
 from fiftyone.core.annotation.attributes import (
     AttributeSpec,
     attr_insert_to_dict,
@@ -279,6 +280,13 @@ def _from_doc(doc: OntologyDocument) -> Ontology:
 # ---- Module-level CRUD functions ------------------------------------------
 
 
+def _objects_by_slug(name: str):
+    """Query ``OntologyDocument`` by slug-normalized name."""
+    return OntologyDocument.objects(  # pylint: disable=no-member
+        slug=fou.to_slug(name)
+    )
+
+
 def create_ontology(ontology: Ontology) -> None:
     """Saves an ontology to the database.
 
@@ -300,11 +308,7 @@ def load_ontology(name: str) -> Ontology:
     Raises:
         ValueError: if no ontology with the given name exists
     """
-    doc = (
-        OntologyDocument.objects(name=name)  # pylint: disable=no-member
-        .order_by("-version")
-        .first()
-    )
+    doc = _objects_by_slug(name).order_by("-version").first()
     if doc is None:
         raise ValueError(f"Ontology '{name}' not found")
 
@@ -340,12 +344,7 @@ def ontology_exists(name: str) -> bool:
     Returns:
         True/False
     """
-    return (
-        OntologyDocument.objects(  # pylint: disable=no-member
-            name=name
-        ).count()
-        > 0
-    )
+    return _objects_by_slug(name).count() > 0
 
 
 def delete_ontology(name: str, force: bool = False) -> None:
@@ -359,9 +358,7 @@ def delete_ontology(name: str, force: bool = False) -> None:
             with label schema integration.
     """
     # TODO: check if in use when force=False (requires label schema integration)
-    count = OntologyDocument.objects(  # pylint: disable=no-member
-        name=name
-    ).delete()
+    count = _objects_by_slug(name).delete()
     if count == 0:
         raise ValueError(f"Ontology '{name}' not found")
 
@@ -373,9 +370,11 @@ def rename_ontology(name: str, new_name: str) -> None:
         name: the current ontology name
         new_name: the new name
     """
-    count = OntologyDocument.objects(  # pylint: disable=no-member
-        name=name
-    ).update(set__name=new_name)
+    # Bulk update bypasses save() hooks, so we must set slug explicitly —
+    # otherwise the stored slug would drift from the (now changed) name.
+    count = _objects_by_slug(name).update(
+        set__name=new_name, set__slug=fou.to_slug(new_name)
+    )
     if count == 0:
         raise ValueError(f"Ontology '{name}' not found")
 
