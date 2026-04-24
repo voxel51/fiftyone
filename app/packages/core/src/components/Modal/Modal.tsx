@@ -49,6 +49,7 @@ import { useAnnotationTracking } from "./Sidebar/Annotate/useAnnotationTracking"
 import { TooltipInfo } from "./TooltipInfo";
 import { useLookerHelpers, useTooltipEventHandler } from "./hooks";
 import { modalContext } from "./modal-context";
+import { AIAnnotationToolbar } from "@fiftyone/annotation/src/agents/AIAnnotationToolbar";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -352,6 +353,7 @@ const Modal = () => {
       >
         <Actions />
         {isAnnotationEnabled && <AnnotationHandlerRegistration />}
+        <AIAnnotationToolbar />
         <TooltipInfo />
         <ModalContainer style={{ ...screenParams }}>
           <ReactErrorBoundary
