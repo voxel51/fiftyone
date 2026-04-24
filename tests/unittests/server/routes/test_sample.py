@@ -979,6 +979,7 @@ class TestCommitMask:
     ):
         """Build a mock POST request for the commit-mask endpoint."""
         mock_request = MagicMock()
+        mock_request.headers = {}
         mock_request.path_params = {
             "dataset_id": dataset_id,
             "sample_id": str(sample_id),

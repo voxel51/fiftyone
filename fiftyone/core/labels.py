@@ -1223,7 +1223,7 @@ class Segmentation(_HasID, _HasMedia, Label):
                 self.mask = None
                 self.mask_path = outpath
         else:
-            raise ValueError("Detection has no mask or mask_path to export")
+            raise ValueError("Segmentation has no mask or mask_path to export")
 
     def transform_mask(self, targets_map, outpath=None, update=False):
         """Transforms this instance's mask according to the provided targets

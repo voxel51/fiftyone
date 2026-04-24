@@ -664,6 +664,7 @@ class CommitMask(HTTPEndpoint):
         """
         dataset_id = request.path_params["dataset_id"]
         sample_id = request.path_params["sample_id"]
+        if_last_modified_at = get_if_last_modified_at(request)
 
         field = data.get("field")
         detection_id = data.get("detection_id")
@@ -674,8 +675,7 @@ class CommitMask(HTTPEndpoint):
                 detail="Both 'field' and 'detection_id' are required",
             )
 
-        dataset = get_dataset(dataset_id)
-        sample = dataset[sample_id]
+        sample = get_sample(dataset_id, sample_id, if_last_modified_at)
 
         try:
             label_field = sample[field]
@@ -727,7 +727,7 @@ class CommitMask(HTTPEndpoint):
             detection.export_mask(
                 mask_path, update=True, overwrite_path=True
             )
-            sample.save()
+            save_sample(sample, if_last_modified_at)
         except Exception as err:
             logger.error("Failed to commit mask to %s: %s", mask_path, err)
             raise HTTPException(
