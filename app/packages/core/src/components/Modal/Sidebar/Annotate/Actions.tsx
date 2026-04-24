@@ -27,7 +27,7 @@ import { useClassificationMode } from "./Edit/useClassificationMode";
 import { fieldsOfType } from "./Edit/state";
 import { useDetectionMode } from "./Edit/useDetectionMode";
 import { Anchor, Icon, IconName, Text, Tooltip } from "@voxel51/voodo";
-import { useSegmentationMode } from "./Edit/useSegmentationMode";
+import { useAIAnnotationMode } from "./Edit/useAIAnnotationMode";
 import { FeatureFlag, FeatureFlagged } from "@fiftyone/feature-flags";
 
 const ActionsDiv = styled.div`
@@ -253,7 +253,7 @@ const Detection = () => {
 };
 
 const Segmentation = () => {
-  const { isActive, activate } = useSegmentationMode();
+  const { isActive, activate, deactivate } = useAIAnnotationMode();
   const deactivateAll = useDeactivateAll();
 
   return (
@@ -266,10 +266,12 @@ const Segmentation = () => {
           deactivateAll();
           if (!isActive) {
             activate();
+          } else {
+            deactivate();
           }
         }}
       >
-        <Icon name={IconName.AI} />
+        <Icon name={IconName.Workspaces} />
       </Square>
     </Tooltip>
   );
@@ -454,7 +456,7 @@ const Actions = () => {
   const {
     isActive: segmentationModeActive,
     deactivate: deactivateSegmentationMode,
-  } = useSegmentationMode();
+  } = useAIAnnotationMode();
   const current3dAnnotationMode = useCurrent3dAnnotationMode();
   const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
 
