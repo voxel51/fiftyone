@@ -364,9 +364,8 @@ class InitSimilarityRunOperator(foo.Operator):
         manager = RunManager(ctx)
         params = {**ctx.params}
         if ctx.user_id:
-            params["created_by"] = getattr(ctx.user, "name", None) or str(
-                ctx.user_id
-            )
+            params["created_by"] = str(ctx.user_id)
+            params["created_by_name"] = getattr(ctx.user, "name", None) or ""
         run_data = manager.create_run(params)
         run_id = run_data["run_id"]
 
