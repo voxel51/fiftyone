@@ -1240,6 +1240,13 @@ export class DetectionOverlay
     return this.mask?.getPendingMask();
   }
 
+  /**
+   * Returns the mask as a drawable source for sidebar preview rendering.
+   */
+  getMaskPreviewSource(): HTMLCanvasElement | ImageBitmap | undefined {
+    return this.mask?.getPreviewSource();
+  }
+
   // ---------------------------------------------------------------------------
   // Segmentation undo/redo support
   // ---------------------------------------------------------------------------

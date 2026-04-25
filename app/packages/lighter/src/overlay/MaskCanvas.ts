@@ -179,6 +179,14 @@ export class MaskCanvas {
     return mask;
   }
 
+  /**
+   * Returns the current mask as a drawable source for sidebar preview.
+   * Prefers the editing canvas (most up-to-date), falls back to decoded bitmap.
+   */
+  getPreviewSource(): HTMLCanvasElement | ImageBitmap | undefined {
+    return this.canvas ?? this.maskBitmap;
+  }
+
   // ---------------------------------------------------------------------------
   // Painting
   // ---------------------------------------------------------------------------

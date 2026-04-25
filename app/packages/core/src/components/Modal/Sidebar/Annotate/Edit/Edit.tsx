@@ -9,6 +9,7 @@ import AnnotationSchema from "./AnnotationSchema";
 import Field from "./Field";
 import Header from "./Header";
 import Id from "./Id";
+import MaskPreview from "./MaskPreview";
 import { PolylineDetails } from "./PolylineDetails";
 import Position from "./Position";
 import Position3d from "./Position3d";
@@ -25,7 +26,8 @@ import useExit from "./useExit";
 
 const ContentContainer = styled.div`
   margin: 0.25rem 1rem;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -36,6 +38,7 @@ const Content = styled.div`
   border-radius: var(--radius-xs);
   width: 100%;
   flex: 1;
+  min-height: 0;
   padding: 1rem;
   overflow: auto;
   display: flex;
@@ -101,6 +104,7 @@ export default function Edit() {
         )}
         {type === POLYLINE && <PolylineDetails />}
         {field && <AnnotationSchema readOnly={isReadOnly} />}
+        {isMaskDetection && <MaskPreview />}
       </Content>
     </ContentContainer>
   );
