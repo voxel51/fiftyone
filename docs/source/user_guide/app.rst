@@ -2351,13 +2351,6 @@ specify a larger number of results, query by greatest or least similarity (if
 supported), choose a different similarity index, or optionally save the
 computed distances as a new sample field.
 
-.. note::
-
-    Refer to the :ref:`Brain guide <brain-similarity>` for more information
-    about indexing datasets by image/object similarity via
-    :meth:`compute_similarity() <fiftyone.brain.compute_similarity>` for use
-    with this feature.
-
 .. _app-image-similarity:
 
 Image similarity
