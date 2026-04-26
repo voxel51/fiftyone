@@ -34,9 +34,8 @@ import { BaseOverlay } from "./BaseOverlay";
 import { MaskCanvas } from "./MaskCanvas";
 import type { MaskSnapshot, PaintStrokeData } from "./MaskCanvas";
 import { MaskKeypoints } from "./MaskKeypoints";
-import { SerializedMask } from "@fiftyone/utilities";
+import type { SerializedMask } from "@fiftyone/utilities";
 import { BASE_ALPHA } from "@fiftyone/looker/src/constants";
-import { deserialize } from "@fiftyone/looker/src/numpy";
 
 export type DetectionLabel = RawLookerLabel & {
   label: string;
@@ -102,12 +101,6 @@ export class DetectionOverlay
 
   // Pen tool state
   private maskKeypoints?: MaskKeypoints;
-  //=======
-  private maskBitmap?: ImageBitmap;
-  private maskData?: { src: Uint8Array; width: number; height: number };
-  private maskDecoding = false;
-  private lastMaskSource?: string;
-  //>>>>>>> develop:app/packages/lighter/src/overlay/BoundingBoxOverlay.ts
 
   public cursor = "pointer";
 
@@ -127,7 +120,7 @@ export class DetectionOverlay
     return "DetectionOverlay";
   }
 
-  updateLabel(label: BoundingBoxLabel) {
+  updateLabel(label: DetectionLabel) {
     super.updateLabel(label);
 
     if (label.bounding_box) {
@@ -141,12 +134,7 @@ export class DetectionOverlay
     }
 
     // invalidate cached mask with new label data
-    const newMaskSource = this.extractMaskB64(label.mask);
-    if (newMaskSource !== this.lastMaskSource) {
-      this.maskBitmap?.close();
-      this.maskBitmap = undefined;
-      this.maskData = undefined;
-      this.lastMaskSource = undefined;
+    if (this.mask?.updateSource(label.mask)) {
       this.markDirty();
     }
   }
@@ -205,16 +193,28 @@ export class DetectionOverlay
 
     if (!style) return;
 
+    // Lazily create MaskCanvas for labels with inline mask data
+    if (this.label?.mask && !this.mask) {
+      this.mask = new MaskCanvas(this.label.mask);
+    }
+
+    const maskColor = style.strokeStyle || style.fillStyle || "#ffffff";
+    const isEditingMask =
+      this.isSelected() && (this.hasMask() || this.maskKeypoints);
+
     this.mask?.render(
       renderer,
       this.bounds,
       this.containerId,
-      style.strokeStyle || style.fillStyle || "#ffffff",
-      this.markDirty
+      maskColor,
+      isEditingMask ? 0.7 : style.opacity ?? BASE_ALPHA,
+      () => {
+        this.markDirty();
+      }
     );
 
     // lightweight border when editing detection mask
-    if (this.isSelected() && (this.hasMask() || this.maskKeypoints)) {
+    if (isEditingMask) {
       renderer.drawScrim(
         this.bounds,
         renderMeta.canonicalMediaBounds,
@@ -235,18 +235,6 @@ export class DetectionOverlay
 
       this.emitLoaded();
       return;
-    }
-
-    // Draw the segmentation mask beneath the box outline when available.
-    if (this.maskBitmap) {
-      renderer.drawImage(
-        { type: "bitmap", bitmap: this.maskBitmap },
-        this.bounds,
-        { opacity: style.opacity ?? BASE_ALPHA },
-        this.containerId
-      );
-    } else if (this.label?.mask && !this.maskDecoding) {
-      this.decodeMask();
     }
 
     // Check if this label has an instance to determine stroke styling
@@ -820,7 +808,9 @@ export class DetectionOverlay
     const wasPainting = this.interactionState === "PAINTING";
 
     this.interactionState = "NONE";
-    this.mask?.paintEnd(this.bounds, this.markDirty);
+    this.mask?.paintEnd(this.bounds, () => {
+      this.markDirty();
+    });
     this.moveStartPoint = undefined;
     this.moveStartPosition = undefined;
     this.moveStartBounds = undefined;
@@ -1000,91 +990,9 @@ export class DetectionOverlay
    * bounding box.
    */
   containsMaskPixel(relativePoint: Point): boolean {
-    if (!this.maskData) {
-      return false;
-    }
-
-    const rb = this.#relativeBounds;
-
-    // Check if point is inside the bounding box
-    if (
-      relativePoint.x < rb.x ||
-      relativePoint.y < rb.y ||
-      relativePoint.x > rb.x + rb.width ||
-      relativePoint.y > rb.y + rb.height
-    ) {
-      return false;
-    }
-
-    const { src, width, height } = this.maskData;
-    const px = Math.floor(((relativePoint.x - rb.x) / rb.width) * (width - 1));
-    const py = Math.floor(
-      ((relativePoint.y - rb.y) / rb.height) * (height - 1)
+    return (
+      this.mask?.containsMaskPixel(relativePoint, this.#relativeBounds) ?? false
     );
-
-    return src[py * width + px] > 0;
-  }
-
-  private extractMaskB64(mask: SerializedMask | undefined): string | undefined {
-    if (!mask) {
-      return undefined;
-    } else if (typeof mask === "string") {
-      return mask;
-    } else {
-      return mask.$binary.base64;
-    }
-  }
-
-  private async decodeMask(): Promise<void> {
-    const b64 = this.extractMaskB64(this.label?.mask);
-    if (!b64 || b64 === this.lastMaskSource) return;
-
-    this.maskDecoding = true;
-    this.lastMaskSource = b64;
-
-    try {
-      const overlayMask = deserialize(b64);
-      if (
-        overlayMask.arrayType !== "Uint8Array" &&
-        overlayMask.arrayType !== "Uint8ClampedArray"
-      ) {
-        console.warn(
-          `[BoundingBoxOverlay] Unsupported mask dtype: ${overlayMask.arrayType}, expected Uint8Array`
-        );
-        return;
-      }
-
-      const [height, width] = overlayMask.shape;
-      const src = new Uint8Array(overlayMask.buffer);
-      const rgba = new Uint8ClampedArray(width * height * 4);
-
-      const colorObj = parseColorWithAlpha(
-        this.currentStyle?.strokeStyle ?? "#ffffff"
-      );
-      const r = (colorObj.color >> 16) & 0xff;
-      const g = (colorObj.color >> 8) & 0xff;
-      const b = colorObj.color & 0xff;
-
-      for (let i = 0; i < width * height; i++) {
-        if (src[i] > 0) {
-          rgba[i * 4] = r;
-          rgba[i * 4 + 1] = g;
-          rgba[i * 4 + 2] = b;
-          rgba[i * 4 + 3] = 255;
-        }
-      }
-
-      this.maskBitmap?.close();
-      this.maskBitmap = await createImageBitmap(
-        new ImageData(rgba, width, height)
-      );
-      this.maskData = { src, width, height };
-      this.markDirty();
-    } catch (e) {
-      console.error("[BoundingBoxOverlay] Failed to decode mask:", e);
-    } finally {
-      this.maskDecoding = false;
-    }
   }
 
   // Selectable interface implementation
@@ -1167,6 +1075,8 @@ export class DetectionOverlay
    * Uses the current tool's eraser setting from the last known segmentation state.
    */
   commitPenPolygon({ segmentationToolState }: OverlayEvent): boolean {
+    if (!this.maskKeypoints) return false;
+
     const absolutePoints = this.maskKeypoints.getAbsolutePoints();
 
     if (absolutePoints.length < 3) {
@@ -1191,7 +1101,9 @@ export class DetectionOverlay
       this.bounds = updatedBounds;
     }
 
-    this.mask.paintEnd(this.bounds, this.markDirty);
+    this.mask.paintEnd(this.bounds, () => {
+      this.markDirty();
+    });
 
     this.eventBus.dispatch("lighter:overlay-paint-end", {
       id: this.id,
@@ -1269,9 +1181,6 @@ export class DetectionOverlay
   override destroy(): void {
     this.mask?.destroy();
     this.maskKeypoints?.destroy();
-    this.maskBitmap?.close();
-    this.maskBitmap = undefined;
-    this.maskData = undefined;
     super.destroy();
   }
 }

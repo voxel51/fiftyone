@@ -5,20 +5,26 @@
 import { ARRAY_TYPES, deserialize, type OverlayMask } from "@fiftyone/looker/src/numpy";
 import { parseColorWithAlpha } from "./color";
 
+export interface DecodedMask {
+  bitmap: ImageBitmap;
+  /** Single-channel pixel data for hit-testing (non-zero = mask). */
+  rawPixels: { src: Uint8Array; width: number; height: number };
+}
+
 /**
  * Decodes a base64-encoded numpy mask string and paints it with the given
- * color, returning an ImageBitmap ready for rendering.
+ * color, returning an ImageBitmap ready for rendering alongside the raw
+ * single-channel pixel data for hit-testing.
  *
  * Pipeline: base64 → inflate → numpy parse → paint RGBA → ImageBitmap
  *
  * @param maskData - Base64-encoded, zlib-compressed numpy array
  * @param color - CSS color string for non-zero mask pixels
- * @returns ImageBitmap of the painted mask
  */
 export async function decodeMask(
   maskData: string,
   color: string
-): Promise<ImageBitmap> {
+): Promise<DecodedMask> {
   const overlayMask = deserialize(maskData);
   const rgbaBuffer = paintMask(overlayMask, color);
   const [height, width] = overlayMask.shape;
@@ -27,7 +33,12 @@ export async function decodeMask(
     width,
     height
   );
-  return createImageBitmap(imageData);
+  const bitmap = await createImageBitmap(imageData);
+
+  const ArrayType = ARRAY_TYPES[overlayMask.arrayType];
+  const src = new Uint8Array(new ArrayType(overlayMask.buffer));
+
+  return { bitmap, rawPixels: { src, width, height } };
 }
 
 /**

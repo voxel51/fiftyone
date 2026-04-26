@@ -3,6 +3,7 @@
  */
 
 import type { SegmentationToolState } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useSegmentationMode";
+import type { SerializedMask } from "@fiftyone/utilities";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { DrawStyle, Point, Rect } from "../types";
 import { parseColorWithAlpha } from "../utils/color";
@@ -36,6 +37,9 @@ export class MaskCanvas {
   /** The color used for the current decoded bitmap, so we can re-decode on color change. */
   private decodedColor?: string;
 
+  /** Raw single-channel pixel data for hit-testing via containsMaskPixel(). */
+  private rawPixels?: { src: Uint8Array; width: number; height: number };
+
   // canvas contents encoded for persistence to backend
   private pendingMask?: string;
 
@@ -52,10 +56,35 @@ export class MaskCanvas {
   private postStrokeSnapshot?: MaskSnapshot;
   private postStrokeBounds?: Rect;
 
-  constructor(maskData?: string) {
-    if (maskData && typeof maskData === "string") {
-      this.rawMaskData = maskData;
-    }
+  constructor(maskData?: SerializedMask) {
+    this.rawMaskData = MaskCanvas.extractB64(maskData);
+  }
+
+  /**
+   * Extracts the base64 string from a SerializedMask, which may be a plain
+   * string or a `{ $binary: { base64: string } }` wrapper.
+   */
+  private static extractB64(mask?: SerializedMask): string | undefined {
+    if (!mask) return undefined;
+    if (typeof mask === "string") return mask;
+    return mask.$binary.base64;
+  }
+
+  /**
+   * Replaces the raw mask source data. Returns true if the source actually
+   * changed (caller should markDirty). Invalidates the decoded bitmap and
+   * raw pixel cache when the source changes.
+   */
+  updateSource(mask?: SerializedMask): boolean {
+    const b64 = MaskCanvas.extractB64(mask);
+    if (b64 === this.rawMaskData) return false;
+
+    this.maskBitmap?.close();
+    this.maskBitmap = undefined;
+    this.rawPixels = undefined;
+    this.decodedColor = undefined;
+    this.rawMaskData = b64;
+    return true;
   }
 
   /**
@@ -68,20 +97,26 @@ export class MaskCanvas {
   /**
    * Kicks off async mask decoding if raw data is present and hasn't been
    * decoded yet (or needs re-decoding due to color change).
+   * Also populates rawPixels for hit-testing on first decode.
    */
   private decodeMaskIfNeeded(color: string, onDecoded?: () => void): void {
     if (!this.rawMaskData || this.decoding) return;
 
-    // Already decoded with this color
+    // Already decoded with this color and raw pixels are available
     if (this.maskBitmap && this.decodedColor === color) return;
 
     this.decoding = true;
 
     decodeMask(this.rawMaskData, color)
-      .then((bitmap) => {
+      .then(({ bitmap, rawPixels }) => {
         this.maskBitmap?.close();
         this.maskBitmap = bitmap;
         this.decodedColor = color;
+
+        if (rawPixels) {
+          this.rawPixels = rawPixels;
+        }
+
         this.decoding = false;
         onDecoded?.();
       })
@@ -101,6 +136,7 @@ export class MaskCanvas {
     bounds: Rect,
     containerId: string,
     color: string,
+    opacity: number,
     onDecoded?: () => void
   ): void {
     this.currentColor = color;
@@ -118,7 +154,7 @@ export class MaskCanvas {
       renderer.drawImage(
         { type: "canvas", canvas: this.canvas },
         bounds,
-        { opacity: 0.7 },
+        { opacity },
         containerId
       );
 
@@ -129,7 +165,7 @@ export class MaskCanvas {
       renderer.drawImage(
         { type: "bitmap", bitmap: this.maskBitmap },
         bounds,
-        { opacity: 0.7 },
+        { opacity },
         containerId
       );
 
@@ -185,6 +221,32 @@ export class MaskCanvas {
    */
   getPreviewSource(): HTMLCanvasElement | ImageBitmap | undefined {
     return this.canvas ?? this.maskBitmap;
+  }
+
+  /**
+   * Tests whether a point in relative coordinates falls on a non-zero mask
+   * pixel. Returns `false` when no raw pixel data is available or the point
+   * is outside the given relative bounding box.
+   */
+  containsMaskPixel(relativePoint: Point, relativeBounds: Rect): boolean {
+    if (!this.rawPixels) return false;
+
+    const { x, y, width: bw, height: bh } = relativeBounds;
+
+    if (
+      relativePoint.x < x ||
+      relativePoint.y < y ||
+      relativePoint.x > x + bw ||
+      relativePoint.y > y + bh
+    ) {
+      return false;
+    }
+
+    const { src, width, height } = this.rawPixels;
+    const px = Math.floor(((relativePoint.x - x) / bw) * (width - 1));
+    const py = Math.floor(((relativePoint.y - y) / bh) * (height - 1));
+
+    return src[py * width + px] > 0;
   }
 
   // ---------------------------------------------------------------------------
@@ -565,6 +627,7 @@ export class MaskCanvas {
   destroy(): void {
     this.maskBitmap?.close();
     this.maskBitmap = undefined;
+    this.rawPixels = undefined;
     this.canvas = undefined;
     this.context = undefined;
     this.lastPoint = undefined;
