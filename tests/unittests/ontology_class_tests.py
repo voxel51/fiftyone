@@ -44,6 +44,25 @@ class WhenTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             When(WhenOperator.EQUALS, field="", value=True)
 
+    def test_from_dict_missing_keys(self):
+        with self.assertRaises(ValueError):
+            When.from_dict({"operator": "equals", "field": "f"})
+        with self.assertRaises(ValueError):
+            When.from_dict({"field": "f", "value": 1})
+        with self.assertRaises(ValueError):
+            When.from_dict({"operator": "equals", "value": 1})
+
+    def test_from_dict_bad_then(self):
+        with self.assertRaises(ValueError):
+            When.from_dict(
+                {
+                    "operator": "equals",
+                    "field": "f",
+                    "value": 1,
+                    "then": "not a dict",
+                }
+            )
+
     def test_with_then(self):
         w = When(
             WhenOperator.EQUALS,
@@ -134,6 +153,36 @@ class AttributeSpecTests(unittest.TestCase):
     def test_missing_component_raises(self):
         with self.assertRaises(ValueError):
             AttributeSpec(name="attr", type="str", component="")
+
+    def test_from_dict_missing_keys(self):
+        with self.assertRaises(ValueError):
+            AttributeSpec.from_dict({"name": "a", "type": "str"})
+        with self.assertRaises(ValueError):
+            AttributeSpec.from_dict({"type": "str", "component": "dropdown"})
+        with self.assertRaises(ValueError):
+            AttributeSpec.from_dict({"name": "a", "component": "dropdown"})
+
+    def test_from_dict_bad_values(self):
+        with self.assertRaises(ValueError):
+            AttributeSpec.from_dict(
+                {
+                    "name": "a",
+                    "type": "str",
+                    "component": "dropdown",
+                    "values": "not a list",
+                }
+            )
+
+    def test_from_dict_bad_when(self):
+        with self.assertRaises(ValueError):
+            AttributeSpec.from_dict(
+                {
+                    "name": "a",
+                    "type": "str",
+                    "component": "dropdown",
+                    "when": "not a list",
+                }
+            )
 
     def test_to_dict_unconditional(self):
         attr = AttributeSpec(name="flag", type="bool", component="checkbox")

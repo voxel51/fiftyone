@@ -21,6 +21,16 @@ def _attr_insert_to_dict(d: dict, name: str, obj: object) -> dict:
     return d
 
 
+def _require_keys(d: dict, keys: tuple, cls: type) -> None:
+    """Raises ``ValueError`` if any of ``keys`` are missing from ``d``."""
+    missing = [k for k in keys if k not in d]
+    if missing:
+        raise ValueError(
+            f"{cls.__name__} dict missing required key(s): "
+            f"{', '.join(missing)}"
+        )
+
+
 class WhenOperator(str, Enum):
     """Supported logical operators for :class:`When` conditions."""
 
@@ -90,11 +100,15 @@ class When:
         Returns:
             a :class:`When`
         """
+        _require_keys(d, ("operator", "field", "value"), cls)
+        then = d.get("then")
+        if then is not None and not isinstance(then, dict):
+            raise ValueError("When.then must be a dict if provided")
         return cls(
             operator=d["operator"],
             field=d["field"],
             value=d["value"],
-            then=d.get("then"),
+            then=then,
         )
 
     def __repr__(self) -> str:
@@ -176,15 +190,25 @@ class AttributeSpec:
         Returns:
             an :class:`AttributeSpec`
         """
+        _require_keys(d, ("name", "type", "component"), cls)
+
+        values = d.get("values")
+        if values is not None and not isinstance(values, list):
+            raise ValueError("AttributeSpec.values must be a list if provided")
+
         when = None
         if "when" in d:
+            if not isinstance(d["when"], list):
+                raise ValueError(
+                    "AttributeSpec.when must be a list if provided"
+                )
             when = [When.from_dict(w) for w in d["when"]]
 
         return cls(
             name=d["name"],
             type=d["type"],
             component=d["component"],
-            values=d.get("values"),
+            values=values,
             when=when,
         )
 
