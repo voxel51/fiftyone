@@ -40,6 +40,10 @@ class WhenTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             When("not_valid", field="f", value="v")
 
+    def test_empty_field_raises(self):
+        with self.assertRaises(ValueError):
+            When(WhenOperator.EQUALS, field="", value=True)
+
     def test_with_then(self):
         w = When(
             WhenOperator.EQUALS,
@@ -239,6 +243,22 @@ class AnnotationOntologyTests(unittest.TestCase):
         self.assertEqual(ao.taxonomies, [])
         self.assertEqual(ao.attributes, [])
 
+    def test_none_name_raises(self):
+        with self.assertRaises(ValueError):
+            AnnotationOntology(name=None)
+
+    def test_empty_name_raises(self):
+        with self.assertRaises(ValueError):
+            AnnotationOntology(name="")
+
+    def test_whitespace_name_raises(self):
+        with self.assertRaises(ValueError):
+            AnnotationOntology(name="   ")
+
+    def test_name_is_stripped(self):
+        ao = AnnotationOntology(name="  padded  ")
+        self.assertEqual(ao.name, "padded")
+
     def test_to_dict(self):
         ao = AnnotationOntology(
             name="test_ao",
@@ -295,6 +315,20 @@ class AnnotationOntologyTests(unittest.TestCase):
         self.assertEqual(ao.taxonomies, ["tax1", "tax2"])
         self.assertEqual(len(ao.attributes), 2)
         self.assertEqual(ao.attributes[1].when[0].field, "attr1")
+
+    def test_from_dict_with_none_root(self):
+        ao = AnnotationOntology.from_dict(
+            {"name": "test_ao", "type": "annotation_ontology", "root": None}
+        )
+        self.assertEqual(ao.taxonomies, [])
+        self.assertEqual(ao.attributes, [])
+
+    def test_from_dict_with_missing_root(self):
+        ao = AnnotationOntology.from_dict(
+            {"name": "test_ao", "type": "annotation_ontology"}
+        )
+        self.assertEqual(ao.taxonomies, [])
+        self.assertEqual(ao.attributes, [])
 
     def test_roundtrip(self):
         original = AnnotationOntology(

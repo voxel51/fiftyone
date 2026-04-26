@@ -45,7 +45,11 @@ class Ontology(abc.ABC):
         name: str,
         description: Optional[str] = None,
     ):
-        self.name = name
+        if name is None:
+            raise ValueError("Ontology name is required")
+        self.name = name.strip()
+        if not self.name:
+            raise ValueError("Ontology name cannot be empty")
         self.description = description
         self._doc = None
 

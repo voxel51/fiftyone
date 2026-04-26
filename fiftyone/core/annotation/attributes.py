@@ -63,6 +63,8 @@ class When:
 
     def __post_init__(self) -> None:
         self.operator = WhenOperator(self.operator)
+        if not self.field:
+            raise ValueError("When.field is required")
 
     def to_dict(self) -> dict:
         """Serializes this condition to a dict.
