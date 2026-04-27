@@ -5325,7 +5325,7 @@ ___________
 
 3D datasets have media type `3d` and can be created from supported 3D asset
 files directly, or from `.fo3d` scene files. Direct assets are the simplest
-choice when a sample is a single mesh or point cloud. Wrap assets in `.fo3d`
+choice when a sample is a single :ref:`mesh <3d-meshes>` or :ref:`point cloud <3d-point-clouds>`. Wrap assets in `.fo3d`
 when you need advanced scene customization such as lights, camera
 configuration, transformations, materials, shapes, or multiple assets in one
 scene.
