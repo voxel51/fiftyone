@@ -78,6 +78,13 @@ type KeypointEntry = {
   variant?: string;
 };
 
+// Ripple animation constants.
+// Tuned to roughly match the original AI-segment ripple appearance.
+const RIPPLE_CYCLE_MS = 1100;
+const RIPPLE_MAX_RADIUS = 22;
+const RIPPLE_RING_COUNT = 2;
+const RIPPLE_PEAK_OPACITY = 0.55;
+
 /**
  * Keypoint overlay implementation with per-point interaction, optional connections,
  * and optional polygon closure.
@@ -112,6 +119,13 @@ export class KeypointOverlay
 
   // Preview point for interactive creation (cursor tracking)
   protected previewPoint?: Point | null = null;
+
+  // Ripple animation state — points whose ids are in this set render an
+  // animated ripple ring. Used to indicate in-flight async work
+  // (e.g. AI inference) on prompt points.
+  private ripplePointIds: Set<string> = new Set();
+  private rippleStartTime = 0;
+  private rippleAnimationFrameId: number | null = null;
 
   // Caches — invalidated in markDirty()
   private _absPointsCache: Point[] | null = null;
@@ -371,6 +385,48 @@ export class KeypointOverlay
         bucket.push(absPoints[i]);
       } else {
         buckets.set(v, [absPoints[i]]);
+      }
+    }
+
+    // Animated ripple rings — drawn behind the points so the solid point
+    // remains crisp on top of the expanding ring.
+    if (this.ripplePointIds.size > 0) {
+      const scale = this.renderer?.getScale() ?? 1;
+      const elapsed = performance.now() - this.rippleStartTime;
+      const cycleProgress = (elapsed % RIPPLE_CYCLE_MS) / RIPPLE_CYCLE_MS;
+
+      for (let i = 0; i < absPoints.length; i++) {
+        const entry = this.#points[i];
+        if (!this.ripplePointIds.has(entry.id)) continue;
+
+        const center = absPoints[i];
+        const ringStyle = resolvePointStyle(entry.variant);
+        const rippleColor =
+          ringStyle.fillStyle || ringStyle.strokeStyle || "#ffffff";
+
+        for (let ring = 0; ring < RIPPLE_RING_COUNT; ring++) {
+          const ringProgress =
+            (cycleProgress - ring / RIPPLE_RING_COUNT + 1) % 1;
+          // Ease-out cubic — fast start, slow finish.
+          const eased = 1 - Math.pow(1 - ringProgress, 3);
+          const radius = KEYPOINT_RADIUS + eased * RIPPLE_MAX_RADIUS;
+          const opacity = (1 - eased) * RIPPLE_PEAK_OPACITY;
+
+          if (opacity <= 0.01) continue;
+
+          // drawPoint divides radius by scale internally; multiply here so
+          // the ring expands in screen-space, not world-space.
+          renderer.drawPoint(
+            center,
+            radius * scale,
+            {
+              strokeStyle: rippleColor,
+              lineWidth: 2,
+              opacity,
+            },
+            this.containerId
+          );
+        }
       }
     }
 
@@ -696,6 +752,13 @@ export class KeypointOverlay
     const { id: pointId, variant } = this.#points[index];
     this.#points.splice(index, 1);
 
+    if (this.ripplePointIds.has(pointId)) {
+      this.ripplePointIds.delete(pointId);
+      if (this.ripplePointIds.size === 0) {
+        this.cancelRippleAnimation();
+      }
+    }
+
     // Update connections: remove references to deleted index, shift higher indices
     this.connections = this.connections
       .map((path) =>
@@ -731,6 +794,53 @@ export class KeypointOverlay
   }
 
   /**
+   * Replaces the set of points that should render an animated ripple. Pass
+   * an empty set or call {@link clearRipple} to stop the animation.
+   *
+   * Used to surface in-flight async work (e.g. AI inference) on prompt
+   * points without coupling the overlay to inference logic.
+   */
+  setRipplePointIds(ids: Iterable<string>): void {
+    const next = new Set(ids);
+    const wasEmpty = this.ripplePointIds.size === 0;
+
+    this.ripplePointIds = next;
+
+    if (next.size === 0) {
+      this.cancelRippleAnimation();
+    } else if (wasEmpty) {
+      this.rippleStartTime = performance.now();
+      this.scheduleRippleAnimation();
+    }
+
+    this.markDirty();
+  }
+
+  /** Convenience: stop ripple on all points. */
+  clearRipple(): void {
+    this.setRipplePointIds([]);
+  }
+
+  private cancelRippleAnimation(): void {
+    if (this.rippleAnimationFrameId !== null) {
+      cancelAnimationFrame(this.rippleAnimationFrameId);
+      this.rippleAnimationFrameId = null;
+    }
+  }
+
+  private scheduleRippleAnimation(): void {
+    if (this.rippleAnimationFrameId !== null) return;
+
+    this.rippleAnimationFrameId = requestAnimationFrame(() => {
+      this.rippleAnimationFrameId = null;
+      if (this.ripplePointIds.size > 0) {
+        this.markDirty();
+        this.scheduleRippleAnimation();
+      }
+    });
+  }
+
+  /**
    * Clears all points from the overlay.
    */
   clearPoints(): void {
@@ -738,7 +848,14 @@ export class KeypointOverlay
     this.selectedPointIndex = null;
     this.dragPointIndex = null;
     this.previewPoint = null;
+    this.ripplePointIds = new Set();
+    this.cancelRippleAnimation();
     this.markDirty();
+  }
+
+  override destroy(): void {
+    this.cancelRippleAnimation();
+    super.destroy();
   }
 
   /**
@@ -746,6 +863,13 @@ export class KeypointOverlay
    */
   getRelativePoints(): [number, number][] {
     return this.#points.map((e) => [...e.position] as [number, number]);
+  }
+
+  /**
+   * Returns the ids of all points, in insertion order.
+   */
+  getPointIds(): string[] {
+    return this.#points.map((e) => e.id);
   }
 
   /**

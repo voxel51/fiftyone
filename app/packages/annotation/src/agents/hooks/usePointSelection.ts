@@ -13,7 +13,7 @@ import {
   useLighter,
   useLighterEventBus,
 } from "@fiftyone/lighter";
-import { atom, useAtom } from "jotai";
+import { atom, useAtom, useAtomValue } from "jotai";
 import { v4 as uuidv4 } from "uuid";
 import { ClickEventModifiers } from "@fiftyone/utilities";
 
@@ -180,4 +180,17 @@ export const usePointSelection = (): PointSelection => {
   }, [getOverlay, keypointOverlayId]);
 
   return { activate, clearPoints, deactivate, isActive };
+};
+
+/**
+ * Returns the live point-selection {@link KeypointOverlay}, or `null` if
+ * point selection is inactive.
+ */
+export const useActivePointSelectionOverlay = (): KeypointOverlay | null => {
+  const overlayId = useAtomValue(keypointOverlayIdAtom);
+  const { getOverlay } = useLighter();
+
+  if (!overlayId) return null;
+  const overlay = getOverlay(overlayId);
+  return overlay instanceof KeypointOverlay ? overlay : null;
 };
