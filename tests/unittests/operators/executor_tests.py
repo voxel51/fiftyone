@@ -220,6 +220,8 @@ def _install_fake_plugin(monkeypatch, plugin_name, operators):
     :class:`OperatorRegistry` resolves ``plugin_name/<op.name>`` URIs to
     the given operator instances.
     """
+    from fiftyone.operators.registry import reset_plugin_index_cache
+
     pd = mock.MagicMock()
     pd.name = plugin_name
     pd.operators = [op.config.name for op in operators]
@@ -235,6 +237,14 @@ def _install_fake_plugin(monkeypatch, plugin_name, operators):
     monkeypatch.setattr(
         "fiftyone.operators.registry.fopc.get_plugin_context",
         lambda name: pctx if name == plugin_name else None,
+    )
+
+    # The plugin index cache is process-wide; clear it so this test sees
+    # the freshly installed mocks rather than data cached from a prior test
+    reset_plugin_index_cache()
+    monkeypatch.setattr(
+        "fiftyone.operators.registry._signature_provider",
+        lambda enabled: ("test", id(monkeypatch), enabled),
     )
 
 

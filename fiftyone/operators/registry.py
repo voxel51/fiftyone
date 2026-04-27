@@ -11,9 +11,17 @@ from contextvars import ContextVar
 
 import eta.core.utils as etau
 
-from fiftyone.operators.panel import Panel
+import fiftyone as fo
+
+# NOTE: ``fiftyone.plugins`` must be imported before
+# ``fiftyone.operators.decorators`` to avoid a circular import:
+# ``decorators`` pulls from ``fiftyone.plugins.core`` and
+# ``fiftyone.plugins.context`` pulls from ``decorators`` -- importing plugins
+# first lets that two-step cycle resolve through plugins/__init__.py
 import fiftyone.plugins as fop
 import fiftyone.plugins.context as fopc
+from fiftyone.operators.decorators import dir_state
+from fiftyone.operators.panel import Panel
 
 
 # A context-bound registry shared by callers within the same async task /
@@ -81,6 +89,112 @@ def use_registry(registry):
         reset_current_registry(token)
 
 
+# Sentinel so we can distinguish "use the default signature provider" from
+# an explicit ``None`` (which means "do not cache, always rebuild").
+_DEFAULT_SIGNATURE = object()
+
+# Process-wide memoization of the plugin index. The index is the relatively
+# expensive part of registry construction (walks ``plugins_dir`` and parses
+# every plugin's ``fiftyone.yml``) but it depends only on the on-disk plugin
+# layout, so it is safe to share across all registries with the same
+# signature.
+#
+# Cache shape:
+#   {"key": (enabled, signature), "value": (by_name, by_uri, listing_error)}
+_INDEX_CACHE = {"key": None, "value": None}
+
+
+def _default_signature(enabled):
+    """Default cache signature for the plugin index.
+
+    Uses ``dir_state(plugins_dir)`` -- a hash of plugin directory mtimes --
+    which is correct on a local filesystem but can be slow when the plugins
+    directory lives on networked storage. Callers (e.g. fiftyone-teams) that
+    have a cheaper authoritative signature available should pass it
+    explicitly via ``OperatorRegistry(index_signature=...)`` rather than
+    paying for the mtime walk.
+    """
+    try:
+        return dir_state(fo.config.plugins_dir)
+    except Exception:
+        return None
+
+
+_signature_provider = _default_signature
+
+
+def set_plugin_index_signature_provider(fn):
+    """Sets the function used to compute the plugin index cache signature
+    when callers don't pass one explicitly.
+
+    The function takes ``(enabled,)`` and must return a hashable signature
+    or ``None`` to disable caching for that call.
+
+    Returns the previous provider so it can be restored.
+    """
+    global _signature_provider
+    prev = _signature_provider
+    _signature_provider = fn or _default_signature
+    return prev
+
+
+def reset_plugin_index_cache():
+    """Clears the cached plugin index. Primarily intended for tests and for
+    callers that have invalidated the underlying plugin set out-of-band.
+    """
+    _INDEX_CACHE["key"] = None
+    _INDEX_CACHE["value"] = None
+
+
+def _build_plugin_index(enabled, signature=_DEFAULT_SIGNATURE):
+    """Returns the cached ``(by_name, by_uri, listing_error)`` plugin index.
+
+    Args:
+        enabled: enablement filter; mirrors :class:`OperatorRegistry`'s
+            ``enabled`` argument
+        signature: an opaque, hashable cache key. If omitted, the configured
+            default signature provider is used. Pass ``None`` to bypass the
+            cache entirely.
+
+    Returns:
+        a tuple ``(by_name, by_uri, listing_error)``
+    """
+    if signature is _DEFAULT_SIGNATURE:
+        signature = _signature_provider(enabled)
+
+    cache_key = (enabled, signature)
+    if signature is not None and _INDEX_CACHE["key"] == cache_key:
+        return _INDEX_CACHE["value"]
+
+    by_name = {}
+    by_uri = {}
+    listing_error = None
+
+    try:
+        plugin_defs = fop.list_plugins(enabled=enabled, builtin="all")
+    except Exception:
+        listing_error = traceback.format_exc()
+        plugin_defs = []
+
+    for pd in plugin_defs:
+        by_name[pd.name] = pd
+        for op_name in pd.operators:
+            uri = "%s/%s" % (pd.name, op_name)
+            # First-declared wins; mirrors the original ordering where
+            # builtin plugins are listed first
+            by_uri.setdefault(uri, pd)
+
+    value = (by_name, by_uri, listing_error)
+
+    # Don't poison the cache with a transient listing failure -- the next
+    # request should retry against disk
+    if signature is not None and listing_error is None:
+        _INDEX_CACHE["key"] = cache_key
+        _INDEX_CACHE["value"] = value
+
+    return value
+
+
 def get_operator(operator_uri, enabled=True):
     """Gets the operator with the given URI.
 
@@ -144,37 +258,39 @@ class OperatorRegistry(object):
     """Operator registry.
 
     Construction is cheap: only plugin metadata (``fiftyone.yml``) is read
-    and an in-memory index of operator URIs is built. Plugin Python entry
-    points are only exec'd lazily when an operator from that plugin is
-    actually requested via :meth:`get_operator` or :meth:`operator_exists`,
-    or when :meth:`list_operators` is called (which requires all plugins).
+    and an in-memory index of operator URIs is built, and that index is
+    memoized process-wide and reused across registries with the same
+    signature. Plugin Python entry points are only exec'd lazily when an
+    operator from that plugin is actually requested via :meth:`get_operator`
+    or :meth:`operator_exists`, or when :meth:`list_operators` is called
+    (which requires all plugins).
 
     Args:
         enabled (True): whether to include only enabled operators (True) or
             only disabled operators (False) or all operators ("all")
+        index_signature (optional): an opaque, hashable cache key for the
+            plugin index. If omitted, the configured signature provider is
+            used (mtime-based by default). Subclasses such as
+            :class:`fiftyone.operators.permissions.PermissionedOperatorRegistry`
+            in ``fiftyone-teams`` can pass a cheaper authoritative
+            fingerprint (e.g. one derived from the managed-plugins API) to
+            avoid the disk walk on networked storage. Pass ``None`` to
+            disable caching for this construction.
     """
 
-    def __init__(self, enabled=True):
+    def __init__(self, enabled=True, *, index_signature=_DEFAULT_SIGNATURE):
         self._enabled = enabled
-        self._plugin_defs_by_name = {}
-        self._plugin_defs_by_uri = {}
         self._contexts_by_plugin = {}
-        self._listing_errors = []
         self._all_ensured = False
 
-        try:
-            plugin_defs = fop.list_plugins(enabled=enabled, builtin="all")
-        except Exception:
-            self._listing_errors.append(traceback.format_exc())
-            plugin_defs = []
-
-        for pd in plugin_defs:
-            self._plugin_defs_by_name[pd.name] = pd
-            for op_name in pd.operators:
-                uri = "%s/%s" % (pd.name, op_name)
-                # First-declared wins; mirrors the original ordering where
-                # builtin plugins are listed first
-                self._plugin_defs_by_uri.setdefault(uri, pd)
+        by_name, by_uri, listing_error = _build_plugin_index(
+            enabled, signature=index_signature
+        )
+        # Shallow copy so registry mutations (e.g. a future ``register``
+        # override) cannot corrupt the shared cached index
+        self._plugin_defs_by_name = dict(by_name)
+        self._plugin_defs_by_uri = dict(by_uri)
+        self._listing_errors = [listing_error] if listing_error else []
 
     @property
     def plugin_contexts(self):
