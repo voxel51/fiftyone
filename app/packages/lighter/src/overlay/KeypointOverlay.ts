@@ -2,6 +2,8 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import { CommandContextManager } from "@fiftyone/commands";
+import { MoveKeypointPointCommand } from "../commands/MoveKeypointPointCommand";
 import {
   EDGE_THRESHOLD,
   KEYPOINT_HIT_RADIUS,
@@ -30,6 +32,7 @@ import {
 } from "../utils/geometry";
 import { BaseOverlay } from "./BaseOverlay";
 import { NO_BOUNDS } from "./BoundingBoxOverlay";
+import { v4 as uuidv4 } from "uuid";
 
 export type KeypointLabel = RawLookerLabel & {
   label: string;
@@ -58,7 +61,21 @@ export interface KeypointOptions {
   draggable?: boolean;
   deletable?: boolean;
   selectable?: boolean;
+  /**
+   * Per-variant style overrides. Points whose variant key is absent from
+   * this map (or who have no variant) render with the overlay's currentStyle.
+   */
+  variantStyles?: Record<string, DrawStyle>;
 }
+
+/**
+ * Internal per-point metadata.
+ */
+type KeypointEntry = {
+  id: string;
+  position: [number, number];
+  variant?: string;
+};
 
 /**
  * Keypoint overlay implementation with per-point interaction, optional connections,
@@ -79,9 +96,10 @@ export class KeypointOverlay
   private isSelectable: boolean;
   private connections: number[][];
   private closed: boolean;
+  private readonly variantStyles: Record<string, DrawStyle>;
   private isSelectedState = false;
 
-  #relativePoints: [number, number][];
+  #points: KeypointEntry[];
 
   // Per-point sub-selection
   private selectedPointIndex: number | null = null;
@@ -104,11 +122,13 @@ export class KeypointOverlay
 
   constructor(options: KeypointOptions) {
     super(options.id, options.field, options.label);
-    this.#relativePoints = options.label?.points
-      ? options.label.points.map((p) => [...p] as [number, number])
-      : [];
+    this.#points = (options.label?.points ?? []).map((p) => ({
+      id: uuidv4(),
+      position: [...p] as [number, number],
+    }));
     this.connections = options.connections ?? [];
     this.closed = options.closed ?? false;
+    this.variantStyles = options.variantStyles ?? {};
     this.isDraggable = options.draggable !== false;
     this.isDeletable = options.deletable !== false;
     this.isSelectable = options.selectable !== false;
@@ -122,7 +142,7 @@ export class KeypointOverlay
   // Coordinate helpers
   // ---------------------------------------------------------------------------
 
-  private relativePointToAbsolute(rp: [number, number]): Point {
+  relativePointToAbsolute(rp: [number, number]): Point {
     const t = this.getCoordinateSystem().getTransform();
     return {
       x: t.offsetX + rp[0] * t.scaleX,
@@ -130,15 +150,15 @@ export class KeypointOverlay
     };
   }
 
-  private absolutePointToRelative(ap: Point): [number, number] {
+  absolutePointToRelative(ap: Point): [number, number] {
     const t = this.getCoordinateSystem().getTransform();
     return [(ap.x - t.offsetX) / t.scaleX, (ap.y - t.offsetY) / t.scaleY];
   }
 
   private getAbsolutePoints(): Point[] {
     if (this._absPointsCache) return this._absPointsCache;
-    this._absPointsCache = this.#relativePoints.map((p) =>
-      this.relativePointToAbsolute(p)
+    this._absPointsCache = this.#points.map((e) =>
+      this.relativePointToAbsolute(e.position)
     );
     return this._absPointsCache;
   }
@@ -163,7 +183,7 @@ export class KeypointOverlay
   // ---------------------------------------------------------------------------
 
   get bounds(): Rect {
-    if (this.#relativePoints.length === 0) return NO_BOUNDS;
+    if (this.#points.length === 0) return NO_BOUNDS;
 
     const currentScale = this.renderer?.getScale() ?? 1;
 
@@ -208,18 +228,19 @@ export class KeypointOverlay
   }
 
   get relativeBounds(): Rect {
-    if (this.#relativePoints.length === 0) return NO_BOUNDS;
+    if (this.#points.length === 0) return NO_BOUNDS;
     if (this._relativeBoundsCache) return this._relativeBoundsCache;
 
     let minX = Infinity,
       minY = Infinity,
       maxX = -Infinity,
       maxY = -Infinity;
-    for (const p of this.#relativePoints) {
-      if (p[0] < minX) minX = p[0];
-      if (p[0] > maxX) maxX = p[0];
-      if (p[1] < minY) minY = p[1];
-      if (p[1] > maxY) maxY = p[1];
+
+    for (const p of this.#points) {
+      if (p.position[0] < minX) minX = p.position[0];
+      if (p.position[0] > maxX) maxX = p.position[0];
+      if (p.position[1] < minY) minY = p.position[1];
+      if (p.position[1] > maxY) maxY = p.position[1];
     }
 
     this._relativeBoundsCache = {
@@ -244,7 +265,7 @@ export class KeypointOverlay
   }
 
   hasValidBounds(): boolean {
-    return this.#relativePoints.length > 0;
+    return this.#points.length > 0;
   }
 
   /**
@@ -296,7 +317,12 @@ export class KeypointOverlay
     }
 
     // 2. Draw preview line (during interactive creation — dashed, separate call)
-    if (this.previewPoint && absPoints.length > 0) {
+    //  Only shown for connected/closed keypoints, not standalone point selection.
+    if (
+      this.previewPoint &&
+      absPoints.length > 0 &&
+      (this.connections.length > 0 || this.closed)
+    ) {
       const lastPoint = absPoints[absPoints.length - 1];
       renderer.drawLine(
         lastPoint,
@@ -311,31 +337,45 @@ export class KeypointOverlay
       );
     }
 
-    // 3. Batch all regular points into a single draw call
-    const pointStyle: DrawStyle = {
+    // 3. Batch points by variant. Points without a matching variant style fall
+    //   back to the overlay's defaults.
+    const defaultPointStyle: DrawStyle = {
       fillStyle: strokeColor,
       strokeStyle: "#ffffff",
       lineWidth,
     };
 
-    const regularPoints: Point[] = [];
+    const resolvePointStyle = (variant: string | undefined): DrawStyle => {
+      const override = variant ? this.variantStyles[variant] : undefined;
+
+      return {
+        ...defaultPointStyle,
+        ...override,
+      };
+    };
+
+    const buckets = new Map<string | undefined, Point[]>();
     let selectedPoint: Point | undefined;
+    let selectedVariant: string | undefined;
 
     for (let i = 0; i < absPoints.length; i++) {
       if (this.selectedPointIndex === i) {
         selectedPoint = absPoints[i];
+        selectedVariant = this.#points[i].variant;
+        continue;
+      }
+      const v = this.#points[i].variant;
+      const bucket = buckets.get(v);
+      if (bucket) {
+        bucket.push(absPoints[i]);
       } else {
-        regularPoints.push(absPoints[i]);
+        buckets.set(v, [absPoints[i]]);
       }
     }
 
-    if (regularPoints.length > 0) {
-      renderer.drawPoints(
-        regularPoints,
-        KEYPOINT_RADIUS,
-        pointStyle,
-        this.containerId
-      );
+    for (const [variant, pts] of buckets) {
+      const pointStyle = resolvePointStyle(variant);
+      renderer.drawPoints(pts, KEYPOINT_RADIUS, pointStyle, this.containerId);
     }
 
     // Draw selected point at larger radius + inner highlight (separate calls)
@@ -343,7 +383,7 @@ export class KeypointOverlay
       renderer.drawPoint(
         selectedPoint,
         KEYPOINT_SELECTED_RADIUS,
-        pointStyle,
+        resolvePointStyle(selectedVariant),
         this.containerId
       );
       renderer.drawPoint(
@@ -489,7 +529,7 @@ export class KeypointOverlay
       if (this.isDraggable) {
         this.dragPointIndex = nearestIdx;
         this.moveStartScreenPoint = point;
-        this.moveStartRelativePoint = [...this.#relativePoints[nearestIdx]];
+        this.moveStartRelativePoint = [...this.#points[nearestIdx].position];
         this.renderer?.disableZoomPan();
       }
 
@@ -520,7 +560,7 @@ export class KeypointOverlay
     // Convert world-space cursor position directly to relative coordinates.
     // This avoids double-scaling that would occur from computing a screen-space
     // delta and dividing by both renderer scale and coordinate transform scale.
-    this.#relativePoints[this.dragPointIndex] =
+    this.#points[this.dragPointIndex].position =
       this.absolutePointToRelative(worldPoint);
 
     this.markDirty();
@@ -532,21 +572,25 @@ export class KeypointOverlay
 
     const movedIdx = this.dragPointIndex;
     const from = this.moveStartRelativePoint;
-    const to = this.#relativePoints[movedIdx];
+    const entry = this.#points[movedIdx];
+    const to: [number, number] = [entry.position[0], entry.position[1]];
 
     this.dragPointIndex = null;
     this.moveStartScreenPoint = undefined;
     this.moveStartRelativePoint = undefined;
     this.renderer?.enableZoomPan();
 
-    if (from && to && (from[0] !== to[0] || from[1] !== to[1])) {
-      const absPoint = this.relativePointToAbsolute(to);
+    if (from && (from[0] !== to[0] || from[1] !== to[1])) {
       this.eventBus.dispatch("lighter:keypoint-point-moved", {
         id: this.id,
-        pointIndex: movedIdx,
-        worldFrom: this.relativePointToAbsolute(from),
-        worldTo: absPoint,
+        pointId: entry.id,
+        from: { x: from[0], y: from[1] },
+        to: { x: to[0], y: to[1] },
       });
+
+      CommandContextManager.instance()
+        .getActiveContext()
+        .pushUndoable(new MoveKeypointPointCommand(this, entry.id, from, to));
     }
 
     return true;
@@ -558,21 +602,97 @@ export class KeypointOverlay
 
   /**
    * Adds a point at the given absolute (world) position.
-   * @returns The index of the new point.
+   *
+   * @param variant - Optional variant key used to determine render style.
+   * @param id - Optional ID. When provided, reuses this id instead of
+   *             generating one. Useful when referential integrity is desired.
+   * @returns The id of the new point.
    */
-  addPoint(worldPoint: Point): number {
-    const rp = this.absolutePointToRelative(worldPoint);
-    this.#relativePoints.push(rp);
-    const idx = this.#relativePoints.length - 1;
+  addPoint(worldPoint: Point, variant?: string, id?: string): string {
+    const position = this.absolutePointToRelative(worldPoint);
+    const entry: KeypointEntry = { id: id ?? uuidv4(), position, variant };
+    this.#points.push(entry);
 
     this.eventBus.dispatch("lighter:keypoint-point-added", {
       id: this.id,
-      pointIndex: idx,
-      worldPoint,
+      pointId: entry.id,
+      point: { x: position[0], y: position[1] },
+      variant,
     });
 
     this.markDirty();
-    return idx;
+    return entry.id;
+  }
+
+  /**
+   * Removes the point with the given ID.
+   *
+   * @param pointId - The ID of the point to remove
+   */
+  removePointById(pointId: string): void {
+    const index = this.#points.findIndex((p) => p.id === pointId);
+    if (index === -1) {
+      return;
+    }
+
+    this.removePoint(index);
+  }
+
+  /**
+   * Sets a point's position by ID.
+   *
+   * @param pointId - ID of the point to move
+   * @param to - [x, y] destination coordinates
+   */
+  movePointById(pointId: string, to: [number, number]): void {
+    const entry = this.#points.find((p) => p.id === pointId);
+    if (!entry) {
+      return;
+    }
+
+    const from: [number, number] = entry.position;
+    entry.position = [to[0], to[1]];
+
+    this.eventBus.dispatch("lighter:keypoint-point-moved", {
+      id: this.id,
+      pointId,
+      from: { x: from[0], y: from[1] },
+      to: { x: to[0], y: to[1] },
+    });
+
+    this.markDirty();
+  }
+
+  /**
+   * Returns the ID of the point at the given absolute (world) position, or
+   * null if no point is within hit range.
+   *
+   * @param worldPoint Point in absolute coordinates
+   */
+  findPointIdAt(worldPoint: Point): string | null {
+    const scale = this.renderer?.getScale() ?? 1;
+    const index = this.findNearestPointIndex(worldPoint, scale);
+    return index >= 0 ? this.#points[index].id : null;
+  }
+
+  /**
+   * Returns a snapshot of the point with the given ID, or `null` if none.
+   * Returns copies so callers can safely retain the data.
+   *
+   * @param pointId Point ID
+   */
+  getPointById(
+    pointId: string
+  ): { position: [number, number]; variant?: string } | null {
+    const entry = this.#points.find((p) => p.id === pointId);
+    if (!entry) {
+      return null;
+    }
+
+    return {
+      position: [entry.position[0], entry.position[1]],
+      variant: entry.variant,
+    };
   }
 
   /**
@@ -580,9 +700,10 @@ export class KeypointOverlay
    */
   removePoint(index: number): void {
     if (!this.isDeletable) return;
-    if (index < 0 || index >= this.#relativePoints.length) return;
+    if (index < 0 || index >= this.#points.length) return;
 
-    this.#relativePoints.splice(index, 1);
+    const { id: pointId, variant } = this.#points[index];
+    this.#points.splice(index, 1);
 
     // Update connections: remove references to deleted index, shift higher indices
     this.connections = this.connections
@@ -603,7 +724,8 @@ export class KeypointOverlay
 
     this.eventBus.dispatch("lighter:keypoint-point-deleted", {
       id: this.id,
-      pointIndex: index,
+      pointId,
+      variant,
     });
 
     this.markDirty();
@@ -621,7 +743,7 @@ export class KeypointOverlay
    * Clears all points from the overlay.
    */
   clearPoints(): void {
-    this.#relativePoints = [];
+    this.#points = [];
     this.selectedPointIndex = null;
     this.dragPointIndex = null;
     this.previewPoint = null;
@@ -632,7 +754,7 @@ export class KeypointOverlay
    * Returns a copy of the relative points array.
    */
   getRelativePoints(): [number, number][] {
-    return this.#relativePoints.map((p) => [...p] as [number, number]);
+    return this.#points.map((e) => [...e.position] as [number, number]);
   }
 
   /**

@@ -3,7 +3,13 @@ import * as fos from "@fiftyone/state";
 import { useBrowserStorage } from "@fiftyone/state";
 import { useCallback, useMemo, useState } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
-import { PANEL_NAME, SEARCH_OPERATOR_URI } from "./constants";
+import {
+  PANEL_NAME,
+  QUERY_TYPE_IMAGE,
+  QUERY_TYPE_TEXT,
+  SCOPE_VIEW,
+  SEARCH_OPERATOR_URI,
+} from "./constants";
 import {
   availableSimilarityKeys,
   buildRunName,
@@ -110,11 +116,12 @@ export default function useSimilarityPopover({
 
         const params: Record<string, unknown> = {
           brain_key: resolvedBrainKey,
-          query_type: isImageSearch ? "image" : "text",
+          query_type: isImageSearch ? QUERY_TYPE_IMAGE : QUERY_TYPE_TEXT,
           query: isImageSearch ? queryIds : textQuery.trim(),
           reverse: false,
           k: DEFAULT_K,
           run_name: runName,
+          search_scope: SCOPE_VIEW,
         };
         if (patchesField) {
           params.patches_field = patchesField;

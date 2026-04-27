@@ -37,6 +37,7 @@ function SimilaritySearchReady(props: SimilaritySearchViewProps) {
           onClone={panel.handleClone}
           onDelete={panel.handleDelete}
           onBulkDelete={panel.handleBulkDelete}
+          onRename={panel.handleRename}
           onRefresh={panel.refreshRuns}
           onNewSearch={panel.handleNewSearch}
           onSettings={panel.navigateSimilarityIndex}
@@ -52,6 +53,7 @@ function SimilaritySearchReady(props: SimilaritySearchViewProps) {
           brainKeys={panel.brainKeys}
           cloneConfig={panel.cloneConfig}
           isPatchesView={panel.isPatchesView}
+          isReadOnly={panel.isReadOnly}
           onBack={panel.navigateHome}
           onSubmitted={panel.handleSubmitted}
         />

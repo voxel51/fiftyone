@@ -16,6 +16,7 @@ import fiftyone.operators as foo
 
 from .constants import STORE_NAME, RunStatus
 from .run_manager import RunManager
+from . import _has_manage_permission
 
 logger = logging.getLogger(__name__)
 
@@ -63,8 +64,9 @@ class SimilaritySearchOperator(foo.Operator):
         if not run_id:
             params = {**ctx.params}
             if ctx.user_id:
-                params["created_by"] = getattr(ctx.user, "name", None) or str(
-                    ctx.user_id
+                params["created_by"] = str(ctx.user_id)
+                params["created_by_name"] = (
+                    getattr(ctx.user, "name", None) or ""
                 )
             run_data = manager.create_run(params)
             run_id = run_data["run_id"]
@@ -77,8 +79,9 @@ class SimilaritySearchOperator(foo.Operator):
         if not run_data:
             params = {**ctx.params}
             if ctx.user_id:
-                params["created_by"] = getattr(ctx.user, "name", None) or str(
-                    ctx.user_id
+                params["created_by"] = str(ctx.user_id)
+                params["created_by_name"] = (
+                    getattr(ctx.user, "name", None) or ""
                 )
             run_data = manager.create_run(params)
             run_id = run_data["run_id"]
@@ -98,11 +101,27 @@ class SimilaritySearchOperator(foo.Operator):
 
             dataset = ctx.dataset
 
-            # Always sort against the base dataset view.
-            # source_view is stored in the run record for context
-            # but not used for the sort itself, because the brain
-            # index may have been computed on the base dataset.
-            view = dataset.view()
+            # Drop dist_field when the dataset is read-only (snapshot)
+            # or when the user lacks edit permission
+            # This is a guard for clone case
+            if dist_field:
+                is_snapshot = dataset.name.startswith("_snapshot")
+                can_edit = ctx.user is None or ctx.user.dataset_permission in (
+                    "EDIT",
+                    "MANAGE",
+                )
+                if is_snapshot or not can_edit:
+                    dist_field = None
+
+            # Determine the base view for the search.
+            # "view" uses ctx.view (includes view stages, sidebar
+            # filters, and extended stages from the app).
+            # "dataset" (default) uses the bare dataset view.
+            search_scope = ctx.params.get("search_scope", "dataset")
+            if search_scope == "view":
+                view = ctx.view
+            else:
+                view = dataset.view()
 
             ctx.set_progress(0.2, label="Preparing query...")
 
@@ -145,7 +164,16 @@ class SimilaritySearchOperator(foo.Operator):
 
             ctx.set_progress(0.7, label="Collecting results...")
 
-            dynamic_results = ctx.params.get("dynamic_results", True)
+            # dynamic_results controls how results are persisted:
+            #   True  → save the serialized SortBySimilarity view stages;
+            #           results are recomputed on apply, always reflecting
+            #           the latest dataset state (slower to load).
+            #   False → save a static list of result IDs; results are
+            #           fixed at search time (faster to load).
+            # The UI toggle for this is currently commented out in
+            # NewSearch.tsx — awaiting user feedback before deciding
+            # whether to remove it entirely.
+            dynamic_results = ctx.params.get("dynamic_results", False)
 
             result_ids = []
             result_view_stages = None
@@ -242,12 +270,6 @@ class SimilaritySearchOperator(foo.Operator):
             combined = 2 * pos_mean - neg_mean
         else:
             combined = pos_mean
-
-        # Normalize for backend-agnostic correctness (cosine doesn't
-        # need it, but dot-product and L2 backends do)
-        norm = np.linalg.norm(combined)
-        if norm > 0:
-            combined = combined / norm
 
         return combined
 
@@ -357,7 +379,13 @@ class InitSimilarityRunOperator(foo.Operator):
 
 
 class ListSimilarityRunsOperator(foo.Operator):
-    """Returns all similarity search runs for the current dataset."""
+    """Returns similarity search runs for the current dataset.
+
+    Accepts an optional ``owner`` param:
+
+    - ``"mine"`` — only runs created by the current user
+    - ``"all"`` or missing — every run
+    """
 
     @property
     def config(self):
@@ -368,8 +396,17 @@ class ListSimilarityRunsOperator(foo.Operator):
         )
 
     def execute(self, ctx):
+        # Import locally to avoid a circular import at module load
+
+        owner = ctx.params.get("owner")
         manager = RunManager(ctx)
-        return {"runs": manager.list_runs()}
+        return {
+            "runs": manager.list_runs(
+                owner=owner,
+                current_user_id=str(ctx.user_id) if ctx.user_id else None,
+                can_manage=_has_manage_permission(ctx),
+            )
+        }
 
 
 class SimilaritySearchSubscriptionOperator(foo.SseOperator):

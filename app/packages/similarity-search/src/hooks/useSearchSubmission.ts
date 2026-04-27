@@ -3,7 +3,7 @@ import { useOperatorExecutor } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
 import { useBrowserStorage } from "@fiftyone/state";
 import { BrainKeyConfig, QueryType, SearchScope } from "../types";
-import { INIT_RUN_OPERATOR_URI } from "../constants";
+import { INIT_RUN_OPERATOR_URI, K_MAX, K_MIN } from "../constants";
 import { canSubmitSearch, buildExecutionParams, UploadedImage } from "../utils";
 
 type UseSearchSubmissionInput = {
@@ -111,8 +111,8 @@ export const useSearchSubmission = (input: UseSearchSubmissionInput) => {
     input.k !== "" &&
     (!Number.isFinite(input.k) ||
       !Number.isInteger(input.k) ||
-      input.k < 1 ||
-      input.k > 10000);
+      input.k < K_MIN ||
+      input.k > K_MAX);
 
   const canSubmit =
     !kError &&

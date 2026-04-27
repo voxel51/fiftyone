@@ -46,7 +46,6 @@ class Sort(HTTPEndpoint):
         state = fose.get_state()
         state.selected_labels = []
         state.selected_samples = []
-        state.sample_selection_style = dict(DEFAULT_SELECTION_STYLE)
 
         await fose.dispatch_event(subscription, StateUpdate(state))
 

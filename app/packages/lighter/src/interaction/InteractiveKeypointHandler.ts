@@ -2,13 +2,36 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import { CommandContextManager } from "@fiftyone/commands";
 import type { EventDispatcher } from "@fiftyone/events";
+import { AddKeypointPointCommand } from "../commands/AddKeypointPointCommand";
+import { RemoveKeypointPointCommand } from "../commands/RemoveKeypointPointCommand";
 import type { LighterEventGroup } from "../events";
 import { KeypointOverlay } from "../overlay/KeypointOverlay";
 import type { Point } from "../types";
 import type { InteractionHandler } from "./InteractionManager";
+import { ClickEventModifiers, getClickModifiers } from "@fiftyone/utilities";
 
 const INTERACTIVE_KEYPOINT_HANDLER_ID = "interactive-keypoint-handler";
+
+/**
+ * Action returned by a point-hit resolver.
+ *
+ * Callers returning `undefined` fall through to the default click behavior.
+ */
+export enum KeypointPointHitAction {
+  DELETE = "delete",
+}
+
+/**
+ * Context passed to a point-hit resolver when a click lands on an existing
+ * point.
+ */
+export type KeypointPointHitContext = {
+  pointId: string;
+  relativePoint: Point;
+  modifiers: ClickEventModifiers;
+};
 
 /**
  * Interactive keypoint handler for creating keypoint annotations.
@@ -22,7 +45,14 @@ export class InteractiveKeypointHandler implements InteractionHandler {
 
   constructor(
     public readonly overlay: KeypointOverlay,
-    private readonly eventBus: EventDispatcher<LighterEventGroup>
+    private readonly eventBus: EventDispatcher<LighterEventGroup>,
+    private readonly resolveVariant?: (
+      relativePoint: Point,
+      ctx: ClickEventModifiers
+    ) => string | undefined,
+    private readonly resolvePointHit?: (
+      ctx: KeypointPointHitContext
+    ) => KeypointPointHitAction | undefined
   ) {}
 
   containsPoint(): boolean {
@@ -53,9 +83,41 @@ export class InteractiveKeypointHandler implements InteractionHandler {
   onPointerDown(
     _point: Point,
     worldPoint: Point,
-    _event: PointerEvent
+    event: PointerEvent
   ): boolean {
-    this.overlay.addPoint(worldPoint);
+    const rp = this.overlay.absolutePointToRelative(worldPoint);
+    const modifiers = getClickModifiers(event);
+
+    // Click landed on an existing point;
+    // check whether the resolver should override the default behavior.
+    const hitId = this.overlay.findPointIdAt(worldPoint);
+    if (hitId && this.resolvePointHit) {
+      const action = this.resolvePointHit({
+        pointId: hitId,
+        relativePoint: { x: rp[0], y: rp[1] },
+        modifiers,
+      });
+
+      if (action === KeypointPointHitAction.DELETE) {
+        const command = new RemoveKeypointPointCommand(this.overlay, hitId);
+        command.execute();
+        CommandContextManager.instance()
+          .getActiveContext()
+          .pushUndoable(command);
+        return true;
+      }
+      // else fall through to default behavior
+    }
+
+    const variant = this.resolveVariant?.({ x: rp[0], y: rp[1] }, modifiers);
+    const pointId = this.overlay.addPoint(worldPoint, variant);
+
+    CommandContextManager.instance()
+      .getActiveContext()
+      .pushUndoable(
+        new AddKeypointPointCommand(this.overlay, pointId, rp, variant)
+      );
+
     return true;
   }
 

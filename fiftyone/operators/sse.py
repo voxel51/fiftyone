@@ -33,6 +33,7 @@ class SseOperatorConfig(foo.OperatorConfig):
             icon=icon,
             light_icon=light_icon,
             dark_icon=dark_icon,
+            unlisted=True,
         )
         self.store_name = store_name
 
