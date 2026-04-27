@@ -154,6 +154,11 @@ const AttributesSection = ({
                   Read-only
                 </Pill>
               )}
+              {config._source && (
+                <Pill size={Size.Md} style={{ marginLeft: 8 }}>
+                  {config._source}
+                </Pill>
+              )}
             </>
           ),
           actions: <EditAction onEdit={() => handleStartEdit(name)} />,
