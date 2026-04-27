@@ -290,9 +290,18 @@ export const useSegmentationMode = () => {
 
   // Auto-enable segmentation mode when a pre-existing mask detection is selected,
   // auto-disable when a pre-existing label of a different type is selected.
+  //
   // New labels are ignored — the mode was set intentionally via the toolbar button.
+  //
+  // Exception: when the AI tool produces a new detection, select its overlay in
+  // Lighter so the SelectionManager and rendering pipeline treat it as active.
   useEffect(() => {
-    if (selectedLabel?.isNew) return;
+    if (selectedLabel?.isNew) {
+      if (segmentationModeActive && tool === "ai" && selectedLabel.overlay) {
+        scene?.selectOverlay(selectedLabel.overlay.id);
+      }
+      return;
+    }
 
     if (isEditingSegmentation && !segmentationModeActive) {
       setSegmentationModeActive(true);
@@ -305,10 +314,13 @@ export const useSegmentationMode = () => {
     }
   }, [
     selectedLabel?.isNew,
+    selectedLabel?.overlay,
     editingLabelType,
     isEditingSegmentation,
     segmentationModeActive,
     setSegmentationModeActive,
+    tool,
+    scene,
   ]);
 
   // -----------------------------  Event handling  ------------------------ //
