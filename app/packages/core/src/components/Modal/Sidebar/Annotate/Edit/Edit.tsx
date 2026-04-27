@@ -1,6 +1,6 @@
 import { DetectionLabel } from "@fiftyone/looker";
 import { useClearModal } from "@fiftyone/state";
-import { DETECTION, POLYLINE } from "@fiftyone/utilities";
+import { DETECTION, KEYPOINT, POLYLINE } from "@fiftyone/utilities";
 import { useAtomValue } from "jotai";
 import { useEffect } from "react";
 import styled from "styled-components";
@@ -9,6 +9,7 @@ import AnnotationSchema from "./AnnotationSchema";
 import Field from "./Field";
 import Header from "./Header";
 import Id from "./Id";
+import { KeypointDetails } from "./KeypointDetails";
 import { PolylineDetails } from "./PolylineDetails";
 import Position from "./Position";
 import Position3d from "./Position3d";
@@ -97,6 +98,7 @@ export default function Edit() {
           <Position3d readOnly={isReadOnly} />
         )}
         {type === POLYLINE && <PolylineDetails />}
+        {type === KEYPOINT && <KeypointDetails />}
         {field && <AnnotationSchema readOnly={isReadOnly} />}
       </Content>
     </ContentContainer>
