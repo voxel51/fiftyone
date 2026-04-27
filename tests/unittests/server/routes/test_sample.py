@@ -1033,6 +1033,9 @@ class TestCommitMask:
         response = await commit_endpoint.post(request)
 
         assert response.status_code == 200
+        body = json.loads(response.body)
+        assert body["committed"] is True
+        assert body["mask_path"] == mask_file
 
         # Verify DB: mask cleared, mask_path preserved
         sample.reload()
@@ -1050,12 +1053,18 @@ class TestCommitMask:
         [
             # missing required params
             (None, lambda _: "x", 400, "missing field"),
+            ("ground_truth", lambda _: None, 400, "missing detection_id"),
             # nonexistent field
             ("no_such_field", lambda _: "x", 404, "nonexistent field"),
             # nonexistent detection
             ("ground_truth", lambda _: str(ObjectId()), 404, "bad det id"),
         ],
-        ids=["missing_field", "nonexistent_field", "bad_detection_id"],
+        ids=[
+            "missing_field",
+            "missing_detection_id",
+            "nonexistent_field",
+            "bad_detection_id",
+        ],
     )
     async def test_commit_mask_error_simple(
         self,

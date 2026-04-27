@@ -727,9 +727,11 @@ class CommitMask(HTTPEndpoint):
             detection.export_mask(
                 mask_path, update=True, overwrite_path=True
             )
-            save_sample(sample, if_last_modified_at)
+            etag = save_sample(sample, if_last_modified_at)
+        except DbVersionMismatchError:
+            raise
         except Exception as err:
-            logger.error("Failed to commit mask to %s: %s", mask_path, err)
+            logger.exception("Failed to commit mask to %s", mask_path)
             raise HTTPException(
                 status_code=500,
                 detail=f"Failed to write mask to '{mask_path}': {err}",
@@ -741,7 +743,10 @@ class CommitMask(HTTPEndpoint):
             mask_path,
         )
 
-        return JSONResponse({"committed": True, "mask_path": mask_path})
+        return JSONResponse(
+            {"committed": True, "mask_path": mask_path},
+            headers={"ETag": etag},
+        )
 
 
 SampleRoutes = [
