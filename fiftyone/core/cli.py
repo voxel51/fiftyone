@@ -99,6 +99,7 @@ class FiftyOneCommand(Command):
         _register_command(subparsers, "datasets", DatasetsCommand)
         _register_command(subparsers, "migrate", MigrateCommand)
         _register_command(subparsers, "operators", OperatorsCommand)
+        _register_command(subparsers, "skills", SkillsCommand)
         _register_command(subparsers, "delegated", DelegatedCommand)
         _register_command(subparsers, "plugins", PluginsCommand)
         _register_command(subparsers, "utils", UtilsCommand)
@@ -3861,7 +3862,6 @@ class PluginsCommand(Command):
         _register_command(subparsers, "enable", PluginsEnableCommand)
         _register_command(subparsers, "disable", PluginsDisableCommand)
         _register_command(subparsers, "delete", PluginsDeleteCommand)
-        _register_command(subparsers, "skills", PluginsSkillsCommand)
 
     @staticmethod
     def execute(parser, args):
@@ -4455,35 +4455,38 @@ class PluginsDeleteCommand(Command):
             fop.delete_plugin(name)
 
 
-class PluginsSkillsCommand(Command):
-    """Tools for working with FiftyOne plugin skills."""
+class SkillsCommand(Command):
+    """Tools for working with FiftyOne skills."""
 
     @staticmethod
     def setup(parser):
         subparsers = parser.add_subparsers(title="available commands")
-        _register_command(subparsers, "list", PluginsSkillsListCommand)
+        _register_command(subparsers, "list", SkillsListCommand)
 
     @staticmethod
     def execute(parser, args):
         parser.print_help()
 
 
-class PluginsSkillsListCommand(Command):
+class SkillsListCommand(Command):
     """List skills provided by installed plugins.
 
     Examples::
 
         # List all available skills
-        fiftyone plugins skills list
+        fiftyone skills list
 
         # List skills from a specific plugin
-        fiftyone plugins skills list --plugin @voxel51/my-plugin
+        fiftyone skills list --plugin @voxel51/my-plugin
 
         # List skills in a specific category
-        fiftyone plugins skills list --category data-ingestion
+        fiftyone skills list --category data-ingestion
+
+        # List enabled skills
+        fiftyone skills list --enabled
 
         # List skill names only
-        fiftyone plugins skills list --names-only
+        fiftyone skills list --names-only
     """
 
     @staticmethod
@@ -4503,6 +4506,20 @@ class PluginsSkillsListCommand(Command):
             help="only show skills in this category(s)",
         )
         parser.add_argument(
+            "-e",
+            "--enabled",
+            action="store_true",
+            default=None,
+            help="only show skills from enabled plugins",
+        )
+        parser.add_argument(
+            "-d",
+            "--disabled",
+            action="store_true",
+            default=None,
+            help="only show skills from disabled plugins",
+        )
+        parser.add_argument(
             "-n",
             "--names-only",
             action="store_true",
@@ -4511,29 +4528,47 @@ class PluginsSkillsListCommand(Command):
 
     @staticmethod
     def execute(parser, args):
+        if args.enabled:
+            enabled = True
+        elif args.disabled:
+            enabled = False
+        else:
+            enabled = "all"
+
         _print_skills_list(
             plugin=args.plugin,
             category=args.category,
+            enabled=enabled,
             names_only=args.names_only,
         )
 
 
-def _print_skills_list(plugin=None, category=None, names_only=False):
-    skills = fop.list_skills(plugin=plugin, category=category)
+def _print_skills_list(
+    plugin=None, category=None, enabled="all", names_only=False
+):
+    skills = fop.list_skills(plugin=plugin, category=category, enabled=enabled)
 
     if names_only:
+        skills_map = defaultdict(list)
         for s in skills:
-            print(s.name)
+            skills_map[s.plugin_name].append(s)
+
+        for pname, plugin_skills in skills_map.items():
+            print(pname)
+            for s in plugin_skills:
+                print("    " + s.name)
 
         return
 
-    headers = ["name", "category", "plugin", "path"]
+    enabled_plugins = set(fop.list_enabled_plugins())
+
+    headers = ["name", "category", "plugin", "enabled"]
     rows = [
         {
             "name": s.name,
             "category": s.category or "",
             "plugin": s.plugin_name,
-            "path": s.path,
+            "enabled": s.plugin_name in enabled_plugins,
         }
         for s in skills
     ]
