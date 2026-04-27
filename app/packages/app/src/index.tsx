@@ -5,6 +5,7 @@ import { SnackbarProvider } from "notistack";
 import type React from "react";
 import { createRoot } from "react-dom/client";
 import { RecoilRoot } from "recoil";
+import { GatedPluginLoader } from "./GatedPluginLoader";
 import Network from "./Network";
 import "./index.css";
 import "@voxel51/voodo/theme.css";
@@ -17,7 +18,12 @@ if (process.env.NODE_ENV === "development" && import.meta.env.VITE_DEV_WORKTREE_
 const App: React.FC = () => {
   const { context, environment } = useRouter();
 
-  return <Network environment={environment} context={context} />;
+  return (
+    <>
+      <GatedPluginLoader />
+      <Network environment={environment} context={context} />
+    </>
+  );
 };
 
 createRoot(document.getElementById("root") as HTMLDivElement).render(

@@ -86,7 +86,7 @@ const GatedPluginRegistrationLoader = ({
 /**
  * Mounts plugin registration modules for enabled feature flags.
 */
-export const GatedPluginLoader = React.memo(() => {
+export const GatedPluginLoader = () => {
   return (
     <>
       {GATED_PLUGIN_REGISTRATIONS.map((registration) => (
@@ -97,4 +97,4 @@ export const GatedPluginLoader = React.memo(() => {
       ))}
     </>
   );
-});
+};
