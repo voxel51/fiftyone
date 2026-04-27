@@ -1,5 +1,7 @@
-import { getFetchParameters } from "@fiftyone/utilities";
-import { buildSimilarityRunName } from "@fiftyone/utilities";
+import {
+  buildSimilarityRunName,
+  getFetchParameters,
+} from "@fiftyone/utilities";
 import {
   SimilarityRun,
   SimilaritySearchParams,
@@ -137,10 +139,18 @@ export type BuildExecutionParamsInput = {
   uploadedImage?: UploadedImage | null;
 };
 
-export function getMediaUrl(filepath: string): string {
+export function getMediaUrl(filepathOrUrl: string): string {
+  // Cloud-backed deployments return pre-signed https URLs from the
+  // backend; pass those through untouched. Only local filesystem paths
+  // need the /media wrap.
+  if (/^https?:\/\//i.test(filepathOrUrl)) {
+    return filepathOrUrl;
+  }
   const params = getFetchParameters();
   const path = `${params.pathPrefix}/media`.replaceAll("//", "/");
-  return `${params.origin}${path}?filepath=${encodeURIComponent(filepath)}`;
+  return `${params.origin}${path}?filepath=${encodeURIComponent(
+    filepathOrUrl
+  )}`;
 }
 
 /**

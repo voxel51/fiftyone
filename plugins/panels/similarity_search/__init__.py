@@ -20,6 +20,7 @@ from fiftyone.operators.panel import Panel, PanelConfig
 from .constants import STORE_NAME, RunStatus
 from .run_manager import RunManager
 from fiftyone.core.brain import BrainMethod
+from fiftyone.server.routes.signed_url import get_signed_url
 
 logger = logging.getLogger(__name__)
 
@@ -293,15 +294,24 @@ class SimilaritySearchPanel(Panel):
         pass
 
     def get_sample_media(self, ctx):
-        """Return filepaths for the given sample IDs."""
+        """Return signed/resolved URLs for the given sample IDs.
+
+        For cloud-stored media, the raw filepath (e.g. ``s3://...``)
+        isn't a usable ``<img src>``. Resolve to a signed URL here so
+        the frontend can render directly.
+        """
+
         sample_ids = ctx.params.get("sample_ids", [])
         if not sample_ids:
             return
 
         try:
             view = ctx.dataset.select(sample_ids)
-            filepaths = dict(zip(view.values("id"), view.values("filepath")))
-            ctx.panel.set_data("sample_media", filepaths)
+            ids, filepaths = view.values(["id", "filepath"])
+            media = {
+                sid: get_signed_url(fp) for sid, fp in zip(ids, filepaths)
+            }
+            ctx.panel.set_data("sample_media", media)
         except Exception as e:
             logger.warning("Failed to get sample media: %s", e)
 
