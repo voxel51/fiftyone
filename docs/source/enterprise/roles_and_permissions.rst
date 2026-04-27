@@ -174,7 +174,7 @@ and cannot receive invitations.
 
 **Roles**
 
-Service accounts must be assigned a role that has API key access enabled, since
+Service accounts can only be assigned a role that has API key access enabled, since
 API keys are their only authentication mechanism. Which roles have this
 permission depends on your deployment's license configuration. You can check
 which roles support API keys by navigating to the
@@ -222,57 +222,15 @@ description, and manage its API keys:
 
 **Managing service accounts via the SDK**
 
-Service accounts can also be managed programmatically using the
-:ref:`Management SDK <enterprise-management-sdk>`:
-
-.. code-block:: python
-
-   import fiftyone.management as fom
-
-   # Create a service account
-   sa = fom.create_service_account("my-pipeline-bot", fom.MEMBER)
-   print(sa.id)
-
-   # List all service accounts
-   service_accounts = fom.list_service_accounts()
-
-   # Retrieve a specific service account by ID
-   sa = fom.get_service_account(sa.id)
-
-   # Update a service account's name, role, or description
-   fom.update_service_account(sa, role=fom.COLLABORATOR, description="Read-only bot")
-
-   # Delete a service account (irreversible)
-   fom.delete_service_account(sa)
+Service accounts can be managed programmatically via the
+:ref:`Management SDK <enterprise-sdk-service-account-management>`.
 
 **API keys**
 
 Service accounts authenticate via API keys. These can be generated through the
-UI on the "Settings > Team > Service Accounts" page, or programmatically:
-
-.. code-block:: python
-
-   import fiftyone.management as fom
-
-   sa = fom.get_service_account("some-id")
-
-   # Generate an API key for the service account
-   key = fom.generate_api_key("pipeline-key", sa)
-
-   # List all keys for a service account
-   keys = fom.list_api_keys(sa)
-
-   # Delete a specific key
-   fom.delete_api_key(keys[0].id, sa)
-
-Once you have an API key, configure the service account's connection the same
-way as a human user — by setting `FIFTYONE_API_URI` and `FIFTYONE_API_KEY`.
-See :ref:`API Connection <enterprise-api-connection>` for details.
-
-.. warning::
-
-   API keys are only displayed once at generation time. Copy and store the key
-   securely immediately — it cannot be recovered if lost.
+UI on the "Settings > Team > Service Accounts" page, or programmatically via
+the :ref:`Management SDK <enterprise-sdk-api-keys>`. Once generated, configure
+the connection by following the steps in :ref:`API Connection <enterprise-api-connection>`.
 
 .. _enterprise-permissions:
 
