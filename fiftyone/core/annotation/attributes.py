@@ -22,7 +22,14 @@ def _attr_insert_to_dict(d: dict, name: str, obj: object) -> dict:
 
 
 def _require_keys(d: dict, keys: tuple, cls: type) -> None:
-    """Raises ``ValueError`` if any of ``keys`` are missing from ``d``."""
+    """Raises ``ValueError`` if ``d`` is not a dict or is missing any of
+    ``keys``.
+    """
+    if not isinstance(d, dict):
+        raise ValueError(
+            f"{cls.__name__}.from_dict expects a dict, got "
+            f"{type(d).__name__}"
+        )
     missing = [k for k in keys if k not in d]
     if missing:
         raise ValueError(
@@ -75,6 +82,8 @@ class When:
         self.operator = WhenOperator(self.operator)
         if not isinstance(self.field, str) or not self.field:
             raise ValueError("When.field must be a non-empty string")
+        if self.then is not None and not isinstance(self.then, dict):
+            raise ValueError("When.then must be a dict if provided")
 
     def to_dict(self) -> dict:
         """Serializes this condition to a dict.
@@ -101,14 +110,11 @@ class When:
             a :class:`When`
         """
         _require_keys(d, ("operator", "field", "value"), cls)
-        then = d.get("then")
-        if then is not None and not isinstance(then, dict):
-            raise ValueError("When.then must be a dict if provided")
         return cls(
             operator=d["operator"],
             field=d["field"],
             value=d["value"],
-            then=then,
+            then=d.get("then"),
         )
 
     def __repr__(self) -> str:
