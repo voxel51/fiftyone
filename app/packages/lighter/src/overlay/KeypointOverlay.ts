@@ -394,6 +394,11 @@ export class KeypointOverlay
       const scale = this.renderer?.getScale() ?? 1;
       const elapsed = performance.now() - this.rippleStartTime;
       const cycleProgress = (elapsed % RIPPLE_CYCLE_MS) / RIPPLE_CYCLE_MS;
+      console.log("[ripple] rendering ripple frame", {
+        rippleSize: this.ripplePointIds.size,
+        absPointCount: absPoints.length,
+        elapsed,
+      });
 
       for (let i = 0; i < absPoints.length; i++) {
         const entry = this.#points[i];
@@ -805,6 +810,13 @@ export class KeypointOverlay
     const wasEmpty = this.ripplePointIds.size === 0;
 
     this.ripplePointIds = next;
+    console.log("[ripple] setRipplePointIds", {
+      size: next.size,
+      ids: [...next],
+      wasEmpty,
+      pointCount: this.#points.length,
+      pointEntries: this.#points.map((p) => p.id),
+    });
 
     if (next.size === 0) {
       this.cancelRippleAnimation();
@@ -834,8 +846,11 @@ export class KeypointOverlay
     this.rippleAnimationFrameId = requestAnimationFrame(() => {
       this.rippleAnimationFrameId = null;
       if (this.ripplePointIds.size > 0) {
+        console.log("[ripple] rAF tick — markDirty + reschedule");
         this.markDirty();
         this.scheduleRippleAnimation();
+      } else {
+        console.log("[ripple] rAF tick — set empty, stopping");
       }
     });
   }

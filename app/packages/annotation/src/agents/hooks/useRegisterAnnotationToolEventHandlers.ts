@@ -54,18 +54,31 @@ export const useRegisterAnnotationToolEventHandlers = () => {
         // Pulse all current prompt points while inference is in flight so the
         // user sees that their click triggered work.
         const ids = pointOverlay?.getPointIds() ?? [];
+        console.log("[ripple] inference effect fired", {
+          hasOverlay: !!pointOverlay,
+          pointIds: ids,
+          hasAgent: !!agent,
+        });
         if (ids.length > 0) {
+          console.log("[ripple] starting ripple on", ids);
           pointOverlay?.setRipplePointIds(ids);
         }
 
         agent
           ?.infer(labelId)
           .then((res) => {
+            console.log("[ripple] inference resolved", {
+              hasRes: !!res,
+              cancelled,
+            });
             if (res && !cancelled) {
               applyInferenceResult(res);
             }
           })
           .finally(() => {
+            console.log("[ripple] inference finally — clearing ripple", {
+              cancelled,
+            });
             if (!cancelled) {
               pointOverlay?.clearRipple();
             }
