@@ -1,5 +1,6 @@
 import {
   KeypointOverlay,
+  RIPPLE_VISIBLE_MS,
   UNDEFINED_LIGHTER_SCENE_ID,
   useLighter,
   useLighterEventHandler,
@@ -7,9 +8,6 @@ import {
 import { useToolsState } from "./useToolsContext";
 import { NEGATIVE_POINT_VARIANT, usePointSelection } from "./usePointSelection";
 import { useCallback } from "react";
-
-/** Minimum time the ripple ring stays on a freshly-placed point. */
-const RIPPLE_VISIBLE_MS = 1200;
 
 /**
  * Hook which registers event handlers for the positive/negative point

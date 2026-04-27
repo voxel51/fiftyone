@@ -64,6 +64,11 @@ export const KEYPOINT_HIT_RADIUS = 10;
 export const PREVIEW_LINE_OPACITY = 0.6;
 
 /**
+ * Minimum time the ripple ring stays on a freshly-placed keypoint.
+ */
+export const RIPPLE_VISIBLE_MS = 1200;
+
+/**
  * Opacity of selected bounding boxes
  */
 export const SELECTED_ALPHA = 0.1;

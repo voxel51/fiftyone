@@ -94,3 +94,6 @@ export type {
 } from "./types";
 
 export { getOverlayColor } from "./utils/colorMapping";
+
+// Constants
+export { RIPPLE_VISIBLE_MS } from "./constants";
