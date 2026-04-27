@@ -142,6 +142,10 @@ class AttributeSpec:
         values: optional list of allowed values
         when: optional list of :class:`When` conditions controlling when
             this attribute is visible or field overrides
+        read_only: optional flag marking the attribute as non-editable
+        default: optional default value (type matches ``type``)
+        range: optional ``[min, max]`` for numeric-with-slider components
+        precision: optional decimal places for float-with-text components
 
     Example::
 
@@ -159,6 +163,10 @@ class AttributeSpec:
     component: str
     values: Optional[list] = None
     when: Optional[list[When]] = None
+    read_only: Optional[bool] = None
+    default: Any = None
+    range: Optional[list] = None
+    precision: Optional[int] = None
 
     def __post_init__(self) -> None:
         invalid_fields = [
@@ -184,6 +192,10 @@ class AttributeSpec:
             "component": self.component,
         }
         attr_insert_to_dict(d, "values", self)
+        attr_insert_to_dict(d, "read_only", self)
+        attr_insert_to_dict(d, "default", self)
+        attr_insert_to_dict(d, "range", self)
+        attr_insert_to_dict(d, "precision", self)
         if self.when is not None:
             d["when"] = [w.to_dict() for w in self.when]
         return d
@@ -218,6 +230,10 @@ class AttributeSpec:
             component=d["component"],
             values=values,
             when=when,
+            read_only=d.get("read_only"),
+            default=d.get("default"),
+            range=d.get("range"),
+            precision=d.get("precision"),
         )
 
     def __repr__(self) -> str:
