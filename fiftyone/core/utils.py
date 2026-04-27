@@ -3407,7 +3407,7 @@ async def create_response(response: dict):
     )
 
 
-def walk_safe(top, topdown=True, onerror=None, follow_symlinks=False):
+def walk_safe(top, topdown=True, on_error=None, follow_symlinks=False):
     """Walk a directory tree like :func:`os.walk`, with safe symlink handling.
 
     Visited directories are tracked by :func:`os.path.realpath`, so each real
@@ -3419,7 +3419,7 @@ def walk_safe(top, topdown=True, onerror=None, follow_symlinks=False):
         top: root directory to walk
         topdown (True): if ``True``, yield a directory before its subdirectories;
             if ``False``, yield after subdirectories (same as :func:`os.walk`)
-        onerror (None): optional callable, ``onerror(OSError)``, invoked when
+        on_error (None): optional callable, ``on_error(OSError)``, invoked when
             :func:`os.listdir` fails
         follow_symlinks (False): if ``False``, symlinks to directories appear in
             ``dirnames`` but are not descended into (same as
@@ -3445,8 +3445,8 @@ def walk_safe(top, topdown=True, onerror=None, follow_symlinks=False):
         try:
             names = os.listdir(dirpath)
         except OSError as err:
-            if onerror is not None:
-                onerror(err)
+            if on_error is not None:
+                on_error(err)
             return
 
         dirnames = []
