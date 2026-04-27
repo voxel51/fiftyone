@@ -130,6 +130,31 @@ def build_plugin_contexts(enabled=True):
     return plugin_contexts
 
 
+@plugins_cache
+def get_plugin_context(plugin_name):
+    """Returns a registered :class:`PluginContext` for the named plugin.
+
+    The result is memoized when ``fo.config.plugins_cache_enabled`` is True
+    so that repeated lookups across registries reuse the same context. Any
+    errors during registration are captured on the returned context's
+    ``errors`` attribute rather than raised.
+
+    Args:
+        plugin_name: the plugin name
+
+    Returns:
+        a :class:`PluginContext`, or None if the plugin cannot be found
+    """
+    try:
+        plugin_def = fop.get_plugin(plugin_name)
+    except Exception:
+        return None
+
+    pctx = PluginContext(plugin_def)
+    pctx.register_all()
+    return pctx
+
+
 class PluginContext(object):
     """Context that represents a plugin and the Python objects it creates.
 

@@ -23,6 +23,7 @@ from .executor import (
 )
 from .message import GeneratedMessage
 from .permissions import PermissionedOperatorRegistry
+from .registry import use_registry
 from .utils import is_method_overridden, create_operator_response
 from .operator import Operator
 
@@ -44,25 +45,28 @@ class ListOperators(HTTPEndpoint):
         registry = await PermissionedOperatorRegistry.from_list_request(
             request, dataset_ids=dataset_ids
         )
-        operators_as_json = []
-        for operator in get_operators(registry):
-            serialized_op = operator.to_json()
-            config = serialized_op["config"]
-            skip_input = not is_method_overridden(
-                Operator, operator, "resolve_input"
-            )
-            skip_output = not is_method_overridden(
-                Operator, operator, "resolve_output"
-            )
-            config["skip_input"] = skip_input
-            config["skip_output"] = skip_output
-            config["can_execute"] = registry.can_execute(serialized_op["uri"])
-            operators_as_json.append(serialized_op)
+        with use_registry(registry):
+            operators_as_json = []
+            for operator in get_operators(registry):
+                serialized_op = operator.to_json()
+                config = serialized_op["config"]
+                skip_input = not is_method_overridden(
+                    Operator, operator, "resolve_input"
+                )
+                skip_output = not is_method_overridden(
+                    Operator, operator, "resolve_output"
+                )
+                config["skip_input"] = skip_input
+                config["skip_output"] = skip_output
+                config["can_execute"] = registry.can_execute(
+                    serialized_op["uri"]
+                )
+                operators_as_json.append(serialized_op)
 
-        return {
-            "operators": operators_as_json,
-            "errors": registry.list_errors(),
-        }
+            return {
+                "operators": operators_as_json,
+                "errors": registry.list_errors(),
+            }
 
 
 class ResolvePlacements(HTTPEndpoint):
@@ -73,18 +77,19 @@ class ResolvePlacements(HTTPEndpoint):
         registry = await PermissionedOperatorRegistry.from_exec_request(
             request, dataset_ids=dataset_ids
         )
-        placements = []
-        for operator in get_operators(registry):
-            placement = resolve_placement(operator, data)
-            if placement is not None:
-                placements.append(
-                    {
-                        "operator_uri": operator.uri,
-                        "placement": placement.to_json(),
-                    }
-                )
+        with use_registry(registry):
+            placements = []
+            for operator in get_operators(registry):
+                placement = resolve_placement(operator, data)
+                if placement is not None:
+                    placements.append(
+                        {
+                            "operator_uri": operator.uri,
+                            "placement": placement.to_json(),
+                        }
+                    )
 
-        return {"placements": placements}
+            return {"placements": placements}
 
 
 class ExecuteOperator(HTTPEndpoint):
@@ -105,19 +110,21 @@ class ExecuteOperator(HTTPEndpoint):
             registry = await PermissionedOperatorRegistry.from_exec_request(
                 request, dataset_ids=dataset_ids
             )
-            if registry.can_execute(operator_uri) is False:
-                return create_permission_error(operator_uri)
+            with use_registry(registry):
+                if registry.can_execute(operator_uri) is False:
+                    return create_permission_error(operator_uri)
 
-            if registry.operator_exists(operator_uri) is False:
-                error_detail = {
-                    "message": "Operator '%s' does not exist" % operator_uri
-                    or "None",
-                    "loading_errors": registry.list_errors(),
-                }
-                raise HTTPException(status_code=404, detail=error_detail)
+                if registry.operator_exists(operator_uri) is False:
+                    error_detail = {
+                        "message": "Operator '%s' does not exist"
+                        % operator_uri
+                        or "None",
+                        "loading_errors": registry.list_errors(),
+                    }
+                    raise HTTPException(status_code=404, detail=error_detail)
 
-            result = await execute_or_delegate_operator(operator_uri, data)
-            return await create_operator_response(result)
+                result = await execute_or_delegate_operator(operator_uri, data)
+                return await create_operator_response(result)
 
 
 def create_response_generator(generator):
@@ -154,37 +161,38 @@ class ExecuteOperatorAsGenerator(HTTPEndpoint):
         registry = await PermissionedOperatorRegistry.from_exec_request(
             request, dataset_ids=dataset_ids
         )
-        if registry.can_execute(operator_uri) is False:
-            return create_permission_error(operator_uri)
+        with use_registry(registry):
+            if registry.can_execute(operator_uri) is False:
+                return create_permission_error(operator_uri)
 
-        if registry.operator_exists(operator_uri) is False:
-            error_detail = {
-                "message": "Operator '%s' does not exist" % operator_uri
-                or "None",
-                "loading_errors": registry.list_errors(),
-            }
-            raise HTTPException(status_code=404, detail=error_detail)
+            if registry.operator_exists(operator_uri) is False:
+                error_detail = {
+                    "message": "Operator '%s' does not exist" % operator_uri
+                    or "None",
+                    "loading_errors": registry.list_errors(),
+                }
+                raise HTTPException(status_code=404, detail=error_detail)
 
-        execution_result = await execute_or_delegate_operator(
-            operator_uri, data
-        )
-        if execution_result.is_generator:
-            result = execution_result.result
-            generator = (
-                create_response_async_generator(result)
-                if isinstance(result, types.AsyncGeneratorType)
-                else create_response_generator(result)
+            execution_result = await execute_or_delegate_operator(
+                operator_uri, data
             )
-            return StreamingResponse(
-                generator,
-                media_type="application/json",
-                headers={
-                    "Cache-Control": "no-cache, no-transform",
-                    "X-Accel-Buffering": "no",
-                },
-            )
-        else:
-            return execution_result.to_json()
+            if execution_result.is_generator:
+                result = execution_result.result
+                generator = (
+                    create_response_async_generator(result)
+                    if isinstance(result, types.AsyncGeneratorType)
+                    else create_response_generator(result)
+                )
+                return StreamingResponse(
+                    generator,
+                    media_type="application/json",
+                    headers={
+                        "Cache-Control": "no-cache, no-transform",
+                        "X-Accel-Buffering": "no",
+                    },
+                )
+            else:
+                return execution_result.to_json()
 
 
 class ResolveType(HTTPEndpoint):
@@ -199,18 +207,19 @@ class ResolveType(HTTPEndpoint):
         registry = await PermissionedOperatorRegistry.from_exec_request(
             request, dataset_ids=dataset_ids
         )
-        if registry.can_execute(operator_uri) is False:
-            return create_permission_error(operator_uri)
+        with use_registry(registry):
+            if registry.can_execute(operator_uri) is False:
+                return create_permission_error(operator_uri)
 
-        if registry.operator_exists(operator_uri) is False:
-            error_detail = {
-                "message": "Operator '%s' does not exist" % operator_uri,
-                "loading_errors": registry.list_errors(),
-            }
-            raise HTTPException(status_code=404, detail=error_detail)
+            if registry.operator_exists(operator_uri) is False:
+                error_detail = {
+                    "message": "Operator '%s' does not exist" % operator_uri,
+                    "loading_errors": registry.list_errors(),
+                }
+                raise HTTPException(status_code=404, detail=error_detail)
 
-        result = await resolve_type(registry, operator_uri, data)
-        return result.to_json() if result else {}
+            result = await resolve_type(registry, operator_uri, data)
+            return result.to_json() if result else {}
 
 
 class ResolveExecutionOptions(HTTPEndpoint):
@@ -225,18 +234,21 @@ class ResolveExecutionOptions(HTTPEndpoint):
         registry = await PermissionedOperatorRegistry.from_exec_request(
             request, dataset_ids=dataset_ids
         )
-        if registry.can_execute(operator_uri) is False:
-            return create_permission_error(operator_uri)
+        with use_registry(registry):
+            if registry.can_execute(operator_uri) is False:
+                return create_permission_error(operator_uri)
 
-        if registry.operator_exists(operator_uri) is False:
-            error_detail = {
-                "message": "Operator '%s' does not exist" % operator_uri,
-                "loading_errors": registry.list_errors(),
-            }
-            raise HTTPException(status_code=404, detail=error_detail)
+            if registry.operator_exists(operator_uri) is False:
+                error_detail = {
+                    "message": "Operator '%s' does not exist" % operator_uri,
+                    "loading_errors": registry.list_errors(),
+                }
+                raise HTTPException(status_code=404, detail=error_detail)
 
-        result = await resolve_execution_options(registry, operator_uri, data)
-        return result.to_dict() if result else {}
+            result = await resolve_execution_options(
+                registry, operator_uri, data
+            )
+            return result.to_dict() if result else {}
 
 
 class SubscribeToExecutionStoreAsOperator(HTTPEndpoint):
@@ -251,24 +263,25 @@ class SubscribeToExecutionStoreAsOperator(HTTPEndpoint):
         registry = await PermissionedOperatorRegistry.from_exec_request(
             request, dataset_ids=dataset_ids
         )
-        if registry.can_execute(operator_uri) is False:
-            return create_permission_error(operator_uri)
+        with use_registry(registry):
+            if registry.can_execute(operator_uri) is False:
+                return create_permission_error(operator_uri)
 
-        if registry.operator_exists(operator_uri) is False:
-            error_detail = {
-                "message": "Operator '%s' does not exist" % operator_uri,
-                "loading_errors": registry.list_errors(),
-            }
-            raise HTTPException(status_code=404, detail=error_detail)
+            if registry.operator_exists(operator_uri) is False:
+                error_detail = {
+                    "message": "Operator '%s' does not exist" % operator_uri,
+                    "loading_errors": registry.list_errors(),
+                }
+                raise HTTPException(status_code=404, detail=error_detail)
 
-        execution_result = await execute_or_delegate_operator(
-            operator_uri, data
-        )
+            execution_result = await execute_or_delegate_operator(
+                operator_uri, data
+            )
 
-        if execution_result.is_sse:
-            return execution_result.result
-        else:
-            return execution_result.to_json()
+            if execution_result.is_sse:
+                return execution_result.result
+            else:
+                return execution_result.to_json()
 
 
 OperatorRoutes = [

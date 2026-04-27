@@ -9,7 +9,6 @@ FiftyOne operation execution tests.
 import copy
 import unittest
 from unittest import mock
-from unittest.mock import patch
 
 import bson
 import pytest
@@ -216,10 +215,34 @@ class EchoOperator(Operator):
         return {"message": ctx.params.get("message", None)}
 
 
+def _install_fake_plugin(monkeypatch, plugin_name, operators):
+    """Wires up fop.list_plugins + fopc.get_plugin_context so an
+    :class:`OperatorRegistry` resolves ``plugin_name/<op.name>`` URIs to
+    the given operator instances.
+    """
+    pd = mock.MagicMock()
+    pd.name = plugin_name
+    pd.operators = [op.config.name for op in operators]
+    for op in operators:
+        op.plugin_name = plugin_name
+
+    pctx = mock.MagicMock(instances=list(operators), errors=[])
+
+    monkeypatch.setattr(
+        "fiftyone.operators.registry.fop.list_plugins",
+        lambda enabled=True, builtin="all": [pd],
+    )
+    monkeypatch.setattr(
+        "fiftyone.operators.registry.fopc.get_plugin_context",
+        lambda name: pctx if name == plugin_name else None,
+    )
+
+
 @pytest.mark.asyncio
-@patch("fiftyone.operators.registry.OperatorRegistry.list_operators")
-async def test_execute_or_delegate_operator(list_operators):
-    list_operators.return_value = [EchoOperator(_builtin=True)]
+async def test_execute_or_delegate_operator(monkeypatch):
+    _install_fake_plugin(
+        monkeypatch, "@voxel51/operators", [EchoOperator(_builtin=True)]
+    )
 
     request_params = {
         "dataset_name": "test_dataset",
@@ -235,9 +258,10 @@ async def test_execute_or_delegate_operator(list_operators):
 
 
 @pytest.mark.asyncio
-@patch("fiftyone.operators.registry.OperatorRegistry.list_operators")
-async def test_delegate_operator(list_operators):
-    list_operators.return_value = [EchoOperator(_builtin=True)]
+async def test_delegate_operator(monkeypatch):
+    _install_fake_plugin(
+        monkeypatch, "@voxel51/operators", [EchoOperator(_builtin=True)]
+    )
 
     request_params = {
         "dataset_name": "test_dataset",
@@ -302,8 +326,8 @@ class TestLabelSelectionStyle(unittest.TestCase):
         self.assertEqual(ctx.selected_labels[0]["type"], "alt")
 
 
-@patch("fiftyone.operators.registry.OperatorRegistry.list_operators")
 class TestPipeline:
+    PLUGIN = "@voxel51/operators"
     PREFIX = "@voxel51/operators/"
 
     def record_request_params(self, *args, **kwargs):
@@ -340,8 +364,13 @@ class TestPipeline:
         )(_builtin=True)
         return pipeline_operator, operators
 
+    def _install(self, monkeypatch, pipeline_operator, operators):
+        _install_fake_plugin(
+            monkeypatch, self.PLUGIN, [pipeline_operator] + list(operators)
+        )
+
     @pytest.mark.asyncio
-    async def test_execute_pipeline(self, list_operators, setup_operators):
+    async def test_execute_pipeline(self, setup_operators, monkeypatch):
         pipeline = types.Pipeline()
         pipeline.stage(
             self.PREFIX + "op0",
@@ -351,7 +380,7 @@ class TestPipeline:
         pipeline.stage(self.PREFIX + "op1", name="stage2", params={})
 
         pipeline_operator, operators = setup_operators
-        list_operators.return_value = [pipeline_operator] + operators
+        self._install(monkeypatch, pipeline_operator, operators)
         pipeline_operator.resolve_pipeline.return_value = pipeline
 
         #####
@@ -378,9 +407,7 @@ class TestPipeline:
         assert result.error is None
 
     @pytest.mark.asyncio
-    async def test_execute_pipeline_fail(
-        self, list_operators, setup_operators
-    ):
+    async def test_execute_pipeline_fail(self, setup_operators, monkeypatch):
         pipeline = types.Pipeline()
         pipeline.stage(
             self.PREFIX + "op0",
@@ -390,7 +417,7 @@ class TestPipeline:
         pipeline.stage(self.PREFIX + "op1", name="stage2", params={})
 
         pipeline_operator, operators = setup_operators
-        list_operators.return_value = [pipeline_operator] + operators
+        self._install(monkeypatch, pipeline_operator, operators)
         pipeline_operator.resolve_pipeline.return_value = pipeline
         the_error = ValueError("Operator failed")
         operators[0].execute.side_effect = the_error
@@ -417,7 +444,7 @@ class TestPipeline:
 
     @pytest.mark.asyncio
     async def test_execute_pipeline_operator_no_exist(
-        self, list_operators, setup_operators
+        self, setup_operators, monkeypatch
     ):
         pipeline = types.Pipeline()
         pipeline.stage(
@@ -430,7 +457,7 @@ class TestPipeline:
         )
 
         pipeline_operator, operators = setup_operators
-        list_operators.return_value = [pipeline_operator] + operators
+        self._install(monkeypatch, pipeline_operator, operators)
         pipeline_operator.resolve_pipeline.return_value = pipeline
 
         #####
@@ -456,7 +483,7 @@ class TestPipeline:
 
     @pytest.mark.asyncio
     async def test_execute_pipeline_operator_fail_always_run(
-        self, list_operators, setup_operators
+        self, setup_operators, monkeypatch
     ):
         pipeline = types.Pipeline()
         pipeline.stage(
@@ -473,7 +500,7 @@ class TestPipeline:
         )
 
         pipeline_operator, operators = setup_operators
-        list_operators.return_value = [pipeline_operator] + operators
+        self._install(monkeypatch, pipeline_operator, operators)
         pipeline_operator.resolve_pipeline.return_value = pipeline
         operators[0].execute.side_effect = ValueError("Operator failed")
 
@@ -506,7 +533,7 @@ class TestPipeline:
 
     @pytest.mark.asyncio
     async def test_pipeline_resolves_rerunnable(
-        self, list_operators, setup_operators
+        self, setup_operators, monkeypatch
     ):
         pipeline = types.Pipeline()
         pipeline.stage(
@@ -527,7 +554,7 @@ class TestPipeline:
         operators[1].config.rerunnable = False
         operators[2].config.rerunnable = True
 
-        list_operators.return_value = [pipeline_operator] + operators
+        self._install(monkeypatch, pipeline_operator, operators)
         pipeline_operator.resolve_pipeline.return_value = pipeline
 
         #####

@@ -32,7 +32,11 @@ from fiftyone.operators.message import GeneratedMessage, MessageType
 from fiftyone.operators.operations import Operations
 from fiftyone.operators.operator import PipelineOperator
 from fiftyone.operators.panel import PanelRef
-from fiftyone.operators.registry import OperatorRegistry
+from fiftyone.operators.registry import (
+    OperatorRegistry,
+    get_current_registry,
+    use_registry,
+)
 from fiftyone.operators.store import ExecutionStore
 import fiftyone.operators.types as types
 from fiftyone.plugins.secrets import PluginSecretsResolver, SecretsDictionary
@@ -180,9 +184,14 @@ def execute_operator(operator_uri, ctx=None, **kwargs):
             operation or scheduling a delegated operation
     """
     request_params = _parse_ctx(ctx=ctx, **kwargs)
-    coroutine = execute_or_delegate_operator(
-        operator_uri, request_params, exhaust=True
-    )
+
+    async def _run():
+        # Bind a single registry so all internal lookups across the call
+        # chain share one lazily-populated set of plugin contexts
+        with use_registry(OperatorRegistry()):
+            return await execute_or_delegate_operator(
+                operator_uri, request_params, exhaust=True
+            )
 
     try:
         # Some contexts like notebooks already have event loops running, so we
@@ -195,9 +204,9 @@ def execute_operator(operator_uri, ctx=None, **kwargs):
         # @todo is it possible to await result here?
         # Sadly, run_until_complete() is not allowed in Jupyter notebooks
         # https://nocomplexity.com/documents/jupyterlab/tip-asyncio.html
-        result = loop.create_task(coroutine)
+        result = loop.create_task(_run())
     else:
-        result = asyncio.run(coroutine)
+        result = asyncio.run(_run())
         result.raise_exceptions()
 
     return result
@@ -308,7 +317,7 @@ async def execute_or_delegate_operator(
                     raise TypeError(
                         "Pipeline stages must be of type PipelineStage"
                     )
-                registry = OperatorRegistry()
+                registry = get_current_registry()
                 for stage in pipeline.stages:
                     if stage.rerunnable is None:
                         child = registry.get_operator(stage.operator_uri)
@@ -421,7 +430,7 @@ async def prepare_operator_executor(
     delegated_operation_id=None,
     pipeline_ctx=None,
 ):
-    registry = OperatorRegistry()
+    registry = get_current_registry()
     if registry.operator_exists(operator_uri) is False:
         raise ValueError("Operator '%s' does not exist" % operator_uri)
 
@@ -486,7 +495,7 @@ async def do_execute_pipeline(pipeline, ctx):
         a tuple of (error, error message string) if an error occurred, or None.
         Pipelines do not return results directly
     """
-    registry = OperatorRegistry()
+    registry = get_current_registry()
     pipeline_stages = pipeline.stages or []
     base_request_params = ctx.request_params
     ctx.pipeline = PipelineExecutionContext(
