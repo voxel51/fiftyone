@@ -107,7 +107,9 @@ Snapshots
 Service account management
 --------------------------
 
-Service accounts can be managed programmatically using the SDK:
+Service accounts can be managed programmatically using the SDK. For an
+overview of service accounts, their roles, and UI management, see
+:ref:`Service accounts <enterprise-service-accounts>`.
 
 .. code-block:: python
 

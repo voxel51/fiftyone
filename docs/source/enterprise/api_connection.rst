@@ -60,7 +60,7 @@ Enterprise the same way as human users — by setting ``FIFTYONE_API_URI`` and
 .. code-block:: shell
 
    export FIFTYONE_API_URI=XXXXXXXX
-   export FIFTYONE_API_KEY=<service-account-api-key>
+   export FIFTYONE_API_KEY="your-service-account-api-key"
 
 .. warning::
 
