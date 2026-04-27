@@ -827,8 +827,10 @@ export class KeypointOverlay
         }
       }
 
+      // Always mark dirty so the frame where the last ripple expires
+      // gets a final repaint that erases its trailing ring.
+      this.markDirty();
       if (this.ripplePointIds.size > 0) {
-        this.markDirty();
         this.scheduleRippleAnimation();
       }
     });
