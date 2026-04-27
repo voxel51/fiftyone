@@ -6,11 +6,13 @@ Similarity search panel constants.
 |
 """
 
+from enum import Enum
+
 STORE_NAME = "similarity_search_panel"
 
 
-class RunStatus:
-    """Constants for similarity search run statuses."""
+class RunStatus(str, Enum):
+    """Statuses a similarity search run can be in."""
 
     PENDING = "pending"
     RUNNING = "running"
@@ -18,8 +20,9 @@ class RunStatus:
     FAILED = "failed"
 
 
-class QueryType:
-    """Constants for similarity query types."""
+class QueryType(str, Enum):
+    """Types of similarity queries."""
 
     TEXT = "text"
     IMAGE = "image"
+    UPLOAD = "upload"

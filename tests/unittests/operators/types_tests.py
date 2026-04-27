@@ -132,3 +132,22 @@ class TestPipelineType(unittest.TestCase):
         )
         new_obj = types.PipelineRunInfo.from_json(dict_rep)
         self.assertEqual(new_obj, run_info)
+
+
+class TestTextFieldViewType(unittest.TestCase):
+    def test_serialize_multiline(self):
+        view = types.TextFieldView(multiline=True, rows=5)
+
+        dict_rep = view.to_json()
+
+        self.assertTrue(dict_rep["multiline"])
+        self.assertEqual(dict_rep["rows"], 5)
+
+    def test_serialize_multiline_after_define_property_clone(self):
+        obj = types.Object()
+        obj.str("notes", view=types.TextFieldView(multiline=True, rows=5))
+
+        view_json = obj.to_json()["properties"]["notes"]["view"]
+
+        self.assertTrue(view_json["multiline"])
+        self.assertEqual(view_json["rows"], 5)

@@ -1,4 +1,4 @@
-import { Page, expect } from "src/oss/fixtures";
+import { expect, Page } from "src/oss/fixtures";
 import type { EventUtils } from "src/shared/event-utils";
 import { ToolbarPom } from "./toolbar";
 import { TooltipPom } from "./tooltip";
@@ -145,13 +145,6 @@ export class SampleCanvasPom {
   }
 
   /**
-   * Wait for the cursor to change
-   */
-  async waitForCursorChange() {
-    await this.eventUtils.getEventReceivedPromiseForPredicate("cursor-change");
-  }
-
-  /**
    * Move the mouse to the right edge of the viewport (e.g. to avoid tooltips in
    * screenshots).
    */
@@ -204,7 +197,6 @@ class SampleCanvasAsserter {
     await this.sampleCanvasPom.tooltip.assert.isVisible(false);
     await this.sampleCanvasPom.moveMouseToViewportEdge();
     await this.sampleCanvasPom.toolbar.assert.isVisible(false);
-    await expect(this.sampleCanvasPom.locator).toBeVisible();
     await expect(this.sampleCanvasPom.locator).toHaveScreenshot(name, {
       maxDiffPixelRatio: 0.0,
     });

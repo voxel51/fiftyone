@@ -64,10 +64,8 @@ function postError(id: number, type: string, error: string): void {
 const IMAGE_MEAN = [0.485, 0.456, 0.406];
 const IMAGE_STD = [0.229, 0.224, 0.225];
 
-// SAM2 Tiny model weights (HuggingFace-hosted, pre-optimized ONNX)
-// Meta (Apache 2.0, https://huggingface.co/facebook/sam2-hiera-tiny)
-// SharpAI (Apache 2.0, ONNX conversion + ORT optimization, https://huggingface.co/SharpAI/sam2-hiera-tiny-onnx)
-const HF_BASE = "https://huggingface.co/SharpAI/sam2-hiera-tiny-onnx/resolve/main";
+// SAM2 Tiny model weights (pre-optimized ONNX)
+const HF_BASE = "https://models-cdn.voxel51.com/sam2";
 const ENCODER_URL = `${HF_BASE}/encoder.with_runtime_opt.ort`;
 const DECODER_URL = `${HF_BASE}/decoder.onnx`;
 
@@ -78,8 +76,14 @@ const DECODER_URL = `${HF_BASE}/decoder.onnx`;
 const CACHE_PREFIX = `${ENCODER_URL}:${SAM2_INPUT_SIZE}:`;
 
 const isCOI = typeof crossOriginIsolated !== "undefined" && crossOriginIsolated;
-ort.env.wasm.numThreads = isCOI ? 4 : 1;
+ort.env.wasm.numThreads = isCOI ? navigator.hardwareConcurrency || 4 : 1;
 ort.env.wasm.simd = true;
+
+// Dev: optimizeDeps.exclude lets ort use its embedded WASM bundle.
+// Prod: worker bundling strips the embedded WASM, so point to the emitted files.
+if (!import.meta.env?.DEV && import.meta.env?.ORT_WASM_PATH) {
+  ort.env.wasm.wasmPaths = import.meta.env.ORT_WASM_PATH;
+}
 
 let encoderSession: ort.InferenceSession | null = null;
 let decoderSession: ort.InferenceSession | null = null;

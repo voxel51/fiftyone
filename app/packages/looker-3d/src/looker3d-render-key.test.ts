@@ -8,7 +8,7 @@ describe("getLooker3dRenderKey", () => {
         modalSampleId: "camera-front-id",
         activeFo3dSlice: null,
       })
-    ).toBe("camera-front-id");
+    ).toBe("camera-front-id:default");
   });
 
   it("changes the key when the rendered fo3d slice changes", () => {
@@ -17,6 +17,16 @@ describe("getLooker3dRenderKey", () => {
         modalSampleId: "camera-front-id",
         activeFo3dSlice: "scene-left",
       })
-    ).toBe("camera-front-id:scene-left");
+    ).toBe("camera-front-id:scene-left:default");
+  });
+
+  it("changes the key when the render context changes", () => {
+    expect(
+      getLooker3dRenderKey({
+        modalSampleId: "camera-front-id",
+        activeFo3dSlice: "scene-left",
+        renderContext: "annotate-focused",
+      })
+    ).toBe("camera-front-id:scene-left:annotate-focused");
   });
 });

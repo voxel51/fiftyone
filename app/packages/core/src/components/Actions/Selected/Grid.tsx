@@ -23,7 +23,7 @@ export default ({
         ...cur,
         {
           _cls: `fiftyone.core.stages.${name}`,
-          kwargs: [["sample_ids", [...selected]]],
+          kwargs: [["sample_ids", [...selected.keys()]]],
         },
       ]);
       close();

@@ -38,7 +38,11 @@ export { default as useScreenshot } from "./useScreenshot";
 export { default as useSelectSample } from "./useSelectSample";
 export { default as useSessionSpaces } from "./useSessionSpaces";
 export { default as useSetDataset } from "./useSetDataset";
-export { default as useSetExpandedSample } from "./useSetExpandedSample";
+export {
+  default as useSetExpandedSample,
+  SET_EXPANDED_SAMPLE_SOURCE_NAVIGATION,
+  SET_EXPANDED_SAMPLE_SOURCE_OPEN,
+} from "./useSetExpandedSample";
 export { default as useSetGroupSlice } from "./useSetGroupSlice";
 export { default as useSetModalState } from "./useSetModalState";
 export { default as useSetSelected } from "./useSetSelected";

@@ -548,6 +548,21 @@ type Mutation {
     session: String
     selected: [String!]!
   ): Boolean!
+  setSelectedSamples(
+    subscription: String!
+    session: String
+    selectedSamples: JSON!
+  ): Boolean!
+  setSampleSelectionStyle(
+    subscription: String!
+    session: String
+    style: JSON!
+  ): Boolean!
+  setLabelSelectionStyle(
+    subscription: String!
+    session: String
+    style: JSON!
+  ): Boolean!
   setSelectedLabels(
     subscription: String!
     session: String
@@ -770,6 +785,7 @@ input SelectedLabel {
   sampleId: ID!
   frameNumber: Int = null
   instanceId: ID = null
+  type: String = null
 }
 
 type SidebarGroup {

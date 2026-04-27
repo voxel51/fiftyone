@@ -7,8 +7,12 @@ vi.mock("./useCanManageSchema", () => ({
   default: vi.fn(() => true),
 }));
 
-vi.mock("./useShowModal", () => ({
-  default: vi.fn(() => vi.fn()),
+vi.mock("./SchemaManager/hooks", () => ({
+  useSchemaManagerModal: vi.fn(() => ({
+    schemaManagerDisplayed: false,
+    openSchemaManager: vi.fn(),
+    closeSchemaManager: vi.fn(),
+  })),
 }));
 
 vi.mock("./RequiredFieldPrompt", () => ({
@@ -79,6 +83,22 @@ describe("ImportSchema", () => {
         ).toBeTruthy();
       }
     );
+
+    it("calls openSchemaManager when Add schema button is clicked", async () => {
+      const mockOpenSchemaManager = vi.fn();
+      const mod = await import("./SchemaManager/hooks");
+      vi.mocked(mod.useSchemaManagerModal).mockReturnValue({
+        schemaManagerDisplayed: false,
+        openSchemaManager: mockOpenSchemaManager,
+        closeSchemaManager: vi.fn(),
+      });
+
+      render(<ImportSchema disabled={false} />);
+
+      screen.getByRole("button", { name: /add schema/i }).click();
+
+      expect(mockOpenSchemaManager).toHaveBeenCalledOnce();
+    });
   });
 
   describe("RequiredFieldPrompt", () => {

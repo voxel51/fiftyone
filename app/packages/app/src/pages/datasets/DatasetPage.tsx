@@ -7,6 +7,7 @@ import {
 } from "@fiftyone/core";
 import "@fiftyone/embeddings";
 import "@fiftyone/map";
+import "@fiftyone/multimodal/inject";
 import { OperatorCore } from "@fiftyone/operators";
 import "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
@@ -19,6 +20,7 @@ import Nav from "../../components/Nav";
 import type { Route } from "../../routing";
 import style from "../index.module.css";
 import type { DatasetPageQuery } from "./__generated__/DatasetPageQuery.graphql";
+import { DatasetGridRendererFailover } from "./DatasetGridRendererFailover";
 
 const DatasetPageQueryNode = graphql`
   query DatasetPageQuery(
@@ -111,6 +113,7 @@ const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
   return (
     <Nav fragment={data} hasDataset={!isEmpty}>
       <div className={style.page} data-cy={"dataset-page"}>
+        <DatasetGridRendererFailover />
         {isEmpty ? (
           <Starter mode="ADD_SAMPLE" />
         ) : (

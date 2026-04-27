@@ -23,6 +23,7 @@ from custom_directives import (
     CustomImageLinkDirective,
     CustomGuidesCardDirective,
     CustomAnimatedCTADirective,
+    CustomUseCaseCardDirective,
 )
 from redirects import generate_redirects, generate_api_redirects
 
@@ -199,6 +200,7 @@ html_sidebars = {"**": ["algolia.html", "sidebar-nav"]}
 
 remove_from_toctrees = [
     "plugins/plugins_ecosystem/*",
+    "labs/labs_ecosystem/*",
     "model_zoo/models/*",
     "dataset_zoo/datasets/*",
     "dataset_zoo/datasets_hf/*",
@@ -299,3 +301,4 @@ def setup(app):
     app.add_directive("customimagelink", CustomImageLinkDirective)
     app.add_directive("customguidescard", CustomGuidesCardDirective)
     app.add_directive("customanimatedcta", CustomAnimatedCTADirective)
+    app.add_directive("customusecasecard", CustomUseCaseCardDirective)

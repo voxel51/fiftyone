@@ -2,12 +2,19 @@ import { AgentDescriptor, AgentRegistry } from "../registry";
 import { atom, useAtom } from "jotai";
 import { useCallback, useMemo } from "react";
 import { AnnotationAgent, InferenceResultProxy } from "../types";
+import { SAM2BrowserAnnotationAgent } from "../SAM2BrowserAnnotationAgent";
+import { BrowserAnnotationProvider } from "../../providers";
 
 /** Maps agent IDs to their {@link AgentDescriptor} entries. */
 type RegistryMap = Record<string, AgentDescriptor<InferenceResultProxy>>;
 
 const registryAtom = atom<RegistryMap>({
   // built-in agents defined statically
+  "sam2-tiny-onnx": {
+    id: "sam2-tiny-onnx",
+    label: "SAM2",
+    agent: new SAM2BrowserAnnotationAgent(new BrowserAnnotationProvider()),
+  },
 });
 
 /**

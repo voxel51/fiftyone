@@ -10,6 +10,7 @@ import {
   fieldSchema,
   ModalSample,
   modalSample,
+  selectedMediaField,
   State,
 } from "../recoil";
 
@@ -84,6 +85,14 @@ export const useModalSampleSchema = (): Schema =>
   useRecoilValue(fieldSchema({ space: State.SPACE.SAMPLE }));
 
 /**
+ * Hook to retrieve the selected media field for the modal view.
+ *
+ * @returns The selected media field state for the modal
+ */
+export const useSelectedMediaFieldModal = () =>
+  useRecoilValue(selectedMediaField(true));
+
+/**
  * Get and set the preferred annotation slice for grouped datasets.
  * Returns [preferredSlice, setPreferredSlice].
  */
@@ -97,4 +106,21 @@ export const useCurrentSampleId = () => {
   const loadable = useRecoilValueLoadable(currentSampleId);
 
   return loadable.state === "hasValue" ? loadable.contents : null;
+};
+
+/**
+ * Returns the current media path in the modal.
+ */
+export const useModalMediaPath = (): string | null => {
+  const sample = useModalSample();
+  const mediaField = useRecoilValue(selectedMediaField(true));
+
+  if (!sample) {
+    return null;
+  }
+
+  return Array.isArray(sample.urls)
+    ? sample.urls.find((u) => u.field === mediaField)?.url ??
+        sample.urls[0]?.url
+    : sample.urls[mediaField];
 };

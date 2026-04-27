@@ -118,6 +118,135 @@ npx playwright test --update-snapshots -g "description of my test"
 Note: `PYTHONPATH` and virtual env setup is done automatically.
 ```
 
+#### Creating Datasets
+
+Always use `DatasetFactory.createBlankDataset` when a test needs a FiftyOne
+dataset. It generates blank PNG images, inserts samples directly into the
+underlying MongoDB collection for performance, and applies any additional
+schema fields and saved views.
+
+```ts
+import { DatasetFactory } from "src/shared/dataset-factory";
+
+await DatasetFactory.createBlankDataset({
+    datasetName: "my-test-dataset",
+    numSamples: 5,
+    numbered: true,
+    schema: {
+        ground_truth: "Detection",
+        uniqueness: "FloatField",
+    },
+    // Optional: customize generated image size and fill color.
+    // Defaults to { fillColor: "white", width: 50, height: 50 }.
+    imageOptions: {
+        fillColor: "#ff0000",
+        width: 100,
+        height: 100,
+    },
+    withSampleData: ({ _id, filepath, index }, { createId }) => ({
+        // _id, filepath, index are already attached to the sample
+        ground_truth: {
+            _cls: "Detection",
+            label: "cat",
+            bounding_box: [0.1, 0.1, 0.5, 0.5],
+            confidence: 0.9,
+        },
+        uniqueness: 0.97,
+    }),
+});
+```
+
+Each sample is automatically assigned a stable, index-derived `_id` of the form
+`000000000000000000000000` (zero-padded 24-character hex). This makes it easy
+to reference samples by ID in assertions. Use the `indexToId` helper to derive
+an ID from a sample's index.
+
+```ts
+import { indexToId } from "src/shared/utils";
+
+const firstSampleId = indexToId(0); // "000000000000000000000000"
+```
+
+If your test is only concerned with modal features and doesn't need to exercise
+grid navigation, you can skip clicking through the grid by navigating directly
+to the dataset filtered to a single sample using its stable ID. Pass the ID as
+an `id` search param to `waitUntilGridVisible` — the modal will open
+immediately on that sample.
+
+```ts
+await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
+    searchParams: new URLSearchParams({ id: indexToId(0) }),
+});
+```
+
+#### Canvas Testing
+
+Canvas interactions must be driven imperatively using the keyboard and mouse
+methods on the `SampleCanvas` POM, which is attached to the `ModalPom` as
+`modal.sampleCanvas`. Do not attempt to use Playwright locators or
+accessibility queries against canvas elements — the canvas is a black box from
+the DOM's perspective.
+
+```ts
+// Move the pointer to a canvas-relative position (0–1 in both axes)
+await modal.sampleCanvas.move(0.5, 0.5);
+
+// Optionally, assert a cursor value change on move
+await modal.sampleCanvas.move(0.9, 0.9, "grab");
+
+// Move the pointer by a pixel offset relative to its current position
+await modal.sampleCanvas.movePixels(10, -5);
+await modal.sampleCanvas.movePixels(10, -5, "grab"); // with optional cursor assertion
+
+// Press and release the mouse button
+await modal.sampleCanvas.down();
+await modal.sampleCanvas.up();
+
+// Click or double-click at a position
+await modal.sampleCanvas.click(0.9, 0.9);
+await modal.sampleCanvas.dblclick(0.9, 0.9);
+```
+
+Since the canvas surface is opaque to the DOM, the only available signals for
+assertions are **screenshots** and **cursor values**. Use these to verify that
+an interaction had the expected effect.
+
+```ts
+// Assert the CSS cursor at the current pointer position
+await modal.sampleCanvas.assert.hasCursor("default");
+await modal.sampleCanvas.assert.hasCursor("nwse-resize");
+
+// Assert the canvas state via screenshot
+await modal.sampleCanvas.assert.hasScreenshot("my-test-state.png");
+
+// Assert the canvas type
+import { SampleCanvasType } from "src/oss/poms/modal/sample-canvas";
+await modal.sampleCanvas.assert.is(SampleCanvasType.LIGHTER);
+await modal.sampleCanvas.assert.is(SampleCanvasType.LOOKER);
+await modal.sampleCanvas.assert.is(SampleCanvasType.LOOKER3D);
+```
+
+When writing canvas tests, move the pointer to the right edge of the viewport
+before taking a screenshot to avoid hover states contaminating the baseline.
+
+```ts
+await modal.sampleCanvas.moveMouseToViewportEdge();
+```
+
+The `SampleCanvasPom` is intentionally kept free of semantic actions. Do not
+add methods that encode knowledge about specific features (e.g.
+`clickDetectionHandle` or `openQuickEdit`) — the sequence of keyboard and mouse
+actions capture the feature in the spec. The POM provides only primitive
+pointer and keyboard operations; the spec is where those primitives are
+composed into meaningful interactions.
+
+This keeps canvas testing uniform across media types. Whether a test is
+targeting an image, video, or 3D sample, the interactions are expressed the
+same way — `move`, `down`, `up`, `click`. Features may look different depending
+on the media type, but the testing approach is identical. Writing tests this
+way makes specs easier to read and collaborate on, since there is only one
+pattern to learn regardless of what is being tested.
+
 ### Known Issues
 
 #### Browser / Target has been closed

@@ -27,12 +27,12 @@ import { useErrorHandler } from "react-error-boundary";
 import { useRelayEnvironment } from "react-relay";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { dynamicGroupsElementCount, selectedMediaField } from "../recoil";
-import { selectedSamples } from "../recoil/atoms";
+import { selectedSamples, sampleSelectionStyle } from "../recoil/atoms";
 import * as dynamicGroupAtoms from "../recoil/dynamicGroups";
 import * as schemaAtoms from "../recoil/schema";
 import { datasetName, dynamicGroupsTargetFrameRate } from "../recoil/selectors";
 import { State } from "../recoil/types";
-import { getSampleSrc } from "../recoil/utils";
+import { getSampleSrc, resolveSelectionIcon } from "../recoil/utils";
 import * as viewAtoms from "../recoil/view";
 import { getNormalizedUrls } from "../utils";
 import { useOnShiftClickLabel } from "./useOnShiftClickLabel";
@@ -47,6 +47,7 @@ export default <T extends AbstractLooker<BaseState>>(
   const abortControllerRef = useRef(new AbortController());
   const environment = useRelayEnvironment();
   const selected = useRecoilValue(selectedSamples);
+  const style = useRecoilValue(sampleSelectionStyle);
   const isClip = useRecoilValue(viewAtoms.isClipsView);
   const isFrame = useRecoilValue(viewAtoms.isFramesView);
   const isPatch = useRecoilValue(viewAtoms.isPatchesView);
@@ -266,13 +267,21 @@ export default <T extends AbstractLooker<BaseState>>(
           } as ImaVidConfig;
         }
 
+        const isSelected = selected.has(sample._id);
+        const {
+          selectionType: sampleSelectionType,
+          selectionIcon: sampleSelectionIcon,
+        } = resolveSelectionIcon(selected, style, sample._id, isSelected);
+
         const looker = new create(
           sample,
           { ...config, symbol },
           {
             ...options,
             ...extra,
-            selected: selected.has(sample._id),
+            selected: isSelected,
+            selectionType: sampleSelectionType,
+            selectionIcon: sampleSelectionIcon,
             highlight: highlight?.(sample),
           }
         );
@@ -307,6 +316,7 @@ export default <T extends AbstractLooker<BaseState>>(
       options,
       shouldRenderImaVidLooker,
       selected,
+      style,
       thumbnail,
       view,
       getOnShiftClickLabelCallback,

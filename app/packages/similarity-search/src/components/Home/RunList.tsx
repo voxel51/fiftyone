@@ -4,6 +4,7 @@ import {
   Checkbox,
   Heading,
   HeadingLevel,
+  Icon,
   IconName,
   Justify,
   RichList,
@@ -17,10 +18,23 @@ import {
   Spacing,
   Variant,
 } from "@voxel51/voodo";
+import { EditableLabel } from "@fiftyone/components";
+import { FileUploadOutlined } from "../../mui";
 import { useCallback, useMemo, useState } from "react";
-import { BrainKeyConfig, SimilarityRun, RunFilterState } from "../../types";
+import {
+  BrainKeyConfig,
+  QueryType,
+  RunStatus,
+  SimilarityRun,
+  RunFilterState,
+} from "../../types";
 import { useSampleMedia } from "../../hooks/useSampleMedia";
-import { MIDDLE_DOT } from "../../constants";
+import {
+  HIGHLIGHT_STYLE,
+  MAX_RUN_NAME_LENGTH,
+  MIDDLE_DOT,
+  POINTER_STYLE,
+} from "../../constants";
 import { formatQuery, formatTime } from "../../utils";
 import StatusBadge from "./StatusBadge";
 import RunActions from "./RunActions";
@@ -28,6 +42,66 @@ import ExpandedThumbnails from "./ExpandedThumbnails";
 import FilterBar from "./FilterBar";
 import BulkActionBar from "./BulkActionBar";
 import { SelectAllRow, tooltipTextStyle } from "../styled";
+
+function QueryTypeIcon({ queryType }: { queryType: string }) {
+  if (queryType === QueryType.Upload) {
+    return <FileUploadOutlined sx={{ fontSize: 18 }} />;
+  }
+  return (
+    <Icon
+      name={
+        queryType === QueryType.Text ? IconName.Search : IconName.ImageSearch
+      }
+      size={Size.Xl}
+      color={TextColor.Primary}
+    />
+  );
+}
+
+function RunName({
+  name,
+  onRename,
+}: {
+  name: string;
+  onRename: (newName: string) => void;
+}) {
+  const [hovering, setHovering] = useState(false);
+  const isLong = name.length > MAX_RUN_NAME_LENGTH;
+
+  const handleSave = (newName: string) => {
+    const trimmed = newName?.trim();
+    if (trimmed && trimmed !== name) {
+      onRename(trimmed);
+    }
+  };
+
+  const label = (
+    <div
+      onMouseEnter={() => setHovering(true)}
+      onMouseLeave={() => setHovering(false)}
+      style={{ minWidth: 0 }}
+    >
+      <EditableLabel
+        label={name}
+        onSave={handleSave}
+        showEditIcon={hovering}
+        labelProps={{
+          sx: {
+            fontWeight: "bold",
+            fontSize: "0.9rem",
+            maxWidth: `${MAX_RUN_NAME_LENGTH}ch`,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          },
+        }}
+        title="Rename"
+      />
+    </div>
+  );
+
+  return isLong ? <Tooltip content={name}>{label}</Tooltip> : label;
+}
 
 type SelectionState = {
   selectMode: boolean;
@@ -49,6 +123,7 @@ type RunListProps = {
   onClone: (runId: string) => void;
   onDelete: (runId: string) => void;
   onBulkDelete: (runIds: string[]) => void;
+  onRename: (runId: string, newName: string) => void;
   onRefresh: () => void;
   onNewSearch: () => void;
   onSettings: () => void;
@@ -71,6 +146,7 @@ export default function RunList({
   onClone,
   onDelete,
   onBulkDelete,
+  onRename,
   onRefresh,
   onNewSearch,
   onSettings,
@@ -147,6 +223,16 @@ export default function RunList({
         id: run.run_id,
         data: {
           canSelect: selectMode,
+          onClick:
+            !selectMode && run.status === RunStatus.Completed
+              ? () => onApply(run.run_id)
+              : undefined,
+          style: {
+            ...(!selectMode && run.status === RunStatus.Completed
+              ? POINTER_STYLE
+              : {}),
+            ...(appliedRunId === run.run_id ? HIGHLIGHT_STYLE : {}),
+          },
           primaryContent: (
             <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
               <Stack
@@ -154,11 +240,13 @@ export default function RunList({
                 spacing={Spacing.Sm}
                 align={Align.Center}
               >
-                <Text variant={TextVariant.Md} style={{ fontWeight: "bold" }}>
-                  {run.run_name}
-                </Text>
+                <QueryTypeIcon queryType={run.query_type} />
+                <RunName
+                  name={run.run_name}
+                  onRename={(newName) => onRename(run.run_id, newName)}
+                />
                 <StatusBadge status={run.status} />
-                {run.status === "completed" && (
+                {run.status === RunStatus.Completed && (
                   <Text variant={TextVariant.Md} color={TextColor.Muted}>
                     {run.result_count} results
                   </Text>
@@ -171,9 +259,11 @@ export default function RunList({
               </Text>
               <Text variant={TextVariant.Md} color={TextColor.Muted}>
                 {formatTime(run.creation_time)}
-                {run.created_by ? ` by ${run.created_by}` : ""}
+                {run.created_by_name || run.created_by
+                  ? ` by ${run.created_by_name || run.created_by}`
+                  : ""}
               </Text>
-              {run.status === "failed" && run.status_details && (
+              {run.status === RunStatus.Failed && run.status_details && (
                 <Text variant={TextVariant.Md} color={TextColor.Destructive}>
                   {run.status_details}
                 </Text>
@@ -203,9 +293,11 @@ export default function RunList({
       selectMode,
       expandedRunIds,
       mergedMedia,
+      appliedRunId,
       onApply,
       onClone,
       onDelete,
+      onRename,
       handleToggleExpand,
     ]
   );

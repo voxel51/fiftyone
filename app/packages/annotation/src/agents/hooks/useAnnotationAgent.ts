@@ -1,8 +1,4 @@
-import {
-  DetectionAnnotationLabel,
-  useCurrentDatasetName,
-  useCurrentSampleId,
-} from "@fiftyone/state";
+import { DetectionAnnotationLabel } from "@fiftyone/state";
 import {
   AgentTaskType,
   AnnotationAgent,
@@ -18,6 +14,7 @@ import { atom, useAtom } from "jotai";
 import { useToolsContext } from "./useToolsContext";
 import { useActiveTask } from "./useActiveTask";
 import { useActiveCapabilities } from "./useActiveCapabilities";
+import { useSampleDescriptor } from "./useSampleDescriptor";
 
 /**
  * Converts an `[x, y, w, h]` bounding box to a four-corner {@link ROI}
@@ -42,8 +39,10 @@ export interface ResolvedAgent<T> {
   /**
    * Runs inference with the current annotation context.
    * Skips inference and returns `null` for invalid contexts.
+   *
+   * @param labelId The ID of the label for which inference is run
    */
-  infer(): Promise<InferenceResult<T> | null>;
+  infer(labelId: string): Promise<InferenceResult<T> | null>;
 
   /** List of tasks supported by the agent. */
   supportedTasks: AgentTaskType[];
@@ -74,11 +73,16 @@ export const useAnnotationAgent = <T extends InferenceResultProxy>(
   const { activeTask } = useActiveTask();
   const { capabilities } = useActiveCapabilities(agent, activeTask);
 
-  const infer = useCallback(async () => {
-    if (!agent || !annotationContext) return null;
+  const infer = useCallback(
+    async (labelId: string) => {
+      if (!agent || !annotationContext) return null;
 
-    return agent.infer(annotationContext);
-  }, [agent, annotationContext]);
+      return agent
+        .infer(annotationContext)
+        .then((res) => ({ labelId, ...res }));
+    },
+    [agent, annotationContext]
+  );
 
   useEffect(() => {
     // eagerly clear to maintain consistent UX, even when agent becomes null
@@ -116,16 +120,14 @@ export const useAnnotationAgent = <T extends InferenceResultProxy>(
  * In all cases, this context includes the current {@link SampleDescriptor}.
  */
 const useAgentContext = (): AnnotationContext | null => {
-  const datasetId = useCurrentDatasetName();
-  const sampleId = useCurrentSampleId();
   const { selectedLabel } = useAnnotationContext();
+  const sampleDescriptor = useSampleDescriptor();
   const toolsContext = useToolsContext();
 
   return useMemo(() => {
     const labelOverride =
       selectedLabel && "bounding_box" in selectedLabel.data
         ? {
-            taskType: AgentTaskType.SEGMENT,
             textPrompt: selectedLabel.data.label,
             regionsOfInterest: [
               bboxToRoi(
@@ -135,22 +137,13 @@ const useAgentContext = (): AnnotationContext | null => {
           }
         : {};
 
-    const taskType =
-      "taskType" in labelOverride
-        ? labelOverride.taskType
-        : toolsContext.taskType;
-
     // No valid context until a task is selected
-    if (!taskType) return null;
+    if (!toolsContext.taskType) return null;
 
     return {
       ...toolsContext,
       ...labelOverride,
-      taskType,
-      sampleDescriptor: {
-        datasetId,
-        sampleId,
-      },
+      sampleDescriptor,
     };
-  }, [datasetId, sampleId, selectedLabel, toolsContext]);
+  }, [sampleDescriptor, selectedLabel, toolsContext]);
 };

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<af1b40c65256e509d8b622838e6b1c98>>
+ * @generated SignedSource<<00c120fb7c871bcb719ef2818321c36a>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -15,6 +15,7 @@ export type SelectedLabel = {
   instanceId?: string | null;
   labelId: string;
   sampleId: string;
+  type?: string | null;
 };
 export type setSelectedLabelsMutation$variables = {
   selectedLabels: ReadonlyArray<SelectedLabel>;

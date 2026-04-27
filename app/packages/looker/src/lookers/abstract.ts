@@ -28,6 +28,7 @@ import {
   STROKE_WIDTH,
 } from "../constants";
 import { Events } from "../elements/base";
+import { buildThumbnailSelectionDetail } from "../selection";
 import { COMMON_SHORTCUTS, LookerElement } from "../elements/common";
 import { ClassificationsOverlay, loadOverlays } from "../overlays";
 import { CONTAINS, Overlay } from "../overlays/base";
@@ -334,12 +335,15 @@ export abstract class AbstractLooker<
   protected getDispatchEvent(): (eventType: string, detail: any) => void {
     return (eventType: string, detail: any) => {
       if (eventType === "selectthumbnail") {
-        this.dispatchEvent(eventType, {
-          shiftKey: detail,
-          id: this.sample.id,
-          sample: this.sample,
-          symbol: this.state.config.symbol,
-        });
+        this.dispatchEvent(
+          eventType,
+          buildThumbnailSelectionDetail({
+            id: this.sample.id,
+            sample: this.sample,
+            symbol: this.state.config.symbol,
+            modifiers: detail,
+          })
+        );
         return;
       }
 

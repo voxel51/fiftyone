@@ -1820,15 +1820,16 @@ class DatasetZooListCommand(Command):
             "-t",
             "--tags",
             metavar="TAGS",
-            help="only show datasets with the specified tag or list,of,tags",
+            nargs="+",
+            help="only show datasets with the specified tag(s)",
         )
         parser.add_argument(
             "-l",
             "--license",
             metavar="LICENSE",
+            nargs="+",
             help=(
-                "only show datasets distributed under the specified license "
-                "or any of the list,of,licenses"
+                "only show datasets distributed under the specified license(s)"
             ),
         )
 
@@ -1867,11 +1868,8 @@ def _print_zoo_dataset_list(
     match_license=None,
     names_only=False,
 ):
-    if match_tags is not None:
-        match_tags = match_tags.split(",")
-
     if match_license is not None:
-        match_license = set(match_license.split(","))
+        match_license = set(match_license)
 
     available_datasets = defaultdict(dict)
     for source, datasets in all_datasets.items():
@@ -2353,7 +2351,8 @@ class ModelZooListCommand(Command):
             "-t",
             "--tags",
             metavar="TAGS",
-            help="only show models with the specified tag or list,of,tags",
+            nargs="+",
+            help="only show models with the specified tag(s)",
         )
         parser.add_argument(
             "-s",
@@ -2365,10 +2364,8 @@ class ModelZooListCommand(Command):
             "-l",
             "--license",
             metavar="LICENSE",
-            help=(
-                "only show models distributed under the specified license or "
-                "any of the list,of,licenses"
-            ),
+            nargs="+",
+            help="only show models distributed under the specified license(s)",
         )
 
     @staticmethod
@@ -2378,12 +2375,6 @@ class ModelZooListCommand(Command):
         tags = args.tags
         source = args.source
         license = args.license
-
-        if tags is not None:
-            tags = tags.split(",")
-
-        if license is not None:
-            license = license.split(",")
 
         models = fozm._list_zoo_models(
             tags=tags, source=source, license=license
@@ -3878,6 +3869,9 @@ class PluginsListCommand(Command):
         # List plugins whose name matches the given glob pattern
         fiftyone plugins list --glob-patt '@voxel51/*'
 
+        # List plugins with the given tag
+        fiftyone plugins list --tags <tag>
+
         # List enabled plugins
         fiftyone plugins list --enabled
 
@@ -3895,6 +3889,13 @@ class PluginsListCommand(Command):
             "--glob-patt",
             metavar="PATT",
             help="only show plugins whose name matches the glob pattern",
+        )
+        parser.add_argument(
+            "-t",
+            "--tags",
+            metavar="TAGS",
+            nargs="+",
+            help="only show plugins with the specified tag(s)",
         )
         parser.add_argument(
             "-e",
@@ -3949,6 +3950,7 @@ class PluginsListCommand(Command):
 
         _print_plugins_list(
             glob_patt=args.glob_patt,
+            tags=args.tags,
             enabled=enabled,
             builtin=builtin,
             names_only=args.names_only,
@@ -3956,7 +3958,7 @@ class PluginsListCommand(Command):
 
 
 def _print_plugins_list(
-    glob_patt=None, enabled="all", builtin="all", names_only=False
+    glob_patt=None, tags=None, enabled="all", builtin="all", names_only=False
 ):
     plugin_definitions = fop.list_plugins(
         enabled=enabled, builtin=builtin, shadowed="all"
@@ -3966,6 +3968,13 @@ def _print_plugins_list(
         regex = re.compile(fnmatch.translate(glob_patt))
         plugin_definitions = [
             pd for pd in plugin_definitions if regex.match(pd.name)
+        ]
+
+    if tags is not None:
+        plugin_definitions = [
+            pd
+            for pd in plugin_definitions
+            if all(tag in pd.tags for tag in tags)
         ]
 
     if names_only:
@@ -3984,6 +3993,7 @@ def _print_plugins_list(
     headers = [
         "plugin",
         "version",
+        "tags",
         "enabled",
         "builtin",
         "shadowed",
@@ -3997,6 +4007,7 @@ def _print_plugins_list(
             {
                 "plugin": pd.name,
                 "version": pd.version or "",
+                "tags": pd.tags,
                 "enabled": enabled,
                 "builtin": pd.builtin,
                 "shadowed": shadowed,
@@ -5205,8 +5216,8 @@ def _print_dict_as_table(d, headers=None):
 
     records = []
     for k, v in d.items():
-        if isinstance(v, list) and v:
-            records.append((k, v[0]))
+        if isinstance(v, list):
+            records.append((k, v[0] if v else None))
             for e in v[1:]:
                 records.append(("", e))
         else:

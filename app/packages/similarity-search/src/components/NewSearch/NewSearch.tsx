@@ -21,10 +21,26 @@ import {
   Spacing,
   Variant,
 } from "@voxel51/voodo";
-import React from "react";
+import { FileUploadOutlined } from "../../mui";
+import React, { useEffect, useRef, useState } from "react";
 import { OperatorExecutionButton } from "@fiftyone/operators";
-import { BrainKeyConfig, CloneConfig, SearchScope } from "../../types";
-import { SEARCH_OPERATOR_URI, CHECK_MARK, CROSS_MARK } from "../../constants";
+import {
+  BrainKeyConfig,
+  CloneConfig,
+  QueryType,
+  SearchScope,
+} from "../../types";
+import {
+  SEARCH_OPERATOR_URI,
+  CHECK_MARK,
+  CROSS_MARK,
+  K_MAX,
+  MIDDLE_DOT,
+  UPLOAD_ACCEPTED_TYPES,
+  UPLOAD_MAX_SIZE,
+} from "../../constants";
+import { fileToBase64 } from "../../utils";
+import { FileDrop } from "@fiftyone/core/src/plugins/SchemaIO/components";
 import { useNewSearchForm } from "../../hooks/useNewSearchForm";
 import {
   NewSearchContainer,
@@ -37,6 +53,7 @@ type NewSearchProps = {
   brainKeys: BrainKeyConfig[];
   cloneConfig?: CloneConfig | null;
   isPatchesView?: boolean;
+  isReadOnly?: boolean;
   onBack: () => void;
   onSubmitted: () => void;
 };
@@ -45,10 +62,21 @@ export default function NewSearch({
   brainKeys,
   cloneConfig,
   isPatchesView = false,
+  isReadOnly = false,
   onBack,
   onSubmitted,
 }: NewSearchProps) {
   const form = useNewSearchForm(brainKeys, cloneConfig, onSubmitted);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  // Guard against setting state after unmount — `fileToBase64` resolves
+  // asynchronously and the user can navigate away mid-read.
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   return (
     <NewSearchContainer>
@@ -97,6 +125,20 @@ export default function NewSearch({
                   Backend: {form.selectedConfig.backend}
                 </Text>
               )}
+              {form.selectedConfig.metric && (
+                <Text variant={TextVariant.Md} color={TextColor.Secondary}>
+                  Metric: {form.selectedConfig.metric}
+                </Text>
+              )}
+              {form.selectedConfig.identifiers?.map((id) => (
+                <Text
+                  key={id.label}
+                  variant={TextVariant.Md}
+                  color={TextColor.Secondary}
+                >
+                  {id.label}: {id.value}
+                </Text>
+              ))}
               <Text variant={TextVariant.Md} color={TextColor.Secondary}>
                 Supports text queries?{" "}
                 {form.selectedConfig.supports_prompts ? CHECK_MARK : CROSS_MARK}
@@ -132,40 +174,63 @@ export default function NewSearch({
               }
               value={form.searchScope}
               onChange={(value) => form.setSearchScope(value as SearchScope)}
-              size={Size.Sm}
+              size={Size.Md}
               style={{ display: "flex", flexDirection: "row", gap: "1rem" }}
             />
           }
         />
 
         {/* Query type toggle */}
-        {form.supportsPrompts && (
+        {(form.supportsPrompts || form.supportsUpload) && (
           <Stack orientation={Orientation.Row} spacing={Spacing.Xs}>
             <Button
               variant={
-                form.queryType === "text" ? Variant.Primary : Variant.Secondary
+                form.queryType === QueryType.Image
+                  ? Variant.Primary
+                  : Variant.Secondary
               }
               size={Size.Sm}
-              onClick={() => form.setQueryType("text")}
-              style={{ flex: 1 }}
-            >
-              Text Search
-            </Button>
-            <Button
-              variant={
-                form.queryType === "image" ? Variant.Primary : Variant.Secondary
-              }
-              size={Size.Sm}
-              onClick={() => form.setQueryType("image")}
+              leadingIcon={IconName.ImageSearch}
+              onClick={() => form.setQueryType(QueryType.Image)}
               style={{ flex: 1 }}
             >
               Image Search
             </Button>
+            {form.supportsUpload && (
+              <Button
+                variant={
+                  form.queryType === QueryType.Upload
+                    ? Variant.Primary
+                    : Variant.Secondary
+                }
+                size={Size.Sm}
+                leadingIcon={() => <FileUploadOutlined sx={{ fontSize: 16 }} />}
+                onClick={() => form.setQueryType(QueryType.Upload)}
+                style={{ flex: 1 }}
+              >
+                Upload Image
+              </Button>
+            )}
+            {form.supportsPrompts && (
+              <Button
+                variant={
+                  form.queryType === QueryType.Text
+                    ? Variant.Primary
+                    : Variant.Secondary
+                }
+                size={Size.Sm}
+                leadingIcon={IconName.Search}
+                onClick={() => form.setQueryType(QueryType.Text)}
+                style={{ flex: 1 }}
+              >
+                Text Search
+              </Button>
+            )}
           </Stack>
         )}
 
         {/* Query input */}
-        {form.queryType === "text" ? (
+        {form.queryType === QueryType.Text && (
           <FormField
             label="Text query"
             control={
@@ -178,29 +243,101 @@ export default function NewSearch({
               />
             }
           />
-        ) : form.queryIds.length > 0 ? (
-          <QuerySelectorBoxActive>
-            <Text variant={TextVariant.Sm} color={TextColor.Primary}>
-              {`${form.queryIds.length} ${
-                Array.isArray(form.selectedLabels) &&
-                form.selectedLabels.length > 0
-                  ? "labels"
-                  : "samples"
-              } selected (positive)`}
-            </Text>
-          </QuerySelectorBoxActive>
-        ) : (
-          <QuerySelectorBoxInactive>
-            <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
-              Select samples in the grid
-            </Text>
-          </QuerySelectorBoxInactive>
         )}
+
+        {form.queryType === QueryType.Upload &&
+          (form.uploadedImage ? (
+            <QuerySelectorBoxActive>
+              <Stack
+                orientation={Orientation.Row}
+                spacing={Spacing.Sm}
+                align={Align.Center}
+                justify={Justify.Between}
+              >
+                <Text variant={TextVariant.Sm} color={TextColor.Primary}>
+                  {form.uploadedImage.name}
+                </Text>
+                <Button
+                  variant={Variant.Secondary}
+                  size={Size.Xs}
+                  onClick={() => form.setUploadedImage(null)}
+                >
+                  Clear
+                </Button>
+              </Stack>
+            </QuerySelectorBoxActive>
+          ) : (
+            <>
+              <FileDrop
+                types={UPLOAD_ACCEPTED_TYPES}
+                onChange={async (files: File[]) => {
+                  if (!files?.length) return;
+                  const file = files[0];
+                  if (file.size > UPLOAD_MAX_SIZE) {
+                    setUploadError(
+                      `File exceeds the 10 MB size limit (${(
+                        file.size /
+                        1024 /
+                        1024
+                      ).toFixed(1)} MB)`
+                    );
+                    return;
+                  }
+                  const { result, error } = await fileToBase64(file);
+                  if (!mountedRef.current) return;
+                  if (error || !result) {
+                    setUploadError(
+                      "Failed to read the image file. Please try again."
+                    );
+                    return;
+                  }
+                  setUploadError(null);
+                  form.setUploadedImage({
+                    content: result,
+                    name: file.name,
+                  });
+                }}
+              />
+              {uploadError && (
+                <Text variant={TextVariant.Sm} color={TextColor.Destructive}>
+                  {uploadError}
+                </Text>
+              )}
+            </>
+          ))}
+
+        {form.queryType === QueryType.Image &&
+          (form.queryIds.length > 0 ? (
+            <QuerySelectorBoxActive>
+              <Text variant={TextVariant.Sm} color={TextColor.Primary}>
+                {`${form.queryIds.length} ${
+                  Array.isArray(form.selectedLabels) &&
+                  form.selectedLabels.length > 0
+                    ? "labels"
+                    : "samples"
+                } selected (positive)${
+                  form.negativeQueryIds.length > 0
+                    ? ` ${MIDDLE_DOT} ${form.negativeQueryIds.length} negative`
+                    : ""
+                }`}
+              </Text>
+            </QuerySelectorBoxActive>
+          ) : (
+            <QuerySelectorBoxInactive>
+              <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+                Select samples in the grid (Alt+click for negative)
+              </Text>
+            </QuerySelectorBoxInactive>
+          ))}
 
         {/* Number of matches */}
         <FormField
           label="Number of matches"
-          error={form.kError ? "Exceeds maximum of 10,000" : undefined}
+          error={
+            form.kError
+              ? `Number of results cannot exceed ${K_MAX.toLocaleString()}`
+              : undefined
+          }
           control={
             <Input
               type={InputType.Number}
@@ -226,7 +363,7 @@ export default function NewSearch({
           />
         )}
 
-        {/* Dynamic results */}
+        {/* Dynamic results — commented out; all searches use cached (static) results for now
         <Toggle
           checked={form.dynamicResults}
           onChange={(checked) => form.setDynamicResults(checked)}
@@ -237,20 +374,23 @@ export default function NewSearch({
           }
           size={Size.Sm}
         />
+        */}
 
-        {/* Distance field */}
-        <FormField
-          label="Distance field (optional)"
-          description="Store distances as a sample field"
-          control={
-            <Input
-              placeholder="e.g., similarity_dist"
-              value={form.distField}
-              onChange={(e) => form.setDistField(e.target.value)}
-              size={Size.Sm}
-            />
-          }
-        />
+        {/* Distance field — hidden in read-only mode */}
+        {!isReadOnly && (
+          <FormField
+            label="Distance field (optional)"
+            description="Store distances as a sample field"
+            control={
+              <Input
+                placeholder="e.g., similarity_dist"
+                value={form.distField}
+                onChange={(e) => form.setDistField(e.target.value)}
+                size={Size.Sm}
+              />
+            }
+          />
+        )}
 
         {/* Search name */}
         <FormField

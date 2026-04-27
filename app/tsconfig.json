@@ -1,14 +1,31 @@
 {
     "files": [],
     "references": [
+        { "path": "packages/aggregations" },
         { "path": "packages/analytics" },
+        { "path": "packages/annotation" },
         { "path": "packages/app" },
+        { "path": "packages/command-bus" },
+        { "path": "packages/commands" },
         { "path": "packages/components" },
+        { "path": "packages/core" },
+        { "path": "packages/embeddings" },
+        { "path": "packages/events" },
+        { "path": "packages/feature-flags" },
         { "path": "packages/flashlight" },
+        { "path": "packages/lighter" },
         { "path": "packages/looker" },
-        { "path": "packages/utilities" },
+        { "path": "packages/looker-3d" },
+        { "path": "packages/map" },
+        { "path": "packages/multimodal" },
+        { "path": "packages/operators" },
+        { "path": "packages/playback" },
         { "path": "packages/plugins" },
+        { "path": "packages/relay" },
+        { "path": "packages/similarity-search" },
+        { "path": "packages/spaces" },
+        { "path": "packages/spotlight" },
         { "path": "packages/state" },
-        { "path": "packages/aggregations" }
+        { "path": "packages/utilities" }
     ]
 }

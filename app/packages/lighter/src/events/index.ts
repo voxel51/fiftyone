@@ -53,7 +53,7 @@ export type LighterEventGroup = {
   // ============================================================================
   // USER INTERACTION EVENTS
   // ============================================================================
-  /** Emitted on "pointer down" to inform QuickDraw to create a new detection */
+  /** Emitted on "pointer down" to inform detection mode to create a new detection */
   "lighter:overlay-create": { eventId: string };
   /** Emitted when an overlay finishes being established */
   "lighter:overlay-establish": {
@@ -115,8 +115,8 @@ export type LighterEventGroup = {
   "lighter:overlay-all-unhover": { point: Point };
   /** Emitted when the mouse moves while hovering over an overlay */
   "lighter:overlay-hover-move": { id: string; point: Point };
-  /** Emitted when user clicks without dragging in QuickDraw mode to exit */
-  "lighter:quickdraw-quit": { eventId: string };
+  /** Emitted when user clicks without dragging in detection mode to exit */
+  "lighter:detection-mode-quit": { eventId: string };
 
   // ============================================================================
   // KEYPOINT EVENTS
@@ -124,21 +124,28 @@ export type LighterEventGroup = {
   /** Emitted when a keypoint is added during interactive creation */
   "lighter:keypoint-point-added": {
     id: string;
-    pointIndex: number;
-    /** Absolute (world-space) coordinates of the added point */
-    worldPoint: Point;
+    pointId: string;
+    /** Relative coordinates of the added point */
+    point: Point;
+    /** Optional keypoint variant. */
+    variant?: string;
   };
   /** Emitted when a keypoint is moved via drag */
   "lighter:keypoint-point-moved": {
     id: string;
-    pointIndex: number;
-    /** Absolute (world-space) coordinates before the move */
-    worldFrom: Point;
-    /** Absolute (world-space) coordinates after the move */
-    worldTo: Point;
+    pointId: string;
+    /** Relative coordinates before the move */
+    from: Point;
+    /** Relative coordinates after the move */
+    to: Point;
   };
   /** Emitted when a keypoint is deleted */
-  "lighter:keypoint-point-deleted": { id: string; pointIndex: number };
+  "lighter:keypoint-point-deleted": {
+    id: string;
+    pointId: string;
+    /** Optional keypoint variant. */
+    variant?: string;
+  };
 
   // ============================================================================
   // SELECTION EVENTS
