@@ -11,7 +11,6 @@ import { useApplyInferenceResult } from "./useApplyInferenceResult";
 import { useAnnotationContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/state";
 import useCreate from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useCreate";
 import { useRegisterPointSelectionEventHandlers } from "./useRegisterPointSelectionEventHandlers";
-import { useActivePointSelectionOverlay } from "./usePointSelection";
 
 const isToolsContextValid = (context: ToolsContext): boolean => {
   return (
@@ -38,8 +37,6 @@ export const useRegisterAnnotationToolEventHandlers = () => {
   const agent = useAnnotationAgent(useAgentSelector().activeAgent?.agent);
   const applyInferenceResult = useApplyInferenceResult(useCreate("Detection"));
 
-  const pointOverlay = useActivePointSelectionOverlay();
-
   // register handlers for specific tools
   useRegisterPointSelectionEventHandlers();
 
@@ -51,43 +48,15 @@ export const useRegisterAnnotationToolEventHandlers = () => {
       if (isToolsContextValid(toolsContext)) {
         const labelId = selectedLabel?.overlay?.id ?? uuidv4();
 
-        // Pulse all current prompt points while inference is in flight so the
-        // user sees that their click triggered work.
-        const ids = pointOverlay?.getPointIds() ?? [];
-        console.log("[ripple] inference effect fired", {
-          hasOverlay: !!pointOverlay,
-          pointIds: ids,
-          hasAgent: !!agent,
+        agent?.infer(labelId).then((res) => {
+          if (res && !cancelled) {
+            applyInferenceResult(res);
+          }
         });
-        if (ids.length > 0) {
-          console.log("[ripple] starting ripple on", ids);
-          pointOverlay?.setRipplePointIds(ids);
-        }
-
-        agent
-          ?.infer(labelId)
-          .then((res) => {
-            console.log("[ripple] inference resolved", {
-              hasRes: !!res,
-              cancelled,
-            });
-            if (res && !cancelled) {
-              applyInferenceResult(res);
-            }
-          })
-          .finally(() => {
-            console.log("[ripple] inference finally — clearing ripple", {
-              cancelled,
-            });
-            if (!cancelled) {
-              pointOverlay?.clearRipple();
-            }
-          });
       }
 
       return () => {
         cancelled = true;
-        pointOverlay?.clearRipple();
       };
     },
     // trigger inference every time the input context changes

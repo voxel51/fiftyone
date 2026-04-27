@@ -1,4 +1,5 @@
 import {
+  KeypointOverlay,
   UNDEFINED_LIGHTER_SCENE_ID,
   useLighter,
   useLighterEventHandler,
@@ -6,6 +7,9 @@ import {
 import { useToolsState } from "./useToolsContext";
 import { NEGATIVE_POINT_VARIANT, usePointSelection } from "./usePointSelection";
 import { useCallback } from "react";
+
+/** Minimum time the ripple ring stays on a freshly-placed point. */
+const RIPPLE_VISIBLE_MS = 1200;
 
 /**
  * Hook which registers event handlers for the positive/negative point
@@ -15,7 +19,7 @@ import { useCallback } from "react";
  * reuse will cause duplicate event handler registration.**
  */
 export const useRegisterPointSelectionEventHandlers = () => {
-  const { scene } = useLighter();
+  const { scene, getOverlay } = useLighter();
   const {
     addNegativePoint,
     addPositivePoint,
@@ -44,9 +48,27 @@ export const useRegisterPointSelectionEventHandlers = () => {
           } else {
             addPositivePoint(descriptor);
           }
+
+          // Surface a ripple on the new point for a guaranteed-visible
+          // duration. Keeps the visual feedback decoupled from inference
+          // timing — fast inference shouldn't make the indicator flash.
+          const overlay = getOverlay(payload.id);
+          if (overlay instanceof KeypointOverlay) {
+            console.log("[ripple] point-added → start ripple", {
+              pointId: payload.pointId,
+              overlayId: payload.id,
+            });
+            overlay.addRipplePointId(payload.pointId);
+            setTimeout(() => {
+              console.log("[ripple] timer expired → remove ripple", {
+                pointId: payload.pointId,
+              });
+              overlay.removeRipplePointId(payload.pointId);
+            }, RIPPLE_VISIBLE_MS);
+          }
         }
       },
-      [addNegativePoint, addPositivePoint, isPointSelectionActive]
+      [addNegativePoint, addPositivePoint, getOverlay, isPointSelectionActive]
     )
   );
 

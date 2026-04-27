@@ -828,6 +828,30 @@ export class KeypointOverlay
     this.markDirty();
   }
 
+  /**
+   * Adds a single point id to the ripple set without disturbing others.
+   * Convenient when a caller wants to ripple a freshly-added point.
+   */
+  addRipplePointId(id: string): void {
+    if (this.ripplePointIds.has(id)) return;
+    const wasEmpty = this.ripplePointIds.size === 0;
+    this.ripplePointIds.add(id);
+    if (wasEmpty) {
+      this.rippleStartTime = performance.now();
+      this.scheduleRippleAnimation();
+    }
+    this.markDirty();
+  }
+
+  /** Removes a single point id from the ripple set. */
+  removeRipplePointId(id: string): void {
+    if (!this.ripplePointIds.delete(id)) return;
+    if (this.ripplePointIds.size === 0) {
+      this.cancelRippleAnimation();
+    }
+    this.markDirty();
+  }
+
   /** Convenience: stop ripple on all points. */
   clearRipple(): void {
     this.setRipplePointIds([]);
@@ -878,13 +902,6 @@ export class KeypointOverlay
    */
   getRelativePoints(): [number, number][] {
     return this.#points.map((e) => [...e.position] as [number, number]);
-  }
-
-  /**
-   * Returns the ids of all points, in insertion order.
-   */
-  getPointIds(): string[] {
-    return this.#points.map((e) => e.id);
   }
 
   /**
