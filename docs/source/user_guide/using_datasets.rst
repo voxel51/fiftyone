@@ -1990,6 +1990,8 @@ as per the table below:
     the new filepath must have the same media type. In other words,
     `media_type` is immutable.
 
+.. note::
+
     When creating new 3D datasets from direct 3D asset files such as `.glb`,
     `.pcd`, or `.ply`, pass `media_type="3d"` explicitly.
 
