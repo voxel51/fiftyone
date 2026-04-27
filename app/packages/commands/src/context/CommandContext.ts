@@ -362,4 +362,15 @@ export class CommandContext {
     this.actions.clear();
     this.parent?.clearUndoRedoStack();
   }
+
+  /**
+   * Removes all undo/redo entries matching the predicate from this
+   * context and any parent contexts.
+   *
+   * @param predicate Returns true for entries that should be removed.
+   */
+  public pruneUndoables(predicate: (undoable: Undoable) => boolean) {
+    this.actions.prune(predicate);
+    this.parent?.pruneUndoables(predicate);
+  }
 }
