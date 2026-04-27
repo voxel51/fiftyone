@@ -10,4 +10,5 @@ from typing import Literal
 
 
 FeatureFlag = Literal["VFF_AI_SEGMENTATION"]
+FeatureFlag = Literal["VFF_MULTIMODAL"]
 """Enumeration of active feature flags."""
