@@ -17,6 +17,7 @@
         "@fiftyone/analytics": "*",
         "@fiftyone/components": "*",
         "@fiftyone/core": "*",
+        "@fiftyone/feature-flags": "*",
         "@fiftyone/multimodal": "*",
         "@fiftyone/relay": "*",
         "@fiftyone/state": "*",

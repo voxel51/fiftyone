@@ -7,7 +7,6 @@ import {
 } from "@fiftyone/core";
 import "@fiftyone/embeddings";
 import "@fiftyone/map";
-import "@fiftyone/multimodal/inject";
 import { OperatorCore } from "@fiftyone/operators";
 import "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
@@ -16,11 +15,12 @@ import React from "react";
 import { usePreloadedQuery } from "react-relay";
 import { useRecoilValue } from "recoil";
 import { graphql } from "relay-runtime";
+import { GatedPluginLoader } from "../../GatedPluginLoader";
 import Nav from "../../components/Nav";
 import type { Route } from "../../routing";
 import style from "../index.module.css";
-import type { DatasetPageQuery } from "./__generated__/DatasetPageQuery.graphql";
 import { DatasetGridRendererFailover } from "./DatasetGridRendererFailover";
+import type { DatasetPageQuery } from "./__generated__/DatasetPageQuery.graphql";
 
 const DatasetPageQueryNode = graphql`
   query DatasetPageQuery(
@@ -113,6 +113,7 @@ const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
   return (
     <Nav fragment={data} hasDataset={!isEmpty}>
       <div className={style.page} data-cy={"dataset-page"}>
+        <GatedPluginLoader />
         <DatasetGridRendererFailover />
         {isEmpty ? (
           <Starter mode="ADD_SAMPLE" />
