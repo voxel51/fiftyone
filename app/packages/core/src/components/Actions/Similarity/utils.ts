@@ -160,30 +160,5 @@ export const sortType = selectorFamily<string, boolean>({
     },
 });
 
-export function buildRunName({
-  isImageSearch,
-  textQuery,
-  queryIds,
-  negativeQueryIds,
-  patchesField,
-}: {
-  isImageSearch: boolean;
-  textQuery: string;
-  queryIds: string[] | string | undefined;
-  negativeQueryIds?: string[];
-  patchesField?: string;
-}): string {
-  if (!isImageSearch) {
-    return `Text: "${textQuery}"`;
-  }
-
-  const positiveCount = Array.isArray(queryIds) ? queryIds.length : 1;
-  const negativeCount = negativeQueryIds?.length ?? 0;
-  const unit = patchesField ? "patches" : "samples";
-
-  if (negativeCount > 0) {
-    return `Image: ${positiveCount} prompt(s), ${negativeCount} negative`;
-  }
-
-  return `Image: ${positiveCount} ${unit}`;
-}
+// Re-export from utilities so existing callers within core still work.
+export { buildSimilarityRunName as buildRunName } from "@fiftyone/utilities";

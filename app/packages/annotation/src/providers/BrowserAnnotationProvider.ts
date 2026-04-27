@@ -181,6 +181,10 @@ export class BrowserAnnotationProvider implements AnnotationProvider {
     this.worker = null;
   }
 
+  isInitialized(): boolean {
+    return !!this.worker;
+  }
+
   private send<T extends WorkerMessageType>(
     type: T,
     payload: WorkerRequest<T>

@@ -39,8 +39,10 @@ export interface ResolvedAgent<T> {
   /**
    * Runs inference with the current annotation context.
    * Skips inference and returns `null` for invalid contexts.
+   *
+   * @param labelId The ID of the label for which inference is run
    */
-  infer(): Promise<InferenceResult<T> | null>;
+  infer(labelId: string): Promise<InferenceResult<T> | null>;
 
   /** List of tasks supported by the agent. */
   supportedTasks: AgentTaskType[];
@@ -71,11 +73,16 @@ export const useAnnotationAgent = <T extends InferenceResultProxy>(
   const { activeTask } = useActiveTask();
   const { capabilities } = useActiveCapabilities(agent, activeTask);
 
-  const infer = useCallback(async () => {
-    if (!agent || !annotationContext) return null;
+  const infer = useCallback(
+    async (labelId: string) => {
+      if (!agent || !annotationContext) return null;
 
-    return agent.infer(annotationContext);
-  }, [agent, annotationContext]);
+      return agent
+        .infer(annotationContext)
+        .then((res) => ({ labelId, ...res }));
+    },
+    [agent, annotationContext]
+  );
 
   useEffect(() => {
     // eagerly clear to maintain consistent UX, even when agent becomes null

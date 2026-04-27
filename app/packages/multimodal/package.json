@@ -1,0 +1,33 @@
+{
+    "name": "@fiftyone/multimodal",
+    "version": "0.0.0",
+    "private": true,
+    "main": "./src/index.ts",
+    "types": "./src/index.ts",
+    "exports": {
+        ".": "./src/index.ts",
+        "./inject": "./src/inject/index.ts",
+        "./schemas/v1": "./src/schemas/v1/index.ts"
+    },
+    "typesVersions": {
+        "*": {
+            "inject": [
+                "src/inject/index.ts"
+            ],
+            "schemas/v1": [
+                "src/schemas/v1/index.ts"
+            ]
+        }
+    },
+    "scripts": {
+        "lint": "yarn check",
+        "check": "yarn check:lint && yarn check:deps && yarn check:types",
+        "check:types": "node ./scripts/check-types.mjs",
+        "check:lint": "node ./scripts/check-lint.mjs",
+        "check:deps": "node ./scripts/check-deps.mjs"
+    },
+    "dependencies": {
+        "@bufbuild/protobuf": "^2.11.0",
+        "@fiftyone/plugins": "*"
+    }
+}

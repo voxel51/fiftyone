@@ -274,8 +274,6 @@ class Mutation(SetColorScheme):
         state.sample_id = None
         state.selected_labels = []
         state.selected_samples = []
-        state.sample_selection_style = dict(DEFAULT_SELECTION_STYLE)
-        state.label_selection_style = dict(DEFAULT_LABEL_SELECTION_STYLE)
 
         if not dataset_name:
             state.dataset = None

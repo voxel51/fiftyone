@@ -82,6 +82,7 @@ from .frame import (
     NoDatasetFrameDocument,
 )
 from .mixins import get_default_fields
+from .ontology import OntologyDocument, OntologyType
 from .runs import RunDocument
 from .sample import (
     DatasetSampleDocument,

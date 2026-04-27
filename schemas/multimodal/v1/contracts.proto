@@ -1,0 +1,111 @@
+syntax = "proto3";
+
+package fiftyone.multimodal.schemas.v1;
+
+// Encoded payload identity shared by source inventories and decode planners.
+message PayloadDescriptor {
+  // Encoding or codec used by the payload bytes.
+  string encoding = 1;
+
+  // Optional upstream schema, message, or logical type identifier.
+  optional string schema = 2;
+
+  // Optional encoding used by the schema descriptor itself.
+  optional string schema_encoding = 3;
+}
+
+// Time range used by scene and stream inventories.
+message TimeRange {
+  // Inclusive start timestamp in nanoseconds.
+  int64 start_ns = 1 [jstype = JS_STRING];
+
+  // Optional exclusive end timestamp in nanoseconds.
+  optional int64 end_ns = 2 [jstype = JS_STRING];
+}
+
+// Deterministic source identity for caching and idempotent ingest.
+message SourceFingerprint {
+  // Source size in bytes.
+  uint64 size_bytes = 1 [jstype = JS_STRING];
+
+  // Optional first-chunk CRC. Some sources are not file-backed or are too
+  // expensive to spot-check, so adapters may omit these fields.
+  optional uint32 first_chunk_crc = 2;
+
+  // Optional last-chunk CRC. See first_chunk_crc for why this may be omitted.
+  optional uint32 last_chunk_crc = 3;
+}
+
+// Inventory entry describing a single multimodal stream.
+message StreamInventory {
+  // Stable stream identifier within the scene inventory.
+  string stream_id = 1;
+
+  // Descriptor used to route encoded payloads to compatible decoders.
+  PayloadDescriptor payload = 2;
+
+  // Optional number of records in the stream.
+  optional uint64 record_count = 3 [jstype = JS_STRING];
+
+  // Optional stream-level time bounds.
+  TimeRange time_range = 4;
+
+  // Adapter-provided source metadata. MCAP channel metadata, parquet column
+  // metadata, or directory-level metadata all live here without changing the
+  // shared contract.
+  map<string, string> metadata = 5;
+}
+
+// Static coordinate-frame relationship, similar to ROS /tf_static.
+message StaticCoordinateFrameEdge {
+  // Parent coordinate frame identifier.
+  string parent_frame_id = 1;
+
+  // Child coordinate frame identifier.
+  string child_frame_id = 2;
+
+  // Stream that declared this static relationship, such as a /tf_static-like
+  // stream in ROS-derived sources.
+  string source_stream_id = 3;
+}
+
+// Inventory document describing the streams available in a scene.
+message SceneInventory {
+  // Stable scene identifier used across multimodal subsystems.
+  string scene_id = 1;
+
+  // Adapter-level source format identifier, such as mcap, rosbag1, or parquet.
+  string source_format = 2;
+
+  // Optional because not every scene is backed by one stable source file.
+  // File-backed adapters should set it for OPFS cache keys and idempotent
+  // re-ingest.
+  SourceFingerprint source_fingerprint = 3;
+
+  // Semantic version of this inventory contract.
+  string inventory_version = 4;
+
+  // Optional scene-level time bounds for ordered multimodal sources.
+  TimeRange time_range = 5;
+
+  // Streams discovered in the source scene.
+  repeated StreamInventory streams = 6;
+
+  // Static coordinate-frame edges discovered during inventory, similar to
+  // entries from ROS /tf_static. Time-varying transforms remain message data.
+  repeated StaticCoordinateFrameEdge static_coordinate_frame_edges = 7;
+
+  // RFC 3339 timestamp string. We intentionally avoid protobuf Timestamp here
+  // because some language runtimes deserialize timestamps into native types
+  // like JavaScript Date and lose nanosecond precision.
+  string produced_at = 8;
+
+  // Adapter name and version that produced this inventory.
+  string produced_by = 9;
+}
+
+// Playback plan resolved for a scene inventory.
+message PlaybackPlan {
+  // Stable scene identifier for the plan.
+  string scene_id = 1;
+}

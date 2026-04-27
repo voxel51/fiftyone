@@ -16,6 +16,10 @@ curate your data from an art into a measurable science.
     `@voxel51/brain <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/brain>`_
     plugin!
 
+.. customanimatedcta::
+    :button_text: Try experimental Brain features in FiftyOne Labs
+    :button_link: labs/index.html
+
 The FiftyOne Brain methods are useful across the stages of the machine learning
 workflow:
 

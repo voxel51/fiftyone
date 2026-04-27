@@ -105,6 +105,12 @@ export const counts = selectorFamily({
   get:
     (params: { extended: boolean; path: string; modal: boolean }) =>
     ({ get }): { [key: string]: number } => {
+      // _label_tags is a pseudo-path derived client-side so queries
+      // for it should not reach the server
+      if (params.path === "_label_tags") {
+        return get(cumulativeCounts({ ...params, ...MATCH_LABEL_TAGS }));
+      }
+
       const exists = Boolean(get(schemaAtoms.field(params.path)));
 
       if (!exists) {

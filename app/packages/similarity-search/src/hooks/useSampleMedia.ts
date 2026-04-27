@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { SimilarityRun } from "../types";
-
-const DEFAULT_MAX_ENTRIES = 500;
+import { SAMPLE_MEDIA_CACHE_MAX_ENTRIES } from "../constants";
 
 /**
  * Simple LRU cache backed by a Map (which preserves insertion order).
@@ -64,7 +63,7 @@ type UseSampleMediaOptions = {
   filteredRuns: SimilarityRun[];
   /** Trigger to fetch media for given sample IDs. */
   onGetSampleMedia: (payload: { sample_ids: string[] }) => void;
-  /** Maximum cache entries. Default: 500. */
+  /** Maximum cache entries. Default: SAMPLE_MEDIA_CACHE_MAX_ENTRIES. */
   maxEntries?: number;
 };
 
@@ -86,7 +85,7 @@ export const useSampleMedia = ({
   expandedRunIds,
   filteredRuns,
   onGetSampleMedia,
-  maxEntries = DEFAULT_MAX_ENTRIES,
+  maxEntries = SAMPLE_MEDIA_CACHE_MAX_ENTRIES,
 }: UseSampleMediaOptions): UseSampleMediaResult => {
   const cacheRef = useRef(new LRUCache<string, string>(maxEntries));
   const pendingFetchRef = useRef<string | null>(null);
@@ -130,10 +129,17 @@ export const useSampleMedia = ({
     }
   }, [expandedRunIds, filteredRuns, onGetSampleMedia]);
 
-  const mergedMedia = {
-    ...cacheRef.current.toRecord(),
-    ...sampleMedia,
-  };
+  // Memoize the merged map so consumers (RichList items) don't see a
+  // new reference on every render. Recomputes when the incoming batch
+  // changes — at that point the cache has just been updated by the
+  // effect above, so reading it here is consistent.
+  const mergedMedia = useMemo(
+    () => ({
+      ...cacheRef.current.toRecord(),
+      ...sampleMedia,
+    }),
+    [sampleMedia]
+  );
 
   return { mergedMedia, handleToggleExpand };
 };
