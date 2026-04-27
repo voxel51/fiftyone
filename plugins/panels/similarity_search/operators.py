@@ -21,6 +21,19 @@ from . import _has_manage_permission
 logger = logging.getLogger(__name__)
 
 
+def _set_ownership(params, ctx):
+    """Set ownership fields (user id + display name) on ``params``.
+
+    Centralized so immediate and DO runs agree on schema:
+    ``created_by`` holds the user id; ``created_by_name`` holds the
+    display name.
+    """
+    params["created_by"] = str(ctx.user_id) if ctx.user_id else None
+    params["created_by_name"] = (
+        (getattr(ctx.user, "name", None) or "") if ctx.user else ""
+    )
+
+
 class SimilaritySearchOperator(foo.Operator):
     """Operator that executes a similarity search query.
 
@@ -63,11 +76,7 @@ class SimilaritySearchOperator(foo.Operator):
         # record found), create a new run record.
         if not run_id:
             params = {**ctx.params}
-            if ctx.user_id:
-                params["created_by"] = str(ctx.user_id)
-                params["created_by_name"] = (
-                    getattr(ctx.user, "name", None) or ""
-                )
+            _set_ownership(params, ctx)
             run_data = manager.create_run(params)
             run_id = run_data["run_id"]
 
@@ -78,11 +87,7 @@ class SimilaritySearchOperator(foo.Operator):
         # Stale/missing run; recover with a fresh record
         if not run_data:
             params = {**ctx.params}
-            if ctx.user_id:
-                params["created_by"] = str(ctx.user_id)
-                params["created_by_name"] = (
-                    getattr(ctx.user, "name", None) or ""
-                )
+            _set_ownership(params, ctx)
             run_data = manager.create_run(params)
             run_id = run_data["run_id"]
 
@@ -363,9 +368,7 @@ class InitSimilarityRunOperator(foo.Operator):
     def execute(self, ctx):
         manager = RunManager(ctx)
         params = {**ctx.params}
-        if ctx.user_id:
-            params["created_by"] = str(ctx.user_id)
-            params["created_by_name"] = getattr(ctx.user, "name", None) or ""
+        _set_ownership(params, ctx)
         run_data = manager.create_run(params)
         run_id = run_data["run_id"]
 
