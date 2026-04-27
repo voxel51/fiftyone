@@ -526,9 +526,7 @@ class Detection(_HasAttributesDict, _HasID, _HasMedia, _HasInstance, Label):
                 exporting in-database segmentations
             overwrite_path (False): whether to write the in-database
                 :attr:`mask` to disk even when :attr:`mask_path` is
-                already set. Use this when an in-app edit has produced a
-                new in-database mask that should overwrite the file at the
-                original on-disk path
+                already set
         """
         if self.mask_path is not None and not overwrite_path:
             etau.copy_file(self.mask_path, outpath)
@@ -1210,9 +1208,7 @@ class Segmentation(_HasID, _HasMedia, Label):
                 exporting in-database segmentations
             overwrite_path (False): whether to write the in-database
                 :attr:`mask` to disk even when :attr:`mask_path` is
-                already set. Use this when an in-app edit has produced a
-                new in-database mask that should overwrite the file at the
-                original on-disk path
+                already set
         """
         if self.mask_path is not None and not overwrite_path:
             etau.copy_file(self.mask_path, outpath)
