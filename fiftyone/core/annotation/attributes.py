@@ -73,8 +73,8 @@ class When:
 
     def __post_init__(self) -> None:
         self.operator = WhenOperator(self.operator)
-        if not self.field:
-            raise ValueError("When.field is required")
+        if not isinstance(self.field, str) or not self.field:
+            raise ValueError("When.field must be a non-empty string")
 
     def to_dict(self) -> dict:
         """Serializes this condition to a dict.
@@ -155,13 +155,15 @@ class AttributeSpec:
     when: Optional[list[When]] = None
 
     def __post_init__(self) -> None:
-        missing = [
-            k for k in ("name", "type", "component") if not getattr(self, k)
+        invalid_fields = [
+            k
+            for k in ("name", "type", "component")
+            if not isinstance(getattr(self, k), str) or not getattr(self, k)
         ]
-        if missing:
+        if invalid_fields:
             raise ValueError(
-                f"AttributeSpec missing required field(s): "
-                f"{', '.join(missing)}"
+                f"AttributeSpec field(s) must be non-empty strings: "
+                f"{', '.join(invalid_fields)}"
             )
 
     def to_dict(self) -> dict:

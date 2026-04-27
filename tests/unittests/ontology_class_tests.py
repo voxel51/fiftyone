@@ -44,6 +44,10 @@ class WhenTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             When(WhenOperator.EQUALS, field="", value=True)
 
+    def test_non_string_field_raises(self):
+        with self.assertRaises(ValueError):
+            When(WhenOperator.EQUALS, field=42, value=True)
+
     def test_from_dict_missing_keys(self):
         with self.assertRaises(ValueError):
             When.from_dict({"operator": "equals", "field": "f"})
@@ -153,6 +157,14 @@ class AttributeSpecTests(unittest.TestCase):
     def test_missing_component_raises(self):
         with self.assertRaises(ValueError):
             AttributeSpec(name="attr", type="str", component="")
+
+    def test_non_string_fields_raise(self):
+        with self.assertRaises(ValueError):
+            AttributeSpec(name=42, type="str", component="dropdown")
+        with self.assertRaises(ValueError):
+            AttributeSpec(name="attr", type=42, component="dropdown")
+        with self.assertRaises(ValueError):
+            AttributeSpec(name="attr", type="str", component=42)
 
     def test_from_dict_missing_keys(self):
         with self.assertRaises(ValueError):
