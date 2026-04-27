@@ -406,6 +406,39 @@ export const useSegmentationMode = () => {
     )
   );
 
+  /**
+   * Handles `lighter:point-selection-finalize` (e.g. right-click during AI
+   * tool). Accepts the current AI mask, tears down point selection, and
+   * switches to brush so the user can refine the mask manually. The overlay
+   * stays selected and in editing mode.
+   */
+  useEventHandler(
+    "lighter:point-selection-finalize",
+    useCallback(
+      (payload) => {
+        if (
+          !segmentationModeActive ||
+          !claimEvent("point-selection-finalize", payload.eventId)
+        ) {
+          return;
+        }
+
+        pointSelection.deactivate();
+        resetToolsState();
+        setActiveTask(null);
+        setTool("brush");
+      },
+      [
+        claimEvent,
+        pointSelection,
+        resetToolsState,
+        segmentationModeActive,
+        setActiveTask,
+        setTool,
+      ]
+    )
+  );
+
   // ----------------------------  Public interface  ----------------------- //
 
   return useMemo(
