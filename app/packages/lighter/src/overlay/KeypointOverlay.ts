@@ -391,14 +391,8 @@ export class KeypointOverlay
     // Animated ripple rings — drawn behind the points so the solid point
     // remains crisp on top of the expanding ring.
     if (this.ripplePointIds.size > 0) {
-      const scale = this.renderer?.getScale() ?? 1;
       const elapsed = performance.now() - this.rippleStartTime;
       const cycleProgress = (elapsed % RIPPLE_CYCLE_MS) / RIPPLE_CYCLE_MS;
-      console.log("[ripple] rendering ripple frame", {
-        rippleSize: this.ripplePointIds.size,
-        absPointCount: absPoints.length,
-        elapsed,
-      });
 
       for (let i = 0; i < absPoints.length; i++) {
         const entry = this.#points[i];
@@ -419,11 +413,12 @@ export class KeypointOverlay
 
           if (opacity <= 0.01) continue;
 
-          // drawPoint divides radius by scale internally; multiply here so
-          // the ring expands in screen-space, not world-space.
+          // Pass the screen-pixel radius directly; drawPoint divides by
+          // viewport scale internally so the ring stays a constant size
+          // on screen as the user zooms.
           renderer.drawPoint(
             center,
-            radius * scale,
+            radius,
             {
               strokeStyle: rippleColor,
               lineWidth: 2,
@@ -799,38 +794,8 @@ export class KeypointOverlay
   }
 
   /**
-   * Replaces the set of points that should render an animated ripple. Pass
-   * an empty set or call {@link clearRipple} to stop the animation.
-   *
-   * Used to surface in-flight async work (e.g. AI inference) on prompt
-   * points without coupling the overlay to inference logic.
-   */
-  setRipplePointIds(ids: Iterable<string>): void {
-    const next = new Set(ids);
-    const wasEmpty = this.ripplePointIds.size === 0;
-
-    this.ripplePointIds = next;
-    console.log("[ripple] setRipplePointIds", {
-      size: next.size,
-      ids: [...next],
-      wasEmpty,
-      pointCount: this.#points.length,
-      pointEntries: this.#points.map((p) => p.id),
-    });
-
-    if (next.size === 0) {
-      this.cancelRippleAnimation();
-    } else if (wasEmpty) {
-      this.rippleStartTime = performance.now();
-      this.scheduleRippleAnimation();
-    }
-
-    this.markDirty();
-  }
-
-  /**
-   * Adds a single point id to the ripple set without disturbing others.
-   * Convenient when a caller wants to ripple a freshly-added point.
+   * Adds a point id to the ripple set so it renders an animated ring.
+   * Idempotent — calling for an id already in the set is a no-op.
    */
   addRipplePointId(id: string): void {
     if (this.ripplePointIds.has(id)) return;
@@ -843,18 +808,13 @@ export class KeypointOverlay
     this.markDirty();
   }
 
-  /** Removes a single point id from the ripple set. */
+  /** Removes a point id from the ripple set. */
   removeRipplePointId(id: string): void {
     if (!this.ripplePointIds.delete(id)) return;
     if (this.ripplePointIds.size === 0) {
       this.cancelRippleAnimation();
     }
     this.markDirty();
-  }
-
-  /** Convenience: stop ripple on all points. */
-  clearRipple(): void {
-    this.setRipplePointIds([]);
   }
 
   private cancelRippleAnimation(): void {
@@ -870,11 +830,8 @@ export class KeypointOverlay
     this.rippleAnimationFrameId = requestAnimationFrame(() => {
       this.rippleAnimationFrameId = null;
       if (this.ripplePointIds.size > 0) {
-        console.log("[ripple] rAF tick — markDirty + reschedule");
         this.markDirty();
         this.scheduleRippleAnimation();
-      } else {
-        console.log("[ripple] rAF tick — set empty, stopping");
       }
     });
   }

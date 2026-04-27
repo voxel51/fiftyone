@@ -50,19 +50,12 @@ export const useRegisterPointSelectionEventHandlers = () => {
           }
 
           // Surface a ripple on the new point for a guaranteed-visible
-          // duration. Keeps the visual feedback decoupled from inference
-          // timing — fast inference shouldn't make the indicator flash.
+          // duration. Decoupled from inference timing so fast inference
+          // doesn't make the indicator flash invisibly.
           const overlay = getOverlay(payload.id);
           if (overlay instanceof KeypointOverlay) {
-            console.log("[ripple] point-added → start ripple", {
-              pointId: payload.pointId,
-              overlayId: payload.id,
-            });
             overlay.addRipplePointId(payload.pointId);
             setTimeout(() => {
-              console.log("[ripple] timer expired → remove ripple", {
-                pointId: payload.pointId,
-              });
               overlay.removeRipplePointId(payload.pointId);
             }, RIPPLE_VISIBLE_MS);
           }
