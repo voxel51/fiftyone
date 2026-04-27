@@ -293,11 +293,11 @@ class SimilaritySearchPanel(Panel):
         pass
 
     def get_sample_media(self, ctx):
-        """Return filepaths for the given sample IDs.
+        """Return media URLs for the given sample IDs.
 
-        OSS only stores local filesystem paths here; the frontend's
-        ``getMediaUrl`` wraps these with ``/media`` for rendering. The
-        Teams build of this panel resolves to signed URLs instead.
+        Filepaths are returned as-is by default. In FiftyOne Enterprise,
+        cloud filepaths (e.g. ``s3://...``, ``gs://...``) are resolved
+        to signed HTTPS URLs so the frontend can render them directly.
         """
         sample_ids = ctx.params.get("sample_ids", [])
         if not sample_ids:
@@ -305,8 +305,8 @@ class SimilaritySearchPanel(Panel):
 
         try:
             view = ctx.dataset.select(sample_ids)
-            filepaths = dict(zip(view.values("id"), view.values("filepath")))
-            ctx.panel.set_data("sample_media", filepaths)
+            ids, filepaths = view.values(["id", "filepath"])
+            ctx.panel.set_data("sample_media", dict(zip(ids, filepaths)))
         except Exception as e:
             logger.warning("Failed to get sample media: %s", e)
 
