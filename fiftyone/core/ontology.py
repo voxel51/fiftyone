@@ -7,6 +7,7 @@ Ontology classes for defining reusable annotation and taxonomy structures.
 """
 
 import abc
+import copy
 import fnmatch
 from datetime import datetime
 from typing import Any, Optional
@@ -111,6 +112,44 @@ class Ontology(abc.ABC):
 
         self._doc.delete()
         self._doc = None
+
+    def rename(self, new_name: str) -> None:
+        """Renames this ontology across all versions.
+
+        Args:
+            new_name: the new ontology name
+        """
+        if self._doc is None:
+            raise ValueError(
+                "Cannot rename an ontology that has not been saved"
+            )
+
+        new_slug = fou.to_slug(new_name)
+        # Bulk update bypasses save() hooks, so we set slug explicitly so it
+        # does not drift from the new name. Pylint can't see ``objects``
+        # (dynamically attached by mongoengine).
+        OntologyDocument.objects(  # pylint: disable=no-member
+            slug=self._doc.slug
+        ).update(set__name=new_name, set__slug=new_slug)
+
+        self.name = new_name
+        self._doc.name = new_name
+        self._doc.slug = new_slug
+
+    def clone(self, new_name: str) -> "Ontology":
+        """Clones this ontology under a new name.
+
+        Args:
+            new_name: the name for the clone
+
+        Returns:
+            the cloned :class:`Ontology`
+        """
+        cloned = copy.deepcopy(self)
+        cloned.name = new_name
+        cloned._doc = None
+        cloned.save()
+        return cloned
 
     def _get_root(self) -> Any:
         """Returns the serialized root data for storage.
@@ -287,15 +326,6 @@ def _objects_by_slug(name: str):
     )
 
 
-def create_ontology(ontology: Ontology) -> None:
-    """Saves an ontology to the database.
-
-    Args:
-        ontology: an :class:`Ontology` instance
-    """
-    ontology.save()
-
-
 def load_ontology(name: str) -> Ontology:
     """Loads the latest version of an ontology by name.
 
@@ -361,38 +391,3 @@ def delete_ontology(name: str, force: bool = False) -> None:
     count = _objects_by_slug(name).delete()
     if count == 0:
         raise ValueError(f"Ontology '{name}' not found")
-
-
-def rename_ontology(name: str, new_name: str) -> None:
-    """Renames an ontology (all versions).
-
-    Args:
-        name: the current ontology name
-        new_name: the new name
-    """
-    # Bulk update bypasses save() hooks, so we must set slug explicitly —
-    # otherwise the stored slug would drift from the (now changed) name.
-    count = _objects_by_slug(name).update(
-        set__name=new_name, set__slug=fou.to_slug(new_name)
-    )
-    if count == 0:
-        raise ValueError(f"Ontology '{name}' not found")
-
-
-def clone_ontology(name: str, new_name: str) -> Ontology:
-    """Clones an ontology under a new name.
-
-    Loads the latest version and saves it as a new ontology.
-
-    Args:
-        name: the source ontology name
-        new_name: the name for the clone
-
-    Returns:
-        the cloned :class:`Ontology`
-    """
-    source = load_ontology(name)
-    source.name = new_name
-    source._doc = None
-    source.save()
-    return source

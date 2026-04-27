@@ -488,10 +488,10 @@ class OntologySDKTests(unittest.TestCase):
         )
 
     def test_save_and_load(self):
-        from fiftyone.core.ontology import create_ontology, load_ontology
+        from fiftyone.core.ontology import load_ontology
 
         ao = self._make_ontology()
-        create_ontology(ao)
+        ao.save()
 
         self.assertIsNotNone(ao.version)
         self.assertIsNotNone(ao.created_at)
@@ -574,38 +574,32 @@ class OntologySDKTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             load_ontology("nonexistent")
 
-    def test_rename_ontology(self):
-        from fiftyone.core.ontology import (
-            load_ontology,
-            ontology_exists,
-            rename_ontology,
-        )
+    def test_rename(self):
+        from fiftyone.core.ontology import load_ontology, ontology_exists
 
-        self._make_ontology("old_name").save()
+        ao = self._make_ontology("old_name")
+        ao.save()
 
-        rename_ontology("old_name", "new_name")
+        ao.rename("new_name")
 
+        self.assertEqual(ao.name, "new_name")
         self.assertFalse(ontology_exists("old_name"))
         loaded = load_ontology("new_name")
         self.assertEqual(loaded.name, "new_name")
         self.assertEqual(len(loaded.attributes), 2)
 
-    def test_rename_nonexistent_raises(self):
-        from fiftyone.core.ontology import rename_ontology
-
+    def test_rename_unsaved_raises(self):
+        ao = self._make_ontology()
         with self.assertRaises(ValueError):
-            rename_ontology("nonexistent", "new_name")
+            ao.rename("new_name")
 
-    def test_clone_ontology(self):
-        from fiftyone.core.ontology import (
-            clone_ontology,
-            load_ontology,
-            ontology_exists,
-        )
+    def test_clone(self):
+        from fiftyone.core.ontology import load_ontology, ontology_exists
 
-        self._make_ontology("original").save()
+        ao = self._make_ontology("original")
+        ao.save()
 
-        cloned = clone_ontology("original", "cloned")
+        cloned = ao.clone("cloned")
 
         self.assertTrue(ontology_exists("original"))
         self.assertTrue(ontology_exists("cloned"))
