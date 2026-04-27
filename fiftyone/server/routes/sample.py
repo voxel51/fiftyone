@@ -679,11 +679,11 @@ class CommitMask(HTTPEndpoint):
 
         try:
             label_field = sample[field]
-        except KeyError:
+        except KeyError as err:
             raise HTTPException(
                 status_code=404,
                 detail=f"Field '{field}' not found on sample",
-            )
+            ) from err
 
         if label_field is None:
             raise HTTPException(
