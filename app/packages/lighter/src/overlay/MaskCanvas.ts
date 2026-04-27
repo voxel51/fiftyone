@@ -26,6 +26,21 @@ export interface PaintStrokeData {
  * Manages mask decoding, rendering, and interactive painting for a
  * detection overlay. Owns the decoded bitmap, the mutable editing canvas,
  * and all painting helpers.
+ *
+ * ## Lifecycle
+ *
+ * The mask has two phases: display and editing. Transitioning to editing
+ * (via `ensureCanvas`) is a one-way door — the display-only fields are
+ * released and the canvas becomes the source of truth.
+ *
+ * ```
+ * Display phase
+ *   rawMaskData ──(decodeMask)──> maskBitmap   (color-painted, for rendering)
+ *                                 rawPixels    (single-channel, for hit-testing)
+ *
+ * Editing phase  (ensureCanvas — copies bitmap into canvas, then releases it)
+ *   canvas ──(encodeMask)──> pendingMask  (base64, for backend persistence)
+ * ```
  */
 export class MaskCanvas {
   // Cached decoded mask bitmap, keyed by the raw mask string to detect changes.
@@ -196,7 +211,12 @@ export class MaskCanvas {
 
     if (this.maskBitmap) {
       this.context.drawImage(this.maskBitmap, 0, 0, width, height);
+      this.maskBitmap.close();
+      this.maskBitmap = undefined;
     }
+
+    this.rawMaskData = undefined;
+    this.decodedColor = undefined;
   }
 
   /**
