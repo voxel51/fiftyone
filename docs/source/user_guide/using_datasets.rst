@@ -5351,7 +5351,7 @@ When using direct 3D assets, pass `media_type="3d"` explicitly:
 Features such as :ref:`camera intrinsics and extrinsics
 <camera-intrinsics-extrinsics>`, camera frustum rendering, and
 :ref:`3D annotation <creating-3d-polylines>` are available whether your sample
-points directly to a supported 3D asset or to an `.fo3d` scene.
+points directly to a :ref:`supported 3D asset <3d-meshes>` or to an `.fo3d` scene.
 
 An FO3D file encapsulates a 3D scene constructed using the
 :class:`Scene <fiftyone.core.threed.Scene>` class, which provides methods
