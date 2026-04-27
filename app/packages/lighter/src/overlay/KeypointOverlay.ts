@@ -33,6 +33,7 @@ import {
 } from "../utils/geometry";
 import { BaseOverlay } from "./BaseOverlay";
 import { NO_BOUNDS } from "./DetectionOverlay";
+import { drawRippleRings } from "./rippleRing";
 import { v4 as uuidv4 } from "uuid";
 
 export type KeypointLabel = RawLookerLabel & {
@@ -77,13 +78,6 @@ type KeypointEntry = {
   position: [number, number];
   variant?: string;
 };
-
-// Ripple animation constants.
-// Tuned to roughly match the original AI-segment ripple appearance.
-const RIPPLE_CYCLE_MS = 1100;
-const RIPPLE_MAX_RADIUS = 22;
-const RIPPLE_RING_COUNT = 2;
-const RIPPLE_PEAK_OPACITY = 0.55;
 
 /**
  * Keypoint overlay implementation with per-point interaction, optional connections,
@@ -391,42 +385,20 @@ export class KeypointOverlay
     // Animated ripple rings — drawn behind the points so the solid point
     // remains crisp on top of the expanding ring.
     if (this.ripplePointIds.size > 0) {
-      const elapsed = performance.now() - this.rippleStartTime;
-      const cycleProgress = (elapsed % RIPPLE_CYCLE_MS) / RIPPLE_CYCLE_MS;
+      const elapsedMs = performance.now() - this.rippleStartTime;
 
       for (let i = 0; i < absPoints.length; i++) {
         const entry = this.#points[i];
         if (!this.ripplePointIds.has(entry.id)) continue;
 
-        const center = absPoints[i];
         const ringStyle = resolvePointStyle(entry.variant);
-        const rippleColor =
-          ringStyle.fillStyle || ringStyle.strokeStyle || "#ffffff";
-
-        for (let ring = 0; ring < RIPPLE_RING_COUNT; ring++) {
-          const ringProgress =
-            (cycleProgress - ring / RIPPLE_RING_COUNT + 1) % 1;
-          // Ease-out cubic — fast start, slow finish.
-          const eased = 1 - Math.pow(1 - ringProgress, 3);
-          const radius = KEYPOINT_RADIUS + eased * RIPPLE_MAX_RADIUS;
-          const opacity = (1 - eased) * RIPPLE_PEAK_OPACITY;
-
-          if (opacity <= 0.01) continue;
-
-          // Pass the screen-pixel radius directly; drawPoint divides by
-          // viewport scale internally so the ring stays a constant size
-          // on screen as the user zooms.
-          renderer.drawPoint(
-            center,
-            radius,
-            {
-              strokeStyle: rippleColor,
-              lineWidth: 2,
-              opacity,
-            },
-            this.containerId
-          );
-        }
+        drawRippleRings({
+          renderer,
+          center: absPoints[i],
+          color: ringStyle.fillStyle || ringStyle.strokeStyle || "#ffffff",
+          elapsedMs,
+          containerId: this.containerId,
+        });
       }
     }
 
