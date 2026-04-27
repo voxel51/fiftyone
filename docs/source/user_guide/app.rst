@@ -2258,7 +2258,8 @@ You can filter the run list by:
 -   **Date range**: Today, Last 7 days, Last 30 days, or Older
 -   **Search text**: filter by query content or run name
 -   **Owner**: show all runs or only your own (Enterprise only, for users with
-    manage permissions)
+    `Can manage <https://docs.voxel51.com/enterprise/roles_and_permissions.html#can-manage>`_
+    dataset access)
 
 Managing runs
 ~~~~~~~~~~~~~
@@ -2324,11 +2325,12 @@ the search will return patch results; otherwise it returns sample results.
 Delegated execution
 -------------------
 
-Triggered from the popover, similarity searches run immediately on the App
-server by default. If your deployment supports
-:ref:`delegated operations <delegated-operations>`, you can choose to run the
-search on a worker pod instead by selecting **Delegate** as the execution mode.
-This is useful for a large number of results or large datasets.
+Searches triggered from the popover always run immediately on the App server,
+even if your deployment supports :ref:`delegated operations <delegated-operations>`.
+To delegate a search, open the panel via the popover's settings icon (or from
+the panels menu), create a search, and select **Delegate** as the execution
+mode. Delegated searches run on a worker pod, which is useful for a large
+number of results or large datasets.
 
 .. _app-similarity:
 
@@ -2350,6 +2352,13 @@ All popover workflows below share a settings icon that opens the full
 specify a larger number of results, query by greatest or least similarity (if
 supported), choose a different similarity index, or optionally save the
 computed distances as a new sample field.
+
+.. note::
+
+    Popover searches always run immediately. After you submit a search, you
+    may briefly see a loading indicator (`...`) while the search executes;
+    once it completes, the Similarity Search panel opens and displays the
+    results.
 
 .. _app-image-similarity:
 
