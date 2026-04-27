@@ -1,10 +1,10 @@
 import {
   KeypointOverlay,
-  RIPPLE_VISIBLE_MS,
   UNDEFINED_LIGHTER_SCENE_ID,
   useLighter,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
+import { RIPPLE_VISIBLE_MS } from "@fiftyone/lighter/src/constants";
 import { useToolsState } from "./useToolsContext";
 import { NEGATIVE_POINT_VARIANT, usePointSelection } from "./usePointSelection";
 import { useCallback } from "react";
