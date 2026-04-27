@@ -52,10 +52,7 @@ export const useRegisterPointSelectionEventHandlers = () => {
           // doesn't make the indicator flash invisibly.
           const overlay = getOverlay(payload.id);
           if (overlay instanceof KeypointOverlay) {
-            overlay.addRipplePointId(payload.pointId);
-            setTimeout(() => {
-              overlay.removeRipplePointId(payload.pointId);
-            }, RIPPLE_VISIBLE_MS);
+            overlay.addRipplePointId(payload.pointId, RIPPLE_VISIBLE_MS);
           }
         }
       },

@@ -9,14 +9,16 @@
  * frame each tick (e.g. via `requestAnimationFrame` + `markDirty`).
  */
 
-import { KEYPOINT_RADIUS } from "../constants";
+import {
+  KEYPOINT_RADIUS,
+  RIPPLE_CYCLE_MS,
+  RIPPLE_LINE_WIDTH,
+  RIPPLE_MAX_RADIUS,
+  RIPPLE_PEAK_OPACITY,
+  RIPPLE_RING_COUNT,
+} from "../constants";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { Point } from "../types";
-
-const RIPPLE_CYCLE_MS = 1100;
-const RIPPLE_MAX_RADIUS = 22;
-const RIPPLE_RING_COUNT = 2;
-const RIPPLE_PEAK_OPACITY = 0.55;
 
 export interface DrawRippleRingsArgs {
   renderer: Renderer2D;
@@ -53,7 +55,7 @@ export const drawRippleRings = ({
     renderer.drawPoint(
       center,
       radius,
-      { strokeStyle: color, lineWidth: 2, opacity },
+      { strokeStyle: color, lineWidth: RIPPLE_LINE_WIDTH, opacity },
       containerId
     );
   }

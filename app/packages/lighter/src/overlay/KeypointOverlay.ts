@@ -118,6 +118,10 @@ export class KeypointOverlay
   // animated ripple ring. Used to indicate in-flight async work
   // (e.g. AI inference) on prompt points.
   private ripplePointIds: Set<string> = new Set();
+  // Expiration timestamp (performance.now() ms) per ripple point id;
+  // entries here are auto-removed by the rAF loop when their time elapses.
+  // Ids without an entry ripple indefinitely until removed manually.
+  private rippleExpiresAt: Map<string, number> = new Map();
   private rippleStartTime = 0;
   private rippleAnimationFrameId: number | null = null;
 
@@ -726,6 +730,7 @@ export class KeypointOverlay
 
     if (this.ripplePointIds.has(pointId)) {
       this.ripplePointIds.delete(pointId);
+      this.rippleExpiresAt.delete(pointId);
       if (this.ripplePointIds.size === 0) {
         this.cancelRippleAnimation();
       }
@@ -767,22 +772,31 @@ export class KeypointOverlay
 
   /**
    * Adds a point id to the ripple set so it renders an animated ring.
-   * Idempotent — calling for an id already in the set is a no-op.
+   *
+   * If `durationMs` is provided, the rAF loop auto-removes the id once that
+   * many milliseconds have elapsed; calling again with the same id refreshes
+   * the deadline. Omit `durationMs` to ripple indefinitely until manually
+   * removed.
    */
-  addRipplePointId(id: string): void {
-    if (this.ripplePointIds.has(id)) return;
-    const wasEmpty = this.ripplePointIds.size === 0;
-    this.ripplePointIds.add(id);
-    if (wasEmpty) {
-      this.rippleStartTime = performance.now();
-      this.scheduleRippleAnimation();
+  addRipplePointId(id: string, durationMs?: number): void {
+    if (!this.ripplePointIds.has(id)) {
+      const wasEmpty = this.ripplePointIds.size === 0;
+      this.ripplePointIds.add(id);
+      if (wasEmpty) {
+        this.rippleStartTime = performance.now();
+        this.scheduleRippleAnimation();
+      }
+      this.markDirty();
     }
-    this.markDirty();
+    if (durationMs != null) {
+      this.rippleExpiresAt.set(id, performance.now() + durationMs);
+    }
   }
 
   /** Removes a point id from the ripple set. */
   removeRipplePointId(id: string): void {
     if (!this.ripplePointIds.delete(id)) return;
+    this.rippleExpiresAt.delete(id);
     if (this.ripplePointIds.size === 0) {
       this.cancelRippleAnimation();
     }
@@ -801,6 +815,18 @@ export class KeypointOverlay
 
     this.rippleAnimationFrameId = requestAnimationFrame(() => {
       this.rippleAnimationFrameId = null;
+
+      // Expire any ids whose duration elapsed since the last frame.
+      if (this.rippleExpiresAt.size > 0) {
+        const now = performance.now();
+        for (const [id, expireAt] of this.rippleExpiresAt) {
+          if (now >= expireAt) {
+            this.rippleExpiresAt.delete(id);
+            this.ripplePointIds.delete(id);
+          }
+        }
+      }
+
       if (this.ripplePointIds.size > 0) {
         this.markDirty();
         this.scheduleRippleAnimation();
@@ -817,11 +843,13 @@ export class KeypointOverlay
     this.dragPointIndex = null;
     this.previewPoint = null;
     this.ripplePointIds = new Set();
+    this.rippleExpiresAt.clear();
     this.cancelRippleAnimation();
     this.markDirty();
   }
 
   override destroy(): void {
+    this.rippleExpiresAt.clear();
     this.cancelRippleAnimation();
     super.destroy();
   }
