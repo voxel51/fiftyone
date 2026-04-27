@@ -6,7 +6,7 @@ Package-wide constants.
 |
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 import os
 
 from packaging.version import Version
@@ -15,6 +15,7 @@ from importlib.metadata import metadata
 
 
 CLIENT_TYPE = "fiftyone"
+UTC = timezone.utc
 
 FIFTYONE_DIR = os.path.dirname(os.path.abspath(__file__))
 FIFTYONE_CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".fiftyone")

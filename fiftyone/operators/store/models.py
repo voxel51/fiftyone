@@ -13,6 +13,8 @@ from enum import Enum
 
 from bson import ObjectId
 
+from fiftyone.constants import UTC
+
 
 class KeyPolicy(str, Enum):
     """
@@ -37,7 +39,7 @@ class KeyDocument:
     value: Any
     _id: Optional[Any] = None
     dataset_id: Optional[ObjectId] = None
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     updated_at: Optional[datetime] = None
     expires_at: Optional[datetime] = None
     policy: KeyPolicy = KeyPolicy.PERSIST
@@ -48,7 +50,7 @@ class KeyDocument:
         if ttl is None:
             return None
 
-        return datetime.utcnow() + timedelta(seconds=ttl)
+        return datetime.now(UTC) + timedelta(seconds=ttl)
 
     @classmethod
     def from_dict(cls, doc: dict[str, Any]) -> "KeyDocument":

@@ -15,6 +15,7 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone.constants as foc
+from fiftyone.constants import UTC
 from fiftyone.core.config import Config, Configurable
 from fiftyone.core.odm import patch_runs
 from fiftyone.core.odm.runs import RunDocument
@@ -313,7 +314,7 @@ class BaseRun(Configurable):
 
         self.validate_run(samples, key, overwrite=overwrite)
         version = foc.VERSION
-        timestamp = datetime.datetime.utcnow()
+        timestamp = datetime.datetime.now(UTC)
         run_info_cls = self.run_info_cls()
         run_info = run_info_cls(
             key, version=version, timestamp=timestamp, config=self.config

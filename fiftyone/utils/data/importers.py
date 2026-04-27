@@ -22,6 +22,7 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.video as etav
 
+from fiftyone.constants import UTC
 import fiftyone.core.annotation as foa
 import fiftyone.core.brain as fob
 import fiftyone.core.dataset as fod
@@ -1878,7 +1879,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
     def _import_samples(self, dataset, dataset_dict, tags=None, progress=None):
         name = dataset.name
         empty_import = not bool(dataset)
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         #
         # Import DatasetDocument

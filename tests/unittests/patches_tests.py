@@ -13,6 +13,7 @@ import unittest
 from unittest import mock
 
 import fiftyone as fo
+from fiftyone.constants import UTC
 import fiftyone.core.patches as fop
 from fiftyone import ViewField as F
 
@@ -830,10 +831,10 @@ class PatchesTests(unittest.TestCase):
         patch = patches.first()
 
         with self.assertRaises(ValueError):
-            patch.created_at = datetime.utcnow()
+            patch.created_at = datetime.now(UTC)
 
         with self.assertRaises(ValueError):
-            patch.last_modified_at = datetime.utcnow()
+            patch.last_modified_at = datetime.now(UTC)
 
         patch.reload()
 

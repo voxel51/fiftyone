@@ -19,6 +19,7 @@ from mongoengine.base import get_document
 
 import eta.core.utils as etau
 
+from fiftyone.constants import UTC
 import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import VALUE
 from fiftyone.core.expressions import ViewExpression as E
@@ -2279,7 +2280,7 @@ class ListSchema(Aggregation):
                     fo.DynamicEmbeddedDocument(
                         task="editing_pass",
                         author="Bob",
-                        timestamp=datetime.utcnow(),
+                        timestamp=datetime.now(UTC),
                     ),
                 ],
             ),

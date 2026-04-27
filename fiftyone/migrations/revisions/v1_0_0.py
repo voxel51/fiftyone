@@ -7,12 +7,14 @@ FiftyOne v1.0.0 revision.
 """
 from datetime import datetime
 
+from fiftyone.constants import UTC
+
 
 def up(db, dataset_name):
     match_d = {"name": dataset_name}
     dataset_dict = db.datasets.find_one(match_d)
 
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
 
     # Populate `Dataset.last_modified_at`
     if dataset_dict.get("last_modified_at", None) is None:

@@ -26,6 +26,7 @@ from freezegun import freeze_time
 from mongoengine import ValidationError
 
 import fiftyone as fo
+from fiftyone.constants import UTC
 import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
@@ -3475,13 +3476,13 @@ class DatasetTests(unittest.TestCase):
             float_field=1.0,
             str_field="hi",
             date_field=date.today(),
-            datetime_field=datetime.utcnow(),
+            datetime_field=datetime.now(UTC),
             list_bool_field=[False, True],
             list_int_field=[1, 2, 3],
             list_float_field=[1.0, 2, 4.1],
             list_str_field=["one", "two", "three"],
             list_date_field=[date.today(), date.today()],
-            list_datetime_field=[datetime.utcnow(), datetime.utcnow()],
+            list_datetime_field=[datetime.now(UTC), datetime.now(UTC)],
             list_untyped_field=[1, {"two": "three"}, [4], "five"],
             dict_field={"hello": "world"},
             vector_field=np.arange(5),
@@ -3663,10 +3664,10 @@ class DatasetTests(unittest.TestCase):
         self.assertTrue(field.read_only)
 
         with self.assertRaises(ValueError):
-            sample.created_at = datetime.utcnow()
+            sample.created_at = datetime.now(UTC)
 
         with self.assertRaises(ValueError):
-            sample.last_modified_at = datetime.utcnow()
+            sample.last_modified_at = datetime.now(UTC)
 
         # Custom fields
 
@@ -3823,10 +3824,10 @@ class DatasetTests(unittest.TestCase):
         self.assertTrue(field.read_only)
 
         with self.assertRaises(ValueError):
-            frame.created_at = datetime.utcnow()
+            frame.created_at = datetime.now(UTC)
 
         with self.assertRaises(ValueError):
-            frame.last_modified_at = datetime.utcnow()
+            frame.last_modified_at = datetime.now(UTC)
 
         # Custom fields
 
@@ -5215,7 +5216,7 @@ class DatasetExtrasTests(unittest.TestCase):
         self.assertIsNone(spaces.name)
 
         workspace_name = "test__workspace"
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         description = "a description of the workspace, yo"
         color = "#FF6D04"
 
@@ -5247,7 +5248,7 @@ class DatasetExtrasTests(unittest.TestCase):
         dataset.reload()
         also_spaces = dataset.load_workspace(workspace_name)
         last_loaded_at2 = dataset._doc.workspaces[0].last_loaded_at
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         self.assertEqual(spaces, also_spaces)
         self.assertEqual(also_spaces.name, workspace_name)
@@ -7492,7 +7493,7 @@ class DynamicFieldTests(unittest.TestCase):
                             fo.DynamicEmbeddedDocument(
                                 task="editing_pass",
                                 author="Bob",
-                                timestamp=datetime.utcnow(),
+                                timestamp=datetime.now(UTC),
                             ),
                         ],
                     ),
@@ -8273,7 +8274,7 @@ class _CameraInfo(fo.EmbeddedDocument):
 
 
 class _LabelMetadata(fo.DynamicEmbeddedDocument):
-    created_at = fof.DateTimeField(default=datetime.utcnow)
+    created_at = fof.DateTimeField(default=lambda: datetime.now(UTC))
 
     model_name = fof.StringField()
 

@@ -13,6 +13,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 from bson import ObjectId
 
+from fiftyone.constants import UTC
 from fiftyone.operators.store.models import (
     KeyDocument,
     StoreDocument,
@@ -507,7 +508,7 @@ class MongoExecutionStoreRepo(ExecutionStoreRepo):
         ttl: Optional[int] = None,
         policy: str = "persist",
     ) -> KeyDocument:
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         expiration = KeyDocument.get_expiration(ttl)
         policy = "evict" if ttl is not None or policy == "evict" else "persist"
         if ttl is not None or policy == "evict":
@@ -772,7 +773,7 @@ class InMemoryExecutionStoreRepo(ExecutionStoreRepo):
         ttl: Optional[int] = None,
         policy: str = "persist",
     ) -> KeyDocument:
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         expiration = KeyDocument.get_expiration(ttl)
         key_doc = KeyDocument.from_dict(
             dict(

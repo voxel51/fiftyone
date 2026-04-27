@@ -1767,13 +1767,12 @@ class ViewExpression(object):
 
         Examples::
 
-            from datetime import datetime
-            import pytz
+            from datetime import datetime, timezone
 
             import fiftyone as fo
             from fiftyone import ViewField as F
 
-            now = datetime.utcnow().replace(tzinfo=pytz.utc)
+            now = datetime.now(timezone.utc)
 
             sample = fo.Sample(
                 filepath="image.png",

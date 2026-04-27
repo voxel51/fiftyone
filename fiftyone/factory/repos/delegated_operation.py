@@ -15,6 +15,7 @@ import pymongo
 from pymongo import IndexModel
 from pymongo.collection import Collection
 
+from fiftyone.constants import UTC
 from fiftyone.factory import DelegatedOperationPagingParams
 from fiftyone.factory.repos import DelegatedOperationDocument
 from fiftyone.internal.util import is_remote_service
@@ -363,8 +364,8 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             update = {
                 "$set": {
                     "run_state": run_state,
-                    "completed_at": datetime.utcnow(),
-                    "updated_at": datetime.utcnow(),
+                    "completed_at": datetime.now(UTC),
+                    "updated_at": datetime.now(UTC),
                     "result": execution_result_json,
                 }
             }
@@ -378,8 +379,8 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             update = {
                 "$set": {
                     "run_state": run_state,
-                    "failed_at": datetime.utcnow(),
-                    "updated_at": datetime.utcnow(),
+                    "failed_at": datetime.now(UTC),
+                    "updated_at": datetime.now(UTC),
                     "result": execution_result_json,
                 }
             }
@@ -388,8 +389,8 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             update = {
                 "$set": {
                     "run_state": run_state,
-                    "started_at": datetime.utcnow(),
-                    "updated_at": datetime.utcnow(),
+                    "started_at": datetime.now(UTC),
+                    "updated_at": datetime.now(UTC),
                     "monitored": monitored,
                 }
             }
@@ -397,8 +398,8 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             update = {
                 "$set": {
                     "run_state": run_state,
-                    "scheduled_at": datetime.utcnow(),
-                    "updated_at": datetime.utcnow(),
+                    "scheduled_at": datetime.now(UTC),
+                    "updated_at": datetime.now(UTC),
                 }
             }
         elif run_state == ExecutionRunState.QUEUED:
@@ -409,8 +410,8 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             update = {
                 "$set": {
                     "run_state": run_state,
-                    "queued_at": datetime.utcnow(),
-                    "updated_at": datetime.utcnow(),
+                    "queued_at": datetime.now(UTC),
+                    "updated_at": datetime.now(UTC),
                 }
             }
 
@@ -425,7 +426,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
 
         if progress is not None:
             update["$set"]["status"] = progress
-            update["$set"]["status"]["updated_at"] = datetime.utcnow()
+            update["$set"]["status"]["updated_at"] = datetime.now(UTC)
 
         collection_filter = {"_id": _id}
         if required_state is not None:
@@ -466,7 +467,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                 "status": {
                     "progress": execution_progress.progress,
                     "label": execution_progress.label,
-                    "updated_at": datetime.utcnow(),
+                    "updated_at": datetime.now(UTC),
                 },
             }
         }
@@ -614,7 +615,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         return self._collection.count_documents(filter=query)
 
     def ping(self, _id: ObjectId, log_tail: str = None):
-        updates = {"updated_at": datetime.utcnow()}
+        updates = {"updated_at": datetime.now(UTC)}
         if log_tail and isinstance(log_tail, str):
             updates["log_tail"] = log_tail
         self._collection.update_one(

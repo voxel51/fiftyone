@@ -13,6 +13,7 @@ from unittest.mock import patch, MagicMock, ANY, Mock
 
 from bson import ObjectId
 
+from fiftyone.constants import UTC
 from fiftyone.operators.store import ExecutionStoreService
 from fiftyone.operators.store.models import KeyDocument
 from fiftyone.factory.repo_factory import MongoExecutionStoreRepo
@@ -34,7 +35,7 @@ def assert_delta_seconds_approx(time_delta, seconds, epsilon=EPSILON):
 class TestKeyDocument(unittest.TestCase):
     def test_get_expiration(self):
         ttl = 1
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         expiration = KeyDocument.get_expiration(ttl)
         time_delta = expiration - now
         assert_delta_seconds_approx(time_delta, ttl)

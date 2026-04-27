@@ -29,6 +29,7 @@ from pymongo import InsertOne, UpdateMany, UpdateOne, WriteConcern
 import eta.core.serial as etas
 import eta.core.utils as etau
 
+from fiftyone.constants import UTC
 import fiftyone.core.aggregations as foa
 import fiftyone.core.annotation as foan
 import fiftyone.core.brain as fob
@@ -2093,7 +2094,7 @@ class SampleCollection(object):
         if self._is_read_only_field("tags"):
             raise ValueError("Cannot edit read-only field 'tags'")
 
-        update["$set"] = {"last_modified_at": datetime.utcnow()}
+        update["$set"] = {"last_modified_at": datetime.now(UTC)}
 
         ids = []
         ops = []
@@ -2223,7 +2224,7 @@ class SampleCollection(object):
         if self._is_read_only_field(tags_path):
             raise ValueError("Cannot edit read-only field '%s'" % tags_path)
 
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         root, is_list_field = self._get_label_field_root(label_field)
         _root, is_frame_field = self._handle_frame_field(root)
@@ -3383,7 +3384,7 @@ class SampleCollection(object):
         if self._is_read_only_field(field_name):
             raise ValueError("Cannot edit read-only field '%s'" % field_name)
 
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         ops = []
         for _id, value in zip(ids, values):
@@ -3426,7 +3427,7 @@ class SampleCollection(object):
         if self._is_read_only_field(field_name):
             raise ValueError("Cannot edit read-only field '%s'" % field_name)
 
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         root = list_field
         leaf = field_name[len(root) + 1 :]
@@ -3489,7 +3490,7 @@ class SampleCollection(object):
         if self._is_read_only_field(field_name):
             raise ValueError("Cannot edit read-only field '%s'" % field_name)
 
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         root = list_field
         leaf = field_name[len(root) + 1 :]
@@ -3530,7 +3531,7 @@ class SampleCollection(object):
                 "(found: '%s')" % field_name
             )
 
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         root, is_list_field = self._get_label_field_root(field_name)
         field_name, is_frame_field = self._handle_frame_field(field_name)
@@ -9574,7 +9575,7 @@ class SampleCollection(object):
                         fo.DynamicEmbeddedDocument(
                             task="editing_pass",
                             author="Bob",
-                            timestamp=datetime.utcnow(),
+                            timestamp=datetime.now(UTC),
                         ),
                     ],
                 ),
@@ -12988,7 +12989,7 @@ def _parse_values_dict(sample_collection, key_field, values):
 
 
 def _parse_frame_values_dicts(sample_collection, sample_ids, values):
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
 
     value = _get_non_none_value(values)
     if not isinstance(value, dict):

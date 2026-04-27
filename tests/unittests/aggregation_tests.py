@@ -13,6 +13,7 @@ import numpy as np
 import unittest
 
 import fiftyone as fo
+from fiftyone.constants import UTC
 import fiftyone.core.fields as fof
 from fiftyone import ViewField as F
 
@@ -437,7 +438,7 @@ class DatasetTests(unittest.TestCase):
                             fo.DynamicEmbeddedDocument(
                                 task="editing_pass",
                                 author="Bob",
-                                timestamp=datetime.utcnow(),
+                                timestamp=datetime.now(UTC),
                             ),
                         ],
                     ),
@@ -1127,7 +1128,7 @@ class DatasetTests(unittest.TestCase):
     @drop_datasets
     def test_dates(self):
         today = date.today()
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         samples = []
         for idx in range(100):
