@@ -1,7 +1,7 @@
 import React from "react";
+import { getSampleSrc } from "@fiftyone/state";
 import { ImageList, ImageListItem } from "../../mui";
 import { THUMB_SIZE, THUMB_GAP, THUMB_SINGLE_ROW_MAX } from "../../constants";
-import { getMediaUrl } from "../../utils";
 import { thumbnailStyle, ThumbnailPlaceholder } from "../styled";
 
 type SampleThumbnailsProps = {
@@ -38,7 +38,7 @@ export default function SampleThumbnails({
           <ImageListItem key={id}>
             {filepath ? (
               <img
-                src={getMediaUrl(filepath)}
+                src={getSampleSrc(filepath)}
                 alt="selected images"
                 style={thumbnailStyle}
               />

@@ -293,7 +293,12 @@ class SimilaritySearchPanel(Panel):
         pass
 
     def get_sample_media(self, ctx):
-        """Return filepaths for the given sample IDs."""
+        """Return filepaths for the given sample IDs.
+
+        OSS only stores local filesystem paths here; the frontend's
+        ``getMediaUrl`` wraps these with ``/media`` for rendering. The
+        Teams build of this panel resolves to signed URLs instead.
+        """
         sample_ids = ctx.params.get("sample_ids", [])
         if not sample_ids:
             return
