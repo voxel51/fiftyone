@@ -5,7 +5,7 @@ import { SnackbarProvider } from "notistack";
 import type React from "react";
 import { createRoot } from "react-dom/client";
 import { RecoilRoot } from "recoil";
-import { GatedPluginLoader } from "./GatedPluginLoader";
+import { GatedDynamicImports } from "./GatedDynamicImports";
 import Network from "./Network";
 import "./index.css";
 import "@voxel51/voodo/theme.css";
@@ -20,7 +20,7 @@ const App: React.FC = () => {
 
   return (
     <>
-      <GatedPluginLoader />
+      <GatedDynamicImports />
       <Network environment={environment} context={context} />
     </>
   );
