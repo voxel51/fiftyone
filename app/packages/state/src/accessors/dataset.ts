@@ -1,10 +1,11 @@
-import { useRecoilValue } from "recoil";
+import { useRecoilCallback, useRecoilValue } from "recoil";
 import {
   dataset,
   datasetId,
   datasetName,
   fieldSchema,
   selectedMediaField,
+  skeleton,
   State,
 } from "../recoil";
 
@@ -46,4 +47,17 @@ export const useSampleSchema = () =>
  */
 export const useSelectedMediaFieldGrid = () => {
   return useRecoilValue(selectedMediaField(false));
+};
+
+/**
+ * Hook which provides a function to get the default keypoint skeleton for a
+ * given field.
+ */
+export const useKeypointSkeleton = () => {
+  return useRecoilCallback(
+    ({ snapshot }) =>
+      (field: string) =>
+        snapshot.getLoadable(skeleton(field)).getValue(),
+    []
+  );
 };
