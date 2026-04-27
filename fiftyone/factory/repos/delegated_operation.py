@@ -7,9 +7,6 @@ FiftyOne delegated operation repository.
 """
 
 from datetime import datetime, timezone
-
-# UTC timezone constant — avoids the deprecated datetime.now(_UTC)
-_UTC = timezone.utc
 import logging
 from typing import Any, List, Optional, Union
 
@@ -29,6 +26,9 @@ from fiftyone.operators.executor import (
 )
 
 logger = logging.getLogger(__name__)
+
+# UTC singleton — use datetime.now(_UTC) instead of the deprecated datetime.utcnow()
+_UTC = timezone.utc
 
 
 class DelegatedOperationRepo(object):
