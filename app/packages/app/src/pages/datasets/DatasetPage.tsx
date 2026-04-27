@@ -18,8 +18,8 @@ import { graphql } from "relay-runtime";
 import Nav from "../../components/Nav";
 import type { Route } from "../../routing";
 import style from "../index.module.css";
-import { DatasetGridRendererFailover } from "./DatasetGridRendererFailover";
 import type { DatasetPageQuery } from "./__generated__/DatasetPageQuery.graphql";
+import { DatasetGridRendererFailover } from "./DatasetGridRendererFailover";
 
 const DatasetPageQueryNode = graphql`
   query DatasetPageQuery(
