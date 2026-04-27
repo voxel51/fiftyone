@@ -574,25 +574,6 @@ class OntologySDKTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             load_ontology("nonexistent")
 
-    def test_rename(self):
-        from fiftyone.core.ontology import load_ontology, ontology_exists
-
-        ao = self._make_ontology("old_name")
-        ao.save()
-
-        ao.rename("new_name")
-
-        self.assertEqual(ao.name, "new_name")
-        self.assertFalse(ontology_exists("old_name"))
-        loaded = load_ontology("new_name")
-        self.assertEqual(loaded.name, "new_name")
-        self.assertEqual(len(loaded.attributes), 2)
-
-    def test_rename_unsaved_raises(self):
-        ao = self._make_ontology()
-        with self.assertRaises(ValueError):
-            ao.rename("new_name")
-
     def test_clone(self):
         from fiftyone.core.ontology import load_ontology, ontology_exists
 

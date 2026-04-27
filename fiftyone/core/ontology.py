@@ -113,29 +113,6 @@ class Ontology(abc.ABC):
         self._doc.delete()
         self._doc = None
 
-    def rename(self, new_name: str) -> None:
-        """Renames this ontology across all versions.
-
-        Args:
-            new_name: the new ontology name
-        """
-        if self._doc is None:
-            raise ValueError(
-                "Cannot rename an ontology that has not been saved"
-            )
-
-        new_slug = fou.to_slug(new_name)
-        # Bulk update bypasses save() hooks, so we set slug explicitly so it
-        # does not drift from the new name. Pylint can't see ``objects``
-        # (dynamically attached by mongoengine).
-        OntologyDocument.objects(  # pylint: disable=no-member
-            slug=self._doc.slug
-        ).update(set__name=new_name, set__slug=new_slug)
-
-        self.name = new_name
-        self._doc.name = new_name
-        self._doc.slug = new_slug
-
     def clone(self, new_name: str) -> "Ontology":
         """Clones this ontology under a new name.
 
