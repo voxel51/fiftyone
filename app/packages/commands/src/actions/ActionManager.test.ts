@@ -58,4 +58,75 @@ describe("ActionManager", () => {
     //not called after unsub
     expect(listener).toBeCalledTimes(3);
   });
+
+  describe("prune", () => {
+    const make = (id: string) =>
+      new DelegatingUndoable(
+        id,
+        () => {
+          return;
+        },
+        () => {
+          return;
+        }
+      );
+
+    it("removes matching entries from the undo stack", async () => {
+      await manager.execute(make("keep.a"));
+      await manager.execute(make("drop.a"));
+      await manager.execute(make("keep.b"));
+      await manager.execute(make("drop.b"));
+      expect(manager.getUndoStackSize()).toBe(4);
+
+      manager.prune((u) => u.id.startsWith("drop."));
+
+      expect(manager.getUndoStackSize()).toBe(2);
+      expect(manager.canUndo()).toBe(true);
+    });
+
+    it("removes matching entries from the redo stack", async () => {
+      await manager.execute(make("drop.a"));
+      await manager.execute(make("keep.a"));
+      await manager.undo();
+      await manager.undo();
+      expect(manager.getRedoStackSize()).toBe(2);
+
+      manager.prune((u) => u.id === "drop.a");
+
+      expect(manager.getRedoStackSize()).toBe(1);
+      expect(manager.getUndoStackSize()).toBe(0);
+    });
+
+    it("fires undo listeners when entries are removed", async () => {
+      await manager.execute(make("drop.a"));
+      const listener = vi.fn();
+      manager.subscribeUndo(listener);
+
+      manager.prune((u) => u.id === "drop.a");
+
+      expect(listener).toBeCalledTimes(1);
+      expect(listener.mock.calls[0]).toEqual([false, false]);
+    });
+
+    it("does not fire undo listeners when nothing matches", async () => {
+      await manager.execute(make("keep.a"));
+      const listener = vi.fn();
+      manager.subscribeUndo(listener);
+
+      manager.prune((u) => u.id === "nothing.matches");
+
+      expect(listener).not.toBeCalled();
+    });
+
+    it("is a no-op on empty stacks", () => {
+      const listener = vi.fn();
+      manager.subscribeUndo(listener);
+
+      manager.prune(() => true);
+
+      expect(listener).not.toBeCalled();
+      expect(manager.getUndoStackSize()).toBe(0);
+      expect(manager.getRedoStackSize()).toBe(0);
+    });
+  });
 });

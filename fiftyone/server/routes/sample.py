@@ -645,10 +645,118 @@ class SampleField(HTTPEndpoint):
         )
 
 
+class CommitMask(HTTPEndpoint):
+    """Commits an in-database mask back to its on-disk mask_path."""
+
+    @decorators.route
+    async def post(self, request: Request, data: dict) -> JSONResponse:
+        """Write a Detection's in-database mask to its mask_path on disk.
+
+        After a successful write the in-database mask is cleared and mask_path
+        is preserved, matching the original storage strategy.
+
+        Args:
+            request: Starlette request with dataset_id and sample_id in path
+            data: ``{"field": "ground_truth", "detection_id": "abc123"}``
+
+        Returns:
+            ``{"committed": true, "mask_path": "..."}`` on success
+        """
+        dataset_id = request.path_params["dataset_id"]
+        sample_id = request.path_params["sample_id"]
+        if_last_modified_at = get_if_last_modified_at(request)
+
+        field = data.get("field")
+        detection_id = data.get("detection_id")
+
+        if not field or not detection_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Both 'field' and 'detection_id' are required",
+            )
+
+        sample = get_sample(dataset_id, sample_id, if_last_modified_at)
+
+        try:
+            label_field = sample[field]
+        except KeyError as err:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Field '{field}' not found on sample",
+            ) from err
+
+        if label_field is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Field '{field}' is empty on sample",
+            )
+
+        detections = getattr(label_field, "detections", None)
+        if detections is None:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Field '{field}' is not a Detections field",
+            )
+
+        detection = next(
+            (d for d in detections if str(d.id) == detection_id),
+            None,
+        )
+
+        if detection is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Detection '{detection_id}' not found in '{field}'",
+            )
+
+        if detection.mask_path is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Detection has no mask_path — nothing to commit",
+            )
+
+        if detection.mask is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Detection has no in-database mask to commit",
+            )
+
+        mask_path = detection.mask_path
+
+        try:
+            detection.export_mask(
+                mask_path, update=True, overwrite_path=True
+            )
+            etag = save_sample(sample, if_last_modified_at)
+        except DbVersionMismatchError:
+            raise
+        except Exception as err:
+            logger.exception("Failed to commit mask to %s", mask_path)
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to write mask to '{mask_path}': {err}",
+            ) from err
+
+        logger.info(
+            "Committed mask for detection %s to %s",
+            detection_id,
+            mask_path,
+        )
+
+        return JSONResponse(
+            {"committed": True, "mask_path": mask_path},
+            headers={"ETag": etag},
+        )
+
+
 SampleRoutes = [
     ("/dataset/{dataset_id}/sample/{sample_id}", Sample),
     (
         "/dataset/{dataset_id}/sample/{sample_id}/{field_path}/{field_id}",
         SampleField,
+    ),
+    (
+        "/dataset/{dataset_id}/sample/{sample_id}/commit-mask",
+        CommitMask,
     ),
 ]

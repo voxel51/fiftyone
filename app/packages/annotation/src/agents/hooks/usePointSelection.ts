@@ -112,6 +112,12 @@ const keypointOverlayIdAtom = atom<string | null>(null);
  * currently active.
  */
 const pointSelectionActiveAtom = atom(false);
+/**
+ * Shared reference to the interactive handler for the active point selection
+ * session. Held in an atom so activation and deactivation can happen from
+ * different component instances of the hook.
+ */
+const interactiveHandlerAtom = atom<InteractiveKeypointHandler | null>(null);
 
 /**
  * Hook which provides activation/deactivation functions for point selection.
@@ -121,6 +127,9 @@ export const usePointSelection = (): PointSelection => {
     keypointOverlayIdAtom
   );
   const [isActive, setIsActive] = useAtom(pointSelectionActiveAtom);
+  const [interactiveHandler, setInteractiveHandler] = useAtom(
+    interactiveHandlerAtom
+  );
 
   const { getOverlay, scene, overlayFactory } = useLighter();
   const eventBus = useLighterEventBus(
@@ -161,14 +170,14 @@ export const usePointSelection = (): PointSelection => {
 
       // Enter interactive mode with a keypoint handler;
       // this will allow for creating/removing points.
-      scene.enterInteractiveMode(
-        new InteractiveKeypointHandler(
-          overlay,
-          eventBus,
-          resolveVariant,
-          resolvePointHit
-        )
+      const handler = new InteractiveKeypointHandler(
+        overlay,
+        eventBus,
+        resolveVariant,
+        resolvePointHit
       );
+      setInteractiveHandler(handler);
+      scene.enterInteractiveMode(handler);
 
       setIsActive(true);
     }
@@ -178,6 +187,7 @@ export const usePointSelection = (): PointSelection => {
     overlayFactory,
     resolveVariant,
     scene,
+    setInteractiveHandler,
     setIsActive,
     setKeypointOverlayId,
   ]);
@@ -186,6 +196,11 @@ export const usePointSelection = (): PointSelection => {
     if (!isActive) {
       return;
     }
+
+    // Points are ephemeral:
+    // drop any undo/redo entries pushed before tearing down interactive mode
+    interactiveHandler?.pruneCommands();
+    setInteractiveHandler(null);
 
     // Clear the interactive keypoint handler; deactivates point interaction
     scene?.exitInteractiveMode();
@@ -197,7 +212,15 @@ export const usePointSelection = (): PointSelection => {
     }
 
     setIsActive(false);
-  }, [isActive, keypointOverlayId, scene, setIsActive, setKeypointOverlayId]);
+  }, [
+    interactiveHandler,
+    isActive,
+    keypointOverlayId,
+    scene,
+    setInteractiveHandler,
+    setIsActive,
+    setKeypointOverlayId,
+  ]);
 
   // Clear points from the overlay without removing the overlay from the scene
   const clearPoints = useCallback(() => {
