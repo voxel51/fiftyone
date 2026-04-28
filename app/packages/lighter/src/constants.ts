@@ -64,6 +64,19 @@ export const KEYPOINT_HIT_RADIUS = 10;
 export const PREVIEW_LINE_OPACITY = 0.6;
 
 /**
+ * Settings related to the keypoint ripple animation.
+ *
+ * `RIPPLE_VISIBLE_MS` and `RIPPLE_CYCLE_MS` are intentionally equal so the
+ * ring fades to opacity 0 right as it's removed (no abrupt mid-cycle cut).
+ */
+export const RIPPLE_VISIBLE_MS = 1200;
+export const RIPPLE_CYCLE_MS = 1200;
+export const RIPPLE_MAX_RADIUS = 22;
+export const RIPPLE_RING_COUNT = 2;
+export const RIPPLE_PEAK_OPACITY = 0.75;
+export const RIPPLE_LINE_WIDTH = 3;
+
+/**
  * Opacity of selected bounding boxes
  */
 export const SELECTED_ALPHA = 0.1;
