@@ -2,7 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { type ToolbarActionGroup } from "@fiftyone/components";
+import { SelectIcon, type ToolbarActionGroup } from "@fiftyone/components";
 import { buildBrushCursor } from "@fiftyone/lighter";
 import {
   Add,
@@ -13,7 +13,6 @@ import {
   CircleOutlined,
   CropSquare,
   FormatColorReset,
-  NearMe,
   Redo,
   Remove,
   Timeline,
@@ -187,7 +186,7 @@ export const useSegmentationActions = ({
           {
             id: "select",
             label: "Select",
-            icon: <NearMe />,
+            icon: <SelectIcon />,
             shortcut: "S",
             tooltip: "Select",
             isActive: tool === "select",
