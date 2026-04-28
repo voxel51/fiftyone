@@ -8,10 +8,10 @@ Annotation attribute primitives for label schemas and ontologies.
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Optional, Union
+from typing import Any, Literal, Optional, Union
 
 
-def _attr_insert_to_dict(d: dict, name: str, obj: object) -> dict:
+def attr_insert_to_dict(d: dict, name: str, obj: object) -> dict:
     """Inserts ``obj.<name>`` into ``d`` under key ``name`` if it is set
     (i.e. not ``None``).
     """
@@ -73,7 +73,7 @@ class When:
         )
     """
 
-    operator: Union[WhenOperator, str]
+    operator: Union[WhenOperator, Literal["equals", "in"]]
     field: str
     value: Any
     then: Optional[dict] = None
@@ -96,7 +96,7 @@ class When:
             "field": self.field,
             "value": self.value,
         }
-        _attr_insert_to_dict(d, "then", self)
+        attr_insert_to_dict(d, "then", self)
         return d
 
     @classmethod
@@ -183,7 +183,7 @@ class AttributeSpec:
             "type": self.type,
             "component": self.component,
         }
-        _attr_insert_to_dict(d, "values", self)
+        attr_insert_to_dict(d, "values", self)
         if self.when is not None:
             d["when"] = [w.to_dict() for w in self.when]
         return d

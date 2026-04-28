@@ -12,7 +12,7 @@ from typing import Any, Optional
 
 from fiftyone.core.annotation.attributes import (
     AttributeSpec,
-    _attr_insert_to_dict,
+    attr_insert_to_dict,
 )
 from fiftyone.core.odm.ontology import OntologyType
 
@@ -22,16 +22,8 @@ class Ontology(abc.ABC):
 
     Ontologies are global, named, versioned resources that define reusable
     annotation structures. They are not scoped to any single dataset.
-
-    Subclasses must set :attr:`_TYPE` to the corresponding
-    :class:`fiftyone.core.odm.ontology.OntologyType` value.
-
-    The :attr:`_doc` attribute holds the backing
-    :class:`fiftyone.core.odm.ontology.OntologyDocument` once the ontology
-    has been persisted via ``save()`` or loaded via ``load()``, which
-    populate fields like :attr:`version`, :attr:`created_at`, and
-    :attr:`last_modified_at`. On this branch ``save()``/``load()`` are not
-    yet wired up, so :attr:`_doc` remains ``None`` until those land.
+    ``save()`` and ``load()`` populate :attr:`version`,
+    :attr:`created_at`, and :attr:`last_modified_at`.
 
     Args:
         name: the ontology name
@@ -51,6 +43,7 @@ class Ontology(abc.ABC):
         if not self.name:
             raise ValueError("Ontology name cannot be empty")
         self.description = description
+        # Backing ``OntologyDocument`` once persisted; ``None`` until then.
         self._doc = None
 
     @property
@@ -97,7 +90,7 @@ class Ontology(abc.ABC):
             "created_at",
             "last_modified_at",
         ):
-            _attr_insert_to_dict(d, attr, self)
+            attr_insert_to_dict(d, attr, self)
         return d
 
     @classmethod
@@ -199,51 +192,4 @@ class AnnotationOntology(Ontology):
             attributes=[
                 AttributeSpec.from_dict(a) for a in root.get("attributes", [])
             ],
-        )
-
-
-class Node:
-    """A node in a :class:`Taxonomy` hierarchy.
-
-    .. note::
-
-        Taxonomy support is not yet implemented. This class is a
-        placeholder for phase 2.
-
-    Raises:
-        NotImplementedError: always
-    """
-
-    def __init__(self, *args: Any, **kwargs: Any):
-        raise NotImplementedError(
-            "Node is not yet implemented; taxonomy support is planned for "
-            "phase 2"
-        )
-
-
-class Taxonomy(Ontology):
-    """A named, versioned, hierarchical class taxonomy.
-
-    .. note::
-
-        Taxonomy support is not yet implemented. This class is a
-        placeholder for phase 2.
-
-    Raises:
-        NotImplementedError: always
-    """
-
-    _TYPE = OntologyType.TAXONOMY.value
-
-    def __init__(self, *args: Any, **kwargs: Any):
-        raise NotImplementedError(
-            "Taxonomy is not yet implemented; taxonomy support is planned "
-            "for phase 2"
-        )
-
-    @classmethod
-    def from_dict(cls, d: dict) -> "Taxonomy":
-        raise NotImplementedError(
-            "Taxonomy is not yet implemented; taxonomy support is planned "
-            "for phase 2"
         )
