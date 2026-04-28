@@ -31,6 +31,7 @@ interface UseAttributeFormResult {
   isIntegerType: boolean;
   isListType: boolean;
   isFromOntology: boolean;
+  appearsWhen: string | null;
   supportsDefault: boolean;
   componentOptions: Array<{ id: string; label: string; icon: IconName }>;
 
@@ -65,6 +66,27 @@ export default function useAttributeForm({
     formState.type === "int" || formState.type === "list<int>";
   const isListType = LIST_TYPES.includes(formState.type);
   const isFromOntology = !!formState._source;
+  const appearsWhen = useMemo(() => {
+    const conditions = formState.when;
+    if (!conditions || conditions.length === 0) return null;
+
+    const formatCondition = (condition: typeof conditions[number]): string => {
+      if (condition.operator === "in" && Array.isArray(condition.value)) {
+        const list = (condition.value as unknown[])
+          .map((v) => `${v}`)
+          .join(", ");
+        return `${condition.field} in [${list}]`;
+      }
+      return `${condition.field} = '${condition.value}'`;
+    };
+
+    const firstStr = formatCondition(conditions[0]);
+    if (conditions.length === 1) return firstStr;
+    const remaining = conditions.length - 1;
+    return `${firstStr}, or ${remaining} other condition${
+      remaining !== 1 ? "s" : ""
+    }`;
+  }, [formState.when]);
   const supportsDefault = !NO_DEFAULT_TYPES.includes(formState.type);
   const componentOptions = COMPONENT_OPTIONS[formState.type] || [];
 
@@ -164,6 +186,7 @@ export default function useAttributeForm({
     isIntegerType,
     isListType,
     isFromOntology,
+    appearsWhen,
     supportsDefault,
     componentOptions,
 

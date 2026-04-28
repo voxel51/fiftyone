@@ -43,6 +43,7 @@ const AttributeFormContent = ({
     isIntegerType,
     isListType,
     isFromOntology,
+    appearsWhen,
     supportsDefault,
     componentOptions,
 
@@ -144,6 +145,16 @@ const AttributeFormContent = ({
             Ontology:
           </Text>
           <Text variant={TextVariant.Lg}>{formState._source}</Text>
+        </Stack>
+      )}
+
+      {/* Conditional visibility from ontology (read-only, only shown when present) */}
+      {appearsWhen && (
+        <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
+          <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
+            Appears when:
+          </Text>
+          <Text variant={TextVariant.Lg}>{appearsWhen}</Text>
         </Stack>
       )}
 
