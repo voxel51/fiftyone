@@ -923,6 +923,7 @@ def _run(fcn, tasks, return_results=True, num_workers=None, progress=None):
     num_workers = fou.recommend_thread_pool_workers(num_workers)
     kwargs = dict(total=num_tasks, iters_str="files", progress=progress)
 
+    results = None
     if num_workers <= 1:
         with fou.ProgressBar(**kwargs) as pb:
             if return_results:
