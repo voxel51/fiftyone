@@ -289,10 +289,7 @@ html_context = {
 # -- Custom app setup --------------------------------------------------------
 
 
-def _skip_hidden_from_docs(_app, _what, _name, obj, skip, _options):
-    if skip:
-        return True
-
+def _skip_hidden_from_docs(_app, _what, _name, obj, _skip, _options):
     if is_hidden_from_docs(obj):
         return True
 
@@ -304,6 +301,7 @@ def setup(app):
     app.add_config_value("redirects_file", "redirects", "env")
     app.connect("builder-inited", generate_redirects)
     app.connect("build-finished", generate_api_redirects)
+    # See https://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html#event-autodoc-skip-member
     app.connect("autodoc-skip-member", _skip_hidden_from_docs)
 
     # Custom directives
