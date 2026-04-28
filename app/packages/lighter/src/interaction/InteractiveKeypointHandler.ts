@@ -111,6 +111,13 @@ export class InteractiveKeypointHandler implements InteractionHandler {
       // else fall through to default behavior
     }
 
+    // Reject placements outside the sample. Relative coordinates run [0, 1]
+    // across the canonical media; anything outside falls on letterboxing or
+    // empty canvas and would be meaningless to inference.
+    if (rp[0] < 0 || rp[0] > 1 || rp[1] < 0 || rp[1] > 1) {
+      return false;
+    }
+
     const variant = this.resolveVariant?.({ x: rp[0], y: rp[1] }, modifiers);
     const pointId = this.overlay.addPoint(worldPoint, variant);
 

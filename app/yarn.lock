@@ -2760,6 +2760,7 @@ __metadata:
     "@textea/json-viewer": "npm:^3.4.1"
     "@types/react-input-autosize": "npm:^2.2.1"
     "@types/react-syntax-highlighter": "npm:^15.5.6"
+    "@voxel51/voodo": "npm:*"
     classnames: "npm:^2.3.1"
     framer-motion: "npm:^6.2.7"
     material-icons: "npm:^1.13.12"
@@ -7683,9 +7684,32 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@voxel51/voodo@npm:^0.0.26":
+"@voxel51/voodo@npm:*":
   version: 0.0.26
   resolution: "@voxel51/voodo@npm:0.0.26"
+  dependencies:
+    "@dnd-kit/core": "npm:^6.3.1"
+    "@dnd-kit/sortable": "npm:^10.0.0"
+    "@dnd-kit/utilities": "npm:^3.2.2"
+    "@headlessui/react": "npm:^2.2.9"
+    clsx: "npm:^2.1.1"
+    date-fns-tz: "npm:^3.2.0"
+    lodash.debounce: "npm:^4.0.8"
+    react-datepicker: "npm:^9.1.0"
+    tailwind-merge: "npm:^3.4.0"
+  peerDependencies:
+    "@emotion/react": ^11.0.0
+    "@emotion/styled": ^11.0.0
+    react: ^18.0.0
+    react-dom: ^18.0.0
+    react-is: ^18.0.0
+  checksum: 10/32774b84168757fffdb8e11bf3ada0c4a960832d47ca1f5bb7b09010331ee9d5da8fc99b42005d6e10c0394c09a66f4e7ec32d395e9dc8ebfac3b6b9163c33e9
+  languageName: node
+  linkType: hard
+
+"@voxel51/voodo@npm:^0.0.25":
+  version: 0.0.25
+  resolution: "@voxel51/voodo@npm:0.0.25"
   dependencies:
     "@dnd-kit/core": "npm:^6.3.1"
     "@dnd-kit/sortable": "npm:^10.0.0"
