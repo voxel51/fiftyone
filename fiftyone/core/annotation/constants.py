@@ -180,6 +180,8 @@ SUPPORTED_LABEL_TYPES_BY_MEDIA_TYPE = {
         fol.Detections,
         fol.Keypoint,
         fol.Keypoints,
+        fol.Polyline,
+        fol.Polylines,
     },
     fom.THREE_D: {fol.Detection, fol.Detections, fol.Polyline, fol.Polylines},
 }
