@@ -8,28 +8,16 @@ import { useAtomCallback } from "jotai/utils";
 import { useRecoilValue } from "recoil";
 
 import {
-  AgentTaskType,
-  NEGATIVE_POINT_VARIANT,
-  PointSelectionVariant,
-  POSITIVE_POINT_VARIANT,
-  useActiveTask,
-  useAgentSelector,
-  usePointSelection,
-  useToolsState,
-} from "@fiftyone/annotation/src/agents";
-import {
   BaseOverlay,
-  DetectionOverlay,
-  KeypointPointHitAction,
-  Point,
   UNDEFINED_LIGHTER_SCENE_ID,
   useLighter,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
 import { isPatchesView } from "@fiftyone/state";
-import { DETECTION, ClickEventModifiers } from "@fiftyone/utilities";
+import { DETECTION } from "@fiftyone/utilities";
 
 import { currentType, fieldsOfType, useAnnotationContext } from "./state";
+import { useAIAnnotationMode } from "./useAIAnnotationMode";
 import useCreate from "./useCreate";
 import useExit from "./useExit";
 
@@ -108,10 +96,7 @@ export const useSegmentationMode = () => {
   const [toolMode, setToolMode] = useAtom(toolModeAtom);
 
   // AI detection
-  const agentSelector = useAgentSelector();
-  const { setActiveTask } = useActiveTask();
-  const { reset: resetAIToolsState } = useToolsState();
-  const pointSelection = usePointSelection();
+  const aiMode = useAIAnnotationMode();
 
   const createDetection = useCreate(DETECTION);
   const editingLabelType = useAtomValue(currentType);
@@ -121,10 +106,6 @@ export const useSegmentationMode = () => {
 
   const selectedLabelRef = useRef(selectedLabel);
   selectedLabelRef.current = selectedLabel;
-
-  const previousSelectedLabelIdRef = useRef<string | null>(
-    selectedLabel?.overlay?.id ?? null
-  );
 
   const isEditingSegmentation =
     editingLabelType === DETECTION &&
@@ -183,85 +164,16 @@ export const useSegmentationMode = () => {
 
   // ------------------------  AI segmentation handling  ------------------- //
 
-  // We don't currently expose agent selection capabilities in the UX.
-  // Select the first available agent once the agents have resolved.
-  useEffect(() => {
-    if (agentSelector.isResolved && !agentSelector.activeAgent) {
-      agentSelector.setActiveAgent(agentSelector.agents[0]);
-    }
-  }, [agentSelector]);
-
-  // When the user commits/exits a label (selected label transitions away
-  // from a populated overlay), wipe the inference prompt points so the next
-  // label starts from a clean slate. We stay in segmentation mode.
-  useEffect(() => {
-    if (!segmentationModeActive) {
-      previousSelectedLabelIdRef.current = selectedLabel?.overlay?.id ?? null;
-      return;
-    }
-
-    const previousId = previousSelectedLabelIdRef.current;
-    const currentId = selectedLabel?.overlay?.id ?? null;
-
-    if (previousId && previousId !== currentId) {
-      pointSelection.clearPoints();
-      resetAIToolsState();
-    }
-
-    previousSelectedLabelIdRef.current = currentId;
-  }, [selectedLabel]);
-
-  // Points placed on the current label's mask are interpreted as negative;
-  // points placed off-mask are positive.
-  // Holding shift inverts the result.
-  const resolvePointVariant = useCallback(
-    (
-      relativePoint: Point,
-      { shiftKey }: ClickEventModifiers
-    ): PointSelectionVariant => {
-      const label = selectedLabelRef.current;
-      const onMask =
-        label && label.overlay instanceof DetectionOverlay
-          ? label.overlay.containsMaskPixel(relativePoint)
-          : false;
-
-      const variant = onMask ? NEGATIVE_POINT_VARIANT : POSITIVE_POINT_VARIANT;
-
-      return !shiftKey
-        ? // normal variant if shift key is not pressed
-          variant
-        : // otherwise invert the variant
-        variant === POSITIVE_POINT_VARIANT
-        ? NEGATIVE_POINT_VARIANT
-        : POSITIVE_POINT_VARIANT;
-    },
-    []
-  );
-
-  // Clicking an existing point deletes it
-  const resolvePointHit = useCallback(() => KeypointPointHitAction.DELETE, []);
-
   // Activate/deactivate AI point selection when switching to/from the AI tool.
   useEffect(() => {
     if (!segmentationModeActive) return;
 
     if (tool === "ai") {
-      setActiveTask(AgentTaskType.SEGMENT);
-      pointSelection.activate(resolvePointVariant, resolvePointHit);
-    } else if (pointSelection.isActive) {
-      pointSelection.deactivate();
-      resetAIToolsState();
-      setActiveTask(null);
+      aiMode.activate();
+    } else if (aiMode.isActive) {
+      aiMode.deactivate();
     }
-  }, [
-    tool,
-    segmentationModeActive,
-    pointSelection,
-    resolvePointVariant,
-    resolvePointHit,
-    setActiveTask,
-    resetAIToolsState,
-  ]);
+  }, [tool, segmentationModeActive, aiMode]);
 
   // ---------------  Segmentation mode activation / deactivation  --------- //
 
@@ -277,18 +189,10 @@ export const useSegmentationMode = () => {
     currentScene?.exitInteractiveMode();
     onExit();
 
-    pointSelection.deactivate();
-    resetAIToolsState();
-    setActiveTask(null);
+    aiMode.deactivate();
 
     setSegmentationModeActive(false);
-  }, [
-    onExit,
-    pointSelection,
-    resetAIToolsState,
-    setActiveTask,
-    setSegmentationModeActive,
-  ]);
+  }, [aiMode, onExit, setSegmentationModeActive]);
 
   const toggleSegmentationMode = useCallback(() => {
     if (segmentationModeActive) {
@@ -437,19 +341,10 @@ export const useSegmentationMode = () => {
           return;
         }
 
-        pointSelection.deactivate();
-        resetAIToolsState();
-        setActiveTask(null);
+        aiMode.deactivate();
         setTool("brush");
       },
-      [
-        claimEvent,
-        pointSelection,
-        resetAIToolsState,
-        segmentationModeActive,
-        setActiveTask,
-        setTool,
-      ]
+      [aiMode, claimEvent, segmentationModeActive, setTool]
     )
   );
 
