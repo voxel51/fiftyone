@@ -49,6 +49,8 @@ class InternalDocsTests(unittest.TestCase):
         self.assertFalse(
             is_hidden_from_docs(VisibleContainer.__dict__["value"])
         )
+        self.assertFalse(is_hidden_from_docs(VisibleContainer.value))
+        self.assertFalse(is_hidden_from_docs(VisibleContainer().value))
 
         class Container:
             @property
@@ -57,6 +59,9 @@ class InternalDocsTests(unittest.TestCase):
                 return 1
 
         self.assertTrue(is_hidden_from_docs(Container.__dict__["value"]))
+        self.assertTrue(is_hidden_from_docs(Container.value))
+        # Instance property access returns the value, not the descriptor.
+        self.assertFalse(is_hidden_from_docs(Container().value))
 
     def test_hides_property_with_outer_decorator(self):
         class VisibleContainer:
@@ -67,6 +72,8 @@ class InternalDocsTests(unittest.TestCase):
         self.assertFalse(
             is_hidden_from_docs(VisibleContainer.__dict__["value"])
         )
+        self.assertFalse(is_hidden_from_docs(VisibleContainer.value))
+        self.assertFalse(is_hidden_from_docs(VisibleContainer().value))
 
         class Container:
             @hide_from_docs
@@ -75,6 +82,9 @@ class InternalDocsTests(unittest.TestCase):
                 return 1
 
         self.assertTrue(is_hidden_from_docs(Container.__dict__["value"]))
+        self.assertTrue(is_hidden_from_docs(Container.value))
+        # Instance property access returns the value, not the descriptor.
+        self.assertFalse(is_hidden_from_docs(Container().value))
 
     def test_hides_classmethod(self):
         class VisibleContainer:
@@ -86,6 +96,7 @@ class InternalDocsTests(unittest.TestCase):
             is_hidden_from_docs(VisibleContainer.__dict__["method"])
         )
         self.assertFalse(is_hidden_from_docs(VisibleContainer.method))
+        self.assertFalse(is_hidden_from_docs(VisibleContainer().method))
 
         class Container:
             @hide_from_docs
@@ -95,6 +106,7 @@ class InternalDocsTests(unittest.TestCase):
 
         self.assertTrue(is_hidden_from_docs(Container.__dict__["method"]))
         self.assertTrue(is_hidden_from_docs(Container.method))
+        self.assertTrue(is_hidden_from_docs(Container().method))
 
     def test_hides_staticmethod(self):
         class VisibleContainer:
@@ -106,6 +118,7 @@ class InternalDocsTests(unittest.TestCase):
             is_hidden_from_docs(VisibleContainer.__dict__["method"])
         )
         self.assertFalse(is_hidden_from_docs(VisibleContainer.method))
+        self.assertFalse(is_hidden_from_docs(VisibleContainer().method))
 
         class Container:
             @hide_from_docs
@@ -115,6 +128,7 @@ class InternalDocsTests(unittest.TestCase):
 
         self.assertTrue(is_hidden_from_docs(Container.__dict__["method"]))
         self.assertTrue(is_hidden_from_docs(Container.method))
+        self.assertTrue(is_hidden_from_docs(Container().method))
 
 
 if __name__ == "__main__":
