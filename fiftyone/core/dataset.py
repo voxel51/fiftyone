@@ -9032,6 +9032,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _expand_schema(self, sample, dynamic):
         expanded = False
 
+        schema = None
         if not dynamic:
             schema = self.get_field_schema(include_private=True)
 
@@ -9089,6 +9090,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self.add_group_slice(slice_name, media_type)
 
     def _expand_frame_schema(self, frames, dynamic):
+        schema = None
         if not dynamic:
             schema = self.get_frame_field_schema(include_private=True)
 
