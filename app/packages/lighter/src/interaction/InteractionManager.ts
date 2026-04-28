@@ -217,13 +217,15 @@ export class InteractionManager {
     const interactiveHandler = this.getInteractiveHandler();
 
     if (interactiveHandler) {
-      handler =
-        interactiveHandler instanceof InteractiveKeypointHandler
-          ? // keypoint handlers manage their own placement
-            interactiveHandler
-          : // otherwise defer to the handler's overlay
-            interactiveHandler.getOverlay();
-      this.selectionManager.select(interactiveHandler.getOverlay().id);
+      if (interactiveHandler instanceof InteractiveKeypointHandler) {
+        // Keypoint handlers (AI point selection) manage their own click
+        // handling. Don't select the transient keypoint overlay — the
+        // detection overlay's selection is managed by React (useSegmentationMode).
+        handler = interactiveHandler;
+      } else {
+        handler = interactiveHandler.getOverlay();
+        this.selectionManager.select(interactiveHandler.getOverlay().id);
+      }
     } else {
       handler = this.findHandlerAtPoint(point);
       // Prevent pan/zoom when target is selectable
@@ -846,42 +848,92 @@ export class InteractionManager {
     }
   }
 
+  /**
+   * Three-tier right-click behavior:
+   *
+   * 1. **Finalize active editing** (pen polygon, AI point selection) —
+   *    commit the in-progress work to the overlay, keep it selected and
+   *    in editing mode.
+   * 2. **Stop editing the current label** (brush/eraser, bbox adjustments) —
+   *    deselect the label but remain in the current mode.
+   * 3. **Exit the current mode** (detection, segmentation) —
+   *    quit the mode entirely and return to Select.
+   */
   private handleRightClick = (event: PointerEvent) => {
     event.preventDefault();
 
     const point = this.getCanvasPoint(event);
     const worldPoint = this.renderer.screenToWorld(point);
     const scale = this.renderer.getScale();
-    const segmentationToolState = segmentationModeBridge.getToolState(scale);
 
     const interactiveHandler = this.getInteractiveHandler();
     const handler =
       interactiveHandler?.getOverlay() || this.findSelectedHandler();
 
-    if (
-      handler &&
-      segmentationToolState.active &&
-      segmentationToolState.tool === "pen"
-    ) {
-      handler?.commitPenPolygon({
-        point,
-        worldPoint,
-        event,
-        scale,
-        segmentationToolState,
-      });
+    // ---- Tier 1: Finalize active editing ----
 
-      if (interactiveHandler) {
+    if (segmentationModeBridge.isActive()) {
+      const tool = segmentationModeBridge.getActiveTool();
+
+      // Pen tool with an in-progress polygon: commit it
+      if (tool === "pen" && handler?.hasPenPolygon?.()) {
+        const segmentationToolState =
+          segmentationModeBridge.getToolState(scale);
+
+        handler.commitPenPolygon({
+          point,
+          worldPoint,
+          event,
+          scale,
+          segmentationToolState,
+        });
+
+        if (interactiveHandler) {
+          this.removeHandler(interactiveHandler);
+          this.eventBus.dispatch("lighter:overlay-establish", {
+            id: handler.id,
+            handler: interactiveHandler,
+            startBounds: handler.bounds,
+            startPosition: { x: handler.bounds.x, y: handler.bounds.y },
+            bounds: handler.bounds,
+          });
+        }
+
+        return;
+      }
+
+      if (tool === "ai") {
+        interactiveHandler.resetOverlay();
         this.removeHandler(interactiveHandler);
 
-        this.eventBus.dispatch("lighter:overlay-establish", {
-          id: handler.id,
-          handler: interactiveHandler,
-          startBounds: handler.bounds,
-          startPosition: { x: handler.bounds.x, y: handler.bounds.y },
-          bounds: handler.bounds,
+        this.eventBus.dispatch("lighter:point-selection-finalize", {
+          eventId: generateUUID(),
         });
+
+        return;
       }
+    }
+
+    // ---- Tier 2: Stop editing the current label, remain in mode ----
+
+    if (this.selectionManager.getSelectionCount() > 0) {
+      this.selectionManager.clearSelection();
+      return;
+    }
+
+    // ---- Tier 3: Exit the current mode ----
+
+    if (detectionModeBridge.isActive()) {
+      this.eventBus.dispatch("lighter:detection-mode-quit", {
+        eventId: generateUUID(),
+      });
+      return;
+    }
+
+    if (segmentationModeBridge.isActive()) {
+      this.eventBus.dispatch("lighter:segmentation-mode-quit", {
+        eventId: generateUUID(),
+      });
     }
   };
 

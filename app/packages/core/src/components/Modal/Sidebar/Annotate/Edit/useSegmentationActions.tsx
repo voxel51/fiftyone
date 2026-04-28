@@ -2,43 +2,135 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { EraserIcon, type ToolbarActionGroup } from "@fiftyone/components";
+import { SelectIcon, type ToolbarActionGroup } from "@fiftyone/components";
+import { buildBrushCursor } from "@fiftyone/lighter";
 import {
+  Add,
+  ArrowDropDown,
+  ArrowDropUp,
   AutoAwesome,
   Brush,
   CircleOutlined,
   CropSquare,
   FormatColorReset,
   Redo,
+  Remove,
   Timeline,
   Undo,
 } from "@mui/icons-material";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import styled from "styled-components";
 import {
+  MAX_CURSOR_SIZE,
   MAX_TOOL_SIZE,
+  MIN_CURSOR_SIZE,
   MIN_TOOL_SIZE,
   useSegmentationMode,
 } from "./useSegmentationMode";
 
-const SizeInput = styled.input`
+const SizeControl = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
   width: 32px;
   border: 1px solid ${({ theme }) => theme.primary.plainBorder};
   border-radius: 3px;
   background: ${({ theme }) => theme.background.level1};
+  overflow: hidden;
+  user-select: none;
+`;
+
+const SizeArrow = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 14px;
+  padding: 0;
+  border: none;
+  background: transparent;
   color: ${({ theme }) => theme.text.primary};
-  font-size: 11px;
-  text-align: center;
+  cursor: pointer;
   outline: none;
 
-  &:focus {
-    border-color: ${({ theme }) => theme.primary.main};
+  &:hover:not(:disabled) {
+    background: ${({ theme }) => theme.background.level2};
   }
 
-  &::-webkit-inner-spin-button {
-    opacity: 1;
+  &:disabled {
+    color: ${({ theme }) => theme.text.tertiary};
+    cursor: not-allowed;
+  }
+
+  svg {
+    font-size: 18px;
   }
 `;
+
+const SizeValue = styled.div<{ $cursor: string }>`
+  text-align: center;
+  color: ${({ theme }) => theme.text.primary};
+  font-size: 11px;
+  padding: 1px 0;
+  font-variant-numeric: tabular-nums;
+  cursor: ${({ $cursor }) => $cursor};
+`;
+
+interface BrushSizeProps {
+  value: number;
+  min: number;
+  max: number;
+  cursor: string;
+  onIncrease: () => void;
+  onDecrease: () => void;
+}
+
+const BrushSize = ({
+  value,
+  min,
+  max,
+  cursor,
+  onIncrease,
+  onDecrease,
+}: BrushSizeProps) => {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const node = ref.current;
+    if (!node) return undefined;
+
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+
+      if (e.deltaY < 0) onDecrease();
+      else if (e.deltaY > 0) onIncrease();
+    };
+
+    node.addEventListener("wheel", onWheel, { passive: false });
+    return () => node.removeEventListener("wheel", onWheel);
+  }, [onIncrease, onDecrease]);
+
+  return (
+    <SizeControl ref={ref}>
+      <SizeArrow
+        type="button"
+        aria-label="Increase brush size"
+        onClick={onIncrease}
+        disabled={value >= max}
+      >
+        <ArrowDropUp />
+      </SizeArrow>
+      <SizeValue $cursor={cursor}>{value}</SizeValue>
+      <SizeArrow
+        type="button"
+        aria-label="Decrease brush size"
+        onClick={onDecrease}
+        disabled={value <= min}
+      >
+        <ArrowDropDown />
+      </SizeArrow>
+    </SizeControl>
+  );
+};
 
 interface UseSegmentationActionsArgs {
   onUndo?: () => void;
@@ -61,10 +153,29 @@ export const useSegmentationActions = ({
     tool,
     toolSize,
     toolShape,
+    toolMode,
     switchTool,
     switchToolShape,
-    setToolSize,
+    switchToolMode,
+    increaseToolSize,
+    decreaseToolSize,
   } = useSegmentationMode();
+
+  const brushCursor = useMemo(() => {
+    const cursorSize = Math.min(
+      MAX_CURSOR_SIZE,
+      Math.max(MIN_CURSOR_SIZE, toolSize)
+    );
+
+    return buildBrushCursor({
+      active: true,
+      tool: "brush",
+      shape: toolShape,
+      size: toolSize,
+      cursorSize,
+      mode: toolMode,
+    });
+  }, [toolShape, toolSize, toolMode]);
 
   const groups: ToolbarActionGroup[] = useMemo(
     () => [
@@ -73,6 +184,15 @@ export const useSegmentationActions = ({
         label: "Tool",
         actions: [
           {
+            id: "select",
+            label: "Select",
+            icon: <SelectIcon />,
+            shortcut: "S",
+            tooltip: "Select",
+            isActive: tool === "select",
+            onClick: () => switchTool("select"),
+          },
+          {
             id: "brush",
             label: "Brush",
             icon: <Brush />,
@@ -80,15 +200,6 @@ export const useSegmentationActions = ({
             tooltip: "Brush",
             isActive: tool === "brush",
             onClick: () => switchTool("brush"),
-          },
-          {
-            id: "eraser",
-            label: "Eraser",
-            icon: <EraserIcon />,
-            shortcut: "E",
-            tooltip: "Eraser",
-            isActive: tool === "eraser",
-            onClick: () => switchTool("eraser"),
           },
           {
             id: "pen",
@@ -111,9 +222,32 @@ export const useSegmentationActions = ({
         ],
       },
       {
+        id: "mode",
+        label: "Mode",
+        isHidden: !["brush", "pen"].includes(tool),
+        actions: [
+          {
+            id: "add",
+            label: "Add",
+            icon: <Add />,
+            tooltip: "Add to mask",
+            isActive: toolMode === "add",
+            onClick: () => switchToolMode("add"),
+          },
+          {
+            id: "remove",
+            label: "Remove",
+            icon: <Remove />,
+            tooltip: "Remove from mask",
+            isActive: toolMode === "remove",
+            onClick: () => switchToolMode("remove"),
+          },
+        ],
+      },
+      {
         id: "size",
         label: "Size",
-        isHidden: ["ai", "pen"].includes(tool),
+        isHidden: tool !== "brush",
         actions: [
           {
             id: "size-input",
@@ -121,12 +255,13 @@ export const useSegmentationActions = ({
             icon: <></>,
             onClick: () => {},
             customComponent: (
-              <SizeInput
-                type="number"
+              <BrushSize
+                value={toolSize}
                 min={MIN_TOOL_SIZE}
                 max={MAX_TOOL_SIZE}
-                value={toolSize}
-                onChange={(e) => setToolSize(Number(e.target.value))}
+                cursor={brushCursor}
+                onIncrease={increaseToolSize}
+                onDecrease={decreaseToolSize}
               />
             ),
           },
@@ -135,7 +270,7 @@ export const useSegmentationActions = ({
       {
         id: "shape",
         label: "Shape",
-        isHidden: ["ai", "pen"].includes(tool),
+        isHidden: tool !== "brush",
         actions: [
           {
             id: "circle",
@@ -191,9 +326,13 @@ export const useSegmentationActions = ({
       tool,
       toolSize,
       toolShape,
+      toolMode,
       switchTool,
       switchToolShape,
-      setToolSize,
+      switchToolMode,
+      increaseToolSize,
+      decreaseToolSize,
+      brushCursor,
       canUndo,
       canRedo,
       onUndo,

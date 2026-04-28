@@ -13,7 +13,7 @@ import requests
 import logging
 from pathlib import Path
 from typing import List, Optional, Tuple
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from urllib.parse import urlparse, urljoin
 from datetime import datetime
 
@@ -33,10 +33,15 @@ class Plugin:
     readme_url: str
     category: str
     icon: Optional[str] = None
+    tags: List[str] = field(default_factory=list)
 
 
 class PluginDocGenerator:
     """Generates plugin documentation from the FiftyOne plugins repository."""
+
+    _ecosystem_subdir = "plugins_ecosystem"
+    _docs_section = "plugins"
+    _card_link_prefix = ""
 
     def __init__(self, docs_source_dir: str):
         self.docs_source_dir = Path(docs_source_dir)
@@ -56,9 +61,13 @@ class PluginDocGenerator:
             flags=re.UNICODE,
         )
         self.feature_patterns = [
-            (re.compile(p), f) for p, f in [
+            (re.compile(p), f)
+            for p, f in [
                 (r"vlm|vision.?language|multimodal", "Vision-Language Model"),
-                (r"qwen|gemini|gpt-?4|claude|llava|minicpm", "Vision-Language Model"),
+                (
+                    r"qwen|gemini|gpt-?4|claude|llava|minicpm",
+                    "Vision-Language Model",
+                ),
                 (r"sam\d?|segment\s?anything", "Segmentation"),
                 (r"segmentation|instance.?mask", "Segmentation"),
                 (r"object.?detection|yolo|detectron", "Detection"),
@@ -87,7 +96,7 @@ class PluginDocGenerator:
             r"## {}\s*\n\n(.*?)(?=\n## |\n$)", re.DOTALL
         )
         self.table_row_pattern = re.compile(
-            r"<tr>\s*<td[^>]*>(.*?)</td>\s*<td[^>]*>(.*?)</td>\s*</tr>",
+            r"<tr>\s*<td[^>]*>(.*?)</td>\s*<td[^>]*>(.*?)</td>\s*<td[^>]*>(.*?)</td>\s*</tr>",
             re.DOTALL,
         )
         self.link_pattern = re.compile(
@@ -265,7 +274,7 @@ class PluginDocGenerator:
             .replace("\n", "\\n")
         )
 
-        return f'''---
+        return f"""---
 myst:
   html_meta:
     "description": "{description}"
@@ -274,7 +283,7 @@ myst:
     "og:description": "{description}"
 ---
 
-'''
+"""
 
     def _generate_github_badge(self, plugin: Plugin) -> str:
         """Generate GitHub badge markdown for a plugin."""
@@ -398,8 +407,11 @@ myst:
         return display_tags
 
     def _generate_plugin_model_docs(
-        self, models: List[dict], plugin_name: str, plugin_link: str,
-        github_url: str
+        self,
+        models: List[dict],
+        plugin_name: str,
+        plugin_link: str,
+        github_url: str,
     ) -> None:
         """Generate model documentation for plugin models."""
         for model in models:
@@ -414,10 +426,18 @@ myst:
             license_str = model.get("license")
             req = model.get("requirements") or {}
             size_bytes = model.get("size_bytes")
-            size_str = etau.to_human_bytes_str(size_bytes, decimals=2) if size_bytes else None
+            size_str = (
+                etau.to_human_bytes_str(size_bytes, decimals=2)
+                if size_bytes
+                else None
+            )
             packages = req.get("packages") or []
-            supports_cpu = "yes" if (req.get("cpu") or {}).get("support") else "no"
-            supports_gpu = "yes" if (req.get("gpu") or {}).get("support") else "no"
+            supports_cpu = (
+                "yes" if (req.get("cpu") or {}).get("support") else "no"
+            )
+            supports_gpu = (
+                "yes" if (req.get("gpu") or {}).get("support") else "no"
+            )
             model_slug = re.sub(r"[^\w]", "_", name)
             safe_name = plugin_name.replace("-", "--").replace("_", "__")
 
@@ -429,14 +449,14 @@ myst:
 
 .. raw:: html
 
-    <a href="../../plugins/{plugin_link}" target="_blank">
+    <a href="../../{self._docs_section}/{plugin_link}" target="_blank">
         <img src="https://img.shields.io/badge/Plugin-{safe_name}-orange" alt="From Plugin">
     </a>
 
 .. note::
 
     This is a :ref:`remotely-sourced model <model-zoo-remote>` from the
-    `{plugin_name} <../../plugins/{plugin_link}>`_ plugin, maintained by the community.
+    `{plugin_name} <../../{self._docs_section}/{plugin_link}>`_ plugin, maintained by the community.
     It is not part of FiftyOne core and may have special installation requirements.
     Please review the plugin documentation and license before use.
 
@@ -502,13 +522,15 @@ myst:
             display_tags = self._format_model_tags(tags)
             display_tags.append("Plugin")
 
-            self._plugin_model_cards.append(f"""
+            self._plugin_model_cards.append(
+                f"""
 .. customcarditem::
     :header: {name}
     :description: {description}
     :link: models/{model_slug}.html
     :tags: {",".join(display_tags)}
-""")
+"""
+            )
             logger.info(f"Generated model docs for {name}")
 
     def extract_plugins_from_readme(self, readme_content: str) -> List[Plugin]:
@@ -545,9 +567,9 @@ myst:
         plugins = []
         rows = self.table_row_pattern.findall(table_content)
 
-        for name_cell, description_cell in rows:
+        for name_cell, tags_cell, description_cell in rows:
             plugin = self._create_plugin_from_row(
-                name_cell, description_cell, category
+                name_cell, tags_cell, description_cell, category
             )
             if plugin:
                 plugins.append(plugin)
@@ -555,7 +577,11 @@ myst:
         return plugins
 
     def _create_plugin_from_row(
-        self, name_cell: str, description_cell: str, category: str
+        self,
+        name_cell: str,
+        tags_cell: str,
+        description_cell: str,
+        category: str,
     ) -> Optional[Plugin]:
         """Create a Plugin object from table row data."""
         name_match = self.link_pattern.search(name_cell)
@@ -578,6 +604,9 @@ myst:
         if "Name" in plugin_name or "Description" in clean_description:
             return None
 
+        tags_text = self.html_tag_pattern.sub("", tags_cell).strip()
+        tags = [t.strip("`") for t in tags_text.split() if t.strip("`")]
+
         return Plugin(
             name=plugin_name,
             description=clean_description,
@@ -585,6 +614,7 @@ myst:
             readme_url=f"{github_url}/README.md",
             category=category,
             icon=icon,
+            tags=tags,
         )
 
     def _convert_relative_url(self, url: str, github_url: str) -> str:
@@ -682,7 +712,9 @@ myst:
 
         for m in self.markdown_img_pattern.finditer(readme_content):
             url = m.group(1)
-            if not url.lower().endswith(banned_exts) and not self._is_badge_url(url):
+            if not url.lower().endswith(
+                banned_exts
+            ) and not self._is_badge_url(url):
                 return self._convert_relative_url(url, github_url)
 
         for m in self.user_attachments_pattern.finditer(readme_content):
@@ -700,7 +732,9 @@ myst:
 
         for m in self.html_img_pattern.finditer(readme_content):
             url = m.group(1)
-            if not url.lower().endswith(banned_exts) and not self._is_badge_url(url):
+            if not url.lower().endswith(
+                banned_exts
+            ) and not self._is_badge_url(url):
                 return self._convert_relative_url(url, github_url)
 
         return None
@@ -782,7 +816,9 @@ myst:
                 return (0, -repo_info.get("stars", 0))
         return (0, -repo_info.get("stars", 0) if repo_info else 0)
 
-    def generate_plugins_ecosystem_rst(self, all_plugins: List[Plugin]) -> str:
+    def generate_plugins_ecosystem_rst(
+        self, all_plugins: List[Plugin], include_category_tag: bool = True
+    ) -> str:
         """Generate the plugins_ecosystem.rst file with all plugin cards."""
         rst_content = ""
 
@@ -816,7 +852,7 @@ myst:
                 word.capitalize()
                 for word in plugin_name.replace("_", " ").split()
             )
-            plugin_link = f"plugins_ecosystem/{plugin_name.lower().replace('-', '_').replace(' ', '_')}.html"
+            plugin_link = f"{self._ecosystem_subdir}/{plugin_name.lower().replace('-', '_').replace(' ', '_')}.html"
 
             processed_readme = self._process_readme_urls(
                 readme_content, plugin.github_url
@@ -826,7 +862,9 @@ myst:
             readme_path = self.plugins_ecosystem_dir / f"{plugin_slug}.md"
 
             with open(readme_path, "w", encoding="utf-8") as f:
-                seo_metadata = self._generate_seo_metadata(plugin, readme_content)
+                seo_metadata = self._generate_seo_metadata(
+                    plugin, readme_content
+                )
                 frontmatter = self._generate_frontmatter(seo_metadata)
                 github_badge = self._generate_github_badge(plugin)
 
@@ -839,7 +877,9 @@ myst:
                     for line in processed_readme.splitlines()
                 )
                 if not has_heading:
-                    processed_readme = f"# {display_name}\n\n" + processed_readme
+                    processed_readme = (
+                        f"# {display_name}\n\n" + processed_readme
+                    )
 
                 if plugin.category == "community":
                     community_note = """```{note}
@@ -899,7 +939,9 @@ Please review each plugin's documentation and license before use.
                 else fallback_images[idx % len(fallback_images)]
             )
 
-            category_tag = plugin.category.title()
+            category_tag = (
+                plugin.category.title() if include_category_tag else ""
+            )
             stars = repo_info.get("stars") if repo_info else None
 
             header_text = (
@@ -961,13 +1003,15 @@ Please review each plugin's documentation and license before use.
                 ]
                 if condition
             ]
-            tags_field = ",".join([category_tag] + extra_tags)
+            tags_field = ",".join(
+                filter(None, [category_tag] + plugin.tags + extra_tags)
+            )
 
             rst_content += f"""
 .. customcarditem::
     :header: {header_text}
     :description: {description_with_author}
-    :link: {plugin_link}
+    :link: {self._card_link_prefix}{plugin_link}
     :image: {image_path}
     :tags: {tags_field}
 
@@ -993,28 +1037,99 @@ Please review each plugin's documentation and license before use.
         with open(cards_path, "w", encoding="utf-8") as f:
             f.write("\n".join(self._plugin_model_cards))
         if self._plugin_model_cards:
-            logger.info(f"Generated {len(self._plugin_model_cards)} plugin model cards")
+            logger.info(
+                f"Generated {len(self._plugin_model_cards)} plugin model cards"
+            )
 
         logger.info("Plugin documentation generated successfully!")
 
 
+class LabsDocGenerator(PluginDocGenerator):
+    """Generates Labs documentation from the fiftyone-labs repository."""
+
+    _ecosystem_subdir = "labs_ecosystem"
+    _docs_section = "labs"
+    _card_link_prefix = "../labs/"
+
+    def __init__(self, docs_source_dir: str):
+        super().__init__(docs_source_dir)
+        self.labs_dir = self.docs_source_dir / "labs"
+        self.labs_dir.mkdir(exist_ok=True)
+        self.labs_ecosystem_dir = self.labs_dir / "labs_ecosystem"
+        self.labs_ecosystem_dir.mkdir(exist_ok=True)
+        self.plugins_ecosystem_dir = self.labs_ecosystem_dir
+
+    def extract_plugins_from_readme(self, readme_content: str) -> List[Plugin]:
+        """Extract labs features from the fiftyone-labs README."""
+        plugins = []
+        sections = [
+            ("Machine Learning Lab", "labs"),
+            ("Visualization Lab", "labs"),
+        ]
+        for section_name, category in sections:
+            section = self._extract_table_section(readme_content, section_name)
+            if not section:
+                continue
+            plugins.extend(self._parse_html_table(section, category))
+        return plugins
+
+    def generate_all_docs(self, readme_content: str):
+        """Generate all labs documentation."""
+        plugins = self.extract_plugins_from_readme(readme_content)
+        if not plugins:
+            logger.warning("No labs features found in README content")
+            return
+
+        logger.info(f"Found {len(plugins)} labs features")
+
+        labs_content = self.generate_plugins_ecosystem_rst(
+            plugins, include_category_tag=False
+        )
+        with open(self.labs_ecosystem_dir / "lab_cards.rst", "w") as f:
+            f.write(labs_content)
+
+        plugins_content = self.generate_plugins_ecosystem_rst(
+            plugins, include_category_tag=True
+        )
+        with open(self.labs_ecosystem_dir / "lab_cards_plugins.rst", "w") as f:
+            f.write(plugins_content)
+
+        logger.info("Labs documentation generated successfully!")
+
+
 def main():
-    """Main function to generate plugin documentation."""
+    """Main function to generate plugin and labs documentation."""
     docs_source = os.path.join(os.path.dirname(__file__), "..", "source")
+
     generator = PluginDocGenerator(docs_source)
     readme_url = "https://raw.githubusercontent.com/voxel51/fiftyone-plugins/main/README.md"
-
     try:
         logger.info(f"Fetching README from: {readme_url}")
         response = requests.get(readme_url, timeout=10)
         if response.status_code == 200:
-            readme_content = response.text
-            generator.generate_all_docs(readme_content)
+            generator.generate_all_docs(response.text)
             logger.info("Plugin documentation generated successfully!")
         else:
-            logger.error(f"Failed to fetch README: {response.status_code}")
+            logger.error(
+                f"Failed to fetch plugins README: {response.status_code}"
+            )
     except Exception as e:
         logger.error(f"Error generating plugin documentation: {e}")
+
+    labs_generator = LabsDocGenerator(docs_source)
+    labs_readme_url = "https://raw.githubusercontent.com/voxel51/fiftyone-labs/main/README.md"
+    try:
+        logger.info(f"Fetching Labs README from: {labs_readme_url}")
+        response = requests.get(labs_readme_url, timeout=10)
+        if response.status_code == 200:
+            labs_generator.generate_all_docs(response.text)
+            logger.info("Labs documentation generated successfully!")
+        else:
+            logger.error(
+                f"Failed to fetch labs README: {response.status_code}"
+            )
+    except Exception as e:
+        logger.error(f"Error generating labs documentation: {e}")
 
 
 if __name__ == "__main__":

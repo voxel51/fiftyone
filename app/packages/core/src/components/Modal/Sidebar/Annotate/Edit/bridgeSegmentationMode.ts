@@ -11,6 +11,7 @@
 
 import { getDefaultStore } from "jotai";
 import {
+  _unsafeToolModeAtom,
   _unsafeToolAtom,
   _unsafeToolSizeAtom,
   _unsafeSegmentationModeActiveAtom,
@@ -19,6 +20,7 @@ import {
   MAX_CURSOR_SIZE,
 } from "./useSegmentationMode";
 import type {
+  SegmentationToolMode,
   SegmentationTool,
   SegmentationToolShape,
   SegmentationToolState,
@@ -51,10 +53,17 @@ export const segmentationModeBridge = {
   },
 
   /**
-   * Current brush/eraser tip shape.
+   * Current brush shape.
    */
   getToolShape(): SegmentationToolShape {
     return getDefaultStore().get(_unsafeToolShapeAtom);
+  },
+
+  /**
+   * Current paint mode (add to mask vs. remove from mask).
+   */
+  getToolMode(): SegmentationToolMode {
+    return getDefaultStore().get(_unsafeToolModeAtom);
   },
 
   /**
@@ -76,6 +85,7 @@ export const segmentationModeBridge = {
       shape: this.getToolShape(),
       size: cursorSize / scale,
       tool: this.getActiveTool(),
+      mode: this.getToolMode(),
     };
   },
 };

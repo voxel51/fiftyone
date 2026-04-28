@@ -294,7 +294,7 @@ export type PlotRegistration<T extends {} = {}> =
 type BaseSampleRendererRegistration<TSample = unknown> =
   BasePluginComponentRegistration<
     PluginComponentType.SampleRenderer,
-    SampleRendererProps<TSample>
+    SampleRendererProps
   > & {
     panelOptions?: never;
     sampleRendererOptions: SampleRendererOptions<TSample>;
@@ -415,11 +415,11 @@ export class PluginComponentRegistry {
       }
     }
 
-    const wrappedRegistration = {
+    // Sample renderers provide their own grid/modal-specific fallbacks and
+    // should not inherit the generic plugin boundary, which clears the modal
+    // on error before local recovery can run.
+    const wrappedRegistration: PluginComponentRegistration = {
       ...registration,
-      // Sample renderers provide their own grid/modal-specific fallbacks and
-      // should not inherit the generic plugin boundary, which clears the modal
-      // on error before local recovery can run.
       component:
         registration.type === PluginComponentType.SampleRenderer
           ? registration.component

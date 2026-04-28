@@ -106,6 +106,71 @@ describe("CommandContext", () => {
     expect(listener).toBeCalledTimes(2);
   });
 
+  it("prunes matching undoables from the local stack", async () => {
+    const drop = new DelegatingUndoable(
+      "fo.test.drop",
+      async () => undefined,
+      async () => undefined
+    );
+    const keep = new DelegatingUndoable(
+      "fo.test.keep",
+      async () => undefined,
+      async () => undefined
+    );
+    await context.executeAction(drop);
+    await context.executeAction(keep);
+
+    context.pruneUndoables((u) => u.id === drop.id);
+
+    expect(context.canUndo()).toBe(true);
+    await context.undo();
+    expect(testUndo).toBeCalledTimes(0); // drop's undo should never run
+    expect(context.canUndo()).toBe(false);
+  });
+
+  it("prunes matching undoables from parent contexts", async () => {
+    const parent = new CommandContext("parent");
+    parent.activate();
+    const child = new CommandContext("child", parent);
+    child.activate();
+
+    const parentUndoable = new DelegatingUndoable(
+      "fo.test.parent",
+      async () => undefined,
+      async () => undefined
+    );
+    const childUndoable = new DelegatingUndoable(
+      "fo.test.child",
+      async () => undefined,
+      async () => undefined
+    );
+    await parent.executeAction(parentUndoable);
+    await child.executeAction(childUndoable);
+    expect(child.canUndo()).toBe(true);
+
+    child.pruneUndoables((u) => u.id === parentUndoable.id);
+
+    // child entry remains, parent entry is gone
+    expect(child.canUndo()).toBe(true);
+    await child.undo();
+    expect(child.canUndo()).toBe(false);
+    expect(parent.canUndo()).toBe(false);
+
+    child.deactivate();
+    parent.deactivate();
+  });
+
+  it("fires undo state listeners when prune removes the last entry", async () => {
+    await context.executeAction(testUndoable);
+    const listener = vi.fn();
+    context.subscribeUndoState(listener);
+
+    context.pruneUndoables((u) => u.id === testUndoable.id);
+
+    expect(listener).toBeCalledTimes(1);
+    expect(listener.mock.calls[0]).toEqual([false, false]);
+  });
+
   it("fires action events on execute/undo/redo", async () => {
     const listener = vi.fn((_id, _isUndo) => {
       return;

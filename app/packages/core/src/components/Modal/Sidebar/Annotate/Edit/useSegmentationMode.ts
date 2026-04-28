@@ -39,8 +39,11 @@ export const MAX_TOOL_SIZE = 32;
 export const MIN_CURSOR_SIZE = 1;
 export const MAX_CURSOR_SIZE = 100;
 
-export type SegmentationTool = "select" | "brush" | "eraser" | "pen" | "ai";
+export type SegmentationTool = "select" | "brush" | "pen" | "ai";
 export type SegmentationToolShape = "circle" | "square";
+export type SegmentationToolMode = "add" | "remove";
+
+export const DEFAULT_TOOL_MODE: SegmentationToolMode = "add";
 
 export interface SegmentationToolState {
   active: boolean;
@@ -48,6 +51,7 @@ export interface SegmentationToolState {
   cursorSize: number; // Screen-pixel cursor size, clamped to [MIN_CURSOR_SIZE, MAX_CURSOR_SIZE]
   tool: SegmentationTool;
   shape: SegmentationToolShape;
+  mode: SegmentationToolMode;
 }
 
 // ---------------------------------------------------------------------------
@@ -58,6 +62,7 @@ const segmentationModeActiveAtom = atom<boolean>(false);
 const toolAtom = atom<SegmentationTool>("select");
 const toolSizeAtom = atom<number>(DEFAULT_TOOL_SIZE);
 const toolShapeAtom = atom<SegmentationToolShape>("circle");
+const toolModeAtom = atom<SegmentationToolMode>(DEFAULT_TOOL_MODE);
 
 /**
  * Tracks the last processed event ID for each event type so that only one
@@ -75,6 +80,7 @@ const claimedEventsAtom = atom<Map<string, string>>(new Map());
 /** @internal */ export { toolAtom as _unsafeToolAtom };
 /** @internal */ export { toolSizeAtom as _unsafeToolSizeAtom };
 /** @internal */ export { toolShapeAtom as _unsafeToolShapeAtom };
+/** @internal */ export { toolModeAtom as _unsafeToolModeAtom };
 
 /**
  * Segmentation mask tool state hook.
@@ -99,6 +105,7 @@ export const useSegmentationMode = () => {
   const [tool, setTool] = useAtom(toolAtom);
   const [toolSize, setToolSizeRaw] = useAtom(toolSizeAtom);
   const [toolShape, setToolShape] = useAtom(toolShapeAtom);
+  const [toolMode, setToolMode] = useAtom(toolModeAtom);
 
   // AI detection
   const agentSelector = useAgentSelector();
@@ -165,6 +172,13 @@ export const useSegmentationMode = () => {
       setToolShape(shape);
     },
     [setToolShape]
+  );
+
+  const switchToolMode = useCallback(
+    (mode: SegmentationToolMode) => {
+      setToolMode(mode);
+    },
+    [setToolMode]
   );
 
   // ------------------------  AI segmentation handling  ------------------- //
@@ -290,9 +304,18 @@ export const useSegmentationMode = () => {
 
   // Auto-enable segmentation mode when a pre-existing mask detection is selected,
   // auto-disable when a pre-existing label of a different type is selected.
+  //
   // New labels are ignored — the mode was set intentionally via the toolbar button.
+  //
+  // Exception: when the AI tool produces a new detection, select its overlay in
+  // Lighter so the SelectionManager and rendering pipeline treat it as active.
   useEffect(() => {
-    if (selectedLabel?.isNew) return;
+    if (selectedLabel?.isNew) {
+      if (segmentationModeActive && tool === "ai" && selectedLabel.overlay) {
+        scene?.selectOverlay(selectedLabel.overlay.id);
+      }
+      return;
+    }
 
     if (isEditingSegmentation && !segmentationModeActive) {
       setSegmentationModeActive(true);
@@ -305,10 +328,13 @@ export const useSegmentationMode = () => {
     }
   }, [
     selectedLabel?.isNew,
+    selectedLabel?.overlay,
     editingLabelType,
     isEditingSegmentation,
     segmentationModeActive,
     setSegmentationModeActive,
+    tool,
+    scene,
   ]);
 
   // -----------------------------  Event handling  ------------------------ //
@@ -394,6 +420,39 @@ export const useSegmentationMode = () => {
     )
   );
 
+  /**
+   * Handles `lighter:point-selection-finalize` (e.g. right-click during AI
+   * tool). Accepts the current AI mask, tears down point selection, and
+   * switches to brush so the user can refine the mask manually. The overlay
+   * stays selected and in editing mode.
+   */
+  useEventHandler(
+    "lighter:point-selection-finalize",
+    useCallback(
+      (payload) => {
+        if (
+          !segmentationModeActive ||
+          !claimEvent("point-selection-finalize", payload.eventId)
+        ) {
+          return;
+        }
+
+        pointSelection.deactivate();
+        resetToolsState();
+        setActiveTask(null);
+        setTool("brush");
+      },
+      [
+        claimEvent,
+        pointSelection,
+        resetToolsState,
+        segmentationModeActive,
+        setActiveTask,
+        setTool,
+      ]
+    )
+  );
+
   // ----------------------------  Public interface  ----------------------- //
 
   return useMemo(
@@ -412,8 +471,10 @@ export const useSegmentationMode = () => {
       tool,
       toolSize,
       toolShape,
+      toolMode,
       switchTool,
       switchToolShape,
+      switchToolMode,
       increaseToolSize,
       decreaseToolSize,
       setToolSize,
@@ -428,8 +489,10 @@ export const useSegmentationMode = () => {
       tool,
       toolSize,
       toolShape,
+      toolMode,
       switchTool,
       switchToolShape,
+      switchToolMode,
       increaseToolSize,
       decreaseToolSize,
       setToolSize,

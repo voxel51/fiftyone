@@ -125,6 +125,8 @@ export type LighterEventGroup = {
   "lighter:detection-mode-quit": { eventId: string };
   /** Emitted when user clicks without dragging in segmentation mode to close out the current detection */
   "lighter:segmentation-mode-quit": { eventId: string };
+  /** Emitted when the AI mask should be established and point selection ended (e.g. right-click) */
+  "lighter:point-selection-finalize": { eventId: string };
 
   // ============================================================================
   // KEYPOINT EVENTS

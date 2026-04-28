@@ -305,7 +305,7 @@ export class MaskCanvas {
     const shape = toolState.shape ?? "circle";
     const radius = size / 2;
 
-    if (toolState.tool === "eraser") {
+    if (toolState.mode === "remove") {
       this.context.globalCompositeOperation = "destination-out";
       this.context.fillStyle = "rgba(0,0,0,1)";
     } else {
@@ -341,13 +341,13 @@ export class MaskCanvas {
       this.paintStart(bounds);
     }
 
-    // Compute dab extent: brush expands bounds, eraser does not
+    // Compute dab extent: add mode expands bounds, remove mode does not
     let minX = bounds.x;
     let minY = bounds.y;
     let maxX = bounds.x + bounds.width;
     let maxY = bounds.y + bounds.height;
 
-    if (toolState.tool === "brush") {
+    if (toolState.mode === "add") {
       const half = (toolState.size ?? 0) / 2;
       minX = Math.min(minX, worldPoint.x - half);
       minY = Math.min(minY, worldPoint.y - half);
@@ -374,7 +374,7 @@ export class MaskCanvas {
 
   /**
    * Fills a closed polygon region on the mask canvas.
-   * Uses the current tool's composite operation (brush paints, eraser removes).
+   * Uses the current paint mode (add paints, remove subtracts).
    */
   fillPolygon(
     worldPoints: Point[],
@@ -391,13 +391,13 @@ export class MaskCanvas {
       this.paintStart(bounds);
     }
 
-    // Compute polygon extent: non-eraser expands to contain all points
+    // Compute polygon extent: add mode expands to contain all points
     let minX = bounds.x;
     let minY = bounds.y;
     let maxX = bounds.x + bounds.width;
     let maxY = bounds.y + bounds.height;
 
-    if (toolState.tool !== "eraser") {
+    if (toolState.mode === "add") {
       for (const wp of worldPoints) {
         minX = Math.min(minX, wp.x);
         minY = Math.min(minY, wp.y);
@@ -416,7 +416,7 @@ export class MaskCanvas {
 
     if (maskPoints.length < 3) return undefined;
 
-    if (toolState.tool === "eraser") {
+    if (toolState.mode === "remove") {
       this.context.globalCompositeOperation = "destination-out";
       this.context.fillStyle = "rgba(0,0,0,1)";
     } else {

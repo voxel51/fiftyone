@@ -17,6 +17,7 @@
         { "path": "packages/looker" },
         { "path": "packages/looker-3d" },
         { "path": "packages/map" },
+        { "path": "packages/multimodal" },
         { "path": "packages/operators" },
         { "path": "packages/playback" },
         { "path": "packages/plugins" },

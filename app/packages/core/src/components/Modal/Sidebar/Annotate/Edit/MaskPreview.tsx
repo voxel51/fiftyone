@@ -85,7 +85,9 @@ function drawPreview(
  * Light mode: white mask on black background.
  *
  * Draws once on mount from the overlay's existing canvas/bitmap, then
- * updates via the afterSnapshot carried by paint-end events.
+ * re-draws when:
+ * - A paint stroke ends (brush/eraser/pen commit)
+ * - The overlay finishes rendering (async mask decode completes)
  */
 export default function MaskPreview() {
   const overlay = useAtomValue(currentOverlay);
@@ -98,8 +100,8 @@ export default function MaskPreview() {
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
   );
 
-  // Initial draw from the overlay's decoded bitmap or editing canvas.
-  useEffect(() => {
+  // Draws the preview from the overlay's current canvas or decoded bitmap.
+  const drawFromOverlay = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas || !(overlay instanceof DetectionOverlay)) return;
 
@@ -109,26 +111,37 @@ export default function MaskPreview() {
     drawPreview(canvas, source, source.width, source.height, isDark);
   }, [overlay, isDark]);
 
-  // On paint-end, use the afterSnapshot from the event payload directly —
-  // it's already in memory, no decode needed.
+  // Initial draw (may be empty if the async decode hasn't completed yet).
+  useEffect(drawFromOverlay, [drawFromOverlay]);
+
+  // On paint-end, prefer the afterSnapshot from the event payload (already in
+  // memory), fall back to the overlay's preview source.
   const handlePaintEnd = useCallback(
     (payload: {
       paintStrokeData?: { afterSnapshot?: { imageData: ImageData } };
     }) => {
       const canvas = canvasRef.current;
+      if (!canvas) return;
+
       const snapshot = payload.paintStrokeData?.afterSnapshot;
-      if (!canvas || !snapshot) return;
+      if (snapshot) {
+        const { imageData } = snapshot;
+        const tmp = new OffscreenCanvas(imageData.width, imageData.height);
+        tmp.getContext("2d")!.putImageData(imageData, 0, 0);
+        drawPreview(canvas, tmp, imageData.width, imageData.height, isDark);
+        return;
+      }
 
-      const { imageData } = snapshot;
-      const tmp = new OffscreenCanvas(imageData.width, imageData.height);
-      tmp.getContext("2d")!.putImageData(imageData, 0, 0);
-
-      drawPreview(canvas, tmp, imageData.width, imageData.height, isDark);
+      drawFromOverlay();
     },
-    [isDark]
+    [isDark, drawFromOverlay]
   );
 
   useEventHandler("lighter:overlay-paint-end", handlePaintEnd);
+
+  // Re-draw when the overlay finishes rendering (e.g. after async mask decode
+  // completes for AI detections, or after the first pen polygon commit).
+  useEventHandler("lighter:overlay-loaded", drawFromOverlay);
 
   if (!(overlay instanceof DetectionOverlay) || !overlay.hasMask()) {
     return null;

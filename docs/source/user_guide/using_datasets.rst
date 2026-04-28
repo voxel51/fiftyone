@@ -1990,6 +1990,11 @@ as per the table below:
     the new filepath must have the same media type. In other words,
     `media_type` is immutable.
 
+.. note::
+
+    When creating new 3D datasets from direct 3D asset files such as `.glb`,
+    `.pcd`, or `.ply`, pass `media_type="3d"` explicitly.
+
 .. _using-tags:
 
 Tags
@@ -5320,9 +5325,35 @@ objects across the frames of a |Sample|:
 3D datasets
 ___________
 
-Any |Sample| whose `filepath` is a file with extension `.fo3d` is
-recognized as a 3D sample, and datasets composed of 3D
-samples have media type `3d`.
+3D datasets have media type `3d` and can be created from supported 3D asset
+files directly, or from `.fo3d` scene files. Direct assets are the simplest
+choice when a sample is a single :ref:`mesh <3d-meshes>` or :ref:`point cloud <3d-point-clouds>`. Wrap assets in `.fo3d`
+when you need advanced scene customization such as lights, camera
+configuration, transformations, materials, shapes, or multiple assets in one
+scene.
+
+When using direct 3D assets, pass `media_type="3d"` explicitly:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    samples = [
+        fo.Sample(filepath="/path/to/model.glb", media_type="3d"),
+        fo.Sample(filepath="/path/to/point-cloud.pcd", media_type="3d"),
+        fo.Sample(filepath="/path/to/mesh.ply", media_type="3d"),
+    ]
+
+    dataset = fo.Dataset()
+    dataset.add_samples(samples)
+
+    print(dataset.media_type)  # 3d
+
+Features such as :ref:`camera intrinsics and extrinsics
+<camera-intrinsics-extrinsics>`, camera frustum rendering, and
+:ref:`3D annotation <creating-3d-polylines>` are available whether your sample
+points directly to a :ref:`supported 3D asset <3d-meshes>` or to an `.fo3d` scene.
 
 An FO3D file encapsulates a 3D scene constructed using the
 :class:`Scene <fiftyone.core.threed.Scene>` class, which provides methods
@@ -5724,6 +5755,9 @@ ____________________
 
     While we'll keep supporting the `point-cloud` media type for backward
     compatibility, we recommend using the `3d` media type for new datasets.
+
+    To use a PCD file as a 3D sample in a new dataset, create it with
+    `media_type="3d"` explicitly.
 
 Any |Sample| whose `filepath` is a
 `PCD file <https://pointclouds.org/documentation/tutorials/pcd_file_format.html>`_

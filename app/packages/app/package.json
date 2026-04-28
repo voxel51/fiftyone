@@ -17,6 +17,8 @@
         "@fiftyone/analytics": "*",
         "@fiftyone/components": "*",
         "@fiftyone/core": "*",
+        "@fiftyone/feature-flags": "*",
+        "@fiftyone/multimodal": "*",
         "@fiftyone/relay": "*",
         "@fiftyone/state": "*",
         "@fiftyone/utilities": "*",
@@ -27,7 +29,7 @@
         "lodash": "^4.18.1",
         "notistack": "^3.0.1",
         "numeral": "^2.0.6",
-        "path-to-regexp": "^8.0.0",
+        "path-to-regexp": "^8.4.0",
         "react": "18.2.0",
         "react-dom": "18.2.0",
         "react-error-boundary": "^3.1.4",
@@ -40,7 +42,7 @@
         "recoil-relay": "^0.1.0",
         "resize-observer-polyfill": "^1.5.1",
         "styled-components": "^6.1.8",
-        "uuid": "^8.3.2"
+        "uuid": "^14.0.0"
     },
     "devDependencies": {
         "@biomejs/biome": "^1.8.3",
@@ -53,7 +55,7 @@
         "relay-compiler": "^14.1.0",
         "rollup-plugin-polyfill-node": "^0.6.2",
         "typescript-plugin-css-modules": "^5.0.2",
-        "vite": "^6.4.2",
+        "vite": "^7.3.2",
         "vite-plugin-relay": "^1.0.7",
         "vite-plugin-rewrite-all": "^1.0.2",
         "vite-plugin-svgr": "^4.2.0"

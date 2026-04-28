@@ -7,6 +7,8 @@ import {
 import { useCallback } from "react";
 import { useLighter } from "@fiftyone/lighter";
 import { DetectionAnnotationLabel } from "@fiftyone/state";
+import { currentData } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/state";
+import { useSetAtom } from "jotai";
 
 /**
  * Method which applies the provided {@link InferenceResult} to the current
@@ -26,6 +28,7 @@ export const useApplyInferenceResult = (
   createDetection: () => DetectionAnnotationLabel | null
 ): InferenceResultHandler => {
   const { getOverlay, scene } = useLighter();
+  const setCurrentData = useSetAtom(currentData);
 
   return useCallback(
     (result: InferenceResult<InferenceResultProxy>) => {
@@ -51,6 +54,13 @@ export const useApplyInferenceResult = (
 
               // todo integrate with undo/redo
               overlay.updateLabel(newLabelData);
+
+              // Sync the mask and bounding box into the sidebar's annotation
+              // for mask preview
+              setCurrentData({
+                bounding_box: newLabelData.bounding_box,
+                mask: newLabelData.mask,
+              });
             } else {
               console.warn("Unable to create overlay");
             }
@@ -62,6 +72,6 @@ export const useApplyInferenceResult = (
         console.warn(`Unsupported result type: ${result.type}`);
       }
     },
-    [createDetection, getOverlay, scene]
+    [createDetection, getOverlay, scene, setCurrentData]
   );
 };
