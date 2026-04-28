@@ -110,7 +110,7 @@ export const useSegmentationMode = () => {
   // AI detection
   const agentSelector = useAgentSelector();
   const { setActiveTask } = useActiveTask();
-  const { reset: resetToolsState } = useToolsState();
+  const { reset: resetAIToolsState } = useToolsState();
   const pointSelection = usePointSelection();
 
   const createDetection = useCreate(DETECTION);
@@ -205,7 +205,7 @@ export const useSegmentationMode = () => {
 
     if (previousId && previousId !== currentId) {
       pointSelection.clearPoints();
-      resetToolsState();
+      resetAIToolsState();
     }
 
     previousSelectedLabelIdRef.current = currentId;
@@ -250,7 +250,7 @@ export const useSegmentationMode = () => {
       pointSelection.activate(resolvePointVariant, resolvePointHit);
     } else if (pointSelection.isActive) {
       pointSelection.deactivate();
-      resetToolsState();
+      resetAIToolsState();
       setActiveTask(null);
     }
   }, [
@@ -260,7 +260,7 @@ export const useSegmentationMode = () => {
     resolvePointVariant,
     resolvePointHit,
     setActiveTask,
-    resetToolsState,
+    resetAIToolsState,
   ]);
 
   // ---------------  Segmentation mode activation / deactivation  --------- //
@@ -278,14 +278,14 @@ export const useSegmentationMode = () => {
     onExit();
 
     pointSelection.deactivate();
-    resetToolsState();
+    resetAIToolsState();
     setActiveTask(null);
 
     setSegmentationModeActive(false);
   }, [
     onExit,
     pointSelection,
-    resetToolsState,
+    resetAIToolsState,
     setActiveTask,
     setSegmentationModeActive,
   ]);
@@ -438,14 +438,14 @@ export const useSegmentationMode = () => {
         }
 
         pointSelection.deactivate();
-        resetToolsState();
+        resetAIToolsState();
         setActiveTask(null);
         setTool("brush");
       },
       [
         claimEvent,
         pointSelection,
-        resetToolsState,
+        resetAIToolsState,
         segmentationModeActive,
         setActiveTask,
         setTool,
