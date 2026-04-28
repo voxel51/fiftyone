@@ -18,6 +18,7 @@ import fiftyone.core.utils as fou
 import fiftyone.utils.torch as fout
 import fiftyone.utils.sam as fosam
 import fiftyone.utils.sam2 as fosam2
+import fiftyone.zoo.models as fozm
 
 fou.ensure_torch()
 import torch
@@ -25,39 +26,57 @@ import torch
 sam3 = fou.lazy_import("sam3")
 sam3tr = fou.lazy_import("sam3.train.transforms.basic_for_api")
 sam3ds = fou.lazy_import("sam3.train.data.sam3_image_dataset")
+sam3coll = fou.lazy_import("sam3.train.data.collator")
+sam3misc = fou.lazy_import("sam3.model.utils.misc")
 sam2ip = fou.lazy_import("sam2.sam2_image_predictor")
 
 logger = logging.getLogger(__name__)
 
 
-class SegmentAnything3ImageModelConfig(fosam.SegmentAnythingModelConfig):
+class SegmentAnything3ImageModelConfig(
+    fout.TorchImageModelConfig, fozm.HasZooModel
+):
     """Configuration for running a :class:`SegmentAnything3ImageModel`.
 
     See :class:`fiftyone.utils.torch.TorchImageModelConfig` for additional
     arguments.
 
     Args:
-        classes (None): a list of custom classes for use as SAM3 text prompts
+        points_mask_index (None): an optional mask index to use for each
+            keypoint output
+        get_item_cls (None): a string like
+            ``"fiftyone.utils.sam.SegmentAnythingImageGetItem"`` specifying the
+            :class:`GetItem` to use for SAM
+        get_item_args (None): a dictionary of arguments for
+            ``get_item_cls(field_mapping=field_mapping, **kwargs)``
+        operation_mode ("concept"): concept or visual mode of operation for inference
     """
 
     def __init__(self, cfg_dict):
-        """Initializes :class:`SegmentAnythingModelConfig`
+        """Initializes :class:`SegmentAnything3ImageModelConfig`
 
         Args:
             cfg_dict: a dictionary with config parameters
         """
         d = self.init(cfg_dict)
         super().__init__(d)
+
+        self.points_mask_index = self.parse_int(
+            d, "points_mask_index", default=None
+        )
+        if self.points_mask_index and not 0 <= self.points_mask_index <= 2:
+            raise ValueError("mask_index must be 0, 1, or 2")
+
         self.get_item_cls = self.parse_string(
             d,
             "get_item_cls",
             default="fiftyone.utils.sam3.SegmentAnything3ImageGetItem",
         )
-        self.classes = self.parse_array(d, "classes", default=None)
+        self.get_item_args = self.parse_dict(d, "get_item_args", default=None)
+
         self.operation_mode = self.parse_string(
             d, "operation_mode", default="concept"
         )
-        self.image_id = None
 
 
 class _SAM3Predictor(fosam2._SAM2Predictor):
@@ -85,8 +104,6 @@ class _SAM3Predictor(fosam2._SAM2Predictor):
             a PIL image or a uint8 numpy array containing image in HWC format
             a tuple containing original image dimensions
         """
-        # SAM2 does image pre-processing when it calls SAM2ImagePredictor.set_image.
-        # No straight-forward way to decouple them other than extracting the functionality.
         if isinstance(img, np.ndarray):
             return super().image_transform(img)
         return img, img.size[::-1]
@@ -94,7 +111,7 @@ class _SAM3Predictor(fosam2._SAM2Predictor):
 
 class SegmentAnything3ImageGetItem(fosam.SegmentAnythingImageGetItem):
     """A :class:`GetItem` that loads images, bounding boxes and/or keypoints to feed to
-    :class:`SegmentAnythingModel` instances.
+    :class:`SegmentAnything3ImageModel` instances.
 
     Args:
         field_mapping (None): the user-supplied dict mapping keys in
@@ -194,6 +211,11 @@ class SegmentAnything3ImageGetItemForVideo(SegmentAnything3ImageGetItem):
 
 
 def build_sam_datapoint_transform():
+    """Builds transforms for SAM3 datapoints.
+
+    Returns:
+        composed transforms
+    """
     transform = sam3tr.ComposeAPI(
         transforms=[
             sam3tr.RandomResizeAPI(
@@ -207,6 +229,62 @@ def build_sam_datapoint_transform():
         ]
     )
     return transform
+
+
+class SAM3ConceptSegmenterOutputProcessor(fout.OutputProcessor):
+    """Converts SAM model outputs to FiftyOne format.
+
+    Args:
+        classes (None): the list of class labels for the model. Not used in SAM output processor.
+        mask_thresh (0.5): Threshold for converting float masks to boolean masks
+    """
+
+    def __init__(self, classes=None, mask_thresh=0.5):
+        self.classes = None
+        self.mask_thresh = mask_thresh
+
+    def __call__(
+        self,
+        output,
+        frame_size,
+    ):
+        """Returns processed model output in FiftyOne format.
+
+        Args:
+            output: a list of model output per sample
+            frame_size: a list of tuple containing original image height and width
+
+        Returns:
+            a list of :class:`fiftyone.core.labels.Detections` instances
+        """
+        proc_output = []
+        for idx, out in enumerate(output):
+            out_logits = out["pred_logits"]
+            out_masks = out["pred_masks"]
+            out_probs = out_logits.sigmoid()
+            presence_score = out["presence_logit_dec"].sigmoid().unsqueeze(1)
+            out_probs = (out_probs * presence_score).squeeze(-1)
+
+            keep = out_probs > self.mask_thresh
+            out_probs = out_probs[keep]
+            out_masks = out_masks[keep]
+
+            img_h = frame_size[idx][0]
+            img_w = frame_size[idx][1]
+
+            out_masks = sam3.model.data_misc.interpolate(
+                out_masks.unsqueeze(1),
+                (img_h, img_w),
+                mode="bilinear",
+                align_corners=False,
+            ).sigmoid()
+            proc_output.append(
+                {
+                    "masks": out_masks.float(),
+                    "iou_predictions": out_probs.unsqueeze(1).float(),
+                }
+            )
+        return proc_output
 
 
 class SegmentAnything3ImageModel(fosam.SegmentAnythingModel):
@@ -234,6 +312,9 @@ class SegmentAnything3ImageModel(fosam.SegmentAnythingModel):
         self._sam_auto_generator = None
         self._sam_predictor = self._load_predictor()
         self._operation_mode = self.config.operation_mode
+        self._concept_output_processor = self._build_concept_output_processor(
+            config
+        )
 
     def _load_predictor(self):
         predictor = _SAM3Predictor(model=self._model)
@@ -244,8 +325,9 @@ class SegmentAnything3ImageModel(fosam.SegmentAnythingModel):
 
     def _load_model(self, config):
         if "device" not in config.entrypoint_args:
-            config.entrypoint_args["device"] = self._device
-        return super()._load_model(config)
+            config.entrypoint_args["device"] = str(self._device)
+        model = super()._load_model(config)
+        return model
 
     def _download_model(self, config):
         # Download sam3 to fo.config.model_zoo_dir from HF hub.
@@ -256,6 +338,13 @@ class SegmentAnything3ImageModel(fosam.SegmentAnythingModel):
             filename=os.path.basename(config.model_path),
             local_dir=os.path.dirname(config.model_path),
             local_dir_use_symlinks=False,
+        )
+
+    def _build_concept_output_processor(self, config):
+        kwargs = config.output_processor_args or {}
+        # NOTE: Add new config params for concept output processor, if needed for more configurability.
+        return SAM3ConceptSegmenterOutputProcessor(
+            classes=None, mask_thresh=kwargs.get("mask_thresh", 0.5)
         )
 
     @property
@@ -316,7 +405,9 @@ class SegmentAnything3ImageModel(fosam.SegmentAnythingModel):
                         query_processing_order=0,
                         inference_metadata=sam3ds.InferenceMetadata(
                             original_image_id=img_idx,
-                            original_size=results["original_size"][::-1],
+                            original_size=results["original_size"][img_idx][
+                                ::-1
+                            ],
                             # dummy values
                             coco_image_id=img_idx,
                             original_category_id=1,
@@ -356,7 +447,7 @@ class SegmentAnything3ImageModel(fosam.SegmentAnythingModel):
                     )
                 )
             datapoints.append(transform(datapoint))
-        batched_dps = sam3.train.data.collator.collate_fn_api(
+        batched_dps = sam3coll.collate_fn_api(
             datapoints, dict_key="datapoints"
         )
         results["datapoints"] = batched_dps["datapoints"]
@@ -371,29 +462,21 @@ class SegmentAnything3ImageModel(fosam.SegmentAnythingModel):
         Returns:
             a :class:`SegmentAnything3ImageGetItem` instance
         """
-        rm_text_prompts, rm_op_mode = False, False
-        if self.config.get_item_args is None:
-            self.config.get_item_args = {}
-        if (
-            "text_prompts" not in self.config.get_item_args
-            and self.config.classes is not None
-        ):
-            self.config.get_item_args["text_prompts"] = self.config.classes
-            rm_text_prompts = True
-        if "operation_mode" not in self.config.get_item_args:
-            self.config.get_item_args[
-                "operation_mode"
-            ] = self.config.operation_mode
-            rm_op_mode = True
-        self.config.get_item_args["use_numpy"] = (
-            self.config.operation_mode == "visual"
-        )
-        get_item = super().build_get_item(field_mapping=field_mapping)
-        if rm_text_prompts:
-            _ = self.config.get_item_args.pop("text_prompts")
-        if rm_op_mode:
-            _ = self.config.get_item_args.pop("operation_mode")
-        return get_item
+        base_args = self.config.get_item_args or {}
+        overrides = {
+            "operation_mode": base_args.get(
+                "operation_mode", self.config.operation_mode
+            ),
+            "use_numpy": self.config.operation_mode == "visual",
+        }
+        if "text_prompts" not in base_args and self.config.classes is not None:
+            overrides["text_prompts"] = self.config.classes
+        original = self.config.get_item_args
+        self.config.get_item_args = {**base_args, **overrides}
+        try:
+            return super().build_get_item(field_mapping=field_mapping)
+        finally:
+            self.config.get_item_args = original
 
     def _predict_all(self, args):
         if self._preprocess and self.has_collate_fn:
@@ -415,12 +498,15 @@ class SegmentAnything3ImageModel(fosam.SegmentAnythingModel):
 
         if "datapoints" in args:
             # Concept mode
-            args["datapoints"] = sam3.model.utils.misc.copy_data_to_device(
+            args["datapoints"] = sam3misc.copy_data_to_device(
                 args["datapoints"], self.device, non_blocking=True
             )
-            orig_image_sizes = args.get("original_size")
 
             output = self._forward_pass_concept(args)
+            if self._concept_output_processor is not None:
+                output = self._concept_output_processor(
+                    output, orig_image_sizes
+                )
         elif prompt_type == "auto":
             return self._forward_pass_auto(args)
         else:
@@ -450,46 +536,7 @@ class SegmentAnything3ImageModel(fosam.SegmentAnythingModel):
 
     def _forward_pass_concept(self, imgs):
         with torch.inference_mode():
-            _output = self._model(imgs["datapoints"])
-
-        output = []
-        orig_image_sizes = imgs.get("original_size")
-        for idx, out in enumerate(_output):
-            out_bbox = out["pred_boxes"]
-            out_logits = out["pred_logits"]
-            out_masks = out["pred_masks"]
-            out_probs = out_logits.sigmoid()
-            presence_score = out["presence_logit_dec"].sigmoid().unsqueeze(1)
-            out_probs = (out_probs * presence_score).squeeze(-1)
-
-            keep = out_probs > 0.5
-            out_probs = out_probs[keep]
-            out_masks = out_masks[keep]
-            out_bbox = out_bbox[keep]
-
-            boxes = sam3.model.box_ops.box_cxcywh_to_xyxy(out_bbox)
-
-            img_h = orig_image_sizes[idx][0]
-            img_w = orig_image_sizes[idx][1]
-            scale_fct = torch.tensor([img_w, img_h, img_w, img_h]).to(
-                self.device
-            )
-            boxes = boxes * scale_fct[None, :]
-
-            out_masks = sam3.model.data_misc.interpolate(
-                out_masks.unsqueeze(1),
-                (img_h, img_w),
-                mode="bilinear",
-                align_corners=False,
-            ).sigmoid()
-            output.append(
-                {
-                    "masks": (out_masks > 0.5).float(),
-                    "iou_predictions": out_probs.unsqueeze(1).float(),
-                }
-            )
-
-        return output
+            return self._model(imgs["datapoints"])
 
     def _forward_pass(self, imgs):
         """Forward pass with prompts
@@ -500,38 +547,7 @@ class SegmentAnything3ImageModel(fosam.SegmentAnythingModel):
         Returns:
             a dict containing model output
         """
-        # TODO: FIX THIS! Using sam3 predict_inst_batch
-        images = imgs.pop("image")
-
-        self._sam_predictor.processor.set_image_batch(images)
-
-        point_coords = imgs.get("point_coords")
-        point_labels = imgs.get("point_labels")
-        boxes = imgs.get("boxes")
-        mask_inputs = imgs.get("mask_inputs")  # Not used currently
-        multimask_output = (
-            True if (boxes is None and point_coords is not None) else False
-        )
-        outputs = []
-        for img_idx in range(len(images)):
-            out_masks, iou_pred, _ = self._sam_predictor.processor._predict(
-                point_coords=point_coords[img_idx]
-                if point_coords is not None
-                else None,
-                point_labels=point_labels[img_idx]
-                if point_labels is not None
-                else None,
-                boxes=boxes[img_idx] if boxes is not None else None,
-                mask_input=mask_inputs[img_idx] if mask_inputs else None,
-                multimask_output=multimask_output,
-            )
-            outputs.append(
-                {
-                    "masks": out_masks.float(),
-                    "iou_predictions": iou_pred.float(),
-                }
-            )
-        return outputs
+        return fosam2.SegmentAnything2ImageModel._forward_pass(self, imgs)
 
     def _forward_pass_auto(self, imgs):
         raise RuntimeError(

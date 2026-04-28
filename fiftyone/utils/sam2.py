@@ -111,16 +111,6 @@ class SegmentAnything2ImageModelConfig(fosam.SegmentAnythingModelConfig):
         )
 
 
-class SegmentAnything2ImageGetItem(fosam.SegmentAnythingImageGetItem):
-    pass
-
-
-class SegmentAnything2ImageGetItemForVideo(
-    fosam.SegmentAnythingImageGetItemForVideo
-):
-    pass
-
-
 class _SAM2Predictor(fosam._SAMPredictor):
     """Wrapper for ``sam2.sam2_image_predictor.SAM2ImagePredictor``.
 
@@ -220,6 +210,16 @@ class _SAM2Predictor(fosam._SAMPredictor):
             boxes=boxes,
             multimask_output=multimask_output,
         )
+
+
+class SegmentAnything2ImageGetItem(fosam.SegmentAnythingImageGetItem):
+    pass
+
+
+class SegmentAnything2ImageGetItemForVideo(
+    fosam.SegmentAnythingImageGetItemForVideo
+):
+    pass
 
 
 class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):

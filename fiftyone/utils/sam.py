@@ -624,7 +624,7 @@ class SAMSegmenterOutputProcessor(fout.OutputProcessor):
         mask_thresh (0.5): Threshold for converting float masks to boolean masks
     """
 
-    def __init__(self, classes=None, mask_thresh=0.5, **kwargs):
+    def __init__(self, classes=None, mask_thresh=0.5):
         self.classes = None
         self.mask_thresh = mask_thresh
 
