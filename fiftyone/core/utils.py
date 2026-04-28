@@ -3159,9 +3159,25 @@ def datetime_to_timestamp(dt):
     return 1000.0 * dt.timestamp()
 
 
+def _config_tzinfo():
+    """Resolves ``fo.config.timezone`` to a ``tzinfo``, defaulting to UTC.
+
+    Returns:
+        a ``datetime.tzinfo``
+    """
+    tz = fo.config.timezone or pytz.utc.zone
+    if tz.lower() == "local":
+        return datetime.now().astimezone().tzinfo
+
+    return pytz.timezone(tz)
+
+
 def timestamp_to_datetime(ts):
     """Converts a timestamp (number of milliseconds since epoch) to a
     `datetime.datetime`.
+
+    The returned datetime is timezone-aware in ``fo.config.timezone``
+    (defaulting to UTC).
 
     Args:
         ts: a number of milliseconds since epoch
@@ -3169,13 +3185,7 @@ def timestamp_to_datetime(ts):
     Returns:
         a `datetime.datetime`
     """
-    dt = datetime.utcfromtimestamp(ts / 1000.0)
-
-    if fo.config.timezone is None:
-        return dt
-
-    timezone = pytz.timezone(fo.config.timezone)
-    return dt.replace(tzinfo=pytz.utc).astimezone(timezone)
+    return datetime.fromtimestamp(ts / 1000.0, tz=_config_tzinfo())
 
 
 def timedelta_to_ms(td):

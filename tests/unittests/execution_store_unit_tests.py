@@ -17,6 +17,7 @@ from fiftyone.operators.store import ExecutionStoreService
 from fiftyone.operators.store.models import KeyDocument
 from fiftyone.factory.repo_factory import MongoExecutionStoreRepo
 from fiftyone.operators.store import ExecutionStore
+from fiftyone.constants import UTC
 
 
 EPSILON = 0.1
@@ -34,7 +35,7 @@ def assert_delta_seconds_approx(time_delta, seconds, epsilon=EPSILON):
 class TestKeyDocument(unittest.TestCase):
     def test_get_expiration(self):
         ttl = 1
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         expiration = KeyDocument.get_expiration(ttl)
         time_delta = expiration - now
         assert_delta_seconds_approx(time_delta, ttl)

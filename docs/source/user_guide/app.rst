@@ -943,19 +943,19 @@ Consider the following example:
 
     import fiftyone as fo
     import fiftyone.zoo as foz
-    from datetime import datetime
+    from datetime import datetime, timezone
 
     dataset = foz.load_zoo_dataset("quickstart")
     dataset.add_dynamic_sample_fields()
 
     field = dataset.get_field("ground_truth")
     field.description = "Ground truth annotations"
-    field.info = {"creator": "alice", "created_at": datetime.utcnow()}
+    field.info = {"creator": "alice", "created_at": datetime.now(timezone.utc)}
     field.save()
 
     field = dataset.get_field("predictions")
     field.description = "YOLOv8 predictions"
-    field.info = {"owner": "bob", "created_at": datetime.utcnow()}
+    field.info = {"owner": "bob", "created_at": datetime.now(timezone.utc)}
     field.save()
 
     session = fo.launch_app(dataset)

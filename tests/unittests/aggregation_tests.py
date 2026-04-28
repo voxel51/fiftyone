@@ -15,6 +15,7 @@ import unittest
 import fiftyone as fo
 import fiftyone.core.fields as fof
 from fiftyone import ViewField as F
+from fiftyone.constants import UTC
 
 from decorators import drop_datasets
 
@@ -437,7 +438,7 @@ class DatasetTests(unittest.TestCase):
                             fo.DynamicEmbeddedDocument(
                                 task="editing_pass",
                                 author="Bob",
-                                timestamp=datetime.utcnow(),
+                                timestamp=datetime.now(UTC),
                             ),
                         ],
                     ),
@@ -1127,7 +1128,7 @@ class DatasetTests(unittest.TestCase):
     @drop_datasets
     def test_dates(self):
         today = date.today()
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         samples = []
         for idx in range(100):
@@ -1178,6 +1179,8 @@ class DatasetTests(unittest.TestCase):
             bounds = dataset.bounds(field)
             self.assertIsInstance(bounds[0], datetime)
             self.assertIsInstance(bounds[1], datetime)
+            self.assertIsNotNone(bounds[0].tzinfo)
+            self.assertIsNotNone(bounds[1].tzinfo)
 
             count = dataset.count(field)
             self.assertEqual(count, 100)
@@ -1185,6 +1188,7 @@ class DatasetTests(unittest.TestCase):
             values = dataset.values(field)
             for value in values:
                 self.assertIsInstance(value, datetime)
+                self.assertIsNotNone(value.tzinfo)
 
             uniques = dataset.distinct(field)
             self.assertListEqual(uniques, list(reversed(values)))

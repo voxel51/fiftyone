@@ -12,6 +12,7 @@ from datetime import date, datetime, timedelta
 import math
 
 from bson import ObjectId
+import pytz
 import unittest
 import numpy as np
 
@@ -909,11 +910,11 @@ class ViewExpressionTests(unittest.TestCase):
     def test_datetimes(self):
         dataset = fo.Dataset()
 
-        date1 = datetime(1970, 1, 1, 2, 0, 0)
-        date2 = datetime(1970, 1, 1, 3, 0, 0)
-        date3 = datetime(1970, 1, 1, 4, 0, 0)
+        date1 = datetime(1970, 1, 1, 2, 0, 0, tzinfo=pytz.utc)
+        date2 = datetime(1970, 1, 1, 3, 0, 0, tzinfo=pytz.utc)
+        date3 = datetime(1970, 1, 1, 4, 0, 0, tzinfo=pytz.utc)
 
-        query_date = datetime(1970, 1, 1, 3, 1, 0)
+        query_date = datetime(1970, 1, 1, 3, 1, 0, tzinfo=pytz.utc)
         query_delta = timedelta(minutes=30)
 
         dataset.add_samples(
@@ -927,6 +928,10 @@ class ViewExpressionTests(unittest.TestCase):
         fo.config.timezone = None
         dataset.reload()
 
+        # After the read-side fix in `fiftyone/core/odm/database.py`, datetime
+        # fields are returned timezone-aware (UTC) even when
+        # ``fo.config.timezone`` is unset, matching the tz-aware values that
+        # were written above.
         dates = dataset.values("date")
         self.assertListEqual(dates, [date1, date2, date3])
 

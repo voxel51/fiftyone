@@ -16,6 +16,7 @@ from fiftyone.operators.executor import (
     ExecutionRunState,
 )
 from fiftyone.operators.types import Pipeline, PipelineRunInfo
+from fiftyone.constants import UTC
 
 logger = logging.getLogger(__name__)
 
@@ -45,15 +46,15 @@ class DelegatedOperationDocument(object):
             else ExecutionRunState.QUEUED
         )  # if running locally use QUEUED otherwise SCHEDULED
         self.run_link = None
-        self.queued_at = datetime.utcnow() if not is_remote else None
-        self.updated_at = datetime.utcnow()
+        self.queued_at = datetime.now(UTC) if not is_remote else None
+        self.updated_at = datetime.now(UTC)
         self.status = None
         self.dataset_id = None
         self.started_at = None
         self.pinned = False
         self.completed_at = None
         self.failed_at = None
-        self.scheduled_at = datetime.utcnow() if is_remote else None
+        self.scheduled_at = datetime.now(UTC) if is_remote else None
         self.result = None
         self.id = None
         self._doc = None

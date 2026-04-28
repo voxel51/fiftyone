@@ -18,6 +18,7 @@ from starlette.exceptions import HTTPException
 from starlette.requests import Request
 
 import fiftyone as fo
+import fiftyone.core.utils as fou
 from fiftyone.server import decorators, utils
 from fiftyone.server.exceptions import DbVersionMismatchError
 from fiftyone.server.utils.datasets import (
@@ -100,7 +101,7 @@ def get_if_last_modified_at(
         # As Unix timestamp
         try:
             if_last_modified_at = datetime.datetime.fromtimestamp(
-                float(if_match)
+                float(if_match), tz=fou._config_tzinfo()
             )
         except Exception:
             ...
@@ -724,9 +725,7 @@ class CommitMask(HTTPEndpoint):
         mask_path = detection.mask_path
 
         try:
-            detection.export_mask(
-                mask_path, update=True, overwrite_path=True
-            )
+            detection.export_mask(mask_path, update=True, overwrite_path=True)
             etag = save_sample(sample, if_last_modified_at)
         except DbVersionMismatchError:
             raise

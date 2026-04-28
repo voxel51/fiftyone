@@ -1656,7 +1656,7 @@ and `last_modified_at` are read-only and thus cannot be manually edited:
 .. code-block:: python
     :linenos:
 
-    from datetime import datetime
+    from datetime import datetime, timezone
     import fiftyone as fo
 
     sample = fo.Sample(filepath="/path/to/image.jpg")
@@ -1664,10 +1664,10 @@ and `last_modified_at` are read-only and thus cannot be manually edited:
     dataset = fo.Dataset()
     dataset.add_sample(sample)
 
-    sample.created_at = datetime.utcnow()
+    sample.created_at = datetime.now(timezone.utc)
     # ValueError: Cannot edit read-only field 'created_at'
 
-    sample.last_modified_at = datetime.utcnow()
+    sample.last_modified_at = datetime.now(timezone.utc)
     # ValueError: Cannot edit read-only field 'last_modified_at'
 
 You can also manually mark additional fields or embedded fields as read-only
@@ -2398,7 +2398,7 @@ You can store date information in FiftyOne datasets by populating fields with
 .. code-block:: python
     :linenos:
 
-    from datetime import date, datetime
+    from datetime import date, datetime, timezone
     import fiftyone as fo
 
     dataset = fo.Dataset()
@@ -2411,7 +2411,7 @@ You can store date information in FiftyOne datasets by populating fields with
             ),
             fo.Sample(
                 filepath="image2.png",
-                acquisition_time=datetime.utcnow(),
+                acquisition_time=datetime.now(timezone.utc),
                 acquisition_date=date.today(),
             ),
         ]
@@ -2434,7 +2434,7 @@ format for safekeeping.
     :linenos:
 
     # A datetime in your local timezone
-    now = datetime.utcnow().astimezone()
+    now = datetime.now(timezone.utc).astimezone()
 
     sample = fo.Sample(filepath="image.png", acquisition_time=now)
 
@@ -2445,12 +2445,12 @@ format for safekeeping.
     # loaded from the database
     dataset.reload()
 
-    sample.acquisition_time.tzinfo  # None
+    sample.acquisition_time.tzinfo  # datetime.timezone.utc
 
 By default, when you access a datetime field of a sample in a dataset, it is
-retrieved as a naive `datetime` instance expressed in UTC format.
+retrieved as a timezone-aware `datetime` instance expressed in UTC.
 
-However, if you prefer, you can
+If you prefer, you can
 :ref:`configure FiftyOne <configuring-timezone>` to load datetime fields as
 timezone-aware `datetime` instances in a timezone of your choice.
 
@@ -2459,8 +2459,8 @@ timezone-aware `datetime` instances in a timezone of your choice.
     FiftyOne assumes that all `datetime` instances with no explicit timezone
     are stored in UTC format.
 
-    Therefore, never use `datetime.datetime.now()` when populating a datetime
-    field of a FiftyOne dataset! Instead, use `datetime.datetime.utcnow()`.
+    Note that `datetime.datetime.utcnow()` is deprecated since Python 3.12;
+    use `datetime.datetime.now(datetime.timezone.utc)` instead.
 
 .. _using-labels:
 
@@ -4876,7 +4876,7 @@ For example, suppose you add the following embedded document classes to a
 .. code-block:: python
     :linenos:
 
-    from datetime import datetime
+    from datetime import datetime, timezone
 
     import fiftyone as fo
 
@@ -4886,7 +4886,9 @@ For example, suppose you add the following embedded document classes to a
         description = fo.StringField()
 
     class LabelMetadata(fo.DynamicEmbeddedDocument):
-        created_at = fo.DateTimeField(default=datetime.utcnow)
+        created_at = fo.DateTimeField(
+            default=lambda: datetime.now(timezone.utc)
+        )
         model_name = fo.StringField()
 
 and then  `foo.bar` to FiftyOne's `module_path` config setting (see

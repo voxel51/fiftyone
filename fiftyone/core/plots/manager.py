@@ -17,6 +17,7 @@ import fiftyone.core.clips as foc
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.patches as fop
 import fiftyone.core.video as fov
+from fiftyone.constants import UTC
 
 from .base import ResponsivePlot, ViewPlot, InteractivePlot
 
@@ -734,7 +735,7 @@ class PlotManager(object):
         ]
 
     def _ready_for_update(self, name):
-        now = datetime.datetime.utcnow()
+        now = datetime.datetime.now(UTC)
 
         if self._last_update is None:
             is_new_update = True
@@ -749,7 +750,7 @@ class PlotManager(object):
         return is_new_update
 
     def _needs_update(self, name):
-        now = datetime.datetime.utcnow()
+        now = datetime.datetime.now(UTC)
 
         last_update = self._last_updates.get(name, None)
 

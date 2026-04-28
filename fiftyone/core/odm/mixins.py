@@ -18,6 +18,7 @@ import fiftyone.core.annotation.constants as foac
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
+from fiftyone.constants import UTC
 
 from .database import get_db_conn
 from .dataset import SampleFieldDocument
@@ -311,7 +312,7 @@ class DatasetMixin(object):
         dataset_doc = dataset._doc
         media_type = dataset.media_type
         is_frame_field = cls._is_frames_doc
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         new_schema = {}
         new_metadata = {}
@@ -667,7 +668,7 @@ class DatasetMixin(object):
         media_type = dataset.media_type
         is_frame_field = cls._is_frames_doc
         is_dataset = isinstance(sample_collection, fod.Dataset)
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         simple_paths = []
         coll_paths = []
@@ -983,7 +984,7 @@ class DatasetMixin(object):
         _paths, _new_paths = cls._handle_db_fields(paths, new_paths)
 
         rename_expr = dict(zip(_paths, _new_paths))
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         coll = get_db_conn()[cls.__name__]
         coll.update_many(
@@ -1039,7 +1040,7 @@ class DatasetMixin(object):
         _paths, _new_paths = cls._handle_db_fields(paths, new_paths)
 
         set_expr = {v: "$" + k for k, v in zip(_paths, _new_paths)}
-        set_expr["last_modified_at"] = datetime.utcnow()
+        set_expr["last_modified_at"] = datetime.now(UTC)
 
         coll = get_db_conn()[cls.__name__]
         coll.update_many({}, [{"$set": set_expr}])
@@ -1091,7 +1092,7 @@ class DatasetMixin(object):
         _paths = cls._handle_db_fields(paths)
 
         set_expr = {p: None for p in _paths}
-        set_expr["last_modified_at"] = datetime.utcnow()
+        set_expr["last_modified_at"] = datetime.now(UTC)
 
         coll = get_db_conn()[cls.__name__]
         coll.update_many({}, {"$set": set_expr})
@@ -1126,7 +1127,7 @@ class DatasetMixin(object):
             return
 
         _paths = cls._handle_db_fields(paths)
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         coll = get_db_conn()[cls.__name__]
         coll.update_many(
@@ -1298,7 +1299,7 @@ class DatasetMixin(object):
     @classmethod
     def _add_field_schema(cls, path, field, created_at=None):
         if created_at is None:
-            created_at = datetime.utcnow()
+            created_at = datetime.now(UTC)
 
         field_name, doc, field_docs, root_doc = cls._parse_path(path)
 
@@ -1555,7 +1556,7 @@ class DatasetMixin(object):
         delattr(cls, field_name)
 
     def _insert(self, doc, deferred=False):
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         self.created_at = now
         self.last_modified_at = now
         doc["created_at"] = now
@@ -1573,7 +1574,7 @@ class DatasetMixin(object):
         **kwargs,
     ):
         if not virtual:
-            now = datetime.utcnow()
+            now = datetime.now(UTC)
             self.last_modified_at = now
             if "$set" not in updates:
                 updates["$set"] = {}

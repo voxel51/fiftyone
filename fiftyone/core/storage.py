@@ -647,7 +647,9 @@ def _get_local_metadata(filepath):
     return {
         "name": os.path.basename(filepath),
         "size": s.st_size,
-        "last_modified": datetime.fromtimestamp(s.st_mtime),
+        "last_modified": datetime.fromtimestamp(
+            s.st_mtime, tz=fou._config_tzinfo()
+        ),
     }
 
 

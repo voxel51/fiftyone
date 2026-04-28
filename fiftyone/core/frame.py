@@ -17,6 +17,7 @@ import fiftyone.core.frame_utils as fofu
 import fiftyone.core.odm as foo
 from fiftyone.core.singletons import FrameSingleton
 import fiftyone.core.utils as fou
+from fiftyone.constants import UTC
 
 import logging
 
@@ -697,7 +698,7 @@ class Frames(object):
         }
 
     def _save_deletions(self, deferred=False):
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         sample_ops = []
         frame_ops = []
@@ -793,7 +794,7 @@ class Frames(object):
         if validate:
             schema = self._dataset.get_frame_field_schema(include_private=True)
 
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         ops = []
         new_dicts = {}

@@ -19,6 +19,7 @@ import fiftyone.core.clips as foc
 import fiftyone.core.odm as foo
 import fiftyone.core.video as fov
 from fiftyone import ViewField as F
+from fiftyone.constants import UTC
 
 from decorators import drop_datasets
 
@@ -402,7 +403,7 @@ class VideoTests(unittest.TestCase):
             str_field="hi",
             float_field=1.0,
             date_field=date.today(),
-            datetime_field=datetime.utcnow(),
+            datetime_field=datetime.now(UTC),
             list_field=[1, 2, 3],
             dict_field={"hello": "world"},
             vector_field=np.arange(5),
@@ -2249,10 +2250,10 @@ class VideoTests(unittest.TestCase):
         clip = clips.first()
 
         with self.assertRaises(ValueError):
-            clip.created_at = datetime.utcnow()
+            clip.created_at = datetime.now(UTC)
 
         with self.assertRaises(ValueError):
-            clip.last_modified_at = datetime.utcnow()
+            clip.last_modified_at = datetime.now(UTC)
 
         with self.assertRaises(ValueError):
             clip.frames[2].hello = "no"
@@ -3172,10 +3173,10 @@ class VideoTests(unittest.TestCase):
         frame = frames.first()
 
         with self.assertRaises(ValueError):
-            frame.created_at = datetime.utcnow()
+            frame.created_at = datetime.now(UTC)
 
         with self.assertRaises(ValueError):
-            frame.last_modified_at = datetime.utcnow()
+            frame.last_modified_at = datetime.now(UTC)
 
         with self.assertRaises(ValueError):
             frame.filepath = "no.jpg"
