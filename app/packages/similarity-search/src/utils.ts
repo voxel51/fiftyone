@@ -1,4 +1,3 @@
-import { getFetchParameters } from "@fiftyone/utilities";
 import { buildSimilarityRunName } from "@fiftyone/utilities";
 import {
   SimilarityRun,
@@ -136,12 +135,6 @@ export type BuildExecutionParamsInput = {
   dynamicResults: boolean;
   uploadedImage?: UploadedImage | null;
 };
-
-export function getMediaUrl(filepath: string): string {
-  const params = getFetchParameters();
-  const path = `${params.pathPrefix}/media`.replaceAll("//", "/");
-  return `${params.origin}${path}?filepath=${encodeURIComponent(filepath)}`;
-}
 
 /**
  * Convert a File to base64-encoded content string (without data URI prefix).

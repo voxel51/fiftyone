@@ -247,15 +247,29 @@ const useSimilarityPanelActions = (deps: PanelActionsDeps) => {
     }
   }, [navigateHome, refreshRuns, setSubmitting]);
 
-  return {
-    handleApply,
-    handleClone,
-    handleDelete,
-    handleBulkDelete,
-    handleNewSearch,
-    handleRename,
-    handleSubmitted,
-  };
+  // Memoize the actions object so consumers' useEffect deps (e.g. the
+  // panel's auto-apply watcher) don't re-fire on every render just
+  // because we returned a fresh object literal.
+  return useMemo(
+    () => ({
+      handleApply,
+      handleClone,
+      handleDelete,
+      handleBulkDelete,
+      handleNewSearch,
+      handleRename,
+      handleSubmitted,
+    }),
+    [
+      handleApply,
+      handleClone,
+      handleDelete,
+      handleBulkDelete,
+      handleNewSearch,
+      handleRename,
+      handleSubmitted,
+    ]
+  );
 };
 
 // ─── Orchestrator ───────────────────────────────────────────────────
@@ -345,29 +359,49 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
   }, [ownerFilter]);
 
   // Auto-apply any run that just transitioned to Completed, regardless
-  // of whether it was executed immediately or delegated — in both cases
-  // the status flip from RUNNING/PENDING → Completed arrives via the
-  // same refreshRuns path (immediate: operator return; delegated: SSE
-  // from the worker's set_run write), and we want the result view to
-  // show automatically once the run finishes.
+  // of whether it was executed immediately or delegated
+  //
+  // Track status against `state.allRuns` (every run, regardless of the
+  // brainKeys filter). If we used the filtered `state.runs`, a view
+  // change (samples ↔ patches) that swaps which brain_keys are visible
+  // would make formerly-hidden runs look like new transitions and we'd
+  // apply an old run instead of the user's just-created one.
+
   const prevRunStatusesRef = useRef<Map<string, string>>(new Map());
+  const autoApplyInitRef = useRef(true);
+  // Hold handleApply in a ref so it isn't a dep on the effect — only
+  // a real change in `state.allRuns` should retrigger the watcher.
+  const handleApplyRef = useRef(actions.handleApply);
+  handleApplyRef.current = actions.handleApply;
 
   useEffect(() => {
     const prev = prevRunStatusesRef.current;
-    const next = new Map(state.runs.map((r) => [r.run_id, r.status]));
+    const next = new Map(state.allRuns.map((r) => [r.run_id, r.status]));
 
-    for (const run of state.runs) {
+    // First non-empty load: seed prev with the existing runs so we don't
+    // treat already-Completed runs as transitions on mount.
+    if (autoApplyInitRef.current) {
+      if (state.allRuns.length > 0) {
+        autoApplyInitRef.current = false;
+      }
+      prevRunStatusesRef.current = next;
+      return;
+    }
+
+    const filteredIds = new Set(state.runs.map((r) => r.run_id));
+    for (const run of state.allRuns) {
       if (
         run.status === RunStatus.Completed &&
-        prev.get(run.run_id) !== RunStatus.Completed
+        prev.get(run.run_id) !== RunStatus.Completed &&
+        filteredIds.has(run.run_id)
       ) {
-        actions.handleApply(run.run_id);
+        handleApplyRef.current(run.run_id);
         break;
       }
     }
 
     prevRunStatusesRef.current = next;
-  }, [state.runs, actions]);
+  }, [state.allRuns, state.runs]);
 
   const selection = useMemo(
     () => ({

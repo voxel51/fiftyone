@@ -659,7 +659,7 @@ function initDynamicCTAs() {
 
     btn.style.setProperty(
       "--cta-arrow-shift",
-      `${Math.min(arrowShift, 320)}px`
+      `${Math.min(arrowShift, 500)}px`
     );
     btn.style.setProperty("--cta-text-shift", `${textShift}px`);
   };
@@ -811,6 +811,12 @@ function initScrollSpyFix() {
   updateActiveSection();
 }
 
+function initNavIcons() {
+  document.querySelectorAll(".nav.bd-sidenav a.reference").forEach((a) => {
+    if (a.textContent.trim() === "FiftyOne Labs") a.classList.add("nav-labs");
+  });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   initSidebarToggle();
   initSlidingNavBar();
@@ -823,6 +829,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initDynamicCTAs();
   initDirectAgentAccess();
   initAIChatButtons();
+  initNavIcons();
 });
 
 /* ScrollSpy initializes on window.load, so we must run after it */
