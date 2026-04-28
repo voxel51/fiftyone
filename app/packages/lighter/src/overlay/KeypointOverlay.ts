@@ -6,11 +6,13 @@ import { CommandContextManager } from "@fiftyone/commands";
 import { MoveKeypointPointCommand } from "../commands/MoveKeypointPointCommand";
 import {
   EDGE_THRESHOLD,
+  HOVERED_DASH_LENGTH,
   KEYPOINT_HIT_RADIUS,
   KEYPOINT_RADIUS,
   KEYPOINT_SELECTED_RADIUS,
   LABEL_ARCHETYPE_PRIORITY,
   PREVIEW_LINE_OPACITY,
+  SELECTED_DASH_LENGTH,
   STROKE_WIDTH,
 } from "../constants";
 import { CONTAINS } from "../core/Scene2D";
@@ -30,6 +32,7 @@ import {
   distanceFromLineSegment,
   pointInPolygon,
 } from "../utils/geometry";
+import { getSimpleStrokeStyles } from "../utils/colorMapping";
 import { BaseOverlay } from "./BaseOverlay";
 import { NO_BOUNDS } from "./BoundingBoxOverlay";
 import { v4 as uuidv4 } from "uuid";
@@ -304,6 +307,8 @@ export class KeypointOverlay
     const absPoints = this.getAbsolutePoints();
     const strokeColor = style.strokeStyle || "#ffffff";
     const lineWidth = style.lineWidth || STROKE_WIDTH;
+    const isHovered = this.isHoveredState;
+    const isSelected = this.isSelectedState;
 
     // 1. Batch all connection edges into a single draw call
     const edgeSegments = this.collectEdgeSegments(absPoints);
@@ -314,6 +319,28 @@ export class KeypointOverlay
         { strokeStyle: strokeColor, lineWidth },
         this.containerId
       );
+
+      // Dashed overlay when hovered or selected, mirroring BoundingBoxOverlay.
+      if (isHovered || isSelected) {
+        const { overlayStrokeColor, overlayDash } = getSimpleStrokeStyles({
+          isSelected,
+          strokeColor,
+          isHovered,
+          dashLength: isSelected ? SELECTED_DASH_LENGTH : HOVERED_DASH_LENGTH,
+        });
+
+        if (overlayStrokeColor && overlayDash) {
+          renderer.drawLines(
+            edgeSegments,
+            {
+              strokeStyle: overlayStrokeColor,
+              lineWidth,
+              dashPattern: [overlayDash, overlayDash],
+            },
+            this.containerId
+          );
+        }
+      }
     }
 
     // 2. Draw preview line (during interactive creation — dashed, separate call)
@@ -359,7 +386,9 @@ export class KeypointOverlay
     let selectedVariant: string | undefined;
 
     for (let i = 0; i < absPoints.length; i++) {
-      if (this.selectedPointIndex === i) {
+      // When hovered, every point renders in its sub-selected state, so
+      // there's no need to peel out the explicitly-selected point.
+      if (!isHovered && this.selectedPointIndex === i) {
         selectedPoint = absPoints[i];
         selectedVariant = this.#points[i].variant;
         continue;
@@ -373,9 +402,23 @@ export class KeypointOverlay
       }
     }
 
+    const pointRadius = isHovered ? KEYPOINT_SELECTED_RADIUS : KEYPOINT_RADIUS;
     for (const [variant, pts] of buckets) {
       const pointStyle = resolvePointStyle(variant);
-      renderer.drawPoints(pts, KEYPOINT_RADIUS, pointStyle, this.containerId);
+      renderer.drawPoints(pts, pointRadius, pointStyle, this.containerId);
+    }
+
+    // When hovered, overlay an inner white highlight on every point so each
+    // vertex matches the sub-selected appearance.
+    if (isHovered) {
+      for (const [, pts] of buckets) {
+        renderer.drawPoints(
+          pts,
+          KEYPOINT_RADIUS,
+          { fillStyle: "#ffffff" },
+          this.containerId
+        );
+      }
     }
 
     // Draw selected point at larger radius + inner highlight (separate calls)
