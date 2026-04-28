@@ -37,12 +37,12 @@ export async function encodeMask(canvas: HTMLCanvasElement): Promise<string> {
  * stored mask format.
  *
  * @param mask - Flat uint8 array of mask values.
- * @param shape - [height, width] tuple.
+ * @param shape - Array shape (e.g. `[height, width]` or `[height, width, channels]`).
  * @returns Base64-encoded, zlib-compressed numpy array string.
  */
 export async function encodeMaskData(
   mask: Uint8Array,
-  shape: [number, number]
+  shape: readonly number[]
 ): Promise<string> {
   const npy = buildNpy(mask, shape);
   const compressed = await deflate(npy);
@@ -62,12 +62,15 @@ export async function encodeMaskData(
  * Format spec: https://numpy.org/doc/stable/reference/generated/numpy.lib.format.html
  *
  * @param data - Flat uint8 array of mask values.
- * @param shape - [height, width] tuple.
+ * @param shape - Array shape.
  * @returns Uint8Array containing the complete .npy file.
  */
-function buildNpy(data: Uint8Array, shape: [number, number]): Uint8Array {
-  // Header dict — must match what numpy's parse expects
-  const headerStr = `{'descr': '|u1', 'fortran_order': False, 'shape': (${shape[0]}, ${shape[1]}), }`;
+function buildNpy(data: Uint8Array, shape: readonly number[]): Uint8Array {
+  // Header dict — must match what numpy's parse expects.
+  // 1-tuples need a trailing comma: `(N,)` not `(N)`.
+  const shapeStr =
+    shape.length === 1 ? `(${shape[0]},)` : `(${shape.join(", ")})`;
+  const headerStr = `{'descr': '|u1', 'fortran_order': False, 'shape': ${shapeStr}, }`;
 
   // Pad header so that magic(6) + version(2) + headerLen(2) + header is
   // aligned to a 64-byte boundary, terminated by a newline.

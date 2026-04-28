@@ -13,7 +13,7 @@ import {
   PointLabel,
   type PromptPoint,
 } from "../providers";
-import { float32ToCompressedNumpy } from "../util/conversion";
+import { encodeMaskData } from "@fiftyone/lighter/src/utils/maskEncoding";
 import { getSampleSrc } from "@fiftyone/state/src/recoil/utils";
 
 /**
@@ -60,7 +60,7 @@ export class SAM2BrowserAnnotationAgent
       response: {
         detections: [
           {
-            mask: this.normalizeMask(
+            mask: await this.normalizeMask(
               result.mask,
               result.maskWidth,
               result.maskHeight
@@ -182,7 +182,11 @@ export class SAM2BrowserAnnotationAgent
     mask: Float32Array,
     width: number,
     height: number
-  ): string {
-    return float32ToCompressedNumpy(mask, [height, width]);
+  ): Promise<string> {
+    const binary = new Uint8Array(mask.length);
+    for (let i = 0; i < mask.length; i++) {
+      binary[i] = mask[i] > 0.5 ? 1 : 0;
+    }
+    return encodeMaskData(binary, [height, width]);
   }
 }

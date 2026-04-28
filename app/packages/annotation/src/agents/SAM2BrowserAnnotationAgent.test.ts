@@ -7,7 +7,7 @@ import {
   InferenceCapability,
   SampleDescriptor,
 } from "./types";
-import { float32ToCompressedNumpy } from "../util/conversion";
+import { encodeMaskData } from "@fiftyone/lighter/src/utils/maskEncoding";
 
 const _DATASET_ID = "dataset-id";
 const _SAMPLE_ID = "sample-id";
@@ -157,16 +157,21 @@ describe("SAM2BrowserAnnotationAgent", () => {
 
       const result = await agent.infer(makeContext());
 
+      const binary = new Uint8Array(providerResult.mask.length);
+      for (let i = 0; i < providerResult.mask.length; i++) {
+        binary[i] = providerResult.mask[i] > 0.5 ? 1 : 0;
+      }
+      const expectedMask = await encodeMaskData(binary, [
+        providerResult.maskHeight,
+        providerResult.maskWidth,
+      ]);
       expect(result).toEqual({
         type: "sync",
         taskType: AgentTaskType.SEGMENT,
         response: {
           detections: [
             {
-              mask: float32ToCompressedNumpy(providerResult.mask, [
-                providerResult.maskHeight,
-                providerResult.maskWidth,
-              ]),
+              mask: expectedMask,
               mask_width: 2,
               mask_height: 2,
               bounding_box: [0.1, 0.2, 0.3, 0.4],
