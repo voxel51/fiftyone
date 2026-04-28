@@ -7,6 +7,7 @@ import { BoundingBoxOverlay } from "./BoundingBoxOverlay";
 import { ClassificationOverlay } from "./ClassificationOverlay";
 import { ImageOverlay } from "./ImageOverlay";
 import { KeypointOverlay } from "./KeypointOverlay";
+import { PolylineOverlay } from "./PolylineOverlay";
 
 /**
  * Constructor type for overlays.
@@ -34,6 +35,7 @@ export class OverlayFactory {
     );
     factory.register("image", (opts) => new ImageOverlay(opts));
     factory.register("keypoint", (opts) => new KeypointOverlay(opts));
+    factory.register("polyline", (opts) => new PolylineOverlay(opts));
 
     return factory;
   }

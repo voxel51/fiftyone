@@ -27,6 +27,8 @@ export { ImageOverlay } from "./overlay/ImageOverlay";
 export type { ImageOptions } from "./overlay/ImageOverlay";
 export { KeypointOverlay } from "./overlay/KeypointOverlay";
 export type { KeypointLabel, KeypointOptions } from "./overlay/KeypointOverlay";
+export { PolylineOverlay } from "./overlay/PolylineOverlay";
+export type { PolylineLabel, PolylineOptions } from "./overlay/PolylineOverlay";
 export { OverlayFactory } from "./overlay/OverlayFactory";
 export type { OverlayConstructor } from "./overlay/OverlayFactory";
 
