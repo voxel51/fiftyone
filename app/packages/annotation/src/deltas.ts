@@ -314,7 +314,7 @@ export const buildDeletionDeltas = (
           (ply) => ply._id !== label.data._id
         ),
       });
-    } else {
+    } else if (isFieldType(schema, "Polyline")) {
       return [{ op: "remove", path: "/" }];
     }
   } else if (label.type === "Keypoint") {
@@ -335,7 +335,7 @@ export const buildDeletionDeltas = (
           (kpt) => kpt._id !== label.data._id
         ),
       });
-    } else {
+    } else if (isFieldType(schema, "Keypoint")) {
       return [{ op: "remove", path: "/" }];
     }
   }
