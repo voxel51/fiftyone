@@ -127,7 +127,7 @@ export function SelectIcon(props: SvgIconProps = {}) {
     >
       <path
         className="stroke-icon"
-        d="M4 3L4 17L8 13L14 13L4 3Z"
+        d="M6 2L6 16L10 12L16 12L6 2Z"
         strokeWidth="1.5"
         strokeLinejoin="round"
       />
