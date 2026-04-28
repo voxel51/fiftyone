@@ -1072,7 +1072,7 @@ export class DetectionOverlay
 
   /**
    * Fills the pen polygon onto the mask canvas and clears the pen state.
-   * Uses the current tool's eraser setting from the last known segmentation state.
+   * Uses the current paint mode from the last known segmentation state.
    */
   commitPenPolygon({ segmentationToolState }: OverlayEvent): boolean {
     if (!this.maskKeypoints) return false;
@@ -1132,14 +1132,13 @@ export class DetectionOverlay
   }
 
   /**
-   * Whether segmentation brush/eraser/pen should intercept pointer events.
+   * Whether segmentation brush/pen should intercept pointer events.
    */
   private isPaintingActive(): boolean {
     if (!this.segmentationTool?.active) return false;
 
     return (
       this.segmentationTool.tool === "brush" ||
-      this.segmentationTool.tool === "eraser" ||
       this.segmentationTool.tool === "pen"
     );
   }

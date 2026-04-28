@@ -2,9 +2,10 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { EraserIcon, type ToolbarActionGroup } from "@fiftyone/components";
+import { type ToolbarActionGroup } from "@fiftyone/components";
 import { buildBrushCursor } from "@fiftyone/lighter";
 import {
+  Add,
   ArrowDropDown,
   ArrowDropUp,
   AutoAwesome,
@@ -12,7 +13,9 @@ import {
   CircleOutlined,
   CropSquare,
   FormatColorReset,
+  NearMe,
   Redo,
+  Remove,
   Timeline,
   Undo,
 } from "@mui/icons-material";
@@ -151,26 +154,29 @@ export const useSegmentationActions = ({
     tool,
     toolSize,
     toolShape,
+    toolMode,
     switchTool,
     switchToolShape,
+    switchToolMode,
     increaseToolSize,
     decreaseToolSize,
   } = useSegmentationMode();
 
   const brushCursor = useMemo(() => {
-    const cursorTool = tool === "brush" || tool === "eraser" ? tool : "brush";
     const cursorSize = Math.min(
       MAX_CURSOR_SIZE,
       Math.max(MIN_CURSOR_SIZE, toolSize)
     );
+
     return buildBrushCursor({
       active: true,
-      tool: cursorTool,
+      tool: "brush",
       shape: toolShape,
       size: toolSize,
       cursorSize,
+      mode: toolMode,
     });
-  }, [tool, toolShape, toolSize]);
+  }, [toolShape, toolSize, toolMode]);
 
   const groups: ToolbarActionGroup[] = useMemo(
     () => [
@@ -179,6 +185,15 @@ export const useSegmentationActions = ({
         label: "Tool",
         actions: [
           {
+            id: "select",
+            label: "Select",
+            icon: <NearMe />,
+            shortcut: "S",
+            tooltip: "Select",
+            isActive: tool === "select",
+            onClick: () => switchTool("select"),
+          },
+          {
             id: "brush",
             label: "Brush",
             icon: <Brush />,
@@ -186,15 +201,6 @@ export const useSegmentationActions = ({
             tooltip: "Brush",
             isActive: tool === "brush",
             onClick: () => switchTool("brush"),
-          },
-          {
-            id: "eraser",
-            label: "Eraser",
-            icon: <EraserIcon />,
-            shortcut: "E",
-            tooltip: "Eraser",
-            isActive: tool === "eraser",
-            onClick: () => switchTool("eraser"),
           },
           {
             id: "pen",
@@ -217,9 +223,32 @@ export const useSegmentationActions = ({
         ],
       },
       {
+        id: "mode",
+        label: "Mode",
+        isHidden: !["brush", "pen"].includes(tool),
+        actions: [
+          {
+            id: "add",
+            label: "Add",
+            icon: <Add />,
+            tooltip: "Add to mask",
+            isActive: toolMode === "add",
+            onClick: () => switchToolMode("add"),
+          },
+          {
+            id: "remove",
+            label: "Remove",
+            icon: <Remove />,
+            tooltip: "Remove from mask",
+            isActive: toolMode === "remove",
+            onClick: () => switchToolMode("remove"),
+          },
+        ],
+      },
+      {
         id: "size",
         label: "Size",
-        isHidden: ["ai", "pen"].includes(tool),
+        isHidden: tool !== "brush",
         actions: [
           {
             id: "size-input",
@@ -242,7 +271,7 @@ export const useSegmentationActions = ({
       {
         id: "shape",
         label: "Shape",
-        isHidden: ["ai", "pen"].includes(tool),
+        isHidden: tool !== "brush",
         actions: [
           {
             id: "circle",
@@ -298,8 +327,10 @@ export const useSegmentationActions = ({
       tool,
       toolSize,
       toolShape,
+      toolMode,
       switchTool,
       switchToolShape,
+      switchToolMode,
       increaseToolSize,
       decreaseToolSize,
       brushCursor,

@@ -1,7 +1,7 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Generates a CSS cursor data-URL for the segmentation brush/eraser tool.
+ * Generates a CSS cursor data-URL for the segmentation brush tool.
  */
 
 import type { SegmentationToolState } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useSegmentationMode";
@@ -15,13 +15,14 @@ export function buildBrushCursor({
   tool,
   cursorSize,
   shape,
+  mode,
 }: SegmentationToolState): string {
   if (tool === "select") return "default";
   if (tool === "pen") return "crosshair";
   if (tool === "ai") return "crosshair";
 
-  const isEraser = tool === "eraser";
-  const dashColor = isEraser ? "red" : "black";
+  const isRemove = mode === "remove";
+  const dashColor = isRemove ? "red" : "black";
 
   const half = cursorSize / 2;
   const pad = 2;
@@ -40,9 +41,9 @@ export function buildBrushCursor({
       `<circle cx="${center}" cy="${center}" r="${half}" fill="none" stroke="${dashColor}" stroke-width="1.5" stroke-dasharray="3,3"/>`;
   }
 
-  let eraserMarkup = "";
+  let removeMarkup = "";
 
-  if (isEraser) {
+  if (isRemove) {
     // Slash from bottom-left to top-right, edge to edge
     let x1: number, y1: number, x2: number, y2: number;
     if (shape === "square") {
@@ -57,12 +58,13 @@ export function buildBrushCursor({
       x2 = center + diag;
       y2 = center - diag;
     }
-    eraserMarkup =
+
+    removeMarkup =
       `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="white" stroke-width="1.5" stroke-dasharray="3,3" stroke-dashoffset="3"/>` +
       `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="red" stroke-width="1.5" stroke-dasharray="3,3"/>`;
   }
 
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${svgSize}" height="${svgSize}">${shapeMarkup}${eraserMarkup}</svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${svgSize}" height="${svgSize}">${shapeMarkup}${removeMarkup}</svg>`;
 
   return `url("data:image/svg+xml,${encodeURIComponent(
     svg
