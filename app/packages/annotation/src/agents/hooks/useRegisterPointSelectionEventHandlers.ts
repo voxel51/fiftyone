@@ -30,7 +30,8 @@ export const useRegisterPointSelectionEventHandlers = () => {
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
   );
   const { isActive: isPointSelectionActive } = usePointSelection();
-  const { add: addRipple } = useKeypointRippleEffect(getOverlay);
+  const { add: addRipple, remove: removeRipple } =
+    useKeypointRippleEffect(getOverlay);
 
   useEventHandler(
     "lighter:keypoint-point-added",
@@ -62,6 +63,12 @@ export const useRegisterPointSelectionEventHandlers = () => {
     "lighter:keypoint-point-deleted",
     useCallback(
       (payload) => {
+        // Defensive cleanup of any active ripple. Time-based pruning in
+        // the rAF loop covers finite deadlines, but indefinite ripples
+        // would otherwise keep the loop alive forever once the source
+        // point is gone.
+        removeRipple(payload.id, payload.pointId);
+
         if (isPointSelectionActive) {
           if (payload.variant === NEGATIVE_POINT_VARIANT) {
             removeNegativePoint(payload.pointId);
@@ -70,7 +77,12 @@ export const useRegisterPointSelectionEventHandlers = () => {
           }
         }
       },
-      [isPointSelectionActive, removeNegativePoint, removePositivePoint]
+      [
+        isPointSelectionActive,
+        removeNegativePoint,
+        removePositivePoint,
+        removeRipple,
+      ]
     )
   );
 
