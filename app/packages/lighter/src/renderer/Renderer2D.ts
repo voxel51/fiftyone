@@ -101,6 +101,12 @@ export interface Renderer2D {
     style: DrawStyle,
     containerId: string
   ): void;
+  /**
+   * Draw a closed polygon connecting `points` in order. When `style.fillStyle`
+   * is set, the polygon interior is filled. When `style.strokeStyle` is set,
+   * the boundary is stroked.
+   */
+  drawPolygon(points: Point[], style: DrawStyle, containerId: string): void;
   drawImage(
     image: ImageSource,
     destination: Rect,

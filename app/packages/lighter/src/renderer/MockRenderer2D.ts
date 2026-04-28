@@ -133,6 +133,14 @@ export class MockRenderer2D implements Renderer2D {
     });
   }
 
+  drawPolygon(points: Point[], style: DrawStyle, containerId: string): void {
+    this.containers.set(containerId, {
+      type: "polygon",
+      points,
+      style,
+    });
+  }
+
   drawImage(
     image: ImageSource,
     destination: Rect,
