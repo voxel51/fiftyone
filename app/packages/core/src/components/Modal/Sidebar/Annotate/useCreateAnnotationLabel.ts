@@ -16,7 +16,7 @@ import {
   useLighter,
 } from "@fiftyone/lighter";
 import { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
-import { AnnotationLabel, useKeypointSkeleton } from "@fiftyone/state";
+import { AnnotationLabel, useGetKeypointSkeleton } from "@fiftyone/state";
 import { getDefaultStore } from "jotai";
 import { isFieldReadOnly, labelSchemaData } from "./state";
 
@@ -27,7 +27,7 @@ export const useCreateAnnotationLabel = () => {
   const { overlayFactory } = useLighter();
 
   // Getter for resolving keypoint skeletons by field
-  const getSkeletonForField = useKeypointSkeleton();
+  const getSkeletonForField = useGetKeypointSkeleton();
 
   return useCallback(
     (

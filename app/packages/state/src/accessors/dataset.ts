@@ -53,7 +53,7 @@ export const useSelectedMediaFieldGrid = () => {
  * Hook which provides a function to get the default keypoint skeleton for a
  * given field.
  */
-export const useKeypointSkeleton = () => {
+export const useGetKeypointSkeleton = () => {
   return useRecoilCallback(
     ({ snapshot }) =>
       (field: string) =>

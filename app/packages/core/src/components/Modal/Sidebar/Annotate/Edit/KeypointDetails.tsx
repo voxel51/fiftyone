@@ -10,7 +10,10 @@ import {
   Tooltip,
   TooltipProps,
 } from "@voxel51/voodo";
-import { KeypointAnnotationLabel, useKeypointSkeleton } from "@fiftyone/state";
+import {
+  KeypointAnnotationLabel,
+  useGetKeypointSkeleton,
+} from "@fiftyone/state";
 import { useMemo } from "react";
 
 const ConditionalTooltip = ({
@@ -35,7 +38,7 @@ const ConditionalTooltip = ({
 export const KeypointDetails = () => {
   const { selectedLabel } = useAnnotationContext();
   const currentData = selectedLabel?.data as KeypointAnnotationLabel["data"];
-  const getKeypointSkeleton = useKeypointSkeleton();
+  const getKeypointSkeleton = useGetKeypointSkeleton();
 
   const keypointSkeleton = useMemo(() => {
     if (selectedLabel?.path) {
@@ -43,7 +46,7 @@ export const KeypointDetails = () => {
     }
 
     return undefined;
-  }, [getKeypointSkeleton, selectedLabel.path]);
+  }, [getKeypointSkeleton, selectedLabel?.path]);
 
   const pointCount = currentData?.points?.length ?? 0;
 
@@ -55,14 +58,14 @@ export const KeypointDetails = () => {
         spacing={Spacing.Sm}
       >
         <Text color={TextColor.Secondary}>
-          {keypointSkeleton.edges.length} edges
+          {keypointSkeleton?.edges?.length ?? 0} edges
         </Text>
 
         <Text color={TextColor.Secondary}>&bull;</Text>
 
         <ConditionalTooltip
           enabled={keypointSkeleton?.labels?.length > 0}
-          content={<Text>{keypointSkeleton.labels.join(", ")}</Text>}
+          content={<Text>{keypointSkeleton?.labels?.join(", ")}</Text>}
         >
           <Text color={TextColor.Secondary}>{pointCount} points</Text>
         </ConditionalTooltip>
