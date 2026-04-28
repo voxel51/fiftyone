@@ -619,7 +619,7 @@ export class KeypointOverlay
     const nearestIdx = this.findNearestPointIndex(worldPoint, scale);
 
     if (nearestIdx >= 0) {
-      this.selectedPointIndex = nearestIdx;
+      this.setSelectedPointIndex(nearestIdx);
 
       if (this.isDraggable) {
         this.dragPointIndex = nearestIdx;
@@ -633,7 +633,7 @@ export class KeypointOverlay
     }
 
     // Clicked away from any point — clear sub-selection
-    this.selectedPointIndex = null;
+    this.setSelectedPointIndex(null);
     this.markDirty();
     return false;
   }
@@ -809,12 +809,12 @@ export class KeypointOverlay
 
     // Clear sub-selection if it was the deleted point
     if (this.selectedPointIndex === index) {
-      this.selectedPointIndex = null;
+      this.setSelectedPointIndex(null);
     } else if (
       this.selectedPointIndex !== null &&
       this.selectedPointIndex > index
     ) {
-      this.selectedPointIndex--;
+      this.setSelectedPointIndex(this.selectedPointIndex - 1);
     }
 
     this.eventBus.dispatch("lighter:keypoint-point-deleted", {
@@ -839,7 +839,7 @@ export class KeypointOverlay
    */
   clearPoints(): void {
     this.#points = [];
-    this.selectedPointIndex = null;
+    this.setSelectedPointIndex(null);
     this.dragPointIndex = null;
     this.previewPoint = null;
     this.markDirty();
@@ -862,7 +862,7 @@ export class KeypointOverlay
       id: uuidv4(),
       position: [p[0], p[1]],
     }));
-    this.selectedPointIndex = null;
+    this.setSelectedPointIndex(null);
     this.dragPointIndex = null;
     this.previewPoint = null;
     this.markDirty();
@@ -873,6 +873,22 @@ export class KeypointOverlay
    */
   getSelectedPointIndex(): number | null {
     return this.selectedPointIndex;
+  }
+
+  /**
+   * Updates the sub-selected point index and dispatches a change event when
+   * the value changes.
+   */
+  private setSelectedPointIndex(index: number | null): void {
+    if (this.selectedPointIndex === index) {
+      return;
+    }
+
+    this.selectedPointIndex = index;
+    this.eventBus.dispatch("lighter:keypoint-sub-selection-changed", {
+      id: this.id,
+      pointIndex: index,
+    });
   }
 
   /**
@@ -903,7 +919,7 @@ export class KeypointOverlay
     if (this.isSelectedState !== selected) {
       this.isSelectedState = selected;
       if (!selected) {
-        this.selectedPointIndex = null;
+        this.setSelectedPointIndex(null);
       }
       this.markDirty();
     }
