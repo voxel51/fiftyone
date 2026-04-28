@@ -289,7 +289,7 @@ html_context = {
 # -- Custom app setup --------------------------------------------------------
 
 
-def _skip_hidden_from_docs(_app, _what, _name, obj, skip):
+def _skip_hidden_from_docs(_app, _what, _name, obj, skip, _options):
     if skip:
         return True
 

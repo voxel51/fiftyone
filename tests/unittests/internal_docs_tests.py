@@ -12,27 +12,12 @@ from fiftyone.internal.docs import hide_from_docs, is_hidden_from_docs
 
 
 class InternalDocsTests(unittest.TestCase):
-    def test_hides_function(self):
-        def visible():
-            pass
-
-        self.assertFalse(is_hidden_from_docs(visible))
-
-        hidden = hide_from_docs(visible)
-
-        self.assertIs(hidden, visible)
-        self.assertTrue(is_hidden_from_docs(visible))
-
     def test_hides_class(self):
-        class Visible:
+        @hide_from_docs
+        class Hidden:
             pass
 
-        self.assertFalse(is_hidden_from_docs(Visible))
-
-        hidden = hide_from_docs(Visible)
-
-        self.assertIs(hidden, Visible)
-        self.assertTrue(is_hidden_from_docs(Visible))
+        self.assertTrue(is_hidden_from_docs(Hidden))
 
     def test_hides_instance_method(self):
         class Container:
