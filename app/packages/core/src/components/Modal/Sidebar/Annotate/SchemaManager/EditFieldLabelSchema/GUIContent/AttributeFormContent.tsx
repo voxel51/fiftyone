@@ -42,6 +42,7 @@ const AttributeFormContent = ({
     isNumericType,
     isIntegerType,
     isListType,
+    isFromOntology,
     supportsDefault,
     componentOptions,
 
@@ -134,6 +135,16 @@ const AttributeFormContent = ({
             options={ATTRIBUTE_TYPE_OPTIONS}
           />
         </div>
+      )}
+
+      {/* Ontology source (read-only, only shown when present) */}
+      {isFromOntology && (
+        <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
+          <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
+            Ontology:
+          </Text>
+          <Text variant={TextVariant.Lg}>{formState._source}</Text>
+        </Stack>
       )}
 
       {/* Read-only toggle */}

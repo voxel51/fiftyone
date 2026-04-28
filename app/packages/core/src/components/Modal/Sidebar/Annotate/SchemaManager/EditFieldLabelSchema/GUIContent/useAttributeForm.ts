@@ -30,6 +30,7 @@ interface UseAttributeFormResult {
   isNumericType: boolean;
   isIntegerType: boolean;
   isListType: boolean;
+  isFromOntology: boolean;
   supportsDefault: boolean;
   componentOptions: Array<{ id: string; label: string; icon: IconName }>;
 
@@ -63,6 +64,7 @@ export default function useAttributeForm({
   const isIntegerType =
     formState.type === "int" || formState.type === "list<int>";
   const isListType = LIST_TYPES.includes(formState.type);
+  const isFromOntology = !!formState._source;
   const supportsDefault = !NO_DEFAULT_TYPES.includes(formState.type);
   const componentOptions = COMPONENT_OPTIONS[formState.type] || [];
 
@@ -161,6 +163,7 @@ export default function useAttributeForm({
     isNumericType,
     isIntegerType,
     isListType,
+    isFromOntology,
     supportsDefault,
     componentOptions,
 
