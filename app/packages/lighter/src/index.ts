@@ -26,7 +26,16 @@ export type { ClassificationOptions } from "./overlay/ClassificationOverlay";
 export { ImageOverlay } from "./overlay/ImageOverlay";
 export type { ImageOptions } from "./overlay/ImageOverlay";
 export { KeypointOverlay } from "./overlay/KeypointOverlay";
-export type { KeypointLabel, KeypointOptions } from "./overlay/KeypointOverlay";
+export type {
+  KeypointEffect,
+  KeypointEffectContext,
+  KeypointEffectPoint,
+  KeypointLabel,
+  KeypointOptions,
+} from "./overlay/KeypointOverlay";
+export { drawRippleRings } from "./overlay/rippleRing";
+export type { DrawRippleRingsArgs } from "./overlay/rippleRing";
+export { RIPPLE_VISIBLE_MS } from "./constants";
 export { OverlayFactory } from "./overlay/OverlayFactory";
 export type { OverlayConstructor } from "./overlay/OverlayFactory";
 
