@@ -168,7 +168,8 @@ const useInitializeViewport = (
        * HACK: We use a double-tick pattern to ensure the reveal is after the image and all overlays
        * have been painted to the canvas. A cleaner solution may be to make Scene2D.renderFrame
        * synchronous which would cause scene graph mutations to happen in the same tick as
-       * Pixi's per-tick render.
+       * Pixi's per-tick render. This will not work if an overlay awaits some async task before
+       * mutating the scene graph, but there are no cases of that behavior today.
        *
        * Tick N: wait for the render loop to finish mutating the scene graph
        * (renderOverlay calls) before registering a second callback.

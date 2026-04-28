@@ -149,11 +149,7 @@ const LighterSetupImpl = (props: {
   const useEventHandler = useLighterEventHandler(
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
   );
-  useEventHandler(
-    "lighter:viewport-init-complete",
-    useCallback(() => onReveal(), [onReveal]),
-    { once: true }
-  );
+  useEventHandler("lighter:viewport-init-complete", onReveal, { once: true });
 
   useViewport(sampleId);
 
