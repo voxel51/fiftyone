@@ -1,13 +1,13 @@
 import {
-  KeypointOverlay,
+  RIPPLE_VISIBLE_MS,
   UNDEFINED_LIGHTER_SCENE_ID,
   useLighter,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
-import { RIPPLE_VISIBLE_MS } from "@fiftyone/lighter/src/constants";
 import { useToolsState } from "./useToolsContext";
 import { NEGATIVE_POINT_VARIANT, usePointSelection } from "./usePointSelection";
 import { useCallback } from "react";
+import { useKeypointRippleEffect } from "./useKeypointRippleEffect";
 
 /**
  * Hook which registers event handlers for the positive/negative point
@@ -30,6 +30,7 @@ export const useRegisterPointSelectionEventHandlers = () => {
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
   );
   const { isActive: isPointSelectionActive } = usePointSelection();
+  const { add: addRipple } = useKeypointRippleEffect(getOverlay);
 
   useEventHandler(
     "lighter:keypoint-point-added",
@@ -50,13 +51,10 @@ export const useRegisterPointSelectionEventHandlers = () => {
           // Surface a ripple on the new point for a guaranteed-visible
           // duration. Decoupled from inference timing so fast inference
           // doesn't make the indicator flash invisibly.
-          const overlay = getOverlay(payload.id);
-          if (overlay instanceof KeypointOverlay) {
-            overlay.addRipplePointId(payload.pointId, RIPPLE_VISIBLE_MS);
-          }
+          addRipple(payload.id, payload.pointId, RIPPLE_VISIBLE_MS);
         }
       },
-      [addNegativePoint, addPositivePoint, getOverlay, isPointSelectionActive]
+      [addNegativePoint, addPositivePoint, addRipple, isPointSelectionActive]
     )
   );
 

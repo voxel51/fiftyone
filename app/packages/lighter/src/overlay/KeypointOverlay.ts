@@ -33,7 +33,6 @@ import {
 } from "../utils/geometry";
 import { BaseOverlay } from "./BaseOverlay";
 import { NO_BOUNDS } from "./DetectionOverlay";
-import { drawRippleRings } from "./rippleRing";
 import { v4 as uuidv4 } from "uuid";
 
 export type KeypointLabel = RawLookerLabel & {
@@ -80,6 +79,38 @@ type KeypointEntry = {
 };
 
 /**
+ * Per-point snapshot passed to render effects for a single frame.
+ */
+export interface KeypointEffectPoint {
+  id: string;
+  position: Point;
+  variant?: string;
+}
+
+/**
+ * Context passed to a {@link KeypointEffect} once per frame. The overlay
+ * owns frame timing and point geometry; effects own only their own draw
+ * contribution.
+ */
+export interface KeypointEffectContext {
+  overlay: KeypointOverlay;
+  renderer: Renderer2D;
+  /** Per-point snapshot for this frame, in entry order. */
+  points: ReadonlyArray<KeypointEffectPoint>;
+  /** Resolves a variant key to the same draw style points use. */
+  resolveStyle: (variant: string | undefined) => DrawStyle;
+  containerId: string;
+}
+
+/**
+ * A custom render contribution for a {@link KeypointOverlay}. Invoked once
+ * per frame, behind the points themselves. The caller owns lifecycle —
+ * driving frame invalidation via `markDirty()` while animating, and
+ * unregistering when done.
+ */
+export type KeypointEffect = (ctx: KeypointEffectContext) => void;
+
+/**
  * Keypoint overlay implementation with per-point interaction, optional connections,
  * and optional polygon closure.
  *
@@ -114,16 +145,10 @@ export class KeypointOverlay
   // Preview point for interactive creation (cursor tracking)
   protected previewPoint?: Point | null = null;
 
-  // Ripple animation state — points whose ids are in this set render an
-  // animated ripple ring. Used to indicate in-flight async work
-  // (e.g. AI inference) on prompt points.
-  private ripplePointIds: Set<string> = new Set();
-  // Expiration timestamp (performance.now() ms) per ripple point id;
-  // entries here are auto-removed by the rAF loop when their time elapses.
-  // Ids without an entry ripple indefinitely until removed manually.
-  private rippleExpiresAt: Map<string, number> = new Map();
-  private rippleStartTime = 0;
-  private rippleAnimationFrameId: number | null = null;
+  // Registered render effects. Invoked once per frame, between point
+  // bucket-collection and bucket-draw, so contributions appear behind the
+  // solid points. Owners drive frame invalidation and unregister when done.
+  private renderEffects: Map<string, KeypointEffect> = new Map();
 
   // Caches — invalidated in markDirty()
   private _absPointsCache: Point[] | null = null;
@@ -386,24 +411,25 @@ export class KeypointOverlay
       }
     }
 
-    // Animated ripple rings — drawn behind the points so the solid point
-    // remains crisp on top of the expanding ring.
-    if (this.ripplePointIds.size > 0) {
-      const elapsedMs = performance.now() - this.rippleStartTime;
-
-      for (let i = 0; i < absPoints.length; i++) {
-        const entry = this.#points[i];
-        if (!this.ripplePointIds.has(entry.id)) continue;
-
-        const ringStyle = resolvePointStyle(entry.variant);
-        drawRippleRings({
-          renderer,
-          center: absPoints[i],
-          color: ringStyle.fillStyle || ringStyle.strokeStyle || "#ffffff",
-          elapsedMs,
-          containerId: this.containerId,
-        });
-      }
+    // Custom render effects — drawn behind the points so they appear
+    // beneath the solid point markers. Owners drive their own animation
+    // timing and frame invalidation.
+    if (this.renderEffects.size > 0) {
+      const effectPoints: KeypointEffectPoint[] = absPoints.map(
+        (position, i) => ({
+          id: this.#points[i].id,
+          position,
+          variant: this.#points[i].variant,
+        })
+      );
+      const ctx: KeypointEffectContext = {
+        overlay: this,
+        renderer,
+        points: effectPoints,
+        resolveStyle: resolvePointStyle,
+        containerId: this.containerId,
+      };
+      for (const effect of this.renderEffects.values()) effect(ctx);
     }
 
     for (const [variant, pts] of buckets) {
@@ -728,14 +754,6 @@ export class KeypointOverlay
     const { id: pointId, variant } = this.#points[index];
     this.#points.splice(index, 1);
 
-    if (this.ripplePointIds.has(pointId)) {
-      this.ripplePointIds.delete(pointId);
-      this.rippleExpiresAt.delete(pointId);
-      if (this.ripplePointIds.size === 0) {
-        this.cancelRippleAnimation();
-      }
-    }
-
     // Update connections: remove references to deleted index, shift higher indices
     this.connections = this.connections
       .map((path) =>
@@ -771,69 +789,23 @@ export class KeypointOverlay
   }
 
   /**
-   * Adds a point id to the ripple set so it renders an animated ring.
+   * Registers a custom render effect. The effect is invoked once per frame
+   * during {@link renderImpl}, behind the points themselves. Returns a
+   * teardown function; {@link unregisterEffect} is also available for callers
+   * that prefer id-based removal.
    *
-   * If `durationMs` is provided, the rAF loop auto-removes the id once that
-   * many milliseconds have elapsed; calling again with the same id refreshes
-   * the deadline. Omit `durationMs` to ripple indefinitely until manually
-   * removed.
+   * The caller owns animation timing — the overlay only re-renders when
+   * dirty, so animated effects must call {@link markDirty} each tick.
    */
-  addRipplePointId(id: string, durationMs?: number): void {
-    if (!this.ripplePointIds.has(id)) {
-      const wasEmpty = this.ripplePointIds.size === 0;
-      this.ripplePointIds.add(id);
-      if (wasEmpty) {
-        this.rippleStartTime = performance.now();
-        this.scheduleRippleAnimation();
-      }
-      this.markDirty();
-    }
-    if (durationMs != null) {
-      this.rippleExpiresAt.set(id, performance.now() + durationMs);
-    }
-  }
-
-  /** Removes a point id from the ripple set. */
-  removeRipplePointId(id: string): void {
-    if (!this.ripplePointIds.delete(id)) return;
-    this.rippleExpiresAt.delete(id);
-    if (this.ripplePointIds.size === 0) {
-      this.cancelRippleAnimation();
-    }
+  registerEffect(id: string, effect: KeypointEffect): () => void {
+    this.renderEffects.set(id, effect);
     this.markDirty();
+    return () => this.unregisterEffect(id);
   }
 
-  private cancelRippleAnimation(): void {
-    if (this.rippleAnimationFrameId !== null) {
-      cancelAnimationFrame(this.rippleAnimationFrameId);
-      this.rippleAnimationFrameId = null;
-    }
-  }
-
-  private scheduleRippleAnimation(): void {
-    if (this.rippleAnimationFrameId !== null) return;
-
-    this.rippleAnimationFrameId = requestAnimationFrame(() => {
-      this.rippleAnimationFrameId = null;
-
-      // Expire any ids whose duration elapsed since the last frame.
-      if (this.rippleExpiresAt.size > 0) {
-        const now = performance.now();
-        for (const [id, expireAt] of this.rippleExpiresAt) {
-          if (now >= expireAt) {
-            this.rippleExpiresAt.delete(id);
-            this.ripplePointIds.delete(id);
-          }
-        }
-      }
-
-      // Always mark dirty so the frame where the last ripple expires
-      // gets a final repaint that erases its trailing ring.
-      this.markDirty();
-      if (this.ripplePointIds.size > 0) {
-        this.scheduleRippleAnimation();
-      }
-    });
+  /** Removes a previously registered render effect by id. */
+  unregisterEffect(id: string): void {
+    if (this.renderEffects.delete(id)) this.markDirty();
   }
 
   /**
@@ -844,16 +816,7 @@ export class KeypointOverlay
     this.selectedPointIndex = null;
     this.dragPointIndex = null;
     this.previewPoint = null;
-    this.ripplePointIds = new Set();
-    this.rippleExpiresAt.clear();
-    this.cancelRippleAnimation();
     this.markDirty();
-  }
-
-  override destroy(): void {
-    this.rippleExpiresAt.clear();
-    this.cancelRippleAnimation();
-    super.destroy();
   }
 
   /**
