@@ -1,9 +1,15 @@
+"""
+| Copyright 2017-2026, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
+
 import binascii
 import datetime
-import os
 
 from .base import MultimodalAdapter
 from .formats import SceneFormat
+from fiftyone.core import storage
 from fiftyone.multimodal.schemas.v1.__generated__.contracts_pb2 import (
     PayloadDescriptor,
     SceneInventory,
@@ -30,7 +36,21 @@ class McapAdapter(MultimodalAdapter):
     """Adapter for loading multimodal scenes from MCAP files."""
 
     @classmethod
-    def get_inventory(cls, filepath: str):
+    def can_read(cls, filepath: str) -> bool:
+        """
+        Returns True if this adapter can read the scene data at the given filepath.
+
+        Args:
+            filepath: the path of the scene file to check
+
+        Returns:
+            True if this adapter can read the scene data at the given filepath, else
+            False
+        """
+        return filepath.lower().endswith(".mcap")
+
+    @classmethod
+    def get_scene_inventory(cls, filepath: str):
         """
         Returns the scene inventory for the MCAP file at the given filepath.
 
@@ -40,10 +60,7 @@ class McapAdapter(MultimodalAdapter):
         Returns:
             a :class:`fiftyone.core.multimodal.SceneInventory`
         """
-        # TODO this should handle cloud paths as well, not just local paths
-        size = os.path.getsize(filepath)
-
-        with open(filepath, "rb") as f:
+        with storage.open_file(filepath, "rb") as f:
             reader = make_reader(f)
             summary = reader.get_summary()
             stats = summary.statistics
@@ -56,7 +73,7 @@ class McapAdapter(MultimodalAdapter):
                 scene_id=filepath,
                 source_format=SceneFormat.MCAP,
                 source_fingerprint=SourceFingerprint(
-                    size_bytes=size,
+                    size_bytes=storage.get_file_size(filepath),
                     first_chunk_crc=chunk_crc(f, chunk_indices[0]),
                     last_chunk_crc=chunk_crc(f, chunk_indices[-1]),
                 ),
@@ -76,7 +93,7 @@ class McapAdapter(MultimodalAdapter):
                             schema_encoding=None,
                         ),
                         record_count=stats.channel_message_counts.get(cid, 0),
-                        time_range=None,  # not in summary, have to read chunks; worth it?
+                        time_range=None,  # not in summary, have to read chunks, so skip it for now
                         metadata=channel.metadata,
                     )
                     for cid, channel in streams.items()

@@ -9305,24 +9305,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._doc._update_last_deletion_at(last_deletion_at=last_deletion_at)
 
 
-def _get_scene_inventories(filepaths, *, adapter):
-    """
-    Reads the given scene files using the given adapter class, and returns
-    a list of scene inventories.
-
-    Args:
-        sources: an iterable of strings representing the locations of the
-            scene files to ingest
-        adapter: an instance of
-            :class:`fiftyone.multimodal.adapters.MultimodalAdapter` that
-            determines how the given sources are ingested
-
-    Returns:
-        a list of :class:`fiftyone.multimodal.SceneInventory` instances
-    """
-    return [adapter.get_inventory(filepath) for filepath in filepaths]
-
-
 def _get_random_characters(n):
     return "".join(
         random.choice(string.ascii_lowercase + string.digits) for _ in range(n)
