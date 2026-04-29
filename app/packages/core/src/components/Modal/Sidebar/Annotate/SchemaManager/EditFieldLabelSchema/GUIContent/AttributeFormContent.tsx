@@ -279,6 +279,7 @@ const AttributeFormContent = ({
               choices={showValues ? formState.values : []}
               isNumeric={isNumericType}
               error={defaultError}
+              readOnly={isFromOntology}
             />
           ) : (
             <>
@@ -288,6 +289,7 @@ const AttributeFormContent = ({
                 onChange={(e) => handleDefaultChange(e.target.value)}
                 placeholder={isNumericType ? "Default number" : "Default value"}
                 error={!!defaultError}
+                disabled={isFromOntology}
               />
               {defaultError && (
                 <Text
