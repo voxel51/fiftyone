@@ -275,7 +275,7 @@ class SAM3ConceptSegmenterOutputProcessor(fout.OutputProcessor):
         return proc_output
 
 
-class SegmentAnything3ImageModel(fosam.SegmentAnythingModel):
+class SegmentAnything3ImageModel(fosam2.SegmentAnything2ImageModel):
     """Wrapper for running `Segment Anything 3 <https://ai.meta.com/research/sam3>`_
     inference.
 
