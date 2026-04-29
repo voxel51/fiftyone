@@ -16,6 +16,23 @@ import { InteractiveKeypointHandler } from "./InteractiveKeypointHandler";
 import { v4 as generateUUID } from "uuid";
 
 /**
+ * Unified event object passed to overlay interaction handlers.
+ * Contains all pointer-event context needed for down / move / up handling.
+ */
+export interface OverlayEvent {
+  /** Canvas-space (screen-space) pointer position. */
+  point: Point;
+  /** World-space pointer position (after inverse camera transform). */
+  worldPoint: Point;
+  /** The original DOM pointer event. */
+  event: PointerEvent;
+  /** Current camera zoom scale factor. */
+  scale: number;
+  /** Whether shift-key aspect-ratio lock is active. */
+  maintainAspectRatio?: boolean;
+}
+
+/**
  * Interface for handlers that support sub-selecting and removing individual
  * points (e.g. keypoint overlays).
  */
@@ -87,45 +104,25 @@ export interface InteractionHandler {
   getMoveStartBounds?(): Rect | undefined;
 
   /**
-   * Handle pointer down event.
-   * @param point - The point where the event occurred.
-   * @param worldPoint - Screen point translated to viewport point.
-   * @param event - The original pointer event.
-   * @param scale - The current scaling factor of the renderer.
+   * Handle pointer-down event.
+   * @param params - The overlay event containing pointer and viewport state.
    * @returns True if the event was handled and should not propagate.
    */
-  onPointerDown?(
-    point: Point,
-    worldPoint: Point,
-    event: PointerEvent,
-    scale: number
-  ): boolean;
+  onPointerDown?(params: OverlayEvent): boolean;
 
   /**
-   * Handle pointer move event.
-   * @param point - The point where the event occurred.
-   * @param worldPoint - Screen point translated to viewport point.
-   * @param event - The original pointer event.
-   * @param scale - The current scaling factor of the renderer.
-   * @param maintainAspectRatio - Maintain aspect ratio during resize (shift key held).
+   * Handle pointer-move event while a gesture is active.
+   * @param params - The overlay event containing pointer and viewport state.
    * @returns True if the event was handled.
    */
-  onMove?(
-    point: Point,
-    worldPoint: Point,
-    event: PointerEvent,
-    scale: number,
-    maintainAspectRatio?: boolean
-  ): boolean;
+  onMove?(params: OverlayEvent): boolean;
 
   /**
-   * Handle pointer up event.
-   * @param point - The point where the event occurred.
-   * @param event - The original pointer event.
-   * @param scale - The current scaling factor of the renderer.
+   * Handle pointer-up event.
+   * @param params - The overlay event containing pointer and viewport state.
    * @returns True if the event was handled.
    */
-  onPointerUp?(point: Point, event: PointerEvent, scale: number): boolean;
+  onPointerUp?(params: OverlayEvent): boolean;
 
   /**
    * Handle click event.
@@ -328,7 +325,7 @@ export class InteractionManager {
       }
     }
 
-    if (handler?.onPointerDown?.(point, worldPoint, event, scale)) {
+    if (handler?.onPointerDown?.({ point, worldPoint, event, scale })) {
       const cursor = handler.getCursor?.(worldPoint, scale);
       if (cursor) {
         this.canvas.style.cursor = cursor;
@@ -408,21 +405,21 @@ export class InteractionManager {
         this.selectionManager.select(handler.id);
 
         // Initialize the handler with the original pointerdown point
-        handler.onPointerDown?.(
-          pending.point,
-          pending.worldPoint,
+        handler.onPointerDown?.({
+          point: pending.point,
+          worldPoint: pending.worldPoint,
           event,
-          pending.scale
-        );
+          scale: pending.scale,
+        });
 
         // Update with the current pointer position
-        handler.onMove?.(
+        handler.onMove?.({
           point,
           worldPoint,
           event,
           scale,
-          this.maintainAspectRatio
-        );
+          maintainAspectRatio: this.maintainAspectRatio,
+        });
 
         if (TypeGuards.isSpatial(handler)) {
           this.eventBus.dispatch("lighter:overlay-drag-start", {
@@ -474,15 +471,17 @@ export class InteractionManager {
 
     // Apply drag gate to prevent accidental overlay dragging on click
     if (handler) {
+      const moveParams: OverlayEvent = {
+        point,
+        worldPoint,
+        event,
+        scale,
+        maintainAspectRatio: this.maintainAspectRatio,
+      };
+
       // Handle drag move
       if (!interactiveHandler) {
-        handler.onMove?.(
-          point,
-          worldPoint,
-          event,
-          scale,
-          this.maintainAspectRatio
-        );
+        handler.onMove?.(moveParams);
       } else {
         handler =
           interactiveHandler instanceof InteractiveKeypointHandler
@@ -491,13 +490,7 @@ export class InteractionManager {
             : // otherwise defer to the handler's overlay
               interactiveHandler.getOverlay();
 
-        handler.onMove?.(
-          point,
-          worldPoint,
-          event,
-          scale,
-          this.maintainAspectRatio
-        );
+        handler.onMove?.(moveParams);
       }
 
       if (handler.isMoving?.()) {
@@ -571,7 +564,7 @@ export class InteractionManager {
       const startPosition = handler.getMoveStartPosition?.();
 
       // Handle drag end
-      handler.onPointerUp?.(point, event, scale);
+      handler.onPointerUp?.({ point, worldPoint, event, scale });
 
       if (interactiveHandler) {
         // When interactive detection is complete, remove the interactive handler
@@ -616,7 +609,7 @@ export class InteractionManager {
       this.handleClick(point, event, now);
 
       // Clean up drag handler
-      handler.onPointerUp?.(point, event, scale);
+      handler.onPointerUp?.({ point, worldPoint, event, scale });
       this.canvas.releasePointerCapture(event.pointerId);
     } else {
       // Handle click

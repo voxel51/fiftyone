@@ -12,6 +12,7 @@ import {
   STROKE_WIDTH,
 } from "../constants";
 import { CONTAINS } from "../core/Scene2D";
+import type { OverlayEvent } from "../interaction/InteractionManager";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { Selectable } from "../selection/Selectable";
 import type {
@@ -401,12 +402,7 @@ export class DetectionOverlay
   }
 
   // Interaction handlers
-  onPointerDown(
-    point: Point,
-    worldPoint: Point,
-    _event: PointerEvent,
-    scale: number
-  ): boolean {
+  onPointerDown({ point, worldPoint, scale }: OverlayEvent): boolean {
     const resizeRegion = this.getResizeRegion(worldPoint, scale);
     const cursorState = !this.hasValidBounds()
       ? "SETTING"
@@ -440,13 +436,12 @@ export class DetectionOverlay
     return true;
   }
 
-  onMove(
-    point: Point,
-    worldPoint: Point,
-    event: PointerEvent,
-    scale: number,
-    maintainAspectRatio?: boolean
-  ): boolean {
+  onMove({
+    point,
+    event,
+    scale,
+    maintainAspectRatio,
+  }: OverlayEvent): boolean {
     if (this.moveState === "DRAGGING") {
       return this.onDrag(point, event, scale);
     }
@@ -586,7 +581,7 @@ export class DetectionOverlay
     return true;
   }
 
-  onPointerUp(_point: Point, _event: PointerEvent): boolean {
+  onPointerUp(_params: OverlayEvent): boolean {
     if (!this.moveStartPoint || !this.moveStartBounds) return false;
 
     this.moveState = "NONE";
