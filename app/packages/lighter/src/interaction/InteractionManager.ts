@@ -310,7 +310,7 @@ export class InteractionManager {
       // Detection mode: defer overlay creation until we confirm this is a drag.
       // If the user releases without dragging (a click), exit detection mode.
       // Clicking on an existing overlay selects it normally instead.
-      if (detectionModeBridge.isDetectionModeActive()) {
+      if (detectionModeBridge.isActive()) {
         const isNonOverlay = !handler || handler.id === this.canonicalMediaId;
 
         if (isNonOverlay) {
@@ -376,7 +376,7 @@ export class InteractionManager {
     scale: number
   ): void {
     if (
-      detectionModeBridge.isDetectionModeActive() &&
+      detectionModeBridge.isActive() &&
       handler &&
       TypeGuards.isSelectable(handler) &&
       !handler.isSelected()
@@ -528,7 +528,7 @@ export class InteractionManager {
       }
       this.configureCursorStyle(handler, worldPoint, scale);
     } else if (
-      detectionModeBridge.isDetectionModeActive() &&
+      detectionModeBridge.isActive() &&
       !interactiveHandler
     ) {
       this.canvas.style.cursor = "crosshair";

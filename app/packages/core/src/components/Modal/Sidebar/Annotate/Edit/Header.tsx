@@ -1,11 +1,12 @@
-import { useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useRef, useState } from "react";
 import { Round } from "../Actions";
 
-import { useLighter } from "@fiftyone/lighter";
+import { DetectionOverlay, useLighter } from "@fiftyone/lighter";
 import { West as Back } from "@mui/icons-material";
 import { Box, Menu, MenuItem, Stack } from "@mui/material";
 import { Clickable, Icon, IconName, Size, Text } from "@voxel51/voodo";
+import { DETECTION } from "@fiftyone/utilities";
 import { ItemLeft, ItemRight } from "../Components";
 import { ICONS } from "../Icons";
 import { Row } from "./Components";
@@ -16,6 +17,7 @@ import { isGeneratedView } from "@fiftyone/state";
 import { useRecoilValue } from "recoil";
 import { useSchemaManagerModal } from "../SchemaManager/hooks";
 import {
+  currentData,
   currentFieldIsReadOnlyAtom,
   currentOverlay,
   currentType,
@@ -26,6 +28,7 @@ import { KnownCommands, KnownContexts, useCommand } from "@fiftyone/commands";
 import useColor from "./useColor";
 import useExit from "./useExit";
 import { useDetectionMode } from "./useDetectionMode";
+import { useSegmentationMode } from "./useSegmentationMode";
 import { useAnnotationController } from "@fiftyone/annotation";
 
 const LabelHamburgerMenu = () => {
@@ -43,6 +46,31 @@ const LabelHamburgerMenu = () => {
   const { openSchemaManager } = useSchemaManagerModal();
   const isGenerated = useRecoilValue(isGeneratedView);
 
+  // Mask state
+  const type = useAtomValue(currentType);
+  const data = useAtomValue(currentData);
+  const overlay = useAtomValue(currentOverlay);
+  const setData = useSetAtom(currentData);
+  const { isEditingMask } = useSegmentationMode();
+
+  const isMaskDetection = !!(data?.mask || isEditingMask);
+  const isDetection = type === DETECTION;
+
+  const handleAddMask = useCallback(() => {
+    if (overlay instanceof DetectionOverlay) {
+      overlay.initMask();
+      setOpen(false);
+    }
+  }, [overlay]);
+
+  const handleRemoveMask = useCallback(() => {
+    if (overlay instanceof DetectionOverlay) {
+      overlay.removeMask();
+      setData({ mask: undefined });
+      setOpen(false);
+    }
+  }, [overlay, setData]);
+
   const handleOpenSchemaManager = () => {
     openSchemaManager();
     setOpen(false);
@@ -50,7 +78,12 @@ const LabelHamburgerMenu = () => {
 
   const showEditSchema = canEditLabels.enabled && currentFieldIsReadOnly;
   const showDelete = !isGenerated;
-  const hasMenuItems = showDelete || showEditSchema;
+  const showAddMask =
+    isDetection && !isMaskDetection && !currentFieldIsReadOnly;
+  const showRemoveMask =
+    isDetection && isMaskDetection && !currentFieldIsReadOnly;
+  const hasMenuItems =
+    showDelete || showEditSchema || showAddMask || showRemoveMask;
 
   if (!hasMenuItems) {
     return null;
@@ -70,6 +103,10 @@ const LabelHamburgerMenu = () => {
         onClose={() => setOpen(false)}
         sx={{ zIndex: 9999 }}
       >
+        {showAddMask && <MenuItem onClick={handleAddMask}>Add mask</MenuItem>}
+        {showRemoveMask && (
+          <MenuItem onClick={handleRemoveMask}>Remove mask</MenuItem>
+        )}
         {showDelete && (
           <MenuItem onClick={deleteCommand.callback}>
             <Stack direction="row" gap={1} alignItems="center">

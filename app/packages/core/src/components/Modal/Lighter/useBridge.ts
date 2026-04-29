@@ -31,6 +31,8 @@ import {
   currentData,
   savedLabel,
 } from "../Sidebar/Annotate/Edit/state";
+import { useDetectionMode } from "../Sidebar/Annotate/Edit/useDetectionMode";
+import { useSegmentationMode } from "../Sidebar/Annotate/Edit/useSegmentationMode";
 import { coerceStringBooleans, useLabelsContext } from "../Sidebar/Annotate";
 import useColorMappingContext from "./useColorMappingContext";
 import { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";
@@ -67,6 +69,9 @@ export const useBridge = (scene: Scene2D | null) => {
   const fieldSchema = useRecoilValue(
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
   );
+
+  const segmentationMode = useSegmentationMode();
+  const detectionMode = useDetectionMode();
 
   useAnnotationEventHandler(
     "annotation:sidebarValueUpdated",
@@ -251,6 +256,65 @@ export const useBridge = (scene: Scene2D | null) => {
   );
 
   useEventHandler("lighter:command-executed", handleCommandEvent);
+
+  // Sync sidebar/edit state when an overlay's label is mutated outside the
+  // command stack (e.g. AI inference applying a new mask via updateLabel).
+  useEventHandler(
+    "lighter:overlay-label-updated",
+    useCallback(
+      (payload) => {
+        if (!payload.label) return;
+
+        const newLabel = coerceStringBooleans(
+          payload.label as Record<string, unknown>
+        );
+
+        if (newLabel) {
+          save(newLabel);
+        }
+
+        segmentationMode.setEditingMask(payload.id, payload.hasMask);
+        detectionMode.setEditingMask(payload.id, payload.hasMask);
+      },
+      [detectionMode, save, segmentationMode]
+    )
+  );
+
+  useEventHandler(
+    "lighter:overlay-create",
+    useCallback(() => {
+      if (segmentationMode.segmentationModeActive) {
+        segmentationMode.create();
+      } else if (detectionMode.detectionModeActive) {
+        detectionMode.create();
+      }
+    }, [detectionMode, segmentationMode])
+  );
+
+  useEventHandler(
+    "lighter:segmentation-mode-quit",
+    useCallback(() => {
+      if (segmentationMode.segmentationModeActive) {
+        segmentationMode.deactivateSegmentationMode();
+      }
+    }, [segmentationMode])
+  );
+
+  useEventHandler(
+    "lighter:detection-mode-quit",
+    useCallback(() => {
+      detectionMode.deactivateDetectionMode();
+    }, [detectionMode])
+  );
+
+  useEventHandler(
+    "lighter:point-selection-finalize",
+    useCallback(() => {
+      if (segmentationMode.segmentationModeActive) {
+        segmentationMode.finalizePointSelection();
+      }
+    }, [segmentationMode])
+  );
 
   const context = useColorMappingContext();
 

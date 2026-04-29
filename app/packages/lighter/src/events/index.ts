@@ -6,7 +6,7 @@ import type { Undoable } from "@fiftyone/commands";
 import type { InteractionHandler } from "../interaction/InteractionManager";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
 import type { PaintStrokeData } from "../overlay/MaskCanvas";
-import type { Point, Rect } from "../types";
+import type { Point, RawLookerLabel, Rect } from "../types";
 
 /**
  * Event type definitions for lighter events.
@@ -27,6 +27,17 @@ export type LighterEventGroup = {
   "lighter:overlay-bounds-changed": {
     id: string;
     bounds: Rect;
+  };
+  /**
+   * Emitted when an overlay's label is updated, or when an overlay's
+   * editing state changes in a way subscribers need to observe (e.g.
+   * `DetectionOverlay.initMask`/`removeMask` flipping mask-canvas state
+   * without changing label data).
+   */
+  "lighter:overlay-label-updated": {
+    id: string;
+    label: RawLookerLabel;
+    hasMask: boolean;
   };
 
   // ============================================================================
@@ -123,6 +134,10 @@ export type LighterEventGroup = {
   };
   /** Emitted when user clicks without dragging in detection mode to exit */
   "lighter:detection-mode-quit": { eventId: string };
+  /** Emitted when user clicks without dragging in segmentation mode to close out the current detection */
+  "lighter:segmentation-mode-quit": { eventId: string };
+  /** Emitted when the AI mask should be established and point selection ended (e.g. right-click) */
+  "lighter:point-selection-finalize": { eventId: string };
 
   // ============================================================================
   // KEYPOINT EVENTS

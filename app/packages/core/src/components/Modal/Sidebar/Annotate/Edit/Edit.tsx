@@ -1,6 +1,6 @@
 import { DetectionLabel } from "@fiftyone/looker";
 import { useClearModal } from "@fiftyone/state";
-import { DETECTION, KEYPOINT, POLYLINE } from "@fiftyone/utilities";
+import { DETECTION, POLYLINE } from "@fiftyone/utilities";
 import { useAtomValue } from "jotai";
 import { useEffect } from "react";
 import styled from "styled-components";
@@ -9,11 +9,12 @@ import AnnotationSchema from "./AnnotationSchema";
 import Field from "./Field";
 import Header from "./Header";
 import Id from "./Id";
-import { KeypointDetails } from "./KeypointDetails";
+import MaskPreview from "./MaskPreview";
 import { PolylineDetails } from "./PolylineDetails";
 import Position from "./Position";
 import Position3d from "./Position3d";
 import {
+  currentData,
   currentField,
   currentFieldIsReadOnlyAtom,
   currentOverlay,
@@ -22,10 +23,12 @@ import {
 import PrimitiveWrapper from "./PrimitiveWrapper";
 import useActivePrimitive from "./useActivePrimitive";
 import useExit from "./useExit";
+import { useSegmentationMode } from "./useSegmentationMode";
 
 const ContentContainer = styled.div`
   margin: 0.25rem 1rem;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -36,6 +39,7 @@ const Content = styled.div`
   border-radius: var(--radius-xs);
   width: 100%;
   flex: 1;
+  min-height: 0;
   padding: 1rem;
   overflow: auto;
   display: flex;
@@ -47,7 +51,10 @@ export default function Edit() {
   const field = useAtomValue(currentField);
   const overlay = useAtomValue(currentOverlay);
   const type = useAtomValue(currentType);
+  const data = useAtomValue(currentData);
   const isReadOnly = useAtomValue(currentFieldIsReadOnlyAtom);
+  const { isEditingMask } = useSegmentationMode();
+  const isMaskDetection = !!(data?.mask || isEditingMask);
   const [activePrimitivePath] = useActivePrimitive();
 
   const clear = useClearModal();
@@ -92,14 +99,14 @@ export default function Edit() {
         {!primitiveEditingActive && <Field />}
         {primitiveEditingActive && <PrimitiveWrapper />}
         {type === DETECTION && overlay && !is3dDetection && (
-          <Position readOnly={isReadOnly} />
+          <Position readOnly={isReadOnly || isMaskDetection} />
         )}
         {type === DETECTION && overlay && is3dDetection && (
           <Position3d readOnly={isReadOnly} />
         )}
         {type === POLYLINE && <PolylineDetails />}
-        {type === KEYPOINT && <KeypointDetails />}
         {field && <AnnotationSchema readOnly={isReadOnly} />}
+        {isMaskDetection && <MaskPreview />}
       </Content>
     </ContentContainer>
   );
