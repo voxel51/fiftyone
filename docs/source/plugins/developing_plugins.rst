@@ -4829,6 +4829,8 @@ Using the custom component as the view for a Python operator field:
         def execute(self, ctx):
             return {}
 
+.. _custom-sample-renderers:
+
 Custom sample renderers
 ~~~~~~~~~~~~~~~~~~~~~~~
 
