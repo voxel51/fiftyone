@@ -43,6 +43,8 @@ export class InteractiveKeypointHandler implements InteractionHandler {
   readonly id = INTERACTIVE_KEYPOINT_HANDLER_ID;
   readonly cursor = "crosshair";
 
+  private readonly pushedCommandIds = new Set<string>();
+
   constructor(
     public readonly overlay: KeypointOverlay,
     private readonly eventBus: EventDispatcher<LighterEventGroup>,
@@ -100,10 +102,14 @@ export class InteractiveKeypointHandler implements InteractionHandler {
 
       if (action === KeypointPointHitAction.DELETE) {
         const command = new RemoveKeypointPointCommand(this.overlay, hitId);
+
         command.execute();
+
         CommandContextManager.instance()
           .getActiveContext()
           .pushUndoable(command);
+        this.pushedCommandIds.add(command.id);
+
         return true;
       }
       // else fall through to default behavior
@@ -112,11 +118,15 @@ export class InteractiveKeypointHandler implements InteractionHandler {
     const variant = this.resolveVariant?.({ x: rp[0], y: rp[1] }, modifiers);
     const pointId = this.overlay.addPoint(worldPoint, variant);
 
-    CommandContextManager.instance()
-      .getActiveContext()
-      .pushUndoable(
-        new AddKeypointPointCommand(this.overlay, pointId, rp, variant)
-      );
+    const command = new AddKeypointPointCommand(
+      this.overlay,
+      pointId,
+      rp,
+      variant
+    );
+
+    CommandContextManager.instance().getActiveContext().pushUndoable(command);
+    this.pushedCommandIds.add(command.id);
 
     return true;
   }
@@ -148,5 +158,21 @@ export class InteractiveKeypointHandler implements InteractionHandler {
 
   cleanup(): void {
     this.overlay.setPreviewPoint(null);
+  }
+
+  /**
+   * Removes all undo/redo entries that this handler pushed during its
+   * lifetime from the active command context.
+   */
+  pruneCommands(): void {
+    if (this.pushedCommandIds.size === 0) {
+      return;
+    }
+
+    CommandContextManager.instance()
+      .getActiveContext()
+      .pruneUndoables((u) => this.pushedCommandIds.has(u.id));
+
+    this.pushedCommandIds.clear();
   }
 }

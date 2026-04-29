@@ -1,6 +1,8 @@
 import type {
   BoundingBoxOverlay,
   ClassificationOverlay,
+  KeypointLabel,
+  KeypointOverlay,
 } from "@fiftyone/lighter";
 import { ClassificationLabel } from "@fiftyone/looker/src/overlays/classifications";
 import { DetectionLabel } from "@fiftyone/looker/src/overlays/detection";
@@ -162,11 +164,18 @@ export interface PolylineAnnotationLabel extends Label {
   type: "Polyline";
 }
 
+export interface KeypointAnnotationLabel extends Label {
+  data: KeypointLabel;
+  overlay: KeypointOverlay;
+  type: "Keypoint";
+}
+
 export type AnnotationLabel =
   | ClassificationAnnotationLabel
   | DetectionAnnotationLabel
   | Detection3DAnnotationLabel
-  | PolylineAnnotationLabel;
+  | PolylineAnnotationLabel
+  | KeypointAnnotationLabel;
 
 export type AnnotationLabelData = AnnotationLabel["data"];
 

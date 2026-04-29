@@ -1,13 +1,23 @@
 import { describe, expect, it } from "vitest";
 import {
   buildAnnotationPath,
+  buildDeletionDeltas,
   buildJsonPath,
+  buildKeypointMutationDeltas,
+  buildKeypointsMutationDeltas,
   buildSingleMutationDelta,
   type LabelProxy,
 } from "./deltas";
+import type { KeypointLabel } from "@fiftyone/lighter";
 import type { AnnotationLabel } from "@fiftyone/state";
+import type { Field } from "@fiftyone/utilities";
 
 type LabelData = AnnotationLabel["data"];
+
+const makeField = (embeddedDocType: string): Field =>
+  ({
+    embeddedDocType,
+  } as Field);
 
 describe("delta calculation utilities", () => {
   describe("buildAnnotationPath", () => {
@@ -172,6 +182,201 @@ describe("delta calculation utilities", () => {
         path: "/tags/1",
         value: "updated",
       });
+    });
+  });
+
+  describe("buildKeypointMutationDeltas", () => {
+    it("merges with existing single Keypoint and produces replace deltas", () => {
+      const path = "kp";
+      const existing: KeypointLabel = {
+        _cls: "Keypoint",
+        _id: "kp-1",
+        label: "head",
+        tags: [],
+        points: [[0.1, 0.2]],
+      } as unknown as KeypointLabel;
+      const sample = { [path]: existing };
+
+      const deltas = buildKeypointMutationDeltas(sample, {
+        type: "Keypoint",
+        path,
+        data: {
+          _cls: "Keypoint",
+          _id: "kp-1",
+          label: "shoulder",
+          tags: [],
+          points: [[0.1, 0.2]],
+        } as unknown as KeypointLabel,
+      });
+
+      expect(deltas).toEqual([
+        { op: "replace", path: "/label", value: "shoulder" },
+      ]);
+    });
+  });
+
+  describe("buildKeypointsMutationDeltas", () => {
+    const path = "keypoints";
+    const existingKeypoint: KeypointLabel = {
+      _cls: "Keypoint",
+      _id: "kp-1",
+      label: "head",
+      tags: ["foo"],
+      points: [[0.1, 0.2]],
+    } as unknown as KeypointLabel;
+
+    it("upserts an existing keypoint by _id and merges server fields", () => {
+      const sample = {
+        [path]: { _cls: "Keypoints", keypoints: [existingKeypoint] },
+      };
+
+      const deltas = buildKeypointsMutationDeltas(sample, {
+        type: "Keypoint",
+        path,
+        data: {
+          _id: "kp-1",
+          label: "shoulder",
+        } as unknown as KeypointLabel,
+      });
+
+      expect(deltas).toEqual([
+        { op: "replace", path: "/keypoints/0/label", value: "shoulder" },
+      ]);
+    });
+
+    it("inserts a new keypoint when the _id is not present", () => {
+      const sample = {
+        [path]: { _cls: "Keypoints", keypoints: [existingKeypoint] },
+      };
+
+      const newKeypoint = {
+        _cls: "Keypoint",
+        _id: "kp-2",
+        label: "foot",
+        tags: [],
+        points: [[0.5, 0.6]],
+      } as unknown as KeypointLabel;
+
+      const deltas = buildKeypointsMutationDeltas(sample, {
+        type: "Keypoint",
+        path,
+        data: newKeypoint,
+      });
+
+      expect(deltas).toContainEqual({
+        op: "add",
+        path: "/keypoints/1",
+        value: newKeypoint,
+      });
+    });
+
+    it("seeds a keypoints list when none exists at the path", () => {
+      const newKeypoint = {
+        _cls: "Keypoint",
+        _id: "kp-1",
+        label: "head",
+        tags: [],
+        points: [[0.1, 0.2]],
+      } as unknown as KeypointLabel;
+
+      const deltas = buildKeypointsMutationDeltas(
+        {},
+        { type: "Keypoint", path, data: newKeypoint }
+      );
+
+      expect(deltas.some((d) => d.op === "add")).toBe(true);
+    });
+  });
+
+  describe("buildDeletionDeltas (Keypoint)", () => {
+    const path = "keypoints";
+
+    it("filters out a keypoint by _id from a Keypoints list", () => {
+      const sample = {
+        [path]: {
+          _cls: "Keypoints",
+          keypoints: [
+            {
+              _cls: "Keypoint",
+              _id: "kp-1",
+              label: "head",
+              points: [[0.1, 0.2]],
+            },
+            {
+              _cls: "Keypoint",
+              _id: "kp-2",
+              label: "foot",
+              points: [[0.5, 0.6]],
+            },
+          ],
+        },
+      };
+
+      const deltas = buildDeletionDeltas(
+        sample,
+        {
+          type: "Keypoint",
+          path,
+          data: { _id: "kp-1" } as unknown as KeypointLabel,
+        },
+        makeField("fiftyone.core.labels.Keypoints")
+      );
+
+      // fast-json-patch emits a "shift down + pop" sequence: the trailing
+      // index is removed, and prior indices are rewritten to the surviving
+      // elements.
+      expect(deltas).toContainEqual({
+        op: "remove",
+        path: "/keypoints/1",
+      });
+      expect(deltas).toContainEqual({
+        op: "replace",
+        path: "/keypoints/0/_id",
+        value: "kp-2",
+      });
+    });
+
+    it("returns a root remove for a single Keypoint field", () => {
+      const deltas = buildDeletionDeltas(
+        { kp: { _cls: "Keypoint", _id: "kp-1" } },
+        {
+          type: "Keypoint",
+          path: "kp",
+          data: { _id: "kp-1" } as unknown as KeypointLabel,
+        },
+        makeField("fiftyone.core.labels.Keypoint")
+      );
+
+      expect(deltas).toEqual([{ op: "remove", path: "/" }]);
+    });
+
+    it("short-circuits to a root remove for generated views", () => {
+      const deltas = buildDeletionDeltas(
+        {},
+        {
+          type: "Keypoint",
+          path: "keypoints",
+          data: { _id: "kp-1" } as unknown as KeypointLabel,
+        },
+        makeField("fiftyone.core.labels.Keypoints"),
+        true
+      );
+
+      expect(deltas).toEqual([{ op: "remove", path: "/" }]);
+    });
+
+    it("warns and returns [] when the keypoints list is missing", () => {
+      const deltas = buildDeletionDeltas(
+        {},
+        {
+          type: "Keypoint",
+          path: "keypoints",
+          data: { _id: "kp-1" } as unknown as KeypointLabel,
+        },
+        makeField("fiftyone.core.labels.Keypoints")
+      );
+
+      expect(deltas).toEqual([]);
     });
   });
 });

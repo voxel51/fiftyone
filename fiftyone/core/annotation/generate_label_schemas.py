@@ -364,9 +364,13 @@ def _generate_field_label_schema(collection, field_name, scan_samples):
             # [0, 1] floats, omit for special handling by the App
             continue
 
-        if f.name == foac.POINTS and field.document_type == fol.Polyline:
+        if f.name == foac.POINTS and field.document_type in (
+            fol.Polyline,
+            fol.Keypoint,
+        ):
             # points is a list of (x, y) or (x, y, z) coordinate lists that
-            # define the polyline shape, omit for special handling by the App
+            # define the polyline/keypoint shape, omit for special handling by
+            # the App
             continue
 
         try:

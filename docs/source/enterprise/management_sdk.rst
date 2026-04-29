@@ -102,6 +102,58 @@ Snapshots
    :members:
    :undoc-members:
 
+.. _enterprise-sdk-service-account-management:
+
+Service account management
+--------------------------
+
+Service accounts can be managed programmatically using the SDK. For an
+overview of service accounts, their roles, and UI management, see
+:ref:`Service accounts <enterprise-service-accounts>`.
+
+.. code-block:: python
+
+   import fiftyone.management as fom
+
+   # Create a service account
+   sa = fom.create_service_account("my-pipeline-bot", fom.MEMBER)
+   print(sa.id)
+
+   # List all service accounts
+   service_accounts = fom.list_service_accounts()
+
+   # Retrieve a specific service account by ID
+   sa = fom.get_service_account(sa.id)
+
+   # Update a service account's name, role, or description
+   fom.update_service_account(
+       sa, role=fom.COLLABORATOR, description="Automation bot for dataset tasks"
+   )
+
+   # Delete a service account (irreversible)
+   fom.delete_service_account(sa)
+
+API keys can be generated, listed, and deleted for service accounts:
+
+.. code-block:: python
+
+   import fiftyone.management as fom
+
+   sa = fom.get_service_account("some-id")
+
+   # Generate an API key for the service account
+   key = fom.generate_api_key("pipeline-key", sa)
+
+   # List all keys for a service account
+   keys = fom.list_api_keys(sa)
+
+   # Delete a specific key
+   fom.delete_api_key(keys[0].id, sa)
+
+.. autoapimodule:: fiftyone.management.service_account
+   :members:
+   :undoc-members:
+
 .. _enterprise-sdk-user-management:
 
 User management
