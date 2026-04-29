@@ -199,11 +199,12 @@ const AttributeFormContent = ({
           spacing={Spacing.Sm}
           style={{ alignItems: "center", marginBottom: 4 }}
         >
-          <Text variant={TextVariant.Md}>Read-only</Text>
+          <Text variant={TextVariant.Lg}>Read-only</Text>
           <Toggle
             checked={formState.read_only}
             onChange={handleReadOnlyChange}
-            size={Size.Sm}
+            size={Size.Md}
+            disabled={isFromOntology}
           />
         </Stack>
         <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
@@ -228,6 +229,7 @@ const AttributeFormContent = ({
               label={opt.label}
               isSelected={formState.component === opt.id}
               onClick={() => handleComponentChange(opt.id)}
+              disabled={isFromOntology}
             />
           ))}
         </Stack>
