@@ -4,7 +4,7 @@
 |
 """
 
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import Mock, call, patch
 
 import pytest
 
@@ -13,7 +13,7 @@ from fiftyone.multimodal import ingest
 
 @pytest.fixture(name="adapter")
 def mock_adapter():
-    return MagicMock()
+    return Mock()
 
 
 @pytest.fixture(name="storage")
