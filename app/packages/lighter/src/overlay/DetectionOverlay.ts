@@ -36,6 +36,7 @@ import { distanceFromLineSegment } from "../utils/geometry";
 import { BaseOverlay } from "./BaseOverlay";
 import { MaskCanvas } from "./MaskCanvas";
 import type { MaskSnapshot, PaintStrokeData } from "./MaskCanvas";
+import { MaskKeypoints } from "./MaskKeypoints";
 import type { SerializedMask } from "@fiftyone/utilities";
 import { BASE_ALPHA } from "@fiftyone/looker/src/constants";
 
@@ -79,6 +80,9 @@ export type InteractionState =
 
 export const NO_BOUNDS = { x: NaN, y: NaN, width: NaN, height: NaN };
 
+// PointerEvent: `event.buttons === 1` -> left mouse button depressed
+const LEFT_MOUSE_BUTTON = 1;
+
 /**
  * Bounding box overlay implementation with drag support, selection, and spatial coordinates.
  */
@@ -100,6 +104,9 @@ export class DetectionOverlay
   private textBounds?: Rect;
 
   private mask?: MaskCanvas;
+
+  // Pen tool state
+  private maskKeypoints?: MaskKeypoints;
 
   public cursor = "pointer";
 
@@ -190,6 +197,11 @@ export class DetectionOverlay
     return this.id;
   }
 
+  override setRenderer(renderer: Renderer2D): void {
+    super.setRenderer(renderer);
+    this.maskKeypoints?.setRenderer(renderer);
+  }
+
   protected renderImpl(renderer: Renderer2D, renderMeta: RenderMeta): void {
     // Dispose of old elements before creating new ones
     renderer.dispose(this.containerId);
@@ -200,7 +212,8 @@ export class DetectionOverlay
 
     // Draw the segmentation mask beneath the box outline when available.
     const maskColor = style.strokeStyle || style.fillStyle || "#ffffff";
-    const isEditingMask = this.isSelected() && this.hasMask();
+    const isEditingMask =
+      this.isSelected() && (this.hasMask() || !!this.maskKeypoints);
 
     this.mask?.render(
       renderer,
@@ -228,6 +241,8 @@ export class DetectionOverlay
         },
         this.containerId
       );
+
+      this.maskKeypoints?.render(renderer, style, renderMeta);
 
       this.emitLoaded();
       return;
@@ -507,6 +522,10 @@ export class DetectionOverlay
     worldPoint: Point,
     toolState: SegmentationToolState
   ): boolean {
+    if (toolState.tool === SegmentationTool.Pen) {
+      return this.onPenPointerDown(point, worldPoint, toolState);
+    }
+
     if (!this.hasValidBounds()) {
       // Bootstrap bounds from the brush dab so the canvas has a size
       const size = toolState?.size ?? 0;
@@ -558,7 +577,12 @@ export class DetectionOverlay
     this.segmentationTool = segmentationToolState;
 
     if (this.interactionState === "PAINTING") {
-      return this.onSegmentationMove(point, worldPoint, segmentationToolState);
+      return this.onSegmentationMove(
+        point,
+        worldPoint,
+        event,
+        segmentationToolState
+      );
     }
 
     if (this.interactionState === "DRAGGING") {
@@ -575,8 +599,13 @@ export class DetectionOverlay
   private onSegmentationMove(
     point: Point,
     worldPoint: Point,
+    event: PointerEvent,
     toolState: SegmentationToolState | undefined
   ): boolean {
+    if (toolState?.tool === SegmentationTool.Pen) {
+      return this.onPenMove(worldPoint, event);
+    }
+
     const updatedBounds = this.mask?.paintAt(
       worldPoint,
       this.bounds,
@@ -600,6 +629,109 @@ export class DetectionOverlay
     }
 
     return true;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Pen tool
+  // ---------------------------------------------------------------------------
+
+  private onPenPointerDown(
+    _point: Point,
+    worldPoint: Point,
+    _toolState: SegmentationToolState
+  ): boolean {
+    this.maskKeypoints ??= new MaskKeypoints({
+      coordinateSystem: this.coordinateSystem,
+      renderer: this.renderer!,
+    });
+
+    this.maskKeypoints.addPoint({ ...worldPoint }, { dragging: false });
+    this.interactionState = "PAINTING";
+    this.markDirty();
+
+    return true;
+  }
+
+  private onPenMove(worldPoint: Point, event: PointerEvent): boolean {
+    this.updatePenMousePosition(worldPoint);
+
+    // Dragging: drop points at intervals
+    if (
+      event.buttons === LEFT_MOUSE_BUTTON &&
+      this.maskKeypoints?.hasValidBounds()
+    ) {
+      this.maskKeypoints.addPoint({ ...worldPoint }, { dragging: true });
+    }
+
+    this.markDirty();
+    return true;
+  }
+
+  /**
+   * Returns true if a pen polygon is currently being built.
+   */
+  hasPenPolygon(): boolean {
+    return !!this.maskKeypoints?.hasValidBounds();
+  }
+
+  /**
+   * Fills the pen polygon onto the mask canvas and clears the pen state.
+   */
+  commitPenPolygon({ segmentationToolState }: OverlayEvent): boolean {
+    if (!this.maskKeypoints) return false;
+
+    const absolutePoints = this.maskKeypoints.getAbsolutePoints();
+
+    if (absolutePoints.length < 3) {
+      this.cancelPenPolygon();
+      return false;
+    }
+
+    if (!this.hasValidBounds()) {
+      this.bounds = this.maskKeypoints.bounds;
+    }
+
+    this.mask ??= new MaskCanvas(this.label.mask);
+
+    const updatedBounds = this.mask.fillPolygon(
+      absolutePoints,
+      this.bounds,
+      segmentationToolState!,
+      this.currentStyle
+    );
+
+    if (updatedBounds) {
+      this.bounds = updatedBounds;
+    }
+
+    this.mask.paintEnd(this.bounds, () => {
+      this.markDirty();
+    });
+
+    this.eventBus.dispatch("lighter:overlay-paint-end", {
+      id: this.id,
+      paintStrokeData: this.mask?.getPaintStrokeData(),
+    });
+
+    this.cancelPenPolygon();
+    return true;
+  }
+
+  /**
+   * Discards the current pen polygon without filling.
+   */
+  cancelPenPolygon(): void {
+    this.maskKeypoints?.destroy();
+    this.maskKeypoints = undefined;
+    this.interactionState = "NONE";
+    this.markDirty();
+  }
+
+  /**
+   * Updates the pen cursor position for live preview rendering.
+   */
+  updatePenMousePosition(worldPoint: Point | null): void {
+    this.maskKeypoints?.setPreviewPoint(worldPoint);
   }
 
   private onDrag(point: Point, _event: PointerEvent, scale: number): boolean {
@@ -974,11 +1106,14 @@ export class DetectionOverlay
   }
 
   /**
-   * Whether segmentation brush should intercept pointer events.
+   * Whether segmentation brush/pen should intercept pointer events.
    */
   private isPaintingActive(): boolean {
     if (!this.segmentationTool?.active) return false;
-    return this.segmentationTool.tool === SegmentationTool.Brush;
+    return (
+      this.segmentationTool.tool === SegmentationTool.Brush ||
+      this.segmentationTool.tool === SegmentationTool.Pen
+    );
   }
 
   /**
@@ -1018,6 +1153,8 @@ export class DetectionOverlay
   override destroy(): void {
     this.mask?.destroy();
     this.mask = undefined;
+    this.maskKeypoints?.destroy();
+    this.maskKeypoints = undefined;
     super.destroy();
   }
 

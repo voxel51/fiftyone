@@ -98,7 +98,7 @@ export class KeypointOverlay
   private isDraggable: boolean;
   private isDeletable: boolean;
   private isSelectable: boolean;
-  private connections: number[][];
+  protected connections: number[][];
   private closed: boolean;
   private readonly variantStyles: Record<string, DrawStyle>;
   private isSelectedState = false;
@@ -106,7 +106,7 @@ export class KeypointOverlay
   #points: KeypointEntry[];
 
   // Per-point sub-selection
-  private selectedPointIndex: number | null = null;
+  protected selectedPointIndex: number | null = null;
 
   // Drag state for individual points
   private dragPointIndex: number | null = null;
@@ -114,7 +114,7 @@ export class KeypointOverlay
   private moveStartRelativePoint?: [number, number];
 
   // Preview point for interactive creation (cursor tracking)
-  private previewPoint?: Point | null = null;
+  protected previewPoint?: Point | null = null;
 
   // Caches — invalidated in markDirty()
   private _absPointsCache: Point[] | null = null;
@@ -159,7 +159,7 @@ export class KeypointOverlay
     return [(ap.x - t.offsetX) / t.scaleX, (ap.y - t.offsetY) / t.scaleY];
   }
 
-  private getAbsolutePoints(): Point[] {
+  protected getAbsolutePoints(): Point[] {
     if (this._absPointsCache) return this._absPointsCache;
     this._absPointsCache = this.#points.map((e) =>
       this.relativePointToAbsolute(e.position)
@@ -275,7 +275,7 @@ export class KeypointOverlay
   /**
    * Collects edge segments from connections with bounds-checked indices.
    */
-  private collectEdgeSegments(absPoints: Point[]): Array<[Point, Point]> {
+  protected collectEdgeSegments(absPoints: Point[]): Array<[Point, Point]> {
     const segments: Array<[Point, Point]> = [];
     const len = absPoints.length;
     for (const path of this.connections) {
@@ -637,12 +637,20 @@ export class KeypointOverlay
   /**
    * Adds a point at the given absolute (world) position.
    *
-   * @param variant - Optional variant key used to determine render style.
-   * @param id - Optional ID. When provided, reuses this id instead of
+   * @param options.variant - Optional variant key used to determine render style.
+   * @param options.id - Optional ID. When provided, reuses this id instead of
    *             generating one. Useful when referential integrity is desired.
+   * @param options.dragging - Whether this point is being placed as part of a
+   *             continuous drag. Subclasses (e.g. `MaskKeypoints`) may gate
+   *             dragged placements by a minimum-distance threshold while
+   *             always honoring discrete clicks.
    * @returns The id of the new point.
    */
-  addPoint(worldPoint: Point, variant?: string, id?: string): string {
+  addPoint(
+    worldPoint: Point,
+    options?: { variant?: string; id?: string; dragging?: boolean }
+  ): string {
+    const { variant, id } = options ?? {};
     const position = this.absolutePointToRelative(worldPoint);
     const entry: KeypointEntry = { id: id ?? uuidv4(), position, variant };
     this.#points.push(entry);
