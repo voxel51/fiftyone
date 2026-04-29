@@ -1,0 +1,154 @@
+import {
+  KeypointOverlay,
+  UNDEFINED_LIGHTER_SCENE_ID,
+  useLighter,
+  useLighterEventHandler,
+} from "@fiftyone/lighter";
+import type { KeypointAnnotationLabel } from "@fiftyone/state";
+import { KEYPOINT } from "@fiftyone/utilities";
+import { useCallback, useMemo, useReducer } from "react";
+import { useAnnotationSchemaContext } from "../state";
+import type { AttributeConfig } from "../SchemaManager/utils";
+import { useAnnotationContext } from "./state";
+
+/**
+ * Reserved label fields that should never be treated as per-point attributes
+ * even if their length happens to match the point count.
+ */
+const RESERVED_KEYS = new Set(["points"]);
+
+/**
+ * Per-point attribute surfaced for the currently sub-selected vertex.
+ */
+export interface KeypointAttribute {
+  /** Field name on the parent label (e.g. "occluded", "confidence") */
+  name: string;
+  /** Value for the currently-selected point */
+  value: unknown;
+  /** Matching schema entry, when one is defined for this attribute */
+  schema?: AttributeConfig;
+}
+
+export interface SelectedKeypoint {
+  /** Index of the sub-selected point on the keypoint overlay */
+  pointIndex: number;
+  /** Total number of points on the keypoint label */
+  pointCount: number;
+  /** Per-point attributes inferred from the label data */
+  attributes: KeypointAttribute[];
+}
+
+/**
+ * Returns the currently active keypoint overlay (when a keypoint label is
+ * being edited), or `null` otherwise.
+ */
+export const useSelectedKeypointOverlay = (): KeypointOverlay | null => {
+  const { selectedLabel } = useAnnotationContext();
+
+  if (
+    selectedLabel?.type !== KEYPOINT ||
+    !(selectedLabel.overlay instanceof KeypointOverlay)
+  ) {
+    return null;
+  }
+
+  return selectedLabel.overlay;
+};
+
+/**
+ * Tracks the sub-selected point index for the currently active keypoint
+ * overlay, reacting to {@link KeypointOverlay} sub-selection events. Returns
+ * `null` when no keypoint label is being edited or no point is sub-selected.
+ */
+export const useSelectedKeypointIndex = (): number | null => {
+  const overlay = useSelectedKeypointOverlay();
+  const { scene } = useLighter();
+  const useEventHandler = useLighterEventHandler(
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+  );
+
+  // stateless re-render trigger
+  const [, forceUpdate] = useReducer((x: number) => x + 1, 0);
+
+  useEventHandler(
+    "lighter:keypoint-sub-selection-changed",
+    useCallback(
+      (payload) => {
+        if (!overlay || payload.id !== overlay.id) {
+          return;
+        }
+
+        forceUpdate();
+      },
+      [overlay]
+    )
+  );
+
+  return overlay?.getSelectedPointIndex() ?? null;
+};
+
+/**
+ * Returns information about the currently sub-selected point of the active
+ * keypoint overlay, or `null` when no keypoint label is being edited or no
+ * point has been selected within it.
+ *
+ * Per-point attributes are inferred from the label's data: any field whose
+ * value is an array with `length === points.length` (excluding `points`
+ * itself) is treated as a per-point list, per the FiftyOne keypoint
+ * documentation.
+ */
+export const useSelectedKeypoint = (): SelectedKeypoint | null => {
+  const { selectedLabel } = useAnnotationContext();
+  const overlay = useSelectedKeypointOverlay();
+  const pointIndex = useSelectedKeypointIndex();
+  const { labelSchema } = useAnnotationSchemaContext();
+
+  const fieldSchema = labelSchema?.[selectedLabel?.path];
+
+  return useMemo(() => {
+    if (!overlay || pointIndex === null) {
+      return null;
+    }
+
+    const data = selectedLabel?.data as
+      | KeypointAnnotationLabel["data"]
+      | undefined;
+    const points = data?.points;
+    if (!Array.isArray(points) || pointIndex >= points.length) {
+      return null;
+    }
+
+    const schemaAttributes =
+      (fieldSchema?.label_schema?.attributes as unknown as
+        | AttributeConfig[]
+        | undefined) ?? [];
+    const schemaByName = new Map(schemaAttributes.map((a) => [a.name, a]));
+
+    const attributes: KeypointAttribute[] = [];
+    for (const [name, value] of Object.entries(data ?? {})) {
+      if (RESERVED_KEYS.has(name)) {
+        continue;
+      }
+
+      if (!Array.isArray(value)) {
+        continue;
+      }
+
+      if (value.length !== points.length) {
+        continue;
+      }
+
+      attributes.push({
+        name,
+        value: value[pointIndex],
+        schema: schemaByName.get(name),
+      });
+    }
+
+    return {
+      pointIndex,
+      pointCount: points.length,
+      attributes,
+    };
+  }, [overlay, pointIndex, selectedLabel, fieldSchema]);
+};
