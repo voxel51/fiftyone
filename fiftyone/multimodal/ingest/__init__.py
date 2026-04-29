@@ -39,3 +39,6 @@ def _get_scene_inventories(filepaths, *, adapter):
                     inventories.append(adapter.get_scene_inventory(filepath))
 
     return inventories
+
+
+__all__ = ["_get_scene_inventories"]
