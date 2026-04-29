@@ -6,13 +6,11 @@ import { CommandContextManager } from "@fiftyone/commands";
 import { MoveKeypointPointCommand } from "../commands/MoveKeypointPointCommand";
 import {
   EDGE_THRESHOLD,
-  HOVERED_DASH_LENGTH,
   KEYPOINT_HIT_RADIUS,
   KEYPOINT_RADIUS,
   KEYPOINT_SELECTED_RADIUS,
   LABEL_ARCHETYPE_PRIORITY,
   PREVIEW_LINE_OPACITY,
-  SELECTED_DASH_LENGTH,
   STROKE_WIDTH,
 } from "../constants";
 import { CONTAINS } from "../core/Scene2D";
@@ -33,7 +31,6 @@ import {
   distanceFromLineSegment,
   pointInPolygon,
 } from "../utils/geometry";
-import { getSimpleStrokeStyles } from "../utils/colorMapping";
 import { BaseOverlay } from "./BaseOverlay";
 import { NO_BOUNDS } from "./DetectionOverlay";
 import { v4 as uuidv4 } from "uuid";
@@ -82,6 +79,38 @@ type KeypointEntry = {
 };
 
 /**
+ * Per-point snapshot passed to render effects for a single frame.
+ */
+export interface KeypointEffectPoint {
+  id: string;
+  position: Point;
+  variant?: string;
+}
+
+/**
+ * Context passed to a {@link KeypointEffect} once per frame. The overlay
+ * owns frame timing and point geometry; effects own only their own draw
+ * contribution.
+ */
+export interface KeypointEffectContext {
+  overlay: KeypointOverlay;
+  renderer: Renderer2D;
+  /** Per-point snapshot for this frame, in entry order. */
+  points: ReadonlyArray<KeypointEffectPoint>;
+  /** Resolves a variant key to the same draw style points use. */
+  resolveStyle: (variant: string | undefined) => DrawStyle;
+  containerId: string;
+}
+
+/**
+ * A custom render contribution for a {@link KeypointOverlay}. Invoked once
+ * per frame, behind the points themselves. The caller owns lifecycle —
+ * driving frame invalidation via `markDirty()` while animating, and
+ * unregistering when done.
+ */
+export type KeypointEffect = (ctx: KeypointEffectContext) => void;
+
+/**
  * Keypoint overlay implementation with per-point interaction, optional connections,
  * and optional polygon closure.
  *
@@ -115,6 +144,11 @@ export class KeypointOverlay
 
   // Preview point for interactive creation (cursor tracking)
   protected previewPoint?: Point | null = null;
+
+  // Registered render effects. Invoked once per frame, between point
+  // bucket-collection and bucket-draw, so contributions appear behind the
+  // solid points. Owners drive frame invalidation and unregister when done.
+  private renderEffects: Map<string, KeypointEffect> = new Map();
 
   // Caches — invalidated in markDirty()
   private _absPointsCache: Point[] | null = null;
@@ -308,8 +342,6 @@ export class KeypointOverlay
     const absPoints = this.getAbsolutePoints();
     const strokeColor = style.strokeStyle || "#ffffff";
     const lineWidth = style.lineWidth || STROKE_WIDTH;
-    const isHovered = this.isHoveredState;
-    const isSelected = this.isSelectedState;
 
     // 1. Batch all connection edges into a single draw call
     const edgeSegments = this.collectEdgeSegments(absPoints);
@@ -320,28 +352,6 @@ export class KeypointOverlay
         { strokeStyle: strokeColor, lineWidth },
         this.containerId
       );
-
-      // Dashed overlay when hovered or selected, mirroring DetectionOverlay.
-      if (isHovered || isSelected) {
-        const { overlayStrokeColor, overlayDash } = getSimpleStrokeStyles({
-          isSelected,
-          strokeColor,
-          isHovered,
-          dashLength: isSelected ? SELECTED_DASH_LENGTH : HOVERED_DASH_LENGTH,
-        });
-
-        if (overlayStrokeColor && overlayDash) {
-          renderer.drawLines(
-            edgeSegments,
-            {
-              strokeStyle: overlayStrokeColor,
-              lineWidth,
-              dashPattern: [overlayDash, overlayDash],
-            },
-            this.containerId
-          );
-        }
-      }
     }
 
     // 2. Draw preview line (during interactive creation — dashed, separate call)
@@ -387,9 +397,7 @@ export class KeypointOverlay
     let selectedVariant: string | undefined;
 
     for (let i = 0; i < absPoints.length; i++) {
-      // When hovered, every point renders in its sub-selected state, so
-      // there's no need to peel out the explicitly-selected point.
-      if (!isHovered && this.selectedPointIndex === i) {
+      if (this.selectedPointIndex === i) {
         selectedPoint = absPoints[i];
         selectedVariant = this.#points[i].variant;
         continue;
@@ -403,23 +411,30 @@ export class KeypointOverlay
       }
     }
 
-    const pointRadius = isHovered ? KEYPOINT_SELECTED_RADIUS : KEYPOINT_RADIUS;
-    for (const [variant, pts] of buckets) {
-      const pointStyle = resolvePointStyle(variant);
-      renderer.drawPoints(pts, pointRadius, pointStyle, this.containerId);
+    // Custom render effects — drawn behind the points so they appear
+    // beneath the solid point markers. Owners drive their own animation
+    // timing and frame invalidation.
+    if (this.renderEffects.size > 0) {
+      const effectPoints: KeypointEffectPoint[] = absPoints.map(
+        (position, i) => ({
+          id: this.#points[i].id,
+          position,
+          variant: this.#points[i].variant,
+        })
+      );
+      const ctx: KeypointEffectContext = {
+        overlay: this,
+        renderer,
+        points: effectPoints,
+        resolveStyle: resolvePointStyle,
+        containerId: this.containerId,
+      };
+      for (const effect of this.renderEffects.values()) effect(ctx);
     }
 
-    // When hovered, overlay an inner white highlight on every point so each
-    // vertex matches the sub-selected appearance.
-    if (isHovered) {
-      for (const [, pts] of buckets) {
-        renderer.drawPoints(
-          pts,
-          KEYPOINT_RADIUS,
-          { fillStyle: "#ffffff" },
-          this.containerId
-        );
-      }
+    for (const [variant, pts] of buckets) {
+      const pointStyle = resolvePointStyle(variant);
+      renderer.drawPoints(pts, KEYPOINT_RADIUS, pointStyle, this.containerId);
     }
 
     // Draw selected point at larger radius + inner highlight (separate calls)
@@ -779,6 +794,26 @@ export class KeypointOverlay
   setPreviewPoint(worldPoint: Point | null): void {
     this.previewPoint = worldPoint;
     this.markDirty();
+  }
+
+  /**
+   * Registers a custom render effect. The effect is invoked once per frame
+   * during {@link renderImpl}, behind the points themselves. Returns a
+   * teardown function; {@link unregisterEffect} is also available for callers
+   * that prefer id-based removal.
+   *
+   * The caller owns animation timing — the overlay only re-renders when
+   * dirty, so animated effects must call {@link markDirty} each tick.
+   */
+  registerEffect(id: string, effect: KeypointEffect): () => void {
+    this.renderEffects.set(id, effect);
+    this.markDirty();
+    return () => this.unregisterEffect(id);
+  }
+
+  /** Removes a previously registered render effect by id. */
+  unregisterEffect(id: string): void {
+    if (this.renderEffects.delete(id)) this.markDirty();
   }
 
   /**

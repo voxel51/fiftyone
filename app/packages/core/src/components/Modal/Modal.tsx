@@ -46,6 +46,7 @@ import { Sidebar } from "./Sidebar";
 import SchemaManagementProvider from "./Sidebar/Annotate/SchemaManagementProvider";
 import useCanManageSchema from "./Sidebar/Annotate/useCanManageSchema";
 import { useAnnotationTracking } from "./Sidebar/Annotate/useAnnotationTracking";
+import { SegmentationToolbar } from "./Sidebar/Annotate/Edit/SegmentationToolbar";
 import { TooltipInfo } from "./TooltipInfo";
 import { useLookerHelpers, useTooltipEventHandler } from "./hooks";
 import { modalContext } from "./modal-context";
@@ -365,6 +366,7 @@ const Modal = () => {
           >
             <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_LEFT} />
             <ModalNavigation closePanels={closePanels} />
+            <SegmentationToolbar />
             <SpacesContainer>
               <ModalSpace />
             </SpacesContainer>
