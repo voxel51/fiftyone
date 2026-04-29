@@ -41,6 +41,13 @@ class OntologyType(str, Enum):  # TODO - update to StrEnum
 _ONTOLOGY_TYPE_VALUES = tuple(t.value for t in OntologyType)
 
 
+# Internal layout version of an ``OntologyDocument`` row. Bump this paired
+# with a forward migration whenever the persisted structure (in particular
+# ``root``) changes shape. ``version`` (user-facing content history) is
+# orthogonal to this.
+CURRENT_SCHEMA_VERSION = 1
+
+
 class OntologyDocument(Document):
     """Backing document for ontologies.
 
@@ -48,6 +55,10 @@ class OntologyDocument(Document):
     Multiple datasets can reference the same ontology by name. Each
     save creates a new versioned document; ``(slug, version)`` is unique,
     so names differing only in case or punctuation collide on save.
+
+    ``schema_version`` records the internal layout version of the row at
+    write time. Bump :data:`CURRENT_SCHEMA_VERSION` and add a migration when
+    changing the persisted structure (especially ``root``).
     """
 
     meta = {
@@ -66,6 +77,7 @@ class OntologyDocument(Document):
     name = StringField(required=True)
     slug = StringField(required=True)
     version = IntField(required=True, default=1)
+    schema_version = IntField(required=True, default=1)
     type = StringField(required=True, choices=_ONTOLOGY_TYPE_VALUES)
     description = StringField(default=None)
     root = DictField()
@@ -94,6 +106,7 @@ class OntologyDocument(Document):
             self.created_at = now
 
         self.last_modified_at = now
+        self.schema_version = CURRENT_SCHEMA_VERSION
 
         return super().save(*args, **kwargs)
 
@@ -132,6 +145,7 @@ class OntologyDocument(Document):
 
         new_doc = self.copy_with_new_id()
         new_doc.version = next_version
+        new_doc.schema_version = CURRENT_SCHEMA_VERSION
         new_doc.created_at = now
         new_doc.last_modified_at = now
         return super(OntologyDocument, new_doc).save(*args, **kwargs)

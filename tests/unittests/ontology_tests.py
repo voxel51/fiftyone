@@ -15,6 +15,7 @@ from mongoengine.errors import ValidationError
 from pymongo.errors import DuplicateKeyError
 
 import fiftyone.core.odm as foo
+from fiftyone.core.odm import ontology as foo_ontology
 from fiftyone.core.odm.ontology import OntologyDocument, OntologyType
 
 
@@ -412,6 +413,37 @@ class OntologyDocumentTests(unittest.TestCase):
         self.assertIs(doc.save(), doc)
         self.assertEqual(doc.version, 2)
         self.assertEqual(doc.description, "v2")
+
+    def test_schema_version_stamped_on_new_save(self):
+        doc = OntologyDocument(
+            name="schema_version_test",
+            version=1,
+            type="taxonomy",
+            root={"name": "root"},
+        )
+        doc.save()
+        self.assertEqual(
+            doc.schema_version, foo_ontology.CURRENT_SCHEMA_VERSION
+        )
+
+    def test_schema_version_overwritten_on_versioned_save(self):
+        doc = OntologyDocument(
+            name="schema_version_test",
+            version=1,
+            type="taxonomy",
+            root={"name": "root"},
+        )
+        doc.save()
+
+        # A stale in-memory schema_version must not survive a save: the
+        # next-version write should always stamp CURRENT_SCHEMA_VERSION.
+        doc.schema_version = 999
+        doc.description = "updated"
+        doc.save()
+
+        self.assertEqual(
+            doc.schema_version, foo_ontology.CURRENT_SCHEMA_VERSION
+        )
 
 
 if __name__ == "__main__":
