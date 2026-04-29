@@ -13,52 +13,100 @@ import logging
 import os
 import re
 import requests
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Default emoji per category when not specified in SKILL.md frontmatter
-CATEGORY_EMOJI = {
-    "QA": "🔍",
-    "Annotation": "🏷️",
-    "Curation": "✂️",
-    "Evaluation": "📊",
-    "Inference": "🤖",
-    "Import": "📥",
-    "Export": "📤",
-    "Embeddings": "🗺️",
-    "Development": "🔧",
-    "Support": "🛠️",
-    "General": "🤖",
-}
-
-SOURCE_BADGE_STYLE = (
-    "background:#ff6b35;color:white;padding:2px 6px;"
-    "border-radius:4px;font-size:0.8em;font-weight:500"
-)
-
 SKILLS_README_URL = (
     "https://raw.githubusercontent.com/voxel51/fiftyone-skills/main/README.md"
+)
+SKILLS_GITHUB_BASE = "https://github.com/voxel51/fiftyone-skills/blob/main/"
+
+# Maps the emoji used in the README table to a filter category
+EMOJI_CATEGORY = {
+    "📥": "Import",
+    "📤": "Export",
+    "🔍": "QA",
+    "🤖": "Inference",
+    "📈": "Evaluation",
+    "📊": "Embeddings",
+    "🔌": "Development",
+    "🎨": "Development",
+    "📝": "Development",
+    "📓": "Development",
+    "🏷️": "Annotation",
+    "🧹": "Curation",
+    "🔧": "Support",
+    "🛡️": "Development",
+}
+
+# README table row: | emoji [**Name**](relative/url) | description | Yes/— |
+_ROW_RE = re.compile(
+    r"^\|\s*(.*?)\[(?:\*\*)?([^\]]+?)(?:\*\*)?\]\(([^)]+)\)"
+    r"\s*\|\s*([^|]+?)\s*\|\s*(Yes|—|-)\s*\|",
+    re.MULTILINE,
 )
 
 
 @dataclass
 class Skill:
-    """Represents a skill with its metadata."""
-
     name: str
     description: str
-    github_url: str  # Link to SKILL.md on GitHub
-    source: str  # "fiftyone-skills" or plugin name e.g. "@voxel51/..."
+    github_url: str
+    source: str
     category: str = "General"
     emoji: str = "🤖"
+    mcp_required: bool = False
+
+
+def _fetch_text(url: str) -> Optional[str]:
+    try:
+        resp = requests.get(url, timeout=10)
+        if resp.status_code == 200:
+            return resp.text
+    except Exception as e:
+        logger.warning(f"Failed to fetch {url}: {e}")
+    return None
+
+
+def _skills_from_fiftyone_skills_readme(readme: str) -> List[Skill]:
+    """Parse the Available Skills table from the fiftyone-skills README."""
+    skills = []
+    for m in _ROW_RE.finditer(readme):
+        prefix = m.group(1).strip()  # emoji before the link, e.g. "📥"
+        name = m.group(2).strip()
+        rel_url = m.group(
+            3
+        ).strip()  # e.g. "skills/fiftyone-dataset-import/SKILL.md"
+        description = m.group(4).strip()
+        mcp_required = m.group(5) == "Yes"
+
+        if "SKILL.md" not in rel_url:
+            continue
+
+        emoji = prefix or "🤖"
+        category = EMOJI_CATEGORY.get(emoji, "General")
+        github_url = SKILLS_GITHUB_BASE + rel_url
+
+        skills.append(
+            Skill(
+                name=name,
+                description=description,
+                github_url=github_url,
+                source="fiftyone-skills",
+                category=category,
+                emoji=emoji,
+                mcp_required=mcp_required,
+            )
+        )
+    return skills
 
 
 def _parse_frontmatter(content: str) -> dict:
-    """Parse YAML-like frontmatter block from a SKILL.md file."""
+    """Parse YAML-like frontmatter from a SKILL.md file."""
     match = re.match(r"^---\s*\n(.*?)\n---", content, re.DOTALL)
     if not match:
         return {}
@@ -70,31 +118,18 @@ def _parse_frontmatter(content: str) -> dict:
     return fm
 
 
-def _fetch_text(url: str) -> Optional[str]:
-    """Fetch plain text from a URL, return None on failure."""
-    try:
-        resp = requests.get(url, timeout=10)
-        if resp.status_code == 200:
-            return resp.text
-    except Exception as e:
-        logger.warning(f"Failed to fetch {url}: {e}")
-    return None
-
-
 def _skill_from_skill_md(
     raw_url: str, github_url: str, source: str
 ) -> Optional[Skill]:
-    """Fetch a SKILL.md and build a Skill object from its frontmatter."""
+    """Fetch a SKILL.md and build a Skill from its frontmatter."""
     content = _fetch_text(raw_url)
     if not content:
         return None
-
     fm = _parse_frontmatter(content)
     name = fm.get("name") or raw_url.split("/")[-2]
     description = fm.get("description", "")
     category = fm.get("category", "General")
-    emoji = fm.get("emoji") or CATEGORY_EMOJI.get(category, "🤖")
-
+    emoji = fm.get("emoji") or "🤖"
     return Skill(
         name=name,
         description=description,
@@ -103,38 +138,6 @@ def _skill_from_skill_md(
         category=category,
         emoji=emoji,
     )
-
-
-def _skills_from_fiftyone_skills_readme(readme: str) -> List[Skill]:
-    """Parse the voxel51/fiftyone-skills README and return Skill objects."""
-    skills = []
-    # Match markdown table rows: | [name](url) | description |
-    row_pattern = re.compile(
-        r"\|\s*\[([^\]]+)\]\(([^)]+)\)\s*\|[^|]*\|", re.MULTILINE
-    )
-    for m in row_pattern.finditer(readme):
-        name, url = m.group(1).strip(), m.group(2).strip()
-        # Convert GitHub blob URL to raw URL for the SKILL.md
-        raw_url = url.replace(
-            "github.com", "raw.githubusercontent.com"
-        ).replace("/blob/", "/")
-        if not raw_url.endswith("SKILL.md"):
-            raw_url = raw_url.rstrip("/") + "/SKILL.md"
-        github_url = url if "SKILL.md" in url else url
-        skill = _skill_from_skill_md(raw_url, github_url, "fiftyone-skills")
-        if skill:
-            skills.append(skill)
-        else:
-            # Fallback: use README row data
-            skills.append(
-                Skill(
-                    name=name,
-                    description="",
-                    github_url=github_url,
-                    source="fiftyone-skills",
-                )
-            )
-    return skills
 
 
 def _skills_from_plugin_skills_json(json_path: Path) -> List[Skill]:
@@ -146,7 +149,6 @@ def _skills_from_plugin_skills_json(json_path: Path) -> List[Skill]:
     except Exception as e:
         logger.warning(f"Failed to read {json_path}: {e}")
         return []
-
     skills = []
     for entry in entries:
         plugin_name = entry.get("plugin_name", "unknown-plugin")
@@ -169,15 +171,11 @@ def _clean_description(text: str) -> str:
 
 def _generate_skill_card(skill: Skill) -> str:
     """Return a customcarditem RST block for a single skill."""
-    source_badge = (
-        f'<span class="card-subtitle text-muted" style="{SOURCE_BADGE_STYLE}">'
-        f"from {skill.source}</span><br/>"
-    )
     description = _clean_description(skill.description)
     return f"""
 .. customcarditem::
     :header: {skill.emoji} {skill.name}
-    :description: {source_badge}{description}
+    :description: {description}
     :link: {skill.github_url}
     :tags: {skill.category}
 
@@ -185,7 +183,6 @@ def _generate_skill_card(skill: Skill) -> str:
 
 
 def generate_skill_cards_rst(skills: List[Skill]) -> str:
-    """Return the full RST content for skill_cards.rst."""
     return "".join(_generate_skill_card(s) for s in skills)
 
 
@@ -197,7 +194,6 @@ def main():
 
     skills: List[Skill] = []
 
-    # Source A: voxel51/fiftyone-skills README
     logger.info("Fetching fiftyone-skills README...")
     readme = _fetch_text(SKILLS_README_URL)
     if readme:
@@ -207,15 +203,13 @@ def main():
     else:
         logger.warning("Could not fetch fiftyone-skills README")
 
-    # Source B: plugin-contributed skills from generate_plugin_docs.py
     plugin_skills_json = skills_cards_dir / "_plugin_skills.json"
     plugin_skills = _skills_from_plugin_skills_json(plugin_skills_json)
     if plugin_skills:
         logger.info(f"Found {len(plugin_skills)} skills from plugin manifests")
         skills.extend(plugin_skills)
 
-    # Deduplicate by github_url
-    seen_urls = set()
+    seen_urls: set = set()
     unique_skills = []
     for s in skills:
         if s.github_url not in seen_urls:
