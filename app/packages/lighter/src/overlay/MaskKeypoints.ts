@@ -21,7 +21,7 @@ export interface MaskKeypointsOptions {
   keypointThreshold?: number;
 }
 
-const KEYPOINT_THRESHOLD = 5;
+const KEYPOINT_THRESHOLD = 25;
 
 /**
  * Extended keypoint overlay for mask pen-tool polygon drawing.
