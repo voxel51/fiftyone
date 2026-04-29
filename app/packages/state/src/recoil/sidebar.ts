@@ -1,6 +1,6 @@
 import type {
-  BoundingBoxOverlay,
   ClassificationOverlay,
+  DetectionOverlay,
   KeypointLabel,
   KeypointOverlay,
 } from "@fiftyone/lighter";
@@ -148,7 +148,7 @@ export interface ClassificationAnnotationLabel extends Label {
 
 export interface DetectionAnnotationLabel extends Label {
   data: DetectionLabel;
-  overlay: BoundingBoxOverlay;
+  overlay: DetectionOverlay;
   type: "Detection";
 }
 

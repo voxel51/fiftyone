@@ -33,7 +33,7 @@ import { SerializedMask } from "@fiftyone/utilities";
 import { BASE_ALPHA } from "@fiftyone/looker/src/constants";
 import { deserialize } from "@fiftyone/looker/src/numpy";
 
-export type BoundingBoxLabel = RawLookerLabel & {
+export type DetectionLabel = RawLookerLabel & {
   label: string;
   bounding_box: number[];
   confidence?: number;
@@ -43,11 +43,11 @@ export type BoundingBoxLabel = RawLookerLabel & {
 /**
  * Options for creating a bounding box overlay.
  */
-export interface BoundingBoxOptions {
+export interface DetectionOverlayOptions {
   id: string;
   // Relative bounds [0,1]
   relativeBounds?: Rect;
-  label: BoundingBoxLabel;
+  label: DetectionLabel;
   field: string;
   draggable?: boolean;
   resizeable?: boolean;
@@ -71,8 +71,8 @@ export const NO_BOUNDS = { x: NaN, y: NaN, width: NaN, height: NaN };
 /**
  * Bounding box overlay implementation with drag support, selection, and spatial coordinates.
  */
-export class BoundingBoxOverlay
-  extends BaseOverlay<BoundingBoxLabel>
+export class DetectionOverlay
+  extends BaseOverlay<DetectionLabel>
   implements Selectable, Spatial, Hoverable
 {
   private isDraggable: boolean;
@@ -94,7 +94,7 @@ export class BoundingBoxOverlay
 
   public cursor = "pointer";
 
-  constructor(options: BoundingBoxOptions) {
+  constructor(options: DetectionOverlayOptions) {
     super(options.id, options.field, options.label);
     this.isDraggable = options.draggable !== false;
     this.isResizeable = options.resizeable !== false;
@@ -103,10 +103,10 @@ export class BoundingBoxOverlay
   }
 
   getOverlayType(): string {
-    return "BoundingBoxOverlay";
+    return "DetectionOverlay";
   }
 
-  updateLabel(label: BoundingBoxLabel) {
+  updateLabel(label: DetectionLabel) {
     super.updateLabel(label);
 
     if (label.bounding_box) {
@@ -811,7 +811,7 @@ export class BoundingBoxOverlay
         overlayMask.arrayType !== "Uint8ClampedArray"
       ) {
         console.warn(
-          `[BoundingBoxOverlay] Unsupported mask dtype: ${overlayMask.arrayType}, expected Uint8Array`
+          `[DetectionOverlay] Unsupported mask dtype: ${overlayMask.arrayType}, expected Uint8Array`
         );
         return;
       }
@@ -843,7 +843,7 @@ export class BoundingBoxOverlay
       this.maskData = { src, width, height };
       this.markDirty();
     } catch (e) {
-      console.error("[BoundingBoxOverlay] Failed to decode mask:", e);
+      console.error("[DetectionOverlay] Failed to decode mask:", e);
     } finally {
       this.maskDecoding = false;
     }

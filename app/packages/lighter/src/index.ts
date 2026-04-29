@@ -16,11 +16,11 @@ export type { Renderer2D } from "./renderer/Renderer2D";
 
 // Overlay exports
 export type { BaseOverlay } from "./overlay/BaseOverlay";
-export { BoundingBoxOverlay } from "./overlay/BoundingBoxOverlay";
+export { DetectionOverlay } from "./overlay/DetectionOverlay";
 export type {
-  BoundingBoxLabel,
-  BoundingBoxOptions,
-} from "./overlay/BoundingBoxOverlay";
+  DetectionLabel,
+  DetectionOverlayOptions,
+} from "./overlay/DetectionOverlay";
 export { ClassificationOverlay } from "./overlay/ClassificationOverlay";
 export type { ClassificationOptions } from "./overlay/ClassificationOverlay";
 export { ImageOverlay } from "./overlay/ImageOverlay";

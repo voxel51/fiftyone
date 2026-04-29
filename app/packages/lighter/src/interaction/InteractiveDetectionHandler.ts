@@ -2,7 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { BoundingBoxOverlay } from "../overlay/BoundingBoxOverlay";
+import { DetectionOverlay } from "../overlay/DetectionOverlay";
 import type { Point } from "../types";
 import type { InteractionHandler } from "./InteractionManager";
 
@@ -20,13 +20,13 @@ export class InteractiveDetectionHandler implements InteractionHandler {
   private _isDragging = false;
   private startPoint?: Point;
 
-  constructor(public readonly overlay: BoundingBoxOverlay) {}
+  constructor(public readonly overlay: DetectionOverlay) {}
 
   containsPoint(): boolean {
     return true;
   }
 
-  getOverlay(): BoundingBoxOverlay {
+  getOverlay(): DetectionOverlay {
     return this.overlay;
   }
 

@@ -3,7 +3,7 @@
  */
 
 import type { BaseOverlay } from "./BaseOverlay";
-import { BoundingBoxOverlay } from "./BoundingBoxOverlay";
+import { DetectionOverlay } from "./DetectionOverlay";
 import { ClassificationOverlay } from "./ClassificationOverlay";
 import { ImageOverlay } from "./ImageOverlay";
 import { KeypointOverlay } from "./KeypointOverlay";
@@ -27,7 +27,7 @@ export class OverlayFactory {
     const factory = new OverlayFactory();
 
     // Register built-in overlays
-    factory.register("bounding-box", (opts) => new BoundingBoxOverlay(opts));
+    factory.register("bounding-box", (opts) => new DetectionOverlay(opts));
     factory.register(
       "classification",
       (opts) => new ClassificationOverlay(opts)

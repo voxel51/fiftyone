@@ -34,7 +34,7 @@ import {
 } from "../utils/geometry";
 import { getSimpleStrokeStyles } from "../utils/colorMapping";
 import { BaseOverlay } from "./BaseOverlay";
-import { NO_BOUNDS } from "./BoundingBoxOverlay";
+import { NO_BOUNDS } from "./DetectionOverlay";
 import { v4 as uuidv4 } from "uuid";
 
 export type KeypointLabel = RawLookerLabel & {
@@ -320,7 +320,7 @@ export class KeypointOverlay
         this.containerId
       );
 
-      // Dashed overlay when hovered or selected, mirroring BoundingBoxOverlay.
+      // Dashed overlay when hovered or selected, mirroring DetectionOverlay.
       if (isHovered || isSelected) {
         const { overlayStrokeColor, overlayDash } = getSimpleStrokeStyles({
           isSelected,

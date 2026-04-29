@@ -1,4 +1,4 @@
-import { BoundingBoxOverlay, useLighter } from "@fiftyone/lighter";
+import { DetectionOverlay, useLighter } from "@fiftyone/lighter";
 import {
   AnnotationLabel,
   AnnotationLabelData,
@@ -302,7 +302,7 @@ const useSyncOverlayReadOnly = () => {
       if (label.type !== DETECTION) continue;
 
       const overlay = label.overlay;
-      if (!(overlay instanceof BoundingBoxOverlay)) continue;
+      if (!(overlay instanceof DetectionOverlay)) continue;
 
       const readOnly = isFieldReadOnly(schemas[label.path]);
       overlay.setDraggable(!readOnly);

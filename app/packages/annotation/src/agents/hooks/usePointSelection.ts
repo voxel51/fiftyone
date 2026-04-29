@@ -1,6 +1,6 @@
 import { useCallback, useRef } from "react";
 import {
-  BoundingBoxOverlay,
+  DetectionOverlay,
   DrawStyle,
   InteractiveKeypointHandler,
   KeypointOptions,
@@ -80,7 +80,7 @@ const resolvePointVariant = (
   label: AnnotationLabel
 ): PointSelectionVariant => {
   const onMask =
-    label && label.overlay instanceof BoundingBoxOverlay
+    label && label.overlay instanceof DetectionOverlay
       ? label.overlay.containsMaskPixel(relativePoint)
       : false;
 
