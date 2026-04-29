@@ -31,7 +31,7 @@ interface UseAttributeFormResult {
   isIntegerType: boolean;
   isListType: boolean;
   isFromOntology: boolean;
-  appearsWhen: { condition: string; suffix: string | null } | null;
+  whenPreview: { condition: string; suffix: string | null } | null;
   supportsDefault: boolean;
   componentOptions: Array<{ id: string; label: string; icon: IconName }>;
 
@@ -66,7 +66,7 @@ export default function useAttributeForm({
     formState.type === "int" || formState.type === "list<int>";
   const isListType = LIST_TYPES.includes(formState.type);
   const isFromOntology = !!formState._source;
-  const appearsWhen = useMemo(() => {
+  const whenPreview = useMemo(() => {
     const conditions = formState.when;
     if (!conditions || conditions.length === 0) return null;
 
@@ -191,7 +191,7 @@ export default function useAttributeForm({
     isIntegerType,
     isListType,
     isFromOntology,
-    appearsWhen,
+    whenPreview,
     supportsDefault,
     componentOptions,
 
