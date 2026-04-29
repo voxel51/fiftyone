@@ -243,6 +243,12 @@ const AttributeFormContent = ({
           isNumeric={isNumericType}
           isInteger={isIntegerType}
           error={valuesError}
+          readOnly={isFromOntology}
+          subtitle={
+            isFromOntology
+              ? "Showing a preview of values, additional values may exist in the ontology"
+              : undefined
+          }
         />
       )}
 

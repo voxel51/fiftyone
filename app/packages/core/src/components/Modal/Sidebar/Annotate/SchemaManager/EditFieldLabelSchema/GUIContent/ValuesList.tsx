@@ -31,6 +31,8 @@ interface ValuesListProps {
   error?: string | null;
   /** Use larger, primary-colored labels */
   largeLabels?: boolean;
+  readOnly?: boolean;
+  subtitle?: string;
 }
 
 const ValuesList = ({
@@ -40,6 +42,8 @@ const ValuesList = ({
   isInteger = false,
   error = null,
   largeLabels = false,
+  readOnly = false,
+  subtitle,
 }: ValuesListProps) => {
   const [newValue, setNewValue] = useState("");
   const [inputError, setInputError] = useState<string | null>(null);
@@ -82,9 +86,9 @@ const ValuesList = ({
   const valueListItems = values.map((value, index) =>
     createRichListItem({
       id: `value-${index}`,
-      canDrag: true,
+      canDrag: !readOnly,
       primaryContent: value,
-      actions: (
+      actions: readOnly ? undefined : (
         <Button
           variant={Variant.Icon}
           borderless
@@ -114,7 +118,7 @@ const ValuesList = ({
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          marginBottom: "0.5rem",
+          marginBottom: subtitle ? "0.25rem" : "0.5rem",
         }}
       >
         <Text
@@ -123,39 +127,54 @@ const ValuesList = ({
         >
           Values
         </Text>
-        <Button
-          variant={Variant.Borderless}
-          onClick={handleAddValue}
-          leadingIcon={() => (
-            <Icon name={IconName.Add} size={Size.Sm} className="size-5" />
-          )}
-        >
-          Add
-        </Button>
+        {!readOnly && (
+          <Button
+            variant={Variant.Borderless}
+            onClick={handleAddValue}
+            leadingIcon={() => (
+              <Icon name={IconName.Add} size={Size.Sm} className="size-5" />
+            )}
+          >
+            Add
+          </Button>
+        )}
       </div>
-      <Input
-        type={isNumeric ? "number" : "text"}
-        value={newValue}
-        onChange={handleChange}
-        onKeyDown={handleKeyDown}
-        placeholder={isNumeric ? "Enter a number" : "Enter a value"}
-        error={!!inputError}
-      />
-      {inputError && (
+      {subtitle && (
         <Text
           variant={TextVariant.Sm}
-          color={TextColor.Destructive}
-          style={{ marginTop: 4 }}
+          color={TextColor.Secondary}
+          style={{ marginBottom: "0.5rem" }}
         >
-          {inputError}
+          {subtitle}
         </Text>
+      )}
+      {!readOnly && (
+        <>
+          <Input
+            type={isNumeric ? "number" : "text"}
+            value={newValue}
+            onChange={handleChange}
+            onKeyDown={handleKeyDown}
+            placeholder={isNumeric ? "Enter a number" : "Enter a value"}
+            error={!!inputError}
+          />
+          {inputError && (
+            <Text
+              variant={TextVariant.Sm}
+              color={TextColor.Destructive}
+              style={{ marginTop: 4 }}
+            >
+              {inputError}
+            </Text>
+          )}
+        </>
       )}
       {values.length > 0 && (
         <div style={{ marginTop: "0.5rem" }}>
           <RichList
             listItems={valueListItems}
-            draggable={true}
-            onOrderChange={handleOrderChange}
+            draggable={!readOnly}
+            onOrderChange={readOnly ? undefined : handleOrderChange}
           />
         </div>
       )}
