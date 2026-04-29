@@ -26,6 +26,7 @@ import { isEqual } from "lodash";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import { SchemaType } from "../../../../../plugins/SchemaIO/utils/types";
+import { createXYGroupSchema } from "./positionSchema";
 import { generatePrimitiveSchema } from "./schemaHelpers";
 import { useAnnotationContext } from "./state";
 import {
@@ -83,17 +84,21 @@ const PerPointEditor = ({
   pointCount,
   attributes,
   pointName,
+  point,
 }: {
   pointIndex: number;
   pointCount: number;
   attributes: KeypointAttribute[];
   pointName?: string;
+  point: [number, number] | null | undefined;
 }) => {
   const { selectedLabel } = useAnnotationContext();
   const eventBus = useAnnotationEventBus();
 
   const schema = useMemo<SchemaType>(() => {
-    const properties: Record<string, SchemaType> = {};
+    const properties: Record<string, SchemaType> = {
+      position: createXYGroupSchema(true),
+    };
     for (const attribute of attributes) {
       const property = buildAttributeProperty(attribute);
       if (property) {
@@ -109,8 +114,14 @@ const PerPointEditor = ({
   }, [attributes]);
 
   const data = useMemo(() => {
-    return Object.fromEntries(attributes.map((a) => [a.name, a.value]));
-  }, [attributes]);
+    const base: Record<string, unknown> = {
+      position: Array.isArray(point) ? { x: point[0], y: point[1] } : {},
+    };
+    for (const attribute of attributes) {
+      base[attribute.name] = attribute.value;
+    }
+    return base;
+  }, [attributes, point]);
 
   const overlay = selectedLabel?.overlay;
 
@@ -157,7 +168,7 @@ const PerPointEditor = ({
     [attributes, eventBus, overlay.id, overlay.label, pointIndex, selectedLabel]
   );
 
-  if (!selectedLabel || attributes.length === 0) {
+  if (!selectedLabel) {
     return null;
   }
 
@@ -238,10 +249,11 @@ const PointRenderer = ({
 
       <AccordionDetails>
         <PerPointEditor
-          attributes={keypointMeta?.attributes}
+          attributes={keypointMeta?.attributes ?? []}
           pointCount={totalPoints}
           pointIndex={pointIndex}
           pointName={pointName}
+          point={label?.points?.[pointIndex]}
         />
       </AccordionDetails>
     </Accordion>
