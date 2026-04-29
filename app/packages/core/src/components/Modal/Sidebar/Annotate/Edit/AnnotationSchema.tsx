@@ -14,12 +14,15 @@ import {
   currentOverlay,
   currentSchema,
 } from "./state";
+import { useLabelSchemaExclusions } from "./useLabelSchemaExclusions";
 
 const useSchema = (readOnly: boolean) => {
   const config = useAtomValue(currentSchema);
   const isLabelReadOnly = config?.read_only;
   // respect either the field OR the parent schema's readOnly flag
   const effectiveReadOnly = readOnly || isLabelReadOnly;
+  // fields excluded from the top-level schema
+  const exclusions = useLabelSchemaExclusions();
 
   return useMemo(() => {
     const attributes = Array.isArray(config?.attributes)
@@ -27,6 +30,7 @@ const useSchema = (readOnly: boolean) => {
       : [];
     const properties = attributes
       .filter(({ name }) => name && !["id", "attributes"].includes(name))
+      .filter(({ name }) => !exclusions.has(name))
       .reduce(
         (schema: SchemaType, value: SchemaType) => ({
           ...schema,
@@ -52,7 +56,7 @@ const useSchema = (readOnly: boolean) => {
       },
       properties,
     };
-  }, [config, effectiveReadOnly]);
+  }, [config, effectiveReadOnly, exclusions]);
 };
 
 const useHandleChanges = () => {

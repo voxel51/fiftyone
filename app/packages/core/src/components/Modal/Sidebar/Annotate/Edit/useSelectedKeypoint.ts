@@ -18,6 +18,59 @@ import { useAnnotationContext } from "./state";
 const RESERVED_KEYS = new Set(["points"]);
 
 /**
+ * Returns the set of label fields that should be treated as per-point
+ * attributes for a keypoint label — any field whose value is an array with
+ * `length === points.length` (excluding {@link RESERVED_KEYS}). Returns an
+ * empty set when the input doesn't have a usable points array.
+ */
+export const getPerPointAttributeNames = (
+  data: KeypointAnnotationLabel["data"] | undefined
+): Set<string> => {
+  const names = new Set<string>();
+  const points = data?.points;
+  if (!Array.isArray(points)) {
+    return names;
+  }
+
+  for (const [name, value] of Object.entries(data ?? {})) {
+    if (RESERVED_KEYS.has(name)) {
+      continue;
+    }
+
+    if (!Array.isArray(value)) {
+      continue;
+    }
+
+    if (value.length !== points.length) {
+      continue;
+    }
+
+    names.add(name);
+  }
+
+  return names;
+};
+
+/**
+ * Hook variant of {@link getPerPointAttributeNames} that resolves the current
+ * label automatically. Returns an empty set when the active label is not a
+ * keypoint, so consumers can apply it unconditionally.
+ */
+export const usePerPointAttributeNames = (): Set<string> => {
+  const { selectedLabel } = useAnnotationContext();
+
+  return useMemo(() => {
+    if (selectedLabel?.type !== KEYPOINT) {
+      return new Set<string>();
+    }
+
+    return getPerPointAttributeNames(
+      selectedLabel.data as KeypointAnnotationLabel["data"]
+    );
+  }, [selectedLabel]);
+};
+
+/**
  * Per-point attribute surfaced for the currently sub-selected vertex.
  */
 export interface KeypointAttribute {
@@ -124,23 +177,13 @@ export const useSelectedKeypoint = (): SelectedKeypoint | null => {
         | undefined) ?? [];
     const schemaByName = new Map(schemaAttributes.map((a) => [a.name, a]));
 
+    const perPointNames = getPerPointAttributeNames(data);
     const attributes: KeypointAttribute[] = [];
-    for (const [name, value] of Object.entries(data ?? {})) {
-      if (RESERVED_KEYS.has(name)) {
-        continue;
-      }
-
-      if (!Array.isArray(value)) {
-        continue;
-      }
-
-      if (value.length !== points.length) {
-        continue;
-      }
-
+    for (const name of perPointNames) {
+      const list = (data as Record<string, unknown>)[name] as unknown[];
       attributes.push({
         name,
-        value: value[pointIndex],
+        value: list[pointIndex],
         schema: schemaByName.get(name),
       });
     }
