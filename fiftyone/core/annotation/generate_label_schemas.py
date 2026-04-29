@@ -279,6 +279,8 @@ def generate_label_schemas(sample_collection, fields=None, scan_samples=True):
             fields=field_name,
         )
 
+        # Regeneration builds a fresh schema from sample data, which loses
+        # the user-set ``applied_ontology`` reference; carry it forward.
         label_schema = _preserve_applied_ontology(
             sample_collection, field_name, label_schema
         )
