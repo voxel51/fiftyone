@@ -1,0 +1,482 @@
+syntax = "proto3";
+
+package fiftyone.multimodal.schemas.v1;
+
+import "google/protobuf/struct.proto";
+
+// Physical interpretation of values on a time track.
+enum TimeTrackType {
+  // No physical interpretation has been declared.
+  TIME_TRACK_TYPE_UNSPECIFIED = 0;
+
+  // Unitless integer positions with no clock semantics.
+  // Use case: frame numbers, row indexes, sample indexes, or event counters.
+  TIME_TRACK_TYPE_SEQUENCE = 1;
+
+  // Elapsed nanoseconds relative to a source or scene origin.
+  // Use case: session time, media presentation time, or episode-relative time.
+  TIME_TRACK_TYPE_DURATION_NS = 2;
+
+  // Absolute Unix epoch nanoseconds.
+  // Use case: wall-clock capture, publish, or record times across sources.
+  TIME_TRACK_TYPE_TIMESTAMP_NS = 3;
+}
+
+// Semantic role a time track plays in playback and synchronization.
+enum TimeTrackRole {
+  // No semantic role has been declared. Unknown provenance.
+  TIME_TRACK_ROLE_UNSPECIFIED = 0;
+
+  // Time when a container / sink recorded payload.
+  TIME_TRACK_ROLE_LOG_TIME = 1;
+
+  // Time when a producer emitted or published a record.
+  TIME_TRACK_ROLE_PUBLISH_TIME = 2;
+
+  // Time when a sensor or producer captured the measurement.
+  TIME_TRACK_ROLE_CAPTURE_TIME = 3;
+
+  // Ordinal sample position rather than a measured time.
+  // Use case: datasets or episodes whose natural clock is row or frame index.
+  TIME_TRACK_ROLE_SAMPLE_INDEX = 4;
+}
+
+// Whether time-track values are known to be ordered in their declared scope.
+enum TimeSortOrder {
+  // No ordering contract has been declared.
+  TIME_SORT_ORDER_UNSPECIFIED = 0;
+
+  // The adapter did not verify ordering.
+  // Avoid assuming binary search or streaming cursor safety.
+  TIME_SORT_ORDER_UNKNOWN = 1;
+
+  // Values never decrease (but may stay constant) within the declared scope.
+  // Allows for efficient seeking and range queries.
+  TIME_SORT_ORDER_MONOTONIC = 2;
+
+  // Values may move backward within the declared scope.
+  // Scan, index, or sort before exact seeking or range filtering.
+  TIME_SORT_ORDER_UNSORTED = 3;
+}
+
+// Scope over which TimeSortOrder applies.
+enum TimeSortScope {
+  // No ordering scope has been declared.
+  TIME_SORT_SCOPE_UNSPECIFIED = 0;
+
+  // Ordering applies across the entire scene.
+  // Use case: global clocks, global sample indexes.
+  TIME_SORT_SCOPE_SCENE = 1;
+
+  // Ordering applies independently within each stream.
+  // Use case: camera, lidar, audio, telemetry, and annotation streams.
+  TIME_SORT_SCOPE_STREAM = 2;
+
+  // Ordering applies only within each segment or shard.
+  // Use case: chunked logs, parquet row groups, files, or episode partitions.
+  TIME_SORT_SCOPE_SEGMENT = 3;
+}
+
+// Policy for selecting the frame that represents a playback clock value.
+enum PlaybackSyncMode {
+  // No frame-selection policy has been declared.
+  PLAYBACK_SYNC_MODE_UNSPECIFIED = 0;
+
+  // Choose the record closest to the playback clock value.
+  PLAYBACK_SYNC_MODE_NEAREST = 1;
+
+  // Choose only records exactly matching the clock value.
+  PLAYBACK_SYNC_MODE_STRICT = 2;
+
+  // Choose the newest record at or before the clock value.
+  PLAYBACK_SYNC_MODE_LATEST = 3;
+}
+
+// Initial panel renderer selected for a playback view.
+enum PanelKind {
+  // No panel renderer has been selected.
+  PANEL_KIND_UNSPECIFIED = 0;
+
+  // Two-dimensional raster or image-like viewer.
+  // Use case: cameras, videos, masks, heatmaps, and image overlays.
+  PANEL_KIND_IMAGE = 1;
+
+  // Three-dimensional scene viewer.
+  // Use case: point clouds, meshes, trajectories, poses, and frustums.
+  PANEL_KIND_THREE_D = 2;
+
+  // Scalar or vector values plotted over a time track.
+  // Use case: telemetry, sensor values, metrics, and control signals.
+  PANEL_KIND_TIMESERIES = 3;
+
+  // Geospatial or plan-view renderer.
+  // Use case: GPS traces, routes, occupancy maps, and ground-plane tracks.
+  PANEL_KIND_MAP = 4;
+
+  // Structured rows and fields rendered as a table.
+  // Use case: metadata, detections, events, decoded fields, and summaries.
+  PANEL_KIND_TABLE = 5;
+
+  // Source-level record inspector.
+  // Use case: debugging record headers, payloads, schemas, and decode output.
+  PANEL_KIND_RAW_RECORDS = 6;
+}
+
+// Role a stream plays within a panel.
+enum PanelStreamRole {
+  // No panel-local stream role has been declared.
+  PANEL_STREAM_ROLE_UNSPECIFIED = 0;
+
+  // Main stream that the panel is centered around.
+  // Use case: the image, point cloud, plot series, map layer, or table source.
+  PANEL_STREAM_ROLE_PRIMARY = 1;
+
+  // Secondary stream that provides context.
+  // Use case: reference telemetry, legends, background layers, or side data.
+  PANEL_STREAM_ROLE_SUPPORT = 2;
+
+  // Stream drawn on top of a primary visual stream.
+  // Use case: boxes, masks, keypoints, labels, tracks, and annotations.
+  PANEL_STREAM_ROLE_OVERLAY = 3;
+
+  // Stream that updates coordinate-frame relationships.
+  // Use case: poses, transforms, ego motion, and frame graph updates.
+  PANEL_STREAM_ROLE_TRANSFORM = 4;
+
+  // Stream that supplies projection or sensor calibration.
+  // Use case: intrinsics, extrinsics, distortion, and sensor models.
+  PANEL_STREAM_ROLE_CALIBRATION = 5;
+}
+
+// Container type for the initial playback layout tree.
+enum LayoutContainerKind {
+  // No layout container type has been selected.
+  LAYOUT_CONTAINER_KIND_UNSPECIFIED = 0;
+
+  // Arrange children as equally weighted tiles.
+  // Use case: Several peer panels.
+  LAYOUT_CONTAINER_KIND_GRID = 1;
+
+  // Arrange children left to right.
+  // Use case: side-by-side comparison or main view plus side panel.
+  LAYOUT_CONTAINER_KIND_HORIZONTAL = 2;
+
+  // Arrange children top to bottom.
+  // Use case: media above timeline, chart, table, or diagnostics panel.
+  LAYOUT_CONTAINER_KIND_VERTICAL = 3;
+
+  // Show one child at a time behind tabs.
+  // Use case: alternate views that should not consume space simultaneously.
+  LAYOUT_CONTAINER_KIND_TABS = 4;
+}
+
+// Range of values on a time track. The active TimeTrack.type determines
+// whether values are sequence numbers, duration nanoseconds, or epoch
+// timestamp nanoseconds.
+message TimeValueRange {
+  // Inclusive lower bound.
+  int64 start = 1 [jstype = JS_STRING];
+
+  // Optional exclusive upper bound.
+  optional int64 end = 2 [jstype = JS_STRING];
+}
+
+// Named time axis available for playback, synchronization, and seeking.
+message TimeTrack {
+  // Stable identifier referenced by clocks, streams, and panels.
+  string time_track_id = 1;
+
+  // Physical value type carried by this track.
+  TimeTrackType type = 2;
+
+  // Semantic meaning of this track.
+  TimeTrackRole role = 3;
+
+  // Human-readable label for UI controls.
+  string display_name = 4;
+
+  // Adapter-native path or column name, such as "header.stamp" or
+  // "row_index". This is provenance only; clients should reference
+  // time_track_id for playback behavior.
+  optional string source_path = 5;
+
+  // Stream that owns this track when the track is stream-local. Omitted for
+  // scene-wide tracks.
+  optional string stream_id = 6;
+
+  // Value bounds for this track.
+  TimeValueRange value_range = 7;
+
+  // How values are ordered within sort_scope.
+  TimeSortOrder sort_order = 8;
+
+  // Scope over which sort_order was evaluated.
+  TimeSortScope sort_scope = 9;
+
+  // Adapter-provided metadata that does not affect playback semantics.
+  map<string, string> metadata = 10;
+}
+
+// Global playback clock defaults for the scene.
+message PlaybackClock {
+  // Time tracks exposed by the shared playback clock.
+  repeated string time_track_ids = 1;
+
+  // Time track selected by default for the shared playback clock.
+  string default_time_track_id = 2;
+
+  // Playback window on default_time_track_id. This is the selected playable
+  // range or initial viewport, not the source extent. It may be a clipped
+  // subset of the referenced TimeTrack.value_range, for example when a planner
+  // wants the initial view to open on one episode, clip, or interesting
+  // interval inside a larger source. If unset, clients should use the default
+  // time track's full value_range.
+  TimeValueRange value_range = 3;
+
+  // Optional initial playhead value on default_time_track_id. This is a single
+  // starting position, not a range; if set, it should fall inside this clock's
+  // playback window, or inside the default TimeTrack.value_range when
+  // value_range is unset.
+  optional int64 start_value = 4 [jstype = JS_STRING];
+
+  // Initial playback speed multiplier. Clients should default to 1.0 if unset.
+  optional float playback_rate = 5;
+
+  // Default frame selection policy for synchronized panels.
+  PlaybackSyncMode sync_mode = 6;
+
+  // Whether playback loops over the selected playback window.
+  bool loop = 7;
+}
+
+// Playback-specific stream policy derived from scene inventory.
+message StreamPlaybackSpec {
+  // Stream this playback spec applies to.
+  string stream_id = 1;
+
+  // Optional runtime decoder hint for this stream.
+  optional string decoder_id = 2;
+
+  // Time tracks available on this stream.
+  repeated string time_track_ids = 3;
+
+  // Time track selected by default for this stream.
+  string default_time_track_id = 4;
+
+  // Planner-provided metadata that does not belong in source inventory.
+  map<string, string> metadata = 5;
+}
+
+// Binding between a stream and a panel.
+message PanelStreamBinding {
+  // Stream selected from SceneInventory.
+  string stream_id = 1;
+
+  // Role the stream plays inside the panel.
+  PanelStreamRole role = 2;
+
+  // Optional panel-local display label.
+  optional string display_name = 3;
+
+  // Optional coordinate frame used for panel-local rendering.
+  optional string coordinate_frame_id = 4;
+
+  // Optional field path within a stream for scalar plots and tables.
+  optional string field_path = 5;
+}
+
+// Settings for PANEL_KIND_IMAGE.
+message ImagePanelSettings {
+  // Optional image fit mode, such as contain, cover, or original.
+  optional string fit_mode = 1;
+
+  // Overlay stream ids that should be enabled when the panel opens.
+  repeated string enabled_overlay_stream_ids = 2;
+}
+
+// Settings for PANEL_KIND_THREE_D.
+message ThreeDPanelSettings {
+  // Optional camera preset or saved view identifier.
+  optional string camera_preset = 1;
+
+  // Optional field path used to color renderable geometry.
+  optional string color_by_field = 2;
+}
+
+// Settings for PANEL_KIND_TIMESERIES.
+message TimeseriesPanelSettings {
+  // Optional time track used for the x axis.
+  optional string x_time_track_id = 1;
+
+  // Field paths plotted as y-axis series when the panel opens.
+  repeated string y_field_paths = 2;
+}
+
+// Settings for PANEL_KIND_MAP.
+message MapPanelSettings {
+  // Optional base layer identifier selected when the panel opens.
+  optional string base_layer = 1;
+}
+
+// Settings for PANEL_KIND_TABLE.
+message TablePanelSettings {
+  // Field paths shown as initial table columns.
+  repeated string column_paths = 1;
+}
+
+// Settings for PANEL_KIND_RAW_RECORDS.
+message RawRecordsPanelSettings {
+  // Whether payload previews should be expanded when the panel opens.
+  optional bool show_payload_preview = 1;
+}
+
+// Typed settings for the selected panel renderer. If set, the oneof
+// case should match PanelSpec.kind.
+message PanelSettings {
+  oneof kind {
+    ImagePanelSettings image = 1;
+    ThreeDPanelSettings three_d = 2;
+    TimeseriesPanelSettings timeseries = 3;
+    MapPanelSettings map = 4;
+    TablePanelSettings table = 5;
+    RawRecordsPanelSettings raw_records = 6;
+
+    // Extension settings for plugin, custom, or experimental panel renderers
+    // whose stable typed settings have not been added to this contract yet.
+    google.protobuf.Struct renderer_extension = 100;
+  }
+}
+
+// Initial panel specification for a playback plan.
+message PanelSpec {
+  // Stable identifier referenced by the layout tree.
+  string panel_id = 1;
+
+  // Renderer family selected for this panel.
+  PanelKind kind = 2;
+
+  // Initial title shown in the panel chrome.
+  string title = 3;
+
+  // Streams used by this panel.
+  repeated PanelStreamBinding streams = 4;
+
+  // Optional typed settings for this panel. The selected settings case
+  // should match kind; if unset, the renderer should use its defaults.
+  PanelSettings settings = 5;
+}
+
+// Leaf layout node that points at a panel.
+message PanelLayout {
+  // PanelSpec.panel_id rendered at this node.
+  string panel_id = 1;
+}
+
+// Container layout node with child nodes.
+message ContainerLayout {
+  // Container arrangement.
+  LayoutContainerKind kind = 1;
+
+  // Child nodes in display order.
+  repeated LayoutNode children = 2;
+
+  // Relative child sizes for split-like containers. If set, values should
+  // match children by index; clients may normalize them and should default to
+  // equal sizes when unset.
+  repeated float child_weights = 3;
+
+  // Active child node for LAYOUT_CONTAINER_KIND_TABS.
+  optional string active_child_node_id = 4;
+}
+
+// Recursive initial layout tree for playback panels.
+message LayoutNode {
+  // Stable node identifier.
+  string node_id = 1;
+
+  // Optional node title for tabs or named layout regions.
+  optional string title = 2;
+
+  // Whether this node is visible. Clients should default to true if unset.
+  optional bool visible = 3;
+
+  oneof content {
+    PanelLayout panel = 4;
+    ContainerLayout container = 5;
+  }
+}
+
+// Planner-produced initial playback workspace for one scene inventory. It should
+// describe the default view a client can open, not the client's mutable runtime UI state.
+message PlaybackPlan {
+  // Stable immutable identifier for this generated plan instance.
+  string plan_id = 1;
+
+  // SceneInventory.scene_id this plan was resolved from.
+  // scene.
+  string scene_id = 2;
+
+  // Semantic version of the playback-plan contract used by the producer.
+  string plan_version = 3;
+
+  // Initial shared playback clock configuration.
+  PlaybackClock clock = 4;
+
+  // Named time axes available for clock control, seeking, and stream
+  // synchronization.
+  repeated TimeTrack time_tracks = 5;
+
+  // Playback-specific hints for streams from SceneInventory.streams.
+  repeated StreamPlaybackSpec streams = 6;
+
+  // Panels available to the initial workspace. Panel ids should be unique
+  // within the plan; layout leaves reference these ids.
+  repeated PanelSpec panels = 7;
+
+  // Root of the initial panel layout tree. The tree is intentionally generic:
+  // clients may adapt it any tiled layout implementation.
+  LayoutNode root_layout = 8;
+
+  // RFC 3339 timestamp describing when this plan was produced. This is planner
+  // provenance for caching and debugging.
+  string produced_at = 9;
+
+  // Planner name and version that produced this plan, such as an adapter,
+  // service, or rule set identifier.
+  string produced_by = 10;
+}
+
+// User-authored playback workspace state derived from a PlaybackPlan. This is
+// the shape to persist when a user rearranges panels, changes panel settings,
+// or adjusts the playback workspace. Unlike PlaybackPlan, this is not produced
+// by a source adapter or planner and should not duplicate immutable source
+// inventory, time-track definitions, or stream playback hints from the base
+// plan.
+message PlaybackWorkspaceState {
+  // SceneInventory.scene_id this workspace state applies to.
+  string scene_id = 1;
+
+  // PlaybackPlan.plan_id of the generated plan this user state was derived
+  // from. This is the primary relationship between persisted user state and the
+  // generated defaults it customizes.
+  string base_plan_id = 2;
+
+  // Current shared playback clock state for the workspace. The time-track ids
+  // referenced here should come from the base PlaybackPlan.time_tracks.
+  PlaybackClock clock = 3;
+
+  // Current panel set after user edits. Panel ids should be unique within this
+  // workspace state; layout leaves reference these ids.
+  repeated PanelSpec panels = 4;
+
+  // Current user-arranged layout tree.
+  LayoutNode root_layout = 5;
+
+  // RFC 3339 timestamp describing when this workspace state was last persisted.
+  // This is user-state provenance, not scene capture time or base-plan
+  // production time.
+  string updated_at = 6;
+
+  // Optional actor, service, or principal that last persisted this workspace state.
+  optional string updated_by = 7;
+}
