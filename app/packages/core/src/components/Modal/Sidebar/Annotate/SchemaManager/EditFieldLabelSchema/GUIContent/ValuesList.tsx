@@ -3,12 +3,18 @@
  */
 
 import {
+  Align,
   Button,
+  FormField,
   Icon,
   IconName,
   Input,
+  Justify,
+  Orientation,
   RichList,
   Size,
+  Spacing,
+  Stack,
   Text,
   TextColor,
   textColorClass,
@@ -112,14 +118,11 @@ const ValuesList = ({
   };
 
   return (
-    <div>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: subtitle ? "0.25rem" : "0.5rem",
-        }}
+    <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
+      <Stack
+        orientation={Orientation.Row}
+        justify={Justify.Between}
+        align={Align.Center}
       >
         <Text
           variant={largeLabels ? TextVariant.Lg : TextVariant.Md}
@@ -138,56 +141,40 @@ const ValuesList = ({
             Add
           </Button>
         )}
-      </div>
+      </Stack>
       {subtitle && (
-        <Text
-          variant={TextVariant.Sm}
-          color={TextColor.Secondary}
-          style={{ marginBottom: "0.5rem" }}
-        >
+        <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
           {subtitle}
         </Text>
       )}
       {!readOnly && (
-        <>
-          <Input
-            type={isNumeric ? "number" : "text"}
-            value={newValue}
-            onChange={handleChange}
-            onKeyDown={handleKeyDown}
-            placeholder={isNumeric ? "Enter a number" : "Enter a value"}
-            error={!!inputError}
-          />
-          {inputError && (
-            <Text
-              variant={TextVariant.Sm}
-              color={TextColor.Destructive}
-              style={{ marginTop: 4 }}
-            >
-              {inputError}
-            </Text>
-          )}
-        </>
+        <FormField
+          control={
+            <Input
+              type={isNumeric ? "number" : "text"}
+              value={newValue}
+              onChange={handleChange}
+              onKeyDown={handleKeyDown}
+              placeholder={isNumeric ? "Enter a number" : "Enter a value"}
+              error={!!inputError}
+            />
+          }
+          error={inputError ?? undefined}
+        />
       )}
       {values.length > 0 && (
-        <div style={{ marginTop: "0.5rem" }}>
-          <RichList
-            listItems={valueListItems}
-            draggable={!readOnly}
-            onOrderChange={readOnly ? undefined : handleOrderChange}
-          />
-        </div>
+        <RichList
+          listItems={valueListItems}
+          draggable={!readOnly}
+          onOrderChange={readOnly ? undefined : handleOrderChange}
+        />
       )}
       {error && (
-        <Text
-          variant={TextVariant.Sm}
-          color={TextColor.Destructive}
-          style={{ marginTop: 4 }}
-        >
+        <Text variant={TextVariant.Sm} color={TextColor.Destructive}>
           {error}
         </Text>
       )}
-    </div>
+    </Stack>
   );
 };
 

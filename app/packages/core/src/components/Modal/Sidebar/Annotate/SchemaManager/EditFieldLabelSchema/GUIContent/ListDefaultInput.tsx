@@ -3,7 +3,14 @@
  * Supports multiple values with freeSolo for custom input.
  */
 
-import { Text, TextColor, TextVariant } from "@voxel51/voodo";
+import {
+  Orientation,
+  Spacing,
+  Stack,
+  Text,
+  TextColor,
+  TextVariant,
+} from "@voxel51/voodo";
 import { useMemo } from "react";
 import AutocompleteView from "../../../../../../../plugins/SchemaIO/components/AutocompleteView";
 import { deduplicateValues, parseNumericValues } from "../../utils";
@@ -56,7 +63,7 @@ const ListDefaultInput = ({
   };
 
   return (
-    <div>
+    <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
       <AutocompleteView
         schema={schema}
         data={values}
@@ -64,15 +71,11 @@ const ListDefaultInput = ({
         path="listDefault"
       />
       {error && (
-        <Text
-          variant={TextVariant.Sm}
-          color={TextColor.Destructive}
-          style={{ marginTop: 4 }}
-        >
+        <Text variant={TextVariant.Sm} color={TextColor.Destructive}>
           {error}
         </Text>
       )}
-    </div>
+    </Stack>
   );
 };
 
