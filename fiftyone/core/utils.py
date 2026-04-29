@@ -771,7 +771,20 @@ class LazyModule(types.ModuleType):
         self._module = None
         self._callback = callback
 
+    def __repr__(self):
+        if self._module is not None:
+            return repr(self._module)
+
+        return f"<module '{self.__name__}' (lazy)>"
+
     def __getattr__(self, item):
+        # Sphinx probes this marker while filtering autodoc members.
+        # We need special handling for Sphinx, as it will look for the
+        # __sphinx_mock__ attribute on all module-level objects, and we need
+        # that to raise an AttributeError to not err out
+        if item == "__sphinx_mock__":
+            raise AttributeError(item)
+
         if self._module is None:
             self._import_module()
 
