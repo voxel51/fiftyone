@@ -68,7 +68,7 @@ const AttributeFormContent = ({
   } = useAttributeForm({ formState, onFormStateChange });
 
   return (
-    <Stack orientation={Orientation.Column} spacing={Spacing.Lg}>
+    <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
       {/* Name field */}
       {isEditing ? (
         <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
@@ -150,11 +150,45 @@ const AttributeFormContent = ({
 
       {/* Conditional visibility from ontology (read-only, only shown when present) */}
       {appearsWhen && (
-        <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
-          <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
+        <Stack
+          orientation={Orientation.Row}
+          spacing={Spacing.Sm}
+          style={{ overflow: "hidden" }}
+        >
+          <Text
+            variant={TextVariant.Lg}
+            color={TextColor.Secondary}
+            style={{ whiteSpace: "nowrap", flexShrink: 0 }}
+          >
             Appears when:
           </Text>
-          <Text variant={TextVariant.Lg}>{appearsWhen}</Text>
+          <div
+            style={{
+              display: "flex",
+              overflow: "hidden",
+              minWidth: 0,
+            }}
+          >
+            <Text
+              variant={TextVariant.Lg}
+              style={{
+                overflow: "hidden",
+                whiteSpace: "nowrap",
+                textOverflow: "ellipsis",
+                minWidth: 0,
+              }}
+            >
+              {appearsWhen.condition}
+            </Text>
+            {appearsWhen.suffix && (
+              <Text
+                variant={TextVariant.Lg}
+                style={{ whiteSpace: "nowrap", flexShrink: 0 }}
+              >
+                {appearsWhen.suffix}
+              </Text>
+            )}
+          </div>
         </Stack>
       )}
 

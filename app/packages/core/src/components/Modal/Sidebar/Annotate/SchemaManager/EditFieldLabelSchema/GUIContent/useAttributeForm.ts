@@ -31,7 +31,7 @@ interface UseAttributeFormResult {
   isIntegerType: boolean;
   isListType: boolean;
   isFromOntology: boolean;
-  appearsWhen: string | null;
+  appearsWhen: { condition: string; suffix: string | null } | null;
   supportsDefault: boolean;
   componentOptions: Array<{ id: string; label: string; icon: IconName }>;
 
@@ -80,12 +80,13 @@ export default function useAttributeForm({
       return `${condition.field} = '${condition.value}'`;
     };
 
-    const firstStr = formatCondition(conditions[0]);
-    if (conditions.length === 1) return firstStr;
+    const condition = formatCondition(conditions[0]);
+    if (conditions.length === 1) return { condition, suffix: null };
     const remaining = conditions.length - 1;
-    return `${firstStr}, or ${remaining} other condition${
+    const suffix = `, or ${remaining} other condition${
       remaining !== 1 ? "s" : ""
     }`;
+    return { condition, suffix };
   }, [formState.when]);
   const supportsDefault = !NO_DEFAULT_TYPES.includes(formState.type);
   const componentOptions = COMPONENT_OPTIONS[formState.type] || [];
