@@ -4,6 +4,7 @@
  */
 
 import {
+  FormField,
   Input,
   Orientation,
   Select,
@@ -68,7 +69,7 @@ const AttributeFormContent = ({
   } = useAttributeForm({ formState, onFormStateChange });
 
   return (
-    <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
+    <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
       {/* Name field */}
       {isEditing ? (
         <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
@@ -78,31 +79,19 @@ const AttributeFormContent = ({
           <Text variant={TextVariant.Lg}>{formState.name}</Text>
         </Stack>
       ) : (
-        <div>
-          <Text
-            variant={TextVariant.Md}
-            color={TextColor.Secondary}
-            style={{ marginBottom: "0.5rem" }}
-          >
-            Name
-          </Text>
-          <Input
-            value={formState.name}
-            onChange={(e) => handleNameChange(e.target.value)}
-            placeholder="Attribute name"
-            error={!!nameError}
-            autoFocus
-          />
-          {nameError && (
-            <Text
-              variant={TextVariant.Sm}
-              color={TextColor.Destructive}
-              style={{ marginTop: 4 }}
-            >
-              {nameError}
-            </Text>
-          )}
-        </div>
+        <FormField
+          label="Name"
+          control={
+            <Input
+              value={formState.name}
+              onChange={(e) => handleNameChange(e.target.value)}
+              placeholder="Attribute name"
+              error={!!nameError}
+              autoFocus
+            />
+          }
+          error={nameError ?? undefined}
+        />
       )}
 
       {/* Attribute type dropdown */}
@@ -116,26 +105,22 @@ const AttributeFormContent = ({
           </Text>
         </Stack>
       ) : (
-        <div>
-          <Text
-            variant={TextVariant.Md}
-            color={TextColor.Secondary}
-            style={{ marginBottom: "0.5rem" }}
-          >
-            Attribute type
-          </Text>
-          <Select
-            exclusive
-            portal
-            value={formState.type}
-            onChange={(value) => {
-              if (typeof value === "string") {
-                handleTypeChange(value);
-              }
-            }}
-            options={ATTRIBUTE_TYPE_OPTIONS}
-          />
-        </div>
+        <FormField
+          label="Attribute type"
+          control={
+            <Select
+              exclusive
+              portal
+              value={formState.type}
+              onChange={(value) => {
+                if (typeof value === "string") {
+                  handleTypeChange(value);
+                }
+              }}
+              options={ATTRIBUTE_TYPE_OPTIONS}
+            />
+          }
+        />
       )}
 
       {/* Ontology source (read-only, only shown when present) */}
@@ -213,27 +198,23 @@ const AttributeFormContent = ({
       </div>
 
       {/* Component type buttons */}
-      <div>
-        <Text
-          variant={TextVariant.Md}
-          color={TextColor.Secondary}
-          style={{ marginBottom: "0.5rem" }}
-        >
-          Input type
-        </Text>
-        <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
-          {componentOptions.map((opt) => (
-            <ComponentTypeButton
-              key={opt.id}
-              icon={opt.icon}
-              label={opt.label}
-              isSelected={formState.component === opt.id}
-              onClick={() => handleComponentChange(opt.id)}
-              disabled={isFromOntology}
-            />
-          ))}
-        </Stack>
-      </div>
+      <FormField
+        label="Input type"
+        control={
+          <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
+            {componentOptions.map((opt) => (
+              <ComponentTypeButton
+                key={opt.id}
+                icon={opt.icon}
+                label={opt.label}
+                isSelected={formState.component === opt.id}
+                onClick={() => handleComponentChange(opt.id)}
+                disabled={isFromOntology}
+              />
+            ))}
+          </Stack>
+        }
+      />
 
       {/* Values list */}
       {showValues && (
@@ -264,25 +245,19 @@ const AttributeFormContent = ({
 
       {/* Default value - only for types that support it */}
       {supportsDefault && (
-        <div>
-          <Text
-            variant={TextVariant.Md}
-            color={TextColor.Secondary}
-            style={{ marginBottom: "0.5rem" }}
-          >
-            Default (optional)
-          </Text>
-          {isListType ? (
-            <ListDefaultInput
-              values={formState.listDefault || []}
-              onChange={handleListDefaultChange}
-              choices={showValues ? formState.values : []}
-              isNumeric={isNumericType}
-              error={defaultError}
-              readOnly={isFromOntology}
-            />
-          ) : (
-            <>
+        <FormField
+          label="Default (optional)"
+          control={
+            isListType ? (
+              <ListDefaultInput
+                values={formState.listDefault || []}
+                onChange={handleListDefaultChange}
+                choices={showValues ? formState.values : []}
+                isNumeric={isNumericType}
+                error={defaultError}
+                readOnly={isFromOntology}
+              />
+            ) : (
               <Input
                 type={isNumericType ? "number" : "text"}
                 value={formState.default}
@@ -291,18 +266,10 @@ const AttributeFormContent = ({
                 error={!!defaultError}
                 disabled={isFromOntology}
               />
-              {defaultError && (
-                <Text
-                  variant={TextVariant.Sm}
-                  color={TextColor.Destructive}
-                  style={{ marginTop: 4 }}
-                >
-                  {defaultError}
-                </Text>
-              )}
-            </>
-          )}
-        </div>
+            )
+          }
+          error={!isListType ? defaultError ?? undefined : undefined}
+        />
       )}
     </Stack>
   );
