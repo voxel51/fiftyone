@@ -3,6 +3,79 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.18.0
+--------------------------
+*Released April 30, 2026*
+
+Includes all updates from :ref:`FiftyOne 1.15.0 <release-notes-v1.15.0>`, plus:
+
+Core
+
+- New feature: `Enterprise service accounts
+  <https://docs.voxel51.com/enterprise/roles_and_permissions.html#enterprise-service-accounts>`_.
+  Non-human principals designed for programmatic, automated, or
+  machine-to-machine access to FiftyOne Enterprise.
+- Fixed a bug where nonstandard file prefixes could cause a deployment to hang
+  indefinitely and crash silently.
+- Fixed a misleading error on the login page.
+
+Orchestrators
+
+- Added an Orchestrators page to Settings in the App, featuring a list of all
+  configured :ref:`Orchestrators <enterprise-delegated-orchestrator>` and links
+  for admins to deploy new orchestrators.
+- The App will automatically select an orchestrator, rather than defaulting to
+  immediate execution, if your operator defines `default_choice_to_delegated` as
+  true and allows immediate execution.
+
+Operators
+
+- Removed immediate execution for the following :ref:`Operators <using-operators>`:
+  `compute_aspect_ratio`, `compute_blurriness`, `compute_brightness`,
+  `compute_entropy`, `compute_exact_duplicates`, `compute_near_duplicates`,
+  `compute_visualization`, `evaluate_model`, `evaluate_model_async`.
+
+App
+
+- Added live log-tail support for
+  :ref:`delegated operations <enterprise-delegated-operations>` on the Runs
+  page. Logs will now stream during operation execution.
+- Added more metrics to delegated operation logs to assist with debugging
+  resource usage.
+- Updated runs under "Your recent runs" on the datasets list page to display
+  run status and timestamp, rather than the user's name.
+- Added run status to runs under "Recent runs" on the Runs page.
+
+.. _release-notes-v1.15.0:
+
+FiftyOne 1.15.0
+---------------
+*Released April 30, 2026*
+
+App
+
+- New feature: `Similarity Search Panel
+  <https://docs.voxel51.com/user_guide/app.html#app-similarity-search-panel>`_.
+  Create new similarity searches with selected or uploaded images, or text as
+  prompts. Alt-click (option-click) in the grid to select samples as negative
+  examples.
+
+3D
+
+- App now supports usage of direct 3D media in FiftyOne samples. Whereas
+  previously you'd have to wrap your 3D media in FO3D, FiftyOne now can natively
+  render formats like gltf/glb, fbx, ply, pcd, and stl so long as `media_type`
+  is declared as `3d`.
+- Both App and SDK can now automatically resolve unambiguous `source -> world`
+  static transforms through intermediate frames.
+
+Plugins
+
+- Added support for plugin-driven `custom media renderers in the App
+  <https://docs.voxel51.com/plugins/developing_plugins.html#custom-sample-renderers>`_,
+  enabling personalized rendering of media files in grid and modal views.
+  `#7164 <https://github.com/voxel51/fiftyone/pull/7164>`_
+
 FiftyOne Enterprise 2.17.2
 --------------------------
 *Released April 22, 2026*
