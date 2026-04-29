@@ -33,16 +33,18 @@ logger = logging.getLogger(__name__)
 
 
 def _sam2_image_transform(img):
-    """Transforms image for SAM2 model input.
+    """Transforms image for SAM3 model input.
 
     Args:
-        img: a uint8 numpy array containing image in HWC format
+        img: a PIL or a uint8 numpy array containing image in HWC format
 
     Returns:
-        a uint8 numpy array containing image in HWC format
+        a PIL image or a uint8 numpy array containing image in HWC format
         a tuple containing original image dimensions
     """
-    return img, img.shape[:2]
+    if isinstance(img, np.ndarray):
+        return img, img.shape[:2]
+    return img, img.size[::-1]
 
 
 def _sam2_box_transform(boxes_xyxy, orig_hw, resolution):

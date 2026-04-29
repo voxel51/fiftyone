@@ -93,20 +93,7 @@ class _SAM3Predictor(fosam2._SAM2Predictor):
             if hasattr(self.processor, "_transforms")
             else sam2ip.SAM2Transforms(model.image_size, mask_threshold=0)
         )
-
-    def image_transform(self, img):
-        """Transforms image for SAM3 model input.
-
-        Args:
-            img: a PIL or a uint8 numpy array containing image in HWC format
-
-        Returns:
-            a PIL image or a uint8 numpy array containing image in HWC format
-            a tuple containing original image dimensions
-        """
-        if isinstance(img, np.ndarray):
-            return super().image_transform(img)
-        return img, img.size[::-1]
+        self.resolution = float(self.sam_transforms.resolution)
 
 
 class SegmentAnything3ImageGetItem(fosam.SegmentAnythingImageGetItem):
@@ -137,15 +124,16 @@ class SegmentAnything3ImageGetItem(fosam.SegmentAnythingImageGetItem):
         operation_mode="concept",
         **kwargs,
     ):
+        self.text_prompts = text_prompts
+        self.operation_mode = operation_mode
         super().__init__(
             field_mapping=field_mapping,
             transform=transform,
             use_numpy=use_numpy,
             box_transform=box_transform,
             point_transform=point_transform,
+            **kwargs,
         )
-        self.text_prompts = text_prompts
-        self.operation_mode = operation_mode
 
     def __call__(self, d):
         """Prepares the model input for a given sample's data.
@@ -337,12 +325,12 @@ class SegmentAnything3ImageModel(fosam.SegmentAnythingModel):
             repo_id="facebook/sam3",
             filename=os.path.basename(config.model_path),
             local_dir=os.path.dirname(config.model_path),
-            local_dir_use_symlinks=False,
         )
 
     def _build_concept_output_processor(self, config):
         kwargs = config.output_processor_args or {}
-        # NOTE: Add new config params for concept output processor, if needed for more configurability.
+        # NOTE: Add params for concept output processor to SegmentAnything3ImageModelConfig
+        # if needed for more configurability.
         return SAM3ConceptSegmenterOutputProcessor(
             classes=None, mask_thresh=kwargs.get("mask_thresh", 0.5)
         )
@@ -354,6 +342,10 @@ class SegmentAnything3ImageModel(fosam.SegmentAnythingModel):
 
     @operation_mode.setter
     def operation_mode(self, value):
+        if value not in ["visual", "concept"]:
+            raise ValueError(
+                f"Operation mode can be either visual or concept. {value} is not supported."
+            )
         self._operation_mode = value
 
     @staticmethod
@@ -437,7 +429,9 @@ class SegmentAnything3ImageModel(fosam.SegmentAnythingModel):
                         ),
                         inference_metadata=sam3ds.InferenceMetadata(
                             original_image_id=img_idx,
-                            original_size=results["original_size"][::-1],
+                            original_size=results["original_size"][img_idx][
+                                ::-1
+                            ],
                             # dummy values
                             coco_image_id=img_idx,
                             original_category_id=1,
