@@ -98,8 +98,8 @@ export default function Edit() {
           <Position3d readOnly={isReadOnly} />
         )}
         {type === POLYLINE && <PolylineDetails />}
-        {type === KEYPOINT && <KeypointDetails />}
         {field && <AnnotationSchema readOnly={isReadOnly} />}
+        {type === KEYPOINT && <KeypointDetails />}
       </Content>
     </ContentContainer>
   );

@@ -3,43 +3,39 @@ import {
   KeypointAnnotationLabel,
   useGetKeypointSkeleton,
 } from "@fiftyone/state";
-import { Box } from "@mui/material";
+import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
+  Box,
+  Divider,
+} from "@mui/material";
 import {
   Align,
+  Icon,
+  IconName,
+  Justify,
   Orientation,
+  Size,
   Spacing,
   Stack,
   Text,
   TextColor,
-  Tooltip,
-  TooltipProps,
 } from "@voxel51/voodo";
 import { isEqual } from "lodash";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import { SchemaType } from "../../../../../plugins/SchemaIO/utils/types";
 import { generatePrimitiveSchema } from "./schemaHelpers";
 import { useAnnotationContext } from "./state";
-import { KeypointAttribute, useSelectedKeypoint } from "./useSelectedKeypoint";
-
-const ConditionalTooltip = ({
-  anchor,
-  children,
-  content,
-  enabled,
-}: Pick<TooltipProps, "anchor" | "children" | "content"> & {
-  enabled: boolean;
-}) => {
-  if (!enabled) {
-    return <>{children}</>;
-  }
-
-  return (
-    <Tooltip portal content={content} anchor={anchor}>
-      {children}
-    </Tooltip>
-  );
-};
+import {
+  getKeypointAttributes,
+  KeypointAttribute,
+  useSelectedKeypointIndex,
+  useSelectedKeypointOverlay,
+} from "./useSelectedKeypoint";
+import { useAnnotationSchemaContext } from "../state";
+import { LabelSchemaMeta } from "../useSchemaManager";
 
 /**
  * Schema attribute types are described as they appear on the parent label
@@ -184,11 +180,82 @@ const PerPointEditor = ({
   );
 };
 
+const PointRenderer = ({
+  label,
+  pointIndex,
+  pointName,
+  schema,
+  forceExpand,
+  onExpand,
+  onCollapse,
+}: {
+  label: KeypointAnnotationLabel["data"];
+  pointIndex: number;
+  pointName: string | null;
+  schema: LabelSchemaMeta;
+  forceExpand?: boolean;
+  onExpand?: () => void;
+  onCollapse?: () => void;
+}) => {
+  const [expanded, setExpanded] = useState<boolean>(false);
+
+  const keypointMeta = getKeypointAttributes(label, pointIndex, schema);
+  const totalPoints = label?.points?.length ?? 0;
+
+  // allow for controlled behavior to force expansion
+  useEffect(() => {
+    if (forceExpand) {
+      setExpanded(true);
+    }
+  }, [forceExpand]);
+
+  return (
+    <Accordion expanded={expanded} disableGutters>
+      <AccordionSummary
+        expandIcon={
+          <Icon
+            name={expanded ? IconName.ChevronTop : IconName.ChevronRight}
+            size={Size.Md}
+          />
+        }
+        onClick={() => {
+          if (!expanded) {
+            onExpand?.();
+          } else {
+            onCollapse?.();
+          }
+
+          setExpanded((prev) => !prev);
+        }}
+        sx={{ flexDirection: "row-reverse", gap: 1, alignItems: "center" }}
+      >
+        {pointName ? (
+          <Text>{pointName}</Text>
+        ) : (
+          <Text>Point {pointIndex + 1}</Text>
+        )}
+      </AccordionSummary>
+
+      <AccordionDetails>
+        <PerPointEditor
+          attributes={keypointMeta?.attributes}
+          pointCount={totalPoints}
+          pointIndex={pointIndex}
+          pointName={pointName}
+        />
+      </AccordionDetails>
+    </Accordion>
+  );
+};
+
 export const KeypointDetails = () => {
   const { selectedLabel } = useAnnotationContext();
   const currentData = selectedLabel?.data as KeypointAnnotationLabel["data"];
   const getKeypointSkeleton = useGetKeypointSkeleton();
-  const selectedKeypoint = useSelectedKeypoint();
+  const { labelSchema } = useAnnotationSchemaContext();
+  const fieldSchema = labelSchema?.[selectedLabel?.path];
+  const keypointOverlay = useSelectedKeypointOverlay();
+  const selectedPointIndex = useSelectedKeypointIndex();
 
   const keypointSkeleton = useMemo(() => {
     if (selectedLabel?.path) {
@@ -201,36 +268,50 @@ export const KeypointDetails = () => {
   const pointCount = currentData?.points?.length ?? 0;
 
   return (
-    <Box sx={{ py: 1 }}>
-      <Stack orientation={Orientation.Column} spacing={Spacing.Md}>
-        <Stack
-          orientation={Orientation.Row}
-          align={Align.Center}
-          spacing={Spacing.Sm}
-        >
-          <Text color={TextColor.Secondary}>
-            {keypointSkeleton?.edges?.length ?? 0} edges
-          </Text>
+    <>
+      <Divider />
+      <Box>
+        <Stack orientation={Orientation.Column} spacing={Spacing.Md}>
+          <Stack orientation={Orientation.Row} justify={Justify.Between}>
+            <Stack
+              orientation={Orientation.Row}
+              align={Align.Center}
+              spacing={Spacing.Sm}
+            >
+              <Text color={TextColor.Secondary}>POINTS</Text>
+            </Stack>
 
-          <Text color={TextColor.Secondary}>&bull;</Text>
+            <Text color={TextColor.Secondary}>{pointCount}</Text>
+          </Stack>
 
-          <ConditionalTooltip
-            enabled={keypointSkeleton?.labels?.length > 0}
-            content={<Text>{keypointSkeleton?.labels?.join(", ")}</Text>}
-          >
-            <Text color={TextColor.Secondary}>{pointCount} points</Text>
-          </ConditionalTooltip>
+          {pointCount > 0 && (
+            <Stack orientation={Orientation.Column} spacing={Spacing.None}>
+              {currentData.points.map((_, idx) => {
+                if (selectedLabel?.type !== "Keypoint") {
+                  return null;
+                }
+
+                return (
+                  <PointRenderer
+                    key={idx}
+                    label={currentData}
+                    pointIndex={idx}
+                    pointName={keypointSkeleton?.labels?.[idx]}
+                    schema={fieldSchema}
+                    forceExpand={idx === selectedPointIndex}
+                    onExpand={() => keypointOverlay?.setSelectedPointIndex(idx)}
+                    onCollapse={() => {
+                      if (idx === selectedPointIndex) {
+                        keypointOverlay?.setSelectedPointIndex(null);
+                      }
+                    }}
+                  />
+                );
+              })}
+            </Stack>
+          )}
         </Stack>
-
-        {selectedKeypoint && (
-          <PerPointEditor
-            pointIndex={selectedKeypoint.pointIndex}
-            pointCount={selectedKeypoint.pointCount}
-            attributes={selectedKeypoint.attributes}
-            pointName={keypointSkeleton?.labels?.[selectedKeypoint.pointIndex]}
-          />
-        )}
-      </Stack>
-    </Box>
+      </Box>
+    </>
   );
 };

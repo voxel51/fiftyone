@@ -10,6 +10,7 @@ import { useCallback, useMemo, useReducer } from "react";
 import { useAnnotationSchemaContext } from "../state";
 import type { AttributeConfig } from "../SchemaManager/utils";
 import { useAnnotationContext } from "./state";
+import { LabelSchemaMeta } from "../useSchemaManager";
 
 /**
  * Reserved label fields that should never be treated as per-point attributes
@@ -82,7 +83,7 @@ export interface KeypointAttribute {
   schema?: AttributeConfig;
 }
 
-export interface SelectedKeypoint {
+export interface KeypointMeta {
   /** Index of the sub-selected point on the keypoint overlay */
   pointIndex: number;
   /** Total number of points on the keypoint label */
@@ -90,6 +91,51 @@ export interface SelectedKeypoint {
   /** Per-point attributes inferred from the label data */
   attributes: KeypointAttribute[];
 }
+
+/**
+ * Get the per-point attributes for the provided point index.
+ *
+ * @param label Keypoint label containing source data
+ * @param pointIndex Point index
+ * @param schema Field schema
+ */
+export const getKeypointAttributes = (
+  label: KeypointAnnotationLabel["data"] | null,
+  pointIndex: number | null,
+  schema: LabelSchemaMeta | null
+): KeypointMeta | null => {
+  if (pointIndex === null) {
+    return null;
+  }
+
+  const points = label?.points;
+  if (!Array.isArray(points) || pointIndex >= points.length) {
+    return null;
+  }
+
+  const schemaAttributes =
+    (schema?.label_schema?.attributes as unknown as
+      | AttributeConfig[]
+      | undefined) ?? [];
+  const schemaByName = new Map(schemaAttributes.map((a) => [a.name, a]));
+
+  const perPointNames = getPerPointAttributeNames(label);
+  const attributes: KeypointAttribute[] = [];
+  for (const name of perPointNames) {
+    const list = (label as Record<string, unknown>)[name] as unknown[];
+    attributes.push({
+      name,
+      value: list[pointIndex],
+      schema: schemaByName.get(name),
+    });
+  }
+
+  return {
+    pointIndex,
+    pointCount: points.length,
+    attributes,
+  };
+};
 
 /**
  * Returns the currently active keypoint overlay (when a keypoint label is
@@ -150,48 +196,18 @@ export const useSelectedKeypointIndex = (): number | null => {
  * itself) is treated as a per-point list, per the FiftyOne keypoint
  * documentation.
  */
-export const useSelectedKeypoint = (): SelectedKeypoint | null => {
+export const useSelectedKeypoint = (): KeypointMeta | null => {
   const { selectedLabel } = useAnnotationContext();
-  const overlay = useSelectedKeypointOverlay();
   const pointIndex = useSelectedKeypointIndex();
   const { labelSchema } = useAnnotationSchemaContext();
 
   const fieldSchema = labelSchema?.[selectedLabel?.path];
 
   return useMemo(() => {
-    if (!overlay || pointIndex === null) {
+    if (selectedLabel?.type !== "Keypoint") {
       return null;
     }
 
-    const data = selectedLabel?.data as
-      | KeypointAnnotationLabel["data"]
-      | undefined;
-    const points = data?.points;
-    if (!Array.isArray(points) || pointIndex >= points.length) {
-      return null;
-    }
-
-    const schemaAttributes =
-      (fieldSchema?.label_schema?.attributes as unknown as
-        | AttributeConfig[]
-        | undefined) ?? [];
-    const schemaByName = new Map(schemaAttributes.map((a) => [a.name, a]));
-
-    const perPointNames = getPerPointAttributeNames(data);
-    const attributes: KeypointAttribute[] = [];
-    for (const name of perPointNames) {
-      const list = (data as Record<string, unknown>)[name] as unknown[];
-      attributes.push({
-        name,
-        value: list[pointIndex],
-        schema: schemaByName.get(name),
-      });
-    }
-
-    return {
-      pointIndex,
-      pointCount: points.length,
-      attributes,
-    };
-  }, [overlay, pointIndex, selectedLabel, fieldSchema]);
+    return getKeypointAttributes(selectedLabel?.data, pointIndex, fieldSchema);
+  }, [pointIndex, selectedLabel, fieldSchema]);
 };
