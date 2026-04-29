@@ -55,6 +55,13 @@ from .core.expressions import (
     ViewExpression,
     VALUE,
 )
+from .core.ontology import (
+    AnnotationOntology,
+    delete_ontology,
+    list_ontologies,
+    load_ontology,
+    ontology_exists,
+)
 from .core.fields import (
     flatten_schema,
     ArrayField,

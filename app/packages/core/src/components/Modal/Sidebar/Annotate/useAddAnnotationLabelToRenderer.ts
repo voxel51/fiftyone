@@ -1,6 +1,10 @@
-import { DetectionOverlay, useLighter } from "@fiftyone/lighter";
+import {
+  DetectionOverlay,
+  KeypointOverlay,
+  useLighter,
+} from "@fiftyone/lighter";
 import type { AnnotationLabel } from "@fiftyone/state";
-import { CLASSIFICATION, DETECTION } from "@fiftyone/utilities";
+import { CLASSIFICATION, DETECTION, KEYPOINT } from "@fiftyone/utilities";
 import { useCallback } from "react";
 
 /**
@@ -15,6 +19,8 @@ export const useAddAnnotationLabelToRenderer = () => {
         addOverlay(label.overlay);
       } else if (label.type === DETECTION) {
         addOverlay(label.overlay as DetectionOverlay);
+      } else if (label.type === KEYPOINT) {
+        addOverlay(label.overlay as KeypointOverlay);
       }
     },
     [addOverlay]

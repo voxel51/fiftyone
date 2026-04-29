@@ -36,6 +36,7 @@ const LABEL_LIST_INFO: Record<string, { listKey: string; type: LabelType }> = {
   Detections: { listKey: "detections", type: "Detection" },
   Classifications: { listKey: "classifications", type: "Classification" },
   Polylines: { listKey: "polylines", type: "Polyline" },
+  Keypoints: { listKey: "keypoints", type: "Keypoint" },
 };
 
 const handleSample = async ({
@@ -83,6 +84,7 @@ const handleSample = async ({
     "Classification",
     "Detection",
     "Polyline",
+    "Keypoint",
   ]);
 
   for (const schemaPath of schemas) {

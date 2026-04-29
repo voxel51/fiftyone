@@ -2,6 +2,8 @@ import {
   type BaseOverlay,
   DetectionOverlay,
   ClassificationOverlay,
+  KeypointOverlay,
+  type KeypointLabel,
   useLighter,
 } from "@fiftyone/lighter";
 import type { DetectionLabel } from "@fiftyone/looker";
@@ -69,9 +71,20 @@ const buildAnnotationLabel = (overlay: BaseOverlay): LabelProxy | undefined => {
     }
   } else if (overlay instanceof ClassificationOverlay) {
     const label = overlay.label as ClassificationLabel;
+
     if (label.label) {
       return {
         type: "Classification",
+        data: label,
+        path: overlay.field,
+      };
+    }
+  } else if (overlay instanceof KeypointOverlay) {
+    const label = overlay.label as KeypointLabel;
+
+    if (label.label) {
+      return {
+        type: "Keypoint",
         data: label,
         path: overlay.field,
       };
