@@ -21,20 +21,6 @@ export const normalizeData = (data: unknown): unknown => {
       }
     }
 
-    // Collapse Extended JSON $binary back to a plain base64 string so that
-    // json-patch diffs produce a flat `replace .../mask` operation instead
-    // of drilling into the $binary structure (which the server can't resolve).
-    if (typeof obj.$binary === "string") {
-      return obj.$binary;
-    }
-    if (
-      obj.$binary &&
-      typeof obj.$binary === "object" &&
-      typeof (obj.$binary as Record<string, unknown>).base64 === "string"
-    ) {
-      return (obj.$binary as Record<string, unknown>).base64 as string;
-    }
-
     // recursively normalize objects
     return Object.fromEntries(
       Object.entries(obj).map(([k, v]) => [k, normalizeData(v)])

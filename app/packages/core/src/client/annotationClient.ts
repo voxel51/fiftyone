@@ -178,16 +178,9 @@ export const patchSample = async (
     ? `${encodeURIPath(pathParts)}?${queryString}`
     : encodeURIPath(pathParts);
 
-  // Convert ObjectId strings and binary fields to Extended JSON so the server
-  // can deserialize them correctly.  For field-level patches (e.g. path
-  // "/detections/0/mask") the last path segment provides the field name context
-  // that toExtendedJson needs to identify special fields like "mask" and "_id".
-  const deltas = request.deltas.map((delta) => {
-    if (!("value" in delta)) return delta;
-
-    const fieldName = delta.path.split("/").pop();
-    return { ...delta, value: toExtendedJson(delta.value, fieldName) };
-  });
+  const deltas = request.deltas.map((delta) =>
+    "value" in delta ? { ...delta, value: toExtendedJson(delta.value) } : delta
+  );
 
   const response = await doFetch<JSONDeltas, Sample>({
     path: pathWithQuery,

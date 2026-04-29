@@ -118,10 +118,6 @@ export const toExtendedJson = (data: unknown, fieldName?: string): unknown => {
     return { $oid: data };
   }
 
-  if (typeof data === "string" && fieldName === "mask") {
-    return { $binary: data, $type: "00" };
-  }
-
   if (Array.isArray(data)) {
     return data.map((item) => toExtendedJson(item));
   }

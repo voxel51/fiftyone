@@ -32,7 +32,7 @@ const buildAnnotationLabel = (overlay: BaseOverlay): LabelProxy | undefined => {
     ];
 
     if (hasValidBounds(boundingBox)) {
-      // Strip transient editing flag and merge pending encoded mask
+      // Strip transient `isEditingMask` flag and merge pending encoded mask
       const {
         isEditingMask,
         mask: _mask,
@@ -49,10 +49,13 @@ const buildAnnotationLabel = (overlay: BaseOverlay): LabelProxy | undefined => {
       // in buildDetectionsMutationDelta overrides the existing value.
       const hadMask = _mask || _maskPath;
       const maskData = overlay.hasMask()
-        ? { ...(_mask && { mask: _mask }), ...(pendingMask && { mask: pendingMask }) }
+        ? {
+            ...(_mask && { mask: _mask }),
+            ...(pendingMask && { mask: pendingMask }),
+          }
         : hadMask
-          ? { mask: null, mask_path: null }
-          : {};
+        ? { mask: null, mask_path: null }
+        : {};
 
       return {
         type: "Detection",
