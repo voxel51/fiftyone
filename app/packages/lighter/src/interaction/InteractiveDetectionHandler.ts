@@ -55,7 +55,7 @@ export class InteractiveDetectionHandler implements InteractionHandler {
     return true;
   }
 
-  isMoving(): boolean {
+  isInteracting(): boolean {
     return this._isDragging;
   }
 

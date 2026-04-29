@@ -11,6 +11,10 @@ import {
   SELECTED_DASH_LENGTH,
   STROKE_WIDTH,
 } from "../constants";
+import {
+  SegmentationTool,
+  type SegmentationToolState,
+} from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useSegmentationMode";
 import { CONTAINS } from "../core/Scene2D";
 import type { OverlayEvent } from "../interaction/InteractionManager";
 import type { Renderer2D } from "../renderer/Renderer2D";
@@ -31,6 +35,7 @@ import {
 import { distanceFromLineSegment } from "../utils/geometry";
 import { BaseOverlay } from "./BaseOverlay";
 import { MaskCanvas } from "./MaskCanvas";
+import type { MaskSnapshot, PaintStrokeData } from "./MaskCanvas";
 import type { SerializedMask } from "@fiftyone/utilities";
 import { BASE_ALPHA } from "@fiftyone/looker/src/constants";
 
@@ -65,7 +70,12 @@ export type ResizeRegion =
   | "RESIZE_W"
   | "RESIZE_NW";
 
-export type MoveState = ResizeRegion | "NONE" | "DRAGGING" | "SETTING";
+export type InteractionState =
+  | ResizeRegion
+  | "NONE"
+  | "DRAGGING"
+  | "SETTING"
+  | "PAINTING";
 
 export const NO_BOUNDS = { x: NaN, y: NaN, width: NaN, height: NaN };
 
@@ -78,7 +88,8 @@ export class DetectionOverlay
 {
   private isDraggable: boolean;
   private isResizeable: boolean;
-  private moveState: MoveState = "NONE";
+  private interactionState: InteractionState = "NONE";
+  private segmentationTool?: SegmentationToolState;
   private moveStartPoint?: Point;
   private moveStartPosition?: Point;
   private moveStartBounds?: Rect;
@@ -179,7 +190,7 @@ export class DetectionOverlay
     return this.id;
   }
 
-  protected renderImpl(renderer: Renderer2D, _renderMeta: RenderMeta): void {
+  protected renderImpl(renderer: Renderer2D, renderMeta: RenderMeta): void {
     // Dispose of old elements before creating new ones
     renderer.dispose(this.containerId);
 
@@ -189,14 +200,38 @@ export class DetectionOverlay
 
     // Draw the segmentation mask beneath the box outline when available.
     const maskColor = style.strokeStyle || style.fillStyle || "#ffffff";
+    const isEditingMask = this.isSelected() && this.hasMask();
+
     this.mask?.render(
       renderer,
       this.bounds,
       this.containerId,
       maskColor,
-      style.opacity ?? BASE_ALPHA,
+      isEditingMask ? 0.7 : style.opacity ?? BASE_ALPHA,
       () => this.markDirty()
     );
+
+    // Lightweight border + scrim when editing detection mask
+    if (isEditingMask) {
+      renderer.drawScrim(
+        this.bounds,
+        renderMeta.canonicalMediaBounds,
+        this.containerId
+      );
+
+      renderer.drawRect(
+        this.bounds,
+        {
+          strokeStyle: style.strokeStyle || "#ffffff",
+          lineWidth: 1,
+          dashPattern: [4, 4],
+        },
+        this.containerId
+      );
+
+      this.emitLoaded();
+      return;
+    }
 
     // Check if this label has an instance to determine stroke styling
     const hasInstance = this.label?.instance?._id !== undefined;
@@ -259,7 +294,7 @@ export class DetectionOverlay
       const color = colorObj.color;
       renderer.drawScrim(
         this.bounds,
-        _renderMeta.canonicalMediaBounds,
+        renderMeta.canonicalMediaBounds,
         this.containerId
       );
       renderer.drawHandles(
@@ -317,24 +352,28 @@ export class DetectionOverlay
     return this.moveStartBounds;
   }
 
-  getMoveState() {
-    return this.moveState;
+  getInteractionState() {
+    return this.interactionState;
   }
 
-  isMoving() {
-    return this.moveState !== "NONE";
+  isInteracting() {
+    return this.interactionState !== "NONE";
   }
 
   isDragging() {
-    return this.moveState === "DRAGGING";
+    return this.interactionState === "DRAGGING";
   }
 
   isResizing() {
-    return this.moveState.startsWith("RESIZE_");
+    return this.interactionState.startsWith("RESIZE_");
   }
 
   isSetting() {
-    return this.moveState === "SETTING";
+    return this.interactionState === "SETTING";
+  }
+
+  isPainting() {
+    return this.interactionState === "PAINTING";
   }
 
   private getResizeRegion(
@@ -369,7 +408,9 @@ export class DetectionOverlay
 
   getCursor(worldPoint: Point, scale: number): string {
     if (!this.hasValidBounds()) return "crosshair";
+    if (this.isPaintingActive()) return "crosshair";
     if (!this.isSelected()) return "pointer";
+    if (this.hasMask()) return "default";
 
     if (!this.isDraggable && !this.isResizeable) {
       return "default";
@@ -408,7 +449,26 @@ export class DetectionOverlay
   }
 
   // Interaction handlers
-  onPointerDown({ point, worldPoint, scale }: OverlayEvent): boolean {
+  onPointerDown({
+    point,
+    worldPoint,
+    scale,
+    segmentationToolState,
+  }: OverlayEvent): boolean {
+    this.segmentationTool = segmentationToolState;
+
+    // Segmentation painting takes priority over drag/resize
+    if (this.isPaintingActive()) {
+      return this.onSegmentationPointerDown(
+        point,
+        worldPoint,
+        segmentationToolState!
+      );
+    }
+
+    // Mask detections are painted, not dragged/resized
+    if (this.hasMask()) return false;
+
     const resizeRegion = this.getResizeRegion(worldPoint, scale);
     const cursorState = !this.hasValidBounds()
       ? "SETTING"
@@ -421,7 +481,7 @@ export class DetectionOverlay
       this.renderer?.disableZoomPan();
     }
 
-    this.moveState = cursorState;
+    this.interactionState = cursorState;
 
     if (cursorState === "SETTING") {
       this.bounds = {
@@ -442,21 +502,104 @@ export class DetectionOverlay
     return true;
   }
 
+  private onSegmentationPointerDown(
+    point: Point,
+    worldPoint: Point,
+    toolState: SegmentationToolState
+  ): boolean {
+    if (!this.hasValidBounds()) {
+      // Bootstrap bounds from the brush dab so the canvas has a size
+      const size = toolState?.size ?? 0;
+      const half = size / 2;
+
+      this.bounds = {
+        x: worldPoint.x - half,
+        y: worldPoint.y - half,
+        width: size,
+        height: size,
+      };
+    }
+
+    this.mask ??= new MaskCanvas(this.label.mask);
+
+    const updatedBounds = this.mask.paintAt(
+      worldPoint,
+      this.bounds,
+      toolState,
+      this.currentStyle
+    );
+
+    if (updatedBounds) {
+      this.bounds = updatedBounds;
+      this.interactionState = "PAINTING";
+      this.moveStartPoint = point;
+      this.moveStartPosition = {
+        x: this.bounds.x,
+        y: this.bounds.y,
+      };
+      this.moveStartBounds = { ...this.bounds };
+      this.markDirty();
+      this.renderer?.disableZoomPan();
+    } else {
+      this.bounds = undefined;
+    }
+
+    return true;
+  }
+
   onMove({
     point,
+    worldPoint,
     event,
     scale,
     maintainAspectRatio,
+    segmentationToolState,
   }: OverlayEvent): boolean {
-    if (this.moveState === "DRAGGING") {
+    this.segmentationTool = segmentationToolState;
+
+    if (this.interactionState === "PAINTING") {
+      return this.onSegmentationMove(point, worldPoint, segmentationToolState);
+    }
+
+    if (this.interactionState === "DRAGGING") {
       return this.onDrag(point, event, scale);
     }
 
-    if (this.moveState === "SETTING" || this.moveState.startsWith("RESIZE_")) {
+    if (this.interactionState === "SETTING" || this.interactionState.startsWith("RESIZE_")) {
       return this.onResize(point, event, scale, maintainAspectRatio);
     }
 
     return false;
+  }
+
+  private onSegmentationMove(
+    point: Point,
+    worldPoint: Point,
+    toolState: SegmentationToolState | undefined
+  ): boolean {
+    const updatedBounds = this.mask?.paintAt(
+      worldPoint,
+      this.bounds,
+      toolState!,
+      this.currentStyle
+    );
+
+    if (updatedBounds) {
+      this.bounds = updatedBounds;
+      this.interactionState = "PAINTING";
+      this.moveStartPoint = point;
+      this.moveStartPosition = {
+        x: this.bounds.x,
+        y: this.bounds.y,
+      };
+      this.moveStartBounds = { ...this.bounds };
+      this.markDirty();
+      this.renderer?.disableZoomPan();
+    } else {
+      this.bounds = undefined;
+    }
+
+    return true;
   }
 
   private onDrag(point: Point, _event: PointerEvent, scale: number): boolean {
@@ -512,55 +655,55 @@ export class DetectionOverlay
 
     let { x, y, width, height } = this.moveStartBounds;
 
-    if (["RESIZE_NW", "RESIZE_N", "RESIZE_NE"].includes(this.moveState)) {
-      maintainY = this.moveState === "RESIZE_NE" ? maintainY * -1 : maintainY;
-      maintainY = this.moveState === "RESIZE_E" ? 0 : maintainY;
+    if (["RESIZE_NW", "RESIZE_N", "RESIZE_NE"].includes(this.interactionState)) {
+      maintainY = this.interactionState === "RESIZE_NE" ? maintainY * -1 : maintainY;
+      maintainY = this.interactionState === "RESIZE_E" ? 0 : maintainY;
 
       y += maintainY || delta.y;
       height -= maintainY || delta.y;
 
-      if (this.moveState === "RESIZE_N") {
+      if (this.interactionState === "RESIZE_N") {
         x += maintainX / 2;
         width -= maintainX;
       }
     }
 
     if (
-      ["SETTING", "RESIZE_NW", "RESIZE_W", "RESIZE_SW"].includes(this.moveState)
+      ["SETTING", "RESIZE_NW", "RESIZE_W", "RESIZE_SW"].includes(this.interactionState)
     ) {
-      maintainX = this.moveState === "RESIZE_SW" ? maintainX * -1 : maintainX;
-      maintainX = this.moveState === "RESIZE_W" ? 0 : maintainX;
+      maintainX = this.interactionState === "RESIZE_SW" ? maintainX * -1 : maintainX;
+      maintainX = this.interactionState === "RESIZE_W" ? 0 : maintainX;
 
       x += maintainX || delta.x;
       width -= maintainX || delta.x;
 
-      if (this.moveState === "RESIZE_W") {
+      if (this.interactionState === "RESIZE_W") {
         y += maintainY / 2;
         height -= maintainY;
       }
     }
 
     if (
-      ["SETTING", "RESIZE_SW", "RESIZE_S", "RESIZE_SE"].includes(this.moveState)
+      ["SETTING", "RESIZE_SW", "RESIZE_S", "RESIZE_SE"].includes(this.interactionState)
     ) {
-      maintainY = this.moveState === "RESIZE_SW" ? maintainY * -1 : maintainY;
-      maintainY = this.moveState === "RESIZE_S" ? 0 : maintainY;
+      maintainY = this.interactionState === "RESIZE_SW" ? maintainY * -1 : maintainY;
+      maintainY = this.interactionState === "RESIZE_S" ? 0 : maintainY;
 
       height += maintainY || delta.y;
 
-      if (this.moveState === "RESIZE_S") {
+      if (this.interactionState === "RESIZE_S") {
         x -= maintainX / 2;
         width += maintainX;
       }
     }
 
-    if (["RESIZE_NE", "RESIZE_E", "RESIZE_SE"].includes(this.moveState)) {
-      maintainX = this.moveState === "RESIZE_NE" ? maintainX * -1 : maintainX;
-      maintainX = this.moveState === "RESIZE_E" ? 0 : maintainX;
+    if (["RESIZE_NE", "RESIZE_E", "RESIZE_SE"].includes(this.interactionState)) {
+      maintainX = this.interactionState === "RESIZE_NE" ? maintainX * -1 : maintainX;
+      maintainX = this.interactionState === "RESIZE_E" ? 0 : maintainX;
 
       width += maintainX || delta.x;
 
-      if (this.moveState === "RESIZE_E") {
+      if (this.interactionState === "RESIZE_E") {
         y -= maintainY / 2;
         height += maintainY;
       }
@@ -587,14 +730,30 @@ export class DetectionOverlay
     return true;
   }
 
-  onPointerUp(_params: OverlayEvent): boolean {
+  onPointerUp({ segmentationToolState }: OverlayEvent): boolean {
+    this.segmentationTool = segmentationToolState;
+
     if (!this.moveStartPoint || !this.moveStartBounds) return false;
 
-    this.moveState = "NONE";
+    const wasPainting = this.interactionState === "PAINTING";
+
+    this.interactionState = "NONE";
+    if (wasPainting) {
+      this.mask?.paintEnd(this.bounds, () => {
+        this.markDirty();
+      });
+    }
     this.moveStartPoint = undefined;
     this.moveStartPosition = undefined;
     this.moveStartBounds = undefined;
     this.renderer?.enableZoomPan();
+
+    if (wasPainting) {
+      this.eventBus.dispatch("lighter:overlay-paint-end", {
+        id: this.id,
+        paintStrokeData: this.mask?.getPaintStrokeData(),
+      });
+    }
 
     return true;
   }
@@ -657,7 +816,7 @@ export class DetectionOverlay
     if (this.isPointInRect(point, drawnBounds)) {
       // For mask detections, narrow CONTENT to actual mask pixels so the
       // hit area matches the painted shape rather than the bbox rectangle.
-      if (!!this.mask) {
+      if (this.hasMask()) {
         return this.mask!.containsMaskPixel(point, this.bounds)
           ? CONTAINS.CONTENT
           : CONTAINS.NONE;
@@ -780,11 +939,80 @@ export class DetectionOverlay
    * the rectangular bounding box.
    */
   override containsPoint(point: Point): boolean {
-    if (!!this.mask && this.renderer) {
+    if (this.hasMask() && this.renderer) {
       const worldPoint = this.renderer.screenToWorld(point);
       return this.mask!.containsMaskPixel(worldPoint, this.bounds);
     }
     return super.containsPoint(point);
+  }
+
+  /**
+   * Returns true if this detection has a mask (inline or editing canvas).
+   */
+  hasMask(): boolean {
+    return !!this.mask;
+  }
+
+  /**
+   * Initializes an empty MaskCanvas so the overlay is treated as a mask
+   * detection (no resize handles, etc.) before any paint occurs.
+   */
+  initMask(): void {
+    if (!this.mask) {
+      this.mask = new MaskCanvas();
+      this.markDirty();
+    }
+  }
+
+  /**
+   * Removes the mask from this detection, destroying the MaskCanvas.
+   */
+  removeMask(): void {
+    this.mask?.destroy();
+    this.mask = undefined;
+    this.markDirty();
+  }
+
+  /**
+   * Whether segmentation brush should intercept pointer events.
+   */
+  private isPaintingActive(): boolean {
+    if (!this.segmentationTool?.active) return false;
+    return this.segmentationTool.tool === SegmentationTool.Brush;
+  }
+
+  /**
+   * Consumes and returns the pending encoded mask, if any. After calling,
+   * the pending mask is cleared.
+   */
+  getPendingMask(): string | undefined {
+    return this.mask?.getPendingMask();
+  }
+
+  /**
+   * Returns the mask as a drawable source for sidebar preview rendering.
+   */
+  getMaskPreviewSource(): HTMLCanvasElement | ImageBitmap | undefined {
+    return this.mask?.getPreviewSource();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Segmentation undo/redo support
+  // ---------------------------------------------------------------------------
+
+  getPaintStrokeData(): PaintStrokeData | undefined {
+    return this.mask?.getPaintStrokeData();
+  }
+
+  restoreMaskSnapshot(
+    snapshot: MaskSnapshot | undefined,
+    bounds: Rect | undefined
+  ): void {
+    this.mask ??= new MaskCanvas();
+
+    this.mask.restoreSnapshot(snapshot);
+    this.bounds = bounds;
+    this.markDirty();
   }
 
   override destroy(): void {

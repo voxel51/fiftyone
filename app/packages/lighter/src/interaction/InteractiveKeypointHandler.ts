@@ -77,7 +77,7 @@ export class InteractiveKeypointHandler implements InteractionHandler {
     this.overlay.markDirty();
   }
 
-  isMoving(): boolean {
+  isInteracting(): boolean {
     return false;
   }
 

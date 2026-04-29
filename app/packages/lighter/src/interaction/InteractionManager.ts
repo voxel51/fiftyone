@@ -3,14 +3,17 @@
  */
 
 import { detectionModeBridge } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/bridgeDetectionMode";
+import { segmentationModeBridge } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/bridgeSegmentationMode";
+import type { SegmentationToolState } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useSegmentationMode";
 import { EventDispatcher, getEventBus } from "@fiftyone/events";
 import { TypeGuards } from "../core/Scene2D";
 import type { LighterEventGroup } from "../events";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
-import { type MoveState } from "../overlay/DetectionOverlay";
+import { type InteractionState } from "../overlay/DetectionOverlay";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { SelectionManager } from "../selection/SelectionManager";
 import type { Point, Rect } from "../types";
+import { buildBrushCursor } from "./buildBrushCursor";
 import { InteractiveDetectionHandler } from "./InteractiveDetectionHandler";
 import { InteractiveKeypointHandler } from "./InteractiveKeypointHandler";
 import { v4 as generateUUID } from "uuid";
@@ -30,6 +33,8 @@ export interface OverlayEvent {
   scale: number;
   /** Whether shift-key aspect-ratio lock is active. */
   maintainAspectRatio?: boolean;
+  /** Segmentation painting tool state, if segmentation mode is active. */
+  segmentationToolState?: SegmentationToolState;
 }
 
 /**
@@ -64,7 +69,7 @@ export interface InteractionHandler {
   /**
    * Returns true if the handler is being dragged or resized.
    */
-  isMoving?(): boolean;
+  isInteracting?(): boolean;
 
   /**
    * Returns true if the handler is being dragged.
@@ -91,7 +96,7 @@ export interface InteractionHandler {
   /**
    * Returns the current move state of the handler
    */
-  getMoveState?(): MoveState;
+  getInteractionState?(): InteractionState;
 
   /**
    * Returns the position from the start of handler movement
@@ -325,7 +330,15 @@ export class InteractionManager {
       }
     }
 
-    if (handler?.onPointerDown?.({ point, worldPoint, event, scale })) {
+    if (
+      handler?.onPointerDown?.({
+        point,
+        worldPoint,
+        event,
+        scale,
+        segmentationToolState: segmentationModeBridge.getToolState(scale),
+      })
+    ) {
       const cursor = handler.getCursor?.(worldPoint, scale);
       if (cursor) {
         this.canvas.style.cursor = cursor;
@@ -369,6 +382,10 @@ export class InteractionManager {
       !handler.isSelected()
     ) {
       this.canvas.style.cursor = "pointer";
+    } else if (segmentationModeBridge.isActive()) {
+      this.canvas.style.cursor = buildBrushCursor(
+        segmentationModeBridge.getToolState(scale)
+      );
     } else if (TypeGuards.isInteractionHandler(handler) && handler.getCursor) {
       this.canvas.style.cursor = handler.getCursor(worldPoint, scale);
     }
@@ -477,6 +494,7 @@ export class InteractionManager {
         event,
         scale,
         maintainAspectRatio: this.maintainAspectRatio,
+        segmentationToolState: segmentationModeBridge.getToolState(scale),
       };
 
       // Handle drag move
@@ -493,7 +511,7 @@ export class InteractionManager {
         handler.onMove?.(moveParams);
       }
 
-      if (handler.isMoving?.()) {
+      if (handler.isInteracting?.()) {
         // Emit move event with bounds information
         if (TypeGuards.isSpatial(handler)) {
           const type = handler.isDragging?.()
@@ -558,13 +576,19 @@ export class InteractionManager {
       handler = this.findMovingHandler() || this.findHandlerAtPoint(point);
     }
 
-    if (handler?.isMoving?.()) {
-      const moveState = handler.getMoveState?.();
+    if (handler?.isInteracting?.()) {
+      const interactionState = handler.getInteractionState?.();
       const startBounds = handler.getMoveStartBounds?.();
       const startPosition = handler.getMoveStartPosition?.();
 
       // Handle drag end
-      handler.onPointerUp?.({ point, worldPoint, event, scale });
+      handler.onPointerUp?.({
+        point,
+        worldPoint,
+        event,
+        scale,
+        segmentationToolState: segmentationModeBridge.getToolState(scale),
+      });
 
       if (interactiveHandler) {
         // When interactive detection is complete, remove the interactive handler
@@ -582,10 +606,10 @@ export class InteractionManager {
           bounds: handler.bounds,
         };
 
-        if (moveState === "SETTING") {
+        if (interactionState === "SETTING") {
           if (!interactiveHandler) {
             throw new Error(
-              "Invariant violation: moveState is SETTING but interactiveHandler is undefined"
+              "Invariant violation: interactionState is SETTING but interactiveHandler is undefined"
             );
           }
 
@@ -595,7 +619,7 @@ export class InteractionManager {
           });
         } else {
           const type =
-            moveState === "DRAGGING"
+            interactionState === "DRAGGING"
               ? "lighter:overlay-drag-end"
               : "lighter:overlay-resize-end";
           this.eventBus.dispatch(type, detail);
@@ -604,12 +628,18 @@ export class InteractionManager {
 
       this.canvas.releasePointerCapture(event.pointerId);
       event.preventDefault();
-    } else if (handler && !handler.isMoving?.()) {
+    } else if (handler && !handler.isInteracting?.()) {
       // This was a click, not a drag - handle as click for selection
       this.handleClick(point, event, now);
 
       // Clean up drag handler
-      handler.onPointerUp?.({ point, worldPoint, event, scale });
+      handler.onPointerUp?.({
+        point,
+        worldPoint,
+        event,
+        scale,
+        segmentationToolState: segmentationModeBridge.getToolState(scale),
+      });
       this.canvas.releasePointerCapture(event.pointerId);
     } else {
       // Handle click
@@ -1043,7 +1073,7 @@ export class InteractionManager {
    */
   findMovingHandler(): InteractionHandler | undefined {
     return this.handlers.find(
-      (handler) => handler.isMoving && handler.isMoving()
+      (handler) => handler.isInteracting && handler.isInteracting()
     );
   }
 
