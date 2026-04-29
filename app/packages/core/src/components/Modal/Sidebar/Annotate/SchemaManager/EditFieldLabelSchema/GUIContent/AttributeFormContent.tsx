@@ -72,10 +72,10 @@ const AttributeFormContent = ({
   return (
     <Stack orientation={Orientation.Column} spacing={Spacing.Xl}>
       {/* Section 1: Identity cluster — name, type, ontology, read-only */}
-      <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
+      <Stack orientation={Orientation.Column} spacing={Spacing.None}>
         {/* Name field */}
         {isEditing ? (
-          <Stack orientation={Orientation.Row} spacing={Spacing.None}>
+          <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
             <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
               Name:
             </Text>

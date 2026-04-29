@@ -119,34 +119,36 @@ const ValuesList = ({
 
   return (
     <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
-      <Stack
-        orientation={Orientation.Row}
-        justify={Justify.Between}
-        align={Align.Center}
-      >
-        <Text
-          variant={largeLabels ? TextVariant.Lg : TextVariant.Md}
-          color={TextColor.Primary}
+      <Stack orientation={Orientation.Column} spacing={Spacing.None}>
+        <Stack
+          orientation={Orientation.Row}
+          justify={Justify.Between}
+          align={Align.Center}
         >
-          Values
-        </Text>
-        {!readOnly && (
-          <Button
-            variant={Variant.Borderless}
-            onClick={handleAddValue}
-            leadingIcon={() => (
-              <Icon name={IconName.Add} size={Size.Sm} className="size-5" />
-            )}
+          <Text
+            variant={largeLabels ? TextVariant.Lg : TextVariant.Md}
+            color={TextColor.Primary}
           >
-            Add
-          </Button>
+            Values
+          </Text>
+          {!readOnly && (
+            <Button
+              variant={Variant.Borderless}
+              onClick={handleAddValue}
+              leadingIcon={() => (
+                <Icon name={IconName.Add} size={Size.Sm} className="size-5" />
+              )}
+            >
+              Add
+            </Button>
+          )}
+        </Stack>
+        {subtitle && (
+          <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+            {subtitle}
+          </Text>
         )}
       </Stack>
-      {subtitle && (
-        <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
-          {subtitle}
-        </Text>
-      )}
       {!readOnly && (
         <FormField
           control={

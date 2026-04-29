@@ -3,10 +3,14 @@
  */
 
 import {
+  Align,
   Button,
+  Orientation,
   Pill,
   RichList,
   Size,
+  Spacing,
+  Stack,
   Text,
   TextColor,
   TextVariant,
@@ -148,19 +152,17 @@ const AttributesSection = ({
           canDrag: true,
           primaryContent: name,
           secondaryContent: (
-            <>
-              {secondaryParts.join(" · ")}
-              {config.read_only && (
-                <Pill size={Size.Md} style={{ marginLeft: 8 }}>
-                  Read-only
-                </Pill>
-              )}
-              {config._source && (
-                <Pill size={Size.Md} style={{ marginLeft: 8 }}>
-                  {config._source}
-                </Pill>
-              )}
-            </>
+            <Stack
+              orientation={Orientation.Row}
+              spacing={Spacing.Sm}
+              align={Align.Center}
+            >
+              <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+                {secondaryParts.join(" · ")}
+              </Text>
+              {config.read_only && <Pill size={Size.Md}>Read-only</Pill>}
+              {config._source && <Pill size={Size.Md}>{config._source}</Pill>}
+            </Stack>
           ),
           actions: <EditAction onEdit={() => handleStartEdit(name)} />,
         } as ListItemProps,
