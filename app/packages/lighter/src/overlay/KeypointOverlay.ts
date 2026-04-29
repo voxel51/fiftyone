@@ -879,7 +879,7 @@ export class KeypointOverlay
    * Updates the sub-selected point index and dispatches a change event when
    * the value changes.
    */
-  private setSelectedPointIndex(index: number | null): void {
+  setSelectedPointIndex(index: number | null): void {
     if (this.selectedPointIndex === index) {
       return;
     }
@@ -889,6 +889,7 @@ export class KeypointOverlay
       id: this.id,
       pointIndex: index,
     });
+    this.markDirty();
   }
 
   /**
