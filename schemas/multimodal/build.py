@@ -23,7 +23,6 @@ class Toolchain(TypedDict):
 
     protoc_path: str
     protoc_version: str
-    protoc_include_path: str
     ts_plugin_path: str
     ts_plugin_version: str
 
@@ -47,7 +46,6 @@ TS_PLUGIN_PATH = APP_ROOT / "node_modules" / ".bin" / "protoc-gen-es"
 TS_PLUGIN_NAME = "protoc-gen-es"
 TS_PLUGIN_OPTION = "target=ts"
 PROTO_MODULES = ("common", "inventory", "playback")
-PROTOBUF_WELL_KNOWN_TYPE = Path("google") / "protobuf" / "struct.proto"
 VERSION_SPECS = {
     "v1": {
         "schema_subdir": Path("v1"),
@@ -118,28 +116,6 @@ def get_local_toolchain() -> Toolchain:
             f"PROTOC=/path/to/protoc-{required_libprotoc_version}."
         )
 
-    # Well-known type protos come from the local protoc install, not this repo.
-    protoc_include_candidates = [
-        Path(protoc_path).resolve().parents[1] / "include",
-        Path("/opt/homebrew/include"),
-        Path("/usr/local/include"),
-    ]
-    default_protoc_path = shutil.which("protoc")
-    if default_protoc_path:
-        protoc_include_candidates.append(
-            Path(default_protoc_path).resolve().parents[1] / "include"
-        )
-
-    for include_path in protoc_include_candidates:
-        if (include_path / PROTOBUF_WELL_KNOWN_TYPE).is_file():
-            protoc_include_path = str(include_path)
-            break
-    else:
-        raise RuntimeError(
-            "Unable to find protobuf well-known type schemas. Install protoc "
-            "with its include directory."
-        )
-
     if not TS_PLUGIN_PATH.is_file():
         raise RuntimeError(
             f"Unable to find {TS_PLUGIN_NAME} in app dependencies. "
@@ -158,7 +134,6 @@ def get_local_toolchain() -> Toolchain:
     return {
         "protoc_path": protoc_path,
         "protoc_version": protoc_version,
-        "protoc_include_path": protoc_include_path,
         "ts_plugin_path": ts_plugin_path,
         "ts_plugin_version": ts_plugin_version,
     }
@@ -211,7 +186,6 @@ def build_contracts(
                 toolchain["protoc_path"],
                 f"--plugin=protoc-gen-es={toolchain['ts_plugin_path']}",
                 f"--proto_path={schema_dir}",
-                f"--proto_path={toolchain['protoc_include_path']}",
                 f"--python_out={python_out_dir}",
                 f"--pyi_out={python_out_dir}",
                 f"--es_out={TS_PLUGIN_OPTION}:{ts_out_dir}",

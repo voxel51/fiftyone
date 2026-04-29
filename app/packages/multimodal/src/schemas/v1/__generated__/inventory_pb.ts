@@ -210,3 +210,4 @@ export type SceneInventory = Message<"fiftyone.multimodal.schemas.v1.SceneInvent
  */
 export const SceneInventorySchema: GenMessage<SceneInventory> = /*@__PURE__*/
   messageDesc(file_inventory, 2);
+
