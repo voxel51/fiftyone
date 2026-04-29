@@ -67,7 +67,7 @@ export const Polyline = ({ fill }: { fill: string }) => {
 export const Keypoint = ({ fill }: { fill: string }) => {
   return (
     <Container style={{ color: fill }}>
-      <Icon name={IconName.Embeddings} size={Size.Md} />
+      <Icon name={IconName.Radio} size={Size.Md} />
     </Container>
   );
 };
