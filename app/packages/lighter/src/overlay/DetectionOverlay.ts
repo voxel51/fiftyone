@@ -30,9 +30,9 @@ import {
 } from "../utils/colorMapping";
 import { distanceFromLineSegment } from "../utils/geometry";
 import { BaseOverlay } from "./BaseOverlay";
-import { SerializedMask } from "@fiftyone/utilities";
+import { MaskCanvas } from "./MaskCanvas";
+import type { SerializedMask } from "@fiftyone/utilities";
 import { BASE_ALPHA } from "@fiftyone/looker/src/constants";
-import { deserialize } from "@fiftyone/looker/src/numpy";
 
 export type DetectionLabel = RawLookerLabel & {
   label: string;
@@ -88,10 +88,7 @@ export class DetectionOverlay
 
   private textBounds?: Rect;
 
-  private maskBitmap?: ImageBitmap;
-  private maskData?: { src: Uint8Array; width: number; height: number };
-  private maskDecoding = false;
-  private lastMaskSource?: string;
+  private mask?: MaskCanvas;
 
   public cursor = "pointer";
 
@@ -101,6 +98,10 @@ export class DetectionOverlay
     this.isResizeable = options.resizeable !== false;
 
     this.#relativeBounds = options.relativeBounds || NO_BOUNDS;
+
+    if (this.label.mask) {
+      this.mask = new MaskCanvas(this.label.mask);
+    }
   }
 
   getOverlayType(): string {
@@ -120,14 +121,20 @@ export class DetectionOverlay
       });
     }
 
-    // invalidate cached mask with new label data
-    const newMaskSource = this.extractMaskB64(label.mask);
-    if (newMaskSource !== this.lastMaskSource) {
-      this.maskBitmap?.close();
-      this.maskBitmap = undefined;
-      this.maskData = undefined;
-      this.lastMaskSource = undefined;
+    if (label.mask) {
+      if (this.mask) {
+        this.mask.updateSource(label.mask);
+      } else {
+        this.mask = new MaskCanvas(label.mask);
+      }
+
       this.markDirty();
+    } else {
+      const hadMask = !!this.mask;
+      this.mask?.destroy();
+      this.mask = undefined;
+
+      if (hadMask) this.markDirty();
     }
   }
 
@@ -181,16 +188,15 @@ export class DetectionOverlay
     if (!style) return;
 
     // Draw the segmentation mask beneath the box outline when available.
-    if (this.maskBitmap) {
-      renderer.drawImage(
-        { type: "bitmap", bitmap: this.maskBitmap },
-        this.bounds,
-        { opacity: style.opacity ?? BASE_ALPHA },
-        this.containerId
-      );
-    } else if (this.label?.mask && !this.maskDecoding) {
-      this.decodeMask();
-    }
+    const maskColor = style.strokeStyle || style.fillStyle || "#ffffff";
+    this.mask?.render(
+      renderer,
+      this.bounds,
+      this.containerId,
+      maskColor,
+      style.opacity ?? BASE_ALPHA,
+      () => this.markDirty()
+    );
 
     // Check if this label has an instance to determine stroke styling
     const hasInstance = this.label?.instance?._id !== undefined;
@@ -649,6 +655,13 @@ export class DetectionOverlay
 
     // Check if point is inside the main bounding box
     if (this.isPointInRect(point, drawnBounds)) {
+      // For mask detections, narrow CONTENT to actual mask pixels so the
+      // hit area matches the painted shape rather than the bbox rectangle.
+      if (!!this.mask) {
+        return this.mask!.containsMaskPixel(point, this.bounds)
+          ? CONTAINS.CONTENT
+          : CONTAINS.NONE;
+      }
       return CONTAINS.CONTENT;
     }
 
@@ -757,97 +770,26 @@ export class DetectionOverlay
    * bounding box.
    */
   containsMaskPixel(relativePoint: Point): boolean {
-    if (!this.maskData) {
-      return false;
-    }
-
-    const rb = this.#relativeBounds;
-
-    // Check if point is inside the bounding box
-    if (
-      relativePoint.x < rb.x ||
-      relativePoint.y < rb.y ||
-      relativePoint.x > rb.x + rb.width ||
-      relativePoint.y > rb.y + rb.height
-    ) {
-      return false;
-    }
-
-    const { src, width, height } = this.maskData;
-    const px = Math.floor(((relativePoint.x - rb.x) / rb.width) * (width - 1));
-    const py = Math.floor(
-      ((relativePoint.y - rb.y) / rb.height) * (height - 1)
+    return (
+      this.mask?.containsMaskPixel(relativePoint, this.#relativeBounds) ?? false
     );
-
-    return src[py * width + px] > 0;
   }
 
-  private extractMaskB64(mask: SerializedMask | undefined): string | undefined {
-    if (!mask) {
-      return undefined;
-    } else if (typeof mask === "string") {
-      return mask;
-    } else {
-      return mask.$binary.base64;
+  /**
+   * For mask detections, hit-test against the actual mask pixels rather than
+   * the rectangular bounding box.
+   */
+  override containsPoint(point: Point): boolean {
+    if (!!this.mask && this.renderer) {
+      const worldPoint = this.renderer.screenToWorld(point);
+      return this.mask!.containsMaskPixel(worldPoint, this.bounds);
     }
-  }
-
-  private async decodeMask(): Promise<void> {
-    const b64 = this.extractMaskB64(this.label?.mask);
-    if (!b64 || b64 === this.lastMaskSource) return;
-
-    this.maskDecoding = true;
-    this.lastMaskSource = b64;
-
-    try {
-      const overlayMask = deserialize(b64);
-      if (
-        overlayMask.arrayType !== "Uint8Array" &&
-        overlayMask.arrayType !== "Uint8ClampedArray"
-      ) {
-        console.warn(
-          `[DetectionOverlay] Unsupported mask dtype: ${overlayMask.arrayType}, expected Uint8Array`
-        );
-        return;
-      }
-
-      const [height, width] = overlayMask.shape;
-      const src = new Uint8Array(overlayMask.buffer);
-      const rgba = new Uint8ClampedArray(width * height * 4);
-
-      const colorObj = parseColorWithAlpha(
-        this.currentStyle?.strokeStyle ?? "#ffffff"
-      );
-      const r = (colorObj.color >> 16) & 0xff;
-      const g = (colorObj.color >> 8) & 0xff;
-      const b = colorObj.color & 0xff;
-
-      for (let i = 0; i < width * height; i++) {
-        if (src[i] > 0) {
-          rgba[i * 4] = r;
-          rgba[i * 4 + 1] = g;
-          rgba[i * 4 + 2] = b;
-          rgba[i * 4 + 3] = 255;
-        }
-      }
-
-      this.maskBitmap?.close();
-      this.maskBitmap = await createImageBitmap(
-        new ImageData(rgba, width, height)
-      );
-      this.maskData = { src, width, height };
-      this.markDirty();
-    } catch (e) {
-      console.error("[DetectionOverlay] Failed to decode mask:", e);
-    } finally {
-      this.maskDecoding = false;
-    }
+    return super.containsPoint(point);
   }
 
   override destroy(): void {
-    this.maskBitmap?.close();
-    this.maskBitmap = undefined;
-    this.maskData = undefined;
+    this.mask?.destroy();
+    this.mask = undefined;
     super.destroy();
   }
 
