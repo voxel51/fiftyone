@@ -258,6 +258,7 @@ const AttributeFormContent = ({
           range={formState.range}
           onRangeChange={handleRangeChange}
           error={rangeError}
+          readOnly={isFromOntology}
         />
       )}
 
