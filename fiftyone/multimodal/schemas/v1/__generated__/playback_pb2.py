@@ -22,80 +22,61 @@ _runtime_version.ValidateProtobufRuntimeVersion(
 _sym_db = _symbol_database.Default()
 
 
+from . import common_pb2 as common__pb2
 from google.protobuf import struct_pb2 as google_dot_protobuf_dot_struct__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0eplayback.proto\x12\x1e\x66iftyone.multimodal.schemas.v1\x1a\x1cgoogle/protobuf/struct.proto\"A\n\x0eTimeValueRange\x12\x11\n\x05start\x18\x01 \x01(\x03\x42\x02\x30\x01\x12\x14\n\x03\x65nd\x18\x02 \x01(\x03\x42\x02\x30\x01H\x00\x88\x01\x01\x42\x06\n\x04_end\"\xc9\x04\n\tTimeTrack\x12\x15\n\rtime_track_id\x18\x01 \x01(\t\x12;\n\x04type\x18\x02 \x01(\x0e\x32-.fiftyone.multimodal.schemas.v1.TimeTrackType\x12;\n\x04role\x18\x03 \x01(\x0e\x32-.fiftyone.multimodal.schemas.v1.TimeTrackRole\x12\x14\n\x0c\x64isplay_name\x18\x04 \x01(\t\x12\x18\n\x0bsource_path\x18\x05 \x01(\tH\x00\x88\x01\x01\x12\x16\n\tstream_id\x18\x06 \x01(\tH\x01\x88\x01\x01\x12\x43\n\x0bvalue_range\x18\x07 \x01(\x0b\x32..fiftyone.multimodal.schemas.v1.TimeValueRange\x12\x41\n\nsort_order\x18\x08 \x01(\x0e\x32-.fiftyone.multimodal.schemas.v1.TimeSortOrder\x12\x41\n\nsort_scope\x18\t \x01(\x0e\x32-.fiftyone.multimodal.schemas.v1.TimeSortScope\x12I\n\x08metadata\x18\n \x03(\x0b\x32\x37.fiftyone.multimodal.schemas.v1.TimeTrack.MetadataEntry\x1a/\n\rMetadataEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\x42\x0e\n\x0c_source_pathB\x0c\n\n_stream_id\"\xba\x02\n\rPlaybackClock\x12\x16\n\x0etime_track_ids\x18\x01 \x03(\t\x12\x1d\n\x15\x64\x65\x66\x61ult_time_track_id\x18\x02 \x01(\t\x12\x43\n\x0bvalue_range\x18\x03 \x01(\x0b\x32..fiftyone.multimodal.schemas.v1.TimeValueRange\x12\x1c\n\x0bstart_value\x18\x04 \x01(\x03\x42\x02\x30\x01H\x00\x88\x01\x01\x12\x1a\n\rplayback_rate\x18\x05 \x01(\x02H\x01\x88\x01\x01\x12\x43\n\tsync_mode\x18\x06 \x01(\x0e\x32\x30.fiftyone.multimodal.schemas.v1.PlaybackSyncMode\x12\x0c\n\x04loop\x18\x07 \x01(\x08\x42\x0e\n\x0c_start_valueB\x10\n\x0e_playback_rate\"\x8b\x02\n\x12StreamPlaybackSpec\x12\x11\n\tstream_id\x18\x01 \x01(\t\x12\x17\n\ndecoder_id\x18\x02 \x01(\tH\x00\x88\x01\x01\x12\x16\n\x0etime_track_ids\x18\x03 \x03(\t\x12\x1d\n\x15\x64\x65\x66\x61ult_time_track_id\x18\x04 \x01(\t\x12R\n\x08metadata\x18\x05 \x03(\x0b\x32@.fiftyone.multimodal.schemas.v1.StreamPlaybackSpec.MetadataEntry\x1a/\n\rMetadataEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\x42\r\n\x0b_decoder_id\"\xf4\x01\n\x12PanelStreamBinding\x12\x11\n\tstream_id\x18\x01 \x01(\t\x12=\n\x04role\x18\x02 \x01(\x0e\x32/.fiftyone.multimodal.schemas.v1.PanelStreamRole\x12\x19\n\x0c\x64isplay_name\x18\x03 \x01(\tH\x00\x88\x01\x01\x12 \n\x13\x63oordinate_frame_id\x18\x04 \x01(\tH\x01\x88\x01\x01\x12\x17\n\nfield_path\x18\x05 \x01(\tH\x02\x88\x01\x01\x42\x0f\n\r_display_nameB\x16\n\x14_coordinate_frame_idB\r\n\x0b_field_path\"\\\n\x12ImagePanelSettings\x12\x15\n\x08\x66it_mode\x18\x01 \x01(\tH\x00\x88\x01\x01\x12\"\n\x1a\x65nabled_overlay_stream_ids\x18\x02 \x03(\tB\x0b\n\t_fit_mode\"s\n\x13ThreeDPanelSettings\x12\x1a\n\rcamera_preset\x18\x01 \x01(\tH\x00\x88\x01\x01\x12\x1b\n\x0e\x63olor_by_field\x18\x02 \x01(\tH\x01\x88\x01\x01\x42\x10\n\x0e_camera_presetB\x11\n\x0f_color_by_field\"b\n\x17TimeseriesPanelSettings\x12\x1c\n\x0fx_time_track_id\x18\x01 \x01(\tH\x00\x88\x01\x01\x12\x15\n\ry_field_paths\x18\x02 \x03(\tB\x12\n\x10_x_time_track_id\":\n\x10MapPanelSettings\x12\x17\n\nbase_layer\x18\x01 \x01(\tH\x00\x88\x01\x01\x42\r\n\x0b_base_layer\"*\n\x12TablePanelSettings\x12\x14\n\x0c\x63olumn_paths\x18\x01 \x03(\t\"U\n\x17RawRecordsPanelSettings\x12!\n\x14show_payload_preview\x18\x01 \x01(\x08H\x00\x88\x01\x01\x42\x17\n\x15_show_payload_preview\"\x80\x04\n\rPanelSettings\x12\x43\n\x05image\x18\x01 \x01(\x0b\x32\x32.fiftyone.multimodal.schemas.v1.ImagePanelSettingsH\x00\x12\x46\n\x07three_d\x18\x02 \x01(\x0b\x32\x33.fiftyone.multimodal.schemas.v1.ThreeDPanelSettingsH\x00\x12M\n\ntimeseries\x18\x03 \x01(\x0b\x32\x37.fiftyone.multimodal.schemas.v1.TimeseriesPanelSettingsH\x00\x12?\n\x03map\x18\x04 \x01(\x0b\x32\x30.fiftyone.multimodal.schemas.v1.MapPanelSettingsH\x00\x12\x43\n\x05table\x18\x05 \x01(\x0b\x32\x32.fiftyone.multimodal.schemas.v1.TablePanelSettingsH\x00\x12N\n\x0braw_records\x18\x06 \x01(\x0b\x32\x37.fiftyone.multimodal.schemas.v1.RawRecordsPanelSettingsH\x00\x12\x35\n\x12renderer_extension\x18\x64 \x01(\x0b\x32\x17.google.protobuf.StructH\x00\x42\x06\n\x04kind\"\xeb\x01\n\tPanelSpec\x12\x10\n\x08panel_id\x18\x01 \x01(\t\x12\x37\n\x04kind\x18\x02 \x01(\x0e\x32).fiftyone.multimodal.schemas.v1.PanelKind\x12\r\n\x05title\x18\x03 \x01(\t\x12\x43\n\x07streams\x18\x04 \x03(\x0b\x32\x32.fiftyone.multimodal.schemas.v1.PanelStreamBinding\x12?\n\x08settings\x18\x05 \x01(\x0b\x32-.fiftyone.multimodal.schemas.v1.PanelSettings\"\x1f\n\x0bPanelLayout\x12\x10\n\x08panel_id\x18\x01 \x01(\t\"\xe5\x01\n\x0f\x43ontainerLayout\x12\x41\n\x04kind\x18\x01 \x01(\x0e\x32\x33.fiftyone.multimodal.schemas.v1.LayoutContainerKind\x12<\n\x08\x63hildren\x18\x02 \x03(\x0b\x32*.fiftyone.multimodal.schemas.v1.LayoutNode\x12\x15\n\rchild_weights\x18\x03 \x03(\x02\x12!\n\x14\x61\x63tive_child_node_id\x18\x04 \x01(\tH\x00\x88\x01\x01\x42\x17\n\x15_active_child_node_id\"\xec\x01\n\nLayoutNode\x12\x0f\n\x07node_id\x18\x01 \x01(\t\x12\x12\n\x05title\x18\x02 \x01(\tH\x01\x88\x01\x01\x12\x14\n\x07visible\x18\x03 \x01(\x08H\x02\x88\x01\x01\x12<\n\x05panel\x18\x04 \x01(\x0b\x32+.fiftyone.multimodal.schemas.v1.PanelLayoutH\x00\x12\x44\n\tcontainer\x18\x05 \x01(\x0b\x32/.fiftyone.multimodal.schemas.v1.ContainerLayoutH\x00\x42\t\n\x07\x63ontentB\x08\n\x06_titleB\n\n\x08_visible\"\xb0\x03\n\x0cPlaybackPlan\x12\x0f\n\x07plan_id\x18\x01 \x01(\t\x12\x10\n\x08scene_id\x18\x02 \x01(\t\x12\x14\n\x0cplan_version\x18\x03 \x01(\t\x12<\n\x05\x63lock\x18\x04 \x01(\x0b\x32-.fiftyone.multimodal.schemas.v1.PlaybackClock\x12>\n\x0btime_tracks\x18\x05 \x03(\x0b\x32).fiftyone.multimodal.schemas.v1.TimeTrack\x12\x43\n\x07streams\x18\x06 \x03(\x0b\x32\x32.fiftyone.multimodal.schemas.v1.StreamPlaybackSpec\x12\x39\n\x06panels\x18\x07 \x03(\x0b\x32).fiftyone.multimodal.schemas.v1.PanelSpec\x12?\n\x0broot_layout\x18\x08 \x01(\x0b\x32*.fiftyone.multimodal.schemas.v1.LayoutNode\x12\x13\n\x0bproduced_at\x18\t \x01(\t\x12\x13\n\x0bproduced_by\x18\n \x01(\t\"\xb6\x02\n\x16PlaybackWorkspaceState\x12\x10\n\x08scene_id\x18\x01 \x01(\t\x12\x14\n\x0c\x62\x61se_plan_id\x18\x02 \x01(\t\x12<\n\x05\x63lock\x18\x03 \x01(\x0b\x32-.fiftyone.multimodal.schemas.v1.PlaybackClock\x12\x39\n\x06panels\x18\x04 \x03(\x0b\x32).fiftyone.multimodal.schemas.v1.PanelSpec\x12?\n\x0broot_layout\x18\x05 \x01(\x0b\x32*.fiftyone.multimodal.schemas.v1.LayoutNode\x12\x12\n\nupdated_at\x18\x06 \x01(\t\x12\x17\n\nupdated_by\x18\x07 \x01(\tH\x00\x88\x01\x01\x42\r\n\x0b_updated_by*\x91\x01\n\rTimeTrackType\x12\x1f\n\x1bTIME_TRACK_TYPE_UNSPECIFIED\x10\x00\x12\x1c\n\x18TIME_TRACK_TYPE_SEQUENCE\x10\x01\x12\x1f\n\x1bTIME_TRACK_TYPE_DURATION_NS\x10\x02\x12 \n\x1cTIME_TRACK_TYPE_TIMESTAMP_NS\x10\x03*\xb4\x01\n\rTimeTrackRole\x12\x1f\n\x1bTIME_TRACK_ROLE_UNSPECIFIED\x10\x00\x12\x1c\n\x18TIME_TRACK_ROLE_LOG_TIME\x10\x01\x12 \n\x1cTIME_TRACK_ROLE_PUBLISH_TIME\x10\x02\x12 \n\x1cTIME_TRACK_ROLE_CAPTURE_TIME\x10\x03\x12 \n\x1cTIME_TRACK_ROLE_SAMPLE_INDEX\x10\x04*\x8a\x01\n\rTimeSortOrder\x12\x1f\n\x1bTIME_SORT_ORDER_UNSPECIFIED\x10\x00\x12\x1b\n\x17TIME_SORT_ORDER_UNKNOWN\x10\x01\x12\x1d\n\x19TIME_SORT_ORDER_MONOTONIC\x10\x02\x12\x1c\n\x18TIME_SORT_ORDER_UNSORTED\x10\x03*\x84\x01\n\rTimeSortScope\x12\x1f\n\x1bTIME_SORT_SCOPE_UNSPECIFIED\x10\x00\x12\x19\n\x15TIME_SORT_SCOPE_SCENE\x10\x01\x12\x1a\n\x16TIME_SORT_SCOPE_STREAM\x10\x02\x12\x1b\n\x17TIME_SORT_SCOPE_SEGMENT\x10\x03*\x94\x01\n\x10PlaybackSyncMode\x12\"\n\x1ePLAYBACK_SYNC_MODE_UNSPECIFIED\x10\x00\x12\x1e\n\x1aPLAYBACK_SYNC_MODE_NEAREST\x10\x01\x12\x1d\n\x19PLAYBACK_SYNC_MODE_STRICT\x10\x02\x12\x1d\n\x19PLAYBACK_SYNC_MODE_LATEST\x10\x03*\xb6\x01\n\tPanelKind\x12\x1a\n\x16PANEL_KIND_UNSPECIFIED\x10\x00\x12\x14\n\x10PANEL_KIND_IMAGE\x10\x01\x12\x16\n\x12PANEL_KIND_THREE_D\x10\x02\x12\x19\n\x15PANEL_KIND_TIMESERIES\x10\x03\x12\x12\n\x0ePANEL_KIND_MAP\x10\x04\x12\x14\n\x10PANEL_KIND_TABLE\x10\x05\x12\x1a\n\x16PANEL_KIND_RAW_RECORDS\x10\x06*\xd5\x01\n\x0fPanelStreamRole\x12!\n\x1dPANEL_STREAM_ROLE_UNSPECIFIED\x10\x00\x12\x1d\n\x19PANEL_STREAM_ROLE_PRIMARY\x10\x01\x12\x1d\n\x19PANEL_STREAM_ROLE_SUPPORT\x10\x02\x12\x1d\n\x19PANEL_STREAM_ROLE_OVERLAY\x10\x03\x12\x1f\n\x1bPANEL_STREAM_ROLE_TRANSFORM\x10\x04\x12!\n\x1dPANEL_STREAM_ROLE_CALIBRATION\x10\x05*\xc6\x01\n\x13LayoutContainerKind\x12%\n!LAYOUT_CONTAINER_KIND_UNSPECIFIED\x10\x00\x12\x1e\n\x1aLAYOUT_CONTAINER_KIND_GRID\x10\x01\x12$\n LAYOUT_CONTAINER_KIND_HORIZONTAL\x10\x02\x12\"\n\x1eLAYOUT_CONTAINER_KIND_VERTICAL\x10\x03\x12\x1e\n\x1aLAYOUT_CONTAINER_KIND_TABS\x10\x04\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0eplayback.proto\x12\x1e\x66iftyone.multimodal.schemas.v1\x1a\x0c\x63ommon.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xba\x02\n\rPlaybackClock\x12\x16\n\x0etime_track_ids\x18\x01 \x03(\t\x12\x1d\n\x15\x64\x65\x66\x61ult_time_track_id\x18\x02 \x01(\t\x12\x43\n\x0bvalue_range\x18\x03 \x01(\x0b\x32..fiftyone.multimodal.schemas.v1.TimeValueRange\x12\x1c\n\x0bstart_value\x18\x04 \x01(\x03\x42\x02\x30\x01H\x00\x88\x01\x01\x12\x1a\n\rplayback_rate\x18\x05 \x01(\x02H\x01\x88\x01\x01\x12\x43\n\tsync_mode\x18\x06 \x01(\x0e\x32\x30.fiftyone.multimodal.schemas.v1.PlaybackSyncMode\x12\x0c\n\x04loop\x18\x07 \x01(\x08\x42\x0e\n\x0c_start_valueB\x10\n\x0e_playback_rate\"\x8b\x02\n\x12StreamPlaybackSpec\x12\x11\n\tstream_id\x18\x01 \x01(\t\x12\x17\n\ndecoder_id\x18\x02 \x01(\tH\x00\x88\x01\x01\x12\x16\n\x0etime_track_ids\x18\x03 \x03(\t\x12\x1d\n\x15\x64\x65\x66\x61ult_time_track_id\x18\x04 \x01(\t\x12R\n\x08metadata\x18\x05 \x03(\x0b\x32@.fiftyone.multimodal.schemas.v1.StreamPlaybackSpec.MetadataEntry\x1a/\n\rMetadataEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\x42\r\n\x0b_decoder_id\"\xf4\x01\n\x12PanelStreamBinding\x12\x11\n\tstream_id\x18\x01 \x01(\t\x12=\n\x04role\x18\x02 \x01(\x0e\x32/.fiftyone.multimodal.schemas.v1.PanelStreamRole\x12\x19\n\x0c\x64isplay_name\x18\x03 \x01(\tH\x00\x88\x01\x01\x12 \n\x13\x63oordinate_frame_id\x18\x04 \x01(\tH\x01\x88\x01\x01\x12\x17\n\nfield_path\x18\x05 \x01(\tH\x02\x88\x01\x01\x42\x0f\n\r_display_nameB\x16\n\x14_coordinate_frame_idB\r\n\x0b_field_path\"\\\n\x12ImagePanelSettings\x12\x15\n\x08\x66it_mode\x18\x01 \x01(\tH\x00\x88\x01\x01\x12\"\n\x1a\x65nabled_overlay_stream_ids\x18\x02 \x03(\tB\x0b\n\t_fit_mode\"s\n\x13ThreeDPanelSettings\x12\x1a\n\rcamera_preset\x18\x01 \x01(\tH\x00\x88\x01\x01\x12\x1b\n\x0e\x63olor_by_field\x18\x02 \x01(\tH\x01\x88\x01\x01\x42\x10\n\x0e_camera_presetB\x11\n\x0f_color_by_field\"b\n\x17TimeseriesPanelSettings\x12\x1c\n\x0fx_time_track_id\x18\x01 \x01(\tH\x00\x88\x01\x01\x12\x15\n\ry_field_paths\x18\x02 \x03(\tB\x12\n\x10_x_time_track_id\":\n\x10MapPanelSettings\x12\x17\n\nbase_layer\x18\x01 \x01(\tH\x00\x88\x01\x01\x42\r\n\x0b_base_layer\"*\n\x12TablePanelSettings\x12\x14\n\x0c\x63olumn_paths\x18\x01 \x03(\t\"U\n\x17RawRecordsPanelSettings\x12!\n\x14show_payload_preview\x18\x01 \x01(\x08H\x00\x88\x01\x01\x42\x17\n\x15_show_payload_preview\"\x80\x04\n\rPanelSettings\x12\x43\n\x05image\x18\x01 \x01(\x0b\x32\x32.fiftyone.multimodal.schemas.v1.ImagePanelSettingsH\x00\x12\x46\n\x07three_d\x18\x02 \x01(\x0b\x32\x33.fiftyone.multimodal.schemas.v1.ThreeDPanelSettingsH\x00\x12M\n\ntimeseries\x18\x03 \x01(\x0b\x32\x37.fiftyone.multimodal.schemas.v1.TimeseriesPanelSettingsH\x00\x12?\n\x03map\x18\x04 \x01(\x0b\x32\x30.fiftyone.multimodal.schemas.v1.MapPanelSettingsH\x00\x12\x43\n\x05table\x18\x05 \x01(\x0b\x32\x32.fiftyone.multimodal.schemas.v1.TablePanelSettingsH\x00\x12N\n\x0braw_records\x18\x06 \x01(\x0b\x32\x37.fiftyone.multimodal.schemas.v1.RawRecordsPanelSettingsH\x00\x12\x35\n\x12renderer_extension\x18\x64 \x01(\x0b\x32\x17.google.protobuf.StructH\x00\x42\x06\n\x04kind\"\xeb\x01\n\tPanelSpec\x12\x10\n\x08panel_id\x18\x01 \x01(\t\x12\x37\n\x04kind\x18\x02 \x01(\x0e\x32).fiftyone.multimodal.schemas.v1.PanelKind\x12\r\n\x05title\x18\x03 \x01(\t\x12\x43\n\x07streams\x18\x04 \x03(\x0b\x32\x32.fiftyone.multimodal.schemas.v1.PanelStreamBinding\x12?\n\x08settings\x18\x05 \x01(\x0b\x32-.fiftyone.multimodal.schemas.v1.PanelSettings\"\x1f\n\x0bPanelLayout\x12\x10\n\x08panel_id\x18\x01 \x01(\t\"\xe5\x01\n\x0f\x43ontainerLayout\x12\x41\n\x04kind\x18\x01 \x01(\x0e\x32\x33.fiftyone.multimodal.schemas.v1.LayoutContainerKind\x12<\n\x08\x63hildren\x18\x02 \x03(\x0b\x32*.fiftyone.multimodal.schemas.v1.LayoutNode\x12\x15\n\rchild_weights\x18\x03 \x03(\x02\x12!\n\x14\x61\x63tive_child_node_id\x18\x04 \x01(\tH\x00\x88\x01\x01\x42\x17\n\x15_active_child_node_id\"\xec\x01\n\nLayoutNode\x12\x0f\n\x07node_id\x18\x01 \x01(\t\x12\x12\n\x05title\x18\x02 \x01(\tH\x01\x88\x01\x01\x12\x14\n\x07visible\x18\x03 \x01(\x08H\x02\x88\x01\x01\x12<\n\x05panel\x18\x04 \x01(\x0b\x32+.fiftyone.multimodal.schemas.v1.PanelLayoutH\x00\x12\x44\n\tcontainer\x18\x05 \x01(\x0b\x32/.fiftyone.multimodal.schemas.v1.ContainerLayoutH\x00\x42\t\n\x07\x63ontentB\x08\n\x06_titleB\n\n\x08_visible\"\xcd\x03\n\x0cPlaybackPlan\x12\x0f\n\x07plan_id\x18\x01 \x01(\t\x12\x10\n\x08scene_id\x18\x02 \x01(\t\x12\x1b\n\x13source_inventory_id\x18\x03 \x01(\t\x12\x14\n\x0cplan_version\x18\x04 \x01(\t\x12<\n\x05\x63lock\x18\x05 \x01(\x0b\x32-.fiftyone.multimodal.schemas.v1.PlaybackClock\x12>\n\x0btime_tracks\x18\x06 \x03(\x0b\x32).fiftyone.multimodal.schemas.v1.TimeTrack\x12\x43\n\x07streams\x18\x07 \x03(\x0b\x32\x32.fiftyone.multimodal.schemas.v1.StreamPlaybackSpec\x12\x39\n\x06panels\x18\x08 \x03(\x0b\x32).fiftyone.multimodal.schemas.v1.PanelSpec\x12?\n\x0broot_layout\x18\t \x01(\x0b\x32*.fiftyone.multimodal.schemas.v1.LayoutNode\x12\x13\n\x0bproduced_at\x18\n \x01(\t\x12\x13\n\x0bproduced_by\x18\x0b \x01(\t\"\xb6\x02\n\x16PlaybackWorkspaceState\x12\x10\n\x08scene_id\x18\x01 \x01(\t\x12\x14\n\x0c\x62\x61se_plan_id\x18\x02 \x01(\t\x12<\n\x05\x63lock\x18\x03 \x01(\x0b\x32-.fiftyone.multimodal.schemas.v1.PlaybackClock\x12\x39\n\x06panels\x18\x04 \x03(\x0b\x32).fiftyone.multimodal.schemas.v1.PanelSpec\x12?\n\x0broot_layout\x18\x05 \x01(\x0b\x32*.fiftyone.multimodal.schemas.v1.LayoutNode\x12\x12\n\nupdated_at\x18\x06 \x01(\t\x12\x17\n\nupdated_by\x18\x07 \x01(\tH\x00\x88\x01\x01\x42\r\n\x0b_updated_by*\x94\x01\n\x10PlaybackSyncMode\x12\"\n\x1ePLAYBACK_SYNC_MODE_UNSPECIFIED\x10\x00\x12\x1e\n\x1aPLAYBACK_SYNC_MODE_NEAREST\x10\x01\x12\x1d\n\x19PLAYBACK_SYNC_MODE_STRICT\x10\x02\x12\x1d\n\x19PLAYBACK_SYNC_MODE_LATEST\x10\x03*\xb6\x01\n\tPanelKind\x12\x1a\n\x16PANEL_KIND_UNSPECIFIED\x10\x00\x12\x14\n\x10PANEL_KIND_IMAGE\x10\x01\x12\x16\n\x12PANEL_KIND_THREE_D\x10\x02\x12\x19\n\x15PANEL_KIND_TIMESERIES\x10\x03\x12\x12\n\x0ePANEL_KIND_MAP\x10\x04\x12\x14\n\x10PANEL_KIND_TABLE\x10\x05\x12\x1a\n\x16PANEL_KIND_RAW_RECORDS\x10\x06*\xd5\x01\n\x0fPanelStreamRole\x12!\n\x1dPANEL_STREAM_ROLE_UNSPECIFIED\x10\x00\x12\x1d\n\x19PANEL_STREAM_ROLE_PRIMARY\x10\x01\x12\x1d\n\x19PANEL_STREAM_ROLE_SUPPORT\x10\x02\x12\x1d\n\x19PANEL_STREAM_ROLE_OVERLAY\x10\x03\x12\x1f\n\x1bPANEL_STREAM_ROLE_TRANSFORM\x10\x04\x12!\n\x1dPANEL_STREAM_ROLE_CALIBRATION\x10\x05*\xc6\x01\n\x13LayoutContainerKind\x12%\n!LAYOUT_CONTAINER_KIND_UNSPECIFIED\x10\x00\x12\x1e\n\x1aLAYOUT_CONTAINER_KIND_GRID\x10\x01\x12$\n LAYOUT_CONTAINER_KIND_HORIZONTAL\x10\x02\x12\"\n\x1eLAYOUT_CONTAINER_KIND_VERTICAL\x10\x03\x12\x1e\n\x1aLAYOUT_CONTAINER_KIND_TABS\x10\x04\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'playback_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
-  _globals['_TIMEVALUERANGE'].fields_by_name['start']._loaded_options = None
-  _globals['_TIMEVALUERANGE'].fields_by_name['start']._serialized_options = b'0\001'
-  _globals['_TIMEVALUERANGE'].fields_by_name['end']._loaded_options = None
-  _globals['_TIMEVALUERANGE'].fields_by_name['end']._serialized_options = b'0\001'
-  _globals['_TIMETRACK_METADATAENTRY']._loaded_options = None
-  _globals['_TIMETRACK_METADATAENTRY']._serialized_options = b'8\001'
   _globals['_PLAYBACKCLOCK'].fields_by_name['start_value']._loaded_options = None
   _globals['_PLAYBACKCLOCK'].fields_by_name['start_value']._serialized_options = b'0\001'
   _globals['_STREAMPLAYBACKSPEC_METADATAENTRY']._loaded_options = None
   _globals['_STREAMPLAYBACKSPEC_METADATAENTRY']._serialized_options = b'8\001'
-  _globals['_TIMETRACKTYPE']._serialized_start=4077
-  _globals['_TIMETRACKTYPE']._serialized_end=4222
-  _globals['_TIMETRACKROLE']._serialized_start=4225
-  _globals['_TIMETRACKROLE']._serialized_end=4405
-  _globals['_TIMESORTORDER']._serialized_start=4408
-  _globals['_TIMESORTORDER']._serialized_end=4546
-  _globals['_TIMESORTSCOPE']._serialized_start=4549
-  _globals['_TIMESORTSCOPE']._serialized_end=4681
-  _globals['_PLAYBACKSYNCMODE']._serialized_start=4684
-  _globals['_PLAYBACKSYNCMODE']._serialized_end=4832
-  _globals['_PANELKIND']._serialized_start=4835
-  _globals['_PANELKIND']._serialized_end=5017
-  _globals['_PANELSTREAMROLE']._serialized_start=5020
-  _globals['_PANELSTREAMROLE']._serialized_end=5233
-  _globals['_LAYOUTCONTAINERKIND']._serialized_start=5236
-  _globals['_LAYOUTCONTAINERKIND']._serialized_end=5434
-  _globals['_TIMEVALUERANGE']._serialized_start=80
-  _globals['_TIMEVALUERANGE']._serialized_end=145
-  _globals['_TIMETRACK']._serialized_start=148
-  _globals['_TIMETRACK']._serialized_end=733
-  _globals['_TIMETRACK_METADATAENTRY']._serialized_start=656
-  _globals['_TIMETRACK_METADATAENTRY']._serialized_end=703
-  _globals['_PLAYBACKCLOCK']._serialized_start=736
-  _globals['_PLAYBACKCLOCK']._serialized_end=1050
-  _globals['_STREAMPLAYBACKSPEC']._serialized_start=1053
-  _globals['_STREAMPLAYBACKSPEC']._serialized_end=1320
-  _globals['_STREAMPLAYBACKSPEC_METADATAENTRY']._serialized_start=656
-  _globals['_STREAMPLAYBACKSPEC_METADATAENTRY']._serialized_end=703
-  _globals['_PANELSTREAMBINDING']._serialized_start=1323
-  _globals['_PANELSTREAMBINDING']._serialized_end=1567
-  _globals['_IMAGEPANELSETTINGS']._serialized_start=1569
-  _globals['_IMAGEPANELSETTINGS']._serialized_end=1661
-  _globals['_THREEDPANELSETTINGS']._serialized_start=1663
-  _globals['_THREEDPANELSETTINGS']._serialized_end=1778
-  _globals['_TIMESERIESPANELSETTINGS']._serialized_start=1780
-  _globals['_TIMESERIESPANELSETTINGS']._serialized_end=1878
-  _globals['_MAPPANELSETTINGS']._serialized_start=1880
-  _globals['_MAPPANELSETTINGS']._serialized_end=1938
-  _globals['_TABLEPANELSETTINGS']._serialized_start=1940
-  _globals['_TABLEPANELSETTINGS']._serialized_end=1982
-  _globals['_RAWRECORDSPANELSETTINGS']._serialized_start=1984
-  _globals['_RAWRECORDSPANELSETTINGS']._serialized_end=2069
-  _globals['_PANELSETTINGS']._serialized_start=2072
-  _globals['_PANELSETTINGS']._serialized_end=2584
-  _globals['_PANELSPEC']._serialized_start=2587
-  _globals['_PANELSPEC']._serialized_end=2822
-  _globals['_PANELLAYOUT']._serialized_start=2824
-  _globals['_PANELLAYOUT']._serialized_end=2855
-  _globals['_CONTAINERLAYOUT']._serialized_start=2858
-  _globals['_CONTAINERLAYOUT']._serialized_end=3087
-  _globals['_LAYOUTNODE']._serialized_start=3090
-  _globals['_LAYOUTNODE']._serialized_end=3326
-  _globals['_PLAYBACKPLAN']._serialized_start=3329
-  _globals['_PLAYBACKPLAN']._serialized_end=3761
-  _globals['_PLAYBACKWORKSPACESTATE']._serialized_start=3764
-  _globals['_PLAYBACKWORKSPACESTATE']._serialized_end=4074
+  _globals['_PLAYBACKSYNCMODE']._serialized_start=3465
+  _globals['_PLAYBACKSYNCMODE']._serialized_end=3613
+  _globals['_PANELKIND']._serialized_start=3616
+  _globals['_PANELKIND']._serialized_end=3798
+  _globals['_PANELSTREAMROLE']._serialized_start=3801
+  _globals['_PANELSTREAMROLE']._serialized_end=4014
+  _globals['_LAYOUTCONTAINERKIND']._serialized_start=4017
+  _globals['_LAYOUTCONTAINERKIND']._serialized_end=4215
+  _globals['_PLAYBACKCLOCK']._serialized_start=95
+  _globals['_PLAYBACKCLOCK']._serialized_end=409
+  _globals['_STREAMPLAYBACKSPEC']._serialized_start=412
+  _globals['_STREAMPLAYBACKSPEC']._serialized_end=679
+  _globals['_STREAMPLAYBACKSPEC_METADATAENTRY']._serialized_start=617
+  _globals['_STREAMPLAYBACKSPEC_METADATAENTRY']._serialized_end=664
+  _globals['_PANELSTREAMBINDING']._serialized_start=682
+  _globals['_PANELSTREAMBINDING']._serialized_end=926
+  _globals['_IMAGEPANELSETTINGS']._serialized_start=928
+  _globals['_IMAGEPANELSETTINGS']._serialized_end=1020
+  _globals['_THREEDPANELSETTINGS']._serialized_start=1022
+  _globals['_THREEDPANELSETTINGS']._serialized_end=1137
+  _globals['_TIMESERIESPANELSETTINGS']._serialized_start=1139
+  _globals['_TIMESERIESPANELSETTINGS']._serialized_end=1237
+  _globals['_MAPPANELSETTINGS']._serialized_start=1239
+  _globals['_MAPPANELSETTINGS']._serialized_end=1297
+  _globals['_TABLEPANELSETTINGS']._serialized_start=1299
+  _globals['_TABLEPANELSETTINGS']._serialized_end=1341
+  _globals['_RAWRECORDSPANELSETTINGS']._serialized_start=1343
+  _globals['_RAWRECORDSPANELSETTINGS']._serialized_end=1428
+  _globals['_PANELSETTINGS']._serialized_start=1431
+  _globals['_PANELSETTINGS']._serialized_end=1943
+  _globals['_PANELSPEC']._serialized_start=1946
+  _globals['_PANELSPEC']._serialized_end=2181
+  _globals['_PANELLAYOUT']._serialized_start=2183
+  _globals['_PANELLAYOUT']._serialized_end=2214
+  _globals['_CONTAINERLAYOUT']._serialized_start=2217
+  _globals['_CONTAINERLAYOUT']._serialized_end=2446
+  _globals['_LAYOUTNODE']._serialized_start=2449
+  _globals['_LAYOUTNODE']._serialized_end=2685
+  _globals['_PLAYBACKPLAN']._serialized_start=2688
+  _globals['_PLAYBACKPLAN']._serialized_end=3149
+  _globals['_PLAYBACKWORKSPACESTATE']._serialized_start=3152
+  _globals['_PLAYBACKWORKSPACESTATE']._serialized_end=3462
 # @@protoc_insertion_point(module_scope)

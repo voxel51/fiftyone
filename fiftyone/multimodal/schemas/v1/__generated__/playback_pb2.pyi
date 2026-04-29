@@ -1,3 +1,4 @@
+from . import common_pb2 as _common_pb2
 from google.protobuf import struct_pb2 as _struct_pb2
 from google.protobuf.internal import containers as _containers
 from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
@@ -7,35 +8,6 @@ from collections.abc import Iterable as _Iterable, Mapping as _Mapping
 from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
 
 DESCRIPTOR: _descriptor.FileDescriptor
-
-class TimeTrackType(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
-    __slots__ = ()
-    TIME_TRACK_TYPE_UNSPECIFIED: _ClassVar[TimeTrackType]
-    TIME_TRACK_TYPE_SEQUENCE: _ClassVar[TimeTrackType]
-    TIME_TRACK_TYPE_DURATION_NS: _ClassVar[TimeTrackType]
-    TIME_TRACK_TYPE_TIMESTAMP_NS: _ClassVar[TimeTrackType]
-
-class TimeTrackRole(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
-    __slots__ = ()
-    TIME_TRACK_ROLE_UNSPECIFIED: _ClassVar[TimeTrackRole]
-    TIME_TRACK_ROLE_LOG_TIME: _ClassVar[TimeTrackRole]
-    TIME_TRACK_ROLE_PUBLISH_TIME: _ClassVar[TimeTrackRole]
-    TIME_TRACK_ROLE_CAPTURE_TIME: _ClassVar[TimeTrackRole]
-    TIME_TRACK_ROLE_SAMPLE_INDEX: _ClassVar[TimeTrackRole]
-
-class TimeSortOrder(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
-    __slots__ = ()
-    TIME_SORT_ORDER_UNSPECIFIED: _ClassVar[TimeSortOrder]
-    TIME_SORT_ORDER_UNKNOWN: _ClassVar[TimeSortOrder]
-    TIME_SORT_ORDER_MONOTONIC: _ClassVar[TimeSortOrder]
-    TIME_SORT_ORDER_UNSORTED: _ClassVar[TimeSortOrder]
-
-class TimeSortScope(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
-    __slots__ = ()
-    TIME_SORT_SCOPE_UNSPECIFIED: _ClassVar[TimeSortScope]
-    TIME_SORT_SCOPE_SCENE: _ClassVar[TimeSortScope]
-    TIME_SORT_SCOPE_STREAM: _ClassVar[TimeSortScope]
-    TIME_SORT_SCOPE_SEGMENT: _ClassVar[TimeSortScope]
 
 class PlaybackSyncMode(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     __slots__ = ()
@@ -70,23 +42,6 @@ class LayoutContainerKind(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     LAYOUT_CONTAINER_KIND_HORIZONTAL: _ClassVar[LayoutContainerKind]
     LAYOUT_CONTAINER_KIND_VERTICAL: _ClassVar[LayoutContainerKind]
     LAYOUT_CONTAINER_KIND_TABS: _ClassVar[LayoutContainerKind]
-TIME_TRACK_TYPE_UNSPECIFIED: TimeTrackType
-TIME_TRACK_TYPE_SEQUENCE: TimeTrackType
-TIME_TRACK_TYPE_DURATION_NS: TimeTrackType
-TIME_TRACK_TYPE_TIMESTAMP_NS: TimeTrackType
-TIME_TRACK_ROLE_UNSPECIFIED: TimeTrackRole
-TIME_TRACK_ROLE_LOG_TIME: TimeTrackRole
-TIME_TRACK_ROLE_PUBLISH_TIME: TimeTrackRole
-TIME_TRACK_ROLE_CAPTURE_TIME: TimeTrackRole
-TIME_TRACK_ROLE_SAMPLE_INDEX: TimeTrackRole
-TIME_SORT_ORDER_UNSPECIFIED: TimeSortOrder
-TIME_SORT_ORDER_UNKNOWN: TimeSortOrder
-TIME_SORT_ORDER_MONOTONIC: TimeSortOrder
-TIME_SORT_ORDER_UNSORTED: TimeSortOrder
-TIME_SORT_SCOPE_UNSPECIFIED: TimeSortScope
-TIME_SORT_SCOPE_SCENE: TimeSortScope
-TIME_SORT_SCOPE_STREAM: TimeSortScope
-TIME_SORT_SCOPE_SEGMENT: TimeSortScope
 PLAYBACK_SYNC_MODE_UNSPECIFIED: PlaybackSyncMode
 PLAYBACK_SYNC_MODE_NEAREST: PlaybackSyncMode
 PLAYBACK_SYNC_MODE_STRICT: PlaybackSyncMode
@@ -110,45 +65,6 @@ LAYOUT_CONTAINER_KIND_HORIZONTAL: LayoutContainerKind
 LAYOUT_CONTAINER_KIND_VERTICAL: LayoutContainerKind
 LAYOUT_CONTAINER_KIND_TABS: LayoutContainerKind
 
-class TimeValueRange(_message.Message):
-    __slots__ = ("start", "end")
-    START_FIELD_NUMBER: _ClassVar[int]
-    END_FIELD_NUMBER: _ClassVar[int]
-    start: int
-    end: int
-    def __init__(self, start: _Optional[int] = ..., end: _Optional[int] = ...) -> None: ...
-
-class TimeTrack(_message.Message):
-    __slots__ = ("time_track_id", "type", "role", "display_name", "source_path", "stream_id", "value_range", "sort_order", "sort_scope", "metadata")
-    class MetadataEntry(_message.Message):
-        __slots__ = ("key", "value")
-        KEY_FIELD_NUMBER: _ClassVar[int]
-        VALUE_FIELD_NUMBER: _ClassVar[int]
-        key: str
-        value: str
-        def __init__(self, key: _Optional[str] = ..., value: _Optional[str] = ...) -> None: ...
-    TIME_TRACK_ID_FIELD_NUMBER: _ClassVar[int]
-    TYPE_FIELD_NUMBER: _ClassVar[int]
-    ROLE_FIELD_NUMBER: _ClassVar[int]
-    DISPLAY_NAME_FIELD_NUMBER: _ClassVar[int]
-    SOURCE_PATH_FIELD_NUMBER: _ClassVar[int]
-    STREAM_ID_FIELD_NUMBER: _ClassVar[int]
-    VALUE_RANGE_FIELD_NUMBER: _ClassVar[int]
-    SORT_ORDER_FIELD_NUMBER: _ClassVar[int]
-    SORT_SCOPE_FIELD_NUMBER: _ClassVar[int]
-    METADATA_FIELD_NUMBER: _ClassVar[int]
-    time_track_id: str
-    type: TimeTrackType
-    role: TimeTrackRole
-    display_name: str
-    source_path: str
-    stream_id: str
-    value_range: TimeValueRange
-    sort_order: TimeSortOrder
-    sort_scope: TimeSortScope
-    metadata: _containers.ScalarMap[str, str]
-    def __init__(self, time_track_id: _Optional[str] = ..., type: _Optional[_Union[TimeTrackType, str]] = ..., role: _Optional[_Union[TimeTrackRole, str]] = ..., display_name: _Optional[str] = ..., source_path: _Optional[str] = ..., stream_id: _Optional[str] = ..., value_range: _Optional[_Union[TimeValueRange, _Mapping]] = ..., sort_order: _Optional[_Union[TimeSortOrder, str]] = ..., sort_scope: _Optional[_Union[TimeSortScope, str]] = ..., metadata: _Optional[_Mapping[str, str]] = ...) -> None: ...
-
 class PlaybackClock(_message.Message):
     __slots__ = ("time_track_ids", "default_time_track_id", "value_range", "start_value", "playback_rate", "sync_mode", "loop")
     TIME_TRACK_IDS_FIELD_NUMBER: _ClassVar[int]
@@ -160,12 +76,12 @@ class PlaybackClock(_message.Message):
     LOOP_FIELD_NUMBER: _ClassVar[int]
     time_track_ids: _containers.RepeatedScalarFieldContainer[str]
     default_time_track_id: str
-    value_range: TimeValueRange
+    value_range: _common_pb2.TimeValueRange
     start_value: int
     playback_rate: float
     sync_mode: PlaybackSyncMode
     loop: bool
-    def __init__(self, time_track_ids: _Optional[_Iterable[str]] = ..., default_time_track_id: _Optional[str] = ..., value_range: _Optional[_Union[TimeValueRange, _Mapping]] = ..., start_value: _Optional[int] = ..., playback_rate: _Optional[float] = ..., sync_mode: _Optional[_Union[PlaybackSyncMode, str]] = ..., loop: _Optional[bool] = ...) -> None: ...
+    def __init__(self, time_track_ids: _Optional[_Iterable[str]] = ..., default_time_track_id: _Optional[str] = ..., value_range: _Optional[_Union[_common_pb2.TimeValueRange, _Mapping]] = ..., start_value: _Optional[int] = ..., playback_rate: _Optional[float] = ..., sync_mode: _Optional[_Union[PlaybackSyncMode, str]] = ..., loop: _Optional[bool] = ...) -> None: ...
 
 class StreamPlaybackSpec(_message.Message):
     __slots__ = ("stream_id", "decoder_id", "time_track_ids", "default_time_track_id", "metadata")
@@ -309,9 +225,10 @@ class LayoutNode(_message.Message):
     def __init__(self, node_id: _Optional[str] = ..., title: _Optional[str] = ..., visible: _Optional[bool] = ..., panel: _Optional[_Union[PanelLayout, _Mapping]] = ..., container: _Optional[_Union[ContainerLayout, _Mapping]] = ...) -> None: ...
 
 class PlaybackPlan(_message.Message):
-    __slots__ = ("plan_id", "scene_id", "plan_version", "clock", "time_tracks", "streams", "panels", "root_layout", "produced_at", "produced_by")
+    __slots__ = ("plan_id", "scene_id", "source_inventory_id", "plan_version", "clock", "time_tracks", "streams", "panels", "root_layout", "produced_at", "produced_by")
     PLAN_ID_FIELD_NUMBER: _ClassVar[int]
     SCENE_ID_FIELD_NUMBER: _ClassVar[int]
+    SOURCE_INVENTORY_ID_FIELD_NUMBER: _ClassVar[int]
     PLAN_VERSION_FIELD_NUMBER: _ClassVar[int]
     CLOCK_FIELD_NUMBER: _ClassVar[int]
     TIME_TRACKS_FIELD_NUMBER: _ClassVar[int]
@@ -322,15 +239,16 @@ class PlaybackPlan(_message.Message):
     PRODUCED_BY_FIELD_NUMBER: _ClassVar[int]
     plan_id: str
     scene_id: str
+    source_inventory_id: str
     plan_version: str
     clock: PlaybackClock
-    time_tracks: _containers.RepeatedCompositeFieldContainer[TimeTrack]
+    time_tracks: _containers.RepeatedCompositeFieldContainer[_common_pb2.TimeTrack]
     streams: _containers.RepeatedCompositeFieldContainer[StreamPlaybackSpec]
     panels: _containers.RepeatedCompositeFieldContainer[PanelSpec]
     root_layout: LayoutNode
     produced_at: str
     produced_by: str
-    def __init__(self, plan_id: _Optional[str] = ..., scene_id: _Optional[str] = ..., plan_version: _Optional[str] = ..., clock: _Optional[_Union[PlaybackClock, _Mapping]] = ..., time_tracks: _Optional[_Iterable[_Union[TimeTrack, _Mapping]]] = ..., streams: _Optional[_Iterable[_Union[StreamPlaybackSpec, _Mapping]]] = ..., panels: _Optional[_Iterable[_Union[PanelSpec, _Mapping]]] = ..., root_layout: _Optional[_Union[LayoutNode, _Mapping]] = ..., produced_at: _Optional[str] = ..., produced_by: _Optional[str] = ...) -> None: ...
+    def __init__(self, plan_id: _Optional[str] = ..., scene_id: _Optional[str] = ..., source_inventory_id: _Optional[str] = ..., plan_version: _Optional[str] = ..., clock: _Optional[_Union[PlaybackClock, _Mapping]] = ..., time_tracks: _Optional[_Iterable[_Union[_common_pb2.TimeTrack, _Mapping]]] = ..., streams: _Optional[_Iterable[_Union[StreamPlaybackSpec, _Mapping]]] = ..., panels: _Optional[_Iterable[_Union[PanelSpec, _Mapping]]] = ..., root_layout: _Optional[_Union[LayoutNode, _Mapping]] = ..., produced_at: _Optional[str] = ..., produced_by: _Optional[str] = ...) -> None: ...
 
 class PlaybackWorkspaceState(_message.Message):
     __slots__ = ("scene_id", "base_plan_id", "clock", "panels", "root_layout", "updated_at", "updated_by")

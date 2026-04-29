@@ -4,6 +4,8 @@
 
 import type { GenEnum, GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
 import { enumDesc, fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
+import type { TimeTrack, TimeValueRange } from "./common_pb";
+import { file_common } from "./common_pb";
 import { file_google_protobuf_struct } from "@bufbuild/protobuf/wkt";
 import type { JsonObject, Message } from "@bufbuild/protobuf";
 
@@ -11,124 +13,7 @@ import type { JsonObject, Message } from "@bufbuild/protobuf";
  * Describes the file playback.proto.
  */
 export const file_playback: GenFile = /*@__PURE__*/
-  fileDesc("Cg5wbGF5YmFjay5wcm90bxIeZmlmdHlvbmUubXVsdGltb2RhbC5zY2hlbWFzLnYxIkEKDlRpbWVWYWx1ZVJhbmdlEhEKBXN0YXJ0GAEgASgDQgIwARIUCgNlbmQYAiABKANCAjABSACIAQFCBgoEX2VuZCLJBAoJVGltZVRyYWNrEhUKDXRpbWVfdHJhY2tfaWQYASABKAkSOwoEdHlwZRgCIAEoDjItLmZpZnR5b25lLm11bHRpbW9kYWwuc2NoZW1hcy52MS5UaW1lVHJhY2tUeXBlEjsKBHJvbGUYAyABKA4yLS5maWZ0eW9uZS5tdWx0aW1vZGFsLnNjaGVtYXMudjEuVGltZVRyYWNrUm9sZRIUCgxkaXNwbGF5X25hbWUYBCABKAkSGAoLc291cmNlX3BhdGgYBSABKAlIAIgBARIWCglzdHJlYW1faWQYBiABKAlIAYgBARJDCgt2YWx1ZV9yYW5nZRgHIAEoCzIuLmZpZnR5b25lLm11bHRpbW9kYWwuc2NoZW1hcy52MS5UaW1lVmFsdWVSYW5nZRJBCgpzb3J0X29yZGVyGAggASgOMi0uZmlmdHlvbmUubXVsdGltb2RhbC5zY2hlbWFzLnYxLlRpbWVTb3J0T3JkZXISQQoKc29ydF9zY29wZRgJIAEoDjItLmZpZnR5b25lLm11bHRpbW9kYWwuc2NoZW1hcy52MS5UaW1lU29ydFNjb3BlEkkKCG1ldGFkYXRhGAogAygLMjcuZmlmdHlvbmUubXVsdGltb2RhbC5zY2hlbWFzLnYxLlRpbWVUcmFjay5NZXRhZGF0YUVudHJ5Gi8KDU1ldGFkYXRhRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4AUIOCgxfc291cmNlX3BhdGhCDAoKX3N0cmVhbV9pZCK6AgoNUGxheWJhY2tDbG9jaxIWCg50aW1lX3RyYWNrX2lkcxgBIAMoCRIdChVkZWZhdWx0X3RpbWVfdHJhY2tfaWQYAiABKAkSQwoLdmFsdWVfcmFuZ2UYAyABKAsyLi5maWZ0eW9uZS5tdWx0aW1vZGFsLnNjaGVtYXMudjEuVGltZVZhbHVlUmFuZ2USHAoLc3RhcnRfdmFsdWUYBCABKANCAjABSACIAQESGgoNcGxheWJhY2tfcmF0ZRgFIAEoAkgBiAEBEkMKCXN5bmNfbW9kZRgGIAEoDjIwLmZpZnR5b25lLm11bHRpbW9kYWwuc2NoZW1hcy52MS5QbGF5YmFja1N5bmNNb2RlEgwKBGxvb3AYByABKAhCDgoMX3N0YXJ0X3ZhbHVlQhAKDl9wbGF5YmFja19yYXRlIosCChJTdHJlYW1QbGF5YmFja1NwZWMSEQoJc3RyZWFtX2lkGAEgASgJEhcKCmRlY29kZXJfaWQYAiABKAlIAIgBARIWCg50aW1lX3RyYWNrX2lkcxgDIAMoCRIdChVkZWZhdWx0X3RpbWVfdHJhY2tfaWQYBCABKAkSUgoIbWV0YWRhdGEYBSADKAsyQC5maWZ0eW9uZS5tdWx0aW1vZGFsLnNjaGVtYXMudjEuU3RyZWFtUGxheWJhY2tTcGVjLk1ldGFkYXRhRW50cnkaLwoNTWV0YWRhdGFFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBQg0KC19kZWNvZGVyX2lkIvQBChJQYW5lbFN0cmVhbUJpbmRpbmcSEQoJc3RyZWFtX2lkGAEgASgJEj0KBHJvbGUYAiABKA4yLy5maWZ0eW9uZS5tdWx0aW1vZGFsLnNjaGVtYXMudjEuUGFuZWxTdHJlYW1Sb2xlEhkKDGRpc3BsYXlfbmFtZRgDIAEoCUgAiAEBEiAKE2Nvb3JkaW5hdGVfZnJhbWVfaWQYBCABKAlIAYgBARIXCgpmaWVsZF9wYXRoGAUgASgJSAKIAQFCDwoNX2Rpc3BsYXlfbmFtZUIWChRfY29vcmRpbmF0ZV9mcmFtZV9pZEINCgtfZmllbGRfcGF0aCJcChJJbWFnZVBhbmVsU2V0dGluZ3MSFQoIZml0X21vZGUYASABKAlIAIgBARIiChplbmFibGVkX292ZXJsYXlfc3RyZWFtX2lkcxgCIAMoCUILCglfZml0X21vZGUicwoTVGhyZWVEUGFuZWxTZXR0aW5ncxIaCg1jYW1lcmFfcHJlc2V0GAEgASgJSACIAQESGwoOY29sb3JfYnlfZmllbGQYAiABKAlIAYgBAUIQCg5fY2FtZXJhX3ByZXNldEIRCg9fY29sb3JfYnlfZmllbGQiYgoXVGltZXNlcmllc1BhbmVsU2V0dGluZ3MSHAoPeF90aW1lX3RyYWNrX2lkGAEgASgJSACIAQESFQoNeV9maWVsZF9wYXRocxgCIAMoCUISChBfeF90aW1lX3RyYWNrX2lkIjoKEE1hcFBhbmVsU2V0dGluZ3MSFwoKYmFzZV9sYXllchgBIAEoCUgAiAEBQg0KC19iYXNlX2xheWVyIioKElRhYmxlUGFuZWxTZXR0aW5ncxIUCgxjb2x1bW5fcGF0aHMYASADKAkiVQoXUmF3UmVjb3Jkc1BhbmVsU2V0dGluZ3MSIQoUc2hvd19wYXlsb2FkX3ByZXZpZXcYASABKAhIAIgBAUIXChVfc2hvd19wYXlsb2FkX3ByZXZpZXcigAQKDVBhbmVsU2V0dGluZ3MSQwoFaW1hZ2UYASABKAsyMi5maWZ0eW9uZS5tdWx0aW1vZGFsLnNjaGVtYXMudjEuSW1hZ2VQYW5lbFNldHRpbmdzSAASRgoHdGhyZWVfZBgCIAEoCzIzLmZpZnR5b25lLm11bHRpbW9kYWwuc2NoZW1hcy52MS5UaHJlZURQYW5lbFNldHRpbmdzSAASTQoKdGltZXNlcmllcxgDIAEoCzI3LmZpZnR5b25lLm11bHRpbW9kYWwuc2NoZW1hcy52MS5UaW1lc2VyaWVzUGFuZWxTZXR0aW5nc0gAEj8KA21hcBgEIAEoCzIwLmZpZnR5b25lLm11bHRpbW9kYWwuc2NoZW1hcy52MS5NYXBQYW5lbFNldHRpbmdzSAASQwoFdGFibGUYBSABKAsyMi5maWZ0eW9uZS5tdWx0aW1vZGFsLnNjaGVtYXMudjEuVGFibGVQYW5lbFNldHRpbmdzSAASTgoLcmF3X3JlY29yZHMYBiABKAsyNy5maWZ0eW9uZS5tdWx0aW1vZGFsLnNjaGVtYXMudjEuUmF3UmVjb3Jkc1BhbmVsU2V0dGluZ3NIABI1ChJyZW5kZXJlcl9leHRlbnNpb24YZCABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0SABCBgoEa2luZCLrAQoJUGFuZWxTcGVjEhAKCHBhbmVsX2lkGAEgASgJEjcKBGtpbmQYAiABKA4yKS5maWZ0eW9uZS5tdWx0aW1vZGFsLnNjaGVtYXMudjEuUGFuZWxLaW5kEg0KBXRpdGxlGAMgASgJEkMKB3N0cmVhbXMYBCADKAsyMi5maWZ0eW9uZS5tdWx0aW1vZGFsLnNjaGVtYXMudjEuUGFuZWxTdHJlYW1CaW5kaW5nEj8KCHNldHRpbmdzGAUgASgLMi0uZmlmdHlvbmUubXVsdGltb2RhbC5zY2hlbWFzLnYxLlBhbmVsU2V0dGluZ3MiHwoLUGFuZWxMYXlvdXQSEAoIcGFuZWxfaWQYASABKAki5QEKD0NvbnRhaW5lckxheW91dBJBCgRraW5kGAEgASgOMjMuZmlmdHlvbmUubXVsdGltb2RhbC5zY2hlbWFzLnYxLkxheW91dENvbnRhaW5lcktpbmQSPAoIY2hpbGRyZW4YAiADKAsyKi5maWZ0eW9uZS5tdWx0aW1vZGFsLnNjaGVtYXMudjEuTGF5b3V0Tm9kZRIVCg1jaGlsZF93ZWlnaHRzGAMgAygCEiEKFGFjdGl2ZV9jaGlsZF9ub2RlX2lkGAQgASgJSACIAQFCFwoVX2FjdGl2ZV9jaGlsZF9ub2RlX2lkIuwBCgpMYXlvdXROb2RlEg8KB25vZGVfaWQYASABKAkSEgoFdGl0bGUYAiABKAlIAYgBARIUCgd2aXNpYmxlGAMgASgISAKIAQESPAoFcGFuZWwYBCABKAsyKy5maWZ0eW9uZS5tdWx0aW1vZGFsLnNjaGVtYXMudjEuUGFuZWxMYXlvdXRIABJECgljb250YWluZXIYBSABKAsyLy5maWZ0eW9uZS5tdWx0aW1vZGFsLnNjaGVtYXMudjEuQ29udGFpbmVyTGF5b3V0SABCCQoHY29udGVudEIICgZfdGl0bGVCCgoIX3Zpc2libGUisAMKDFBsYXliYWNrUGxhbhIPCgdwbGFuX2lkGAEgASgJEhAKCHNjZW5lX2lkGAIgASgJEhQKDHBsYW5fdmVyc2lvbhgDIAEoCRI8CgVjbG9jaxgEIAEoCzItLmZpZnR5b25lLm11bHRpbW9kYWwuc2NoZW1hcy52MS5QbGF5YmFja0Nsb2NrEj4KC3RpbWVfdHJhY2tzGAUgAygLMikuZmlmdHlvbmUubXVsdGltb2RhbC5zY2hlbWFzLnYxLlRpbWVUcmFjaxJDCgdzdHJlYW1zGAYgAygLMjIuZmlmdHlvbmUubXVsdGltb2RhbC5zY2hlbWFzLnYxLlN0cmVhbVBsYXliYWNrU3BlYxI5CgZwYW5lbHMYByADKAsyKS5maWZ0eW9uZS5tdWx0aW1vZGFsLnNjaGVtYXMudjEuUGFuZWxTcGVjEj8KC3Jvb3RfbGF5b3V0GAggASgLMiouZmlmdHlvbmUubXVsdGltb2RhbC5zY2hlbWFzLnYxLkxheW91dE5vZGUSEwoLcHJvZHVjZWRfYXQYCSABKAkSEwoLcHJvZHVjZWRfYnkYCiABKAkitgIKFlBsYXliYWNrV29ya3NwYWNlU3RhdGUSEAoIc2NlbmVfaWQYASABKAkSFAoMYmFzZV9wbGFuX2lkGAIgASgJEjwKBWNsb2NrGAMgASgLMi0uZmlmdHlvbmUubXVsdGltb2RhbC5zY2hlbWFzLnYxLlBsYXliYWNrQ2xvY2sSOQoGcGFuZWxzGAQgAygLMikuZmlmdHlvbmUubXVsdGltb2RhbC5zY2hlbWFzLnYxLlBhbmVsU3BlYxI/Cgtyb290X2xheW91dBgFIAEoCzIqLmZpZnR5b25lLm11bHRpbW9kYWwuc2NoZW1hcy52MS5MYXlvdXROb2RlEhIKCnVwZGF0ZWRfYXQYBiABKAkSFwoKdXBkYXRlZF9ieRgHIAEoCUgAiAEBQg0KC191cGRhdGVkX2J5KpEBCg1UaW1lVHJhY2tUeXBlEh8KG1RJTUVfVFJBQ0tfVFlQRV9VTlNQRUNJRklFRBAAEhwKGFRJTUVfVFJBQ0tfVFlQRV9TRVFVRU5DRRABEh8KG1RJTUVfVFJBQ0tfVFlQRV9EVVJBVElPTl9OUxACEiAKHFRJTUVfVFJBQ0tfVFlQRV9USU1FU1RBTVBfTlMQAyq0AQoNVGltZVRyYWNrUm9sZRIfChtUSU1FX1RSQUNLX1JPTEVfVU5TUEVDSUZJRUQQABIcChhUSU1FX1RSQUNLX1JPTEVfTE9HX1RJTUUQARIgChxUSU1FX1RSQUNLX1JPTEVfUFVCTElTSF9USU1FEAISIAocVElNRV9UUkFDS19ST0xFX0NBUFRVUkVfVElNRRADEiAKHFRJTUVfVFJBQ0tfUk9MRV9TQU1QTEVfSU5ERVgQBCqKAQoNVGltZVNvcnRPcmRlchIfChtUSU1FX1NPUlRfT1JERVJfVU5TUEVDSUZJRUQQABIbChdUSU1FX1NPUlRfT1JERVJfVU5LTk9XThABEh0KGVRJTUVfU09SVF9PUkRFUl9NT05PVE9OSUMQAhIcChhUSU1FX1NPUlRfT1JERVJfVU5TT1JURUQQAyqEAQoNVGltZVNvcnRTY29wZRIfChtUSU1FX1NPUlRfU0NPUEVfVU5TUEVDSUZJRUQQABIZChVUSU1FX1NPUlRfU0NPUEVfU0NFTkUQARIaChZUSU1FX1NPUlRfU0NPUEVfU1RSRUFNEAISGwoXVElNRV9TT1JUX1NDT1BFX1NFR01FTlQQAyqUAQoQUGxheWJhY2tTeW5jTW9kZRIiCh5QTEFZQkFDS19TWU5DX01PREVfVU5TUEVDSUZJRUQQABIeChpQTEFZQkFDS19TWU5DX01PREVfTkVBUkVTVBABEh0KGVBMQVlCQUNLX1NZTkNfTU9ERV9TVFJJQ1QQAhIdChlQTEFZQkFDS19TWU5DX01PREVfTEFURVNUEAMqtgEKCVBhbmVsS2luZBIaChZQQU5FTF9LSU5EX1VOU1BFQ0lGSUVEEAASFAoQUEFORUxfS0lORF9JTUFHRRABEhYKElBBTkVMX0tJTkRfVEhSRUVfRBACEhkKFVBBTkVMX0tJTkRfVElNRVNFUklFUxADEhIKDlBBTkVMX0tJTkRfTUFQEAQSFAoQUEFORUxfS0lORF9UQUJMRRAFEhoKFlBBTkVMX0tJTkRfUkFXX1JFQ09SRFMQBirVAQoPUGFuZWxTdHJlYW1Sb2xlEiEKHVBBTkVMX1NUUkVBTV9ST0xFX1VOU1BFQ0lGSUVEEAASHQoZUEFORUxfU1RSRUFNX1JPTEVfUFJJTUFSWRABEh0KGVBBTkVMX1NUUkVBTV9ST0xFX1NVUFBPUlQQAhIdChlQQU5FTF9TVFJFQU1fUk9MRV9PVkVSTEFZEAMSHwobUEFORUxfU1RSRUFNX1JPTEVfVFJBTlNGT1JNEAQSIQodUEFORUxfU1RSRUFNX1JPTEVfQ0FMSUJSQVRJT04QBSrGAQoTTGF5b3V0Q29udGFpbmVyS2luZBIlCiFMQVlPVVRfQ09OVEFJTkVSX0tJTkRfVU5TUEVDSUZJRUQQABIeChpMQVlPVVRfQ09OVEFJTkVSX0tJTkRfR1JJRBABEiQKIExBWU9VVF9DT05UQUlORVJfS0lORF9IT1JJWk9OVEFMEAISIgoeTEFZT1VUX0NPTlRBSU5FUl9LSU5EX1ZFUlRJQ0FMEAMSHgoaTEFZT1VUX0NPTlRBSU5FUl9LSU5EX1RBQlMQBGIGcHJvdG8z", [file_google_protobuf_struct]);
-
-/**
- * Range of values on a time track. The active TimeTrack.type determines
- * whether values are sequence numbers, duration nanoseconds, or epoch
- * timestamp nanoseconds.
- *
- * @generated from message fiftyone.multimodal.schemas.v1.TimeValueRange
- */
-export type TimeValueRange = Message<"fiftyone.multimodal.schemas.v1.TimeValueRange"> & {
-  /**
-   * Inclusive lower bound.
-   *
-   * @generated from field: int64 start = 1 [jstype = JS_STRING];
-   */
-  start: string;
-
-  /**
-   * Optional exclusive upper bound.
-   *
-   * @generated from field: optional int64 end = 2 [jstype = JS_STRING];
-   */
-  end?: string;
-};
-
-/**
- * Describes the message fiftyone.multimodal.schemas.v1.TimeValueRange.
- * Use `create(TimeValueRangeSchema)` to create a new message.
- */
-export const TimeValueRangeSchema: GenMessage<TimeValueRange> = /*@__PURE__*/
-  messageDesc(file_playback, 0);
-
-/**
- * Named time axis available for playback, synchronization, and seeking.
- *
- * @generated from message fiftyone.multimodal.schemas.v1.TimeTrack
- */
-export type TimeTrack = Message<"fiftyone.multimodal.schemas.v1.TimeTrack"> & {
-  /**
-   * Stable identifier referenced by clocks, streams, and panels.
-   *
-   * @generated from field: string time_track_id = 1;
-   */
-  timeTrackId: string;
-
-  /**
-   * Physical value type carried by this track.
-   *
-   * @generated from field: fiftyone.multimodal.schemas.v1.TimeTrackType type = 2;
-   */
-  type: TimeTrackType;
-
-  /**
-   * Semantic meaning of this track.
-   *
-   * @generated from field: fiftyone.multimodal.schemas.v1.TimeTrackRole role = 3;
-   */
-  role: TimeTrackRole;
-
-  /**
-   * Human-readable label for UI controls.
-   *
-   * @generated from field: string display_name = 4;
-   */
-  displayName: string;
-
-  /**
-   * Adapter-native path or column name, such as "header.stamp" or
-   * "row_index". This is provenance only; clients should reference
-   * time_track_id for playback behavior.
-   *
-   * @generated from field: optional string source_path = 5;
-   */
-  sourcePath?: string;
-
-  /**
-   * Stream that owns this track when the track is stream-local. Omitted for
-   * scene-wide tracks.
-   *
-   * @generated from field: optional string stream_id = 6;
-   */
-  streamId?: string;
-
-  /**
-   * Value bounds for this track.
-   *
-   * @generated from field: fiftyone.multimodal.schemas.v1.TimeValueRange value_range = 7;
-   */
-  valueRange?: TimeValueRange;
-
-  /**
-   * How values are ordered within sort_scope.
-   *
-   * @generated from field: fiftyone.multimodal.schemas.v1.TimeSortOrder sort_order = 8;
-   */
-  sortOrder: TimeSortOrder;
-
-  /**
-   * Scope over which sort_order was evaluated.
-   *
-   * @generated from field: fiftyone.multimodal.schemas.v1.TimeSortScope sort_scope = 9;
-   */
-  sortScope: TimeSortScope;
-
-  /**
-   * Adapter-provided metadata that does not affect playback semantics.
-   *
-   * @generated from field: map<string, string> metadata = 10;
-   */
-  metadata: { [key: string]: string };
-};
-
-/**
- * Describes the message fiftyone.multimodal.schemas.v1.TimeTrack.
- * Use `create(TimeTrackSchema)` to create a new message.
- */
-export const TimeTrackSchema: GenMessage<TimeTrack> = /*@__PURE__*/
-  messageDesc(file_playback, 1);
+  fileDesc("Cg5wbGF5YmFjay5wcm90bxIeZmlmdHlvbmUubXVsdGltb2RhbC5zY2hlbWFzLnYxIroCCg1QbGF5YmFja0Nsb2NrEhYKDnRpbWVfdHJhY2tfaWRzGAEgAygJEh0KFWRlZmF1bHRfdGltZV90cmFja19pZBgCIAEoCRJDCgt2YWx1ZV9yYW5nZRgDIAEoCzIuLmZpZnR5b25lLm11bHRpbW9kYWwuc2NoZW1hcy52MS5UaW1lVmFsdWVSYW5nZRIcCgtzdGFydF92YWx1ZRgEIAEoA0ICMAFIAIgBARIaCg1wbGF5YmFja19yYXRlGAUgASgCSAGIAQESQwoJc3luY19tb2RlGAYgASgOMjAuZmlmdHlvbmUubXVsdGltb2RhbC5zY2hlbWFzLnYxLlBsYXliYWNrU3luY01vZGUSDAoEbG9vcBgHIAEoCEIOCgxfc3RhcnRfdmFsdWVCEAoOX3BsYXliYWNrX3JhdGUiiwIKElN0cmVhbVBsYXliYWNrU3BlYxIRCglzdHJlYW1faWQYASABKAkSFwoKZGVjb2Rlcl9pZBgCIAEoCUgAiAEBEhYKDnRpbWVfdHJhY2tfaWRzGAMgAygJEh0KFWRlZmF1bHRfdGltZV90cmFja19pZBgEIAEoCRJSCghtZXRhZGF0YRgFIAMoCzJALmZpZnR5b25lLm11bHRpbW9kYWwuc2NoZW1hcy52MS5TdHJlYW1QbGF5YmFja1NwZWMuTWV0YWRhdGFFbnRyeRovCg1NZXRhZGF0YUVudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAFCDQoLX2RlY29kZXJfaWQi9AEKElBhbmVsU3RyZWFtQmluZGluZxIRCglzdHJlYW1faWQYASABKAkSPQoEcm9sZRgCIAEoDjIvLmZpZnR5b25lLm11bHRpbW9kYWwuc2NoZW1hcy52MS5QYW5lbFN0cmVhbVJvbGUSGQoMZGlzcGxheV9uYW1lGAMgASgJSACIAQESIAoTY29vcmRpbmF0ZV9mcmFtZV9pZBgEIAEoCUgBiAEBEhcKCmZpZWxkX3BhdGgYBSABKAlIAogBAUIPCg1fZGlzcGxheV9uYW1lQhYKFF9jb29yZGluYXRlX2ZyYW1lX2lkQg0KC19maWVsZF9wYXRoIlwKEkltYWdlUGFuZWxTZXR0aW5ncxIVCghmaXRfbW9kZRgBIAEoCUgAiAEBEiIKGmVuYWJsZWRfb3ZlcmxheV9zdHJlYW1faWRzGAIgAygJQgsKCV9maXRfbW9kZSJzChNUaHJlZURQYW5lbFNldHRpbmdzEhoKDWNhbWVyYV9wcmVzZXQYASABKAlIAIgBARIbCg5jb2xvcl9ieV9maWVsZBgCIAEoCUgBiAEBQhAKDl9jYW1lcmFfcHJlc2V0QhEKD19jb2xvcl9ieV9maWVsZCJiChdUaW1lc2VyaWVzUGFuZWxTZXR0aW5ncxIcCg94X3RpbWVfdHJhY2tfaWQYASABKAlIAIgBARIVCg15X2ZpZWxkX3BhdGhzGAIgAygJQhIKEF94X3RpbWVfdHJhY2tfaWQiOgoQTWFwUGFuZWxTZXR0aW5ncxIXCgpiYXNlX2xheWVyGAEgASgJSACIAQFCDQoLX2Jhc2VfbGF5ZXIiKgoSVGFibGVQYW5lbFNldHRpbmdzEhQKDGNvbHVtbl9wYXRocxgBIAMoCSJVChdSYXdSZWNvcmRzUGFuZWxTZXR0aW5ncxIhChRzaG93X3BheWxvYWRfcHJldmlldxgBIAEoCEgAiAEBQhcKFV9zaG93X3BheWxvYWRfcHJldmlldyKABAoNUGFuZWxTZXR0aW5ncxJDCgVpbWFnZRgBIAEoCzIyLmZpZnR5b25lLm11bHRpbW9kYWwuc2NoZW1hcy52MS5JbWFnZVBhbmVsU2V0dGluZ3NIABJGCgd0aHJlZV9kGAIgASgLMjMuZmlmdHlvbmUubXVsdGltb2RhbC5zY2hlbWFzLnYxLlRocmVlRFBhbmVsU2V0dGluZ3NIABJNCgp0aW1lc2VyaWVzGAMgASgLMjcuZmlmdHlvbmUubXVsdGltb2RhbC5zY2hlbWFzLnYxLlRpbWVzZXJpZXNQYW5lbFNldHRpbmdzSAASPwoDbWFwGAQgASgLMjAuZmlmdHlvbmUubXVsdGltb2RhbC5zY2hlbWFzLnYxLk1hcFBhbmVsU2V0dGluZ3NIABJDCgV0YWJsZRgFIAEoCzIyLmZpZnR5b25lLm11bHRpbW9kYWwuc2NoZW1hcy52MS5UYWJsZVBhbmVsU2V0dGluZ3NIABJOCgtyYXdfcmVjb3JkcxgGIAEoCzI3LmZpZnR5b25lLm11bHRpbW9kYWwuc2NoZW1hcy52MS5SYXdSZWNvcmRzUGFuZWxTZXR0aW5nc0gAEjUKEnJlbmRlcmVyX2V4dGVuc2lvbhhkIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3RIAEIGCgRraW5kIusBCglQYW5lbFNwZWMSEAoIcGFuZWxfaWQYASABKAkSNwoEa2luZBgCIAEoDjIpLmZpZnR5b25lLm11bHRpbW9kYWwuc2NoZW1hcy52MS5QYW5lbEtpbmQSDQoFdGl0bGUYAyABKAkSQwoHc3RyZWFtcxgEIAMoCzIyLmZpZnR5b25lLm11bHRpbW9kYWwuc2NoZW1hcy52MS5QYW5lbFN0cmVhbUJpbmRpbmcSPwoIc2V0dGluZ3MYBSABKAsyLS5maWZ0eW9uZS5tdWx0aW1vZGFsLnNjaGVtYXMudjEuUGFuZWxTZXR0aW5ncyIfCgtQYW5lbExheW91dBIQCghwYW5lbF9pZBgBIAEoCSLlAQoPQ29udGFpbmVyTGF5b3V0EkEKBGtpbmQYASABKA4yMy5maWZ0eW9uZS5tdWx0aW1vZGFsLnNjaGVtYXMudjEuTGF5b3V0Q29udGFpbmVyS2luZBI8CghjaGlsZHJlbhgCIAMoCzIqLmZpZnR5b25lLm11bHRpbW9kYWwuc2NoZW1hcy52MS5MYXlvdXROb2RlEhUKDWNoaWxkX3dlaWdodHMYAyADKAISIQoUYWN0aXZlX2NoaWxkX25vZGVfaWQYBCABKAlIAIgBAUIXChVfYWN0aXZlX2NoaWxkX25vZGVfaWQi7AEKCkxheW91dE5vZGUSDwoHbm9kZV9pZBgBIAEoCRISCgV0aXRsZRgCIAEoCUgBiAEBEhQKB3Zpc2libGUYAyABKAhIAogBARI8CgVwYW5lbBgEIAEoCzIrLmZpZnR5b25lLm11bHRpbW9kYWwuc2NoZW1hcy52MS5QYW5lbExheW91dEgAEkQKCWNvbnRhaW5lchgFIAEoCzIvLmZpZnR5b25lLm11bHRpbW9kYWwuc2NoZW1hcy52MS5Db250YWluZXJMYXlvdXRIAEIJCgdjb250ZW50QggKBl90aXRsZUIKCghfdmlzaWJsZSLNAwoMUGxheWJhY2tQbGFuEg8KB3BsYW5faWQYASABKAkSEAoIc2NlbmVfaWQYAiABKAkSGwoTc291cmNlX2ludmVudG9yeV9pZBgDIAEoCRIUCgxwbGFuX3ZlcnNpb24YBCABKAkSPAoFY2xvY2sYBSABKAsyLS5maWZ0eW9uZS5tdWx0aW1vZGFsLnNjaGVtYXMudjEuUGxheWJhY2tDbG9jaxI+Cgt0aW1lX3RyYWNrcxgGIAMoCzIpLmZpZnR5b25lLm11bHRpbW9kYWwuc2NoZW1hcy52MS5UaW1lVHJhY2sSQwoHc3RyZWFtcxgHIAMoCzIyLmZpZnR5b25lLm11bHRpbW9kYWwuc2NoZW1hcy52MS5TdHJlYW1QbGF5YmFja1NwZWMSOQoGcGFuZWxzGAggAygLMikuZmlmdHlvbmUubXVsdGltb2RhbC5zY2hlbWFzLnYxLlBhbmVsU3BlYxI/Cgtyb290X2xheW91dBgJIAEoCzIqLmZpZnR5b25lLm11bHRpbW9kYWwuc2NoZW1hcy52MS5MYXlvdXROb2RlEhMKC3Byb2R1Y2VkX2F0GAogASgJEhMKC3Byb2R1Y2VkX2J5GAsgASgJIrYCChZQbGF5YmFja1dvcmtzcGFjZVN0YXRlEhAKCHNjZW5lX2lkGAEgASgJEhQKDGJhc2VfcGxhbl9pZBgCIAEoCRI8CgVjbG9jaxgDIAEoCzItLmZpZnR5b25lLm11bHRpbW9kYWwuc2NoZW1hcy52MS5QbGF5YmFja0Nsb2NrEjkKBnBhbmVscxgEIAMoCzIpLmZpZnR5b25lLm11bHRpbW9kYWwuc2NoZW1hcy52MS5QYW5lbFNwZWMSPwoLcm9vdF9sYXlvdXQYBSABKAsyKi5maWZ0eW9uZS5tdWx0aW1vZGFsLnNjaGVtYXMudjEuTGF5b3V0Tm9kZRISCgp1cGRhdGVkX2F0GAYgASgJEhcKCnVwZGF0ZWRfYnkYByABKAlIAIgBAUINCgtfdXBkYXRlZF9ieSqUAQoQUGxheWJhY2tTeW5jTW9kZRIiCh5QTEFZQkFDS19TWU5DX01PREVfVU5TUEVDSUZJRUQQABIeChpQTEFZQkFDS19TWU5DX01PREVfTkVBUkVTVBABEh0KGVBMQVlCQUNLX1NZTkNfTU9ERV9TVFJJQ1QQAhIdChlQTEFZQkFDS19TWU5DX01PREVfTEFURVNUEAMqtgEKCVBhbmVsS2luZBIaChZQQU5FTF9LSU5EX1VOU1BFQ0lGSUVEEAASFAoQUEFORUxfS0lORF9JTUFHRRABEhYKElBBTkVMX0tJTkRfVEhSRUVfRBACEhkKFVBBTkVMX0tJTkRfVElNRVNFUklFUxADEhIKDlBBTkVMX0tJTkRfTUFQEAQSFAoQUEFORUxfS0lORF9UQUJMRRAFEhoKFlBBTkVMX0tJTkRfUkFXX1JFQ09SRFMQBirVAQoPUGFuZWxTdHJlYW1Sb2xlEiEKHVBBTkVMX1NUUkVBTV9ST0xFX1VOU1BFQ0lGSUVEEAASHQoZUEFORUxfU1RSRUFNX1JPTEVfUFJJTUFSWRABEh0KGVBBTkVMX1NUUkVBTV9ST0xFX1NVUFBPUlQQAhIdChlQQU5FTF9TVFJFQU1fUk9MRV9PVkVSTEFZEAMSHwobUEFORUxfU1RSRUFNX1JPTEVfVFJBTlNGT1JNEAQSIQodUEFORUxfU1RSRUFNX1JPTEVfQ0FMSUJSQVRJT04QBSrGAQoTTGF5b3V0Q29udGFpbmVyS2luZBIlCiFMQVlPVVRfQ09OVEFJTkVSX0tJTkRfVU5TUEVDSUZJRUQQABIeChpMQVlPVVRfQ09OVEFJTkVSX0tJTkRfR1JJRBABEiQKIExBWU9VVF9DT05UQUlORVJfS0lORF9IT1JJWk9OVEFMEAISIgoeTEFZT1VUX0NPTlRBSU5FUl9LSU5EX1ZFUlRJQ0FMEAMSHgoaTEFZT1VUX0NPTlRBSU5FUl9LSU5EX1RBQlMQBGIGcHJvdG8z", [file_common, file_google_protobuf_struct]);
 
 /**
  * Global playback clock defaults for the scene.
@@ -199,7 +84,7 @@ export type PlaybackClock = Message<"fiftyone.multimodal.schemas.v1.PlaybackCloc
  * Use `create(PlaybackClockSchema)` to create a new message.
  */
 export const PlaybackClockSchema: GenMessage<PlaybackClock> = /*@__PURE__*/
-  messageDesc(file_playback, 2);
+  messageDesc(file_playback, 0);
 
 /**
  * Playback-specific stream policy derived from scene inventory.
@@ -248,7 +133,7 @@ export type StreamPlaybackSpec = Message<"fiftyone.multimodal.schemas.v1.StreamP
  * Use `create(StreamPlaybackSpecSchema)` to create a new message.
  */
 export const StreamPlaybackSpecSchema: GenMessage<StreamPlaybackSpec> = /*@__PURE__*/
-  messageDesc(file_playback, 3);
+  messageDesc(file_playback, 1);
 
 /**
  * Binding between a stream and a panel.
@@ -297,7 +182,7 @@ export type PanelStreamBinding = Message<"fiftyone.multimodal.schemas.v1.PanelSt
  * Use `create(PanelStreamBindingSchema)` to create a new message.
  */
 export const PanelStreamBindingSchema: GenMessage<PanelStreamBinding> = /*@__PURE__*/
-  messageDesc(file_playback, 4);
+  messageDesc(file_playback, 2);
 
 /**
  * Settings for PANEL_KIND_IMAGE.
@@ -325,7 +210,7 @@ export type ImagePanelSettings = Message<"fiftyone.multimodal.schemas.v1.ImagePa
  * Use `create(ImagePanelSettingsSchema)` to create a new message.
  */
 export const ImagePanelSettingsSchema: GenMessage<ImagePanelSettings> = /*@__PURE__*/
-  messageDesc(file_playback, 5);
+  messageDesc(file_playback, 3);
 
 /**
  * Settings for PANEL_KIND_THREE_D.
@@ -353,7 +238,7 @@ export type ThreeDPanelSettings = Message<"fiftyone.multimodal.schemas.v1.ThreeD
  * Use `create(ThreeDPanelSettingsSchema)` to create a new message.
  */
 export const ThreeDPanelSettingsSchema: GenMessage<ThreeDPanelSettings> = /*@__PURE__*/
-  messageDesc(file_playback, 6);
+  messageDesc(file_playback, 4);
 
 /**
  * Settings for PANEL_KIND_TIMESERIES.
@@ -381,7 +266,7 @@ export type TimeseriesPanelSettings = Message<"fiftyone.multimodal.schemas.v1.Ti
  * Use `create(TimeseriesPanelSettingsSchema)` to create a new message.
  */
 export const TimeseriesPanelSettingsSchema: GenMessage<TimeseriesPanelSettings> = /*@__PURE__*/
-  messageDesc(file_playback, 7);
+  messageDesc(file_playback, 5);
 
 /**
  * Settings for PANEL_KIND_MAP.
@@ -402,7 +287,7 @@ export type MapPanelSettings = Message<"fiftyone.multimodal.schemas.v1.MapPanelS
  * Use `create(MapPanelSettingsSchema)` to create a new message.
  */
 export const MapPanelSettingsSchema: GenMessage<MapPanelSettings> = /*@__PURE__*/
-  messageDesc(file_playback, 8);
+  messageDesc(file_playback, 6);
 
 /**
  * Settings for PANEL_KIND_TABLE.
@@ -423,7 +308,7 @@ export type TablePanelSettings = Message<"fiftyone.multimodal.schemas.v1.TablePa
  * Use `create(TablePanelSettingsSchema)` to create a new message.
  */
 export const TablePanelSettingsSchema: GenMessage<TablePanelSettings> = /*@__PURE__*/
-  messageDesc(file_playback, 9);
+  messageDesc(file_playback, 7);
 
 /**
  * Settings for PANEL_KIND_RAW_RECORDS.
@@ -444,7 +329,7 @@ export type RawRecordsPanelSettings = Message<"fiftyone.multimodal.schemas.v1.Ra
  * Use `create(RawRecordsPanelSettingsSchema)` to create a new message.
  */
 export const RawRecordsPanelSettingsSchema: GenMessage<RawRecordsPanelSettings> = /*@__PURE__*/
-  messageDesc(file_playback, 10);
+  messageDesc(file_playback, 8);
 
 /**
  * Typed settings for the selected panel renderer. If set, the oneof
@@ -509,7 +394,7 @@ export type PanelSettings = Message<"fiftyone.multimodal.schemas.v1.PanelSetting
  * Use `create(PanelSettingsSchema)` to create a new message.
  */
 export const PanelSettingsSchema: GenMessage<PanelSettings> = /*@__PURE__*/
-  messageDesc(file_playback, 11);
+  messageDesc(file_playback, 9);
 
 /**
  * Initial panel specification for a playback plan.
@@ -559,7 +444,7 @@ export type PanelSpec = Message<"fiftyone.multimodal.schemas.v1.PanelSpec"> & {
  * Use `create(PanelSpecSchema)` to create a new message.
  */
 export const PanelSpecSchema: GenMessage<PanelSpec> = /*@__PURE__*/
-  messageDesc(file_playback, 12);
+  messageDesc(file_playback, 10);
 
 /**
  * Leaf layout node that points at a panel.
@@ -580,7 +465,7 @@ export type PanelLayout = Message<"fiftyone.multimodal.schemas.v1.PanelLayout"> 
  * Use `create(PanelLayoutSchema)` to create a new message.
  */
 export const PanelLayoutSchema: GenMessage<PanelLayout> = /*@__PURE__*/
-  messageDesc(file_playback, 13);
+  messageDesc(file_playback, 11);
 
 /**
  * Container layout node with child nodes.
@@ -624,7 +509,7 @@ export type ContainerLayout = Message<"fiftyone.multimodal.schemas.v1.ContainerL
  * Use `create(ContainerLayoutSchema)` to create a new message.
  */
 export const ContainerLayoutSchema: GenMessage<ContainerLayout> = /*@__PURE__*/
-  messageDesc(file_playback, 14);
+  messageDesc(file_playback, 12);
 
 /**
  * Recursive initial layout tree for playback panels.
@@ -676,11 +561,12 @@ export type LayoutNode = Message<"fiftyone.multimodal.schemas.v1.LayoutNode"> & 
  * Use `create(LayoutNodeSchema)` to create a new message.
  */
 export const LayoutNodeSchema: GenMessage<LayoutNode> = /*@__PURE__*/
-  messageDesc(file_playback, 15);
+  messageDesc(file_playback, 13);
 
 /**
- * Planner-produced initial playback workspace for one scene inventory. It should
- * describe the default view a client can open, not the client's mutable runtime UI state.
+ * Planner-produced initial playback workspace for one scene inventory. It
+ * describes the default view a client can open, not the client's mutable
+ * runtime UI state.
  *
  * @generated from message fiftyone.multimodal.schemas.v1.PlaybackPlan
  */
@@ -694,23 +580,31 @@ export type PlaybackPlan = Message<"fiftyone.multimodal.schemas.v1.PlaybackPlan"
 
   /**
    * SceneInventory.scene_id this plan was resolved from.
-   * scene.
    *
    * @generated from field: string scene_id = 2;
    */
   sceneId: string;
 
   /**
+   * SceneInventory.inventory_id this plan was built from. This links the
+   * generated default workspace back to the immutable source-fact artifact that
+   * the planner consumed.
+   *
+   * @generated from field: string source_inventory_id = 3;
+   */
+  sourceInventoryId: string;
+
+  /**
    * Semantic version of the playback-plan contract used by the producer.
    *
-   * @generated from field: string plan_version = 3;
+   * @generated from field: string plan_version = 4;
    */
   planVersion: string;
 
   /**
    * Initial shared playback clock configuration.
    *
-   * @generated from field: fiftyone.multimodal.schemas.v1.PlaybackClock clock = 4;
+   * @generated from field: fiftyone.multimodal.schemas.v1.PlaybackClock clock = 5;
    */
   clock?: PlaybackClock;
 
@@ -718,14 +612,14 @@ export type PlaybackPlan = Message<"fiftyone.multimodal.schemas.v1.PlaybackPlan"
    * Named time axes available for clock control, seeking, and stream
    * synchronization.
    *
-   * @generated from field: repeated fiftyone.multimodal.schemas.v1.TimeTrack time_tracks = 5;
+   * @generated from field: repeated fiftyone.multimodal.schemas.v1.TimeTrack time_tracks = 6;
    */
   timeTracks: TimeTrack[];
 
   /**
    * Playback-specific hints for streams from SceneInventory.streams.
    *
-   * @generated from field: repeated fiftyone.multimodal.schemas.v1.StreamPlaybackSpec streams = 6;
+   * @generated from field: repeated fiftyone.multimodal.schemas.v1.StreamPlaybackSpec streams = 7;
    */
   streams: StreamPlaybackSpec[];
 
@@ -733,15 +627,15 @@ export type PlaybackPlan = Message<"fiftyone.multimodal.schemas.v1.PlaybackPlan"
    * Panels available to the initial workspace. Panel ids should be unique
    * within the plan; layout leaves reference these ids.
    *
-   * @generated from field: repeated fiftyone.multimodal.schemas.v1.PanelSpec panels = 7;
+   * @generated from field: repeated fiftyone.multimodal.schemas.v1.PanelSpec panels = 8;
    */
   panels: PanelSpec[];
 
   /**
    * Root of the initial panel layout tree. The tree is intentionally generic:
-   * clients may adapt it any tiled layout implementation.
+   * clients may adapt it to any tiled layout implementation.
    *
-   * @generated from field: fiftyone.multimodal.schemas.v1.LayoutNode root_layout = 8;
+   * @generated from field: fiftyone.multimodal.schemas.v1.LayoutNode root_layout = 9;
    */
   rootLayout?: LayoutNode;
 
@@ -749,7 +643,7 @@ export type PlaybackPlan = Message<"fiftyone.multimodal.schemas.v1.PlaybackPlan"
    * RFC 3339 timestamp describing when this plan was produced. This is planner
    * provenance for caching and debugging.
    *
-   * @generated from field: string produced_at = 9;
+   * @generated from field: string produced_at = 10;
    */
   producedAt: string;
 
@@ -757,7 +651,7 @@ export type PlaybackPlan = Message<"fiftyone.multimodal.schemas.v1.PlaybackPlan"
    * Planner name and version that produced this plan, such as an adapter,
    * service, or rule set identifier.
    *
-   * @generated from field: string produced_by = 10;
+   * @generated from field: string produced_by = 11;
    */
   producedBy: string;
 };
@@ -767,7 +661,7 @@ export type PlaybackPlan = Message<"fiftyone.multimodal.schemas.v1.PlaybackPlan"
  * Use `create(PlaybackPlanSchema)` to create a new message.
  */
 export const PlaybackPlanSchema: GenMessage<PlaybackPlan> = /*@__PURE__*/
-  messageDesc(file_playback, 16);
+  messageDesc(file_playback, 14);
 
 /**
  * User-authored playback workspace state derived from a PlaybackPlan. This is
@@ -841,188 +735,7 @@ export type PlaybackWorkspaceState = Message<"fiftyone.multimodal.schemas.v1.Pla
  * Use `create(PlaybackWorkspaceStateSchema)` to create a new message.
  */
 export const PlaybackWorkspaceStateSchema: GenMessage<PlaybackWorkspaceState> = /*@__PURE__*/
-  messageDesc(file_playback, 17);
-
-/**
- * Physical interpretation of values on a time track.
- *
- * @generated from enum fiftyone.multimodal.schemas.v1.TimeTrackType
- */
-export enum TimeTrackType {
-  /**
-   * No physical interpretation has been declared.
-   *
-   * @generated from enum value: TIME_TRACK_TYPE_UNSPECIFIED = 0;
-   */
-  UNSPECIFIED = 0,
-
-  /**
-   * Unitless integer positions with no clock semantics.
-   * Use case: frame numbers, row indexes, sample indexes, or event counters.
-   *
-   * @generated from enum value: TIME_TRACK_TYPE_SEQUENCE = 1;
-   */
-  SEQUENCE = 1,
-
-  /**
-   * Elapsed nanoseconds relative to a source or scene origin.
-   * Use case: session time, media presentation time, or episode-relative time.
-   *
-   * @generated from enum value: TIME_TRACK_TYPE_DURATION_NS = 2;
-   */
-  DURATION_NS = 2,
-
-  /**
-   * Absolute Unix epoch nanoseconds.
-   * Use case: wall-clock capture, publish, or record times across sources.
-   *
-   * @generated from enum value: TIME_TRACK_TYPE_TIMESTAMP_NS = 3;
-   */
-  TIMESTAMP_NS = 3,
-}
-
-/**
- * Describes the enum fiftyone.multimodal.schemas.v1.TimeTrackType.
- */
-export const TimeTrackTypeSchema: GenEnum<TimeTrackType> = /*@__PURE__*/
-  enumDesc(file_playback, 0);
-
-/**
- * Semantic role a time track plays in playback and synchronization.
- *
- * @generated from enum fiftyone.multimodal.schemas.v1.TimeTrackRole
- */
-export enum TimeTrackRole {
-  /**
-   * No semantic role has been declared. Unknown provenance.
-   *
-   * @generated from enum value: TIME_TRACK_ROLE_UNSPECIFIED = 0;
-   */
-  UNSPECIFIED = 0,
-
-  /**
-   * Time when a container / sink recorded payload.
-   *
-   * @generated from enum value: TIME_TRACK_ROLE_LOG_TIME = 1;
-   */
-  LOG_TIME = 1,
-
-  /**
-   * Time when a producer emitted or published a record.
-   *
-   * @generated from enum value: TIME_TRACK_ROLE_PUBLISH_TIME = 2;
-   */
-  PUBLISH_TIME = 2,
-
-  /**
-   * Time when a sensor or producer captured the measurement.
-   *
-   * @generated from enum value: TIME_TRACK_ROLE_CAPTURE_TIME = 3;
-   */
-  CAPTURE_TIME = 3,
-
-  /**
-   * Ordinal sample position rather than a measured time.
-   * Use case: datasets or episodes whose natural clock is row or frame index.
-   *
-   * @generated from enum value: TIME_TRACK_ROLE_SAMPLE_INDEX = 4;
-   */
-  SAMPLE_INDEX = 4,
-}
-
-/**
- * Describes the enum fiftyone.multimodal.schemas.v1.TimeTrackRole.
- */
-export const TimeTrackRoleSchema: GenEnum<TimeTrackRole> = /*@__PURE__*/
-  enumDesc(file_playback, 1);
-
-/**
- * Whether time-track values are known to be ordered in their declared scope.
- *
- * @generated from enum fiftyone.multimodal.schemas.v1.TimeSortOrder
- */
-export enum TimeSortOrder {
-  /**
-   * No ordering contract has been declared.
-   *
-   * @generated from enum value: TIME_SORT_ORDER_UNSPECIFIED = 0;
-   */
-  UNSPECIFIED = 0,
-
-  /**
-   * The adapter did not verify ordering.
-   * Avoid assuming binary search or streaming cursor safety.
-   *
-   * @generated from enum value: TIME_SORT_ORDER_UNKNOWN = 1;
-   */
-  UNKNOWN = 1,
-
-  /**
-   * Values never decrease (but may stay constant) within the declared scope.
-   * Allows for efficient seeking and range queries.
-   *
-   * @generated from enum value: TIME_SORT_ORDER_MONOTONIC = 2;
-   */
-  MONOTONIC = 2,
-
-  /**
-   * Values may move backward within the declared scope.
-   * Scan, index, or sort before exact seeking or range filtering.
-   *
-   * @generated from enum value: TIME_SORT_ORDER_UNSORTED = 3;
-   */
-  UNSORTED = 3,
-}
-
-/**
- * Describes the enum fiftyone.multimodal.schemas.v1.TimeSortOrder.
- */
-export const TimeSortOrderSchema: GenEnum<TimeSortOrder> = /*@__PURE__*/
-  enumDesc(file_playback, 2);
-
-/**
- * Scope over which TimeSortOrder applies.
- *
- * @generated from enum fiftyone.multimodal.schemas.v1.TimeSortScope
- */
-export enum TimeSortScope {
-  /**
-   * No ordering scope has been declared.
-   *
-   * @generated from enum value: TIME_SORT_SCOPE_UNSPECIFIED = 0;
-   */
-  UNSPECIFIED = 0,
-
-  /**
-   * Ordering applies across the entire scene.
-   * Use case: global clocks, global sample indexes.
-   *
-   * @generated from enum value: TIME_SORT_SCOPE_SCENE = 1;
-   */
-  SCENE = 1,
-
-  /**
-   * Ordering applies independently within each stream.
-   * Use case: camera, lidar, audio, telemetry, and annotation streams.
-   *
-   * @generated from enum value: TIME_SORT_SCOPE_STREAM = 2;
-   */
-  STREAM = 2,
-
-  /**
-   * Ordering applies only within each segment or shard.
-   * Use case: chunked logs, parquet row groups, files, or episode partitions.
-   *
-   * @generated from enum value: TIME_SORT_SCOPE_SEGMENT = 3;
-   */
-  SEGMENT = 3,
-}
-
-/**
- * Describes the enum fiftyone.multimodal.schemas.v1.TimeSortScope.
- */
-export const TimeSortScopeSchema: GenEnum<TimeSortScope> = /*@__PURE__*/
-  enumDesc(file_playback, 3);
+  messageDesc(file_playback, 15);
 
 /**
  * Policy for selecting the frame that represents a playback clock value.
@@ -1063,7 +776,7 @@ export enum PlaybackSyncMode {
  * Describes the enum fiftyone.multimodal.schemas.v1.PlaybackSyncMode.
  */
 export const PlaybackSyncModeSchema: GenEnum<PlaybackSyncMode> = /*@__PURE__*/
-  enumDesc(file_playback, 4);
+  enumDesc(file_playback, 0);
 
 /**
  * Initial panel renderer selected for a playback view.
@@ -1131,7 +844,7 @@ export enum PanelKind {
  * Describes the enum fiftyone.multimodal.schemas.v1.PanelKind.
  */
 export const PanelKindSchema: GenEnum<PanelKind> = /*@__PURE__*/
-  enumDesc(file_playback, 5);
+  enumDesc(file_playback, 1);
 
 /**
  * Role a stream plays within a panel.
@@ -1191,7 +904,7 @@ export enum PanelStreamRole {
  * Describes the enum fiftyone.multimodal.schemas.v1.PanelStreamRole.
  */
 export const PanelStreamRoleSchema: GenEnum<PanelStreamRole> = /*@__PURE__*/
-  enumDesc(file_playback, 6);
+  enumDesc(file_playback, 2);
 
 /**
  * Container type for the initial playback layout tree.
@@ -1243,5 +956,5 @@ export enum LayoutContainerKind {
  * Describes the enum fiftyone.multimodal.schemas.v1.LayoutContainerKind.
  */
 export const LayoutContainerKindSchema: GenEnum<LayoutContainerKind> = /*@__PURE__*/
-  enumDesc(file_playback, 7);
+  enumDesc(file_playback, 3);
 

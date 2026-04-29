@@ -2,80 +2,8 @@ syntax = "proto3";
 
 package fiftyone.multimodal.schemas.v1;
 
+import "common.proto";
 import "google/protobuf/struct.proto";
-
-// Physical interpretation of values on a time track.
-enum TimeTrackType {
-  // No physical interpretation has been declared.
-  TIME_TRACK_TYPE_UNSPECIFIED = 0;
-
-  // Unitless integer positions with no clock semantics.
-  // Use case: frame numbers, row indexes, sample indexes, or event counters.
-  TIME_TRACK_TYPE_SEQUENCE = 1;
-
-  // Elapsed nanoseconds relative to a source or scene origin.
-  // Use case: session time, media presentation time, or episode-relative time.
-  TIME_TRACK_TYPE_DURATION_NS = 2;
-
-  // Absolute Unix epoch nanoseconds.
-  // Use case: wall-clock capture, publish, or record times across sources.
-  TIME_TRACK_TYPE_TIMESTAMP_NS = 3;
-}
-
-// Semantic role a time track plays in playback and synchronization.
-enum TimeTrackRole {
-  // No semantic role has been declared. Unknown provenance.
-  TIME_TRACK_ROLE_UNSPECIFIED = 0;
-
-  // Time when a container / sink recorded payload.
-  TIME_TRACK_ROLE_LOG_TIME = 1;
-
-  // Time when a producer emitted or published a record.
-  TIME_TRACK_ROLE_PUBLISH_TIME = 2;
-
-  // Time when a sensor or producer captured the measurement.
-  TIME_TRACK_ROLE_CAPTURE_TIME = 3;
-
-  // Ordinal sample position rather than a measured time.
-  // Use case: datasets or episodes whose natural clock is row or frame index.
-  TIME_TRACK_ROLE_SAMPLE_INDEX = 4;
-}
-
-// Whether time-track values are known to be ordered in their declared scope.
-enum TimeSortOrder {
-  // No ordering contract has been declared.
-  TIME_SORT_ORDER_UNSPECIFIED = 0;
-
-  // The adapter did not verify ordering.
-  // Avoid assuming binary search or streaming cursor safety.
-  TIME_SORT_ORDER_UNKNOWN = 1;
-
-  // Values never decrease (but may stay constant) within the declared scope.
-  // Allows for efficient seeking and range queries.
-  TIME_SORT_ORDER_MONOTONIC = 2;
-
-  // Values may move backward within the declared scope.
-  // Scan, index, or sort before exact seeking or range filtering.
-  TIME_SORT_ORDER_UNSORTED = 3;
-}
-
-// Scope over which TimeSortOrder applies.
-enum TimeSortScope {
-  // No ordering scope has been declared.
-  TIME_SORT_SCOPE_UNSPECIFIED = 0;
-
-  // Ordering applies across the entire scene.
-  // Use case: global clocks, global sample indexes.
-  TIME_SORT_SCOPE_SCENE = 1;
-
-  // Ordering applies independently within each stream.
-  // Use case: camera, lidar, audio, telemetry, and annotation streams.
-  TIME_SORT_SCOPE_STREAM = 2;
-
-  // Ordering applies only within each segment or shard.
-  // Use case: chunked logs, parquet row groups, files, or episode partitions.
-  TIME_SORT_SCOPE_SEGMENT = 3;
-}
 
 // Policy for selecting the frame that represents a playback clock value.
 enum PlaybackSyncMode {
@@ -168,53 +96,6 @@ enum LayoutContainerKind {
   // Show one child at a time behind tabs.
   // Use case: alternate views that should not consume space simultaneously.
   LAYOUT_CONTAINER_KIND_TABS = 4;
-}
-
-// Range of values on a time track. The active TimeTrack.type determines
-// whether values are sequence numbers, duration nanoseconds, or epoch
-// timestamp nanoseconds.
-message TimeValueRange {
-  // Inclusive lower bound.
-  int64 start = 1 [jstype = JS_STRING];
-
-  // Optional exclusive upper bound.
-  optional int64 end = 2 [jstype = JS_STRING];
-}
-
-// Named time axis available for playback, synchronization, and seeking.
-message TimeTrack {
-  // Stable identifier referenced by clocks, streams, and panels.
-  string time_track_id = 1;
-
-  // Physical value type carried by this track.
-  TimeTrackType type = 2;
-
-  // Semantic meaning of this track.
-  TimeTrackRole role = 3;
-
-  // Human-readable label for UI controls.
-  string display_name = 4;
-
-  // Adapter-native path or column name, such as "header.stamp" or
-  // "row_index". This is provenance only; clients should reference
-  // time_track_id for playback behavior.
-  optional string source_path = 5;
-
-  // Stream that owns this track when the track is stream-local. Omitted for
-  // scene-wide tracks.
-  optional string stream_id = 6;
-
-  // Value bounds for this track.
-  TimeValueRange value_range = 7;
-
-  // How values are ordered within sort_scope.
-  TimeSortOrder sort_order = 8;
-
-  // Scope over which sort_order was evaluated.
-  TimeSortScope sort_scope = 9;
-
-  // Adapter-provided metadata that does not affect playback semantics.
-  map<string, string> metadata = 10;
 }
 
 // Global playback clock defaults for the scene.
@@ -406,44 +287,49 @@ message LayoutNode {
   }
 }
 
-// Planner-produced initial playback workspace for one scene inventory. It should
-// describe the default view a client can open, not the client's mutable runtime UI state.
+// Planner-produced initial playback workspace for one scene inventory. It
+// describes the default view a client can open, not the client's mutable
+// runtime UI state.
 message PlaybackPlan {
   // Stable immutable identifier for this generated plan instance.
   string plan_id = 1;
 
   // SceneInventory.scene_id this plan was resolved from.
-  // scene.
   string scene_id = 2;
 
+  // SceneInventory.inventory_id this plan was built from. This links the
+  // generated default workspace back to the immutable source-fact artifact that
+  // the planner consumed.
+  string source_inventory_id = 3;
+
   // Semantic version of the playback-plan contract used by the producer.
-  string plan_version = 3;
+  string plan_version = 4;
 
   // Initial shared playback clock configuration.
-  PlaybackClock clock = 4;
+  PlaybackClock clock = 5;
 
   // Named time axes available for clock control, seeking, and stream
   // synchronization.
-  repeated TimeTrack time_tracks = 5;
+  repeated TimeTrack time_tracks = 6;
 
   // Playback-specific hints for streams from SceneInventory.streams.
-  repeated StreamPlaybackSpec streams = 6;
+  repeated StreamPlaybackSpec streams = 7;
 
   // Panels available to the initial workspace. Panel ids should be unique
   // within the plan; layout leaves reference these ids.
-  repeated PanelSpec panels = 7;
+  repeated PanelSpec panels = 8;
 
   // Root of the initial panel layout tree. The tree is intentionally generic:
-  // clients may adapt it any tiled layout implementation.
-  LayoutNode root_layout = 8;
+  // clients may adapt it to any tiled layout implementation.
+  LayoutNode root_layout = 9;
 
   // RFC 3339 timestamp describing when this plan was produced. This is planner
   // provenance for caching and debugging.
-  string produced_at = 9;
+  string produced_at = 10;
 
   // Planner name and version that produced this plan, such as an adapter,
   // service, or rule set identifier.
-  string produced_by = 10;
+  string produced_by = 11;
 }
 
 // User-authored playback workspace state derived from a PlaybackPlan. This is

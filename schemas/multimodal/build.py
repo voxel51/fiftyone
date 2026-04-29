@@ -23,6 +23,7 @@ class Toolchain(TypedDict):
 
     protoc_path: str
     protoc_version: str
+    protoc_include_path: str
     ts_plugin_path: str
     ts_plugin_version: str
 
@@ -30,10 +31,10 @@ class Toolchain(TypedDict):
 class GeneratedOutput(TypedDict):
     """Generated files for a versioned multimodal schema."""
 
-    schema: Path
-    python: Path
-    python_stub: Path
-    typescript: Path
+    schemas: list[Path]
+    python: list[Path]
+    python_stub: list[Path]
+    typescript: list[Path]
 
 
 BUILD_FILE = Path(__file__).resolve()
@@ -45,10 +46,8 @@ TS_ROOT = REPO_ROOT / "app" / "packages" / "multimodal" / "src"
 TS_PLUGIN_PATH = APP_ROOT / "node_modules" / ".bin" / "protoc-gen-es"
 TS_PLUGIN_NAME = "protoc-gen-es"
 TS_PLUGIN_OPTION = "target=ts"
-PROTO_NAME = "contracts.proto"
-PYTHON_GENERATED_NAME = "contracts_pb2.py"
-PYTHON_STUB_GENERATED_NAME = "contracts_pb2.pyi"
-TS_GENERATED_NAME = "contracts_pb.ts"
+PROTO_MODULES = ("common", "inventory", "playback")
+PROTOBUF_WELL_KNOWN_TYPE = Path("google") / "protobuf" / "struct.proto"
 VERSION_SPECS = {
     "v1": {
         "schema_subdir": Path("v1"),
@@ -91,13 +90,14 @@ def get_local_toolchain() -> Toolchain:
     required_libprotoc_version = ".".join(
         python_protobuf_version.split(".")[1:]
     )
-    protoc_path = os.environ.get("PROTOC") or shutil.which("protoc")
+    protoc_path = shutil.which(os.environ.get("PROTOC") or "protoc")
     if not protoc_path:
         raise RuntimeError(
             "Missing protoc. Install or select libprotoc "
             f"{required_libprotoc_version}, or set "
             f"PROTOC=/path/to/protoc-{required_libprotoc_version}."
         )
+    protoc_path = str(Path(protoc_path).resolve())
 
     # Keep Python gencode deterministic and aligned with setup.py's protobuf pin.
     protoc_output = _run([protoc_path, "--version"])
@@ -118,6 +118,28 @@ def get_local_toolchain() -> Toolchain:
             f"PROTOC=/path/to/protoc-{required_libprotoc_version}."
         )
 
+    # Well-known type protos come from the local protoc install, not this repo.
+    protoc_include_candidates = [
+        Path(protoc_path).resolve().parents[1] / "include",
+        Path("/opt/homebrew/include"),
+        Path("/usr/local/include"),
+    ]
+    default_protoc_path = shutil.which("protoc")
+    if default_protoc_path:
+        protoc_include_candidates.append(
+            Path(default_protoc_path).resolve().parents[1] / "include"
+        )
+
+    for include_path in protoc_include_candidates:
+        if (include_path / PROTOBUF_WELL_KNOWN_TYPE).is_file():
+            protoc_include_path = str(include_path)
+            break
+    else:
+        raise RuntimeError(
+            "Unable to find protobuf well-known type schemas. Install protoc "
+            "with its include directory."
+        )
+
     if not TS_PLUGIN_PATH.is_file():
         raise RuntimeError(
             f"Unable to find {TS_PLUGIN_NAME} in app dependencies. "
@@ -136,6 +158,7 @@ def get_local_toolchain() -> Toolchain:
     return {
         "protoc_path": protoc_path,
         "protoc_version": protoc_version,
+        "protoc_include_path": protoc_include_path,
         "ts_plugin_path": ts_plugin_path,
         "ts_plugin_version": ts_plugin_version,
     }
@@ -158,16 +181,26 @@ def build_contracts(
         schema_dir = (
             Path(schema_root).resolve() / spec["schema_subdir"]
         ).resolve()
-        proto_path = schema_dir / PROTO_NAME
+        proto_paths = [
+            (schema_dir / f"{proto_module}.proto").resolve()
+            for proto_module in PROTO_MODULES
+        ]
         python_out_dir = (
             Path(python_root).resolve() / spec["python_out_subdir"]
         ).resolve()
         ts_out_dir = (
             Path(ts_root).resolve() / spec["ts_out_subdir"]
         ).resolve()
-
-        if not proto_path.exists():
-            raise FileNotFoundError(f"Missing protobuf schema: {proto_path}")
+        missing_proto_paths = [
+            proto_path for proto_path in proto_paths if not proto_path.exists()
+        ]
+        if missing_proto_paths:
+            missing_schemas = ", ".join(
+                str(path) for path in missing_proto_paths
+            )
+            raise FileNotFoundError(
+                f"Missing protobuf schema(s): {missing_schemas}"
+            )
 
         python_out_dir.mkdir(parents=True, exist_ok=True)
         ts_out_dir.mkdir(parents=True, exist_ok=True)
@@ -178,34 +211,70 @@ def build_contracts(
                 toolchain["protoc_path"],
                 f"--plugin=protoc-gen-es={toolchain['ts_plugin_path']}",
                 f"--proto_path={schema_dir}",
+                f"--proto_path={toolchain['protoc_include_path']}",
                 f"--python_out={python_out_dir}",
                 f"--pyi_out={python_out_dir}",
                 f"--es_out={TS_PLUGIN_OPTION}:{ts_out_dir}",
-                str(proto_path),
+                *[str(proto_path) for proto_path in proto_paths],
             ]
         )
 
-        python_generated = python_out_dir / PYTHON_GENERATED_NAME
-        python_stub_generated = python_out_dir / PYTHON_STUB_GENERATED_NAME
-        ts_generated = ts_out_dir / TS_GENERATED_NAME
-        if not python_generated.exists():
+        # Expected filenames follow protoc/protoc-gen-es conventions.
+        python_generated = [
+            python_out_dir / f"{proto_module}_pb2.py"
+            for proto_module in PROTO_MODULES
+        ]
+        python_stub_generated = [
+            python_out_dir / f"{proto_module}_pb2.pyi"
+            for proto_module in PROTO_MODULES
+        ]
+        ts_generated = [
+            ts_out_dir / f"{proto_module}_pb.ts"
+            for proto_module in PROTO_MODULES
+        ]
+        expected_outputs = [
+            *python_generated,
+            *python_stub_generated,
+            *ts_generated,
+        ]
+        missing_outputs = [
+            output_path
+            for output_path in expected_outputs
+            if not output_path.exists()
+        ]
+        if missing_outputs:
+            missing = ", ".join(str(path) for path in missing_outputs)
             raise FileNotFoundError(
-                f"Missing generated Python protobuf module: {python_generated}"
+                f"Missing generated protobuf output(s): {missing}"
             )
 
-        if not python_stub_generated.exists():
-            raise FileNotFoundError(
-                "Missing generated Python protobuf type stub: "
-                f"{python_stub_generated}"
-            )
+        # protoc emits absolute sibling imports; package modules need relative
+        # imports once they live under schemas.v1.__generated__.
+        # Replace, for instance, "import common_pb2 as common__pb2"
+        # with "from . import common_pb2 as common__pb2"
+        for generated_file in [*python_generated, *python_stub_generated]:
+            contents = generated_file.read_text()
+            patched_contents = contents
+            for proto_module in PROTO_MODULES:
+                generated_module = f"{proto_module}_pb2"
+                patched_contents = re.sub(
+                    rf"^import {generated_module} as (.+)$",
+                    rf"from . import {generated_module} as \1",
+                    patched_contents,
+                    flags=re.MULTILINE,
+                )
+                patched_contents = re.sub(
+                    rf"^from {generated_module} import (.+)$",
+                    rf"from .{generated_module} import \1",
+                    patched_contents,
+                    flags=re.MULTILINE,
+                )
 
-        if not ts_generated.exists():
-            raise FileNotFoundError(
-                f"Missing generated TypeScript protobuf module: {ts_generated}"
-            )
+            if patched_contents != contents:
+                generated_file.write_text(patched_contents)
 
         generated[version] = {
-            "schema": proto_path,
+            "schemas": proto_paths,
             "python": python_generated,
             "python_stub": python_stub_generated,
             "typescript": ts_generated,
@@ -243,10 +312,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         f"(v{toolchain['ts_plugin_version']})"
     )
     for version, outputs in generated.items():
-        print(f"Schema ({version}): {outputs['schema']}")
-        print(f"Generated Python ({version}): {outputs['python']}")
-        print(f"Generated Python stub ({version}): {outputs['python_stub']}")
-        print(f"Generated TypeScript ({version}): {outputs['typescript']}")
+        for schema_path in outputs["schemas"]:
+            print(f"Schema ({version}): {schema_path}")
+        for python_path in outputs["python"]:
+            print(f"Generated Python ({version}): {python_path}")
+        for python_stub_path in outputs["python_stub"]:
+            print(f"Generated Python stub ({version}): {python_stub_path}")
+        for typescript_path in outputs["typescript"]:
+            print(f"Generated TypeScript ({version}): {typescript_path}")
     return 0
 
 
