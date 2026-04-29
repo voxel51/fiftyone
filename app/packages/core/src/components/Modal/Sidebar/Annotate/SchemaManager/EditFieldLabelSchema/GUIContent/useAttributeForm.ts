@@ -73,21 +73,25 @@ export default function useAttributeForm({
     const formatCondition = (condition: typeof conditions[number]): string => {
       if (condition.operator === "in" && Array.isArray(condition.value)) {
         const list = (condition.value as unknown[])
-          .map((v) => `${v}`)
+          .map((v) => JSON.stringify(v))
           .join(", ");
         return `${condition.field} in [${list}]`;
       }
-      return `${condition.field} = '${condition.value}'`;
+      return `${condition.field} = '${JSON.stringify(condition.value)}'`;
     };
 
     const condition = formatCondition(conditions[0]);
+
     if (conditions.length === 1) return { condition, suffix: null };
+
     const remaining = conditions.length - 1;
     const suffix = `, or ${remaining} other condition${
       remaining !== 1 ? "s" : ""
     }`;
+
     return { condition, suffix };
   }, [formState.when]);
+
   const supportsDefault = !NO_DEFAULT_TYPES.includes(formState.type);
   const componentOptions = COMPONENT_OPTIONS[formState.type] || [];
 
