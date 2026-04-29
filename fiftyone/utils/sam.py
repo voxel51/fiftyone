@@ -26,6 +26,29 @@ sam = fou.lazy_import("segment_anything")
 logger = logging.getLogger(__name__)
 
 
+def _expand_sam_prompt_field(field_mapping):
+    """Expand ``prompt_field`` into box/point field names (in-place)."""
+    if "prompt_field" not in field_mapping:
+        return
+    has_box = "box_prompt_field" in field_mapping
+    has_point = "point_prompt_field" in field_mapping
+
+    if has_box and has_point:
+        raise ValueError(
+            "The generic prompt_field cannot be used when both box_prompt_field and point_prompt_field are present."
+        )
+
+    value = field_mapping["prompt_field"]
+    # Copy to box and/or point fields since prompt type is unknown.
+    if not has_box:
+        logger.debug("Moving prompt_field to box_prompt_field")
+        field_mapping["box_prompt_field"] = value
+
+    if not has_point:
+        logger.debug("Moving prompt_field to point_prompt_field")
+        field_mapping["point_prompt_field"] = value
+
+
 class SegmentAnythingModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
     """Configuration for running a :class:`SegmentAnythingModel`.
 
@@ -98,12 +121,14 @@ class _SAMPredictor:
         image_torch = image_torch.permute(2, 0, 1).contiguous()[None, :, :, :]
         return image_torch, img.shape[:2]
 
-    def box_transform(self, boxes_xyxy, img_hw):
+    def box_transform(self, boxes_xyxy, img_hw, resolution=None):
         """Transforms boxes for SAM model prompts.
 
         Args:
             boxes_xyxy: list of boxes in XYXY pixels
             img_hw: original image height and width
+            resolution (None): optional SAM2-style prompt resolution scaling
+                parameter; ignored by SAM transforms
 
         Returns:
             resized boxes for SAM as a Bx4 tensor
@@ -114,13 +139,17 @@ class _SAMPredictor:
             (img_hw[0], img_hw[1]),
         )
 
-    def point_transform(self, points, img_hw, point_labels=None):
+    def point_transform(
+        self, points, img_hw, point_labels=None, resolution=None
+    ):
         """Transforms points for SAM model prompts.
 
         Args:
             points: relative points in xyxy format
             img_hw: original image height and width
             point_labels (None): list containing positive (1) and negative (0) point labels. Defaults to None.
+            resolution (None): optional SAM2-style prompt resolution scaling
+                parameter; ignored by SAM transforms
 
         Returns:
             a torch tensor containing points in XYXY pixels for SAM model
@@ -231,6 +260,10 @@ class SegmentAnythingImageGetItem(fout.GetItem):
             and Torch tensors when loading data
         box_transform (None): SAM specific box transform function to apply
         point_transform (None): SAM specific point transform function to apply
+        resolution (None): when set, ``box_transform`` / ``point_transform``
+            are called with ``resolution=self.resolution`` (SAM2 helpers in
+            ``fiftyone.utils.sam2``). Leave unset for SAM (two-arg transforms
+            only).
     """
 
     def __init__(
@@ -240,6 +273,7 @@ class SegmentAnythingImageGetItem(fout.GetItem):
         use_numpy=False,
         box_transform=None,
         point_transform=None,
+        resolution=None,
         **kwargs,
     ):
         field_mapping = {} if field_mapping is None else dict(field_mapping)
@@ -258,6 +292,8 @@ class SegmentAnythingImageGetItem(fout.GetItem):
             )
 
         self.mode = self._set_mode(field_mapping)
+
+        self.resolution = float(resolution) if resolution is not None else None
 
         super().__init__(field_mapping=field_mapping, **kwargs)
         self.transform = transform
@@ -1004,23 +1040,7 @@ class SegmentAnythingModel(fout.TorchImageModelWithPrompts):
         get_item_args = dict(self.config.get_item_args or {})
         field_mapping = {} if field_mapping is None else dict(field_mapping)
 
-        if "prompt_field" in field_mapping:
-            # Maintain backward compability of prompt_field.
-            if (
-                "box_prompt_field" in field_mapping
-                and "point_prompt_field" in field_mapping
-            ):
-                raise ValueError(
-                    "The generic prompt_field cannot be used when both box_prompt_field and point_prompt_field are present."
-                )
-            value = field_mapping["prompt_field"]
-            # Copy to box and/or point fields since prompt type is unknown.
-            if "box_prompt_field" not in field_mapping:
-                logger.debug("Moving prompt_field to box_prompt_field")
-                field_mapping["box_prompt_field"] = value
-            if "point_prompt_field" not in field_mapping:
-                logger.debug("Moving prompt_field to point_prompt_field")
-                field_mapping["point_prompt_field"] = value
+        _expand_sam_prompt_field(field_mapping)
 
         return get_item(
             field_mapping=field_mapping,
@@ -1034,6 +1054,7 @@ class SegmentAnythingModel(fout.TorchImageModelWithPrompts):
             point_transform=get_item_args.pop(
                 "point_transform", self._sam_predictor.point_transform
             ),
+            resolution=get_item_args.pop("resolution", None),
             **get_item_args,
         )
 
