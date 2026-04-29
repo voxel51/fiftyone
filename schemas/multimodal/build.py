@@ -40,9 +40,7 @@ SCHEMA_ROOT = BUILD_FILE.parent
 REPO_ROOT = BUILD_FILE.parents[2]
 APP_ROOT = REPO_ROOT / "app"
 PYTHON_ROOT = REPO_ROOT / "fiftyone" / "multimodal"
-TS_ROOT = (
-    REPO_ROOT / "app" / "packages" / "multimodal" / "src" / "types" / "shared"
-)
+TS_ROOT = REPO_ROOT / "app" / "packages" / "multimodal" / "src"
 TS_PLUGIN_PATH = APP_ROOT / "node_modules" / ".bin" / "protoc-gen-es"
 TS_PLUGIN_NAME = "protoc-gen-es"
 TS_PLUGIN_OPTION = "target=ts"
