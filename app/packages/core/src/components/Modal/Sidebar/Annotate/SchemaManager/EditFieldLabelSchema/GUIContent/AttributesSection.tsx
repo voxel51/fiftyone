@@ -127,6 +127,7 @@ const AttributesSection = ({
           onDelete: handleDeleteAttribute,
           canDrag: true,
           isEditing: true,
+          readOnly: !!config._source,
         });
       }
 

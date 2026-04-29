@@ -25,6 +25,7 @@ interface CardActionsProps {
   canSave: boolean;
   /** Optional delete button click handler (trash icon) - only shown if provided */
   onDelete?: () => void;
+  readOnly?: boolean;
 }
 
 const CardActions = ({
@@ -32,6 +33,7 @@ const CardActions = ({
   onSave,
   canSave,
   onDelete,
+  readOnly = false,
 }: CardActionsProps) => (
   <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
     <Button variant={Variant.Icon} borderless onClick={onCancel}>
@@ -41,27 +43,31 @@ const CardActions = ({
         className={textColorClass(TextColor.Secondary)}
       />
     </Button>
-    {onDelete && (
-      <Button variant={Variant.Icon} borderless onClick={onDelete}>
-        <Icon
-          name={IconName.Delete}
-          size={Size.Md}
-          className={textColorClass(TextColor.Secondary)}
-        />
-      </Button>
+    {!readOnly && (
+      <>
+        {onDelete && (
+          <Button variant={Variant.Icon} borderless onClick={onDelete}>
+            <Icon
+              name={IconName.Delete}
+              size={Size.Md}
+              className={textColorClass(TextColor.Secondary)}
+            />
+          </Button>
+        )}
+        <Button
+          variant={Variant.Icon}
+          borderless
+          onClick={canSave ? onSave : undefined}
+          disabled={!canSave}
+        >
+          <Icon
+            name={IconName.Check}
+            size={Size.Md}
+            className={textColorClass(TextColor.Secondary)}
+          />
+        </Button>
+      </>
     )}
-    <Button
-      variant={Variant.Icon}
-      borderless
-      onClick={canSave ? onSave : undefined}
-      disabled={!canSave}
-    >
-      <Icon
-        name={IconName.Check}
-        size={Size.Md}
-        className={textColorClass(TextColor.Secondary)}
-      />
-    </Button>
   </Stack>
 );
 
