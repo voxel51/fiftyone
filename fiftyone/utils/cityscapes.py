@@ -85,7 +85,7 @@ def parse_cityscapes_dataset(
 
     images_dir = _extract_images(images_zip_path, scratch_dir)
 
-    if images_extra_zip_path:
+    if images_extra_zip_path and "train_extra" in _splits:
         _merge_extra_images(images_extra_zip_path, images_dir, scratch_dir)
 
     if fine_annos_zip_path:
@@ -219,7 +219,7 @@ def _parse_split(split):
 
     if split not in ("test", "train"):
         raise ValueError(
-            "Invalid split '%s''; supported values are %s"
+            "Invalid split '%s'; supported values are %s"
             % (split, ("train", "train_extra", "test", "validation"))
         )
 
@@ -303,7 +303,7 @@ def _export_split(
     dataset.delete()
 
 
-def _merge_extra_images(images_extra_zip_path, images_dir, scratch_dir):
+def _merge_extra_images(images_extra_zip_path, images_dir, scratch_dir) -> None:
     """Extract train_extra images and merge them into the existing images dir."""
     tmp_dir = os.path.join(scratch_dir, "images_extra")
     extra_images_dir = os.path.join(tmp_dir, "leftImg8bit")
