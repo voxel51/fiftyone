@@ -32,6 +32,7 @@ class GeneratedOutput(TypedDict):
 
     schema: Path
     python: Path
+    python_stub: Path
     typescript: Path
 
 
@@ -46,6 +47,7 @@ TS_PLUGIN_NAME = "protoc-gen-es"
 TS_PLUGIN_OPTION = "target=ts"
 PROTO_NAME = "contracts.proto"
 PYTHON_GENERATED_NAME = "contracts_pb2.py"
+PYTHON_STUB_GENERATED_NAME = "contracts_pb2.pyi"
 TS_GENERATED_NAME = "contracts_pb.ts"
 VERSION_SPECS = {
     "v1": {
@@ -177,16 +179,24 @@ def build_contracts(
                 f"--plugin=protoc-gen-es={toolchain['ts_plugin_path']}",
                 f"--proto_path={schema_dir}",
                 f"--python_out={python_out_dir}",
+                f"--pyi_out={python_out_dir}",
                 f"--es_out={TS_PLUGIN_OPTION}:{ts_out_dir}",
                 str(proto_path),
             ]
         )
 
         python_generated = python_out_dir / PYTHON_GENERATED_NAME
+        python_stub_generated = python_out_dir / PYTHON_STUB_GENERATED_NAME
         ts_generated = ts_out_dir / TS_GENERATED_NAME
         if not python_generated.exists():
             raise FileNotFoundError(
                 f"Missing generated Python protobuf module: {python_generated}"
+            )
+
+        if not python_stub_generated.exists():
+            raise FileNotFoundError(
+                "Missing generated Python protobuf type stub: "
+                f"{python_stub_generated}"
             )
 
         if not ts_generated.exists():
@@ -197,6 +207,7 @@ def build_contracts(
         generated[version] = {
             "schema": proto_path,
             "python": python_generated,
+            "python_stub": python_stub_generated,
             "typescript": ts_generated,
         }
 
@@ -234,6 +245,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     for version, outputs in generated.items():
         print(f"Schema ({version}): {outputs['schema']}")
         print(f"Generated Python ({version}): {outputs['python']}")
+        print(f"Generated Python stub ({version}): {outputs['python_stub']}")
         print(f"Generated TypeScript ({version}): {outputs['typescript']}")
     return 0
 
