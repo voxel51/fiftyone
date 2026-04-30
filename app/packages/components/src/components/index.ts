@@ -19,12 +19,6 @@ export type {
   ToolbarActionItem,
   ToolbarActionGroup,
 } from "./ActionToolbar";
-export { FloatingToolbar } from "./FloatingToolbar";
-export type {
-  FloatingToolbarActionProps,
-  FloatingToolbarGroupProps,
-  FloatingToolbarProps,
-} from "./FloatingToolbar";
 export { default as Header } from "./Header";
 export { default as HelpPanel } from "./HelpPanel";
 export { default as HelpTooltip } from "./HelpTooltip";
