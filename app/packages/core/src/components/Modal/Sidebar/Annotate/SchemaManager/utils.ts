@@ -41,6 +41,7 @@ export interface RichListItemOptions {
   additionalContent?: ReactNode;
   canSelect?: boolean;
   canDrag?: boolean;
+  className?: string;
 }
 
 // Conditional visibility rule for an attribute from an applied ontology.
@@ -150,6 +151,7 @@ export const createRichListItem = ({
   additionalContent,
   canSelect = false,
   canDrag = false,
+  className,
 }: RichListItemOptions): RichListItem => ({
   id,
   data: {
@@ -159,6 +161,7 @@ export const createRichListItem = ({
     secondaryContent,
     actions,
     additionalContent,
+    className,
   },
 });
 

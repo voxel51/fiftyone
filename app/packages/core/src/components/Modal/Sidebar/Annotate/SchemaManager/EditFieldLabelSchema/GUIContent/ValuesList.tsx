@@ -92,6 +92,7 @@ const ValuesList = ({
   const valueListItems = values.map((value, index) =>
     createRichListItem({
       id: `value-${index}`,
+      className: "py-0",
       canDrag: !readOnly,
       primaryContent: value,
       actions: readOnly ? undefined : (
@@ -166,6 +167,7 @@ const ValuesList = ({
       )}
       {values.length > 0 && (
         <RichList
+          spacing={Spacing.None}
           listItems={valueListItems}
           draggable={!readOnly}
           onOrderChange={readOnly ? undefined : handleOrderChange}
