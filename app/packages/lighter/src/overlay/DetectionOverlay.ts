@@ -882,6 +882,13 @@ export class DetectionOverlay
 
     // Check if point is inside the main bounding box
     if (this.isPointInRect(point, drawnBounds)) {
+      // For mask detections, narrow CONTENT to actual mask pixels so the
+      // hit area matches the painted shape rather than the bbox rectangle.
+      if (this.hasMask()) {
+        return this.mask!.containsMaskPixel(point, this.bounds)
+          ? CONTAINS.CONTENT
+          : CONTAINS.NONE;
+      }
       return CONTAINS.CONTENT;
     }
 
@@ -993,6 +1000,18 @@ export class DetectionOverlay
     return (
       this.mask?.containsMaskPixel(relativePoint, this.#relativeBounds) ?? false
     );
+  }
+
+  /**
+   * For mask detections, hit-test against the actual mask pixels rather than
+   * the rectangular bounding box.
+   */
+  override containsPoint(point: Point): boolean {
+    if (this.hasMask() && this.renderer) {
+      const worldPoint = this.renderer.screenToWorld(point);
+      return this.mask!.containsMaskPixel(worldPoint, this.bounds);
+    }
+    return super.containsPoint(point);
   }
 
   // Selectable interface implementation

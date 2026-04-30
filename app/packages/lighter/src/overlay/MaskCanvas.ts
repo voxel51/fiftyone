@@ -451,6 +451,9 @@ export class MaskCanvas {
     this.postStrokeBounds = { ...bounds };
     this.postStrokeSnapshot = this.takeSnapshot();
 
+    // Refresh single-channel mask data so hit-testing reflects the edit.
+    this.updateRawPixelsFromCanvas();
+
     encodeMask(this.canvas).then((encoded) => {
       this.pendingMask = encoded;
       onEncoded?.();
@@ -600,6 +603,28 @@ export class MaskCanvas {
   // ---------------------------------------------------------------------------
 
   /**
+   * Rebuilds the single-channel `rawPixels` cache from the current canvas
+   * contents so that {@link containsMaskPixel} reflects post-edit state.
+   * Treats any pixel with non-zero alpha as set.
+   */
+  private updateRawPixelsFromCanvas(): void {
+    if (!this.canvas || !this.context) {
+      this.rawPixels = undefined;
+      return;
+    }
+
+    const { width, height } = this.canvas;
+    const rgba = this.context.getImageData(0, 0, width, height).data;
+    const src = new Uint8Array(width * height);
+
+    for (let i = 0; i < src.length; i++) {
+      src[i] = rgba[i * 4 + 3] > 0 ? 1 : 0;
+    }
+
+    this.rawPixels = { src, width, height };
+  }
+
+  /**
    * Returns a copy of the current canvas pixel data, or `undefined` if the
    * canvas has not been created yet.
    */
@@ -624,6 +649,7 @@ export class MaskCanvas {
       this.canvas = undefined;
       this.context = undefined;
       this.lastPoint = undefined;
+      this.rawPixels = undefined;
       return;
     }
 
@@ -636,6 +662,9 @@ export class MaskCanvas {
     this.canvas = maskCanvas;
     this.context = maskContext;
     this.lastPoint = undefined;
+
+    // Refresh single-channel mask data so hit-testing reflects the snapshot.
+    this.updateRawPixelsFromCanvas();
 
     encodeMask(this.canvas).then((encoded) => (this.pendingMask = encoded));
   }
