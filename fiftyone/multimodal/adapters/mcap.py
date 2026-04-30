@@ -97,9 +97,13 @@ class McapAdapter(MultimodalAdapter):
                 last_chunk_crc=last_chunk_crc,
             ),
             inventory_version="1.0",
-            time_range=TimeRange(
-                start_ns=stats.message_start_time,
-                end_ns=stats.message_end_time,
+            time_range=(
+                TimeRange(
+                    start_ns=stats.message_start_time,
+                    end_ns=stats.message_end_time,
+                )
+                if stats
+                else None
             ),
             streams=[
                 StreamInventory(
@@ -109,7 +113,11 @@ class McapAdapter(MultimodalAdapter):
                         schema=summary.schemas[channel.schema_id].name,
                         schema_encoding=None,
                     ),
-                    record_count=stats.channel_message_counts.get(cid, 0),
+                    record_count=(
+                        stats.channel_message_counts.get(cid, 0)
+                        if stats
+                        else 0
+                    ),
                     time_range=None,  # not in summary, have to read chunks, so skip it for now
                     metadata=channel.metadata,
                 )
