@@ -8,7 +8,7 @@ Base interfaces for multimodal adapters.
 
 import abc
 
-from fiftyone.multimodal.schemas.v1.__generated__.contracts_pb2 import (
+from fiftyone.multimodal.schemas.v1.__generated__.inventory_pb2 import (
     SceneInventory,
 )
 

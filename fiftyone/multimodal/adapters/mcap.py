@@ -10,12 +10,13 @@ import datetime
 from .base import MultimodalAdapter
 from .formats import SceneFormat
 from fiftyone.core import storage
-from fiftyone.multimodal.schemas.v1.__generated__.contracts_pb2 import (
+from fiftyone.multimodal.schemas.v1.__generated__.common_pb2 import (
     PayloadDescriptor,
-    SceneInventory,
     SourceFingerprint,
+)
+from fiftyone.multimodal.schemas.v1.__generated__.inventory_pb2 import (
+    SceneInventory,
     StreamInventory,
-    TimeRange,
 )
 
 try:
@@ -97,14 +98,6 @@ class McapAdapter(MultimodalAdapter):
                 last_chunk_crc=last_chunk_crc,
             ),
             inventory_version="1.0",
-            time_range=(
-                TimeRange(
-                    start_ns=stats.message_start_time,
-                    end_ns=stats.message_end_time,
-                )
-                if stats
-                else None
-            ),
             streams=[
                 StreamInventory(
                     stream_id=str(cid),
@@ -118,7 +111,6 @@ class McapAdapter(MultimodalAdapter):
                         if stats
                         else 0
                     ),
-                    time_range=None,  # not in summary, have to read chunks, so skip it for now
                     metadata=channel.metadata,
                 )
                 for cid, channel in summary.channels.items()

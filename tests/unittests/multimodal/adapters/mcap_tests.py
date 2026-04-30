@@ -10,12 +10,13 @@ import pytest
 
 from fiftyone.multimodal.adapters.formats import SceneFormat
 from fiftyone.multimodal.adapters.mcap import McapAdapter
-from fiftyone.multimodal.schemas.v1.__generated__.contracts_pb2 import (
+from fiftyone.multimodal.schemas.v1.__generated__.common_pb2 import (
     PayloadDescriptor,
-    SceneInventory,
     SourceFingerprint,
+)
+from fiftyone.multimodal.schemas.v1.__generated__.inventory_pb2 import (
+    SceneInventory,
     StreamInventory,
-    TimeRange,
 )
 
 
@@ -66,7 +67,6 @@ class TestMcapAdapter:
                 size_bytes=10, first_chunk_crc=5, last_chunk_crc=15
             )
             assert inventory.inventory_version == "1.0"
-            assert inventory.time_range == TimeRange(start_ns=51, end_ns=52)
             assert inventory.streams == [
                 StreamInventory(
                     stream_id="channel_id",
@@ -76,7 +76,6 @@ class TestMcapAdapter:
                         schema_encoding=None,
                     ),
                     record_count=435,
-                    time_range=None,
                     metadata=stream_metadata,
                 )
             ]
@@ -119,7 +118,6 @@ class TestMcapAdapter:
                 size_bytes=10, first_chunk_crc=5, last_chunk_crc=15
             )
             assert inventory.inventory_version == "1.0"
-            assert inventory.time_range == TimeRange()
             assert inventory.streams == [
                 StreamInventory(
                     stream_id="channel_id",
@@ -129,7 +127,6 @@ class TestMcapAdapter:
                         schema_encoding=None,
                     ),
                     record_count=0,
-                    time_range=None,
                     metadata=stream_metadata,
                 )
             ]
