@@ -24,6 +24,8 @@ import {
 import SpaceTree from "./SpaceTree";
 import { PanelContext } from "./contexts";
 import {
+  currentPanelAreasRenderer,
+  panelAreaRenderers,
   panelIdToScopeAtom,
   panelStatePartialSelector,
   panelStateSelector,
@@ -487,4 +489,40 @@ function useScope(scope?: string) {
   const panelContext = usePanelContext();
   if (typeof scope === "string") return scope;
   return panelContext?.scope;
+}
+
+export function usePanelAreaRenderer(areaId: string) {
+  const [currentRenderers, setCurrentRenderers] = useRecoilState(
+    currentPanelAreasRenderer
+  );
+
+  const setRenderer = useCallback(
+    (rendererId: string) => {
+      setCurrentRenderers((renderers) => {
+        const updatedRenderers = new Map(renderers);
+        updatedRenderers.set(areaId, rendererId);
+        return updatedRenderers;
+      });
+    },
+    [areaId, setCurrentRenderers]
+  );
+
+  const unsetRenderer = useCallback(() => {
+    setCurrentRenderers((renderers) => {
+      const updatedRenderers = new Map(renderers);
+      updatedRenderers.delete(areaId);
+      return updatedRenderers;
+    });
+  }, [areaId, setCurrentRenderers]);
+
+  const currentRendererId = currentRenderers.get(areaId);
+
+  return {
+    setRenderer,
+    unsetRenderer,
+    currentRendererId,
+    CurrentRenderer: currentRendererId
+      ? panelAreaRenderers.get(currentRendererId)
+      : undefined,
+  };
 }
