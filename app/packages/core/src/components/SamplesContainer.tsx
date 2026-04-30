@@ -1,4 +1,5 @@
 import { OPERATOR_PROMPT_AREAS, OperatorPromptArea } from "@fiftyone/operators";
+import { PANEL_AREA, PanelArea } from "@fiftyone/spaces";
 import * as fos from "@fiftyone/state";
 import type { Controller } from "@react-spring/web";
 import React, { useCallback } from "react";
@@ -147,6 +148,7 @@ function SamplesContainer() {
       {!isModalOpen && (
         <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_RIGHT} />
       )}
+      <PanelArea id={PANEL_AREA.GRID_SIDEBAR_RIGHT} />
     </Container>
   );
 }
