@@ -5325,14 +5325,11 @@ objects across the frames of a |Sample|:
 3D datasets
 ___________
 
-3D datasets have media type `3d` and can be created from supported 3D asset
-files directly, or from `.fo3d` scene files. Direct assets are the simplest
-choice when a sample is a single :ref:`mesh <3d-meshes>` or :ref:`point cloud <3d-point-clouds>`. Wrap assets in `.fo3d`
-when you need advanced scene customization such as lights, camera
-configuration, transformations, materials, shapes, or multiple assets in one
-scene.
+3D datasets have `media_type="3d"` and can be created from supported 3D asset
+files directly, or from `.fo3d` scene files.
 
-When using direct 3D assets, pass `media_type="3d"` explicitly:
+Direct assets are the simplest choice when a sample is a single
+:ref:`mesh <3d-meshes>` or :ref:`point cloud <3d-point-clouds>`:
 
 .. code-block:: python
     :linenos:
@@ -5350,12 +5347,15 @@ When using direct 3D assets, pass `media_type="3d"` explicitly:
 
     print(dataset.media_type)  # 3d
 
-Features such as :ref:`camera intrinsics and extrinsics
-<camera-intrinsics-extrinsics>`, camera frustum rendering, and
-:ref:`3D annotation <creating-3d-polylines>` are available whether your sample
-points directly to a :ref:`supported 3D asset <3d-meshes>` or to an `.fo3d` scene.
+Features such as
+:ref:`camera intrinsics and extrinsics <camera-intrinsics-extrinsics>`, camera
+frustum rendering, and :ref:`3D annotation <creating-3d-polylines>` are
+available whether your sample points directly to a
+:ref:`supported 3D asset <3d-meshes>` or to an `.fo3d` scene.
 
-An FO3D file encapsulates a 3D scene constructed using the
+Wrap assets in `.fo3d` when you need advanced scene customization such as
+lights, camera configuration, transformations, materials, shapes, or multiple
+assets in one scene. An FO3D file encapsulates a 3D scene constructed using the
 :class:`Scene <fiftyone.core.threed.Scene>` class, which provides methods
 to add, remove, and manipulate 3D objects in the scene. A scene is
 internally represented as a n-ary tree of 3D objects, where each
