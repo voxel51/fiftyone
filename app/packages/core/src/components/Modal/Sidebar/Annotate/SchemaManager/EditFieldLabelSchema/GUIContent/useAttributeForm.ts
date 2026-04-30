@@ -77,7 +77,7 @@ export default function useAttributeForm({
           .join(", ");
         return `${condition.field} in [${list}]`;
       }
-      return `${condition.field} = '${JSON.stringify(condition.value)}'`;
+      return `${condition.field} = ${JSON.stringify(condition.value)}`;
     };
 
     const condition = formatCondition(conditions[0]);
