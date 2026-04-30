@@ -34,10 +34,8 @@ import React, {
 } from "react";
 import ReactDOM from "react-dom";
 import { useRecoilCallback, useRecoilValue } from "recoil";
-import {
-  ErrorBoundary as ReactErrorBoundary,
-  FallbackProps,
-} from "react-error-boundary";
+import { ErrorBoundary as ReactErrorBoundary } from "react-error-boundary";
+import type { FallbackProps } from "react-error-boundary";
 import styled from "styled-components";
 import Actions from "./Actions";
 import ModalNavigation from "./ModalNavigation";
@@ -49,6 +47,7 @@ import { useAnnotationTracking } from "./Sidebar/Annotate/useAnnotationTracking"
 import { TooltipInfo } from "./TooltipInfo";
 import { useLookerHelpers, useTooltipEventHandler } from "./hooks";
 import { modalContext } from "./modal-context";
+import { useMediaFieldNavigation } from "./useMediaFieldNavigation";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -174,36 +173,32 @@ const Modal = () => {
   const { jsonPanel, helpPanel } = useLookerHelpers();
 
   const modalCloseHandler = useRecoilCallback(
-    ({ snapshot, set }) =>
-      async () => {
-        const isTooltipCurrentlyLocked = await snapshot.getPromise(
-          fos.isTooltipLocked
-        );
-        if (isTooltipCurrentlyLocked) {
-          set(fos.isTooltipLocked, false);
-          return;
-        }
+    ({ snapshot, set }) => async () => {
+      const isTooltipCurrentlyLocked = await snapshot.getPromise(
+        fos.isTooltipLocked
+      );
+      if (isTooltipCurrentlyLocked) {
+        set(fos.isTooltipLocked, false);
+        return;
+      }
 
-        jsonPanel.close();
-        helpPanel.close();
+      jsonPanel.close();
+      helpPanel.close();
 
-        const isFullScreen = await snapshot.getPromise(fos.fullscreen);
+      const isFullScreen = await snapshot.getPromise(fos.fullscreen);
 
-        if (isFullScreen) {
-          set(fos.fullscreen, false);
-          return;
-        }
+      if (isFullScreen) {
+        set(fos.fullscreen, false);
+        return;
+      }
 
-        clearModal();
-        activeLookerRef.current?.removeEventListener(
-          "close",
-          modalCloseHandler
-        );
+      clearModal();
+      activeLookerRef.current?.removeEventListener("close", modalCloseHandler);
 
-        selectiveRenderingEventBus.removeAllListeners();
+      selectiveRenderingEventBus.removeAllListeners();
 
-        jotaiStore.set(currentModalUniqueIdJotaiAtom, "");
-      },
+      jotaiStore.set(currentModalUniqueIdJotaiAtom, "");
+    },
     [clearModal, jsonPanel, helpPanel]
   );
 
@@ -227,18 +222,16 @@ const Modal = () => {
   );
 
   const sidebarFn = useRecoilCallback(
-    ({ set }) =>
-      async () => {
-        set(fos.sidebarVisible(true), (prev) => !prev);
-      },
+    ({ set }) => async () => {
+      set(fos.sidebarVisible(true), (prev) => !prev);
+    },
     []
   );
 
   const fullscreenFn = useRecoilCallback(
-    ({ set }) =>
-      async () => {
-        set(fos.fullscreen, (prev) => !prev);
-      },
+    ({ set }) => async () => {
+      set(fos.fullscreen, (prev) => !prev);
+    },
     []
   );
 
@@ -310,22 +303,21 @@ const Modal = () => {
   > | null>(null);
 
   const onLookerSet = useRecoilCallback(
-    ({ snapshot }) =>
-      (looker: fos.Lookers) => {
-        looker.addEventListener("close", modalCloseHandler);
+    ({ snapshot }) => (looker: fos.Lookers) => {
+      looker.addEventListener("close", modalCloseHandler);
 
-        // remove previous event listener
-        removeTooltipEventHanlderRef.current?.();
-        removeTooltipEventHanlderRef.current = addTooltipEventHandler(looker);
+      // remove previous event listener
+      removeTooltipEventHanlderRef.current?.();
+      removeTooltipEventHanlderRef.current = addTooltipEventHandler(looker);
 
-        // set the current modal unique id
-        jotaiStore.set(
-          currentModalUniqueIdJotaiAtom,
-          `${snapshot.getLoadable(fos.groupId).getValue()}-${snapshot
-            .getLoadable(fos.nullableModalSampleId)
-            .getValue()}`
-        );
-      },
+      // set the current modal unique id
+      jotaiStore.set(
+        currentModalUniqueIdJotaiAtom,
+        `${snapshot.getLoadable(fos.groupId).getValue()}-${snapshot
+          .getLoadable(fos.nullableModalSampleId)
+          .getValue()}`
+      );
+    },
     [modalCloseHandler, addTooltipEventHandler]
   );
 
@@ -336,6 +328,8 @@ const Modal = () => {
     },
     [onLookerSet]
   );
+
+  useMediaFieldNavigation();
 
   return ReactDOM.createPortal(
     <modalContext.Provider
