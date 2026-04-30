@@ -71,7 +71,7 @@ const AttributeFormContent = ({
 
   return (
     <Stack orientation={Orientation.Column} spacing={Spacing.Xl}>
-      {/* Section 1: Identity cluster — name, type, ontology, read-only */}
+      {/* Section 1: Identity cluster — name, type, ontology */}
       <Stack orientation={Orientation.Column} spacing={Spacing.None}>
         {/* Name field */}
         {isEditing ? (
@@ -179,29 +179,29 @@ const AttributeFormContent = ({
             </div>
           </Stack>
         )}
-
-        {/* Read-only toggle */}
-        <Stack orientation={Orientation.Column} spacing={Spacing.None}>
-          <Stack
-            orientation={Orientation.Row}
-            spacing={Spacing.Sm}
-            align={Align.Center}
-          >
-            <Text variant={TextVariant.Lg}>Read-only</Text>
-            <Toggle
-              checked={formState.read_only}
-              onChange={handleReadOnlyChange}
-              size={Size.Md}
-              disabled={isFromOntology}
-            />
-          </Stack>
-          <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
-            When enabled, annotators can view but cannot edit values.
-          </Text>
-        </Stack>
       </Stack>
 
-      {/* Section 2: Input type */}
+      {/* Section 2: Read-only toggle */}
+      <Stack orientation={Orientation.Column} spacing={Spacing.None}>
+        <Stack
+          orientation={Orientation.Row}
+          spacing={Spacing.Sm}
+          align={Align.Center}
+        >
+          <Text variant={TextVariant.Lg}>Read-only</Text>
+          <Toggle
+            checked={formState.read_only}
+            onChange={handleReadOnlyChange}
+            size={Size.Md}
+            disabled={isFromOntology}
+          />
+        </Stack>
+        <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+          When enabled, annotators can view but cannot edit values.
+        </Text>
+      </Stack>
+
+      {/* Section 3: Input type */}
       <FormField
         label="Input type"
         control={
@@ -220,7 +220,7 @@ const AttributeFormContent = ({
         }
       />
 
-      {/* Section 3: Values, range, and default — only rendered when at least one is visible */}
+      {/* Section 4: Values, range, and default — only rendered when at least one is visible */}
       {(showValues || showRange || supportsDefault) && (
         <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
           {showValues && (
