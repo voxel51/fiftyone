@@ -11,40 +11,29 @@ Includes all updates from :ref:`FiftyOne 1.15.0 <release-notes-v1.15.0>`, plus:
 
 Core
 
-- New feature: `Enterprise service accounts
-  <https://docs.voxel51.com/enterprise/roles_and_permissions.html#enterprise-service-accounts>`_.
-  Non-human principals designed for programmatic, automated, or
-  machine-to-machine access to FiftyOne Enterprise.
+- Added support for :ref:`Service Accounts <enterprise-service-accounts>`,
+  allowing teams to create non-human accounts designed for programmatic,
+  automated, or machine-to-machine access to FiftyOne Enterprise
+- Removed immediate execution option from builtin operators that should always
+  be :ref:`delegated <enterprise-delegated-operations>` due to their compute
+  needs
 - Fixed a bug where nonstandard file prefixes could cause a deployment to hang
-  indefinitely and crash silently.
-- Fixed a misleading error on the login page.
-
-Orchestrators
-
-- Added an Orchestrators page to Settings in the App, featuring a list of all
-  configured :ref:`Orchestrators <enterprise-delegated-orchestrator>` and links
-  for admins to deploy new orchestrators.
-- The App will automatically select an orchestrator, rather than defaulting to
-  immediate execution, if your operator defines `default_choice_to_delegated` as
-  true and allows immediate execution.
-
-Operators
-
-- Removed immediate execution for the following :ref:`Operators <using-operators>`:
-  `compute_aspect_ratio`, `compute_blurriness`, `compute_brightness`,
-  `compute_entropy`, `compute_exact_duplicates`, `compute_near_duplicates`,
-  `compute_visualization`, `evaluate_model`, `evaluate_model_async`.
+  indefinitely and crash silently
+- Fixed a misleading error on the login page
 
 App
 
-- Added live log-tail support for
-  :ref:`delegated operations <enterprise-delegated-operations>` on the Runs
-  page. Logs will now stream during operation execution.
+- Added an Orchestrators tab to the Settings page that lists all configured
+  :ref:`Orchestrators <enterprise-delegated-orchestrator>` and provides links
+  for admins to deploy new orchestrators
+- Added a "Your recent runs" component to the dataset listing page that
+  provides quick access to your most recent
+  :ref:`delegated operations <enterprise-delegated-operations>`
+- Upgraded to the Logs tab of a delegated operation's
+  :ref:`Run page <enterprise-run-page>` to support live streaming during
+  execution
 - Added more metrics to delegated operation logs to assist with debugging
-  resource usage.
-- Updated runs under "Your recent runs" on the datasets list page to display
-  run status and timestamp, rather than the user's name.
-- Added run status to runs under "Recent runs" on the Runs page.
+  resource usage
 
 .. _release-notes-v1.15.0:
 
@@ -54,26 +43,25 @@ FiftyOne 1.15.0
 
 App
 
-- New feature: `Similarity Search Panel
-  <https://docs.voxel51.com/user_guide/app.html#app-similarity-search-panel>`_.
-  Create new similarity searches with selected or uploaded images, or text as
-  prompts. Alt-click (option-click) in the grid to select samples as negative
-  examples.
-
-3D
-
-- App now supports usage of direct 3D media in FiftyOne samples. Whereas
-  previously you'd have to wrap your 3D media in FO3D, FiftyOne now can natively
-  render formats like gltf/glb, fbx, ply, pcd, and stl so long as `media_type`
-  is declared as `3d`.
-- Both App and SDK can now automatically resolve unambiguous `source -> world`
-  static transforms through intermediate frames.
+- Added a :ref:`Similarity Search Panel <app-similarity-search-panel>` that
+  provides a full-featured experience for performing visual/text similarity
+  searches in the App, including a list of historical searches, the ability to
+  alt-click in the grid to add negative examples to a search, and much more
+- You can now create :ref:`3D datasets <3d-datasets>` composed of samples
+  whose filepaths point directly to 3D media assets such as meshes and point
+  clouds. Just declare the sample's media type as `media_type="3d"`
+- The App and SDK can now automatically resolve unambiguous `source -> world`
+  static transforms through intermediate frames
 
 Plugins
 
-- Added support for plugin-driven `custom media renderers in the App
-  <https://docs.voxel51.com/plugins/developing_plugins.html#custom-sample-renderers>`_,
-  enabling personalized rendering of media files in grid and modal views.
+- Optimized the
+  :class:`FileExplorerView <fiftyone.operators.types.FileExplorerView>`
+  component to provide faster load times when working with folders that contain
+  many files/subfolders
+- Plugins can now register
+  :ref:`custom media renderers <custom-sample-renderers>` to support
+  visualizing non-native media types in the App grid/modal
   `#7164 <https://github.com/voxel51/fiftyone/pull/7164>`_
 
 FiftyOne Enterprise 2.17.2
