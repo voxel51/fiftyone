@@ -1316,7 +1316,7 @@ class COCOObject(object):
             bbox = [x * width, y * height, w * width, h * height]
 
             segmentation = _polyline_to_coco_segmentation(
-                label, frame_size, iscrowd=iscrowd
+                label, frame_size, iscrowd=iscrowd, bbox=bbox
             )
         elif isinstance(label, fol.Keypoint):
             keypoints = _make_coco_keypoints(label, frame_size)
@@ -2250,7 +2250,9 @@ def _normalize_coco_segmentation(segmentation):
     return _segmentation
 
 
-def _polyline_to_coco_segmentation(polyline, frame_size, iscrowd="iscrowd"):
+def _polyline_to_coco_segmentation(
+    polyline, frame_size, iscrowd="iscrowd", bbox=None
+):
     if polyline.get_attribute_value(iscrowd, None):
         seg = polyline.to_segmentation(frame_size=frame_size, target=1)
         return _mask_to_rle(seg.mask)
@@ -2260,8 +2262,19 @@ def _polyline_to_coco_segmentation(polyline, frame_size, iscrowd="iscrowd"):
     for points in polyline.points:
         polygon = []
         for x, y in points:
-            polygon.append(int(x * width))
-            polygon.append(int(y * height))
+            x_abs = int(x * width)
+            y_abs = int(y * height)
+
+            # Clip segmentation points to bbox if provided
+            if bbox is not None:
+                x_min, y_min, w, h = bbox
+                x_max = x_min + w
+                y_max = y_min + h
+                x_abs = max(int(x_min), min(x_abs, int(x_max)))
+                y_abs = max(int(y_min), min(y_abs, int(y_max)))
+
+            polygon.append(x_abs)
+            polygon.append(y_abs)
 
         polygons.append(polygon)
 
