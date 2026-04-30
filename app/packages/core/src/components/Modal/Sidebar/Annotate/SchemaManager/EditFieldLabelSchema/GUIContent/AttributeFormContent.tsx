@@ -76,10 +76,10 @@ const AttributeFormContent = ({
         {/* Name field */}
         {isEditing ? (
           <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
-            <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
+            <Text variant={TextVariant.Md} color={TextColor.Secondary}>
               Name:
             </Text>
-            <Text variant={TextVariant.Lg}>{formState.name}</Text>
+            <Text variant={TextVariant.Md}>{formState.name}</Text>
           </Stack>
         ) : (
           <FormField
@@ -100,10 +100,10 @@ const AttributeFormContent = ({
         {/* Attribute type dropdown */}
         {isEditing ? (
           <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
-            <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
+            <Text variant={TextVariant.Md} color={TextColor.Secondary}>
               Type:
             </Text>
-            <Text variant={TextVariant.Lg}>
+            <Text variant={TextVariant.Md}>
               {ATTRIBUTE_TYPE_LABELS[formState.type] || formState.type}
             </Text>
           </Stack>
@@ -129,10 +129,10 @@ const AttributeFormContent = ({
         {/* Ontology source (read-only, only shown when present) */}
         {isFromOntology && (
           <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
-            <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
+            <Text variant={TextVariant.Md} color={TextColor.Secondary}>
               Ontology:
             </Text>
-            <Text variant={TextVariant.Lg}>{formState._source}</Text>
+            <Text variant={TextVariant.Md}>{formState._source}</Text>
           </Stack>
         )}
 
@@ -144,7 +144,7 @@ const AttributeFormContent = ({
             style={{ overflow: "hidden" }}
           >
             <Text
-              variant={TextVariant.Lg}
+              variant={TextVariant.Md}
               color={TextColor.Secondary}
               style={{ whiteSpace: "nowrap", flexShrink: 0 }}
             >
@@ -158,7 +158,7 @@ const AttributeFormContent = ({
               }}
             >
               <Text
-                variant={TextVariant.Lg}
+                variant={TextVariant.Md}
                 style={{
                   overflow: "hidden",
                   whiteSpace: "nowrap",
@@ -170,7 +170,7 @@ const AttributeFormContent = ({
               </Text>
               {whenPreview.suffix && (
                 <Text
-                  variant={TextVariant.Lg}
+                  variant={TextVariant.Md}
                   style={{ whiteSpace: "nowrap", flexShrink: 0 }}
                 >
                   {whenPreview.suffix}
@@ -188,7 +188,7 @@ const AttributeFormContent = ({
           spacing={Spacing.Sm}
           align={Align.Center}
         >
-          <Text variant={TextVariant.Lg}>Read-only</Text>
+          <Text variant={TextVariant.Md}>Read-only</Text>
           <Toggle
             checked={formState.read_only}
             onChange={handleReadOnlyChange}
@@ -204,6 +204,7 @@ const AttributeFormContent = ({
       {/* Section 3: Input type */}
       <FormField
         label="Input type"
+        spacing={Spacing.Xs}
         control={
           <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
             {componentOptions.map((opt) => (
