@@ -45,7 +45,7 @@ const AttributeFormContent = ({
     isIntegerType,
     isListType,
     isFromOntology,
-    appearsWhen,
+    whenPreview,
     supportsDefault,
     componentOptions,
 
@@ -137,7 +137,7 @@ const AttributeFormContent = ({
         )}
 
         {/* Conditional visibility from ontology (read-only, only shown when present) */}
-        {appearsWhen && (
+        {whenPreview && (
           <Stack
             orientation={Orientation.Row}
             spacing={Spacing.Sm}
@@ -166,14 +166,14 @@ const AttributeFormContent = ({
                   minWidth: 0,
                 }}
               >
-                {appearsWhen.condition}
+                {whenPreview.condition}
               </Text>
-              {appearsWhen.suffix && (
+              {whenPreview.suffix && (
                 <Text
                   variant={TextVariant.Lg}
                   style={{ whiteSpace: "nowrap", flexShrink: 0 }}
                 >
-                  {appearsWhen.suffix}
+                  {whenPreview.suffix}
                 </Text>
               )}
             </div>
