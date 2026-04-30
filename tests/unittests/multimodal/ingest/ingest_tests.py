@@ -32,6 +32,7 @@ class TestGetSceneInventories:
         adapter.get_scene_inventory.assert_not_called()
 
     def test_reads_file(self, adapter, storage):
+        storage.isdir.return_value = False
         storage.exists.return_value = True
         adapter.can_read.return_value = True
         adapter.get_scene_inventory.return_value = "scene inventory"
@@ -104,4 +105,28 @@ class TestGetSceneInventories:
         assert result == ["scene inventory"]
         adapter.get_scene_inventory.assert_called_with(
             "/path/to/readable_file"
+        )
+
+    def test_does_not_read_directory_as_file(self, adapter, storage):
+        storage.exists.return_value = True
+        adapter.can_read.return_value = True
+        storage.isdir.return_value = True
+        storage.list_files.return_value = [
+            "/path/to/file",
+            "/path/to/another_file",
+        ]
+        adapter.get_scene_inventory.return_value = "scene inventory"
+
+        ###
+        result = ingest._get_scene_inventories(
+            ["/path/to/directory"], adapter=adapter
+        )
+        ###
+
+        assert result == ["scene inventory", "scene inventory"]
+        storage.list_files.assert_called_with(
+            "/path/to/directory", abs_paths=True, recursive=True
+        )
+        adapter.get_scene_inventory.assert_has_calls(
+            [call("/path/to/file"), call("/path/to/another_file")]
         )

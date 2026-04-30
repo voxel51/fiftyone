@@ -27,16 +27,14 @@ def _get_scene_inventories(filepaths, *, adapter):
     inventories = []
 
     for filepath in filepaths:
-        if storage.exists(filepath) and adapter.can_read(filepath):
-            inventories.append(adapter.get_scene_inventory(filepath))
-            continue
-
         if storage.isdir(filepath):
             for filepath in storage.list_files(
                 filepath, abs_paths=True, recursive=True
             ):
                 if adapter.can_read(filepath):
                     inventories.append(adapter.get_scene_inventory(filepath))
+        elif storage.exists(filepath) and adapter.can_read(filepath):
+            inventories.append(adapter.get_scene_inventory(filepath))
 
     return inventories
 
