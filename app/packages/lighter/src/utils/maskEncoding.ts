@@ -44,6 +44,13 @@ export async function encodeMaskData(
   mask: Uint8Array,
   shape: readonly number[]
 ): Promise<string> {
+  const expectedLength = shape.reduce((product, dim) => product * dim, 1);
+  if (mask.length !== expectedLength) {
+    throw new Error(
+      `Mask length ${mask.length} does not match shape ${shape.join("x")}`
+    );
+  }
+
   const npy = buildNpy(mask, shape);
   const compressed = await deflate(npy);
 

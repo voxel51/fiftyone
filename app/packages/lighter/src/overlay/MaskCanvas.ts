@@ -87,19 +87,43 @@ export class MaskCanvas {
 
   /**
    * Replaces the raw mask source data. Returns true if the source actually
-   * changed (caller should markDirty). Invalidates the decoded bitmap and
-   * raw pixel cache when the source changes.
+   * changed (caller should markDirty). Drops all derived state — decoded
+   * bitmap, raw pixels, editing canvas, undo snapshots — so that subsequent
+   * renders / hit-tests reflect the new source rather than a stale canvas.
    */
   updateSource(mask?: SerializedMask): boolean {
     const b64 = MaskCanvas.extractB64(mask);
     if (b64 === this.rawMaskData) return false;
 
-    this.maskBitmap?.close();
-    this.maskBitmap = undefined;
-    this.rawPixels = undefined;
-    this.decodedColor = undefined;
+    this.reset();
     this.rawMaskData = b64;
     return true;
+  }
+
+  /**
+   * Tears down all derived state (bitmap, raw pixels, editing canvas, undo
+   * snapshots, pending encode) and the source data. Leaves the instance
+   * usable but empty; the next render decodes from a fresh `rawMaskData` if
+   * one is set afterward.
+   */
+  private reset(): void {
+    this.maskBitmap?.close();
+    this.maskBitmap = undefined;
+    this.rawMaskData = undefined;
+    this.rawPixels = undefined;
+
+    this.canvas = undefined;
+    this.context = undefined;
+    this.pendingMask = undefined;
+
+    this.decodedColor = undefined;
+    this.lastColor = undefined;
+    this.lastPoint = undefined;
+
+    this.preStrokeSnapshot = undefined;
+    this.preStrokeBounds = undefined;
+    this.postStrokeSnapshot = undefined;
+    this.postStrokeBounds = undefined;
   }
 
   /**
@@ -120,10 +144,22 @@ export class MaskCanvas {
     // Already decoded with this color and raw pixels are available
     if (this.maskBitmap && this.decodedColor === color) return;
 
+    // Snapshot the source so a concurrent updateSource() can invalidate this
+    // decode without stale data overwriting the new source on resolution.
+    const sourceToken = this.rawMaskData;
     this.decoding = true;
 
-    decodeMask(this.rawMaskData, color)
+    decodeMask(sourceToken, color)
       .then(({ bitmap, rawPixels }) => {
+        this.decoding = false;
+
+        // Source changed mid-decode — discard this result. The next render
+        // will re-trigger decodeMaskIfNeeded against the current rawMaskData.
+        if (this.rawMaskData !== sourceToken) {
+          bitmap.close();
+          return;
+        }
+
         this.maskBitmap?.close();
         this.maskBitmap = bitmap;
         this.decodedColor = color;
@@ -132,7 +168,6 @@ export class MaskCanvas {
           this.rawPixels = rawPixels;
         }
 
-        this.decoding = false;
         onDecoded?.();
       })
       .catch((err) => {
@@ -649,6 +684,7 @@ export class MaskCanvas {
       this.canvas = undefined;
       this.context = undefined;
       this.lastPoint = undefined;
+      this.pendingMask = undefined;
       this.rawPixels = undefined;
       return;
     }
@@ -674,11 +710,6 @@ export class MaskCanvas {
   // ---------------------------------------------------------------------------
 
   destroy(): void {
-    this.maskBitmap?.close();
-    this.maskBitmap = undefined;
-    this.rawPixels = undefined;
-    this.canvas = undefined;
-    this.context = undefined;
-    this.lastPoint = undefined;
+    this.reset();
   }
 }

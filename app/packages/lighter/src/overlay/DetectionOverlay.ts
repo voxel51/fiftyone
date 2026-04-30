@@ -133,9 +133,20 @@ export class DetectionOverlay
       });
     }
 
-    // invalidate cached mask with new label data
-    if (this.mask?.updateSource(label.mask)) {
+    if (label.mask) {
+      if (this.mask) {
+        this.mask.updateSource(label.mask);
+      } else {
+        this.mask = new MaskCanvas(label.mask);
+      }
+
       this.markDirty();
+    } else {
+      const hadMask = !!this.mask;
+      this.mask?.destroy();
+      this.mask = undefined;
+
+      if (hadMask) this.markDirty();
     }
   }
 
