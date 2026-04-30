@@ -489,7 +489,9 @@ export class MaskCanvas {
     // Refresh single-channel mask data so hit-testing reflects the edit.
     this.updateRawPixelsFromCanvas();
 
-    encodeMask(this.canvas).then((encoded) => {
+    const capturedCanvas = this.canvas;
+    encodeMask(capturedCanvas).then((encoded) => {
+      if (this.canvas !== capturedCanvas) return;
       this.pendingMask = encoded;
       onEncoded?.();
     });
@@ -702,7 +704,11 @@ export class MaskCanvas {
     // Refresh single-channel mask data so hit-testing reflects the snapshot.
     this.updateRawPixelsFromCanvas();
 
-    encodeMask(this.canvas).then((encoded) => (this.pendingMask = encoded));
+    const capturedCanvas = this.canvas;
+    encodeMask(capturedCanvas).then((encoded) => {
+      if (this.canvas !== capturedCanvas) return;
+      this.pendingMask = encoded;
+    });
   }
 
   // ---------------------------------------------------------------------------
