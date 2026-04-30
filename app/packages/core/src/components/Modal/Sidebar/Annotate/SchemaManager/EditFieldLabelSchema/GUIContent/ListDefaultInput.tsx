@@ -19,6 +19,7 @@ interface ListDefaultInputProps {
   isNumeric?: boolean;
   /** Validation error from parent */
   error?: string | null;
+  readOnly?: boolean;
 }
 
 const ListDefaultInput = ({
@@ -27,6 +28,7 @@ const ListDefaultInput = ({
   choices = [],
   isNumeric = false,
   error = null,
+  readOnly = false,
 }: ListDefaultInputProps) => {
   // Build SchemaIO-compatible schema for AutocompleteView
   const schema = useMemo(
@@ -37,12 +39,13 @@ const ListDefaultInput = ({
         allow_user_input: true,
         allow_clearing: true,
         allow_duplicates: false,
+        readOnly,
         placeholder: isNumeric
           ? "Type a number and press Enter"
           : "Type a value and press Enter",
       },
     }),
-    [choices, isNumeric]
+    [choices, isNumeric, readOnly]
   );
 
   const handleChange = (_path: string, newValues: unknown) => {

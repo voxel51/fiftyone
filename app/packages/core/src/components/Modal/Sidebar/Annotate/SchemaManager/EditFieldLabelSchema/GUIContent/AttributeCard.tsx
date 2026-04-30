@@ -23,6 +23,7 @@ interface AttributeCardProps {
   canDrag?: boolean;
   /** When true, name and type are rendered as read-only text */
   isEditing?: boolean;
+  readOnly?: boolean;
 }
 
 /**
@@ -40,6 +41,7 @@ export const createAttributeCardItem = ({
   onDelete,
   canDrag = false,
   isEditing = false,
+  readOnly = false,
 }: AttributeCardProps): {
   id: string;
   data: ListItemProps;
@@ -55,6 +57,7 @@ export const createAttributeCardItem = ({
         onSave={onSave}
         canSave={canSave}
         onDelete={onDelete}
+        readOnly={readOnly}
       />
     ),
     additionalContent: (

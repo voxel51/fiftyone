@@ -21,6 +21,7 @@ interface RangeInputProps {
   error?: string | null;
   /** Use larger, primary-colored labels */
   largeLabels?: boolean;
+  readOnly?: boolean;
 }
 
 const RangeInput = ({
@@ -28,6 +29,7 @@ const RangeInput = ({
   onRangeChange,
   error = null,
   largeLabels = false,
+  readOnly = false,
 }: RangeInputProps) => {
   const min = range?.min || "";
   const max = range?.max || "";
@@ -52,6 +54,7 @@ const RangeInput = ({
             onChange={(e) => onRangeChange({ min: e.target.value, max })}
             placeholder="Minimum value"
             error={!!error}
+            disabled={readOnly}
           />
         </div>
         <div style={{ flex: 1 }}>
@@ -68,6 +71,7 @@ const RangeInput = ({
             onChange={(e) => onRangeChange({ min, max: e.target.value })}
             placeholder="Maximum value"
             error={!!error}
+            disabled={readOnly}
           />
         </div>
       </Stack>

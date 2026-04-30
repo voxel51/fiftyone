@@ -127,6 +127,7 @@ const AttributesSection = ({
           onDelete: handleDeleteAttribute,
           canDrag: true,
           isEditing: true,
+          readOnly: !!config._source,
         });
       }
 
@@ -152,6 +153,11 @@ const AttributesSection = ({
               {config.read_only && (
                 <Pill size={Size.Md} style={{ marginLeft: 8 }}>
                   Read-only
+                </Pill>
+              )}
+              {config._source && (
+                <Pill size={Size.Md} style={{ marginLeft: 8 }}>
+                  {config._source}
                 </Pill>
               )}
             </>

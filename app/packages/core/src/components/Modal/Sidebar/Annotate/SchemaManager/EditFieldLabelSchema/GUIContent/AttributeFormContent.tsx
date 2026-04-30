@@ -42,6 +42,8 @@ const AttributeFormContent = ({
     isNumericType,
     isIntegerType,
     isListType,
+    isFromOntology,
+    whenPreview,
     supportsDefault,
     componentOptions,
 
@@ -66,7 +68,7 @@ const AttributeFormContent = ({
   } = useAttributeForm({ formState, onFormStateChange });
 
   return (
-    <Stack orientation={Orientation.Column} spacing={Spacing.Lg}>
+    <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
       {/* Name field */}
       {isEditing ? (
         <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
@@ -136,6 +138,60 @@ const AttributeFormContent = ({
         </div>
       )}
 
+      {/* Ontology source (read-only, only shown when present) */}
+      {isFromOntology && (
+        <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
+          <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
+            Ontology:
+          </Text>
+          <Text variant={TextVariant.Lg}>{formState._source}</Text>
+        </Stack>
+      )}
+
+      {/* Conditional visibility from ontology (read-only, only shown when present) */}
+      {whenPreview && (
+        <Stack
+          orientation={Orientation.Row}
+          spacing={Spacing.Sm}
+          style={{ overflow: "hidden" }}
+        >
+          <Text
+            variant={TextVariant.Lg}
+            color={TextColor.Secondary}
+            style={{ whiteSpace: "nowrap", flexShrink: 0 }}
+          >
+            Appears when:
+          </Text>
+          <div
+            style={{
+              display: "flex",
+              overflow: "hidden",
+              minWidth: 0,
+            }}
+          >
+            <Text
+              variant={TextVariant.Lg}
+              style={{
+                overflow: "hidden",
+                whiteSpace: "nowrap",
+                textOverflow: "ellipsis",
+                minWidth: 0,
+              }}
+            >
+              {whenPreview.condition}
+            </Text>
+            {whenPreview.suffix && (
+              <Text
+                variant={TextVariant.Lg}
+                style={{ whiteSpace: "nowrap", flexShrink: 0 }}
+              >
+                {whenPreview.suffix}
+              </Text>
+            )}
+          </div>
+        </Stack>
+      )}
+
       {/* Read-only toggle */}
       <div>
         <Stack
@@ -143,11 +199,12 @@ const AttributeFormContent = ({
           spacing={Spacing.Sm}
           style={{ alignItems: "center", marginBottom: 4 }}
         >
-          <Text variant={TextVariant.Md}>Read-only</Text>
+          <Text variant={TextVariant.Lg}>Read-only</Text>
           <Toggle
             checked={formState.read_only}
             onChange={handleReadOnlyChange}
-            size={Size.Sm}
+            size={Size.Md}
+            disabled={isFromOntology}
           />
         </Stack>
         <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
@@ -172,6 +229,7 @@ const AttributeFormContent = ({
               label={opt.label}
               isSelected={formState.component === opt.id}
               onClick={() => handleComponentChange(opt.id)}
+              disabled={isFromOntology}
             />
           ))}
         </Stack>
@@ -185,6 +243,12 @@ const AttributeFormContent = ({
           isNumeric={isNumericType}
           isInteger={isIntegerType}
           error={valuesError}
+          readOnly={isFromOntology}
+          subtitle={
+            isFromOntology
+              ? "Showing a preview of values, additional values may exist in the ontology"
+              : undefined
+          }
         />
       )}
 
@@ -194,6 +258,7 @@ const AttributeFormContent = ({
           range={formState.range}
           onRangeChange={handleRangeChange}
           error={rangeError}
+          readOnly={isFromOntology}
         />
       )}
 
@@ -214,6 +279,7 @@ const AttributeFormContent = ({
               choices={showValues ? formState.values : []}
               isNumeric={isNumericType}
               error={defaultError}
+              readOnly={isFromOntology}
             />
           ) : (
             <>
@@ -223,6 +289,7 @@ const AttributeFormContent = ({
                 onChange={(e) => handleDefaultChange(e.target.value)}
                 placeholder={isNumericType ? "Default number" : "Default value"}
                 error={!!defaultError}
+                disabled={isFromOntology}
               />
               {defaultError && (
                 <Text
