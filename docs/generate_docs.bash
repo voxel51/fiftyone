@@ -88,15 +88,20 @@ cd "${THIS_DIR}/.."
 ln -sfn "$FIFTYONE_BRAIN_DIR" fiftyone/brain
 
 echo "Generating API docs"
+API_DOC_EXCLUDES=(
+    fiftyone/brain/internal/models
+    fiftyone/constants
+    fiftyone/internal
+    # Multimodal APIs are feature-gated and hidden from public API docs for now.
+    fiftyone/multimodal
+    fiftyone/server
+    fiftyone/service
+)
+
 # sphinx-apidoc [OPTIONS] -o <OUTPUT_PATH> <MODULE_PATH> [EXCLUDE_PATTERN, ...]
 sphinx-apidoc --force --no-toc --separate --follow-links \
     --templatedir=docs/templates/apidoc \
-    -o docs/source/api fiftyone \
-        fiftyone/brain/internal/models \
-        fiftyone/constants \
-        fiftyone/internal \
-        fiftyone/server \
-        fiftyone/service &
+    -o docs/source/api fiftyone "${API_DOC_EXCLUDES[@]}" &
 
 sphinx-apidoc --force --no-toc --separate --follow-links \
     --templatedir=docs/templates/apidoc \

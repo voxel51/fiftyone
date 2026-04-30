@@ -6100,6 +6100,11 @@ keyword argument. Adding the sample to a |Dataset| will result in a dataset
 with `media_type` inherited from the sample. Custom media types can be used
 to extend functionality for sample types that are not natively supported.
 
+For App support in the grid or the modal, pair custom media types with
+:ref:`custom sample renderers <custom-sample-renderers>`. This plugin feature
+lets you provide domain-specific rendering for custom media types whose samples
+may not be handled by FiftyOne's built-in media renderers.
+
 .. code:: python
     :linenos:
 

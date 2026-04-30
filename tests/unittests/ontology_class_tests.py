@@ -6,7 +6,12 @@ FiftyOne ontology data class unit tests.
 |
 """
 
+import os
 import unittest
+
+# Ontology SDK is gated by VFF_ONTOLOGY_CA; enable for the whole module.
+# Tests that need the flag off manage the env var themselves.
+os.environ.setdefault("VFF_ONTOLOGY_CA", "1")
 
 from fiftyone.core.annotation.attributes import (
     AttributeSpec,
@@ -437,6 +442,158 @@ class AnnotationOntologyTests(unittest.TestCase):
         self.assertEqual(
             restored.attributes[2].when[0].field, "damage_location"
         )
+
+
+class OntologySDKTests(unittest.TestCase):
+    """Integration tests that hit MongoDB."""
+
+    def setUp(self):
+        import fiftyone.core.odm as foo
+
+        db = foo.get_db_conn()
+        db.drop_collection("ontologies")
+
+        from fiftyone.core.odm.ontology import OntologyDocument
+
+        OntologyDocument.ensure_indexes()
+
+    def tearDown(self):
+        import fiftyone.core.odm as foo
+
+        db = foo.get_db_conn()
+        db.drop_collection("ontologies")
+
+    def _make_ontology(
+        self, name: str = "test_ontology"
+    ) -> AnnotationOntology:
+        return AnnotationOntology(
+            name=name,
+            description="Test annotation ontology",
+            taxonomies=["vehicle_classes"],
+            attributes=[
+                AttributeSpec(
+                    name="damage_present",
+                    type="bool",
+                    component="checkbox",
+                ),
+                AttributeSpec(
+                    name="damage_location",
+                    type="str",
+                    component="dropdown",
+                    values=["front", "rear"],
+                    when=[
+                        When(
+                            WhenOperator.EQUALS,
+                            field="damage_present",
+                            value=True,
+                        )
+                    ],
+                ),
+            ],
+        )
+
+    def test_save_and_load(self):
+        from fiftyone.core.ontology import load_ontology
+
+        ao = self._make_ontology()
+        ao.save()
+
+        self.assertIsNotNone(ao.version)
+        self.assertIsNotNone(ao.created_at)
+
+        loaded = load_ontology("test_ontology")
+        self.assertEqual(loaded.name, "test_ontology")
+        self.assertEqual(loaded.description, "Test annotation ontology")
+        self.assertEqual(loaded.taxonomies, ["vehicle_classes"])
+        self.assertEqual(len(loaded.attributes), 2)
+        self.assertEqual(loaded.attributes[0].name, "damage_present")
+        self.assertEqual(loaded.attributes[1].when[0].field, "damage_present")
+
+    def test_save_and_reload(self):
+        ao = self._make_ontology()
+        ao.save()
+
+        ao.description = "updated"
+        ao.reload()
+
+        self.assertEqual(ao.description, "Test annotation ontology")
+
+    def test_delete(self):
+        from fiftyone.core.ontology import delete_ontology, load_ontology
+
+        ao = self._make_ontology()
+        ao.save()
+
+        ao.delete()
+        self.assertIsNone(ao._doc)
+
+        with self.assertRaises(ValueError):
+            load_ontology("test_ontology")
+
+    def test_delete_via_function(self):
+        from fiftyone.core.ontology import delete_ontology, ontology_exists
+
+        ao = self._make_ontology()
+        ao.save()
+
+        delete_ontology("test_ontology")
+        self.assertFalse(ontology_exists("test_ontology"))
+
+    def test_delete_nonexistent_raises(self):
+        from fiftyone.core.ontology import delete_ontology
+
+        with self.assertRaises(ValueError):
+            delete_ontology("nonexistent")
+
+    def test_list_ontologies(self):
+        from fiftyone.core.ontology import list_ontologies
+
+        self._make_ontology("alpha").save()
+        self._make_ontology("beta").save()
+        self._make_ontology("gamma").save()
+
+        names = list_ontologies()
+        self.assertEqual(names, ["alpha", "beta", "gamma"])
+
+    def test_list_ontologies_glob(self):
+        from fiftyone.core.ontology import list_ontologies
+
+        self._make_ontology("vehicle_damage").save()
+        self._make_ontology("vehicle_classes").save()
+        self._make_ontology("person_attributes").save()
+
+        names = list_ontologies("vehicle_*")
+        self.assertEqual(names, ["vehicle_classes", "vehicle_damage"])
+
+    def test_ontology_exists(self):
+        from fiftyone.core.ontology import ontology_exists
+
+        self.assertFalse(ontology_exists("test_ontology"))
+
+        self._make_ontology().save()
+        self.assertTrue(ontology_exists("test_ontology"))
+
+    def test_load_nonexistent_raises(self):
+        from fiftyone.core.ontology import load_ontology
+
+        with self.assertRaises(ValueError):
+            load_ontology("nonexistent")
+
+    def test_clone(self):
+        from fiftyone.core.ontology import load_ontology, ontology_exists
+
+        ao = self._make_ontology("original")
+        ao.save()
+
+        cloned = ao.clone("cloned")
+
+        self.assertTrue(ontology_exists("original"))
+        self.assertTrue(ontology_exists("cloned"))
+        self.assertEqual(cloned.name, "cloned")
+        self.assertEqual(len(cloned.attributes), 2)
+
+        original = load_ontology("original")
+        self.assertEqual(original.name, "original")
 
 
 if __name__ == "__main__":

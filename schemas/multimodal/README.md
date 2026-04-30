@@ -44,3 +44,10 @@ install/select the matching version and point the build at it:
 ```bash
 PROTOC=/path/to/protoc python schemas/multimodal/build.py
 ```
+
+The Python package version and `protoc` version differ by the Python major
+prefix. For example, `protobuf==6.33.6` in `setup.py` requires
+`protoc --version` to print `libprotoc 33.6`.
+
+For macOS and Linux binaries, use the official Protocol Buffers release page:
+https://github.com/protocolbuffers/protobuf/releases/tag/v33.6.

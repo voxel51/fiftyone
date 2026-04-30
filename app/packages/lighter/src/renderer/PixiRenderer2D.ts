@@ -619,17 +619,30 @@ export class PixiRenderer2D implements Renderer2D {
       style.strokeStyle || "#000000"
     );
 
-    graphics.setStrokeStyle({
-      width: (style.lineWidth || 1) / this.getScale(),
-      color: color,
-      alpha: alpha * (style.opacity ?? 1),
-    });
+    if (style.dashPattern && style.dashPattern.length > 0) {
+      const dashLine = new DashLine(graphics, {
+        dash: style.dashPattern,
+        width: (style.lineWidth || 1) / this.getScale(),
+        color: color,
+        alpha: alpha * (style.opacity ?? 1),
+      });
+      for (const [start, end] of segments) {
+        dashLine.moveTo(start.x, start.y);
+        dashLine.lineTo(end.x, end.y);
+      }
+    } else {
+      graphics.setStrokeStyle({
+        width: (style.lineWidth || 1) / this.getScale(),
+        color: color,
+        alpha: alpha * (style.opacity ?? 1),
+      });
 
-    for (const [start, end] of segments) {
-      graphics.moveTo(start.x, start.y);
-      graphics.lineTo(end.x, end.y);
+      for (const [start, end] of segments) {
+        graphics.moveTo(start.x, start.y);
+        graphics.lineTo(end.x, end.y);
+      }
+      graphics.stroke();
     }
-    graphics.stroke();
 
     this.addToContainer(graphics, containerId);
   }

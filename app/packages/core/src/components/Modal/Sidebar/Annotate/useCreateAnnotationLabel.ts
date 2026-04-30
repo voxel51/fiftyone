@@ -1,15 +1,22 @@
 import { useCallback } from "react";
 import type { LabelType } from "./Edit/state";
-import { CLASSIFICATION, DETECTION, POLYLINE } from "@fiftyone/utilities";
+import {
+  CLASSIFICATION,
+  DETECTION,
+  KEYPOINT,
+  POLYLINE,
+} from "@fiftyone/utilities";
 import {
   BoundingBoxOptions,
   BoundingBoxOverlay,
   ClassificationOptions,
   ClassificationOverlay,
+  KeypointOptions,
+  KeypointOverlay,
   useLighter,
 } from "@fiftyone/lighter";
 import { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
-import { AnnotationLabel } from "@fiftyone/state";
+import { AnnotationLabel, useGetKeypointSkeleton } from "@fiftyone/state";
 import { getDefaultStore } from "jotai";
 import { isFieldReadOnly, labelSchemaData } from "./state";
 
@@ -18,6 +25,9 @@ import { isFieldReadOnly, labelSchemaData } from "./state";
  */
 export const useCreateAnnotationLabel = () => {
   const { overlayFactory } = useLighter();
+
+  // Getter for resolving keypoint skeletons by field
+  const getSkeletonForField = useGetKeypointSkeleton();
 
   return useCallback(
     (
@@ -81,8 +91,28 @@ export const useCreateAnnotationLabel = () => {
         };
       }
 
+      if (type === KEYPOINT) {
+        const fieldSkeleton = getSkeletonForField(field);
+
+        const overlay = overlayFactory.create<KeypointOptions, KeypointOverlay>(
+          "keypoint",
+          {
+            id: data._id,
+            field,
+            label: data as KeypointOptions["label"],
+            connections: fieldSkeleton?.edges ?? [],
+            closed: false,
+            draggable: false,
+            deletable: false,
+            selectable: true,
+          }
+        );
+
+        return { data, overlay, path: field, type };
+      }
+
       throw new Error(`unable to create label of type '${type}'`);
     },
-    [overlayFactory]
+    [getSkeletonForField, overlayFactory]
   );
 };
