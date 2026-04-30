@@ -70,14 +70,19 @@ export default function useAttributeForm({
     const conditions = formState.when;
     if (!conditions || conditions.length === 0) return null;
 
+    const formatValue = (v: unknown): string => {
+      if (typeof v === "string") return v;
+      return JSON.stringify(v);
+    };
+
     const formatCondition = (condition: typeof conditions[number]): string => {
       if (condition.operator === "in" && Array.isArray(condition.value)) {
         const list = (condition.value as unknown[])
-          .map((v) => JSON.stringify(v))
+          .map((v) => formatValue(v))
           .join(", ");
         return `${condition.field} in [${list}]`;
       }
-      return `${condition.field} = ${JSON.stringify(condition.value)}`;
+      return `${condition.field} = ${formatValue(condition.value)}`;
     };
 
     const condition = formatCondition(conditions[0]);
