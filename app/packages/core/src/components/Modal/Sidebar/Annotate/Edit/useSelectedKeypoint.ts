@@ -122,12 +122,14 @@ export const getKeypointAttributes = (
   const perPointNames = getPerPointAttributeNames(label);
   const attributes: KeypointAttribute[] = [];
   for (const name of perPointNames) {
-    const list = (label as Record<string, unknown>)[name] as unknown[];
-    attributes.push({
-      name,
-      value: list[pointIndex],
-      schema: schemaByName.get(name),
-    });
+    if (schemaByName.has(name)) {
+      const list = (label as Record<string, unknown>)[name] as unknown[];
+      attributes.push({
+        name,
+        value: list[pointIndex],
+        schema: schemaByName.get(name),
+      });
+    }
   }
 
   return {
