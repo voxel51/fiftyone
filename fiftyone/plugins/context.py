@@ -113,23 +113,27 @@ def _purge_sys_modules_under_dir(plugin_dir):
 
     Ensures a subsequent import re-reads plugin sources from disk (including
     submodules), which ``importlib`` would otherwise serve from ``sys.modules``.
+
+    The check is a literal path-prefix comparison; we deliberately avoid
+    ``os.path.realpath`` per ``sys.modules`` entry because that turns this
+    routine into hundreds of synchronous ``stat()`` calls on the asyncio event
+    loop. This is safe because plugin (sub)modules are loaded via
+    :func:`importlib.util.spec_from_file_location` with paths derived from
+    the same ``plugin_dir`` we receive here, so their ``__file__`` attributes
+    share its literal prefix. The only supported symlink usage is symlinking
+    an entire plugin directory; we never resolve nor follow symlinks for
+    files *within* a plugin.
     """
-    try:
-        root = os.path.realpath(plugin_dir)
-    except (TypeError, OSError):
+    if not plugin_dir:
         return
 
-    prefix = root + os.sep
+    prefix = plugin_dir + os.sep
     for name in list(sys.modules):
         mod = sys.modules[name]
         mod_file = getattr(mod, "__file__", None)
         if not mod_file:
             continue
-        try:
-            mod_file = os.path.realpath(mod_file)
-        except (TypeError, OSError):
-            continue
-        if mod_file == root or mod_file.startswith(prefix):
+        if mod_file == plugin_dir or mod_file.startswith(prefix):
             del sys.modules[name]
 
 
@@ -277,7 +281,7 @@ class PluginContext(object):
             fallback_name = os.path.basename(module_dir)
             module_name = _get_plugin_module_name(self.name, fallback_name)
 
-            _invalidate_plugin_python_caches(real_module_dir)
+            _invalidate_plugin_python_caches(module_dir)
 
             _ensure_parent_modules(module_name, module_dir)
 
