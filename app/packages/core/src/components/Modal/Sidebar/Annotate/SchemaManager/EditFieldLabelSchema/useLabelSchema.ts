@@ -18,6 +18,7 @@ import {
 } from "../../state";
 import {
   useSchemaManager,
+  type FieldSchema,
   type UpdateSchemaRequest,
 } from "../../useSchemaManager";
 import {
@@ -112,6 +113,32 @@ export const useReadOnly = (field: string) => {
         ...(current as object),
         read_only: !(current as { read_only?: boolean })?.read_only,
       });
+    },
+  };
+};
+
+export const useAppliedOntology = (field: string) => {
+  const [current, setCurrent] = useCurrentLabelSchema(field);
+  const schema = current as FieldSchema | undefined;
+
+  return {
+    appliedOntology: schema?.applied_ontology,
+    applyOntology: (name: string) => {
+      setCurrent({ ...(schema as FieldSchema), applied_ontology: name });
+    },
+    clearOntology: () => {
+      const next: FieldSchema = { ...(schema as FieldSchema) };
+      delete next.applied_ontology;
+      // Drop ontology-owned attributes (carry the `_source` marker). The
+      // backend's dehydrate only strips them while `applied_ontology` is
+      // still set, so we'd leave orphaned `when` clauses for the validator
+      // to reject if we didn't strip them here.
+      if (Array.isArray(next.attributes)) {
+        next.attributes = next.attributes.filter(
+          (a: unknown) => !(a && typeof a === "object" && "_source" in a)
+        );
+      }
+      setCurrent(next);
     },
   };
 };
@@ -324,6 +351,14 @@ export default function useLabelSchema(field: string) {
     visibility.discardVisibility();
   }, [originalDiscard, visibility.discardVisibility]);
 
+  // The currentLabelSchema atom is typed as `object | undefined` because it
+  // is fed into both <GUIContent> (which wants the looser SchemaConfigType)
+  // and <JSONEditor> (which wants JSONValue). We narrow it here once so
+  // consumers can read `labelSchema.appliedOntology` without casting.
+  const appliedOntology = (
+    validate.currentLabelSchema as FieldSchema | undefined
+  )?.applied_ontology;
+
   return {
     hasChanges,
     isFieldVisible: visibility.isFieldVisible,
@@ -334,6 +369,7 @@ export default function useLabelSchema(field: string) {
     ...save,
     ...scan,
     ...validate,
+    appliedOntology,
     discard,
   };
 }
