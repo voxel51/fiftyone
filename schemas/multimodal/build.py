@@ -22,7 +22,6 @@ class Toolchain(TypedDict):
     """Resolved protobuf codegen toolchain."""
 
     protoc_path: str
-    protoc_include_path: str
     protoc_version: str
     ts_plugin_path: str
     ts_plugin_version: str
@@ -96,35 +95,7 @@ def get_local_toolchain() -> Toolchain:
             f"{required_libprotoc_version}, or set "
             f"PROTOC=/path/to/protoc-{required_libprotoc_version}."
         )
-    protoc_path = Path(protoc_path)
-    protoc_include = os.environ.get("PROTOC_INCLUDE")
-    if protoc_include:
-        include_candidates = [Path(protoc_include)]
-    else:
-        include_candidates = [
-            protoc_path.parent.parent / "include",
-            protoc_path.resolve().parent.parent / "include",
-            Path("/opt/homebrew/opt/protobuf/include"),
-            Path("/opt/homebrew/include"),
-            Path("/usr/local/opt/protobuf/include"),
-            Path("/usr/local/include"),
-            Path("/usr/include"),
-        ]
-    protoc_include_path = next(
-        (
-            include_path.resolve()
-            for include_path in include_candidates
-            if include_path.is_dir()
-        ),
-        None,
-    )
-    if protoc_include_path is None:
-        raise RuntimeError(
-            "Unable to find protoc include directory. "
-            "Install the full Protocol Buffers release, not just the protoc "
-            "binary, or set PROTOC_INCLUDE=/path/to/include."
-        )
-    protoc_path = str(protoc_path.resolve())
+    protoc_path = str(Path(protoc_path).resolve())
 
     # Keep Python gencode deterministic and aligned with setup.py's protobuf pin.
     protoc_output = _run([protoc_path, "--version"])
@@ -162,7 +133,6 @@ def get_local_toolchain() -> Toolchain:
 
     return {
         "protoc_path": protoc_path,
-        "protoc_include_path": str(protoc_include_path),
         "protoc_version": protoc_version,
         "ts_plugin_path": ts_plugin_path,
         "ts_plugin_version": ts_plugin_version,
@@ -181,6 +151,7 @@ def build_contracts(
         toolchain = get_local_toolchain()
 
     generated: dict[str, GeneratedOutput] = {}
+    include_dir = (Path(schema_root).resolve() / "include").resolve()
 
     for version, spec in VERSION_SPECS.items():
         schema_dir = (
@@ -216,7 +187,7 @@ def build_contracts(
                 toolchain["protoc_path"],
                 f"--plugin=protoc-gen-es={toolchain['ts_plugin_path']}",
                 f"--proto_path={schema_dir}",
-                f"--proto_path={toolchain['protoc_include_path']}",
+                f"--proto_path={include_dir}",
                 f"--python_out={python_out_dir}",
                 f"--pyi_out={python_out_dir}",
                 f"--es_out={TS_PLUGIN_OPTION}:{ts_out_dir}",

@@ -24,6 +24,7 @@ It uses:
 
 -   all protobuf files under the current versioned schema directory as the
     schema source of truth
+-   vendored protobuf imports under `include`
 -   project-local `protoc-gen-es` from `app/package.json`
 -   local `protoc` matching the Python protobuf runtime pinned in `setup.py`
 
