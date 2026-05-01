@@ -29,14 +29,18 @@ def fixture_datetime():
 class TestMcapAdapter:
     class TestReadSceneInventory:
         def test_success(self, datetime):
-            schema = Mock(encoding="json")
-            schema.name = "this_schema"  # 'name' is used by the constructor
+            schema = Mock(encoding="schema's encoding")
+            schema.name = (
+                "this_schema"  # 'name' is used by the Mock constructor
+            )
 
             stream_metadata = {"some_key": "some_value"}
             summary = Mock(
                 channels={
                     "channel_id": Mock(
-                        schema_id="schema_id", metadata=stream_metadata
+                        schema_id="schema_id",
+                        metadata=stream_metadata,
+                        message_encoding="some_encoding",
                     )
                 },
                 schemas={"schema_id": schema},
@@ -71,9 +75,9 @@ class TestMcapAdapter:
                 StreamInventory(
                     stream_id="channel_id",
                     payload=PayloadDescriptor(
-                        encoding="json",
+                        encoding="some_encoding",
                         schema="this_schema",
-                        schema_encoding=None,
+                        schema_encoding="schema's encoding",
                     ),
                     record_count=435,
                     metadata=stream_metadata,
@@ -84,14 +88,18 @@ class TestMcapAdapter:
             assert inventory.produced_by == "McapAdapter 1.0"
 
         def test_missing_statistics(self, datetime):
-            schema = Mock(encoding="json")
-            schema.name = "this_schema"  # 'name' is used by the constructor
+            schema = Mock(encoding="schema's encoding")
+            schema.name = (
+                "this_schema"  # 'name' is used by the Mock constructor
+            )
 
             stream_metadata = {"some_key": "some_value"}
             summary = Mock(
                 channels={
                     "channel_id": Mock(
-                        schema_id="schema_id", metadata=stream_metadata
+                        schema_id="schema_id",
+                        metadata=stream_metadata,
+                        message_encoding="some_encoding",
                     )
                 },
                 schemas={"schema_id": schema},
@@ -122,9 +130,9 @@ class TestMcapAdapter:
                 StreamInventory(
                     stream_id="channel_id",
                     payload=PayloadDescriptor(
-                        encoding="json",
+                        encoding="some_encoding",
                         schema="this_schema",
-                        schema_encoding=None,
+                        schema_encoding="schema's encoding",
                     ),
                     record_count=0,
                     metadata=stream_metadata,
