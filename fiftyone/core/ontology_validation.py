@@ -17,7 +17,8 @@ _ALLOWED_THEN_KEYS = {"values", "component"}
 def validate_annotation_ontology(ontology: AnnotationOntology) -> None:
     """Validates an :class:`AnnotationOntology`.
 
-    Runs every rule and aggregates all failures into a single error.
+    Aggregates all ontology-level failures into a single error.
+    :class:`When` operators are validated on construction.
 
     Args:
         ontology: the ontology to validate
