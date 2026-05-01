@@ -185,9 +185,7 @@ class AttributeSpecTests(unittest.TestCase):
             type="str",
             component="dropdown",
             values=["front", "rear"],
-            when=[
-                When(WhenOperator.EQUALS, field="damage_present", value=True)
-            ],
+            when=[WhenEquals(field="damage_present", value=True)],
         )
         self.assertEqual(attr.name, "damage_location")
         self.assertEqual(attr.type, "str")
@@ -270,9 +268,7 @@ class AttributeSpecTests(unittest.TestCase):
             type="str",
             component="radio",
             values=["minor", "moderate", "severe"],
-            when=[
-                When(WhenOperator.EQUALS, field="damage_present", value=True)
-            ],
+            when=[WhenEquals(field="damage_present", value=True)],
         )
         d = attr.to_dict()
         self.assertEqual(d["name"], "severity")
@@ -310,9 +306,7 @@ class AttributeSpecTests(unittest.TestCase):
             type="str",
             component="dropdown",
             values=["front", "rear"],
-            when=[
-                When(WhenOperator.EQUALS, field="damage_present", value=True)
-            ],
+            when=[WhenEquals(field="damage_present", value=True)],
         )
         restored = AttributeSpec.from_dict(original.to_dict())
         self.assertEqual(restored.name, original.name)
@@ -342,13 +336,7 @@ class AnnotationOntologyTests(unittest.TestCase):
                     type="str",
                     component="dropdown",
                     values=["front", "rear", "driver_side", "passenger_side"],
-                    when=[
-                        When(
-                            WhenOperator.EQUALS,
-                            field="damage_present",
-                            value=True,
-                        )
-                    ],
+                    when=[WhenEquals(field="damage_present", value=True)],
                 ),
             ],
         )
@@ -466,25 +454,13 @@ class AnnotationOntologyTests(unittest.TestCase):
                     type="str",
                     component="dropdown",
                     values=["front", "rear"],
-                    when=[
-                        When(
-                            WhenOperator.EQUALS,
-                            field="damage_present",
-                            value=True,
-                        )
-                    ],
+                    when=[WhenEquals(field="damage_present", value=True)],
                 ),
                 AttributeSpec(
                     name="airbags_deployed",
                     type="bool",
                     component="checkbox",
-                    when=[
-                        When(
-                            WhenOperator.EQUALS,
-                            field="damage_location",
-                            value="front",
-                        )
-                    ],
+                    when=[WhenEquals(field="damage_location", value="front")],
                 ),
             ],
         )
@@ -535,13 +511,7 @@ class OntologySDKTests(unittest.TestCase):
                     type="str",
                     component="dropdown",
                     values=["front", "rear"],
-                    when=[
-                        When(
-                            WhenOperator.EQUALS,
-                            field="damage_present",
-                            value=True,
-                        )
-                    ],
+                    when=[WhenEquals(field="damage_present", value=True)],
                 ),
             ],
         )
