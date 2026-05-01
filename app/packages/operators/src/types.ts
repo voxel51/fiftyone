@@ -1326,6 +1326,7 @@ export enum Places {
   MAP_ACTIONS = "map-actions",
   MAP_SECONDARY_ACTIONS = "map-secondary-actions",
   DISPLAY_OPTIONS = "display-options",
+  HEADER_ACTIONS = "header-actions",
 }
 
 // NOTE: keys should always match fiftyone/operators/types.py
