@@ -13,6 +13,8 @@ from fiftyone.multimodal.adapters.mcap import McapAdapter
 from fiftyone.multimodal.schemas.v1.__generated__.common_pb2 import (
     PayloadDescriptor,
     SourceFingerprint,
+    TimeTrack,
+    TimeValueRange,
 )
 from fiftyone.multimodal.schemas.v1.__generated__.inventory_pb2 import (
     SceneInventory,
@@ -38,6 +40,7 @@ class TestMcapAdapter:
             summary = Mock(
                 channels={
                     "channel_id": Mock(
+                        topic="some_topic",
                         schema_id="schema_id",
                         metadata=stream_metadata,
                         message_encoding="some_encoding",
@@ -71,9 +74,13 @@ class TestMcapAdapter:
                 size_bytes=10, first_chunk_crc=5, last_chunk_crc=15
             )
             assert inventory.inventory_version == "1.0"
+            assert inventory.time_tracks == [
+                TimeTrack(value_range=TimeValueRange(start=51, end=52))
+            ]
             assert inventory.streams == [
                 StreamInventory(
                     stream_id="channel_id",
+                    display_name="some_topic",
                     payload=PayloadDescriptor(
                         encoding="some_encoding",
                         schema="this_schema",
@@ -97,6 +104,7 @@ class TestMcapAdapter:
             summary = Mock(
                 channels={
                     "channel_id": Mock(
+                        topic="some_topic",
                         schema_id="schema_id",
                         metadata=stream_metadata,
                         message_encoding="some_encoding",
@@ -126,9 +134,11 @@ class TestMcapAdapter:
                 size_bytes=10, first_chunk_crc=5, last_chunk_crc=15
             )
             assert inventory.inventory_version == "1.0"
+            assert inventory.time_tracks == []
             assert inventory.streams == [
                 StreamInventory(
                     stream_id="channel_id",
+                    display_name="some_topic",
                     payload=PayloadDescriptor(
                         encoding="some_encoding",
                         schema="this_schema",

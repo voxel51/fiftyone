@@ -13,6 +13,8 @@ from fiftyone.core import storage
 from fiftyone.multimodal.schemas.v1.__generated__.common_pb2 import (
     PayloadDescriptor,
     SourceFingerprint,
+    TimeTrack,
+    TimeValueRange,
 )
 from fiftyone.multimodal.schemas.v1.__generated__.inventory_pb2 import (
     SceneInventory,
@@ -98,9 +100,22 @@ class McapAdapter(MultimodalAdapter):
                 last_chunk_crc=last_chunk_crc,
             ),
             inventory_version="1.0",
+            time_tracks=(
+                [
+                    TimeTrack(
+                        value_range=TimeValueRange(
+                            start=stats.message_start_time,
+                            end=stats.message_end_time,
+                        )
+                    )
+                ]
+                if stats
+                else []
+            ),
             streams=[
                 StreamInventory(
                     stream_id=str(cid),
+                    display_name=channel.topic,
                     payload=PayloadDescriptor(
                         encoding=channel.message_encoding,
                         schema=summary.schemas[channel.schema_id].name,
