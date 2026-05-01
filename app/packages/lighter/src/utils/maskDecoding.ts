@@ -43,6 +43,7 @@ export async function decodeMask(
   if (!ArrayType) {
     throw new Error(`Unsupported mask array type: ${overlayMask.arrayType}`);
   }
+
   const typed = new ArrayType(overlayMask.buffer);
   const src = new Uint8Array(typed.length);
   for (let i = 0; i < typed.length; i++) {
@@ -57,6 +58,10 @@ export async function decodeMask(
  * Non-zero mask values become the color; zero values stay transparent.
  */
 function paintMask(mask: OverlayMask, cssColor: string): ArrayBuffer {
+  if (mask.channels !== 1) {
+    throw new Error(`Expected single-channel mask, got ${mask.channels}`);
+  }
+
   const [height, width] = mask.shape;
   const rgbaBuffer = new ArrayBuffer(width * height * 4);
   const overlay = new Uint32Array(rgbaBuffer);
