@@ -270,6 +270,99 @@ class AttributeSpecTests(unittest.TestCase):
             restored.when[0].to_dict(), original.when[0].to_dict()
         )
 
+    def test_create_with_extended_fields(self):
+        attr = AttributeSpec(
+            name="severity",
+            type="float",
+            component="slider",
+            read_only=True,
+            default=0.5,
+            range=[0.0, 1.0],
+            precision=2,
+        )
+        self.assertEqual(attr.read_only, True)
+        self.assertEqual(attr.default, 0.5)
+        self.assertEqual(attr.range, [0.0, 1.0])
+        self.assertEqual(attr.precision, 2)
+
+    def test_to_dict_omits_unset_extended_fields(self):
+        attr = AttributeSpec(name="flag", type="bool", component="checkbox")
+        d = attr.to_dict()
+        self.assertNotIn("read_only", d)
+        self.assertNotIn("default", d)
+        self.assertNotIn("range", d)
+        self.assertNotIn("precision", d)
+
+    def test_to_dict_emits_falsy_extended_fields(self):
+        attr = AttributeSpec(
+            name="flag",
+            type="bool",
+            component="checkbox",
+            read_only=False,
+            default=False,
+        )
+        d = attr.to_dict()
+        self.assertEqual(d["read_only"], False)
+        self.assertEqual(d["default"], False)
+
+    def test_to_dict_emits_extended_fields(self):
+        attr = AttributeSpec(
+            name="severity",
+            type="float",
+            component="slider",
+            read_only=True,
+            default=0.5,
+            range=[0.0, 1.0],
+            precision=2,
+        )
+        d = attr.to_dict()
+        self.assertEqual(d["read_only"], True)
+        self.assertEqual(d["default"], 0.5)
+        self.assertEqual(d["range"], [0.0, 1.0])
+        self.assertEqual(d["precision"], 2)
+
+    def test_from_dict_reads_extended_fields(self):
+        attr = AttributeSpec.from_dict(
+            {
+                "name": "severity",
+                "type": "float",
+                "component": "slider",
+                "read_only": True,
+                "default": 0.5,
+                "range": [0.0, 1.0],
+                "precision": 2,
+            }
+        )
+        self.assertEqual(attr.read_only, True)
+        self.assertEqual(attr.default, 0.5)
+        self.assertEqual(attr.range, [0.0, 1.0])
+        self.assertEqual(attr.precision, 2)
+
+    def test_from_dict_handles_missing_extended_fields(self):
+        attr = AttributeSpec.from_dict(
+            {"name": "flag", "type": "bool", "component": "checkbox"}
+        )
+        self.assertIsNone(attr.read_only)
+        self.assertIsNone(attr.default)
+        self.assertIsNone(attr.range)
+        self.assertIsNone(attr.precision)
+
+    def test_roundtrip_with_extended_fields(self):
+        original = AttributeSpec(
+            name="severity",
+            type="float",
+            component="slider",
+            read_only=True,
+            default=0.5,
+            range=[0.0, 1.0],
+            precision=2,
+        )
+        restored = AttributeSpec.from_dict(original.to_dict())
+        self.assertEqual(restored.read_only, original.read_only)
+        self.assertEqual(restored.default, original.default)
+        self.assertEqual(restored.range, original.range)
+        self.assertEqual(restored.precision, original.precision)
+
 
 class AnnotationOntologyTests(unittest.TestCase):
     def test_create(self):
