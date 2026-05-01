@@ -36,7 +36,7 @@ export type ComponentType =
 /**
  * Schema definition for a single field.
  */
-type FieldSchema = {
+export type FieldSchema = {
   type: FieldType;
   component: ComponentType;
   read_only?: boolean;
@@ -45,7 +45,8 @@ type FieldSchema = {
   values?: (string | number)[];
   classes?: string[];
   default?: unknown;
-  attributes?: Record<string, unknown>;
+  attributes?: Record<string, unknown> | unknown[];
+  applied_ontology?: string;
 };
 
 /**
