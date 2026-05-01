@@ -127,7 +127,7 @@ const PerPointEditor = ({
 
   const onChange = useCallback(
     (changes: Record<string, unknown>) => {
-      if (!selectedLabel?.data) {
+      if (!selectedLabel?.data || !overlay) {
         return;
       }
 
@@ -165,7 +165,7 @@ const PerPointEditor = ({
         value: newLabel as KeypointAnnotationLabel["data"],
       });
     },
-    [attributes, eventBus, overlay.id, overlay.label, pointIndex, selectedLabel]
+    [attributes, eventBus, overlay, pointIndex, selectedLabel]
   );
 
   if (!selectedLabel) {

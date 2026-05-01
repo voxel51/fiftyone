@@ -109,7 +109,7 @@ export const getKeypointAttributes = (
   }
 
   const points = label?.points;
-  if (!Array.isArray(points) || pointIndex >= points.length) {
+  if (!Array.isArray(points) || pointIndex >= points.length || pointIndex < 0) {
     return null;
   }
 
@@ -204,7 +204,7 @@ export const useSelectedKeypoint = (): KeypointMeta | null => {
   const fieldSchema = labelSchema?.[selectedLabel?.path];
 
   return useMemo(() => {
-    if (selectedLabel?.type !== "Keypoint") {
+    if (selectedLabel?.type !== KEYPOINT) {
       return null;
     }
 
