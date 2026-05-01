@@ -6,11 +6,15 @@
     "types": "./src/index.ts",
     "exports": {
         ".": "./src/index.ts",
+        "./client": "./src/client/index.ts",
         "./inject": "./src/inject/index.ts",
         "./schemas/v1": "./src/schemas/v1/index.ts"
     },
     "typesVersions": {
         "*": {
+            "client": [
+                "src/client/index.ts"
+            ],
             "inject": [
                 "src/inject/index.ts"
             ],
@@ -28,6 +32,8 @@
     },
     "dependencies": {
         "@bufbuild/protobuf": "^2.11.0",
-        "@fiftyone/plugins": "*"
+        "@fiftyone/plugins": "*",
+        "@fiftyone/utilities": "*",
+        "react": "*"
     }
 }

@@ -1,5 +1,5 @@
 import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
-import { GridRenderer } from "./GridRenderer";
+import { SceneInventoryGridRenderer } from "../grid/SceneInventoryGridRenderer";
 import { ModalRenderer } from "./ModalRenderer";
 
 registerComponent({
@@ -12,7 +12,7 @@ registerComponent({
     supports: { extensions: ["mcap"] },
     grid: {
       enabled: true,
-      overrideComponent: GridRenderer,
+      overrideComponent: SceneInventoryGridRenderer,
     },
   },
 });
