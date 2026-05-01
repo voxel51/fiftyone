@@ -7,6 +7,7 @@ import {
 import { withSuspense } from "@fiftyone/state";
 import { isPrimitiveString } from "@fiftyone/utilities";
 import { Extension } from "@mui/icons-material";
+import { IconButton, Tooltip } from "@mui/material";
 import styled from "styled-components";
 import { types } from ".";
 import OperatorIcon from "./OperatorIcon";
@@ -142,11 +143,19 @@ function ButtonPlacement(props: OperatorPlacementProps) {
     );
   }
 
+  if (place === types.Places.HEADER_ACTIONS) {
+    return (
+      <Tooltip title={title} onClick={handleClick}>
+        <IconButton sx={{ p: 0 }}>{IconComponent}</IconButton>
+      </Tooltip>
+    );
+  }
+
   return (
     <SquareButton
       {...(getStringAndNumberProps(adaptiveMenuItemProps) || {})}
       to={handleClick}
-      title={label}
+      title={title}
     >
       {IconComponent}
     </SquareButton>
