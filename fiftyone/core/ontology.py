@@ -215,7 +215,7 @@ class AnnotationOntology(Ontology):
                     type="str",
                     component="dropdown",
                     values=["front", "rear", "driver_side", "passenger_side"],
-                    when=[When(WhenOperator.EQUALS, field="damage_present", value=True)],
+                    when=[WhenEquals(field="damage_present", value=True)],
                 ),
             ],
         )
@@ -277,6 +277,8 @@ class AnnotationOntology(Ontology):
                 AttributeSpec.from_dict(a) for a in root.get("attributes", [])
             ],
         )
+
+
 # ---- Type dispatch --------------------------------------------------------
 
 _TYPE_TO_CLS: dict[str, type[Ontology]] = {
