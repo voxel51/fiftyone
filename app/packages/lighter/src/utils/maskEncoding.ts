@@ -54,13 +54,15 @@ export async function encodeMaskData(
   const npy = buildNpy(mask, shape);
   const compressed = await deflate(npy);
 
-  // base64 encode
-  let binary = "";
   const bytes = new Uint8Array(compressed);
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
+  const CHUNK_SIZE = 0x8000;
+  const parts: string[] = [];
+
+  for (let i = 0; i < bytes.length; i += CHUNK_SIZE) {
+    parts.push(String.fromCharCode(...bytes.subarray(i, i + CHUNK_SIZE)));
   }
-  return btoa(binary);
+
+  return btoa(parts.join(""));
 }
 
 /**
@@ -124,8 +126,8 @@ function buildNpy(data: Uint8Array, shape: readonly number[]): Uint8Array {
 async function deflate(data: Uint8Array): Promise<ArrayBuffer> {
   const cs = new CompressionStream("deflate");
   const writer = cs.writable.getWriter();
-  writer.write(data);
-  writer.close();
+  await writer.write(data);
+  await writer.close();
 
   const reader = cs.readable.getReader();
   const chunks: Uint8Array[] = [];
