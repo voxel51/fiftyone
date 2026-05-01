@@ -123,6 +123,16 @@ def test_missing_file_returns_404(client, tmp_path):
     _assert_range_headers(response)
 
 
+@pytest.mark.parametrize("error", [NotADirectoryError, PermissionError])
+def test_stat_error_returns_404(client, media_file, error):
+    with patch("fiftyone.server.routes.media.os.stat", side_effect=error):
+        response = client.get(_media_url(media_file))
+
+    assert response.status_code == 404
+    assert response.text == "Not found"
+    _assert_range_headers(response)
+
+
 def test_directory_returns_404(client, tmp_path):
     response = client.get(_media_url(tmp_path))
 
