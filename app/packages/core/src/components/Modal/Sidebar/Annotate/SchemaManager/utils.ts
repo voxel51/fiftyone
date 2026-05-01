@@ -41,6 +41,15 @@ export interface RichListItemOptions {
   additionalContent?: ReactNode;
   canSelect?: boolean;
   canDrag?: boolean;
+  className?: string;
+}
+
+// Conditional visibility rule for an attribute from an applied ontology.
+// Describes a condition under which the attribute should be shown.
+export interface AttributeCondition {
+  operator: "equals" | "in";
+  field: string;
+  value: unknown;
 }
 
 // Attribute configuration (matches API)
@@ -53,6 +62,8 @@ export interface AttributeConfig {
   range?: [number, number];
   default?: string | number | (string | number)[]; // Array for list types
   read_only?: boolean;
+  when?: AttributeCondition[];
+  _source?: string;
 }
 
 // Class configuration
@@ -84,6 +95,8 @@ export interface AttributeFormData {
   default: string;
   listDefault: (string | number)[]; // For list types
   read_only: boolean;
+  when?: AttributeCondition[];
+  _source?: string;
 }
 
 // =============================================================================
@@ -138,6 +151,7 @@ export const createRichListItem = ({
   additionalContent,
   canSelect = false,
   canDrag = false,
+  className,
 }: RichListItemOptions): RichListItem => ({
   id,
   data: {
@@ -147,6 +161,7 @@ export const createRichListItem = ({
     secondaryContent,
     actions,
     additionalContent,
+    className,
   },
 });
 
@@ -296,6 +311,8 @@ export const toFormData = (config: AttributeConfig): AttributeFormData => {
     default: defaultStr,
     listDefault,
     read_only: config.read_only || false,
+    when: config.when,
+    _source: config._source,
   };
 };
 

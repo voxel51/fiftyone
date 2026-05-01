@@ -8,12 +8,14 @@ FiftyOne annotation unit tests.
 
 from exceptiongroup import ExceptionGroup
 import unittest
+from unittest.mock import MagicMock, patch
 
 import fiftyone as fo
 import fiftyone.core.fields as fof
 from fiftyone.core.annotation import validate_label_schemas
+from fiftyone.core.ontology import AnnotationOntology
 
-from decorators import drop_datasets
+from decorators import drop_datasets, drop_ontologies
 
 
 class LabelSchemaValidationTests(unittest.TestCase):
@@ -1007,3 +1009,81 @@ class LabelSchemaValidationTests(unittest.TestCase):
                 fields="new_field",
                 allow_new_fields=True,
             )
+
+    @drop_datasets
+    @drop_ontologies
+    def test_applied_ontology_recognized_on_label_field(self):
+        dataset = _make_applied_ontology_test_dataset()
+        validate_label_schemas(
+            dataset,
+            {"type": "detections", "applied_ontology": "my_ontology"},
+            fields="detections",
+        )
+
+    @drop_datasets
+    @drop_ontologies
+    def test_applied_ontology_unknown_reference_raises(self):
+        dataset = _make_applied_ontology_test_dataset()
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schemas(
+                dataset,
+                {
+                    "type": "detections",
+                    "applied_ontology": "nonexistent_ontology_xyz",
+                },
+                fields="detections",
+            )
+
+    @drop_datasets
+    @drop_ontologies
+    def test_applied_ontology_wrong_type_rejected(self):
+        dataset = _make_applied_ontology_test_dataset()
+        # Taxonomy() raises NotImplementedError, so we can't seed a real one.
+        non_annotation = MagicMock(is_annotation_ontology=False)
+        with patch(
+            "fiftyone.core.ontology.load_ontology",
+            return_value=non_annotation,
+        ):
+            with self.assertRaises(ExceptionGroup):
+                validate_label_schemas(
+                    dataset,
+                    {
+                        "type": "detections",
+                        "applied_ontology": "my_ontology",
+                    },
+                    fields="detections",
+                )
+
+    @drop_datasets
+    @drop_ontologies
+    def test_applied_ontology_rejected_on_non_label_field(self):
+        dataset = _make_applied_ontology_test_dataset()
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schemas(
+                dataset,
+                {
+                    "type": "str",
+                    "component": "text",
+                    "applied_ontology": "my_ontology",
+                },
+                fields="str_field",
+            )
+
+
+def _make_applied_ontology_test_dataset(ontology_name: str = "my_ontology"):
+    """Dataset with a `detections` label field and a `str_field`, with a real
+    `AnnotationOntology` named ``ontology_name`` persisted to the `ontologies`
+    collection so the validator can resolve the reference.
+    """
+    AnnotationOntology(name=ontology_name).save()
+
+    dataset = fo.Dataset()
+    dataset.add_sample(
+        fo.Sample(
+            filepath="image.png",
+            detections=fo.Detections(detections=[fo.Detection(label="one")]),
+        )
+    )
+    dataset.add_sample_field("str_field", fo.StringField)
+
+    return dataset

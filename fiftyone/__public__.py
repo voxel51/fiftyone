@@ -57,6 +57,7 @@ from .core.expressions import (
 )
 from .core.ontology import (
     AnnotationOntology,
+    apply_ontology,
     delete_ontology,
     list_ontologies,
     load_ontology,

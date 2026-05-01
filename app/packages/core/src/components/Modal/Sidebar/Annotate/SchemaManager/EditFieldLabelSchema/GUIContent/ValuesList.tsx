@@ -3,12 +3,18 @@
  */
 
 import {
+  Align,
   Button,
+  FormField,
   Icon,
   IconName,
   Input,
+  Justify,
+  Orientation,
   RichList,
   Size,
+  Spacing,
+  Stack,
   Text,
   TextColor,
   textColorClass,
@@ -31,6 +37,8 @@ interface ValuesListProps {
   error?: string | null;
   /** Use larger, primary-colored labels */
   largeLabels?: boolean;
+  readOnly?: boolean;
+  subtitle?: string;
 }
 
 const ValuesList = ({
@@ -40,6 +48,8 @@ const ValuesList = ({
   isInteger = false,
   error = null,
   largeLabels = false,
+  readOnly = false,
+  subtitle,
 }: ValuesListProps) => {
   const [newValue, setNewValue] = useState("");
   const [inputError, setInputError] = useState<string | null>(null);
@@ -82,9 +92,10 @@ const ValuesList = ({
   const valueListItems = values.map((value, index) =>
     createRichListItem({
       id: `value-${index}`,
-      canDrag: true,
+      className: "py-0",
+      canDrag: !readOnly,
       primaryContent: value,
-      actions: (
+      actions: readOnly ? undefined : (
         <Button
           variant={Variant.Icon}
           borderless
@@ -108,67 +119,66 @@ const ValuesList = ({
   };
 
   return (
-    <div>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "0.5rem",
-        }}
-      >
-        <Text
-          variant={largeLabels ? TextVariant.Lg : TextVariant.Md}
-          color={TextColor.Primary}
+    <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
+      <Stack orientation={Orientation.Column} spacing={Spacing.None}>
+        <Stack
+          orientation={Orientation.Row}
+          justify={Justify.Between}
+          align={Align.Center}
         >
-          Values
-        </Text>
-        <Button
-          variant={Variant.Borderless}
-          onClick={handleAddValue}
-          leadingIcon={() => (
-            <Icon name={IconName.Add} size={Size.Sm} className="size-5" />
+          <Text
+            variant={largeLabels ? TextVariant.Lg : TextVariant.Md}
+            color={TextColor.Primary}
+          >
+            Values
+          </Text>
+          {!readOnly && (
+            <Button
+              variant={Variant.Borderless}
+              onClick={handleAddValue}
+              leadingIcon={() => (
+                <Icon name={IconName.Add} size={Size.Sm} className="size-5" />
+              )}
+            >
+              Add
+            </Button>
           )}
-        >
-          Add
-        </Button>
-      </div>
-      <Input
-        type={isNumeric ? "number" : "text"}
-        value={newValue}
-        onChange={handleChange}
-        onKeyDown={handleKeyDown}
-        placeholder={isNumeric ? "Enter a number" : "Enter a value"}
-        error={!!inputError}
-      />
-      {inputError && (
-        <Text
-          variant={TextVariant.Sm}
-          color={TextColor.Destructive}
-          style={{ marginTop: 4 }}
-        >
-          {inputError}
-        </Text>
+        </Stack>
+        {subtitle && (
+          <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+            {subtitle}
+          </Text>
+        )}
+      </Stack>
+      {!readOnly && (
+        <FormField
+          control={
+            <Input
+              type={isNumeric ? "number" : "text"}
+              value={newValue}
+              onChange={handleChange}
+              onKeyDown={handleKeyDown}
+              placeholder={isNumeric ? "Enter a number" : "Enter a value"}
+              error={!!inputError}
+            />
+          }
+          error={inputError ?? undefined}
+        />
       )}
       {values.length > 0 && (
-        <div style={{ marginTop: "0.5rem" }}>
-          <RichList
-            listItems={valueListItems}
-            draggable={true}
-            onOrderChange={handleOrderChange}
-          />
-        </div>
+        <RichList
+          spacing={Spacing.None}
+          listItems={valueListItems}
+          draggable={!readOnly}
+          onOrderChange={readOnly ? undefined : handleOrderChange}
+        />
       )}
       {error && (
-        <Text
-          variant={TextVariant.Sm}
-          color={TextColor.Destructive}
-          style={{ marginTop: 4 }}
-        >
+        <Text variant={TextVariant.Sm} color={TextColor.Destructive}>
           {error}
         </Text>
       )}
-    </div>
+    </Stack>
   );
 };
 

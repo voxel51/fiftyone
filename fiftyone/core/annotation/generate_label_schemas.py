@@ -279,6 +279,12 @@ def generate_label_schemas(sample_collection, fields=None, scan_samples=True):
             fields=field_name,
         )
 
+        # Regeneration builds a fresh schema from sample data, which loses
+        # the user-set ``applied_ontology`` reference; carry it forward.
+        label_schema = _preserve_applied_ontology(
+            sample_collection, field_name, label_schema
+        )
+
         if is_scalar:
             return label_schema
 
@@ -418,6 +424,20 @@ def _handle_float_or_int(
         settings[foac.RANGE] = [mn, mx]
 
     return settings
+
+
+def _preserve_applied_ontology(
+    sample_collection, field_name: str, label_schema: dict
+) -> dict:
+    # Carries a stored applied_ontology reference through regeneration.
+    # Dangling references are not re-validated here; the next save handles it.
+    stored_label_schemas = sample_collection._dataset._doc.label_schemas or {}
+    stored_field_schema = stored_label_schemas.get(field_name) or {}
+    applied_ontology = stored_field_schema.get(foac.APPLIED_ONTOLOGY)
+    if applied_ontology is not None:
+        label_schema[foac.APPLIED_ONTOLOGY] = applied_ontology
+
+    return label_schema
 
 
 def _handle_str(collection, field_name, is_list, settings, scan_samples):
