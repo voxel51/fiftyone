@@ -126,6 +126,37 @@ def dehydrate_applied_ontology(label_schema: dict) -> dict:
     return cleaned
 
 
+def inline_applied_ontology(label_schema: dict, ontology: Any) -> dict:
+    """Permanently inlines an annotation ontology's attributes into a
+    label schema as local copies and removes the ``applied_ontology``
+    reference.
+
+    Used when the referenced ontology is about to be deleted (or for
+    any other "freeze the current ontology state into the schema"
+    operation). Unlike :func:`hydrate_applied_ontology`, the merged
+    attributes are NOT marked with ``_source`` — they are now
+    first-class local attributes — and the ``applied_ontology`` key
+    is stripped from the result.
+
+    The caller is responsible for resolving the ontology; this
+    function does not load anything.
+
+    Args:
+        label_schema: a label schema dict
+        ontology: an :class:`AnnotationOntology` whose attributes
+            should be inlined
+
+    Returns:
+        a deep-copied schema with the ontology's attributes merged in
+        as locals and the ``applied_ontology`` reference removed
+    """
+    merged = _merge(label_schema, ontology)
+    for attr in merged.get(foac.ATTRIBUTES, []):
+        attr.pop(_SOURCE, None)
+    merged.pop(foac.APPLIED_ONTOLOGY, None)
+    return merged
+
+
 def _merge(label_schema: dict, ontology: Any) -> dict:
     hydrated = copy.deepcopy(label_schema)
     existing = hydrated.get(foac.ATTRIBUTES, [])

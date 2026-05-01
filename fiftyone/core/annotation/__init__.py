@@ -19,6 +19,7 @@ from .generate_label_schemas import generate_label_schemas
 from .hydrate_label_schemas import (
     dehydrate_applied_ontology,
     hydrate_applied_ontology,
+    inline_applied_ontology,
 )
 from .validate_label_schemas import validate_label_schemas
 
