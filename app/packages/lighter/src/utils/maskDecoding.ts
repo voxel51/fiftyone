@@ -2,7 +2,11 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { ARRAY_TYPES, deserialize, type OverlayMask } from "@fiftyone/looker/src/numpy";
+import {
+  ARRAY_TYPES,
+  deserialize,
+  type OverlayMask,
+} from "@fiftyone/looker/src/numpy";
 import { parseColorWithAlpha } from "./color";
 
 export interface DecodedMask {
@@ -36,7 +40,14 @@ export async function decodeMask(
   const bitmap = await createImageBitmap(imageData);
 
   const ArrayType = ARRAY_TYPES[overlayMask.arrayType];
-  const src = new Uint8Array(new ArrayType(overlayMask.buffer));
+  if (!ArrayType) {
+    throw new Error(`Unsupported mask array type: ${overlayMask.arrayType}`);
+  }
+  const typed = new ArrayType(overlayMask.buffer);
+  const src = new Uint8Array(typed.length);
+  for (let i = 0; i < typed.length; i++) {
+    src[i] = typed[i] ? 1 : 0;
+  }
 
   return { bitmap, rawPixels: { src, width, height } };
 }
