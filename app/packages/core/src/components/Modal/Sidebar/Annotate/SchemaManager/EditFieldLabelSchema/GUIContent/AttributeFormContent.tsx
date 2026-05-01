@@ -4,6 +4,8 @@
  */
 
 import {
+  Align,
+  FormField,
   Input,
   Orientation,
   Select,
@@ -68,138 +70,125 @@ const AttributeFormContent = ({
   } = useAttributeForm({ formState, onFormStateChange });
 
   return (
-    <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
-      {/* Name field */}
-      {isEditing ? (
-        <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
-          <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
-            Name:
-          </Text>
-          <Text variant={TextVariant.Lg}>{formState.name}</Text>
-        </Stack>
-      ) : (
-        <div>
-          <Text
-            variant={TextVariant.Md}
-            color={TextColor.Secondary}
-            style={{ marginBottom: "0.5rem" }}
-          >
-            Name
-          </Text>
-          <Input
-            value={formState.name}
-            onChange={(e) => handleNameChange(e.target.value)}
-            placeholder="Attribute name"
-            error={!!nameError}
-            autoFocus
-          />
-          {nameError && (
-            <Text
-              variant={TextVariant.Sm}
-              color={TextColor.Destructive}
-              style={{ marginTop: 4 }}
-            >
-              {nameError}
+    <Stack orientation={Orientation.Column} spacing={Spacing.Xl}>
+      {/* Section 1: Identity cluster — name, type, ontology */}
+      <Stack orientation={Orientation.Column} spacing={Spacing.None}>
+        {/* Name field */}
+        {isEditing ? (
+          <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
+            <Text variant={TextVariant.Md} color={TextColor.Secondary}>
+              Name:
             </Text>
-          )}
-        </div>
-      )}
-
-      {/* Attribute type dropdown */}
-      {isEditing ? (
-        <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
-          <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
-            Type:
-          </Text>
-          <Text variant={TextVariant.Lg}>
-            {ATTRIBUTE_TYPE_LABELS[formState.type] || formState.type}
-          </Text>
-        </Stack>
-      ) : (
-        <div>
-          <Text
-            variant={TextVariant.Md}
-            color={TextColor.Secondary}
-            style={{ marginBottom: "0.5rem" }}
-          >
-            Attribute type
-          </Text>
-          <Select
-            exclusive
-            portal
-            value={formState.type}
-            onChange={(value) => {
-              if (typeof value === "string") {
-                handleTypeChange(value);
-              }
-            }}
-            options={ATTRIBUTE_TYPE_OPTIONS}
+            <Text variant={TextVariant.Md}>{formState.name}</Text>
+          </Stack>
+        ) : (
+          <FormField
+            label="Name"
+            control={
+              <Input
+                value={formState.name}
+                onChange={(e) => handleNameChange(e.target.value)}
+                placeholder="Attribute name"
+                error={!!nameError}
+                autoFocus
+              />
+            }
+            error={nameError ?? undefined}
           />
-        </div>
-      )}
+        )}
 
-      {/* Ontology source (read-only, only shown when present) */}
-      {isFromOntology && (
-        <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
-          <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
-            Ontology:
-          </Text>
-          <Text variant={TextVariant.Lg}>{formState._source}</Text>
-        </Stack>
-      )}
+        {/* Attribute type dropdown */}
+        {isEditing ? (
+          <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
+            <Text variant={TextVariant.Md} color={TextColor.Secondary}>
+              Type:
+            </Text>
+            <Text variant={TextVariant.Md}>
+              {ATTRIBUTE_TYPE_LABELS[formState.type] || formState.type}
+            </Text>
+          </Stack>
+        ) : (
+          <FormField
+            label="Attribute type"
+            control={
+              <Select
+                exclusive
+                portal
+                value={formState.type}
+                onChange={(value) => {
+                  if (typeof value === "string") {
+                    handleTypeChange(value);
+                  }
+                }}
+                options={ATTRIBUTE_TYPE_OPTIONS}
+              />
+            }
+          />
+        )}
 
-      {/* Conditional visibility from ontology (read-only, only shown when present) */}
-      {whenPreview && (
-        <Stack
-          orientation={Orientation.Row}
-          spacing={Spacing.Sm}
-          style={{ overflow: "hidden" }}
-        >
-          <Text
-            variant={TextVariant.Lg}
-            color={TextColor.Secondary}
-            style={{ whiteSpace: "nowrap", flexShrink: 0 }}
-          >
-            Appears when:
-          </Text>
-          <div
-            style={{
-              display: "flex",
-              overflow: "hidden",
-              minWidth: 0,
-            }}
+        {/* Ontology source (read-only, only shown when present) */}
+        {isFromOntology && (
+          <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
+            <Text variant={TextVariant.Md} color={TextColor.Secondary}>
+              Ontology:
+            </Text>
+            <Text variant={TextVariant.Md}>{formState._source}</Text>
+          </Stack>
+        )}
+
+        {/* Conditional visibility from ontology (read-only, only shown when present) */}
+        {whenPreview && (
+          <Stack
+            orientation={Orientation.Row}
+            spacing={Spacing.Sm}
+            style={{ overflow: "hidden" }}
           >
             <Text
-              variant={TextVariant.Lg}
+              variant={TextVariant.Md}
+              color={TextColor.Secondary}
+              style={{ whiteSpace: "nowrap", flexShrink: 0 }}
+            >
+              Appears when:
+            </Text>
+            <div
               style={{
+                display: "flex",
                 overflow: "hidden",
-                whiteSpace: "nowrap",
-                textOverflow: "ellipsis",
                 minWidth: 0,
               }}
             >
-              {whenPreview.condition}
-            </Text>
-            {whenPreview.suffix && (
               <Text
-                variant={TextVariant.Lg}
-                style={{ whiteSpace: "nowrap", flexShrink: 0 }}
+                variant={TextVariant.Md}
+                style={{
+                  overflow: "hidden",
+                  whiteSpace: "nowrap",
+                  textOverflow: "ellipsis",
+                  minWidth: 0,
+                }}
               >
-                {whenPreview.suffix}
+                {whenPreview.condition}
               </Text>
-            )}
-          </div>
-        </Stack>
-      )}
+              {whenPreview.suffix && (
+                <Text
+                  variant={TextVariant.Md}
+                  style={{ whiteSpace: "nowrap", flexShrink: 0 }}
+                >
+                  {whenPreview.suffix}
+                </Text>
+              )}
+            </div>
+          </Stack>
+        )}
+      </Stack>
 
-      {/* Read-only toggle */}
-      <div>
+      {/* Section 2: Read-only toggle */}
+      <Stack orientation={Orientation.Column} spacing={Spacing.None}>
         <Stack
           orientation={Orientation.Row}
           spacing={Spacing.Sm}
-          style={{ alignItems: "center", marginBottom: 4 }}
+          align={Align.Center}
         >
-          <Text variant={TextVariant.Lg}>Read-only</Text>
+          <Text variant={TextVariant.Md}>Read-only</Text>
           <Toggle
             checked={formState.read_only}
             onChange={handleReadOnlyChange}
@@ -210,99 +199,84 @@ const AttributeFormContent = ({
         <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
           When enabled, annotators can view but cannot edit values.
         </Text>
-      </div>
+      </Stack>
 
-      {/* Component type buttons */}
-      <div>
-        <Text
-          variant={TextVariant.Md}
-          color={TextColor.Secondary}
-          style={{ marginBottom: "0.5rem" }}
-        >
-          Input type
-        </Text>
-        <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
-          {componentOptions.map((opt) => (
-            <ComponentTypeButton
-              key={opt.id}
-              icon={opt.icon}
-              label={opt.label}
-              isSelected={formState.component === opt.id}
-              onClick={() => handleComponentChange(opt.id)}
-              disabled={isFromOntology}
-            />
-          ))}
-        </Stack>
-      </div>
-
-      {/* Values list */}
-      {showValues && (
-        <ValuesList
-          values={formState.values}
-          onValuesChange={handleValuesChange}
-          isNumeric={isNumericType}
-          isInteger={isIntegerType}
-          error={valuesError}
-          readOnly={isFromOntology}
-          subtitle={
-            isFromOntology
-              ? "Showing a preview of values, additional values may exist in the ontology"
-              : undefined
-          }
-        />
-      )}
-
-      {/* Range input */}
-      {showRange && (
-        <RangeInput
-          range={formState.range}
-          onRangeChange={handleRangeChange}
-          error={rangeError}
-          readOnly={isFromOntology}
-        />
-      )}
-
-      {/* Default value - only for types that support it */}
-      {supportsDefault && (
-        <div>
-          <Text
-            variant={TextVariant.Md}
-            color={TextColor.Secondary}
-            style={{ marginBottom: "0.5rem" }}
-          >
-            Default (optional)
-          </Text>
-          {isListType ? (
-            <ListDefaultInput
-              values={formState.listDefault || []}
-              onChange={handleListDefaultChange}
-              choices={showValues ? formState.values : []}
-              isNumeric={isNumericType}
-              error={defaultError}
-              readOnly={isFromOntology}
-            />
-          ) : (
-            <>
-              <Input
-                type={isNumericType ? "number" : "text"}
-                value={formState.default}
-                onChange={(e) => handleDefaultChange(e.target.value)}
-                placeholder={isNumericType ? "Default number" : "Default value"}
-                error={!!defaultError}
+      {/* Section 3: Input type */}
+      <FormField
+        label="Input type"
+        spacing={Spacing.Xs}
+        control={
+          <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
+            {componentOptions.map((opt) => (
+              <ComponentTypeButton
+                key={opt.id}
+                icon={opt.icon}
+                label={opt.label}
+                isSelected={formState.component === opt.id}
+                onClick={() => handleComponentChange(opt.id)}
                 disabled={isFromOntology}
               />
-              {defaultError && (
-                <Text
-                  variant={TextVariant.Sm}
-                  color={TextColor.Destructive}
-                  style={{ marginTop: 4 }}
-                >
-                  {defaultError}
-                </Text>
-              )}
-            </>
+            ))}
+          </Stack>
+        }
+      />
+
+      {/* Section 4: Values, range, and default — only rendered when at least one is visible */}
+      {(showValues || showRange || supportsDefault) && (
+        <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
+          {showValues && (
+            <ValuesList
+              values={formState.values}
+              onValuesChange={handleValuesChange}
+              isNumeric={isNumericType}
+              isInteger={isIntegerType}
+              error={valuesError}
+              readOnly={isFromOntology}
+              subtitle={
+                isFromOntology
+                  ? "Showing a preview of values, additional values may exist in the ontology"
+                  : undefined
+              }
+            />
           )}
-        </div>
+          {showRange && (
+            <RangeInput
+              range={formState.range}
+              onRangeChange={handleRangeChange}
+              error={rangeError}
+              readOnly={isFromOntology}
+            />
+          )}
+          {supportsDefault && (
+            <FormField
+              label="Default (optional)"
+              control={
+                isListType ? (
+                  <ListDefaultInput
+                    values={formState.listDefault || []}
+                    onChange={handleListDefaultChange}
+                    choices={showValues ? formState.values : []}
+                    isNumeric={isNumericType}
+                    error={defaultError}
+                    readOnly={isFromOntology}
+                  />
+                ) : (
+                  <Input
+                    type={isNumericType ? "number" : "text"}
+                    value={formState.default}
+                    onChange={(e) => handleDefaultChange(e.target.value)}
+                    placeholder={
+                      isNumericType ? "Default number" : "Default value"
+                    }
+                    error={!!defaultError}
+                    disabled={isFromOntology}
+                  />
+                )
+              }
+              error={!isListType ? defaultError ?? undefined : undefined}
+            />
+          )}
+        </Stack>
       )}
     </Stack>
   );

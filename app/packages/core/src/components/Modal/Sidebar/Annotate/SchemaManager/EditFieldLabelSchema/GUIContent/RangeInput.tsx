@@ -12,8 +12,6 @@ import {
   TextVariant,
 } from "@voxel51/voodo";
 
-const LABEL_MARGIN_BOTTOM = "0.5rem";
-
 interface RangeInputProps {
   range: { min: string; max: string } | null;
   onRangeChange: (range: { min: string; max: string }) => void;
@@ -40,12 +38,12 @@ const RangeInput = ({
   return (
     <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
       <Stack orientation={Orientation.Row} spacing={Spacing.Md}>
-        <div style={{ flex: 1 }}>
-          <Text
-            variant={labelVariant}
-            color={labelColor}
-            style={{ marginBottom: LABEL_MARGIN_BOTTOM }}
-          >
+        <Stack
+          orientation={Orientation.Column}
+          spacing={Spacing.Sm}
+          style={{ flex: 1 }}
+        >
+          <Text variant={labelVariant} color={labelColor}>
             Min
           </Text>
           <Input
@@ -56,13 +54,13 @@ const RangeInput = ({
             error={!!error}
             disabled={readOnly}
           />
-        </div>
-        <div style={{ flex: 1 }}>
-          <Text
-            variant={labelVariant}
-            color={labelColor}
-            style={{ marginBottom: LABEL_MARGIN_BOTTOM }}
-          >
+        </Stack>
+        <Stack
+          orientation={Orientation.Column}
+          spacing={Spacing.Sm}
+          style={{ flex: 1 }}
+        >
+          <Text variant={labelVariant} color={labelColor}>
             Max
           </Text>
           <Input
@@ -73,7 +71,7 @@ const RangeInput = ({
             error={!!error}
             disabled={readOnly}
           />
-        </div>
+        </Stack>
       </Stack>
       {error && (
         <Text variant={TextVariant.Sm} color={TextColor.Destructive}>
