@@ -52,7 +52,15 @@ class MediaFileResponse(FileResponse):
 class Media(HTTPEndpoint):
     async def get(self, request: Request) -> Response:
         # Note for HEAD: Starlette routes HEAD through GET when no HEAD handler exists.
-        path = request.query_params["filepath"]
+        path = request.query_params.get("filepath")
+
+        if not path:
+            return Response(
+                content="Missing required query parameter: filepath",
+                status_code=400,
+                headers=_media_headers(),
+            )
+
         return await self._file_response(path)
 
     async def _file_response(self, path: str) -> Response:

@@ -59,6 +59,15 @@ def test_get_stats_once(client, media_file):
     assert stat.call_count == 1
 
 
+@pytest.mark.parametrize("url", ["/media", "/media?filepath="])
+def test_get_requires_filepath(client, url):
+    response = client.get(url)
+
+    assert response.status_code == 400
+    assert response.text == "Missing required query parameter: filepath"
+    _assert_range_headers(response)
+
+
 def test_head_returns_headers_without_body(client, media_file):
     response = client.head(_media_url(media_file))
 
