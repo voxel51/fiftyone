@@ -45,7 +45,6 @@ TS_ROOT = REPO_ROOT / "app" / "packages" / "multimodal" / "src"
 TS_PLUGIN_PATH = APP_ROOT / "node_modules" / ".bin" / "protoc-gen-es"
 TS_PLUGIN_NAME = "protoc-gen-es"
 TS_PLUGIN_OPTION = "target=ts"
-PROTO_MODULES = ("common", "inventory", "playback")
 VERSION_SPECS = {
     "v1": {
         "schema_subdir": Path("v1"),
@@ -157,25 +156,19 @@ def build_contracts(
         schema_dir = (
             Path(schema_root).resolve() / spec["schema_subdir"]
         ).resolve()
-        proto_paths = [
-            (schema_dir / f"{proto_module}.proto").resolve()
-            for proto_module in PROTO_MODULES
-        ]
+        proto_paths = sorted(
+            proto_path.resolve() for proto_path in schema_dir.glob("*.proto")
+        )
+        proto_modules = [proto_path.stem for proto_path in proto_paths]
         python_out_dir = (
             Path(python_root).resolve() / spec["python_out_subdir"]
         ).resolve()
         ts_out_dir = (
             Path(ts_root).resolve() / spec["ts_out_subdir"]
         ).resolve()
-        missing_proto_paths = [
-            proto_path for proto_path in proto_paths if not proto_path.exists()
-        ]
-        if missing_proto_paths:
-            missing_schemas = ", ".join(
-                str(path) for path in missing_proto_paths
-            )
+        if not proto_paths:
             raise FileNotFoundError(
-                f"Missing protobuf schema(s): {missing_schemas}"
+                f"Missing protobuf schema(s): {schema_dir}/*.proto"
             )
 
         python_out_dir.mkdir(parents=True, exist_ok=True)
@@ -198,15 +191,15 @@ def build_contracts(
         # Expected filenames follow protoc/protoc-gen-es conventions.
         python_generated = [
             python_out_dir / f"{proto_module}_pb2.py"
-            for proto_module in PROTO_MODULES
+            for proto_module in proto_modules
         ]
         python_stub_generated = [
             python_out_dir / f"{proto_module}_pb2.pyi"
-            for proto_module in PROTO_MODULES
+            for proto_module in proto_modules
         ]
         ts_generated = [
             ts_out_dir / f"{proto_module}_pb.ts"
-            for proto_module in PROTO_MODULES
+            for proto_module in proto_modules
         ]
         expected_outputs = [
             *python_generated,
@@ -231,7 +224,7 @@ def build_contracts(
         for generated_file in [*python_generated, *python_stub_generated]:
             contents = generated_file.read_text()
             patched_contents = contents
-            for proto_module in PROTO_MODULES:
+            for proto_module in proto_modules:
                 generated_module = f"{proto_module}_pb2"
                 patched_contents = re.sub(
                     rf"^import {generated_module} as (.+)$",
