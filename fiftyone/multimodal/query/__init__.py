@@ -5,3 +5,7 @@ Query scaffolding for multimodal workflows.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
+from .scene_inventory import resolve_scene_inventory
+
+__all__ = ["resolve_scene_inventory"]

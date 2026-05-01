@@ -6,6 +6,7 @@ FiftyOne Server routes
 |
 """
 
+from fiftyone.multimodal.server import MultimodalRoutes
 from fiftyone.operators.server import OperatorRoutes
 
 from .aggregate import Aggregate
@@ -33,6 +34,7 @@ routes = (
     CameraRoutes
     + EmbeddingsRoutes
     + GroupsRoutes
+    + MultimodalRoutes
     + OperatorRoutes
     + SampleRoutes
     + [
