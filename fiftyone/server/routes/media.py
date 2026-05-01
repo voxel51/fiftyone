@@ -68,6 +68,10 @@ class Media(HTTPEndpoint):
             stat_result = await anyio.to_thread.run_sync(os.stat, path)
         except (FileNotFoundError, NotADirectoryError, PermissionError):
             return _not_found_response()
+        except OSError as e:
+            if e.errno in {errno.ENAMETOOLONG, errno.ELOOP}:
+                return _not_found_response()
+            raise
 
         if not stat.S_ISREG(stat_result.st_mode):
             return _not_found_response()
