@@ -6,10 +6,13 @@ FiftyOne Server decorators.
 |
 """
 
+import json
 import unittest
+from unittest.mock import AsyncMock, MagicMock
 
 import numpy as np
 
+from fiftyone.server import decorators
 from fiftyone.server.decorators import create_response
 
 
@@ -30,3 +33,37 @@ class TestNumPyResponse(unittest.IsolatedAsyncioTestCase):
                 "uint64": np.array([8], dtype=np.uint64),
             }
         )
+
+
+class TestRouteDecorator(unittest.IsolatedAsyncioTestCase):
+    async def test_route_parses_json_body_by_default(self):
+        class Endpoint:
+            @decorators.route
+            async def post(self, request, data):
+                return {"value": data["value"]}
+
+        request = MagicMock()
+        request.body = AsyncMock(return_value=b'{"value": "ok"}')
+
+        # pylint: disable-next=no-value-for-parameter
+        response = await Endpoint().post(request)
+
+        request.body.assert_awaited_once()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(json.loads(response.body), {"value": "ok"})
+
+    async def test_route_can_skip_body_parsing(self):
+        class Endpoint:
+            @decorators.route(parse_body=False)
+            async def get(self, request):
+                return {"value": request.path_params["value"]}
+
+        request = MagicMock()
+        request.body = AsyncMock(side_effect=AssertionError("unexpected body"))
+        request.path_params = {"value": "ok"}
+
+        response = await Endpoint().get(request)
+
+        request.body.assert_not_called()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(json.loads(response.body), {"value": "ok"})
