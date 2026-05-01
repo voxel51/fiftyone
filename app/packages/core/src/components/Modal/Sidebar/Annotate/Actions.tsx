@@ -1,5 +1,4 @@
 import { useUndoRedo } from "@fiftyone/commands";
-import { Tooltip } from "@fiftyone/components";
 import { use3dAnnotationFields } from "@fiftyone/looker-3d/src/annotation/use3dAnnotationFields";
 import {
   ANNOTATION_CUBOID,
@@ -7,16 +6,10 @@ import {
 } from "@fiftyone/looker-3d/src/constants";
 import {
   useCurrent3dAnnotationMode,
-  useReset3dAnnotationMode,
   useSetCurrent3dAnnotationMode,
 } from "@fiftyone/looker-3d/src/state/accessors";
+import { is3DDataset, useRenderConfig3dState } from "@fiftyone/state";
 import {
-  is3DDataset,
-  isPatchesView,
-  useRenderConfig3dState,
-} from "@fiftyone/state";
-import {
-  CLASSIFICATION,
   DETECTION,
   DETECTIONS,
   POLYLINE,
@@ -24,25 +17,18 @@ import {
 } from "@fiftyone/utilities";
 import PolylineIcon from "@mui/icons-material/Timeline";
 import CuboidIcon from "@mui/icons-material/ViewInAr";
-import {
-  Button,
-  Size,
-  Text,
-  TextColor,
-  TextVariant,
-  Variant,
-} from "@voxel51/voodo";
 import { useAtomValue, useSetAtom } from "jotai";
-import { useCallback } from "react";
+import { createContext, useCallback, useContext } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ItemLeft, ItemRight } from "./Components";
 import { editing } from "./Edit";
+import { useClassificationMode } from "./Edit/useClassificationMode";
 import { fieldsOfType } from "./Edit/state";
-import useCreate from "./Edit/useCreate";
-import { useQuickDraw } from "./Edit/useQuickDraw";
-import useCanManageSchema from "./useCanManageSchema";
-import useShowModal from "./useShowModal";
+import { useDetectionMode } from "./Edit/useDetectionMode";
+import { Anchor, Icon, IconName, Text, Tooltip } from "@voxel51/voodo";
+import { useAIAnnotationMode } from "./Edit/useAIAnnotationMode";
+import { FeatureFlag, FeatureFlagged } from "@fiftyone/feature-flags";
 
 const ActionsDiv = styled.div`
   align-items: center;
@@ -80,6 +66,11 @@ const Container = styled.div<{ $active?: boolean }>`
     fill: var(--color-content-icon-subtle);
   }
 
+  path.stroke-icon {
+    fill: none;
+    stroke: var(--color-content-icon-subtle);
+  }
+
   ${({ $active, theme }) =>
     $active &&
     `
@@ -87,6 +78,11 @@ const Container = styled.div<{ $active?: boolean }>`
 
     path {
       fill: ${theme.primary.plainColor};
+    }
+
+    path.stroke-icon {
+      fill: none;
+      stroke: ${theme.primary.plainColor};
     }
 
     svg {
@@ -106,6 +102,11 @@ const Container = styled.div<{ $active?: boolean }>`
 
   &:not(.disabled):hover path {
     fill: ${({ theme }) => theme.primary.plainColor};
+  }
+
+  &:not(.disabled):hover path.stroke-icon {
+    fill: none;
+    stroke: ${({ theme }) => theme.primary.plainColor};
   }
 `;
 
@@ -136,32 +137,65 @@ const Square = styled(Container)<{ $active?: boolean }>`
   border-radius: var(--radius-xs);
 `;
 
-const Classification = () => {
-  const create = useCreate(CLASSIFICATION);
-  const isPatchView = useRecoilValue(isPatchesView);
-  const reset3dAnnotationMode = useReset3dAnnotationMode();
-  const fields = useAtomValue(fieldsOfType(CLASSIFICATION));
-  const disabled = isPatchView || fields.length === 0;
+const DeactivateAllContext = createContext<() => void>(() => {});
 
-  const handleCreateClassification = useCallback(() => {
-    if (disabled) return;
-    create();
+/**
+ * Returns a callback that deactivates any active annotation actions.
+ * Action buttons should call this before activating themselves.
+ */
+export const useDeactivateAll = () => useContext(DeactivateAllContext);
 
-    // Exit other "persistent" annotation modes like 3D
-    reset3dAnnotationMode();
-  }, [create, disabled]);
+const Select = ({ active }: { active: boolean }) => {
+  const deactivateAll = useDeactivateAll();
 
   return (
-    <Tooltip
-      placement="top-center"
-      text={
-        isPatchView
-          ? "Creating classifications is not supported in this view"
-          : "Create new classification"
-      }
-    >
+    <Tooltip anchor={Anchor.Top} content={<Text>Select</Text>} portal>
       <Square
-        onClick={handleCreateClassification}
+        $active={active}
+        data-cy="select-action"
+        data-cy-active={active}
+        onClick={active ? undefined : deactivateAll}
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="19"
+          height="18"
+          viewBox="0 0 19 18"
+          fill="none"
+        >
+          <title>Select</title>
+          <path
+            className="stroke-icon"
+            d="M4 3L4 17L8 13L14 13L4 3Z"
+            strokeWidth="1.5"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </Square>
+    </Tooltip>
+  );
+};
+
+const Classification = () => {
+  const {
+    classificationModeActive,
+    disabled,
+    tooltip,
+    activateClassificationMode,
+  } = useClassificationMode();
+  const deactivateAll = useDeactivateAll();
+
+  return (
+    <Tooltip anchor={Anchor.Top} content={<Text>{tooltip}</Text>} portal>
+      <Square
+        $active={classificationModeActive}
+        data-cy="create-classification"
+        data-cy-active={classificationModeActive}
+        onClick={() => {
+          if (disabled) return;
+          deactivateAll();
+          if (!classificationModeActive) activateClassificationMode();
+        }}
         className={disabled ? "disabled" : ""}
       >
         <svg
@@ -183,28 +217,21 @@ const Classification = () => {
 };
 
 const Detection = () => {
-  const { quickDrawActive, toggleQuickDraw } = useQuickDraw();
-  const isPatchView = useRecoilValue(isPatchesView);
-
-  const fields = useAtomValue(fieldsOfType(DETECTION));
-  const disabled = isPatchView || fields.length === 0;
-
-  const tooltip = isPatchView
-    ? "Creating detections is not supported in this view"
-    : quickDrawActive
-    ? "Exit detection creation"
-    : "Create new detections";
+  const { activateDetectionMode, detectionModeActive, disabled, tooltip } =
+    useDetectionMode();
+  const deactivateAll = useDeactivateAll();
 
   return (
-    <Tooltip placement="top-center" text={tooltip}>
+    <Tooltip anchor={Anchor.Top} content={<Text>{tooltip}</Text>} portal>
       <Square
-        $active={quickDrawActive}
+        $active={detectionModeActive}
         className={disabled ? "disabled" : ""}
-        data-cy="quick-draw-detection"
-        data-cy-active={quickDrawActive}
+        data-cy="detection-mode"
+        data-cy-active={detectionModeActive}
         onClick={() => {
           if (disabled) return;
-          toggleQuickDraw();
+          deactivateAll();
+          if (!detectionModeActive) activateDetectionMode();
         }}
       >
         <svg
@@ -225,29 +252,56 @@ const Detection = () => {
   );
 };
 
+const Segmentation = () => {
+  const { isActive, activate, deactivate } = useAIAnnotationMode();
+  const deactivateAll = useDeactivateAll();
+
+  return (
+    <Tooltip anchor={Anchor.Top} content={<Text>Segment</Text>} portal>
+      <Square
+        $active={isActive}
+        data-cy="segmentation-mode"
+        data-cy-active={isActive}
+        onClick={() => {
+          deactivateAll();
+          if (!isActive) {
+            activate();
+          } else {
+            deactivate();
+          }
+        }}
+      >
+        <Icon name={IconName.Workspaces} />
+      </Square>
+    </Tooltip>
+  );
+};
+
 export const Undo = () => {
   const { undo, undoEnabled } = useUndoRedo();
 
   return (
-    <Round
-      onClick={undo}
-      className={undoEnabled ? "" : "disabled"}
-      data-cy="undo-button"
-    >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="13"
-        height="12"
-        viewBox="0 0 13 12"
-        fill="none"
+    <Tooltip anchor={Anchor.Top} content={<Text>Undo</Text>} portal>
+      <Round
+        onClick={undo}
+        className={undoEnabled ? "" : "disabled"}
+        data-cy="undo-button"
       >
-        <title>Undo</title>
-        <path
-          d="M2.98395 12C2.74746 12 2.54922 11.9211 2.38925 11.7633C2.22927 11.6055 2.14928 11.4099 2.14928 11.1767C2.14928 10.9434 2.22927 10.7479 2.38925 10.5901C2.54922 10.4322 2.74746 10.3533 2.98395 10.3533H8.07544C8.95185 10.3533 9.71348 10.0789 10.3604 9.53002C11.0072 8.98113 11.3307 8.29503 11.3307 7.4717C11.3307 6.64837 11.0072 5.96226 10.3604 5.41338C9.71348 4.86449 8.95185 4.59005 8.07544 4.59005H2.81701L4.40289 6.15437C4.55591 6.30532 4.63242 6.49743 4.63242 6.7307C4.63242 6.96398 4.55591 7.15609 4.40289 7.30703C4.24987 7.45798 4.05511 7.53345 3.81862 7.53345C3.58213 7.53345 3.38737 7.45798 3.23435 7.30703L0.229535 4.34305C0.146067 4.26072 0.0869449 4.17153 0.0521669 4.07547C0.017389 3.97942 0 3.8765 0 3.76672C0 3.65695 0.017389 3.55403 0.0521669 3.45798C0.0869449 3.36192 0.146067 3.27273 0.229535 3.19039L3.23435 0.226415C3.38737 0.0754717 3.58213 0 3.81862 0C4.05511 0 4.24987 0.0754717 4.40289 0.226415C4.55591 0.377358 4.63242 0.569468 4.63242 0.802744C4.63242 1.03602 4.55591 1.22813 4.40289 1.37907L2.81701 2.9434H8.07544C9.42483 2.9434 10.5829 3.37564 11.5498 4.24014C12.5166 5.10463 13 6.18182 13 7.4717C13 8.76158 12.5166 9.83877 11.5498 10.7033C10.5829 11.5678 9.42483 12 8.07544 12H2.98395Z"
-          fill="currentColor"
-        />
-      </svg>
-    </Round>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="13"
+          height="12"
+          viewBox="0 0 13 12"
+          fill="none"
+        >
+          <title>Undo</title>
+          <path
+            d="M2.98395 12C2.74746 12 2.54922 11.9211 2.38925 11.7633C2.22927 11.6055 2.14928 11.4099 2.14928 11.1767C2.14928 10.9434 2.22927 10.7479 2.38925 10.5901C2.54922 10.4322 2.74746 10.3533 2.98395 10.3533H8.07544C8.95185 10.3533 9.71348 10.0789 10.3604 9.53002C11.0072 8.98113 11.3307 8.29503 11.3307 7.4717C11.3307 6.64837 11.0072 5.96226 10.3604 5.41338C9.71348 4.86449 8.95185 4.59005 8.07544 4.59005H2.81701L4.40289 6.15437C4.55591 6.30532 4.63242 6.49743 4.63242 6.7307C4.63242 6.96398 4.55591 7.15609 4.40289 7.30703C4.24987 7.45798 4.05511 7.53345 3.81862 7.53345C3.58213 7.53345 3.38737 7.45798 3.23435 7.30703L0.229535 4.34305C0.146067 4.26072 0.0869449 4.17153 0.0521669 4.07547C0.017389 3.97942 0 3.8765 0 3.76672C0 3.65695 0.017389 3.55403 0.0521669 3.45798C0.0869449 3.36192 0.146067 3.27273 0.229535 3.19039L3.23435 0.226415C3.38737 0.0754717 3.58213 0 3.81862 0C4.05511 0 4.24987 0.0754717 4.40289 0.226415C4.55591 0.377358 4.63242 0.569468 4.63242 0.802744C4.63242 1.03602 4.55591 1.22813 4.40289 1.37907L2.81701 2.9434H8.07544C9.42483 2.9434 10.5829 3.37564 11.5498 4.24014C12.5166 5.10463 13 6.18182 13 7.4717C13 8.76158 12.5166 9.83877 11.5498 10.7033C10.5829 11.5678 9.42483 12 8.07544 12H2.98395Z"
+            fill="currentColor"
+          />
+        </svg>
+      </Round>
+    </Tooltip>
   );
 };
 
@@ -255,7 +309,7 @@ export const Redo = () => {
   const { redo, redoEnabled } = useUndoRedo();
 
   return (
-    <Tooltip placement="top-center" text="Redo">
+    <Tooltip anchor={Anchor.Top} content={<Text>Redo</Text>} portal>
       <Round
         onClick={redo}
         className={redoEnabled ? "" : "disabled"}
@@ -283,6 +337,7 @@ export const ThreeDPolylines = () => {
   const setEditing = useSetAtom(editing);
   const current3dAnnotationMode = useCurrent3dAnnotationMode();
   const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
+  const deactivateAll = useDeactivateAll();
   const visibleFields = useAtomValue(fieldsOfType(POLYLINE));
 
   const polylineFields = use3dAnnotationFields(
@@ -301,26 +356,26 @@ export const ThreeDPolylines = () => {
 
   return (
     <Tooltip
-      placement="top-center"
-      text={
-        isPolylineAnnotateActive
-          ? "Exit polyline annotation mode"
-          : "Enter polyline annotation mode"
+      anchor={Anchor.Top}
+      content={
+        <Text>
+          {isPolylineAnnotateActive
+            ? "Exit polyline annotation mode"
+            : "Enter polyline annotation mode"}
+        </Text>
       }
+      portal
     >
       <Square
         $active={isPolylineAnnotateActive}
         className={disabled ? "disabled" : ""}
         onClick={() => {
           if (disabled) return;
-          if (isPolylineAnnotateActive) {
-            setCurrent3dAnnotationMode(null);
-            return;
-          }
+          deactivateAll();
+
+          if (isPolylineAnnotateActive) return;
 
           if (!hasPolylineFieldsInSchema) {
-            // Setting `editing` to a string triggers schema creation flow
-            // See docstring of `editing` atom for more details
             setEditing(POLYLINE);
             return;
           }
@@ -338,6 +393,7 @@ export const ThreeDCuboids = () => {
   const setEditing = useSetAtom(editing);
   const current3dAnnotationMode = useCurrent3dAnnotationMode();
   const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
+  const deactivateAll = useDeactivateAll();
   const visibleFields = useAtomValue(fieldsOfType(DETECTION));
 
   const cuboidFields = use3dAnnotationFields(
@@ -355,26 +411,26 @@ export const ThreeDCuboids = () => {
 
   return (
     <Tooltip
-      placement="top-center"
-      text={
-        isCuboidAnnotateActive
-          ? "Exit cuboid annotation mode"
-          : "Enter cuboid annotation mode"
+      anchor={Anchor.Top}
+      content={
+        <Text>
+          {isCuboidAnnotateActive
+            ? "Exit cuboid annotation mode"
+            : "Enter cuboid annotation mode"}
+        </Text>
       }
+      portal
     >
       <Square
         $active={isCuboidAnnotateActive}
         className={disabled ? "disabled" : ""}
         onClick={() => {
           if (disabled) return;
-          if (isCuboidAnnotateActive) {
-            setCurrent3dAnnotationMode(null);
-            return;
-          }
+          deactivateAll();
+
+          if (isCuboidAnnotateActive) return;
 
           if (!hasCuboidFieldsInSchema) {
-            // Setting `editing` to a string triggers schema creation flow
-            // See docstring of `editing` atom for more details
             setEditing(DETECTION);
             return;
           }
@@ -388,58 +444,69 @@ export const ThreeDCuboids = () => {
   );
 };
 
-const Schema = () => {
-  const showModal = useShowModal();
-
-  return (
-    <Button variant={Variant.Borderless} size={Size.Sm} onClick={showModal}>
-      Schema
-    </Button>
-  );
-};
-
 const Actions = () => {
   // This checks if media type of the dataset resolved to 3d
   const is3dDataset = useRecoilValue(is3DDataset);
   // This checks if a 3d sample is pinned - is true when media type is `group` with a 3d slice pinned
   const { isPinned: is3dSamplePinned } = useRenderConfig3dState();
 
-  const canManage = useCanManageSchema();
+  const { classificationModeActive, deactivateClassificationMode } =
+    useClassificationMode();
+  const { detectionModeActive, deactivateDetectionMode } = useDetectionMode();
+  const {
+    isActive: segmentationModeActive,
+    deactivate: deactivateSegmentationMode,
+  } = useAIAnnotationMode();
+  const current3dAnnotationMode = useCurrent3dAnnotationMode();
+  const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
 
-  const areThreedActionsVisible = is3dDataset || is3dSamplePinned;
+  const noActiveActions =
+    !classificationModeActive &&
+    !detectionModeActive &&
+    !segmentationModeActive &&
+    !current3dAnnotationMode;
+  const areThreeDActionsVisible = is3dDataset || is3dSamplePinned;
+
+  const deactivateAll = useCallback(() => {
+    deactivateClassificationMode();
+    setCurrent3dAnnotationMode(null);
+    deactivateDetectionMode();
+    deactivateSegmentationMode();
+  }, [
+    deactivateClassificationMode,
+    deactivateDetectionMode,
+    deactivateSegmentationMode,
+    setCurrent3dAnnotationMode,
+  ]);
 
   return (
-    <ActionsDiv style={{ margin: "0 0.25rem", paddingBottom: "0.5rem" }}>
-      <Row>
-        <ItemLeft style={{ columnGap: "0.1rem" }}>
-          <Classification />
-          {areThreedActionsVisible ? (
-            <>
-              <ThreeDCuboids />
-              <ThreeDPolylines />
-            </>
-          ) : (
-            <Detection />
-          )}
-        </ItemLeft>
-        <ItemRight style={{ columnGap: "0.1rem" }}>
-          <Undo />
-          <Redo />
-        </ItemRight>
-      </Row>
-      {canManage && (
+    <DeactivateAllContext.Provider value={deactivateAll}>
+      <ActionsDiv style={{ margin: "0 0.25rem", paddingBottom: "0.5rem" }}>
         <Row>
-          <ItemLeft style={{ width: "50%" }}>
-            <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
-              Click labels to edit
-            </Text>
+          <ItemLeft style={{ columnGap: "0.1rem" }}>
+            <Select active={noActiveActions} />
+            <Classification />
+            {areThreeDActionsVisible ? (
+              <>
+                <ThreeDCuboids />
+                <ThreeDPolylines />
+              </>
+            ) : (
+              <>
+                <Detection />
+                <FeatureFlagged feature={FeatureFlag.VFF_AI_SEGMENTATION}>
+                  <Segmentation />
+                </FeatureFlagged>
+              </>
+            )}
           </ItemLeft>
-          <ItemRight style={{ width: "50%" }}>
-            <Schema />
+          <ItemRight style={{ columnGap: "0.1rem" }}>
+            <Undo />
+            <Redo />
           </ItemRight>
         </Row>
-      )}
-    </ActionsDiv>
+      </ActionsDiv>
+    </DeactivateAllContext.Provider>
   );
 };
 

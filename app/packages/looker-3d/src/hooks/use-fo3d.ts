@@ -111,6 +111,7 @@ export const appendDirect3dSamplesToScene = ({
 type UseFo3dReturnType = {
   foScene: FoScene | null;
   isLoading: boolean;
+  loadError: Error | null;
   fo3dRoot: string | null;
   rootAssetCount: number;
 };
@@ -127,6 +128,7 @@ export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
   const fetchFo3d = useFo3dFetcher();
 
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<Error | null>(null);
   const [rawData, setRawData] = useState<FiftyoneSceneRawJson | null>(null);
 
   const filepath = sample.sample.filepath;
@@ -209,6 +211,7 @@ export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
     let isActive = true;
 
     setIsLoading(true);
+    setLoadError(null);
     setRawData(null);
 
     if (isRealFo3dScene) {
@@ -227,14 +230,19 @@ export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
             : response;
 
           setRawData(mergedResponse);
+          setLoadError(null);
           setIsLoading(false);
         })
-        .catch(() => {
+        .catch((error) => {
           if (!isActive) {
             return;
           }
 
+          console.error("Failed to fetch fo3d scene:", error);
           setRawData(null);
+          setLoadError(
+            error instanceof Error ? error : new Error(String(error))
+          );
           setIsLoading(false);
         });
 
@@ -245,6 +253,7 @@ export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
 
     if (syntheticRawData || isWrappableDirectAsset) {
       setRawData(syntheticRawData);
+      setLoadError(null);
       setIsLoading(false);
       return () => {
         isActive = false;
@@ -252,6 +261,7 @@ export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
     }
 
     setRawData(null);
+    setLoadError(null);
     setIsLoading(false);
 
     return () => {
@@ -296,6 +306,7 @@ export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
     return {
       foScene: null,
       isLoading: true,
+      loadError: null,
       fo3dRoot,
       rootAssetCount: 0,
     };
@@ -304,6 +315,7 @@ export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
   return {
     foScene,
     isLoading: false,
+    loadError,
     fo3dRoot,
     rootAssetCount,
   };

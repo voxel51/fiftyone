@@ -1,20 +1,10 @@
-import type { ID } from "@fiftyone/spotlight";
+import type { ThumbnailSelectionDetail } from "@fiftyone/looker/src/selection";
 import type { Sample } from "@fiftyone/state";
-import {
-  selectedSampleObjects,
-  selectedSamples,
-  useSetSelected,
-} from "@fiftyone/state";
+import { selectedSampleObjects, selectedSamples } from "@fiftyone/state";
+import type { SelectionType } from "@fiftyone/state";
 import { useRef } from "react";
 import { useRecoilCallback } from "recoil";
 import type { Records } from "./useRecords";
-
-export interface SelectThumbnailData {
-  shiftKey: boolean;
-  id: string;
-  sample: Sample;
-  symbol: ID;
-}
 
 export const addRange = (
   index: number,
@@ -101,43 +91,63 @@ export const removeRange = (
 };
 
 export default (records: Records) => {
-  const setSelected = useSetSelected();
-  const ref = useRef<(params: SelectThumbnailData) => Promise<void>>();
+  const ref =
+    useRef<(params: ThumbnailSelectionDetail<Sample>) => Promise<void>>();
   ref.current = useRecoilCallback(
     ({ set, snapshot }) =>
-      async (params: SelectThumbnailData) => {
-        const { shiftKey, id: sampleId, sample, symbol } = params;
-        const current = new Set(await snapshot.getPromise(selectedSamples));
-        let selected = new Set(current);
-        const selectedObjects = new Map(
+      async (params: ThumbnailSelectionDetail<Sample>) => {
+        const { shiftKey, altKey, id: sampleId, sample, symbol } = params;
+
+        const current = new Map(await snapshot.getPromise(selectedSamples));
+        const currentObjects = new Map(
           await snapshot.getPromise(selectedSampleObjects)
         );
 
+        const selectionType: SelectionType = altKey ? "alt" : "default";
         const index = get(records, symbol.description);
-        if (shiftKey && !selected.has(sampleId)) {
-          selected = new Set([
-            ...selected,
-            ...addRange(index, selected, records),
-          ]);
+
+        if (shiftKey && !current.has(sampleId)) {
+          // Shift-click (or shift+alt-click) range add
+          if (current.size === 0) {
+            // No anchor — treat as normal click
+            current.set(sampleId, selectionType);
+            currentObjects.set(sampleId, sample);
+            set(selectedSamples, current);
+            set(selectedSampleObjects, currentObjects);
+            return;
+          }
+          const currentKeys = new Set(current.keys());
+          const newSelected = addRange(index, currentKeys, records);
+          for (const id of newSelected) {
+            if (!current.has(id)) {
+              current.set(id, selectionType);
+            }
+          }
+          currentObjects.set(sampleId, sample);
         } else if (shiftKey) {
-          selected = removeRange(index, selected, records);
+          // Shift-click range remove
+          const currentKeys = new Set(current.keys());
+          const remaining = removeRange(index, currentKeys, records);
+          for (const id of currentKeys) {
+            if (!remaining.has(id)) {
+              current.delete(id);
+              currentObjects.delete(id);
+            }
+          }
+        } else if (current.has(sampleId)) {
+          // Click on any selected sample → deselect
+          current.delete(sampleId);
+          currentObjects.delete(sampleId);
         } else {
-          selected.has(sampleId)
-            ? selected.delete(sampleId)
-            : selected.add(sampleId);
+          // Click unselected sample → select with type based on alt key
+          current.set(sampleId, selectionType);
+          currentObjects.set(sampleId, sample);
         }
 
-        if (selectedObjects.has(sampleId)) {
-          selectedObjects.delete(sampleId);
-        } else {
-          selectedObjects.set(sampleId, sample);
-        }
-
-        set(selectedSamples, selected);
-        set(selectedSampleObjects, selectedObjects);
-        setSelected(new Set(selected));
+        set(selectedSamples, current);
+        set(selectedSampleObjects, currentObjects);
       },
-    [records, setSelected]
+    [records]
   );
   return ref;
 };

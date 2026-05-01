@@ -1,10 +1,11 @@
 import { Button } from "@fiftyone/components";
-import { CircularProgress, Button as MUIButton } from "@mui/material";
+import { CircularProgress, Stack } from "@mui/material";
 import { useCallback } from "react";
+import { SubmitButtonOption } from "../OperatorPalette";
 import SplitButton from "../SplitButton";
 import { BaseStylesProvider } from "../styled-components";
 import { onEnter } from "../utils";
-import { SubmitButtonOption } from "../OperatorPalette";
+import RequiresOrchestrator from "./RequiresOrchestrator";
 
 export default function OperatorPromptFooter(props: OperatorFooterProps) {
   const {
@@ -18,7 +19,7 @@ export default function OperatorPromptFooter(props: OperatorFooterProps) {
     submitButtonOptions,
     submitOptionsLoading,
     hasSubmitButtonOptions,
-    showWarning,
+    requiresOrchestratorSetup,
   } = props;
 
   const handleSubmit = useCallback(() => {
@@ -26,62 +27,59 @@ export default function OperatorPromptFooter(props: OperatorFooterProps) {
     onSubmit();
   }, [disableSubmit, onSubmit]);
 
-  if (showWarning) {
+  if (requiresOrchestratorSetup) {
     return (
-      <MUIButton
-        sx={{ textTransform: "none" }}
-        onClick={onCancel}
-        onKeyDown={onEnter(onCancel)}
-      >
-        OK
-      </MUIButton>
+      <Stack sx={{ width: "100%", gap: 2 }}>
+        <RequiresOrchestrator />
+        <Stack justifyContent="flex-end" direction="row">
+          <Button onClick={onCancel} onKeyDown={onEnter(onCancel)}>
+            Close
+          </Button>
+        </Stack>
+      </Stack>
     );
   }
 
-  if (!showWarning) {
-    return (
-      <>
-        {loading && (
-          <CircularProgress
-            size={20}
-            sx={{ mr: 1, color: (theme) => theme.palette.text.secondary }}
+  return (
+    <>
+      {loading && (
+        <CircularProgress
+          size={20}
+          sx={{ mr: 1, color: (theme) => theme.palette.text.secondary }}
+        />
+      )}
+      {onCancel && (
+        <BaseStylesProvider>
+          <Button onClick={onCancel} onKeyDown={onEnter(onCancel)}>
+            {cancelButtonText}
+          </Button>
+        </BaseStylesProvider>
+      )}
+      {onSubmit && !hasSubmitButtonOptions && !submitOptionsLoading && (
+        <BaseStylesProvider>
+          <Button
+            onClick={handleSubmit}
+            onKeyDown={onEnter(handleSubmit)}
+            disabled={disableSubmit}
+            title={disableSubmit && disabledReason}
+          >
+            {submitButtonText}
+          </Button>
+        </BaseStylesProvider>
+      )}
+      {onSubmit && hasSubmitButtonOptions && !submitOptionsLoading && (
+        <BaseStylesProvider>
+          <SplitButton
+            disabled={disableSubmit}
+            disabledReason={disabledReason}
+            options={submitButtonOptions}
+            submitOnEnter
+            onSubmit={onSubmit}
           />
-        )}
-        {onCancel && (
-          <BaseStylesProvider>
-            <Button onClick={onCancel} onKeyDown={onEnter(onCancel)}>
-              {cancelButtonText}
-            </Button>
-          </BaseStylesProvider>
-        )}
-        {onSubmit && !hasSubmitButtonOptions && !submitOptionsLoading && (
-          <BaseStylesProvider>
-            <Button
-              onClick={handleSubmit}
-              onKeyDown={onEnter(handleSubmit)}
-              disabled={disableSubmit}
-              title={disableSubmit && disabledReason}
-            >
-              {submitButtonText}
-            </Button>
-          </BaseStylesProvider>
-        )}
-        {onSubmit && hasSubmitButtonOptions && !submitOptionsLoading && (
-          <BaseStylesProvider>
-            <SplitButton
-              disabled={disableSubmit}
-              disabledReason={disabledReason}
-              options={submitButtonOptions}
-              submitOnEnter
-              onSubmit={onSubmit}
-            />
-          </BaseStylesProvider>
-        )}
-      </>
-    );
-  }
-
-  return null;
+        </BaseStylesProvider>
+      )}
+    </>
+  );
 }
 
 type OperatorFooterProps = {
@@ -92,8 +90,8 @@ type OperatorFooterProps = {
   disableSubmit?: boolean;
   disabledReason?: string;
   loading?: boolean;
-  submitButtonOptions: SubmitButtonOption[];
-  hasSubmitButtonOptions: boolean;
-  submitOptionsLoading: boolean;
-  showWarning?: boolean;
+  submitButtonOptions?: SubmitButtonOption[];
+  hasSubmitButtonOptions?: boolean;
+  submitOptionsLoading?: boolean;
+  requiresOrchestratorSetup?: boolean;
 };

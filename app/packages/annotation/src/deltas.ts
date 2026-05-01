@@ -21,21 +21,21 @@ import { arePrimitivesEqual, isPrimitiveFieldType } from "./util";
 /**
  * Helper type representing a `fo.Polylines`-like element.
  */
-type PolylinesParent = {
+export type PolylinesParent = {
   polylines: PolylineLabel[];
 };
 
 /**
  * Helper type representing a `fo.Detections`-like element.
  */
-type DetectionsParent = {
+export type DetectionsParent = {
   detections: DetectionLabel[];
 };
 
 /**
  * Helper type representing a `fo.Classifications`-like element.
  */
-type ClassificationsParent = {
+export type ClassificationsParent = {
   classifications: ClassificationLabel[];
 };
 

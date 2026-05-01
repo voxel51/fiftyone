@@ -12,24 +12,6 @@ import type {
 } from "../../types";
 
 /**
- * Loads an image and returns its dimensions.
- */
-function loadImageDimensions(
-  url: string
-): Promise<{ width: number; height: number }> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      resolve({ width: img.naturalWidth, height: img.naturalHeight });
-    };
-    img.onerror = () => {
-      reject(new Error(`Failed to load image: ${url}`));
-    };
-    img.src = url;
-  });
-}
-
-/**
  * Fetches camera frustum data (static transforms and intrinsics) for all 2D slices
  * in a grouped dataset.
  *
@@ -142,30 +124,7 @@ export function useFetchFrustumParameters() {
 
         if (cancelled) return;
 
-        // Load image dimensions in parallel to get aspect ratios
-        const frustumsWithAspectRatios = await Promise.all(
-          frustums.map(async (frustum) => {
-            if (!frustum.imageUrl) {
-              return frustum;
-            }
-
-            try {
-              const { width, height } = await loadImageDimensions(
-                frustum.imageUrl
-              );
-              return {
-                ...frustum,
-                imageAspectRatio: width / height,
-              };
-            } catch {
-              return frustum;
-            }
-          })
-        );
-
-        if (!cancelled) {
-          setData(frustumsWithAspectRatios);
-        }
+        setData(frustums);
       } catch (err) {
         if (!cancelled) {
           console.error("Failed to fetch frustum data:", err);

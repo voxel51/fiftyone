@@ -1,9 +1,6 @@
 import { useMemo, useState } from "react";
 import type { Box3, LoadingManager } from "three";
-import {
-  isFo3dCameraLifecycleReady,
-  type Fo3dCameraLifecycleState,
-} from "../fo3d/camera-lifecycle";
+import type { Fo3dCameraLifecycleState } from "../fo3d/camera-lifecycle";
 import { FoScene } from "../fo3d/render-types";
 import type { Looker3dSettings } from "../settings";
 import type { HoverMetadata } from "../types";
@@ -20,6 +17,7 @@ interface UseFo3dSceneContextStateArgs {
   fo3dRoot: string | null;
   loadingManager: LoadingManager | null;
   cameraLifecycleState: Fo3dCameraLifecycleState;
+  isSceneReady: boolean;
 }
 
 /**
@@ -34,6 +32,7 @@ export const useFo3dSceneContextState = ({
   fo3dRoot,
   loadingManager,
   cameraLifecycleState,
+  isSceneReady,
 }: UseFo3dSceneContextStateArgs) => {
   const [upVector, setUpVectorVal] = useFo3dUpVector(
     foScene,
@@ -56,12 +55,10 @@ export const useFo3dSceneContextState = ({
   const { effectiveSceneBoundingBox, cursorBounds, lookAt } =
     useFo3dDerivedSceneState(sceneBoundingBox);
 
-  const isSceneInitialized = isFo3dCameraLifecycleReady(cameraLifecycleState);
-
   const contextValue = useMemo(
     () => ({
       cameraLifecycleState,
-      isSceneInitialized,
+      isSceneInitialized: isSceneReady,
       numPrimaryAssets: rootAssetCount,
       upVector,
       setUpVector: setUpVectorVal,
@@ -83,7 +80,7 @@ export const useFo3dSceneContextState = ({
     }),
     [
       cameraLifecycleState,
-      isSceneInitialized,
+      isSceneReady,
       rootAssetCount,
       upVector,
       setUpVectorVal,

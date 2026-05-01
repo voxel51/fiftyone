@@ -48,6 +48,28 @@ See
 :ref:`this page <configuring-fiftyone>` for more information about using your
 FiftyOne config.
 
+.. _enterprise-service-account-connection:
+
+Connecting as a service account
+--------------------------------
+
+:ref:`Service accounts <enterprise-service-accounts>` connect to FiftyOne
+Enterprise the same way as human users — by setting ``FIFTYONE_API_URI`` and
+``FIFTYONE_API_KEY`` to the service account's API key:
+
+.. code-block:: shell
+
+   export FIFTYONE_API_URI=XXXXXXXX
+   export FIFTYONE_API_KEY="your-service-account-api-key"
+
+.. warning::
+
+   Service account API keys are only displayed once at generation time. Copy
+   and store the key securely immediately — it cannot be recovered if lost.
+
+See :ref:`Service account management <enterprise-sdk-service-account-management>`
+for how to generate API keys for a service account.
+
 .. _enterprise-generate-api-key:
 
 Generating an API key

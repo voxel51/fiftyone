@@ -13,6 +13,7 @@ export interface SelectEvent {
     sampleId: string;
     instanceId?: string;
     isShiftPressed?: boolean;
+    isAltPressed?: boolean;
   };
 }
 
@@ -27,6 +28,7 @@ export function useOnSelectLabel() {
           sampleId,
           instanceId,
           isShiftPressed,
+          isAltPressed,
         },
       }: SelectEvent) => {
         if (isShiftPressed) {
@@ -50,6 +52,7 @@ export function useOnSelectLabel() {
             sampleId,
             frameNumber,
             instanceId,
+            type: isAltPressed ? "alt" : "default",
           };
         }
         set(

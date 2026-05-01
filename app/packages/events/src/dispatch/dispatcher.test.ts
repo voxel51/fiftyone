@@ -165,6 +165,150 @@ describe("EventDispatcher", () => {
     });
   });
 
+  describe("once", () => {
+    test("should register a handler that fires only once", () => {
+      const handler = vi.fn();
+      dispatcher.once("test:eventA", handler);
+
+      dispatcher.dispatch("test:eventA", { id: "1", name: "test" });
+      dispatcher.dispatch("test:eventA", { id: "2", name: "test2" });
+
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(handler).toHaveBeenCalledWith({ id: "1", name: "test" });
+    });
+
+    test("should pass the correct payload to the handler", () => {
+      const handler = vi.fn();
+      dispatcher.once("test:eventA", handler);
+
+      dispatcher.dispatch("test:eventA", { id: "42", name: "hello" });
+
+      expect(handler).toHaveBeenCalledWith({ id: "42", name: "hello" });
+    });
+
+    test("should not affect other handlers registered with on", () => {
+      const onceHandler = vi.fn();
+      const onHandler = vi.fn();
+
+      dispatcher.once("test:eventA", onceHandler);
+      dispatcher.on("test:eventA", onHandler);
+
+      dispatcher.dispatch("test:eventA", { id: "1", name: "test" });
+      dispatcher.dispatch("test:eventA", { id: "2", name: "test2" });
+
+      expect(onceHandler).toHaveBeenCalledTimes(1);
+      expect(onHandler).toHaveBeenCalledTimes(2);
+    });
+
+    test("should work with events with no payload", () => {
+      const handler = vi.fn();
+      dispatcher.once("test:eventC", handler);
+
+      dispatcher.dispatch("test:eventC");
+      dispatcher.dispatch("test:eventC");
+
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(handler).toHaveBeenCalledWith(undefined);
+    });
+
+    test("should work with events with null payload", () => {
+      const handler = vi.fn();
+      dispatcher.once("test:eventD", handler);
+
+      dispatcher.dispatch("test:eventD", null);
+      dispatcher.dispatch("test:eventD", null);
+
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(handler).toHaveBeenCalledWith(null);
+    });
+
+    test("should return an unregister function", () => {
+      const handler = vi.fn();
+      const unregister = dispatcher.once("test:eventA", handler);
+
+      expect(typeof unregister).toBe("function");
+    });
+
+    test("should not fire if unregistered before the event is dispatched", () => {
+      const handler = vi.fn();
+      const unregister = dispatcher.once("test:eventA", handler);
+
+      unregister();
+      dispatcher.dispatch("test:eventA", { id: "1", name: "test" });
+
+      expect(handler).not.toHaveBeenCalled();
+    });
+
+    test("should be safe to call unregister after handler has already fired", () => {
+      const handler = vi.fn();
+      const unregister = dispatcher.once("test:eventA", handler);
+
+      dispatcher.dispatch("test:eventA", { id: "1", name: "test" });
+      expect(handler).toHaveBeenCalledTimes(1);
+
+      // Should not throw even though the handler already removed itself
+      expect(() => unregister()).not.toThrow();
+
+      dispatcher.dispatch("test:eventA", { id: "2", name: "test2" });
+      expect(handler).toHaveBeenCalledTimes(1); // Still 1
+    });
+
+    test("should allow re-registering the same handler after it has fired", () => {
+      const handler = vi.fn();
+
+      dispatcher.once("test:eventA", handler);
+      dispatcher.dispatch("test:eventA", { id: "1", name: "test" });
+      expect(handler).toHaveBeenCalledTimes(1);
+
+      dispatcher.once("test:eventA", handler);
+      dispatcher.dispatch("test:eventA", { id: "2", name: "test2" });
+      expect(handler).toHaveBeenCalledTimes(2);
+    });
+
+    test("should handle async handlers and fire only once", async () => {
+      vi.useFakeTimers();
+      const handler = vi.fn(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      });
+
+      dispatcher.once("test:eventA", handler);
+
+      dispatcher.dispatch("test:eventA", { id: "1", name: "test" });
+      dispatcher.dispatch("test:eventA", { id: "2", name: "test2" });
+
+      await vi.runAllTimersAsync();
+
+      expect(handler).toHaveBeenCalledTimes(1);
+      vi.useRealTimers();
+    });
+
+    test("should handle errors without preventing removal", async () => {
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => undefined);
+      const handler = vi.fn(() => {
+        throw new Error("once handler error");
+      });
+
+      dispatcher.once("test:eventA", handler);
+
+      expect(() =>
+        dispatcher.dispatch("test:eventA", { id: "1", name: "test" })
+      ).not.toThrow();
+
+      // Wait for async error logging
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(consoleErrorSpy).toHaveBeenCalled();
+
+      // Handler should not fire again even though it threw
+      dispatcher.dispatch("test:eventA", { id: "2", name: "test2" });
+      expect(handler).toHaveBeenCalledTimes(1);
+
+      consoleErrorSpy.mockRestore();
+    });
+  });
+
   describe("off", () => {
     test("should unregister a specific handler", () => {
       const handler1 = vi.fn();

@@ -4,6 +4,7 @@
 
 export const LABEL_ARCHETYPE_PRIORITY = {
   CLASSIFICATION: 15,
+  KEYPOINT: 12,
   BOUNDING_BOX: 10,
   IMAGE: 0,
 };
@@ -53,6 +54,14 @@ export const HANDLE_COLOR = 0xffffff;
 export const HANDLE_OUTLINE = 2;
 export const HANDLE_OFFSET_X = 6;
 export const HANDLE_OFFSET_Y = 3;
+
+/**
+ * Settings related to keypoint overlays
+ */
+export const KEYPOINT_RADIUS = 5;
+export const KEYPOINT_SELECTED_RADIUS = 8;
+export const KEYPOINT_HIT_RADIUS = 10;
+export const PREVIEW_LINE_OPACITY = 0.6;
 
 /**
  * Opacity of selected bounding boxes

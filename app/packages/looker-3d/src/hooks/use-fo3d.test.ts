@@ -278,4 +278,28 @@ describe("useFo3d", () => {
     expect(content.children[0].name).toBe("fresh-scene");
     expect(mockState.fetchFo3d).toHaveBeenCalledTimes(2);
   });
+
+  it("surfaces fo3d fetch failures without crashing downstream scene rendering", async () => {
+    const sceneSample = buildModalSample("scene-id", "/tmp/group/scene.fo3d");
+    const loadError = new Error("forced resolve-fo3d failure");
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+
+    mockState.fetchFo3d.mockRejectedValue(loadError);
+
+    const { result } = renderHook(() => useFo3d(sceneSample));
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.foScene).toBeNull();
+    expect(result.current.rootAssetCount).toBe(0);
+    expect(result.current.loadError).toEqual(loadError);
+    expect(consoleErrorSpy).toHaveBeenCalled();
+
+    consoleErrorSpy.mockRestore();
+  });
 });

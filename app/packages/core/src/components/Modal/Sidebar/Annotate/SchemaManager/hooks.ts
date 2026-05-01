@@ -33,7 +33,7 @@ import {
   labelSchemaData,
   labelSchemasData,
   removeFromActiveSchemas,
-  showModal,
+  schemaManagerDisplayedAtom,
 } from "../state";
 import {
   draftJsonContent,
@@ -84,17 +84,12 @@ export const useSetCurrentField = () => {
  * Hook to control the schema manager modal visibility
  */
 export const useSchemaManagerModal = () => {
-  const [isOpen, setIsOpen] = useAtom(showModal);
-  const open = useCallback(() => setIsOpen(true), [setIsOpen]);
-  const close = useCallback(() => setIsOpen(false), [setIsOpen]);
-  return { isOpen, setIsOpen, open, close };
-};
+  const [schemaManagerDisplayed, setSchemaManagerDisplayed] = useAtom(schemaManagerDisplayedAtom);
 
-/**
- * Hook to show the schema manager modal
- */
-export const useShowSchemaManagerModal = () => {
-  return useSetAtom(showModal);
+  const openSchemaManager = useCallback(() => setSchemaManagerDisplayed(true), [setSchemaManagerDisplayed]);
+  const closeSchemaManager = useCallback(() => setSchemaManagerDisplayed(false), [setSchemaManagerDisplayed]);
+
+  return { schemaManagerDisplayed, openSchemaManager, closeSchemaManager };
 };
 
 // =============================================================================
@@ -479,7 +474,7 @@ export const useFullSchemaEditor = () => {
   const [errors, setErrors] = useAtom(jsonValidationErrors);
   const [isValidating, setIsValidating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const setShowModal = useSetAtom(showModal);
+  const { closeSchemaManager } = useSchemaManagerModal();
   const setMessage = useNotification();
 
   const { validateSchemas, updateSchema: updateSchemaOp } = useSchemaManager();
@@ -598,7 +593,7 @@ export const useFullSchemaEditor = () => {
         msg: "Schema changes saved",
         variant: "success",
       });
-      setShowModal(false);
+      closeSchemaManager();
     } catch (e) {
       setIsSaving(false);
       setMessage({
@@ -613,7 +608,7 @@ export const useFullSchemaEditor = () => {
     setDraftJson,
     setErrors,
     setMessage,
-    setShowModal,
+    closeSchemaManager,
   ]);
 
   const discard = useCallback(() => {

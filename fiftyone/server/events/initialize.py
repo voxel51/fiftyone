@@ -12,6 +12,7 @@ import typing as t
 
 import fiftyone.core.dataset as fod
 import fiftyone.core.state as fos
+from fiftyone.core.session.constants import DEFAULT_SELECTION_STYLE
 from fiftyone.core.session.events import (
     AppInitializer,
     ListenPayload,
@@ -138,8 +139,9 @@ def handle_dataset_change(
         state.group_id = None
         state.group_slice = state.dataset.group_slice
         state.sample_id = None
-        state.selected = []
         state.selected_labels = []
+        state.selected_samples = []
+        state.sample_selection_style = dict(DEFAULT_SELECTION_STYLE)
         state.spaces = None
         state.view = None
     except Exception:
@@ -147,8 +149,9 @@ def handle_dataset_change(
         state.group_id = None
         state.group_slice = None
         state.sample_id = None
-        state.selected = []
         state.selected_labels = []
+        state.selected_samples = []
+        state.sample_selection_style = dict(DEFAULT_SELECTION_STYLE)
         state.spaces = None
         state.view = None
         return
@@ -266,8 +269,9 @@ def handle_saved_view(
         if slug:
             doc = state.dataset._get_saved_view_doc(slug, slug=True)
             state.view = state.dataset.load_saved_view(doc.name)
-        state.selected = []
         state.selected_labels = []
+        state.selected_samples = []
+        state.sample_selection_style = dict(DEFAULT_SELECTION_STYLE)
     except Exception:
         pass
 

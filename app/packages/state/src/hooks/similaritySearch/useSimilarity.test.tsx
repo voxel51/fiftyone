@@ -20,7 +20,13 @@ const getRecoilRoot = (
         initializeState={({ set }) => {
           set(fos.dataset, TEST_DS);
           if (type === "selectedSample") {
-            set(fos.selectedSamples, new Set(["1", "2"]));
+            set(
+              fos.selectedSamples,
+              new Map([
+                ["1", "default"],
+                ["2", "default"],
+              ])
+            );
           }
           if (type === "selectedLabel") {
             set(fos.selectedLabels, [

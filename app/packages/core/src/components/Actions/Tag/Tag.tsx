@@ -317,7 +317,7 @@ const useTagCallback = (
 
   const finalize = [
     () => setLabels([]),
-    () => setSamples(new Set()),
+    () => setSamples(new Map()),
     () => setAggs((cur) => cur + 1),
     ...[
       useRecoilRefresher_UNSTABLE(fos.activeModalSidebarSample),

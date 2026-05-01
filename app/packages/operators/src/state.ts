@@ -100,6 +100,8 @@ const globalContextSelector = selector({
     const extended = get(fos.extendedStages);
     const filters = get(fos.filters);
     const selectedSamples = get(fos.selectedSamples);
+    const sampleSelectionStyle = get(fos.sampleSelectionStyle);
+    const labelSelectionStyle = get(fos.labelSelectionStyle);
     const selectedLabels = get(fos.selectedLabels);
     const viewName = get(fos.viewName);
     const extendedSelection = get(fos.extendedSelection);
@@ -115,6 +117,8 @@ const globalContextSelector = selector({
       extended,
       filters,
       selectedSamples,
+      sampleSelectionStyle,
+      labelSelectionStyle,
       selectedLabels,
       viewName,
       extendedSelection,
@@ -158,6 +162,8 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     extended,
     filters,
     selectedSamples,
+    sampleSelectionStyle,
+    labelSelectionStyle,
     params,
     selectedLabels,
     viewName,
@@ -180,6 +186,8 @@ const useExecutionContext = (operatorName, hooks = {}) => {
         extended,
         filters,
         selectedSamples,
+        sampleSelectionStyle,
+        labelSelectionStyle,
         selectedLabels,
         currentSample,
         viewName,
@@ -201,6 +209,8 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     extended,
     filters,
     selectedSamples,
+    sampleSelectionStyle,
+    labelSelectionStyle,
     selectedLabels,
     hooks,
     viewName,
@@ -261,7 +271,7 @@ export type OperatorExecutionOption = {
   isDisabledSchedule?: boolean;
 };
 
-const useOperatorPromptSubmitOptions = (
+export const useOperatorPromptSubmitOptions = (
   operatorURI,
   execDetails,
   execute: (options?: OperatorExecutorOptions) => void,
@@ -408,22 +418,17 @@ const useOperatorPromptSubmitOptions = (
   }, [options, selectedID]);
 
   if (selectedOption) selectedOption.selected = true;
-  const showWarning =
+  const requiresOrchestratorSetup =
     executionOptions.orchestratorRegistrationEnabled &&
     !hasAvailableOrchestrators &&
     !executionOptions.allowImmediateExecution;
-  const warningStr =
-    "This operation requires [delegated execution](https://docs.voxel51.com/plugins/using_plugins.html#delegated-operations)";
-  const warningMessage = React.createElement(Markdown, null, warningStr);
 
   return {
-    showWarning,
-    warningTitle: "No available orchestrators",
-    warningMessage,
-    options,
+    handleSubmit,
     hasOptions: options.length > 0,
     isLoading: execDetails.isLoading,
-    handleSubmit,
+    options,
+    requiresOrchestratorSetup,
   };
 };
 
@@ -435,22 +440,21 @@ export const useOperatorExecutionOptions = ({
   onExecute,
 }: {
   operatorUri: string;
-  onExecute: (opts: OperatorExecutorOptions) => void;
+  onExecute: (options?: OperatorExecutorOptions) => void;
 }): {
   executionOptions: OperatorExecutionOption[];
+  requiresOrchestratorSetup: boolean;
 } => {
   const ctx = useExecutionContext(operatorUri);
   const { isRemote } = getLocalOrRemoteOperator(operatorUri);
   const execDetails = useExecutionOptions(operatorUri, ctx, isRemote);
-  const submitOptions = useOperatorPromptSubmitOptions(
+  const { options, requiresOrchestratorSetup } = useOperatorPromptSubmitOptions(
     operatorUri,
     execDetails,
     onExecute
   );
 
-  return {
-    executionOptions: submitOptions.options,
-  };
+  return { executionOptions: options, requiresOrchestratorSetup };
 };
 
 export const useOperatorPrompt = () => {

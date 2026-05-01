@@ -2,19 +2,39 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { quickDrawBridge } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/bridgeQuickDraw";
+import { detectionModeBridge } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/bridgeDetectionMode";
 import { EventDispatcher, getEventBus } from "@fiftyone/events";
 import { TypeGuards } from "../core/Scene2D";
 import type { LighterEventGroup } from "../events";
-import {
-  BoundingBoxOverlay,
-  type MoveState,
-} from "../overlay/BoundingBoxOverlay";
+import type { BaseOverlay } from "../overlay/BaseOverlay";
+import { type MoveState } from "../overlay/BoundingBoxOverlay";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { SelectionManager } from "../selection/SelectionManager";
 import type { Point, Rect } from "../types";
 import { InteractiveDetectionHandler } from "./InteractiveDetectionHandler";
+import { InteractiveKeypointHandler } from "./InteractiveKeypointHandler";
 import { v4 as generateUUID } from "uuid";
+
+/**
+ * Interface for handlers that support sub-selecting and removing individual
+ * points (e.g. keypoint overlays).
+ */
+export interface KeypointMutationHandler {
+  getSelectedPointIndex(): number | null;
+  removePoint(index: number): void;
+}
+
+function hasKeypointMutation(
+  h: InteractionHandler
+): h is InteractionHandler & KeypointMutationHandler {
+  return (
+    "getSelectedPointIndex" in h &&
+    "removePoint" in h &&
+    typeof (h as Record<string, unknown>).getSelectedPointIndex ===
+      "function" &&
+    typeof (h as Record<string, unknown>).removePoint === "function"
+  );
+}
 
 /**
  * Interface for objects that can handle interaction events.
@@ -22,7 +42,7 @@ import { v4 as generateUUID } from "uuid";
 export interface InteractionHandler {
   readonly id: string;
   readonly cursor?: string;
-  overlay?: BoundingBoxOverlay;
+  overlay?: BaseOverlay;
 
   /**
    * Returns true if the handler is being dragged or resized.
@@ -195,12 +215,12 @@ export class InteractionManager {
   private readonly CLICK_THRESHOLD = 3; // pixels, dictates drag vs. click
   private readonly DRAG_TIME_THRESHOLD = 500; // ms, dictates drag vs. click
   private readonly DOUBLE_CLICK_TIME_THRESHOLD = 500; // ms
-  private readonly DOUBLE_CLICK_DISTANCE_THRESHOLD = 10; // pixels
+  private readonly DOUBLE_CLICK_DISTANCE_THRESHOLD = 3; // pixels
 
   private currentPixelCoordinates?: Point;
   private readonly eventBus: EventDispatcher<LighterEventGroup>;
 
-  private pendingQuickDraw?: {
+  private pendingDetection?: {
     point: Point;
     worldPoint: Point;
     scale: number;
@@ -261,8 +281,13 @@ export class InteractionManager {
     const interactiveHandler = this.getInteractiveHandler();
 
     if (interactiveHandler) {
-      handler = interactiveHandler.getOverlay();
-      this.selectionManager.select(handler.id);
+      handler =
+        interactiveHandler instanceof InteractiveKeypointHandler
+          ? // keypoint handlers manage their own placement
+            interactiveHandler
+          : // otherwise defer to the handler's overlay
+            interactiveHandler.getOverlay();
+      this.selectionManager.select(interactiveHandler.getOverlay().id);
     } else {
       handler = this.findHandlerAtPoint(point);
       // Prevent pan/zoom when target is selectable
@@ -280,15 +305,16 @@ export class InteractionManager {
         this.selectionManager.select(handler!.id);
       }
 
-      // QuickDraw: defer overlay creation until we confirm this is a drag.
-      // If the user releases without dragging (a click), exit QuickDraw mode.
-      if (quickDrawBridge.isQuickDrawActive()) {
+      // Detection mode: defer overlay creation until we confirm this is a drag.
+      // If the user releases without dragging (a click), exit detection mode.
+      // Clicking on an existing overlay selects it normally instead.
+      if (detectionModeBridge.isDetectionModeActive()) {
         const isNonOverlay = !handler || handler.id === this.canonicalMediaId;
 
-        if (isNonOverlay || isUnselectedOverlay) {
+        if (isNonOverlay) {
           this.renderer.disableZoomPan();
 
-          this.pendingQuickDraw = {
+          this.pendingDetection = {
             point,
             worldPoint,
             scale,
@@ -308,16 +334,24 @@ export class InteractionManager {
         this.canvas.style.cursor = cursor;
       }
 
-      // If this is a spatial overlay, track move state
-      if (TypeGuards.isSpatial(handler)) {
+      // If this is a spatial overlay with move state, track drag/resize lifecycle.
+      // Handlers that manage their own drag events (e.g. KeypointOverlay point
+      // drags) don't provide getMoveStartBounds/getMoveStartPosition, so we skip
+      // dispatching to avoid stranded start events with no matching end.
+      // Capture move start state before the type guard narrows `handler` away
+      // from InteractionHandler (which defines these optional methods).
+      const startPosition = handler.getMoveStartPosition?.();
+      const startBounds = handler.getMoveStartBounds?.();
+
+      if (TypeGuards.isSpatial(handler) && startPosition && startBounds) {
         const type: keyof LighterEventGroup = handler.isDragging?.()
           ? "lighter:overlay-drag-start"
           : "lighter:overlay-resize-start";
 
         this.eventBus.dispatch(type, {
           id: handler.id,
-          startPosition: handler.bounds,
-          bounds: handler.bounds,
+          startPosition,
+          bounds: startBounds,
         });
       }
 
@@ -332,20 +366,20 @@ export class InteractionManager {
     scale: number
   ): void {
     if (
-      quickDrawBridge.isQuickDrawActive() &&
+      detectionModeBridge.isDetectionModeActive() &&
       handler &&
       TypeGuards.isSelectable(handler) &&
       !handler.isSelected()
     ) {
-      this.canvas.style.cursor = "crosshair";
+      this.canvas.style.cursor = "pointer";
     } else if (TypeGuards.isInteractionHandler(handler) && handler.getCursor) {
       this.canvas.style.cursor = handler.getCursor(worldPoint, scale);
     }
   }
 
-  // Promote pending QuickDraw event once drag threshold is exceeded.
-  private quickDrawCreate = (event: PointerEvent): boolean => {
-    if (!this.pendingQuickDraw) return false;
+  // Promote pending detection mode event once drag threshold is exceeded.
+  private detectionModeCreate = (event: PointerEvent): boolean => {
+    if (!this.pendingDetection) return false;
 
     const point = this.getCanvasPoint(event);
     const worldPoint = this.renderer.screenToWorld(point);
@@ -353,15 +387,15 @@ export class InteractionManager {
     this.currentPixelCoordinates = point;
 
     const distance = Math.hypot(
-      point.x - this.pendingQuickDraw.point.x,
-      point.y - this.pendingQuickDraw.point.y
+      point.x - this.pendingDetection.point.x,
+      point.y - this.pendingDetection.point.y
     );
 
     if (distance > this.CLICK_THRESHOLD) {
-      const pending = this.pendingQuickDraw;
-      this.pendingQuickDraw = undefined;
+      const pending = this.pendingDetection;
+      this.pendingDetection = undefined;
 
-      // Signal QuickDraw to create a detection and register
+      // Signal detection mode to create a detection and register
       // an interactive handler. This relies on the event bus invoking
       // handlers synchronously so the handler is immediately available.
       this.eventBus.dispatch("lighter:overlay-create", {
@@ -406,8 +440,8 @@ export class InteractionManager {
   };
 
   private handlePointerMove = (event: PointerEvent): void => {
-    // short-circuit if pending QuickDraw operation kicks off
-    if (this.quickDrawCreate(event)) return;
+    // short-circuit if pending detection mode operation kicks off
+    if (this.detectionModeCreate(event)) return;
 
     const point = this.getCanvasPoint(event);
     const worldPoint = this.renderer.screenToWorld(point);
@@ -450,7 +484,12 @@ export class InteractionManager {
           this.maintainAspectRatio
         );
       } else {
-        handler = interactiveHandler.getOverlay();
+        handler =
+          interactiveHandler instanceof InteractiveKeypointHandler
+            ? // keypoint handlers manage their own points
+              interactiveHandler
+            : // otherwise defer to the handler's overlay
+              interactiveHandler.getOverlay();
 
         handler.onMove?.(
           point,
@@ -477,19 +516,22 @@ export class InteractionManager {
         event.preventDefault();
       }
       this.configureCursorStyle(handler, worldPoint, scale);
-    } else if (quickDrawBridge.isQuickDrawActive() && !interactiveHandler) {
+    } else if (
+      detectionModeBridge.isDetectionModeActive() &&
+      !interactiveHandler
+    ) {
       this.canvas.style.cursor = "crosshair";
     }
   };
 
-  private quickDrawQuit = (event: PointerEvent): boolean => {
-    if (!this.pendingQuickDraw) return false;
+  private detectionModeQuit = (event: PointerEvent): boolean => {
+    if (!this.pendingDetection) return false;
 
-    this.eventBus.dispatch("lighter:quickdraw-quit", {
+    this.eventBus.dispatch("lighter:detection-mode-quit", {
       eventId: generateUUID(),
     });
 
-    this.pendingQuickDraw = undefined;
+    this.pendingDetection = undefined;
     this.renderer.enableZoomPan();
     this.canvas.releasePointerCapture(event.pointerId);
     this.clickStartPoint = undefined;
@@ -499,9 +541,9 @@ export class InteractionManager {
   };
 
   private handlePointerUp = (event: PointerEvent): void => {
-    // if we still have a pendingQuickDraw there was no significant movement
-    // the user clicked to exit QuickDraw
-    if (this.quickDrawQuit(event)) return;
+    // if we still have a pendingDetectionDraw there was no significant movement
+    // the user clicked to exit detection mode
+    if (this.detectionModeQuit(event)) return;
 
     const point = this.getCanvasPoint(event);
     const worldPoint = this.renderer.screenToWorld(point);
@@ -513,7 +555,12 @@ export class InteractionManager {
     const interactiveHandler = this.getInteractiveHandler();
 
     if (interactiveHandler) {
-      handler = interactiveHandler.getOverlay();
+      handler =
+        interactiveHandler instanceof InteractiveKeypointHandler
+          ? // keypoint handlers manage their own points
+            interactiveHandler
+          : // otherwise defer to the handler's overlay
+            interactiveHandler.getOverlay();
     } else {
       handler = this.findMovingHandler() || this.findHandlerAtPoint(point);
     }
@@ -551,7 +598,7 @@ export class InteractionManager {
 
           this.eventBus.dispatch("lighter:overlay-establish", {
             ...detail,
-            overlay: interactiveHandler,
+            handler: interactiveHandler,
           });
         } else {
           const type =
@@ -584,8 +631,8 @@ export class InteractionManager {
   };
 
   private handlePointerCancel = (event: PointerEvent): void => {
-    if (this.pendingQuickDraw) {
-      this.pendingQuickDraw = undefined;
+    if (this.pendingDetection) {
+      this.pendingDetection = undefined;
       this.renderer.enableZoomPan();
     }
 
@@ -633,6 +680,21 @@ export class InteractionManager {
     if (event.shiftKey) {
       this.maintainAspectRatio = event.shiftKey;
       return;
+    }
+
+    // Delete/Backspace: remove sub-selected keypoint
+    if (event.key === "Delete" || event.key === "Backspace") {
+      const selectedId = this.selectionManager.getSelectedIds()[0];
+      if (selectedId) {
+        const handler = this.handlers.find((h) => h.id === selectedId);
+        if (handler && hasKeypointMutation(handler)) {
+          const idx = handler.getSelectedPointIndex();
+          if (idx !== null && idx >= 0) {
+            handler.removePoint(idx);
+            event.preventDefault();
+          }
+        }
+      }
     }
   };
 
@@ -789,8 +851,15 @@ export class InteractionManager {
     );
   }
 
-  private getInteractiveHandler(): InteractiveDetectionHandler | undefined {
-    return this.handlers.find((h) => h instanceof InteractiveDetectionHandler);
+  private getInteractiveHandler():
+    | InteractiveKeypointHandler
+    | InteractiveDetectionHandler
+    | undefined {
+    // keypoint handlers take precedence to allow placing points on top of detections
+    return (
+      this.handlers.find((h) => h instanceof InteractiveKeypointHandler) ??
+      this.handlers.find((h) => h instanceof InteractiveDetectionHandler)
+    );
   }
 
   /**
@@ -820,9 +889,13 @@ export class InteractionManager {
     point: Point,
     skipCanonicalMedia: boolean = false
   ): InteractionHandler | undefined {
-    // Find handlers in reverse order (topmost first)
-    // Note: this is a hack, we need a better z-order logic
-    const candidates: InteractionHandler[] = [];
+    // Single-pass: find best handler at point using priority rules.
+    // Priority: selected > highest selectable priority > topmost (reverse order).
+    let bestSelected: InteractionHandler | undefined;
+    let bestSelectable: InteractionHandler | undefined;
+    let bestSelectablePriority = -1;
+    let topmost: InteractionHandler | undefined;
+
     for (let i = this.handlers.length - 1; i >= 0; i--) {
       const handler = this.handlers[i];
 
@@ -830,46 +903,25 @@ export class InteractionManager {
         continue;
       }
 
-      if (handler.containsPoint(point)) {
-        candidates.push(handler);
+      if (!handler.containsPoint(point)) {
+        continue;
       }
-    }
 
-    if (candidates.length === 0) return undefined;
-    if (candidates.length === 1) return candidates[0];
+      if (!topmost) topmost = handler;
 
-    // First, check if any candidates are selected - selected overlays override everything
-    const selectedCandidates = candidates.filter((handler) => {
       if (TypeGuards.isSelectable(handler)) {
-        return this.selectionManager.isSelected(handler.id);
+        if (!bestSelected && this.selectionManager.isSelected(handler.id)) {
+          bestSelected = handler;
+        }
+        const priority = handler.getSelectionPriority();
+        if (priority > bestSelectablePriority) {
+          bestSelectablePriority = priority;
+          bestSelectable = handler;
+        }
       }
-      return false;
-    });
-
-    if (selectedCandidates.length > 0) {
-      return selectedCandidates[0];
     }
 
-    // If multiple handlers found, prefer selectable ones with higher priority
-    const selectableCandidates = candidates.filter((handler) =>
-      TypeGuards.isSelectable(handler)
-    );
-
-    if (selectableCandidates.length > 0) {
-      // Choose the selectable candidate with highest selection priority
-      return selectableCandidates.reduce((best, current) => {
-        const bestPriority = TypeGuards.isSelectable(best)
-          ? best.getSelectionPriority()
-          : 0;
-        const currentPriority = TypeGuards.isSelectable(current)
-          ? current.getSelectionPriority()
-          : 0;
-        return currentPriority > bestPriority ? current : best;
-      });
-    }
-
-    // Fall back to the first candidate (topmost)
-    return candidates[0];
+    return bestSelected || bestSelectable || topmost;
   }
 
   private getCanvasPoint(event: PointerEvent): Point {
@@ -960,6 +1012,9 @@ export class InteractionManager {
    * Clears all handlers.
    */
   clearHandlers(): void {
+    for (const handler of this.handlers) {
+      handler.cleanup?.();
+    }
     this.handlers = [];
     this.hoveredHandler = undefined;
   }
@@ -1033,8 +1088,9 @@ export class InteractionManager {
     }
 
     // Add any remaining handlers that weren't in the overlay order
+    const overlayOrderSet = new Set(overlayOrder);
     for (const handler of this.handlers) {
-      if (!overlayOrder.includes(handler.id)) {
+      if (!overlayOrderSet.has(handler.id)) {
         reorderedHandlers.push(handler);
       }
     }

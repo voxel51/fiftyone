@@ -12,11 +12,13 @@ import { fieldVisibilityStage, gridSortBy } from "@fiftyone/state";
 import { is3d } from "@fiftyone/utilities";
 import { DefaultValue, atomFamily, selector, selectorFamily } from "recoil";
 import { v4 as uuid } from "uuid";
+import { getGridCustomRendererFailoverForcedSubscription } from "../gridCustomRendererFailover";
 import * as atoms from "./atoms";
 import { config } from "./config";
 import { dataset as datasetAtom } from "./dataset";
 import { modalSample, modalSelector } from "./modal";
 import { pathFilter } from "./pathFilters";
+import type { SelectionType } from "./types";
 import { State } from "./types";
 import { isPatchesView } from "./view";
 
@@ -65,6 +67,13 @@ export const isNotebook = selector<boolean>({
 export const stateSubscription = selector<string>({
   key: "stateSubscription",
   get: () => {
+    const forcedSubscription =
+      getGridCustomRendererFailoverForcedSubscription();
+
+    if (forcedSubscription) {
+      return forcedSubscription;
+    }
+
     const params = new URLSearchParams(window.location.search);
 
     return params.get("subscription") || uuid();
@@ -280,6 +289,18 @@ export const selectedLabelIds = selector<Set<string>>({
   get: ({ get }) => {
     const labels = get(selectedLabelMap);
     return new Set(Object.keys(labels));
+  },
+});
+
+export const selectedLabelTypes = selector<Record<string, SelectionType>>({
+  key: "selectedLabelTypes",
+  get: ({ get }) => {
+    const labels = get(selectedLabelMap);
+    const types: Record<string, SelectionType> = {};
+    for (const [labelId, label] of Object.entries(labels)) {
+      types[labelId] = label.type === "alt" ? "alt" : "default";
+    }
+    return types;
   },
 });
 
@@ -552,10 +573,10 @@ export const selectedPatchIds = selectorFamily({
       const selectedSampleObjects = get(atoms.selectedSampleObjects);
 
       if (isPatches || modal) {
-        return selectedSamples;
+        return new Set(selectedSamples.keys());
       }
       let patchIds: string[] = [];
-      for (const sampleId of Array.from(selectedSamples)) {
+      for (const sampleId of Array.from(selectedSamples.keys())) {
         if (selectedSampleObjects.has(sampleId)) {
           const sample = selectedSampleObjects.get(sampleId);
           patchIds = [
@@ -581,7 +602,7 @@ export const selectedPatchSamples = selector({
 
     if (isPatches) {
       let sampleIds: string[] = [];
-      for (const patchId of Array.from(selectedPatches)) {
+      for (const patchId of Array.from(selectedPatches.keys())) {
         if (selectedSampleObjects.has(patchId)) {
           const sample = selectedSampleObjects.get(patchId);
           sampleIds = [...sampleIds, sample?._sample_id as unknown as string];

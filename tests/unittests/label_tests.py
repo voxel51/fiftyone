@@ -5,6 +5,8 @@ FiftyOne Label-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import os
+import tempfile
 import unittest
 
 from bson import Binary, ObjectId
@@ -14,6 +16,7 @@ import numpy.testing as nptest
 import fiftyone as fo
 import fiftyone.core.labels as focl
 import fiftyone.utils.labels as foul
+from fiftyone.core.labels import _read_mask, _write_mask
 from fiftyone import ViewField as F
 
 from decorators import drop_datasets
@@ -857,6 +860,154 @@ class LabelUtilsTests(unittest.TestCase):
         )
         ids3 = dataset.values("nms3.detections.id", unwind=True)
         self.assertListEqual(ids3, [id2])
+
+
+class ExportMaskTests(unittest.TestCase):
+    """Tests for Detection.export_mask and Segmentation.export_mask."""
+
+    _MASK = np.ones((5, 5), dtype=np.uint8) * 255
+    _ZEROS = np.zeros((5, 5), dtype=np.uint8)
+
+    def _make_detection(self, mask=None, mask_path=None):
+        det = fo.Detection(
+            label="test",
+            bounding_box=[0.1, 0.1, 0.2, 0.2],
+        )
+        if mask is not None:
+            det.mask = mask
+        if mask_path is not None:
+            det.mask_path = mask_path
+        return det
+
+    def test_export_inline_mask_to_disk(self):
+        """export_mask writes in-database mask to disk when no mask_path."""
+        det = self._make_detection(mask=self._MASK.copy())
+
+        with tempfile.TemporaryDirectory() as tmp:
+            outpath = os.path.join(tmp, "mask.png")
+            det.export_mask(outpath)
+            saved = _read_mask(outpath)
+            nptest.assert_array_equal(saved, self._MASK)
+
+    def test_export_inline_mask_with_update_clears_mask(self):
+        """export_mask with update=True clears in-database mask and sets
+        mask_path."""
+        det = self._make_detection(mask=self._MASK.copy())
+
+        self.assertIsNotNone(det.mask)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            outpath = os.path.join(tmp, "mask.png")
+            det.export_mask(outpath, update=True)
+            self.assertIsNone(det.mask)
+            self.assertEqual(det.mask_path, outpath)
+
+    def test_export_copies_file_when_mask_path_set(self):
+        """export_mask copies the on-disk file when mask_path is set and
+        no in-database mask exists."""
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, "src.png")
+            dst = os.path.join(tmp, "dst.png")
+            _write_mask(self._MASK, src)
+
+            det = self._make_detection(mask_path=src)
+            det.export_mask(dst)
+
+            saved = _read_mask(dst)
+            nptest.assert_array_equal(saved, self._MASK)
+
+    _OVERWRITE_CASES = [
+        {
+            "id": "overwrite_writes_inline",
+            "overwrite_path": True,
+            "update": False,
+            "expect_mask_cleared": False,
+            "expect_new_data": True,
+        },
+        {
+            "id": "overwrite_and_update_clears_inline",
+            "overwrite_path": True,
+            "update": True,
+            "expect_mask_cleared": True,
+            "expect_new_data": True,
+        },
+        {
+            "id": "no_overwrite_copies_old_file",
+            "overwrite_path": False,
+            "update": False,
+            "expect_mask_cleared": False,
+            "expect_new_data": False,
+        },
+    ]
+
+    def test_export_overwrite_matrix(self):
+        """Behaviour when both mask and mask_path are set, varying
+        overwrite_path and update."""
+        for case in self._OVERWRITE_CASES:
+            with self.subTest(case["id"]):
+                with tempfile.TemporaryDirectory() as tmp:
+                    src = os.path.join(tmp, "original.png")
+                    dst = src if case["overwrite_path"] else os.path.join(
+                        tmp, "copy.png"
+                    )
+                    _write_mask(self._ZEROS, src)
+
+                    det = self._make_detection(
+                        mask=self._MASK.copy(), mask_path=src
+                    )
+                    self.assertIsNotNone(det.mask, case["id"])
+
+                    det.export_mask(
+                        dst,
+                        overwrite_path=case["overwrite_path"],
+                        update=case["update"],
+                    )
+
+                    saved = _read_mask(dst)
+                    if case["expect_new_data"]:
+                        self.assertTrue(saved.max() > 0, case["id"])
+                    else:
+                        self.assertEqual(saved.max(), 0, case["id"])
+
+                    if case["expect_mask_cleared"]:
+                        self.assertIsNone(det.mask, case["id"])
+                        self.assertEqual(det.mask_path, dst, case["id"])
+
+    _ERROR_CASES = [
+        {
+            "id": "no_mask_and_no_path",
+            "mask": None,
+            "mask_path": None,
+            "overwrite_path": False,
+        },
+        {
+            "id": "overwrite_but_no_inline_mask",
+            "mask": None,
+            "mask_path": "will_be_set",
+            "overwrite_path": True,
+        },
+    ]
+
+    def test_export_error_matrix(self):
+        """export_mask raises ValueError for invalid states."""
+        for case in self._ERROR_CASES:
+            with self.subTest(case["id"]):
+                with tempfile.TemporaryDirectory() as tmp:
+                    outpath = os.path.join(tmp, "mask.png")
+
+                    mp = None
+                    if case["mask_path"] is not None:
+                        mp = os.path.join(tmp, "existing.png")
+                        _write_mask(self._ZEROS, mp)
+                        outpath = mp
+
+                    det = self._make_detection(
+                        mask=case["mask"], mask_path=mp
+                    )
+                    with self.assertRaises(ValueError, msg=case["id"]):
+                        det.export_mask(
+                            outpath, overwrite_path=case["overwrite_path"]
+                        )
 
 
 if __name__ == "__main__":

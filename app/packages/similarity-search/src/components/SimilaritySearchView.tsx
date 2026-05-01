@@ -2,41 +2,69 @@ import { usePanelContext } from "@fiftyone/spaces";
 import { Spinner } from "@voxel51/voodo";
 import React, { Suspense } from "react";
 import { SimilaritySearchViewProps } from "../types";
-import { useNavigate } from "../hooks/useNavigate";
-import * as s from "./styles";
+import { useSimilarityPanel } from "../hooks/useSimilarityPanel";
+import RunList from "./Home/RunList";
+import NewSearch from "./NewSearch/NewSearch";
+import SimilarityIndex from "./SimilarityIndex/SimilarityIndex";
+import SimilaritySearchCTA from "./SimilaritySearchCTA";
+import { FullCenter, FullSize } from "./styled";
 
 function SimilaritySearchReady(props: SimilaritySearchViewProps) {
-  const { page, navigateHome, navigateNewSearch, navigateSimilarityIndex } =
-    useNavigate();
+  const panel = useSimilarityPanel(props);
+
+  if (!panel.loaded) {
+    return (
+      <FullCenter>
+        <Spinner />
+      </FullCenter>
+    );
+  }
+
+  if (panel.brainKeys.length === 0 && panel.runs.length === 0) {
+    return <SimilaritySearchCTA mode="onboarding" />;
+  }
 
   return (
-    <div style={s.fullSize}>
-      {page === "home" && (
-        <div style={s.runListContainer}>
-          <div style={s.emptyState}>
-            <p>Similarity Search Runs will appear here</p>
-            <button onClick={navigateNewSearch}>New Search</button>
-            <button onClick={navigateSimilarityIndex}>Similarity Index</button>
-          </div>
-        </div>
+    <FullSize>
+      {panel.page === "home" && (
+        <RunList
+          runs={panel.runs}
+          filteredRuns={panel.filteredRuns}
+          brainKeys={panel.brainKeys}
+          appliedRunId={panel.appliedRunId}
+          sampleMedia={panel.sampleMedia}
+          onApply={panel.handleApply}
+          onClone={panel.handleClone}
+          onDelete={panel.handleDelete}
+          onBulkDelete={panel.handleBulkDelete}
+          onRename={panel.handleRename}
+          onRefresh={panel.refreshRuns}
+          onNewSearch={panel.handleNewSearch}
+          onSettings={panel.navigateSimilarityIndex}
+          onGetSampleMedia={panel.getSampleMedia}
+          filterState={panel.filterState}
+          onFilterChange={panel.setFilterState}
+          canFilterByOwner={panel.canFilterByOwner}
+          selection={panel.selection}
+        />
       )}
-      {page === "new_search" && (
-        <div style={s.newSearchContainer}>
-          <div style={s.emptyState}>
-            <p>New Search form will appear here</p>
-            <button onClick={navigateHome}>Back</button>
-          </div>
-        </div>
+      {panel.page === "new_search" && (
+        <NewSearch
+          brainKeys={panel.brainKeys}
+          cloneConfig={panel.cloneConfig}
+          isPatchesView={panel.isPatchesView}
+          isReadOnly={panel.isReadOnly}
+          onBack={panel.navigateHome}
+          onSubmitted={panel.handleSubmitted}
+        />
       )}
-      {page === "similarity_index" && (
-        <div style={s.newSearchContainer}>
-          <div style={s.emptyState}>
-            <p>Similarity Index will appear here</p>
-            <button onClick={navigateHome}>Back</button>
-          </div>
-        </div>
+      {panel.page === "similarity_index" && (
+        <SimilarityIndex
+          brainKeys={panel.brainKeys}
+          onBack={panel.navigateHome}
+        />
       )}
-    </div>
+    </FullSize>
   );
 }
 
@@ -46,18 +74,18 @@ export default function SimilaritySearchView(props: SimilaritySearchViewProps) {
 
   if (!panelId) {
     return (
-      <div style={s.fullCenter}>
+      <FullCenter>
         <Spinner />
-      </div>
+      </FullCenter>
     );
   }
 
   return (
     <Suspense
       fallback={
-        <div style={s.fullCenter}>
+        <FullCenter>
           <Spinner />
-        </div>
+        </FullCenter>
       }
     >
       <SimilaritySearchReady {...props} />

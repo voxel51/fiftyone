@@ -216,10 +216,10 @@ export class Scene2D {
 
     // Listen for OVERLAY_ESTABLISH events to unset bounds of new overlay
     this.registerEventHandler("lighter:overlay-establish", (event) => {
-      const { overlay, bounds } = event;
+      const { handler, bounds } = event;
 
-      if (overlay) {
-        const addCommand = new AddOverlayCommand(this, overlay, bounds);
+      if (handler) {
+        const addCommand = new AddOverlayCommand(this, handler, bounds);
 
         CommandContextManager.instance()
           .getActiveContext()

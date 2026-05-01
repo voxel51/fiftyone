@@ -4,11 +4,9 @@
 
 import { Suspense } from "react";
 import { useFo3dContext } from "../fo3d/context";
+import { computeFrustumDepth, isValidStaticTransform } from "./builders";
 import { Frustum } from "./Frustum";
-import {
-  useComputeFrustumGeometry,
-  useFetchFrustumParameters,
-} from "./hooks/internal";
+import { useFetchFrustumParameters } from "./hooks/internal";
 import { useFrustums } from "./hooks/public";
 
 /**
@@ -25,10 +23,9 @@ export function FrustumCollection() {
   const { sceneBoundingBox } = useFo3dContext();
 
   const { data: frustumData, isLoading, error } = useFetchFrustumParameters();
-
-  const { geometries } = useComputeFrustumGeometry(
-    frustumData,
-    sceneBoundingBox
+  const depth = computeFrustumDepth(sceneBoundingBox);
+  const visibleFrustums = frustumData.filter((frustum) =>
+    isValidStaticTransform(frustum.staticTransform)
   );
 
   if (!isVisible) {
@@ -39,26 +36,17 @@ export function FrustumCollection() {
     return null;
   }
 
-  if (!frustumData.length) {
+  if (!visibleFrustums.length) {
     return null;
   }
 
   return (
     <group name="camera-frustums">
-      {frustumData.map((frustum) => {
-        const geometry = geometries.get(frustum.sliceName);
-
-        // Skip if geometry couldn't be computed (invalid static transform)
-        if (!geometry) {
-          return null;
-        }
-
-        return (
-          <Suspense key={frustum.sliceName} fallback={null}>
-            <Frustum frustumData={frustum} geometry={geometry} />
-          </Suspense>
-        );
-      })}
+      {visibleFrustums.map((frustum) => (
+        <Suspense key={frustum.sliceName} fallback={null}>
+          <Frustum frustumData={frustum} depth={depth} />
+        </Suspense>
+      ))}
     </group>
   );
 }
