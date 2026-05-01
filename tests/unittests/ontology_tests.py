@@ -198,25 +198,6 @@ class OntologyDocumentTests(unittest.TestCase):
         self.assertEqual(restored.version, doc.version)
         self.assertEqual(restored.root, doc.root)
 
-    def test_last_modified_at_auto_updates(self):
-        doc = OntologyDocument(
-            name="timestamp_test",
-            version=1,
-            type="taxonomy",
-            root={"name": "root"},
-        )
-        doc.save()
-        self.assertIsNotNone(doc.created_at)
-
-        original_modified = doc.last_modified_at
-
-        doc.description = "updated"
-        doc.save()
-        doc.reload()
-
-        self.assertIsNotNone(doc.last_modified_at)
-        self.assertNotEqual(doc.last_modified_at, original_modified)
-
     def test_same_name_different_types(self):
         OntologyDocument(
             name="shared_name",
@@ -340,6 +321,97 @@ class OntologyDocumentTests(unittest.TestCase):
         doc.delete()
 
         self.assertEqual(OntologyDocument.objects(name="to_delete").count(), 0)
+
+    def test_save_creates_new_version(self):
+        doc = OntologyDocument(
+            name="versioning_test",
+            version=1,
+            type="taxonomy",
+            root={"name": "root"},
+        )
+        doc.save()
+        self.assertIsNotNone(doc.created_at)
+        self.assertEqual(doc.version, 1)
+        original_id = doc.id
+
+        # Saving an existing doc creates a new version and re-points self
+        # at the new row.
+        doc.description = "updated"
+        result = doc.save()
+
+        self.assertIs(result, doc)
+        self.assertEqual(doc.version, 2)
+        self.assertNotEqual(doc.id, original_id)
+        self.assertIsNotNone(doc.created_at)
+
+        # Both versions exist in the database
+        all_versions = OntologyDocument.objects(name="versioning_test")
+        self.assertEqual(all_versions.count(), 2)
+
+        # Original row is unchanged
+        original = OntologyDocument.objects.get(id=original_id)
+        self.assertIsNone(original.description)
+        self.assertEqual(original.version, 1)
+
+        # New row has the update
+        latest = OntologyDocument.objects.get(id=doc.id)
+        self.assertEqual(latest.description, "updated")
+        self.assertEqual(latest.version, 2)
+
+    def test_save_bumps_version_across_case_only_rename(self):
+        doc = OntologyDocument(
+            name="My Ontology",
+            version=1,
+            type="taxonomy",
+            root={"name": "root"},
+        )
+        doc.save()
+        original_slug = doc.slug
+
+        # Renaming to a case variant of the original name keeps the same slug;
+        # the next version should chain off the existing slug, not restart at 1.
+        doc.name = "my ontology"
+        doc.save()
+
+        self.assertEqual(doc.slug, original_slug)
+        self.assertEqual(doc.version, 2)
+        self.assertEqual(
+            OntologyDocument.objects(slug=original_slug).count(), 2
+        )
+
+    def test_save_rejects_slug_change(self):
+        doc = OntologyDocument(
+            name="cars",
+            version=1,
+            type="taxonomy",
+            root={"name": "root"},
+        )
+        doc.save()
+
+        # Changing to a name that produces a different slug breaks lineage —
+        # rename_ontology() is the supported way to rename.
+        doc.name = "vehicles"
+        with self.assertRaises(ValueError):
+            doc.save()
+
+        # Failed save leaves only the original row.
+        self.assertEqual(OntologyDocument.objects().count(), 1)
+
+    def test_save_returns_self(self):
+        doc = OntologyDocument(
+            name="returns_self",
+            version=1,
+            type="taxonomy",
+            root={"name": "root"},
+        )
+        # New save also returns the same instance.
+        self.assertIs(doc.save(), doc)
+
+        # Versioned save updates and returns the same instance.
+        doc.description = "v2"
+        self.assertIs(doc.save(), doc)
+        self.assertEqual(doc.version, 2)
+        self.assertEqual(doc.description, "v2")
 
 
 if __name__ == "__main__":

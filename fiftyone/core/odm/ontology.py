@@ -6,8 +6,11 @@ Ontology documents.
 |
 """
 
+from __future__ import annotations
+
 from enum import Enum
 from datetime import datetime, timezone
+from typing import Any
 
 import fiftyone.core.utils as fou
 from fiftyone.core.fields import (
@@ -69,15 +72,66 @@ class OntologyDocument(Document):
     created_at = DateTimeField()
     last_modified_at = DateTimeField()
 
-    def save(self, *args, **kwargs):
+    def save(self, *args: Any, **kwargs: Any) -> OntologyDocument:
         now = datetime.now(timezone.utc)
 
         if self.name is not None:
             self.slug = fou.to_slug(self.name)
 
-        if not self.in_db and self.created_at is None:
+        # If this document already exists in MongoDB, don't update it in-place;
+        # create and save a new (slug, version) document instead.
+        if self.in_db:
+            self._reject_slug_change()
+            new_doc = self._save_as_new_version(now, *args, **kwargs)
+            # Re-point self at the newly written version so callers retain a
+            # live reference to the latest row, matching the standard
+            # ``doc.save()`` contract.
+            self.id = new_doc.id
+            self.reload()
+            return self
+
+        if self.created_at is None:
             self.created_at = now
 
         self.last_modified_at = now
 
         return super().save(*args, **kwargs)
+
+    # pylint disable: mongoengine's ``objects`` queryset manager is attached
+    # dynamically and not introspectable by pylint.
+    def _reject_slug_change(  # pylint: disable=no-member
+        self,
+    ) -> None:
+        """Raises if the in-memory slug differs from the persisted slug.
+
+        Slug is the lineage key for append-only versioning; renames must go
+        through :func:`fiftyone.core.ontology.rename_ontology`, which updates
+        all versions in bulk.
+        """
+        persisted = OntologyDocument.objects(id=self.id).only("slug").first()
+        if persisted is not None and self.slug != persisted.slug:
+            raise ValueError(
+                "Cannot change ontology slug via save(); use "
+                "rename_ontology() to rename across all versions"
+            )
+
+    # pylint disable: mongoengine's ``objects`` queryset manager is attached
+    # dynamically and not introspectable by pylint.
+    def _save_as_new_version(  # pylint: disable=no-member
+        self, now: datetime, *args: Any, **kwargs: Any
+    ) -> OntologyDocument:
+        # Append-only versioning: create a new document instead of updating
+        # the existing one.
+        latest = (
+            OntologyDocument.objects(slug=self.slug)
+            .order_by("-version")
+            .only("version")
+            .first()
+        )
+        next_version = (latest.version + 1) if latest else 1
+
+        new_doc = self.copy_with_new_id()
+        new_doc.version = next_version
+        new_doc.created_at = now
+        new_doc.last_modified_at = now
+        return super(OntologyDocument, new_doc).save(*args, **kwargs)
