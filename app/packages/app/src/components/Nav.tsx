@@ -1,3 +1,4 @@
+import { useTrackEvent } from "@fiftyone/analytics";
 import {
   DiscordLink,
   DocsLink,
@@ -6,12 +7,12 @@ import {
   IconButton,
   iconContainer,
 } from "@fiftyone/components";
-import { useTrackEvent } from "@fiftyone/analytics";
 import { ViewBar } from "@fiftyone/core";
+import { OperatorPlacements, types } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
 import { useRefresh } from "@fiftyone/state";
 import { DarkMode, LightMode } from "@mui/icons-material";
-import { useColorScheme } from "@mui/material";
+import { Box, useColorScheme } from "@mui/material";
 import React, { Suspense, useMemo } from "react";
 import { useFragment, usePaginationFragment } from "react-relay";
 import { useDebounce } from "react-use";
@@ -120,6 +121,9 @@ const Nav: React.FC<
           <DiscordLink />
           <GitHubLink />
           <DocsLink />
+          <Box ml={1}> 
+            <OperatorPlacements place={types.Places.HEADER_ACTIONS} />
+          </Box>
         </div>
       </Header>
       {children}
