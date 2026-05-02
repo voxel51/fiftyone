@@ -32,17 +32,20 @@ def hydrate_applied_ontology(label_schema: dict) -> dict:
     ``_source: <ontology_name>`` marker. Attributes are matched by ``name``
     and ontology values win on collision.
 
-    If the schema has no ``applied_ontology`` reference, or if the
-    reference is dangling or points at a non-annotation ontology, the
-    schema is returned unchanged. A dangling reference is logged at
-    WARNING so operators can detect deleted-ontology scenarios.
+    If the schema has no ``applied_ontology`` reference, the schema is
+    returned unchanged. If the reference is dangling (deleted ontology)
+    or points at a non-annotation ontology, the ``applied_ontology`` key
+    is stripped from the returned schema and a WARNING is logged. This
+    lets a subsequent save silently persist a clean schema rather than
+    failing validation on the dangling reference.
 
     Args:
         label_schema: a label schema dict
 
     Returns:
-        a hydrated copy of ``label_schema``, or ``label_schema`` unchanged
-        when there is nothing to hydrate
+        a hydrated copy of ``label_schema``, a copy with
+        ``applied_ontology`` stripped if the reference is dangling, or
+        the schema unchanged when there is nothing to do
     """
     ontology_name = label_schema.get(foac.APPLIED_ONTOLOGY)
     if ontology_name is None:
@@ -56,23 +59,26 @@ def hydrate_applied_ontology(label_schema: dict) -> dict:
     except ValueError:
         logger.warning(
             "applied_ontology '%s' does not resolve to a known ontology; "
-            "returning label schema without hydration",
+            "stripping the dangling reference from the returned schema",
             ontology_name,
         )
-        # do not cause app failure on mis-configuration
-        return label_schema
+        return _strip_applied_ontology(label_schema)
 
     if not ontology.is_annotation_ontology:
         logger.warning(
-            "applied_ontology '%s' does not resolve to an Annotation Ontology"
-            " ontology; returning label schema without hydration",
+            "applied_ontology '%s' does not resolve to an Annotation "
+            "Ontology; stripping the reference from the returned schema",
             ontology_name,
         )
-        # do not cause app failure on mis-configuration
-
-        return label_schema
+        return _strip_applied_ontology(label_schema)
 
     return _merge(label_schema, ontology)
+
+
+def _strip_applied_ontology(label_schema: dict) -> dict:
+    cleaned = dict(label_schema)
+    cleaned.pop(foac.APPLIED_ONTOLOGY, None)
+    return cleaned
 
 
 def dehydrate_applied_ontology(label_schema: dict) -> dict:
