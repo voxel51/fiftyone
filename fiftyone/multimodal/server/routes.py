@@ -62,6 +62,12 @@ def _get_required_path_param(request: Request, field: str) -> str:
 
 
 def _get_required_body_field(data: dict, field: str) -> str:
+    if not isinstance(data, dict):
+        raise HTTPException(
+            status_code=400,
+            detail="JSON body must be an object",
+        )
+
     value = data.get(field)
 
     return _require_string(value, field)
