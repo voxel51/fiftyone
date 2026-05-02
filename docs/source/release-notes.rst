@@ -3,6 +3,67 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.18.0
+--------------------------
+*Released May 1, 2026*
+
+Includes all updates from :ref:`FiftyOne 1.15.0 <release-notes-v1.15.0>`, plus:
+
+Core
+
+- Added support for :ref:`Service Accounts <enterprise-service-accounts>`,
+  allowing teams to create non-human accounts designed for programmatic,
+  automated, or machine-to-machine access to FiftyOne Enterprise
+- Removed immediate execution option from builtin operators that should always
+  be :ref:`delegated <enterprise-delegated-operations>` due to their compute
+  needs
+- Fixed a bug where nonstandard file prefixes could cause a deployment to hang
+  indefinitely and crash silently
+- Fixed a misleading error on the login page
+
+App
+
+- Added an Orchestrators tab to the Settings page that lists all configured
+  :ref:`Orchestrators <enterprise-delegated-orchestrator>` and provides links
+  for admins to deploy new orchestrators
+- Added a "Your recent runs" component to the dataset listing page that
+  provides quick access to your most recent
+  :ref:`delegated operations <enterprise-delegated-operations>`
+- Upgraded to the Logs tab of a delegated operation's
+  :ref:`Run page <enterprise-run-page>` to support live streaming during
+  execution
+- Added more metrics to delegated operation logs to assist with debugging
+  resource usage
+
+.. _release-notes-v1.15.0:
+
+FiftyOne 1.15.0
+---------------
+*Released May 1, 2026*
+
+App
+
+- Added a :ref:`Similarity Search Panel <app-similarity-search-panel>` that
+  provides a full-featured experience for performing visual/text similarity
+  searches in the App, including a list of historical searches, the ability to
+  alt-click in the grid to add negative examples to a search, and much more
+- You can now create :ref:`3D datasets <3d-datasets>` composed of samples
+  whose filepaths point directly to 3D media assets such as meshes and point
+  clouds. Just declare the sample's media type as `media_type="3d"`
+- The App and SDK can now automatically resolve unambiguous `source -> world`
+  static transforms through intermediate frames
+
+Plugins
+
+- Optimized the
+  :class:`FileExplorerView <fiftyone.operators.types.FileExplorerView>`
+  component to provide faster load times when working with folders that contain
+  many files/subfolders
+- Plugins can now register
+  :ref:`custom media renderers <custom-sample-renderers>` to support
+  visualizing non-native media types in the App grid/modal
+  `#7164 <https://github.com/voxel51/fiftyone/pull/7164>`_
+
 FiftyOne Enterprise 2.17.2
 --------------------------
 *Released April 22, 2026*
