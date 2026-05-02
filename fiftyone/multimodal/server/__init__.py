@@ -8,12 +8,14 @@ Server scaffolding for multimodal workflows.
 
 from .routes import (
     MultimodalRoutes,
+    PlaybackPlanEndpoint,
     PROTOBUF_MEDIA_TYPE,
     SceneInventoryEndpoint,
 )
 
 __all__ = [
     "MultimodalRoutes",
+    "PlaybackPlanEndpoint",
     "PROTOBUF_MEDIA_TYPE",
     "SceneInventoryEndpoint",
 ]

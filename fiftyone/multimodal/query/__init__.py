@@ -6,6 +6,7 @@ Query scaffolding for multimodal workflows.
 |
 """
 
+from .playback_plan import resolve_playback_plan
 from .scene_inventory import resolve_scene_inventory
 
-__all__ = ["resolve_scene_inventory"]
+__all__ = ["resolve_playback_plan", "resolve_scene_inventory"]
