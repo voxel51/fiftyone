@@ -143,7 +143,7 @@ export class ThreeDElement extends BaseElement<ThreeDState, HTMLImageElement> {
     this.ctx.stroke();
 
     // a small elevated '3D' logo at the top right
-    const logoText = this.isFo3d ? "3D" : "PCD";
+    const logoText = "3D";
     const logoFont = "bold 18px system-ui, sans-serif";
     const paddingX = 2;
     const margin = 10;

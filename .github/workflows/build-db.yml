@@ -65,14 +65,14 @@ jobs:
           cd package/db
           python -Im build --sdist
       - name: Upload
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: ${{ matrix.platform == 'sdist' }}
         with:
           name: dist-${{ matrix.platform }}
           path: package/db/dist/*.tar.gz
       - name: Upload wheel
         if: ${{ matrix.platform != 'sdist' }}
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: dist-${{ matrix.platform }}
           path: package/db/dist/*.whl
@@ -86,7 +86,7 @@ jobs:
       - name: Clone fiftyone
         uses: actions/checkout@v6
       - name: Download fiftyone-db
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: dist-sdist
           path: downloads
@@ -115,7 +115,7 @@ jobs:
       id-token: write
     steps:
       - name: Download
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           pattern: dist-*
           merge-multiple: true
@@ -126,4 +126,4 @@ jobs:
       # See
       # [fiftyone-db](https://pypi.org/manage/project/fiftyone-db/settings/publishing/)
       - name: Publish
-        uses: pypa/gh-action-pypi-publish@v1.13.0
+        uses: pypa/gh-action-pypi-publish@v1.14.0

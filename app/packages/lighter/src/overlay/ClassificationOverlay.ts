@@ -2,16 +2,18 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import { Selectable } from "../selection/Selectable";
+import { BaseOverlay } from "./BaseOverlay";
+
+import type { Renderer2D } from "../renderer/Renderer2D";
+import type { Point, RawLookerLabel, RenderMeta } from "../types";
+
 import {
   LABEL_ARCHETYPE_PRIORITY,
   TAB_DASH_HOVERED,
   TAB_DASH_SELECTED,
   TAB_DASH_WIDTH,
 } from "../constants";
-import type { Renderer2D } from "../renderer/Renderer2D";
-import { Selectable } from "../selection/Selectable";
-import { Point, RawLookerLabel, Rect, RenderMeta } from "../types";
-import { BaseOverlay } from "./BaseOverlay";
 
 /**
  * Options for creating a classification overlay.
@@ -23,14 +25,64 @@ export interface ClassificationOptions {
 }
 
 /**
+ * Per-channel registry of active classification overlays.
+ * Keyed by event channel so overlays from different scenes don't interfere.
+ */
+const channelRegistry = new Map<
+  string | undefined,
+  Map<string, ClassificationOverlay>
+>();
+
+function getChannelMap(
+  channel: string | undefined
+): Map<string, ClassificationOverlay> {
+  let map = channelRegistry.get(channel);
+  if (!map) {
+    map = new Map();
+    channelRegistry.set(channel, map);
+  }
+  return map;
+}
+
+/**
  * Classification overlay implementation with selection support.
  */
 export class ClassificationOverlay extends BaseOverlay implements Selectable {
   private isSelectedState = false;
-  private textBounds?: Rect;
+  private channel: string | undefined = undefined;
 
   constructor(options: ClassificationOptions) {
     super(options.id, options.field, options.label);
+  }
+
+  setEventChannel(eventChannel: string | undefined): void {
+    super.setEventChannel(eventChannel);
+    this.channel = eventChannel;
+
+    getChannelMap(this.channel).set(this.id, this);
+  }
+
+  // The "stack index" is the order in which Classifications are drawn to the scene.
+  // They are displayed vertically in the upper-left of the scene and sorted alphabetically by label class.
+  private getStackIndex(): number {
+    const siblings = getChannelMap(this.channel);
+    const alphabetical = [...siblings.values()].sort((a, b) =>
+      (a.label?.label ?? "").localeCompare(b.label?.label ?? "")
+    );
+
+    return alphabetical.indexOf(this);
+  }
+
+  public get label(): RawLookerLabel {
+    return super.label;
+  }
+
+  public set label(value: RawLookerLabel) {
+    super.label = value;
+
+    getChannelMap(this.channel).forEach((classificationOverlay) =>
+      classificationOverlay.markDirty()
+    );
   }
 
   getCursor(_worldPoint: Point, _scale: number): string {
@@ -91,7 +143,7 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
         fontStyle: hasLabel ? "normal" : "italic",
         backgroundColor,
         anchor: { vertical: "top" },
-        offset: { bottom: renderMeta.overlayIndex },
+        offset: { bottom: this.getStackIndex() },
         rounded: 4,
         tab: "right",
         dashline,
@@ -121,5 +173,30 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
 
   getSelectionPriority(): number {
     return LABEL_ARCHETYPE_PRIORITY.CLASSIFICATION;
+  }
+
+  getTooltipInfo(): {
+    color: string;
+    field: string;
+    label: any;
+    type: string;
+  } | null {
+    return {
+      color: this.getCurrentStyle()?.fillStyle ?? "#ffffff",
+      field: this.field || "unknown",
+      label: this.label,
+      type: "Classification",
+    };
+  }
+
+  destroy(): void {
+    const map = getChannelMap(this.channel);
+    map.delete(this.id);
+
+    if (map.size === 0) {
+      channelRegistry.delete(this.channel);
+    }
+
+    super.destroy();
   }
 }

@@ -2,8 +2,8 @@
  * Custom hooks for SchemaManager
  */
 
-import { useOperatorExecutor } from "@fiftyone/operators";
 import {
+  activeField,
   datasetSampleCount,
   groupMediaTypesMap,
   isGroup,
@@ -12,9 +12,13 @@ import {
   useNotification,
   usePreferredGroupAnnotationSlice,
 } from "@fiftyone/state";
+import {
+  useSchemaManager,
+  type UpdateSchemaRequest,
+} from "../useSchemaManager";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useAtomCallback } from "jotai/utils";
-import { useRecoilValue } from "recoil";
+import { useRecoilCallback, useRecoilValue } from "recoil";
 import { isEqual } from "lodash";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -29,7 +33,7 @@ import {
   labelSchemaData,
   labelSchemasData,
   removeFromActiveSchemas,
-  showModal,
+  schemaManagerDisplayedAtom,
 } from "../state";
 import {
   draftJsonContent,
@@ -80,17 +84,12 @@ export const useSetCurrentField = () => {
  * Hook to control the schema manager modal visibility
  */
 export const useSchemaManagerModal = () => {
-  const [isOpen, setIsOpen] = useAtom(showModal);
-  const open = useCallback(() => setIsOpen(true), [setIsOpen]);
-  const close = useCallback(() => setIsOpen(false), [setIsOpen]);
-  return { isOpen, setIsOpen, open, close };
-};
+  const [schemaManagerDisplayed, setSchemaManagerDisplayed] = useAtom(schemaManagerDisplayedAtom);
 
-/**
- * Hook to show the schema manager modal
- */
-export const useShowSchemaManagerModal = () => {
-  return useSetAtom(showModal);
+  const openSchemaManager = useCallback(() => setSchemaManagerDisplayed(true), [setSchemaManagerDisplayed]);
+  const closeSchemaManager = useCallback(() => setSchemaManagerDisplayed(false), [setSchemaManagerDisplayed]);
+
+  return { schemaManagerDisplayed, openSchemaManager, closeSchemaManager };
 };
 
 // =============================================================================
@@ -204,6 +203,24 @@ export const useActiveFieldsMetadata = () => {
 export const useIsFieldActive = (field: string) => {
   const activeFields = useAtomValue(activeLabelSchemas);
   return activeFields?.includes(field) ?? false;
+};
+
+/**
+ * Hook that returns a callback to activate a field in the Explore sidebar.
+ *
+ * Sets the Recoil `activeField` source of truth. The Sidebar.tsx
+ * Recoil→Jotai sync effect automatically propagates this change to the
+ * Jotai `exploreActiveFields` atom, ensuring the field becomes visible
+ * in the Annotate sidebar via `visibleLabelSchemas`.
+ */
+export const useAddToExploreActiveFields = () => {
+  return useRecoilCallback(
+    ({ set }) =>
+      (field: string) => {
+        set(activeField({ modal: true, path: field }), true);
+      },
+    []
+  );
 };
 
 // =============================================================================
@@ -337,8 +354,7 @@ export const useToggleFieldVisibility = (field: string) => {
   const addToActive = useSetAtom(addToActiveSchemas);
   const removeFromActive = useSetAtom(removeFromActiveSchemas);
   const activeFields = useAtomValue(activeLabelSchemas);
-  const activateOperator = useOperatorExecutor("activate_label_schemas");
-  const deactivateOperator = useOperatorExecutor("deactivate_label_schemas");
+  const { activateSchemas, deactivateSchemas } = useSchemaManager();
 
   const isActive = activeFields?.includes(field) ?? false;
 
@@ -346,36 +362,22 @@ export const useToggleFieldVisibility = (field: string) => {
     const fieldSet = new Set([field]);
     if (isActive) {
       removeFromActive(fieldSet);
-      deactivateOperator.execute(
-        { fields: [field] },
-        {
-          callback: (result) => {
-            if (result.error) {
-              addToActive(fieldSet); // rollback on failure
-            }
-          },
-        }
-      );
+      deactivateSchemas({ fields: [field] }).catch(() => {
+        addToActive(fieldSet); // rollback on failure
+      });
     } else {
       addToActive(fieldSet);
-      activateOperator.execute(
-        { fields: [field] },
-        {
-          callback: (result) => {
-            if (result.error) {
-              removeFromActive(fieldSet); // rollback on failure
-            }
-          },
-        }
-      );
+      activateSchemas({ fields: [field] }).catch(() => {
+        removeFromActive(fieldSet); // rollback on failure
+      });
     }
   }, [
     field,
     isActive,
     addToActive,
     removeFromActive,
-    activateOperator,
-    deactivateOperator,
+    activateSchemas,
+    deactivateSchemas,
   ]);
 
   return { isActive, toggle };
@@ -390,13 +392,21 @@ export const useToggleFieldVisibility = (field: string) => {
  */
 export const useActivateFields = () => {
   const addToActiveSchema = useSetAtom(addToActiveSchemas);
+  const removeFromActiveSchema = useSetAtom(removeFromActiveSchemas);
   const [selected, setSelected] = useAtom(selectedHiddenFields);
-  const activateFields = useOperatorExecutor("activate_label_schemas");
+  const { activateSchemas } = useSchemaManager();
   const setMessage = useNotification();
 
   return useCallback(() => {
+    const fields = Array.from(selected);
     addToActiveSchema(selected);
-    activateFields.execute({ fields: Array.from(selected) });
+    activateSchemas({ fields }).catch(() => {
+      removeFromActiveSchema(selected); // rollback on failure
+      setMessage({
+        msg: "Failed to activate fields",
+        variant: "error",
+      });
+    });
     setSelected(new Set());
     setMessage({
       msg: `${selected.size} schema${
@@ -404,21 +414,36 @@ export const useActivateFields = () => {
       } moved to active fields`,
       variant: "success",
     });
-  }, [activateFields, addToActiveSchema, selected, setSelected, setMessage]);
+  }, [
+    activateSchemas,
+    addToActiveSchema,
+    removeFromActiveSchema,
+    selected,
+    setSelected,
+    setMessage,
+  ]);
 };
 
 /**
  * Hook to deactivate (move to hidden) selected active fields
  */
 export const useDeactivateFields = () => {
+  const addToActiveSchema = useSetAtom(addToActiveSchemas);
   const removeFromActiveSchema = useSetAtom(removeFromActiveSchemas);
   const [selected, setSelected] = useAtom(selectedActiveFields);
-  const deactivateFields = useOperatorExecutor("deactivate_label_schemas");
+  const { deactivateSchemas } = useSchemaManager();
   const setMessage = useNotification();
 
   return useCallback(() => {
+    const fields = Array.from(selected);
     removeFromActiveSchema(selected);
-    deactivateFields.execute({ fields: Array.from(selected) });
+    deactivateSchemas({ fields }).catch(() => {
+      addToActiveSchema(selected); // rollback on failure
+      setMessage({
+        msg: "Failed to deactivate fields",
+        variant: "error",
+      });
+    });
     setSelected(new Set());
     setMessage({
       msg: `${selected.size} schema${
@@ -427,7 +452,8 @@ export const useDeactivateFields = () => {
       variant: "success",
     });
   }, [
-    deactivateFields,
+    addToActiveSchema,
+    deactivateSchemas,
     removeFromActiveSchema,
     selected,
     setSelected,
@@ -448,11 +474,10 @@ export const useFullSchemaEditor = () => {
   const [errors, setErrors] = useAtom(jsonValidationErrors);
   const [isValidating, setIsValidating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const setShowModal = useSetAtom(showModal);
+  const { closeSchemaManager } = useSchemaManagerModal();
   const setMessage = useNotification();
 
-  const validate = useOperatorExecutor("validate_label_schemas");
-  const updateSchema = useOperatorExecutor("update_label_schema");
+  const { validateSchemas, updateSchema: updateSchemaOp } = useSchemaManager();
 
   // Reset JSON editor state on unmount
   useEffect(() => {
@@ -507,16 +532,20 @@ export const useFullSchemaEditor = () => {
           }
         }
 
-        validate.execute(
-          { label_schemas: labelSchemas },
-          {
-            skipErrorNotification: true,
-            callback: (result) => {
-              setErrors(result.result?.errors ?? []);
-              setIsValidating(false);
-            },
-          }
-        );
+        validateSchemas({ label_schemas: labelSchemas })
+          .then((result) => {
+            setErrors(result?.errors ?? []);
+          })
+          .catch((error) => {
+            setErrors([
+              error instanceof Error
+                ? error.message
+                : "Failed to validate schema",
+            ]);
+          })
+          .finally(() => {
+            setIsValidating(false);
+          });
       } catch (e) {
         if (e instanceof SyntaxError) {
           setErrors([e.message]);
@@ -524,7 +553,7 @@ export const useFullSchemaEditor = () => {
         setIsValidating(false);
       }
     },
-    [setDraftJson, validate, setErrors]
+    [setDraftJson, validateSchemas, setErrors]
   );
 
   const save = useCallback(async () => {
@@ -542,17 +571,15 @@ export const useFullSchemaEditor = () => {
       const parsed = JSON.parse(draftJson);
 
       // Update each field's label_schema
-      const updates: Promise<void>[] = [];
+      const updates: Promise<unknown>[] = [];
       for (const [field, data] of Object.entries(parsed)) {
         if (data && typeof data === "object" && "label_schema" in data) {
           const labelSchema = (data as { label_schema: unknown }).label_schema;
           updates.push(
-            new Promise((resolve) => {
-              updateSchema.execute(
-                { field, label_schema: labelSchema },
-                { callback: () => resolve() }
-              );
-            })
+            updateSchemaOp({
+              field,
+              label_schema: labelSchema,
+            } as UpdateSchemaRequest)
           );
         }
       }
@@ -566,7 +593,7 @@ export const useFullSchemaEditor = () => {
         msg: "Schema changes saved",
         variant: "success",
       });
-      setShowModal(false);
+      closeSchemaManager();
     } catch (e) {
       setIsSaving(false);
       setMessage({
@@ -577,11 +604,11 @@ export const useFullSchemaEditor = () => {
   }, [
     draftJson,
     errors,
-    updateSchema,
+    updateSchemaOp,
     setDraftJson,
     setErrors,
     setMessage,
-    setShowModal,
+    closeSchemaManager,
   ]);
 
   const discard = useCallback(() => {

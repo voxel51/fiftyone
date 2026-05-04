@@ -1,0 +1,214 @@
+"""
+Similarity search run manager.
+
+| Copyright 2017-2026, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
+
+import logging
+import uuid
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
+
+from bson import ObjectId
+
+from fiftyone.operators.store import ExecutionStore
+
+from .constants import STORE_NAME, RunStatus
+
+logger = logging.getLogger(__name__)
+
+
+def get_head_dataset_id(dataset):
+    """Get the head dataset ID for a given dataset or a snapshot.
+
+    Args:
+        dataset: the dataset instance
+
+    Returns:
+        the head dataset ID as a string
+    """
+    dataset_id = str(dataset._doc.id)
+    return dataset_id
+
+
+class RunManager:
+    """Manager class for persisting and retrieving similarity search runs."""
+
+    _RUN_PREFIX = "run:"
+    _OPID_PREFIX = "opid:"
+
+    # Fields too large for listing — only needed by get_run / apply_run
+    _HEAVY_FIELDS = {"result_ids", "result_view"}
+
+    def __init__(self, ctx):
+        dataset_id = get_head_dataset_id(ctx.dataset)
+        self._store = ExecutionStore.create(STORE_NAME, ObjectId(dataset_id))
+
+    def create_run(self, run_params: Dict[str, Any]) -> Dict[str, Any]:
+        """Create a new run entry.
+
+        Args:
+            run_params: run configuration parameters
+
+        Returns:
+            the full run data dict
+        """
+        run_id = str(uuid.uuid4())
+        now = datetime.now(timezone.utc).isoformat()
+
+        run_data = {
+            "run_id": run_id,
+            "run_name": run_params.get("run_name") or f"Search {now[:16]}",
+            "status": RunStatus.PENDING,
+            "brain_key": self._require_param(run_params, "brain_key"),
+            "query_type": self._require_param(run_params, "query_type"),
+            "query": run_params.get("query"),
+            "k": run_params.get("k"),
+            "reverse": run_params.get("reverse", False),
+            "dist_field": run_params.get("dist_field"),
+            "patches_field": run_params.get("patches_field"),
+            "result_ids": [],
+            "result_view": None,
+            "result_count": 0,
+            "creation_time": now,
+            "start_time": None,
+            "end_time": None,
+            "negative_query_ids": run_params.get("negative_query_ids"),
+            "operator_run_id": None,
+            "status_details": None,
+            "created_by": run_params.get("created_by"),
+            "created_by_name": run_params.get("created_by_name"),
+        }
+        self.set_run(run_id, run_data)
+        return run_data
+
+    def get_run(self, run_id: str) -> Optional[Dict]:
+        """Get a run by ID.
+
+        Args:
+            run_id: the run ID
+
+        Returns:
+            the run data dict, or None
+        """
+        return self._store.get(self._key(run_id))
+
+    def set_run(self, run_id: str, run_data: Dict[str, Any]):
+        """Write a full run record to the store (atomic upsert).
+
+        Args:
+            run_id: the run ID
+            run_data: the complete run data dict
+        """
+        self._store.set(self._key(run_id), run_data)
+
+    def update_run(self, run_id: str, updates: Dict[str, Any]):
+        """Update fields on an existing run (read-modify-write).
+
+        For hot paths where the caller already holds the full run dict,
+        prefer mutating locally and calling :meth:`set_run` directly.
+
+        Args:
+            run_id: the run ID
+            updates: dict of fields to update
+        """
+        run = self.get_run(run_id)
+        if not run:
+            logger.warning("Attempted to update non-existent run %s", run_id)
+            return
+        run.update(updates)
+        self.set_run(run_id, run)
+
+    def set_operator_run_id(self, run_id: str, operator_run_id: str):
+        """Link a delegated operation ID to a run and create index key.
+
+        Args:
+            run_id: the run ID
+            operator_run_id: the delegated operation document ID
+        """
+        self.update_run(run_id, {"operator_run_id": operator_run_id})
+        self._store.set(f"{self._OPID_PREFIX}{operator_run_id}", run_id)
+
+    def find_run_by_operator_id(self, operator_run_id: str) -> Optional[Dict]:
+        """Find a run by its delegated operation ID. O(1) lookup.
+
+        Args:
+            operator_run_id: the delegated operation document ID
+
+        Returns:
+            the run data dict, or None
+        """
+        run_id = self._store.get(f"{self._OPID_PREFIX}{operator_run_id}")
+        if run_id:
+            return self.get_run(run_id)
+        return None
+
+    def delete_run(self, run_id: str):
+        """Delete a run and its index keys.
+
+        Args:
+            run_id: the run ID
+        """
+        run = self.get_run(run_id)
+        if not run:
+            return
+        if run.get("operator_run_id"):
+            self._store.delete(f"{self._OPID_PREFIX}{run['operator_run_id']}")
+        self._store.delete(self._key(run_id))
+
+    def list_runs(
+        self,
+        owner: Optional[str] = None,
+        current_user_id: Optional[str] = None,
+        can_manage: bool = True,
+    ) -> List[Dict]:
+        """List runs sorted by creation time (newest first).
+
+        Args:
+            owner: "mine" to restrict to runs whose ``created_by``
+                matches ``current_user_id``; "all" or ``None`` returns
+                every run.
+            current_user_id: the current user's id. Required when
+                ``owner == "mine"``; ignored otherwise.
+            can_manage: whether the current user has manage
+                permissions. Non-managers are always restricted to
+                their own runs regardless of ``owner``.
+
+        Returns:
+            list of run data dicts
+        """
+        # Users without manage permission can only see their own runs
+        if not can_manage:
+            owner = "mine"
+
+        filter_mine = owner == "mine" and bool(current_user_id)
+
+        keys = self._store.list_keys()
+        runs = []
+        for key in keys:
+            if not key.startswith(self._RUN_PREFIX):
+                continue
+            run = self._store.get(key)
+            if not run:
+                continue
+            if filter_mine and run.get("created_by") != current_user_id:
+                continue
+            # Strip heavy fields for listing
+            runs.append(
+                {k: v for k, v in run.items() if k not in self._HEAVY_FIELDS}
+            )
+
+        runs.sort(key=lambda r: r.get("creation_time", ""), reverse=True)
+        return runs
+
+    @staticmethod
+    def _require_param(params: Dict, key: str):
+        value = params.get(key)
+        if not value:
+            raise ValueError(f"'{key}' is required")
+        return value
+
+    def _key(self, run_id: str) -> str:
+        return f"{self._RUN_PREFIX}{run_id}"

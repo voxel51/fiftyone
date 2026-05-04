@@ -771,7 +771,20 @@ class LazyModule(types.ModuleType):
         self._module = None
         self._callback = callback
 
+    def __repr__(self):
+        if self._module is not None:
+            return repr(self._module)
+
+        return f"<module '{self.__name__}' (lazy)>"
+
     def __getattr__(self, item):
+        # Sphinx probes this marker while filtering autodoc members.
+        # We need special handling for Sphinx, as it will look for the
+        # __sphinx_mock__ attribute on all module-level objects, and we need
+        # that to raise an AttributeError to not err out
+        if item == "__sphinx_mock__":
+            raise AttributeError(item)
+
         if self._module is None:
             self._import_module()
 
@@ -2530,7 +2543,10 @@ def compute_filehash(filepath, method=None, chunk_size=None):
     Args:
         filepath: the path to the file
         method (None): an optional ``hashlib`` method to use. If not specified,
-            the builtin ``str.__hash__`` will be used
+            Python's builtin ``hash()`` on the file bytes will be used, which
+            returns an integer. This value may be unsafe to compare/display via
+            JavaScript due to numeric precision limits. If this is problematic,
+            pass ``method="sha1"`` to get a stable hexadecimal string digest.
         chunk_size (None): an optional chunk size to use to read the file, in
             bytes. Only applicable when a ``method`` is provided. The default
             is 64kB. If negative, the entire file is read at once
@@ -3220,11 +3236,38 @@ class ResponseStream(object):
     def seek(self, position, whence=io.SEEK_SET):
         if whence == io.SEEK_END:
             self._load_all()
-        else:
-            self._bytes.seek(position, whence)
+        self._bytes.seek(position, whence)
+        return self.tell()
 
     def tell(self):
         return self._bytes.tell()
+
+    def consume_size(self):
+        """Returns the total size of the response content in bytes but
+        may invalidate the stream for subsequent reads.
+
+        If a ``Content-Length`` header is available, it is returned directly.
+        Otherwise, remaining chunks are counted but discarded rather than
+        buffered into memory. This is more memory-efficient for large
+        responses when you only need the size, but the stream will be
+        unusable for subsequent reads after this call.
+
+        Returns:
+            the total size of the response content in bytes
+        """
+        size = self._response.headers.get("Content-Length")
+        if size is not None:
+            try:
+                size = int(size)
+                if size >= 0:
+                    return size
+            except Exception:
+                pass
+
+        self._bytes.seek(0, io.SEEK_END)
+        size = self.tell() + sum(map(len, self._iterator))
+
+        return size
 
     def _load_all(self):
         self._bytes.seek(0, io.SEEK_END)

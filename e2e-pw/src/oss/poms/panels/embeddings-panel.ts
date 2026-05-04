@@ -93,8 +93,8 @@ class EmebddingsAsserter {
       timeout: 2000,
     });
 
-    await this.embeddingsPom.lassoTool.click({ timeout: 500 });
+    await this.embeddingsPom.lassoTool.click();
     await this.embeddingsPom.selectAll();
-    await expect(this.panelPom.selectionCount).toBeVisible({ timeout: 500 });
+    await expect(this.panelPom.selectionCount).toBeVisible();
   }
 }

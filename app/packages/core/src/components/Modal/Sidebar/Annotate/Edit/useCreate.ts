@@ -5,6 +5,7 @@ import type {
   ClassificationOverlay,
 } from "@fiftyone/lighter";
 import { InteractiveDetectionHandler, useLighter } from "@fiftyone/lighter";
+import { ClassificationLabel, DetectionLabel } from "@fiftyone/looker";
 import type { AnnotationLabel } from "@fiftyone/state";
 import {
   CLASSIFICATION,
@@ -14,10 +15,9 @@ import {
 } from "@fiftyone/utilities";
 import { atom, getDefaultStore, useSetAtom } from "jotai";
 import { useCallback } from "react";
+import { isFieldReadOnly, labelSchemaData } from "../state";
 import type { LabelType } from "./state";
 import { defaultField, editing, savedLabel } from "./state";
-import { isFieldReadOnly, labelSchemaData } from "../state";
-import { ClassificationLabel, DetectionLabel } from "@fiftyone/looker";
 
 export interface CreateOptions {
   field?: string;
@@ -28,10 +28,7 @@ const useCreateAnnotationLabel = () => {
   const { scene, addOverlay, overlayFactory } = useLighter();
 
   return useCallback(
-    (
-      type: LabelType,
-      options?: CreateOptions
-    ): AnnotationLabel | undefined => {
+    (type: LabelType, options?: CreateOptions): AnnotationLabel | undefined => {
       const id = objectId();
       const store = getDefaultStore();
 
@@ -46,7 +43,7 @@ const useCreateAnnotationLabel = () => {
       // Extract default values from the label schema for new annotations
       const fieldSchema = store.get(labelSchemaData(field));
 
-      // Build label data with defaults and quick draw values (if applicable)
+      // Build label data with defaults and detection mode values (if applicable)
       const data = buildNewLabelData(field, type, id, labelValue);
 
       if (type === CLASSIFICATION) {
@@ -88,11 +85,7 @@ const useCreateAnnotationLabel = () => {
 
       return undefined;
     },
-    [
-      addOverlay,
-      overlayFactory,
-      scene,
-    ]
+    [addOverlay, overlayFactory, scene]
   );
 };
 
@@ -107,7 +100,7 @@ export default function useCreate(type: LabelType) {
   const createAnnotationLabel = useCreateAnnotationLabel();
 
   return useCallback(
-    (options?: CreateOptions) => {
+    (options?: CreateOptions): AnnotationLabel | null => {
       const label = createAnnotationLabel(type, options);
 
       if (label) {
@@ -117,8 +110,11 @@ export default function useCreate(type: LabelType) {
             ...label,
           })
         );
+
+        return label;
       } else {
         setEditing(type);
+        return null;
       }
     },
     [createAnnotationLabel, setEditing, type]

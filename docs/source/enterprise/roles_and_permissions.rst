@@ -22,7 +22,8 @@ FiftyOne Enterprise.
 Roles
 _____
 
-FiftyOne Enterprise has four user roles: Admin, Member, Collaborator, and Guest.
+FiftyOne Enterprise has five user roles: Admin, Member, Collaborator,
+Labeler, and Guest.
 
 Admins can access user management features by clicking on their account icon in
 the upper-right of the FiftyOne Enterprise App and navigating to the
@@ -84,6 +85,22 @@ Collaborators cannot create new datasets, clone existing datasets, or view
 other users of the deployment. Collaborators may export datasets to which
 they've been granted access.
 
+.. _enterprise-labeler:
+
+Labeler
+-------
+
+Labelers only have access to datasets to which they have been specifically
+granted access (a dataset's
+:ref:`default access level <enterprise-default-access>` does not apply to
+Labelers), and they may only be granted **Can view** or **Can tag** access
+to datasets. Additionally, Labelers can update annotations and metadata on
+samples using FiftyOne's :ref:`in-App annotation features <in-app-annotation>`,
+but cannot make changes to the Annotation Schema.
+
+Labelers cannot create new datasets, clone existing datasets, export datasets, or
+view other users of the deployment.
+
 .. _enterprise-guest:
 
 Guest
@@ -109,8 +126,8 @@ access to datasets.
 
 Admins can manage groups through the "Settings > Team > Groups" page.
 Each group can be given specific dataset access permissions, which apply to
-all users within the group. Collaborators' and guests' access to the dataset is 
-limited by the maximum dataset access level of the role. 
+all users within the group. Collaborators', labelers', and guests' access to
+the dataset is limited by the maximum dataset access level of the role. 
 
 .. image:: /images/enterprise/admin_team_groups_page.png
    :alt: admin-team-groups-page
@@ -131,6 +148,89 @@ existing users to the group by clicking on "Add users".
 
    Non-existing users cannot be directly added to a group. Users must be
    invited and accept the invitation before they can be added to a group.
+
+.. _enterprise-service-accounts:
+
+Service accounts
+----------------
+
+Service accounts are non-human principals designed for programmatic, automated,
+or machine-to-machine access to FiftyOne Enterprise. They authenticate
+exclusively via API keys and cannot log in interactively through the App.
+
+Common use cases include:
+
+-  CI/CD pipelines that run model evaluation or dataset quality checks
+-  Data ingestion scripts that upload and curate samples automatically
+-  Automated annotation workflows and model-in-the-loop jobs
+-  Any process that needs to interact with FiftyOne without a human user
+
+Unlike human users, service accounts have no email address, no user profile,
+and cannot receive invitations.
+
+.. note::
+
+   Only admins can create, view, update, or delete service accounts.
+
+**Roles**
+
+Service accounts can only be assigned a role that has API key access enabled, since
+API keys are their only authentication mechanism. Which roles have this
+permission depends on your deployment's license configuration. You can check
+which roles support API keys by navigating to the
+"Settings > Security > Roles" page.
+
+The assigned role determines what the service account can do, such as which
+datasets it can access by default and whether it can create new datasets.
+
+**Groups**
+
+Service accounts can be added to
+:ref:`user groups <enterprise-groups>` in the same way as human users,
+allowing you to manage dataset permissions for a set of service accounts (or a
+mix of users and service accounts) as a single entity.
+
+**Dataset permissions**
+
+Service accounts can be granted individual or group-based dataset permissions
+using the same permission model as human users. All five permission levels —
+**No access**, **Can view**, **Can tag**, **Can edit**, and **Can manage** — apply,
+subject to the service account's role.
+
+**Managing service accounts via the UI**
+
+Admins can manage service accounts through the
+"Settings > Team > Service Accounts" page:
+
+.. image:: /images/enterprise/admin_team_service_accounts_page.png
+   :alt: admin-team-service-accounts-page
+   :align: center
+
+Create a new service account by clicking "Create service account" and
+providing a name, role, and optional description:
+
+.. image:: /images/enterprise/admin_create_service_account.png
+   :alt: admin-create-service-account
+   :align: center
+
+Click on a service account to view its details, edit its name, role, or
+description, and manage its API keys:
+
+.. image:: /images/enterprise/admin_service_account_detail.png
+   :alt: admin-service-account-detail
+   :align: center
+
+**Managing service accounts via the SDK**
+
+Service accounts can be managed programmatically via the
+:ref:`Management SDK <enterprise-sdk-service-account-management>`.
+
+**API keys**
+
+Service accounts authenticate via API keys. These can be generated through the
+UI on the "Settings > Team > Service Accounts" page, or programmatically via
+the :ref:`Management SDK <enterprise-sdk-api-keys>`. Once generated, configure
+the connection by following the steps in :ref:`API Connection <enterprise-api-connection>`.
 
 .. _enterprise-permissions:
 
@@ -181,8 +281,9 @@ A dataset's default access level can be set to **No access**, **Can view**,
 
 .. note::
 
-   Default access level only applies to Members. Guests and Collaborators must
-   be granted :ref:`specific access <enterprise-specific-access>` to datasets.
+   Default access level only applies to Members. Guests, Labelers, and
+   Collaborators must be granted
+   :ref:`specific access <enterprise-specific-access>` to datasets.
 
 .. _enterprise-specific-access:
 
@@ -212,6 +313,7 @@ The following permissions are available to each user role:
    or **Can manage** permissions
 -  Collaborators may be granted **Can view**, **Can tag**, 
    or **Can edit** permissions
+-  Labelers may be granted **Can view** or **Can tag** permissions
 -  Guests may be granted **Can view** permissions
 
 .. note::
@@ -221,9 +323,9 @@ The following permissions are available to each user role:
    is not yet user of a FiftyOne Enterprise deployment.
 
    When the invitation is accepted, the user will become a Guest if the
-   **Can view** permission is chosen or a Collaborator if a higher permission
-   is chosen, and an Admin can upgrade this user to another role if desired via
-   the Team Settings page.
+   **Can view** permission is chosen, a Labeler if the **Can tag** permission is
+   chosen, or a Collaborator if a higher permission is chosen, and an Admin can
+   upgrade this user to another role if desired via the Team Settings page.
 
 .. _enterprise-no-access:
 
@@ -247,8 +349,8 @@ example by adding or removing samples, tags, annotation runs, brain runs, etc.
 
 .. note::
 
-   Members (but not Guests or Collaborators) with **Can view** access to a
-   dataset may clone the dataset.
+   Members (but not Guests, Labelers, or Collaborators) with **Can view** access
+   to a dataset may clone the dataset.
 
 .. _enterprise-can-tag:
 

@@ -3,11 +3,11 @@ import type { ImageLooker } from "@fiftyone/looker";
 import { isNativeMediaType } from "@fiftyone/looker/src/util";
 import * as fos from "@fiftyone/state";
 import { useAtomValue } from "jotai";
-import React, { useMemo } from "react";
+import React from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { ImaVidLookerReact } from "./ImaVidLooker";
 import { LighterSampleRenderer } from "./Lighter/LighterSampleRenderer";
-import { MetadataLooker } from "./MetadataLooker";
+import { ModalSampleRenderer } from "./ModalSampleRenderer";
 import { VideoLookerReact } from "./VideoLooker";
 import useLooker from "./use-looker";
 import { useImageModalSelectiveRendering } from "./use-modal-selective-rendering";
@@ -55,19 +55,23 @@ const ModalLookerNoTimeline = React.memo((props: LookerProps) => {
 
 export const ModalLooker = React.memo(
   ({ sample: propsSampleData }: LookerProps) => {
-    const modalSampleData = useRecoilValue(fos.modalSample);
+    return propsSampleData ? (
+      <ModalLookerContent sample={propsSampleData} />
+    ) : (
+      <ModalLookerCurrentSample />
+    );
+  }
+);
+
+const ModalLookerCurrentSample = React.memo(() => {
+  const sample = useRecoilValue(fos.modalSample);
+
+  return <ModalLookerContent sample={sample} />;
+});
+
+const ModalLookerContent = React.memo(
+  ({ sample }: { sample: fos.ModalSample }) => {
     const mode = useAtomValue(fos.modalMode);
-    const sample = useMemo(() => {
-      if (propsSampleData) {
-        return {
-          ...modalSampleData,
-          ...propsSampleData,
-        };
-      }
-
-      return modalSampleData;
-    }, [propsSampleData, modalSampleData]);
-
     const shouldRenderImavid = useRecoilValue(
       fos.shouldRenderImaVidLooker(true)
     );
@@ -112,6 +116,8 @@ export const ModalLooker = React.memo(
       );
     }
 
-    return <MetadataLooker sample={sample} />;
+    return (
+      <ModalSampleRenderer sample={sample} modalMediaField={modalMediaField} />
+    );
   }
 );

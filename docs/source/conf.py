@@ -23,7 +23,9 @@ from custom_directives import (
     CustomImageLinkDirective,
     CustomGuidesCardDirective,
     CustomAnimatedCTADirective,
+    CustomUseCaseCardDirective,
 )
+from fiftyone.internal.docs import is_hidden_from_docs
 from redirects import generate_redirects, generate_api_redirects
 
 import fiftyone.constants as foc
@@ -199,6 +201,7 @@ html_sidebars = {"**": ["algolia.html", "sidebar-nav"]}
 
 remove_from_toctrees = [
     "plugins/plugins_ecosystem/*",
+    "labs/labs_ecosystem/*",
     "model_zoo/models/*",
     "dataset_zoo/datasets/*",
     "dataset_zoo/datasets_hf/*",
@@ -286,11 +289,20 @@ html_context = {
 # -- Custom app setup --------------------------------------------------------
 
 
+def _skip_hidden_from_docs(_app, _what, _name, obj, _skip, _options):
+    if is_hidden_from_docs(obj):
+        return True
+
+    return None
+
+
 def setup(app):
     # Generate page redirects
     app.add_config_value("redirects_file", "redirects", "env")
     app.connect("builder-inited", generate_redirects)
     app.connect("build-finished", generate_api_redirects)
+    # See https://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html#event-autodoc-skip-member
+    app.connect("autodoc-skip-member", _skip_hidden_from_docs)
 
     # Custom directives
     app.add_directive("custombutton", CustomButtonDirective)
@@ -299,3 +311,4 @@ def setup(app):
     app.add_directive("customimagelink", CustomImageLinkDirective)
     app.add_directive("customguidescard", CustomGuidesCardDirective)
     app.add_directive("customanimatedcta", CustomAnimatedCTADirective)
+    app.add_directive("customusecasecard", CustomUseCaseCardDirective)

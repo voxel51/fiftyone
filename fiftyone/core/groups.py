@@ -43,6 +43,29 @@ class Group(foo.EmbeddedDocument):
         return self.__class__(id=self.id, name=name)
 
 
+def get_group_slice_name(sample, group_field):
+    """Gets the group slice name for a sample, if available.
+
+    Args:
+        sample: a :class:`fiftyone.core.sample.Sample`
+        group_field: the dataset's group field name
+
+    Returns:
+        the slice name, or ``None``
+    """
+    if group_field is None:
+        return None
+
+    group = getattr(sample, group_field, None)
+    if group is None:
+        return None
+
+    try:
+        return group.name
+    except (AttributeError, KeyError):
+        return None
+
+
 def is_group_field(field):
     """Determines whether the given field is a group field.
 

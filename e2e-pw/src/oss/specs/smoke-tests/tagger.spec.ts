@@ -82,6 +82,7 @@ test.describe.serial("tag", () => {
   });
 
   test("In grid, I can add a new label tag to all samples", async ({
+    aggregationWatcher,
     grid,
     page,
     sidebar,
@@ -103,6 +104,15 @@ test.describe.serial("tag", () => {
     const bubble2 = page.getByTestId("tag-_label_tags-labeltest:-22");
     await expect(bubble1).toBeVisible();
     await expect(bubble2).toBeVisible();
+
+    // `_label_tags` is a client-derived pseudo path; the server has no such
+    // field on the view and throws `DatasetView has no field '_label_tags'`
+    // if it ever appears in an aggregations form. Full-view label-tag counts
+    // come from per-label-field `.tags` aggregations (via cumulativeCounts).
+    expect(
+      aggregationWatcher.allPaths(),
+      "aggregationsQuery must never request '_label_tags'"
+    ).not.toContain("_label_tags");
   });
 
   test("In modal, I can add a label tag to a filtered sample", async ({

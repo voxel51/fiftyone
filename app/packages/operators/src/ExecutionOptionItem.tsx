@@ -13,10 +13,14 @@ export default function ExecutionOptionItem({ label, tag, disabled }) {
       {tag}
     </span>
   ) : null;
+  // Use an inline-level wrapper so this component can be rendered
+  // inside phrasing content (e.g. MUI <Typography>, which defaults to
+  // <p>). A <div> here produced "<div> cannot appear as a descendant
+  // of <p>" warnings in callers like OperatorExecutionMenu.
   return (
-    <div style={{ display: "flex", alignItems: "center" }}>
+    <span style={{ display: "inline-flex", alignItems: "center" }}>
       {label}
       {tagEl}
-    </div>
+    </span>
   );
 }

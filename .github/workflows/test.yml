@@ -9,6 +9,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          submodules: true
+          sparse-checkout: |
+            /*
+            !/docs/**
+          sparse-checkout-cone-mode: false
 
       - name: Setup node 22
         uses: actions/setup-node@v6
@@ -39,6 +45,8 @@ jobs:
     timeout-minutes: 90
     env:
       FIFTYONE_DO_NOT_TRACK: true
+      # Assuming no pytest should take more than 60 seconds
+      PYTEST_TIMEOUT: 60
     strategy:
       fail-fast: false
       matrix:
@@ -55,13 +63,22 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-      - name: Setup
+        with:
+          sparse-checkout: |
+            /*
+            !/docs/**
+          sparse-checkout-cone-mode: false
+      - name: Setup Python
         uses: actions/setup-python@v6
-        id: pip-cache
         with:
           python-version: ${{ matrix.python }}
-          cache: "pip"
-          cache-dependency-path: |
+      - name: Setup (UV)
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: ${{ matrix.python }}
+          # TODO: we are unsure if cache is working correctly here
+          enable-cache: true
+          cache-dependency-glob: |
             requirements/common.txt
             requirements/github.txt
             requirements/test.txt
@@ -70,13 +87,12 @@ jobs:
         with:
           large-packages: false # e2e test failed when `true`
       - name: Install requirements
-        if: steps.pip-cache.outputs.cache-hit != true
         run: |
-          pip install -U wheel setuptools
-          pip install -r requirements/github.txt
+          uv pip install --system -U wheel setuptools
+          uv pip install --system -r requirements/github.txt
       - name: Install fiftyone
         run: |
-          pip install . -r requirements/github.txt
+          uv pip install --system . -r requirements/github.txt
       - name: Configure
         id: test_config
         run: |
@@ -105,7 +121,7 @@ jobs:
             --ignore tests/no_wrapper
       - name: Upload
         if: ${{ !startsWith(matrix.os, 'windows') && matrix.python == '3.11' }}
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.xml

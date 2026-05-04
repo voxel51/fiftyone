@@ -38,7 +38,6 @@ fout = fou.lazy_import("fiftyone.utils.torch")
 foutr = fou.lazy_import("fiftyone.utils.transformers")
 fouu = fou.lazy_import("fiftyone.utils.ultralytics")
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -63,6 +62,7 @@ def apply_model(
     output_dir=None,
     rel_dir=None,
     progress=None,
+    pin_memory=False,
     **kwargs,
 ):
     """Applies the model to the samples in the collection.
@@ -108,6 +108,9 @@ def apply_model(
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
+        pin_memory (False): whether to pin memory when using a DataLoader. Only
+            applicable for Torch-based models. This setting can have a significant
+            impact on memory usage, so it is not enabled by default.
         **kwargs: optional model-specific keyword arguments passed through
             to the underlying inference implementation
     """
@@ -257,6 +260,7 @@ def apply_model(
                     skip_failures,
                     filename_maker,
                     progress,
+                    field_mapping=field_mapping,  # workaround until samples mixin is deprecated for all models
                 )
 
             return _apply_image_model_to_frames_single(
@@ -268,6 +272,7 @@ def apply_model(
                 skip_failures,
                 filename_maker,
                 progress,
+                field_mapping=field_mapping,  # workaround until samples mixin is deprecated for all models
             )
 
         if use_data_loader:
@@ -283,6 +288,7 @@ def apply_model(
                 filename_maker,
                 progress,
                 field_mapping,
+                pin_memory,
             )
 
         if batch_size is not None:
@@ -455,6 +461,7 @@ def _apply_image_model_data_loader(
     filename_maker,
     progress,
     field_mapping,
+    pin_memory,
 ):
     needs_samples = isinstance(model, SamplesMixin)
 
@@ -465,6 +472,7 @@ def _apply_image_model_data_loader(
         num_workers,
         skip_failures,
         field_mapping,
+        pin_memory,
     )
 
     samples = _select_fields_for_inference(samples, model)
@@ -528,12 +536,13 @@ def _apply_image_model_to_frames_single(
     skip_failures,
     filename_maker,
     progress,
+    field_mapping=None,
 ):
     needs_samples = isinstance(model, SamplesMixin)
     frame_counts, total_frame_count = _get_frame_counts(samples)
     is_clips = samples._dataset._is_clips
 
-    samples = _select_fields_for_inference(samples, model)
+    samples = _select_fields_for_inference(samples, model, field_mapping)
 
     with contextlib.ExitStack() as context:
         pb = context.enter_context(
@@ -555,6 +564,46 @@ def _apply_image_model_to_frames_single(
                         if needs_samples:
                             frame = sample.frames[video_reader.frame_number]
                             labels = model.predict(img, sample=frame)
+                        elif isinstance(
+                            model, fout.TorchImageModelWithPrompts
+                        ):
+                            # This will be removed in the future when GetItem/dataloaders support video readers.
+                            frame = sample.frames[video_reader.frame_number]
+
+                            _field_mapping = {
+                                k: v[len("frames.") :]
+                                if v.startswith("frames.")
+                                else v
+                                for k, v in field_mapping.items()
+                            }
+
+                            if hasattr(
+                                model.config, "get_item_cls"
+                            ) and not model.config.get_item_cls.endswith(
+                                "ForVideo"
+                            ):
+                                context.enter_context(
+                                    fou.SetAttributes(
+                                        model.config,
+                                        get_item_cls=model.config.get_item_cls
+                                        + "ForVideo",
+                                    )
+                                )
+                            get_item = model.build_get_item(
+                                field_mapping=_field_mapping
+                            )
+                            _field_mapping = get_item.field_mapping
+                            _ = _field_mapping.pop("image")
+
+                            sample_dict = fout.get_samples_dict_for_get_item(
+                                [frame],
+                                _field_mapping,
+                                skip_failures=skip_failures,
+                            )[0]
+                            if "image" in get_item.required_keys:
+                                sample_dict["image"] = img
+                            model_input = get_item(sample_dict)
+                            labels = model.predict(model_input)
                         else:
                             labels = model.predict(img)
 
@@ -593,12 +642,13 @@ def _apply_image_model_to_frames_batch(
     skip_failures,
     filename_maker,
     progress,
+    field_mapping=None,
 ):
     needs_samples = isinstance(model, SamplesMixin)
     frame_counts, total_frame_count = _get_frame_counts(samples)
     is_clips = samples._dataset._is_clips
 
-    samples = _select_fields_for_inference(samples, model)
+    samples = _select_fields_for_inference(samples, model, field_mapping)
 
     with contextlib.ExitStack() as context:
         pb = context.enter_context(
@@ -621,6 +671,52 @@ def _apply_image_model_to_frames_batch(
                             _frames = [sample.frames[fn] for fn in fns]
                             labels_batch = model.predict_all(
                                 imgs, samples=_frames
+                            )
+                        elif isinstance(
+                            model, fout.TorchImageModelWithPrompts
+                        ):
+                            # This will be removed in the future when GetItem/dataloaders support video readers.
+                            _frames = [sample.frames[fn] for fn in fns]
+                            _field_mapping = {
+                                k: v[len("frames.") :]
+                                if v.startswith("frames.")
+                                else v
+                                for k, v in field_mapping.items()
+                            }
+
+                            if hasattr(
+                                model.config, "get_item_cls"
+                            ) and not model.config.get_item_cls.endswith(
+                                "ForVideo"
+                            ):
+                                context.enter_context(
+                                    fou.SetAttributes(
+                                        model.config,
+                                        get_item_cls=model.config.get_item_cls
+                                        + "ForVideo",
+                                    )
+                                )
+                            get_item = model.build_get_item(
+                                field_mapping=_field_mapping
+                            )
+                            _field_mapping = get_item.field_mapping
+                            _ = _field_mapping.pop("image")
+
+                            sample_dicts = fout.get_samples_dict_for_get_item(
+                                _frames,
+                                get_item.field_mapping,
+                                skip_failures=skip_failures,
+                            )
+                            if "image" in get_item.required_keys:
+                                for d_idx, sample_dict in enumerate(
+                                    sample_dicts
+                                ):
+                                    sample_dict["image"] = imgs[d_idx]
+                            labels_batch = model.predict_all(
+                                [
+                                    get_item(sample_dict)
+                                    for sample_dict in sample_dicts
+                                ]
                             )
                         else:
                             labels_batch = model.predict_all(imgs)
@@ -705,9 +801,13 @@ def _apply_video_model(
                 logger.warning("Sample: %s\nError: %s\n", sample.id, e)
 
 
-def _select_fields_for_inference(samples, model):
+def _select_fields_for_inference(samples, model, field_mapping=None):
     if isinstance(model, SamplesMixin):
         fields = list(model.needs_fields.values())
+        return samples.select_fields(fields)
+    elif field_mapping is not None:
+        # Workaround for applying image models (that use GetItem instead of SamplesMixin) to video frames
+        fields = list(field_mapping.values())
         return samples.select_fields(fields)
     else:
         return samples.select_fields()
@@ -849,6 +949,7 @@ def _make_data_loader(
     num_workers,
     skip_failures,
     field_mapping,
+    pin_memory,
 ):
     # This function supports DataLoaders that emit numpy arrays that can
     # therefore be used for non-Torch models; but we do not currently use this
@@ -886,7 +987,23 @@ def _make_data_loader(
         )
         worker_init_fn = None
 
-    pin_memory = isinstance(model, fout.TorchImageModel) and model._using_gpu
+    if pin_memory:
+        if not isinstance(model, TorchModelMixin):
+            logger.warning(
+                "The provided model is not a `TorchModelMixin`, so `pin_memory` "
+                "will be disabled."
+            )
+            pin_memory = False
+        elif not model._using_gpu:
+            logger.warning(
+                "The provided model is not using a GPU, so `pin_memory` will be disabled."
+            )
+            pin_memory = False
+        else:
+            logger.info(
+                "Using `pin_memory=True` for DataLoader. This may increase "
+                "memory usage, so monitor your system to avoid OOM errors."
+            )
 
     return tud.DataLoader(
         dataset,
@@ -907,6 +1024,7 @@ def compute_embeddings(
     num_workers=None,
     skip_failures=True,
     progress=None,
+    pin_memory=False,
     **kwargs,
 ):
     """Computes embeddings for the samples in the collection using the given
@@ -941,6 +1059,9 @@ def compute_embeddings(
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
+        pin_memory (False): whether to pin memory when using a DataLoader. Only
+            applicable for Torch-based models. This setting can have a significant
+            impact on memory usage, so it is not enabled by default.
         **kwargs: optional model-specific keyword arguments passed through
             to the underlying inference implementation
 
@@ -1009,32 +1130,37 @@ def compute_embeddings(
     else:
         field_mapping = None
 
-    process_video_frames = (
-        samples.media_type == fom.VIDEO and model.media_type == "image"
-    )
+    with contextlib.ExitStack() as context:
+        if hasattr(model, "mode") and model.mode is None:
+            context.enter_context(
+                fou.SetAttributes(model, mode=samples.media_type)
+            )
 
-    use_data_loader = (
-        isinstance(model, (SupportsGetItem, TorchModelMixin))
-        and not process_video_frames
-    )
-
-    if num_workers is not None and not use_data_loader:
-        logger.warning("Ignoring unsupported `num_workers` parameter")
-
-    if embeddings_field is not None:
-        dataset = samples._dataset
-        embeddings_field, _is_frame_field = dataset._handle_frame_field(
-            embeddings_field
+        process_video_frames = (
+            samples.media_type == fom.VIDEO and model.media_type == "image"
         )
 
-        if dataset.media_type == fom.VIDEO and model.media_type == "image":
-            if not dataset.has_frame_field(embeddings_field):
-                dataset.add_frame_field(embeddings_field, fof.VectorField)
-        else:
-            if not dataset.has_sample_field(embeddings_field):
-                dataset.add_sample_field(embeddings_field, fof.VectorField)
+        use_data_loader = (
+            isinstance(model, (SupportsGetItem, TorchModelMixin))
+            and not process_video_frames
+        )
 
-    with contextlib.ExitStack() as context:
+        if num_workers is not None and not use_data_loader:
+            logger.warning("Ignoring unsupported `num_workers` parameter")
+
+        if embeddings_field is not None:
+            dataset = samples._dataset
+            embeddings_field, _is_frame_field = dataset._handle_frame_field(
+                embeddings_field
+            )
+
+            if dataset.media_type == fom.VIDEO and model.media_type == "image":
+                if not dataset.has_frame_field(embeddings_field):
+                    dataset.add_frame_field(embeddings_field, fof.VectorField)
+            else:
+                if not dataset.has_sample_field(embeddings_field):
+                    dataset.add_sample_field(embeddings_field, fof.VectorField)
+
         if use_data_loader:
             context.enter_context(fou.SetAttributes(model, preprocess=False))
 
@@ -1072,6 +1198,7 @@ def compute_embeddings(
                 skip_failures,
                 progress,
                 field_mapping,
+                pin_memory,
             )
 
         if batch_size is not None:
@@ -1194,6 +1321,7 @@ def _compute_image_embeddings_data_loader(
     skip_failures,
     progress,
     field_mapping,
+    pin_memory,
 ):
     data_loader = _make_data_loader(
         samples,
@@ -1202,6 +1330,7 @@ def _compute_image_embeddings_data_loader(
         num_workers,
         skip_failures,
         field_mapping,
+        pin_memory,
     )
 
     samples = _select_fields_for_embeddings(samples, embeddings_field)
@@ -1449,6 +1578,7 @@ def _compute_video_embeddings(
                     raise e
 
                 errors = True
+                embedding = None
                 logger.warning("Sample: %s\nError: %s\n", sample.id, e)
 
             if embeddings_field is not None:

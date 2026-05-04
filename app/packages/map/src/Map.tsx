@@ -135,7 +135,7 @@ const Panel: React.FC<{}> = () => {
   const data = React.useMemo(() => {
     let source = sampleLocationMap;
 
-    if (selection) {
+    if (selection?.length) {
       source = {};
       for (const id of selection) {
         if (sampleLocationMap[id]) {

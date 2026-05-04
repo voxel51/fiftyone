@@ -1,747 +1,250 @@
-import { LoadingDots } from "@fiftyone/components";
+import { Loading, LoadingDots } from "@fiftyone/components";
 import useCanAnnotate from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useCanAnnotate";
 import { usePluginSettings } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
-import { isInMultiPanelViewAtom, useBrowserStorage } from "@fiftyone/state";
-import { CameraControls } from "@react-three/drei";
-import { Canvas } from "@react-three/fiber";
-import CameraControlsImpl from "camera-controls";
-import { useAtomValue } from "jotai";
+import type { CameraControls } from "@react-three/drei";
+import { useEffect, useMemo, useReducer, useRef } from "react";
 import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { useRecoilCallback, useRecoilValue, useSetRecoilState } from "recoil";
-import styled from "styled-components";
-import * as THREE from "three";
-import { Vector3 } from "three";
-import { StatusBar } from "../StatusBar";
+  LoadingManager,
+  type Group,
+  type PerspectiveCamera,
+  type Vector3,
+} from "three";
 import { MultiPanelView } from "../annotation/MultiPanelView";
+import { SinglePanelView } from "../annotation/SinglePanelView";
 import { AnnotationToolbar } from "../annotation/annotation-toolbar/AnnotationToolbar";
-import { useRenderModel } from "../annotation/store/renderModel";
-import { PcdColorMapTunnel } from "../components/PcdColormapModal";
-import {
-  DEFAULT_BOUNDING_BOX,
-  DEFAULT_CAMERA_POSITION,
-  SET_EGO_VIEW_EVENT,
-  SET_TOP_VIEW_EVENT,
-  SET_ZOOM_TO_SELECTED_EVENT,
-} from "../constants";
-import { StatusBarRootContainer } from "../containers";
+import { ANNOTATION_CUBOID, ANNOTATION_POLYLINE } from "../constants";
 import {
   useFo3d,
-  useHotkey,
+  useFo3dCameraControlsConfig,
+  useFo3dCameraInitialization,
+  useFo3dCameraViewEvents,
+  useFo3dInteractionLifecycle,
+  useFo3dPanelRouting,
+  useFo3dSceneBounds,
+  useFo3dSceneContextState,
   useTrackStatus,
-  useZoomToSelected,
 } from "../hooks";
-import { useFo3dBounds } from "../hooks/use-bounds";
-import { useCursorBounds } from "../hooks/use-cursor-bounds";
-import { useLabelBounds } from "../hooks/use-label-bounds";
-import { useLoadingStatus } from "../hooks/use-loading-status";
 import type { Looker3dSettings } from "../settings";
-import {
-  activeNodeAtom,
-  annotationPlaneAtom,
-  cameraPositionAtom,
-  clearTransformStateSelector,
-  currentHoveredPointAtom,
-  isActivelySegmentingSelector,
-  isCreatingCuboidPointerDownAtom,
-  isCurrentlyTransformingAtom,
-  isFo3dBackgroundOnAtom,
-  isSegmentingPointerDownAtom,
-  selectedPolylineVertexAtom,
-} from "../state";
 import { useCurrent3dAnnotationMode } from "../state/accessors";
-import { HoverMetadata } from "../types";
-import { calculateCameraPositionForUpVector } from "../utils";
 import { Annotation3d } from "./Annotation3d";
-import { Fo3dSceneContent } from "./Fo3dCanvas";
-import HoverMetadataHUD from "./HoverMetadataHUD";
-import { DEFAULT_RAYCAST_PRECISION, Fo3dSceneContext } from "./context";
 import {
-  getFo3dRoot,
-  getMediaPathForFo3dSample,
-  getOrthonormalAxis,
-  getSavedCameraState,
-} from "./utils";
-
-const CANVAS_WRAPPER_ID = "sample3d-canvas-wrapper";
-
-const MainContainer = styled.main`
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  width: 100%;
-`;
-
-export const MediaTypeFo3dComponent = () => {
-  const sample = useRecoilValue(fos.fo3dSample);
-  const mediaField = useRecoilValue(fos.selectedMediaField(true));
-  const is2DSampleViewerVisible = useRecoilValue(
-    fos.groupMediaIsMain2DViewerVisible
-  );
-  const isGroup = useRecoilValue(fos.isGroup);
-  const setIsInMultiPanelView = useSetRecoilState(isInMultiPanelViewAtom);
-
-  const settings = usePluginSettings<Looker3dSettings>("3d");
-
-  const mediaPath = useMemo(
-    () => getMediaPathForFo3dSample(sample, mediaField),
-    [mediaField, sample]
-  );
-
-  const mode = useAtomValue(fos.modalMode);
-
-  const mediaUrl = useMemo(() => fos.getSampleSrc(mediaPath), [mediaPath]);
-
-  const fo3dRoot = useMemo(() => getFo3dRoot(sample.sample.filepath), [sample]);
-
-  const { foScene, isLoading: isParsingFo3d } = useFo3d(
-    mediaUrl,
-    sample.sample.filepath,
-    fo3dRoot
-  );
-
-  const [isSceneInitialized, setSceneInitialized] = useState(false);
-
-  const numPrimaryAssets = useMemo(() => {
-    if (!foScene) return 0;
-    return foScene.children?.length ?? 0;
-  }, [foScene]);
-
-  useHotkey(
-    "KeyB",
-    ({ set }) => {
-      set(isFo3dBackgroundOnAtom, (prev) => !prev);
-    },
-    []
-  );
-
-  const getDefaultUpVector = useCallback(() => {
-    if (foScene?.cameraProps.up) {
-      const mayBeUp = foScene.cameraProps.up;
-      if (mayBeUp === "X") {
-        return new Vector3(1, 0, 0);
-      }
-      if (mayBeUp === "Y") {
-        return new Vector3(0, 1, 0);
-      }
-      if (mayBeUp === "Z") {
-        return new Vector3(0, 0, 1);
-      }
-      if (mayBeUp === "-X") {
-        return new Vector3(-1, 0, 0);
-      }
-      if (mayBeUp === "-Y") {
-        return new Vector3(0, -1, 0);
-      }
-      if (mayBeUp === "-Z") {
-        return new Vector3(0, 0, -1);
-      }
-    }
-
-    if (settings.defaultUp) {
-      const maybeOrthonormalAxis = getOrthonormalAxis(settings.defaultUp);
-
-      if (maybeOrthonormalAxis) {
-        return new Vector3(
-          settings.defaultUp[0],
-          settings.defaultUp[1],
-          settings.defaultUp[2]
-        );
-      }
-    }
-
-    // default to y-up
-    return new Vector3(0, 1, 0);
-  }, [foScene]);
-
-  const [upVector, setUpVectorVal] = fos.useBrowserStorage<Vector3>(
-    "fo3d-up-vector",
-    null,
-    false,
-    {
-      parse: (upVectorStr) => {
-        try {
-          const [x, y, z] = JSON.parse(upVectorStr);
-          return new Vector3(x, y, z);
-        } catch (error) {
-          return new Vector3(0, 1, 0);
-        }
-      },
-      stringify: (upVector) =>
-        upVector ? JSON.stringify(upVector.toArray()) : "null",
-    }
-  );
-
-  // todo: reconcile with lookAt from foScene, too
-  const [lookAt, setLookAt] = useState<Vector3 | null>(null);
-
-  useEffect(() => {
-    if (!foScene || upVector) {
-      return;
-    }
-
-    setUpVectorVal(getDefaultUpVector());
-  }, [foScene, upVector, getDefaultUpVector]);
-
-  const containerRef = useRef<HTMLDivElement>(null);
-  const cameraRef = useRef<THREE.PerspectiveCamera>();
-  const cameraControlsRef = useRef<CameraControls>();
-  const datasetName = useRecoilValue(fos.datasetName);
-  const isActivelySegmenting = useRecoilValue(isActivelySegmentingSelector);
-  const isSegmentingPointerDown = useRecoilValue(isSegmentingPointerDownAtom);
-  const isCreatingCuboidPointerDown = useRecoilValue(
-    isCreatingCuboidPointerDownAtom
-  );
-  const isCurrentlyTransforming = useRecoilValue(isCurrentlyTransformingAtom);
-
-  const keyState = useRef({
-    shiftRight: false,
-    shiftLeft: false,
-    controlRight: false,
-    controlLeft: false,
-  });
-
-  const updateCameraControlsConfig = useCallback(() => {
-    if (!cameraControlsRef.current) return;
-
-    // Disable camera controls when transforming or creating annotations
-    if (
-      isSegmentingPointerDown ||
-      isCreatingCuboidPointerDown ||
-      isCurrentlyTransforming
-    ) {
-      cameraControlsRef.current.enabled = false;
-      return;
-    }
-
-    // Re-enable camera controls when not transforming
-    cameraControlsRef.current.enabled = true;
-
-    if (keyState.current.shiftRight || keyState.current.shiftLeft) {
-      cameraControlsRef.current.mouseButtons.left =
-        CameraControlsImpl.ACTION.TRUCK;
-    } else if (keyState.current.controlRight || keyState.current.controlLeft) {
-      cameraControlsRef.current.mouseButtons.left =
-        CameraControlsImpl.ACTION.DOLLY;
-    } else {
-      cameraControlsRef.current.mouseButtons.left =
-        CameraControlsImpl.ACTION.ROTATE;
-    }
-  }, [
-    keyState,
-    isCurrentlyTransforming,
-    isSegmentingPointerDown,
-    isCreatingCuboidPointerDown,
-  ]);
-
-  /**
-   * This effect updates the camera controls config when the transforming state changes
-   */
-  useEffect(() => {
-    updateCameraControlsConfig();
-  }, [updateCameraControlsConfig]);
-
-  fos.useEventHandler(document, "keydown", (e: KeyboardEvent) => {
-    if (e.code === "ShiftRight") keyState.current.shiftRight = true;
-    if (e.code === "ShiftLeft") keyState.current.shiftLeft = true;
-    if (e.code === "ControlRight") keyState.current.controlRight = true;
-    if (e.code === "ControlLeft") keyState.current.controlLeft = true;
-    updateCameraControlsConfig();
-  });
-
-  fos.useEventHandler(document, "keyup", (e: KeyboardEvent) => {
-    if (e.code === "ShiftRight") keyState.current.shiftRight = false;
-    if (e.code === "ShiftLeft") keyState.current.shiftLeft = false;
-    if (e.code === "ControlRight") keyState.current.controlRight = false;
-    if (e.code === "ControlLeft") keyState.current.controlLeft = false;
-    updateCameraControlsConfig();
-  });
-
-  const assetsGroupRef = useRef<THREE.Group>();
-
-  const loadingStatus = useLoadingStatus();
-
-  // Ready when fo3d is parsed, foScene has assets, and all referenced assets are loaded
-  const isReadyForBounds =
-    Boolean(foScene) && !isParsingFo3d && loadingStatus.isSuccess;
-
-  const {
-    boundingBox: sceneBoundingBox,
-    recomputeBounds,
-    isComputing: isComputingSceneBoundingBox,
-  } = useFo3dBounds(assetsGroupRef, isReadyForBounds, {
-    numPrimaryAssets,
-  });
-
-  const effectiveSceneBoundingBox = sceneBoundingBox || DEFAULT_BOUNDING_BOX;
-
-  const renderModel = useRenderModel();
-  const labelBounds = useLabelBounds(renderModel);
-
-  const cursorBounds = useCursorBounds(effectiveSceneBoundingBox, labelBounds);
-
-  useEffect(() => {
-    if (effectiveSceneBoundingBox && !lookAt) {
-      const center = effectiveSceneBoundingBox.getCenter(new Vector3());
-      setLookAt(center);
-    }
-  }, [lookAt, effectiveSceneBoundingBox]);
-
-  const topCameraPosition = useMemo(() => {
-    if (
-      Math.abs(effectiveSceneBoundingBox.max.x) === Number.POSITIVE_INFINITY ||
-      !upVector
-    ) {
-      return DEFAULT_CAMERA_POSITION();
-    }
-
-    const center = effectiveSceneBoundingBox.getCenter(new Vector3());
-    const size = effectiveSceneBoundingBox.getSize(new Vector3());
-
-    return calculateCameraPositionForUpVector(
-      center,
-      size,
-      upVector,
-      2.5,
-      "top"
-    );
-  }, [upVector, effectiveSceneBoundingBox]);
-
-  const overriddenCameraPosition = useRecoilValue(cameraPositionAtom);
-
-  const lastSavedCameraState = useMemo(
-    () => getSavedCameraState(datasetName),
-    [datasetName]
-  );
-
-  const getDefaultCameraPosition = useCallback(
-    (ignoreLastSavedCameraPosition = false) => {
-      /**
-       * This is the order of precedence for the camera position:
-       * 1. If the user has set a camera position via operator by writing to `cameraPositionAtom`, use that
-       * 2. If the user has set a default camera position in the scene itself, use that
-       * 3. If the user has set a default camera position in the plugin settings, use that
-       * 4. If the user has set a default camera position in the browser storage, use that
-       * 5. Compute a default camera position based on the bounding box of the scene
-       * 6. Use an arbitrary default camera position
-       */
-
-      if (isParsingFo3d) {
-        return DEFAULT_CAMERA_POSITION();
-      }
-
-      if (overriddenCameraPosition?.length === 3) {
-        return new Vector3(
-          overriddenCameraPosition[0],
-          overriddenCameraPosition[1],
-          overriddenCameraPosition[2]
-        );
-      }
-
-      const defaultCameraPosition = foScene?.cameraProps.position;
-
-      if (defaultCameraPosition) {
-        return new Vector3(
-          defaultCameraPosition[0],
-          defaultCameraPosition[1],
-          defaultCameraPosition[2]
-        );
-      }
-
-      if (!ignoreLastSavedCameraPosition && lastSavedCameraState) {
-        return new Vector3(
-          lastSavedCameraState.position[0],
-          lastSavedCameraState.position[1],
-          lastSavedCameraState.position[2]
-        );
-      }
-
-      if (settings.defaultCameraPosition) {
-        return new Vector3(
-          settings.defaultCameraPosition.x,
-          settings.defaultCameraPosition.y,
-          settings.defaultCameraPosition.z
-        );
-      }
-
-      if (
-        Math.abs(effectiveSceneBoundingBox.max.x) !==
-          Number.POSITIVE_INFINITY &&
-        upVector
-      ) {
-        const size = effectiveSceneBoundingBox.getSize(new Vector3());
-
-        return calculateCameraPositionForUpVector(
-          new Vector3(0, 0, 0),
-          size,
-          upVector,
-          1.5,
-          "pov"
-        );
-      }
-
-      return DEFAULT_CAMERA_POSITION();
-    },
-    [
-      settings,
-      overriddenCameraPosition,
-      isParsingFo3d,
-      foScene,
-      effectiveSceneBoundingBox,
-      upVector,
-      lastSavedCameraState,
-    ]
-  );
-
-  const defaultCameraPositionComputed = useMemo(
-    () => getDefaultCameraPosition(),
-    [getDefaultCameraPosition]
-  );
-
-  const resetActiveNode = useRecoilCallback(
-    ({ set }) =>
-      (event: MouseEvent | null) => {
-        // Don't handle right click since that might mean we're panning the camera
-        if (event?.type === "contextmenu") {
-          return;
-        }
-
-        if (isActivelySegmenting) {
-          return;
-        }
-
-        set(activeNodeAtom, null);
-        set(currentHoveredPointAtom, null);
-        set(clearTransformStateSelector, null);
-        set(selectedPolylineVertexAtom, null);
-        set(isCurrentlyTransformingAtom, false);
-        setAutoRotate(false);
-      },
-    [isActivelySegmenting]
-  );
-
-  useLayoutEffect(() => {
-    const canvas = document.getElementById(CANVAS_WRAPPER_ID);
-
-    if (canvas) {
-      canvas.querySelector("canvas")?.setAttribute("canvas-loaded", "true");
-    }
-  }, [isSceneInitialized]);
-
-  useEffect(() => {
-    resetActiveNode(null);
-  }, [isSceneInitialized, resetActiveNode]);
-
-  const onChangeView = useCallback(
-    (
-      view: "pov" | "top",
-      {
-        useAnimation = true,
-        ignoreLastSavedCameraPosition = false,
-        isFirstTime = false,
-      }: {
-        useAnimation?: boolean;
-        ignoreLastSavedCameraPosition?: boolean;
-        isFirstTime?: boolean;
-      } = {}
-    ) => {
-      if (!cameraRef.current || !cameraControlsRef.current) {
-        return;
-      }
-
-      const defaultCameraPosition = getDefaultCameraPosition(
-        ignoreLastSavedCameraPosition
-      );
-
-      let newCameraPosition = [
-        defaultCameraPosition.x,
-        defaultCameraPosition.y,
-        defaultCameraPosition.z,
-      ] as const;
-
-      // note: for ego, we don't have look at at center of bounding box
-      // this is for the "automotive-centered" ego view
-      // and doesn't make too much sense for "ego view" of other scenes
-      let newLookAt: [number, number, number] = [0, 0, 0];
-
-      if (view === "top") {
-        newCameraPosition = [
-          topCameraPosition.x,
-          topCameraPosition.y,
-          topCameraPosition.z,
-        ];
-
-        // for top view, we have look at at center of bounding box
-        const center = effectiveSceneBoundingBox.getCenter(new Vector3());
-
-        newLookAt = [center.x, center.y, center.z] as const;
-      }
-
-      cameraControlsRef.current.setLookAt(
-        ...newCameraPosition,
-        ...newLookAt,
-        useAnimation
-      );
-
-      if (isFirstTime) {
-        setSceneInitialized(true);
-      }
-    },
-    [
-      effectiveSceneBoundingBox,
-      topCameraPosition,
-      getDefaultCameraPosition,
-      setSceneInitialized,
-    ]
-  );
-
-  fos.useEventHandler(window, SET_TOP_VIEW_EVENT, () => {
-    const execute = () => {
-      onChangeView("top", {
-        useAnimation: true,
-        ignoreLastSavedCameraPosition: true,
-      });
-    };
-
-    // Sometimes the bbox isn't computed yet, especially on scene load or error
-    // for big assets, or because of timeout, or three.js loading manager issues,
-    // so we lazily recompute it and try again shortly after.
-    if (!sceneBoundingBox) {
-      recomputeBounds();
-      setTimeout(execute, 50);
-    } else {
-      execute();
-    }
-  });
-
-  fos.useEventHandler(window, SET_EGO_VIEW_EVENT, () => {
-    const execute = () => {
-      onChangeView("pov", {
-        useAnimation: true,
-        ignoreLastSavedCameraPosition: true,
-      });
-    };
-
-    // Same lazy pattern is used here as above
-    if (!sceneBoundingBox) {
-      recomputeBounds();
-      setTimeout(execute, 50);
-    } else {
-      execute();
-    }
-  });
-
-  // Zoom to selected labels and use them as the new lookAt
-  const handleZoomToSelected = useZoomToSelected({
-    sample,
+  FO3D_CAMERA_LIFECYCLE,
+  FO3D_CAMERA_LIFECYCLE_ACTION,
+  fo3dCameraLifecycleReducer,
+  isFo3dSceneReady,
+  type Fo3dCameraLifecycleState,
+} from "./camera-lifecycle";
+import { Fo3dSceneContext } from "./context";
+import { FoScene } from "./render-types";
+
+interface Fo3dPanelsProps {
+  shouldRenderMultiPanelView: boolean;
+  upVector: Vector3 | null;
+  assetsGroupRef: React.RefObject<Group>;
+  foScene: FoScene;
+  interactionSample: fos.ModalSample;
+  cameraRef: React.RefObject<PerspectiveCamera>;
+  cameraControlsRef: React.RefObject<CameraControls>;
+  mountCameraPosition: Vector3;
+  cameraLifecycleState: Fo3dCameraLifecycleState;
+  mode: string;
+}
+
+const Fo3dPanels = ({
+  shouldRenderMultiPanelView,
+  upVector,
+  assetsGroupRef,
+  foScene,
+  interactionSample,
+  cameraRef,
+  cameraControlsRef,
+  mountCameraPosition,
+  cameraLifecycleState,
+  mode,
+}: Fo3dPanelsProps) => {
+  const { resetActiveNode } = useFo3dInteractionLifecycle({
+    cameraLifecycleState,
+    interactionSample,
     upVector,
     mode,
     cameraControlsRef,
   });
 
-  fos.useEventHandler(window, SET_ZOOM_TO_SELECTED_EVENT, handleZoomToSelected);
+  if (shouldRenderMultiPanelView) {
+    return (
+      <MultiPanelView
+        key={upVector ? upVector.toArray().join(",") : null}
+        assetsGroupRef={assetsGroupRef}
+        foScene={foScene}
+        sample={interactionSample}
+        cameraRef={cameraRef}
+        cameraControlsRef={cameraControlsRef}
+        defaultCameraPosition={mountCameraPosition}
+        onPointerMissed={resetActiveNode}
+      />
+    );
+  }
 
-  // Restore camera from localStorage or scene config as soon as controls are available.
-  // This does not depend on bounding box.
-  useEffect(() => {
-    if (!cameraControlsRef.current || !cameraRef.current || !foScene) {
-      return;
-    }
-
-    // try restoring from saved state first
-    if (lastSavedCameraState) {
-      cameraControlsRef.current.setLookAt(
-        lastSavedCameraState.position[0],
-        lastSavedCameraState.position[1],
-        lastSavedCameraState.position[2],
-        lastSavedCameraState.target[0],
-        lastSavedCameraState.target[1],
-        lastSavedCameraState.target[2],
-        false
-      );
-      setSceneInitialized(true);
-      return;
-    }
-
-    // try restoring from scene-defined lookAt
-    if (foScene.cameraProps.lookAt?.length === 3) {
-      cameraControlsRef.current.setTarget(
-        foScene.cameraProps.lookAt[0],
-        foScene.cameraProps.lookAt[1],
-        foScene.cameraProps.lookAt[2],
-        false
-      );
-      setSceneInitialized(true);
-      return;
-    }
-
-    // no saved state and no scene config — fall through to bbox-dependent effect below
-  }, [foScene, lastSavedCameraState, cameraControlsRef, cameraRef]);
-
-  // Fallback: position camera based on bounding box when no saved state is available.
-  // This only runs when we have no localStorage/scene-config camera AND bbox is ready.
-  useEffect(() => {
-    if (
-      !cameraControlsRef.current ||
-      !cameraRef.current ||
-      isComputingSceneBoundingBox ||
-      isSceneInitialized
-    ) {
-      return;
-    }
-
-    // only reach here if the first effect didn't initialize (no saved state, no scene lookAt)
-    onChangeView("top", {
-      useAnimation: false,
-      ignoreLastSavedCameraPosition: false,
-      isFirstTime: true,
-    });
-    setSceneInitialized(true);
-  }, [
-    onChangeView,
-    cameraControlsRef,
-    cameraRef,
-    isComputingSceneBoundingBox,
-    isSceneInitialized,
-  ]);
-
-  useTrackStatus();
-
-  const setUpVector = useCallback((upVector: Vector3) => {
-    setUpVectorVal(upVector);
-  }, []);
-
-  const [autoRotate, setAutoRotate] = useBrowserStorage(
-    "fo3dAutoRotate",
-    false
+  return (
+    <SinglePanelView
+      assetsGroupRef={assetsGroupRef}
+      foScene={foScene}
+      cameraRef={cameraRef}
+      cameraControlsRef={cameraControlsRef}
+      defaultCameraPosition={mountCameraPosition}
+      onPointerMissed={resetActiveNode}
+    />
   );
+};
 
-  const [pointCloudSettings, setPointCloudSettings] = useBrowserStorage(
-    "fo3d-pointCloudSettings",
-    {
-      enableTooltip: false,
-    }
+const Fo3dLoadErrorState = ({ error }: { error: Error | null }) => {
+  const message = error?.message
+    ? `Failed to load 3D scene: ${error.message}`
+    : "Failed to load 3D scene";
+
+  return (
+    <Loading
+      dataCy="looker3d"
+      wrapperStyle={{ textAlign: "center", maxWidth: 420 }}
+    >
+      <div data-cy="looker-error-info">{message}</div>
+    </Loading>
   );
+};
 
-  const [raycastPrecision, setRaycastPrecision] = useBrowserStorage(
-    "fo3d-raycastingPrecision",
-    DEFAULT_RAYCAST_PRECISION
-  );
-
-  const [hoverMetadata, setHoverMetadata] = useState<HoverMetadata | null>(
-    null
-  );
-
-  const isAnnotationPlaneEnabled = useRecoilValue(annotationPlaneAtom).enabled;
-
+export const MediaTypeFo3dComponent = () => {
+  const { interactionSample, sceneSample } = fos.useRenderConfig3dState();
+  const settings = usePluginSettings<Looker3dSettings>("3d");
+  const mode = fos.useModalMode();
+  const canAnnotate = useCanAnnotate().showAnnotationTab;
   const current3dAnnotationMode = useCurrent3dAnnotationMode();
-  const isPolylineAnnotateActive = current3dAnnotationMode === "polyline";
-  const isCuboidAnnotateActive = current3dAnnotationMode === "cuboid";
+  const sceneSampleId = sceneSample.id ?? sceneSample.sample._id;
+  const loadingManager = useMemo(() => new LoadingManager(), [sceneSampleId]);
 
-  const canAnnotate = useCanAnnotate();
+  const {
+    foScene,
+    isLoading: isParsingFo3d,
+    loadError,
+    fo3dRoot,
+    rootAssetCount,
+  } = useFo3d(sceneSample);
 
-  const shouldRenderMultiPanelView = useMemo(
-    () =>
-      mode === "annotate" &&
-      canAnnotate &&
-      !(isGroup && is2DSampleViewerVisible) &&
-      isSceneInitialized,
-    [mode, isGroup, is2DSampleViewerVisible, isSceneInitialized, canAnnotate]
+  const [cameraLifecycleState, dispatchCameraLifecycle] = useReducer(
+    fo3dCameraLifecycleReducer,
+    FO3D_CAMERA_LIFECYCLE.WAITING_FOR_SCENE
+  );
+  const isSceneReady = isFo3dSceneReady({
+    cameraLifecycleState,
+    foScene,
+    rootAssetCount,
+  });
+
+  // Reset camera initialization whenever the scene identity changes.
+  useEffect(() => {
+    dispatchCameraLifecycle({
+      type: FO3D_CAMERA_LIFECYCLE_ACTION.WAIT_FOR_SCENE,
+    });
+  }, [sceneSampleId]);
+
+  const cameraRef = useRef<PerspectiveCamera | null>(null);
+  const cameraControlsRef = useRef<CameraControls | null>(null);
+  const assetsGroupRef = useRef<Group | null>(null);
+  const threeJsLoadingStatus = useTrackStatus(loadingManager, isSceneReady);
+
+  useFo3dCameraControlsConfig({
+    cameraControlsRef,
+  });
+
+  const {
+    sceneBoundingBox,
+    recomputeBounds,
+    isComputingSceneBoundingBox,
+    isBoundsResolved,
+  } = useFo3dSceneBounds({
+    assetsGroupRef,
+    foScene,
+    isParsingFo3d,
+    rootAssetCount,
+    isThreeJsLoading: threeJsLoadingStatus.isLoading,
+  });
+
+  const { upVector, effectiveSceneBoundingBox, contextValue } =
+    useFo3dSceneContextState({
+      foScene,
+      settings,
+      sceneBoundingBox,
+      isComputingSceneBoundingBox,
+      rootAssetCount,
+      fo3dRoot,
+      loadingManager,
+      cameraLifecycleState,
+      isSceneReady,
+    });
+
+  const { shouldRenderMultiPanelView, currentRenderPath } = useFo3dPanelRouting(
+    {
+      mode,
+      canAnnotate,
+      isSceneReady,
+      recomputeBounds,
+    }
   );
 
-  useEffect(() => {
-    if (shouldRenderMultiPanelView) {
-      recomputeBounds();
-    }
-  }, [shouldRenderMultiPanelView, isAnnotationPlaneEnabled, recomputeBounds]);
+  const { mountCameraPosition } = useFo3dCameraInitialization({
+    cameraRef,
+    cameraControlsRef,
+    currentRenderPath,
+    foScene,
+    sceneBoundingBox,
+    upVector,
+    settings,
+    isBoundsResolved,
+    dispatchCameraLifecycle,
+  });
 
-  useEffect(() => {
-    setIsInMultiPanelView(shouldRenderMultiPanelView);
-  }, [shouldRenderMultiPanelView]);
+  useFo3dCameraViewEvents({
+    cameraRef,
+    cameraControlsRef,
+    effectiveSceneBoundingBox,
+    sceneBoundingBox,
+    upVector,
+    foScene,
+    settings,
+    recomputeBounds,
+  });
+
+  const isPolylineAnnotateActive =
+    current3dAnnotationMode === ANNOTATION_POLYLINE;
+  const isCuboidAnnotateActive = current3dAnnotationMode === ANNOTATION_CUBOID;
+  const shouldShowAnnotationToolbar =
+    mode === fos.ModalMode.ANNOTATE &&
+    (isPolylineAnnotateActive || isCuboidAnnotateActive);
 
   if (isParsingFo3d) {
     return <LoadingDots />;
   }
 
+  if (!foScene) {
+    return <Fo3dLoadErrorState error={loadError} />;
+  }
+
   return (
-    <Fo3dSceneContext.Provider
-      value={{
-        isSceneInitialized,
-        numPrimaryAssets,
-        upVector,
-        setUpVector,
-        isComputingSceneBoundingBox,
-        fo3dRoot,
-        sceneBoundingBox: effectiveSceneBoundingBox,
-        cursorBounds,
-        lookAt,
-        setLookAt,
-        autoRotate,
-        setAutoRotate,
-        pointCloudSettings,
-        setPointCloudSettings,
-        raycastPrecision,
-        setRaycastPrecision,
-        hoverMetadata,
-        setHoverMetadata,
-        pluginSettings: settings,
-      }}
-    >
+    <Fo3dSceneContext.Provider value={contextValue}>
       {canAnnotate && <Annotation3d />}
-      {shouldRenderMultiPanelView ? (
-        <MultiPanelView
-          key={upVector ? upVector.toArray().join(",") : null}
-          assetsGroupRef={assetsGroupRef}
-          foScene={foScene}
-          sample={sample}
-          cameraRef={cameraRef}
-          cameraControlsRef={cameraControlsRef}
-          defaultCameraPosition={defaultCameraPositionComputed}
-        />
-      ) : (
-        <MainContainer ref={containerRef}>
-          <HoverMetadataHUD />
-          <PcdColorMapTunnel.Out />
-          <Canvas
-            id={CANVAS_WRAPPER_ID}
-            eventSource={containerRef}
-            onPointerMissed={resetActiveNode}
-            key={upVector ? upVector.toArray().join(",") : null}
-          >
-            <Fo3dSceneContent
-              cameraPosition={defaultCameraPositionComputed}
-              upVector={upVector}
-              fov={foScene?.cameraProps.fov ?? 50}
-              isGizmoHelperVisible={true}
-              near={foScene?.cameraProps.near ?? 0.1}
-              far={foScene?.cameraProps.far ?? 2500}
-              aspect={foScene?.cameraProps.aspect ?? 1}
-              autoRotate={autoRotate}
-              cameraControlsRef={cameraControlsRef}
-              foScene={foScene}
-              isSceneInitialized={isSceneInitialized}
-              sample={sample}
-              pointCloudSettings={pointCloudSettings}
-              assetsGroupRef={assetsGroupRef}
-              cameraRef={cameraRef}
-            />
-          </Canvas>
-          <StatusBarRootContainer>
-            <StatusBar cameraRef={cameraRef} />
-          </StatusBarRootContainer>
-        </MainContainer>
-      )}
-      {mode === "annotate" &&
-        (isPolylineAnnotateActive || isCuboidAnnotateActive) && (
-          <AnnotationToolbar />
-        )}
+      <Fo3dPanels
+        shouldRenderMultiPanelView={shouldRenderMultiPanelView}
+        upVector={upVector}
+        assetsGroupRef={assetsGroupRef}
+        foScene={foScene}
+        interactionSample={interactionSample}
+        cameraRef={cameraRef}
+        cameraControlsRef={cameraControlsRef}
+        mountCameraPosition={mountCameraPosition}
+        cameraLifecycleState={cameraLifecycleState}
+        mode={mode}
+      />
+      {shouldShowAnnotationToolbar && <AnnotationToolbar />}
     </Fo3dSceneContext.Provider>
   );
 };

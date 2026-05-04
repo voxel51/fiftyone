@@ -11,7 +11,7 @@ import logging
 import os
 import pathlib
 import stat
-
+import mimetypes
 import eta.core.utils as etau
 import strawberry as gql
 from starlette.applications import Starlette
@@ -30,6 +30,7 @@ from starlette.types import Scope
 
 import fiftyone as fo
 import fiftyone.constants as foc
+import fiftyone.core.context as focx
 from fiftyone.operators.store.notification_service import (
     MongoChangeStreamNotificationServiceLifecycleManager,
     default_notification_service,
@@ -97,6 +98,14 @@ class HeadersMiddleware(BaseHTTPMiddleware):
     ) -> Response:
         response = await call_next(request)
         response.headers["x-colab-notebook-cache-control"] = "no-cache"
+        # Enable cross-origin isolation for multi-threaded WASM
+        # (SharedArrayBuffer).
+        # Skipped in notebook/iframe contexts (Jupyter, Colab) where
+        # COOP: same-origin would prevent the app from loading inside
+        # the iframe.
+        if not focx.is_notebook_context():
+            response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+            response.headers["Cross-Origin-Embedder-Policy"] = "credentialless"
         return response
 
 
@@ -107,6 +116,13 @@ schema = gql.Schema(
     scalar_overrides=SCALAR_OVERRIDES,
 )
 
+mtypes = (  # ensure mimetypes for Windows
+    ('application/javascript', '.js'),
+    ('text/css', '.css'),
+    ('application/wasm', '.wasm'),
+)
+for mtype, ext in mtypes:
+    mimetypes.add_type(mtype, ext)
 
 app = Starlette(
     middleware=[

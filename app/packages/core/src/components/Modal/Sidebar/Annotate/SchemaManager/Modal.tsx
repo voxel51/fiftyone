@@ -26,8 +26,8 @@ import {
   useNewFieldMode,
   useSchemaEditorGUIJSONToggle,
   useSchemaManagerCleanup,
+  useSchemaManagerModal,
   useSelectedFieldCounts,
-  useShowSchemaManagerModal,
 } from "./hooks";
 import NewFieldSchema from "./NewFieldSchema";
 import {
@@ -43,8 +43,10 @@ export { ModalHeader as Header } from "./styled";
 
 const Heading = () => {
   const { field, setField } = useCurrentField();
-  const { isNewField: newFieldMode, setIsNewField: setNewFieldMode } =
-    useNewFieldMode();
+  const {
+    isNewField: newFieldMode,
+    setIsNewField: setNewFieldMode,
+  } = useNewFieldMode();
 
   if (newFieldMode) {
     return (
@@ -81,7 +83,7 @@ const Subheading = () => {
 
   return (
     <Text color={TextColor.Secondary} style={{ marginTop: "0.5rem" }}>
-      Manage your label schemas
+      Manage your field schemas
     </Text>
   );
 };
@@ -104,8 +106,10 @@ const Page = () => {
 const SchemaManagerFooter = () => {
   const field = useCurrentFieldValue();
   const { tab } = useSchemaEditorGUIJSONToggle();
-  const { activeCount: activeSelectedCount, hiddenCount: hiddenSelectedCount } =
-    useSelectedFieldCounts();
+  const {
+    activeCount: activeSelectedCount,
+    hiddenCount: hiddenSelectedCount,
+  } = useSelectedFieldCounts();
   const activateFields = useActivateFields();
   const deactivateFields = useDeactivateFields();
 
@@ -172,6 +176,8 @@ const Modal = () => {
   // and JSON editor state is reset by useFullSchemaEditor's cleanup effect.
   useSchemaManagerCleanup();
 
+  const { closeSchemaManager } = useSchemaManagerModal();
+
   const element = useMemo(() => {
     const el = document.getElementById("annotation");
     if (!el) {
@@ -179,7 +185,6 @@ const Modal = () => {
     }
     return el;
   }, []);
-  const setShowModal = useShowSchemaManagerModal();
 
   useEffect(() => {
     element.style.display = "block";
@@ -190,7 +195,7 @@ const Modal = () => {
   }, [element]);
 
   return createPortal(
-    <ModalBackground onClick={() => setShowModal(false)}>
+    <ModalBackground onClick={() => closeSchemaManager()}>
       <ModalContainer
         data-cy="schema-manager"
         onClick={(e) => e.stopPropagation()}
@@ -202,7 +207,7 @@ const Modal = () => {
             borderless
             size={Size.Sm}
             data-cy="close-schema-manager"
-            onClick={() => setShowModal(false)}
+            onClick={() => closeSchemaManager()}
             style={{ marginRight: "14px" }}
           >
             <Icon

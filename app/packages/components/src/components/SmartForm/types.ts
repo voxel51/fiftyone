@@ -21,6 +21,7 @@ export enum SmartFormComponents {
   SelectWidget = "SelectWidget",
   RadioView = "RadioView",
   RadioGroup = "RadioGroup",
+  CheckboxesView = "CheckboxesView",
   AutocompleteView = "AutocompleteView",
   ColorView = "ColorView",
   CodeView = "CodeView",

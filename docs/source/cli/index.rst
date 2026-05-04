@@ -843,23 +843,24 @@ List operators and panels that are installed locally.
 
 .. code-block:: text
 
-    fiftyone operators list [-h] [-g PATT] [-e] [-d] [-b] [-c] [-o] [-p] [-n]
+    fiftyone operators list [-h] [-g PATT] [-e] [-d] [-b] [-c] [-o] [-p] [-n] [-u]
 
 **Arguments**
 
 .. code-block:: text
 
     optional arguments:
-      -h, --help            show this help message and exit
+      -h, --help              show this help message and exit
       -g PATT, --glob-patt PATT
-                            only show operators whose URI matches the glob pattern
-      -e, --enabled         only show enabled operators and panels
-      -d, --disabled        only show disabled operators and panels
-      -b, --builtins-only   only show builtin operators and panels
-      -c, --no-builtins     only show non-builtin operators and panels
-      -o, --operators-only  only show operators
-      -p, --panels-only     only show panels
-      -n, --names-only      only show names
+                              only show operators whose URI matches the glob pattern
+      -e, --enabled           only show enabled operators and panels
+      -d, --disabled          only show disabled operators and panels
+      -b, --builtins-only     only show builtin operators and panels
+      -c, --no-builtins       only show non-builtin operators and panels
+      -o, --operators-only    only show operators
+      -p, --panels-only       only show panels
+      -n, --names-only        only show names
+      -u, --include-unlisted  include unlisted operators
 
 **Examples**
 
@@ -1235,7 +1236,7 @@ List plugins that are installed locally.
 
 .. code-block:: text
 
-    fiftyone plugins list [-h] [-g PATT] [-e] [-d] [-b] [-c] [-n]
+    fiftyone plugins list [-h] [-g PATT] [-t TAGS [TAGS ...]] [-e] [-d] [-b] [-c] [-n]
 
 **Arguments**
 
@@ -1245,6 +1246,8 @@ List plugins that are installed locally.
       -h, --help            show this help message and exit
       -g PATT, --glob-patt PATT
                             only show plugins whose name matches the glob pattern
+      -t TAGS [TAGS ...], --tags TAGS [TAGS ...]
+                            only show plugins with the specified tag(s)
       -e, --enabled         only show enabled plugins
       -d, --disabled        only show disabled plugins
       -b, --builtins-only   only show builtin plugins
@@ -1262,6 +1265,11 @@ List plugins that are installed locally.
 
     # List plugins whose name matches the given glob pattern
     fiftyone plugins list --glob-patt '@voxel51/*'
+
+.. code-block:: shell
+
+    # List plugins with the given tag
+    fiftyone plugins list --tags <tag>
 
 .. code-block:: shell
 
@@ -2565,7 +2573,7 @@ List datasets in the FiftyOne Dataset Zoo.
 
 .. code-block:: text
 
-    fiftyone zoo datasets list [-h] [-n] [-d] [-s SOURCE] [-t TAGS] [-l LICENSE]
+    fiftyone zoo datasets list [-h] [-n] [-d] [-s SOURCE] [-t TAGS [TAGS ...]] [-l LICENSE [LICENSE ...]]
 
 **Arguments**
 
@@ -2578,10 +2586,10 @@ List datasets in the FiftyOne Dataset Zoo.
                             only show datasets that have been downloaded
       -s SOURCE, --source SOURCE
                             only show datasets available from the specified source
-      -t TAGS, --tags TAGS  only show datasets with the specified tag or list,of,tags
-      -l LICENSE, --license LICENSE
-                            only show datasets with the specified license or
-                            any of the list,of,licenses
+      -t TAGS [TAGS ...], --tags TAGS [TAGS ...]
+                            only show datasets with the specified tag(s)
+      -l LICENSE [LICENSE ...], --license LICENSE [LICENSE ...]
+                            only show datasets distributed under the specified license(s)
 
 **Examples**
 
@@ -2916,7 +2924,7 @@ List models in the FiftyOne Model Zoo.
 
 .. code-block:: text
 
-    fiftyone zoo models list [-h] [-n] [-d] [-t TAGS] [-s SOURCE] [-l LICENSE]
+    fiftyone zoo models list [-h] [-n] [-d] [-t TAGS [TAGS ...]] [-s SOURCE] [-l LICENSE [LICENSE ...]]
 
 **Arguments**
 
@@ -2927,12 +2935,12 @@ List models in the FiftyOne Model Zoo.
       -n, --names-only      only show model names
       -d, --downloaded-only
                             only show models that have been downloaded
-      -t TAGS, --tags TAGS  only show models with the specified tag or list,of,tags
+      -t TAGS [TAGS ...], --tags TAGS [TAGS ...]
+                            only show models with the specified tag(s)
       -s SOURCE, --source SOURCE
                             only show models available from the specified remote source
-      -l LICENSE, --license LICENSE
-                            only show models with the specified license or any
-                            of the list,of,licenses
+      -l LICENSE [LICENSE ...], --license LICENSE [LICENSE ...]
+                            only show models distributed under the specified license(s)
 
 **Examples**
 

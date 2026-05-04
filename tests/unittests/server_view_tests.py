@@ -184,8 +184,7 @@ class ServerViewTests(unittest.TestCase):
                 view._pipeline(),
             )
         )
-        self.assertIn("_label_tags", sample)
-        self.assertDictEqual(sample["_label_tags"], {"one": 1, "two": 2})
+        self.assertNotIn("_label_tags", sample)
 
         filters = {
             "_label_tags": {
@@ -216,8 +215,7 @@ class ServerViewTests(unittest.TestCase):
                 view._pipeline(),
             )
         )
-        self.assertIn("_label_tags", sample)
-        self.assertDictEqual(sample["_label_tags"], {"one": 1, "two": 1})
+        self.assertNotIn("_label_tags", sample)
 
         filters = {
             "_label_tags": {
@@ -250,8 +248,7 @@ class ServerViewTests(unittest.TestCase):
                 view._pipeline(),
             )
         )
-        self.assertIn("_label_tags", sample)
-        self.assertDictEqual(sample["_label_tags"], {"two": 1})
+        self.assertNotIn("_label_tags", sample)
 
         filters = {
             "_label_tags": {
@@ -321,8 +318,7 @@ class ServerViewTests(unittest.TestCase):
                 view._pipeline(),
             )
         )
-        self.assertIn("_label_tags", sample)
-        self.assertDictEqual(sample["_label_tags"], {"one": 1, "two": 2})
+        self.assertNotIn("_label_tags", sample)
 
         filters = {
             "_label_tags": {
@@ -353,8 +349,7 @@ class ServerViewTests(unittest.TestCase):
                 view._pipeline(),
             )
         )
-        self.assertIn("_label_tags", sample)
-        self.assertDictEqual(sample["_label_tags"], {"one": 1, "two": 1})
+        self.assertNotIn("_label_tags", sample)
 
         filters = {
             "_label_tags": {
@@ -388,8 +383,7 @@ class ServerViewTests(unittest.TestCase):
                 view._pipeline(),
             )
         )
-        self.assertIn("_label_tags", sample)
-        self.assertDictEqual(sample["_label_tags"], {"two": 1})
+        self.assertNotIn("_label_tags", sample)
 
         filters = {
             "_label_tags": {
@@ -549,8 +543,7 @@ class ServerViewTests(unittest.TestCase):
                 view._pipeline(),
             )
         )
-        self.assertIn("_label_tags", sample)
-        self.assertDictEqual(sample["_label_tags"], {"one": 1, "two": 2})
+        self.assertNotIn("_label_tags", sample)
 
         filters = {
             "_label_tags": {
@@ -581,8 +574,7 @@ class ServerViewTests(unittest.TestCase):
                 view._pipeline(),
             )
         )
-        self.assertIn("_label_tags", sample)
-        self.assertDictEqual(sample["_label_tags"], {"one": 1, "two": 1})
+        self.assertNotIn("_label_tags", sample)
 
         filters = {
             "_label_tags": {
@@ -615,8 +607,7 @@ class ServerViewTests(unittest.TestCase):
                 view._pipeline(),
             )
         )
-        self.assertIn("_label_tags", sample)
-        self.assertDictEqual(sample["_label_tags"], {"two": 1})
+        self.assertNotIn("_label_tags", sample)
 
         filters = {
             "_label_tags": {
@@ -1024,6 +1015,193 @@ class ServerDocTests(unittest.TestCase):
         doc = Dataset.modifier({"_id": "id"})
         self.assertIn("frame_collection_name", doc)
         self.assertEqual(doc["frame_collection_name"], None)
+
+
+class MatchLabelTagsTests(unittest.TestCase):
+    """Tests for _match_label_tags covering all four (exclude, matching) cases.
+
+    Dataset layout used across all tests:
+      - sample1: two detections, one tagged ["target"], one tagged ["other"]
+      - sample2: one detection tagged ["other"]
+
+    Filtering on tag "target" yields different results depending on the mode:
+
+      exclude=False, matching=False → prefilter samples then select labels
+      exclude=True,  matching=False → no prefilter, exclude matching labels
+      exclude=False, matching=True  → prefilter samples, keep all labels
+      exclude=True,  matching=True  → prefilter to *exclude* samples that match
+    """
+
+    def setUp(self):
+        self.dataset = fod.Dataset()
+        self.sample1 = fos.Sample(
+            filepath="image1.png",
+            predictions=fol.Detections(
+                detections=[
+                    fol.Detection(label="alpha", tags=["target"]),
+                    fol.Detection(label="beta", tags=["other"]),
+                ]
+            ),
+            # additional field which contains only non-target labels
+            predictions2=fol.Detections(
+                detections=[
+                    fol.Detection(label="beta", tags=["other"]),
+                ]
+            ),
+            # ground_truth also carries "target" so that a correct $nor must
+            # cover both label fields to exclude this sample
+            ground_truth=fol.Detections(
+                detections=[
+                    fol.Detection(label="delta", tags=["target"]),
+                ]
+            ),
+        )
+        self.sample2 = fos.Sample(
+            filepath="image2.png",
+            predictions=fol.Detections(
+                detections=[
+                    fol.Detection(label="gamma", tags=["other"]),
+                ]
+            ),
+            ground_truth=fol.Detections(
+                detections=[
+                    fol.Detection(label="epsilon", tags=["other"]),
+                ]
+            ),
+        )
+        self.dataset.add_samples([self.sample1, self.sample2])
+
+    def tearDown(self):
+        self.dataset.delete()
+
+    def _label_tags_filter(self, exclude, matching):
+        return {
+            "_label_tags": {
+                "values": ["target"],
+                "exclude": exclude,
+                "isMatching": matching,
+            }
+        }
+
+    def test_no_exclude_no_matching(self):
+        """exclude=False, matching=False: prefilter samples with $or, then
+        select_labels keeps only the tagged labels within those samples.
+
+        Only sample1 has a "target" label, so it is the only sample returned.
+        Within sample1 only the "alpha" (target-tagged) detection survives.
+        """
+        view = fosv.get_extended_view(
+            self.dataset.view(),
+            filters=self._label_tags_filter(exclude=False, matching=False),
+        )
+        self.assertEqual(len(view), 1)
+        ground_truth = view.first().ground_truth.detections
+        self.assertEqual(len(ground_truth), 1)
+        self.assertEqual(ground_truth[0].label, "delta")
+        predictions = view.first().predictions.detections
+        self.assertEqual(len(predictions), 1)
+        self.assertEqual(predictions[0].label, "alpha")
+        predictions = view.first().predictions2.detections
+        self.assertEqual(len(predictions), 0)
+
+    def test_exclude_no_matching(self):
+        """exclude=True, matching=False: no sample-level prefilter, then
+        exclude_labels removes "target"-tagged labels from every sample.
+
+        Both samples survive; sample1 loses its "alpha" detection and
+        sample2 is unchanged.
+        """
+        view = fosv.get_extended_view(
+            self.dataset.view(),
+            filters=self._label_tags_filter(exclude=True, matching=False),
+        )
+        self.assertEqual(len(view), 2)
+        ids_to_detections = lambda f: {
+            str(s.id): s[f].detections for s in view
+        }
+
+        # ground truth
+        sample1_ground_truth = ids_to_detections("ground_truth")[
+            self.sample1.id
+        ]
+        self.assertEqual(len(sample1_ground_truth), 0)
+        sample2_ground_truth = ids_to_detections("ground_truth")[
+            self.sample2.id
+        ]
+        self.assertEqual(len(sample2_ground_truth), 1)
+        self.assertEqual(sample2_ground_truth[0].label, "epsilon")
+
+        # predictions
+        sample1_predictions = ids_to_detections("predictions")[self.sample1.id]
+        self.assertEqual(len(sample1_predictions), 1)
+        self.assertEqual(sample1_predictions[0].label, "beta")
+        sample2_predictions = ids_to_detections("predictions")[self.sample2.id]
+        self.assertEqual(len(sample2_predictions), 1)
+        self.assertEqual(sample2_predictions[0].label, "gamma")
+
+        # predictions2
+        sample1_predictions2 = ids_to_detections("predictions2")[
+            self.sample1.id
+        ]
+        self.assertEqual(len(sample1_predictions2), 1)
+        self.assertEqual(sample1_predictions2[0].label, "beta")
+
+    def test_no_exclude_matching(self):
+        """exclude=False, matching=True: $or prefilter keeps only samples that
+        have at least one "target"-tagged label; all labels are preserved.
+
+        Only sample1 passes the prefilter and both its detections are kept.
+        """
+        view = fosv.get_extended_view(
+            self.dataset.view(),
+            filters=self._label_tags_filter(exclude=False, matching=True),
+        )
+        self.assertEqual(len(view), 1)
+        sample = view.first()
+
+        # ground_truth
+        ground_truth = sample.ground_truth.detections
+        self.assertEqual(len(ground_truth), 1)
+        self.assertEqual(ground_truth[0].label, "delta")
+
+        # predictions
+        predictions = sample.predictions.detections
+        self.assertEqual(len(predictions), 2)
+        labels = {d.label for d in predictions}
+        self.assertEqual(labels, {"alpha", "beta"})
+        predictions2 = sample.predictions2.detections
+        self.assertEqual(len(predictions2), 1)
+        self.assertEqual(predictions2[0].label, "beta")
+
+    def test_exclude_matching(self):
+        """exclude=True, matching=True: $nor prefilter keeps only samples that
+        have *no* "target"-tagged label across *all* label fields; all labels
+        in those samples are kept.
+
+        sample1 carries "target" in both predictions and ground_truth.
+        sample2 carries "target" in neither field.
+
+        The $nor condition must cover every label path, if it regresses to
+        $or, sample1 is returned instead of sample2. If any label field is
+        omitted from the conditions, sample1 leaks through even with $nor
+        (it would only be excluded via the one field that is checked).
+        """
+        view = fosv.get_extended_view(
+            self.dataset.view(),
+            filters=self._label_tags_filter(exclude=True, matching=True),
+        )
+        self.assertEqual(len(view), 1)
+        sample = view.first()
+        # ground_truth: also intact and carries no "target" tag
+        self.assertEqual(len(sample.ground_truth.detections), 1)
+        self.assertEqual(sample.ground_truth.detections[0].label, "epsilon")
+
+        # predictions: only the "other"-tagged detection is present
+        self.assertEqual(len(sample.predictions.detections), 1)
+        self.assertEqual(sample.predictions.detections[0].label, "gamma")
+
+        # predictions2: empty
+        self.assertIsNone(sample.predictions2)
 
 
 class GetExtendedViewTests(unittest.TestCase):

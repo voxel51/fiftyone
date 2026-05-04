@@ -1,3 +1,13 @@
+// FiftyOne Labs icon in sidebar nav
+.nav.bd-sidenav a.reference.nav-labs::after
+  content: ''
+  display: inline-block
+  width: 16px
+  height: 16px
+  margin-left: 4px
+  background: url('../images/icons/fiftyone-labs.svg') no-repeat center / contain
+  vertical-align: text-top
+
 .nav.bd-sidenav
   @for $i from 1 through 6
     .toctree-l#{$i}

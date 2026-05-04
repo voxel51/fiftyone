@@ -25,7 +25,7 @@ Whether you're working with images, videos, or other data types, a plugin can
 help you streamline your machine learning workflows and co-develop your data
 and models.
 
-.. image:: /images/plugins/plugin-design.png
+.. image:: https://cdn.voxel51.com/develop_plugins/plugin-design.png
     :align: center
 
 .. _plugins-design-types:
@@ -142,6 +142,34 @@ directory.
    `FiftyOne Hello World JS Example <https://github.com/voxel51/hello-world-plugin-js>`_
    repository and following the conventions there to build your JS plugin.
 
+.. _plugins-local-testing:
+
+Testing plugins locally
+-----------------------
+
+.. versionadded:: 1.13.0
+
+The easiest way to test a plugin during development is the
+``fiftyone app debug`` command, which launches the App with server logs
+printed directly to your shell:
+
+.. code-block:: shell
+
+    fiftyone app debug
+
+You can also load a specific dataset immediately on launch:
+
+.. code-block:: shell
+
+    fiftyone app debug <name>
+
+.. note::
+
+    Make sure your plugin is installed in your
+    :ref:`plugins directory <plugins-directory>` before launching. If you
+    add or modify a plugin while the App is running, restart the debug
+    session to pick up the changes.
+
 .. _plugin-anatomy:
 
 Anatomy of a plugin
@@ -180,6 +208,12 @@ plugin:
     If your FiftyOne App is already running, you may need to restart the server
     and refresh your browser to see new plugins.
 
+.. note::
+
+    When writing Python plugins with multiple files, see
+    :ref:`importing modules <operator-importing-modules>` for how to import
+    code between files in your plugin.
+
 .. _plugin-fiftyone-yml:
 
 fiftyone.yml
@@ -211,6 +245,8 @@ The following fields are available:
     | `license`                    |           | The license under which the plugin is distributed                           |
     +------------------------------+-----------+-----------------------------------------------------------------------------+
     | `description`                |           | A brief description of the plugin                                           |
+    +------------------------------+-----------+-----------------------------------------------------------------------------+
+    | `tags`                       |           | A list of tags for the plugin                                               |
     +------------------------------+-----------+-----------------------------------------------------------------------------+
     | `fiftyone.version`           |           | A semver version specifier (or `*`) describing the required                 |
     |                              |           | FiftyOne version for the plugin to work properly                            |
@@ -1749,6 +1785,89 @@ the caching strategy according to your needs:
     Refer to :ref:`this section <panel-execution-cache>` for more information
     about using the execution cache.
 
+.. _operator-async-data-loading:
+
+Async data loading
+------------------
+
+Some operators need to load data asynchronously (e.g., from an API or database)
+based on user input. The :meth:`loader() <fiftyone.operators.types.Object.loader>`
+method allows you to fetch data without blocking the form, showing a loading
+indicator while the data is being retrieved.
+
+To use a loader, define an operator that returns the data and call
+:meth:`inputs.loader() <fiftyone.operators.types.Object.loader>` to trigger it:
+
+.. code-block:: python
+    :linenos:
+
+    class LoadModels(foo.Operator):
+        @property
+        def config(self):
+            return foo.OperatorConfig(name="load_models", unlisted=True)
+
+        def execute(self, ctx):
+            make = ctx.params.get("make")
+            models = {"dodge": [{"id": "charger", "name": "Charger"}]}
+            return models.get(make, [])
+
+
+    class CarSelector(foo.Operator):
+        @property
+        def config(self):
+            return foo.OperatorConfig(name="car_selector", dynamic=True)
+
+        def resolve_input(self, ctx):
+            inputs = types.Object()
+            inputs.enum("make", values=["dodge", "jeep"], label="Make")
+
+            if ctx.params.get("make"):
+                inputs.loader(
+                    "models",
+                    type=types.List(types.Object()),
+                    operator="@my-plugin/load_models",
+                    params={"make": ctx.params["make"]},
+                    label="Loading models...",
+                    dependencies=["make"],  # reload when "make" changes
+                )
+
+            models = ctx.params.get("models", {})
+            if models.get("state") == "loaded":
+                inputs.enum("model", values=[m["id"] for m in models["data"]], label="Model")
+
+            return types.Property(inputs)
+
+The loader property value always has the following structure:
+
+- ``state``: one of ``"idle"``, ``"loading"``, ``"loaded"``, or ``"errored"``
+- ``data``: the data returned by the operator (shaped by the ``type`` argument)
+- ``error``: an error message if the loader failed
+
+By default, loaders execute only once when the form mounts. To reload data when
+specific parameters change, use the ``dependencies`` argument with a list of
+parameter paths to watch:
+
+.. code-block:: python
+
+    inputs.loader(
+        "models",
+        type=types.List(types.Object()),
+        operator="@my-plugin/load_models",
+        params={"make": ctx.params["make"]},
+        label="Loading models...",
+        dependencies=["make"],  # reload only when "make" changes
+    )
+
+The ``dependencies`` argument supports dot-notation for nested values (e.g.,
+``"filters.category"``). The loader will re-execute whenever any of these
+values change, but will ignore changes to other parameters.
+
+.. note::
+
+    Loaders require ``dynamic=True`` in the operator config so that
+    :meth:`resolve_input() <fiftyone.operators.Operator.resolve_input>` is
+    re-called when the loader state changes.
+
 .. _operator-target-view:
 
 Target view __SUB_NEW__
@@ -2640,6 +2759,74 @@ plugin. Operators can access these secrets via the `ctx.secrets` dict:
       username = ctx.secrets["FIFTYONE_CVAT_USERNAME"]
       password = ctx.secrets["FIFTYONE_CVAT_PASSWORD"]
       email = ctx.secrets["FIFTYONE_CVAT_EMAIL"]
+
+.. _operator-importing-modules:
+
+Importing modules
+-----------------
+
+When your plugin has multiple Python files, you can import between them using
+absolute imports based on your plugin's name.
+
+Plugin names map to Python module namespaces under `fiftyone.plugins.orgs`:
+
+.. table::
+    :widths: 40 60
+
+    +------------------------------+-----------------------------------------------+
+    | Plugin name                  | Module namespace                              |
+    +==============================+===============================================+
+    | `@myorg/my-plugin`           | `fiftyone.plugins.orgs.myorg.my_plugin`       |
+    +------------------------------+-----------------------------------------------+
+    | `my-plugin`                  | `fiftyone.plugins.orgs.external.my_plugin`    |
+    +------------------------------+-----------------------------------------------+
+
+.. note::
+
+    Plugins without an organization prefix are placed under the ``external``
+    namespace.
+
+Names are automatically sanitized: hyphens become underscores and `PascalCase`
+becomes `snake_case`.
+
+For example, if your plugin `@myorg/my-plugin` has this structure:
+
+.. code-block:: text
+
+    my-plugin/
+        fiftyone.yml
+        __init__.py
+        utils.py
+        models/
+            __init__.py
+            classifier.py
+
+You can import modules using absolute paths:
+
+.. code-block:: python
+    :linenos:
+
+    # In __init__.py
+    from fiftyone.plugins.orgs.myorg.my_plugin.utils import helper
+    from fiftyone.plugins.orgs.myorg.my_plugin.models import classifier
+
+    # In models/classifier.py
+    from fiftyone.plugins.orgs.myorg.my_plugin.utils import helper
+
+Relative imports also work:
+
+.. code-block:: python
+
+    # In __init__.py
+    from .utils import helper
+    from .models import classifier
+
+.. warning::
+
+    These module paths are for **internal plugin use only**. External code
+    should not import plugin modules directly, as the namespace is created
+    dynamically when FiftyOne loads the plugin. To run plugin code from
+    external scripts, use the :ref:`operator execution API <using-operators>`.
 
 .. _operator-outputs:
 
@@ -3733,6 +3920,95 @@ avoid roadblocks along the way.
     plugin to see a collection of fully-functional panels that demonstrate
     the common patterns below.
 
+.. _panel-hybrid-python-js-panels:
+
+Hybrid panels (Python + JavaScript/React)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+FiftyOne supports building panels that combine Python and JavaScript/React
+code. This allows you to leverage the full power of React and the JS ecosystem
+while still taking advantage of the simplicity and expressiveness of Python for
+defining panel logic and state.
+
+The Python panel class handles configuration, state initialization, and event
+logic. The ``render()`` method connects to the React component via
+``composite_view=True``. Any event handlers passed as view kwargs become
+callable from JavaScript:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.operators as foo
+    import fiftyone.operators.types as types
+
+    class HybridPanel(foo.Panel):
+        @property
+        def config(self):
+            return foo.PanelConfig(
+                name="hybrid_panel",
+                label="Hybrid Panel",
+                icon="adjust",
+                surfaces="grid modal",
+            )
+
+        def on_load(self, ctx):
+            ctx.panel.set_state("count", 0)
+
+        def increment(self, ctx):
+            count = ctx.panel.get_state("count") or 0
+            ctx.panel.set_state("count", count + 1)
+
+        def render(self, ctx):
+            panel = types.Object()
+            return types.Property(
+                panel,
+                view=types.View(
+                    component="MyCustomView",
+                    composite_view=True,
+                    increment=self.increment,
+                ),
+            )
+
+    def register(p):
+        p.register(HybridPanel)
+
+On the JavaScript side, register a component whose ``name`` matches the
+``component`` argument in ``render()``. Access panel state via
+``usePanelStatePartial`` and trigger Python event handlers using
+``useTriggerPanelEvent``:
+
+.. code-block:: jsx
+    :linenos:
+
+    import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
+    import { usePanelStatePartial } from "@fiftyone/spaces";
+    import { useTriggerPanelEvent } from "@fiftyone/operators";
+
+    function MyCustomView({ schema }) {
+        const [state] = usePanelStatePartial("state", {});
+        const triggerEvent = useTriggerPanelEvent();
+        const { increment } = schema.view;
+
+        return (
+            <button onClick={() => triggerEvent(increment)}>
+                Count: {state.count}
+            </button>
+        );
+    }
+
+    registerComponent({
+        name: "MyCustomView",
+        label: "MyCustomView",
+        component: MyCustomView,
+        type: PluginComponentType.Component,
+        activator: () => true,
+    });
+    
+.. note::
+
+    Check out the `Hybrid Panel Plugin <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/hybrid-panel>`_
+    for a complete example of building a hybrid panel.
+
 .. _panel-callbacks:
 
 Callbacks
@@ -4552,6 +4828,76 @@ Using the custom component as the view for a Python operator field:
 
         def execute(self, ctx):
             return {}
+
+.. _custom-sample-renderers:
+
+Custom sample renderers
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Plugins can register ``SampleRenderer`` components to provide custom rendering
+for non-native media types in the grid and modal. Native media types
+(``image``, ``video``, ``point-cloud``, ``3d``) continue
+to use the built-in media renderers.
+
+Each sample renderer declares ``sampleRendererOptions.supports``. The simplest
+form is a matcher object with ``extensions``, ``mimeTypes``, and
+``mediaTypes``. All specified matcher groups must match (AND), and values in a
+group are matched case-insensitively (OR). ``supports`` can also be a predicate
+function that receives the sample renderer match context.
+
+Grid rendering is opt-in. Set ``sampleRendererOptions.grid.enabled`` to
+``true`` to enable a renderer in the grid. If you need a different grid-only
+implementation, provide ``sampleRendererOptions.grid.overrideComponent``;
+otherwise the canonical renderer component is reused in both modal and grid.
+
+The sample renderer component receives a single ``ctx`` prop containing the
+sample renderer render context:
+
+-   ``sample`` and ``media``
+-   ``surface`` (``"modal"`` or ``"grid"``)
+-   ``dataset`` and ``schema``
+
+Here's an example of a hypothetical plugin config that renders PDF files in
+both the grid and modal:
+
+.. code-block:: jsx
+    :linenos:
+
+    import {
+      type SampleRendererProps,
+      PluginComponentType,
+      registerComponent,
+    } from "@fiftyone/plugins";
+
+    function PdfRenderer({ ctx }: SampleRendererProps) {
+      return (
+        <iframe
+          src={ctx.media.url ?? ""}
+          title={ctx.sample.sample.filepath}
+          style={{ width: "100%", height: "100%", border: 0 }}
+        />
+      );
+    }
+
+    registerComponent({
+      name: "PDFRenderer",
+      label: "PDF renderer",
+      component: PdfRenderer,
+      type: PluginComponentType.SampleRenderer,
+      activator: () => true,
+      sampleRendererOptions: {
+        priority: 100,
+        supports: {
+          extensions: [".pdf"],
+          mimeTypes: ["application/pdf"],
+          mediaTypes: ["unknown"],
+        },
+        grid: {
+          enabled: true,
+        },
+      },
+    });
+
 
 FiftyOne App state
 ------------------

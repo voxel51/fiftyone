@@ -2,13 +2,35 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { getEventBus } from "@fiftyone/events";
-import { Scene2D } from "../core/Scene2D";
-import type { LighterEventGroup } from "../events";
-import { InteractiveDetectionHandler } from "../interaction/InteractiveDetectionHandler";
-import type { BaseOverlay } from "../overlay/BaseOverlay";
-import { Rect } from "../types";
 import type { Undoable } from "@fiftyone/commands";
+import { getEventBus } from "@fiftyone/events";
+import type { Scene2D } from "../core/Scene2D";
+import type { LighterEventGroup } from "../events";
+import type { InteractionHandler } from "../interaction/InteractionManager";
+import type { BaseOverlay } from "../overlay/BaseOverlay";
+import type { Rect, Spatial } from "../types";
+
+/**
+ * Type guard for interactive handlers that wrap an overlay (e.g. InteractiveDetectionHandler,
+ * InteractiveKeypointHandler).
+ */
+function isInteractiveHandler(
+  overlay: BaseOverlay | InteractionHandler
+): overlay is InteractionHandler & { getOverlay(): BaseOverlay } {
+  return (
+    "getOverlay" in overlay &&
+    typeof (overlay as Record<string, unknown>).getOverlay === "function"
+  );
+}
+
+/**
+ * Type guard for overlays that expose a settable relativeBounds property.
+ */
+function hasRelativeBounds(
+  obj: BaseOverlay
+): obj is BaseOverlay & { relativeBounds: Rect } {
+  return "relativeBounds" in obj;
+}
 
 /**
  * Command for adding an overlay to the scene with undo/redo support.
@@ -19,8 +41,8 @@ export class AddOverlayCommand implements Undoable {
 
   constructor(
     private scene: Scene2D,
-    private overlay: BaseOverlay | InteractiveDetectionHandler,
-    private absoluteBounds?: Rect,
+    private overlay: BaseOverlay | InteractionHandler,
+    private bounds?: Rect,
     private relativeBounds?: Rect
   ) {
     this.id = `add-overlay-${overlay.id}-${Date.now()}`;
@@ -28,29 +50,29 @@ export class AddOverlayCommand implements Undoable {
   }
 
   execute(): void {
-    if (this.overlay instanceof InteractiveDetectionHandler) {
+    if (isInteractiveHandler(this.overlay)) {
       const handler = this.overlay.getOverlay();
       const interactionManager = this.scene.getInteractionManager();
 
-      if (this.absoluteBounds) {
-        handler.setAbsoluteBounds(this.absoluteBounds);
+      const spatial = handler as BaseOverlay & Partial<Spatial>;
+      if (this.bounds && "bounds" in spatial) {
+        spatial.bounds = this.bounds;
       }
-      if (this.relativeBounds) {
-        handler.setRelativeBounds(this.relativeBounds);
+      if (this.relativeBounds && hasRelativeBounds(handler)) {
+        handler.relativeBounds = this.relativeBounds;
       }
 
-      interactionManager.removeHandler(this.overlay);
+      interactionManager.removeHandler(this.overlay as InteractionHandler);
       this.scene.addOverlay(handler, false);
     } else {
-      this.scene.addOverlay(this.overlay, false);
+      this.scene.addOverlay(this.overlay as BaseOverlay, false);
     }
   }
 
   undo(): void {
-    const overlayID =
-      this.overlay instanceof InteractiveDetectionHandler
-        ? this.overlay.getOverlay().id
-        : this.overlay.id;
+    const overlayID = isInteractiveHandler(this.overlay)
+      ? this.overlay.getOverlay().id
+      : this.overlay.id;
 
     this.scene.exitInteractiveMode();
 
@@ -68,10 +90,12 @@ export class AddOverlayCommand implements Undoable {
         error
       );
     } finally {
-      if (this.overlay instanceof InteractiveDetectionHandler) {
+      if (isInteractiveHandler(this.overlay)) {
         const handler = this.overlay.getOverlay();
-
-        handler.unsetBounds();
+        const spatial = handler as BaseOverlay & Partial<Spatial>;
+        if ("bounds" in spatial) {
+          spatial.bounds = undefined;
+        }
         this.scene.removeOverlay(handler.id, false);
       } else {
         this.scene.removeOverlay(this.overlay.id, false);
