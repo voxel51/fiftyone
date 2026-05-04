@@ -162,6 +162,11 @@ def apply_model(
     if classes is not None:
         classes = set(classes)
 
+    process_video_frames = (
+        samples.media_type == fom.VIDEO and model.media_type == "image"
+    )
+    frames_chunk_size = kwargs.pop("frames_chunk_size", 1)
+
     supports_get_item = isinstance(model, SupportsGetItem)
     needs_samples = isinstance(model, SamplesMixin)
 
@@ -181,16 +186,14 @@ def apply_model(
         field_mapping = None
         needs_fields = None
 
-    process_video_frames = (
-        samples.media_type == fom.VIDEO and model.media_type == "image"
-    )
-
     use_data_loader = (
         isinstance(model, (SupportsGetItem, TorchModelMixin))
         and not process_video_frames
     )
 
-    if num_workers is not None and not use_data_loader:
+    if num_workers is not None and not (
+        use_data_loader or process_video_frames
+    ):
         logger.warning("Ignoring unsupported `num_workers` parameter")
 
     if output_dir is not None:
@@ -249,30 +252,19 @@ def apply_model(
         if process_video_frames:
             label_field, _ = samples._handle_frame_field(label_field)
 
-            if batch_size is not None:
-                return _apply_image_model_to_frames_batch(
-                    samples,
-                    model,
-                    label_field,
-                    confidence_thresh,
-                    classes,
-                    batch_size,
-                    skip_failures,
-                    filename_maker,
-                    progress,
-                    field_mapping=field_mapping,  # workaround until samples mixin is deprecated for all models
-                )
-
-            return _apply_image_model_to_frames_single(
+            return _apply_image_model_with_video_data_loader(
                 samples,
                 model,
                 label_field,
                 confidence_thresh,
                 classes,
+                batch_size,
+                frames_chunk_size,
+                num_workers,
                 skip_failures,
-                filename_maker,
                 progress,
-                field_mapping=field_mapping,  # workaround until samples mixin is deprecated for all models
+                field_mapping,
+                pin_memory,
             )
 
         if use_data_loader:
@@ -750,6 +742,79 @@ def _apply_image_model_to_frames_batch(
             pb.set_iteration(frame_counts[idx])
 
 
+def _apply_image_model_with_video_data_loader(
+    samples,
+    model,
+    label_field,
+    confidence_thresh,
+    classes,
+    batch_size,
+    frames_chunk_size,
+    num_workers,
+    skip_failures,
+    progress,
+    field_mapping,
+    pin_memory,
+):
+    """Applies the image model to the video samples in the collection.
+
+    Only supports applying image model to videos frames.
+    """
+    if samples.media_type != fom.VIDEO:
+        raise fom.MediaTypeError(
+            f"Unsupported media type {samples.media_type}."
+        )
+
+    if model.media_type != "image":
+        raise ValueError("Only image models are supported.")
+
+    label_field, _ = samples._handle_frame_field(label_field)
+
+    data_loader = _make_video_frame_data_loader(
+        samples=samples,
+        model=model,
+        batch_size=batch_size,
+        num_workers=num_workers,
+        frames_chunk_size=frames_chunk_size,
+        skip_failures=skip_failures,
+        field_mapping=field_mapping,
+        pin_memory=pin_memory,
+    )
+
+    with contextlib.ExitStack() as context:
+        if confidence_thresh is not None and hasattr(
+            model.config, "confidence_thresh"
+        ):
+            context.enter_context(
+                fou.SetAttributes(
+                    model.config, confidence_thresh=confidence_thresh
+                )
+            )
+            confidence_thresh = None
+
+        pb = context.enter_context(
+            fou.ProgressBar(data_loader, progress=progress)
+        )
+        context.enter_context(fou.SetAttributes(model, preprocess=False))
+
+        for batch in pb(data_loader):
+            for frames in batch:
+                labels_frames = model.predict_all(frames["frames"])
+                sample_idx = frames["sample_idx"]
+                sample = samples[sample_idx]
+
+                fns = frames["frame_ids"]
+                sample.add_labels(
+                    {
+                        int(fn): labels
+                        for fn, labels in zip(fns, labels_frames)
+                    },
+                    label_field=label_field,
+                    confidence_thresh=confidence_thresh,
+                )
+                sample.save()
+
+
 def _apply_video_model(
     samples,
     model,
@@ -1013,6 +1078,82 @@ def _make_data_loader(
         pin_memory=pin_memory,
         persistent_workers=False,
         worker_init_fn=worker_init_fn,
+    )
+
+
+class _VideoCollateFn:
+    def __init__(self, model_collate):
+        self.model_collate = model_collate
+
+    def __call__(self, batch):
+        for b in batch:
+            frames_data = b["frames"]
+            collated_frames = self.model_collate(frames_data)
+            b["frames"] = collated_frames
+        return batch
+
+
+def _make_video_frame_data_loader(
+    samples,
+    model,
+    batch_size,
+    num_workers,
+    frames_chunk_size,
+    skip_failures,
+    field_mapping,
+    pin_memory,
+):
+    use_numpy = not isinstance(model, TorchModelMixin)
+    num_workers = fout.recommend_num_workers(num_workers)
+
+    if batch_size is None:
+        batch_size = 1
+
+    if model.has_collate_fn:
+        user_collate_fn = _VideoCollateFn(model.collate_fn)
+    else:
+        user_collate_fn = _VideoCollateFn(tud.dataloader.default_collate)
+
+    collate_fn = ErrorHandlingCollate(
+        skip_failures,
+        ragged_batches=model.ragged_batches,
+        use_numpy=use_numpy,
+        user_collate_fn=user_collate_fn,
+    )
+
+    dataset = fout.TorchVideoFramesIterableDataset(
+        samples=samples,
+        get_item=model.build_get_item(field_mapping),
+        chunk_size=frames_chunk_size,
+        skip_failures=skip_failures,
+    )
+
+    if pin_memory:
+        if not isinstance(model, TorchModelMixin):
+            logger.warning(
+                "The provided model is not a `TorchModelMixin`, so `pin_memory` "
+                "will be disabled."
+            )
+            pin_memory = False
+        elif not model._using_gpu:
+            logger.warning(
+                "The provided model is not using a GPU, so `pin_memory` will be disabled."
+            )
+            pin_memory = False
+        else:
+            logger.info(
+                "Using `pin_memory=True` for DataLoader. This may increase "
+                "memory usage, so monitor your system to avoid OOM errors."
+            )
+
+    return tud.DataLoader(
+        dataset,
+        batch_size=batch_size,
+        num_workers=num_workers,
+        collate_fn=collate_fn,
+        pin_memory=pin_memory,
+        persistent_workers=False,
+        worker_init_fn=fout.TorchVideoFramesIterableDataset.worker_init,
     )
 
 

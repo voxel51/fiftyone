@@ -23,6 +23,7 @@ from PIL import Image
 import eta.core.geometry as etag
 import eta.core.learning as etal
 import eta.core.utils as etau
+import eta.core.video as etav
 
 import fiftyone.core.config as foc
 import fiftyone.core.labels as fol
@@ -37,7 +38,7 @@ import fiftyone.core.view as fov
 fou.ensure_torch()
 
 import torch
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, IterableDataset, get_worker_info
 import torch.distributed as dist
 
 import torchvision
@@ -294,6 +295,9 @@ class GetItem(object):
             the model input
         """
         raise NotImplementedError("subclasses must implement __call__()")
+
+    def _load_media(self, d):
+        raise NotImplementedError("subclasses must implement _load_media()")
 
     @property
     def required_keys(self):
@@ -632,11 +636,7 @@ class ImageGetItem(GetItem):
         self.use_numpy = use_numpy
 
     def __call__(self, d):
-        img = _load_image(
-            d["filepath"],
-            use_numpy=self.use_numpy,
-            force_rgb=True,
-        )
+        img = self._load_media(d)
 
         if self.transform is not None:
             img = self.transform(img)
@@ -649,9 +649,71 @@ class ImageGetItem(GetItem):
 
         return img
 
+    def _load_media(self, d):
+        return _load_image(
+            d["filepath"],
+            use_numpy=self.use_numpy,
+            force_rgb=True,
+        )
+
     @property
     def required_keys(self):
         return ["filepath"]
+
+
+class VideoFrameGetItem:
+    """Wrapper around model's get_item that injects pre-loaded frames.
+
+    This replaces filepath loading but preserves all other get_item logic.
+    """
+
+    def __init__(self, base_get_item=None):
+        """
+        Args:
+            base_get_item: original get_item instance from model.build_get_item()
+        """
+        self.base_get_item = base_get_item
+        self.required_keys = base_get_item.required_keys
+        self.has_filepath = "filepath" in self.required_keys
+
+    def __call__(self, sample_dict):
+        """Modified __call__ that uses injected frames instead of loading from filepath.
+
+        This mimics the original get_item behavior but with pre-loaded frames.
+        """
+        if self.has_filepath:
+            sample_dict["filepath"] = None
+
+        return self._call_with_injected_frame(sample_dict)
+
+    def _call_with_injected_frame(self, sample_dict):
+        """Call base get_item with frame injection.
+
+        Args:
+            frame: a video frame
+            sample_dict: dict containing required sample fields (with filepath set to None)
+        """
+        base_load_media = None
+        if hasattr(self.base_get_item, "_load_media"):
+            base_load_media = self.base_get_item._load_media
+
+        def _load_image_from_frame(d):
+            """Replacement that returns pre-loaded frame instead of loading."""
+            if sample_dict.get("frame") is not None:
+                return sample_dict.pop("frame")
+            else:
+                raise ValueError("Frame not available for injection")
+
+        try:
+            if hasattr(self.base_get_item, "_load_media"):
+                self.base_get_item._load_media = _load_image_from_frame
+
+            result = self.base_get_item(sample_dict)
+            return result
+
+        finally:
+            if base_load_media is not None:
+                self.base_get_item._load_media = base_load_media
 
 
 class TorchImageModel(
@@ -2603,6 +2665,217 @@ class TorchImagePatchesDataset(Dataset):
         patches = np.array(patches)
 
         return image_paths, sample_ids, patch_edges, patches
+
+
+class TorchVideoFramesIterableDataset(IterableDataset):
+    def __init__(
+        self,
+        samples,
+        get_item=None,
+        transform=None,
+        use_numpy=False,
+        force_rgb=False,
+        chunk_size=None,
+        skip_failures=False,
+    ):
+        self.chunk_size = chunk_size if chunk_size is not None else 1
+
+        self.video_get_item = VideoFrameGetItem(get_item) if get_item else None
+        self.skip_failures = skip_failures
+
+        self.video_paths = samples.values("filepath")
+        self.sample_ids = samples.values("id")
+        self.sample_data = self._extract_sample_data(samples)
+
+        self.transform = transform
+        self.use_numpy = use_numpy
+        self.force_rgb = force_rgb
+
+        self._current_decoder = None
+        self._current_iterator = None
+        self._current_video_path = None
+
+    @staticmethod
+    def worker_init(worker_id):
+        """Initializes a worker during inference/training.
+
+        This method is used as the ``worker_init_fn`` parameter for
+        :class:`torch:torch.utils.data.DataLoader`.
+
+        Args:
+            worker_id: the worker ID
+        """
+        import fiftyone.core.odm.database as food
+
+        # Ensure that each process creates its own MongoDB clients
+        # https://pymongo.readthedocs.io/en/stable/faq.html#using-pymongo-with-multiprocessing
+        # pylint:disable-next=protected-access
+        food._disconnect()
+
+    def _get_decoder_for_video(self, video_path):
+        """
+        Get decoder for video.
+
+        Cache only the current video being processed.
+        """
+        if video_path == self._current_video_path:
+            logger.debug(f"Reusing decoder for {video_path}")
+            return self._current_decoder, self._current_iterator
+
+        self._cleanup_current_decoder()
+        logger.debug(f"Opening decoder for {video_path}")
+        decoder = etav.FFmpegVideoReader(video_path)
+        iterator = iter(decoder)
+
+        self._current_video_path = video_path
+        self._current_decoder = decoder
+        self._current_iterator = iterator
+
+        return decoder, iterator
+
+    def _cleanup_current_decoder(self):
+        """Close current decoder if any."""
+        if self._current_decoder is not None:
+            self._current_decoder.close()
+            self._current_decoder = None
+            self._current_iterator = None
+            self._current_video_path = None
+
+    def _extract_sample_data(self, samples):
+        """Extract all required fields from samples (except filepath).
+
+        The required fields are treated as frame level fields.
+
+        Returns:
+           Dict mapping required fields to a nested list of frame-level values
+        """
+        if self.video_get_item is None:
+            return None
+
+        field_mapping = self.video_get_item.base_get_item.field_mapping.copy()
+        _ = field_mapping.pop("filepath")
+
+        self.sample_data = {}
+        fields_to_load = list(field_mapping.values())
+        for field_name in fields_to_load:
+            frame_field_name = samples._handle_frame_field(field_name)
+            self.sample_data[field_name] = samples.values(frame_field_name)
+
+    def __iter__(self):
+        worker_info = get_worker_info()
+
+        if worker_info is None:
+            video_indices = range(len(self.video_paths))
+        else:
+            worker_id = worker_info.id
+            num_workers = worker_info.num_workers
+            video_indices = range(
+                worker_id, len(self.video_paths), num_workers
+            )
+
+            logger.info(
+                f"Worker {worker_id}/{num_workers} assigned "
+                f"{len(list(video_indices))} videos"
+            )
+
+        for video_idx in video_indices:
+            try:
+                yield from self._process_video(video_idx)
+            except Exception as e:
+                if self.skip_failures:
+                    logger.warning(
+                        f"Failed to process {self.video_paths[video_idx]}: {e}"
+                    )
+                    continue
+                else:
+                    raise
+
+    def _process_video(self, video_idx):
+        """Process one video, yielding chunks with model inputs."""
+        video_path = self.video_paths[video_idx]
+        video_sample_data = {}
+        if self.sample_data is not None:
+            video_sample_data = {
+                k: self.sample_data[k][video_idx] for k in self.sample_data
+            }
+        _, iterator = self._get_decoder_for_video(video_path)
+
+        raw_frames = []
+        frame_ids = []
+        frame_num = 0
+
+        try:
+            for img in iterator:
+                raw_frame = np.array(img)
+                raw_frames.append(raw_frame)
+                frame_num += 1
+                frame_ids.append(frame_num)
+
+                if len(raw_frames) == self.chunk_size:
+                    frames_data = None
+                    if video_sample_data:
+                        frames_data = [
+                            {key: lst[i - 1]}
+                            for i in frame_ids
+                            for key, lst in video_sample_data.items()
+                        ]
+                    model_inputs = self._process_chunk(raw_frames, frames_data)
+
+                    yield {
+                        "frames": model_inputs,
+                        "sample_idx": self.sample_ids[video_idx],
+                        "frame_ids": np.array(frame_ids),
+                    }
+
+                    raw_frames = []
+                    frame_ids = []
+
+            # Yield remaining
+            if raw_frames:
+                frames_data = None
+                if video_sample_data:
+                    frames_data = [
+                        {key: lst[i - 1]}
+                        for i in frame_ids
+                        for key, lst in video_sample_data.items()
+                    ]
+                model_inputs = self._process_chunk(raw_frames, frames_data)
+                yield {
+                    "frames": model_inputs,
+                    "sample_idx": self.sample_ids[video_idx],
+                    "frame_ids": np.array(frame_ids),
+                }
+
+        finally:
+            self._cleanup_current_decoder()
+
+    def _process_chunk(self, raw_frames, frame_dicts):
+        """
+        Process chunk of frames through model's get_item.
+
+        Args:
+            raw_frames: List of numpy arrays (H, W, C)
+            frame_dicts: Dict with sample fields (excluding filepath)
+
+        Returns:
+            Tensor of processed frames ready for model
+        """
+        processed_frames = []
+        if frame_dicts is None:
+            frame_dicts = [{}] * len(raw_frames)
+        for frame, frame_dict in zip(raw_frames, frame_dicts):
+            if self.video_get_item is not None:
+                frame_dict["frame"] = frame
+                frame_input = self.video_get_item(frame_dict)
+            else:
+                if self.use_numpy is False:
+                    frame = Image.fromarray(frame)
+                if self.transform:
+                    frame = self.transform(frame)
+                frame_input = frame
+            processed_frames.append(frame_input)
+
+        return processed_frames
 
 
 def _to_eta_bbox(bounding_box):
