@@ -3111,6 +3111,7 @@ __metadata:
   resolution: "@fiftyone/playback@workspace:packages/playback"
   dependencies:
     "@eslint/compat": "npm:^1.1.1"
+    "@voxel51/voodo": "npm:^0.0.27"
     eslint: "npm:9.7.0"
     eslint-plugin-react: "npm:^7.35.0"
     eslint-plugin-react-hooks: "npm:rc"
@@ -7683,9 +7684,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@voxel51/voodo@npm:^0.0.26":
-  version: 0.0.26
-  resolution: "@voxel51/voodo@npm:0.0.26"
+"@voxel51/voodo@portal:/home/mikeobrien/code/design-system::locator=%40fiftyone%2Ffiftyone%40workspace%3A.":
+  version: 0.0.0-use.local
+  resolution: "@voxel51/voodo@portal:/home/mikeobrien/code/design-system::locator=%40fiftyone%2Ffiftyone%40workspace%3A."
   dependencies:
     "@dnd-kit/core": "npm:^6.3.1"
     "@dnd-kit/sortable": "npm:^10.0.0"
@@ -7702,9 +7703,8 @@ __metadata:
     react: ^18.0.0
     react-dom: ^18.0.0
     react-is: ^18.0.0
-  checksum: 10/32774b84168757fffdb8e11bf3ada0c4a960832d47ca1f5bb7b09010331ee9d5da8fc99b42005d6e10c0394c09a66f4e7ec32d395e9dc8ebfac3b6b9163c33e9
   languageName: node
-  linkType: hard
+  linkType: soft
 
 "@webgpu/types@npm:*":
   version: 0.1.48
