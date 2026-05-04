@@ -2714,8 +2714,8 @@ Overriding request parameters per stage
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 By default, each stage in a pipeline inherits the same execution context as the
-top-level pipeline operator — including its ``view``, ``view_name``, ``filters``,
-and other request parameters.
+top-level pipeline operator — including its ``view``, ``view_name``, and other
+request parameters.
 
 Use ``request_params_overrides`` on a :class:`PipelineStage
 <fiftyone.operators.types.PipelineStage>` to give a specific stage a different
@@ -2723,19 +2723,24 @@ execution context. Any key you include in ``request_params_overrides`` will
 shadow the corresponding value from the top-level request for that stage only;
 all other stages are unaffected.
 
-Overridable parameters include:
+Commonly overridden parameters include:
 
-- ``view`` — a list of view stages to apply
+- ``view`` — a :class:`DatasetView <fiftyone.core.view.DatasetView>` to apply
+  (serialized automatically), or ``None`` to clear any active view
 - ``view_name`` — the name of a saved view to use
-- ``filters`` — a dictionary of filters to apply
-- any other valid :ref:`execution context <operator-execution-context>` request
-  parameter
+- ``selected`` — a list of selected sample IDs
+- ``group_slice`` — the group slice to use
 
 .. note::
 
     Do **not** include ``params`` inside ``request_params_overrides``. Use the
     ``params`` field of :class:`PipelineStage
     <fiftyone.operators.types.PipelineStage>` directly for operator parameters.
+
+.. note::
+
+    The ``dataset_name``, ``delegated``, and ``request_delegation`` parameters
+    cannot be overridden per stage.
 
 .. code-block:: python
 
@@ -2776,6 +2781,16 @@ Overridable parameters include:
                 name="Stats on full dataset",
                 params={"field": "predictions"},
                 request_params_overrides={"view": None, "view_name": None},
+            )
+
+            # Stage 4 runs against a programmatic slice of the current view,
+            # useful for manual batching
+            batch = ctx.view[:100]
+            pipeline.stage(
+                operator_uri="@my-plugin/compute_stats",
+                name="Stats on first 100 samples",
+                params={"field": "predictions"},
+                request_params_overrides={"view": batch},
             )
 
             return pipeline
