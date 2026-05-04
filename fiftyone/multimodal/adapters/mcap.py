@@ -55,7 +55,7 @@ class McapAdapter(MultimodalAdapter):
         return filepath.lower().endswith(".mcap")
 
     @classmethod
-    def get_scene_inventory(cls, filepath: str):
+    def get_scene_inventory(cls, filepath: str) -> SceneInventory:
         """
         Returns the scene inventory for the MCAP file at the given filepath.
 
@@ -81,14 +81,14 @@ class McapAdapter(MultimodalAdapter):
                         first_chunk_crc=chunk_crc(f, chunk_indices[0]),
                         last_chunk_crc=chunk_crc(f, chunk_indices[-1]),
                     )
-                else:
-                    return cls._read_scene_inventory(
-                        summary=summary,
-                        scene_id=filepath,
-                        size=storage.get_file_size(filepath),
-                        first_chunk_crc=None,
-                        last_chunk_crc=None,
-                    )
+
+            return cls._read_scene_inventory(
+                summary=summary,
+                scene_id=filepath,
+                size=storage.get_file_size(filepath),
+                first_chunk_crc=None,
+                last_chunk_crc=None,
+            )
 
     @classmethod
     def _read_scene_inventory(

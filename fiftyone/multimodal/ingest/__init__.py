@@ -15,7 +15,7 @@ def _get_scene_inventories(filepaths, *, adapter):
     a list of scene inventories.
 
     Args:
-        sources: an iterable of strings representing the locations of the
+        filepaths: an iterable of strings representing the locations of the
             scene files to ingest
         adapter: an instance of
             :class:`fiftyone.multimodal.adapters.MultimodalAdapter` that
@@ -28,11 +28,11 @@ def _get_scene_inventories(filepaths, *, adapter):
 
     for filepath in filepaths:
         if storage.isdir(filepath):
-            for filepath in storage.list_files(
+            for path in storage.list_files(
                 filepath, abs_paths=True, recursive=True
             ):
-                if adapter.can_read(filepath):
-                    inventories.append(adapter.get_scene_inventory(filepath))
+                if adapter.can_read(path):
+                    inventories.append(adapter.get_scene_inventory(path))
         elif storage.exists(filepath) and adapter.can_read(filepath):
             inventories.append(adapter.get_scene_inventory(filepath))
 

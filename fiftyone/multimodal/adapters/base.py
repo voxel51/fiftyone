@@ -43,8 +43,8 @@ class MultimodalAdapter(abc.ABC):
             filepath: the path of the scene file to load
 
         Returns:
-            a :class:`fiftyone.core.multimodal.SceneInventory`
+            a :class:`SceneInventory`
         """
         raise NotImplementedError(
-            "get_inventory() must be implemented by subclasses"
+            "get_scene_inventory() must be implemented by subclasses"
         )

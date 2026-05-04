@@ -32,8 +32,8 @@ class TestGetSceneInventories:
         adapter.get_scene_inventory.assert_not_called()
 
     def test_reads_file(self, adapter, storage):
-        storage.isdir.return_value = False
         storage.exists.return_value = True
+        storage.isdir.return_value = False
         adapter.can_read.return_value = True
         adapter.get_scene_inventory.return_value = "scene inventory"
 
@@ -48,6 +48,7 @@ class TestGetSceneInventories:
 
     def test_ignores_unreadable_file(self, adapter, storage):
         storage.exists.return_value = True
+        storage.isdir.return_value = False
         adapter.can_read.return_value = False
         adapter.get_scene_inventory.return_value = "scene inventory"
 
