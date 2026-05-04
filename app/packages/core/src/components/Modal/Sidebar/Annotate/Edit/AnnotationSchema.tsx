@@ -7,7 +7,11 @@ import { useMemo } from "react";
 import { useRecoilCallback } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import { SchemaType } from "../../../../../plugins/SchemaIO/utils/types";
-import { evaluateWhen } from "./evaluateWhen";
+import {
+  evaluateWhen,
+  isWhenFulfillable,
+  resolveVisibleAttribute,
+} from "./evaluateWhen";
 import { generatePrimitiveSchema } from "./schemaHelpers";
 import {
   currentData,
@@ -36,7 +40,11 @@ const useSchema = (readOnly: boolean) => {
 
     const properties = attributes
       .filter(({ name }) => name && !["id", "attributes"].includes(name))
-      .filter((attr) => evaluateWhen(attr.when, data ?? {}))
+      .filter(
+        (attr) =>
+          evaluateWhen(attr.when, data ?? {}) ||
+          !isWhenFulfillable(attr.when, attributes)
+      )
       .filter((attr) => {
         if (seen.has(attr.name)) return false;
         seen.add(attr.name);
@@ -157,15 +165,30 @@ const AnnotationSchema = ({ readOnly = false }: AnnotationSchemaProps) => {
           const value = { ...data, ...result };
 
           // Clear values for attributes that are now hidden so hidden state
-          // is never persisted.
           const allAttributes = Array.isArray(config?.attributes)
             ? config.attributes
             : [];
-          allAttributes.forEach((attr) => {
-            if (attr.name && attr.when && !evaluateWhen(attr.when, value)) {
-              delete value[attr.name];
+
+          const uniqueConditionalNames = new Set(
+            allAttributes.filter((a) => a.when).map((a) => a.name)
+          );
+
+          for (const name of uniqueConditionalNames) {
+            if (!name) continue;
+            const prevEntry = resolveVisibleAttribute(
+              name,
+              allAttributes,
+              (data ?? {}) as Record<string, unknown>
+            );
+            const newEntry = resolveVisibleAttribute(
+              name,
+              allAttributes,
+              value
+            );
+            if (!newEntry || prevEntry !== newEntry) {
+              delete value[name];
             }
-          });
+          }
 
           if (isEqual(value, overlay.label)) {
             return;
