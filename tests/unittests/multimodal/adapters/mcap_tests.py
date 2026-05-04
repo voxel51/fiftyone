@@ -22,15 +22,16 @@ from fiftyone.multimodal.schemas.v1.__generated__.inventory_pb2 import (
 )
 
 
-@pytest.fixture(name="datetime")
-def fixture_datetime():
+@pytest.fixture(name="now")
+def fixture_now():
     with patch("fiftyone.multimodal.adapters.mcap.datetime") as mock:
+        mock.datetime.now.return_value = Mock(isoformat=lambda: "now now now")
         yield mock
 
 
 class TestMcapAdapter:
     class TestReadSceneInventory:
-        def test_success(self, datetime):
+        def test_success(self, now):
             schema = Mock(encoding="schema's encoding")
             schema.name = (
                 "this_schema"  # 'name' is used by the Mock constructor
@@ -52,9 +53,6 @@ class TestMcapAdapter:
                     message_end_time=52,
                     channel_message_counts={"channel_id": 435},
                 ),
-            )
-            datetime.datetime.now.return_value = Mock(
-                isoformat=lambda: "now now now"
             )
 
             ###
@@ -118,7 +116,7 @@ class TestMcapAdapter:
             assert inventory.produced_at
             assert inventory.produced_by == "McapAdapter 1.0"
 
-        def test_missing_statistics(self, datetime):
+        def test_missing_statistics(self, now):
             schema = Mock(encoding="schema's encoding")
             schema.name = (
                 "this_schema"  # 'name' is used by the Mock constructor
@@ -136,9 +134,6 @@ class TestMcapAdapter:
                 },
                 schemas={2: schema},
                 statistics=None,
-            )
-            datetime.datetime.now.return_value = Mock(
-                isoformat=lambda: "now now now"
             )
 
             ###
@@ -176,7 +171,7 @@ class TestMcapAdapter:
             assert inventory.produced_at == "now now now"
             assert inventory.produced_by == "McapAdapter 1.0"
 
-        def test_schemaless_channel(self, datetime):
+        def test_schemaless_channel(self, now):
             stream_metadata = {"some_key": "some_value"}
             summary = Mock(
                 channels={
@@ -189,9 +184,6 @@ class TestMcapAdapter:
                 },
                 schemas={},
                 statistics=None,
-            )
-            datetime.datetime.now.return_value = Mock(
-                isoformat=lambda: "now now now"
             )
 
             ###
@@ -229,7 +221,7 @@ class TestMcapAdapter:
             assert inventory.produced_at == "now now now"
             assert inventory.produced_by == "McapAdapter 1.0"
 
-        def test_missing_schema(self, datetime):
+        def test_missing_schema(self, now):
             schema = Mock(encoding="schema's encoding")
             schema.name = (
                 "this_schema"  # 'name' is used by the Mock constructor
@@ -251,9 +243,6 @@ class TestMcapAdapter:
                     message_end_time=52,
                     channel_message_counts={"channel_id": 435},
                 ),
-            )
-            datetime.datetime.now.return_value = Mock(
-                isoformat=lambda: "now now now"
             )
 
             ###
