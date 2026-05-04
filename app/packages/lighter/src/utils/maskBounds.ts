@@ -10,10 +10,12 @@
  * stroke ends, and to size new canvases when extending bounds during paint.
  *
  * @param maskData - Source `ImageData` (RGBA, alpha channel determines fill).
- * @returns The half-open bounding box `[minX, minY] – [maxX, maxY]` (in
- *   canvas pixels) covering all opaque pixels. Returns `{ minX: 0, minY: 0,
- *   maxX: 0, maxY: 0 }` when the image is fully transparent — callers should
- *   treat this as an empty region rather than a single pixel at the origin.
+ * @returns Inclusive bounding box `{ minX, minY, maxX, maxY }` (in canvas
+ *   pixels) covering all opaque pixels — the box covers the pixels from
+ *   `minX..maxX` and `minY..maxY`, **both endpoints included**. Returns
+ *   `{ minX: 0, minY: 0, maxX: 0, maxY: 0 }` when the image is fully
+ *   transparent; callers should treat this as an empty region rather than
+ *   a single pixel at the origin.
  */
 export const maskBounds = (maskData: ImageData) => {
   const { data, height, width } = maskData;
