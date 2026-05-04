@@ -116,12 +116,18 @@ class McapAdapter(MultimodalAdapter):
                 StreamInventory(
                     stream_id=str(cid),
                     display_name=channel.topic,
-                    payload=PayloadDescriptor(
-                        encoding=channel.message_encoding,
-                        schema=summary.schemas[channel.schema_id].name,
-                        schema_encoding=summary.schemas[
-                            channel.schema_id
-                        ].encoding,
+                    payload=(
+                        PayloadDescriptor(
+                            encoding=channel.message_encoding,
+                            schema=summary.schemas[channel.schema_id].name,
+                            schema_encoding=summary.schemas[
+                                channel.schema_id
+                            ].encoding,
+                        )
+                        if channel.schema_id != 0
+                        else PayloadDescriptor(
+                            encoding=channel.message_encoding
+                        )
                     ),
                     record_count=(
                         stats.channel_message_counts.get(cid, 0)

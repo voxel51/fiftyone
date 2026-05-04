@@ -151,3 +151,56 @@ class TestMcapAdapter:
             assert inventory.static_coordinate_frame_edges == []
             assert inventory.produced_at == "now now now"
             assert inventory.produced_by == "McapAdapter 1.0"
+
+        def test_schemaless_channel(self, datetime):
+            stream_metadata = {"some_key": "some_value"}
+            summary = Mock(
+                channels={
+                    "channel_id": Mock(
+                        topic="some_topic",
+                        schema_id=0,
+                        metadata=stream_metadata,
+                        message_encoding="some_encoding",
+                    )
+                },
+                schemas={},
+                statistics=None,
+            )
+            datetime.datetime.now.return_value = Mock(
+                isoformat=lambda: "now now now"
+            )
+
+            ###
+            inventory = McapAdapter._read_scene_inventory(
+                summary=summary,
+                scene_id="some_id",
+                size=10,
+                first_chunk_crc=5,
+                last_chunk_crc=15,
+            )
+            ###
+
+            assert isinstance(inventory, SceneInventory)
+            assert inventory.scene_id == "some_id"
+            assert inventory.source_format == SceneFormat.MCAP
+            assert inventory.source_fingerprint == SourceFingerprint(
+                size_bytes=10, first_chunk_crc=5, last_chunk_crc=15
+            )
+            assert inventory.inventory_version == "1.0"
+            assert inventory.time_tracks == []
+            assert inventory.streams == [
+                StreamInventory(
+                    stream_id="channel_id",
+                    display_name="some_topic",
+                    payload=PayloadDescriptor(
+                        encoding="some_encoding",
+                        schema=None,
+                        schema_encoding=None,
+                    ),
+                    record_count=0,
+                    metadata=stream_metadata,
+                )
+            ]
+            assert inventory.static_coordinate_frame_edges == []
+            assert inventory.produced_at == "now now now"
+            assert inventory.produced_by == "McapAdapter 1.0"
