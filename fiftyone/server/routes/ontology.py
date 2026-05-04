@@ -12,8 +12,8 @@ from starlette.endpoints import HTTPEndpoint
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
 
+import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
-from fiftyone.core.odm.ontology import OntologyDocument
 from fiftyone.internal.features.registry import is_feature_enabled
 from fiftyone.server.utils.json import JSONResponse
 
@@ -30,14 +30,14 @@ class Ontologies(HTTPEndpoint):
 
         return JSONResponse(
             {
-                "ontologies": _list_ontology_summaries(
+                "ontologies": await _list_ontology_summaries(
                     type_filter=type_filter, name_filter=name_filter
                 )
             }
         )
 
 
-def _list_ontology_summaries(
+async def _list_ontology_summaries(
     type_filter: Optional[str] = None,
     name_filter: Optional[str] = None,
 ) -> list[dict[str, Any]]:
@@ -71,8 +71,8 @@ def _list_ontology_summaries(
         {"$project": {"_id": 0}},
     ]
 
-    # pylint: disable-next=no-member
-    summaries = list(OntologyDocument.objects.aggregate(pipeline))
+    collection = foo.get_async_db_conn()["ontologies"]
+    summaries = await foo.aggregate(collection, pipeline).to_list(None)
     # Replace BSON datetimes with ISO strings so the JSON response is flat
     # (avoids the default ``{"$date": ...}`` BSON-extended-JSON shape).
     for s in summaries:
