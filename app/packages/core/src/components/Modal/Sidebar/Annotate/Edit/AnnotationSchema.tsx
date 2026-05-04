@@ -156,6 +156,17 @@ const AnnotationSchema = ({ readOnly = false }: AnnotationSchemaProps) => {
 
           const value = { ...data, ...result };
 
+          // Clear values for attributes that are now hidden so hidden state
+          // is never persisted.
+          const allAttributes = Array.isArray(config?.attributes)
+            ? config.attributes
+            : [];
+          allAttributes.forEach((attr) => {
+            if (attr.name && attr.when && !evaluateWhen(attr.when, value)) {
+              delete value[attr.name];
+            }
+          });
+
           if (isEqual(value, overlay.label)) {
             return;
           }
