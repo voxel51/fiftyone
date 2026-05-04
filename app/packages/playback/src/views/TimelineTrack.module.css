@@ -1,0 +1,74 @@
+.root {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--color-content-border-subtle);
+}
+
+.label {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 6px 0 10px;
+  border-right: 1px solid var(--color-content-border-default);
+  height: 100%;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.labelText {
+  font-size: 0.72rem;
+  color: var(--color-content-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Pin button is hidden until the label row is hovered. */
+.pinButton {
+  opacity: 0;
+  transition: opacity 0.1s;
+  flex-shrink: 0;
+}
+
+.pinButtonActive {
+  opacity: 1;
+}
+
+.label:hover .pinButton {
+  opacity: 1;
+}
+
+.lane {
+  flex: 1;
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.bar {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 14px;
+  border-radius: 2px;
+}
+
+.event {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%) rotate(45deg);
+  width: 8px;
+  height: 8px;
+  z-index: 1;
+  cursor: default;
+}
