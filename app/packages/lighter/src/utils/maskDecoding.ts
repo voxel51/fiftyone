@@ -7,7 +7,7 @@ import {
   deserialize,
   type OverlayMask,
 } from "@fiftyone/looker/src/numpy";
-import { parseColorWithAlpha } from "./color";
+import { parseColorToRGBA } from "./color";
 
 export interface DecodedMask {
   bitmap: ImageBitmap;
@@ -66,11 +66,7 @@ function paintMask(mask: OverlayMask, cssColor: string): ArrayBuffer {
   const rgbaBuffer = new ArrayBuffer(width * height * 4);
   const overlay = new Uint32Array(rgbaBuffer);
 
-  const { color: hexColor, alpha } = parseColorWithAlpha(cssColor);
-  const r = (hexColor >> 16) & 0xff;
-  const g = (hexColor >> 8) & 0xff;
-  const b = hexColor & 0xff;
-  const a = Math.round(alpha * 255);
+  const { r, g, b, a } = parseColorToRGBA(cssColor);
 
   // Pack as RGBA (little-endian: ABGR in Uint32)
   const packedColor = (a << 24) | (b << 16) | (g << 8) | r;

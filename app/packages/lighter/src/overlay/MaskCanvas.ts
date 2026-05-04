@@ -6,7 +6,7 @@ import type { SegmentationToolState } from "@fiftyone/core/src/components/Modal/
 import type { SerializedMask } from "@fiftyone/utilities";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { DrawStyle, Point, Rect } from "../types";
-import { parseColorWithAlpha } from "../utils/color";
+import { parseColorToRGBA } from "../utils/color";
 import { createMaskCanvas, decodeMask, encodeMask, maskBounds } from "../utils";
 
 export interface MaskSnapshot {
@@ -571,10 +571,7 @@ export class MaskCanvas {
       // overlay color with full alpha, eliminating anti-aliased fringes
       // and correcting any pixels painted before the color was known.
       if (this.currentColor) {
-        const { color: hex } = parseColorWithAlpha(this.currentColor);
-        const r = (hex >> 16) & 0xff;
-        const g = (hex >> 8) & 0xff;
-        const b = hex & 0xff;
+        const { r, g, b } = parseColorToRGBA(this.currentColor);
         const data = imageData.data;
 
         for (let i = 0; i < data.length; i += 4) {
