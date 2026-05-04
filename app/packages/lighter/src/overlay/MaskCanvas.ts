@@ -7,7 +7,13 @@ import type { SerializedMask } from "@fiftyone/utilities";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { DrawStyle, Point, Rect } from "../types";
 import { parseColorToRGBA } from "../utils/color";
-import { createMaskCanvas, decodeMask, encodeMask, maskBounds } from "../utils";
+import {
+  createMaskCanvas,
+  decodeMask,
+  encodeMask,
+  maskBounds,
+  type MaskBounds,
+} from "../utils";
 
 export interface MaskSnapshot {
   imageData: ImageData;
@@ -538,8 +544,14 @@ export class MaskCanvas {
   // Bounds recomputation
   // ---------------------------------------------------------------------------
 
-  // TODO: jsdoc
-  private getBounds() {
+  /**
+   * Returns the tight inclusive bounding box of opaque pixels on the editing
+   * canvas, in canvas-pixel coordinates. Returns `null` when no canvas exists
+   * yet, or when the canvas is fully transparent.
+   *
+   * @see {@link maskBounds} for the shape of the returned box.
+   */
+  private getBounds(): MaskBounds | null {
     if (!this.canvas || !this.context) return null;
 
     const { width, height } = this.canvas;
