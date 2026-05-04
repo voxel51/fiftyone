@@ -174,7 +174,15 @@ class UpdateLabelSchema(foo.Operator):
             ctx.ops.notify(str(e), variant="error")
             return {"error": str(e)}
 
-        return {"label_schema": label_schema}
+        if label_schema is None:
+            return {"label_schema": None}
+
+        # Hydrate the outgoing label schema if an ontology is attached.
+        # Re-read the saved (dehydrated) shape defensively so a caller
+        # that sent a partially-hydrated schema doesn't get double-
+        # processed.
+        saved = ctx.dataset.label_schemas.get(field, label_schema)
+        return {"label_schema": hydrate_applied_ontology(saved)}
 
 
 class ValidateLabelSchemas(foo.Operator):
