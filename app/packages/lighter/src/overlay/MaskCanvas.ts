@@ -2,7 +2,11 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import type { SegmentationToolState } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useSegmentationMode";
+import {
+  SegmentationToolMode,
+  SegmentationToolShape,
+  type SegmentationToolState,
+} from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useSegmentationMode";
 import type { SerializedMask } from "@fiftyone/utilities";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { DrawStyle, Point, Rect } from "../types";
@@ -343,10 +347,10 @@ export class MaskCanvas {
     if (!this.context) return;
 
     const size = toolState.size ?? 0;
-    const shape = toolState.shape ?? "circle";
+    const shape = toolState.shape ?? SegmentationToolShape.Circle;
     const radius = size / 2;
 
-    if (toolState.mode === "remove") {
+    if (toolState.mode === SegmentationToolMode.Remove) {
       this.context.globalCompositeOperation = "destination-out";
       this.context.fillStyle = "rgba(0,0,0,1)";
     } else {
@@ -359,7 +363,7 @@ export class MaskCanvas {
     }
 
     this.context.beginPath();
-    if (shape === "circle") {
+    if (shape === SegmentationToolShape.Circle) {
       this.context.arc(point.x, point.y, radius, 0, Math.PI * 2);
     } else {
       this.context.rect(point.x - radius, point.y - radius, size, size);
@@ -388,7 +392,7 @@ export class MaskCanvas {
     let maxX = bounds.x + bounds.width;
     let maxY = bounds.y + bounds.height;
 
-    if (toolState.mode === "add") {
+    if (toolState.mode === SegmentationToolMode.Add) {
       const half = (toolState.size ?? 0) / 2;
       minX = Math.min(minX, worldPoint.x - half);
       minY = Math.min(minY, worldPoint.y - half);
@@ -438,7 +442,7 @@ export class MaskCanvas {
     let maxX = bounds.x + bounds.width;
     let maxY = bounds.y + bounds.height;
 
-    if (toolState.mode === "add") {
+    if (toolState.mode === SegmentationToolMode.Add) {
       for (const wp of worldPoints) {
         minX = Math.min(minX, wp.x);
         minY = Math.min(minY, wp.y);
@@ -457,7 +461,7 @@ export class MaskCanvas {
 
     if (maskPoints.length < 3) return undefined;
 
-    if (toolState.mode === "remove") {
+    if (toolState.mode === SegmentationToolMode.Remove) {
       this.context.globalCompositeOperation = "destination-out";
       this.context.fillStyle = "rgba(0,0,0,1)";
     } else {

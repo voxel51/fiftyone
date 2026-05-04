@@ -27,7 +27,10 @@ import {
   getInstanceStrokeStyles,
   getSimpleStrokeStyles,
 } from "../utils/colorMapping";
-import type { SegmentationToolState } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useSegmentationMode";
+import {
+  SegmentationTool,
+  type SegmentationToolState,
+} from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useSegmentationMode";
 import type { OverlayEvent } from "../interaction/InteractionManager";
 import { distanceFromLineSegment } from "../utils/geometry";
 import { BaseOverlay } from "./BaseOverlay";
@@ -527,7 +530,7 @@ export class DetectionOverlay
     worldPoint: Point,
     toolState: SegmentationToolState
   ): boolean {
-    if (toolState.tool === "pen") {
+    if (toolState.tool === SegmentationTool.Pen) {
       return this.onPenPointerDown(point, worldPoint, toolState);
     }
 
@@ -629,7 +632,7 @@ export class DetectionOverlay
     event,
     segmentationToolState,
   }: OverlayEvent): boolean {
-    if (segmentationToolState?.tool === "pen") {
+    if (segmentationToolState?.tool === SegmentationTool.Pen) {
       return this.onPenMove(worldPoint, event);
     }
 
@@ -1168,8 +1171,8 @@ export class DetectionOverlay
     if (!this.segmentationTool?.active) return false;
 
     return (
-      this.segmentationTool.tool === "brush" ||
-      this.segmentationTool.tool === "pen"
+      this.segmentationTool.tool === SegmentationTool.Brush ||
+      this.segmentationTool.tool === SegmentationTool.Pen
     );
   }
 

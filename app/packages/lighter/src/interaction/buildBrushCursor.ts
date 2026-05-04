@@ -4,7 +4,12 @@
  * Generates a CSS cursor data-URL for the segmentation brush tool.
  */
 
-import type { SegmentationToolState } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useSegmentationMode";
+import {
+  SegmentationTool,
+  SegmentationToolMode,
+  SegmentationToolShape,
+  type SegmentationToolState,
+} from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useSegmentationMode";
 
 /**
  * Returns a CSS `cursor` value (data-URL SVG + hotspot) for the given brush
@@ -17,11 +22,11 @@ export function buildBrushCursor({
   shape,
   mode,
 }: SegmentationToolState): string {
-  if (tool === "select") return "default";
-  if (tool === "pen") return "crosshair";
-  if (tool === "ai") return "crosshair";
+  if (tool === SegmentationTool.Select) return "default";
+  if (tool === SegmentationTool.Pen) return "crosshair";
+  if (tool === SegmentationTool.AI) return "crosshair";
 
-  const isRemove = mode === "remove";
+  const isRemove = mode === SegmentationToolMode.Remove;
   const dashColor = isRemove ? "red" : "black";
 
   const half = cursorSize / 2;
@@ -46,7 +51,7 @@ export function buildBrushCursor({
   if (isRemove) {
     // Slash from bottom-left to top-right, edge to edge
     let x1: number, y1: number, x2: number, y2: number;
-    if (shape === "square") {
+    if (shape === SegmentationToolShape.Square) {
       x1 = pad;
       y1 = pad + cursorSize;
       x2 = pad + cursorSize;

@@ -27,11 +27,30 @@ export const MAX_TOOL_SIZE = 32;
 export const MIN_CURSOR_SIZE = 1;
 export const MAX_CURSOR_SIZE = 100;
 
-export type SegmentationTool = "select" | "brush" | "pen" | "ai";
-export type SegmentationToolShape = "circle" | "square";
-export type SegmentationToolMode = "add" | "remove";
+export const SegmentationTool = {
+  Select: "select",
+  Brush: "brush",
+  Pen: "pen",
+  AI: "ai",
+} as const;
+export type SegmentationTool =
+  (typeof SegmentationTool)[keyof typeof SegmentationTool];
 
-export const DEFAULT_TOOL_MODE: SegmentationToolMode = "add";
+export const SegmentationToolShape = {
+  Circle: "circle",
+  Square: "square",
+} as const;
+export type SegmentationToolShape =
+  (typeof SegmentationToolShape)[keyof typeof SegmentationToolShape];
+
+export const SegmentationToolMode = {
+  Add: "add",
+  Remove: "remove",
+} as const;
+export type SegmentationToolMode =
+  (typeof SegmentationToolMode)[keyof typeof SegmentationToolMode];
+
+export const DEFAULT_TOOL_MODE: SegmentationToolMode = SegmentationToolMode.Add;
 
 export interface SegmentationToolState {
   active: boolean;
@@ -47,9 +66,9 @@ export interface SegmentationToolState {
 // ---------------------------------------------------------------------------
 
 const segmentationModeActiveAtom = atom<boolean>(false);
-const toolAtom = atom<SegmentationTool>("select");
+const toolAtom = atom<SegmentationTool>(SegmentationTool.Select);
 const toolSizeAtom = atom<number>(DEFAULT_TOOL_SIZE);
-const toolShapeAtom = atom<SegmentationToolShape>("circle");
+const toolShapeAtom = atom<SegmentationToolShape>(SegmentationToolShape.Circle);
 const toolModeAtom = atom<SegmentationToolMode>(DEFAULT_TOOL_MODE);
 
 /**
@@ -168,7 +187,7 @@ export const useSegmentationMode = () => {
   useEffect(() => {
     if (!segmentationModeActive) return;
 
-    if (tool === "ai") {
+    if (tool === SegmentationTool.AI) {
       aiMode.activate();
     } else if (aiMode.isActive) {
       aiMode.deactivate();
@@ -215,7 +234,7 @@ export const useSegmentationMode = () => {
   // Lighter so the SelectionManager and rendering pipeline treat it as active.
   useEffect(() => {
     if (selectedLabel?.isNew) {
-      if (segmentationModeActive && tool === "ai" && selectedLabel.overlay) {
+      if (segmentationModeActive && tool === SegmentationTool.AI && selectedLabel.overlay) {
         scene?.selectOverlay(selectedLabel.overlay.id);
       }
       return;

@@ -7,7 +7,10 @@ import { segmentationModeBridge } from "@fiftyone/core/src/components/Modal/Side
 import { EventDispatcher, getEventBus } from "@fiftyone/events";
 import { TypeGuards } from "../core/Scene2D";
 import type { LighterEventGroup } from "../events";
-import type { SegmentationToolState } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useSegmentationMode";
+import {
+  SegmentationTool,
+  type SegmentationToolState,
+} from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useSegmentationMode";
 import type { InteractionState } from "../overlay/DetectionOverlay";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
 import type { Renderer2D } from "../renderer/Renderer2D";
@@ -595,7 +598,7 @@ export class InteractionManager {
 
     if (segmentationModeBridge.isActive()) {
       // No brush selected — click exits segmentation mode entirely
-      if (segmentationModeBridge.getActiveTool() === "select") {
+      if (segmentationModeBridge.getActiveTool() === SegmentationTool.Select) {
         this.eventBus.dispatch("lighter:segmentation-mode-quit", {
           eventId: generateUUID(),
         });
@@ -607,13 +610,13 @@ export class InteractionManager {
 
       // AI tool: point selection handles clicks via InteractiveKeypointHandler;
       // if a pending action somehow reaches here, discard it.
-      if (segmentationModeBridge.getActiveTool() === "ai") {
+      if (segmentationModeBridge.getActiveTool() === SegmentationTool.AI) {
         this.clearPendingAction(event);
         return true;
       }
 
       // Pen tool: forward click to the overlay to add a point.
-      if (segmentationModeBridge.getActiveTool() === "pen") {
+      if (segmentationModeBridge.getActiveTool() === SegmentationTool.Pen) {
         this.segmentationModePaint(event);
         return false;
       }
@@ -876,7 +879,7 @@ export class InteractionManager {
       const tool = segmentationModeBridge.getActiveTool();
 
       // Pen tool with an in-progress polygon: commit it
-      if (tool === "pen" && handler?.hasPenPolygon?.()) {
+      if (tool === SegmentationTool.Pen && handler?.hasPenPolygon?.()) {
         const segmentationToolState =
           segmentationModeBridge.getToolState(scale);
 
@@ -902,7 +905,7 @@ export class InteractionManager {
         return;
       }
 
-      if (tool === "ai") {
+      if (tool === SegmentationTool.AI) {
         interactiveHandler.resetOverlay();
         this.removeHandler(interactiveHandler);
 
