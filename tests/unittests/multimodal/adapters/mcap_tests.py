@@ -94,6 +94,30 @@ class TestMcapAdapter:
             assert inventory.produced_at == "now now now"
             assert inventory.produced_by == "McapAdapter 1.0"
 
+        def test_missing_summary(self):
+            ###
+            inventory = McapAdapter._read_scene_inventory(
+                summary=None,
+                scene_id="some_id",
+                size=10,
+                first_chunk_crc=5,
+                last_chunk_crc=15,
+            )
+            ###
+
+            assert isinstance(inventory, SceneInventory)
+            assert inventory.scene_id == "some_id"
+            assert inventory.source_format == SceneFormat.MCAP
+            assert inventory.source_fingerprint == SourceFingerprint(
+                size_bytes=10, first_chunk_crc=5, last_chunk_crc=15
+            )
+            assert inventory.inventory_version == "1.0"
+            assert inventory.time_tracks == []
+            assert inventory.streams == []
+            assert inventory.static_coordinate_frame_edges == []
+            assert inventory.produced_at
+            assert inventory.produced_by == "McapAdapter 1.0"
+
         def test_missing_statistics(self, datetime):
             schema = Mock(encoding="schema's encoding")
             schema.name = (

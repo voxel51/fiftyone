@@ -6,6 +6,7 @@
 
 import binascii
 import datetime
+from typing import Optional
 
 from .base import MultimodalAdapter
 from .formats import SceneFormat
@@ -67,28 +68,48 @@ class McapAdapter(MultimodalAdapter):
         with storage.open_file(filepath, "rb") as f:
             reader = make_reader(f)
             summary = reader.get_summary()
-            chunk_indices = sorted(
-                summary.chunk_indexes,
-                key=lambda ci: ci.chunk_start_offset,
-            )
-            return cls._read_scene_inventory(
-                summary=summary,
-                scene_id=filepath,
-                size=storage.get_file_size(filepath),
-                first_chunk_crc=chunk_crc(f, chunk_indices[0]),
-                last_chunk_crc=chunk_crc(f, chunk_indices[-1]),
-            )
+            if summary:
+                chunk_indices = sorted(
+                    summary.chunk_indexes,
+                    key=lambda ci: ci.chunk_start_offset,
+                )
+                return cls._read_scene_inventory(
+                    summary=summary,
+                    scene_id=filepath,
+                    size=storage.get_file_size(filepath),
+                    first_chunk_crc=chunk_crc(f, chunk_indices[0]),
+                    last_chunk_crc=chunk_crc(f, chunk_indices[-1]),
+                )
 
     @classmethod
     def _read_scene_inventory(
         cls,
         *,
-        summary: Summary,
+        summary: Optional[Summary],
         scene_id: str,
         size: int,
         first_chunk_crc: int = None,
         last_chunk_crc: int = None,
     ) -> SceneInventory:
+        if not summary:
+            return SceneInventory(
+                scene_id=scene_id,
+                source_format=SceneFormat.MCAP,
+                source_fingerprint=SourceFingerprint(
+                    size_bytes=size,
+                    first_chunk_crc=first_chunk_crc,
+                    last_chunk_crc=last_chunk_crc,
+                ),
+                inventory_version="1.0",
+                time_tracks=[],
+                streams=[],
+                static_coordinate_frame_edges=[],
+                produced_at=datetime.datetime.now(
+                    datetime.timezone.utc
+                ).isoformat(),
+                produced_by="McapAdapter 1.0",
+            )
+
         stats = summary.statistics
 
         return SceneInventory(
