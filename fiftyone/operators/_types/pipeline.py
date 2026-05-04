@@ -9,6 +9,8 @@ FiftyOne pipeline operator types.
 import dataclasses
 from typing import Any, List, Mapping, Optional
 
+import fiftyone.core.view as fov
+
 
 @dataclasses.dataclass
 class PipelineStage:
@@ -38,13 +40,14 @@ class PipelineStage:
 
     request_params_overrides: Optional[Mapping[str, Any]] = None
     """Optional dict of request parameter overrides for the execution context.
-    
+
     This allows stages to override any ExecutionContext request parameter such as:
-    - `view`: List of view stages to apply
+    - `view`: a :class:`fiftyone.core.view.DatasetView` or serialized list of
+        view stages to apply (DatasetView instances are serialized automatically)
     - `view_name`: Name of a saved view to use
     - `filters`: Dictionary of filters to apply
     - Any other valid ExecutionContext request parameter
-    
+
     Note: The `params` field should not be included in `request_params_overrides`.
     Use the `params` field directly for operator parameters.
     """
@@ -85,6 +88,14 @@ class PipelineStage:
             and self.num_distributed_tasks < 1
         ):
             self.num_distributed_tasks = None
+
+        if self.request_params_overrides is not None:
+            view = self.request_params_overrides.get("view", None)
+            if isinstance(view, fov.DatasetView):
+                self.request_params_overrides = {
+                    **self.request_params_overrides,
+                    "view": view._serialize(),
+                }
 
     def to_json(self):
         """Converts the object definition to JSON / python dict.
@@ -137,7 +148,8 @@ class Pipeline:
             rerunnable: whether the stage is rerunnable
             request_params_overrides: optional dict of request parameter
                 overrides for the execution context. Allows overriding fields
-                like `view`, `filters`, etc.
+                like `view` (accepts a DatasetView or serialized stages),
+                `filters`, etc.
             **kwargs: reserved for future use
 
         Returns:
