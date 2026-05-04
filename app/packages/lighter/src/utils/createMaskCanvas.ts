@@ -29,9 +29,10 @@ export const createMaskCanvas = (
   const maskCanvas = document.createElement("canvas");
   maskCanvas.width = width;
   maskCanvas.height = height;
-  const maskContext = maskCanvas.getContext("2d", {
+
+  const maskContext = maskCanvas?.getContext("2d", {
     willReadFrequently: true,
-  })!;
+  });
 
   if (!maskContext) throw new Error("Failed to get 2d context");
 
