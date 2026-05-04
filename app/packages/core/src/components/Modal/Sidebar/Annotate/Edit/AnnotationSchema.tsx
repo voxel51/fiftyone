@@ -7,6 +7,7 @@ import { useMemo } from "react";
 import { useRecoilCallback } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import { SchemaType } from "../../../../../plugins/SchemaIO/utils/types";
+import { evaluateWhen } from "./evaluateWhen";
 import { generatePrimitiveSchema } from "./schemaHelpers";
 import {
   currentData,
@@ -17,6 +18,7 @@ import {
 
 const useSchema = (readOnly: boolean) => {
   const config = useAtomValue(currentSchema);
+  const data = useAtomValue(currentData);
   const isLabelReadOnly = config?.read_only;
   // respect either the field OR the parent schema's readOnly flag
   const effectiveReadOnly = readOnly || isLabelReadOnly;
@@ -25,8 +27,21 @@ const useSchema = (readOnly: boolean) => {
     const attributes = Array.isArray(config?.attributes)
       ? config.attributes
       : [];
+
+    // Track which attribute names have already been added to the form schema.
+    // When multiple attributes share the same name (e.g. same field with
+    // different when conditions for different parent values), the first visible
+    // match wins. Later entries with the same name are skipped.
+    const seen = new Set<string>();
+
     const properties = attributes
       .filter(({ name }) => name && !["id", "attributes"].includes(name))
+      .filter((attr) => evaluateWhen(attr.when, data ?? {}))
+      .filter((attr) => {
+        if (seen.has(attr.name)) return false;
+        seen.add(attr.name);
+        return true;
+      })
       .reduce(
         (schema: SchemaType, value: SchemaType) => ({
           ...schema,
@@ -52,7 +67,7 @@ const useSchema = (readOnly: boolean) => {
       },
       properties,
     };
-  }, [config, effectiveReadOnly]);
+  }, [config, data, effectiveReadOnly]);
 };
 
 const useHandleChanges = () => {
@@ -88,6 +103,7 @@ export interface AnnotationSchemaProps {
 
 const AnnotationSchema = ({ readOnly = false }: AnnotationSchemaProps) => {
   const schema = useSchema(readOnly);
+  const config = useAtomValue(currentSchema);
   const [data, _save] = useAtom(currentData);
   const overlay = useAtomValue(currentOverlay);
   const eventBus = useAnnotationEventBus();
