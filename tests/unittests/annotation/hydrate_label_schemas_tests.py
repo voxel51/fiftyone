@@ -120,7 +120,7 @@ class HydrateLabelSchemasTests(unittest.TestCase):
 
     @drop_datasets
     @drop_ontologies
-    def test_dangling_reference_returns_schema_unchanged(self):
+    def test_dangling_reference_strips_applied_ontology(self):
         schema = {
             "type": "detections",
             "applied_ontology": "nonexistent_ontology_xyz",
@@ -129,11 +129,16 @@ class HydrateLabelSchemasTests(unittest.TestCase):
             ],
         }
         result = hydrate_applied_ontology(schema)
-        self.assertEqual(result, schema)
+        self.assertNotIn("applied_ontology", result)
+        self.assertEqual(result["attributes"], schema["attributes"])
+        # Input not mutated
+        self.assertEqual(
+            schema["applied_ontology"], "nonexistent_ontology_xyz"
+        )
 
     @drop_datasets
     @drop_ontologies
-    def test_non_annotation_ontology_returns_schema_unchanged(self):
+    def test_non_annotation_ontology_strips_applied_ontology(self):
         schema = {
             "type": "detections",
             "applied_ontology": "some_taxonomy",
@@ -147,7 +152,8 @@ class HydrateLabelSchemasTests(unittest.TestCase):
             return_value=non_annotation,
         ):
             result = hydrate_applied_ontology(schema)
-        self.assertEqual(result, schema)
+        self.assertNotIn("applied_ontology", result)
+        self.assertEqual(schema["applied_ontology"], "some_taxonomy")
 
 
 class DehydrateLabelSchemasTests(unittest.TestCase):
