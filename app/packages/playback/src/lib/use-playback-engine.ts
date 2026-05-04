@@ -1,0 +1,224 @@
+import { createStore } from "jotai";
+import { useCallback, useEffect, useMemo, useRef } from "react";
+import {
+  currentTimeAtom,
+  durationAtom,
+  isBufferingAtom,
+  isPlayingAtom,
+  loopEndAtom,
+  loopStartAtom,
+  playheadAtom,
+  seekEventAtom,
+  speedAtom,
+  stepIntervalAtom,
+  viewEndAtom,
+  viewStartAtom,
+} from "./playback-atoms";
+import type {
+  PlaybackConfig,
+  PlaybackContextValue,
+  PlaybackStore,
+  PlaybackStream,
+} from "./playback-types";
+
+const clamp = (v: number, lo: number, hi: number) =>
+  Math.min(hi, Math.max(lo, v));
+
+export function usePlaybackEngine({
+  duration,
+  stepInterval,
+  defaultLoopStart,
+  defaultLoopEnd,
+  defaultSpeed = 1.0,
+}: PlaybackConfig): { store: PlaybackStore; contextValue: PlaybackContextValue } {
+  const store = useMemo(() => {
+    const s = createStore();
+    s.set(durationAtom, duration);
+    s.set(stepIntervalAtom, stepInterval);
+    s.set(speedAtom, defaultSpeed);
+    s.set(viewEndAtom, duration);
+    s.set(loopStartAtom, defaultLoopStart ?? 0);
+    s.set(loopEndAtom, defaultLoopEnd ?? duration);
+    return s;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // store is created once at mount; config is treated as mount-time
+
+  const streamsRef = useRef<Map<string, PlaybackStream>>(new Map());
+  const rafIdRef = useRef<number | null>(null);
+  const lastTimestampRef = useRef<number | null>(null);
+  const seekDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const seekSeqRef = useRef(0);
+
+  const fireSeekEvent = useCallback(
+    (time: number, immediate = false) => {
+      const fire = () => {
+        seekSeqRef.current += 1;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        store.set(seekEventAtom as any, { time, seq: seekSeqRef.current });
+      };
+      if (seekDebounceRef.current) clearTimeout(seekDebounceRef.current);
+      if (immediate) {
+        fire();
+      } else {
+        // Debounced so streams don't thrash their caches during rapid scrubbing.
+        seekDebounceRef.current = setTimeout(fire, 50);
+      }
+    },
+    [store]
+  );
+
+  const doCommit = useCallback(
+    (time: number) => {
+      store.set(currentTimeAtom, time);
+      for (const s of streamsRef.current.values()) {
+        s.onCommit?.(time, store);
+      }
+    },
+    [store]
+  );
+
+  const tick = useCallback(
+    (timestamp: number) => {
+      // Capture first timestamp to avoid a large dt spike on the first frame.
+      if (lastTimestampRef.current === null) {
+        lastTimestampRef.current = timestamp;
+        rafIdRef.current = requestAnimationFrame(tick);
+        return;
+      }
+
+      const dt = ((timestamp - lastTimestampRef.current) / 1000) * store.get(speedAtom);
+      lastTimestampRef.current = timestamp;
+
+      const currentTime = store.get(playheadAtom);
+      const loopStart = store.get(loopStartAtom);
+      const loopEnd = store.get(loopEndAtom);
+
+      const rawNext = currentTime + dt;
+      const willWrap = rawNext >= loopEnd;
+      const targetTime = willWrap ? loopStart : rawNext;
+
+      const duration = store.get(durationAtom);
+      let isBuffering = false;
+
+      for (const s of streamsRef.current.values()) {
+        if (!s.blocking) continue;
+        const state = s.bufferState(targetTime);
+        if (state === "ready") continue;
+        isBuffering = true;
+        // "loading" means fetch already in flight — don't re-request.
+        if (state === "missing") {
+          s.prefetch?.([targetTime, Math.min(duration, targetTime + (s.lookaheadSeconds ?? 3))]);
+        }
+      }
+
+      store.set(isBufferingAtom, isBuffering);
+
+      if (!isBuffering) {
+        store.set(playheadAtom, targetTime);
+        doCommit(targetTime);
+        // Loop-wrap is a discontinuous jump — fire immediately so streams
+        // can flush their cache and buffer around loopStart.
+        if (willWrap) fireSeekEvent(loopStart, true);
+      }
+
+      rafIdRef.current = requestAnimationFrame(tick);
+    },
+    [store, fireSeekEvent, doCommit]
+  );
+
+  useEffect(() => {
+    const unsub = store.sub(isPlayingAtom, () => {
+      const isPlaying = store.get(isPlayingAtom);
+      if (isPlaying) {
+        lastTimestampRef.current = null;
+        rafIdRef.current = requestAnimationFrame(tick);
+      } else {
+        if (rafIdRef.current !== null) {
+          cancelAnimationFrame(rafIdRef.current);
+          rafIdRef.current = null;
+        }
+      }
+    });
+    return () => {
+      unsub();
+      if (rafIdRef.current !== null) cancelAnimationFrame(rafIdRef.current);
+    };
+  }, [store, tick]);
+
+  const checkAllReady = useCallback(
+    (time: number): boolean => {
+      for (const s of streamsRef.current.values()) {
+        if (s.blocking && s.bufferState(time) !== "ready") return false;
+      }
+      return true;
+    },
+    []
+  );
+
+  const actions = useMemo(
+    () => ({
+      seek: (time: number) => {
+        const clamped = clamp(time, 0, store.get(durationAtom));
+        store.set(playheadAtom, clamped);
+        fireSeekEvent(clamped);
+        if (checkAllReady(clamped)) doCommit(clamped);
+      },
+      play: () => {
+        const current = store.get(playheadAtom);
+        const ls = store.get(loopStartAtom);
+        const le = store.get(loopEndAtom);
+        if (current < ls || current >= le) {
+          store.set(playheadAtom, ls);
+          fireSeekEvent(ls, true);
+        }
+        store.set(isPlayingAtom, true);
+      },
+      pause: () => {
+        store.set(isPlayingAtom, false);
+      },
+      stepBack: () => {
+        const next = clamp(
+          store.get(playheadAtom) - store.get(stepIntervalAtom),
+          0,
+          store.get(durationAtom)
+        );
+        store.set(playheadAtom, next);
+        fireSeekEvent(next, true);
+        if (checkAllReady(next)) doCommit(next);
+      },
+      stepForward: () => {
+        const next = clamp(
+          store.get(playheadAtom) + store.get(stepIntervalAtom),
+          0,
+          store.get(durationAtom)
+        );
+        store.set(playheadAtom, next);
+        fireSeekEvent(next, true);
+        if (checkAllReady(next)) doCommit(next);
+      },
+      setView: (start: number, end: number) => {
+        store.set(viewStartAtom, start);
+        store.set(viewEndAtom, end);
+      },
+      setLoop: (start: number, end: number) => {
+        store.set(loopStartAtom, start);
+        store.set(loopEndAtom, end);
+      },
+      setSpeed: (speed: number) => {
+        store.set(speedAtom, speed);
+      },
+      registerStream: (stream: PlaybackStream) => {
+        streamsRef.current.set(stream.id, stream);
+        return () => streamsRef.current.delete(stream.id);
+      },
+    }),
+    [store, fireSeekEvent, doCommit, checkAllReady]
+  );
+
+  const contextValue = useMemo<PlaybackContextValue>(
+    () => ({ duration, stepInterval, ...actions }),
+    [duration, stepInterval, actions]
+  );
+
+  return { store, contextValue };
+}
