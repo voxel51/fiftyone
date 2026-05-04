@@ -540,8 +540,7 @@ export class MaskCanvas {
 
   // TODO: jsdoc
   private getBounds() {
-    if (!this.canvas || !this.context)
-      return { minX: 0, minY: 0, maxX: 0, maxY: 0 };
+    if (!this.canvas || !this.context) return null;
 
     const { width, height } = this.canvas;
     return maskBounds(this.context.getImageData(0, 0, width, height));

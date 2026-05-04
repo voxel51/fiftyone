@@ -2,6 +2,13 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+export interface MaskBounds {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+}
+
 /**
  * Computes the tight axis-aligned bounding box of opaque pixels in an
  * `ImageData`. A pixel is "opaque" if its alpha byte is non-zero.
@@ -13,11 +20,9 @@
  * @returns Inclusive bounding box `{ minX, minY, maxX, maxY }` (in canvas
  *   pixels) covering all opaque pixels — the box covers the pixels from
  *   `minX..maxX` and `minY..maxY`, **both endpoints included**. Returns
- *   `{ minX: 0, minY: 0, maxX: 0, maxY: 0 }` when the image is fully
- *   transparent; callers should treat this as an empty region rather than
- *   a single pixel at the origin.
+ *   `null` when the image has no opaque pixels.
  */
-export const maskBounds = (maskData: ImageData) => {
+export const maskBounds = (maskData: ImageData): MaskBounds | null => {
   const { data, height, width } = maskData;
   let minX = width;
   let minY = height;
@@ -36,12 +41,7 @@ export const maskBounds = (maskData: ImageData) => {
   }
 
   if (maxX < 0 || maxY < 0) {
-    return {
-      minX: 0,
-      minY: 0,
-      maxX: 0,
-      maxY: 0,
-    };
+    return null;
   }
 
   return {

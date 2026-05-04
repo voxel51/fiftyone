@@ -28,14 +28,9 @@ const makeImageData = (
 };
 
 describe("maskBounds", () => {
-  test("returns the empty-region sentinel when fully transparent", () => {
+  test("returns null when fully transparent", () => {
     const image = makeImageData(8, 8, () => false);
-    expect(maskBounds(image)).toEqual({
-      minX: 0,
-      minY: 0,
-      maxX: 0,
-      maxY: 0,
-    });
+    expect(maskBounds(image)).toBeNull();
   });
 
   test("computes a single-pixel bbox for one opaque pixel", () => {
