@@ -6,6 +6,7 @@ FiftyOne Server /media route
 |
 """
 
+import errno
 import os
 import stat
 
@@ -13,7 +14,6 @@ import anyio
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 from starlette.responses import FileResponse, Response
-
 
 _MEDIA_HEADERS = {
     "Accept-Ranges": "bytes",
