@@ -239,8 +239,8 @@ export class MaskCanvas {
 
   /**
    * Lazily creates (or reuses) the mask editing canvas.
-   * Always sizes the canvas to match the world-space bounds so that
-   * canvas pixels map 1:1 with world coordinates. When seeding from a
+   * Always sizes the canvas to match the detection bounds so that
+   * canvas pixels map 1:1 with sample. When seeding from a
    * decoded bitmap, the bitmap is drawn scaled to fill the canvas.
    */
   private ensureCanvas(bounds: Rect): void {
