@@ -148,7 +148,10 @@ function SamplesContainer() {
       {!isModalOpen && (
         <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_RIGHT} />
       )}
-      <PanelArea id={PANEL_AREA.GRID_SIDEBAR_RIGHT} />
+      <PanelArea
+        id={PANEL_AREA.GRID_SIDEBAR_RIGHT}
+        resize={{ direction: "left" }}
+      />
     </Container>
   );
 }

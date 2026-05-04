@@ -93,4 +93,10 @@ export type PanelRendererProps = {
 
 export type PanelAreaProps = {
   id: PANEL_AREA;
+  resize?: {
+    defaultWidth?: number;
+    minWidth?: number;
+    maxWidth?: number;
+    direction: "left" | "right";
+  };
 };
