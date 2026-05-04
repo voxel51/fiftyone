@@ -2739,8 +2739,9 @@ Commonly overridden parameters include:
 
 .. note::
 
-    The ``dataset_name``, ``delegated``, and ``request_delegation`` parameters
-    cannot be overridden per stage.
+    The following parameters cannot be overridden per stage and will be ignored
+    if included: ``dataset_id``, ``dataset_name``, ``delegated``,
+    ``delegation_target``, ``request_delegation``, ``results``.
 
 .. code-block:: python
 
