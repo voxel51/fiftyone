@@ -155,6 +155,7 @@ class McapAdapter(MultimodalAdapter):
                             ].encoding,
                         )
                         if channel.schema_id != 0
+                        and channel.schema_id in summary.schemas
                         else PayloadDescriptor(
                             encoding=channel.message_encoding
                         )
