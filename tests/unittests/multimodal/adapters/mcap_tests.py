@@ -41,12 +41,12 @@ class TestMcapAdapter:
                 channels={
                     "channel_id": Mock(
                         topic="some_topic",
-                        schema_id="schema_id",
+                        schema_id=1,
                         metadata=stream_metadata,
                         message_encoding="some_encoding",
                     )
                 },
-                schemas={"schema_id": schema},
+                schemas={1: schema},
                 statistics=Mock(
                     message_start_time=51,
                     message_end_time=52,
@@ -105,12 +105,12 @@ class TestMcapAdapter:
                 channels={
                     "channel_id": Mock(
                         topic="some_topic",
-                        schema_id="schema_id",
+                        schema_id=2,
                         metadata=stream_metadata,
                         message_encoding="some_encoding",
                     )
                 },
-                schemas={"schema_id": schema},
+                schemas={2: schema},
                 statistics=None,
             )
             datetime.datetime.now.return_value = Mock(
