@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { evaluateWhen, isWhenFulfillable } from "./evaluateWhen";
+import {
+  evaluateWhen,
+  isWhenFulfillable,
+  resolveVisibleAttribute,
+} from "./evaluateWhen";
 import type { AttributeConfig } from "../SchemaManager/utils";
 
 // ---------------------------------------------------------------------------
@@ -206,5 +210,125 @@ describe("isWhenFulfillable", () => {
       { operator: "equals" as const, field: "category", value: "dragon" },
     ];
     expect(isWhenFulfillable(conditions, animalAttributes)).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// resolveVisibleAttribute
+// ---------------------------------------------------------------------------
+
+const schemaWithVariants: AttributeConfig[] = [
+  {
+    name: "category",
+    type: "str",
+    component: "dropdown",
+    values: ["mammal", "reptile", "bird"],
+  },
+  {
+    name: "animal_name",
+    type: "str",
+    component: "dropdown",
+    values: ["dog", "cat"],
+    when: [{ operator: "equals" as const, field: "category", value: "mammal" }],
+  },
+  {
+    name: "animal_name",
+    type: "str",
+    component: "dropdown",
+    values: ["snake", "lizard"],
+    when: [
+      { operator: "equals" as const, field: "category", value: "reptile" },
+    ],
+  },
+  {
+    name: "impossible_field",
+    type: "str",
+    component: "text",
+    when: [{ operator: "equals" as const, field: "category", value: "dragon" }],
+  },
+  {
+    name: "size",
+    type: "str",
+    component: "radio",
+    values: ["small", "medium", "large"],
+  },
+];
+
+describe("resolveVisibleAttribute", () => {
+  it("returns the mammal entry when category is mammal", () => {
+    const result = resolveVisibleAttribute("animal_name", schemaWithVariants, {
+      category: "mammal",
+    });
+    expect(result).toBe(schemaWithVariants[1]);
+  });
+
+  it("returns the reptile entry when category is reptile", () => {
+    const result = resolveVisibleAttribute("animal_name", schemaWithVariants, {
+      category: "reptile",
+    });
+    expect(result).toBe(schemaWithVariants[2]);
+  });
+
+  it("returns undefined when no variant matches", () => {
+    const result = resolveVisibleAttribute("animal_name", schemaWithVariants, {
+      category: "bird",
+    });
+    expect(result).toBeUndefined();
+  });
+
+  it("returns the unfulfillable entry regardless of form data", () => {
+    const result = resolveVisibleAttribute(
+      "impossible_field",
+      schemaWithVariants,
+      { category: "mammal" }
+    );
+    expect(result).toBe(schemaWithVariants[3]);
+  });
+
+  it("returns the same unfulfillable entry even with empty form data", () => {
+    const result = resolveVisibleAttribute(
+      "impossible_field",
+      schemaWithVariants,
+      {}
+    );
+    expect(result).toBe(schemaWithVariants[3]);
+  });
+
+  it("returns undefined for attributes without when conditions", () => {
+    const result = resolveVisibleAttribute("size", schemaWithVariants, {
+      category: "mammal",
+    });
+    expect(result).toBeUndefined();
+  });
+
+  it("returns undefined for a name that does not exist in the schema", () => {
+    const result = resolveVisibleAttribute("nonexistent", schemaWithVariants, {
+      category: "mammal",
+    });
+    expect(result).toBeUndefined();
+  });
+
+  it("switching category changes the winning entry", () => {
+    const before = resolveVisibleAttribute("animal_name", schemaWithVariants, {
+      category: "mammal",
+    });
+    const after = resolveVisibleAttribute("animal_name", schemaWithVariants, {
+      category: "reptile",
+    });
+    expect(before).not.toBe(after);
+    expect(before).toBe(schemaWithVariants[1]);
+    expect(after).toBe(schemaWithVariants[2]);
+  });
+
+  it("changing an unrelated field keeps the same winning entry", () => {
+    const before = resolveVisibleAttribute("animal_name", schemaWithVariants, {
+      category: "mammal",
+      size: "small",
+    });
+    const after = resolveVisibleAttribute("animal_name", schemaWithVariants, {
+      category: "mammal",
+      size: "large",
+    });
+    expect(before).toBe(after);
   });
 });
