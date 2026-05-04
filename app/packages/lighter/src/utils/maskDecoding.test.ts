@@ -56,7 +56,7 @@ describe("decodeMask", () => {
     vi.unstubAllGlobals();
   });
 
-  test("rawPixels mirrors the source numpy buffer", async () => {
+  test("rawPixels normalizes source values for hit-testing", async () => {
     const overlayMask = deserialize(SAMPLE_MASK);
     const [height, width] = overlayMask.shape;
 
@@ -65,7 +65,11 @@ describe("decodeMask", () => {
     expect(rawPixels.width).toBe(width);
     expect(rawPixels.height).toBe(height);
     expect(rawPixels.src.length).toBe(width * height);
-    expect(rawPixels.src).toEqual(new Uint8Array(overlayMask.buffer));
+    expect(rawPixels.src).toEqual(
+      Uint8Array.from(new Uint8Array(overlayMask.buffer), (value) =>
+        value > 0 ? 1 : 0
+      )
+    );
   });
 
   test("paints non-zero mask pixels with the requested color", async () => {

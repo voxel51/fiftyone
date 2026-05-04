@@ -44,6 +44,15 @@ export async function encodeMaskData(
   mask: Uint8Array,
   shape: readonly number[]
 ): Promise<string> {
+  if (
+    (shape.length !== 2 && shape.length !== 3) ||
+    shape.some((dim) => !Number.isInteger(dim) || dim <= 0)
+  ) {
+    throw new Error(
+      "Mask shape must be 2D or 3D with positive integer dimensions"
+    );
+  }
+
   const expectedLength = shape.reduce((product, dim) => product * dim, 1);
   if (mask.length !== expectedLength) {
     throw new Error(

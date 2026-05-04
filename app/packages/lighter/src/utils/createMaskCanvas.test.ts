@@ -62,9 +62,6 @@ describe("createMaskCanvas", () => {
   test("throws when the browser cannot provide a 2d context", () => {
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
 
-    // The non-null assertion in the source means the throw fires on the
-    // *next* line (drawImage), not at getContext — but in either case the
-    // call surface raises, which is what callers care about.
     expect(() => createMaskCanvas(4, 4, 0, 0, {} as ImageBitmap)).toThrow();
   });
 });
