@@ -330,8 +330,16 @@ export class MaskCanvas {
    * Converts a world-space point to mask-pixel coordinates.
    */
   private worldToMask(worldPoint: Point, bounds: Rect): Point | undefined {
-    if (!bounds || bounds.width <= 0 || bounds.height <= 0) return undefined;
-    if (!this.canvas) return undefined;
+    if (
+      !bounds ||
+      bounds.width <= 0 ||
+      bounds.height <= 0 ||
+      !Number.isFinite(bounds.width) ||
+      !Number.isFinite(bounds.height) ||
+      !this.canvas
+    ) {
+      return undefined;
+    }
 
     return {
       x: ((worldPoint.x - bounds.x) / bounds.width) * this.canvas.width,
