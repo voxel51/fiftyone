@@ -135,10 +135,12 @@ function buildNpy(data: Uint8Array, shape: readonly number[]): Uint8Array {
 async function deflate(data: Uint8Array): Promise<ArrayBuffer> {
   const cs = new CompressionStream("deflate");
   const writer = cs.writable.getWriter();
-  await writer.write(data);
-  await writer.close();
-
   const reader = cs.readable.getReader();
+
+  // Kick off the write+close in the background and surface any errors at the
+  // end so they don't go unhandled.
+  const writePromise = writer.write(data).then(() => writer.close());
+
   const chunks: Uint8Array[] = [];
   let totalLen = 0;
 
@@ -148,6 +150,10 @@ async function deflate(data: Uint8Array): Promise<ArrayBuffer> {
     chunks.push(value);
     totalLen += value.length;
   }
+
+  // Surface write/close errors deterministically once the readable side is
+  // drained — without this, a rejection would be unhandled.
+  await writePromise;
 
   const result = new Uint8Array(totalLen);
   let offset = 0;

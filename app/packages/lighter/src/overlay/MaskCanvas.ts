@@ -508,11 +508,15 @@ export class MaskCanvas {
     this.updateRawPixelsFromCanvas();
 
     const capturedCanvas = this.canvas;
-    encodeMask(capturedCanvas).then((encoded) => {
-      if (this.canvas !== capturedCanvas) return;
-      this.pendingMask = encoded;
-      onEncoded?.();
-    });
+    encodeMask(capturedCanvas)
+      .then((encoded) => {
+        if (this.canvas !== capturedCanvas) return;
+        this.pendingMask = encoded;
+        onEncoded?.();
+      })
+      .catch((err) => {
+        console.error("[MaskCanvas] paintEnd encode failed:", err);
+      });
   }
 
   getPaintStrokeData(): PaintStrokeData {
@@ -725,10 +729,14 @@ export class MaskCanvas {
     this.updateRawPixelsFromCanvas();
 
     const capturedCanvas = this.canvas;
-    encodeMask(capturedCanvas).then((encoded) => {
-      if (this.canvas !== capturedCanvas) return;
-      this.pendingMask = encoded;
-    });
+    encodeMask(capturedCanvas)
+      .then((encoded) => {
+        if (this.canvas !== capturedCanvas) return;
+        this.pendingMask = encoded;
+      })
+      .catch((err) => {
+        console.error("[MaskCanvas] restoreSnapshot encode failed:", err);
+      });
   }
 
   // ---------------------------------------------------------------------------
