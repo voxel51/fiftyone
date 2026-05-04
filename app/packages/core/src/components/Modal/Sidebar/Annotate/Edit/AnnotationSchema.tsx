@@ -3,7 +3,7 @@ import { expandPath, field } from "@fiftyone/state";
 import { FLOAT_FIELD, INT_FIELD } from "@fiftyone/utilities";
 import { useAtom, useAtomValue } from "jotai";
 import { isEqual } from "lodash";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useRecoilCallback } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import { SchemaType } from "../../../../../plugins/SchemaIO/utils/types";
@@ -24,7 +24,6 @@ const useSchema = (readOnly: boolean) => {
   const config = useAtomValue(currentSchema);
   const data = useAtomValue(currentData);
   const isLabelReadOnly = config?.read_only;
-  // respect either the field OR the parent schema's readOnly flag
   const effectiveReadOnly = readOnly || isLabelReadOnly;
 
   return useMemo(() => {
@@ -32,10 +31,6 @@ const useSchema = (readOnly: boolean) => {
       ? config.attributes
       : [];
 
-    // Track which attribute names have already been added to the form schema.
-    // When multiple attributes share the same name (e.g. same field with
-    // different when conditions for different parent values), the first visible
-    // match wins. Later entries with the same name are skipped.
     const seen = new Set<string>();
 
     const properties = attributes
@@ -78,7 +73,7 @@ const useSchema = (readOnly: boolean) => {
   }, [config, data, effectiveReadOnly]);
 };
 
-const useHandleChanges = () => {
+const useCoerceFieldValue = () => {
   return useRecoilCallback(
     ({ snapshot }) =>
       async (currentField: string, path: string, data) => {
@@ -105,33 +100,82 @@ const useHandleChanges = () => {
   );
 };
 
+/**
+ * Handles form changes: coerces field types, clears values for attributes
+ * whose visible entry changed, and dispatches the update event.
+ */
+const useHandleSchemaChange = (readOnly: boolean) => {
+  const config = useAtomValue(currentSchema);
+  const [data] = useAtom(currentData);
+  const overlay = useAtomValue(currentOverlay);
+  const eventBus = useAnnotationEventBus();
+  const coerceFieldValue = useCoerceFieldValue();
+  const field = useAtomValue(currentField);
+
+  return useCallback(
+    async (changes: Record<string, unknown>) => {
+      if (readOnly || !field || !overlay) return;
+
+      const result = Object.fromEntries(
+        await Promise.all(
+          Object.entries(changes).map(async ([key, value]) => [
+            key,
+            await coerceFieldValue(field, key, value),
+          ])
+        )
+      );
+
+      const value = { ...data, ...result };
+
+      const allAttributes = Array.isArray(config?.attributes)
+        ? config.attributes
+        : [];
+
+      const uniqueConditionalNames = new Set(
+        allAttributes.filter((a) => a.when).map((a) => a.name)
+      );
+
+      for (const name of uniqueConditionalNames) {
+        if (!name) continue;
+        const prevEntry = resolveVisibleAttribute(
+          name,
+          allAttributes,
+          (data ?? {}) as Record<string, unknown>
+        );
+        const newEntry = resolveVisibleAttribute(name, allAttributes, value);
+        if (!newEntry || prevEntry !== newEntry) {
+          delete value[name];
+        }
+      }
+
+      if (isEqual(value, overlay.label)) return;
+
+      eventBus.dispatch("annotation:sidebarValueUpdated", {
+        overlayId: overlay.id,
+        currentLabel: overlay.label as any,
+        value,
+      });
+    },
+    [config, data, eventBus, field, coerceFieldValue, overlay, readOnly]
+  );
+};
+
 export interface AnnotationSchemaProps {
   readOnly?: boolean;
 }
 
 const AnnotationSchema = ({ readOnly = false }: AnnotationSchemaProps) => {
   const schema = useSchema(readOnly);
-  const config = useAtomValue(currentSchema);
-  const [data, _save] = useAtom(currentData);
+  const [data] = useAtom(currentData);
   const overlay = useAtomValue(currentOverlay);
-  const eventBus = useAnnotationEventBus();
-  const handleChanges = useHandleChanges();
   const field = useAtomValue(currentField);
+  const onChange = useHandleSchemaChange(readOnly);
 
-  if (!field) {
-    throw new Error("no field");
-  }
+  if (!field) throw new Error("no field");
+  if (!overlay) throw new Error("no overlay");
 
-  if (!overlay) {
-    throw new Error("no overlay");
-  }
-
-  // Transform data for read-only display: convert arrays to comma-separated strings
   const displayData = useMemo(() => {
-    if (!readOnly) {
-      return data;
-    }
-
+    if (!readOnly) return data;
     return Object.fromEntries(
       Object.entries(data || {}).map(([key, value]) => [
         key,
@@ -143,63 +187,12 @@ const AnnotationSchema = ({ readOnly = false }: AnnotationSchemaProps) => {
   return (
     <div>
       <SchemaIOComponent
-        key={overlay.id}
+        key={`${overlay.id}-${field}`}
         smartForm={true}
-        smartFormProps={{
-          liveValidate: "onChange",
-        }}
+        smartFormProps={{ liveValidate: "onChange" }}
         schema={schema}
         data={displayData}
-        onChange={async (changes) => {
-          if (readOnly) return;
-
-          const result = Object.fromEntries(
-            await Promise.all(
-              Object.entries(changes).map(async ([key, value]) => [
-                key,
-                await handleChanges(field, key, value),
-              ])
-            )
-          );
-
-          const value = { ...data, ...result };
-
-          // Clear values for attributes that are now hidden so hidden state
-          const allAttributes = Array.isArray(config?.attributes)
-            ? config.attributes
-            : [];
-
-          const uniqueConditionalNames = new Set(
-            allAttributes.filter((a) => a.when).map((a) => a.name)
-          );
-
-          for (const name of uniqueConditionalNames) {
-            if (!name) continue;
-            const prevEntry = resolveVisibleAttribute(
-              name,
-              allAttributes,
-              (data ?? {}) as Record<string, unknown>
-            );
-            const newEntry = resolveVisibleAttribute(
-              name,
-              allAttributes,
-              value
-            );
-            if (!newEntry || prevEntry !== newEntry) {
-              delete value[name];
-            }
-          }
-
-          if (isEqual(value, overlay.label)) {
-            return;
-          }
-
-          eventBus.dispatch("annotation:sidebarValueUpdated", {
-            overlayId: overlay.id,
-            currentLabel: overlay.label as any,
-            value,
-          });
-        }}
+        onChange={onChange}
       />
     </div>
   );
