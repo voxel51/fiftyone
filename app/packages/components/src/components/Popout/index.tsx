@@ -9,7 +9,7 @@ export type PopoutProps = PropsWithChildren<{
   style?: CSSProperties;
   modal?: boolean;
   onClose?: () => void;
-  popoutProps: React.HTMLAttributes<HTMLDivElement>;
+  popoutProps?: React.HTMLAttributes<HTMLDivElement>;
 }>;
 
 function Popout(
