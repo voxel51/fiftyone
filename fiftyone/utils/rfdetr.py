@@ -33,8 +33,6 @@ _VALID_MODEL_TYPES = (
     "RFDETRSeg2XLarge",
 )
 
-_DEFAULT_CONFIDENCE_THRESH = 0.5
-
 
 class RFDETRDetectionModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
     """Configuration for running a :class:`RFDETRDetectionModel`.
@@ -52,11 +50,6 @@ class RFDETRDetectionModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
         super().__init__(d)
 
         self.model_type = self.parse_string(d, "model_type")
-        self.confidence_thresh = self.parse_number(
-            d,
-            "confidence_thresh",
-            default=_DEFAULT_CONFIDENCE_THRESH,
-        )
 
 
 class RFDETRSegmentationModelConfig(
@@ -77,11 +70,6 @@ class RFDETRSegmentationModelConfig(
         super().__init__(d)
 
         self.model_type = self.parse_string(d, "model_type")
-        self.confidence_thresh = self.parse_number(
-            d,
-            "confidence_thresh",
-            default=_DEFAULT_CONFIDENCE_THRESH,
-        )
 
 
 def _normalize_rfdetr_device(device):
@@ -206,11 +194,6 @@ class _RFDETRBaseModel(fout.TorchSamplesMixin, fout.TorchImageModel):
         # without forcing Torch's default tensor collate on PIL images.
         return batch
 
-    @property
-    def _class_name_map(self):
-        """Lazy access to class names from the loaded rfdetr model."""
-        return self._model.class_names
-
     def _download_model(self, config: Any) -> None:
         # rfdetr downloads weights automatically during model init
         pass
@@ -230,9 +213,11 @@ class _RFDETRBaseModel(fout.TorchSamplesMixin, fout.TorchImageModel):
     def _forward_pass(self, imgs: list[Any]) -> dict[str, Any]:
         pil_images, sizes = fout.imgs_to_rgb_pil(imgs)
 
-        results = self._model.predict(
-            pil_images, threshold=self.config.confidence_thresh
-        )
+        predict_kwargs = {}
+        if self.config.confidence_thresh is not None:
+            predict_kwargs["threshold"] = self.config.confidence_thresh
+
+        results = self._model.predict(pil_images, **predict_kwargs)
         if not isinstance(results, list):
             results = [results]
 
@@ -243,7 +228,7 @@ class _RFDETRBaseModel(fout.TorchSamplesMixin, fout.TorchImageModel):
         if classes is not None:
             return classes
 
-        class_names = self._class_name_map
+        class_names = self._model.class_names
         if isinstance(class_names, dict):
             return [name for _, name in sorted(class_names.items())]
 
@@ -261,7 +246,7 @@ class _RFDETRBaseModel(fout.TorchSamplesMixin, fout.TorchImageModel):
     def _predict_all(self, imgs: list[Any]) -> list[fol.Detections]:
         output = self._forward_pass(imgs)
 
-        class_names = self._class_name_map
+        class_names = self._model.class_names
         filter_classes = set(self.config.filter_classes or ())
         results = output["results"]
         sizes = output["sizes"]
