@@ -69,17 +69,26 @@ class McapAdapter(MultimodalAdapter):
             reader = make_reader(f)
             summary = reader.get_summary()
             if summary:
-                chunk_indices = sorted(
-                    summary.chunk_indexes,
-                    key=lambda ci: ci.chunk_start_offset,
-                )
-                return cls._read_scene_inventory(
-                    summary=summary,
-                    scene_id=filepath,
-                    size=storage.get_file_size(filepath),
-                    first_chunk_crc=chunk_crc(f, chunk_indices[0]),
-                    last_chunk_crc=chunk_crc(f, chunk_indices[-1]),
-                )
+                if summary.chunk_indexes:
+                    chunk_indices = sorted(
+                        summary.chunk_indexes,
+                        key=lambda ci: ci.chunk_start_offset,
+                    )
+                    return cls._read_scene_inventory(
+                        summary=summary,
+                        scene_id=filepath,
+                        size=storage.get_file_size(filepath),
+                        first_chunk_crc=chunk_crc(f, chunk_indices[0]),
+                        last_chunk_crc=chunk_crc(f, chunk_indices[-1]),
+                    )
+                else:
+                    return cls._read_scene_inventory(
+                        summary=summary,
+                        scene_id=filepath,
+                        size=storage.get_file_size(filepath),
+                        first_chunk_crc=None,
+                        last_chunk_crc=None,
+                    )
 
     @classmethod
     def _read_scene_inventory(
@@ -88,8 +97,8 @@ class McapAdapter(MultimodalAdapter):
         summary: Optional[Summary],
         scene_id: str,
         size: int,
-        first_chunk_crc: int = None,
-        last_chunk_crc: int = None,
+        first_chunk_crc: Optional[int] = None,
+        last_chunk_crc: Optional[int] = None,
     ) -> SceneInventory:
         if not summary:
             return SceneInventory(
