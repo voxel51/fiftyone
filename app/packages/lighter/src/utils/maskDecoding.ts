@@ -74,14 +74,22 @@ function paintMask(mask: OverlayMask, cssColor: string): ArrayBuffer {
 
   // Pack as RGBA (little-endian: ABGR in Uint32)
   const packedColor = (a << 24) | (b << 16) | (g << 8) | r;
-
   const ArrayType = ARRAY_TYPES[mask.arrayType];
+
   if (!ArrayType) {
     throw new Error(`Unsupported mask array type: ${mask.arrayType}`);
   }
-  const targets = new ArrayType(mask.buffer);
 
-  for (let i = 0; i < targets.length; i++) {
+  const targets = new ArrayType(mask.buffer);
+  const expectedPixels = width * height;
+
+  if (targets.length !== expectedPixels) {
+    throw new Error(
+      `Mask payload length mismatch: expected ${expectedPixels}, got ${targets.length}`
+    );
+  }
+
+  for (let i = 0; i < expectedPixels; i++) {
     if (targets[i]) {
       overlay[i] = packedColor;
     }
