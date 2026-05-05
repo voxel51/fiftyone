@@ -229,6 +229,7 @@ export interface BaseOptions {
   pointFilter: (path: string, point: Point) => boolean;
   thumbnailTitle?: (sample: any) => string;
   mediaFallback: boolean;
+  initialViewport?: ViewportState | null;
 }
 
 export type BoundingBox = [number, number, number, number];
@@ -510,6 +511,7 @@ export const DEFAULT_BASE_OPTIONS: BaseOptions = {
   attributeVisibility: {},
   mediaFallback: false,
   shouldHandleKeyEvents: true,
+  initialViewport: null,
 };
 
 export const DEFAULT_FRAME_OPTIONS: FrameOptions = {
@@ -556,4 +558,10 @@ export interface FrameChunkResponse extends FrameChunk {
   frames: FrameSample[];
   range: [number, number];
   error?: boolean;
+}
+
+export interface ViewportState {
+  readonly scale: number;
+  readonly panX: number;
+  readonly panY: number;
 }
