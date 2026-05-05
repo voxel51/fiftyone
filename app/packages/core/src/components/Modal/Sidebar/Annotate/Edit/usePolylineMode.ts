@@ -164,7 +164,7 @@ export const usePolylineMode = () => {
 
   useEffect(() => {
     if (!scene || !polylineModeActive || isEditingPolyline) {
-      return null;
+      return undefined;
     }
 
     scene.setEmptyCanvasClickHandler((worldPoint) => {
