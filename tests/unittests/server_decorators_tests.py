@@ -36,7 +36,7 @@ class TestNumPyResponse(unittest.IsolatedAsyncioTestCase):
 
 
 class TestRouteDecorator(unittest.IsolatedAsyncioTestCase):
-    async def test_route_parses_json_body_by_default(self):
+    async def test_route_parses_json_body_by_default_post(self):
         class Endpoint:
             @decorators.route
             async def post(self, request, data):
@@ -52,9 +52,9 @@ class TestRouteDecorator(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(json.loads(response.body), {"value": "ok"})
 
-    async def test_route_can_skip_body_parsing(self):
+    async def test_route_skips_body_parsing_for_get_by_default(self):
         class Endpoint:
-            @decorators.route(parse_body=False)
+            @decorators.route
             async def get(self, request):
                 return {"value": request.path_params["value"]}
 
@@ -63,6 +63,22 @@ class TestRouteDecorator(unittest.IsolatedAsyncioTestCase):
         request.path_params = {"value": "ok"}
 
         response = await Endpoint().get(request)
+
+        request.body.assert_not_called()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(json.loads(response.body), {"value": "ok"})
+
+    async def test_route_skips_body_parsing_for_delete_by_default(self):
+        class Endpoint:
+            @decorators.route
+            async def delete(self, request):
+                return {"value": request.path_params["value"]}
+
+        request = MagicMock()
+        request.body = AsyncMock(side_effect=AssertionError("unexpected body"))
+        request.path_params = {"value": "ok"}
+
+        response = await Endpoint().delete(request)
 
         request.body.assert_not_called()
         self.assertEqual(response.status_code, 200)
@@ -83,6 +99,22 @@ class TestRouteDecorator(unittest.IsolatedAsyncioTestCase):
         request.body.assert_awaited_once()
         self.assertEqual(response.status_code, 200)
         self.assertEqual(json.loads(response.body), {"value": "manual"})
+
+    async def test_route_can_force_body_parsing_for_get(self):
+        class Endpoint:
+            @decorators.route(parse_body=True)
+            async def get(self, request, data):
+                return {"value": data["value"]}
+
+        request = MagicMock()
+        request.body = AsyncMock(return_value=b'{"value": "forced"}')
+
+        # pylint: disable-next=no-value-for-parameter
+        response = await Endpoint().get(request)
+
+        request.body.assert_awaited_once()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(json.loads(response.body), {"value": "forced"})
 
     async def test_route_returns_server_error_for_malformed_json_body(self):
         handler_was_called = False

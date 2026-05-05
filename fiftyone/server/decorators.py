@@ -21,21 +21,30 @@ from fiftyone.server import utils
 from fiftyone.server.exceptions import DbVersionMismatchError
 
 
-def route(func=None, *, parse_body: bool = True):
+_BODY_METHOD_NAMES = {"post", "put", "patch"}
+
+
+def route(func=None, *, parse_body: t.Optional[bool] = None):
     """A decorator for HTTPEndpoint methods that handles exceptions.
 
-    By default, it assumes JSON body parsing behavior (for legacy support) and
-    passes parsed data as the third handler argument. Routes without a request
-    body can opt out with ``@route(parse_body=False)``.
+    By default, POST, PUT, and PATCH handlers parse the JSON body and receive
+    the parsed data as the third handler argument. Other handlers skip body
+    parsing. This behavior can be explicitly overridden with ``parse_body``.
     """
 
     def decorator(func):
+        should_parse_body = (
+            func.__name__.lower() in _BODY_METHOD_NAMES
+            if parse_body is None
+            else parse_body
+        )
+
         @wraps(func)
         async def wrapper(
             endpoint: HTTPEndpoint, request: Request, *args
         ) -> t.Union[dict, Response]:
             try:
-                if parse_body:
+                if should_parse_body:
                     body = await request.body()
                     payload = body.decode("utf-8")
                     data = utils.json.loads(payload)
