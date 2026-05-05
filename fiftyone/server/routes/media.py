@@ -6,150 +6,83 @@ FiftyOne Server /media route
 |
 """
 
+import errno
 import os
-import typing as t
+import stat
 
 import anyio
-import aiofiles
-from aiofiles.threadpool.binary import AsyncBufferedReader
-from aiofiles.os import stat as aio_stat
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
-from starlette.responses import (
-    FileResponse,
-    Response,
-    StreamingResponse,
-    guess_type,
-)
+from starlette.responses import FileResponse, Response
+
+_MEDIA_HEADERS = {
+    "Accept-Ranges": "bytes",
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+    "Access-Control-Allow-Headers": "Range, Content-Type, Authorization",
+    "Access-Control-Expose-Headers": (
+        "Accept-Ranges, Content-Range, Content-Length"
+    ),
+}
+MEDIA_FILE_RESPONSE_CHUNK_SIZE = 256 * 1024
 
 
-async def ranged(
-    file: AsyncBufferedReader,
-    start: int = 0,
-    end: int = None,
-    block_size: int = 8192,
-) -> t.AsyncGenerator:
-    consumed = 0
+def _media_headers(extra=None):
+    headers = dict(_MEDIA_HEADERS)
 
-    await file.seek(start)
+    if extra:
+        headers.update(extra)
 
-    while True:
-        data_length = (
-            min(block_size, end - start - consumed) if end else block_size
-        )
+    return headers
 
-        if data_length <= 0:
-            break
 
-        data = await file.read(data_length)
+def _not_found_response():
+    return Response(
+        content="Not found",
+        status_code=404,
+        headers=_media_headers(),
+    )
 
-        if not data:
-            break
 
-        consumed += data_length
-
-        yield data
-
-    if hasattr(file, "close"):
-        await file.close()
+class MediaFileResponse(FileResponse):
+    # Optimize local media serving for large range reads.
+    chunk_size = MEDIA_FILE_RESPONSE_CHUNK_SIZE
 
 
 class Media(HTTPEndpoint):
-    async def get(
-        self, request: Request
-    ) -> t.Union[FileResponse, StreamingResponse]:
-        path = request.query_params["filepath"]
+    async def get(self, request: Request) -> Response:
+        # Note for HEAD: Starlette routes HEAD through GET when no HEAD handler exists.
+        path = request.query_params.get("filepath")
 
-        response: t.Union[FileResponse, StreamingResponse]
+        if not path:
+            return Response(
+                content="Missing required query parameter: filepath",
+                status_code=400,
+                headers=_media_headers(),
+            )
 
+        return await self._file_response(path)
+
+    async def _file_response(self, path: str) -> Response:
         try:
-            await anyio.to_thread.run_sync(os.stat, path)
-        except FileNotFoundError:
-            return Response(content="Not found", status_code=404)
+            stat_result = await anyio.to_thread.run_sync(os.stat, path)
+        except (FileNotFoundError, NotADirectoryError, PermissionError):
+            return _not_found_response()
+        except OSError as e:
+            if e.errno in {errno.ENAMETOOLONG, errno.ELOOP}:
+                return _not_found_response()
+            raise
 
-        if request.headers.get("range"):
-            response = await self.ranged_file_response(path, request)
-        else:
-            response = FileResponse(
-                path,
-            )
-        response.headers["Accept-Ranges"] = "bytes"
+        if not stat.S_ISREG(stat_result.st_mode):
+            return _not_found_response()
 
-        response.headers["Access-Control-Allow-Origin"] = "*"
-        response.headers["Access-Control-Allow-Methods"] = "GET, HEAD, OPTIONS"
-        response.headers[
-            "Access-Control-Allow-Headers"
-        ] = "Range, Content-Type, Authorization"
-        response.headers[
-            "Access-Control-Expose-Headers"
-        ] = "Accept-Ranges, Content-Range, Content-Length"
-        return response
-
-    async def ranged_file_response(
-        self, path: str, request: Request
-    ) -> StreamingResponse:
-        file = await aiofiles.open(path, "rb")
-        file_size = (await aio_stat(path)).st_size
-        content_range = request.headers.get("range")
-        content_length = file_size
-        status_code = 200
-        headers = {}
-
-        if content_range is not None:
-            content_range = content_range.strip().lower()
-
-            content_ranges = content_range.split("=")[-1]
-
-            range_start, range_end, *_ = map(
-                str.strip, (content_ranges + "-").split("-")
-            )
-
-            start, end = (
-                int(range_start) if range_start else 0,
-                int(range_end) if range_end else file_size - 1,
-            )
-            range_start = max(0, start)
-            range_end = min(file_size - 1, int(end))
-
-            content_length = (end - start) + 1
-
-            file_response = ranged(file, start=start, end=end + 1)
-
-            status_code = 206
-
-            headers["Content-Range"] = f"bytes {start}-{end}/{file_size}"
-
-        response = StreamingResponse(
-            file_response,
-            media_type=guess_type(path)[0],
-            status_code=status_code,
+        return MediaFileResponse(
+            path,
+            stat_result=stat_result,
+            headers=_media_headers(),
         )
-
-        response.headers.update(
-            {
-                "Accept-Ranges": "bytes",
-                "Content-Length": str(content_length),
-                **headers,
-            }
-        )
-
-        return response
-
-    async def head(self, request: Request) -> Response:
-        path = request.query_params["filepath"]
-        response = Response()
-        size = (await aio_stat(path)).st_size
-        response.headers.update(
-            {
-                "Accept-Ranges": "bytes",
-                "Content-Type": guess_type(path)[0],
-                "Content-Length": size,
-            }
-        )
-        return response
 
     async def options(self, request: Request) -> Response:
-        response = Response()
-        response.headers["Accept-Ranges"] = "bytes"
-        response.headers["Allow"] = "OPTIONS, GET, HEAD"
-        return response
+        return Response(
+            headers=_media_headers({"Allow": "OPTIONS, GET, HEAD"})
+        )

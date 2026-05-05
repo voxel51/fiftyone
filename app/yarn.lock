@@ -2646,6 +2646,7 @@ __metadata:
     uuid: "npm:^14.0.0"
     vite: "npm:^7.3.2"
     vite-plugin-externals: "npm:^0.5.0"
+    vite-plugin-relay: "npm:^2.0.0"
     vitest: "npm:^1.6.0"
   peerDependencies:
     "@fiftyone/commands": "*"
