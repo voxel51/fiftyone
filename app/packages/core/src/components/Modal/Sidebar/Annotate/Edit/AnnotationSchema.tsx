@@ -3,7 +3,7 @@ import { expandPath, field } from "@fiftyone/state";
 import { FLOAT_FIELD, INT_FIELD } from "@fiftyone/utilities";
 import { useAtom, useAtomValue } from "jotai";
 import { isEqual } from "lodash";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { useRecoilCallback } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import { SchemaType } from "../../../../../plugins/SchemaIO/utils/types";
@@ -26,42 +26,48 @@ const useSchema = (readOnly: boolean) => {
   const isLabelReadOnly = config?.read_only;
   const effectiveReadOnly = readOnly || isLabelReadOnly;
 
+  const allAttributes = useMemo(
+    () => (Array.isArray(config?.attributes) ? config.attributes : []),
+    [config]
+  );
+
+  const visibleAttributes = useMemo(() => {
+    const result = new Map<string, typeof allAttributes[number]>();
+    for (const attr of allAttributes) {
+      if (!attr.name || attr.name === "id" || attr.name === "attributes") {
+        continue;
+      }
+      if (result.has(attr.name)) continue;
+      if (
+        evaluateWhen(attr.when, data ?? {}) ||
+        !isWhenFulfillable(attr.when, allAttributes)
+      ) {
+        result.set(attr.name, attr);
+      }
+    }
+    return result;
+  }, [allAttributes, data]);
+
+  // Stable string key — only changes when the visible attribute set changes
+  const visibleKey = [...visibleAttributes.keys()].join("\0");
+
+  // Reruns only when the visible attribute set changes.
   return useMemo(() => {
-    const attributes = Array.isArray(config?.attributes)
-      ? config.attributes
-      : [];
+    const properties: Record<string, SchemaType | undefined> = {
+      label: generatePrimitiveSchema("label", {
+        type: "str",
+        component: config?.component || "dropdown",
+        values: config?.classes || [],
+        readOnly: effectiveReadOnly,
+      }),
+    };
 
-    const seen = new Set<string>();
-
-    const properties = attributes
-      .filter(({ name }) => name && !["id", "attributes"].includes(name))
-      .filter(
-        (attr) =>
-          evaluateWhen(attr.when, data ?? {}) ||
-          !isWhenFulfillable(attr.when, attributes)
-      )
-      .filter((attr) => {
-        if (seen.has(attr.name)) return false;
-        seen.add(attr.name);
-        return true;
-      })
-      .reduce(
-        (schema: SchemaType, value: SchemaType) => ({
-          ...schema,
-          [value.name!]: generatePrimitiveSchema(value.name!, {
-            ...value,
-            readOnly: effectiveReadOnly || value.read_only,
-          }),
-        }),
-        {
-          label: generatePrimitiveSchema("label", {
-            type: "str",
-            component: config?.component || "dropdown",
-            values: config?.classes || [],
-            readOnly: effectiveReadOnly,
-          }),
-        }
-      );
+    for (const [name, attr] of visibleAttributes) {
+      properties[name] = generatePrimitiveSchema(name, {
+        ...attr,
+        readOnly: effectiveReadOnly || attr.read_only,
+      });
+    }
 
     return {
       type: "object",
@@ -70,7 +76,9 @@ const useSchema = (readOnly: boolean) => {
       },
       properties,
     };
-  }, [config, data, effectiveReadOnly]);
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visibleKey, config, effectiveReadOnly]);
 };
 
 const useParseFieldValue = () => {
@@ -103,6 +111,9 @@ const useParseFieldValue = () => {
 /**
  * Handles form changes: parses field types, clears values for attributes
  * whose visible entry changed, and dispatches the update event.
+ *
+ * Volatile atoms (config, data, overlay, field) are read via refs so that
+ * the returned callback keeps a stable identity across data changes.
  */
 const useHandleSchemaChange = (readOnly: boolean) => {
   const config = useAtomValue(currentSchema);
@@ -112,8 +123,22 @@ const useHandleSchemaChange = (readOnly: boolean) => {
   const parseFieldValue = useParseFieldValue();
   const field = useAtomValue(currentField);
 
+  const configRef = useRef(config);
+  const dataRef = useRef(data);
+  const overlayRef = useRef(overlay);
+  const fieldRef = useRef(field);
+  configRef.current = config;
+  dataRef.current = data;
+  overlayRef.current = overlay;
+  fieldRef.current = field;
+
   return useCallback(
     async (changes: Record<string, unknown>) => {
+      const config = configRef.current;
+      const data = dataRef.current;
+      const overlay = overlayRef.current;
+      const field = fieldRef.current;
+
       if (readOnly || !field || !overlay) return;
 
       const result = Object.fromEntries(
@@ -137,10 +162,6 @@ const useHandleSchemaChange = (readOnly: boolean) => {
 
       for (const name of uniqueConditionalNames) {
         if (!name) continue;
-        // An unconditional (always-visible) variant for this name exists — its
-        // value must never be wiped by conditional-switch logic because
-        // resolveVisibleAttribute only inspects `when`-bearing entries and
-        // would return undefined, falsely triggering deletion.
         if (allAttributes.some((a) => a.name === name && !a.when)) continue;
         const prevEntry = resolveVisibleAttribute(
           name,
@@ -161,7 +182,7 @@ const useHandleSchemaChange = (readOnly: boolean) => {
         value,
       });
     },
-    [config, data, eventBus, field, parseFieldValue, overlay, readOnly]
+    [eventBus, parseFieldValue, readOnly]
   );
 };
 
