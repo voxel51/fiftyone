@@ -2,9 +2,14 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { LABEL_ARCHETYPE_PRIORITY } from "../constants";
+import { EDGE_THRESHOLD, LABEL_ARCHETYPE_PRIORITY } from "../constants";
 import type { Renderer2D } from "../renderer/Renderer2D";
-import type { DrawStyle, RawLookerLabel } from "../types";
+import type { DrawStyle, Point, RawLookerLabel } from "../types";
+import {
+  distance,
+  distanceFromLineSegment,
+  projectOntoSegment2d,
+} from "../utils/geometry";
 import {
   KeypointOverlay,
   type KeypointLabel,
@@ -141,7 +146,12 @@ export class PolylineOverlay extends KeypointOverlay {
   }
 
   /**
-   * Reconstructs the polyline points in their original nested form.
+   * Reconstructs the polyline points in their original nested form, suitable
+   * for persistence as a `[[number, number][], ...]` label.
+   *
+   * @returns One `[x, y]` array per segment, in segment order.
+   *   Empty segments (created via {@link startNewSegment} but not yet
+   *   populated) appear as empty arrays.
    */
   getNestedPoints(): [number, number][][] {
     const flat = this.getRelativePoints();
@@ -160,6 +170,389 @@ export class PolylineOverlay extends KeypointOverlay {
 
   getFilled(): boolean {
     return this.polylineFilled;
+  }
+
+  /**
+   * Returns the number of segments, including any empty segments created via
+   * {@link startNewSegment} that haven't yet had a point added.
+   */
+  getSegmentCount(): number {
+    return this.segmentBoundaries.length;
+  }
+
+  /**
+   * Returns the number of points in `segmentIdx`, or `0` if the index is
+   * out of range.
+   *
+   * @param segmentIdx Zero-based segment index.
+   */
+  getSegmentLength(segmentIdx: number): number {
+    if (segmentIdx < 0 || segmentIdx >= this.segmentBoundaries.length) {
+      return 0;
+    }
+
+    const segStart = this.segmentStart(segmentIdx);
+    return this.segmentBoundaries[segmentIdx] - segStart;
+  }
+
+  /**
+   * Appends a point at the end of the last segment (creating one if none
+   * exist). Use {@link appendPointToSegment} or {@link insertPointInSegment}
+   * to target a specific segment.
+   *
+   * @param worldPoint Absolute (world-space) coordinates of the new point.
+   * @param variant Optional variant key used to determine render style.
+   * @param id Optional point id; one is generated when omitted.
+   * @returns The id of the new point.
+   */
+  override addPoint(worldPoint: Point, variant?: string, id?: string): string {
+    const newId = super.addPoint(worldPoint, variant, id);
+
+    if (this.segmentBoundaries.length === 0) {
+      this.segmentBoundaries.push(1);
+    } else {
+      this.segmentBoundaries[this.segmentBoundaries.length - 1] += 1;
+    }
+
+    this.setConnections(this.rebuildConnectionsFromBoundaries());
+
+    return newId;
+  }
+
+  /**
+   * Removes the point at the given flat-array index. The owning segment is
+   * inferred from `segmentBoundaries`; if removal empties a segment, the
+   * segment slot is dropped.
+   *
+   * @param index Flat-array index of the point to remove (across all segments).
+   *   Out-of-range indices are silently ignored, as are calls when the overlay
+   *   is non-deletable.
+   */
+  override removePoint(index: number): void {
+    const segIdx = this.locateSegmentForIndex(index);
+    if (segIdx === -1) {
+      return;
+    }
+
+    const sizeBefore = this.getRelativePoints().length;
+    super.removePoint(index);
+    const sizeAfter = this.getRelativePoints().length;
+
+    // Base may have rejected the call (e.g. !isDeletable, out-of-range)
+    if (sizeAfter === sizeBefore) {
+      return;
+    }
+
+    for (let i = segIdx; i < this.segmentBoundaries.length; i++) {
+      this.segmentBoundaries[i] -= 1;
+    }
+
+    const segStart = this.segmentStart(segIdx);
+    if (this.segmentBoundaries[segIdx] === segStart) {
+      this.segmentBoundaries.splice(segIdx, 1);
+    }
+
+    this.setConnections(this.rebuildConnectionsFromBoundaries());
+  }
+
+  /**
+   * Inserts a point at position `indexInSegment` within `segmentIdx`. An
+   * `indexInSegment` equal to the segment's length appends.
+   *
+   * @param segmentIdx Zero-based segment index.
+   * @param indexInSegment Zero-based position within the segment, in the inclusive range `[0, segmentLength]`.
+   * @param relPoint Relative-coordinate position `[x, y]` of the new point.
+   * @param variant Optional variant key used to determine render style.
+   * @param id Optional point id; one is generated when omitted.
+   * @returns The id of the new point.
+   * @throws RangeError if `segmentIdx` or `indexInSegment` is out of range.
+   */
+  insertPointInSegment(
+    segmentIdx: number,
+    indexInSegment: number,
+    relPoint: [number, number],
+    variant?: string,
+    id?: string
+  ): string {
+    if (segmentIdx < 0 || segmentIdx >= this.segmentBoundaries.length) {
+      throw new RangeError(
+        `PolylineOverlay: segmentIdx ${segmentIdx} out of bounds`
+      );
+    }
+
+    const segStart = this.segmentStart(segmentIdx);
+    const segLen = this.segmentBoundaries[segmentIdx] - segStart;
+    if (indexInSegment < 0 || indexInSegment > segLen) {
+      throw new RangeError(
+        `PolylineOverlay: indexInSegment ${indexInSegment} out of bounds [0, ${segLen}]`
+      );
+    }
+
+    const newId = this.insertRelativePointAt(
+      segStart + indexInSegment,
+      relPoint,
+      variant,
+      id
+    );
+
+    for (let i = segmentIdx; i < this.segmentBoundaries.length; i++) {
+      this.segmentBoundaries[i] += 1;
+    }
+
+    this.setConnections(this.rebuildConnectionsFromBoundaries());
+
+    return newId;
+  }
+
+  /**
+   * Appends a point to the end of `segmentIdx`. Equivalent to
+   * {@link insertPointInSegment} with `indexInSegment` set to the segment's
+   * current length.
+   *
+   * @param segmentIdx Zero-based segment index.
+   * @param relPoint Relative-coordinate position `[x, y]` of the new point.
+   * @param variant Optional variant key used to determine render style.
+   * @param id Optional point id; one is generated when omitted.
+   * @returns The id of the new point.
+   * @throws RangeError if `segmentIdx` is out of range.
+   */
+  appendPointToSegment(
+    segmentIdx: number,
+    relPoint: [number, number],
+    variant?: string,
+    id?: string
+  ): string {
+    return this.insertPointInSegment(
+      segmentIdx,
+      this.getSegmentLength(segmentIdx),
+      relPoint,
+      variant,
+      id
+    );
+  }
+
+  /**
+   * Removes the point at position `indexInSegment` within `segmentIdx`. If
+   * the segment becomes empty, the segment slot is dropped.
+   *
+   * @param segmentIdx Zero-based segment index. Out-of-range values are
+   *  silently ignored.
+   * @param indexInSegment Zero-based position within the segment, in the
+   *  half-open range `[0, segmentLength)`. Out-of-range values are silently
+   *  ignored.
+   */
+  removePointFromSegment(segmentIdx: number, indexInSegment: number): void {
+    if (segmentIdx < 0 || segmentIdx >= this.segmentBoundaries.length) {
+      return;
+    }
+
+    const segLen = this.getSegmentLength(segmentIdx);
+    if (indexInSegment < 0 || indexInSegment >= segLen) {
+      return;
+    }
+
+    this.removePoint(this.segmentStart(segmentIdx) + indexInSegment);
+  }
+
+  /**
+   * Appends a new empty segment. A subsequent {@link addPoint} or
+   * {@link appendPointToSegment} populates it.
+   *
+   * @returns The zero-based index of the newly created segment.
+   */
+  startNewSegment(): number {
+    this.segmentBoundaries.push(this.getRelativePoints().length);
+    // No connection entry yet — empty segments don't render.
+    return this.segmentBoundaries.length - 1;
+  }
+
+  /**
+   * Locates the closest edge to `worldPoint` within `thresholdOverride` (or
+   * the default `EDGE_THRESHOLD` adjusted for the current scale).
+   *
+   * For closed polylines, the closing edge from the last point back to the
+   * first is included; its `edgeIdx` is the segment's last point index, and
+   * inserting at `indexInSegment = segLen` (i.e. appending) splits it.
+   *
+   * @param worldPoint Absolute (world-space) point to test against.
+   * @param thresholdOverride Maximum distance to consider, in world units.
+   *  Defaults to `EDGE_THRESHOLD / scale`.
+   * @returns `{ segmentIdx, edgeIdx, projectedRel }` for the closest edge, or
+   *  `null` if none is within threshold. `projectedRel` is the click position
+   *  projected onto the matched edge in relative coordinates, suitable for
+   *  {@link insertPointInSegment}.
+   */
+  findEdgeAt(
+    worldPoint: Point,
+    thresholdOverride?: number
+  ): {
+    segmentIdx: number;
+    edgeIdx: number;
+    projectedRel: [number, number];
+  } | null {
+    const scale = this.renderer?.getScale() ?? 1;
+    const threshold = thresholdOverride ?? EDGE_THRESHOLD / scale;
+    const flatRel = this.getRelativePoints();
+    if (flatRel.length === 0) {
+      return null;
+    }
+
+    let best: {
+      segmentIdx: number;
+      edgeIdx: number;
+      projectedRel: [number, number];
+      dist: number;
+    } | null = null;
+
+    let prev = 0;
+    for (let segIdx = 0; segIdx < this.segmentBoundaries.length; segIdx++) {
+      const end = this.segmentBoundaries[segIdx];
+      const segPointsRel = flatRel.slice(prev, end);
+      const segPointsAbs = segPointsRel.map((rp) =>
+        this.relativePointToAbsolute(rp)
+      );
+
+      for (let edgeIdx = 0; edgeIdx < segPointsAbs.length - 1; edgeIdx++) {
+        const aAbs = segPointsAbs[edgeIdx];
+        const bAbs = segPointsAbs[edgeIdx + 1];
+        const d = distanceFromLineSegment(worldPoint, aAbs, bAbs);
+        if (d <= threshold && (!best || d < best.dist)) {
+          const wpRel = this.absolutePointToRelative(worldPoint);
+          best = {
+            segmentIdx: segIdx,
+            edgeIdx,
+            projectedRel: projectOntoSegment2d(
+              [wpRel[0], wpRel[1]],
+              segPointsRel[edgeIdx],
+              segPointsRel[edgeIdx + 1]
+            ),
+            dist: d,
+          };
+        }
+      }
+
+      // Closing edge for closed polylines with >=3 points
+      if (this.polylineClosed && segPointsAbs.length > 2) {
+        const aAbs = segPointsAbs[segPointsAbs.length - 1];
+        const bAbs = segPointsAbs[0];
+        const d = distanceFromLineSegment(worldPoint, aAbs, bAbs);
+        if (d <= threshold && (!best || d < best.dist)) {
+          const wpRel = this.absolutePointToRelative(worldPoint);
+          best = {
+            segmentIdx: segIdx,
+            edgeIdx: segPointsAbs.length - 1,
+            projectedRel: projectOntoSegment2d(
+              [wpRel[0], wpRel[1]],
+              segPointsRel[segPointsRel.length - 1],
+              segPointsRel[0]
+            ),
+            dist: d,
+          };
+        }
+      }
+
+      prev = end;
+    }
+
+    return best
+      ? {
+          segmentIdx: best.segmentIdx,
+          edgeIdx: best.edgeIdx,
+          projectedRel: best.projectedRel,
+        }
+      : null;
+  }
+
+  /**
+   * Locates the head (first) or tail (last) point of any segment closest to
+   * `worldPoint`. Used as the fallback for empty-space clicks during editing,
+   * so this method intentionally has no distance threshold — when any
+   * non-empty segment exists, an endpoint is always returned.
+   *
+   * @param worldPoint Absolute (world-space) point to measure distance from.
+   * @returns `{ segmentIdx, end }` for the closest endpoint, or `null` if no
+   *  non-empty segments exist. `end` is `"head"` for the segment's first point
+   *  and `"tail"` for its last.
+   */
+  findNearestEndpoint(worldPoint: Point): {
+    segmentIdx: number;
+    end: "head" | "tail";
+  } | null {
+    const flatRel = this.getRelativePoints();
+    if (flatRel.length === 0) {
+      return null;
+    }
+
+    let best: {
+      segmentIdx: number;
+      end: "head" | "tail";
+      dist: number;
+    } | null = null;
+
+    let prev = 0;
+    for (let segIdx = 0; segIdx < this.segmentBoundaries.length; segIdx++) {
+      const segEnd = this.segmentBoundaries[segIdx];
+      if (segEnd === prev) {
+        prev = segEnd;
+        continue;
+      }
+
+      const headAbs = this.relativePointToAbsolute(flatRel[prev]);
+      const dHead = distance(worldPoint.x, worldPoint.y, headAbs.x, headAbs.y);
+      if (!best || dHead < best.dist) {
+        best = { segmentIdx: segIdx, end: "head", dist: dHead };
+      }
+
+      const tailIdx = segEnd - 1;
+      if (tailIdx !== prev) {
+        const tailAbs = this.relativePointToAbsolute(flatRel[tailIdx]);
+        const dTail = distance(
+          worldPoint.x,
+          worldPoint.y,
+          tailAbs.x,
+          tailAbs.y
+        );
+        if (!best || dTail < best.dist) {
+          best = { segmentIdx: segIdx, end: "tail", dist: dTail };
+        }
+      }
+
+      prev = segEnd;
+    }
+
+    return best ? { segmentIdx: best.segmentIdx, end: best.end } : null;
+  }
+
+  private segmentStart(segmentIdx: number): number {
+    return segmentIdx === 0 ? 0 : this.segmentBoundaries[segmentIdx - 1];
+  }
+
+  private locateSegmentForIndex(globalIndex: number): number {
+    for (let i = 0; i < this.segmentBoundaries.length; i++) {
+      if (globalIndex < this.segmentBoundaries[i]) {
+        return i;
+      }
+    }
+
+    return -1;
+  }
+
+  private rebuildConnectionsFromBoundaries(): number[][] {
+    const connections: number[][] = [];
+    let prev = 0;
+
+    for (const end of this.segmentBoundaries) {
+      if (end > prev) {
+        const path: number[] = [];
+        for (let i = prev; i < end; i++) {
+          path.push(i);
+        }
+        connections.push(path);
+      }
+      prev = end;
+    }
+
+    return connections;
   }
 
   protected override renderFill(
