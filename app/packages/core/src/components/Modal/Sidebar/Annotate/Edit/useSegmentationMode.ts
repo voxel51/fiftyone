@@ -120,16 +120,42 @@ export const useSegmentationMode = () => {
     activateSegmentationMode,
   ]);
 
+  /**
+   * Persist any in-progress mask edit and exit interactive paint mode.
+   * Idempotent — safe to call when there's no open label.
+   */
+  const closeOpenLabel = useCallback(() => {
+    const currentScene = sceneRef.current;
+    const currentLabel = selectedLabelRef.current;
+
+    if (
+      currentScene &&
+      !currentScene.isDestroyed &&
+      currentScene.renderLoopActive
+    ) {
+      currentScene.exitInteractiveMode();
+
+      if (currentLabel?.overlay) {
+        addOverlay(currentLabel.overlay as BaseOverlay);
+      }
+    }
+  }, [addOverlay]);
+
   // Activate/deactivate AI point selection when switching to/from the AI tool.
+  // Switching INTO AI finalizes any open manual edit so the user starts the
+  // AI flow on a clean slate.
   useEffect(() => {
     if (!segmentationModeActive) return;
 
     if (manualMode.tool === SegmentationTool.AI) {
+      if (!aiMode.isActive) {
+        closeOpenLabel();
+      }
       aiMode.activate();
     } else if (aiMode.isActive) {
       aiMode.deactivate();
     }
-  }, [manualMode.tool, segmentationModeActive, aiMode]);
+  }, [manualMode.tool, segmentationModeActive, aiMode, closeOpenLabel]);
 
   // Auto-enable segmentation mode when a pre-existing mask detection is selected,
   // auto-disable when a pre-existing label of a different type is selected.
@@ -166,25 +192,11 @@ export const useSegmentationMode = () => {
    * Finalize the previous mask detection (if any) and start a new one.
    */
   const create = useCallback(() => {
-    const currentScene = sceneRef.current;
-    const currentLabel = selectedLabelRef.current;
-
-    if (
-      currentScene &&
-      !currentScene.isDestroyed &&
-      currentScene.renderLoopActive
-    ) {
-      currentScene.exitInteractiveMode();
-
-      if (currentLabel?.overlay) {
-        addOverlay(currentLabel.overlay as BaseOverlay);
-      }
-    }
-
+    closeOpenLabel();
     // TODO: assume previous `field` and `labelValue`
     // e.g. createDetection({ field, labelValue, isEditingMask: true });
     createDetection({ isEditingMask: true });
-  }, [addOverlay, createDetection]);
+  }, [closeOpenLabel, createDetection]);
 
   /**
    * Accept the current AI mask, tear down point selection, and switch to the
