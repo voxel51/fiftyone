@@ -53,6 +53,15 @@ export {
   KeypointPointHitAction,
 } from "./interaction/InteractiveKeypointHandler";
 export type { KeypointPointHitContext } from "./interaction/InteractiveKeypointHandler";
+export {
+  InteractivePolylineHandler,
+  PolylineEdgeHitAction,
+  PolylineEmptyHitAction,
+} from "./interaction/InteractivePolylineHandler";
+export type {
+  PolylineEdgeHitContext,
+  PolylineEmptyHitContext,
+} from "./interaction/InteractivePolylineHandler";
 
 // Selection exports
 export type { Selectable } from "./selection/Selectable";
