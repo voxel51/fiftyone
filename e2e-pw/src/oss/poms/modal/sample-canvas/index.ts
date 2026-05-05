@@ -154,13 +154,19 @@ export class SampleCanvasPom {
   }
 
   /**
-   * Scroll the mouse wheel at the current cursor position.
+   * Wheel in or out at the current cursor position.
    *
-   * @param deltaX Horizontal scroll delta
-   * @param deltaY Vertical scroll delta (negative = zoom in, positive = zoom out)
+   * Each step applies one wheel event, which Looker translates into a single
+   * SCALE_FACTOR (1.09×) multiplication. Positive values zoom in, negative
+   * values zoom out.
+   *
+   * @param steps Number of wheel steps (positive = in, negative = out)
    */
-  async wheel(deltaX: number, deltaY: number) {
-    await this.page.mouse.wheel(deltaX, deltaY);
+  async wheel(steps: number) {
+    const deltaY = steps > 0 ? -1 : 1;
+    for (let i = 0; i < Math.abs(steps); i++) {
+      await this.page.mouse.wheel(0, deltaY);
+    }
   }
 
   /**

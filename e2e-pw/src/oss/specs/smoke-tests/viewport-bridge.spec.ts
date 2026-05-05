@@ -49,9 +49,8 @@ test.describe.serial("viewport-bridge-visual", () => {
     await modal.waitForSampleLoadDomAttribute();
     await modal.sampleCanvas.assert.is(SampleCanvasType.LOOKER);
 
-    // Zoom in by scrolling the wheel at the canvas centre.
     await modal.sampleCanvas.move(0.5, 0.5);
-    await modal.sampleCanvas.wheel(0, -600);
+    await modal.sampleCanvas.wheel(7);
 
     // Pan right by dragging from the canvas centre 150px to the right.
     await modal.sampleCanvas.move(0.5, 0.5);
@@ -83,9 +82,8 @@ test.describe.serial("viewport-bridge-visual", () => {
     await modal.waitForSampleLoadDomAttribute();
     await modal.sampleCanvas.assert.is(SampleCanvasType.LOOKER);
 
-    // Zoom in by scrolling the wheel at the canvas centre.
     await modal.sampleCanvas.move(0.5, 0.5);
-    await modal.sampleCanvas.wheel(0, -600);
+    await modal.sampleCanvas.wheel(7);
 
     // Pan right by dragging from the canvas centre 150px to the right.
     await modal.sampleCanvas.move(0.5, 0.5);
