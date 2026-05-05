@@ -154,6 +154,11 @@ export class DetectionOverlay
 
       if (hadMask) this.markDirty();
     }
+
+    this.eventBus.dispatch("lighter:overlay-label-updated", {
+      id: this.id,
+      label,
+    });
   }
 
   getPosition() {

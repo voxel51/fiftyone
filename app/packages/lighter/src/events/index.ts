@@ -6,7 +6,7 @@ import type { Undoable } from "@fiftyone/commands";
 import type { InteractionHandler } from "../interaction/InteractionManager";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
 import type { PaintStrokeData } from "../overlay/MaskCanvas";
-import type { Point, Rect } from "../types";
+import type { Point, RawLookerLabel, Rect } from "../types";
 
 /**
  * Event type definitions for lighter events.
@@ -27,6 +27,15 @@ export type LighterEventGroup = {
   "lighter:overlay-bounds-changed": {
     id: string;
     bounds: Rect;
+  };
+  /**
+   * Emitted when an overlay's label is updated via `updateLabel` (e.g. by
+   * AI inference applying a new mask). Subscribers can use this to keep
+   * sidebar/edit state in sync without the producer reaching into React.
+   */
+  "lighter:overlay-label-updated": {
+    id: string;
+    label: RawLookerLabel;
   };
 
   // ============================================================================

@@ -254,6 +254,24 @@ export const useBridge = (scene: Scene2D | null) => {
 
   useEventHandler("lighter:command-executed", handleCommandEvent);
 
+  // Sync sidebar/edit state when an overlay's label is mutated outside the
+  // command stack (e.g. AI inference applying a new mask via updateLabel).
+  useEventHandler(
+    "lighter:overlay-label-updated",
+    useCallback(
+      (payload) => {
+        if (!payload.label) return;
+        const newLabel = coerceStringBooleans(
+          payload.label as Record<string, unknown>
+        );
+        if (newLabel) {
+          save(newLabel);
+        }
+      },
+      [save]
+    )
+  );
+
   // ---------------------------------------------------------------------------
   // Mode events: route Lighter signals to the active mode hook
   // ---------------------------------------------------------------------------
