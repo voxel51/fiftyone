@@ -46,7 +46,10 @@ export type { LighterEventGroup } from "./events";
 
 // Interaction exports
 export { InteractionManager } from "./interaction/InteractionManager";
-export type { InteractionHandler } from "./interaction/InteractionManager";
+export type {
+  EmptyCanvasClickHandler,
+  InteractionHandler,
+} from "./interaction/InteractionManager";
 export { InteractiveDetectionHandler } from "./interaction/InteractiveDetectionHandler";
 export {
   InteractiveKeypointHandler,

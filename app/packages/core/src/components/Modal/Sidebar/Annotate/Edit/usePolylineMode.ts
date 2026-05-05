@@ -13,6 +13,7 @@ import { atom, useAtom, useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { fieldsOfType, useAnnotationContext } from "./state";
+import useCreate from "./useCreate";
 
 /**
  * Active flag for 2D polyline annotation mode. While `true`, selecting a
@@ -149,6 +150,33 @@ export const usePolylineMode = () => {
     scene.enterInteractiveMode(handler);
     installedHandlerRef.current = handler;
   }, [exitInstalledHandler, polylineModeActive, scene, selectedLabel]);
+
+  // Empty-canvas click => create a new polyline seeded at the click position.
+  // Only registered when mode is active and no polyline is currently being
+  // edited (when one is, clicks go through the installed interactive handler).
+  const createPolyline = useCreate(POLYLINE);
+  const createPolylineRef = useRef(createPolyline);
+  createPolylineRef.current = createPolyline;
+
+  const isEditingPolyline =
+    selectedLabel?.type === "Polyline" &&
+    selectedLabel.overlay instanceof PolylineOverlay;
+
+  useEffect(() => {
+    if (!scene || !polylineModeActive || isEditingPolyline) {
+      return null;
+    }
+
+    scene.setEmptyCanvasClickHandler((worldPoint) => {
+      const rel = scene.absolutePointToRelative(worldPoint);
+      createPolylineRef.current({ origin: [rel.x, rel.y] });
+      return true;
+    });
+
+    return () => {
+      scene.setEmptyCanvasClickHandler(null);
+    };
+  }, [isEditingPolyline, polylineModeActive, scene]);
 
   // Tear down on unmount (e.g., scene swap, modal close).
   useEffect(() => {
