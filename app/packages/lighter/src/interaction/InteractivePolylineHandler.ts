@@ -268,6 +268,41 @@ export class InteractivePolylineHandler implements InteractionHandler {
   }
 
   /**
+   * Pre-activates the segment under `worldPoint` (point hit, then edge hit,
+   * then nearest endpoint). Used at install time to inherit the segment
+   * implied by the click that triggered selection — without this, the user
+   * would have to click again before EXTEND constrains to that segment.
+   *
+   * Pass `null` to clear activation.
+   */
+  activateSegmentAtWorldPoint(worldPoint: Point | null): void {
+    if (!worldPoint) {
+      this.setActiveSegmentIdx(null);
+      return;
+    }
+
+    const hitId = this.overlay.findPointIdAt(worldPoint);
+    if (hitId) {
+      const loc = this.overlay.findPointLocationById(hitId);
+      if (loc) {
+        this.setActiveSegmentIdx(loc.segmentIdx);
+        return;
+      }
+    }
+
+    const edgeHit = this.overlay.findEdgeAt(worldPoint);
+    if (edgeHit) {
+      this.setActiveSegmentIdx(edgeHit.segmentIdx);
+      return;
+    }
+
+    const nearest = this.overlay.findNearestEndpoint(worldPoint);
+    if (nearest) {
+      this.setActiveSegmentIdx(nearest.segmentIdx);
+    }
+  }
+
+  /**
    * Removes all undo/redo entries that this handler pushed during its
    * lifetime from the active command context.
    */

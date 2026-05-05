@@ -401,6 +401,14 @@ export class InteractionManager {
         });
       }
 
+      // Self-managed interactive handlers don't go through the selectable
+      // disableZoomPan branch above, so a point drag would otherwise compete
+      // with renderer pan. Suppress while the handler reports itself as
+      // dragging; pointerup re-enables.
+      if (handler.isDragging?.()) {
+        this.renderer.disableZoomPan();
+      }
+
       this.canvas.setPointerCapture(event.pointerId);
       event.preventDefault();
     }
@@ -617,9 +625,12 @@ export class InteractionManager {
       // Handle drag end
       handler.onPointerUp?.(point, event, scale);
 
-      if (interactiveHandler) {
-        // When interactive detection is complete, remove the interactive handler
-        // The overlay will be managed by its own handler
+      if (
+        interactiveHandler &&
+        !isSelfManagedInteractiveHandler(interactiveHandler)
+      ) {
+        // Self-managed handlers outlive a single drag and are torn down
+        // explicitly via exitInteractiveMode instead.
         this.removeHandler(interactiveHandler);
       }
 
