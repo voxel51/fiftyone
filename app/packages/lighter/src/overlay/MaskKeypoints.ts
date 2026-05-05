@@ -79,11 +79,18 @@ export class MaskKeypoints extends KeypointOverlay {
 
   /**
    * Adds a point and connects it to any prior point.
+   *
+   * When `options.dragging` is true, throttles placements by `keypointThreshold`
+   * to avoid clustering during a drag. Discrete clicks (`dragging` falsy) always
+   * place a point so users can manually add points closer than the threshold.
    */
-  override addPoint(worldPoint: Point): string {
+  override addPoint(
+    worldPoint: Point,
+    options?: { variant?: string; id?: string; dragging?: boolean }
+  ): string {
     let shouldAddPoint = true;
 
-    if (this.lastKeypoint) {
+    if (options?.dragging && this.lastKeypoint) {
       const dist = Math.hypot(
         worldPoint.x - this.lastKeypoint.x,
         worldPoint.y - this.lastKeypoint.y
@@ -93,7 +100,7 @@ export class MaskKeypoints extends KeypointOverlay {
     }
 
     if (shouldAddPoint) {
-      const pointID = super.addPoint(worldPoint);
+      const pointID = super.addPoint(worldPoint, options);
       const points = this.getAbsolutePoints();
 
       const connections = points.reduce(

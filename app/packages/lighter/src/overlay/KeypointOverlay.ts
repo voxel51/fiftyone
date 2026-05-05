@@ -674,12 +674,20 @@ export class KeypointOverlay
   /**
    * Adds a point at the given absolute (world) position.
    *
-   * @param variant - Optional variant key used to determine render style.
-   * @param id - Optional ID. When provided, reuses this id instead of
+   * @param options.variant - Optional variant key used to determine render style.
+   * @param options.id - Optional ID. When provided, reuses this id instead of
    *             generating one. Useful when referential integrity is desired.
+   * @param options.dragging - Whether this point is being placed as part of a
+   *             continuous drag. Subclasses (e.g. `MaskKeypoints`) may gate
+   *             dragged placements by a minimum-distance threshold while
+   *             always honoring discrete clicks.
    * @returns The id of the new point.
    */
-  addPoint(worldPoint: Point, variant?: string, id?: string): string {
+  addPoint(
+    worldPoint: Point,
+    options?: { variant?: string; id?: string; dragging?: boolean }
+  ): string {
+    const { variant, id } = options ?? {};
     const position = this.absolutePointToRelative(worldPoint);
     const entry: KeypointEntry = { id: id ?? uuidv4(), position, variant };
     this.#points.push(entry);

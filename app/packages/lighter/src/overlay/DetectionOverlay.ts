@@ -587,7 +587,7 @@ export class DetectionOverlay
       renderer: this.renderer,
     });
 
-    this.maskKeypoints.addPoint({ ...worldPoint });
+    this.maskKeypoints.addPoint({ ...worldPoint }, { dragging: false });
     this.interactionState = "PAINTING";
     this.markDirty();
 
@@ -672,7 +672,7 @@ export class DetectionOverlay
       event.buttons === LEFT_MOUSE_BUTTON &&
       this.maskKeypoints?.hasValidBounds()
     ) {
-      this.maskKeypoints.addPoint({ ...worldPoint });
+      this.maskKeypoints.addPoint({ ...worldPoint }, { dragging: true });
     }
 
     this.markDirty();

@@ -119,7 +119,7 @@ export class InteractiveKeypointHandler implements InteractionHandler {
     }
 
     const variant = this.resolveVariant?.({ x: rp[0], y: rp[1] }, modifiers);
-    const pointId = this.overlay.addPoint(worldPoint, variant);
+    const pointId = this.overlay.addPoint(worldPoint, { variant });
 
     const command = new AddKeypointPointCommand(
       this.overlay,
