@@ -30,8 +30,9 @@ def fixture_now():
 
 
 class TestMcapAdapter:
+    @pytest.mark.usefixtures("now")
     class TestReadSceneInventory:
-        def test_success(self, now):
+        def test_success(self):
             schema = Mock(encoding="schema's encoding")
             schema.name = (
                 "this_schema"  # 'name' is used by the Mock constructor
@@ -66,6 +67,7 @@ class TestMcapAdapter:
             ###
 
             assert isinstance(inventory, SceneInventory)
+            assert inventory.inventory_id == "some_id now now now"
             assert inventory.scene_id == "some_id"
             assert inventory.source_format == SceneFormat.MCAP
             assert inventory.source_fingerprint == SourceFingerprint(
@@ -104,6 +106,7 @@ class TestMcapAdapter:
             ###
 
             assert isinstance(inventory, SceneInventory)
+            assert inventory.inventory_id == "some_id now now now"
             assert inventory.scene_id == "some_id"
             assert inventory.source_format == SceneFormat.MCAP
             assert inventory.source_fingerprint == SourceFingerprint(
@@ -116,7 +119,7 @@ class TestMcapAdapter:
             assert inventory.produced_at
             assert inventory.produced_by == "McapAdapter 1.0"
 
-        def test_missing_statistics(self, now):
+        def test_missing_statistics(self):
             schema = Mock(encoding="schema's encoding")
             schema.name = (
                 "this_schema"  # 'name' is used by the Mock constructor
@@ -147,6 +150,7 @@ class TestMcapAdapter:
             ###
 
             assert isinstance(inventory, SceneInventory)
+            assert inventory.inventory_id == "some_id now now now"
             assert inventory.scene_id == "some_id"
             assert inventory.source_format == SceneFormat.MCAP
             assert inventory.source_fingerprint == SourceFingerprint(
@@ -171,7 +175,7 @@ class TestMcapAdapter:
             assert inventory.produced_at == "now now now"
             assert inventory.produced_by == "McapAdapter 1.0"
 
-        def test_schemaless_channel(self, now):
+        def test_schemaless_channel(self):
             stream_metadata = {"some_key": "some_value"}
             summary = Mock(
                 channels={
@@ -197,6 +201,7 @@ class TestMcapAdapter:
             ###
 
             assert isinstance(inventory, SceneInventory)
+            assert inventory.inventory_id == "some_id now now now"
             assert inventory.scene_id == "some_id"
             assert inventory.source_format == SceneFormat.MCAP
             assert inventory.source_fingerprint == SourceFingerprint(
@@ -221,7 +226,7 @@ class TestMcapAdapter:
             assert inventory.produced_at == "now now now"
             assert inventory.produced_by == "McapAdapter 1.0"
 
-        def test_missing_schema(self, now):
+        def test_missing_schema(self):
             schema = Mock(encoding="schema's encoding")
             schema.name = (
                 "this_schema"  # 'name' is used by the Mock constructor
@@ -256,6 +261,7 @@ class TestMcapAdapter:
             ###
 
             assert isinstance(inventory, SceneInventory)
+            assert inventory.inventory_id == "some_id now now now"
             assert inventory.scene_id == "some_id"
             assert inventory.source_format == SceneFormat.MCAP
             assert inventory.source_fingerprint == SourceFingerprint(

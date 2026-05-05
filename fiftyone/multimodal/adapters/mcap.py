@@ -100,8 +100,11 @@ class McapAdapter(MultimodalAdapter):
         first_chunk_crc: Optional[int] = None,
         last_chunk_crc: Optional[int] = None,
     ) -> SceneInventory:
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
         if not summary:
             return SceneInventory(
+                inventory_id=f"{scene_id} {now}",
                 scene_id=scene_id,
                 source_format=SceneFormat.MCAP,
                 source_fingerprint=SourceFingerprint(
@@ -122,6 +125,7 @@ class McapAdapter(MultimodalAdapter):
         stats = summary.statistics
 
         return SceneInventory(
+            inventory_id=f"{scene_id} {now}",
             scene_id=scene_id,
             source_format=SceneFormat.MCAP,
             source_fingerprint=SourceFingerprint(
@@ -170,8 +174,6 @@ class McapAdapter(MultimodalAdapter):
                 for cid, channel in summary.channels.items()
             ],
             static_coordinate_frame_edges=[],
-            produced_at=datetime.datetime.now(
-                datetime.timezone.utc
-            ).isoformat(),
+            produced_at=now,
             produced_by="McapAdapter 1.0",
         )
