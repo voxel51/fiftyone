@@ -14,71 +14,45 @@ import { currentType, fieldsOfType, useAnnotationContext } from "./state";
 import { useAIAnnotationMode } from "./useAIAnnotationMode";
 import useCreate from "./useCreate";
 import useExit from "./useExit";
+import {
+  SegmentationTool,
+  useManualSegmentationTools,
+} from "./useManualSegmentationTools";
 
-export const DEFAULT_TOOL_SIZE = 16;
-export const MIN_TOOL_SIZE = 1;
-export const MAX_TOOL_SIZE = 32;
-export const MIN_CURSOR_SIZE = 1;
-export const MAX_CURSOR_SIZE = 100;
-
-export const SegmentationTool = {
-  Select: "select",
-  Brush: "brush",
-  Pen: "pen",
-  AI: "ai",
-} as const;
-export type SegmentationTool = typeof SegmentationTool[keyof typeof SegmentationTool];
-
-export const SegmentationToolShape = {
-  Circle: "circle",
-  Square: "square",
-} as const;
-export type SegmentationToolShape = typeof SegmentationToolShape[keyof typeof SegmentationToolShape];
-
-export const SegmentationToolMode = {
-  Add: "add",
-  Remove: "remove",
-} as const;
-export type SegmentationToolMode = typeof SegmentationToolMode[keyof typeof SegmentationToolMode];
-
-export const DEFAULT_TOOL_MODE: SegmentationToolMode = SegmentationToolMode.Add;
-
-export interface SegmentationToolState {
-  active: boolean;
-  size: number; // World-space dab size (for painting on the mask canvas)
-  cursorSize: number; // Screen-pixel cursor size, clamped to [MIN_CURSOR_SIZE, MAX_CURSOR_SIZE]
-  tool: SegmentationTool;
-  shape: SegmentationToolShape;
-  mode: SegmentationToolMode;
-}
-
-// ---------------------------------------------------------------------------
-// Atoms (internal)
-// ---------------------------------------------------------------------------
+// Re-export tool types/constants and unsafe atoms so existing import paths
+// (e.g. `import { SegmentationTool } from "./useSegmentationMode"`) keep
+// working after the split into focused hooks.
+export {
+  DEFAULT_TOOL_MODE,
+  DEFAULT_TOOL_SIZE,
+  MAX_CURSOR_SIZE,
+  MAX_TOOL_SIZE,
+  MIN_CURSOR_SIZE,
+  MIN_TOOL_SIZE,
+  SegmentationTool,
+  SegmentationToolMode,
+  SegmentationToolShape,
+  _unsafeToolAtom,
+  _unsafeToolModeAtom,
+  _unsafeToolShapeAtom,
+  _unsafeToolSizeAtom,
+} from "./useManualSegmentationTools";
+export type { SegmentationToolState } from "./useManualSegmentationTools";
 
 const segmentationModeActiveAtom = atom<boolean>(false);
-const toolAtom = atom<SegmentationTool>(SegmentationTool.Select);
-const toolSizeAtom = atom<number>(DEFAULT_TOOL_SIZE);
-const toolShapeAtom = atom<SegmentationToolShape>(SegmentationToolShape.Circle);
-const toolModeAtom = atom<SegmentationToolMode>(DEFAULT_TOOL_MODE);
-
-// ---------------------------------------------------------------------------
-// Unsafe exports for non-React bridge access only.
-// Do not use directly in React components — use useSegmentationMode() instead.
-// ---------------------------------------------------------------------------
 
 /** @internal */ export { segmentationModeActiveAtom as _unsafeSegmentationModeActiveAtom };
-/** @internal */ export { toolAtom as _unsafeToolAtom };
-/** @internal */ export { toolSizeAtom as _unsafeToolSizeAtom };
-/** @internal */ export { toolShapeAtom as _unsafeToolShapeAtom };
-/** @internal */ export { toolModeAtom as _unsafeToolModeAtom };
 
 /**
  * Segmentation mask tool state hook.
  *
- * Selection/editing state is managed by the existing annotation system
- * (editing atom in state.ts, SelectionManager in Lighter).
- * This hook only owns segmentation-specific tool state.
+ * Composes:
+ * - `useManualSegmentationTools` — brush/pen/select tool state and actions
+ * - `useAIAnnotationMode` — AI tool point selection
+ *
+ * Plus the cross-concern glue (mode activation/deactivation, auto-activate
+ * on mask selection, AI tool effect, `create`/`finalizePointSelection` for
+ * the bridge).
  */
 export const useSegmentationMode = () => {
   const { scene, addOverlay } = useLighter();
@@ -90,12 +64,8 @@ export const useSegmentationMode = () => {
   const [segmentationModeActive, setSegmentationModeActive] = useAtom(
     segmentationModeActiveAtom
   );
-  const [tool, setTool] = useAtom(toolAtom);
-  const [toolSize, setToolSizeRaw] = useAtom(toolSizeAtom);
-  const [toolShape, setToolShape] = useAtom(toolShapeAtom);
-  const [toolMode, setToolMode] = useAtom(toolModeAtom);
 
-  // AI detection
+  const manualMode = useManualSegmentationTools();
   const aiMode = useAIAnnotationMode();
 
   const createDetection = useCreate(DETECTION);
@@ -122,59 +92,6 @@ export const useSegmentationMode = () => {
     ? "Exit mask creation"
     : "Create new mask";
 
-  // -----------------------  Manual segmentation tools  ------------------- //
-
-  const switchTool = useCallback(
-    (newTool: SegmentationTool) => {
-      setTool(newTool);
-    },
-    [setTool]
-  );
-
-  const increaseToolSize = useCallback(() => {
-    setToolSizeRaw((prev) => Math.min(prev + 1, MAX_TOOL_SIZE));
-  }, [setToolSizeRaw]);
-
-  const decreaseToolSize = useCallback(() => {
-    setToolSizeRaw((prev) => Math.max(prev - 1, MIN_TOOL_SIZE));
-  }, [setToolSizeRaw]);
-
-  const setToolSize = useCallback(
-    (size: number) => {
-      const n = Number(size);
-      if (Number.isNaN(n)) return;
-      setToolSizeRaw(Math.max(MIN_TOOL_SIZE, Math.min(n, MAX_TOOL_SIZE)));
-    },
-    [setToolSizeRaw]
-  );
-
-  const switchToolShape = useCallback(
-    (shape: SegmentationToolShape) => {
-      setToolShape(shape);
-    },
-    [setToolShape]
-  );
-
-  const switchToolMode = useCallback(
-    (mode: SegmentationToolMode) => {
-      setToolMode(mode);
-    },
-    [setToolMode]
-  );
-
-  // ------------------------  AI segmentation handling  ------------------- //
-
-  // Activate/deactivate AI point selection when switching to/from the AI tool.
-  useEffect(() => {
-    if (!segmentationModeActive) return;
-
-    if (tool === SegmentationTool.AI) {
-      aiMode.activate();
-    } else if (aiMode.isActive) {
-      aiMode.deactivate();
-    }
-  }, [tool, segmentationModeActive, aiMode]);
-
   // ---------------  Segmentation mode activation / deactivation  --------- //
 
   const activateSegmentationMode = useCallback(() => {
@@ -185,12 +102,9 @@ export const useSegmentationMode = () => {
    * Disable segmentation mode and gracefully close out any label being edited.
    */
   const deactivateSegmentationMode = useCallback(() => {
-    const currentScene = sceneRef.current;
-    currentScene?.exitInteractiveMode();
+    sceneRef.current?.exitInteractiveMode();
     onExit();
-
     aiMode.deactivate();
-
     setSegmentationModeActive(false);
   }, [aiMode, onExit, setSegmentationModeActive]);
 
@@ -206,22 +120,23 @@ export const useSegmentationMode = () => {
     activateSegmentationMode,
   ]);
 
+  // Activate/deactivate AI point selection when switching to/from the AI tool.
+  useEffect(() => {
+    if (!segmentationModeActive) return;
+
+    if (manualMode.tool === SegmentationTool.AI) {
+      aiMode.activate();
+    } else if (aiMode.isActive) {
+      aiMode.deactivate();
+    }
+  }, [manualMode.tool, segmentationModeActive, aiMode]);
+
   // Auto-enable segmentation mode when a pre-existing mask detection is selected,
   // auto-disable when a pre-existing label of a different type is selected.
   //
   // New labels are ignored — the mode was set intentionally via the toolbar button.
-  //
-  // Exception: when the AI tool produces a new detection, select its overlay in
-  // Lighter so the SelectionManager and rendering pipeline treat it as active.
   useEffect(() => {
     if (selectedLabel?.isNew) {
-      if (
-        segmentationModeActive &&
-        tool === SegmentationTool.AI &&
-        selectedLabel.overlay
-      ) {
-        scene?.selectOverlay(selectedLabel.overlay.id);
-      }
       return;
     }
 
@@ -241,11 +156,11 @@ export const useSegmentationMode = () => {
     isEditingSegmentation,
     segmentationModeActive,
     setSegmentationModeActive,
-    tool,
+    manualMode.tool,
     scene,
   ]);
 
-  // -----------------------------  Mode actions  -------------------------- //
+  // -----------------------  Bridge Event Handlers  ----------------------- //
 
   /**
    * Finalize the previous mask detection (if any) and start a new one.
@@ -278,8 +193,8 @@ export const useSegmentationMode = () => {
    */
   const finalizePointSelection = useCallback(() => {
     aiMode.deactivate();
-    setTool("brush");
-  }, [aiMode, setTool]);
+    manualMode.switchTool(SegmentationTool.Brush);
+  }, [aiMode, manualMode]);
 
   // ----------------------------  Public interface  ----------------------- //
 
@@ -299,17 +214,17 @@ export const useSegmentationMode = () => {
       create,
       finalizePointSelection,
 
-      // Tool state
-      tool,
-      toolSize,
-      toolShape,
-      toolMode,
-      switchTool,
-      switchToolShape,
-      switchToolMode,
-      increaseToolSize,
-      decreaseToolSize,
-      setToolSize,
+      // Tool state and actions
+      tool: manualMode.tool,
+      toolSize: manualMode.toolSize,
+      toolShape: manualMode.toolShape,
+      toolMode: manualMode.toolMode,
+      switchTool: manualMode.switchTool,
+      switchToolShape: manualMode.switchToolShape,
+      switchToolMode: manualMode.switchToolMode,
+      increaseToolSize: manualMode.increaseToolSize,
+      decreaseToolSize: manualMode.decreaseToolSize,
+      setToolSize: manualMode.setToolSize,
     }),
     [
       segmentationModeActive,
@@ -320,16 +235,7 @@ export const useSegmentationMode = () => {
       toggleSegmentationMode,
       create,
       finalizePointSelection,
-      tool,
-      toolSize,
-      toolShape,
-      toolMode,
-      switchTool,
-      switchToolShape,
-      switchToolMode,
-      increaseToolSize,
-      decreaseToolSize,
-      setToolSize,
+      manualMode,
     ]
   );
 };
