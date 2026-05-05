@@ -75,6 +75,8 @@ async def _list_ontology_summaries(
     summaries = await foo.aggregate(collection, pipeline).to_list(None)
     # Replace BSON datetimes with ISO strings so the JSON response is flat
     # (avoids the default ``{"$date": ...}`` BSON-extended-JSON shape).
+    # ``last_modified_at`` may be missing on manually-inserted docs.
     for s in summaries:
-        s["last_modified_at"] = s["last_modified_at"].isoformat()
+        dt = s.get("last_modified_at")
+        s["last_modified_at"] = dt.isoformat() if dt is not None else None
     return summaries
