@@ -28,6 +28,7 @@ import { fieldsOfType } from "./Edit/state";
 import { useDetectionMode } from "./Edit/useDetectionMode";
 import { Anchor, Icon, IconName, Text, Tooltip } from "@voxel51/voodo";
 import { useAIAnnotationMode } from "./Edit/useAIAnnotationMode";
+import { usePolylineMode } from "./Edit/usePolylineMode";
 import { FeatureFlag, FeatureFlagged } from "@fiftyone/feature-flags";
 
 const ActionsDiv = styled.div`
@@ -277,6 +278,36 @@ const Segmentation = () => {
   );
 };
 
+const Polyline = () => {
+  const { activatePolylineMode, polylineModeActive, disabled, tooltip } =
+    usePolylineMode();
+  const deactivateAll = useDeactivateAll();
+
+  return (
+    <Tooltip anchor={Anchor.Top} content={<Text>{tooltip}</Text>} portal>
+      <Square
+        $active={polylineModeActive}
+        className={disabled ? "disabled" : ""}
+        data-cy="polyline-mode"
+        data-cy-active={polylineModeActive}
+        onClick={() => {
+          if (disabled) {
+            return;
+          }
+
+          deactivateAll();
+
+          if (!polylineModeActive) {
+            activatePolylineMode();
+          }
+        }}
+      >
+        <PolylineIcon sx={{ transform: "rotate(90deg)" }} />
+      </Square>
+    </Tooltip>
+  );
+};
+
 export const Undo = () => {
   const { undo, undoEnabled } = useUndoRedo();
 
@@ -457,6 +488,7 @@ const Actions = () => {
     isActive: segmentationModeActive,
     deactivate: deactivateSegmentationMode,
   } = useAIAnnotationMode();
+  const { polylineModeActive, deactivatePolylineMode } = usePolylineMode();
   const current3dAnnotationMode = useCurrent3dAnnotationMode();
   const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
 
@@ -464,6 +496,7 @@ const Actions = () => {
     !classificationModeActive &&
     !detectionModeActive &&
     !segmentationModeActive &&
+    !polylineModeActive &&
     !current3dAnnotationMode;
   const areThreeDActionsVisible = is3dDataset || is3dSamplePinned;
 
@@ -472,9 +505,11 @@ const Actions = () => {
     setCurrent3dAnnotationMode(null);
     deactivateDetectionMode();
     deactivateSegmentationMode();
+    deactivatePolylineMode();
   }, [
     deactivateClassificationMode,
     deactivateDetectionMode,
+    deactivatePolylineMode,
     deactivateSegmentationMode,
     setCurrent3dAnnotationMode,
   ]);
@@ -496,6 +531,9 @@ const Actions = () => {
                 <Detection />
                 <FeatureFlagged feature={FeatureFlag.VFF_AI_SEGMENTATION}>
                   <Segmentation />
+                </FeatureFlagged>
+                <FeatureFlagged feature={FeatureFlag.VFF_POLYLINE_ANNOTATION}>
+                  <Polyline />
                 </FeatureFlagged>
               </>
             )}
