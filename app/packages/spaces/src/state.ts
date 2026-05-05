@@ -1,4 +1,5 @@
-import { COLOR_OPTIONS } from "@fiftyone/components";
+import { constants } from "@fiftyone/state";
+import { ReactNode } from "react";
 import { atom, selectorFamily } from "recoil";
 import {
   PanelIdToScopeType,
@@ -7,7 +8,8 @@ import {
   PanelsCloseEffect,
   SpaceNodeJSON,
 } from "./types";
-import { ReactNode } from "react";
+
+const { COLOR_OPTIONS } = constants;
 
 // a react hook for managing the state of all spaces in the app
 // it should use recoil to persist the tree
