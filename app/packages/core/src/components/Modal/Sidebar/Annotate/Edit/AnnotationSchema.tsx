@@ -73,7 +73,7 @@ const useSchema = (readOnly: boolean) => {
   }, [config, data, effectiveReadOnly]);
 };
 
-const useCoerceFieldValue = () => {
+const useParseFieldValue = () => {
   return useRecoilCallback(
     ({ snapshot }) =>
       async (currentField: string, path: string, data) => {
@@ -101,7 +101,7 @@ const useCoerceFieldValue = () => {
 };
 
 /**
- * Handles form changes: coerces field types, clears values for attributes
+ * Handles form changes: parses field types, clears values for attributes
  * whose visible entry changed, and dispatches the update event.
  */
 const useHandleSchemaChange = (readOnly: boolean) => {
@@ -109,7 +109,7 @@ const useHandleSchemaChange = (readOnly: boolean) => {
   const [data] = useAtom(currentData);
   const overlay = useAtomValue(currentOverlay);
   const eventBus = useAnnotationEventBus();
-  const coerceFieldValue = useCoerceFieldValue();
+  const parseFieldValue = useParseFieldValue();
   const field = useAtomValue(currentField);
 
   return useCallback(
@@ -120,7 +120,7 @@ const useHandleSchemaChange = (readOnly: boolean) => {
         await Promise.all(
           Object.entries(changes).map(async ([key, value]) => [
             key,
-            await coerceFieldValue(field, key, value),
+            await parseFieldValue(field, key, value),
           ])
         )
       );
@@ -156,7 +156,7 @@ const useHandleSchemaChange = (readOnly: boolean) => {
         value,
       });
     },
-    [config, data, eventBus, field, coerceFieldValue, overlay, readOnly]
+    [config, data, eventBus, field, parseFieldValue, overlay, readOnly]
   );
 };
 
@@ -187,7 +187,7 @@ const AnnotationSchema = ({ readOnly = false }: AnnotationSchemaProps) => {
   return (
     <div>
       <SchemaIOComponent
-        key={`${overlay.id}-${field}`}
+        key={overlay.id}
         smartForm={true}
         smartFormProps={{ liveValidate: "onChange" }}
         schema={schema}
