@@ -113,9 +113,16 @@ const GridCustomRendererWrapper = ({
   const [hovering, setHovering] = React.useState(false);
   const showSelectionControl = hovering || selected;
 
+  const handleClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (event.shiftKey) {
+      onSelect(event as unknown as React.MouseEvent<HTMLButtonElement>);
+    }
+  };
+
   return (
     <div
       style={CONTAINER_STYLES}
+      onClick={handleClick}
       onMouseEnter={() => setHovering(true)}
       onMouseMove={() => setHovering(true)}
       onMouseLeave={() => setHovering(false)}

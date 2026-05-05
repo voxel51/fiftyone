@@ -3,6 +3,7 @@
  */
 
 import { SELECTION_TEXT } from "../../constants";
+import { getThumbnailSelectionModifiers } from "../../selection";
 import type { BaseState, Control } from "../../state";
 import { ControlEventKeyType } from "../../state";
 import type { Events } from "../base";
@@ -19,10 +20,22 @@ export class LookerElement<State extends BaseState> extends BaseElement<
 
   getEvents(): Events<State> {
     return {
-      click: ({ update }) => {
-        update(({ config: { thumbnail } }) =>
-          thumbnail ? { hovering: false } : {}
-        );
+      click: ({ event, update, dispatchEvent }) => {
+        update(({ config: { thumbnail }, options: { selected } }) => {
+          if (!thumbnail) {
+            return {};
+          }
+          if (event.shiftKey) {
+            event.stopPropagation();
+            event.preventDefault();
+            dispatchEvent(
+              "selectthumbnail",
+              getThumbnailSelectionModifiers(event)
+            );
+            return { hovering: false, options: { selected: !selected } };
+          }
+          return { hovering: false };
+        });
       },
       keydown: ({ event, update, dispatchEvent }) => {
         if (event.altKey || event.ctrlKey || event.metaKey) {
