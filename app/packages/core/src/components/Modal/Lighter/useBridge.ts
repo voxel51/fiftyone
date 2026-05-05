@@ -31,6 +31,8 @@ import {
   currentData,
   savedLabel,
 } from "../Sidebar/Annotate/Edit/state";
+import { useDetectionMode } from "../Sidebar/Annotate/Edit/useDetectionMode";
+import { useSegmentationMode } from "../Sidebar/Annotate/Edit/useSegmentationMode";
 import { coerceStringBooleans, useLabelsContext } from "../Sidebar/Annotate";
 import useColorMappingContext from "./useColorMappingContext";
 import { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";
@@ -251,6 +253,49 @@ export const useBridge = (scene: Scene2D | null) => {
   );
 
   useEventHandler("lighter:command-executed", handleCommandEvent);
+
+  // ---------------------------------------------------------------------------
+  // Mode events: route Lighter signals to the active mode hook
+  // ---------------------------------------------------------------------------
+
+  const segmentationMode = useSegmentationMode();
+  const detectionMode = useDetectionMode();
+
+  useEventHandler(
+    "lighter:overlay-create",
+    useCallback(() => {
+      if (segmentationMode.segmentationModeActive) {
+        segmentationMode.create();
+      } else if (detectionMode.detectionModeActive) {
+        detectionMode.create();
+      }
+    }, [detectionMode, segmentationMode])
+  );
+
+  useEventHandler(
+    "lighter:segmentation-mode-quit",
+    useCallback(() => {
+      if (segmentationMode.segmentationModeActive) {
+        segmentationMode.deactivateSegmentationMode();
+      }
+    }, [segmentationMode])
+  );
+
+  useEventHandler(
+    "lighter:detection-mode-quit",
+    useCallback(() => {
+      detectionMode.deactivateDetectionMode();
+    }, [detectionMode])
+  );
+
+  useEventHandler(
+    "lighter:point-selection-finalize",
+    useCallback(() => {
+      if (segmentationMode.segmentationModeActive) {
+        segmentationMode.finalizePointSelection();
+      }
+    }, [segmentationMode])
+  );
 
   const context = useColorMappingContext();
 

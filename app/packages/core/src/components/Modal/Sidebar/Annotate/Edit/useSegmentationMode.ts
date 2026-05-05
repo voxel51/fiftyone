@@ -4,15 +4,9 @@
 
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { atom, useAtom, useAtomValue } from "jotai";
-import { useAtomCallback } from "jotai/utils";
 import { useRecoilValue } from "recoil";
 
-import {
-  BaseOverlay,
-  UNDEFINED_LIGHTER_SCENE_ID,
-  useLighter,
-  useLighterEventHandler,
-} from "@fiftyone/lighter";
+import { BaseOverlay, useLighter } from "@fiftyone/lighter";
 import { isPatchesView } from "@fiftyone/state";
 import { DETECTION } from "@fiftyone/utilities";
 
@@ -33,22 +27,19 @@ export const SegmentationTool = {
   Pen: "pen",
   AI: "ai",
 } as const;
-export type SegmentationTool =
-  (typeof SegmentationTool)[keyof typeof SegmentationTool];
+export type SegmentationTool = typeof SegmentationTool[keyof typeof SegmentationTool];
 
 export const SegmentationToolShape = {
   Circle: "circle",
   Square: "square",
 } as const;
-export type SegmentationToolShape =
-  (typeof SegmentationToolShape)[keyof typeof SegmentationToolShape];
+export type SegmentationToolShape = typeof SegmentationToolShape[keyof typeof SegmentationToolShape];
 
 export const SegmentationToolMode = {
   Add: "add",
   Remove: "remove",
 } as const;
-export type SegmentationToolMode =
-  (typeof SegmentationToolMode)[keyof typeof SegmentationToolMode];
+export type SegmentationToolMode = typeof SegmentationToolMode[keyof typeof SegmentationToolMode];
 
 export const DEFAULT_TOOL_MODE: SegmentationToolMode = SegmentationToolMode.Add;
 
@@ -70,13 +61,6 @@ const toolAtom = atom<SegmentationTool>(SegmentationTool.Select);
 const toolSizeAtom = atom<number>(DEFAULT_TOOL_SIZE);
 const toolShapeAtom = atom<SegmentationToolShape>(SegmentationToolShape.Circle);
 const toolModeAtom = atom<SegmentationToolMode>(DEFAULT_TOOL_MODE);
-
-/**
- * Tracks the last processed event ID for each event type so that only one
- * `useSegmentationMode` instance handles each event, even though the hook is
- * called in multiple components.
- */
-const claimedEventsAtom = atom<Map<string, string>>(new Map());
 
 // ---------------------------------------------------------------------------
 // Unsafe exports for non-React bridge access only.
@@ -102,9 +86,6 @@ export const useSegmentationMode = () => {
   const onExit = useExit();
   const isPatchView = useRecoilValue(isPatchesView);
   const fields = useAtomValue(fieldsOfType(DETECTION));
-  const useEventHandler = useLighterEventHandler(
-    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
-  );
 
   const [segmentationModeActive, setSegmentationModeActive] = useAtom(
     segmentationModeActiveAtom
@@ -234,7 +215,11 @@ export const useSegmentationMode = () => {
   // Lighter so the SelectionManager and rendering pipeline treat it as active.
   useEffect(() => {
     if (selectedLabel?.isNew) {
-      if (segmentationModeActive && tool === SegmentationTool.AI && selectedLabel.overlay) {
+      if (
+        segmentationModeActive &&
+        tool === SegmentationTool.AI &&
+        selectedLabel.overlay
+      ) {
         scene?.selectOverlay(selectedLabel.overlay.id);
       }
       return;
@@ -260,112 +245,41 @@ export const useSegmentationMode = () => {
     scene,
   ]);
 
-  // -----------------------------  Event handling  ------------------------ //
+  // -----------------------------  Mode actions  -------------------------- //
 
-  const claimEvent = useAtomCallback(
-    useCallback((get, set, eventType: string, eventId: string) => {
-      const claimedEvents = get(claimedEventsAtom);
-      if (claimedEvents.get(eventType) === eventId) {
-        return false;
+  /**
+   * Finalize the previous mask detection (if any) and start a new one.
+   */
+  const create = useCallback(() => {
+    const currentScene = sceneRef.current;
+    const currentLabel = selectedLabelRef.current;
+
+    if (
+      currentScene &&
+      !currentScene.isDestroyed &&
+      currentScene.renderLoopActive
+    ) {
+      currentScene.exitInteractiveMode();
+
+      if (currentLabel?.overlay) {
+        addOverlay(currentLabel.overlay as BaseOverlay);
       }
+    }
 
-      const updatedEvents = new Map(claimedEvents);
-      updatedEvents.set(eventType, eventId);
-      set(claimedEventsAtom, updatedEvents);
-
-      return true;
-    }, [])
-  );
+    // TODO: assume previous `field` and `labelValue`
+    // e.g. createDetection({ field, labelValue, isEditingMask: true });
+    createDetection({ isEditingMask: true });
+  }, [addOverlay, createDetection]);
 
   /**
-   * Handles the `lighter:overlay-create` event fired by `InteractionManager`
-   * on pointer-down when no interactive handler exists.
-   *
-   * 1. Finalize the previous detection (exit interactive mode, persist overlay,
-   *    remember field/label for auto-assignment).
-   * 2. Resolve field and label for the next detection.
-   * 3. Create the next detection.
+   * Accept the current AI mask, tear down point selection, and switch to the
+   * brush so the user can refine the mask manually. The overlay stays
+   * selected and in editing mode.
    */
-  useEventHandler(
-    "lighter:overlay-create",
-    useCallback(
-      (payload) => {
-        if (
-          !segmentationModeActive ||
-          !claimEvent("overlay-create", payload.eventId)
-        ) {
-          return;
-        }
-
-        // Finalize the previous detection if one exists
-        const currentScene = sceneRef.current;
-        const currentLabel = selectedLabelRef.current;
-
-        if (
-          currentScene &&
-          !currentScene.isDestroyed &&
-          currentScene.renderLoopActive
-        ) {
-          currentScene.exitInteractiveMode();
-
-          if (currentLabel?.overlay) {
-            addOverlay(currentLabel.overlay as BaseOverlay);
-          }
-        }
-
-        // TODO: assume previous `field` and `labelValue`
-        // e.g. createDetection({ field, labelValue, isEditingMask: true });
-        createDetection({ isEditingMask: true });
-      },
-      [addOverlay, claimEvent, createDetection, segmentationModeActive]
-    )
-  );
-
-  /**
-   * Handles the `lighter:segmentation-mode-quit` event fired by
-   * `InteractionManager` when the user clicks with the "select" tool active.
-   * Deactivates segmentation mode entirely.
-   */
-  useEventHandler(
-    "lighter:segmentation-mode-quit",
-    useCallback(
-      (payload) => {
-        if (
-          !segmentationModeActive ||
-          !claimEvent("segmentation-mode-exit", payload.eventId)
-        ) {
-          return;
-        }
-
-        deactivateSegmentationMode();
-      },
-      [claimEvent, deactivateSegmentationMode, segmentationModeActive]
-    )
-  );
-
-  /**
-   * Handles `lighter:point-selection-finalize` (e.g. right-click during AI
-   * tool). Accepts the current AI mask, tears down point selection, and
-   * switches to brush so the user can refine the mask manually. The overlay
-   * stays selected and in editing mode.
-   */
-  useEventHandler(
-    "lighter:point-selection-finalize",
-    useCallback(
-      (payload) => {
-        if (
-          !segmentationModeActive ||
-          !claimEvent("point-selection-finalize", payload.eventId)
-        ) {
-          return;
-        }
-
-        aiMode.deactivate();
-        setTool("brush");
-      },
-      [aiMode, claimEvent, segmentationModeActive, setTool]
-    )
-  );
+  const finalizePointSelection = useCallback(() => {
+    aiMode.deactivate();
+    setTool("brush");
+  }, [aiMode, setTool]);
 
   // ----------------------------  Public interface  ----------------------- //
 
@@ -380,6 +294,10 @@ export const useSegmentationMode = () => {
       activateSegmentationMode,
       deactivateSegmentationMode,
       toggleSegmentationMode,
+
+      // Bridge actions (wired to Lighter events by `useBridge`)
+      create,
+      finalizePointSelection,
 
       // Tool state
       tool,
@@ -400,6 +318,8 @@ export const useSegmentationMode = () => {
       activateSegmentationMode,
       deactivateSegmentationMode,
       toggleSegmentationMode,
+      create,
+      finalizePointSelection,
       tool,
       toolSize,
       toolShape,

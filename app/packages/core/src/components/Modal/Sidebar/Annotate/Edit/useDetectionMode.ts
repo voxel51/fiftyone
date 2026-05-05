@@ -5,11 +5,7 @@ import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import type { PrimitiveAtom } from "jotai";
 import { useRecoilValue } from "recoil";
 
-import {
-  UNDEFINED_LIGHTER_SCENE_ID,
-  useLighter,
-  useLighterEventHandler,
-} from "@fiftyone/lighter";
+import { useLighter } from "@fiftyone/lighter";
 import { DETECTION } from "@fiftyone/utilities";
 
 import { labelsByPath } from "../useLabels";
@@ -55,13 +51,6 @@ const lastUsedLabelAtom = atomFamily(
 const detectionTypes = new Set(["Detection", "Detections"]);
 
 /**
- * Tracks the last processed event ID for each event type so that only one
- * `useDetectionMode` instance handles each event, even though the hook is
- * called in multiple components.
- */
-const claimedEventsAtom = atom<Map<string, string>>(new Map());
-
-/**
  * Centralized hook for managing detection mode state and operations.
  */
 export const useDetectionMode = () => {
@@ -78,10 +67,6 @@ export const useDetectionMode = () => {
   const createDetection = useCreate(DETECTION);
   const onExit = useExit();
   const fields = useAtomValue(fieldsOfType(DETECTION));
-
-  const useEventHandler = useLighterEventHandler(
-    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
-  );
 
   // Using refs to prevent shared closure contexts from retaining old Scene2D instances.
   const sceneRef = useRef(scene);
@@ -298,21 +283,6 @@ export const useDetectionMode = () => {
     [getLabelSchema, getLastUsedLabel, labelsMap]
   );
 
-  const claimEvent = useAtomCallback(
-    useCallback((get, set, eventType: string, eventId: string) => {
-      const claimedEvents = get(claimedEventsAtom);
-      if (claimedEvents.get(eventType) === eventId) {
-        return false;
-      }
-
-      const updatedEvents = new Map(claimedEvents);
-      updatedEvents.set(eventType, eventId);
-      set(claimedEventsAtom, updatedEvents);
-
-      return true;
-    }, [])
-  );
-
   /**
    * Toggle detection mode.
    */
@@ -325,55 +295,17 @@ export const useDetectionMode = () => {
   }, [detectionModeActive, deactivateDetectionMode, activateDetectionMode]);
 
   /**
-   * Cache field/label for auto-assignment
-   * Close out previous label
-   * Create the next detection.
+   * Finalize the previous detection and create the next one with auto-
+   * assigned field/label.
    */
-  useEventHandler(
-    "lighter:overlay-create",
-    useCallback(
-      (payload) => {
-        if (
-          !detectionModeActive ||
-          !claimEvent("overlay-create", payload.eventId)
-        ) {
-          return;
-        }
+  const create = useCallback(() => {
+    finalizeCurrentDetection();
 
-        finalizeCurrentDetection();
+    const field = getLastField() ?? undefined;
+    const labelValue = field ? getLastLabel(field) ?? undefined : undefined;
 
-        const field = getLastField() ?? undefined;
-        const labelValue = field ? getLastLabel(field) ?? undefined : undefined;
-
-        createDetection({ field, labelValue });
-      },
-      [
-        claimEvent,
-        createDetection,
-        detectionModeActive,
-        finalizeCurrentDetection,
-        getLastField,
-        getLastLabel,
-      ]
-    )
-  );
-
-  /**
-   * Exit detection mode (triggered when user clicks without dragging).
-   */
-  useEventHandler(
-    "lighter:detection-mode-quit",
-    useCallback(
-      (payload) => {
-        if (!claimEvent("detection-mode-quit", payload.eventId)) {
-          return;
-        }
-
-        deactivateDetectionMode();
-      },
-      [claimEvent, deactivateDetectionMode]
-    )
-  );
+    createDetection({ field, labelValue });
+  }, [createDetection, finalizeCurrentDetection, getLastField, getLastLabel]);
 
   return useMemo(
     () => ({
@@ -386,6 +318,9 @@ export const useDetectionMode = () => {
       activateDetectionMode,
       deactivateDetectionMode,
       toggleDetectionMode,
+
+      // Bridge actions (wired to Lighter events by `useBridge`)
+      create,
     }),
     [
       activateDetectionMode,
@@ -394,6 +329,7 @@ export const useDetectionMode = () => {
       disabled,
       toggleDetectionMode,
       tooltip,
+      create,
     ]
   );
 };
