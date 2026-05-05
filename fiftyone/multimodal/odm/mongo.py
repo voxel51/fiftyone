@@ -35,5 +35,5 @@ class MongoAdapter(DatabaseAdapter):
     @classmethod
     def _scene_inventory_to_sample(cls, inventory: SceneInventory) -> Sample:
         sample = Sample(filepath=inventory.scene_id)
-        sample["scene_inventory"] = MessageToDict(inventory)
+        sample["metadata"] = MessageToDict(inventory)
         return sample
