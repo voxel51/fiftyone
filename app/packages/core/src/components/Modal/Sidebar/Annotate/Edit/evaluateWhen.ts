@@ -101,6 +101,10 @@ export function isWhenFulfillable(
           Array.isArray(cond.value) &&
           (cond.value as unknown[]).some((v) => allowed.has(v))
         );
+      default: {
+        const _exhaustive: never = cond.operator;
+        throw new Error(`Unhandled operator: ${_exhaustive}`);
+      }
     }
   });
 }

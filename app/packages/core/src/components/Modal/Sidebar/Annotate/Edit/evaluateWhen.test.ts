@@ -211,6 +211,18 @@ describe("isWhenFulfillable", () => {
     ];
     expect(isWhenFulfillable(conditions, animalAttributes)).toBe(false);
   });
+
+  it("throws on an unknown operator (exhaustiveness guard)", () => {
+    const conditions = [
+      // Cast through `any` to simulate a future operator arriving at runtime
+      // before the frontend is updated (e.g. from a newer backend).
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      { operator: "contains" as any, field: "category", value: "mammal" },
+    ];
+    expect(() => isWhenFulfillable(conditions, animalAttributes)).toThrow(
+      "Unhandled operator: contains"
+    );
+  });
 });
 
 // ---------------------------------------------------------------------------
