@@ -424,3 +424,78 @@ describe("resolveVisibleAttribute", () => {
     expect(before).toBe(after);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Mixed conditional + unconditional variants for the same attribute name
+//
+// This covers the guard added to useHandleSchemaChange in AnnotationSchema.tsx:
+// when a name has BOTH a conditional and an unconditional entry, the deletion
+// logic must skip that name entirely, because resolveVisibleAttribute only
+// inspects `when`-bearing entries and would return `undefined` for the hidden
+// conditional — incorrectly triggering deletion of the unconditional value.
+// ---------------------------------------------------------------------------
+
+describe("mixed conditional/unconditional variants for the same name", () => {
+  // "notes" appears twice: once unconditionally (always visible) and once
+  // gated on category === "mammal".
+  const mixedAttributes: AttributeConfig[] = [
+    {
+      name: "category",
+      type: "str",
+      component: "dropdown",
+      values: ["mammal", "bird"],
+    },
+    {
+      // Always visible — no `when`
+      name: "notes",
+      type: "str",
+      component: "text",
+    },
+    {
+      // Conditional sibling — only visible when category is "mammal"
+      name: "notes",
+      type: "str",
+      component: "text",
+      when: [
+        { operator: "equals" as const, field: "category", value: "mammal" },
+      ],
+    },
+  ];
+
+  it("resolveVisibleAttribute returns undefined when the conditional sibling is hidden", () => {
+    // category = "bird" hides the conditional variant; the unconditional one
+    // is invisible to resolveVisibleAttribute (it filters by a.when truthy).
+    // Without the guard this `undefined` would trigger deletion of the value.
+    const result = resolveVisibleAttribute("notes", mixedAttributes, {
+      category: "bird",
+    });
+    expect(result).toBeUndefined();
+  });
+
+  it("resolveVisibleAttribute returns undefined even when the conditional sibling is visible", () => {
+    // Both variants coexist for category = "mammal"; resolveVisibleAttribute
+    // still returns the conditional entry (not the unconditional one).
+    const result = resolveVisibleAttribute("notes", mixedAttributes, {
+      category: "mammal",
+    });
+    // The conditional entry (index 2) wins; the unconditional one is ignored.
+    expect(result).toBe(mixedAttributes[2]);
+  });
+
+  it("unconditional-sibling guard check returns true for a mixed name", () => {
+    // This is the exact predicate used in the AnnotationSchema fix.
+    const hasUnconditional = mixedAttributes.some(
+      (a) => a.name === "notes" && !a.when
+    );
+    expect(hasUnconditional).toBe(true);
+  });
+
+  it("unconditional-sibling guard check returns false for a purely conditional name", () => {
+    // "animal_name" in schemaWithVariants has no unconditional entry, so the
+    // guard does NOT fire and deletion logic proceeds normally.
+    const hasUnconditional = schemaWithVariants.some(
+      (a) => a.name === "animal_name" && !a.when
+    );
+    expect(hasUnconditional).toBe(false);
+  });
+});

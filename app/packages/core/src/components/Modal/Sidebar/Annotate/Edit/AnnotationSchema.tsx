@@ -137,6 +137,11 @@ const useHandleSchemaChange = (readOnly: boolean) => {
 
       for (const name of uniqueConditionalNames) {
         if (!name) continue;
+        // An unconditional (always-visible) variant for this name exists — its
+        // value must never be wiped by conditional-switch logic because
+        // resolveVisibleAttribute only inspects `when`-bearing entries and
+        // would return undefined, falsely triggering deletion.
+        if (allAttributes.some((a) => a.name === name && !a.when)) continue;
         const prevEntry = resolveVisibleAttribute(
           name,
           allAttributes,
