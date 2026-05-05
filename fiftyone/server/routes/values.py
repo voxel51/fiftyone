@@ -10,10 +10,10 @@ import regex as re
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 
-import fiftyone.core.aggregations as foa
 import fiftyone.core.media as fom
 
 import fiftyone.server.constants as foc
+from fiftyone.server.db import get_grid_adapter
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
 import fiftyone.server.view as fosv
 from fiftyone.server.decorators import route
@@ -62,15 +62,14 @@ class Values(HTTPEndpoint):
             else None
         )
 
-        count, first = await view._async_aggregate(
-            foa.CountValues(
-                path,
-                _first=limit,
-                _asc=asc,
-                _sort_by=sort_by,
-                _search=regex_safe_search,
-                _selected=selected,
-            ),
+        count, first = await get_grid_adapter().count_field_values(
+            view,
+            path=path,
+            first=limit,
+            asc=asc,
+            sort_by=sort_by,
+            search=regex_safe_search,
+            selected=selected,
         )
 
         return {

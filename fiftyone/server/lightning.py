@@ -19,10 +19,12 @@ import strawberry as gql
 
 import fiftyone as fo
 import fiftyone.core.fields as fof
+import fiftyone.core.odm as foo
 from fiftyone.core.utils import run_sync_task
 
 import fiftyone.server.constants as foc
 from fiftyone.server.data import Info
+from fiftyone.server.db import get_grid_adapter
 from fiftyone.server.scalars import BSON, JSON
 from fiftyone.server.utils import meets_type
 from fiftyone.server.view import get_view
@@ -133,36 +135,7 @@ async def lightning_resolver(
     run = lambda: get_view(input.dataset, reload=True)
     dataset = await run_sync_task(run)
     dataset = dataset._dataset
-
-    collections, queries, resolvers, is_frames = zip(
-        *[
-            _resolve_lightning_path_queries(path, dataset, info)
-            for path in input.paths
-        ]
-    )
-    counts = [len(a) for a in queries]
-    flattened = [
-        (collection, item, is_frames)
-        for collection, sublist, is_frames in zip(
-            collections, queries, is_frames
-        )
-        for item in sublist
-    ]
-
-    match_filter = input.match or {}
-    if dataset.group_field and input.slice:
-        match_filter[f"{dataset.group_field}.name"] = input.slice
-        dataset.group_slice = input.slice
-
-    result = await _do_async_pooled_queries(dataset, flattened, match_filter)
-
-    results = []
-    offset = 0
-    for length, resolve in zip(counts, resolvers):
-        results.append(resolve(result[offset : length + offset]))
-        offset += length
-
-    return results
+    return await get_grid_adapter().lightning(dataset, input=input)
 
 
 @dataclass
@@ -179,7 +152,7 @@ class DistinctQuery:
 
 
 def _resolve_lightning_path_queries(
-    path: LightningPathInput, dataset: fo.Dataset, info: Info
+    path: LightningPathInput, dataset: fo.Dataset
 ) -> t.Tuple[
     AsyncIOMotorCollection,
     t.Union[DistinctQuery, t.List[t.Dict]],
@@ -194,7 +167,7 @@ def _resolve_lightning_path_queries(
         field_path = field_path[len(dataset._FRAMES_PREFIX) :]
         collection = dataset._frame_collection_name
 
-    collection = info.context.db[collection]
+    collection = foo.get_async_db_conn()[collection]
 
     while isinstance(field, fof.ListField):
         field = field.field

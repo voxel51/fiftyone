@@ -35,6 +35,7 @@ from fiftyone.server.aggregations import aggregate_resolver
 from fiftyone.server.color import ColorBy, ColorScheme
 from fiftyone.server.data import Info
 from fiftyone.server.dataloader import get_dataloader_resolver
+from fiftyone.server.db import get_grid_adapter
 from fiftyone.server.events import get_state
 from fiftyone.server.indexes import Index, from_dict as indexes_from_dict
 from fiftyone.server.lightning import lightning_resolver
@@ -279,9 +280,9 @@ class Dataset:
 
     @gql.field
     async def estimated_sample_count(self, info: Info = None) -> int:
-        return await info.context.db[
+        return await get_grid_adapter().estimated_sample_count(
             self.sample_collection_name
-        ].estimated_document_count()
+        )
 
     @gql.field
     async def estimated_frame_count(
@@ -608,7 +609,7 @@ async def serialize_dataset(
         try:
             dataset = fo.load_dataset(dataset_name, reload=True)
         except fod.DatasetNotFoundError:
-            return None
+            return None, None
 
         view_name = None
         try:
@@ -653,10 +654,6 @@ async def serialize_dataset(
 
             collection = view
 
-        data.sample_fields = serialize_fields(
-            collection.get_field_schema(flat=True)
-        )
-
         data.frame_fields = serialize_fields(
             collection.get_frame_field_schema(flat=True)
         )
@@ -700,9 +697,15 @@ async def serialize_dataset(
         _assign_estimated_counts(data, dataset)
         _assign_lightning_info(data, dataset)
 
-        return data
+        return data, collection
 
-    return await run_sync_task(run)
+    data, collection = await run_sync_task(run)
+    if data is None:
+        return None
+    data.sample_fields = await get_grid_adapter().get_grid_field_schema(
+        collection
+    )
+    return data
 
 
 def _assign_estimated_counts(dataset: Dataset, fo_dataset: fo.Dataset):

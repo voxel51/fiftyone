@@ -7,16 +7,14 @@ FiftyOne Server paginator
 """
 
 from bson import ObjectId
-import motor.motor_asyncio as mtr
 import typing as t
 
 import strawberry as gql
 from strawberry import UNSET
 
-import fiftyone.core.odm as foo
-
 from fiftyone.server.constants import LIST_LIMIT
 from fiftyone.server.data import Info, T
+from fiftyone.server.db import get_metadata_adapter
 from fiftyone.server.utils import from_dict
 
 C = t.TypeVar("C")
@@ -44,7 +42,7 @@ class Connection(t.Generic[T, C]):
 
 
 async def get_items(
-    collection: mtr.AsyncIOMotorCollection,
+    collection_name: str,
     from_db: t.Callable[[dict], T],
     key: str,
     filters: t.List[dict],
@@ -67,7 +65,9 @@ async def get_items(
         start + [{"$count": "total"}],
     ]
 
-    data = await foo.aggregate(collection, pipelines)
+    data = await get_metadata_adapter().aggregate_collection(
+        collection_name, pipelines
+    )
     results, total = data
     edges = []
 
@@ -106,7 +106,7 @@ def get_paginator_resolver(
             return from_dict(cls, doc)
 
         return await get_items(
-            info.context.db[collection],
+            collection,
             from_db,
             key,
             filters,
