@@ -18,7 +18,10 @@ import {
 } from "../commands/TransformOverlayCommand";
 import { STROKE_WIDTH } from "../constants";
 import type { LighterEventGroup } from "../events";
-import type { InteractionHandler } from "../interaction/InteractionManager";
+import type {
+  EmptyCanvasClickHandler,
+  InteractionHandler,
+} from "../interaction/InteractionManager";
 import { InteractionManager } from "../interaction/InteractionManager";
 import type { InteractiveDetectionHandler } from "../interaction/InteractiveDetectionHandler";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
@@ -1594,6 +1597,38 @@ export class Scene2D {
     this.eventBus.dispatch("lighter:scene-interactive-mode-changed", {
       interactiveMode: false,
     });
+  }
+
+  /**
+   * Registers a handler invoked when a pointer-down event lands on the
+   * empty canvas (no overlay, or only the canonical media). Returning `true`
+   * from the handler claims the click — the scene skips its default
+   * empty-canvas behavior. Pass `null` to clear.
+   *
+   * Used by consumers to seed a new overlay at the click position without
+   * coupling lighter to the consumer's identity.
+   */
+  public setEmptyCanvasClickHandler(
+    handler: EmptyCanvasClickHandler | null
+  ): void {
+    this.interactionManager.setEmptyCanvasClickHandler(handler);
+  }
+
+  /**
+   * Converts an absolute (world-space) point to relative coordinates using
+   * the scene's coordinate system. Useful for consumers that receive world
+   * points (e.g. via {@link setEmptyCanvasClickHandler}) and need to seed a
+   * new overlay with relative-coordinate label data.
+   */
+  public absolutePointToRelative(point: { x: number; y: number }): {
+    x: number;
+    y: number;
+  } {
+    const t = this.coordinateSystem.getTransform();
+    return {
+      x: (point.x - t.offsetX) / t.scaleX,
+      y: (point.y - t.offsetY) / t.scaleY,
+    };
   }
 
   /**
