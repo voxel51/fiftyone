@@ -2,7 +2,11 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { EDGE_THRESHOLD, LABEL_ARCHETYPE_PRIORITY } from "../constants";
+import {
+  EDGE_THRESHOLD,
+  LABEL_ARCHETYPE_PRIORITY,
+  PREVIEW_LINE_OPACITY,
+} from "../constants";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { DrawStyle, Point, RawLookerLabel } from "../types";
 import {
@@ -81,6 +85,12 @@ export class PolylineOverlay extends KeypointOverlay {
   private segmentBoundaries: number[];
   private polylineClosed: boolean;
   private polylineFilled: boolean;
+
+  /**
+   * Segment that the preview line should anchor against. When `null`, the
+   * preview anchors to whichever endpoint is globally nearest the cursor.
+   */
+  private previewAnchorSegmentIdx: number | null = null;
 
   constructor(options: PolylineOptions) {
     const { flatPoints, connections, segmentBoundaries } =
@@ -550,11 +560,17 @@ export class PolylineOverlay extends KeypointOverlay {
    * non-empty segment exists, an endpoint is always returned.
    *
    * @param worldPoint Absolute (world-space) point to measure distance from.
+   * @param restrictToSegmentIdx If provided, only the head/tail of that
+   *  segment are considered; returns `null` if the segment is missing or
+   *  empty.
    * @returns `{ segmentIdx, end }` for the closest endpoint, or `null` if no
    *  non-empty segments exist. `end` is `"head"` for the segment's first point
    *  and `"tail"` for its last.
    */
-  findNearestEndpoint(worldPoint: Point): {
+  findNearestEndpoint(
+    worldPoint: Point,
+    restrictToSegmentIdx?: number
+  ): {
     segmentIdx: number;
     end: "head" | "tail";
   } | null {
@@ -573,6 +589,14 @@ export class PolylineOverlay extends KeypointOverlay {
     for (let segIdx = 0; segIdx < this.segmentBoundaries.length; segIdx++) {
       const segEnd = this.segmentBoundaries[segIdx];
       if (segEnd === prev) {
+        prev = segEnd;
+        continue;
+      }
+
+      if (
+        restrictToSegmentIdx !== undefined &&
+        segIdx !== restrictToSegmentIdx
+      ) {
         prev = segEnd;
         continue;
       }
@@ -633,6 +657,75 @@ export class PolylineOverlay extends KeypointOverlay {
     }
 
     return connections;
+  }
+
+  /**
+   * Restricts the preview line to anchor against a specific segment. Pass
+   * `null` to anchor against the globally nearest endpoint instead. Mirrors
+   * the active-segment state held by the interactive handler.
+   */
+  setPreviewAnchorSegmentIdx(segmentIdx: number | null): void {
+    if (this.previewAnchorSegmentIdx === segmentIdx) {
+      return;
+    }
+
+    this.previewAnchorSegmentIdx = segmentIdx;
+    this.markDirty();
+  }
+
+  /**
+   * Anchors the preview line to whichever endpoint of the active segment
+   * (or globally, if no active segment) is closest to the cursor — so the
+   * dashed line previews the actual point that EXTEND will produce.
+   */
+  protected override renderPreviewLine(
+    renderer: Renderer2D,
+    ctx: KeypointRenderContext
+  ): void {
+    if (!this.previewPoint || ctx.absPoints.length === 0) {
+      return;
+    }
+
+    const nearest = this.findNearestEndpoint(
+      this.previewPoint,
+      this.previewAnchorSegmentIdx ?? undefined
+    );
+    if (!nearest) {
+      return;
+    }
+
+    const segLen = this.getSegmentLength(nearest.segmentIdx);
+    if (segLen === 0) {
+      return;
+    }
+
+    const indexInSegment = nearest.end === "head" ? 0 : segLen - 1;
+    const anchorId = this.getPointIdInSegment(
+      nearest.segmentIdx,
+      indexInSegment
+    );
+    if (!anchorId) {
+      return;
+    }
+
+    const entry = this.getPointById(anchorId);
+    if (!entry) {
+      return;
+    }
+
+    const anchorAbs = this.relativePointToAbsolute(entry.position);
+
+    renderer.drawLine(
+      anchorAbs,
+      this.previewPoint,
+      {
+        strokeStyle: ctx.strokeColor,
+        lineWidth: ctx.lineWidth,
+        dashPattern: [6, 4],
+        opacity: PREVIEW_LINE_OPACITY,
+      },
+      this.containerId
+    );
   }
 
   protected override renderFill(

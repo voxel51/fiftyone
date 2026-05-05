@@ -127,7 +127,7 @@ export class KeypointOverlay
   private moveStartRelativePoint?: [number, number];
 
   // Preview point for interactive creation (cursor tracking)
-  private previewPoint?: Point | null = null;
+  protected previewPoint?: Point | null = null;
 
   // Caches — invalidated in markDirty()
   private _absPointsCache: Point[] | null = null;
