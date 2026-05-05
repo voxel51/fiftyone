@@ -87,7 +87,7 @@ export class MaskKeypoints extends KeypointOverlay {
   override addPoint(
     worldPoint: Point,
     options?: { variant?: string; id?: string; dragging?: boolean }
-  ): string {
+  ): string | null {
     let shouldAddPoint = true;
 
     if (options?.dragging && this.lastKeypoint) {
@@ -119,7 +119,7 @@ export class MaskKeypoints extends KeypointOverlay {
       return pointID;
     }
 
-    return "";
+    return null;
   }
 
   protected override renderImpl(renderer: Renderer2D): void {
