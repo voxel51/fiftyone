@@ -67,3 +67,43 @@ class TestRouteDecorator(unittest.IsolatedAsyncioTestCase):
         request.body.assert_not_called()
         self.assertEqual(response.status_code, 200)
         self.assertEqual(json.loads(response.body), {"value": "ok"})
+
+    async def test_route_can_skip_body_parsing_with_body_present(self):
+        class Endpoint:
+            @decorators.route(parse_body=False)
+            async def post(self, request):
+                data = json.loads((await request.body()).decode("utf-8"))
+                return {"value": data["value"]}
+
+        request = MagicMock()
+        request.body = AsyncMock(return_value=b'{"value": "manual"}')
+
+        response = await Endpoint().post(request)
+
+        request.body.assert_awaited_once()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(json.loads(response.body), {"value": "manual"})
+
+    async def test_route_returns_server_error_for_malformed_json_body(self):
+        handler_was_called = False
+
+        class Endpoint:
+            @decorators.route
+            async def post(self, request, data):
+                nonlocal handler_was_called
+                handler_was_called = True
+                return {"value": data["value"]}
+
+        request = MagicMock()
+        request.body = AsyncMock(return_value=b'{"value":')
+
+        # pylint: disable-next=no-value-for-parameter
+        response = await Endpoint().post(request)
+
+        request.body.assert_awaited_once()
+        self.assertFalse(handler_was_called)
+        self.assertEqual(response.status_code, 500)
+
+        body = json.loads(response.body)
+        self.assertEqual(body["kind"], "Server Error")
+        self.assertIn("JSONDecodeError", body["stack"])
