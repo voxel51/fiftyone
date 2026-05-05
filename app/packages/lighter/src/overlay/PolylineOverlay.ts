@@ -367,6 +367,61 @@ export class PolylineOverlay extends KeypointOverlay {
   }
 
   /**
+   * Splices a new segment at `segmentIdx` containing a single point. Existing
+   * segments at or after that index shift up by one. Use this for the
+   * "start new line + place first point" gesture, and to undo a removal that
+   * dropped a segment slot.
+   *
+   * @param segmentIdx Zero-based index for the new segment, in the inclusive
+   *  range `[0, segmentCount]`. A value equal to `segmentCount` appends a
+   *  trailing segment.
+   * @param relPoint Relative-coordinate position `[x, y]` of the new point.
+   * @param variant Optional variant key used to determine render style.
+   * @param id Optional point id; one is generated when omitted.
+   * @returns The id of the new point.
+   * @throws RangeError if `segmentIdx` is out of range.
+   */
+  insertPointInNewSegment(
+    segmentIdx: number,
+    relPoint: [number, number],
+    variant?: string,
+    id?: string
+  ): string {
+    if (segmentIdx < 0 || segmentIdx > this.segmentBoundaries.length) {
+      throw new RangeError(
+        `PolylineOverlay: segmentIdx ${segmentIdx} out of bounds [0, ${this.segmentBoundaries.length}]`
+      );
+    }
+
+    const segStart = this.segmentStart(segmentIdx);
+    this.segmentBoundaries.splice(segmentIdx, 0, segStart);
+    return this.insertPointInSegment(segmentIdx, 0, relPoint, variant, id);
+  }
+
+  /**
+   * Returns the id of the point at `(segmentIdx, indexInSegment)`, or `null`
+   * if either coordinate is out of range.
+   *
+   * @param segmentIdx Zero-based segment index.
+   * @param indexInSegment Zero-based position within the segment.
+   */
+  getPointIdInSegment(
+    segmentIdx: number,
+    indexInSegment: number
+  ): string | null {
+    if (segmentIdx < 0 || segmentIdx >= this.segmentBoundaries.length) {
+      return null;
+    }
+
+    const segLen = this.getSegmentLength(segmentIdx);
+    if (indexInSegment < 0 || indexInSegment >= segLen) {
+      return null;
+    }
+
+    return this.getPointIdAt(this.segmentStart(segmentIdx) + indexInSegment);
+  }
+
+  /**
    * Locates the closest edge to `worldPoint` within `thresholdOverride` (or
    * the default `EDGE_THRESHOLD` adjusted for the current scale).
    *

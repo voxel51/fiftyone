@@ -720,6 +720,20 @@ export class KeypointOverlay
   }
 
   /**
+   * Returns the id of the point at the given flat-array index, or `null` if
+   * the index is out of range.
+   *
+   * @param index Flat-array index across all points.
+   */
+  protected getPointIdAt(index: number): string | null {
+    if (index < 0 || index >= this.#points.length) {
+      return null;
+    }
+
+    return this.#points[index].id;
+  }
+
+  /**
    * Inserts a point at the given flat-array index using relative coordinates.
    *
    * Connections referencing indices >= `index` are shifted up by one.
