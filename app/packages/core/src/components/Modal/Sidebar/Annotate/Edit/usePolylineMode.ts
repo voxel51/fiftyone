@@ -149,6 +149,14 @@ export const usePolylineMode = () => {
 
     scene.enterInteractiveMode(handler);
     installedHandlerRef.current = handler;
+
+    // Seed activation from the cursor's last known position.
+    // Without this, the next EXTEND click falls back to global-nearest
+    // instead of the segment the user just clicked on.
+    const lastPixel = scene.getInteractionManager().getPixelCoordinates();
+    if (lastPixel) {
+      handler.activateSegmentAtWorldPoint(scene.screenToWorld(lastPixel));
+    }
   }, [exitInstalledHandler, polylineModeActive, scene, selectedLabel]);
 
   // Empty-canvas click => create a new polyline seeded at the click position.
