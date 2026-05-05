@@ -210,11 +210,6 @@ export class DetectionOverlay
 
     if (!style) return;
 
-    // Lazily create MaskCanvas for labels with inline mask data
-    if (this.label?.mask && !this.mask) {
-      this.mask = new MaskCanvas(this.label.mask);
-    }
-
     const maskColor = style.strokeStyle || style.fillStyle || "#ffffff";
     const isEditingMask =
       this.isSelected() && (this.hasMask() || this.maskKeypoints);

@@ -27,9 +27,7 @@ import {
 import { KnownCommands, KnownContexts, useCommand } from "@fiftyone/commands";
 import useColor from "./useColor";
 import useExit from "./useExit";
-import useSave from "./useSave";
 import { useDetectionMode } from "./useDetectionMode";
-import { useSegmentationMode } from "./useSegmentationMode";
 import { useAnnotationController } from "@fiftyone/annotation";
 
 const LabelHamburgerMenu = () => {
@@ -52,8 +50,6 @@ const LabelHamburgerMenu = () => {
   const data = useAtomValue(currentData);
   const overlay = useAtomValue(currentOverlay);
   const setData = useSetAtom(currentData);
-  const { activateSegmentationMode } = useSegmentationMode();
-  const save = useSave();
 
   const isMaskDetection = !!(data?.mask || data?.isEditingMask);
   const isDetection = type === DETECTION;
@@ -61,22 +57,20 @@ const LabelHamburgerMenu = () => {
   const handleAddMask = useCallback(() => {
     if (overlay instanceof DetectionOverlay) {
       overlay.initMask();
-    }
 
-    setData({ isEditingMask: true });
-    activateSegmentationMode();
-    setOpen(false);
-  }, [overlay, setData, activateSegmentationMode]);
+      setData({ isEditingMask: true });
+      setOpen(false);
+    }
+  }, [overlay, setData]);
 
   const handleRemoveMask = useCallback(() => {
     if (overlay instanceof DetectionOverlay) {
       overlay.removeMask();
-    }
 
-    setData({ mask: undefined, isEditingMask: undefined });
-    save();
-    setOpen(false);
-  }, [overlay, setData, save]);
+      setData({ mask: undefined, isEditingMask: undefined });
+      setOpen(false);
+    }
+  }, [overlay, setData]);
 
   const handleOpenSchemaManager = () => {
     openSchemaManager();
