@@ -29,36 +29,41 @@ def fixture_now():
         yield mock
 
 
+@pytest.fixture(name="stream_metadata")
+def fixture_stream_metadata():
+    return {"some_key": "some_value"}
+
+
+@pytest.fixture(name="default_summary")
+def fixture_default_summary(stream_metadata):
+    schema = Mock(encoding="schema's encoding")
+    schema.name = "this_schema"  # 'name' is used by the Mock constructor
+
+    return Mock(
+        channels={
+            "channel_id": Mock(
+                topic="some_topic",
+                schema_id=1,
+                metadata=stream_metadata,
+                message_encoding="some_encoding",
+            )
+        },
+        schemas={1: schema},
+        statistics=Mock(
+            message_start_time=51,
+            message_end_time=52,
+            channel_message_counts={"channel_id": 435},
+        ),
+    )
+
+
 class TestMcapAdapter:
     @pytest.mark.usefixtures("now")
     class TestReadSceneInventory:
-        def test_success(self):
-            schema = Mock(encoding="schema's encoding")
-            schema.name = (
-                "this_schema"  # 'name' is used by the Mock constructor
-            )
-
-            stream_metadata = {"some_key": "some_value"}
-            summary = Mock(
-                channels={
-                    "channel_id": Mock(
-                        topic="some_topic",
-                        schema_id=1,
-                        metadata=stream_metadata,
-                        message_encoding="some_encoding",
-                    )
-                },
-                schemas={1: schema},
-                statistics=Mock(
-                    message_start_time=51,
-                    message_end_time=52,
-                    channel_message_counts={"channel_id": 435},
-                ),
-            )
-
+        def test_success(self, default_summary, stream_metadata):
             ###
             inventory = McapAdapter._read_scene_inventory(
-                summary=summary,
+                summary=default_summary,
                 scene_id="some_id",
                 size=10,
                 first_chunk_crc=5,
@@ -119,29 +124,12 @@ class TestMcapAdapter:
             assert inventory.produced_at
             assert inventory.produced_by == "McapAdapter 1.0"
 
-        def test_missing_statistics(self):
-            schema = Mock(encoding="schema's encoding")
-            schema.name = (
-                "this_schema"  # 'name' is used by the Mock constructor
-            )
-
-            stream_metadata = {"some_key": "some_value"}
-            summary = Mock(
-                channels={
-                    "channel_id": Mock(
-                        topic="some_topic",
-                        schema_id=2,
-                        metadata=stream_metadata,
-                        message_encoding="some_encoding",
-                    )
-                },
-                schemas={2: schema},
-                statistics=None,
-            )
+        def test_missing_statistics(self, default_summary, stream_metadata):
+            default_summary.statistics = None
 
             ###
             inventory = McapAdapter._read_scene_inventory(
-                summary=summary,
+                summary=default_summary,
                 scene_id="some_id",
                 size=10,
                 first_chunk_crc=5,
@@ -175,24 +163,12 @@ class TestMcapAdapter:
             assert inventory.produced_at == "now now now"
             assert inventory.produced_by == "McapAdapter 1.0"
 
-        def test_schemaless_channel(self):
-            stream_metadata = {"some_key": "some_value"}
-            summary = Mock(
-                channels={
-                    "channel_id": Mock(
-                        topic="some_topic",
-                        schema_id=0,
-                        metadata=stream_metadata,
-                        message_encoding="some_encoding",
-                    )
-                },
-                schemas={},
-                statistics=None,
-            )
+        def test_schemaless_channel(self, default_summary, stream_metadata):
+            default_summary.channels["channel_id"].schema_id = 0
 
             ###
             inventory = McapAdapter._read_scene_inventory(
-                summary=summary,
+                summary=default_summary,
                 scene_id="some_id",
                 size=10,
                 first_chunk_crc=5,
@@ -208,17 +184,15 @@ class TestMcapAdapter:
                 size_bytes=10, first_chunk_crc=5, last_chunk_crc=15
             )
             assert inventory.inventory_version == "1.0"
-            assert inventory.time_tracks == []
+            assert inventory.time_tracks == [
+                TimeTrack(value_range=TimeValueRange(start=51, end=52))
+            ]
             assert inventory.streams == [
                 StreamInventory(
                     stream_id="channel_id",
                     display_name="some_topic",
-                    payload=PayloadDescriptor(
-                        encoding="some_encoding",
-                        schema=None,
-                        schema_encoding=None,
-                    ),
-                    record_count=0,
+                    payload=PayloadDescriptor(encoding="some_encoding"),
+                    record_count=435,
                     metadata=stream_metadata,
                 )
             ]
@@ -226,33 +200,12 @@ class TestMcapAdapter:
             assert inventory.produced_at == "now now now"
             assert inventory.produced_by == "McapAdapter 1.0"
 
-        def test_missing_schema(self):
-            schema = Mock(encoding="schema's encoding")
-            schema.name = (
-                "this_schema"  # 'name' is used by the Mock constructor
-            )
-
-            stream_metadata = {"some_key": "some_value"}
-            summary = Mock(
-                channels={
-                    "channel_id": Mock(
-                        topic="some_topic",
-                        schema_id=1,
-                        metadata=stream_metadata,
-                        message_encoding="some_encoding",
-                    )
-                },
-                schemas={},
-                statistics=Mock(
-                    message_start_time=51,
-                    message_end_time=52,
-                    channel_message_counts={"channel_id": 435},
-                ),
-            )
+        def test_missing_schema(self, default_summary, stream_metadata):
+            default_summary.schemas = {}
 
             ###
             inventory = McapAdapter._read_scene_inventory(
-                summary=summary,
+                summary=default_summary,
                 scene_id="some_id",
                 size=10,
                 first_chunk_crc=5,
