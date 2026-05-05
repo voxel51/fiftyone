@@ -13,7 +13,21 @@ import type { SelectionManager } from "../selection/SelectionManager";
 import type { Point, Rect } from "../types";
 import { InteractiveDetectionHandler } from "./InteractiveDetectionHandler";
 import { InteractiveKeypointHandler } from "./InteractiveKeypointHandler";
+import { InteractivePolylineHandler } from "./InteractivePolylineHandler";
 import { v4 as generateUUID } from "uuid";
+
+/**
+ * Predicate for interactive handlers that own their own pointer-event
+ * dispatch (drag, hit-testing, etc.) and shouldn't have events forwarded to
+ * their `getOverlay()`. The default routing — defer to the wrapped overlay —
+ * applies to creation handlers like {@link InteractiveDetectionHandler}.
+ */
+function isSelfManagedInteractiveHandler(handler: InteractionHandler): boolean {
+  return (
+    handler instanceof InteractiveKeypointHandler ||
+    handler instanceof InteractivePolylineHandler
+  );
+}
 
 /**
  * Interface for handlers that support sub-selecting and removing individual
@@ -281,12 +295,11 @@ export class InteractionManager {
     const interactiveHandler = this.getInteractiveHandler();
 
     if (interactiveHandler) {
-      handler =
-        interactiveHandler instanceof InteractiveKeypointHandler
-          ? // keypoint handlers manage their own placement
-            interactiveHandler
-          : // otherwise defer to the handler's overlay
-            interactiveHandler.getOverlay();
+      handler = isSelfManagedInteractiveHandler(interactiveHandler)
+        ? // self-managed handlers route their own pointer events
+          interactiveHandler
+        : // otherwise defer to the handler's overlay
+          interactiveHandler.getOverlay();
       this.selectionManager.select(interactiveHandler.getOverlay().id);
     } else {
       handler = this.findHandlerAtPoint(point);
@@ -484,12 +497,11 @@ export class InteractionManager {
           this.maintainAspectRatio
         );
       } else {
-        handler =
-          interactiveHandler instanceof InteractiveKeypointHandler
-            ? // keypoint handlers manage their own points
-              interactiveHandler
-            : // otherwise defer to the handler's overlay
-              interactiveHandler.getOverlay();
+        handler = isSelfManagedInteractiveHandler(interactiveHandler)
+          ? // self-managed handlers route their own move events
+            interactiveHandler
+          : // otherwise defer to the handler's overlay
+            interactiveHandler.getOverlay();
 
         handler.onMove?.(
           point,
@@ -555,12 +567,11 @@ export class InteractionManager {
     const interactiveHandler = this.getInteractiveHandler();
 
     if (interactiveHandler) {
-      handler =
-        interactiveHandler instanceof InteractiveKeypointHandler
-          ? // keypoint handlers manage their own points
-            interactiveHandler
-          : // otherwise defer to the handler's overlay
-            interactiveHandler.getOverlay();
+      handler = isSelfManagedInteractiveHandler(interactiveHandler)
+        ? // self-managed handlers route their own pointer-up events
+          interactiveHandler
+        : // otherwise defer to the handler's overlay
+          interactiveHandler.getOverlay();
     } else {
       handler = this.findMovingHandler() || this.findHandlerAtPoint(point);
     }
@@ -853,11 +864,16 @@ export class InteractionManager {
 
   private getInteractiveHandler():
     | InteractiveKeypointHandler
+    | InteractivePolylineHandler
     | InteractiveDetectionHandler
     | undefined {
-    // keypoint handlers take precedence to allow placing points on top of detections
+    // self-managed handlers take precedence to allow editing on top of detections
+    const selfManaged = this.handlers.find((h) =>
+      isSelfManagedInteractiveHandler(h)
+    ) as InteractiveKeypointHandler | InteractivePolylineHandler | undefined;
+
     return (
-      this.handlers.find((h) => h instanceof InteractiveKeypointHandler) ??
+      selfManaged ??
       this.handlers.find((h) => h instanceof InteractiveDetectionHandler)
     );
   }
