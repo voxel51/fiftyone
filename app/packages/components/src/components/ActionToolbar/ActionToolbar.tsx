@@ -81,6 +81,19 @@ const ActionButton = ({ action }: { action: ToolbarActionItem }) => {
   );
 };
 
+/**
+ * Renders a data-driven Voodo toolbar from a list of `ToolbarActionGroup`s.
+ *
+ * Hides groups whose `isHidden` is true or whose actions are all
+ * `isVisible: false`. Within a visible group, individual actions with
+ * `isVisible: false` are also skipped. Each action renders as a
+ * `ToolbarAction` icon button by default; if `customComponent` is provided,
+ * it replaces the standard button. Tooltips wrap the button when `tooltip`
+ * or `shortcut` is set.
+ *
+ * The component owns no portal logic, no domain state, and no visibility
+ * gating — callers handle mounting, action wiring, and when to show it.
+ */
 export const ActionToolbar = ({
   groups,
   orientation = Orientation.Column,
