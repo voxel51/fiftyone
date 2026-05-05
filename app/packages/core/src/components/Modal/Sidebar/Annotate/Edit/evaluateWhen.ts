@@ -78,10 +78,17 @@ export function isWhenFulfillable(
 ): boolean {
   if (!conditions || conditions.length === 0) return true;
 
+  // Merge values from all attributes with the same name so that duplicate
+  // entries (e.g. "animal_name" for "mammal" and "reptile" variants) each
+  // contribute their allowed values to a single unified set. Without this,
+  // the last entry would silently overwrite earlier ones, making fulfillability
+  // checks order-dependent and incorrect.
   const valuesByField = new Map<string, Set<unknown>>();
   for (const attr of schemaAttributes) {
     if (attr.values && attr.values.length > 0) {
-      valuesByField.set(attr.name, new Set(attr.values));
+      const existing = valuesByField.get(attr.name) ?? new Set<unknown>();
+      for (const v of attr.values) existing.add(v);
+      valuesByField.set(attr.name, existing);
     }
   }
 

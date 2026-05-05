@@ -212,6 +212,86 @@ describe("isWhenFulfillable", () => {
     expect(isWhenFulfillable(conditions, animalAttributes)).toBe(false);
   });
 
+  describe("duplicate attribute names — values are merged, not overwritten", () => {
+    // Schema with two "animal_name" entries sharing the same name but carrying
+    // different allowed values (mammal variants first, reptile variants second).
+    const duplicateNameAttributes: AttributeConfig[] = [
+      {
+        name: "category",
+        type: "str",
+        component: "dropdown",
+        values: ["mammal", "reptile"],
+      },
+      {
+        name: "animal_name",
+        type: "str",
+        component: "dropdown",
+        values: ["dog", "cat"],
+        when: [
+          { operator: "equals" as const, field: "category", value: "mammal" },
+        ],
+      },
+      {
+        name: "animal_name",
+        type: "str",
+        component: "dropdown",
+        values: ["snake", "lizard"],
+        when: [
+          { operator: "equals" as const, field: "category", value: "reptile" },
+        ],
+      },
+    ];
+
+    it("finds a value from the first duplicate entry even when the second entry is last", () => {
+      const conditions = [
+        {
+          operator: "equals" as const,
+          field: "animal_name",
+          value: "dog",
+        },
+      ];
+      expect(isWhenFulfillable(conditions, duplicateNameAttributes)).toBe(true);
+    });
+
+    it("finds a value from the second duplicate entry", () => {
+      const conditions = [
+        {
+          operator: "equals" as const,
+          field: "animal_name",
+          value: "snake",
+        },
+      ];
+      expect(isWhenFulfillable(conditions, duplicateNameAttributes)).toBe(true);
+    });
+
+    it("returns false when the value is in neither duplicate entry", () => {
+      const conditions = [
+        {
+          operator: "equals" as const,
+          field: "animal_name",
+          value: "dragon",
+        },
+      ];
+      expect(isWhenFulfillable(conditions, duplicateNameAttributes)).toBe(
+        false
+      );
+    });
+
+    it("produces the same result regardless of duplicate entry order", () => {
+      const reversed: AttributeConfig[] = [
+        duplicateNameAttributes[0],
+        duplicateNameAttributes[2], // reptile first
+        duplicateNameAttributes[1], // mammal second
+      ];
+      const conditions = [
+        { operator: "equals" as const, field: "animal_name", value: "dog" },
+      ];
+      expect(isWhenFulfillable(conditions, duplicateNameAttributes)).toBe(
+        isWhenFulfillable(conditions, reversed)
+      );
+    });
+  });
+
   it("throws on an unknown operator (exhaustiveness guard)", () => {
     const conditions = [
       // Cast through `any` to simulate a future operator arriving at runtime
