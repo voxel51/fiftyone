@@ -18,8 +18,13 @@ import { fieldsOfType, useAnnotationContext } from "./state";
  * Active flag for 2D polyline annotation mode. While `true`, selecting a
  * polyline overlay installs an {@link InteractivePolylineHandler} on it; the
  * handler is torn down on selection change or mode deactivation.
+ *
+ * This atom is exported (as `_unsafe…`) for inspection from non-React code
+ * such as InteractionManager bridges; React code should use
+ * {@link usePolylineMode} instead.
  */
 const polylineModeActiveAtom = atom<boolean>(false);
+export { polylineModeActiveAtom as _unsafePolylineModeActiveAtom };
 
 /**
  * Modifier policy: Alt-click on a point deletes it.
@@ -37,18 +42,18 @@ const resolveEmptyHit = (ctx: PolylineEmptyHitContext) =>
 /**
  * Centralized hook for 2D polyline annotation mode.
  *
- * Lifecycle:
- * - Toggling on activates the mode; toggling off exits.
- * - While active, whenever the currently-edited annotation is a 2D polyline,
- *   an {@link InteractivePolylineHandler} is installed via
- *   `scene.enterInteractiveMode`. Selecting a different label or deselecting
- *   tears the handler down; the next polyline selection installs a fresh
- *   one.
- * - 3D polyline labels (`PolylineAnnotationLabel` whose overlay isn't a
- *   real `PolylineOverlay`) are ignored — they have their own annotation
- *   pipeline.
+ * Two paths activate the mode:
  *
- * Creation of new polylines is wired up separately (see `useCreate`).
+ * 1. **Toolbar toggle** — primes the UX for creating a new polyline. No
+ *    overlay is selected yet.
+ * 2. **Selection of a 2D polyline** — auto-activates the mode (if not
+ *    already) and installs an {@link InteractivePolylineHandler} on the
+ *    selected overlay via `scene.enterInteractiveMode`.
+ *
+ * The mode exits when:
+ *
+ * - The deactivation function is called explicitly, or
+ * - Selection moves from a 2D polyline to a different label, or to nothing.
  */
 export const usePolylineMode = () => {
   const [polylineModeActive, setPolylineModeActive] = useAtom(
@@ -83,24 +88,43 @@ export const usePolylineMode = () => {
     installedHandlerRef.current = null;
   }, [scene]);
 
-  // Install / re-install / tear down based on selection while mode is active.
+  // Selection drives the mode. Selecting a 2D polyline activates polyline
+  // mode; selecting a non-polyline (or deselecting) exits it.
+  // Toolbar activations with no selection are preserved (the previous selection
+  // ref lets us distinguish "no change" from "user deselected").
+  const prevSelectedLabelRef = useRef(selectedLabel);
+  useEffect(() => {
+    const prev = prevSelectedLabelRef.current;
+    prevSelectedLabelRef.current = selectedLabel;
+
+    const isPolyline2d =
+      selectedLabel?.type === "Polyline" &&
+      selectedLabel.overlay instanceof PolylineOverlay;
+
+    const wasPolyline2d =
+      prev?.type === "Polyline" && prev.overlay instanceof PolylineOverlay;
+
+    if (isPolyline2d) {
+      setPolylineModeActive(true);
+    } else if (wasPolyline2d) {
+      // Selection moved away from a polyline (different label or deselect).
+      setPolylineModeActive(false);
+    }
+    // Otherwise the selection isn't (and wasn't) a polyline — leave the mode
+    // alone so toolbar-driven activations stick around for creation.
+  }, [selectedLabel, setPolylineModeActive]);
+
+  // Mode + selection drive the installed handler.
   useEffect(() => {
     if (!scene) {
       return;
     }
 
-    if (!polylineModeActive) {
-      exitInstalledHandler();
-      return;
-    }
-
-    // Only target real 2D PolylineOverlay instances. 3D polyline labels use
-    // a generic overlay shape and have a separate pipeline.
     const isPolyline2d =
       selectedLabel?.type === "Polyline" &&
       selectedLabel.overlay instanceof PolylineOverlay;
 
-    if (!isPolyline2d) {
+    if (!polylineModeActive || !isPolyline2d) {
       exitInstalledHandler();
       return;
     }
