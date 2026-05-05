@@ -1,4 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@fiftyone/utilities", () => ({
+  getFetchParameters: vi.fn(),
+}));
+
+import { getFetchParameters } from "@fiftyone/utilities";
 import { BrowserAnnotationProvider } from "./BrowserAnnotationProvider";
 
 // Mock Worker
@@ -25,6 +31,28 @@ describe("BrowserAnnotationProvider", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     stubBrowserAPIs();
+  });
+
+  it("Sends init message with fetch parameters after spawning worker", async () => {
+    const params = { origin: "http://api", headers: { Auth: "x" }, pathPrefix: "/api/proxy/fiftyone-xyz" };
+    vi.mocked(getFetchParameters).mockReturnValue(params);
+
+    let instance: any;
+    class TrackedWorker extends MockWorker {
+      constructor() {
+        super();
+        instance = this;
+      }
+    }
+    vi.stubGlobal("Worker", TrackedWorker);
+
+    const provider = new BrowserAnnotationProvider();
+    await provider.initialize();
+
+    expect(instance.postMessage.mock.calls[0][0]).toEqual({
+      type: "init",
+      payload: params,
+    });
   });
 
   it("Calls onStatus with loading then ready on successful init", async () => {

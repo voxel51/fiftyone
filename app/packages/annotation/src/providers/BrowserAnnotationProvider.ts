@@ -1,3 +1,4 @@
+import { getFetchParameters } from "@fiftyone/utilities";
 import type {
   AnnotationProvider,
   DownloadProgress,
@@ -97,6 +98,11 @@ export class BrowserAnnotationProvider implements AnnotationProvider {
       throw err;
     }
 
+    this.worker.postMessage({
+      type: "init",
+      payload: getFetchParameters(),
+    });
+
     this.worker.onmessage = (e: MessageEvent) => {
       const { id, type, success, result, error } = e.data;
 
@@ -159,6 +165,7 @@ export class BrowserAnnotationProvider implements AnnotationProvider {
     return promise;
   }
 
+  // Client-side only: rejects the pending promise but the worker keeps computing.
   // Only aborts the most recent inference. Earlier in-flight requests are not cancelled.
   abort(): void {
     if (this.lastInferenceId === null)
