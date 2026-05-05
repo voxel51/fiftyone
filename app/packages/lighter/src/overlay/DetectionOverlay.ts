@@ -80,6 +80,9 @@ export type InteractionState =
 
 export const NO_BOUNDS = { x: NaN, y: NaN, width: NaN, height: NaN };
 
+// PointerEvent: `event.buttons === 1` -> left mouse button depressed
+const LEFT_MOUSE_BUTTON = 1;
+
 /**
  * Bounding box overlay implementation with drag support, selection, and spatial coordinates.
  */
@@ -665,8 +668,10 @@ export class DetectionOverlay
     this.updatePenMousePosition(worldPoint);
 
     // Dragging: drop points at intervals
-    // `event.buttons === 1` -> left mouse button depressed
-    if (event.buttons === 1 && this.maskKeypoints?.hasValidBounds()) {
+    if (
+      event.buttons === LEFT_MOUSE_BUTTON &&
+      this.maskKeypoints?.hasValidBounds()
+    ) {
       this.maskKeypoints.addPoint({ ...worldPoint });
     }
 
