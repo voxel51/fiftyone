@@ -3543,6 +3543,23 @@ class TimerView(View):
         super().__init__(**kwargs)
 
 
+class ComponentView(View):
+    """Represents a custom component view.
+
+    Args:
+        name: the name of the component to render. This should correspond to a
+            registered custom plugin component.
+    """
+
+    def __init__(self, name, **kwargs):
+        super().__init__(component=name, **kwargs)
+
+    def clone(self):
+        kwargs = dict(self._kwargs)
+        name = kwargs.pop("component")
+        return self.__class__(name, container=self.container, **kwargs)
+
+
 class Container(BaseType):
     """Represents a base container for a container types."""
 
