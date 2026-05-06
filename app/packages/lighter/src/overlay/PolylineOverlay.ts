@@ -109,8 +109,7 @@ export class PolylineOverlay extends KeypointOverlay {
       flattenPolylinePoints(options.label.points ?? []);
 
     // Synthesize a Keypoint-compatible label so the parent's render machinery
-    // operates on a flat point list. The original nested label is preserved
-    // by reassigning `this.label` after super() returns.
+    // operates on a flat point list
     const flatLabel = {
       ...options.label,
       points: flatPoints,
@@ -228,13 +227,15 @@ export class PolylineOverlay extends KeypointOverlay {
    * @returns The id of the new point.
    */
   override addPoint(worldPoint: Point, variant?: string, id?: string): string {
-    const newId = super.addPoint(worldPoint, variant, id);
-
+    // Bump boundaries BEFORE super, since `super.addPoint` synchronously
+    // dispatches `lighter:keypoint-point-added`.
     if (this.segmentBoundaries.length === 0) {
       this.segmentBoundaries.push(1);
     } else {
       this.segmentBoundaries[this.segmentBoundaries.length - 1] += 1;
     }
+
+    const newId = super.addPoint(worldPoint, variant, id);
 
     this.setConnections(this.rebuildConnectionsFromBoundaries());
 
@@ -256,12 +257,11 @@ export class PolylineOverlay extends KeypointOverlay {
       return;
     }
 
-    const sizeBefore = this.getRelativePoints().length;
-    super.removePoint(index);
-    const sizeAfter = this.getRelativePoints().length;
+    if (!this.getDeletable()) {
+      return;
+    }
 
-    // Base may have rejected the call (e.g. !isDeletable, out-of-range)
-    if (sizeAfter === sizeBefore) {
+    if (index < 0 || index >= this.getRelativePoints().length) {
       return;
     }
 
@@ -273,6 +273,11 @@ export class PolylineOverlay extends KeypointOverlay {
     if (this.segmentBoundaries[segIdx] === segStart) {
       this.segmentBoundaries.splice(segIdx, 1);
     }
+
+    // super dispatches `lighter:keypoint-point-deleted` synchronously
+    // after splicing `#points`; defer this call until event state is
+    // consistent
+    super.removePoint(index);
 
     this.setConnections(this.rebuildConnectionsFromBoundaries());
   }
@@ -310,16 +315,18 @@ export class PolylineOverlay extends KeypointOverlay {
       );
     }
 
+    for (let i = segmentIdx; i < this.segmentBoundaries.length; i++) {
+      this.segmentBoundaries[i] += 1;
+    }
+
+    // synchronously dispatches `lighter:keypoint-point-added`; defer until
+    // event state is consistent
     const newId = this.insertRelativePointAt(
       segStart + indexInSegment,
       relPoint,
       variant,
       id
     );
-
-    for (let i = segmentIdx; i < this.segmentBoundaries.length; i++) {
-      this.segmentBoundaries[i] += 1;
-    }
 
     this.setConnections(this.rebuildConnectionsFromBoundaries());
 

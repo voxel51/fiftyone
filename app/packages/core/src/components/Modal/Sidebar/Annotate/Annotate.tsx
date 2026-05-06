@@ -14,6 +14,7 @@ import useSourceFieldToActivate from "./useSourceFieldToActivate";
 import useLabels from "./useLabels";
 import { useAnnotationContextManager } from "./useAnnotationContextManager";
 import useDelete from "./Edit/useDelete";
+import { useRegisterPolylineSidebarSyncHandlers } from "./Edit/useRegisterPolylineSidebarSyncHandlers";
 import { KnownContexts, useUndoRedo } from "@fiftyone/commands";
 import LabelList from "./LabelList";
 import { useRegisterAIAnnotationEventHandlers } from "@fiftyone/annotation/src/agents/hooks/useRegisterAIAnnotationEventHandlers";
@@ -66,6 +67,7 @@ interface AnnotateProps {
 
 const Annotate = ({ disabledReason }: AnnotateProps) => {
   useRegisterAIAnnotationEventHandlers();
+  useRegisterPolylineSidebarSyncHandlers();
 
   const { schemaManagerDisplayed } = useSchemaManagerModal();
   const loading = useAtomValue(labelSchemasData) === null;
