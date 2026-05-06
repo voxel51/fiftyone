@@ -6,11 +6,11 @@
 
 from typing import List
 
-from google.protobuf.json_format import MessageToDict
+from fiftyone import Dataset, Sample, ViewField as F
+from fiftyone.multimodal.metadata import MultimodalMetadata
+from fiftyone.multimodal.schemas.v1 import SceneInventory
 
 from .base import DatabaseAdapter
-from fiftyone import Dataset, Sample
-from fiftyone.multimodal.schemas.v1 import SceneInventory
 
 
 class MongoAdapter(DatabaseAdapter):
@@ -25,15 +25,23 @@ class MongoAdapter(DatabaseAdapter):
         Args:
             inventories: a list of :class:`SceneInventory`
         """
-        dataset.add_samples(
-            [
-                cls._scene_inventory_to_sample(inventory)
-                for inventory in inventories
-            ]
-        )
+        scene_ids = {inventory.scene_id for inventory in inventories}
+        existing_samples = {
+            s.filepath: s
+            for s in dataset.match(F("filepath").is_in(scene_ids))
+        }
 
-    @classmethod
-    def _scene_inventory_to_sample(cls, inventory: SceneInventory) -> Sample:
-        sample = Sample(filepath=inventory.scene_id)
-        sample["metadata"] = MessageToDict(inventory)
-        return sample
+        new_samples = []
+        for inventory in inventories:
+            metadata = MultimodalMetadata.build_for(inventory)
+
+            if inventory.scene_id in existing_samples:
+                sample = existing_samples[inventory.scene_id]
+                sample["metadata"] = metadata
+                sample.save()
+            else:
+                sample = Sample(filepath=inventory.scene_id)
+                sample["metadata"] = metadata
+                new_samples.append(sample)
+
+        dataset.add_samples(new_samples)
