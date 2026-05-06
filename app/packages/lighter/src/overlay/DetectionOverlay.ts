@@ -45,6 +45,7 @@ export type DetectionLabel = RawLookerLabel & {
   bounding_box: number[];
   confidence?: number;
   mask?: SerializedMask;
+  mask_path?: string;
 };
 
 /**
@@ -145,19 +146,18 @@ export class DetectionOverlay
       } else {
         this.mask = new MaskCanvas(label.mask);
       }
-
       this.markDirty();
     } else {
       const hadMask = !!this.mask;
       this.mask?.destroy();
       this.mask = undefined;
-
       if (hadMask) this.markDirty();
     }
 
     this.eventBus.dispatch("lighter:overlay-label-updated", {
       id: this.id,
       label,
+      hasMask: !!this.mask,
     });
   }
 
@@ -1085,6 +1085,11 @@ export class DetectionOverlay
     if (!this.mask) {
       this.mask = new MaskCanvas();
       this.markDirty();
+      this.eventBus.dispatch("lighter:overlay-label-updated", {
+        id: this.id,
+        label: this.label,
+        hasMask: true,
+      });
     }
   }
 
@@ -1092,9 +1097,17 @@ export class DetectionOverlay
    * Removes the mask from this detection, destroying the MaskCanvas.
    */
   removeMask(): void {
+    const hadMask = !!this.mask;
     this.mask?.destroy();
     this.mask = undefined;
     this.markDirty();
+    if (hadMask) {
+      this.eventBus.dispatch("lighter:overlay-label-updated", {
+        id: this.id,
+        label: this.label,
+        hasMask: false,
+      });
+    }
   }
 
   // ---------------------------------------------------------------------------

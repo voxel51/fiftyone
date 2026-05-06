@@ -28,6 +28,7 @@ import { KnownCommands, KnownContexts, useCommand } from "@fiftyone/commands";
 import useColor from "./useColor";
 import useExit from "./useExit";
 import { useDetectionMode } from "./useDetectionMode";
+import { useSegmentationMode } from "./useSegmentationMode";
 import { useAnnotationController } from "@fiftyone/annotation";
 
 const LabelHamburgerMenu = () => {
@@ -50,24 +51,22 @@ const LabelHamburgerMenu = () => {
   const data = useAtomValue(currentData);
   const overlay = useAtomValue(currentOverlay);
   const setData = useSetAtom(currentData);
+  const { isEditingMask } = useSegmentationMode();
 
-  const isMaskDetection = !!(data?.mask || data?.isEditingMask);
+  const isMaskDetection = !!(data?.mask || isEditingMask);
   const isDetection = type === DETECTION;
 
   const handleAddMask = useCallback(() => {
     if (overlay instanceof DetectionOverlay) {
       overlay.initMask();
-
-      setData({ isEditingMask: true });
       setOpen(false);
     }
-  }, [overlay, setData]);
+  }, [overlay]);
 
   const handleRemoveMask = useCallback(() => {
     if (overlay instanceof DetectionOverlay) {
       overlay.removeMask();
-
-      setData({ mask: undefined, isEditingMask: undefined });
+      setData({ mask: undefined });
       setOpen(false);
     }
   }, [overlay, setData]);

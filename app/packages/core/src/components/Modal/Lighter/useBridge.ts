@@ -70,6 +70,9 @@ export const useBridge = (scene: Scene2D | null) => {
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
   );
 
+  const segmentationMode = useSegmentationMode();
+  const detectionMode = useDetectionMode();
+
   useAnnotationEventHandler(
     "annotation:sidebarValueUpdated",
     useCallback(
@@ -261,23 +264,21 @@ export const useBridge = (scene: Scene2D | null) => {
     useCallback(
       (payload) => {
         if (!payload.label) return;
+
         const newLabel = coerceStringBooleans(
           payload.label as Record<string, unknown>
         );
+
         if (newLabel) {
           save(newLabel);
         }
+
+        segmentationMode.setEditingMask(payload.id, payload.hasMask);
+        detectionMode.setEditingMask(payload.id, payload.hasMask);
       },
-      [save]
+      [detectionMode, save, segmentationMode]
     )
   );
-
-  // ---------------------------------------------------------------------------
-  // Mode events: route Lighter signals to the active mode hook
-  // ---------------------------------------------------------------------------
-
-  const segmentationMode = useSegmentationMode();
-  const detectionMode = useDetectionMode();
 
   useEventHandler(
     "lighter:overlay-create",

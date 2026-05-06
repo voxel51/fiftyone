@@ -15,6 +15,7 @@ import useExit from "./useExit";
 import { isPatchesView } from "@fiftyone/state";
 import { fieldType, isFieldReadOnly, labelSchemaData } from "../state";
 import {
+  current,
   currentType,
   defaultField,
   fieldsOfType,
@@ -48,6 +49,19 @@ const lastUsedLabelAtom = atomFamily(
   (_field: string) => atom<string | null>(null) as PrimitiveAtom<string | null>
 );
 
+// Set of label ids currently being authored as masks. Updated by
+// `useBridge` via the public `setEditingMask` action.
+const editingMaskLabelIdsAtom = atom<ReadonlySet<string>>(new Set<string>());
+
+// Derived: does the currently-edited label have a mask?
+const isEditingMaskAtom = atom((get) => {
+  const ids = get(editingMaskLabelIdsAtom);
+  if (ids.size === 0) return false;
+
+  const data = get(current)?.data as { _id?: string } | undefined;
+  return data?._id !== undefined && ids.has(data._id);
+});
+
 const detectionTypes = new Set(["Detection", "Detections"]);
 
 /**
@@ -75,11 +89,31 @@ export const useDetectionMode = () => {
   const selectedLabelRef = useRef(selectedLabel);
   selectedLabelRef.current = selectedLabel;
 
+  const isEditingMask = useAtomValue(isEditingMaskAtom);
+  const setEditingMaskIds = useSetAtom(editingMaskLabelIdsAtom);
+
+  // Mark `id` as mid-mask authoring (when `hasMask`) or clear that
+  const setEditingMask = useCallback(
+    (id: string, hasMask: boolean) => {
+      setEditingMaskIds((prev) => {
+        const has = prev.has(id);
+        if (hasMask === has) return prev;
+
+        const next = new Set(prev);
+        if (hasMask) next.add(id);
+        else next.delete(id);
+
+        return next;
+      });
+    },
+    [setEditingMaskIds]
+  );
+
   const isEditingDetection =
     editingLabelType === DETECTION &&
     !selectedLabel?.isNew &&
     !selectedLabel?.data?.mask &&
-    !selectedLabel?.data?.isEditingMask;
+    !isEditingMask;
 
   const noActiveFields = fields.length === 0;
   const disabled = isPatchView || noActiveFields;
@@ -321,6 +355,7 @@ export const useDetectionMode = () => {
 
       // Bridge actions (wired to Lighter events by `useBridge`)
       create,
+      setEditingMask,
     }),
     [
       activateDetectionMode,
@@ -330,6 +365,7 @@ export const useDetectionMode = () => {
       toggleDetectionMode,
       tooltip,
       create,
+      setEditingMask,
     ]
   );
 };

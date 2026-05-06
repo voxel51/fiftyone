@@ -24,6 +24,7 @@ import {
 import PrimitiveWrapper from "./PrimitiveWrapper";
 import useActivePrimitive from "./useActivePrimitive";
 import useExit from "./useExit";
+import { useSegmentationMode } from "./useSegmentationMode";
 
 const ContentContainer = styled.div`
   margin: 0.25rem 1rem;
@@ -53,7 +54,8 @@ export default function Edit() {
   const type = useAtomValue(currentType);
   const data = useAtomValue(currentData);
   const isReadOnly = useAtomValue(currentFieldIsReadOnlyAtom);
-  const isMaskDetection = !!(data?.mask || data?.isEditingMask);
+  const { isEditingMask } = useSegmentationMode();
+  const isMaskDetection = !!(data?.mask || isEditingMask);
   const [activePrimitivePath] = useActivePrimitive();
 
   const clear = useClearModal();

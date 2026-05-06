@@ -29,13 +29,15 @@ export type LighterEventGroup = {
     bounds: Rect;
   };
   /**
-   * Emitted when an overlay's label is updated via `updateLabel` (e.g. by
-   * AI inference applying a new mask). Subscribers can use this to keep
-   * sidebar/edit state in sync without the producer reaching into React.
+   * Emitted when an overlay's label is updated, or when an overlay's
+   * editing state changes in a way subscribers need to observe (e.g.
+   * `DetectionOverlay.initMask`/`removeMask` flipping mask-canvas state
+   * without changing label data).
    */
   "lighter:overlay-label-updated": {
     id: string;
     label: RawLookerLabel;
+    hasMask: boolean;
   };
 
   // ============================================================================

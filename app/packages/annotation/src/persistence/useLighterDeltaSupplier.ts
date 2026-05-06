@@ -34,16 +34,9 @@ const buildAnnotationLabel = (overlay: BaseOverlay): LabelProxy | undefined => {
     ];
 
     if (hasValidBounds(boundingBox)) {
-      // Strip transient `isEditingMask` flag and merge pending encoded mask
-      const {
-        isEditingMask,
-        mask: _mask,
-        mask_path: _maskPath,
-        ...data
-      } = overlay.label as DetectionLabel & {
-        isEditingMask?: boolean;
-        mask_path?: string;
-      };
+      // Pull mask/mask_path off so we can decide what (if anything) to persist
+      // for the mask channel.
+      const { mask: _mask, mask_path: _maskPath, ...data } = overlay.label;
       const pendingMask = overlay.getPendingMask();
 
       // Include mask data only when the overlay still has a mask.

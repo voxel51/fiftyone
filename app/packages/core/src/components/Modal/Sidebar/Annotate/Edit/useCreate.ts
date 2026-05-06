@@ -23,7 +23,6 @@ export interface CreateOptions {
   id?: string;
   field?: string;
   labelValue?: string;
-  isEditingMask?: boolean;
 }
 
 const useCreateAnnotationLabel = () => {
@@ -49,7 +48,6 @@ const useCreateAnnotationLabel = () => {
       const data = buildNewLabelData(field, type, {
         id,
         labelValue,
-        isEditingMask: options?.isEditingMask,
       });
 
       if (type === CLASSIFICATION) {
@@ -165,7 +163,6 @@ export function buildNewLabelData(
     _id: labelId,
     ...defaults,
     ...(labelValue && { label: labelValue }),
-    ...(options?.isEditingMask && { isEditingMask: true }),
   };
 
   if (type === POLYLINE) {

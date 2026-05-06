@@ -3,14 +3,19 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { atom, useAtom, useAtomValue } from "jotai";
+import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useRecoilValue } from "recoil";
 
-import { BaseOverlay, useLighter } from "@fiftyone/lighter";
+import { BaseOverlay, DetectionOverlay, useLighter } from "@fiftyone/lighter";
 import { isPatchesView } from "@fiftyone/state";
 import { DETECTION } from "@fiftyone/utilities";
 
-import { currentType, fieldsOfType, useAnnotationContext } from "./state";
+import {
+  current,
+  currentType,
+  fieldsOfType,
+  useAnnotationContext,
+} from "./state";
 import { useAIAnnotationMode } from "./useAIAnnotationMode";
 import useCreate from "./useCreate";
 import useExit from "./useExit";
@@ -43,6 +48,19 @@ const segmentationModeActiveAtom = atom<boolean>(false);
 
 /** @internal */ export { segmentationModeActiveAtom as _unsafeSegmentationModeActiveAtom };
 
+// Set of label ids currently being authored as masks. Updated by
+// `useBridge` via the public `setEditingMask` action.
+const editingMaskLabelIdsAtom = atom<ReadonlySet<string>>(new Set<string>());
+
+// Derived: does the currently-edited label have a mask?
+const isEditingMaskAtom = atom((get) => {
+  const ids = get(editingMaskLabelIdsAtom);
+  if (ids.size === 0) return false;
+
+  const data = get(current)?.data as { _id?: string } | undefined;
+  return data?._id !== undefined && ids.has(data._id);
+});
+
 /**
  * Segmentation mask tool state hook.
  *
@@ -60,9 +78,28 @@ export const useSegmentationMode = () => {
   const onExit = useExit();
   const isPatchView = useRecoilValue(isPatchesView);
   const fields = useAtomValue(fieldsOfType(DETECTION));
-
+  const isEditingMask = useAtomValue(isEditingMaskAtom);
+  const setEditingMaskIds = useSetAtom(editingMaskLabelIdsAtom);
   const [segmentationModeActive, setSegmentationModeActive] = useAtom(
     segmentationModeActiveAtom
+  );
+
+  // Mark `id` as mid-mask authoring (when `hasMask`) or clear that
+  const setEditingMask = useCallback(
+    (id: string, hasMask: boolean) => {
+      setEditingMaskIds((prev) => {
+        const has = prev.has(id);
+        if (hasMask === has) return prev;
+
+        const next = new Set(prev);
+
+        if (hasMask) next.add(id);
+        else next.delete(id);
+
+        return next;
+      });
+    },
+    [setEditingMaskIds]
   );
 
   const manualMode = useManualSegmentationTools();
@@ -79,7 +116,7 @@ export const useSegmentationMode = () => {
 
   const isEditingSegmentation =
     editingLabelType === DETECTION &&
-    (!!selectedLabel?.data?.mask || !!selectedLabel?.data?.isEditingMask);
+    (!!selectedLabel?.data?.mask || isEditingMask);
 
   const noActiveFields = fields.length === 0;
   const disabled = isPatchView || noActiveFields;
@@ -194,8 +231,12 @@ export const useSegmentationMode = () => {
   const create = useCallback(() => {
     closeOpenLabel();
     // TODO: assume previous `field` and `labelValue`
-    // e.g. createDetection({ field, labelValue, isEditingMask: true });
-    createDetection({ isEditingMask: true });
+    // e.g. createDetection({ field, labelValue });
+    const newLabel = createDetection();
+
+    if (newLabel?.overlay instanceof DetectionOverlay) {
+      newLabel.overlay.initMask();
+    }
   }, [closeOpenLabel, createDetection]);
 
   /**
@@ -214,6 +255,7 @@ export const useSegmentationMode = () => {
     () => ({
       // State (read-only)
       segmentationModeActive,
+      isEditingMask,
       disabled,
       tooltip,
 
@@ -225,6 +267,7 @@ export const useSegmentationMode = () => {
       // Bridge actions (wired to Lighter events by `useBridge`)
       create,
       finalizePointSelection,
+      setEditingMask,
 
       // Tool state and actions
       tool: manualMode.tool,
@@ -240,6 +283,7 @@ export const useSegmentationMode = () => {
     }),
     [
       segmentationModeActive,
+      isEditingMask,
       disabled,
       tooltip,
       activateSegmentationMode,
@@ -247,6 +291,7 @@ export const useSegmentationMode = () => {
       toggleSegmentationMode,
       create,
       finalizePointSelection,
+      setEditingMask,
       manualMode,
     ]
   );
