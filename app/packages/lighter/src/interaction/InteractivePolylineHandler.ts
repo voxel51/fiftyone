@@ -256,13 +256,19 @@ export class InteractivePolylineHandler implements InteractionHandler {
    * Updates the preview line based on cursor position and modifier state.
    * Hidden when:
    * - Cursor is over an existing point — next click is grab/delete.
+   * - Cursor is over an edge — next click inserts at the projection on
+   *   that edge, anchored to its endpoints rather than the segment's.
    * - Shift is held — next click starts a fresh segment with no anchor.
    */
   private refreshPreview(
     worldPoint: Point,
     modifiers: ClickEventModifiers
   ): void {
-    if (modifiers.shiftKey || this.overlay.findPointIdAt(worldPoint)) {
+    if (
+      modifiers.shiftKey ||
+      this.overlay.findPointIdAt(worldPoint) ||
+      this.overlay.findEdgeAt(worldPoint)
+    ) {
       this.overlay.setPreviewPoint(null);
       return;
     }
