@@ -13,6 +13,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 import { SortableEvent } from "react-sortablejs";
 import {
@@ -496,6 +497,11 @@ export function usePanelAreaRenderer(areaId: string) {
     currentPanelAreasRenderer
   );
 
+  const renderers = useSyncExternalStore(
+    panelAreaRenderers.subscribe,
+    panelAreaRenderers.getSnapshot
+  );
+
   const setRenderer = useCallback(
     (rendererId: string) => {
       setCurrentRenderers((renderers) => {
@@ -507,22 +513,23 @@ export function usePanelAreaRenderer(areaId: string) {
     [areaId, setCurrentRenderers]
   );
 
-  const unsetRenderer = useCallback(() => {
-    setCurrentRenderers((renderers) => {
-      const updatedRenderers = new Map(renderers);
-      updatedRenderers.delete(areaId);
-      return updatedRenderers;
-    });
-  }, [areaId, setCurrentRenderers]);
+  const unsetRenderer = useCallback(
+    (rendererId: string) => {
+      setCurrentRenderers((renderers) => {
+        const updatedRenderers = new Map(renderers);
+        if (!rendererId || updatedRenderers.get(areaId) === rendererId) {
+          updatedRenderers.delete(areaId);
+        }
+        return updatedRenderers;
+      });
+    },
+    [areaId, setCurrentRenderers]
+  );
 
   const currentRendererId = currentRenderers.get(areaId);
+  const CurrentRenderer = currentRendererId
+    ? renderers.get(currentRendererId)
+    : undefined;
 
-  return {
-    setRenderer,
-    unsetRenderer,
-    currentRendererId,
-    CurrentRenderer: currentRendererId
-      ? panelAreaRenderers.get(currentRendererId)
-      : undefined,
-  };
+  return { setRenderer, unsetRenderer, currentRendererId, CurrentRenderer };
 }
