@@ -211,6 +211,85 @@ describe("SAM2BrowserAnnotationAgent", () => {
     });
   });
 
+  describe("mask normalization", () => {
+    const inferAndDecode = async (mask: Float32Array) => {
+      const providerResult = makeProviderResult({
+        mask,
+        maskWidth: mask.length,
+        maskHeight: 1,
+      });
+      provider.infer.mockResolvedValue(providerResult);
+      return agent.infer(makeContext());
+    };
+
+    const expectMaskMatches = async (
+      result: Awaited<ReturnType<typeof agent.infer>>,
+      expected: number[]
+    ) => {
+      const encoded = await encodeMaskData(new Uint8Array(expected), [
+        1,
+        expected.length,
+      ]);
+      if (result.type !== "sync") throw new Error("expected sync result");
+      expect(result.response.detections[0].mask).toBe(encoded);
+    };
+
+    it("thresholds values strictly greater than 0.5 to 1", async () => {
+      // 0.5 itself is NOT > 0.5, so it becomes 0
+      const result = await inferAndDecode(
+        new Float32Array([0.5, 0.50001, 0.499, 0.5])
+      );
+      await expectMaskMatches(result, [0, 1, 0, 0]);
+    });
+
+    it("maps negative values to 0", async () => {
+      const result = await inferAndDecode(
+        new Float32Array([-1, -0.0001, -100, -1e-8])
+      );
+      await expectMaskMatches(result, [0, 0, 0, 0]);
+    });
+
+    it("maps values in (0.5, 1] to 1 and [0, 0.5] to 0", async () => {
+      const result = await inferAndDecode(
+        new Float32Array([0, 0.25, 0.5, 0.75, 1.0])
+      );
+      await expectMaskMatches(result, [0, 0, 0, 1, 1]);
+    });
+
+    it("throws when mask contains NaN", async () => {
+      const providerResult = makeProviderResult({
+        mask: new Float32Array([0.1, NaN, 0.9, 0.2]),
+      });
+      provider.infer.mockResolvedValue(providerResult);
+
+      await expect(agent.infer(makeContext())).rejects.toThrow(
+        /Invalid float at index 1/
+      );
+    });
+
+    it("throws when mask contains Infinity", async () => {
+      const providerResult = makeProviderResult({
+        mask: new Float32Array([0.1, 0.2, Infinity, 0.4]),
+      });
+      provider.infer.mockResolvedValue(providerResult);
+
+      await expect(agent.infer(makeContext())).rejects.toThrow(
+        /Invalid float at index 2/
+      );
+    });
+
+    it("throws when mask contains -Infinity", async () => {
+      const providerResult = makeProviderResult({
+        mask: new Float32Array([0.1, -Infinity, 0.9]),
+      });
+      provider.infer.mockResolvedValue(providerResult);
+
+      await expect(agent.infer(makeContext())).rejects.toThrow(
+        /Invalid float at index 1/
+      );
+    });
+  });
+
   describe("listSupportedTasks", () => {
     it("should return only SEGMENT", async () => {
       const tasks = await agent.listSupportedTasks();
