@@ -19,13 +19,8 @@ import useCreate from "./useCreate";
  * Active flag for 2D polyline annotation mode. While `true`, selecting a
  * polyline overlay installs an {@link InteractivePolylineHandler} on it; the
  * handler is torn down on selection change or mode deactivation.
- *
- * This atom is exported (as `_unsafe…`) for inspection from non-React code
- * such as InteractionManager bridges; React code should use
- * {@link usePolylineMode} instead.
  */
 const polylineModeActiveAtom = atom<boolean>(false);
-export { polylineModeActiveAtom as _unsafePolylineModeActiveAtom };
 
 /**
  * Modifier policy: Alt-click on a point deletes it.
