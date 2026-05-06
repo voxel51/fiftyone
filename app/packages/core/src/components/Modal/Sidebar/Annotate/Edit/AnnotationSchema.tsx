@@ -158,15 +158,24 @@ const useHandleSchemaChange = (readOnly: boolean) => {
         allAttributes.filter((a) => a.when).map((a) => a.name)
       );
 
+      // Iterate over the unique conditional attribute names, obtain the current and
+      // previous owner of the data attribute value, and conditionally delete the
+      // value if the owner has changed or the attribute has become hidden entirely.
       for (const name of uniqueConditionalNames) {
         if (!name) continue;
-        const prevEntry = resolveVisibleAttribute(
+
+        const prevOwner = resolveVisibleAttribute(
           name,
           allAttributes,
           (data ?? {}) as Record<string, unknown>
         );
-        const newEntry = resolveVisibleAttribute(name, allAttributes, value);
-        if (!newEntry || prevEntry !== newEntry) {
+        const currentOwner = resolveVisibleAttribute(
+          name,
+          allAttributes,
+          value
+        );
+
+        if (!currentOwner || prevOwner !== currentOwner) {
           delete value[name];
         }
       }

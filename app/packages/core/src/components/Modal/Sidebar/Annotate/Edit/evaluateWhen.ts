@@ -52,6 +52,9 @@ export function evaluateWhen(
 
   return conditions.some((cond) => {
     const handler = OPERATOR_HANDLERS[cond.operator];
+    if (!handler) {
+      throw new Error(`Unhandled operator: ${cond.operator}`);
+    }
     return handler(currentValues[cond.field], cond.value);
   });
 }
