@@ -43,7 +43,8 @@ class MultimodalMetadata(fo.Metadata):
         inventory.
 
         Args:
-            path_or_url: the path to a multimodal scene on disk or at a URL
+            scene_inventory: a :class:`SceneInventory` containing information
+                about a multimodal scene
 
         Returns:
             a :class:`MultimodalMetadata`

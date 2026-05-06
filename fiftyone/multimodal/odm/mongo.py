@@ -23,6 +23,7 @@ class MongoAdapter(DatabaseAdapter):
         metadata field 'scene_inventory'.
 
         Args:
+            dataset: the :class:`fiftyone.Dataset` to write to
             inventories: a list of :class:`SceneInventory`
         """
         scene_ids = {inventory.scene_id for inventory in inventories}

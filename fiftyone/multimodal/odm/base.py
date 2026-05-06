@@ -22,8 +22,9 @@ class DatabaseAdapter(abc.ABC):
         metadata field 'scene_inventory'.
 
         Args:
+            dataset: the :class:`fiftyone.Dataset` to write to
             inventories: a list of :class:`SceneInventory`
         """
         raise NotImplementedError(
-            "subclasses must implement write_scene_inventory()"
+            "subclasses must implement write_scene_inventories()"
         )
