@@ -27,7 +27,7 @@ class MongoAdapter(DatabaseAdapter):
         """
         scene_ids = {inventory.scene_id for inventory in inventories}
         existing_samples = {
-            s.filepath: s
+            s["metadata"].scene_id: s
             for s in dataset.match(F("filepath").is_in(scene_ids))
         }
 
@@ -44,4 +44,5 @@ class MongoAdapter(DatabaseAdapter):
                 sample["metadata"] = metadata
                 new_samples.append(sample)
 
-        dataset.add_samples(new_samples)
+        if new_samples:
+            dataset.add_samples(new_samples)
