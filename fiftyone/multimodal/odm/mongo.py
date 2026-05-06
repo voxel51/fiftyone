@@ -4,13 +4,21 @@
 |
 """
 
-from typing import List
+from typing import List, Optional
 
 from fiftyone import Dataset, Sample, ViewField as F
 from fiftyone.multimodal.metadata import MultimodalMetadata
 from fiftyone.multimodal.schemas.v1 import SceneInventory
 
 from .base import DatabaseAdapter
+
+
+def get_scene_id(sample: Sample) -> Optional[str]:
+    """Returns the scene ID for the given sample."""
+    metadata = sample["metadata"]
+    if not metadata:
+        return None
+    return metadata.scene_id
 
 
 class MongoAdapter(DatabaseAdapter):
@@ -28,7 +36,7 @@ class MongoAdapter(DatabaseAdapter):
         """
         scene_ids = {inventory.scene_id for inventory in inventories}
         existing_samples = {
-            s["metadata"].scene_id: s
+            get_scene_id(s): s
             for s in dataset.match(F("filepath").is_in(scene_ids))
         }
 
