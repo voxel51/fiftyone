@@ -127,6 +127,62 @@ class When:
         return parts + ")"
 
 
+class WhenEquals(When):
+    """Convenience subclass of :class:`When` for ``equals`` conditions.
+
+    Equivalent to ``When(WhenOperator.EQUALS, field=..., value=...)``
+    without spelling the operator. Inherits ``to_dict``,
+    ``__post_init__`` validation, and operator-based dispatch from
+    :class:`When`.
+
+    Example::
+
+        WhenEquals(field="damage_present", value=True)
+    """
+
+    def __init__(self, field: str, value: Any, then: Optional[dict] = None):
+        super().__init__(
+            operator=WhenOperator.EQUALS,
+            field=field,
+            value=value,
+            then=then,
+        )
+
+    def __repr__(self) -> str:
+        parts = f"WhenEquals(field={self.field!r}, value={self.value!r}"
+        if self.then is not None:
+            parts += f", then={self.then!r}"
+        return parts + ")"
+
+
+class WhenIn(When):
+    """Convenience subclass of :class:`When` for ``in`` conditions.
+
+    Equivalent to ``When(WhenOperator.IN, field=..., value=[...])``
+    without spelling the operator. Inherits ``to_dict``,
+    ``__post_init__`` validation, and operator-based dispatch from
+    :class:`When`.
+
+    Example::
+
+        WhenIn(field="car_model", value=["camry", "corolla"])
+    """
+
+    def __init__(self, field: str, value: list, then: Optional[dict] = None):
+        super().__init__(
+            operator=WhenOperator.IN,
+            field=field,
+            value=value,
+            then=then,
+        )
+
+    def __repr__(self) -> str:
+        parts = f"WhenIn(field={self.field!r}, value={self.value!r}"
+        if self.then is not None:
+            parts += f", then={self.then!r}"
+        return parts + ")"
+
+
 @dataclass(repr=False)
 class AttributeSpec:
     """A typed annotation attribute with optional conditional visibility.
@@ -150,7 +206,7 @@ class AttributeSpec:
             type="str",
             component="dropdown",
             values=["front", "rear", "driver_side", "passenger_side"],
-            when=[When(WhenOperator.EQUALS, field="damage_present", value=True)],
+            when=[WhenEquals(field="damage_present", value=True)],
         )
     """
 
