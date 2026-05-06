@@ -224,20 +224,66 @@ export class InteractivePolylineHandler implements InteractionHandler {
     return true;
   }
 
-  onMove(_point: Point, worldPoint: Point, _event: PointerEvent): boolean {
+  onMove(_point: Point, worldPoint: Point, event: PointerEvent): boolean {
     if (this.dragPointId !== null) {
       this.overlay.movePointById(
         this.dragPointId,
         this.overlay.absolutePointToRelative(worldPoint)
       );
+      // Hide new point preview while dragging
+      this.overlay.setPreviewPoint(null);
 
       return true;
     }
 
-    // Hover preview — telegraphs where the next click will place a point.
-    this.overlay.setPreviewPoint(worldPoint);
+    this.refreshPreview(worldPoint, getClickModifiers(event));
 
     return true;
+  }
+
+  onModifiersChanged(
+    modifiers: ClickEventModifiers,
+    worldPoint: Point | null
+  ): void {
+    if (this.dragPointId !== null || !worldPoint) {
+      return;
+    }
+
+    this.refreshPreview(worldPoint, modifiers);
+  }
+
+  /**
+   * Updates the preview line based on cursor position and modifier state.
+   * Hidden when:
+   * - Cursor is over an existing point — next click is grab/delete.
+   * - Shift is held — next click starts a fresh segment with no anchor.
+   */
+  private refreshPreview(
+    worldPoint: Point,
+    modifiers: ClickEventModifiers
+  ): void {
+    if (modifiers.shiftKey || this.overlay.findPointIdAt(worldPoint)) {
+      this.overlay.setPreviewPoint(null);
+      return;
+    }
+
+    this.overlay.setPreviewPoint(worldPoint);
+  }
+
+  getCursor(
+    worldPoint: Point,
+    _scale: number,
+    modifiers?: ClickEventModifiers
+  ): string {
+    if (this.dragPointId !== null) {
+      return "grabbing";
+    }
+
+    if (this.overlay.findPointIdAt(worldPoint)) {
+      return modifiers?.altKey ? "not-allowed" : "grab";
+    }
+
+    return "crosshair";
   }
 
   onPointerUp(_point: Point, _event: PointerEvent): boolean {

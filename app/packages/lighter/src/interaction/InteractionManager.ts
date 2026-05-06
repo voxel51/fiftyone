@@ -4,6 +4,7 @@
 
 import { detectionModeBridge } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/bridgeDetectionMode";
 import { EventDispatcher, getEventBus } from "@fiftyone/events";
+import type { ClickEventModifiers } from "@fiftyone/utilities";
 import { TypeGuards } from "../core/Scene2D";
 import type { LighterEventGroup } from "../events";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
@@ -98,8 +99,29 @@ export interface InteractionHandler {
    * Returns the type of cursor that is currently appropriate
    * @param worldPoint - Current screen location translated to viewport location.
    * @param scale - The current scaling factor of the renderer.
+   * @param modifiers - Current keyboard modifier state. Tracked by the
+   *  manager across both pointer and key events, so cursor can react to
+   *  alt/shift/etc. presses even when the mouse is still.
    */
-  getCursor?(worldPoint: Point, scale: number): string;
+  getCursor?(
+    worldPoint: Point,
+    scale: number,
+    modifiers?: ClickEventModifiers
+  ): string;
+
+  /**
+   * Notification that the global modifier state changed. Fired by the
+   * manager on key press/release while this handler is installed, so
+   * handlers can react to modifier changes without a pointer move
+   * (e.g. hide the preview line on shift-press for new-segment intent).
+   *
+   * `worldPoint` is the cursor's last known world position, or `null`
+   * when no pointer event has been observed yet.
+   */
+  onModifiersChanged?(
+    modifiers: ClickEventModifiers,
+    worldPoint: Point | null
+  ): void;
 
   /**
    * Returns the current move state of the handler
@@ -239,6 +261,18 @@ export class InteractionManager {
   private lastClickPoint?: Point;
   private maintainAspectRatio = false;
 
+  /**
+   * Current modifier state, refreshed from both pointer events and
+   * document key events so handlers can react to modifier changes
+   * (e.g. alt-hover cursor swap) without requiring a pointer move.
+   */
+  private currentModifiers: ClickEventModifiers = {
+    altKey: false,
+    ctrlKey: false,
+    metaKey: false,
+    shiftKey: false,
+  };
+
   private canonicalMediaId?: string;
 
   private emptyCanvasClickHandler?: EmptyCanvasClickHandler;
@@ -304,6 +338,8 @@ export class InteractionManager {
     const point = this.getCanvasPoint(event);
     const worldPoint = this.renderer.screenToWorld(point);
     const scale = this.renderer.getScale();
+
+    this.syncModifiersFromEvent(event);
 
     this.clickStartTime = Date.now();
     this.clickStartPoint = point;
@@ -375,7 +411,11 @@ export class InteractionManager {
     }
 
     if (handler?.onPointerDown?.(point, worldPoint, event, scale)) {
-      const cursor = handler.getCursor?.(worldPoint, scale);
+      const cursor = handler.getCursor?.(
+        worldPoint,
+        scale,
+        this.currentModifiers
+      );
       if (cursor) {
         this.canvas.style.cursor = cursor;
       }
@@ -427,7 +467,11 @@ export class InteractionManager {
     ) {
       this.canvas.style.cursor = "pointer";
     } else if (TypeGuards.isInteractionHandler(handler) && handler.getCursor) {
-      this.canvas.style.cursor = handler.getCursor(worldPoint, scale);
+      this.canvas.style.cursor = handler.getCursor(
+        worldPoint,
+        scale,
+        this.currentModifiers
+      );
     }
   }
 
@@ -501,6 +545,7 @@ export class InteractionManager {
     const worldPoint = this.renderer.screenToWorld(point);
     const scale = this.renderer.getScale();
     this.currentPixelCoordinates = point;
+    this.syncModifiersFromEvent(event);
 
     const interactiveHandler = this.getInteractiveHandler();
     let handler = this.findMovingHandler() || this.findHandlerAtPoint(point);
@@ -603,6 +648,8 @@ export class InteractionManager {
     const scale = this.renderer.getScale();
     const now = Date.now();
 
+    this.syncModifiersFromEvent(event);
+
     let handler: InteractionHandler | undefined = undefined;
 
     const interactiveHandler = this.getInteractiveHandler();
@@ -680,7 +727,8 @@ export class InteractionManager {
 
     this.renderer.enableZoomPan();
     this.canvas.style.cursor =
-      handler?.getCursor?.(worldPoint, scale) || this.canvas.style.cursor;
+      handler?.getCursor?.(worldPoint, scale, this.currentModifiers) ||
+      this.canvas.style.cursor;
     this.clickStartPoint = undefined;
     this.clickStartTime = 0;
   };
@@ -732,6 +780,9 @@ export class InteractionManager {
     ) {
       return;
     }
+
+    this.syncModifiersFromEvent(event);
+
     if (event.shiftKey) {
       this.maintainAspectRatio = event.shiftKey;
       return;
@@ -769,8 +820,61 @@ export class InteractionManager {
       return;
     }
 
+    this.syncModifiersFromEvent(event);
+
     this.maintainAspectRatio = event.shiftKey;
   };
+
+  /**
+   * Snapshot modifier state from a pointer or keyboard event. If anything
+   * changed and we have a self-managed interactive handler installed, push
+   * a fresh cursor. Without this, a handler can't react to modifier
+   * changes (e.g. alt-press) until the next pointer move.
+   */
+  private syncModifiersFromEvent(event: PointerEvent | KeyboardEvent): void {
+    const next: ClickEventModifiers = {
+      altKey: event.altKey,
+      ctrlKey: event.ctrlKey,
+      metaKey: event.metaKey,
+      shiftKey: event.shiftKey,
+    };
+
+    const changed =
+      next.altKey !== this.currentModifiers.altKey ||
+      next.ctrlKey !== this.currentModifiers.ctrlKey ||
+      next.metaKey !== this.currentModifiers.metaKey ||
+      next.shiftKey !== this.currentModifiers.shiftKey;
+
+    this.currentModifiers = next;
+
+    if (!changed) {
+      return;
+    }
+
+    const interactiveHandler = this.getInteractiveHandler();
+    if (
+      !interactiveHandler ||
+      !isSelfManagedInteractiveHandler(interactiveHandler)
+    ) {
+      return;
+    }
+
+    const pixel = this.currentPixelCoordinates;
+    const worldPoint = pixel ? this.renderer.screenToWorld(pixel) : null;
+
+    interactiveHandler.onModifiersChanged?.(this.currentModifiers, worldPoint);
+
+    if (worldPoint && interactiveHandler.getCursor) {
+      const cursor = interactiveHandler.getCursor(
+        worldPoint,
+        this.renderer.getScale(),
+        this.currentModifiers
+      );
+      if (cursor) {
+        this.canvas.style.cursor = cursor;
+      }
+    }
+  }
 
   private handleClick(point: Point, event: PointerEvent, now: number): void {
     if (!this.clickStartPoint || !this.clickStartTime) return;
@@ -861,7 +965,8 @@ export class InteractionManager {
     if (handler && this.hoveredHandler !== handler && !movingHandler) {
       handler.onHoverEnter?.(point, event);
       this.canvas.style.cursor =
-        handler.getCursor?.(worldPoint, scale) || this.canvas.style.cursor;
+        handler.getCursor?.(worldPoint, scale, this.currentModifiers) ||
+        this.canvas.style.cursor;
 
       this.eventBus.dispatch("lighter:overlay-hover", {
         id: handler.id,
@@ -872,7 +977,8 @@ export class InteractionManager {
     // If we are hovering on the same overlay, move the hover
     if (this.hoveredHandler === handler) {
       this.canvas.style.cursor =
-        handler.getCursor?.(worldPoint, scale) || this.canvas.style.cursor;
+        handler.getCursor?.(worldPoint, scale, this.currentModifiers) ||
+        this.canvas.style.cursor;
 
       this.eventBus.dispatch("lighter:overlay-hover-move", {
         id: handler.id,
