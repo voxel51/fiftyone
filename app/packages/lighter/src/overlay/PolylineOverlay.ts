@@ -39,6 +39,11 @@ export interface PolylineOptions {
 
 const DEFAULT_FILL_OPACITY = 0.3;
 
+export type SegmentEndpoint = {
+  segmentIdx: number;
+  end: "head" | "tail";
+} | null;
+
 /**
  * Flattens a polyline's nested points into a single array, emitting one
  * `connections` path per segment with sequential indices and a parallel
@@ -91,6 +96,13 @@ export class PolylineOverlay extends KeypointOverlay {
    * preview anchors to whichever endpoint is globally nearest the cursor.
    */
   private previewAnchorSegmentIdx: number | null = null;
+
+  /**
+   * When `true`, the preview line anchors against the segment's far endpoint
+   * instead of the nearest — mirrors the meta-key flip in the interactive
+   * handler so the dashed telegraph matches what a click will produce.
+   */
+  private previewAnchorFlipped = false;
 
   constructor(options: PolylineOptions) {
     const { flatPoints, connections, segmentBoundaries } =
@@ -563,17 +575,18 @@ export class PolylineOverlay extends KeypointOverlay {
    * @param restrictToSegmentIdx If provided, only the head/tail of that
    *  segment are considered; returns `null` if the segment is missing or
    *  empty.
-   * @returns `{ segmentIdx, end }` for the closest endpoint, or `null` if no
-   *  non-empty segments exist. `end` is `"head"` for the segment's first point
-   *  and `"tail"` for its last.
+   * @param preferFar When `true`, picks the farthest candidate instead of
+   *  the nearest — used to override the default proximity anchor (e.g.
+   *  meta-click extending the opposite end of a segment).
+   * @returns `{ segmentIdx, end }` for the matching endpoint, or `null` if
+   *  no non-empty segments exist. `end` is `"head"` for the segment's first
+   *  point and `"tail"` for its last.
    */
   findNearestEndpoint(
     worldPoint: Point,
-    restrictToSegmentIdx?: number
-  ): {
-    segmentIdx: number;
-    end: "head" | "tail";
-  } | null {
+    restrictToSegmentIdx?: number,
+    preferFar?: boolean
+  ): SegmentEndpoint {
     const flatRel = this.getRelativePoints();
     if (flatRel.length === 0) {
       return null;
@@ -584,6 +597,14 @@ export class PolylineOverlay extends KeypointOverlay {
       end: "head" | "tail";
       dist: number;
     } | null = null;
+
+    const isBetter = (dist: number): boolean => {
+      if (!best) {
+        return true;
+      }
+
+      return preferFar ? dist > best.dist : dist < best.dist;
+    };
 
     let prev = 0;
     for (let segIdx = 0; segIdx < this.segmentBoundaries.length; segIdx++) {
@@ -603,7 +624,7 @@ export class PolylineOverlay extends KeypointOverlay {
 
       const headAbs = this.relativePointToAbsolute(flatRel[prev]);
       const dHead = distance(worldPoint.x, worldPoint.y, headAbs.x, headAbs.y);
-      if (!best || dHead < best.dist) {
+      if (isBetter(dHead)) {
         best = { segmentIdx: segIdx, end: "head", dist: dHead };
       }
 
@@ -616,7 +637,7 @@ export class PolylineOverlay extends KeypointOverlay {
           tailAbs.x,
           tailAbs.y
         );
-        if (!best || dTail < best.dist) {
+        if (isBetter(dTail)) {
           best = { segmentIdx: segIdx, end: "tail", dist: dTail };
         }
       }
@@ -674,9 +695,24 @@ export class PolylineOverlay extends KeypointOverlay {
   }
 
   /**
+   * Flips the preview anchor between the segment's near and far endpoint.
+   * Set to `true` while the user holds the meta-key override; the dashed
+   * line then telegraphs the same anchor a click would produce.
+   */
+  setPreviewAnchorFlipped(flipped: boolean): void {
+    if (this.previewAnchorFlipped === flipped) {
+      return;
+    }
+
+    this.previewAnchorFlipped = flipped;
+    this.markDirty();
+  }
+
+  /**
    * Anchors the preview line to whichever endpoint of the active segment
    * (or globally, if no active segment) is closest to the cursor — so the
-   * dashed line previews the actual point that EXTEND will produce.
+   * dashed line previews the actual point that EXTEND will produce. The
+   * meta-flip flag inverts that to the far endpoint instead.
    */
   protected override renderPreviewLine(
     renderer: Renderer2D,
@@ -688,7 +724,8 @@ export class PolylineOverlay extends KeypointOverlay {
 
     const nearest = this.findNearestEndpoint(
       this.previewPoint,
-      this.previewAnchorSegmentIdx ?? undefined
+      this.previewAnchorSegmentIdx ?? undefined,
+      this.previewAnchorFlipped
     );
     if (!nearest) {
       return;
