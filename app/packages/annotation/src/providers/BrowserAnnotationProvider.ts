@@ -98,12 +98,6 @@ export class BrowserAnnotationProvider implements AnnotationProvider {
       throw err;
     }
 
-    const params = getFetchParameters();
-    this.worker.postMessage({
-      type: "init",
-      payload: { ...params, headers: mergeHeaders(params.headers) },
-    });
-
     this.worker.onmessage = (e: MessageEvent) => {
       const { id, type, success, result, error } = e.data;
 
@@ -150,6 +144,12 @@ export class BrowserAnnotationProvider implements AnnotationProvider {
     };
 
     try {
+      const params = getFetchParameters();
+      this.worker.postMessage({
+        type: "init",
+        payload: { ...params, headers: mergeHeaders(params.headers) },
+      });
+
       await this.send("loadModel", {}).promise;
       this.onStatus?.("ready");
     } catch (err) {
