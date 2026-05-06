@@ -16,6 +16,7 @@ from fiftyone.server.routes.runtime_assets import (
     DEFAULT_MODEL_URLS,
     ModelWeights,
     _get_model_base_url,
+    _validate_model_id,
 )
 
 
@@ -111,3 +112,55 @@ class TestModelWeightsEndpoint:
             await endpoint.get(request)
 
         assert exc_info.value.status_code == 404
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "bad_model_id",
+        [
+            "../private/secret",
+            "sub/../../escape",
+            "/absolute/path",
+            "..",
+            "",
+        ],
+    )
+    async def test_path_traversal_returns_400(self, endpoint, bad_model_id):
+        """Tests that a 400 is raised for traversal / absolute / empty model_id."""
+        request = _make_request("sam2", bad_model_id)
+
+        with pytest.raises(HTTPException) as exc_info:
+            await endpoint.get(request)
+
+        assert exc_info.value.status_code == 400
+
+
+class TestValidateModelId:
+    """Tests for _validate_model_id helper."""
+
+    @pytest.mark.parametrize(
+        "model_id,expected",
+        [
+            ("encoder.onnx", "encoder.onnx"),
+            ("subdir/model.onnx", "subdir/model.onnx"),
+            ("a/b/c/file.bin", "a/b/c/file.bin"),
+        ],
+    )
+    def test_valid_paths_normalized(self, model_id, expected):
+        """Tests that valid relative paths are returned normalized."""
+        assert _validate_model_id(model_id) == expected
+
+    @pytest.mark.parametrize(
+        "bad_model_id",
+        [
+            "../private",
+            "a/../../b",
+            "/absolute",
+            "..",
+            "",
+        ],
+    )
+    def test_invalid_paths_raise_400(self, bad_model_id):
+        """Tests that traversal, absolute, and empty inputs raise 400."""
+        with pytest.raises(HTTPException) as exc_info:
+            _validate_model_id(bad_model_id)
+        assert exc_info.value.status_code == 400
