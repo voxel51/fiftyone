@@ -269,7 +269,9 @@ const createBlankDataset = (() => {
       addFields.push(`
     dataset.add_sample_field(
         "${path}", fo.${fieldType},
-        embedded_doc_type=${embeddedDocType ? "fo." : ""}${embeddedDocType}
+        embedded_doc_type=${
+          embeddedDocType !== "None" ? "fo." : ""
+        }${embeddedDocType}
     )`);
     }
 
@@ -285,19 +287,20 @@ const createBlankDataset = (() => {
     dataset = fo.Dataset("${datasetName}")
     dataset.add_sample_field("index", fo.IntField)
     dataset.media_type = "image"
+    dataset.persistent = True
 
     now = datetime.now()
 
 
     # an easy hack for creating a small number of samples
     # fix me to scale this factory
-    ${addFields.join("\n")}
+    ${addFields.join("\n    ")}
 
     samples = []
     sample_data = []
 
     # also a hack
-    ${sampleData.join("\n")}
+    ${sampleData.join("\n    ")}
     
     for idx in range(0, ${numSamples}):
         sample = fo.Sample(
