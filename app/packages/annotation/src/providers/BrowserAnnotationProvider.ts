@@ -1,4 +1,4 @@
-import { getFetchParameters } from "@fiftyone/utilities";
+import { getFetchParameters, mergeHeaders } from "@fiftyone/utilities";
 import type {
   AnnotationProvider,
   DownloadProgress,
@@ -98,9 +98,10 @@ export class BrowserAnnotationProvider implements AnnotationProvider {
       throw err;
     }
 
+    const params = getFetchParameters();
     this.worker.postMessage({
       type: "init",
-      payload: getFetchParameters(),
+      payload: { ...params, headers: mergeHeaders(params.headers) },
     });
 
     this.worker.onmessage = (e: MessageEvent) => {

@@ -2,9 +2,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@fiftyone/utilities", () => ({
   getFetchParameters: vi.fn(),
+  mergeHeaders: vi.fn(),
 }));
 
-import { getFetchParameters } from "@fiftyone/utilities";
+import { getFetchParameters, mergeHeaders } from "@fiftyone/utilities";
 import { BrowserAnnotationProvider } from "./BrowserAnnotationProvider";
 
 // Mock Worker
@@ -31,11 +32,14 @@ describe("BrowserAnnotationProvider", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     stubBrowserAPIs();
+    vi.mocked(getFetchParameters).mockReturnValue({ origin: "", headers: {}, pathPrefix: "" });
+    vi.mocked(mergeHeaders).mockReturnValue({});
   });
 
   it("Sends init message with fetch parameters after spawning worker", async () => {
     const params = { origin: "http://api", headers: { Auth: "x" }, pathPrefix: "/api/proxy/fiftyone-xyz" };
     vi.mocked(getFetchParameters).mockReturnValue(params);
+    vi.mocked(mergeHeaders).mockReturnValue(params.headers);
 
     let instance: any;
     class TrackedWorker extends MockWorker {
@@ -53,6 +57,32 @@ describe("BrowserAnnotationProvider", () => {
       type: "init",
       payload: params,
     });
+  });
+
+  it("Normalizes Headers instance to a plain record before posting init", async () => {
+    // Headers instances aren't structured-cloneable. mergeHeaders() flattens
+    // them so postMessage doesn't throw OR silently drop headers.
+    const headersInstance = new Headers({ Auth: "x" });
+    const params = { origin: "http://api", headers: headersInstance, pathPrefix: "" };
+    const flat = { Auth: "x" };
+    vi.mocked(getFetchParameters).mockReturnValue(params as any);
+    vi.mocked(mergeHeaders).mockReturnValue(flat);
+
+    let instance: any;
+    class TrackedWorker extends MockWorker {
+      constructor() {
+        super();
+        instance = this;
+      }
+    }
+    vi.stubGlobal("Worker", TrackedWorker);
+
+    const provider = new BrowserAnnotationProvider();
+    await provider.initialize();
+
+    expect(mergeHeaders).toHaveBeenCalledWith(headersInstance);
+    expect(instance.postMessage.mock.calls[0][0].payload.headers).toEqual(flat);
+    expect(instance.postMessage.mock.calls[0][0].payload.headers).not.toBeInstanceOf(Headers);
   });
 
   it("Calls onStatus with loading then ready on successful init", async () => {
