@@ -3,6 +3,11 @@ import { GridPom } from "src/oss/poms/grid";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
+// Labels match the first 5 samples of the cifar10 test split, preserved when
+// migrating away from loadZooDataset (zoo datasets are a bad test pattern:
+// slow, network-dependent, and couple tests to external data).
+const LABELS = ["cat", "ship", "ship", "airplane", "frog"];
+
 const datasetName = getUniqueDatasetNameWithPrefix("classification-5");
 
 const test = base.extend<{ sidebar: SidebarPom; grid: GridPom }>({
@@ -18,12 +23,17 @@ test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
 
-  await fiftyoneLoader.loadZooDataset("cifar10", datasetName, {
-    max_samples: 5,
-    split: "test",
+  await datasetFactory.createBlankDataset({
+    datasetName,
+    numSamples: 5,
+    numbered: true,
+    schema: { ground_truth: "Classification" },
+    withSampleData: ({ index }) => ({
+      ground_truth: { label: LABELS[index] },
+    }),
   });
 });
 
@@ -32,7 +42,7 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   });
 
-  test("In cifar grid, setting visibility directly works", async ({
+  test("In classification grid,setting visibility directly works", async ({
     grid,
     sidebar,
     eventUtils,
@@ -53,11 +63,7 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
     // test case: visibility mode - show label
     await sidebar.clickFieldDropdown("ground_truth");
     await entryExpandPromise;
-    await sidebar.applyLabelFromList(
-      "ground_truth.detections.label",
-      ["cat"],
-      "show-label"
-    );
+    await sidebar.applyLabelFromList(["cat"], "show-label");
     await gridRefreshedEventPromise;
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "visible-cat.png",
@@ -65,11 +71,7 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
     );
 
     // test case: visibility mode - hide label
-    await sidebar.applyLabelFromList(
-      "ground_truth.detections.label",
-      [],
-      "hide-label"
-    );
+    await sidebar.applyLabelFromList([], "hide-label");
     await gridRefreshedEventPromise;
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "not-visible-cat.png",
@@ -77,7 +79,7 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
     );
   });
 
-  test("In cifar grid, show samples with a label filter works", async ({
+  test("In classification grid,show samples with a label filter works", async ({
     grid,
     sidebar,
     eventUtils,
@@ -91,17 +93,9 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
     await entryExpandPromise;
     await sidebar.waitForElement("checkbox-frog");
     await sidebar.waitForElement("checkbox-ship");
-    await sidebar.applyLabelFromList(
-      "ground_truth.detections.label",
-      ["frog"],
-      "show-samples-with-label"
-    );
+    await sidebar.applyLabelFromList(["frog"], "show-samples-with-label");
 
-    await sidebar.applyLabelFromList(
-      "ground_truth.detections.label",
-      ["ship"],
-      "show-samples-with-label"
-    );
+    await sidebar.applyLabelFromList(["ship"], "show-samples-with-label");
 
     // verify the number of samples in the result
     await grid.assert.isEntryCountTextEqualTo("3 of 5 samples");
@@ -120,11 +114,7 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
       );
 
     // test case: visibility mode - show label
-    await sidebar.applyLabelFromList(
-      "ground_truth.detections.label",
-      ["frog"],
-      "show-label"
-    );
+    await sidebar.applyLabelFromList(["frog"], "show-label");
     await gridRefreshedEventPromise;
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "show-frog-ship-visible-frog.png",
@@ -132,11 +122,7 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
     );
 
     // test case: visibility mode - hide label
-    await sidebar.applyLabelFromList(
-      "ground_truth.detections.label",
-      [],
-      "hide-label"
-    );
+    await sidebar.applyLabelFromList([], "hide-label");
     await gridRefreshedEventPromise;
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "show-frog-ship-invisible-frog.png",
@@ -144,7 +130,7 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
     );
   });
 
-  test("In cifar grid, omit samples with a label filter works", async ({
+  test("In classification grid,omit samples with a label filter works", async ({
     grid,
     sidebar,
     eventUtils,
@@ -156,11 +142,7 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
     await sidebar.clickFieldDropdown("ground_truth");
     await entryExpandPromise;
 
-    await sidebar.applyLabelFromList(
-      "ground_truth.detections.label",
-      ["ship"],
-      "omit-samples-with-label"
-    );
+    await sidebar.applyLabelFromList(["ship"], "omit-samples-with-label");
 
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "hide-ship.png",
@@ -178,11 +160,7 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
       );
 
     // test case: visibility mode - show label
-    await sidebar.applyLabelFromList(
-      "ground_truth.detections.label",
-      ["cat"],
-      "show-label"
-    );
+    await sidebar.applyLabelFromList(["cat"], "show-label");
     await gridRefreshedEventPromise;
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "hide-ship-visible-cat.png",
@@ -190,11 +168,7 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
     );
 
     // test case: visibility mode - hide label
-    await sidebar.applyLabelFromList(
-      "ground_truth.detections.label",
-      [],
-      "hide-label"
-    );
+    await sidebar.applyLabelFromList([], "hide-label");
     await gridRefreshedEventPromise;
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "hide-ship-invisible-cat.png",
