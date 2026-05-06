@@ -8,6 +8,7 @@ import {
   PanelsCloseEffect,
   SpaceNodeJSON,
 } from "./types";
+import { SubscribableMap } from "./utils/SubscribableMap";
 
 const { COLOR_OPTIONS } = constants;
 
@@ -143,7 +144,7 @@ function getStateAtom(local?: boolean, scope?: string) {
   return local || nonGridScope ? panelsLocalStateAtom : panelsStateAtom;
 }
 
-export const panelAreaRenderers = new Map<string, ReactNode>();
+export const panelAreaRenderers = new SubscribableMap<string, ReactNode>();
 
 export const currentPanelAreasRenderer = atom<Map<string, string>>({
   key: "currentPanelAreasRenderer",
