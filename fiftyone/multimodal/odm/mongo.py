@@ -42,7 +42,7 @@ class MongoAdapter(DatabaseAdapter):
 
         new_samples = []
         for inventory in inventories:
-            metadata = MultimodalMetadata.build_for(inventory)
+            metadata = MultimodalMetadata.build_for_scene_inventory(inventory)
 
             if inventory.scene_id in existing_samples:
                 sample = existing_samples[inventory.scene_id]

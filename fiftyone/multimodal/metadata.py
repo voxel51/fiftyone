@@ -38,7 +38,7 @@ class MultimodalMetadata(fo.Metadata):
     produced_by = fof.StringField()
 
     @classmethod
-    def build_for(cls, scene_inventory: SceneInventory):
+    def build_for_scene_inventory(cls, scene_inventory: SceneInventory):
         """Builds an :class:`MultimodalMetadata` object for the given scene
         inventory.
 

@@ -20,7 +20,7 @@ def fixture_inventories():
 @pytest.fixture(name="metadata_builder")
 def fixture_metadata_builder():
     with patch(
-        "fiftyone.multimodal.odm.mongo.MultimodalMetadata.build_for"
+        "fiftyone.multimodal.odm.mongo.MultimodalMetadata.build_for_scene_inventory"
     ) as mock:
         yield mock
 
