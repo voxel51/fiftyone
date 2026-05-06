@@ -96,6 +96,14 @@ export class InteractivePolylineHandler implements InteractionHandler {
    */
   private activeSegmentIdx: number | null = null;
 
+  /**
+   * Saved `isDeletable` value from before the handler installed. Polyline
+   * overlays are typically constructed with `deletable: false` so deletes are
+   * blocked in non-edit contexts; an active editing session needs point
+   * removal allowed.
+   */
+  private readonly priorIsDeletable: boolean;
+
   private setActiveSegmentIdx(segmentIdx: number | null): void {
     this.activeSegmentIdx = segmentIdx;
     this.overlay.setPreviewAnchorSegmentIdx(segmentIdx);
@@ -112,7 +120,10 @@ export class InteractivePolylineHandler implements InteractionHandler {
     private readonly resolveEmptyHit?: (
       ctx: PolylineEmptyHitContext
     ) => PolylineEmptyHitAction | undefined
-  ) {}
+  ) {
+    this.priorIsDeletable = overlay.getDeletable();
+    overlay.setDeletable(true);
+  }
 
   containsPoint(): boolean {
     // Capture all clicks while active
@@ -265,6 +276,7 @@ export class InteractivePolylineHandler implements InteractionHandler {
   cleanup(): void {
     this.overlay.setPreviewPoint(null);
     this.overlay.setPreviewAnchorSegmentIdx(null);
+    this.overlay.setDeletable(this.priorIsDeletable);
   }
 
   /**
