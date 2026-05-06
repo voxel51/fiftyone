@@ -40,8 +40,15 @@ class ViewFieldMatcher:
 
 
 class SampleMatcher:
+    def __init__(self, suffix):
+        self._suffix = suffix
+
     def __eq__(self, other):
-        return isinstance(other, Sample) and "metadata" in other
+        return (
+            isinstance(other, Sample)
+            and "metadata" in other
+            and other.filepath.endswith(self._suffix)
+        )
 
     def __repr__(self):
         return "SampleMatcher()"
@@ -61,7 +68,7 @@ class TestMongoAdapter:
                 ViewFieldMatcher(F("filepath").is_in({"scene1", "scene2"}))
             )
             dataset.add_samples.assert_called_once_with(
-                [SampleMatcher(), SampleMatcher()]
+                [SampleMatcher("scene1"), SampleMatcher("scene2")]
             )
 
         def test_update_samples(self, inventories, metadata_builder):
