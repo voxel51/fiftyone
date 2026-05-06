@@ -342,11 +342,8 @@ class SegmentAnythingImageGetItem(fout.GetItem):
             the model input
         """
         item_dict = {}
-        img = fout._load_image(
-            d["filepath"],
-            use_numpy=self.use_numpy,
-            force_rgb=True,
-        )
+        img = self._load_media(d)
+
         if self.mode != SAMPromptMode.auto:
             if self.transform is None:
                 raise ValueError(
@@ -362,6 +359,13 @@ class SegmentAnythingImageGetItem(fout.GetItem):
         item_dict.update(prompts)
 
         return item_dict
+
+    def _load_media(self, d):
+        return fout._load_image(
+            d["filepath"],
+            use_numpy=self.use_numpy,
+            force_rgb=True,
+        )
 
     def _preprocess_prompts(self, d, img_hw):
         """Pre-processes prompts for SAM model input.

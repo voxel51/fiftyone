@@ -2685,7 +2685,8 @@ class TorchVideoFramesIterableDataset(IterableDataset):
 
         self.video_paths = samples.values("filepath")
         self.sample_ids = samples.values("id")
-        self.sample_data = self._extract_sample_data(samples)
+        self.sample_data = None
+        self._extract_sample_data(samples)
 
         self.transform = transform
         self.use_numpy = use_numpy
@@ -2758,7 +2759,7 @@ class TorchVideoFramesIterableDataset(IterableDataset):
         self.sample_data = {}
         fields_to_load = list(field_mapping.values())
         for field_name in fields_to_load:
-            frame_field_name = samples._handle_frame_field(field_name)
+            frame_field_name = samples._FRAMES_PREFIX + field_name
             self.sample_data[field_name] = samples.values(frame_field_name)
 
     def __iter__(self):
@@ -2796,7 +2797,7 @@ class TorchVideoFramesIterableDataset(IterableDataset):
         video_sample_data = {}
         if self.sample_data is not None:
             video_sample_data = {
-                k: self.sample_data[k][video_idx] for k in self.sample_data
+                key: val[video_idx] for key, val in self.sample_data.items()
             }
         _, iterator = self._get_decoder_for_video(video_path)
 
@@ -2813,7 +2814,7 @@ class TorchVideoFramesIterableDataset(IterableDataset):
 
                 if len(raw_frames) == self.chunk_size:
                     frames_data = None
-                    if video_sample_data:
+                    if video_sample_data is not None:
                         frames_data = [
                             {key: lst[i - 1]}
                             for i in frame_ids
@@ -2833,7 +2834,7 @@ class TorchVideoFramesIterableDataset(IterableDataset):
             # Yield remaining
             if raw_frames:
                 frames_data = None
-                if video_sample_data:
+                if video_sample_data is not None:
                     frames_data = [
                         {key: lst[i - 1]}
                         for i in frame_ids
@@ -2863,7 +2864,7 @@ class TorchVideoFramesIterableDataset(IterableDataset):
         processed_frames = []
         if frame_dicts is None:
             frame_dicts = [{}] * len(raw_frames)
-        for frame, frame_dict in zip(raw_frames, frame_dicts):
+        for frame, frame_dict in zip(raw_frames, frame_dicts, strict=True):
             if self.video_get_item is not None:
                 frame_dict["frame"] = frame
                 frame_input = self.video_get_item(frame_dict)
