@@ -32,20 +32,18 @@ const useSchema = (readOnly: boolean) => {
   );
 
   const visibleAttributes = useMemo(() => {
-    const result = new Map<string, typeof allAttributes[number]>();
-    for (const attr of allAttributes) {
-      if (!attr.name || attr.name === "id" || attr.name === "attributes") {
-        continue;
-      }
-      if (result.has(attr.name)) continue;
+    return allAttributes.reduce((map, attr) => {
+      if (!attr.name || attr.name === "id" || attr.name === "attributes")
+        return map;
+      if (map.has(attr.name)) return map;
       if (
         evaluateWhen(attr.when, data ?? {}) ||
         !isWhenFulfillable(attr.when, allAttributes)
       ) {
-        result.set(attr.name, attr);
+        map.set(attr.name, attr);
       }
-    }
-    return result;
+      return map;
+    }, new Map<string, unknown>());
   }, [allAttributes, data]);
 
   // Stable string key — only changes when the visible attribute set changes
@@ -162,7 +160,6 @@ const useHandleSchemaChange = (readOnly: boolean) => {
 
       for (const name of uniqueConditionalNames) {
         if (!name) continue;
-        if (allAttributes.some((a) => a.name === name && !a.when)) continue;
         const prevEntry = resolveVisibleAttribute(
           name,
           allAttributes,
