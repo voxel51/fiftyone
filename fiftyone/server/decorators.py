@@ -46,8 +46,15 @@ def route(func=None, *, parse_body: t.Optional[bool] = None):
             try:
                 if should_parse_body:
                     body = await request.body()
-                    payload = body.decode("utf-8")
-                    data = utils.json.loads(payload)
+                    try:
+                        payload = body.decode("utf-8")
+                        data = utils.json.loads(payload)
+                    except (UnicodeDecodeError, ValueError) as e:
+                        raise HTTPException(
+                            status_code=400,
+                            detail="Malformed JSON body",
+                        ) from e
+
                     response = await func(endpoint, request, data, *args)
                 else:
                     response = await func(endpoint, request, *args)

@@ -74,7 +74,7 @@ def _get_required_body_field(data: dict, field: str) -> str:
 
 
 def _require_string(value, field: str) -> str:
-    if not isinstance(value, str) or not value:
+    if not isinstance(value, str) or not value.strip():
         raise HTTPException(
             status_code=400,
             detail=f"'{field}' is required",

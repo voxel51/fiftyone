@@ -11,6 +11,7 @@ import unittest
 from unittest.mock import AsyncMock, MagicMock
 
 import numpy as np
+from starlette.exceptions import HTTPException
 
 from fiftyone.server import decorators
 from fiftyone.server.decorators import create_response
@@ -116,7 +117,7 @@ class TestRouteDecorator(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(json.loads(response.body), {"value": "forced"})
 
-    async def test_route_returns_server_error_for_malformed_json_body(self):
+    async def test_route_returns_bad_request_for_malformed_json_body(self):
         handler_was_called = False
 
         class Endpoint:
@@ -129,13 +130,10 @@ class TestRouteDecorator(unittest.IsolatedAsyncioTestCase):
         request = MagicMock()
         request.body = AsyncMock(return_value=b'{"value":')
 
-        # pylint: disable-next=no-value-for-parameter
-        response = await Endpoint().post(request)
+        with self.assertRaises(HTTPException) as exc:
+            # pylint: disable-next=no-value-for-parameter
+            await Endpoint().post(request)
 
         request.body.assert_awaited_once()
         self.assertFalse(handler_was_called)
-        self.assertEqual(response.status_code, 500)
-
-        body = json.loads(response.body)
-        self.assertEqual(body["kind"], "Server Error")
-        self.assertIn("JSONDecodeError", body["stack"])
+        self.assertEqual(exc.exception.status_code, 400)
