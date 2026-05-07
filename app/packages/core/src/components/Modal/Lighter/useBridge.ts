@@ -37,6 +37,7 @@ import {
   useSegmentationMode,
 } from "../Sidebar/Annotate/Edit/useSegmentationMode";
 import { coerceStringBooleans, useLabelsContext } from "../Sidebar/Annotate";
+import useFocus from "../Sidebar/Annotate/useFocus";
 import useColorMappingContext from "./useColorMappingContext";
 import { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";
 
@@ -75,6 +76,7 @@ export const useBridge = (scene: Scene2D | null) => {
 
   const segmentationMode = useSegmentationMode();
   const detectionMode = useDetectionMode();
+  const focus = useFocus();
 
   useAnnotationEventHandler(
     "annotation:sidebarValueUpdated",
@@ -168,26 +170,42 @@ export const useBridge = (scene: Scene2D | null) => {
     )
   );
 
-  // Merge tool: route existing-detection selections through the merge tool
-  // hook, which decides whether to load the target into the sidebar (first
-  // click) or merge masks (subsequent clicks).
+  // Route overlay selection into the focus controller (sets the editing
+  // label in the sidebar) and, when the Merge tool is active, into the
+  // merge tool's click handler.
   useEventHandler(
     "lighter:overlay-select",
     useCallback(
       (payload) => {
+        focus.selectOverlay(payload.id, {
+          ignoreSideEffects: payload.ignoreSideEffects,
+        });
+
         if (
-          !segmentationMode.segmentationModeActive ||
-          segmentationMode.tool !== SegmentationTool.Merge
+          segmentationMode.segmentationModeActive &&
+          segmentationMode.tool === SegmentationTool.Merge
         ) {
-          return;
+          const overlay = scene?.getOverlay(payload.id);
+          if (overlay instanceof DetectionOverlay) {
+            void segmentationMode.mergeTool.handleOverlayClick(overlay);
+          }
         }
-
-        const overlay = scene?.getOverlay(payload.id);
-        if (!(overlay instanceof DetectionOverlay)) return;
-
-        void segmentationMode.mergeTool.handleOverlayClick(overlay);
       },
-      [scene, segmentationMode]
+      [focus, scene, segmentationMode]
+    )
+  );
+
+  // Route overlay deselection into the focus controller (exits edit mode
+  // unless we're in a generated view).
+  useEventHandler(
+    "lighter:overlay-deselect",
+    useCallback(
+      (payload) => {
+        focus.deselectOverlay({
+          ignoreSideEffects: payload.ignoreSideEffects,
+        });
+      },
+      [focus]
     )
   );
 

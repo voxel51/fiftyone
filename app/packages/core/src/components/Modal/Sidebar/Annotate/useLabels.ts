@@ -24,7 +24,6 @@ import {
 import { useAddAnnotationLabelToRenderer } from "./useAddAnnotationLabelToRenderer";
 import { useSetActiveLabelId } from "./useAnnotationContextManager";
 import { useCreateAnnotationLabel } from "./useCreateAnnotationLabel";
-import useFocus from "./useFocus";
 import useHover from "./useHover";
 
 /**
@@ -472,7 +471,6 @@ export default function useLabels() {
 
   useSyncOverlayReadOnly();
   useHover();
-  useFocus();
 
   return initialOverlayIds;
 }
