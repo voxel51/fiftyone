@@ -50,6 +50,8 @@ export type {
   EmptyCanvasClickHandler,
   InteractionHandler,
 } from "./interaction/InteractionManager";
+export { InteractiveCreationHandler } from "./interaction/InteractiveCreationHandler";
+export type { InteractiveCreationHandlerOptions } from "./interaction/InteractiveCreationHandler";
 export { InteractiveDetectionHandler } from "./interaction/InteractiveDetectionHandler";
 export {
   InteractiveKeypointHandler,

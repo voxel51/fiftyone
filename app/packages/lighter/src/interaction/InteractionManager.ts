@@ -12,6 +12,7 @@ import { type MoveState } from "../overlay/BoundingBoxOverlay";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { SelectionManager } from "../selection/SelectionManager";
 import type { Point, Rect } from "../types";
+import { InteractiveCreationHandler } from "./InteractiveCreationHandler";
 import { InteractiveDetectionHandler } from "./InteractiveDetectionHandler";
 import { InteractiveKeypointHandler } from "./InteractiveKeypointHandler";
 import { InteractivePolylineHandler } from "./InteractivePolylineHandler";
@@ -38,7 +39,8 @@ export type EmptyCanvasClickHandler = (
 function isSelfManagedInteractiveHandler(handler: InteractionHandler): boolean {
   return (
     handler instanceof InteractiveKeypointHandler ||
-    handler instanceof InteractivePolylineHandler
+    handler instanceof InteractivePolylineHandler ||
+    handler instanceof InteractiveCreationHandler
   );
 }
 
@@ -133,6 +135,11 @@ export interface InteractionHandler {
    * Returns the position from the start of handler movement
    */
   getMoveStartBounds?(): Rect | undefined;
+
+  /**
+   * Returns the overlay associated with the manager.
+   */
+  getOverlay?(): BaseOverlay | undefined;
 
   /**
    * Handle pointer down event.
@@ -355,8 +362,11 @@ export class InteractionManager {
         ? // self-managed handlers route their own pointer events
           interactiveHandler
         : // otherwise defer to the handler's overlay
-          interactiveHandler.getOverlay();
-      this.selectionManager.select(interactiveHandler.getOverlay().id);
+          interactiveHandler.getOverlay?.();
+
+      if (interactiveHandler?.getOverlay?.()) {
+        this.selectionManager.select(interactiveHandler.getOverlay().id);
+      }
     } else {
       handler = this.findHandlerAtPoint(point);
       // Prevent pan/zoom when target is selectable
@@ -1012,15 +1022,12 @@ export class InteractionManager {
     );
   }
 
-  private getInteractiveHandler():
-    | InteractiveKeypointHandler
-    | InteractivePolylineHandler
-    | InteractiveDetectionHandler
-    | undefined {
-    // self-managed handlers take precedence to allow editing on top of detections
+  private getInteractiveHandler(): InteractionHandler | undefined {
+    // self-managed handlers take precedence to allow editing on top of
+    // other overlays
     const selfManaged = this.handlers.find((h) =>
       isSelfManagedInteractiveHandler(h)
-    ) as InteractiveKeypointHandler | InteractivePolylineHandler | undefined;
+    );
 
     return (
       selfManaged ??
