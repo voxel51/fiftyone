@@ -9,6 +9,7 @@ import {
   Toggle,
 } from "@voxel51/voodo";
 import { useState } from "react";
+import { useConfirmDisconnectOntology } from "../../Confirmation/useConfirmDisconnectOntology";
 import OntologyPicker from "./OntologyPicker";
 import { useAppliedOntology } from "./useLabelSchema";
 import { useOntologies } from "./useOntologies";
@@ -25,11 +26,18 @@ const ApplyOntologySection = ({ field }: ApplyOntologySectionProps) => {
 
   const expanded = !!appliedOntology || pickerArmed;
 
+  const { confirmDisconnect, DisconnectOntologyModal } =
+    useConfirmDisconnectOntology(() => {
+      clearOntology();
+      setPickerArmed(false);
+    });
+
   const handleToggle = (): void => {
     if (expanded) {
-      setPickerArmed(false);
       if (appliedOntology) {
-        clearOntology();
+        confirmDisconnect();
+      } else {
+        setPickerArmed(false);
       }
     } else {
       setPickerArmed(true);
@@ -69,6 +77,7 @@ const ApplyOntologySection = ({ field }: ApplyOntologySectionProps) => {
           onPick={handlePick}
         />
       )}
+      <DisconnectOntologyModal />
     </Stack>
   );
 };
