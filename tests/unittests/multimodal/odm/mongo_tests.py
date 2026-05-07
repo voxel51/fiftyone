@@ -65,7 +65,9 @@ class TestMongoAdapter:
             ###
 
             dataset.match.assert_called_once_with(
-                ViewFieldMatcher(F("filepath").is_in({"scene1", "scene2"}))
+                ViewFieldMatcher(
+                    F("metadata.scene_id").is_in({"scene1", "scene2"})
+                )
             )
             dataset.add_samples.assert_called_once_with(
                 [SampleMatcher("scene1"), SampleMatcher("scene2")]
@@ -97,7 +99,9 @@ class TestMongoAdapter:
             ###
 
             dataset.match.assert_called_once_with(
-                ViewFieldMatcher(F("filepath").is_in({"scene1", "scene2"}))
+                ViewFieldMatcher(
+                    F("metadata.scene_id").is_in({"scene1", "scene2"})
+                )
             )
             sample1.__setitem__.assert_called_once_with(
                 "metadata", metadata_builder.return_value
@@ -127,7 +131,9 @@ class TestMongoAdapter:
             ###
 
             dataset.match.assert_called_once_with(
-                ViewFieldMatcher(F("filepath").is_in({"scene1", "scene2"}))
+                ViewFieldMatcher(
+                    F("metadata.scene_id").is_in({"scene1", "scene2"})
+                )
             )
             dataset.add_samples.assert_called_once_with(
                 [SampleMatcher("scene1"), SampleMatcher("scene2")]
