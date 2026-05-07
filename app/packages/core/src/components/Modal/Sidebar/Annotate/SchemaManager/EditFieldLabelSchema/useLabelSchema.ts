@@ -121,8 +121,18 @@ export const useAppliedOntology = (field: string) => {
   const [current, setCurrent] = useCurrentLabelSchema(field);
   const schema = current as FieldSchema | undefined;
 
+  const ontologyAttributes: string[] = Array.isArray(schema?.attributes)
+    ? (schema.attributes as { name?: string; _source?: unknown }[]).reduce<
+        string[]
+      >((acc, a) => {
+        if (a && "_source" in a && a._source && a.name) acc.push(a.name);
+        return acc;
+      }, [])
+    : [];
+
   return {
     appliedOntology: schema?.applied_ontology,
+    ontologyAttributes,
     applyOntology: (name: string) => {
       setCurrent({ ...(schema as FieldSchema), applied_ontology: name });
     },
