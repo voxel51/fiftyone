@@ -492,6 +492,57 @@ export class MaskCanvas {
     return updatedBounds;
   }
 
+  /**
+   * Composites another mask's pixels onto this one (binary OR), expanding
+   * bounds to the union AABB if needed. Frames the work as a paint operation
+   * so the existing pre/post snapshot machinery picks it up — call
+   * {@link getPaintStrokeData} after to retrieve before/after for undo.
+   *
+   * `otherSource` is the source's drawable mask (canvas or bitmap, typically
+   * obtained via {@link getPreviewSource}). The recolor/threshold pass at
+   * the end of {@link paintEnd} snaps composited pixels to this overlay's
+   * current color, so source pixels lose their original color.
+   */
+  mergeFrom(
+    otherSource: HTMLCanvasElement | ImageBitmap,
+    otherBounds: Rect,
+    ourBounds: Rect,
+    onEncoded?: () => void
+  ): Rect {
+    this.ensureCanvas(ourBounds);
+    this.paintStart(ourBounds);
+
+    const minX = Math.min(ourBounds.x, otherBounds.x);
+    const minY = Math.min(ourBounds.y, otherBounds.y);
+    const maxX = Math.max(
+      ourBounds.x + ourBounds.width,
+      otherBounds.x + otherBounds.width
+    );
+    const maxY = Math.max(
+      ourBounds.y + ourBounds.height,
+      otherBounds.y + otherBounds.height
+    );
+
+    const newBounds = this.updateBounds(ourBounds, { minX, minY, maxX, maxY }) ??
+      ourBounds;
+
+    if (this.context && this.canvas) {
+      const dx =
+        ((otherBounds.x - newBounds.x) / newBounds.width) * this.canvas.width;
+      const dy =
+        ((otherBounds.y - newBounds.y) / newBounds.height) * this.canvas.height;
+      const dw = (otherBounds.width / newBounds.width) * this.canvas.width;
+      const dh = (otherBounds.height / newBounds.height) * this.canvas.height;
+
+      this.context.globalCompositeOperation = "source-over";
+      this.context.drawImage(otherSource, dx, dy, dw, dh);
+    }
+
+    this.paintEnd(newBounds, onEncoded);
+
+    return newBounds;
+  }
+
   paintEnd(bounds: Rect, onEncoded?: () => void) {
     if (!this.canvas) return;
 

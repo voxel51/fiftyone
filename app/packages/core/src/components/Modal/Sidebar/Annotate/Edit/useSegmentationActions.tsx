@@ -10,6 +10,7 @@ import {
   ArrowDropUp,
   AutoAwesome,
   Brush,
+  CallMerge,
   CircleOutlined,
   CropSquare,
   FormatColorReset,
@@ -18,8 +19,10 @@ import {
   Timeline,
   Undo,
 } from "@mui/icons-material";
+import { useAtomValue } from "jotai";
 import { useEffect, useMemo, useRef } from "react";
 import styled from "styled-components";
+import { labels } from "../useLabels";
 import {
   MAX_CURSOR_SIZE,
   MAX_TOOL_SIZE,
@@ -164,6 +167,17 @@ export const useSegmentationActions = ({
     decreaseToolSize,
   } = useSegmentationMode();
 
+  const sidebarLabels = useAtomValue(labels);
+  const canMerge = useMemo(
+    () =>
+      sidebarLabels.some(
+        (label) =>
+          label.type === "Detection" &&
+          !!(label.data as { mask?: unknown })?.mask
+      ),
+    [sidebarLabels]
+  );
+
   const brushCursor = useMemo(() => {
     const cursorSize = Math.min(
       MAX_CURSOR_SIZE,
@@ -221,6 +235,19 @@ export const useSegmentationActions = ({
             tooltip: "AI",
             isActive: tool === SegmentationTool.AI,
             onClick: () => switchTool(SegmentationTool.AI),
+          },
+          {
+            id: SegmentationTool.Merge,
+            label: "Merge",
+            icon: <CallMerge />,
+            shortcut: "M",
+            tooltip: canMerge
+              ? "Merge masks"
+              : "No mask detections to merge",
+            isActive: tool === SegmentationTool.Merge,
+            isDisabled: !canMerge,
+            onClick: () =>
+              canMerge && switchTool(SegmentationTool.Merge),
           },
         ],
       },
@@ -338,6 +365,7 @@ export const useSegmentationActions = ({
       increaseToolSize,
       decreaseToolSize,
       brushCursor,
+      canMerge,
       canUndo,
       canRedo,
       onUndo,

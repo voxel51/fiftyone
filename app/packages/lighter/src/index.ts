@@ -21,6 +21,7 @@ export type {
   DetectionLabel,
   DetectionOverlayOptions,
 } from "./overlay/DetectionOverlay";
+export type { MaskSnapshot, PaintStrokeData } from "./overlay/MaskCanvas";
 export { ClassificationOverlay } from "./overlay/ClassificationOverlay";
 export type { ClassificationOptions } from "./overlay/ClassificationOverlay";
 export { ImageOverlay } from "./overlay/ImageOverlay";
@@ -73,6 +74,8 @@ export type { SelectionOptions } from "./selection/SelectionManager";
 
 // Command exports
 export { AddKeypointPointCommand } from "./commands/AddKeypointPointCommand";
+export { MergeDetectionsCommand } from "./commands/MergeDetectionsCommand";
+export type { MergeDetectionsCommandDeps } from "./commands/MergeDetectionsCommand";
 export { MoveKeypointPointCommand } from "./commands/MoveKeypointPointCommand";
 export { MoveOverlayCommand } from "./commands/MoveOverlayCommand";
 export { RemoveKeypointPointCommand } from "./commands/RemoveKeypointPointCommand";

@@ -32,7 +32,10 @@ import {
   savedLabel,
 } from "../Sidebar/Annotate/Edit/state";
 import { useDetectionMode } from "../Sidebar/Annotate/Edit/useDetectionMode";
-import { useSegmentationMode } from "../Sidebar/Annotate/Edit/useSegmentationMode";
+import {
+  SegmentationTool,
+  useSegmentationMode,
+} from "../Sidebar/Annotate/Edit/useSegmentationMode";
 import { coerceStringBooleans, useLabelsContext } from "../Sidebar/Annotate";
 import useColorMappingContext from "./useColorMappingContext";
 import { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";
@@ -144,6 +147,15 @@ export const useBridge = (scene: Scene2D | null) => {
           return;
         }
 
+        // In Merge mode, detection clicks are routed via the selection
+        // event below — skip the establish path so we don't double-handle.
+        if (
+          segmentationMode.segmentationModeActive &&
+          segmentationMode.tool === SegmentationTool.Merge
+        ) {
+          return;
+        }
+
         annotationEventBus.dispatch(
           "annotation:canvasDetectionOverlayEstablish",
           {
@@ -152,8 +164,45 @@ export const useBridge = (scene: Scene2D | null) => {
           }
         );
       },
-      [annotationEventBus]
+      [annotationEventBus, segmentationMode]
     )
+  );
+
+  // Merge tool: route existing-detection selections through the merge tool
+  // hook, which decides whether to load the target into the sidebar (first
+  // click) or merge masks (subsequent clicks).
+  useEventHandler(
+    "lighter:overlay-select",
+    useCallback(
+      (payload) => {
+        if (
+          !segmentationMode.segmentationModeActive ||
+          segmentationMode.tool !== SegmentationTool.Merge
+        ) {
+          return;
+        }
+
+        const overlay = scene?.getOverlay(payload.id);
+        if (!(overlay instanceof DetectionOverlay)) return;
+
+        void segmentationMode.mergeTool.handleOverlayClick(overlay);
+      },
+      [scene, segmentationMode]
+    )
+  );
+
+  // Merge tool: when selection clears (e.g. right-click deselect), drop
+  // the merge-target reference so the next canvas click starts a new merge.
+  useEventHandler(
+    "lighter:selection-cleared",
+    useCallback(() => {
+      if (
+        segmentationMode.segmentationModeActive &&
+        segmentationMode.tool === SegmentationTool.Merge
+      ) {
+        segmentationMode.mergeTool.clearMergeTarget();
+      }
+    }, [segmentationMode])
   );
 
   useEventHandler(

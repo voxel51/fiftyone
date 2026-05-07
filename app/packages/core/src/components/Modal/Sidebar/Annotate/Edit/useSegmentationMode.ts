@@ -23,6 +23,7 @@ import {
   SegmentationTool,
   useManualSegmentationTools,
 } from "./useManualSegmentationTools";
+import { useMergeTool } from "./useMergeTool";
 
 // Re-export tool types/constants and unsafe atoms so existing import paths
 // (e.g. `import { SegmentationTool } from "./useSegmentationMode"`) keep
@@ -104,6 +105,7 @@ export const useSegmentationMode = () => {
 
   const manualMode = useManualSegmentationTools();
   const aiMode = useAIAnnotationMode();
+  const mergeTool = useMergeTool();
 
   const createDetection = useCreate(DETECTION);
   const editingLabelType = useAtomValue(currentType);
@@ -194,6 +196,24 @@ export const useSegmentationMode = () => {
     }
   }, [manualMode.tool, segmentationModeActive, aiMode, closeOpenLabel]);
 
+  // Switching INTO Merge finalizes any open manual edit so the user starts
+  // the merge flow on a clean slate. Switching OUT clears the merge target.
+  const previousToolRef = useRef(manualMode.tool);
+  useEffect(() => {
+    const previousTool = previousToolRef.current;
+    previousToolRef.current = manualMode.tool;
+
+    if (!segmentationModeActive) return;
+
+    if (manualMode.tool === SegmentationTool.Merge) {
+      if (previousTool !== SegmentationTool.Merge) {
+        closeOpenLabel();
+      }
+    } else if (previousTool === SegmentationTool.Merge) {
+      mergeTool.deactivate();
+    }
+  }, [manualMode.tool, segmentationModeActive, closeOpenLabel, mergeTool]);
+
   // Auto-enable segmentation mode when a pre-existing mask detection is selected,
   // auto-disable when a pre-existing label of a different type is selected.
   //
@@ -280,6 +300,9 @@ export const useSegmentationMode = () => {
       increaseToolSize: manualMode.increaseToolSize,
       decreaseToolSize: manualMode.decreaseToolSize,
       setToolSize: manualMode.setToolSize,
+
+      // Merge tool — composed sub-state for the bridge to drive
+      mergeTool,
     }),
     [
       segmentationModeActive,
@@ -293,6 +316,7 @@ export const useSegmentationMode = () => {
       finalizePointSelection,
       setEditingMask,
       manualMode,
+      mergeTool,
     ]
   );
 };
