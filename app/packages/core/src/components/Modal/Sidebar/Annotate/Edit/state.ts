@@ -93,14 +93,14 @@ export const current = atom(
 
 export const currentData = atom(
   (get) => get(current)?.data ?? null,
-  (get, set, data: Partial<AnnotationLabel["data"]>) => {
+  (get, set, data: Partial<AnnotationLabel["data"]>, replace?: boolean) => {
     const currentEditing = get(editing);
 
     if (currentEditing && typeof currentEditing !== "string") {
       const current = get(currentEditing);
       return set(currentEditing, {
         ...current,
-        data: { ...current.data, ...data },
+        data: replace ? data : { ...current.data, ...data },
       });
     }
   }
