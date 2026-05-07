@@ -3,7 +3,7 @@
  */
 
 import { act, renderHook } from "@testing-library/react";
-import { getDefaultStore } from "jotai";
+import { atom, getDefaultStore } from "jotai";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // ── Mocks ────────────────────────────────────────────────────────────────────
@@ -93,7 +93,12 @@ vi.mock("recoil", () => ({
   useRecoilValue: () => ({}),
 }));
 
+const labelsAtom = atom<
+  Array<{ type: string; data: { mask?: unknown } }>
+>([{ type: "Detection", data: { mask: "fake-mask" } }]);
+
 vi.mock("../useLabels", () => ({
+  labels: labelsAtom,
   useLabelsContext: () => ({
     addLabelToSidebar: mockAddLabelToSidebar,
     getLabelById: mockGetLabelById,
@@ -110,8 +115,11 @@ describe("useMergeTool", () => {
     vi.clearAllMocks();
     mockGetOverlay.mockReset();
     mockGetLabelById.mockReset();
-    // Reset module-level atom between tests so prior state doesn't leak.
+    // Reset module-level atoms between tests so prior state doesn't leak.
     getDefaultStore().set(_unsafeMergeTargetIdAtom, null);
+    getDefaultStore().set(labelsAtom, [
+      { type: "Detection", data: { mask: "fake-mask" } },
+    ]);
   });
 
   it("first click adopts the overlay as the merge target and dispatches the establish event", async () => {
@@ -229,19 +237,24 @@ describe("useMergeTool", () => {
     expect(result.current.mergeTargetId).toBe(null);
   });
 
-  it("deactivate clears the merge target", async () => {
+  it("disabled is false when at least one mask detection is in the sidebar", () => {
     const { result } = renderHook(() => useMergeTool());
+    expect(result.current.disabled).toBe(false);
+  });
 
-    const overlay = new MockDetectionOverlay("ov-1");
-    await act(async () => {
-      await result.current.handleOverlayClick(overlay as never);
-    });
+  it("disabled is true when there are no mask detections in the sidebar", () => {
+    getDefaultStore().set(labelsAtom, []);
+    const { result } = renderHook(() => useMergeTool());
+    expect(result.current.disabled).toBe(true);
+  });
 
-    act(() => {
-      result.current.deactivate();
-    });
-
-    expect(result.current.mergeTargetId).toBe(null);
+  it("disabled is true when present detections lack masks", () => {
+    getDefaultStore().set(labelsAtom, [
+      { type: "Detection", data: {} },
+      { type: "Classification" as never, data: {} },
+    ]);
+    const { result } = renderHook(() => useMergeTool());
+    expect(result.current.disabled).toBe(true);
   });
 
   it("MergeDetectionsCommand deps wire deletion and restoration of the source", async () => {

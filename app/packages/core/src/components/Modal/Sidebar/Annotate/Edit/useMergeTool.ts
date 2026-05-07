@@ -19,7 +19,7 @@ import { atom, useAtomValue, useSetAtom } from "jotai";
 import { useAtomCallback } from "jotai/utils";
 import { useCallback, useMemo } from "react";
 import { useRecoilValue } from "recoil";
-import { useLabelsContext } from "../useLabels";
+import { labels, useLabelsContext } from "../useLabels";
 
 const mergeTargetIdAtom = atom(null as string | null);
 
@@ -36,8 +36,8 @@ export interface MergeTool {
   handleOverlayClick: (overlay: DetectionOverlay) => void | Promise<void>;
   /** Drops the merge-target reference. Called on right-click-deselect. */
   clearMergeTarget: () => void;
-  /** Tool-switch teardown — clears merge-target. */
-  deactivate: () => void;
+  /** True when the tool has nothing to operate on (no mask detections). */
+  disabled: boolean;
 }
 
 /**
@@ -61,6 +61,17 @@ export const useMergeTool = (): MergeTool => {
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
   );
 
+  const sidebarLabels = useAtomValue(labels);
+  const disabled = useMemo(
+    () =>
+      !sidebarLabels.some(
+        (label) =>
+          label.type === "Detection" &&
+          !!(label.data as { mask?: unknown })?.mask
+      ),
+    [sidebarLabels]
+  );
+
   const getMergeTargetId = useAtomCallback(
     useCallback((get) => get(mergeTargetIdAtom), [])
   );
@@ -68,10 +79,6 @@ export const useMergeTool = (): MergeTool => {
   const clearMergeTarget = useCallback(() => {
     setMergeTargetId(null);
   }, [setMergeTargetId]);
-
-  const deactivate = useCallback(() => {
-    clearMergeTarget();
-  }, [clearMergeTarget]);
 
   const handleOverlayClick = useCallback(
     async (overlay: DetectionOverlay) => {
@@ -164,8 +171,8 @@ export const useMergeTool = (): MergeTool => {
       mergeTargetId,
       handleOverlayClick,
       clearMergeTarget,
-      deactivate,
+      disabled,
     }),
-    [mergeTargetId, handleOverlayClick, clearMergeTarget, deactivate]
+    [mergeTargetId, handleOverlayClick, clearMergeTarget, disabled]
   );
 };
