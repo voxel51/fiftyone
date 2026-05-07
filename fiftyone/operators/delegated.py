@@ -872,10 +872,35 @@ class DelegatedOperationService(object):
                     result = ExecutionResult()
         finally:
             listener.stop()
-            if child_process and child_process.is_alive():
-                self._terminate_child_process(
-                    child_process, operation.id, "Executor shutting down"
-                )
+            if child_process is not None:
+                if child_process.is_alive():
+                    self._terminate_child_process(
+                        child_process, operation.id, "Executor shutting down"
+                    )
+                # Reap the child so multiprocessing.Process.exitcode is
+                # populated from the OS exit status.
+                child_process.join(timeout=5)
+
+                code = child_process.exitcode
+                if code == 0:
+                    logger.debug(
+                        "Child process for operation %s exited cleanly",
+                        operation.id,
+                    )
+                elif code is not None:
+                    logger.error(
+                        "Child process for operation %s exited unexpectedly "
+                        "with code %s",
+                        operation.id,
+                        code,
+                    )
+                    if result is not None and result.error is None:
+                        result.error = f"Child process exited unexpectedly with code {code}"
+                        self.set_failed(
+                            doc_id=operation.id,
+                            result=result,
+                            required_state=ExecutionRunState.RUNNING,
+                        )
 
         return result
 
@@ -889,33 +914,13 @@ class DelegatedOperationService(object):
         """
         Monitors the child_process and operation state for failures.
         """
-        while True:
+        while child_process.is_alive():
             child_process.join(timeout=check_interval_seconds)
 
             if not child_process.is_alive():
-                code = child_process.exitcode
-                if code == 0:
-                    logger.debug(
-                        "Child process for operation %s exited cleanly",
-                        operation_id,
-                    )
-                    return None
-
-                logger.error(
-                    "Child process for operation %s exited unexpectedly "
-                    "with code %s",
-                    operation_id,
-                    code,
-                )
-                result = ExecutionResult(
-                    error=f"Child process exited unexpectedly with code {code}"
-                )
-                self.set_failed(
-                    doc_id=operation_id,
-                    result=result,
-                    required_state=ExecutionRunState.RUNNING,
-                )
-                return result
+                # Child exited; the caller's finally block reads the exit
+                # code and surfaces non-zero exits as a failure.
+                return None
 
             try:
                 op_doc = self.get(operation_id)

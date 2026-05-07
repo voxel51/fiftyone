@@ -936,6 +936,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         mock_process = mock.MagicMock()
 
         mock_process.is_alive.side_effect = [True, True, True, False, False]
+        mock_process.exitcode = 0
 
         mock_context = mock.MagicMock()
         mock_context.Process.return_value = mock_process
@@ -1139,8 +1140,9 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         _mock_get_operator,
     ):
         mock_process = mock.MagicMock()
-        # Dead immediately, both inside _monitor_operation and in the
-        # execute_operation finally block
+        # Child appears dead at every is_alive() check: the monitor's while
+        # loop exits immediately, the caller's finally block sees a dead
+        # child with a non-zero exitcode, and surfaces the failure.
         mock_process.is_alive.return_value = False
         mock_process.exitcode = 1
         mock_process.pid = 12345
