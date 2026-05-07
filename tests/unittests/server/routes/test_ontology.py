@@ -8,6 +8,7 @@ FiftyOne Server ontology route unit tests.
 
 import json
 import os
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -76,15 +77,19 @@ class TestOntologiesRoute:
 
     @pytest.mark.asyncio
     async def test_sort_by_last_modified_desc(self, endpoint, mock_request):
-        OntologyDocument(
+        base = datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        first = OntologyDocument(
             name="first", type=OntologyType.ANNOTATION_ONTOLOGY
         ).save()
-        OntologyDocument(
+        first.modify(set__last_modified_at=base)
+        second = OntologyDocument(
             name="second", type=OntologyType.ANNOTATION_ONTOLOGY
         ).save()
-        OntologyDocument(
+        second.modify(set__last_modified_at=base + timedelta(seconds=1))
+        third = OntologyDocument(
             name="third", type=OntologyType.ANNOTATION_ONTOLOGY
         ).save()
+        third.modify(set__last_modified_at=base + timedelta(seconds=2))
 
         response = await endpoint.get(mock_request())
 
