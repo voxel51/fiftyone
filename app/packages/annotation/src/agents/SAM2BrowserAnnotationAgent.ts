@@ -13,7 +13,7 @@ import {
   PointLabel,
   type PromptPoint,
 } from "../providers";
-import { float32ToCompressedNumpy } from "../util/conversion";
+import { encodeMaskData } from "@fiftyone/lighter/src/utils/maskEncoding";
 import { getSampleSrc } from "@fiftyone/state/src/recoil/utils";
 
 /**
@@ -60,7 +60,7 @@ export class SAM2BrowserAnnotationAgent
       response: {
         detections: [
           {
-            mask: this.normalizeMask(
+            mask: await this.normalizeMask(
               result.mask,
               result.maskWidth,
               result.maskHeight
@@ -178,11 +178,23 @@ export class SAM2BrowserAnnotationAgent
     return { x: vec[0], y: vec[1], label };
   }
 
+  // 0.5 is NOT > 0.5, so it becomes 0
   private normalizeMask(
     mask: Float32Array,
     width: number,
     height: number
-  ): string {
-    return float32ToCompressedNumpy(mask, [height, width]);
+  ): Promise<string> {
+    const binary = new Uint8Array(mask.length);
+    for (let i = 0; i < mask.length; i++) {
+      const v = mask[i];
+      // Reject NaN/±Infinity loudly — silently coercing them would yield a
+      // valid-looking but degraded mask. SAM2 shouldn't emit these in normal
+      // operation, so treat them as a signal something is wrong.
+      if (!Number.isFinite(v)) {
+        throw new Error(`Invalid float at index ${i}`);
+      }
+      binary[i] = v > 0.5 ? 1 : 0;
+    }
+    return encodeMaskData(binary, [height, width]);
   }
 }

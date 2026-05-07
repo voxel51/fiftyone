@@ -7,8 +7,8 @@ import {
   POLYLINE,
 } from "@fiftyone/utilities";
 import {
-  BoundingBoxOptions,
-  BoundingBoxOverlay,
+  DetectionOverlayOptions,
+  DetectionOverlay,
   ClassificationOptions,
   ClassificationOverlay,
   KeypointOptions,
@@ -49,7 +49,7 @@ export const useCreateAnnotationLabel = () => {
       }
 
       if (type === DETECTION) {
-        const label = data as BoundingBoxOptions["label"];
+        const label = data as DetectionOverlayOptions["label"];
         const boundingBox = label?.bounding_box;
 
         // Check if field is read-only
@@ -58,9 +58,9 @@ export const useCreateAnnotationLabel = () => {
         const isReadOnly = isFieldReadOnly(fieldSchema);
 
         const overlay = overlayFactory.create<
-          BoundingBoxOptions,
-          BoundingBoxOverlay
-        >("bounding-box", {
+          DetectionOverlayOptions,
+          DetectionOverlay
+        >("detection", {
           field,
           id: data._id,
           draggable: !isReadOnly,
