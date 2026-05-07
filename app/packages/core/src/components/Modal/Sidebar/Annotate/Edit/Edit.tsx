@@ -25,7 +25,8 @@ import useExit from "./useExit";
 
 const ContentContainer = styled.div`
   margin: 0.25rem 1rem;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
