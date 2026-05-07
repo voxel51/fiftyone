@@ -171,7 +171,7 @@ def _sv_detections_to_fo(
     return fol.Detections(detections=detections)
 
 
-class _RFDETRBaseModel(fout.TorchSamplesMixin, fout.TorchImageModel):
+class _RFDETRBaseModel(fout.TorchImageModel):
     """Base class for RF-DETR model wrappers.
 
     Subclasses set ``_has_masks`` to control whether instance masks are
@@ -181,7 +181,6 @@ class _RFDETRBaseModel(fout.TorchSamplesMixin, fout.TorchImageModel):
     _has_masks = False
 
     def __init__(self, config):
-        fout.TorchSamplesMixin.__init__(self)
         fout.TorchImageModel.__init__(self, config)
 
     @property
