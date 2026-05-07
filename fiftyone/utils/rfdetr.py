@@ -9,6 +9,8 @@ Model Zoo.
 
 from typing import Any, Optional
 
+import numpy as np
+
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 import fiftyone.utils.torch as fout
@@ -118,6 +120,96 @@ def _load_rfdetr_model(
     return model_cls(**kwargs)
 
 
+def _clip_box_to_frame(box, frame_size):
+    width, height = frame_size
+
+    x1, y1, x2, y2 = map(float, box)
+    x1 = min(max(x1, 0.0), width)
+    y1 = min(max(y1, 0.0), height)
+    x2 = min(max(x2, 0.0), width)
+    y2 = min(max(y2, 0.0), height)
+    if x2 <= x1 or y2 <= y1:
+        return None
+
+    return x1, y1, x2, y2
+
+
+def _crop_detection_mask(mask, box, mask_thresh=0.5):
+    mask_full = np.asarray(mask)
+    x1, y1, x2, y2 = box
+
+    if mask_full.ndim == 3:
+        candidates = []
+        if mask_full.shape[0] == 1:
+            candidates.append(mask_full[0])
+        if mask_full.shape[-1] == 1:
+            candidates.append(mask_full[..., 0])
+        if not candidates:
+            return None
+
+        if len(candidates) == 1:
+            mask_full = candidates[0]
+        else:
+            exp_h = max(0, int(np.ceil(y2)) - int(np.floor(y1)))
+            exp_w = max(0, int(np.ceil(x2)) - int(np.floor(x1)))
+
+            # Prefer the channel interpretation that best matches the bbox.
+            mask_full = min(
+                candidates,
+                key=lambda arr: abs(arr.shape[0] - exp_h)
+                + abs(arr.shape[1] - exp_w),
+            )
+    if mask_full.ndim != 2:
+        return None
+
+    r1 = max(0, min(mask_full.shape[0], int(np.floor(y1))))
+    r2 = max(0, min(mask_full.shape[0], int(np.ceil(y2))))
+    c1 = max(0, min(mask_full.shape[1], int(np.floor(x1))))
+    c2 = max(0, min(mask_full.shape[1], int(np.ceil(x2))))
+    if r1 >= r2 or c1 >= c2:
+        return None
+
+    mask_crop = mask_full[r1:r2, c1:c2]
+    if mask_crop.size == 0:
+        return None
+
+    if mask_crop.dtype != bool:
+        mask_crop = mask_crop > mask_thresh
+
+    return mask_crop
+
+
+def _make_frame_detection(
+    label, box, frame_size, confidence=None, mask=None, mask_thresh=0.5
+):
+    width, height = frame_size
+
+    clipped_box = _clip_box_to_frame(box, frame_size)
+    if clipped_box is None:
+        return None
+
+    x1, y1, x2, y2 = clipped_box
+    kwargs = {
+        "label": label,
+        "bounding_box": [
+            x1 / width,
+            y1 / height,
+            (x2 - x1) / width,
+            (y2 - y1) / height,
+        ],
+        "confidence": (
+            float(confidence) if confidence is not None else None
+        ),
+    }
+
+    if mask is not None:
+        mask_crop = _crop_detection_mask(mask, clipped_box, mask_thresh)
+        if mask_crop is not None:
+            kwargs["mask"] = mask_crop
+
+    return fol.Detection(**kwargs)
+
+
 def _sv_detections_to_fo(
     sv_dets: Any,
     width: int,
@@ -158,7 +250,7 @@ def _sv_detections_to_fo(
         label = class_names.get(cid, str(cid))
         score = float(confidence[i]) if confidence is not None else None
         mask = masks[i] if masks is not None else None
-        detection = fout._make_frame_detection(
+        detection = _make_frame_detection(
             label,
             xyxy[i],
             (width, height),
