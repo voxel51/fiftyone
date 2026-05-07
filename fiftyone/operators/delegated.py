@@ -889,21 +889,33 @@ class DelegatedOperationService(object):
         """
         Monitors the child_process and operation state for failures.
         """
-        while child_process.is_alive():
+        while True:
             child_process.join(timeout=check_interval_seconds)
 
             if not child_process.is_alive():
                 code = child_process.exitcode
+                if code == 0:
+                    logger.debug(
+                        "Child process for operation %s exited cleanly",
+                        operation_id,
+                    )
+                    return None
+
                 logger.error(
-                    "Child process for operation %s exited with code %s",
+                    "Child process for operation %s exited unexpectedly "
+                    "with code %s",
                     operation_id,
                     code,
                 )
-                if code != 0:
-                    return ExecutionResult(
-                        error=f"Child process exited unexpectedly with code {code}"
-                    )
-                return None
+                result = ExecutionResult(
+                    error=f"Child process exited unexpectedly with code {code}"
+                )
+                self.set_failed(
+                    doc_id=operation_id,
+                    result=result,
+                    required_state=ExecutionRunState.RUNNING,
+                )
+                return result
 
             try:
                 op_doc = self.get(operation_id)
