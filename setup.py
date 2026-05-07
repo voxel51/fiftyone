@@ -11,7 +11,7 @@ import os
 from setuptools import setup, find_packages
 
 
-VERSION = "1.15.1"
+VERSION = "1.15.0"
 
 
 def get_version():
