@@ -22,6 +22,7 @@ from .groups import GroupsRoutes
 from .media import Media
 from .ontology import Ontologies
 from .plugins import Plugins
+from .runtime_assets import RuntimeAssetRoutes
 from .sample import SampleRoutes
 from .screenshot import Screenshot
 from .sort import Sort
@@ -35,6 +36,7 @@ routes = (
     + EmbeddingsRoutes
     + GroupsRoutes
     + OperatorRoutes
+    + RuntimeAssetRoutes
     + SampleRoutes
     + [
         ("/aggregate", Aggregate),

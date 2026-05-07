@@ -192,6 +192,10 @@ export type LighterEventGroup = {
   "lighter:zoomed": { scale: number };
   /** Emitted when the viewport is panned/moved */
   "lighter:viewport-moved": { x: number; y: number; scale: number };
+  /** Emitted by useViewport once the initial viewport has been applied (or no action was needed) */
+  "lighter:viewport-init-complete": Record<string, never>;
+  /** Emitted after PixiJS initialization completes and the render loop starts */
+  "lighter:renderer-ready": Record<string, never>;
 
   // ============================================================================
   // "DO" EVENTS USERS CAN EMIT TO FORCE STATE CHANGES OR ACTIONS

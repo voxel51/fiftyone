@@ -7,6 +7,7 @@ FiftyOne operator type tests.
 """
 
 import unittest
+from unittest.mock import MagicMock, patch
 
 import bson
 
@@ -108,6 +109,59 @@ class TestPipelineType(unittest.TestCase):
         pipe = types.Pipeline()
         pipe.stage("my/uri", num_distributed_tasks=-5)
         self.assertIsNone(pipe.stages[0].num_distributed_tasks)
+
+    def test_disallowed_keys_stripped(self):
+        with self.assertLogs(
+            "fiftyone.operators._types.pipeline", level="ERROR"
+        ) as log:
+            stage = types.PipelineStage(
+                operator_uri="my/uri",
+                request_params_overrides={
+                    "dataset_id": "some_id",
+                    "dataset_name": "should_be_stripped",
+                    "delegated": True,
+                    "delegation_target": "some_target",
+                    "request_delegation": True,
+                    "results": {},
+                    "view_name": "should_be_kept",
+                },
+            )
+
+        overrides = stage.request_params_overrides
+        self.assertNotIn("dataset_id", overrides)
+        self.assertNotIn("dataset_name", overrides)
+        self.assertNotIn("delegated", overrides)
+        self.assertNotIn("delegation_target", overrides)
+        self.assertNotIn("request_delegation", overrides)
+        self.assertNotIn("results", overrides)
+        self.assertEqual(overrides.get("view_name"), "should_be_kept")
+        self.assertTrue(any("disallowed" in msg for msg in log.output))
+
+    def test_view_datasetview_auto_serialized(self):
+        serialized_stages = [{"_cls": "Limit", "kwargs": [["limit", 10]]}]
+        mock_view = MagicMock()
+        mock_view._serialize.return_value = serialized_stages
+
+        MockDatasetView = type("DatasetView", (), {})
+        mock_view.__class__ = MockDatasetView
+
+        with patch("fiftyone.operators._types.pipeline.fov") as mock_fov:
+            mock_fov.DatasetView = MockDatasetView
+            stage = types.PipelineStage(
+                operator_uri="my/uri",
+                request_params_overrides={
+                    "view": mock_view,
+                    "view_name": "also_kept",
+                },
+            )
+
+        mock_view._serialize.assert_called_once()
+        self.assertEqual(
+            stage.request_params_overrides["view"], serialized_stages
+        )
+        self.assertEqual(
+            stage.request_params_overrides["view_name"], "also_kept"
+        )
 
     def test_none(self):
         self.assertIsNone(types.Pipeline.from_json(None))

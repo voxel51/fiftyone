@@ -68,3 +68,9 @@ export const PREVIEW_LINE_OPACITY = 0.6;
  */
 export const SELECTED_ALPHA = 0.1;
 export const SELECTED_COLOR = 0x000000;
+
+/**
+ * Default padding applied on each side when auto-zooming to content.
+ * 0.1 per side = 0.2 total
+ */
+export const DEFAULT_ZOOM_PAD = 0.1;

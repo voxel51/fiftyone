@@ -81,7 +81,7 @@ setup(
         "retrying>=1,<2",
         "sseclient-py>=1.7.2,<2",
         "sse-starlette>=0.10.3,<4",
-        "starlette>=0.24.0,<0.53",
+        "starlette>=0.49.1,<0.53",
         "strawberry-graphql>=0.262.4,<0.292.0",
         "tabulate>=0.7,<0.10",
         "tqdm>=2,<5",
@@ -97,7 +97,7 @@ setup(
         "scikit-image<1",
         "scipy<2",
         # internal packages
-        "fiftyone-brain>=0.21.5,<0.22",
+        "fiftyone-brain>=0.21.6,<0.22",
         "fiftyone-db>=0.4,<2.0",
         "voxel51-eta>=0.15.3,<0.16",
     ],

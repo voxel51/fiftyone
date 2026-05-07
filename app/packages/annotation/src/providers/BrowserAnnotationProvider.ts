@@ -1,3 +1,4 @@
+import { getFetchParameters, mergeHeaders } from "@fiftyone/utilities";
 import type {
   AnnotationProvider,
   DownloadProgress,
@@ -143,6 +144,12 @@ export class BrowserAnnotationProvider implements AnnotationProvider {
     };
 
     try {
+      const params = getFetchParameters();
+      this.worker.postMessage({
+        type: "init",
+        payload: { ...params, headers: mergeHeaders(params.headers) },
+      });
+
       await this.send("loadModel", {}).promise;
       this.onStatus?.("ready");
     } catch (err) {
@@ -159,6 +166,7 @@ export class BrowserAnnotationProvider implements AnnotationProvider {
     return promise;
   }
 
+  // Client-side only: rejects the pending promise but the worker keeps computing.
   // Only aborts the most recent inference. Earlier in-flight requests are not cancelled.
   abort(): void {
     if (this.lastInferenceId === null)
