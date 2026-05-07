@@ -131,3 +131,40 @@ class TestMongoAdapter:
             dataset.add_samples.assert_called_once_with(
                 [SampleMatcher("scene1"), SampleMatcher("scene2")]
             )
+
+        def test_existing_duplicates(self, metadata_builder):
+            sample1 = MagicMock(
+                __getitem__=lambda _, k: (
+                    Mock(scene_id="scene1") if k == "metadata" else None
+                )
+            )
+            sample2 = MagicMock(
+                __getitem__=lambda _, k: (
+                    Mock(scene_id="scene1") if k == "metadata" else None
+                )
+            )
+            dataset = Mock(
+                match=Mock(
+                    return_value=[
+                        sample1,
+                        sample2,
+                    ]
+                )
+            )
+            metadata_builder.return_value = Mock()
+
+            ###
+            MongoAdapter.write_scene_inventories(
+                dataset, [Mock(scene_id="scene1")]
+            )
+            ###
+
+            sample1.__setitem__.assert_called_once_with(
+                "metadata", metadata_builder.return_value
+            )
+            sample2.__setitem__.assert_called_once_with(
+                "metadata", metadata_builder.return_value
+            )
+            sample1.save.assert_called_once()
+            sample2.save.assert_called_once()
+            dataset.add_samples.assert_not_called()
