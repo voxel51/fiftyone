@@ -19,7 +19,7 @@ interface ApplyOntologySectionProps {
 }
 
 const ApplyOntologySection = ({ field }: ApplyOntologySectionProps) => {
-  const { appliedOntology, applyOntology, clearOntology } =
+  const { appliedOntology, ontologyAttributes, applyOntology, clearOntology } =
     useAppliedOntology(field);
   const { ontologies, isFetching, error } = useOntologies();
   const [pickerArmed, setPickerArmed] = useState(false);
@@ -30,7 +30,7 @@ const ApplyOntologySection = ({ field }: ApplyOntologySectionProps) => {
     useConfirmDisconnectOntology(() => {
       clearOntology();
       setPickerArmed(false);
-    });
+    }, ontologyAttributes);
 
   const handleToggle = (): void => {
     if (expanded) {
