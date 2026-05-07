@@ -113,32 +113,6 @@ class TestMongoAdapter:
             sample2.save.assert_called_once()
             dataset.add_samples.assert_not_called()
 
-        def test_metadata_missing(self, inventories, metadata_builder):
-            sample1 = MagicMock(__getitem__=lambda _, _k: None)
-            sample2 = MagicMock(__getitem__=lambda _, _k: None)
-            dataset = Mock(
-                match=Mock(
-                    return_value=[
-                        sample1,
-                        sample2,
-                    ]
-                )
-            )
-            metadata_builder.return_value = Mock()
-
-            ###
-            MongoAdapter.write_scene_inventories(dataset, inventories)
-            ###
-
-            dataset.match.assert_called_once_with(
-                ViewFieldMatcher(
-                    F("metadata.scene_id").is_in({"scene1", "scene2"})
-                )
-            )
-            dataset.add_samples.assert_called_once_with(
-                [SampleMatcher("scene1"), SampleMatcher("scene2")]
-            )
-
         def test_duplicate_new_scene_ids(self, inventories, metadata_builder):
             dataset = Mock(match=Mock(return_value=[]))
             metadata_builder.return_value = Mock()

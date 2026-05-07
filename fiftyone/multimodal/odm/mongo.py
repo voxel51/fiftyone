@@ -11,14 +11,6 @@ from fiftyone.multimodal.schemas.v1 import SceneInventory
 from .base import DatabaseAdapter
 
 
-def get_scene_id(sample: Sample) -> Optional[str]:
-    """Returns the scene ID for the given sample."""
-    metadata = sample["metadata"]
-    if not metadata:
-        return None
-    return metadata.scene_id
-
-
 class MongoAdapter(DatabaseAdapter):
     @classmethod
     def write_scene_inventories(
@@ -34,7 +26,7 @@ class MongoAdapter(DatabaseAdapter):
         """
         scene_ids = {inventory.scene_id for inventory in inventories}
         existing_samples = {
-            get_scene_id(s): s
+            s["metadata"].scene_id: s
             for s in dataset.match(F("metadata.scene_id").is_in(scene_ids))
         }
 
