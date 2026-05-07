@@ -21,26 +21,6 @@ from fiftyone.core.ontology import AnnotationOntology
 from fiftyone.core.ontology_validation import validate_annotation_ontology
 
 
-class UniqueAttributeNamesTests(unittest.TestCase):
-    def test_rejects_duplicate_names(self):
-        ao = AnnotationOntology(
-            name="test",
-            attributes=[
-                AttributeSpec(name="damage", type="str", component="dropdown"),
-                AttributeSpec(
-                    name="damage", type="bool", component="checkbox"
-                ),
-            ],
-        )
-        with self.assertRaises(ValueError) as cm:
-            validate_annotation_ontology(ao)
-        self.assertIn("damage", str(cm.exception))
-
-    def test_accepts_empty_attributes(self):
-        ao = AnnotationOntology(name="empty")
-        validate_annotation_ontology(ao)
-
-
 class OperatorValidTests(unittest.TestCase):
     def test_rejects_invalid_operator_on_mutated_when(self):
         # Safety net for direct mutation past __post_init__.

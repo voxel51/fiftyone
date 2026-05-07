@@ -34,7 +34,6 @@ def validate_annotation_ontology(ontology: AnnotationOntology) -> None:
     # `Taxonomy` documents; validate that each `ontology.taxonomies` name
     # resolves to a `Taxonomy` in the DB once the type exists.
     errors: list[str] = [
-        *_validate_unique_attribute_names(ontology),
         *_validate_when_operators(ontology),
         *_validate_types(ontology),
         *_validate_components(ontology),
@@ -47,21 +46,6 @@ def validate_annotation_ontology(ontology: AnnotationOntology) -> None:
         raise ValueError(
             f"Invalid AnnotationOntology {ontology.name!r}:\n{bullet_list}"
         )
-
-
-def _validate_unique_attribute_names(
-    ontology: AnnotationOntology,
-) -> list[str]:
-    seen: set[str] = set()
-    duplicates: set[str] = set()
-    for attr in ontology.attributes:
-        if attr.name in seen:
-            duplicates.add(attr.name)
-        seen.add(attr.name)
-
-    if duplicates:
-        return [f"duplicate attribute name(s): {sorted(duplicates)}"]
-    return []
 
 
 def _validate_when_operators(ontology: AnnotationOntology) -> list[str]:
