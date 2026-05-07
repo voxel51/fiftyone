@@ -6,7 +6,11 @@ FiftyOne annotation ontology validation unit tests.
 |
 """
 
+import os
 import unittest
+
+# Ontology SDK is gated by VFF_ONTOLOGY_CA; enable for the whole module.
+os.environ.setdefault("VFF_ONTOLOGY_CA", "1")
 
 from fiftyone.core.annotation.attributes import (
     AttributeSpec,
@@ -130,6 +134,31 @@ class ThenKeysValidTests(unittest.TestCase):
         )
         with self.assertRaises(ValueError):
             validate_annotation_ontology(ao)
+
+
+class SaveInvokesValidationTests(unittest.TestCase):
+    def test_save_invokes_validation(self):
+        # Auto-validate hook in Ontology.save() — invalid ontologies
+        # raise before any DB interaction.
+        ao = AnnotationOntology(
+            name="bad",
+            attributes=[
+                AttributeSpec(
+                    name="a",
+                    type="str",
+                    component="dropdown",
+                    when=[When(WhenOperator.EQUALS, field="b", value="x")],
+                ),
+                AttributeSpec(
+                    name="b",
+                    type="str",
+                    component="dropdown",
+                    when=[When(WhenOperator.EQUALS, field="a", value="y")],
+                ),
+            ],
+        )
+        with self.assertRaises(ValueError):
+            ao.save()
 
 
 if __name__ == "__main__":
