@@ -42,10 +42,10 @@ class PlaybackPlanEndpoint(HTTPEndpoint):
     """Playback plan query endpoint."""
 
     @decorators.route
-    async def post(self, request: Request, data: dict) -> Response:
+    async def get(self, request: Request) -> Response:
         """Returns a serialized PlaybackPlan protobuf."""
 
-        inventory_id = _get_required_body_field(data, "inventory_id")
+        inventory_id = _get_required_path_param(request, "inventory_id")
 
         plan = resolve_playback_plan(inventory_id)
 
@@ -57,18 +57,6 @@ class PlaybackPlanEndpoint(HTTPEndpoint):
 
 def _get_required_path_param(request: Request, field: str) -> str:
     value = request.path_params.get(field)
-
-    return _require_string(value, field)
-
-
-def _get_required_body_field(data: dict, field: str) -> str:
-    if not isinstance(data, dict):
-        raise HTTPException(
-            status_code=400,
-            detail="JSON body must be an object",
-        )
-
-    value = data.get(field)
 
     return _require_string(value, field)
 
@@ -85,7 +73,7 @@ def _require_string(value, field: str) -> str:
 
 MultimodalRoutes = [
     (
-        "/multimodal/playback-plan",
+        "/multimodal/playback-plan/{inventory_id}",
         PlaybackPlanEndpoint,
     ),
     (
