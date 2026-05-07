@@ -298,7 +298,7 @@ export const useBridge = (scene: Scene2D | null) => {
       );
 
       if (newLabel) {
-        save(newLabel);
+        save(newLabel, true);
       }
     },
     [save]
