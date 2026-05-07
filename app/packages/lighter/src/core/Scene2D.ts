@@ -19,11 +19,12 @@ import {
   TransformOverlayCommand,
 } from "../commands/TransformOverlayCommand";
 import { STROKE_WIDTH } from "../constants";
+import type { ViewportState } from "../types";
 import type { LighterEventGroup } from "../events";
 import type { InteractionHandler } from "../interaction/InteractionManager";
 import { InteractionManager } from "../interaction/InteractionManager";
 import type { InteractiveDetectionHandler } from "../interaction/InteractiveDetectionHandler";
-import type { BaseOverlay } from "../overlay/BaseOverlay";
+import { BaseOverlay } from "../overlay/BaseOverlay";
 import type { Selectable } from "../selection/Selectable";
 import type { SelectionOptions } from "../selection/SelectionManager";
 import { SelectionManager } from "../selection/SelectionManager";
@@ -75,6 +76,17 @@ export const TypeGuards = {
     typeof (value as { containsPoint: unknown }).containsPoint === "function" &&
     "markDirty" in value &&
     typeof (value as { markDirty: unknown }).markDirty === "function",
+};
+
+/**
+ * Type guard that narrows `Rect | undefined` to `Rect` and confirms the rect
+ * has non-zero area.
+ */
+const isUsableBounds = (bounds: Rect | undefined): bounds is Rect => {
+  if (!bounds) return false;
+  return (
+    BaseOverlay.validBounds(bounds) && bounds.width !== 0 && bounds.height !== 0
+  );
 };
 
 /**
@@ -645,6 +657,69 @@ export class Scene2D {
    */
   setCursor(cursor: string): void {
     this.config.canvas.style.cursor = cursor;
+  }
+
+  /**
+   * Returns the current zoom and pan state of the scene's renderer.
+   * Use this to snapshot the viewport before unmounting the scene.
+   */
+  getViewportState(): ViewportState {
+    return this.config.renderer.getViewportState();
+  }
+
+  /**
+   * Restores a previously captured zoom and pan state to the scene's renderer.
+   * Call this after the renderer is initialized and the render loop has started.
+   */
+  setViewportState(state: ViewportState): void {
+    this.config.renderer.setViewportState(state);
+  }
+
+  /**
+   * Computes the smallest rectangle in world coordinates that
+   * contains all `Spatial` overlays in the scene (excluding canonical media).
+   * Only overlays with non-zero area bounds are included.
+   *
+   * @returns The union bounding rect, or `null` if no qualifying overlays exist.
+   */
+  getContentBounds(): Rect | null {
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    let found = false;
+
+    this.overlays.forEach((overlay, id) => {
+      if (id === this.canonicalMediaId) return;
+      if (!TypeGuards.isSpatial(overlay)) return;
+
+      const bounds = overlay.bounds;
+      if (!isUsableBounds(bounds)) return;
+
+      minX = Math.min(minX, bounds.x);
+      minY = Math.min(minY, bounds.y);
+      maxX = Math.max(maxX, bounds.x + bounds.width);
+      maxY = Math.max(maxY, bounds.y + bounds.height);
+      found = true;
+    });
+
+    if (!found) return null;
+
+    return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+  }
+
+  /**
+   * Adjusts the viewport so all `Spatial` overlays are centered and fully
+   * visible. A no-op when there are no qualifying overlays.
+   *
+   * @param padding - Fraction of the viewport to keep as empty space on each
+   *   side (0–1). Passed directly to `Renderer2D.fitToRect`. Defaults to 0.
+   */
+  fitToContent(padding?: number): void {
+    const bounds = this.getContentBounds();
+    if (bounds) {
+      this.config.renderer.fitToRect(bounds, padding);
+    }
   }
 
   /**

@@ -108,15 +108,24 @@ export class SampleCanvasPom {
    *
    * @param x The x coordinate between [0, 1]
    * @param y The y coordinate between [0, 1]
-   * @param cursor An optional cursor value to expect after moving
+   * @param cursor An optional cursor value to expect after moving. When
+   *   provided, the move is retried until the cursor matches. This is
+   *   necessary because the cursor is event-driven — it only updates when a
+   *   mouse event fires — so the underlying state (e.g. detection mode) may
+   *   not have settled yet on the first move attempt.
    */
   async move(x: number, y: number, cursor?: string) {
     const xy = await this.#toScreenCoordinates(x, y);
     this.#mouseX = xy.x;
     this.#mouseY = xy.y;
-    await this.page.mouse.move(xy.x, xy.y);
+
     if (cursor) {
-      await this.assert.hasCursor(cursor);
+      await expect(async () => {
+        await this.page.mouse.move(xy.x, xy.y);
+        await this.assert.hasCursor(cursor);
+      }).toPass();
+    } else {
+      await this.page.mouse.move(xy.x, xy.y);
     }
   }
 
@@ -142,6 +151,29 @@ export class SampleCanvasPom {
    */
   async up() {
     await this.page.mouse.up();
+  }
+
+  /**
+   * Wheel in or out at the current cursor position.
+   *
+   * Each step applies one wheel event, which Looker translates into a single
+   * SCALE_FACTOR (1.09×) multiplication. Positive values zoom in, negative
+   * values zoom out.
+   *
+   * @param steps Number of wheel steps (positive = in, negative = out)
+   */
+  async wheel(steps: number) {
+    const deltaY = steps > 0 ? -1 : 1;
+    for (let i = 0; i < Math.abs(steps); i++) {
+      await this.page.mouse.wheel(0, deltaY);
+    }
+  }
+
+  /**
+   * Wait for the cursor to change
+   */
+  async waitForCursorChange() {
+    await this.eventUtils.getEventReceivedPromiseForPredicate("cursor-change");
   }
 
   /**
@@ -180,7 +212,7 @@ class SampleCanvasAsserter {
   /**
    * Does the mouse have this cursor style
    *
-   * @param name the cursor style
+   * @param cursor the cursor style
    */
   async hasCursor(cursor: string) {
     const value = await this.sampleCanvasPom.cursor;

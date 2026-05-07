@@ -82,6 +82,7 @@ function mockStreamingResponse(chunks: Uint8Array[]) {
 }
 
 const TEST_URL = "https://example.com/model.onnx";
+const TEST_CACHE_KEY = "test:model.onnx";
 const TEST_BUFFER = new ArrayBuffer(64);
 
 describe("loadModelWeights", () => {
@@ -99,7 +100,7 @@ describe("loadModelWeights", () => {
   });
 
   it("Downloads and returns buffer on cache miss", async () => {
-    const result = await loadModelWeights(TEST_URL);
+    const result = await loadModelWeights(TEST_URL, TEST_CACHE_KEY);
 
     expect(result.byteLength).toBe(64);
     expect(global.fetch).toHaveBeenCalledTimes(1);
@@ -107,9 +108,9 @@ describe("loadModelWeights", () => {
   });
 
   it("Returns cached buffer without fetching on cache hit", async () => {
-    store.set(TEST_URL, TEST_BUFFER);
+    store.set(TEST_CACHE_KEY, TEST_BUFFER);
 
-    const result = await loadModelWeights(TEST_URL);
+    const result = await loadModelWeights(TEST_URL, TEST_CACHE_KEY);
 
     expect(result.byteLength).toBe(64);
     expect(global.fetch).not.toHaveBeenCalled();
@@ -117,10 +118,10 @@ describe("loadModelWeights", () => {
   });
 
   it("Caches downloaded buffer for subsequent calls", async () => {
-    await loadModelWeights(TEST_URL);
+    await loadModelWeights(TEST_URL, TEST_CACHE_KEY);
     (global.fetch as ReturnType<typeof vi.fn>).mockClear();
 
-    const result = await loadModelWeights(TEST_URL);
+    const result = await loadModelWeights(TEST_URL, TEST_CACHE_KEY);
 
     expect(result.byteLength).toBe(64);
     expect(global.fetch).not.toHaveBeenCalled();
@@ -128,10 +129,10 @@ describe("loadModelWeights", () => {
   });
 
   it("Calls onProgress with full size on cache hit", async () => {
-    store.set(TEST_URL, TEST_BUFFER);
+    store.set(TEST_CACHE_KEY, TEST_BUFFER);
     const onProgress = vi.fn();
 
-    await loadModelWeights(TEST_URL, onProgress);
+    await loadModelWeights(TEST_URL, TEST_CACHE_KEY, onProgress);
 
     expect(onProgress).toHaveBeenCalledWith(64, 64);
     expect(closeSpy).toHaveBeenCalledTimes(1);
@@ -143,7 +144,7 @@ describe("loadModelWeights", () => {
     global.fetch = vi.fn().mockResolvedValue(mockStreamingResponse([chunk1, chunk2]));
     const onProgress = vi.fn();
 
-    const result = await loadModelWeights(TEST_URL, onProgress);
+    const result = await loadModelWeights(TEST_URL, TEST_CACHE_KEY, onProgress);
 
     expect(result.byteLength).toBe(5);
     expect(onProgress).toHaveBeenCalledTimes(2);
@@ -166,7 +167,7 @@ describe("loadModelWeights", () => {
     if (fetchOverride)
       global.fetch = fetchOverride();
 
-    const result = await loadModelWeights(TEST_URL, onProgress);
+    const result = await loadModelWeights(TEST_URL, TEST_CACHE_KEY, onProgress);
 
     expect(result.byteLength).toBe(64);
     if (onProgress)
@@ -177,7 +178,7 @@ describe("loadModelWeights", () => {
   it("Throws on 4xx without retrying", async () => {
     global.fetch = vi.fn().mockResolvedValue(mockFetchResponse(new ArrayBuffer(0), 404));
 
-    await expect(loadModelWeights(TEST_URL)).rejects.toThrow("404");
+    await expect(loadModelWeights(TEST_URL, TEST_CACHE_KEY)).rejects.toThrow("404");
     expect(global.fetch).toHaveBeenCalledTimes(1);
     expect(closeSpy).toHaveBeenCalledTimes(1);
   });
@@ -199,7 +200,7 @@ describe("loadModelWeights", () => {
     vi.useFakeTimers();
     global.fetch = mockFetch();
 
-    const promise = loadModelWeights(TEST_URL);
+    const promise = loadModelWeights(TEST_URL, TEST_CACHE_KEY);
     await vi.runAllTimersAsync();
     const result = await promise;
 
@@ -218,7 +219,7 @@ describe("loadModelWeights", () => {
         }))
       .mockResolvedValue(mockFetchResponse(TEST_BUFFER));
 
-    const promise = loadModelWeights(TEST_URL);
+    const promise = loadModelWeights(TEST_URL, TEST_CACHE_KEY);
     await vi.advanceTimersByTimeAsync(61_000);
     await vi.runAllTimersAsync();
     const result = await promise;
@@ -237,7 +238,7 @@ describe("loadModelWeights", () => {
     vi.stubGlobal("indexedDB", idb.mockIndexedDB);
     const onWarning = vi.fn();
 
-    const result = await loadModelWeights(TEST_URL, undefined, onWarning);
+    const result = await loadModelWeights(TEST_URL, TEST_CACHE_KEY, undefined, onWarning);
 
     expect(result.byteLength).toBe(64);
     expect(global.fetch).toHaveBeenCalledTimes(1);
@@ -249,7 +250,7 @@ describe("loadModelWeights", () => {
     vi.stubGlobal("indexedDB", { open: () => { throw new Error("blocked"); } });
     const onWarning = vi.fn();
 
-    const result = await loadModelWeights(TEST_URL, undefined, onWarning);
+    const result = await loadModelWeights(TEST_URL, TEST_CACHE_KEY, undefined, onWarning);
 
     expect(result.byteLength).toBe(64);
     expect(onWarning).toHaveBeenCalledWith("IndexedDB open failed, downloading instead: Error: blocked");
@@ -268,7 +269,7 @@ describe("loadModelWeights", () => {
       .mockResolvedValueOnce(truncated)
       .mockResolvedValue(mockFetchResponse(TEST_BUFFER));
 
-    const promise = loadModelWeights(TEST_URL, vi.fn());
+    const promise = loadModelWeights(TEST_URL, TEST_CACHE_KEY, vi.fn());
     await vi.runAllTimersAsync();
     const result = await promise;
 
@@ -282,7 +283,7 @@ describe("loadModelWeights", () => {
     vi.useFakeTimers();
     global.fetch = vi.fn().mockRejectedValue(new Error("Network Error"));
 
-    const promise = loadModelWeights(TEST_URL).catch((e: Error) => e);
+    const promise = loadModelWeights(TEST_URL, TEST_CACHE_KEY).catch((e: Error) => e);
     await vi.runAllTimersAsync();
     const err = await promise;
     expect(err).toBeInstanceOf(Error);
@@ -302,7 +303,7 @@ describe("loadModelWeights", () => {
     );
     global.fetch = vi.fn().mockImplementation(() => Promise.resolve(makeTruncated()));
 
-    const promise = loadModelWeights(TEST_URL, vi.fn()).catch((e: Error) => e);
+    const promise = loadModelWeights(TEST_URL, TEST_CACHE_KEY, vi.fn()).catch((e: Error) => e);
     await vi.runAllTimersAsync();
     const err = await promise;
     expect(err).toBeInstanceOf(Error);
