@@ -15,8 +15,7 @@ import {
   useLighter,
 } from "@fiftyone/lighter";
 import * as fos from "@fiftyone/state";
-import { atom, useAtomValue, useSetAtom } from "jotai";
-import { useAtomCallback } from "jotai/utils";
+import { atom, useAtom, useAtomValue } from "jotai";
 import { useCallback, useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import { labels, useLabelsContext } from "../useLabels";
@@ -47,8 +46,7 @@ export interface MergeTool {
  * composed by {@link useSegmentationMode}.
  */
 export const useMergeTool = (): MergeTool => {
-  const mergeTargetId = useAtomValue(mergeTargetIdAtom);
-  const setMergeTargetId = useSetAtom(mergeTargetIdAtom);
+  const [mergeTargetId, setMergeTargetId] = useAtom(mergeTargetIdAtom);
   const annotationEventBus = useAnnotationEventBus();
   const commandBus = useCommandBus();
   const { scene, removeOverlay } = useLighter();
@@ -72,19 +70,13 @@ export const useMergeTool = (): MergeTool => {
     [sidebarLabels]
   );
 
-  const getMergeTargetId = useAtomCallback(
-    useCallback((get) => get(mergeTargetIdAtom), [])
-  );
-
   const clearMergeTarget = useCallback(() => {
     setMergeTargetId(null);
   }, [setMergeTargetId]);
 
   const handleOverlayClick = useCallback(
     async (overlay: DetectionOverlay) => {
-      const currentTargetId = getMergeTargetId();
-
-      if (currentTargetId === null) {
+      if (mergeTargetId === null) {
         // First click — adopt as target and load into sidebar via the
         // existing detection-establish path.
         setMergeTargetId(overlay.id);
@@ -95,12 +87,12 @@ export const useMergeTool = (): MergeTool => {
         return;
       }
 
-      if (overlay.id === currentTargetId) {
+      if (overlay.id === mergeTargetId) {
         // Re-clicked the loaded target — no-op.
         return;
       }
 
-      const targetOverlay = scene?.getOverlay(currentTargetId);
+      const targetOverlay = scene?.getOverlay(mergeTargetId);
       if (!(targetOverlay instanceof DetectionOverlay) || !scene) return;
 
       const sourceLabel = getLabelById(overlay.id);
@@ -158,7 +150,7 @@ export const useMergeTool = (): MergeTool => {
       commandBus,
       fieldSchema,
       getLabelById,
-      getMergeTargetId,
+      mergeTargetId,
       removeLabelFromSidebar,
       removeOverlay,
       scene,

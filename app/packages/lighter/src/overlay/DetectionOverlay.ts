@@ -1210,23 +1210,8 @@ export class DetectionOverlay
   }
 
   // ---------------------------------------------------------------------------
-  // Segmentation undo/redo support
+  // Merging mask detections
   // ---------------------------------------------------------------------------
-
-  getPaintStrokeData(): PaintStrokeData | undefined {
-    return this.mask?.getPaintStrokeData();
-  }
-
-  restoreMaskSnapshot(
-    snapshot: MaskSnapshot | undefined,
-    bounds: Rect | undefined
-  ): void {
-    this.mask ??= new MaskCanvas();
-
-    this.mask.restoreSnapshot(snapshot);
-    this.bounds = bounds;
-    this.markDirty();
-  }
 
   /**
    * Merges another detection's mask into this one. Expands this overlay's
@@ -1239,9 +1224,7 @@ export class DetectionOverlay
    */
   mergeFrom(source: DetectionOverlay): boolean {
     const sourceSource = source.mask?.getPreviewSource();
-    if (!sourceSource) return false;
-
-    this.mask ??= new MaskCanvas();
+    if (!this.mask || !sourceSource) return false;
 
     const newBounds = this.mask.mergeFrom(
       sourceSource,
@@ -1267,6 +1250,25 @@ export class DetectionOverlay
     });
 
     return true;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Segmentation undo/redo support
+  // ---------------------------------------------------------------------------
+
+  getPaintStrokeData(): PaintStrokeData | undefined {
+    return this.mask?.getPaintStrokeData();
+  }
+
+  restoreMaskSnapshot(
+    snapshot: MaskSnapshot | undefined,
+    bounds: Rect | undefined
+  ): void {
+    this.mask ??= new MaskCanvas();
+
+    this.mask.restoreSnapshot(snapshot);
+    this.bounds = bounds;
+    this.markDirty();
   }
 
   override destroy(): void {
