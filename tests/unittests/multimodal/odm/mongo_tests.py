@@ -32,7 +32,7 @@ class ViewFieldMatcher:
     def __eq__(self, other):
         try:
             return other.to_mongo() == self._expected.to_mongo()
-        except Exception:
+        except AttributeError:
             return False
 
     def __repr__(self):
