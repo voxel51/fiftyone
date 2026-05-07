@@ -180,6 +180,7 @@ const HistogramRenderer: React.FC<{ path: string }> = ({ path }) => {
   return data.length ? (
     <Container id={`histogram-${path}`} ref={ref}>
       {hasMore && <Title>{`First ${data?.length} results`}</Title>}
+      <div style={{ display: "flex", justifyContent: "center" }}>
       <BarChart
         height={height - 37}
         width={data.length * (barWidth + 4) + 50}
@@ -247,6 +248,7 @@ const HistogramRenderer: React.FC<{ path: string }> = ({ path }) => {
           isAnimationActive={false}
         />
       </BarChart>
+      </div>
     </Container>
   ) : (
     <Loading>No Data</Loading>

@@ -20,7 +20,9 @@ from .geo import GeoPoints
 from .get_similar_labels_frames import GetSimilarLabelsFrameCollection
 from .groups import GroupsRoutes
 from .media import Media
+from .ontology import Ontologies
 from .plugins import Plugins
+from .runtime_assets import RuntimeAssetRoutes
 from .sample import SampleRoutes
 from .screenshot import Screenshot
 from .sort import Sort
@@ -34,6 +36,7 @@ routes = (
     + EmbeddingsRoutes
     + GroupsRoutes
     + OperatorRoutes
+    + RuntimeAssetRoutes
     + SampleRoutes
     + [
         ("/aggregate", Aggregate),
@@ -44,6 +47,7 @@ routes = (
         ("/frames", Frames),
         ("/geo", GeoPoints),
         ("/media", Media),
+        ("/ontologies", Ontologies),
         ("/plugins", Plugins),
         ("/sort", Sort),
         ("/screenshot/{img:str}", Screenshot),

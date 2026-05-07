@@ -127,6 +127,62 @@ class When:
         return parts + ")"
 
 
+class WhenEquals(When):
+    """Convenience subclass of :class:`When` for ``equals`` conditions.
+
+    Equivalent to ``When(WhenOperator.EQUALS, field=..., value=...)``
+    without spelling the operator. Inherits ``to_dict``,
+    ``__post_init__`` validation, and operator-based dispatch from
+    :class:`When`.
+
+    Example::
+
+        WhenEquals(field="damage_present", value=True)
+    """
+
+    def __init__(self, field: str, value: Any, then: Optional[dict] = None):
+        super().__init__(
+            operator=WhenOperator.EQUALS,
+            field=field,
+            value=value,
+            then=then,
+        )
+
+    def __repr__(self) -> str:
+        parts = f"WhenEquals(field={self.field!r}, value={self.value!r}"
+        if self.then is not None:
+            parts += f", then={self.then!r}"
+        return parts + ")"
+
+
+class WhenIn(When):
+    """Convenience subclass of :class:`When` for ``in`` conditions.
+
+    Equivalent to ``When(WhenOperator.IN, field=..., value=[...])``
+    without spelling the operator. Inherits ``to_dict``,
+    ``__post_init__`` validation, and operator-based dispatch from
+    :class:`When`.
+
+    Example::
+
+        WhenIn(field="car_model", value=["camry", "corolla"])
+    """
+
+    def __init__(self, field: str, value: list, then: Optional[dict] = None):
+        super().__init__(
+            operator=WhenOperator.IN,
+            field=field,
+            value=value,
+            then=then,
+        )
+
+    def __repr__(self) -> str:
+        parts = f"WhenIn(field={self.field!r}, value={self.value!r}"
+        if self.then is not None:
+            parts += f", then={self.then!r}"
+        return parts + ")"
+
+
 @dataclass(repr=False)
 class AttributeSpec:
     """A typed annotation attribute with optional conditional visibility.
@@ -142,6 +198,10 @@ class AttributeSpec:
         values: optional list of allowed values
         when: optional list of :class:`When` conditions controlling when
             this attribute is visible or field overrides
+        read_only: optional flag marking the attribute as non-editable
+        default: optional default value (type matches ``type``)
+        range: optional ``[min, max]`` for numeric-with-slider components
+        precision: optional decimal places for float-with-text components
 
     Example::
 
@@ -150,7 +210,7 @@ class AttributeSpec:
             type="str",
             component="dropdown",
             values=["front", "rear", "driver_side", "passenger_side"],
-            when=[When(WhenOperator.EQUALS, field="damage_present", value=True)],
+            when=[WhenEquals(field="damage_present", value=True)],
         )
     """
 
@@ -159,6 +219,10 @@ class AttributeSpec:
     component: str
     values: Optional[list] = None
     when: Optional[list[When]] = None
+    read_only: Optional[bool] = None
+    default: Any = None
+    range: Optional[list] = None
+    precision: Optional[int] = None
 
     def __post_init__(self) -> None:
         invalid_fields = [
@@ -184,6 +248,10 @@ class AttributeSpec:
             "component": self.component,
         }
         attr_insert_to_dict(d, "values", self)
+        attr_insert_to_dict(d, "read_only", self)
+        attr_insert_to_dict(d, "default", self)
+        attr_insert_to_dict(d, "range", self)
+        attr_insert_to_dict(d, "precision", self)
         if self.when is not None:
             d["when"] = [w.to_dict() for w in self.when]
         return d
@@ -218,6 +286,10 @@ class AttributeSpec:
             component=d["component"],
             values=values,
             when=when,
+            read_only=d.get("read_only"),
+            default=d.get("default"),
+            range=d.get("range"),
+            precision=d.get("precision"),
         )
 
     def __repr__(self) -> str:

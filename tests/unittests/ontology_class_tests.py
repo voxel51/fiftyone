@@ -16,6 +16,8 @@ os.environ.setdefault("VFF_ONTOLOGY_CA", "1")
 from fiftyone.core.annotation.attributes import (
     AttributeSpec,
     When,
+    WhenEquals,
+    WhenIn,
     WhenOperator,
 )
 from fiftyone.core.ontology import AnnotationOntology
@@ -124,6 +126,58 @@ class WhenTests(unittest.TestCase):
         self.assertEqual(restored.then, original.then)
 
 
+class WhenEqualsTests(unittest.TestCase):
+    def test_pre_fills_operator(self):
+        w = WhenEquals(field="damage_present", value=True)
+        self.assertEqual(w.operator, WhenOperator.EQUALS)
+        self.assertEqual(w.field, "damage_present")
+        self.assertEqual(w.value, True)
+        self.assertIsNone(w.then)
+
+    def test_isinstance_of_when(self):
+        # Existing CA-2 validators / dispatchers branch on
+        # ``isinstance(x, When)``; subclasses must satisfy that.
+        self.assertIsInstance(WhenEquals(field="f", value=1), When)
+
+    def test_to_dict_matches_when(self):
+        # Wire format and MongoDB storage are unchanged — the
+        # subclass should produce the same dict as a hand-rolled When.
+        sub = WhenEquals(field="f", value=1)
+        base = When(WhenOperator.EQUALS, field="f", value=1)
+        self.assertEqual(sub.to_dict(), base.to_dict())
+
+    def test_with_then(self):
+        w = WhenEquals(
+            field="vehicle_type",
+            value="car",
+            then={"values": ["sedan", "suv"]},
+        )
+        self.assertEqual(w.then, {"values": ["sedan", "suv"]})
+
+    def test_repr_uses_subclass_name(self):
+        self.assertIn("WhenEquals(", repr(WhenEquals(field="f", value=1)))
+
+
+class WhenInTests(unittest.TestCase):
+    def test_pre_fills_operator(self):
+        w = WhenIn(field="car_model", value=["camry", "corolla"])
+        self.assertEqual(w.operator, WhenOperator.IN)
+        self.assertEqual(w.field, "car_model")
+        self.assertEqual(w.value, ["camry", "corolla"])
+        self.assertIsNone(w.then)
+
+    def test_isinstance_of_when(self):
+        self.assertIsInstance(WhenIn(field="f", value=[1]), When)
+
+    def test_to_dict_matches_when(self):
+        sub = WhenIn(field="f", value=[1, 2])
+        base = When(WhenOperator.IN, field="f", value=[1, 2])
+        self.assertEqual(sub.to_dict(), base.to_dict())
+
+    def test_repr_uses_subclass_name(self):
+        self.assertIn("WhenIn(", repr(WhenIn(field="f", value=[1])))
+
+
 class AttributeSpecTests(unittest.TestCase):
     def test_create_full(self):
         attr = AttributeSpec(
@@ -131,9 +185,7 @@ class AttributeSpecTests(unittest.TestCase):
             type="str",
             component="dropdown",
             values=["front", "rear"],
-            when=[
-                When(WhenOperator.EQUALS, field="damage_present", value=True)
-            ],
+            when=[WhenEquals(field="damage_present", value=True)],
         )
         self.assertEqual(attr.name, "damage_location")
         self.assertEqual(attr.type, "str")
@@ -216,9 +268,7 @@ class AttributeSpecTests(unittest.TestCase):
             type="str",
             component="radio",
             values=["minor", "moderate", "severe"],
-            when=[
-                When(WhenOperator.EQUALS, field="damage_present", value=True)
-            ],
+            when=[WhenEquals(field="damage_present", value=True)],
         )
         d = attr.to_dict()
         self.assertEqual(d["name"], "severity")
@@ -256,9 +306,7 @@ class AttributeSpecTests(unittest.TestCase):
             type="str",
             component="dropdown",
             values=["front", "rear"],
-            when=[
-                When(WhenOperator.EQUALS, field="damage_present", value=True)
-            ],
+            when=[WhenEquals(field="damage_present", value=True)],
         )
         restored = AttributeSpec.from_dict(original.to_dict())
         self.assertEqual(restored.name, original.name)
@@ -269,6 +317,99 @@ class AttributeSpecTests(unittest.TestCase):
         self.assertEqual(
             restored.when[0].to_dict(), original.when[0].to_dict()
         )
+
+    def test_create_with_extended_fields(self):
+        attr = AttributeSpec(
+            name="severity",
+            type="float",
+            component="slider",
+            read_only=True,
+            default=0.5,
+            range=[0.0, 1.0],
+            precision=2,
+        )
+        self.assertEqual(attr.read_only, True)
+        self.assertEqual(attr.default, 0.5)
+        self.assertEqual(attr.range, [0.0, 1.0])
+        self.assertEqual(attr.precision, 2)
+
+    def test_to_dict_omits_unset_extended_fields(self):
+        attr = AttributeSpec(name="flag", type="bool", component="checkbox")
+        d = attr.to_dict()
+        self.assertNotIn("read_only", d)
+        self.assertNotIn("default", d)
+        self.assertNotIn("range", d)
+        self.assertNotIn("precision", d)
+
+    def test_to_dict_emits_falsy_extended_fields(self):
+        attr = AttributeSpec(
+            name="flag",
+            type="bool",
+            component="checkbox",
+            read_only=False,
+            default=False,
+        )
+        d = attr.to_dict()
+        self.assertEqual(d["read_only"], False)
+        self.assertEqual(d["default"], False)
+
+    def test_to_dict_emits_extended_fields(self):
+        attr = AttributeSpec(
+            name="severity",
+            type="float",
+            component="slider",
+            read_only=True,
+            default=0.5,
+            range=[0.0, 1.0],
+            precision=2,
+        )
+        d = attr.to_dict()
+        self.assertEqual(d["read_only"], True)
+        self.assertEqual(d["default"], 0.5)
+        self.assertEqual(d["range"], [0.0, 1.0])
+        self.assertEqual(d["precision"], 2)
+
+    def test_from_dict_reads_extended_fields(self):
+        attr = AttributeSpec.from_dict(
+            {
+                "name": "severity",
+                "type": "float",
+                "component": "slider",
+                "read_only": True,
+                "default": 0.5,
+                "range": [0.0, 1.0],
+                "precision": 2,
+            }
+        )
+        self.assertEqual(attr.read_only, True)
+        self.assertEqual(attr.default, 0.5)
+        self.assertEqual(attr.range, [0.0, 1.0])
+        self.assertEqual(attr.precision, 2)
+
+    def test_from_dict_handles_missing_extended_fields(self):
+        attr = AttributeSpec.from_dict(
+            {"name": "flag", "type": "bool", "component": "checkbox"}
+        )
+        self.assertIsNone(attr.read_only)
+        self.assertIsNone(attr.default)
+        self.assertIsNone(attr.range)
+        self.assertIsNone(attr.precision)
+
+    def test_roundtrip_with_extended_fields(self):
+        original = AttributeSpec(
+            name="severity",
+            type="float",
+            component="slider",
+            read_only=True,
+            default=0.5,
+            range=[0.0, 1.0],
+            precision=2,
+        )
+        restored = AttributeSpec.from_dict(original.to_dict())
+        self.assertEqual(restored.read_only, original.read_only)
+        self.assertEqual(restored.default, original.default)
+        self.assertEqual(restored.range, original.range)
+        self.assertEqual(restored.precision, original.precision)
 
 
 class AnnotationOntologyTests(unittest.TestCase):
@@ -288,13 +429,7 @@ class AnnotationOntologyTests(unittest.TestCase):
                     type="str",
                     component="dropdown",
                     values=["front", "rear", "driver_side", "passenger_side"],
-                    when=[
-                        When(
-                            WhenOperator.EQUALS,
-                            field="damage_present",
-                            value=True,
-                        )
-                    ],
+                    when=[WhenEquals(field="damage_present", value=True)],
                 ),
             ],
         )
@@ -412,25 +547,13 @@ class AnnotationOntologyTests(unittest.TestCase):
                     type="str",
                     component="dropdown",
                     values=["front", "rear"],
-                    when=[
-                        When(
-                            WhenOperator.EQUALS,
-                            field="damage_present",
-                            value=True,
-                        )
-                    ],
+                    when=[WhenEquals(field="damage_present", value=True)],
                 ),
                 AttributeSpec(
                     name="airbags_deployed",
                     type="bool",
                     component="checkbox",
-                    when=[
-                        When(
-                            WhenOperator.EQUALS,
-                            field="damage_location",
-                            value="front",
-                        )
-                    ],
+                    when=[WhenEquals(field="damage_location", value="front")],
                 ),
             ],
         )
@@ -481,13 +604,7 @@ class OntologySDKTests(unittest.TestCase):
                     type="str",
                     component="dropdown",
                     values=["front", "rear"],
-                    when=[
-                        When(
-                            WhenOperator.EQUALS,
-                            field="damage_present",
-                            value=True,
-                        )
-                    ],
+                    when=[WhenEquals(field="damage_present", value=True)],
                 ),
             ],
         )

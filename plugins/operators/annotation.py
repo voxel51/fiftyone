@@ -8,6 +8,10 @@ Annotation label schemas operators
 
 import fiftyone.core.annotation.constants as foac
 import fiftyone.core.annotation.utils as foau
+from fiftyone.core.annotation.hydrate_label_schemas import (
+    dehydrate_applied_ontology,
+    hydrate_applied_ontology,
+)
 from fiftyone.core.annotation.validate_label_schemas import (
     ValidationErrors,
     validate_label_schemas,
@@ -136,7 +140,9 @@ class GetLabelSchemas(foo.Operator):
             }
 
             if field in label_schemas:
-                result[field]["label_schema"] = label_schemas[field]
+                result[field]["label_schema"] = hydrate_applied_ontology(
+                    label_schemas[field]
+                )
 
         return {
             "active_label_schemas": ctx.dataset.active_label_schemas,
@@ -168,7 +174,15 @@ class UpdateLabelSchema(foo.Operator):
             ctx.ops.notify(str(e), variant="error")
             return {"error": str(e)}
 
-        return {"label_schema": label_schema}
+        if label_schema is None:
+            return {"label_schema": None}
+
+        # Hydrate the outgoing label schema if an ontology is attached.
+        # Re-read the saved (dehydrated) shape defensively so a caller
+        # that sent a partially-hydrated schema doesn't get double-
+        # processed.
+        saved = ctx.dataset.label_schemas.get(field, label_schema)
+        return {"label_schema": hydrate_applied_ontology(saved)}
 
 
 class ValidateLabelSchemas(foo.Operator):
@@ -182,10 +196,16 @@ class ValidateLabelSchemas(foo.Operator):
 
     def execute(self, ctx):
         errors = []
+        # Mirror update_label_schema: dehydrate before validating so the
+        # pre-save check sees the same shape that will actually be saved.
+        label_schemas = {
+            field: dehydrate_applied_ontology(schema)
+            for field, schema in ctx.params.get("label_schemas", {}).items()
+        }
         try:
             validate_label_schemas(
                 ctx.dataset,
-                ctx.params.get("label_schemas", {}),
+                label_schemas,
                 allow_new_attrs=True,
                 allow_new_fields=True,
             )

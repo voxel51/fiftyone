@@ -12,6 +12,7 @@ import fnmatch
 from datetime import datetime
 from typing import Any, Optional
 
+import fiftyone.core.annotation.constants as foac
 import fiftyone.core.utils as fou
 from fiftyone.core.annotation.attributes import (
     AttributeSpec,
@@ -225,7 +226,7 @@ class AnnotationOntology(Ontology):
                     type="str",
                     component="dropdown",
                     values=["front", "rear", "driver_side", "passenger_side"],
-                    when=[When(WhenOperator.EQUALS, field="damage_present", value=True)],
+                    when=[WhenEquals(field="damage_present", value=True)],
                 ),
             ],
         )
@@ -287,6 +288,8 @@ class AnnotationOntology(Ontology):
                 AttributeSpec.from_dict(a) for a in root.get("attributes", [])
             ],
         )
+
+
 # ---- Type dispatch --------------------------------------------------------
 
 _TYPE_TO_CLS: dict[str, type[Ontology]] = {
@@ -387,3 +390,32 @@ def delete_ontology(name: str, force: bool = False) -> None:
     count = _objects_by_slug(name).delete()
     if count == 0:
         raise ValueError(f"Ontology '{name}' not found")
+
+
+def apply_ontology(
+    label_schemas: dict, field_name: str, ontology_name: Optional[str]
+) -> dict:
+    """Returns a new ``label_schemas`` dict with an annotation ontology
+    attached to (or removed from) the given field.
+
+    Pure function — does not mutate the input. Apply the result via
+    :meth:`fiftyone.core.dataset.Dataset.set_label_schemas` to persist.
+
+    Args:
+        label_schemas: a label schemas dict
+        field_name: the field to attach the ontology to
+        ontology_name: name of an annotation ontology to attach, or ``None``
+            to unset an existing reference
+
+    Returns:
+        a new label schemas dict
+    """
+    label_schemas = dict(label_schemas)
+    field_schema = dict(label_schemas.get(field_name, {}))
+    if ontology_name is None:
+        # idempotent: no-op if there is no existing reference to unset
+        field_schema.pop(foac.APPLIED_ONTOLOGY, None)
+    else:
+        field_schema[foac.APPLIED_ONTOLOGY] = ontology_name
+    label_schemas[field_name] = field_schema
+    return label_schemas
