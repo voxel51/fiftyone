@@ -39,48 +39,50 @@ function DisconnectOntologyModalComponent({
           the schema:
         </Typography>
 
-        <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
-          <Typography color={TextColor.Primary}>Attributes:</Typography>
-          {vulnerableAttributes.length > 0 && (
-            <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
-              {vulnerableAttributes.slice(0, 5).map((name) => (
-                <Text
-                  key={name}
-                  variant={TextVariant.Md}
-                  color={TextColor.Secondary}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.5rem",
-                    paddingLeft: "1rem",
-                  }}
-                >
-                  <span
+        {vulnerableAttributes && vulnerableAttributes.length > 0 && (
+          <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
+            <Typography color={TextColor.Primary}>Attributes:</Typography>
+            {vulnerableAttributes.length > 0 && (
+              <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
+                {vulnerableAttributes.slice(0, 5).map((name) => (
+                  <Text
+                    key={name}
+                    variant={TextVariant.Md}
+                    color={TextColor.Secondary}
                     style={{
-                      display: "inline-block",
-                      marginTop: "4px",
-                      width: 6,
-                      height: 6,
-                      borderRadius: "50%",
-                      backgroundColor: "currentColor",
-                      flexShrink: 0,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.5rem",
+                      paddingLeft: "1rem",
                     }}
-                  />
-                  {name}
-                </Text>
-              ))}
-              {vulnerableAttributes.length > 5 && (
-                <Text
-                  variant={TextVariant.Md}
-                  color={TextColor.Primary}
-                  style={{ paddingLeft: "2rem" }}
-                >
-                  ... and {vulnerableAttributes.length - 5} others
-                </Text>
-              )}
-            </Stack>
-          )}
-        </Stack>
+                  >
+                    <span
+                      style={{
+                        display: "inline-block",
+                        marginTop: "4px",
+                        width: 6,
+                        height: 6,
+                        borderRadius: "50%",
+                        backgroundColor: "currentColor",
+                        flexShrink: 0,
+                      }}
+                    />
+                    {name}
+                  </Text>
+                ))}
+                {vulnerableAttributes.length > 5 && (
+                  <Text
+                    variant={TextVariant.Md}
+                    color={TextColor.Primary}
+                    style={{ paddingLeft: "2rem" }}
+                  >
+                    ... and {vulnerableAttributes.length - 5} others
+                  </Text>
+                )}
+              </Stack>
+            )}
+          </Stack>
+        )}
       </Stack>
 
       <Stack
