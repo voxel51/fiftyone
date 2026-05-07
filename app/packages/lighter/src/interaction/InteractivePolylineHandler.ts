@@ -344,6 +344,10 @@ export class InteractivePolylineHandler implements InteractionHandler {
     return true;
   }
 
+  onCanvasLeave(): void {
+    this.overlay.setPreviewPoint(null);
+  }
+
   cleanup(): void {
     this.overlay.setPreviewPoint(null);
     this.overlay.setPreviewAnchorSegmentIdx(null);

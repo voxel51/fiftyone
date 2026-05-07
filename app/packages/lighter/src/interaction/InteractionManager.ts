@@ -213,6 +213,12 @@ export interface InteractionHandler {
   onHoverLeave?(point?: Point | null, event?: PointerEvent | null): boolean;
 
   /**
+   * Notification that the pointer has left the canvas. Fired by the manager
+   * on `pointerleave` for the active interactive handler.
+   */
+  onCanvasLeave?(): void;
+
+  /**
    * Handle hover move event.
    * @param point - The point where the event occurred.
    * @param event - The original pointer event.
@@ -755,6 +761,8 @@ export class InteractionManager {
       this.hoveredHandler.onHoverLeave?.(point, event);
       this.hoveredHandler = undefined;
     }
+
+    this.getInteractiveHandler()?.onCanvasLeave?.();
   };
 
   private handleWheel = (event: WheelEvent): void => {
