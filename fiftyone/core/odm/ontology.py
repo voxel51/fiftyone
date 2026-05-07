@@ -102,6 +102,11 @@ class OntologyDocument(Document):
             self.reload()
             return self
 
+        # version is internal bookkeeping; compute from the DB on first save
+        # too, so a caller-supplied value can't bypass append-only invariants.
+        # Symmetric with the slug recomputation above.
+        self.version = self._next_version()
+
         if self.created_at is None:
             self.created_at = now
 
@@ -130,21 +135,25 @@ class OntologyDocument(Document):
 
     # pylint disable: mongoengine's ``objects`` queryset manager is attached
     # dynamically and not introspectable by pylint.
-    def _save_as_new_version(  # pylint: disable=no-member
-        self, now: datetime, *args: Any, **kwargs: Any
-    ) -> OntologyDocument:
-        # Append-only versioning: create a new document instead of updating
-        # the existing one.
+    def _next_version(  # pylint: disable=no-member
+        self,
+    ) -> int:
+        """Returns the next version number for this slug's lineage."""
         latest = (
             OntologyDocument.objects(slug=self.slug)
             .order_by("-version")
             .only("version")
             .first()
         )
-        next_version = (latest.version + 1) if latest else 1
+        return (latest.version + 1) if latest else 1
 
+    def _save_as_new_version(
+        self, now: datetime, *args: Any, **kwargs: Any
+    ) -> OntologyDocument:
+        # Append-only versioning: create a new document instead of updating
+        # the existing one.
         new_doc = self.copy_with_new_id()
-        new_doc.version = next_version
+        new_doc.version = self._next_version()
         new_doc.schema_version = CURRENT_SCHEMA_VERSION
         new_doc.created_at = now
         new_doc.last_modified_at = now

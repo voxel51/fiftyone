@@ -12,7 +12,6 @@ import unittest
 from datetime import datetime, timezone
 
 from mongoengine.errors import ValidationError
-from pymongo.errors import DuplicateKeyError
 
 import fiftyone.core.odm as foo
 from fiftyone.core.odm import ontology as foo_ontology
@@ -120,21 +119,40 @@ class OntologyDocumentTests(unittest.TestCase):
         self.assertIn("when", loaded.root["attributes"][1])
         self.assertEqual(loaded.root["taxonomies"], ["vehicle_classes"])
 
-    def test_name_version_uniqueness(self):
-        OntologyDocument(
-            name="test_ontology",
-            version=1,
+    def test_caller_supplied_version_overwritten_on_first_save(self):
+        # version is internal bookkeeping; a caller-supplied value on a
+        # brand-new slug is silently replaced with 1.
+        doc = OntologyDocument(
+            name="brand_new_slug",
+            version=99,
             type=OntologyType.TAXONOMY,
             root={"name": "root"},
-        ).save()
+        )
+        doc.save()
+        self.assertEqual(doc.version, 1)
 
-        with self.assertRaises(DuplicateKeyError):
+    def test_caller_supplied_version_overwritten_for_existing_slug(self):
+        # When the slug already has a lineage, a fresh document with a
+        # caller-supplied version is bumped to next-from-DB instead of
+        # honoring the supplied value.
+        for v in range(1, 4):
             OntologyDocument(
-                name="test_ontology",
-                version=1,
+                name="lineage",
                 type=OntologyType.TAXONOMY,
-                root={"name": "root"},
+                root={"name": "root", "v": v},
             ).save()
+
+        # Now the slug has versions 1, 2, 3. A new construction with
+        # version=99 should land at 4, not 99.
+        new_doc = OntologyDocument(
+            name="lineage",
+            version=99,
+            type=OntologyType.TAXONOMY,
+            root={"name": "root", "v": "fresh"},
+        )
+        new_doc.save()
+        self.assertEqual(new_doc.version, 4)
+        self.assertEqual(OntologyDocument.objects(slug="lineage").count(), 4)
 
     def test_multiple_versions(self):
         for v in range(1, 4):
@@ -271,21 +289,25 @@ class OntologyDocumentTests(unittest.TestCase):
 
         self.assertEqual(doc.slug, "my-ontology-v1")
 
-    def test_case_insensitive_uniqueness(self):
+    def test_case_variant_names_land_in_same_lineage(self):
+        # "Cars" and "CARS" normalize to the same slug, so two new-doc
+        # saves append to the same lineage (versions 1 and 2) rather than
+        # colliding on the unique (slug, version) index — the version is
+        # computed from the DB on each save.
         OntologyDocument(
             name="Cars",
-            version=1,
             type=OntologyType.TAXONOMY,
             root={"name": "root"},
         ).save()
 
-        with self.assertRaises(DuplicateKeyError):
-            OntologyDocument(
-                name="CARS",
-                version=1,
-                type=OntologyType.TAXONOMY,
-                root={"name": "root"},
-            ).save()
+        OntologyDocument(
+            name="CARS",
+            type=OntologyType.TAXONOMY,
+            root={"name": "root"},
+        ).save()
+
+        docs = OntologyDocument.objects(slug="cars").order_by("version")
+        self.assertEqual([d.version for d in docs], [1, 2])
 
     def test_slug_differs_across_versions(self):
         for v in range(1, 4):
