@@ -138,3 +138,22 @@ class TestMongoAdapter:
             dataset.add_samples.assert_called_once_with(
                 [SampleMatcher("scene1"), SampleMatcher("scene2")]
             )
+
+        def test_duplicate_new_scene_ids(self, inventories, metadata_builder):
+            dataset = Mock(match=Mock(return_value=[]))
+            metadata_builder.return_value = Mock()
+
+            ###
+            MongoAdapter.write_scene_inventories(
+                dataset, inventories + [Mock(scene_id="scene1")]
+            )
+            ###
+
+            dataset.match.assert_called_once_with(
+                ViewFieldMatcher(
+                    F("metadata.scene_id").is_in({"scene1", "scene2"})
+                )
+            )
+            dataset.add_samples.assert_called_once_with(
+                [SampleMatcher("scene1"), SampleMatcher("scene2")]
+            )
