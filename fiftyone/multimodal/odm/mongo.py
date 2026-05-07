@@ -26,7 +26,7 @@ class MongoAdapter(DatabaseAdapter):
     ) -> None:
         """
         Writes the given scene inventories to the dataset as samples with the
-        metadata field 'scene_inventory'.
+        'metadata' field.
 
         Args:
             dataset: the :class:`fiftyone.Dataset` to write to
