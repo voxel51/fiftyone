@@ -91,6 +91,36 @@ class NoCyclesTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_annotation_ontology(ao)
 
+    def test_rejects_cycle_through_overwritten_variant(self):
+        # A multi-variant attribute (same `name`, different `when`)
+        # used to lose its edges when a later same-name variant
+        # overwrote it in the cycle graph. The edges from every variant
+        # must contribute, otherwise a cycle through the dropped variant
+        # goes silently unreported.
+        ao = AnnotationOntology(
+            name="test",
+            attributes=[
+                AttributeSpec(
+                    name="a",
+                    type="str",
+                    component="dropdown",
+                    when=[When(WhenOperator.EQUALS, field="b", value="x")],
+                ),
+                # Same-name variant with no `when` — would have erased
+                # the cyclic edge from the first variant under the old
+                # graph-build code.
+                AttributeSpec(name="a", type="str", component="dropdown"),
+                AttributeSpec(
+                    name="b",
+                    type="str",
+                    component="dropdown",
+                    when=[When(WhenOperator.EQUALS, field="a", value="y")],
+                ),
+            ],
+        )
+        with self.assertRaises(ValueError):
+            validate_annotation_ontology(ao)
+
 
 class ThenKeysValidTests(unittest.TestCase):
     def test_rejects_then_with_disallowed_key(self):
