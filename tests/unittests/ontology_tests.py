@@ -131,38 +131,54 @@ class OntologyDocumentTests(unittest.TestCase):
         doc.save()
         self.assertEqual(doc.version, 1)
 
-    def test_caller_supplied_version_overwritten_for_existing_slug(self):
-        # When the slug already has a lineage, a fresh document with a
-        # caller-supplied version is bumped to next-from-DB instead of
-        # honoring the supplied value.
-        for v in range(1, 4):
+    def test_first_save_raises_when_slug_already_exists(self):
+        # Recreating an existing ontology via fresh construction is
+        # rejected. To create a new version, callers must load the
+        # existing instance and save the loaded copy.
+        OntologyDocument(
+            name="cars",
+            type=OntologyType.TAXONOMY,
+            root={"name": "root"},
+        ).save()
+
+        with self.assertRaises(ValueError):
             OntologyDocument(
-                name="lineage",
+                name="cars",
                 type=OntologyType.TAXONOMY,
-                root={"name": "root", "v": v},
+                root={"name": "root"},
             ).save()
 
-        # Now the slug has versions 1, 2, 3. A new construction with
-        # version=99 should land at 4, not 99.
-        new_doc = OntologyDocument(
-            name="lineage",
-            version=99,
+    def test_first_save_raises_for_case_variant_of_existing_slug(self):
+        # Case-only variants normalize to the same slug, so they hit the
+        # existing-slug defense too.
+        OntologyDocument(
+            name="Cars",
             type=OntologyType.TAXONOMY,
-            root={"name": "root", "v": "fresh"},
-        )
-        new_doc.save()
-        self.assertEqual(new_doc.version, 4)
-        self.assertEqual(OntologyDocument.objects(slug="lineage").count(), 4)
+            root={"name": "root"},
+        ).save()
+
+        with self.assertRaises(ValueError):
+            OntologyDocument(
+                name="CARS",
+                type=OntologyType.TAXONOMY,
+                root={"name": "root"},
+            ).save()
 
     def test_multiple_versions(self):
-        for v in range(1, 4):
-            OntologyDocument(
-                name="versioned",
-                version=v,
-                type=OntologyType.TAXONOMY,
-                description=f"Version {v}",
-                root={"name": "root", "version_data": v},
-            ).save()
+        # Successive versions of the same slug are produced via the
+        # load+save (in_db) path; first-save with an existing slug raises.
+        doc = OntologyDocument(
+            name="versioned",
+            type=OntologyType.TAXONOMY,
+            description="Version 1",
+            root={"name": "root", "version_data": 1},
+        )
+        doc.save()
+
+        for v in range(2, 4):
+            doc.description = f"Version {v}"
+            doc.root = {"name": "root", "version_data": v}
+            doc.save()
 
         all_versions = OntologyDocument.objects(name="versioned")
         self.assertEqual(all_versions.count(), 3)
@@ -217,23 +233,22 @@ class OntologyDocumentTests(unittest.TestCase):
         self.assertEqual(restored.version, doc.version)
         self.assertEqual(restored.root, doc.root)
 
-    def test_same_name_different_types(self):
+    def test_same_name_different_types_rejected(self):
+        # The (slug, version) lineage doesn't distinguish by type, so a
+        # second ontology with the same name — even of a different type —
+        # collides with the existing-slug defense and is rejected.
         OntologyDocument(
             name="shared_name",
-            version=1,
             type=OntologyType.TAXONOMY,
             root={"name": "root"},
         ).save()
 
-        OntologyDocument(
-            name="shared_name",
-            version=2,
-            type=OntologyType.ANNOTATION_ONTOLOGY,
-            root={"classes": [], "attributes": [], "taxonomies": []},
-        ).save()
-
-        docs = OntologyDocument.objects(name="shared_name")
-        self.assertEqual(docs.count(), 2)
+        with self.assertRaises(ValueError):
+            OntologyDocument(
+                name="shared_name",
+                type=OntologyType.ANNOTATION_ONTOLOGY,
+                root={"classes": [], "attributes": [], "taxonomies": []},
+            ).save()
 
     def test_query_by_type(self):
         OntologyDocument(
@@ -289,34 +304,17 @@ class OntologyDocumentTests(unittest.TestCase):
 
         self.assertEqual(doc.slug, "my-ontology-v1")
 
-    def test_case_variant_names_land_in_same_lineage(self):
-        # "Cars" and "CARS" normalize to the same slug, so two new-doc
-        # saves append to the same lineage (versions 1 and 2) rather than
-        # colliding on the unique (slug, version) index — the version is
-        # computed from the DB on each save.
-        OntologyDocument(
-            name="Cars",
+    def test_slug_consistent_across_versions(self):
+        # Successive versions of the same ontology share the same slug;
+        # versions are produced via the load+save (in_db) path.
+        doc = OntologyDocument(
+            name="My Ontology",
             type=OntologyType.TAXONOMY,
             root={"name": "root"},
-        ).save()
-
-        OntologyDocument(
-            name="CARS",
-            type=OntologyType.TAXONOMY,
-            root={"name": "root"},
-        ).save()
-
-        docs = OntologyDocument.objects(slug="cars").order_by("version")
-        self.assertEqual([d.version for d in docs], [1, 2])
-
-    def test_slug_differs_across_versions(self):
-        for v in range(1, 4):
-            OntologyDocument(
-                name="My Ontology",
-                version=v,
-                type=OntologyType.TAXONOMY,
-                root={"name": "root"},
-            ).save()
+        )
+        doc.save()
+        for _ in range(2):
+            doc.save()
 
         docs = OntologyDocument.objects(slug="my-ontology")
         self.assertEqual(docs.count(), 3)

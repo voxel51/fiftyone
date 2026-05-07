@@ -102,10 +102,16 @@ class OntologyDocument(Document):
             self.reload()
             return self
 
-        # version is internal bookkeeping; compute from the DB on first save
-        # too, so a caller-supplied value can't bypass append-only invariants.
-        # Symmetric with the slug recomputation above.
-        self.version = self._next_version()
+        # First-save defense: refuse to silently append to an existing
+        # lineage. Updates must go through the in_db path (load the
+        # existing doc, mutate, save), which exercises append-only
+        # versioning explicitly.
+        self._reject_if_slug_exists()
+
+        # version is internal bookkeeping; a caller-supplied value is
+        # discarded. We've just verified the slug has no lineage, so the
+        # first version is always 1.
+        self.version = 1
 
         if self.created_at is None:
             self.created_at = now
@@ -131,6 +137,28 @@ class OntologyDocument(Document):
             raise ValueError(
                 "Cannot change ontology slug via save(); use "
                 "rename_ontology() to rename across all versions"
+            )
+
+    # pylint disable: mongoengine's ``objects`` queryset manager is attached
+    # dynamically and not introspectable by pylint.
+    def _reject_if_slug_exists(  # pylint: disable=no-member
+        self,
+    ) -> None:
+        """Raises if any document with this slug is already persisted.
+
+        First-save defense: an unpersisted document whose slug already
+        exists indicates the caller is trying to recreate an ontology
+        that exists. Updates must go through the loaded-doc path, which
+        appends a new version explicitly.
+        """
+        if (
+            OntologyDocument.objects(slug=self.slug).only("id").first()
+            is not None
+        ):
+            raise ValueError(
+                f"Ontology '{self.name}' already exists. To update it, "
+                f"load the existing ontology and save the loaded "
+                f"instance to create a new version."
             )
 
     # pylint disable: mongoengine's ``objects`` queryset manager is attached
