@@ -4,8 +4,6 @@
 |
 """
 
-from typing import List, Optional
-
 from fiftyone import Dataset, Sample, ViewField as F
 from fiftyone.multimodal.metadata import MultimodalMetadata
 from fiftyone.multimodal.schemas.v1 import SceneInventory
@@ -24,7 +22,7 @@ def get_scene_id(sample: Sample) -> Optional[str]:
 class MongoAdapter(DatabaseAdapter):
     @classmethod
     def write_scene_inventories(
-        cls, dataset: Dataset, inventories: List[SceneInventory]
+        cls, dataset: Dataset, inventories: list[SceneInventory]
     ) -> None:
         """
         Writes the given scene inventories to the dataset as samples with the
