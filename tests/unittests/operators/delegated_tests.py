@@ -1135,16 +1135,9 @@ class DelegatedOperationServiceTests(unittest.TestCase):
     def test_execute_operation_monitor_unclean_exit(
         self,
         mock_get_context,
-        mock_listener,
-        mock_get_operator,
+        _mock_listener,
+        _mock_get_operator,
     ):
-        """A non-zero child exit (e.g. SIGKILL/OOM/segfault) must surface as
-        an error result and transition the doc to FAILED.
-
-        Previously the monitor returned None for any exit; the caller then
-        fetched the still-RUNNING doc and silently produced an empty
-        ExecutionResult(), leaving the operation orphaned in RUNNING state.
-        """
         mock_process = mock.MagicMock()
         # Dead immediately, both inside _monitor_operation and in the
         # execute_operation finally block
@@ -1171,10 +1164,10 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             result = self.svc.execute_operation(
                 operation=doc, log=False, monitor=True
             )
-
         self.assertIsNotNone(result)
         self.assertIsNotNone(result.error)
         self.assertIn("exited unexpectedly", result.error)
+        # Exit code should be included in the error message
         self.assertIn("code 1", result.error)
 
         # Doc must be transitioned out of RUNNING so it doesn't sit orphaned
