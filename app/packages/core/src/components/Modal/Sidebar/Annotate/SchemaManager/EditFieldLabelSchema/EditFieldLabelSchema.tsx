@@ -1,4 +1,5 @@
 import { scrollable } from "@fiftyone/components";
+import { FeatureFlag, FeatureFlagged } from "@fiftyone/feature-flags";
 import {
   Anchor,
   Button,
@@ -21,6 +22,8 @@ import { TAB_GUI, TAB_IDS, TAB_JSON, TabId } from "../constants";
 import Footer from "../Footer";
 import { useIsLargeDataset } from "../hooks";
 import { EditContainer, SchemaSection } from "../styled";
+
+import ApplyOntologySection from "./ApplyOntologySection";
 import Errors from "./Errors";
 import GUIContent from "./GUIContent";
 import Header from "./Header";
@@ -68,6 +71,10 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
         </Text>
       </div>
 
+      <FeatureFlagged feature={FeatureFlag.VFF_ONTOLOGY_CA}>
+        <ApplyOntologySection field={field} />
+      </FeatureFlagged>
+
       <div
         style={{
           borderTop: "1px solid var(--fo-palette-divider)",
@@ -101,6 +108,7 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
               data-cy={"scan"}
               size={Size.Md}
               variant={Variant.Secondary}
+              disabled={!!labelSchema.appliedOntology}
               onClick={labelSchema.scan}
             >
               <Icon
