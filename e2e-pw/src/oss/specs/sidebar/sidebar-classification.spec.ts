@@ -42,7 +42,7 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   });
 
-  test("In classification grid,setting visibility directly works", async ({
+  test("In classification grid, setting visibility directly works", async ({
     grid,
     sidebar,
     eventUtils,
@@ -79,7 +79,7 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
     );
   });
 
-  test("In classification grid,show samples with a label filter works", async ({
+  test("In classification grid, show samples with a label filter works", async ({
     grid,
     sidebar,
     eventUtils,
@@ -130,7 +130,7 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
     );
   });
 
-  test("In classification grid,omit samples with a label filter works", async ({
+  test("In classification grid, omit samples with a label filter works", async ({
     grid,
     sidebar,
     eventUtils,
