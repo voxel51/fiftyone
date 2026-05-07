@@ -55,7 +55,9 @@ class HydrateLabelSchemasTests(unittest.TestCase):
         result = hydrate_applied_ontology(schema)
         self.assertEqual(len(result["attributes"]), 1)
         self.assertEqual(result["attributes"][0]["name"], "damage_location")
-        self.assertEqual(result["attributes"][0]["_source"], "my_ontology")
+        self.assertEqual(
+            result["attributes"][0]["source_ontology"], "my_ontology"
+        )
 
     @drop_datasets
     @drop_ontologies
@@ -84,7 +86,7 @@ class HydrateLabelSchemasTests(unittest.TestCase):
         color = result["attributes"][0]
         self.assertEqual(color["component"], "dropdown")
         self.assertEqual(color["values"], ["red", "blue"])
-        self.assertEqual(color["_source"], "my_ontology")
+        self.assertEqual(color["source_ontology"], "my_ontology")
 
     @drop_datasets
     @drop_ontologies
@@ -115,8 +117,8 @@ class HydrateLabelSchemasTests(unittest.TestCase):
         ontology_attr = next(
             a for a in result["attributes"] if a["name"] == "damage"
         )
-        self.assertNotIn("_source", local)
-        self.assertEqual(ontology_attr["_source"], "my_ontology")
+        self.assertNotIn("source_ontology", local)
+        self.assertEqual(ontology_attr["source_ontology"], "my_ontology")
 
     @drop_datasets
     @drop_ontologies
@@ -167,7 +169,7 @@ class DehydrateLabelSchemasTests(unittest.TestCase):
                     "name": "color",
                     "type": "str",
                     "component": "text",
-                    "_source": "stray",
+                    "source_ontology": "stray",
                 }
             ],
         }
@@ -192,7 +194,7 @@ class DehydrateLabelSchemasTests(unittest.TestCase):
                     "name": "owned",
                     "type": "bool",
                     "component": "checkbox",
-                    "_source": "my_ontology",
+                    "source_ontology": "my_ontology",
                 },
                 {"name": "local", "type": "str", "component": "text"},
             ],
@@ -203,7 +205,7 @@ class DehydrateLabelSchemasTests(unittest.TestCase):
 
     @drop_datasets
     @drop_ontologies
-    def test_source_stripped_from_local_attributes(self):
+    def test_source_ontology_stripped_from_local_attributes(self):
         AnnotationOntology(
             name="my_ontology",
             attributes=[
@@ -219,12 +221,12 @@ class DehydrateLabelSchemasTests(unittest.TestCase):
                     "name": "local",
                     "type": "str",
                     "component": "text",
-                    "_source": "forged",
+                    "source_ontology": "forged",
                 },
             ],
         }
         result = dehydrate_applied_ontology(schema)
-        self.assertNotIn("_source", result["attributes"][0])
+        self.assertNotIn("source_ontology", result["attributes"][0])
 
     @drop_datasets
     @drop_ontologies
@@ -237,7 +239,7 @@ class DehydrateLabelSchemasTests(unittest.TestCase):
                     "name": "local",
                     "type": "str",
                     "component": "text",
-                    "_source": "stray",
+                    "source_ontology": "stray",
                 }
             ],
         }

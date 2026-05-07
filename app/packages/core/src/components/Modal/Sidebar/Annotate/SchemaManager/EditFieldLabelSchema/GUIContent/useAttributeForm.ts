@@ -65,7 +65,7 @@ export default function useAttributeForm({
   const isIntegerType =
     formState.type === "int" || formState.type === "list<int>";
   const isListType = LIST_TYPES.includes(formState.type);
-  const isFromOntology = !!formState._source;
+  const isFromOntology = !!formState.source_ontology;
   const whenPreview = useMemo(() => {
     const conditions = formState.when;
     if (!conditions || conditions.length === 0) return null;

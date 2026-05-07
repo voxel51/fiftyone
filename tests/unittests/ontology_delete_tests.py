@@ -125,7 +125,7 @@ class DeleteOntologyTests(unittest.TestCase):
 
         ds.reload()
         for attr in ds._doc.label_schemas["ground_truth"]["attributes"]:
-            self.assertNotIn("_source", attr)
+            self.assertNotIn("source_ontology", attr)
 
     def test_force_inlines_across_multiple_datasets(self) -> None:
         _make_ontology()

@@ -63,7 +63,7 @@ export interface AttributeConfig {
   default?: string | number | (string | number)[]; // Array for list types
   read_only?: boolean;
   when?: AttributeCondition[];
-  _source?: string;
+  source_ontology?: string;
 }
 
 // Class configuration
@@ -96,7 +96,7 @@ export interface AttributeFormData {
   listDefault: (string | number)[]; // For list types
   read_only: boolean;
   when?: AttributeCondition[];
-  _source?: string;
+  source_ontology?: string;
 }
 
 // =============================================================================
@@ -312,7 +312,7 @@ export const toFormData = (config: AttributeConfig): AttributeFormData => {
     listDefault,
     read_only: config.read_only || false,
     when: config.when,
-    _source: config._source,
+    source_ontology: config.source_ontology,
   };
 };
 

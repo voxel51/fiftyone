@@ -132,7 +132,7 @@ const AttributeFormContent = ({
             <Text variant={TextVariant.Md} color={TextColor.Secondary}>
               Ontology:
             </Text>
-            <Text variant={TextVariant.Md}>{formState._source}</Text>
+            <Text variant={TextVariant.Md}>{formState.source_ontology}</Text>
           </Stack>
         )}
 

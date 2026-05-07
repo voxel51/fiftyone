@@ -1817,9 +1817,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             ExceptionGroup: if the label schema is invalid
         """
         # Defensive: the frontend is expected to submit a schema with no
-        # ontology-sourced attributes or _source markers, but strip them here
-        # regardless so a hand-edited / malformed payload cannot persist
-        # ontology content as local copies.
+        # ontology-sourced attributes or source_ontology markers, but strip
+        # them here regardless so a hand-edited / malformed payload cannot
+        # persist ontology content as local copies.
         label_schema = foa.dehydrate_applied_ontology(label_schema)
         foa.validate_label_schemas(
             self,
