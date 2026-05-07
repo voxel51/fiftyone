@@ -519,229 +519,6 @@ def _apply_image_model_data_loader(
             pb.update(len(sample_batch))
 
 
-def _apply_image_model_to_frames_single(
-    samples,
-    model,
-    label_field,
-    confidence_thresh,
-    classes,
-    skip_failures,
-    filename_maker,
-    progress,
-    field_mapping=None,
-):
-    needs_samples = isinstance(model, SamplesMixin)
-    frame_counts, total_frame_count = _get_frame_counts(samples)
-    is_clips = samples._dataset._is_clips
-
-    samples = _select_fields_for_inference(samples, model, field_mapping)
-
-    with contextlib.ExitStack() as context:
-        pb = context.enter_context(
-            fou.ProgressBar(total=total_frame_count, progress=progress)
-        )
-        ctx = context.enter_context(foc.SaveContext(samples))
-
-        for idx, sample in enumerate(samples):
-            if is_clips:
-                frames = etaf.FrameRange(*sample.support)
-            else:
-                frames = None
-
-            try:
-                with etav.FFmpegVideoReader(
-                    sample.filepath, frames=frames
-                ) as video_reader:
-                    for img in video_reader:
-                        if needs_samples:
-                            frame = sample.frames[video_reader.frame_number]
-                            labels = model.predict(img, sample=frame)
-                        elif isinstance(
-                            model, fout.TorchImageModelWithPrompts
-                        ):
-                            # This will be removed in the future when GetItem/dataloaders support video readers.
-                            frame = sample.frames[video_reader.frame_number]
-
-                            _field_mapping = {
-                                k: v[len("frames.") :]
-                                if v.startswith("frames.")
-                                else v
-                                for k, v in field_mapping.items()
-                            }
-
-                            if hasattr(
-                                model.config, "get_item_cls"
-                            ) and not model.config.get_item_cls.endswith(
-                                "ForVideo"
-                            ):
-                                context.enter_context(
-                                    fou.SetAttributes(
-                                        model.config,
-                                        get_item_cls=model.config.get_item_cls
-                                        + "ForVideo",
-                                    )
-                                )
-                            get_item = model.build_get_item(
-                                field_mapping=_field_mapping
-                            )
-                            _field_mapping = get_item.field_mapping
-                            _ = _field_mapping.pop("image")
-
-                            sample_dict = fout.get_samples_dict_for_get_item(
-                                [frame],
-                                _field_mapping,
-                                skip_failures=skip_failures,
-                            )[0]
-                            if "image" in get_item.required_keys:
-                                sample_dict["image"] = img
-                            model_input = get_item(sample_dict)
-                            labels = model.predict(model_input)
-                        else:
-                            labels = model.predict(img)
-
-                        if filename_maker is not None:
-                            _export_arrays(
-                                labels, sample.filepath, filename_maker
-                            )
-
-                        sample.add_labels(
-                            {video_reader.frame_number: labels},
-                            label_field=label_field,
-                            confidence_thresh=confidence_thresh,
-                            classes=classes,
-                        )
-                        ctx.save(sample)
-
-                        pb.update()
-
-            except Exception as e:
-                if not skip_failures:
-                    raise e
-
-                logger.warning("Sample: %s\nError: %s\n", sample.id, e)
-
-            # Explicitly set in case actual # frames differed from expected #
-            pb.set_iteration(frame_counts[idx])
-
-
-def _apply_image_model_to_frames_batch(
-    samples,
-    model,
-    label_field,
-    confidence_thresh,
-    classes,
-    batch_size,
-    skip_failures,
-    filename_maker,
-    progress,
-    field_mapping=None,
-):
-    needs_samples = isinstance(model, SamplesMixin)
-    frame_counts, total_frame_count = _get_frame_counts(samples)
-    is_clips = samples._dataset._is_clips
-
-    samples = _select_fields_for_inference(samples, model, field_mapping)
-
-    with contextlib.ExitStack() as context:
-        pb = context.enter_context(
-            fou.ProgressBar(total=total_frame_count, progress=progress)
-        )
-        ctx = context.enter_context(foc.SaveContext(samples))
-
-        for idx, sample in enumerate(samples):
-            if is_clips:
-                frames = etaf.FrameRange(*sample.support)
-            else:
-                frames = None
-
-            try:
-                with etav.FFmpegVideoReader(
-                    sample.filepath, frames=frames
-                ) as video_reader:
-                    for fns, imgs in _iter_batches(video_reader, batch_size):
-                        if needs_samples:
-                            _frames = [sample.frames[fn] for fn in fns]
-                            labels_batch = model.predict_all(
-                                imgs, samples=_frames
-                            )
-                        elif isinstance(
-                            model, fout.TorchImageModelWithPrompts
-                        ):
-                            # This will be removed in the future when GetItem/dataloaders support video readers.
-                            _frames = [sample.frames[fn] for fn in fns]
-                            _field_mapping = {
-                                k: v[len("frames.") :]
-                                if v.startswith("frames.")
-                                else v
-                                for k, v in field_mapping.items()
-                            }
-
-                            if hasattr(
-                                model.config, "get_item_cls"
-                            ) and not model.config.get_item_cls.endswith(
-                                "ForVideo"
-                            ):
-                                context.enter_context(
-                                    fou.SetAttributes(
-                                        model.config,
-                                        get_item_cls=model.config.get_item_cls
-                                        + "ForVideo",
-                                    )
-                                )
-                            get_item = model.build_get_item(
-                                field_mapping=_field_mapping
-                            )
-                            _field_mapping = get_item.field_mapping
-                            _ = _field_mapping.pop("image")
-
-                            sample_dicts = fout.get_samples_dict_for_get_item(
-                                _frames,
-                                get_item.field_mapping,
-                                skip_failures=skip_failures,
-                            )
-                            if "image" in get_item.required_keys:
-                                for d_idx, sample_dict in enumerate(
-                                    sample_dicts
-                                ):
-                                    sample_dict["image"] = imgs[d_idx]
-                            labels_batch = model.predict_all(
-                                [
-                                    get_item(sample_dict)
-                                    for sample_dict in sample_dicts
-                                ]
-                            )
-                        else:
-                            labels_batch = model.predict_all(imgs)
-
-                        if filename_maker is not None:
-                            for labels in labels_batch:
-                                _export_arrays(
-                                    labels, sample.filepath, filename_maker
-                                )
-
-                        sample.add_labels(
-                            {
-                                fn: labels
-                                for fn, labels in zip(fns, labels_batch)
-                            },
-                            label_field=label_field,
-                            confidence_thresh=confidence_thresh,
-                            classes=classes,
-                        )
-                        ctx.save(sample)
-
-                        pb.update(len(imgs))
-
-            except Exception as e:
-                if not skip_failures:
-                    raise e
-
-                logger.warning("Sample: %s\nError: %s\n", sample.id, e)
-
-            # Explicitly set in case actual # frames differed from expected #
-            pb.set_iteration(frame_counts[idx])
-
-
 def _apply_image_model_with_video_data_loader(
     samples,
     model,
@@ -795,24 +572,45 @@ def _apply_image_model_with_video_data_loader(
         pb = context.enter_context(
             fou.ProgressBar(data_loader, progress=progress)
         )
+        ctx = context.enter_context(
+            foc.SaveContext(
+                samples,
+                async_writes=True,
+            )
+        )
         context.enter_context(fou.SetAttributes(model, preprocess=False))
 
         for batch in pb(data_loader):
-            for frames in batch:
-                labels_frames = model.predict_all(frames["frames"])
-                sample_idx = frames["sample_idx"]
-                sample = samples[sample_idx]
+            try:
+                for frames in batch:
+                    labels_frames = model.predict_all(frames["frames"])
+                    sample_idx = frames["sample_idx"]
+                    sample = samples[sample_idx]
 
-                fns = frames["frame_ids"]
-                sample.add_labels(
-                    {
-                        int(fn): labels
-                        for fn, labels in zip(fns, labels_frames)
-                    },
-                    label_field=label_field,
-                    confidence_thresh=confidence_thresh,
+                    fns = frames["frame_ids"]
+                    sample.add_labels(
+                        {
+                            int(fn): labels
+                            for fn, labels in zip(fns, labels_frames)
+                        },
+                        label_field=label_field,
+                        confidence_thresh=confidence_thresh,
+                        classes=classes,
+                    )
+                    ctx.save(sample)
+            except Exception as e:
+                if not skip_failures:
+                    raise e
+
+                logger.warning(
+                    "Batch: %s - %s\nError: %s\n",
+                    batch[0].id,
+                    batch[-1].id,
+                    e,
+                    exc_info=True,
                 )
-                sample.save()
+
+            pb.update(len(batch))
 
 
 def _apply_video_model(
@@ -1109,7 +907,7 @@ def _make_video_frame_data_loader(
     if batch_size is None:
         batch_size = 1
 
-    if model.has_collate_fn:
+    if hasattr(model, "has_collate_fn") and model.has_collate_fn:
         user_collate_fn = _VideoCollateFn(model.collate_fn)
     else:
         user_collate_fn = _VideoCollateFn(tud.dataloader.default_collate)
@@ -1120,13 +918,22 @@ def _make_video_frame_data_loader(
         use_numpy=use_numpy,
         user_collate_fn=user_collate_fn,
     )
-
-    dataset = fout.TorchVideoFramesIterableDataset(
-        samples=samples,
-        get_item=model.build_get_item(field_mapping),
-        chunk_size=frames_chunk_size,
-        skip_failures=skip_failures,
-    )
+    if isinstance(model, SupportsGetItem):
+        dataset = fout.TorchVideoFramesIterableDataset(
+            samples=samples,
+            get_item=model.build_get_item(field_mapping),
+            chunk_size=frames_chunk_size,
+            skip_failures=skip_failures,
+        )
+    else:
+        dataset = fout.TorchVideoFramesIterableDataset(
+            samples=samples,
+            transform=model.transforms,
+            use_numpy=use_numpy,
+            force_rgb=True,
+            chunk_size=frames_chunk_size,
+            skip_failures=skip_failures,
+        )
 
     if pin_memory:
         if not isinstance(model, TorchModelMixin):

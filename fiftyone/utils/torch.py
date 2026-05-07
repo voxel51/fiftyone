@@ -683,7 +683,6 @@ class VideoFrameGetItem:
         """
         if self.has_filepath:
             sample_dict["filepath"] = None
-
         return self._call_with_injected_frame(sample_dict)
 
     def _call_with_injected_frame(self, sample_dict):
@@ -2692,9 +2691,14 @@ class TorchVideoFramesIterableDataset(IterableDataset):
         self.use_numpy = use_numpy
         self.force_rgb = force_rgb
 
+        self._is_clips_view = samples._dataset._is_clips
+        self.clips_range = (
+            samples.values("support") if self._is_clips_view else None
+        )
         self._current_decoder = None
         self._current_iterator = None
         self._current_video_path = None
+        self._current_frame_range = None
 
     @staticmethod
     def worker_init(worker_id):
@@ -2713,24 +2717,30 @@ class TorchVideoFramesIterableDataset(IterableDataset):
         # pylint:disable-next=protected-access
         food._disconnect()
 
-    def _get_decoder_for_video(self, video_path):
+    def _get_decoder_for_video(self, video_path, frames=None):
         """
         Get decoder for video.
 
         Cache only the current video being processed.
         """
-        if video_path == self._current_video_path:
+        if video_path == self._current_video_path and tuple(frames) == tuple(
+            self._current_frame_range
+        ):
             logger.debug(f"Reusing decoder for {video_path}")
             return self._current_decoder, self._current_iterator
 
         self._cleanup_current_decoder()
         logger.debug(f"Opening decoder for {video_path}")
-        decoder = etav.FFmpegVideoReader(video_path)
+        decoder = etav.FFmpegVideoReader(video_path, frames=frames)
+        if frames is not None:
+            decoder.seek(frames[0] - 1)
+
         iterator = iter(decoder)
 
         self._current_video_path = video_path
         self._current_decoder = decoder
         self._current_iterator = iterator
+        self._current_frame_range = frames
 
         return decoder, iterator
 
@@ -2757,10 +2767,9 @@ class TorchVideoFramesIterableDataset(IterableDataset):
         _ = field_mapping.pop("filepath")
 
         self.sample_data = {}
-        fields_to_load = list(field_mapping.values())
-        for field_name in fields_to_load:
+        for field_key, field_name in field_mapping.items():
             frame_field_name = samples._FRAMES_PREFIX + field_name
-            self.sample_data[field_name] = samples.values(frame_field_name)
+            self.sample_data[field_key] = samples.values(frame_field_name)
 
     def __iter__(self):
         worker_info = get_worker_info()
@@ -2784,9 +2793,11 @@ class TorchVideoFramesIterableDataset(IterableDataset):
                 yield from self._process_video(video_idx)
             except Exception as e:
                 if self.skip_failures:
-                    logger.warning(
-                        f"Failed to process {self.video_paths[video_idx]}: {e}"
-                    )
+                    if self._is_clips_view:
+                        msg = f"Failed to process clip {self.clips_range[video_idx]} -- {self.video_paths[video_idx]}: {e}"
+                    else:
+                        msg = f"Failed to process {self.video_paths[video_idx]}: {e}"
+                    logger.warning(msg)
                     continue
                 else:
                     raise
@@ -2799,26 +2810,40 @@ class TorchVideoFramesIterableDataset(IterableDataset):
             video_sample_data = {
                 key: val[video_idx] for key, val in self.sample_data.items()
             }
-        _, iterator = self._get_decoder_for_video(video_path)
 
         raw_frames = []
         frame_ids = []
-        frame_num = 0
+        if self._is_clips_view:
+            start_frame, end_frame = self.clips_range[video_idx]
+            frame_range = (start_frame, end_frame)
+        else:
+            start_frame, end_frame = [1, -1]
+            frame_range = None
+
+        _, iterator = self._get_decoder_for_video(video_path, frame_range)
+
+        frames_read = 0
+        max_frames = end_frame - start_frame + 1
 
         try:
             for img in iterator:
+                if max_frames != -1 and frames_read >= max_frames:
+                    break
+
                 raw_frame = np.array(img)
                 raw_frames.append(raw_frame)
-                frame_num += 1
-                frame_ids.append(frame_num)
+                frame_ids.append(start_frame + frames_read)
+                frames_read += 1
 
                 if len(raw_frames) == self.chunk_size:
                     frames_data = None
                     if video_sample_data is not None:
                         frames_data = [
-                            {key: lst[i - 1]}
+                            {
+                                key: lst[i - 1]
+                                for key, lst in video_sample_data.items()
+                            }
                             for i in frame_ids
-                            for key, lst in video_sample_data.items()
                         ]
                     model_inputs = self._process_chunk(raw_frames, frames_data)
 
@@ -2836,9 +2861,11 @@ class TorchVideoFramesIterableDataset(IterableDataset):
                 frames_data = None
                 if video_sample_data is not None:
                     frames_data = [
-                        {key: lst[i - 1]}
+                        {
+                            key: lst[i - 1]
+                            for key, lst in video_sample_data.items()
+                        }
                         for i in frame_ids
-                        for key, lst in video_sample_data.items()
                     ]
                 model_inputs = self._process_chunk(raw_frames, frames_data)
                 yield {
