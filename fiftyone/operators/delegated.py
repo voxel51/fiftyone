@@ -893,6 +893,16 @@ class DelegatedOperationService(object):
             child_process.join(timeout=check_interval_seconds)
 
             if not child_process.is_alive():
+                code = child_process.exitcode
+                logger.error(
+                    "Child process for operation %s exited with code %s",
+                    operation_id,
+                    code,
+                )
+                if code != 0:
+                    return ExecutionResult(
+                        error=f"Child process exited unexpectedly with code {code}"
+                    )
                 return None
 
             try:
