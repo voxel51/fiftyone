@@ -29,14 +29,20 @@ class MongoAdapter(DatabaseAdapter):
         """
         new_samples = []
         update_values = {}
+        failed = []
         for sample, inventory in sample_and_scene_inventory_pairs:
-            metadata = MultimodalMetadata.build_for_scene_inventory(inventory)
-
-            if sample.id:
-                update_values[sample.id] = metadata
+            try:
+                metadata = MultimodalMetadata.build_for_scene_inventory(
+                    inventory
+                )
+            except Exception as e:
+                failed.append((sample, inventory, e))
             else:
-                sample["metadata"] = metadata
-                new_samples.append(sample)
+                if sample.id:
+                    update_values[sample.id] = metadata
+                else:
+                    sample["metadata"] = metadata
+                    new_samples.append(sample)
 
         if update_values:
             dataset.set_values("metadata", update_values, key_field="id")

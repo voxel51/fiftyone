@@ -62,3 +62,26 @@ class TestMongoAdapter:
                 key_field="id",
             )
             dataset.add_samples.assert_not_called()
+
+        def test_metadata_failure(self, inventories, metadata_builder):
+            dataset = Mock(match=Mock(return_value=[]))
+            metadata = Mock()
+            metadata_builder.side_effect = [
+                metadata,
+                Exception("bad inventory"),
+            ]
+            samples = [MagicMock(id="sample1"), MagicMock(id="sample2")]
+
+            ###
+            MongoAdapter.write_scene_inventories(
+                dataset,
+                zip(samples, inventories),
+            )
+            ###
+
+            dataset.set_values.assert_called_once_with(
+                "metadata",
+                {"sample1": metadata},
+                key_field="id",
+            )
+            dataset.add_samples.assert_not_called()
