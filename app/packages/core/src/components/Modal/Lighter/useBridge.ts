@@ -149,15 +149,6 @@ export const useBridge = (scene: Scene2D | null) => {
           return;
         }
 
-        // In Merge mode, detection clicks are routed via the selection
-        // event below — skip the establish path so we don't double-handle.
-        if (
-          segmentationMode.segmentationModeActive &&
-          segmentationMode.tool === SegmentationTool.Merge
-        ) {
-          return;
-        }
-
         annotationEventBus.dispatch(
           "annotation:canvasDetectionOverlayEstablish",
           {
@@ -177,10 +168,6 @@ export const useBridge = (scene: Scene2D | null) => {
     "lighter:overlay-select",
     useCallback(
       (payload) => {
-        focus.selectOverlay(payload.id, {
-          ignoreSideEffects: payload.ignoreSideEffects,
-        });
-
         if (
           segmentationMode.segmentationModeActive &&
           segmentationMode.tool === SegmentationTool.Merge
@@ -189,7 +176,17 @@ export const useBridge = (scene: Scene2D | null) => {
           if (overlay instanceof DetectionOverlay) {
             void segmentationMode.mergeTool.handleOverlayClick(overlay);
           }
+
+					// we're merging and we have a target
+					// skip overlay selection
+					if (segmentationMode.mergeTool.mergeTargetId) {
+						return;
+					}
         }
+
+        focus.selectOverlay(payload.id, {
+          ignoreSideEffects: payload.ignoreSideEffects,
+        });
       },
       [focus, scene, segmentationMode]
     )
@@ -201,6 +198,13 @@ export const useBridge = (scene: Scene2D | null) => {
     "lighter:overlay-deselect",
     useCallback(
       (payload) => {
+        if (
+          segmentationMode.segmentationModeActive &&
+          segmentationMode.tool === SegmentationTool.Merge
+        ) {
+					return;
+				}
+
         focus.deselectOverlay({
           ignoreSideEffects: payload.ignoreSideEffects,
         });

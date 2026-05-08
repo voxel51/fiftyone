@@ -77,13 +77,7 @@ export const useMergeTool = (): MergeTool => {
   const handleOverlayClick = useCallback(
     async (overlay: DetectionOverlay) => {
       if (mergeTargetId === null) {
-        // First click — adopt as target and load into sidebar via the
-        // existing detection-establish path.
         setMergeTargetId(overlay.id);
-        annotationEventBus.dispatch(
-          "annotation:canvasDetectionOverlayEstablish",
-          { id: overlay.id, overlay }
-        );
         return;
       }
 
