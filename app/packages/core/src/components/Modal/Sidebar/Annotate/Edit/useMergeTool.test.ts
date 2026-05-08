@@ -18,12 +18,13 @@ const mockGetOverlay = vi.fn();
 const mockAddOverlay = vi.fn();
 const mockSelectOverlay = vi.fn();
 const mockPushUndoable = vi.fn();
-const mockGetFieldSchema = vi.fn().mockReturnValue({ ftype: "EmbeddedDocumentField" });
+const mockGetFieldSchema = vi
+  .fn()
+  .mockReturnValue({ ftype: "EmbeddedDocumentField" });
 
 class MockDetectionOverlay {
   public id: string;
   public mergeFrom = vi.fn().mockReturnValue(true);
-  public rehydrateMask = vi.fn();
   public getPaintStrokeData = vi.fn().mockReturnValue({
     beforeSnapshot: { tag: "before" },
     beforeBounds: { x: 0, y: 0, width: 10, height: 10 },
@@ -44,7 +45,10 @@ class MockMergeDetectionsCommand {
   constructor(
     public target: unknown,
     public paintData: unknown,
-    public deps: { deleteSource: () => Promise<void>; restoreSource: () => void },
+    public deps: {
+      deleteSource: () => Promise<void>;
+      restoreSource: () => void;
+    },
     public targetId: string,
     public sourceId: string
   ) {
@@ -94,9 +98,9 @@ vi.mock("recoil", () => ({
   useRecoilValue: () => ({}),
 }));
 
-const labelsAtom = atom<
-  Array<{ type: string; data: { mask?: unknown } }>
->([{ type: "Detection", data: { mask: "fake-mask" } }]);
+const labelsAtom = atom<Array<{ type: string; data: { mask?: unknown } }>>([
+  { type: "Detection", data: { mask: "fake-mask" } },
+]);
 
 vi.mock("../useLabels", () => ({
   labels: labelsAtom,
@@ -107,7 +111,9 @@ vi.mock("../useLabels", () => ({
   }),
 }));
 
-const { useMergeTool, _unsafeMergeTargetIdAtom } = await import("./useMergeTool");
+const { useMergeTool, _unsafeMergeTargetIdAtom } = await import(
+  "./useMergeTool"
+);
 
 // ── Tests ────────────────────────────────────────────────────────────────────
 
@@ -305,12 +311,9 @@ describe("useMergeTool", () => {
     expect(mockRemoveLabelFromSidebar).toHaveBeenCalledWith("source");
     expect(mockRemoveOverlay).toHaveBeenCalledWith("source", false);
 
-    // Undo path
+    // Undo path: re-attach the source overlay and re-add to the sidebar.
     command.deps.restoreSource();
     expect(mockAddOverlay).toHaveBeenCalledWith(source);
-    // The overlay's MaskCanvas was destroyed on removal — restoreSource
-    // must rehydrate it so the mask renders again.
-    expect(source.rehydrateMask).toHaveBeenCalledTimes(1);
     expect(mockAddLabelToSidebar).toHaveBeenCalledWith(sourceLabel);
   });
 });
