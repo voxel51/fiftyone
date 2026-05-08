@@ -522,49 +522,39 @@ class Query(fosa.AggregateQuery):
             return None
 
     @gql.field
-    def schema_for_view_stages(
+    async def schema_for_view_stages(
         self,
         dataset_name: str,
         view_stages: BSONArray,
     ) -> SchemaResult:
+        # ``field_schema`` flows through the grid adapter so non-Mongo
+        # backends (e.g. BigQuery) can surface paths that aren't
+        # declared as FiftyOne sample fields. The Mongo adapter just
+        # returns ``serialize_fields(view.get_field_schema(flat=True))``
+        # — same as the previous direct-call path. ``frame_field_schema``
+        # stays on the FO-side path; frame fields are out of scope for
+        # the BQ adapter.
         try:
             ds = fod.load_dataset(dataset_name, reload=True)
             if view_stages:
                 view = fov.DatasetView._build(ds, view_stages or [])
+            else:
+                view = ds.view()
 
-                if ds.media_type == fom.VIDEO:
-                    frame_schema = serialize_fields(
-                        view.get_frame_field_schema(flat=True)
-                    )
-                    field_schema = serialize_fields(
-                        view.get_field_schema(flat=True)
-                    )
-                    return SchemaResult(
-                        field_schema=field_schema,
-                        frame_field_schema=frame_schema,
-                    )
+            field_schema = await get_grid_adapter().get_grid_field_schema(view)
 
-                return SchemaResult(
-                    field_schema=serialize_fields(
-                        view.get_field_schema(flat=True)
-                    ),
-                    frame_field_schema=[],
-                )
             if ds.media_type == fom.VIDEO:
-                frames_field_schema = serialize_fields(
-                    ds.get_frame_field_schema(flat=True)
+                frame_field_schema = serialize_fields(
+                    view.get_frame_field_schema(flat=True)
                 )
-                field_schema = serialize_fields(ds.get_field_schema(flat=True))
-                return SchemaResult(
-                    field_schema=field_schema,
-                    frame_field_schema=frames_field_schema,
-                )
+            else:
+                frame_field_schema = []
 
             return SchemaResult(
-                field_schema=serialize_fields(ds.get_field_schema(flat=True)),
-                frame_field_schema=[],
+                field_schema=field_schema,
+                frame_field_schema=frame_field_schema,
             )
-        except Exception as e:
+        except Exception:
             return SchemaResult(
                 field_schema=[],
                 frame_field_schema=[],
