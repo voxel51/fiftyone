@@ -2,10 +2,11 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import type { Command } from "../commands/Command";
+import type { Undoable } from "@fiftyone/commands";
 import type { InteractionHandler } from "../interaction/InteractionManager";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
-import type { Point, Rect } from "../types";
+import type { PaintStrokeData } from "../overlay/MaskCanvas";
+import type { Point, RawLookerLabel, Rect } from "../types";
 
 /**
  * Event type definitions for lighter events.
@@ -27,6 +28,17 @@ export type LighterEventGroup = {
     id: string;
     bounds: Rect;
   };
+  /**
+   * Emitted when an overlay's label is updated, or when an overlay's
+   * editing state changes in a way subscribers need to observe (e.g.
+   * `DetectionOverlay.initMask`/`removeMask` flipping mask-canvas state
+   * without changing label data).
+   */
+  "lighter:overlay-label-updated": {
+    id: string;
+    label: RawLookerLabel;
+    hasMask: boolean;
+  };
 
   // ============================================================================
   // COMMAND & UNDO/REDO EVENTS
@@ -35,7 +47,7 @@ export type LighterEventGroup = {
   "lighter:command-executed": {
     commandId: string;
     isUndoable: boolean;
-    command: Command;
+    command: Undoable;
   };
   /** Emitted when a command is undone (reversed) */
   "lighter:undo": { commandId: string };
@@ -115,8 +127,17 @@ export type LighterEventGroup = {
   "lighter:overlay-all-unhover": { point: Point };
   /** Emitted when the mouse moves while hovering over an overlay */
   "lighter:overlay-hover-move": { id: string; point: Point };
+  /** Emitted when a paint stroke (brush/eraser) ends */
+  "lighter:overlay-paint-end": {
+    id: string;
+    paintStrokeData: PaintStrokeData | undefined;
+  };
   /** Emitted when user clicks without dragging in detection mode to exit */
   "lighter:detection-mode-quit": { eventId: string };
+  /** Emitted when user clicks without dragging in segmentation mode to close out the current detection */
+  "lighter:segmentation-mode-quit": { eventId: string };
+  /** Emitted when the AI mask should be established and point selection ended (e.g. right-click) */
+  "lighter:point-selection-finalize": { eventId: string };
 
   // ============================================================================
   // KEYPOINT EVENTS

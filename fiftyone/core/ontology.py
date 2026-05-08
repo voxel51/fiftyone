@@ -92,6 +92,7 @@ class Ontology(abc.ABC):
     @require_feature("VFF_ONTOLOGY_CA")
     def save(self) -> None:
         """Saves this ontology to the database."""
+        self._validate()
         if self._doc is None:
             self._doc = OntologyDocument(
                 name=self.name,
@@ -143,6 +144,12 @@ class Ontology(abc.ABC):
         cloned._doc = None
         cloned.save()
         return cloned
+
+    def _validate(self) -> None:
+        """Hook called by :meth:`save` to validate the ontology before
+        persisting. Default is a no-op; subclasses override to call
+        their type-specific validator.
+        """
 
     def _get_root(self) -> Any:
         """Returns the serialized root data for storage.
@@ -244,6 +251,16 @@ class AnnotationOntology(Ontology):
         super().__init__(name=name, description=description)
         self.taxonomies = taxonomies or []
         self.attributes = attributes or []
+
+    def _validate(self) -> None:
+        # Lazy import — ``ontology_validation`` imports
+        # ``AnnotationOntology`` for type hints, so a top-level import
+        # here would be circular.
+        from fiftyone.core.ontology_validation import (
+            validate_annotation_ontology,
+        )
+
+        validate_annotation_ontology(self)
 
     def _get_root(self) -> dict:
         return {

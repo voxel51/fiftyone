@@ -11,7 +11,9 @@ import {
 } from "@fiftyone/events";
 import { AddOverlayCommand } from "../commands/AddOverlayCommand";
 import { MoveOverlayCommand } from "../commands/MoveOverlayCommand";
+import { PaintStrokeCommand } from "../commands/PaintStrokeCommand";
 import { RemoveOverlayCommand } from "../commands/RemoveOverlayCommand";
+import { DetectionOverlay } from "../overlay/DetectionOverlay";
 import {
   TransformOptions,
   TransformOverlayCommand,
@@ -286,6 +288,33 @@ export class Scene2D {
         }
       }
     });
+
+    // Listen for paint stroke end events to push undo/redo commands
+    this.registerEventHandler(
+      "lighter:overlay-paint-end",
+      ({ id, paintStrokeData }) => {
+        if (!id || !paintStrokeData) return;
+
+        const overlay = this.getOverlay(id);
+        const { beforeBounds, beforeSnapshot, afterBounds, afterSnapshot } =
+          paintStrokeData;
+
+        if (overlay && overlay instanceof DetectionOverlay) {
+          const command = new PaintStrokeCommand(
+            overlay,
+            id,
+            beforeSnapshot,
+            beforeBounds,
+            afterSnapshot,
+            afterBounds
+          );
+
+          CommandContextManager.instance()
+            .getActiveContext()
+            .pushUndoable(command);
+        }
+      }
+    );
 
     // Listen for DO_OVERLAY_HOVER events to force hover state
     this.registerEventHandler("lighter:do-overlay-hover", (event) => {

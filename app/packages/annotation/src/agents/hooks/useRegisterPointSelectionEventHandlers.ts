@@ -1,4 +1,5 @@
 import {
+  RIPPLE_VISIBLE_MS,
   UNDEFINED_LIGHTER_SCENE_ID,
   useLighter,
   useLighterEventHandler,
@@ -6,6 +7,7 @@ import {
 import { useToolsState } from "./useToolsContext";
 import { NEGATIVE_POINT_VARIANT, usePointSelection } from "./usePointSelection";
 import { useCallback } from "react";
+import { useKeypointRippleEffect } from "./useKeypointRippleEffect";
 
 /**
  * Hook which registers event handlers for the positive/negative point
@@ -15,7 +17,7 @@ import { useCallback } from "react";
  * reuse will cause duplicate event handler registration.**
  */
 export const useRegisterPointSelectionEventHandlers = () => {
-  const { scene } = useLighter();
+  const { scene, getOverlay } = useLighter();
   const {
     addNegativePoint,
     addPositivePoint,
@@ -28,6 +30,8 @@ export const useRegisterPointSelectionEventHandlers = () => {
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
   );
   const { isActive: isPointSelectionActive } = usePointSelection();
+  const { add: addRipple, remove: removeRipple } =
+    useKeypointRippleEffect(getOverlay);
 
   useEventHandler(
     "lighter:keypoint-point-added",
@@ -44,9 +48,14 @@ export const useRegisterPointSelectionEventHandlers = () => {
           } else {
             addPositivePoint(descriptor);
           }
+
+          // Surface a ripple on the new point for a guaranteed-visible
+          // duration. Decoupled from inference timing so fast inference
+          // doesn't make the indicator flash invisibly.
+          addRipple(payload.id, payload.pointId, RIPPLE_VISIBLE_MS);
         }
       },
-      [addNegativePoint, addPositivePoint, isPointSelectionActive]
+      [addNegativePoint, addPositivePoint, addRipple, isPointSelectionActive]
     )
   );
 
@@ -54,6 +63,12 @@ export const useRegisterPointSelectionEventHandlers = () => {
     "lighter:keypoint-point-deleted",
     useCallback(
       (payload) => {
+        // Defensive cleanup of any active ripple. Time-based pruning in
+        // the rAF loop covers finite deadlines, but indefinite ripples
+        // would otherwise keep the loop alive forever once the source
+        // point is gone.
+        removeRipple(payload.id, payload.pointId);
+
         if (isPointSelectionActive) {
           if (payload.variant === NEGATIVE_POINT_VARIANT) {
             removeNegativePoint(payload.pointId);
@@ -62,7 +77,12 @@ export const useRegisterPointSelectionEventHandlers = () => {
           }
         }
       },
-      [isPointSelectionActive, removeNegativePoint, removePositivePoint]
+      [
+        isPointSelectionActive,
+        removeNegativePoint,
+        removePositivePoint,
+        removeRipple,
+      ]
     )
   );
 

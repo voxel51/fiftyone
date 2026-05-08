@@ -6,6 +6,8 @@ Annotation constants
 |
 """
 
+from datetime import date, datetime
+
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
@@ -89,6 +91,24 @@ LABEL_SETTINGS = ALL_TYPES_SETTINGS.union(
 STR_SETTINGS = ALL_TYPES_SETTINGS.union({DEFAULT})
 STR_LIST_SETTINGS = ALL_TYPES_SETTINGS.union({DEFAULT})
 VALUES_COMPONENTS = {CHECKBOXES, DROPDOWN, RADIO}
+
+
+### Valid components per type
+
+
+TYPE_TO_COMPONENTS = {
+    BOOL: BOOL_COMPONENTS,
+    DATE: DATE_DATETIME_COMPONENTS,
+    DATETIME: DATE_DATETIME_COMPONENTS,
+    DICT: DICT_COMPONENTS,
+    FLOAT: FLOAT_INT_COMPONENTS,
+    FLOAT_LIST: FLOAT_INT_LIST_COMPONENTS,
+    ID: ID_COMPONENTS,
+    INT: FLOAT_INT_COMPONENTS,
+    INT_LIST: FLOAT_INT_LIST_COMPONENTS,
+    STR: STR_COMPONENTS,
+    STR_LIST: STR_LIST_COMPONENTS,
+}
 
 
 ### Default components

@@ -9,7 +9,7 @@ import { RemoveKeypointPointCommand } from "../commands/RemoveKeypointPointComma
 import type { LighterEventGroup } from "../events";
 import { KeypointOverlay } from "../overlay/KeypointOverlay";
 import type { Point } from "../types";
-import type { InteractionHandler } from "./InteractionManager";
+import type { InteractionHandler, OverlayEvent } from "./InteractionManager";
 import { ClickEventModifiers, getClickModifiers } from "@fiftyone/utilities";
 
 const INTERACTIVE_KEYPOINT_HANDLER_ID = "interactive-keypoint-handler";
@@ -82,11 +82,7 @@ export class InteractiveKeypointHandler implements InteractionHandler {
     return false;
   }
 
-  onPointerDown(
-    _point: Point,
-    worldPoint: Point,
-    event: PointerEvent
-  ): boolean {
+  onPointerDown({ worldPoint, event }: OverlayEvent): boolean {
     const rp = this.overlay.absolutePointToRelative(worldPoint);
     const modifiers = getClickModifiers(event);
 
@@ -115,8 +111,15 @@ export class InteractiveKeypointHandler implements InteractionHandler {
       // else fall through to default behavior
     }
 
+    // Reject placements outside the sample. Relative coordinates run [0, 1]
+    // across the canonical media; anything outside falls on letterboxing or
+    // empty canvas and would be meaningless to inference.
+    if (rp[0] < 0 || rp[0] > 1 || rp[1] < 0 || rp[1] > 1) {
+      return false;
+    }
+
     const variant = this.resolveVariant?.({ x: rp[0], y: rp[1] }, modifiers);
-    const pointId = this.overlay.addPoint(worldPoint, variant);
+    const pointId = this.overlay.addPoint(worldPoint, { variant });
 
     const command = new AddKeypointPointCommand(
       this.overlay,
@@ -131,12 +134,12 @@ export class InteractiveKeypointHandler implements InteractionHandler {
     return true;
   }
 
-  onMove(_point: Point, worldPoint: Point, _event: PointerEvent): boolean {
+  onMove({ worldPoint }: OverlayEvent): boolean {
     this.overlay.setPreviewPoint(worldPoint);
     return true;
   }
 
-  onPointerUp(_point: Point, _event: PointerEvent): boolean {
+  onPointerUp(): boolean {
     // No-op — points are placed on pointer down, not release
     return true;
   }
