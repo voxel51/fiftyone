@@ -14,7 +14,7 @@ export const detectionModeBridge = {
    * Check if detection mode is currently active.
    * @returns true if detection mode is active, false otherwise
    */
-  isDetectionModeActive(): boolean {
+  isActive(): boolean {
     const store = getDefaultStore();
     return store.get(_unsafeDetectionModeActiveAtom);
   },

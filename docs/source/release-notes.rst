@@ -3,6 +3,24 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.18.1
+--------------------------
+*Released May 7, 2026*
+
+App
+
+- Fixed a bug that caused global cloud credentials to incorrectly appear under
+  the "Groups" tab on the Cloud credentials settings page when no groups
+  existed in the system
+
+Security
+
+- Updated a number of dependencies in the FiftyOne Enterprise App in order to
+  resolve security vulnerabilities: `picomatch`, `protobufjs`,
+  `@xmldom/xmldom`, and `langchain-core`
+- Updated a number of dependencies in the FiftyOne Enterprise API in order to
+  resolve security vulnerabilities: `ujson` and `pyjwt`
+
 FiftyOne Enterprise 2.18.0
 --------------------------
 *Released May 1, 2026*

@@ -64,6 +64,7 @@ def deserialize(value: Any) -> Any:
                 )
 
             return cls.from_dict(value)
+
     elif isinstance(value, str):
         if parsed_dt := _try_parse_datetime(value):
             return parsed_dt

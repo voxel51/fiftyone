@@ -27,27 +27,35 @@ import {
   getInstanceStrokeStyles,
   getSimpleStrokeStyles,
 } from "../utils/colorMapping";
+import {
+  SegmentationTool,
+  type SegmentationToolState,
+} from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useSegmentationMode";
+import type { OverlayEvent } from "../interaction/InteractionManager";
 import { distanceFromLineSegment } from "../utils/geometry";
 import { BaseOverlay } from "./BaseOverlay";
-import { SerializedMask } from "@fiftyone/utilities";
+import { MaskCanvas } from "./MaskCanvas";
+import type { MaskSnapshot, PaintStrokeData } from "./MaskCanvas";
+import { MaskKeypoints } from "./MaskKeypoints";
+import type { SerializedMask } from "@fiftyone/utilities";
 import { BASE_ALPHA } from "@fiftyone/looker/src/constants";
-import { deserialize } from "@fiftyone/looker/src/numpy";
 
-export type BoundingBoxLabel = RawLookerLabel & {
+export type DetectionLabel = RawLookerLabel & {
   label: string;
   bounding_box: number[];
   confidence?: number;
   mask?: SerializedMask;
+  mask_path?: string;
 };
 
 /**
  * Options for creating a bounding box overlay.
  */
-export interface BoundingBoxOptions {
+export interface DetectionOverlayOptions {
   id: string;
   // Relative bounds [0,1]
   relativeBounds?: Rect;
-  label: BoundingBoxLabel;
+  label: DetectionLabel;
   field: string;
   draggable?: boolean;
   resizeable?: boolean;
@@ -64,20 +72,28 @@ export type ResizeRegion =
   | "RESIZE_W"
   | "RESIZE_NW";
 
-export type MoveState = ResizeRegion | "NONE" | "DRAGGING" | "SETTING";
+export type InteractionState =
+  | ResizeRegion
+  | "NONE"
+  | "DRAGGING"
+  | "SETTING"
+  | "PAINTING";
 
 export const NO_BOUNDS = { x: NaN, y: NaN, width: NaN, height: NaN };
+
+// PointerEvent: `event.buttons === 1` -> left mouse button depressed
+const LEFT_MOUSE_BUTTON = 1;
 
 /**
  * Bounding box overlay implementation with drag support, selection, and spatial coordinates.
  */
-export class BoundingBoxOverlay
-  extends BaseOverlay<BoundingBoxLabel>
+export class DetectionOverlay
+  extends BaseOverlay<DetectionLabel>
   implements Selectable, Spatial, Hoverable
 {
   private isDraggable: boolean;
   private isResizeable: boolean;
-  private moveState: MoveState = "NONE";
+  private interactionState: InteractionState = "NONE";
   private moveStartPoint?: Point;
   private moveStartPosition?: Point;
   private moveStartBounds?: Rect;
@@ -87,26 +103,31 @@ export class BoundingBoxOverlay
 
   private textBounds?: Rect;
 
-  private maskBitmap?: ImageBitmap;
-  private maskData?: { src: Uint8Array; width: number; height: number };
-  private maskDecoding = false;
-  private lastMaskSource?: string;
+  private mask?: MaskCanvas;
+  private segmentationTool?: SegmentationToolState;
+
+  // Pen tool state
+  private maskKeypoints?: MaskKeypoints;
 
   public cursor = "pointer";
 
-  constructor(options: BoundingBoxOptions) {
+  constructor(options: DetectionOverlayOptions) {
     super(options.id, options.field, options.label);
+
     this.isDraggable = options.draggable !== false;
     this.isResizeable = options.resizeable !== false;
-
     this.#relativeBounds = options.relativeBounds || NO_BOUNDS;
+
+    if (this.label.mask) {
+      this.mask = new MaskCanvas(this.label.mask);
+    }
   }
 
   getOverlayType(): string {
-    return "BoundingBoxOverlay";
+    return "DetectionOverlay";
   }
 
-  updateLabel(label: BoundingBoxLabel) {
+  updateLabel(label: DetectionLabel) {
     super.updateLabel(label);
 
     if (label.bounding_box) {
@@ -119,15 +140,25 @@ export class BoundingBoxOverlay
       });
     }
 
-    // invalidate cached mask with new label data
-    const newMaskSource = this.extractMaskB64(label.mask);
-    if (newMaskSource !== this.lastMaskSource) {
-      this.maskBitmap?.close();
-      this.maskBitmap = undefined;
-      this.maskData = undefined;
-      this.lastMaskSource = undefined;
+    if (label.mask) {
+      if (this.mask) {
+        this.mask.updateSource(label.mask);
+      } else {
+        this.mask = new MaskCanvas(label.mask);
+      }
       this.markDirty();
+    } else {
+      const hadMask = !!this.mask;
+      this.mask?.destroy();
+      this.mask = undefined;
+      if (hadMask) this.markDirty();
     }
+
+    this.eventBus.dispatch("lighter:overlay-label-updated", {
+      id: this.id,
+      label,
+      hasMask: !!this.mask,
+    });
   }
 
   getPosition() {
@@ -171,7 +202,12 @@ export class BoundingBoxOverlay
     return this.id;
   }
 
-  protected renderImpl(renderer: Renderer2D, _renderMeta: RenderMeta): void {
+  override setRenderer(renderer: Renderer2D): void {
+    super.setRenderer(renderer);
+    this.maskKeypoints?.setRenderer(renderer);
+  }
+
+  protected renderImpl(renderer: Renderer2D, renderMeta: RenderMeta): void {
     // Dispose of old elements before creating new ones
     renderer.dispose(this.containerId);
 
@@ -179,16 +215,43 @@ export class BoundingBoxOverlay
 
     if (!style) return;
 
-    // Draw the segmentation mask beneath the box outline when available.
-    if (this.maskBitmap) {
-      renderer.drawImage(
-        { type: "bitmap", bitmap: this.maskBitmap },
+    const maskColor = style.strokeStyle || style.fillStyle || "#ffffff";
+    const isEditingMask =
+      this.isSelected() && (this.hasMask() || this.maskKeypoints);
+
+    this.mask?.render(
+      renderer,
+      this.bounds,
+      this.containerId,
+      maskColor,
+      isEditingMask ? 0.7 : style.opacity ?? BASE_ALPHA,
+      () => {
+        this.markDirty();
+      }
+    );
+
+    // lightweight border when editing detection mask
+    if (isEditingMask) {
+      renderer.drawScrim(
         this.bounds,
-        { opacity: style.opacity ?? BASE_ALPHA },
+        renderMeta.canonicalMediaBounds,
         this.containerId
       );
-    } else if (this.label?.mask && !this.maskDecoding) {
-      this.decodeMask();
+
+      renderer.drawRect(
+        this.bounds,
+        {
+          strokeStyle: style.strokeStyle || "#ffffff",
+          lineWidth: 1,
+          dashPattern: [4, 4],
+        },
+        this.containerId
+      );
+
+      this.maskKeypoints?.render(renderer, style, renderMeta);
+
+      this.emitLoaded();
+      return;
     }
 
     // Check if this label has an instance to determine stroke styling
@@ -220,7 +283,10 @@ export class BoundingBoxOverlay
 
     delete mainStrokeStyle.dashPattern;
 
-    renderer.drawRect(this.bounds, mainStrokeStyle, this.containerId);
+    // Hide bbox stroke by default when mask is present (only show on selection/hover)
+    if (!this.hasMask() || this.isSelectedState || this.isHoveredState) {
+      renderer.drawRect(this.bounds, mainStrokeStyle, this.containerId);
+    }
 
     if (hoverStrokeColor) {
       renderer.drawRect(
@@ -252,7 +318,7 @@ export class BoundingBoxOverlay
       const color = colorObj.color;
       renderer.drawScrim(
         this.bounds,
-        _renderMeta.canonicalMediaBounds,
+        renderMeta.canonicalMediaBounds,
         this.containerId
       );
       renderer.drawHandles(
@@ -263,7 +329,9 @@ export class BoundingBoxOverlay
       );
     }
 
-    if (this.label && this.label.label?.length > 0) {
+    const showLabel = !this.hasMask() || hoverStrokeColor || overlayStrokeColor;
+
+    if (this.label && this.label.label?.length > 0 && showLabel) {
       const offset = style.lineWidth
         ? style.lineWidth / renderer.getScale() / 2
         : 0;
@@ -310,24 +378,28 @@ export class BoundingBoxOverlay
     return this.moveStartBounds;
   }
 
-  getMoveState() {
-    return this.moveState;
+  getInteractionState() {
+    return this.interactionState;
   }
 
-  isMoving() {
-    return this.moveState !== "NONE";
+  isInteracting() {
+    return this.interactionState !== "NONE";
   }
 
   isDragging() {
-    return this.moveState === "DRAGGING";
+    return this.interactionState === "DRAGGING";
   }
 
   isResizing() {
-    return this.moveState.startsWith("RESIZE_");
+    return this.interactionState.startsWith("RESIZE_");
   }
 
   isSetting() {
-    return this.moveState === "SETTING";
+    return this.interactionState === "SETTING";
+  }
+
+  isPainting() {
+    return this.interactionState === "PAINTING";
   }
 
   private getResizeRegion(
@@ -362,7 +434,9 @@ export class BoundingBoxOverlay
 
   getCursor(worldPoint: Point, scale: number): string {
     if (!this.hasValidBounds()) return "crosshair";
+    if (this.isPaintingActive()) return "crosshair";
     if (!this.isSelected()) return "pointer";
+    if (this.hasMask()) return "default";
 
     if (!this.isDraggable && !this.isResizeable) {
       return "default";
@@ -401,12 +475,26 @@ export class BoundingBoxOverlay
   }
 
   // Interaction handlers
-  onPointerDown(
-    point: Point,
-    worldPoint: Point,
-    _event: PointerEvent,
-    scale: number
-  ): boolean {
+  onPointerDown({
+    point,
+    worldPoint,
+    scale,
+    segmentationToolState,
+  }: OverlayEvent): boolean {
+    this.segmentationTool = segmentationToolState;
+
+    // Segmentation painting takes priority over drag/resize
+    if (this.isPaintingActive()) {
+      return this.onSegmentationPointerDown(
+        point,
+        worldPoint,
+        segmentationToolState!
+      );
+    }
+
+    // Mask detections are painted, not dragged/resized
+    if (this.hasMask() || this.maskKeypoints) return false;
+
     const resizeRegion = this.getResizeRegion(worldPoint, scale);
     const cursorState = !this.hasValidBounds()
       ? "SETTING"
@@ -419,7 +507,7 @@ export class BoundingBoxOverlay
       this.renderer?.disableZoomPan();
     }
 
-    this.moveState = cursorState;
+    this.interactionState = cursorState;
 
     if (cursorState === "SETTING") {
       this.bounds = {
@@ -440,22 +528,155 @@ export class BoundingBoxOverlay
     return true;
   }
 
-  onMove(
+  private onSegmentationPointerDown(
     point: Point,
     worldPoint: Point,
-    event: PointerEvent,
-    scale: number,
-    maintainAspectRatio?: boolean
+    toolState: SegmentationToolState
   ): boolean {
-    if (this.moveState === "DRAGGING") {
+    if (toolState.tool === SegmentationTool.Pen) {
+      return this.onPenPointerDown(point, worldPoint, toolState);
+    }
+
+    if (!this.hasValidBounds()) {
+      // Bootstrap bounds from the brush dab so ensureMaskCanvas has a size
+      const size = toolState?.size ?? 0;
+      const half = size / 2;
+
+      this.bounds = {
+        x: worldPoint.x - half,
+        y: worldPoint.y - half,
+        width: size,
+        height: size,
+      };
+    }
+
+    this.mask ??= new MaskCanvas(this.label.mask);
+
+    const updatedBounds = this.mask.paintAt(
+      worldPoint,
+      this.bounds,
+      toolState,
+      this.currentStyle
+    );
+
+    if (updatedBounds) {
+      this.bounds = updatedBounds;
+      this.interactionState = "PAINTING";
+      this.moveStartPoint = point;
+      this.moveStartPosition = {
+        x: this.bounds.x,
+        y: this.bounds.y,
+      };
+      this.moveStartBounds = { ...this.bounds };
+      this.markDirty();
+      this.renderer?.disableZoomPan();
+    } else {
+      this.bounds = undefined;
+    }
+
+    return true;
+  }
+
+  private onPenPointerDown(
+    _point: Point,
+    worldPoint: Point,
+    _toolState: SegmentationToolState
+  ): boolean {
+    this.maskKeypoints ??= new MaskKeypoints({
+      coordinateSystem: this.coordinateSystem,
+      renderer: this.renderer,
+    });
+
+    this.maskKeypoints.addPoint({ ...worldPoint }, { dragging: false });
+    this.interactionState = "PAINTING";
+    this.markDirty();
+
+    return true;
+  }
+
+  onMove({
+    point,
+    worldPoint,
+    event,
+    scale,
+    maintainAspectRatio,
+    segmentationToolState,
+  }: OverlayEvent): boolean {
+    this.segmentationTool = segmentationToolState;
+
+    if (this.interactionState === "PAINTING") {
+      return this.onSegmentationMove({
+        point,
+        worldPoint,
+        event,
+        scale,
+        maintainAspectRatio,
+        segmentationToolState,
+      });
+    }
+
+    if (this.interactionState === "DRAGGING") {
       return this.onDrag(point, event, scale);
     }
 
-    if (this.moveState === "SETTING" || this.moveState.startsWith("RESIZE_")) {
+    if (
+      this.interactionState === "SETTING" ||
+      this.interactionState.startsWith("RESIZE_")
+    ) {
       return this.onResize(point, event, scale, maintainAspectRatio);
     }
 
     return false;
+  }
+
+  private onSegmentationMove({
+    point,
+    worldPoint,
+    event,
+    segmentationToolState,
+  }: OverlayEvent): boolean {
+    if (segmentationToolState?.tool === SegmentationTool.Pen) {
+      return this.onPenMove(worldPoint, event);
+    }
+
+    const updatedBounds = this.mask?.paintAt(
+      worldPoint,
+      this.bounds,
+      segmentationToolState!,
+      this.currentStyle
+    );
+
+    if (updatedBounds) {
+      this.bounds = updatedBounds;
+      this.interactionState = "PAINTING";
+      this.moveStartPoint = point;
+      this.moveStartPosition = {
+        x: this.bounds.x,
+        y: this.bounds.y,
+      };
+      this.moveStartBounds = { ...this.bounds };
+      this.markDirty();
+      this.renderer?.disableZoomPan();
+    } else {
+      this.bounds = undefined;
+    }
+
+    return true;
+  }
+
+  private onPenMove(worldPoint: Point, event: PointerEvent): boolean {
+    this.updatePenMousePosition(worldPoint);
+
+    // Dragging: drop points at intervals
+    if (
+      event.buttons === LEFT_MOUSE_BUTTON &&
+      this.maskKeypoints?.hasValidBounds()
+    ) {
+      this.maskKeypoints.addPoint({ ...worldPoint }, { dragging: true });
+    }
+
+    this.markDirty();
+    return true;
   }
 
   private onDrag(point: Point, _event: PointerEvent, scale: number): boolean {
@@ -511,55 +732,67 @@ export class BoundingBoxOverlay
 
     let { x, y, width, height } = this.moveStartBounds;
 
-    if (["RESIZE_NW", "RESIZE_N", "RESIZE_NE"].includes(this.moveState)) {
-      maintainY = this.moveState === "RESIZE_NE" ? maintainY * -1 : maintainY;
-      maintainY = this.moveState === "RESIZE_E" ? 0 : maintainY;
+    if (
+      ["RESIZE_NW", "RESIZE_N", "RESIZE_NE"].includes(this.interactionState)
+    ) {
+      maintainY =
+        this.interactionState === "RESIZE_NE" ? maintainY * -1 : maintainY;
+      maintainY = this.interactionState === "RESIZE_E" ? 0 : maintainY;
 
       y += maintainY || delta.y;
       height -= maintainY || delta.y;
 
-      if (this.moveState === "RESIZE_N") {
+      if (this.interactionState === "RESIZE_N") {
         x += maintainX / 2;
         width -= maintainX;
       }
     }
 
     if (
-      ["SETTING", "RESIZE_NW", "RESIZE_W", "RESIZE_SW"].includes(this.moveState)
+      ["SETTING", "RESIZE_NW", "RESIZE_W", "RESIZE_SW"].includes(
+        this.interactionState
+      )
     ) {
-      maintainX = this.moveState === "RESIZE_SW" ? maintainX * -1 : maintainX;
-      maintainX = this.moveState === "RESIZE_W" ? 0 : maintainX;
+      maintainX =
+        this.interactionState === "RESIZE_SW" ? maintainX * -1 : maintainX;
+      maintainX = this.interactionState === "RESIZE_W" ? 0 : maintainX;
 
       x += maintainX || delta.x;
       width -= maintainX || delta.x;
 
-      if (this.moveState === "RESIZE_W") {
+      if (this.interactionState === "RESIZE_W") {
         y += maintainY / 2;
         height -= maintainY;
       }
     }
 
     if (
-      ["SETTING", "RESIZE_SW", "RESIZE_S", "RESIZE_SE"].includes(this.moveState)
+      ["SETTING", "RESIZE_SW", "RESIZE_S", "RESIZE_SE"].includes(
+        this.interactionState
+      )
     ) {
-      maintainY = this.moveState === "RESIZE_SW" ? maintainY * -1 : maintainY;
-      maintainY = this.moveState === "RESIZE_S" ? 0 : maintainY;
+      maintainY =
+        this.interactionState === "RESIZE_SW" ? maintainY * -1 : maintainY;
+      maintainY = this.interactionState === "RESIZE_S" ? 0 : maintainY;
 
       height += maintainY || delta.y;
 
-      if (this.moveState === "RESIZE_S") {
+      if (this.interactionState === "RESIZE_S") {
         x -= maintainX / 2;
         width += maintainX;
       }
     }
 
-    if (["RESIZE_NE", "RESIZE_E", "RESIZE_SE"].includes(this.moveState)) {
-      maintainX = this.moveState === "RESIZE_NE" ? maintainX * -1 : maintainX;
-      maintainX = this.moveState === "RESIZE_E" ? 0 : maintainX;
+    if (
+      ["RESIZE_NE", "RESIZE_E", "RESIZE_SE"].includes(this.interactionState)
+    ) {
+      maintainX =
+        this.interactionState === "RESIZE_NE" ? maintainX * -1 : maintainX;
+      maintainX = this.interactionState === "RESIZE_E" ? 0 : maintainX;
 
       width += maintainX || delta.x;
 
-      if (this.moveState === "RESIZE_E") {
+      if (this.interactionState === "RESIZE_E") {
         y -= maintainY / 2;
         height += maintainY;
       }
@@ -586,14 +819,28 @@ export class BoundingBoxOverlay
     return true;
   }
 
-  onPointerUp(_point: Point, _event: PointerEvent): boolean {
+  onPointerUp({ segmentationToolState }: OverlayEvent): boolean {
+    this.segmentationTool = segmentationToolState;
+
     if (!this.moveStartPoint || !this.moveStartBounds) return false;
 
-    this.moveState = "NONE";
+    const wasPainting = this.interactionState === "PAINTING";
+
+    this.interactionState = "NONE";
+    this.mask?.paintEnd(this.bounds, () => {
+      this.markDirty();
+    });
     this.moveStartPoint = undefined;
     this.moveStartPosition = undefined;
     this.moveStartBounds = undefined;
     this.renderer?.enableZoomPan();
+
+    if (wasPainting) {
+      this.eventBus.dispatch("lighter:overlay-paint-end", {
+        id: this.id,
+        paintStrokeData: this.mask?.getPaintStrokeData(),
+      });
+    }
 
     return true;
   }
@@ -654,6 +901,13 @@ export class BoundingBoxOverlay
 
     // Check if point is inside the main bounding box
     if (this.isPointInRect(point, drawnBounds)) {
+      // For mask detections, narrow CONTENT to actual mask pixels so the
+      // hit area matches the painted shape rather than the bbox rectangle.
+      if (this.hasMask()) {
+        return this.mask!.containsMaskPixel(point, this.bounds)
+          ? CONTAINS.CONTENT
+          : CONTAINS.NONE;
+      }
       return CONTAINS.CONTENT;
     }
 
@@ -762,98 +1016,21 @@ export class BoundingBoxOverlay
    * bounding box.
    */
   containsMaskPixel(relativePoint: Point): boolean {
-    if (!this.maskData) {
-      return false;
-    }
-
-    const rb = this.#relativeBounds;
-
-    // Check if point is inside the bounding box
-    if (
-      relativePoint.x < rb.x ||
-      relativePoint.y < rb.y ||
-      relativePoint.x > rb.x + rb.width ||
-      relativePoint.y > rb.y + rb.height
-    ) {
-      return false;
-    }
-
-    const { src, width, height } = this.maskData;
-    const px = Math.floor(((relativePoint.x - rb.x) / rb.width) * (width - 1));
-    const py = Math.floor(
-      ((relativePoint.y - rb.y) / rb.height) * (height - 1)
+    return (
+      this.mask?.containsMaskPixel(relativePoint, this.#relativeBounds) ?? false
     );
-
-    return src[py * width + px] > 0;
   }
 
-  private extractMaskB64(mask: SerializedMask | undefined): string | undefined {
-    if (!mask) {
-      return undefined;
-    } else if (typeof mask === "string") {
-      return mask;
-    } else {
-      return mask.$binary.base64;
+  /**
+   * For mask detections, hit-test against the actual mask pixels rather than
+   * the rectangular bounding box.
+   */
+  override containsPoint(point: Point): boolean {
+    if (this.hasMask() && this.renderer) {
+      const worldPoint = this.renderer.screenToWorld(point);
+      return this.mask!.containsMaskPixel(worldPoint, this.bounds);
     }
-  }
-
-  private async decodeMask(): Promise<void> {
-    const b64 = this.extractMaskB64(this.label?.mask);
-    if (!b64 || b64 === this.lastMaskSource) return;
-
-    this.maskDecoding = true;
-    this.lastMaskSource = b64;
-
-    try {
-      const overlayMask = deserialize(b64);
-      if (
-        overlayMask.arrayType !== "Uint8Array" &&
-        overlayMask.arrayType !== "Uint8ClampedArray"
-      ) {
-        console.warn(
-          `[BoundingBoxOverlay] Unsupported mask dtype: ${overlayMask.arrayType}, expected Uint8Array`
-        );
-        return;
-      }
-
-      const [height, width] = overlayMask.shape;
-      const src = new Uint8Array(overlayMask.buffer);
-      const rgba = new Uint8ClampedArray(width * height * 4);
-
-      const colorObj = parseColorWithAlpha(
-        this.currentStyle?.strokeStyle ?? "#ffffff"
-      );
-      const r = (colorObj.color >> 16) & 0xff;
-      const g = (colorObj.color >> 8) & 0xff;
-      const b = colorObj.color & 0xff;
-
-      for (let i = 0; i < width * height; i++) {
-        if (src[i] > 0) {
-          rgba[i * 4] = r;
-          rgba[i * 4 + 1] = g;
-          rgba[i * 4 + 2] = b;
-          rgba[i * 4 + 3] = 255;
-        }
-      }
-
-      this.maskBitmap?.close();
-      this.maskBitmap = await createImageBitmap(
-        new ImageData(rgba, width, height)
-      );
-      this.maskData = { src, width, height };
-      this.markDirty();
-    } catch (e) {
-      console.error("[BoundingBoxOverlay] Failed to decode mask:", e);
-    } finally {
-      this.maskDecoding = false;
-    }
-  }
-
-  override destroy(): void {
-    this.maskBitmap?.close();
-    this.maskBitmap = undefined;
-    this.maskData = undefined;
-    super.destroy();
+    return super.containsPoint(point);
   }
 
   // Selectable interface implementation
@@ -883,11 +1060,177 @@ export class BoundingBoxOverlay
     label: any;
     type: string;
   } | null {
+    if (this.isSelected()) return null;
+
     return {
       color: this.currentStyle?.strokeStyle ?? "#ffffff",
       field: this.field || "unknown",
       label: this.label,
       type: "Detection",
     };
+  }
+
+  /**
+   * Returns true if this detection has a mask (inline, on-disk, or editing canvas).
+   */
+  hasMask(): boolean {
+    return !!this.mask;
+  }
+
+  /**
+   * Initializes an empty MaskCanvas so the overlay is treated as a mask
+   * detection (finer outline, no resize handles) before any paint occurs.
+   */
+  initMask(): void {
+    if (!this.mask) {
+      this.mask = new MaskCanvas();
+      this.markDirty();
+      this.eventBus.dispatch("lighter:overlay-label-updated", {
+        id: this.id,
+        label: this.label,
+        hasMask: true,
+      });
+    }
+  }
+
+  /**
+   * Removes the mask from this detection, destroying the MaskCanvas.
+   */
+  removeMask(): void {
+    const hadMask = !!this.mask;
+    this.mask?.destroy();
+    this.mask = undefined;
+    this.markDirty();
+    if (hadMask) {
+      this.eventBus.dispatch("lighter:overlay-label-updated", {
+        id: this.id,
+        label: this.label,
+        hasMask: false,
+      });
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Pen tool
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Returns true if a pen polygon is currently being built.
+   */
+  hasPenPolygon(): boolean {
+    return this.maskKeypoints?.hasValidBounds();
+  }
+
+  /**
+   * Fills the pen polygon onto the mask canvas and clears the pen state.
+   * Uses the current paint mode from the last known segmentation state.
+   */
+  commitPenPolygon({ segmentationToolState }: OverlayEvent): boolean {
+    if (!this.maskKeypoints) return false;
+
+    const absolutePoints = this.maskKeypoints.getAbsolutePoints();
+
+    if (absolutePoints.length < 3) {
+      this.cancelPenPolygon();
+      return false;
+    }
+
+    if (!this.hasValidBounds()) {
+      this.bounds = this.maskKeypoints.bounds;
+    }
+
+    this.mask ??= new MaskCanvas(this.label.mask);
+
+    const updatedBounds = this.mask.fillPolygon(
+      absolutePoints,
+      this.bounds,
+      segmentationToolState,
+      this.currentStyle
+    );
+
+    if (updatedBounds) {
+      this.bounds = updatedBounds;
+    }
+
+    this.mask.paintEnd(this.bounds, () => {
+      this.markDirty();
+    });
+
+    this.eventBus.dispatch("lighter:overlay-paint-end", {
+      id: this.id,
+      paintStrokeData: this.mask?.getPaintStrokeData(),
+    });
+
+    this.cancelPenPolygon();
+    return true;
+  }
+
+  /**
+   * Discards the current pen polygon without filling.
+   */
+  cancelPenPolygon(): void {
+    this.maskKeypoints?.destroy();
+    this.maskKeypoints = undefined;
+    this.interactionState = "NONE";
+    this.markDirty();
+  }
+
+  /**
+   * Updates the pen cursor position for live preview rendering.
+   */
+  updatePenMousePosition(worldPoint: Point | null): void {
+    this.maskKeypoints?.setPreviewPoint(worldPoint);
+  }
+
+  /**
+   * Whether segmentation brush/pen should intercept pointer events.
+   */
+  private isPaintingActive(): boolean {
+    if (!this.segmentationTool?.active) return false;
+
+    return (
+      this.segmentationTool.tool === SegmentationTool.Brush ||
+      this.segmentationTool.tool === SegmentationTool.Pen
+    );
+  }
+
+  /**
+   * Consumes and returns the pending encoded mask, if any.
+   * After calling, the pending mask is cleared.
+   */
+  getPendingMask(): string | undefined {
+    return this.mask?.getPendingMask();
+  }
+
+  /**
+   * Returns the mask as a drawable source for sidebar preview rendering.
+   */
+  getMaskPreviewSource(): HTMLCanvasElement | ImageBitmap | undefined {
+    return this.mask?.getPreviewSource();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Segmentation undo/redo support
+  // ---------------------------------------------------------------------------
+
+  getPaintStrokeData(): PaintStrokeData | undefined {
+    return this.mask?.getPaintStrokeData();
+  }
+
+  restoreMaskSnapshot(
+    snapshot: MaskSnapshot | undefined,
+    bounds: Rect | undefined
+  ): void {
+    this.mask ??= new MaskCanvas();
+
+    this.mask.restoreSnapshot(snapshot);
+    this.bounds = bounds;
+    this.markDirty();
+  }
+
+  override destroy(): void {
+    this.mask?.destroy();
+    this.maskKeypoints?.destroy();
+    super.destroy();
   }
 }

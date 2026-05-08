@@ -1,7 +1,25 @@
 import type { SampleRendererProps } from "@fiftyone/plugins";
+import { usePlaybackPlan, useSceneInventory } from "../client/hooks";
+import { getSampleIdentifiers } from "./sample";
 
-// TODO: implement MCAP renderers.
+/**
+ * Modal proof renderer for MCAP-backed multimodal samples.
+ */
+export function ModalRenderer({ ctx }: SampleRendererProps) {
+  const { datasetId, sampleId } = getSampleIdentifiers(ctx);
+  const inventoryState = useSceneInventory(
+    datasetId && sampleId ? { datasetId, sampleId } : null
+  );
+  const playbackPlanState = usePlaybackPlan(
+    inventoryState.status === "loaded" && inventoryState.data.inventoryId
+      ? { inventoryId: inventoryState.data.inventoryId }
+      : null
+  );
 
-export const ModalRenderer = (_props: SampleRendererProps) => {
-  return <div>hi from modal</div>;
-};
+  return (
+    <div>
+      <div>Scene inventory ID: {inventoryState.data?.inventoryId}</div>
+      <div>Playback ID: {playbackPlanState.data?.planId}</div>
+    </div>
+  );
+}
