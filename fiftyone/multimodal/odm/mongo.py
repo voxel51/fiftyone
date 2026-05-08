@@ -4,7 +4,7 @@
 |
 """
 
-from fiftyone import Dataset, Sample, ViewField as F
+from fiftyone import Dataset, Sample
 from fiftyone.multimodal.metadata import MultimodalMetadata
 from fiftyone.multimodal.schemas.v1 import SceneInventory
 
@@ -14,47 +14,32 @@ from .base import DatabaseAdapter
 class MongoAdapter(DatabaseAdapter):
     @classmethod
     def write_scene_inventories(
-        cls, dataset: Dataset, inventories: list[SceneInventory]
+        cls,
+        dataset: Dataset,
+        sample_and_scene_inventory_pairs: list[tuple[Sample, SceneInventory]],
     ) -> None:
         """
-        Writes the given scene inventories to the dataset as samples with the
-        'metadata' field.
+        Writes the given scene inventories to the 'metadata' field of their
+        respective samples.
 
         Args:
             dataset: the :class:`fiftyone.Dataset` to write to
-            inventories: a list of :class:`SceneInventory`
+            sample_and_scene_inventory_pairs: a list of tuples of
+                :class:`Sample` and :class:`SceneInventory`
         """
-        scene_ids = {inventory.scene_id for inventory in inventories}
-        existing_samples = {}
-        for sample in dataset.match(F("metadata.scene_id").is_in(scene_ids)):
-            existing_samples.setdefault(
-                sample["metadata.scene_id"], []
-            ).append(sample)
-
+        new_samples = []
         update_values = {}
-        new_samples = {}
-        for inventory in inventories:
+        for sample, inventory in sample_and_scene_inventory_pairs:
             metadata = MultimodalMetadata.build_for_scene_inventory(inventory)
 
-            if inventory.scene_id in existing_samples:
-                for sample in existing_samples[inventory.scene_id]:
-                    update_values[sample.id] = metadata
-            elif inventory.scene_id in new_samples:
-                for sample in new_samples[inventory.scene_id]:
-                    sample["metadata"] = metadata
+            if sample.id:
+                update_values[sample.id] = metadata
             else:
-                sample = Sample(filepath=inventory.scene_id)
                 sample["metadata"] = metadata
-                new_samples.setdefault(inventory.scene_id, []).append(sample)
+                new_samples.append(sample)
 
         if update_values:
             dataset.set_values("metadata", update_values, key_field="id")
 
         if new_samples:
-            dataset.add_samples(
-                [
-                    sample
-                    for samples in new_samples.values()
-                    for sample in samples
-                ]
-            )
+            dataset.add_samples(new_samples)

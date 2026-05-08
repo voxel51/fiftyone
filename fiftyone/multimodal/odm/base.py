@@ -5,9 +5,8 @@
 """
 
 import abc
-from typing import List
 
-from fiftyone import Dataset
+from fiftyone import Dataset, Sample
 from fiftyone.multimodal.schemas.v1 import SceneInventory
 
 
@@ -15,15 +14,18 @@ class DatabaseAdapter(abc.ABC):
     @classmethod
     @abc.abstractmethod
     def write_scene_inventories(
-        cls, dataset: Dataset, inventories: List[SceneInventory]
+        cls,
+        dataset: Dataset,
+        sample_and_scene_inventory_pairs: list[tuple[Sample, SceneInventory]],
     ) -> None:
         """
-        Writes the given scene inventories to the dataset as samples with the
-        'metadata' field.
+        Writes the given scene inventories to the 'metadata' field of their
+        respective samples.
 
         Args:
             dataset: the :class:`fiftyone.Dataset` to write to
-            inventories: a list of :class:`SceneInventory`
+            sample_and_scene_inventory_pairs: a list of tuples of
+                :class:`Sample` and :class:`SceneInventory`
         """
         raise NotImplementedError(
             "subclasses must implement write_scene_inventories()"
