@@ -14,14 +14,15 @@ import { atom, useAtom, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import Modal from "./Modal";
 
+const displayCount = 5;
 const showDisconnectConfirmation = atom(false);
 
 function DisconnectOntologyModalComponent({
   onConfirm,
-  vulnerableAttributes,
+  affectedAttributes,
 }: {
   onConfirm: () => void;
-  vulnerableAttributes: string[];
+  affectedAttributes: string[];
 }) {
   const [shown, show] = useAtom(showDisconnectConfirmation);
 
@@ -39,12 +40,12 @@ function DisconnectOntologyModalComponent({
           the schema:
         </Typography>
 
-        {vulnerableAttributes && vulnerableAttributes.length > 0 && (
+        {affectedAttributes && affectedAttributes.length > 0 && (
           <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
             <Typography color={TextColor.Primary}>Attributes:</Typography>
-            {vulnerableAttributes.length > 0 && (
+            {affectedAttributes.length > 0 && (
               <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
-                {vulnerableAttributes.slice(0, 5).map((name) => (
+                {affectedAttributes.slice(0, displayCount).map((name) => (
                   <Text
                     key={name}
                     variant={TextVariant.Md}
@@ -70,13 +71,13 @@ function DisconnectOntologyModalComponent({
                     {name}
                   </Text>
                 ))}
-                {vulnerableAttributes.length > 5 && (
+                {affectedAttributes.length > displayCount && (
                   <Text
                     variant={TextVariant.Md}
                     color={TextColor.Primary}
                     style={{ paddingLeft: "2rem" }}
                   >
-                    ... and {vulnerableAttributes.length - 5} others
+                    ... and {affectedAttributes.length - displayCount} others
                   </Text>
                 )}
               </Stack>
@@ -110,7 +111,7 @@ function DisconnectOntologyModalComponent({
 
 export const useConfirmDisconnectOntology = (
   onConfirm: () => void,
-  vulnerableAttributes: string[]
+  affectedAttributes: string[]
 ) => {
   const showConfirmation = useSetAtom(showDisconnectConfirmation);
   return {
@@ -121,7 +122,7 @@ export const useConfirmDisconnectOntology = (
     DisconnectOntologyModal: () => (
       <DisconnectOntologyModalComponent
         onConfirm={onConfirm}
-        vulnerableAttributes={vulnerableAttributes}
+        affectedAttributes={affectedAttributes}
       />
     ),
   };
