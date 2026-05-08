@@ -15,6 +15,7 @@ import unittest
 import fiftyone as fo
 import fiftyone.core.aggregations as foa
 import fiftyone.core.odm as foo
+from fiftyone.core.state import serialize_fields
 
 from fiftyone.server.db.mongo import MongoGridAdapter
 from fiftyone.server.samples import get_samples_pipeline
@@ -93,8 +94,6 @@ class TestMongoGridAdapter(unittest.IsolatedAsyncioTestCase):
     async def test_get_grid_field_schema_matches_serialize_fields(
         self, dataset: fo.Dataset
     ):
-        from fiftyone.core.state import serialize_fields
-
         _add_samples(dataset)
         view = dataset.view()
 

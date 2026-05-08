@@ -42,6 +42,7 @@ class SQLGridAdapter:
         *,
         sample_filter,
         first: int,
+        filters: t.Optional[t.Mapping[str, t.Any]] = None,
         hint: t.Optional[str] = None,
         max_time_ms: t.Optional[int] = None,
     ) -> t.Tuple[t.List[t.Dict[str, t.Any]], bool]:
@@ -65,6 +66,7 @@ class SQLGridAdapter:
         sort_by: str,
         search: t.Optional[str],
         selected: t.Optional[t.List[t.Any]],
+        filters: t.Optional[t.Mapping[str, t.Any]] = None,
     ) -> t.Tuple[int, t.List[t.Tuple[t.Any, int]]]:
         _not_implemented("count_field_values")
 
