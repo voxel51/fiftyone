@@ -580,9 +580,9 @@ def _apply_image_model_with_video_data_loader(
         )
         context.enter_context(fou.SetAttributes(model, preprocess=False))
 
-        for batch in pb(data_loader):
-            try:
-                for frames in batch:
+        for batch in data_loader:
+            for frames in batch:
+                try:
                     labels_frames = model.predict_all(frames["frames"])
                     sample_idx = frames["sample_idx"]
                     sample = samples[sample_idx]
@@ -598,19 +598,19 @@ def _apply_image_model_with_video_data_loader(
                         classes=classes,
                     )
                     ctx.save(sample)
-            except Exception as e:
-                if not skip_failures:
-                    raise e
+                except Exception as e:
+                    if not skip_failures:
+                        raise e
 
-                logger.warning(
-                    "Batch: %s - %s\nError: %s\n",
-                    batch[0].id,
-                    batch[-1].id,
-                    e,
-                    exc_info=True,
-                )
+                    logger.warning(
+                        "Batch: %s - %s\nError: %s\n",
+                        batch[0].id,
+                        batch[-1].id,
+                        e,
+                        exc_info=True,
+                    )
 
-            pb.update(len(batch))
+                pb.update(len(frames["frame_ids"]))
 
 
 def _apply_video_model(

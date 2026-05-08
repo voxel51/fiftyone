@@ -20,6 +20,7 @@ import cv2
 import numpy as np
 from PIL import Image
 
+import eta.core.frameutils as etaf
 import eta.core.geometry as etag
 import eta.core.learning as etal
 import eta.core.utils as etau
@@ -2717,30 +2718,29 @@ class TorchVideoFramesIterableDataset(IterableDataset):
         # pylint:disable-next=protected-access
         food._disconnect()
 
-    def _get_decoder_for_video(self, video_path, frames=None):
+    def _get_decoder_for_video(self, video_path, frame_range=None):
         """
         Get decoder for video.
 
         Cache only the current video being processed.
         """
-        if video_path == self._current_video_path and tuple(frames) == tuple(
-            self._current_frame_range
-        ):
+        if video_path == self._current_video_path and tuple(
+            frame_range
+        ) == tuple(self._current_frame_range):
             logger.debug(f"Reusing decoder for {video_path}")
             return self._current_decoder, self._current_iterator
 
         self._cleanup_current_decoder()
         logger.debug(f"Opening decoder for {video_path}")
-        decoder = etav.FFmpegVideoReader(video_path, frames=frames)
-        if frames is not None:
-            decoder.seek(frames[0] - 1)
-
+        decoder = etav.FFmpegVideoReader(
+            video_path, frames=etaf.FrameRange(*frame_range)
+        )
         iterator = iter(decoder)
 
         self._current_video_path = video_path
         self._current_decoder = decoder
         self._current_iterator = iterator
-        self._current_frame_range = frames
+        self._current_frame_range = frame_range
 
         return decoder, iterator
 
@@ -2824,7 +2824,6 @@ class TorchVideoFramesIterableDataset(IterableDataset):
 
         frames_read = 0
         max_frames = end_frame - start_frame + 1
-
         try:
             for img in iterator:
                 if max_frames != -1 and frames_read >= max_frames:
