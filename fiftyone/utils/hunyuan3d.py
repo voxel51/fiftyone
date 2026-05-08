@@ -9,8 +9,10 @@ wrapper for the FiftyOne Model Zoo.
 
 import logging
 import os
+import shutil
 import tempfile
 import uuid
+from typing import Any, List, Optional, Union
 
 import numpy as np
 from PIL import Image
@@ -25,7 +27,7 @@ import fiftyone.zoo.models as fozm
 logger = logging.getLogger(__name__)
 
 
-def _ensure_hunyuan3d():
+def _ensure_hunyuan3d() -> None:
     if not fou.ensure_package("hy3dgen", error_level=2):
         fou.install_package(
             "git+https://github.com/Tencent-Hunyuan/Hunyuan3D-2.git"
@@ -40,6 +42,17 @@ hy3dgen_shapegen = fou.lazy_import(
 
 DEFAULT_HUNYUAN3D_MODEL = "tencent/Hunyuan3D-2"
 
+SUPPORTED_OUTPUT_FORMATS = ("obj", "stl", "ply", "fbx", "gltf", "glb")
+
+_MESH_TYPES = {
+    "obj": fo3d.ObjMesh,
+    "stl": fo3d.StlMesh,
+    "ply": fo3d.PlyMesh,
+    "fbx": fo3d.FbxMesh,
+    "gltf": fo3d.GltfMesh,
+    "glb": fo3d.GltfMesh,
+}
+
 
 class Hunyuan3DModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
     """Configuration for running a :class:`Hunyuan3DModel`.
@@ -48,14 +61,16 @@ class Hunyuan3DModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
     arguments.
 
     Args:
-        name_or_path (None): the name or path of the Hunyuan3D model to use.
-            Defaults to ``"tencent/Hunyuan3D-2"``
-        output_dir (None): directory to save output mesh files. If None,
-            uses a temporary directory
-        output_format (None): output mesh format. Defaults to ``"obj"``
+        name_or_path ("tencent/Hunyuan3D-2"): the name or path of the
+            Hunyuan3D model to load
+        output_dir (None): directory to write generated mesh and scene files.
+            If ``None``, a temporary directory is created and a warning is
+            logged
+        output_format ("obj"): mesh output format. One of
+            ``"obj"``, ``"stl"``, ``"ply"``, ``"fbx"``, ``"gltf"``, ``"glb"``
     """
 
-    def __init__(self, d):
+    def __init__(self, d: dict) -> None:
         d = self.init(d)
         super().__init__(d)
 
@@ -63,7 +78,20 @@ class Hunyuan3DModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
             d, "name_or_path", default=DEFAULT_HUNYUAN3D_MODEL
         )
         self.output_dir = self.parse_string(d, "output_dir", default=None)
-        self.output_format = self.parse_string(d, "output_format", default="obj")
+        self.output_format = self.parse_string(
+            d, "output_format", default="obj"
+        )
+        if self.output_format not in SUPPORTED_OUTPUT_FORMATS:
+            raise ValueError(
+                "Unsupported output_format '%s'; expected one of %s"
+                % (self.output_format, ", ".join(SUPPORTED_OUTPUT_FORMATS))
+            )
+
+        self.is_v21 = self.name_or_path == "tencent/Hunyuan3D-2.1"
+
+        # Hunyuan3D's pipeline accepts PIL images and string paths directly,
+        # so the wrapper bypasses TorchImageModel's tensor-style preprocessing.
+        self.raw_inputs = True
 
 
 class Hunyuan3DModel(fout.TorchImageModel):
@@ -71,8 +99,13 @@ class Hunyuan3DModel(fout.TorchImageModel):
     `Hunyuan3D <https://github.com/Tencent-Hunyuan/Hunyuan3D-2>`_
     inference.
 
-    Hunyuan3D is a large-scale 3D synthesis system that generates high-resolution
-    textured 3D assets from a single image.
+    Hunyuan3D is a large-scale 3D synthesis system that generates
+    high-resolution textured 3D assets from a single image.
+
+    When ``output_dir`` is not provided in the config, the wrapper writes
+    meshes and scene files to a fresh temporary directory and logs its
+    location. Call :meth:`cleanup` (or rely on garbage collection) to remove
+    that directory; user-provided ``output_dir`` paths are never deleted.
 
     Example usage::
 
@@ -93,57 +126,60 @@ class Hunyuan3DModel(fout.TorchImageModel):
         config: a :class:`Hunyuan3DModelConfig`
     """
 
-    def __init__(self, config):
+    def __init__(self, config: Hunyuan3DModelConfig) -> None:
         super().__init__(config)
-        self.config.raw_inputs = True
-        self._output_dir = config.output_dir
-        self._output_format = config.output_format
-        self._output_dir_initialized = False
+        self._output_dir: Optional[str] = config.output_dir
+        self._output_format: str = config.output_format
+        self._output_dir_initialized: bool = False
+        self._owns_output_dir: bool = False
 
-    def _load_model(self, config):
+    def _load_model(self, config: Hunyuan3DModelConfig) -> Any:
         kwargs = {}
-        if "2.1" in config.name_or_path:
+        if config.is_v21:
             kwargs["subfolder"] = "hunyuan3d-dit-v2-1"
             kwargs["use_safetensors"] = False
 
-        pipeline = hy3dgen_shapegen.Hunyuan3DDiTFlowMatchingPipeline.from_pretrained(
+        return hy3dgen_shapegen.Hunyuan3DDiTFlowMatchingPipeline.from_pretrained(
             config.name_or_path, **kwargs
         )
-        return pipeline
 
     @property
-    def media_type(self):
+    def media_type(self) -> str:
         return "image"
 
-    def _ensure_output_dir(self):
-        if not self._output_dir_initialized:
-            if self._output_dir is None:
-                self._output_dir = tempfile.mkdtemp(prefix="hunyuan3d_")
-                self._owns_output_dir = True
-                logger.warning(
-                    "No output_dir provided; outputs will be written to "
-                    "temporary directory '%s'",
-                    self._output_dir,
-                )
-            else:
-                self._owns_output_dir = False
-            os.makedirs(self._output_dir, exist_ok=True)
-            self._output_dir_initialized = True
+    def _ensure_output_dir(self) -> None:
+        if self._output_dir_initialized:
+            return
 
-    def cleanup(self):
-        """Remove the temporary output directory if one was created."""
-        if getattr(self, "_owns_output_dir", False) and self._output_dir:
-            import shutil
+        if self._output_dir is None:
+            self._output_dir = tempfile.mkdtemp(prefix="hunyuan3d_")
+            self._owns_output_dir = True
+            logger.warning(
+                "No output_dir provided; outputs will be written to "
+                "temporary directory '%s'",
+                self._output_dir,
+            )
+
+        os.makedirs(self._output_dir, exist_ok=True)
+        self._output_dir_initialized = True
+
+    def cleanup(self) -> None:
+        """Removes the temporary output directory if one was created.
+
+        No-op when the user supplied an explicit ``output_dir``.
+        """
+        if self._owns_output_dir and self._output_dir:
             shutil.rmtree(self._output_dir, ignore_errors=True)
             self._output_dir_initialized = False
+            self._owns_output_dir = False
 
-    def __del__(self):
-        self.cleanup()
+    def _to_pil(
+        self, img: Union[str, Image.Image, np.ndarray, "torch.Tensor"]
+    ) -> Union[str, Image.Image]:
+        """Converts an input image to a PIL Image.
 
-    def _to_pil(self, img):
-        """Convert input to PIL Image if needed.
-
-        The Hunyuan3D pipeline accepts str paths or PIL Images directly.
+        The Hunyuan3D pipeline accepts string paths and PIL Images directly;
+        numpy arrays and torch tensors are converted to PIL.
         """
         if isinstance(img, (str, Image.Image)):
             return img
@@ -170,31 +206,18 @@ class Hunyuan3DModel(fout.TorchImageModel):
 
         raise TypeError("Unsupported image type: %s" % type(img).__name__)
 
-    def _export_mesh(self, mesh):
-        """Export mesh to disk and return a Classification with viewable scene."""
+    def _export_mesh(self, mesh: Any) -> fol.Classification:
+        """Writes a mesh and its FO3D scene to disk and returns a label."""
         self._ensure_output_dir()
 
-        mesh_id = uuid.uuid4().hex[:12]
-        mesh_path = os.path.join(
-            self._output_dir, "mesh_%s.%s" % (mesh_id, self._output_format)
-        )
+        mesh_id = uuid.uuid4().hex
+        mesh_filename = "mesh_%s.%s" % (mesh_id, self._output_format)
+        mesh_path = os.path.join(self._output_dir, mesh_filename)
         mesh.export(mesh_path)
 
-        mesh_filename = "mesh_%s.%s" % (mesh_id, self._output_format)
-        _mesh_types = {
-            "obj": fo3d.ObjMesh,
-            "stl": fo3d.StlMesh,
-            "ply": fo3d.PlyMesh,
-            "fbx": fo3d.FbxMesh,
-            "gltf": fo3d.GltfMesh,
-            "glb": fo3d.GltfMesh,
-        }
-        mesh_cls = _mesh_types.get(self._output_format, fo3d.ObjMesh)
+        mesh_cls = _MESH_TYPES[self._output_format]
         scene = fo3d.Scene()
-        scene.add(mesh_cls(
-            "mesh",
-            mesh_filename,
-        ))
+        scene.add(mesh_cls("mesh", mesh_filename))
         scene_path = os.path.join(
             self._output_dir, "scene_%s.fo3d" % mesh_id
         )
@@ -208,23 +231,20 @@ class Hunyuan3DModel(fout.TorchImageModel):
             faces=mesh.faces.shape[0],
         )
 
-    def _predict_all(self, imgs):
+    def _predict_all(self, imgs: Any) -> List[Optional[fol.Classification]]:
         if not isinstance(imgs, list):
             imgs = [imgs]
 
         if len(imgs) == 0:
             return []
 
-        outputs = []
+        outputs: List[Optional[fol.Classification]] = []
         for i, img in enumerate(imgs):
             try:
                 pil_img = self._to_pil(img)
                 mesh = self._model(image=pil_img)[0]
                 outputs.append(self._export_mesh(mesh))
-            except (
-                OSError, ValueError, RuntimeError, KeyError,
-                IndexError, AttributeError, TypeError,
-            ) as e:
+            except (OSError, RuntimeError, ValueError) as e:
                 logger.warning(
                     "Hunyuan3D inference failed for image %d: %s",
                     i, e, exc_info=True,
