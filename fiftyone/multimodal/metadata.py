@@ -10,6 +10,8 @@ from google.protobuf.json_format import MessageToDict
 
 import fiftyone as fo
 import fiftyone.core.fields as fof
+from fiftyone.multimodal.adapters.mcap import McapAdapter
+from fiftyone.multimodal.ingest import _get_scene_inventories
 from fiftyone.multimodal.schemas.v1 import SceneInventory
 
 
@@ -36,6 +38,27 @@ class MultimodalMetadata(fo.Metadata):
     streams = fof.ListField(fof.DictField())
     produced_at = fof.DateTimeField()
     produced_by = fof.StringField()
+
+    @classmethod
+    def build_for(cls, path_or_url, mime_type=None):
+        """Builds a :class:`MultimodalMetadata` object for the given file.
+
+        Args:
+            path_or_url: the path to the data on disk or a URL
+            mime_type (None): ignored; assumed to be "application/octet-stream"
+
+        Returns:
+            a :class:`MultimodalMetadata`
+        """
+        inventories = _get_scene_inventories(
+            [path_or_url], adapter=McapAdapter
+        )
+        if not inventories:
+            raise ValueError(
+                f"Unable to build MultimodalMetadata for {path_or_url}: no "
+                "scene inventories found"
+            )
+        return cls.build_for_scene_inventory(inventories[0])
 
     @classmethod
     def build_for_scene_inventory(cls, scene_inventory: SceneInventory):
