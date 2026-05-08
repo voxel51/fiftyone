@@ -185,7 +185,7 @@ const useSave = (field: string, visibilityChanged: boolean) => {
   const removeFromActive = useSetAtom(removeFromActiveSchemas);
   const activeSchemas = useAtomValue(activeLabelSchemas);
   const notify = useNotification();
-  const [current] = useCurrentLabelSchema(field);
+  const [current, setCurrent] = useCurrentLabelSchema(field);
   const setCurrentField = useSetAtom(currentField);
   const { dispatch } = useSchemaManagerEventBus();
 
@@ -197,11 +197,13 @@ const useSave = (field: string, visibilityChanged: boolean) => {
 
       const labelSchema = current ? reconcileComponent(current) : current;
 
+      let hydrated: unknown;
       try {
-        await updateSchema({
+        const response = await updateSchema({
           field,
           label_schema: labelSchema,
         } as UpdateSchemaRequest);
+        hydrated = response.label_schema;
       } catch (error) {
         console.error("Failed to save label schema:", error);
         setIsSaving(false);
@@ -209,7 +211,9 @@ const useSave = (field: string, visibilityChanged: boolean) => {
         return;
       }
 
-      setSaved(current);
+      const resolved = hydrated ?? current;
+      setSaved(resolved);
+      setCurrent(resolved);
       setIsSaving(false);
       dispatchSchemaManagerEvent(dispatch, "schema-manager:save-complete");
 
