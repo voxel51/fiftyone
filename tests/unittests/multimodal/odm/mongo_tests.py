@@ -4,7 +4,7 @@
 |
 """
 
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, Mock, call, patch
 
 import pytest
 
@@ -37,6 +37,9 @@ class TestMongoAdapter:
             )
             ###
 
+            metadata_builder.assert_has_calls(
+                [call(inventory) for inventory in inventories]
+            )
             dataset.set_values.assert_not_called()
             dataset.add_samples.assert_called_once_with(samples)
 
