@@ -70,6 +70,7 @@ class Values(HTTPEndpoint):
             sort_by=sort_by,
             search=regex_safe_search,
             selected=selected,
+            filters=filters,
         )
 
         return {

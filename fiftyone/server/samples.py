@@ -126,6 +126,7 @@ async def paginate_samples(
         view,
         sample_filter=sample_filter,
         first=first,
+        filters=filters,
         hint=hint,
         max_time_ms=maxTimeMS,
     )

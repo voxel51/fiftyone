@@ -58,11 +58,18 @@ class GridDataAdapter(t.Protocol):
         *,
         sample_filter: t.Optional["SampleFilter"],
         first: int,
+        filters: t.Optional[t.Mapping[str, t.Any]] = None,
         hint: t.Optional[str] = None,
         max_time_ms: t.Optional[int] = None,
     ) -> t.Tuple[t.List[t.Dict[str, t.Any]], bool]:
         """Return up to ``first`` raw sample documents for the grid plus a
         ``has_more`` flag.
+
+        ``filters`` is the raw client-supplied sidebar filter dict (the
+        same shape passed to ``fosv.get_view``). The Mongo implementation
+        ignores it because the equivalent filters are already baked into
+        ``view`` as view stages; non-Mongo implementations consume it
+        directly to translate into their native query language.
 
         The caller (resolver) is responsible for any cursor / skip handling
         before invocation and for post-processing the returned documents
@@ -96,8 +103,13 @@ class GridDataAdapter(t.Protocol):
         sort_by: str,
         search: t.Optional[str],
         selected: t.Optional[t.List[t.Any]],
+        filters: t.Optional[t.Mapping[str, t.Any]] = None,
     ) -> t.Tuple[int, t.List[t.Tuple[t.Any, int]]]:
         """Power the sidebar value picker.
+
+        ``filters`` is the raw sidebar filter dict, with the same Mongo-
+        ignored / non-Mongo-consumed semantics as in
+        :meth:`paginate_samples`.
 
         Returns ``(total_distinct_count, page)`` where ``page`` is a list of
         ``(value, count)`` tuples truncated to ``first`` entries.

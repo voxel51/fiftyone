@@ -28,9 +28,14 @@ class MongoGridAdapter:
         *,
         sample_filter,
         first: int,
+        filters: t.Optional[t.Mapping[str, t.Any]] = None,
         hint: t.Optional[str] = None,
         max_time_ms: t.Optional[int] = None,
     ) -> t.Tuple[t.List[t.Dict[str, t.Any]], bool]:
+        # ``filters`` is intentionally unused — the equivalent filters are
+        # already baked into ``view`` as view stages by the resolver.
+        del filters
+
         # Imported lazily to avoid module-load cycles between the server
         # package and the db package.
         from fiftyone.server.samples import get_samples_pipeline
@@ -105,7 +110,12 @@ class MongoGridAdapter:
         sort_by: str,
         search: t.Optional[str],
         selected: t.Optional[t.List[t.Any]],
+        filters: t.Optional[t.Mapping[str, t.Any]] = None,
     ) -> t.Tuple[int, t.List[t.Tuple[t.Any, int]]]:
+        # ``filters`` is intentionally unused — the equivalent filters are
+        # already baked into ``view`` as view stages by the resolver.
+        del filters
+
         import fiftyone.core.aggregations as foa
 
         count, page = await view._async_aggregate(
