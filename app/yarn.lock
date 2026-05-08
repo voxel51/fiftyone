@@ -2010,6 +2010,7 @@ __metadata:
   dependencies:
     "@emotion/react": "npm:^11.14.0"
     "@emotion/styled": "npm:^11.14.0"
+    "@miris-inc/three": "npm:latest"
     "@react-three/drei": "npm:^10.7.6"
     "@react-three/fiber": "catalog:"
     "@sparkjsdev/spark": "npm:2.1.0"
@@ -2171,7 +2172,9 @@ __metadata:
   resolution: "@fiftyone/plugins@workspace:packages/plugins"
   dependencies:
     "@fiftyone/utilities": "workspace:^"
+    moment: "npm:^2.29.4"
     prettier: "catalog:"
+    three: "npm:^0.182.0"
     vite: "catalog:"
   languageName: unknown
   linkType: soft
@@ -3180,6 +3183,13 @@ __metadata:
   version: 2.0.1
   resolution: "@microsoft/fetch-event-source@npm:2.0.1"
   checksum: 10/c147055fafe83801efb9834136ba4b7944406a0bba3517afcea6ceeb56714b5ef78c2e89544bd9c1426ad1d2f964a087e3a719169ae04855836a23fb53269f8d
+  languageName: node
+  linkType: hard
+
+"@miris-inc/three@npm:latest":
+  version: 0.0.7-86c2ee0
+  resolution: "@miris-inc/three@npm:0.0.7-86c2ee0"
+  checksum: 10/24f0fb237e5a695280e0ba2c14ec75f98733d4f6e638bdb4d845a7b51184f77a5d701c3bfd99d9a04e7a7b2c02b2a56650128d1edf97e17b5d4151fb26f11a4d
   languageName: node
   linkType: hard
 
@@ -14855,6 +14865,13 @@ __metadata:
   bin:
     mkdirp: bin/cmd.js
   checksum: 10/d71b8dcd4b5af2fe13ecf3bd24070263489404fe216488c5ba7e38ece1f54daf219e72a833a3a2dc404331e870e9f44963a33399589490956bff003a3404d3b2
+  languageName: node
+  linkType: hard
+
+"moment@npm:^2.29.4":
+  version: 2.30.1
+  resolution: "moment@npm:2.30.1"
+  checksum: 10/ae42d876d4ec831ef66110bdc302c0657c664991e45cf2afffc4b0f6cd6d251dde11375c982a5c0564ccc0fa593fc564576ddceb8c8845e87c15f58aa6baca69
   languageName: node
   linkType: hard
 

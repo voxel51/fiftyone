@@ -15,6 +15,7 @@
     "dependencies": {
         "@emotion/react": "^11.14.0",
         "@emotion/styled": "^11.14.0",
+        "@miris-inc/three": "latest",
         "@react-three/drei": "^10.7.6",
         "@react-three/fiber": "catalog:",
         "@sparkjsdev/spark": "2.1.0",

@@ -10,6 +10,7 @@ import {
   type FoSceneNode,
   GltfAsset,
   type MeshAsset,
+  MirisStreamAsset,
   ObjAsset,
   PcdAsset,
   PlaneGeometryAsset,
@@ -117,6 +118,13 @@ const parseAsset = (node: FoSceneRawNode): MeshAsset | undefined => {
       getOptionalBooleanField(node, "centerGeometry") ?? true,
       getOptionalNumberField(node, "opacity"),
       getOptionalStringField(node, "tint"),
+    );
+  }
+
+  if (nodeType === "mirisstream" && hasStringField(node, "assetUuid")) {
+    return new MirisStreamAsset(
+      node.assetUuid,
+      getOptionalStringField(node, "viewerKey"),
     );
   }
 
@@ -254,6 +262,7 @@ const parseAsset = (node: FoSceneRawNode): MeshAsset | undefined => {
 
 const buildSceneNode = (node: FoSceneRawNode): FoSceneNode => {
   return {
+    uuid: node.uuid,
     asset: parseAsset(node),
     name: node.name,
     visible: node.visible,
