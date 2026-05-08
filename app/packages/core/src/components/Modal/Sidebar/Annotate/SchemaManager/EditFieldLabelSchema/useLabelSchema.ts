@@ -6,6 +6,7 @@ import {
   useNotification,
   useQueryPerformanceSampleLimit,
 } from "@fiftyone/state";
+import { getFetchFunction } from "@fiftyone/utilities";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { isEqual } from "lodash";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -134,7 +135,39 @@ export const useAppliedOntology = (field: string) => {
     appliedOntology: schema?.applied_ontology,
     ontologyAttributes,
     applyOntology: (name: string) => {
-      setCurrent({ ...(schema as FieldSchema), applied_ontology: name });
+      const draft = { ...(schema as FieldSchema), applied_ontology: name };
+      setCurrent(draft);
+
+      getFetchFunction()(
+        "GET",
+        `/ontologies/${encodeURIComponent(name)}/attributes`
+      )
+        .then((result) => {
+          // Merge ontology attributes into the schema
+          const attrs = (result as { attributes: Record<string, unknown>[] })
+            .attributes;
+          if (!attrs?.length) return;
+
+          const existing = Array.isArray(draft.attributes)
+            ? ([...draft.attributes] as Record<string, unknown>[])
+            : [];
+          const byName = new Map(existing.map((a) => [a.name, a]));
+          const orderedNames = existing.map((a) => a.name as string);
+
+          for (const attr of attrs) {
+            const attrName = attr.name as string;
+            if (!byName.has(attrName)) orderedNames.push(attrName);
+            byName.set(attrName, attr);
+          }
+
+          setCurrent({
+            ...draft,
+            attributes: orderedNames.map((n) => byName.get(n)),
+          });
+        })
+        .catch(() => {
+          // Preview failed — name is already set, attributes will hydrate on save
+        });
     },
     clearOntology: () => {
       const next: FieldSchema = { ...(schema as FieldSchema) };
