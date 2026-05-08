@@ -3001,6 +3001,7 @@ __metadata:
     "@biomejs/biome": "npm:^1.8.3"
     "@emotion/react": "npm:^11.14.0"
     "@emotion/styled": "npm:^11.14.0"
+    "@miris-inc/three": "npm:latest"
     "@react-three/drei": "npm:^10.7.6"
     "@react-three/fiber": "npm:^8.18.0"
     "@types/chroma-js": "npm:^3.1.1"
@@ -3137,6 +3138,7 @@ __metadata:
     jest: "npm:^29.7.0"
     moment: "npm:^2.29.4"
     prettier: "npm:2.2.1"
+    three: "npm:^0.182.0"
     vite: "npm:^7.3.2"
   languageName: unknown
   linkType: soft
@@ -4139,6 +4141,13 @@ __metadata:
   version: 2.0.1
   resolution: "@microsoft/fetch-event-source@npm:2.0.1"
   checksum: 10/c147055fafe83801efb9834136ba4b7944406a0bba3517afcea6ceeb56714b5ef78c2e89544bd9c1426ad1d2f964a087e3a719169ae04855836a23fb53269f8d
+  languageName: node
+  linkType: hard
+
+"@miris-inc/three@npm:latest":
+  version: 0.0.7-86c2ee0
+  resolution: "@miris-inc/three@npm:0.0.7-86c2ee0"
+  checksum: 10/24f0fb237e5a695280e0ba2c14ec75f98733d4f6e638bdb4d845a7b51184f77a5d701c3bfd99d9a04e7a7b2c02b2a56650128d1edf97e17b5d4151fb26f11a4d
   languageName: node
   linkType: hard
 

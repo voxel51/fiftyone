@@ -195,6 +195,7 @@ from .core.threed import (
     SphereGeometry,
     FbxMesh,
     GltfMesh,
+    MirisStream,
     ObjMesh,
     PlyMesh,
     StlMesh,
