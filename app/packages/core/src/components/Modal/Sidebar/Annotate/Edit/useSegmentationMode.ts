@@ -204,11 +204,26 @@ export const useSegmentationMode = () => {
         aiMode.activate();
       } else if (nextTool === SegmentationTool.Merge) {
         closeOpenLabel();
+
+        // Adopt an already-selected mask detection as the merge target so
+        // the user doesn't have to re-click it. If a non-mask label is
+        // selected, deselect it — the Merge tool only operates on masks.
+        const selected = selectedLabelRef.current;
+        const overlayId = selected?.overlay?.id;
+        const hasMask =
+          selected?.type === "Detection" &&
+          !!(selected.data as { mask?: unknown })?.mask;
+
+        if (hasMask && overlayId) {
+          mergeTool.setMergeTarget(overlayId);
+        } else if (selected) {
+          onExit();
+        }
       }
 
       manualMode.switchTool(nextTool);
     },
-    [aiMode, closeOpenLabel, manualMode, mergeTool]
+    [aiMode, closeOpenLabel, manualMode, mergeTool, onExit]
   );
 
   // Auto-enable segmentation mode when a pre-existing mask detection is selected,

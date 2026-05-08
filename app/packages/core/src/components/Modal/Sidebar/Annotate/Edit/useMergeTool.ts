@@ -33,6 +33,8 @@ export interface MergeTool {
    * the target and delete the source.
    */
   handleOverlayClick: (overlay: DetectionOverlay) => void | Promise<void>;
+  /** Sets the merge-target id directly (e.g. on tool entry with a selection). */
+  setMergeTarget: (id: string | null) => void;
   /** Drops the merge-target reference. Called on right-click-deselect. */
   clearMergeTarget: () => void;
   /** True when the tool has nothing to operate on (no mask detections). */
@@ -68,6 +70,13 @@ export const useMergeTool = (): MergeTool => {
           !!(label.data as { mask?: unknown })?.mask
       ),
     [sidebarLabels]
+  );
+
+  const setMergeTarget = useCallback(
+    (id: string | null) => {
+      setMergeTargetId(id);
+    },
+    [setMergeTargetId]
   );
 
   const clearMergeTarget = useCallback(() => {
@@ -156,9 +165,16 @@ export const useMergeTool = (): MergeTool => {
     () => ({
       mergeTargetId,
       handleOverlayClick,
+      setMergeTarget,
       clearMergeTarget,
       disabled,
     }),
-    [mergeTargetId, handleOverlayClick, clearMergeTarget, disabled]
+    [
+      mergeTargetId,
+      handleOverlayClick,
+      setMergeTarget,
+      clearMergeTarget,
+      disabled,
+    ]
   );
 };

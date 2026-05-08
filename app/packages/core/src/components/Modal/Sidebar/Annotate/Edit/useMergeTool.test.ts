@@ -251,6 +251,31 @@ describe("useMergeTool", () => {
     expect(result.current.disabled).toBe(true);
   });
 
+  it("setMergeTarget assigns the merge target id directly", () => {
+    const { result } = renderHook(() => useMergeTool());
+    expect(result.current.mergeTargetId).toBe(null);
+
+    act(() => {
+      result.current.setMergeTarget("ov-9");
+    });
+
+    expect(result.current.mergeTargetId).toBe("ov-9");
+  });
+
+  it("setMergeTarget(null) clears the target", () => {
+    const { result } = renderHook(() => useMergeTool());
+
+    act(() => {
+      result.current.setMergeTarget("ov-9");
+    });
+    expect(result.current.mergeTargetId).toBe("ov-9");
+
+    act(() => {
+      result.current.setMergeTarget(null);
+    });
+    expect(result.current.mergeTargetId).toBe(null);
+  });
+
   it("MergeDetectionsCommand deps wire deletion and restoration of the source", async () => {
     const target = new MockDetectionOverlay("target");
     const source = new MockDetectionOverlay("source");
