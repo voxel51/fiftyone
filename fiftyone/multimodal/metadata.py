@@ -72,6 +72,13 @@ class MultimodalMetadata(fo.Metadata):
         Returns:
             a :class:`MultimodalMetadata`
         """
+        try:
+            produced_at = datetime.datetime.fromisoformat(
+                scene_inventory.produced_at
+            )
+        except ValueError:
+            produced_at = None
+
         return cls(
             size_bytes=scene_inventory.source_fingerprint.size_bytes,
             mime_type="application/octet-stream",
@@ -87,7 +94,5 @@ class MultimodalMetadata(fo.Metadata):
                 for stream in scene_inventory.streams
             ],
             produced_by=scene_inventory.produced_by,
-            produced_at=datetime.datetime.fromisoformat(
-                scene_inventory.produced_at
-            ),
+            produced_at=produced_at,
         )

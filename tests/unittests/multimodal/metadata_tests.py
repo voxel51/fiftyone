@@ -27,3 +27,18 @@ class TestMultimodalMetadata:
 
             assert metadata.size_bytes == 2342
             assert metadata.mime_type == "application/octet-stream"
+
+        def test_handles_malformed_produced_at(self):
+            inventory = Mock(
+                scene_id="some_scene_id",
+                source_format="some_format",
+                source_fingerprint=SourceFingerprint(size_bytes=2342),
+                inventory_version="some_version",
+                streams=[],
+                produced_by="some_producer",
+                produced_at="not a real datetime",
+            )
+
+            metadata = MultimodalMetadata.build_for_scene_inventory(inventory)
+
+            assert metadata.produced_at is None
