@@ -44,7 +44,7 @@ class MongoAdapter(DatabaseAdapter):
                 sample = Sample(filepath=inventory.scene_id)
                 sample["metadata"] = metadata
                 new_samples.append(sample)
-                # In case the same scene ID shows up in multiple new samples, save the same and update it rather than
+                # In case the same scene ID shows up in multiple new samples, save the sample and update it rather than
                 # creating a duplicate sample
                 existing_samples[inventory.scene_id] = [sample]
 
