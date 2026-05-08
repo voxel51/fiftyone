@@ -1095,6 +1095,7 @@ export class Scene2D {
     overlay.setRenderer(this.config.renderer);
     overlay.setResourceLoader(this.config.resourceLoader);
     overlay.setEventChannel(this.eventChannel);
+    overlay.rehydrateMask?.();
 
     // Add to internal tracking
     this.overlays.set(overlay.id, overlay);

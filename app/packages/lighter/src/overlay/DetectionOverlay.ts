@@ -1271,9 +1271,26 @@ export class DetectionOverlay
     this.markDirty();
   }
 
+  /**
+   * Re-creates the mask canvas from {@link label}.mask after a destroy/re-add
+   * cycle (e.g. undoing a deletion). No-op if the mask is already present or
+   * if the label has no mask data.
+   */
+  rehydrateMask(): void {
+    if (this.mask) return;
+    if (!this.label.mask) return;
+
+    this.mask = new MaskCanvas(this.label.mask);
+
+    this.forceHoverLeave();
+    this.markDirty();
+  }
+
   override destroy(): void {
     this.mask?.destroy();
+    this.mask = undefined;
     this.maskKeypoints?.destroy();
+    this.maskKeypoints = undefined;
     super.destroy();
   }
 }

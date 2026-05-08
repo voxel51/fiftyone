@@ -523,8 +523,8 @@ export class MaskCanvas {
       otherBounds.y + otherBounds.height
     );
 
-    const newBounds = this.updateBounds(ourBounds, { minX, minY, maxX, maxY }) ??
-      ourBounds;
+    const newBounds =
+      this.updateBounds(ourBounds, { minX, minY, maxX, maxY }) ?? ourBounds;
 
     if (this.context && this.canvas) {
       const dx =

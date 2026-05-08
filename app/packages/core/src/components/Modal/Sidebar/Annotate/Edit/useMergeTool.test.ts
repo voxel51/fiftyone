@@ -23,6 +23,7 @@ const mockGetFieldSchema = vi.fn().mockReturnValue({ ftype: "EmbeddedDocumentFie
 class MockDetectionOverlay {
   public id: string;
   public mergeFrom = vi.fn().mockReturnValue(true);
+  public rehydrateMask = vi.fn();
   public getPaintStrokeData = vi.fn().mockReturnValue({
     beforeSnapshot: { tag: "before" },
     beforeBounds: { x: 0, y: 0, width: 10, height: 10 },
@@ -282,6 +283,9 @@ describe("useMergeTool", () => {
     // Undo path
     command.deps.restoreSource();
     expect(mockAddOverlay).toHaveBeenCalledWith(source);
+    // The overlay's MaskCanvas was destroyed on removal — restoreSource
+    // must rehydrate it so the mask renders again.
+    expect(source.rehydrateMask).toHaveBeenCalledTimes(1);
     expect(mockAddLabelToSidebar).toHaveBeenCalledWith(sourceLabel);
   });
 });
