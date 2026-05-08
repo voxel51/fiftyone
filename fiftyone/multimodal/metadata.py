@@ -50,6 +50,8 @@ class MultimodalMetadata(fo.Metadata):
             a :class:`MultimodalMetadata`
         """
         return cls(
+            size_bytes=scene_inventory.source_fingerprint.size_bytes,
+            mime_type="application/octet-stream",
             scene_id=scene_inventory.scene_id,
             source_format=scene_inventory.source_format,
             source_fingerprint=MessageToDict(
