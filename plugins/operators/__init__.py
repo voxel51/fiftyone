@@ -40,6 +40,7 @@ from .annotation import (
     UpdateLabelSchema,
     ValidateLabelSchemas,
 )
+from .dataset import GetFieldSchema
 
 logger = logging.getLogger(__name__)
 
@@ -3527,3 +3528,6 @@ def register(p):
     p.register(SetActiveLabelSchemas)
     p.register(UpdateLabelSchema)
     p.register(ValidateLabelSchemas)
+
+    # dataset
+    p.register(GetFieldSchema)
