@@ -28,25 +28,33 @@ class MongoAdapter(DatabaseAdapter):
         existing_samples = {}
         for sample in dataset.match(F("metadata.scene_id").is_in(scene_ids)):
             existing_samples.setdefault(
-                sample["metadata"].scene_id, []
+                sample["metadata.scene_id"], []
             ).append(sample)
 
-        new_samples = []
+        update_values = {}
+        new_samples = {}
         for inventory in inventories:
             metadata = MultimodalMetadata.build_for_scene_inventory(inventory)
 
             if inventory.scene_id in existing_samples:
                 for sample in existing_samples[inventory.scene_id]:
+                    update_values[sample.id] = metadata
+            elif inventory.scene_id in new_samples:
+                for sample in new_samples[inventory.scene_id]:
                     sample["metadata"] = metadata
-                    if sample.in_dataset:
-                        sample.save()
             else:
                 sample = Sample(filepath=inventory.scene_id)
                 sample["metadata"] = metadata
-                new_samples.append(sample)
-                # In case the same scene ID shows up in multiple new samples, save the sample and update it rather than
-                # creating a duplicate sample
-                existing_samples[inventory.scene_id] = [sample]
+                new_samples.setdefault(inventory.scene_id, []).append(sample)
+
+        if update_values:
+            dataset.set_values("metadata", update_values, key_field="id")
 
         if new_samples:
-            dataset.add_samples(new_samples)
+            dataset.add_samples(
+                [
+                    sample
+                    for samples in new_samples.values()
+                    for sample in samples
+                ]
+            )
