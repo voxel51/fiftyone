@@ -119,8 +119,9 @@ def _load_attributes(name: str) -> Optional[list[dict[str, Any]]]:
     This is a synchronous function intended to run inside
     :func:`fiftyone.core.utils.run_sync_task`.
     """
-    # Late import to mirror the pattern in hydrate_label_schemas.py and avoid
-    # a circular import with the ontology SDK.
+    from fiftyone.core.annotation.hydrate_label_schemas import (
+        attributes_with_source,
+    )
     from fiftyone.core.ontology import load_ontology
 
     try:
@@ -131,10 +132,4 @@ def _load_attributes(name: str) -> Optional[list[dict[str, Any]]]:
     if not ontology.is_annotation_ontology:
         return None
 
-    attrs = []
-    for attr_spec in ontology.attributes:
-        attr_dict = attr_spec.to_dict()
-        attr_dict["_source"] = ontology.name
-        attrs.append(attr_dict)
-
-    return attrs
+    return attributes_with_source(ontology)
