@@ -21,6 +21,19 @@ export const normalizeData = (data: unknown): unknown => {
       }
     }
 
+    // Unwrap MongoDB Extended JSON binary envelopes ({$binary:{base64:'...'}})
+    // to the plain base64 string so a wrapped vs. unwrapped form (e.g. backend
+    // load vs. freshly-encoded mask) compares as a single primitive. Without
+    // this, fast-json-patch dives into the wrapper and emits patch ops with
+    // `$binary` path segments that the backend rejects.
+    if (
+      obj.$binary &&
+      typeof obj.$binary === "object" &&
+      typeof (obj.$binary as { base64?: unknown }).base64 === "string"
+    ) {
+      return (obj.$binary as { base64: string }).base64;
+    }
+
     // recursively normalize objects
     return Object.fromEntries(
       Object.entries(obj).map(([k, v]) => [k, normalizeData(v)])

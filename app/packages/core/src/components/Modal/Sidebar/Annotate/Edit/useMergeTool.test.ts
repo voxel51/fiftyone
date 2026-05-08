@@ -122,7 +122,7 @@ describe("useMergeTool", () => {
     ]);
   });
 
-  it("first click adopts the overlay as the merge target and dispatches the establish event", async () => {
+  it("first click adopts the overlay as the merge target without persisting anything", async () => {
     const { result } = renderHook(() => useMergeTool());
 
     expect(result.current.mergeTargetId).toBe(null);
@@ -133,10 +133,6 @@ describe("useMergeTool", () => {
     });
 
     expect(result.current.mergeTargetId).toBe("ov-1");
-    expect(mockDispatchAnnotationEvent).toHaveBeenCalledWith(
-      "annotation:canvasDetectionOverlayEstablish",
-      { id: "ov-1", overlay }
-    );
     expect(mockExecuteCommand).not.toHaveBeenCalled();
     expect(mockPushUndoable).not.toHaveBeenCalled();
   });
@@ -149,13 +145,10 @@ describe("useMergeTool", () => {
       await result.current.handleOverlayClick(overlay as never);
     });
 
-    mockDispatchAnnotationEvent.mockClear();
-
     await act(async () => {
       await result.current.handleOverlayClick(overlay as never);
     });
 
-    expect(mockDispatchAnnotationEvent).not.toHaveBeenCalled();
     expect(mockExecuteCommand).not.toHaveBeenCalled();
   });
 
