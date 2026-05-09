@@ -8,6 +8,7 @@ import { useRecoilCallback } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import { SchemaType } from "../../../../../plugins/SchemaIO/utils/types";
 import type { AttributeConfig } from "../SchemaManager/utils";
+import type { ComponentType, FieldType } from "../useSchemaManager";
 import {
   evaluateWhen,
   isWhenFulfillable,
@@ -38,7 +39,7 @@ const useSchema = (readOnly: boolean) => {
         return map;
       if (map.has(attr.name)) return map;
       if (
-        evaluateWhen(attr.when, data ?? {}) ||
+        evaluateWhen(attr.when, (data ?? {}) as Record<string, unknown>) ||
         !isWhenFulfillable(attr.when, allAttributes)
       ) {
         map.set(attr.name, attr);
@@ -64,6 +65,9 @@ const useSchema = (readOnly: boolean) => {
     for (const [name, attr] of visibleAttributes) {
       properties[name] = generatePrimitiveSchema(name, {
         ...attr,
+        type: attr.type as FieldType,
+        component: attr.component as ComponentType | undefined,
+        values: attr.values as string[] | number[] | undefined,
         readOnly: effectiveReadOnly || attr.read_only,
       });
     }
