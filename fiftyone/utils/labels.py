@@ -905,6 +905,7 @@ def classifications_to_detections(
 def index_to_instance(
     sample_collection,
     label_field,
+    id_field="id",
     index_attr="index",
     clear_index=False,
     progress=None,
@@ -923,6 +924,14 @@ def index_to_instance(
             :class:`fiftyone.core.labels.Polylines`,
             :class:`fiftyone.core.labels.Keypoint`, and
             :class:`fiftyone.core.labels.Keypoints`
+        id_field ("id"): the attribute identifying samples/frames of the
+            same video/sequence. Samples with the same id_field are processed
+            together. For dynamic grouped views from
+            :meth:`fiftyone.core.collections.SampleCollection.group_by` with
+            ``flat=False``, this must be the group key (e.g. ``"sample_id"`` when
+            grouping frames by parent video). For pinned group datasets,
+            ``id_field`` names an attribute under the dataset's ``group_field``
+            (the default ``"id"`` refers to ``<group_field>.id``)
         index_attr ("index"): the attribute whose unique values define the
             object instances. When ``index_attr="index"`` specifically, the
             ``(label, index)`` of each object is used as the unique identifier.
@@ -950,15 +959,18 @@ def index_to_instance(
     )
 
     if sample_collection.media_type == fom.GROUP:
-        id_path = sample_collection.group_field + ".id"
-        ids = sample_collection.values(id_path)
-
-        sample_collection = sample_collection.select_group_slices(
-            _allow_mixed=True
-        )
+        if sample_collection._is_dynamic_groups:
+            id_path = id_field
+            ids = list(dict.fromkeys(sample_collection.values(id_path)))
+        else:
+            id_path = sample_collection.group_field + "." + id_field
+            ids = list(dict.fromkeys(sample_collection.values(id_path)))
+            sample_collection = sample_collection.select_group_slices(
+                _allow_mixed=True
+            )
     else:
-        id_path = "id"
-        ids = sample_collection.values(id_path)
+        id_path = id_field
+        ids = list(dict.fromkeys(sample_collection.values(id_path)))
 
     is_frame_field = sample_collection._is_frame_field(label_field)
     root, _ = sample_collection._get_label_field_root(label_field)
@@ -972,7 +984,10 @@ def index_to_instance(
 
     with fou.ProgressBar(progress=progress) as pb:
         for id in pb(ids):
-            view = sample_collection.select_by(id_path, id)
+            if sample_collection._is_dynamic_groups:
+                view = sample_collection.get_dynamic_group(id)
+            else:
+                view = sample_collection.select_by(id_path, id)
 
             if is_frame_field:
                 sample_ids, frame_numbers, *indexes = view.values(
@@ -992,12 +1007,10 @@ def index_to_instance(
             if not instances:
                 continue
 
-            sample_collection.set_values(
-                instance_path, instances, key_field="id"
-            )
+            view.set_values(instance_path, instances, key_field="id")
 
             if clear_index:
-                sample_collection.set_values(
+                view.set_values(
                     index_path, _to_none_values(instances), key_field="id"
                 )
 
