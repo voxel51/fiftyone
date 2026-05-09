@@ -42,9 +42,7 @@ const fetchAndMergeOntologyAttributes = async (
   const attrs = (result as { attributes: AttributeConfig[] }).attributes;
   if (!attrs?.length) return;
 
-  const existing = Array.isArray(draft.attributes)
-    ? ([...draft.attributes] as AttributeConfig[])
-    : [];
+  const existing = Array.isArray(draft.attributes) ? [...draft.attributes] : [];
   const byName = new Map(existing.map((a) => [a.name, a]));
   const orderedNames = existing.map((a) => a.name);
 
@@ -153,13 +151,10 @@ export const useAppliedOntology = (field: string) => {
   const schema = current as FieldSchema | undefined;
 
   const ontologyAttributes: string[] = Array.isArray(schema?.attributes)
-    ? (schema.attributes as Partial<AttributeConfig>[]).reduce<string[]>(
-        (acc, a) => {
-          if (a._source && a.name) acc.push(a.name);
-          return acc;
-        },
-        []
-      )
+    ? schema.attributes.reduce<string[]>((acc, a) => {
+        if (a._source && a.name) acc.push(a.name);
+        return acc;
+      }, [])
     : [];
 
   return {
@@ -181,9 +176,7 @@ export const useAppliedOntology = (field: string) => {
       // still set, so we'd leave orphaned `when` clauses for the validator
       // to reject if we didn't strip them here.
       if (Array.isArray(next.attributes)) {
-        next.attributes = next.attributes.filter(
-          (a: unknown) => !(a && typeof a === "object" && "_source" in a)
-        );
+        next.attributes = next.attributes.filter((a) => !a._source);
       }
       setCurrent(next);
     },

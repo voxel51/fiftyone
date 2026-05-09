@@ -7,6 +7,7 @@ import { useCallback, useMemo, useRef } from "react";
 import { useRecoilCallback } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import { SchemaType } from "../../../../../plugins/SchemaIO/utils/types";
+import type { AttributeConfig } from "../SchemaManager/utils";
 import {
   evaluateWhen,
   isWhenFulfillable,
@@ -43,7 +44,7 @@ const useSchema = (readOnly: boolean) => {
         map.set(attr.name, attr);
       }
       return map;
-    }, new Map<string, unknown>());
+    }, new Map<string, AttributeConfig>());
   }, [allAttributes, data]);
 
   // Stable string key — only changes when the visible attribute set changes

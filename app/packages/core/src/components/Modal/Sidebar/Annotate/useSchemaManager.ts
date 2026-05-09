@@ -45,7 +45,7 @@ export type FieldSchema = {
   values?: (string | number)[];
   classes?: string[];
   default?: unknown;
-  attributes?: Record<string, unknown> | unknown[];
+  attributes?: AttributeConfig[];
   applied_ontology?: string;
 };
 
