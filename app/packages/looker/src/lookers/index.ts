@@ -5,3 +5,4 @@ export * from "./imavid";
 export * from "./metadata";
 export * from "./three-d";
 export * from "./video";
+export * from "./audio";
