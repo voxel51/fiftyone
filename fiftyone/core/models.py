@@ -260,6 +260,7 @@ def apply_model(
                 batch_size,
                 num_workers,
                 skip_failures,
+                filename_maker,
                 progress,
                 field_mapping,
                 pin_memory,
@@ -526,6 +527,7 @@ def _apply_image_model_with_video_data_loader(
     batch_size,
     num_workers,
     skip_failures,
+    filename_maker,
     progress,
     field_mapping,
     pin_memory,
@@ -610,6 +612,12 @@ def _apply_image_model_with_video_data_loader(
                         classes=classes,
                     )
                     ctx.save(sample)
+                    if filename_maker is not None:
+                        for labels in labels_frames:
+                            _export_arrays(
+                                labels, sample.filepath, filename_maker
+                            )
+
                 except Exception as e:
                     if not skip_failures:
                         raise e
