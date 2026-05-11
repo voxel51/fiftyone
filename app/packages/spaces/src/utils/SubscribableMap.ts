@@ -3,7 +3,7 @@ type Listener = () => void;
 export class SubscribableMap<K, V> {
   private renderers = new Map<K, V>();
   private listeners = new Set<Listener>();
-  private snapshot: ReadonlyMap<K, V> = this.renderers;
+  private snapshot: ReadonlyMap<K, V> = new Map<K, V>();
 
   subscribe = (listener: Listener) => {
     this.listeners.add(listener);

@@ -160,6 +160,12 @@ function ComponentPlacement(props: OperatorPlacementProps) {
   const { canExecute, execute } = usePlacementControls(props);
   const componentName = props.placement?.view?.options?.component;
 
+  if (!componentName) {
+    throw new Error(
+      "ComponentPlacement requires a component name as an argument"
+    );
+  }
+
   const Component = componentPlugins.find(
     (plugin) => plugin.name === componentName
   )?.component;
