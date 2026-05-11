@@ -14,6 +14,7 @@ from fiftyone.core.annotation.validate_label_schemas import (
 )
 import fiftyone.core.fields as fof
 import fiftyone.operators as foo
+import fiftyone.operators.types as types
 
 
 class ActivateLabelSchemas(foo.Operator):
@@ -23,6 +24,7 @@ class ActivateLabelSchemas(foo.Operator):
             name="activate_label_schemas",
             label="Activate label schemas",
             unlisted=True,
+            risk_level=types.RiskLevel.MEDIUM,
         )
 
     def execute(self, ctx):
@@ -37,6 +39,7 @@ class DeleteLabelSchemas(foo.Operator):
             name="delete_label_schemas",
             label="Delete label schemas",
             unlisted=True,
+            risk_level=types.RiskLevel.HIGH,
         )
 
     def execute(self, ctx):
@@ -51,6 +54,7 @@ class DeactivateLabelSchemas(foo.Operator):
             name="deactivate_label_schemas",
             label="Deactivate label schemas",
             unlisted=True,
+            risk_level=types.RiskLevel.MEDIUM,
         )
 
     def execute(self, ctx):
@@ -65,6 +69,7 @@ class SetActiveLabelSchemas(foo.Operator):
             name="set_active_label_schemas",
             label="Set active label schemas",
             unlisted=True,
+            risk_level=types.RiskLevel.MEDIUM,
         )
 
     def execute(self, ctx):
@@ -80,6 +85,7 @@ class GenerateLabelSchemas(foo.Operator):
             name="generate_label_schemas",
             label="Generate label schemas",
             unlisted=True,
+            risk_level=types.RiskLevel.LOW,
         )
 
     def execute(self, ctx):
@@ -103,6 +109,7 @@ class GetLabelSchemas(foo.Operator):
             name="get_label_schemas",
             label="Get label schemas",
             unlisted=True,
+            risk_level=types.RiskLevel.LOW,
         )
 
     def execute(self, ctx):
@@ -151,6 +158,7 @@ class UpdateLabelSchema(foo.Operator):
             name="update_label_schema",
             label="Update label schema",
             unlisted=True,
+            risk_level=types.RiskLevel.MEDIUM,
         )
 
     def execute(self, ctx):
@@ -178,6 +186,7 @@ class ValidateLabelSchemas(foo.Operator):
             name="validate_label_schemas",
             label="Validate label schemas",
             unlisted=True,
+            risk_level=types.RiskLevel.LOW,
         )
 
     def execute(self, ctx):
@@ -210,6 +219,7 @@ class CreateAndActivateField(foo.Operator):
             name="create_and_activate_field",
             label="Create and activate field",
             unlisted=True,
+            risk_level=types.RiskLevel.MEDIUM,
         )
 
     def execute(self, ctx):
@@ -323,6 +333,7 @@ class ListValidAnnotationFields(foo.Operator):
             name="list_valid_annotation_fields",
             label="List valid annotation fields",
             unlisted=True,
+            risk_level=types.RiskLevel.LOW,
         )
 
     def execute(self, ctx: foo.ExecutionContext):

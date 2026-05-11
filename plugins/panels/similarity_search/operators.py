@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 import numpy as np
 
 import fiftyone.operators as foo
+import fiftyone.operators.types as types
 
 from .constants import STORE_NAME, RunStatus
 from .run_manager import RunManager
@@ -55,6 +56,7 @@ class SimilaritySearchOperator(foo.Operator):
             unlisted=True,
             allow_immediate_execution=True,
             allow_delegated_execution=True,
+            risk_level=types.RiskLevel.MEDIUM,
         )
 
     def execute(self, ctx):
@@ -363,6 +365,7 @@ class InitSimilarityRunOperator(foo.Operator):
             name="init_similarity_run",
             label="Initialize Similarity Run",
             unlisted=True,
+            risk_level=types.RiskLevel.MEDIUM,
         )
 
     def execute(self, ctx):
@@ -395,6 +398,7 @@ class ListSimilarityRunsOperator(foo.Operator):
             name="list_similarity_runs",
             label="List Similarity Runs",
             unlisted=True,
+            risk_level=types.RiskLevel.LOW,
         )
 
     def execute(self, ctx):

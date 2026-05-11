@@ -15,6 +15,7 @@ class E2ESetView(foo.Operator):
         return foo.OperatorConfig(
             name="e2e_set_view",
             label="E2E: Set view",
+            risk_level=types.RiskLevel.LOW,
         )
 
     def execute(self, ctx):
@@ -29,6 +30,7 @@ class E2ESayHelloInModal(foo.Operator):
         return foo.OperatorConfig(
             name="e2e_say_hello_in_modal",
             label="E2E: Say hello in modal",
+            risk_level=types.RiskLevel.LOW,
         )
 
     def resolve_input(self, ctx):
@@ -52,6 +54,7 @@ class E2ESayHelloInDrawer(foo.Operator):
         return foo.OperatorConfig(
             name="e2e_say_hello_in_drawer",
             label="E2E: Say hello in drawer",
+            risk_level=types.RiskLevel.LOW,
         )
 
     def resolve_input(self, ctx):
@@ -76,6 +79,7 @@ class E2EProgress(foo.Operator):
             name="e2e_progress",
             label="E2E: Progress",
             execute_as_generator=True,
+            risk_level=types.RiskLevel.LOW,
         )
 
     async def execute(self, ctx):
