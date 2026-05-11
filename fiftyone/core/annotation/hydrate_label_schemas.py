@@ -22,6 +22,23 @@ logger = logging.getLogger(__name__)
 _SOURCE = "_source"
 
 
+def attributes_with_source(ontology: Any) -> list[dict[str, Any]]:
+    """Returns ontology attributes as dicts tagged with a ``_source`` marker.
+
+    Args:
+        ontology: an ontology object whose ``.attributes`` are attribute specs
+            with a ``.to_dict()`` method and whose ``.name`` identifies the
+            ontology
+
+    Returns:
+        a list of attribute dicts, each carrying ``_source: ontology.name``
+    """
+    return [
+        {**attr_spec.to_dict(), _SOURCE: ontology.name}
+        for attr_spec in ontology.attributes
+    ]
+
+
 def hydrate_applied_ontology(label_schema: dict) -> dict:
     """Merges a referenced annotation ontology's attributes into a label
     schema.
@@ -171,9 +188,7 @@ def _merge(label_schema: dict, ontology: Any) -> dict:
     by_name: dict = {a.get(foac.NAME): a for a in existing}
     ordered_names = [a.get(foac.NAME) for a in existing]
 
-    for attr_spec in ontology.attributes:
-        attr_dict = attr_spec.to_dict()
-        attr_dict[_SOURCE] = ontology.name
+    for attr_dict in attributes_with_source(ontology):
         name = attr_dict.get(foac.NAME)
         if name not in by_name:
             ordered_names.append(name)

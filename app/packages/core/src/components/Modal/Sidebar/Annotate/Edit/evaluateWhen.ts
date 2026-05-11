@@ -34,8 +34,8 @@ const OPERATOR_HANDLERS: Record<
 /**
  * Evaluates a set of `when` conditions against the current label field values.
  *
- * Visibility semantics: an attribute is visible if ANY of its conditions are
- * satisfied (OR logic), matching the preview logic in the Schema Manager.
+ * Visibility semantics: an attribute is visible only if ALL of its conditions
+ * are satisfied (AND logic).
  *
  * @param conditions - The `when` array from an attribute definition, or
  *   undefined/empty for unconditionally-visible attributes.
@@ -50,7 +50,7 @@ export function evaluateWhen(
 ): boolean {
   if (!conditions || conditions.length === 0) return true;
 
-  return conditions.some((cond) => {
+  return conditions.every((cond) => {
     const handler = OPERATOR_HANDLERS[cond.operator];
     if (!handler) {
       throw new Error(`Unhandled operator: ${cond.operator}`);
@@ -60,8 +60,8 @@ export function evaluateWhen(
 }
 
 /**
- * Determines whether a set of `when` conditions can ever be satisfied given
- * the possible values of the referenced fields in the schema.
+ * Determines whether a set of `when` conditions can ever be simultaneously
+ * satisfied given the possible values of the referenced fields in the schema.
  *
  * Used to detect attributes whose conditions are structurally unfulfillable
  * (e.g. `when: [{ field: "category", operator: "equals", value: "insect" }]`
@@ -69,11 +69,14 @@ export function evaluateWhen(
  * when also marked `required` — must be rendered unconditionally so the
  * annotator can still fill them in.
  *
+ * With AND semantics, every condition must be independently fulfillable for
+ * the set as a whole to be considered fulfillable.
+ *
  * @param conditions - The `when` conditions to check.
  * @param schemaAttributes - All attribute configs for the current label schema,
  *   used to look up each referenced field's allowed values.
- * @returns `true` if at least one condition could be satisfied, `false` if
- *   every condition references a value that isn't in the field's value list.
+ * @returns `true` if every condition could be satisfied, `false` if any
+ *   condition references a value that isn't in the field's value list.
  */
 export function isWhenFulfillable(
   conditions: AttributeCondition[] | undefined,
@@ -95,7 +98,7 @@ export function isWhenFulfillable(
     }
   }
 
-  return conditions.some((cond) => {
+  return conditions.every((cond) => {
     const allowed = valuesByField.get(cond.field);
     if (!allowed) {
       // Field has no constrained value list — condition could be satisfied.
