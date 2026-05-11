@@ -8,17 +8,17 @@ Script for generating plugin documentation dynamically from the FiftyOne plugins
 """
 
 import json
+import logging
 import os
 import re
-import requests
-import logging
+from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Tuple
-from dataclasses import dataclass, field
-from urllib.parse import urlparse, urljoin
-from datetime import datetime
+from urllib.parse import urljoin, urlparse
 
 import eta.core.utils as etau
+import requests
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -973,7 +973,6 @@ Please review each plugin's documentation and license before use.
             display_name,
             plugin_link,
         ) in enumerate(all_plugins_list):
-
             image_path = (
                 cached_image_path
                 if cached_image_path

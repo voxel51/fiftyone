@@ -56,10 +56,8 @@ class Skill:
     name: str
     description: str
     github_url: str
-    source: str
     category: str = "General"
     emoji: str = "🤖"
-    mcp_required: bool = False
 
 
 def _fetch_text(url: str) -> Optional[str]:
@@ -78,11 +76,8 @@ def _skills_from_fiftyone_skills_readme(readme: str) -> List[Skill]:
     for m in _ROW_RE.finditer(readme):
         prefix = m.group(1).strip()  # emoji before the link, e.g. "📥"
         name = m.group(2).strip()
-        rel_url = m.group(
-            3
-        ).strip()  # e.g. "skills/fiftyone-dataset-import/SKILL.md"
+        rel_url = m.group(3).strip()
         description = m.group(4).strip()
-        mcp_required = m.group(5) == "Yes"
 
         if "SKILL.md" not in rel_url:
             continue
@@ -96,10 +91,8 @@ def _skills_from_fiftyone_skills_readme(readme: str) -> List[Skill]:
                 name=name,
                 description=description,
                 github_url=github_url,
-                source="fiftyone-skills",
                 category=category,
                 emoji=emoji,
-                mcp_required=mcp_required,
             )
         )
     return skills
@@ -118,9 +111,7 @@ def _parse_frontmatter(content: str) -> dict:
     return fm
 
 
-def _skill_from_skill_md(
-    raw_url: str, github_url: str, source: str
-) -> Optional[Skill]:
+def _skill_from_skill_md(raw_url: str, github_url: str) -> Optional[Skill]:
     """Fetch a SKILL.md and build a Skill from its frontmatter."""
     content = _fetch_text(raw_url)
     if not content:
@@ -134,7 +125,6 @@ def _skill_from_skill_md(
         name=name,
         description=description,
         github_url=github_url,
-        source=source,
         category=category,
         emoji=emoji,
     )
@@ -151,12 +141,11 @@ def _skills_from_plugin_skills_json(json_path: Path) -> List[Skill]:
         return []
     skills = []
     for entry in entries:
-        plugin_name = entry.get("plugin_name", "unknown-plugin")
         raw_url = entry.get("raw_url", "")
         github_url = entry.get("github_url", raw_url)
         if not raw_url:
             continue
-        skill = _skill_from_skill_md(raw_url, github_url, plugin_name)
+        skill = _skill_from_skill_md(raw_url, github_url)
         if skill:
             skills.append(skill)
     return skills

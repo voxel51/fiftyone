@@ -1,5 +1,5 @@
 
-.. _data-agents-developing:
+.. _agents-developing:
 
 Developing Tools & Skills
 =========================

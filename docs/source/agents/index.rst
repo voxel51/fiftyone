@@ -15,10 +15,10 @@ FiftyOne agents go beyond code generation. They import datasets, run
 model inference, find duplicates, evaluate predictions, and build custom
 plugins, all from a single prompt. Browse the skills below to see what
 your agent can do out of the box, or :ref:`develop your own
-<data-agents-developing>`.
+<agents-developing>`.
 
 
-.. _data-agents-skills:
+.. _agents-skills:
 
 .. raw:: html
 
