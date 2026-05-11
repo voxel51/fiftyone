@@ -10,7 +10,7 @@ import abc
 import copy
 import fnmatch
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, NamedTuple, Optional
 
 import fiftyone.core.annotation.constants as foac
 import fiftyone.core.utils as fou
@@ -392,21 +392,142 @@ def ontology_exists(name: str) -> bool:
     return _objects_by_slug(name).count() > 0
 
 
+class LabelSchemaOntologyRef(NamedTuple):
+    """One dataset's ``applied_ontology`` references for a given ontology.
+
+    Attributes:
+        dataset_id: the ``DatasetDocument`` id (string form)
+        field_names: the label-schema field names on that dataset that
+            reference the ontology
+    """
+
+    dataset_id: str
+    field_names: list[str]
+
+
+def _find_label_schema_refs_by_ontology(
+    ontology_name: str,
+) -> list[LabelSchemaOntologyRef]:
+    """Finds every label-schema field across every dataset that
+    references the named ontology via ``applied_ontology``.
+
+    The filter happens server-side in MongoDB rather than in Python,
+    which avoids deserializing every dataset doc and only sends back
+    the matches — meaningfully faster than a Python iteration when
+    there are many datasets.
+
+    Returns:
+        one :class:`LabelSchemaOntologyRef` per dataset that has at
+        least one matching reference. Empty if no dataset references
+        the ontology.
+    """
+    from fiftyone.core.odm.dataset import DatasetDocument
+
+    pipeline = [
+        # Field names inside ``label_schemas`` are user-defined
+        # (``ground_truth``, ``predictions``, etc.), so we can't
+        # query them by a fixed path. $objectToArray flattens the
+        # dict into ``[{k: "ground_truth", v: {...}}, ...]`` so
+        # $filter can iterate it; we keep only the pairs whose
+        # value's applied_ontology matches the target. ($$this is
+        # the current pair, ``.v`` is its value — the schema dict.)
+        {
+            "$addFields": {
+                "_matching_fields": {
+                    "$filter": {
+                        "input": {"$objectToArray": "$label_schemas"},
+                        "cond": {
+                            "$eq": [
+                                "$$this.v.applied_ontology",
+                                ontology_name,
+                            ]
+                        },
+                    }
+                }
+            }
+        },
+        # Drop datasets with zero matches. ``_matching_fields.0``
+        # exists iff the array has at least one entry.
+        {"$match": {"_matching_fields.0": {"$exists": True}}},
+        # Project just the doc id and the field names (.k of each
+        # matching {k, v} pair).
+        {
+            "$project": {
+                "_id": 1,
+                "matching_fields": "$_matching_fields.k",
+            }
+        },
+    ]
+
+    # pylint: disable-next=no-member
+    matches = DatasetDocument.objects.aggregate(pipeline)
+    return [
+        LabelSchemaOntologyRef(
+            dataset_id=str(d["_id"]),
+            field_names=d["matching_fields"],
+        )
+        for d in matches
+    ]
+
+
 @require_feature("VFF_ONTOLOGY_CA")
 def delete_ontology(name: str, force: bool = False) -> None:
     """Deletes an ontology and all its versions from the database.
 
+    If any label schema references this ontology (via
+    ``applied_ontology`` on a field), the default behavior is to raise
+    rather than silently break those schemas. Pass ``force=True`` to
+    inline the ontology's attributes into each affected schema as
+    permanent local copies and then delete the ontology.
+
+    Inlining and deletion run as two phases: every affected schema is
+    inlined and saved first, and the ontology is deleted only if every
+    save succeeds. If something fails mid-inline, the ontology still
+    exists and the call is safely re-runnable — already-inlined
+    schemas no longer match the lookup.
+
     Args:
         name: the ontology name
-        force: whether to delete even if the ontology is in use.
-            By default, raises an error if the ontology is referenced
-            by a label schema. Not yet enforced — will be implemented
-            with label schema integration.
+        force: if False (default), raise if any label schema references
+            the ontology. If True, inline the ontology's attributes
+            into each affected schema as local copies before deleting.
+
+    Raises:
+        ValueError: if the ontology does not exist, or if it is in use
+            and ``force=False``
     """
-    # TODO: check if in use when force=False (requires label schema integration)
-    count = _objects_by_slug(name).delete()
-    if count == 0:
-        raise ValueError(f"Ontology '{name}' not found")
+    # Late imports to avoid circular dependency with annotation/dataset.
+    from fiftyone.core.annotation import inline_applied_ontology
+    from fiftyone.core.odm.dataset import DatasetDocument
+
+    ontology = load_ontology(name)
+    affected = _find_label_schema_refs_by_ontology(name)
+
+    if affected and not force:
+        n_fields = sum(len(ref.field_names) for ref in affected)
+        raise ValueError(
+            f"Ontology '{name}' is referenced by {n_fields} label-schema "
+            f"field(s) across {len(affected)} dataset(s). Pass "
+            "force=True to inline the ontology's attributes into each "
+            "affected schema and delete."
+        )
+
+    # Phase 1: inline every affected schema. The ontology is deleted
+    # below only if every save here succeeds.
+    for ref in affected:
+        # pylint: disable-next=no-member
+        dataset_doc = DatasetDocument.objects.get(id=ref.dataset_id)
+        for field_name in ref.field_names:
+            schema = dataset_doc.label_schemas.get(field_name, {})
+            dataset_doc.label_schemas[field_name] = inline_applied_ontology(
+                schema, ontology
+            )
+        dataset_doc.save()
+
+    # Phase 2: delete the ontology last. On mid-inline failure the
+    # ontology survives, leaving the system recoverable — re-running
+    # the call is idempotent.
+    _objects_by_slug(name).delete()
 
 
 def apply_ontology(
