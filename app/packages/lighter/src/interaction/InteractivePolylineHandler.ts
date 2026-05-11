@@ -12,7 +12,7 @@ import type {
   SegmentEndpoint,
 } from "../overlay/PolylineOverlay";
 import type { Point } from "../types";
-import type { InteractionHandler } from "./InteractionManager";
+import type { InteractionHandler, OverlayEvent } from "./InteractionManager";
 import {
   KeypointPointHitAction,
   type KeypointPointHitContext,
@@ -149,11 +149,7 @@ export class InteractivePolylineHandler implements InteractionHandler {
     this.overlay.markDirty();
   }
 
-  onPointerDown(
-    _point: Point,
-    worldPoint: Point,
-    event: PointerEvent
-  ): boolean {
+  onPointerDown({ worldPoint, event }: OverlayEvent): boolean {
     const modifiers = getClickModifiers(event);
     const rp = this.overlay.absolutePointToRelative(worldPoint);
     const relativePoint: Point = { x: rp[0], y: rp[1] };
@@ -233,7 +229,7 @@ export class InteractivePolylineHandler implements InteractionHandler {
     return true;
   }
 
-  onMove(_point: Point, worldPoint: Point, event: PointerEvent): boolean {
+  onMove({ worldPoint, event }: OverlayEvent): boolean {
     if (this.dragPointId !== null) {
       this.overlay.movePointById(
         this.dragPointId,

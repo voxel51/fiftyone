@@ -3,7 +3,7 @@
  */
 
 import type { Point } from "../types";
-import type { InteractionHandler } from "./InteractionManager";
+import type { InteractionHandler, OverlayEvent } from "./InteractionManager";
 
 /**
  * Configuration for an {@link InteractiveCreationHandler}.
@@ -55,7 +55,7 @@ export class InteractiveCreationHandler implements InteractionHandler {
     return this.cursor;
   }
 
-  onPointerDown(_point: Point, worldPoint: Point): boolean {
+  onPointerDown({ worldPoint }: OverlayEvent): boolean {
     this.onCreate(worldPoint);
     return true;
   }
