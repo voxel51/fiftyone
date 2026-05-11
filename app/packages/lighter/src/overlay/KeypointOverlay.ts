@@ -720,6 +720,47 @@ export class KeypointOverlay
   }
 
   /**
+   * Inserts a point at the given flat-array index using relative coordinates.
+   *
+   * Connections referencing indices >= `index` are shifted up by one.
+   */
+  protected insertRelativePointAt(
+    index: number,
+    position: [number, number],
+    variant?: string,
+    id?: string
+  ): string {
+    const clamped = Math.max(0, Math.min(index, this.#points.length));
+    const entry: KeypointEntry = {
+      id: id ?? uuidv4(),
+      position: [position[0], position[1]],
+      variant,
+    };
+    this.#points.splice(clamped, 0, entry);
+
+    this.connections = this.connections.map((path) =>
+      path.map((i) => (i >= clamped ? i + 1 : i))
+    );
+
+    if (
+      this.selectedPointIndex !== null &&
+      this.selectedPointIndex >= clamped
+    ) {
+      this.selectedPointIndex++;
+    }
+
+    this.eventBus.dispatch("lighter:keypoint-point-added", {
+      id: this.id,
+      pointId: entry.id,
+      point: { x: position[0], y: position[1] },
+      variant,
+    });
+
+    this.markDirty();
+    return entry.id;
+  }
+
+  /**
    * Removes the point with the given ID.
    *
    * @param pointId - The ID of the point to remove
