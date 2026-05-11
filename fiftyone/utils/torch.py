@@ -2733,7 +2733,8 @@ class TorchVideoFramesIterableDataset(IterableDataset):
         self._cleanup_current_decoder()
         logger.debug(f"Opening decoder for {video_path}")
         decoder = etav.FFmpegVideoReader(
-            video_path, frames=etaf.FrameRange(*frame_range)
+            video_path,
+            frames=etaf.FrameRange(*frame_range) if frame_range else None,
         )
         iterator = iter(decoder)
 

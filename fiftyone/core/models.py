@@ -165,7 +165,6 @@ def apply_model(
     process_video_frames = (
         samples.media_type == fom.VIDEO and model.media_type == "image"
     )
-    frames_chunk_size = kwargs.pop("frames_chunk_size", 1)
 
     supports_get_item = isinstance(model, SupportsGetItem)
     needs_samples = isinstance(model, SamplesMixin)
@@ -259,7 +258,6 @@ def apply_model(
                 confidence_thresh,
                 classes,
                 batch_size,
-                frames_chunk_size,
                 num_workers,
                 skip_failures,
                 progress,
@@ -526,7 +524,6 @@ def _apply_image_model_with_video_data_loader(
     confidence_thresh,
     classes,
     batch_size,
-    frames_chunk_size,
     num_workers,
     skip_failures,
     progress,
@@ -550,9 +547,9 @@ def _apply_image_model_with_video_data_loader(
     data_loader = _make_video_frame_data_loader(
         samples=samples,
         model=model,
-        batch_size=batch_size,
+        batch_size=1,  # chunk of frames from one video
         num_workers=num_workers,
-        frames_chunk_size=frames_chunk_size,
+        frames_chunk_size=batch_size,
         skip_failures=skip_failures,
         field_mapping=field_mapping,
         pin_memory=pin_memory,
@@ -581,13 +578,28 @@ def _apply_image_model_with_video_data_loader(
         context.enter_context(fou.SetAttributes(model, preprocess=False))
 
         for batch in data_loader:
+            if isinstance(batch, Exception):
+                if not skip_failures:
+                    raise batch
+                logger.warning(
+                    "Error loading video frame batch: %s",
+                    batch,
+                    exc_info=True,
+                )
+                continue
             for frames in batch:
                 try:
-                    labels_frames = model.predict_all(frames["frames"])
                     sample_idx = frames["sample_idx"]
                     sample = samples[sample_idx]
-
                     fns = frames["frame_ids"]
+                    if isinstance(model, SamplesMixin):
+                        labels_frames = model.predict_all(
+                            frames["frames"],
+                            samples=[sample] * len(fns),
+                        )
+                    else:
+                        labels_frames = model.predict_all(frames["frames"])
+
                     sample.add_labels(
                         {
                             int(fn): labels
@@ -601,15 +613,12 @@ def _apply_image_model_with_video_data_loader(
                 except Exception as e:
                     if not skip_failures:
                         raise e
-
                     logger.warning(
-                        "Batch: %s - %s\nError: %s\n",
-                        batch[0].id,
-                        batch[-1].id,
+                        "Sample: %s\nError: %s\n",
+                        sample_idx,
                         e,
                         exc_info=True,
                     )
-
                 pb.update(len(frames["frame_ids"]))
 
 
