@@ -21,7 +21,7 @@ from .geo import GeoPoints
 from .get_similar_labels_frames import GetSimilarLabelsFrameCollection
 from .groups import GroupsRoutes
 from .media import Media
-from .ontology import Ontologies
+from .ontology import OntologyAttributes, Ontologies
 from .plugins import Plugins
 from .runtime_assets import RuntimeAssetRoutes
 from .sample import SampleRoutes
@@ -49,6 +49,7 @@ routes = (
         ("/frames", Frames),
         ("/geo", GeoPoints),
         ("/media", Media),
+        ("/ontologies/{name}/attributes", OntologyAttributes),
         ("/ontologies", Ontologies),
         ("/plugins", Plugins),
         ("/sort", Sort),
