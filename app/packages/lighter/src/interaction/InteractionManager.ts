@@ -147,60 +147,22 @@ export interface InteractionHandler {
 
   /** Returns the current state of the handler */
   getInteractionState?(): InteractionState;
-
   /** Returns the position from the start of handler movement */
   getMoveStartPosition?(): Point | undefined;
   /** Returns the position from the start of handler movement */
   getMoveStartBounds?(): Rect | undefined;
-
-  /**
-   * Returns the overlay associated with the manager.
-   */
+  /** Returns the overlay associated with the manager. */
   getOverlay?(): BaseOverlay | undefined;
-
-  /**
-   * Handle pointer down event.
-   * @param point - The point where the event occurred.
-   * @param worldPoint - Screen point translated to viewport point.
-   * @param event - The original pointer event.
-   * @param scale - The current scaling factor of the renderer.
-   * @returns True if the event was handled and should not propagate.
-   */
-  onPointerDown?(
-    point: Point,
-    worldPoint: Point,
-    event: PointerEvent,
-    scale: number
-  ): boolean;
-
-  /**
-   * Handle pointer move event.
-   * @param point - The point where the event occurred.
-   * @param worldPoint - Screen point translated to viewport point.
-   * @param event - The original pointer event.
-   * @param scale - The current scaling factor of the renderer.
-   * @param maintainAspectRatio - Maintain aspect ratio during resize (shift key held).
-   * @returns True if the event was handled.
-   */
-  onMove?(
-    point: Point,
-    worldPoint: Point,
-    event: PointerEvent,
-    scale: number,
-    maintainAspectRatio?: boolean
-  ): boolean;
   /** Called when a pointer-down occurs on this handler. */
   onPointerDown?(params: OverlayEvent): boolean;
   /** Called on pointer-move while this handler is active. */
   onMove?(params: OverlayEvent): boolean;
   /** Called when the pointer is released. */
   onPointerUp?(params: OverlayEvent): boolean;
-
   /** Single-click handler. */
   onClick?(point: Point, event: PointerEvent, scale: number): boolean;
   /** Double-click handler. */
   onDoubleClick?(point: Point, event: PointerEvent): boolean;
-
   /** Called when the pointer enters this handler's hit area. */
   onHoverEnter?(point: Point | null, event: PointerEvent | null): boolean;
   /** Called when the pointer leaves this handler's hit area. */
@@ -225,13 +187,10 @@ export interface InteractionHandler {
   forceHoverEnter?(): void;
   /** Forces the overlay to be in unhovered state. */
   forceHoverLeave?(): void;
-
   /** Hit-test: does the given point fall within this handler's area? */
   containsPoint(point: Point): boolean;
-
   /** Marks the overlay as dirty, indicating it needs to be re-rendered. */
   markDirty(): void;
-
   /** Release any resources held by the handler. */
   cleanup?(): void;
 }
@@ -409,7 +368,11 @@ export class InteractionManager {
         segmentationToolState: segmentationModeBridge.getToolState(scale),
       })
     ) {
-      const cursor = handler.getCursor?.(worldPoint, scale, this.currentModifiers);
+      const cursor = handler.getCursor?.(
+        worldPoint,
+        scale,
+        this.currentModifiers
+      );
       if (cursor) {
         this.canvas.style.cursor = cursor;
       }

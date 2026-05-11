@@ -492,24 +492,30 @@ export class KeypointOverlay
     // beneath the solid point markers. Owners drive their own animation
     // timing and frame invalidation.
     if (this.renderEffects.size > 0) {
-      const effectPoints: KeypointEffectPoint[] = absPoints.map(
+      const effectPoints: KeypointEffectPoint[] = ctx.absPoints.map(
         (position, i) => ({
           id: this.#points[i].id,
           position,
           variant: this.#points[i].variant,
         })
       );
-      const ctx: KeypointEffectContext = {
+
+      const effectContext: KeypointEffectContext = {
         overlay: this,
         renderer,
         points: effectPoints,
         resolveStyle: resolvePointStyle,
         containerId: this.containerId,
       };
-      for (const effect of this.renderEffects.values()) effect(ctx);
+
+      for (const effect of this.renderEffects.values()) {
+        effect(effectContext);
+      }
     }
 
-    const pointRadius = isHovered ? KEYPOINT_SELECTED_RADIUS : KEYPOINT_RADIUS;
+    const pointRadius = ctx.isHovered
+      ? KEYPOINT_SELECTED_RADIUS
+      : KEYPOINT_RADIUS;
     for (const [variant, pts] of buckets) {
       const pointStyle = resolvePointStyle(variant);
       renderer.drawPoints(pts, pointRadius, pointStyle, this.containerId);
