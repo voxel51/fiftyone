@@ -3,7 +3,15 @@ import {
   viewEndAtom,
   viewStartAtom,
 } from "../lib/playback-atoms";
-import { Button, IconName, Size, Variant } from "@voxel51/voodo";
+import {
+  Button,
+  IconName,
+  Size,
+  Text,
+  TextColor,
+  TextVariant,
+  Variant,
+} from "@voxel51/voodo";
 import clsx from "clsx";
 import { useAtomValue } from "jotai";
 import React from "react";
@@ -61,7 +69,13 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
       {labelWidth > 0 && (
         <div className={styles.label} style={{ width: labelWidth }}>
           <div className={styles.dot} style={{ background: color }} />
-          <span className={styles.labelText}>{id}</span>
+          <Text
+            variant={TextVariant.Xs}
+            color={TextColor.Primary}
+            className={styles.labelText}
+          >
+            {id}
+          </Text>
           {onPinClick && (
             <Button
               variant={Variant.Icon}

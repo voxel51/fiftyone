@@ -5,7 +5,16 @@ import {
   loopStartAtom,
   playheadAtom,
 } from "../lib/playback-atoms";
-import { Button, IconName, Size, Variant } from "@voxel51/voodo";
+import {
+  BrandColor,
+  Button,
+  IconName,
+  Size,
+  Text,
+  TextColor,
+  TextVariant,
+  Variant,
+} from "@voxel51/voodo";
 import clsx from "clsx";
 import { useAtomValue } from "jotai";
 import React, { useCallback } from "react";
@@ -86,38 +95,46 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
         onClick={stepForward}
       />
 
-      <span className={styles.time}>{formatTime(currentTime)}</span>
+      <Text
+        variant={TextVariant.Xs}
+        color={TextColor.Secondary}
+        className={styles.time}
+      >
+        {formatTime(currentTime)}
+      </Text>
 
       {loopMoved && (
         <>
           <span className={styles.divider} aria-hidden />
-          <span className={styles.loopBounds}>
+          <Text
+            variant={TextVariant.Xs}
+            color={TextColor.Secondary}
+            className={styles.loopBounds}
+          >
             {"("}
-            <span
+            <Text
+              variant={TextVariant.Xs}
+              color={atStart ? BrandColor.Primary : TextColor.Secondary}
               className={styles.loopBound}
-              style={
-                atStart ? { color: "var(--color-brand-primary)" } : undefined
-              }
               onClick={onLoopStartReset}
               title="Reset loop start to 0"
               role="button"
             >
               {fmtBound(loopStart)}
-            </span>
+            </Text>
             {", "}
-            <span
+            <Text
+              variant={TextVariant.Xs}
+              color={atEnd ? BrandColor.Primary : TextColor.Secondary}
               className={styles.loopBound}
-              style={
-                atEnd ? { color: "var(--color-brand-primary)" } : undefined
-              }
               onClick={onLoopEndReset}
               title="Reset loop end to duration"
               role="button"
             >
               {fmtBound(loopEnd)}
-            </span>
+            </Text>
             {")"}
-          </span>
+          </Text>
         </>
       )}
     </div>

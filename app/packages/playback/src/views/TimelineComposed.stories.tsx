@@ -1,9 +1,6 @@
-import { PlaybackProvider } from "../lib/PlaybackProvider";
 import type { Meta, StoryObj } from "@storybook/react";
-import React, { useRef } from "react";
-import TimelineControls from "./TimelineControls";
-import TimelineRuler from "./TimelineRuler";
-import TimelineTrack from "./TimelineTrack";
+import { PlaybackProvider } from "../lib/PlaybackProvider";
+import TimelineWithTracks from "./TimelineWithTracks";
 
 const meta: Meta = {
   title: "Playback/TimelineComposed",
@@ -16,51 +13,12 @@ const TRACKS = [
   { id: "pose", color: "#4aff9e", start: 1, end: 8, events: [4, 6] },
 ];
 
-const LABEL_WIDTH = 120;
-
-function ComposedTimeline() {
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  return (
-    <div
-      ref={containerRef}
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        width: 900,
-        border: "1px solid var(--color-content-border-default)",
-        borderRadius: 6,
-        overflow: "hidden",
-        background: "var(--color-bg-surface)",
-      }}
-    >
-      <TimelineRuler
-        labelWidth={LABEL_WIDTH}
-        zoomRef={containerRef}
-      />
-      {TRACKS.map((track) => (
-        <TimelineTrack
-          key={track.id}
-          {...track}
-          labelWidth={LABEL_WIDTH}
-        />
-      ))}
-      <div
-        style={{
-          padding: "6px 10px",
-          borderTop: "1px solid var(--color-content-border-default)",
-        }}
-      >
-        <TimelineControls />
-      </div>
-    </div>
-  );
-}
-
 export const Default: StoryObj = {
   render: () => (
     <PlaybackProvider duration={10} stepInterval={1 / 30}>
-      <ComposedTimeline />
+      <div style={{ width: 900 }}>
+        <TimelineWithTracks tracks={TRACKS} />
+      </div>
     </PlaybackProvider>
   ),
 };
@@ -68,7 +26,9 @@ export const Default: StoryObj = {
 export const SlowPlayback: StoryObj = {
   render: () => (
     <PlaybackProvider duration={10} stepInterval={1 / 30} defaultSpeed={0.25}>
-      <ComposedTimeline />
+      <div style={{ width: 900 }}>
+        <TimelineWithTracks tracks={TRACKS} />
+      </div>
     </PlaybackProvider>
   ),
 };
@@ -81,7 +41,9 @@ export const WithLoopRegion: StoryObj = {
       defaultLoopStart={2}
       defaultLoopEnd={7}
     >
-      <ComposedTimeline />
+      <div style={{ width: 900 }}>
+        <TimelineWithTracks tracks={TRACKS} />
+      </div>
     </PlaybackProvider>
   ),
 };

@@ -1,4 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react";
+import {
+  Button,
+  IconName,
+  Size,
+  Text,
+  TextColor,
+  TextVariant,
+  Variant,
+} from "@voxel51/voodo";
 import { useAtomValue } from "jotai";
 import { useEffect, useState } from "react";
 import { PlaybackProvider, usePlayback } from "../lib/PlaybackProvider";
@@ -48,7 +57,9 @@ function Consumer({ label }: { label: string }) {
         borderRadius: 4,
       }}
     >
-      <strong>{label}</strong>: {value ? value.t.toFixed(3) : "—"}
+      <Text variant={TextVariant.Sm} color={TextColor.Primary}>
+        <strong>{label}</strong>: {value ? value.t.toFixed(3) : "—"}
+      </Text>
     </div>
   );
 }
@@ -72,11 +83,20 @@ function EngineDemo() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12, width: 480 }}>
       <div style={{ display: "flex", gap: 8 }}>
-        <button onClick={isPlaying ? pause : play}>
+        <Button
+          variant={Variant.Primary}
+          size={Size.Sm}
+          leadingIcon={isPlaying ? IconName.Toggle : IconName.ArrowRight}
+          onClick={isPlaying ? pause : play}
+        >
           {isPlaying ? "Pause" : "Play"}
-        </button>
-        <button onClick={() => seek(0)}>Seek 0</button>
-        <button onClick={() => seek(2.5)}>Seek 2.5s</button>
+        </Button>
+        <Button variant={Variant.Secondary} size={Size.Sm} onClick={() => seek(0)}>
+          Seek 0
+        </Button>
+        <Button variant={Variant.Secondary} size={Size.Sm} onClick={() => seek(2.5)}>
+          Seek 2.5s
+        </Button>
       </div>
 
       <div

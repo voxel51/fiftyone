@@ -71,12 +71,5 @@
   pointer-events: none;
 }
 
-.playheadLine {
-  position: absolute;
-  top: 8px;
-  bottom: 0;
-  width: 1px;
-  background: var(--color-brand-primary);
-  pointer-events: none;
-  z-index: 3;
-}
+/* The vertical playhead line is rendered by TimelineWithTracks so it can
+   extend through the tracks below the ruler. */

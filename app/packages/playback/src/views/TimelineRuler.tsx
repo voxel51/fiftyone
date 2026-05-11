@@ -273,10 +273,8 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
       >
         <div className={styles.playheadTriangle} />
       </div>
-      <div
-        className={styles.playheadLine}
-        style={{ left: laneLeft(playheadRatio) }}
-      />
+      {/* Vertical line rendered by TimelineWithTracks so it can extend
+          through the tracks below — see TimelineWithTracks.tsx. */}
     </div>
   );
 };

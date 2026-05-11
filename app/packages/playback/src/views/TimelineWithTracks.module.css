@@ -1,0 +1,32 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  width: 100%;
+}
+
+.controlsRow {
+  display: flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--color-content-border-default);
+}
+
+.tracksArea {
+  /* Container the playhead line measures against — must include the ruler
+     AND all tracks so the line can span both. */
+  position: relative;
+}
+
+/* Full-height vertical playhead line. Rendered here (not in the ruler) so
+   it can extend through the tracks below the ruler. The triangle handle
+   stays in the ruler. */
+.playheadLine {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--color-brand-primary);
+  pointer-events: none;
+  z-index: 3;
+}
