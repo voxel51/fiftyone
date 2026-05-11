@@ -11,12 +11,10 @@ import {
   AutoAwesome,
   Brush,
   CircleOutlined,
+  Close,
   CropSquare,
-  FormatColorReset,
-  Redo,
   Remove,
   Timeline,
-  Undo,
 } from "@mui/icons-material";
 import { useEffect, useMemo, useRef } from "react";
 import styled from "styled-components";
@@ -83,6 +81,7 @@ interface BrushSizeProps {
   min: number;
   max: number;
   cursor: string;
+  onClick: () => void;
   onIncrease: () => void;
   onDecrease: () => void;
 }
@@ -92,6 +91,7 @@ const BrushSize = ({
   min,
   max,
   cursor,
+  onClick,
   onIncrease,
   onDecrease,
 }: BrushSizeProps) => {
@@ -122,7 +122,9 @@ const BrushSize = ({
       >
         <ArrowDropUp />
       </SizeArrow>
-      <SizeValue $cursor={cursor}>{value}</SizeValue>
+      <SizeValue $cursor={cursor} onClick={onClick}>
+        {value}
+      </SizeValue>
       <SizeArrow
         type="button"
         aria-label="Decrease brush size"
@@ -135,19 +137,7 @@ const BrushSize = ({
   );
 };
 
-interface UseSegmentationActionsArgs {
-  onUndo?: () => void;
-  onRedo?: () => void;
-  canUndo?: boolean;
-  canRedo?: boolean;
-}
-
-export const useSegmentationActions = ({
-  onUndo,
-  onRedo,
-  canUndo = false,
-  canRedo = false,
-}: UseSegmentationActionsArgs): {
+export const useSegmentationActions = (): {
   groups: ToolbarActionGroup[];
   visible: boolean;
 } => {
@@ -157,11 +147,13 @@ export const useSegmentationActions = ({
     toolSize,
     toolShape,
     toolMode,
+    setToolSize,
     switchTool,
     switchToolShape,
     switchToolMode,
     increaseToolSize,
     decreaseToolSize,
+    deactivateSegmentationMode,
   } = useSegmentationMode();
 
   const brushCursor = useMemo(() => {
@@ -265,6 +257,10 @@ export const useSegmentationActions = ({
                 min={MIN_TOOL_SIZE}
                 max={MAX_TOOL_SIZE}
                 cursor={brushCursor}
+                onClick={() => {
+                  // no value provided falls back to DEFAULT
+                  setToolSize();
+                }}
                 onIncrease={increaseToolSize}
                 onDecrease={decreaseToolSize}
               />
@@ -296,33 +292,16 @@ export const useSegmentationActions = ({
         ],
       },
       {
-        id: "actions",
-        label: "Actions",
+        id: "close",
+        label: "Close",
         actions: [
           {
-            id: "undo",
-            label: "Undo",
-            icon: <Undo />,
-            shortcut: "Ctrl+Z",
-            tooltip: "Undo",
-            isDisabled: !canUndo,
-            onClick: () => canUndo && onUndo?.(),
-          },
-          {
-            id: "redo",
-            label: "Redo",
-            icon: <Redo />,
-            shortcut: "Ctrl+Shift+Z",
-            tooltip: "Redo",
-            isDisabled: !canRedo,
-            onClick: () => canRedo && onRedo?.(),
-          },
-          {
-            id: "clear",
-            label: "Clear mask",
-            icon: <FormatColorReset />,
-            tooltip: "Clear mask",
-            onClick: () => {},
+            id: "close",
+            label: "Close",
+            icon: <Close />,
+            shortcut: "Esc",
+            tooltip: "Close Segmentation Mode",
+            onClick: () => deactivateSegmentationMode(),
           },
         ],
       },
@@ -332,16 +311,14 @@ export const useSegmentationActions = ({
       toolSize,
       toolShape,
       toolMode,
+      setToolSize,
       switchTool,
       switchToolShape,
       switchToolMode,
       increaseToolSize,
       decreaseToolSize,
+      deactivateSegmentationMode,
       brushCursor,
-      canUndo,
-      canRedo,
-      onUndo,
-      onRedo,
     ]
   );
 
