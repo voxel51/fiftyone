@@ -1,10 +1,5 @@
 import { McapIndexedReader } from "@mcap/core";
-import type {
-  DecompressHandlers,
-  IReadable,
-  TypedMcapRecords,
-} from "@mcap/core";
-import { loadDecompressHandlers } from "@mcap/support";
+import * as mcapSupport from "@mcap/support";
 import {
   createDecodeResourceClient,
   defaultMultimodalClient,
@@ -17,6 +12,47 @@ import {
 } from "../client";
 import type { DecoderRegistry, PayloadDescriptor } from "../decoders";
 import { createMcapDecoderRegistry } from "./decoders";
+
+type DecompressHandlers = Readonly<
+  Record<string, (buffer: Uint8Array, decompressedSize: bigint) => Uint8Array>
+>;
+
+interface IReadable {
+  read(offset: bigint, size: bigint): Promise<Uint8Array>;
+  size(): Promise<bigint>;
+}
+
+type TypedMcapRecords = {
+  Channel: {
+    readonly id: number;
+    readonly messageEncoding: string;
+    readonly metadata: ReadonlyMap<string, string>;
+    readonly schemaId: number;
+    readonly topic: string;
+    readonly type: "Channel";
+  };
+  Message: {
+    readonly channelId: number;
+    readonly data: Uint8Array;
+    readonly logTime: bigint;
+    readonly publishTime: bigint;
+    readonly sequence: number;
+    readonly type: "Message";
+  };
+  Schema: {
+    readonly data: Uint8Array;
+    readonly encoding: string;
+    readonly id: number;
+    readonly name: string;
+    readonly type: "Schema";
+  };
+};
+
+type McapSupportModule = {
+  loadDecompressHandlers(): Promise<DecompressHandlers>;
+};
+
+const { loadDecompressHandlers } = mcapSupport as unknown as McapSupportModule;
 
 /**
  * Default tolerance for synchronized MCAP playback windows.
