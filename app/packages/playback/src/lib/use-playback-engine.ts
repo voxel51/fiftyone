@@ -44,10 +44,17 @@ export function usePlaybackEngine({
   }, []); // store is created once at mount; config is treated as mount-time
 
   const streamsRef = useRef<Map<string, PlaybackStream>>(new Map());
+  const subscribersRef = useRef<Map<string, number>>(new Map());
   const rafIdRef = useRef<number | null>(null);
   const lastTimestampRef = useRef<number | null>(null);
   const seekDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const seekSeqRef = useRef(0);
+
+  // A stream is "active" when registered AND has at least one subscriber.
+  // Dormant streams (registered but no subscribers) are skipped entirely.
+  const isActive = useCallback((id: string): boolean => {
+    return (subscribersRef.current.get(id) ?? 0) > 0;
+  }, []);
 
   const fireSeekEvent = useCallback(
     (time: number, immediate = false) => {
@@ -71,10 +78,11 @@ export function usePlaybackEngine({
     (time: number) => {
       store.set(currentTimeAtom, time);
       for (const s of streamsRef.current.values()) {
+        if (!isActive(s.id)) continue;
         s.onCommit?.(time, store);
       }
     },
-    [store]
+    [store, isActive]
   );
 
   const tick = useCallback(
@@ -102,6 +110,7 @@ export function usePlaybackEngine({
 
       for (const s of streamsRef.current.values()) {
         if (!s.blocking) continue;
+        if (!isActive(s.id)) continue; // dormant — no subscribers
         const state = s.bufferState(targetTime);
         if (state === "ready") continue;
         isBuffering = true;
@@ -123,7 +132,7 @@ export function usePlaybackEngine({
 
       rafIdRef.current = requestAnimationFrame(tick);
     },
-    [store, fireSeekEvent, doCommit]
+    [store, fireSeekEvent, doCommit, isActive]
   );
 
   useEffect(() => {
@@ -148,11 +157,13 @@ export function usePlaybackEngine({
   const checkAllReady = useCallback(
     (time: number): boolean => {
       for (const s of streamsRef.current.values()) {
-        if (s.blocking && s.bufferState(time) !== "ready") return false;
+        if (!s.blocking) continue;
+        if (!isActive(s.id)) continue; // dormant — no subscribers
+        if (s.bufferState(time) !== "ready") return false;
       }
       return true;
     },
-    []
+    [isActive]
   );
 
   const actions = useMemo(
@@ -210,6 +221,17 @@ export function usePlaybackEngine({
       registerStream: (stream: PlaybackStream) => {
         streamsRef.current.set(stream.id, stream);
         return () => streamsRef.current.delete(stream.id);
+      },
+      subscribeStream: (id: string) => {
+        subscribersRef.current.set(id, (subscribersRef.current.get(id) ?? 0) + 1);
+        return () => {
+          const next = (subscribersRef.current.get(id) ?? 1) - 1;
+          if (next <= 0) {
+            subscribersRef.current.delete(id);
+          } else {
+            subscribersRef.current.set(id, next);
+          }
+        };
       },
     }),
     [store, fireSeekEvent, doCommit, checkAllReady]

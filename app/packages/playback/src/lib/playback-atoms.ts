@@ -12,6 +12,17 @@
 // ---------------------------------------------------------------------------
 
 import { atom } from "jotai";
+import { atomFamily } from "jotai/utils";
+
+/**
+ * Per-stream reactive value atom, keyed by stream id. Lazily created on first
+ * access. Streams write their resolved data into `streamValueAtom(id)` from
+ * `onCommit`; consumers read it via `useStream(id)`.
+ *
+ * Atoms persist for the lifetime of the store — a consumer that subscribes
+ * before its stream registers will get `null` until the stream's first commit.
+ */
+export const streamValueAtom = atomFamily((_id: string) => atom<unknown>(null));
 
 /**
  * The visual playhead position. Updates immediately on every seek, scrub, and

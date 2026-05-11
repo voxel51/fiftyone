@@ -53,16 +53,16 @@ export interface StreamLookupPolicy {
  * dynamically (mount/unmount) and the engine consults blocking streams
  * before advancing the playhead.
  *
- * Implement this interface as a plain object — no class required:
+ * Most streams should extend `PlaybackStreamBase`, which provides defaults
+ * and wires `onCommit` into the `streamValueAtom(id)` family automatically.
+ * The interface below is the raw contract — extend the base unless you need
+ * full control.
  *
- *   const cam: PlaybackStream = {
- *     id: 'camera',
- *     blocking: true,
- *     lookupPolicy: { type: 'nearestPrevious', thresholdSeconds: 0.1 },
- *     bufferState: (t) => resolveAtTime(cache, t, lookupPolicy) ? "ready" : "missing",
- *     prefetch: ([start, end]) => fetchRange(start, end),
- *     onCommit: (t, store) => store.set(cameraFrameAtom, resolveAtTime(cache, t, lookupPolicy)),
- *   };
+ * **Subscriber lifecycle:** A registered stream is *dormant* until at least
+ * one consumer subscribes via `useStream(id)`. Dormant streams are skipped
+ * entirely by the engine — `bufferState` and `prefetch` are not called, and
+ * blocking dormant streams do NOT stall the clock. This avoids fetching data
+ * nothing is rendering.
  */
 export interface PlaybackStream {
   /** Unique identifier within a playback instance. */
@@ -170,6 +170,19 @@ export interface PlaybackContextValue {
    *
    * Registering with an id that already exists replaces the entry in-place
    * so the RAF loop always calls the latest closures without a remount cycle.
+   *
+   * Registration alone does NOT activate the stream — at least one consumer
+   * must subscribe via `useStream(id)` before the engine starts driving it.
    */
   registerStream: (stream: PlaybackStream) => () => void;
+
+  /**
+   * Increment the subscriber count for a stream. Returns an unsubscribe
+   * function that decrements it. When the count is zero the stream is
+   * dormant and the engine skips it.
+   *
+   * Most consumers should use `useStream(id)` instead of calling this
+   * directly — the hook handles subscribe/unsubscribe in a useEffect.
+   */
+  subscribeStream: (id: string) => () => void;
 }
