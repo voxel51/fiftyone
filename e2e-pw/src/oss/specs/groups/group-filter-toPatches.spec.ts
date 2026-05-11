@@ -78,11 +78,7 @@ test(`group dataset with filters converts toPatches correctly`, async ({
   await entryExpandPromise;
 
   await sidebar.waitForElement("checkbox-carrot");
-  await sidebar.applyLabelFromList(
-    "predictions.detections.label",
-    ["carrot"],
-    "select-detections-with-label"
-  );
+  await sidebar.applyLabelFromList(["carrot"], "select-detections-with-label");
 
   // convert to patches
   await grid.actionsRow.toggleToClipsOrPatches();

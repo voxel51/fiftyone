@@ -1,4 +1,5 @@
 export * from "./archetypes";
+export * from "./client";
 export { DecoderRegistry } from "./decoders";
 export type {
   DecodeContext,
