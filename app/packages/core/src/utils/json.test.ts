@@ -111,39 +111,4 @@ describe("normalizeData", () => {
     });
   });
 
-  /**
-   * MongoDB Extended JSON binary envelopes — `{$binary:{base64:'...'}}` —
-   * should normalize to the underlying base64 string so a wrapped value vs.
-   * the same value as a plain string compares as a single primitive.
-   */
-  describe("binary envelopes", () => {
-    it("should unwrap a $binary envelope to its base64 string", () => {
-      const wrapped = { $binary: { base64: "abc123" } };
-      expect(normalizeData(wrapped)).toBe("abc123");
-    });
-
-    it("should unwrap nested $binary envelopes", () => {
-      const data = {
-        mask: { $binary: { base64: "mask-data" } },
-        other: "value",
-      };
-      expect(normalizeData(data)).toStrictEqual({
-        mask: "mask-data",
-        other: "value",
-      });
-    });
-
-    it("should treat wrapped and unwrapped masks as structurally equal", () => {
-      const wrapped = { mask: { $binary: { base64: "X" } } };
-      const unwrapped = { mask: "X" };
-      expect(normalizeData(wrapped)).toStrictEqual(normalizeData(unwrapped));
-    });
-
-    it("should not unwrap envelopes missing the base64 field", () => {
-      const data = { $binary: { encoded: "abc" } };
-      expect(normalizeData(data)).toStrictEqual({
-        $binary: { encoded: "abc" },
-      });
-    });
-  });
 });

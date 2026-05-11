@@ -157,7 +157,7 @@ export const useBridge = (scene: Scene2D | null) => {
           }
         );
       },
-      [annotationEventBus, segmentationMode]
+      [annotationEventBus]
     )
   );
 
@@ -209,7 +209,7 @@ export const useBridge = (scene: Scene2D | null) => {
           ignoreSideEffects: payload.ignoreSideEffects,
         });
       },
-      [focus]
+      [focus, segmentationMode]
     )
   );
 
