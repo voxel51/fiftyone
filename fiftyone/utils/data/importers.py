@@ -38,6 +38,7 @@ import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.migrations as fomi
 import fiftyone.types as fot
+from fiftyone.constants import UTC
 
 from .parsers import (
     FiftyOneImageClassificationSampleParser,
@@ -1878,7 +1879,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
     def _import_samples(self, dataset, dataset_dict, tags=None, progress=None):
         name = dataset.name
         empty_import = not bool(dataset)
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         #
         # Import DatasetDocument

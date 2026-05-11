@@ -650,8 +650,8 @@ deployment:
 Configuring a timezone
 ----------------------
 
-By default, FiftyOne loads all datetimes in FiftyOne datasets as naive
-`datetime` objects expressed in UTC time.
+By default, FiftyOne loads all datetimes in FiftyOne datasets as timezone-aware
+`datetime` objects expressed in UTC.
 
 However, you can configure FiftyOne to express datetimes in a specific timezone
 by setting the `timezone` property of your FiftyOne config.
@@ -674,16 +674,16 @@ Or, you can even dynamically change the timezone while you work in Python:
 .. code-block:: python
     :linenos:
 
-    from datetime import datetime
+    from datetime import datetime, timezone
     import fiftyone as fo
 
-    sample = fo.Sample(filepath="image.png", created_at=datetime.utcnow())
+    sample = fo.Sample(filepath="image.png", created_at=datetime.now(timezone.utc))
 
     dataset = fo.Dataset()
     dataset.add_sample(sample)
 
     print(sample.created_at)
-    # 2021-08-24 20:24:09.723021
+    # 2021-08-24 20:24:09.723021+00:00
 
     fo.config.timezone = "local"
     dataset.reload()

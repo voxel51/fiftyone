@@ -19,6 +19,7 @@ import eta.core.serial as etas
 
 import fiftyone.core.fields as fof
 import fiftyone.core.utils as fou
+from fiftyone.constants import UTC
 
 from .database import ensure_connection
 from .utils import serialize_value, deserialize_value
@@ -781,7 +782,7 @@ class Document(BaseDocument, mongoengine.Document):
         **kwargs,
     ):
         if self.has_field("last_modified_at") and not virtual:
-            now = datetime.utcnow()
+            now = datetime.now(UTC)
             self.last_modified_at = now
             if "$set" not in updates:
                 updates["$set"] = {}
@@ -797,19 +798,19 @@ class Document(BaseDocument, mongoengine.Document):
         return ops, updated_existing
 
     def _update_last_loaded_at(self):
-        self.last_loaded_at = datetime.utcnow()
+        self.last_loaded_at = datetime.now(UTC)
         self.save(virtual=True)
 
-    def _update_last_modified_at(self, last_modified_at=None):
+    def _update_last_modified_at(self, last_modified_at=None) -> None:
         if last_modified_at is None:
-            last_modified_at = datetime.utcnow()
+            last_modified_at = datetime.now(UTC)
 
         self.last_modified_at = last_modified_at
         self.save(virtual=True)
 
-    def _update_last_deletion_at(self, last_deletion_at=None):
+    def _update_last_deletion_at(self, last_deletion_at=None) -> None:
         if last_deletion_at is None:
-            last_deletion_at = datetime.utcnow()
+            last_deletion_at = datetime.now(UTC)
 
         self.last_deletion_at = last_deletion_at
         self.save(virtual=True)

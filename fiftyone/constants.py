@@ -6,13 +6,14 @@ Package-wide constants.
 |
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 import os
 
 from packaging.version import Version
 
 from importlib.metadata import metadata
 
+UTC = timezone.utc
 
 CLIENT_TYPE = "fiftyone"
 

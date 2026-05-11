@@ -8,7 +8,6 @@ Database utilities.
 
 import atexit
 import dataclasses
-from datetime import datetime
 import logging
 from multiprocessing.pool import ThreadPool
 import os
@@ -16,7 +15,6 @@ from typing import Tuple
 
 import asyncio
 from bson import json_util, ObjectId
-from bson.codec_options import CodecOptions
 import mongoengine
 import motor.motor_asyncio as mtr
 
@@ -29,7 +27,6 @@ from pymongo.errors import (
     PyMongoError,
     ServerSelectionTimeoutError,
 )
-import pytz
 
 import eta.core.utils as etau
 
@@ -215,14 +212,20 @@ def establish_db_conn(config):
             )
 
     _client = pymongo.MongoClient(
-        **_connection_kwargs, appname=foc.DATABASE_APPNAME
+        **_connection_kwargs,
+        appname=foc.DATABASE_APPNAME,
+        tz_aware=True,
     )
     _validate_db_version(config, _client)
 
     # Register cleanup method
     atexit.register(_delete_non_persistent_datasets_if_allowed)
 
-    mongoengine.connect(config.database_name, **_connection_kwargs)
+    mongoengine.connect(
+        config.database_name,
+        **_connection_kwargs,
+        tz_aware=True,
+    )
 
     db_config = get_db_config()
     if db_config.type != foc.CLIENT_TYPE:
@@ -292,7 +295,9 @@ def _async_connect(use_global=False):
     if not use_global or _is_client_closed(_async_client):
         global _connection_kwargs
         client = mtr.AsyncIOMotorClient(
-            **_connection_kwargs, appname=foc.DATABASE_APPNAME
+            **_connection_kwargs,
+            appname=foc.DATABASE_APPNAME,
+            tz_aware=True,
         )
 
         if use_global:
@@ -535,18 +540,10 @@ def get_async_db_conn(use_global=False):
 
 
 def _apply_options(db):
-    timezone = fo.config.timezone
-
-    if not timezone:
-        return db
-
-    if timezone.lower() == "local":
-        tzinfo = datetime.now().astimezone().tzinfo
-    else:
-        tzinfo = pytz.timezone(timezone)
-
     return db.with_options(
-        codec_options=CodecOptions(tz_aware=True, tzinfo=tzinfo)
+        codec_options=db.codec_options.with_options(
+            tz_aware=True, tzinfo=fou._config_tzinfo()
+        )
     )
 
 

@@ -32,6 +32,7 @@ import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 from fiftyone import ViewField as F
 from fiftyone.operators.store import ExecutionStoreService
+from fiftyone.constants import UTC
 
 
 class DatasetTests(unittest.TestCase):
@@ -615,6 +616,159 @@ class DatasetTests(unittest.TestCase):
         self.assertTrue(last_loaded_at2 > last_loaded_at1)
         self.assertEqual(created_at2, created_at1)
         self.assertEqual(last_modified_at2, last_modified_at1)
+
+    @drop_datasets
+    def test_timestamps_are_timezone_aware(self):
+        """Asserts that ``created_at`` / ``last_modified_at`` values are
+        ``datetime`` objects with a UTC ``tzinfo`` after a Mongo round-trip,
+        so that user code can compare them against ``datetime.now(UTC)``
+        without raising
+        ``TypeError: can't compare offset-naive and offset-aware datetimes``.
+
+        This is the read-side invariant prescribed in the discussion of #7402.
+        """
+        original_timezone = fo.config.timezone
+        try:
+            fo.config.timezone = None
+
+            sample = fo.Sample(filepath="image.jpg")
+
+            dataset = fo.Dataset()
+            dataset.add_sample(sample)
+
+            # Reload from Mongo to exercise the read-side BSON codec
+            dataset.reload()
+            sample.reload()
+
+            self.assertIsNotNone(sample.created_at.tzinfo)
+            self.assertIsNotNone(sample.last_modified_at.tzinfo)
+            self.assertIsNotNone(dataset.created_at.tzinfo)
+            self.assertIsNotNone(dataset.last_modified_at.tzinfo)
+
+            self.assertEqual(sample.created_at.utcoffset(), timedelta(0))
+            self.assertEqual(sample.last_modified_at.utcoffset(), timedelta(0))
+            self.assertEqual(dataset.created_at.utcoffset(), timedelta(0))
+            self.assertEqual(
+                dataset.last_modified_at.utcoffset(), timedelta(0)
+            )
+
+            # Compare against an aware ``now`` without raising
+            now = datetime.now(UTC)
+            self.assertLessEqual(sample.created_at, now)
+            self.assertLessEqual(sample.last_modified_at, now)
+            self.assertLessEqual(dataset.created_at, now)
+            self.assertLessEqual(dataset.last_modified_at, now)
+        finally:
+            fo.config.timezone = original_timezone
+
+    @drop_datasets
+    def test_timestamps_are_timezone_aware_with_user_timezone(self):
+        """Asserts that the read-side tz-awareness invariant of
+        ``test_timestamps_are_timezone_aware`` also holds when the user
+        configures a non-UTC ``fo.config.timezone`` (equivalent to
+        ``FIFTYONE_TIMEZONE=US/Eastern``), per @Burhan-Q's review on #7414.
+
+        Writes are performed under the default UTC config to capture the
+        true UTC instants stored in Mongo; the read-side is then exercised
+        under ``US/Eastern`` so that a regression that stored or returned
+        shifted Eastern wall-clock instead of converted UTC is caught, per
+        CodeRabbit's review on #7414.
+        """
+        original_timezone = fo.config.timezone
+        try:
+            # 1. Seed under UTC so the values written to Mongo are true
+            #    UTC instants.
+            fo.config.timezone = None
+
+            sample = fo.Sample(filepath="image.jpg")
+
+            dataset = fo.Dataset()
+            dataset.add_sample(sample)
+
+            utc_instants = (
+                sample.created_at,
+                sample.last_modified_at,
+                dataset.created_at,
+                dataset.last_modified_at,
+            )
+
+            for value in utc_instants:
+                self.assertIsNotNone(value.tzinfo)
+                self.assertEqual(value.utcoffset(), timedelta(0))
+
+            # 2. Switch to a non-UTC config and reload to exercise the
+            #    read-side BSON codec conversion path.
+            fo.config.timezone = "US/Eastern"
+
+            dataset.reload()
+            sample.reload()
+
+            converted = (
+                sample.created_at,
+                sample.last_modified_at,
+                dataset.created_at,
+                dataset.last_modified_at,
+            )
+
+            for value, original in zip(converted, utc_instants):
+                # Aware datetime under the configured timezone. Note that
+                # ``Sample.reload()`` reuses the mongoengine connection,
+                # whose ``CodecOptions`` is established once at
+                # ``mongoengine.connect()`` time and is not re-applied when
+                # ``fo.config.timezone`` changes mid-process. So we assert
+                # tz-awareness here, not that ``tzinfo.zone == "US/Eastern"``.
+                self.assertIsNotNone(value.tzinfo)
+
+                # Underlying UTC instant is preserved across the
+                # conversion (this is what isolates a write-side bug from
+                # a read-side bug). BSON Date is millisecond resolution,
+                # so we truncate sub-millisecond microseconds on the
+                # in-memory ``original`` before comparing to the value
+                # round-tripped through Mongo.
+                original_utc = original.astimezone(pytz.utc)
+                original_ms = original_utc.replace(
+                    microsecond=(original_utc.microsecond // 1000) * 1000
+                )
+                self.assertEqual(value.astimezone(pytz.utc), original_ms)
+
+                # Comparing against an aware "now" must not raise
+                # ``TypeError: can't compare offset-naive and
+                # offset-aware datetimes``
+                self.assertLessEqual(value, datetime.now(UTC))
+        finally:
+            fo.config.timezone = original_timezone
+
+    @drop_datasets
+    def test_timestamp_to_datetime_returns_aware(self):
+        """Asserts that :func:`fiftyone.core.utils.timestamp_to_datetime`
+        returns timezone-aware ``datetime`` instances under both the default
+        UTC config and a user-configured non-UTC ``fo.config.timezone``,
+        per @Burhan-Q's review on #7414.
+        """
+        TS = 1700000000000.0
+
+        original_timezone = fo.config.timezone
+        try:
+            # No timezone configured uses UTC as default
+            fo.config.timezone = None
+
+            dt = fou.timestamp_to_datetime(TS)
+            self.assertIsNotNone(dt.tzinfo)
+            self.assertEqual(dt.utcoffset(), timedelta(0))
+
+            # Configured timezone is used
+            fo.config.timezone = "US/Eastern"
+
+            dt = fou.timestamp_to_datetime(TS)
+            self.assertIsNotNone(dt.tzinfo)
+            self.assertEqual(dt.tzinfo.zone, "US/Eastern")
+
+            # Comparing against an aware ``now`` must not raise
+            # ``TypeError: can't compare offset-naive and
+            # offset-aware datetimes``
+            fou.timestamp_to_datetime(TS) - datetime.now(UTC)
+        finally:
+            fo.config.timezone = original_timezone
 
     @drop_datasets
     def test_last_deletion_at(self):
@@ -1350,8 +1504,12 @@ class DatasetTests(unittest.TestCase):
         fo.config.timezone = None
         dataset.reload()
 
-        self.assertIsNone(sample1.date.tzinfo)
-        self.assertEqual(int((sample1.date - date1).total_seconds()), 0)
+        # After the read-side fix in `fiftyone/core/odm/database.py`, datetime
+        # fields are returned timezone-aware (UTC) even when
+        # ``fo.config.timezone`` is unset, so that user code can compare them
+        # against ``datetime.now(UTC)`` without raising ``TypeError``.
+        self.assertEqual(sample1.date.tzinfo, pytz.utc)
+        self.assertEqual(int((sample1.date - utcdate1).total_seconds()), 0)
         self.assertEqual(int((sample1.date - sample2.date).total_seconds()), 0)
         self.assertEqual(int((sample1.date - sample3.date).total_seconds()), 0)
 
@@ -3475,13 +3633,13 @@ class DatasetTests(unittest.TestCase):
             float_field=1.0,
             str_field="hi",
             date_field=date.today(),
-            datetime_field=datetime.utcnow(),
+            datetime_field=datetime.now(UTC),
             list_bool_field=[False, True],
             list_int_field=[1, 2, 3],
             list_float_field=[1.0, 2, 4.1],
             list_str_field=["one", "two", "three"],
             list_date_field=[date.today(), date.today()],
-            list_datetime_field=[datetime.utcnow(), datetime.utcnow()],
+            list_datetime_field=[datetime.now(UTC), datetime.now(UTC)],
             list_untyped_field=[1, {"two": "three"}, [4], "five"],
             dict_field={"hello": "world"},
             vector_field=np.arange(5),
@@ -3663,10 +3821,10 @@ class DatasetTests(unittest.TestCase):
         self.assertTrue(field.read_only)
 
         with self.assertRaises(ValueError):
-            sample.created_at = datetime.utcnow()
+            sample.created_at = datetime.now(UTC)
 
         with self.assertRaises(ValueError):
-            sample.last_modified_at = datetime.utcnow()
+            sample.last_modified_at = datetime.now(UTC)
 
         # Custom fields
 
@@ -3823,10 +3981,10 @@ class DatasetTests(unittest.TestCase):
         self.assertTrue(field.read_only)
 
         with self.assertRaises(ValueError):
-            frame.created_at = datetime.utcnow()
+            frame.created_at = datetime.now(UTC)
 
         with self.assertRaises(ValueError):
-            frame.last_modified_at = datetime.utcnow()
+            frame.last_modified_at = datetime.now(UTC)
 
         # Custom fields
 
@@ -5215,7 +5373,7 @@ class DatasetExtrasTests(unittest.TestCase):
         self.assertIsNone(spaces.name)
 
         workspace_name = "test__workspace"
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         description = "a description of the workspace, yo"
         color = "#FF6D04"
 
@@ -5247,7 +5405,7 @@ class DatasetExtrasTests(unittest.TestCase):
         dataset.reload()
         also_spaces = dataset.load_workspace(workspace_name)
         last_loaded_at2 = dataset._doc.workspaces[0].last_loaded_at
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         self.assertEqual(spaces, also_spaces)
         self.assertEqual(also_spaces.name, workspace_name)
@@ -7492,7 +7650,7 @@ class DynamicFieldTests(unittest.TestCase):
                             fo.DynamicEmbeddedDocument(
                                 task="editing_pass",
                                 author="Bob",
-                                timestamp=datetime.utcnow(),
+                                timestamp=datetime.now(UTC),
                             ),
                         ],
                     ),
@@ -8273,7 +8431,7 @@ class _CameraInfo(fo.EmbeddedDocument):
 
 
 class _LabelMetadata(fo.DynamicEmbeddedDocument):
-    created_at = fof.DateTimeField(default=datetime.utcnow)
+    created_at = fof.DateTimeField(default=lambda: datetime.now(UTC))
 
     model_name = fof.StringField()
 

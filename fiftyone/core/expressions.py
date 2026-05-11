@@ -18,6 +18,7 @@ import eta.core.utils as etau
 
 from fiftyone.core.odm.document import MongoEngineBaseDocument
 import fiftyone.core.utils as fou
+from fiftyone.constants import UTC
 
 
 def to_mongo(expr, prefix=None):
@@ -1767,13 +1768,12 @@ class ViewExpression(object):
 
         Examples::
 
-            from datetime import datetime
-            import pytz
+            from datetime import datetime, timezone
 
             import fiftyone as fo
             from fiftyone import ViewField as F
 
-            now = datetime.utcnow().replace(tzinfo=pytz.utc)
+            now = datetime.now(timezone.utc)
 
             sample = fo.Sample(
                 filepath="image.png",
@@ -2748,9 +2748,7 @@ class ViewExpression(object):
             array.sort({comp}){rev};
             return array;
         }}
-        """.format(
-            comp=comp, rev=rev
-        )
+        """.format(comp=comp, rev=rev)
 
         return self._function(sort_fcn)
 

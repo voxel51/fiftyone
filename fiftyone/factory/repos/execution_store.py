@@ -23,6 +23,7 @@ from fiftyone.operators.store.notification_service import (
     default_notification_service,
     is_notification_service_disabled,
 )
+from fiftyone.constants import UTC
 
 logger = logging.getLogger(__name__)
 
@@ -507,7 +508,7 @@ class MongoExecutionStoreRepo(ExecutionStoreRepo):
         ttl: Optional[int] = None,
         policy: str = "persist",
     ) -> KeyDocument:
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         expiration = KeyDocument.get_expiration(ttl)
         policy = "evict" if ttl is not None or policy == "evict" else "persist"
         if ttl is not None or policy == "evict":
@@ -772,7 +773,7 @@ class InMemoryExecutionStoreRepo(ExecutionStoreRepo):
         ttl: Optional[int] = None,
         policy: str = "persist",
     ) -> KeyDocument:
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         expiration = KeyDocument.get_expiration(ttl)
         key_doc = KeyDocument.from_dict(
             dict(

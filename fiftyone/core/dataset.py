@@ -49,6 +49,7 @@ import fiftyone.migrations as fomi
 from fiftyone.core.expressions import ViewField as F
 from fiftyone.core.odm.dataset import DatasetAppConfig
 from fiftyone.core.singletons import DatasetSingleton
+from fiftyone.constants import UTC
 
 fot = fou.lazy_import("fiftyone.core.stages")
 foud = fou.lazy_import("fiftyone.utils.data")
@@ -501,7 +502,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 embedded_doc_type=doc_type,
             )
             field_doc = foo.SampleFieldDocument.from_field(field)
-            field_doc._set_created_at(datetime.utcnow())
+            field_doc._set_created_at(datetime.now(UTC))
 
             self._doc.sample_fields[idx] = field_doc
 
@@ -2997,7 +2998,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             raise ValueError(f"Field {field_name} is not a summary field")
 
         summary_info = field.info[_SUMMARY_FIELD_KEY]
-        summary_info["last_modified_at"] = datetime.utcnow()
+        summary_info["last_modified_at"] = datetime.now(UTC)
         field.save(_enforce_read_only=False)
 
         self._populate_summary_field(field_name, summary_info)
@@ -4361,7 +4362,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if validate:
             self._validate_sample(sample)
 
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         return (
             sample,
@@ -4960,7 +4961,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             if self._is_read_only_field(field):
                 raise ValueError("Cannot edit read-only field '%s'" % field)
 
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         batch_size = fou.recommend_batch_size_for_value(
             ObjectId(), max_size=100000
@@ -5082,7 +5083,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             if self._is_read_only_field(field):
                 raise ValueError("Cannot edit read-only field '%s'" % field)
 
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         sample_ops = []
         frame_ops = []
@@ -5346,7 +5347,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         slug = self._validate_saved_view_name(name, overwrite=overwrite)
 
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         view_doc = foo.SavedViewDocument(
             dataset_id=self._doc.id,
@@ -5498,7 +5499,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         # When reloading generated views, increment `last_modified_at` so we
         # can compute when the view next needs refreshing
         if reload and view._is_generated:
-            view_doc.last_modified_at = datetime.utcnow()
+            view_doc.last_modified_at = datetime.now(UTC)
             updated = True
 
         if updated:
@@ -5692,7 +5693,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         slug = self._validate_workspace_name(name, overwrite=overwrite)
 
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         workspace_doc = foo.WorkspaceDocument(
             child=workspace,
@@ -5980,7 +5981,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._clear()
 
     def _clear(self, view=None, sample_ids=None):
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         if view is not None:
             contains_videos = view._contains_videos(any_slice=True)
@@ -6082,7 +6083,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if not sample_collection._contains_videos(any_slice=True):
             return
 
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         if self._is_clips:
             if sample_ids is not None:
@@ -6180,7 +6181,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if view is None:
             return
 
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         if view.media_type == fom.GROUP:
             view = view.select_group_slices(media_type=fom.VIDEO)
@@ -6263,7 +6264,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 media_type=fom.VIDEO
             )
 
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         sample_collection.compute_metadata()
         sample_collection._aggregate(
@@ -9384,7 +9385,7 @@ def _create_dataset(
     slug = _validate_dataset_name(name)
 
     _id = ObjectId()
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
 
     sample_collection_name = _make_sample_collection_name(
         _id, patches=_patches, frames=_frames, clips=_clips
@@ -9847,7 +9848,7 @@ def _declare_fields(dataset, doc_cls, field_docs=None):
         default_fields -= {field_doc.name for field_doc in field_docs}
 
     # Declare default fields that don't already exist
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     for field_name in default_fields:
         field = doc_cls._fields[field_name]
 
@@ -10043,7 +10044,7 @@ def _clone_collection(
     dataset_doc = dataset._doc.copy(new_id=True)
 
     _id = dataset_doc.id
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
 
     sample_collection_name = _make_sample_collection_name(_id)
 
@@ -10244,7 +10245,7 @@ def _save_view(view, fields=None):
     # Must retrieve IDs now in case view changes after saving
     sample_ids = view.values("id")
 
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
 
     #
     # Save samples
@@ -10642,7 +10643,7 @@ def _add_collection_with_new_ids(
     else:
         num_ids = len(src_samples)
 
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
 
     add_fields = {
         "_dataset_id": dataset._doc.id,
@@ -10999,7 +11000,7 @@ def _merge_samples_pipeline(
     else:
         when_not_matched = "discard"
 
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
 
     sample_pipeline.extend(
         [

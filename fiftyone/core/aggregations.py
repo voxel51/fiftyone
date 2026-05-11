@@ -27,7 +27,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
-
+from fiftyone.constants import UTC
 
 logger = logging.getLogger(__name__)
 
@@ -2260,7 +2260,7 @@ class ListSchema(Aggregation):
 
     Examples::
 
-        from datetime import datetime
+        from datetime import datetime, timezone
         import fiftyone as fo
 
         dataset = fo.Dataset()
@@ -2273,13 +2273,13 @@ class ListSchema(Aggregation):
                     fo.DynamicEmbeddedDocument(
                         task="initial_annotation",
                         author="Alice",
-                        timestamp=datetime(1970, 1, 1),
+                        timestamp=datetime(1970, 1, 1, tzinfo=timezone.utc),
                         notes=["foo", "bar"],
                     ),
                     fo.DynamicEmbeddedDocument(
                         task="editing_pass",
                         author="Bob",
-                        timestamp=datetime.utcnow(),
+                        timestamp=datetime.now(timezone.utc),
                     ),
                 ],
             ),
@@ -2293,7 +2293,7 @@ class ListSchema(Aggregation):
                     fo.DynamicEmbeddedDocument(
                         task="initial_annotation",
                         author="Bob",
-                        timestamp=datetime(2018, 10, 18),
+                        timestamp=datetime(2018, 10, 18, tzinfo=timezone.utc),
                         notes=["spam", "eggs"],
                     ),
                 ],
