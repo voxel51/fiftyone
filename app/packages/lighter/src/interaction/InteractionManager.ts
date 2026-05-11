@@ -1039,12 +1039,23 @@ export class InteractionManager {
   ): void => {
     this.handlers?.forEach((handler) => handler.markDirty());
 
-    if (segmentationModeBridge.isActive()) {
-      const scale = this.renderer.getScale();
-      this.canvas.style.cursor = buildBrushCursor(
-        segmentationModeBridge.getToolState(scale)!
-      );
+    if (!segmentationModeBridge.isActive()) return;
+
+    if (segmentationModeBridge.getActiveTool() === SegmentationTool.Merge) {
+      const handler = this.hoveredHandler;
+      const isMergeable =
+        handler instanceof DetectionOverlay &&
+        handler.hasMask() &&
+        handler.id !== segmentationModeBridge.getMergeTargetId();
+      this.canvas.style.cursor = isMergeable ? "cell" : "default";
+
+      return;
     }
+
+    const scale = this.renderer.getScale();
+    this.canvas.style.cursor = buildBrushCursor(
+      segmentationModeBridge.getToolState(scale)!
+    );
   };
 
   private isDoubleClick(point: Point, now: number): boolean {
