@@ -7,18 +7,17 @@ Script for generating plugin documentation dynamically from the FiftyOne plugins
 |
 """
 
-import json
 import logging
 import os
 import re
-from dataclasses import dataclass
+import requests
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Tuple
 from urllib.parse import urljoin, urlparse
 
 import eta.core.utils as etau
-import requests
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -53,7 +52,6 @@ class PluginDocGenerator:
         self.models_dir = self.docs_source_dir / "model_zoo" / "models"
         self.models_dir.mkdir(parents=True, exist_ok=True)
         self._plugin_model_cards = []
-        self._collected_plugin_skills = []
         self._compile_regex_patterns()
 
     def _compile_regex_patterns(self):
@@ -393,45 +391,6 @@ myst:
         except (requests.RequestException, ValueError) as e:
             logger.debug(f"No manifest found at {url}: {e}")
         return None
-
-    def _fetch_fiftyone_yml_skills(
-        self, owner: str, repo: str, path: str, branch: str
-    ) -> List[str]:
-        """Fetch fiftyone.yml and return skill raw URLs if a skills: field exists."""
-        yml_path = f"{path}/fiftyone.yml" if path else "fiftyone.yml"
-        url = f"https://raw.githubusercontent.com/{owner}/{repo}/{branch}/{yml_path}"
-        try:
-            resp = requests.get(url, timeout=6)
-            if resp.status_code != 200:
-                return []
-            skills = []
-            in_skills = False
-            for line in resp.text.splitlines():
-                if re.match(r"^skills\s*:", line):
-                    in_skills = True
-                    continue
-                if in_skills:
-                    m = re.match(r"^\s+-\s+(.+)", line)
-                    if m:
-                        skill_path = m.group(1).strip()
-                        raw_url = (
-                            f"https://raw.githubusercontent.com/"
-                            f"{owner}/{repo}/{branch}/{skill_path}"
-                        )
-                        github_url = f"https://github.com/{owner}/{repo}/blob/{branch}/{skill_path}"
-                        skills.append(
-                            {
-                                "plugin_name": f"@{owner}/{repo}",
-                                "raw_url": raw_url,
-                                "github_url": github_url,
-                            }
-                        )
-                    elif line and not line.startswith(" "):
-                        in_skills = False
-            return skills
-        except Exception as e:
-            logger.debug(f"No fiftyone.yml skills in {owner}/{repo}: {e}")
-        return []
 
     def _format_model_tags(self, tags: List[str]) -> List[str]:
         """Convert model tags to display format."""
@@ -1035,17 +994,11 @@ Please review each plugin's documentation and license before use.
                         models, plugin_name, plugin_link, github_url
                     )
 
-            plugin_skills = self._fetch_fiftyone_yml_skills(
-                owner, repo, path, branch
-            )
-            self._collected_plugin_skills.extend(plugin_skills)
-
             extra_tags = [
                 tag
                 for tag, condition in [
                     ("Model", has_model),
                     ("Dataset", has_dataset),
-                    ("Skills", bool(plugin_skills)),
                 ]
                 if condition
             ]
@@ -1085,20 +1038,6 @@ Please review each plugin's documentation and license before use.
         if self._plugin_model_cards:
             logger.info(
                 f"Generated {len(self._plugin_model_cards)} plugin model cards"
-            )
-
-        skills_json_path = (
-            self.docs_source_dir
-            / "agents"
-            / "skills_cards"
-            / "_plugin_skills.json"
-        )
-        skills_json_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(skills_json_path, "w", encoding="utf-8") as f:
-            json.dump(self._collected_plugin_skills, f, indent=2)
-        if self._collected_plugin_skills:
-            logger.info(
-                f"Wrote {len(self._collected_plugin_skills)} plugin skills to {skills_json_path}"
             )
 
         logger.info("Plugin documentation generated successfully!")
