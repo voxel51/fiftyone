@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 
 def _sam2_image_transform(img):
-    """Transforms image for SAM3 model input.
+    """Transforms image for SAM2 model input.
 
     Args:
         img: a PIL or a uint8 numpy array containing image in HWC format

@@ -1329,5 +1329,5 @@ def _get_sam_box_labels(detection):
     if "sam_label" in detection and detection.sam_label is not None:
         return detection.sam_label
     if "sam3_label" in detection and detection.sam3_label is not None:
-        return detection.sam3_labels
+        return detection.sam3_label
     return True

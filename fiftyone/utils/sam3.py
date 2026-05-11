@@ -8,12 +8,9 @@ wrapper for the FiftyOne Model Zoo.
 """
 
 import logging
-import numpy as np
 import os
 from PIL import Image
-from enum import Enum
 
-import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 import fiftyone.utils.torch as fout
 import fiftyone.utils.sam as fosam
@@ -488,6 +485,7 @@ class SegmentAnything3ImageModel(fosam2.SegmentAnything2ImageModel):
             if prompt_type in ["box_only", "box_point_combo"]
             else None
         )
+        # TODO: Add classes to concept mode by adding tracking for which detection came from which prompt.
         labels = args.get("classes") if "datapoints" not in args else None
 
         if "datapoints" in args:

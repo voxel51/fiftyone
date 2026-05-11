@@ -12,9 +12,10 @@ Usage:
     pytest sam_parity_tests.py -v --timeout=500
 """
 
-import unittest
+import cv2
 import numpy as np
 import torch
+import unittest
 
 import fiftyone as fo
 import fiftyone.zoo as foz
@@ -1308,8 +1309,6 @@ def _concept_output_to_detections(output, img_h, img_w, label="mask"):
         # Resize to original image size if needed
         mh, mw = mask_i.shape
         if mh != img_h or mw != img_w:
-            import cv2
-
             mask_i = cv2.resize(
                 mask_i.astype(np.uint8),
                 (img_w, img_h),
@@ -1452,7 +1451,6 @@ class TestSAM3VisualParity(unittest.TestCase):
         )
 
         from sam3.model_builder import build_sam3_image_model
-        from sam3.model.sam3_image_processor import Sam3Processor
 
         sam3_model = build_sam3_image_model(
             enable_inst_interactivity=True,
