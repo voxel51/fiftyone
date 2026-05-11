@@ -2,7 +2,11 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { EDGE_THRESHOLD, LABEL_ARCHETYPE_PRIORITY } from "../constants";
+import {
+  EDGE_THRESHOLD,
+  LABEL_ARCHETYPE_PRIORITY,
+  PREVIEW_LINE_OPACITY,
+} from "../constants";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { DrawStyle, Point, RawLookerLabel } from "../types";
 import {
@@ -34,6 +38,11 @@ export interface PolylineOptions {
 }
 
 const DEFAULT_FILL_OPACITY = 0.3;
+
+export type SegmentEndpoint = {
+  segmentIdx: number;
+  end: "head" | "tail";
+} | null;
 
 /**
  * Flattens a polyline's nested points into a single array, emitting one
@@ -82,13 +91,25 @@ export class PolylineOverlay extends KeypointOverlay {
   private polylineClosed: boolean;
   private polylineFilled: boolean;
 
+  /**
+   * Segment that the preview line should anchor against. When `null`, the
+   * preview anchors to whichever endpoint is globally nearest the cursor.
+   */
+  private previewAnchorSegmentIdx: number | null = null;
+
+  /**
+   * When `true`, the preview line anchors against the segment's far endpoint
+   * instead of the nearest — mirrors the meta-key flip in the interactive
+   * handler so the dashed telegraph matches what a click will produce.
+   */
+  private previewAnchorFlipped = false;
+
   constructor(options: PolylineOptions) {
     const { flatPoints, connections, segmentBoundaries } =
       flattenPolylinePoints(options.label.points ?? []);
 
     // Synthesize a Keypoint-compatible label so the parent's render machinery
-    // operates on a flat point list. The original nested label is preserved
-    // by reassigning `this.label` after super() returns.
+    // operates on a flat point list
     const flatLabel = {
       ...options.label,
       points: flatPoints,
@@ -206,13 +227,15 @@ export class PolylineOverlay extends KeypointOverlay {
    * @returns The id of the new point.
    */
   override addPoint(worldPoint: Point, variant?: string, id?: string): string {
-    const newId = super.addPoint(worldPoint, variant, id);
-
+    // Bump boundaries BEFORE super, since `super.addPoint` synchronously
+    // dispatches `lighter:keypoint-point-added`.
     if (this.segmentBoundaries.length === 0) {
       this.segmentBoundaries.push(1);
     } else {
       this.segmentBoundaries[this.segmentBoundaries.length - 1] += 1;
     }
+
+    const newId = super.addPoint(worldPoint, variant, id);
 
     this.setConnections(this.rebuildConnectionsFromBoundaries());
 
@@ -234,12 +257,11 @@ export class PolylineOverlay extends KeypointOverlay {
       return;
     }
 
-    const sizeBefore = this.getRelativePoints().length;
-    super.removePoint(index);
-    const sizeAfter = this.getRelativePoints().length;
+    if (!this.getDeletable()) {
+      return;
+    }
 
-    // Base may have rejected the call (e.g. !isDeletable, out-of-range)
-    if (sizeAfter === sizeBefore) {
+    if (index < 0 || index >= this.getRelativePoints().length) {
       return;
     }
 
@@ -251,6 +273,11 @@ export class PolylineOverlay extends KeypointOverlay {
     if (this.segmentBoundaries[segIdx] === segStart) {
       this.segmentBoundaries.splice(segIdx, 1);
     }
+
+    // super dispatches `lighter:keypoint-point-deleted` synchronously
+    // after splicing `#points`; defer this call until event state is
+    // consistent
+    super.removePoint(index);
 
     this.setConnections(this.rebuildConnectionsFromBoundaries());
   }
@@ -288,16 +315,18 @@ export class PolylineOverlay extends KeypointOverlay {
       );
     }
 
+    for (let i = segmentIdx; i < this.segmentBoundaries.length; i++) {
+      this.segmentBoundaries[i] += 1;
+    }
+
+    // synchronously dispatches `lighter:keypoint-point-added`; defer until
+    // event state is consistent
     const newId = this.insertRelativePointAt(
       segStart + indexInSegment,
       relPoint,
       variant,
       id
     );
-
-    for (let i = segmentIdx; i < this.segmentBoundaries.length; i++) {
-      this.segmentBoundaries[i] += 1;
-    }
 
     this.setConnections(this.rebuildConnectionsFromBoundaries());
 
@@ -550,14 +579,21 @@ export class PolylineOverlay extends KeypointOverlay {
    * non-empty segment exists, an endpoint is always returned.
    *
    * @param worldPoint Absolute (world-space) point to measure distance from.
-   * @returns `{ segmentIdx, end }` for the closest endpoint, or `null` if no
-   *  non-empty segments exist. `end` is `"head"` for the segment's first point
-   *  and `"tail"` for its last.
+   * @param restrictToSegmentIdx If provided, only the head/tail of that
+   *  segment are considered; returns `null` if the segment is missing or
+   *  empty.
+   * @param preferFar When `true`, picks the farthest candidate instead of
+   *  the nearest — used to override the default proximity anchor (e.g.
+   *  meta-click extending the opposite end of a segment).
+   * @returns `{ segmentIdx, end }` for the matching endpoint, or `null` if
+   *  no non-empty segments exist. `end` is `"head"` for the segment's first
+   *  point and `"tail"` for its last.
    */
-  findNearestEndpoint(worldPoint: Point): {
-    segmentIdx: number;
-    end: "head" | "tail";
-  } | null {
+  findNearestEndpoint(
+    worldPoint: Point,
+    restrictToSegmentIdx?: number,
+    preferFar?: boolean
+  ): SegmentEndpoint {
     const flatRel = this.getRelativePoints();
     if (flatRel.length === 0) {
       return null;
@@ -569,6 +605,14 @@ export class PolylineOverlay extends KeypointOverlay {
       dist: number;
     } | null = null;
 
+    const isBetter = (dist: number): boolean => {
+      if (!best) {
+        return true;
+      }
+
+      return preferFar ? dist > best.dist : dist < best.dist;
+    };
+
     let prev = 0;
     for (let segIdx = 0; segIdx < this.segmentBoundaries.length; segIdx++) {
       const segEnd = this.segmentBoundaries[segIdx];
@@ -577,9 +621,17 @@ export class PolylineOverlay extends KeypointOverlay {
         continue;
       }
 
+      if (
+        restrictToSegmentIdx !== undefined &&
+        segIdx !== restrictToSegmentIdx
+      ) {
+        prev = segEnd;
+        continue;
+      }
+
       const headAbs = this.relativePointToAbsolute(flatRel[prev]);
       const dHead = distance(worldPoint.x, worldPoint.y, headAbs.x, headAbs.y);
-      if (!best || dHead < best.dist) {
+      if (isBetter(dHead)) {
         best = { segmentIdx: segIdx, end: "head", dist: dHead };
       }
 
@@ -592,7 +644,7 @@ export class PolylineOverlay extends KeypointOverlay {
           tailAbs.x,
           tailAbs.y
         );
-        if (!best || dTail < best.dist) {
+        if (isBetter(dTail)) {
           best = { segmentIdx: segIdx, end: "tail", dist: dTail };
         }
       }
@@ -633,6 +685,91 @@ export class PolylineOverlay extends KeypointOverlay {
     }
 
     return connections;
+  }
+
+  /**
+   * Restricts the preview line to anchor against a specific segment. Pass
+   * `null` to anchor against the globally nearest endpoint instead. Mirrors
+   * the active-segment state held by the interactive handler.
+   */
+  setPreviewAnchorSegmentIdx(segmentIdx: number | null): void {
+    if (this.previewAnchorSegmentIdx === segmentIdx) {
+      return;
+    }
+
+    this.previewAnchorSegmentIdx = segmentIdx;
+    this.markDirty();
+  }
+
+  /**
+   * Flips the preview anchor between the segment's near and far endpoint.
+   * Set to `true` while the user holds the meta-key override; the dashed
+   * line then telegraphs the same anchor a click would produce.
+   */
+  setPreviewAnchorFlipped(flipped: boolean): void {
+    if (this.previewAnchorFlipped === flipped) {
+      return;
+    }
+
+    this.previewAnchorFlipped = flipped;
+    this.markDirty();
+  }
+
+  /**
+   * Anchors the preview line to whichever endpoint of the active segment
+   * (or globally, if no active segment) is closest to the cursor — so the
+   * dashed line previews the actual point that EXTEND will produce. The
+   * meta-flip flag inverts that to the far endpoint instead.
+   */
+  protected override renderPreviewLine(
+    renderer: Renderer2D,
+    ctx: KeypointRenderContext
+  ): void {
+    if (!this.previewPoint || ctx.absPoints.length === 0) {
+      return;
+    }
+
+    const nearest = this.findNearestEndpoint(
+      this.previewPoint,
+      this.previewAnchorSegmentIdx ?? undefined,
+      this.previewAnchorFlipped
+    );
+    if (!nearest) {
+      return;
+    }
+
+    const segLen = this.getSegmentLength(nearest.segmentIdx);
+    if (segLen === 0) {
+      return;
+    }
+
+    const indexInSegment = nearest.end === "head" ? 0 : segLen - 1;
+    const anchorId = this.getPointIdInSegment(
+      nearest.segmentIdx,
+      indexInSegment
+    );
+    if (!anchorId) {
+      return;
+    }
+
+    const entry = this.getPointById(anchorId);
+    if (!entry) {
+      return;
+    }
+
+    const anchorAbs = this.relativePointToAbsolute(entry.position);
+
+    renderer.drawLine(
+      anchorAbs,
+      this.previewPoint,
+      {
+        strokeStyle: ctx.strokeColor,
+        lineWidth: ctx.lineWidth,
+        dashPattern: [6, 4],
+        opacity: PREVIEW_LINE_OPACITY,
+      },
+      this.containerId
+    );
   }
 
   protected override renderFill(

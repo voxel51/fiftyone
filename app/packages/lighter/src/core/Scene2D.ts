@@ -1632,6 +1632,18 @@ export class Scene2D {
   }
 
   /**
+   * Converts a screen-space (canvas-local) pixel point to world-space using
+   * the scene's renderer transform. Inverse of the renderer's internal
+   * world→screen pipeline.
+   */
+  public screenToWorld(point: { x: number; y: number }): {
+    x: number;
+    y: number;
+  } {
+    return this.config.renderer.screenToWorld(point);
+  }
+
+  /**
    * Toggles interactive mode on/off with the provided interaction handler.
    * @param handler - The interaction handler to use for interactive mode.
    * @returns True if interactive mode is now active, false if it is now inactive.

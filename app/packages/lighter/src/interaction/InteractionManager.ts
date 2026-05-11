@@ -4,6 +4,7 @@
 
 import { detectionModeBridge } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/bridgeDetectionMode";
 import { EventDispatcher, getEventBus } from "@fiftyone/events";
+import type { ClickEventModifiers } from "@fiftyone/utilities";
 import { TypeGuards } from "../core/Scene2D";
 import type { LighterEventGroup } from "../events";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
@@ -11,20 +12,17 @@ import { type MoveState } from "../overlay/BoundingBoxOverlay";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { SelectionManager } from "../selection/SelectionManager";
 import type { Point, Rect } from "../types";
+import { InteractiveCreationHandler } from "./InteractiveCreationHandler";
 import { InteractiveDetectionHandler } from "./InteractiveDetectionHandler";
 import { InteractiveKeypointHandler } from "./InteractiveKeypointHandler";
 import { InteractivePolylineHandler } from "./InteractivePolylineHandler";
 import { v4 as generateUUID } from "uuid";
 
 /**
- * Handler invoked when a pointer-down lands on the empty canvas (no overlay
- * or only the canonical media). Returning `true` claims the event: the
- * manager skips its default empty-canvas handling, captures the pointer,
- * and prevents the default DOM action. Returning `false` / `undefined`
- * lets default behavior run.
- *
- * Used by consumers to intercept the first canvas click and seed a new overlay
- * at that point.
+ * Handler invoked on pointer-down before overlay selection runs. Returning
+ * `true` claims the event: the manager skips selection and detection-mode
+ * handling, captures the pointer, and prevents the default DOM action.
+ * Returning `false` / `undefined` lets default behavior run.
  */
 export type EmptyCanvasClickHandler = (
   worldPoint: Point,
@@ -41,7 +39,8 @@ export type EmptyCanvasClickHandler = (
 function isSelfManagedInteractiveHandler(handler: InteractionHandler): boolean {
   return (
     handler instanceof InteractiveKeypointHandler ||
-    handler instanceof InteractivePolylineHandler
+    handler instanceof InteractivePolylineHandler ||
+    handler instanceof InteractiveCreationHandler
   );
 }
 
@@ -98,8 +97,29 @@ export interface InteractionHandler {
    * Returns the type of cursor that is currently appropriate
    * @param worldPoint - Current screen location translated to viewport location.
    * @param scale - The current scaling factor of the renderer.
+   * @param modifiers - Current keyboard modifier state. Tracked by the
+   *  manager across both pointer and key events, so cursor can react to
+   *  alt/shift/etc. presses even when the mouse is still.
    */
-  getCursor?(worldPoint: Point, scale: number): string;
+  getCursor?(
+    worldPoint: Point,
+    scale: number,
+    modifiers?: ClickEventModifiers
+  ): string;
+
+  /**
+   * Notification that the global modifier state changed. Fired by the
+   * manager on key press/release while this handler is installed, so
+   * handlers can react to modifier changes without a pointer move
+   * (e.g. hide the preview line on shift-press for new-segment intent).
+   *
+   * `worldPoint` is the cursor's last known world position, or `null`
+   * when no pointer event has been observed yet.
+   */
+  onModifiersChanged?(
+    modifiers: ClickEventModifiers,
+    worldPoint: Point | null
+  ): void;
 
   /**
    * Returns the current move state of the handler
@@ -115,6 +135,11 @@ export interface InteractionHandler {
    * Returns the position from the start of handler movement
    */
   getMoveStartBounds?(): Rect | undefined;
+
+  /**
+   * Returns the overlay associated with the manager.
+   */
+  getOverlay?(): BaseOverlay | undefined;
 
   /**
    * Handle pointer down event.
@@ -191,6 +216,12 @@ export interface InteractionHandler {
   onHoverLeave?(point?: Point | null, event?: PointerEvent | null): boolean;
 
   /**
+   * Notification that the pointer has left the canvas. Fired by the manager
+   * on `pointerleave` for the active interactive handler.
+   */
+  onCanvasLeave?(): void;
+
+  /**
    * Handle hover move event.
    * @param point - The point where the event occurred.
    * @param event - The original pointer event.
@@ -238,6 +269,18 @@ export class InteractionManager {
   private lastClickTime = 0;
   private lastClickPoint?: Point;
   private maintainAspectRatio = false;
+
+  /**
+   * Current modifier state, refreshed from both pointer events and
+   * document key events so handlers can react to modifier changes
+   * (e.g. alt-hover cursor swap) without requiring a pointer move.
+   */
+  private currentModifiers: ClickEventModifiers = {
+    altKey: false,
+    ctrlKey: false,
+    metaKey: false,
+    shiftKey: false,
+  };
 
   private canonicalMediaId?: string;
 
@@ -305,6 +348,8 @@ export class InteractionManager {
     const worldPoint = this.renderer.screenToWorld(point);
     const scale = this.renderer.getScale();
 
+    this.syncModifiersFromEvent(event);
+
     this.clickStartTime = Date.now();
     this.clickStartPoint = point;
 
@@ -317,13 +362,27 @@ export class InteractionManager {
         ? // self-managed handlers route their own pointer events
           interactiveHandler
         : // otherwise defer to the handler's overlay
-          interactiveHandler.getOverlay();
-      this.selectionManager.select(interactiveHandler.getOverlay().id);
+          interactiveHandler.getOverlay?.();
+
+      if (interactiveHandler?.getOverlay?.()) {
+        this.selectionManager.select(interactiveHandler.getOverlay().id);
+      }
     } else {
       handler = this.findHandlerAtPoint(point);
       // Prevent pan/zoom when target is selectable
       if (handler && TypeGuards.isSelectable(handler)) {
         this.renderer.disableZoomPan();
+      }
+
+      // Generic canvas-click claim: a registered consumer can claim the click
+      // before selection runs
+      if (
+        this.emptyCanvasClickHandler &&
+        this.emptyCanvasClickHandler(worldPoint, point, event)
+      ) {
+        this.canvas.setPointerCapture(event.pointerId);
+        event.preventDefault();
+        return;
       }
 
       // If clicking an overlay, select it
@@ -357,25 +416,14 @@ export class InteractionManager {
           return;
         }
       }
-
-      // Generic empty-canvas claim: a registered consumer can claim the click
-      // to seed a new overlay at this point
-      if (this.emptyCanvasClickHandler) {
-        const isNonOverlay = !handler || handler.id === this.canonicalMediaId;
-
-        if (
-          isNonOverlay &&
-          this.emptyCanvasClickHandler(worldPoint, point, event)
-        ) {
-          this.canvas.setPointerCapture(event.pointerId);
-          event.preventDefault();
-          return;
-        }
-      }
     }
 
     if (handler?.onPointerDown?.(point, worldPoint, event, scale)) {
-      const cursor = handler.getCursor?.(worldPoint, scale);
+      const cursor = handler.getCursor?.(
+        worldPoint,
+        scale,
+        this.currentModifiers
+      );
       if (cursor) {
         this.canvas.style.cursor = cursor;
       }
@@ -401,6 +449,14 @@ export class InteractionManager {
         });
       }
 
+      // Self-managed interactive handlers don't go through the selectable
+      // disableZoomPan branch above, so a point drag would otherwise compete
+      // with renderer pan. Suppress while the handler reports itself as
+      // dragging; pointerup re-enables.
+      if (handler.isDragging?.()) {
+        this.renderer.disableZoomPan();
+      }
+
       this.canvas.setPointerCapture(event.pointerId);
       event.preventDefault();
     }
@@ -419,7 +475,11 @@ export class InteractionManager {
     ) {
       this.canvas.style.cursor = "pointer";
     } else if (TypeGuards.isInteractionHandler(handler) && handler.getCursor) {
-      this.canvas.style.cursor = handler.getCursor(worldPoint, scale);
+      this.canvas.style.cursor = handler.getCursor(
+        worldPoint,
+        scale,
+        this.currentModifiers
+      );
     }
   }
 
@@ -493,6 +553,7 @@ export class InteractionManager {
     const worldPoint = this.renderer.screenToWorld(point);
     const scale = this.renderer.getScale();
     this.currentPixelCoordinates = point;
+    this.syncModifiersFromEvent(event);
 
     const interactiveHandler = this.getInteractiveHandler();
     let handler = this.findMovingHandler() || this.findHandlerAtPoint(point);
@@ -595,6 +656,8 @@ export class InteractionManager {
     const scale = this.renderer.getScale();
     const now = Date.now();
 
+    this.syncModifiersFromEvent(event);
+
     let handler: InteractionHandler | undefined = undefined;
 
     const interactiveHandler = this.getInteractiveHandler();
@@ -617,9 +680,12 @@ export class InteractionManager {
       // Handle drag end
       handler.onPointerUp?.(point, event, scale);
 
-      if (interactiveHandler) {
-        // When interactive detection is complete, remove the interactive handler
-        // The overlay will be managed by its own handler
+      if (
+        interactiveHandler &&
+        !isSelfManagedInteractiveHandler(interactiveHandler)
+      ) {
+        // Self-managed handlers outlive a single drag and are torn down
+        // explicitly via exitInteractiveMode instead.
         this.removeHandler(interactiveHandler);
       }
 
@@ -669,7 +735,8 @@ export class InteractionManager {
 
     this.renderer.enableZoomPan();
     this.canvas.style.cursor =
-      handler?.getCursor?.(worldPoint, scale) || this.canvas.style.cursor;
+      handler?.getCursor?.(worldPoint, scale, this.currentModifiers) ||
+      this.canvas.style.cursor;
     this.clickStartPoint = undefined;
     this.clickStartTime = 0;
   };
@@ -696,6 +763,8 @@ export class InteractionManager {
       this.hoveredHandler.onHoverLeave?.(point, event);
       this.hoveredHandler = undefined;
     }
+
+    this.getInteractiveHandler()?.onCanvasLeave?.();
   };
 
   private handleWheel = (event: WheelEvent): void => {
@@ -721,6 +790,9 @@ export class InteractionManager {
     ) {
       return;
     }
+
+    this.syncModifiersFromEvent(event);
+
     if (event.shiftKey) {
       this.maintainAspectRatio = event.shiftKey;
       return;
@@ -758,8 +830,61 @@ export class InteractionManager {
       return;
     }
 
+    this.syncModifiersFromEvent(event);
+
     this.maintainAspectRatio = event.shiftKey;
   };
+
+  /**
+   * Snapshot modifier state from a pointer or keyboard event. If anything
+   * changed and we have a self-managed interactive handler installed, push
+   * a fresh cursor. Without this, a handler can't react to modifier
+   * changes (e.g. alt-press) until the next pointer move.
+   */
+  private syncModifiersFromEvent(event: PointerEvent | KeyboardEvent): void {
+    const next: ClickEventModifiers = {
+      altKey: event.altKey,
+      ctrlKey: event.ctrlKey,
+      metaKey: event.metaKey,
+      shiftKey: event.shiftKey,
+    };
+
+    const changed =
+      next.altKey !== this.currentModifiers.altKey ||
+      next.ctrlKey !== this.currentModifiers.ctrlKey ||
+      next.metaKey !== this.currentModifiers.metaKey ||
+      next.shiftKey !== this.currentModifiers.shiftKey;
+
+    this.currentModifiers = next;
+
+    if (!changed) {
+      return;
+    }
+
+    const interactiveHandler = this.getInteractiveHandler();
+    if (
+      !interactiveHandler ||
+      !isSelfManagedInteractiveHandler(interactiveHandler)
+    ) {
+      return;
+    }
+
+    const pixel = this.currentPixelCoordinates;
+    const worldPoint = pixel ? this.renderer.screenToWorld(pixel) : null;
+
+    interactiveHandler.onModifiersChanged?.(this.currentModifiers, worldPoint);
+
+    if (worldPoint && interactiveHandler.getCursor) {
+      const cursor = interactiveHandler.getCursor(
+        worldPoint,
+        this.renderer.getScale(),
+        this.currentModifiers
+      );
+      if (cursor) {
+        this.canvas.style.cursor = cursor;
+      }
+    }
+  }
 
   private handleClick(point: Point, event: PointerEvent, now: number): void {
     if (!this.clickStartPoint || !this.clickStartTime) return;
@@ -850,7 +975,8 @@ export class InteractionManager {
     if (handler && this.hoveredHandler !== handler && !movingHandler) {
       handler.onHoverEnter?.(point, event);
       this.canvas.style.cursor =
-        handler.getCursor?.(worldPoint, scale) || this.canvas.style.cursor;
+        handler.getCursor?.(worldPoint, scale, this.currentModifiers) ||
+        this.canvas.style.cursor;
 
       this.eventBus.dispatch("lighter:overlay-hover", {
         id: handler.id,
@@ -861,7 +987,8 @@ export class InteractionManager {
     // If we are hovering on the same overlay, move the hover
     if (this.hoveredHandler === handler) {
       this.canvas.style.cursor =
-        handler.getCursor?.(worldPoint, scale) || this.canvas.style.cursor;
+        handler.getCursor?.(worldPoint, scale, this.currentModifiers) ||
+        this.canvas.style.cursor;
 
       this.eventBus.dispatch("lighter:overlay-hover-move", {
         id: handler.id,
@@ -895,15 +1022,12 @@ export class InteractionManager {
     );
   }
 
-  private getInteractiveHandler():
-    | InteractiveKeypointHandler
-    | InteractivePolylineHandler
-    | InteractiveDetectionHandler
-    | undefined {
-    // self-managed handlers take precedence to allow editing on top of detections
+  private getInteractiveHandler(): InteractionHandler | undefined {
+    // self-managed handlers take precedence to allow editing on top of
+    // other overlays
     const selfManaged = this.handlers.find((h) =>
       isSelfManagedInteractiveHandler(h)
-    ) as InteractiveKeypointHandler | InteractivePolylineHandler | undefined;
+    );
 
     return (
       selfManaged ??
@@ -1051,11 +1175,10 @@ export class InteractionManager {
   }
 
   /**
-   * Registers a handler invoked on pointer-down events that land on empty
-   * canvas (no overlay or only the canonical media). Used by consumers to
-   * intercept the first click of a creation gesture (e.g. seeding a new
-   * overlay at the click position) without the manager needing to know
-   * which mode is active. Pass `null` to clear.
+   * Registers a handler invoked on pointer-down events before overlay
+   * selection runs. The handler decides whether to claim the click; can be
+   * used to take precedence over * selecting an underlying overlay.
+   * Pass `null` to clear.
    */
   setEmptyCanvasClickHandler(handler: EmptyCanvasClickHandler | null): void {
     this.emptyCanvasClickHandler = handler ?? undefined;

@@ -7,7 +7,10 @@ import { ClickEventModifiers, getClickModifiers } from "@fiftyone/utilities";
 import { AddPolylinePointCommand } from "../commands/AddPolylinePointCommand";
 import { MoveKeypointPointCommand } from "../commands/MoveKeypointPointCommand";
 import { RemovePolylinePointCommand } from "../commands/RemovePolylinePointCommand";
-import type { PolylineOverlay } from "../overlay/PolylineOverlay";
+import type {
+  PolylineOverlay,
+  SegmentEndpoint,
+} from "../overlay/PolylineOverlay";
 import type { Point } from "../types";
 import type { InteractionHandler } from "./InteractionManager";
 import {
@@ -88,6 +91,27 @@ export class InteractivePolylineHandler implements InteractionHandler {
   private dragPointId: string | null = null;
   private dragStartRelative: [number, number] | null = null;
 
+  /**
+   * Segment that subsequent empty-space EXTEND clicks should append to. Set
+   * whenever a click lands on (or creates) a segment; cleared if that segment
+   * is later spliced away by a deletion. Mirrored to the overlay so the
+   * preview line anchors against the same segment.
+   */
+  private activeSegmentIdx: number | null = null;
+
+  /**
+   * Saved `isDeletable` value from before the handler installed. Polyline
+   * overlays are typically constructed with `deletable: false` so deletes are
+   * blocked in non-edit contexts; an active editing session needs point
+   * removal allowed.
+   */
+  private readonly priorIsDeletable: boolean;
+
+  private setActiveSegmentIdx(segmentIdx: number | null): void {
+    this.activeSegmentIdx = segmentIdx;
+    this.overlay.setPreviewAnchorSegmentIdx(segmentIdx);
+  }
+
   constructor(
     public readonly overlay: PolylineOverlay,
     private readonly resolvePointHit?: (
@@ -99,7 +123,10 @@ export class InteractivePolylineHandler implements InteractionHandler {
     private readonly resolveEmptyHit?: (
       ctx: PolylineEmptyHitContext
     ) => PolylineEmptyHitAction | undefined
-  ) {}
+  ) {
+    this.priorIsDeletable = overlay.getDeletable();
+    overlay.setDeletable(true);
+  }
 
   containsPoint(): boolean {
     // Capture all clicks while active
@@ -134,6 +161,11 @@ export class InteractivePolylineHandler implements InteractionHandler {
     // 1) Existing point?
     const hitId = this.overlay.findPointIdAt(worldPoint);
     if (hitId) {
+      const loc = this.overlay.findPointLocationById(hitId);
+      if (loc) {
+        this.setActiveSegmentIdx(loc.segmentIdx);
+      }
+
       const action = this.resolvePointHit?.({
         pointId: hitId,
         relativePoint,
@@ -152,6 +184,8 @@ export class InteractivePolylineHandler implements InteractionHandler {
     // 2) Edge?
     const edgeHit = this.overlay.findEdgeAt(worldPoint);
     if (edgeHit) {
+      this.setActiveSegmentIdx(edgeHit.segmentIdx);
+
       const action =
         this.resolveEdgeHit?.({
           segmentIdx: edgeHit.segmentIdx,
@@ -189,24 +223,92 @@ export class InteractivePolylineHandler implements InteractionHandler {
       return true;
     }
 
-    this.extendNearestEndpoint(worldPoint, rp);
+    // connect to the farthest endpoint when holding meta key,
+    // otherwise the nearest endpoint
+    if (modifiers.metaKey) {
+      this.extendFarthestEndpoint(worldPoint, rp);
+    } else {
+      this.extendNearestEndpoint(worldPoint, rp);
+    }
     return true;
   }
 
-  onMove(_point: Point, worldPoint: Point, _event: PointerEvent): boolean {
+  onMove(_point: Point, worldPoint: Point, event: PointerEvent): boolean {
     if (this.dragPointId !== null) {
       this.overlay.movePointById(
         this.dragPointId,
         this.overlay.absolutePointToRelative(worldPoint)
       );
+      // Hide new point preview while dragging
+      this.overlay.setPreviewPoint(null);
 
       return true;
     }
 
-    // Hover preview — telegraphs where the next click will place a point.
-    this.overlay.setPreviewPoint(worldPoint);
+    this.refreshPreview(worldPoint, getClickModifiers(event));
 
     return true;
+  }
+
+  onModifiersChanged(
+    modifiers: ClickEventModifiers,
+    worldPoint: Point | null
+  ): void {
+    if (this.dragPointId !== null || !worldPoint) {
+      return;
+    }
+
+    this.refreshPreview(worldPoint, modifiers);
+  }
+
+  /**
+   * Updates the preview line based on cursor position and modifier state.
+   * Hidden when:
+   * - Cursor is over an existing point — next click is grab/delete.
+   * - Cursor is over an edge — next click inserts at the projection on
+   *   that edge, anchored to its endpoints rather than the segment's.
+   * - Shift is held — next click starts a fresh segment with no anchor.
+   *
+   * Meta is mirrored to the overlay so the dashed line anchors against
+   * the segment's far endpoint while held — matching what the click
+   * will produce.
+   */
+  private refreshPreview(
+    worldPoint: Point,
+    modifiers: ClickEventModifiers
+  ): void {
+    this.overlay.setPreviewAnchorFlipped(modifiers.metaKey);
+
+    // hide preview if:
+    //   - creating a new segment (holding shift key)
+    //   - hovering an existing point (move point)
+    //   - hovering an existing edge (new point between edge endpoints)
+    if (
+      modifiers.shiftKey ||
+      this.overlay.findPointIdAt(worldPoint) ||
+      this.overlay.findEdgeAt(worldPoint)
+    ) {
+      this.overlay.setPreviewPoint(null);
+      return;
+    }
+
+    this.overlay.setPreviewPoint(worldPoint);
+  }
+
+  getCursor(
+    worldPoint: Point,
+    _scale: number,
+    modifiers?: ClickEventModifiers
+  ): string {
+    if (this.dragPointId !== null) {
+      return "grabbing";
+    }
+
+    if (this.overlay.findPointIdAt(worldPoint)) {
+      return modifiers?.altKey ? "not-allowed" : "grab";
+    }
+
+    return "crosshair";
   }
 
   onPointerUp(_point: Point, _event: PointerEvent): boolean {
@@ -242,8 +344,50 @@ export class InteractivePolylineHandler implements InteractionHandler {
     return true;
   }
 
+  onCanvasLeave(): void {
+    this.overlay.setPreviewPoint(null);
+  }
+
   cleanup(): void {
     this.overlay.setPreviewPoint(null);
+    this.overlay.setPreviewAnchorSegmentIdx(null);
+    this.overlay.setPreviewAnchorFlipped(false);
+    this.overlay.setDeletable(this.priorIsDeletable);
+  }
+
+  /**
+   * Pre-activates the segment under `worldPoint` (point hit, then edge hit,
+   * then nearest endpoint). Used at install time to inherit the segment
+   * implied by the click that triggered selection — without this, the user
+   * would have to click again before EXTEND constrains to that segment.
+   *
+   * Pass `null` to clear activation.
+   */
+  activateSegmentAtWorldPoint(worldPoint: Point | null): void {
+    if (!worldPoint) {
+      this.setActiveSegmentIdx(null);
+      return;
+    }
+
+    const hitId = this.overlay.findPointIdAt(worldPoint);
+    if (hitId) {
+      const loc = this.overlay.findPointLocationById(hitId);
+      if (loc) {
+        this.setActiveSegmentIdx(loc.segmentIdx);
+        return;
+      }
+    }
+
+    const edgeHit = this.overlay.findEdgeAt(worldPoint);
+    if (edgeHit) {
+      this.setActiveSegmentIdx(edgeHit.segmentIdx);
+      return;
+    }
+
+    const nearest = this.overlay.findNearestEndpoint(worldPoint);
+    if (nearest) {
+      this.setActiveSegmentIdx(nearest.segmentIdx);
+    }
   }
 
   /**
@@ -276,6 +420,7 @@ export class InteractivePolylineHandler implements InteractionHandler {
       return;
     }
 
+    const segCountBefore = this.overlay.getSegmentCount();
     const cmd = new RemovePolylinePointCommand(
       this.overlay,
       loc.segmentIdx,
@@ -284,6 +429,18 @@ export class InteractivePolylineHandler implements InteractionHandler {
     cmd.execute();
     CommandContextManager.instance().getActiveContext().pushUndoable(cmd);
     this.pushedCommandIds.add(cmd.id);
+
+    // If the segment was emptied, indices for following segments shift down.
+    if (this.overlay.getSegmentCount() < segCountBefore) {
+      if (this.activeSegmentIdx === loc.segmentIdx) {
+        this.setActiveSegmentIdx(null);
+      } else if (
+        this.activeSegmentIdx !== null &&
+        this.activeSegmentIdx > loc.segmentIdx
+      ) {
+        this.setActiveSegmentIdx(this.activeSegmentIdx - 1);
+      }
+    }
   }
 
   private insertOnEdge(edgeHit: {
@@ -314,34 +471,67 @@ export class InteractivePolylineHandler implements InteractionHandler {
     return newId;
   }
 
-  private startNewSegmentWithPoint(rp: [number, number]): string {
+  private startNewSegmentWithPoint(relativePoint: [number, number]): string {
     const newSegIdx = this.overlay.startNewSegment();
-    const newId = this.overlay.appendPointToSegment(newSegIdx, rp);
+    const newId = this.overlay.appendPointToSegment(newSegIdx, relativePoint);
 
     const cmd = new AddPolylinePointCommand(
       this.overlay,
       newSegIdx,
       0,
       newId,
-      rp,
+      relativePoint,
       undefined,
       true
     );
     CommandContextManager.instance().getActiveContext().pushUndoable(cmd);
     this.pushedCommandIds.add(cmd.id);
 
+    this.setActiveSegmentIdx(newSegIdx);
+
     return newId;
   }
 
   private extendNearestEndpoint(
     worldPoint: Point,
-    rp: [number, number]
+    relativePoint: [number, number]
   ): string {
-    const target = this.overlay.findNearestEndpoint(worldPoint);
+    return this.extendFromEndpoint(
+      relativePoint,
+      this.overlay.findNearestEndpoint(
+        worldPoint,
+        this.activeSegmentIdx ?? undefined,
+        false
+      )
+    );
+  }
+
+  private extendFarthestEndpoint(
+    worldPoint: Point,
+    relativePoint: [number, number]
+  ): string {
+    return this.extendFromEndpoint(
+      relativePoint,
+      this.overlay.findNearestEndpoint(
+        worldPoint,
+        this.activeSegmentIdx ?? undefined,
+        true
+      )
+    );
+  }
+
+  private extendFromEndpoint(
+    relativePoint: [number, number],
+    target: SegmentEndpoint
+  ): string {
     // No segments yet — extend gesture seeds the first segment.
     if (!target) {
-      return this.startNewSegmentWithPoint(rp);
+      return this.startNewSegmentWithPoint(relativePoint);
     }
+
+    // First extend with no prior activation — adopt the chosen segment so
+    // subsequent extends keep targeting it.
+    this.setActiveSegmentIdx(target.segmentIdx);
 
     const segLen = this.overlay.getSegmentLength(target.segmentIdx);
     const indexInSegment = target.end === "head" ? 0 : segLen;
@@ -349,14 +539,14 @@ export class InteractivePolylineHandler implements InteractionHandler {
     const newId = this.overlay.insertPointInSegment(
       target.segmentIdx,
       indexInSegment,
-      rp
+      relativePoint
     );
     const cmd = new AddPolylinePointCommand(
       this.overlay,
       target.segmentIdx,
       indexInSegment,
       newId,
-      rp
+      relativePoint
     );
     CommandContextManager.instance().getActiveContext().pushUndoable(cmd);
     this.pushedCommandIds.add(cmd.id);
