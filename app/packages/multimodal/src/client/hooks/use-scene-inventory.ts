@@ -13,7 +13,7 @@ import { useMultimodalQuery } from "./use-multimodal-query";
  */
 export function useSceneInventory(
   request: SceneInventoryRequest | null | undefined,
-  client: MultimodalQueryClient = defaultMultimodalClient
+  client: MultimodalQueryClient = defaultMultimodalClient.queries
 ): MultimodalQueryState<SceneInventory> {
   const datasetId = request?.datasetId;
   const sampleId = request?.sampleId;

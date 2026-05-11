@@ -13,7 +13,7 @@ import { useMultimodalQuery } from "./use-multimodal-query";
  */
 export function usePlaybackPlan(
   request: PlaybackPlanRequest | null | undefined,
-  client: MultimodalQueryClient = defaultMultimodalClient
+  client: MultimodalQueryClient = defaultMultimodalClient.queries
 ): MultimodalQueryState<PlaybackPlan> {
   const inventoryId = request?.inventoryId;
 

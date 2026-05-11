@@ -65,18 +65,12 @@ export interface DecodedOutput {
 }
 
 /**
- * Context supplied to decoder implementations at decode time.
- */
-export interface DecodeContext {
-  readonly streamId: string;
-  readonly coordinateFrameId?: string;
-}
-
-/**
  * Frontend decoder implementation for a specific encoded payload.
  */
 export interface Decoder {
+  readonly id: string;
   readonly payload: PayloadDescriptor;
+  readonly version: string;
 
-  decode(bytes: Uint8Array, ctx: DecodeContext): DecodedOutput;
+  decode<DecoderContext>(bytes: Uint8Array, ctx: DecoderContext): DecodedOutput;
 }

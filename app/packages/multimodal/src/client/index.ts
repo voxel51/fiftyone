@@ -5,6 +5,10 @@ import {
   type SceneInventory,
 } from "../schemas/v1";
 import { fetchProtobuf } from "./fetch-protobuf";
+import {
+  defaultMultimodalResourcesClient,
+  type MultimodalResourcesClient,
+} from "./resources";
 
 /**
  * Identifies the sample whose source inventory should be resolved.
@@ -30,12 +34,46 @@ export interface MultimodalQueryClient {
 }
 
 /**
+ * Public multimodal client split by source-agnostic queries and adapter
+ * resources.
+ */
+export interface MultimodalClient {
+  readonly queries: MultimodalQueryClient;
+  readonly resources: MultimodalResourcesClient;
+}
+
+/**
+ * Options used to construct a multimodal client.
+ */
+export interface CreateMultimodalClientOptions {
+  readonly queries?: MultimodalQueryClient;
+  readonly resources?: MultimodalResourcesClient;
+}
+
+/**
  * Default query client backed by FiftyOne's multimodal server routes.
  */
-export const defaultMultimodalClient: MultimodalQueryClient = {
+export const defaultMultimodalQueryClient: MultimodalQueryClient = {
   getPlaybackPlan,
   getSceneInventory,
 };
+
+/**
+ * Creates the public multimodal client surface.
+ */
+export function createMultimodalClient(
+  options: CreateMultimodalClientOptions = {}
+): MultimodalClient {
+  return {
+    queries: options.queries ?? defaultMultimodalQueryClient,
+    resources: options.resources ?? defaultMultimodalResourcesClient,
+  };
+}
+
+/**
+ * Default multimodal client.
+ */
+export const defaultMultimodalClient = createMultimodalClient();
 
 /**
  * Fetches the inventory artifact for a dataset sample.
@@ -62,3 +100,4 @@ export function getPlaybackPlan(
 }
 
 export { fetchProtobuf } from "./fetch-protobuf";
+export * from "./resources";
