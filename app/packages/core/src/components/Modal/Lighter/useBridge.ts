@@ -214,17 +214,23 @@ export const useBridge = (scene: Scene2D | null) => {
   );
 
   // Merge tool: when selection clears (e.g. right-click deselect), drop
-  // the merge-target reference so the next canvas click starts a new merge.
+  // the merge-target reference and exit edit mode.
   useEventHandler(
     "lighter:selection-cleared",
-    useCallback(() => {
-      if (
-        segmentationMode.segmentationModeActive &&
-        segmentationMode.tool === SegmentationTool.Merge
-      ) {
-        segmentationMode.mergeTool.clearMergeTarget();
-      }
-    }, [segmentationMode])
+    useCallback(
+      (payload) => {
+        if (
+          segmentationMode.segmentationModeActive &&
+          segmentationMode.tool === SegmentationTool.Merge
+        ) {
+          segmentationMode.mergeTool.clearMergeTarget();
+          focus.deselectOverlay({
+            ignoreSideEffects: payload.ignoreSideEffects,
+          });
+        }
+      },
+      [focus, segmentationMode]
+    )
   );
 
   useEventHandler(
