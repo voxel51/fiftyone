@@ -23,10 +23,22 @@ const Draggable: React.FC<
   const disabled = canModifySidebarGroup.enabled !== true;
   const isFieldVisibilityApplied = useRecoilValue(fos.isFieldVisibilityActive);
 
+  const entryPath = useMemo(() => {
+    if (!entryKey) return undefined;
+    try {
+      const parsed = JSON.parse(entryKey);
+      return Array.isArray(parsed)
+        ? (parsed[1] as string | undefined)
+        : undefined;
+    } catch {
+      return undefined;
+    }
+  }, [entryKey]);
+
   const disableDrag =
     !entryKey ||
-    entryKey.split(",")[1]?.includes(fos.TAGS_FIELD) ||
-    entryKey.split(",")[1]?.includes(fos.LABEL_TAGS_FIELD) ||
+    entryPath === fos.TAGS_FIELD ||
+    entryPath === fos.LABEL_TAGS_FIELD ||
     disabled ||
     isFieldVisibilityApplied;
   const active = trigger && (dragging || hovering) && !disableDrag;
@@ -37,11 +49,6 @@ const Draggable: React.FC<
     cursor:
       !trigger || disableDrag ? "default" : dragging ? "grabbing" : "grab",
   });
-  const dataCyKey = entryKey
-    ?.split(",")?.[1]
-    ?.replace(/["]/g, "")
-    ?.replace("]", "");
-
   const isDraggable = useMemo(
     () => !disableDrag && trigger && !disabled,
     [disableDrag, trigger, disabled]
@@ -57,7 +64,7 @@ const Draggable: React.FC<
     <>
       <animated.div
         data-draggable={isDraggable}
-        data-cy={`sidebar-entry-draggable-${dataCyKey}`}
+        data-cy={`sidebar-entry-draggable-${entryPath}`}
         onClick={(event) => {
           event.stopPropagation();
         }}
