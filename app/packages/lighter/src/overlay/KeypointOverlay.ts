@@ -17,6 +17,7 @@ import {
 } from "../constants";
 import { CONTAINS } from "../core/Scene2D";
 import type { Renderer2D } from "../renderer/Renderer2D";
+import type { OverlayEvent } from "../interaction/InteractionManager";
 import type { Selectable } from "../selection/Selectable";
 import type {
   DrawStyle,
@@ -34,7 +35,7 @@ import {
 } from "../utils/geometry";
 import { getSimpleStrokeStyles } from "../utils/colorMapping";
 import { BaseOverlay } from "./BaseOverlay";
-import { NO_BOUNDS } from "./BoundingBoxOverlay";
+import { NO_BOUNDS } from "./DetectionOverlay";
 import { v4 as uuidv4 } from "uuid";
 
 export type KeypointLabel = RawLookerLabel & {
@@ -81,6 +82,38 @@ type KeypointEntry = {
 };
 
 /**
+ * Per-point snapshot passed to render effects for a single frame.
+ */
+export interface KeypointEffectPoint {
+  id: string;
+  position: Point;
+  variant?: string;
+}
+
+/**
+ * Context passed to a {@link KeypointEffect} once per frame. The overlay
+ * owns frame timing and point geometry; effects own only their own draw
+ * contribution.
+ */
+export interface KeypointEffectContext {
+  overlay: KeypointOverlay;
+  renderer: Renderer2D;
+  /** Per-point snapshot for this frame, in entry order. */
+  points: ReadonlyArray<KeypointEffectPoint>;
+  /** Resolves a variant key to the same draw style points use. */
+  resolveStyle: (variant: string | undefined) => DrawStyle;
+  containerId: string;
+}
+
+/**
+ * A custom render contribution for a {@link KeypointOverlay}. Invoked once
+ * per frame, behind the points themselves. The caller owns lifecycle —
+ * driving frame invalidation via `markDirty()` while animating, and
+ * unregistering when done.
+ */
+export type KeypointEffect = (ctx: KeypointEffectContext) => void;
+
+/**
  * Per-render context passed to {@link KeypointOverlay} render hooks. Lets
  * subclasses extend rendering without recomputing shared state.
  */
@@ -111,7 +144,7 @@ export class KeypointOverlay
   private isDraggable: boolean;
   private isDeletable: boolean;
   private isSelectable: boolean;
-  private connections: number[][];
+  protected connections: number[][];
   private closed: boolean;
   private readonly variantStyles: Record<string, DrawStyle>;
   private isSelectedState = false;
@@ -119,7 +152,7 @@ export class KeypointOverlay
   #points: KeypointEntry[];
 
   // Per-point sub-selection
-  private selectedPointIndex: number | null = null;
+  protected selectedPointIndex: number | null = null;
 
   // Drag state for individual points
   private dragPointIndex: number | null = null;
@@ -128,6 +161,11 @@ export class KeypointOverlay
 
   // Preview point for interactive creation (cursor tracking)
   protected previewPoint?: Point | null = null;
+
+  // Registered render effects. Invoked once per frame, between point
+  // bucket-collection and bucket-draw, so contributions appear behind the
+  // solid points. Owners drive frame invalidation and unregister when done.
+  private renderEffects: Map<string, KeypointEffect> = new Map();
 
   // Caches — invalidated in markDirty()
   private _absPointsCache: Point[] | null = null;
@@ -172,7 +210,7 @@ export class KeypointOverlay
     return [(ap.x - t.offsetX) / t.scaleX, (ap.y - t.offsetY) / t.scaleY];
   }
 
-  private getAbsolutePoints(): Point[] {
+  protected getAbsolutePoints(): Point[] {
     if (this._absPointsCache) return this._absPointsCache;
     this._absPointsCache = this.#points.map((e) =>
       this.relativePointToAbsolute(e.position)
@@ -288,7 +326,7 @@ export class KeypointOverlay
   /**
    * Collects edge segments from connections with bounds-checked indices.
    */
-  private collectEdgeSegments(absPoints: Point[]): Array<[Point, Point]> {
+  protected collectEdgeSegments(absPoints: Point[]): Array<[Point, Point]> {
     const segments: Array<[Point, Point]> = [];
     const len = absPoints.length;
     for (const path of this.connections) {
@@ -447,6 +485,31 @@ export class KeypointOverlay
         bucket.push(ctx.absPoints[i]);
       } else {
         buckets.set(v, [ctx.absPoints[i]]);
+      }
+    }
+
+    // Custom render effects — drawn behind the points so they appear
+    // beneath the solid point markers. Owners drive their own animation
+    // timing and frame invalidation.
+    if (this.renderEffects.size > 0) {
+      const effectPoints: KeypointEffectPoint[] = ctx.absPoints.map(
+        (position, i) => ({
+          id: this.#points[i].id,
+          position,
+          variant: this.#points[i].variant,
+        })
+      );
+
+      const effectContext: KeypointEffectContext = {
+        overlay: this,
+        renderer,
+        points: effectPoints,
+        resolveStyle: resolvePointStyle,
+        containerId: this.containerId,
+      };
+
+      for (const effect of this.renderEffects.values()) {
+        effect(effectContext);
       }
     }
 
@@ -610,12 +673,7 @@ export class KeypointOverlay
     return "default";
   }
 
-  onPointerDown(
-    point: Point,
-    worldPoint: Point,
-    _event: PointerEvent,
-    scale: number
-  ): boolean {
+  onPointerDown({ point, worldPoint, scale }: OverlayEvent): boolean {
     const nearestIdx = this.findNearestPointIndex(worldPoint, scale);
 
     if (nearestIdx >= 0) {
@@ -638,12 +696,7 @@ export class KeypointOverlay
     return false;
   }
 
-  onMove(
-    _point: Point,
-    worldPoint: Point,
-    _event: PointerEvent,
-    _scale: number
-  ): boolean {
+  onMove({ worldPoint }: OverlayEvent): boolean {
     if (
       this.dragPointIndex === null ||
       !this.moveStartScreenPoint ||
@@ -662,7 +715,7 @@ export class KeypointOverlay
     return true;
   }
 
-  onPointerUp(_point: Point, _event: PointerEvent): boolean {
+  onPointerUp(): boolean {
     if (this.dragPointIndex === null) return false;
 
     const movedIdx = this.dragPointIndex;
@@ -698,12 +751,20 @@ export class KeypointOverlay
   /**
    * Adds a point at the given absolute (world) position.
    *
-   * @param variant - Optional variant key used to determine render style.
-   * @param id - Optional ID. When provided, reuses this id instead of
+   * @param options.variant - Optional variant key used to determine render style.
+   * @param options.id - Optional ID. When provided, reuses this id instead of
    *             generating one. Useful when referential integrity is desired.
+   * @param options.dragging - Whether this point is being placed as part of a
+   *             continuous drag. Subclasses (e.g. `MaskKeypoints`) may gate
+   *             dragged placements by a minimum-distance threshold while
+   *             always honoring discrete clicks.
    * @returns The id of the new point.
    */
-  addPoint(worldPoint: Point, variant?: string, id?: string): string {
+  addPoint(
+    worldPoint: Point,
+    options?: { variant?: string; id?: string; dragging?: boolean }
+  ): string {
+    const { variant, id } = options ?? {};
     const position = this.absolutePointToRelative(worldPoint);
     const entry: KeypointEntry = { id: id ?? uuidv4(), position, variant };
     this.#points.push(entry);
@@ -887,6 +948,26 @@ export class KeypointOverlay
   setPreviewPoint(worldPoint: Point | null): void {
     this.previewPoint = worldPoint;
     this.markDirty();
+  }
+
+  /**
+   * Registers a custom render effect. The effect is invoked once per frame
+   * during {@link renderImpl}, behind the points themselves. Returns a
+   * teardown function; {@link unregisterEffect} is also available for callers
+   * that prefer id-based removal.
+   *
+   * The caller owns animation timing — the overlay only re-renders when
+   * dirty, so animated effects must call {@link markDirty} each tick.
+   */
+  registerEffect(id: string, effect: KeypointEffect): () => void {
+    this.renderEffects.set(id, effect);
+    this.markDirty();
+    return () => this.unregisterEffect(id);
+  }
+
+  /** Removes a previously registered render effect by id. */
+  unregisterEffect(id: string): void {
+    if (this.renderEffects.delete(id)) this.markDirty();
   }
 
   /**

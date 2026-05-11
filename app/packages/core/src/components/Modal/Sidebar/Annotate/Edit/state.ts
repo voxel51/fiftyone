@@ -93,14 +93,14 @@ export const current = atom(
 
 export const currentData = atom(
   (get) => get(current)?.data ?? null,
-  (get, set, data: Partial<AnnotationLabel["data"]>) => {
+  (get, set, data: Partial<AnnotationLabel["data"]>, replace?: boolean) => {
     const currentEditing = get(editing);
 
     if (currentEditing && typeof currentEditing !== "string") {
       const current = get(currentEditing);
       return set(currentEditing, {
         ...current,
-        data: { ...current.data, ...data },
+        data: replace ? data : { ...current.data, ...data },
       });
     }
   }
@@ -121,7 +121,9 @@ export const currentField = atom(
     }
 
     const currentData = currentLabel.data;
-    const data = buildNewLabelData(path, currentData._cls, currentData?._id);
+    const data = buildNewLabelData(path, currentData._cls, {
+      id: currentData?._id,
+    });
     data.bounding_box = currentData?.bounding_box;
 
     currentLabel.overlay?.updateField(path);

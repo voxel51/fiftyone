@@ -122,14 +122,10 @@ export class SidebarPom {
   }
 
   // apply a filter to a field
-  async applyLabelFromList(
-    field: string,
-    labels: string[],
-    targetModeId: string
-  ) {
-    labels.forEach((label) => {
-      this.applyFilter(label);
-    });
+  async applyLabelFromList(labels: string[], targetModeId: string) {
+    for (const label of labels) {
+      await this.applyFilter(label);
+    }
 
     const currentMode = this.sidebar.getByTestId("filter-mode-div");
     await currentMode.waitFor();

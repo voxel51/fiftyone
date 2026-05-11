@@ -118,7 +118,6 @@ call `session.wait()` to keep the session (and the script) alive.
 """
 
 _WELCOME_MESSAGE = """
-Welcome to
 
 ███████╗██╗███████╗████████╗██╗   ██╗ ██████╗ ███╗   ██╗███████╗
 ██╔════╝██║██╔════╝╚══██╔══╝╚██╗ ██╔╝██╔═══██╗████╗  ██║██╔════╝
@@ -127,15 +126,10 @@ Welcome to
 ██║     ██║██║        ██║      ██║   ╚██████╔╝██║ ╚████║███████╗
 ╚═╝     ╚═╝╚═╝        ╚═╝      ╚═╝    ╚═════╝ ╚═╝  ╚═══╝╚══════╝ v{0}
 
-If you're finding FiftyOne helpful, here's how you can get involved:
-
-|
-|  ⭐⭐⭐ Give the project a star on GitHub ⭐⭐⭐
-|  https://github.com/voxel51/fiftyone
-|
-|  🚀🚀🚀 Join the FiftyOne Discord community 🚀🚀🚀
-|  https://community.voxel51.com/
-|
+🤖  Ask the Docs Agent       https://docs.voxel51.com
+🚀  Getting Started Guides   https://docs.voxel51.com/getting_started
+💬  Join the Community       https://community.voxel51.com
+🎓  Book a Workshop          https://voxel51.com/workshops
 """
 
 

@@ -1,5 +1,5 @@
 import {
-  BoundingBoxOverlay,
+  DetectionOverlay,
   KeypointOverlay,
   PolylineOverlay,
   useLighter,
@@ -24,7 +24,7 @@ export const useAddAnnotationLabelToRenderer = () => {
       if (label.type === CLASSIFICATION) {
         addOverlay(label.overlay);
       } else if (label.type === DETECTION) {
-        addOverlay(label.overlay as BoundingBoxOverlay);
+        addOverlay(label.overlay as DetectionOverlay);
       } else if (label.type === KEYPOINT) {
         addOverlay(label.overlay as KeypointOverlay);
       } else if (

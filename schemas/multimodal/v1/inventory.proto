@@ -1,0 +1,89 @@
+syntax = "proto3";
+
+package fiftyone.multimodal.schemas.v1;
+
+import "common.proto";
+
+// Source-fact entry describing a single multimodal stream discovered during
+// ingest.
+message StreamInventory {
+  // Stable stream identifier within the scene inventory.
+  string stream_id = 1;
+
+  // Descriptor used to route encoded payloads to compatible decoders.
+  PayloadDescriptor payload = 2;
+
+  // Optional number of records in the stream.
+  optional uint64 record_count = 3 [jstype = JS_STRING];
+
+  // Optional human-readable stream label for default panel titles.
+  optional string display_name = 4;
+
+  // Optional coordinate frame associated with records in this stream.
+  optional string coordinate_frame_id = 5;
+
+  // Adapter-provided stream metadata, such as topic, channel, column, shard,
+  // schema name, or source path. Scene-level metadata belongs on
+  // SceneInventory.metadata.
+  map<string, string> metadata = 6;
+}
+
+// Static coordinate-frame topology discovered by the source adapter. This
+// identifies parent/child frame relationships and their provenance only. The
+// actual transform value remains source or stream data unless this contract
+// grows a typed transform representation.
+message StaticCoordinateFrameEdge {
+  // Parent coordinate frame identifier.
+  string parent_frame_id = 1;
+
+  // Child coordinate frame identifier.
+  string child_frame_id = 2;
+
+  // Stream that declared this static relationship.
+  string source_stream_id = 3;
+}
+
+// Durable source inventory produced by ingest for one multimodal scene.
+message SceneInventory {
+  // Stable immutable identifier for this ingest-produced inventory artifact.
+  string inventory_id = 1;
+
+  // Stable scene identifier used across multimodal subsystems.
+  string scene_id = 2;
+
+  // Adapter-level source format identifier.
+  string source_format = 3;
+
+  // Optional because not every scene is backed by one stable source file.
+  // File-backed adapters should set it for OPFS cache keys and idempotent
+  // re-ingest.
+  SourceFingerprint source_fingerprint = 4;
+
+  // Semantic version of this inventory contract. This is for contract
+  // compatibility, not the source dataset or adapter version.
+  string inventory_version = 5;
+
+  // Time tracks discovered during ingest.
+  repeated TimeTrack time_tracks = 6;
+
+  // Streams discovered in the source scene.
+  repeated StreamInventory streams = 7;
+
+  // Static coordinate-frame edges discovered during inventory. Time-varying
+  // transforms remain stream data.
+  repeated StaticCoordinateFrameEdge static_coordinate_frame_edges = 8;
+
+  // Adapter-provided scene metadata, such as dataset, directory, shard group,
+  // episode, or source-level labels. Stream-specific details belong on
+  // StreamInventory.metadata.
+  map<string, string> metadata = 9;
+
+  // RFC 3339 timestamp string. We intentionally avoid protobuf Timestamp here
+  // (and other places)
+  // because some language runtimes deserialize timestamps into native types
+  // like JavaScript Date and lose nanosecond precision.
+  string produced_at = 10;
+
+  // Adapter name and version that produced this inventory.
+  string produced_by = 11;
+}

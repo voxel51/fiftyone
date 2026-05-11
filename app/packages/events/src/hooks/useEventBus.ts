@@ -19,6 +19,7 @@ export const useEventBus = <T extends EventGroup>(
     return {
       on: dispatcher.on.bind(dispatcher),
       off: dispatcher.off.bind(dispatcher),
+      once: dispatcher.once.bind(dispatcher),
       dispatch: dispatcher.dispatch.bind(dispatcher),
     } as EventDispatcher<T>;
   }, [channelId]);

@@ -2478,9 +2478,7 @@ class TestPipelineRequestParamsOverrides(unittest.TestCase):
                     name="export_stage",
                     operator_uri="@test/export_op",
                     params={"format": "json"},
-                    request_params_overrides={
-                        "dataset_name": "export_dataset"
-                    },
+                    request_params_overrides={"view_name": "export_view"},
                 ),
             ]
         )
@@ -2508,5 +2506,5 @@ class TestPipelineRequestParamsOverrides(unittest.TestCase):
         # Verify second stage overrides
         self.assertEqual(
             doc.pipeline.stages[1].request_params_overrides,
-            {"dataset_name": "export_dataset"},
+            {"view_name": "export_view"},
         )

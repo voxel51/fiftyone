@@ -1,5 +1,5 @@
 import type {
-  BoundingBoxOverlay,
+  DetectionOverlay,
   ClassificationOverlay,
   KeypointLabel,
   KeypointOverlay,
@@ -149,7 +149,7 @@ export interface ClassificationAnnotationLabel extends Label {
 
 export interface DetectionAnnotationLabel extends Label {
   data: DetectionLabel;
-  overlay: BoundingBoxOverlay;
+  overlay: DetectionOverlay;
   type: "Detection";
 }
 

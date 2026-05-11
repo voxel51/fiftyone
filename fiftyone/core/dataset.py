@@ -18,6 +18,7 @@ import os
 import random
 import string
 from datetime import datetime
+from typing import Optional
 
 import cachetools
 import eta.core.serial as etas
@@ -1815,6 +1816,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Raises:
             ExceptionGroup: if the label schema is invalid
         """
+        # Defensive: the frontend is expected to submit a schema with no
+        # ontology-sourced attributes or _source markers, but strip them here
+        # regardless so a hand-edited / malformed payload cannot persist
+        # ontology content as local copies.
+        label_schema = foa.dehydrate_applied_ontology(label_schema)
         foa.validate_label_schemas(
             self,
             label_schema,
@@ -9031,7 +9037,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _expand_schema(self, sample, dynamic):
         expanded = False
+        schema = None
 
+        schema = None
         if not dynamic:
             schema = self.get_field_schema(include_private=True)
 
@@ -9089,6 +9097,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self.add_group_slice(slice_name, media_type)
 
     def _expand_frame_schema(self, frames, dynamic):
+        schema = None
         if not dynamic:
             schema = self.get_frame_field_schema(include_private=True)
 

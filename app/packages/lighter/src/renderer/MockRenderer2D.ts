@@ -2,7 +2,13 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import type { DrawStyle, Point, Rect, TextOptions } from "../types";
+import type {
+  DrawStyle,
+  Point,
+  Rect,
+  TextOptions,
+  ViewportState,
+} from "../types";
 import type { ImageOptions, ImageSource, Renderer2D } from "./Renderer2D";
 
 /**
@@ -15,6 +21,8 @@ export class MockRenderer2D implements Renderer2D {
   private tickHandlers: (() => void)[] = [];
   private containers = new Map<string, any>();
   private scale = 1;
+  private panX = 0;
+  private panY = 0;
   private containerDimensions = { width: 800, height: 600 };
 
   constructor(canvas?: HTMLCanvasElement) {
@@ -218,8 +226,6 @@ export class MockRenderer2D implements Renderer2D {
     return this.canvas;
   }
 
-  resetZoomPan(): void {}
-
   zoomIn(): void {}
 
   zoomOut(): void {}
@@ -227,6 +233,24 @@ export class MockRenderer2D implements Renderer2D {
   disableZoomPan(): void {}
 
   enableZoomPan(): void {}
+
+  resetZoomPan(): void {
+    this.scale = 1;
+    this.panX = 0;
+    this.panY = 0;
+  }
+
+  getViewportState(): ViewportState {
+    return { scale: this.scale, panX: 0, panY: 0 };
+  }
+
+  setViewportState({ scale, panX, panY }: ViewportState): void {
+    this.scale = scale;
+    this.panX = panX;
+    this.panY = panY;
+  }
+
+  fitToRect(_worldRect: Rect, _padding?: number): void {}
 
   isReady(): boolean {
     return true;
