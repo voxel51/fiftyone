@@ -3,6 +3,11 @@
  */
 
 import { SelectIcon, type ToolbarActionGroup } from "@fiftyone/components";
+import {
+  type KeyBinding,
+  KnownContexts,
+  useKeyBindings,
+} from "@fiftyone/commands";
 import { buildBrushCursor } from "@fiftyone/lighter";
 import {
   Add,
@@ -311,7 +316,7 @@ export const useSegmentationActions = (): {
             id: "close",
             label: "Close",
             icon: <Close />,
-            shortcut: "Esc",
+            shortcut: "escape",
             tooltip: "Close Segmentation Mode",
             onClick: () => deactivateSegmentationMode(),
           },
@@ -333,6 +338,30 @@ export const useSegmentationActions = (): {
       brushCursor,
     ]
   );
+
+  // Wire `shortcut` declarations on toolbar actions into actual keybindings.
+  // Each visible, enabled action with a shortcut gets a command in the
+  // ModalAnnotate context; `enablement` gates firing on the same conditions
+  // the UI uses to enable the button.
+  const bindings = useMemo<KeyBinding[]>(() => {
+    const out: KeyBinding[] = [];
+    for (const group of groups) {
+      if (group.isHidden) continue;
+      for (const action of group.actions) {
+        if (!action.shortcut || !action.onClick) continue;
+        out.push({
+          commandId: `segmentation-toolbar.${group.id}.${action.id}`,
+          sequence: action.shortcut.toLowerCase(),
+          handler: () => action.onClick!(),
+          label: action.label,
+          enablement: () => segmentationModeActive && !action.isDisabled,
+        });
+      }
+    }
+    return out;
+  }, [groups, segmentationModeActive]);
+
+  useKeyBindings(KnownContexts.ModalAnnotate, bindings, [bindings]);
 
   return { groups, visible: segmentationModeActive };
 };
