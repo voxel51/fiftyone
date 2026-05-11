@@ -2619,7 +2619,7 @@ __metadata:
     fs-extra: "npm:^10.1.0"
     jest: "npm:^29.7.0"
     lodash: "npm:^4.18.1"
-    prettier: "npm:2.2.1"
+    prettier: "npm:^2.8.0"
     vite: "npm:^7.3.2"
   languageName: unknown
   linkType: soft
@@ -2825,7 +2825,7 @@ __metadata:
     lru-cache: "npm:^11.0.1"
     luxon: "npm:^3.6.1"
     numeral: "npm:^2.0.6"
-    prettier: "npm:2.2.1"
+    prettier: "npm:^2.8.0"
     re-resizable: "npm:^6.9.17"
     react-color: "npm:^2.19.3"
     react-draggable: "npm:^4.4.5"
@@ -3099,7 +3099,7 @@ __metadata:
     "@fiftyone/utilities": "workspace:^"
     "@testing-library/react": "npm:^14.0.0"
     jest: "npm:^29.7.0"
-    prettier: "npm:2.2.1"
+    prettier: "npm:^2.8.0"
     vite: "npm:^7.3.2"
     vitest: "npm:^3.0.8"
   peerDependencies:
@@ -3136,7 +3136,7 @@ __metadata:
     "@fiftyone/utilities": "workspace:^"
     jest: "npm:^29.7.0"
     moment: "npm:^2.29.4"
-    prettier: "npm:2.2.1"
+    prettier: "npm:^2.8.0"
     vite: "npm:^7.3.2"
   languageName: unknown
   linkType: soft
@@ -17419,15 +17419,6 @@ __metadata:
   dependencies:
     fast-diff: "npm:^1.1.2"
   checksum: 10/00ce8011cf6430158d27f9c92cfea0a7699405633f7f1d4a45f07e21bf78e99895911cbcdc3853db3a824201a7c745bd49bfea8abd5fb9883e765a90f74f8392
-  languageName: node
-  linkType: hard
-
-"prettier@npm:2.2.1":
-  version: 2.2.1
-  resolution: "prettier@npm:2.2.1"
-  bin:
-    prettier: bin-prettier.js
-  checksum: 10/7bad7ef9cf2da3059a83de0729d480879f5adbe9974419a16a953dee69b2c720ebf1df8d1a713306547a5af8c2b6168a79cd94bda15202de0121348123f7903f
   languageName: node
   linkType: hard
 
