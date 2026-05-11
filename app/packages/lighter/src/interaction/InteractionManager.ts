@@ -1040,7 +1040,7 @@ export class InteractionManager {
 
     const interactiveHandler = this.getInteractiveHandler();
     const handler =
-      interactiveHandler?.getOverlay() || this.findSelectedHandler();
+      interactiveHandler?.getOverlay?.() || this.findSelectedHandler();
 
     // ---- Tier 1: Finalize active editing ----
 
@@ -1445,7 +1445,7 @@ export class InteractionManager {
   getActiveHandler(): InteractionHandler | undefined {
     const interactiveHandler = this.getInteractiveHandler();
     const handler =
-      interactiveHandler?.getOverlay() || this.findSelectedHandler();
+      interactiveHandler?.getOverlay?.() || this.findSelectedHandler();
 
     return handler;
   }
