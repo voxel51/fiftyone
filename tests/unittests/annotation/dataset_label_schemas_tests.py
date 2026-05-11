@@ -463,8 +463,8 @@ class DatasetAnnotationTests(unittest.TestCase):
         dataset.set_label_schemas({"detections": {"type": "detections"}})
 
         # simulate the frontend echoing back a hydrated schema: an
-        # ontology-owned attribute with a _source marker, plus a local
-        # attribute that somehow acquired a forged _source
+        # ontology-owned attribute with a source_ontology marker, plus a local
+        # attribute that somehow acquired a forged source_ontology
         hydrated_payload = {
             "type": "detections",
             "applied_ontology": "my_ontology",
@@ -473,13 +473,13 @@ class DatasetAnnotationTests(unittest.TestCase):
                     "name": "owned",
                     "type": "bool",
                     "component": "checkbox",
-                    "_source": "my_ontology",
+                    "source_ontology": "my_ontology",
                 },
                 {
                     "name": "local",
                     "type": "str",
                     "component": "text",
-                    "_source": "forged",
+                    "source_ontology": "forged",
                 },
             ],
         }
@@ -490,7 +490,7 @@ class DatasetAnnotationTests(unittest.TestCase):
         saved = dataset.label_schemas["detections"]
         names = [a["name"] for a in saved["attributes"]]
         self.assertEqual(names, ["local"])
-        self.assertNotIn("_source", saved["attributes"][0])
+        self.assertNotIn("source_ontology", saved["attributes"][0])
 
 
 def _make_applied_ontology_test_dataset(ontology_name: str = "my_ontology"):

@@ -3,7 +3,7 @@ Annotation label schema hydration
 
 Resolves ``applied_ontology`` references in label schemas by merging the
 referenced annotation ontology's attributes into the schema's ``attributes``
-list, tagging merged attributes with a ``_source`` marker.
+list, tagging merged attributes with a ``source_ontology`` marker.
 
 | Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -19,7 +19,7 @@ import fiftyone.core.annotation.constants as foac
 
 logger = logging.getLogger(__name__)
 
-_SOURCE = "_source"
+SOURCE_ONTOLOGY = "source_ontology"
 
 
 def hydrate_applied_ontology(label_schema: dict) -> dict:
@@ -29,8 +29,8 @@ def hydrate_applied_ontology(label_schema: dict) -> dict:
     If ``label_schema`` has an ``applied_ontology`` key that resolves to an
     annotation ontology, returns a new dict with the ontology's attributes
     merged into the ``attributes`` list. Each merged attribute carries a
-    ``_source: <ontology_name>`` marker. Attributes are matched by ``name``
-    and ontology values win on collision.
+    ``source_ontology: <ontology_name>`` marker. Attributes are matched by
+    ``name`` and ontology values win on collision.
 
     If the schema has no ``applied_ontology`` reference, the schema is
     returned unchanged. If the reference is dangling (deleted ontology)
@@ -87,7 +87,7 @@ def dehydrate_applied_ontology(label_schema: dict) -> dict:
     Companion to :func:`hydrate_applied_ontology`. When the schema has an
     ``applied_ontology`` that resolves to an annotation ontology, drops
     any attribute whose ``name`` matches an ontology-owned attribute and
-    strips the ``_source`` marker from the remaining attributes.
+    strips the ``source_ontology`` marker from the remaining attributes.
 
     Otherwise (no reference, dangling reference, or non-annotation
     reference) the schema is returned unchanged — the validator will
@@ -121,11 +121,11 @@ def dehydrate_applied_ontology(label_schema: dict) -> dict:
     cleaned = copy.deepcopy(label_schema)
     kept = []
     for attr in cleaned.get(foac.ATTRIBUTES, []):
-        # ontology-owned attrs get dropped entirely, so their _source goes
-        # with them; only the kept (local) attrs need _source popped
+        # ontology-owned attrs get dropped entirely, so their source_ontology
+        # goes with them; only the kept (local) attrs need it popped
         if attr.get(foac.NAME) in ontology_owned_names:
             continue
-        attr.pop(_SOURCE, None)
+        attr.pop(SOURCE_ONTOLOGY, None)
         kept.append(attr)
 
     cleaned[foac.ATTRIBUTES] = kept
@@ -140,7 +140,7 @@ def inline_applied_ontology(label_schema: dict, ontology: Any) -> dict:
     Used when the referenced ontology is about to be deleted (or for
     any other "freeze the current ontology state into the schema"
     operation). Unlike :func:`hydrate_applied_ontology`, the merged
-    attributes are NOT marked with ``_source`` — they are now
+    attributes are NOT marked with ``source_ontology`` — they are now
     first-class local attributes — and the ``applied_ontology`` key
     is stripped from the result.
 
@@ -158,7 +158,7 @@ def inline_applied_ontology(label_schema: dict, ontology: Any) -> dict:
     """
     merged = _merge(label_schema, ontology)
     for attr in merged.get(foac.ATTRIBUTES, []):
-        attr.pop(_SOURCE, None)
+        attr.pop(SOURCE_ONTOLOGY, None)
     merged.pop(foac.APPLIED_ONTOLOGY, None)
     return merged
 
@@ -173,7 +173,7 @@ def _merge(label_schema: dict, ontology: Any) -> dict:
 
     for attr_spec in ontology.attributes:
         attr_dict = attr_spec.to_dict()
-        attr_dict[_SOURCE] = ontology.name
+        attr_dict[SOURCE_ONTOLOGY] = ontology.name
         name = attr_dict.get(foac.NAME)
         if name not in by_name:
             ordered_names.append(name)

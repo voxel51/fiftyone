@@ -131,7 +131,7 @@ const AttributesSection = ({
           onDelete: handleDeleteAttribute,
           canDrag: true,
           isEditing: true,
-          readOnly: !!config._source,
+          readOnly: !!config.source_ontology,
         });
       }
 
@@ -161,7 +161,9 @@ const AttributesSection = ({
                 {secondaryParts.join(" · ")}
               </Text>
               {config.read_only && <Pill size={Size.Md}>Read-only</Pill>}
-              {config._source && <Pill size={Size.Md}>{config._source}</Pill>}
+              {config.source_ontology && (
+                <Pill size={Size.Md}>{config.source_ontology}</Pill>
+              )}
             </Stack>
           ),
           actions: <EditAction onEdit={() => handleStartEdit(name)} />,
