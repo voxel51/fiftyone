@@ -20,7 +20,7 @@ import type { Coordinates } from "@fiftyone/looker/src/state";
  * ```
  * @param points Coordinate array
  */
-const countSegments = (points: Coordinates[][]): number => {
+const countSegments = (points: Coordinates[][] | undefined): number => {
   return points?.length ?? 0;
 };
 
@@ -39,7 +39,7 @@ const countSegments = (points: Coordinates[][]): number => {
  * ```
  * @param points Coordinate array
  */
-const countVertices = (points: Coordinates[][]): number => {
+const countVertices = (points: Coordinates[][] | undefined): number => {
   return (
     points?.reduce((total, segment) => {
       return total + segment.length;
@@ -53,7 +53,7 @@ export const PolylineDetails = () => {
   ) as fos.PolylineAnnotationLabel["data"];
 
   const { segmentCount, vertexCount } = useMemo(() => {
-    const points = currentDataValue?.points3d ?? currentDataValue.points;
+    const points = currentDataValue?.points3d ?? currentDataValue?.points;
     return {
       segmentCount: countSegments(points),
       vertexCount: countVertices(points),
