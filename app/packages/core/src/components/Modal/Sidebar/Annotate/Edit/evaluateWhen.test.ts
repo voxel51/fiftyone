@@ -86,13 +86,25 @@ describe("evaluateWhen", () => {
   // typed as Record<AttributeCondition["operator"], ...>, so TypeScript will
   // error if a new operator is added to the union without a handler entry.
 
-  describe("OR semantics — multiple conditions", () => {
-    it("returns true if ANY condition is satisfied", () => {
+  describe("AND semantics — multiple conditions", () => {
+    it("returns true when ALL conditions are satisfied", () => {
       const conditions = [
         { operator: "equals" as const, field: "category", value: "mammal" },
-        { operator: "equals" as const, field: "category", value: "bird" },
+        { operator: "equals" as const, field: "size", value: "large" },
       ];
-      expect(evaluateWhen(conditions, { category: "bird" })).toBe(true);
+      expect(
+        evaluateWhen(conditions, { category: "mammal", size: "large" })
+      ).toBe(true);
+    });
+
+    it("returns false when only some conditions are satisfied", () => {
+      const conditions = [
+        { operator: "equals" as const, field: "category", value: "mammal" },
+        { operator: "equals" as const, field: "size", value: "large" },
+      ];
+      expect(
+        evaluateWhen(conditions, { category: "mammal", size: "small" })
+      ).toBe(false);
     });
 
     it("returns false when no conditions are satisfied", () => {
@@ -180,13 +192,21 @@ describe("isWhenFulfillable", () => {
     });
   });
 
-  describe("OR semantics — multiple conditions", () => {
-    it("returns true if ANY condition is fulfillable", () => {
+  describe("AND semantics — multiple conditions", () => {
+    it("returns true when ALL conditions are fulfillable", () => {
+      const conditions = [
+        { operator: "equals" as const, field: "category", value: "mammal" },
+        { operator: "equals" as const, field: "size", value: "large" },
+      ];
+      expect(isWhenFulfillable(conditions, animalAttributes)).toBe(true);
+    });
+
+    it("returns false when any condition is unfulfillable", () => {
       const conditions = [
         { operator: "equals" as const, field: "category", value: "insect" },
         { operator: "equals" as const, field: "category", value: "mammal" },
       ];
-      expect(isWhenFulfillable(conditions, animalAttributes)).toBe(true);
+      expect(isWhenFulfillable(conditions, animalAttributes)).toBe(false);
     });
 
     it("returns false when all conditions are unfulfillable", () => {
