@@ -26,16 +26,23 @@ export const useOntologies = (): UseOntologiesResult => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     setIsFetching(true);
     setError(null);
     getFetchFunction()("GET", "/ontologies?type=annotation_ontology")
-      .then((result) =>
-        setOntologies((result as OntologiesResponse).ontologies)
-      )
-      .catch((e: unknown) =>
-        setError(e instanceof Error ? e.message : String(e))
-      )
-      .finally(() => setIsFetching(false));
+      .then((result) => {
+        if (!cancelled)
+          setOntologies((result as OntologiesResponse).ontologies);
+      })
+      .catch((e: unknown) => {
+        if (!cancelled) setError(e instanceof Error ? e.message : String(e));
+      })
+      .finally(() => {
+        if (!cancelled) setIsFetching(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return { ontologies, isFetching, error };
