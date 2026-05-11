@@ -25,7 +25,7 @@ export default function PanelArea(props: PanelAreaProps) {
         maxWidth={maxWidth || DEFAULT_MAX_WIDTH}
         direction={direction}
         onResizeStop={(_, __, ___, { width: delta }) => {
-          setWidth(width + delta);
+          setWidth((width) => width + delta);
         }}
         onResizeReset={() => {
           setWidth(computedDefaultWidth);

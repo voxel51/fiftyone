@@ -18,5 +18,5 @@ export default function PanelRenderer(props: PanelRendererProps) {
     return null;
   }
 
-  return <Panel node={node} isModalPanel={false} />;
+  return <Panel node={node} isModalPanel={false} style={{ height: "100%" }} />;
 }
