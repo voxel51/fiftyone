@@ -1,3 +1,7 @@
+import { useDragDelta } from "@voxel51/voodo";
+import clsx from "clsx";
+import { useAtomValue } from "jotai";
+import React, { useEffect, useRef } from "react";
 import { usePlayback } from "../lib/PlaybackProvider";
 import {
   loopEndAtom,
@@ -6,24 +10,12 @@ import {
   viewEndAtom,
   viewStartAtom,
 } from "../lib/playback-atoms";
-import clsx from "clsx";
-import { useAtomValue } from "jotai";
-import React, { useEffect, useRef, useState } from "react";
 import styles from "./TimelineRuler.module.css";
 
 const MIN_VIEW = 0.25;
+const CLICK_PX_THRESHOLD = 3;
 const clamp = (v: number, lo: number, hi: number) =>
   Math.min(hi, Math.max(lo, v));
-
-type DragMode = "pan" | "playhead" | "loopStart" | "loopEnd" | null;
-
-interface DragState {
-  mode: DragMode;
-  startX: number;
-  startVs: number;
-  startVe: number;
-  startValue: number;
-}
 
 function tickLabel(t: number): string {
   const s = Math.floor(t);
@@ -59,13 +51,113 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
   const { duration, seek, setView, setLoop } = usePlayback();
 
   const rulerRef = useRef<HTMLDivElement>(null);
-  const [dragCursor, setDragCursor] = useState<string | null>(null);
-  const dragRef = useRef<DragState>({
-    mode: null,
-    startX: 0,
+
+  // Capture state at drag-start so onDelta can compute against it without
+  // racing with state updates during the drag.
+  const dragRef = useRef({
+    startValue: 0,
     startVs: 0,
     startVe: 0,
-    startValue: 0,
+    laneWidth: 1,
+    maxAbsDelta: 0,
+    lastPointerX: 0,
+  });
+
+  const measureAtStart = () => {
+    const el = rulerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    dragRef.current.startVs = viewStart;
+    dragRef.current.startVe = viewEnd;
+    dragRef.current.laneWidth = Math.max(rect.width - labelWidth, 1);
+    dragRef.current.maxAbsDelta = 0;
+  };
+
+  // Each draggable handle gets its own useDragDelta. The lane handles both
+  // pan-drag and click-to-seek (distinguished by total movement at drag end).
+  const playheadDrag = useDragDelta({
+    axis: "horizontal",
+    onDragStart: () => {
+      measureAtStart();
+      dragRef.current.startValue = playhead;
+    },
+    onDelta: (delta) => {
+      const { startValue, startVs, startVe, laneWidth } = dragRef.current;
+      const vd = startVe - startVs;
+      dragRef.current.maxAbsDelta = Math.max(
+        dragRef.current.maxAbsDelta,
+        Math.abs(delta)
+      );
+      seek(clamp(startValue + (delta / laneWidth) * vd, 0, duration));
+    },
+  });
+
+  const loopStartDrag = useDragDelta({
+    axis: "horizontal",
+    onDragStart: () => {
+      measureAtStart();
+      dragRef.current.startValue = loopStart;
+    },
+    onDelta: (delta) => {
+      const { startValue, startVs, startVe, laneWidth } = dragRef.current;
+      const vd = startVe - startVs;
+      const t = clamp(
+        startValue + (delta / laneWidth) * vd,
+        0,
+        loopEnd - 1 / 60
+      );
+      setLoop(t, loopEnd);
+    },
+  });
+
+  const loopEndDrag = useDragDelta({
+    axis: "horizontal",
+    onDragStart: () => {
+      measureAtStart();
+      dragRef.current.startValue = loopEnd;
+    },
+    onDelta: (delta) => {
+      const { startValue, startVs, startVe, laneWidth } = dragRef.current;
+      const vd = startVe - startVs;
+      const t = clamp(
+        startValue + (delta / laneWidth) * vd,
+        loopStart + 1 / 60,
+        duration
+      );
+      setLoop(loopStart, t);
+    },
+  });
+
+  // Lane drag: pans the view. A pointer-up with very small total movement
+  // counts as a click-to-seek instead.
+  const laneDrag = useDragDelta({
+    axis: "horizontal",
+    onDragStart: () => {
+      measureAtStart();
+    },
+    onDelta: (delta) => {
+      const { startVs, startVe, laneWidth } = dragRef.current;
+      dragRef.current.maxAbsDelta = Math.max(
+        dragRef.current.maxAbsDelta,
+        Math.abs(delta)
+      );
+      const vd = startVe - startVs;
+      const dt = (delta / laneWidth) * vd;
+      const newStart = clamp(startVs - dt, 0, duration - vd);
+      setView(newStart, newStart + vd);
+    },
+    onDragEnd: () => {
+      if (dragRef.current.maxAbsDelta >= CLICK_PX_THRESHOLD) return;
+      const ruler = rulerRef.current;
+      if (!ruler) return;
+      const rect = ruler.getBoundingClientRect();
+      const laneX = dragRef.current.lastPointerX - rect.left - labelWidth;
+      const laneWidth = rect.width - labelWidth;
+      if (laneX < 0 || laneX > laneWidth) return;
+      const vs = dragRef.current.startVs;
+      const ve = dragRef.current.startVe;
+      seek(clamp(vs + (laneX / laneWidth) * (ve - vs), 0, duration));
+    },
   });
 
   // Refs for stale-closure-free access inside the native wheel handler.
@@ -140,102 +232,32 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
   const laneLeft = (ratio: number) =>
     `calc(${labelWidth}px + (100% - ${labelWidth}px) * ${ratio})`;
 
-  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    e.currentTarget.setPointerCapture(e.pointerId);
-    const { viewStart: vs, viewEnd: ve } = viewRef.current;
-    const handle = (e.target as HTMLElement).dataset.handle as
-      | "playhead"
-      | "loopStart"
-      | "loopEnd"
-      | undefined;
-
-    if (handle === "playhead") {
-      setDragCursor("grabbing");
-      dragRef.current = {
-        mode: "playhead",
-        startX: e.clientX,
-        startVs: vs,
-        startVe: ve,
-        startValue: playhead,
-      };
-    } else if (handle === "loopStart") {
-      setDragCursor("ew-resize");
-      dragRef.current = {
-        mode: "loopStart",
-        startX: e.clientX,
-        startVs: vs,
-        startVe: ve,
-        startValue: loopStart,
-      };
-    } else if (handle === "loopEnd") {
-      setDragCursor("ew-resize");
-      dragRef.current = {
-        mode: "loopEnd",
-        startX: e.clientX,
-        startVs: vs,
-        startVe: ve,
-        startValue: loopEnd,
-      };
-    } else {
-      dragRef.current = {
-        mode: "pan",
-        startX: e.clientX,
-        startVs: vs,
-        startVe: ve,
-        startValue: 0,
-      };
-    }
+  // Wrap lane pointer handlers so we can also track the last pointer position
+  // for the click-to-seek path in laneDrag.onDragEnd.
+  const lanePointerProps = {
+    ...laneDrag.handleProps,
+    onPointerDown: (e: React.PointerEvent<HTMLElement>) => {
+      dragRef.current.lastPointerX = e.clientX;
+      laneDrag.handleProps.onPointerDown(e);
+    },
+    onPointerMove: (e: React.PointerEvent<HTMLElement>) => {
+      dragRef.current.lastPointerX = e.clientX;
+      laneDrag.handleProps.onPointerMove(e);
+    },
   };
 
-  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    const drag = dragRef.current;
-    if (!drag.mode || !rulerRef.current) return;
-    const laneWidth =
-      rulerRef.current.getBoundingClientRect().width - labelWidth;
-    const dx = e.clientX - drag.startX;
-    const vd = drag.startVe - drag.startVs;
-    const dt = (dx / laneWidth) * vd;
-
-    if (drag.mode === "pan") {
-      const newStart = clamp(drag.startVs - dt, 0, duration - vd);
-      setView(newStart, newStart + vd);
-    } else if (drag.mode === "playhead") {
-      seek(clamp(drag.startValue + dt, 0, duration));
-    } else if (drag.mode === "loopStart") {
-      const t = clamp(drag.startValue + dt, 0, loopEnd - 1 / 60);
-      setLoop(t, loopEnd);
-    } else if (drag.mode === "loopEnd") {
-      const t = clamp(drag.startValue + dt, loopStart + 1 / 60, duration);
-      setLoop(loopStart, t);
-    }
-  };
-
-  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    const drag = dragRef.current;
-    if (drag.mode === "pan" && Math.abs(e.clientX - drag.startX) < 3) {
-      const ruler = rulerRef.current;
-      if (ruler) {
-        const rect = ruler.getBoundingClientRect();
-        const laneWidth = rect.width - labelWidth;
-        const laneX = e.clientX - rect.left - labelWidth;
-        if (laneX >= 0 && laneX <= laneWidth) {
-          const { viewStart: vs, viewEnd: ve } = viewRef.current;
-          seek(clamp(vs + (laneX / laneWidth) * (ve - vs), 0, duration));
-        }
-      }
-    }
-    dragRef.current.mode = null;
-    setDragCursor(null);
-  };
+  const cursor = playheadDrag.isDragging
+    ? "grabbing"
+    : loopStartDrag.isDragging || loopEndDrag.isDragging
+      ? "ew-resize"
+      : undefined;
 
   return (
     <div
       ref={rulerRef}
       className={clsx(styles.ruler, className)}
-      style={{ height, cursor: dragCursor ?? undefined, ...style }}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
+      style={{ height, cursor, ...style }}
+      {...lanePointerProps}
     >
       {labelWidth > 0 && (
         <div className={styles.labelSpacer} style={{ width: labelWidth }} />
@@ -256,20 +278,24 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
       </div>
 
       <div
-        data-handle="loopStart"
         className={styles.loopHandle}
         style={{ left: laneLeft(loopStartRatio) }}
+        {...loopStartDrag.handleProps}
+        // Stop the lane drag from also receiving these events.
+        onPointerDownCapture={(e) => e.stopPropagation()}
       />
       <div
-        data-handle="loopEnd"
         className={styles.loopHandle}
         style={{ left: laneLeft(loopEndRatio) }}
+        {...loopEndDrag.handleProps}
+        onPointerDownCapture={(e) => e.stopPropagation()}
       />
 
       <div
-        data-handle="playhead"
         className={styles.playheadHandle}
         style={{ left: laneLeft(playheadRatio) }}
+        {...playheadDrag.handleProps}
+        onPointerDownCapture={(e) => e.stopPropagation()}
       >
         <div className={styles.playheadTriangle} />
       </div>

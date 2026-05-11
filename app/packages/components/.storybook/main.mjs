@@ -17,7 +17,6 @@ export default {
       plugins: [
         {
           // Stub .svg?react imports — returns a no-op React component.
-          // Avoids needing vite-plugin-svgr in the Storybook config.
           name: "svg-react-stub",
           transform(_code, id) {
             if (!id.includes(".svg?react")) return null;

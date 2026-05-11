@@ -5,6 +5,11 @@
   width: 100%;
 }
 
+.header {
+  display: flex;
+  flex-direction: column;
+}
+
 .controlsRow {
   display: flex;
   align-items: center;
@@ -12,15 +17,14 @@
   border-bottom: 1px solid var(--color-content-border-default);
 }
 
-.tracksArea {
-  /* Container the playhead line measures against — must include the ruler
-     AND all tracks so the line can span both. */
-  position: relative;
+.tracksBody {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
-/* Full-height vertical playhead line. Rendered here (not in the ruler) so
-   it can extend through the tracks below the ruler. The triangle handle
-   stays in the ruler. */
+/* Full-height vertical playhead line. Rendered in the drawer body so it
+   spans every track. The triangle handle in the ruler is separate. */
 .playheadLine {
   position: absolute;
   top: 0;
