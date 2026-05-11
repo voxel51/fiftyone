@@ -91,6 +91,10 @@ const LabelEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
   return (
     <Container
       onClick={() => {
+        // Clicking on a label will unmount this component,
+        // causing onMouseLeave to never be fired
+        handleMouseLeave();
+
         const store = getDefaultStore();
         scene?.selectOverlay(store.get(atom).overlay.id);
 

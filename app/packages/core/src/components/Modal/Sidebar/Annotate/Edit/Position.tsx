@@ -13,33 +13,8 @@ import {
   imagePixelsToCanvasPixels,
   relativeToImagePixels,
 } from "./coordinateConversion";
+import { createWHGroupSchema, createXYGroupSchema } from "./positionSchema";
 import { currentData, currentOverlay } from "./state";
-
-const createInput = (name: string, readOnly?: boolean) => {
-  return {
-    [name]: {
-      type: "number",
-      view: {
-        name: "View",
-        label: name,
-        component: "FieldView",
-        readOnly,
-      },
-      multipleOf: 0.01,
-    },
-  };
-};
-
-const createStack = () => {
-  return {
-    name: "HStackView",
-    component: "GridView",
-    orientation: "horizontal",
-    gap: 1,
-    align_x: "left",
-    align_y: "top",
-  };
-};
 
 interface Coordinates {
   position: { x?: number; y?: number };
@@ -66,9 +41,10 @@ export default function Position({ readOnly = false }: PositionProps) {
 
   const toImagePixels = useCallback(
     (relative: Parameters<typeof relativeToImagePixels>[0]) => {
-      const dims = scene
-        ?.getCanonicalMedia()
-        ?.getOriginalDimensions() ?? { width: 1, height: 1 };
+      const dims = scene?.getCanonicalMedia()?.getOriginalDimensions() ?? {
+        width: 1,
+        height: 1,
+      };
       return relativeToImagePixels(relative, dims);
     },
     [scene]
@@ -77,8 +53,16 @@ export default function Position({ readOnly = false }: PositionProps) {
   const toCanvasPixels = useCallback(
     (imageRect: Parameters<typeof imagePixelsToCanvasPixels>[0]) => {
       const canonicalMedia = scene?.getCanonicalMedia();
-      const dims = canonicalMedia?.getOriginalDimensions() ?? { width: 1, height: 1 };
-      const rendered = canonicalMedia?.getRenderedBounds() ?? { x: 0, y: 0, width: 1, height: 1 };
+      const dims = canonicalMedia?.getOriginalDimensions() ?? {
+        width: 1,
+        height: 1,
+      };
+      const rendered = canonicalMedia?.getRenderedBounds() ?? {
+        x: 0,
+        y: 0,
+        width: 1,
+        height: 1,
+      };
       return imagePixelsToCanvasPixels(imageRect, dims, rendered);
     },
     [scene]
@@ -133,22 +117,8 @@ export default function Position({ readOnly = false }: PositionProps) {
         component: "ObjectView",
       },
       properties: {
-        position: {
-          type: "object",
-          view: createStack(),
-          properties: {
-            ...createInput("x", readOnly),
-            ...createInput("y", readOnly),
-          },
-        },
-        dimensions: {
-          type: "object",
-          view: createStack(),
-          properties: {
-            ...createInput("width", readOnly),
-            ...createInput("height", readOnly),
-          },
-        },
+        position: createXYGroupSchema(readOnly),
+        dimensions: createWHGroupSchema(readOnly),
       },
     }),
     [readOnly]
@@ -179,7 +149,12 @@ export default function Position({ readOnly = false }: PositionProps) {
           };
           const newCanvasBounds = toCanvasPixels(newImagePixels);
           scene?.executeCommand(
-            new TransformOverlayCommand(overlay, overlay.id, oldBounds, newCanvasBounds)
+            new TransformOverlayCommand(
+              overlay,
+              overlay.id,
+              oldBounds,
+              newCanvasBounds
+            )
           );
         }}
       />

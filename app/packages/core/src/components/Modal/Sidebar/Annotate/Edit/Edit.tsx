@@ -25,9 +25,10 @@ import useExit from "./useExit";
 
 const ContentContainer = styled.div`
   margin: 0.25rem 1rem;
-  height: 100%;
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-height: 0;
   justify-content: space-between;
 `;
 
@@ -98,8 +99,8 @@ export default function Edit() {
           <Position3d readOnly={isReadOnly} />
         )}
         {type === POLYLINE && <PolylineDetails />}
-        {type === KEYPOINT && <KeypointDetails />}
         {field && <AnnotationSchema readOnly={isReadOnly} />}
+        {type === KEYPOINT && <KeypointDetails />}
       </Content>
     </ContentContainer>
   );

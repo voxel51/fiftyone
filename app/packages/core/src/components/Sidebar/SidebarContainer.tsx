@@ -30,6 +30,8 @@ const SidebarContainer = ({
       style={{
         borderTopRightRadius: 8,
         zIndex: modal ? muiTheme.zIndex.tooltip + 1 : undefined,
+        display: "flex",
+        flexDirection: "column",
       }}
     >
       {children}

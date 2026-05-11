@@ -146,6 +146,12 @@ export type LighterEventGroup = {
     /** Optional keypoint variant. */
     variant?: string;
   };
+  /** Emitted when a keypoint overlay's per-point sub-selection changes */
+  "lighter:keypoint-sub-selection-changed": {
+    id: string;
+    /** Index of the selected point, or null when no point is selected */
+    pointIndex: number | null;
+  };
 
   // ============================================================================
   // SELECTION EVENTS
