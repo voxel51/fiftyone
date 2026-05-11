@@ -1,19 +1,16 @@
-import { Drawer } from "@voxel51/voodo";
+import { Drawer, useElementSize } from "@voxel51/voodo";
 import clsx from "clsx";
-import { useAtomValue } from "jotai";
 import React, { useRef } from "react";
 import {
-  playheadAtom,
-  viewEndAtom,
-  viewStartAtom,
-} from "../lib/playback-atoms";
-import TimelineControls from "./TimelineControls";
-import TimelineRuler from "./TimelineRuler";
+  TIMELINE_DEFAULT_DRAWER_SIZE,
+  TIMELINE_DRAWER_MAX_SIZE,
+  TIMELINE_LABEL_WIDTH,
+} from "../lib/constants";
+import LoopOverlays from "./LoopOverlays";
+import PlayheadLine from "./PlayheadLine";
+import TimelineHeader from "./TimelineHeader";
 import TimelineTrack, { TimelineTrackProps } from "./TimelineTrack";
 import styles from "./TimelineWithTracks.module.css";
-
-const clamp = (v: number, lo: number, hi: number) =>
-  Math.min(hi, Math.max(lo, v));
 
 export type TimelineTrackConfig = Pick<
   TimelineTrackProps,
@@ -22,84 +19,82 @@ export type TimelineTrackConfig = Pick<
 
 export interface TimelineWithTracksProps {
   tracks: TimelineTrackConfig[];
-  /** Width of the label column shared between ruler and tracks. */
+  /** @default TIMELINE_LABEL_WIDTH */
   labelWidth?: number;
-  /** Height of the ruler row. */
-  rulerHeight?: number;
   /**
-   * Default open size of the drawer in pixels. The drawer collapses to its
-   * measured header height (controls + ruler) when closed.
-   * @default 220
+   * Initial open size of the drawer (px). Capped by content height.
+   * @default TIMELINE_DEFAULT_DRAWER_SIZE
    */
   defaultSize?: number;
-  /** @default 120 */
-  minSize?: number;
-  /** @default 600 */
+  /**
+   * Hard ceiling on drawer height (px). Effective max is also clamped to the
+   * measured content height.
+   * @default TIMELINE_DRAWER_MAX_SIZE
+   */
   maxSize?: number;
   className?: string;
-  style?: React.CSSProperties;
 }
 
 /**
  * Full timeline composition: controls + ruler in the always-visible header,
- * tracks in the resizable body. Wrapped in the design-system Drawer so the
- * user can collapse the tracks area or resize it. Owns the vertical playhead
- * line so it extends through every visible track.
+ * tracks in the resizable body. Subscribes to no atoms directly — every
+ * tick-y subscription lives in `<PlayheadLine>` and `<LoopOverlays>`, so
+ * the buttons in the header stay stable across RAF ticks.
  */
 const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
   tracks,
-  labelWidth = 120,
-  rulerHeight = 24,
-  defaultSize = 220,
-  minSize = 120,
-  maxSize = 600,
+  labelWidth = TIMELINE_LABEL_WIDTH,
+  defaultSize = TIMELINE_DEFAULT_DRAWER_SIZE,
+  maxSize = TIMELINE_DRAWER_MAX_SIZE,
   className,
-  style,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const playhead = useAtomValue(playheadAtom);
-  const viewStart = useAtomValue(viewStartAtom);
-  const viewEnd = useAtomValue(viewEndAtom);
 
-  const viewDuration = viewEnd - viewStart;
-  const playheadRatio =
-    viewDuration > 0 ? clamp((playhead - viewStart) / viewDuration, 0, 1) : 0;
-  const playheadLeft = `calc(${labelWidth}px + (100% - ${labelWidth}px) * ${playheadRatio})`;
+  // Measure the actual rendered tracks content so we can clamp the drawer's
+  // draggable max to the real height — no per-track height math needed.
+  const { ref: tracksBodyRef, height: contentHeight } = useElementSize();
+
+  // Before the first measurement we fall back to maxSize so the drawer can
+  // open to a sensible size. Once measured, the smaller of the two wins.
+  const effectiveMaxSize =
+    contentHeight > 0 ? Math.min(contentHeight, maxSize) : maxSize;
+  const effectiveDefaultSize = Math.min(defaultSize, effectiveMaxSize);
 
   return (
-    <div ref={containerRef} className={clsx(styles.root, className)} style={style}>
+    <div ref={containerRef} className={clsx(styles.root, className)}>
       <Drawer
         side="bottom"
-        defaultSize={defaultSize}
-        minSize={minSize}
-        maxSize={maxSize}
+        defaultSize={effectiveDefaultSize}
+        minSize={0}
+        maxSize={effectiveMaxSize}
         mode="push"
-        header={() => (
-          <div className={styles.header}>
-            <div className={styles.controlsRow}>
-              <TimelineControls />
-            </div>
-            <TimelineRuler
-              labelWidth={labelWidth}
-              height={rulerHeight}
-              zoomRef={containerRef}
-            />
-          </div>
+        header={({ toggle }) => (
+          <TimelineHeader
+            labelWidth={labelWidth}
+            zoomRef={containerRef}
+            onToggle={toggle}
+          />
         )}
       >
-        <div className={styles.tracksBody}>
-          {tracks.map((track) => (
-            <TimelineTrack
-              key={track.id}
-              {...track}
-              labelWidth={labelWidth}
-            />
-          ))}
-        </div>
+        <div className={styles.tracksArea}>
+          <div ref={tracksBodyRef} className={styles.tracksBody}>
+            {tracks.map((track) => (
+              <TimelineTrack
+                key={track.id}
+                {...track}
+                labelWidth={labelWidth}
+              />
+            ))}
+          </div>
 
-        {/* Full-height playhead line — spans the entire drawer body so the
-            line continues through every track. */}
-        <div className={styles.playheadLine} style={{ left: playheadLeft }} />
+          {/* Both overlays are absolutely positioned and anchor to
+              `.tracksArea` (the explicit positioning wrapper above).
+              That keeps them contained to the tracks region — they can't
+              leak up into the ruler / controls regardless of what the
+              Drawer's CSS does with its body. */}
+          <LoopOverlays labelWidth={labelWidth} />
+          <PlayheadLine labelWidth={labelWidth} />
+        </div>
       </Drawer>
     </div>
   );

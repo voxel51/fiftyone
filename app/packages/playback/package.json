@@ -16,6 +16,7 @@
         "@voxel51/voodo": "^0.0.27",
         "jotai": "^2.9.3",
         "jotai-optics": "^0.4.0",
+        "react-mosaic-component": "^6.1.1",
         "vite-plugin-svgr": "^4.2.0"
     },
     "peerDependencies": {

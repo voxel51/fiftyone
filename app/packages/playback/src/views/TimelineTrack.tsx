@@ -30,7 +30,6 @@ export interface TimelineTrackProps {
   onPinClick?: () => void;
   onContextMenu?: (e: React.MouseEvent<HTMLDivElement>) => void;
   className?: string;
-  style?: React.CSSProperties;
 }
 
 const TimelineTrack: React.FC<TimelineTrackProps> = ({
@@ -46,7 +45,6 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
   onPinClick,
   onContextMenu,
   className,
-  style,
 }) => {
   const viewStart = useAtomValue(viewStartAtom);
   const viewEnd = useAtomValue(viewEndAtom);
@@ -63,7 +61,7 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
   return (
     <div
       className={clsx(styles.root, className)}
-      style={{ height, ...style }}
+      style={{ height }}
       onContextMenu={onContextMenu}
     >
       {labelWidth > 0 && (

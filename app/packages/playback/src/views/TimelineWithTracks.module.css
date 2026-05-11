@@ -5,32 +5,17 @@
   width: 100%;
 }
 
-.header {
-  display: flex;
-  flex-direction: column;
-}
-
-.controlsRow {
-  display: flex;
-  align-items: center;
-  padding: 6px 10px;
-  border-bottom: 1px solid var(--color-content-border-default);
+/* Explicit positioning wrapper for the tracks region. PlayheadLine and
+   LoopOverlays anchor here (not to the Drawer body) so they can't extend
+   above the wrapper into the ruler / controls area. */
+.tracksArea {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .tracksBody {
   display: flex;
   flex-direction: column;
-  height: 100%;
-}
-
-/* Full-height vertical playhead line. Rendered in the drawer body so it
-   spans every track. The triangle handle in the ruler is separate. */
-.playheadLine {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  background: var(--color-brand-primary);
-  pointer-events: none;
-  z-index: 3;
 }

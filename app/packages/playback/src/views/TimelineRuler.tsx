@@ -26,22 +26,18 @@ function tickLabel(t: number): string {
 export interface TimelineRulerProps {
   /** Width of the label column in pixels, to align with track rows. */
   labelWidth?: number;
-  height?: number;
   /**
    * Optional ref to an outer container. When provided, wheel-to-zoom is
    * attached there so users can zoom from anywhere in the track area.
    */
   zoomRef?: React.RefObject<HTMLElement | null>;
   className?: string;
-  style?: React.CSSProperties;
 }
 
 const TimelineRuler: React.FC<TimelineRulerProps> = ({
   labelWidth = 0,
-  height = 24,
   zoomRef,
   className,
-  style,
 }) => {
   const playhead = useAtomValue(playheadAtom);
   const viewStart = useAtomValue(viewStartAtom);
@@ -256,7 +252,7 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
     <div
       ref={rulerRef}
       className={clsx(styles.ruler, className)}
-      style={{ height, cursor, ...style }}
+      style={{ cursor }}
       {...lanePointerProps}
     >
       {labelWidth > 0 && (
@@ -281,26 +277,46 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
         className={styles.loopHandle}
         style={{ left: laneLeft(loopStartRatio) }}
         {...loopStartDrag.handleProps}
-        // Stop the lane drag from also receiving these events.
-        onPointerDownCapture={(e) => e.stopPropagation()}
+        onPointerDown={(e) => {
+          // Stop the lane drag from also receiving this event; the lane's
+          // useDragDelta would otherwise steal pointer capture.
+          e.stopPropagation();
+          loopStartDrag.handleProps.onPointerDown(e);
+        }}
       />
       <div
         className={styles.loopHandle}
         style={{ left: laneLeft(loopEndRatio) }}
         {...loopEndDrag.handleProps}
-        onPointerDownCapture={(e) => e.stopPropagation()}
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          loopEndDrag.handleProps.onPointerDown(e);
+        }}
       />
 
+      {/* Playhead handle + line share one translated wrapper. translate3d
+          on the wrapper is composited (no layout on every tick); the
+          handle and line stay anchored to the wrapper's left edge. */}
       <div
-        className={styles.playheadHandle}
-        style={{ left: laneLeft(playheadRatio) }}
-        {...playheadDrag.handleProps}
-        onPointerDownCapture={(e) => e.stopPropagation()}
+        className={styles.playheadGroup}
+        style={{
+          left: labelWidth,
+          width: `calc(100% - ${labelWidth}px)`,
+          transform: `translate3d(${playheadRatio * 100}%, 0, 0)`,
+        }}
       >
-        <div className={styles.playheadTriangle} />
+        <div className={styles.playheadLine} />
+        <div
+          className={styles.playheadHandle}
+          {...playheadDrag.handleProps}
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            playheadDrag.handleProps.onPointerDown(e);
+          }}
+        >
+          <div className={styles.playheadTriangle} />
+        </div>
       </div>
-      {/* Vertical line rendered by TimelineWithTracks so it can extend
-          through the tracks below — see TimelineWithTracks.tsx. */}
     </div>
   );
 };

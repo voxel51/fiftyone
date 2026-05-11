@@ -1,0 +1,81 @@
+.root {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  position: relative;
+}
+
+.mosaic {
+  flex: 1;
+  min-height: 0;
+}
+
+.empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: var(--color-content-text-muted);
+  pointer-events: none;
+}
+
+/* Strip react-mosaic's default chrome — we provide our own via TileHeader
+   in renderToolbar and our tile bodies as the window children. */
+.root :global(.mosaic) {
+  background: transparent;
+}
+
+.root :global(.mosaic .mosaic-window) {
+  box-shadow: none;
+  border-radius: 0;
+  border: 1px solid var(--color-content-border-default);
+  background: var(--color-content-bg-card-2);
+}
+
+/* react-mosaic auto-wires the toolbar as the drag source; we render a
+   TileHeader inside via renderToolbar. Strip default padding/border so
+   the TileHeader is the only thing styling that row. */
+.root :global(.mosaic .mosaic-window-toolbar) {
+  padding: 0;
+  background: transparent;
+  border-bottom: none;
+  box-shadow: none;
+  height: auto;
+}
+
+.root :global(.mosaic .mosaic-window-body) {
+  background: transparent;
+}
+
+.root :global(.mosaic .mosaic-split) {
+  background: transparent;
+}
+
+.root :global(.mosaic .mosaic-split:hover) {
+  background: var(--color-brand-primary);
+}
+
+/* TileHeader fills the full toolbar width so the whole row is draggable. */
+.toolbarHeader {
+  width: 100%;
+}
+
+/* Wraps tile.render() output so we can attach pointer-down for focus
+   without each tile having to opt in. */
+.bodyWrapper {
+  width: 100%;
+  height: 100%;
+}
+
+/* Focused window — inset accent outline so the user sees which tile new
+   spawns will split. Outline (rather than border) avoids fighting the
+   base .mosaic-window border specificity. */
+.focused {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: -2px;
+}

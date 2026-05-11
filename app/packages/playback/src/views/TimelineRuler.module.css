@@ -1,6 +1,7 @@
 .ruler {
   display: flex;
   position: relative;
+  height: 24px;
   border-bottom: 1px solid var(--color-content-border-default);
   flex-shrink: 0;
   cursor: pointer;
@@ -49,12 +50,29 @@
   z-index: 3;
 }
 
+/* Wrapper for the playhead triangle + line segment. Sized to the lane
+   (label column → right edge) so translateX(%) moves children by a
+   fraction of the lane width. Composited (translate3d) so per-tick
+   updates avoid layout work. */
+.playheadGroup {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  pointer-events: none;
+  will-change: transform;
+  /* Above the yellow loop handles (z-index 3) so the triangle/line
+     paints in front when they overlap. */
+  z-index: 5;
+}
+
 .playheadHandle {
   position: absolute;
   top: 0;
   bottom: 0;
+  left: 0;
   width: 12px;
   transform: translateX(-50%);
+  pointer-events: auto;
   cursor: grab;
   z-index: 4;
   display: flex;
@@ -71,5 +89,15 @@
   pointer-events: none;
 }
 
-/* The vertical playhead line is rendered by TimelineWithTracks so it can
-   extend through the tracks below the ruler. */
+/* Playhead line segment inside the ruler. TimelineWithTracks renders a
+   second matching segment in the tracks body so the line appears continuous
+   from the triangle handle all the way down through every track. */
+.playheadLine {
+  position: absolute;
+  top: 8px;
+  bottom: 0;
+  left: 0;
+  width: 1px;
+  background: var(--color-brand-primary);
+  z-index: 3;
+}
