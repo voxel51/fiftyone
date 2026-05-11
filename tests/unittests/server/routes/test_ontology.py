@@ -99,10 +99,12 @@ class TestOntologiesRoute:
 
     @pytest.mark.asyncio
     async def test_only_latest_version_per_name(self, endpoint, mock_request):
-        for v in (1, 2, 3):
-            OntologyDocument(
-                name="foo", version=v, type=OntologyType.ANNOTATION_ONTOLOGY
-            ).save()
+        doc = OntologyDocument(
+            name="foo", type=OntologyType.ANNOTATION_ONTOLOGY
+        )
+        doc.save()
+        for _ in range(2):
+            doc.save()
 
         response = await endpoint.get(mock_request())
 
