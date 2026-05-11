@@ -17,6 +17,22 @@ import { InteractivePolylineHandler } from "./InteractivePolylineHandler";
 import { v4 as generateUUID } from "uuid";
 
 /**
+ * Handler invoked when a pointer-down lands on the empty canvas (no overlay
+ * or only the canonical media). Returning `true` claims the event: the
+ * manager skips its default empty-canvas handling, captures the pointer,
+ * and prevents the default DOM action. Returning `false` / `undefined`
+ * lets default behavior run.
+ *
+ * Used by consumers to intercept the first canvas click and seed a new overlay
+ * at that point.
+ */
+export type EmptyCanvasClickHandler = (
+  worldPoint: Point,
+  point: Point,
+  event: PointerEvent
+) => boolean | void;
+
+/**
  * Predicate for interactive handlers that own their own pointer-event
  * dispatch (drag, hit-testing, etc.) and shouldn't have events forwarded to
  * their `getOverlay()`. The default routing — defer to the wrapped overlay —
@@ -225,6 +241,8 @@ export class InteractionManager {
 
   private canonicalMediaId?: string;
 
+  private emptyCanvasClickHandler?: EmptyCanvasClickHandler;
+
   // Configuration
   private readonly CLICK_THRESHOLD = 3; // pixels, dictates drag vs. click
   private readonly DRAG_TIME_THRESHOLD = 500; // ms, dictates drag vs. click
@@ -334,6 +352,21 @@ export class InteractionManager {
             pointerId: event.pointerId,
           };
 
+          this.canvas.setPointerCapture(event.pointerId);
+          event.preventDefault();
+          return;
+        }
+      }
+
+      // Generic empty-canvas claim: a registered consumer can claim the click
+      // to seed a new overlay at this point
+      if (this.emptyCanvasClickHandler) {
+        const isNonOverlay = !handler || handler.id === this.canonicalMediaId;
+
+        if (
+          isNonOverlay &&
+          this.emptyCanvasClickHandler(worldPoint, point, event)
+        ) {
           this.canvas.setPointerCapture(event.pointerId);
           event.preventDefault();
           return;
@@ -1015,6 +1048,17 @@ export class InteractionManager {
     if (this.hoveredHandler === handler) {
       this.hoveredHandler = undefined;
     }
+  }
+
+  /**
+   * Registers a handler invoked on pointer-down events that land on empty
+   * canvas (no overlay or only the canonical media). Used by consumers to
+   * intercept the first click of a creation gesture (e.g. seeding a new
+   * overlay at the click position) without the manager needing to know
+   * which mode is active. Pass `null` to clear.
+   */
+  setEmptyCanvasClickHandler(handler: EmptyCanvasClickHandler | null): void {
+    this.emptyCanvasClickHandler = handler ?? undefined;
   }
 
   /**

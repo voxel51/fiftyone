@@ -3,6 +3,9 @@ import type {
   BoundingBoxOverlay,
   ClassificationOptions,
   ClassificationOverlay,
+  PolylineLabel,
+  PolylineOptions,
+  PolylineOverlay,
 } from "@fiftyone/lighter";
 import { InteractiveDetectionHandler, useLighter } from "@fiftyone/lighter";
 import { ClassificationLabel, DetectionLabel } from "@fiftyone/looker";
@@ -22,6 +25,11 @@ import { defaultField, editing, savedLabel } from "./state";
 export interface CreateOptions {
   field?: string;
   labelValue?: string;
+  /**
+   * Relative-coordinate in the renderer indicating the origin of the creation.
+   * This can be used to seed overlay creation.
+   */
+  origin?: [number, number];
 }
 
 const useCreateAnnotationLabel = () => {
@@ -44,7 +52,9 @@ const useCreateAnnotationLabel = () => {
       const fieldSchema = store.get(labelSchemaData(field));
 
       // Build label data with defaults and detection mode values (if applicable)
-      const data = buildNewLabelData(field, type, id, labelValue);
+      const data = buildNewLabelData(field, type, id, labelValue, {
+        origin: options?.origin,
+      });
 
       if (type === CLASSIFICATION) {
         const overlay = overlayFactory.create<
@@ -81,6 +91,28 @@ const useCreateAnnotationLabel = () => {
         scene?.enterInteractiveMode(handler);
         store.set(savedLabel, data);
         return { data, overlay, path: field, type };
+      }
+
+      if (type === POLYLINE) {
+        const polylineData = data as PolylineLabel;
+
+        const overlay = overlayFactory.create<PolylineOptions, PolylineOverlay>(
+          "polyline",
+          {
+            field,
+            id,
+            label: polylineData,
+            selectable: true,
+          }
+        );
+        addOverlay(overlay);
+
+        // Selecting the new overlay triggers `usePolylineMode`'s effect to
+        // install an `InteractivePolylineHandler` for editing. Creation
+        // itself doesn't `enterInteractiveMode` here.
+        scene?.selectOverlay(id, { ignoreSideEffects: true });
+        store.set(savedLabel, polylineData);
+        return { data: polylineData, overlay, path: field, type };
       }
 
       return undefined;
@@ -125,7 +157,8 @@ export function buildNewLabelData(
   field: string,
   type: LabelType,
   id?: string,
-  label?: string
+  label?: string,
+  options?: { origin?: [number, number] }
 ) {
   const labelId = id || objectId();
   const store = getDefaultStore();
@@ -156,6 +189,8 @@ export function buildNewLabelData(
         ? "Classification"
         : type === DETECTION
         ? "Detection"
+        : type === POLYLINE
+        ? "Polyline"
         : undefined,
     _id: labelId,
     ...defaults,
@@ -163,7 +198,12 @@ export function buildNewLabelData(
   };
 
   if (type === POLYLINE) {
-    throw new Error("todo");
+    return {
+      ...data,
+      points: options?.origin ? [[options.origin]] : [],
+      closed: false,
+      filled: false,
+    };
   }
 
   return data;
