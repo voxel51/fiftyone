@@ -47,7 +47,7 @@ const ObjectIdTransformer: FieldTransformer = {
 };
 
 /**
- * Convert serialized bson.Binary data to a format consistent with graphql
+ * Convert serialized bson.Binary data to a format consistent with graphql.
  */
 const BinaryTransformer: FieldTransformer = {
   canTransform: (data: unknown): boolean => {
