@@ -50,6 +50,7 @@ export type SpaceNodeJSON = {
 export type PanelProps = {
   node: SpaceNode;
   isModalPanel?: boolean;
+  style?: React.CSSProperties;
 };
 
 export type PanelTabProps = {
