@@ -289,6 +289,10 @@ export const validateGroupName = (current: string[], name: string): boolean => {
   return true;
 };
 
+export const TAGS_FIELD = "tags";
+export const LABEL_TAGS_FIELD = "_label_tags";
+export const OTHER_GROUP = "other";
+
 export const RESERVED_GROUPS = new Set([
   "frame tags",
   "label tags",
