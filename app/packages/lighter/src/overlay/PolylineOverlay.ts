@@ -422,6 +422,31 @@ export class PolylineOverlay extends KeypointOverlay {
   }
 
   /**
+   * Returns the `(segmentIdx, indexInSegment)` coordinates of the point with
+   * the given id, or `null` if no such point exists. Inverse of
+   * {@link getPointIdInSegment}.
+   *
+   * @param pointId Id of the point to locate.
+   */
+  findPointLocationById(
+    pointId: string
+  ): { segmentIdx: number; indexInSegment: number } | null {
+    const total = this.getRelativePoints().length;
+
+    for (let i = 0; i < total; i++) {
+      if (this.getPointIdAt(i) === pointId) {
+        const segmentIdx = this.locateSegmentForIndex(i);
+        return {
+          segmentIdx,
+          indexInSegment: i - this.segmentStart(segmentIdx),
+        };
+      }
+    }
+
+    return null;
+  }
+
+  /**
    * Locates the closest edge to `worldPoint` within `thresholdOverride` (or
    * the default `EDGE_THRESHOLD` adjusted for the current scale).
    *
