@@ -136,6 +136,19 @@ export default function useSimilarityPopover({
         });
 
         close();
+
+        // Close modal and clear selections *before* kicking off the
+        // search. The follow-up set_view to ToPatches would otherwise
+        // race against a still-open modalSample query whose variables
+        // point at a sample id that doesn't exist in the patches view,
+        // surfacing as a "sample with id X not found" error.
+        if (modal) {
+          set(fos.modalSelector, null);
+        }
+        executeOperator("clear_selected_samples");
+        executeOperator("clear_selected_labels");
+        set(fos.extendedSelection, { selection: [] });
+
         onSearchStart?.();
 
         executeOperator(SEARCH_OPERATOR_URI, params, {
@@ -145,13 +158,6 @@ export default function useSimilarityPopover({
               console.error("Similarity search failed:", result.error);
               return;
             }
-
-            if (modal) {
-              set(fos.modalSelector, null);
-            }
-            executeOperator("clear_selected_samples");
-            executeOperator("clear_selected_labels");
-            set(fos.extendedSelection, { selection: [] });
 
             if (patchesField) {
               executeOperator(

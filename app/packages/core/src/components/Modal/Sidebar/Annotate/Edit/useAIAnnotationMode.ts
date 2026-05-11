@@ -43,12 +43,9 @@ const useDefaultAgent = () => {
  */
 const useLabelReset = (isActive: boolean, reset: () => void) => {
   const { selectedLabel } = useAnnotationContext();
-  const selectedLabelRef = useRef(selectedLabel);
   const previousSelectedLabelIdRef = useRef<string | null>(
     selectedLabel?.overlay?.id ?? null
   );
-
-  selectedLabelRef.current = selectedLabel;
 
   // When the selected label changes,
   // reset state to ensure a clean starting point for the next label
@@ -82,8 +79,9 @@ export const useAIAnnotationMode = (): AIAnnotationMode => {
   // bootstrap AI annotation capabilities
   useDefaultAgent();
 
+  // Clears prompt state without tearing down point selection. Used on
+  // label change — we stay in AI mode for the next label.
   const resetTools = useCallback(() => {
-    pointSelection.deactivate();
     pointSelection.clearPoints();
     resetToolsState();
   }, [pointSelection, resetToolsState]);
@@ -95,20 +93,22 @@ export const useAIAnnotationMode = (): AIAnnotationMode => {
       return;
     }
 
-    setIsActive(true);
     setActiveTask(AgentTaskType.SEGMENT);
-  }, [isActive, setActiveTask, setIsActive]);
+    setIsActive(true);
+    pointSelection.activate();
+  }, [isActive, pointSelection, setActiveTask, setIsActive]);
 
   const deactivate = useCallback(() => {
     if (!isActive) {
       return;
     }
 
+    pointSelection.deactivate();
     resetTools();
 
     setActiveTask(null);
     setIsActive(false);
-  }, [isActive, resetTools, setActiveTask, setIsActive]);
+  }, [resetTools, isActive, pointSelection, setActiveTask, setIsActive]);
 
   return useMemo(
     () => ({

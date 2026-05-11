@@ -50,7 +50,6 @@ test.describe.serial("sidebar-filter-visibility", () => {
     await sidebar.clickFieldDropdown("ground_truth");
     await entryExpandPromise;
     await sidebar.applyLabelFromList(
-      "ground_truth.detections.label",
       ["bottle"],
       "select-detections-with-label"
     );
@@ -67,11 +66,7 @@ test.describe.serial("sidebar-filter-visibility", () => {
     await sidebar.toggleSidebarMode();
 
     // test case: visibility mode - show label
-    await sidebar.applyLabelFromList(
-      "ground_truth.detections.label",
-      ["cat"],
-      "show-label"
-    );
+    await sidebar.applyLabelFromList(["cat"], "show-label");
 
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "select-bottle-show-cat.png",
@@ -79,11 +74,7 @@ test.describe.serial("sidebar-filter-visibility", () => {
     );
 
     // test case: visibility mode - hide label
-    await sidebar.applyLabelFromList(
-      "ground_truth.detections.label",
-      ["person"],
-      "hide-label"
-    );
+    await sidebar.applyLabelFromList(["person"], "hide-label");
 
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "select-bottle-hide-person-cat.png",
@@ -107,7 +98,6 @@ test.describe.serial("sidebar-filter-visibility", () => {
     await sidebar.clickFieldDropdown("ground_truth");
     await entryExpandPromise;
     await sidebar.applyLabelFromList(
-      "ground_truth.detections.label",
       ["bottle"],
       "exclude-detections-with-label"
     );
@@ -125,11 +115,7 @@ test.describe.serial("sidebar-filter-visibility", () => {
     await sidebar.toggleSidebarMode();
 
     // test case: visibility mode - show label
-    await sidebar.applyLabelFromList(
-      "ground_truth.detections.label",
-      ["cup"],
-      "show-label"
-    );
+    await sidebar.applyLabelFromList(["cup"], "show-label");
 
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "exclude-bottle-show-cup.png",
@@ -137,11 +123,7 @@ test.describe.serial("sidebar-filter-visibility", () => {
     );
 
     // test case: visibility mode - hide label
-    await sidebar.applyLabelFromList(
-      "ground_truth.detections.label",
-      [],
-      "hide-label"
-    );
+    await sidebar.applyLabelFromList([], "hide-label");
 
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "exclude-bottle-hide-cup.png",
@@ -166,11 +148,7 @@ test.describe.serial("sidebar-filter-visibility", () => {
     await entryExpandPromise;
 
     const gridRefreshPromise = grid.getWaitForGridRefreshPromise();
-    await sidebar.applyLabelFromList(
-      "ground_truth.detections.label",
-      ["bottle"],
-      "show-samples-with-label"
-    );
+    await sidebar.applyLabelFromList(["bottle"], "show-samples-with-label");
 
     // verify the number of samples in the result
     await grid.assert.isEntryCountTextEqualTo("1 of 5 samples");
@@ -184,11 +162,7 @@ test.describe.serial("sidebar-filter-visibility", () => {
     await sidebar.toggleSidebarMode();
 
     // test case: visibility mode - show label
-    await sidebar.applyLabelFromList(
-      "ground_truth.detections.label",
-      ["cup"],
-      "show-label"
-    );
+    await sidebar.applyLabelFromList(["cup"], "show-label");
 
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "show-bottle-show-cup.png",
@@ -196,11 +170,7 @@ test.describe.serial("sidebar-filter-visibility", () => {
     );
 
     // test case: visibility mode - hide label
-    await sidebar.applyLabelFromList(
-      "ground_truth.detections.label",
-      [],
-      "hide-label"
-    );
+    await sidebar.applyLabelFromList([], "hide-label");
 
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "show-bottle-hide-cup.png",
@@ -223,11 +193,7 @@ test.describe.serial("sidebar-filter-visibility", () => {
 
     await sidebar.clickFieldDropdown("ground_truth");
     await entryExpandPromise;
-    await sidebar.applyLabelFromList(
-      "ground_truth.detections.label",
-      ["bottle"],
-      "omit-samples-with-label"
-    );
+    await sidebar.applyLabelFromList(["bottle"], "omit-samples-with-label");
 
     // verify the number of samples in the result
     await grid.assert.isEntryCountTextEqualTo("4 of 5 samples");
@@ -242,11 +208,7 @@ test.describe.serial("sidebar-filter-visibility", () => {
     await sidebar.toggleSidebarMode();
 
     // test case: visibility mode - show label
-    await sidebar.applyLabelFromList(
-      "ground_truth.detections.label",
-      ["horse"],
-      "show-label"
-    );
+    await sidebar.applyLabelFromList(["horse"], "show-label");
 
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "hide-bottle-show-horse.png",
@@ -254,11 +216,7 @@ test.describe.serial("sidebar-filter-visibility", () => {
     );
 
     // test case: visibility mode - hide label
-    await sidebar.applyLabelFromList(
-      "ground_truth.detections.label",
-      [],
-      "hide-label"
-    );
+    await sidebar.applyLabelFromList([], "hide-label");
 
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "hide-bottle-hide-horse.png",

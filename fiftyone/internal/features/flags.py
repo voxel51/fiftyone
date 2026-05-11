@@ -10,6 +10,9 @@ from typing import Literal
 
 
 FeatureFlag = Literal[
-    "VFF_AI_SEGMENTATION", "VFF_MULTIMODAL", "VFF_POLYLINE_ANNOTATION"
+    "VFF_AI_SEGMENTATION",
+    "VFF_MULTIMODAL",
+    "VFF_POLYLINE_ANNOTATION",
+    "VFF_ONTOLOGY_CA",
 ]
 """Enumeration of active feature flags."""

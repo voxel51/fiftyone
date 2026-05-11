@@ -16,16 +16,26 @@ export type { Renderer2D } from "./renderer/Renderer2D";
 
 // Overlay exports
 export type { BaseOverlay } from "./overlay/BaseOverlay";
-export { BoundingBoxOverlay } from "./overlay/BoundingBoxOverlay";
+export { DetectionOverlay } from "./overlay/DetectionOverlay";
 export type {
-  BoundingBoxLabel,
-  BoundingBoxOptions,
-} from "./overlay/BoundingBoxOverlay";
+  DetectionLabel,
+  DetectionOverlayOptions,
+} from "./overlay/DetectionOverlay";
 export { ClassificationOverlay } from "./overlay/ClassificationOverlay";
 export type { ClassificationOptions } from "./overlay/ClassificationOverlay";
 export { ImageOverlay } from "./overlay/ImageOverlay";
 export type { ImageOptions } from "./overlay/ImageOverlay";
 export { KeypointOverlay } from "./overlay/KeypointOverlay";
+export type {
+  KeypointEffect,
+  KeypointEffectContext,
+  KeypointEffectPoint,
+  KeypointLabel,
+  KeypointOptions,
+} from "./overlay/KeypointOverlay";
+export { drawRippleRings } from "./overlay/rippleRing";
+export type { DrawRippleRingsArgs } from "./overlay/rippleRing";
+export { RIPPLE_VISIBLE_MS } from "./constants";
 export type { KeypointLabel, KeypointOptions } from "./overlay/KeypointOverlay";
 export { PolylineOverlay } from "./overlay/PolylineOverlay";
 export type { PolylineLabel, PolylineOptions } from "./overlay/PolylineOverlay";
@@ -45,13 +55,15 @@ export type { ResourceLoader } from "./resource/ResourceLoader";
 export type { LighterEventGroup } from "./events";
 
 // Interaction exports
+export { buildBrushCursor } from "./interaction/buildBrushCursor";
+export type { BrushCursorOptions } from "./interaction/buildBrushCursor";
 export { InteractionManager } from "./interaction/InteractionManager";
-export type {
-  EmptyCanvasClickHandler,
-  InteractionHandler,
-} from "./interaction/InteractionManager";
 export { InteractiveCreationHandler } from "./interaction/InteractiveCreationHandler";
 export type { InteractiveCreationHandlerOptions } from "./interaction/InteractiveCreationHandler";
+export type {
+  InteractionHandler,
+  OverlayEvent,
+} from "./interaction/InteractionManager";
 export { InteractiveDetectionHandler } from "./interaction/InteractiveDetectionHandler";
 export {
   InteractiveKeypointHandler,
@@ -102,6 +114,10 @@ export type {
   Spatial,
   TextOptions,
   TransformMatrix,
+  ViewportState,
 } from "./types";
 
 export { getOverlayColor } from "./utils/colorMapping";
+
+// Constants
+export { DEFAULT_ZOOM_PAD } from "./constants";

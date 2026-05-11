@@ -1,6 +1,6 @@
 import type {
-  BoundingBoxOptions,
-  BoundingBoxOverlay,
+  DetectionOverlayOptions,
+  DetectionOverlay,
   ClassificationOptions,
   ClassificationOverlay,
   PolylineLabel,
@@ -23,6 +23,7 @@ import type { LabelType } from "./state";
 import { defaultField, editing, savedLabel } from "./state";
 
 export interface CreateOptions {
+  id?: string;
   field?: string;
   labelValue?: string;
   /**
@@ -51,8 +52,10 @@ const useCreateAnnotationLabel = () => {
       // Extract default values from the label schema for new annotations
       const fieldSchema = store.get(labelSchemaData(field));
 
-      // Build label data with defaults and detection mode values (if applicable)
-      const data = buildNewLabelData(field, type, id, labelValue, {
+      // Build label data with defaults and detection/segmentation mode values (if applicable)
+      const data = buildNewLabelData(field, type, {
+        id,
+        labelValue,
         origin: options?.origin,
       });
 
@@ -76,9 +79,9 @@ const useCreateAnnotationLabel = () => {
         const readOnly = isFieldReadOnly(fieldSchema);
 
         const overlay = overlayFactory.create<
-          BoundingBoxOptions,
-          BoundingBoxOverlay
-        >("bounding-box", {
+          DetectionOverlayOptions,
+          DetectionOverlay
+        >("detection", {
           field,
           id,
           label: data as DetectionLabel,
@@ -156,18 +159,16 @@ export default function useCreate(type: LabelType) {
 export function buildNewLabelData(
   field: string,
   type: LabelType,
-  id?: string,
-  label?: string,
-  options?: { origin?: [number, number] }
+  options?: CreateOptions
 ) {
-  const labelId = id || objectId();
+  const labelId = options?.id ?? objectId();
   const store = getDefaultStore();
 
   // Extract default values from the label schema for new annotations
   const fieldSchema = store.get(labelSchemaData(field));
   const labelSchema = fieldSchema?.label_schema;
   const defaults: Record<string, unknown> = {};
-  const labelValue = label || labelSchema?.classes?.[0];
+  const labelValue = options?.labelValue || labelSchema?.classes?.[0];
 
   // Top-level default applies to the "label" value (e.g., default class)
   if (labelSchema?.default !== undefined) {

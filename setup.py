@@ -11,7 +11,7 @@ import os
 from setuptools import setup, find_packages
 
 
-VERSION = "1.15.0"
+VERSION = "1.16.0"
 
 
 def get_version():
@@ -71,7 +71,7 @@ setup(
         "Pillow>=6.2,!=11.2.*",  # Pillow 11.2.0 introduced CVE 2025-48379 that is fixed in 11.3.0
         "plotly>=6.1.1,<7",
         "pprintpp>=0.1,<0.5",
-        "protobuf==6.33.5",
+        "protobuf==6.33.6",
         "psutil>=5,<8",
         "pydash>=6,<9",
         "pymongo~=4.9.2",  # Keep small bounds on mongo-related libraries
@@ -81,7 +81,7 @@ setup(
         "retrying>=1,<2",
         "sseclient-py>=1.7.2,<2",
         "sse-starlette>=0.10.3,<4",
-        "starlette>=0.24.0,<0.53",
+        "starlette>=0.49.1,<0.53",
         "strawberry-graphql>=0.262.4,<0.292.0",
         "tabulate>=0.7,<0.10",
         "tqdm>=2,<5",
@@ -97,7 +97,7 @@ setup(
         "scikit-image<1",
         "scipy<2",
         # internal packages
-        "fiftyone-brain>=0.21.5,<0.22",
+        "fiftyone-brain>=0.21.6,<0.22",
         "fiftyone-db>=0.4,<2.0",
         "voxel51-eta>=0.15.3,<0.16",
     ],
@@ -122,5 +122,5 @@ setup(
         "Programming Language :: Python :: 3.12",
     ],
     entry_points={"console_scripts": ["fiftyone=fiftyone.core.cli:main"]},
-    python_requires=">=3.9,<3.13",
+    python_requires=">=3.9",
 )

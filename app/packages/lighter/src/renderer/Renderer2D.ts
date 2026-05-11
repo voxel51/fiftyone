@@ -2,7 +2,13 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import type { DrawStyle, Point, Rect, TextOptions } from "../types";
+import type {
+  DrawStyle,
+  Point,
+  Rect,
+  TextOptions,
+  ViewportState,
+} from "../types";
 
 /**
  * Types of image sources that can be rendered.
@@ -55,6 +61,17 @@ export interface ResourceOptions {
  * 2D renderer interface.
  */
 export interface Renderer2D {
+  // Viewport state
+  /**
+   * Returns the current zoom and pan state of the viewport.
+   */
+  getViewportState(): ViewportState;
+
+  /**
+   * Applies a previously captured zoom and pan state to the viewport.
+   */
+  setViewportState(state: ViewportState): void;
+
   // Tick loop
   addTickHandler(onFrame: () => void): void;
   resetTickHandler(): void;
@@ -192,6 +209,16 @@ export interface Renderer2D {
    * @returns The viewport position { x, y }.
    */
   getViewportPosition(): { x: number; y: number };
+
+  /**
+   * Adjusts the viewport zoom and pan so that the given world-space rectangle
+   * is centered and fully visible, with optional padding.
+   *
+   * @param worldRect - The rectangle in world (canvas) coordinates to fit.
+   * @param padding - Fraction of the viewport to reserve as padding on each
+   *   side (0–1). Defaults to 0. A value of 0.1 leaves 10% padding.
+   */
+  fitToRect(worldRect: Rect, padding?: number): void;
 
   /**
    * Check if the renderer is initialized and ready to use.

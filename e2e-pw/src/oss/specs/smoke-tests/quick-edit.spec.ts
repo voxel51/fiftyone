@@ -234,7 +234,7 @@ test.describe.serial("quick edit", () => {
     // Transition to quick edit via the tooltip
     await modal.sampleCanvas.tooltip.quickEdit();
     await modal.sampleCanvas.assert.is(SampleCanvasType.LIGHTER);
-    await modal.sampleCanvas.move(0.9, 0.9, "default");
+    await modal.sampleCanvas.move(0.9, 0.9, "crosshair");
     await modal.sidebar.edit.assert.redoIsEnabled(false);
     await modal.sidebar.edit.assert.undoIsEnabled(false);
     await modal.sampleCanvas.assert.hasScreenshot(

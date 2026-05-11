@@ -5,7 +5,10 @@
 import { type EventDispatcher, getEventBus } from "@fiftyone/events";
 import { CONTAINS } from "../core/Scene2D";
 import type { LighterEventGroup } from "../events";
-import type { InteractionHandler } from "../interaction/InteractionManager";
+import type {
+  InteractionHandler,
+  OverlayEvent,
+} from "../interaction/InteractionManager";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { ResourceLoader } from "../resource/ResourceLoader";
 import type {
@@ -327,45 +330,28 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
   }
 
   /**
-   * Handle pointer down event.
-   * Override in subclasses to implement custom behavior.
-   * @param point - The point where the event occurred.
-   * @param worldPoint - Screen point translated to viewport point.
-   * @param event - The original pointer event.
-   * @param scale - The current scaling factor of the viewport.
+   * Handle pointer-down event.
+   * Override in subclasses to implement drag, resize, or painting behavior.
+   * @param params - The overlay event containing pointer and tool state.
    * @returns True if the event was handled.
    */
-  onPointerDown?(
-    point: Point,
-    worldPoint: Point,
-    event: PointerEvent,
-    scale: number
-  ): boolean;
+  onPointerDown?(params: OverlayEvent): boolean;
 
   /**
-   * Handle drag event.
-   * Override in subclasses to implement custom behavior.
-   * @param point - The point where the event occurred.
-   * @param worldPoint - Screen point translated to viewport point.
-   * @param event - The original pointer event.
-   * @param scale - The current scaling factor of the viewport.
+   * Handle pointer-move event while a gesture is active.
+   * Override in subclasses to implement drag, resize, or painting behavior.
+   * @param params - The overlay event containing pointer and tool state.
    * @returns True if the event was handled.
    */
-  onMove?(
-    point: Point,
-    worldPoint: Point,
-    event: PointerEvent,
-    scale: number
-  ): boolean;
+  onMove?(params: OverlayEvent): boolean;
 
   /**
-   * Handle pointer up event.
-   * Override in subclasses to implement custom behavior.
-   * @param point - The point where the event occurred.
-   * @param event - The original pointer event.
+   * Handle pointer-up event.
+   * Override in subclasses to finalize drag, resize, or painting behavior.
+   * @param params - The overlay event containing pointer and tool state.
    * @returns True if the event was handled.
    */
-  onPointerUp?(point: Point, event: PointerEvent): boolean;
+  onPointerUp?(params: OverlayEvent): boolean;
 
   /**
    * Handle click event.

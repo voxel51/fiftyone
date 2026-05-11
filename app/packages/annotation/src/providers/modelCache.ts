@@ -106,11 +106,14 @@ async function fetchWithProgress(
  * Falls back to download-only if IndexedDB is unavailable.
  *
  * @param url URL of the model weights file
+ * @param cacheKey Stable key for IndexedDB caching (independent of URL which
+ *   may change across deployments or contain signed parameters)
  * @param onProgress Called with (loaded, total) bytes during download or immediately on cache hit
  * @param onWarning Called when a non-fatal issue occurs (e.g. IndexedDB unavailable)
  */
 export async function loadModelWeights(
   url: string,
+  cacheKey: string,
   onProgress?: (loaded: number, total: number) => void,
   onWarning?: (message: string) => void
 ): Promise<ArrayBuffer> {
@@ -125,7 +128,7 @@ export async function loadModelWeights(
 
   try {
     try {
-      const cached = await idbGet(db, url);
+      const cached = await idbGet(db, cacheKey);
       if (cached) {
         onProgress?.(cached.byteLength, cached.byteLength);
         return cached;
@@ -137,7 +140,7 @@ export async function loadModelWeights(
     const buffer = await fetchWithProgress(url, onProgress);
 
     try {
-      await idbPut(db, url, buffer);
+      await idbPut(db, cacheKey, buffer);
     } catch (err) {
       onWarning?.(`IndexedDB cache write failed: ${err}`);
     }

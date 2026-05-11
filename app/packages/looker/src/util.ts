@@ -4,7 +4,6 @@
 import { mergeWith } from "immutable";
 import mime from "mime";
 
-import { MIN_PIXELS } from "./constants";
 import {
   BaseState,
   BoundingBox,
@@ -18,10 +17,10 @@ import {
 
 import {
   AppError,
-  getFetchParameters,
   GraphQLError,
   NetworkError,
   ServerError,
+  getFetchParameters,
 } from "@fiftyone/utilities";
 import LookerWorker from "./worker/index.ts?worker&inline";
 
@@ -392,17 +391,7 @@ export const clampScale = (
   scale: number,
   pad: number
 ): number => {
-  const renderedScale = getRenderedScale([ww, wh], [iw, ih]);
-
-  if ((ww * ww) / (iw * renderedScale * scale) < MIN_PIXELS) {
-    scale = (ww * ww) / (iw * renderedScale * MIN_PIXELS);
-  }
-
-  if ((wh * wh) / (ih * renderedScale * scale) < MIN_PIXELS) {
-    scale = (wh * wh) / (ih * renderedScale * MIN_PIXELS);
-  }
-
-  return Math.max(scale, 1 - pad);
+  return Math.min(Math.max(scale, 0.1), 10);
 };
 
 export const mergeUpdates = <State extends BaseState>(
