@@ -77,7 +77,7 @@ const ApplyOntologySection = ({ field }: ApplyOntologySectionProps) => {
           onPick={handlePick}
         />
       )}
-      <DisconnectOntologyModal />
+      {DisconnectOntologyModal}
     </Stack>
   );
 };
