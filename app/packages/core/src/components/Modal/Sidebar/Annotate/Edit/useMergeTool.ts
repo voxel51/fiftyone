@@ -109,10 +109,22 @@ export const useMergeTool = (): MergeTool => {
       const paintData = targetOverlay.getPaintStrokeData();
       if (!paintData) return;
 
-      // 2. Persist deletion of source and detach from UI.
-      await commandBus.execute(
-        new DeleteAnnotationCommand(sourceLabel, schema)
-      );
+      // 2. Persist deletion of source and detach from UI. The mask mutation
+      // in step 1 is already visible locally — if the backend delete fails,
+      // roll the target's mask back so the canvas / sidebar / pending
+      // persist state stay in sync.
+      try {
+        await commandBus.execute(
+          new DeleteAnnotationCommand(sourceLabel, schema)
+        );
+      } catch (err) {
+        targetOverlay.restoreMaskSnapshot(
+          paintData.beforeSnapshot,
+          paintData.beforeBounds
+        );
+        console.error("Merge tool: failed to delete source detection", err);
+        return;
+      }
       removeLabelFromSidebar(overlay.id);
       removeOverlay(overlay.id, false);
 

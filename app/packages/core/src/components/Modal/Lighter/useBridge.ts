@@ -174,14 +174,14 @@ export const useBridge = (scene: Scene2D | null) => {
         ) {
           const overlay = scene?.getOverlay(payload.id);
           if (overlay instanceof DetectionOverlay) {
-            void segmentationMode.mergeTool.handleOverlayClick(overlay);
+            segmentationMode.mergeTool.handleOverlayClick(overlay);
           }
 
-					// we're merging and we have a target
-					// skip overlay selection
-					if (segmentationMode.mergeTool.mergeTargetId) {
-						return;
-					}
+          // we're merging and we have a target
+          // skip overlay selection
+          if (segmentationMode.mergeTool.mergeTargetId) {
+            return;
+          }
         }
 
         focus.selectOverlay(payload.id, {
@@ -202,8 +202,8 @@ export const useBridge = (scene: Scene2D | null) => {
           segmentationMode.segmentationModeActive &&
           segmentationMode.tool === SegmentationTool.Merge
         ) {
-					return;
-				}
+          return;
+        }
 
         focus.deselectOverlay({
           ignoreSideEffects: payload.ignoreSideEffects,
