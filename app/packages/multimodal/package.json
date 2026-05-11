@@ -8,11 +8,20 @@
         ".": "./src/index.ts",
         "./client": "./src/client/index.ts",
         "./client/hooks": "./src/client/hooks/index.ts",
+        "./client/resources": "./src/client/resources/index.ts",
+        "./decoders": "./src/decoders/index.ts",
         "./inject": "./src/inject/index.ts",
+        "./mcap": "./src/mcap/index.ts",
         "./schemas/v1": "./src/schemas/v1/index.ts"
     },
     "typesVersions": {
         "*": {
+            "decoders": [
+                "src/decoders/index.ts"
+            ],
+            "client/resources": [
+                "src/client/resources/index.ts"
+            ],
             "client/hooks": [
                 "src/client/hooks/index.ts"
             ],
@@ -21,6 +30,9 @@
             ],
             "inject": [
                 "src/inject/index.ts"
+            ],
+            "mcap": [
+                "src/mcap/index.ts"
             ],
             "schemas/v1": [
                 "src/schemas/v1/index.ts"
@@ -38,6 +50,8 @@
         "@bufbuild/protobuf": "^2.11.0",
         "@fiftyone/plugins": "*",
         "@fiftyone/tiling": "*",
-        "@fiftyone/utilities": "*"
+        "@mcap/core": "^2.2.1",
+        "@mcap/support": "^1.1.0",
+        "protobufjs": "^7.2.5"
     }
 }

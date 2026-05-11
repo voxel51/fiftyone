@@ -3459,7 +3459,9 @@ __metadata:
     "@bufbuild/protobuf": "npm:^2.11.0"
     "@fiftyone/plugins": "npm:*"
     "@fiftyone/tiling": "npm:*"
-    "@fiftyone/utilities": "npm:*"
+    "@mcap/core": "npm:^2.2.1"
+    "@mcap/support": "npm:^1.1.0"
+    protobufjs: "npm:^7.2.5"
   languageName: unknown
   linkType: soft
 
@@ -3765,6 +3767,36 @@ __metadata:
   version: 0.2.10
   resolution: "@floating-ui/utils@npm:0.2.10"
   checksum: 10/b635ea865a8be2484b608b7157f5abf9ed439f351011a74b7e988439e2898199a9a8b790f52291e05bdcf119088160dc782d98cff45cc98c5a271bc6f51327ae
+  languageName: node
+  linkType: hard
+
+"@foxglove/crc@npm:^0.0.3":
+  version: 0.0.3
+  resolution: "@foxglove/crc@npm:0.0.3"
+  checksum: 10/53e2f78fb001884ed4baeb1cb4dd510e1d67d9389e0457c57c4d4eb6ada346528310a7e5e486f93cfcf131657ed8e4a57cc3ba6d0e7a564742c0a51498504065
+  languageName: node
+  linkType: hard
+
+"@foxglove/wasm-bz2@npm:^0.3.0":
+  version: 0.3.0
+  resolution: "@foxglove/wasm-bz2@npm:0.3.0"
+  dependencies:
+    tslib: "npm:^2"
+  checksum: 10/f363e700b2088eeddeac83f42dbae86f0c9bb0344322c85c920166cf75595dda0b726ba10822b669aa3b22cc7efe6257fc6cd975afbe17b1ad2af017a58754f1
+  languageName: node
+  linkType: hard
+
+"@foxglove/wasm-lz4@npm:^1.0.2":
+  version: 1.0.2
+  resolution: "@foxglove/wasm-lz4@npm:1.0.2"
+  checksum: 10/0efc4dc9dbacbd79b475460a890410986c5dea0ddd6b3f7c3025d17b90fb5fe313007c7aa1c8f54b20677c8c1eec9af6e6a8247922dad344e6f02174122445c0
+  languageName: node
+  linkType: hard
+
+"@foxglove/wasm-zstd@npm:^1.0.1":
+  version: 1.0.1
+  resolution: "@foxglove/wasm-zstd@npm:1.0.1"
+  checksum: 10/d23db12b7ec55a2fee2e3e0673730c6a2e70350340d3699a3ca0aa64bdb8364c1db7dffec7f63bffa33bc8154d890688989da51bb89d1f4bad4c3f0839752b3f
   languageName: node
   linkType: hard
 
@@ -4527,6 +4559,30 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@mcap/core@npm:^2.2.1":
+  version: 2.2.1
+  resolution: "@mcap/core@npm:2.2.1"
+  dependencies:
+    "@foxglove/crc": "npm:^0.0.3"
+    heap-js: "npm:^2.2.0"
+    tslib: "npm:^2.5.0"
+  checksum: 10/940fb7c50ff1a15931bb5ab73dc69027de206813796bb607d3e8c63402b17b787d6465aea007fe4ada841e37881dd5bb25046a25cada4e8e544d7d5bc305e27a
+  languageName: node
+  linkType: hard
+
+"@mcap/support@npm:^1.1.0":
+  version: 1.1.0
+  resolution: "@mcap/support@npm:1.1.0"
+  dependencies:
+    "@foxglove/wasm-bz2": "npm:^0.3.0"
+    "@foxglove/wasm-lz4": "npm:^1.0.2"
+    "@foxglove/wasm-zstd": "npm:^1.0.1"
+    protobufjs: "npm:^7.2.5"
+    tslib: "npm:^2.5.0"
+  checksum: 10/dbc8c7c84100ae9474158b07591b58cd961e9b02bfcd294e423ab9ce423bf482965ab100171907b7cd109e2226ab7ee0e4e9e9a6553227ac5a0df37c319f0e63
+  languageName: node
+  linkType: hard
+
 "@mdx-js/react@npm:^1.6.22":
   version: 1.6.22
   resolution: "@mdx-js/react@npm:1.6.22"
@@ -5044,6 +5100,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@protobufjs/fetch@npm:^1.1.0":
+  version: 1.1.0
+  resolution: "@protobufjs/fetch@npm:1.1.0"
+  dependencies:
+    "@protobufjs/aspromise": "npm:^1.1.1"
+    "@protobufjs/inquire": "npm:^1.1.0"
+  checksum: 10/67ae40572ad536e4ef94269199f252c024b66e3059850906bdaee161ca1d75c73d04d35cd56f147a8a5a079f5808e342b99e61942c1dae15604ff0600b09a958
+  languageName: node
+  linkType: hard
+
 "@protobufjs/fetch@npm:^1.1.1":
   version: 1.1.1
   resolution: "@protobufjs/fetch@npm:1.1.1"
@@ -5057,6 +5123,20 @@ __metadata:
   version: 1.0.2
   resolution: "@protobufjs/float@npm:1.0.2"
   checksum: 10/634c2c989da0ef2f4f19373d64187e2a79f598c5fb7991afb689d29a2ea17c14b796b29725945fa34b9493c17fb799e08ac0a7ccaae460ee1757d3083ed35187
+  languageName: node
+  linkType: hard
+
+"@protobufjs/inquire@npm:^1.1.0":
+  version: 1.1.0
+  resolution: "@protobufjs/inquire@npm:1.1.0"
+  checksum: 10/c09efa34a5465cb120775e1a482136f2340a58b4abce7e93d72b8b5a9324a0e879275016ef9fcd73d72a4731639c54f2bb755bb82f916e4a78892d1d840bb3d2
+  languageName: node
+  linkType: hard
+
+"@protobufjs/inquire@npm:^1.1.1":
+  version: 1.1.1
+  resolution: "@protobufjs/inquire@npm:1.1.1"
+  checksum: 10/504740e8ac348f70b33bcf6a20c83d5b9679901654c1a96b18c0491ec2f2f7ac580e74019b6d1bce16113bfb9746bc6e7dfd4e12a717deed699675b7f230ce9e
   languageName: node
   linkType: hard
 
@@ -14056,6 +14136,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"heap-js@npm:^2.2.0":
+  version: 2.7.1
+  resolution: "heap-js@npm:2.7.1"
+  checksum: 10/da26838c82e849a94ba8d61ec255bcb517d0bac0d8452cbe7ac6b8eadbcbec2e7f4e60de498838293998e758363930276f328685794b2220f3b469e265991253
+  languageName: node
+  linkType: hard
+
 "hey-listen@npm:^1.0.8":
   version: 1.0.8
   resolution: "hey-listen@npm:1.0.8"
@@ -16289,7 +16376,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"long@npm:^5.2.3, long@npm:^5.3.2":
+"long@npm:^5.0.0, long@npm:^5.2.3, long@npm:^5.3.2":
   version: 5.3.2
   resolution: "long@npm:5.3.2"
   checksum: 10/b6b55ddae56fcce2864d37119d6b02fe28f6dd6d9e44fd22705f86a9254b9321bd69e9ffe35263b4846d54aba197c64882adcb8c543f2383c1e41284b321ea64
@@ -18945,6 +19032,26 @@ __metadata:
     "@types/node": "npm:>=13.7.0"
     long: "npm:^5.3.2"
   checksum: 10/2becdf429fa148b2f3c9ee5e52c7b8249d2b775d158ce9e5bcf82d2f9d979bf95667818f5c70487636f775e5712aecf20775ac6e86a019e146fb95ed4063dfdc
+  languageName: node
+  linkType: hard
+
+"protobufjs@npm:^7.2.5":
+  version: 7.5.7
+  resolution: "protobufjs@npm:7.5.7"
+  dependencies:
+    "@protobufjs/aspromise": "npm:^1.1.2"
+    "@protobufjs/base64": "npm:^1.1.2"
+    "@protobufjs/codegen": "npm:^2.0.5"
+    "@protobufjs/eventemitter": "npm:^1.1.0"
+    "@protobufjs/fetch": "npm:^1.1.0"
+    "@protobufjs/float": "npm:^1.0.2"
+    "@protobufjs/inquire": "npm:^1.1.1"
+    "@protobufjs/path": "npm:^1.1.2"
+    "@protobufjs/pool": "npm:^1.1.0"
+    "@protobufjs/utf8": "npm:^1.1.1"
+    "@types/node": "npm:>=13.7.0"
+    long: "npm:^5.0.0"
+  checksum: 10/283c24ca23c9d37f2a612416cd73cb1202d2232199b7b7cfad8d64d83482d0176ba1fa49073e556d52eab41c1a89ef5d31c9db38472085457eb91de651628f26
   languageName: node
   linkType: hard
 
@@ -22274,7 +22381,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tslib@npm:^2.0.0, tslib@npm:^2.0.1, tslib@npm:^2.0.3, tslib@npm:^2.1.0, tslib@npm:^2.3.0, tslib@npm:^2.3.1, tslib@npm:^2.8.0, tslib@npm:^2.8.1":
+"tslib@npm:^2, tslib@npm:^2.0.0, tslib@npm:^2.0.1, tslib@npm:^2.0.3, tslib@npm:^2.1.0, tslib@npm:^2.3.0, tslib@npm:^2.3.1, tslib@npm:^2.5.0, tslib@npm:^2.8.0, tslib@npm:^2.8.1":
   version: 2.8.1
   resolution: "tslib@npm:2.8.1"
   checksum: 10/3e2e043d5c2316461cb54e5c7fe02c30ef6dccb3384717ca22ae5c6b5bc95232a6241df19c622d9c73b809bea33b187f6dbc73030963e29950c2141bc32a79f7
@@ -23766,7 +23873,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ws@npm:^8.11.0, ws@npm:^8.18.0, ws@npm:^8.2.3":
+"ws@npm:^8.11.0, ws@npm:^8.2.3":
   version: 8.20.1
   resolution: "ws@npm:8.20.1"
   peerDependencies:
@@ -23778,6 +23885,21 @@ __metadata:
     utf-8-validate:
       optional: true
   checksum: 10/8c4d2b06dc65381b6bfab1f2e584275dabd30a99a5ce058b4dc76f3d03fad1921cef3a21d8f53127d30a808cfd1864aa2fe6890a5d43359f682457315baec873
+  languageName: node
+  linkType: hard
+
+"ws@npm:^8.18.0":
+  version: 8.18.3
+  resolution: "ws@npm:8.18.3"
+  peerDependencies:
+    bufferutil: ^4.0.1
+    utf-8-validate: ">=5.0.2"
+  peerDependenciesMeta:
+    bufferutil:
+      optional: true
+    utf-8-validate:
+      optional: true
+  checksum: 10/725964438d752f0ab0de582cd48d6eeada58d1511c3f613485b5598a83680bedac6187c765b0fe082e2d8cc4341fc57707c813ae780feee82d0c5efe6a4c61b6
   languageName: node
   linkType: hard
 
