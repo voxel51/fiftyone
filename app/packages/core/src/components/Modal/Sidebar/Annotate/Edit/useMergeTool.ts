@@ -2,11 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import {
-  DeleteAnnotationCommand,
-  getFieldSchema,
-  useAnnotationEventBus,
-} from "@fiftyone/annotation";
+import { DeleteAnnotationCommand, getFieldSchema } from "@fiftyone/annotation";
 import { useCommandBus } from "@fiftyone/command-bus";
 import { CommandContextManager } from "@fiftyone/commands";
 import {
@@ -49,14 +45,10 @@ export interface MergeTool {
  */
 export const useMergeTool = (): MergeTool => {
   const [mergeTargetId, setMergeTargetId] = useAtom(mergeTargetIdAtom);
-  const annotationEventBus = useAnnotationEventBus();
   const commandBus = useCommandBus();
   const { scene, removeOverlay } = useLighter();
-  const {
-    addLabelToSidebar,
-    getLabelById,
-    removeLabelFromSidebar,
-  } = useLabelsContext();
+  const { addLabelToSidebar, getLabelById, removeLabelFromSidebar } =
+    useLabelsContext();
   const fieldSchema = useRecoilValue(
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
   );
@@ -161,7 +153,6 @@ export const useMergeTool = (): MergeTool => {
     },
     [
       addLabelToSidebar,
-      annotationEventBus,
       commandBus,
       fieldSchema,
       getLabelById,

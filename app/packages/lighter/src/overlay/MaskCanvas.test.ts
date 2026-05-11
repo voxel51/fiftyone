@@ -2,6 +2,11 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import {
+  SegmentationTool,
+  SegmentationToolMode,
+  SegmentationToolShape,
+} from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useSegmentationMode";
 import { describe, expect, it } from "vitest";
 import { MaskCanvas } from "./MaskCanvas";
 import type { Rect } from "../types";
@@ -13,25 +18,20 @@ const WHITE = "#ffffff";
  * given world-space sub-rectangle. Skips the lazy decode path so tests run
  * synchronously against canvas pixels.
  */
-const seedCanvas = (
-  bounds: Rect,
-  paintRect: Rect
-): MaskCanvas => {
+const seedCanvas = (bounds: Rect, paintRect: Rect): MaskCanvas => {
   const mc = new MaskCanvas();
+  const toolState = {
+    active: true,
+    tool: SegmentationTool.Select,
+    shape: SegmentationToolShape.Circle,
+    mode: SegmentationToolMode.Add,
+    size: 0,
+    cursorSize: 0,
+  } satisfies Parameters<MaskCanvas["paintAt"]>[2];
   // A no-op paint dab to force the editing canvas into existence at our bounds.
-  mc.paintAt(
-    { x: bounds.x, y: bounds.y },
-    bounds,
-    {
-      active: true,
-      tool: "select" as never,
-      shape: "circle" as never,
-      mode: "add" as never,
-      size: 0,
-      cursorSize: 0,
-    },
-    { strokeStyle: WHITE }
-  );
+  mc.paintAt({ x: bounds.x, y: bounds.y }, bounds, toolState, {
+    strokeStyle: WHITE,
+  });
   // Get the underlying canvas via getPreviewSource and fill the requested
   // sub-rectangle directly (bypasses the line-interpolation and color logic).
   const canvas = mc.getPreviewSource() as HTMLCanvasElement;
@@ -68,7 +68,11 @@ describe("MaskCanvas.mergeFrom", () => {
     });
 
     const sourceCanvas = source.getPreviewSource() as HTMLCanvasElement;
-    const newBounds = target.mergeFrom(sourceCanvas, sourceBounds, targetBounds);
+    const newBounds = target.mergeFrom(
+      sourceCanvas,
+      sourceBounds,
+      targetBounds
+    );
 
     // Union: (0,0) → (18,18)
     expect(newBounds.x).toBe(0);
@@ -123,7 +127,11 @@ describe("MaskCanvas.mergeFrom", () => {
     });
 
     const sourceCanvas = source.getPreviewSource() as HTMLCanvasElement;
-    const newBounds = target.mergeFrom(sourceCanvas, sourceBounds, targetBounds);
+    const newBounds = target.mergeFrom(
+      sourceCanvas,
+      sourceBounds,
+      targetBounds
+    );
 
     // Source is inside target; bounds shouldn't grow.
     expect(newBounds.x).toBe(targetBounds.x);
