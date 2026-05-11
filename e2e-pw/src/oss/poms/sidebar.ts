@@ -127,13 +127,13 @@ export class SidebarPom {
     labels: string[],
     targetModeId: string
   ) {
-    labels.forEach((label) => {
-      this.applyFilter(label);
-    });
+    for (const label of labels) {
+      await this.applyFilter(label);
+    }
 
     const currentMode = this.sidebar.getByTestId("filter-mode-div");
     await currentMode.waitFor();
-    await currentMode.click();
+
     // make sure the pop out panel is fully expanded, to make sure click is successful
     const targetMode = this.sidebar.getByTestId(
       `filter-option-${targetModeId}`

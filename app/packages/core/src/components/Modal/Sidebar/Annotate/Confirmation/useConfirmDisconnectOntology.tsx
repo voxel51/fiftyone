@@ -11,7 +11,7 @@ import {
   Variant,
 } from "@voxel51/voodo";
 import { atom, useAtom, useSetAtom } from "jotai";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import Modal from "./Modal";
 
 const displayCount = 5;
@@ -114,16 +114,22 @@ export const useConfirmDisconnectOntology = (
   affectedAttributes: string[]
 ) => {
   const showConfirmation = useSetAtom(showDisconnectConfirmation);
-  return {
-    confirmDisconnect: useCallback(
-      () => showConfirmation(true),
-      [showConfirmation]
-    ),
-    DisconnectOntologyModal: () => (
+
+  const confirmDisconnect = useCallback(
+    () => showConfirmation(true),
+    [showConfirmation]
+  );
+
+  const DisconnectOntologyModal = useCallback(
+    () => (
       <DisconnectOntologyModalComponent
         onConfirm={onConfirm}
         affectedAttributes={affectedAttributes}
       />
     ),
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [onConfirm, affectedAttributes]
+  );
+
+  return { confirmDisconnect, DisconnectOntologyModal };
 };
