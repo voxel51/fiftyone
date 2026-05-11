@@ -73,8 +73,8 @@ describe("MaskCanvas.mergeFrom", () => {
     // Union: (0,0) → (18,18)
     expect(newBounds.x).toBe(0);
     expect(newBounds.y).toBe(0);
-    expect(newBounds.width).toBeGreaterThanOrEqual(18);
-    expect(newBounds.height).toBeGreaterThanOrEqual(18);
+    expect(newBounds.width).toBe(18);
+    expect(newBounds.height).toBe(18);
   });
 
   it("captures pre/post snapshots reachable via getPaintStrokeData", () => {
