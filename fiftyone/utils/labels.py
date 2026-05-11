@@ -924,14 +924,17 @@ def index_to_instance(
             :class:`fiftyone.core.labels.Polylines`,
             :class:`fiftyone.core.labels.Keypoint`, and
             :class:`fiftyone.core.labels.Keypoints`
-        id_field ("id"): the attribute identifying samples/frames of the
-            same video/sequence. Samples with the same id_field are processed
-            together. For dynamic grouped views from
+        id_field ("id"): the attribute identifying samples of the same
+            sequence, e.g. image frames of a dynamically grouped video. Samples
+            with the same ``id_field`` are processed together. For dynamically
+            grouped views created via
             :meth:`fiftyone.core.collections.SampleCollection.group_by` with
-            ``flat=False``, this must be the group key (e.g. ``"sample_id"`` when
-            grouping frames by parent video). For pinned group datasets,
-            ``id_field`` names an attribute under the dataset's ``group_field``
-            (the default ``"id"`` refers to ``<group_field>.id``)
+            ``flat=False``, this must be the group key (e.g. ``"sample_id"``
+            when grouping frames for a video). For group datasets, ``id_field``
+            names an attribute under the dataset's ``group_field`` (the default
+            ``"id"`` refers to ``<group_field>.id``). If the resolved field path
+            is not present on any sample in the collection, it falls back to ``"id"``
+            (or ``<group_field>.id`` for group datasets)
         index_attr ("index"): the attribute whose unique values define the
             object instances. When ``index_attr="index"`` specifically, the
             ``(label, index)`` of each object is used as the unique identifier.
@@ -958,19 +961,29 @@ def index_to_instance(
         ),
     )
 
-    if sample_collection.media_type == fom.GROUP:
-        if sample_collection._is_dynamic_groups:
-            id_path = id_field
-            ids = list(dict.fromkeys(sample_collection.values(id_path)))
-        else:
-            id_path = sample_collection.group_field + "." + id_field
-            ids = list(dict.fromkeys(sample_collection.values(id_path)))
-            sample_collection = sample_collection.select_group_slices(
-                _allow_mixed=True
+    if sample_collection.media_type == fom.GROUP and (
+        not sample_collection._is_dynamic_groups
+    ):
+        id_path = sample_collection.group_field + "." + id_field
+        ids = list(dict.fromkeys(sample_collection.values(id_path)))
+        if None in ids:
+            logger.warning(
+                "Some samples have no %s; defaulting to 'id'", id_path
             )
+            id_path = sample_collection.group_field + "." + "id"
+            ids = list(dict.fromkeys(sample_collection.values(id_path)))
+        sample_collection = sample_collection.select_group_slices(
+            _allow_mixed=True
+        )
     else:
         id_path = id_field
         ids = list(dict.fromkeys(sample_collection.values(id_path)))
+        if None in ids:
+            logger.warning(
+                "Some samples have no %s; defaulting to 'id'", id_path
+            )
+            id_path = "id"
+            ids = list(dict.fromkeys(sample_collection.values(id_path)))
 
     is_frame_field = sample_collection._is_frame_field(label_field)
     root, _ = sample_collection._get_label_field_root(label_field)
