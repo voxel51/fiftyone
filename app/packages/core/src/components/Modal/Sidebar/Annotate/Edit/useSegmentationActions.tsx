@@ -101,11 +101,23 @@ const BrushSize = ({
     const node = ref.current;
     if (!node) return undefined;
 
+    const STEP_THRESHOLD = 10;
+    let accumulated = 0;
+
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
 
-      if (e.deltaY < 0) onDecrease();
-      else if (e.deltaY > 0) onIncrease();
+      accumulated += e.deltaY;
+
+      while (accumulated <= -STEP_THRESHOLD) {
+        onDecrease();
+        accumulated %= STEP_THRESHOLD;
+      }
+
+      while (accumulated >= STEP_THRESHOLD) {
+        onIncrease();
+        accumulated %= STEP_THRESHOLD;
+      }
     };
 
     node.addEventListener("wheel", onWheel, { passive: false });
