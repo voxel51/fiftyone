@@ -150,12 +150,16 @@ export const useAppliedOntology = (field: string) => {
   const [current, setCurrent] = useCurrentLabelSchema(field);
   const schema = current as FieldSchema | undefined;
 
-  const ontologyAttributes: string[] = Array.isArray(schema?.attributes)
-    ? schema.attributes.reduce<string[]>((acc, a) => {
-        if (a._source && a.name) acc.push(a.name);
-        return acc;
-      }, [])
-    : [];
+  const ontologyAttributes = useMemo<string[]>(
+    () =>
+      Array.isArray(schema?.attributes)
+        ? schema.attributes.reduce<string[]>((acc, a) => {
+            if (a._source && a.name) acc.push(a.name);
+            return acc;
+          }, [])
+        : [],
+    [schema?.attributes]
+  );
 
   return {
     appliedOntology: schema?.applied_ontology,
