@@ -46,7 +46,12 @@ type Label = "Classification" | "Classifications" | "Detection" | "Detections";
  * All supported field types for dataset schema definitions.
  * Includes both primitive scalar types and FiftyOne {@link Label} types.
  */
-type FieldType = Label | "IntField" | "FloatField" | "StringField";
+type FieldType =
+  | Label
+  | "IntField"
+  | "FloatField"
+  | "StringField"
+  | "DictField";
 
 /**
  * A recursive type representing any valid JSON value.

@@ -13,6 +13,8 @@ import {
   ClassificationOverlay,
   KeypointOptions,
   KeypointOverlay,
+  PolylineOptions,
+  PolylineOverlay,
   useLighter,
 } from "@fiftyone/lighter";
 import { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
@@ -79,16 +81,21 @@ export const useCreateAnnotationLabel = () => {
       }
 
       if (type === POLYLINE) {
-        return {
-          data: data as PolylineLabel,
-          overlay: {
+        const polylineLabel = data as PolylineLabel;
+
+        const overlay = overlayFactory.create<PolylineOptions, PolylineOverlay>(
+          "polyline",
+          {
             id: data._id,
             field,
-            label: data as PolylineLabel,
-          },
-          type,
-          path: field,
-        };
+            label: polylineLabel as PolylineOptions["label"],
+            draggable: false,
+            deletable: false,
+            selectable: true,
+          }
+        );
+
+        return { data: polylineLabel, overlay, path: field, type };
       }
 
       if (type === KEYPOINT) {

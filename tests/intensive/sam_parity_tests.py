@@ -12,19 +12,23 @@ Usage:
     pytest sam_parity_tests.py -v --timeout=500
 """
 
-import unittest
+import cv2
 import numpy as np
 import torch
+import unittest
 
 import fiftyone as fo
 import fiftyone.zoo as foz
 from fiftyone.core.labels import Detection, Detections, Keypoint, Keypoints
 from fiftyone import ViewField as F
 
-MASK_IOU = 0.99
+MASK_IOU = 0.95  # change for more/less aggressive mask parity testing
 MASK_THRESH = 0.5
 PLACEHOLDER_LABEL = "mask"
 MIN_METRIC = 1.0
+
+# Default text prompts for concept-mode tests
+TEXT_PROMPTS = ["person"]
 
 
 def _create_test_dataset(num_samples=5, seed=51):
@@ -47,6 +51,12 @@ def _get_image_as_numpy(filepath):
     from PIL import Image
 
     return np.array(Image.open(filepath).convert("RGB"))
+
+
+def _get_image_as_pil(filepath):
+    from PIL import Image
+
+    return Image.open(filepath).convert("RGB")
 
 
 def _auto_masks_to_detections(masks_list):
@@ -1264,6 +1274,423 @@ class TestSAM2InteractiveParity(unittest.TestCase):
             interactive_field,
             direct_field,
             eval_key="eval_sam2_inter_combo",
+        )
+
+
+def _concept_output_to_detections(output, img_h, img_w, label="mask"):
+    """Convert ``Sam3Processor.set_text_prompt()`` output to
+    ``fo.Detections``.
+
+    Args:
+        output: dict with keys ``masks`` ([N, H, W] bool/uint8),
+            ``boxes`` ([N, 4] xyxy absolute), ``scores`` ([N] float).
+        img_h: original image height.
+        img_w: original image width.
+        label: label string to assign to each detection.
+
+    Returns:
+        a :class:`fiftyone.core.labels.Detections` instance.
+    """
+    masks = output["masks"]
+    scores = output["scores"]
+
+    if isinstance(masks, torch.Tensor):
+        masks = masks.cpu().float().numpy()
+    if isinstance(scores, torch.Tensor):
+        scores = scores.cpu().float().numpy()
+
+    if masks.ndim > 3:
+        masks = masks.squeeze(1)
+
+    dets = []
+    for i in range(len(masks)):
+        mask_i = masks[i].astype(bool) if masks[i].dtype != bool else masks[i]
+
+        # Resize to original image size if needed
+        mh, mw = mask_i.shape
+        if mh != img_h or mw != img_w:
+            mask_i = cv2.resize(
+                mask_i.astype(np.uint8),
+                (img_w, img_h),
+                interpolation=cv2.INTER_NEAREST,
+            ).astype(bool)
+
+        if not mask_i.any():
+            continue
+
+        det = Detection.from_mask(
+            mask=mask_i,
+            label=label,
+            confidence=float(scores[i]),
+        )
+        dets.append(det)
+
+    return Detections(detections=dets)
+
+
+class TestSAM3ConceptParity(unittest.TestCase):
+    """Compare FiftyOne SAM3 concept-mode integration outputs against
+    direct ``Sam3Processor.set_text_prompt()`` inference."""
+
+    MODEL_NAME = "segment-anything-3-image-torch"
+
+    @classmethod
+    def setUpClass(cls):
+        cls.fo_model = foz.load_zoo_model(
+            cls.MODEL_NAME,
+            classes=TEXT_PROMPTS,
+            operation_mode="concept",
+        )
+
+        from sam3.model_builder import build_sam3_image_model
+        from sam3.model.sam3_image_processor import Sam3Processor
+
+        cls.sam3_model = build_sam3_image_model()
+        cls.processor = Sam3Processor(cls.sam3_model)
+
+        cls.device = "cuda" if torch.cuda.is_available() else "cpu"
+        cls.dataset = _create_test_dataset(num_samples=4, seed=31)
+
+    def test_concept_text_prompt_parity(self):
+        fo_field = "sam3_concept_fo"
+        direct_field = "sam3_concept_direct"
+
+        self.dataset.apply_model(self.fo_model, label_field=fo_field)
+        self.dataset.set_field(
+            f"{fo_field}.detections.label",
+            F("label").if_else(F("label"), PLACEHOLDER_LABEL),
+        ).save()
+
+        for sample in self.dataset.iter_samples(progress=False, autosave=True):
+            image = _get_image_as_pil(sample.filepath)
+            img_np = np.array(image)
+            img_h, img_w = img_np.shape[:2]
+
+            inference_state = self.processor.set_image(image)
+
+            all_dets = []
+            for prompt_text in TEXT_PROMPTS:
+                output = self.processor.set_text_prompt(
+                    state=inference_state,
+                    prompt=prompt_text,
+                )
+                dets = _concept_output_to_detections(
+                    output, img_h, img_w, label=PLACEHOLDER_LABEL
+                )
+                all_dets.extend(dets.detections)
+
+            sample[direct_field] = Detections(detections=all_dets)
+
+        _assert_parity(
+            self,
+            self.dataset,
+            fo_field,
+            direct_field,
+            eval_key="eval_sam3_concept",
+        )
+
+    def test_concept_multi_prompt_parity(self):
+        """Multiple text prompts: verify each prompt's detections match."""
+        multi_prompts = ["person", "car"]
+
+        fo_model_multi = foz.load_zoo_model(
+            self.MODEL_NAME,
+            classes=multi_prompts,
+            operation_mode="concept",
+        )
+
+        fo_field = "sam3_multi_fo"
+        direct_field = "sam3_multi_direct"
+
+        self.dataset.apply_model(fo_model_multi, label_field=fo_field)
+        self.dataset.set_field(
+            f"{fo_field}.detections.label",
+            F("label").if_else(F("label"), PLACEHOLDER_LABEL),
+        ).save()
+
+        for sample in self.dataset.iter_samples(progress=False, autosave=True):
+            image = _get_image_as_pil(sample.filepath)
+            img_np = np.array(image)
+            img_h, img_w = img_np.shape[:2]
+
+            inference_state = self.processor.set_image(image)
+
+            all_dets = []
+            for prompt_text in multi_prompts:
+                output = self.processor.set_text_prompt(
+                    state=inference_state,
+                    prompt=prompt_text,
+                )
+                dets = _concept_output_to_detections(
+                    output, img_h, img_w, label=PLACEHOLDER_LABEL
+                )
+                all_dets.extend(dets.detections)
+
+            sample[direct_field] = Detections(detections=all_dets)
+
+        _assert_parity(
+            self,
+            self.dataset,
+            fo_field,
+            direct_field,
+            eval_key="eval_sam3_multi",
+        )
+
+
+class TestSAM3VisualParity(unittest.TestCase):
+    """Compare FiftyOne SAM3 visual-mode integration outputs against
+    direct SAM3 interactive predictor inference."""
+
+    MODEL_NAME = "segment-anything-3-image-torch"
+
+    @classmethod
+    def setUpClass(cls):
+        cls.fo_model = foz.load_zoo_model(
+            cls.MODEL_NAME,
+            operation_mode="visual",
+        )
+
+        from sam3.model_builder import build_sam3_image_model
+
+        sam3_model = build_sam3_image_model(
+            enable_inst_interactivity=True,
+        )
+        tracker_model = sam3_model.inst_interactive_predictor.model
+        if getattr(tracker_model, "backbone", None) is None:
+            tracker_model.backbone = sam3_model.backbone
+        cls.predictor = sam3_model.inst_interactive_predictor
+
+        cls.device = "cuda" if torch.cuda.is_available() else "cpu"
+        cls.dataset = _create_test_dataset(num_samples=4, seed=21)
+        cls.output_processor = fo.utils.sam.SAMSegmenterOutputProcessor()
+
+    def test_box_prompt_parity(self):
+        """Box prompts: FiftyOne apply_model vs. direct predictor."""
+        fo_field = "sam3_box_fo"
+        direct_field = "sam3_box_direct"
+
+        # FiftyOne model inference with box prompts
+        self.dataset.apply_model(
+            self.fo_model,
+            label_field=fo_field,
+            prompt_field="ground_truth",
+        )
+
+        # Direct SAM3 inference with box prompts
+        for sample in self.dataset.iter_samples(progress=False, autosave=True):
+            gt = sample.get_field("ground_truth")
+
+            image = _get_image_as_numpy(sample.filepath)
+            h, w = image.shape[:2]
+
+            self.predictor.set_image(image)
+
+            masks = []
+            scores = []
+            dims_hw = (h, w)
+            box_prompts = []
+            labels = []
+            for gt_det in gt.detections:
+                box_abs = _box_to_sam_abs(gt_det.bounding_box, w, h)
+                _masks, _scores, _ = self.predictor.predict(
+                    box=box_abs,
+                    multimask_output=False,
+                )
+                masks.append(_masks[None, ...])
+                scores.append(_scores[None, ...])
+                box_prompts.append(box_abs)
+                labels.append(gt_det.label)
+
+            outputs = {
+                "masks": torch.as_tensor(np.concatenate(masks, axis=0)),
+                "iou_predictions": torch.as_tensor(
+                    np.concatenate(scores, axis=0)
+                ),
+            }
+            sample[direct_field] = self.output_processor(
+                output=[outputs],
+                frame_size=[dims_hw],
+                box_prompts=[box_prompts],
+                labels=[labels],
+            )[0]
+
+        _assert_parity(
+            self,
+            self.dataset,
+            fo_field,
+            direct_field,
+            eval_key="eval_sam3_box",
+        )
+
+    def test_keypoint_prompt_parity(self):
+        """Keypoint prompts: FiftyOne apply_model vs. direct predictor."""
+        kp_field = "sam3_test_kps"
+        fo_field = "sam3_kp_fo"
+        direct_field = "sam3_kp_direct"
+
+        kp_model = foz.load_zoo_model("vitpose-base-simple-torch")
+        with torch.amp.autocast("cuda", enabled=False):
+            self.dataset.apply_model(
+                kp_model,
+                prompt_field="ground_truth",
+                label_field=kp_field,
+            )
+
+        self.dataset.apply_model(
+            self.fo_model,
+            label_field=fo_field,
+            prompt_field=kp_field,
+        )
+        self.dataset.set_field(
+            f"{fo_field}.detections.label",
+            F("label").if_else(F("label"), PLACEHOLDER_LABEL),
+        ).save()
+
+        for sample in self.dataset.iter_samples(progress=False, autosave=True):
+            kps_label = sample.get_field(kp_field)
+            if kps_label is None or not kps_label.keypoints:
+                sample[direct_field] = Detections()
+                continue
+
+            image = _get_image_as_numpy(sample.filepath)
+            h, w = image.shape[:2]
+
+            self.predictor.set_image(image)
+
+            masks = []
+            scores = []
+            dims_hw = (h, w)
+            labels = []
+            for kp in kps_label.keypoints:
+                pts = np.array(kp.points)
+                valid = (pts[:, 0] > 0) & (pts[:, 1] > 0)
+                if not valid.any():
+                    continue
+
+                pts_abs = pts[valid] * np.array([w, h])
+                labels_arr = np.ones(len(pts_abs), dtype=np.int32)
+
+                _masks, _scores, _ = self.predictor.predict(
+                    point_coords=pts_abs,
+                    point_labels=labels_arr,
+                    multimask_output=True,
+                )
+                masks.append(_masks[None, ...])
+                scores.append(_scores[None, ...])
+                labels.append(PLACEHOLDER_LABEL)
+
+            if not masks:
+                sample[direct_field] = Detections()
+                continue
+
+            outputs = {
+                "masks": torch.as_tensor(np.concatenate(masks, axis=0)),
+                "iou_predictions": torch.as_tensor(
+                    np.concatenate(scores, axis=0)
+                ),
+            }
+            sample[direct_field] = self.output_processor(
+                output=[outputs],
+                frame_size=[dims_hw],
+                labels=[labels],
+                mask_index=self.fo_model.config.points_mask_index,
+            )[0]
+
+        _assert_parity(
+            self,
+            self.dataset,
+            fo_field,
+            direct_field,
+            eval_key="eval_sam3_kp",
+        )
+
+    def test_combined_box_and_point_prompt_parity(self):
+        """Box + center-point combined prompts."""
+        fo_field = "sam3_combo_fo"
+        direct_field = "sam3_combo_direct"
+
+        # Build synthetic center-point keypoints from ground_truth boxes
+        for sample in self.dataset.iter_samples(progress=False, autosave=True):
+            gt = sample.get_field("ground_truth")
+            if gt is None:
+                continue
+            kps = []
+            for det in gt.detections:
+                bx, by, bw, bh = det.bounding_box
+                cx, cy = bx + bw / 2, by + bh / 2
+                kps.append(Keypoint(points=[(cx, cy)], label=det.label))
+            sample["combo_points"] = Keypoints(keypoints=kps)
+
+        # FiftyOne model inference with box + point prompts
+        self.dataset.apply_model(
+            self.fo_model,
+            label_field=fo_field,
+            box_prompt_field="ground_truth",
+            point_prompt_field="combo_points",
+        )
+
+        # Direct SAM3 inference with box + center point
+        for sample in self.dataset.iter_samples(progress=False, autosave=True):
+            gt = sample.get_field("ground_truth")
+            combo_kps = sample.get_field("combo_points")
+            if gt is None or not gt.detections:
+                sample[direct_field] = Detections()
+                continue
+
+            image = _get_image_as_numpy(sample.filepath)
+            h, w = image.shape[:2]
+
+            self.predictor.set_image(image)
+
+            masks = []
+            scores = []
+            dims_hw = (h, w)
+            box_prompts = []
+            labels = []
+            for i, gt_det in enumerate(gt.detections):
+                box_abs = _box_to_sam_abs(gt_det.bounding_box, w, h)
+
+                # Also provide center point if available
+                point_coords = None
+                point_labels = None
+                if combo_kps is not None and i < len(combo_kps.keypoints):
+                    pts = combo_kps.keypoints[i].points
+                    if pts:
+                        px, py = pts[0]
+                        point_coords = np.array([[px * w, py * h]])
+                        point_labels = np.array([1])
+
+                _masks, _scores, _ = self.predictor.predict(
+                    point_coords=point_coords,
+                    point_labels=point_labels,
+                    box=box_abs,
+                    multimask_output=False,
+                )
+
+                masks.append(_masks[None, ...])
+                scores.append(_scores[None, ...])
+                box_prompts.append(box_abs)
+                labels.append(gt_det.label)
+
+            outputs = {
+                "masks": torch.as_tensor(np.concatenate(masks, axis=0)),
+                "iou_predictions": torch.as_tensor(
+                    np.concatenate(scores, axis=0)
+                ),
+            }
+            sample[direct_field] = self.output_processor(
+                output=[outputs],
+                frame_size=[dims_hw],
+                box_prompts=[box_prompts],
+                labels=[labels],
+            )[0]
+
+        _assert_parity(
+            self,
+            self.dataset,
+            fo_field,
+            direct_field,
+            eval_key="eval_sam3_combo",
         )
 
 

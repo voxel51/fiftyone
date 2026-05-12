@@ -3,6 +3,7 @@ import type {
   ClassificationOverlay,
   KeypointLabel,
   KeypointOverlay,
+  PolylineOverlay,
 } from "@fiftyone/lighter";
 import { ClassificationLabel } from "@fiftyone/looker/src/overlays/classifications";
 import { DetectionLabel } from "@fiftyone/looker/src/overlays/detection";
@@ -160,7 +161,7 @@ export interface Detection3DAnnotationLabel extends Label {
 
 export interface PolylineAnnotationLabel extends Label {
   data: PolylineLabel;
-  overlay: GenericOverlay<PolylineLabel>;
+  overlay: PolylineOverlay | GenericOverlay<PolylineLabel>;
   type: "Polyline";
 }
 
@@ -288,6 +289,10 @@ export const validateGroupName = (current: string[], name: string): boolean => {
   }
   return true;
 };
+
+export const TAGS_FIELD = "tags";
+export const LABEL_TAGS_FIELD = "_label_tags";
+export const OTHER_GROUP = "other";
 
 export const RESERVED_GROUPS = new Set([
   "frame tags",

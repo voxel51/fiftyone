@@ -2,7 +2,13 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import type { DrawStyle, Point, Rect, TextOptions, ViewportState } from "../types";
+import type {
+  DrawStyle,
+  Point,
+  Rect,
+  TextOptions,
+  ViewportState,
+} from "../types";
 import type { ImageOptions, ImageSource, Renderer2D } from "./Renderer2D";
 
 /**
@@ -135,6 +141,14 @@ export class MockRenderer2D implements Renderer2D {
     });
   }
 
+  drawPolygon(points: Point[], style: DrawStyle, containerId: string): void {
+    this.containers.set(containerId, {
+      type: "polygon",
+      points,
+      style,
+    });
+  }
+
   drawImage(
     image: ImageSource,
     destination: Rect,
@@ -212,13 +226,13 @@ export class MockRenderer2D implements Renderer2D {
     return this.canvas;
   }
 
-  zoomIn(): void { }
+  zoomIn(): void {}
 
-  zoomOut(): void { }
+  zoomOut(): void {}
 
-  disableZoomPan(): void { }
+  disableZoomPan(): void {}
 
-  enableZoomPan(): void { }
+  enableZoomPan(): void {}
 
   resetZoomPan(): void {
     this.scale = 1;
@@ -236,7 +250,7 @@ export class MockRenderer2D implements Renderer2D {
     this.panY = panY;
   }
 
-  fitToRect(_worldRect: Rect, _padding?: number): void { }
+  fitToRect(_worldRect: Rect, _padding?: number): void {}
 
   isReady(): boolean {
     return true;
