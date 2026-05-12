@@ -11,6 +11,7 @@ import { useApplyInferenceResult } from "./useApplyInferenceResult";
 import { useAnnotationContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/state";
 import useCreate from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useCreate";
 import { useRegisterPointSelectionEventHandlers } from "./useRegisterPointSelectionEventHandlers";
+import { useSetInferenceStatus } from "./useInferenceStatus";
 
 const isToolsContextValid = (context: ToolsContext): boolean => {
   return (
@@ -36,6 +37,7 @@ export const useRegisterAnnotationToolEventHandlers = () => {
 
   const agent = useAnnotationAgent(useAgentSelector().activeAgent?.agent);
   const applyInferenceResult = useApplyInferenceResult(useCreate("Detection"));
+  const setInferenceStatus = useSetInferenceStatus();
 
   // register handlers for specific tools
   useRegisterPointSelectionEventHandlers();
@@ -45,18 +47,31 @@ export const useRegisterAnnotationToolEventHandlers = () => {
     () => {
       let cancelled = false;
 
-      if (isToolsContextValid(toolsContext)) {
+      if (isToolsContextValid(toolsContext) && agent) {
         const labelId = selectedLabel?.overlay?.id ?? uuidv4();
 
-        agent?.infer(labelId).then((res) => {
-          if (res && !cancelled) {
-            applyInferenceResult(res);
-          }
-        });
+        setInferenceStatus("inferring");
+        agent
+          .infer(labelId)
+          .then((res) => {
+            if (cancelled) return;
+            setInferenceStatus("idle");
+            if (res) applyInferenceResult(res);
+          })
+          .catch(() => {
+            if (cancelled) return;
+            setInferenceStatus("idle");
+          });
+      } else {
+        setInferenceStatus("idle");
       }
 
       return () => {
         cancelled = true;
+        // Ensure status doesn't leak across unmount (e.g. modal close while
+        // inference is in-flight). Effect re-runs already clear status via
+        // the else branch, so this is the only place we need it on cleanup.
+        setInferenceStatus("idle");
       };
     },
     // trigger inference every time the input context changes
