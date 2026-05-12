@@ -17,6 +17,8 @@ import {
 import {
   getAttributeFormErrors,
   hasAttributeFormError,
+  type AttributeCondition,
+  type AttributeConditionLeaf,
   type AttributeFormData,
 } from "../../utils";
 
@@ -67,30 +69,37 @@ export default function useAttributeForm({
   const isListType = LIST_TYPES.includes(formState.type);
   const isFromOntology = !!formState._source;
   const whenPreview = useMemo(() => {
-    const conditions = formState.when;
-    if (!conditions || conditions.length === 0) return null;
+    const when = formState.when;
+    if (!when) return null;
 
-    const formatValue = (v: unknown): string => {
-      if (typeof v === "string") return v;
-      return JSON.stringify(v);
-    };
+    const formatValue = (v: unknown): string =>
+      typeof v === "string" ? v : JSON.stringify(v);
 
-    const formatCondition = (condition: typeof conditions[number]): string => {
-      if (condition.operator === "in" && Array.isArray(condition.value)) {
-        const list = (condition.value as unknown[])
-          .map((v) => formatValue(v))
-          .join(", ");
-        return `${condition.field} in [${list}]`;
+    // Recursively collect all leaf conditions from the condition tree.
+    const collectLeaves = (
+      cond: AttributeCondition
+    ): AttributeConditionLeaf[] => {
+      if (cond.operator === "and" || cond.operator === "or") {
+        return cond.conditions.flatMap(collectLeaves);
       }
-      return `${condition.field} = ${formatValue(condition.value)}`;
+      return [cond];
     };
 
-    const condition = formatCondition(conditions[0]);
+    const leaves = collectLeaves(when);
+    if (leaves.length === 0) return null;
 
-    if (conditions.length === 1) return { condition, suffix: null };
+    const first = leaves[0];
+    const condition =
+      first.operator === "in" && Array.isArray(first.value)
+        ? `${first.field} in [${(first.value as unknown[])
+            .map(formatValue)
+            .join(", ")}]`
+        : `${first.field} = ${formatValue(first.value)}`;
 
-    const remaining = conditions.length - 1;
-    const suffix = `, or ${remaining} other condition${
+    if (leaves.length === 1) return { condition, suffix: null };
+
+    const remaining = leaves.length - 1;
+    const suffix = `, +${remaining} more condition${
       remaining !== 1 ? "s" : ""
     }`;
 
