@@ -12,12 +12,21 @@
    wrapper isn't a flex container — `flex: 1` would be ignored and we'd
    fall back to natural content height, defeating the overflow:auto.
    Vertical scroll only — the playhead's translate3d intentionally extends
-   past the visible width and must NOT trigger horizontal scrolling. */
+   past the visible width and must NOT trigger horizontal scrolling.
+   The scrollbar is hidden visually (wheel / keyboard scrolling still
+   works) so its width doesn't reduce the lane's effective width — the
+   ruler doesn't have a scrollbar, and a mismatched width would desync
+   the ruler playhead from the in-tracks playhead. */
 .tracksArea {
   position: relative;
   height: 100%;
   overflow-x: hidden;
   overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.tracksArea::-webkit-scrollbar {
+  display: none;
 }
 
 .tracksBody {
