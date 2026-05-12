@@ -147,7 +147,9 @@ export class DetectionOverlay
         this.mask = new MaskCanvas(label.mask);
       }
       this.markDirty();
-    } else {
+    } else if (label.mask === null) {
+      // null — explicit removal
+      // `undefined` can be cases when mask has not been saved yet - leave it alone
       const hadMask = !!this.mask;
       this.mask?.destroy();
       this.mask = undefined;
@@ -1122,6 +1124,53 @@ export class DetectionOverlay
   }
 
   /**
+   * Adds a point to the in-progress pen polygon. Lazily constructs the
+   * `MaskKeypoints` overlay on the first call. Returns the new point id, or
+   * `null` if the dragging-throttle rejected the placement.
+   */
+  addMaskKeypoint(
+    worldPoint: Point,
+    options?: { id?: string; variant?: string; dragging?: boolean }
+  ): string | null {
+    this.maskKeypoints ??= new MaskKeypoints({
+      coordinateSystem: this.coordinateSystem,
+      renderer: this.renderer,
+    });
+
+    const pointId = this.maskKeypoints.addPoint({ ...worldPoint }, options);
+    if (pointId !== null) {
+      this.interactionState = "PAINTING";
+      this.markDirty();
+    }
+    return pointId;
+  }
+
+  /**
+   * Removes a pen-polygon point by id. Disposes the in-progress polygon when
+   * the last point is removed so a subsequent click starts a fresh ring.
+   */
+  removeMaskKeypointById(pointId: string): void {
+    if (!this.maskKeypoints) return;
+
+    this.maskKeypoints.removePointById(pointId);
+
+    if (this.maskKeypoints.getAbsolutePoints().length === 0) {
+      this.maskKeypoints.destroy();
+      this.maskKeypoints = undefined;
+      this.interactionState = "NONE";
+    }
+
+    this.markDirty();
+  }
+
+  /**
+   * Number of points currently in the in-progress pen polygon.
+   */
+  getMaskKeypointCount(): number {
+    return this.maskKeypoints?.getAbsolutePoints().length ?? 0;
+  }
+
+  /**
    * Fills the pen polygon onto the mask canvas and clears the pen state.
    * Uses the current paint mode from the last known segmentation state.
    */
@@ -1210,6 +1259,49 @@ export class DetectionOverlay
   }
 
   // ---------------------------------------------------------------------------
+  // Merging mask detections
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Merges another detection's mask into this one. Expands this overlay's
+   * bounds to the union AABB and composites the source mask's pixels (binary
+   * OR). Captures pre/post snapshots — call {@link getPaintStrokeData} after
+   * to retrieve them for undo.
+   *
+   * Returns `true` on success, `false` if the source has no decoded mask
+   * (e.g. still loading).
+   */
+  mergeFrom(source: DetectionOverlay): boolean {
+    const sourceSource = source.mask?.getPreviewSource();
+    if (!this.mask || !sourceSource) return false;
+
+    const newBounds = this.mask.mergeFrom(
+      sourceSource,
+      source.bounds,
+      this.bounds
+    );
+
+    this.bounds = newBounds;
+    this.markDirty();
+
+    const [x, y, w, h] = [
+      this.relativeBounds.x,
+      this.relativeBounds.y,
+      this.relativeBounds.width,
+      this.relativeBounds.height,
+    ];
+    const updatedLabel = { ...this.label, bounding_box: [x, y, w, h] };
+
+    this.eventBus.dispatch("lighter:overlay-label-updated", {
+      id: this.id,
+      label: updatedLabel,
+      hasMask: this.hasMask(),
+    });
+
+    return true;
+  }
+
+  // ---------------------------------------------------------------------------
   // Segmentation undo/redo support
   // ---------------------------------------------------------------------------
 
@@ -1228,9 +1320,26 @@ export class DetectionOverlay
     this.markDirty();
   }
 
+  /**
+   * Re-creates the mask canvas from {@link label}.mask after a destroy/re-add
+   * cycle (e.g. undoing a deletion). No-op if the mask is already present or
+   * if the label has no mask data.
+   */
+  rehydrateMask(): void {
+    if (this.mask) return;
+    if (!this.label.mask) return;
+
+    this.mask = new MaskCanvas(this.label.mask);
+
+    this.forceHoverLeave();
+    this.markDirty();
+  }
+
   override destroy(): void {
     this.mask?.destroy();
+    this.mask = undefined;
     this.maskKeypoints?.destroy();
+    this.maskKeypoints = undefined;
     super.destroy();
   }
 }

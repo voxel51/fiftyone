@@ -46,6 +46,7 @@ class ConfigureScenario(foo.Operator):
             label="Configure scenario",
             dynamic=True,
             unlisted=True,
+            risk_level=types.RiskLevel.MEDIUM,
         )
 
     @execution_cache(
@@ -1062,6 +1063,7 @@ class ConfigureScenarioPlotResolver(foo.Operator):
             label="Configure scenario plot resolver",
             dynamic=True,
             unlisted=True,
+            risk_level=types.RiskLevel.LOW,
         )
 
     def execute(self, ctx):

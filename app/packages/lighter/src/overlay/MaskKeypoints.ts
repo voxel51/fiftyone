@@ -101,25 +101,40 @@ export class MaskKeypoints extends KeypointOverlay {
 
     if (shouldAddPoint) {
       const pointID = super.addPoint(worldPoint, options);
-      const points = this.getAbsolutePoints();
-
-      const connections = points.reduce(
-        (memo, _point, index) =>
-          index === 0
-            ? memo
-            : index === points.length - 1
-            ? [...memo, [index - 1, index], [index, 0]]
-            : [...memo, [index - 1, index]],
-        []
-      );
-
-      this.setConnections(connections);
-
+      this.rebuildRingConnections();
       this.lastKeypoint = { ...worldPoint };
       return pointID;
     }
 
     return null;
+  }
+
+  /**
+   * Removes a point by id and rebuilds the closing-ring connections so the
+   * remaining points stay correctly chained.
+   */
+  override removePointById(pointId: string): void {
+    super.removePointById(pointId);
+    this.rebuildRingConnections();
+
+    const points = this.getAbsolutePoints();
+    this.lastKeypoint = points.length
+      ? { x: points[points.length - 1].x, y: points[points.length - 1].y }
+      : undefined;
+  }
+
+  private rebuildRingConnections(): void {
+    const points = this.getAbsolutePoints();
+    const connections = points.reduce(
+      (memo, _point, index) =>
+        index === 0
+          ? memo
+          : index === points.length - 1
+          ? [...memo, [index - 1, index], [index, 0]]
+          : [...memo, [index - 1, index]],
+      []
+    );
+    this.setConnections(connections);
   }
 
   protected override renderImpl(renderer: Renderer2D): void {
