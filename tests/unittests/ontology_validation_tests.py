@@ -15,7 +15,10 @@ os.environ.setdefault("VFF_ONTOLOGY_CA", "1")
 from fiftyone.core.annotation.attributes import (
     AttributeSpec,
     When,
+    WhenAnd,
+    WhenEquals,
     WhenOperator,
+    WhenOr,
 )
 from fiftyone.core.ontology import AnnotationOntology
 from fiftyone.core.ontology_validation import validate_annotation_ontology
@@ -34,7 +37,55 @@ class OperatorValidTests(unittest.TestCase):
                     name="location",
                     type="str",
                     component="dropdown",
-                    when=[w],
+                    when=w,
+                ),
+            ],
+        )
+        with self.assertRaises(ValueError):
+            validate_annotation_ontology(ao)
+
+    def test_rejects_invalid_operator_nested_inside_and_group(self):
+        # collect_leaf_conditions must recurse into WhenAnd to expose the
+        # mutated leaf; the group itself has no operator to validate.
+        bad_leaf = When(WhenOperator.EQUALS, field="flag", value=True)
+        bad_leaf.operator = "mock_operator"
+        ao = AnnotationOntology(
+            name="test",
+            attributes=[
+                AttributeSpec(name="flag", type="bool", component="checkbox"),
+                AttributeSpec(
+                    name="location",
+                    type="str",
+                    component="dropdown",
+                    when=WhenAnd(
+                        conditions=[
+                            WhenEquals(field="flag", value=True),
+                            bad_leaf,
+                        ]
+                    ),
+                ),
+            ],
+        )
+        with self.assertRaises(ValueError):
+            validate_annotation_ontology(ao)
+
+    def test_rejects_invalid_operator_nested_inside_or_group(self):
+        bad_leaf = When(WhenOperator.EQUALS, field="flag", value=True)
+        bad_leaf.operator = "mock_operator"
+        ao = AnnotationOntology(
+            name="test",
+            attributes=[
+                AttributeSpec(name="flag", type="bool", component="checkbox"),
+                AttributeSpec(
+                    name="location",
+                    type="str",
+                    component="dropdown",
+                    when=WhenOr(
+                        conditions=[
+                            WhenEquals(field="flag", value=True),
+                            bad_leaf,
+                        ]
+                    ),
                 ),
             ],
         )
@@ -78,13 +129,13 @@ class NoCyclesTests(unittest.TestCase):
                     name="a",
                     type="str",
                     component="dropdown",
-                    when=[When(WhenOperator.EQUALS, field="b", value="x")],
+                    when=WhenEquals(field="b", value="x"),
                 ),
                 AttributeSpec(
                     name="b",
                     type="str",
                     component="dropdown",
-                    when=[When(WhenOperator.EQUALS, field="a", value="y")],
+                    when=WhenEquals(field="a", value="y"),
                 ),
             ],
         )
@@ -104,7 +155,7 @@ class NoCyclesTests(unittest.TestCase):
                     name="a",
                     type="str",
                     component="dropdown",
-                    when=[When(WhenOperator.EQUALS, field="b", value="x")],
+                    when=WhenEquals(field="b", value="x"),
                 ),
                 # Same-name variant with no `when` — would have erased
                 # the cyclic edge from the first variant under the old
@@ -114,12 +165,100 @@ class NoCyclesTests(unittest.TestCase):
                     name="b",
                     type="str",
                     component="dropdown",
-                    when=[When(WhenOperator.EQUALS, field="a", value="y")],
+                    when=WhenEquals(field="a", value="y"),
                 ),
             ],
         )
         with self.assertRaises(ValueError):
             validate_annotation_ontology(ao)
+
+    def test_rejects_cycle_where_edge_is_inside_and_group(self):
+        # collect_leaf_conditions must traverse into WhenAnd so both
+        # leaf field references contribute edges to the cycle graph.
+        ao = AnnotationOntology(
+            name="test",
+            attributes=[
+                AttributeSpec(
+                    name="a",
+                    type="str",
+                    component="dropdown",
+                    when=WhenAnd(
+                        conditions=[
+                            WhenEquals(field="b", value="x"),
+                            WhenEquals(field="c", value="y"),
+                        ]
+                    ),
+                ),
+                AttributeSpec(
+                    name="b",
+                    type="str",
+                    component="dropdown",
+                ),
+                AttributeSpec(
+                    name="c",
+                    type="str",
+                    component="dropdown",
+                    when=WhenEquals(field="a", value="z"),
+                ),
+            ],
+        )
+        with self.assertRaises(ValueError):
+            validate_annotation_ontology(ao)
+
+    def test_rejects_cycle_where_edge_is_inside_or_group(self):
+        # Same as above but the back-edge lives inside a WhenOr.
+        ao = AnnotationOntology(
+            name="test",
+            attributes=[
+                AttributeSpec(
+                    name="a",
+                    type="str",
+                    component="dropdown",
+                    when=WhenOr(
+                        conditions=[
+                            WhenEquals(field="b", value="x"),
+                            WhenEquals(field="c", value="y"),
+                        ]
+                    ),
+                ),
+                AttributeSpec(
+                    name="b",
+                    type="str",
+                    component="dropdown",
+                ),
+                AttributeSpec(
+                    name="c",
+                    type="str",
+                    component="dropdown",
+                    when=WhenEquals(field="a", value="z"),
+                ),
+            ],
+        )
+        with self.assertRaises(ValueError):
+            validate_annotation_ontology(ao)
+
+    def test_accepts_valid_acyclic_and_group(self):
+        # A WhenAnd with two unrelated field references is not a cycle.
+        ao = AnnotationOntology(
+            name="test",
+            attributes=[
+                AttributeSpec(name="flag1", type="bool", component="checkbox"),
+                AttributeSpec(name="flag2", type="bool", component="checkbox"),
+                AttributeSpec(
+                    name="detail",
+                    type="str",
+                    component="dropdown",
+                    when=WhenAnd(
+                        conditions=[
+                            WhenEquals(field="flag1", value=True),
+                            WhenEquals(field="flag2", value=True),
+                        ]
+                    ),
+                ),
+            ],
+        )
+        # Should not raise
+        validate_annotation_ontology(ao)
 
 
 class ThenKeysValidTests(unittest.TestCase):
@@ -138,7 +277,82 @@ class ThenKeysValidTests(unittest.TestCase):
                     name="attr",
                     type="str",
                     component="dropdown",
-                    when=[w],
+                    when=w,
+                ),
+            ],
+        )
+        with self.assertRaises(ValueError):
+            validate_annotation_ontology(ao)
+
+    def test_accepts_then_with_allowed_keys(self):
+        ao = AnnotationOntology(
+            name="test",
+            attributes=[
+                AttributeSpec(
+                    name="vehicle_type", type="str", component="dropdown"
+                ),
+                AttributeSpec(
+                    name="model",
+                    type="str",
+                    component="dropdown",
+                    when=WhenEquals(
+                        field="vehicle_type",
+                        value="car",
+                        then={
+                            "values": ["sedan", "suv"],
+                            "component": "radio",
+                        },
+                    ),
+                ),
+            ],
+        )
+        # Should not raise
+        validate_annotation_ontology(ao)
+
+    def test_rejects_disallowed_then_key_inside_and_group(self):
+        # collect_leaf_conditions must recurse into WhenAnd to surface
+        # the bad `then` key on the nested leaf.
+        bad_leaf = WhenEquals(
+            field="other", value=True, then={"name": "renamed"}
+        )
+        ao = AnnotationOntology(
+            name="test",
+            attributes=[
+                AttributeSpec(name="flag", type="bool", component="checkbox"),
+                AttributeSpec(name="other", type="bool", component="checkbox"),
+                AttributeSpec(
+                    name="attr",
+                    type="str",
+                    component="dropdown",
+                    when=WhenAnd(
+                        conditions=[
+                            WhenEquals(field="flag", value=True),
+                            bad_leaf,
+                        ]
+                    ),
+                ),
+            ],
+        )
+        with self.assertRaises(ValueError):
+            validate_annotation_ontology(ao)
+
+    def test_rejects_disallowed_then_key_inside_or_group(self):
+        bad_leaf = WhenEquals(field="other", value=True, then={"type": "int"})
+        ao = AnnotationOntology(
+            name="test",
+            attributes=[
+                AttributeSpec(name="flag", type="bool", component="checkbox"),
+                AttributeSpec(name="other", type="bool", component="checkbox"),
+                AttributeSpec(
+                    name="attr",
+                    type="str",
+                    component="dropdown",
+                    when=WhenOr(
+                        conditions=[
+                            WhenEquals(field="flag", value=True),
+                            bad_leaf,
+                        ]
+                    ),
                 ),
             ],
         )
@@ -157,13 +371,13 @@ class SaveInvokesValidationTests(unittest.TestCase):
                     name="a",
                     type="str",
                     component="dropdown",
-                    when=[When(WhenOperator.EQUALS, field="b", value="x")],
+                    when=WhenEquals(field="b", value="x"),
                 ),
                 AttributeSpec(
                     name="b",
                     type="str",
                     component="dropdown",
-                    when=[When(WhenOperator.EQUALS, field="a", value="y")],
+                    when=WhenEquals(field="a", value="y"),
                 ),
             ],
         )
