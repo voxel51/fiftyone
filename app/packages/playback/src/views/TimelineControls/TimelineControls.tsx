@@ -63,7 +63,7 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
       />
 
       <span className={styles.divider} aria-hidden />
-      <PlayheadTime className={styles.time} />
+      <PlayheadTime />
       <LoopBounds />
     </div>
   );

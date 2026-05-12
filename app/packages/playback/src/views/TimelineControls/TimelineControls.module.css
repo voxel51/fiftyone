@@ -10,14 +10,6 @@
   cursor: pointer;
 }
 
-.time {
-  font-family: monospace;
-  font-size: 0.7rem;
-  color: var(--color-content-text-secondary);
-  margin-left: 4px;
-  white-space: nowrap;
-}
-
 .divider {
   width: 1px;
   height: 12px;
