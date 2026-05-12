@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, Mock, call, patch
 
 import pytest
 
-from fiftyone.multimodal.odm.mongo import MongoAdapter
+from fiftyone.multimodal.db.mongo import MongoAdapter
 
 
 @pytest.fixture(name="inventories")
@@ -19,7 +19,7 @@ def fixture_inventories():
 @pytest.fixture(name="metadata_builder")
 def fixture_metadata_builder():
     with patch(
-        "fiftyone.multimodal.odm.mongo.MultimodalMetadata.build_for_scene_inventory"
+        "fiftyone.multimodal.db.mongo.MultimodalMetadata.build_for_scene_inventory"
     ) as mock:
         yield mock
 
