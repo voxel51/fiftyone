@@ -50,14 +50,22 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Measure the actual rendered tracks content so we can clamp the drawer's
-  // draggable max to the real height — no per-track height math needed.
+  // Measure both the header (controls + ruler) and the tracks body so we
+  // can clamp the drawer's draggable max to the actual visible content.
+  // The Drawer's `size` is the TOTAL drawer height (header + body), so if
+  // we only clamp by body height the header gets crammed in and content
+  // gets clipped.
   const { ref: tracksBodyRef, height: contentHeight } = useElementSize();
+  const { ref: headerMeasureRef, height: headerHeight } = useElementSize();
 
-  // Before the first measurement we fall back to maxSize so the drawer can
-  // open to a sensible size. Once measured, the smaller of the two wins.
+  // Before measurement we fall back to maxSize so the drawer can open to
+  // a sensible size. Once measured, the smaller of (visible content,
+  // maxSize) wins.
+  const visibleContent = contentHeight + headerHeight;
   const effectiveMaxSize =
-    contentHeight > 0 ? Math.min(contentHeight, maxSize) : maxSize;
+    contentHeight > 0 && headerHeight > 0
+      ? Math.min(visibleContent, maxSize)
+      : maxSize;
   const effectiveDefaultSize = Math.min(defaultSize, effectiveMaxSize);
 
   return (
@@ -69,11 +77,13 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
         maxSize={effectiveMaxSize}
         mode="push"
         header={({ toggle }) => (
-          <TimelineHeader
-            labelWidth={labelWidth}
-            zoomRef={containerRef}
-            onToggle={toggle}
-          />
+          <div ref={headerMeasureRef}>
+            <TimelineHeader
+              labelWidth={labelWidth}
+              zoomRef={containerRef}
+              onToggle={toggle}
+            />
+          </div>
         )}
       >
         <div className={styles.tracksArea}>

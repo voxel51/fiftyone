@@ -7,12 +7,17 @@
 
 /* Explicit positioning wrapper for the tracks region. PlayheadLine and
    LoopOverlays anchor here (not to the Drawer body) so they can't extend
-   above the wrapper into the ruler / controls area. */
+   above the wrapper into the ruler / controls area.
+   `height: 100%` (not `flex: 1`) because the Drawer's internal `.content`
+   wrapper isn't a flex container — `flex: 1` would be ignored and we'd
+   fall back to natural content height, defeating the overflow:auto.
+   Vertical scroll only — the playhead's translate3d intentionally extends
+   past the visible width and must NOT trigger horizontal scrolling. */
 .tracksArea {
   position: relative;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .tracksBody {

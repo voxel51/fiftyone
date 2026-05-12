@@ -1,11 +1,10 @@
 import React, { useMemo } from "react";
+import { useTileSettings } from "../../lib/TilingProvider";
+import LidarSettings from "./LidarSettings";
 import styles from "./LidarTile.module.css";
 
-/**
- * Lidar tile body — placeholder "point cloud" scatter pattern. Chrome
- * is provided externally (see `Tile` / `MosaicGrid`).
- */
 const LidarTile: React.FC = () => {
+  useTileSettings(LidarSettings);
   // Deterministic-ish scatter so the placeholder is stable across renders.
   const points = useMemo(() => generatePoints(160), []);
 

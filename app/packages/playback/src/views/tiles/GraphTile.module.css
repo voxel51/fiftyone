@@ -40,6 +40,12 @@
   stroke-dasharray: 3 2;
 }
 
+.playhead {
+  stroke: var(--color-brand-primary);
+  stroke-width: 0.6;
+  vector-effect: non-scaling-stroke;
+}
+
 .legend {
   display: flex;
   gap: 12px;

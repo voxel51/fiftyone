@@ -10,6 +10,7 @@ import {
   updateTree,
 } from "react-mosaic-component";
 import "react-mosaic-component/react-mosaic-component.css";
+import { TileIdScope } from "../../lib/TilingProvider";
 import styles from "./MosaicGrid.module.css";
 import { TileHeader } from "./Tile";
 
@@ -82,7 +83,15 @@ const MosaicGrid: React.FC<MosaicGridProps> = ({
     const tile = tiles[id];
     if (!tile) return <div />;
 
+    const focus = () => onFocusTile?.(id);
+    const isFocused = focusedTileId === id;
+
+    // Focus is folded into the action callbacks rather than fired from a
+    // toolbar onPointerDown — calling onFocusTile in pointerdown caused a
+    // re-render between pointerdown and click that swallowed the click on
+    // the toolbar's buttons (needed two taps to fullscreen).
     const handleClose = () => {
+      focus();
       if (expandedTileId === id) {
         preExpandLayout.current = null;
         setExpandedTileId(null);
@@ -92,10 +101,10 @@ const MosaicGrid: React.FC<MosaicGridProps> = ({
         onChange(updateTree(value, [update]));
       }
     };
-
-    const handleFullscreen = () => handleExpand(id, path);
-    const focus = () => onFocusTile?.(id);
-    const isFocused = focusedTileId === id;
+    const handleFullscreen = () => {
+      focus();
+      handleExpand(id, path);
+    };
 
     return (
       <MosaicWindow<string>
@@ -107,9 +116,7 @@ const MosaicGrid: React.FC<MosaicGridProps> = ({
           // react-mosaic's react-dnd integration needs a native DOM node at
           // the toolbar root to attach the drag source ref. TileHeader is a
           // React FC, so we wrap it in a plain div the connector can grab.
-          // Pointer-down on the toolbar also focuses this tile so dragging
-          // it (or just clicking the header) doubles as a focus event.
-          <div className={styles.toolbarHeader} onPointerDown={focus}>
+          <div className={styles.toolbarHeader}>
             <TileHeader
               title={tile.title}
               onClose={handleClose}
@@ -118,9 +125,11 @@ const MosaicGrid: React.FC<MosaicGridProps> = ({
           </div>
         )}
       >
-        <div className={styles.bodyWrapper} onPointerDown={focus}>
-          {tile.render()}
-        </div>
+        <TileIdScope tileId={id}>
+          <div className={styles.bodyWrapper} onPointerDown={focus}>
+            {tile.render()}
+          </div>
+        </TileIdScope>
       </MosaicWindow>
     );
   };

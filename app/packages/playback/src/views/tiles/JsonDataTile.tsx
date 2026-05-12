@@ -1,4 +1,6 @@
 import React from "react";
+import { useTileSettings } from "../../lib/TilingProvider";
+import JsonDataSettings from "./JsonDataSettings";
 import styles from "./JsonDataTile.module.css";
 
 export interface JsonDataTileProps {
@@ -24,7 +26,10 @@ const PLACEHOLDER_DATA = {
  */
 const JsonDataTile: React.FC<JsonDataTileProps> = ({
   data = PLACEHOLDER_DATA,
-}) => <div className={styles.body}>{formatJson(data)}</div>;
+}) => {
+  useTileSettings(JsonDataSettings);
+  return <div className={styles.body}>{formatJson(data)}</div>;
+};
 
 function formatJson(value: unknown, indent = 0): React.ReactNode {
   const pad = "  ".repeat(indent);
