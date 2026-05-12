@@ -180,7 +180,9 @@ class Qwen3VLModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
             raise ValueError(
                 f"video_fps must be positive, got {self.video_fps}"
             )
-        self.max_video_frames = self.parse_int(d, "max_video_frames", default=128)
+        self.max_video_frames = self.parse_int(
+            d, "max_video_frames", default=128
+        )
         if self.max_video_frames <= 0:
             raise ValueError(
                 f"max_video_frames must be positive, got {self.max_video_frames}"
@@ -275,11 +277,22 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
         model_cls = transformers.Qwen3VLForConditionalGeneration
         dtype = torch.bfloat16 if self._using_gpu else torch.float32
 
+        # HuggingFace models loaded with `device_map="auto"` may end up on an
+        # unexpected GPU in multi-GPU environments. If the user explicitly
+        # requested a device via `device=...`, honor it by disabling auto
+        # device mapping and moving the model to `self._device`.
+        device_map = None
+        if self._using_gpu:
+            device_map = "auto" if config.device is None else None
+
         model = model_cls.from_pretrained(
             config.name_or_path,
             torch_dtype=dtype,
-            device_map="auto" if self._using_gpu else None,
+            device_map=device_map,
         )
+
+        if device_map is None:
+            model = model.to(self._device)
         model.eval()
 
         self._processor = transformers.AutoProcessor.from_pretrained(
@@ -346,7 +359,7 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
             )
 
             generated_ids_trimmed = [
-                out_ids[len(in_ids):]
+                out_ids[len(in_ids) :]
                 for in_ids, out_ids in zip(inputs["input_ids"], generated_ids)
             ]
 
@@ -416,7 +429,9 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
             if img.shape[0] in (1, 3, 4) and img.shape[2] not in (1, 3, 4):
                 img = np.transpose(img, (1, 2, 0))
 
-        if isinstance(img, np.ndarray) and np.issubdtype(img.dtype, np.floating):
+        if isinstance(img, np.ndarray) and np.issubdtype(
+            img.dtype, np.floating
+        ):
             if img.max() <= 1.0:
                 img = img * 255.0
             img = np.clip(img, 0, 255).astype(np.uint8)
@@ -567,7 +582,9 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
             }
         ]
 
-        image_inputs, video_inputs = qwen_vl_utils.process_vision_info(messages)
+        image_inputs, video_inputs = qwen_vl_utils.process_vision_info(
+            messages
+        )
         text = self._processor.apply_chat_template(
             messages,
             tokenize=False,
