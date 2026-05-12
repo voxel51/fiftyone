@@ -823,16 +823,8 @@ a delegated operation:
 
 **Viewing logs**
 
-Once log storage is configured, logs will automatically appear in the Logs tab
-of a run once they are available:
-
-.. note::
-
-    Logs are currently only available *after* the run completes.
-
-.. image:: /images/plugins/operators/runs/logs_not_available_pre_completion.png
-
-.. image:: /images/plugins/operators/runs/logs_now_available_post_completion.png
+Logs are stored in MongoDB and are available in the Logs tab both while a run
+is in progress and after it completes.
 
 **Logs structure**
 
@@ -840,11 +832,6 @@ Logs are displayed in a tabular format as pictured below, including the
 timestamp, severity, and message associated with each log entry:
 
 .. image:: /images/plugins/operators/runs/logs_general_with_columns.png
-
-For logs that exceed 1MB, no content will be shown and instead a
-"Download logs" button will appear:
-
-.. image:: /images/plugins/operators/runs/logs_too_large.png
 
 **Downloading logs**
 
@@ -855,25 +842,25 @@ table and the operation's Run page:
 
 .. image:: /images/plugins/operators/runs/logs_download_preview_pane.png
 
-**Logs setup**
+**Log retention and archival**
 
-Viewing run logs for delegated operations requires some one-time
-deployment-level configuration.
+By default, delegated operation logs are retained in MongoDB for 30 days. After
+the retention period expires, logs are either uploaded to a cloud bucket or
+deleted.
 
-A deployment admin on your team will need to explicitly define log generation
-behavior for your orchestrator(s). We provide simple setup instructions for the
-two deployment configurations we support for the
-:ref:`builtin orchestrator <enterprise-delegated-orchestrator>`:
+The following environment variables can be set on your API pod to configure
+log retention behavior:
 
--   `Helm instructions <https://github.com/voxel51/fiftyone-teams-app-deploy/blob/main/helm/docs/configuring-delegated-operators.md>`_
--   `Docker instructions <https://github.com/voxel51/fiftyone-teams-app-deploy/blob/main/docker/docs/configuring-delegated-operators.md>`_
-
-.. image:: /images/plugins/operators/runs/logs_configure_not_setup.png
+-   ``FIFTYONE_DO_LOG_RETENTION_DAYS``: the number of days to retain logs in
+    MongoDB before archiving or deleting them. Default is ``30``.
+-   ``FIFTYONE_DO_LOG_BUCKET_PATH``: a cloud bucket prefix where logs are
+    uploaded after the retention period expires, e.g.
+    ``gs://my-bucket/do-logs`` or ``s3://my-bucket/do-logs``. If unset, logs
+    are deleted without being uploaded. Default is ``None``.
 
 .. note::
 
-    If you are using a third-party orchestrator, it can be configured
-    similarly to upload logs, in addition to a ``run_link`` that can be
+    If you are using a third-party orchestrator, a ``run_link`` can be
     added to each run to link back to the external run details page.
 
 .. _enterprise-run-page-view:
