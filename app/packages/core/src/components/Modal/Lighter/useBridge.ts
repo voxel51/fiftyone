@@ -23,7 +23,7 @@ import type { DetectionLabel } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { useSetAtom } from "jotai";
 import { useAtomCallback } from "jotai/utils";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { editing } from "../Sidebar/Annotate/Edit";
 import {
@@ -161,76 +161,84 @@ export const useBridge = (scene: Scene2D | null) => {
     )
   );
 
+	// Maintain refs so we don't miss events as useEventHandler
+	// is torn down and reinstantiated.
+  const segmentationModeRef = useRef(segmentationMode);
+  const focusRef = useRef(focus);
+  const sceneRef = useRef(scene);
+  segmentationModeRef.current = segmentationMode;
+  focusRef.current = focus;
+  sceneRef.current = scene;
+
   // Route overlay selection into the focus controller (sets the editing
   // label in the sidebar) and, when the Merge tool is active, into the
   // merge tool's click handler.
   useEventHandler(
     "lighter:overlay-select",
-    useCallback(
-      (payload) => {
-        if (
-          segmentationMode.segmentationModeActive &&
-          segmentationMode.tool === SegmentationTool.Merge
-        ) {
-          const overlay = scene?.getOverlay(payload.id);
-          if (overlay instanceof DetectionOverlay) {
-            segmentationMode.mergeTool.handleOverlayClick(overlay);
-          }
+    useCallback((payload) => {
+      const sm = segmentationModeRef.current;
+      const f = focusRef.current;
+      const s = sceneRef.current;
 
-          // we're merging and we have a target
-          // skip overlay selection
-          if (segmentationMode.mergeTool.mergeTargetId) {
-            return;
-          }
+      if (
+        sm.segmentationModeActive &&
+        sm.tool === SegmentationTool.Merge
+      ) {
+        const overlay = s?.getOverlay(payload.id);
+        if (overlay instanceof DetectionOverlay) {
+          sm.mergeTool.handleOverlayClick(overlay);
         }
 
-        focus.selectOverlay(payload.id, {
-          ignoreSideEffects: payload.ignoreSideEffects,
-        });
-      },
-      [focus, scene, segmentationMode]
-    )
+        // we're merging and we have a target
+        // skip overlay selection
+        if (sm.mergeTool.mergeTargetId) {
+          return;
+        }
+      }
+
+      f.selectOverlay(payload.id, {
+        ignoreSideEffects: payload.ignoreSideEffects,
+      });
+    }, [])
   );
 
   // Route overlay deselection into the focus controller (exits edit mode
   // unless we're in a generated view).
   useEventHandler(
     "lighter:overlay-deselect",
-    useCallback(
-      (payload) => {
-        if (
-          segmentationMode.segmentationModeActive &&
-          segmentationMode.tool === SegmentationTool.Merge
-        ) {
-          return;
-        }
+    useCallback((payload) => {
+      const sm = segmentationModeRef.current;
 
-        focus.deselectOverlay({
-          ignoreSideEffects: payload.ignoreSideEffects,
-        });
-      },
-      [focus, segmentationMode]
-    )
+      if (
+        sm.segmentationModeActive &&
+        sm.tool === SegmentationTool.Merge
+      ) {
+        return;
+      }
+
+      focusRef.current.deselectOverlay({
+        ignoreSideEffects: payload.ignoreSideEffects,
+      });
+    }, [])
   );
 
   // Merge tool: when selection clears (e.g. right-click deselect), drop
   // the merge-target reference and exit edit mode.
   useEventHandler(
     "lighter:selection-cleared",
-    useCallback(
-      (payload) => {
-        if (
-          segmentationMode.segmentationModeActive &&
-          segmentationMode.tool === SegmentationTool.Merge
-        ) {
-          segmentationMode.mergeTool.clearMergeTarget();
-          focus.deselectOverlay({
-            ignoreSideEffects: payload.ignoreSideEffects,
-          });
-        }
-      },
-      [focus, segmentationMode]
-    )
+    useCallback((payload) => {
+      const sm = segmentationModeRef.current;
+
+      if (
+        sm.segmentationModeActive &&
+        sm.tool === SegmentationTool.Merge
+      ) {
+        sm.mergeTool.clearMergeTarget();
+        focusRef.current.deselectOverlay({
+          ignoreSideEffects: payload.ignoreSideEffects,
+        });
+      }
+    }, [])
   );
 
   useEventHandler(
