@@ -11,7 +11,6 @@ import {
   AddOverlayCommand,
   BaseOverlay,
   DetectionOverlay,
-  InteractivePenHandler,
   useLighter,
 } from "@fiftyone/lighter";
 import { isPatchesView } from "@fiftyone/state";
@@ -31,6 +30,7 @@ import {
   useManualSegmentationTools,
 } from "./useManualSegmentationTools";
 import { useMergeTool } from "./useMergeTool";
+import { usePenTool } from "./usePenTool";
 
 // Re-export tool types/constants and unsafe atoms so existing import paths
 // (e.g. `import { SegmentationTool } from "./useSegmentationMode"`) keep
@@ -233,68 +233,15 @@ export const useSegmentationMode = () => {
     [aiMode, closeOpenLabel, manualMode, mergeTool, onExit]
   );
 
-  // Pen tool: install an InteractivePenHandler on the selected detection so
-  // each click pushes a per-point undo entry (mirrors the polyline pattern).
-  // The handler is torn down whenever the tool, mode, or selection changes
-  // such that pen editing is no longer the active gesture.
-  const installedPenHandlerRef = useRef<InteractivePenHandler | null>(null);
-  useEffect(() => {
-    const exit = () => {
-      const installed = installedPenHandlerRef.current;
-      if (!installed) return;
-      installed.cleanup();
-      sceneRef.current?.exitInteractiveMode();
-      installedPenHandlerRef.current = null;
-    };
-
-    if (!scene || !segmentationModeActive) {
-      exit();
-      return;
-    }
-
-    if (manualMode.tool !== SegmentationTool.Pen) {
-      exit();
-      return;
-    }
-
-    const overlay = selectedLabel?.overlay;
-    if (!(overlay instanceof DetectionOverlay)) {
-      // No detection selected yet — the first click goes through the legacy
-      // create path (segmentationModePaint) which builds the overlay and adds
-      // the first point. Once selection lands on the new overlay, this effect
-      // re-runs and installs the handler for subsequent clicks.
-      exit();
-      return;
-    }
-
-    const installed = installedPenHandlerRef.current;
-    if (installed && installed.overlay === overlay) {
-      return;
-    }
-
-    exit();
-
-    // The legacy first-click create path leaves the scene in interactive mode
-    // wrapping an InteractiveDetectionHandler that's already been removed
-    // from the handler list. `enterInteractiveMode` is a no-op in that state,
-    // so flip it off before re-entering with the pen handler.
-    scene.exitInteractiveMode();
-
-    const handler = new InteractivePenHandler(overlay);
-    scene.enterInteractiveMode(handler);
-    installedPenHandlerRef.current = handler;
-  }, [manualMode.tool, scene, segmentationModeActive, selectedLabel?.overlay]);
-
-  // Tear down on unmount.
-  useEffect(() => {
-    return () => {
-      const installed = installedPenHandlerRef.current;
-      if (!installed) return;
-      installed.cleanup();
-      sceneRef.current?.exitInteractiveMode();
-      installedPenHandlerRef.current = null;
-    };
-  }, []);
+  // Pen-tool lifecycle: install/exit the InteractivePenHandler reactively.
+  // See `usePenTool` for the full state machine and the rationale behind
+  // bypassing the no-detection-selected case (legacy first-click path).
+  usePenTool({
+    scene,
+    segmentationModeActive,
+    tool: manualMode.tool,
+    selectedOverlay: selectedLabel?.overlay,
+  });
 
   // Auto-enable segmentation mode when a pre-existing mask detection is selected,
   // auto-disable when a pre-existing label of a different type is selected.
