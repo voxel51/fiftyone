@@ -8,6 +8,7 @@ import MainSpace from "./MainSpace";
 import SchemaSettings from "./Schema/SchemaSettings";
 import { Entries, default as RenderSidebar } from "./Sidebar";
 import { Filter } from "./Sidebar/Entries";
+import { createExploreIsDisabled } from "./Sidebar/InteractiveSidebar";
 import SidebarContainer from "./Sidebar/SidebarContainer";
 import ViewSelection from "./Sidebar/ViewSelection";
 
@@ -74,7 +75,9 @@ const Sidebar = () => {
                 key={key}
                 name={entry.name}
                 modal={false}
-                mutable={!["other", "tags"].includes(entry.name)}
+                mutable={
+                  ![fos.OTHER_GROUP, fos.TAGS_FIELD].includes(entry.name)
+                }
                 trigger={trigger}
               />
             ),
@@ -120,7 +123,7 @@ const Sidebar = () => {
       </TopContainer>
 
       <RenderSidebar
-        isDisabled={() => false}
+        isDisabled={createExploreIsDisabled(disabled)}
         useEntries={fos.useGridEntries}
         render={renderGridEntry}
         modal={false}

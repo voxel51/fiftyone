@@ -289,13 +289,16 @@ class SidebarAsserter {
     );
   }
 
-  async assertCannotDragField(fieldName: string) {
-    const draggableSidebarFieldArea =
-      this.sb.sidebarEntryDraggableArea(fieldName);
-
-    await expect(draggableSidebarFieldArea).toHaveAttribute(
+  async assertCanDragField(fieldName: string) {
+    await expect(this.sb.sidebarEntryDraggableArea(fieldName)).toHaveAttribute(
       "data-draggable",
-      "false"
+      "true"
     );
+  }
+
+  async assertCannotDragField(fieldName: string) {
+    await expect(
+      this.sb.sidebarEntryDraggableArea(fieldName)
+    ).not.toHaveAttribute("data-draggable", "true");
   }
 }
