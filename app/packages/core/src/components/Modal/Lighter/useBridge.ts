@@ -186,13 +186,13 @@ export const useBridge = (scene: Scene2D | null) => {
       ) {
         const overlay = s?.getOverlay(payload.id);
         if (overlay instanceof DetectionOverlay) {
-          sm.mergeTool.handleOverlayClick(overlay);
-        }
-
-        // we're merging and we have a target
-        // skip overlay selection
-        if (sm.mergeTool.mergeTargetId) {
-          return;
+          // Merge tool consumes the click; `true` means we should skip the
+          // normal focus routing (re-click of target, or source-click that
+          // performed a merge). `false` means it was a first-click that
+          // adopted a new target — fall through so focus loads it.
+          if (sm.mergeTool.handleOverlayClick(overlay)) {
+            return;
+          }
         }
       }
 
