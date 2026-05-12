@@ -222,7 +222,6 @@ class DelegatedOperationService(object):
         doc_id,
         progress=None,
         run_link=None,
-        log_path=None,
         required_state=None,
         monitored=False,
     ):
@@ -235,7 +234,6 @@ class DelegatedOperationService(object):
                 operation
             run_link (None): an optional link to orchestrator-specific
                 information about the operation
-            log_path (None): an optional path to the log file for the operation
             required_state (None): an optional
                 :class:`fiftyone.operators.executor.ExecutionRunState` required
                 state of the operation. If provided, the update will only be
@@ -251,7 +249,6 @@ class DelegatedOperationService(object):
             _id=doc_id,
             run_state=ExecutionRunState.RUNNING,
             run_link=run_link,
-            log_path=log_path,
             progress=progress,
             required_state=required_state,
             monitored=monitored,
@@ -302,7 +299,6 @@ class DelegatedOperationService(object):
         result=None,
         progress=None,
         run_link=None,
-        log_path=None,
         required_state=None,
     ):
         """Sets the given delegated operation to completed state.
@@ -317,7 +313,6 @@ class DelegatedOperationService(object):
                 operation
             run_link (None): an optional link to orchestrator-specific
                 information about the operation
-            log_path (None): an optional path to the log file for the operation
             required_state (None): an optional
                 :class:`fiftyone.operators.executor.ExecutionRunState` required
                 state of the operation. If provided, the update will only be
@@ -334,7 +329,6 @@ class DelegatedOperationService(object):
             result=result,
             progress=progress,
             run_link=run_link,
-            log_path=log_path,
             required_state=required_state,
         )
 
@@ -344,7 +338,6 @@ class DelegatedOperationService(object):
         result=None,
         progress=None,
         run_link=None,
-        log_path=None,
         required_state=None,
         update_pipeline=None,
     ):
@@ -360,7 +353,6 @@ class DelegatedOperationService(object):
                 operation
             run_link (None): an optional link to orchestrator-specific
                 information about the operation
-            log_path (None): an optional path to the log file for the operation
             required_state (None): an optional
                 :class:`fiftyone.operators.executor.ExecutionRunState` required
                 state of the operation. If provided, the update will only be
@@ -380,7 +372,6 @@ class DelegatedOperationService(object):
             run_state=ExecutionRunState.FAILED,
             result=result,
             run_link=run_link,
-            log_path=log_path,
             progress=progress,
             required_state=required_state,
         )
@@ -415,33 +406,6 @@ class DelegatedOperationService(object):
             a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
         """
         return self._repo.set_label(_id=doc_id, label=label)
-
-    def set_log_upload_error(self, doc_id, log_upload_error):
-        """Sets the log upload error for the given delegated operation.
-
-        Args:
-            doc_id: the ID of the delegated operation
-            log upload error: the error message if we failed to upload
-            logs for the given delegated operation.
-
-        Returns:
-            a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
-        """
-        return self._repo.set_log_upload_error(
-            _id=doc_id, log_upload_error=log_upload_error
-        )
-
-    def set_log_size(self, doc_id, log_size):
-        """Sets the log size for the given delegated operation.
-
-        Args:
-            doc_id: the ID of the delegated operation
-            log size: the size of the log file for the given delegated operation.
-
-        Returns:
-            a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
-        """
-        return self._repo.set_log_size(_id=doc_id, log_size=log_size)
 
     def archive_operation(self, doc_id):
         """Archives the given delegated operation.
@@ -685,7 +649,6 @@ class DelegatedOperationService(object):
         operation,
         log=False,
         run_link=None,
-        log_path=None,
         monitor=False,
         check_interval_seconds=60,
         stdout_capture=None,
@@ -700,7 +663,6 @@ class DelegatedOperationService(object):
                 delegated operations
             run_link (None): an optional link to orchestrator-specific
                 information about the operation
-            log_path (None): an optional path to the log file for the operation
             monitor (False): if we should monitor the state of the operator in a subprocess.
             check_interval_seconds (60): how many seconds to wait between polling operator status.
             stdout_capture (None): an optional callable returning a context
@@ -720,7 +682,6 @@ class DelegatedOperationService(object):
                     self.set_running(
                         doc_id=operation.id,
                         run_link=run_link,
-                        log_path=log_path,
                         required_state=ExecutionRunState.QUEUED,
                         monitored=monitor,
                     )
@@ -916,17 +877,16 @@ class DelegatedOperationService(object):
                     return ExecutionResult(error=reason)
                 else:
                     logger.debug("Pinging operation %s", operation_id)
-                    log_tail = None
                     if on_monitor_ping:
                         try:
-                            log_tail = on_monitor_ping(child_process.pid)
+                            on_monitor_ping(child_process.pid)
                         except Exception as e:
                             logger.debug(
                                 "Error in on_monitor_ping callback for operation %s: %s",
                                 operation_id,
                                 e,
                             )
-                    self._repo.ping(operation_id, log_tail=log_tail)
+                    self._repo.ping(operation_id)
             except Exception as e:
                 reason = f"Error in monitoring loop: {e}"
                 logger.error(
