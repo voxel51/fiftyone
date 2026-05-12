@@ -15,40 +15,32 @@ import { useIsAIAnnotationModeActive } from "./Sidebar/Annotate/Edit/useAIAnnota
 
 const Container = styled(Stack)`
   position: absolute;
-  top: 6px;
+  top: 0;
   left: 50%;
   transform: translateX(-50%);
   z-index: 1502;
   pointer-events: none;
   user-select: none;
+  white-space: nowrap;
 `;
 
-const Dot = styled.span<{ $color: string }>`
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: ${(p) => p.$color};
-`;
-
-const POSITIVE_COLOR = "var(--color-semantic-success)";
-const NEGATIVE_COLOR = "var(--color-semantic-destructive)";
-
-const Marker = ({ color, label }: { color: string; label: string }) => (
+const Marker = ({ color, label }: { color: TextColor; label: string }) => (
   <Stack
     orientation={Orientation.Row}
     align={Align.Center}
     spacing={Spacing.Xs}
   >
-    <Dot $color={color} />
-    <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+    <Text variant={TextVariant.Md} color={color}>
+      ●
+    </Text>
+    <Text variant={TextVariant.Md} color={TextColor.Secondary}>
       {label}
     </Text>
   </Stack>
 );
 
 const Separator = () => (
-  <Text variant={TextVariant.Sm} color={TextColor.Tertiary}>
+  <Text variant={TextVariant.Md} color={TextColor.Tertiary}>
     ·
   </Text>
 );
@@ -74,8 +66,8 @@ export const AIAnnotationStatusBar = () => {
         spacing={Spacing.Sm}
         data-cy="ai-annotation-status-bar"
       >
-        <Spinner size={Size.Xs} />
-        <Text variant={TextVariant.Sm} color={TextColor.Primary}>
+        <Spinner size={Size.Md} />
+        <Text variant={TextVariant.Md} color={TextColor.Primary}>
           Inferring...
         </Text>
       </Container>
@@ -89,14 +81,14 @@ export const AIAnnotationStatusBar = () => {
       spacing={Spacing.Md}
       data-cy="ai-annotation-status-bar"
     >
-      <Marker color={POSITIVE_COLOR} label="Positive prompt" />
-      <Marker color={NEGATIVE_COLOR} label="Negative prompt" />
+      <Marker color={TextColor.Success} label="Positive prompt" />
+      <Marker color={TextColor.Destructive} label="Negative prompt" />
       <Separator />
-      <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+      <Text variant={TextVariant.Md} color={TextColor.Secondary}>
         Shift = Invert
       </Text>
       <Separator />
-      <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+      <Text variant={TextVariant.Md} color={TextColor.Secondary}>
         Click marker to remove
       </Text>
     </Container>
