@@ -8,12 +8,6 @@
   user-select: none;
 }
 
-.time {
-  white-space: nowrap;
-  flex-shrink: 0;
-  font-family: monospace;
-}
-
 .track {
   position: relative;
   flex: 1;
@@ -31,6 +25,7 @@
   height: 3px;
   background: var(--color-content-bg-muted);
   border-radius: 2px;
+  pointer-events: none;
 }
 
 .fill {

@@ -1,76 +1,46 @@
-import {
-  Button,
-  Size,
-  Text,
-  TextColor,
-  TextVariant,
-  Variant,
-} from "@voxel51/voodo";
-import clsx from "clsx";
+import { Button, Size, Variant } from "@voxel51/voodo";
 import { useAtomValue } from "jotai";
-import React, { useRef } from "react";
+import React from "react";
 import { isPlayingAtom, playheadAtom } from "../../lib/playback-atoms";
 import { usePlayback } from "../../lib/PlaybackProvider";
+import PlayheadTime from "../Playhead/PlayheadTime";
 import { PauseIcon, PlayIcon } from "../TimelineControls/timeline-controls-icons";
 import styles from "./SimplePlaybackBar.module.css";
 
-function formatTime(t: number): string {
-  const total = Math.max(0, Math.floor(t));
-  const m = Math.floor(total / 60);
-  const s = total % 60;
-  return `${m}:${String(s).padStart(2, "0")}`;
-}
-
-/**
- * Live time/duration readout. Isolated so its playheadAtom subscription
- * doesn't re-render the play button or progress bar on every tick.
- */
-const TimeReadout: React.FC = () => {
-  const playhead = useAtomValue(playheadAtom);
-  const { duration } = usePlayback();
-  return (
-    <Text
-      variant={TextVariant.Xs}
-      color={TextColor.Secondary}
-      className={styles.time}
-    >
-      {`${formatTime(playhead)} / ${formatTime(duration)}`}
-    </Text>
-  );
-};
+const clamp = (v: number, lo: number, hi: number) =>
+  Math.min(hi, Math.max(lo, v));
 
 /**
  * Click-or-drag scrub track. Subscribes to playheadAtom (re-renders on
- * every tick) but only renders a thin track, fill, and handle.
+ * every tick) but only renders a thin track, fill, and handle. Children
+ * use `pointer-events: none` so the pointer event's `offsetX` is always
+ * measured relative to the track itself.
  */
 const ProgressBar: React.FC = () => {
   const playhead = useAtomValue(playheadAtom);
   const { duration, seek } = usePlayback();
-  const trackRef = useRef<HTMLDivElement>(null);
 
-  const ratio = duration > 0 ? Math.max(0, Math.min(1, playhead / duration)) : 0;
+  const ratio = duration > 0 ? clamp(playhead / duration, 0, 1) : 0;
 
-  const seekFromPointer = (clientX: number) => {
-    const track = trackRef.current;
-    if (!track || duration <= 0) return;
-    const rect = track.getBoundingClientRect();
-    const x = clientX - rect.left;
-    const r = Math.max(0, Math.min(1, x / rect.width));
+  const seekFromPointer = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (duration <= 0) return;
+    const width = e.currentTarget.clientWidth;
+    if (width <= 0) return;
+    const r = clamp(e.nativeEvent.offsetX / width, 0, 1);
     seek(r * duration);
   };
 
   return (
     <div
-      ref={trackRef}
       className={styles.track}
       onPointerDown={(e) => {
-        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-        seekFromPointer(e.clientX);
+        e.currentTarget.setPointerCapture(e.pointerId);
+        seekFromPointer(e);
       }}
       onPointerMove={(e) => {
         // Only scrub while the pointer is down (any button).
         if (e.buttons === 0) return;
-        seekFromPointer(e.clientX);
+        seekFromPointer(e);
       }}
     >
       <div className={styles.rail} />
@@ -83,22 +53,16 @@ const ProgressBar: React.FC = () => {
   );
 };
 
-export interface SimplePlaybackBarProps {
-  className?: string;
-}
-
 /**
  * Minimal playback bar: play/pause button, current time / duration, and a
  * scrubbable progress bar. Designed to sit at the bottom of a video
  * surface — think basic YouTube player.
  */
-const SimplePlaybackBar: React.FC<SimplePlaybackBarProps> = ({
-  className,
-}) => {
+const SimplePlaybackBar: React.FC = () => {
   const isPlaying = useAtomValue(isPlayingAtom);
   const { play, pause } = usePlayback();
   return (
-    <div className={clsx(styles.root, className)}>
+    <div className={styles.root}>
       <Button
         variant={Variant.Borderless}
         size={Size.Xs}
@@ -109,7 +73,7 @@ const SimplePlaybackBar: React.FC<SimplePlaybackBarProps> = ({
         aria-label={isPlaying ? "Pause" : "Play"}
         title={isPlaying ? "Pause" : "Play"}
       />
-      <TimeReadout />
+      <PlayheadTime />
       <ProgressBar />
     </div>
   );
