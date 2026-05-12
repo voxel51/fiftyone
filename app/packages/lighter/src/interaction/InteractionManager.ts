@@ -12,6 +12,7 @@ import {
   SegmentationTool,
   type SegmentationToolState,
 } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useSegmentationMode";
+import { DetectionOverlay } from "../overlay/DetectionOverlay";
 import type { InteractionState } from "../overlay/DetectionOverlay";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
 import type { Renderer2D } from "../renderer/Renderer2D";
@@ -416,6 +417,18 @@ export class InteractionManager {
     worldPoint: Point,
     scale: number
   ): void {
+    if (
+      segmentationModeBridge.isActive() &&
+      segmentationModeBridge.getActiveTool() === SegmentationTool.Merge
+    ) {
+      const isMergeable =
+        handler instanceof DetectionOverlay &&
+        handler.hasMask() &&
+        handler.id !== segmentationModeBridge.getMergeTargetId();
+      this.canvas.style.cursor = isMergeable ? "cell" : "default";
+      return;
+    }
+
     if (TypeGuards.isSelectable(handler) && !handler.isSelected?.()) {
       this.canvas.style.cursor = "pointer";
     } else if (segmentationModeBridge.isActive()) {
@@ -652,9 +665,12 @@ export class InteractionManager {
       }
       this.configureCursorStyle(handler, worldPoint, scale);
     } else if (segmentationModeBridge.isActive() && !interactiveHandler) {
-      this.canvas.style.cursor = buildBrushCursor(
-        segmentationModeBridge.getToolState(scale)!
-      );
+      const isMergeTool =
+        segmentationModeBridge.getActiveTool() === SegmentationTool.Merge;
+
+      this.canvas.style.cursor = isMergeTool
+        ? "default"
+        : buildBrushCursor(segmentationModeBridge.getToolState(scale)!);
     } else if (detectionModeBridge.isActive() && !interactiveHandler) {
       this.canvas.style.cursor = "crosshair";
     }
@@ -1194,12 +1210,23 @@ export class InteractionManager {
   ): void => {
     this.handlers?.forEach((handler) => handler.markDirty());
 
-    if (segmentationModeBridge.isActive()) {
-      const scale = this.renderer.getScale();
-      this.canvas.style.cursor = buildBrushCursor(
-        segmentationModeBridge.getToolState(scale)!
-      );
+    if (!segmentationModeBridge.isActive()) return;
+
+    if (segmentationModeBridge.getActiveTool() === SegmentationTool.Merge) {
+      const handler = this.hoveredHandler;
+      const isMergeable =
+        handler instanceof DetectionOverlay &&
+        handler.hasMask() &&
+        handler.id !== segmentationModeBridge.getMergeTargetId();
+      this.canvas.style.cursor = isMergeable ? "cell" : "default";
+
+      return;
     }
+
+    const scale = this.renderer.getScale();
+    this.canvas.style.cursor = buildBrushCursor(
+      segmentationModeBridge.getToolState(scale)!
+    );
   };
 
   private isDoubleClick(point: Point, now: number): boolean {

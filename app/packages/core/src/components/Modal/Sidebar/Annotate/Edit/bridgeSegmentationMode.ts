@@ -19,6 +19,7 @@ import {
   MIN_CURSOR_SIZE,
   MAX_CURSOR_SIZE,
 } from "./useSegmentationMode";
+import { _unsafeMergeTargetIdAtom } from "./useMergeTool";
 import type {
   SegmentationToolMode,
   SegmentationTool,
@@ -64,6 +65,14 @@ export const segmentationModeBridge = {
    */
   getToolMode(): SegmentationToolMode {
     return getDefaultStore().get(_unsafeToolModeAtom);
+  },
+
+  /**
+   * Id of the detection currently held as the Merge tool's target, or null
+   * if no target is set (or the Merge tool isn't active).
+   */
+  getMergeTargetId(): string | null {
+    return getDefaultStore().get(_unsafeMergeTargetIdAtom);
   },
 
   /**

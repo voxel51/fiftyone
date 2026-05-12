@@ -2,12 +2,8 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { SelectIcon, type ToolbarActionGroup } from "@fiftyone/components";
-import {
-  type KeyBinding,
-  KnownContexts,
-  useKeyBindings,
-} from "@fiftyone/commands";
+import { SelectIcon } from "@fiftyone/components";
+import { KnownContexts, useKeyBindings } from "@fiftyone/commands";
 import { buildBrushCursor } from "@fiftyone/lighter";
 import {
   Add,
@@ -15,6 +11,7 @@ import {
   ArrowDropUp,
   AutoAwesome,
   Brush,
+  CallMerge,
   CircleOutlined,
   Close,
   CropSquare,
@@ -36,6 +33,8 @@ import {
   SegmentationToolShape,
   useSegmentationMode,
 } from "./useSegmentationMode";
+import type { ToolbarActionGroup } from "@fiftyone/components";
+import type { KeyBinding } from "@fiftyone/commands";
 
 const SizeControl = styled.div`
   display: flex;
@@ -174,6 +173,7 @@ export const useSegmentationActions = (): {
     increaseToolSize,
     decreaseToolSize,
     deactivateSegmentationMode,
+    mergeTool,
   } = useSegmentationMode();
 
   const editingValue = useAtomValue(editing);
@@ -196,13 +196,7 @@ export const useSegmentationActions = (): {
     }
 
     deactivateSegmentationMode();
-  }, [
-    editingValue,
-    tool,
-    onExit,
-    switchTool,
-    deactivateSegmentationMode,
-  ]);
+  }, [editingValue, tool, onExit, switchTool, deactivateSegmentationMode]);
 
   const brushCursor = useMemo(() => {
     const cursorSize = Math.min(
@@ -261,6 +255,19 @@ export const useSegmentationActions = (): {
             tooltip: "AI",
             isActive: tool === SegmentationTool.AI,
             onClick: () => switchTool(SegmentationTool.AI),
+          },
+          {
+            id: SegmentationTool.Merge,
+            label: "Merge",
+            icon: <CallMerge />,
+            shortcut: "M",
+            tooltip: mergeTool.disabled
+              ? "No mask detections to merge"
+              : "Merge masks",
+            isActive: tool === SegmentationTool.Merge,
+            isDisabled: mergeTool.disabled,
+            onClick: () =>
+              !mergeTool.disabled && switchTool(SegmentationTool.Merge),
           },
         ],
       },
@@ -357,18 +364,19 @@ export const useSegmentationActions = (): {
       },
     ],
     [
-      tool,
-      toolSize,
-      toolShape,
-      toolMode,
-      setToolSize,
-      switchTool,
-      switchToolShape,
-      switchToolMode,
-      increaseToolSize,
+      brushCursor,
       decreaseToolSize,
       handleEscape,
-      brushCursor,
+      increaseToolSize,
+      mergeTool.disabled,
+      setToolSize,
+      switchTool,
+      switchToolMode,
+      switchToolShape,
+      tool,
+      toolMode,
+      toolShape,
+      toolSize,
     ]
   );
 
@@ -424,13 +432,13 @@ export const useSegmentationActions = (): {
 
     return out;
   }, [
+    decreaseToolSize,
     groups,
+    increaseToolSize,
     segmentationModeActive,
+    switchToolShape,
     tool,
     toolShape,
-    decreaseToolSize,
-    increaseToolSize,
-    switchToolShape,
   ]);
 
   useKeyBindings(KnownContexts.ModalAnnotate, bindings, [bindings]);

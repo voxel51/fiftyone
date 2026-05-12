@@ -32,3 +32,10 @@ export type ResolvablePropertyOptions = {
   leading?: boolean;
   trailing?: boolean;
 };
+
+export enum RiskLevel {
+  LOW = "low",
+  MEDIUM = "medium",
+  HIGH = "high",
+  DANGEROUS = "dangerous",
+}

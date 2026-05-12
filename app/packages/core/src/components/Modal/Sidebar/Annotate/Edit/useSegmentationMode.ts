@@ -23,6 +23,7 @@ import {
   SegmentationTool,
   useManualSegmentationTools,
 } from "./useManualSegmentationTools";
+import { useMergeTool } from "./useMergeTool";
 
 // Re-export tool types/constants and unsafe atoms so existing import paths
 // (e.g. `import { SegmentationTool } from "./useSegmentationMode"`) keep
@@ -104,6 +105,7 @@ export const useSegmentationMode = () => {
 
   const manualMode = useManualSegmentationTools();
   const aiMode = useAIAnnotationMode();
+  const mergeTool = useMergeTool();
 
   const createDetection = useCreate(DETECTION);
   const editingLabelType = useAtomValue(currentType);
@@ -178,21 +180,51 @@ export const useSegmentationMode = () => {
     }
   }, [addOverlay]);
 
-  // Activate/deactivate AI point selection when switching to/from the AI tool.
-  // Switching INTO AI finalizes any open manual edit so the user starts the
-  // AI flow on a clean slate.
-  useEffect(() => {
-    if (!segmentationModeActive) return;
+  /**
+   * Wraps the manual tool atom setter with the tear-down/setup work that
+   * each tool needs around a transition: finalize any open manual edit on
+   * the way in, deactivate AI point selection or clear the merge target on
+   * the way out. Replaces effect-driven tool reconciliation.
+   */
+  const switchTool = useCallback(
+    (nextTool: SegmentationTool) => {
+      const currentTool = manualMode.tool;
+      if (currentTool === nextTool) return;
 
-    if (manualMode.tool === SegmentationTool.AI) {
-      if (!aiMode.isActive) {
-        closeOpenLabel();
+      // Tear down the outgoing tool.
+      if (currentTool === SegmentationTool.AI) {
+        aiMode.deactivate();
+      } else if (currentTool === SegmentationTool.Merge) {
+        mergeTool.clearMergeTarget();
       }
-      aiMode.activate();
-    } else if (aiMode.isActive) {
-      aiMode.deactivate();
-    }
-  }, [manualMode.tool, segmentationModeActive, aiMode, closeOpenLabel]);
+
+      // Set up the incoming tool.
+      if (nextTool === SegmentationTool.AI) {
+        closeOpenLabel();
+        aiMode.activate();
+      } else if (nextTool === SegmentationTool.Merge) {
+        closeOpenLabel();
+
+        // Adopt an already-selected mask detection as the merge target so
+        // the user doesn't have to re-click it. If a non-mask label is
+        // selected, deselect it — the Merge tool only operates on masks.
+        const selected = selectedLabelRef.current;
+        const overlayId = selected?.overlay?.id;
+        const hasMask =
+          selected?.type === "Detection" &&
+          !!(selected.data as { mask?: unknown })?.mask;
+
+        if (hasMask && overlayId) {
+          mergeTool.setMergeTarget(overlayId);
+        } else if (selected) {
+          onExit();
+        }
+      }
+
+      manualMode.switchTool(nextTool);
+    },
+    [aiMode, closeOpenLabel, manualMode, mergeTool, onExit]
+  );
 
   // Auto-enable segmentation mode when a pre-existing mask detection is selected,
   // auto-disable when a pre-existing label of a different type is selected.
@@ -274,12 +306,15 @@ export const useSegmentationMode = () => {
       toolSize: manualMode.toolSize,
       toolShape: manualMode.toolShape,
       toolMode: manualMode.toolMode,
-      switchTool: manualMode.switchTool,
+      switchTool,
       switchToolShape: manualMode.switchToolShape,
       switchToolMode: manualMode.switchToolMode,
       increaseToolSize: manualMode.increaseToolSize,
       decreaseToolSize: manualMode.decreaseToolSize,
       setToolSize: manualMode.setToolSize,
+
+      // Merge tool — composed sub-state for the bridge to drive
+      mergeTool,
     }),
     [
       segmentationModeActive,
@@ -293,6 +328,8 @@ export const useSegmentationMode = () => {
       finalizePointSelection,
       setEditingMask,
       manualMode,
+      switchTool,
+      mergeTool,
     ]
   );
 };
