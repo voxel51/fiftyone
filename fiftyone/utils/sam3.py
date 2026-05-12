@@ -33,14 +33,10 @@ sam2ip = fou.lazy_import("sam2.sam2_image_predictor")
 logger = logging.getLogger(__name__)
 
 
-_SAM3_BPE_FILENAME = "bpe_simple_vocab_16e6.txt.gz"
-_SAM3_BPE_URL = (
-    "https://raw.githubusercontent.com/openai/CLIP/main/clip/"
-    + _SAM3_BPE_FILENAME
-)
-
-
-def _ensure_sam3_bpe_vocab_path():
+def _ensure_sam3_bpe_vocab_path(
+    tokenizer_base_filename: str,
+    tokenizer_base_url: str,
+):
     """Ensures SAM3 has a valid BPE vocab file and returns its path.
 
     The upstream `sam3` package defaults to a relative `../assets/` location
@@ -52,7 +48,7 @@ def _ensure_sam3_bpe_vocab_path():
 
     bpe_dir = os.path.join(fo.config.model_zoo_dir, "sam3")
     os.makedirs(bpe_dir, exist_ok=True)
-    bpe_path = os.path.join(bpe_dir, _SAM3_BPE_FILENAME)
+    bpe_path = os.path.join(bpe_dir, tokenizer_base_filename)
 
     if os.path.isfile(bpe_path):
         return bpe_path
@@ -64,9 +60,11 @@ def _ensure_sam3_bpe_vocab_path():
         sam3_pkg_dir = os.path.dirname(os.path.abspath(_sam3_pkg.__file__))
         candidates = (
             os.path.join(
-                os.path.dirname(sam3_pkg_dir), "assets", _SAM3_BPE_FILENAME
+                os.path.dirname(sam3_pkg_dir),
+                "assets",
+                tokenizer_base_filename,
             ),
-            os.path.join(sam3_pkg_dir, "assets", _SAM3_BPE_FILENAME),
+            os.path.join(sam3_pkg_dir, "assets", tokenizer_base_filename),
         )
         for candidate in candidates:
             if os.path.isfile(candidate):
@@ -75,14 +73,16 @@ def _ensure_sam3_bpe_vocab_path():
     except Exception:
         pass
 
-    logger.info("Downloading SAM3 tokenizer vocab (%s)...", _SAM3_BPE_FILENAME)
+    logger.info(
+        "Downloading SAM3 tokenizer vocab (%s)...", tokenizer_base_filename
+    )
     try:
-        etaw.download_file(_SAM3_BPE_URL, path=bpe_path)
+        etaw.download_file(tokenizer_base_url, path=bpe_path)
     except Exception as e:
         raise RuntimeError(
             "Failed to download SAM3 tokenizer vocab. "
             "You can manually download '%s' from %s and save it to %s"
-            % (_SAM3_BPE_FILENAME, _SAM3_BPE_URL, bpe_path)
+            % (tokenizer_base_filename, tokenizer_base_url, bpe_path)
         ) from e
 
     return bpe_path
@@ -128,6 +128,14 @@ class SegmentAnything3ImageModelConfig(
             default="fiftyone.utils.sam3.SegmentAnything3ImageGetItem",
         )
         self.get_item_args = self.parse_dict(d, "get_item_args", default=None)
+
+        # Tokenizer vocab settings (provided by the model zoo manifest)
+        self.tokenizer_base_filename = self.parse_string(
+            d, "tokenizer_base_filename", default=None
+        )
+        self.tokenizer_base_url = self.parse_string(
+            d, "tokenizer_base_url", default=None
+        )
 
         self.operation_mode = self.parse_string(
             d, "operation_mode", default="concept"
@@ -370,10 +378,23 @@ class SegmentAnything3ImageModel(fosam2.SegmentAnything2ImageModel):
         if "device" not in config.entrypoint_args:
             config.entrypoint_args["device"] = str(self._device)
 
+        if (
+            not self.config.tokenizer_base_filename
+            or not self.config.tokenizer_base_url
+        ):
+            raise ValueError(
+                "Missing required SAM3 tokenizer vocab configuration. "
+                "Provide 'tokenizer_base_filename' and 'tokenizer_base_url' "
+                "in the model config (typically via the model zoo manifest)."
+            )
+
         # Ensure the upstream `sam3` entrypoint has a valid BPE vocab path
         bpe_path = config.entrypoint_args.get("bpe_path", None)
         if not bpe_path or not os.path.isfile(bpe_path):
-            config.entrypoint_args["bpe_path"] = _ensure_sam3_bpe_vocab_path()
+            config.entrypoint_args["bpe_path"] = _ensure_sam3_bpe_vocab_path(
+                tokenizer_base_filename=self.config.tokenizer_base_filename,
+                tokenizer_base_url=self.config.tokenizer_base_url,
+            )
 
         model = super()._load_model(config)
         return model
