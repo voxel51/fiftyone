@@ -70,7 +70,8 @@ export const useAnnotationStatus = () => {
         case SegmentationTool.Pen:
           return <PenStatus />;
         case SegmentationTool.AI:
-          if (inferenceStatus === "inferring") return <AIInferringStatus />;
+          if (inferenceStatus === "inferring")
+            return <AIInferringStatus status={inferenceStatus} />;
           if (!hasAiPoints) return <AIFirstClickStatus />;
           return <AIPromptStatus />;
         case SegmentationTool.Merge:

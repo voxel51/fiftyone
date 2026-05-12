@@ -77,7 +77,7 @@ export const StatusItem = ({
   <Stack
     orientation={Orientation.Row}
     align={Align.Center}
-    spacing={Spacing.Xs}
+    spacing={Spacing.Sm}
   >
     <IconWrap>{icon}</IconWrap>
     <Text variant={TextVariant.Md} color={TextColor.Secondary}>

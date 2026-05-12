@@ -15,6 +15,7 @@ import {
 } from "@voxel51/voodo";
 import { ReactElement } from "react";
 import { StatusItem } from "../../../ModalStatusBar";
+import { InferenceStatus } from "@fiftyone/annotation/src/agents";
 
 export const DetectionStatus = (): ReactElement => (
   <StatusItem
@@ -40,7 +41,7 @@ export const PenStatus = (): ReactElement => (
 export const PolylineEntryStatus = (): ReactElement => (
   <StatusItem
     icon={<Timeline fontSize="small" />}
-    label="Click to draw another polyline · Click existing shape to edit"
+    label="Click to start a new polyline"
   />
 );
 
@@ -48,14 +49,27 @@ export const PolylineProgressStatus = ({
   vertexCount,
 }: {
   vertexCount: number;
-}): ReactElement => (
-  <StatusItem
-    icon={<Timeline fontSize="small" />}
-    label={`${vertexCount} ${
-      vertexCount === 1 ? "vertex" : "vertices"
-    } · Right click to finish`}
-  />
-);
+}): ReactElement => {
+  const instructions = [
+    `${vertexCount} ${vertexCount === 1 ? "vertex" : "vertices"}`,
+    "Click to add a point",
+    "Ctrl + click to swap segment endpoints",
+    "Shift + click to start a new segment",
+    "Alt + click to delete a point",
+    "Right click to exit",
+  ];
+
+  return (
+    <Stack orientation={Orientation.Row} spacing={Spacing.Md}>
+      {instructions.map((text, idx) => (
+        <>
+          <Text color={TextColor.Secondary}>{text}</Text>
+          {idx < instructions.length - 1 && <Separator />}
+        </>
+      ))}
+    </Stack>
+  );
+};
 
 export const MergeInitialStatus = (): ReactElement => (
   <StatusItem
@@ -76,18 +90,29 @@ export const MergeTargetSetStatus = (): ReactElement => (
   />
 );
 
-export const AIInferringStatus = (): ReactElement => (
-  <Stack
-    orientation={Orientation.Row}
-    align={Align.Center}
-    spacing={Spacing.Sm}
-  >
-    <Spinner size={Size.Md} />
-    <Text variant={TextVariant.Md} color={TextColor.Primary}>
-      Inferring...
-    </Text>
-  </Stack>
-);
+export const AIInferringStatus = ({
+  status,
+}: {
+  status: InferenceStatus;
+}): ReactElement => {
+  const statusLabels: Record<InferenceStatus, string> = {
+    inferring: "Running inference",
+    idle: "No inference running",
+  };
+
+  return (
+    <Stack
+      orientation={Orientation.Row}
+      align={Align.Center}
+      spacing={Spacing.Sm}
+    >
+      <Spinner size={Size.Md} color={TextColor.Secondary} />
+      <Text variant={TextVariant.Md} color={TextColor.Secondary}>
+        {statusLabels[status]}
+      </Text>
+    </Stack>
+  );
+};
 
 export const AIFirstClickStatus = (): ReactElement => (
   <Text variant={TextVariant.Md} color={TextColor.Secondary}>
@@ -126,7 +151,7 @@ export const AIPromptStatus = (): ReactElement => (
     <Marker color={TextColor.Destructive} label="Negative prompt" />
     <Separator />
     <Text variant={TextVariant.Md} color={TextColor.Secondary}>
-      Shift = Invert
+      Hold shift to invert positive/negative selection
     </Text>
     <Separator />
     <Text variant={TextVariant.Md} color={TextColor.Secondary}>
