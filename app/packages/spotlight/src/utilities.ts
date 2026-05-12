@@ -18,12 +18,27 @@ interface Matches<K, V> {
   forward?: Match<K, V>;
 }
 
+/** Typed wrapper around `document.createElement`. */
 export const create = <K extends keyof HTMLElementTagNameMap>(
   tagName: K
 ): HTMLElementTagNameMap[K] => {
   return document.createElement(tagName);
 };
 
+/**
+ * Resolves the scroll `top` value the grid should target for the current render pass.
+ *
+ * When `at` is set and the item is found in the forward section, the position is
+ * computed from the item's row rather than the current `scrollTop`. This is how
+ * scroll-restore and programmatic focus scrolling work.
+ *
+ * @param at - Optional target item and pixel offset within its row.
+ * @param backward - The backward section, used for height calculations.
+ * @param forward - The forward section, searched first when `at` is set.
+ * @param offset - Pending scroll adjustment (px) from a section swap, or `false` if none.
+ * @param scrollTop - Current `element.scrollTop`.
+ * @returns The resolved scroll target in pixels.
+ */
 export const findTop = <K, V>({
   at,
   backward,
@@ -47,6 +62,20 @@ export const findTop = <K, V>({
   return top;
 };
 
+/**
+ * Builds a {@link RowChange} event for the topmost visible row if the scroll
+ * position has changed or an `at` target is set.
+ *
+ * Picks the row with the smallest `delta` (closest to the viewport top) across
+ * both sections, then looks up its pagination key from `keys`.
+ *
+ * @param at - The current scroll-restore target; when absent and `dispatchOffset`
+ *   is false, no event is emitted.
+ * @param dispatchOffset - When `true`, always emit even without an `at` target.
+ * @param keys - Map from item ID to its pagination cursor.
+ * @param matches - The closest visible row from each section.
+ * @returns A {@link RowChange} event, or `undefined` if none should be dispatched.
+ */
 export const handleRowChange = <K, V>({
   at,
   dispatchOffset,
@@ -59,7 +88,7 @@ export const handleRowChange = <K, V>({
   matches: Matches<K, V>;
 }) => {
   if (!dispatchOffset && !at) {
-    return;
+    return null;
   }
   let item = forward?.row.first;
   let delta = forward?.delta;
@@ -70,14 +99,28 @@ export const handleRowChange = <K, V>({
   }
 
   if (!keys.has(item)) {
-    return;
+    return null;
   }
 
   return new RowChange(item, keys.get(item), Math.abs(delta));
 };
 
+/** Converts a pixel number to a CSS `px` string. */
 export const pixels = (pixels: number) => `${pixels}px`;
 
+/**
+ * Imperatively scrolls the container to the position indicated by `at` or `offset`.
+ *
+ * When `at` is set, searches forward then backward sections for the target item
+ * and scrolls directly to it. Otherwise applies the pending `offset` correction.
+ *
+ * @param at - Optional target item to scroll to.
+ * @param backward - The backward section.
+ * @param el - The scrollable container element.
+ * @param forward - The forward section.
+ * @param offset - Pending scroll adjustment from a section swap, or `false` if none.
+ * @param top - Pre-computed scroll target from {@link findTop}.
+ */
 export const scrollToPosition = <K, V>({
   at,
   backward,
@@ -110,5 +153,6 @@ export const scrollToPosition = <K, V>({
   }
 };
 
+/** Sums an array of numbers. */
 export const sum = (values: number[]) =>
   values.reduce((sum, next) => sum + next, 0);
