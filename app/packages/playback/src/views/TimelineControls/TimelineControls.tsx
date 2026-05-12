@@ -16,13 +16,9 @@ export interface TimelineControlsProps {
    * acts as a "show / hide tracks" affordance.
    */
   onToggle?: () => void;
-  className?: string;
 }
 
-const TimelineControls: React.FC<TimelineControlsProps> = ({
-  onToggle,
-  className,
-}) => {
+const TimelineControls: React.FC<TimelineControlsProps> = ({ onToggle }) => {
   const isPlaying = useAtomValue(isPlayingAtom);
   const { play, pause, stepBack, stepForward } = usePlayback();
 
@@ -37,7 +33,7 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
 
   return (
     <div
-      className={clsx(styles.root, { [styles.clickable]: !!onToggle }, className)}
+      className={clsx(styles.root, { [styles.clickable]: !!onToggle })}
       onClick={handleClick}
     >
       <Button

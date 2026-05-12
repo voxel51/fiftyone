@@ -30,9 +30,7 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({
 }) => {
   return (
     <div className={styles.root}>
-      <div className={styles.controlsRow}>
-        <TimelineControls onToggle={onToggle} />
-      </div>
+      <TimelineControls onToggle={onToggle} />
       <TimelineRuler labelWidth={labelWidth} zoomRef={zoomRef} />
     </div>
   );

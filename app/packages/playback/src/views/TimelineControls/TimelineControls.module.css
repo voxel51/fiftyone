@@ -2,8 +2,8 @@
   display: flex;
   align-items: center;
   gap: 2px;
-  flex: 1;
   user-select: none;
+  border-bottom: 1px solid var(--color-content-border-default);
 }
 
 .clickable {
