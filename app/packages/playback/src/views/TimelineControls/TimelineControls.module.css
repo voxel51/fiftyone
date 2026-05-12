@@ -18,18 +18,3 @@
   margin: 0 6px;
 }
 
-.loopBounds {
-  font-family: monospace;
-  font-size: 0.7rem;
-  color: var(--color-content-text-secondary);
-  white-space: nowrap;
-  user-select: none;
-}
-
-.loopBound {
-  cursor: pointer;
-}
-
-.loopBound:hover {
-  text-decoration: underline;
-}
