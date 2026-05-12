@@ -405,8 +405,14 @@ class SegmentAnything3ImageModel(fosam2.SegmentAnything2ImageModel):
             )
             config.entrypoint_args["bpe_path"] = bpe_path
 
-        model = super()._load_model(config)
-        return model
+        # The upstream `sam3` codebase uses `device="cuda"` and/or `.cuda()`
+        # calls in a few places when building caches. Those allocate on the
+        # *current* CUDA device, which may be cuda:0 unless we set it here.
+        if self._device.type == "cuda":
+            with torch.cuda.device(self._device):
+                return super()._load_model(config)
+
+        return super()._load_model(config)
 
     def _download_model(self, config):
         # Download sam3 to fo.config.model_zoo_dir from HF hub.
