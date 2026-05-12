@@ -158,9 +158,6 @@ class WhenEqualsTests(unittest.TestCase):
         )
         self.assertEqual(w.then, {"values": ["sedan", "suv"]})
 
-    def test_repr_uses_subclass_name(self):
-        self.assertIn("WhenEquals(", repr(WhenEquals(field="f", value=1)))
-
 
 class WhenInTests(unittest.TestCase):
     def test_pre_fills_operator(self):
@@ -178,14 +175,11 @@ class WhenInTests(unittest.TestCase):
         base = When(WhenOperator.IN, field="f", value=[1, 2])
         self.assertEqual(sub.to_dict(), base.to_dict())
 
-    def test_repr_uses_subclass_name(self):
-        self.assertIn("WhenIn(", repr(WhenIn(field="f", value=[1])))
-
 
 class WhenAndTests(unittest.TestCase):
     def test_create(self):
         wa = WhenAnd(
-            conditions=[
+            [
                 WhenEquals(field="damage_present", value=True),
                 WhenIn(field="vehicle_type", value=["car", "truck"]),
             ]
@@ -194,21 +188,19 @@ class WhenAndTests(unittest.TestCase):
 
     def test_empty_conditions_raises(self):
         with self.assertRaises(ValueError):
-            WhenAnd(conditions=[])
+            WhenAnd([])
 
     def test_non_list_conditions_raises(self):
         with self.assertRaises(ValueError):
-            WhenAnd(conditions="not a list")
+            WhenAnd("not a list")
 
-    def test_accepts_mixed_condition_types(self):
-        # WhenAnd accepts any list of WhenCondition nodes without type-checking
-        # each element; type safety is enforced at the call site by type hints.
-        wa = WhenAnd(conditions=[WhenEquals(field="f", value=1)])
-        self.assertEqual(len(wa.conditions), 1)
+    def test_non_when_condition_element_raises(self):
+        with self.assertRaises(ValueError):
+            WhenAnd([WhenEquals(field="f", value=1), "not a condition"])
 
     def test_to_dict(self):
         wa = WhenAnd(
-            conditions=[
+            [
                 WhenEquals(field="a", value=1),
                 WhenIn(field="b", value=[2, 3]),
             ]
@@ -241,7 +233,7 @@ class WhenAndTests(unittest.TestCase):
 
     def test_roundtrip(self):
         original = WhenAnd(
-            conditions=[
+            [
                 WhenEquals(field="flag", value=True),
                 WhenIn(field="type", value=["a", "b"]),
             ]
@@ -254,17 +246,11 @@ class WhenAndTests(unittest.TestCase):
             original.conditions[0].to_dict(),
         )
 
-    def test_repr(self):
-        self.assertIn(
-            "WhenAnd(",
-            repr(WhenAnd(conditions=[WhenEquals(field="f", value=1)])),
-        )
-
 
 class WhenOrTests(unittest.TestCase):
     def test_create(self):
         wo = WhenOr(
-            conditions=[
+            [
                 WhenEquals(field="category", value="mammal"),
                 WhenEquals(field="category", value="bird"),
             ]
@@ -273,15 +259,19 @@ class WhenOrTests(unittest.TestCase):
 
     def test_empty_conditions_raises(self):
         with self.assertRaises(ValueError):
-            WhenOr(conditions=[])
+            WhenOr([])
 
     def test_non_list_conditions_raises(self):
         with self.assertRaises(ValueError):
-            WhenOr(conditions="not a list")
+            WhenOr("not a list")
+
+    def test_non_when_condition_element_raises(self):
+        with self.assertRaises(ValueError):
+            WhenOr([WhenEquals(field="f", value=1), 42])
 
     def test_to_dict(self):
         wo = WhenOr(
-            conditions=[
+            [
                 WhenEquals(field="a", value=1),
                 WhenEquals(field="a", value=2),
             ]
@@ -305,7 +295,7 @@ class WhenOrTests(unittest.TestCase):
 
     def test_roundtrip(self):
         original = WhenOr(
-            conditions=[
+            [
                 WhenEquals(field="x", value="yes"),
                 WhenIn(field="y", value=["p", "q"]),
             ]
@@ -320,10 +310,10 @@ class WhenOrTests(unittest.TestCase):
     def test_nested_and_inside_or(self):
         """WhenOr may contain WhenAnd children."""
         wo = WhenOr(
-            conditions=[
+            [
                 WhenEquals(field="priority", value="urgent"),
                 WhenAnd(
-                    conditions=[
+                    [
                         WhenEquals(field="category", value="mammal"),
                         WhenEquals(field="size", value="large"),
                     ]
@@ -389,12 +379,12 @@ class WhenConditionDispatchTests(unittest.TestCase):
     def test_deeply_nested_roundtrip(self):
         """AND(OR(leaf, AND(leaf, leaf)), leaf) survives a full to/from dict cycle."""
         original = WhenAnd(
-            conditions=[
+            [
                 WhenOr(
-                    conditions=[
+                    [
                         WhenEquals(field="a", value=1),
                         WhenAnd(
-                            conditions=[
+                            [
                                 WhenEquals(field="b", value=2),
                                 WhenEquals(field="c", value=3),
                             ]
@@ -414,9 +404,6 @@ class WhenConditionDispatchTests(unittest.TestCase):
 class CollectLeafConditionsTests(unittest.TestCase):
     """collect_leaf_conditions must yield exactly the When leaves of any tree."""
 
-    def test_none_yields_nothing(self):
-        self.assertEqual(list(collect_leaf_conditions(None)), [])
-
     def test_single_leaf(self):
         w = WhenEquals(field="f", value=1)
         leaves = list(collect_leaf_conditions(w))
@@ -425,13 +412,13 @@ class CollectLeafConditionsTests(unittest.TestCase):
     def test_and_group_yields_all_leaves(self):
         a = WhenEquals(field="a", value=1)
         b = WhenIn(field="b", value=[2, 3])
-        leaves = list(collect_leaf_conditions(WhenAnd(conditions=[a, b])))
+        leaves = list(collect_leaf_conditions(WhenAnd([a, b])))
         self.assertEqual(leaves, [a, b])
 
     def test_or_group_yields_all_leaves(self):
         a = WhenEquals(field="a", value=1)
         b = WhenEquals(field="a", value=2)
-        leaves = list(collect_leaf_conditions(WhenOr(conditions=[a, b])))
+        leaves = list(collect_leaf_conditions(WhenOr([a, b])))
         self.assertEqual(leaves, [a, b])
 
     def test_nested_tree_yields_all_leaves(self):
@@ -440,8 +427,8 @@ class CollectLeafConditionsTests(unittest.TestCase):
         c = WhenEquals(field="c", value=3)
         d = WhenEquals(field="d", value=4)
         tree = WhenAnd(
-            conditions=[
-                WhenOr(conditions=[a, WhenAnd(conditions=[b, c])]),
+            [
+                WhenOr([a, WhenAnd([b, c])]),
                 d,
             ]
         )
@@ -449,7 +436,7 @@ class CollectLeafConditionsTests(unittest.TestCase):
 
     def test_leaf_objects_are_when_instances(self):
         tree = WhenAnd(
-            conditions=[
+            [
                 WhenEquals(field="x", value=True),
                 WhenIn(field="y", value=["p", "q"]),
             ]

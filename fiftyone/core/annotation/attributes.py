@@ -12,6 +12,11 @@ from enum import Enum
 from typing import Any, Generator, Literal, Optional, Union
 
 
+#: Maximum nesting depth allowed for a ``when`` condition tree. Mirrors the
+#: 20-level taxonomy depth limit cited in the PRD.
+MAX_CONDITION_DEPTH = 20
+
+
 def attr_insert_to_dict(d: dict, name: str, obj: object) -> dict:
     """Inserts ``obj.<name>`` into ``d`` under key ``name`` if it is set
     (i.e. not ``None``).
@@ -40,10 +45,12 @@ def _require_keys(d: dict, keys: tuple, cls: type) -> None:
 
 
 class WhenOperator(str, Enum):
-    """Supported logical operators for :class:`When` leaf conditions."""
+    """Supported logical operators for all :class:`WhenCondition` nodes."""
 
     EQUALS = "equals"
     IN = "in"
+    AND = "and"
+    OR = "or"
 
 
 class WhenCondition(abc.ABC):
@@ -69,7 +76,7 @@ class WhenCondition(abc.ABC):
         """
 
     @classmethod
-    def from_dict(cls, d: dict) -> "WhenCondition":
+    def from_dict(cls, d: dict, _depth: int = 0) -> "WhenCondition":
         """Deserializes a condition from a plain dict.
 
         Dispatches to :class:`WhenAnd`, :class:`WhenOr`, or :class:`When`
@@ -81,21 +88,27 @@ class WhenCondition(abc.ABC):
         Returns:
             a :class:`WhenCondition`
         """
+        if _depth > MAX_CONDITION_DEPTH:
+            raise ValueError(
+                f"condition tree exceeds the maximum nesting depth of "
+                f"{MAX_CONDITION_DEPTH}"
+            )
         if not isinstance(d, dict):
             raise ValueError(
                 f"WhenCondition.from_dict expects a dict, got "
                 f"{type(d).__name__}"
             )
         op = d.get("operator")
-        if op == "and":
-            return WhenAnd.from_dict(d)
-        if op == "or":
-            return WhenOr.from_dict(d)
+        if op == WhenOperator.AND:
+            return WhenAnd.from_dict(d, _depth=_depth + 1)
+        if op == WhenOperator.OR:
+            return WhenOr.from_dict(d, _depth=_depth + 1)
         return When.from_dict(d)
 
 
 def collect_leaf_conditions(
     root: WhenCondition,
+    _depth: int = 0,
 ) -> Generator["When", None, None]:
     """Recursively yields all leaf :class:`When` nodes in a condition tree.
 
@@ -112,13 +125,21 @@ def collect_leaf_conditions(
     Yields:
         each leaf :class:`When` node in the tree
     """
-    if root is None:
-        return
+    if _depth > MAX_CONDITION_DEPTH:
+        raise ValueError(
+            f"condition tree exceeds the maximum nesting depth of "
+            f"{MAX_CONDITION_DEPTH}"
+        )
     if isinstance(root, (WhenAnd, WhenOr)):
         for child in root.conditions:
-            yield from collect_leaf_conditions(child)
+            yield from collect_leaf_conditions(child, _depth=_depth + 1)
+    elif isinstance(root, When):
+        yield root
     else:
-        yield root  # type: ignore[misc]
+        raise TypeError(
+            f"collect_leaf_conditions encountered an unexpected node type: "
+            f"{type(root).__name__!r}"
+        )
 
 
 @dataclass(repr=False)
@@ -294,6 +315,12 @@ class WhenAnd(WhenCondition):
     def __post_init__(self) -> None:
         if not isinstance(self.conditions, list) or not self.conditions:
             raise ValueError("WhenAnd.conditions must be a non-empty list")
+        for i, c in enumerate(self.conditions):
+            if not isinstance(c, WhenCondition):
+                raise ValueError(
+                    f"WhenAnd.conditions[{i}] must be a WhenCondition, "
+                    f"got {type(c).__name__!r}"
+                )
 
     def to_dict(self) -> dict:
         """Serializes this group condition to a dict.
@@ -302,12 +329,12 @@ class WhenAnd(WhenCondition):
             a dict
         """
         return {
-            "operator": "and",
+            "operator": WhenOperator.AND.value,
             "conditions": [c.to_dict() for c in self.conditions],
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> "WhenAnd":
+    def from_dict(cls, d: dict, _depth: int = 0) -> "WhenAnd":
         """Creates a :class:`WhenAnd` from a dict.
 
         Args:
@@ -320,7 +347,10 @@ class WhenAnd(WhenCondition):
         if not isinstance(d["conditions"], list):
             raise ValueError("WhenAnd.conditions must be a list")
         return cls(
-            conditions=[WhenCondition.from_dict(c) for c in d["conditions"]]
+            [
+                WhenCondition.from_dict(c, _depth=_depth)
+                for c in d["conditions"]
+            ]
         )
 
     def __repr__(self) -> str:
@@ -362,6 +392,12 @@ class WhenOr(WhenCondition):
     def __post_init__(self) -> None:
         if not isinstance(self.conditions, list) or not self.conditions:
             raise ValueError("WhenOr.conditions must be a non-empty list")
+        for i, c in enumerate(self.conditions):
+            if not isinstance(c, WhenCondition):
+                raise ValueError(
+                    f"WhenOr.conditions[{i}] must be a WhenCondition, "
+                    f"got {type(c).__name__!r}"
+                )
 
     def to_dict(self) -> dict:
         """Serializes this group condition to a dict.
@@ -370,12 +406,12 @@ class WhenOr(WhenCondition):
             a dict
         """
         return {
-            "operator": "or",
+            "operator": WhenOperator.OR.value,
             "conditions": [c.to_dict() for c in self.conditions],
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> "WhenOr":
+    def from_dict(cls, d: dict, _depth: int = 0) -> "WhenOr":
         """Creates a :class:`WhenOr` from a dict.
 
         Args:
@@ -388,7 +424,10 @@ class WhenOr(WhenCondition):
         if not isinstance(d["conditions"], list):
             raise ValueError("WhenOr.conditions must be a list")
         return cls(
-            conditions=[WhenCondition.from_dict(c) for c in d["conditions"]]
+            [
+                WhenCondition.from_dict(c, _depth=_depth)
+                for c in d["conditions"]
+            ]
         )
 
     def __repr__(self) -> str:

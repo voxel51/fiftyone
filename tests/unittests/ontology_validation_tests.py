@@ -58,7 +58,7 @@ class OperatorValidTests(unittest.TestCase):
                     type="str",
                     component="dropdown",
                     when=WhenAnd(
-                        conditions=[
+                        [
                             WhenEquals(field="flag", value=True),
                             bad_leaf,
                         ]
@@ -81,7 +81,7 @@ class OperatorValidTests(unittest.TestCase):
                     type="str",
                     component="dropdown",
                     when=WhenOr(
-                        conditions=[
+                        [
                             WhenEquals(field="flag", value=True),
                             bad_leaf,
                         ]
@@ -175,30 +175,34 @@ class NoCyclesTests(unittest.TestCase):
     def test_rejects_cycle_where_edge_is_inside_and_group(self):
         # collect_leaf_conditions must traverse into WhenAnd so both
         # leaf field references contribute edges to the cycle graph.
+        # Cycle: a → {b, c} (via WhenAnd), c → a (back-edge).
+        cycle_attr_a = "a"
+        cycle_attr_b = "b"
+        cycle_attr_c = "c"
         ao = AnnotationOntology(
             name="test",
             attributes=[
                 AttributeSpec(
-                    name="a",
+                    name=cycle_attr_a,
                     type="str",
                     component="dropdown",
                     when=WhenAnd(
-                        conditions=[
-                            WhenEquals(field="b", value="x"),
-                            WhenEquals(field="c", value="y"),
+                        [
+                            WhenEquals(field=cycle_attr_b, value="x"),
+                            WhenEquals(field=cycle_attr_c, value="y"),
                         ]
                     ),
                 ),
                 AttributeSpec(
-                    name="b",
+                    name=cycle_attr_b,
                     type="str",
                     component="dropdown",
                 ),
                 AttributeSpec(
-                    name="c",
+                    name=cycle_attr_c,
                     type="str",
                     component="dropdown",
-                    when=WhenEquals(field="a", value="z"),
+                    when=WhenEquals(field=cycle_attr_a, value="z"),
                 ),
             ],
         )
@@ -207,30 +211,34 @@ class NoCyclesTests(unittest.TestCase):
 
     def test_rejects_cycle_where_edge_is_inside_or_group(self):
         # Same as above but the back-edge lives inside a WhenOr.
+        # Cycle: a → {b, c} (via WhenOr), c → a (back-edge).
+        cycle_attr_a = "a"
+        cycle_attr_b = "b"
+        cycle_attr_c = "c"
         ao = AnnotationOntology(
             name="test",
             attributes=[
                 AttributeSpec(
-                    name="a",
+                    name=cycle_attr_a,
                     type="str",
                     component="dropdown",
                     when=WhenOr(
-                        conditions=[
-                            WhenEquals(field="b", value="x"),
-                            WhenEquals(field="c", value="y"),
+                        [
+                            WhenEquals(field=cycle_attr_b, value="x"),
+                            WhenEquals(field=cycle_attr_c, value="y"),
                         ]
                     ),
                 ),
                 AttributeSpec(
-                    name="b",
+                    name=cycle_attr_b,
                     type="str",
                     component="dropdown",
                 ),
                 AttributeSpec(
-                    name="c",
+                    name=cycle_attr_c,
                     type="str",
                     component="dropdown",
-                    when=WhenEquals(field="a", value="z"),
+                    when=WhenEquals(field=cycle_attr_a, value="z"),
                 ),
             ],
         )
@@ -249,7 +257,7 @@ class NoCyclesTests(unittest.TestCase):
                     type="str",
                     component="dropdown",
                     when=WhenAnd(
-                        conditions=[
+                        [
                             WhenEquals(field="flag1", value=True),
                             WhenEquals(field="flag2", value=True),
                         ]
@@ -325,7 +333,7 @@ class ThenKeysValidTests(unittest.TestCase):
                     type="str",
                     component="dropdown",
                     when=WhenAnd(
-                        conditions=[
+                        [
                             WhenEquals(field="flag", value=True),
                             bad_leaf,
                         ]
@@ -348,7 +356,7 @@ class ThenKeysValidTests(unittest.TestCase):
                     type="str",
                     component="dropdown",
                     when=WhenOr(
-                        conditions=[
+                        [
                             WhenEquals(field="flag", value=True),
                             bad_leaf,
                         ]
