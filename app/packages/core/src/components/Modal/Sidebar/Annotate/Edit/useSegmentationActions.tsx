@@ -21,8 +21,11 @@ import {
   Remove,
   Timeline,
 } from "@mui/icons-material";
-import { useEffect, useMemo, useRef } from "react";
+import { useAtomValue } from "jotai";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import styled from "styled-components";
+import { editing } from "./state";
+import useExit from "./useExit";
 import {
   MAX_CURSOR_SIZE,
   MAX_TOOL_SIZE,
@@ -173,6 +176,34 @@ export const useSegmentationActions = (): {
     deactivateSegmentationMode,
   } = useSegmentationMode();
 
+  const editingValue = useAtomValue(editing);
+  const onExit = useExit();
+
+  // Three-tier Escape behaviour, mirroring the right-click flow in
+  // InteractionManager:
+  //   1. close any open label (clear the editing focus)
+  //   2. switch to the Select tool
+  //   3. exit segmentation mode entirely
+  const handleEscape = useCallback(() => {
+    if (editingValue !== null) {
+      onExit();
+      return;
+    }
+
+    if (tool !== SegmentationTool.Select) {
+      switchTool(SegmentationTool.Select);
+      return;
+    }
+
+    deactivateSegmentationMode();
+  }, [
+    editingValue,
+    tool,
+    onExit,
+    switchTool,
+    deactivateSegmentationMode,
+  ]);
+
   const brushCursor = useMemo(() => {
     const cursorSize = Math.min(
       MAX_CURSOR_SIZE,
@@ -317,8 +348,8 @@ export const useSegmentationActions = (): {
             label: "Close",
             icon: <Close />,
             shortcut: "escape",
-            tooltip: "Close Segmentation Mode",
-            onClick: () => deactivateSegmentationMode(),
+            tooltip: "Close open label, then tool, then segmentation mode",
+            onClick: handleEscape,
           },
         ],
       },
@@ -334,7 +365,7 @@ export const useSegmentationActions = (): {
       switchToolMode,
       increaseToolSize,
       decreaseToolSize,
-      deactivateSegmentationMode,
+      handleEscape,
       brushCursor,
     ]
   );
