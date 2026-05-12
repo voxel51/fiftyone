@@ -69,6 +69,7 @@ export {
   KeypointPointHitAction,
 } from "./interaction/InteractiveKeypointHandler";
 export type { KeypointPointHitContext } from "./interaction/InteractiveKeypointHandler";
+export { InteractivePenHandler } from "./interaction/InteractivePenHandler";
 export {
   InteractivePolylineHandler,
   PolylineEdgeHitAction,
@@ -88,6 +89,8 @@ export type { SelectionOptions } from "./selection/SelectionManager";
 export { AddKeypointPointCommand } from "./commands/AddKeypointPointCommand";
 export { MergeDetectionsCommand } from "./commands/MergeDetectionsCommand";
 export type { MergeDetectionsCommandDeps } from "./commands/MergeDetectionsCommand";
+export { AddMaskKeypointCommand } from "./commands/AddMaskKeypointCommand";
+export { AddOverlayCommand } from "./commands/AddOverlayCommand";
 export { MoveKeypointPointCommand } from "./commands/MoveKeypointPointCommand";
 export { MoveOverlayCommand } from "./commands/MoveOverlayCommand";
 export { RemoveKeypointPointCommand } from "./commands/RemoveKeypointPointCommand";
