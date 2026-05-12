@@ -36,13 +36,15 @@ def _sam2_image_transform(img):
     """Transforms image for SAM2 model input.
 
     Args:
-        img: a uint8 numpy array containing image in HWC format
+        img: a PIL or a uint8 numpy array containing image in HWC format
 
     Returns:
-        a uint8 numpy array containing image in HWC format
+        a PIL image or a uint8 numpy array containing image in HWC format
         a tuple containing original image dimensions
     """
-    return img, img.shape[:2]
+    if isinstance(img, np.ndarray):
+        return img, img.shape[:2]
+    return img, img.size[::-1]
 
 
 def _sam2_box_transform(boxes_xyxy, orig_hw, resolution):
@@ -109,16 +111,6 @@ class SegmentAnything2ImageModelConfig(fosam.SegmentAnythingModelConfig):
             "get_item_cls",
             default="fiftyone.utils.sam2.SegmentAnything2ImageGetItem",
         )
-
-
-class SegmentAnything2ImageGetItem(fosam.SegmentAnythingImageGetItem):
-    pass
-
-
-class SegmentAnything2ImageGetItemForVideo(
-    fosam.SegmentAnythingImageGetItemForVideo
-):
-    pass
 
 
 class _SAM2Predictor(fosam._SAMPredictor):
@@ -220,6 +212,16 @@ class _SAM2Predictor(fosam._SAMPredictor):
             boxes=boxes,
             multimask_output=multimask_output,
         )
+
+
+class SegmentAnything2ImageGetItem(fosam.SegmentAnythingImageGetItem):
+    pass
+
+
+class SegmentAnything2ImageGetItemForVideo(
+    fosam.SegmentAnythingImageGetItemForVideo
+):
+    pass
 
 
 class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):

@@ -285,7 +285,6 @@ class SegmentAnythingImageGetItem(fout.GetItem):
             raise ValueError(
                 "Field mapping contains prompt_field which is not a required key. Use type specific prompt key(s) -- box_prompt_field, point_prompt_field."
             )
-
         self.mode = self._set_mode(field_mapping)
         self.box_transform_kwargs = kwargs.pop("box_transform_kwargs", {})
         self.point_transform_kwargs = kwargs.pop("point_transform_kwargs", {})
@@ -351,7 +350,7 @@ class SegmentAnythingImageGetItem(fout.GetItem):
                 )
             img, img_hw = self.transform(img)
         else:
-            img_hw = img.shape[:2]
+            img_hw = img.shape[:2] if self.use_numpy else img.size[::-1]
         item_dict["image"] = img
         item_dict["original_size"] = img_hw
         item_dict["id"] = d["id"]
@@ -625,15 +624,11 @@ class SAMSegmenterOutputProcessor(fout.OutputProcessor):
     """Converts SAM model outputs to FiftyOne format.
 
     Args:
-        classes (None): the list of class labels for the model
+        classes (None): the list of class labels for the model. Not used in SAM output processor.
         mask_thresh (0.5): Threshold for converting float masks to boolean masks
     """
 
-    def __init__(self, classes=None, mask_thresh=0.5, **kwargs):
-        if classes is not None:
-            logger.warning(
-                "SAM doesn't generate classes. Input prompt classes will be preserved when available. Setting classes to None."
-            )
+    def __init__(self, classes=None, mask_thresh=0.5):
         self.classes = None
         self.mask_thresh = mask_thresh
 
@@ -861,7 +856,7 @@ class SegmentAnythingModel(fout.TorchImageModelWithPrompts):
         if "checkpoint" not in config.entrypoint_args:
             config.entrypoint_args["checkpoint"] = config.model_path
 
-        fout.TorchImageModel.__init__(self, config)
+        fout.TorchImageModelWithPrompts.__init__(self, config)
         self._sam_auto_generator = self._load_auto_generator()
         self._sam_predictor = self._load_predictor()
 
@@ -1338,5 +1333,5 @@ def _get_sam_box_labels(detection):
     if "sam_label" in detection and detection.sam_label is not None:
         return detection.sam_label
     if "sam3_label" in detection and detection.sam3_label is not None:
-        return detection.sam3_labels
+        return detection.sam3_label
     return True

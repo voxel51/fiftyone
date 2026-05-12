@@ -46,7 +46,28 @@ const ObjectIdTransformer: FieldTransformer = {
   },
 };
 
-const fieldTransformers = [DateTimeTransformer, ObjectIdTransformer];
+/**
+ * Convert serialized bson.Binary data to a format consistent with graphql.
+ */
+const BinaryTransformer: FieldTransformer = {
+  canTransform: (data: unknown): boolean => {
+    if (!isObject(data) || !("$binary" in data)) return false;
+    const inner = (data as { $binary: unknown }).$binary;
+    return (
+      isObject(inner) &&
+      typeof (inner as { base64?: unknown }).base64 === "string"
+    );
+  },
+  transform: (data: unknown): string => {
+    return (data as { $binary: { base64: string } }).$binary.base64;
+  },
+};
+
+const fieldTransformers = [
+  DateTimeTransformer,
+  ObjectIdTransformer,
+  BinaryTransformer,
+];
 
 /**
  * Transformer which converts `fo.Sample.to_dict()` serialization to a format

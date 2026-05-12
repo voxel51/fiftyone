@@ -1,24 +1,9 @@
-import { Close as CloseIcon } from "@mui/icons-material";
 import type { PropsWithChildren } from "react";
-import React, { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import styled from "styled-components";
 
-const Close = styled(CloseIcon)`
-  cursor: pointer;
-  height: 3rem !important;
-  padding: 0.5rem;
-  width: 3rem !important;
-
-  &:hover {
-    background: ${({ theme }) => theme.background.level1};
-    border-radius: var(--radius-full);
-    color: ${({ theme }) => theme.text.primary};
-  }
-`;
-
 const Background = styled.div`
-  position: absolute;
+  position: fixed;
   width: 100%;
   height: 100%;
   background: rgba(0, 0, 0, 0.8);
@@ -54,38 +39,15 @@ const Modal = ({
   close,
   title,
 }: PropsWithChildren<{ close: () => void; title: string }>) => {
-  const element = useMemo(() => {
-    const el = document.getElementById("annotation");
-    if (!el) {
-      throw new Error("no annotation modal element");
-    }
-    return el;
-  }, []);
-
-  useEffect(() => {
-    element.style.display = "block";
-
-    return () => {
-      element.style.display = "none";
-    };
-  }, [element]);
-
   return createPortal(
     <Background onClick={close}>
       <Container onClick={(e) => e.stopPropagation()}>
-        <Header>
-          {title}
-          <Close
-            color="secondary"
-            style={{ height: "3rem", width: "3rem" }}
-            onClick={close}
-          />
-        </Header>
+        <Header>{title}</Header>
 
         {children}
       </Container>
     </Background>,
-    element
+    document.body
   );
 };
 
