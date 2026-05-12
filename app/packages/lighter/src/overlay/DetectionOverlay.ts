@@ -1124,6 +1124,53 @@ export class DetectionOverlay
   }
 
   /**
+   * Adds a point to the in-progress pen polygon. Lazily constructs the
+   * `MaskKeypoints` overlay on the first call. Returns the new point id, or
+   * `null` if the dragging-throttle rejected the placement.
+   */
+  addMaskKeypoint(
+    worldPoint: Point,
+    options?: { id?: string; variant?: string; dragging?: boolean }
+  ): string | null {
+    this.maskKeypoints ??= new MaskKeypoints({
+      coordinateSystem: this.coordinateSystem,
+      renderer: this.renderer,
+    });
+
+    const pointId = this.maskKeypoints.addPoint({ ...worldPoint }, options);
+    if (pointId !== null) {
+      this.interactionState = "PAINTING";
+      this.markDirty();
+    }
+    return pointId;
+  }
+
+  /**
+   * Removes a pen-polygon point by id. Disposes the in-progress polygon when
+   * the last point is removed so a subsequent click starts a fresh ring.
+   */
+  removeMaskKeypointById(pointId: string): void {
+    if (!this.maskKeypoints) return;
+
+    this.maskKeypoints.removePointById(pointId);
+
+    if (this.maskKeypoints.getAbsolutePoints().length === 0) {
+      this.maskKeypoints.destroy();
+      this.maskKeypoints = undefined;
+      this.interactionState = "NONE";
+    }
+
+    this.markDirty();
+  }
+
+  /**
+   * Number of points currently in the in-progress pen polygon.
+   */
+  getMaskKeypointCount(): number {
+    return this.maskKeypoints?.getAbsolutePoints().length ?? 0;
+  }
+
+  /**
    * Fills the pen polygon onto the mask canvas and clears the pen state.
    * Uses the current paint mode from the last known segmentation state.
    */

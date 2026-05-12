@@ -6,7 +6,13 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useRecoilValue } from "recoil";
 
-import { BaseOverlay, DetectionOverlay, useLighter } from "@fiftyone/lighter";
+import { CommandContextManager } from "@fiftyone/commands";
+import {
+  AddOverlayCommand,
+  BaseOverlay,
+  DetectionOverlay,
+  useLighter,
+} from "@fiftyone/lighter";
 import { isPatchesView } from "@fiftyone/state";
 import { DETECTION } from "@fiftyone/utilities";
 
@@ -24,6 +30,7 @@ import {
   useManualSegmentationTools,
 } from "./useManualSegmentationTools";
 import { useMergeTool } from "./useMergeTool";
+import { usePenTool } from "./usePenTool";
 
 // Re-export tool types/constants and unsafe atoms so existing import paths
 // (e.g. `import { SegmentationTool } from "./useSegmentationMode"`) keep
@@ -226,6 +233,16 @@ export const useSegmentationMode = () => {
     [aiMode, closeOpenLabel, manualMode, mergeTool, onExit]
   );
 
+  // Pen-tool lifecycle: install/exit the InteractivePenHandler reactively.
+  // See `usePenTool` for the full state machine and the rationale behind
+  // bypassing the no-detection-selected case (legacy first-click path).
+  usePenTool({
+    scene,
+    segmentationModeActive,
+    tool: manualMode.tool,
+    selectedOverlay: selectedLabel?.overlay,
+  });
+
   // Auto-enable segmentation mode when a pre-existing mask detection is selected,
   // auto-disable when a pre-existing label of a different type is selected.
   //
@@ -268,8 +285,22 @@ export const useSegmentationMode = () => {
 
     if (newLabel?.overlay instanceof DetectionOverlay) {
       newLabel.overlay.initMask();
+
+      // Pen tool: the `overlay-establish` event that normally pushes
+      // `AddOverlayCommand` doesn't fire because `onPenPointerDown` doesn't
+      // seed the moveStart state. Push it explicitly so the new detection
+      // can be undone after the user finishes (or abandons) the polygon.
+      // Brush tool reaches establish through the bbox-style drag and pushes
+      // the command itself, so we skip it there.
+      if (manualMode.tool === SegmentationTool.Pen) {
+        CommandContextManager.instance()
+          .getActiveContext()
+          .pushUndoable(
+            new AddOverlayCommand(sceneRef.current!, newLabel.overlay)
+          );
+      }
     }
-  }, [closeOpenLabel, createDetection]);
+  }, [closeOpenLabel, createDetection, manualMode.tool]);
 
   /**
    * Accept the current AI mask, tear down point selection, and switch to the
