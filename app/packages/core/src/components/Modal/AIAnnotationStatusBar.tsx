@@ -1,11 +1,19 @@
 import { useInferenceStatus } from "@fiftyone/annotation/src/agents";
+import {
+  Align,
+  Orientation,
+  Size,
+  Spacing,
+  Spinner,
+  Stack,
+  Text,
+  TextColor,
+  TextVariant,
+} from "@voxel51/voodo";
 import styled from "styled-components";
 import { useIsAIAnnotationModeActive } from "./Sidebar/Annotate/Edit/useAIAnnotationMode";
 
-const POSITIVE_COLOR = "hsl(140, 60%, 50%)";
-const NEGATIVE_COLOR = "hsl(0, 70%, 55%)";
-
-const Container = styled.div`
+const Container = styled(Stack)`
   position: absolute;
   top: 6px;
   left: 50%;
@@ -13,60 +21,37 @@ const Container = styled.div`
   z-index: 1502;
   pointer-events: none;
   user-select: none;
-
-  display: flex;
-  align-items: center;
-  gap: 12px;
-
-  padding: 4px 12px;
-  border-radius: 6px;
-
-  font-size: 12px;
-  line-height: 1;
-  color: ${({ theme }) => theme.text.secondary};
 `;
 
-const Marker = styled.span<{ $color: string }>`
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-
-  &::before {
-    content: "";
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background: ${(p) => p.$color};
-    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4) inset;
-  }
-`;
-
-const Separator = styled.span`
-  color: ${({ theme }) => theme.text.tertiary};
-`;
-
-const Inferring = styled.span`
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: ${({ theme }) => theme.text.primary};
-  font-weight: 500;
-`;
-
-const Spinner = styled.span`
+const Dot = styled.span<{ $color: string }>`
+  display: inline-block;
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  border: 1.5px solid ${({ theme }) => theme.text.tertiary};
-  border-top-color: ${({ theme }) => theme.text.primary};
-  animation: ai-status-spin 0.9s linear infinite;
-
-  @keyframes ai-status-spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+  background: ${(p) => p.$color};
 `;
+
+const POSITIVE_COLOR = "var(--color-semantic-success)";
+const NEGATIVE_COLOR = "var(--color-semantic-destructive)";
+
+const Marker = ({ color, label }: { color: string; label: string }) => (
+  <Stack
+    orientation={Orientation.Row}
+    align={Align.Center}
+    spacing={Spacing.Xs}
+  >
+    <Dot $color={color} />
+    <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+      {label}
+    </Text>
+  </Stack>
+);
+
+const Separator = () => (
+  <Text variant={TextVariant.Sm} color={TextColor.Tertiary}>
+    ·
+  </Text>
+);
 
 /**
  * Floating status / guidance display shown at the top of the modal sample
@@ -81,23 +66,39 @@ export const AIAnnotationStatusBar = () => {
 
   if (!isActive) return null;
 
-  return (
-    <Container data-cy="ai-annotation-status-bar">
-      {status === "inferring" ? (
-        <Inferring>
-          <Spinner />
+  if (status === "inferring") {
+    return (
+      <Container
+        orientation={Orientation.Row}
+        align={Align.Center}
+        spacing={Spacing.Sm}
+        data-cy="ai-annotation-status-bar"
+      >
+        <Spinner size={Size.Xs} />
+        <Text variant={TextVariant.Sm} color={TextColor.Primary}>
           Inferring...
-        </Inferring>
-      ) : (
-        <>
-          <Marker $color={POSITIVE_COLOR}>Positive prompt</Marker>
-          <Marker $color={NEGATIVE_COLOR}>Negative prompt</Marker>
-          <Separator>·</Separator>
-          <span>Shift = Invert</span>
-          <Separator>·</Separator>
-          <span>Click marker to remove</span>
-        </>
-      )}
+        </Text>
+      </Container>
+    );
+  }
+
+  return (
+    <Container
+      orientation={Orientation.Row}
+      align={Align.Center}
+      spacing={Spacing.Md}
+      data-cy="ai-annotation-status-bar"
+    >
+      <Marker color={POSITIVE_COLOR} label="Positive prompt" />
+      <Marker color={NEGATIVE_COLOR} label="Negative prompt" />
+      <Separator />
+      <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+        Shift = Invert
+      </Text>
+      <Separator />
+      <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+        Click marker to remove
+      </Text>
     </Container>
   );
 };

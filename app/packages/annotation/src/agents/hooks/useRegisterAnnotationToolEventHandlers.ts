@@ -68,6 +68,10 @@ export const useRegisterAnnotationToolEventHandlers = () => {
 
       return () => {
         cancelled = true;
+        // Ensure status doesn't leak across unmount (e.g. modal close while
+        // inference is in-flight). Effect re-runs already clear status via
+        // the else branch, so this is the only place we need it on cleanup.
+        setInferenceStatus("idle");
       };
     },
     // trigger inference every time the input context changes
