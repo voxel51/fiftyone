@@ -14,6 +14,7 @@ import unittest
 os.environ.setdefault("VFF_ONTOLOGY_CA", "1")
 
 from fiftyone.core.annotation.attributes import (
+    MAX_CONDITION_DEPTH,
     AttributeSpec,
     When,
     WhenAnd,
@@ -400,6 +401,20 @@ class WhenConditionDispatchTests(unittest.TestCase):
         self.assertIsInstance(restored.conditions[0].conditions[1], WhenAnd)
         self.assertEqual(restored.to_dict(), original.to_dict())
 
+    def test_dispatch_exceeds_max_depth_raises(self):
+        # Build a dict chain MAX_CONDITION_DEPTH + 1 levels deep.  Each wrap
+        # adds one "and" node; the innermost child is the leaf.  When
+        # WhenCondition.from_dict recurses into the leaf it reaches
+        # _depth = MAX_CONDITION_DEPTH + 1, satisfying _depth > MAX_CONDITION_DEPTH.
+        d = {"operator": "equals", "field": "f", "value": 1}
+        for _ in range(MAX_CONDITION_DEPTH + 1):
+            d = {"operator": "and", "conditions": [d]}
+
+        with self.assertRaises(ValueError) as ctx:
+            WhenCondition.from_dict(d)
+
+        self.assertIn("maximum nesting depth", str(ctx.exception))
+
 
 class CollectLeafConditionsTests(unittest.TestCase):
     """collect_leaf_conditions must yield exactly the When leaves of any tree."""
@@ -443,6 +458,19 @@ class CollectLeafConditionsTests(unittest.TestCase):
         )
         for leaf in collect_leaf_conditions(tree):
             self.assertIsInstance(leaf, When)
+
+    def test_exceeds_max_depth_raises(self):
+        # Build a tree that is MAX_CONDITION_DEPTH + 1 levels deep by wrapping
+        # a leaf in WhenAnd MAX_CONDITION_DEPTH + 1 times.  The leaf ends up at
+        # depth MAX_CONDITION_DEPTH + 1, which exceeds the guard threshold.
+        tree: WhenCondition = WhenEquals(field="x", value=1)
+        for _ in range(MAX_CONDITION_DEPTH + 1):
+            tree = WhenAnd([tree])
+
+        with self.assertRaises(ValueError) as ctx:
+            list(collect_leaf_conditions(tree))
+
+        self.assertIn("maximum nesting depth", str(ctx.exception))
 
 
 class AttributeSpecTests(unittest.TestCase):

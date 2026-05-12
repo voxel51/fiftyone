@@ -80,6 +80,7 @@ export default function useAttributeForm({
       cond: AttributeCondition
     ): AttributeConditionLeaf[] => {
       if (cond.operator === "and" || cond.operator === "or") {
+        if (!Array.isArray(cond.conditions)) return [];
         return cond.conditions.flatMap(collectLeaves);
       }
       return [cond];

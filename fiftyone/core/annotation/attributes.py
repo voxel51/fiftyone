@@ -9,7 +9,8 @@ Annotation attribute primitives for label schemas and ontologies.
 import abc
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Generator, Literal, Optional, Union
+from collections.abc import Generator
+from typing import Any, Literal, Optional, Union
 
 
 #: Maximum nesting depth allowed for a ``when`` condition tree. Mirrors the
