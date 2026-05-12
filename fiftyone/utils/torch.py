@@ -668,14 +668,17 @@ class VideoFrameGetItem:
     This replaces filepath loading but preserves all other get_item logic.
     """
 
-    def __init__(self, base_get_item=None):
+    def __init__(self, base_get_item=None, filepath_key="filepath"):
         """
         Args:
             base_get_item: original get_item instance from model.build_get_item()
+            filepath_key: required key for sample filepath
         """
+        if base_get_item is None:
+            raise ValueError("base_get_item is required")
         self.base_get_item = base_get_item
         self.required_keys = base_get_item.required_keys
-        self.has_filepath = "filepath" in self.required_keys
+        self.has_filepath = filepath_key in self.required_keys
 
     def __call__(self, sample_dict):
         """Modified __call__ that uses injected frames instead of loading from filepath.
@@ -699,13 +702,15 @@ class VideoFrameGetItem:
 
         def _load_image_from_frame(d):
             """Replacement that returns pre-loaded frame instead of loading."""
-            if sample_dict.get("frame") is not None:
-                return sample_dict.pop("frame")
-            else:
+            frame = d.pop("frame", None)
+            if frame is None:
                 raise ValueError("Frame not available for injection")
+            return frame
 
         try:
-            if hasattr(self.base_get_item, "_load_media"):
+            if self.has_filepath and hasattr(
+                self.base_get_item, "_load_media"
+            ):
                 self.base_get_item._load_media = _load_image_from_frame
 
             result = self.base_get_item(sample_dict)
@@ -2678,6 +2683,22 @@ class TorchVideoFramesIterableDataset(IterableDataset):
         chunk_size=None,
         skip_failures=False,
     ):
+        """A :class:`torch:torch.utils.data.IterableDataset` of video frames.
+
+        Instances of this dataset yield a chunk of frames for each video sample.
+
+        Args:
+            samples: a :class:`fiftyone.core.collections.SampleCollection`
+                from which to extract image paths
+            get_item (None): a :class:`fiftyone.utils.torch.GetItem` instance for the image model to apply to video frames
+            transform (None): an optional transform function to apply to each frame. Only used when get_item is None.
+            use_numpy (False): whether to use numpy arrays rather than PIL frames
+                and Torch tensors when loading data. Only used when get_item is None.
+            force_rgb (False): whether to force convert the frames to RGB. Only used when get_item is None.
+            chunk_size (None): number of frames in a chunk
+            skip_failures (False): whether to return an ``Exception`` object rather
+                than raising it if an error occurs while loading a sample
+        """
         self.chunk_size = chunk_size if chunk_size is not None else 1
 
         self.video_get_item = VideoFrameGetItem(get_item) if get_item else None
@@ -2765,7 +2786,7 @@ class TorchVideoFramesIterableDataset(IterableDataset):
             return None
 
         field_mapping = self.video_get_item.base_get_item.field_mapping.copy()
-        _ = field_mapping.pop("filepath")
+        _ = field_mapping.pop("filepath", None)
 
         self.sample_data = {}
         for field_key, field_name in field_mapping.items():
@@ -2786,7 +2807,7 @@ class TorchVideoFramesIterableDataset(IterableDataset):
 
             logger.info(
                 f"Worker {worker_id}/{num_workers} assigned "
-                f"{len(list(video_indices))} videos"
+                f"{len(video_indices)} videos"
             )
 
         for video_idx in video_indices:
@@ -2840,7 +2861,7 @@ class TorchVideoFramesIterableDataset(IterableDataset):
                     if video_sample_data is not None:
                         frames_data = [
                             {
-                                key: lst[i - 1]
+                                key: lst[i - start_frame]
                                 for key, lst in video_sample_data.items()
                             }
                             for i in frame_ids
@@ -2891,7 +2912,11 @@ class TorchVideoFramesIterableDataset(IterableDataset):
         processed_frames = []
         if frame_dicts is None:
             frame_dicts = [{}] * len(raw_frames)
-        for frame, frame_dict in zip(raw_frames, frame_dicts, strict=True):
+        if len(raw_frames) != len(frame_dicts):
+            raise ValueError(
+                "Length mismatch. Each frame should have a corresponding frame dict."
+            )
+        for frame, frame_dict in zip(raw_frames, frame_dicts):
             if self.video_get_item is not None:
                 frame_dict["frame"] = frame
                 frame_input = self.video_get_item(frame_dict)

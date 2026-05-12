@@ -536,15 +536,8 @@ def _apply_image_model_with_video_data_loader(
 
     Only supports applying image model to videos frames.
     """
-    if samples.media_type != fom.VIDEO:
-        raise fom.MediaTypeError(
-            f"Unsupported media type {samples.media_type}."
-        )
-
-    if model.media_type != "image":
-        raise ValueError("Only image models are supported.")
-
     label_field, _ = samples._handle_frame_field(label_field)
+    _, total_frame_count = _get_frame_counts(samples)
 
     data_loader = _make_video_frame_data_loader(
         samples=samples,
@@ -558,18 +551,8 @@ def _apply_image_model_with_video_data_loader(
     )
 
     with contextlib.ExitStack() as context:
-        if confidence_thresh is not None and hasattr(
-            model.config, "confidence_thresh"
-        ):
-            context.enter_context(
-                fou.SetAttributes(
-                    model.config, confidence_thresh=confidence_thresh
-                )
-            )
-            confidence_thresh = None
-
         pb = context.enter_context(
-            fou.ProgressBar(data_loader, progress=progress)
+            fou.ProgressBar(total_frame_count, progress=progress)
         )
         ctx = context.enter_context(
             foc.SaveContext(
@@ -602,6 +585,12 @@ def _apply_image_model_with_video_data_loader(
                     else:
                         labels_frames = model.predict_all(frames["frames"])
 
+                    if filename_maker is not None:
+                        for labels in labels_frames:
+                            _export_arrays(
+                                labels, sample.filepath, filename_maker
+                            )
+
                     sample.add_labels(
                         {
                             int(fn): labels
@@ -612,18 +601,13 @@ def _apply_image_model_with_video_data_loader(
                         classes=classes,
                     )
                     ctx.save(sample)
-                    if filename_maker is not None:
-                        for labels in labels_frames:
-                            _export_arrays(
-                                labels, sample.filepath, filename_maker
-                            )
 
                 except Exception as e:
                     if not skip_failures:
                         raise e
                     logger.warning(
                         "Sample: %s\nError: %s\n",
-                        sample_idx,
+                        frames["sample_idx"],
                         e,
                         exc_info=True,
                     )
@@ -901,11 +885,12 @@ class _VideoCollateFn:
         self.model_collate = model_collate
 
     def __call__(self, batch):
+        out = []
         for b in batch:
-            frames_data = b["frames"]
-            collated_frames = self.model_collate(frames_data)
-            b["frames"] = collated_frames
-        return batch
+            frames_data = dict(b)
+            frames_data["frames"] = self.model_collate(b["frames"])
+            out.append(frames_data)
+        return out
 
 
 def _make_video_frame_data_loader(
