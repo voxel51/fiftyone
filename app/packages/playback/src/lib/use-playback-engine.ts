@@ -25,12 +25,18 @@ const clamp = (v: number, lo: number, hi: number) =>
   Math.min(hi, Math.max(lo, v));
 
 export function usePlaybackEngine({
-  duration,
+  duration = 0,
   stepInterval,
   defaultLoopStart,
   defaultLoopEnd,
   defaultSpeed = 1.0,
 }: PlaybackConfig): { store: PlaybackStore; contextValue: PlaybackContextValue } {
+  // The duration prop is a FALLBACK when no stream provides one. Stored in a
+  // ref so the recompute function can read the latest value without
+  // capturing it.
+  const fallbackDurationRef = useRef(duration);
+  fallbackDurationRef.current = duration;
+
   const store = useMemo(() => {
     const s = createStore();
     s.set(durationAtom, duration);
@@ -55,6 +61,26 @@ export function usePlaybackEngine({
   const isActive = useCallback((id: string): boolean => {
     return (subscribersRef.current.get(id) ?? 0) > 0;
   }, []);
+
+  /**
+   * Derive the overall timeline duration from registered streams.
+   * `durationAtom = max(fallback, every stream's duration)`. Also keeps
+   * `viewEndAtom` and `loopEndAtom` in sync — but only if they were
+   * sitting at the previous duration value, which is our signal that
+   * the user hasn't customized them. Once the user calls `setView` or
+   * `setLoop`, their values stop tracking duration automatically.
+   */
+  const recomputeDuration = useCallback(() => {
+    let max = fallbackDurationRef.current;
+    for (const s of streamsRef.current.values()) {
+      if (s.duration != null && s.duration > max) max = s.duration;
+    }
+    const prev = store.get(durationAtom);
+    if (prev === max) return;
+    store.set(durationAtom, max);
+    if (store.get(viewEndAtom) === prev) store.set(viewEndAtom, max);
+    if (store.get(loopEndAtom) === prev) store.set(loopEndAtom, max);
+  }, [store]);
 
   const fireSeekEvent = useCallback(
     (time: number, immediate = false) => {
@@ -220,7 +246,11 @@ export function usePlaybackEngine({
       },
       registerStream: (stream: PlaybackStream) => {
         streamsRef.current.set(stream.id, stream);
-        return () => streamsRef.current.delete(stream.id);
+        recomputeDuration();
+        return () => {
+          streamsRef.current.delete(stream.id);
+          recomputeDuration();
+        };
       },
       subscribeStream: (id: string) => {
         subscribersRef.current.set(id, (subscribersRef.current.get(id) ?? 0) + 1);
@@ -234,7 +264,7 @@ export function usePlaybackEngine({
         };
       },
     }),
-    [store, fireSeekEvent, doCommit, checkAllReady]
+    [store, fireSeekEvent, doCommit, checkAllReady, recomputeDuration]
   );
 
   const contextValue = useMemo<PlaybackContextValue>(

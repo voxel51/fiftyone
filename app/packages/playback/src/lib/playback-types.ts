@@ -79,6 +79,15 @@ export interface PlaybackStream {
   blocking: boolean;
 
   /**
+   * Total duration of this stream's data in seconds, if known. The engine
+   * derives `durationAtom` from the max of every registered stream's
+   * duration, so the timeline's length follows whichever stream has the
+   * most content. Omit (or leave `undefined`) for streams whose extent
+   * isn't known yet — re-register the stream once it is.
+   */
+  duration?: number;
+
+  /**
    * How many seconds ahead of the target time this stream wants to keep
    * buffered. Passed as the upper bound of the range in prefetch() calls.
    * @default 3
@@ -132,7 +141,14 @@ export interface PlaybackStream {
 // ---------------------------------------------------------------------------
 
 export interface PlaybackConfig {
-  duration: number;
+  /**
+   * Fallback duration when no registered stream provides one. The engine
+   * always sets `durationAtom = max(this, max of streams' durations)`, so
+   * streams override this once they register. Useful for demos / stories
+   * that want a meaningful timeline before any real data wires up.
+   * @default 0
+   */
+  duration?: number;
   /**
    * Step size in seconds used by stepForward / stepBack. Should reflect the
    * native sampling interval of the source data (e.g. 1/30 for 30 fps video,

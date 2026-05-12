@@ -12,6 +12,12 @@ export interface PlaybackStreamBaseOptions {
    * @default true
    */
   blocking?: boolean;
+  /**
+   * Total duration of this stream's data in seconds. The engine derives
+   * the timeline's overall duration from the max of every registered
+   * stream's value.
+   */
+  duration?: number;
   /** @default 3 */
   lookaheadSeconds?: number;
   /** @default { type: "nearest", thresholdSeconds: 0.1 } */
@@ -47,6 +53,7 @@ export interface PlaybackStreamBaseOptions {
  */
 export abstract class PlaybackStreamBase<T> implements PlaybackStream {
   readonly blocking: boolean;
+  readonly duration?: number;
   readonly lookaheadSeconds: number;
   readonly lookupPolicy: StreamLookupPolicy;
 
@@ -55,6 +62,7 @@ export abstract class PlaybackStreamBase<T> implements PlaybackStream {
     options: PlaybackStreamBaseOptions = {}
   ) {
     this.blocking = options.blocking ?? true;
+    this.duration = options.duration;
     this.lookaheadSeconds = options.lookaheadSeconds ?? 3;
     this.lookupPolicy = options.lookupPolicy ?? {
       type: "nearest",
