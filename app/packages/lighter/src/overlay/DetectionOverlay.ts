@@ -147,7 +147,9 @@ export class DetectionOverlay
         this.mask = new MaskCanvas(label.mask);
       }
       this.markDirty();
-    } else {
+    } else if (label.mask === null) {
+      // null — explicit removal
+      // `undefined` can be cases when mask has not been saved yet - leave it alone
       const hadMask = !!this.mask;
       this.mask?.destroy();
       this.mask = undefined;
