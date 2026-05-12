@@ -10,6 +10,7 @@ import {
   ArrowDropUp,
   AutoAwesome,
   Brush,
+  CallMerge,
   CircleOutlined,
   CropSquare,
   FormatColorReset,
@@ -162,6 +163,7 @@ export const useSegmentationActions = ({
     switchToolMode,
     increaseToolSize,
     decreaseToolSize,
+    mergeTool,
   } = useSegmentationMode();
 
   const brushCursor = useMemo(() => {
@@ -221,6 +223,19 @@ export const useSegmentationActions = ({
             tooltip: "AI",
             isActive: tool === SegmentationTool.AI,
             onClick: () => switchTool(SegmentationTool.AI),
+          },
+          {
+            id: SegmentationTool.Merge,
+            label: "Merge",
+            icon: <CallMerge />,
+            shortcut: "M",
+            tooltip: mergeTool.disabled
+              ? "No mask detections to merge"
+              : "Merge masks",
+            isActive: tool === SegmentationTool.Merge,
+            isDisabled: mergeTool.disabled,
+            onClick: () =>
+              !mergeTool.disabled && switchTool(SegmentationTool.Merge),
           },
         ],
       },
@@ -338,6 +353,7 @@ export const useSegmentationActions = ({
       increaseToolSize,
       decreaseToolSize,
       brushCursor,
+      mergeTool.disabled,
       canUndo,
       canRedo,
       onUndo,

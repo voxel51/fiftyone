@@ -16,6 +16,7 @@ export const SegmentationTool = {
   Brush: "brush",
   Pen: "pen",
   AI: "ai",
+  Merge: "merge",
 } as const;
 export type SegmentationTool =
   (typeof SegmentationTool)[keyof typeof SegmentationTool];

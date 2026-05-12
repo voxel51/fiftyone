@@ -36,7 +36,7 @@ const StyledCanvas = styled.canvas`
   height: auto;
 `;
 
-const MAX_PREVIEW_WIDTH = 256;
+const PREVIEW_SIZE = 256;
 
 /**
  * Draws a {@link CanvasImageSource} to the preview canvas as a monochrome mask.
@@ -50,20 +50,22 @@ function drawPreview(
 ) {
   if (srcWidth === 0 || srcHeight === 0) return;
 
-  const scale = Math.min(1, MAX_PREVIEW_WIDTH / srcWidth);
-  const w = Math.round(srcWidth * scale);
-  const h = Math.round(srcHeight * scale);
+  canvas.width = PREVIEW_SIZE;
+  canvas.height = PREVIEW_SIZE;
 
-  canvas.width = w;
-  canvas.height = h;
+  const scale = Math.min(PREVIEW_SIZE / srcWidth, PREVIEW_SIZE / srcHeight);
+  const drawW = Math.round(srcWidth * scale);
+  const drawH = Math.round(srcHeight * scale);
+  const offsetX = Math.floor((PREVIEW_SIZE - drawW) / 2);
+  const offsetY = Math.floor((PREVIEW_SIZE - drawH) / 2);
 
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
 
-  ctx.clearRect(0, 0, w, h);
-  ctx.drawImage(source, 0, 0, w, h);
+  ctx.clearRect(0, 0, PREVIEW_SIZE, PREVIEW_SIZE);
+  ctx.drawImage(source, offsetX, offsetY, drawW, drawH);
 
-  const imageData = ctx.getImageData(0, 0, w, h);
+  const imageData = ctx.getImageData(offsetX, offsetY, drawW, drawH);
   const pixels = imageData.data;
   const c = isDark ? 0 : 255;
 
@@ -76,7 +78,7 @@ function drawPreview(
     }
   }
 
-  ctx.putImageData(imageData, 0, 0);
+  ctx.putImageData(imageData, offsetX, offsetY);
 }
 
 /**

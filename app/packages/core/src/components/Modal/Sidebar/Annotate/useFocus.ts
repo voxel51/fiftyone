@@ -1,11 +1,7 @@
-import {
-  UNDEFINED_LIGHTER_SCENE_ID,
-  useLighter,
-  useLighterEventHandler,
-} from "@fiftyone/lighter";
+import { useLighter } from "@fiftyone/lighter";
 import { isGeneratedView } from "@fiftyone/state";
 import { getDefaultStore } from "jotai";
-import { useCallback, useRef } from "react";
+import { useCallback, useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import { editing } from "./Edit";
 import { current, savedLabel } from "./Edit/state";
@@ -14,79 +10,73 @@ import { labelMap } from "./useLabels";
 
 const STORE = getDefaultStore();
 
-export default function useFocus() {
+export interface FocusOptions {
+  ignoreSideEffects?: boolean;
+}
+
+export interface FocusController {
+  /**
+   * Reacts to an overlay being selected: if no label is currently being
+   * edited, makes this overlay the editing focus; otherwise lets the
+   * existing edit stay (and pushes the selection back out via deselect).
+   */
+  selectOverlay: (id: string, options?: FocusOptions) => void;
+  /**
+   * Reacts to an overlay being deselected: exits edit mode (unless we're
+   * in a generated view, where edit mode is sticky for the single label).
+   */
+  deselectOverlay: (options?: FocusOptions) => void;
+}
+
+export default function useFocus(): FocusController {
   const { scene } = useLighter();
-  const useEventHandler = useLighterEventHandler(
-    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
-  );
-  const selectId = useRef<string | null>(null);
   const onExit = useExit();
   const isGenerated = useRecoilValue(isGeneratedView);
 
-  const select = useCallback(() => {
-    const id = selectId.current;
-    if (!id) {
-      return;
-    }
+  const selectOverlay = useCallback(
+    (id: string, options?: FocusOptions) => {
+      if (options?.ignoreSideEffects) return;
 
-    const label = STORE.get(labelMap)[id];
-    if (id && label) {
+      if (STORE.get(editing)) {
+        const currentLabel = STORE.get(current);
+
+        if (currentLabel?.isNew) return;
+
+        // Re-clicking the overlay that's already being edited — needed
+        // for drag/resize interactions in patches view auto-edit.
+        if (currentLabel?.overlay?.id === id) return;
+
+        // Another label is already open for editing; cancel the new
+        // selection and keep editing the current one.
+        scene?.deselectOverlay(id, { ignoreSideEffects: true });
+        return;
+      }
+
+      const label = STORE.get(labelMap)[id];
+      if (!label) return;
+
       STORE.set(savedLabel, STORE.get(label)?.data);
       STORE.set(editing, label);
       scene?.selectOverlay(id, { ignoreSideEffects: true });
-    }
-    selectId.current = null;
-  }, [scene]);
-
-  useEventHandler(
-    "lighter:overlay-deselect",
-    useCallback(
-      (payload) => {
-        if (payload.ignoreSideEffects) {
-          return;
-        }
-
-        // In generated views (patches/clips/frames), don't exit edit mode on deselect
-        // The user should stay in edit mode for the single label
-        if (isGenerated) {
-          return;
-        }
-
-        onExit();
-      },
-      [isGenerated, onExit]
-    )
+    },
+    [scene]
   );
 
-  useEventHandler(
-    "lighter:overlay-select",
-    useCallback(
-      (payload) => {
-        if (payload.ignoreSideEffects) {
-          return;
-        }
-        selectId.current = payload.id;
+  const deselectOverlay = useCallback(
+    (options?: FocusOptions) => {
+      if (options?.ignoreSideEffects) return;
 
-        if (STORE.get(editing)) {
-          // if it's a new label with no changes, discard it and allow the selection
-          const currentLabel = STORE.get(current);
+      // In generated views (patches/clips/frames), don't exit edit mode on
+      // deselect — the user should stay in edit mode for the single label.
+      if (isGenerated) return;
 
-          if (currentLabel?.isNew) return;
-
-          // If clicking on the same overlay that's already being edited, allow it
-          // (needed for drag/resize interactions in patches view auto-edit)
-          if (currentLabel?.overlay?.id === payload.id) {
-            return;
-          }
-
-          // a label is already being edited, let the DESELECT event handle it
-          scene?.deselectOverlay(payload.id, { ignoreSideEffects: true });
-          return;
-        }
-
-        select();
-      },
-      [scene, select]
-    )
+      onExit();
+    },
+    [isGenerated, onExit]
   );
+
+  return useMemo(() => ({ selectOverlay, deselectOverlay }), [
+    selectOverlay,
+    deselectOverlay,
+  ]);
 }
