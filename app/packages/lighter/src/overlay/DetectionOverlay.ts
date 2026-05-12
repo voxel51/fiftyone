@@ -147,7 +147,11 @@ export class DetectionOverlay
         this.mask = new MaskCanvas(label.mask);
       }
       this.markDirty();
-    } else {
+    } else if (label.mask === null) {
+      // Explicit removal — destroy any existing mask.
+      // `undefined` means the caller didn't supply mask data (e.g. the sidebar
+      // schema update only carries primitive fields), so preserve the
+      // in-progress MaskCanvas instead of throwing away the user's edit.
       const hadMask = !!this.mask;
       this.mask?.destroy();
       this.mask = undefined;
