@@ -1,33 +1,22 @@
 import {
-  Button,
   Drawer,
-  Dropdown,
-  DropdownAnchor,
-  DropdownTrigger,
-  Heading,
   IconName,
   MenuIconTextItem,
   MenuSeparator,
-  Size,
-  Text,
-  TextColor,
-  TextVariant,
-  Variant,
 } from "@voxel51/voodo";
 import type { Meta, StoryObj } from "@storybook/react";
 import { useState } from "react";
 import { PlaybackProvider } from "../../lib/playback/PlaybackProvider";
-import {
-  TilingProvider,
-  TilingTile,
-  useTiling,
-} from "../../lib/TilingProvider";
+import { TilingProvider, TilingTile, useTiling } from "../../lib/TilingProvider";
 import CameraTile from "../tiles/test_tiles/CameraTile/CameraTile";
 import GraphTile from "../tiles/test_tiles/GraphTile/GraphTile";
 import JsonDataTile from "../tiles/test_tiles/JsonDataTile/JsonDataTile";
 import LidarTile from "../tiles/test_tiles/LidarTile/LidarTile";
 import MosaicGrid from "../tiles/MosaicGrid";
 import SceneTile from "../tiles/test_tiles/SceneTile/SceneTile";
+import TileSettingsSidebar from "../TileSettingsSidebar/TileSettingsSidebar";
+import TilingHeader from "../TilingHeader/TilingHeader";
+import TilingInspectorSidebar from "../TilingInspectorSidebar/TilingInspectorSidebar";
 import TimelineWithTracks from "../TimelineWithTracks/TimelineWithTracks";
 
 const meta: Meta = { title: "Playback/MultiModalDemo" };
@@ -80,52 +69,6 @@ const TRACKS = [
   { id: "gps", color: "#c84aff", start: 0, end: 10, events: [0, 2, 4, 6, 8] },
 ];
 
-/**
- * Left sidebar — renders the focused tile's settings, or an empty state.
- * Reads directly from the TilingProvider.
- */
-function SettingsSidebar() {
-  const { focusedTileId, FocusedTileSettings } = useTiling();
-  return (
-    <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
-      {focusedTileId && FocusedTileSettings ? (
-        <FocusedTileSettings />
-      ) : (
-        <>
-          <Heading>Settings</Heading>
-          <Text variant={TextVariant.Sm} color={TextColor.Muted}>
-            Focus a tile to edit its settings.
-          </Text>
-        </>
-      )}
-    </div>
-  );
-}
-
-/** Right sidebar — placeholder inspector showing the focused tile id. */
-function InspectorSidebar() {
-  const { focusedTileId } = useTiling();
-  return (
-    <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
-      <Heading>Inspector</Heading>
-      {focusedTileId ? (
-        <>
-          <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-            Focused tile
-          </Text>
-          <Text variant={TextVariant.Sm} color={TextColor.Primary}>
-            {focusedTileId}
-          </Text>
-        </>
-      ) : (
-        <Text variant={TextVariant.Sm} color={TextColor.Muted}>
-          Select a tile to inspect.
-        </Text>
-      )}
-    </div>
-  );
-}
-
 function DemoBody() {
   const {
     layout,
@@ -139,7 +82,6 @@ function DemoBody() {
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
 
-
   return (
     <div
       style={{
@@ -150,54 +92,35 @@ function DemoBody() {
         overflow: "hidden",
       }}
     >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          padding: 8,
-          borderBottom: "1px solid var(--color-content-border-default)",
-        }}
-      >
-        <Dropdown
-          anchor={DropdownAnchor.BottomStart}
-          trigger={<DropdownTrigger>Add tile</DropdownTrigger>}
-        >
-          {(Object.keys(KIND_LABELS) as TileKind[]).map((kind) => (
+      <TilingHeader
+        fileName="multimodal_demo.fo"
+        leftSidebarOpen={leftOpen}
+        rightSidebarOpen={rightOpen}
+        onToggleLeftSidebar={() => setLeftOpen((v) => !v)}
+        onToggleRightSidebar={() => setRightOpen((v) => !v)}
+        tileMenu={
+          <>
+            {(Object.keys(KIND_LABELS) as TileKind[]).map((kind) => (
+              <MenuIconTextItem
+                key={kind}
+                icon={KIND_ICONS[kind]}
+                text={KIND_LABELS[kind]}
+                onClick={() =>
+                  addTile(tile(kind, `${kind}_${Date.now() % 1000}`), {
+                    idPrefix: kind,
+                  })
+                }
+              />
+            ))}
+            <MenuSeparator />
             <MenuIconTextItem
-              key={kind}
-              icon={KIND_ICONS[kind]}
-              text={KIND_LABELS[kind]}
-              onClick={() => addTile(tile(kind, `${kind}_${Date.now() % 1000}`), { idPrefix: kind })}
+              icon={IconName.Refresh}
+              text="Auto Layout"
+              onClick={autoLayout}
             />
-          ))}
-          <MenuSeparator />
-          <MenuIconTextItem
-            icon={IconName.Refresh}
-            text="Auto Layout"
-            onClick={autoLayout}
-          />
-        </Dropdown>
-
-        <div style={{ flex: 1 }} />
-
-        <Button
-          variant={Variant.Borderless}
-          size={Size.Xs}
-          leadingIcon={IconName.Menu}
-          aria-label={leftOpen ? "Hide settings" : "Show settings"}
-          title={leftOpen ? "Hide settings" : "Show settings"}
-          onClick={() => setLeftOpen((v) => !v)}
-        />
-        <Button
-          variant={Variant.Borderless}
-          size={Size.Xs}
-          leadingIcon={IconName.Inspect}
-          aria-label={rightOpen ? "Hide inspector" : "Show inspector"}
-          title={rightOpen ? "Hide inspector" : "Show inspector"}
-          onClick={() => setRightOpen((v) => !v)}
-        />
-      </div>
+          </>
+        }
+      />
 
       <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
         <Drawer
@@ -209,7 +132,7 @@ function DemoBody() {
           open={leftOpen}
           onOpenChange={setLeftOpen}
         >
-          <SettingsSidebar />
+          <TileSettingsSidebar />
         </Drawer>
 
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -231,7 +154,7 @@ function DemoBody() {
           open={rightOpen}
           onOpenChange={setRightOpen}
         >
-          <InspectorSidebar />
+          <TilingInspectorSidebar />
         </Drawer>
       </div>
 
