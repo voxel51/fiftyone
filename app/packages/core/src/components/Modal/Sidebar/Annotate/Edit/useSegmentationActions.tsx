@@ -2,7 +2,8 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { SelectIcon, type ToolbarActionGroup } from "@fiftyone/components";
+import { SelectIcon } from "@fiftyone/components";
+import { KnownContexts, useKeyBindings } from "@fiftyone/commands";
 import { buildBrushCursor } from "@fiftyone/lighter";
 import {
   Add,
@@ -12,15 +13,16 @@ import {
   Brush,
   CallMerge,
   CircleOutlined,
+  Close,
   CropSquare,
-  FormatColorReset,
-  Redo,
   Remove,
   Timeline,
-  Undo,
 } from "@mui/icons-material";
-import { useEffect, useMemo, useRef } from "react";
+import { useAtomValue } from "jotai";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import styled from "styled-components";
+import { editing } from "./state";
+import useExit from "./useExit";
 import {
   MAX_CURSOR_SIZE,
   MAX_TOOL_SIZE,
@@ -31,6 +33,8 @@ import {
   SegmentationToolShape,
   useSegmentationMode,
 } from "./useSegmentationMode";
+import type { ToolbarActionGroup } from "@fiftyone/components";
+import type { KeyBinding } from "@fiftyone/commands";
 
 const SizeControl = styled.div`
   display: flex;
@@ -84,6 +88,7 @@ interface BrushSizeProps {
   min: number;
   max: number;
   cursor: string;
+  onClick: () => void;
   onIncrease: () => void;
   onDecrease: () => void;
 }
@@ -93,6 +98,7 @@ const BrushSize = ({
   min,
   max,
   cursor,
+  onClick,
   onIncrease,
   onDecrease,
 }: BrushSizeProps) => {
@@ -102,11 +108,23 @@ const BrushSize = ({
     const node = ref.current;
     if (!node) return undefined;
 
+    const STEP_THRESHOLD = 10;
+    let accumulated = 0;
+
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
 
-      if (e.deltaY < 0) onDecrease();
-      else if (e.deltaY > 0) onIncrease();
+      accumulated += e.deltaY;
+
+      while (accumulated <= -STEP_THRESHOLD) {
+        onDecrease();
+        accumulated %= STEP_THRESHOLD;
+      }
+
+      while (accumulated >= STEP_THRESHOLD) {
+        onIncrease();
+        accumulated %= STEP_THRESHOLD;
+      }
     };
 
     node.addEventListener("wheel", onWheel, { passive: false });
@@ -123,7 +141,9 @@ const BrushSize = ({
       >
         <ArrowDropUp />
       </SizeArrow>
-      <SizeValue $cursor={cursor}>{value}</SizeValue>
+      <SizeValue $cursor={cursor} onClick={onClick}>
+        {value}
+      </SizeValue>
       <SizeArrow
         type="button"
         aria-label="Decrease brush size"
@@ -136,19 +156,7 @@ const BrushSize = ({
   );
 };
 
-interface UseSegmentationActionsArgs {
-  onUndo?: () => void;
-  onRedo?: () => void;
-  canUndo?: boolean;
-  canRedo?: boolean;
-}
-
-export const useSegmentationActions = ({
-  onUndo,
-  onRedo,
-  canUndo = false,
-  canRedo = false,
-}: UseSegmentationActionsArgs): {
+export const useSegmentationActions = (): {
   groups: ToolbarActionGroup[];
   visible: boolean;
 } => {
@@ -158,13 +166,37 @@ export const useSegmentationActions = ({
     toolSize,
     toolShape,
     toolMode,
+    setToolSize,
     switchTool,
     switchToolShape,
     switchToolMode,
     increaseToolSize,
     decreaseToolSize,
+    deactivateSegmentationMode,
     mergeTool,
   } = useSegmentationMode();
+
+  const editingValue = useAtomValue(editing);
+  const onExit = useExit();
+
+  // Three-tier Escape behaviour, mirroring the right-click flow in
+  // InteractionManager:
+  //   1. close any open label (clear the editing focus)
+  //   2. switch to the Select tool
+  //   3. exit segmentation mode entirely
+  const handleEscape = useCallback(() => {
+    if (editingValue !== null) {
+      onExit();
+      return;
+    }
+
+    if (tool !== SegmentationTool.Select) {
+      switchTool(SegmentationTool.Select);
+      return;
+    }
+
+    deactivateSegmentationMode();
+  }, [editingValue, tool, onExit, switchTool, deactivateSegmentationMode]);
 
   const brushCursor = useMemo(() => {
     const cursorSize = Math.min(
@@ -192,7 +224,7 @@ export const useSegmentationActions = ({
             id: SegmentationTool.Select,
             label: "Select",
             icon: <SelectIcon />,
-            shortcut: "S",
+            shortcut: "V",
             tooltip: "Select",
             isActive: tool === SegmentationTool.Select,
             onClick: () => switchTool(SegmentationTool.Select),
@@ -250,6 +282,7 @@ export const useSegmentationActions = ({
             id: SegmentationToolMode.Add,
             label: "Add",
             icon: <Add />,
+            shortcut: "D",
             tooltip: "Add to mask",
             isActive: toolMode === SegmentationToolMode.Add,
             onClick: () => switchToolMode(SegmentationToolMode.Add),
@@ -258,6 +291,7 @@ export const useSegmentationActions = ({
             id: SegmentationToolMode.Remove,
             label: "Remove",
             icon: <Remove />,
+            shortcut: "E",
             tooltip: "Remove from mask",
             isActive: toolMode === SegmentationToolMode.Remove,
             onClick: () => switchToolMode(SegmentationToolMode.Remove),
@@ -280,6 +314,10 @@ export const useSegmentationActions = ({
                 min={MIN_TOOL_SIZE}
                 max={MAX_TOOL_SIZE}
                 cursor={brushCursor}
+                onClick={() => {
+                  // no value provided falls back to DEFAULT
+                  setToolSize();
+                }}
                 onIncrease={increaseToolSize}
                 onDecrease={decreaseToolSize}
               />
@@ -311,55 +349,99 @@ export const useSegmentationActions = ({
         ],
       },
       {
-        id: "actions",
-        label: "Actions",
+        id: "close",
+        label: "Close",
         actions: [
           {
-            id: "undo",
-            label: "Undo",
-            icon: <Undo />,
-            shortcut: "Ctrl+Z",
-            tooltip: "Undo",
-            isDisabled: !canUndo,
-            onClick: () => canUndo && onUndo?.(),
-          },
-          {
-            id: "redo",
-            label: "Redo",
-            icon: <Redo />,
-            shortcut: "Ctrl+Shift+Z",
-            tooltip: "Redo",
-            isDisabled: !canRedo,
-            onClick: () => canRedo && onRedo?.(),
-          },
-          {
-            id: "clear",
-            label: "Clear mask",
-            icon: <FormatColorReset />,
-            tooltip: "Clear mask",
-            onClick: () => {},
+            id: "close",
+            label: "Close",
+            icon: <Close />,
+            shortcut: "escape",
+            tooltip: "Close open label, then tool, then segmentation mode",
+            onClick: handleEscape,
           },
         ],
       },
     ],
     [
-      tool,
-      toolSize,
-      toolShape,
-      toolMode,
-      switchTool,
-      switchToolShape,
-      switchToolMode,
-      increaseToolSize,
-      decreaseToolSize,
       brushCursor,
+      decreaseToolSize,
+      handleEscape,
+      increaseToolSize,
       mergeTool.disabled,
-      canUndo,
-      canRedo,
-      onUndo,
-      onRedo,
+      setToolSize,
+      switchTool,
+      switchToolMode,
+      switchToolShape,
+      tool,
+      toolMode,
+      toolShape,
+      toolSize,
     ]
   );
+
+  // Wire `shortcut` declarations on toolbar actions into actual keybindings.
+  // Each visible, enabled action with a shortcut gets a command in the
+  // ModalAnnotate context; `enablement` gates firing on the same conditions
+  // the UI uses to enable the button.
+  const bindings = useMemo<KeyBinding[]>(() => {
+    const out: KeyBinding[] = [];
+    for (const group of groups) {
+      if (group.isHidden) continue;
+      for (const action of group.actions) {
+        if (!action.shortcut || !action.onClick) continue;
+        out.push({
+          commandId: `segmentation-toolbar.${group.id}.${action.id}`,
+          sequence: action.shortcut.toLowerCase(),
+          handler: () => action.onClick!(),
+          label: action.label,
+          enablement: () => segmentationModeActive && !action.isDisabled,
+        });
+      }
+    }
+
+    // Brush-only shortcuts that don't bind to a single toolbar button.
+    if (tool === SegmentationTool.Brush) {
+      out.push({
+        commandId: "segmentation-toolbar.size.decrease",
+        sequence: "[",
+        handler: decreaseToolSize,
+        label: "Decrease brush size",
+        enablement: () => segmentationModeActive,
+      });
+      out.push({
+        commandId: "segmentation-toolbar.size.increase",
+        sequence: "]",
+        handler: increaseToolSize,
+        label: "Increase brush size",
+        enablement: () => segmentationModeActive,
+      });
+      out.push({
+        commandId: "segmentation-toolbar.shape.toggle",
+        sequence: "s",
+        handler: () =>
+          switchToolShape(
+            toolShape === SegmentationToolShape.Circle
+              ? SegmentationToolShape.Square
+              : SegmentationToolShape.Circle
+          ),
+        label: "Toggle brush shape",
+        enablement: () => segmentationModeActive,
+      });
+    }
+
+    return out;
+  }, [
+    decreaseToolSize,
+    groups,
+    increaseToolSize,
+    segmentationModeActive,
+    switchToolShape,
+    tool,
+    toolShape,
+  ]);
+
+  useKeyBindings(KnownContexts.ModalAnnotate, bindings, [bindings]);
 
   return { groups, visible: segmentationModeActive };
 };
