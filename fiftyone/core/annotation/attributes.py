@@ -6,9 +6,10 @@ Annotation attribute primitives for label schemas and ontologies.
 |
 """
 
+import abc
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Literal, Optional, Union
+from typing import Any, Generator, Literal, Optional, Union
 
 
 def attr_insert_to_dict(d: dict, name: str, obj: object) -> dict:
@@ -39,19 +40,92 @@ def _require_keys(d: dict, keys: tuple, cls: type) -> None:
 
 
 class WhenOperator(str, Enum):
-    """Supported logical operators for :class:`When` conditions."""
+    """Supported logical operators for :class:`When` leaf conditions."""
 
     EQUALS = "equals"
     IN = "in"
 
 
+class WhenCondition(abc.ABC):
+    """Abstract base class for all condition nodes in a ``when`` expression
+    tree.
+
+    A ``when`` expression is a tree of :class:`WhenCondition` nodes.
+    Leaves are :class:`When` instances (or the convenience subclasses
+    :class:`WhenEquals` / :class:`WhenIn`). Interior nodes are
+    :class:`WhenAnd` and :class:`WhenOr`, which hold child conditions and
+    evaluate them with AND / OR semantics respectively.
+
+    Subclasses must implement :meth:`to_dict`. Deserialization always goes
+    through :meth:`from_dict`, which dispatches on the ``"operator"`` key.
+    """
+
+    @abc.abstractmethod
+    def to_dict(self) -> dict:
+        """Serializes this condition to a plain dict.
+
+        Returns:
+            a dict
+        """
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "WhenCondition":
+        """Deserializes a condition from a plain dict.
+
+        Dispatches to :class:`WhenAnd`, :class:`WhenOr`, or :class:`When`
+        based on the ``"operator"`` key.
+
+        Args:
+            d: a condition dict
+
+        Returns:
+            a :class:`WhenCondition`
+        """
+        if not isinstance(d, dict):
+            raise ValueError(
+                f"WhenCondition.from_dict expects a dict, got "
+                f"{type(d).__name__}"
+            )
+        op = d.get("operator")
+        if op == "and":
+            return WhenAnd.from_dict(d)
+        if op == "or":
+            return WhenOr.from_dict(d)
+        return When.from_dict(d)
+
+
+def collect_leaf_conditions(
+    root: WhenCondition,
+) -> Generator["When", None, None]:
+    """Recursively yields all leaf :class:`When` nodes in a condition tree.
+
+    Group nodes (:class:`WhenAnd`, :class:`WhenOr`) are traversed but not
+    yielded. Only :class:`When` leaves (including :class:`WhenEquals` and
+    :class:`WhenIn`) are yielded.
+
+    This is the correct way for validation code to inspect operators, field
+    references, and ``then`` overrides without needing to know about nesting.
+
+    Args:
+        root: the root condition node to traverse
+
+    Yields:
+        each leaf :class:`When` node in the tree
+    """
+    if isinstance(root, (WhenAnd, WhenOr)):
+        for child in root.conditions:
+            yield from collect_leaf_conditions(child)
+    else:
+        yield root  # type: ignore[misc]
+
+
 @dataclass(repr=False)
-class When:
-    """A visibility/override condition for an :class:`AttributeSpec`.
+class When(WhenCondition):
+    """A leaf visibility/override condition for an :class:`AttributeSpec`.
 
     Controls when an attribute is shown based on the value of another
-    attribute. Multiple ``When`` conditions on a single attribute are
-    combined with implicit AND.
+    attribute. Compose multiple conditions using :class:`WhenAnd` and
+    :class:`WhenOr`.
 
     Args:
         operator: the logical operator (:class:`WhenOperator` or its string
@@ -184,6 +258,142 @@ class WhenIn(When):
 
 
 @dataclass(repr=False)
+class WhenAnd(WhenCondition):
+    """An AND group condition: satisfied when ALL child conditions are met.
+
+    Child conditions may themselves be leaves (:class:`When`,
+    :class:`WhenEquals`, :class:`WhenIn`) or nested groups
+    (:class:`WhenAnd`, :class:`WhenOr`), enabling arbitrary boolean
+    composition.
+
+    Args:
+        conditions: list of child :class:`WhenCondition` nodes, all of which
+            must be satisfied
+
+    Example::
+
+        WhenAnd([
+            WhenEquals(field="has_damage", value=True),
+            WhenIn(field="vehicle_type", value=["car", "truck"]),
+        ])
+
+        # Nested composition
+        WhenAnd([
+            WhenEquals(field="has_damage", value=True),
+            WhenOr([
+                WhenEquals(field="vehicle_type", value="car"),
+                WhenEquals(field="vehicle_type", value="truck"),
+            ]),
+        ])
+    """
+
+    conditions: list
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.conditions, list) or not self.conditions:
+            raise ValueError("WhenAnd.conditions must be a non-empty list")
+
+    def to_dict(self) -> dict:
+        """Serializes this group condition to a dict.
+
+        Returns:
+            a dict
+        """
+        return {
+            "operator": "and",
+            "conditions": [c.to_dict() for c in self.conditions],
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "WhenAnd":
+        """Creates a :class:`WhenAnd` from a dict.
+
+        Args:
+            d: a condition dict with ``"operator": "and"``
+
+        Returns:
+            a :class:`WhenAnd`
+        """
+        _require_keys(d, ("conditions",), cls)
+        if not isinstance(d["conditions"], list):
+            raise ValueError("WhenAnd.conditions must be a list")
+        return cls(
+            conditions=[WhenCondition.from_dict(c) for c in d["conditions"]]
+        )
+
+    def __repr__(self) -> str:
+        return f"WhenAnd({self.conditions!r})"
+
+
+@dataclass(repr=False)
+class WhenOr(WhenCondition):
+    """An OR group condition: satisfied when ANY child condition is met.
+
+    Child conditions may themselves be leaves (:class:`When`,
+    :class:`WhenEquals`, :class:`WhenIn`) or nested groups
+    (:class:`WhenAnd`, :class:`WhenOr`), enabling arbitrary boolean
+    composition.
+
+    Args:
+        conditions: list of child :class:`WhenCondition` nodes, at least one
+            of which must be satisfied
+
+    Example::
+
+        WhenOr([
+            WhenEquals(field="vehicle_type", value="car"),
+            WhenEquals(field="vehicle_type", value="truck"),
+        ])
+
+        # Nested: show when damage is present AND region is front OR rear
+        WhenAnd([
+            WhenEquals(field="damage_present", value=True),
+            WhenOr([
+                WhenEquals(field="region", value="front"),
+                WhenEquals(field="region", value="rear"),
+            ]),
+        ])
+    """
+
+    conditions: list
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.conditions, list) or not self.conditions:
+            raise ValueError("WhenOr.conditions must be a non-empty list")
+
+    def to_dict(self) -> dict:
+        """Serializes this group condition to a dict.
+
+        Returns:
+            a dict
+        """
+        return {
+            "operator": "or",
+            "conditions": [c.to_dict() for c in self.conditions],
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "WhenOr":
+        """Creates a :class:`WhenOr` from a dict.
+
+        Args:
+            d: a condition dict with ``"operator": "or"``
+
+        Returns:
+            a :class:`WhenOr`
+        """
+        _require_keys(d, ("conditions",), cls)
+        if not isinstance(d["conditions"], list):
+            raise ValueError("WhenOr.conditions must be a list")
+        return cls(
+            conditions=[WhenCondition.from_dict(c) for c in d["conditions"]]
+        )
+
+    def __repr__(self) -> str:
+        return f"WhenOr({self.conditions!r})"
+
+
+@dataclass(repr=False)
 class AttributeSpec:
     """A typed annotation attribute with optional conditional visibility.
 
@@ -196,8 +406,9 @@ class AttributeSpec:
         component: the UI component (e.g. ``"checkbox"``, ``"dropdown"``,
             ``"radio"``)
         values: optional list of allowed values
-        when: optional list of :class:`When` conditions controlling when
-            this attribute is visible or field overrides
+        when: optional :class:`WhenCondition` controlling when this attribute
+            is visible. Use a bare leaf for a single condition, or compose
+            with :class:`WhenAnd` / :class:`WhenOr` for boolean logic.
         read_only: optional flag marking the attribute as non-editable
         default: optional default value (type matches ``type``)
         range: optional ``[min, max]`` for numeric-with-slider components
@@ -205,12 +416,39 @@ class AttributeSpec:
 
     Example::
 
+        # Single condition
         AttributeSpec(
             name="damage_location",
             type="str",
             component="dropdown",
             values=["front", "rear", "driver_side", "passenger_side"],
-            when=[WhenEquals(field="damage_present", value=True)],
+            when=WhenEquals(field="damage_present", value=True),
+        )
+
+        # AND of two conditions
+        AttributeSpec(
+            name="repair_priority",
+            type="str",
+            component="radio",
+            values=["urgent", "scheduled", "deferred"],
+            when=WhenAnd([
+                WhenEquals(field="damage_present", value=True),
+                WhenIn(field="vehicle_type", value=["car", "truck"]),
+            ]),
+        )
+
+        # Nested AND / OR
+        AttributeSpec(
+            name="repair_detail",
+            type="str",
+            component="text",
+            when=WhenAnd([
+                WhenEquals(field="damage_present", value=True),
+                WhenOr([
+                    WhenEquals(field="region", value="front"),
+                    WhenEquals(field="region", value="rear"),
+                ]),
+            ]),
         )
     """
 
@@ -218,7 +456,7 @@ class AttributeSpec:
     type: str
     component: str
     values: Optional[list] = None
-    when: Optional[list[When]] = None
+    when: Optional[WhenCondition] = None
     read_only: Optional[bool] = None
     default: Any = None
     range: Optional[list] = None
@@ -253,7 +491,7 @@ class AttributeSpec:
         attr_insert_to_dict(d, "range", self)
         attr_insert_to_dict(d, "precision", self)
         if self.when is not None:
-            d["when"] = [w.to_dict() for w in self.when]
+            d["when"] = self.when.to_dict()
         return d
 
     @classmethod
@@ -274,11 +512,7 @@ class AttributeSpec:
 
         when = None
         if "when" in d:
-            if not isinstance(d["when"], list):
-                raise ValueError(
-                    "AttributeSpec.when must be a list if provided"
-                )
-            when = [When.from_dict(w) for w in d["when"]]
+            when = WhenCondition.from_dict(d["when"])
 
         return cls(
             name=d["name"],
