@@ -34,6 +34,7 @@ import { editing } from "./Edit";
 import { fieldsOfType } from "./Edit/state";
 import { useClassificationMode } from "./Edit/useClassificationMode";
 import { useDetectionMode } from "./Edit/useDetectionMode";
+import { usePolylineMode } from "./Edit/usePolylineMode";
 import { useSegmentationMode } from "./Edit/useSegmentationMode";
 import { Anchor, Text, Tooltip } from "@voxel51/voodo";
 import { FeatureFlag, FeatureFlagged } from "@fiftyone/feature-flags";
@@ -199,12 +200,8 @@ const Classification = () => {
 };
 
 const Detection = () => {
-  const {
-    activateDetectionMode,
-    detectionModeActive,
-    disabled,
-    tooltip,
-  } = useDetectionMode();
+  const { activateDetectionMode, detectionModeActive, disabled, tooltip } =
+    useDetectionMode();
   const deactivateAll = useDeactivateAll();
 
   return (
@@ -252,6 +249,36 @@ const Segmentation = () => {
         }}
       >
         <SegmentationIcon />
+      </Square>
+    </Tooltip>
+  );
+};
+
+const Polyline = () => {
+  const { activatePolylineMode, polylineModeActive, disabled, tooltip } =
+    usePolylineMode();
+  const deactivateAll = useDeactivateAll();
+
+  return (
+    <Tooltip anchor={Anchor.Top} content={<Text>{tooltip}</Text>} portal>
+      <Square
+        $active={polylineModeActive}
+        className={disabled ? "disabled" : ""}
+        data-cy="polyline-mode"
+        data-cy-active={polylineModeActive}
+        onClick={() => {
+          if (disabled) {
+            return;
+          }
+
+          deactivateAll();
+
+          if (!polylineModeActive) {
+            activatePolylineMode();
+          }
+        }}
+      >
+        <PolylineIcon sx={{ transform: "rotate(90deg)" }} />
       </Square>
     </Tooltip>
   );
@@ -406,15 +433,12 @@ const Actions = () => {
   // This checks if a 3d sample is pinned - is true when media type is `group` with a 3d slice pinned
   const { isPinned: is3dSamplePinned } = useRenderConfig3dState();
 
-  const {
-    classificationModeActive,
-    deactivateClassificationMode,
-  } = useClassificationMode();
+  const { classificationModeActive, deactivateClassificationMode } =
+    useClassificationMode();
   const { detectionModeActive, deactivateDetectionMode } = useDetectionMode();
-  const {
-    segmentationModeActive,
-    deactivateSegmentationMode,
-  } = useSegmentationMode();
+  const { segmentationModeActive, deactivateSegmentationMode } =
+    useSegmentationMode();
+  const { polylineModeActive, deactivatePolylineMode } = usePolylineMode();
   const current3dAnnotationMode = useCurrent3dAnnotationMode();
   const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
 
@@ -422,6 +446,7 @@ const Actions = () => {
     !classificationModeActive &&
     !detectionModeActive &&
     !segmentationModeActive &&
+    !polylineModeActive &&
     !current3dAnnotationMode;
   const areThreeDActionsVisible = is3dDataset || is3dSamplePinned;
 
@@ -430,9 +455,11 @@ const Actions = () => {
     deactivateDetectionMode();
     deactivateSegmentationMode();
     setCurrent3dAnnotationMode(null);
+    deactivatePolylineMode();
   }, [
     deactivateClassificationMode,
     deactivateDetectionMode,
+    deactivatePolylineMode,
     deactivateSegmentationMode,
     setCurrent3dAnnotationMode,
   ]);
@@ -454,6 +481,9 @@ const Actions = () => {
                 <Detection />
                 <FeatureFlagged feature={FeatureFlag.VFF_AI_SEGMENTATION}>
                   <Segmentation />
+                </FeatureFlagged>
+                <FeatureFlagged feature={FeatureFlag.VFF_POLYLINE_ANNOTATION}>
+                  <Polyline />
                 </FeatureFlagged>
               </>
             )}

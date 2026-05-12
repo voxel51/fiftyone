@@ -415,10 +415,15 @@ export default function useLabels() {
           if (stale) return;
 
           result.forEach((annotationLabel) => {
-            // update overlays
-            if (scene?.hasOverlay(annotationLabel.data._id)) {
-              scene.getOverlay(annotationLabel.data._id)!.label =
-                annotationLabel.data;
+            const existingOverlay = scene?.getOverlay(annotationLabel.data._id);
+
+            // use existing overlay if available
+            if (existingOverlay) {
+              // refresh data
+              existingOverlay.label = annotationLabel.data;
+              // reuse overlay
+              annotationLabel.overlay =
+                existingOverlay as AnnotationLabel["overlay"];
             }
 
             // update sidebar, or add if this is a new label

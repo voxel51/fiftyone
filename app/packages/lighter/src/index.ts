@@ -37,6 +37,8 @@ export type {
 export { drawRippleRings } from "./overlay/rippleRing";
 export type { DrawRippleRingsArgs } from "./overlay/rippleRing";
 export { RIPPLE_VISIBLE_MS } from "./constants";
+export { PolylineOverlay } from "./overlay/PolylineOverlay";
+export type { PolylineLabel, PolylineOptions } from "./overlay/PolylineOverlay";
 export { OverlayFactory } from "./overlay/OverlayFactory";
 export type { OverlayConstructor } from "./overlay/OverlayFactory";
 
@@ -54,8 +56,9 @@ export type { LighterEventGroup } from "./events";
 
 // Interaction exports
 export { buildBrushCursor } from "./interaction/buildBrushCursor";
-export type { BrushCursorOptions } from "./interaction/buildBrushCursor";
 export { InteractionManager } from "./interaction/InteractionManager";
+export { InteractiveCreationHandler } from "./interaction/InteractiveCreationHandler";
+export type { InteractiveCreationHandlerOptions } from "./interaction/InteractiveCreationHandler";
 export type {
   InteractionHandler,
   OverlayEvent,
@@ -66,6 +69,15 @@ export {
   KeypointPointHitAction,
 } from "./interaction/InteractiveKeypointHandler";
 export type { KeypointPointHitContext } from "./interaction/InteractiveKeypointHandler";
+export {
+  InteractivePolylineHandler,
+  PolylineEdgeHitAction,
+  PolylineEmptyHitAction,
+} from "./interaction/InteractivePolylineHandler";
+export type {
+  PolylineEdgeHitContext,
+  PolylineEmptyHitContext,
+} from "./interaction/InteractivePolylineHandler";
 
 // Selection exports
 export type { Selectable } from "./selection/Selectable";
