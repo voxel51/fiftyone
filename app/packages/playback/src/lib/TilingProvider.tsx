@@ -122,7 +122,16 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
   const [settings, setSettings] = useState<
     Record<string, React.ComponentType>
   >({});
-  const counterRef = useRef(1);
+  // Seed the counter past any `<prefix>-<n>` suffix in the initial tiles,
+  // so the first `addTile("camera", ...)` against `{ "camera-1": ... }`
+  // produces `camera-2` instead of colliding with `camera-1`. Walks every
+  // initial id once at mount; later additions just `counterRef.current++`.
+  const counterRef = useRef(
+    Object.keys(initialTiles).reduce((max, id) => {
+      const m = id.match(/-(\d+)$/);
+      return m ? Math.max(max, Number(m[1])) : max;
+    }, 0) + 1
+  );
 
   /**
    * Layout setter that also reconciles the entries map (drops orphans
