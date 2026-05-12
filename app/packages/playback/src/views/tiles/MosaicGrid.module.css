@@ -52,8 +52,30 @@
   background: transparent;
 }
 
+/* Pull the per-tile margin in (react-mosaic defaults to 3px on each
+   side → 6px gap + 2px window borders ≈ 8px between tile contents).
+   2px gives 4px gap + 2px borders ≈ 6px — visibly slim without making
+   adjacent borders feel like one continuous line. */
+.root :global(.mosaic .mosaic-tile) {
+  margin: 2px;
+}
+
+/* Split hit area: still draggable, but its width matches the tile
+   margins on each side so it sits in the gap without overlapping the
+   tile body. Vertical splits use width + horizontal margin; horizontal
+   splits use the column variant. */
 .root :global(.mosaic .mosaic-split) {
   background: transparent;
+}
+
+.root :global(.mosaic .mosaic-split.-row) {
+  width: 4px;
+  margin-left: -2px;
+}
+
+.root :global(.mosaic .mosaic-split.-column) {
+  height: 4px;
+  margin-top: -2px;
 }
 
 .root :global(.mosaic .mosaic-split:hover) {

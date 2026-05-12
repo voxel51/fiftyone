@@ -1,7 +1,7 @@
 import { useAtomValue } from "jotai";
 import React, { useMemo } from "react";
-import { playheadAtom } from "../../../../lib/playback-atoms";
-import { usePlayback } from "../../../../lib/PlaybackProvider";
+import { playheadAtom } from "../../../../lib/playback/atoms";
+import { usePlayback } from "../../../../lib/playback/PlaybackProvider";
 import { useTileSettings } from "../../../../lib/TilingProvider";
 import GraphSettings from "./GraphSettings";
 import styles from "./GraphTile.module.css";
@@ -9,18 +9,30 @@ import styles from "./GraphTile.module.css";
 const CHART_VIEWBOX_W = 200;
 const CHART_VIEWBOX_H = 80;
 
+const clamp = (v: number, lo: number, hi: number) =>
+  Math.min(hi, Math.max(lo, v));
+
 /**
  * Graph tile body — two stylized line series with a vertical playhead
- * cursor synced to the current playback time. Chrome is provided
- * externally (see `Tile` / `MosaicGrid`).
+ * cursor synced to the current playback time. Clicking the chart seeks
+ * the playhead to the corresponding time. Chrome is provided externally
+ * (see `Tile` / `MosaicGrid`).
  */
 const GraphTile: React.FC = () => {
   useTileSettings(GraphSettings);
   const { path1, path2 } = useMemo(() => buildPaths(), []);
   const playhead = useAtomValue(playheadAtom);
-  const { duration } = usePlayback();
-  const ratio = duration > 0 ? Math.max(0, Math.min(1, playhead / duration)) : 0;
+  const { duration, seek } = usePlayback();
+  const ratio = duration > 0 ? clamp(playhead / duration, 0, 1) : 0;
   const playheadX = ratio * CHART_VIEWBOX_W;
+
+  const handleChartClick = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (duration <= 0) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    if (rect.width <= 0) return;
+    const r = clamp((e.clientX - rect.left) / rect.width, 0, 1);
+    seek(r * duration);
+  };
 
   return (
     <div className={styles.body}>
@@ -28,6 +40,7 @@ const GraphTile: React.FC = () => {
         viewBox={`0 0 ${CHART_VIEWBOX_W} ${CHART_VIEWBOX_H}`}
         className={styles.chart}
         preserveAspectRatio="none"
+        onClick={handleChartClick}
       >
         {[16, 32, 48, 64].map((y) => (
           <line
