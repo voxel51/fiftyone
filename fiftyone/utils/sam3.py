@@ -9,6 +9,7 @@ wrapper for the FiftyOne Model Zoo.
 
 import logging
 import os
+import shutil
 from PIL import Image
 
 import fiftyone.core.utils as fou
@@ -16,6 +17,8 @@ import fiftyone.utils.torch as fout
 import fiftyone.utils.sam as fosam
 import fiftyone.utils.sam2 as fosam2
 import fiftyone.zoo.models as fozm
+
+import eta.core.web as etaw
 
 fou.ensure_torch()
 import torch
@@ -28,6 +31,61 @@ sam3misc = fou.lazy_import("sam3.model.utils.misc")
 sam2ip = fou.lazy_import("sam2.sam2_image_predictor")
 
 logger = logging.getLogger(__name__)
+
+
+_SAM3_BPE_FILENAME = "bpe_simple_vocab_16e6.txt.gz"
+_SAM3_BPE_URL = (
+    "https://raw.githubusercontent.com/openai/CLIP/main/clip/"
+    + _SAM3_BPE_FILENAME
+)
+
+
+def _ensure_sam3_bpe_vocab_path():
+    """Ensures SAM3 has a valid BPE vocab file and returns its path.
+
+    The upstream `sam3` package defaults to a relative `../assets/` location
+    that is not always present in packaged wheels, so we store/download this
+    file in FiftyOne's model zoo directory.
+    """
+
+    import fiftyone as fo
+
+    bpe_dir = os.path.join(fo.config.model_zoo_dir, "sam3")
+    os.makedirs(bpe_dir, exist_ok=True)
+    bpe_path = os.path.join(bpe_dir, _SAM3_BPE_FILENAME)
+
+    if os.path.isfile(bpe_path):
+        return bpe_path
+
+    # Best-effort: copy from installed `sam3` package if it ships the asset
+    try:
+        import sam3 as _sam3_pkg
+
+        sam3_pkg_dir = os.path.dirname(os.path.abspath(_sam3_pkg.__file__))
+        candidates = (
+            os.path.join(
+                os.path.dirname(sam3_pkg_dir), "assets", _SAM3_BPE_FILENAME
+            ),
+            os.path.join(sam3_pkg_dir, "assets", _SAM3_BPE_FILENAME),
+        )
+        for candidate in candidates:
+            if os.path.isfile(candidate):
+                shutil.copyfile(candidate, bpe_path)
+                return bpe_path
+    except Exception:
+        pass
+
+    logger.info("Downloading SAM3 tokenizer vocab (%s)...", _SAM3_BPE_FILENAME)
+    try:
+        etaw.download_file(_SAM3_BPE_URL, path=bpe_path)
+    except Exception as e:
+        raise RuntimeError(
+            "Failed to download SAM3 tokenizer vocab. "
+            "You can manually download '%s' from %s and save it to %s"
+            % (_SAM3_BPE_FILENAME, _SAM3_BPE_URL, bpe_path)
+        ) from e
+
+    return bpe_path
 
 
 class SegmentAnything3ImageModelConfig(
@@ -311,6 +369,12 @@ class SegmentAnything3ImageModel(fosam2.SegmentAnything2ImageModel):
     def _load_model(self, config):
         if "device" not in config.entrypoint_args:
             config.entrypoint_args["device"] = str(self._device)
+
+        # Ensure the upstream `sam3` entrypoint has a valid BPE vocab path
+        bpe_path = config.entrypoint_args.get("bpe_path", None)
+        if not bpe_path or not os.path.isfile(bpe_path):
+            config.entrypoint_args["bpe_path"] = _ensure_sam3_bpe_vocab_path()
+
         model = super()._load_model(config)
         return model
 
