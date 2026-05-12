@@ -27,6 +27,3 @@ class DatabaseAdapter(abc.ABC):
             sample_and_scene_inventory_pairs: a list of tuples of
                 :class:`Sample` and :class:`SceneInventory`
         """
-        raise NotImplementedError(
-            "subclasses must implement write_scene_inventories()"
-        )
