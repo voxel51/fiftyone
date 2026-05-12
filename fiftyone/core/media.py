@@ -44,6 +44,9 @@ def get_media_type(filepath):
     if filepath.endswith(".fo3d"):
         return THREE_D
 
+    if filepath.endswith(".mcap"):
+        return MULTIMODAL
+
     return UNKNOWN
 
 
