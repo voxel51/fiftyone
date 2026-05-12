@@ -64,15 +64,17 @@ export const useMergeTool = (): MergeTool => {
   );
 
   const sidebarLabels = useAtomValue(labels);
-  const disabled = useMemo(
-    () =>
-      !sidebarLabels.some(
-        (label) =>
-          label.type === "Detection" &&
-          !!(label.data as { mask?: unknown })?.mask
-      ),
-    [sidebarLabels]
-  );
+  const disabled = useMemo(() => {
+    const maskCount = sidebarLabels.reduce((count, label) => {
+      const hasMask =
+        label.type === "Detection" &&
+        !!(label.data as { mask?: unknown })?.mask;
+
+      return hasMask ? count + 1 : count;
+    }, 0);
+
+    return maskCount < 2;
+  }, [sidebarLabels]);
 
   const setMergeTarget = useCallback(
     (id: string | null) => {
