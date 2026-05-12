@@ -48,9 +48,7 @@ import useCanManageSchema from "./Sidebar/Annotate/useCanManageSchema";
 import { useAnnotationTracking } from "./Sidebar/Annotate/useAnnotationTracking";
 import { SegmentationToolbar } from "./Sidebar/Annotate/Edit/SegmentationToolbar";
 import { ModalStatusBar } from "./ModalStatusBar";
-import { useDetectionStatus } from "./Sidebar/Annotate/Edit/useDetectionStatus";
-import { usePolylineStatus } from "./Sidebar/Annotate/Edit/usePolylineStatus";
-import { useSegmentationStatus } from "./Sidebar/Annotate/Edit/useSegmentationStatus";
+import { useAnnotationStatus } from "./Sidebar/Annotate/Edit/useAnnotationStatus";
 import { TooltipInfo } from "./TooltipInfo";
 import { useLookerHelpers, useTooltipEventHandler } from "./hooks";
 import { modalContext } from "./modal-context";
@@ -148,11 +146,7 @@ const ModalErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => {
 };
 
 const Modal = () => {
-  // Register mode-specific status bar content. Each hook is a no-op
-  // unless its mode is active; the active mode owns the bar via setContent.
-  useDetectionStatus();
-  useSegmentationStatus();
-  usePolylineStatus();
+  useAnnotationStatus();
 
   const wrapperRef = useRef<HTMLDivElement>(null);
   const pointerDownTargetRef = useRef<EventTarget | null>(null);
