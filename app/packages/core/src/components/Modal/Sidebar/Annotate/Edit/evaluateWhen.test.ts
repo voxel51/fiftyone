@@ -11,109 +11,268 @@ import type { AttributeConfig } from "../SchemaManager/utils";
 // ---------------------------------------------------------------------------
 
 describe("evaluateWhen", () => {
-  it("returns true when conditions are undefined", () => {
+  it("returns true when condition is undefined", () => {
     expect(evaluateWhen(undefined, {})).toBe(true);
   });
 
-  it("returns true when conditions array is empty", () => {
-    expect(evaluateWhen([], { category: "mammal" })).toBe(true);
-  });
-
-  describe("operator: equals", () => {
+  describe("operator: equals (leaf)", () => {
     it("returns true when the field value equals the condition value", () => {
-      const conditions = [
-        { operator: "equals" as const, field: "category", value: "mammal" },
-      ];
-      expect(evaluateWhen(conditions, { category: "mammal" })).toBe(true);
-    });
-
-    it("returns false when the field value does not match", () => {
-      const conditions = [
-        { operator: "equals" as const, field: "category", value: "mammal" },
-      ];
-      expect(evaluateWhen(conditions, { category: "bird" })).toBe(false);
-    });
-
-    it("returns false when the field is absent from currentValues", () => {
-      const conditions = [
-        { operator: "equals" as const, field: "category", value: "mammal" },
-      ];
-      expect(evaluateWhen(conditions, {})).toBe(false);
-    });
-
-    it("uses strict equality (no type coercion)", () => {
-      const conditions = [
-        { operator: "equals" as const, field: "score", value: 1 },
-      ];
-      expect(evaluateWhen(conditions, { score: "1" })).toBe(false);
-      expect(evaluateWhen(conditions, { score: 1 })).toBe(true);
-    });
-  });
-
-  describe("operator: in", () => {
-    it("returns true when field value is in the condition value array", () => {
-      const conditions = [
-        {
-          operator: "in" as const,
-          field: "category",
-          value: ["mammal", "bird"],
-        },
-      ];
-      expect(evaluateWhen(conditions, { category: "mammal" })).toBe(true);
-      expect(evaluateWhen(conditions, { category: "bird" })).toBe(true);
-    });
-
-    it("returns false when field value is not in the array", () => {
-      const conditions = [
-        {
-          operator: "in" as const,
-          field: "category",
-          value: ["mammal", "bird"],
-        },
-      ];
-      expect(evaluateWhen(conditions, { category: "reptile" })).toBe(false);
-    });
-
-    it("returns false when condition value is not an array", () => {
-      const conditions = [
-        { operator: "in" as const, field: "category", value: "mammal" },
-      ];
-      expect(evaluateWhen(conditions, { category: "mammal" })).toBe(false);
-    });
-  });
-
-  // Unknown operators are prevented at compile time: OPERATOR_HANDLERS is
-  // typed as Record<AttributeCondition["operator"], ...>, so TypeScript will
-  // error if a new operator is added to the union without a handler entry.
-
-  describe("AND semantics — multiple conditions", () => {
-    it("returns true when ALL conditions are satisfied", () => {
-      const conditions = [
-        { operator: "equals" as const, field: "category", value: "mammal" },
-        { operator: "equals" as const, field: "size", value: "large" },
-      ];
       expect(
-        evaluateWhen(conditions, { category: "mammal", size: "large" })
+        evaluateWhen(
+          { operator: "equals", field: "category", value: "mammal" },
+          { category: "mammal" }
+        )
       ).toBe(true);
     });
 
-    it("returns false when only some conditions are satisfied", () => {
-      const conditions = [
-        { operator: "equals" as const, field: "category", value: "mammal" },
-        { operator: "equals" as const, field: "size", value: "large" },
-      ];
+    it("returns false when the field value does not match", () => {
       expect(
-        evaluateWhen(conditions, { category: "mammal", size: "small" })
+        evaluateWhen(
+          { operator: "equals", field: "category", value: "mammal" },
+          { category: "bird" }
+        )
       ).toBe(false);
     });
 
-    it("returns false when no conditions are satisfied", () => {
-      const conditions = [
-        { operator: "equals" as const, field: "category", value: "mammal" },
-        { operator: "equals" as const, field: "category", value: "bird" },
-      ];
-      expect(evaluateWhen(conditions, { category: "reptile" })).toBe(false);
+    it("returns false when the field is absent from currentValues", () => {
+      expect(
+        evaluateWhen(
+          { operator: "equals", field: "category", value: "mammal" },
+          {}
+        )
+      ).toBe(false);
     });
+
+    it("uses strict equality (no type coercion)", () => {
+      const cond = { operator: "equals" as const, field: "score", value: 1 };
+      expect(evaluateWhen(cond, { score: "1" })).toBe(false);
+      expect(evaluateWhen(cond, { score: 1 })).toBe(true);
+    });
+  });
+
+  describe("operator: in (leaf)", () => {
+    it("returns true when field value is in the condition value array", () => {
+      const cond = {
+        operator: "in" as const,
+        field: "category",
+        value: ["mammal", "bird"],
+      };
+      expect(evaluateWhen(cond, { category: "mammal" })).toBe(true);
+      expect(evaluateWhen(cond, { category: "bird" })).toBe(true);
+    });
+
+    it("returns false when field value is not in the array", () => {
+      expect(
+        evaluateWhen(
+          { operator: "in", field: "category", value: ["mammal", "bird"] },
+          { category: "reptile" }
+        )
+      ).toBe(false);
+    });
+
+    it("returns false when condition value is not an array", () => {
+      expect(
+        evaluateWhen(
+          { operator: "in", field: "category", value: "mammal" },
+          { category: "mammal" }
+        )
+      ).toBe(false);
+    });
+  });
+
+  // Unknown leaf operators are prevented at compile time by LEAF_OPERATOR_HANDLERS
+  // being typed as Record<AttributeConditionLeaf["operator"], ...>.
+
+  describe("operator: and (group)", () => {
+    it("returns true when ALL child conditions are satisfied", () => {
+      expect(
+        evaluateWhen(
+          {
+            operator: "and",
+            conditions: [
+              { operator: "equals", field: "category", value: "mammal" },
+              { operator: "equals", field: "size", value: "large" },
+            ],
+          },
+          { category: "mammal", size: "large" }
+        )
+      ).toBe(true);
+    });
+
+    it("returns false when only some child conditions are satisfied", () => {
+      expect(
+        evaluateWhen(
+          {
+            operator: "and",
+            conditions: [
+              { operator: "equals", field: "category", value: "mammal" },
+              { operator: "equals", field: "size", value: "large" },
+            ],
+          },
+          { category: "mammal", size: "small" }
+        )
+      ).toBe(false);
+    });
+
+    it("returns false when no child conditions are satisfied", () => {
+      expect(
+        evaluateWhen(
+          {
+            operator: "and",
+            conditions: [
+              { operator: "equals", field: "category", value: "mammal" },
+              { operator: "equals", field: "category", value: "bird" },
+            ],
+          },
+          { category: "reptile" }
+        )
+      ).toBe(false);
+    });
+  });
+
+  describe("operator: or (group)", () => {
+    it("returns true when any child condition is satisfied", () => {
+      const cond = {
+        operator: "or" as const,
+        conditions: [
+          { operator: "equals" as const, field: "category", value: "mammal" },
+          { operator: "equals" as const, field: "category", value: "bird" },
+        ],
+      };
+      expect(evaluateWhen(cond, { category: "mammal" })).toBe(true);
+      expect(evaluateWhen(cond, { category: "bird" })).toBe(true);
+    });
+
+    it("returns false when no child condition is satisfied", () => {
+      expect(
+        evaluateWhen(
+          {
+            operator: "or",
+            conditions: [
+              { operator: "equals", field: "category", value: "mammal" },
+              { operator: "equals", field: "category", value: "bird" },
+            ],
+          },
+          { category: "reptile" }
+        )
+      ).toBe(false);
+    });
+  });
+
+  describe("nested conditions", () => {
+    it("AND containing an OR: passes when outer leaf and any inner OR branch match", () => {
+      const cond = {
+        operator: "and" as const,
+        conditions: [
+          { operator: "equals" as const, field: "has_damage", value: true },
+          {
+            operator: "or" as const,
+            conditions: [
+              {
+                operator: "equals" as const,
+                field: "region",
+                value: "front",
+              },
+              { operator: "equals" as const, field: "region", value: "rear" },
+            ],
+          },
+        ],
+      };
+      expect(evaluateWhen(cond, { has_damage: true, region: "front" })).toBe(
+        true
+      );
+      expect(evaluateWhen(cond, { has_damage: true, region: "rear" })).toBe(
+        true
+      );
+    });
+
+    it("AND containing an OR: fails when outer leaf doesn't match", () => {
+      const cond = {
+        operator: "and" as const,
+        conditions: [
+          { operator: "equals" as const, field: "has_damage", value: true },
+          {
+            operator: "or" as const,
+            conditions: [
+              {
+                operator: "equals" as const,
+                field: "region",
+                value: "front",
+              },
+              { operator: "equals" as const, field: "region", value: "rear" },
+            ],
+          },
+        ],
+      };
+      expect(evaluateWhen(cond, { has_damage: false, region: "front" })).toBe(
+        false
+      );
+    });
+
+    it("OR containing an AND: passes when the AND branch is fully satisfied", () => {
+      const cond = {
+        operator: "or" as const,
+        conditions: [
+          { operator: "equals" as const, field: "priority", value: "urgent" },
+          {
+            operator: "and" as const,
+            conditions: [
+              {
+                operator: "equals" as const,
+                field: "category",
+                value: "mammal",
+              },
+              { operator: "equals" as const, field: "size", value: "large" },
+            ],
+          },
+        ],
+      };
+      expect(
+        evaluateWhen(cond, {
+          category: "mammal",
+          size: "large",
+          priority: "low",
+        })
+      ).toBe(true);
+      expect(evaluateWhen(cond, { priority: "urgent" })).toBe(true);
+    });
+
+    it("deep nesting: AND(OR(leaf, AND(leaf, leaf)), leaf)", () => {
+      const cond = {
+        operator: "and" as const,
+        conditions: [
+          {
+            operator: "or" as const,
+            conditions: [
+              { operator: "equals" as const, field: "a", value: 1 },
+              {
+                operator: "and" as const,
+                conditions: [
+                  { operator: "equals" as const, field: "b", value: 2 },
+                  { operator: "equals" as const, field: "c", value: 3 },
+                ],
+              },
+            ],
+          },
+          { operator: "equals" as const, field: "d", value: 4 },
+        ],
+      };
+      // a=1 satisfies OR branch 1; d=4 satisfies outer AND leaf
+      expect(evaluateWhen(cond, { a: 1, d: 4 })).toBe(true);
+      // b=2, c=3 satisfies OR branch 2 (inner AND); d=4 satisfies outer AND leaf
+      expect(evaluateWhen(cond, { b: 2, c: 3, d: 4 })).toBe(true);
+      // neither OR branch satisfied
+      expect(evaluateWhen(cond, { a: 0, b: 2, c: 0, d: 4 })).toBe(false);
+      // outer leaf not satisfied
+      expect(evaluateWhen(cond, { a: 1, d: 99 })).toBe(false);
+    });
+  });
+
+  it("throws on an unknown operator (exhaustiveness guard)", () => {
+    expect(() =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      evaluateWhen({ operator: "contains" as any, field: "x", value: "y" }, {})
+    ).toThrow("Unhandled operator: contains");
   });
 });
 
@@ -137,99 +296,198 @@ const animalAttributes: AttributeConfig[] = [
 ];
 
 describe("isWhenFulfillable", () => {
-  it("returns true when conditions are undefined", () => {
+  it("returns true when condition is undefined", () => {
     expect(isWhenFulfillable(undefined, animalAttributes)).toBe(true);
   });
 
-  it("returns true when conditions are empty", () => {
-    expect(isWhenFulfillable([], animalAttributes)).toBe(true);
-  });
-
-  describe("operator: equals", () => {
+  describe("operator: equals (leaf)", () => {
     it("returns true when the value exists in the referenced field's values", () => {
-      const conditions = [
-        { operator: "equals" as const, field: "category", value: "mammal" },
-      ];
-      expect(isWhenFulfillable(conditions, animalAttributes)).toBe(true);
+      expect(
+        isWhenFulfillable(
+          { operator: "equals", field: "category", value: "mammal" },
+          animalAttributes
+        )
+      ).toBe(true);
     });
 
     it("returns false when the value is not in the referenced field's values", () => {
-      const conditions = [
-        { operator: "equals" as const, field: "category", value: "insect" },
-      ];
-      expect(isWhenFulfillable(conditions, animalAttributes)).toBe(false);
+      expect(
+        isWhenFulfillable(
+          { operator: "equals", field: "category", value: "insect" },
+          animalAttributes
+        )
+      ).toBe(false);
     });
 
     it("returns true when the referenced field has no values list (open-ended)", () => {
-      const conditions = [
-        { operator: "equals" as const, field: "notes", value: "foo" },
-      ];
-      expect(isWhenFulfillable(conditions, animalAttributes)).toBe(true);
+      expect(
+        isWhenFulfillable(
+          { operator: "equals", field: "notes", value: "foo" },
+          animalAttributes
+        )
+      ).toBe(true);
     });
   });
 
-  describe("operator: in", () => {
+  describe("operator: in (leaf)", () => {
     it("returns true when at least one value in the list is allowed", () => {
-      const conditions = [
-        {
-          operator: "in" as const,
-          field: "category",
-          value: ["insect", "mammal"],
-        },
-      ];
-      expect(isWhenFulfillable(conditions, animalAttributes)).toBe(true);
+      expect(
+        isWhenFulfillable(
+          { operator: "in", field: "category", value: ["insect", "mammal"] },
+          animalAttributes
+        )
+      ).toBe(true);
     });
 
     it("returns false when none of the values in the list are allowed", () => {
-      const conditions = [
-        {
-          operator: "in" as const,
-          field: "category",
-          value: ["insect", "fungus"],
-        },
-      ];
-      expect(isWhenFulfillable(conditions, animalAttributes)).toBe(false);
+      expect(
+        isWhenFulfillable(
+          { operator: "in", field: "category", value: ["insect", "fungus"] },
+          animalAttributes
+        )
+      ).toBe(false);
     });
   });
 
-  describe("AND semantics — multiple conditions", () => {
+  describe("operator: and (group)", () => {
     it("returns true when ALL conditions are fulfillable", () => {
-      const conditions = [
-        { operator: "equals" as const, field: "category", value: "mammal" },
-        { operator: "equals" as const, field: "size", value: "large" },
-      ];
-      expect(isWhenFulfillable(conditions, animalAttributes)).toBe(true);
+      expect(
+        isWhenFulfillable(
+          {
+            operator: "and",
+            conditions: [
+              { operator: "equals", field: "category", value: "mammal" },
+              { operator: "equals", field: "size", value: "large" },
+            ],
+          },
+          animalAttributes
+        )
+      ).toBe(true);
     });
 
     it("returns false when any condition is unfulfillable", () => {
-      const conditions = [
-        { operator: "equals" as const, field: "category", value: "insect" },
-        { operator: "equals" as const, field: "category", value: "mammal" },
-      ];
-      expect(isWhenFulfillable(conditions, animalAttributes)).toBe(false);
+      expect(
+        isWhenFulfillable(
+          {
+            operator: "and",
+            conditions: [
+              { operator: "equals", field: "category", value: "insect" },
+              { operator: "equals", field: "category", value: "mammal" },
+            ],
+          },
+          animalAttributes
+        )
+      ).toBe(false);
     });
 
     it("returns false when all conditions are unfulfillable", () => {
-      const conditions = [
-        { operator: "equals" as const, field: "category", value: "insect" },
-        { operator: "equals" as const, field: "category", value: "fungus" },
-      ];
-      expect(isWhenFulfillable(conditions, animalAttributes)).toBe(false);
+      expect(
+        isWhenFulfillable(
+          {
+            operator: "and",
+            conditions: [
+              { operator: "equals", field: "category", value: "insect" },
+              { operator: "equals", field: "category", value: "fungus" },
+            ],
+          },
+          animalAttributes
+        )
+      ).toBe(false);
     });
   });
 
-  it("returns true for the ontology_test is_domesticated attribute", () => {
-    const conditions = [
-      { operator: "equals" as const, field: "category", value: "mammal" },
-    ];
-    expect(isWhenFulfillable(conditions, animalAttributes)).toBe(true);
+  describe("operator: or (group)", () => {
+    it("returns true when at least one child is fulfillable", () => {
+      expect(
+        isWhenFulfillable(
+          {
+            operator: "or",
+            conditions: [
+              { operator: "equals", field: "category", value: "insect" },
+              { operator: "equals", field: "category", value: "mammal" },
+            ],
+          },
+          animalAttributes
+        )
+      ).toBe(true);
+    });
+
+    it("returns false when all children are unfulfillable", () => {
+      expect(
+        isWhenFulfillable(
+          {
+            operator: "or",
+            conditions: [
+              { operator: "equals", field: "category", value: "insect" },
+              { operator: "equals", field: "category", value: "fungus" },
+            ],
+          },
+          animalAttributes
+        )
+      ).toBe(false);
+    });
   });
 
-  it("returns false for a fictitious value not in ontology_test category list", () => {
-    const conditions = [
-      { operator: "equals" as const, field: "category", value: "dragon" },
-    ];
-    expect(isWhenFulfillable(conditions, animalAttributes)).toBe(false);
+  describe("nested groups", () => {
+    it("AND(OR(fulfillable, unfulfillable), fulfillable) is fulfillable", () => {
+      expect(
+        isWhenFulfillable(
+          {
+            operator: "and",
+            conditions: [
+              {
+                operator: "or",
+                conditions: [
+                  { operator: "equals", field: "category", value: "mammal" },
+                  { operator: "equals", field: "category", value: "insect" },
+                ],
+              },
+              { operator: "equals", field: "size", value: "large" },
+            ],
+          },
+          animalAttributes
+        )
+      ).toBe(true);
+    });
+
+    it("AND(OR(unfulfillable, unfulfillable), fulfillable) is not fulfillable", () => {
+      expect(
+        isWhenFulfillable(
+          {
+            operator: "and",
+            conditions: [
+              {
+                operator: "or",
+                conditions: [
+                  { operator: "equals", field: "category", value: "insect" },
+                  { operator: "equals", field: "category", value: "fungus" },
+                ],
+              },
+              { operator: "equals", field: "size", value: "large" },
+            ],
+          },
+          animalAttributes
+        )
+      ).toBe(false);
+    });
+  });
+
+  it("returns true for a fulfillable named attribute", () => {
+    expect(
+      isWhenFulfillable(
+        { operator: "equals", field: "category", value: "mammal" },
+        animalAttributes
+      )
+    ).toBe(true);
+  });
+
+  it("returns false for a fictitious value not in the category list", () => {
+    expect(
+      isWhenFulfillable(
+        { operator: "equals", field: "category", value: "dragon" },
+        animalAttributes
+      )
+    ).toBe(false);
   });
 
   describe("duplicate attribute names — values are merged, not overwritten", () => {
@@ -247,54 +505,50 @@ describe("isWhenFulfillable", () => {
         type: "str",
         component: "dropdown",
         values: ["dog", "cat"],
-        when: [
-          { operator: "equals" as const, field: "category", value: "mammal" },
-        ],
+        when: {
+          operator: "equals" as const,
+          field: "category",
+          value: "mammal",
+        },
       },
       {
         name: "animal_name",
         type: "str",
         component: "dropdown",
         values: ["snake", "lizard"],
-        when: [
-          { operator: "equals" as const, field: "category", value: "reptile" },
-        ],
+        when: {
+          operator: "equals" as const,
+          field: "category",
+          value: "reptile",
+        },
       },
     ];
 
     it("finds a value from the first duplicate entry even when the second entry is last", () => {
-      const conditions = [
-        {
-          operator: "equals" as const,
-          field: "animal_name",
-          value: "dog",
-        },
-      ];
-      expect(isWhenFulfillable(conditions, duplicateNameAttributes)).toBe(true);
+      expect(
+        isWhenFulfillable(
+          { operator: "equals", field: "animal_name", value: "dog" },
+          duplicateNameAttributes
+        )
+      ).toBe(true);
     });
 
     it("finds a value from the second duplicate entry", () => {
-      const conditions = [
-        {
-          operator: "equals" as const,
-          field: "animal_name",
-          value: "snake",
-        },
-      ];
-      expect(isWhenFulfillable(conditions, duplicateNameAttributes)).toBe(true);
+      expect(
+        isWhenFulfillable(
+          { operator: "equals", field: "animal_name", value: "snake" },
+          duplicateNameAttributes
+        )
+      ).toBe(true);
     });
 
     it("returns false when the value is in neither duplicate entry", () => {
-      const conditions = [
-        {
-          operator: "equals" as const,
-          field: "animal_name",
-          value: "dragon",
-        },
-      ];
-      expect(isWhenFulfillable(conditions, duplicateNameAttributes)).toBe(
-        false
-      );
+      expect(
+        isWhenFulfillable(
+          { operator: "equals", field: "animal_name", value: "dragon" },
+          duplicateNameAttributes
+        )
+      ).toBe(false);
     });
 
     it("produces the same result regardless of duplicate entry order", () => {
@@ -303,25 +557,42 @@ describe("isWhenFulfillable", () => {
         duplicateNameAttributes[2], // reptile first
         duplicateNameAttributes[1], // mammal second
       ];
-      const conditions = [
-        { operator: "equals" as const, field: "animal_name", value: "dog" },
-      ];
-      expect(isWhenFulfillable(conditions, duplicateNameAttributes)).toBe(
-        isWhenFulfillable(conditions, reversed)
+      const cond = {
+        operator: "equals" as const,
+        field: "animal_name",
+        value: "dog",
+      };
+      expect(isWhenFulfillable(cond, duplicateNameAttributes)).toBe(
+        isWhenFulfillable(cond, reversed)
       );
     });
   });
 
   it("throws on an unknown operator (exhaustiveness guard)", () => {
-    const conditions = [
-      // Cast through `any` to simulate a future operator arriving at runtime
-      // before the frontend is updated (e.g. from a newer backend).
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      { operator: "contains" as any, field: "category", value: "mammal" },
-    ];
-    expect(() => isWhenFulfillable(conditions, animalAttributes)).toThrow(
-      "Unhandled operator: contains"
-    );
+    expect(() =>
+      isWhenFulfillable(
+        // Cast through `any` to simulate a future operator arriving at runtime
+        // before the frontend is updated (e.g. from a newer backend).
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        { operator: "contains" as any, field: "category", value: "mammal" },
+        animalAttributes
+      )
+    ).toThrow("Unhandled operator: contains");
+  });
+
+  it("throws on an unknown operator inside a group node (exhaustiveness guard)", () => {
+    expect(() =>
+      isWhenFulfillable(
+        {
+          operator: "and",
+          conditions: [
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            { operator: "contains" as any, field: "category", value: "mammal" },
+          ],
+        },
+        animalAttributes
+      )
+    ).toThrow("Unhandled operator: contains");
   });
 });
 
@@ -341,22 +612,20 @@ const schemaWithVariants: AttributeConfig[] = [
     type: "str",
     component: "dropdown",
     values: ["dog", "cat"],
-    when: [{ operator: "equals" as const, field: "category", value: "mammal" }],
+    when: { operator: "equals" as const, field: "category", value: "mammal" },
   },
   {
     name: "animal_name",
     type: "str",
     component: "dropdown",
     values: ["snake", "lizard"],
-    when: [
-      { operator: "equals" as const, field: "category", value: "reptile" },
-    ],
+    when: { operator: "equals" as const, field: "category", value: "reptile" },
   },
   {
     name: "impossible_field",
     type: "str",
     component: "text",
-    when: [{ operator: "equals" as const, field: "category", value: "dragon" }],
+    when: { operator: "equals" as const, field: "category", value: "dragon" },
   },
   {
     name: "size",
@@ -443,6 +712,57 @@ describe("resolveVisibleAttribute", () => {
     });
     expect(before).toBe(after);
   });
+
+  describe("WhenAnd entry — variant gated on two conditions", () => {
+    const schemaWithAndVariant: AttributeConfig[] = [
+      {
+        name: "has_damage",
+        type: "bool",
+        component: "checkbox",
+      },
+      {
+        name: "vehicle_type",
+        type: "str",
+        component: "dropdown",
+        values: ["car", "truck", "motorcycle"],
+      },
+      {
+        name: "damage_location",
+        type: "str",
+        component: "dropdown",
+        values: ["front", "rear"],
+        when: {
+          operator: "and" as const,
+          conditions: [
+            { operator: "equals" as const, field: "has_damage", value: true },
+            {
+              operator: "in" as const,
+              field: "vehicle_type",
+              value: ["car", "truck"],
+            },
+          ],
+        },
+      },
+    ];
+
+    it("resolves the entry when both AND conditions are met", () => {
+      const result = resolveVisibleAttribute(
+        "damage_location",
+        schemaWithAndVariant,
+        { has_damage: true, vehicle_type: "car" }
+      );
+      expect(result).toBe(schemaWithAndVariant[2]);
+    });
+
+    it("returns undefined when only one AND condition is met", () => {
+      const result = resolveVisibleAttribute(
+        "damage_location",
+        schemaWithAndVariant,
+        { has_damage: true, vehicle_type: "motorcycle" }
+      );
+      expect(result).toBeUndefined();
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -476,9 +796,7 @@ describe("mixed conditional/unconditional variants for the same name", () => {
       name: "notes",
       type: "str",
       component: "text",
-      when: [
-        { operator: "equals" as const, field: "category", value: "mammal" },
-      ],
+      when: { operator: "equals" as const, field: "category", value: "mammal" },
     },
   ];
 
@@ -492,7 +810,7 @@ describe("mixed conditional/unconditional variants for the same name", () => {
     expect(result).toBeUndefined();
   });
 
-  it("resolveVisibleAttribute returns undefined even when the conditional sibling is visible", () => {
+  it("resolveVisibleAttribute returns the conditional entry when it is visible", () => {
     // Both variants coexist for category = "mammal"; resolveVisibleAttribute
     // still returns the conditional entry (not the unconditional one).
     const result = resolveVisibleAttribute("notes", mixedAttributes, {
