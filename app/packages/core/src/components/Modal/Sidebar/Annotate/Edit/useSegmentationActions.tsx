@@ -230,7 +230,7 @@ export const useSegmentationActions = (): {
             id: SegmentationTool.Select,
             label: "Select",
             icon: <SelectIcon />,
-            shortcut: "S",
+            shortcut: "V",
             tooltip: "Select",
             isActive: tool === SegmentationTool.Select,
             onClick: () => switchTool(SegmentationTool.Select),
@@ -275,6 +275,7 @@ export const useSegmentationActions = (): {
             id: SegmentationToolMode.Add,
             label: "Add",
             icon: <Add />,
+            shortcut: "D",
             tooltip: "Add to mask",
             isActive: toolMode === SegmentationToolMode.Add,
             onClick: () => switchToolMode(SegmentationToolMode.Add),
@@ -283,6 +284,7 @@ export const useSegmentationActions = (): {
             id: SegmentationToolMode.Remove,
             label: "Remove",
             icon: <Remove />,
+            shortcut: "E",
             tooltip: "Remove from mask",
             isActive: toolMode === SegmentationToolMode.Remove,
             onClick: () => switchToolMode(SegmentationToolMode.Remove),
@@ -389,8 +391,47 @@ export const useSegmentationActions = (): {
         });
       }
     }
+
+    // Brush-only shortcuts that don't bind to a single toolbar button.
+    if (tool === SegmentationTool.Brush) {
+      out.push({
+        commandId: "segmentation-toolbar.size.decrease",
+        sequence: "[",
+        handler: decreaseToolSize,
+        label: "Decrease brush size",
+        enablement: () => segmentationModeActive,
+      });
+      out.push({
+        commandId: "segmentation-toolbar.size.increase",
+        sequence: "]",
+        handler: increaseToolSize,
+        label: "Increase brush size",
+        enablement: () => segmentationModeActive,
+      });
+      out.push({
+        commandId: "segmentation-toolbar.shape.toggle",
+        sequence: "s",
+        handler: () =>
+          switchToolShape(
+            toolShape === SegmentationToolShape.Circle
+              ? SegmentationToolShape.Square
+              : SegmentationToolShape.Circle
+          ),
+        label: "Toggle brush shape",
+        enablement: () => segmentationModeActive,
+      });
+    }
+
     return out;
-  }, [groups, segmentationModeActive]);
+  }, [
+    groups,
+    segmentationModeActive,
+    tool,
+    toolShape,
+    decreaseToolSize,
+    increaseToolSize,
+    switchToolShape,
+  ]);
 
   useKeyBindings(KnownContexts.ModalAnnotate, bindings, [bindings]);
 
