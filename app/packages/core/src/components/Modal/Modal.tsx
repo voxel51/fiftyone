@@ -47,7 +47,10 @@ import SchemaManagementProvider from "./Sidebar/Annotate/SchemaManagementProvide
 import useCanManageSchema from "./Sidebar/Annotate/useCanManageSchema";
 import { useAnnotationTracking } from "./Sidebar/Annotate/useAnnotationTracking";
 import { SegmentationToolbar } from "./Sidebar/Annotate/Edit/SegmentationToolbar";
-import { AIAnnotationStatusBar } from "./AIAnnotationStatusBar";
+import { ModalStatusBar } from "./ModalStatusBar";
+import { useDetectionStatus } from "./Sidebar/Annotate/Edit/useDetectionStatus";
+import { usePolylineStatus } from "./Sidebar/Annotate/Edit/usePolylineStatus";
+import { useSegmentationStatus } from "./Sidebar/Annotate/Edit/useSegmentationStatus";
 import { TooltipInfo } from "./TooltipInfo";
 import { useLookerHelpers, useTooltipEventHandler } from "./hooks";
 import { modalContext } from "./modal-context";
@@ -145,6 +148,12 @@ const ModalErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => {
 };
 
 const Modal = () => {
+  // Register mode-specific status bar content. Each hook is a no-op
+  // unless its mode is active; the active mode owns the bar via setContent.
+  useDetectionStatus();
+  useSegmentationStatus();
+  usePolylineStatus();
+
   const wrapperRef = useRef<HTMLDivElement>(null);
   const pointerDownTargetRef = useRef<EventTarget | null>(null);
   const { enabled: isAnnotationEnabled } = useRecoilValue(canAnnotate);
@@ -371,7 +380,7 @@ const Modal = () => {
             <SegmentationToolbar />
             <SpacesContainer>
               <ModalSpace />
-              <AIAnnotationStatusBar />
+              <ModalStatusBar />
             </SpacesContainer>
             {isSidebarVisible && <Sidebar />}
             <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_RIGHT} />
