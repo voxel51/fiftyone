@@ -280,9 +280,9 @@ class Dataset:
 
     @gql.field
     async def estimated_sample_count(self, info: Info = None) -> int:
-        return await get_grid_adapter().estimated_sample_count(
+        return await info.context.db[
             self.sample_collection_name
-        )
+        ].estimated_document_count()
 
     @gql.field
     async def estimated_frame_count(

@@ -1,20 +1,9 @@
 """
-FiftyOne Server data adapter Protocols.
+FiftyOne Server grid-data adapter Protocol.
 
-Two interfaces:
-
-* ``GridDataAdapter`` — the swappable surface. Methods cover grid sample
-  pagination, sidebar aggregations, the value picker, lightning fast paths,
-  and sample counts. A non-Mongo (SQL/BigQuery) implementation will replace
-  this surface.
-
-* ``MetadataAdapter`` — the always-Mongo surface. Methods cover Strawberry
-  DataLoader-style key lookups and Connection-style paginators over the
-  ``datasets`` / ``workspaces`` / saved-view / etc. metadata collections.
-  Defined as a Protocol so the seam is consistent, but only ever implemented
-  by Mongo.
-
-Both Protocols are async-only.
+Defines :class:`GridDataAdapter`: the async adapter-pattern interface for
+sample / grid / sidebar reads, plus the result dataclasses its methods
+return.
 
 | Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -23,6 +12,7 @@ Both Protocols are async-only.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import typing as t
 
 import fiftyone.core.collections as foc
@@ -42,14 +32,39 @@ if t.TYPE_CHECKING:  # avoid runtime import cycles
     )
 
 
+@dataclass(frozen=True)
+class SamplesPage:
+    """A page of grid samples returned by :meth:`GridDataAdapter.paginate_samples`.
+
+    Attributes:
+        samples: Raw sample documents to render in the grid.
+        has_more: ``True`` when more samples follow this page.
+    """
+
+    samples: t.List[t.Dict[str, t.Any]]
+    has_more: bool
+
+
+@dataclass(frozen=True)
+class ValuePickerResult:
+    """A page of sidebar value-picker results returned by
+    :meth:`GridDataAdapter.count_field_values`.
+
+    Attributes:
+        total: Total number of distinct values for the path.
+        page: ``(value, count)`` pairs truncated to the requested page size.
+    """
+
+    total: int
+    page: t.List[t.Tuple[t.Any, int]]
+
+
 @t.runtime_checkable
 class GridDataAdapter(t.Protocol):
     """Backend interface for grid / sidebar / lightning sample reads.
 
     Implementations receive an already-built FiftyOne ``SampleCollection``
-    (with any client view stages baked in) plus raw sidebar inputs; they
-    are not expected to introspect view stages or FiftyOne aggregation /
-    expression objects in this iteration.
+    (with any client view stages baked in) plus raw sidebar inputs.
     """
 
     async def paginate_samples(
@@ -61,19 +76,25 @@ class GridDataAdapter(t.Protocol):
         filters: t.Optional[t.Mapping[str, t.Any]] = None,
         hint: t.Optional[str] = None,
         max_time_ms: t.Optional[int] = None,
-    ) -> t.Tuple[t.List[t.Dict[str, t.Any]], bool]:
-        """Return up to ``first`` raw sample documents for the grid plus a
-        ``has_more`` flag.
+    ) -> SamplesPage:
+        """Return a page of grid samples.
 
-        ``filters`` is the raw client-supplied sidebar filter dict (the
-        same shape passed to ``fosv.get_view``). The Mongo implementation
-        ignores it because the equivalent filters are already baked into
-        ``view`` as view stages; non-Mongo implementations consume it
-        directly to translate into their native query language.
+        Args:
+            view: The sample collection (with any client view stages baked
+                in by the resolver) to paginate over.
+            sample_filter: Optional :class:`SampleFilter` carrying group /
+                slice scoping; ``None`` for non-grouped datasets.
+            first: Maximum number of samples to return in this page.
+            filters: Raw client-supplied sidebar filter dict (the same
+                shape passed to ``fosv.get_view``). Implementations may
+                consume this directly to translate into their native query
+                language.
+            hint: Backend-specific index hint, or ``None``.
+            max_time_ms: Per-query timeout in milliseconds, or ``None``.
 
-        The caller (resolver) is responsible for any cursor / skip handling
-        before invocation and for post-processing the returned documents
-        into GraphQL ``SampleItem`` types.
+        Returns:
+            A :class:`SamplesPage` containing the sample documents and a
+            ``has_more`` flag.
         """
         ...
 
@@ -83,13 +104,20 @@ class GridDataAdapter(t.Protocol):
         *,
         form: "AggregationForm",
     ) -> t.List[t.Union["AggregateResult", "AggregationQueryTimeout"]]:
-        """Resolve the sidebar aggregations described by ``form`` against
-        ``view``.
+        """Resolve the sidebar aggregations described by ``form``.
 
-        The caller has already built the view, applied any
-        ``select(sample_ids)`` and ``exclude_labels(hidden_labels)``
-        adjustments, and is responsible for any "slice" augmentation that
-        depends on a separately-built mixed-mode view.
+        Args:
+            view: The sample collection. The caller has already applied
+                ``select(sample_ids)`` and ``exclude_labels(hidden_labels)``
+                adjustments and is responsible for any "slice" augmentation
+                that depends on a separately-built mixed-mode view.
+            form: Aggregation request carrying paths, filters, query
+                performance options, and timeouts.
+
+        Returns:
+            One result per path in ``form.paths``, in order. Each entry is
+            either an :class:`AggregateResult` (success) or an
+            :class:`AggregationQueryTimeout` (per-path timeout).
         """
         ...
 
@@ -104,15 +132,25 @@ class GridDataAdapter(t.Protocol):
         search: t.Optional[str],
         selected: t.Optional[t.List[t.Any]],
         filters: t.Optional[t.Mapping[str, t.Any]] = None,
-    ) -> t.Tuple[int, t.List[t.Tuple[t.Any, int]]]:
-        """Power the sidebar value picker.
+    ) -> ValuePickerResult:
+        """Power the sidebar value picker for a single path.
 
-        ``filters`` is the raw sidebar filter dict, with the same Mongo-
-        ignored / non-Mongo-consumed semantics as in
-        :meth:`paginate_samples`.
+        Args:
+            view: The sample collection.
+            path: The field path whose distinct values are requested.
+            first: Maximum number of values to return on the page.
+            asc: Sort direction.
+            sort_by: Sort key — typically ``"count"`` or ``"_id"``.
+            search: Optional regex / substring to filter the values, or
+                ``None``.
+            selected: Optional list of already-picked values to exclude
+                from the result, or ``None``.
+            filters: Raw client-supplied sidebar filter dict, with the same
+                semantics as in :meth:`paginate_samples`.
 
-        Returns ``(total_distinct_count, page)`` where ``page`` is a list of
-        ``(value, count)`` tuples truncated to ``first`` entries.
+        Returns:
+            A :class:`ValuePickerResult` with the total distinct-value count
+            and the requested page of ``(value, count)`` pairs.
         """
         ...
 
@@ -122,65 +160,29 @@ class GridDataAdapter(t.Protocol):
         *,
         input: "LightningInput",
     ) -> t.List["LightningResults"]:
-        """Resolve a list of "lightning" sidebar fast-path queries against
-        ``dataset``. Each implementation chooses its own optimization
-        strategy; the Mongo implementation runs Mongo-specific minimal
-        pipelines, while a SQL implementation may collapse all paths to a
-        single straightforward query.
-        """
-        ...
+        """Resolve a batch of "lightning" sidebar fast-path queries.
 
-    async def estimated_sample_count(self, sample_collection_name: str) -> int:
-        """Return an estimated document count for the named sample
-        collection. Used by the grid size badge.
+        Args:
+            dataset: The dataset.
+            input: The lightning request describing paths and per-path
+                options.
+
+        Returns:
+            One :class:`LightningResults` per path in ``input.paths``, in
+            order.
         """
         ...
 
     async def get_grid_field_schema(
         self, view: foc.SampleCollection
     ) -> t.List["SampleField"]:
-        """Return the flat list of fields the sidebar should expose for
-        ``view``.
+        """Return the flat list of fields the sidebar should expose.
 
-        The Mongo implementation derives this from the FiftyOne field
-        schema attached to the dataset / view; a SQL/BigQuery
-        implementation would consult its own schema source (e.g. a
-        ``multimodal_fields`` declaration on the dataset doc, populated
-        by ingestion). Returning a list of ``SampleField`` keeps the
-        sidebar resolver dialect-agnostic.
-        """
-        ...
+        Args:
+            view: The sample collection.
 
-
-@t.runtime_checkable
-class MetadataAdapter(t.Protocol):
-    """Backend interface for always-Mongo metadata reads.
-
-    These methods read collections that hold dataset metadata, workspaces,
-    saved views, and similar — *not* sample/scene data. They are only ever
-    implemented by Mongo.
-    """
-
-    async def find_documents(
-        self,
-        collection_name: str,
-        filter: t.Mapping[str, t.Any],
-        projection: t.Optional[t.Mapping[str, t.Any]] = None,
-    ) -> t.List[t.Dict[str, t.Any]]:
-        """Return all documents in ``collection_name`` matching ``filter``.
-
-        Used by the Strawberry DataLoader factory in ``dataloader.py``.
-        """
-        ...
-
-    async def aggregate_collection(
-        self,
-        collection_name: str,
-        pipelines: t.Sequence[t.Sequence[t.Mapping[str, t.Any]]],
-    ) -> t.List[t.List[t.Dict[str, t.Any]]]:
-        """Run one or more aggregation pipelines against ``collection_name``
-        and return their results.
-
-        Used by the Connection-style paginator in ``paginator.py``.
+        Returns:
+            A list of :class:`SampleField` entries that the App will render
+            as sidebar paths.
         """
         ...

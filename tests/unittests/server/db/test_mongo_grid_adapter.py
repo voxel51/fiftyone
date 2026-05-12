@@ -38,19 +38,6 @@ def _add_samples(dataset: fo.Dataset):
 
 class TestMongoGridAdapter(unittest.IsolatedAsyncioTestCase):
     @drop_async_dataset
-    async def test_estimated_sample_count(self, dataset: fo.Dataset):
-        _add_samples(dataset)
-
-        adapter = MongoGridAdapter()
-        count = await adapter.estimated_sample_count(
-            dataset._sample_collection_name
-        )
-        direct = await foo.get_async_db_conn()[
-            dataset._sample_collection_name
-        ].estimated_document_count()
-        self.assertEqual(count, direct)
-
-    @drop_async_dataset
     async def test_paginate_samples_matches_direct_pipeline(
         self, dataset: fo.Dataset
     ):
@@ -58,7 +45,7 @@ class TestMongoGridAdapter(unittest.IsolatedAsyncioTestCase):
         view = dataset.view()
 
         adapter = MongoGridAdapter()
-        samples, more = await adapter.paginate_samples(
+        page = await adapter.paginate_samples(
             view, sample_filter=None, first=2
         )
 
@@ -72,8 +59,8 @@ class TestMongoGridAdapter(unittest.IsolatedAsyncioTestCase):
         ).to_list(3)
 
         # Adapter trims to `first`; direct returns first+1 to detect more.
-        self.assertEqual(samples, direct[:2])
-        self.assertTrue(more)
+        self.assertEqual(page.samples, direct[:2])
+        self.assertTrue(page.has_more)
 
     @drop_async_dataset
     async def test_paginate_samples_no_more_when_under_limit(
@@ -83,12 +70,12 @@ class TestMongoGridAdapter(unittest.IsolatedAsyncioTestCase):
         view = dataset.view()
 
         adapter = MongoGridAdapter()
-        samples, more = await adapter.paginate_samples(
+        page = await adapter.paginate_samples(
             view, sample_filter=None, first=100
         )
 
-        self.assertEqual(len(samples), 5)
-        self.assertFalse(more)
+        self.assertEqual(len(page.samples), 5)
+        self.assertFalse(page.has_more)
 
     @drop_async_dataset
     async def test_get_grid_field_schema_matches_serialize_fields(
@@ -110,7 +97,7 @@ class TestMongoGridAdapter(unittest.IsolatedAsyncioTestCase):
         view = dataset.view()
 
         adapter = MongoGridAdapter()
-        count, page = await adapter.count_field_values(
+        result = await adapter.count_field_values(
             view,
             path="weather",
             first=10,
@@ -129,8 +116,8 @@ class TestMongoGridAdapter(unittest.IsolatedAsyncioTestCase):
                 _selected=None,
             ),
         )
-        self.assertEqual(count, direct_count)
-        self.assertEqual(list(page), list(direct_page))
+        self.assertEqual(result.total, direct_count)
+        self.assertEqual(result.page, list(direct_page))
 
 
 if __name__ == "__main__":

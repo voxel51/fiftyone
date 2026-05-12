@@ -12,7 +12,6 @@ import motor.motor_asyncio as mtr
 from strawberry.dataloader import DataLoader
 
 from fiftyone.server.data import Info, T
-from fiftyone.server.db import get_metadata_adapter
 from fiftyone.server.utils import from_dict
 
 
@@ -35,15 +34,17 @@ def get_dataloader(
     async def load_items(
         keys: t.List[str],
     ) -> t.List[t.Optional[T]]:
-        if config.key == "id":
-            config.key = "_id"
-        filter = {"$and": [{config.key: {"$in": keys}}] + config.filters}
+        key = "_id" if config.key == "id" else config.key
+        filter = {"$and": [{key: {"$in": keys}}] + config.filters}
 
-        docs = await get_metadata_adapter().find_documents(
-            config.collection, filter, config.projections
-        )
+        find_args: t.List[t.Any] = [filter]
+        if config.projections is not None:
+            find_args.append(config.projections)
 
-        results = {doc[config.key]: doc for doc in docs}
+        results = {
+            doc[key]: doc
+            async for doc in db[config.collection].find(*find_args)
+        }
 
         def build(doc: dict = None) -> t.Optional[T]:
             if not doc:

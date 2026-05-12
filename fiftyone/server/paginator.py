@@ -12,9 +12,10 @@ import typing as t
 import strawberry as gql
 from strawberry import UNSET
 
+import fiftyone.core.odm as foo
+
 from fiftyone.server.constants import LIST_LIMIT
 from fiftyone.server.data import Info, T
-from fiftyone.server.db import get_metadata_adapter
 from fiftyone.server.utils import from_dict
 
 C = t.TypeVar("C")
@@ -65,10 +66,8 @@ async def get_items(
         start + [{"$count": "total"}],
     ]
 
-    data = await get_metadata_adapter().aggregate_collection(
-        collection_name, pipelines
-    )
-    results, total = data
+    collection = foo.get_async_db_conn()[collection_name]
+    results, total = await foo.aggregate(collection, pipelines)
     edges = []
 
     for doc in results:

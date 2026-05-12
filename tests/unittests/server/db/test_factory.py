@@ -6,22 +6,17 @@ Tests for fiftyone.server.db.factory.
 |
 """
 
-import os
 import unittest
 from unittest import mock
 
+import fiftyone as fo
+
 from fiftyone.server.db import (
     GridDataAdapter,
-    MetadataAdapter,
     get_grid_adapter,
-    get_metadata_adapter,
 )
 from fiftyone.server.db.factory import _reset_caches_for_tests
-from fiftyone.server.db.mongo import (
-    MongoGridAdapter,
-    MongoMetadataAdapter,
-)
-from fiftyone.server.db.sql import SQLGridAdapter
+from fiftyone.server.db.mongo import MongoGridAdapter
 
 
 class TestFactory(unittest.TestCase):
@@ -32,39 +27,21 @@ class TestFactory(unittest.TestCase):
         _reset_caches_for_tests()
 
     def test_default_grid_backend_is_mongo(self):
-        with mock.patch.dict(os.environ, {}, clear=False):
-            os.environ.pop("FIFTYONE_GRID_BACKEND", None)
+        with mock.patch.object(fo.config, "grid_backend", "mongo"):
             _reset_caches_for_tests()
             adapter = get_grid_adapter()
 
         self.assertIsInstance(adapter, MongoGridAdapter)
-        self.assertIsInstance(adapter, GridDataAdapter)
-
-    def test_grid_backend_mongo(self):
-        with mock.patch.dict(os.environ, {"FIFTYONE_GRID_BACKEND": "mongo"}):
-            _reset_caches_for_tests()
-            adapter = get_grid_adapter()
-
-        self.assertIsInstance(adapter, MongoGridAdapter)
-
-    def test_grid_backend_sql_returns_stub(self):
-        with mock.patch.dict(os.environ, {"FIFTYONE_GRID_BACKEND": "sql"}):
-            _reset_caches_for_tests()
-            adapter = get_grid_adapter()
-
-        self.assertIsInstance(adapter, SQLGridAdapter)
         self.assertIsInstance(adapter, GridDataAdapter)
 
     def test_grid_backend_unknown_raises(self):
-        with mock.patch.dict(os.environ, {"FIFTYONE_GRID_BACKEND": "banana"}):
+        with mock.patch.object(fo.config, "grid_backend", "banana"):
             _reset_caches_for_tests()
             with self.assertRaises(ValueError):
                 get_grid_adapter()
 
     def test_grid_backend_case_insensitive_and_trimmed(self):
-        with mock.patch.dict(
-            os.environ, {"FIFTYONE_GRID_BACKEND": "  Mongo  "}
-        ):
+        with mock.patch.object(fo.config, "grid_backend", "  Mongo  "):
             _reset_caches_for_tests()
             adapter = get_grid_adapter()
 
@@ -74,20 +51,6 @@ class TestFactory(unittest.TestCase):
         _reset_caches_for_tests()
         first = get_grid_adapter()
         second = get_grid_adapter()
-        self.assertIs(first, second)
-
-    def test_metadata_adapter_always_mongo(self):
-        with mock.patch.dict(os.environ, {"FIFTYONE_GRID_BACKEND": "sql"}):
-            _reset_caches_for_tests()
-            adapter = get_metadata_adapter()
-
-        self.assertIsInstance(adapter, MongoMetadataAdapter)
-        self.assertIsInstance(adapter, MetadataAdapter)
-
-    def test_metadata_adapter_is_singleton_per_process(self):
-        _reset_caches_for_tests()
-        first = get_metadata_adapter()
-        second = get_metadata_adapter()
         self.assertIs(first, second)
 
 

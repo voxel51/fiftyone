@@ -1,10 +1,9 @@
 """
-FiftyOne Server Mongo data adapters.
+FiftyOne Server Mongo grid-data adapter.
 
-Implements ``GridDataAdapter`` and ``MetadataAdapter`` against the existing
-Motor / pymongo / FiftyOne core machinery. No business logic is
-re-implemented; each method is a thin delegation to the helpers used by
-the resolvers today.
+Implements :class:`GridDataAdapter` against MongoDB / Motor by delegating
+to the FiftyOne core machinery (``SampleCollection._async_aggregate``,
+``foo.aggregate``, the lightning Mongo pipeline builders).
 
 | Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -17,6 +16,12 @@ import typing as t
 
 import fiftyone.core.collections as foc
 import fiftyone.core.odm as foo
+
+from fiftyone.server.db._mongo_lightning import (
+    do_async_pooled_queries,
+    resolve_lightning_path_queries,
+)
+from fiftyone.server.db.interface import SamplesPage, ValuePickerResult
 
 
 class MongoGridAdapter:
@@ -31,7 +36,7 @@ class MongoGridAdapter:
         filters: t.Optional[t.Mapping[str, t.Any]] = None,
         hint: t.Optional[str] = None,
         max_time_ms: t.Optional[int] = None,
-    ) -> t.Tuple[t.List[t.Dict[str, t.Any]], bool]:
+    ) -> SamplesPage:
         # ``filters`` is intentionally unused — the equivalent filters are
         # already baked into ``view`` as view stages by the resolver.
         del filters
@@ -48,12 +53,12 @@ class MongoGridAdapter:
             maxTimeMS=max_time_ms,
         ).to_list(first + 1)
 
-        more = False
+        has_more = False
         if len(samples) > first:
             samples = samples[:first]
-            more = True
+            has_more = True
 
-        return samples, more
+        return SamplesPage(samples=samples, has_more=has_more)
 
     async def aggregate_paths(
         self,
@@ -111,14 +116,14 @@ class MongoGridAdapter:
         search: t.Optional[str],
         selected: t.Optional[t.List[t.Any]],
         filters: t.Optional[t.Mapping[str, t.Any]] = None,
-    ) -> t.Tuple[int, t.List[t.Tuple[t.Any, int]]]:
+    ) -> ValuePickerResult:
         # ``filters`` is intentionally unused — the equivalent filters are
         # already baked into ``view`` as view stages by the resolver.
         del filters
 
         import fiftyone.core.aggregations as foa
 
-        count, page = await view._async_aggregate(
+        total, page = await view._async_aggregate(
             foa.CountValues(
                 path,
                 _first=first,
@@ -128,17 +133,12 @@ class MongoGridAdapter:
                 _selected=selected,
             ),
         )
-        return count, page
+        return ValuePickerResult(total=total, page=list(page))
 
     async def lightning(self, dataset, *, input):
-        from fiftyone.server.lightning import (
-            _do_async_pooled_queries,
-            _resolve_lightning_path_queries,
-        )
-
         collections, queries, resolvers, is_frames = zip(
             *[
-                _resolve_lightning_path_queries(path, dataset)
+                resolve_lightning_path_queries(path, dataset)
                 for path in input.paths
             ]
         )
@@ -156,7 +156,7 @@ class MongoGridAdapter:
             match_filter[f"{dataset.group_field}.name"] = input.slice
             dataset.group_slice = input.slice
 
-        result = await _do_async_pooled_queries(
+        result = await do_async_pooled_queries(
             dataset, flattened, match_filter
         )
 
@@ -168,36 +168,7 @@ class MongoGridAdapter:
 
         return results
 
-    async def estimated_sample_count(self, sample_collection_name: str) -> int:
-        return await foo.get_async_db_conn()[
-            sample_collection_name
-        ].estimated_document_count()
-
     async def get_grid_field_schema(self, view: foc.SampleCollection):
         from fiftyone.core.state import serialize_fields
 
         return serialize_fields(view.get_field_schema(flat=True))
-
-
-class MongoMetadataAdapter:
-    """``MetadataAdapter`` backed by MongoDB / Motor."""
-
-    async def find_documents(
-        self,
-        collection_name: str,
-        filter: t.Mapping[str, t.Any],
-        projection: t.Optional[t.Mapping[str, t.Any]] = None,
-    ) -> t.List[t.Dict[str, t.Any]]:
-        db = foo.get_async_db_conn()
-        find_args: t.List[t.Any] = [filter]
-        if projection is not None:
-            find_args.append(projection)
-        return [doc async for doc in db[collection_name].find(*find_args)]
-
-    async def aggregate_collection(
-        self,
-        collection_name: str,
-        pipelines: t.Sequence[t.Sequence[t.Mapping[str, t.Any]]],
-    ) -> t.List[t.List[t.Dict[str, t.Any]]]:
-        collection = foo.get_async_db_conn()[collection_name]
-        return await foo.aggregate(collection, list(pipelines))

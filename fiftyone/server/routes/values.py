@@ -62,7 +62,7 @@ class Values(HTTPEndpoint):
             else None
         )
 
-        count, first = await get_grid_adapter().count_field_values(
+        result = await get_grid_adapter().count_field_values(
             view,
             path=path,
             first=limit,
@@ -74,6 +74,6 @@ class Values(HTTPEndpoint):
         )
 
         return {
-            "count": count,
-            "values": map(lambda v: {"value": v[0], "count": v[1]}, first),
+            "count": result.total,
+            "values": ({"value": v[0], "count": v[1]} for v in result.page),
         }

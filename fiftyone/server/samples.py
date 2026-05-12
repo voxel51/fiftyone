@@ -122,7 +122,7 @@ async def paginate_samples(
         view = view.skip(int(after) + 1)
 
     maxTimeMS = max_query_time * 1000 if max_query_time else None
-    samples, more = await get_grid_adapter().paginate_samples(
+    page = await get_grid_adapter().paginate_samples(
         view,
         sample_filter=sample_filter,
         first=first,
@@ -134,7 +134,7 @@ async def paginate_samples(
     metadata_cache = {}
     url_cache = {}
     additional_media_fields = (
-        fosm._get_additional_media_fields(view) if samples else None
+        fosm._get_additional_media_fields(view) if page.samples else None
     )
     nodes = await asyncio.gather(
         *[
@@ -146,7 +146,7 @@ async def paginate_samples(
                 pagination_data,
                 additional_media_fields=additional_media_fields,
             )
-            for sample in samples
+            for sample in page.samples
         ]
     )
 
@@ -162,7 +162,7 @@ async def paginate_samples(
     return Connection(
         page_info=PageInfo(
             has_previous_page=False,
-            has_next_page=more,
+            has_next_page=page.has_more,
             start_cursor=edges[0].cursor if edges else None,
             end_cursor=edges[-1].cursor if len(edges) > 1 else None,
         ),
