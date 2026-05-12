@@ -7,15 +7,15 @@ Script for generating plugin documentation dynamically from the FiftyOne plugins
 |
 """
 
-import logging
 import os
 import re
 import requests
-from dataclasses import dataclass, field
-from datetime import datetime
+import logging
 from pathlib import Path
 from typing import List, Optional, Tuple
-from urllib.parse import urljoin, urlparse
+from dataclasses import dataclass, field
+from urllib.parse import urlparse, urljoin
+from datetime import datetime
 
 import eta.core.utils as etau
 
@@ -932,6 +932,7 @@ Please review each plugin's documentation and license before use.
             display_name,
             plugin_link,
         ) in enumerate(all_plugins_list):
+
             image_path = (
                 cached_image_path
                 if cached_image_path
