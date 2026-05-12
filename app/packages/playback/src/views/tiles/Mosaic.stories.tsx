@@ -9,16 +9,16 @@ import {
 import type { Meta, StoryObj } from "@storybook/react";
 import { useCallback, useState } from "react";
 import { MosaicNode } from "react-mosaic-component";
-import CameraTile from "./CameraTile";
-import GraphTile from "./GraphTile";
-import JsonDataTile from "./JsonDataTile";
-import LidarTile from "./LidarTile";
+import CameraTile from "./test_tiles/CameraTile/CameraTile";
+import GraphTile from "./test_tiles/GraphTile/GraphTile";
+import JsonDataTile from "./test_tiles/JsonDataTile/JsonDataTile";
+import LidarTile from "./test_tiles/LidarTile/LidarTile";
 import MosaicGrid, {
   addTileToLayout,
   autoLayout,
   collectTileIds,
 } from "./MosaicGrid";
-import SceneTile from "./SceneTile";
+import SceneTile from "./test_tiles/SceneTile/SceneTile";
 
 const meta: Meta = { title: "Playback/Tiles/Mosaic" };
 export default meta;
