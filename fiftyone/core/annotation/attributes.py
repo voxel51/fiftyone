@@ -112,6 +112,8 @@ def collect_leaf_conditions(
     Yields:
         each leaf :class:`When` node in the tree
     """
+    if root is None:
+        return
     if isinstance(root, (WhenAnd, WhenOr)):
         for child in root.conditions:
             yield from collect_leaf_conditions(child)

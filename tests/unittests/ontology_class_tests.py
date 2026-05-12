@@ -16,9 +16,13 @@ os.environ.setdefault("VFF_ONTOLOGY_CA", "1")
 from fiftyone.core.annotation.attributes import (
     AttributeSpec,
     When,
+    WhenAnd,
+    WhenCondition,
     WhenEquals,
     WhenIn,
     WhenOperator,
+    WhenOr,
+    collect_leaf_conditions,
 )
 from fiftyone.core.ontology import AnnotationOntology
 
@@ -178,6 +182,282 @@ class WhenInTests(unittest.TestCase):
         self.assertIn("WhenIn(", repr(WhenIn(field="f", value=[1])))
 
 
+class WhenAndTests(unittest.TestCase):
+    def test_create(self):
+        wa = WhenAnd(
+            conditions=[
+                WhenEquals(field="damage_present", value=True),
+                WhenIn(field="vehicle_type", value=["car", "truck"]),
+            ]
+        )
+        self.assertEqual(len(wa.conditions), 2)
+
+    def test_empty_conditions_raises(self):
+        with self.assertRaises(ValueError):
+            WhenAnd(conditions=[])
+
+    def test_non_list_conditions_raises(self):
+        with self.assertRaises(ValueError):
+            WhenAnd(conditions="not a list")
+
+    def test_accepts_mixed_condition_types(self):
+        # WhenAnd accepts any list of WhenCondition nodes without type-checking
+        # each element; type safety is enforced at the call site by type hints.
+        wa = WhenAnd(conditions=[WhenEquals(field="f", value=1)])
+        self.assertEqual(len(wa.conditions), 1)
+
+    def test_to_dict(self):
+        wa = WhenAnd(
+            conditions=[
+                WhenEquals(field="a", value=1),
+                WhenIn(field="b", value=[2, 3]),
+            ]
+        )
+        d = wa.to_dict()
+        self.assertEqual(d["operator"], "and")
+        self.assertIsInstance(d["conditions"], list)
+        self.assertEqual(len(d["conditions"]), 2)
+        self.assertEqual(d["conditions"][0]["operator"], "equals")
+        self.assertEqual(d["conditions"][1]["operator"], "in")
+
+    def test_from_dict(self):
+        d = {
+            "operator": "and",
+            "conditions": [
+                {"operator": "equals", "field": "a", "value": 1},
+                {"operator": "in", "field": "b", "value": [2, 3]},
+            ],
+        }
+        wa = WhenAnd.from_dict(d)
+        self.assertIsInstance(wa, WhenAnd)
+        self.assertEqual(len(wa.conditions), 2)
+        # from_dict always deserializes leaf conditions as When, not subclasses
+        self.assertIsInstance(wa.conditions[0], When)
+        self.assertIsInstance(wa.conditions[1], When)
+
+    def test_from_dict_missing_conditions_raises(self):
+        with self.assertRaises(ValueError):
+            WhenAnd.from_dict({"operator": "and"})
+
+    def test_roundtrip(self):
+        original = WhenAnd(
+            conditions=[
+                WhenEquals(field="flag", value=True),
+                WhenIn(field="type", value=["a", "b"]),
+            ]
+        )
+        restored = WhenAnd.from_dict(original.to_dict())
+        self.assertIsInstance(restored, WhenAnd)
+        self.assertEqual(len(restored.conditions), 2)
+        self.assertEqual(
+            restored.conditions[0].to_dict(),
+            original.conditions[0].to_dict(),
+        )
+
+    def test_repr(self):
+        self.assertIn(
+            "WhenAnd(",
+            repr(WhenAnd(conditions=[WhenEquals(field="f", value=1)])),
+        )
+
+
+class WhenOrTests(unittest.TestCase):
+    def test_create(self):
+        wo = WhenOr(
+            conditions=[
+                WhenEquals(field="category", value="mammal"),
+                WhenEquals(field="category", value="bird"),
+            ]
+        )
+        self.assertEqual(len(wo.conditions), 2)
+
+    def test_empty_conditions_raises(self):
+        with self.assertRaises(ValueError):
+            WhenOr(conditions=[])
+
+    def test_non_list_conditions_raises(self):
+        with self.assertRaises(ValueError):
+            WhenOr(conditions="not a list")
+
+    def test_to_dict(self):
+        wo = WhenOr(
+            conditions=[
+                WhenEquals(field="a", value=1),
+                WhenEquals(field="a", value=2),
+            ]
+        )
+        d = wo.to_dict()
+        self.assertEqual(d["operator"], "or")
+        self.assertIsInstance(d["conditions"], list)
+        self.assertEqual(len(d["conditions"]), 2)
+
+    def test_from_dict(self):
+        d = {
+            "operator": "or",
+            "conditions": [
+                {"operator": "equals", "field": "a", "value": 1},
+                {"operator": "equals", "field": "a", "value": 2},
+            ],
+        }
+        wo = WhenOr.from_dict(d)
+        self.assertIsInstance(wo, WhenOr)
+        self.assertEqual(len(wo.conditions), 2)
+
+    def test_roundtrip(self):
+        original = WhenOr(
+            conditions=[
+                WhenEquals(field="x", value="yes"),
+                WhenIn(field="y", value=["p", "q"]),
+            ]
+        )
+        restored = WhenOr.from_dict(original.to_dict())
+        self.assertIsInstance(restored, WhenOr)
+        self.assertEqual(
+            restored.conditions[1].to_dict(),
+            original.conditions[1].to_dict(),
+        )
+
+    def test_nested_and_inside_or(self):
+        """WhenOr may contain WhenAnd children."""
+        wo = WhenOr(
+            conditions=[
+                WhenEquals(field="priority", value="urgent"),
+                WhenAnd(
+                    conditions=[
+                        WhenEquals(field="category", value="mammal"),
+                        WhenEquals(field="size", value="large"),
+                    ]
+                ),
+            ]
+        )
+        d = wo.to_dict()
+        restored = WhenOr.from_dict(d)
+        self.assertIsInstance(restored.conditions[1], WhenAnd)
+
+
+class WhenConditionDispatchTests(unittest.TestCase):
+    """WhenCondition.from_dict must dispatch to the correct concrete class."""
+
+    def test_dispatch_equals(self):
+        d = {"operator": "equals", "field": "f", "value": 1}
+        cond = WhenCondition.from_dict(d)
+        # Deserialized leaves are When instances (not WhenEquals subclass)
+        self.assertIsInstance(cond, When)
+        self.assertEqual(cond.operator, WhenOperator.EQUALS)
+
+    def test_dispatch_in(self):
+        d = {"operator": "in", "field": "f", "value": [1, 2]}
+        cond = WhenCondition.from_dict(d)
+        # Deserialized leaves are When instances (not WhenIn subclass)
+        self.assertIsInstance(cond, When)
+        self.assertEqual(cond.operator, WhenOperator.IN)
+
+    def test_dispatch_and(self):
+        d = {
+            "operator": "and",
+            "conditions": [
+                {"operator": "equals", "field": "a", "value": 1},
+            ],
+        }
+        cond = WhenCondition.from_dict(d)
+        self.assertIsInstance(cond, WhenAnd)
+
+    def test_dispatch_or(self):
+        d = {
+            "operator": "or",
+            "conditions": [
+                {"operator": "equals", "field": "a", "value": 1},
+            ],
+        }
+        cond = WhenCondition.from_dict(d)
+        self.assertIsInstance(cond, WhenOr)
+
+    def test_dispatch_unknown_operator_raises(self):
+        with self.assertRaises(ValueError):
+            WhenCondition.from_dict(
+                {"operator": "contains", "field": "f", "value": 1}
+            )
+
+    def test_dispatch_not_a_dict_raises(self):
+        with self.assertRaises(ValueError):
+            WhenCondition.from_dict("not a dict")
+
+    def test_dispatch_missing_operator_raises(self):
+        with self.assertRaises((ValueError, KeyError)):
+            WhenCondition.from_dict({"field": "f", "value": 1})
+
+    def test_deeply_nested_roundtrip(self):
+        """AND(OR(leaf, AND(leaf, leaf)), leaf) survives a full to/from dict cycle."""
+        original = WhenAnd(
+            conditions=[
+                WhenOr(
+                    conditions=[
+                        WhenEquals(field="a", value=1),
+                        WhenAnd(
+                            conditions=[
+                                WhenEquals(field="b", value=2),
+                                WhenEquals(field="c", value=3),
+                            ]
+                        ),
+                    ]
+                ),
+                WhenEquals(field="d", value=4),
+            ]
+        )
+        restored = WhenCondition.from_dict(original.to_dict())
+        self.assertIsInstance(restored, WhenAnd)
+        self.assertIsInstance(restored.conditions[0], WhenOr)
+        self.assertIsInstance(restored.conditions[0].conditions[1], WhenAnd)
+        self.assertEqual(restored.to_dict(), original.to_dict())
+
+
+class CollectLeafConditionsTests(unittest.TestCase):
+    """collect_leaf_conditions must yield exactly the When leaves of any tree."""
+
+    def test_none_yields_nothing(self):
+        self.assertEqual(list(collect_leaf_conditions(None)), [])
+
+    def test_single_leaf(self):
+        w = WhenEquals(field="f", value=1)
+        leaves = list(collect_leaf_conditions(w))
+        self.assertEqual(leaves, [w])
+
+    def test_and_group_yields_all_leaves(self):
+        a = WhenEquals(field="a", value=1)
+        b = WhenIn(field="b", value=[2, 3])
+        leaves = list(collect_leaf_conditions(WhenAnd(conditions=[a, b])))
+        self.assertEqual(leaves, [a, b])
+
+    def test_or_group_yields_all_leaves(self):
+        a = WhenEquals(field="a", value=1)
+        b = WhenEquals(field="a", value=2)
+        leaves = list(collect_leaf_conditions(WhenOr(conditions=[a, b])))
+        self.assertEqual(leaves, [a, b])
+
+    def test_nested_tree_yields_all_leaves(self):
+        a = WhenEquals(field="a", value=1)
+        b = WhenEquals(field="b", value=2)
+        c = WhenEquals(field="c", value=3)
+        d = WhenEquals(field="d", value=4)
+        tree = WhenAnd(
+            conditions=[
+                WhenOr(conditions=[a, WhenAnd(conditions=[b, c])]),
+                d,
+            ]
+        )
+        self.assertEqual(list(collect_leaf_conditions(tree)), [a, b, c, d])
+
+    def test_leaf_objects_are_when_instances(self):
+        tree = WhenAnd(
+            conditions=[
+                WhenEquals(field="x", value=True),
+                WhenIn(field="y", value=["p", "q"]),
+            ]
+        )
+        for leaf in collect_leaf_conditions(tree):
+            self.assertIsInstance(leaf, When)
+
+
 class AttributeSpecTests(unittest.TestCase):
     def test_create_full(self):
         attr = AttributeSpec(
@@ -185,13 +465,13 @@ class AttributeSpecTests(unittest.TestCase):
             type="str",
             component="dropdown",
             values=["front", "rear"],
-            when=[WhenEquals(field="damage_present", value=True)],
+            when=WhenEquals(field="damage_present", value=True),
         )
         self.assertEqual(attr.name, "damage_location")
         self.assertEqual(attr.type, "str")
         self.assertEqual(attr.component, "dropdown")
         self.assertEqual(attr.values, ["front", "rear"])
-        self.assertEqual(len(attr.when), 1)
+        self.assertIsInstance(attr.when, WhenEquals)
 
     def test_create_unconditional(self):
         attr = AttributeSpec(
@@ -268,15 +548,15 @@ class AttributeSpecTests(unittest.TestCase):
             type="str",
             component="radio",
             values=["minor", "moderate", "severe"],
-            when=[WhenEquals(field="damage_present", value=True)],
+            when=WhenEquals(field="damage_present", value=True),
         )
         d = attr.to_dict()
         self.assertEqual(d["name"], "severity")
         self.assertEqual(d["type"], "str")
         self.assertEqual(d["component"], "radio")
         self.assertEqual(d["values"], ["minor", "moderate", "severe"])
-        self.assertEqual(len(d["when"]), 1)
-        self.assertEqual(d["when"][0]["operator"], "equals")
+        self.assertIsInstance(d["when"], dict)
+        self.assertEqual(d["when"]["operator"], "equals")
 
     def test_from_dict(self):
         d = {
@@ -284,21 +564,20 @@ class AttributeSpecTests(unittest.TestCase):
             "type": "str",
             "component": "dropdown",
             "values": ["front", "rear"],
-            "when": [
-                {
-                    "operator": "equals",
-                    "field": "damage_present",
-                    "value": True,
-                },
-            ],
+            "when": {
+                "operator": "equals",
+                "field": "damage_present",
+                "value": True,
+            },
         }
         attr = AttributeSpec.from_dict(d)
         self.assertEqual(attr.name, "damage_location")
         self.assertEqual(attr.type, "str")
         self.assertEqual(attr.component, "dropdown")
         self.assertEqual(attr.values, ["front", "rear"])
-        self.assertEqual(len(attr.when), 1)
-        self.assertEqual(attr.when[0].operator, WhenOperator.EQUALS)
+        # from_dict deserializes leaves as When (not WhenEquals subclass)
+        self.assertIsInstance(attr.when, When)
+        self.assertEqual(attr.when.operator, WhenOperator.EQUALS)
 
     def test_roundtrip(self):
         original = AttributeSpec(
@@ -306,17 +585,14 @@ class AttributeSpecTests(unittest.TestCase):
             type="str",
             component="dropdown",
             values=["front", "rear"],
-            when=[WhenEquals(field="damage_present", value=True)],
+            when=WhenEquals(field="damage_present", value=True),
         )
         restored = AttributeSpec.from_dict(original.to_dict())
         self.assertEqual(restored.name, original.name)
         self.assertEqual(restored.type, original.type)
         self.assertEqual(restored.component, original.component)
         self.assertEqual(restored.values, original.values)
-        self.assertEqual(len(restored.when), len(original.when))
-        self.assertEqual(
-            restored.when[0].to_dict(), original.when[0].to_dict()
-        )
+        self.assertEqual(restored.when.to_dict(), original.when.to_dict())
 
     def test_create_with_extended_fields(self):
         attr = AttributeSpec(
@@ -429,7 +705,7 @@ class AnnotationOntologyTests(unittest.TestCase):
                     type="str",
                     component="dropdown",
                     values=["front", "rear", "driver_side", "passenger_side"],
-                    when=[WhenEquals(field="damage_present", value=True)],
+                    when=WhenEquals(field="damage_present", value=True),
                 ),
             ],
         )
@@ -499,13 +775,11 @@ class AnnotationOntologyTests(unittest.TestCase):
                         "type": "str",
                         "component": "dropdown",
                         "values": ["a", "b"],
-                        "when": [
-                            {
-                                "operator": "equals",
-                                "field": "attr1",
-                                "value": True,
-                            }
-                        ],
+                        "when": {
+                            "operator": "equals",
+                            "field": "attr1",
+                            "value": True,
+                        },
                     },
                 ],
             },
@@ -515,7 +789,7 @@ class AnnotationOntologyTests(unittest.TestCase):
         self.assertEqual(ao.description, "A test")
         self.assertEqual(ao.taxonomies, ["tax1", "tax2"])
         self.assertEqual(len(ao.attributes), 2)
-        self.assertEqual(ao.attributes[1].when[0].field, "attr1")
+        self.assertEqual(ao.attributes[1].when.field, "attr1")
 
     def test_from_dict_with_none_root(self):
         ao = AnnotationOntology.from_dict(
@@ -547,13 +821,13 @@ class AnnotationOntologyTests(unittest.TestCase):
                     type="str",
                     component="dropdown",
                     values=["front", "rear"],
-                    when=[WhenEquals(field="damage_present", value=True)],
+                    when=WhenEquals(field="damage_present", value=True),
                 ),
                 AttributeSpec(
                     name="airbags_deployed",
                     type="bool",
                     component="checkbox",
-                    when=[WhenEquals(field="damage_location", value="front")],
+                    when=WhenEquals(field="damage_location", value="front"),
                 ),
             ],
         )
@@ -562,9 +836,7 @@ class AnnotationOntologyTests(unittest.TestCase):
         self.assertEqual(restored.description, original.description)
         self.assertEqual(restored.taxonomies, original.taxonomies)
         self.assertEqual(len(restored.attributes), 3)
-        self.assertEqual(
-            restored.attributes[2].when[0].field, "damage_location"
-        )
+        self.assertEqual(restored.attributes[2].when.field, "damage_location")
 
 
 class OntologySDKTests(unittest.TestCase):
@@ -604,7 +876,7 @@ class OntologySDKTests(unittest.TestCase):
                     type="str",
                     component="dropdown",
                     values=["front", "rear"],
-                    when=[WhenEquals(field="damage_present", value=True)],
+                    when=WhenEquals(field="damage_present", value=True),
                 ),
             ],
         )
@@ -624,7 +896,7 @@ class OntologySDKTests(unittest.TestCase):
         self.assertEqual(loaded.taxonomies, ["vehicle_classes"])
         self.assertEqual(len(loaded.attributes), 2)
         self.assertEqual(loaded.attributes[0].name, "damage_present")
-        self.assertEqual(loaded.attributes[1].when[0].field, "damage_present")
+        self.assertEqual(loaded.attributes[1].when.field, "damage_present")
 
     def test_save_and_reload(self):
         ao = self._make_ontology()
