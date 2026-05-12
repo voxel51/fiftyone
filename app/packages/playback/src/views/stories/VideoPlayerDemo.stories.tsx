@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { useRef } from "react";
-import { PlaybackProvider } from "../../lib/PlaybackProvider";
-import { useVideoStream } from "../../lib/use-video-stream";
-import { useVideoSync } from "../../lib/use-video-sync";
+import { PlaybackProvider } from "../../lib/playback/PlaybackProvider";
+import { useVideoStream } from "../../lib/playback/use-video-stream";
+import { useVideoSync } from "../../lib/playback/use-video-sync";
 import SimplePlaybackBar from "../SimplePlaybackBar/SimplePlaybackBar";
 // Drop a `crowd.mp4` into `src/views/assets/` to run this story locally.
 // The whole `assets/` directory is gitignored — videos live there only on

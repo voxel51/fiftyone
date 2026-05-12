@@ -1,8 +1,8 @@
-import { usePlayback } from "../../lib/PlaybackProvider";
+import { usePlayback } from "../../lib/playback/PlaybackProvider";
 import {
   viewEndAtom,
   viewStartAtom,
-} from "../../lib/playback-atoms";
+} from "../../lib/playback/atoms";
 import {
   Button,
   IconName,

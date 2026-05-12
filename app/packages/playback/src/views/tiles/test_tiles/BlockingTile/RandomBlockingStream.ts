@@ -1,7 +1,7 @@
 import type {
   BufferReadiness,
   PlaybackStream,
-} from "../../../../lib/playback-types";
+} from "../../../../lib/playback/types";
 
 const IDLE_MIN_MS = 4000;
 const IDLE_MAX_MS = 10000;

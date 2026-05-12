@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { PlaybackProvider } from "../../lib/PlaybackProvider";
+import { PlaybackProvider } from "../../lib/playback/PlaybackProvider";
 import TimelineWithTracks from "../TimelineWithTracks/TimelineWithTracks";
 
 const meta: Meta = {

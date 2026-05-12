@@ -4,9 +4,9 @@ import {
   playheadAtom,
   viewEndAtom,
   viewStartAtom,
-} from "../../lib/playback-atoms";
+} from "../../lib/playback/atoms";
 import styles from "./PlayheadLine.module.css";
-import { clamp } from "../timeline-lane";
+import { clamp } from "../utils/timeline-utils";
 
 export interface PlayheadLineProps {
   /** Width of the label column shared between ruler and tracks. */

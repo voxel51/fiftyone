@@ -13,13 +13,13 @@ import {
   stepIntervalAtom,
   viewEndAtom,
   viewStartAtom,
-} from "./playback-atoms";
+} from "./atoms";
 import type {
   PlaybackConfig,
   PlaybackContextValue,
   PlaybackStore,
   PlaybackStream,
-} from "./playback-types";
+} from "./types";
 
 const clamp = (v: number, lo: number, hi: number) =>
   Math.min(hi, Math.max(lo, v));

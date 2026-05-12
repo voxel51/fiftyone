@@ -1,7 +1,7 @@
 import { cleanup, render } from "@testing-library/react";
 import React, { useEffect } from "react";
 import { afterEach, describe, expect, it } from "vitest";
-import { PlaybackProvider, usePlayback } from "../../lib/PlaybackProvider";
+import { PlaybackProvider, usePlayback } from "../../lib/playback/PlaybackProvider";
 import LoopOverlays from "./LoopOverlays";
 
 /**
@@ -50,7 +50,7 @@ const maskClass = ".mask";
 // attribute, so we can't reliably assert on the math here — render-logic
 // (which masks appear, with what visible attributes) is what these tests
 // cover. Positioning math is covered by a unit test on
-// `timeline-lane.ts::laneLeftCalc`.
+// `utils/timeline-utils.ts::laneLeftCalc`.
 
 describe("LoopOverlays", () => {
   afterEach(() => cleanup());

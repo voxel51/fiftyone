@@ -16,7 +16,7 @@ import {
 } from "@voxel51/voodo";
 import type { Meta, StoryObj } from "@storybook/react";
 import { useState } from "react";
-import { PlaybackProvider } from "../../lib/PlaybackProvider";
+import { PlaybackProvider } from "../../lib/playback/PlaybackProvider";
 import {
   TilingProvider,
   TilingTile,

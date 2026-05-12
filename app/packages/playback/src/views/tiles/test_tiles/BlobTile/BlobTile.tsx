@@ -1,9 +1,9 @@
 import { useAtomValue } from "jotai";
 import React, { useEffect, useMemo } from "react";
-import { playheadAtom } from "../../../../lib/playback-atoms";
-import { usePlayback } from "../../../../lib/PlaybackProvider";
-import type { PlaybackStream } from "../../../../lib/playback-types";
-import { useStream } from "../../../../lib/use-stream";
+import { playheadAtom } from "../../../../lib/playback/atoms";
+import { usePlayback } from "../../../../lib/playback/PlaybackProvider";
+import type { PlaybackStream } from "../../../../lib/playback/types";
+import { useStream } from "../../../../lib/playback/use-stream";
 import { useTileId } from "../../../../lib/TilingProvider";
 import styles from "./BlobTile.module.css";
 

@@ -1,10 +1,10 @@
-import { streamValueAtom } from "./playback-atoms";
+import { streamValueAtom } from "./atoms";
 import type {
   BufferReadiness,
   PlaybackStore,
   PlaybackStream,
   StreamLookupPolicy,
-} from "./playback-types";
+} from "./types";
 
 export interface PlaybackStreamBaseOptions {
   /**

@@ -1,8 +1,8 @@
 import { Size, Spinner } from "@voxel51/voodo";
 import clsx from "clsx";
 import React, { useEffect, useState } from "react";
-import { usePlayback } from "../../../../lib/PlaybackProvider";
-import { useStream } from "../../../../lib/use-stream";
+import { usePlayback } from "../../../../lib/playback/PlaybackProvider";
+import { useStream } from "../../../../lib/playback/use-stream";
 import { useTileId } from "../../../../lib/TilingProvider";
 import styles from "./BlockingTile.module.css";
 import { RandomBlockingStream } from "./RandomBlockingStream";

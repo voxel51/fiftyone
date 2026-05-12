@@ -55,7 +55,7 @@
 
 import { useEffect } from "react";
 import { usePlayback } from "./PlaybackProvider";
-import type { PlaybackStream } from "./playback-types";
+import type { PlaybackStream } from "./types";
 
 export function usePlaybackStream(stream: PlaybackStream) {
   const { registerStream } = usePlayback();

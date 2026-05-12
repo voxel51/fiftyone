@@ -1,6 +1,6 @@
 import { useAtomValue, useSetAtom, useStore } from "jotai";
 import { useEffect, type RefObject } from "react";
-import { currentTimeAtom, isPlayingAtom, playheadAtom } from "./playback-atoms";
+import { currentTimeAtom, isPlayingAtom, playheadAtom } from "./atoms";
 
 /**
  * Seek tolerance in seconds. If the playhead and the video's currentTime

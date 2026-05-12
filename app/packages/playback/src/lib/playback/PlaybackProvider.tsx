@@ -1,7 +1,7 @@
 import { Provider as JotaiProvider, useAtomValue } from "jotai";
 import React, { createContext, useContext, useMemo } from "react";
-import { durationAtom } from "./playback-atoms";
-import type { PlaybackConfig, PlaybackContextValue } from "./playback-types";
+import { durationAtom } from "./atoms";
+import type { PlaybackConfig, PlaybackContextValue } from "./types";
 import { usePlaybackEngine } from "./use-playback-engine";
 
 const PlaybackContext = createContext<PlaybackContextValue | null>(null);

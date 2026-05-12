@@ -98,7 +98,7 @@ export interface PlaybackStream {
    * How this stream resolves the best cached entry for a given time. Used
    * both in bufferState (to determine readiness) and in onCommit (to pick
    * the data to push to the reactive atom). Use resolveAtTime() from
-   * playback-utils to implement both consistently.
+   * `utils.ts::resolveAtTime` to implement both consistently.
    */
   lookupPolicy?: StreamLookupPolicy;
 

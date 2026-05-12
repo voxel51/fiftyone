@@ -1,7 +1,7 @@
 import { cleanup, render } from "@testing-library/react";
 import { useEffect } from "react";
 import { afterEach, describe, expect, it } from "vitest";
-import { PlaybackProvider, usePlayback } from "../../lib/PlaybackProvider";
+import { PlaybackProvider, usePlayback } from "../../lib/playback/PlaybackProvider";
 import PlayheadLine from "./PlayheadLine";
 
 function Seeker({ time }: { time: number }) {

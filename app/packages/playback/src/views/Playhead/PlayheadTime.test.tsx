@@ -1,7 +1,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { useEffect } from "react";
 import { afterEach, describe, expect, it } from "vitest";
-import { PlaybackProvider, usePlayback } from "../../lib/PlaybackProvider";
+import { PlaybackProvider, usePlayback } from "../../lib/playback/PlaybackProvider";
 import PlayheadTime from "./PlayheadTime";
 
 /**

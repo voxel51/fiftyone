@@ -2,11 +2,11 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useAtomValue } from "jotai";
 import { useEffect, useRef } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { PlaybackProvider, usePlayback } from "../../lib/PlaybackProvider";
+import { PlaybackProvider, usePlayback } from "../../lib/playback/PlaybackProvider";
 import {
   viewEndAtom,
   viewStartAtom,
-} from "../../lib/playback-atoms";
+} from "../../lib/playback/atoms";
 import TimelineRuler from "./TimelineRuler";
 
 // Renders the current view window to the DOM so tests can assert on
@@ -232,7 +232,7 @@ describe("TimelineRuler", () => {
     // from the inline style attribute, so these tests only verify that both
     // handles render — the calc math is covered indirectly by the (similar)
     // LoopOverlays.test.tsx assertions and should be unit-tested on
-    // `timeline-lane.ts::laneLeftCalc` if you want belt-and-suspenders.
+    // `utils/timeline-utils.ts::laneLeftCalc` if you want belt-and-suspenders.
 
     it("always renders both loop handles (start + end)", () => {
       const { container } = renderRuler({ duration: 10 });

@@ -1,4 +1,4 @@
-import type { StreamLookupPolicy } from "./playback-types";
+import type { StreamLookupPolicy } from "./types";
 
 /**
  * Resolves the best cached entry for a given time from a Map<number, T>.

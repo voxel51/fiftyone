@@ -2,14 +2,14 @@ import { useDragDelta } from "@voxel51/voodo";
 import clsx from "clsx";
 import { useAtomValue } from "jotai";
 import React, { useEffect, useRef } from "react";
-import { usePlayback } from "../../lib/PlaybackProvider";
+import { usePlayback } from "../../lib/playback/PlaybackProvider";
 import {
   loopEndAtom,
   loopStartAtom,
   playheadAtom,
   viewEndAtom,
   viewStartAtom,
-} from "../../lib/playback-atoms";
+} from "../../lib/playback/atoms";
 import styles from "./TimelineRuler.module.css";
 
 const MIN_VIEW = 0.25;

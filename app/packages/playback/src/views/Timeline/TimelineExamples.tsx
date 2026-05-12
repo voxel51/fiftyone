@@ -1,9 +1,9 @@
 import { BufferRange } from "@fiftyone/utilities";
 import React from "react";
 import { DEFAULT_FRAME_NUMBER } from "../../lib/constants";
-import { useCreateTimeline } from "../../lib/use-create-timeline";
-import { useDefaultTimelineNameImperative } from "../../lib/use-default-timeline-name";
-import { useTimeline } from "../../lib/use-timeline";
+import { useCreateTimeline } from "../../lib/timeline/use-create-timeline";
+import { useDefaultTimelineNameImperative } from "../../lib/timeline/use-default-timeline-name";
+import { useTimeline } from "../../lib/timeline/use-timeline";
 import { Timeline } from "./Timeline";
 
 /**

@@ -1,8 +1,8 @@
 import { Button, Size, Variant } from "@voxel51/voodo";
 import { useAtomValue } from "jotai";
 import React from "react";
-import { isPlayingAtom, playheadAtom } from "../../lib/playback-atoms";
-import { usePlayback } from "../../lib/PlaybackProvider";
+import { isPlayingAtom, playheadAtom } from "../../lib/playback/atoms";
+import { usePlayback } from "../../lib/playback/PlaybackProvider";
 import PlayheadTime from "../Playhead/PlayheadTime";
 import { PauseIcon, PlayIcon } from "../TimelineControls/timeline-controls-icons";
 import styles from "./SimplePlaybackBar.module.css";

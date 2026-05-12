@@ -6,7 +6,7 @@ import {
   screen,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { PlaybackProvider } from "../../lib/PlaybackProvider";
+import { PlaybackProvider } from "../../lib/playback/PlaybackProvider";
 import SimplePlaybackBar from "./SimplePlaybackBar";
 
 // jsdom's PointerEvent constructor doesn't propagate offsetX/Y from its

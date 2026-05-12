@@ -1,8 +1,8 @@
 import { Text, TextColor, TextVariant } from "@voxel51/voodo";
 import { useAtomValue } from "jotai";
 import React, { useCallback } from "react";
-import { loopEndAtom, loopStartAtom } from "../../lib/playback-atoms";
-import { usePlayback } from "../../lib/PlaybackProvider";
+import { loopEndAtom, loopStartAtom } from "../../lib/playback/atoms";
+import { usePlayback } from "../../lib/playback/PlaybackProvider";
 import { fmtBound, LOOP_EDGE_EPSILON } from "../TimelineControls/timeline-controls-utils";
 import styles from "./LoopBounds.module.css";
 

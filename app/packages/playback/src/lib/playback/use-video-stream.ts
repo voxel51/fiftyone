@@ -1,5 +1,5 @@
 import { useEffect, useState, type RefObject } from "react";
-import type { PlaybackStream } from "./playback-types";
+import type { PlaybackStream } from "./types";
 import { usePlayback } from "./PlaybackProvider";
 
 /**

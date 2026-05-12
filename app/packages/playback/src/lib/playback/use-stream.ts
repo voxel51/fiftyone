@@ -1,7 +1,7 @@
 import { useAtomValue } from "jotai";
 import { useEffect } from "react";
 import { usePlayback } from "./PlaybackProvider";
-import { streamValueAtom } from "./playback-atoms";
+import { streamValueAtom } from "./atoms";
 
 /**
  * Subscribe to a stream's current data and re-render when it changes.

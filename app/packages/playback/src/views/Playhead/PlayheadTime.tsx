@@ -1,8 +1,8 @@
 import { Text, TextColor, TextVariant } from "@voxel51/voodo";
 import { useAtomValue } from "jotai";
 import React from "react";
-import { playheadAtom } from "../../lib/playback-atoms";
-import { usePlayback } from "../../lib/PlaybackProvider";
+import { playheadAtom } from "../../lib/playback/atoms";
+import { usePlayback } from "../../lib/playback/PlaybackProvider";
 import { formatTime } from "../TimelineControls/timeline-controls-utils";
 
 /**

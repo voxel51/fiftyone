@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { PlaybackProvider } from "../../lib/PlaybackProvider";
+import { PlaybackProvider } from "../../lib/playback/PlaybackProvider";
 import LoopBounds from "./LoopBounds";
 
 function renderInProvider(opts: {

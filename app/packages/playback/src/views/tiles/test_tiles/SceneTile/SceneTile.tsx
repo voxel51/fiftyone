@@ -2,7 +2,7 @@ import { OrbitControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import { useAtomValue } from "jotai";
 import React from "react";
-import { playheadAtom } from "../../../../lib/playback-atoms";
+import { playheadAtom } from "../../../../lib/playback/atoms";
 import { useTileSettings } from "../../../../lib/TilingProvider";
 import SceneSettings from "./SceneSettings";
 import styles from "./SceneTile.module.css";

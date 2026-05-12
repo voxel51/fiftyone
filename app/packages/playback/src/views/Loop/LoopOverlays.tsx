@@ -5,9 +5,9 @@ import {
   loopStartAtom,
   viewEndAtom,
   viewStartAtom,
-} from "../../lib/playback-atoms";
+} from "../../lib/playback/atoms";
 import styles from "./LoopOverlays.module.css";
-import { clamp, laneLeftCalc } from "../timeline-lane";
+import { clamp, laneLeftCalc } from "../utils/timeline-utils";
 
 /** Tolerance for treating a loop bound as "at the edge" of the view. */
 const LOOP_EDGE_EPSILON = 0.001;
