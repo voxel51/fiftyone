@@ -44,13 +44,30 @@ export interface RichListItemOptions {
   className?: string;
 }
 
-// Conditional visibility rule for an attribute from an applied ontology.
-// Describes a condition under which the attribute should be shown.
-export interface AttributeCondition {
+// Leaf condition: a single field comparison (equals / in).
+export interface AttributeConditionLeaf {
   operator: "equals" | "in";
   field: string;
   value: unknown;
 }
+
+// Group condition: satisfied when ALL child conditions are met.
+export interface AttributeConditionAnd {
+  operator: "and";
+  conditions: AttributeCondition[];
+}
+
+// Group condition: satisfied when ANY child condition is met.
+export interface AttributeConditionOr {
+  operator: "or";
+  conditions: AttributeCondition[];
+}
+
+// Discriminated union over all condition node shapes.
+export type AttributeCondition =
+  | AttributeConditionLeaf
+  | AttributeConditionAnd
+  | AttributeConditionOr;
 
 // Attribute configuration (matches API)
 // Note: When stored in schema, attributes include 'name' field
@@ -62,7 +79,7 @@ export interface AttributeConfig {
   range?: [number, number];
   default?: string | number | (string | number)[]; // Array for list types
   read_only?: boolean;
-  when?: AttributeCondition[];
+  when?: AttributeCondition;
   _source?: string;
 }
 
@@ -95,7 +112,7 @@ export interface AttributeFormData {
   default: string;
   listDefault: (string | number)[]; // For list types
   read_only: boolean;
-  when?: AttributeCondition[];
+  when?: AttributeCondition;
   _source?: string;
 }
 
