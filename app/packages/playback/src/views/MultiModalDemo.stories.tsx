@@ -15,22 +15,18 @@ import {
   Variant,
 } from "@voxel51/voodo";
 import type { Meta, StoryObj } from "@storybook/react";
-import { useCallback, useState } from "react";
-import { MosaicNode } from "react-mosaic-component";
+import { useState } from "react";
 import { PlaybackProvider } from "../lib/PlaybackProvider";
 import {
   TilingProvider,
+  TilingTile,
   useTiling,
 } from "../lib/TilingProvider";
 import CameraTile from "./tiles/CameraTile";
 import GraphTile from "./tiles/GraphTile";
 import JsonDataTile from "./tiles/JsonDataTile";
 import LidarTile from "./tiles/LidarTile";
-import MosaicGrid, {
-  addTileToLayout,
-  autoLayout,
-  collectTileIds,
-} from "./tiles/MosaicGrid";
+import MosaicGrid from "./tiles/MosaicGrid";
 import SceneTile from "./tiles/SceneTile";
 import TimelineWithTracks from "./TimelineWithTracks";
 
@@ -38,11 +34,6 @@ const meta: Meta = { title: "Playback/MultiModalDemo" };
 export default meta;
 
 type TileKind = "camera" | "lidar" | "scene" | "graph" | "json";
-
-interface TileEntry {
-  kind: TileKind;
-  title: string;
-}
 
 const KIND_LABELS: Record<TileKind, string> = {
   camera: "Camera",
@@ -60,13 +51,27 @@ const KIND_ICONS: Record<TileKind, IconName> = {
   json: IconName.JSON,
 };
 
+const KIND_RENDERERS: Record<TileKind, () => React.ReactNode> = {
+  camera: () => <CameraTile />,
+  lidar: () => <LidarTile />,
+  scene: () => <SceneTile />,
+  graph: () => <GraphTile />,
+  json: () => <JsonDataTile />,
+};
+
+function tile(kind: TileKind, title: string): TilingTile {
+  return { title, render: KIND_RENDERERS[kind] };
+}
+
+const INITIAL_TILES: Record<string, TilingTile> = {
+  "camera-1": tile("camera", "camera_front"),
+  "lidar-1": tile("lidar", "lidar_top"),
+  "scene-1": tile("scene", "scene_world"),
+  "graph-1": tile("graph", "imu"),
+  "json-1": tile("json", "metadata"),
+};
+
 const TRACKS = [
-  { id: "camera_front", color: "#4a9eff", start: 0, end: 10, events: [1, 3, 7] },
-  { id: "camera_left", color: "#4a9eff", start: 0, end: 10, events: [1.2, 3.4, 7.1] },
-  { id: "lidar_top", color: "#ff7c4a", start: 2, end: 9, events: [2.5, 5, 8] },
-  { id: "pose", color: "#4aff9e", start: 1, end: 8, events: [4, 6] },
-  { id: "imu", color: "#ffd24a", start: 0, end: 10, events: [0.5, 4.5, 9] },
-  { id: "gps", color: "#c84aff", start: 0, end: 10, events: [0, 2, 4, 6, 8] },
   { id: "camera_front", color: "#4a9eff", start: 0, end: 10, events: [1, 3, 7] },
   { id: "camera_left", color: "#4a9eff", start: 0, end: 10, events: [1.2, 3.4, 7.1] },
   { id: "lidar_top", color: "#ff7c4a", start: 2, end: 9, events: [2.5, 5, 8] },
@@ -75,24 +80,9 @@ const TRACKS = [
   { id: "gps", color: "#c84aff", start: 0, end: 10, events: [0, 2, 4, 6, 8] },
 ];
 
-function renderTileBody(kind: TileKind) {
-  switch (kind) {
-    case "camera":
-      return <CameraTile />;
-    case "lidar":
-      return <LidarTile />;
-    case "scene":
-      return <SceneTile />;
-    case "graph":
-      return <GraphTile />;
-    case "json":
-      return <JsonDataTile />;
-  }
-}
-
 /**
- * Left sidebar content — renders the focused tile's settings, or an empty
- * state when no tile is focused. Read straight from the TilingProvider.
+ * Left sidebar — renders the focused tile's settings, or an empty state.
+ * Reads directly from the TilingProvider.
  */
 function SettingsSidebar() {
   const { focusedTileId, FocusedTileSettings } = useTiling();
@@ -112,11 +102,7 @@ function SettingsSidebar() {
   );
 }
 
-/**
- * Right sidebar content — a placeholder inspector that surfaces the
- * focused tile's id. Real implementation would show selected-object
- * metadata, annotations, etc.
- */
+/** Right sidebar — placeholder inspector showing the focused tile id. */
 function InspectorSidebar() {
   const { focusedTileId } = useTiling();
   return (
@@ -141,67 +127,18 @@ function InspectorSidebar() {
 }
 
 function DemoBody() {
-  const { focusedTileId, setFocusedTileId } = useTiling();
-  const [entries, setEntries] = useState<Record<string, TileEntry>>(() => ({
-    "camera-1": { kind: "camera", title: "camera_front" },
-    "lidar-1": { kind: "lidar", title: "lidar_top" },
-    "scene-1": { kind: "scene", title: "scene_world" },
-    "graph-1": { kind: "graph", title: "imu" },
-    "json-1": { kind: "json", title: "metadata" },
-  }));
-  const [layout, setLayout] = useState<MosaicNode<string> | null>(() =>
-    autoLayout(["camera-1", "lidar-1", "scene-1", "graph-1", "json-1"])
-  );
-  const [counter, setCounter] = useState(2);
+  const {
+    layout,
+    tiles,
+    focusedTileId,
+    setLayout,
+    setFocusedTileId,
+    addTile,
+    autoLayout,
+  } = useTiling();
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
 
-  const handleLayoutChange = useCallback(
-    (next: MosaicNode<string> | null) => {
-      setLayout(next);
-      const presentIds = new Set(collectTileIds(next));
-      setEntries((prev) => {
-        const filtered: Record<string, TileEntry> = {};
-        for (const [id, entry] of Object.entries(prev)) {
-          if (presentIds.has(id)) filtered[id] = entry;
-        }
-        return filtered;
-      });
-      // Clear focus if the focused tile was removed.
-      if (focusedTileId && !presentIds.has(focusedTileId)) {
-        setFocusedTileId(null);
-      }
-    },
-    [focusedTileId, setFocusedTileId]
-  );
-
-  const spawn = useCallback(
-    (kind: TileKind) => {
-      const id = `${kind}-${counter}`;
-      setCounter((c) => c + 1);
-      setEntries((prev) => ({
-        ...prev,
-        [id]: { kind, title: `${kind}_${counter}` },
-      }));
-      setLayout((prev) => addTileToLayout(prev, id, focusedTileId));
-      setFocusedTileId(id);
-    },
-    [counter, focusedTileId, setFocusedTileId]
-  );
-
-  const doAutoLayout = useCallback(() => {
-    setLayout((prev) => autoLayout(collectTileIds(prev)));
-  }, []);
-
-  const tiles = Object.fromEntries(
-    Object.entries(entries).map(([id, entry]) => [
-      id,
-      {
-        title: entry.title,
-        render: () => renderTileBody(entry.kind),
-      },
-    ])
-  );
 
   return (
     <div
@@ -213,8 +150,6 @@ function DemoBody() {
         overflow: "hidden",
       }}
     >
-      {/* Top toolbar — spans the full width above sidebars + grid.
-          Add-tile dropdown on the left, sidebar toggles on the right. */}
       <div
         style={{
           display: "flex",
@@ -233,14 +168,14 @@ function DemoBody() {
               key={kind}
               icon={KIND_ICONS[kind]}
               text={KIND_LABELS[kind]}
-              onClick={() => spawn(kind)}
+              onClick={() => addTile(tile(kind, `${kind}_${Date.now() % 1000}`), { idPrefix: kind })}
             />
           ))}
           <MenuSeparator />
           <MenuIconTextItem
             icon={IconName.Refresh}
             text="Auto Layout"
-            onClick={doAutoLayout}
+            onClick={autoLayout}
           />
         </Dropdown>
 
@@ -281,7 +216,7 @@ function DemoBody() {
           <MosaicGrid
             tiles={tiles}
             value={layout}
-            onChange={handleLayoutChange}
+            onChange={setLayout}
             focusedTileId={focusedTileId}
             onFocusTile={setFocusedTileId}
           />
@@ -308,7 +243,7 @@ function DemoBody() {
 export const Default: StoryObj = {
   render: () => (
     <PlaybackProvider duration={10} stepInterval={1 / 30}>
-      <TilingProvider>
+      <TilingProvider initialTiles={INITIAL_TILES}>
         <DemoBody />
       </TilingProvider>
     </PlaybackProvider>
