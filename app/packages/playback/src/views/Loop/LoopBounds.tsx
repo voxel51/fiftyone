@@ -39,7 +39,12 @@ const LoopBounds: React.FC = () => {
     <>
       <span className={styles.divider} aria-hidden />
       <span className={styles.loopBounds}>
-        {"("}
+        <Text
+          variant={TextVariant.Xs}
+          color={TextColor.Muted}
+        >
+          {" ( "}
+        </Text>
         <Text
           variant={TextVariant.Xs}
           color={atStart ? TextColor.Muted : TextColor.Primary}
@@ -50,7 +55,12 @@ const LoopBounds: React.FC = () => {
         >
           {fmtBound(loopStart)}
         </Text>
-        {" / "}
+        <Text
+          variant={TextVariant.Xs}
+          color={TextColor.Muted}
+        >
+          {" / "}
+        </Text>
         <Text
           variant={TextVariant.Xs}
           color={atEnd ? TextColor.Muted : TextColor.Primary}
@@ -61,7 +71,12 @@ const LoopBounds: React.FC = () => {
         >
           {fmtBound(loopEnd)}
         </Text>
-        {")"}
+        <Text
+          variant={TextVariant.Xs}
+          color={TextColor.Muted}
+        >
+          {" ) "}
+        </Text>
       </span>
     </>
   );
