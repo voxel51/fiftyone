@@ -4,11 +4,15 @@
 |
 """
 
+import logging
+
 from fiftyone import Dataset, Sample
 from fiftyone.multimodal.metadata import MultimodalMetadata
 from fiftyone.multimodal.schemas.v1 import SceneInventory
 
 from .base import DatabaseAdapter
+
+logger = logging.getLogger(__name__)
 
 
 class MongoAdapter(DatabaseAdapter):
@@ -29,14 +33,18 @@ class MongoAdapter(DatabaseAdapter):
         """
         new_samples = []
         update_values = {}
-        failed = []
         for sample, inventory in sample_and_scene_inventory_pairs:
             try:
                 metadata = MultimodalMetadata.build_for_scene_inventory(
                     inventory
                 )
             except Exception as e:
-                failed.append((sample, inventory, e))
+                logger.warning(
+                    "Failed to build metadata for scene inventory with scene ID '%s': %s",
+                    inventory.scene_id,
+                    str(e),
+                )
+
             else:
                 if sample.id:
                     update_values[sample.id] = metadata
