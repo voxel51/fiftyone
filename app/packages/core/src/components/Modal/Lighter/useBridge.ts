@@ -161,8 +161,8 @@ export const useBridge = (scene: Scene2D | null) => {
     )
   );
 
-	// Maintain refs so we don't miss events as useEventHandler
-	// is torn down and reinstantiated.
+  // Maintain refs so we don't miss events as useEventHandler
+  // is torn down and reinstantiated.
   const segmentationModeRef = useRef(segmentationMode);
   const focusRef = useRef(focus);
   const sceneRef = useRef(scene);
@@ -395,16 +395,9 @@ export const useBridge = (scene: Scene2D | null) => {
   useEventHandler(
     "lighter:point-selection-finalize",
     useCallback(
-      (payload) => {
-        if (!segmentationMode.segmentationModeActive) return;
-
-        // Tiered right-click in AI mode: if the user had placed at least one
-        // point, finalize the AI session; otherwise step back to the Select
-        // tool (mirrors the tiered Escape behaviour).
-        if (payload.hadPoints) {
+      () => {
+        if (segmentationMode.segmentationModeActive) {
           segmentationMode.finalizePointSelection();
-        } else {
-          segmentationMode.switchTool(SegmentationTool.Select);
         }
       },
       [segmentationMode]

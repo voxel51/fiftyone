@@ -1095,24 +1095,25 @@ export class InteractionManager {
         return;
       }
 
-      if (tool === SegmentationTool.AI) {
+      if (tool === SegmentationTool.AI && interactiveHandler) {
         // For the keypoint overlay backing AI point selection,
         // `hasValidBounds()` is true iff points have been placed — use it
         // as the "session had in-progress work" signal so the bridge can
         // tier between finalize and step-back-to-Select.
         const overlay = interactiveHandler.getOverlay?.();
-        const hadPoints =
+        const pointsEstablished =
           overlay instanceof KeypointOverlay && overlay.hasValidBounds();
 
         interactiveHandler.resetOverlay();
         this.removeHandler(interactiveHandler);
 
-        this.eventBus.dispatch("lighter:point-selection-finalize", {
-          eventId: generateUUID(),
-          hadPoints,
-        });
+        if (pointsEstablished) {
+          this.eventBus.dispatch("lighter:point-selection-finalize", {
+            eventId: generateUUID(),
+          });
 
-        return;
+          return;
+        }
       }
     }
 

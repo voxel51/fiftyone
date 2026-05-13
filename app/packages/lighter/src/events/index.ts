@@ -138,11 +138,9 @@ export type LighterEventGroup = {
   "lighter:segmentation-mode-quit": { eventId: string };
   /**
    * Emitted when the AI mask should be established and point selection ended
-   * (e.g. right-click). `hadPoints` is true when the keypoint overlay had at
-   * least one point at the moment of finalize; consumers can use it to tier
-   * behaviour (e.g. finalize vs. step back to a different tool when idle).
+   * (e.g. right-click).
    */
-  "lighter:point-selection-finalize": { eventId: string; hadPoints: boolean };
+  "lighter:point-selection-finalize": { eventId: string };
 
   // ============================================================================
   // KEYPOINT EVENTS
