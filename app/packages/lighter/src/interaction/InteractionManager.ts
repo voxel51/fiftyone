@@ -344,7 +344,11 @@ export class InteractionManager {
       if (detectionModeBridge.isActive() || segmentationModeBridge.isActive()) {
         const isNonOverlay = !handler || handler.id === this.canonicalMediaId;
 
-        if (isNonOverlay) {
+        const isSelectInSegmentation =
+          segmentationModeBridge.isActive() &&
+          segmentationModeBridge.getActiveTool() === SegmentationTool.Select;
+
+        if (isNonOverlay && !isSelectInSegmentation) {
           this.renderer.disableZoomPan();
 
           this.pendingAction = {
