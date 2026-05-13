@@ -189,6 +189,12 @@ class GenerateLabelSchemaTests(unittest.TestCase):
         self.assertEqual(schema.get("applied_ontology"), "my_ontology")
 
     @drop_datasets
+    def test_preserves_taxonomy_on_regeneration(self):
+        dataset = _make_taxonomy_field_test_dataset()
+        schema = generate_label_schemas(dataset, "detections_field")
+        self.assertEqual(schema.get("taxonomy"), "my_taxonomy")
+
+    @drop_datasets
     def test_generate_group_detections_field_label_schema(self):
         dataset = fo.Dataset()
         dataset.add_group_field("group", default="slice")
@@ -239,6 +245,32 @@ def _make_applied_ontology_test_dataset(ontology_name: str = "my_ontology"):
         "detections_field": {
             "type": "detections",
             "applied_ontology": ontology_name,
+        }
+    }
+    dataset._doc.save()
+
+    return dataset
+
+
+def _make_taxonomy_field_test_dataset(taxonomy_name: str = "my_taxonomy"):
+    """Dataset with a `detections_field` and a `taxonomy` reference stored
+    on its label schema. The stored reference bypasses the validator so
+    tests can read it as pre-existing state.
+    """
+    dataset = fo.Dataset()
+    dataset.add_sample(
+        fo.Sample(
+            filepath="image.png",
+            detections_field=fo.Detections(
+                detections=[fo.Detection(label="test")]
+            ),
+        )
+    )
+
+    dataset._doc.label_schemas = {
+        "detections_field": {
+            "type": "detections",
+            "taxonomy": taxonomy_name,
         }
     }
     dataset._doc.save()
