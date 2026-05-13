@@ -6,7 +6,13 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useRecoilValue } from "recoil";
 
-import { BaseOverlay, DetectionOverlay, useLighter } from "@fiftyone/lighter";
+import {
+  AddOverlayCommand,
+  BaseOverlay,
+  DetectionOverlay,
+  useLighter,
+} from "@fiftyone/lighter";
+import { CommandContextManager } from "@fiftyone/commands";
 import { isPatchesView } from "@fiftyone/state";
 import { DETECTION } from "@fiftyone/utilities";
 
@@ -277,6 +283,14 @@ export const useSegmentationMode = () => {
    * detection while staying in AI mode.
    */
   const finalizePointSelection = useCallback(() => {
+    const currentScene = sceneRef.current;
+    const overlay = selectedLabelRef.current?.overlay;
+    if (currentScene && overlay instanceof DetectionOverlay) {
+      CommandContextManager.instance()
+        .getActiveContext()
+        .pushUndoable(new AddOverlayCommand(currentScene, overlay));
+    }
+
     aiMode.deactivate();
     aiMode.activate();
   }, [aiMode]);

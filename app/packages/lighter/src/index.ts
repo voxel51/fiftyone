@@ -86,6 +86,7 @@ export type { SelectionOptions } from "./selection/SelectionManager";
 
 // Command exports
 export { AddKeypointPointCommand } from "./commands/AddKeypointPointCommand";
+export { AddOverlayCommand } from "./commands/AddOverlayCommand";
 export { MergeDetectionsCommand } from "./commands/MergeDetectionsCommand";
 export type { MergeDetectionsCommandDeps } from "./commands/MergeDetectionsCommand";
 export { MoveKeypointPointCommand } from "./commands/MoveKeypointPointCommand";
