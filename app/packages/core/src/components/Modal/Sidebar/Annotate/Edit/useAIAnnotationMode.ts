@@ -6,7 +6,7 @@ import {
   useToolsState,
 } from "@fiftyone/annotation/src/agents";
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { atom, useAtom } from "jotai";
+import { atom, getDefaultStore, useAtom } from "jotai";
 import { useAnnotationContext } from "./state";
 
 export interface AIAnnotationMode {
@@ -88,27 +88,26 @@ export const useAIAnnotationMode = (): AIAnnotationMode => {
 
   useLabelReset(isActive, resetTools);
 
+  // Guards read fresh from the jotai store so back-to-back deactivate /
+  // activate calls (e.g. AI right-click finalize) don't no-op on a stale
+  // closure value of `isActive`.
   const activate = useCallback(() => {
-    if (isActive) {
-      return;
-    }
+    if (getDefaultStore().get(isActiveAtom)) return;
 
     setActiveTask(AgentTaskType.SEGMENT);
     setIsActive(true);
     pointSelection.activate();
-  }, [isActive, pointSelection, setActiveTask, setIsActive]);
+  }, [pointSelection, setActiveTask, setIsActive]);
 
   const deactivate = useCallback(() => {
-    if (!isActive) {
-      return;
-    }
+    if (!getDefaultStore().get(isActiveAtom)) return;
 
     pointSelection.deactivate();
     resetTools();
 
     setActiveTask(null);
     setIsActive(false);
-  }, [resetTools, isActive, pointSelection, setActiveTask, setIsActive]);
+  }, [resetTools, pointSelection, setActiveTask, setIsActive]);
 
   return useMemo(
     () => ({
