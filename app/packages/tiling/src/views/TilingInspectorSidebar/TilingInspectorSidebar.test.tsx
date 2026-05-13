@@ -1,15 +1,9 @@
 import { act, cleanup, render, screen } from "@testing-library/react";
 import React from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import * as voodoMock from "../../__tests__/voodo-mock";
+import { afterEach, describe, expect, it } from "vitest";
 
-vi.mock("@voxel51/voodo", () => voodoMock);
-
-// eslint-disable-next-line import/first
 import { TileIdScope, TilingProvider, useTiling } from "../../lib/TilingProvider";
-// eslint-disable-next-line import/first
 import { useSetTileSelection } from "../../lib/use-tile-state";
-// eslint-disable-next-line import/first
 import TilingInspectorSidebar from "./TilingInspectorSidebar";
 
 const Selector: React.FC<{ payload: unknown }> = ({ payload }) => {

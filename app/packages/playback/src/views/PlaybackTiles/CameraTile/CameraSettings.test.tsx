@@ -1,18 +1,13 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { Provider as JotaiProvider, createStore } from "jotai";
 import React, { useEffect } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import * as voodoMock from "../../../__tests__/voodo-mock";
+import { afterEach, describe, expect, it } from "vitest";
 
-vi.mock("@voxel51/voodo", () => voodoMock);
-
-// eslint-disable-next-line import/first
 import {
   TileIdScope,
   TilingProvider,
   useTileRegistry,
 } from "@fiftyone/tiling";
-// eslint-disable-next-line import/first
 import CameraSettings from "./CameraSettings";
 
 const DummyTile: React.FC = () => null;

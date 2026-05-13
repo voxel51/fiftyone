@@ -1,15 +1,9 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import React, { useEffect } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import * as voodoMock from "../../__tests__/voodo-mock";
 
-vi.mock("@voxel51/voodo", () => voodoMock);
-
-// eslint-disable-next-line import/first
 import { TilingProvider } from "../../lib/TilingProvider";
-// eslint-disable-next-line import/first
 import { useTileRegistry } from "../../lib/use-tile-registry";
-// eslint-disable-next-line import/first
 import TilingHeader from "./TilingHeader";
 
 const CameraTile: React.FC = () => <div data-testid="camera-body" />;

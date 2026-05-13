@@ -1,9 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import * as voodoMock from "../../__tests__/voodo-mock";
-
-vi.mock("@voxel51/voodo", () => voodoMock);
 
 // react-mosaic-component uses react-dnd which needs a DnD context; in
 // jsdom we just need the layout to mount, so stub MosaicGrid to a
@@ -30,7 +27,6 @@ vi.mock("@fiftyone/tiling", async () => {
   };
 });
 
-// eslint-disable-next-line import/first
 import MultiModalPlayback from "./MultiModalPlayback";
 
 describe("MultiModalPlayback shell", () => {

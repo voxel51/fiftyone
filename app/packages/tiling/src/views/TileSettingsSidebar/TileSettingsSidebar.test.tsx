@@ -1,13 +1,8 @@
 import { act, cleanup, render, screen } from "@testing-library/react";
 import React from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import * as voodoMock from "../../__tests__/voodo-mock";
+import { afterEach, describe, expect, it } from "vitest";
 
-vi.mock("@voxel51/voodo", () => voodoMock);
-
-// eslint-disable-next-line import/first
 import { TileIdScope, TilingProvider, useTileSettings, useTiling } from "../../lib/TilingProvider";
-// eslint-disable-next-line import/first
 import TileSettingsSidebar from "./TileSettingsSidebar";
 
 const SETTINGS_LABEL = "camera-settings-panel";

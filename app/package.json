@@ -69,7 +69,6 @@
     "resolutions": {
         "brace-expansion": "^2.0.3",
         "three-stdlib": "^2.36.1",
-        "@types/react": "18.2.0",
-        "@voxel51/voodo": "portal:/home/mikeobrien/code/design-system"
+        "@types/react": "18.2.0"
     }
 }

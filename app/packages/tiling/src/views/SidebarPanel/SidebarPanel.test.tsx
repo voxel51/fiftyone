@@ -1,10 +1,6 @@
 import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import * as voodoMock from "../../__tests__/voodo-mock";
+import { afterEach, describe, expect, it } from "vitest";
 
-vi.mock("@voxel51/voodo", () => voodoMock);
-
-// eslint-disable-next-line import/first
 import SidebarPanel from "./SidebarPanel";
 
 describe("SidebarPanel", () => {

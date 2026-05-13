@@ -1,11 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import * as voodoMock from "../../__tests__/voodo-mock";
 
-vi.mock("@voxel51/voodo", () => voodoMock);
-
-// Mocks must register before the SUT pulls voodo transitively.
-// eslint-disable-next-line import/first
 import Tile, { TileHeader } from "./Tile";
 
 describe("Tile chrome", () => {

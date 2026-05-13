@@ -4,12 +4,6 @@ import { Provider as JotaiProvider, createStore } from "jotai";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@voxel51/voodo", async () => {
-  // Lazy-imported inside the factory so vitest's hoisting doesn't
-  // run before the top-level imports.
-  return await import("../../__tests__/voodo-mock");
-});
-
 // @react-three/fiber pulls in Canvas which jsdom can't render; the
 // SceneTile module is reached transitively via mock-scene-stream.
 vi.mock("@react-three/fiber", () => ({
@@ -19,9 +13,7 @@ vi.mock("@react-three/fiber", () => ({
 }));
 vi.mock("@react-three/drei", () => ({ OrbitControls: () => null }));
 
-// eslint-disable-next-line import/first
 import { PlaybackProvider, usePlayback } from "../../lib/playback/PlaybackProvider";
-// eslint-disable-next-line import/first
 import { useMockStreams, type MockStreamConfig } from "./use-mock-streams";
 
 const Probe: React.FC<{
