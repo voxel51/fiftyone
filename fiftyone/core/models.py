@@ -552,7 +552,7 @@ def _apply_image_model_with_video_data_loader(
 
     with contextlib.ExitStack() as context:
         pb = context.enter_context(
-            fou.ProgressBar(total_frame_count, progress=progress)
+            fou.ProgressBar(total=total_frame_count, progress=progress)
         )
         ctx = context.enter_context(
             foc.SaveContext(
@@ -607,11 +607,11 @@ def _apply_image_model_with_video_data_loader(
                         raise e
                     logger.warning(
                         "Sample: %s\nError: %s\n",
-                        frames["sample_idx"],
+                        frames.get("sample_idx"),
                         e,
                         exc_info=True,
                     )
-                pb.update(len(frames["frame_ids"]))
+                pb.update(len(frames.get("frame_ids", [])))
 
 
 def _apply_video_model(
@@ -903,7 +903,6 @@ def _make_video_frame_data_loader(
     field_mapping,
     pin_memory,
 ):
-    use_numpy = not isinstance(model, TorchModelMixin)
     num_workers = fout.recommend_num_workers(num_workers)
 
     if batch_size is None:
@@ -917,7 +916,7 @@ def _make_video_frame_data_loader(
     collate_fn = ErrorHandlingCollate(
         skip_failures,
         ragged_batches=model.ragged_batches,
-        use_numpy=use_numpy,
+        use_numpy=False,
         user_collate_fn=user_collate_fn,
     )
     if isinstance(model, SupportsGetItem):
@@ -928,9 +927,11 @@ def _make_video_frame_data_loader(
             skip_failures=skip_failures,
         )
     else:
+        use_numpy = not isinstance(model, TorchModelMixin)
+        transform = model.transforms if hasattr(model, "transforms") else None
         dataset = fout.TorchVideoFramesIterableDataset(
             samples=samples,
-            transform=model.transforms,
+            transform=transform,
             use_numpy=use_numpy,
             force_rgb=True,
             chunk_size=frames_chunk_size,
