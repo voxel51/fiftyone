@@ -1,0 +1,55 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  width: 100%;
+}
+
+/* Explicit positioning wrapper for the tracks region. PlayheadLine and
+   LoopOverlays anchor here (not to the Drawer body) so they can't extend
+   above the wrapper into the ruler / controls area.
+   `height: 100%` (not `flex: 1`) because the Drawer's internal `.content`
+   wrapper isn't a flex container — `flex: 1` would be ignored and we'd
+   fall back to natural content height, defeating the overflow:auto.
+   Vertical scroll only — the playhead's translate3d intentionally extends
+   past the visible width and must NOT trigger horizontal scrolling.
+   The scrollbar is hidden visually (wheel / keyboard scrolling still
+   works) so its width doesn't reduce the lane's effective width — the
+   ruler doesn't have a scrollbar, and a mismatched width would desync
+   the ruler playhead from the in-tracks playhead. */
+.tracksArea {
+  position: relative;
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.tracksArea::-webkit-scrollbar {
+  display: none;
+}
+
+.tracksBody {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Pinned tracks block, rendered into the always-visible header below
+   the ruler. Tracks here are full opacity since they're the user's
+   "promoted" tracks. */
+.pinnedTracks {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Unpinned tracks live in the collapsible drawer body. Dimmed so they
+   read as "browse / available" — pin one to move it into the header
+   block above. */
+.unpinnedTrack {
+  opacity: 0.55;
+  transition: opacity 0.15s;
+}
+
+.unpinnedTrack:hover {
+  opacity: 0.9;
+}
