@@ -6,6 +6,9 @@ Ingest scaffolding for multimodal workflows.
 |
 """
 
+import os
+from concurrent.futures import ThreadPoolExecutor
+
 from fiftyone.core import storage
 
 
@@ -50,8 +53,10 @@ def _get_scene_inventories(filepaths, *, adapter):
     Returns:
         a list of :class:`fiftyone.multimodal.SceneInventory` instances
     """
-    paths = _readable_paths(filepaths, adapter=adapter)
-    return [adapter.get_scene_inventory(path) for path in paths]
+    paths = list(_readable_paths(filepaths, adapter=adapter))
+    max_workers = max(1, min(8, (os.cpu_count() or 1) + 4, len(paths)))
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        return list(executor.map(adapter.get_scene_inventory, paths))
 
 
 __all__ = ["_get_scene_inventories"]
