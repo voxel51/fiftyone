@@ -44,12 +44,25 @@ export function usePlaybackEngine({
 
   const store = useMemo(() => {
     const s = createStore();
-    s.set(durationAtom, duration);
+    const initialDuration = Math.max(0, duration);
+    const loopStart = clamp(defaultLoopStart ?? 0, 0, initialDuration);
+    const rawLoopEnd = clamp(
+      defaultLoopEnd ?? initialDuration,
+      0,
+      initialDuration
+    );
+    // Inverted / collapsed window → fall back to the full timeline so the
+    // RAF wrap path isn't trapped in a zero-width loop.
+    const loopEnd = rawLoopEnd > loopStart ? rawLoopEnd : initialDuration;
+    const initialSpeed =
+      Number.isFinite(defaultSpeed) && defaultSpeed > 0 ? defaultSpeed : 1;
+
+    s.set(durationAtom, initialDuration);
     s.set(stepIntervalAtom, stepInterval);
-    s.set(speedAtom, defaultSpeed);
-    s.set(viewEndAtom, duration);
-    s.set(loopStartAtom, defaultLoopStart ?? 0);
-    s.set(loopEndAtom, defaultLoopEnd ?? duration);
+    s.set(speedAtom, initialSpeed);
+    s.set(viewEndAtom, initialDuration);
+    s.set(loopStartAtom, loopStart);
+    s.set(loopEndAtom, loopEnd);
     return s;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // store is created once at mount; config is treated as mount-time
@@ -203,6 +216,12 @@ export function usePlaybackEngine({
     return () => {
       unsub();
       if (rafIdRef.current !== null) cancelAnimationFrame(rafIdRef.current);
+      // A queued seek-event timeout could otherwise fire after unmount and
+      // touch an orphaned store.
+      if (seekDebounceRef.current !== null) {
+        clearTimeout(seekDebounceRef.current);
+        seekDebounceRef.current = null;
+      }
     };
   }, [store, tick]);
 
@@ -264,10 +283,19 @@ export function usePlaybackEngine({
         store.set(viewEndAtom, end);
       },
       setLoop: (start: number, end: number) => {
-        store.set(loopStartAtom, start);
-        store.set(loopEndAtom, end);
+        const dur = store.get(durationAtom);
+        const ls = clamp(start, 0, dur);
+        const le = clamp(end, 0, dur);
+        // Reject inverted / collapsed windows so the RAF wrap path can't
+        // get trapped in a zero-width loop.
+        if (le <= ls) return;
+        store.set(loopStartAtom, ls);
+        store.set(loopEndAtom, le);
       },
       setSpeed: (speed: number) => {
+        // NaN / Infinity / non-positive values would corrupt `dt` in the
+        // RAF tick and produce invalid playhead progression.
+        if (!Number.isFinite(speed) || speed <= 0) return;
         store.set(speedAtom, speed);
       },
       registerStream: (stream: PlaybackStream) => {
@@ -275,9 +303,13 @@ export function usePlaybackEngine({
         recomputeDuration();
         recomputeStepInterval();
         return () => {
-          streamsRef.current.delete(stream.id);
-          recomputeDuration();
-          recomputeStepInterval();
+          // Identity check: if the same id has been replaced with a newer
+          // stream instance, an older cleanup shouldn't yank it out.
+          if (streamsRef.current.get(stream.id) === stream) {
+            streamsRef.current.delete(stream.id);
+            recomputeDuration();
+            recomputeStepInterval();
+          }
         };
       },
       subscribeStream: (id: string) => {

@@ -1,17 +1,17 @@
 import { Provider as JotaiProvider } from "jotai";
 import React, { createContext, useContext, useMemo } from "react";
 import type { PlaybackConfig, PlaybackContextValue } from "./types";
-import { useDuration } from "./use-playback-state";
+import { useDuration, useStepInterval } from "./use-playback-state";
 import { usePlaybackEngine } from "./use-playback-engine";
 
 const PlaybackContext = createContext<PlaybackContextValue | null>(null);
 
 /**
- * Renders the context inside the JotaiProvider so it can subscribe to
- * `durationAtom` and surface the live (stream-derived) duration on the
- * context. Without this inner component the duration on `usePlayback()`
- * would be the static prop value and wouldn't reflect what streams
- * actually report.
+ * Renders the context inside the JotaiProvider so it can subscribe to the
+ * stream-derived atoms (`durationAtom`, `stepIntervalAtom`) and surface
+ * their live values on the context. Without this inner component
+ * `usePlayback()` would be locked to the static prop fallbacks and
+ * wouldn't reflect what streams actually report.
  */
 function PlaybackContextHost({
   baseContext,
@@ -21,9 +21,14 @@ function PlaybackContextHost({
   children: React.ReactNode;
 }) {
   const liveDuration = useDuration();
+  const liveStepInterval = useStepInterval();
   const value = useMemo<PlaybackContextValue>(
-    () => ({ ...baseContext, duration: liveDuration }),
-    [baseContext, liveDuration]
+    () => ({
+      ...baseContext,
+      duration: liveDuration,
+      stepInterval: liveStepInterval,
+    }),
+    [baseContext, liveDuration, liveStepInterval]
   );
   return (
     <PlaybackContext.Provider value={value}>{children}</PlaybackContext.Provider>

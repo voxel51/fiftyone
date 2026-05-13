@@ -12,6 +12,7 @@ import {
   usePlayhead,
   useSeekEvent,
   useSpeed,
+  useStepInterval,
   useViewEnd,
   useViewStart,
 } from "./use-playback-state";
@@ -19,6 +20,7 @@ import {
 const wrap =
   (config: {
     duration?: number;
+    stepInterval?: number;
     defaultLoopStart?: number;
     defaultLoopEnd?: number;
     defaultSpeed?: number;
@@ -63,6 +65,13 @@ describe("use-playback-state wrappers", () => {
       wrapper: wrap({ duration: 7 }),
     });
     expect(result.current).toBe(7);
+  });
+
+  it("useStepInterval reflects the provider fallback", () => {
+    const { result } = renderHook(() => useStepInterval(), {
+      wrapper: wrap({ duration: 7, stepInterval: 1 / 24 }),
+    });
+    expect(result.current).toBeCloseTo(1 / 24);
   });
 
   it("useViewStart/useViewEnd start at 0 and duration respectively", () => {

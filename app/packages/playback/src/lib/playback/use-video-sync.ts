@@ -29,6 +29,7 @@ export function useVideoSync(
   const isPlaying = useAtomValue(isPlayingAtom);
   const setPlayhead = useSetAtom(playheadAtom);
   const setCurrentTime = useSetAtom(currentTimeAtom);
+  const setIsPlaying = useSetAtom(isPlayingAtom);
   const store = useStore();
 
   // play / pause
@@ -69,8 +70,11 @@ export function useVideoSync(
     };
     const onEnded = () => {
       // Video reached its end — surface that as paused so the bar's
-      // play button is correct.
+      // play button is correct. `isPlayingAtom` normally drives the
+      // video; here the video drove itself to a stop, so we have to
+      // push the state back up.
       v.pause();
+      setIsPlaying(false);
     };
     v.addEventListener("timeupdate", onTimeUpdate);
     v.addEventListener("ended", onEnded);
@@ -78,5 +82,7 @@ export function useVideoSync(
       v.removeEventListener("timeupdate", onTimeUpdate);
       v.removeEventListener("ended", onEnded);
     };
-  }, [setPlayhead, setCurrentTime, videoRef]);
+    // setPlayhead / setCurrentTime / setIsPlaying are stable Jotai setters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [videoRef]);
 }

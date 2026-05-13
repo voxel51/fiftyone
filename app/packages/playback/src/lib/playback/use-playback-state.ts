@@ -16,6 +16,7 @@ import {
   playheadAtom,
   seekEventAtom,
   speedAtom,
+  stepIntervalAtom,
   viewEndAtom,
   viewStartAtom,
 } from "./atoms";
@@ -44,6 +45,11 @@ export function useIsBuffering(): boolean {
 /** Live duration (max of registered streams, or the provider's fallback). */
 export function useDuration(): number {
   return useAtomValue(durationAtom);
+}
+
+/** Live step interval (min of registered streams, or the provider's fallback). */
+export function useStepInterval(): number {
+  return useAtomValue(stepIntervalAtom);
 }
 
 /** Left edge of the visible timeline window, in seconds. */

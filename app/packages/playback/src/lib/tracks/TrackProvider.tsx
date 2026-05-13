@@ -3,6 +3,7 @@ import React, {
   useCallback,
   useContext,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -89,8 +90,10 @@ export const TrackProvider: React.FC<TrackProviderProps> = ({
   initialPinnedIds = [],
   children,
 }) => {
-  // Tracks themselves are mount-time config — no setter exposed. Pin
-  // state is the only thing that changes from the UI.
+  // Tracks are mount-time config — no setter exposed. Capture in a ref so
+  // a parent passing a fresh `initialTracks` array on every render doesn't
+  // bust the context's memoization.
+  const tracksRef = useRef(initialTracks);
   const [pinnedIds, setPinnedSet] = useState<Set<string>>(
     () => new Set(initialPinnedIds)
   );
@@ -106,6 +109,9 @@ export const TrackProvider: React.FC<TrackProviderProps> = ({
 
   const setPinned = useCallback((id: string, pinned: boolean) => {
     setPinnedSet((prev) => {
+      // No-op when the requested state already matches — saves a context
+      // re-render that would otherwise propagate to every track row.
+      if (prev.has(id) === pinned) return prev;
       const next = new Set(prev);
       if (pinned) next.add(id);
       else next.delete(id);
@@ -115,12 +121,12 @@ export const TrackProvider: React.FC<TrackProviderProps> = ({
 
   const value = useMemo<TrackContextValue>(
     () => ({
-      tracks: initialTracks,
+      tracks: tracksRef.current,
       pinnedIds,
       togglePin,
       setPinned,
     }),
-    [initialTracks, pinnedIds, togglePin, setPinned]
+    [pinnedIds, togglePin, setPinned]
   );
 
   return (

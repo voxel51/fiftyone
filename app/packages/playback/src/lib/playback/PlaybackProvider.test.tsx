@@ -213,10 +213,36 @@ describe("PlaybackProvider engine actions", () => {
       expect(result.current.store.get(loopEndAtom)).toBe(6);
     });
 
+    it("setLoop clamps out-of-range bounds to [0, duration]", () => {
+      const { result } = renderEngine({ duration: 10 });
+      act(() => result.current.api.setLoop(-2, 20));
+      expect(result.current.store.get(loopStartAtom)).toBe(0);
+      expect(result.current.store.get(loopEndAtom)).toBe(10);
+    });
+
+    it("setLoop rejects inverted / collapsed windows (end <= start)", () => {
+      const { result } = renderEngine({ duration: 10 });
+      act(() => result.current.api.setLoop(2, 7));
+      act(() => result.current.api.setLoop(8, 4));
+      expect(result.current.store.get(loopStartAtom)).toBe(2);
+      expect(result.current.store.get(loopEndAtom)).toBe(7);
+    });
+
     it("setSpeed writes the speed atom", () => {
       const { result } = renderEngine({ duration: 10 });
       act(() => result.current.api.setSpeed(2));
       expect(result.current.store.get(speedAtom)).toBe(2);
+    });
+
+    it("setSpeed rejects NaN, Infinity, 0, and negative values", () => {
+      const { result } = renderEngine({ duration: 10 });
+      act(() => result.current.api.setSpeed(3));
+      const before = result.current.store.get(speedAtom);
+      act(() => result.current.api.setSpeed(NaN));
+      act(() => result.current.api.setSpeed(Infinity));
+      act(() => result.current.api.setSpeed(0));
+      act(() => result.current.api.setSpeed(-1));
+      expect(result.current.store.get(speedAtom)).toBe(before);
     });
   });
 
@@ -317,6 +343,34 @@ describe("PlaybackProvider engine actions", () => {
       expect(result.current.store.get(durationAtom)).toBe(30);
       act(() => unsub());
       expect(result.current.store.get(durationAtom)).toBe(10);
+    });
+
+    it("a stale cleanup does not unregister a newer stream with the same id", () => {
+      const { result } = renderEngine({ duration: 5 });
+      const streamA: PlaybackStream = {
+        id: "cam",
+        blocking: true,
+        duration: 30,
+        bufferState: () => "ready",
+      };
+      const streamB: PlaybackStream = {
+        id: "cam",
+        blocking: true,
+        duration: 42,
+        bufferState: () => "ready",
+      };
+      let unsubA!: () => void;
+      act(() => {
+        unsubA = result.current.api.registerStream(streamA);
+      });
+      // Replace the registration with a newer instance under the same id.
+      act(() => {
+        result.current.api.registerStream(streamB);
+      });
+      expect(result.current.store.get(durationAtom)).toBe(42);
+      // Old cleanup must NOT yank the newer stream.
+      act(() => unsubA());
+      expect(result.current.store.get(durationAtom)).toBe(42);
     });
   });
 

@@ -19,6 +19,11 @@ export function resolveAtTime<T>(
   time: number,
   policy: StreamLookupPolicy
 ): T | null {
+  // Hot path: exact-time hits dominate normal playback (the engine ticks
+  // on stream-aligned step intervals), so skip the linear scan when the
+  // key is already in the cache.
+  if (cache.has(time)) return cache.get(time) as T;
+
   let bestKey: number | null = null;
   let bestDist = Infinity;
 

@@ -32,12 +32,12 @@ export function useVideoStream(
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return undefined;
-    const onLoaded = () => {
-      if (isFinite(v.duration) && v.duration > 0) setDuration(v.duration);
+    const apply = () => {
+      if (isFiniteDuration(v.duration)) setDuration(v.duration);
     };
-    if (isFinite(v.duration) && v.duration > 0) setDuration(v.duration);
-    v.addEventListener("loadedmetadata", onLoaded);
-    return () => v.removeEventListener("loadedmetadata", onLoaded);
+    apply();
+    v.addEventListener("loadedmetadata", apply);
+    return () => v.removeEventListener("loadedmetadata", apply);
   }, [videoRef]);
 
   // Register / re-register the stream when its duration becomes known.
@@ -50,11 +50,15 @@ export function useVideoStream(
       bufferState: (t) => {
         const v = videoRef.current;
         if (!v) return "missing";
+        // Per HTML spec, `TimeRanges.end(i)` is the first moment NOT
+        // buffered — use an exclusive upper bound.
         for (let i = 0; i < v.buffered.length; i++) {
-          if (t >= v.buffered.start(i) && t <= v.buffered.end(i)) return "ready";
+          if (t >= v.buffered.start(i) && t < v.buffered.end(i)) return "ready";
         }
-        // Video element is fetching but the target time isn't covered yet.
-        return v.readyState >= 3 ? "ready" : "loading";
+        // `readyState >= 3` only guarantees playback can proceed from
+        // `currentTime`, not that an arbitrary `t` is buffered — return
+        // "loading" so the engine stalls until the target range is fetched.
+        return "loading";
       },
       bufferedRanges: () => {
         const v = videoRef.current;
@@ -68,4 +72,8 @@ export function useVideoStream(
     };
     return registerStream(stream);
   }, [id, duration, options.blocking, registerStream, videoRef]);
+}
+
+function isFiniteDuration(d: number): boolean {
+  return Number.isFinite(d) && d > 0;
 }
