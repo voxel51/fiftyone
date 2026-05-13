@@ -17,7 +17,7 @@ def _get_scene_inventories(filepaths, *, adapter):
     Args:
         filepaths: an iterable of strings representing the locations of the
             scene files to ingest
-        adapter: an instance of
+        adapter: a subclass of
             :class:`fiftyone.multimodal.adapters.MultimodalAdapter` that
             determines how the given sources are ingested
 

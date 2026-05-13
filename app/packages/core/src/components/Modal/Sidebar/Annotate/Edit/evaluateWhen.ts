@@ -1,10 +1,11 @@
 import type {
   AttributeCondition,
+  AttributeConditionLeaf,
   AttributeConfig,
 } from "../SchemaManager/utils";
 
 /**
- * Handler signature for a single operator.
+ * Handler signature for a single leaf operator.
  *
  * @param fieldValue - The current value of the referenced field.
  * @param condValue  - The value (or array of values) declared in the condition.
@@ -12,19 +13,19 @@ import type {
  * Note: comparison assumes primitive values. If condValue or fieldValue could
  * be objects, we'll need to implement a deep-equality check.
  */
-type OperatorHandler = (fieldValue: unknown, condValue: unknown) => boolean;
+type LeafOperatorHandler = (fieldValue: unknown, condValue: unknown) => boolean;
 
 /**
- * Typed map of every supported `when` operator to its evaluation logic.
+ * Typed map of every supported leaf `when` operator to its evaluation logic.
  *
- * Using `Record<AttributeCondition["operator"], ...>` means TypeScript will
- * produce a compile error here if a new operator is added to the union without
- * a corresponding handler — ensuring no operator is silently unhandled at
- * runtime.
+ * Using `Record<AttributeConditionLeaf["operator"], ...>` means TypeScript will
+ * produce a compile error here if a new leaf operator is added to the union
+ * without a corresponding handler — ensuring no operator is silently unhandled
+ * at runtime.
  */
-const OPERATOR_HANDLERS: Record<
-  AttributeCondition["operator"],
-  OperatorHandler
+const LEAF_OPERATOR_HANDLERS: Record<
+  AttributeConditionLeaf["operator"],
+  LeafOperatorHandler
 > = {
   equals: (fieldValue, condValue) => fieldValue === condValue,
   in: (fieldValue, condValue) =>
@@ -32,57 +33,128 @@ const OPERATOR_HANDLERS: Record<
 };
 
 /**
- * Evaluates a set of `when` conditions against the current label field values.
+ * Recursively evaluates a single condition node against the current label
+ * field values.
  *
- * Visibility semantics: an attribute is visible only if ALL of its conditions
- * are satisfied (AND logic).
+ * - `"and"` nodes pass when every child passes.
+ * - `"or"` nodes pass when any child passes.
+ * - `"equals"` / `"in"` leaves delegate to {@link LEAF_OPERATOR_HANDLERS}.
+ */
+function evaluateCondition(
+  cond: AttributeCondition,
+  currentValues: Record<string, unknown>
+): boolean {
+  switch (cond.operator) {
+    case "and":
+      return cond.conditions.every((c) => evaluateCondition(c, currentValues));
+    case "or":
+      return cond.conditions.some((c) => evaluateCondition(c, currentValues));
+    case "equals":
+    case "in": {
+      const handler = LEAF_OPERATOR_HANDLERS[cond.operator];
+      return handler(currentValues[cond.field], cond.value);
+    }
+    default: {
+      const _exhaustive: never = cond;
+      throw new Error(
+        `Unhandled operator: ${(_exhaustive as AttributeCondition).operator}`
+      );
+    }
+  }
+}
+
+/**
+ * Evaluates a `when` condition tree against the current label field values.
  *
- * @param conditions - The `when` array from an attribute definition, or
- *   undefined/empty for unconditionally-visible attributes.
+ * Visibility semantics: an attribute is visible only if its condition tree
+ * evaluates to true. Compose AND / OR logic via
+ * {@link AttributeConditionAnd} / {@link AttributeConditionOr} nodes; a bare
+ * leaf condition is a single field check.
+ *
+ * @param condition - The `when` root node from an attribute definition, or
+ *   `undefined` for unconditionally-visible attributes.
  * @param currentValues - Flat map of the label's current field values
  *   (e.g. `{ label: "dog", category: "mammal" }`).
  * @returns `true` if the attribute should be shown, `false` if it should be
  *   hidden.
  */
 export function evaluateWhen(
-  conditions: AttributeCondition[] | undefined,
+  condition: AttributeCondition | undefined,
   currentValues: Record<string, unknown>
 ): boolean {
-  if (!conditions || conditions.length === 0) return true;
-
-  return conditions.every((cond) => {
-    const handler = OPERATOR_HANDLERS[cond.operator];
-    if (!handler) {
-      throw new Error(`Unhandled operator: ${cond.operator}`);
-    }
-    return handler(currentValues[cond.field], cond.value);
-  });
+  if (!condition) return true;
+  return evaluateCondition(condition, currentValues);
 }
 
 /**
- * Determines whether a set of `when` conditions can ever be simultaneously
- * satisfied given the possible values of the referenced fields in the schema.
+ * Recursively determines whether a condition node can ever be satisfied given
+ * the possible values of the referenced fields in the schema.
+ *
+ * - `"and"` is fulfillable when every child is fulfillable.
+ * - `"or"` is fulfillable when any child is fulfillable.
+ * - Leaf nodes check whether the referenced field's allowed value set contains
+ *   a matching value.
+ */
+function isConditionFulfillable(
+  cond: AttributeCondition,
+  valuesByField: Map<string, Set<unknown>>
+): boolean {
+  switch (cond.operator) {
+    case "and":
+      return cond.conditions.every((c) =>
+        isConditionFulfillable(c, valuesByField)
+      );
+    case "or":
+      return cond.conditions.some((c) =>
+        isConditionFulfillable(c, valuesByField)
+      );
+    case "equals": {
+      const allowed = valuesByField.get(cond.field);
+      // Field has no constrained value list — condition could be satisfied.
+      if (!allowed) return true;
+      return allowed.has(cond.value);
+    }
+    case "in": {
+      const allowed = valuesByField.get(cond.field);
+      if (!allowed) return true;
+      return (
+        Array.isArray(cond.value) &&
+        (cond.value as unknown[]).some((v) => allowed.has(v))
+      );
+    }
+    default: {
+      const _exhaustive: never = cond;
+      throw new Error(
+        `Unhandled operator: ${(_exhaustive as AttributeCondition).operator}`
+      );
+    }
+  }
+}
+
+/**
+ * Determines whether a `when` condition tree can ever be satisfied given the
+ * possible values of the referenced fields in the schema.
  *
  * Used to detect attributes whose conditions are structurally unfulfillable
- * (e.g. `when: [{ field: "category", operator: "equals", value: "insect" }]`
+ * (e.g. `when: { operator: "equals", field: "category", value: "insect" }`
  * but `category` has no "insect" in its `values` list). Such attributes —
  * when also marked `required` — must be rendered unconditionally so the
  * annotator can still fill them in.
  *
- * With AND semantics, every condition must be independently fulfillable for
- * the set as a whole to be considered fulfillable.
+ * For `"and"` trees, every branch must be independently fulfillable.
+ * For `"or"` trees, at least one branch must be fulfillable.
  *
- * @param conditions - The `when` conditions to check.
+ * @param condition - The `when` root node to check.
  * @param schemaAttributes - All attribute configs for the current label schema,
  *   used to look up each referenced field's allowed values.
- * @returns `true` if every condition could be satisfied, `false` if any
- *   condition references a value that isn't in the field's value list.
+ * @returns `true` if the condition could be satisfied, `false` if it is
+ *   structurally impossible given the schema's value constraints.
  */
 export function isWhenFulfillable(
-  conditions: AttributeCondition[] | undefined,
+  condition: AttributeCondition | undefined,
   schemaAttributes: AttributeConfig[]
 ): boolean {
-  if (!conditions || conditions.length === 0) return true;
+  if (!condition) return true;
 
   // Merge values from all attributes with the same name so that duplicate
   // entries (e.g. "animal_name" for "mammal" and "reptile" variants) each
@@ -98,28 +170,7 @@ export function isWhenFulfillable(
     }
   }
 
-  return conditions.every((cond) => {
-    const allowed = valuesByField.get(cond.field);
-    if (!allowed) {
-      // Field has no constrained value list — condition could be satisfied.
-      return true;
-    }
-
-    // Reuse the same operator handlers, but against the set of allowed values
-    switch (cond.operator) {
-      case "equals":
-        return allowed.has(cond.value);
-      case "in":
-        return (
-          Array.isArray(cond.value) &&
-          (cond.value as unknown[]).some((v) => allowed.has(v))
-        );
-      default: {
-        const _exhaustive: never = cond.operator;
-        throw new Error(`Unhandled operator: ${_exhaustive}`);
-      }
-    }
-  });
+  return isConditionFulfillable(condition, valuesByField);
 }
 
 /**

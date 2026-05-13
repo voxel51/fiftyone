@@ -13,6 +13,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 import { SortableEvent } from "react-sortablejs";
 import {
@@ -24,6 +25,8 @@ import {
 import SpaceTree from "./SpaceTree";
 import { PanelContext } from "./contexts";
 import {
+  currentPanelAreasRenderer,
+  panelAreaRenderers,
   panelIdToScopeAtom,
   panelStatePartialSelector,
   panelStateSelector,
@@ -487,4 +490,46 @@ function useScope(scope?: string) {
   const panelContext = usePanelContext();
   if (typeof scope === "string") return scope;
   return panelContext?.scope;
+}
+
+export function usePanelAreaRenderer(areaId: string) {
+  const [currentRenderers, setCurrentRenderers] = useRecoilState(
+    currentPanelAreasRenderer
+  );
+
+  const renderers = useSyncExternalStore(
+    panelAreaRenderers.subscribe,
+    panelAreaRenderers.getSnapshot
+  );
+
+  const setRenderer = useCallback(
+    (rendererId: string) => {
+      setCurrentRenderers((renderers) => {
+        const updatedRenderers = new Map(renderers);
+        updatedRenderers.set(areaId, rendererId);
+        return updatedRenderers;
+      });
+    },
+    [areaId, setCurrentRenderers]
+  );
+
+  const unsetRenderer = useCallback(
+    (rendererId: string) => {
+      setCurrentRenderers((renderers) => {
+        const updatedRenderers = new Map(renderers);
+        if (!rendererId || updatedRenderers.get(areaId) === rendererId) {
+          updatedRenderers.delete(areaId);
+        }
+        return updatedRenderers;
+      });
+    },
+    [areaId, setCurrentRenderers]
+  );
+
+  const currentRendererId = currentRenderers.get(areaId);
+  const CurrentRenderer = currentRendererId
+    ? renderers.get(currentRendererId)
+    : undefined;
+
+  return { setRenderer, unsetRenderer, currentRendererId, CurrentRenderer };
 }
