@@ -1,6 +1,5 @@
 import { useAnnotationController } from "@fiftyone/annotation";
 import * as fos from "@fiftyone/state";
-import "../builtin";
 import { Operator, OperatorConfig } from "../operators";
 import * as types from "../types";
 

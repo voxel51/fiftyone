@@ -1,4 +1,5 @@
 import * as fos from "@fiftyone/state";
+import { isNullish } from "@fiftyone/utilities";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { Operator, OperatorConfig } from "../operators";
 import * as types from "../types";
@@ -64,7 +65,7 @@ export class SetColorScheme extends Operator {
 
     const updatedColorScheme = otherParams ?? {};
 
-    if (color_by) {
+    if (!isNullish(color_by)) {
       updatedColorScheme["colorBy"] = color_by;
     }
 
@@ -75,38 +76,38 @@ export class SetColorScheme extends Operator {
         fos.constants.COLOR_BLIND_FRIENDLY_PALETTE;
     }
 
-    if (color_pool) {
+    if (!isNullish(color_pool)) {
       updatedColorScheme["colorPool"] = color_pool;
     }
 
     // name takes precedence over list for colorscale
     // value must be between 0 and 1
-    if (default_colorscale_preset) {
+    if (!isNullish(default_colorscale_preset)) {
       updatedColorScheme["defaultColorscale"] = {
         name: default_colorscale_preset,
         list: null,
       };
-    } else if (default_colorscale) {
+    } else if (!isNullish(default_colorscale)) {
       updatedColorScheme["defaultColorscale"] = {
         name: null,
         list: default_colorscale,
       };
     }
 
-    if (default_mask_targets_colors) {
+    if (!isNullish(default_mask_targets_colors)) {
       updatedColorScheme["defaultMaskTargetsColors"] =
         default_mask_targets_colors;
     }
 
-    if (opacity !== undefined) {
+    if (!isNullish(opacity)) {
       updatedColorScheme["opacity"] = opacity;
     }
 
-    if (multi_color_keypoints) {
+    if (!isNullish(multi_color_keypoints)) {
       updatedColorScheme["multicolorKeypoints"] = multi_color_keypoints;
     }
 
-    if (show_keypoint_skeletons) {
+    if (!isNullish(show_keypoint_skeletons)) {
       updatedColorScheme["showSkeletons"] = show_keypoint_skeletons;
     }
 

@@ -1,8 +1,4 @@
-import { usePanels, useSpaceNodes } from "@fiftyone/spaces";
-import {
-  panelsLocalStateAtom,
-  panelsStateAtom,
-} from "@fiftyone/spaces/src/state";
+import { usePanels, usePanelsState, useSpaceNodes } from "@fiftyone/spaces";
 import { constants, isModalActive } from "@fiftyone/state";
 import { useRecoilValue } from "recoil";
 import { Operator, OperatorConfig } from "../operators";
@@ -146,7 +142,7 @@ export class GetPanelState extends Operator {
   useHooks(): GetPanelStateHooks {
     const openedGridPanels = useSpaceNodes(FIFTYONE_GRID_SPACES_ID);
     const openedModalPanels = useSpaceNodes(FIFTYONE_MODAL_SPACES_ID);
-    const panelsState = useRecoilValue(panelsStateAtom);
+    const [panelsState] = usePanelsState();
 
     const openedPanels = [...openedGridPanels, ...openedModalPanels];
 
@@ -170,7 +166,7 @@ export class GetPanelState extends Operator {
       throw new Error("Panel not found");
     }
 
-    return panelsState.get(computedId);
+    return panelsState[computedId];
   }
 }
 
@@ -197,7 +193,7 @@ export class GetPanelData extends Operator {
   useHooks(): GetPanelDataHooks {
     const openedGridPanels = useSpaceNodes(FIFTYONE_GRID_SPACES_ID);
     const openedModalPanels = useSpaceNodes(FIFTYONE_MODAL_SPACES_ID);
-    const panelsData = useRecoilValue(panelsLocalStateAtom);
+    const [panelsData] = usePanelsState(true);
 
     const openedPanels = [...openedGridPanels, ...openedModalPanels];
 
@@ -219,6 +215,6 @@ export class GetPanelData extends Operator {
       throw new Error("Panel not found");
     }
 
-    return panelsData.get(computedId);
+    return panelsData[computedId];
   }
 }
