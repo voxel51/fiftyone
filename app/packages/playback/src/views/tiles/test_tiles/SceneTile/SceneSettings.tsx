@@ -1,35 +1,44 @@
+import { Checkbox, Select, Text, TextColor, TextVariant } from "@voxel51/voodo";
+import React, { useMemo } from "react";
 import {
-  Checkbox,
-  Heading,
-  Select,
-  Text,
-  TextColor,
-  TextVariant,
-} from "@voxel51/voodo";
-import React from "react";
+  useSetTileSource,
+  useStreamsByKind,
+  useTileSource,
+} from "../../../../lib/playback/use-tile-state";
 import styles from "../../tile-settings.module.css";
 
-const CAMERAS = [
-  { id: "perspective", data: { label: "Perspective" } },
-  { id: "top", data: { label: "Top-down" } },
-  { id: "iso", data: { label: "Isometric" } },
-];
+const SceneSettings: React.FC = () => {
+  const sources = useStreamsByKind("scene");
+  const sourceId = useTileSource();
+  const setSource = useSetTileSource();
 
-const SceneSettings: React.FC = () => (
-  <div className={styles.root}>
-    <Heading>3D Scene</Heading>
+  const options = useMemo(
+    () =>
+      sources.map((s) => ({
+        id: s.id,
+        data: { label: s.tile.title },
+      })),
+    [sources]
+  );
 
-    <div className={styles.field}>
-      <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-        Camera
-      </Text>
-      <Select options={CAMERAS} value="perspective" />
+  return (
+    <div className={styles.root}>
+      <div className={styles.field}>
+        <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+          Source
+        </Text>
+        <Select
+          options={options}
+          value={sourceId ?? ""}
+          onChange={(v) => setSource((v as string) || null)}
+        />
+      </div>
+
+      <Checkbox label="Show grid" defaultChecked />
+      <Checkbox label="Show path" defaultChecked />
+      <Checkbox label="Show axes" />
     </div>
-
-    <Checkbox label="Show grid" defaultChecked />
-    <Checkbox label="Show path" defaultChecked />
-    <Checkbox label="Show axes" />
-  </div>
-);
+  );
+};
 
 export default SceneSettings;

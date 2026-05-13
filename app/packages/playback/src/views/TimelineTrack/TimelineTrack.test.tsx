@@ -215,14 +215,16 @@ describe("TimelineTrack", () => {
       expect(screen.getByTestId("playhead").textContent).toBe("6.000");
     });
 
-    it("does not seek when an event marker is clicked", () => {
+    it("clicking an event marker seeks to that event's start time", () => {
       const { container } = renderTrack({
         track: { start: 0, end: 10, events: [3] },
       });
       const event = container.querySelector(".event") as HTMLElement;
+      // The lane's click handler short-circuits on event targets so we
+      // don't double-seek; the event's own click handler seeks to its
+      // startSec (3 here).
       fireEvent.click(event, { clientX: 250 });
-      // The handler short-circuits on event-class targets — playhead stays at 0.
-      expect(screen.getByTestId("playhead").textContent).toBe("0.000");
+      expect(screen.getByTestId("playhead").textContent).toBe("3.000");
     });
   });
 

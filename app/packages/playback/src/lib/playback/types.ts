@@ -159,9 +159,22 @@ export interface PlaybackStream {
  * Streams attach this via `PlaybackStream.tile` so UIs like
  * `TilingHeader` can build their add-tile menu by scanning what's been
  * registered with the engine — no per-story menu wiring required.
+ *
+ * `kind` is the type discriminator (e.g. `"camera"`): the add-tile menu
+ * groups by it, the settings panel filters by it (so a camera tile's
+ * source picker only lists camera streams), and tile components can
+ * key behavior off it.
+ *
+ * `title` is the per-source label ("Camera front", "IMU"). `kindLabel`
+ * is the menu label shared across all streams of the same kind
+ * ("Camera", "IMU").
  */
 export interface PlaybackStreamTileMetadata {
-  /** Display label in the add-tile menu. */
+  /** Type discriminator for source/menu grouping. */
+  kind: string;
+  /** Menu label, shared across all streams of the same `kind`. */
+  kindLabel: string;
+  /** Per-source display name (used in the settings source picker). */
   title: string;
   /** Menu item icon. */
   icon: IconName;

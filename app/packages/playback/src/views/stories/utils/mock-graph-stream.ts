@@ -40,6 +40,8 @@ class MockGraphStream extends PlaybackStreamBase<MockGraphSample> {
       duration,
       nativeStepSeconds: 1 / hz,
       tile: {
+        kind: "graph",
+        kindLabel: "Graph",
         title,
         icon: IconName.Logs,
         Tile: GraphTile,

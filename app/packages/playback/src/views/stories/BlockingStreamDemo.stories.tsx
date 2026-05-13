@@ -16,19 +16,16 @@ import {
   TilingTile,
   useTiling,
 } from "../../lib/TilingProvider";
+import { TrackProvider } from "../../lib/TrackProvider";
 import BlobTile from "../tiles/test_tiles/BlobTile/BlobTile";
 import BlockingTile from "../tiles/test_tiles/BlockingTile/BlockingTile";
 import MosaicGrid from "../tiles/MosaicGrid";
-import TimelineWithTracks, {
-  TimelineTrackConfig,
-} from "../TimelineWithTracks/TimelineWithTracks";
+import TimelineWithTracks from "../TimelineWithTracks/TimelineWithTracks";
 
 const meta: Meta = { title: "Playback/BlockingStreamDemo" };
 export default meta;
 
 type TileKind = "blob" | "blocking";
-
-const STREAM_DURATION = 20;
 
 const KIND_LABELS: Record<TileKind, string> = {
   blob: "Blob (non-blocking)",
@@ -59,40 +56,9 @@ const INITIAL_TILES: Record<string, TilingTile> = {
   "blocking-1": tile("blocking", "blocking_a"),
 };
 
-const KIND_TRACK_COLOR: Record<TileKind, string> = {
-  blob: "#7c5cff",
-  blocking: "#ff7c4a",
-};
-
-/** Recover a tile's kind from its generated id (e.g. `blocking-3` → `blocking`). */
-function kindFromId(id: string): TileKind | null {
-  if (id.startsWith("blob")) return "blob";
-  if (id.startsWith("blocking")) return "blocking";
-  return null;
-}
-
-function tracksFromTiles(
-  tiles: Record<string, TilingTile>
-): TimelineTrackConfig[] {
-  return Object.keys(tiles).map((id) => {
-    const kind = kindFromId(id);
-    return {
-      id,
-      color: kind ? KIND_TRACK_COLOR[kind] : "#888",
-      start: 0,
-      end: STREAM_DURATION,
-      // A handful of evenly-spaced "events" so the track has some texture;
-      // these don't correspond to any real data, they're just visual.
-      events: [2, 5, 8, 12, 16, 19],
-    };
-  });
-}
-
 function DemoBody() {
   const { layout, tiles, focusedTileId, setLayout, setFocusedTileId, addTile, autoLayout } =
     useTiling();
-
-  const tracks = tracksFromTiles(tiles);
 
   return (
     <div
@@ -155,7 +121,7 @@ function DemoBody() {
         </div>
       </div>
 
-      <TimelineWithTracks tracks={tracks} />
+      <TimelineWithTracks />
     </div>
   );
 }
@@ -163,9 +129,11 @@ function DemoBody() {
 export const Default: StoryObj = {
   render: () => (
     <PlaybackProvider stepInterval={1 / 30}>
-      <TilingProvider initialTiles={INITIAL_TILES}>
-        <DemoBody />
-      </TilingProvider>
+      <TrackProvider>
+        <TilingProvider initialTiles={INITIAL_TILES}>
+          <DemoBody />
+        </TilingProvider>
+      </TrackProvider>
     </PlaybackProvider>
   ),
 };

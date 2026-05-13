@@ -1,5 +1,4 @@
 import { IconName } from "@voxel51/voodo";
-import React from "react";
 import { PlaybackStreamBase } from "../../../lib/playback/stream-base";
 import type { BufferReadiness } from "../../../lib/playback/types";
 import JsonDataTile from "../../tiles/test_tiles/JsonDataTile/JsonDataTile";
@@ -25,9 +24,11 @@ class MockJsonStream extends PlaybackStreamBase<MockJsonRecord> {
       duration,
       nativeStepSeconds: 1 / hz,
       tile: {
+        kind: "json",
+        kindLabel: "JSON Data",
         title,
         icon: IconName.JSON,
-        Tile: () => React.createElement(JsonDataTile, { streamId: id }),
+        Tile: JsonDataTile,
       },
     });
   }

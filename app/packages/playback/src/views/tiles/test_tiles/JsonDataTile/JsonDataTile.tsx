@@ -1,18 +1,17 @@
 import React from "react";
 import { useStream } from "../../../../lib/playback/use-stream";
+import { useTileSource } from "../../../../lib/playback/use-tile-state";
 import { useTileSettings } from "../../../../lib/TilingProvider";
 import JsonDataSettings from "./JsonDataSettings";
 import styles from "./JsonDataTile.module.css";
 
 export interface JsonDataTileProps {
-  /** Object to render as JSON. Falls back to a placeholder when omitted. */
-  data?: unknown;
   /**
-   * If provided, subscribes to the stream with this id and renders its
-   * payload. `data` takes priority — useful for the standalone story to
-   * pass a fixed sample.
+   * Object to render as JSON. When provided, takes priority over the
+   * tile's bound stream — useful for the standalone story to pass a
+   * fixed sample.
    */
-  streamId?: string;
+  data?: unknown;
 }
 
 const PLACEHOLDER_DATA = {
@@ -31,13 +30,14 @@ const PLACEHOLDER_DATA = {
  * JSON tile body — syntax-colored render of an arbitrary object. Chrome
  * is provided externally (see `Tile` / `MosaicGrid`).
  */
-const JsonDataTile: React.FC<JsonDataTileProps> = ({ data, streamId }) => {
+const JsonDataTile: React.FC<JsonDataTileProps> = ({ data }) => {
   useTileSettings(JsonDataSettings);
-  const streamValue = useStream<unknown>(streamId ?? "");
+  const sourceId = useTileSource();
+  const streamValue = useStream<unknown>(sourceId ?? "");
   const value =
     data !== undefined
       ? data
-      : streamId && streamValue !== null
+      : sourceId && streamValue !== null
         ? streamValue
         : PLACEHOLDER_DATA;
   return <div className={styles.body}>{formatJson(value)}</div>;

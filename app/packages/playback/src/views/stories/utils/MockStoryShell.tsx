@@ -1,22 +1,27 @@
+import { useStore } from "jotai";
 import {
   createContext,
   useContext,
+  useEffect,
   useMemo,
   type ReactNode,
 } from "react";
+import { tileSourceAtom } from "../../../lib/playback/atoms";
 import {
   TilingProvider,
   type TilingTile,
 } from "../../../lib/TilingProvider";
-import type { TimelineTrackConfig } from "../../TimelineWithTracks/TimelineWithTracks";
+import { TrackProvider, type Track } from "../../../lib/TrackProvider";
 import { DEFAULT_STREAM_CONFIGS } from "./default-stream-configs";
-import { tracksFromBundles } from "./track-utils";
+import {
+  DEFAULT_PINNED_TRACK_IDS,
+  DEFAULT_TRACKS,
+} from "./default-tracks";
 import type { MockStreamBundle } from "./types";
 import { useMockStreams, type MockStreamConfig } from "./use-mock-streams";
 
 interface MockStoryContextValue {
   bundles: MockStreamBundle[];
-  tracks: TimelineTrackConfig[];
 }
 
 const MockStoryContext = createContext<MockStoryContextValue | null>(null);
@@ -33,20 +38,6 @@ export function useMockBundles(): MockStreamBundle[] {
     throw new Error("useMockBundles must be used inside <MockStoryShell>");
   }
   return ctx.bundles;
-}
-
-/**
- * Read the auto-derived timeline tracks (one per registered stream
- * bundle, full-duration, with sensible default coloring + event
- * markers). Stories that want bespoke tracks should bypass this and
- * pass a hand-written array directly into TimelineWithTracks.
- */
-export function useMockTracks(): TimelineTrackConfig[] {
-  const ctx = useContext(MockStoryContext);
-  if (!ctx) {
-    throw new Error("useMockTracks must be used inside <MockStoryShell>");
-  }
-  return ctx.tracks;
 }
 
 /**
@@ -69,6 +60,13 @@ export interface MockStoryShellProps {
    * mix so demos pick up sane data without specifying anything.
    */
   configs?: MockStreamConfig[];
+  /**
+   * Semantic tracks broadcast through the surrounding `TrackProvider`.
+   * Defaults to {@link DEFAULT_TRACKS}.
+   */
+  tracks?: Track[];
+  /** Which of the tracks start pinned to the timeline. */
+  pinnedTrackIds?: string[];
   children: ReactNode;
 }
 
@@ -95,9 +93,12 @@ export interface MockStoryShellProps {
  */
 export function MockStoryShell({
   configs = DEFAULT_STREAM_CONFIGS,
+  tracks = DEFAULT_TRACKS,
+  pinnedTrackIds = DEFAULT_PINNED_TRACK_IDS,
   children,
 }: MockStoryShellProps) {
   const bundles = useMockStreams(configs);
+  const store = useStore();
 
   const initialTiles = useMemo<Record<string, TilingTile>>(
     () =>
@@ -107,13 +108,22 @@ export function MockStoryShell({
     [bundles]
   );
 
-  const tracks = useMemo(() => tracksFromBundles(bundles), [bundles]);
+  // Bind each seeded tile to its corresponding stream id. Tile bodies
+  // read this from `tileSourceAtom(tileId)` via `useTileSource()`, so
+  // the initial layout has data flowing without any per-story setup.
+  useEffect(() => {
+    for (const bundle of bundles) {
+      store.set(tileSourceAtom(`${bundle.id}-1`), bundle.id);
+    }
+  }, [bundles, store]);
 
-  const value = useMemo(() => ({ bundles, tracks }), [bundles, tracks]);
+  const value = useMemo(() => ({ bundles }), [bundles]);
 
   return (
     <MockStoryContext.Provider value={value}>
-      <TilingProvider initialTiles={initialTiles}>{children}</TilingProvider>
+      <TrackProvider initialTracks={tracks} initialPinnedIds={pinnedTrackIds}>
+        <TilingProvider initialTiles={initialTiles}>{children}</TilingProvider>
+      </TrackProvider>
     </MockStoryContext.Provider>
   );
 }

@@ -7,11 +7,16 @@ import SidebarPanel from "../SidebarPanel/SidebarPanel";
  * Left-hand sidebar that renders the focused tile's settings component,
  * if one was registered via `useTileSettings`. Otherwise shows an empty
  * state hint. Reads directly from the surrounding `TilingProvider`.
+ *
+ * The header reads "Settings: <tile title>" so it's obvious which tile
+ * is being configured.
  */
 const TileSettingsSidebar: React.FC = () => {
-  const { focusedTileId, FocusedTileSettings } = useTiling();
+  const { focusedTileId, FocusedTileSettings, tiles } = useTiling();
+  const focusedTile = focusedTileId ? tiles[focusedTileId] : null;
+  const title = focusedTile ? `Settings: ${focusedTile.title}` : "Settings";
   return (
-    <SidebarPanel title="Settings">
+    <SidebarPanel title={title}>
       {focusedTileId && FocusedTileSettings ? (
         <FocusedTileSettings />
       ) : (

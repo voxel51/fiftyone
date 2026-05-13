@@ -1,5 +1,4 @@
 import { IconName } from "@voxel51/voodo";
-import React from "react";
 import { PlaybackStreamBase } from "../../../lib/playback/stream-base";
 import type { BufferReadiness } from "../../../lib/playback/types";
 import SceneTile from "../../tiles/test_tiles/SceneTile/SceneTile";
@@ -35,9 +34,11 @@ class MockSceneStream extends PlaybackStreamBase<MockScenePose> {
       duration,
       nativeStepSeconds: 1 / 30,
       tile: {
+        kind: "scene",
+        kindLabel: "3D Scene",
         title,
         icon: IconName.Workspaces,
-        Tile: () => React.createElement(SceneTile, { streamId: id }),
+        Tile: SceneTile,
       },
     });
   }

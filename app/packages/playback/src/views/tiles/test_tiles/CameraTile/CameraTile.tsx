@@ -1,5 +1,6 @@
 import React from "react";
 import { useStream } from "../../../../lib/playback/use-stream";
+import { useTileSource } from "../../../../lib/playback/use-tile-state";
 import { useTileSettings } from "../../../../lib/TilingProvider";
 import CameraSettings from "./CameraSettings";
 import styles from "./CameraTile.module.css";
@@ -10,27 +11,18 @@ interface CameraFrame {
   label?: string;
 }
 
-export interface CameraTileProps {
-  /**
-   * If provided, the tile subscribes to the stream with this id and
-   * shows its live `label` / `frameNumber` payload. Omit to render the
-   * static placeholder (used by the standalone tile stories).
-   */
-  streamId?: string;
-}
-
 /**
  * Camera tile body — placeholder video pane plus an optional live
- * frame-number / label readout from a connected stream. The Tile chrome
- * (title + actions) is provided externally: either by `<Tile>` for
- * standalone usage or by `<MosaicGrid>`'s toolbar in a mosaic context.
+ * frame-number / label readout from the tile's bound source stream
+ * (selected via the settings sidebar's source picker).
  *
- * Registers its settings UI with the surrounding `TilingProvider` so the
- * page-level sidebar can show it when this tile is focused.
+ * Reads its source from the per-tile `tileSourceAtom` so the user can
+ * swap which camera feed is bound without remounting the tile.
  */
-const CameraTile: React.FC<CameraTileProps> = ({ streamId }) => {
+const CameraTile: React.FC = () => {
   useTileSettings(CameraSettings);
-  const frame = useStream<CameraFrame>(streamId ?? "");
+  const sourceId = useTileSource();
+  const frame = useStream<CameraFrame>(sourceId ?? "");
   return (
     <div className={styles.body}>
       <div className={styles.recIndicator}>
@@ -50,9 +42,7 @@ const CameraTile: React.FC<CameraTileProps> = ({ streamId }) => {
           <path d="M23 13 L29 9 L29 23 L23 19 Z" />
         </svg>
         <span>
-          {streamId && frame?.label
-            ? frame.label
-            : "Camera feed"}
+          {sourceId && frame?.label ? frame.label : "Camera feed"}
         </span>
       </div>
     </div>

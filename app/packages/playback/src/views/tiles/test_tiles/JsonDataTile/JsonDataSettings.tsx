@@ -1,34 +1,43 @@
+import { Checkbox, Select, Text, TextColor, TextVariant } from "@voxel51/voodo";
+import React, { useMemo } from "react";
 import {
-  Checkbox,
-  Heading,
-  Select,
-  Text,
-  TextColor,
-  TextVariant,
-} from "@voxel51/voodo";
-import React from "react";
+  useSetTileSource,
+  useStreamsByKind,
+  useTileSource,
+} from "../../../../lib/playback/use-tile-state";
 import styles from "../../tile-settings.module.css";
 
-const SOURCES = [
-  { id: "gps", data: { label: "gps" } },
-  { id: "imu", data: { label: "imu" } },
-  { id: "metadata", data: { label: "metadata" } },
-];
+const JsonDataSettings: React.FC = () => {
+  const sources = useStreamsByKind("json");
+  const sourceId = useTileSource();
+  const setSource = useSetTileSource();
 
-const JsonDataSettings: React.FC = () => (
-  <div className={styles.root}>
-    <Heading>JSON Data</Heading>
+  const options = useMemo(
+    () =>
+      sources.map((s) => ({
+        id: s.id,
+        data: { label: s.tile.title },
+      })),
+    [sources]
+  );
 
-    <div className={styles.field}>
-      <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-        Source
-      </Text>
-      <Select options={SOURCES} value="gps" />
+  return (
+    <div className={styles.root}>
+      <div className={styles.field}>
+        <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+          Source
+        </Text>
+        <Select
+          options={options}
+          value={sourceId ?? ""}
+          onChange={(v) => setSource((v as string) || null)}
+        />
+      </div>
+
+      <Checkbox label="Pretty-print" defaultChecked />
+      <Checkbox label="Show types" />
     </div>
-
-    <Checkbox label="Pretty-print" defaultChecked />
-    <Checkbox label="Show types" />
-  </div>
-);
+  );
+};
 
 export default JsonDataSettings;

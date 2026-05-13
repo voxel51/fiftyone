@@ -1,24 +1,20 @@
 import { Drawer, useElementSize } from "@voxel51/voodo";
 import clsx from "clsx";
 import React, { useRef } from "react";
+import { usePlayback } from "../../lib/playback/PlaybackProvider";
 import {
   TIMELINE_DEFAULT_DRAWER_SIZE,
   TIMELINE_DRAWER_MAX_SIZE,
   TIMELINE_LABEL_WIDTH,
 } from "../../lib/constants";
+import { useTracks, useTrackPinning } from "../../lib/TrackProvider";
 import LoopOverlays from "../Loop/LoopOverlays";
 import PlayheadLine from "../Playhead/PlayheadLine";
 import TimelineHeader from "../TimelineHeader/TimelineHeader";
-import TimelineTrack, { TimelineTrackProps } from "../TimelineTrack/TimelineTrack";
+import TimelineTrack from "../TimelineTrack/TimelineTrack";
 import styles from "./TimelineWithTracks.module.css";
 
-export type TimelineTrackConfig = Pick<
-  TimelineTrackProps,
-  "id" | "color" | "bg" | "start" | "end" | "events" | "height"
->;
-
 export interface TimelineWithTracksProps {
-  tracks: TimelineTrackConfig[];
   /** @default TIMELINE_LABEL_WIDTH */
   labelWidth?: number;
   /**
@@ -37,18 +33,39 @@ export interface TimelineWithTracksProps {
 
 /**
  * Full timeline composition: controls + ruler in the always-visible header,
- * tracks in the resizable body. Subscribes to no atoms directly — every
- * tick-y subscription lives in `<PlayheadLine>` and `<LoopOverlays>`, so
- * the buttons in the header stay stable across RAF ticks.
+ * tracks in the resizable body. Reads tracks from the surrounding
+ * `TrackProvider` — every track renders, but pinned ones sort to the top
+ * with full opacity and unpinned ones sit underneath dimmed. Clicking the
+ * pin button on a row toggles its pin state; clicking an event on the row
+ * seeks the playhead to that event's start.
+ *
+ * Subscribes to no atoms directly — every tick-y subscription lives in
+ * `<PlayheadLine>` and `<LoopOverlays>`, so the buttons in the header stay
+ * stable across RAF ticks.
  */
 const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
-  tracks,
   labelWidth = TIMELINE_LABEL_WIDTH,
   defaultSize = TIMELINE_DEFAULT_DRAWER_SIZE,
   maxSize = TIMELINE_DRAWER_MAX_SIZE,
   className,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const tracks = useTracks();
+  const { pinnedIds, togglePin } = useTrackPinning();
+  const { seek } = usePlayback();
+
+  // Pinned first, unpinned after — within each group, preserve the
+  // declared order so the layout doesn't shuffle on pin/unpin actions
+  // beyond the bare minimum (toggled track moves between groups).
+  const sortedTracks = React.useMemo(() => {
+    const pinned: typeof tracks = [];
+    const unpinned: typeof tracks = [];
+    for (const t of tracks) {
+      if (pinnedIds.has(t.id)) pinned.push(t);
+      else unpinned.push(t);
+    }
+    return [...pinned, ...unpinned];
+  }, [tracks, pinnedIds]);
 
   // Measure both the header (controls + ruler) and the tracks body so we
   // can clamp the drawer's draggable max to the actual visible content.
@@ -88,13 +105,23 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
       >
         <div className={styles.tracksArea}>
           <div ref={tracksBodyRef} className={styles.tracksBody}>
-            {tracks.map((track) => (
-              <TimelineTrack
-                key={track.id}
-                {...track}
-                labelWidth={labelWidth}
-              />
-            ))}
+            {sortedTracks.map((track) => {
+              const pinned = pinnedIds.has(track.id);
+              return (
+                <TimelineTrack
+                  key={track.id}
+                  id={track.id}
+                  label={track.label}
+                  color={track.color}
+                  events={track.events}
+                  labelWidth={labelWidth}
+                  pinned={pinned}
+                  onPinClick={() => togglePin(track.id)}
+                  onEventClick={(e) => seek(e.startSec)}
+                  className={pinned ? undefined : styles.unpinnedTrack}
+                />
+              );
+            })}
           </div>
 
           {/* Both overlays are absolutely positioned and anchor to

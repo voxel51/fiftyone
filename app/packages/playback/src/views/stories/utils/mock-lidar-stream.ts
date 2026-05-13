@@ -1,5 +1,4 @@
 import { IconName } from "@voxel51/voodo";
-import React from "react";
 import { PlaybackStreamBase } from "../../../lib/playback/stream-base";
 import type { BufferReadiness } from "../../../lib/playback/types";
 import LidarTile from "../../tiles/test_tiles/LidarTile/LidarTile";
@@ -32,9 +31,11 @@ class MockLidarStream extends PlaybackStreamBase<MockLidarFrame> {
       duration,
       nativeStepSeconds: 1 / hz,
       tile: {
+        kind: "lidar",
+        kindLabel: "Lidar",
         title,
         icon: IconName.Embeddings,
-        Tile: () => React.createElement(LidarTile, { streamId: id }),
+        Tile: LidarTile,
       },
     });
   }

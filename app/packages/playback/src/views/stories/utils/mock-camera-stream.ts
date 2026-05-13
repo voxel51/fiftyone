@@ -1,5 +1,4 @@
 import { IconName } from "@voxel51/voodo";
-import React from "react";
 import { PlaybackStreamBase } from "../../../lib/playback/stream-base";
 import type { BufferReadiness } from "../../../lib/playback/types";
 import CameraTile from "../../tiles/test_tiles/CameraTile/CameraTile";
@@ -34,11 +33,11 @@ class MockCameraStream extends PlaybackStreamBase<MockCameraFrame> {
       duration,
       nativeStepSeconds: 1 / fps,
       tile: {
+        kind: "camera",
+        kindLabel: "Camera",
         title,
         icon: IconName.GridView,
-        // Pre-bind the streamId so the tile resolves its data via
-        // useStream(id) without any prop threading at the spawn site.
-        Tile: () => React.createElement(CameraTile, { streamId: id }),
+        Tile: CameraTile,
       },
     });
   }
@@ -76,8 +75,6 @@ export function createMockCameraStream(opts: MockCameraOptions): MockStreamBundl
     title,
     icon: IconName.GridView,
     stream,
-    // Re-use the same Tile component the stream advertises, so the
-    // bundle and the engine's registered-tile metadata stay in sync.
     Tile: stream.tile!.Tile,
   };
 }

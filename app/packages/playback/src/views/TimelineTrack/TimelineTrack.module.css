@@ -32,15 +32,17 @@
   min-width: 0;
 }
 
-/* Pin button is hidden until the label row is hovered. */
+/* Pin button stays visible — at half opacity when unpinned so it's
+   discoverable, full opacity when pinned (or on hover). */
 .pinButton {
-  opacity: 0;
+  opacity: 0.5;
   transition: opacity 0.1s;
   flex-shrink: 0;
 }
 
 .pinButtonActive {
   opacity: 1;
+  color: var(--color-brand-primary);
 }
 
 .label:hover .pinButton {
@@ -70,5 +72,21 @@
   width: 8px;
   height: 8px;
   z-index: 1;
-  cursor: default;
+  cursor: pointer;
+}
+
+/* Interval bar — one segment of a semantic track, click-to-seek. */
+.intervalBar {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 12px;
+  border-radius: 2px;
+  cursor: pointer;
+  z-index: 1;
+}
+
+.intervalBar:hover,
+.event:hover {
+  filter: brightness(1.15);
 }

@@ -17,13 +17,46 @@ import { useAtomValue } from "jotai";
 import React from "react";
 import styles from "./TimelineTrack.module.css";
 
+/**
+ * One event on a track. A `number` is shorthand for a point at that
+ * time; an object with an `endSec` renders as an interval bar, without
+ * one as a point.
+ */
+export type TimelineTrackEvent =
+  | number
+  | { startSec: number; endSec?: number; label?: string };
+
+interface NormalizedEvent {
+  startSec: number;
+  endSec?: number;
+  label?: string;
+}
+
+function normalizeEvent(e: TimelineTrackEvent): NormalizedEvent {
+  return typeof e === "number" ? { startSec: e } : e;
+}
+
 export interface TimelineTrackProps {
   id: string;
   color: string;
   bg?: string;
-  start: number;
-  end: number;
-  events?: number[];
+  /**
+   * Optional "background bar" running from `start` → `end`. Useful for
+   * showing the extent of a continuous stream. Omit for semantic tracks
+   * that are just a sequence of events.
+   */
+  start?: number;
+  end?: number;
+  /**
+   * Event list. Numbers render as point markers (legacy / continuous
+   * streams). Objects render as either an interval bar (when `endSec`
+   * is set) or a point.
+   */
+  events?: TimelineTrackEvent[];
+  /** Fired when an event marker / bar is clicked. Typically seeks. */
+  onEventClick?: (event: NormalizedEvent) => void;
+  /** Override the label column text. Defaults to `id`. */
+  label?: string;
   height?: number;
   labelWidth?: number;
   pinned?: boolean;
@@ -39,6 +72,8 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
   start,
   end,
   events = [],
+  onEventClick,
+  label,
   height = 28,
   labelWidth = 0,
   pinned = false,
@@ -54,9 +89,13 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
   const pct = (t: number) =>
     `${((t - viewStart) / viewDuration) * 100}%`;
 
-  const clippedStart = Math.max(start, viewStart);
-  const clippedEnd = Math.min(end, viewEnd);
-  const barVisible = clippedStart < clippedEnd;
+  // Background bar is rendered only when both start/end are provided.
+  const hasBackground = start !== undefined && end !== undefined;
+  const clippedStart = hasBackground ? Math.max(start, viewStart) : 0;
+  const clippedEnd = hasBackground ? Math.min(end, viewEnd) : 0;
+  const barVisible = hasBackground && clippedStart < clippedEnd;
+
+  const labelText = label ?? id;
 
   return (
     <div
@@ -72,7 +111,7 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
             color={TextColor.Primary}
             className={styles.labelText}
           >
-            {id}
+            {labelText}
           </Text>
           {onPinClick && (
             <Button
@@ -95,8 +134,11 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
       <div
         className={styles.lane}
         onClick={(e) => {
+          const target = e.target as HTMLElement;
+          // Event markers / bars own their own click — don't seek twice.
           if (
-            (e.target as HTMLElement).classList.contains(styles.event)
+            target.classList.contains(styles.event) ||
+            target.classList.contains(styles.intervalBar)
           )
             return;
           const rect = e.currentTarget.getBoundingClientRect();
@@ -118,15 +160,58 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
           />
         )}
         {events
-          .filter((t) => t >= viewStart && t <= viewEnd)
-          .map((t, i) => (
-            <div
-              key={i}
-              className={styles.event}
-              style={{ left: pct(t), background: color }}
-              title={`${id} @ ${t.toFixed(3)}s`}
-            />
-          ))}
+          .map(normalizeEvent)
+          .filter((e) =>
+            e.endSec !== undefined
+              ? e.endSec >= viewStart && e.startSec <= viewEnd
+              : e.startSec >= viewStart && e.startSec <= viewEnd
+          )
+          .map((e, i) => {
+            const handleClick = (ev: React.MouseEvent) => {
+              ev.stopPropagation();
+              if (onEventClick) onEventClick(e);
+              else seek(e.startSec);
+            };
+            if (e.endSec !== undefined) {
+              const left = pct(Math.max(e.startSec, viewStart));
+              const right = Math.min(e.endSec, viewEnd);
+              const width = `${
+                ((right - Math.max(e.startSec, viewStart)) / viewDuration) *
+                100
+              }%`;
+              return (
+                <div
+                  key={i}
+                  className={styles.intervalBar}
+                  style={{
+                    left,
+                    width,
+                    background: `${color}99`,
+                    border: `1px solid ${color}`,
+                  }}
+                  title={
+                    e.label
+                      ? `${e.label}  (${e.startSec.toFixed(2)}–${e.endSec.toFixed(2)}s)`
+                      : `${labelText}  (${e.startSec.toFixed(2)}–${e.endSec.toFixed(2)}s)`
+                  }
+                  onClick={handleClick}
+                />
+              );
+            }
+            return (
+              <div
+                key={i}
+                className={styles.event}
+                style={{ left: pct(e.startSec), background: color }}
+                title={
+                  e.label
+                    ? `${e.label}  @ ${e.startSec.toFixed(3)}s`
+                    : `${labelText} @ ${e.startSec.toFixed(3)}s`
+                }
+                onClick={handleClick}
+              />
+            );
+          })}
       </div>
     </div>
   );

@@ -95,3 +95,28 @@ export interface RegisteredTile {
   tile: PlaybackStreamTileMetadata;
 }
 export const registeredTilesAtom = atom<RegisteredTile[]>([]);
+
+/**
+ * Per-tile-id source binding. The value is the id of the registered
+ * stream whose data the tile should render — `null` when the tile is
+ * unbound (placeholder mode). Tiles read this via `useTileSource()`;
+ * the settings panel writes to it through `useSetTileSource()`.
+ */
+type TileSource = string | null;
+export const tileSourceAtom = atomFamily((_tileId: string) => {
+  const initial: TileSource = null;
+  return atom(initial);
+});
+
+/**
+ * Per-tile-id "current selection". Tile bodies write into this when the
+ * user clicks something inspectable (a graph point, a scene object,
+ * etc.); the inspector sidebar reads the focused tile's value to render
+ * its details. Shape is intentionally `unknown` — each tile can publish
+ * its own payload schema.
+ */
+type TileSelection = unknown;
+export const tileSelectionAtom = atomFamily((_tileId: string) => {
+  const initial: TileSelection = null;
+  return atom(initial);
+});

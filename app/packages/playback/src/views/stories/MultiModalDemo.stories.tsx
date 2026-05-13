@@ -8,13 +8,12 @@ import TileSettingsSidebar from "../TileSettingsSidebar/TileSettingsSidebar";
 import TilingHeader from "../TilingHeader/TilingHeader";
 import TilingInspectorSidebar from "../TilingInspectorSidebar/TilingInspectorSidebar";
 import TimelineWithTracks from "../TimelineWithTracks/TimelineWithTracks";
-import { MockStoryShell, useMockTracks } from "./utils";
+import { MockStoryShell } from "./utils";
 
 const meta: Meta = { title: "Playback/MultiModalDemo" };
 export default meta;
 
 function DemoBody() {
-  const tracks = useMockTracks();
   const { layout, tiles, focusedTileId, setLayout, setFocusedTileId } =
     useTiling();
   const [leftOpen, setLeftOpen] = useState(true);
@@ -74,7 +73,7 @@ function DemoBody() {
         </Drawer>
       </div>
 
-      <TimelineWithTracks tracks={tracks} />
+      <TimelineWithTracks />
     </div>
   );
 }

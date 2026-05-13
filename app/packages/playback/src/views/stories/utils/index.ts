@@ -11,10 +11,9 @@ export type {
 export { DEFAULT_STREAM_CONFIGS } from "./default-stream-configs";
 
 export {
-  bundleToTrack,
-  TRACK_COLOR_BY_KIND,
-  tracksFromBundles,
-} from "./track-utils";
+  DEFAULT_TRACKS,
+  DEFAULT_PINNED_TRACK_IDS,
+} from "./default-tracks";
 
 export {
   createMockCameraStream,
@@ -52,6 +51,5 @@ export {
   MockStoryShell,
   type MockStoryShellProps,
   useMockBundles,
-  useMockTracks,
   tileFromBundle,
 } from "./MockStoryShell";

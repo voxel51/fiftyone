@@ -33,3 +33,15 @@
   display: flex;
   flex-direction: column;
 }
+
+/* Unpinned tracks: dimmed but still visible & interactive (pin button +
+   event clicks still work). Gives users a way to see "what other
+   tracks exist" without pinning them. */
+.unpinnedTrack {
+  opacity: 0.45;
+  transition: opacity 0.15s;
+}
+
+.unpinnedTrack:hover {
+  opacity: 0.85;
+}
