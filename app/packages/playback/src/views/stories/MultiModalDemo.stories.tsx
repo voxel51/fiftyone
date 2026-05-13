@@ -3,7 +3,7 @@ import { useStore } from "jotai";
 import { useEffect } from "react";
 import { tileSourceAtom } from "../../lib/playback/atoms";
 import type { TilingTile } from "../../lib/TilingProvider";
-import MultiModalPlayback from "../MultiModalPlayback/MultiModalPlayback";
+import MultiModalPlayback from "../../../../multimodal/src/components/MultiModalPlayback/MultiModalPlayback";
 import {
   buildBundle,
   DEFAULT_PINNED_TRACK_IDS,
