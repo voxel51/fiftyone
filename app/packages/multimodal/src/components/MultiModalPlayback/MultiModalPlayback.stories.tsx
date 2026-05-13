@@ -1,8 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { useStore } from "jotai";
 import { useEffect } from "react";
-import { tileSourceAtom, type TilingTile } from "@fiftyone/tiling";
-import MultiModalPlayback from "../../../multimodal/src/components/MultiModalPlayback/MultiModalPlayback";
+import { useSetTileSourceFor, type TilingTile } from "@fiftyone/tiling";
 import {
   buildBundle,
   DEFAULT_PINNED_TRACK_IDS,
@@ -10,9 +8,10 @@ import {
   DEFAULT_TRACKS,
   useMockStreams,
   type MockStreamConfig,
-} from "./utils";
+} from "../../../../playback/src/stories/utils";
+import MultiModalPlayback from "./MultiModalPlayback";
 
-const meta: Meta = { title: "Playback/MultiModalDemo" };
+const meta: Meta = { title: "Multimodal/Demos/MultiModalPlayback" };
 export default meta;
 
 const STREAM_CONFIGS: MockStreamConfig[] = DEFAULT_STREAM_CONFIGS;
@@ -42,12 +41,12 @@ const INITIAL_TILES: Record<string, TilingTile> = Object.fromEntries(
  */
 function MockSetup() {
   const bundles = useMockStreams(STREAM_CONFIGS);
-  const store = useStore();
+  const setTileSource = useSetTileSourceFor();
   useEffect(() => {
     for (const b of bundles) {
-      store.set(tileSourceAtom(`${b.id}-1`), b.id);
+      setTileSource(`${b.id}-1`, b.id);
     }
-  }, [bundles, store]);
+  }, [bundles, setTileSource]);
   return null;
 }
 

@@ -135,13 +135,17 @@ const MosaicGrid: React.FC<MosaicGridProps> = ({
   };
 
   return (
-    <div className={clsx(styles.root, className)}>
+    <div className={clsx(styles.root, className)} data-testid="mosaic-grid">
       <Mosaic<string>
         className={styles.mosaic}
         value={value}
         onChange={onChange}
         renderTile={renderWindow}
-        zeroStateView={<div className={styles.empty}>No tiles open</div>}
+        zeroStateView={
+          <div className={styles.empty} data-testid="mosaic-grid-empty">
+            No tiles open
+          </div>
+        }
       />
     </div>
   );

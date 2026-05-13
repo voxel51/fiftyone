@@ -9,7 +9,7 @@ import SimplePlaybackBar from "../views/SimplePlaybackBar/SimplePlaybackBar";
 // the dev's machine, never in the repo.
 import VIDEO_SRC from "../views/assets/crowd.mp4";
 
-const meta: Meta = { title: "Playback/VideoPlayerDemo" };
+const meta: Meta = { title: "Playback/Demos/VideoPlayer" };
 export default meta;
 
 /**

@@ -1,17 +1,17 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { PlaybackProvider } from "../lib/playback/PlaybackProvider";
-import { TrackProvider } from "../lib/TrackProvider";
-import TimelineWithTracks from "../views/TimelineWithTracks/TimelineWithTracks";
-import { DEFAULT_PINNED_TRACK_IDS, DEFAULT_TRACKS } from "./utils";
+import { PlaybackProvider } from "../../lib/playback/PlaybackProvider";
+import { TrackProvider } from "../../lib/TrackProvider";
+import { DEFAULT_PINNED_TRACK_IDS, DEFAULT_TRACKS } from "../../stories/utils";
+import TimelineWithTracks from "./TimelineWithTracks";
 
-const meta: Meta = {
-  title: "Playback/Demos/TimelineComposed",
+const meta: Meta<typeof TimelineWithTracks> = {
+  title: "Playback/Components/TimelineWithTracks",
+  component: TimelineWithTracks,
 };
 export default meta;
 
-// Page-shell wrapper: a fixed-height flex column with a placeholder
-// "main content" area that fills the top, and the timeline drawer
-// pinned to the bottom. Mirrors how a real app would host the timeline.
+type Story = StoryObj<typeof TimelineWithTracks>;
+
 function StoryShell({ children }: { children: React.ReactNode }) {
   return (
     <div
@@ -35,20 +35,32 @@ function StoryShell({ children }: { children: React.ReactNode }) {
           borderBottom: "1px solid var(--color-content-border-subtle)",
         }}
       >
-        Main content area (grid / data surfaces would render here)
+        Main content area
       </div>
       {children}
     </div>
   );
 }
 
-export const Default: StoryObj = {
+export const WithTracks: Story = {
   render: () => (
     <PlaybackProvider duration={12} stepInterval={1 / 30}>
       <TrackProvider
         initialTracks={DEFAULT_TRACKS}
         initialPinnedIds={DEFAULT_PINNED_TRACK_IDS}
       >
+        <StoryShell>
+          <TimelineWithTracks />
+        </StoryShell>
+      </TrackProvider>
+    </PlaybackProvider>
+  ),
+};
+
+export const NoTracks: Story = {
+  render: () => (
+    <PlaybackProvider duration={12} stepInterval={1 / 30}>
+      <TrackProvider>
         <StoryShell>
           <TimelineWithTracks />
         </StoryShell>

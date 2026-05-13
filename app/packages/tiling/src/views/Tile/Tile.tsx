@@ -30,7 +30,7 @@ export const TileHeader: React.FC<TileHeaderProps> = ({
   onFullscreen,
   className,
 }) => (
-  <div className={clsx(styles.header, className)}>
+  <div className={clsx(styles.header, className)} data-testid="tile-header">
     <Text
       variant={TextVariant.Xs}
       color={TextColor.Secondary}
@@ -43,6 +43,7 @@ export const TileHeader: React.FC<TileHeaderProps> = ({
       <Button
         variant={Variant.Borderless}
         size={Size.Xs}
+        data-testid="tile-header-fullscreen"
         leadingIcon={IconName.Fullscreen}
         onClick={onFullscreen}
         aria-label="Fullscreen"
@@ -51,6 +52,7 @@ export const TileHeader: React.FC<TileHeaderProps> = ({
       <Button
         variant={Variant.Borderless}
         size={Size.Xs}
+        data-testid="tile-header-close"
         leadingIcon={IconName.Close}
         onClick={onClose}
         aria-label="Close"

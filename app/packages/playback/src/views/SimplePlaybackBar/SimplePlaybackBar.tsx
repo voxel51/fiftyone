@@ -35,6 +35,14 @@ const ProgressBar: React.FC = () => {
   return (
     <div
       className={styles.track}
+      data-testid="simple-playback-bar-track"
+      role="slider"
+      aria-label="Scrub"
+      aria-valuemin={0}
+      aria-valuemax={duration > 0 ? duration : 0}
+      aria-valuenow={playhead}
+      aria-valuetext={`${playhead.toFixed(2)} of ${duration.toFixed(2)} seconds`}
+      tabIndex={duration > 0 ? 0 : -1}
       onPointerDown={(e) => {
         e.currentTarget.setPointerCapture(e.pointerId);
         seekFromPointer(e);
@@ -65,11 +73,13 @@ const SimplePlaybackBar: React.FC = () => {
       <Button
         variant={Variant.Borderless}
         size={Size.Xs}
+        data-testid="simple-playback-bar-play-pause"
         // React 18/19 type mismatch on FC<{}>.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         leadingIcon={(isPlaying ? PauseIcon : PlayIcon) as any}
         onClick={isPlaying ? pause : play}
         aria-label={isPlaying ? "Pause" : "Play"}
+        aria-pressed={isPlaying}
         title={isPlaying ? "Pause" : "Play"}
       />
       <PlayheadTime />

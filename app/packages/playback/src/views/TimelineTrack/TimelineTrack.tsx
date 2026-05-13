@@ -116,8 +116,10 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
             <Button
               variant={Variant.Icon}
               size={Size.Xs}
+              data-testid={`timeline-track-pin-${id}`}
               leadingIcon={IconName.Pin}
               aria-label={pinned ? "Unpin track" : "Pin track"}
+              aria-pressed={pinned}
               className={clsx(styles.pinButton, {
                 [styles.pinButtonActive]: pinned,
               })}

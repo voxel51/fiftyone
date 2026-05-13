@@ -126,6 +126,7 @@ const TilingHeader: React.FC<TilingHeaderProps> = ({
                 <Button
                   variant={Variant.Borderless}
                   size={Size.Xs}
+                  data-testid="tiling-header-add-tile"
                   leadingIcon={IconName.GridView}
                   aria-label="Add tile"
                   title="Add tile"
@@ -141,10 +142,12 @@ const TilingHeader: React.FC<TilingHeaderProps> = ({
           <Button
             variant={Variant.Borderless}
             size={Size.Xs}
+            data-testid="tiling-header-toggle-left-sidebar"
             // React 18/19 type mismatch on FC<{}>.
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             leadingIcon={SidebarLeftIcon as any}
             aria-label={leftSidebarOpen ? "Hide settings" : "Show settings"}
+            aria-pressed={!!leftSidebarOpen}
             title={leftSidebarOpen ? "Hide settings" : "Show settings"}
             onClick={onToggleLeftSidebar}
             className={clsx({ [styles.toggleActive]: leftSidebarOpen })}
@@ -155,10 +158,12 @@ const TilingHeader: React.FC<TilingHeaderProps> = ({
           <Button
             variant={Variant.Borderless}
             size={Size.Xs}
+            data-testid="tiling-header-toggle-right-sidebar"
             // React 18/19 type mismatch on FC<{}>.
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             leadingIcon={SidebarRightIcon as any}
             aria-label={rightSidebarOpen ? "Hide inspector" : "Show inspector"}
+            aria-pressed={!!rightSidebarOpen}
             title={rightSidebarOpen ? "Hide inspector" : "Show inspector"}
             onClick={onToggleRightSidebar}
             className={clsx({ [styles.toggleActive]: rightSidebarOpen })}

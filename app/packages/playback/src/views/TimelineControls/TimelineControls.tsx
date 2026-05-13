@@ -38,6 +38,7 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({ onToggle }) => {
       <Button
         variant={Variant.Icon}
         size={Size.Xs}
+        data-testid="timeline-controls-step-back"
         leadingIcon={IconName.ChevronLeft}
         aria-label="Step back"
         onClick={stepBack}
@@ -45,13 +46,16 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({ onToggle }) => {
       <Button
         variant={Variant.Icon}
         size={Size.Xs}
+        data-testid="timeline-controls-play-pause"
         leadingIcon={isPlaying ? PauseIcon : PlayIcon}
         aria-label={isPlaying ? "Pause" : "Play"}
+        aria-pressed={isPlaying}
         onClick={isPlaying ? pause : play}
       />
       <Button
         variant={Variant.Icon}
         size={Size.Xs}
+        data-testid="timeline-controls-step-forward"
         leadingIcon={IconName.ChevronRight}
         aria-label="Step forward"
         onClick={stepForward}

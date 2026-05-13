@@ -22,7 +22,7 @@ import BlobTile from "../views/PlaybackTiles/BlobTile/BlobTile";
 import BlockingTile from "../views/PlaybackTiles/BlockingTile/BlockingTile";
 import TimelineWithTracks from "../views/TimelineWithTracks/TimelineWithTracks";
 
-const meta: Meta = { title: "Playback/BlockingStreamDemo" };
+const meta: Meta = { title: "Playback/Demos/BlockingStream" };
 export default meta;
 
 type TileKind = "blob" | "blocking";
