@@ -190,6 +190,11 @@ def apply_model(
         and not process_video_frames
     )
 
+    use_video_frames_data_loader = (
+        isinstance(model, (SupportsGetItem, TorchModelMixin))
+        and process_video_frames
+    )
+
     if num_workers is not None and not (
         use_data_loader or process_video_frames
     ):
@@ -224,7 +229,7 @@ def apply_model(
         if store_logits:
             context.enter_context(fou.SetAttributes(model, store_logits=True))
 
-        if use_data_loader:
+        if use_data_loader or use_video_frames_data_loader:
             context.enter_context(fou.SetAttributes(model, preprocess=False))
 
         if needs_samples:
@@ -246,24 +251,51 @@ def apply_model(
                 progress,
             )
 
-        batch_size = _parse_batch_size(batch_size, model, use_data_loader)
+        batch_size = _parse_batch_size(
+            batch_size, model, use_data_loader or use_video_frames_data_loader
+        )
 
         if process_video_frames:
             label_field, _ = samples._handle_frame_field(label_field)
 
-            return _apply_image_model_with_video_data_loader(
+            if use_video_frames_data_loader:
+                return _apply_image_model_with_video_data_loader(
+                    samples,
+                    model,
+                    label_field,
+                    confidence_thresh,
+                    classes,
+                    batch_size,
+                    num_workers,
+                    skip_failures,
+                    filename_maker,
+                    progress,
+                    field_mapping,
+                    pin_memory,
+                )
+
+            if batch_size is not None:
+                return _apply_image_model_to_frames_batch(
+                    samples,
+                    model,
+                    label_field,
+                    confidence_thresh,
+                    classes,
+                    batch_size,
+                    skip_failures,
+                    filename_maker,
+                    progress,
+                )
+
+            return _apply_image_model_to_frames_single(
                 samples,
                 model,
                 label_field,
                 confidence_thresh,
                 classes,
-                batch_size,
-                num_workers,
                 skip_failures,
                 filename_maker,
                 progress,
-                field_mapping,
-                pin_memory,
             )
 
         if use_data_loader:
@@ -560,8 +592,6 @@ def _apply_image_model_with_video_data_loader(
                 async_writes=True,
             )
         )
-        context.enter_context(fou.SetAttributes(model, preprocess=False))
-
         for batch in data_loader:
             if isinstance(batch, Exception):
                 if not skip_failures:
@@ -612,6 +642,141 @@ def _apply_image_model_with_video_data_loader(
                         exc_info=True,
                     )
                 pb.update(len(frames.get("frame_ids", [])))
+
+
+def _apply_image_model_to_frames_single(
+    samples,
+    model,
+    label_field,
+    confidence_thresh,
+    classes,
+    skip_failures,
+    filename_maker,
+    progress,
+):
+    needs_samples = isinstance(model, SamplesMixin)
+    frame_counts, total_frame_count = _get_frame_counts(samples)
+    is_clips = samples._dataset._is_clips
+
+    samples = _select_fields_for_inference(samples, model)
+
+    with contextlib.ExitStack() as context:
+        pb = context.enter_context(
+            fou.ProgressBar(total=total_frame_count, progress=progress)
+        )
+        ctx = context.enter_context(foc.SaveContext(samples))
+
+        for idx, sample in enumerate(samples):
+            if is_clips:
+                frames = etaf.FrameRange(*sample.support)
+            else:
+                frames = None
+
+            try:
+                with etav.FFmpegVideoReader(
+                    sample.filepath, frames=frames
+                ) as video_reader:
+                    for img in video_reader:
+                        if needs_samples:
+                            frame = sample.frames[video_reader.frame_number]
+                            labels = model.predict(img, sample=frame)
+                        else:
+                            labels = model.predict(img)
+
+                        if filename_maker is not None:
+                            _export_arrays(
+                                labels, sample.filepath, filename_maker
+                            )
+
+                        sample.add_labels(
+                            {video_reader.frame_number: labels},
+                            label_field=label_field,
+                            confidence_thresh=confidence_thresh,
+                            classes=classes,
+                        )
+                        ctx.save(sample)
+
+                        pb.update()
+
+            except Exception as e:
+                if not skip_failures:
+                    raise e
+
+                logger.warning("Sample: %s\nError: %s\n", sample.id, e)
+
+            # Explicitly set in case actual # frames differed from expected #
+            pb.set_iteration(frame_counts[idx])
+
+
+def _apply_image_model_to_frames_batch(
+    samples,
+    model,
+    label_field,
+    confidence_thresh,
+    classes,
+    batch_size,
+    skip_failures,
+    filename_maker,
+    progress,
+):
+    needs_samples = isinstance(model, SamplesMixin)
+    frame_counts, total_frame_count = _get_frame_counts(samples)
+    is_clips = samples._dataset._is_clips
+
+    samples = _select_fields_for_inference(samples, model)
+
+    with contextlib.ExitStack() as context:
+        pb = context.enter_context(
+            fou.ProgressBar(total=total_frame_count, progress=progress)
+        )
+        ctx = context.enter_context(foc.SaveContext(samples))
+
+        for idx, sample in enumerate(samples):
+            if is_clips:
+                frames = etaf.FrameRange(*sample.support)
+            else:
+                frames = None
+
+            try:
+                with etav.FFmpegVideoReader(
+                    sample.filepath, frames=frames
+                ) as video_reader:
+                    for fns, imgs in _iter_batches(video_reader, batch_size):
+                        if needs_samples:
+                            _frames = [sample.frames[fn] for fn in fns]
+                            labels_batch = model.predict_all(
+                                imgs, samples=_frames
+                            )
+                        else:
+                            labels_batch = model.predict_all(imgs)
+
+                        if filename_maker is not None:
+                            for labels in labels_batch:
+                                _export_arrays(
+                                    labels, sample.filepath, filename_maker
+                                )
+
+                        sample.add_labels(
+                            {
+                                fn: labels
+                                for fn, labels in zip(fns, labels_batch)
+                            },
+                            label_field=label_field,
+                            confidence_thresh=confidence_thresh,
+                            classes=classes,
+                        )
+                        ctx.save(sample)
+
+                        pb.update(len(imgs))
+
+            except Exception as e:
+                if not skip_failures:
+                    raise e
+
+                logger.warning("Sample: %s\nError: %s\n", sample.id, e)
+
+            # Explicitly set in case actual # frames differed from expected #
+            pb.set_iteration(frame_counts[idx])
 
 
 def _apply_video_model(
