@@ -156,7 +156,7 @@ export class MaskKeypoints extends KeypointOverlay {
 
     // 1b. Preview-state closing edge (last -> first) at reduced opacity so it
     // reads as in-progress, distinct from the committed edges above.
-    if (absPoints.length >= 2) {
+    if (absPoints.length > 2) {
       renderer.drawLine(
         absPoints[absPoints.length - 1],
         absPoints[0],
