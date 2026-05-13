@@ -45,6 +45,8 @@ import type {
   OpenPanelParams,
   OpenSampleHooks,
   OpenSampleParams,
+  TrackEventHooks,
+  TrackEventParams,
 } from "./ts";
 
 const { FIFTYONE_GRID_SPACES_ID, FIFTYONE_MODAL_SPACES_ID, PANEL_SURFACE } =
@@ -211,9 +213,12 @@ class OpenPanel extends Operator {
     if (!panel && !force) {
       throw new Error(`Panel with name ${name} does not exist`);
     }
+    const scope = isModalOpen ? PANEL_SURFACE.MODAL : PANEL_SURFACE.GRID;
     const surfaces = panel?.panelOptions?.surfaces || PANEL_SURFACE.GRID;
-    if (isModalOpen && !surfaces.includes(PANEL_SURFACE.MODAL)) {
-      throw new Error(`Panel with name ${name} cannot be opened in a modal`);
+    if (!surfaces.includes(scope)) {
+      throw new Error(
+        `Panel with name ${name} cannot be opened in a ${scope} surface`
+      );
     }
     const openedPanel = openedPanels.find(({ type }) => type === name);
     const allowDuplicate = force
@@ -224,7 +229,6 @@ class OpenPanel extends Operator {
       return;
     }
     const newNode = new SpaceNode();
-    const scope = isModalOpen ? PANEL_SURFACE.MODAL : PANEL_SURFACE.GRID;
     await initializePanel(newNode.id, scope, state, data);
     newNode.type = name;
     spaces.addNodeAfter(targetSpace, newNode, isActive);
@@ -1330,20 +1334,22 @@ export class TrackEvent extends Operator {
       unlisted: true,
     });
   }
-  useHooks(): {
-    setActiveFields: (fields: string[]) => void;
-  } {
+  useHooks(): TrackEventHooks {
     const trackEvent = useTrackEvent();
     return { trackEvent };
   }
-  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+  async resolveInput(): Promise<types.Property> {
     const inputs = new types.Object();
     inputs.str("event", { label: "Event", required: true });
     inputs.obj("properties", { label: "Properties" });
     return new types.Property(inputs);
   }
-  async execute(ctx: ExecutionContext): Promise<void> {
-    ctx.hooks.trackEvent(ctx.params.event, ctx.params.properties);
+  async execute(
+    ctx: ExecutionContext<TrackEventParams, TrackEventHooks>
+  ): Promise<void> {
+    const { hooks, params } = ctx;
+    const { event, properties } = params;
+    hooks.trackEvent(event, properties);
   }
 }
 
@@ -1393,7 +1399,9 @@ export class SetPlayheadState extends Operator {
     inputs.str("timeline_name", { label: "Timeline name" });
     return new types.Property(inputs);
   }
-  useHooks(): SetPlayheadStateHooks {
+  useHooks(
+    ctx: ExecutionContext<SetPlayheadStateParams, SetPlayheadStateHooks>
+  ): SetPlayheadStateHooks {
     const timeline = fop.useTimeline(ctx.params.timeline_name);
     return {
       setPlayheadState: (state: fop.PlayheadState) => {

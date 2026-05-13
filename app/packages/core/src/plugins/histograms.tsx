@@ -35,12 +35,17 @@ function usePlotPath() {
   const paths = useRecoilValue(distributionPaths);
   const [path, setPath] = usePanelStatePartial("path", paths[0]);
 
-  return { path, setPath };
+  useEffect(() => {
+    if (!paths.includes(path)) {
+      setPath(paths[0]);
+    }
+  }, [path, paths, setPath]);
+
+  return { path, setPath, paths };
 }
 
 const PlotSelector = () => {
-  const paths = useRecoilValue(distributionPaths);
-  const { path, setPath } = usePlotPath();
+  const { path, setPath, paths } = usePlotPath();
 
   return (
     <Selector

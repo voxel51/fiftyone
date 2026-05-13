@@ -32,4 +32,6 @@ const builtInOperators = {
 };
 
 registerBuiltInOperators(builtInOperators);
-registerBuiltInOperatorsAsync();
+registerBuiltInOperatorsAsync().catch((e) => {
+  console.error("Failed to register built-in operators asynchronously:", e);
+});

@@ -4,6 +4,7 @@ import {
   SpaceTree,
   useInitializePanel,
   usePanels,
+  PanelsStateObject,
 } from "@fiftyone/spaces";
 import * as fos from "@fiftyone/state";
 import { SetterOrUpdater } from "recoil";
@@ -29,7 +30,7 @@ export type SetColorSchemeParams = {
   color_pool?: string[];
   color_scheme?: Record<string, unknown>;
   color_pool_preset?: "default" | "color-blind-friendly";
-  default_mask_targets_colors?: Array<{ initTarget: number; color: string }>;
+  default_mask_targets_colors?: Array<{ intTarget: number; color: string }>;
   default_colorscale?: Array<{ value: number; color: string }>;
   default_colorscale_preset?: string;
   multi_color_keypoints?: boolean;
@@ -68,7 +69,7 @@ export type OpenPanelParams = {
   force?: boolean;
   forceDuplicate?: boolean;
   isActive?: boolean;
-  layout?: string;
+  layout?: "horizontal" | "vertical";
   name: string;
   state?: Record<string, unknown>;
 };
@@ -101,7 +102,7 @@ export type ListOpenPanelsItemType = ListPanelItemType & {
 
 export type GetPanelStateHooks = {
   openedPanels: SpaceNode[];
-  panelsState: Map<string, unknown>;
+  panelsState: PanelsStateObject;
 };
 
 export type GetPanelStateParams = {
@@ -111,7 +112,7 @@ export type GetPanelStateParams = {
 
 export type GetPanelDataHooks = {
   openedPanels: SpaceNode[];
-  panelsData: Map<string, unknown>;
+  panelsData: PanelsStateObject;
 };
 
 export type GetPanelDataParams = {
@@ -142,9 +143,9 @@ export type OpenSampleHooks = {
 };
 
 export type OpenSampleParams = {
-  id?: string;
+  id: string;
   group_id?: string;
-  mode: "explore" | "annotate";
+  mode?: "explore" | "annotate";
 };
 
 /**
@@ -156,3 +157,16 @@ export type SetFiltersHooks = {
 };
 
 export type SetFiltersParams = fos.State.Filters;
+
+/**
+ * Analytics
+ */
+
+export type TrackEventParams = {
+  event: string;
+  properties?: Record<string, unknown>;
+};
+
+export type TrackEventHooks = {
+  trackEvent: (event: string, properties?: Record<string, unknown>) => void;
+};
