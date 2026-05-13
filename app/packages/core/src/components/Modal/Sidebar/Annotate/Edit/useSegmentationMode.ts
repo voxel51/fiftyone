@@ -150,8 +150,10 @@ export const useSegmentationMode = () => {
     sceneRef.current?.exitInteractiveMode();
     onExit();
     aiMode.deactivate();
+    mergeTool.clearMergeTarget();
+    manualMode.switchTool(SegmentationTool.Select);
     setSegmentationModeActive(false);
-  }, [aiMode, onExit, setSegmentationModeActive]);
+  }, [aiMode, manualMode, mergeTool, onExit, setSegmentationModeActive]);
 
   const toggleSegmentationMode = useCallback(() => {
     if (segmentationModeActive) {
