@@ -197,3 +197,96 @@ def _merge(label_schema: dict, ontology: Any) -> dict:
 
     hydrated[foac.ATTRIBUTES] = [by_name[n] for n in ordered_names]
     return hydrated
+
+
+def hydrate_taxonomy(label_schema: dict) -> dict:
+    """Resolves a referenced taxonomy into the label schema.
+
+    If ``label_schema`` has a ``taxonomy`` key that resolves to a
+    taxonomy ontology, returns a new dict with the string reference
+    replaced by the taxonomy's ``to_dict()`` payload (full metadata
+    plus ``root`` node tree).
+
+    If the schema has no ``taxonomy`` reference, the schema is
+    returned unchanged. If the reference is dangling (deleted
+    taxonomy) or points at a non-taxonomy ontology, the ``taxonomy``
+    key is stripped from the returned schema and a WARNING is logged.
+    A subsequent save then silently persists a clean schema rather
+    than failing validation on the dangling reference.
+
+    Companion to :func:`dehydrate_taxonomy`.
+
+    Args:
+        label_schema: a label schema dict
+
+    Returns:
+        a hydrated copy of ``label_schema``, a copy with ``taxonomy``
+        stripped if the reference is dangling, or the schema unchanged
+        when there is nothing to do
+    """
+    taxonomy_name = label_schema.get(foac.TAXONOMY)
+    if taxonomy_name is None or not isinstance(taxonomy_name, str):
+        return label_schema
+
+    # Late import to avoid a circular import with the ontology SDK.
+    from fiftyone.core.ontology import load_ontology
+
+    try:
+        taxonomy = load_ontology(taxonomy_name)
+    except ValueError:
+        logger.warning(
+            "taxonomy '%s' does not resolve to a known ontology; "
+            "stripping the dangling reference from the returned schema",
+            taxonomy_name,
+        )
+        return _strip_taxonomy(label_schema)
+
+    if not taxonomy.is_taxonomy:
+        logger.warning(
+            "taxonomy '%s' does not resolve to a Taxonomy; stripping "
+            "the reference from the returned schema",
+            taxonomy_name,
+        )
+        return _strip_taxonomy(label_schema)
+
+    hydrated = dict(label_schema)
+    hydrated[foac.TAXONOMY] = taxonomy.to_dict()
+    return hydrated
+
+
+def dehydrate_taxonomy(label_schema: dict) -> dict:
+    """Strips taxonomy hydration artifacts from a label schema before save.
+
+    Companion to :func:`hydrate_taxonomy`. When the schema's ``taxonomy``
+    value is a dict (the resolved form), replaces it with the dict's
+    ``name`` so the persisted schema carries only the string reference.
+
+    The resolved tree is treated as frozen — any local edits a caller
+    made to the hydrated payload are silently discarded. Edit taxonomies
+    via the SDK, not via the label schema.
+
+    Args:
+        label_schema: a label schema dict, possibly carrying hydration
+            artifacts from :func:`hydrate_taxonomy`
+
+    Returns:
+        a copy of ``label_schema`` with ``taxonomy`` reduced to its
+        string name, or the schema unchanged when there is nothing to do
+    """
+    taxonomy = label_schema.get(foac.TAXONOMY)
+    if not isinstance(taxonomy, dict):
+        return label_schema
+
+    cleaned = dict(label_schema)
+    name = taxonomy.get(foac.NAME)
+    if name is None:
+        cleaned.pop(foac.TAXONOMY, None)
+    else:
+        cleaned[foac.TAXONOMY] = name
+    return cleaned
+
+
+def _strip_taxonomy(label_schema: dict) -> dict:
+    cleaned = dict(label_schema)
+    cleaned.pop(foac.TAXONOMY, None)
+    return cleaned

@@ -1821,6 +1821,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         # regardless so a hand-edited / malformed payload cannot persist
         # ontology content as local copies.
         label_schema = foa.dehydrate_applied_ontology(label_schema)
+        label_schema = foa.dehydrate_taxonomy(label_schema)
         foa.validate_label_schemas(
             self,
             label_schema,

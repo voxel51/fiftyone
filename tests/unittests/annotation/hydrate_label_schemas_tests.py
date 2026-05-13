@@ -6,17 +6,25 @@ FiftyOne annotation unit tests.
 |
 """
 
+import os
+
+os.environ.setdefault("VFF_ONTOLOGY_CA", "1")
+os.environ.setdefault("VFF_ONTOLOGY_TX", "1")
+
 import unittest
 from unittest.mock import MagicMock, patch
 
 from fiftyone.core.annotation.attributes import AttributeSpec
 from fiftyone.core.annotation.hydrate_label_schemas import (
     dehydrate_applied_ontology,
+    dehydrate_taxonomy,
     hydrate_applied_ontology,
+    hydrate_taxonomy,
 )
 from fiftyone.core.ontology import AnnotationOntology
 
 from decorators import drop_datasets, drop_ontologies
+from ontology_fixtures import make_taxonomy
 
 
 class HydrateLabelSchemasTests(unittest.TestCase):
@@ -264,3 +272,111 @@ class DehydrateLabelSchemasTests(unittest.TestCase):
         hydrated = hydrate_applied_ontology(original)
         dehydrated = dehydrate_applied_ontology(hydrated)
         self.assertEqual(dehydrated["attributes"], original["attributes"])
+
+
+class HydrateTaxonomyTests(unittest.TestCase):
+    @drop_datasets
+    @drop_ontologies
+    def test_no_taxonomy_returns_schema_unchanged(self):
+        schema = {
+            "type": "detections",
+            "attributes": [
+                {"name": "color", "type": "str", "component": "text"}
+            ],
+        }
+        result = hydrate_taxonomy(schema)
+        self.assertEqual(result, schema)
+
+    @drop_datasets
+    @drop_ontologies
+    def test_string_reference_replaced_with_to_dict(self):
+        make_taxonomy("vehicles").save()
+
+        schema = {"type": "detections", "taxonomy": "vehicles"}
+        result = hydrate_taxonomy(schema)
+        self.assertIsInstance(result["taxonomy"], dict)
+        self.assertEqual(result["taxonomy"]["name"], "vehicles")
+        self.assertEqual(result["taxonomy"]["root"]["name"], "vehicles")
+        self.assertEqual(len(result["taxonomy"]["root"]["values"]), 2)
+
+    @drop_datasets
+    @drop_ontologies
+    def test_dangling_reference_strips_taxonomy(self):
+        schema = {
+            "type": "detections",
+            "taxonomy": "nonexistent_taxonomy_xyz",
+        }
+        result = hydrate_taxonomy(schema)
+        self.assertNotIn("taxonomy", result)
+        # Input not mutated
+        self.assertEqual(schema["taxonomy"], "nonexistent_taxonomy_xyz")
+
+    @drop_datasets
+    @drop_ontologies
+    def test_non_taxonomy_reference_strips_taxonomy(self):
+        schema = {"type": "detections", "taxonomy": "some_annotation"}
+        non_taxonomy = MagicMock(is_taxonomy=False, name="some_annotation")
+        with patch(
+            "fiftyone.core.ontology.load_ontology",
+            return_value=non_taxonomy,
+        ):
+            result = hydrate_taxonomy(schema)
+        self.assertNotIn("taxonomy", result)
+        self.assertEqual(schema["taxonomy"], "some_annotation")
+
+    @drop_datasets
+    @drop_ontologies
+    def test_already_resolved_dict_passes_through_unchanged(self):
+        schema = {
+            "type": "detections",
+            "taxonomy": {"name": "vehicles", "root": {"name": "vehicles"}},
+        }
+        result = hydrate_taxonomy(schema)
+        self.assertEqual(result, schema)
+
+
+class DehydrateTaxonomyTests(unittest.TestCase):
+    @drop_datasets
+    @drop_ontologies
+    def test_no_taxonomy_returns_schema_unchanged(self):
+        schema = {"type": "detections", "attributes": []}
+        result = dehydrate_taxonomy(schema)
+        self.assertEqual(result, schema)
+
+    @drop_datasets
+    @drop_ontologies
+    def test_string_reference_passes_through_unchanged(self):
+        schema = {"type": "detections", "taxonomy": "vehicles"}
+        result = dehydrate_taxonomy(schema)
+        self.assertEqual(result, schema)
+
+    @drop_datasets
+    @drop_ontologies
+    def test_resolved_dict_reduced_to_name(self):
+        schema = {
+            "type": "detections",
+            "taxonomy": {
+                "name": "vehicles",
+                "root": {"name": "vehicles", "values": []},
+                "version": 3,
+            },
+        }
+        result = dehydrate_taxonomy(schema)
+        self.assertEqual(result["taxonomy"], "vehicles")
+
+    @drop_datasets
+    @drop_ontologies
+    def test_resolved_dict_without_name_drops_key(self):
+        schema = {"type": "detections", "taxonomy": {"root": {}}}
+        result = dehydrate_taxonomy(schema)
+        self.assertNotIn("taxonomy", result)
+
+    @drop_datasets
+    @drop_ontologies
+    def test_roundtrip_hydrate_then_dehydrate_matches_original(self):
+        make_taxonomy("vehicles").save()
+
+        original = {"type": "detections", "taxonomy": "vehicles"}
+        hydrated = hydrate_taxonomy(original)
+        dehydrated = dehydrate_taxonomy(hydrated)
+        self.assertEqual(dehydrated, original)

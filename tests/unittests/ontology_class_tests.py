@@ -30,6 +30,8 @@ from fiftyone.core.annotation.nodes import Node
 from fiftyone.core.ontology import AnnotationOntology, Taxonomy, load_ontology
 from fiftyone.core.ontology_validation import validate_taxonomy
 
+from ontology_fixtures import make_taxonomy
+
 
 class WhenTests(unittest.TestCase):
     def test_create_equals(self):
@@ -1108,22 +1110,8 @@ class TaxonomySDKTests(unittest.TestCase):
         db = foo.get_db_conn()
         db.drop_collection("ontologies")
 
-    def _make_taxonomy(self, name: str = "test_taxonomy") -> Taxonomy:
-        return Taxonomy(
-            name=name,
-            description="Test taxonomy",
-            root=Node(
-                name="vehicles",
-                can_select=False,
-                values=[
-                    Node(name="car"),
-                    Node(name="truck", values=[Node(name="pickup")]),
-                ],
-            ),
-        )
-
     def test_save_and_load(self):
-        t = self._make_taxonomy()
+        t = make_taxonomy()
         t.save()
 
         self.assertIsNotNone(t.version)
@@ -1136,7 +1124,7 @@ class TaxonomySDKTests(unittest.TestCase):
         self.assertEqual(loaded.root.values[1].values[0].name, "pickup")
 
     def test_save_and_reload(self):
-        t = self._make_taxonomy()
+        t = make_taxonomy()
         t.save()
 
         t.description = "updated"
@@ -1146,7 +1134,7 @@ class TaxonomySDKTests(unittest.TestCase):
     def test_delete(self):
         from fiftyone.core.ontology import ontology_exists
 
-        t = self._make_taxonomy()
+        t = make_taxonomy()
         t.save()
         t.delete()
 
@@ -1156,7 +1144,7 @@ class TaxonomySDKTests(unittest.TestCase):
     def test_clone(self):
         from fiftyone.core.ontology import ontology_exists
 
-        t = self._make_taxonomy("original")
+        t = make_taxonomy("original")
         t.save()
 
         cloned = t.clone("cloned")

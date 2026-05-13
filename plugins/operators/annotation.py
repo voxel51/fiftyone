@@ -10,7 +10,9 @@ import fiftyone.core.annotation.constants as foac
 import fiftyone.core.annotation.utils as foau
 from fiftyone.core.annotation.hydrate_label_schemas import (
     dehydrate_applied_ontology,
+    dehydrate_taxonomy,
     hydrate_applied_ontology,
+    hydrate_taxonomy,
 )
 from fiftyone.core.annotation.validate_label_schemas import (
     ValidationErrors,
@@ -19,6 +21,17 @@ from fiftyone.core.annotation.validate_label_schemas import (
 import fiftyone.core.fields as fof
 import fiftyone.operators as foo
 import fiftyone.operators.types as types
+
+
+def _dehydrate_for_save(label_schema: dict) -> dict:
+    """Strips both ontology and taxonomy hydration artifacts.
+
+    Used on the write/validate path so the persisted shape carries
+    only string references, never resolved payloads.
+    """
+    label_schema = dehydrate_applied_ontology(label_schema)
+    label_schema = dehydrate_taxonomy(label_schema)
+    return label_schema
 
 
 class ActivateLabelSchemas(foo.Operator):
@@ -147,9 +160,9 @@ class GetLabelSchemas(foo.Operator):
             }
 
             if field in label_schemas:
-                result[field]["label_schema"] = hydrate_applied_ontology(
-                    label_schemas[field]
-                )
+                hydrated = hydrate_applied_ontology(label_schemas[field])
+                hydrated = hydrate_taxonomy(hydrated)
+                result[field]["label_schema"] = hydrated
 
         return {
             "active_label_schemas": ctx.dataset.active_label_schemas,
@@ -190,7 +203,9 @@ class UpdateLabelSchema(foo.Operator):
         # that sent a partially-hydrated schema doesn't get double-
         # processed.
         saved = ctx.dataset.label_schemas.get(field, label_schema)
-        return {"label_schema": hydrate_applied_ontology(saved)}
+        hydrated = hydrate_applied_ontology(saved)
+        hydrated = hydrate_taxonomy(hydrated)
+        return {"label_schema": hydrated}
 
 
 class ValidateLabelSchemas(foo.Operator):
@@ -205,13 +220,16 @@ class ValidateLabelSchemas(foo.Operator):
 
     def execute(self, ctx):
         errors = []
-        # Mirror update_label_schema: dehydrate before validating so the
-        # pre-save check sees the same shape that will actually be saved.
-        label_schemas = {
-            field: dehydrate_applied_ontology(schema)
-            for field, schema in ctx.params.get("label_schemas", {}).items()
-        }
         try:
+            # Mirror update_label_schema: dehydrate before validating so
+            # the pre-save check sees the same shape that will actually
+            # be saved.
+            label_schemas = {
+                field: _dehydrate_for_save(schema)
+                for field, schema in ctx.params.get(
+                    "label_schemas", {}
+                ).items()
+            }
             validate_label_schemas(
                 ctx.dataset,
                 label_schemas,
