@@ -12,6 +12,7 @@ import os
 import shutil
 from PIL import Image
 
+import fiftyone as fo
 import fiftyone.core.utils as fou
 import fiftyone.utils.torch as fout
 import fiftyone.utils.sam as fosam
@@ -44,8 +45,6 @@ def _ensure_sam3_bpe_vocab_path(
     file in FiftyOne's model zoo directory.
     """
 
-    import fiftyone as fo
-
     bpe_dir = os.path.join(fo.config.model_zoo_dir, "sam3")
     os.makedirs(bpe_dir, exist_ok=True)
     bpe_path = os.path.join(bpe_dir, tokenizer_base_filename)
@@ -70,8 +69,9 @@ def _ensure_sam3_bpe_vocab_path(
             if os.path.isfile(candidate):
                 shutil.copyfile(candidate, bpe_path)
                 return bpe_path
-    except Exception:
-        pass
+
+    except Exception as e:
+        logger.debug("Could not copy SAM3 vocab from installed package: %s", e)
 
     logger.info(
         "Downloading SAM3 tokenizer vocab (%s)...", tokenizer_base_filename
@@ -378,6 +378,19 @@ class SegmentAnything3ImageModel(fosam2.SegmentAnything2ImageModel):
         if "device" not in config.entrypoint_args:
             config.entrypoint_args["device"] = str(self._device)
 
+        model = super()._load_model(config)
+        return model
+
+    def _download_model(self, config):
+        # Download sam3 to fo.config.model_zoo_dir from HF hub.
+        from huggingface_hub import hf_hub_download
+
+        hf_hub_download(
+            repo_id="facebook/sam3",
+            filename=os.path.basename(config.model_path),
+            local_dir=os.path.dirname(config.model_path),
+        )
+
         if (
             not self.config.tokenizer_base_filename
             or not self.config.tokenizer_base_url
@@ -395,19 +408,6 @@ class SegmentAnything3ImageModel(fosam2.SegmentAnything2ImageModel):
                 tokenizer_base_filename=self.config.tokenizer_base_filename,
                 tokenizer_base_url=self.config.tokenizer_base_url,
             )
-
-        model = super()._load_model(config)
-        return model
-
-    def _download_model(self, config):
-        # Download sam3 to fo.config.model_zoo_dir from HF hub.
-        from huggingface_hub import hf_hub_download
-
-        hf_hub_download(
-            repo_id="facebook/sam3",
-            filename=os.path.basename(config.model_path),
-            local_dir=os.path.dirname(config.model_path),
-        )
 
     def _build_concept_output_processor(self, config):
         kwargs = config.output_processor_args or {}
