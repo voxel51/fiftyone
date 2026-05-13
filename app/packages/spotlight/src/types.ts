@@ -98,6 +98,11 @@ export type Show<K, V> = (ctx: {
 export interface SpotlightConfig<K, V> {
   /** Item or offset to scroll to on initial render. */
   at?: At;
+  /**
+   * When `true` the grid scrolls horizontally and each item fills the full container height,
+   * with its width proportional to its aspect ratio. Defaults to `false` (vertical scroll).
+   */
+  horizontal?: boolean;
   /** Starting pagination cursor. */
   key: K;
   /** Maximum rows per section before it is swapped out. Defaults to {@link DEFAULT_MAX_ROWS}. */
@@ -121,8 +126,8 @@ export interface SpotlightConfig<K, V> {
   hideItem: Hide;
   /** Called when the user clicks an item (not fired when Meta/Shift/Ctrl is held). */
   onItemClick?: ItemClick<K, V>;
-  /** Returns the target row aspect ratio for the given container width; drives the tiling algorithm. */
-  rowAspectRatioThreshold: (width: number) => number;
+  /** Returns the target row aspect ratio for the given cross extent (viewport width in vertical mode, height in horizontal); drives the tiling algorithm. */
+  rowAspectRatioThreshold: (crossExtent: number) => number;
   /** Called when an item enters the render buffer; must resolve with the item's byte size. */
   showItem: Show<K, V>;
 }
@@ -140,14 +145,4 @@ export interface Iter {
    * @returns The ID of the item `from` steps away, or `undefined` if the boundary is reached.
    */
   next(from: number, soft?: boolean): Promise<ID | undefined>;
-}
-
-interface Match<K, V> {
-  row: Row<K, V>;
-  delta: number;
-}
-
-interface Matches<K, V> {
-  backward?: Match<K, V>;
-  forward?: Match<K, V>;
 }

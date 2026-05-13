@@ -2,6 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import { createAxis } from "./axis";
 import { ZOOM_TIMEOUT } from "./constants";
 
 /**
@@ -24,8 +25,10 @@ import { ZOOM_TIMEOUT } from "./constants";
 export default function createScrollReader(
   element: HTMLElement,
   render: (zooming: boolean, dispatchOffset?: boolean) => void,
-  getScrollSpeedThreshold: () => number
+  getScrollSpeedThreshold: () => number,
+  horizontal?: boolean
 ) {
+  const axis = createAxis(horizontal);
   let animationFrame: ReturnType<typeof requestAnimationFrame>;
   let destroyed = false;
   let prior: number;
@@ -52,10 +55,8 @@ export default function createScrollReader(
       return false;
     }
 
-    if (
-      prior === undefined ||
-      Math.abs(element.scrollTop - prior) > threshold
-    ) {
+    const pos = axis.scrollPos(element);
+    if (prior === undefined || Math.abs(pos - prior) > threshold) {
       zooming = prior !== undefined;
       timeout && clearTimeout(timeout);
       timeout = setTimeout(() => {
@@ -65,7 +66,7 @@ export default function createScrollReader(
       }, ZOOM_TIMEOUT);
     }
 
-    prior = element.scrollTop;
+    prior = pos;
 
     return true;
   };

@@ -3,7 +3,9 @@
  */
 import styles from "./styles.module.css";
 
-import { BOTTOM, DIV, ONE, TOP, UNSET, ZERO } from "./constants";
+import { createAxis } from "./axis";
+import type { Axis } from "./axis";
+import { DIV, ONE, UNSET, ZERO } from "./constants";
 import type Spotlight from "./index";
 import type Iter from "./iter";
 import type { Focus, ID, ItemData, Measure, SpotlightConfig } from "./types";
@@ -20,12 +22,13 @@ export default class Row<K, V> {
   #from: number;
 
   readonly #aborter: AbortController = new AbortController();
+  readonly #axis: Axis;
   readonly #config: SpotlightConfig<K, V>;
   /** True when this is the last row of the last page and may have fewer items than a full row. */
   readonly #dangle?: boolean;
   readonly #container: HTMLDivElement = create(DIV);
   readonly #row: { item: ItemData<K, V>; element: HTMLDivElement }[];
-  readonly #width: number;
+  readonly #crossExtent: number;
 
   /**
    * @param config - Shared grid configuration.
@@ -53,15 +56,16 @@ export default class Row<K, V> {
     iter: Iter<K, V>;
     width: number;
   }) {
+    this.#axis = createAxis(config.horizontal);
     this.#config = config;
     this.#dangle = dangle;
     this.#container.classList.add(styles.spotlightRow);
     this.#from = from;
-    this.#width = width;
+    this.#crossExtent = width;
 
     this.#row = items.map((item) => {
       const element = create(DIV);
-      element.style.top = pixels(ZERO);
+      element.style[this.#axis.itemPrimaryAttr] = pixels(ZERO);
 
       if (config.onItemClick) {
         const handler = (event: MouseEvent) => {
@@ -90,25 +94,24 @@ export default class Row<K, V> {
       return { element, item };
     });
 
-    const height = this.height;
-
-    let left = ZERO;
+    const extent = this.primaryExtent;
+    let crossOffset = ZERO;
 
     for (const {
       element,
       item: { aspectRatio },
     } of this.#row) {
-      const itemWidth = height * aspectRatio;
+      const itemCross = this.#axis.itemCrossExtent(extent, aspectRatio);
 
-      element.style.height = pixels(height);
-      element.style.width = pixels(itemWidth);
-      element.style.left = pixels(left);
+      element.style[this.#axis.primarySizeAttr] = pixels(extent);
+      element.style[this.#axis.crossSizeAttr] = pixels(itemCross);
+      element.style[this.#axis.itemCrossAttr] = pixels(crossOffset);
 
-      left += itemWidth + config.spacing;
+      crossOffset += itemCross + config.spacing;
     }
 
-    this.#container.style.height = pixels(height);
-    this.#container.style.width = pixels(this.#width);
+    this.#container.style[this.#axis.primarySizeAttr] = pixels(extent);
+    this.#container.style[this.#axis.crossSizeAttr] = pixels(this.#crossExtent);
   }
 
   /** True when the row container is currently in the DOM. */
@@ -130,8 +133,8 @@ export default class Row<K, V> {
     this.#from = from;
   }
 
-  /** Pixel height of this row, derived from container width and combined aspect ratio. */
-  get height() {
+  /** Extent of this row along the primary (scroll) axis — row height in vertical mode, column width in horizontal. */
+  get primaryExtent() {
     return this.#cleanWidth / this.#cleanAspectRatio;
   }
 
@@ -192,7 +195,7 @@ export default class Row<K, V> {
     spotlight,
     zooming,
   }: {
-    attr: typeof BOTTOM | typeof TOP;
+    attr: string;
     element: HTMLDivElement;
     measure?: Measure<K, V>;
     spotlight: Spotlight<K, V>;
@@ -200,19 +203,23 @@ export default class Row<K, V> {
   }) {
     if (!this.attached) {
       this.#container.style[attr] = `${this.#from}px`;
-      this.#container.style[attr === BOTTOM ? TOP : BOTTOM] = UNSET;
+      const opposite =
+        attr === this.#axis.startAttr
+          ? this.#axis.endAttr
+          : this.#axis.startAttr;
+      this.#container.style[opposite] = UNSET;
       element.appendChild(this.#container);
     }
 
+    const extent = this.primaryExtent;
     for (const { element, item } of this.#row) {
-      const width = item.aspectRatio * this.height;
       if (this.#aborter.signal.aborted) {
         return;
       }
 
       const bytes = this.#config.showItem({
         id: item.id,
-        dimensions: [width, this.height],
+        dimensions: this.#axis.showDimensions(extent, item.aspectRatio),
         element,
         spotlight,
         zooming,
@@ -223,12 +230,14 @@ export default class Row<K, V> {
 
   /**
    * Updates the row's CSS position without re-appending it.
-   * Called after a section direction reversal to flip `top` ↔ `bottom`.
-   * @param attr - The CSS property to set: `"top"` or `"bottom"`.
+   * Called after a section direction reversal to flip start ↔ end.
+   * @param attr - The CSS property to set: `"top"`, `"bottom"`, `"left"`, or `"right"`.
    */
-  switch(attr) {
+  switch(attr: string) {
     this.#container.style[attr] = `${this.#from}px`;
-    this.#container.style[attr === BOTTOM ? TOP : BOTTOM] = UNSET;
+    const opposite =
+      attr === this.#axis.startAttr ? this.#axis.endAttr : this.#axis.startAttr;
+    this.#container.style[opposite] = UNSET;
   }
 
   /** Calls `updater` for every item ID in this row. */
@@ -242,7 +251,7 @@ export default class Row<K, V> {
    */
   get #cleanAspectRatio() {
     const result = this.#row
-      .map(({ item }) => item.aspectRatio)
+      .map(({ item }) => this.#axis.tilingAR(item.aspectRatio))
       .reduce((ar, next) => ar + next, ZERO);
     if (this.#dangle) {
       const ar = this.#singleAspectRatio;
@@ -250,7 +259,7 @@ export default class Row<K, V> {
         return this.#dangleSingleAspectRatioCount * ar;
       }
 
-      const target = this.#config.rowAspectRatioThreshold(this.#width);
+      const target = this.#config.rowAspectRatioThreshold(this.#crossExtent);
       return result > target ? result : target;
     }
 
@@ -263,11 +272,11 @@ export default class Row<K, V> {
    */
   get #cleanWidth() {
     if (!this.#dangle || this.#singleAspectRatio === null) {
-      return this.#width - (this.#row.length - ONE) * this.#config.spacing;
+      return this.#crossExtent - (this.#row.length - ONE) * this.#config.spacing;
     }
 
     return (
-      this.#width -
+      this.#crossExtent -
       (this.#dangleSingleAspectRatioCount - ONE) * this.#config.spacing
     );
   }
@@ -278,8 +287,8 @@ export default class Row<K, V> {
    * even though fewer actual items are present.
    */
   get #dangleSingleAspectRatioCount() {
-    const ar = this.#row[ZERO].item.aspectRatio;
-    const target = this.#config.rowAspectRatioThreshold(this.#width);
+    const ar = this.#axis.tilingAR(this.#row[ZERO].item.aspectRatio);
+    const target = this.#config.rowAspectRatioThreshold(this.#crossExtent);
 
     let count = ONE;
     let result = ar;
@@ -296,7 +305,11 @@ export default class Row<K, V> {
    * Used to detect uniform dangle rows and apply the virtual-count sizing path.
    */
   get #singleAspectRatio() {
-    const set = new Set(this.#row.map(({ item }) => item.aspectRatio));
-    return set.size === ONE ? this.#row[ZERO].item.aspectRatio : null;
+    const set = new Set(
+      this.#row.map(({ item }) => this.#axis.tilingAR(item.aspectRatio))
+    );
+    return set.size === ONE
+      ? this.#axis.tilingAR(this.#row[ZERO].item.aspectRatio)
+      : null;
   }
 }

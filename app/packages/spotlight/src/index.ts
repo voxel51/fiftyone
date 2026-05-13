@@ -6,6 +6,8 @@ import "@af-utils/scrollend-polyfill";
 
 import styles from "./styles.module.css";
 
+import { createAxis } from "./axis";
+import type { Axis } from "./axis";
 import {
   DEFAULT_MAX_ROWS,
   DEFAULT_OFFSET,
@@ -68,6 +70,7 @@ export * from "./types";
  */
 export default class Spotlight<K, V> extends EventTarget {
   readonly #aborter = new AbortController();
+  readonly #axis: Axis;
   readonly #config: SpotlightConfig<K, V>;
   readonly #element = create(DIV);
   readonly #keys = new WeakMap<ID, K>();
@@ -93,8 +96,10 @@ export default class Spotlight<K, V> extends EventTarget {
       spacing: DEFAULT_SPACING,
       ...config,
     };
+    this.#axis = createAxis(this.#config.horizontal);
     this.#element.classList.add(styles.spotlight);
     this.#config.scrollbar && this.#element.classList.add(styles.scrollbar);
+    this.#config.horizontal && this.#element.classList.add(styles.horizontal);
   }
 
   /** True when the spotlight element is mounted in the DOM. */
@@ -166,8 +171,8 @@ export default class Spotlight<K, V> extends EventTarget {
       requestAnimationFrame(() => {
         this.#rect = this.#element.getBoundingClientRect();
 
-        // wait for height
-        if (this.#rect.height) {
+        // wait for the primary dimension (height in vertical, width in horizontal)
+        if (this.#axis.primarySize(this.#rect)) {
           this.#fill();
           return;
         }
@@ -271,9 +276,10 @@ export default class Spotlight<K, V> extends EventTarget {
 
       const run = () =>
         requestAnimationFrame(() => {
+          const scrollPos = this.#axis.scrollPos(this.#element);
           const tooFar = reverse
-            ? this.#element.scrollTop < ZERO
-            : this.#element.scrollTop > this.#containerHeight;
+            ? scrollPos < ZERO
+            : scrollPos > this.#containerHeight;
 
           if (tooFar || this.#scrollReader.zooming()) {
             requestAnimationFrame(run);
@@ -356,21 +362,21 @@ export default class Spotlight<K, V> extends EventTarget {
   }
 
   get #pivot() {
-    let base = this.#backward.height;
+    let base = this.#backward.primaryExtent;
     if (base) base += this.#config.spacing;
     return base;
   }
 
   get #aspectRatio() {
-    return this.#width / this.#height;
+    return this.#crossExtent / this.#height;
   }
 
   get #containerHeight() {
-    return this.#forward.height + this.#pivot;
+    return this.#forward.primaryExtent + this.#pivot;
   }
 
   get #height() {
-    return this.#rect.height;
+    return this.#axis.primarySize(this.#rect);
   }
 
   get #padding() {
@@ -395,7 +401,7 @@ export default class Spotlight<K, V> extends EventTarget {
     }
 
     use = use.slice(ZERO, use.length - ONE);
-    const current = this.#config.rowAspectRatioThreshold(this.#width);
+    const current = this.#config.rowAspectRatioThreshold(this.#crossExtent);
     let proposed = current;
     const itemAspectRatios = use.map(({ aspectRatio }) => aspectRatio);
     let tiledAspectRatio: number;
@@ -434,8 +440,8 @@ export default class Spotlight<K, V> extends EventTarget {
     return { backward, forward };
   }
 
-  get #width() {
-    return this.#rect.width - SCROLLBAR_WIDTH * TWO;
+  get #crossExtent() {
+    return this.#axis.crossSize(this.#rect) - SCROLLBAR_WIDTH * TWO;
   }
 
   #attachScrollReader() {
@@ -446,12 +452,13 @@ export default class Spotlight<K, V> extends EventTarget {
       this.#element,
       (zooming, dispatchOffset) =>
         this.#render({ dispatchOffset, zooming, ...this.#measure() }),
-      () => this.#zooming()
+      () => this.#zooming(),
+      this.#config.horizontal
     );
   }
 
   #measure() {
-    const ar = this.#config.rowAspectRatioThreshold(this.#width);
+    const ar = this.#config.rowAspectRatioThreshold(this.#crossExtent);
     const items: ItemData<K, V>[] = [];
     const map = new Map<string, number>();
     const promises: Promise<number>[] = [];
@@ -468,7 +475,7 @@ export default class Spotlight<K, V> extends EventTarget {
       map.set(key, add);
       if (
         sum(Array.from(map.values())) >= this.#config.maxItemsSizeBytes &&
-        this.#config.rowAspectRatioThreshold(this.#width) > ONE
+        this.#config.rowAspectRatioThreshold(this.#crossExtent) > ONE
       ) {
         this.#handleHighMemoryUsage(items, map, bytes / count);
       }
@@ -496,8 +503,8 @@ export default class Spotlight<K, V> extends EventTarget {
           const max = this.#loaded
             ? this.#config.maxItemsSizeBytes
             : // For initial load, reduce by three as a simple adjustment
-              // because only only enough items to fill the screen have been
-              // loaded. As opposed a screen height + padding render
+              // because only enough items to fill the screen have been
+              // loaded. As opposed to a screen height + padding render
               this.#config.maxItemsSizeBytes / THREE;
 
           if (bytes >= max && ar > ONE) {
@@ -549,7 +556,7 @@ export default class Spotlight<K, V> extends EventTarget {
     const top = findTop({
       at,
       offset,
-      scrollTop: this.#element.scrollTop,
+      scrollTop: this.#axis.scrollPos(this.#element),
       ...this.#sections,
     });
 
@@ -568,10 +575,10 @@ export default class Spotlight<K, V> extends EventTarget {
     });
 
     const forwardResult = this.#forward.render({
-      target: top - this.#padding - this.#backward.height,
+      target: top - this.#padding - this.#backward.primaryExtent,
       threshold: (n) =>
-        n < top + this.#height + this.#padding - this.#backward.height,
-      top: top - this.#backward.height + this.#config.offset,
+        n < top + this.#height + this.#padding - this.#backward.primaryExtent,
+      top: top - this.#backward.primaryExtent + this.#config.offset,
       ...params,
     });
 
@@ -594,7 +601,14 @@ export default class Spotlight<K, V> extends EventTarget {
       this.#backward.top = this.#config.offset;
     }
 
-    scrollToPosition({ at, el: this.#element, offset, top, ...this.#sections });
+    scrollToPosition({
+      at,
+      horizontal: this.#config.horizontal,
+      el: this.#element,
+      offset,
+      top,
+      ...this.#sections,
+    });
     this.#attachScrollReader();
     close?.();
     if (!zooming && backwardResult.more) this.#previous();
@@ -603,9 +617,9 @@ export default class Spotlight<K, V> extends EventTarget {
 
   #zooming() {
     return (
-      (this.#width /
+      (this.#crossExtent /
         (this.#height *
-          Math.max(this.#config.rowAspectRatioThreshold(this.#width), ONE))) *
+          Math.max(this.#config.rowAspectRatioThreshold(this.#crossExtent), ONE))) *
       ZOOMING_COEFFICIENT
     );
   }
@@ -616,12 +630,12 @@ export default class Spotlight<K, V> extends EventTarget {
       config: this.#config,
       direction: DIRECTION.FORWARD,
       edge: { key: this.#config.key, remainder: [] },
-      width: this.#width,
+      width: this.#crossExtent,
     });
     this.#forward.attach(this.#element);
 
     await this.#next(false);
-    while (!this.#forward.finished && this.#forward.height < this.#height) {
+    while (!this.#forward.finished && this.#forward.primaryExtent < this.#height) {
       await this.#next(false);
     }
 
@@ -666,7 +680,7 @@ export default class Spotlight<K, V> extends EventTarget {
           result.previous !== null
             ? { key: result.previous, remainder }
             : { key: null, remainder },
-        width: this.#width,
+        width: this.#crossExtent,
       });
       this.#backward.attach(this.#element);
     }

@@ -4,9 +4,10 @@
 
 import styles from "./styles.module.css";
 
+import { createAxis } from "./axis";
+import type { Axis } from "./axis";
 import { closest } from "./closest";
 import {
-  BOTTOM,
   DATA_CY,
   DATA_CY_SECTION,
   DIRECTION,
@@ -15,7 +16,6 @@ import {
   LAST,
   ONE,
   SLOW_DOWN,
-  TOP,
   TWO,
   ZERO,
 } from "./constants";
@@ -60,10 +60,11 @@ export type Sibling<K, V> = (apply: boolean) => Section<K, V>;
  * supporting infinite scroll in both directions.
  */
 export default class Section<K, V> {
+  readonly #axis: Axis;
   readonly #config: SpotlightConfig<K, V>;
   readonly #container = create(DIV);
   readonly #section = create(DIV);
-  readonly #width: number;
+  readonly #crossExtent: number;
 
   #direction: DIRECTION;
   /** Cursor and remainder items at the leading edge; `undefined` while a fetch is in-flight. */
@@ -96,16 +97,22 @@ export default class Section<K, V> {
     edge: Edge<K, V>;
     width: number;
   }) {
+    this.#axis = createAxis(config.horizontal);
     this.#config = config;
     this.#direction = direction;
     this.#end = edge;
-    this.#width = width;
+    this.#crossExtent = width;
 
     this.#container.classList.add(styles.spotlightContainer);
     this.#container.setAttribute(DATA_CY, DATA_CY_SECTION[this.#direction]);
+    // set the fixed cross dimension once; the primary dimension is updated each render pass
+    this.#container.style[this.#axis.crossSizeAttr] = `${this.#crossExtent}px`;
 
     this.#section.classList.add(styles.spotlightSection);
     this.#section.classList.add(direction);
+    if (config.horizontal) {
+      this.#section.classList.add(styles.horizontal);
+    }
     this.#section.append(...[create(DIV), this.#container, create(DIV)]);
   }
 
@@ -120,8 +127,8 @@ export default class Section<K, V> {
   }
 
   /** Total pixel height of all rows in this section. */
-  get height() {
-    return this.#height;
+  get primaryExtent() {
+    return this.#primaryExtent;
   }
 
   /** Number of rows currently held by this section. */
@@ -134,9 +141,9 @@ export default class Section<K, V> {
     return Boolean(this.#end);
   }
 
-  /** Sets the CSS `top` of the section wrapper, positioning it within the scroll container. */
+  /** Sets the position of the section wrapper along the scroll axis. */
   set top(top: number) {
-    this.#section.style.top = `${top}px`;
+    this.#section.style[this.#axis.startAttr] = `${top}px`;
   }
 
   /**
@@ -208,8 +215,8 @@ export default class Section<K, V> {
 
     const match = closest(
       this.#rows,
-      this.#direction === DIRECTION.BACKWARD ? this.height - target : target,
-      (row) => row.from + row.height
+      this.#direction === DIRECTION.BACKWARD ? this.primaryExtent - target : target,
+      (row) => row.from + row.primaryExtent
     );
 
     let pageRow: Row<K, V>;
@@ -219,7 +226,7 @@ export default class Section<K, V> {
       this.#direction === DIRECTION.FORWARD
         ? (row) => row.from - top + this.#config.offset
         : (row) =>
-            this.#height - row.from - top + this.#config.offset - row.height;
+            this.#primaryExtent - row.from - top + this.#config.offset - row.primaryExtent;
 
     if (match) {
       index = match.index;
@@ -232,7 +239,7 @@ export default class Section<K, V> {
 
         const current =
           this.#direction === DIRECTION.BACKWARD
-            ? this.height - row.from
+            ? this.primaryExtent - row.from
             : row.from;
 
         if (!threshold(current)) {
@@ -240,7 +247,10 @@ export default class Section<K, V> {
         }
 
         row.show({
-          attr: this.#direction === DIRECTION.FORWARD ? TOP : BOTTOM,
+          attr:
+            this.#direction === DIRECTION.FORWARD
+              ? this.#axis.startAttr
+              : this.#axis.endAttr,
           element: this.#container,
           measure,
           spotlight,
@@ -269,7 +279,7 @@ export default class Section<K, V> {
       requestMore = true;
     }
 
-    this.#container.style.height = `${this.height}px`;
+    this.#container.style[this.#axis.primarySizeAttr] = `${this.primaryExtent}px`;
     return {
       match: pageRow ? { row: pageRow, delta } : undefined,
       more: requestMore && this.ready,
@@ -406,7 +416,7 @@ export default class Section<K, V> {
         [...end.remainder, ...data.items].filter(
           (i) => !this.#itemIds.has(i.id.description)
         ),
-        this.#height,
+        this.#primaryExtent,
         data.next === null,
         data.focus,
         request,
@@ -432,7 +442,7 @@ export default class Section<K, V> {
       this.#rows.push(...rows);
 
       const height = rows.reduce(
-        (acc, cur) => acc + cur.height + this.#config.spacing,
+        (acc, cur) => acc + cur.primaryExtent + this.#config.spacing,
         ZERO
       );
 
@@ -445,7 +455,7 @@ export default class Section<K, V> {
         config: this.#config,
         direction: this.#direction,
         edge: newEnd,
-        width: this.#width,
+        width: this.#crossExtent,
       });
 
       this.#end = this.#start;
@@ -463,10 +473,10 @@ export default class Section<K, V> {
   }
 
   /** Total height of all rows including inter-row spacing. */
-  get #height() {
+  get #primaryExtent() {
     if (!this.#rows.length) return ZERO;
     const row = this.#rows[this.length - ONE];
-    return row.from + row.height;
+    return row.from + row.primaryExtent;
   }
 
   /** Half of `maxRows` — the per-section row limit before a section swap is triggered. */
@@ -490,8 +500,12 @@ export default class Section<K, V> {
     let offset = ZERO;
     for (const row of this.#rows) {
       row.from = offset;
-      offset += this.#config.spacing + row.height;
-      row.switch(this.#direction === DIRECTION.BACKWARD ? BOTTOM : TOP);
+      offset += this.#config.spacing + row.primaryExtent;
+      row.switch(
+        this.#direction === DIRECTION.BACKWARD
+          ? this.#axis.endAttr
+          : this.#axis.startAttr
+      );
     }
 
     this.#section.classList.remove(old);
@@ -523,13 +537,16 @@ export default class Section<K, V> {
     sibling: Sibling<K, V>,
     finished: boolean
   ): { rows: Row<K, V>[]; remainder: ItemData<K, V>[]; offset: number } {
-    const data = items.map(({ aspectRatio }) => aspectRatio);
+    const threshold = this.#config.rowAspectRatioThreshold(this.#crossExtent);
 
-    const breakpoints = tile(
-      data,
-      this.#config.rowAspectRatioThreshold(this.#width),
-      useRemainder
-    );
+    const breakpoints =
+      threshold === ZERO
+        ? items.map((_, i) => i + 1)
+        : tile(
+            items.map(({ aspectRatio }) => this.#axis.tilingAR(aspectRatio)),
+            threshold,
+            useRemainder
+          );
 
     let offset = this.#rows.length ? this.#config.spacing : ZERO;
     let previous = ZERO;
@@ -589,10 +606,10 @@ export default class Section<K, V> {
         from: from + offset,
         iter: new Iter(focus, request, renderer, this, sibling),
         items: rowItems,
-        width: this.#width,
+        width: this.#crossExtent,
       });
       rows.push(row);
-      offset += row.height + this.#config.spacing;
+      offset += row.primaryExtent + this.#config.spacing;
       previous = breakpoints[index];
     }
 

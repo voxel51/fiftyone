@@ -2,6 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import { createAxis } from "./axis";
 import { ZERO } from "./constants";
 import { RowChange } from "./events";
 import type Row from "./row";
@@ -123,6 +124,7 @@ export const pixels = (pixels: number) => `${pixels}px`;
  */
 export const scrollToPosition = <K, V>({
   at,
+  horizontal,
   backward,
   offset,
   el,
@@ -130,26 +132,28 @@ export const scrollToPosition = <K, V>({
   top,
 }: {
   at: At;
+  horizontal?: boolean;
   backward: Section<K, V>;
   el: HTMLDivElement;
   forward: Section<K, V>;
   offset: number | false;
   top: number;
 }) => {
+  const { scrollTo } = createAxis(horizontal);
   if (at) {
     let row = forward.find(at.description);
     if (row) {
-      el.scrollTo(ZERO, backward.height + row.from - at.offset);
+      scrollTo(el, backward.height + row.from - at.offset);
       return;
     }
 
     row = backward.find(at.description);
-    row && el.scrollTo(ZERO, backward.height - row.from - row.height);
+    row && scrollTo(el, backward.height - row.from - row.height);
     return;
   }
 
   if (offset !== false && top) {
-    el.scrollTo(ZERO, top);
+    scrollTo(el, top);
   }
 };
 
