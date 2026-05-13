@@ -53,6 +53,12 @@ class Ontology(abc.ABC):
                 f"feature flag; set the {self._FEATURE_FLAG} env var to enable"
             )
 
+    def _validate(self) -> None:
+        """Hook called by :meth:`save` to validate the ontology before
+        persisting. Default is a no-op; subclasses override to call
+        their type-specific validator.
+        """
+
     def __init__(
         self,
         name: str,
@@ -160,12 +166,6 @@ class Ontology(abc.ABC):
         cloned._doc = None
         cloned.save()
         return cloned
-
-    def _validate(self) -> None:
-        """Hook called by :meth:`save` to validate the ontology before
-        persisting. Default is a no-op; subclasses override to call
-        their type-specific validator.
-        """
 
     def _get_root(self) -> Any:
         """Returns the serialized root data for storage.
@@ -366,6 +366,13 @@ class Taxonomy(Ontology):
         if not isinstance(root, Node):
             raise ValueError("Taxonomy.root must be a Node instance")
         self.root = root
+
+    def _validate(self) -> None:
+        # Lazy import — ``ontology_validation`` imports ``Taxonomy`` for
+        # type hints, so a top-level import here would be circular.
+        from fiftyone.core.ontology_validation import validate_taxonomy
+
+        validate_taxonomy(self)
 
     def _get_root(self) -> dict:
         return self.root.to_dict()
