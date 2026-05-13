@@ -9,6 +9,7 @@ import {
   loopStartAtom,
   playheadAtom,
   speedAtom,
+  stepIntervalAtom,
   viewEndAtom,
   viewStartAtom,
 } from "./atoms";
@@ -352,6 +353,86 @@ describe("PlaybackProvider engine actions", () => {
       // Calling cleanup twice shouldn't throw.
       act(() => unsub());
       expect(() => act(() => unsub())).not.toThrow();
+    });
+  });
+
+  describe("stepInterval derived from streams", () => {
+    it("uses the provider's stepInterval prop when no stream declares a native step", () => {
+      const { result } = renderEngine({ duration: 10 });
+      expect(result.current.store.get(stepIntervalAtom)).toBeCloseTo(1 / 30, 6);
+    });
+
+    it("falls back to 1/30 when neither prop nor stream provides a step", () => {
+      const { result } = renderHook(
+        () => ({ store: useStore() }),
+        {
+          wrapper: ({ children }) => (
+            <PlaybackProvider>{children}</PlaybackProvider>
+          ),
+        }
+      );
+      expect(result.current.store.get(stepIntervalAtom)).toBeCloseTo(1 / 30, 6);
+    });
+
+    it("adopts a registered stream's nativeStepSeconds", () => {
+      const { result } = renderEngine({ duration: 10 });
+      act(() => {
+        result.current.api.registerStream({
+          id: "fast",
+          blocking: false,
+          nativeStepSeconds: 1 / 100,
+          bufferState: () => "ready",
+        });
+      });
+      expect(result.current.store.get(stepIntervalAtom)).toBeCloseTo(1 / 100, 6);
+    });
+
+    it("picks the smallest nativeStepSeconds across streams", () => {
+      const { result } = renderEngine({ duration: 10 });
+      act(() => {
+        result.current.api.registerStream({
+          id: "slow",
+          blocking: false,
+          nativeStepSeconds: 0.1,
+          bufferState: () => "ready",
+        });
+        result.current.api.registerStream({
+          id: "fast",
+          blocking: false,
+          nativeStepSeconds: 0.01,
+          bufferState: () => "ready",
+        });
+      });
+      expect(result.current.store.get(stepIntervalAtom)).toBeCloseTo(0.01, 6);
+    });
+
+    it("reverts to the fallback once all native-step streams unregister", () => {
+      const { result } = renderEngine({ duration: 10 });
+      let unsub!: () => void;
+      act(() => {
+        unsub = result.current.api.registerStream({
+          id: "fast",
+          blocking: false,
+          nativeStepSeconds: 0.01,
+          bufferState: () => "ready",
+        });
+      });
+      expect(result.current.store.get(stepIntervalAtom)).toBeCloseTo(0.01, 6);
+      act(() => unsub());
+      expect(result.current.store.get(stepIntervalAtom)).toBeCloseTo(1 / 30, 6);
+    });
+
+    it("ignores streams without a nativeStepSeconds", () => {
+      const { result } = renderEngine({ duration: 10 });
+      act(() => {
+        result.current.api.registerStream({
+          id: "unstepped",
+          blocking: false,
+          bufferState: () => "ready",
+        });
+      });
+      // No step declared → still the provider fallback.
+      expect(result.current.store.get(stepIntervalAtom)).toBeCloseTo(1 / 30, 6);
     });
   });
 

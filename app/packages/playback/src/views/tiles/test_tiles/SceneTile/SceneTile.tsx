@@ -3,28 +3,44 @@ import { Canvas } from "@react-three/fiber";
 import { useAtomValue } from "jotai";
 import React from "react";
 import { playheadAtom } from "../../../../lib/playback/atoms";
+import { useStream } from "../../../../lib/playback/use-stream";
 import { useTileSettings } from "../../../../lib/TilingProvider";
 import SceneSettings from "./SceneSettings";
 import styles from "./SceneTile.module.css";
 
+interface ScenePose {
+  position?: [number, number, number];
+  rotation?: number;
+}
+
+export interface SceneTileProps {
+  /**
+   * If provided, the animated box's position follows the stream's
+   * `position` payload instead of the closed-form orbit. Useful when a
+   * real pose stream is registered.
+   */
+  streamId?: string;
+}
+
 /**
  * 3D scene tile body — a Three.js (via react-three-fiber) scene with a
- * box moving along a closed path. The box's position is a function of
- * the playback time, so playing/scrubbing animates the scene.
+ * box moving along a closed path. When `streamId` is provided, the box
+ * tracks the stream's published pose; otherwise it falls back to a
+ * closed-form orbit driven by `playheadAtom`.
  */
-const SceneTile: React.FC = () => {
+const SceneTile: React.FC<SceneTileProps> = ({ streamId }) => {
   useTileSettings(SceneSettings);
   return (
     <div className={styles.body}>
-    <Canvas
-      camera={{ position: [4, 3, 4], fov: 50 }}
-      style={{ background: "#0f1115" }}
-    >
-      <ambientLight intensity={0.5} />
-      <directionalLight position={[5, 5, 5]} intensity={1.2} />
-      <PathReference />
-      <FloorGrid />
-      <AnimatedBox />
+      <Canvas
+        camera={{ position: [4, 3, 4], fov: 50 }}
+        style={{ background: "#0f1115" }}
+      >
+        <ambientLight intensity={0.5} />
+        <directionalLight position={[5, 5, 5]} intensity={1.2} />
+        <PathReference />
+        <FloorGrid />
+        <AnimatedBox streamId={streamId} />
         <OrbitControls enablePan={false} />
       </Canvas>
     </div>
@@ -46,13 +62,15 @@ function pathPoint(t: number): [number, number, number] {
 }
 
 /**
- * The animated box. Reads `playheadAtom` and re-renders on every tick.
- * Position is a pure function of time — works the same when scrubbing
- * as when playing.
+ * The animated box. When a `streamId` is provided and the stream is
+ * publishing a pose, the box follows that position. Otherwise it falls
+ * back to a closed-form orbit driven by `playheadAtom`.
  */
-const AnimatedBox: React.FC = () => {
+const AnimatedBox: React.FC<{ streamId?: string }> = ({ streamId }) => {
   const t = useAtomValue(playheadAtom);
-  const [x, y, z] = pathPoint(t);
+  const pose = useStream<ScenePose>(streamId ?? "");
+  const [x, y, z] =
+    streamId && pose?.position ? pose.position : pathPoint(t);
   return (
     <mesh position={[x, y, z]}>
       <boxGeometry args={[0.5, 0.5, 0.5]} />

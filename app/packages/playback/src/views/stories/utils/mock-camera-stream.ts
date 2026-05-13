@@ -1,0 +1,83 @@
+import { IconName } from "@voxel51/voodo";
+import React from "react";
+import { PlaybackStreamBase } from "../../../lib/playback/stream-base";
+import type { BufferReadiness } from "../../../lib/playback/types";
+import CameraTile from "../../tiles/test_tiles/CameraTile/CameraTile";
+import type { MockStreamBundle, MockStreamFactoryOptions } from "./types";
+
+/** Synthetic "frame" the mock camera publishes each commit. */
+export interface MockCameraFrame {
+  frameNumber: number;
+  timestampSec: number;
+  /** Pretend image label — a real impl would put a URL or ImageBitmap here. */
+  label: string;
+}
+
+export interface MockCameraOptions extends MockStreamFactoryOptions {
+  /** Sample rate in frames per second. @default 30 */
+  fps?: number;
+}
+
+class MockCameraStream extends PlaybackStreamBase<MockCameraFrame> {
+  constructor(
+    id: string,
+    duration: number,
+    private readonly fps: number,
+    title: string
+  ) {
+    // Camera is non-blocking by default for demo purposes — a real
+    // implementation would block until the frame at the target time
+    // has been fetched. `nativeStepSeconds = 1/fps` so the engine's
+    // step interval lands on actual frame boundaries.
+    super(id, {
+      blocking: false,
+      duration,
+      nativeStepSeconds: 1 / fps,
+      tile: {
+        title,
+        icon: IconName.GridView,
+        // Pre-bind the streamId so the tile resolves its data via
+        // useStream(id) without any prop threading at the spawn site.
+        Tile: () => React.createElement(CameraTile, { streamId: id }),
+      },
+    });
+  }
+
+  bufferState(): BufferReadiness {
+    return "ready";
+  }
+
+  prefetch(): void {
+    // No-op — mock data is computed lazily.
+  }
+
+  getValue(time: number): MockCameraFrame {
+    const frameNumber = Math.floor(time * this.fps);
+    return {
+      frameNumber,
+      timestampSec: time,
+      label: `${this.id} #${frameNumber}`,
+    };
+  }
+}
+
+/**
+ * Build a camera-tile stream. Publishes a synthetic "frame number +
+ * timestamp" payload every commit; the existing `CameraTile` body just
+ * renders a placeholder, but `useStream("<id>")` consumers will see the
+ * live payload.
+ */
+export function createMockCameraStream(opts: MockCameraOptions): MockStreamBundle {
+  const { id, title = id, duration = 10, fps = 30 } = opts;
+  const stream = new MockCameraStream(id, duration, fps, title);
+  return {
+    id,
+    kind: "camera",
+    title,
+    icon: IconName.GridView,
+    stream,
+    // Re-use the same Tile component the stream advertises, so the
+    // bundle and the engine's registered-tile metadata stay in sync.
+    Tile: stream.tile!.Tile,
+  };
+}

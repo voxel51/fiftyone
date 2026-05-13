@@ -3,7 +3,9 @@
 // based timeline in use-timeline.ts / state.ts).
 // ---------------------------------------------------------------------------
 
+import type { IconName } from "@voxel51/voodo";
 import type { createStore } from "jotai";
+import type { ComponentType } from "react";
 
 /** Opaque handle to the scoped Jotai store owned by a PlaybackProvider instance. */
 export type PlaybackStore = ReturnType<typeof createStore>;
@@ -88,6 +90,14 @@ export interface PlaybackStream {
   duration?: number;
 
   /**
+   * Native sample period in seconds — e.g. 1/30 for 30 fps video, 0.1
+   * for 10 Hz sensor data. The engine derives `stepIntervalAtom` from
+   * the *min* across registered streams, so stepForward / stepBack lands
+   * on a tick that even the highest-frequency stream can resolve.
+   */
+  nativeStepSeconds?: number;
+
+  /**
    * How many seconds ahead of the target time this stream wants to keep
    * buffered. Passed as the upper bound of the range in prefetch() calls.
    * @default 3
@@ -134,6 +144,29 @@ export interface PlaybackStream {
    * Optional — omit if the stream has no meaningful buffer to display.
    */
   bufferedRanges?: () => Array<[number, number]>;
+
+  /**
+   * Optional tile metadata so a `TilingHeader` (or any UI surface that
+   * spawns tiles) can list this stream as an addable tile. Streams
+   * without this entry are still valid — they just won't appear in
+   * tile-add menus.
+   */
+  tile?: PlaybackStreamTileMetadata;
+}
+
+/**
+ * Describes how to render a tile that consumes a particular stream.
+ * Streams attach this via `PlaybackStream.tile` so UIs like
+ * `TilingHeader` can build their add-tile menu by scanning what's been
+ * registered with the engine — no per-story menu wiring required.
+ */
+export interface PlaybackStreamTileMetadata {
+  /** Display label in the add-tile menu. */
+  title: string;
+  /** Menu item icon. */
+  icon: IconName;
+  /** Tile body component, mounted as `<Tile />` when a new tile spawns. */
+  Tile: ComponentType;
 }
 
 // ---------------------------------------------------------------------------
@@ -150,12 +183,14 @@ export interface PlaybackConfig {
    */
   duration?: number;
   /**
-   * Step size in seconds used by stepForward / stepBack. Should reflect the
-   * native sampling interval of the source data (e.g. 1/30 for 30 fps video,
-   * 0.1 for 10 Hz sensor data). Not related to the display refresh rate —
-   * the RAF loop advances time using wall-clock dt regardless of monitor Hz.
+   * Fallback step size in seconds. The engine derives `stepIntervalAtom`
+   * from `min(this, every registered stream's `nativeStepSeconds`)`, so
+   * step size tracks the highest-frequency stream by default. Provide
+   * this only as a sensible floor for the case where no stream
+   * publishes a `nativeStepSeconds`.
+   * @default 1/30
    */
-  stepInterval: number;
+  stepInterval?: number;
   defaultLoopStart?: number;
   defaultLoopEnd?: number;
   /** Initial playback speed multiplier. @default 1.0 */

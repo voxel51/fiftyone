@@ -3,6 +3,7 @@ import type {
   BufferReadiness,
   PlaybackStore,
   PlaybackStream,
+  PlaybackStreamTileMetadata,
   StreamLookupPolicy,
 } from "./types";
 
@@ -18,10 +19,20 @@ export interface PlaybackStreamBaseOptions {
    * stream's value.
    */
   duration?: number;
+  /**
+   * Native sample period in seconds. The engine derives the global
+   * `stepIntervalAtom` from the min across registered streams' values.
+   */
+  nativeStepSeconds?: number;
   /** @default 3 */
   lookaheadSeconds?: number;
   /** @default { type: "nearest", thresholdSeconds: 0.1 } */
   lookupPolicy?: StreamLookupPolicy;
+  /**
+   * Optional tile metadata so UIs that spawn tiles from registered
+   * streams (e.g. `TilingHeader`) can list this stream automatically.
+   */
+  tile?: PlaybackStreamTileMetadata;
 }
 
 /**
@@ -54,8 +65,10 @@ export interface PlaybackStreamBaseOptions {
 export abstract class PlaybackStreamBase<T> implements PlaybackStream {
   readonly blocking: boolean;
   readonly duration?: number;
+  readonly nativeStepSeconds?: number;
   readonly lookaheadSeconds: number;
   readonly lookupPolicy: StreamLookupPolicy;
+  readonly tile?: PlaybackStreamTileMetadata;
 
   constructor(
     public readonly id: string,
@@ -63,11 +76,13 @@ export abstract class PlaybackStreamBase<T> implements PlaybackStream {
   ) {
     this.blocking = options.blocking ?? true;
     this.duration = options.duration;
+    this.nativeStepSeconds = options.nativeStepSeconds;
     this.lookaheadSeconds = options.lookaheadSeconds ?? 3;
     this.lookupPolicy = options.lookupPolicy ?? {
       type: "nearest",
       thresholdSeconds: 0.1,
     };
+    this.tile = options.tile;
   }
 
   abstract bufferState(time: number): BufferReadiness;

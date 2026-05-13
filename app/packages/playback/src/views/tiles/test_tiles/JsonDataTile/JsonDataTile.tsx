@@ -1,11 +1,18 @@
 import React from "react";
+import { useStream } from "../../../../lib/playback/use-stream";
 import { useTileSettings } from "../../../../lib/TilingProvider";
 import JsonDataSettings from "./JsonDataSettings";
 import styles from "./JsonDataTile.module.css";
 
 export interface JsonDataTileProps {
-  /** Object to render as JSON. If omitted, a placeholder sample is shown. */
+  /** Object to render as JSON. Falls back to a placeholder when omitted. */
   data?: unknown;
+  /**
+   * If provided, subscribes to the stream with this id and renders its
+   * payload. `data` takes priority — useful for the standalone story to
+   * pass a fixed sample.
+   */
+  streamId?: string;
 }
 
 const PLACEHOLDER_DATA = {
@@ -24,11 +31,16 @@ const PLACEHOLDER_DATA = {
  * JSON tile body — syntax-colored render of an arbitrary object. Chrome
  * is provided externally (see `Tile` / `MosaicGrid`).
  */
-const JsonDataTile: React.FC<JsonDataTileProps> = ({
-  data = PLACEHOLDER_DATA,
-}) => {
+const JsonDataTile: React.FC<JsonDataTileProps> = ({ data, streamId }) => {
   useTileSettings(JsonDataSettings);
-  return <div className={styles.body}>{formatJson(data)}</div>;
+  const streamValue = useStream<unknown>(streamId ?? "");
+  const value =
+    data !== undefined
+      ? data
+      : streamId && streamValue !== null
+        ? streamValue
+        : PLACEHOLDER_DATA;
+  return <div className={styles.body}>{formatJson(value)}</div>;
 };
 
 function formatJson(value: unknown, indent = 0): React.ReactNode {

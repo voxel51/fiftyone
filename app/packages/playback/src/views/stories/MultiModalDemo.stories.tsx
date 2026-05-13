@@ -1,84 +1,22 @@
-import {
-  Drawer,
-  IconName,
-  MenuIconTextItem,
-  MenuSeparator,
-} from "@voxel51/voodo";
+import { Drawer } from "@voxel51/voodo";
 import type { Meta, StoryObj } from "@storybook/react";
 import { useState } from "react";
 import { PlaybackProvider } from "../../lib/playback/PlaybackProvider";
-import { TilingProvider, TilingTile, useTiling } from "../../lib/TilingProvider";
-import CameraTile from "../tiles/test_tiles/CameraTile/CameraTile";
-import GraphTile from "../tiles/test_tiles/GraphTile/GraphTile";
-import JsonDataTile from "../tiles/test_tiles/JsonDataTile/JsonDataTile";
-import LidarTile from "../tiles/test_tiles/LidarTile/LidarTile";
+import { useTiling } from "../../lib/TilingProvider";
 import MosaicGrid from "../tiles/MosaicGrid";
-import SceneTile from "../tiles/test_tiles/SceneTile/SceneTile";
 import TileSettingsSidebar from "../TileSettingsSidebar/TileSettingsSidebar";
 import TilingHeader from "../TilingHeader/TilingHeader";
 import TilingInspectorSidebar from "../TilingInspectorSidebar/TilingInspectorSidebar";
 import TimelineWithTracks from "../TimelineWithTracks/TimelineWithTracks";
+import { MockStoryShell, useMockTracks } from "./utils";
 
 const meta: Meta = { title: "Playback/MultiModalDemo" };
 export default meta;
 
-type TileKind = "camera" | "lidar" | "scene" | "graph" | "json";
-
-const KIND_LABELS: Record<TileKind, string> = {
-  camera: "Camera",
-  lidar: "Lidar",
-  scene: "3D Scene",
-  graph: "Graph",
-  json: "JSON Data",
-};
-
-const KIND_ICONS: Record<TileKind, IconName> = {
-  camera: IconName.GridView,
-  lidar: IconName.Embeddings,
-  scene: IconName.GridView,
-  graph: IconName.Logs,
-  json: IconName.JSON,
-};
-
-const KIND_RENDERERS: Record<TileKind, () => React.ReactNode> = {
-  camera: () => <CameraTile />,
-  lidar: () => <LidarTile />,
-  scene: () => <SceneTile />,
-  graph: () => <GraphTile />,
-  json: () => <JsonDataTile />,
-};
-
-function tile(kind: TileKind, title: string): TilingTile {
-  return { title, render: KIND_RENDERERS[kind] };
-}
-
-const INITIAL_TILES: Record<string, TilingTile> = {
-  "camera-1": tile("camera", "camera_front"),
-  "lidar-1": tile("lidar", "lidar_top"),
-  "scene-1": tile("scene", "scene_world"),
-  "graph-1": tile("graph", "imu"),
-  "json-1": tile("json", "metadata"),
-};
-
-const TRACKS = [
-  { id: "camera_front", color: "#4a9eff", start: 0, end: 10, events: [1, 3, 7] },
-  { id: "camera_left", color: "#4a9eff", start: 0, end: 10, events: [1.2, 3.4, 7.1] },
-  { id: "lidar_top", color: "#ff7c4a", start: 2, end: 9, events: [2.5, 5, 8] },
-  { id: "pose", color: "#4aff9e", start: 1, end: 8, events: [4, 6] },
-  { id: "imu", color: "#ffd24a", start: 0, end: 10, events: [0.5, 4.5, 9] },
-  { id: "gps", color: "#c84aff", start: 0, end: 10, events: [0, 2, 4, 6, 8] },
-];
-
 function DemoBody() {
-  const {
-    layout,
-    tiles,
-    focusedTileId,
-    setLayout,
-    setFocusedTileId,
-    addTile,
-    autoLayout,
-  } = useTiling();
+  const tracks = useMockTracks();
+  const { layout, tiles, focusedTileId, setLayout, setFocusedTileId } =
+    useTiling();
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
 
@@ -98,28 +36,6 @@ function DemoBody() {
         rightSidebarOpen={rightOpen}
         onToggleLeftSidebar={() => setLeftOpen((v) => !v)}
         onToggleRightSidebar={() => setRightOpen((v) => !v)}
-        tileMenu={
-          <>
-            {(Object.keys(KIND_LABELS) as TileKind[]).map((kind) => (
-              <MenuIconTextItem
-                key={kind}
-                icon={KIND_ICONS[kind]}
-                text={KIND_LABELS[kind]}
-                onClick={() =>
-                  addTile(tile(kind, `${kind}_${Date.now() % 1000}`), {
-                    idPrefix: kind,
-                  })
-                }
-              />
-            ))}
-            <MenuSeparator />
-            <MenuIconTextItem
-              icon={IconName.Refresh}
-              text="Auto Layout"
-              onClick={autoLayout}
-            />
-          </>
-        }
       />
 
       <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
@@ -158,17 +74,17 @@ function DemoBody() {
         </Drawer>
       </div>
 
-      <TimelineWithTracks tracks={TRACKS} />
+      <TimelineWithTracks tracks={tracks} />
     </div>
   );
 }
 
 export const Default: StoryObj = {
   render: () => (
-    <PlaybackProvider duration={10} stepInterval={1 / 30}>
-      <TilingProvider initialTiles={INITIAL_TILES}>
+    <PlaybackProvider>
+      <MockStoryShell>
         <DemoBody />
-      </TilingProvider>
+      </MockStoryShell>
     </PlaybackProvider>
   ),
 };

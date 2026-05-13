@@ -13,6 +13,7 @@
 
 import { atom } from "jotai";
 import { atomFamily } from "jotai/utils";
+import type { PlaybackStreamTileMetadata } from "./types";
 
 /**
  * Per-stream reactive value atom, keyed by stream id. Lazily created on first
@@ -80,3 +81,17 @@ export const speedAtom = atom(1.0);
  * don't thrash. playheadAtom always updates immediately for smooth UI.
  */
 export const seekEventAtom = atom<{ time: number; seq: number } | null>(null);
+
+/**
+ * Per-stream tile descriptors: the subset of registered streams that
+ * declared `PlaybackStream.tile`. UIs that spawn tiles from registered
+ * streams (e.g. `TilingHeader`'s add-tile menu) subscribe to this so
+ * the menu stays in lockstep with whatever streams are alive. Updated
+ * by the engine's register / unregister hooks; held in registration
+ * order.
+ */
+export interface RegisteredTile {
+  id: string;
+  tile: PlaybackStreamTileMetadata;
+}
+export const registeredTilesAtom = atom<RegisteredTile[]>([]);

@@ -8,11 +8,13 @@ import {
   loopEndAtom,
   loopStartAtom,
   playheadAtom,
+  registeredTilesAtom,
   seekEventAtom,
   speedAtom,
   stepIntervalAtom,
   viewEndAtom,
   viewStartAtom,
+  type RegisteredTile,
 } from "./atoms";
 import type {
   PlaybackConfig,
@@ -26,16 +28,21 @@ const clamp = (v: number, lo: number, hi: number) =>
 
 export function usePlaybackEngine({
   duration = 0,
-  stepInterval,
+  stepInterval = 1 / 30,
   defaultLoopStart,
   defaultLoopEnd,
   defaultSpeed = 1.0,
-}: PlaybackConfig): { store: PlaybackStore; contextValue: PlaybackContextValue } {
-  // The duration prop is a FALLBACK when no stream provides one. Stored in a
-  // ref so the recompute function can read the latest value without
-  // capturing it.
+}: PlaybackConfig = {}): {
+  store: PlaybackStore;
+  contextValue: PlaybackContextValue;
+} {
+  // The duration / stepInterval props are FALLBACKS when no stream
+  // provides them. Stored in refs so the recompute functions can read
+  // the latest values without capturing them.
   const fallbackDurationRef = useRef(duration);
   fallbackDurationRef.current = duration;
+  const fallbackStepIntervalRef = useRef(stepInterval);
+  fallbackStepIntervalRef.current = stepInterval;
 
   const store = useMemo(() => {
     const s = createStore();
@@ -80,6 +87,41 @@ export function usePlaybackEngine({
     store.set(durationAtom, max);
     if (store.get(viewEndAtom) === prev) store.set(viewEndAtom, max);
     if (store.get(loopEndAtom) === prev) store.set(loopEndAtom, max);
+  }, [store]);
+
+  /**
+   * Rebuild the registered-tiles snapshot from streams that declared
+   * `PlaybackStream.tile`. Streams without tile metadata are excluded
+   * silently — they're still part of the engine, they just don't show
+   * up in tile-spawning UIs.
+   */
+  const recomputeRegisteredTiles = useCallback(() => {
+    const next: RegisteredTile[] = [];
+    for (const s of streamsRef.current.values()) {
+      if (s.tile) next.push({ id: s.id, tile: s.tile });
+    }
+    store.set(registeredTilesAtom, next);
+  }, [store]);
+
+  /**
+   * Derive `stepIntervalAtom` from the registered streams. Picks the
+   * smallest `nativeStepSeconds` so stepForward / stepBack lands on a
+   * tick even the highest-frequency stream can resolve. Streams that
+   * don't declare a native step are ignored. Falls back to the
+   * provider's `stepInterval` prop (default `1/30`) when no stream
+   * contributes a value.
+   */
+  const recomputeStepInterval = useCallback(() => {
+    let min = Infinity;
+    for (const s of streamsRef.current.values()) {
+      if (s.nativeStepSeconds != null && s.nativeStepSeconds > 0) {
+        if (s.nativeStepSeconds < min) min = s.nativeStepSeconds;
+      }
+    }
+    const next = min === Infinity ? fallbackStepIntervalRef.current : min;
+    if (store.get(stepIntervalAtom) !== next) {
+      store.set(stepIntervalAtom, next);
+    }
   }, [store]);
 
   const fireSeekEvent = useCallback(
@@ -247,9 +289,13 @@ export function usePlaybackEngine({
       registerStream: (stream: PlaybackStream) => {
         streamsRef.current.set(stream.id, stream);
         recomputeDuration();
+        recomputeStepInterval();
+        recomputeRegisteredTiles();
         return () => {
           streamsRef.current.delete(stream.id);
           recomputeDuration();
+          recomputeStepInterval();
+          recomputeRegisteredTiles();
         };
       },
       subscribeStream: (id: string) => {
@@ -264,7 +310,15 @@ export function usePlaybackEngine({
         };
       },
     }),
-    [store, fireSeekEvent, doCommit, checkAllReady, recomputeDuration]
+    [
+      store,
+      fireSeekEvent,
+      doCommit,
+      checkAllReady,
+      recomputeDuration,
+      recomputeStepInterval,
+      recomputeRegisteredTiles,
+    ]
   );
 
   const contextValue = useMemo<PlaybackContextValue>(
