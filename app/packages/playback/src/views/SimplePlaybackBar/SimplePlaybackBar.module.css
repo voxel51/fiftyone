@@ -18,24 +18,25 @@
   touch-action: none;
 }
 
-.rail {
+.rail,
+.fill {
   position: absolute;
-  left: 0;
-  right: 0;
+  top: 50%;
   height: 3px;
-  background: var(--color-content-bg-muted);
   border-radius: 2px;
   pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.rail {
+  left: 0;
+  right: 0;
+  background: var(--color-content-bg-muted);
 }
 
 .fill {
-  position: absolute;
-  top: 0;
-  bottom: 0;
   left: 0;
   background: var(--color-brand-primary);
-  border-radius: 2px;
-  pointer-events: none;
 }
 
 .handle {

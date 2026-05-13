@@ -46,10 +46,7 @@ const ProgressBar: React.FC = () => {
       }}
     >
       <div className={styles.rail} />
-      <div
-        className={styles.fill}
-        style={{ width: `calc(${ratio * 100}% - 0px)`, height: 3 }}
-      />
+      <div className={styles.fill} style={{ width: `${ratio * 100}%` }} />
       <div className={styles.handle} style={{ left: `${ratio * 100}%` }} />
     </div>
   );
