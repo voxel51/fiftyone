@@ -11,8 +11,8 @@ import {
 } from "react-mosaic-component";
 import "react-mosaic-component/react-mosaic-component.css";
 import { TileIdScope } from "../../lib/TilingProvider";
+import { TileHeader } from "../Tile/Tile";
 import styles from "./MosaicGrid.module.css";
-import { TileHeader } from "./Tile";
 
 /**
  * Per-tile config. `title` shows in the draggable toolbar (the toolbar IS

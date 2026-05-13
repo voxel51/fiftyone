@@ -32,20 +32,12 @@ class MockGraphStream extends PlaybackStreamBase<MockGraphSample> {
     id: string,
     duration: number,
     private readonly series: Record<string, number>,
-    hz: number,
-    title: string
+    hz: number
   ) {
     super(id, {
       blocking: false,
       duration,
       nativeStepSeconds: 1 / hz,
-      tile: {
-        kind: "graph",
-        kindLabel: "Graph",
-        title,
-        icon: IconName.Logs,
-        Tile: GraphTile,
-      },
     });
   }
 
@@ -82,13 +74,14 @@ export function createMockGraphStream(opts: MockGraphOptions): MockStreamBundle 
   // GraphTile doesn't yet consume per-tick samples (the chart would
   // need a rolling history). Stream still publishes data for future
   // consumers; tile renders its existing playhead-driven animation.
-  const stream = new MockGraphStream(id, duration, series, hz, title);
+  const stream = new MockGraphStream(id, duration, series, hz);
   return {
     id,
-    kind: "graph",
+    type: "graph",
+    typeLabel: "Graph",
     title,
     icon: IconName.Logs,
     stream,
-    Tile: stream.tile!.Tile,
+    Tile: GraphTile,
   };
 }

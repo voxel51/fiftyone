@@ -8,13 +8,11 @@ import {
   loopEndAtom,
   loopStartAtom,
   playheadAtom,
-  registeredTilesAtom,
   seekEventAtom,
   speedAtom,
   stepIntervalAtom,
   viewEndAtom,
   viewStartAtom,
-  type RegisteredTile,
 } from "./atoms";
 import type {
   PlaybackConfig,
@@ -87,20 +85,6 @@ export function usePlaybackEngine({
     store.set(durationAtom, max);
     if (store.get(viewEndAtom) === prev) store.set(viewEndAtom, max);
     if (store.get(loopEndAtom) === prev) store.set(loopEndAtom, max);
-  }, [store]);
-
-  /**
-   * Rebuild the registered-tiles snapshot from streams that declared
-   * `PlaybackStream.tile`. Streams without tile metadata are excluded
-   * silently — they're still part of the engine, they just don't show
-   * up in tile-spawning UIs.
-   */
-  const recomputeRegisteredTiles = useCallback(() => {
-    const next: RegisteredTile[] = [];
-    for (const s of streamsRef.current.values()) {
-      if (s.tile) next.push({ id: s.id, tile: s.tile });
-    }
-    store.set(registeredTilesAtom, next);
   }, [store]);
 
   /**
@@ -290,12 +274,10 @@ export function usePlaybackEngine({
         streamsRef.current.set(stream.id, stream);
         recomputeDuration();
         recomputeStepInterval();
-        recomputeRegisteredTiles();
         return () => {
           streamsRef.current.delete(stream.id);
           recomputeDuration();
           recomputeStepInterval();
-          recomputeRegisteredTiles();
         };
       },
       subscribeStream: (id: string) => {
@@ -317,7 +299,6 @@ export function usePlaybackEngine({
       checkAllReady,
       recomputeDuration,
       recomputeStepInterval,
-      recomputeRegisteredTiles,
     ]
   );
 

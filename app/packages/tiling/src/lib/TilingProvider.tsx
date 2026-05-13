@@ -12,76 +12,14 @@ import {
   addTileToLayout,
   autoLayout as autoLayoutFn,
   collectTileIds,
-} from "../views/tiles/MosaicGrid";
+} from "../views/MosaicGrid/MosaicGrid";
+import type {
+  AddTileOptions,
+  TilingContextValue,
+  TilingTile,
+} from "./types";
 
-/**
- * Per-tile config the grid renders. `title` shows in the draggable toolbar;
- * `render` returns the body content. Both are stored in provider state and
- * passed straight through to `MosaicGrid`.
- */
-export interface TilingTile {
-  title: string;
-  render: () => React.ReactNode;
-}
-
-export interface AddTileOptions {
-  /**
-   * Prefix used when generating the new tile's id. Defaults to `"tile"`.
-   * The provider keeps a single counter; final id is `${prefix}-${n}`.
-   */
-  idPrefix?: string;
-  /**
-   * Tile id to split when inserting the new tile. Defaults to the
-   * currently focused tile (if any). Falls back to splitting the largest
-   * leaf when the target isn't in the layout.
-   */
-  targetId?: string | null;
-  /**
-   * Whether to focus the new tile after inserting it. Defaults to `true`.
-   */
-  focus?: boolean;
-}
-
-/**
- * Everything the provider exposes. Layout + tiles + focus + settings
- * registry, plus the spawn / remove / auto-layout operations.
- */
-export interface TilingContextValue {
-  // Layout state
-  layout: MosaicNode<string> | null;
-  tiles: Record<string, TilingTile>;
-  focusedTileId: string | null;
-
-  // Layout setters / operations
-  /**
-   * Replace the layout tree. Automatically removes orphaned entries
-   * (tiles no longer in the tree) and clears focus if the focused tile
-   * was removed. Pass this directly as MosaicGrid's `onChange`.
-   */
-  setLayout: (layout: MosaicNode<string> | null) => void;
-  setFocusedTileId: (id: string | null) => void;
-  /**
-   * Insert a new tile. Returns the generated id. By default the new tile
-   * splits the focused tile (falling back to the largest leaf) and
-   * becomes the focused tile.
-   */
-  addTile: (tile: TilingTile, options?: AddTileOptions) => string;
-  /** Remove a tile by id. Updates both the entries map and the layout. */
-  removeTile: (id: string) => void;
-  /** Rebalance every tile in the current layout into a fresh tree. */
-  autoLayout: () => void;
-
-  // Settings registry
-  /**
-   * The component type registered by the focused tile's settings, if
-   * any. Render as `<Component />`.
-   */
-  FocusedTileSettings: React.ComponentType | null;
-  registerSettings: (
-    tileId: string,
-    Component: React.ComponentType
-  ) => () => void;
-}
+export type { AddTileOptions, TilingContextValue, TilingTile } from "./types";
 
 const TilingContext = createContext<TilingContextValue | null>(null);
 

@@ -3,7 +3,6 @@ import type {
   BufferReadiness,
   PlaybackStore,
   PlaybackStream,
-  PlaybackStreamTileMetadata,
   StreamLookupPolicy,
 } from "./types";
 
@@ -28,11 +27,6 @@ export interface PlaybackStreamBaseOptions {
   lookaheadSeconds?: number;
   /** @default { type: "nearest", thresholdSeconds: 0.1 } */
   lookupPolicy?: StreamLookupPolicy;
-  /**
-   * Optional tile metadata so UIs that spawn tiles from registered
-   * streams (e.g. `TilingHeader`) can list this stream automatically.
-   */
-  tile?: PlaybackStreamTileMetadata;
 }
 
 /**
@@ -68,7 +62,6 @@ export abstract class PlaybackStreamBase<T> implements PlaybackStream {
   readonly nativeStepSeconds?: number;
   readonly lookaheadSeconds: number;
   readonly lookupPolicy: StreamLookupPolicy;
-  readonly tile?: PlaybackStreamTileMetadata;
 
   constructor(
     public readonly id: string,
@@ -82,7 +75,6 @@ export abstract class PlaybackStreamBase<T> implements PlaybackStream {
       type: "nearest",
       thresholdSeconds: 0.1,
     };
-    this.tile = options.tile;
   }
 
   abstract bufferState(time: number): BufferReadiness;

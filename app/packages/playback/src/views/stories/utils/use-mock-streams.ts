@@ -1,3 +1,4 @@
+import { useTileRegistry } from "@fiftyone/tiling";
 import { useEffect, useMemo } from "react";
 import { usePlayback } from "../../../lib/playback/PlaybackProvider";
 import {
@@ -23,15 +24,15 @@ import {
 import type { MockStreamBundle } from "./types";
 
 /**
- * One entry per mock stream the demo wants. The `kind` discriminant
+ * One entry per mock stream the demo wants. The `type` discriminant
  * selects the factory; the remaining fields are that factory's options.
  */
 export type MockStreamConfig =
-  | ({ kind: "camera" } & MockCameraOptions)
-  | ({ kind: "lidar" } & MockLidarOptions)
-  | ({ kind: "scene" } & MockSceneOptions)
-  | ({ kind: "graph" } & MockGraphOptions)
-  | ({ kind: "json" } & MockJsonOptions);
+  | ({ type: "camera" } & MockCameraOptions)
+  | ({ type: "lidar" } & MockLidarOptions)
+  | ({ type: "scene" } & MockSceneOptions)
+  | ({ type: "graph" } & MockGraphOptions)
+  | ({ type: "json" } & MockJsonOptions);
 
 /**
  * Pure conversion: `MockStreamConfig` → `MockStreamBundle`. No hooks,
@@ -40,7 +41,7 @@ export type MockStreamConfig =
  * before mounting the providers.
  */
 export function buildBundle(config: MockStreamConfig): MockStreamBundle {
-  switch (config.kind) {
+  switch (config.type) {
     case "camera":
       return createMockCameraStream(config);
     case "lidar":
@@ -73,6 +74,7 @@ export function useMockStreams(
   configs: MockStreamConfig[]
 ): MockStreamBundle[] {
   const { registerStream } = usePlayback();
+  const { registerTile } = useTileRegistry();
 
   // Built once at mount. The lint suppression is intentional — see the
   // doc comment above for the mount-time-only contract.
@@ -83,11 +85,21 @@ export function useMockStreams(
   );
 
   useEffect(() => {
-    const cleanups = bundles.map((b) => registerStream(b.stream));
+    const cleanups = bundles.flatMap((b) => [
+      registerStream(b.stream),
+      registerTile({
+        streamId: b.id,
+        type: b.type,
+        typeLabel: b.typeLabel,
+        title: b.title,
+        icon: b.icon,
+        Tile: b.Tile,
+      }),
+    ]);
     return () => {
       for (const c of cleanups) c();
     };
-  }, [bundles, registerStream]);
+  }, [bundles, registerStream, registerTile]);
 
   return bundles;
 }

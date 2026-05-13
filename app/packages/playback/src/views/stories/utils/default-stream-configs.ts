@@ -10,34 +10,34 @@ import type { MockStreamConfig } from "./use-mock-streams";
  */
 export const DEFAULT_STREAM_CONFIGS: MockStreamConfig[] = [
   {
-    kind: "camera",
+    type: "camera",
     id: "camera_front",
     title: "Camera front",
     duration: 12,
     fps: 30,
   },
   {
-    kind: "lidar",
+    type: "lidar",
     id: "lidar_top",
     title: "Lidar top",
     duration: 12,
     hz: 10,
   },
   {
-    kind: "scene",
+    type: "scene",
     id: "scene_world",
     title: "Scene",
     duration: 12,
   },
   {
-    kind: "graph",
+    type: "graph",
     id: "imu",
     title: "IMU",
     duration: 12,
     hz: 50,
   },
   {
-    kind: "json",
+    type: "json",
     id: "metadata",
     title: "Metadata",
     duration: 12,

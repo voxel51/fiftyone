@@ -1,12 +1,12 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import { useMemo } from "react";
-import { useTileId } from "../TilingProvider";
 import {
   registeredTilesAtom,
   tileSelectionAtom,
   tileSourceAtom,
-  type RegisteredTile,
 } from "./atoms";
+import { useTileId } from "./TilingProvider";
+import type { RegisteredTile } from "./types";
 
 // We need a stable placeholder key so atomFamily doesn't create a new
 // atom on every render when the surrounding tile id is null (the
@@ -53,31 +53,27 @@ export function useSetTileSelection(): (selection: unknown) => void {
 }
 
 /**
- * Distinct tile kinds among the currently-registered streams, in
- * registration order. Each entry exposes the first registered stream's
- * tile metadata as the kind's exemplar (used for the icon + kind
- * label).
+ * Distinct tile types among the currently-registered tiles, in
+ * registration order. Each entry exposes the first registered source
+ * as the type's exemplar (used for the icon + type label in
+ * TilingHeader's add-tile menu).
  */
-export function useTileKinds(): RegisteredTile[] {
+export function useTileTypes(): RegisteredTile[] {
   const tiles = useAtomValue(registeredTilesAtom);
   return useMemo(() => {
     const seen = new Map<string, RegisteredTile>();
     for (const entry of tiles) {
-      if (!seen.has(entry.tile.kind)) seen.set(entry.tile.kind, entry);
+      if (!seen.has(entry.type)) seen.set(entry.type, entry);
     }
     return Array.from(seen.values());
   }, [tiles]);
 }
 
 /**
- * Registered streams whose tile metadata matches the given kind. Used
- * by settings source pickers ("which camera feed to bind this Camera
- * tile to").
+ * Registered tile sources matching the given `type`. Used by settings
+ * source pickers ("which camera feed should this Camera tile show").
  */
-export function useStreamsByKind(kind: string): RegisteredTile[] {
+export function useTileSourcesByType(type: string): RegisteredTile[] {
   const tiles = useAtomValue(registeredTilesAtom);
-  return useMemo(
-    () => tiles.filter((t) => t.tile.kind === kind),
-    [tiles, kind]
-  );
+  return useMemo(() => tiles.filter((t) => t.type === type), [tiles, type]);
 }

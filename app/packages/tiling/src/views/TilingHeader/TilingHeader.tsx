@@ -14,8 +14,8 @@ import {
 import clsx from "clsx";
 import { useAtomValue, useStore } from "jotai";
 import React, { useMemo } from "react";
-import { registeredTilesAtom, tileSourceAtom } from "../../lib/playback/atoms";
-import { useTileKinds } from "../../lib/playback/use-tile-state";
+import { registeredTilesAtom, tileSourceAtom } from "../../lib/atoms";
+import { useTileTypes } from "../../lib/use-tile-state";
 import { useTiling } from "../../lib/TilingProvider";
 import { SidebarLeftIcon, SidebarRightIcon } from "./tiling-header-icons";
 import styles from "./TilingHeader.module.css";
@@ -36,7 +36,7 @@ export interface TilingHeaderProps {
  *
  * - Filename on the left (truncates with ellipsis when narrow)
  * - "Add tile" icon-button dropdown — items are inferred from the
- *   distinct tile *kinds* among streams registered with the engine.
+ *   distinct tile *types* among the entries registered with the tile
  *   Spawning a Camera tile binds it to the first registered camera
  *   stream by default; the user can swap to any other registered
  *   camera through the tile's settings panel. Auto Layout is
@@ -54,38 +54,38 @@ const TilingHeader: React.FC<TilingHeaderProps> = ({
   onToggleLeftSidebar,
   onToggleRightSidebar,
 }) => {
-  const kinds = useTileKinds();
+  const types = useTileTypes();
   const allTiles = useAtomValue(registeredTilesAtom);
   const { addTile, autoLayout } = useTiling();
   const store = useStore();
 
   const tileMenu = useMemo(() => {
-    if (kinds.length === 0) return null;
+    if (types.length === 0) return null;
     return (
       <>
-        {kinds.map(({ tile }) => {
-          const TileComponent = tile.Tile;
+        {types.map((entry) => {
+          const TileComponent = entry.Tile;
           return (
             <MenuIconTextItem
-              key={tile.kind}
-              icon={tile.icon}
-              text={tile.kindLabel}
+              key={entry.type}
+              icon={entry.icon}
+              text={entry.typeLabel}
               onClick={() => {
                 const newTileId = addTile(
                   {
-                    title: tile.kindLabel,
+                    title: entry.typeLabel,
                     render: () => <TileComponent />,
                   },
-                  { idPrefix: tile.kind }
+                  { idPrefix: entry.type }
                 );
                 // Default the spawn to the first registered source of
-                // this kind, if any. The user can swap via the settings
+                // this type, if any. The user can swap via the settings
                 // sidebar's source picker.
                 const firstSource = allTiles.find(
-                  (t) => t.tile.kind === tile.kind
+                  (t) => t.type === entry.type
                 );
                 if (firstSource) {
-                  store.set(tileSourceAtom(newTileId), firstSource.id);
+                  store.set(tileSourceAtom(newTileId), firstSource.streamId);
                 }
               }}
             />
@@ -99,7 +99,7 @@ const TilingHeader: React.FC<TilingHeaderProps> = ({
         />
       </>
     );
-  }, [kinds, allTiles, addTile, autoLayout, store]);
+  }, [types, allTiles, addTile, autoLayout, store]);
 
   return (
     <div className={styles.root}>

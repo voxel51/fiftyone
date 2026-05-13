@@ -5,7 +5,7 @@
 export type {
   MockStreamBundle,
   MockStreamFactoryOptions,
-  MockStreamKind,
+  MockStreamType,
 } from "./types";
 
 export { DEFAULT_STREAM_CONFIGS } from "./default-stream-configs";

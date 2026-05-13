@@ -3456,6 +3456,7 @@ __metadata:
   dependencies:
     "@bufbuild/protobuf": "npm:^2.11.0"
     "@fiftyone/plugins": "npm:*"
+    "@fiftyone/tiling": "workspace:*"
   languageName: unknown
   linkType: soft
 
@@ -3481,6 +3482,7 @@ __metadata:
   resolution: "@fiftyone/playback@workspace:packages/playback"
   dependencies:
     "@eslint/compat": "npm:^1.1.1"
+    "@fiftyone/tiling": "workspace:*"
     "@voxel51/voodo": "npm:^0.0.27"
     eslint: "npm:9.7.0"
     eslint-plugin-react: "npm:^7.35.0"
@@ -3595,6 +3597,20 @@ __metadata:
     react-relay: "*"
     recoil: "*"
     recoil-relay: "*"
+  languageName: unknown
+  linkType: soft
+
+"@fiftyone/tiling@workspace:*, @fiftyone/tiling@workspace:packages/tiling":
+  version: 0.0.0-use.local
+  resolution: "@fiftyone/tiling@workspace:packages/tiling"
+  dependencies:
+    "@voxel51/voodo": "npm:^0.0.27"
+    clsx: "npm:^2.1.1"
+    jotai: "npm:^2.9.3"
+    react-mosaic-component: "npm:^6.1.1"
+  peerDependencies:
+    react: "*"
+    react-dom: "*"
   languageName: unknown
   linkType: soft
 

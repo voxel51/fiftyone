@@ -1,7 +1,7 @@
 import { Text, TextColor, TextVariant } from "@voxel51/voodo";
 import { useAtomValue } from "jotai";
 import React from "react";
-import { tileSelectionAtom } from "../../lib/playback/atoms";
+import { tileSelectionAtom } from "../../lib/atoms";
 import { useTiling } from "../../lib/TilingProvider";
 import SidebarPanel from "../SidebarPanel/SidebarPanel";
 import styles from "./TilingInspectorSidebar.module.css";

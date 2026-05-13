@@ -3,7 +3,7 @@ import type { ComponentType } from "react";
 import type { PlaybackStream } from "../../../lib/playback/types";
 
 /** Discriminator for the mock factories we ship. */
-export type MockStreamKind = "camera" | "lidar" | "scene" | "graph" | "json";
+export type MockStreamType = "camera" | "lidar" | "scene" | "graph" | "json";
 
 /**
  * The complete description of a mock stream + the tile that renders it.
@@ -23,8 +23,10 @@ export type MockStreamKind = "camera" | "lidar" | "scene" | "graph" | "json";
 export interface MockStreamBundle {
   /** Stream id — must be unique within a single PlaybackProvider. */
   id: string;
-  /** Mock kind — drives default coloring on the timeline tracks. */
-  kind: MockStreamKind;
+  /** Mock type — drives default coloring on the timeline tracks. */
+  type: MockStreamType;
+  /** Menu label for the type ("Camera", "3D Scene", …). */
+  typeLabel: string;
   /** Human-readable title shown on the add-tile menu and the tile chrome. */
   title: string;
   /** Icon used for the add-tile menu entry. */

@@ -2,21 +2,21 @@ import { Checkbox, Select, Text, TextColor, TextVariant } from "@voxel51/voodo";
 import React, { useMemo } from "react";
 import {
   useSetTileSource,
-  useStreamsByKind,
+  useTileSourcesByType,
   useTileSource,
-} from "../../../../lib/playback/use-tile-state";
-import styles from "../../tile-settings.module.css";
+} from "@fiftyone/tiling";
+import styles from "@fiftyone/tiling/src/views/Tile/tile-settings.module.css";
 
 const SceneSettings: React.FC = () => {
-  const sources = useStreamsByKind("scene");
+  const sources = useTileSourcesByType("scene");
   const sourceId = useTileSource();
   const setSource = useSetTileSource();
 
   const options = useMemo(
     () =>
       sources.map((s) => ({
-        id: s.id,
-        data: { label: s.tile.title },
+        id: s.streamId,
+        data: { label: s.title },
       })),
     [sources]
   );

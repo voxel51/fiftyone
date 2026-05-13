@@ -1,8 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { useStore } from "jotai";
 import { useEffect } from "react";
-import { tileSourceAtom } from "../../lib/playback/atoms";
-import type { TilingTile } from "../../lib/TilingProvider";
+import { tileSourceAtom, type TilingTile } from "@fiftyone/tiling";
 import MultiModalPlayback from "../../../../multimodal/src/components/MultiModalPlayback/MultiModalPlayback";
 import {
   buildBundle,

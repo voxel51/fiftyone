@@ -13,11 +13,12 @@ import CameraTile from "./test_tiles/CameraTile/CameraTile";
 import GraphTile from "./test_tiles/GraphTile/GraphTile";
 import JsonDataTile from "./test_tiles/JsonDataTile/JsonDataTile";
 import LidarTile from "./test_tiles/LidarTile/LidarTile";
-import MosaicGrid, {
+import {
+  MosaicGrid,
   addTileToLayout,
   autoLayout,
   collectTileIds,
-} from "./MosaicGrid";
+} from "@fiftyone/tiling";
 import SceneTile from "./test_tiles/SceneTile/SceneTile";
 
 const meta: Meta = { title: "Playback/Tiles/Mosaic" };

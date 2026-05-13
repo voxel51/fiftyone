@@ -28,6 +28,7 @@
     },
     "dependencies": {
         "@bufbuild/protobuf": "^2.11.0",
-        "@fiftyone/plugins": "*"
+        "@fiftyone/plugins": "*",
+        "@fiftyone/tiling": "workspace:*"
     }
 }

@@ -2,10 +2,10 @@ import { Checkbox, Select, Text, TextColor, TextVariant } from "@voxel51/voodo";
 import React, { useMemo } from "react";
 import {
   useSetTileSource,
-  useStreamsByKind,
+  useTileSourcesByType,
   useTileSource,
-} from "../../../../lib/playback/use-tile-state";
-import styles from "../../tile-settings.module.css";
+} from "@fiftyone/tiling";
+import styles from "@fiftyone/tiling/src/views/Tile/tile-settings.module.css";
 
 /**
  * Source picker + per-tile toggles. The picker enumerates every
@@ -13,15 +13,15 @@ import styles from "../../tile-settings.module.css";
  * any of them without spawning a new tile.
  */
 const CameraSettings: React.FC = () => {
-  const sources = useStreamsByKind("camera");
+  const sources = useTileSourcesByType("camera");
   const sourceId = useTileSource();
   const setSource = useSetTileSource();
 
   const options = useMemo(
     () =>
       sources.map((s) => ({
-        id: s.id,
-        data: { label: s.tile.title },
+        id: s.streamId,
+        data: { label: s.title },
       })),
     [sources]
   );

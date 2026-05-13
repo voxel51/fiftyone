@@ -13,7 +13,6 @@
 
 import { atom } from "jotai";
 import { atomFamily } from "jotai/utils";
-import type { PlaybackStreamTileMetadata } from "./types";
 
 /**
  * Per-stream reactive value atom, keyed by stream id. Lazily created on first
@@ -81,42 +80,3 @@ export const speedAtom = atom(1.0);
  * don't thrash. playheadAtom always updates immediately for smooth UI.
  */
 export const seekEventAtom = atom<{ time: number; seq: number } | null>(null);
-
-/**
- * Per-stream tile descriptors: the subset of registered streams that
- * declared `PlaybackStream.tile`. UIs that spawn tiles from registered
- * streams (e.g. `TilingHeader`'s add-tile menu) subscribe to this so
- * the menu stays in lockstep with whatever streams are alive. Updated
- * by the engine's register / unregister hooks; held in registration
- * order.
- */
-export interface RegisteredTile {
-  id: string;
-  tile: PlaybackStreamTileMetadata;
-}
-export const registeredTilesAtom = atom<RegisteredTile[]>([]);
-
-/**
- * Per-tile-id source binding. The value is the id of the registered
- * stream whose data the tile should render — `null` when the tile is
- * unbound (placeholder mode). Tiles read this via `useTileSource()`;
- * the settings panel writes to it through `useSetTileSource()`.
- */
-type TileSource = string | null;
-export const tileSourceAtom = atomFamily((_tileId: string) => {
-  const initial: TileSource = null;
-  return atom(initial);
-});
-
-/**
- * Per-tile-id "current selection". Tile bodies write into this when the
- * user clicks something inspectable (a graph point, a scene object,
- * etc.); the inspector sidebar reads the focused tile's value to render
- * its details. Shape is intentionally `unknown` — each tile can publish
- * its own payload schema.
- */
-type TileSelection = unknown;
-export const tileSelectionAtom = atomFamily((_tileId: string) => {
-  const initial: TileSelection = null;
-  return atom(initial);
-});

@@ -7,8 +7,8 @@ import { useStream } from "../../../../lib/playback/use-stream";
 import {
   useSetTileSelection,
   useTileSource,
-} from "../../../../lib/playback/use-tile-state";
-import { useTileSettings } from "../../../../lib/TilingProvider";
+} from "@fiftyone/tiling";
+import { useTileSettings } from "@fiftyone/tiling";
 import SceneSettings from "./SceneSettings";
 import styles from "./SceneTile.module.css";
 

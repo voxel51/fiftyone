@@ -3,9 +3,7 @@
 // based timeline in use-timeline.ts / state.ts).
 // ---------------------------------------------------------------------------
 
-import type { IconName } from "@voxel51/voodo";
 import type { createStore } from "jotai";
-import type { ComponentType } from "react";
 
 /** Opaque handle to the scoped Jotai store owned by a PlaybackProvider instance. */
 export type PlaybackStore = ReturnType<typeof createStore>;
@@ -144,42 +142,6 @@ export interface PlaybackStream {
    * Optional — omit if the stream has no meaningful buffer to display.
    */
   bufferedRanges?: () => Array<[number, number]>;
-
-  /**
-   * Optional tile metadata so a `TilingHeader` (or any UI surface that
-   * spawns tiles) can list this stream as an addable tile. Streams
-   * without this entry are still valid — they just won't appear in
-   * tile-add menus.
-   */
-  tile?: PlaybackStreamTileMetadata;
-}
-
-/**
- * Describes how to render a tile that consumes a particular stream.
- * Streams attach this via `PlaybackStream.tile` so UIs like
- * `TilingHeader` can build their add-tile menu by scanning what's been
- * registered with the engine — no per-story menu wiring required.
- *
- * `kind` is the type discriminator (e.g. `"camera"`): the add-tile menu
- * groups by it, the settings panel filters by it (so a camera tile's
- * source picker only lists camera streams), and tile components can
- * key behavior off it.
- *
- * `title` is the per-source label ("Camera front", "IMU"). `kindLabel`
- * is the menu label shared across all streams of the same kind
- * ("Camera", "IMU").
- */
-export interface PlaybackStreamTileMetadata {
-  /** Type discriminator for source/menu grouping. */
-  kind: string;
-  /** Menu label, shared across all streams of the same `kind`. */
-  kindLabel: string;
-  /** Per-source display name (used in the settings source picker). */
-  title: string;
-  /** Menu item icon. */
-  icon: IconName;
-  /** Tile body component, mounted as `<Tile />` when a new tile spawns. */
-  Tile: ComponentType;
 }
 
 // ---------------------------------------------------------------------------

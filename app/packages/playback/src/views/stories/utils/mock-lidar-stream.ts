@@ -23,20 +23,12 @@ class MockLidarStream extends PlaybackStreamBase<MockLidarFrame> {
     id: string,
     duration: number,
     private readonly pointsPerScan: number,
-    hz: number,
-    title: string
+    hz: number
   ) {
     super(id, {
       blocking: false,
       duration,
       nativeStepSeconds: 1 / hz,
-      tile: {
-        kind: "lidar",
-        kindLabel: "Lidar",
-        title,
-        icon: IconName.Embeddings,
-        Tile: LidarTile,
-      },
     });
   }
 
@@ -75,13 +67,14 @@ class MockLidarStream extends PlaybackStreamBase<MockLidarFrame> {
  */
 export function createMockLidarStream(opts: MockLidarOptions): MockStreamBundle {
   const { id, title = id, duration = 10, pointsPerScan = 64, hz = 10 } = opts;
-  const stream = new MockLidarStream(id, duration, pointsPerScan, hz, title);
+  const stream = new MockLidarStream(id, duration, pointsPerScan, hz);
   return {
     id,
-    kind: "lidar",
+    type: "lidar",
+    typeLabel: "Lidar",
     title,
     icon: IconName.Embeddings,
     stream,
-    Tile: stream.tile!.Tile,
+    Tile: LidarTile,
   };
 }

@@ -18,18 +18,11 @@ export interface MockJsonOptions extends MockStreamFactoryOptions {
 }
 
 class MockJsonStream extends PlaybackStreamBase<MockJsonRecord> {
-  constructor(id: string, duration: number, hz: number, title: string) {
+  constructor(id: string, duration: number, hz: number) {
     super(id, {
       blocking: false,
       duration,
       nativeStepSeconds: 1 / hz,
-      tile: {
-        kind: "json",
-        kindLabel: "JSON Data",
-        title,
-        icon: IconName.JSON,
-        Tile: JsonDataTile,
-      },
     });
   }
 
@@ -70,13 +63,14 @@ class MockJsonStream extends PlaybackStreamBase<MockJsonRecord> {
  */
 export function createMockJsonStream(opts: MockJsonOptions): MockStreamBundle {
   const { id, title = id, duration = 10, hz = 10 } = opts;
-  const stream = new MockJsonStream(id, duration, hz, title);
+  const stream = new MockJsonStream(id, duration, hz);
   return {
     id,
-    kind: "json",
+    type: "json",
+    typeLabel: "JSON Data",
     title,
     icon: IconName.JSON,
     stream,
-    Tile: stream.tile!.Tile,
+    Tile: JsonDataTile,
   };
 }

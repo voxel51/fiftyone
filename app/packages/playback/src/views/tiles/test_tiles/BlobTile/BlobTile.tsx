@@ -4,7 +4,7 @@ import { playheadAtom } from "../../../../lib/playback/atoms";
 import { usePlayback } from "../../../../lib/playback/PlaybackProvider";
 import type { PlaybackStream } from "../../../../lib/playback/types";
 import { useStream } from "../../../../lib/playback/use-stream";
-import { useTileId } from "../../../../lib/TilingProvider";
+import { useTileId } from "@fiftyone/tiling";
 import styles from "./BlobTile.module.css";
 
 const STREAM_DURATION = 20;

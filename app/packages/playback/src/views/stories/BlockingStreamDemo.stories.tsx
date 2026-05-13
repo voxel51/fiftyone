@@ -12,14 +12,14 @@ import {
 import type { Meta, StoryObj } from "@storybook/react";
 import { PlaybackProvider } from "../../lib/playback/PlaybackProvider";
 import {
+  MosaicGrid,
   TilingProvider,
-  TilingTile,
   useTiling,
-} from "../../lib/TilingProvider";
+  type TilingTile,
+} from "@fiftyone/tiling";
 import { TrackProvider } from "../../lib/TrackProvider";
 import BlobTile from "../tiles/test_tiles/BlobTile/BlobTile";
 import BlockingTile from "../tiles/test_tiles/BlockingTile/BlockingTile";
-import MosaicGrid from "../tiles/MosaicGrid";
 import TimelineWithTracks from "../TimelineWithTracks/TimelineWithTracks";
 
 const meta: Meta = { title: "Playback/BlockingStreamDemo" };

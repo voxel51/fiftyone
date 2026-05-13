@@ -1,21 +1,21 @@
+import {
+  MosaicGrid,
+  TileSettingsSidebar,
+  TilingHeader,
+  TilingInspectorSidebar,
+  TilingProvider,
+  useTiling,
+  type TilingTile,
+} from "@fiftyone/tiling";
 import { Drawer } from "@voxel51/voodo";
 import clsx from "clsx";
 import React, { useState, type ReactNode } from "react";
 import { PlaybackProvider } from "../../../../playback/src/lib/playback/PlaybackProvider";
 import {
-  TilingProvider,
-  useTiling,
-  type TilingTile,
-} from "../../../../playback/src/lib/TilingProvider";
-import {
   TrackProvider,
   type Track,
 } from "../../../../playback/src/lib/TrackProvider";
-import TileSettingsSidebar from "../../../../playback/src/views/TileSettingsSidebar/TileSettingsSidebar";
-import TilingHeader from "../../../../playback/src/views/TilingHeader/TilingHeader";
-import TilingInspectorSidebar from "../../../../playback/src/views/TilingInspectorSidebar/TilingInspectorSidebar";
 import TimelineWithTracks from "../../../../playback/src/views/TimelineWithTracks/TimelineWithTracks";
-import MosaicGrid from "../../../../playback/src/views/tiles/MosaicGrid";
 import styles from "./MultiModalPlayback.module.css";
 
 export interface MultiModalPlaybackProps {

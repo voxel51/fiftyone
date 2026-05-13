@@ -2,8 +2,8 @@ import { useAtomValue } from "jotai";
 import React, { useMemo } from "react";
 import { playheadAtom } from "../../../../lib/playback/atoms";
 import { usePlayback } from "../../../../lib/playback/PlaybackProvider";
-import { useSetTileSelection } from "../../../../lib/playback/use-tile-state";
-import { useTileSettings } from "../../../../lib/TilingProvider";
+import { useSetTileSelection } from "@fiftyone/tiling";
+import { useTileSettings } from "@fiftyone/tiling";
 import GraphSettings from "./GraphSettings";
 import styles from "./GraphTile.module.css";
 

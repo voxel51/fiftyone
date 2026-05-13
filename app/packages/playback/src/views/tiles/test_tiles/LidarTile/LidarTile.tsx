@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { useStream } from "../../../../lib/playback/use-stream";
-import { useTileSource } from "../../../../lib/playback/use-tile-state";
-import { useTileSettings } from "../../../../lib/TilingProvider";
+import { useTileSource } from "@fiftyone/tiling";
+import { useTileSettings } from "@fiftyone/tiling";
 import LidarSettings from "./LidarSettings";
 import styles from "./LidarTile.module.css";
 

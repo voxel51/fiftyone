@@ -21,8 +21,7 @@ class MockCameraStream extends PlaybackStreamBase<MockCameraFrame> {
   constructor(
     id: string,
     duration: number,
-    private readonly fps: number,
-    title: string
+    private readonly fps: number
   ) {
     // Camera is non-blocking by default for demo purposes — a real
     // implementation would block until the frame at the target time
@@ -32,13 +31,6 @@ class MockCameraStream extends PlaybackStreamBase<MockCameraFrame> {
       blocking: false,
       duration,
       nativeStepSeconds: 1 / fps,
-      tile: {
-        kind: "camera",
-        kindLabel: "Camera",
-        title,
-        icon: IconName.GridView,
-        Tile: CameraTile,
-      },
     });
   }
 
@@ -68,13 +60,14 @@ class MockCameraStream extends PlaybackStreamBase<MockCameraFrame> {
  */
 export function createMockCameraStream(opts: MockCameraOptions): MockStreamBundle {
   const { id, title = id, duration = 10, fps = 30 } = opts;
-  const stream = new MockCameraStream(id, duration, fps, title);
+  const stream = new MockCameraStream(id, duration, fps);
   return {
     id,
-    kind: "camera",
+    type: "camera",
+    typeLabel: "Camera",
     title,
     icon: IconName.GridView,
     stream,
-    Tile: stream.tile!.Tile,
+    Tile: CameraTile,
   };
 }

@@ -24,8 +24,7 @@ class MockSceneStream extends PlaybackStreamBase<MockScenePose> {
     id: string,
     duration: number,
     private readonly radius: number,
-    private readonly periodSec: number,
-    title: string
+    private readonly periodSec: number
   ) {
     // Scene mock publishes at 30 Hz — matches the typical render loop
     // cadence; nothing in the scene is intrinsically rate-limited.
@@ -33,13 +32,6 @@ class MockSceneStream extends PlaybackStreamBase<MockScenePose> {
       blocking: false,
       duration,
       nativeStepSeconds: 1 / 30,
-      tile: {
-        kind: "scene",
-        kindLabel: "3D Scene",
-        title,
-        icon: IconName.Workspaces,
-        Tile: SceneTile,
-      },
     });
   }
 
@@ -74,13 +66,14 @@ class MockSceneStream extends PlaybackStreamBase<MockScenePose> {
  */
 export function createMockSceneStream(opts: MockSceneOptions): MockStreamBundle {
   const { id, title = id, duration = 10, radius = 2, periodSec = 6 } = opts;
-  const stream = new MockSceneStream(id, duration, radius, periodSec, title);
+  const stream = new MockSceneStream(id, duration, radius, periodSec);
   return {
     id,
-    kind: "scene",
+    type: "scene",
+    typeLabel: "3D Scene",
     title,
     icon: IconName.Workspaces,
     stream,
-    Tile: stream.tile!.Tile,
+    Tile: SceneTile,
   };
 }

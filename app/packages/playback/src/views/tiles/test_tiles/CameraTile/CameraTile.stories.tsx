@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import CameraTile from "./CameraTile";
-import Tile from "../../Tile";
+import { Tile } from "@fiftyone/tiling";
 
 const meta: Meta = { title: "Playback/Tiles/CameraTile" };
 export default meta;
