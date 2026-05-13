@@ -11,8 +11,13 @@ import {
 } from "../../../../playback/src/stories/utils";
 import MultiModalPlayback from "./MultiModalPlayback";
 
-const meta: Meta = { title: "Multimodal/Demos/MultiModalPlayback" };
+const meta = {
+  title: "Multimodal/Demos/MultiModalPlayback",
+  component: MultiModalPlayback,
+} satisfies Meta<typeof MultiModalPlayback>;
 export default meta;
+
+type Story = StoryObj<typeof MultiModalPlayback>;
 
 const STREAM_CONFIGS: MockStreamConfig[] = DEFAULT_STREAM_CONFIGS;
 
@@ -42,15 +47,17 @@ const INITIAL_TILES: Record<string, TilingTile> = Object.fromEntries(
 function MockSetup() {
   const bundles = useMockStreams(STREAM_CONFIGS);
   const setTileSource = useSetTileSourceFor();
+  // setTileSource is a stable jotai-backed setter — not in deps by design.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     for (const b of bundles) {
       setTileSource(`${b.id}-1`, b.id);
     }
-  }, [bundles, setTileSource]);
+  }, [bundles]);
   return null;
 }
 
-export const Default: StoryObj = {
+export const Default: Story = {
   render: () => (
     <div style={{ height: "calc(100vh - 32px)" }}>
       <MultiModalPlayback
