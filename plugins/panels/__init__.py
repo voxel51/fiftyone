@@ -14,6 +14,10 @@ from .similarity_search.operators import (
     SimilaritySearchOperator,
     SimilaritySearchSubscriptionOperator,
 )
+from .temporal_embedding_trajectory import (
+    ComputeTrajectoryEmbeddings,
+    TemporalEmbeddingTrajectoryPanel,
+)
 
 
 def register(p):
@@ -23,3 +27,5 @@ def register(p):
     p.register(ListSimilarityRunsOperator)
     p.register(InitSimilarityRunOperator)
     p.register(SimilaritySearchSubscriptionOperator)
+    p.register(TemporalEmbeddingTrajectoryPanel)
+    p.register(ComputeTrajectoryEmbeddings)

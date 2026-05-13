@@ -11,6 +11,8 @@ operators:
   - list_similarity_runs
   - init_similarity_run
   - get_similarity_search_subscription_notifier
+  - compute_trajectory_embeddings
 panels:
   - model_evaluation_panel_builtin
   - similarity_search_panel
+  - temporal_embedding_trajectory

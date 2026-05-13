@@ -63,3 +63,4 @@ export { default as TreeSelectionView } from "./TreeSelectionView";
 export { default as TupleView } from "./TupleView";
 export { default as UnsupportedView } from "./UnsupportedView";
 export { SimilaritySearchView } from "@fiftyone/similarity-search";
+export { TemporalEmbeddingTrajectoryView } from "@fiftyone/temporal-embedding-trajectory";
