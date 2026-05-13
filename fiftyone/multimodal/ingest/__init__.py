@@ -6,13 +6,19 @@ Ingest scaffolding for multimodal workflows.
 |
 """
 
-import os
 from concurrent.futures import ThreadPoolExecutor
+import os
+from typing import Generator
 
+import fiftyone as fo
 from fiftyone.core import storage
+from fiftyone.multimodal.adapters import MultimodalAdapter
+from fiftyone.multimodal.schemas.v1 import SceneInventory
 
 
-def _readable_paths(filepaths, *, adapter):
+def _readable_paths(
+    filepaths: list[str], *, adapter: MultimodalAdapter
+) -> Generator[str, None, None]:
     """
     Returns a generator of filepaths in the given iterable that can be read by
     the given adapter.
@@ -38,7 +44,9 @@ def _readable_paths(filepaths, *, adapter):
             yield filepath
 
 
-def _get_scene_inventories(filepaths, *, adapter):
+def _get_scene_inventories(
+    filepaths: list[str], *, adapter: MultimodalAdapter
+) -> list[SceneInventory]:
     """
     Reads the given scene files using the given adapter class, and returns
     a list of scene inventories.
