@@ -9,7 +9,7 @@ export const useDynamicGroupSamples = () => {
   const slice = useRecoilValue(fos.groupSlice);
   const modalSlice = useRecoilValue(fos.modalGroupSlice);
   const view = useRecoilValue(fos.view);
-  const dynamicGroup = useRecoilValue(fos.groupByFieldValue);
+  const dynamicGroup = fos.useGroupByFieldValue();
   const dataset = useRecoilValue(fos.datasetName);
   const dynamicGroupIndex = useRecoilValue(fos.dynamicGroupIndex);
   const shouldRenderImavid = useRecoilValue(fos.shouldRenderImaVidLooker(true));
