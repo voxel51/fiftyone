@@ -394,14 +394,11 @@ export const useBridge = (scene: Scene2D | null) => {
 
   useEventHandler(
     "lighter:point-selection-finalize",
-    useCallback(
-      () => {
-        if (segmentationMode.segmentationModeActive) {
-          segmentationMode.finalizePointSelection();
-        }
-      },
-      [segmentationMode]
-    )
+    useCallback(() => {
+      if (segmentationMode.segmentationModeActive) {
+        segmentationMode.finalizePointSelection();
+      }
+    }, [segmentationMode])
   );
 
   const context = useColorMappingContext();
