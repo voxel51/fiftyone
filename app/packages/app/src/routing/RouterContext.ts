@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import { viewsAreEqual } from "@fiftyone/state";
 import { NotFoundError, Resource, isNotebook } from "@fiftyone/utilities";
 import type { Action, Location } from "history";
