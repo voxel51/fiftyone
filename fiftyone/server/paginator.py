@@ -7,6 +7,7 @@ FiftyOne Server paginator
 """
 
 from bson import ObjectId
+import motor.motor_asyncio as mtr
 import typing as t
 
 import strawberry as gql
@@ -43,7 +44,7 @@ class Connection(t.Generic[T, C]):
 
 
 async def get_items(
-    collection_name: str,
+    collection: mtr.AsyncIOMotorCollection,
     from_db: t.Callable[[dict], T],
     key: str,
     filters: t.List[dict],
@@ -66,8 +67,8 @@ async def get_items(
         start + [{"$count": "total"}],
     ]
 
-    collection = foo.get_async_db_conn()[collection_name]
-    results, total = await foo.aggregate(collection, pipelines)
+    data = await foo.aggregate(collection, pipelines)
+    results, total = data
     edges = []
 
     for doc in results:
@@ -105,7 +106,7 @@ def get_paginator_resolver(
             return from_dict(cls, doc)
 
         return await get_items(
-            collection,
+            info.context.db[collection],
             from_db,
             key,
             filters,
