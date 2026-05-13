@@ -13,6 +13,7 @@
         "vite": "^7.3.2"
     },
     "dependencies": {
+        "@fiftyone/tiling": "*",
         "@voxel51/voodo": "^0.0.30",
         "jotai": "^2.9.3",
         "jotai-optics": "^0.4.0",

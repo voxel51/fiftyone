@@ -1,0 +1,25 @@
+/* Visual separator drawn before the loop readouts so they sit cleanly
+   apart from the rest of the controls row. */
+.divider {
+  width: 1px;
+  height: 12px;
+  background: var(--color-content-border-default);
+  flex-shrink: 0;
+  margin: 0 6px;
+}
+
+/* Wrapper around the `(start / end)` readouts. Text styling (font,
+   color) lives on the inner voodo `Text` elements — this rule only
+   handles layout-y concerns specific to the bounds block. */
+.loopBounds {
+  white-space: nowrap;
+  user-select: none;
+}
+
+.loopBound {
+  cursor: pointer;
+}
+
+.loopBound:hover {
+  text-decoration: underline;
+}

@@ -7,14 +7,14 @@ import {
   PLAYHEAD_STATE_PAUSED,
   PLAYHEAD_STATE_PLAYING,
   PlayheadState,
-} from "../lib/constants";
-import { TimelineName } from "../lib/timeline/state";
-import { convertFrameNumberToPercentage } from "../lib/timeline/use-timeline-viz-utils";
-import { getGradientStringForSeekbar } from "../lib/timeline/utils";
-import BufferingIcon from "./svgs/buffering.svg?react";
-import PauseIcon from "./svgs/pause.svg?react";
-import PlayIcon from "./svgs/play.svg?react";
-import SpeedIcon from "./svgs/speed.svg?react";
+} from "../../lib/constants";
+import { TimelineName } from "../../lib/timeline/state";
+import { convertFrameNumberToPercentage } from "../../lib/timeline/use-timeline-viz-utils";
+import { getGradientStringForSeekbar } from "../../lib/timeline/utils";
+import BufferingIcon from "../svgs/buffering.svg?react";
+import PauseIcon from "../svgs/pause.svg?react";
+import PlayIcon from "../svgs/play.svg?react";
+import SpeedIcon from "../svgs/speed.svg?react";
 interface PlayheadProps {
   status: PlayheadState;
   timelineName: TimelineName;

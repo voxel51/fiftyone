@@ -1,0 +1,22 @@
+/* Outer is laid out as the full lane area; translateX(%) moves it by a
+   fraction of its own width = a fraction of the lane width. */
+.outer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  pointer-events: none;
+  will-change: transform;
+}
+
+/* Inner is the visible 1px line, anchored to the outer's left edge.
+   When the outer translates, the line goes with it — without triggering
+   layout. */
+.line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 1px;
+  background: var(--color-brand-primary);
+  z-index: 3;
+}
