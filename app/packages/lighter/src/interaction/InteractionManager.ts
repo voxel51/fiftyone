@@ -23,6 +23,7 @@ import { buildBrushCursor } from "./buildBrushCursor";
 import { InteractiveCreationHandler } from "./InteractiveCreationHandler";
 import { InteractiveDetectionHandler } from "./InteractiveDetectionHandler";
 import { InteractiveKeypointHandler } from "./InteractiveKeypointHandler";
+import { InteractivePenHandler } from "./InteractivePenHandler";
 import { InteractivePolylineHandler } from "./InteractivePolylineHandler";
 import { v4 as generateUUID } from "uuid";
 
@@ -67,6 +68,7 @@ function isSelfManagedInteractiveHandler(handler: InteractionHandler): boolean {
   return (
     handler instanceof InteractiveKeypointHandler ||
     handler instanceof InteractivePolylineHandler ||
+    handler instanceof InteractivePenHandler ||
     handler instanceof InteractiveCreationHandler
   );
 }
@@ -1081,7 +1083,15 @@ export class InteractionManager {
           segmentationToolState,
         });
 
-        if (interactiveHandler) {
+        if (interactiveHandler instanceof InteractivePenHandler) {
+          // Replace the per-point undo entries with the single
+          // PaintStrokeCommand emitted by commitPenPolygon. The handler stays
+          // installed so the user can keep drawing more polygons.
+          interactiveHandler.pruneCommands();
+        } else if (interactiveHandler) {
+          // First-click case: an InteractiveDetectionHandler still wraps the
+          // freshly-created overlay. Tear it down and emit overlay-establish
+          // so the AddOverlayCommand makes it into the undo stack.
           this.removeHandler(interactiveHandler);
           this.eventBus.dispatch("lighter:overlay-establish", {
             id: handler.id,

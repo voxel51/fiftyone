@@ -37,6 +37,7 @@ const is2dPolyline = (
  * handler is torn down on selection change or mode deactivation.
  */
 const polylineModeActiveAtom = atom<boolean>(false);
+export { polylineModeActiveAtom as _unsafePolylineModeActiveAtom };
 
 /**
  * Modifier policy: Alt-click on a point deletes it.
