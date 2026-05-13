@@ -1444,6 +1444,7 @@ export class InteractionManager {
     this.canvas.removeEventListener("pointercancel", this.handlePointerCancel);
     this.canvas.removeEventListener("pointerleave", this.handlePointerLeave);
     this.canvas.removeEventListener("wheel", this.handleWheel);
+    this.canvas.removeEventListener("contextmenu", this.handleRightClick);
     document.removeEventListener("keydown", this.handleKeyDown);
     document.removeEventListener("keyup", this.handleKeyUp);
     this.eventBus.off("lighter:zoomed", this.handleZoomed);
