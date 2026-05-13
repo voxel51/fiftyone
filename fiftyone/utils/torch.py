@@ -691,6 +691,7 @@ class VideoFrameGetItem:
             raise ValueError("base_get_item is required")
         self.base_get_item = base_get_item
         self.required_keys = base_get_item.required_keys
+        self.filepath_key = filepath_key
         self.has_filepath = filepath_key in self.required_keys
 
     def __call__(self, sample_dict):
@@ -699,7 +700,7 @@ class VideoFrameGetItem:
         This mimics the original get_item behavior but with pre-loaded frames.
         """
         if self.has_filepath:
-            sample_dict["filepath"] = None
+            sample_dict[self.filepath_key] = None
         return self._call_with_injected_frame(sample_dict)
 
     def _call_with_injected_frame(self, sample_dict):
