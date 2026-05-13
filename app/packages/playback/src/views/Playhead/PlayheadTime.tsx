@@ -1,8 +1,7 @@
 import { Text, TextColor, TextVariant } from "@voxel51/voodo";
-import { useAtomValue } from "jotai";
 import React from "react";
-import { playheadAtom } from "../../lib/playback/atoms";
 import { usePlayback } from "../../lib/playback/PlaybackProvider";
+import { usePlayhead } from "../../lib/playback/use-playback-state";
 import { formatTime } from "../TimelineControls/timeline-controls-utils";
 
 /**
@@ -11,7 +10,7 @@ import { formatTime } from "../TimelineControls/timeline-controls-utils";
  * RAF tick just because the time changes.
  */
 const PlayheadTime: React.FC = () => {
-  const playhead = useAtomValue(playheadAtom);
+  const playhead = usePlayhead();
   const { duration } = usePlayback();
   return (
     <Text variant={TextVariant.Xs} color={TextColor.Secondary}>

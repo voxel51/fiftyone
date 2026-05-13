@@ -1,8 +1,8 @@
 import { usePlayback } from "../../lib/playback/PlaybackProvider";
 import {
-  viewEndAtom,
-  viewStartAtom,
-} from "../../lib/playback/atoms";
+  useViewEnd,
+  useViewStart,
+} from "../../lib/playback/use-playback-state";
 import {
   Button,
   IconName,
@@ -13,7 +13,6 @@ import {
   Variant,
 } from "@voxel51/voodo";
 import clsx from "clsx";
-import { useAtomValue } from "jotai";
 import React from "react";
 import styles from "./TimelineTrack.module.css";
 
@@ -81,8 +80,8 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
   onContextMenu,
   className,
 }) => {
-  const viewStart = useAtomValue(viewStartAtom);
-  const viewEnd = useAtomValue(viewEndAtom);
+  const viewStart = useViewStart();
+  const viewEnd = useViewEnd();
   const { seek } = usePlayback();
 
   const viewDuration = viewEnd - viewStart;

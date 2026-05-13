@@ -12,10 +12,12 @@ import {
   Variant,
 } from "@voxel51/voodo";
 import clsx from "clsx";
-import { useAtomValue, useStore } from "jotai";
 import React, { useMemo } from "react";
-import { registeredTilesAtom, tileSourceAtom } from "../../lib/atoms";
-import { useTileTypes } from "../../lib/use-tile-state";
+import { useRegisteredTiles } from "../../lib/use-registered-tiles";
+import {
+  useSetTileSourceFor,
+  useTileTypes,
+} from "../../lib/use-tile-state";
 import { useTiling } from "../../lib/TilingProvider";
 import { SidebarLeftIcon, SidebarRightIcon } from "./tiling-header-icons";
 import styles from "./TilingHeader.module.css";
@@ -55,9 +57,9 @@ const TilingHeader: React.FC<TilingHeaderProps> = ({
   onToggleRightSidebar,
 }) => {
   const types = useTileTypes();
-  const allTiles = useAtomValue(registeredTilesAtom);
+  const allTiles = useRegisteredTiles();
   const { addTile, autoLayout } = useTiling();
-  const store = useStore();
+  const setTileSource = useSetTileSourceFor();
 
   const tileMenu = useMemo(() => {
     if (types.length === 0) return null;
@@ -85,7 +87,7 @@ const TilingHeader: React.FC<TilingHeaderProps> = ({
                   (t) => t.type === entry.type
                 );
                 if (firstSource) {
-                  store.set(tileSourceAtom(newTileId), firstSource.streamId);
+                  setTileSource(newTileId, firstSource.streamId);
                 }
               }}
             />
@@ -99,7 +101,7 @@ const TilingHeader: React.FC<TilingHeaderProps> = ({
         />
       </>
     );
-  }, [types, allTiles, addTile, autoLayout, store]);
+  }, [types, allTiles, addTile, autoLayout, setTileSource]);
 
   return (
     <div className={styles.root}>

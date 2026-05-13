@@ -25,8 +25,10 @@ export {
 export {
   useTileSource,
   useSetTileSource,
+  useSetTileSourceFor,
   useTileSelection,
   useSetTileSelection,
+  useTileSelectionFor,
   useTileTypes,
   useTileSourcesByType,
 } from "./lib/use-tile-state";

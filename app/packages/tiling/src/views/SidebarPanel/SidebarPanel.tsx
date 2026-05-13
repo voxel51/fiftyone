@@ -15,8 +15,7 @@ export interface SidebarPanelProps {
  * their chrome stays in lockstep.
  *
  * Heading uses `HeadingLevel.H4` (Md, normal weight) so it reads as a
- * section header rather than a page title — the demo's previous H1
- * default was too loud for sidebar chrome.
+ * section header rather than a page title
  */
 const SidebarPanel: React.FC<SidebarPanelProps> = ({ title, children }) => {
   return (

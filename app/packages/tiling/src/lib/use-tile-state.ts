@@ -1,5 +1,5 @@
-import { useAtomValue, useSetAtom } from "jotai";
-import { useMemo } from "react";
+import { useAtomValue, useSetAtom, useStore } from "jotai";
+import { useCallback, useMemo } from "react";
 import {
   registeredTilesAtom,
   tileSelectionAtom,
@@ -34,6 +34,23 @@ export function useSetTileSource(): (sourceId: string | null) => void {
 }
 
 /**
+ * Imperative setter for the source of an explicit tile id — used by
+ * surfaces that bind a tile that doesn't yet exist at hook call time
+ * (e.g. TilingHeader's "Add tile" menu defaulting a freshly-spawned
+ * tile to the first registered source of its type).
+ */
+export function useSetTileSourceFor(): (
+  tileId: string,
+  sourceId: string | null
+) => void {
+  const store = useStore();
+  return useCallback(
+    (tileId, sourceId) => store.set(tileSourceAtom(tileId), sourceId),
+    [store]
+  );
+}
+
+/**
  * Read the current tile's selection payload. Inspector / setting
  * surfaces use this to render details about whatever the user picked
  * inside the tile.
@@ -50,6 +67,18 @@ export function useTileSelection<T = unknown>(): T | null {
 export function useSetTileSelection(): (selection: unknown) => void {
   const tileId = useTileId();
   return useSetAtom(tileSelectionAtom(tileId ?? NO_TILE));
+}
+
+/**
+ * Read the selection payload for an explicit `tileId` — used by surfaces
+ * that aren't inside a `TileIdScope` but know which tile to inspect
+ * (e.g. the global inspector sidebar reading the focused tile's data).
+ * Pass `null` when no tile is focused.
+ */
+export function useTileSelectionFor<T = unknown>(
+  tileId: string | null
+): T | null {
+  return useAtomValue(tileSelectionAtom(tileId ?? NO_TILE)) as T | null;
 }
 
 /**

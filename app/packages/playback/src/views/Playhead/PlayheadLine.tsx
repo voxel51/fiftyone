@@ -1,10 +1,9 @@
-import { useAtomValue } from "jotai";
 import React from "react";
 import {
-  playheadAtom,
-  viewEndAtom,
-  viewStartAtom,
-} from "../../lib/playback/atoms";
+  usePlayhead,
+  useViewEnd,
+  useViewStart,
+} from "../../lib/playback/use-playback-state";
 import styles from "./PlayheadLine.module.css";
 import { clamp } from "../utils/timeline-utils";
 
@@ -26,9 +25,9 @@ export interface PlayheadLineProps {
  * that spans the region the line should cover.
  */
 const PlayheadLine: React.FC<PlayheadLineProps> = ({ labelWidth }) => {
-  const playhead = useAtomValue(playheadAtom);
-  const viewStart = useAtomValue(viewStartAtom);
-  const viewEnd = useAtomValue(viewEndAtom);
+  const playhead = usePlayhead();
+  const viewStart = useViewStart();
+  const viewEnd = useViewEnd();
   const viewDuration = viewEnd - viewStart;
   const ratio =
     viewDuration > 0 ? clamp((playhead - viewStart) / viewDuration, 0, 1) : 0;

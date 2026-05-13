@@ -1,8 +1,7 @@
 import { Text, TextColor, TextVariant } from "@voxel51/voodo";
-import { useAtomValue } from "jotai";
 import React, { useCallback } from "react";
-import { loopEndAtom, loopStartAtom } from "../../lib/playback/atoms";
 import { usePlayback } from "../../lib/playback/PlaybackProvider";
+import { useLoopEnd, useLoopStart } from "../../lib/playback/use-playback-state";
 import { fmtBound, LOOP_EDGE_EPSILON } from "../TimelineControls/timeline-controls-utils";
 import styles from "./LoopBounds.module.css";
 
@@ -15,8 +14,8 @@ import styles from "./LoopBounds.module.css";
  * stays stable when the user drags loop handles.
  */
 const LoopBounds: React.FC = () => {
-  const loopStart = useAtomValue(loopStartAtom);
-  const loopEnd = useAtomValue(loopEndAtom);
+  const loopStart = useLoopStart();
+  const loopEnd = useLoopEnd();
   const { duration, setLoop } = usePlayback();
 
   const hasLoop = duration !== undefined;

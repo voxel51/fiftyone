@@ -6,8 +6,10 @@
 // per provider instance. Multiple independent playback instances
 // on the same page each get their own copy of these values.
 //
-// Components read atoms via useAtomValue / useAtom, which automatically
-// reads from the nearest JotaiProvider's store. The RAF loop reads/writes
+// Components read atoms ONLY through the wrapper hooks in
+// `use-playback-state.ts` (e.g. usePlayhead, useViewStart). Don't call
+// useAtomValue / useAtom on these atoms directly from components — keep
+// jotai isolated to the lib layer. The RAF loop reads/writes
 // imperatively via store.get / store.set.
 // ---------------------------------------------------------------------------
 

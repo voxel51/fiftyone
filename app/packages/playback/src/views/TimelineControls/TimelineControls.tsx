@@ -1,9 +1,8 @@
 import { Button, IconName, Size, Variant } from "@voxel51/voodo";
 import clsx from "clsx";
-import { useAtomValue } from "jotai";
 import React from "react";
-import { isPlayingAtom } from "../../lib/playback/atoms";
 import { usePlayback } from "../../lib/playback/PlaybackProvider";
+import { useIsPlaying } from "../../lib/playback/use-playback-state";
 import LoopBounds from "../Loop/LoopBounds";
 import PlayheadTime from "../Playhead/PlayheadTime";
 import { PauseIcon, PlayIcon } from "./timeline-controls-icons";
@@ -19,7 +18,7 @@ export interface TimelineControlsProps {
 }
 
 const TimelineControls: React.FC<TimelineControlsProps> = ({ onToggle }) => {
-  const isPlaying = useAtomValue(isPlayingAtom);
+  const isPlaying = useIsPlaying();
   const { play, pause, stepBack, stepForward } = usePlayback();
 
   const handleClick = onToggle

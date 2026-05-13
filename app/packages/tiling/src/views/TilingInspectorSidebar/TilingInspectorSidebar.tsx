@@ -1,8 +1,7 @@
 import { Text, TextColor, TextVariant } from "@voxel51/voodo";
-import { useAtomValue } from "jotai";
 import React from "react";
-import { tileSelectionAtom } from "../../lib/atoms";
 import { useTiling } from "../../lib/TilingProvider";
+import { useTileSelectionFor } from "../../lib/use-tile-state";
 import SidebarPanel from "../SidebarPanel/SidebarPanel";
 import styles from "./TilingInspectorSidebar.module.css";
 
@@ -12,13 +11,13 @@ import styles from "./TilingInspectorSidebar.module.css";
  * the user clicked an inspectable element (a graph sample, a 3D scene
  * object, …). Each tile defines its own payload shape; we render the
  * payload as syntax-colored JSON so any structure displays sensibly.
+ * 
+ * NOTE: This is very subject to change
  */
 const TilingInspectorSidebar: React.FC = () => {
   const { focusedTileId, tiles } = useTiling();
   const focusedTile = focusedTileId ? tiles[focusedTileId] : null;
-  // atomFamily wants a non-empty key — `""` is fine; the atom just
-  // never holds anything meaningful for an "absent" tile.
-  const selection = useAtomValue(tileSelectionAtom(focusedTileId ?? ""));
+  const selection = useTileSelectionFor(focusedTileId);
 
   if (!focusedTileId) {
     return (

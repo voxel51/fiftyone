@@ -1,8 +1,10 @@
 import { Button, Size, Variant } from "@voxel51/voodo";
-import { useAtomValue } from "jotai";
 import React from "react";
-import { isPlayingAtom, playheadAtom } from "../../lib/playback/atoms";
 import { usePlayback } from "../../lib/playback/PlaybackProvider";
+import {
+  useIsPlaying,
+  usePlayhead,
+} from "../../lib/playback/use-playback-state";
 import PlayheadTime from "../Playhead/PlayheadTime";
 import { PauseIcon, PlayIcon } from "../TimelineControls/timeline-controls-icons";
 import styles from "./SimplePlaybackBar.module.css";
@@ -17,7 +19,7 @@ const clamp = (v: number, lo: number, hi: number) =>
  * measured relative to the track itself.
  */
 const ProgressBar: React.FC = () => {
-  const playhead = useAtomValue(playheadAtom);
+  const playhead = usePlayhead();
   const { duration, seek } = usePlayback();
 
   const ratio = duration > 0 ? clamp(playhead / duration, 0, 1) : 0;
@@ -59,7 +61,7 @@ const ProgressBar: React.FC = () => {
  * surface — think basic YouTube player.
  */
 const SimplePlaybackBar: React.FC = () => {
-  const isPlaying = useAtomValue(isPlayingAtom);
+  const isPlaying = useIsPlaying();
   const { play, pause } = usePlayback();
   return (
     <div className={styles.root}>

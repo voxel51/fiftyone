@@ -1,11 +1,10 @@
-import { useAtomValue } from "jotai";
 import React from "react";
 import {
-  loopEndAtom,
-  loopStartAtom,
-  viewEndAtom,
-  viewStartAtom,
-} from "../../lib/playback/atoms";
+  useLoopEnd,
+  useLoopStart,
+  useViewEnd,
+  useViewStart,
+} from "../../lib/playback/use-playback-state";
 import styles from "./LoopOverlays.module.css";
 import { clamp, laneLeftCalc } from "../utils/timeline-utils";
 
@@ -26,10 +25,10 @@ export interface LoopOverlaysProps {
  * that spans the region the overlays should cover.
  */
 const LoopOverlays: React.FC<LoopOverlaysProps> = ({ labelWidth }) => {
-  const viewStart = useAtomValue(viewStartAtom);
-  const viewEnd = useAtomValue(viewEndAtom);
-  const loopStart = useAtomValue(loopStartAtom);
-  const loopEnd = useAtomValue(loopEndAtom);
+  const viewStart = useViewStart();
+  const viewEnd = useViewEnd();
+  const loopStart = useLoopStart();
+  const loopEnd = useLoopEnd();
 
   const viewDuration = viewEnd - viewStart;
   const ratioFor = (t: number) =>

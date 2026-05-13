@@ -1,7 +1,7 @@
-import { Provider as JotaiProvider, useAtomValue } from "jotai";
+import { Provider as JotaiProvider } from "jotai";
 import React, { createContext, useContext, useMemo } from "react";
-import { durationAtom } from "./atoms";
 import type { PlaybackConfig, PlaybackContextValue } from "./types";
+import { useDuration } from "./use-playback-state";
 import { usePlaybackEngine } from "./use-playback-engine";
 
 const PlaybackContext = createContext<PlaybackContextValue | null>(null);
@@ -20,7 +20,7 @@ function PlaybackContextHost({
   baseContext: PlaybackContextValue;
   children: React.ReactNode;
 }) {
-  const liveDuration = useAtomValue(durationAtom);
+  const liveDuration = useDuration();
   const value = useMemo<PlaybackContextValue>(
     () => ({ ...baseContext, duration: liveDuration }),
     [baseContext, liveDuration]

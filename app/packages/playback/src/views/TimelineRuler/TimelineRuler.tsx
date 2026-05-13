@@ -1,15 +1,14 @@
 import { useDragDelta } from "@voxel51/voodo";
 import clsx from "clsx";
-import { useAtomValue } from "jotai";
 import React, { useEffect, useRef } from "react";
 import { usePlayback } from "../../lib/playback/PlaybackProvider";
 import {
-  loopEndAtom,
-  loopStartAtom,
-  playheadAtom,
-  viewEndAtom,
-  viewStartAtom,
-} from "../../lib/playback/atoms";
+  useLoopEnd,
+  useLoopStart,
+  usePlayhead,
+  useViewEnd,
+  useViewStart,
+} from "../../lib/playback/use-playback-state";
 import styles from "./TimelineRuler.module.css";
 
 const MIN_VIEW = 0.25;
@@ -39,11 +38,11 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
   zoomRef,
   className,
 }) => {
-  const playhead = useAtomValue(playheadAtom);
-  const viewStart = useAtomValue(viewStartAtom);
-  const viewEnd = useAtomValue(viewEndAtom);
-  const loopStart = useAtomValue(loopStartAtom);
-  const loopEnd = useAtomValue(loopEndAtom);
+  const playhead = usePlayhead();
+  const viewStart = useViewStart();
+  const viewEnd = useViewEnd();
+  const loopStart = useLoopStart();
+  const loopEnd = useLoopEnd();
   const { duration, seek, setView, setLoop } = usePlayback();
 
   const rulerRef = useRef<HTMLDivElement>(null);
