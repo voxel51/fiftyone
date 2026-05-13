@@ -10,7 +10,7 @@ import abc
 import copy
 import fnmatch
 from datetime import datetime
-from typing import Any, NamedTuple, Optional
+from typing import Any, ClassVar, NamedTuple, Optional
 
 import fiftyone.core.annotation.constants as foac
 import fiftyone.core.utils as fou
@@ -18,8 +18,13 @@ from fiftyone.core.annotation.attributes import (
     AttributeSpec,
     attr_insert_to_dict,
 )
+from fiftyone.core.annotation.nodes import Node
 from fiftyone.core.odm.ontology import OntologyDocument, OntologyType
-from fiftyone.internal.features.registry import require_feature
+from fiftyone.internal.features.flags import FeatureFlag
+from fiftyone.internal.features.registry import (
+    is_feature_enabled,
+    require_feature,
+)
 
 
 class Ontology(abc.ABC):
@@ -35,7 +40,18 @@ class Ontology(abc.ABC):
         description: optional description
     """
 
-    _TYPE: Optional[str] = None
+    _TYPE: ClassVar[Optional[str]] = None
+    _FEATURE_FLAG: ClassVar[Optional[FeatureFlag]] = None
+
+    def _require_feature(self) -> None:
+        """Raises ``RuntimeError`` if this ontology type's feature flag
+        is not enabled.
+        """
+        if not is_feature_enabled(self._FEATURE_FLAG):
+            raise RuntimeError(
+                f"This feature is gated behind the {self._FEATURE_FLAG} "
+                f"feature flag; set the {self._FEATURE_FLAG} env var to enable"
+            )
 
     def __init__(
         self,
@@ -89,9 +105,9 @@ class Ontology(abc.ABC):
         """Whether this ontology is a taxonomy."""
         return self._TYPE == OntologyType.TAXONOMY.value
 
-    @require_feature("VFF_ONTOLOGY_CA")
     def save(self) -> None:
         """Saves this ontology to the database."""
+        self._require_feature()
         self._validate()
         if self._doc is None:
             self._doc = OntologyDocument(
@@ -107,9 +123,9 @@ class Ontology(abc.ABC):
 
         self._doc.save()
 
-    @require_feature("VFF_ONTOLOGY_CA")
     def reload(self) -> None:
         """Reloads this ontology from the database."""
+        self._require_feature()
         if self._doc is None:
             raise ValueError(
                 "Cannot reload an ontology that has not been saved"
@@ -118,9 +134,9 @@ class Ontology(abc.ABC):
         self._doc.reload()
         self._apply_doc(self._doc)
 
-    @require_feature("VFF_ONTOLOGY_CA")
     def delete(self) -> None:
         """Deletes this ontology from the database."""
+        self._require_feature()
         if self._doc is None:
             raise ValueError(
                 "Cannot delete an ontology that has not been saved"
@@ -129,7 +145,6 @@ class Ontology(abc.ABC):
         self._doc.delete()
         self._doc = None
 
-    @require_feature("VFF_ONTOLOGY_CA")
     def clone(self, new_name: str) -> "Ontology":
         """Clones this ontology under a new name.
 
@@ -139,6 +154,7 @@ class Ontology(abc.ABC):
         Returns:
             the cloned :class:`Ontology`
         """
+        self._require_feature()
         cloned = copy.deepcopy(self)
         cloned.name = new_name
         cloned._doc = None
@@ -240,6 +256,7 @@ class AnnotationOntology(Ontology):
     """
 
     _TYPE = OntologyType.ANNOTATION_ONTOLOGY.value
+    _FEATURE_FLAG: ClassVar[FeatureFlag] = "VFF_ONTOLOGY_CA"
 
     def __init__(
         self,
@@ -307,10 +324,90 @@ class AnnotationOntology(Ontology):
         )
 
 
+class Taxonomy(Ontology):
+    """Ontology for defining a hierarchical class structure.
+
+    A taxonomy is a named, versioned, self-contained class hierarchy.
+    Label schema fields reference a taxonomy by ``name`` instead of
+    inlining a flat class list, so the same hierarchy can be shared
+    across multiple datasets.
+
+    Args:
+        name: the taxonomy name
+        description: optional description
+        root: the root :class:`Node` of the hierarchy. Required.
+
+    Example::
+
+        Taxonomy(
+            name="vehicle_classes",
+            root=Node(
+                name="vehicles",
+                can_select=False,
+                values=[
+                    Node(name="car"),
+                    Node(name="truck"),
+                    Node(name="motorcycle"),
+                ],
+            ),
+        )
+    """
+
+    _TYPE = OntologyType.TAXONOMY.value
+    _FEATURE_FLAG: ClassVar[FeatureFlag] = "VFF_ONTOLOGY_TX"
+
+    def __init__(
+        self,
+        name: str,
+        root: Node,
+        description: Optional[str] = None,
+    ):
+        super().__init__(name=name, description=description)
+        if not isinstance(root, Node):
+            raise ValueError("Taxonomy.root must be a Node instance")
+        self.root = root
+
+    def _get_root(self) -> dict:
+        return self.root.to_dict()
+
+    def _apply_doc(self, doc: OntologyDocument) -> None:
+        self.name = doc.name
+        self.description = doc.description
+        self.root = Node.from_dict(doc.root)
+
+    def to_dict(self) -> dict:
+        """Serializes this taxonomy to a dict.
+
+        Returns:
+            a dict
+        """
+        d = super().to_dict()
+        d["root"] = self._get_root()
+        return d
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "Taxonomy":
+        """Creates a :class:`Taxonomy` from a dict.
+
+        Args:
+            d: a taxonomy dict
+
+        Returns:
+            a :class:`Taxonomy`
+        """
+        root = d.get("root") or {}
+        return cls(
+            name=d["name"],
+            description=d.get("description"),
+            root=Node.from_dict(root),
+        )
+
+
 # ---- Type dispatch --------------------------------------------------------
 
 _TYPE_TO_CLS: dict[str, type[Ontology]] = {
     OntologyType.ANNOTATION_ONTOLOGY.value: AnnotationOntology,
+    OntologyType.TAXONOMY.value: Taxonomy,
 }
 
 
