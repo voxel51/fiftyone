@@ -14,5 +14,6 @@ FeatureFlag = Literal[
     "VFF_MULTIMODAL",
     "VFF_POLYLINE_ANNOTATION",
     "VFF_ONTOLOGY_CA",
+    "VFF_ONTOLOGY_TX",
 ]
 """Enumeration of active feature flags."""
