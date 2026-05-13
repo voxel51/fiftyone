@@ -566,7 +566,7 @@ def _apply_image_model_with_video_data_loader(
 ):
     """Applies the image model to the video samples in the collection.
 
-    Only supports applying image model to videos frames.
+    Only supports applying TorchImageModel to video frames.
     """
     label_field, _ = samples._handle_frame_field(label_field)
     _, total_frame_count = _get_frame_counts(samples)
@@ -1068,20 +1068,22 @@ def _make_video_frame_data_loader(
     field_mapping,
     pin_memory,
 ):
+    use_numpy = not isinstance(model, TorchModelMixin)
+
     num_workers = fout.recommend_num_workers(num_workers)
 
     if batch_size is None:
         batch_size = 1
 
     if hasattr(model, "has_collate_fn") and model.has_collate_fn:
-        user_collate_fn = _VideoCollateFn(model.collate_fn)
+        user_collate_fn = model.collate_fn
     else:
-        user_collate_fn = _VideoCollateFn(tud.dataloader.default_collate)
+        user_collate_fn = None
 
     collate_fn = ErrorHandlingCollate(
         skip_failures,
         ragged_batches=model.ragged_batches,
-        use_numpy=False,
+        use_numpy=use_numpy,
         user_collate_fn=user_collate_fn,
     )
     if isinstance(model, SupportsGetItem):
@@ -1092,14 +1094,11 @@ def _make_video_frame_data_loader(
             skip_failures=skip_failures,
         )
     else:
-        use_numpy = not isinstance(model, TorchModelMixin)
-        transform = model.transforms if hasattr(model, "transforms") else None
         dataset = fout.TorchVideoFramesIterableDataset(
             samples=samples,
-            transform=transform,
+            transform=model.transforms,
             use_numpy=use_numpy,
             force_rgb=True,
-            chunk_size=frames_chunk_size,
             skip_failures=skip_failures,
         )
 
@@ -1125,7 +1124,7 @@ def _make_video_frame_data_loader(
         dataset,
         batch_size=batch_size,
         num_workers=num_workers,
-        collate_fn=collate_fn,
+        collate_fn=_VideoCollateFn(collate_fn),
         pin_memory=pin_memory,
         persistent_workers=False,
         worker_init_fn=fout.TorchVideoFramesIterableDataset.worker_init,
