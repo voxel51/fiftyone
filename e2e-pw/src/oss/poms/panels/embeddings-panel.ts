@@ -91,7 +91,10 @@ class EmebddingsAsserter {
   async verifyLassoSelectsSamples() {
     await this.embeddingsPom.selector.openResults();
     await this.embeddingsPom.selector.selectResult("img_viz");
-    await this.embeddingsPom.plotContainer.waitFor({ state: "visible" });
+    await this.embeddingsPom.plotContainer.waitFor({
+      state: "visible",
+      timeout: 2000,
+    });
 
     await this.embeddingsPom.lassoTool.click();
     await this.embeddingsPom.selectAll();
