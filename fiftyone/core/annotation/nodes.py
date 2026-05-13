@@ -85,6 +85,7 @@ class Node:
         """
         d: dict[str, Any] = {"name": self.name}
         attr_insert_to_dict(d, "description", self)
+        # omit default-valued fields to keep serialized trees compact at scale
         if self.can_select is not True:
             d["can_select"] = self.can_select
         if self.deprecated is not False:
