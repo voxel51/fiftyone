@@ -178,8 +178,6 @@ export const patchSample = async (
     ? `${encodeURIPath(pathParts)}?${queryString}`
     : encodeURIPath(pathParts);
 
-  // Convert ObjectId strings to Extended JSON ({ $oid: "..." }) so the server
-  // can deserialize them as bson.ObjectId rather than storing plain strings.
   const deltas = request.deltas.map((delta) =>
     "value" in delta ? { ...delta, value: toExtendedJson(delta.value) } : delta
   );

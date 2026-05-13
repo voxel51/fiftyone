@@ -50,6 +50,7 @@ export const isSystemReadOnlyField = (fieldName: string): boolean =>
 export const LABEL_TYPE_OPTIONS = [
   { id: "detections", data: { label: "Detections" } },
   { id: "classification", data: { label: "Classification" } },
+  { id: "polylines", data: { label: "Polylines" } },
 ];
 
 // Label type options for 3D datasets

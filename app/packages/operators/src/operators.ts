@@ -7,7 +7,11 @@ import { getFetchFunction, isNullish, ServerError } from "@fiftyone/utilities";
 import { CallbackInterface } from "recoil";
 import { QueueItemStatus } from "./constants";
 import * as types from "./types";
-import { ExecutionCallback, OperatorExecutorOptions } from "./types-internal";
+import {
+  ExecutionCallback,
+  OperatorExecutorOptions,
+  RiskLevel,
+} from "./types-internal";
 import { stringifyError } from "./utils";
 import { ValidationContext, ValidationError } from "./validation";
 
@@ -253,6 +257,7 @@ export type OperatorConfigOptions = {
   resolveExecutionOptionsOnChange?: boolean;
   skipInput?: boolean;
   skipOutput?: boolean;
+  riskLevel?: RiskLevel;
 };
 export class OperatorConfig {
   public name: string;
@@ -271,6 +276,7 @@ export class OperatorConfig {
   public resolveExecutionOptionsOnChange = false;
   public skipInput: boolean;
   public skipOutput: boolean;
+  public riskLevel: RiskLevel = RiskLevel.LOW;
 
   constructor(options: OperatorConfigOptions) {
     this.name = options.name;
@@ -291,6 +297,7 @@ export class OperatorConfig {
       options.resolveExecutionOptionsOnChange || false;
     this.skipInput = options.skipInput || false;
     this.skipOutput = options.skipOutput || false;
+    this.riskLevel = options.riskLevel || RiskLevel.LOW;
   }
   static fromJSON(json) {
     return new OperatorConfig({
@@ -310,6 +317,7 @@ export class OperatorConfig {
       resolveExecutionOptionsOnChange: json.resolve_execution_options_on_change,
       skipInput: json.skip_input,
       skipOutput: json.skip_output,
+      riskLevel: json.risk_level,
     });
   }
 }
@@ -337,6 +345,9 @@ export class Operator {
   }
   get unlisted() {
     return this.config.unlisted;
+  }
+  get riskLevel() {
+    return this.config.riskLevel || RiskLevel.LOW;
   }
   async needsUserInput(ctx: ExecutionContext) {
     const inputs = await this.resolveInput(ctx);

@@ -1,11 +1,11 @@
-import { BoundingBoxOverlay, useLighter } from "@fiftyone/lighter";
+import { DetectionOverlay, useLighter } from "@fiftyone/lighter";
 import {
-  activeFields,
   AnnotationLabel,
   AnnotationLabelData,
+  ModalSample,
+  activeFields,
   field,
   isPatchesView,
-  ModalSample,
   useCurrentSampleId,
   useModalSample,
 } from "@fiftyone/state";
@@ -13,7 +13,7 @@ import { DETECTION } from "@fiftyone/utilities";
 import { atom, getDefaultStore, useAtomValue, useSetAtom } from "jotai";
 import { splitAtom, useAtomCallback } from "jotai/utils";
 import { get } from "lodash";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { selector, useRecoilCallback, useRecoilValue } from "recoil";
 import type { LabelType } from "./Edit/state";
 import {
@@ -24,7 +24,6 @@ import {
 import { useAddAnnotationLabelToRenderer } from "./useAddAnnotationLabelToRenderer";
 import { useSetActiveLabelId } from "./useAnnotationContextManager";
 import { useCreateAnnotationLabel } from "./useCreateAnnotationLabel";
-import useFocus from "./useFocus";
 import useHover from "./useHover";
 
 /**
@@ -302,7 +301,7 @@ const useSyncOverlayReadOnly = () => {
       if (label.type !== DETECTION) continue;
 
       const overlay = label.overlay;
-      if (!(overlay instanceof BoundingBoxOverlay)) continue;
+      if (!(overlay instanceof DetectionOverlay)) continue;
 
       const readOnly = isFieldReadOnly(schemas[label.path]);
       overlay.setDraggable(!readOnly);
@@ -326,6 +325,8 @@ export default function useLabels() {
   const updateLabelAtom = useUpdateLabelAtom();
   const isPatches = useRecoilValue(isPatchesView);
   const setActiveLabelId = useSetActiveLabelId();
+  const [initialOverlayIds, setInitialOverlayIds] =
+    useState<Set<string> | null>(null);
 
   // Use a ref for the loading state machine to avoid having it as an effect
   // dependency. When loadingState was both a dep and mutated inside the effect,
@@ -392,9 +393,12 @@ export default function useLabels() {
           }
 
           setLabels(result);
-          result.forEach((annotationLabel) =>
-            addLabelToRenderer(annotationLabel)
-          );
+          const initialOverlayIds = new Set<string>();
+          for (const annotationLabel of result) {
+            addLabelToRenderer(annotationLabel);
+            initialOverlayIds.add(annotationLabel.data._id);
+          }
+          setInitialOverlayIds(initialOverlayIds);
 
           // In patches view with a single label, activate it for editing
           // via the entranceLabelId mechanism (reuses the quick-edit flow)
@@ -411,10 +415,15 @@ export default function useLabels() {
           if (stale) return;
 
           result.forEach((annotationLabel) => {
-            // update overlays
-            if (scene?.hasOverlay(annotationLabel.data._id)) {
-              scene.getOverlay(annotationLabel.data._id)!.label =
-                annotationLabel.data;
+            const existingOverlay = scene?.getOverlay(annotationLabel.data._id);
+
+            // use existing overlay if available
+            if (existingOverlay) {
+              // refresh data
+              existingOverlay.label = annotationLabel.data;
+              // reuse overlay
+              annotationLabel.overlay =
+                existingOverlay as AnnotationLabel["overlay"];
             }
 
             // update sidebar, or add if this is a new label
@@ -467,5 +476,6 @@ export default function useLabels() {
 
   useSyncOverlayReadOnly();
   useHover();
-  useFocus();
+
+  return initialOverlayIds;
 }

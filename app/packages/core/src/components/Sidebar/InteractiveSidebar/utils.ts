@@ -334,3 +334,34 @@ const measureGroups = (
 
   return { data, activeHeight };
 };
+
+/**
+ * Returns a predicate that marks sidebar entries as non-interactive for drag
+ * ordering. Entries for tags, _label_tags, the tags/other group headers, INPUT
+ * rows, and any path in the disabled set are treated as fixed boundaries that
+ * are skipped when computing valid drop targets in `getAfterKey`.
+ */
+export const createExploreIsDisabled =
+  (disabled: Set<string>) => (entry: fos.SidebarEntry) => {
+    if (entry.kind === fos.EntryKind.PATH) {
+      return (
+        entry.path === fos.TAGS_FIELD ||
+        entry.path === fos.LABEL_TAGS_FIELD ||
+        disabled.has(entry.path)
+      );
+    }
+
+    if (entry.kind === fos.EntryKind.EMPTY) {
+      return entry.group === fos.TAGS_FIELD;
+    }
+
+    if (entry.kind === fos.EntryKind.GROUP) {
+      return entry.name === fos.TAGS_FIELD || entry.name === fos.OTHER_GROUP;
+    }
+
+    if (entry.kind === fos.EntryKind.INPUT) {
+      return true;
+    }
+
+    return false;
+  };

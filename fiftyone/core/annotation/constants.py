@@ -6,6 +6,8 @@ Annotation constants
 |
 """
 
+from datetime import date, datetime
+
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
@@ -46,6 +48,7 @@ STR_LIST = "list<str>"
 ### Settings
 
 
+APPLIED_ONTOLOGY = "applied_ontology"
 ATTRIBUTES = "attributes"
 CLASSES = "classes"
 COMPONENT = "component"
@@ -82,10 +85,30 @@ FLOAT_INT_SETTINGS = ALL_TYPES_SETTINGS.union({DEFAULT})
 FLOAT_SETTINGS = {PRECISION}
 FLOAT_INT_LIST_SETTINGS = ALL_TYPES_SETTINGS.union({DEFAULT})
 ID_SETTINGS = ALL_TYPES_SETTINGS
-LABEL_SETTINGS = ALL_TYPES_SETTINGS.union({ATTRIBUTES, DEFAULT})
+LABEL_SETTINGS = ALL_TYPES_SETTINGS.union(
+    {APPLIED_ONTOLOGY, ATTRIBUTES, DEFAULT}
+)
 STR_SETTINGS = ALL_TYPES_SETTINGS.union({DEFAULT})
 STR_LIST_SETTINGS = ALL_TYPES_SETTINGS.union({DEFAULT})
 VALUES_COMPONENTS = {CHECKBOXES, DROPDOWN, RADIO}
+
+
+### Valid components per type
+
+
+TYPE_TO_COMPONENTS = {
+    BOOL: BOOL_COMPONENTS,
+    DATE: DATE_DATETIME_COMPONENTS,
+    DATETIME: DATE_DATETIME_COMPONENTS,
+    DICT: DICT_COMPONENTS,
+    FLOAT: FLOAT_INT_COMPONENTS,
+    FLOAT_LIST: FLOAT_INT_LIST_COMPONENTS,
+    ID: ID_COMPONENTS,
+    INT: FLOAT_INT_COMPONENTS,
+    INT_LIST: FLOAT_INT_LIST_COMPONENTS,
+    STR: STR_COMPONENTS,
+    STR_LIST: STR_LIST_COMPONENTS,
+}
 
 
 ### Default components
@@ -180,6 +203,8 @@ SUPPORTED_LABEL_TYPES_BY_MEDIA_TYPE = {
         fol.Detections,
         fol.Keypoint,
         fol.Keypoints,
+        fol.Polyline,
+        fol.Polylines,
     },
     fom.THREE_D: {fol.Detection, fol.Detections, fol.Polyline, fol.Polylines},
 }

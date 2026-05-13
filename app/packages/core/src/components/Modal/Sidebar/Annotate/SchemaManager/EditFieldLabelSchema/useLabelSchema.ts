@@ -6,6 +6,7 @@ import {
   useNotification,
   useQueryPerformanceSampleLimit,
 } from "@fiftyone/state";
+import { getFetchFunction } from "@fiftyone/utilities";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { isEqual } from "lodash";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -18,6 +19,7 @@ import {
 } from "../../state";
 import {
   useSchemaManager,
+  type FieldSchema,
   type UpdateSchemaRequest,
 } from "../../useSchemaManager";
 import {
@@ -25,7 +27,35 @@ import {
   useSchemaManagerEventBus,
 } from "../events";
 import { currentLabelSchema } from "../state";
-import { reconcileComponent } from "../utils";
+import { type AttributeConfig, reconcileComponent } from "../utils";
+
+const fetchAndMergeOntologyAttributes = async (
+  draft: FieldSchema,
+  name: string,
+  setCurrent: (schema: FieldSchema) => void
+): Promise<void> => {
+  const result = await getFetchFunction()(
+    "GET",
+    `/ontologies/${encodeURIComponent(name)}/attributes`
+  );
+
+  const attrs = (result as { attributes: AttributeConfig[] }).attributes;
+  if (!attrs?.length) return;
+
+  const existing = Array.isArray(draft.attributes) ? [...draft.attributes] : [];
+  const byName = new Map(existing.map((a) => [a.name, a]));
+  const orderedNames = existing.map((a) => a.name);
+
+  for (const attr of attrs) {
+    if (!byName.has(attr.name)) orderedNames.push(attr.name);
+    byName.set(attr.name, attr);
+  }
+
+  setCurrent({
+    ...draft,
+    attributes: orderedNames.map((n) => byName.get(n)),
+  });
+};
 
 // =============================================================================
 // Internal Hooks
@@ -116,6 +146,47 @@ export const useReadOnly = (field: string) => {
   };
 };
 
+export const useAppliedOntology = (field: string) => {
+  const [current, setCurrent] = useCurrentLabelSchema(field);
+  const schema = current as FieldSchema | undefined;
+
+  const ontologyAttributes = useMemo<string[]>(
+    () =>
+      Array.isArray(schema?.attributes)
+        ? schema.attributes.reduce<string[]>((acc, a) => {
+            if (a._source && a.name) acc.push(a.name);
+            return acc;
+          }, [])
+        : [],
+    [schema?.attributes]
+  );
+
+  return {
+    appliedOntology: schema?.applied_ontology,
+    ontologyAttributes,
+    applyOntology: (name: string) => {
+      const draft = { ...(schema as FieldSchema), applied_ontology: name };
+      setCurrent(draft);
+      fetchAndMergeOntologyAttributes(draft, name, setCurrent).catch(() => {
+        // Preview failed. The name is already set, attributes will hydrate after save
+        console.error(`Failed to fetch ontology attributes for ${name}`);
+      });
+    },
+    clearOntology: () => {
+      const next: FieldSchema = { ...(schema as FieldSchema) };
+      delete next.applied_ontology;
+      // Drop ontology-owned attributes (carry the `_source` marker). The
+      // backend's dehydrate only strips them while `applied_ontology` is
+      // still set, so we'd leave orphaned `when` clauses for the validator
+      // to reject if we didn't strip them here.
+      if (Array.isArray(next.attributes)) {
+        next.attributes = next.attributes.filter((a) => !a._source);
+      }
+      setCurrent(next);
+    },
+  };
+};
+
 const useConfigUpdate = (field: string) => {
   const [current, setCurrent] = useCurrentLabelSchema(field);
   return {
@@ -148,7 +219,7 @@ const useSave = (field: string, visibilityChanged: boolean) => {
   const removeFromActive = useSetAtom(removeFromActiveSchemas);
   const activeSchemas = useAtomValue(activeLabelSchemas);
   const notify = useNotification();
-  const [current] = useCurrentLabelSchema(field);
+  const [current, setCurrent] = useCurrentLabelSchema(field);
   const setCurrentField = useSetAtom(currentField);
   const { dispatch } = useSchemaManagerEventBus();
 
@@ -160,11 +231,13 @@ const useSave = (field: string, visibilityChanged: boolean) => {
 
       const labelSchema = current ? reconcileComponent(current) : current;
 
+      let hydrated: unknown;
       try {
-        await updateSchema({
+        const response = await updateSchema({
           field,
           label_schema: labelSchema,
         } as UpdateSchemaRequest);
+        hydrated = response.label_schema;
       } catch (error) {
         console.error("Failed to save label schema:", error);
         setIsSaving(false);
@@ -172,7 +245,9 @@ const useSave = (field: string, visibilityChanged: boolean) => {
         return;
       }
 
-      setSaved(current);
+      const resolved = hydrated ?? current;
+      setSaved(resolved);
+      setCurrent(resolved);
       setIsSaving(false);
       dispatchSchemaManagerEvent(dispatch, "schema-manager:save-complete");
 
@@ -324,6 +399,14 @@ export default function useLabelSchema(field: string) {
     visibility.discardVisibility();
   }, [originalDiscard, visibility.discardVisibility]);
 
+  // The currentLabelSchema atom is typed as `object | undefined` because it
+  // is fed into both <GUIContent> (which wants the looser SchemaConfigType)
+  // and <JSONEditor> (which wants JSONValue). We narrow it here once so
+  // consumers can read `labelSchema.appliedOntology` without casting.
+  const appliedOntology = (
+    validate.currentLabelSchema as FieldSchema | undefined
+  )?.applied_ontology;
+
   return {
     hasChanges,
     isFieldVisible: visibility.isFieldVisible,
@@ -334,6 +417,7 @@ export default function useLabelSchema(field: string) {
     ...save,
     ...scan,
     ...validate,
+    appliedOntology,
     discard,
   };
 }

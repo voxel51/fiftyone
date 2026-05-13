@@ -40,6 +40,9 @@ export class RemoveKeypointPointCommand implements Undoable {
     const worldPoint = this.overlay.relativePointToAbsolute(
       this.relativePosition
     );
-    this.overlay.addPoint(worldPoint, this.variant, this.pointId);
+    this.overlay.addPoint(worldPoint, {
+      variant: this.variant,
+      id: this.pointId,
+    });
   }
 }

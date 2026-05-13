@@ -8,10 +8,10 @@ import {
   AppError,
   DATE_FIELD,
   DATE_TIME_FIELD,
-  LABEL_LISTS,
-  LABEL_LISTS_MAP,
   LABELS,
   LABELS_PATH,
+  LABEL_LISTS,
+  LABEL_LISTS_MAP,
   LIST_FIELD,
   Schema,
   withPath,
@@ -28,11 +28,11 @@ import {
   STROKE_WIDTH,
 } from "../constants";
 import { Events } from "../elements/base";
-import { buildThumbnailSelectionDetail } from "../selection";
 import { COMMON_SHORTCUTS, LookerElement } from "../elements/common";
 import { ClassificationsOverlay, loadOverlays } from "../overlays";
 import { CONTAINS, Overlay } from "../overlays/base";
 import processOverlays from "../processOverlays";
+import { buildThumbnailSelectionDetail } from "../selection";
 import {
   FO_LABEL_HOVERED_EVENT,
   FO_LABEL_UNHOVERED_EVENT,
@@ -46,6 +46,7 @@ import {
   LabelData,
   Sample,
   StateUpdate,
+  ViewportState,
 } from "../state";
 import {
   createWorker,
@@ -54,7 +55,6 @@ import {
   getFitRect,
   getMimeType,
   mergeUpdates,
-  snapBox,
 } from "../util";
 import { ProcessSample } from "../worker";
 import { AsyncLabelsRenderingManager } from "../worker/async-labels-rendering-manager";
@@ -272,6 +272,18 @@ export abstract class AbstractLooker<
 
   getSampleOverlays(): Overlay<State>[] {
     return this.sampleOverlays;
+  }
+
+  /**
+   * Returns a snapshot of the current zoom and pan state.
+   * Used to hand off the camera position when switching to ANNOTATE mode.
+   */
+  getViewportState(): ViewportState {
+    return {
+      scale: this.state.scale,
+      panX: this.state.pan[0],
+      panY: this.state.pan[1],
+    };
   }
 
   loadOverlays(sample: Sample): void {
@@ -834,12 +846,6 @@ export abstract class AbstractLooker<
       throw new Error("media not loaded");
     }
     const [tlx, tly, w, h] = this.state.windowBBox;
-    this.state.pan = snapBox(
-      this.state.scale,
-      this.state.pan,
-      [w, h],
-      this.state.dimensions
-    );
     this.state.mediaBBox = getFitRect(
       this.state.dimensions,
       this.state.windowBBox

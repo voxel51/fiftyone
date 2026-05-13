@@ -47,6 +47,7 @@ class EditFieldInfo(foo.Operator):
             name="edit_field_info",
             label="Edit field info",
             dynamic=True,
+            risk_level=types.RiskLevel.MEDIUM,
         )
 
     def resolve_input(self, ctx):
@@ -160,6 +161,7 @@ class EditFieldValues(foo.Operator):
             allow_immediate_execution=True,
             default_choice_to_delegated=True,
             dynamic=True,
+            risk_level=types.RiskLevel.MEDIUM,
         )
 
     def resolve_input(self, ctx):
@@ -362,6 +364,7 @@ class CloneSelectedSamples(foo.Operator):
             name="clone_selected_samples",
             label="Clone selected samples",
             dynamic=True,
+            risk_level=types.RiskLevel.MEDIUM,
         )
 
     def resolve_input(self, ctx):
@@ -407,6 +410,7 @@ class CloneSampleField(foo.Operator):
             allow_immediate_execution=True,
             default_choice_to_delegated=True,
             dynamic=True,
+            risk_level=types.RiskLevel.MEDIUM,
         )
 
     def resolve_input(self, ctx):
@@ -519,6 +523,7 @@ class CloneFrameField(foo.Operator):
             allow_immediate_execution=True,
             default_choice_to_delegated=True,
             dynamic=True,
+            risk_level=types.RiskLevel.MEDIUM,
         )
 
     def resolve_input(self, ctx):
@@ -640,6 +645,7 @@ class RenameSampleField(foo.Operator):
             allow_immediate_execution=True,
             default_choice_to_delegated=True,
             dynamic=True,
+            risk_level=types.RiskLevel.MEDIUM,
         )
 
     def resolve_input(self, ctx):
@@ -726,6 +732,7 @@ class RenameFrameField(foo.Operator):
             allow_immediate_execution=True,
             default_choice_to_delegated=True,
             dynamic=True,
+            risk_level=types.RiskLevel.MEDIUM,
         )
 
     def resolve_input(self, ctx):
@@ -821,6 +828,7 @@ class ClearSampleField(foo.Operator):
             allow_immediate_execution=True,
             default_choice_to_delegated=True,
             dynamic=True,
+            risk_level=types.RiskLevel.MEDIUM,
         )
 
     def resolve_input(self, ctx):
@@ -923,6 +931,7 @@ class ClearFrameField(foo.Operator):
             allow_immediate_execution=True,
             default_choice_to_delegated=True,
             dynamic=True,
+            risk_level=types.RiskLevel.MEDIUM,
         )
 
     def resolve_input(self, ctx):
@@ -1035,6 +1044,7 @@ class DeleteSelectedSamples(foo.Operator):
             name="delete_selected_samples",
             label="Delete selected samples",
             dynamic=True,
+            risk_level=types.RiskLevel.HIGH,
         )
 
     def resolve_input(self, ctx):
@@ -1076,6 +1086,7 @@ class DeleteSelectedLabels(foo.Operator):
             name="delete_selected_labels",
             label="Delete selected labels",
             dynamic=True,
+            risk_level=types.RiskLevel.HIGH,
         )
 
     def resolve_input(self, ctx):
@@ -1216,6 +1227,7 @@ class DeleteSampleField(foo.Operator):
             allow_immediate_execution=True,
             default_choice_to_delegated=True,
             dynamic=True,
+            risk_level=types.RiskLevel.HIGH,
         )
 
     def resolve_input(self, ctx):
@@ -1285,6 +1297,7 @@ class DeleteFrameField(foo.Operator):
             allow_immediate_execution=True,
             default_choice_to_delegated=True,
             dynamic=True,
+            risk_level=types.RiskLevel.HIGH,
         )
 
     def resolve_input(self, ctx):
@@ -1364,6 +1377,7 @@ class AddDynamicSampleFields(foo.Operator):
             name="add_dynamic_sample_fields",
             label="Add dynamic sample fields",
             dynamic=True,
+            risk_level=types.RiskLevel.MEDIUM,
         )
 
     def resolve_input(self, ctx):
@@ -1514,6 +1528,7 @@ class AddDynamicFrameFields(foo.Operator):
             name="add_dynamic_frame_fields",
             label="Add dynamic frame fields",
             dynamic=True,
+            risk_level=types.RiskLevel.MEDIUM,
         )
 
     def resolve_input(self, ctx):
@@ -1662,6 +1677,7 @@ class RemoveDynamicSampleFields(foo.Operator):
             name="remove_dynamic_sample_fields",
             label="Remove dynamic sample fields",
             dynamic=True,
+            risk_level=types.RiskLevel.HIGH,
         )
 
     def resolve_input(self, ctx):
@@ -1735,6 +1751,7 @@ class RemoveDynamicFrameFields(foo.Operator):
             name="remove_dynamic_frame_fields",
             label="Remove dynamic frame fields",
             dynamic=True,
+            risk_level=types.RiskLevel.HIGH,
         )
 
     def resolve_input(self, ctx):
@@ -1820,6 +1837,7 @@ class CreateIndex(foo.Operator):
             name="create_index",
             label="Create index",
             dynamic=True,
+            risk_level=types.RiskLevel.MEDIUM,
         )
 
     def resolve_input(self, ctx):
@@ -1968,6 +1986,7 @@ class DropIndex(foo.Operator):
             name="drop_index",
             label="Drop index",
             dynamic=True,
+            risk_level=types.RiskLevel.MEDIUM,
         )
 
     def resolve_input(self, ctx):
@@ -2029,6 +2048,7 @@ class CreateSummaryField(foo.Operator):
             allow_immediate_execution=True,
             default_choice_to_delegated=True,
             dynamic=True,
+            risk_level=types.RiskLevel.MEDIUM,
         )
 
     def resolve_input(self, ctx):
@@ -2229,6 +2249,7 @@ class UpdateSummaryField(foo.Operator):
             allow_immediate_execution=True,
             default_choice_to_delegated=True,
             dynamic=True,
+            risk_level=types.RiskLevel.MEDIUM,
         )
 
     def resolve_input(self, ctx):
@@ -2296,6 +2317,7 @@ class DeleteSummaryField(foo.Operator):
             allow_immediate_execution=True,
             default_choice_to_delegated=True,
             dynamic=True,
+            risk_level=types.RiskLevel.HIGH,
         )
 
     def resolve_input(self, ctx):
@@ -2347,6 +2369,7 @@ class AddGroupSlice(foo.Operator):
             name="add_group_slice",
             label="Add group slice",
             dynamic=True,
+            risk_level=types.RiskLevel.MEDIUM,
         )
 
     def resolve_input(self, ctx):
@@ -2410,6 +2433,7 @@ class RenameGroupSlice(foo.Operator):
             allow_immediate_execution=True,
             default_choice_to_delegated=True,
             dynamic=True,
+            risk_level=types.RiskLevel.MEDIUM,
         )
 
     def resolve_input(self, ctx):
@@ -2478,6 +2502,7 @@ class DeleteGroupSlice(foo.Operator):
             allow_immediate_execution=True,
             default_choice_to_delegated=True,
             dynamic=True,
+            risk_level=types.RiskLevel.HIGH,
         )
 
     def resolve_input(self, ctx):
@@ -2534,6 +2559,7 @@ class ListSavedViews(foo.Operator):
             name="list_saved_views",
             label="List saved views",
             unlisted=True,
+            risk_level=types.RiskLevel.LOW,
         )
 
     def execute(self, ctx):
@@ -2547,6 +2573,7 @@ class LoadSavedView(foo.Operator):
             name="load_saved_view",
             label="Load saved view",
             dynamic=True,
+            risk_level=types.RiskLevel.LOW,
         )
 
     def resolve_input(self, ctx):
@@ -2591,6 +2618,7 @@ class ReloadSavedView(foo.Operator):
             name="reload_saved_view",
             label="Reload saved view",
             dynamic=True,
+            risk_level=types.RiskLevel.LOW,
         )
 
     def resolve_placement(self, ctx):
@@ -2720,6 +2748,7 @@ class SaveView(foo.Operator):
             name="save_view",
             label="Save view",
             dynamic=True,
+            risk_level=types.RiskLevel.MEDIUM,
         )
 
     def resolve_input(self, ctx):
@@ -2792,6 +2821,7 @@ class EditSavedViewInfo(foo.Operator):
             name="edit_saved_view_info",
             label="Edit saved view info",
             dynamic=True,
+            risk_level=types.RiskLevel.MEDIUM,
         )
 
     def resolve_input(self, ctx):
@@ -2886,6 +2916,7 @@ class DeleteSavedView(foo.Operator):
             name="delete_saved_view",
             label="Delete saved view",
             dynamic=True,
+            risk_level=types.RiskLevel.HIGH,
         )
 
     def resolve_input(self, ctx):
@@ -2937,6 +2968,7 @@ class ListWorkspaces(foo.Operator):
             name="list_workspaces",
             label="List workspaces",
             unlisted=True,
+            risk_level=types.RiskLevel.LOW,
         )
 
     def execute(self, ctx):
@@ -2950,6 +2982,7 @@ class LoadWorkspace(foo.Operator):
             name="load_workspace",
             label="Load workspace",
             dynamic=True,
+            risk_level=types.RiskLevel.LOW,
         )
 
     def resolve_input(self, ctx):
@@ -2994,6 +3027,7 @@ class SaveWorkspace(foo.Operator):
             name="save_workspace",
             label="Save workspace",
             dynamic=True,
+            risk_level=types.RiskLevel.MEDIUM,
         )
 
     def resolve_input(self, ctx):
@@ -3080,6 +3114,7 @@ class EditWorkspaceInfo(foo.Operator):
             name="edit_workspace_info",
             label="Edit workspace info",
             dynamic=True,
+            risk_level=types.RiskLevel.MEDIUM,
         )
 
     def resolve_input(self, ctx):
@@ -3179,6 +3214,7 @@ class DeleteWorkspace(foo.Operator):
             name="delete_workspace",
             label="Delete workspace",
             dynamic=True,
+            risk_level=types.RiskLevel.HIGH,
         )
 
     def resolve_input(self, ctx):
@@ -3238,6 +3274,7 @@ class SyncLastModifiedAt(foo.Operator):
             allow_immediate_execution=True,
             default_choice_to_delegated=True,
             dynamic=True,
+            risk_level=types.RiskLevel.MEDIUM,
         )
 
     def resolve_input(self, ctx):
@@ -3284,6 +3321,7 @@ class ListFiles(foo.Operator):
             name="list_files",
             label="List Files",
             unlisted=True,
+            risk_level=types.RiskLevel.LOW,
         )
 
     def execute(self, ctx):
@@ -3400,6 +3438,7 @@ class DownloadFileOperator(foo.Operator):
             name="download_file",
             label="Download file",
             unlisted=True,
+            risk_level=types.RiskLevel.LOW,
         )
 
     def resolve_input(self, ctx):

@@ -2646,6 +2646,7 @@ __metadata:
     uuid: "npm:^14.0.0"
     vite: "npm:^7.3.2"
     vite-plugin-externals: "npm:^0.5.0"
+    vite-plugin-relay: "npm:^2.0.0"
     vitest: "npm:^1.6.0"
   peerDependencies:
     "@fiftyone/commands": "*"
@@ -3086,6 +3087,7 @@ __metadata:
   dependencies:
     "@bufbuild/protobuf": "npm:^2.11.0"
     "@fiftyone/plugins": "npm:*"
+    "@fiftyone/utilities": "npm:*"
   languageName: unknown
   linkType: soft
 
@@ -4654,9 +4656,9 @@ __metadata:
   linkType: hard
 
 "@protobufjs/utf8@npm:^1.1.0":
-  version: 1.1.0
-  resolution: "@protobufjs/utf8@npm:1.1.0"
-  checksum: 10/131e289c57534c1d73a0e55782d6751dd821db1583cb2f7f7e017c9d6747addaebe79f28120b2e0185395d990aad347fb14ffa73ef4096fa38508d61a0e64602
+  version: 1.1.1
+  resolution: "@protobufjs/utf8@npm:1.1.1"
+  checksum: 10/ed0c3f9ff1afd602a0aed54c4c03a0b8f641686a5587d8949e088dcac653fb2019d15691ed92eef23dfdf9f4293249532d0508ecd15cef810acf026917719a19
   languageName: node
   linkType: hard
 
@@ -11774,9 +11776,9 @@ __metadata:
   linkType: hard
 
 "fast-uri@npm:^3.0.1, fast-uri@npm:^3.1.0":
-  version: 3.1.0
-  resolution: "fast-uri@npm:3.1.0"
-  checksum: 10/818b2c96dc913bcf8511d844c3d2420e2c70b325c0653633f51821e4e29013c2015387944435cd0ef5322c36c9beecc31e44f71b257aeb8e0b333c1d62bb17c2
+  version: 3.1.2
+  resolution: "fast-uri@npm:3.1.2"
+  checksum: 10/1dff04865b2a38d3e0659deadfbf72efdf83a776bfbf9667e4aa9e5a3ec31bc341cda9622136b32b7652a857c8ba11896794186e8f876f8b2b72731fce8622f6
   languageName: node
   linkType: hard
 

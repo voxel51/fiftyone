@@ -7,7 +7,23 @@ FiftyOne pipeline operator types.
 """
 
 import dataclasses
+import logging
 from typing import Any, List, Mapping, Optional
+
+import fiftyone.core.view as fov
+
+logger = logging.getLogger(__name__)
+
+_DISALLOWED_REQUEST_PARAM_OVERRIDES = frozenset(
+    {
+        "dataset_id",
+        "dataset_name",
+        "delegated",
+        "delegation_target",
+        "request_delegation",
+        "results",
+    }
+)
 
 
 @dataclasses.dataclass
@@ -38,15 +54,20 @@ class PipelineStage:
 
     request_params_overrides: Optional[Mapping[str, Any]] = None
     """Optional dict of request parameter overrides for the execution context.
-    
-    This allows stages to override any ExecutionContext request parameter such as:
-    - `view`: List of view stages to apply
-    - `view_name`: Name of a saved view to use
-    - `filters`: Dictionary of filters to apply
-    - Any other valid ExecutionContext request parameter
-    
-    Note: The `params` field should not be included in `request_params_overrides`.
-    Use the `params` field directly for operator parameters.
+
+    Commonly overridden parameters include:
+    - `view`: a :class:`fiftyone.core.view.DatasetView` (serialized
+        automatically) or ``None`` to clear any active view
+    - `view_name`: name of a saved view to use
+    - `selected`: list of selected sample IDs
+    - `group_slice`: group slice to use
+
+    The keys ``dataset_id``, ``dataset_name``, ``delegated``,
+    ``delegation_target``, ``request_delegation``, and ``results`` are not
+    allowed and will be removed with a logged error.
+
+    Note: The `params` field should not be included here; use the `params`
+    field of :class:`PipelineStage` directly for operator parameters.
     """
 
     # ADD A CUSTOM __init__ METHOD TO ACCEPT AND DISCARD UNUSED KWARGS
@@ -85,6 +106,31 @@ class PipelineStage:
             and self.num_distributed_tasks < 1
         ):
             self.num_distributed_tasks = None
+
+        if self.request_params_overrides is not None:
+            disallowed = (
+                _DISALLOWED_REQUEST_PARAM_OVERRIDES
+                & self.request_params_overrides.keys()
+            )
+            if disallowed:
+                logger.error(
+                    "request_params_overrides contains disallowed keys %s "
+                    "for stage '%s'; they will be ignored",
+                    sorted(disallowed),
+                    self.operator_uri,
+                )
+                self.request_params_overrides = {
+                    k: v
+                    for k, v in self.request_params_overrides.items()
+                    if k not in disallowed
+                }
+
+            view = self.request_params_overrides.get("view", None)
+            if isinstance(view, fov.DatasetView):
+                self.request_params_overrides = {
+                    **self.request_params_overrides,
+                    "view": view._serialize(),
+                }
 
     def to_json(self):
         """Converts the object definition to JSON / python dict.
@@ -137,7 +183,8 @@ class Pipeline:
             rerunnable: whether the stage is rerunnable
             request_params_overrides: optional dict of request parameter
                 overrides for the execution context. Allows overriding fields
-                like `view`, `filters`, etc.
+                like `view` (accepts a DatasetView or serialized stages),
+                `filters`, etc.
             **kwargs: reserved for future use
 
         Returns:

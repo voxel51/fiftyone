@@ -16,17 +16,29 @@ export type { Renderer2D } from "./renderer/Renderer2D";
 
 // Overlay exports
 export type { BaseOverlay } from "./overlay/BaseOverlay";
-export { BoundingBoxOverlay } from "./overlay/BoundingBoxOverlay";
+export { DetectionOverlay } from "./overlay/DetectionOverlay";
 export type {
-  BoundingBoxLabel,
-  BoundingBoxOptions,
-} from "./overlay/BoundingBoxOverlay";
+  DetectionLabel,
+  DetectionOverlayOptions,
+} from "./overlay/DetectionOverlay";
+export type { MaskSnapshot, PaintStrokeData } from "./overlay/MaskCanvas";
 export { ClassificationOverlay } from "./overlay/ClassificationOverlay";
 export type { ClassificationOptions } from "./overlay/ClassificationOverlay";
 export { ImageOverlay } from "./overlay/ImageOverlay";
 export type { ImageOptions } from "./overlay/ImageOverlay";
 export { KeypointOverlay } from "./overlay/KeypointOverlay";
-export type { KeypointLabel, KeypointOptions } from "./overlay/KeypointOverlay";
+export type {
+  KeypointEffect,
+  KeypointEffectContext,
+  KeypointEffectPoint,
+  KeypointLabel,
+  KeypointOptions,
+} from "./overlay/KeypointOverlay";
+export { drawRippleRings } from "./overlay/rippleRing";
+export type { DrawRippleRingsArgs } from "./overlay/rippleRing";
+export { RIPPLE_VISIBLE_MS } from "./constants";
+export { PolylineOverlay } from "./overlay/PolylineOverlay";
+export type { PolylineLabel, PolylineOptions } from "./overlay/PolylineOverlay";
 export { OverlayFactory } from "./overlay/OverlayFactory";
 export type { OverlayConstructor } from "./overlay/OverlayFactory";
 
@@ -43,14 +55,30 @@ export type { ResourceLoader } from "./resource/ResourceLoader";
 export type { LighterEventGroup } from "./events";
 
 // Interaction exports
+export { buildBrushCursor } from "./interaction/buildBrushCursor";
 export { InteractionManager } from "./interaction/InteractionManager";
-export type { InteractionHandler } from "./interaction/InteractionManager";
+export { InteractiveCreationHandler } from "./interaction/InteractiveCreationHandler";
+export type { InteractiveCreationHandlerOptions } from "./interaction/InteractiveCreationHandler";
+export type {
+  InteractionHandler,
+  OverlayEvent,
+} from "./interaction/InteractionManager";
 export { InteractiveDetectionHandler } from "./interaction/InteractiveDetectionHandler";
 export {
   InteractiveKeypointHandler,
   KeypointPointHitAction,
 } from "./interaction/InteractiveKeypointHandler";
 export type { KeypointPointHitContext } from "./interaction/InteractiveKeypointHandler";
+export { InteractivePenHandler } from "./interaction/InteractivePenHandler";
+export {
+  InteractivePolylineHandler,
+  PolylineEdgeHitAction,
+  PolylineEmptyHitAction,
+} from "./interaction/InteractivePolylineHandler";
+export type {
+  PolylineEdgeHitContext,
+  PolylineEmptyHitContext,
+} from "./interaction/InteractivePolylineHandler";
 
 // Selection exports
 export type { Selectable } from "./selection/Selectable";
@@ -59,6 +87,10 @@ export type { SelectionOptions } from "./selection/SelectionManager";
 
 // Command exports
 export { AddKeypointPointCommand } from "./commands/AddKeypointPointCommand";
+export { MergeDetectionsCommand } from "./commands/MergeDetectionsCommand";
+export type { MergeDetectionsCommandDeps } from "./commands/MergeDetectionsCommand";
+export { AddMaskKeypointCommand } from "./commands/AddMaskKeypointCommand";
+export { AddOverlayCommand } from "./commands/AddOverlayCommand";
 export { MoveKeypointPointCommand } from "./commands/MoveKeypointPointCommand";
 export { MoveOverlayCommand } from "./commands/MoveOverlayCommand";
 export { RemoveKeypointPointCommand } from "./commands/RemoveKeypointPointCommand";
@@ -86,6 +118,10 @@ export type {
   Spatial,
   TextOptions,
   TransformMatrix,
+  ViewportState,
 } from "./types";
 
 export { getOverlayColor } from "./utils/colorMapping";
+
+// Constants
+export { DEFAULT_ZOOM_PAD } from "./constants";

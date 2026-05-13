@@ -17,6 +17,7 @@ import {
 } from "../constants";
 import { CONTAINS } from "../core/Scene2D";
 import type { Renderer2D } from "../renderer/Renderer2D";
+import type { OverlayEvent } from "../interaction/InteractionManager";
 import type { Selectable } from "../selection/Selectable";
 import type {
   DrawStyle,
@@ -34,7 +35,7 @@ import {
 } from "../utils/geometry";
 import { getSimpleStrokeStyles } from "../utils/colorMapping";
 import { BaseOverlay } from "./BaseOverlay";
-import { NO_BOUNDS } from "./BoundingBoxOverlay";
+import { NO_BOUNDS } from "./DetectionOverlay";
 import { v4 as uuidv4 } from "uuid";
 
 export type KeypointLabel = RawLookerLabel & {
@@ -81,6 +82,52 @@ type KeypointEntry = {
 };
 
 /**
+ * Per-point snapshot passed to render effects for a single frame.
+ */
+export interface KeypointEffectPoint {
+  id: string;
+  position: Point;
+  variant?: string;
+}
+
+/**
+ * Context passed to a {@link KeypointEffect} once per frame. The overlay
+ * owns frame timing and point geometry; effects own only their own draw
+ * contribution.
+ */
+export interface KeypointEffectContext {
+  overlay: KeypointOverlay;
+  renderer: Renderer2D;
+  /** Per-point snapshot for this frame, in entry order. */
+  points: ReadonlyArray<KeypointEffectPoint>;
+  /** Resolves a variant key to the same draw style points use. */
+  resolveStyle: (variant: string | undefined) => DrawStyle;
+  containerId: string;
+}
+
+/**
+ * A custom render contribution for a {@link KeypointOverlay}. Invoked once
+ * per frame, behind the points themselves. The caller owns lifecycle —
+ * driving frame invalidation via `markDirty()` while animating, and
+ * unregistering when done.
+ */
+export type KeypointEffect = (ctx: KeypointEffectContext) => void;
+
+/**
+ * Per-render context passed to {@link KeypointOverlay} render hooks. Lets
+ * subclasses extend rendering without recomputing shared state.
+ */
+export type KeypointRenderContext = {
+  style: DrawStyle;
+  absPoints: Point[];
+  strokeColor: string;
+  lineWidth: number;
+  isHovered: boolean;
+  isSelected: boolean;
+  edgeSegments: Array<[Point, Point]>;
+};
+
+/**
  * Keypoint overlay implementation with per-point interaction, optional connections,
  * and optional polygon closure.
  *
@@ -97,7 +144,7 @@ export class KeypointOverlay
   private isDraggable: boolean;
   private isDeletable: boolean;
   private isSelectable: boolean;
-  private connections: number[][];
+  protected connections: number[][];
   private closed: boolean;
   private readonly variantStyles: Record<string, DrawStyle>;
   private isSelectedState = false;
@@ -105,7 +152,7 @@ export class KeypointOverlay
   #points: KeypointEntry[];
 
   // Per-point sub-selection
-  private selectedPointIndex: number | null = null;
+  protected selectedPointIndex: number | null = null;
 
   // Drag state for individual points
   private dragPointIndex: number | null = null;
@@ -113,7 +160,12 @@ export class KeypointOverlay
   private moveStartRelativePoint?: [number, number];
 
   // Preview point for interactive creation (cursor tracking)
-  private previewPoint?: Point | null = null;
+  protected previewPoint?: Point | null = null;
+
+  // Registered render effects. Invoked once per frame, between point
+  // bucket-collection and bucket-draw, so contributions appear behind the
+  // solid points. Owners drive frame invalidation and unregister when done.
+  private renderEffects: Map<string, KeypointEffect> = new Map();
 
   // Caches — invalidated in markDirty()
   private _absPointsCache: Point[] | null = null;
@@ -158,7 +210,7 @@ export class KeypointOverlay
     return [(ap.x - t.offsetX) / t.scaleX, (ap.y - t.offsetY) / t.scaleY];
   }
 
-  private getAbsolutePoints(): Point[] {
+  protected getAbsolutePoints(): Point[] {
     if (this._absPointsCache) return this._absPointsCache;
     this._absPointsCache = this.#points.map((e) =>
       this.relativePointToAbsolute(e.position)
@@ -274,7 +326,7 @@ export class KeypointOverlay
   /**
    * Collects edge segments from connections with bounds-checked indices.
    */
-  private collectEdgeSegments(absPoints: Point[]): Array<[Point, Point]> {
+  protected collectEdgeSegments(absPoints: Point[]): Array<[Point, Point]> {
     const segments: Array<[Point, Point]> = [];
     const len = absPoints.length;
     for (const path of this.connections) {
@@ -305,104 +357,165 @@ export class KeypointOverlay
     if (!style) return;
 
     const absPoints = this.getAbsolutePoints();
-    const strokeColor = style.strokeStyle || "#ffffff";
-    const lineWidth = style.lineWidth || STROKE_WIDTH;
-    const isHovered = this.isHoveredState;
-    const isSelected = this.isSelectedState;
+    const ctx: KeypointRenderContext = {
+      style,
+      absPoints,
+      strokeColor: style.strokeStyle || "#ffffff",
+      lineWidth: style.lineWidth || STROKE_WIDTH,
+      isHovered: this.isHoveredState,
+      isSelected: this.isSelectedState,
+      edgeSegments: this.collectEdgeSegments(absPoints),
+    };
 
-    // 1. Batch all connection edges into a single draw call
-    const edgeSegments = this.collectEdgeSegments(absPoints);
+    this.renderFill(renderer, ctx);
+    this.renderEdges(renderer, ctx);
+    this.renderPreviewLine(renderer, ctx);
+    this.renderPoints(renderer, ctx);
+    this.renderLabelText(renderer, ctx);
 
-    if (edgeSegments.length > 0) {
+    this.emitLoaded();
+  }
+
+  /**
+   * Hook for filled rendering beneath edges/points. Default: no-op.
+   * Subclasses (e.g. PolylineOverlay) override to draw filled segments.
+   */
+  protected renderFill(
+    _renderer: Renderer2D,
+    _ctx: KeypointRenderContext
+  ): void {
+    // intentionally empty
+  }
+
+  protected renderEdges(
+    renderer: Renderer2D,
+    ctx: KeypointRenderContext
+  ): void {
+    if (ctx.edgeSegments.length === 0) return;
+
+    renderer.drawLines(
+      ctx.edgeSegments,
+      { strokeStyle: ctx.strokeColor, lineWidth: ctx.lineWidth },
+      this.containerId
+    );
+
+    // Dashed overlay when hovered or selected, mirroring BoundingBoxOverlay.
+    if (!ctx.isHovered && !ctx.isSelected) return;
+
+    const { overlayStrokeColor, overlayDash } = getSimpleStrokeStyles({
+      isSelected: ctx.isSelected,
+      strokeColor: ctx.strokeColor,
+      isHovered: ctx.isHovered,
+      dashLength: ctx.isSelected ? SELECTED_DASH_LENGTH : HOVERED_DASH_LENGTH,
+    });
+
+    if (overlayStrokeColor && overlayDash) {
       renderer.drawLines(
-        edgeSegments,
-        { strokeStyle: strokeColor, lineWidth },
-        this.containerId
-      );
-
-      // Dashed overlay when hovered or selected, mirroring BoundingBoxOverlay.
-      if (isHovered || isSelected) {
-        const { overlayStrokeColor, overlayDash } = getSimpleStrokeStyles({
-          isSelected,
-          strokeColor,
-          isHovered,
-          dashLength: isSelected ? SELECTED_DASH_LENGTH : HOVERED_DASH_LENGTH,
-        });
-
-        if (overlayStrokeColor && overlayDash) {
-          renderer.drawLines(
-            edgeSegments,
-            {
-              strokeStyle: overlayStrokeColor,
-              lineWidth,
-              dashPattern: [overlayDash, overlayDash],
-            },
-            this.containerId
-          );
-        }
-      }
-    }
-
-    // 2. Draw preview line (during interactive creation — dashed, separate call)
-    //  Only shown for connected/closed keypoints, not standalone point selection.
-    if (
-      this.previewPoint &&
-      absPoints.length > 0 &&
-      (this.connections.length > 0 || this.closed)
-    ) {
-      const lastPoint = absPoints[absPoints.length - 1];
-      renderer.drawLine(
-        lastPoint,
-        this.previewPoint,
+        ctx.edgeSegments,
         {
-          strokeStyle: strokeColor,
-          lineWidth,
-          dashPattern: [6, 4],
-          opacity: PREVIEW_LINE_OPACITY,
+          strokeStyle: overlayStrokeColor,
+          lineWidth: ctx.lineWidth,
+          dashPattern: [overlayDash, overlayDash],
         },
         this.containerId
       );
     }
+  }
 
-    // 3. Batch points by variant. Points without a matching variant style fall
-    //   back to the overlay's defaults.
+  /**
+   * Preview line during interactive creation (dashed). Only shown for
+   * connected/closed keypoints, not standalone point selection.
+   */
+  protected renderPreviewLine(
+    renderer: Renderer2D,
+    ctx: KeypointRenderContext
+  ): void {
+    if (
+      !this.previewPoint ||
+      ctx.absPoints.length === 0 ||
+      (this.connections.length === 0 && !this.closed)
+    ) {
+      return;
+    }
+
+    const lastPoint = ctx.absPoints[ctx.absPoints.length - 1];
+    renderer.drawLine(
+      lastPoint,
+      this.previewPoint,
+      {
+        strokeStyle: ctx.strokeColor,
+        lineWidth: ctx.lineWidth,
+        dashPattern: [6, 4],
+        opacity: PREVIEW_LINE_OPACITY,
+      },
+      this.containerId
+    );
+  }
+
+  protected renderPoints(
+    renderer: Renderer2D,
+    ctx: KeypointRenderContext
+  ): void {
     const defaultPointStyle: DrawStyle = {
-      fillStyle: strokeColor,
+      fillStyle: ctx.strokeColor,
       strokeStyle: "#ffffff",
-      lineWidth,
+      lineWidth: ctx.lineWidth,
     };
 
     const resolvePointStyle = (variant: string | undefined): DrawStyle => {
       const override = variant ? this.variantStyles[variant] : undefined;
-
-      return {
-        ...defaultPointStyle,
-        ...override,
-      };
+      return { ...defaultPointStyle, ...override };
     };
 
     const buckets = new Map<string | undefined, Point[]>();
     let selectedPoint: Point | undefined;
     let selectedVariant: string | undefined;
 
-    for (let i = 0; i < absPoints.length; i++) {
+    for (let i = 0; i < ctx.absPoints.length; i++) {
       // When hovered, every point renders in its sub-selected state, so
       // there's no need to peel out the explicitly-selected point.
-      if (!isHovered && this.selectedPointIndex === i) {
-        selectedPoint = absPoints[i];
+      if (!ctx.isHovered && this.selectedPointIndex === i) {
+        selectedPoint = ctx.absPoints[i];
         selectedVariant = this.#points[i].variant;
         continue;
       }
       const v = this.#points[i].variant;
       const bucket = buckets.get(v);
       if (bucket) {
-        bucket.push(absPoints[i]);
+        bucket.push(ctx.absPoints[i]);
       } else {
-        buckets.set(v, [absPoints[i]]);
+        buckets.set(v, [ctx.absPoints[i]]);
       }
     }
 
-    const pointRadius = isHovered ? KEYPOINT_SELECTED_RADIUS : KEYPOINT_RADIUS;
+    // Custom render effects — drawn behind the points so they appear
+    // beneath the solid point markers. Owners drive their own animation
+    // timing and frame invalidation.
+    if (this.renderEffects.size > 0) {
+      const effectPoints: KeypointEffectPoint[] = ctx.absPoints.map(
+        (position, i) => ({
+          id: this.#points[i].id,
+          position,
+          variant: this.#points[i].variant,
+        })
+      );
+
+      const effectContext: KeypointEffectContext = {
+        overlay: this,
+        renderer,
+        points: effectPoints,
+        resolveStyle: resolvePointStyle,
+        containerId: this.containerId,
+      };
+
+      for (const effect of this.renderEffects.values()) {
+        effect(effectContext);
+      }
+    }
+
+    const pointRadius = ctx.isHovered
+      ? KEYPOINT_SELECTED_RADIUS
+      : KEYPOINT_RADIUS;
     for (const [variant, pts] of buckets) {
       const pointStyle = resolvePointStyle(variant);
       renderer.drawPoints(pts, pointRadius, pointStyle, this.containerId);
@@ -410,7 +523,7 @@ export class KeypointOverlay
 
     // When hovered, overlay an inner white highlight on every point so each
     // vertex matches the sub-selected appearance.
-    if (isHovered) {
+    if (ctx.isHovered) {
       for (const [, pts] of buckets) {
         renderer.drawPoints(
           pts,
@@ -436,24 +549,26 @@ export class KeypointOverlay
         this.containerId
       );
     }
+  }
 
-    // 4. Draw label text (reuses cached bounds)
-    if (this.label && this.label.label?.length > 0) {
-      const labelBounds = this.bounds;
-      if (BaseOverlay.validBounds(labelBounds)) {
-        renderer.drawText(
-          this.label.label,
-          { x: labelBounds.x, y: labelBounds.y },
-          {
-            fontColor: "#ffffff",
-            backgroundColor: style.fillStyle || style.strokeStyle || "#000",
-          },
-          this.containerId
-        );
-      }
-    }
+  protected renderLabelText(
+    renderer: Renderer2D,
+    ctx: KeypointRenderContext
+  ): void {
+    if (!this.label || !this.label.label?.length) return;
 
-    this.emitLoaded();
+    const labelBounds = this.bounds;
+    if (!BaseOverlay.validBounds(labelBounds)) return;
+
+    renderer.drawText(
+      this.label.label,
+      { x: labelBounds.x, y: labelBounds.y },
+      {
+        fontColor: "#ffffff",
+        backgroundColor: ctx.style.fillStyle || ctx.style.strokeStyle || "#000",
+      },
+      this.containerId
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -558,12 +673,7 @@ export class KeypointOverlay
     return "default";
   }
 
-  onPointerDown(
-    point: Point,
-    worldPoint: Point,
-    _event: PointerEvent,
-    scale: number
-  ): boolean {
+  onPointerDown({ point, worldPoint, scale }: OverlayEvent): boolean {
     const nearestIdx = this.findNearestPointIndex(worldPoint, scale);
 
     if (nearestIdx >= 0) {
@@ -586,12 +696,7 @@ export class KeypointOverlay
     return false;
   }
 
-  onMove(
-    _point: Point,
-    worldPoint: Point,
-    _event: PointerEvent,
-    _scale: number
-  ): boolean {
+  onMove({ worldPoint }: OverlayEvent): boolean {
     if (
       this.dragPointIndex === null ||
       !this.moveStartScreenPoint ||
@@ -610,7 +715,7 @@ export class KeypointOverlay
     return true;
   }
 
-  onPointerUp(_point: Point, _event: PointerEvent): boolean {
+  onPointerUp(): boolean {
     if (this.dragPointIndex === null) return false;
 
     const movedIdx = this.dragPointIndex;
@@ -646,15 +751,78 @@ export class KeypointOverlay
   /**
    * Adds a point at the given absolute (world) position.
    *
-   * @param variant - Optional variant key used to determine render style.
-   * @param id - Optional ID. When provided, reuses this id instead of
+   * @param options.variant - Optional variant key used to determine render style.
+   * @param options.id - Optional ID. When provided, reuses this id instead of
    *             generating one. Useful when referential integrity is desired.
+   * @param options.dragging - Whether this point is being placed as part of a
+   *             continuous drag. Subclasses (e.g. `MaskKeypoints`) may gate
+   *             dragged placements by a minimum-distance threshold while
+   *             always honoring discrete clicks.
    * @returns The id of the new point.
    */
-  addPoint(worldPoint: Point, variant?: string, id?: string): string {
+  addPoint(
+    worldPoint: Point,
+    options?: { variant?: string; id?: string; dragging?: boolean }
+  ): string {
+    const { variant, id } = options ?? {};
     const position = this.absolutePointToRelative(worldPoint);
     const entry: KeypointEntry = { id: id ?? uuidv4(), position, variant };
     this.#points.push(entry);
+
+    this.eventBus.dispatch("lighter:keypoint-point-added", {
+      id: this.id,
+      pointId: entry.id,
+      point: { x: position[0], y: position[1] },
+      variant,
+    });
+
+    this.markDirty();
+    return entry.id;
+  }
+
+  /**
+   * Returns the id of the point at the given flat-array index, or `null` if
+   * the index is out of range.
+   *
+   * @param index Flat-array index across all points.
+   */
+  protected getPointIdAt(index: number): string | null {
+    if (index < 0 || index >= this.#points.length) {
+      return null;
+    }
+
+    return this.#points[index].id;
+  }
+
+  /**
+   * Inserts a point at the given flat-array index using relative coordinates.
+   *
+   * Connections referencing indices >= `index` are shifted up by one.
+   */
+  protected insertRelativePointAt(
+    index: number,
+    position: [number, number],
+    variant?: string,
+    id?: string
+  ): string {
+    const clamped = Math.max(0, Math.min(index, this.#points.length));
+    const entry: KeypointEntry = {
+      id: id ?? uuidv4(),
+      position: [position[0], position[1]],
+      variant,
+    };
+    this.#points.splice(clamped, 0, entry);
+
+    this.connections = this.connections.map((path) =>
+      path.map((i) => (i >= clamped ? i + 1 : i))
+    );
+
+    if (
+      this.selectedPointIndex !== null &&
+      this.selectedPointIndex >= clamped
+    ) {
+      this.selectedPointIndex++;
+    }
 
     this.eventBus.dispatch("lighter:keypoint-point-added", {
       id: this.id,
@@ -783,6 +951,26 @@ export class KeypointOverlay
   }
 
   /**
+   * Registers a custom render effect. The effect is invoked once per frame
+   * during {@link renderImpl}, behind the points themselves. Returns a
+   * teardown function; {@link unregisterEffect} is also available for callers
+   * that prefer id-based removal.
+   *
+   * The caller owns animation timing — the overlay only re-renders when
+   * dirty, so animated effects must call {@link markDirty} each tick.
+   */
+  registerEffect(id: string, effect: KeypointEffect): () => void {
+    this.renderEffects.set(id, effect);
+    this.markDirty();
+    return () => this.unregisterEffect(id);
+  }
+
+  /** Removes a previously registered render effect by id. */
+  unregisterEffect(id: string): void {
+    if (this.renderEffects.delete(id)) this.markDirty();
+  }
+
+  /**
    * Clears all points from the overlay.
    */
   clearPoints(): void {
@@ -798,6 +986,22 @@ export class KeypointOverlay
    */
   getRelativePoints(): [number, number][] {
     return this.#points.map((e) => [...e.position] as [number, number]);
+  }
+
+  /**
+   * Replaces all points with the given relative-coordinate positions, assigning
+   * fresh IDs. Bypasses world-coordinate conversion that {@link addPoint} would
+   * otherwise apply, so callers can supply already-relative points directly.
+   */
+  protected setRelativePoints(positions: [number, number][]): void {
+    this.#points = positions.map((p) => ({
+      id: uuidv4(),
+      position: [p[0], p[1]],
+    }));
+    this.selectedPointIndex = null;
+    this.dragPointIndex = null;
+    this.previewPoint = null;
+    this.markDirty();
   }
 
   /**

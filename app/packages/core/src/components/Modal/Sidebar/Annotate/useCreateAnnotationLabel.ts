@@ -7,12 +7,14 @@ import {
   POLYLINE,
 } from "@fiftyone/utilities";
 import {
-  BoundingBoxOptions,
-  BoundingBoxOverlay,
+  DetectionOverlayOptions,
+  DetectionOverlay,
   ClassificationOptions,
   ClassificationOverlay,
   KeypointOptions,
   KeypointOverlay,
+  PolylineOptions,
+  PolylineOverlay,
   useLighter,
 } from "@fiftyone/lighter";
 import { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
@@ -49,7 +51,7 @@ export const useCreateAnnotationLabel = () => {
       }
 
       if (type === DETECTION) {
-        const label = data as BoundingBoxOptions["label"];
+        const label = data as DetectionOverlayOptions["label"];
         const boundingBox = label?.bounding_box;
 
         // Check if field is read-only
@@ -58,9 +60,9 @@ export const useCreateAnnotationLabel = () => {
         const isReadOnly = isFieldReadOnly(fieldSchema);
 
         const overlay = overlayFactory.create<
-          BoundingBoxOptions,
-          BoundingBoxOverlay
-        >("bounding-box", {
+          DetectionOverlayOptions,
+          DetectionOverlay
+        >("detection", {
           field,
           id: data._id,
           draggable: !isReadOnly,
@@ -79,16 +81,21 @@ export const useCreateAnnotationLabel = () => {
       }
 
       if (type === POLYLINE) {
-        return {
-          data: data as PolylineLabel,
-          overlay: {
+        const polylineLabel = data as PolylineLabel;
+
+        const overlay = overlayFactory.create<PolylineOptions, PolylineOverlay>(
+          "polyline",
+          {
             id: data._id,
             field,
-            label: data as PolylineLabel,
-          },
-          type,
-          path: field,
-        };
+            label: polylineLabel as PolylineOptions["label"],
+            draggable: false,
+            deletable: false,
+            selectable: true,
+          }
+        );
+
+        return { data: polylineLabel, overlay, path: field, type };
       }
 
       if (type === KEYPOINT) {

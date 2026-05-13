@@ -25,7 +25,7 @@ export interface SchemaIOComponentProps {
   onSubmit?: (data: unknown) => void;
   jsonSchema?: SmartFormProps["jsonSchema"];
   uiSchema?: SmartFormProps["uiSchema"];
-  smartFormProps?: FormProps;
+  smartFormProps?: Partial<FormProps>;
 }
 
 export function SchemaIOComponent(props: SchemaIOComponentProps) {

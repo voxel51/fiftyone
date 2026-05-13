@@ -1,10 +1,16 @@
 import {
-  BoundingBoxOverlay,
+  DetectionOverlay,
   KeypointOverlay,
+  PolylineOverlay,
   useLighter,
 } from "@fiftyone/lighter";
 import type { AnnotationLabel } from "@fiftyone/state";
-import { CLASSIFICATION, DETECTION, KEYPOINT } from "@fiftyone/utilities";
+import {
+  CLASSIFICATION,
+  DETECTION,
+  KEYPOINT,
+  POLYLINE,
+} from "@fiftyone/utilities";
 import { useCallback } from "react";
 
 /**
@@ -18,9 +24,14 @@ export const useAddAnnotationLabelToRenderer = () => {
       if (label.type === CLASSIFICATION) {
         addOverlay(label.overlay);
       } else if (label.type === DETECTION) {
-        addOverlay(label.overlay as BoundingBoxOverlay);
+        addOverlay(label.overlay as DetectionOverlay);
       } else if (label.type === KEYPOINT) {
         addOverlay(label.overlay as KeypointOverlay);
+      } else if (
+        label.type === POLYLINE &&
+        label.overlay instanceof PolylineOverlay
+      ) {
+        addOverlay(label.overlay);
       }
     },
     [addOverlay]
