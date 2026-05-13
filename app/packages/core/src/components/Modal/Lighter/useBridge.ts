@@ -394,11 +394,21 @@ export const useBridge = (scene: Scene2D | null) => {
 
   useEventHandler(
     "lighter:point-selection-finalize",
-    useCallback(() => {
-      if (segmentationMode.segmentationModeActive) {
-        segmentationMode.finalizePointSelection();
-      }
-    }, [segmentationMode])
+    useCallback(
+      (payload) => {
+        if (!segmentationMode.segmentationModeActive) return;
+
+        // Tiered right-click in AI mode: if the user had placed at least one
+        // point, finalize the AI session; otherwise step back to the Select
+        // tool (mirrors the tiered Escape behaviour).
+        if (payload.hadPoints) {
+          segmentationMode.finalizePointSelection();
+        } else {
+          segmentationMode.switchTool(SegmentationTool.Select);
+        }
+      },
+      [segmentationMode]
+    )
   );
 
   const context = useColorMappingContext();

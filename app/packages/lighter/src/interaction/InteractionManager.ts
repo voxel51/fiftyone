@@ -14,6 +14,7 @@ import {
 } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useSegmentationMode";
 import { DetectionOverlay } from "../overlay/DetectionOverlay";
 import type { InteractionState } from "../overlay/DetectionOverlay";
+import { KeypointOverlay } from "../overlay/KeypointOverlay";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { SelectionManager } from "../selection/SelectionManager";
@@ -1091,11 +1092,20 @@ export class InteractionManager {
       }
 
       if (tool === SegmentationTool.AI) {
+        // For the keypoint overlay backing AI point selection,
+        // `hasValidBounds()` is true iff points have been placed — use it
+        // as the "session had in-progress work" signal so the bridge can
+        // tier between finalize and step-back-to-Select.
+        const overlay = interactiveHandler.getOverlay?.();
+        const hadPoints =
+          overlay instanceof KeypointOverlay && overlay.hasValidBounds();
+
         interactiveHandler.resetOverlay();
         this.removeHandler(interactiveHandler);
 
         this.eventBus.dispatch("lighter:point-selection-finalize", {
           eventId: generateUUID(),
+          hadPoints,
         });
 
         return;
