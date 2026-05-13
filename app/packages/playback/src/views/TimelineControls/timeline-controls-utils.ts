@@ -1,11 +1,14 @@
 /**
  * Formats a time in seconds as `m:ss.cs` (e.g. 1:23.45). Used by the
- * playhead time readout.
+ * playhead time readout. Clamps non-finite / negative input to 0.
  */
 export function formatTime(t: number): string {
-  const s = Math.floor(t);
-  const cs = Math.floor((t - s) * 100);
-  return `0:${String(s).padStart(2, "0")}.${String(cs).padStart(2, "0")}`;
+  const safe = Number.isFinite(t) && t > 0 ? t : 0;
+  const totalCs = Math.floor(safe * 100);
+  const m = Math.floor(totalCs / 6000);
+  const s = Math.floor((totalCs % 6000) / 100);
+  const cs = totalCs % 100;
+  return `${m}:${String(s).padStart(2, "0")}.${String(cs).padStart(2, "0")}`;
 }
 
 /** Formats a loop bound as `1.23s`. Used by the loop bound readouts. */

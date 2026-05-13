@@ -4,10 +4,10 @@ import { PlaybackProvider } from "../lib/playback/PlaybackProvider";
 import { useVideoStream } from "../lib/playback/use-video-stream";
 import { useVideoSync } from "../lib/playback/use-video-sync";
 import SimplePlaybackBar from "../views/SimplePlaybackBar/SimplePlaybackBar";
-// Drop a `crowd.mp4` into `src/views/assets/` to run this story locally.
-// The whole `assets/` directory is gitignored — videos live there only on
-// the dev's machine, never in the repo.
-import VIDEO_SRC from "../views/assets/crowd.mp4";
+
+// Public sample so the story renders for anyone — no local asset needed.
+const VIDEO_SRC =
+  "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
 
 const meta: Meta = { title: "Playback/Demos/VideoPlayer" };
 export default meta;

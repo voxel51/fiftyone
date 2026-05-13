@@ -11,4 +11,4 @@ export const clamp = (v: number, lo: number, hi: number) =>
  * across the lane, accounting for the fixed label column on the left.
  */
 export const laneLeftCalc = (ratio: number, labelWidth: number) =>
-  `calc(${labelWidth}px + (100% - ${labelWidth}px) * ${ratio})`;
+  `calc(${labelWidth}px + (100% - ${labelWidth}px) * ${clamp(ratio, 0, 1)})`;

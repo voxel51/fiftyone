@@ -71,6 +71,9 @@ export function createMockGraphStream(opts: MockGraphOptions): MockStreamBundle 
     series = DEFAULT_SERIES,
     hz = 50,
   } = opts;
+  if (!Number.isFinite(hz) || hz <= 0) {
+    throw new Error(`mock-graph-stream: invalid hz ${hz}`);
+  }
   // GraphTile doesn't yet consume per-tick samples (the chart would
   // need a rolling history). Stream still publishes data for future
   // consumers; tile renders its existing playhead-driven animation.

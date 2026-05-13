@@ -60,6 +60,9 @@ class MockCameraStream extends PlaybackStreamBase<MockCameraFrame> {
  */
 export function createMockCameraStream(opts: MockCameraOptions): MockStreamBundle {
   const { id, title = id, duration = 10, fps = 30 } = opts;
+  if (!Number.isFinite(fps) || fps <= 0) {
+    throw new Error(`mock-camera-stream: invalid fps ${fps}`);
+  }
   const stream = new MockCameraStream(id, duration, fps);
   return {
     id,

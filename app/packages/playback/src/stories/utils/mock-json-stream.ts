@@ -63,6 +63,9 @@ class MockJsonStream extends PlaybackStreamBase<MockJsonRecord> {
  */
 export function createMockJsonStream(opts: MockJsonOptions): MockStreamBundle {
   const { id, title = id, duration = 10, hz = 10 } = opts;
+  if (!Number.isFinite(hz) || hz <= 0) {
+    throw new Error(`mock-json-stream: invalid hz ${hz}`);
+  }
   const stream = new MockJsonStream(id, duration, hz);
   return {
     id,

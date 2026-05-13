@@ -12,9 +12,14 @@ import { formatTime } from "../TimelineControls/timeline-controls-utils";
 const PlayheadTime: React.FC = () => {
   const playhead = usePlayhead();
   const { duration } = usePlayback();
+  // `duration` is optional on the context (the engine can be mounted
+  // without a fallback prop and before any stream has registered); guard
+  // here so the readout never shows `NaN`.
+  const safeDuration = duration ?? 0;
+  const safePlayhead = Math.min(playhead, safeDuration);
   return (
     <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-      {`${formatTime(playhead)} / ${formatTime(duration)}`}
+      {`${formatTime(safePlayhead)} / ${formatTime(safeDuration)}`}
     </Text>
   );
 };

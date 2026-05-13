@@ -3,6 +3,7 @@ import { useRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PlaybackProvider } from "../../lib/playback/PlaybackProvider";
 import TimelineHeader from "./TimelineHeader";
+import styles from "./TimelineHeader.module.css";
 
 /**
  * Provides a stable ref the ruler needs. The element doesn't need to be
@@ -39,7 +40,7 @@ describe("TimelineHeader", () => {
     expect(screen.getByRole("button", { name: "Play" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Step back" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Step forward" })).toBeTruthy();
-    expect(container.querySelector(".ruler")).not.toBeNull();
+    expect(container.querySelector(`.${rulerStyles.ruler}`)).not.toBeNull();
   });
 
   it("renders the PlayheadTime readout (proxied through TimelineControls)", () => {
@@ -66,14 +67,14 @@ describe("TimelineHeader", () => {
   it("passes labelWidth down to the ruler", () => {
     const { container } = render(<HeaderHarness labelWidth={150} />);
     // The ruler renders a labelSpacer div whose inline width === labelWidth.
-    const spacer = container.querySelector(".labelSpacer") as HTMLElement;
+    const spacer = container.querySelector(`.${rulerStyles.labelSpacer}`) as HTMLElement;
     expect(spacer).not.toBeNull();
     expect(spacer.getAttribute("style") ?? "").toContain("width: 150px");
   });
 
   it("renders the controls row and the ruler in document order", () => {
     const { container } = render(<HeaderHarness />);
-    const root = container.querySelector(".root");
+    const root = container.querySelector(`.${styles.root}`);
     expect(root).not.toBeNull();
     // Controls (root has class "root" with border-bottom) is the first
     // child; ruler is the second.

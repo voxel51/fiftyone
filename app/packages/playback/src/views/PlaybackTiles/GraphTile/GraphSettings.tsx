@@ -5,7 +5,7 @@ import {
   useTileSourcesByType,
   useTileSource,
 } from "@fiftyone/tiling";
-import styles from "@fiftyone/tiling/src/views/Tile/tile-settings.module.css";
+import styles from "../tile-settings.module.css";
 
 const GraphSettings: React.FC = () => {
   const sources = useTileSourcesByType("graph");

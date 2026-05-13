@@ -67,6 +67,12 @@ class MockLidarStream extends PlaybackStreamBase<MockLidarFrame> {
  */
 export function createMockLidarStream(opts: MockLidarOptions): MockStreamBundle {
   const { id, title = id, duration = 10, pointsPerScan = 64, hz = 10 } = opts;
+  if (!Number.isFinite(hz) || hz <= 0) {
+    throw new Error(`mock-lidar-stream: invalid hz ${hz}`);
+  }
+  if (!Number.isFinite(pointsPerScan) || pointsPerScan <= 0) {
+    throw new Error(`mock-lidar-stream: invalid pointsPerScan ${pointsPerScan}`);
+  }
   const stream = new MockLidarStream(id, duration, pointsPerScan, hz);
   return {
     id,

@@ -60,9 +60,11 @@ const Inner: React.FC<TileStoryProps> = ({
 }) => {
   useMockStreams([config]);
   const setTileSource = useSetTileSourceFor();
+  // setTileSource is a stable jotai-backed setter — not in deps by design.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     setTileSource(TILE_ID, config.id);
-  }, [setTileSource, config.id]);
+  }, [config.id]);
 
   return (
     <TileIdScope tileId={TILE_ID}>

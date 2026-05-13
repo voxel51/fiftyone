@@ -35,7 +35,9 @@ const BlobTile: React.FC = () => {
   const streamId = tileId ?? "blob";
   const stream = useMemo(() => createBlobStream(streamId), [streamId]);
 
-  useEffect(() => registerStream(stream), [registerStream, stream]);
+  // registerStream is a stable action — only re-register when `stream` changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => registerStream(stream), [stream]);
   // Subscribe so the engine considers the stream active. (Without a
   // subscriber the engine would skip it for duration purposes too in
   // future iterations — keep it active explicitly.)

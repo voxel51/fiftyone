@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
+import type { ReactNode } from "react";
 import { PlaybackProvider } from "../lib/playback/PlaybackProvider";
 import { TrackProvider } from "../lib/tracks/TrackProvider";
 import TimelineWithTracks from "../views/TimelineWithTracks/TimelineWithTracks";
@@ -12,7 +13,7 @@ export default meta;
 // Page-shell wrapper: a fixed-height flex column with a placeholder
 // "main content" area that fills the top, and the timeline drawer
 // pinned to the bottom. Mirrors how a real app would host the timeline.
-function StoryShell({ children }: { children: React.ReactNode }) {
+function StoryShell({ children }: { children: ReactNode }) {
   return (
     <div
       style={{

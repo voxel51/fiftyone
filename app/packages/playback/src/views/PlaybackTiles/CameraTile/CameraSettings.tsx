@@ -5,7 +5,7 @@ import {
   useTileSourcesByType,
   useTileSource,
 } from "@fiftyone/tiling";
-import styles from "@fiftyone/tiling/src/views/Tile/tile-settings.module.css";
+import styles from "../tile-settings.module.css";
 
 /**
  * Source picker + per-tile toggles. The picker enumerates every

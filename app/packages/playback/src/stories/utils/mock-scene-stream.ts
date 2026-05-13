@@ -66,6 +66,9 @@ class MockSceneStream extends PlaybackStreamBase<MockScenePose> {
  */
 export function createMockSceneStream(opts: MockSceneOptions): MockStreamBundle {
   const { id, title = id, duration = 10, radius = 2, periodSec = 6 } = opts;
+  if (!Number.isFinite(periodSec) || periodSec <= 0) {
+    throw new Error(`mock-scene-stream: invalid periodSec ${periodSec}`);
+  }
   const stream = new MockSceneStream(id, duration, radius, periodSec);
   return {
     id,

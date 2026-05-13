@@ -23,14 +23,22 @@ const LoopBounds: React.FC = () => {
   const atEnd = hasLoop && loopEnd > duration - LOOP_EDGE_EPSILON;
   const loopMoved = hasLoop && (!atStart || !atEnd);
 
-  const onLoopStartReset = useCallback(
-    () => setLoop(0, loopEnd),
-    [setLoop, loopEnd]
-  );
+  // setLoop is a stable jotai-backed action — not in deps by design.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const onLoopStartReset = useCallback(() => setLoop(0, loopEnd), [loopEnd]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const onLoopEndReset = useCallback(
     () => setLoop(loopStart, duration),
-    [setLoop, loopStart, duration]
+    [loopStart, duration]
   );
+
+  const activateOnEnter =
+    (callback: () => void) => (e: React.KeyboardEvent) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        callback();
+      }
+    };
 
   if (!loopMoved) return null;
 
@@ -49,6 +57,8 @@ const LoopBounds: React.FC = () => {
           color={atStart ? TextColor.Muted : TextColor.Primary}
           className={styles.loopBound}
           onClick={onLoopStartReset}
+          onKeyDown={activateOnEnter(onLoopStartReset)}
+          tabIndex={0}
           title="Reset loop start to 0"
           role="button"
         >
@@ -65,6 +75,8 @@ const LoopBounds: React.FC = () => {
           color={atEnd ? TextColor.Muted : TextColor.Primary}
           className={styles.loopBound}
           onClick={onLoopEndReset}
+          onKeyDown={activateOnEnter(onLoopEndReset)}
+          tabIndex={0}
           title="Reset loop end to duration"
           role="button"
         >

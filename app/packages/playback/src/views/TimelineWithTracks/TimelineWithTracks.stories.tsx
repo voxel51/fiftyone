@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
+import type { ReactNode } from "react";
 import { PlaybackProvider } from "../../lib/playback/PlaybackProvider";
 import { TrackProvider } from "../../lib/tracks/TrackProvider";
 import { DEFAULT_PINNED_TRACK_IDS, DEFAULT_TRACKS } from "../../stories/utils";
@@ -12,7 +13,7 @@ export default meta;
 
 type Story = StoryObj<typeof TimelineWithTracks>;
 
-function StoryShell({ children }: { children: React.ReactNode }) {
+function StoryShell({ children }: { children: ReactNode }) {
   return (
     <div
       style={{

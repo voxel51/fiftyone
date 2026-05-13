@@ -1,0 +1,19 @@
+/* Shared styles for the per-tile Settings sidebar panels. */
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}

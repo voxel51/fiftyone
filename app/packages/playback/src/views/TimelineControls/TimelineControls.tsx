@@ -24,9 +24,22 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({ onToggle }) => {
   const handleClick = onToggle
     ? (e: React.MouseEvent<HTMLDivElement>) => {
         const target = e.target as HTMLElement;
-        // Skip clicks on real interactive elements — they own their own action.
-        if (target.closest('button, [role="button"]')) return;
+        const interactive = target.closest(
+          'button, [role="button"], a, input, select, textarea'
+        );
+        if (interactive && interactive !== e.currentTarget) return;
         onToggle();
+      }
+    : undefined;
+
+  const handleKeyDown = onToggle
+    ? (e: React.KeyboardEvent<HTMLDivElement>) => {
+        // Only respond if focus is on the row itself, not a nested control.
+        if (e.target !== e.currentTarget) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onToggle();
+        }
       }
     : undefined;
 
@@ -34,6 +47,9 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({ onToggle }) => {
     <div
       className={clsx(styles.root, { [styles.clickable]: !!onToggle })}
       onClick={handleClick}
+      onKeyDown={handleKeyDown}
+      role={onToggle ? "button" : undefined}
+      tabIndex={onToggle ? 0 : undefined}
     >
       <Button
         variant={Variant.Icon}

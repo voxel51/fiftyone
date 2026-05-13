@@ -8,6 +8,7 @@ import {
   viewStartAtom,
 } from "../../lib/playback/atoms";
 import TimelineRuler from "./TimelineRuler";
+import styles from "./TimelineRuler.module.css";
 
 // Renders the current view window to the DOM so tests can assert on
 // post-action atom state without touching the store directly.
@@ -116,29 +117,29 @@ describe("TimelineRuler", () => {
   describe("structure", () => {
     it("renders the ruler, lane, loop handles, and playhead group", () => {
       const { container } = renderRuler();
-      expect(container.querySelector(".ruler")).not.toBeNull();
-      expect(container.querySelector(".lane")).not.toBeNull();
-      expect(container.querySelectorAll(".loopHandle")).toHaveLength(2);
-      expect(container.querySelector(".playheadGroup")).not.toBeNull();
-      expect(container.querySelector(".playheadHandle")).not.toBeNull();
-      expect(container.querySelector(".playheadTriangle")).not.toBeNull();
+      expect(container.querySelector(`.${styles.ruler}`)).not.toBeNull();
+      expect(container.querySelector(`.${styles.lane}`)).not.toBeNull();
+      expect(container.querySelectorAll(`.${styles.loopHandle}`)).toHaveLength(2);
+      expect(container.querySelector(`.${styles.playheadGroup}`)).not.toBeNull();
+      expect(container.querySelector(`.${styles.playheadHandle}`)).not.toBeNull();
+      expect(container.querySelector(`.${styles.playheadTriangle}`)).not.toBeNull();
     });
 
     it("omits the labelSpacer when labelWidth is 0", () => {
       const { container } = renderRuler({ labelWidth: 0 });
-      expect(container.querySelector(".labelSpacer")).toBeNull();
+      expect(container.querySelector(`.${styles.labelSpacer}`)).toBeNull();
     });
 
     it("renders the labelSpacer with the requested width when labelWidth > 0", () => {
       const { container } = renderRuler({ labelWidth: 120 });
-      const spacer = container.querySelector(".labelSpacer");
+      const spacer = container.querySelector(`.${styles.labelSpacer}`);
       expect(spacer).not.toBeNull();
       expect(inlineStyle(spacer!)).toContain("width: 120px");
     });
 
     it("offsets the playhead group by labelWidth", () => {
       const { container } = renderRuler({ labelWidth: 80 });
-      const group = container.querySelector(".playheadGroup");
+      const group = container.querySelector(`.${styles.playheadGroup}`);
       expect(inlineStyle(group!)).toContain("left: 80px");
     });
   });
@@ -146,7 +147,7 @@ describe("TimelineRuler", () => {
   describe("ticks", () => {
     it("uses 1s intervals when the view is wider than 3s", () => {
       const { container } = renderRuler({ duration: 10 });
-      const labels = Array.from(container.querySelectorAll(".tick")).map(
+      const labels = Array.from(container.querySelectorAll(`.${styles.tick}`)).map(
         (el) => el.textContent
       );
       // 0s through 10s inclusive.
@@ -171,7 +172,7 @@ describe("TimelineRuler", () => {
         viewStart: 0,
         viewEnd: 3,
       });
-      const labels = Array.from(container.querySelectorAll(".tick")).map(
+      const labels = Array.from(container.querySelectorAll(`.${styles.tick}`)).map(
         (el) => el.textContent
       );
       expect(labels).toEqual(["0s", "0.5s", "1s", "1.5s", "2s", "2.5s", "3s"]);
@@ -183,7 +184,7 @@ describe("TimelineRuler", () => {
         viewStart: 1,
         viewEnd: 2,
       });
-      const labels = Array.from(container.querySelectorAll(".tick")).map(
+      const labels = Array.from(container.querySelectorAll(`.${styles.tick}`)).map(
         (el) => el.textContent
       );
       expect(labels[0]).toBe("1s");
@@ -194,7 +195,7 @@ describe("TimelineRuler", () => {
 
     it("positions each tick using its fraction of the view duration", () => {
       const { container } = renderRuler({ duration: 10 });
-      const ticks = container.querySelectorAll<HTMLElement>(".tick");
+      const ticks = container.querySelectorAll<HTMLElement>(`.${styles.tick}`);
       // First tick at 0s sits at 0%, last at 10s sits at 100%.
       expect(inlineStyle(ticks[0])).toContain("left: 0%");
       expect(inlineStyle(ticks[ticks.length - 1])).toContain("left: 100%");
@@ -204,13 +205,13 @@ describe("TimelineRuler", () => {
   describe("playhead positioning", () => {
     it("translates the playhead group by the playhead's view fraction", () => {
       const { container } = renderRuler({ duration: 10, seekTo: 2.5 });
-      const group = container.querySelector(".playheadGroup");
+      const group = container.querySelector(`.${styles.playheadGroup}`);
       expect(inlineStyle(group!)).toContain("translate3d(25%");
     });
 
     it("anchors at 0% before any seek", () => {
       const { container } = renderRuler();
-      const group = container.querySelector(".playheadGroup");
+      const group = container.querySelector(`.${styles.playheadGroup}`);
       expect(inlineStyle(group!)).toContain("translate3d(0%");
     });
 
@@ -222,7 +223,7 @@ describe("TimelineRuler", () => {
         viewStart: 4,
         viewEnd: 8,
       });
-      const group = container.querySelector(".playheadGroup");
+      const group = container.querySelector(`.${styles.playheadGroup}`);
       expect(inlineStyle(group!)).toContain("translate3d(25%");
     });
   });
@@ -236,7 +237,7 @@ describe("TimelineRuler", () => {
 
     it("always renders both loop handles (start + end)", () => {
       const { container } = renderRuler({ duration: 10 });
-      const handles = container.querySelectorAll<HTMLElement>(".loopHandle");
+      const handles = container.querySelectorAll<HTMLElement>(`.${styles.loopHandle}`);
       expect(handles).toHaveLength(2);
     });
 
@@ -247,14 +248,14 @@ describe("TimelineRuler", () => {
         defaultLoopEnd: 7,
       });
       // Two handles still present; their exact x is JSDOM-opaque.
-      expect(container.querySelectorAll(".loopHandle")).toHaveLength(2);
+      expect(container.querySelectorAll(`.${styles.loopHandle}`)).toHaveLength(2);
     });
   });
 
   describe("default cursor", () => {
     it("has no cursor style when no drag is active", () => {
       const { container } = renderRuler();
-      const ruler = container.querySelector(".ruler");
+      const ruler = container.querySelector(`.${styles.ruler}`);
       // cursor is set conditionally; when undefined, React strips the property
       // so the inline style won't contain "cursor:".
       expect(inlineStyle(ruler!)).not.toContain("cursor:");

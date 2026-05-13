@@ -10,6 +10,7 @@ import {
   TextVariant,
 } from "@voxel51/voodo";
 import type { Meta, StoryObj } from "@storybook/react";
+import type { ReactNode } from "react";
 import { PlaybackProvider } from "../lib/playback/PlaybackProvider";
 import {
   MosaicGrid,
@@ -37,7 +38,7 @@ const KIND_ICONS: Record<TileKind, IconName> = {
   blocking: IconName.Logs,
 };
 
-const KIND_RENDERERS: Record<TileKind, () => React.ReactNode> = {
+const KIND_RENDERERS: Record<TileKind, () => ReactNode> = {
   blob: () => <BlobTile />,
   blocking: () => <BlockingTile />,
 };

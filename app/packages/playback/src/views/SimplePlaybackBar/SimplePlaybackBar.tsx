@@ -32,6 +32,41 @@ const ProgressBar: React.FC = () => {
     seek(r * duration);
   };
 
+  // Standard slider-role keyboard support: arrows = ±1%, PageUp/Down =
+  // ±10%, Home/End = jump to ends.
+  const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (duration <= 0) return;
+    const step = duration / 100;
+    const pageStep = duration / 10;
+    let next = playhead;
+    switch (e.key) {
+      case "ArrowRight":
+      case "ArrowUp":
+        next = clamp(playhead + step, 0, duration);
+        break;
+      case "ArrowLeft":
+      case "ArrowDown":
+        next = clamp(playhead - step, 0, duration);
+        break;
+      case "PageUp":
+        next = clamp(playhead + pageStep, 0, duration);
+        break;
+      case "PageDown":
+        next = clamp(playhead - pageStep, 0, duration);
+        break;
+      case "Home":
+        next = 0;
+        break;
+      case "End":
+        next = duration;
+        break;
+      default:
+        return;
+    }
+    e.preventDefault();
+    seek(next);
+  };
+
   return (
     <div
       className={styles.track}
@@ -43,6 +78,7 @@ const ProgressBar: React.FC = () => {
       aria-valuenow={playhead}
       aria-valuetext={`${playhead.toFixed(2)} of ${duration.toFixed(2)} seconds`}
       tabIndex={duration > 0 ? 0 : -1}
+      onKeyDown={onKeyDown}
       onPointerDown={(e) => {
         e.currentTarget.setPointerCapture(e.pointerId);
         seekFromPointer(e);

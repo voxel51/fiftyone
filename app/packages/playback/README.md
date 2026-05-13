@@ -6,7 +6,7 @@ clock, the chrome reads atoms via wrapper hooks.
 
 ## Layout
 
-```
+```text
 src/
   lib/
     playback/                  # the engine

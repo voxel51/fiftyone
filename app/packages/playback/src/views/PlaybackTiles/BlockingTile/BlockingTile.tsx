@@ -25,6 +25,8 @@ const BlockingTile: React.FC = () => {
   const [buffering, setBuffering] = useState(false);
   const streamId = tileId ?? "blocking";
 
+  // registerStream is a stable action — only the streamId drives re-init.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const stream = new RandomBlockingStream(streamId, setBuffering);
     const unregister = registerStream(stream);
@@ -32,7 +34,7 @@ const BlockingTile: React.FC = () => {
       unregister();
       stream.destroy();
     };
-  }, [streamId, registerStream]);
+  }, [streamId]);
 
   // Activate the stream so the engine drives it (and stalls on it).
   useStream(streamId);

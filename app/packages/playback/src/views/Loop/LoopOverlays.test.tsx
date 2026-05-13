@@ -3,6 +3,7 @@ import React, { useEffect } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { PlaybackProvider, usePlayback } from "../../lib/playback/PlaybackProvider";
 import LoopOverlays from "./LoopOverlays";
+import styles from "./LoopOverlays.module.css";
 
 /**
  * Drives the view atoms (no provider-prop shortcut for view bounds).
@@ -11,9 +12,11 @@ import LoopOverlays from "./LoopOverlays";
  */
 function ViewSetter({ start, end }: { start: number; end: number }) {
   const { setView } = usePlayback();
+  // setView is a stable jotai-backed setter — not in deps by design.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     setView(start, end);
-  }, [setView, start, end]);
+  }, [start, end]);
   return null;
 }
 
@@ -43,7 +46,9 @@ function renderOverlays(opts: RenderOpts) {
   );
 }
 
-const maskClass = ".mask";
+// CSS modules hash class names at build time — `.mask` literal misses
+// the hashed name `LoopOverlays__mask__abc123`. Use the imported module.
+const maskClass = `.${styles.mask}`;
 
 // LoopOverlays positions its masks using CSS `calc()` strings. JSDOM's
 // CSSOM rejects those values and they get stripped from the inline style
@@ -161,7 +166,7 @@ describe("LoopOverlays", () => {
     const masks = container.querySelectorAll(maskClass);
     expect(masks).toHaveLength(2);
     masks.forEach((m) => {
-      expect(m.classList.contains("mask")).toBe(true);
+      expect(m.classList.contains(styles.mask)).toBe(true);
     });
   });
 });

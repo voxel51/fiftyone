@@ -8,6 +8,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PlaybackProvider } from "../../lib/playback/PlaybackProvider";
 import SimplePlaybackBar from "./SimplePlaybackBar";
+import styles from "./SimplePlaybackBar.module.css";
 
 // jsdom's PointerEvent constructor doesn't propagate offsetX/Y from its
 // init object, so build the event and patch the property directly. The
@@ -77,7 +78,7 @@ describe("SimplePlaybackBar", () => {
 
   it("seeks to the pointer position when the track is clicked", () => {
     const { container } = renderBar(10);
-    const track = container.querySelector<HTMLDivElement>(".track");
+    const track = container.querySelector<HTMLDivElement>(`.${styles.track}`);
     expect(track).not.toBeNull();
     // Track is 100px wide → clicking at x=25 → 25% → 2.5s of a 10s timeline.
     pointerDown(track!, 25);
@@ -86,21 +87,21 @@ describe("SimplePlaybackBar", () => {
 
   it("clamps pointer-down past the track width to 100% (seek end)", () => {
     const { container } = renderBar(10);
-    const track = container.querySelector<HTMLDivElement>(".track");
+    const track = container.querySelector<HTMLDivElement>(`.${styles.track}`);
     pointerDown(track!, 250);
     expect(screen.getByText("0:10.00 / 0:10.00")).toBeTruthy();
   });
 
   it("clamps pointer-down before the track origin to 0% (seek start)", () => {
     const { container } = renderBar(10);
-    const track = container.querySelector<HTMLDivElement>(".track");
+    const track = container.querySelector<HTMLDivElement>(`.${styles.track}`);
     pointerDown(track!, -50);
     expect(screen.getByText("0:00.00 / 0:10.00")).toBeTruthy();
   });
 
   it("scrubs while the pointer is held down and moved", () => {
     const { container } = renderBar(10);
-    const track = container.querySelector<HTMLDivElement>(".track");
+    const track = container.querySelector<HTMLDivElement>(`.${styles.track}`);
     pointerDown(track!, 10);
     // buttons=1 → primary button held.
     pointerMove(track!, 70, 1);
@@ -109,7 +110,7 @@ describe("SimplePlaybackBar", () => {
 
   it("ignores pointermove when no buttons are pressed", () => {
     const { container } = renderBar(10);
-    const track = container.querySelector<HTMLDivElement>(".track");
+    const track = container.querySelector<HTMLDivElement>(`.${styles.track}`);
     pointerDown(track!, 10);
     pointerMove(track!, 80, 0);
     // Position should reflect the pointerDown (10%), not the hover (80%).
@@ -118,10 +119,10 @@ describe("SimplePlaybackBar", () => {
 
   it("positions the fill and handle to match the seek ratio", () => {
     const { container } = renderBar(10);
-    const track = container.querySelector<HTMLDivElement>(".track");
+    const track = container.querySelector<HTMLDivElement>(`.${styles.track}`);
     pointerDown(track!, 40);
-    const fill = container.querySelector(".fill");
-    const handle = container.querySelector(".handle");
+    const fill = container.querySelector(`.${styles.fill}`);
+    const handle = container.querySelector(`.${styles.handle}`);
     expect(fill).not.toBeNull();
     expect(handle).not.toBeNull();
     expect(handle!.getAttribute("style") ?? "").toContain("left: 40%");
@@ -130,7 +131,7 @@ describe("SimplePlaybackBar", () => {
 
   it("ignores pointer-down when duration is 0 (no usable timeline)", () => {
     const { container } = renderBar(0);
-    const track = container.querySelector<HTMLDivElement>(".track");
+    const track = container.querySelector<HTMLDivElement>(`.${styles.track}`);
     pointerDown(track!, 50);
     // Readout stays at the zero baseline; no NaN, no throw.
     expect(screen.getByText("0:00.00 / 0:00.00")).toBeTruthy();

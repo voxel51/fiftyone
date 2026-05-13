@@ -7,7 +7,7 @@ import {
   useTileRegistry,
 } from "@fiftyone/tiling";
 import { Provider as JotaiProvider, createStore } from "jotai";
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo } from "react";
 import { PlaybackProvider } from "../lib/playback/PlaybackProvider";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -26,6 +26,8 @@ export const RegisterTiles: React.FC<{ entries: TileRegistration[] }> = ({
   entries,
 }) => {
   const { registerTile } = useTileRegistry();
+  // registerTile is a stable jotai-backed setter — not in deps by design.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const disposes = entries.map((e) =>
       registerTile({
@@ -40,7 +42,7 @@ export const RegisterTiles: React.FC<{ entries: TileRegistration[] }> = ({
     return () => {
       for (const d of disposes) d();
     };
-  }, [entries, registerTile]);
+  }, [entries]);
   return null;
 };
 
@@ -59,7 +61,9 @@ export const TileHarness: React.FC<TileHarnessProps> = ({
   duration,
   children,
 }) => {
-  const store = createStore();
+  // Memoize so the Jotai store survives re-renders — otherwise every
+  // render would reset all atom state under the harness.
+  const store = useMemo(() => createStore(), []);
   return (
     <JotaiProvider store={store}>
       <PlaybackProvider duration={duration}>

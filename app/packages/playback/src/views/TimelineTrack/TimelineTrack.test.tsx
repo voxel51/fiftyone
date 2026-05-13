@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PlaybackProvider, usePlayback } from "../../lib/playback/PlaybackProvider";
 import { playheadAtom } from "../../lib/playback/atoms";
 import TimelineTrack, { TimelineTrackProps } from "./TimelineTrack";
+import styles from "./TimelineTrack.module.css";
 
 /**
  * Reads the playhead so tests can assert post-action state without
@@ -75,30 +76,30 @@ describe("TimelineTrack", () => {
   describe("structure", () => {
     it("renders the root, lane, and bar by default", () => {
       const { container } = renderTrack();
-      expect(container.querySelector(".root")).not.toBeNull();
-      expect(container.querySelector(".lane")).not.toBeNull();
-      expect(container.querySelector(".bar")).not.toBeNull();
+      expect(container.querySelector(`.${styles.root}`)).not.toBeNull();
+      expect(container.querySelector(`.${styles.lane}`)).not.toBeNull();
+      expect(container.querySelector(`.${styles.bar}`)).not.toBeNull();
     });
 
     it("omits the label column when labelWidth is 0", () => {
       const { container } = renderTrack();
-      expect(container.querySelector(".label")).toBeNull();
+      expect(container.querySelector(`.${styles.label}`)).toBeNull();
     });
 
     it("renders the label with id text, color dot, and the given width", () => {
       const { container } = renderTrack({ track: { labelWidth: 150 } });
-      const label = container.querySelector(".label") as HTMLElement;
+      const label = container.querySelector(`.${styles.label}`) as HTMLElement;
       expect(label).not.toBeNull();
       expect(inlineStyle(label)).toContain("width: 150px");
       expect(screen.getByText("camera_front")).toBeTruthy();
-      const dot = container.querySelector(".dot") as HTMLElement;
+      const dot = container.querySelector(`.${styles.dot}`) as HTMLElement;
       expect(dot).not.toBeNull();
       expect(inlineStyle(dot)).toContain("background");
     });
 
     it("applies the height prop to the root container", () => {
       const { container } = renderTrack({ track: { height: 40 } });
-      const root = container.querySelector(".root") as HTMLElement;
+      const root = container.querySelector(`.${styles.root}`) as HTMLElement;
       expect(inlineStyle(root)).toContain("height: 40px");
     });
   });
@@ -110,7 +111,7 @@ describe("TimelineTrack", () => {
         viewStart: 0,
         viewEnd: 10,
       });
-      expect(container.querySelector(".bar")).not.toBeNull();
+      expect(container.querySelector(`.${styles.bar}`)).not.toBeNull();
     });
 
     it("hides the bar when the track ends before the view starts", () => {
@@ -119,7 +120,7 @@ describe("TimelineTrack", () => {
         viewStart: 5,
         viewEnd: 10,
       });
-      expect(container.querySelector(".bar")).toBeNull();
+      expect(container.querySelector(`.${styles.bar}`)).toBeNull();
     });
 
     it("hides the bar when the track starts after the view ends", () => {
@@ -129,7 +130,7 @@ describe("TimelineTrack", () => {
         viewStart: 0,
         viewEnd: 10,
       });
-      expect(container.querySelector(".bar")).toBeNull();
+      expect(container.querySelector(`.${styles.bar}`)).toBeNull();
     });
 
     it("clips the bar to the visible view window when partially in range", () => {
@@ -138,7 +139,7 @@ describe("TimelineTrack", () => {
         viewStart: 0,
         viewEnd: 10,
       });
-      const bar = container.querySelector(".bar") as HTMLElement;
+      const bar = container.querySelector(`.${styles.bar}`) as HTMLElement;
       expect(bar).not.toBeNull();
       // Clamped start → left 0%, width = 5/10 = 50%.
       expect(inlineStyle(bar)).toContain("left: 0%");
@@ -151,7 +152,7 @@ describe("TimelineTrack", () => {
         viewStart: 0,
         viewEnd: 10,
       });
-      const bar = container.querySelector(".bar") as HTMLElement;
+      const bar = container.querySelector(`.${styles.bar}`) as HTMLElement;
       expect(inlineStyle(bar)).toContain("left: 20%");
       expect(inlineStyle(bar)).toContain("width: 50%");
     });
@@ -164,7 +165,7 @@ describe("TimelineTrack", () => {
         viewStart: 3,
         viewEnd: 7,
       });
-      const dots = container.querySelectorAll(".event");
+      const dots = container.querySelectorAll(`.${styles.event}`);
       // Only the event at t=5 falls within [3, 7].
       expect(dots).toHaveLength(1);
     });
@@ -173,7 +174,7 @@ describe("TimelineTrack", () => {
       const { container } = renderTrack({
         track: { start: 0, end: 10, events: [2.5, 7.5] },
       });
-      const dots = container.querySelectorAll<HTMLElement>(".event");
+      const dots = container.querySelectorAll<HTMLElement>(`.${styles.event}`);
       expect(dots).toHaveLength(2);
       expect(inlineStyle(dots[0])).toContain("left: 25%");
       expect(inlineStyle(dots[1])).toContain("left: 75%");
@@ -190,14 +191,14 @@ describe("TimelineTrack", () => {
       const { container } = renderTrack({
         track: { start: 0, end: 10, events: [] },
       });
-      expect(container.querySelectorAll(".event")).toHaveLength(0);
+      expect(container.querySelectorAll(`.${styles.event}`)).toHaveLength(0);
     });
   });
 
   describe("lane click → seek", () => {
     it("seeks to the proportional time when the lane is clicked", () => {
       const { container } = renderTrack({ duration: 10 });
-      const lane = container.querySelector(".lane") as HTMLElement;
+      const lane = container.querySelector(`.${styles.lane}`) as HTMLElement;
       // Click at x=250 on a 1000-wide lane → 25% of view [0, 10] = 2.5s.
       fireEvent.click(lane, { clientX: 250 });
       expect(screen.getByTestId("playhead").textContent).toBe("2.500");
@@ -209,7 +210,7 @@ describe("TimelineTrack", () => {
         viewStart: 4,
         viewEnd: 8,
       });
-      const lane = container.querySelector(".lane") as HTMLElement;
+      const lane = container.querySelector(`.${styles.lane}`) as HTMLElement;
       // 50% of a [4, 8] window → 6s.
       fireEvent.click(lane, { clientX: 500 });
       expect(screen.getByTestId("playhead").textContent).toBe("6.000");
@@ -219,7 +220,7 @@ describe("TimelineTrack", () => {
       const { container } = renderTrack({
         track: { start: 0, end: 10, events: [3] },
       });
-      const event = container.querySelector(".event") as HTMLElement;
+      const event = container.querySelector(`.${styles.event}`) as HTMLElement;
       // The lane's click handler short-circuits on event targets so we
       // don't double-seek; the event's own click handler seeks to its
       // startSec (3 here).
@@ -269,7 +270,7 @@ describe("TimelineTrack", () => {
     it("wires onContextMenu to the root container", () => {
       const onContextMenu = vi.fn();
       const { container } = renderTrack({ track: { onContextMenu } });
-      const root = container.querySelector(".root") as HTMLElement;
+      const root = container.querySelector(`.${styles.root}`) as HTMLElement;
       fireEvent.contextMenu(root);
       expect(onContextMenu).toHaveBeenCalledTimes(1);
     });
@@ -280,13 +281,13 @@ describe("TimelineTrack", () => {
       const { container } = renderTrack({
         track: { color: "#ff0000", bg: "rgb(0, 255, 0)" },
       });
-      const bar = container.querySelector(".bar") as HTMLElement;
+      const bar = container.querySelector(`.${styles.bar}`) as HTMLElement;
       expect(inlineStyle(bar)).toContain("background: rgb(0, 255, 0)");
     });
 
     it("falls back to a translucent `color`+55 bar background when bg is omitted", () => {
       const { container } = renderTrack({ track: { color: "#ff0000" } });
-      const bar = container.querySelector(".bar") as HTMLElement;
+      const bar = container.querySelector(`.${styles.bar}`) as HTMLElement;
       // JSDOM normalizes #ff000055 to rgba(255, 0, 0, 0.333).
       expect(inlineStyle(bar).toLowerCase()).toMatch(
         /background:\s*(#ff000055|rgba\(255,\s*0,\s*0,\s*0\.33)/
