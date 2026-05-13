@@ -1,7 +1,7 @@
 import { atom } from "jotai";
 import { atomFamily } from "jotai/utils";
 import { LRUCache } from "lru-cache";
-import { BufferManager, BufferRange } from "../../../utilities/src";
+import { BufferManager, BufferRange } from "../../../../utilities/src";
 import {
   ATOM_FAMILY_CONFIGS_LRU_CACHE_SIZE,
   DEFAULT_FRAME_NUMBER,
@@ -12,7 +12,7 @@ import {
   MIN_LOAD_RANGE_SIZE,
   PLAYHEAD_STATE_PAUSED,
   PlayheadState,
-} from "./constants";
+} from "../constants";
 
 export type TimelineName = string;
 export type FrameNumber = number;
