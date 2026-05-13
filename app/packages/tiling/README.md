@@ -6,7 +6,7 @@ call `registerTile(...)` works.
 
 ## Layout
 
-```
+```text
 src/
   lib/              # state + hooks
     TilingProvider  # mounts context + handles layout state

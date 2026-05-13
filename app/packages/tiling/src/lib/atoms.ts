@@ -25,6 +25,10 @@ export const registeredTilesAtom = atom<RegisteredTile[]>([]);
  * via `useTileSource()`; the settings panel writes it through
  * `useSetTileSource()`.
  */
+// `atom<string | null>(null)` should resolve to PrimitiveAtom, but jotai's
+// overloads narrow `Value` against the bare `null` argument and produce a
+// read-only `Atom<string>`. The cast preserves the writable shape so
+// `useSetAtom(tileSourceAtom(id))` keeps its setter signature.
 export const tileSourceAtom = atomFamily(
   (_tileId: string) => atom<string | null>(null) as PrimitiveAtom<string | null>
 );
@@ -36,6 +40,7 @@ export const tileSourceAtom = atomFamily(
  * to render its details. Shape is intentionally `unknown` — each tile
  * can publish its own payload schema.
  */
+// See note on `tileSourceAtom` — same `null`-initial-value inference quirk.
 export const tileSelectionAtom = atomFamily(
   (_tileId: string) => atom<unknown>(null) as PrimitiveAtom<unknown>
 );

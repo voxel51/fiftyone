@@ -43,7 +43,7 @@ const TilingInspectorSidebar: React.FC = () => {
       <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
         Selection
       </Text>
-      {selection ? (
+      {selection != null ? (
         <pre className={styles.json}>{formatSelection(selection)}</pre>
       ) : (
         <Text variant={TextVariant.Sm} color={TextColor.Muted}>

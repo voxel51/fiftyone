@@ -72,8 +72,12 @@ describe("TilingInspectorSidebar", () => {
       screen.getByTestId("emit-selection").click();
     });
     const json = JSON.stringify(payload, null, 2);
-    const pre = document.querySelector("pre");
+    // RTL normalizes whitespace by default; match on the multi-line content
+    // by tag instead so the pretty-printed indentation is preserved.
+    const pre = screen.getByText(
+      (_text, node) =>
+        node?.tagName === "PRE" && node.textContent === json
+    );
     expect(pre).toBeTruthy();
-    expect(pre!.textContent).toBe(json);
   });
 });

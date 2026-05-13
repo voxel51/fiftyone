@@ -14,13 +14,17 @@ type Story = StoryObj<typeof TilingInspectorSidebar>;
 
 function AutoFocus({ id }: { id: string }) {
   const { setFocusedTileId } = useTiling();
-  useEffect(() => setFocusedTileId(id), [setFocusedTileId, id]);
+  // setFocusedTileId is a stable Jotai setter; not in deps by design.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => setFocusedTileId(id), [id]);
   return null;
 }
 
 function EmitSelection({ payload }: { payload: unknown }) {
   const setSelection = useSetTileSelection();
-  useEffect(() => setSelection(payload), [setSelection, payload]);
+  // setSelection is a stable Jotai setter; not in deps by design.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => setSelection(payload), [payload]);
   return null;
 }
 

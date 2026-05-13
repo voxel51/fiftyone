@@ -40,7 +40,9 @@ const TileBody: React.FC = () => {
 
 function AutoFocus({ id }: { id: string }) {
   const { setFocusedTileId } = useTiling();
-  useEffect(() => setFocusedTileId(id), [setFocusedTileId, id]);
+  // setFocusedTileId is a stable Jotai setter; not in deps by design.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => setFocusedTileId(id), [id]);
   return null;
 }
 

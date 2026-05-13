@@ -101,7 +101,10 @@ const TilingHeader: React.FC<TilingHeaderProps> = ({
         />
       </>
     );
-  }, [types, allTiles, addTile, autoLayout, setTileSource]);
+    // addTile / autoLayout / setTileSource are stable callbacks from
+    // their providers; only re-build when types or registrations change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [types, allTiles]);
 
   return (
     <div className={styles.root}>

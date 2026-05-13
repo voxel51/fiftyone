@@ -13,11 +13,14 @@ import SidebarPanel from "../SidebarPanel/SidebarPanel";
  */
 const TileSettingsSidebar: React.FC = () => {
   const { focusedTileId, FocusedTileSettings, tiles } = useTiling();
-  const focusedTile = focusedTileId ? tiles[focusedTileId] : null;
+  // Defend against a stale focusedTileId — possible if a tile is removed
+  // mid-render or the consumer's layout state races ahead of the registry.
+  const focusedTile =
+    focusedTileId && tiles[focusedTileId] ? tiles[focusedTileId] : null;
   const title = focusedTile ? `Settings: ${focusedTile.title}` : "Settings";
   return (
     <SidebarPanel title={title}>
-      {focusedTileId && FocusedTileSettings ? (
+      {focusedTile && FocusedTileSettings ? (
         <FocusedTileSettings />
       ) : (
         <Text variant={TextVariant.Sm} color={TextColor.Muted}>

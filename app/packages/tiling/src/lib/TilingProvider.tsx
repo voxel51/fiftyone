@@ -247,5 +247,7 @@ export function useTileSettings(Component: React.ComponentType): void {
   useEffect(() => {
     if (!tileId) return undefined;
     return registerSettings(tileId, Component);
-  }, [tileId, Component, registerSettings]);
+    // registerSettings is a useCallback([]) — stable across renders.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tileId, Component]);
 }

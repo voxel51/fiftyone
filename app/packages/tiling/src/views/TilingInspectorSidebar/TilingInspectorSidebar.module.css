@@ -13,6 +13,6 @@
   line-height: 1.4;
   color: var(--color-content-text-primary);
   white-space: pre-wrap;
-  word-break: break-word;
+  overflow-wrap: break-word;
   overflow-x: auto;
 }

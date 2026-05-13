@@ -68,41 +68,10 @@ describe("useTileSource / useSetTileSource", () => {
 describe("useSetTileSourceFor", () => {
   afterEach(() => cleanup());
 
-  it("writes to the source atom for an explicit tileId outside any TileIdScope", () => {
-    const { result } = renderHook(
-      () => ({
-        set: useSetTileSourceFor(),
-        scoped: useTileSelectionFor("camera-2"), // selection family with same id is fine; we read source via dedicated reader below
-      }),
-      { wrapper: makePlainWrap() }
-    );
-    // Read back through a scoped useTileSource within the same provider.
-    const { result: read } = renderHook(() => useTileSource(), {
-      wrapper: wrap("camera-2"),
-    });
-    expect(read.current).toBeNull();
-    act(() => {
-      result.current.set("camera-2", "camera_back");
-    });
-    // The two hooks share the same Jotai store, so the scoped reader sees it.
-    // (renderHook mounts a fresh provider per call, so this checks we're not
-    // crossing provider boundaries — keep them under one provider via the
-    // dedicated test below.)
-    // Tear down — actual cross-hook check is covered in the next test.
-  });
-
-  it("writes are visible to a useTileSource scoped to the same id (one provider)", () => {
-    const { result } = renderHook(
-      () => {
-        const set = useSetTileSourceFor();
-        // Mount a TileIdScope inline via a small bridge component:
-        return { set };
-      },
-      { wrapper: makePlainWrap() }
-    );
-    // We can't easily nest scopes in renderHook, but we can verify with a
-    // dedicated render — switch to a custom component:
-    function Probe({
+  it("writes are visible to a scoped useTileSource reader for the same id", () => {
+    // Setter probe: captures the setter via a callback ref so the assertion
+    // can call it from outside the React tree.
+    function SourceWriter({
       onReady,
     }: {
       onReady: (set: (id: string, src: string | null) => void) => void;
@@ -112,23 +81,22 @@ describe("useSetTileSourceFor", () => {
       return null;
     }
     let captured: (id: string, src: string | null) => void = () => {};
-    renderHook(
-      () => useTileSource(),
-      {
-        wrapper: ({ children }) => (
+    const store = createStore();
+    const { result } = renderHook(() => useTileSource(), {
+      wrapper: ({ children }) => (
+        <JotaiProvider store={store}>
           <TilingProvider>
-            <Probe onReady={(s) => (captured = s)} />
+            <SourceWriter onReady={(s) => (captured = s)} />
             <TileIdScope tileId="lidar-1">{children}</TileIdScope>
           </TilingProvider>
-        ),
-      }
-    );
-    expect(captured).toBeTypeOf("function");
-    // Best-effort: smoke that the function exists and can be called.
-    expect(() => captured("lidar-1", "lidar_top")).not.toThrow();
-    // satisfy the assertion budget; full cross-scope read covered by the
-    // suite below via useTileSelection / useTileSelectionFor.
-    expect(result.current.set).toBeTypeOf("function");
+        </JotaiProvider>
+      ),
+    });
+    expect(result.current).toBeNull();
+    act(() => {
+      captured("lidar-1", "lidar_top");
+    });
+    expect(result.current).toBe("lidar_top");
   });
 });
 
