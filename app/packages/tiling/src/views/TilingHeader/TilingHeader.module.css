@@ -1,0 +1,54 @@
+.root {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--color-content-border-default);
+  background: var(--color-content-bg-background);
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.fileName {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex-shrink: 1;
+  overflow: hidden;
+}
+
+.fileNameText {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.spacer {
+  flex: 1;
+  min-width: 0;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+/* voodo's Borderless Button applies its own text-color Tailwind class.
+   Beat its specificity by targeting the inner SVG directly — they use
+   `currentColor` so this paints the icon. */
+.toggleActive svg {
+  color: var(--color-brand-primary);
+}
+
+/* voodo's <Dropdown> wraps its trigger in a `<div class="relative
+   inline-block">`. Inline-block + default line-height makes the
+   wrapper taller than the bare <button> siblings next to it, so the
+   trigger floats to the top of its row. Flex-centering the slot fixes
+   the vertical alignment without touching voodo internals. */
+.dropdownSlot {
+  display: flex;
+  align-items: center;
+}
