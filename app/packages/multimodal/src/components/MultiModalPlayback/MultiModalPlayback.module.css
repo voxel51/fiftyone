@@ -1,0 +1,18 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--color-content-bg-background);
+  overflow: hidden;
+}
+
+.body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+}
