@@ -45,11 +45,8 @@ export {
   type MockJsonOptions,
 } from "./mock-json-stream";
 
-export { useMockStreams, type MockStreamConfig } from "./use-mock-streams";
-
 export {
-  MockStoryShell,
-  type MockStoryShellProps,
-  useMockBundles,
-  tileFromBundle,
-} from "./MockStoryShell";
+  useMockStreams,
+  type MockStreamConfig,
+  buildBundle,
+} from "./use-mock-streams";

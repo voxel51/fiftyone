@@ -33,7 +33,13 @@ export type MockStreamConfig =
   | ({ kind: "graph" } & MockGraphOptions)
   | ({ kind: "json" } & MockJsonOptions);
 
-function buildBundle(config: MockStreamConfig): MockStreamBundle {
+/**
+ * Pure conversion: `MockStreamConfig` → `MockStreamBundle`. No hooks,
+ * no provider context — safe to call at module level when a story
+ * needs to derive things from the bundles (e.g. initial tile entries)
+ * before mounting the providers.
+ */
+export function buildBundle(config: MockStreamConfig): MockStreamBundle {
   switch (config.kind) {
     case "camera":
       return createMockCameraStream(config);

@@ -2,3 +2,12 @@
   display: flex;
   flex-direction: column;
 }
+
+/* Slot rendered below the ruler but still inside the always-visible
+   header. TimelineWithTracks puts pinned tracks here so they stay on
+   screen when the drawer body is collapsed. */
+.belowRuler {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--color-content-border-subtle);
+}

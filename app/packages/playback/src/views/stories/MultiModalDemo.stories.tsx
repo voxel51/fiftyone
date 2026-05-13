@@ -1,89 +1,68 @@
-import { Drawer } from "@voxel51/voodo";
 import type { Meta, StoryObj } from "@storybook/react";
-import { useState } from "react";
-import { PlaybackProvider } from "../../lib/playback/PlaybackProvider";
-import { useTiling } from "../../lib/TilingProvider";
-import MosaicGrid from "../tiles/MosaicGrid";
-import TileSettingsSidebar from "../TileSettingsSidebar/TileSettingsSidebar";
-import TilingHeader from "../TilingHeader/TilingHeader";
-import TilingInspectorSidebar from "../TilingInspectorSidebar/TilingInspectorSidebar";
-import TimelineWithTracks from "../TimelineWithTracks/TimelineWithTracks";
-import { MockStoryShell } from "./utils";
+import { useStore } from "jotai";
+import { useEffect } from "react";
+import { tileSourceAtom } from "../../lib/playback/atoms";
+import type { TilingTile } from "../../lib/TilingProvider";
+import MultiModalPlayback from "../MultiModalPlayback/MultiModalPlayback";
+import {
+  buildBundle,
+  DEFAULT_PINNED_TRACK_IDS,
+  DEFAULT_STREAM_CONFIGS,
+  DEFAULT_TRACKS,
+  useMockStreams,
+  type MockStreamConfig,
+} from "./utils";
 
 const meta: Meta = { title: "Playback/MultiModalDemo" };
 export default meta;
 
-function DemoBody() {
-  const { layout, tiles, focusedTileId, setLayout, setFocusedTileId } =
-    useTiling();
-  const [leftOpen, setLeftOpen] = useState(true);
-  const [rightOpen, setRightOpen] = useState(true);
+const STREAM_CONFIGS: MockStreamConfig[] = DEFAULT_STREAM_CONFIGS;
 
-  return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        height: "calc(100vh - 32px)",
-        background: "var(--color-content-bg-background)",
-        overflow: "hidden",
-      }}
-    >
-      <TilingHeader
-        fileName="multimodal_demo.fo"
-        leftSidebarOpen={leftOpen}
-        rightSidebarOpen={rightOpen}
-        onToggleLeftSidebar={() => setLeftOpen((v) => !v)}
-        onToggleRightSidebar={() => setRightOpen((v) => !v)}
-      />
+/**
+ * Initial tile entries derived from the stream configs at module level
+ * (the bundle factories are pure functions of their config). One tile
+ * per stream, id `<streamId>-1` so subsequent TilingProvider adds get
+ * `-2`, `-3`, …
+ */
+const INITIAL_TILES: Record<string, TilingTile> = Object.fromEntries(
+  STREAM_CONFIGS.map((config) => {
+    const bundle = buildBundle(config);
+    const TileComponent = bundle.Tile;
+    return [
+      `${bundle.id}-1`,
+      { title: bundle.title, render: () => <TileComponent /> },
+    ];
+  })
+);
 
-      <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
-        <Drawer
-          side="left"
-          mode="push"
-          defaultSize={280}
-          minSize={200}
-          maxSize={500}
-          open={leftOpen}
-          onOpenChange={setLeftOpen}
-        >
-          <TileSettingsSidebar />
-        </Drawer>
-
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <MosaicGrid
-            tiles={tiles}
-            value={layout}
-            onChange={setLayout}
-            focusedTileId={focusedTileId}
-            onFocusTile={setFocusedTileId}
-          />
-        </div>
-
-        <Drawer
-          side="right"
-          mode="push"
-          defaultSize={280}
-          minSize={200}
-          maxSize={500}
-          open={rightOpen}
-          onOpenChange={setRightOpen}
-        >
-          <TilingInspectorSidebar />
-        </Drawer>
-      </div>
-
-      <TimelineWithTracks />
-    </div>
-  );
+/**
+ * Mounts inside MultiModalPlayback's providers. Registers the mock
+ * streams with the playback engine, then binds each pre-seeded initial
+ * tile (`<streamId>-1`) to its matching stream id so its body resolves
+ * the right data out of the gate.
+ */
+function MockSetup() {
+  const bundles = useMockStreams(STREAM_CONFIGS);
+  const store = useStore();
+  useEffect(() => {
+    for (const b of bundles) {
+      store.set(tileSourceAtom(`${b.id}-1`), b.id);
+    }
+  }, [bundles, store]);
+  return null;
 }
 
 export const Default: StoryObj = {
   render: () => (
-    <PlaybackProvider>
-      <MockStoryShell>
-        <DemoBody />
-      </MockStoryShell>
-    </PlaybackProvider>
+    <div style={{ height: "calc(100vh - 32px)" }}>
+      <MultiModalPlayback
+        fileName="multimodal_demo.fo"
+        tracks={DEFAULT_TRACKS}
+        defaultPinnedTrackIds={DEFAULT_PINNED_TRACK_IDS}
+        initialTiles={INITIAL_TILES}
+      >
+        <MockSetup />
+      </MultiModalPlayback>
+    </div>
   ),
 };

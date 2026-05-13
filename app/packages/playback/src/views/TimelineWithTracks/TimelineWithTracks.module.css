@@ -34,14 +34,22 @@
   flex-direction: column;
 }
 
-/* Unpinned tracks: dimmed but still visible & interactive (pin button +
-   event clicks still work). Gives users a way to see "what other
-   tracks exist" without pinning them. */
+/* Pinned tracks block, rendered into the always-visible header below
+   the ruler. Tracks here are full opacity since they're the user's
+   "promoted" tracks. */
+.pinnedTracks {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Unpinned tracks live in the collapsible drawer body. Dimmed so they
+   read as "browse / available" — pin one to move it into the header
+   block above. */
 .unpinnedTrack {
-  opacity: 0.45;
+  opacity: 0.55;
   transition: opacity 0.15s;
 }
 
 .unpinnedTrack:hover {
-  opacity: 0.85;
+  opacity: 0.9;
 }
