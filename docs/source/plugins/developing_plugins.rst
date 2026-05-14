@@ -37,11 +37,13 @@ FiftyOne plugins can be written in Python or JavaScript (JS), or a combination
 of both.
 
 Python plugins are built using the `fiftyone` package, pip packages, and your
-own Python. They can consist of panels and operators.
+own Python. They can consist of panels and operators. Plugins can also bundle
+skills via a `skills/` directory and `fiftyone.yml` registration.
 
 JS plugins are built using the `@fiftyone` TypeScript packages, npm packages,
 and your own TypeScript. They can consist of panels, operators, and custom
-components.
+components. Plugins can also bundle skills via a `skills/` directory and
+`fiftyone.yml` registration.
 
 .. _plugins-design-panels:
 
