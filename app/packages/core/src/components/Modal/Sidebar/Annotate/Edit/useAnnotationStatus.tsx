@@ -50,7 +50,8 @@ export const useAnnotationStatus = () => {
   const polylineModeActive = useAtomValue(_unsafePolylineModeActiveAtom);
   const tool = useAtomValue(_unsafeToolAtom);
   const mergeTargetId = useAtomValue(_unsafeMergeTargetIdAtom);
-  const inferenceStatus = useInferenceStatus();
+  const { status: inferenceStatus, progress: inferenceProgress } =
+    useInferenceStatus();
   const { positivePoints, negativePoints } = useToolsContext();
   const polylineData = useAtomValue(currentData) as
     | PolylineAnnotationLabel["data"]
@@ -70,8 +71,16 @@ export const useAnnotationStatus = () => {
         case SegmentationTool.Pen:
           return <PenStatus />;
         case SegmentationTool.AI:
-          if (inferenceStatus === "inferring")
-            return <AIInferringStatus status={inferenceStatus} />;
+          // Any non-terminal "active" state takes the status bar so the user
+          // sees in-flight work (init / download / encode / infer) regardless
+          // of whether prompts are present.
+          if (inferenceStatus !== "idle" && inferenceStatus !== "error")
+            return (
+              <AIInferringStatus
+                status={inferenceStatus}
+                progress={inferenceProgress}
+              />
+            );
           if (!hasAiPoints) return <AIFirstClickStatus />;
           return <AIPromptStatus />;
         case SegmentationTool.Merge:
@@ -98,6 +107,7 @@ export const useAnnotationStatus = () => {
     tool,
     mergeTargetId,
     inferenceStatus,
+    inferenceProgress,
     hasAiPoints,
     vertexCount,
   ]);
