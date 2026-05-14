@@ -2,6 +2,9 @@ import type { Decoder } from "../../decoders";
 import { DecoderRegistry } from "../../decoders";
 import { foxgloveDecoders } from "./foxglove";
 
+/**
+ * Foxglove MCAP decoder exports provided by the MCAP adapter.
+ */
 export * from "./foxglove";
 
 /**
