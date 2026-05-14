@@ -1,6 +1,6 @@
 {
     "name": "@fiftyone/fiftyone",
-    "version": "0.0.0",
+    "version": "0.0.x",
     "productName": "FiftyOne",
     "license": "Apache-2.0",
     "private": true,
