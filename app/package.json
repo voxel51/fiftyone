@@ -69,6 +69,6 @@
     "resolutions": {
         "brace-expansion": "^2.0.3",
         "three-stdlib": "^2.36.1",
-        "@types/react": "18.2.0"
+        "@types/react": "18.3.12"
     }
 }
