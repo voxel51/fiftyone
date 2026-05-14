@@ -161,8 +161,8 @@ export const useBridge = (scene: Scene2D | null) => {
     )
   );
 
-	// Maintain refs so we don't miss events as useEventHandler
-	// is torn down and reinstantiated.
+  // Maintain refs so we don't miss events as useEventHandler
+  // is torn down and reinstantiated.
   const segmentationModeRef = useRef(segmentationMode);
   const focusRef = useRef(focus);
   const sceneRef = useRef(scene);
