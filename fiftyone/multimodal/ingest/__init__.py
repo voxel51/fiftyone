@@ -7,13 +7,12 @@ Ingest scaffolding for multimodal workflows.
 """
 
 from concurrent.futures import ThreadPoolExecutor
-import os
 from typing import Generator
 
-import fiftyone as fo
 from fiftyone.core import storage
 from fiftyone.multimodal.adapters import MultimodalAdapter
 from fiftyone.multimodal.schemas.v1 import SceneInventory
+import fiftyone.core.utils as fou
 
 
 def _readable_paths(
@@ -62,7 +61,7 @@ def _get_scene_inventories(
         a list of :class:`fiftyone.multimodal.SceneInventory` instances
     """
     paths = _readable_paths(filepaths, adapter=adapter)
-    max_workers = min(8, (os.cpu_count() or 1) + 4)
+    max_workers = fou.recommend_thread_pool_workers(num_workers=8)
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         return list(executor.map(adapter.get_scene_inventory, paths))
 
