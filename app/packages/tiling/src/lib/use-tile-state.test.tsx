@@ -135,16 +135,19 @@ describe("useTileSelection / useTileSelectionFor / useSetTileSelection", () => {
       return null;
     }
     let capturedSet: (v: unknown) => void = () => {};
+    const store = createStore();
     const { result } = renderHook(
       () => useTileSelectionFor<{ y: string }>("graph-2"),
       {
         wrapper: ({ children }) => (
-          <TilingProvider>
-            <TileIdScope tileId="graph-2">
-              <Probe onReady={(s) => (capturedSet = s)} />
-            </TileIdScope>
-            {children}
-          </TilingProvider>
+          <JotaiProvider store={store}>
+            <TilingProvider>
+              <TileIdScope tileId="graph-2">
+                <Probe onReady={(s) => (capturedSet = s)} />
+              </TileIdScope>
+              {children}
+            </TilingProvider>
+          </JotaiProvider>
         ),
       }
     );
