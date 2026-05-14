@@ -8,6 +8,7 @@ from unittest.mock import Mock, call, patch
 
 import pytest
 
+import fiftyone as fo
 from fiftyone.multimodal import ingest
 
 
@@ -131,3 +132,52 @@ class TestGetSceneInventories:
         adapter.get_scene_inventory.assert_has_calls(
             [call("/path/to/file"), call("/path/to/another_file")]
         )
+
+
+class SampleMatcher:
+    def __init__(self, expected_filepath, expected_media_type):
+        self.expected_filepath = expected_filepath
+        self.expected_media_type = expected_media_type
+
+    def __eq__(self, other):
+        return (
+            isinstance(other, fo.Sample)
+            and other.filepath == self.expected_filepath
+            and other.media_type == self.expected_media_type
+        )
+
+
+class TestIngestFilepaths:
+    def test_success(self, adapter):
+        dataset = Mock()
+        adapter = Mock()
+
+        with patch(
+            "fiftyone.multimodal.ingest._get_scene_inventories",
+            return_value=[Mock(scene_id="scene 1"), Mock(scene_id="scene 2")],
+        ) as mock_get_inventories, patch(
+            "fiftyone.multimodal.db.mongo.MongoAdapter.write_scene_inventories"
+        ) as mock_write:
+            ingest.ingest_files(
+                dataset,
+                ["/some/path", "/another/path"],
+                adapter=adapter,
+                manifest=None,
+            )
+
+        mock_get_inventories.assert_called_with(
+            ["/some/path", "/another/path"], adapter=adapter
+        )
+        mock_write.assert_called_once()
+        dataset.save.assert_called_once()
+
+        args = mock_write.mock_calls[0][1]
+        assert args[0] == dataset
+
+        sample1 = args[1][0][0]
+        assert sample1.filepath.endswith("scene 1")
+        assert sample1.media_type == fo.core.media.MULTIMODAL
+
+        sample2 = args[1][1][0]
+        assert sample2.filepath.endswith("scene 2")
+        assert sample2.media_type == fo.core.media.MULTIMODAL

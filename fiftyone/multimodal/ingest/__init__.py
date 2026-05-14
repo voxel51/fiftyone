@@ -11,7 +11,7 @@ from .read import _get_scene_inventories
 from fiftyone.multimodal.db.mongo import MongoAdapter
 
 
-def ingest_filepaths(
+def ingest_files(
     dataset: fo.Dataset, filepaths: list[str], *, adapter, manifest
 ) -> None:
     """
@@ -37,4 +37,4 @@ def ingest_filepaths(
     dataset.save()
 
 
-__all__ = ["_get_scene_inventories", "ingest_filepaths"]
+__all__ = ["_get_scene_inventories", "ingest_files"]
