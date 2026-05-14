@@ -8,16 +8,30 @@ import type { SourceFingerprint } from "../../schemas/v1";
 export const DEFAULT_BYTE_CACHE_SIZE_BYTES = 128 * 1024 * 1024;
 
 /**
- * Default in-memory decoded archetype cache budget.
+ * Default in-memory decoded output cache budget.
  */
 export const DEFAULT_DECODED_CACHE_SIZE_BYTES = 64 * 1024 * 1024;
 
 /**
- * Default block size for read-through byte cache fills. Keep this small enough
- * to avoid expensive overfetch on bandwidth-limited playback, but large enough
- * to collapse adjacent container index/chunk reads into one cached block.
+ * Default block size for local/unknown read-through byte cache fills.
  */
-export const DEFAULT_BYTE_CACHE_BLOCK_SIZE_BYTES = 2 * 1024 * 1024;
+export const DEFAULT_LOCAL_BYTE_CACHE_BLOCK_SIZE_BYTES = 2 * 1024 * 1024;
+
+/**
+ * Default block size for remote/object-storage read-through byte cache fills.
+ */
+export const DEFAULT_REMOTE_BYTE_CACHE_BLOCK_SIZE_BYTES = 8 * 1024 * 1024;
+
+/**
+ * Explicit source profile for byte-cache fill policy.
+ */
+export const BYTE_SOURCE_READ_PROFILE = Object.freeze({
+  LOCAL: "local",
+  REMOTE: "remote",
+} as const);
+
+export type ByteSourceReadProfile =
+  typeof BYTE_SOURCE_READ_PROFILE[keyof typeof BYTE_SOURCE_READ_PROFILE];
 
 /**
  * Half-open byte range to read from a source.
@@ -31,6 +45,7 @@ export interface ByteRange {
  * Frontend-readable source identity for adapter byte readers.
  */
 export interface ByteSourceDescriptor {
+  readonly readProfile?: ByteSourceReadProfile;
   readonly sourceId: string;
   readonly url: string;
   readonly sizeBytes?: string;
@@ -44,6 +59,13 @@ export interface ByteRangeReadRequest {
   readonly source: ByteSourceDescriptor;
   readonly range: ByteRange;
 }
+
+/**
+ * Fixed or source-aware byte-cache fill block size.
+ */
+export type ByteCacheBlockSizeBytes =
+  | number
+  | ((request: ByteRangeReadRequest) => number | undefined);
 
 /**
  * Bytes returned for one source byte range.
@@ -76,12 +98,12 @@ export interface ByteRangeCache {
  * Byte cache tiers used by resource clients.
  */
 export interface ByteCacheLayers {
-  readonly blockSizeBytes?: number;
+  readonly blockSizeBytes?: ByteCacheBlockSizeBytes;
   readonly memory: ByteRangeCache;
 }
 
 /**
- * Record identity used to cache decoded archetype output.
+ * Record identity used to cache decoded payload output.
  */
 export interface DecodeCacheDescriptor {
   readonly decoderOptionsKey?: string;
@@ -92,7 +114,7 @@ export interface DecodeCacheDescriptor {
 }
 
 /**
- * Request for decoding one encoded payload into an archetype output.
+ * Request for decoding one encoded payload into playback/visualization output.
  */
 export interface DecodeResourceRequest {
   readonly bytes: Uint8Array;
@@ -149,7 +171,7 @@ export interface DecodedOutputCacheKey {
 }
 
 /**
- * Cache contract for decoded archetype outputs.
+ * Cache contract for decoded playback/visualization outputs.
  */
 export interface DecodedOutputCache {
   get(key: DecodedOutputCacheKey): Promise<DecodeResourceResult | undefined>;
@@ -160,7 +182,7 @@ export interface DecodedOutputCache {
 }
 
 /**
- * Generic client for decoding payload bytes into archetype outputs.
+ * Generic client for decoding payload bytes into playback/visualization outputs.
  */
 export interface DecodeResourceClient {
   decode(request: DecodeResourceRequest): Promise<DecodeResourceResult>;

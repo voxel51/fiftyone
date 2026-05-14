@@ -1,10 +1,10 @@
 import { useMemo } from "react";
 import type { PlaybackPlan } from "../../schemas/v1";
 import {
-  defaultMultimodalClient,
+  defaultMultimodalQueryClient,
   type MultimodalQueryClient,
   type PlaybackPlanRequest,
-} from "../index";
+} from "../queries";
 import type { MultimodalQueryState } from "./types";
 import { useMultimodalQuery } from "./use-multimodal-query";
 
@@ -13,7 +13,7 @@ import { useMultimodalQuery } from "./use-multimodal-query";
  */
 export function usePlaybackPlan(
   request: PlaybackPlanRequest | null | undefined,
-  client: MultimodalQueryClient = defaultMultimodalClient.queries
+  client: MultimodalQueryClient = defaultMultimodalQueryClient
 ): MultimodalQueryState<PlaybackPlan> {
   const inventoryId = request?.inventoryId;
 

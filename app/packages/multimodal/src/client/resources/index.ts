@@ -1,12 +1,9 @@
-export * from "./cache";
-export * from "./clients";
-export * from "./types";
-
 import { defaultDecoderRegistry } from "../../decoders";
 import {
   createCachedByteResourceClient,
   createDecodeResourceClient,
   createHttpByteResourceClient,
+  defaultByteCacheBlockSizeBytes,
 } from "./clients";
 import {
   createMemoryByteRangeCache,
@@ -14,7 +11,6 @@ import {
 } from "./cache";
 import {
   DEFAULT_BYTE_CACHE_SIZE_BYTES,
-  DEFAULT_BYTE_CACHE_BLOCK_SIZE_BYTES,
   DEFAULT_DECODED_CACHE_SIZE_BYTES,
   type CreateMultimodalResourcesClientOptions,
   type MultimodalResourcesClient,
@@ -28,8 +24,7 @@ export function createMultimodalResourcesClient(
 ): MultimodalResourcesClient {
   const byteCaches = {
     blockSizeBytes:
-      options.caches?.bytes?.blockSizeBytes ??
-      DEFAULT_BYTE_CACHE_BLOCK_SIZE_BYTES,
+      options.caches?.bytes?.blockSizeBytes ?? defaultByteCacheBlockSizeBytes,
     memory:
       options.caches?.bytes?.memory ??
       createMemoryByteRangeCache({
@@ -68,3 +63,48 @@ export function createMultimodalResourcesClient(
  */
 export const defaultMultimodalResourcesClient =
   createMultimodalResourcesClient();
+
+/**
+ * Public byte-cache constants and source profile values.
+ */
+export {
+  BYTE_SOURCE_READ_PROFILE,
+  DEFAULT_BYTE_CACHE_SIZE_BYTES,
+  DEFAULT_DECODED_CACHE_SIZE_BYTES,
+  DEFAULT_LOCAL_BYTE_CACHE_BLOCK_SIZE_BYTES,
+  DEFAULT_REMOTE_BYTE_CACHE_BLOCK_SIZE_BYTES,
+} from "./types";
+
+/**
+ * Public in-memory cache factories for custom resource client wiring.
+ */
+export {
+  createMemoryByteRangeCache,
+  createMemoryDecodedOutputCache,
+} from "./cache";
+
+/**
+ * Public source, byte-resource, decode-resource, and cache contracts.
+ */
+export type {
+  ByteCacheBlockSizeBytes,
+  ByteCacheLayers,
+  ByteRange,
+  ByteRangeCache,
+  ByteRangeReadRequest,
+  ByteRangeReadResult,
+  ByteResourceClient,
+  ByteSourceDescriptor,
+  ByteSourceReadProfile,
+  CreateMultimodalResourcesClientOptions,
+  DecodeCacheDescriptor,
+  DecodedOutputCache,
+  DecodedOutputCacheKey,
+  DecodeExecutionRequest,
+  DecodeExecutor,
+  DecodeResourceClient,
+  DecodeResourceRequest,
+  DecodeResourceResult,
+  MultimodalResourceCaches,
+  MultimodalResourcesClient,
+} from "./types";

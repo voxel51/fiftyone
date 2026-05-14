@@ -2,8 +2,14 @@ import { getFetchFunctionExtended } from "@fiftyone/utilities";
 import { defaultDecoderRegistry, type DecoderRegistry } from "../../decoders";
 import type { Decoder } from "../../decoders";
 import { byteRangeCacheKey, decodedOutputCacheKey } from "./cache";
+import {
+  BYTE_SOURCE_READ_PROFILE,
+  DEFAULT_LOCAL_BYTE_CACHE_BLOCK_SIZE_BYTES,
+  DEFAULT_REMOTE_BYTE_CACHE_BLOCK_SIZE_BYTES,
+} from "./types";
 import type {
   ByteCacheLayers,
+  ByteCacheBlockSizeBytes,
   ByteRange,
   ByteRangeReadRequest,
   ByteRangeReadResult,
@@ -26,6 +32,17 @@ export const inlineDecodeExecutor: DecodeExecutor = {
     return decoder.decode(bytes, context);
   },
 };
+
+/**
+ * Default byte-cache fill block size from explicit source metadata.
+ */
+export function defaultByteCacheBlockSizeBytes(
+  request: ByteRangeReadRequest
+): number {
+  return request.source.readProfile === BYTE_SOURCE_READ_PROFILE.REMOTE
+    ? DEFAULT_REMOTE_BYTE_CACHE_BLOCK_SIZE_BYTES
+    : DEFAULT_LOCAL_BYTE_CACHE_BLOCK_SIZE_BYTES;
+}
 
 /**
  * Creates an HTTP byte reader that sends explicit Range headers.
@@ -52,7 +69,11 @@ export function createHttpByteResourceClient(
       });
       const bytes = new Uint8Array(buffer);
 
-      validateContentRange(headers, request.range, expectedLength);
+      const totalSizeBytes = validateContentRange(
+        headers,
+        request.range,
+        expectedLength
+      );
       if (bytes.byteLength !== expectedLength) {
         throw new Error(
           `Expected ${expectedLength} bytes but received ${bytes.byteLength}`
@@ -62,7 +83,7 @@ export function createHttpByteResourceClient(
       return {
         bytes,
         range: request.range,
-        source: request.source,
+        source: sourceWithResolvedSize(request.source, totalSizeBytes),
       };
     },
   };
@@ -233,9 +254,14 @@ function maybeDecodeCacheKey(
 
 function byteCacheFillRequest(
   request: ByteRangeReadRequest,
-  blockSizeBytes: number | undefined
+  blockSizeBytes: ByteCacheBlockSizeBytes | undefined
 ): ByteRangeReadRequest {
-  if (!blockSizeBytes || request.range.length >= BigInt(blockSizeBytes)) {
+  const resolvedBlockSizeBytes = resolveBlockSizeBytes(request, blockSizeBytes);
+
+  if (
+    !resolvedBlockSizeBytes ||
+    request.range.length >= BigInt(resolvedBlockSizeBytes)
+  ) {
     return request;
   }
 
@@ -244,7 +270,7 @@ function byteCacheFillRequest(
     return request;
   }
 
-  const blockSize = BigInt(blockSizeBytes);
+  const blockSize = BigInt(resolvedBlockSizeBytes);
   const offset = (request.range.offset / blockSize) * blockSize;
   const end = minBigInt(offset + blockSize, sourceSize);
   if (end < request.range.offset + request.range.length) {
@@ -260,11 +286,22 @@ function byteCacheFillRequest(
   };
 }
 
+function resolveBlockSizeBytes(
+  request: ByteRangeReadRequest,
+  blockSizeBytes: ByteCacheBlockSizeBytes | undefined
+): number | undefined {
+  if (typeof blockSizeBytes === "function") {
+    return blockSizeBytes(request);
+  }
+
+  return blockSizeBytes ?? defaultByteCacheBlockSizeBytes(request);
+}
+
 function validateContentRange(
   headers: Headers | undefined,
   range: ByteRange,
   expectedLength: number
-) {
+): bigint | undefined {
   const contentRange = headers?.get("Content-Range");
   if (!contentRange) {
     throw new Error("Expected Content-Range header for byte-range response");
@@ -288,6 +325,42 @@ function validateContentRange(
       } but received '${contentRange}'`
     );
   }
+
+  const totalSizeBytes = match[3] === "*" ? undefined : BigInt(match[3]);
+  if (totalSizeBytes !== undefined && end >= totalSizeBytes) {
+    throw new Error(`Invalid Content-Range header '${contentRange}'`);
+  }
+
+  return totalSizeBytes;
+}
+
+function sourceWithResolvedSize(
+  source: ByteRangeReadRequest["source"],
+  totalSizeBytes: bigint | undefined
+) {
+  if (totalSizeBytes === undefined) {
+    return source;
+  }
+
+  const existingSizeBytes = source.sizeBytes ?? source.fingerprint?.sizeBytes;
+  if (
+    existingSizeBytes !== undefined &&
+    BigInt(existingSizeBytes) !== totalSizeBytes
+  ) {
+    throw new Error(
+      `Expected source size ${existingSizeBytes} but Content-Range reported ${totalSizeBytes.toString()}`
+    );
+  }
+
+  const sizeBytes = totalSizeBytes.toString();
+  if (source.sizeBytes === sizeBytes) {
+    return source;
+  }
+
+  return {
+    ...source,
+    sizeBytes,
+  };
 }
 
 function sliceByteRangeResult(

@@ -1,3 +1,6 @@
+import { LRUCache } from "lru-cache";
+
+import { VISUALIZATION_KIND } from "../../visualization";
 import type {
   ByteRange,
   ByteRangeCache,
@@ -49,9 +52,7 @@ export function decodedOutputCacheKey(key: DecodedOutputCacheKey): string {
 export function createMemoryByteRangeCache(
   options: MemoryCacheOptions
 ): ByteRangeCache {
-  const cache = new BoundedMemoryCache<ByteRangeReadResult>(
-    options.maxSizeBytes
-  );
+  const cache = createByteBoundedCache<ByteRangeReadResult>(options);
 
   return {
     async clear() {
@@ -73,20 +74,24 @@ export function createMemoryByteRangeCache(
       return sliceByteRangeResult(containingHit, request.range);
     },
     async put(result) {
-      cache.set(byteRangeCacheKey(result), result, result.bytes.byteLength);
+      setByteBoundedEntry(
+        cache,
+        options,
+        byteRangeCacheKey(result),
+        result,
+        result.bytes.byteLength
+      );
     },
   };
 }
 
 /**
- * Creates a byte-bounded in-memory cache for decoded archetype outputs.
+ * Creates a byte-bounded in-memory cache for decoded playback/visualization outputs.
  */
 export function createMemoryDecodedOutputCache(
   options: MemoryCacheOptions
 ): DecodedOutputCache {
-  const cache = new BoundedMemoryCache<DecodeResourceResult>(
-    options.maxSizeBytes
-  );
+  const cache = createByteBoundedCache<DecodeResourceResult>(options);
 
   return {
     async clear() {
@@ -96,7 +101,9 @@ export function createMemoryDecodedOutputCache(
       return cache.get(decodedOutputCacheKey(key));
     },
     async put(key, result) {
-      cache.set(
+      setByteBoundedEntry(
+        cache,
+        options,
         decodedOutputCacheKey(key),
         result,
         estimateDecodeResultSize(result)
@@ -105,72 +112,26 @@ export function createMemoryDecodedOutputCache(
   };
 }
 
-class BoundedMemoryCache<Value> {
-  private readonly entries = new Map<
-    string,
-    { readonly sizeBytes: number; readonly value: Value }
-  >();
-  private totalSizeBytes = 0;
+function createByteBoundedCache<Value extends object>(
+  options: MemoryCacheOptions
+) {
+  return new LRUCache<string, Value>({
+    maxSize: Math.max(1, options.maxSizeBytes),
+  });
+}
 
-  constructor(private readonly maxSizeBytes: number) {}
-
-  clear() {
-    this.entries.clear();
-    this.totalSizeBytes = 0;
+function setByteBoundedEntry<Value extends object>(
+  cache: LRUCache<string, Value>,
+  options: MemoryCacheOptions,
+  key: string,
+  value: Value,
+  sizeBytes: number
+) {
+  if (sizeBytes > options.maxSizeBytes) {
+    return;
   }
 
-  get(key: string): Value | undefined {
-    const entry = this.entries.get(key);
-    if (!entry) {
-      return undefined;
-    }
-
-    this.entries.delete(key);
-    this.entries.set(key, entry);
-
-    return entry.value;
-  }
-
-  find(predicate: (value: Value) => boolean): Value | undefined {
-    for (const [key, entry] of this.entries) {
-      if (predicate(entry.value)) {
-        this.entries.delete(key);
-        this.entries.set(key, entry);
-        return entry.value;
-      }
-    }
-
-    return undefined;
-  }
-
-  set(key: string, value: Value, sizeBytes: number) {
-    if (sizeBytes > this.maxSizeBytes) {
-      return;
-    }
-
-    const existing = this.entries.get(key);
-    if (existing) {
-      this.entries.delete(key);
-      this.totalSizeBytes -= existing.sizeBytes;
-    }
-
-    this.entries.set(key, { sizeBytes, value });
-    this.totalSizeBytes += sizeBytes;
-    this.evictOverflow();
-  }
-
-  private evictOverflow() {
-    while (this.totalSizeBytes > this.maxSizeBytes) {
-      const oldestKey = this.entries.keys().next().value as string | undefined;
-      if (!oldestKey) {
-        return;
-      }
-
-      const oldestEntry = this.entries.get(oldestKey);
-      this.entries.delete(oldestKey);
-      this.totalSizeBytes -= oldestEntry?.sizeBytes ?? 0;
-    }
-  }
+  cache.set(key, value, { size: Math.max(1, sizeBytes) });
 }
 
 function canServeRange(
@@ -178,8 +139,55 @@ function canServeRange(
   request: ByteRangeReadRequest
 ) {
   return (
-    sourceCacheKey(candidate.source) === sourceCacheKey(request.source) &&
+    canServeSource(candidate.source, request.source) &&
     containsRange(candidate.range, request.range)
+  );
+}
+
+function canServeSource(
+  candidate: ByteSourceDescriptor,
+  request: ByteSourceDescriptor
+) {
+  if (
+    candidate.sourceId !== request.sourceId ||
+    candidate.url !== request.url
+  ) {
+    return false;
+  }
+
+  return (
+    sizeMatches(candidate, request) &&
+    fingerprintFieldMatches(candidate, request, "firstChunkCrc") &&
+    fingerprintFieldMatches(candidate, request, "lastChunkCrc")
+  );
+}
+
+function sizeMatches(
+  candidate: ByteSourceDescriptor,
+  request: ByteSourceDescriptor
+) {
+  const candidateSize = candidate.sizeBytes ?? candidate.fingerprint?.sizeBytes;
+  const requestSize = request.sizeBytes ?? request.fingerprint?.sizeBytes;
+
+  return (
+    candidateSize === undefined ||
+    requestSize === undefined ||
+    candidateSize === requestSize
+  );
+}
+
+function fingerprintFieldMatches(
+  candidate: ByteSourceDescriptor,
+  request: ByteSourceDescriptor,
+  field: "firstChunkCrc" | "lastChunkCrc"
+) {
+  const candidateValue = candidate.fingerprint?.[field];
+  const requestValue = request.fingerprint?.[field];
+
+  return (
+    candidateValue === undefined ||
+    requestValue === undefined ||
+    candidateValue === requestValue
   );
 }
 
@@ -236,14 +244,29 @@ function safeNumber(value: bigint): number {
 
 function estimateDecodeResultSize(result: DecodeResourceResult): number {
   return (
-    byteLength(result.output.render.data) +
-    estimateFieldSize(result.output.fields) +
-    estimateFieldSize(result.output.render.metadata)
+    estimateVisualizationSize(result.output.visualization) +
+    estimateFieldSize(result.output.attributes)
   );
 }
 
-function byteLength(value: Uint8Array | Float32Array | ArrayBuffer): number {
-  return value instanceof ArrayBuffer ? value.byteLength : value.byteLength;
+function estimateVisualizationSize(
+  visualization: DecodeResourceResult["output"]["visualization"]
+): number {
+  if (!visualization) {
+    return 0;
+  }
+
+  switch (visualization.kind) {
+    case VISUALIZATION_KIND.ENCODED_IMAGE:
+      return visualization.bytes.byteLength;
+    case VISUALIZATION_KIND.POINT_CLOUD:
+      return (
+        visualization.positions.byteLength +
+        estimateFieldSize(visualization.fields)
+      );
+  }
+
+  return 0;
 }
 
 function estimateFieldSize(value: unknown): number {

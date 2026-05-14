@@ -8,11 +8,15 @@
         ".": "./src/index.ts",
         "./client": "./src/client/index.ts",
         "./client/hooks": "./src/client/hooks/index.ts",
+        "./client/queries": "./src/client/queries/index.ts",
         "./client/resources": "./src/client/resources/index.ts",
         "./decoders": "./src/decoders/index.ts",
         "./inject": "./src/inject/index.ts",
         "./mcap": "./src/mcap/index.ts",
-        "./schemas/v1": "./src/schemas/v1/index.ts"
+        "./schemas/v1": "./src/schemas/v1/index.ts",
+        "./visualization": "./src/visualization/index.ts",
+        "./visualization/panels/image": "./src/visualization/panels/image.tsx",
+        "./visualization/panels/point-cloud": "./src/visualization/panels/point-cloud.tsx"
     },
     "typesVersions": {
         "*": {
@@ -21,6 +25,9 @@
             ],
             "client/resources": [
                 "src/client/resources/index.ts"
+            ],
+            "client/queries": [
+                "src/client/queries/index.ts"
             ],
             "client/hooks": [
                 "src/client/hooks/index.ts"
@@ -36,6 +43,15 @@
             ],
             "schemas/v1": [
                 "src/schemas/v1/index.ts"
+            ],
+            "visualization": [
+                "src/visualization/index.ts"
+            ],
+            "visualization/panels/image": [
+                "src/visualization/panels/image.tsx"
+            ],
+            "visualization/panels/point-cloud": [
+                "src/visualization/panels/point-cloud.tsx"
             ]
         }
     },
@@ -52,6 +68,13 @@
         "@fiftyone/tiling": "*",
         "@mcap/core": "^2.2.1",
         "@mcap/support": "^1.1.0",
-        "protobufjs": "^7.2.5"
+        "@react-three/drei": "9.105.4",
+        "@react-three/fiber": "^8.18.0",
+        "lru-cache": "^11.0.1",
+        "protobufjs": "^7.2.5",
+        "three": "^0.182.0"
+    },
+    "devDependencies": {
+        "@types/three": "^0.176.0"
     }
 }

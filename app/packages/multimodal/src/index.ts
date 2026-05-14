@@ -1,13 +1,16 @@
-export * from "./archetypes";
 export * from "./client";
+export * from "./visualization";
 export { DecoderRegistry } from "./decoders";
 export type {
-  DecodedFieldValue,
+  DecodedAttributeValue,
   DecodedOutput,
   DecodedSourceTimestamps,
   DecodedTimeRange,
   DecodedTiming,
+  DecodedVisualization,
   Decoder,
+  EncodedImageVisualization,
   PayloadDescriptor,
-  RenderBuffers,
+  PointCloudField,
+  PointCloudVisualization,
 } from "./decoders";

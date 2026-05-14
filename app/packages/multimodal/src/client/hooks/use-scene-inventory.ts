@@ -1,10 +1,10 @@
 import { useMemo } from "react";
 import type { SceneInventory } from "../../schemas/v1";
 import {
-  defaultMultimodalClient,
+  defaultMultimodalQueryClient,
   type MultimodalQueryClient,
   type SceneInventoryRequest,
-} from "../index";
+} from "../queries";
 import type { MultimodalQueryState } from "./types";
 import { useMultimodalQuery } from "./use-multimodal-query";
 
@@ -13,7 +13,7 @@ import { useMultimodalQuery } from "./use-multimodal-query";
  */
 export function useSceneInventory(
   request: SceneInventoryRequest | null | undefined,
-  client: MultimodalQueryClient = defaultMultimodalClient.queries
+  client: MultimodalQueryClient = defaultMultimodalQueryClient
 ): MultimodalQueryState<SceneInventory> {
   const datasetId = request?.datasetId;
   const sampleId = request?.sampleId;
