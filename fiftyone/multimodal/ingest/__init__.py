@@ -61,8 +61,8 @@ def _get_scene_inventories(
     Returns:
         a list of :class:`fiftyone.multimodal.SceneInventory` instances
     """
-    paths = list(_readable_paths(filepaths, adapter=adapter))
-    max_workers = max(1, min(8, (os.cpu_count() or 1) + 4, len(paths)))
+    paths = _readable_paths(filepaths, adapter=adapter)
+    max_workers = max(1, min(8, (os.cpu_count() or 1) + 4))
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         return list(executor.map(adapter.get_scene_inventory, paths))
 
