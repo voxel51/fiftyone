@@ -62,14 +62,14 @@ export function useTrajectoryData(
   }, [brainKeys, selectedBrainKey, setSelectedBrainKey]);
 
   // Current modal sample id — drives which scene is requested.
-  const modalSample = useRecoilValue(fos.modalSample);
-  const currentSampleId = useMemo<string | null>(() => {
-    const sid =
-      (modalSample as any)?.sample?._id ??
-      (modalSample as any)?.sample?.id ??
-      null;
-    return sid ? String(sid) : null;
-  }, [modalSample]);
+  // We use `nullableModalSampleId` (not `modalSample`) because the panel
+  // can render with no modal open, and the `modalSample` graphQLSelector
+  // dereferences a null modal context to compute its variables.
+  const modalSampleId = useRecoilValue(fos.nullableModalSampleId);
+  const currentSampleId = useMemo<string | null>(
+    () => (modalSampleId ? String(modalSampleId) : null),
+    [modalSampleId]
+  );
 
   // Re-fetch the scene whenever sample or brain key changes.
   const lastRequest = useRef<string | null>(null);
