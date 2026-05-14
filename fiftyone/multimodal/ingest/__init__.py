@@ -19,6 +19,14 @@ def ingest_files(
 
     Args:
         dataset: a :class:`fiftyone.core.dataset.Dataset` to ingest
+        filepaths: an iterable of strings representing the locations of the
+            scene files to ingest
+        adapter: a subclass of
+            :class:`fiftyone.multimodal.adapters.MultimodalAdapter` that
+            determines how the given sources are ingested
+        manifest: a :class:`fiftyone.multimodal.manifest.Manifest` that
+            describes the mapping between scene inventories and samples in the
+            dataset
     """
     inventories = _get_scene_inventories(filepaths, adapter=adapter)
     sample_and_inventory_pairs = [
