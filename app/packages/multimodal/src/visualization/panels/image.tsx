@@ -139,7 +139,7 @@ async function createImageTexture(
   bytes: Uint8Array,
   mimeType: string | undefined
 ): Promise<ImageTextureHandle> {
-  const blob = new Blob([arrayBufferFromBytes(bytes)], {
+  const blob = new Blob([bytes as BlobPart], {
     type: mimeType ?? "image/jpeg",
   });
 
@@ -198,13 +198,6 @@ async function loadHtmlImage(blob: Blob): Promise<HTMLImageElement> {
   } finally {
     URL.revokeObjectURL(objectUrl);
   }
-}
-
-function arrayBufferFromBytes(bytes: Uint8Array): ArrayBuffer {
-  const buffer = new ArrayBuffer(bytes.byteLength);
-  new Uint8Array(buffer).set(bytes);
-
-  return buffer;
 }
 
 const styles: Record<string, CSSProperties> = {

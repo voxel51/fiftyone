@@ -1,7 +1,5 @@
 /* eslint-disable react/no-unknown-property */
-import { GizmoHelper } from "@react-three/drei/core/GizmoHelper";
-import { GizmoViewport } from "@react-three/drei/core/GizmoViewport";
-import { OrbitControls } from "@react-three/drei/core/OrbitControls";
+import { GizmoHelper, GizmoViewport, OrbitControls } from "@react-three/drei";
 import type { ReactNode } from "react";
 
 export interface Base3DSceneProps {
