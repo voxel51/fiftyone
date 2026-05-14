@@ -7,9 +7,7 @@ import { useAtomValue } from "jotai";
 import { useEffect, useMemo } from "react";
 import { StatusContent, useModalStatusBar } from "../../../ModalStatusBar";
 import {
-  AIFirstClickStatus,
-  AIInferringStatus,
-  AIPromptStatus,
+  AISegmentationStatus,
   BrushStatus,
   DetectionStatus,
   MergeInitialStatus,
@@ -50,8 +48,11 @@ export const useAnnotationStatus = () => {
   const polylineModeActive = useAtomValue(_unsafePolylineModeActiveAtom);
   const tool = useAtomValue(_unsafeToolAtom);
   const mergeTargetId = useAtomValue(_unsafeMergeTargetIdAtom);
-  const { status: inferenceStatus, progress: inferenceProgress } =
-    useInferenceStatus();
+  const {
+    status: inferenceStatus,
+    progress: inferenceProgress,
+    error: inferenceError,
+  } = useInferenceStatus();
   const { positivePoints, negativePoints } = useToolsContext();
   const polylineData = useAtomValue(currentData) as
     | PolylineAnnotationLabel["data"]
@@ -71,18 +72,14 @@ export const useAnnotationStatus = () => {
         case SegmentationTool.Pen:
           return <PenStatus />;
         case SegmentationTool.AI:
-          // Any non-terminal "active" state takes the status bar so the user
-          // sees in-flight work (init / download / encode / infer) regardless
-          // of whether prompts are present.
-          if (inferenceStatus !== "idle" && inferenceStatus !== "error")
-            return (
-              <AIInferringStatus
-                status={inferenceStatus}
-                progress={inferenceProgress}
-              />
-            );
-          if (!hasAiPoints) return <AIFirstClickStatus />;
-          return <AIPromptStatus />;
+          return (
+            <AISegmentationStatus
+              status={inferenceStatus}
+              progress={inferenceProgress}
+              error={inferenceError}
+              hasPoints={hasAiPoints}
+            />
+          );
         case SegmentationTool.Merge:
           return mergeTargetId ? (
             <MergeTargetSetStatus />
@@ -108,6 +105,7 @@ export const useAnnotationStatus = () => {
     mergeTargetId,
     inferenceStatus,
     inferenceProgress,
+    inferenceError,
     hasAiPoints,
     vertexCount,
   ]);
