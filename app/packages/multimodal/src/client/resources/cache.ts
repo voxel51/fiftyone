@@ -23,27 +23,27 @@ export interface MemoryCacheOptions {
  * Creates a stable cache key for a byte-range read.
  */
 export function byteRangeCacheKey(request: ByteRangeReadRequest): string {
-  return [
+  return serializeCacheKey([
     sourceCacheKey(request.source),
     request.range.offset.toString(),
     request.range.length.toString(),
-  ].join("|");
+  ]);
 }
 
 /**
  * Creates a stable cache key for a decoded output.
  */
 export function decodedOutputCacheKey(key: DecodedOutputCacheKey): string {
-  return [
+  return serializeCacheKey([
     key.decoderId,
     key.decoderVersion,
-    key.decoderOptionsKey ?? "",
+    key.decoderOptionsKey ?? null,
     payloadCacheKey(key.payload),
     key.streamId,
     key.recordId,
-    key.timeNs?.toString() ?? "",
-    key.source ? sourceCacheKey(key.source) : "",
-  ].join("|");
+    key.timeNs?.toString() ?? null,
+    key.source ? sourceCacheKey(key.source) : null,
+  ]);
 }
 
 /**
@@ -215,21 +215,25 @@ function sliceByteRangeResult(
 function sourceCacheKey(source: ByteSourceDescriptor): string {
   const fingerprint = source.fingerprint;
 
-  return [
+  return serializeCacheKey([
     source.sourceId,
     source.url,
-    source.sizeBytes ?? fingerprint?.sizeBytes ?? "",
-    fingerprint?.firstChunkCrc?.toString() ?? "",
-    fingerprint?.lastChunkCrc?.toString() ?? "",
-  ].join(":");
+    source.sizeBytes ?? fingerprint?.sizeBytes ?? null,
+    fingerprint?.firstChunkCrc?.toString() ?? null,
+    fingerprint?.lastChunkCrc?.toString() ?? null,
+  ]);
 }
 
 function payloadCacheKey(payload: DecodedOutputCacheKey["payload"]): string {
-  return JSON.stringify([
+  return serializeCacheKey([
     payload.encoding,
     payload.schemaEncoding ?? null,
     payload.schema ?? null,
   ]);
+}
+
+function serializeCacheKey(parts: readonly (string | null)[]): string {
+  return JSON.stringify(parts);
 }
 
 function safeNumber(value: bigint): number {

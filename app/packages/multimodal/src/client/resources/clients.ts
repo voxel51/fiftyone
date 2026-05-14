@@ -259,7 +259,7 @@ function byteCacheFillRequest(
   const resolvedBlockSizeBytes = resolveBlockSizeBytes(request, blockSizeBytes);
 
   if (
-    !resolvedBlockSizeBytes ||
+    !isPositiveSafeInteger(resolvedBlockSizeBytes) ||
     request.range.length >= BigInt(resolvedBlockSizeBytes)
   ) {
     return request;
@@ -343,9 +343,10 @@ function sourceWithResolvedSize(
   }
 
   const existingSizeBytes = source.sizeBytes ?? source.fingerprint?.sizeBytes;
+  const parsedExistingSizeBytes = parseSizeBytes(existingSizeBytes);
   if (
-    existingSizeBytes !== undefined &&
-    BigInt(existingSizeBytes) !== totalSizeBytes
+    parsedExistingSizeBytes !== undefined &&
+    parsedExistingSizeBytes !== totalSizeBytes
   ) {
     throw new Error(
       `Expected source size ${existingSizeBytes} but Content-Range reported ${totalSizeBytes.toString()}`
@@ -387,7 +388,7 @@ function sliceByteRangeResult(
 function sourceSizeBytes(request: ByteRangeReadRequest): bigint | undefined {
   const sizeBytes =
     request.source.sizeBytes ?? request.source.fingerprint?.sizeBytes;
-  return sizeBytes === undefined ? undefined : BigInt(sizeBytes);
+  return parseSizeBytes(sizeBytes);
 }
 
 function validateRange(range: ByteRange) {
@@ -411,6 +412,18 @@ function safeNumber(value: bigint): number {
 
 function minBigInt(left: bigint, right: bigint): bigint {
   return left < right ? left : right;
+}
+
+function isPositiveSafeInteger(value: number | undefined): value is number {
+  return value !== undefined && Number.isSafeInteger(value) && value > 0;
+}
+
+function parseSizeBytes(value: string | undefined): bigint | undefined {
+  if (value === undefined || !/^\d+$/.test(value)) {
+    return undefined;
+  }
+
+  return BigInt(value);
 }
 
 function formatPayload(payload: DecodeResourceRequest["payload"]): string {

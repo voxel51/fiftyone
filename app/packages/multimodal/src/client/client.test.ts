@@ -22,6 +22,7 @@ import {
   createHttpByteResourceClient,
 } from "./resources/clients";
 import {
+  decodedOutputCacheKey,
   createMemoryByteRangeCache,
   createMemoryDecodedOutputCache,
 } from "./resources/cache";
@@ -221,6 +222,70 @@ describe("multimodal client", () => {
     expect(reader.readBytes).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps delimiter-like source values distinct in byte cache keys", async () => {
+    const cache = createMemoryByteRangeCache({ maxSizeBytes: 128 });
+    const first = createByteRangeReadRequest({
+      source: {
+        sizeBytes: "128",
+        sourceId: "source:1",
+        url: "nested:path",
+      },
+    });
+    const second = createByteRangeReadRequest({
+      source: {
+        sizeBytes: "128",
+        sourceId: "source",
+        url: "1:nested:path",
+      },
+    });
+
+    await cache.put({
+      bytes: new Uint8Array([1]),
+      range: first.range,
+      source: first.source,
+    });
+    await cache.put({
+      bytes: new Uint8Array([2]),
+      range: second.range,
+      source: second.source,
+    });
+
+    await expect(cache.get(first)).resolves.toMatchObject({
+      bytes: new Uint8Array([1]),
+    });
+    await expect(cache.get(second)).resolves.toMatchObject({
+      bytes: new Uint8Array([2]),
+    });
+  });
+
+  it("keeps delimiter-like decoded cache components distinct", () => {
+    const payload = {
+      encoding: "custom",
+      schema: "custom.Schema",
+      schemaEncoding: "custom-schema",
+    };
+
+    expect(
+      decodedOutputCacheKey({
+        decoderId: "decoder|1",
+        decoderOptionsKey: "options",
+        decoderVersion: "version",
+        payload,
+        recordId: "record",
+        streamId: "stream",
+      })
+    ).not.toBe(
+      decodedOutputCacheKey({
+        decoderId: "decoder",
+        decoderOptionsKey: "options",
+        decoderVersion: "1|version",
+        payload,
+        recordId: "record",
+        streamId: "stream",
+      })
+    );
+  });
+
   it("serves byte subranges from block cache fills", async () => {
     const reader: ByteResourceClient = {
       readBytes: vi.fn(async (readRequest) => ({
@@ -322,6 +387,30 @@ describe("multimodal client", () => {
     });
   });
 
+  it("does not expand cache fills with invalid block sizes", async () => {
+    for (const blockSizeBytes of [0, -1, 1.5, Number.NaN]) {
+      const reader: ByteResourceClient = {
+        readBytes: vi.fn(async (readRequest) => ({
+          bytes: bytesForRange(readRequest),
+          range: readRequest.range,
+          source: readRequest.source,
+        })),
+      };
+      const cache = createMemoryByteRangeCache({ maxSizeBytes: 128 });
+      const request = createByteRangeReadRequest({
+        range: { length: 4n, offset: 4n },
+      });
+      const client = createCachedByteResourceClient(reader, {
+        blockSizeBytes,
+        memory: cache,
+      });
+
+      await client.readBytes(request);
+
+      expect(reader.readBytes).toHaveBeenCalledWith(request);
+    }
+  });
+
   it("coalesces in-flight byte cache fills", async () => {
     const reader: ByteResourceClient = {
       readBytes: vi.fn(async (readRequest) => ({
@@ -346,6 +435,28 @@ describe("multimodal client", () => {
     ]);
 
     expect(reader.readBytes).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignores malformed source size metadata when resolving content ranges", async () => {
+    const { extendedFetch } = createFetchMock({
+      "/media?filepath=%2Ftmp%2Fsample.bin": new Uint8Array([1, 2, 3]).buffer,
+    });
+    fetchHarness.activeExtendedFetch = extendedFetch;
+    const client = createHttpByteResourceClient();
+
+    await expect(
+      client.readBytes({
+        range: { length: 3n, offset: 4n },
+        source: {
+          ...createByteRangeReadRequest().source,
+          sizeBytes: "not-a-number",
+        },
+      })
+    ).resolves.toMatchObject({
+      source: {
+        sizeBytes: "7",
+      },
+    });
   });
 
   it("uses decoded cache hits without re-running decoders", async () => {
