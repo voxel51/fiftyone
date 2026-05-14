@@ -11,7 +11,7 @@ import {
   useLighter,
   useLighterEventBus,
 } from "@fiftyone/lighter";
-import { atom, useAtom } from "jotai";
+import { atom, getDefaultStore, useAtom } from "jotai";
 import { v4 as uuidv4 } from "uuid";
 import { ClickEventModifiers } from "@fiftyone/utilities";
 import { AnnotationLabel } from "@fiftyone/state";
@@ -147,8 +147,11 @@ export const usePointSelection = (): PointSelection => {
     []
   );
 
+  // Guards read fresh from the jotai store so a deactivate→activate pair
+  // (e.g. AI right-click finalize) in the same tick doesn't no-op on a
+  // stale closure value of `isActive`.
   const activate = useCallback(() => {
-    if (isActive) {
+    if (getDefaultStore().get(pointSelectionActiveAtom)) {
       return;
     }
 
@@ -183,7 +186,6 @@ export const usePointSelection = (): PointSelection => {
     }
   }, [
     eventBus,
-    isActive,
     overlayFactory,
     resolveVariant,
     scene,
@@ -193,7 +195,7 @@ export const usePointSelection = (): PointSelection => {
   ]);
 
   const deactivate = useCallback(() => {
-    if (!isActive) {
+    if (!getDefaultStore().get(pointSelectionActiveAtom)) {
       return;
     }
 
@@ -214,7 +216,6 @@ export const usePointSelection = (): PointSelection => {
     setIsActive(false);
   }, [
     interactiveHandler,
-    isActive,
     keypointOverlayId,
     scene,
     setInteractiveHandler,

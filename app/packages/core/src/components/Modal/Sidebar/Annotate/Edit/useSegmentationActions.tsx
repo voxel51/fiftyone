@@ -74,13 +74,15 @@ const SizeArrow = styled.button`
   }
 `;
 
-const SizeValue = styled.div<{ $cursor: string }>`
+const SizeValue = styled.button<{ $cursor: string }>`
   text-align: center;
   color: ${({ theme }) => theme.text.primary};
   font-size: 11px;
   padding: 1px 0;
   font-variant-numeric: tabular-nums;
   cursor: ${({ $cursor }) => $cursor};
+  border: none;
+  background: transparent;
 `;
 
 interface BrushSizeProps {
