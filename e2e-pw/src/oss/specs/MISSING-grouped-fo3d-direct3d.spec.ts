@@ -45,7 +45,7 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
 
   await Promise.all(
     groupSpecs.map((spec, index) =>
-      mediaFactory.createBlankImage({
+      mediaFactory.createImage({
         outputPath: spec.imagePath,
         width: 320,
         height: 240,
