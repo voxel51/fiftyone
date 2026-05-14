@@ -133,9 +133,24 @@ class ComputeTrajectoryEmbeddings(foo.Operator):
         method = ctx.params.get("method") or "umap"
         batch_size = ctx.params.get("batch_size") or 32
 
-        # Frame-level view. For nuScenes-style video datasets this
-        # exposes per-frame samples that compute_visualization can embed.
-        frames = dataset.to_frames(sample_frames=True)
+        # Frame-level collection. For video datasets we materialize
+        # frames via to_frames; for image datasets we assume each sample
+        # is already a frame (e.g. the user is on a dataset that was
+        # previously materialized from to_frames, or a plain image
+        # collection).
+        media_type = getattr(dataset, "media_type", None)
+        if media_type == "video":
+            frames = dataset.to_frames(sample_frames=True)
+        elif media_type == "image":
+            frames = dataset
+        else:
+            return {
+                "ok": False,
+                "error": (
+                    f"Unsupported media type for trajectory: {media_type}. "
+                    f"Expected 'video' or 'image'."
+                ),
+            }
 
         # Cache embeddings to a frame field keyed by model name so that
         # re-running the operator with the same model (e.g. after a
