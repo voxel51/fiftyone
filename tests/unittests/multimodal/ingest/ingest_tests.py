@@ -18,7 +18,7 @@ def mock_adapter():
 
 @pytest.fixture(name="storage")
 def mock_storage():
-    with patch("fiftyone.multimodal.ingest.storage") as mock:
+    with patch("fiftyone.multimodal.ingest.read.storage") as mock:
         yield mock
 
 
