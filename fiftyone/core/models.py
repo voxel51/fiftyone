@@ -571,6 +571,14 @@ def _apply_image_model_with_video_data_loader(
     label_field, _ = samples._handle_frame_field(label_field)
     _, total_frame_count = _get_frame_counts(samples)
 
+    # Remove frames prefix from field mapping
+    _field_mapping = {}
+    if field_mapping:
+        _field_mapping = {
+            key: samples._handle_frame_field(val)[0]
+            for key, val in field_mapping.items()
+        }
+
     data_loader = _make_video_frame_data_loader(
         samples=samples,
         model=model,
@@ -578,9 +586,11 @@ def _apply_image_model_with_video_data_loader(
         num_workers=num_workers,
         frames_chunk_size=batch_size,
         skip_failures=skip_failures,
-        field_mapping=field_mapping,
+        field_mapping=_field_mapping,
         pin_memory=pin_memory,
     )
+
+    samples = _select_fields_for_inference(samples, model, field_mapping)
 
     with contextlib.ExitStack() as context:
         pb = context.enter_context(

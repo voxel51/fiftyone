@@ -2804,7 +2804,11 @@ class TorchVideoFramesIterableDataset(IterableDataset):
 
         self.sample_data = {}
         for field_key, field_name in field_mapping.items():
-            frame_field_name = samples._FRAMES_PREFIX + field_name
+            frame_field_name = (
+                samples._FRAMES_PREFIX + field_name
+                if not field_name.startswith(samples._FRAMES_PREFIX)
+                else field_name
+            )
             self.sample_data[field_key] = samples.values(frame_field_name)
 
     def __iter__(self):
