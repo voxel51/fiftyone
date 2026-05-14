@@ -87,6 +87,12 @@ class ProjectionRepo(object):
     ) -> ProjectionJobDocument:
         raise NotImplementedError
 
+    def get_all_episode_paths(self, plan_id: str) -> set:
+        raise NotImplementedError
+
+    def get_next_batch_index(self, plan_id: str) -> int:
+        raise NotImplementedError
+
     def set_delegated_operation_id(
         self,
         job_id: str,
@@ -313,7 +319,13 @@ class MongoProjectionRepo(ProjectionRepo):
         ):
             update["completed_at"] = now
 
-        if error is not None:
+        # Always write the error field at terminal states so stale errors from
+        # a prior failed run are cleared when the job is re-run successfully.
+        if status in (
+            JobStatus.COMPLETED,
+            JobStatus.FAILED,
+            JobStatus.PARTIAL,
+        ):
             update["error"] = error
 
         doc = self._jobs.find_one_and_update(
@@ -351,6 +363,22 @@ class MongoProjectionRepo(ProjectionRepo):
         if doc is None:
             raise ValueError(f"No job found with job_id={job_id!r}")
         return ProjectionJobDocument().from_pymongo(doc)
+
+    def get_all_episode_paths(self, plan_id: str) -> set:
+        """Return the set of episode paths already assigned to any job for this plan."""
+        cursor = self._jobs.find({"plan_id": plan_id}, {"episode_paths": 1})
+        covered: set = set()
+        for doc in cursor:
+            covered.update(doc.get("episode_paths", []))
+        return covered
+
+    def get_next_batch_index(self, plan_id: str) -> int:
+        """Return the next available batch_index for a plan (max existing + 1, or 0)."""
+        doc = self._jobs.find_one(
+            {"plan_id": plan_id},
+            sort=[("batch_index", pymongo.DESCENDING)],
+        )
+        return (doc["batch_index"] + 1) if doc else 0
 
     def set_delegated_operation_id(
         self,

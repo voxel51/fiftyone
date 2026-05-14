@@ -101,6 +101,7 @@ def dispatch(
     episode_paths: list[str],
     base_path: str,
     batch_size: int = 20,
+    start_batch_index: int = 0,
 ) -> list[ProjectionJob]:
     """Slice episode paths into batches and emit one job document per batch.
 
@@ -113,6 +114,9 @@ def dispatch(
         episode_paths: GCS (or local) paths to MCAP files
         base_path: bucket/path root, e.g. ``gs://my-bucket``
         batch_size: number of episodes per job document
+        start_batch_index: first batch_index to assign; pass the result of
+            ``repo.get_next_batch_index(plan_id)`` when adding episodes to an
+            existing plan so new jobs don't collide with existing batch numbers
 
     Returns:
         list of :class:`~.model.ProjectionJob` documents (not yet persisted)
@@ -122,7 +126,8 @@ def dispatch(
         for i in range(0, len(episode_paths), batch_size)
     ]
     jobs: list[ProjectionJob] = []
-    for idx, batch in enumerate(batches):
+    for offset, batch in enumerate(batches):
+        idx = start_batch_index + offset
         output_paths = {
             proj.id: (
                 f"{base_path}/datasets/{plan.dataset_id}"
