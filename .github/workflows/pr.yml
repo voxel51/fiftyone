@@ -73,8 +73,9 @@ jobs:
     uses: ./.github/workflows/lint-app.yml
 
   enterprise-sync:
-    if: github.event.action == 'closed' || github.event.pull_request.draft != true
-    runs-on: ubuntu-latest
+    if: >-
+      (github.event.action == 'closed' || github.event.pull_request.draft != true) &&
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - uses: actions/github-script@v7
