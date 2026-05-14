@@ -105,7 +105,7 @@ class ComputeTrajectoryEmbeddings(foo.Operator):
             view=method_choices,
             label="Dimensionality reduction",
             default=_METHOD_CHOICES[0][0],
-            required=True,
+            required=False,
         )
 
         inputs.int(
