@@ -20,6 +20,10 @@ from fiftyone.factory.repos.execution_store import (
     ExecutionStoreRepo,
     MongoExecutionStoreRepo,
 )
+from fiftyone.factory.repos.projection_repo import (
+    ProjectionRepo,
+    MongoProjectionRepo,
+)
 from fiftyone.operators.store.notification_service import (
     ChangeStreamNotificationService,
 )
@@ -76,3 +80,14 @@ class RepositoryFactory(object):
             )
 
         return RepositoryFactory.repos[es_repo_key]
+
+    @staticmethod
+    def projection_repo() -> ProjectionRepo:
+        key = MongoProjectionRepo.PLANS_COLLECTION
+        if key not in RepositoryFactory.repos:
+            db = _get_db()
+            RepositoryFactory.repos[key] = MongoProjectionRepo(
+                plans_collection=db[MongoProjectionRepo.PLANS_COLLECTION],
+                jobs_collection=db[MongoProjectionRepo.JOBS_COLLECTION],
+            )
+        return RepositoryFactory.repos[key]

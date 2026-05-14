@@ -8,3 +8,7 @@ FiftyOne repository factory.
 from fiftyone.factory.repos.delegated_operation_doc import (
     DelegatedOperationDocument,
 )
+from fiftyone.factory.repos.projection_plan_doc import (
+    ManifestPlanDocument,
+    ProjectionJobDocument,
+)
