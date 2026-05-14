@@ -43,7 +43,9 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer }, testInfo) => {
         dataset.persistent = True
 
         embeddings = np.random.random((5, 512))
-        fob.compute_visualization(dataset, brain_key="img_viz", embeddings=embeddings)
+        fob.compute_visualization(
+            dataset, brain_key="img_viz", embeddings=embeddings, method="pca"
+        )
 
         dataset.save()
     `
