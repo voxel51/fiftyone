@@ -17,7 +17,7 @@ This page describes how to write your own FiftyOne plugins.
 Design overview
 _______________
 
-Plugins are composed of one or more panels, operators, and components.
+Plugins are composed of one or more panels, operators, skills, and components.
 
 Together these building blocks enable you to build full-featured interactive
 data applications that tailor FiftyOne to your specific use case and workflow.
@@ -95,6 +95,21 @@ plugin use.
 
     Jump to :ref:`this section <developing-operators>` for more information
     about developing operators.
+
+.. _plugins-design-skills:
+
+Skills
+------
+
+Skills are Markdown files that teach AI agents how to perform complex
+FiftyOne workflows using natural language. Each skill describes a task that
+an agent can be asked to perform, providing step-by-step guidance that the
+agent follows to complete the workflow autonomously.
+
+.. note::
+
+    Jump to :ref:`this section <developing-skills-from-plugins>` for more
+    information about developing skills.
 
 .. _plugins-design-components:
 
@@ -254,6 +269,9 @@ The following fields are available:
     | `operators`                  |           | A list of operator names registered by the plugin, if any                   |
     +------------------------------+-----------+-----------------------------------------------------------------------------+
     | `panels`                     |           | A list of panel names registered by the plugin, if any                      |
+    +------------------------------+-----------+-----------------------------------------------------------------------------+
+    | `skills`                     |           | A list of :ref:`skill <developing-skills-from-plugins>` names registered by |
+    |                              |           | the plugin, if any                                                          |
     +------------------------------+-----------+-----------------------------------------------------------------------------+
     | `secrets`                    |           | A list of secret keys that may be used by the plugin, if any                |
     +------------------------------+-----------+-----------------------------------------------------------------------------+
@@ -4714,6 +4732,31 @@ you to reveal all of its available methods during development:
         # Reveals the remaining methods available to ctx
         ctx.
         ...
+
+.. _developing-skills-from-plugins:
+
+Developing skills
+_________________
+
+Skills are Markdown files that teach AI agents how to perform complex
+FiftyOne workflows using natural language. A skill describes a task that
+an agent can be asked to perform — such as importing a dataset, running
+inference, or finding duplicates — and provides step-by-step guidance
+that the agent follows to complete the workflow autonomously.
+
+You can bundle skills inside any FiftyOne plugin by placing them in a
+`skills/` subdirectory and declaring their names in your `fiftyone.yml`:
+
+.. code-block:: yaml
+
+    skills:
+      - my-skill-name
+
+.. note::
+
+    See :ref:`Developing skills <developing-skills-authoring>` for a full
+    guide on authoring skills, including the required file structure, YAML
+    frontmatter fields, and how to contribute skills to the community.
 
 .. _developing-js-plugins:
 
