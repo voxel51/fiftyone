@@ -34,6 +34,7 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer }, testInfo) => {
   await fiftyoneLoader.executePythonCode(
     `
       import sys, types
+      import fiftyone.core.utils as fou
 
         # Block umap.parametric_umap from triggering \`import tensorflow\` during
         # umap/__init__.py load (causes an Abseil mutex deadlock on macOS during
@@ -62,16 +63,8 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer }, testInfo) => {
         dataset.persistent = True
 
         embeddings = np.random.random((5, 512))
-        #
+        # umap is default
         fob.compute_visualization(dataset, brain_key="img_viz", embeddings=embeddings)
-        #
-        # TODO: revert to the line above (i.e. no method="pca").
-        # fob.compute_visualization segfaults on # CI's Linux runner.
-        # TensorFlow loads during import and crashes the Python process.
-        # Suspected to coincide with the brain version bump in #7455.
-        fob.compute_visualization(
-            dataset, brain_key="img_viz", embeddings=embeddings, method="pca"
-        )
 
         dataset.save()
     `
