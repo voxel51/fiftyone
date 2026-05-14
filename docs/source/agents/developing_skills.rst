@@ -8,20 +8,19 @@ Developing Tools & Skills
 
 There are two ways to extend what agents can do in FiftyOne:
 
-- **Operators**: write a FiftyOne plugin operator and it becomes immediately
+- **Operators**: write a :ref:`FiftyOne operator <developing-operators>` and it becomes immediately
   callable by any agent through the MCP server, no extra wiring required
-- **Skills**: write a ``SKILL.md`` file that teaches the agent *when* and
-  *how* to use those operators correctly for a specific task
+- **Skills**: write a :ref:`FiftyOne skill <developing-skills-authoring>` that teaches the agent *when* and *how* to execute a sequence of code/operator invocations to achieve a specific higher-level task
 
 Together, an operator handles the execution and a skill provides the guidance.
-You can ship both in the same plugin.
+You can ship both in the same :ref:`plugin <developing-plugins>`.
 
 .. _developing-operators-as-tools:
 
 Operators as Agent Tools
 ________________________
 
-Any operator you register in a FiftyOne plugin is automatically available to
+Any operator you register in a :ref:`FiftyOne plugin <developing-plugins>` is automatically available to
 agents. When an agent connects via the MCP server it can:
 
 1. Call ``list_operators`` to discover all installed operators
@@ -124,10 +123,12 @@ to follow.
     # Troubleshooting
     Common errors and how to resolve them.
 
-The ``description`` field is the most important: it determines when the
-agent decides to invoke this skill. Make it specific and action-oriented:
-*"Import a dataset from local disk, Hugging Face Hub, or cloud storage into
-FiftyOne"* is better than *"import data"*.
+.. note::
+
+    The ``description`` field is the most important: it determines when the
+    agent decides to invoke this skill. Make it specific and action-oriented:
+    *"Import a dataset from local disk, Hugging Face Hub, or cloud storage into
+    FiftyOne"* is better than *"import data"*.
 
 .. _developing-skills-from-plugins:
 
@@ -135,7 +136,7 @@ Skills from Plugins
 ___________________
 
 The cleanest way to ship an operator and its skill together is to declare the
-skill in your plugin's ``fiftyone.yml``:
+skill in your plugin's :ref:`fiftyone.yml <plugin-fiftyone-yml>`:
 
 .. code-block:: yaml
 
@@ -158,6 +159,12 @@ of the box.
 
 Contributing a Skill
 ____________________
+
+.. note::
+
+    Only contribute a skill here if it is generic, polished, and broadly useful
+    across projects. Skills built for a specific dataset, model, or internal
+    workflow are better kept in your own plugin.
 
 To add a skill to the `voxel51/fiftyone-skills
 <https://github.com/voxel51/fiftyone-skills>`_ repository:

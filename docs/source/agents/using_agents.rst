@@ -186,11 +186,16 @@ Step 3: Install Skills
 -----------------------
 
 Skills teach your agent how to complete complex FiftyOne workflows end to
-end. Install them alongside the MCP server for the full experience:
+end. Run the command below to download the `universal installer <https://skil.sh>`_
+and install the default skills pack from `voxel51/fiftyone-skills
+<https://github.com/voxel51/fiftyone-skills>`_:
 
 .. code-block:: bash
 
     curl -sL skil.sh | sh -s -- voxel51/fiftyone-skills
+
+You can also :ref:`develop and install your own skills <developing-skills-authoring>`
+to teach agents custom workflows specific to your project.
 
 See the :ref:`Agent Ecosystem <agents-skills>` for the full list of
 available skills and per-agent install instructions.
