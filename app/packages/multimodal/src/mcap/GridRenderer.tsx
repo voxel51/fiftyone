@@ -1,3 +1,7 @@
+/**
+ * THIS IS POC CODE FOR DEMO COUPLED WITH NUSCENES.
+ * THIS IS TO TEST DECODE/FETCH SLICE. PLEASE REMOVE WITH PRODUCTION CODE.
+ */
 import type { SampleRendererProps } from "@fiftyone/plugins";
 import { useSceneInventory } from "../client/hooks";
 import { getSampleIdentifiers } from "./sample";
