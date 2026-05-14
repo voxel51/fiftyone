@@ -364,7 +364,8 @@ const SlicesLoadable = ({ path }: { path: string }) => {
 
 const useSlicesData = <T,>(path: string) => {
   const keys = path.split(".");
-  const { activeSampleMap, activeSlices } = fos.useRenderConfig3dState();
+  const activeSampleMap = fos.useActive3dSamplesMap();
+  const activeSlices = fos.useActive3dSlices();
   const slices = Array.from(activeSlices || []).sort();
 
   if (!slices.every((slice) => activeSampleMap[slice])) {
@@ -461,8 +462,8 @@ const PathValueEntry = ({
   ) => void;
 }) => {
   const [hovering, setHovering] = useState<boolean>(false);
-  const isPinned = fos.useIs3dPinned();
   const active3dSlices = fos.useActive3dSlices();
+  const isPinned = fos.useIs3dPinned();
   const slices = isPinned && (active3dSlices?.length || 1) > 1;
   const isScalar = useRecoilValue(isScalarValue(path));
 
