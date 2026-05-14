@@ -14,6 +14,7 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.labels as fol
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
+import fiftyone.core.stages as fosg
 from fiftyone.server.query import Dataset
 from fiftyone.server.samples import paginate_samples
 import fiftyone.server.view as fosv
@@ -945,6 +946,69 @@ class ServerViewTests(unittest.TestCase):
             },
         )
         self.assertEqual(len(view), 1)
+
+    @drop_datasets
+    def test_dynamic_group_injects_group_field(self):
+        dataset = fod.Dataset("test")
+        dataset.add_samples(
+            [
+                fos.Sample(filepath="a.png", category="cat"),
+                fos.Sample(filepath="b.png", category="cat"),
+                fos.Sample(filepath="c.png", category="dog"),
+            ]
+        )
+
+        stages = [fosg.GroupBy("category")._serialize()]
+        view = fosv.get_view("test", stages=stages, dynamic_group="cat")
+
+        samples = list(
+            foo.aggregate(
+                foo.get_db_conn()[view._dataset._sample_collection_name],
+                view._pipeline(),
+            )
+        )
+        self.assertEqual(len(samples), 2)
+        for s in samples:
+            self.assertEqual(s["_group"], "cat")
+
+    @drop_datasets
+    def test_modal_group_filter_injects_group_field(self):
+        dataset = fod.Dataset("test")
+        dataset.add_group_field("group", default="left")
+        group = fo.Group()
+        dataset.add_samples(
+            [
+                fos.Sample(
+                    filepath="a.png",
+                    category="cat",
+                    group=group.element(name="left"),
+                ),
+                fos.Sample(
+                    filepath="b.png",
+                    category="cat",
+                    group=group.element(name="right"),
+                ),
+            ]
+        )
+
+        stages = [fosg.GroupBy("category")._serialize()]
+        view = fosv.get_view(
+            "test",
+            stages=stages,
+            sample_filter=fosv.SampleFilter(
+                group=fosv.GroupElementFilter(slices=["left"])
+            ),
+        )
+
+        samples = list(
+            foo.aggregate(
+                foo.get_db_conn()[view._dataset._sample_collection_name],
+                view._pipeline(),
+            )
+        )
+        self.assertGreater(len(samples), 0)
+        for s in samples:
+            self.assertEqual(s["_group"], "cat")
 
     @drop_datasets
     def test_sort_by(self):
