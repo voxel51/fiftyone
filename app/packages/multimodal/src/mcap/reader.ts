@@ -78,7 +78,13 @@ export async function getReader(
   let reader = readers.get(key);
 
   if (!reader) {
-    reader = readerFactory(source, new ByteClientReadable(source, byteClient));
+    reader = readerFactory(
+      source,
+      new ByteClientReadable(source, byteClient)
+    ).catch((error) => {
+      readers.delete(key);
+      throw error;
+    });
     readers.set(key, reader);
   }
 

@@ -72,6 +72,12 @@ export async function createWasmFrameDecompressor<WasmExports>({
   controls.initialize();
 
   return (buffer, decompressedSize) => {
+    if (decompressedSize < 0n) {
+      throw new Error(
+        `MCAP ${codecName} chunk reported a negative decompressed size: ${decompressedSize.toString()} bytes`
+      );
+    }
+
     if (decompressedSize > BigInt(Number.MAX_SAFE_INTEGER)) {
       throw new Error(
         `MCAP ${codecName} chunk is too large to decompress in the browser: ${decompressedSize.toString()} bytes`

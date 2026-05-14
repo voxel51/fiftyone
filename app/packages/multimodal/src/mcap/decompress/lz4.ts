@@ -34,7 +34,12 @@ let runtimePromise: Promise<Lz4FrameDecompressor> | undefined;
  * Loads and memoizes the LZ4 WASM runtime for MCAP chunk decompression.
  */
 export async function loadLz4FrameDecompressor(): Promise<Lz4FrameDecompressor> {
-  runtimePromise ??= createLz4Runtime();
+  if (!runtimePromise) {
+    runtimePromise = createLz4Runtime().catch((error) => {
+      runtimePromise = undefined;
+      throw error;
+    });
+  }
 
   return runtimePromise;
 }

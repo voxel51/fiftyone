@@ -56,6 +56,21 @@ describe("Foxglove decoders", () => {
     expect(output.timing?.sourceTimestamps?.messageTime).toBe(123456000000n);
   });
 
+  it("normalizes uppercase compressed image MIME formats", () => {
+    const output = foxgloveCompressedImageDecoder.decode(
+      compressedImageMessage("IMAGE/JPEG"),
+      {
+        schemaData: bytes(IMAGE_SCHEMA_B64),
+      }
+    );
+
+    expect(output.visualization?.kind).toBe(VISUALIZATION_KIND.ENCODED_IMAGE);
+    if (output.visualization?.kind !== VISUALIZATION_KIND.ENCODED_IMAGE) {
+      throw new Error("Expected encoded image visualization");
+    }
+    expect(output.visualization.mimeType).toBe("image/jpeg");
+  });
+
   it("decodes point cloud payloads into point cloud visualizations", () => {
     const output = foxglovePointCloudDecoder.decode(bytes(POINT_MESSAGE_B64), {
       schemaData: bytes(POINT_SCHEMA_B64),
@@ -91,4 +106,46 @@ function bytes(base64: string): Uint8Array {
 
 function text(data: Uint8Array): string {
   return new TextDecoder().decode(data);
+}
+
+function compressedImageMessage(format: string): Uint8Array {
+  return concatProtobufFields(
+    protobufBytesField(2, new TextEncoder().encode("fake-jpeg")),
+    protobufBytesField(3, new TextEncoder().encode(format))
+  );
+}
+
+function protobufBytesField(
+  fieldNumber: number,
+  value: Uint8Array
+): Uint8Array {
+  return concatProtobufFields(
+    Uint8Array.of((fieldNumber << 3) | 2),
+    varint(value.byteLength),
+    value
+  );
+}
+
+function varint(value: number): Uint8Array {
+  const bytes: number[] = [];
+  let remaining = value;
+  while (remaining >= 0x80) {
+    bytes.push((remaining & 0x7f) | 0x80);
+    remaining >>>= 7;
+  }
+  bytes.push(remaining);
+
+  return Uint8Array.from(bytes);
+}
+
+function concatProtobufFields(...fields: readonly Uint8Array[]): Uint8Array {
+  const length = fields.reduce((size, field) => size + field.byteLength, 0);
+  const result = new Uint8Array(length);
+  let offset = 0;
+  for (const field of fields) {
+    result.set(field, offset);
+    offset += field.byteLength;
+  }
+
+  return result;
 }

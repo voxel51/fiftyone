@@ -524,6 +524,39 @@ describe("MCAP resources", () => {
     ).rejects.toThrow("exceeds source size 128");
     expect(readBytes).not.toHaveBeenCalled();
   });
+
+  it("retries reader initialization after a rejected reader promise", async () => {
+    const readerFactory = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("temporary init failure"))
+      .mockResolvedValueOnce({
+        channelsById: new Map(),
+        readMessages: async function* () {
+          for (const message of [] as TypedMcapRecords["Message"][]) {
+            yield message;
+          }
+        },
+        schemasById: new Map(),
+      });
+    const client = createMcapResourceClient({
+      byteClient: {
+        readBytes: vi.fn(),
+      },
+      decodeClient: createTestDecodeClient(),
+      readerFactory,
+    });
+    const request = {
+      limit: 1,
+      source: createMcapSourceDescriptor(),
+      topic: "/camera",
+    };
+
+    await expect(client.readTimelineAnchors(request)).rejects.toThrow(
+      "temporary init failure"
+    );
+    await expect(client.readTimelineAnchors(request)).resolves.toEqual([]);
+    expect(readerFactory).toHaveBeenCalledTimes(2);
+  });
 });
 
 async function collect<T>(

@@ -19,7 +19,15 @@ export function growWasmMemory({
   }
 
   const oldSize = heap.byteLength;
-  const normalizedSize = requestedSize >>> 0;
+  if (
+    !Number.isFinite(requestedSize) ||
+    requestedSize < 0 ||
+    !Number.isInteger(requestedSize)
+  ) {
+    return 0;
+  }
+
+  const normalizedSize = requestedSize;
   if (normalizedSize > MAX_WASM_HEAP_BYTES) {
     return 0;
   }

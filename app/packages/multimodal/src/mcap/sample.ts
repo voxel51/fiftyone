@@ -29,7 +29,7 @@ function normalizeIdentifier(value: unknown): string | null {
 
 function normalizeSizeBytes(value: unknown): string | null {
   if (typeof value === "string" && value) {
-    return value;
+    return /^\d+$/.test(value) ? value : null;
   }
 
   if (typeof value === "number" && Number.isFinite(value)) {

@@ -53,8 +53,7 @@ function mimeTypeFromFormat(format: string): string | undefined {
     return undefined;
   }
 
-  const normalized = format.toLowerCase() === "jpg" ? "jpeg" : format;
-  return normalized.startsWith("image/")
-    ? normalized
-    : `image/${normalized.toLowerCase()}`;
+  const lowerFormat = format.toLowerCase();
+  const normalized = lowerFormat === "jpg" ? "jpeg" : lowerFormat;
+  return normalized.startsWith("image/") ? normalized : `image/${normalized}`;
 }
