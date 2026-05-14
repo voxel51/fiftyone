@@ -35,6 +35,44 @@ def _field_is_populated(view, field_name):
         return False
 
 
+def _list_existing_embedding_fields(ctx):
+    """Return sample-field names that plausibly hold embeddings.
+
+    Looks for VectorField / ArrayField / ListField columns on the
+    current dataset's frame schema (for video) or sample schema (for
+    image). Reported names are suitable for passing back as
+    ``embeddings_field``.
+    """
+    dataset = ctx.dataset
+    if dataset is None:
+        return []
+    try:
+        import fiftyone.core.fields as fof
+
+        media_type = getattr(dataset, "media_type", None)
+        if media_type == "video":
+            schema = dataset.get_frame_field_schema(flat=False) or {}
+        else:
+            schema = dataset.get_field_schema(flat=False) or {}
+
+        candidate_types = (
+            getattr(fof, "VectorField", None),
+            getattr(fof, "ArrayField", None),
+            getattr(fof, "ListField", None),
+        )
+        candidate_types = tuple(t for t in candidate_types if t is not None)
+
+        out = []
+        for name, field in schema.items():
+            if name.startswith("_"):
+                continue
+            if isinstance(field, candidate_types):
+                out.append(name)
+        return sorted(out)
+    except Exception:
+        return []
+
+
 _DEFAULT_BRAIN_KEY = "temporal_trajectory"
 
 _MODEL_CHOICES = [
@@ -72,6 +110,30 @@ class ComputeTrajectoryEmbeddings(foo.Operator):
     def resolve_input(self, ctx):
         inputs = types.Object()
 
+        # Existing embeddings field on the dataset/frames, if any. When
+        # set, skips model loading + inference entirely and projects
+        # straight from there. We surface every populated VectorField /
+        # ArrayField the user could plausibly want.
+        existing_field_choices = _list_existing_embedding_fields(ctx)
+        if existing_field_choices:
+            field_choices = types.Choices()
+            field_choices.add_choice("", label="(compute new with model)")
+            for field_name in existing_field_choices:
+                field_choices.add_choice(field_name, label=field_name)
+            inputs.enum(
+                "embeddings_field",
+                field_choices.values(),
+                view=field_choices,
+                label="Existing embeddings field",
+                description=(
+                    "Reuse an existing per-sample embedding field instead "
+                    "of computing fresh embeddings. The model setting is "
+                    "ignored when this is set."
+                ),
+                default="",
+                required=False,
+            )
+
         model_choices = types.Choices()
         for value, label in _MODEL_CHOICES:
             model_choices.add_choice(value, label=label)
@@ -80,8 +142,9 @@ class ComputeTrajectoryEmbeddings(foo.Operator):
             model_choices.values(),
             view=model_choices,
             label="Embedding model",
+            description="Only used if no existing field is selected.",
             default=_MODEL_CHOICES[0][0],
-            required=True,
+            required=False,
         )
 
         inputs.str(
@@ -128,7 +191,8 @@ class ComputeTrajectoryEmbeddings(foo.Operator):
         if dataset is None:
             return {"ok": False, "error": "No dataset"}
 
-        model_name = ctx.params["model"]
+        existing_field = (ctx.params.get("embeddings_field") or "").strip()
+        model_name = ctx.params.get("model") or _MODEL_CHOICES[0][0]
         brain_key = ctx.params.get("brain_key") or _DEFAULT_BRAIN_KEY
         method = ctx.params.get("method") or "umap"
         batch_size = ctx.params.get("batch_size") or 32
@@ -152,31 +216,50 @@ class ComputeTrajectoryEmbeddings(foo.Operator):
                 ),
             }
 
-        # Cache embeddings to a frame field keyed by model name so that
-        # re-running the operator with the same model (e.g. after a
-        # missing-dep failure on UMAP) skips inference entirely.
-        embeddings_field = (
-            f"trajectory_embeddings_{model_name.replace('-', '_')}"
-        )
-        if frames.has_field(embeddings_field) and _field_is_populated(
-            frames, embeddings_field
-        ):
+        if existing_field:
+            # User pointed us at an existing field — skip inference.
+            if not frames.has_field(existing_field):
+                return {
+                    "ok": False,
+                    "error": (
+                        f"Embeddings field `{existing_field}` not found on "
+                        f"the frames view."
+                    ),
+                }
             ctx.ops.notify(
-                f"Reusing cached embeddings in `{embeddings_field}`.",
+                f"Using existing embeddings field `{existing_field}`.",
                 variant="info",
             )
-            embeddings = np.array(frames.values(embeddings_field))
+            embeddings = np.array(frames.values(existing_field))
+            embeddings_field = existing_field
         else:
-            # compute_embeddings wants a Model instance, not a string —
-            # load the zoo model first so we can reuse it for both the
-            # raw embeddings (cosine-distance) and compute_visualization.
-            model = foz.load_zoo_model(model_name)
-            embeddings = frames.compute_embeddings(
-                model=model,
-                embeddings_field=embeddings_field,
-                batch_size=batch_size,
-                progress=True,
+            # Cache embeddings to a frame field keyed by model name so
+            # that re-running the operator with the same model (e.g.
+            # after a missing-dep failure on UMAP) skips inference
+            # entirely.
+            embeddings_field = (
+                f"trajectory_embeddings_{model_name.replace('-', '_')}"
             )
+            if frames.has_field(embeddings_field) and _field_is_populated(
+                frames, embeddings_field
+            ):
+                ctx.ops.notify(
+                    f"Reusing cached embeddings in `{embeddings_field}`.",
+                    variant="info",
+                )
+                embeddings = np.array(frames.values(embeddings_field))
+            else:
+                # compute_embeddings wants a Model instance, not a string
+                # — load the zoo model first so we can reuse it for both
+                # the raw embeddings (cosine-distance) and
+                # compute_visualization.
+                model = foz.load_zoo_model(model_name)
+                embeddings = frames.compute_embeddings(
+                    model=model,
+                    embeddings_field=embeddings_field,
+                    batch_size=batch_size,
+                    progress=True,
+                )
 
         fob.compute_visualization(
             frames,
