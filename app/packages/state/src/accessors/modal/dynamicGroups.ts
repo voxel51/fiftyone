@@ -39,6 +39,9 @@ export const useElementsCount = (modal: boolean): number => {
   const ref = useRef<number>(
     loadable.state === "hasValue" ? loadable.contents : 0
   );
+  if (loadable.state === "hasError") {
+    throw loadable.contents;
+  }
   if (loadable.state === "hasValue") {
     ref.current = loadable.contents;
   }

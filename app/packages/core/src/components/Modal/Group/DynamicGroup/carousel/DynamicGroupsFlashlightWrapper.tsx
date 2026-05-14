@@ -202,13 +202,16 @@ export const DynamicGroupsFlashlightWrapper = React.memo(() => {
   );
 
   const key = fos.useGroupByFieldValue();
-  const lastKey = useRef<string | null | undefined>(undefined);
+  const lastIdentity = useRef<string | undefined>(undefined);
   const [flashlight, setFlashlight] = useState<Flashlight<number> | null>(null);
   const mediaField = useRecoilValue(fos.selectedMediaField(true));
 
   useEffect(() => {
-    if (key === undefined || lastKey.current === key) return;
-    lastKey.current = key;
+    if (key === undefined) return;
+    const identity = `${mediaField}::${key ?? "null"}`;
+    if (lastIdentity.current === identity) return;
+    lastIdentity.current = identity;
+    reset();
     setFlashlight(createFlashlight());
   }, [createFlashlight, key, reset, mediaField]);
 

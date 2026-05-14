@@ -31,6 +31,11 @@ export const useDynamicGroupSamples = () => {
         return null;
       }
 
+      // group key hasn't settled yet — skip the query
+      if (dynamicGroup === undefined) {
+        return null;
+      }
+
       return loadQuery<foq.paginateSamplesQuery>(
         environment,
         foq.paginateSamples,
