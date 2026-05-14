@@ -21,11 +21,31 @@ import fiftyone.operators.types as types
 logger = logging.getLogger(__name__)
 
 
+def _field_is_populated(view, field_name):
+    """True if at least one value in `field_name` is non-None.
+
+    Used to decide whether a cached embedding column is usable. A
+    bare ``has_field`` check isn't enough: the field can exist on the
+    schema with every value being None (e.g. after a failed prior
+    run that aborted before any frame was written).
+    """
+    try:
+        return bool(view.match({field_name: {"$ne": None}}).limit(1).count())
+    except Exception:
+        return False
+
+
 _DEFAULT_BRAIN_KEY = "temporal_trajectory"
 
 _MODEL_CHOICES = [
     ("clip-vit-base32-torch", "CLIP ViT-B/32 (semantic)"),
     ("dinov2-vitb14-torch", "DINOv2 ViT-B/14 (visual)"),
+]
+
+_METHOD_CHOICES = [
+    ("umap", "UMAP (recommended, requires umap-learn)"),
+    ("tsne", "t-SNE (sklearn, no extra deps)"),
+    ("pca", "PCA (fastest, sklearn)"),
 ]
 
 
@@ -76,6 +96,18 @@ class ComputeTrajectoryEmbeddings(foo.Operator):
             required=True,
         )
 
+        method_choices = types.Choices()
+        for value, label in _METHOD_CHOICES:
+            method_choices.add_choice(value, label=label)
+        inputs.enum(
+            "method",
+            method_choices.values(),
+            view=method_choices,
+            label="Dimensionality reduction",
+            default=_METHOD_CHOICES[0][0],
+            required=True,
+        )
+
         inputs.int(
             "batch_size",
             label="Embedding batch size",
@@ -98,32 +130,43 @@ class ComputeTrajectoryEmbeddings(foo.Operator):
 
         model_name = ctx.params["model"]
         brain_key = ctx.params.get("brain_key") or _DEFAULT_BRAIN_KEY
+        method = ctx.params.get("method") or "umap"
         batch_size = ctx.params.get("batch_size") or 32
 
         # Frame-level view. For nuScenes-style video datasets this
         # exposes per-frame samples that compute_visualization can embed.
         frames = dataset.to_frames(sample_frames=True)
 
-        # compute_embeddings wants a Model instance, not a string — load
-        # the zoo model first so we can reuse it for both the raw
-        # embeddings (used for cosine-distance) and compute_visualization
-        # (which projects them to 2D).
-        model = foz.load_zoo_model(model_name)
-
-        # Compute embeddings once and pass them to compute_visualization,
-        # so we can also use them for the raw cosine-distance step.
-        # NB: compute_embeddings returns a numpy array aligned with the
-        # frames view ordering.
-        embeddings = frames.compute_embeddings(
-            model=model,
-            batch_size=batch_size,
-            progress=True,
+        # Cache embeddings to a frame field keyed by model name so that
+        # re-running the operator with the same model (e.g. after a
+        # missing-dep failure on UMAP) skips inference entirely.
+        embeddings_field = (
+            f"_trajectory_embeddings_{model_name.replace('-', '_')}"
         )
+        if frames.has_field(embeddings_field) and _field_is_populated(
+            frames, embeddings_field
+        ):
+            ctx.ops.notify(
+                f"Reusing cached embeddings in `{embeddings_field}`.",
+                variant="info",
+            )
+            embeddings = np.array(frames.values(embeddings_field))
+        else:
+            # compute_embeddings wants a Model instance, not a string —
+            # load the zoo model first so we can reuse it for both the
+            # raw embeddings (cosine-distance) and compute_visualization.
+            model = foz.load_zoo_model(model_name)
+            embeddings = frames.compute_embeddings(
+                model=model,
+                embeddings_field=embeddings_field,
+                batch_size=batch_size,
+                progress=True,
+            )
 
         fob.compute_visualization(
             frames,
             embeddings=embeddings,
-            method="umap",
+            method=method,
             brain_key=brain_key,
             num_dims=2,
         )
