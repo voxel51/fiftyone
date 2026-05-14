@@ -90,18 +90,25 @@ class ComputeTrajectoryEmbeddings(foo.Operator):
 
     def execute(self, ctx):
         import fiftyone.brain as fob
+        import fiftyone.zoo as foz
 
         dataset = ctx.dataset
         if dataset is None:
             return {"ok": False, "error": "No dataset"}
 
-        model = ctx.params["model"]
+        model_name = ctx.params["model"]
         brain_key = ctx.params.get("brain_key") or _DEFAULT_BRAIN_KEY
         batch_size = ctx.params.get("batch_size") or 32
 
         # Frame-level view. For nuScenes-style video datasets this
         # exposes per-frame samples that compute_visualization can embed.
         frames = dataset.to_frames(sample_frames=True)
+
+        # compute_embeddings wants a Model instance, not a string — load
+        # the zoo model first so we can reuse it for both the raw
+        # embeddings (used for cosine-distance) and compute_visualization
+        # (which projects them to 2D).
+        model = foz.load_zoo_model(model_name)
 
         # Compute embeddings once and pass them to compute_visualization,
         # so we can also use them for the raw cosine-distance step.
