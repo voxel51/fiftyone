@@ -47,7 +47,7 @@ from fiftyone.server.utils import meets_type
 from fiftyone.server.view import get_view
 
 
-_TWENTY_FOUR = 24
+_OBJECT_ID_HEX_LEN = 24
 
 
 _INT_CLS = {
@@ -304,7 +304,7 @@ async def _do_list_distinct_query(
         match = query.search
         matcher = lambda v: not v.startswith(match)
         if query.is_object_id_field:
-            match = match[:_TWENTY_FOUR]
+            match = match[:_OBJECT_ID_HEX_LEN]
             matcher = lambda v: v < match
 
     try:
@@ -363,7 +363,6 @@ async def _do_distinct_grouped_pipeline(
     match_filter: t.Optional[t.Mapping[str, str]],
     is_frames: bool,
 ):
-
     pipeline = []
     if match_filter:
         pipeline += [{"$match": match_filter}]
@@ -381,15 +380,15 @@ async def _do_distinct_grouped_pipeline(
 def _add_search(query: DistinctQuery):
     # strip chars after 24
     if query.is_object_id_field:
-        search = query.search[:_TWENTY_FOUR]
-        add = (_TWENTY_FOUR - len(search)) * "0"
+        search = query.search[:_OBJECT_ID_HEX_LEN]
+        add = (_OBJECT_ID_HEX_LEN - len(search)) * "0"
         if add:
             search = f"{search}{add}"
         try:
             value = {"$gte": ObjectId(search)}
         except InvalidId:
             # search is not valid
-            value = {"$lt": ObjectId("0" * _TWENTY_FOUR)}
+            value = {"$lt": ObjectId("0" * _OBJECT_ID_HEX_LEN)}
     else:
         value = {"$regex": f"^{re.escape(query.search)}"}
     return {"$match": {"_id": value}}
