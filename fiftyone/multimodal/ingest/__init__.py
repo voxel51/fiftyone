@@ -6,7 +6,8 @@ Ingest scaffolding for multimodal workflows.
 |
 """
 
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from threading import Semaphore
 from typing import Generator
 
 from fiftyone.core import storage
@@ -43,6 +44,25 @@ def _readable_paths(
             yield filepath
 
 
+def _buffer_map(executor, fn, items, *, buffersize):
+    semaphore = Semaphore(buffersize)
+
+    def call_and_release(item):
+        try:
+            return fn(item)
+        finally:
+            semaphore.release()
+
+    futures = []
+
+    for item in items:
+        semaphore.acquire()
+        future = executor.submit(call_and_release, item)
+        futures.append(future)
+
+    return [future.result() for future in as_completed(futures)]
+
+
 def _get_scene_inventories(
     filepaths: list[str], *, adapter: MultimodalAdapter
 ) -> list[SceneInventory]:
@@ -63,7 +83,12 @@ def _get_scene_inventories(
     paths = _readable_paths(filepaths, adapter=adapter)
     max_workers = fou.recommend_thread_pool_workers(num_workers=8)
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        return list(executor.map(adapter.get_scene_inventory, paths))
+        return _buffer_map(
+            executor,
+            adapter.get_scene_inventory,
+            paths,
+            buffersize=max_workers * 2,
+        )
 
 
 __all__ = ["_get_scene_inventories"]
