@@ -158,17 +158,17 @@ class GridDataAdapter(t.Protocol):
         self,
         dataset: "fod.Dataset",
         *,
-        input: "LightningInput",
+        request: "LightningInput",
     ) -> t.List["LightningResults"]:
         """Resolve a batch of "lightning" sidebar fast-path queries.
 
         Args:
             dataset: The dataset.
-            input: The lightning request describing paths and per-path
+            request: The lightning request describing paths and per-path
                 options.
 
         Returns:
-            One :class:`LightningResults` per path in ``input.paths``, in
+            One :class:`LightningResults` per path in ``request.paths``, in
             order.
         """
         ...

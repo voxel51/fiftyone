@@ -25,6 +25,7 @@ import re
 import typing as t
 
 from bson import ObjectId
+from bson.errors import InvalidId
 from motor.motor_asyncio import AsyncIOMotorCollection
 
 import fiftyone as fo
@@ -96,7 +97,8 @@ def resolve_lightning_path_queries(
         path.exclude or path.search
     ):
         raise ValueError(
-            f"'excluded' and 'search' are not valid for {fof.StringField}"
+            f"'exclude' and 'search' are not valid for "
+            f"{field.__class__.__name__}"
         )
 
     if meets_type(field, fof.BooleanField):
@@ -137,11 +139,11 @@ def resolve_lightning_path_queries(
         ]
 
         def _resolve_int(results):
-            min, max, none = results
+            min_val, max_val, none = results
             return _INT_CLS[field.__class__](
                 path=path.path,
-                max=_parse_result(max),
-                min=_parse_result(min),
+                max=_parse_result(max_val),
+                min=_parse_result(min_val),
                 none=bool(none),
             )
 
@@ -169,7 +171,7 @@ def resolve_lightning_path_queries(
         ]
 
         def _resolve_float(results):
-            min, max, ninf, inf, nan, none = results
+            min_val, max_val, ninf, inf, nan, none = results
 
             inf = bool(inf)
             nan = bool(nan)
@@ -179,8 +181,8 @@ def resolve_lightning_path_queries(
             return FloatLightningResult(
                 inf=inf,
                 path=path.path,
-                max=_parse_result(max),
-                min=_parse_result(min),
+                max=_parse_result(max_val),
+                min=_parse_result(min_val),
                 nan=nan,
                 ninf=ninf,
                 none=none,
@@ -385,7 +387,7 @@ def _add_search(query: DistinctQuery):
             search = f"{search}{add}"
         try:
             value = {"$gte": ObjectId(search)}
-        except:
+        except InvalidId:
             # search is not valid
             value = {"$lt": ObjectId("0" * _TWENTY_FOUR)}
     else:

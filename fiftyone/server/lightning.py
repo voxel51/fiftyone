@@ -123,4 +123,4 @@ async def lightning_resolver(
     run = lambda: get_view(input.dataset, reload=True)
     dataset = await run_sync_task(run)
     dataset = dataset._dataset
-    return await get_grid_adapter().lightning(dataset, input=input)
+    return await get_grid_adapter().lightning(dataset, request=input)

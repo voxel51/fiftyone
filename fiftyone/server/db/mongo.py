@@ -135,11 +135,11 @@ class MongoGridAdapter:
         )
         return ValuePickerResult(total=total, page=list(page))
 
-    async def lightning(self, dataset, *, input):
+    async def lightning(self, dataset, *, request):
         collections, queries, resolvers, is_frames = zip(
             *[
                 resolve_lightning_path_queries(path, dataset)
-                for path in input.paths
+                for path in request.paths
             ]
         )
         counts = [len(a) for a in queries]
@@ -151,10 +151,10 @@ class MongoGridAdapter:
             for item in sublist
         ]
 
-        match_filter = dict(input.match) if input.match else {}
-        if dataset.group_field and input.slice:
-            match_filter[f"{dataset.group_field}.name"] = input.slice
-            dataset.group_slice = input.slice
+        match_filter = dict(request.match) if request.match else {}
+        if dataset.group_field and request.slice:
+            match_filter[f"{dataset.group_field}.name"] = request.slice
+            dataset.group_slice = request.slice
 
         result = await do_async_pooled_queries(
             dataset, flattened, match_filter
