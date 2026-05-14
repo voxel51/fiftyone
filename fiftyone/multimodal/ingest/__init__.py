@@ -11,8 +11,9 @@ import os
 from typing import Generator
 
 import fiftyone as fo
-from fiftyone.core import storage
+from fiftyone.core import media, storage
 from fiftyone.multimodal.adapters import MultimodalAdapter
+from fiftyone.multimodal.db.mongo import MongoAdapter
 from fiftyone.multimodal.schemas.v1 import SceneInventory
 
 
@@ -67,4 +68,30 @@ def _get_scene_inventories(
         return list(executor.map(adapter.get_scene_inventory, paths))
 
 
-__all__ = ["_get_scene_inventories"]
+def ingest_filepaths(
+    dataset: fo.Dataset, filepaths: list[str], *, adapter, manifest
+) -> None:
+    """
+    Runs the multimodal ingestion pipeline on the given dataset.
+
+    Args:
+        dataset: a :class:`fiftyone.core.dataset.Dataset` to ingest
+    """
+    inventories = _get_scene_inventories(filepaths, adapter=adapter)
+    sample_and_inventory_pairs = [
+        (
+            fo.Sample(
+                # TODO the actual mapping of inventory to filepath should be
+                # derived from the manifest
+                filepath=inventory.scene_id,
+                media_type=media.MULTIMODAL,
+            ),
+            inventory,
+        )
+        for inventory in inventories
+    ]
+    MongoAdapter.write_scene_inventories(dataset, sample_and_inventory_pairs)
+    dataset.save()
+
+
+__all__ = ["_get_scene_inventories", "ingest_filepaths"]
