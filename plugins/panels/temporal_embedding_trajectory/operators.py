@@ -141,7 +141,7 @@ class ComputeTrajectoryEmbeddings(foo.Operator):
         # re-running the operator with the same model (e.g. after a
         # missing-dep failure on UMAP) skips inference entirely.
         embeddings_field = (
-            f"_trajectory_embeddings_{model_name.replace('-', '_')}"
+            f"trajectory_embeddings_{model_name.replace('-', '_')}"
         )
         if frames.has_field(embeddings_field) and _field_is_populated(
             frames, embeddings_field
