@@ -566,7 +566,7 @@ def _apply_image_model_with_video_data_loader(
 ):
     """Applies the image model to the video samples in the collection.
 
-    Only supports applying TorchImageModel to video frames.
+    Only supports applying image models to video frames.
     """
     label_field, _ = samples._handle_frame_field(label_field)
     _, total_frame_count = _get_frame_counts(samples)
