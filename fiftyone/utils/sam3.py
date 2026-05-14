@@ -63,7 +63,7 @@ def _download_sam3_bpe_vocab_file(
         for candidate in candidates:
             if os.path.isfile(candidate):
                 shutil.copyfile(candidate, bpe_path)
-                return bpe_path
+                return
 
     except Exception as e:
         logger.debug("Could not copy SAM3 vocab from installed package: %s", e)
