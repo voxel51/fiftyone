@@ -953,23 +953,22 @@ class ServerViewTests(unittest.TestCase):
         dataset.add_samples(
             [
                 fos.Sample(filepath="a.png", category="cat"),
-                fos.Sample(filepath="b.png", category="cat"),
-                fos.Sample(filepath="c.png", category="dog"),
+                fos.Sample(filepath="b.png", category="$foo"),
             ]
         )
 
         stages = [fosg.GroupBy("category")._serialize()]
-        view = fosv.get_view("test", stages=stages, dynamic_group="cat")
 
-        samples = list(
-            foo.aggregate(
-                foo.get_db_conn()[view._dataset._sample_collection_name],
-                view._pipeline(),
-            )
-        )
-        self.assertEqual(len(samples), 2)
-        for s in samples:
-            self.assertEqual(s["_group"], "cat")
+        for group_value in ("cat", "$foo"):
+            with self.subTest(group_value=group_value):
+                view = fosv.get_view(
+                    "test", stages=stages, dynamic_group=group_value
+                )
+                (sample,) = foo.aggregate(
+                    foo.get_db_conn()[view._dataset._sample_collection_name],
+                    view._pipeline(),
+                )
+                self.assertEqual(sample["_group"], group_value)
 
     @drop_datasets
     def test_modal_group_filter_injects_group_field(self):

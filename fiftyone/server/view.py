@@ -133,7 +133,9 @@ def get_view(
             view = view.get_dynamic_group(dynamic_group)
             # inject _group so relay store records are consistent with modal
             view = view.add_stage(
-                fosg.Mongo([{"$addFields": {"_group": dynamic_group}}])
+                fosg.Mongo(
+                    [{"$addFields": {"_group": {"$literal": dynamic_group}}}]
+                )
             )
 
         media_types = None
