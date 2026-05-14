@@ -1,10 +1,36 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   MCAP_PLAYBACK_WORKER_PRIORITY,
   type McapPlaybackWorkerRequest,
   type McapPlaybackWorkerResponse,
 } from "./playback-worker-types";
 import { createWorkerMcapResourceClient } from "./worker-client";
+
+const resourcesHarness = vi.hoisted(() => {
+  const inlineClient = {
+    dispose: vi.fn(),
+    readDecodedMessages: vi.fn(async function* () {
+      for (const item of [] as never[]) {
+        yield item;
+      }
+      return;
+    }),
+    readMessageTimes: vi.fn(async function* () {
+      for (const item of [] as never[]) {
+        yield item;
+      }
+      return;
+    }),
+    readSynchronizedMessageBatch: vi.fn(async () => []),
+    readSynchronizedMessages: vi.fn(),
+    readTimelineAnchors: vi.fn(async () => [42n]),
+  };
+
+  return {
+    createMcapResourceClient: vi.fn(() => inlineClient),
+    inlineClient,
+  };
+});
 
 vi.mock("@fiftyone/utilities", () => ({
   getFetchParameters: () => ({
@@ -16,7 +42,21 @@ vi.mock("@fiftyone/utilities", () => ({
     Object.assign({}, ...headers),
 }));
 
+vi.mock("../resources", () => ({
+  createMcapResourceClient: resourcesHarness.createMcapResourceClient,
+}));
+
 describe("worker-backed MCAP resource client", () => {
+  beforeEach(() => {
+    resourcesHarness.createMcapResourceClient.mockClear();
+    resourcesHarness.inlineClient.dispose.mockClear();
+    resourcesHarness.inlineClient.readDecodedMessages.mockClear();
+    resourcesHarness.inlineClient.readMessageTimes.mockClear();
+    resourcesHarness.inlineClient.readSynchronizedMessageBatch.mockClear();
+    resourcesHarness.inlineClient.readSynchronizedMessages.mockClear();
+    resourcesHarness.inlineClient.readTimelineAnchors.mockClear();
+  });
+
   it("initializes the worker and maps resource calls to RPC messages", async () => {
     const { client, workers } = createClientHarness();
     const request = createTimelineRequest();
@@ -150,6 +190,90 @@ describe("worker-backed MCAP resource client", () => {
     expect(worker.terminate).toHaveBeenCalledTimes(1);
     await expect(anchors).rejects.toThrow("disposed");
   });
+
+  it("falls back to the inline client when worker creation fails", async () => {
+    const client = createWorkerMcapResourceClient({
+      fallback: "inline",
+      workerFactory: () => {
+        throw new Error("worker blocked");
+      },
+    });
+    const request = createTimelineRequest();
+
+    await expect(client.readTimelineAnchors(request)).resolves.toEqual([42n]);
+
+    expect(resourcesHarness.createMcapResourceClient).toHaveBeenCalledTimes(1);
+    expect(
+      resourcesHarness.inlineClient.readTimelineAnchors
+    ).toHaveBeenCalledWith(request);
+  });
+
+  it("rejects worker startup errors when inline fallback is disabled", async () => {
+    const client = createWorkerMcapResourceClient({
+      fallback: "error",
+      workerFactory: () => {
+        throw new Error("worker blocked");
+      },
+    });
+
+    expect(() => client.readTimelineAnchors(createTimelineRequest())).toThrow(
+      "worker blocked"
+    );
+  });
+
+  it("tears down partial workers when init postMessage throws", async () => {
+    const worker = new MockWorker({ throwOnMessageType: "init" });
+    const client = createWorkerMcapResourceClient({
+      fallback: "error",
+      workerFactory: () => worker as unknown as Worker,
+    });
+
+    expect(() => client.readTimelineAnchors(createTimelineRequest())).toThrow(
+      "postMessage failed"
+    );
+
+    expect(worker.onmessage).toBeNull();
+    expect(worker.onerror).toBeNull();
+    expect(worker.terminate).toHaveBeenCalledTimes(1);
+  });
+
+  it("marks reset streams terminal after buffered values drain", async () => {
+    const { client, workers } = createClientHarness();
+    const stream = client.readMessageTimes({
+      source: createSource("source:1"),
+      topics: ["/camera"],
+    });
+    const first = stream.next();
+    const worker = workers[0];
+    const firstMessage = createMessageTime(1n);
+    const secondMessage = createMessageTime(2n);
+
+    worker.respond({
+      done: false,
+      id: 1,
+      item: firstMessage,
+      ok: true,
+      stream: true,
+    });
+    worker.respond({
+      done: false,
+      id: 1,
+      item: secondMessage,
+      ok: true,
+      stream: true,
+    });
+    worker.emitError("worker crashed");
+
+    await expect(first).resolves.toEqual({
+      done: false,
+      value: firstMessage,
+    });
+    await expect(stream.next()).resolves.toEqual({
+      done: false,
+      value: secondMessage,
+    });
+    await expect(stream.next()).rejects.toThrow("worker crashed");
+  });
 });
 
 function createClientHarness() {
@@ -201,9 +325,27 @@ class MockWorker {
     | ((event: MessageEvent<McapPlaybackWorkerResponse>) => void)
     | null = null;
   postMessage = vi.fn((message: McapPlaybackWorkerRequest) => {
+    if (message.type === this.throwOnMessageType) {
+      throw new Error("postMessage failed");
+    }
+
     this.messages.push(message);
   });
   terminate = vi.fn();
+
+  constructor(
+    private readonly options: {
+      readonly throwOnMessageType?: McapPlaybackWorkerRequest["type"];
+    } = {}
+  ) {}
+
+  private get throwOnMessageType() {
+    return this.options.throwOnMessageType;
+  }
+
+  emitError(message: string) {
+    this.onerror?.({ message } as ErrorEvent);
+  }
 
   respond(response: McapPlaybackWorkerResponse) {
     this.onmessage?.({
