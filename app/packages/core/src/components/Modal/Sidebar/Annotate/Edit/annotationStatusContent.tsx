@@ -15,7 +15,10 @@ import {
 } from "@voxel51/voodo";
 import { ReactElement } from "react";
 import { StatusItem } from "../../../ModalStatusBar";
-import { InferenceStatus } from "@fiftyone/annotation/src/agents";
+import {
+  InferenceProgress,
+  InferenceStatus,
+} from "@fiftyone/annotation/src/agents";
 
 export const DetectionStatus = (): ReactElement => (
   <StatusItem
@@ -90,29 +93,48 @@ export const MergeTargetSetStatus = (): ReactElement => (
   />
 );
 
+const STATUS_LABELS: Record<InferenceStatus, string> = {
+  idle: "No inference running",
+  initializing: "Initializing model",
+  "downloading-weights": "Downloading model",
+  "encoding-image": "Encoding image",
+  inferring: "Running inference",
+  error: "Inference error",
+};
+
+const formatProgressLabel = (
+  status: InferenceStatus,
+  progress: InferenceProgress
+): string => {
+  const base = STATUS_LABELS[status];
+  if (status !== "downloading-weights" || !progress || !progress.total) {
+    return base;
+  }
+  const pct = Math.min(
+    100,
+    Math.max(0, Math.round((progress.loaded / progress.total) * 100))
+  );
+  return `${base} (${pct}%)`;
+};
+
 export const AIInferringStatus = ({
   status,
+  progress = null,
 }: {
   status: InferenceStatus;
-}): ReactElement => {
-  const statusLabels: Record<InferenceStatus, string> = {
-    inferring: "Running inference",
-    idle: "No inference running",
-  };
-
-  return (
-    <Stack
-      orientation={Orientation.Row}
-      align={Align.Center}
-      spacing={Spacing.Sm}
-    >
-      <Spinner size={Size.Md} color={TextColor.Secondary} />
-      <Text variant={TextVariant.Md} color={TextColor.Secondary}>
-        {statusLabels[status]}
-      </Text>
-    </Stack>
-  );
-};
+  progress?: InferenceProgress;
+}): ReactElement => (
+  <Stack
+    orientation={Orientation.Row}
+    align={Align.Center}
+    spacing={Spacing.Sm}
+  >
+    <Spinner size={Size.Md} color={TextColor.Secondary} />
+    <Text variant={TextVariant.Md} color={TextColor.Secondary}>
+      {formatProgressLabel(status, progress)}
+    </Text>
+  </Stack>
+);
 
 export const AIFirstClickStatus = (): ReactElement => (
   <Text variant={TextVariant.Md} color={TextColor.Secondary}>
