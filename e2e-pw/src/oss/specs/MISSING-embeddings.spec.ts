@@ -33,40 +33,47 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer }, testInfo) => {
   await foWebServer.startWebServer();
   await fiftyoneLoader.executePythonCode(
     `
+
+      # TF_INTRA/INTER_OP=1 forces single-threaded init, which sidesteps the
+      # Abseil mutex deadlock seen.
+      import os
+      os.environ["TF_INTRA_OP_PARALLELISM_THREADS"] = "1"
+      os.environ["TF_INTER_OP_PARALLELISM_THREADS"] = "1"
+
       import sys, types
+
+      # Block umap.parametric_umap from triggering \`import tensorflow\` during
+      # umap/__init__.py load (causes an Abseil mutex deadlock on macOS during
+      # TF's C++ static init). compute_visualization only uses umap.UMAP, never
+      # ParametricUMAP, so a stub is fine.
+      if "umap.parametric_umap" not in sys.modules:
+          _stub = types.ModuleType("umap.parametric_umap")
+
+          class _ParametricUMAPDisabled:
+              def __init__(self, *a, **kw):
+                  raise NotImplementedError(
+                      "ParametricUMAP disabled to avoid TensorFlow deadlock"
+                  )
+
+          _stub.ParametricUMAP = _ParametricUMAPDisabled
+          sys.modules["umap.parametric_umap"] = _stub
+
       import fiftyone.core.utils as fou
+      umap = fou.lazy_import("umap.umap_")
+      import fiftyone as fo
+      import fiftyone.zoo as foz
+      import fiftyone.brain as fob
+      import numpy as np
+      np.random.seed(42)
 
-        # Block umap.parametric_umap from triggering \`import tensorflow\` during
-        # umap/__init__.py load (causes an Abseil mutex deadlock on macOS during
-        # TF's C++ static init). compute_visualization only uses umap.UMAP, never
-        # ParametricUMAP, so a stub is fine.
-        if "umap.parametric_umap" not in sys.modules:
-            _stub = types.ModuleType("umap.parametric_umap")
-        
-            class _ParametricUMAPDisabled:
-                def __init__(self, *a, **kw):
-                    raise NotImplementedError(
-                        "ParametricUMAP disabled to avoid TensorFlow deadlock"
-                    )
-        
-            _stub.ParametricUMAP = _ParametricUMAPDisabled
-            sys.modules["umap.parametric_umap"] = _stub
-        
-        umap = fou.lazy_import("umap.umap_")
-        import fiftyone as fo
-        import fiftyone.zoo as foz
-        import fiftyone.brain as fob
-        import numpy as np
-        np.random.seed(42)
+      dataset = foz.load_zoo_dataset("quickstart", max_samples=5, dataset_name="${datasetName}")
+      dataset.persistent = True
 
-        dataset = foz.load_zoo_dataset("quickstart", max_samples=5, dataset_name="${datasetName}")
-        dataset.persistent = True
+      embeddings = np.random.random((5, 512))
+      # umap is default
+      fob.compute_visualization(dataset, brain_key="img_viz", embeddings=embeddings)
 
-        embeddings = np.random.random((5, 512))
-        # umap is default
-        fob.compute_visualization(dataset, brain_key="img_viz", embeddings=embeddings)
-
-        dataset.save()
+      dataset.save()
     `
   );
 });
