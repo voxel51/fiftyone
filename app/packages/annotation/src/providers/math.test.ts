@@ -11,65 +11,34 @@ import {
 const SZ = SAM2_INPUT_SIZE;
 
 function makeImg(width: number, height: number): ProcessedImage {
-  const scale = Math.min(SZ / width, SZ / height);
-  const scaledW = Math.round(width * scale);
-  const scaledH = Math.round(height * scale);
-
   return {
     tensor: new Float32Array(0),
     originalWidth: width,
     originalHeight: height,
-    scale,
-    padX: Math.floor((SZ - scaledW) / 2),
-    padY: Math.floor((SZ - scaledH) / 2),
   };
 }
 
 describe("transformPoint", () => {
-  const square = makeImg(512, 512);
-  const landscape = makeImg(1920, 1080);
-  const portrait = makeImg(1080, 1920);
+  const cases: Array<[string, ProcessedImage]> = [
+    ["square", makeImg(512, 512)],
+    ["landscape", makeImg(1920, 1080)],
+    ["portrait", makeImg(1080, 1920)],
+  ];
 
-  it("Square image: no padding, maps cleanly to SZ", () => {
-    expect(square.padX).toBe(0);
-    expect(square.padY).toBe(0);
-    expect(transformPoint(0, 0, square)).toEqual([0, 0]);
+  it.each(cases)(
+    "Normalized [0,1] coords map directly to [0, SZ] for %s images",
+    () => {
+      expect(transformPoint(0, 0)).toEqual([0, 0]);
 
-    const [cx, cy] = transformPoint(0.5, 0.5, square);
-    expect(cx).toBeCloseTo(SZ / 2, 5);
-    expect(cy).toBeCloseTo(SZ / 2, 5);
+      const [cx, cy] = transformPoint(0.5, 0.5);
+      expect(cx).toBeCloseTo(SZ / 2, 5);
+      expect(cy).toBeCloseTo(SZ / 2, 5);
 
-    const [ex, ey] = transformPoint(1, 1, square);
-    expect(ex).toBeCloseTo(SZ, 5);
-    expect(ey).toBeCloseTo(SZ, 5);
-  });
-
-  it("Non-square images: padding, center, and corner", () => {
-    // Origin
-    expect(landscape.padX).toBe(0);
-    expect(landscape.padY).toBeGreaterThan(0);
-
-    expect(portrait.padX).toBeGreaterThan(0);
-    expect(portrait.padY).toBe(0);
-
-    // Center point
-    const [lcx, lcy] = transformPoint(0.5, 0.5, landscape);
-    expect(lcx).toBeCloseTo(SZ / 2, 5);
-    expect(lcy).toBeCloseTo(0.5 * landscape.originalHeight * landscape.scale + landscape.padY, 5);
-
-    const [pcx, pcy] = transformPoint(0.5, 0.5, portrait);
-    expect(pcx).toBeCloseTo(0.5 * portrait.originalWidth * portrait.scale + portrait.padX, 5);
-    expect(pcy).toBeCloseTo(SZ / 2, 5);
-
-    // (1,1) -> scaled size + padding
-    const [lx, ly] = transformPoint(1, 1, landscape);
-    expect(lx).toBeCloseTo(landscape.originalWidth * landscape.scale + landscape.padX, 5);
-    expect(ly).toBeCloseTo(landscape.originalHeight * landscape.scale + landscape.padY, 5);
-
-    const [px, py] = transformPoint(1, 1, portrait);
-    expect(px).toBeCloseTo(portrait.originalWidth * portrait.scale + portrait.padX, 5);
-    expect(py).toBeCloseTo(portrait.originalHeight * portrait.scale + portrait.padY, 5);
-  });
+      const [ex, ey] = transformPoint(1, 1);
+      expect(ex).toBeCloseTo(SZ, 5);
+      expect(ey).toBeCloseTo(SZ, 5);
+    }
+  );
 });
 
 describe("computeMaskBbox", () => {
@@ -102,16 +71,12 @@ describe("computeMaskBbox", () => {
 
     // Derive expected bbox using the same mapping as computeMaskBbox
     const W = 100, H = 50;
-    const msx = SAM2_OUTPUT_SIZE / SZ;
-    const msy = SAM2_OUTPUT_SIZE / SZ;
-    const mpx = Math.floor(img.padX * msx);
-    const mpy = Math.floor(img.padY * msy);
-    const mw = Math.round(W * img.scale * msx);
-    const mh = Math.round(H * img.scale * msy);
-    const x1 = Math.max(0, Math.floor(((regionX - mpx) / mw) * W));
-    const y1 = Math.max(0, Math.floor(((regionY - mpy) / mh) * H));
-    const x2 = Math.min(W - 1, Math.ceil(((regionX + regionW - 1 - mpx) / mw) * W));
-    const y2 = Math.min(H - 1, Math.ceil(((regionY + regionH - 1 - mpy) / mh) * H));
+    const maskW = SAM2_OUTPUT_SIZE;
+    const maskH = SAM2_OUTPUT_SIZE;
+    const x1 = Math.max(0, Math.floor((regionX / maskW) * W));
+    const y1 = Math.max(0, Math.floor((regionY / maskH) * H));
+    const x2 = Math.min(W - 1, Math.ceil(((regionX + regionW - 1) / maskW) * W));
+    const y2 = Math.min(H - 1, Math.ceil(((regionY + regionH - 1) / maskH) * H));
 
     const bbox = computeMaskBbox(mask, img)!;
     expect(bbox).not.toBeNull();
