@@ -700,3 +700,40 @@ default, so that local SDK usage will download credentials from the Enterprise
 server, and there is no need to configure credentials locally. To enable
 downloading of credentials to machines, set the environment variable
 `FEATURE_FLAG_ENABLE_CREDS_LOCAL_USE` to `True` in the `teams-api` container.
+
+.. _enterprise-ai-model-weights:
+
+AI Model Weights
+________________
+
+The Enterprise App ships with AI-assisted mask segmentation for annotation
+workflows. By default, the required model weights are served from Voxel51's
+CDN and no configuration is required.
+
+Deployments that prefer to serve the weights from their own infrastructure
+can set the optional `FIFTYONE_MODEL_WEIGHTS_BASE_SAM2` environment
+variable on the `fiftyone-app` container. The value is a base URL or
+cloud path that hosts the weights. The App appends the specific weight
+file to it at request time.
+
+The base location must host the two files that the App fetches:
+
+* `encoder.with_runtime_opt.ort`
+* `decoder.onnx`
+
+The SAM2 tiny variant is recommended for optimal user experience.
+
+.. code-block:: shell
+
+    # Private GCS bucket
+    FIFTYONE_MODEL_WEIGHTS_BASE_SAM2=gs://my-bucket/sam2
+
+    # Private S3 bucket
+    FIFTYONE_MODEL_WEIGHTS_BASE_SAM2=s3://my-bucket/sam2
+
+    # Private HTTPS endpoint
+    FIFTYONE_MODEL_WEIGHTS_BASE_SAM2=https://cdn.internal.example.com/sam2
+
+When a cloud path is used, URLs are signed automatically using the
+deployment's :ref:`cloud credentials <enterprise-cloud-credentials>`, so
+the `fiftyone-app` container must have access to the bucket.
