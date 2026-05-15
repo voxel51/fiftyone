@@ -12,7 +12,7 @@ import PanelSkeleton from "./PanelSkeleton";
 import { StyledPanel } from "./StyledElements";
 
 function Panel(props: PanelProps) {
-  const { node, isModalPanel } = props;
+  const { node, isModalPanel, style } = props;
   const panelName = node.type as string;
   const panel = useReactivePanel(panelName);
   const dimensions = fos.useDimensions();
@@ -28,7 +28,7 @@ function Panel(props: PanelProps) {
 
   if (!panel) {
     return (
-      <StyledPanel data-cy={panelContentTestId}>
+      <StyledPanel data-cy={panelContentTestId} style={style}>
         <CenteredStack>
           {pending ? (
             <PanelSkeleton />
@@ -49,6 +49,7 @@ function Panel(props: PanelProps) {
       data-cy={panelContentTestId}
       className={scrollable}
       ref={dimensions.ref}
+      style={style}
     >
       <PanelContext.Provider value={{ node, scope }}>
         <Component panelNode={node} dimensions={dimensions} />
