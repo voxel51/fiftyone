@@ -9,7 +9,8 @@ from unittest.mock import Mock, call, patch
 import pytest
 
 import fiftyone as fo
-from fiftyone.multimodal import ingest
+from fiftyone.multimodal.ingest import ingest_files
+from fiftyone.multimodal.ingest.read import _get_scene_inventories
 
 
 @pytest.fixture(name="adapter")
@@ -26,7 +27,7 @@ def mock_storage():
 class TestGetSceneInventories:
     def test_empty_input(self, adapter):
         ###
-        result = ingest._get_scene_inventories([], adapter=adapter)
+        result = _get_scene_inventories([], adapter=adapter)
         ###
 
         assert result == []
@@ -39,9 +40,7 @@ class TestGetSceneInventories:
         adapter.get_scene_inventory.return_value = "scene inventory"
 
         ###
-        result = ingest._get_scene_inventories(
-            ["/path/to/file"], adapter=adapter
-        )
+        result = _get_scene_inventories(["/path/to/file"], adapter=adapter)
         ###
 
         assert result == ["scene inventory"]
@@ -54,9 +53,7 @@ class TestGetSceneInventories:
         adapter.get_scene_inventory.return_value = "scene inventory"
 
         ###
-        result = ingest._get_scene_inventories(
-            ["/path/to/file"], adapter=adapter
-        )
+        result = _get_scene_inventories(["/path/to/file"], adapter=adapter)
         ###
 
         assert result == []
@@ -73,7 +70,7 @@ class TestGetSceneInventories:
         adapter.get_scene_inventory.return_value = "scene inventory"
 
         ###
-        result = ingest._get_scene_inventories(
+        result = _get_scene_inventories(
             ["/path/to/directory"], adapter=adapter
         )
         ###
@@ -99,7 +96,7 @@ class TestGetSceneInventories:
         adapter.get_scene_inventory.return_value = "scene inventory"
 
         ###
-        result = ingest._get_scene_inventories(
+        result = _get_scene_inventories(
             ["/path/to/directory"], adapter=adapter
         )
         ###
@@ -120,7 +117,7 @@ class TestGetSceneInventories:
         adapter.get_scene_inventory.return_value = "scene inventory"
 
         ###
-        result = ingest._get_scene_inventories(
+        result = _get_scene_inventories(
             ["/path/to/directory"], adapter=adapter
         )
         ###
@@ -145,7 +142,7 @@ class TestIngestFilepaths:
         ) as mock_get_inventories, patch(
             "fiftyone.multimodal.db.mongo.MongoAdapter.write_scene_inventories"
         ) as mock_write:
-            ingest.ingest_files(
+            ingest_files(
                 dataset,
                 ["/some/path", "/another/path"],
                 adapter=adapter,

@@ -10,6 +10,8 @@ import fiftyone as fo
 from .read import _get_scene_inventories
 from fiftyone.multimodal.db.mongo import MongoAdapter
 
+__all__ = ["ingest_files"]
+
 
 def ingest_files(
     dataset: fo.Dataset, filepaths: list[str], *, adapter, manifest
@@ -43,6 +45,3 @@ def ingest_files(
     ]
     MongoAdapter.write_scene_inventories(dataset, sample_and_inventory_pairs)
     dataset.save()
-
-
-__all__ = ["_get_scene_inventories", "ingest_files"]
