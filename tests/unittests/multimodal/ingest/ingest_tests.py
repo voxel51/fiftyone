@@ -162,9 +162,9 @@ class TestIngestFilepaths:
         assert len(sample_inventory_pairs) == 2
 
         sample1 = sample_inventory_pairs[0][0]
-        assert sample1.filepath.endswith("scene 1")
+        assert sample1.filepath.endswith("/scene 1")
         assert sample1.media_type == fo.core.media.MULTIMODAL
 
         sample2 = sample_inventory_pairs[1][0]
-        assert sample2.filepath.endswith("scene 2")
+        assert sample2.filepath.endswith("/scene 2")
         assert sample2.media_type == fo.core.media.MULTIMODAL
