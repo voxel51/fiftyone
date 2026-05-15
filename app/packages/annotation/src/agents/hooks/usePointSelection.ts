@@ -1,6 +1,5 @@
 import { useCallback, useRef } from "react";
 import {
-  DetectionOverlay,
   DrawStyle,
   InteractiveKeypointHandler,
   KeypointOptions,
@@ -14,18 +13,21 @@ import {
 import { atom, getDefaultStore, useAtom } from "jotai";
 import { v4 as uuidv4 } from "uuid";
 import { ClickEventModifiers } from "@fiftyone/utilities";
-import { AnnotationLabel } from "@fiftyone/state";
 import { useAnnotationContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/state";
+import {
+  NEGATIVE_POINT_VARIANT,
+  POSITIVE_POINT_VARIANT,
+  type PointSelectionVariant,
+  resolvePointVariant,
+} from "./resolvePointVariant";
 
-/** Positive points are explicitly *included* in inference results. */
-export const POSITIVE_POINT_VARIANT = "positive" as const;
-/** Negative points are explicitly *excluded* from inference results. */
-export const NEGATIVE_POINT_VARIANT = "negative" as const;
-
-/** Union of supported point selection variants. */
-export type PointSelectionVariant =
-  | typeof POSITIVE_POINT_VARIANT
-  | typeof NEGATIVE_POINT_VARIANT;
+// Re-export the variant identifiers so existing callers can continue to
+// import them from `./usePointSelection`.
+export {
+  NEGATIVE_POINT_VARIANT,
+  POSITIVE_POINT_VARIANT,
+  type PointSelectionVariant,
+};
 
 /** Mapping of supported variant styles to draw styles. */
 const POINT_SELECTION_VARIANT_STYLES: Record<PointSelectionVariant, DrawStyle> =
@@ -62,38 +64,6 @@ export interface PointSelection {
   /** The current activation status of the point selection tool. */
   isActive: boolean;
 }
-
-/**
- * Resolve the point variant with the given context.
- *
- * Points placed on the current label's mask are interpreted as negative;
- * points placed off-mask are positive.
- * If shift is pressed while clicking, the variants are inverted.
- *
- * @param relativePoint Point in relative coordinates
- * @param shiftKey Flag indicating whether the shift key is pressed
- * @param label Label to use for mask hit detection
- */
-const resolvePointVariant = (
-  relativePoint: Point,
-  { shiftKey }: ClickEventModifiers,
-  label: AnnotationLabel
-): PointSelectionVariant => {
-  const onMask =
-    label && label.overlay instanceof DetectionOverlay
-      ? label.overlay.containsMaskPixel(relativePoint)
-      : false;
-
-  const variant = onMask ? NEGATIVE_POINT_VARIANT : POSITIVE_POINT_VARIANT;
-
-  return !shiftKey
-    ? // normal variant if shift key is not pressed
-      variant
-    : // otherwise invert the variant
-    variant === POSITIVE_POINT_VARIANT
-    ? NEGATIVE_POINT_VARIANT
-    : POSITIVE_POINT_VARIANT;
-};
 
 /**
  * Point hit action resolver; clicking on an existing point should delete it.
