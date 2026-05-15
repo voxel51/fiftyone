@@ -721,7 +721,20 @@ The base location must host the two files that the App fetches:
 * `encoder.with_runtime_opt.ort`
 * `decoder.onnx`
 
-The SAM2 tiny variant is recommended for optimal user experience.
+The SAM2 tiny variant is recommended for optimal user experience. The
+simplest way to populate your own location is to mirror the files Voxel51
+serves from its CDN, which are the canonical artifacts that the App is
+built against:
+
+.. code-block:: shell
+
+    curl -sSL -o encoder.with_runtime_opt.ort \
+        https://models-cdn.voxel51.com/sam2/encoder.with_runtime_opt.ort
+    curl -sSL -o decoder.onnx \
+        https://models-cdn.voxel51.com/sam2/decoder.onnx
+
+Then upload both files to the location referenced by
+`FIFTYONE_MODEL_WEIGHTS_BASE_SAM2`.
 
 .. code-block:: shell
 
