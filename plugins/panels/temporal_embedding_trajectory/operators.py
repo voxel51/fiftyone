@@ -254,12 +254,17 @@ class ComputeTrajectoryEmbeddings(foo.Operator):
                 # the raw embeddings (cosine-distance) and
                 # compute_visualization.
                 model = foz.load_zoo_model(model_name)
-                embeddings = frames.compute_embeddings(
+                # compute_embeddings writes to embeddings_field and
+                # returns None when a field is specified; pull the
+                # array back from the field for the downstream
+                # jump-distance step.
+                frames.compute_embeddings(
                     model=model,
                     embeddings_field=embeddings_field,
                     batch_size=batch_size,
                     progress=True,
                 )
+                embeddings = np.array(frames.values(embeddings_field))
 
         fob.compute_visualization(
             frames,
