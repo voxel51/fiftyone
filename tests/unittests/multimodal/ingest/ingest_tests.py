@@ -134,21 +134,8 @@ class TestGetSceneInventories:
         )
 
 
-class SampleMatcher:
-    def __init__(self, expected_filepath, expected_media_type):
-        self.expected_filepath = expected_filepath
-        self.expected_media_type = expected_media_type
-
-    def __eq__(self, other):
-        return (
-            isinstance(other, fo.Sample)
-            and other.filepath == self.expected_filepath
-            and other.media_type == self.expected_media_type
-        )
-
-
 class TestIngestFilepaths:
-    def test_success(self, adapter):
+    def test_success(self):
         dataset = Mock()
         adapter = Mock()
 
