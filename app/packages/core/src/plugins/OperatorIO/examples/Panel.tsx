@@ -18,6 +18,7 @@ import {
   data as smartFormData,
   schema as smartFormSchema,
 } from "./smart-form.json";
+import Lab from "./Lab";
 
 // Panel enabled only in development environment for testing and debugging SchemaIO
 if (import.meta.env?.MODE === "development") {
@@ -78,6 +79,7 @@ function OperatorIO() {
                 { value: "inferred-input", label: "Inferred Input" },
                 { value: "basic-input", label: "Basic Input" },
                 { value: "smart-form", label: "Smart Form" },
+                { value: "lab", label: "Lab" },
               ],
             },
           }}
@@ -117,6 +119,7 @@ function OperatorIO() {
           smartFormProps={{ liveValidate: "onChange" }}
         />
       )}
+      {mode === "lab" && <Lab />}
     </Box>
   );
 }
