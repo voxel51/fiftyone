@@ -6,7 +6,7 @@ Ingest scaffolding for multimodal workflows.
 |
 """
 
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 from threading import Semaphore
 from typing import Generator
 
@@ -60,7 +60,7 @@ def _buffer_map(executor, fn, items, *, buffersize):
         future = executor.submit(call_and_release, item)
         futures.append(future)
 
-    return [future.result() for future in as_completed(futures)]
+    return [future.result() for future in futures]
 
 
 def _get_scene_inventories(
