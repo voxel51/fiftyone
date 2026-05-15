@@ -60,30 +60,13 @@ describe("computeMaskBbox", () => {
 
   it("Returns localized bbox for localized mask", () => {
     const mask = mask256().fill(-5);
-    // Small positive region in mask space
-    const regionX = 15;
-    const regionY = 80;
-    const regionW = 10;
-    const regionH = 20;
-    for (let y = regionY; y < regionY + regionH; y++)
-      for (let x = regionX; x < regionX + regionW; x++)
+    for (let y = 80; y < 100; y++)
+      for (let x = 15; x < 25; x++)
         mask[y * SAM2_OUTPUT_SIZE + x] = 5;
-
-    // Derive expected bbox using the same mapping as computeMaskBbox
-    const W = 100, H = 50;
-    const maskW = SAM2_OUTPUT_SIZE;
-    const maskH = SAM2_OUTPUT_SIZE;
-    const x1 = Math.max(0, Math.floor((regionX / maskW) * W));
-    const y1 = Math.max(0, Math.floor((regionY / maskH) * H));
-    const x2 = Math.min(W - 1, Math.ceil(((regionX + regionW - 1) / maskW) * W));
-    const y2 = Math.min(H - 1, Math.ceil(((regionY + regionH - 1) / maskH) * H));
 
     const bbox = computeMaskBbox(mask, img)!;
     expect(bbox).not.toBeNull();
-    expect(bbox.x).toBe(x1);
-    expect(bbox.y).toBe(y1);
-    expect(bbox.w).toBe(x2 - x1 + 1);
-    expect(bbox.h).toBe(y2 - y1 + 1);
+    expect(bbox).toEqual({ x: 5, y: 15, w: 6, h: 6 });
   });
 });
 
