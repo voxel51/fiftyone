@@ -1,5 +1,6 @@
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
+import { useSidebarExpandedState } from "@fiftyone/state";
 import { makePseudoField } from "@fiftyone/utilities";
 import { Checkbox } from "@mui/material";
 import Color from "color";
@@ -10,8 +11,6 @@ import RegularEntry from "../RegularEntry";
 import FilterablePathEntries from "./FilterablePathEntries";
 import Loading from "./Loading";
 import useTitleTemplate from "./useTitleTemplate";
-
-const LABEL_TAGS = "_label_tags";
 
 const useOnClick = ({ modal, path }: { modal: boolean; path: string }) => {
   return useRecoilCallback<[React.MouseEvent<HTMLButtonElement>], void>(
@@ -54,9 +53,10 @@ const FilterableEntry = ({
   const field = useField(path);
   const fieldIsFiltered = useRecoilValue(fos.fieldIsFiltered({ path, modal }));
   const expandedPath = useRecoilValue(fos.expandPath(path));
-  const expanded = useRecoilValue(
-    fos.sidebarExpanded({ modal, path: expandedPath })
-  );
+  const [expanded, setExpanded] = useSidebarExpandedState({
+    modal,
+    path: expandedPath,
+  });
   const onClick = useOnClick({ modal, path });
   const theme = useTheme();
   const color = disabled ? theme.background.paper : pathColor;
@@ -68,11 +68,13 @@ const FilterableEntry = ({
           ? Color(color).alpha(0.25).string()
           : theme.background.level1
       }
+      clickable={!disabled}
       color={color}
       entryKey={entryKey}
+      onHeaderClick={!disabled ? () => setExpanded((v) => !v) : undefined}
       heading={
         <>
-          {!disabled && !(modal && path === LABEL_TAGS) && (
+          {!disabled && !(modal && path === fos.LABEL_TAGS_FIELD) && (
             <Checkbox
               key="checkbox"
               checked={active}
@@ -84,6 +86,7 @@ const FilterableEntry = ({
               }}
               data-cy={`checkbox-${path}`}
               onClick={onClick}
+              onMouseUp={(e) => e.stopPropagation()}
             />
           )}
           {

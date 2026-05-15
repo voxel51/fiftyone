@@ -43,7 +43,16 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer }, testInfo) => {
         dataset.persistent = True
 
         embeddings = np.random.random((5, 512))
-        fob.compute_visualization(dataset, brain_key="img_viz", embeddings=embeddings)
+        #
+        # fob.compute_visualization(dataset, brain_key="img_viz", embeddings=embeddings)
+        #
+        # TODO: revert to the line above (i.e. no method="pca").
+        # fob.compute_visualization segfaults on # CI's Linux runner.
+        # TensorFlow loads during import and crashes the Python process.
+        # Suspected to coincide with the brain version bump in #7455.
+        fob.compute_visualization(
+            dataset, brain_key="img_viz", embeddings=embeddings, method="pca"
+        )
 
         dataset.save()
     `

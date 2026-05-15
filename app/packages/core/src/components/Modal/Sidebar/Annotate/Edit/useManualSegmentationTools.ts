@@ -16,6 +16,7 @@ export const SegmentationTool = {
   Brush: "brush",
   Pen: "pen",
   AI: "ai",
+  Merge: "merge",
 } as const;
 export type SegmentationTool =
   (typeof SegmentationTool)[keyof typeof SegmentationTool];
@@ -81,7 +82,7 @@ export const useManualSegmentationTools = () => {
   }, [setToolSizeRaw]);
 
   const setToolSize = useCallback(
-    (size: number) => {
+    (size: number = DEFAULT_TOOL_SIZE) => {
       const n = Number(size);
       if (Number.isNaN(n)) return;
       setToolSizeRaw(Math.max(MIN_TOOL_SIZE, Math.min(n, MAX_TOOL_SIZE)));

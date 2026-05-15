@@ -116,9 +116,7 @@ class McapAdapter(MultimodalAdapter):
                 time_tracks=[],
                 streams=[],
                 static_coordinate_frame_edges=[],
-                produced_at=datetime.datetime.now(
-                    datetime.timezone.utc
-                ).isoformat(),
+                produced_at=now,
                 produced_by="McapAdapter 1.0",
             )
 

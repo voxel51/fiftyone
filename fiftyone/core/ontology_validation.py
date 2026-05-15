@@ -7,7 +7,10 @@ Validation for :class:`fiftyone.core.ontology.AnnotationOntology`.
 """
 
 from fiftyone.core.annotation import constants as _fac
-from fiftyone.core.annotation.attributes import WhenOperator
+from fiftyone.core.annotation.attributes import (
+    WhenOperator,
+    collect_leaf_conditions,
+)
 from fiftyone.core.ontology import AnnotationOntology
 
 
@@ -57,7 +60,7 @@ def _validate_when_operators(ontology: AnnotationOntology) -> list[str]:
     for attr in ontology.attributes:
         if attr.when is None:
             continue
-        for w in attr.when:
+        for w in collect_leaf_conditions(attr.when):
             try:
                 WhenOperator(w.operator)
             except (ValueError, TypeError):
@@ -112,7 +115,7 @@ def _validate_then_keys(ontology: AnnotationOntology) -> list[str]:
     for attr in ontology.attributes:
         if attr.when is None:
             continue
-        for w in attr.when:
+        for w in collect_leaf_conditions(attr.when):
             if w.then is None:
                 continue
             # set difference: keys present in w.then but not in the
@@ -136,7 +139,11 @@ def _validate_no_cycles(ontology: AnnotationOntology) -> list[str]:
     """
     graph: dict[str, list[str]] = {}
     for attr in ontology.attributes:
-        edges = [w.field for w in (attr.when or [])]
+        edges = (
+            [w.field for w in collect_leaf_conditions(attr.when)]
+            if attr.when is not None
+            else []
+        )
         graph.setdefault(attr.name, []).extend(edges)
     errors: list[str] = []
     for start in graph:

@@ -37,6 +37,33 @@ class Ontologies(HTTPEndpoint):
         )
 
 
+class OntologyAttributes(HTTPEndpoint):
+    """Returns the attributes list for a single annotation ontology.
+
+    ``GET /ontologies/{name}/attributes`` — path parameter ``name`` is the
+    ontology's human-readable name (URL-encoded). Each attribute dict in the
+    response carries a ``_source`` key set to the ontology name, matching the
+    format expected by the frontend merge logic.
+
+    Returns 404 when the feature flag is off, when the ontology does not
+    exist, or when it is not an annotation ontology.
+    """
+
+    async def get(self, request: Request) -> JSONResponse:
+        if not is_feature_enabled("VFF_ONTOLOGY_CA"):
+            raise HTTPException(status_code=404)
+
+        name = request.path_params["name"]
+
+        attributes = await fou.run_sync_task(_load_attributes, name)
+        if attributes is None:
+            raise HTTPException(
+                status_code=404, detail=f"Ontology '{name}' not found"
+            )
+
+        return JSONResponse({"attributes": attributes})
+
+
 async def _list_ontology_summaries(
     type_filter: Optional[str] = None,
     name_filter: Optional[str] = None,
@@ -80,3 +107,29 @@ async def _list_ontology_summaries(
         dt = s.get("last_modified_at")
         s["last_modified_at"] = dt.isoformat() if dt is not None else None
     return summaries
+
+
+def _load_attributes(name: str) -> Optional[list[dict[str, Any]]]:
+    """Returns the attributes list for an annotation ontology, or ``None``.
+
+    Each attribute dict carries a ``_source`` key set to the ontology name so
+    the frontend can tag and later strip ontology-owned attributes. Returns
+    ``None`` when the ontology does not exist or is not an annotation ontology.
+
+    This is a synchronous function intended to run inside
+    :func:`fiftyone.core.utils.run_sync_task`.
+    """
+    from fiftyone.core.annotation.hydrate_label_schemas import (
+        attributes_with_source,
+    )
+    from fiftyone.core.ontology import load_ontology
+
+    try:
+        ontology = load_ontology(name)
+    except ValueError:
+        return None
+
+    if not ontology.is_annotation_ontology:
+        return None
+
+    return attributes_with_source(ontology)
