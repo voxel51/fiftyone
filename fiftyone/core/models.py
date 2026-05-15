@@ -185,19 +185,9 @@ def apply_model(
         field_mapping = None
         needs_fields = None
 
-    use_data_loader = (
-        isinstance(model, (SupportsGetItem, TorchModelMixin))
-        and not process_video_frames
-    )
+    use_data_loader = isinstance(model, (SupportsGetItem, TorchModelMixin))
 
-    use_video_frames_data_loader = (
-        isinstance(model, (SupportsGetItem, TorchModelMixin))
-        and process_video_frames
-    )
-
-    if num_workers is not None and not (
-        use_data_loader or process_video_frames
-    ):
+    if num_workers is not None and not use_data_loader:
         logger.warning("Ignoring unsupported `num_workers` parameter")
 
     if output_dir is not None:
@@ -229,7 +219,7 @@ def apply_model(
         if store_logits:
             context.enter_context(fou.SetAttributes(model, store_logits=True))
 
-        if use_data_loader or use_video_frames_data_loader:
+        if use_data_loader:
             context.enter_context(fou.SetAttributes(model, preprocess=False))
 
         if needs_samples:
@@ -251,15 +241,13 @@ def apply_model(
                 progress,
             )
 
-        batch_size = _parse_batch_size(
-            batch_size, model, use_data_loader or use_video_frames_data_loader
-        )
+        batch_size = _parse_batch_size(batch_size, model, use_data_loader)
 
         if process_video_frames:
             label_field, _ = samples._handle_frame_field(label_field)
 
-            if use_video_frames_data_loader:
-                return _apply_image_model_with_video_data_loader(
+            if use_data_loader:
+                return _apply_image_model_with_frames_data_loader(
                     samples,
                     model,
                     label_field,
@@ -298,7 +286,7 @@ def apply_model(
                 progress,
             )
 
-        if use_data_loader:
+        if use_data_loader and not process_video_frames:
             return _apply_image_model_data_loader(
                 samples,
                 model,
@@ -550,7 +538,7 @@ def _apply_image_model_data_loader(
             pb.update(len(sample_batch))
 
 
-def _apply_image_model_with_video_data_loader(
+def _apply_image_model_with_frames_data_loader(
     samples,
     model,
     label_field,
@@ -564,10 +552,6 @@ def _apply_image_model_with_video_data_loader(
     field_mapping,
     pin_memory,
 ):
-    """Applies the image model to the video samples in the collection.
-
-    Only supports applying image models to video frames.
-    """
     label_field, _ = samples._handle_frame_field(label_field)
     _, total_frame_count = _get_frame_counts(samples)
 

@@ -694,6 +694,18 @@ class VideoFrameGetItem:
         self.filepath_key = filepath_key
         self.has_filepath = filepath_key in self.required_keys
 
+        # Patch base get_item's _load_media method
+        def _load_image_from_frame(d):
+            """Replacement that returns pre-loaded frame instead of loading."""
+            frame = d.pop("frame", None)
+            if frame is None:
+                raise ValueError("Frame not available for injection")
+            return frame
+
+        self._base_load_media = getattr(base_get_item, "_load_media", None)
+        if self.has_filepath:
+            self.base_get_item._load_media = _load_image_from_frame
+
     def __call__(self, sample_dict):
         """Modified __call__ that uses injected frames instead of loading from filepath.
 
@@ -703,36 +715,17 @@ class VideoFrameGetItem:
             sample_dict[self.filepath_key] = None
         return self._call_with_injected_frame(sample_dict)
 
+    def __del__(self):
+        self.base_get_item._load_media = self._base_load_media
+
     def _call_with_injected_frame(self, sample_dict):
         """Call base get_item with frame injection.
 
         Args:
-            frame: a video frame
             sample_dict: dict containing required sample fields (with filepath set to None)
         """
-        base_load_media = None
-        if hasattr(self.base_get_item, "_load_media"):
-            base_load_media = self.base_get_item._load_media
-
-        def _load_image_from_frame(d):
-            """Replacement that returns pre-loaded frame instead of loading."""
-            frame = d.pop("frame", None)
-            if frame is None:
-                raise ValueError("Frame not available for injection")
-            return frame
-
-        try:
-            if self.has_filepath and hasattr(
-                self.base_get_item, "_load_media"
-            ):
-                self.base_get_item._load_media = _load_image_from_frame
-
-            result = self.base_get_item(sample_dict)
-            return result
-
-        finally:
-            if base_load_media is not None:
-                self.base_get_item._load_media = base_load_media
+        result = self.base_get_item(sample_dict)
+        return result
 
 
 class TorchImageModel(
@@ -2704,14 +2697,18 @@ class TorchVideoFramesIterableDataset(IterableDataset):
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection`
                 from which to extract image paths
-            get_item (None): a :class:`fiftyone.utils.torch.GetItem` instance for the image model to apply to video frames
-            transform (None): an optional transform function to apply to each frame. Only used when get_item is None.
-            use_numpy (False): whether to use numpy arrays rather than PIL frames
-                and Torch tensors when loading data. Only used when get_item is None.
-            force_rgb (False): whether to force convert the frames to RGB. Only used when get_item is None.
+            get_item (None): a :class:`fiftyone.utils.torch.GetItem` instance
+                for the image model to apply to video frames
+            transform (None): an optional transform function to apply to each
+                frame. Only used when get_item is None.
+            use_numpy (False): whether to use numpy arrays rather than PIL
+                frames and Torch tensors when loading data. Only used when
+                get_item is None.
+            force_rgb (False): whether to force convert the frames to RGB.
+                Only used when get_item is None.
             chunk_size (None): number of frames in a chunk
-            skip_failures (False): whether to return an ``Exception`` object rather
-                than raising it if an error occurs while loading a sample
+            skip_failures (False): whether to return an ``Exception`` object
+                rather than raising if an error occurs while loading a sample
         """
         self.chunk_size = chunk_size if chunk_size is not None else 1
 
@@ -2782,11 +2779,17 @@ class TorchVideoFramesIterableDataset(IterableDataset):
 
     def _cleanup_current_decoder(self):
         """Close current decoder if any."""
-        if self._current_decoder is not None:
-            self._current_decoder.close()
-            self._current_decoder = None
-            self._current_iterator = None
-            self._current_video_path = None
+        try:
+            if self._current_decoder is not None:
+                self._current_decoder.close()
+                self._current_decoder = None
+                self._current_iterator = None
+                self._current_video_path = None
+        except Exception as e:
+            if self.skip_failures:
+                logger.warning(f"Failed to clean up current decoder: {e}")
+            else:
+                raise
 
     def _extract_sample_data(self, samples):
         """Extract all required fields from samples (except filepath).
