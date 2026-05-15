@@ -145,6 +145,33 @@ export class ModalAnnotateSidebarPom {
       await this.page.getByTestId("detection-mode").click();
     }
   }
+
+  /**
+   * Toggle segmentation mode. When inactive this enters segmentation mode
+   * (selecting the Select tool by default). When active it deactivates the
+   * mode.
+   */
+  async segmentationMode() {
+    await this.page.getByTestId("segmentation-mode").click();
+  }
+
+  /**
+   * The Voodo segmentation toolbar lives in a portal. Buttons are tagged with
+   * `aria-label="Select" | "Brush" | "Pen" | "AI" | "Merge"` (and likewise for
+   * mode/shape sub-groups).
+   */
+  private toolbarButton(label: string) {
+    return this.page.getByRole("button", { name: label, exact: true });
+  }
+
+  /**
+   * Switch to a segmentation tool from the floating segmentation toolbar.
+   *
+   * Requires `segmentationMode()` to have been called first.
+   */
+  async pickTool(tool: "Select" | "Brush" | "Pen" | "AI" | "Merge") {
+    await this.toolbarButton(tool).click();
+  }
 }
 
 /**
@@ -272,5 +299,34 @@ class ModalAnnotateSidebarAsserter {
       "detection-mode"
     );
     await expect(button).toHaveAttribute("data-cy-active", active.toString());
+  }
+
+  /**
+   * Assert that segmentation mode is active or inactive
+   *
+   * @param active Whether segmentation mode should be active (default true)
+   */
+  async segmentationModeIsActive(active = true) {
+    const button = this.modalAnnotateSidebar.page.getByTestId(
+      "segmentation-mode"
+    );
+    await expect(button).toHaveAttribute("data-cy-active", active.toString());
+  }
+
+  /**
+   * Assert that a given segmentation tool button is currently the active one
+   * in the floating toolbar.
+   *
+   * @param tool The tool that should be active
+   */
+  async toolIsActive(tool: "Select" | "Brush" | "Pen" | "AI" | "Merge") {
+    // Voodo's ToolbarAction reflects the `active` prop as an attribute on the
+    // <button>. We don't depend on Voodo's internal class names: aria-pressed
+    // is the closest standard signal.
+    const button = this.modalAnnotateSidebar.page.getByRole("button", {
+      name: tool,
+      exact: true,
+    });
+    await expect(button).toHaveAttribute("aria-pressed", "true");
   }
 }

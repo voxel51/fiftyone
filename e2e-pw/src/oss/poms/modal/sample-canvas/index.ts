@@ -29,7 +29,10 @@ export class SampleCanvasPom {
   #mouseX = 0;
   #mouseY = 0;
 
-  constructor(readonly page: Page, readonly eventUtils: EventUtils) {
+  constructor(
+    readonly page: Page,
+    readonly eventUtils: EventUtils
+  ) {
     this.assert = new SampleCanvasAsserter(this);
   }
 
@@ -94,6 +97,19 @@ export class SampleCanvasPom {
     this.#mouseX = xy.x;
     this.#mouseY = xy.y;
     await this.page.mouse.dblclick(xy.x, xy.y);
+  }
+
+  /**
+   * Mouse right-click on the sample canvas.
+   *
+   * @param x The x coordinate between [0, 1]
+   * @param y The y coordinate between [0, 1]
+   */
+  async rightClick(x: number, y: number) {
+    const xy = await this.#toScreenCoordinates(x, y);
+    this.#mouseX = xy.x;
+    this.#mouseY = xy.y;
+    await this.page.mouse.click(xy.x, xy.y, { button: "right" });
   }
 
   /**
