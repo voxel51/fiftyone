@@ -39,9 +39,18 @@ function isLabelValueWidgetPath(property: string, uiSchema: UiSchema): boolean {
 
 export function transformErrors(
   errors: RJSFValidationError[],
-  uiSchema?: UiSchema
+  uiSchema?: UiSchema,
+  formData?: Record<string, unknown>
 ) {
   const filteredErrors = errors.filter((error) => {
+    // Drop type/enum errors whose value is null
+    if (
+      formData &&
+      (error.name === "type" || error.name === "enum") &&
+      _valueAt(formData, error.property) === null
+    ) {
+      return false;
+    }
     if (!uiSchema) return true; // can't filter without the schema
     // We don't need to show validation errors on read-only fields.
     if (isLabelValueWidgetPath(error?.property ?? "", uiSchema)) {
@@ -60,4 +69,15 @@ export function transformErrors(
     }
     return error;
   });
+}
+
+function _valueAt(data: Record<string, unknown>, property?: string): unknown {
+  if (!property) return undefined;
+  const path = property.replace(/^\./, "").split(".");
+  let value: unknown = data;
+  for (const key of path) {
+    if (value === null || value === undefined) return value;
+    value = (value as Record<string, unknown>)[key];
+  }
+  return value;
 }
