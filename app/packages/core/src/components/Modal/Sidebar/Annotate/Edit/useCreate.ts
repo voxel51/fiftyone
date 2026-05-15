@@ -200,10 +200,10 @@ export function buildNewLabelData(
 
   if (type === POLYLINE) {
     return {
-      ...data,
-      points: options?.origin ? [[options.origin]] : [],
       closed: false,
       filled: false,
+      ...data,
+      points: options?.origin ? [[options.origin]] : [],
     };
   }
 
