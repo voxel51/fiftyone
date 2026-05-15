@@ -5,12 +5,11 @@ export const SAM2_INPUT_SIZE = 1024;
 export const SAM2_OUTPUT_SIZE = 256;
 
 // Geometric metadata from preprocessing (shared by encoder, decoder, and cache).
+// SAM2's reference preprocessing is a direct (non-aspect-preserving) resize to
+// SAM2_INPUT_SIZE x SAM2_INPUT_SIZE.
 export interface ImageGeometry {
   originalWidth: number;
   originalHeight: number;
-  scale: number;
-  padX: number;
-  padY: number;
 }
 
 export interface ProcessedImage extends ImageGeometry {
@@ -18,23 +17,16 @@ export interface ProcessedImage extends ImageGeometry {
 }
 
 /**
- * Map normalized [0,1] coordinates to the SAM2_INPUT_SIZE x SAM2_INPUT_SIZE padded/scaled
- * encoder input space.
+ * Map normalized [0,1] coordinates to the SAM2_INPUT_SIZE x SAM2_INPUT_SIZE
+ * encoder input space. Since the image is stretched to fill the full input,
+ * normalized coords map straight to [0, SAM2_INPUT_SIZE] on each axis.
  *
  * @param x Normalized x coordinate in [0,1]
  * @param y Normalized y coordinate in [0,1]
- * @param img The preprocessing metadata (scale, padding) from {@link preprocessImage}
  * @returns Pixel coordinates in encoder input space
  */
-export function transformPoint(
-  x: number,
-  y: number,
-  img: ImageGeometry
-): [number, number] {
-  return [
-    x * img.originalWidth * img.scale + img.padX,
-    y * img.originalHeight * img.scale + img.padY,
-  ];
+export function transformPoint(x: number, y: number): [number, number] {
+  return [x * SAM2_INPUT_SIZE, y * SAM2_INPUT_SIZE];
 }
 
 /**
@@ -72,13 +64,9 @@ export function computeMaskBbox(
   maskH = SAM2_OUTPUT_SIZE,
   maskW = SAM2_OUTPUT_SIZE
 ): { x: number; y: number; w: number; h: number } | null {
-  const { originalWidth: W, originalHeight: H, scale, padX, padY } = img;
-  const msx = maskW / SAM2_INPUT_SIZE;
-  const msy = maskH / SAM2_INPUT_SIZE;
-  const mpx = Math.floor(padX * msx);
-  const mpy = Math.floor(padY * msy);
-  const mw = Math.round(W * scale * msx);
-  const mh = Math.round(H * scale * msy);
+  const { originalWidth: W, originalHeight: H } = img;
+  // The image fills the full mask (SAM2 stretches to 1024x1024), so the
+  // mask-space coords map directly to normalized [0,1] image coords.
 
   // Find exact bbox of positive logits in mask space
   let mx0 = maskW, my0 = maskH, mx1 = -1, my1 = -1;
@@ -97,10 +85,10 @@ export function computeMaskBbox(
     return null;
 
   // Map mask-space bbox to original image coordinates
-  const x1 = Math.max(0, Math.floor(((mx0 - mpx) / mw) * W));
-  const y1 = Math.max(0, Math.floor(((my0 - mpy) / mh) * H));
-  const x2 = Math.min(W - 1, Math.ceil(((mx1 - mpx) / mw) * W));
-  const y2 = Math.min(H - 1, Math.ceil(((my1 - mpy) / mh) * H));
+  const x1 = Math.max(0, Math.floor((mx0 / maskW) * W));
+  const y1 = Math.max(0, Math.floor((my0 / maskH) * H));
+  const x2 = Math.min(W - 1, Math.ceil((mx1 / maskW) * W));
+  const y2 = Math.min(H - 1, Math.ceil((my1 / maskH) * H));
 
   return { x: x1, y: y1, w: x2 - x1 + 1, h: y2 - y1 + 1 };
 }
@@ -124,21 +112,17 @@ export function postprocessMask(
   maskH = SAM2_OUTPUT_SIZE,
   maskW = SAM2_OUTPUT_SIZE
 ): Float32Array {
-  const { originalWidth: W, originalHeight: H, scale, padX, padY } = img;
-  const msx = maskW / SAM2_INPUT_SIZE;
-  const msy = maskH / SAM2_INPUT_SIZE;
-  const mpx = Math.floor(padX * msx);
-  const mpy = Math.floor(padY * msy);
-  const mw = Math.round(W * scale * msx);
-  const mh = Math.round(H * scale * msy);
+  const { originalWidth: W, originalHeight: H } = img;
+  // The image fills the full mask: map image-space (ox, oy) directly to
+  // mask coords (ox/W * maskW, oy/H * maskH).
   const out = new Float32Array(bbox.w * bbox.h);
 
   for (let iy = 0; iy < bbox.h; iy++) {
     for (let ix = 0; ix < bbox.w; ix++) {
       const ox = bbox.x + ix;
       const oy = bbox.y + iy;
-      const mx = (ox / W) * mw + mpx;
-      const my = (oy / H) * mh + mpy;
+      const mx = (ox / W) * maskW;
+      const my = (oy / H) * maskH;
       const x0 = Math.max(0, Math.min(Math.floor(mx), maskW - 1));
       const x1 = Math.min(x0 + 1, maskW - 1);
       const y0 = Math.max(0, Math.min(Math.floor(my), maskH - 1));
