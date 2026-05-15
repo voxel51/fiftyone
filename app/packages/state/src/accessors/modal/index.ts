@@ -1,12 +1,14 @@
+export * from "./3d";
+
 import type { Schema } from "@fiftyone/utilities";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useMemo } from "react";
 import { useRecoilState, useRecoilValue, useRecoilValueLoadable } from "recoil";
-import { ModalMode, modalMode } from "../jotai";
-import { preferredGroupAnnotationSliceAtom } from "../jotai/group-annotation";
-import type { ModalViewportState } from "../jotai/modal";
-import { __unsafeModalViewportAtom } from "../jotai/modal";
-import type { ModalSample } from "../recoil";
+import { ModalMode, modalMode } from "../../jotai";
+import { preferredGroupAnnotationSliceAtom } from "../../jotai/group-annotation";
+import type { ModalViewportState } from "../../jotai/modal";
+import { __unsafeModalViewportAtom } from "../../jotai/modal";
+import type { ModalSample } from "../../recoil";
 import {
   State,
   activeFields,
@@ -15,7 +17,7 @@ import {
   lookerOptions,
   modalSample,
   selectedMediaField,
-} from "../recoil";
+} from "../../recoil";
 
 /**
  * Hook which provides the modal's current active paths,
