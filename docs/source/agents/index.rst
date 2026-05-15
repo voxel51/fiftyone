@@ -59,7 +59,7 @@ your agent can do out of the box, or :ref:`develop your own
     <div id="tutorial-cards">
     <div class="list">
 
-.. include:: skills_cards/skill_cards.rst
+.. include:: skills_ecosystem/skill_cards.rst
 
 .. raw:: html
 
@@ -74,6 +74,8 @@ your agent can do out of the box, or :ref:`develop your own
 .. toctree::
    :maxdepth: 1
    :hidden:
+   :glob:
 
    Using Agents <using_agents>
    Developing Tools & Skills <developing_skills>
+   skills_ecosystem/*

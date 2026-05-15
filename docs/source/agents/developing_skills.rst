@@ -145,7 +145,13 @@ skill in your plugin's :ref:`fiftyone.yml <plugin-fiftyone-yml>`:
     fiftyone:
       version: ">=0.23"
     skills:
-      - skills/my-skill/SKILL.md
+      - my-skill
+
+.. note::
+
+    The name declared under ``skills:`` must match the ``name`` field in the
+    corresponding skill's YAML frontmatter. FiftyOne resolves skills by
+    scanning the plugin's ``skills/`` directory and matching on that field.
 
 When a user installs your plugin, the skill is available automatically. The
 agent can discover the operator via MCP *and* has structured guidance on how
