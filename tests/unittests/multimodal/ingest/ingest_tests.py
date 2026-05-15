@@ -150,7 +150,7 @@ class TestIngestFilepaths:
                 manifest=None,
             )
 
-        mock_get_inventories.assert_called_with(
+        mock_get_inventories.assert_called_once_with(
             ["/some/path", "/another/path"], adapter=adapter
         )
         mock_write.assert_called_once()
