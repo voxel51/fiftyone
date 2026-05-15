@@ -4,6 +4,7 @@
 |
 """
 
+from pathlib import Path
 from unittest.mock import Mock, call, patch
 
 import pytest
@@ -162,9 +163,9 @@ class TestIngestFilepaths:
         assert len(sample_inventory_pairs) == 2
 
         sample1 = sample_inventory_pairs[0][0]
-        assert sample1.filepath.endswith("/scene 1")
+        assert Path(sample1.filepath).name == "scene 1"
         assert sample1.media_type == fo.core.media.MULTIMODAL
 
         sample2 = sample_inventory_pairs[1][0]
-        assert sample2.filepath.endswith("/scene 2")
+        assert Path(sample2.filepath).name == "scene 2"
         assert sample2.media_type == fo.core.media.MULTIMODAL
