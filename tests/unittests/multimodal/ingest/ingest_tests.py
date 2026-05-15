@@ -158,13 +158,16 @@ class TestIngestFilepaths:
         mock_write.assert_called_once()
         dataset.save.assert_called_once()
 
-        args = mock_write.mock_calls[0][1]
-        assert args[0] == dataset
+        write_args, _ = mock_write.call_args
+        assert write_args[0] is dataset
 
-        sample1 = args[1][0][0]
+        sample_inventory_pairs = write_args[1]
+        assert len(sample_inventory_pairs) == 2
+
+        sample1 = sample_inventory_pairs[0][0]
         assert sample1.filepath.endswith("scene 1")
         assert sample1.media_type == fo.core.media.MULTIMODAL
 
-        sample2 = args[1][1][0]
+        sample2 = sample_inventory_pairs[1][0]
         assert sample2.filepath.endswith("scene 2")
         assert sample2.media_type == fo.core.media.MULTIMODAL
