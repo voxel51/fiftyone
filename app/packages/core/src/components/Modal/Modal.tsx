@@ -44,11 +44,11 @@ import ModalNavigation from "./ModalNavigation";
 import { ModalSpace } from "./ModalSpace";
 import { Sidebar } from "./Sidebar";
 import SchemaManagementProvider from "./Sidebar/Annotate/SchemaManagementProvider";
+import useCanManageSchema from "./Sidebar/Annotate/useCanManageSchema";
 import { useAnnotationTracking } from "./Sidebar/Annotate/useAnnotationTracking";
 import { SegmentationToolbar } from "./Sidebar/Annotate/Edit/SegmentationToolbar";
 import { ModalStatusBar } from "./ModalStatusBar";
 import { useAnnotationStatus } from "./Sidebar/Annotate/Edit/useAnnotationStatus";
-import useCanManageSchema from "./Sidebar/Annotate/useCanManageSchema";
 import { TooltipInfo } from "./TooltipInfo";
 import { useLookerHelpers, useTooltipEventHandler } from "./hooks";
 import { modalContext } from "./modal-context";
@@ -78,6 +78,7 @@ const ModalContainer = styled.div`
 `;
 
 const SpacesContainer = styled.div`
+  position: relative;
   width: 100%;
   height: 100%;
   display: flex;
@@ -145,6 +146,8 @@ const ModalErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => {
 };
 
 const Modal = () => {
+  useAnnotationStatus();
+
   const wrapperRef = useRef<HTMLDivElement>(null);
   const pointerDownTargetRef = useRef<EventTarget | null>(null);
   const { enabled: isAnnotationEnabled } = useRecoilValue(canAnnotate);
@@ -371,6 +374,7 @@ const Modal = () => {
             <SegmentationToolbar />
             <SpacesContainer>
               <ModalSpace />
+              <ModalStatusBar />
             </SpacesContainer>
             {isSidebarVisible && <Sidebar />}
             <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_RIGHT} />

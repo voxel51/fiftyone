@@ -180,7 +180,9 @@ const ListValueEntry = ({
           : ftype
       })`}
       backgroundColor={backgroundColor}
+      clickable
       color={color}
+      onHeaderClick={() => setExpanded(!expanded)}
       heading={
         <NameAndCountContainer>
           <FieldLabelAndInfo
@@ -218,6 +220,10 @@ const ListValueEntry = ({
               setExpanded(!expanded);
             }}
             onMouseDown={(event) => {
+              event.stopPropagation();
+              event.preventDefault();
+            }}
+            onMouseUp={(event) => {
               event.stopPropagation();
               event.preventDefault();
             }}

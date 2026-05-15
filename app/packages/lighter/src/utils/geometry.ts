@@ -51,6 +51,45 @@ export function project2d(
 }
 
 /**
+ * Projects a point onto a line segment, clamping the result to the segment's
+ * endpoints when the perpendicular projection would fall outside.
+ *
+ * Differs from {@link project2d} (which projects onto the *infinite* line
+ * through the two endpoints) by clamping to the segment itself, so the
+ * returned point always lies on or between `segmentStart` and `segmentEnd`.
+ *
+ * @param point The point to project, as `[x, y]`.
+ * @param segmentStart Segment start endpoint, as `[x, y]`.
+ * @param segmentEnd Segment end endpoint, as `[x, y]`.
+ * @returns The closest point on the segment to `point`, as `[x, y]`. When the
+ *   segment is zero-length, returns a copy of `segmentStart`.
+ */
+export function projectOntoSegment2d(
+  point: [number, number],
+  segmentStart: [number, number],
+  segmentEnd: [number, number]
+): [number, number] {
+  const dx = segmentEnd[0] - segmentStart[0];
+  const dy = segmentEnd[1] - segmentStart[1];
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq === 0) {
+    return [segmentStart[0], segmentStart[1]];
+  }
+
+  // fraction along the segment, clamped to [0, 1]
+  const fraction = Math.min(
+    Math.max(
+      ((point[0] - segmentStart[0]) * dx + (point[1] - segmentStart[1]) * dy) /
+        lenSq,
+      0
+    ),
+    1
+  );
+
+  return [segmentStart[0] + fraction * dx, segmentStart[1] + fraction * dy];
+}
+
+/**
  * Calculates the distance from a point to a line segment defined by two other points.
  */
 export function distanceFromLineSegment(

@@ -31,6 +31,13 @@ const GroupLabel = styled(Typography)(({ theme }) => ({
   letterSpacing: "0.3px",
 }));
 
+const StyledToolbarAction = styled(ToolbarAction)({
+  cursor: "pointer",
+  "&:disabled": {
+    cursor: "default",
+  },
+});
+
 export interface ActionToolbarProps {
   groups: ToolbarActionGroup[];
   orientation?: Orientation;
@@ -45,14 +52,14 @@ export interface ActionToolbarProps {
 
 const ActionButton = ({ action }: { action: ToolbarActionItem }) => {
   const button = (
-    <ToolbarAction
+    <StyledToolbarAction
       active={action.isActive}
       disabled={action.isDisabled}
       onClick={action.onClick}
       aria-label={action.label}
     >
       {action.icon}
-    </ToolbarAction>
+    </StyledToolbarAction>
   );
 
   if (!action.tooltip && !action.shortcut) return button;
