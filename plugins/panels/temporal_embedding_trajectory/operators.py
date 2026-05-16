@@ -247,7 +247,6 @@ class ComputeTrajectoryEmbeddings(foo.Operator):
                     f"Reusing cached embeddings in `{embeddings_field}`.",
                     variant="info",
                 )
-                embeddings = np.array(frames.values(embeddings_field))
             else:
                 # compute_embeddings wants a Model instance, not a string
                 # — load the zoo model first so we can reuse it for both
@@ -264,7 +263,32 @@ class ComputeTrajectoryEmbeddings(foo.Operator):
                     batch_size=batch_size,
                     progress=True,
                 )
-                embeddings = np.array(frames.values(embeddings_field))
+
+        # Some frames may have failed to embed (e.g. ffmpeg couldn't
+        # decode the tail of a video). Filter to the subset whose
+        # embedding actually landed on disk; all downstream work uses
+        # this restricted view.
+        frames = frames.exists(embeddings_field)
+        total = len(frames)
+        if total == 0:
+            return {
+                "ok": False,
+                "error": (
+                    "No frames have embeddings — model failed on every "
+                    "frame. Check the video file for decode errors."
+                ),
+            }
+
+        raw_values = frames.values(embeddings_field)
+        embeddings = np.asarray(
+            [v for v in raw_values if v is not None], dtype=np.float32
+        )
+        if embeddings.shape[0] < total:
+            ctx.ops.notify(
+                f"{total - embeddings.shape[0]} frame(s) had no embedding "
+                "and were dropped.",
+                variant="warning",
+            )
 
         fob.compute_visualization(
             frames,
