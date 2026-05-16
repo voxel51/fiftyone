@@ -70,6 +70,11 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
     JUMP_SIGMA_DEFAULT,
     true
   );
+  const [matchTolerance, setMatchTolerance] = usePanelStatePartial<number>(
+    "matchTolerance",
+    0,
+    true
+  );
   const [composeModel, setComposeModel] = usePanelStatePartial<string>(
     "composeModel",
     MODEL_CHOICES[0].value,
@@ -146,30 +151,28 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
 
   const compareDiff = useMemo(() => {
     const sigma = jumpSigma ?? JUMP_SIGMA_DEFAULT;
+    const tol = Math.max(0, Math.floor(matchTolerance ?? 0));
     const aJumps = sceneA ? jumpsForScene(sceneA, sigma) : [];
     const bJumps = sceneB ? jumpsForScene(sceneB, sigma) : [];
-    const aSet = new Set(aJumps.map((j) => j.frameNumber));
-    const bSet = new Set(bJumps.map((j) => j.frameNumber));
+
+    // Within-tolerance membership: O(N*M) but jump counts are small
+    // (tens, not thousands). For tol=0 this collapses to exact set
+    // membership.
+    const hasMatchIn = (target: number, others: JumpFrame[]): boolean =>
+      others.some((o) => Math.abs(o.frameNumber - target) <= tol);
 
     const onlyA: JumpFrame[] = aJumps
-      .filter((j) => !bSet.has(j.frameNumber))
+      .filter((j) => !hasMatchIn(j.frameNumber, bJumps))
       .map((j) => ({ ...j, accent: ACCENT_A }));
     const onlyB: JumpFrame[] = bJumps
-      .filter((j) => !aSet.has(j.frameNumber))
+      .filter((j) => !hasMatchIn(j.frameNumber, aJumps))
       .map((j) => ({ ...j, accent: ACCENT_B }));
-
-    // For "both", prefer A's frame_id (it's the same parent frame, just
-    // tagged twice). Keep insertion order by frame_number.
-    const bothFrameNumbers = new Set<number>();
-    aJumps.forEach((j) => {
-      if (bSet.has(j.frameNumber)) bothFrameNumbers.add(j.frameNumber);
-    });
     const both: JumpFrame[] = aJumps
-      .filter((j) => bothFrameNumbers.has(j.frameNumber))
+      .filter((j) => hasMatchIn(j.frameNumber, bJumps))
       .map((j) => ({ ...j, accent: ACCENT_BOTH }));
 
     return { onlyA, both, onlyB };
-  }, [sceneA, sceneB, jumpSigma]);
+  }, [sceneA, sceneB, jumpSigma, matchTolerance]);
 
   // Collect every frame id we want a thumbnail for, across the active
   // mode, so we batch a single get_frame_media request.
@@ -366,6 +369,22 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
             onChange={(e) => setJumpSigma(Number(e.target.value))}
           />
         </label>
+
+        {viewMode === "compare" && (
+          <label style={styles.field}>
+            <span style={styles.fieldLabel}>
+              Match tol: ±{matchTolerance ?? 0} fr
+            </span>
+            <input
+              type="range"
+              min={0}
+              max={10}
+              step={1}
+              value={matchTolerance ?? 0}
+              onChange={(e) => setMatchTolerance(Number(e.target.value))}
+            />
+          </label>
+        )}
 
         <button style={styles.button} onClick={handleCompute}>
           Compute
