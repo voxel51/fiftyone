@@ -751,6 +751,11 @@ export class PolylineOverlay extends KeypointOverlay {
    *   - **No sticky (or sticky is stale/no longer an endpoint)** — fall
    *     back to `findNearestEndpoint` against the active segment, with
    *     meta-flip selecting farthest-from-cursor.
+   *
+   * For closed polylines (segments with ≥3 points), the new point lands in
+   * the closing region and is connected to both head and tail, so two
+   * preview lines are drawn — one to each endpoint — regardless of which
+   * endpoint sticky resolves to.
    */
   protected override renderPreviewLine(
     renderer: Renderer2D,
@@ -760,35 +765,37 @@ export class PolylineOverlay extends KeypointOverlay {
       return;
     }
 
-    // Sticky-aware anchor resolution: when a sticky point id is set and the
-    // point is still an endpoint of its segment, anchor to that point — or,
-    // when meta-flip is active, to the opposite endpoint of the same
-    // segment (matching the meta-swap behavior in
-    // InteractivePolylineHandler, which toggles by endpoint identity rather
-    // than by cursor distance).
-    let entry: ReturnType<typeof this.getPointById> | null = null;
+    // Resolve the segment being previewed against (and, for open segments,
+    // the specific endpoint). Sticky takes priority when valid; otherwise
+    // fall back to `findNearestEndpoint`.
+    let segmentIdx: number | null = null;
+    let primaryEntry: ReturnType<typeof this.getPointById> | null = null;
 
     if (this.previewAnchorPointId) {
       const loc = this.findPointLocationById(this.previewAnchorPointId);
       if (loc) {
         const segLen = this.getSegmentLength(loc.segmentIdx);
         let anchorIndexInSegment: number | null = null;
+
         if (loc.indexInSegment === 0) {
           anchorIndexInSegment = this.previewAnchorFlipped ? segLen - 1 : 0;
         } else if (loc.indexInSegment === segLen - 1) {
           anchorIndexInSegment = this.previewAnchorFlipped ? 0 : segLen - 1;
         }
+
         if (anchorIndexInSegment !== null) {
+          segmentIdx = loc.segmentIdx;
           const anchorId = this.getPointIdInSegment(
             loc.segmentIdx,
             anchorIndexInSegment
           );
-          entry = anchorId ? this.getPointById(anchorId) : null;
+
+          primaryEntry = anchorId ? this.getPointById(anchorId) : null;
         }
       }
     }
 
-    if (!entry) {
+    if (segmentIdx === null) {
       const nearest = this.findNearestEndpoint(
         this.previewPoint,
         this.previewAnchorSegmentIdx ?? undefined,
@@ -803,26 +810,55 @@ export class PolylineOverlay extends KeypointOverlay {
         return;
       }
 
+      segmentIdx = nearest.segmentIdx;
       const indexInSegment = nearest.end === "head" ? 0 : segLen - 1;
       const anchorId = this.getPointIdInSegment(
         nearest.segmentIdx,
         indexInSegment
       );
-      if (!anchorId) {
-        return;
-      }
-
-      entry = this.getPointById(anchorId);
+      primaryEntry = anchorId ? this.getPointById(anchorId) : null;
     }
 
-    if (!entry) {
+    const segLen = this.getSegmentLength(segmentIdx);
+
+    // Closed segment: a new point inserts into the closing region and
+    // connects to both endpoints, so render two preview lines to telegraph
+    // both connections. The `>2` threshold matches the rendering threshold
+    // for the actual closing edge (see renderFill / closing-edge hit
+    // logic).
+    if (this.polylineClosed && segLen > 2) {
+      const headId = this.getPointIdInSegment(segmentIdx, 0);
+      const tailId = this.getPointIdInSegment(segmentIdx, segLen - 1);
+      const headEntry = headId ? this.getPointById(headId) : null;
+      const tailEntry = tailId ? this.getPointById(tailId) : null;
+      if (headEntry) {
+        this.drawPreviewLineTo(renderer, ctx, headEntry.position);
+      }
+      if (tailEntry) {
+        this.drawPreviewLineTo(renderer, ctx, tailEntry.position);
+      }
+
       return;
     }
 
-    const anchorAbs = this.relativePointToAbsolute(entry.position);
+    // Open segment (or too few points to close): single preview line to
+    // the chosen endpoint.
+    if (primaryEntry) {
+      this.drawPreviewLineTo(renderer, ctx, primaryEntry.position);
+    }
+  }
+
+  private drawPreviewLineTo(
+    renderer: Renderer2D,
+    ctx: KeypointRenderContext,
+    relativeAnchor: [number, number]
+  ): void {
+    if (!this.previewPoint) {
+      return;
+    }
 
     renderer.drawLine(
-      anchorAbs,
+      this.relativePointToAbsolute(relativeAnchor),
       this.previewPoint,
       {
         strokeStyle: ctx.strokeColor,
