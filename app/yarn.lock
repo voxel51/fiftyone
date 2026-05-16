@@ -2174,7 +2174,6 @@ __metadata:
     "@fiftyone/utilities": "workspace:^"
     moment: "npm:^2.29.4"
     prettier: "catalog:"
-    three: "npm:^0.182.0"
     vite: "catalog:"
   languageName: unknown
   linkType: soft
