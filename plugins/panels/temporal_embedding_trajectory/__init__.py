@@ -84,6 +84,43 @@ class TemporalEmbeddingTrajectoryPanel(Panel):
         ctx.panel.set_state("selected_brain_key", brain_key)
         return payload
 
+    def get_compare_trajectories(self, ctx):
+        """Build trajectory payloads for several brain keys at once.
+
+        Used by the compare-mode view: one payload per selected brain
+        key, all for the same parent sample. The payload shape is
+        identical to ``get_scene_trajectory`` so the frontend can
+        treat each entry the same way.
+
+        Params (in ``ctx.params``):
+          - ``brain_keys`` (list[str]): the visualization brain keys.
+          - ``sample_id`` (str): the parent video sample id. Falls
+            back to the currently-selected sample.
+        """
+        brain_keys = ctx.params.get("brain_keys") or []
+        sample_id = ctx.params.get("sample_id") or ctx.current_sample
+        if not brain_keys or not sample_id:
+            ctx.panel.set_data("compare_trajectories", {})
+            return {}
+
+        results = {}
+        for brain_key in brain_keys:
+            if not brain_key:
+                continue
+            try:
+                payload = self._build_scene_payload(ctx, brain_key, sample_id)
+                if payload is not None:
+                    results[brain_key] = payload
+            except Exception as e:
+                logger.warning(
+                    "Failed to build compare payload for %s: %s",
+                    brain_key,
+                    e,
+                )
+
+        ctx.panel.set_data("compare_trajectories", results)
+        return results
+
     def compute_trajectory(self, ctx):
         """Prompt the compute operator with the panel's chosen params.
 
@@ -142,6 +179,7 @@ class TemporalEmbeddingTrajectoryPanel(Panel):
                 composite_view=True,
                 list_brain_keys=self.list_brain_keys,
                 get_scene_trajectory=self.get_scene_trajectory,
+                get_compare_trajectories=self.get_compare_trajectories,
                 compute_trajectory=self.compute_trajectory,
                 seek_to_frame=self.seek_to_frame,
             ),
