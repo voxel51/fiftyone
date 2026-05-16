@@ -702,6 +702,16 @@ export class MaskCanvas {
 
     this.updateCanvas(newWidth, newHeight, offsetX, offsetY);
 
+    // Existing pixels were shifted by (offsetX, offsetY); the cached lastPoint
+    // is in canvas-pixel coords and must be shifted in lockstep so paintLine
+    // continues to interpolate from the correct origin after a resize.
+    if (this.lastPoint) {
+      this.lastPoint = {
+        x: this.lastPoint.x + offsetX,
+        y: this.lastPoint.y + offsetY,
+      };
+    }
+
     return {
       x: minX,
       y: minY,
