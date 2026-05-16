@@ -104,6 +104,16 @@ export class PolylineOverlay extends KeypointOverlay {
    */
   private previewAnchorFlipped = false;
 
+  /**
+   * Sticky-extension override: when set, the preview line anchors against
+   * this specific point instead of the segment's nearest endpoint. Mirrors
+   * the {@link InteractivePolylineHandler}'s last-extended point id so the
+   * dashed preview matches the click target. The meta-flip flag takes
+   * precedence — pressing meta still telegraphs (and produces) a swap to
+   * the opposite endpoint of the active segment.
+   */
+  private previewAnchorPointId: string | null = null;
+
   constructor(options: PolylineOptions) {
     const { flatPoints, connections, segmentBoundaries } =
       flattenPolylinePoints(options.label.points ?? []);
@@ -716,10 +726,31 @@ export class PolylineOverlay extends KeypointOverlay {
   }
 
   /**
-   * Anchors the preview line to whichever endpoint of the active segment
-   * (or globally, if no active segment) is closest to the cursor — so the
-   * dashed line previews the actual point that EXTEND will produce. The
-   * meta-flip flag inverts that to the far endpoint instead.
+   * Sets the sticky-anchor point id for the preview line. When set (and the
+   * point still exists, and meta-flip is off), the preview anchors against
+   * this point instead of the segment's nearest endpoint. Pass `null` to
+   * clear and fall back to nearest-endpoint anchoring.
+   */
+  setPreviewAnchorPointId(pointId: string | null): void {
+    if (this.previewAnchorPointId === pointId) {
+      return;
+    }
+
+    this.previewAnchorPointId = pointId;
+    this.markDirty();
+  }
+
+  /**
+   * Anchors the preview line so the dashed telegraph matches the point that
+   * EXTEND will actually produce on click.
+   *
+   *   - **Sticky set, no meta-flip** — anchor to the sticky point.
+   *   - **Sticky set, meta-flip on** — anchor to the opposite endpoint of
+   *     the sticky's segment (matches the swap-by-identity logic in
+   *     {@link InteractivePolylineHandler}).
+   *   - **No sticky (or sticky is stale/no longer an endpoint)** — fall
+   *     back to `findNearestEndpoint` against the active segment, with
+   *     meta-flip selecting farthest-from-cursor.
    */
   protected override renderPreviewLine(
     renderer: Renderer2D,
@@ -729,30 +760,61 @@ export class PolylineOverlay extends KeypointOverlay {
       return;
     }
 
-    const nearest = this.findNearestEndpoint(
-      this.previewPoint,
-      this.previewAnchorSegmentIdx ?? undefined,
-      this.previewAnchorFlipped
-    );
-    if (!nearest) {
-      return;
+    // Sticky-aware anchor resolution: when a sticky point id is set and the
+    // point is still an endpoint of its segment, anchor to that point — or,
+    // when meta-flip is active, to the opposite endpoint of the same
+    // segment (matching the meta-swap behavior in
+    // InteractivePolylineHandler, which toggles by endpoint identity rather
+    // than by cursor distance).
+    let entry: ReturnType<typeof this.getPointById> | null = null;
+
+    if (this.previewAnchorPointId) {
+      const loc = this.findPointLocationById(this.previewAnchorPointId);
+      if (loc) {
+        const segLen = this.getSegmentLength(loc.segmentIdx);
+        let anchorIndexInSegment: number | null = null;
+        if (loc.indexInSegment === 0) {
+          anchorIndexInSegment = this.previewAnchorFlipped ? segLen - 1 : 0;
+        } else if (loc.indexInSegment === segLen - 1) {
+          anchorIndexInSegment = this.previewAnchorFlipped ? 0 : segLen - 1;
+        }
+        if (anchorIndexInSegment !== null) {
+          const anchorId = this.getPointIdInSegment(
+            loc.segmentIdx,
+            anchorIndexInSegment
+          );
+          entry = anchorId ? this.getPointById(anchorId) : null;
+        }
+      }
     }
 
-    const segLen = this.getSegmentLength(nearest.segmentIdx);
-    if (segLen === 0) {
-      return;
+    if (!entry) {
+      const nearest = this.findNearestEndpoint(
+        this.previewPoint,
+        this.previewAnchorSegmentIdx ?? undefined,
+        this.previewAnchorFlipped
+      );
+      if (!nearest) {
+        return;
+      }
+
+      const segLen = this.getSegmentLength(nearest.segmentIdx);
+      if (segLen === 0) {
+        return;
+      }
+
+      const indexInSegment = nearest.end === "head" ? 0 : segLen - 1;
+      const anchorId = this.getPointIdInSegment(
+        nearest.segmentIdx,
+        indexInSegment
+      );
+      if (!anchorId) {
+        return;
+      }
+
+      entry = this.getPointById(anchorId);
     }
 
-    const indexInSegment = nearest.end === "head" ? 0 : segLen - 1;
-    const anchorId = this.getPointIdInSegment(
-      nearest.segmentIdx,
-      indexInSegment
-    );
-    if (!anchorId) {
-      return;
-    }
-
-    const entry = this.getPointById(anchorId);
     if (!entry) {
       return;
     }
