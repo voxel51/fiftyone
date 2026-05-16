@@ -3228,6 +3228,27 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@fiftyone/temporal-embedding-trajectory@workspace:packages/temporal-embedding-trajectory":
+  version: 0.0.0-use.local
+  resolution: "@fiftyone/temporal-embedding-trajectory@workspace:packages/temporal-embedding-trajectory"
+  dependencies:
+    "@fiftyone/components": "npm:*"
+    "@fiftyone/operators": "npm:*"
+    "@fiftyone/plugins": "npm:*"
+    "@fiftyone/spaces": "npm:*"
+    "@fiftyone/state": "npm:*"
+    plotly.js: "npm:^3.1.1"
+    react-plotly.js: "npm:^2.6.0"
+    vite: "npm:^7.3.2"
+    vite-plugin-externals: "npm:^0.5.0"
+  peerDependencies:
+    "@mui/icons-material": "*"
+    "@voxel51/voodo": "*"
+    jotai: "*"
+    recoil: "*"
+  languageName: unknown
+  linkType: soft
+
 "@fiftyone/utilities@npm:*, @fiftyone/utilities@workspace:^, @fiftyone/utilities@workspace:packages/utilities":
   version: 0.0.0-use.local
   resolution: "@fiftyone/utilities@workspace:packages/utilities"
