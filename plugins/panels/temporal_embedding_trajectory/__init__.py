@@ -213,22 +213,42 @@ class TemporalEmbeddingTrajectoryPanel(Panel):
             return None
 
         dataset = ctx.dataset
-        results = dataset.load_brain_results(brain_key)
+        try:
+            results = dataset.load_brain_results(brain_key)
+        except Exception as e:
+            logger.warning(
+                "Failed to load brain results for %s: %s", brain_key, e
+            )
+            return None
+
         # Brain visualization results expose parallel arrays of points
-        # and per-frame ids. See fiftyone/server/routes/embeddings.py
-        # OnPlotLoad for the reference accessor pattern.
+        # and per-frame ids. When compute_visualization runs on a
+        # frames view, each "sample" in that view is a frame document,
+        # so `_curr_sample_ids` holds *frame* ids — not parent video
+        # ids. `_curr_label_ids` is empty in that case.
         points = getattr(results, "_curr_points", None)
         sample_ids = getattr(results, "_curr_sample_ids", None)
-        label_ids = getattr(results, "_curr_label_ids", None)
 
         if points is None or sample_ids is None:
             return None
 
-        # For frame-level visualizations, sample_ids are the parent
-        # video sample ids, and label_ids hold the frame document ids.
+        # Build a frame_id -> frame_number map for this parent video so
+        # we can filter the brain results and recover frame ordering in
+        # one pass.
+        try:
+            parent = dataset[sample_id]
+        except Exception as e:
+            logger.warning("Failed to load sample %s: %s", sample_id, e)
+            return None
+
+        frame_id_to_number = {
+            str(f.id): f.frame_number for f in parent.frames.values()
+        }
+        parent_frame_id_set = set(frame_id_to_number.keys())
+
         idx_by_frame = []
         for i, sid in enumerate(sample_ids):
-            if str(sid) == str(sample_id):
+            if str(sid) in parent_frame_id_set:
                 idx_by_frame.append(i)
         if not idx_by_frame:
             return {
@@ -240,13 +260,8 @@ class TemporalEmbeddingTrajectoryPanel(Panel):
                 "jump_dists": [],
             }
 
-        # Pull frame_numbers and jump_dists for this scene's frame ids.
-        frame_ids = (
-            [str(label_ids[i]) for i in idx_by_frame]
-            if label_ids is not None
-            else []
-        )
-        frame_numbers = self._lookup_frame_numbers(ctx, sample_id, frame_ids)
+        frame_ids = [str(sample_ids[i]) for i in idx_by_frame]
+        frame_numbers = [frame_id_to_number.get(fid) for fid in frame_ids]
         jump_dists = self._lookup_jump_dists(
             ctx, sample_id, frame_ids, brain_key
         )
