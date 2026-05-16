@@ -5,6 +5,7 @@ import { usePanelContext, usePanelStatePartial } from "@fiftyone/spaces";
 import { useTrajectoryData } from "../hooks/useTrajectoryData";
 import { useFrameSync } from "../hooks/useFrameSync";
 import { useCompareData } from "../hooks/useCompareData";
+import { useFrameMedia } from "../hooks/useFrameMedia";
 import {
   buildTraces,
   defaultJumpThreshold,
@@ -12,7 +13,8 @@ import {
 } from "../plot/buildTraces";
 import { buildCompareTraces, compareLayout } from "../plot/buildCompareTraces";
 import { trajectoryConfig, trajectoryLayout } from "../plot/trajectoryLayout";
-import type { TrajectoryViewProps, ViewMode } from "../types";
+import JumpFrames, { JumpFrame } from "./JumpFrames";
+import type { SceneTrajectory, TrajectoryViewProps, ViewMode } from "../types";
 
 const TRAJECTORY_LENGTH_DEFAULT = 30;
 const JUMP_SIGMA_DEFAULT = 2;
@@ -20,6 +22,24 @@ const MODEL_CHOICES: Array<{ value: string; label: string }> = [
   { value: "clip-vit-base32-torch", label: "CLIP ViT-B/32 (semantic)" },
   { value: "dinov2-vitb14-torch", label: "DINOv2 ViT-B/14 (visual)" },
 ];
+
+const ACCENT_A = "rgba(70, 140, 220, 0.95)";
+const ACCENT_B = "rgba(230, 130, 50, 0.95)";
+const ACCENT_BOTH = "rgba(80, 200, 140, 0.95)";
+
+function jumpsForScene(scene: SceneTrajectory, sigma: number): JumpFrame[] {
+  const threshold = defaultJumpThreshold(scene.jump_dists, sigma);
+  const out: JumpFrame[] = [];
+  for (let i = 0; i < scene.jump_dists.length; i++) {
+    if (scene.jump_dists[i] >= threshold && threshold > 0) {
+      out.push({
+        frameId: scene.frame_ids[i],
+        frameNumber: scene.frame_numbers[i],
+      });
+    }
+  }
+  return out;
+}
 
 function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
   const [viewMode, setViewMode] = usePanelStatePartial<ViewMode>(
@@ -30,9 +50,14 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
   const [selectedBrainKey, setSelectedBrainKey] = usePanelStatePartial<
     string | null
   >("selectedBrainKey", null, true);
-  const [compareKeys, setCompareKeys] = usePanelStatePartial<string[]>(
-    "compareKeys",
-    [],
+  const [keyA, setKeyA] = usePanelStatePartial<string | null>(
+    "compareKeyA",
+    null,
+    true
+  );
+  const [keyB, setKeyB] = usePanelStatePartial<string | null>(
+    "compareKeyB",
+    null,
     true
   );
   const [trajectoryLength, setTrajectoryLength] = usePanelStatePartial<number>(
@@ -58,23 +83,30 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
 
   const { currentFrame, seekFrame, isTimelineActive } = useFrameSync();
 
-  // Seed compareKeys with the currently-selected brain key the first time
-  // the user has a key available, so the compare view isn't empty on first
-  // open.
+  // Seed compare keys on first availability: A = current scatter key,
+  // B = next available key (if any).
   React.useEffect(() => {
-    if (
-      (compareKeys?.length ?? 0) === 0 &&
-      brainKeys.length > 0 &&
-      selectedBrainKey
-    ) {
-      setCompareKeys([selectedBrainKey]);
+    if (brainKeys.length === 0) return;
+    if (!keyA && selectedBrainKey) {
+      setKeyA(selectedBrainKey);
     }
-  }, [compareKeys, brainKeys, selectedBrainKey, setCompareKeys]);
+    if (!keyB) {
+      const candidate = brainKeys.find(
+        (bk) => bk.key !== (keyA || selectedBrainKey)
+      );
+      if (candidate) setKeyB(candidate.key);
+    }
+  }, [brainKeys, selectedBrainKey, keyA, keyB, setKeyA, setKeyB]);
+
+  const compareKeysSel = useMemo(
+    () => [keyA, keyB].filter((k): k is string => !!k),
+    [keyA, keyB]
+  );
 
   const { scenes: compareScenes } = useCompareData(
     props,
     currentSampleId,
-    viewMode === "compare" ? compareKeys ?? [] : []
+    viewMode === "compare" ? compareKeysSel : []
   );
 
   // ── Scatter mode derived state ─────────────────────────────────────
@@ -92,32 +124,75 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
     });
   }, [scene, trajectoryLength, jumpThreshold, currentFrame]);
 
+  const scatterJumps = useMemo<JumpFrame[]>(
+    () => (scene ? jumpsForScene(scene, jumpSigma ?? JUMP_SIGMA_DEFAULT) : []),
+    [scene, jumpSigma]
+  );
+
   // ── Compare mode derived state ─────────────────────────────────────
+  const sceneA = keyA ? compareScenes[keyA] : undefined;
+  const sceneB = keyB ? compareScenes[keyB] : undefined;
+
   const compareTracesAndDomain = useMemo(() => {
-    const orderedKeys = (compareKeys ?? []).filter((k) => compareScenes[k]);
-    const scenesList = orderedKeys.map((k) => ({
-      brainKey: k,
-      scene: compareScenes[k],
-    }));
+    const scenesList: Array<{ brainKey: string; scene: SceneTrajectory }> = [];
+    if (keyA && sceneA) scenesList.push({ brainKey: keyA, scene: sceneA });
+    if (keyB && sceneB) scenesList.push({ brainKey: keyB, scene: sceneB });
     return buildCompareTraces({
       scenes: scenesList,
       jumpSigma: jumpSigma ?? JUMP_SIGMA_DEFAULT,
       currentFrameNumber: currentFrame,
     });
-  }, [compareKeys, compareScenes, jumpSigma, currentFrame]);
+  }, [keyA, keyB, sceneA, sceneB, jumpSigma, currentFrame]);
+
+  const compareDiff = useMemo(() => {
+    const sigma = jumpSigma ?? JUMP_SIGMA_DEFAULT;
+    const aJumps = sceneA ? jumpsForScene(sceneA, sigma) : [];
+    const bJumps = sceneB ? jumpsForScene(sceneB, sigma) : [];
+    const aSet = new Set(aJumps.map((j) => j.frameNumber));
+    const bSet = new Set(bJumps.map((j) => j.frameNumber));
+
+    const onlyA: JumpFrame[] = aJumps
+      .filter((j) => !bSet.has(j.frameNumber))
+      .map((j) => ({ ...j, accent: ACCENT_A }));
+    const onlyB: JumpFrame[] = bJumps
+      .filter((j) => !aSet.has(j.frameNumber))
+      .map((j) => ({ ...j, accent: ACCENT_B }));
+
+    // For "both", prefer A's frame_id (it's the same parent frame, just
+    // tagged twice). Keep insertion order by frame_number.
+    const bothFrameNumbers = new Set<number>();
+    aJumps.forEach((j) => {
+      if (bSet.has(j.frameNumber)) bothFrameNumbers.add(j.frameNumber);
+    });
+    const both: JumpFrame[] = aJumps
+      .filter((j) => bothFrameNumbers.has(j.frameNumber))
+      .map((j) => ({ ...j, accent: ACCENT_BOTH }));
+
+    return { onlyA, both, onlyB };
+  }, [sceneA, sceneB, jumpSigma]);
+
+  // Collect every frame id we want a thumbnail for, across the active
+  // mode, so we batch a single get_frame_media request.
+  const thumbnailFrameIds = useMemo(() => {
+    if (viewMode === "scatter") {
+      return scatterJumps.map((j) => j.frameId);
+    }
+    return [
+      ...compareDiff.onlyA,
+      ...compareDiff.both,
+      ...compareDiff.onlyB,
+    ].map((j) => j.frameId);
+  }, [viewMode, scatterJumps, compareDiff]);
+
+  const { media: frameMedia } = useFrameMedia(props, thumbnailFrameIds);
 
   const handlePlotClick = useCallback(
     (event: any) => {
       const pt = event?.points?.[0];
       if (!pt) return;
-      // customdata varies per trace:
-      //   scatter mode: frame_number (number) or [frame_number, jump_dist]
-      //   compare mode: [brain_key, frame_number, jump_dist]
       let frameNumber: number | undefined;
       const cd = pt.customdata;
       if (Array.isArray(cd)) {
-        // last numeric in [brainKey, frame_number, jump_dist] is jump_dist —
-        // frame_number is the second element when string is present, first otherwise.
         frameNumber = typeof cd[0] === "string" ? Number(cd[1]) : Number(cd[0]);
       } else if (cd != null) {
         frameNumber = Number(cd);
@@ -126,7 +201,6 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
 
       seekFrame(frameNumber);
 
-      // Cross-sample fallback (only matters in scatter mode).
       if (
         viewMode === "scatter" &&
         scene &&
@@ -152,35 +226,18 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
     });
   }, [triggers, composeModel, selectedBrainKey, brainKeys]);
 
-  const toggleCompareKey = useCallback(
-    (key: string) => {
-      const current = compareKeys ?? [];
-      if (current.includes(key)) {
-        setCompareKeys(current.filter((k) => k !== key));
-      } else {
-        setCompareKeys([...current, key]);
-      }
-    },
-    [compareKeys, setCompareKeys]
-  );
-
   const noBrainKeys = brainKeys.length === 0;
   const cursorIdx = scene
     ? findCursorIndex(scene.frame_numbers, currentFrame)
     : -1;
 
-  // Status counts depend on the active mode.
   const statusLeft = (() => {
     if (viewMode === "scatter") {
       return scene
-        ? `${scene.points.length} frames · ${
-            scene.jump_dists.filter((d) => d >= jumpThreshold).length
-          } jumps`
+        ? `${scene.points.length} frames · ${scatterJumps.length} jumps`
         : "no scene loaded";
     }
-    const keys = compareKeys ?? [];
-    const loaded = keys.filter((k) => compareScenes[k]).length;
-    return `${loaded}/${keys.length} keys loaded`;
+    return `${compareDiff.onlyA.length} only A · ${compareDiff.both.length} both · ${compareDiff.onlyB.length} only B`;
   })();
 
   return (
@@ -228,28 +285,44 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
             </select>
           </label>
         ) : (
-          <div style={styles.field}>
-            <span style={styles.fieldLabel}>Compare brain keys</span>
-            <div style={styles.compareKeyList}>
-              {noBrainKeys ? (
-                <span style={styles.hint}>compute first</span>
-              ) : (
-                brainKeys.map((bk) => {
-                  const checked = (compareKeys ?? []).includes(bk.key);
-                  return (
-                    <label key={bk.key} style={styles.compareKeyItem}>
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => toggleCompareKey(bk.key)}
-                      />
-                      <span>{bk.key}</span>
-                    </label>
-                  );
-                })
-              )}
-            </div>
-          </div>
+          <>
+            <label style={styles.field}>
+              <span style={styles.fieldLabel}>
+                Model A <span style={{ color: ACCENT_A }}>●</span>
+              </span>
+              <select
+                style={styles.select}
+                value={keyA ?? ""}
+                onChange={(e) => setKeyA(e.target.value || null)}
+                disabled={noBrainKeys}
+              >
+                <option value="">—</option>
+                {brainKeys.map((bk) => (
+                  <option key={bk.key} value={bk.key}>
+                    {bk.key}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label style={styles.field}>
+              <span style={styles.fieldLabel}>
+                Model B <span style={{ color: ACCENT_B }}>●</span>
+              </span>
+              <select
+                style={styles.select}
+                value={keyB ?? ""}
+                onChange={(e) => setKeyB(e.target.value || null)}
+                disabled={noBrainKeys}
+              >
+                <option value="">—</option>
+                {brainKeys.map((bk) => (
+                  <option key={bk.key} value={bk.key}>
+                    {bk.key}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </>
         )}
 
         <label style={styles.field}>
@@ -333,8 +406,8 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
           <div style={styles.empty}>
             {noBrainKeys ? (
               <p>Compute at least one brain key first.</p>
-            ) : (compareKeys ?? []).length === 0 ? (
-              <p>Pick one or more brain keys to compare.</p>
+            ) : !keyA && !keyB ? (
+              <p>Pick brain keys for Model A and Model B.</p>
             ) : !currentSampleId ? (
               <p>Open a video sample in the modal.</p>
             ) : (
@@ -353,6 +426,50 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
             onClick={handlePlotClick}
           />
         )}
+      </div>
+
+      <div style={styles.thumbsArea}>
+        {viewMode === "scatter" ? (
+          scene && scatterJumps.length > 0 ? (
+            <JumpFrames
+              title="jump frames"
+              frames={scatterJumps}
+              media={frameMedia}
+              onClickFrame={seekFrame}
+            />
+          ) : null
+        ) : keyA || keyB ? (
+          <div style={styles.diffRow}>
+            {keyA ? (
+              <div style={styles.diffCol}>
+                <JumpFrames
+                  title={`only ${keyA}`}
+                  frames={compareDiff.onlyA}
+                  media={frameMedia}
+                  onClickFrame={seekFrame}
+                />
+              </div>
+            ) : null}
+            <div style={styles.diffCol}>
+              <JumpFrames
+                title="both"
+                frames={compareDiff.both}
+                media={frameMedia}
+                onClickFrame={seekFrame}
+              />
+            </div>
+            {keyB ? (
+              <div style={styles.diffCol}>
+                <JumpFrames
+                  title={`only ${keyB}`}
+                  frames={compareDiff.onlyB}
+                  media={frameMedia}
+                  onClickFrame={seekFrame}
+                />
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       <div style={styles.status}>
@@ -445,24 +562,6 @@ const styles: Record<string, React.CSSProperties> = {
     background: "rgba(70,140,220,0.85)",
     color: "white",
   },
-  compareKeyList: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 2,
-    background: "rgba(40,40,55,0.5)",
-    border: "1px solid rgba(120,120,150,0.25)",
-    borderRadius: 4,
-    padding: "4px 6px",
-    maxHeight: 92,
-    overflowY: "auto",
-    minWidth: 200,
-  },
-  compareKeyItem: {
-    display: "flex",
-    alignItems: "center",
-    gap: 6,
-    fontSize: 12,
-  },
   button: {
     background: "rgba(70,140,220,0.85)",
     color: "white",
@@ -477,6 +576,19 @@ const styles: Record<string, React.CSSProperties> = {
     flex: 1,
     minHeight: 0,
     position: "relative",
+  },
+  thumbsArea: {
+    padding: "8px 12px",
+    borderTop: "1px solid rgba(120,120,140,0.18)",
+    overflowX: "hidden",
+  },
+  diffRow: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr 1fr",
+    gap: 12,
+  },
+  diffCol: {
+    minWidth: 0,
   },
   empty: {
     display: "flex",

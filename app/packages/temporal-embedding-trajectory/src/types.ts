@@ -18,6 +18,7 @@ export type TrajectoryPanelData = {
   brain_keys?: BrainKeyInfo[];
   scene_trajectory?: SceneTrajectory | null;
   compare_trajectories?: Record<string, SceneTrajectory>;
+  frame_media?: Record<string, string>;
 };
 
 export type TrajectoryViewSchema = {
@@ -25,6 +26,7 @@ export type TrajectoryViewSchema = {
     list_brain_keys: string;
     get_scene_trajectory: string;
     get_compare_trajectories: string;
+    get_frame_media: string;
     compute_trajectory: string;
     seek_to_frame: string;
   };

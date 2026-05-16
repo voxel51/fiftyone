@@ -144,6 +144,42 @@ class TemporalEmbeddingTrajectoryPanel(Panel):
             ctx.panel.set_state("selected_brain_key", new_key)
         self._push_scene_for_current_sample(ctx)
 
+    def get_frame_media(self, ctx):
+        """Resolve filepaths for the given frame document ids.
+
+        Used by the thumbnail strips in scatter / compare modes.
+        Filepaths exist on each frame document after the operator runs
+        ``to_frames(sample_frames=True)``. Pushes the full requested
+        batch to the FE as ``frame_media: {frame_id: filepath}`` —
+        the FE side is responsible for any accumulation across batches.
+        """
+        frame_ids = ctx.params.get("frame_ids") or []
+        if not frame_ids:
+            ctx.panel.set_data("frame_media", {})
+            return {}
+
+        dataset = ctx.dataset
+        if dataset is None:
+            return {}
+
+        try:
+            media_type = getattr(dataset, "media_type", None)
+            if media_type == "video":
+                # Frame documents live in the parent's frames collection;
+                # to_frames(sample_frames=True) materialized filepaths.
+                frames = dataset.to_frames(sample_frames=True)
+                view = frames.select(frame_ids)
+            else:
+                view = dataset.select(frame_ids)
+
+            ids, filepaths = view.values(["id", "filepath"])
+            media = {str(i): fp for i, fp in zip(ids, filepaths) if fp}
+            ctx.panel.set_data("frame_media", media)
+            return media
+        except Exception as e:
+            logger.warning("Failed to resolve frame media: %s", e)
+            return {}
+
     def seek_to_frame(self, ctx):
         """Seek the modal to the given frame_number.
 
@@ -180,6 +216,7 @@ class TemporalEmbeddingTrajectoryPanel(Panel):
                 list_brain_keys=self.list_brain_keys,
                 get_scene_trajectory=self.get_scene_trajectory,
                 get_compare_trajectories=self.get_compare_trajectories,
+                get_frame_media=self.get_frame_media,
                 compute_trajectory=self.compute_trajectory,
                 seek_to_frame=self.seek_to_frame,
             ),
