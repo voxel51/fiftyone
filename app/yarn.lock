@@ -3138,7 +3138,6 @@ __metadata:
     jest: "npm:^29.7.0"
     moment: "npm:^2.29.4"
     prettier: "npm:2.2.1"
-    three: "npm:^0.182.0"
     vite: "npm:^7.3.2"
   languageName: unknown
   linkType: soft
