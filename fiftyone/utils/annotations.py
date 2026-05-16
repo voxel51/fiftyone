@@ -348,7 +348,7 @@ _DEFAULT_LABEL_FIELDS_MAP = {
 
 # Label fields that are overwritten when spatial changes are allowed
 _SPATIAL_LABEL_FIELDS_MAP = {
-    fol.Detection: ["bounding_box", "mask"],
+    fol.Detection: ["bounding_box", "mask", "rotation"],
     fol.Polyline: ["points", "closed", "filled"],
     fol.Keypoint: ["points"],
     fol.Segmentation: ["mask"],
