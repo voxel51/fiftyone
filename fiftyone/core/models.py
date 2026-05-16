@@ -2532,6 +2532,12 @@ class SamplesMixin(object):
     """
 
     def __init__(self):
+        logger.warning(
+            "The `SamplesMixin` interface is deprecated in favor of the "
+            "`SupportsGetItem` interface. If this is new code, please implement "
+            "`SupportsGetItem` instead. If this is existing code, please migrate"
+            " to `SupportsGetItem` as soon as possible."
+        )
         self._fields = {}
 
     @property
