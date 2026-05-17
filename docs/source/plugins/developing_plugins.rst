@@ -37,13 +37,11 @@ FiftyOne plugins can be written in Python or JavaScript (JS), or a combination
 of both.
 
 Python plugins are built using the `fiftyone` package, pip packages, and your
-own Python. They can consist of panels and operators. Plugins can also bundle
-skills via a `skills/` directory and `fiftyone.yml` registration.
+own Python. They can consist of panels, operators, and skills.
 
 JS plugins are built using the `@fiftyone` TypeScript packages, npm packages,
-and your own TypeScript. They can consist of panels, operators, and custom
-components. Plugins can also bundle skills via a `skills/` directory and
-`fiftyone.yml` registration.
+and your own TypeScript. They can consist of panels, operators, skills, and custom
+components.
 
 .. _plugins-design-panels:
 
@@ -110,7 +108,7 @@ agent follows to complete the workflow autonomously.
 
 .. note::
 
-    Jump to :ref:`this section <developing-skills-from-plugins>` for more
+    Jump to :ref:`this section <developing-plugins-skills>` for more
     information about developing skills.
 
 .. _plugins-design-components:
@@ -272,7 +270,7 @@ The following fields are available:
     +------------------------------+-----------+-----------------------------------------------------------------------------+
     | `panels`                     |           | A list of panel names registered by the plugin, if any                      |
     +------------------------------+-----------+-----------------------------------------------------------------------------+
-    | `skills`                     |           | A list of :ref:`skill <developing-skills-from-plugins>` names registered by |
+    | `skills`                     |           | A list of :ref:`skill <developing-plugins-skills>` names registered by |
     |                              |           | the plugin, if any                                                          |
     +------------------------------+-----------+-----------------------------------------------------------------------------+
     | `secrets`                    |           | A list of secret keys that may be used by the plugin, if any                |
@@ -3175,7 +3173,7 @@ subsequent sections.
                 allow_multiple=False,
 
                 # Whether the panel should be available in the grid, modal, or both
-                # Possible values: "grid", "modal", "grid modal"       
+                # Possible values: "grid", "modal", "grid modal"
                 surfaces="grid",  # default = "grid"
 
                 # Markdown-formatted text that describes the panel. This is
@@ -3409,7 +3407,7 @@ subsequent sections.
             }
             ctx.panel.set_state("event", "on_change_extended_selection")
             ctx.panel.set_data("event_data", event)
-        
+
         def on_change_group_slice(self, ctx):
             """Implement this method to set panel state/data when the current
             group slice changes.
@@ -4111,7 +4109,7 @@ On the JavaScript side, register a component whose ``name`` matches the
         type: PluginComponentType.Component,
         activator: () => true,
     });
-    
+
 .. note::
 
     Check out the `Hybrid Panel Plugin <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/hybrid-panel>`_
@@ -4139,7 +4137,7 @@ and programmatically modify the current state.
 
 .. warning::
 
-    The return value of all panel events—including builtin events (such as 
+    The return value of all panel events—including builtin events (such as
     `on_load`, `on_unload`, `on_change_ctx`, etc.) and custom events (such as
     `on_change_brain_key`, `on_click_start`, etc.)—must be JSON-serializable.
 
@@ -4735,7 +4733,7 @@ you to reveal all of its available methods during development:
         ctx.
         ...
 
-.. _developing-skills-from-plugins:
+.. _developing-plugins-skills:
 
 Developing skills
 _________________
@@ -4770,13 +4768,13 @@ This section describes how to develop JS-specific plugin components.
 Getting Started
 ---------------
 
-To start building your own JS plugin, refer to the 
-`hello-world-plugin-js <https://github.com/voxel51/hello-world-plugin-js>`_ 
-repository. This repo serves as a starting point, providing examples of a build 
+To start building your own JS plugin, refer to the
+`hello-world-plugin-js <https://github.com/voxel51/hello-world-plugin-js>`_
+repository. This repo serves as a starting point, providing examples of a build
 process, a JS panel, and a JS operator.
 
-The `fiftyone-js-plugin-build <https://github.com/voxel51/fiftyone-js-plugin-build>`_ 
-package offers a utility for configuring `vite <https://vite.dev>`_ to build your 
+The `fiftyone-js-plugin-build <https://github.com/voxel51/fiftyone-js-plugin-build>`_
+package offers a utility for configuring `vite <https://vite.dev>`_ to build your
 JS plugin bundle.
 
 Component types
