@@ -2,6 +2,9 @@
 import { GizmoHelper, GizmoViewport, OrbitControls } from "@react-three/drei";
 import type { ReactNode } from "react";
 
+/**
+ * Props for the shared 3D visualization scene shell.
+ */
 export interface Base3DSceneProps {
   readonly children?: ReactNode;
 }

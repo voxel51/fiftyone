@@ -23,6 +23,9 @@ interface PointCloudRenderData {
   readonly renderedPointCount: number;
 }
 
+/**
+ * Props for rendering one decoded point-cloud visualization frame.
+ */
 export interface PointCloudPanelProps {
   readonly className?: string;
   readonly fit?: "initial" | "frame" | "never";

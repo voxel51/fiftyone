@@ -4,16 +4,25 @@ import type { ReactNode } from "react";
 import { useEffect, useMemo } from "react";
 import * as THREE from "three";
 
+/**
+ * Loaded Three.js texture plus image aspect ratio and disposal hook.
+ */
 export interface ImageTextureHandle {
   readonly aspectRatio: number;
   readonly dispose: () => void;
   readonly texture: THREE.Texture;
 }
 
+/**
+ * Props for the shared 2D visualization scene shell.
+ */
 export interface Base2DSceneProps {
   readonly children?: ReactNode;
 }
 
+/**
+ * Props for rendering an image texture into the 2D scene.
+ */
 export interface ImageTexturePlaneProps {
   readonly fit: "contain" | "cover";
   readonly textureHandle: ImageTextureHandle | null;

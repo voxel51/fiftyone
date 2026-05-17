@@ -32,6 +32,9 @@ const styles: Record<string, CSSProperties> = {
   },
 };
 
+/**
+ * Props for the shared React Three Fiber WebGPU canvas root.
+ */
 export interface WebGpuCanvasProps {
   readonly camera?: CanvasProps["camera"];
   readonly children: ReactNode;

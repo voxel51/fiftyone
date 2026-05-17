@@ -10,6 +10,13 @@ declare module "@foxglove/wasm-lz4" {
 }
 
 declare module "@foxglove/wasm-zstd" {
+  /**
+   * Resolves when the zstd WASM module is ready to decompress chunks.
+   */
   export const isLoaded: Promise<unknown>;
+
+  /**
+   * Decompresses one zstd-compressed chunk into the expected output size.
+   */
   export function decompress(buffer: Uint8Array, size: number): Uint8Array;
 }

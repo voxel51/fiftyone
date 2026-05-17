@@ -1,18 +1,34 @@
 import { MCAP_ACTIVE_TIMELINE, type McapActiveTimeline } from "./types";
 
+/**
+ * Default playback timeline tick cadence used to sample MCAP ranges.
+ */
 export const DEFAULT_MCAP_TIMELINE_TICK_RATE_HZ = 30;
+
+/**
+ * Upper bound for generated MCAP timeline ticks.
+ */
 export const DEFAULT_MCAP_TIMELINE_MAX_TICKS = 20_000;
 
+/**
+ * Options for generating sampled MCAP timeline ticks.
+ */
 export interface McapTimelineTickOptions {
   readonly maxTicks?: number;
   readonly tickRateHz?: number;
 }
 
+/**
+ * Minimal MCAP timeline range used by tick generation.
+ */
 export interface McapTimelineRangeLike {
   readonly endTimeNs: bigint;
   readonly startTimeNs: bigint;
 }
 
+/**
+ * Normalizes and validates the active MCAP timeline id.
+ */
 export function resolveMcapActiveTimeline(
   activeTimeline: string | undefined
 ): McapActiveTimeline {
@@ -26,6 +42,9 @@ export function resolveMcapActiveTimeline(
   throw new Error(`Unsupported MCAP active timeline '${activeTimeline}'`);
 }
 
+/**
+ * Generates sampled playback timestamps across one MCAP timeline range.
+ */
 export function createMcapTimelineTicks(
   range: McapTimelineRangeLike,
   options: McapTimelineTickOptions = {}

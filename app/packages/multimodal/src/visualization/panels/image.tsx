@@ -19,6 +19,9 @@ const ORTHOGRAPHIC_IMAGE_CAMERA = {
   zoom: 1,
 };
 
+/**
+ * Props for rendering one decoded encoded-image visualization frame.
+ */
 export interface ImagePanelProps {
   readonly alt?: string;
   readonly className?: string;
