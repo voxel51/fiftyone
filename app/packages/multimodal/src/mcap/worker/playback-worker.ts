@@ -4,13 +4,17 @@ import {
   type DecodedOutputCache,
 } from "../../client/resources";
 import { createMcapResourceClient } from "../resources";
+import {
+  isMcapPlaybackWorkerStreamRequest,
+  runMcapPlaybackWorkerStreamRequest,
+  runMcapPlaybackWorkerUnaryRequest,
+} from "./playback-worker-rpc";
 import { McapPlaybackWorkerScheduler } from "./playback-worker-scheduler";
 import { transferablesForMcapResult } from "./playback-worker-transfer";
 import type {
   McapPlaybackWorkerRequest,
   McapPlaybackWorkerRpcRequest,
   McapPlaybackWorkerStreamType,
-  McapPlaybackWorkerUnaryType,
 } from "./playback-worker-types";
 import type { McapResourceClient } from "../types";
 
@@ -89,12 +93,12 @@ workerScope.onmessage = (event: MessageEvent<McapPlaybackWorkerRequest>) => {
 async function runAndRespond(message: McapPlaybackWorkerRpcRequest) {
   try {
     ensureActiveSource(message.sourceKey);
-    if (isStreamRequest(message)) {
+    if (isMcapPlaybackWorkerStreamRequest(message)) {
       await streamRequest(message);
       return;
     }
 
-    const result = await runRequest(message);
+    const result = await runMcapPlaybackWorkerUnaryRequest(mcap, message);
     postResponse({
       id: message.id,
       ok: true,
@@ -109,34 +113,17 @@ async function runAndRespond(message: McapPlaybackWorkerRpcRequest) {
   }
 }
 
-async function runRequest(
-  message: McapPlaybackWorkerRpcRequest<McapPlaybackWorkerUnaryType>
-) {
-  switch (message.type) {
-    case "readSynchronizedMessageBatch":
-      return mcap.readSynchronizedMessageBatch(message.payload);
-    case "readSynchronizedMessages":
-      return mcap.readSynchronizedMessages(message.payload);
-    case "readTimelineRange":
-      return mcap.readTimelineRange(message.payload);
-  }
-}
-
 async function streamRequest(
   message: McapPlaybackWorkerRpcRequest<McapPlaybackWorkerStreamType>
 ) {
-  switch (message.type) {
-    case "readDecodedMessages":
-      for await (const item of mcap.readDecodedMessages(message.payload)) {
-        postResponse({
-          done: false,
-          id: message.id,
-          item,
-          ok: true,
-          stream: true,
-        });
-      }
-      break;
+  for await (const item of runMcapPlaybackWorkerStreamRequest(mcap, message)) {
+    postResponse({
+      done: false,
+      id: message.id,
+      item,
+      ok: true,
+      stream: true,
+    });
   }
 
   postResponse({
@@ -145,12 +132,6 @@ async function streamRequest(
     ok: true,
     stream: true,
   });
-}
-
-function isStreamRequest(
-  message: McapPlaybackWorkerRpcRequest
-): message is McapPlaybackWorkerRpcRequest<McapPlaybackWorkerStreamType> {
-  return message.type === "readDecodedMessages";
 }
 
 function ensureActiveSource(sourceKey: string) {

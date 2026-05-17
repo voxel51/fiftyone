@@ -5,12 +5,16 @@ import {
 } from "../../client/resources/cache";
 import { createMcapResourceClient } from "../resources";
 import {
-  MCAP_PLAYBACK_WORKER_PRIORITY,
+  mcapPlaybackWorkerOperation,
+  type McapPlaybackWorkerStreamOperation,
+  type McapPlaybackWorkerUnaryOperation,
+} from "./playback-worker-rpc";
+import {
   type McapPlaybackWorkerFetchParameters,
   type McapPlaybackWorkerRequest,
+  type McapPlaybackWorkerRequestPayloadByType,
   type McapPlaybackWorkerResponse,
   type McapPlaybackWorkerResultByType,
-  type McapPlaybackWorkerRpcType,
   type McapPlaybackWorkerStreamItemByType,
   type McapPlaybackWorkerStreamType,
   type McapPlaybackWorkerUnaryType,
@@ -129,7 +133,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
 
   private request<Type extends McapPlaybackWorkerUnaryType>(
     type: Type,
-    payload: ParametersForWorkerType<Type>
+    payload: McapPlaybackWorkerRequestPayloadByType[Type]
   ): Promise<McapPlaybackWorkerResultByType[Type]> {
     if (this.disposed) {
       return Promise.reject(new Error("MCAP worker client is disposed"));
@@ -142,10 +146,11 @@ class WorkerMcapResourceClient implements McapResourceClient {
     }
 
     const id = this.nextRequestId++;
+    const operation = mcapPlaybackWorkerOperation(type);
     const message: McapPlaybackWorkerRequest = {
       id,
       payload,
-      priority: priorityForRequestType(type),
+      priority: operation.priority,
       sourceKey,
       type,
     } as McapPlaybackWorkerRequest;
@@ -168,7 +173,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
 
   private async *streamRequest<Type extends McapPlaybackWorkerStreamType>(
     type: Type,
-    payload: ParametersForWorkerType<Type>
+    payload: McapPlaybackWorkerRequestPayloadByType[Type]
   ): AsyncGenerator<McapPlaybackWorkerStreamItemByType[Type], void, void> {
     if (this.disposed) {
       throw new Error("MCAP worker client is disposed");
@@ -182,6 +187,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
     }
 
     const id = this.nextRequestId++;
+    const operation = mcapPlaybackWorkerOperation(type);
     const stream: PendingStream = {
       done: false,
       rejectors: [],
@@ -192,7 +198,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
     const message: McapPlaybackWorkerRequest = {
       id,
       payload,
-      priority: priorityForRequestType(type),
+      priority: operation.priority,
       sourceKey,
       type,
     } as McapPlaybackWorkerRequest;
@@ -364,21 +370,6 @@ class WorkerMcapResourceClient implements McapResourceClient {
   }
 }
 
-type ParametersForWorkerType<Type extends McapPlaybackWorkerRpcType> =
-  Type extends "readDecodedMessages"
-    ? McapReadDecodedMessagesRequest
-    : Type extends "readSynchronizedMessageBatch"
-    ? McapReadSynchronizedMessageBatchRequest
-    : Type extends "readSynchronizedMessages"
-    ? McapReadSynchronizedMessagesRequest
-    : McapReadTimelineRangeRequest;
-
-function priorityForRequestType(type: McapPlaybackWorkerRpcType) {
-  return type === "readSynchronizedMessageBatch"
-    ? MCAP_PLAYBACK_WORKER_PRIORITY.PLAYBACK_BATCH
-    : MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME;
-}
-
 function nextStreamValue(
   stream: PendingStream
 ): Promise<IteratorResult<unknown, void>> {
@@ -432,40 +423,25 @@ function isWorker(target: Worker | McapResourceClient): target is Worker {
 function requestInlineClient<Type extends McapPlaybackWorkerUnaryType>(
   client: McapResourceClient,
   type: Type,
-  payload: ParametersForWorkerType<Type>
+  payload: McapPlaybackWorkerRequestPayloadByType[Type]
 ): Promise<McapPlaybackWorkerResultByType[Type]> {
-  switch (type) {
-    case "readSynchronizedMessageBatch":
-      return client.readSynchronizedMessageBatch(
-        payload as McapReadSynchronizedMessageBatchRequest
-      ) as Promise<McapPlaybackWorkerResultByType[Type]>;
-    case "readSynchronizedMessages":
-      return client.readSynchronizedMessages(
-        payload as McapReadSynchronizedMessagesRequest
-      ) as Promise<McapPlaybackWorkerResultByType[Type]>;
-    case "readTimelineRange":
-      return client.readTimelineRange(
-        payload as McapReadTimelineRangeRequest
-      ) as Promise<McapPlaybackWorkerResultByType[Type]>;
-  }
+  const operation = mcapPlaybackWorkerOperation(
+    type
+  ) as McapPlaybackWorkerUnaryOperation<Type>;
 
-  throw new Error(`Unsupported inline MCAP request '${type}'`);
+  return operation.run(client, payload);
 }
 
 async function* streamInlineClient<Type extends McapPlaybackWorkerStreamType>(
   client: McapResourceClient,
   type: Type,
-  payload: ParametersForWorkerType<Type>
+  payload: McapPlaybackWorkerRequestPayloadByType[Type]
 ): AsyncGenerator<McapPlaybackWorkerStreamItemByType[Type], void, void> {
-  switch (type) {
-    case "readDecodedMessages":
-      yield* client.readDecodedMessages(
-        payload as McapReadDecodedMessagesRequest
-      ) as AsyncGenerator<McapPlaybackWorkerStreamItemByType[Type], void, void>;
-      return;
-  }
+  const operation = mcapPlaybackWorkerOperation(
+    type
+  ) as McapPlaybackWorkerStreamOperation<Type>;
 
-  throw new Error(`Unsupported inline MCAP stream '${type}'`);
+  yield* operation.run(client, payload);
 }
 
 function disposeWorker(worker: Worker | undefined) {
