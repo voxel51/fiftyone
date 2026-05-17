@@ -23,10 +23,7 @@ import {
   minBigInt,
   selectCandidatesForTopic,
 } from "./sync";
-import {
-  assertSupportedMcapActiveTimeline,
-  resolveMcapActiveTimeline,
-} from "./timeline";
+import { resolveMcapActiveTimeline } from "./timeline";
 import {
   type McapActiveTimeline,
   type McapDecodedMessage,
@@ -84,7 +81,6 @@ export function createMcapResourceClient(
     request: McapReadDecodedMessagesRequest
   ): AsyncGenerator<McapDecodedMessage, void, void> {
     const activeTimeline = resolveMcapActiveTimeline(request.activeTimeline);
-    assertSupportedMcapActiveTimeline(activeTimeline);
     const reader = await getReader(
       readers,
       readerFactory,
@@ -129,7 +125,6 @@ export function createMcapResourceClient(
     request: McapReadTimelineRangeRequest
   ): Promise<McapTimelineRange> {
     const activeTimeline = resolveMcapActiveTimeline(request.activeTimeline);
-    assertSupportedMcapActiveTimeline(activeTimeline);
     const reader = await getReader(
       readers,
       readerFactory,
@@ -175,7 +170,6 @@ export function createMcapResourceClient(
     }
 
     const activeTimeline = resolveMcapActiveTimeline(request.activeTimeline);
-    assertSupportedMcapActiveTimeline(activeTimeline);
     const windowBounds = request.timeNs.map((timeNs) =>
       createWindowBounds({
         timeNs,

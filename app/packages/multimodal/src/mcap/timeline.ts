@@ -14,19 +14,16 @@ export interface McapTimelineRangeLike {
 }
 
 export function resolveMcapActiveTimeline(
-  activeTimeline: McapActiveTimeline | undefined
+  activeTimeline: string | undefined
 ): McapActiveTimeline {
-  return activeTimeline ?? MCAP_ACTIVE_TIMELINE.LOG;
-}
-
-export function assertSupportedMcapActiveTimeline(
-  activeTimeline: McapActiveTimeline
-) {
-  if (activeTimeline !== MCAP_ACTIVE_TIMELINE.LOG) {
-    throw new Error(
-      `MCAP active timeline '${activeTimeline}' is not implemented yet`
-    );
+  if (
+    activeTimeline === undefined ||
+    activeTimeline === MCAP_ACTIVE_TIMELINE.LOG
+  ) {
+    return MCAP_ACTIVE_TIMELINE.LOG;
   }
+
+  throw new Error(`Unsupported MCAP active timeline '${activeTimeline}'`);
 }
 
 export function createMcapTimelineTicks(

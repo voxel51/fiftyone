@@ -5,13 +5,11 @@ import type { PlaybackSyncMode } from "../schemas/v1";
  * MCAP timeline selected as the playback clock/time track.
  */
 export const MCAP_ACTIVE_TIMELINE = Object.freeze({
-  HEADER_STAMP: "header.stamp",
   LOG: "log",
-  PUBLISH: "publish",
 } as const);
 
 /**
- * Supported MCAP timelines used to derive playback synchronization time.
+ * Supported MCAP timeline used to derive playback synchronization time.
  */
 export type McapActiveTimeline =
   typeof MCAP_ACTIVE_TIMELINE[keyof typeof MCAP_ACTIVE_TIMELINE];

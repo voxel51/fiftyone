@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_MCAP_TIMELINE_TICK_RATE_HZ,
-  assertSupportedMcapActiveTimeline,
   createMcapTimelineTicks,
   resolveMcapActiveTimeline,
 } from "./timeline";
@@ -12,10 +11,10 @@ describe("MCAP timeline helpers", () => {
     expect(resolveMcapActiveTimeline(undefined)).toBe(MCAP_ACTIVE_TIMELINE.LOG);
   });
 
-  it("rejects non-log active timelines until implemented", () => {
-    expect(() =>
-      assertSupportedMcapActiveTimeline(MCAP_ACTIVE_TIMELINE.PUBLISH)
-    ).toThrow("not implemented yet");
+  it("rejects unsupported timeline values from untyped callers", () => {
+    expect(() => resolveMcapActiveTimeline("publish")).toThrow(
+      "Unsupported MCAP active timeline 'publish'"
+    );
   });
 
   it("generates fixed-rate timeline ticks within the range", () => {
