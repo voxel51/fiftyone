@@ -56,20 +56,19 @@ describe("MCAP resources", () => {
         timeNs: 100n,
       },
       context: {
+        schemaData,
         sourceTimestamps: {
           logTime: 100n,
           publishTime: 101n,
         },
         streamId: "/topic",
         timeRangeStartKey: "logTime",
-        topic: "/topic",
       },
       payload: {
         encoding: "protobuf",
         schema: "foxglove.CompressedImage",
         schemaEncoding: "protobuf",
       },
-      schemaData,
     });
   });
 
@@ -132,6 +131,24 @@ describe("MCAP resources", () => {
     ).toEqual([90n, 108n]);
     expect(readMessages).toHaveBeenCalledTimes(1);
     expect(decodeClient.decode).toHaveBeenCalledTimes(2);
+  });
+
+  it("returns empty synchronized batches without opening a reader", async () => {
+    const readerFactory = vi.fn();
+    const client = createMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory,
+    });
+
+    await expect(
+      client.readSynchronizedMessageBatch({
+        source: createMcapSourceDescriptor(),
+        timeNs: [],
+        topics: ["/camera"],
+      })
+    ).resolves.toEqual([]);
+    expect(readerFactory).not.toHaveBeenCalled();
   });
 
   it("reads log timeline range from chunk indexes without scanning messages", async () => {

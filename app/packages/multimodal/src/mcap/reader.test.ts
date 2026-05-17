@@ -2,10 +2,9 @@ import type { McapTypes } from "@mcap/core";
 import { describe, expect, it, vi } from "vitest";
 import type { ByteResourceClient } from "../client";
 import {
-  getReader,
+  createMcapReaderStore,
   parseMcapMessageIndexRecord,
   readIndexedMessageTimesForReader,
-  type McapIndexedReaderLike,
   type McapInitializedReader,
   type McapReadable,
 } from "./reader";
@@ -153,7 +152,6 @@ describe("MCAP indexed message times", () => {
   });
 
   it("caches delimiter-like source identities independently", async () => {
-    const readers = new Map<string, Promise<McapIndexedReaderLike>>();
     const readerFactory = vi.fn(async () =>
       createReader({
         chunkIndexes: [],
@@ -162,20 +160,15 @@ describe("MCAP indexed message times", () => {
     const byteClient: ByteResourceClient = {
       readBytes: vi.fn(),
     };
+    const readerStore = createMcapReaderStore({ byteClient, readerFactory });
 
-    await getReader(
-      readers,
-      readerFactory,
-      byteClient,
+    await readerStore.get(
       createSource({
         sourceId: "source|1",
         url: "nested|path",
       })
     );
-    await getReader(
-      readers,
-      readerFactory,
-      byteClient,
+    await readerStore.get(
       createSource({
         sourceId: "source",
         url: "1|nested|path",

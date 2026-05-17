@@ -1,15 +1,12 @@
-import { McapIndexedReader, type McapTypes } from "@mcap/core";
-import type { ByteResourceClient } from "../client";
-import { byteSourceCacheKey } from "../client/resources/cache";
-import { loadMcapDecompressHandlers } from "./decompress/handlers";
-import type { McapSourceDescriptor } from "./types";
+import type { McapTypes } from "@mcap/core";
+import type {
+  McapIndexedMessageTime,
+  McapInitializedReader,
+  McapReadable,
+  McapReadIndexedMessageTimesRequest,
+  ParsedMcapMessageIndexRecord,
+} from "./types";
 
-type DecompressHandlers = McapTypes.DecompressHandlers;
-
-/**
- * Seekable byte-readable source consumed by @mcap/core.
- */
-export type McapReadable = McapTypes.IReadable;
 type TypedMcapRecords = McapTypes.TypedMcapRecords;
 
 type ExactMcapReadable = McapReadable & {
@@ -21,145 +18,9 @@ const MCAP_MESSAGE_INDEX_OPCODE = 0x07;
 const MESSAGE_INDEX_CONTENT_HEADER_BYTES = 6;
 const MESSAGE_INDEX_RECORD_BYTES = 16;
 
-export interface McapIndexedMessageTime {
-  readonly channelId: number;
-  readonly chunkStartOffset: bigint;
-  readonly logTimeNs: bigint;
-  readonly messageOffset: bigint;
-  readonly topic: string;
-}
-
-export interface McapReadIndexedMessageTimesRequest {
-  readonly endTimeNs?: bigint;
-  readonly limit?: number;
-  readonly startTimeNs?: bigint;
-  readonly topics?: readonly string[];
-}
-
-export interface ParsedMcapMessageIndexRecord {
-  readonly channelId: number;
-  readonly records: readonly (readonly [
-    logTimeNs: bigint,
-    messageOffset: bigint
-  ])[];
-}
-
 /**
- * Reader factory used by MCAP production code and tests.
+ * Reads ordered MCAP message times directly from chunk message-index records.
  */
-export type McapReaderFactory = (
-  source: McapSourceDescriptor,
-  readable: McapReadable
-) => Promise<McapIndexedReaderLike>;
-
-/**
- * Indexed MCAP reader surface used by this adapter.
- */
-export interface McapIndexedReaderLike {
-  readonly channelsById: ReadonlyMap<number, TypedMcapRecords["Channel"]>;
-  readonly chunkIndexes: readonly TypedMcapRecords["ChunkIndex"][];
-  readonly schemasById: ReadonlyMap<number, TypedMcapRecords["Schema"]>;
-
-  readIndexedMessageTimes?(
-    args?: McapReadIndexedMessageTimesRequest
-  ): AsyncGenerator<McapIndexedMessageTime, void, void>;
-
-  readMessages(args?: {
-    readonly endTime?: bigint;
-    readonly startTime?: bigint;
-    readonly topics?: readonly string[];
-  }): AsyncGenerator<TypedMcapRecords["Message"], void, void>;
-}
-
-export type McapInitializedReader = McapIndexedReaderLike & {
-  readonly chunkIndexes: readonly TypedMcapRecords["ChunkIndex"][];
-};
-
-/**
- * Creates the default indexed MCAP reader with supported chunk decompressors.
- */
-export async function createDefaultMcapReader(
-  _source: McapSourceDescriptor,
-  readable: McapReadable
-): Promise<McapIndexedReaderLike> {
-  const reader = await initializeDefaultMcapReader(
-    readable,
-    await loadMcapDecompressHandlers()
-  );
-  const chunkCompressions = compressedChunkTypes(reader);
-  assertSupportedChunkCompressions(chunkCompressions);
-
-  return {
-    channelsById: reader.channelsById,
-    chunkIndexes: reader.chunkIndexes,
-    readIndexedMessageTimes: (args) =>
-      readIndexedMessageTimesForReader(reader, readable, args),
-    readMessages: (args) => reader.readMessages(args),
-    schemasById: reader.schemasById,
-  };
-}
-
-/**
- * Gets or initializes the cached reader promise for one MCAP source.
- */
-export async function getReader(
-  readers: Map<string, Promise<McapIndexedReaderLike>>,
-  readerFactory: McapReaderFactory,
-  byteClient: ByteResourceClient,
-  source: McapSourceDescriptor
-) {
-  const key = sourceKey(source);
-  let reader = readers.get(key);
-
-  if (!reader) {
-    reader = readerFactory(
-      source,
-      new ByteClientReadable(source, byteClient)
-    ).catch((error) => {
-      readers.delete(key);
-      throw error;
-    });
-    readers.set(key, reader);
-  }
-
-  return reader;
-}
-
-async function initializeDefaultMcapReader(
-  readable: McapReadable,
-  decompressHandlers: DecompressHandlers
-): Promise<McapInitializedReader> {
-  return McapIndexedReader.Initialize({
-    decompressHandlers,
-    messageIndexCacheSizeBytes: 128 * 1024 * 1024,
-    readable,
-  });
-}
-
-function compressedChunkTypes(
-  reader: McapInitializedReader
-): ReadonlySet<string> {
-  return new Set(
-    reader.chunkIndexes
-      .map((chunkIndex) => chunkIndex.compression)
-      .filter((compression) => compression.length > 0)
-  );
-}
-
-function assertSupportedChunkCompressions(compressions: ReadonlySet<string>) {
-  const unsupported = [...compressions]
-    .filter((compression) => compression !== "lz4" && compression !== "zstd")
-    .sort();
-
-  if (unsupported.length > 0) {
-    throw new Error(
-      `Unsupported MCAP chunk compression: ${unsupported.join(
-        ", "
-      )}. Supported compressions are lz4 and zstd.`
-    );
-  }
-}
-
 export async function* readIndexedMessageTimesForReader(
   reader: McapInitializedReader,
   readable: McapReadable,
@@ -240,6 +101,9 @@ export async function* readIndexedMessageTimesForReader(
   }
 }
 
+/**
+ * Parses one raw MCAP MessageIndex record into channel offsets.
+ */
 export function parseMcapMessageIndexRecord(
   bytes: Uint8Array
 ): ParsedMcapMessageIndexRecord {
@@ -523,90 +387,4 @@ function compareBigInt(left: bigint, right: bigint) {
   }
 
   return 0;
-}
-
-class ByteClientReadable implements McapReadable {
-  private source: McapSourceDescriptor;
-  private resolvedSizeBytes?: bigint;
-
-  constructor(
-    source: McapSourceDescriptor,
-    private readonly byteClient: ByteResourceClient
-  ) {
-    this.source = source;
-  }
-
-  async size(): Promise<bigint> {
-    const sizeBytes = sourceSizeBytes(this.source);
-    if (sizeBytes !== undefined) {
-      return sizeBytes;
-    }
-
-    if (this.resolvedSizeBytes !== undefined) {
-      return this.resolvedSizeBytes;
-    }
-
-    const result = await this.byteClient.readBytes({
-      range: { length: 1n, offset: 0n },
-      source: this.source,
-    });
-    this.updateSource(result.source);
-
-    if (this.resolvedSizeBytes === undefined) {
-      throw new Error("MCAP source size is required for indexed reads");
-    }
-
-    return this.resolvedSizeBytes;
-  }
-
-  async read(offset: bigint, size: bigint): Promise<Uint8Array> {
-    return this.readRange(offset, size);
-  }
-
-  async readExact(offset: bigint, size: bigint): Promise<Uint8Array> {
-    return this.readRange(offset, size, { blockFill: false });
-  }
-
-  private async readRange(
-    offset: bigint,
-    size: bigint,
-    cachePolicy?: { readonly blockFill?: boolean }
-  ): Promise<Uint8Array> {
-    const sourceSize = sourceSizeBytes(this.source) ?? this.resolvedSizeBytes;
-    if (sourceSize !== undefined && offset + size > sourceSize) {
-      throw new Error(
-        `Read of ${size.toString()} bytes at offset ${offset.toString()} exceeds source size ${sourceSize.toString()}`
-      );
-    }
-
-    if (size === 0n) {
-      return new Uint8Array();
-    }
-
-    const result = await this.byteClient.readBytes({
-      cachePolicy,
-      range: { length: size, offset },
-      source: this.source,
-    });
-    this.updateSource(result.source);
-
-    return result.bytes;
-  }
-
-  private updateSource(source: McapSourceDescriptor) {
-    const sizeBytes = sourceSizeBytes(source);
-    if (sizeBytes !== undefined) {
-      this.resolvedSizeBytes = sizeBytes;
-      this.source = source;
-    }
-  }
-}
-
-function sourceSizeBytes(source: McapSourceDescriptor): bigint | undefined {
-  const sizeBytes = source.sizeBytes ?? source.fingerprint?.sizeBytes;
-  return sizeBytes === undefined ? undefined : BigInt(sizeBytes);
-}
-
-function sourceKey(source: McapSourceDescriptor): string {
-  return byteSourceCacheKey(source);
 }
