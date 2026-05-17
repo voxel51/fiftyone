@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useSetAtom } from "jotai";
 import {
-  setFrameNumberAtom,
+  dispatchTimelineSetFrameNumberEvent,
   useDefaultTimelineNameImperative,
   useTimeline,
 } from "@fiftyone/playback";
@@ -13,8 +12,12 @@ const SUBSCRIPTION_ID = "temporal-embedding-trajectory-cursor";
  *
  * - Reads: subscribes to frame updates via useTimeline so the panel
  *   re-renders when the user scrubs the video.
- * - Writes: returns a `seekFrame` callback that drives the looker via
- *   `setFrameNumberAtom`.
+ * - Writes: returns a `seekFrame` callback that drives the *video element*
+ *   via dispatchTimelineSetFrameNumberEvent. The plain setFrameNumberAtom
+ *   only updates Jotai subscribers (us, but not the looker), so we have
+ *   to fire the DOM CustomEvent the looker listens for to actually move
+ *   the playhead. The atom catches up via the looker's own callback
+ *   once it has seeked.
  *
  * Returns null currentFrame when there's no active timeline (e.g.
  * panel is open in grid mode without a modal video).
@@ -24,7 +27,6 @@ export function useFrameSync() {
   const timelineName = getName();
 
   const { subscribe, isTimelineInitialized } = useTimeline(timelineName);
-  const setFrameNumberDirect = useSetAtom(setFrameNumberAtom);
 
   const [currentFrame, setCurrentFrame] = useState<number | null>(null);
   const currentFrameRef = useRef<number | null>(null);
@@ -50,12 +52,12 @@ export function useFrameSync() {
   const seekFrame = useCallback(
     (frameNumber: number) => {
       if (!timelineName) return;
-      setFrameNumberDirect({
-        name: timelineName,
+      dispatchTimelineSetFrameNumberEvent({
+        timelineName,
         newFrameNumber: frameNumber,
       });
     },
-    [setFrameNumberDirect, timelineName]
+    [timelineName]
   );
 
   return {

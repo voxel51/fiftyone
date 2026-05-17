@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { getSampleSrc } from "@fiftyone/state";
 import { ImageList, Orientation } from "@voxel51/voodo";
 
-const THUMB_SIZE = 80;
+const DEFAULT_THUMB_SIZE = 80;
 const THUMB_GAP = 6;
 const SINGLE_ROW_MAX = 12;
 
@@ -20,6 +20,9 @@ export type JumpFramesProps = {
   onClickFrame?: (frameNumber: number) => void;
   // If true, scrolls horizontally; if false, the parent must size it.
   scrollHorizontally?: boolean;
+  // Override the per-cell pixel size. Defaults to 80; the context
+  // preview row passes ~140 so the user can read the small differences.
+  thumbSize?: number;
 };
 
 /**
@@ -35,6 +38,7 @@ export default function JumpFrames({
   media,
   onClickFrame,
   scrollHorizontally = true,
+  thumbSize = DEFAULT_THUMB_SIZE,
 }: JumpFramesProps) {
   const items = useMemo(
     () =>
@@ -59,7 +63,7 @@ export default function JumpFrames({
   }
 
   const rows = frames.length <= SINGLE_ROW_MAX && scrollHorizontally ? 1 : 2;
-  const containerHeight = THUMB_SIZE * rows + THUMB_GAP * Math.max(0, rows - 1);
+  const containerHeight = thumbSize * rows + THUMB_GAP * Math.max(0, rows - 1);
 
   return (
     <div style={styles.section}>
@@ -71,11 +75,11 @@ export default function JumpFrames({
       <ImageList
         orientation={scrollHorizontally ? Orientation.Row : Orientation.Column}
         cols={rows}
-        colWidth={THUMB_SIZE}
+        colWidth={thumbSize}
         gap={THUMB_GAP}
         style={{ height: containerHeight, width: "100%" }}
         items={items as any}
-        renderItem={(data: any, item: any) => {
+        renderItem={(data: any) => {
           const filepath = data?.filepath as string | undefined;
           const accent = data?.accent as string | undefined;
           const frameNumber = data?.frameNumber as number;

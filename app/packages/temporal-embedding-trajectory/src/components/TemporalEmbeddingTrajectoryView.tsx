@@ -23,6 +23,7 @@ import type { SceneTrajectory, TrajectoryViewProps, ViewMode } from "../types";
 
 const TRAJECTORY_LENGTH_DEFAULT = 30;
 const JUMP_SIGMA_DEFAULT = 2;
+const CONTEXT_HALF = 2; // +/- frames around the selected frame
 const MODEL_CHOICES: Array<{ value: string; label: string }> = [
   { value: "clip-vit-base32-torch", label: "CLIP ViT-B/32 (semantic)" },
   { value: "dinov2-vitb14-torch", label: "DINOv2 ViT-B/14 (visual)" },
@@ -31,6 +32,7 @@ const MODEL_CHOICES: Array<{ value: string; label: string }> = [
 const ACCENT_A = "rgba(70, 140, 220, 0.95)";
 const ACCENT_B = "rgba(230, 130, 50, 0.95)";
 const ACCENT_BOTH = "rgba(80, 200, 140, 0.95)";
+const ACCENT_SELECTED = "rgba(255, 220, 80, 1)";
 
 function jumpsForScene(scene: SceneTrajectory, sigma: number): JumpFrame[] {
   const threshold = defaultJumpThreshold(scene.jump_dists, sigma);
@@ -46,7 +48,75 @@ function jumpsForScene(scene: SceneTrajectory, sigma: number): JumpFrame[] {
   return out;
 }
 
+/**
+ * Context frames around the user-selected frame: [center-N, ..., center, ..., center+N].
+ * The center frame carries a yellow accent so the eye finds it instantly.
+ */
+function contextFramesFor(
+  selectedFrame: number | null,
+  sourceScene: SceneTrajectory | undefined,
+  half: number = CONTEXT_HALF
+): JumpFrame[] {
+  if (selectedFrame == null || !sourceScene) return [];
+  const idx = sourceScene.frame_numbers.indexOf(selectedFrame);
+  if (idx === -1) return [];
+  const start = Math.max(0, idx - half);
+  const end = Math.min(sourceScene.frame_numbers.length, idx + half + 1);
+  const out: JumpFrame[] = [];
+  for (let i = start; i < end; i++) {
+    out.push({
+      frameId: sourceScene.frame_ids[i],
+      frameNumber: sourceScene.frame_numbers[i],
+      accent: i === idx ? ACCENT_SELECTED : undefined,
+    });
+  }
+  return out;
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// Compute action: shared between grid CTA and modal toolbar.
+// ──────────────────────────────────────────────────────────────────────
+
+type ComputeBarProps = {
+  composeModel: string;
+  setComposeModel: (m: string) => void;
+  onCompute: () => void;
+};
+
+function ComputeBar({
+  composeModel,
+  setComposeModel,
+  onCompute,
+}: ComputeBarProps) {
+  return (
+    <div style={styles.computeGroup}>
+      <label style={styles.field}>
+        <span style={styles.fieldLabel}>Compute model</span>
+        <select
+          style={styles.select}
+          value={composeModel}
+          onChange={(e) => setComposeModel(e.target.value)}
+        >
+          {MODEL_CHOICES.map((m) => (
+            <option key={m.value} value={m.value}>
+              {m.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <button style={styles.button} onClick={onCompute}>
+        Compute
+      </button>
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// Main panel body.
+// ──────────────────────────────────────────────────────────────────────
+
 function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
+  // ── Panel state ────────────────────────────────────────────────────
   const [viewMode, setViewMode] = usePanelStatePartial<ViewMode>(
     "viewMode",
     "scatter",
@@ -90,21 +160,23 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
     MODEL_CHOICES[0].value,
     true
   );
+  const [selectedFrame, setSelectedFrame] = usePanelStatePartial<number | null>(
+    "selectedFrame",
+    null,
+    true
+  );
 
+  // ── Data hooks ─────────────────────────────────────────────────────
   const { brainKeys, scene, triggers, currentSampleId } = useTrajectoryData(
     props,
     [selectedBrainKey, setSelectedBrainKey]
   );
-
   const { currentFrame, seekFrame, isTimelineActive } = useFrameSync();
 
-  // Seed compare keys on first availability: A = current scatter key,
-  // B = next available key (if any).
+  // Seed compare keys on first availability.
   React.useEffect(() => {
     if (brainKeys.length === 0) return;
-    if (!keyA && selectedBrainKey) {
-      setKeyA(selectedBrainKey);
-    }
+    if (!keyA && selectedBrainKey) setKeyA(selectedBrainKey);
     if (!keyB) {
       const candidate = brainKeys.find(
         (bk) => bk.key !== (keyA || selectedBrainKey)
@@ -117,21 +189,17 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
     () => [keyA, keyB].filter((k): k is string => !!k),
     [keyA, keyB]
   );
-
-  // Same A/B selection drives both compare and scenes modes — fetch
-  // whenever either mode is active.
   const { scenes: compareScenes } = useCompareData(
     props,
     currentSampleId,
     viewMode === "compare" || viewMode === "scenes" ? compareKeysSel : []
   );
 
-  // ── Scatter mode derived state ─────────────────────────────────────
+  // ── Scatter derived state ──────────────────────────────────────────
   const jumpThreshold = useMemo(
     () => (scene ? defaultJumpThreshold(scene.jump_dists, jumpSigma ?? 2) : 0),
     [scene, jumpSigma]
   );
-
   const scatterTraces = useMemo(() => {
     if (!scene || scene.points.length === 0) return [];
     return buildTraces(scene, {
@@ -140,13 +208,12 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
       currentFrameNumber: currentFrame,
     });
   }, [scene, trajectoryLength, jumpThreshold, currentFrame]);
-
   const scatterJumps = useMemo<JumpFrame[]>(
     () => (scene ? jumpsForScene(scene, jumpSigma ?? JUMP_SIGMA_DEFAULT) : []),
     [scene, jumpSigma]
   );
 
-  // ── Compare mode derived state ─────────────────────────────────────
+  // ── Compare / Scenes derived state ─────────────────────────────────
   const sceneA = keyA ? compareScenes[keyA] : undefined;
   const sceneB = keyB ? compareScenes[keyB] : undefined;
 
@@ -166,13 +233,8 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
     const tol = Math.max(0, Math.floor(matchTolerance ?? 0));
     const aJumps = sceneA ? jumpsForScene(sceneA, sigma) : [];
     const bJumps = sceneB ? jumpsForScene(sceneB, sigma) : [];
-
-    // Within-tolerance membership: O(N*M) but jump counts are small
-    // (tens, not thousands). For tol=0 this collapses to exact set
-    // membership.
     const hasMatchIn = (target: number, others: JumpFrame[]): boolean =>
       others.some((o) => Math.abs(o.frameNumber - target) <= tol);
-
     const onlyA: JumpFrame[] = aJumps
       .filter((j) => !hasMatchIn(j.frameNumber, bJumps))
       .map((j) => ({ ...j, accent: ACCENT_A }));
@@ -182,11 +244,9 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
     const both: JumpFrame[] = aJumps
       .filter((j) => hasMatchIn(j.frameNumber, bJumps))
       .map((j) => ({ ...j, accent: ACCENT_BOTH }));
-
     return { onlyA, both, onlyB };
   }, [sceneA, sceneB, jumpSigma, matchTolerance]);
 
-  // ── Scenes mode derived state ──────────────────────────────────────
   const scenesPlot = useMemo(() => {
     const scenesList: Array<{
       brainKey: string;
@@ -200,13 +260,10 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
     return buildScenesTraces({
       scenes: scenesList,
       sigma: sceneSigma ?? 1.5,
-      // Peaks within W frames of each other almost always describe the
-      // same boundary; W is the operator's scene_window default (30).
       minPeakDistance: 30,
       currentFrameNumber: currentFrame,
     });
   }, [keyA, keyB, sceneA, sceneB, sceneSigma, currentFrame]);
-
   const scenesSegmentsA = useMemo(
     () =>
       keyA && sceneA && scenesPlot.boundariesByKey[keyA]
@@ -222,27 +279,55 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
     [keyB, sceneB, scenesPlot]
   );
 
-  // Collect every frame id we want a thumbnail for, across the active
-  // mode, so we batch a single get_frame_media request.
-  const thumbnailFrameIds = useMemo(() => {
-    if (viewMode === "scatter") {
-      return scatterJumps.map((j) => j.frameId);
-    }
-    if (viewMode === "compare") {
-      return [
-        ...compareDiff.onlyA,
-        ...compareDiff.both,
-        ...compareDiff.onlyB,
-      ].map((j) => j.frameId);
-    }
-    // scenes
-    return [
-      ...scenesSegmentsA.map((s) => s.frameId),
-      ...scenesSegmentsB.map((s) => s.frameId),
-    ];
-  }, [viewMode, scatterJumps, compareDiff, scenesSegmentsA, scenesSegmentsB]);
+  // ── Context preview frames around the user-selected frame ──────────
+  // Source the surrounding frames from whichever scene we currently
+  // have loaded — they're all keyed by the same parent video, so the
+  // frame_ids around `selectedFrame` are identical.
+  const contextSourceScene = sceneA ?? sceneB ?? scene ?? undefined;
+  const contextFrames = useMemo(
+    () => contextFramesFor(selectedFrame ?? null, contextSourceScene),
+    [selectedFrame, contextSourceScene]
+  );
 
+  // ── Frame-media batching ───────────────────────────────────────────
+  const thumbnailFrameIds = useMemo(() => {
+    const ids: string[] = [];
+    if (viewMode === "scatter") {
+      ids.push(...scatterJumps.map((j) => j.frameId));
+    } else if (viewMode === "compare") {
+      ids.push(
+        ...[
+          ...compareDiff.onlyA,
+          ...compareDiff.both,
+          ...compareDiff.onlyB,
+        ].map((j) => j.frameId)
+      );
+    } else {
+      ids.push(...scenesSegmentsA.map((s) => s.frameId));
+      ids.push(...scenesSegmentsB.map((s) => s.frameId));
+    }
+    // Always include the context-preview frames so they show as soon
+    // as the user clicks anywhere.
+    ids.push(...contextFrames.map((f) => f.frameId));
+    return ids;
+  }, [
+    viewMode,
+    scatterJumps,
+    compareDiff,
+    scenesSegmentsA,
+    scenesSegmentsB,
+    contextFrames,
+  ]);
   const { media: frameMedia } = useFrameMedia(props, thumbnailFrameIds);
+
+  // ── Click handlers ─────────────────────────────────────────────────
+  const handleSelectFrame = useCallback(
+    (frameNumber: number) => {
+      setSelectedFrame(frameNumber);
+      seekFrame(frameNumber);
+    },
+    [seekFrame, setSelectedFrame]
+  );
 
   const handlePlotClick = useCallback(
     (event: any) => {
@@ -256,9 +341,9 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
         frameNumber = Number(cd);
       }
       if (frameNumber == null || Number.isNaN(frameNumber)) return;
+      handleSelectFrame(frameNumber);
 
-      seekFrame(frameNumber);
-
+      // Cross-sample fallback (only matters in scatter mode).
       if (
         viewMode === "scatter" &&
         scene &&
@@ -271,7 +356,7 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
         });
       }
     },
-    [viewMode, scene, seekFrame, triggers, currentSampleId]
+    [viewMode, scene, handleSelectFrame, triggers, currentSampleId]
   );
 
   const handleCompute = useCallback(() => {
@@ -289,6 +374,31 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
     ? findCursorIndex(scene.frame_numbers, currentFrame)
     : -1;
 
+  // ── Grid surface — no sample open ──────────────────────────────────
+  if (!currentSampleId) {
+    return (
+      <div style={styles.root}>
+        <div style={styles.gridCta}>
+          <p style={styles.gridCtaTitle}>
+            {noBrainKeys
+              ? "Pick a model and click Compute to embed your video frames."
+              : "Open a video sample in the modal to view its trajectory."}
+          </p>
+          <p style={styles.hint}>
+            Compute runs as a delegated operator; on a large dataset it can take
+            a few minutes.
+          </p>
+          <ComputeBar
+            composeModel={composeModel ?? MODEL_CHOICES[0].value}
+            setComposeModel={setComposeModel}
+            onCompute={handleCompute}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // ── Modal surface — full panel ─────────────────────────────────────
   const statusLeft = (() => {
     if (viewMode === "scatter") {
       return scene
@@ -303,35 +413,25 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
 
   return (
     <div style={styles.root}>
-      <div style={styles.toolbar}>
+      {/* ── Row 1: mode tabs · key selection · compute action ──────── */}
+      <div style={styles.toolbarRow}>
         <div style={styles.modeToggle}>
-          <button
-            onClick={() => setViewMode("scatter")}
-            style={{
-              ...styles.modeButton,
-              ...(viewMode === "scatter" ? styles.modeButtonActive : {}),
-            }}
-          >
-            Scatter
-          </button>
-          <button
-            onClick={() => setViewMode("compare")}
-            style={{
-              ...styles.modeButton,
-              ...(viewMode === "compare" ? styles.modeButtonActive : {}),
-            }}
-          >
-            Compare
-          </button>
-          <button
-            onClick={() => setViewMode("scenes")}
-            style={{
-              ...styles.modeButton,
-              ...(viewMode === "scenes" ? styles.modeButtonActive : {}),
-            }}
-          >
-            Scenes
-          </button>
+          {(["scatter", "compare", "scenes"] as ViewMode[]).map((m) => (
+            <button
+              key={m}
+              onClick={() => setViewMode(m)}
+              style={{
+                ...styles.modeButton,
+                ...(viewMode === m ? styles.modeButtonActive : {}),
+              }}
+            >
+              {m === "scatter"
+                ? "Scatter"
+                : m === "compare"
+                ? "Compare"
+                : "Scenes"}
+            </button>
+          ))}
         </div>
 
         {viewMode === "scatter" ? (
@@ -395,62 +495,72 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
           </>
         )}
 
-        <label style={styles.field}>
-          <span style={styles.fieldLabel}>Compute model</span>
-          <select
-            style={styles.select}
-            value={composeModel ?? MODEL_CHOICES[0].value}
-            onChange={(e) => setComposeModel(e.target.value)}
-          >
-            {MODEL_CHOICES.map((m) => (
-              <option key={m.value} value={m.value}>
-                {m.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div style={styles.spacer} />
 
+        <ComputeBar
+          composeModel={composeModel ?? MODEL_CHOICES[0].value}
+          setComposeModel={setComposeModel}
+          onCompute={handleCompute}
+        />
+      </div>
+
+      {/* ── Row 2: per-mode display controls ───────────────────────── */}
+      <div style={styles.toolbarRow}>
         {viewMode === "scatter" && (
-          <label style={styles.field}>
-            <span style={styles.fieldLabel}>
-              Trajectory length: {trajectoryLength}
-            </span>
-            <input
-              type="range"
-              min={2}
-              max={200}
-              value={trajectoryLength ?? TRAJECTORY_LENGTH_DEFAULT}
-              onChange={(e) => setTrajectoryLength(Number(e.target.value))}
-            />
-          </label>
+          <>
+            <label style={styles.field}>
+              <span style={styles.fieldLabel}>
+                Trajectory length: {trajectoryLength}
+              </span>
+              <input
+                type="range"
+                min={2}
+                max={200}
+                value={trajectoryLength ?? TRAJECTORY_LENGTH_DEFAULT}
+                onChange={(e) => setTrajectoryLength(Number(e.target.value))}
+              />
+            </label>
+            <label style={styles.field}>
+              <span style={styles.fieldLabel}>Jump σ: {jumpSigma}</span>
+              <input
+                type="range"
+                min={0.5}
+                max={5}
+                step={0.1}
+                value={jumpSigma ?? JUMP_SIGMA_DEFAULT}
+                onChange={(e) => setJumpSigma(Number(e.target.value))}
+              />
+            </label>
+          </>
         )}
 
-        <label style={styles.field}>
-          <span style={styles.fieldLabel}>Jump σ: {jumpSigma}</span>
-          <input
-            type="range"
-            min={0.5}
-            max={5}
-            step={0.1}
-            value={jumpSigma ?? JUMP_SIGMA_DEFAULT}
-            onChange={(e) => setJumpSigma(Number(e.target.value))}
-          />
-        </label>
-
         {viewMode === "compare" && (
-          <label style={styles.field}>
-            <span style={styles.fieldLabel}>
-              Match tol: ±{matchTolerance ?? 0} fr
-            </span>
-            <input
-              type="range"
-              min={0}
-              max={10}
-              step={1}
-              value={matchTolerance ?? 0}
-              onChange={(e) => setMatchTolerance(Number(e.target.value))}
-            />
-          </label>
+          <>
+            <label style={styles.field}>
+              <span style={styles.fieldLabel}>Jump σ: {jumpSigma}</span>
+              <input
+                type="range"
+                min={0.5}
+                max={5}
+                step={0.1}
+                value={jumpSigma ?? JUMP_SIGMA_DEFAULT}
+                onChange={(e) => setJumpSigma(Number(e.target.value))}
+              />
+            </label>
+            <label style={styles.field}>
+              <span style={styles.fieldLabel}>
+                Match tol: ±{matchTolerance ?? 0} fr
+              </span>
+              <input
+                type="range"
+                min={0}
+                max={10}
+                step={1}
+                value={matchTolerance ?? 0}
+                onChange={(e) => setMatchTolerance(Number(e.target.value))}
+              />
+            </label>
+          </>
         )}
 
         {viewMode === "scenes" && (
@@ -466,26 +576,15 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
             />
           </label>
         )}
-
-        <button style={styles.button} onClick={handleCompute}>
-          Compute
-        </button>
       </div>
 
+      {/* ── Plot area ──────────────────────────────────────────────── */}
       <div style={styles.plotWrap}>
         {viewMode === "scatter" ? (
           scatterTraces.length === 0 ? (
             <div style={styles.empty}>
               {noBrainKeys ? (
-                <>
-                  <p>No trajectory yet — pick a model and click Compute.</p>
-                  <p style={styles.hint}>
-                    Compute runs as a delegated operator; on a large dataset it
-                    can take a few minutes.
-                  </p>
-                </>
-              ) : !currentSampleId ? (
-                <p>Open a video sample in the modal to see its trajectory.</p>
+                <p>Compute a brain key first.</p>
               ) : (
                 <p>
                   No embeddings found for this scene under "{selectedBrainKey}".
@@ -509,8 +608,6 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
                 <p>Compute at least one brain key first.</p>
               ) : !keyA && !keyB ? (
                 <p>Pick brain keys for Model A and Model B.</p>
-              ) : !currentSampleId ? (
-                <p>Open a video sample in the modal.</p>
               ) : (
                 <p>Loading compare data…</p>
               )}
@@ -536,8 +633,6 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
               <p>Compute at least one brain key first.</p>
             ) : !keyA && !keyB ? (
               <p>Pick brain keys for Model A and Model B.</p>
-            ) : !currentSampleId ? (
-              <p>Open a video sample in the modal.</p>
             ) : (sceneA &&
                 !(sceneA.scene_shifts && sceneA.scene_shifts.length)) ||
               (sceneB &&
@@ -562,6 +657,7 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
         )}
       </div>
 
+      {/* ── Thumbnails area ────────────────────────────────────────── */}
       <div style={styles.thumbsArea}>
         {viewMode === "scatter" ? (
           scene && scatterJumps.length > 0 ? (
@@ -569,7 +665,7 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
               title="jump frames"
               frames={scatterJumps}
               media={frameMedia}
-              onClickFrame={seekFrame}
+              onClickFrame={handleSelectFrame}
             />
           ) : null
         ) : viewMode === "compare" ? (
@@ -581,7 +677,7 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
                     title={`only ${keyA}`}
                     frames={compareDiff.onlyA}
                     media={frameMedia}
-                    onClickFrame={seekFrame}
+                    onClickFrame={handleSelectFrame}
                   />
                 </div>
               ) : null}
@@ -590,7 +686,7 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
                   title="both"
                   frames={compareDiff.both}
                   media={frameMedia}
-                  onClickFrame={seekFrame}
+                  onClickFrame={handleSelectFrame}
                 />
               </div>
               {keyB ? (
@@ -599,15 +695,13 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
                     title={`only ${keyB}`}
                     frames={compareDiff.onlyB}
                     media={frameMedia}
-                    onClickFrame={seekFrame}
+                    onClickFrame={handleSelectFrame}
                   />
                 </div>
               ) : null}
             </div>
           ) : null
         ) : (
-          // scenes mode: one strip per selected brain key, each thumbnail
-          // is the first frame of a detected segment, badge = frame range.
           <div
             style={
               keyA && keyB
@@ -625,7 +719,7 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
                     accent: ACCENT_A,
                   }))}
                   media={frameMedia}
-                  onClickFrame={seekFrame}
+                  onClickFrame={handleSelectFrame}
                 />
               </div>
             ) : null}
@@ -639,14 +733,28 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
                     accent: ACCENT_B,
                   }))}
                   media={frameMedia}
-                  onClickFrame={seekFrame}
+                  onClickFrame={handleSelectFrame}
                 />
               </div>
             ) : null}
           </div>
         )}
+
+        {/* Context preview: ±N frames around the currently selected frame */}
+        {contextFrames.length > 0 ? (
+          <div style={styles.contextPreview}>
+            <JumpFrames
+              title={`context · frame ${selectedFrame}`}
+              frames={contextFrames}
+              media={frameMedia}
+              onClickFrame={handleSelectFrame}
+              thumbSize={140}
+            />
+          </div>
+        ) : null}
       </div>
 
+      {/* ── Status bar ─────────────────────────────────────────────── */}
       <div style={styles.status}>
         <span>{statusLeft}</span>
         <span>
@@ -679,6 +787,10 @@ export default function TemporalEmbeddingTrajectoryView(
   );
 }
 
+// ──────────────────────────────────────────────────────────────────────
+// Styles
+// ──────────────────────────────────────────────────────────────────────
+
 const styles: Record<string, React.CSSProperties> = {
   root: {
     display: "flex",
@@ -691,13 +803,21 @@ const styles: Record<string, React.CSSProperties> = {
     fontFamily:
       "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
   },
-  toolbar: {
+  toolbarRow: {
     display: "flex",
     flexWrap: "wrap",
     gap: 12,
-    padding: "8px 12px",
+    padding: "6px 12px",
     borderBottom: "1px solid rgba(120,120,140,0.18)",
     alignItems: "flex-end",
+  },
+  spacer: {
+    flex: 1,
+  },
+  computeGroup: {
+    display: "flex",
+    alignItems: "flex-end",
+    gap: 8,
   },
   field: {
     display: "flex",
@@ -755,7 +875,11 @@ const styles: Record<string, React.CSSProperties> = {
   thumbsArea: {
     padding: "8px 12px",
     borderTop: "1px solid rgba(120,120,140,0.18)",
-    overflowX: "hidden",
+    overflowY: "auto",
+    maxHeight: "40%",
+    display: "flex",
+    flexDirection: "column",
+    gap: 12,
   },
   diffRow: {
     display: "grid",
@@ -764,6 +888,10 @@ const styles: Record<string, React.CSSProperties> = {
   },
   diffCol: {
     minWidth: 0,
+  },
+  contextPreview: {
+    borderTop: "1px dashed rgba(120,120,140,0.25)",
+    paddingTop: 8,
   },
   empty: {
     display: "flex",
@@ -776,10 +904,26 @@ const styles: Record<string, React.CSSProperties> = {
     textAlign: "center",
     padding: 16,
   },
+  gridCta: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    height: "100%",
+    padding: 24,
+    textAlign: "center",
+  },
+  gridCtaTitle: {
+    fontSize: 14,
+    color: "rgba(220,220,230,0.9)",
+    margin: 0,
+  },
   hint: {
     color: "rgba(140,140,160,0.7)",
     fontSize: 11,
     maxWidth: 360,
+    margin: 0,
   },
   status: {
     display: "flex",
