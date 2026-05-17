@@ -283,7 +283,6 @@ class ComputeTrajectoryEmbeddings(foo.Operator):
                 f"Using existing embeddings field `{existing_field}`.",
                 variant="info",
             )
-            embeddings = np.array(frames.values(existing_field))
             embeddings_field = existing_field
         else:
             # Cache embeddings to a frame field keyed by model name so
