@@ -43,7 +43,6 @@ const CAMERA_SYNC_LOOKBACK_NS = 120_000_000n;
 const LIDAR_SYNC_LOOKBACK_NS = 200_000_000n;
 const PLAYBACK_BATCH_FRAME_COUNT = 8;
 const PLAYBACK_WINDOW_CACHE_MAX_ENTRIES = PLAYBACK_BATCH_FRAME_COUNT * 8;
-const SEEK_DEBOUNCE_MS = 50;
 const CAMERA_SYNC_POLICY = {
   mode: PlaybackSyncMode.LATEST,
   toleranceBeforeNs: CAMERA_SYNC_LOOKBACK_NS,
@@ -277,58 +276,52 @@ export function ModalRenderer({
 
     let cancelled = false;
     const requestSourceKey = sourceKey;
-    const timeout = window.setTimeout(
-      () => {
-        inFlightFrameRequestsRef.current.add(cacheKey);
-        setFrameStatus("loading");
-        setError(null);
+    inFlightFrameRequestsRef.current.add(cacheKey);
+    setFrameStatus("loading");
+    setError(null);
 
-        readSynchronizedFrame(mcap, source, activeTimeline, timeNs)
-          .then((window) => {
-            playbackWindowCache.set(cacheKey, window);
-            if (
-              cancelled ||
-              sourceKeyRef.current !== requestSourceKey ||
-              currentTimeNsRef.current !== timeNs
-            ) {
-              return;
-            }
+    readSynchronizedFrame(mcap, source, activeTimeline, timeNs)
+      .then((window) => {
+        playbackWindowCache.set(cacheKey, window);
+        if (
+          cancelled ||
+          sourceKeyRef.current !== requestSourceKey ||
+          currentTimeNsRef.current !== timeNs
+        ) {
+          return;
+        }
 
-            setDisplayMessagesByTopic(
-              displayMessagesForWindow(
-                window,
-                heldMessagesByTopicRef.current,
-                frameLoadReasonRef.current === "playback"
-              )
-            );
-            setFrameStatus("ready");
-          })
-          .catch((caughtError) => {
-            if (
-              cancelled ||
-              sourceKeyRef.current !== requestSourceKey ||
-              currentTimeNsRef.current !== timeNs
-            ) {
-              return;
-            }
+        setDisplayMessagesByTopic(
+          displayMessagesForWindow(
+            window,
+            heldMessagesByTopicRef.current,
+            frameLoadReasonRef.current === "playback"
+          )
+        );
+        setFrameStatus("ready");
+      })
+      .catch((caughtError) => {
+        if (
+          cancelled ||
+          sourceKeyRef.current !== requestSourceKey ||
+          currentTimeNsRef.current !== timeNs
+        ) {
+          return;
+        }
 
-            if (frameLoadReasonRef.current !== "playback") {
-              heldMessagesByTopicRef.current.clear();
-              setDisplayMessagesByTopic({});
-            }
-            setFrameStatus("error");
-            setError(errorMessage(caughtError));
-          })
-          .finally(() => {
-            inFlightFrameRequestsRef.current.delete(cacheKey);
-          });
-      },
-      frameLoadReasonRef.current === "seek" ? SEEK_DEBOUNCE_MS : 0
-    );
+        if (frameLoadReasonRef.current !== "playback") {
+          heldMessagesByTopicRef.current.clear();
+          setDisplayMessagesByTopic({});
+        }
+        setFrameStatus("error");
+        setError(errorMessage(caughtError));
+      })
+      .finally(() => {
+        inFlightFrameRequestsRef.current.delete(cacheKey);
+      });
 
     return () => {
       cancelled = true;
-      window.clearTimeout(timeout);
     };
   }, [
     activeTimeline,
@@ -502,8 +495,6 @@ export function ModalRenderer({
   const handleTimelineChange = (event: ChangeEvent<HTMLInputElement>) => {
     frameLoadReasonRef.current = "seek";
     setIsPlaying(false);
-    heldMessagesByTopicRef.current.clear();
-    setDisplayMessagesByTopic({});
     setFrameIndex(Number(event.currentTarget.value));
   };
 
