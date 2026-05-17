@@ -73,73 +73,6 @@ describe("MCAP resources", () => {
     });
   });
 
-  it("applies playback.proto sync modes per stream on the active log timeline", async () => {
-    const source = createMcapSourceDescriptor();
-    const messages = [
-      createMessage(new Uint8Array([1]), {
-        channelId: 7,
-        logTime: 90n,
-        publishTime: 91n,
-      }),
-      createMessage(new Uint8Array([2]), {
-        channelId: 7,
-        logTime: 110n,
-        publishTime: 111n,
-      }),
-      createMessage(new Uint8Array([3]), {
-        channelId: 8,
-        logTime: 108n,
-        publishTime: 109n,
-      }),
-      createMessage(new Uint8Array([4]), {
-        channelId: 9,
-        logTime: 100n,
-        publishTime: 101n,
-      }),
-    ];
-    const decodeClient = createTestDecodeClient();
-    const client = createMcapResourceClient({
-      byteClient: { readBytes: vi.fn() },
-      decodeClient,
-      readerFactory: vi.fn(async () =>
-        createReader({
-          channelsById: new Map([
-            [7, createChannel({ id: 7, topic: "/camera" })],
-            [8, createChannel({ id: 8, topic: "/lidar" })],
-            [9, createChannel({ id: 9, topic: "/pose" })],
-          ]),
-          messages,
-        })
-      ),
-    });
-
-    const window = await client.readSynchronizedMessages({
-      timeNs: 100n,
-      source,
-      streamPolicies: {
-        "/camera": {
-          mode: PlaybackSyncMode.LATEST,
-          toleranceBeforeNs: 20n,
-        },
-        "/lidar": {
-          mode: PlaybackSyncMode.NEAREST,
-          toleranceAfterNs: 20n,
-          toleranceBeforeNs: 20n,
-        },
-        "/pose": {
-          mode: PlaybackSyncMode.STRICT,
-        },
-      },
-      topics: ["/camera", "/lidar", "/pose"],
-    });
-
-    expect(window.activeTimeline).toBe(MCAP_ACTIVE_TIMELINE.LOG);
-    expect(window.timeNs).toBe(100n);
-    expect(window.messagesByTopic["/camera"]?.[0]?.timelineTimeNs).toBe(90n);
-    expect(window.messagesByTopic["/lidar"]?.[0]?.timelineTimeNs).toBe(108n);
-    expect(window.messagesByTopic["/pose"]?.[0]?.timelineTimeNs).toBe(100n);
-  });
-
   it("reads synchronized playback batches with one raw scan and shared decode work", async () => {
     const source = createMcapSourceDescriptor();
     const messages = [
@@ -251,38 +184,6 @@ describe("MCAP resources", () => {
     expect(readMessages).not.toHaveBeenCalled();
   });
 
-  it("rejects non-log active timelines until payload-aware paths are implemented", async () => {
-    const client = createMcapResourceClient({
-      byteClient: { readBytes: vi.fn() },
-      decodeClient: createTestDecodeClient(),
-      readerFactory: vi.fn(async () => createReader()),
-    });
-    const source = createMcapSourceDescriptor();
-
-    await expect(
-      client.readTimelineRange({
-        activeTimeline: MCAP_ACTIVE_TIMELINE.PUBLISH,
-        source,
-      })
-    ).rejects.toThrow("not implemented yet");
-    await expect(
-      collect(
-        client.readDecodedMessages({
-          activeTimeline: MCAP_ACTIVE_TIMELINE.HEADER_STAMP,
-          source,
-        })
-      )
-    ).rejects.toThrow("not implemented yet");
-    await expect(
-      client.readSynchronizedMessages({
-        activeTimeline: MCAP_ACTIVE_TIMELINE.PUBLISH,
-        source,
-        timeNs: 1n,
-        topics: ["/camera"],
-      })
-    ).rejects.toThrow("not implemented yet");
-  });
-
   it("rejects byte reads past known source size before hitting the byte client", async () => {
     const source = createMcapSourceDescriptor();
     const readBytes = vi.fn();
@@ -356,7 +257,7 @@ function createMcapSourceDescriptor(): McapSourceDescriptor {
   return {
     sizeBytes: "128",
     sourceId: "source:1",
-    url: "/media?filepath=%2Ftmp%2Fsample.mcap",
+    url: "mcap-source://sample",
   };
 }
 

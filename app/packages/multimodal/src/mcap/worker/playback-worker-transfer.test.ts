@@ -4,6 +4,7 @@ import { transferablesForMcapResult } from "./playback-worker-transfer";
 import type {
   McapDecodedMessage,
   McapSynchronizedMessageWindow,
+  McapTimelineRange,
 } from "../types";
 
 describe("MCAP playback worker transfer collection", () => {
@@ -27,10 +28,18 @@ describe("MCAP playback worker transfer collection", () => {
     ]);
   });
 
-  it("keeps metadata-only results cloneable without transferables", () => {
-    expect(transferablesForMcapResult([1n, 2n])).toEqual([]);
+  it("keeps timeline ranges cloneable without transferables", () => {
+    expect(transferablesForMcapResult(createTimelineRange())).toEqual([]);
   });
 });
+
+function createTimelineRange(): McapTimelineRange {
+  return {
+    activeTimeline: "log",
+    endTimeNs: 2n,
+    startTimeNs: 1n,
+  };
+}
 
 function createWindow(
   messages: readonly McapDecodedMessage[]
