@@ -2,78 +2,122 @@
 
 App-side package for multimodal data loading, decoding, and visualization.
 
-The package has two kinds of code:
+## Layer Contracts
 
--   Source-agnostic infrastructure: server queries, byte reads, decode
-    plumbing, caches, decoder contracts, and visualization panels.
--   Source-specific adapters: format code that maps a concrete container, such
-    as MCAP, onto the generic infrastructure.
+### Queries
 
-## Major Pieces
+Queries fetch small server-authored protobuf artifacts, such as scene inventory
+and playback plans. Query code lives under `src/client/queries`, with React
+wrappers under `src/client/hooks`.
 
-| Location               | Role                                                                                                   |
-| ---------------------- | ------------------------------------------------------------------------------------------------------ |
-| `src/client`           | Source-agnostic app client. Fetches server artifacts and exposes resource clients.                     |
-| `src/client/hooks`     | React hooks for source-agnostic server artifacts such as scene inventory and playback plans.           |
-| `src/client/queries`   | Protobuf route clients for small server-provided artifacts.                                            |
-| `src/client/resources` | Byte-range reads, decode execution, and cache contracts.                                               |
-| `src/decoders`         | Generic `Decoder`, `DecoderRegistry`, payload descriptors, and decoded output types.                   |
-| `src/visualization`    | Panels that render decoded visual artifacts, such as images and point clouds.                          |
-| `src/schemas/v1`       | Generated protobuf contracts and versioned schema exports.                                             |
-| `src/mcap`             | MCAP adapter: indexed reads, sync/window selection, MCAP decoders, decompression, and worker playback. |
-| `src/inject`           | Side-effect entrypoint for registering multimodal app integrations.                                    |
+Queries do not read media bytes or decode payloads. They stay cheap, typed, and
+source-agnostic.
 
-## How It Fits
+### Resources
 
-```mermaid
-flowchart LR
-  UI["App UI"] --> Hooks["client/hooks"]
-  Hooks --> Queries["client/queries"]
-  Queries --> Server["Multimodal server routes"]
-  Server --> Schemas["schemas/v1 protobufs"]
+Resources do the heavier local work needed once the app knows what to play.
+They cover byte-range reads, decode execution, and bounded cache contracts
+under `src/client/resources`.
 
-  UI --> Mcap["mcap adapter"]
-  Mcap --> Bytes["client/resources.bytes"]
-  Bytes --> ByteCache["byte cache"]
-  Bytes --> Media["media URL / range source"]
+Resources are still source-agnostic: a byte range is just `{ source, range }`,
+and a decode request is just `{ payload, bytes, context }`. Adapters decide
+which ranges to read and which payload descriptors to decode.
 
-  Mcap --> Decode["client/resources.decode"]
-  Decode --> DecodedCache["decoded cache"]
-  Decode --> Registry["DecoderRegistry"]
-  Registry --> Decoders["mcap/decoders"]
+### Adapters
 
-  Mcap --> Windows["timeline anchors + synchronized windows"]
-  Windows --> Visualization["visualization panels"]
+Adapters compose queries and resources for a concrete source format. The MCAP
+adapter under `src/mcap` owns MCAP indexing, chunk decompression,
+channel/schema mapping, sync-window selection, worker playback, and
+adapter-owned decoder registration. Its public surface presents playback-ready
+APIs instead of exposing MCAP internals to the generic client package.
+
+### Supporting Contracts
+
+`src/decoders` defines generic payload decoder interfaces. `src/visualization`
+renders decoded visual outputs without knowing how the bytes were fetched.
+`src/schemas/v1` is the shared generated protobuf contract surface.
+
+## Runtime Flow
+
+1. UI hooks fetch inventory/playback-plan contracts through the query layer.
+2. The MCAP adapter uses those contracts to choose topics, timeline anchors,
+   sync policy, and byte ranges.
+3. Byte resources read MCAP ranges through app media URLs and populate the raw
+   byte cache.
+4. The MCAP reader uses `@mcap/core` with local decompression handlers backed
+   by Foxglove's browser WASM codec packages for supported compressed chunks.
+5. MCAP messages are mapped to generic payload descriptors and decoded through
+   the decode resource client.
+6. Decoded visualization outputs are cached and rendered by source-agnostic
+   panels.
+
+## Worker Playback
+
+Playback uses `src/mcap/worker` so MCAP scans, decompression, and payload
+decoding do not block the main UI thread. The worker owns the same MCAP
+resource client as inline execution, but exposes it through prioritized RPC:
+
+-   current-frame requests run before speculative playback batches,
+-   streaming reads return incremental values to the main thread,
+-   transferable buffers move decoded image/point-cloud data without extra
+    copies, and
+-   worker startup can fall back to inline execution when configured.
+
+## Decompression
+
+The adapter delegates MCAP chunk decompression to Foxglove's browser WASM codec
+packages instead of instantiating `.wasm` binaries directly. The app keeps only
+a small local wrapper that:
+
+-   exposes the chunk compressions this adapter supports today: `lz4` and
+    `zstd`,
+-   validates MCAP decompressed sizes before they are handed to a codec
+    package, and
+-   leaves codec runtime details, WASM loading, and Emscripten glue inside
+    upstream packages.
+
+The FiftyOne app Vite config enables `vite-plugin-wasm`, resolves the Foxglove
+package-local WASM imports as asset URLs, and teaches dependency optimization
+to keep those wrappers as browser-loadable CommonJS modules. The adapter
+installs a small `Buffer` shim before the codec packages load because those
+upstream wrappers return Node-style `Buffer` instances.
+
+## Caching
+
+The package has two in-memory cache tiers:
+
+-   The byte cache stores raw byte-range results by source identity and
+    half-open range. Remote/object-storage sources use larger fill blocks than
+    local sources to reduce round trips.
+-   The decoded-output cache stores decoder results by decoder identity,
+    payload descriptor, source/record identity, timestamp, and decoder options.
+
+The caches are intentionally app-local and bounded by estimated byte budgets.
+They avoid re-reading MCAP chunks and re-decoding repeated playback windows
+without changing server-side dataset state.
+
+## Local Manual Test
+
+Create a temporary MCAP dataset from the NuScenes scene file:
+
+```python
+import fiftyone as fo
+
+dataset = fo.Dataset("mcap-nuscenes-scene-0002")
+dataset.add_sample(
+    fo.Sample(filepath="nuscenes/NuScenes-v1.0-trainval-scene-0002.mcap")
+)
 ```
 
-## Boundaries
+Then compute and persist the scene inventory:
 
--   `client` stays source-agnostic. It should not know about MCAP topics,
-    channels, schemas, chunks, or sync rules.
--   `mcap` owns MCAP-specific behavior and composes generic byte/decode clients
-    into playback-ready APIs.
--   `decoders` describes payload decoding, not transport or container reads.
--   `visualization` consumes decoded visual artifacts. It should not know how
-    the bytes were fetched or which container they came from.
--   `schemas/v1` is the shared contract surface for generated protobuf types.
+```python
+from fiftyone.multimodal.adapters.mcap import McapAdapter
+from fiftyone.multimodal.db.mongo import MongoAdapter
 
-## MCAP Adapter
+inventory = McapAdapter.get_scene_inventory(dataset.first().filepath)
+MongoAdapter.write_scene_inventories(dataset, [inventory])
+```
 
-The MCAP adapter is the first concrete source adapter. It:
-
--   reads MCAP data through the generic byte resource client,
--   uses `@mcap/core` plus local LZ4/zstd decompression helpers,
--   maps MCAP channel/schema metadata to generic payload descriptors,
--   registers MCAP-owned Foxglove decoders,
--   selects timeline anchors and synchronized playback windows, and
--   exposes a worker-backed resource client for playback workloads.
-
-## Adding New Code
-
--   Add source-agnostic server fetches under `src/client/queries` and hooks
-    under `src/client/hooks`.
--   Add generic resource/cache/decode contracts under `src/client/resources`.
--   Add payload decoders near the adapter that owns their payload format.
--   Add a new source format as its own adapter directory, similar to
-    `src/mcap`.
--   Add visual renderers under `src/visualization/panels`.
+Start the app against that dataset. The modal renderer should show synchronized
+playback for the hardcoded NuScenes camera/lidar topics.
