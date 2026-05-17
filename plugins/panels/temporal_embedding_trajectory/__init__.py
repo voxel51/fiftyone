@@ -337,25 +337,37 @@ class TemporalEmbeddingTrajectoryPanel(Panel):
 
         frame_ids = [str(sample_ids[i]) for i in idx_by_frame]
         frame_numbers = [frame_id_to_number.get(fid) for fid in frame_ids]
-        jump_dists = self._lookup_jump_dists(
-            ctx, sample_id, frame_ids, brain_key
+        jump_dists = self._lookup_frame_field(
+            ctx, sample_id, frame_ids, f"{brain_key}_jump_dist"
+        )
+        scene_shifts = self._lookup_frame_field(
+            ctx, sample_id, frame_ids, f"{brain_key}_scene_shift"
         )
 
         # Sort everything by frame_number.
-        bundled = list(zip(frame_numbers, idx_by_frame, frame_ids, jump_dists))
+        bundled = list(
+            zip(
+                frame_numbers,
+                idx_by_frame,
+                frame_ids,
+                jump_dists,
+                scene_shifts,
+            )
+        )
         bundled.sort(key=lambda t: (t[0] if t[0] is not None else 1 << 30))
 
         out_points = [
             [float(points[idx][0]), float(points[idx][1])]
-            for (_, idx, _, _) in bundled
+            for (_, idx, _, _, _) in bundled
         ]
         return {
             "sample_id": str(sample_id),
             "brain_key": brain_key,
             "points": out_points,
-            "frame_numbers": [fn for (fn, _, _, _) in bundled],
-            "frame_ids": [fid for (_, _, fid, _) in bundled],
-            "jump_dists": [jd for (_, _, _, jd) in bundled],
+            "frame_numbers": [fn for (fn, _, _, _, _) in bundled],
+            "frame_ids": [fid for (_, _, fid, _, _) in bundled],
+            "jump_dists": [jd for (_, _, _, jd, _) in bundled],
+            "scene_shifts": [ss for (_, _, _, _, ss) in bundled],
         }
 
     def _lookup_frame_numbers(self, ctx, sample_id, frame_ids):
@@ -373,20 +385,30 @@ class TemporalEmbeddingTrajectoryPanel(Panel):
             logger.warning("Failed to look up frame numbers: %s", e)
             return [None] * len(frame_ids)
 
-    def _lookup_jump_dists(self, ctx, sample_id, frame_ids, brain_key):
+    def _lookup_frame_field(self, ctx, sample_id, frame_ids, field_name):
+        """Pull a per-frame float field for the given frame ids.
+
+        Returns the values in ``frame_ids`` order (not parent-frame
+        iteration order — the bundled-sort downstream re-orders by
+        frame_number anyway). Missing / None entries become 0.0 so
+        downstream numeric work doesn't crash.
+        """
         if not frame_ids:
             return []
-        field = f"{brain_key}_jump_dist"
         try:
             sample = ctx.dataset[sample_id]
             wanted = set(frame_ids)
-            return [
-                float(frame.get_field(field) or 0.0)
-                for frame in sample.frames.values()
-                if str(frame.id) in wanted
-            ]
+            # Map frame_id -> value via single pass over parent's frames.
+            by_id = {}
+            for frame in sample.frames.values():
+                fid = str(frame.id)
+                if fid in wanted:
+                    by_id[fid] = float(frame.get_field(field_name) or 0.0)
+            return [by_id.get(fid, 0.0) for fid in frame_ids]
         except Exception as e:
-            logger.warning("Failed to look up jump distances: %s", e)
+            logger.warning(
+                "Failed to look up frame field %s: %s", field_name, e
+            )
             return [0.0] * len(frame_ids)
 
 

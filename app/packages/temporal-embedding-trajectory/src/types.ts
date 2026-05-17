@@ -12,6 +12,7 @@ export type SceneTrajectory = {
   frame_numbers: number[];
   frame_ids: string[];
   jump_dists: number[];
+  scene_shifts?: number[];
 };
 
 export type TrajectoryPanelData = {
@@ -32,7 +33,7 @@ export type TrajectoryViewSchema = {
   };
 };
 
-export type ViewMode = "scatter" | "compare";
+export type ViewMode = "scatter" | "compare" | "scenes";
 
 export type TrajectoryViewProps = {
   schema: TrajectoryViewSchema;

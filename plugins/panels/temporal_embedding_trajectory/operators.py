@@ -21,6 +21,44 @@ import fiftyone.operators.types as types
 logger = logging.getLogger(__name__)
 
 
+def _windowed_centroid_shift(normed: np.ndarray, W: int) -> np.ndarray:
+    """Per-frame "scene change" score from windowed centroid distance.
+
+    For each frame t, returns the cosine distance between the mean of
+    the previous W normalized embeddings and the mean of the next W.
+    Frames within W of either edge of the scene return 0 (insufficient
+    context for a meaningful comparison).
+
+    Detects gradual transitions like tunnel entry/exit that the
+    per-step jump metric misses, and smooths out single-frame events
+    like the streetlight-behind-sign blip.
+    """
+    n = len(normed)
+    scores = np.zeros(n, dtype=np.float32)
+    if n < 2 * W:
+        return scores
+
+    # cs[i] = sum of normed[:i] for i in 0..n
+    cs = np.concatenate(
+        [
+            np.zeros((1, normed.shape[1]), dtype=normed.dtype),
+            np.cumsum(normed, axis=0),
+        ],
+        axis=0,
+    )
+
+    for t in range(W, n - W + 1):
+        before = (cs[t] - cs[t - W]) / W
+        after = (cs[t + W] - cs[t]) / W
+        bn = float(np.linalg.norm(before))
+        an = float(np.linalg.norm(after))
+        if bn == 0.0 or an == 0.0:
+            continue
+        scores[t] = 1.0 - float(np.dot(before, after) / (bn * an))
+
+    return scores
+
+
 def _field_is_populated(view, field_name):
     """True if at least one value in `field_name` is non-None.
 
@@ -178,6 +216,20 @@ class ComputeTrajectoryEmbeddings(foo.Operator):
             required=False,
         )
 
+        inputs.int(
+            "scene_window",
+            label="Scene-shift window (frames)",
+            default=30,
+            description=(
+                "Half-window size W for the scene-shift score. "
+                "scene_shift(t) = cosine_distance(mean(emb[t-W:t]), "
+                "mean(emb[t:t+W])). At 60fps, W=30 ≈ 0.5s before/after; "
+                "smaller W = sharper boundaries, larger W = smoother "
+                "segmentation."
+            ),
+            required=False,
+        )
+
         return types.Property(
             inputs,
             view=types.View(label="Compute trajectory embeddings"),
@@ -196,6 +248,7 @@ class ComputeTrajectoryEmbeddings(foo.Operator):
         brain_key = ctx.params.get("brain_key") or _DEFAULT_BRAIN_KEY
         method = ctx.params.get("method") or "umap"
         batch_size = ctx.params.get("batch_size") or 32
+        scene_window = max(2, int(ctx.params.get("scene_window") or 30))
 
         # Frame-level collection. For video datasets we materialize
         # frames via to_frames; for image datasets we assume each sample
@@ -312,55 +365,59 @@ class ComputeTrajectoryEmbeddings(foo.Operator):
             groups.setdefault(str(sid), []).append(i)
 
         jump_field = f"{brain_key}_jump_dist"
-        # Per-sample lists: list[ list[(frame_id, dist)] ] mirroring
-        # _set_frame_values input shape.
+        scene_field = f"{brain_key}_scene_shift"
+
         sample_id_order = []
         per_sample_frame_ids = []
-        per_sample_values = []
+        per_sample_jumps = []
+        per_sample_shifts = []
 
         for sid, idxs in groups.items():
             # Sort by frame number to ensure correct sequence.
             idxs.sort(key=lambda i: frame_numbers[i] or 0)
             embs = np.asarray([embeddings[i] for i in idxs], dtype=np.float32)
-            # Cosine distance between consecutive frames.
             if len(embs) == 0:
-                dists = []
+                continue
+
+            norms = np.linalg.norm(embs, axis=1)
+            norms = np.where(norms == 0, 1.0, norms)
+            normed = embs / norms[:, None]
+
+            # Per-step jump: cosine distance between consecutive frames.
+            if len(normed) >= 2:
+                cos_sims = np.sum(normed[1:] * normed[:-1], axis=1)
+                jumps = [0.0] + (1.0 - cos_sims).tolist()
             else:
-                norms = np.linalg.norm(embs, axis=1)
-                norms = np.where(norms == 0, 1.0, norms)
-                normed = embs / norms[:, None]
-                if len(normed) >= 2:
-                    cos_sims = np.sum(normed[1:] * normed[:-1], axis=1)
-                    dists = (1.0 - cos_sims).tolist()
-                else:
-                    dists = []
-                dists = [0.0] + dists  # first frame has no predecessor
+                jumps = [0.0] * len(embs)
+
+            # Windowed centroid shift — catches gradual scene transitions
+            # (tunnel entry/exit) that per-step distance misses.
+            shifts = _windowed_centroid_shift(normed, scene_window).tolist()
 
             sample_id_order.append(sid)
             per_sample_frame_ids.append([frame_ids[i] for i in idxs])
-            per_sample_values.append(dists)
+            per_sample_jumps.append(jumps)
+            per_sample_shifts.append(shifts)
 
-        # Ensure the field exists on the dataset before writing.
+        import fiftyone.core.fields as fof
+
         if not dataset.has_frame_field(jump_field):
-            import fiftyone.core.fields as fof
-
             dataset.add_frame_field(jump_field, fof.FloatField)
+        if not dataset.has_frame_field(scene_field):
+            dataset.add_frame_field(scene_field, fof.FloatField)
 
-        # Batch-write frame values, one sample at a time. set_values on
-        # the dataset accepts a dict keyed by frame_id.
-        flat_updates = {}
-        for fids, vals in zip(per_sample_frame_ids, per_sample_values):
-            for fid, val in zip(fids, vals):
-                flat_updates[fid] = float(val)
+        def _write_field(field_name, per_sample_values):
+            flat = {}
+            for fids, vals in zip(per_sample_frame_ids, per_sample_values):
+                for fid, val in zip(fids, vals):
+                    flat[fid] = float(val)
+            ids = list(flat.keys())
+            vals = [flat[i] for i in ids]
+            view = dataset.to_frames().select(ids, ordered=True)
+            view.set_values(field_name, vals)
 
-        # Use the high-level set_values on a frames view, which handles
-        # the per-frame write efficiently.
-        frame_id_to_value = flat_updates
-        ids = list(frame_id_to_value.keys())
-        vals = [frame_id_to_value[i] for i in ids]
-        # Select the matching frames and set values in one shot.
-        view = dataset.to_frames().select(ids, ordered=True)
-        view.set_values(jump_field, vals)
+        _write_field(jump_field, per_sample_jumps)
+        _write_field(scene_field, per_sample_shifts)
         dataset.save()
 
         ctx.ops.notify(
@@ -374,4 +431,5 @@ class ComputeTrajectoryEmbeddings(foo.Operator):
             "brain_key": brain_key,
             "num_scenes": len(sample_id_order),
             "jump_field": jump_field,
+            "scene_field": scene_field,
         }

@@ -12,6 +12,11 @@ import {
   findCursorIndex,
 } from "../plot/buildTraces";
 import { buildCompareTraces, compareLayout } from "../plot/buildCompareTraces";
+import {
+  buildScenesTraces,
+  scenesFromBoundaries,
+  scenesLayout,
+} from "../plot/buildScenesTraces";
 import { trajectoryConfig, trajectoryLayout } from "../plot/trajectoryLayout";
 import JumpFrames, { JumpFrame } from "./JumpFrames";
 import type { SceneTrajectory, TrajectoryViewProps, ViewMode } from "../types";
@@ -75,6 +80,11 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
     0,
     true
   );
+  const [sceneSigma, setSceneSigma] = usePanelStatePartial<number>(
+    "sceneSigma",
+    1.5,
+    true
+  );
   const [composeModel, setComposeModel] = usePanelStatePartial<string>(
     "composeModel",
     MODEL_CHOICES[0].value,
@@ -108,10 +118,12 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
     [keyA, keyB]
   );
 
+  // Same A/B selection drives both compare and scenes modes — fetch
+  // whenever either mode is active.
   const { scenes: compareScenes } = useCompareData(
     props,
     currentSampleId,
-    viewMode === "compare" ? compareKeysSel : []
+    viewMode === "compare" || viewMode === "scenes" ? compareKeysSel : []
   );
 
   // ── Scatter mode derived state ─────────────────────────────────────
@@ -174,18 +186,61 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
     return { onlyA, both, onlyB };
   }, [sceneA, sceneB, jumpSigma, matchTolerance]);
 
+  // ── Scenes mode derived state ──────────────────────────────────────
+  const scenesPlot = useMemo(() => {
+    const scenesList: Array<{
+      brainKey: string;
+      scene: SceneTrajectory;
+      color: string;
+    }> = [];
+    if (keyA && sceneA)
+      scenesList.push({ brainKey: keyA, scene: sceneA, color: ACCENT_A });
+    if (keyB && sceneB)
+      scenesList.push({ brainKey: keyB, scene: sceneB, color: ACCENT_B });
+    return buildScenesTraces({
+      scenes: scenesList,
+      sigma: sceneSigma ?? 1.5,
+      // Peaks within W frames of each other almost always describe the
+      // same boundary; W is the operator's scene_window default (30).
+      minPeakDistance: 30,
+      currentFrameNumber: currentFrame,
+    });
+  }, [keyA, keyB, sceneA, sceneB, sceneSigma, currentFrame]);
+
+  const scenesSegmentsA = useMemo(
+    () =>
+      keyA && sceneA && scenesPlot.boundariesByKey[keyA]
+        ? scenesFromBoundaries(sceneA, scenesPlot.boundariesByKey[keyA])
+        : [],
+    [keyA, sceneA, scenesPlot]
+  );
+  const scenesSegmentsB = useMemo(
+    () =>
+      keyB && sceneB && scenesPlot.boundariesByKey[keyB]
+        ? scenesFromBoundaries(sceneB, scenesPlot.boundariesByKey[keyB])
+        : [],
+    [keyB, sceneB, scenesPlot]
+  );
+
   // Collect every frame id we want a thumbnail for, across the active
   // mode, so we batch a single get_frame_media request.
   const thumbnailFrameIds = useMemo(() => {
     if (viewMode === "scatter") {
       return scatterJumps.map((j) => j.frameId);
     }
+    if (viewMode === "compare") {
+      return [
+        ...compareDiff.onlyA,
+        ...compareDiff.both,
+        ...compareDiff.onlyB,
+      ].map((j) => j.frameId);
+    }
+    // scenes
     return [
-      ...compareDiff.onlyA,
-      ...compareDiff.both,
-      ...compareDiff.onlyB,
-    ].map((j) => j.frameId);
-  }, [viewMode, scatterJumps, compareDiff]);
+      ...scenesSegmentsA.map((s) => s.frameId),
+      ...scenesSegmentsB.map((s) => s.frameId),
+    ];
+  }, [viewMode, scatterJumps, compareDiff, scenesSegmentsA, scenesSegmentsB]);
 
   const { media: frameMedia } = useFrameMedia(props, thumbnailFrameIds);
 
@@ -240,7 +295,10 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
         ? `${scene.points.length} frames · ${scatterJumps.length} jumps`
         : "no scene loaded";
     }
-    return `${compareDiff.onlyA.length} only A · ${compareDiff.both.length} both · ${compareDiff.onlyB.length} only B`;
+    if (viewMode === "compare") {
+      return `${compareDiff.onlyA.length} only A · ${compareDiff.both.length} both · ${compareDiff.onlyB.length} only B`;
+    }
+    return `${scenesSegmentsA.length} scenes (A) · ${scenesSegmentsB.length} scenes (B)`;
   })();
 
   return (
@@ -264,6 +322,15 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
             }}
           >
             Compare
+          </button>
+          <button
+            onClick={() => setViewMode("scenes")}
+            style={{
+              ...styles.modeButton,
+              ...(viewMode === "scenes" ? styles.modeButtonActive : {}),
+            }}
+          >
+            Scenes
           </button>
         </div>
 
@@ -386,6 +453,20 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
           </label>
         )}
 
+        {viewMode === "scenes" && (
+          <label style={styles.field}>
+            <span style={styles.fieldLabel}>Scene σ: {sceneSigma}</span>
+            <input
+              type="range"
+              min={0.5}
+              max={5}
+              step={0.1}
+              value={sceneSigma ?? 1.5}
+              onChange={(e) => setSceneSigma(Number(e.target.value))}
+            />
+          </label>
+        )}
+
         <button style={styles.button} onClick={handleCompute}>
           Compute
         </button>
@@ -421,7 +502,35 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
               onClick={handlePlotClick}
             />
           )
-        ) : compareTracesAndDomain.traces.length === 0 ? (
+        ) : viewMode === "compare" ? (
+          compareTracesAndDomain.traces.length === 0 ? (
+            <div style={styles.empty}>
+              {noBrainKeys ? (
+                <p>Compute at least one brain key first.</p>
+              ) : !keyA && !keyB ? (
+                <p>Pick brain keys for Model A and Model B.</p>
+              ) : !currentSampleId ? (
+                <p>Open a video sample in the modal.</p>
+              ) : (
+                <p>Loading compare data…</p>
+              )}
+            </div>
+          ) : (
+            <Plot
+              data={compareTracesAndDomain.traces as any}
+              layout={
+                compareLayout(
+                  compareTracesAndDomain.domain,
+                  currentFrame
+                ) as any
+              }
+              config={trajectoryConfig as any}
+              useResizeHandler
+              style={{ width: "100%", height: "100%" }}
+              onClick={handlePlotClick}
+            />
+          )
+        ) : scenesPlot.traces.length === 0 ? (
           <div style={styles.empty}>
             {noBrainKeys ? (
               <p>Compute at least one brain key first.</p>
@@ -429,16 +538,22 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
               <p>Pick brain keys for Model A and Model B.</p>
             ) : !currentSampleId ? (
               <p>Open a video sample in the modal.</p>
+            ) : (sceneA &&
+                !(sceneA.scene_shifts && sceneA.scene_shifts.length)) ||
+              (sceneB &&
+                !(sceneB.scene_shifts && sceneB.scene_shifts.length)) ? (
+              <p>
+                No scene-shift data for this brain key — re-run Compute to
+                populate the <code>_scene_shift</code> field.
+              </p>
             ) : (
-              <p>Loading compare data…</p>
+              <p>Loading scenes data…</p>
             )}
           </div>
         ) : (
           <Plot
-            data={compareTracesAndDomain.traces as any}
-            layout={
-              compareLayout(compareTracesAndDomain.domain, currentFrame) as any
-            }
+            data={scenesPlot.traces as any}
+            layout={scenesLayout(scenesPlot.domain, currentFrame) as any}
             config={trajectoryConfig as any}
             useResizeHandler
             style={{ width: "100%", height: "100%" }}
@@ -457,38 +572,79 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
               onClickFrame={seekFrame}
             />
           ) : null
-        ) : keyA || keyB ? (
-          <div style={styles.diffRow}>
-            {keyA ? (
+        ) : viewMode === "compare" ? (
+          keyA || keyB ? (
+            <div style={styles.diffRow}>
+              {keyA ? (
+                <div style={styles.diffCol}>
+                  <JumpFrames
+                    title={`only ${keyA}`}
+                    frames={compareDiff.onlyA}
+                    media={frameMedia}
+                    onClickFrame={seekFrame}
+                  />
+                </div>
+              ) : null}
               <div style={styles.diffCol}>
                 <JumpFrames
-                  title={`only ${keyA}`}
-                  frames={compareDiff.onlyA}
+                  title="both"
+                  frames={compareDiff.both}
+                  media={frameMedia}
+                  onClickFrame={seekFrame}
+                />
+              </div>
+              {keyB ? (
+                <div style={styles.diffCol}>
+                  <JumpFrames
+                    title={`only ${keyB}`}
+                    frames={compareDiff.onlyB}
+                    media={frameMedia}
+                    onClickFrame={seekFrame}
+                  />
+                </div>
+              ) : null}
+            </div>
+          ) : null
+        ) : (
+          // scenes mode: one strip per selected brain key, each thumbnail
+          // is the first frame of a detected segment, badge = frame range.
+          <div
+            style={
+              keyA && keyB
+                ? { ...styles.diffRow, gridTemplateColumns: "1fr 1fr" }
+                : styles.diffRow
+            }
+          >
+            {keyA && scenesSegmentsA.length > 0 ? (
+              <div style={styles.diffCol}>
+                <JumpFrames
+                  title={`${keyA} scenes`}
+                  frames={scenesSegmentsA.map((s) => ({
+                    frameId: s.frameId,
+                    frameNumber: s.startFrame,
+                    accent: ACCENT_A,
+                  }))}
                   media={frameMedia}
                   onClickFrame={seekFrame}
                 />
               </div>
             ) : null}
-            <div style={styles.diffCol}>
-              <JumpFrames
-                title="both"
-                frames={compareDiff.both}
-                media={frameMedia}
-                onClickFrame={seekFrame}
-              />
-            </div>
-            {keyB ? (
+            {keyB && scenesSegmentsB.length > 0 ? (
               <div style={styles.diffCol}>
                 <JumpFrames
-                  title={`only ${keyB}`}
-                  frames={compareDiff.onlyB}
+                  title={`${keyB} scenes`}
+                  frames={scenesSegmentsB.map((s) => ({
+                    frameId: s.frameId,
+                    frameNumber: s.startFrame,
+                    accent: ACCENT_B,
+                  }))}
                   media={frameMedia}
                   onClickFrame={seekFrame}
                 />
               </div>
             ) : null}
           </div>
-        ) : null}
+        )}
       </div>
 
       <div style={styles.status}>
