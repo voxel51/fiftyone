@@ -36,10 +36,14 @@ describe("MCAP decompress handlers", () => {
     const { loadMcapDecompressHandlers } = await import("./handlers");
     const handlers = await loadMcapDecompressHandlers();
     const buffer = new Uint8Array([1, 2, 3]);
+    const lz4Result = handlers.lz4(buffer, 3n);
+    const zstdResult = handlers.zstd(buffer, 3n);
 
     expect(Object.keys(handlers).sort()).toEqual(["lz4", "zstd"]);
-    expect(handlers.lz4(buffer, 3n)).toEqual(buffer);
-    expect(handlers.zstd(buffer, 3n)).toEqual(buffer);
+    expect(lz4Result).toEqual(buffer);
+    expect(zstdResult).toEqual(buffer);
+    expect(lz4Result).toBe(buffer);
+    expect(zstdResult).toBe(buffer);
     expect(support.lz4).toHaveBeenCalledWith(buffer, 3);
     expect(support.zstd).toHaveBeenCalledWith(buffer, 3);
   });

@@ -34,12 +34,12 @@ async function createMcapDecompressHandlers(): Promise<DecompressHandlers> {
     lz4: guardedDecompress(
       "LZ4",
       (buffer: Uint8Array, decompressedSize: bigint) =>
-        new Uint8Array(decompressLz4(buffer, Number(decompressedSize)))
+        decompressLz4(buffer, Number(decompressedSize))
     ),
     zstd: guardedDecompress(
       "zstd",
       (buffer: Uint8Array, decompressedSize: bigint) =>
-        new Uint8Array(zstd.decompress(buffer, Number(decompressedSize)))
+        zstd.decompress(buffer, Number(decompressedSize))
     ),
   };
 }
