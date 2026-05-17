@@ -13,41 +13,17 @@ import { McapPlaybackWorkerScheduler } from "./playback-worker-scheduler";
 import { transferablesForMcapResult } from "./playback-worker-transfer";
 import type {
   McapPlaybackWorkerRequest,
+  McapPlaybackWorkerResponse,
   McapPlaybackWorkerRpcRequest,
   McapPlaybackWorkerStreamType,
 } from "./playback-worker-types";
 import type { McapResourceClient } from "../types";
 
-type McapPlaybackWorkerPostResponse =
-  | {
-      readonly id: number;
-      readonly ok: true;
-      readonly result: unknown;
-    }
-  | {
-      readonly done: false;
-      readonly id: number;
-      readonly item: unknown;
-      readonly ok: true;
-      readonly stream: true;
-    }
-  | {
-      readonly done: true;
-      readonly id: number;
-      readonly ok: true;
-      readonly stream: true;
-    }
-  | {
-      readonly error: string;
-      readonly id: number;
-      readonly ok: false;
-    };
-
 type McapPlaybackWorkerScope = {
   close(): void;
   onmessage: ((event: MessageEvent<McapPlaybackWorkerRequest>) => void) | null;
   postMessage(
-    response: McapPlaybackWorkerPostResponse,
+    response: McapPlaybackWorkerResponse,
     transfer?: readonly Transferable[]
   ): void;
 };
@@ -144,11 +120,11 @@ function ensureActiveSource(sourceKey: string) {
   mcap = createWorkerResourceClient();
 }
 
-function postResponse(response: McapPlaybackWorkerPostResponse) {
+function postResponse(response: McapPlaybackWorkerResponse) {
   workerScope.postMessage(response, transferablesForResponse(response));
 }
 
-function transferablesForResponse(response: McapPlaybackWorkerPostResponse) {
+function transferablesForResponse(response: McapPlaybackWorkerResponse) {
   if (!response.ok) {
     return [];
   }

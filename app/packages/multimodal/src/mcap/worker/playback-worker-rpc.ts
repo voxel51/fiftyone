@@ -1,57 +1,40 @@
-import type { McapResourceClient } from "../types";
 import {
   MCAP_PLAYBACK_WORKER_PRIORITY,
   type McapPlaybackWorkerPriority,
   type McapPlaybackWorkerRpcRequest,
-  type McapPlaybackWorkerRequestPayloadByType,
   type McapPlaybackWorkerResultByType,
   type McapPlaybackWorkerRpcType,
   type McapPlaybackWorkerStreamItemByType,
   type McapPlaybackWorkerStreamType,
   type McapPlaybackWorkerUnaryType,
 } from "./playback-worker-types";
+import type { McapResourceClient } from "../types";
 
 /**
  * Worker operation descriptor for one unary MCAP RPC.
  */
-export type McapPlaybackWorkerUnaryOperation<
-  Type extends McapPlaybackWorkerUnaryType
-> = {
+export type McapPlaybackWorkerUnaryOperation = {
   readonly kind: "unary";
   readonly priority: McapPlaybackWorkerPriority;
-  run(
-    client: McapResourceClient,
-    payload: McapPlaybackWorkerRequestPayloadByType[Type]
-  ): Promise<McapPlaybackWorkerResultByType[Type]>;
 };
 
 /**
  * Worker operation descriptor for one streaming MCAP RPC.
  */
-export type McapPlaybackWorkerStreamOperation<
-  Type extends McapPlaybackWorkerStreamType
-> = {
+export type McapPlaybackWorkerStreamOperation = {
   readonly kind: "stream";
   readonly priority: McapPlaybackWorkerPriority;
-  run(
-    client: McapResourceClient,
-    payload: McapPlaybackWorkerRequestPayloadByType[Type]
-  ): AsyncGenerator<McapPlaybackWorkerStreamItemByType[Type], void, void>;
 };
 
 /**
  * Union of worker operation descriptors keyed by RPC type.
  */
-export type McapPlaybackWorkerOperation<
-  Type extends McapPlaybackWorkerRpcType = McapPlaybackWorkerRpcType
-> = Type extends McapPlaybackWorkerUnaryType
-  ? McapPlaybackWorkerUnaryOperation<Type>
-  : Type extends McapPlaybackWorkerStreamType
-  ? McapPlaybackWorkerStreamOperation<Type>
-  : never;
+export type McapPlaybackWorkerOperation =
+  | McapPlaybackWorkerUnaryOperation
+  | McapPlaybackWorkerStreamOperation;
 
 type McapPlaybackWorkerOperationMap = {
-  readonly [Type in McapPlaybackWorkerRpcType]: McapPlaybackWorkerOperation<Type>;
+  readonly [Type in McapPlaybackWorkerRpcType]: McapPlaybackWorkerOperation;
 };
 
 /**
@@ -61,34 +44,28 @@ export const MCAP_PLAYBACK_WORKER_OPERATIONS: McapPlaybackWorkerOperationMap = {
   readDecodedMessages: {
     kind: "stream",
     priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
-    run: (client, payload) => client.readDecodedMessages(payload),
   },
   readSynchronizedMessageBatch: {
     kind: "unary",
     priority: MCAP_PLAYBACK_WORKER_PRIORITY.PLAYBACK_BATCH,
-    run: (client, payload) => client.readSynchronizedMessageBatch(payload),
   },
   readSynchronizedMessages: {
     kind: "unary",
     priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
-    run: (client, payload) => client.readSynchronizedMessages(payload),
   },
   readTimelineRange: {
     kind: "unary",
     priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
-    run: (client, payload) => client.readTimelineRange(payload),
   },
 };
 
 /**
  * Returns the worker operation descriptor for one RPC type.
  */
-export function mcapPlaybackWorkerOperation<
-  Type extends McapPlaybackWorkerRpcType
->(type: Type): McapPlaybackWorkerOperation<Type> {
-  return MCAP_PLAYBACK_WORKER_OPERATIONS[
-    type
-  ] as unknown as McapPlaybackWorkerOperation<Type>;
+export function mcapPlaybackWorkerOperation(
+  type: McapPlaybackWorkerRpcType
+): McapPlaybackWorkerOperation {
+  return MCAP_PLAYBACK_WORKER_OPERATIONS[type];
 }
 
 /**
@@ -107,11 +84,14 @@ export function runMcapPlaybackWorkerUnaryRequest(
   client: McapResourceClient,
   message: McapPlaybackWorkerRpcRequest<McapPlaybackWorkerUnaryType>
 ): Promise<McapPlaybackWorkerResultByType[McapPlaybackWorkerUnaryType]> {
-  const operation = mcapPlaybackWorkerOperation(
-    message.type
-  ) as McapPlaybackWorkerUnaryOperation<McapPlaybackWorkerUnaryType>;
-
-  return operation.run(client, message.payload as never);
+  switch (message.type) {
+    case "readSynchronizedMessageBatch":
+      return client.readSynchronizedMessageBatch(message.payload);
+    case "readSynchronizedMessages":
+      return client.readSynchronizedMessages(message.payload);
+    case "readTimelineRange":
+      return client.readTimelineRange(message.payload);
+  }
 }
 
 /**
@@ -125,9 +105,9 @@ export async function* runMcapPlaybackWorkerStreamRequest(
   void,
   void
 > {
-  const operation = mcapPlaybackWorkerOperation(
-    message.type
-  ) as McapPlaybackWorkerStreamOperation<McapPlaybackWorkerStreamType>;
-
-  yield* operation.run(client, message.payload as never);
+  switch (message.type) {
+    case "readDecodedMessages":
+      yield* client.readDecodedMessages(message.payload);
+      return;
+  }
 }

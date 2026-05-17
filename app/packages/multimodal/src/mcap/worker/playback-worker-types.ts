@@ -114,36 +114,45 @@ export type McapPlaybackWorkerRequest =
   | McapPlaybackWorkerRpcRequest;
 
 /**
+ * Final success response for one unary worker RPC.
+ */
+export type McapPlaybackWorkerUnaryResponse = {
+  readonly id: number;
+  readonly ok: true;
+  readonly result: McapPlaybackWorkerResultByType[McapPlaybackWorkerUnaryType];
+};
+
+/**
+ * Incremental or terminal success response for one streaming worker RPC.
+ */
+export type McapPlaybackWorkerStreamResponse =
+  | {
+      readonly done: false;
+      readonly id: number;
+      readonly item: McapPlaybackWorkerStreamItemByType[McapPlaybackWorkerStreamType];
+      readonly ok: true;
+      readonly stream: true;
+    }
+  | {
+      readonly done: true;
+      readonly id: number;
+      readonly ok: true;
+      readonly stream: true;
+    };
+
+/**
+ * Failure response for any worker RPC.
+ */
+export type McapPlaybackWorkerErrorResponse = {
+  readonly error: string;
+  readonly id: number;
+  readonly ok: false;
+};
+
+/**
  * Response envelope posted by the worker for RPC success, streamed items, or failure.
  */
-export type McapPlaybackWorkerResponse<
-  Type extends McapPlaybackWorkerRpcType = McapPlaybackWorkerRpcType
-> =
-  | (Type extends McapPlaybackWorkerUnaryType
-      ? {
-          readonly id: number;
-          readonly ok: true;
-          readonly result: McapPlaybackWorkerResultByType[Type];
-        }
-      : never)
-  | (Type extends McapPlaybackWorkerStreamType
-      ?
-          | {
-              readonly done: false;
-              readonly id: number;
-              readonly item: McapPlaybackWorkerStreamItemByType[Type];
-              readonly ok: true;
-              readonly stream: true;
-            }
-          | {
-              readonly done: true;
-              readonly id: number;
-              readonly ok: true;
-              readonly stream: true;
-            }
-      : never)
-  | {
-      readonly error: string;
-      readonly id: number;
-      readonly ok: false;
-    };
+export type McapPlaybackWorkerResponse =
+  | McapPlaybackWorkerUnaryResponse
+  | McapPlaybackWorkerStreamResponse
+  | McapPlaybackWorkerErrorResponse;
