@@ -24,6 +24,8 @@ import type {
 
 type FetchFunction = ReturnType<typeof getFetchFunctionExtended>;
 
+const DEFAULT_HTTP_BYTE_READ_RETRIES = 2;
+
 /**
  * Default decode executor. It runs decoder work inline on the caller thread.
  */
@@ -65,7 +67,7 @@ export function createHttpByteResourceClient(
         method: "GET",
         path: request.source.url,
         result: "arrayBuffer",
-        retries: 2,
+        retries: DEFAULT_HTTP_BYTE_READ_RETRIES,
       });
       const bytes = new Uint8Array(buffer);
 

@@ -28,6 +28,10 @@ import type {
   McapTimelineRange,
 } from "../types";
 
+const INLINE_WORKER_REQUEST_ID = 0;
+const INLINE_WORKER_REQUEST_PRIORITY = 0;
+const INLINE_WORKER_SOURCE_KEY = "inline";
+
 /**
  * Options for creating a worker-backed MCAP resource client.
  */
@@ -252,10 +256,10 @@ async function* streamInlineClient<Type extends McapPlaybackWorkerStreamType>(
   payload: McapPlaybackWorkerRequestPayloadByType[Type]
 ): AsyncGenerator<McapPlaybackWorkerStreamItemByType[Type], void, void> {
   yield* runMcapPlaybackWorkerStreamRequest(client, {
-    id: 0,
+    id: INLINE_WORKER_REQUEST_ID,
     payload,
-    priority: 0,
-    sourceKey: "inline",
+    priority: INLINE_WORKER_REQUEST_PRIORITY,
+    sourceKey: INLINE_WORKER_SOURCE_KEY,
     type,
   });
 }

@@ -19,6 +19,8 @@ import type {
 
 type TypedMcapRecords = McapTypes.TypedMcapRecords;
 
+const INDEXED_LOOKUP_KEY_SEPARATOR = "\0";
+
 interface McapRawMessageCandidate {
   readonly channel: TypedMcapRecords["Channel"];
   readonly message: TypedMcapRecords["Message"];
@@ -448,7 +450,9 @@ function compareIndexedCandidateTieBreaker(
 }
 
 function serializeIndexedLookupKey(candidate: McapIndexedMessageCandidate) {
-  return [candidate.topic, candidate.logTimeNs.toString()].join("\0");
+  return [candidate.topic, candidate.logTimeNs.toString()].join(
+    INDEXED_LOOKUP_KEY_SEPARATOR
+  );
 }
 
 function indexedCandidateRecordId(candidate: McapIndexedMessageCandidate) {
@@ -458,7 +462,7 @@ function indexedCandidateRecordId(candidate: McapIndexedMessageCandidate) {
     candidate.logTimeNs.toString(),
     candidate.chunkStartOffset.toString(),
     candidate.messageOffset.toString(),
-  ].join("\0");
+  ].join(INDEXED_LOOKUP_KEY_SEPARATOR);
 }
 
 function compareBigInt(left: bigint, right: bigint) {

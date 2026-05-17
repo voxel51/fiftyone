@@ -10,6 +10,12 @@ import type {
 
 type DecompressHandlers = McapTypes.DecompressHandlers;
 
+const DEFAULT_MCAP_MESSAGE_INDEX_CACHE_SIZE_BYTES = 128 * 1024 * 1024;
+const SUPPORTED_MCAP_CHUNK_COMPRESSIONS = ["lz4", "zstd"] as const;
+const SUPPORTED_MCAP_CHUNK_COMPRESSION_SET = new Set<string>(
+  SUPPORTED_MCAP_CHUNK_COMPRESSIONS
+);
+
 /**
  * Creates the default indexed MCAP reader with supported chunk decompressors.
  */
@@ -40,7 +46,7 @@ async function initializeDefaultMcapReader(
 ): Promise<McapInitializedReader> {
   return McapIndexedReader.Initialize({
     decompressHandlers,
-    messageIndexCacheSizeBytes: 128 * 1024 * 1024,
+    messageIndexCacheSizeBytes: DEFAULT_MCAP_MESSAGE_INDEX_CACHE_SIZE_BYTES,
     readable,
   });
 }
@@ -57,14 +63,18 @@ function compressedChunkTypes(
 
 function assertSupportedChunkCompressions(compressions: ReadonlySet<string>) {
   const unsupported = [...compressions]
-    .filter((compression) => compression !== "lz4" && compression !== "zstd")
+    .filter(
+      (compression) => !SUPPORTED_MCAP_CHUNK_COMPRESSION_SET.has(compression)
+    )
     .sort();
 
   if (unsupported.length > 0) {
     throw new Error(
       `Unsupported MCAP chunk compression: ${unsupported.join(
         ", "
-      )}. Supported compressions are lz4 and zstd.`
+      )}. Supported compressions are ${SUPPORTED_MCAP_CHUNK_COMPRESSIONS.join(
+        " and "
+      )}.`
     );
   }
 }

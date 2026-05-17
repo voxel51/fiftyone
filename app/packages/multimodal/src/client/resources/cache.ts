@@ -23,6 +23,12 @@ export interface MemoryCacheOptions {
   readonly maxSizeBytes: number;
 }
 
+const ESTIMATED_BOOLEAN_FIELD_SIZE_BYTES = 1;
+const ESTIMATED_NUMBER_FIELD_SIZE_BYTES = 8;
+const ESTIMATED_UNKNOWN_FIELD_SIZE_BYTES = 1;
+const MIN_CACHE_SIZE_BYTES = 1;
+const MIN_CACHE_ENTRY_SIZE_BYTES = 1;
+
 /**
  * Creates a stable cache key for a byte-range read.
  */
@@ -120,7 +126,7 @@ function createByteBoundedCache<Value extends object>(
   options: MemoryCacheOptions
 ) {
   return new LRUCache<string, Value>({
-    maxSize: Math.max(1, options.maxSizeBytes),
+    maxSize: Math.max(MIN_CACHE_SIZE_BYTES, options.maxSizeBytes),
   });
 }
 
@@ -135,7 +141,9 @@ function setByteBoundedEntry<Value extends object>(
     return;
   }
 
-  cache.set(key, value, { size: Math.max(1, sizeBytes) });
+  cache.set(key, value, {
+    size: Math.max(MIN_CACHE_ENTRY_SIZE_BYTES, sizeBytes),
+  });
 }
 
 function canServeRange(
@@ -284,10 +292,10 @@ function estimateFieldSize(value: unknown): number {
     return value.length;
   }
   if (typeof value === "number" || typeof value === "bigint") {
-    return 8;
+    return ESTIMATED_NUMBER_FIELD_SIZE_BYTES;
   }
   if (typeof value === "boolean") {
-    return 1;
+    return ESTIMATED_BOOLEAN_FIELD_SIZE_BYTES;
   }
   if (Array.isArray(value)) {
     return value.reduce((size, item) => size + estimateFieldSize(item), 0);
@@ -299,5 +307,5 @@ function estimateFieldSize(value: unknown): number {
     );
   }
 
-  return 1;
+  return ESTIMATED_UNKNOWN_FIELD_SIZE_BYTES;
 }

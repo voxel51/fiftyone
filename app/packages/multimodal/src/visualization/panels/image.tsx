@@ -8,9 +8,16 @@ import {
   ImageTexturePlane,
   type ImageTextureHandle,
 } from "./base-2d-scene";
+import {
+  VISUALIZATION_PANEL_BACKGROUND_COLOR,
+  VISUALIZATION_STATUS_TEXT_COLOR,
+} from "./style-tokens";
 import { WebGpuCanvas } from "./webgpu-canvas";
 
 type ImageLoadStatus = "loading" | "loaded" | "error";
+
+const STATUS_FONT_SIZE_PX = 13;
+const STATUS_PADDING_PX = 16;
 
 const ORTHOGRAPHIC_IMAGE_CAMERA = {
   far: 10,
@@ -210,7 +217,7 @@ const styles: Record<string, CSSProperties> = {
     width: "100%",
   },
   panel: {
-    background: "#050b12",
+    background: VISUALIZATION_PANEL_BACKGROUND_COLOR,
     boxSizing: "border-box",
     height: "100%",
     minHeight: 0,
@@ -221,12 +228,12 @@ const styles: Record<string, CSSProperties> = {
   },
   status: {
     alignItems: "center",
-    color: "#9fb3c8",
+    color: VISUALIZATION_STATUS_TEXT_COLOR,
     display: "flex",
-    fontSize: 13,
+    fontSize: STATUS_FONT_SIZE_PX,
     inset: 0,
     justifyContent: "center",
-    padding: 16,
+    padding: STATUS_PADDING_PX,
     position: "absolute",
     textAlign: "center",
   },

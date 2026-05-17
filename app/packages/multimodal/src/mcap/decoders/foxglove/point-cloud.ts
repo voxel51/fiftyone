@@ -19,6 +19,11 @@ import {
 import { timingFromContext, timestampNs } from "./protobuf/timing";
 
 const FLOAT32_FIELD_TYPE = 7;
+const FLOAT32_BYTE_WIDTH = 4;
+const POINT_COMPONENT_COUNT = 3;
+const X_COMPONENT_INDEX = 0;
+const Y_COMPONENT_INDEX = 1;
+const Z_COMPONENT_INDEX = 2;
 
 /**
  * Decoder for Foxglove point cloud protobuf messages.
@@ -40,7 +45,7 @@ export const foxglovePointCloudDecoder: Decoder = {
     const positions = extractPositions(data, pointStride, fields);
     const frameId = optionalString(message, "frameId", "frame_id");
     const messageTimestamp = timestampNs(optionalRecord(message, "timestamp"));
-    const pointCount = positions.length / 3;
+    const pointCount = positions.length / POINT_COMPONENT_COUNT;
     const packedFieldMetadata = fields.map((field) => ({
       name: field.name,
       offset: field.offset,
@@ -84,7 +89,7 @@ function extractPositions(
   const z = requiredFloat32Field(fields, "z");
 
   for (const field of [x, y, z]) {
-    if (field.offset < 0 || field.offset + 4 > pointStride) {
+    if (field.offset < 0 || field.offset + FLOAT32_BYTE_WIDTH > pointStride) {
       throw new Error(`Point cloud '${field.name}' field exceeds point stride`);
     }
   }
@@ -94,14 +99,24 @@ function extractPositions(
   }
 
   const pointCount = Math.floor(data.byteLength / pointStride);
-  const positions = new Float32Array(pointCount * 3);
+  const positions = new Float32Array(pointCount * POINT_COMPONENT_COUNT);
   const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
 
   for (let index = 0; index < pointCount; index++) {
     const baseOffset = index * pointStride;
-    positions[index * 3] = view.getFloat32(baseOffset + x.offset, true);
-    positions[index * 3 + 1] = view.getFloat32(baseOffset + y.offset, true);
-    positions[index * 3 + 2] = view.getFloat32(baseOffset + z.offset, true);
+    const positionOffset = index * POINT_COMPONENT_COUNT;
+    positions[positionOffset + X_COMPONENT_INDEX] = view.getFloat32(
+      baseOffset + x.offset,
+      true
+    );
+    positions[positionOffset + Y_COMPONENT_INDEX] = view.getFloat32(
+      baseOffset + y.offset,
+      true
+    );
+    positions[positionOffset + Z_COMPONENT_INDEX] = view.getFloat32(
+      baseOffset + z.offset,
+      true
+    );
   }
 
   return positions;

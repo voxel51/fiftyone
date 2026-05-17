@@ -4,6 +4,8 @@ import type { CSSProperties, ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three/webgpu";
 
+import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "./style-tokens";
+
 type WebGpuRootState = RootState & {
   readonly gl: THREE.WebGPURenderer;
 };
@@ -20,6 +22,8 @@ type WebGpuCanvasGl = (
 ) => RootState["gl"];
 
 const DEFAULT_DPR: Dpr = [1, 2];
+const OPAQUE_CLEAR_ALPHA = 1;
+const DEFAULT_MAX_ANISOTROPY = 1;
 
 const styles: Record<string, CSSProperties> = {
   root: {
@@ -56,7 +60,7 @@ export function WebGpuCanvas({
   camera,
   children,
   className,
-  clearColor = "#050b12",
+  clearColor = VISUALIZATION_PANEL_BACKGROUND_COLOR,
   dpr = DEFAULT_DPR,
   frameloop = "demand",
   onError,
@@ -193,14 +197,14 @@ function prepareWebGpuRenderer(
   clearColor: THREE.ColorRepresentation
 ) {
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.setClearColor(clearColor, 1);
+  renderer.setClearColor(clearColor, OPAQUE_CLEAR_ALPHA);
 
   const rendererWithCompat = renderer as RendererWithDreiCompat;
   rendererWithCompat.capabilities = {
     ...rendererWithCompat.capabilities,
     getMaxAnisotropy:
       rendererWithCompat.capabilities?.getMaxAnisotropy ??
-      (() => renderer.getMaxAnisotropy?.() ?? 1),
+      (() => renderer.getMaxAnisotropy?.() ?? DEFAULT_MAX_ANISOTROPY),
     isWebGL2: rendererWithCompat.capabilities?.isWebGL2 ?? false,
   };
 }

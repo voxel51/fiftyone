@@ -6,6 +6,13 @@ import * as THREE from "three";
 
 import type { PointCloudVisualization } from "../../decoders";
 import { Base3DScene } from "./base-3d-scene";
+import {
+  VISUALIZATION_HUD_BACKGROUND_COLOR,
+  VISUALIZATION_HUD_BORDER_COLOR,
+  VISUALIZATION_HUD_TEXT_COLOR,
+  VISUALIZATION_PANEL_BACKGROUND_COLOR,
+  VISUALIZATION_STATUS_TEXT_COLOR,
+} from "./style-tokens";
 import { WebGpuCanvas } from "./webgpu-canvas";
 
 const PERSPECTIVE_POINT_CAMERA = {
@@ -14,6 +21,31 @@ const PERSPECTIVE_POINT_CAMERA = {
   near: 0.01,
   position: [8, 5, 8] as [number, number, number],
 };
+const DEFAULT_MAX_RENDERED_POINTS = 120_000;
+const DEFAULT_POINT_SIZE = 2;
+const EMPTY_POINT_CLOUD_BOUNDS_SIZE = 1;
+const MIN_POINT_SAMPLE_COUNT = 1;
+const NORMALIZED_HEIGHT_MIN = 0;
+const NORMALIZED_HEIGHT_MAX = 1;
+const POINT_COMPONENT_COUNT = 3;
+const X_COMPONENT_INDEX = 0;
+const Y_COMPONENT_INDEX = 1;
+const Z_COMPONENT_INDEX = 2;
+const HEIGHT_COLOR_MIDPOINT = 0.5;
+const HEIGHT_COLOR_SCALE = 2;
+const HEIGHT_COLOR_RED_BASE = 0.25;
+const HEIGHT_COLOR_RED_RANGE = 0.75;
+const HEIGHT_COLOR_GREEN_BASE = 0.55;
+const HEIGHT_COLOR_GREEN_RANGE = 0.35;
+const HEIGHT_COLOR_BLUE_BASE = NORMALIZED_HEIGHT_MAX;
+const HEIGHT_COLOR_BLUE_WARM_RANGE = 0.48;
+const HEIGHT_NORMALIZATION_EPSILON = 0.000001;
+const HUD_BORDER_RADIUS_PX = 4;
+const HUD_FONT_SIZE_PX = 11;
+const HUD_LINE_HEIGHT = 1;
+const HUD_OFFSET_PX = 8;
+const STATUS_FONT_SIZE_PX = 13;
+const STATUS_PADDING_PX = 16;
 
 interface PointCloudRenderData {
   readonly bounds: THREE.Box3;
@@ -43,8 +75,8 @@ export function PointCloudPanel({
   className,
   fit = "initial",
   frame,
-  maxRenderedPoints = 120000,
-  pointSize = 2,
+  maxRenderedPoints = DEFAULT_MAX_RENDERED_POINTS,
+  pointSize = DEFAULT_POINT_SIZE,
   showHud = true,
   style,
 }: PointCloudPanelProps) {
@@ -140,8 +172,14 @@ function PointCloudPoints({
 
 function createPointCloudGeometry(data: PointCloudRenderData) {
   const geometry = new THREE.BufferGeometry();
-  const positionAttribute = new THREE.BufferAttribute(data.positions, 3);
-  const colorAttribute = new THREE.BufferAttribute(data.colors, 3);
+  const positionAttribute = new THREE.BufferAttribute(
+    data.positions,
+    POINT_COMPONENT_COUNT
+  );
+  const colorAttribute = new THREE.BufferAttribute(
+    data.colors,
+    POINT_COMPONENT_COUNT
+  );
   positionAttribute.setUsage(THREE.DynamicDrawUsage);
   colorAttribute.setUsage(THREE.DynamicDrawUsage);
   geometry.setAttribute("position", positionAttribute);
@@ -157,14 +195,21 @@ function buildPointCloudRenderData(
   sourcePositions: Float32Array,
   maxRenderedPoints: number
 ): PointCloudRenderData {
-  const sourcePointCount = Math.floor(sourcePositions.length / 3);
-  const sampleEvery = Math.max(
-    1,
-    Math.ceil(sourcePointCount / Math.max(1, maxRenderedPoints))
+  const sourcePointCount = Math.floor(
+    sourcePositions.length / POINT_COMPONENT_COUNT
   );
-  const maxSampleCount = Math.max(1, Math.ceil(sourcePointCount / sampleEvery));
-  const positions = new Float32Array(maxSampleCount * 3);
-  const colors = new Float32Array(maxSampleCount * 3);
+  const sampleEvery = Math.max(
+    MIN_POINT_SAMPLE_COUNT,
+    Math.ceil(
+      sourcePointCount / Math.max(MIN_POINT_SAMPLE_COUNT, maxRenderedPoints)
+    )
+  );
+  const maxSampleCount = Math.max(
+    MIN_POINT_SAMPLE_COUNT,
+    Math.ceil(sourcePointCount / sampleEvery)
+  );
+  const positions = new Float32Array(maxSampleCount * POINT_COMPONENT_COUNT);
+  const colors = new Float32Array(maxSampleCount * POINT_COMPONENT_COUNT);
   const heightBounds = computeSourceHeightBounds(sourcePositions);
   const bounds = new THREE.Box3();
   let renderedPointCount = 0;
@@ -176,19 +221,19 @@ function buildPointCloudRenderData(
     sourcePointIndex < sourcePointCount;
     sourcePointIndex += sampleEvery
   ) {
-    const sourceOffset = sourcePointIndex * 3;
+    const sourceOffset = sourcePointIndex * POINT_COMPONENT_COUNT;
     const x = sourcePositions[sourceOffset];
-    const y = sourcePositions[sourceOffset + 1];
-    const z = sourcePositions[sourceOffset + 2];
+    const y = sourcePositions[sourceOffset + Y_COMPONENT_INDEX];
+    const z = sourcePositions[sourceOffset + Z_COMPONENT_INDEX];
 
     if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) {
       continue;
     }
 
-    const targetOffset = renderedPointCount * 3;
-    positions[targetOffset] = x;
-    positions[targetOffset + 1] = z;
-    positions[targetOffset + 2] = -y;
+    const targetOffset = renderedPointCount * POINT_COMPONENT_COUNT;
+    positions[targetOffset + X_COMPONENT_INDEX] = x;
+    positions[targetOffset + Y_COMPONENT_INDEX] = z;
+    positions[targetOffset + Z_COMPONENT_INDEX] = -y;
     writeHeightColor(
       colors,
       targetOffset,
@@ -196,9 +241,9 @@ function buildPointCloudRenderData(
     );
     bounds.expandByPoint(
       new THREE.Vector3(
-        positions[targetOffset],
-        positions[targetOffset + 1],
-        positions[targetOffset + 2]
+        positions[targetOffset + X_COMPONENT_INDEX],
+        positions[targetOffset + Y_COMPONENT_INDEX],
+        positions[targetOffset + Z_COMPONENT_INDEX]
       )
     );
     renderedPointCount++;
@@ -207,7 +252,11 @@ function buildPointCloudRenderData(
   if (heightBounds.finitePointCount === 0) {
     bounds.setFromCenterAndSize(
       new THREE.Vector3(),
-      new THREE.Vector3(1, 1, 1)
+      new THREE.Vector3(
+        EMPTY_POINT_CLOUD_BOUNDS_SIZE,
+        EMPTY_POINT_CLOUD_BOUNDS_SIZE,
+        EMPTY_POINT_CLOUD_BOUNDS_SIZE
+      )
     );
   }
 
@@ -224,13 +273,13 @@ function computeSourceHeightBounds(sourcePositions: Float32Array) {
   let finitePointCount = 0;
   let minHeight = Infinity;
   let maxHeight = -Infinity;
-  const pointCount = Math.floor(sourcePositions.length / 3);
+  const pointCount = Math.floor(sourcePositions.length / POINT_COMPONENT_COUNT);
 
   for (let pointIndex = 0; pointIndex < pointCount; pointIndex++) {
-    const offset = pointIndex * 3;
+    const offset = pointIndex * POINT_COMPONENT_COUNT;
     const x = sourcePositions[offset];
-    const y = sourcePositions[offset + 1];
-    const z = sourcePositions[offset + 2];
+    const y = sourcePositions[offset + Y_COMPONENT_INDEX];
+    const z = sourcePositions[offset + Z_COMPONENT_INDEX];
 
     if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) {
       continue;
@@ -249,17 +298,29 @@ function computeSourceHeightBounds(sourcePositions: Float32Array) {
 }
 
 function writeHeightColor(target: Float32Array, offset: number, value: number) {
-  const clamped = Math.max(0, Math.min(1, value));
-  const warm = clamped > 0.5 ? (clamped - 0.5) * 2 : 0;
-  const cool = clamped < 0.5 ? clamped * 2 : 1;
+  const clamped = Math.max(
+    NORMALIZED_HEIGHT_MIN,
+    Math.min(NORMALIZED_HEIGHT_MAX, value)
+  );
+  const warm =
+    clamped > HEIGHT_COLOR_MIDPOINT
+      ? (clamped - HEIGHT_COLOR_MIDPOINT) * HEIGHT_COLOR_SCALE
+      : NORMALIZED_HEIGHT_MIN;
+  const cool =
+    clamped < HEIGHT_COLOR_MIDPOINT
+      ? clamped * HEIGHT_COLOR_SCALE
+      : NORMALIZED_HEIGHT_MAX;
 
-  target[offset] = 0.25 + warm * 0.75;
-  target[offset + 1] = 0.55 + cool * 0.35;
-  target[offset + 2] = 1 - warm * 0.48;
+  target[offset + X_COMPONENT_INDEX] =
+    HEIGHT_COLOR_RED_BASE + warm * HEIGHT_COLOR_RED_RANGE;
+  target[offset + Y_COMPONENT_INDEX] =
+    HEIGHT_COLOR_GREEN_BASE + cool * HEIGHT_COLOR_GREEN_RANGE;
+  target[offset + Z_COMPONENT_INDEX] =
+    HEIGHT_COLOR_BLUE_BASE - warm * HEIGHT_COLOR_BLUE_WARM_RANGE;
 }
 
 function normalizeHeight(value: number, min: number, max: number) {
-  const span = Math.max(max - min, 0.000001);
+  const span = Math.max(max - min, HEIGHT_NORMALIZATION_EPSILON);
 
   return (value - min) / span;
 }
@@ -285,19 +346,19 @@ const styles: Record<string, CSSProperties> = {
     width: "100%",
   },
   hud: {
-    background: "rgba(5, 11, 18, 0.76)",
-    border: "1px solid rgba(148, 163, 184, 0.22)",
-    borderRadius: 4,
-    color: "#cbd5e1",
-    fontSize: 11,
-    lineHeight: 1,
+    background: VISUALIZATION_HUD_BACKGROUND_COLOR,
+    border: `1px solid ${VISUALIZATION_HUD_BORDER_COLOR}`,
+    borderRadius: HUD_BORDER_RADIUS_PX,
+    color: VISUALIZATION_HUD_TEXT_COLOR,
+    fontSize: HUD_FONT_SIZE_PX,
+    lineHeight: HUD_LINE_HEIGHT,
     padding: "5px 7px",
     position: "absolute",
-    right: 8,
-    top: 8,
+    right: HUD_OFFSET_PX,
+    top: HUD_OFFSET_PX,
   },
   panel: {
-    background: "#050b12",
+    background: VISUALIZATION_PANEL_BACKGROUND_COLOR,
     boxSizing: "border-box",
     height: "100%",
     minHeight: 0,
@@ -308,12 +369,12 @@ const styles: Record<string, CSSProperties> = {
   },
   status: {
     alignItems: "center",
-    color: "#9fb3c8",
+    color: VISUALIZATION_STATUS_TEXT_COLOR,
     display: "flex",
-    fontSize: 13,
+    fontSize: STATUS_FONT_SIZE_PX,
     inset: 0,
     justifyContent: "center",
-    padding: 16,
+    padding: STATUS_PADDING_PX,
     position: "absolute",
     textAlign: "center",
   },

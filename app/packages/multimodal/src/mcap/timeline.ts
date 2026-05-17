@@ -17,6 +17,8 @@ export const DEFAULT_MCAP_TIMELINE_TICK_RATE_HZ = 30;
  */
 export const DEFAULT_MCAP_TIMELINE_MAX_TICKS = 20_000;
 
+const NANOSECONDS_PER_SECOND = 1_000_000_000;
+
 /**
  * Options for generating sampled MCAP timeline ticks.
  */
@@ -158,7 +160,9 @@ export function createMcapTimelineTicks(
     throw new Error("MCAP timeline range end cannot be before start");
   }
 
-  const stepNs = BigInt(Math.max(1, Math.round(1_000_000_000 / tickRateHz)));
+  const stepNs = BigInt(
+    Math.max(1, Math.round(NANOSECONDS_PER_SECOND / tickRateHz))
+  );
   const ticks: bigint[] = [];
 
   for (

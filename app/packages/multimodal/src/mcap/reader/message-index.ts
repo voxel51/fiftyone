@@ -14,9 +14,15 @@ type ExactMcapReadable = McapReadable & {
 };
 
 const MCAP_RECORD_HEADER_BYTES = 9;
+const MCAP_RECORD_OPCODE_OFFSET_BYTES = 0;
+const MCAP_RECORD_LENGTH_OFFSET_BYTES = 1;
 const MCAP_MESSAGE_INDEX_OPCODE = 0x07;
 const MESSAGE_INDEX_CONTENT_HEADER_BYTES = 6;
 const MESSAGE_INDEX_RECORD_BYTES = 16;
+const MESSAGE_INDEX_CHANNEL_ID_OFFSET_BYTES = MCAP_RECORD_HEADER_BYTES;
+const MESSAGE_INDEX_RECORDS_BYTE_LENGTH_OFFSET_BYTES =
+  MESSAGE_INDEX_CHANNEL_ID_OFFSET_BYTES + 2;
+const MESSAGE_INDEX_RECORD_OFFSET_OFFSET_BYTES = 8;
 
 /**
  * Reads ordered MCAP message times directly from chunk message-index records.
@@ -112,14 +118,14 @@ export function parseMcapMessageIndexRecord(
     throw new Error("MCAP message index record is missing its record header");
   }
 
-  const opcode = view.getUint8(0);
+  const opcode = view.getUint8(MCAP_RECORD_OPCODE_OFFSET_BYTES);
   if (opcode !== MCAP_MESSAGE_INDEX_OPCODE) {
     throw new Error(
       `Expected MCAP MessageIndex record, found opcode ${opcode}`
     );
   }
 
-  const recordLength = view.getBigUint64(1, true);
+  const recordLength = view.getBigUint64(MCAP_RECORD_LENGTH_OFFSET_BYTES, true);
   if (recordLength > BigInt(Number.MAX_SAFE_INTEGER)) {
     throw new Error(
       `MCAP MessageIndex record length is too large: ${recordLength.toString()} bytes`
@@ -147,8 +153,11 @@ export function parseMcapMessageIndexRecord(
     );
   }
 
-  const channelId = view.getUint16(MCAP_RECORD_HEADER_BYTES, true);
-  const recordsByteLength = view.getUint32(MCAP_RECORD_HEADER_BYTES + 2, true);
+  const channelId = view.getUint16(MESSAGE_INDEX_CHANNEL_ID_OFFSET_BYTES, true);
+  const recordsByteLength = view.getUint32(
+    MESSAGE_INDEX_RECORDS_BYTE_LENGTH_OFFSET_BYTES,
+    true
+  );
   if (recordsByteLength % MESSAGE_INDEX_RECORD_BYTES !== 0) {
     throw new Error(
       `MCAP MessageIndex records length ${recordsByteLength} is not divisible by ${MESSAGE_INDEX_RECORD_BYTES}`
@@ -172,7 +181,10 @@ export function parseMcapMessageIndexRecord(
   ) {
     records.push([
       view.getBigUint64(offset, true),
-      view.getBigUint64(offset + 8, true),
+      view.getBigUint64(
+        offset + MESSAGE_INDEX_RECORD_OFFSET_OFFSET_BYTES,
+        true
+      ),
     ]);
   }
 

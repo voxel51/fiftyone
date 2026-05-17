@@ -4,6 +4,8 @@ import type { ReactNode } from "react";
 import { useEffect, useMemo } from "react";
 import * as THREE from "three";
 
+import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "./style-tokens";
+
 /**
  * Loaded Three.js texture plus image aspect ratio and disposal hook.
  */
@@ -34,7 +36,10 @@ export interface ImageTexturePlaneProps {
 export function Base2DScene({ children }: Base2DSceneProps) {
   return (
     <>
-      <color args={["#050b12"]} attach="background" />
+      <color
+        args={[VISUALIZATION_PANEL_BACKGROUND_COLOR]}
+        attach="background"
+      />
       {children}
     </>
   );

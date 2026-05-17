@@ -13,6 +13,8 @@ import type {
  */
 export const DEFAULT_MCAP_SYNC_TOLERANCE_NS = 50_000_000n;
 
+const DEFAULT_STREAM_SYNC_LIMIT = 1;
+
 /**
  * Resolved sync bounds for every requested topic around one playback time.
  */
@@ -238,7 +240,7 @@ function resolveStreamSyncPolicy(
   topic: string
 ): McapResolvedStreamSyncPolicy {
   const mode = normalizePlaybackSyncMode(policy?.mode);
-  const limit = policy?.limit ?? 1;
+  const limit = policy?.limit ?? DEFAULT_STREAM_SYNC_LIMIT;
   if (limit < 1) {
     throw new Error(
       `MCAP sync policy for ${topic} must request at least one frame`
