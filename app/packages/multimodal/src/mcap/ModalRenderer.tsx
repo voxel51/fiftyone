@@ -7,6 +7,10 @@ import { LRUCache } from "lru-cache";
 import type { ChangeEvent, CSSProperties, ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ByteSourceDescriptor } from "../client";
+import {
+  byteSourceCacheKey,
+  serializeCacheKey,
+} from "../client/resources/cache";
 import { usePlaybackPlan, useSceneInventory } from "../client/hooks";
 import type { DecodedVisualization } from "../decoders";
 import { PlaybackSyncMode } from "../schemas/v1";
@@ -52,14 +56,10 @@ const STREAM_SYNC_POLICIES: McapStreamSyncPolicies = {
     toleranceBeforeNs: LIDAR_SYNC_LOOKBACK_NS,
   },
 };
-const PLAYBACK_WINDOW_TOPICS_CACHE_KEY = PLAYBACK_TOPICS.join("\u001f");
+const PLAYBACK_WINDOW_TOPICS_CACHE_KEY = serializeCacheKey(PLAYBACK_TOPICS);
 const PLAYBACK_WINDOW_SYNC_POLICY_CACHE_KEY =
   streamSyncPoliciesCacheKey(STREAM_SYNC_POLICIES);
-const ACTIVE_TIMELINE_OPTIONS = [
-  MCAP_ACTIVE_TIMELINE.LOG,
-  MCAP_ACTIVE_TIMELINE.PUBLISH,
-  MCAP_ACTIVE_TIMELINE.HEADER_STAMP,
-] as const;
+const ACTIVE_TIMELINE_OPTIONS = [MCAP_ACTIVE_TIMELINE.LOG] as const;
 
 type LoadStatus = "idle" | "loading" | "ready" | "error";
 type FrameLoadReason = "load" | "playback" | "seek";
@@ -691,12 +691,12 @@ function timelineCacheKey(
   tickRateHz: number,
   maxTicks: number
 ) {
-  return [
+  return serializeCacheKey([
     sourceKey,
     activeTimeline,
     tickRateHz.toString(),
     maxTicks.toString(),
-  ].join("|");
+  ]);
 }
 
 function frameCacheKey(
@@ -704,27 +704,29 @@ function frameCacheKey(
   activeTimeline: McapActiveTimeline,
   timeNs: bigint
 ) {
-  return [
+  return serializeCacheKey([
     sourceKey,
     activeTimeline,
     timeNs.toString(),
     PLAYBACK_WINDOW_TOPICS_CACHE_KEY,
     PLAYBACK_WINDOW_SYNC_POLICY_CACHE_KEY,
-  ].join("|");
+  ]);
 }
 
 function streamSyncPoliciesCacheKey(policies: McapStreamSyncPolicies) {
-  return PLAYBACK_TOPICS.map((topic) => {
-    const policy = policies[topic];
+  return serializeCacheKey(
+    PLAYBACK_TOPICS.map((topic) => {
+      const policy = policies[topic];
 
-    return [
-      topic,
-      policy?.mode ?? "",
-      policy?.limit?.toString() ?? "",
-      policy?.toleranceBeforeNs?.toString() ?? "",
-      policy?.toleranceAfterNs?.toString() ?? "",
-    ].join("\u001f");
-  }).join("\u001e");
+      return serializeCacheKey([
+        topic,
+        policy?.mode?.toString() ?? "",
+        policy?.limit?.toString() ?? "",
+        policy?.toleranceBeforeNs?.toString() ?? "",
+        policy?.toleranceAfterNs?.toString() ?? "",
+      ]);
+    })
+  );
 }
 
 function StreamPanel({
@@ -813,15 +815,7 @@ function sourceProblemMessage(source: ByteSourceDescriptor | null) {
 }
 
 function mcapSourceKey(source: ByteSourceDescriptor | null) {
-  return source
-    ? [
-        source.sourceId,
-        source.url,
-        source.sizeBytes ?? source.fingerprint?.sizeBytes ?? "",
-        source.fingerprint?.firstChunkCrc?.toString() ?? "",
-        source.fingerprint?.lastChunkCrc?.toString() ?? "",
-      ].join("|")
-    : "";
+  return source ? byteSourceCacheKey(source) : "";
 }
 
 function formatSeconds(ns: bigint) {

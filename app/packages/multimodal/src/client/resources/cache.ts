@@ -13,6 +13,11 @@ import type {
 } from "./types";
 
 /**
+ * Primitive value accepted by stable cache-key serialization.
+ */
+export type CacheKeyPart = string | null;
+
+/**
  * Options for bounded in-memory caches.
  */
 export interface MemoryCacheOptions {
@@ -24,7 +29,7 @@ export interface MemoryCacheOptions {
  */
 export function byteRangeCacheKey(request: ByteRangeReadRequest): string {
   return serializeCacheKey([
-    sourceCacheKey(request.source),
+    byteSourceCacheKey(request.source),
     request.range.offset.toString(),
     request.range.length.toString(),
   ]);
@@ -42,7 +47,7 @@ export function decodedOutputCacheKey(key: DecodedOutputCacheKey): string {
     key.streamId,
     key.recordId,
     key.timeNs?.toString() ?? null,
-    key.source ? sourceCacheKey(key.source) : null,
+    key.source ? byteSourceCacheKey(key.source) : null,
   ]);
 }
 
@@ -212,7 +217,10 @@ function sliceByteRangeResult(
   };
 }
 
-function sourceCacheKey(source: ByteSourceDescriptor): string {
+/**
+ * Creates a stable key for byte-source identity.
+ */
+export function byteSourceCacheKey(source: ByteSourceDescriptor): string {
   const fingerprint = source.fingerprint;
 
   return serializeCacheKey([
@@ -232,7 +240,10 @@ function payloadCacheKey(payload: DecodedOutputCacheKey["payload"]): string {
   ]);
 }
 
-function serializeCacheKey(parts: readonly (string | null)[]): string {
+/**
+ * Serializes key parts without delimiter collisions.
+ */
+export function serializeCacheKey(parts: readonly CacheKeyPart[]): string {
   return JSON.stringify(parts);
 }
 

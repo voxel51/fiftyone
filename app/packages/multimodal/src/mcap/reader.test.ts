@@ -1,8 +1,11 @@
 import type { McapTypes } from "@mcap/core";
 import { describe, expect, it, vi } from "vitest";
+import type { ByteResourceClient } from "../client";
 import {
+  getReader,
   parseMcapMessageIndexRecord,
   readIndexedMessageTimesForReader,
+  type McapIndexedReaderLike,
   type McapInitializedReader,
   type McapReadable,
 } from "./reader";
@@ -148,6 +151,39 @@ describe("MCAP indexed message times", () => {
       "Expected MCAP MessageIndex record"
     );
   });
+
+  it("caches delimiter-like source identities independently", async () => {
+    const readers = new Map<string, Promise<McapIndexedReaderLike>>();
+    const readerFactory = vi.fn(async () =>
+      createReader({
+        chunkIndexes: [],
+      })
+    );
+    const byteClient: ByteResourceClient = {
+      readBytes: vi.fn(),
+    };
+
+    await getReader(
+      readers,
+      readerFactory,
+      byteClient,
+      createSource({
+        sourceId: "source|1",
+        url: "nested|path",
+      })
+    );
+    await getReader(
+      readers,
+      readerFactory,
+      byteClient,
+      createSource({
+        sourceId: "source",
+        url: "1|nested|path",
+      })
+    );
+
+    expect(readerFactory).toHaveBeenCalledTimes(2);
+  });
 });
 
 async function collect<T>(
@@ -263,6 +299,20 @@ function createChunkIndex(
     messageStartTime: options.messageStartTime ?? 10n,
     type: "ChunkIndex",
     uncompressedSize: options.uncompressedSize ?? 0n,
+  };
+}
+
+function createSource({
+  sourceId,
+  url,
+}: {
+  readonly sourceId: string;
+  readonly url: string;
+}) {
+  return {
+    sizeBytes: "128",
+    sourceId,
+    url,
   };
 }
 

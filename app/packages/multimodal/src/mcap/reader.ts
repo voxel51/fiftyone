@@ -1,5 +1,6 @@
 import { McapIndexedReader, type McapTypes } from "@mcap/core";
 import type { ByteResourceClient } from "../client";
+import { byteSourceCacheKey } from "../client/resources/cache";
 import { loadMcapDecompressHandlers } from "./decompress/handlers";
 import type { McapSourceDescriptor } from "./types";
 
@@ -607,11 +608,5 @@ function sourceSizeBytes(source: McapSourceDescriptor): bigint | undefined {
 }
 
 function sourceKey(source: McapSourceDescriptor): string {
-  return [
-    source.sourceId,
-    source.url,
-    source.sizeBytes ?? source.fingerprint?.sizeBytes ?? "",
-    source.fingerprint?.firstChunkCrc?.toString() ?? "",
-    source.fingerprint?.lastChunkCrc?.toString() ?? "",
-  ].join("|");
+  return byteSourceCacheKey(source);
 }

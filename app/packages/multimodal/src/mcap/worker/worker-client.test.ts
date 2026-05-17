@@ -178,6 +178,27 @@ describe("worker-backed MCAP resource client", () => {
     await expect(second).resolves.toEqual(createTimelineRange(2n, 2n));
   });
 
+  it("does not reuse a worker for delimiter-like source identities", async () => {
+    const { client, workers } = createClientHarness();
+    const first = client.readTimelineRange({
+      source: createSource("source|1", "nested|path"),
+    });
+    const second = client.readTimelineRange({
+      source: createSource("source", "1|nested|path"),
+    });
+
+    expect(workers).toHaveLength(2);
+    await expect(first).rejects.toThrow("different source");
+
+    workers[1].respond({
+      id: 2,
+      ok: true,
+      result: createTimelineRange(2n, 2n),
+    });
+
+    await expect(second).resolves.toEqual(createTimelineRange(2n, 2n));
+  });
+
   it("terminates the worker and rejects pending requests on dispose", async () => {
     const { client, workers } = createClientHarness();
     const range = client.readTimelineRange(createTimelineRequest());
@@ -305,11 +326,14 @@ function createTimelineRange(startTimeNs: bigint, endTimeNs: bigint) {
   };
 }
 
-function createSource(sourceId: string) {
+function createSource(
+  sourceId: string,
+  url = `mcap-source://${encodeURIComponent(sourceId)}`
+) {
   return {
     sizeBytes: "1024",
     sourceId,
-    url: `/media?filepath=${encodeURIComponent(sourceId)}`,
+    url,
   };
 }
 

@@ -1,4 +1,8 @@
 import { getFetchParameters, mergeHeaders } from "@fiftyone/utilities";
+import {
+  byteSourceCacheKey,
+  serializeCacheKey,
+} from "../../client/resources/cache";
 import { createMcapResourceClient } from "../resources";
 import {
   MCAP_PLAYBACK_WORKER_PRIORITY,
@@ -489,12 +493,8 @@ function workerFetchParameters(): McapPlaybackWorkerFetchParameters {
 }
 
 function mcapWorkerSourceKey(source: McapSourceDescriptor): string {
-  return [
-    source.readProfile ?? "",
-    source.sourceId,
-    source.url,
-    source.sizeBytes ?? source.fingerprint?.sizeBytes ?? "",
-    source.fingerprint?.firstChunkCrc?.toString() ?? "",
-    source.fingerprint?.lastChunkCrc?.toString() ?? "",
-  ].join("|");
+  return serializeCacheKey([
+    source.readProfile ?? null,
+    byteSourceCacheKey(source),
+  ]);
 }
