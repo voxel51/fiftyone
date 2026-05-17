@@ -23,7 +23,8 @@ import type { SceneTrajectory, TrajectoryViewProps, ViewMode } from "../types";
 
 const TRAJECTORY_LENGTH_DEFAULT = 30;
 const JUMP_SIGMA_DEFAULT = 2;
-const CONTEXT_HALF = 2; // +/- frames around the selected frame
+const CONTEXT_HALF_DEFAULT = 2; // +/- frames around the selected frame
+const LOW_VARIATION_CV = 0.3; // coefficient-of-variation threshold for the noise-hint banner
 
 const ACCENT_A = "rgba(70, 140, 220, 0.95)";
 const ACCENT_B = "rgba(230, 130, 50, 0.95)";
@@ -38,6 +39,7 @@ function jumpsForScene(scene: SceneTrajectory, sigma: number): JumpFrame[] {
       out.push({
         frameId: scene.frame_ids[i],
         frameNumber: scene.frame_numbers[i],
+        score: scene.jump_dists[i],
       });
     }
   }
@@ -51,7 +53,7 @@ function jumpsForScene(scene: SceneTrajectory, sigma: number): JumpFrame[] {
 function contextFramesFor(
   selectedFrame: number | null,
   sourceScene: SceneTrajectory | undefined,
-  half: number = CONTEXT_HALF
+  half: number
 ): JumpFrame[] {
   if (selectedFrame == null || !sourceScene) return [];
   const idx = sourceScene.frame_numbers.indexOf(selectedFrame);
@@ -63,10 +65,27 @@ function contextFramesFor(
     out.push({
       frameId: sourceScene.frame_ids[i],
       frameNumber: sourceScene.frame_numbers[i],
+      score: sourceScene.jump_dists[i],
       accent: i === idx ? ACCENT_SELECTED : undefined,
     });
   }
   return out;
+}
+
+/**
+ * Coefficient of variation of the jump_dist distribution for a scene.
+ * Used to flag "low variation" scenes where per-frame jumps are dominated
+ * by embedding noise rather than real signal.
+ */
+function jumpDistCV(scene: SceneTrajectory | undefined): number | null {
+  if (!scene) return null;
+  const nonZero = scene.jump_dists.filter((d) => d > 0);
+  if (nonZero.length < 5) return null;
+  const mean = nonZero.reduce((a, b) => a + b, 0) / nonZero.length;
+  if (mean === 0) return null;
+  const variance =
+    nonZero.reduce((a, b) => a + (b - mean) ** 2, 0) / nonZero.length;
+  return Math.sqrt(variance) / mean;
 }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -130,6 +149,11 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
   const [sceneSigma, setSceneSigma] = usePanelStatePartial<number>(
     "sceneSigma",
     1.5,
+    true
+  );
+  const [contextHalf, setContextHalf] = usePanelStatePartial<number>(
+    "contextHalf",
+    CONTEXT_HALF_DEFAULT,
     true
   );
   const [selectedFrame, setSelectedFrame] = usePanelStatePartial<number | null>(
@@ -257,8 +281,13 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
   // frame_ids around `selectedFrame` are identical.
   const contextSourceScene = sceneA ?? sceneB ?? scene ?? undefined;
   const contextFrames = useMemo(
-    () => contextFramesFor(selectedFrame ?? null, contextSourceScene),
-    [selectedFrame, contextSourceScene]
+    () =>
+      contextFramesFor(
+        selectedFrame ?? null,
+        contextSourceScene,
+        Math.max(1, Math.floor(contextHalf ?? CONTEXT_HALF_DEFAULT))
+      ),
+    [selectedFrame, contextSourceScene, contextHalf]
   );
 
   // ── Frame-media batching ───────────────────────────────────────────
@@ -341,6 +370,28 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
   const cursorIdx = scene
     ? findCursorIndex(scene.frame_numbers, currentFrame)
     : -1;
+
+  // ── Low-variation hint ─────────────────────────────────────────────
+  // When a scene's jump_dist distribution is unusually tight (small
+  // coefficient of variation), per-frame "jumps" are almost certainly
+  // statistical outliers from a steady-state scene rather than real
+  // visual events. Flag it so the user knows what they're looking at.
+  const lowVariationScene = useMemo(() => {
+    if (viewMode === "scatter") {
+      const cv = jumpDistCV(scene ?? undefined);
+      return cv != null && cv < LOW_VARIATION_CV ? cv : null;
+    }
+    if (viewMode === "compare") {
+      const a = jumpDistCV(sceneA);
+      const b = jumpDistCV(sceneB);
+      const worst = Math.min(
+        a ?? Number.POSITIVE_INFINITY,
+        b ?? Number.POSITIVE_INFINITY
+      );
+      return worst < LOW_VARIATION_CV ? worst : null;
+    }
+    return null;
+  }, [viewMode, scene, sceneA, sceneB]);
 
   // ── Grid surface — no sample open ──────────────────────────────────
   if (!currentSampleId) {
@@ -536,7 +587,39 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
             />
           </label>
         )}
+
+        {/* Context window applies across modes — frame previews around
+            the user-selected frame use this radius. */}
+        <label style={styles.field}>
+          <span style={styles.fieldLabel}>
+            Context: ±{contextHalf ?? CONTEXT_HALF_DEFAULT} fr
+          </span>
+          <input
+            type="range"
+            min={1}
+            max={30}
+            step={1}
+            value={contextHalf ?? CONTEXT_HALF_DEFAULT}
+            onChange={(e) => setContextHalf(Number(e.target.value))}
+          />
+        </label>
       </div>
+
+      {/* Low-variation hint: scene's per-frame jumps are so tightly
+          distributed that the flagged "jumps" are likely noise. */}
+      {lowVariationScene != null && (
+        <div style={styles.hintBanner}>
+          ⚠️ low frame-to-frame variation (CV={lowVariationScene.toFixed(2)}) —
+          per-frame jumps here are likely embedding noise. Try{" "}
+          <span
+            style={styles.hintBannerLink}
+            onClick={() => setViewMode("scenes")}
+          >
+            Scenes mode
+          </span>{" "}
+          for boundary detection instead.
+        </div>
+      )}
 
       {/* ── Plot area ──────────────────────────────────────────────── */}
       <div style={styles.plotWrap}>
@@ -826,6 +909,19 @@ const styles: Record<string, React.CSSProperties> = {
     flex: 1,
     minHeight: 0,
     position: "relative",
+  },
+  hintBanner: {
+    background: "rgba(80, 60, 30, 0.45)",
+    color: "rgba(240,230,200,0.95)",
+    fontSize: 11,
+    padding: "5px 12px",
+    borderBottom: "1px solid rgba(180,140,60,0.35)",
+    lineHeight: 1.4,
+  },
+  hintBannerLink: {
+    color: "rgba(160, 200, 255, 0.95)",
+    textDecoration: "underline",
+    cursor: "pointer",
   },
   thumbsArea: {
     padding: "8px 12px",

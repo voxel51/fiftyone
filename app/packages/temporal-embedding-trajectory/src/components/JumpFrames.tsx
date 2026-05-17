@@ -11,6 +11,10 @@ export type JumpFrame = {
   frameNumber: number;
   // Optional badge color (e.g. for "only A" vs "both" sets).
   accent?: string;
+  // Optional numeric score (e.g. jump distance, scene shift).
+  // Renders as a second line on the badge so users can see anomaly
+  // magnitude without hovering.
+  score?: number;
 };
 
 export type JumpFramesProps = {
@@ -48,6 +52,7 @@ export default function JumpFrames({
           filepath: media[f.frameId],
           frameNumber: f.frameNumber,
           accent: f.accent,
+          score: f.score,
         },
       })),
     [frames, media]
@@ -83,6 +88,7 @@ export default function JumpFrames({
           const filepath = data?.filepath as string | undefined;
           const accent = data?.accent as string | undefined;
           const frameNumber = data?.frameNumber as number;
+          const score = data?.score as number | undefined;
           return (
             <div
               style={{
@@ -90,7 +96,11 @@ export default function JumpFrames({
                 ...(accent ? { boxShadow: `0 0 0 2px ${accent}` } : {}),
               }}
               onClick={() => onClickFrame?.(frameNumber)}
-              title={`frame ${frameNumber}`}
+              title={
+                score != null
+                  ? `frame ${frameNumber} · ${score.toFixed(3)}`
+                  : `frame ${frameNumber}`
+              }
             >
               {filepath ? (
                 <img
@@ -101,7 +111,12 @@ export default function JumpFrames({
               ) : (
                 <div style={styles.thumbPlaceholder}>?</div>
               )}
-              <div style={styles.badge}>{frameNumber}</div>
+              <div style={styles.badge}>
+                <span>{frameNumber}</span>
+                {score != null ? (
+                  <span style={styles.badgeScore}>{score.toFixed(3)}</span>
+                ) : null}
+              </div>
             </div>
           );
         }}
@@ -160,5 +175,12 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 10,
     padding: "1px 4px",
     borderRadius: 2,
+    display: "flex",
+    flexDirection: "column",
+    lineHeight: 1.1,
+  },
+  badgeScore: {
+    fontSize: 9,
+    color: "rgba(180,200,255,0.85)",
   },
 };
