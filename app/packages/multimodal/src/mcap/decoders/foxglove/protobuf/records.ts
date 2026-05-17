@@ -124,7 +124,8 @@ export function optionalString(
 
 /**
  * Read an optional protobuf integer-like field as bigint. Protobufjs may expose
- * timestamp components as bigint, number, string, or Long-like objects.
+ * timestamp components as bigint, number, string, or Long-like objects. Invalid
+ * values are treated as absent.
  */
 export function optionalBigInt(
   record: Record<string, unknown>,
@@ -138,14 +139,26 @@ export function optionalBigInt(
     return value;
   }
   if (typeof value === "number") {
-    return BigInt(value);
+    return parseBigInt(value);
   }
   if (typeof value === "string") {
-    return BigInt(value);
+    return parseBigInt(value);
   }
-  if (typeof value === "object" && "toString" in value) {
-    return BigInt(value.toString());
+  if (
+    typeof value === "object" &&
+    "toString" in value &&
+    typeof value.toString === "function"
+  ) {
+    return parseBigInt(value.toString());
   }
 
-  throw new Error(`Field '${field}' is not a bigint-compatible value`);
+  return undefined;
+}
+
+function parseBigInt(value: number | string): bigint | undefined {
+  try {
+    return BigInt(value);
+  } catch {
+    return undefined;
+  }
 }

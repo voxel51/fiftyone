@@ -284,6 +284,7 @@ function estimateFieldSize(value: unknown): number {
     return value.byteLength;
   }
   if (typeof value === "string") {
+    // Cache sizing is an eviction heuristic, not exact encoded-byte accounting.
     return value.length;
   }
   if (typeof value === "number" || typeof value === "bigint") {

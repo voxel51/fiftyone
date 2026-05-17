@@ -2,25 +2,28 @@ import type { Decoder, DecoderRegistry } from "../../decoders";
 import type { DecodedOutput, PayloadDescriptor } from "../../decoders";
 import type { SourceFingerprint } from "../../schemas/v1";
 
+const BYTES_PER_MEGABYTE = 1024 * 1024;
+
 /**
  * Default in-memory raw byte cache budget.
  */
-export const DEFAULT_BYTE_CACHE_SIZE_BYTES = 128 * 1024 * 1024;
+export const DEFAULT_BYTE_CACHE_SIZE_BYTES = 128 * BYTES_PER_MEGABYTE;
 
 /**
  * Default in-memory decoded output cache budget.
  */
-export const DEFAULT_DECODED_CACHE_SIZE_BYTES = 64 * 1024 * 1024;
+export const DEFAULT_DECODED_CACHE_SIZE_BYTES = 64 * BYTES_PER_MEGABYTE;
 
 /**
  * Default block size for local/unknown read-through byte cache fills.
  */
-export const DEFAULT_LOCAL_BYTE_CACHE_BLOCK_SIZE_BYTES = 2 * 1024 * 1024;
+export const DEFAULT_LOCAL_BYTE_CACHE_BLOCK_SIZE_BYTES = 2 * BYTES_PER_MEGABYTE;
 
 /**
  * Default block size for remote/object-storage read-through byte cache fills.
  */
-export const DEFAULT_REMOTE_BYTE_CACHE_BLOCK_SIZE_BYTES = 8 * 1024 * 1024;
+export const DEFAULT_REMOTE_BYTE_CACHE_BLOCK_SIZE_BYTES =
+  8 * BYTES_PER_MEGABYTE;
 
 /**
  * Explicit source profile for byte-cache fill policy.

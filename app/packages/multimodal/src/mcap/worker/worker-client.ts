@@ -413,8 +413,8 @@ function nextStreamValue(
 
 function pushStreamValue(stream: PendingStream, value: unknown) {
   const resolve = stream.resolvers.shift();
-  stream.rejectors.shift();
   if (resolve) {
+    stream.rejectors.shift();
     resolve({ done: false, value });
   } else {
     stream.values.push(value);

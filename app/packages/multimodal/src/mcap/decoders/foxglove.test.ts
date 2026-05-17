@@ -5,6 +5,7 @@ import {
   foxgloveCompressedImageDecoder,
   foxglovePointCloudDecoder,
 } from "./foxglove";
+import { optionalBigInt } from "./foxglove/protobuf/records";
 
 const IMAGE_SCHEMA_B64 =
   "Cv8BCh9nb29nbGUvcHJvdG9idWYvdGltZXN0YW1wLnByb3RvEg9nb29nbGUucHJvdG9idWYiOwoJVGltZXN0YW1wEhgKB3NlY29uZHMYASABKANSB3NlY29uZHMSFAoFbmFub3MYAiABKAVSBW5hbm9zQoUBChNjb20uZ29vZ2xlLnByb3RvYnVmQg5UaW1lc3RhbXBQcm90b1ABWjJnb29nbGUuZ29sYW5nLm9yZy9wcm90b2J1Zi90eXBlcy9rbm93bi90aW1lc3RhbXBwYvgBAaICA0dQQqoCHkdvb2dsZS5Qcm90b2J1Zi5XZWxsS25vd25UeXBlc2IGcHJvdG8zCsUBCh5mb3hnbG92ZS9Db21wcmVzc2VkSW1hZ2UucHJvdG8SCGZveGdsb3ZlGh9nb29nbGUvcHJvdG9idWYvdGltZXN0YW1wLnByb3RvInAKD0NvbXByZXNzZWRJbWFnZRItCgl0aW1lc3RhbXAYASABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhAKCGZyYW1lX2lkGAQgASgJEgwKBGRhdGEYAiABKAwSDgoGZm9ybWF0GAMgASgJYgZwcm90bzM=";
@@ -69,6 +70,18 @@ describe("Foxglove decoders", () => {
       throw new Error("Expected encoded image visualization");
     }
     expect(output.visualization.mimeType).toBe("image/jpeg");
+  });
+
+  it("treats invalid optional bigint protobuf fields as absent", () => {
+    expect(optionalBigInt({ seconds: "not-a-number" }, "seconds")).toBe(
+      undefined
+    );
+    expect(
+      optionalBigInt(
+        { seconds: { toString: () => "also-not-a-number" } },
+        "seconds"
+      )
+    ).toBe(undefined);
   });
 
   it("decodes point cloud payloads into point cloud visualizations", () => {

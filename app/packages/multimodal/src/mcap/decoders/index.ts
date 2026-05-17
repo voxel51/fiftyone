@@ -14,6 +14,9 @@ export const mcapBuiltInDecoders: readonly Decoder[] = [...foxgloveDecoders];
 
 /**
  * Creates an MCAP decoder registry with adapter-owned built-ins.
+ *
+ * Throws when an additional decoder collides with a built-in or earlier
+ * additional decoder registration.
  */
 export function createMcapDecoderRegistry(
   additionalDecoders: readonly Decoder[] = []

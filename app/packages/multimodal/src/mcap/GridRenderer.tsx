@@ -1,6 +1,6 @@
 /**
  * THIS IS POC CODE FOR DEMO COUPLED WITH NUSCENES.
- * THIS IS TO TEST DECODE/FETCH SLICE. PLEASE REMOVE WITH PRODUCTION CODE.
+ * TODO(FOEPD-3830): REPLACE THIS DECODE/FETCH SLICE WITH PRODUCTION CODE.
  */
 import type { SampleRendererProps } from "@fiftyone/plugins";
 import { useSceneInventory } from "../client/hooks";

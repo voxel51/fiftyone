@@ -32,11 +32,11 @@ function normalizeSizeBytes(value: unknown): string | null {
     return /^\d+$/.test(value) ? value : null;
   }
 
-  if (typeof value === "number" && Number.isFinite(value)) {
+  if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
     return Math.trunc(value).toString();
   }
 
-  if (typeof value === "bigint") {
+  if (typeof value === "bigint" && value >= 0n) {
     return value.toString();
   }
 
@@ -85,7 +85,7 @@ export function getMcapSourceDescriptor(
   const readProfile = remoteReadProfile(filepath);
 
   return {
-    ...(readProfile ? { readProfile } : {}),
+    readProfile: readProfile ?? undefined,
     sizeBytes: sizeBytes ?? undefined,
     sourceId: filepath,
     url: getSampleSrc(filepath),
