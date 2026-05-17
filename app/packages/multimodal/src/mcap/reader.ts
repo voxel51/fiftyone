@@ -1,7 +1,6 @@
 import { McapIndexedReader, type McapTypes } from "@mcap/core";
 import type { ByteResourceClient } from "../client";
-import { loadLz4FrameDecompressor } from "./decompress/lz4";
-import { loadZstdFrameDecompressor } from "./decompress/zstd";
+import { loadMcapDecompressHandlers } from "./decompress/handlers";
 import type { McapSourceDescriptor } from "./types";
 
 type DecompressHandlers = McapTypes.DecompressHandlers;
@@ -45,24 +44,14 @@ export async function createDefaultMcapReader(
   _source: McapSourceDescriptor,
   readable: McapReadable
 ): Promise<McapIndexedReaderLike> {
-  const decompressLz4 = await loadLz4FrameDecompressor();
-  const lz4Handlers = {
-    lz4: decompressLz4,
-  };
-  const reader = await initializeDefaultMcapReader(readable, lz4Handlers);
+  const reader = await initializeDefaultMcapReader(
+    readable,
+    await loadMcapDecompressHandlers()
+  );
   const chunkCompressions = compressedChunkTypes(reader);
   assertSupportedChunkCompressions(chunkCompressions);
 
-  if (!chunkCompressions.has("zstd")) {
-    return reader;
-  }
-
-  const decompressZstd = await loadZstdFrameDecompressor();
-
-  return initializeDefaultMcapReader(readable, {
-    ...lz4Handlers,
-    zstd: decompressZstd,
-  });
+  return reader;
 }
 
 /**

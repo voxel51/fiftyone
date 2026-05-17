@@ -3333,6 +3333,7 @@ __metadata:
     vite: "npm:^7.3.2"
     vite-plugin-eslint: "npm:^1.8.1"
     vite-plugin-relay: "npm:^2.0.0"
+    vite-plugin-wasm: "npm:^3.6.0"
     vitest: "npm:^3.0.8"
   languageName: unknown
   linkType: soft
@@ -3459,11 +3460,14 @@ __metadata:
     "@bufbuild/protobuf": "npm:^2.11.0"
     "@fiftyone/plugins": "npm:*"
     "@fiftyone/tiling": "npm:*"
+    "@fiftyone/utilities": "npm:*"
+    "@foxglove/wasm-lz4": "npm:^1.0.2"
+    "@foxglove/wasm-zstd": "npm:^1.0.1"
     "@mcap/core": "npm:^2.2.1"
-    "@mcap/support": "npm:^1.1.0"
     "@react-three/drei": "npm:9.105.4"
     "@react-three/fiber": "npm:^8.18.0"
     "@types/three": "npm:^0.176.0"
+    buffer: "npm:^6.0.3"
     lru-cache: "npm:^11.0.1"
     protobufjs: "npm:^7.2.5"
     three: "npm:^0.182.0"
@@ -3779,15 +3783,6 @@ __metadata:
   version: 0.0.3
   resolution: "@foxglove/crc@npm:0.0.3"
   checksum: 10/53e2f78fb001884ed4baeb1cb4dd510e1d67d9389e0457c57c4d4eb6ada346528310a7e5e486f93cfcf131657ed8e4a57cc3ba6d0e7a564742c0a51498504065
-  languageName: node
-  linkType: hard
-
-"@foxglove/wasm-bz2@npm:^0.3.0":
-  version: 0.3.0
-  resolution: "@foxglove/wasm-bz2@npm:0.3.0"
-  dependencies:
-    tslib: "npm:^2"
-  checksum: 10/f363e700b2088eeddeac83f42dbae86f0c9bb0344322c85c920166cf75595dda0b726ba10822b669aa3b22cc7efe6257fc6cd975afbe17b1ad2af017a58754f1
   languageName: node
   linkType: hard
 
@@ -4572,19 +4567,6 @@ __metadata:
     heap-js: "npm:^2.2.0"
     tslib: "npm:^2.5.0"
   checksum: 10/940fb7c50ff1a15931bb5ab73dc69027de206813796bb607d3e8c63402b17b787d6465aea007fe4ada841e37881dd5bb25046a25cada4e8e544d7d5bc305e27a
-  languageName: node
-  linkType: hard
-
-"@mcap/support@npm:^1.1.0":
-  version: 1.1.0
-  resolution: "@mcap/support@npm:1.1.0"
-  dependencies:
-    "@foxglove/wasm-bz2": "npm:^0.3.0"
-    "@foxglove/wasm-lz4": "npm:^1.0.2"
-    "@foxglove/wasm-zstd": "npm:^1.0.1"
-    protobufjs: "npm:^7.2.5"
-    tslib: "npm:^2.5.0"
-  checksum: 10/dbc8c7c84100ae9474158b07591b58cd961e9b02bfcd294e423ab9ce423bf482965ab100171907b7cd109e2226ab7ee0e4e9e9a6553227ac5a0df37c319f0e63
   languageName: node
   linkType: hard
 
@@ -22386,7 +22368,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tslib@npm:^2, tslib@npm:^2.0.0, tslib@npm:^2.0.1, tslib@npm:^2.0.3, tslib@npm:^2.1.0, tslib@npm:^2.3.0, tslib@npm:^2.3.1, tslib@npm:^2.5.0, tslib@npm:^2.8.0, tslib@npm:^2.8.1":
+"tslib@npm:^2.0.0, tslib@npm:^2.0.1, tslib@npm:^2.0.3, tslib@npm:^2.1.0, tslib@npm:^2.3.0, tslib@npm:^2.3.1, tslib@npm:^2.5.0, tslib@npm:^2.8.0, tslib@npm:^2.8.1":
   version: 2.8.1
   resolution: "tslib@npm:2.8.1"
   checksum: 10/3e2e043d5c2316461cb54e5c7fe02c30ef6dccb3384717ca22ae5c6b5bc95232a6241df19c622d9c73b809bea33b187f6dbc73030963e29950c2141bc32a79f7
@@ -23286,6 +23268,15 @@ __metadata:
   peerDependencies:
     vite: ^2.6.0 || 3 || 4 || 5
   checksum: 10/c860e65836509a144cf838eabcf420d848f35aea4c83044e75c9f9d00947f878217470536ea4098dc4e78510cb5fb683ec564f33cddde4dab0459e3a87f5ff79
+  languageName: node
+  linkType: hard
+
+"vite-plugin-wasm@npm:^3.6.0":
+  version: 3.6.0
+  resolution: "vite-plugin-wasm@npm:3.6.0"
+  peerDependencies:
+    vite: ^2 || ^3 || ^4 || ^5 || ^6 || ^7 || ^8
+  checksum: 10/404e8aab51ba35db1599f84da53a1d123e158bd6f41ea1ce9000ab660af171c62d3ed305ae0366e593eb2201157917f0cfb1c287334abbb4690a3ad94aeae5b1
   languageName: node
   linkType: hard
 
