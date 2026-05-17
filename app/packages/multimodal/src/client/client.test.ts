@@ -320,6 +320,31 @@ describe("multimodal client", () => {
     });
   });
 
+  it("allows callers to skip block cache fills for scattered exact reads", async () => {
+    const reader: ByteResourceClient = {
+      readBytes: vi.fn(async (readRequest) => ({
+        bytes: bytesForRange(readRequest),
+        range: readRequest.range,
+        source: readRequest.source,
+      })),
+    };
+    const cache = createMemoryByteRangeCache({ maxSizeBytes: 128 });
+    const client = createCachedByteResourceClient(reader, {
+      blockSizeBytes: 64,
+      memory: cache,
+    });
+    const request = createByteRangeReadRequest({
+      cachePolicy: { blockFill: false },
+      range: { length: 4n, offset: 4n },
+    });
+
+    await expect(client.readBytes(request)).resolves.toMatchObject({
+      bytes: new Uint8Array([4, 5, 6, 7]),
+    });
+
+    expect(reader.readBytes).toHaveBeenCalledWith(request);
+  });
+
   it("uses larger default block fills for explicitly remote sources", async () => {
     const reader: ByteResourceClient = {
       readBytes: vi.fn(async (readRequest) => ({
@@ -639,6 +664,7 @@ function createByteRangeReadRequest(
   overrides: Partial<ByteRangeReadRequest> = {}
 ): ByteRangeReadRequest {
   return {
+    ...(overrides.cachePolicy ? { cachePolicy: overrides.cachePolicy } : {}),
     range: overrides.range ?? { length: 16n, offset: 4n },
     source: overrides.source ?? {
       sizeBytes: "128",

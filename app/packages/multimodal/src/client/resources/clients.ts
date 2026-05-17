@@ -106,7 +106,10 @@ export function createCachedByteResourceClient(
         return cached;
       }
 
-      const fillRequest = byteCacheFillRequest(request, caches.blockSizeBytes);
+      const fillRequest =
+        request.cachePolicy?.blockFill === false
+          ? request
+          : byteCacheFillRequest(request, caches.blockSizeBytes);
       const fillCached = await readCachedBytes(caches, fillRequest);
       if (fillCached) {
         return sliceByteRangeResult(fillCached, request.range);

@@ -59,6 +59,9 @@ export interface ByteSourceDescriptor {
  * Request for reading one source byte range.
  */
 export interface ByteRangeReadRequest {
+  readonly cachePolicy?: {
+    readonly blockFill?: boolean;
+  };
   readonly source: ByteSourceDescriptor;
   readonly range: ByteRange;
 }
