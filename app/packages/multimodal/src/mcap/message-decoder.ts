@@ -1,12 +1,9 @@
 import type { McapTypes } from "@mcap/core";
 import type { DecodeResourceClient } from "../client/resources";
 import type { PayloadDescriptor } from "../decoders";
-import type {
-  McapActiveTimeline,
-  McapDecodedMessage,
-  McapSourceDescriptor,
-} from "./types";
 import type { McapIndexedReaderLike } from "./reader";
+import type { McapTimelineStrategy } from "./timeline";
+import type { McapDecodedMessage, McapSourceDescriptor } from "./types";
 
 type TypedMcapRecords = McapTypes.TypedMcapRecords;
 
@@ -14,26 +11,26 @@ type TypedMcapRecords = McapTypes.TypedMcapRecords;
  * Inputs needed to decode one MCAP message into the adapter's playback shape.
  */
 export interface DecodeMcapMessageRequest {
-  readonly activeTimeline: McapActiveTimeline;
   readonly channel?: TypedMcapRecords["Channel"];
   readonly decodeClient: DecodeResourceClient;
   readonly message: TypedMcapRecords["Message"];
   readonly reader?: McapIndexedReaderLike;
   readonly schema?: TypedMcapRecords["Schema"];
   readonly source: McapSourceDescriptor;
+  readonly timeline: McapTimelineStrategy;
 }
 
 /**
  * Decodes one MCAP message and preserves adapter playback metadata.
  */
 export async function decodeMcapMessage({
-  activeTimeline,
   channel,
   decodeClient,
   message,
   reader,
   schema,
   source,
+  timeline,
 }: DecodeMcapMessageRequest): Promise<McapDecodedMessage> {
   const resolvedChannel =
     channel ?? reader?.channelsById.get(message.channelId);
@@ -44,14 +41,15 @@ export async function decodeMcapMessage({
   const resolvedSchema =
     schema ?? reader?.schemasById.get(resolvedChannel.schemaId);
   const topic = resolvedChannel.topic;
+  const timelineTimeNs = timeline.messageTimeNs(message);
   const decoded = await decodeClient.decode({
     bytes: message.data,
     cache: {
-      decoderOptionsKey: `activeTimeline=${activeTimeline}`,
+      decoderOptionsKey: timeline.cacheKeySuffix,
       recordId: mcapMessageRecordId(message),
       source,
       streamId: topic,
-      timeNs: message.logTime,
+      timeNs: timelineTimeNs,
     },
     context: {
       schemaData: resolvedSchema?.data,
@@ -60,19 +58,19 @@ export async function decodeMcapMessage({
         publishTime: message.publishTime,
       },
       streamId: topic,
-      timeRangeStartKey: "logTime",
+      timeRangeStartKey: timeline.decodeTimeRangeStartKey,
     },
     payload: payloadFromMcapChannel(resolvedChannel, resolvedSchema),
   });
 
   return {
-    activeTimeline,
+    activeTimeline: timeline.id,
     channelId: message.channelId,
     decoded,
     logTimeNs: message.logTime,
     publishTimeNs: message.publishTime,
     sequence: message.sequence,
-    timelineTimeNs: message.logTime,
+    timelineTimeNs,
     topic,
   };
 }

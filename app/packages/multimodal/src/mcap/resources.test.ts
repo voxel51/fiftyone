@@ -133,6 +133,91 @@ describe("MCAP resources", () => {
     expect(decodeClient.decode).toHaveBeenCalledTimes(2);
   });
 
+  it("uses indexed message times to read only selected synchronized messages", async () => {
+    const source = createMcapSourceDescriptor();
+    const camera = createMessage(new Uint8Array([1]), {
+      channelId: 7,
+      logTime: 90n,
+      publishTime: 91n,
+    });
+    const lidar = createMessage(new Uint8Array([2]), {
+      channelId: 8,
+      logTime: 108n,
+      publishTime: 109n,
+    });
+    const lateCamera = createMessage(new Uint8Array([3]), {
+      channelId: 7,
+      logTime: 130n,
+      publishTime: 131n,
+    });
+    const decodeClient = createTestDecodeClient();
+    const readIndexedMessageTimes = vi.fn(async function* () {
+      yield createIndexedMessageTime("/camera", 7, 90n, 900n);
+      yield createIndexedMessageTime("/lidar", 8, 108n, 1080n);
+      yield createIndexedMessageTime("/camera", 7, 130n, 1300n);
+    });
+    const readMessages = vi.fn(async function* (args?: {
+      readonly endTime?: bigint;
+      readonly startTime?: bigint;
+      readonly topics?: readonly string[];
+    }): AsyncGenerator<TypedMcapRecords["Message"], void, void> {
+      expect(args?.startTime).toBe(args?.endTime);
+      const topic = args?.topics?.[0];
+      if (topic === "/camera" && args?.startTime === 90n) {
+        yield camera;
+      }
+      if (topic === "/lidar" && args?.startTime === 108n) {
+        yield lidar;
+      }
+      if (topic === "/camera" && args?.startTime === 130n) {
+        yield lateCamera;
+      }
+    });
+    const client = createMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient,
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [7, createChannel({ id: 7, topic: "/camera" })],
+            [8, createChannel({ id: 8, topic: "/lidar" })],
+          ]),
+          readIndexedMessageTimes,
+          readMessages,
+        })
+      ),
+    });
+
+    const windows = await client.readSynchronizedMessageBatch({
+      timeNs: [100n, 105n],
+      source,
+      defaultStreamPolicy: {
+        mode: PlaybackSyncMode.NEAREST,
+        toleranceAfterNs: 20n,
+        toleranceBeforeNs: 20n,
+      },
+      topics: ["/camera", "/lidar"],
+    });
+
+    expect(windows).toHaveLength(2);
+    expect(
+      windows[0]?.messages.map((message) => message.timelineTimeNs)
+    ).toEqual([90n, 108n]);
+    expect(
+      windows[1]?.messages.map((message) => message.timelineTimeNs)
+    ).toEqual([90n, 108n]);
+    expect(readIndexedMessageTimes).toHaveBeenCalledWith({
+      endTimeNs: 125n,
+      startTimeNs: 80n,
+      topics: ["/camera", "/lidar"],
+    });
+    expect(readMessages.mock.calls.map(([args]) => args)).toEqual([
+      { endTime: 90n, startTime: 90n, topics: ["/camera"] },
+      { endTime: 108n, startTime: 108n, topics: ["/lidar"] },
+    ]);
+    expect(decodeClient.decode).toHaveBeenCalledTimes(2);
+  });
+
   it("returns empty synchronized batches without opening a reader", async () => {
     const readerFactory = vi.fn();
     const client = createMcapResourceClient({
@@ -289,7 +374,7 @@ function createReader({
   readonly channelsById?: ReadonlyMap<number, TypedMcapRecords["Channel"]>;
   readonly chunkIndexes?: readonly TypedMcapRecords["ChunkIndex"][];
   readonly messages?: readonly TypedMcapRecords["Message"][];
-  readonly readIndexedMessageTimes?: () => AsyncGenerator<
+  readonly readIndexedMessageTimes?: (args?: unknown) => AsyncGenerator<
     {
       readonly channelId: number;
       readonly chunkStartOffset: bigint;
@@ -300,9 +385,11 @@ function createReader({
     void,
     void
   >;
-  readonly readMessages?: (
-    args?: unknown
-  ) => AsyncGenerator<TypedMcapRecords["Message"], void, void>;
+  readonly readMessages?: (args?: {
+    readonly endTime?: bigint;
+    readonly startTime?: bigint;
+    readonly topics?: readonly string[];
+  }) => AsyncGenerator<TypedMcapRecords["Message"], void, void>;
   readonly schemasById?: ReadonlyMap<number, TypedMcapRecords["Schema"]>;
 } = {}) {
   return {
@@ -317,6 +404,21 @@ function createReader({
         }
       }),
     schemasById,
+  };
+}
+
+function createIndexedMessageTime(
+  topic: string,
+  channelId: number,
+  logTimeNs: bigint,
+  messageOffset: bigint
+) {
+  return {
+    channelId,
+    chunkStartOffset: 1_000n,
+    logTimeNs,
+    messageOffset,
+    topic,
   };
 }
 

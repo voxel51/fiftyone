@@ -16,7 +16,7 @@ import {
 } from "./reader";
 import { mcapTimelineRangeFromReader } from "./timeline-range";
 import { readMcapSynchronizedMessageBatch } from "./synchronized-reader";
-import { resolveMcapActiveTimeline } from "./timeline";
+import { resolveMcapTimelineStrategy } from "./timeline";
 import {
   type McapDecodedMessage,
   type McapReadDecodedMessagesRequest,
@@ -61,22 +61,22 @@ export function createMcapResourceClient(
   async function* readDecodedMessages(
     request: McapReadDecodedMessagesRequest
   ): AsyncGenerator<McapDecodedMessage, void, void> {
-    const activeTimeline = resolveMcapActiveTimeline(request.activeTimeline);
+    const timeline = resolveMcapTimelineStrategy(request.activeTimeline);
     const reader = await readerStore.get(request.source);
     yield* readMcapDecodedMessages({
-      activeTimeline,
       decodeClient,
       reader,
       request,
+      timeline,
     });
   }
 
   async function readTimelineRange(
     request: McapReadTimelineRangeRequest
   ): Promise<McapTimelineRange> {
-    const activeTimeline = resolveMcapActiveTimeline(request.activeTimeline);
+    const timeline = resolveMcapTimelineStrategy(request.activeTimeline);
     const reader = await readerStore.get(request.source);
-    return mcapTimelineRangeFromReader(reader, activeTimeline);
+    return mcapTimelineRangeFromReader(reader, timeline);
   }
 
   async function readSynchronizedMessages(
@@ -101,13 +101,13 @@ export function createMcapResourceClient(
       return [];
     }
 
-    const activeTimeline = resolveMcapActiveTimeline(request.activeTimeline);
+    const timeline = resolveMcapTimelineStrategy(request.activeTimeline);
     const reader = await readerStore.get(request.source);
     return readMcapSynchronizedMessageBatch({
-      activeTimeline,
       decodeClient,
       reader,
       request,
+      timeline,
     });
   }
 
