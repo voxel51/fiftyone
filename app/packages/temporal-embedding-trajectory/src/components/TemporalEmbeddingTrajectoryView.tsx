@@ -24,10 +24,6 @@ import type { SceneTrajectory, TrajectoryViewProps, ViewMode } from "../types";
 const TRAJECTORY_LENGTH_DEFAULT = 30;
 const JUMP_SIGMA_DEFAULT = 2;
 const CONTEXT_HALF = 2; // +/- frames around the selected frame
-const MODEL_CHOICES: Array<{ value: string; label: string }> = [
-  { value: "clip-vit-base32-torch", label: "CLIP ViT-B/32 (semantic)" },
-  { value: "dinov2-vitb14-torch", label: "DINOv2 ViT-B/14 (visual)" },
-];
 
 const ACCENT_A = "rgba(70, 140, 220, 0.95)";
 const ACCENT_B = "rgba(230, 130, 50, 0.95)";
@@ -75,39 +71,20 @@ function contextFramesFor(
 
 // ──────────────────────────────────────────────────────────────────────
 // Compute action: shared between grid CTA and modal toolbar.
+// All compute params (model, brain key, method, ...) are configured
+// in the operator's own prompt dialog, so the panel just exposes the
+// trigger.
 // ──────────────────────────────────────────────────────────────────────
 
 type ComputeBarProps = {
-  composeModel: string;
-  setComposeModel: (m: string) => void;
   onCompute: () => void;
 };
 
-function ComputeBar({
-  composeModel,
-  setComposeModel,
-  onCompute,
-}: ComputeBarProps) {
+function ComputeBar({ onCompute }: ComputeBarProps) {
   return (
-    <div style={styles.computeGroup}>
-      <label style={styles.field}>
-        <span style={styles.fieldLabel}>Compute model</span>
-        <select
-          style={styles.select}
-          value={composeModel}
-          onChange={(e) => setComposeModel(e.target.value)}
-        >
-          {MODEL_CHOICES.map((m) => (
-            <option key={m.value} value={m.value}>
-              {m.label}
-            </option>
-          ))}
-        </select>
-      </label>
-      <button style={styles.button} onClick={onCompute}>
-        Compute
-      </button>
-    </div>
+    <button style={styles.button} onClick={onCompute}>
+      Compute
+    </button>
   );
 }
 
@@ -153,11 +130,6 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
   const [sceneSigma, setSceneSigma] = usePanelStatePartial<number>(
     "sceneSigma",
     1.5,
-    true
-  );
-  const [composeModel, setComposeModel] = usePanelStatePartial<string>(
-    "composeModel",
-    MODEL_CHOICES[0].value,
     true
   );
   const [selectedFrame, setSelectedFrame] = usePanelStatePartial<number | null>(
@@ -360,14 +332,10 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
   );
 
   const handleCompute = useCallback(() => {
-    triggers.computeTrajectory({
-      model: composeModel ?? MODEL_CHOICES[0].value,
-      brain_key:
-        selectedBrainKey ??
-        (brainKeys[0]?.key as string | undefined) ??
-        "temporal_trajectory",
-    });
-  }, [triggers, composeModel, selectedBrainKey, brainKeys]);
+    // No pre-filled params — the user picks model / brain key / method
+    // in the operator's prompt dialog.
+    triggers.computeTrajectory({});
+  }, [triggers]);
 
   const noBrainKeys = brainKeys.length === 0;
   const cursorIdx = scene
@@ -388,11 +356,7 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
             Compute runs as a delegated operator; on a large dataset it can take
             a few minutes.
           </p>
-          <ComputeBar
-            composeModel={composeModel ?? MODEL_CHOICES[0].value}
-            setComposeModel={setComposeModel}
-            onCompute={handleCompute}
-          />
+          <ComputeBar onCompute={handleCompute} />
         </div>
       </div>
     );
@@ -497,11 +461,7 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
 
         <div style={styles.spacer} />
 
-        <ComputeBar
-          composeModel={composeModel ?? MODEL_CHOICES[0].value}
-          setComposeModel={setComposeModel}
-          onCompute={handleCompute}
-        />
+        <ComputeBar onCompute={handleCompute} />
       </div>
 
       {/* ── Row 2: per-mode display controls ───────────────────────── */}
@@ -813,11 +773,6 @@ const styles: Record<string, React.CSSProperties> = {
   },
   spacer: {
     flex: 1,
-  },
-  computeGroup: {
-    display: "flex",
-    alignItems: "flex-end",
-    gap: 8,
   },
   field: {
     display: "flex",
