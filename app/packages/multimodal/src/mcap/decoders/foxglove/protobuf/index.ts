@@ -5,9 +5,9 @@
  * turns that schema data into cached protobufjs message types and decodes
  * message bytes into plain records for the concrete Foxglove decoders.
  */
-import type { PayloadDescriptor } from "../../../../decoders";
+import type { DecodeContext, PayloadDescriptor } from "../../../../decoders";
 import { protobufFromBinaryDescriptor } from "./descriptors";
-import { asRecord, optionalContextRecord } from "./records";
+import { asRecord } from "./records";
 
 type MessageTypeLike = {
   decode(bytes: Uint8Array): unknown;
@@ -25,7 +25,7 @@ const messageTypeCache = new WeakMap<
 export function decodeProtobufMessage(
   bytes: Uint8Array,
   payload: PayloadDescriptor,
-  context: unknown
+  context: DecodeContext
 ): Record<string, unknown> {
   const schemaData = schemaDataFromContext(context);
   if (!schemaData) {
@@ -65,9 +65,8 @@ function getMessageType(
   return messageType;
 }
 
-function schemaDataFromContext(context: unknown): Uint8Array | undefined {
-  const record = optionalContextRecord(context);
-  const schemaData = record?.schemaData;
+function schemaDataFromContext(context: DecodeContext): Uint8Array | undefined {
+  const schemaData = context.schemaData;
 
   if (schemaData === undefined || schemaData === null) {
     return undefined;

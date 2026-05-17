@@ -1,4 +1,5 @@
 export * from "./registry";
+export * from "./resource-hints";
 export * from "./types";
 
 import { DecoderRegistry } from "./registry";

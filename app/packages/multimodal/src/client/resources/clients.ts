@@ -209,29 +209,11 @@ async function runDecode(
     decoderVersion: decoder.version,
     output: await executor.decode({
       bytes: request.bytes,
-      context: decoderContextForRequest(request),
+      context: request.context,
       decoder,
       payload: request.payload,
-      schemaData: request.schemaData,
     }),
     payload: request.payload,
-  };
-}
-
-function decoderContextForRequest(request: DecodeResourceRequest): unknown {
-  if (!request.schemaData) {
-    return request.context;
-  }
-
-  if (!request.context || typeof request.context !== "object") {
-    return {
-      schemaData: request.schemaData,
-    };
-  }
-
-  return {
-    ...request.context,
-    schemaData: request.schemaData,
   };
 }
 

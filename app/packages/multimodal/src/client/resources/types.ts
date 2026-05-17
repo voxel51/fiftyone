@@ -1,4 +1,4 @@
-import type { Decoder, DecoderRegistry } from "../../decoders";
+import type { DecodeContext, Decoder, DecoderRegistry } from "../../decoders";
 import type { DecodedOutput, PayloadDescriptor } from "../../decoders";
 import type { SourceFingerprint } from "../../schemas/v1";
 
@@ -33,6 +33,9 @@ export const BYTE_SOURCE_READ_PROFILE = Object.freeze({
   REMOTE: "remote",
 } as const);
 
+/**
+ * Byte-source locality hint used to choose cache fill behavior.
+ */
 export type ByteSourceReadProfile =
   typeof BYTE_SOURCE_READ_PROFILE[keyof typeof BYTE_SOURCE_READ_PROFILE];
 
@@ -125,9 +128,8 @@ export interface DecodeCacheDescriptor {
 export interface DecodeResourceRequest {
   readonly bytes: Uint8Array;
   readonly cache?: DecodeCacheDescriptor;
-  readonly context: unknown;
+  readonly context: DecodeContext;
   readonly payload: PayloadDescriptor;
-  readonly schemaData?: Uint8Array;
 }
 
 /**
@@ -145,10 +147,9 @@ export interface DecodeResourceResult {
  */
 export interface DecodeExecutionRequest {
   readonly bytes: Uint8Array;
-  readonly context: unknown;
+  readonly context: DecodeContext;
   readonly decoder: Decoder;
   readonly payload: PayloadDescriptor;
-  readonly schemaData?: Uint8Array;
 }
 
 /**

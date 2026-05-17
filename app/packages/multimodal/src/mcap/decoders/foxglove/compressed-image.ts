@@ -1,4 +1,8 @@
-import type { DecodedAttributeValue, Decoder } from "../../../decoders";
+import {
+  resourceHintsForArrayBufferViews,
+  type DecodedAttributeValue,
+  type Decoder,
+} from "../../../decoders";
 import { VISUALIZATION_KIND } from "../../../visualization";
 import { decodeProtobufMessage } from "./protobuf";
 import { FOXGLOVE_COMPRESSED_IMAGE_PAYLOAD } from "./protobuf/payloads";
@@ -38,6 +42,7 @@ export const foxgloveCompressedImageDecoder: Decoder = {
 
     return {
       attributes,
+      resourceHints: resourceHintsForArrayBufferViews(data),
       timing: timingFromContext(context, messageTimestamp),
       visualization: {
         bytes: data,

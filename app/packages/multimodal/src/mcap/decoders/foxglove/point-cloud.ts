@@ -3,6 +3,7 @@ import type {
   Decoder,
   PointCloudField,
 } from "../../../decoders";
+import { resourceHintsForArrayBufferViews } from "../../../decoders";
 import { VISUALIZATION_KIND } from "../../../visualization";
 import { decodeProtobufMessage } from "./protobuf";
 import { FOXGLOVE_POINT_CLOUD_PAYLOAD } from "./protobuf/payloads";
@@ -57,6 +58,7 @@ export const foxglovePointCloudDecoder: Decoder = {
 
     return {
       attributes,
+      resourceHints: resourceHintsForArrayBufferViews(positions),
       timing: timingFromContext(context, messageTimestamp),
       visualization: {
         fields: packedFieldMetadata,

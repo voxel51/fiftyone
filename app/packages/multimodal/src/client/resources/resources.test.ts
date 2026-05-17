@@ -412,9 +412,11 @@ describe("multimodal resource clients", () => {
 
     await client.decode({
       bytes,
-      context,
+      context: {
+        ...context,
+        schemaData: new Uint8Array([2]),
+      },
       payload,
-      schemaData: new Uint8Array([2]),
     });
 
     expect(executor.decode).toHaveBeenCalledWith({
@@ -425,7 +427,6 @@ describe("multimodal resource clients", () => {
       },
       decoder,
       payload,
-      schemaData: new Uint8Array([2]),
     });
   });
 

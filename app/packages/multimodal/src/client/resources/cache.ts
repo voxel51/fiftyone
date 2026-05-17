@@ -1,6 +1,5 @@
 import { LRUCache } from "lru-cache";
 
-import { VISUALIZATION_KIND } from "../../visualization";
 import type {
   ByteRange,
   ByteRangeCache,
@@ -258,30 +257,16 @@ function safeNumber(value: bigint): number {
 }
 
 function estimateDecodeResultSize(result: DecodeResourceResult): number {
-  return (
-    estimateVisualizationSize(result.output.visualization) +
-    estimateFieldSize(result.output.attributes)
-  );
-}
-
-function estimateVisualizationSize(
-  visualization: DecodeResourceResult["output"]["visualization"]
-): number {
-  if (!visualization) {
-    return 0;
+  const hintedSize = result.output.resourceHints?.sizeBytes;
+  if (hintedSize !== undefined) {
+    return (
+      hintedSize +
+      estimateFieldSize(result.output.attributes) +
+      estimateFieldSize(result.output.timing)
+    );
   }
 
-  switch (visualization.kind) {
-    case VISUALIZATION_KIND.ENCODED_IMAGE:
-      return visualization.bytes.byteLength;
-    case VISUALIZATION_KIND.POINT_CLOUD:
-      return (
-        visualization.positions.byteLength +
-        estimateFieldSize(visualization.fields)
-      );
-  }
-
-  return 0;
+  return estimateFieldSize(result.output);
 }
 
 function estimateFieldSize(value: unknown): number {

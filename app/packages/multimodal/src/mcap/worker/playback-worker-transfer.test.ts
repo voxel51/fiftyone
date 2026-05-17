@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { VISUALIZATION_KIND } from "../../visualization";
 import { transferablesForMcapResult } from "./playback-worker-transfer";
 import type {
   McapDecodedMessage,
@@ -12,14 +11,8 @@ describe("MCAP playback worker transfer collection", () => {
     const image = new Uint8Array([1, 2, 3]);
     const positions = new Float32Array([1, 2, 3]);
     const window = createWindow([
-      createMessage({
-        bytes: image,
-        kind: VISUALIZATION_KIND.ENCODED_IMAGE,
-      }),
-      createMessage({
-        kind: VISUALIZATION_KIND.POINT_CLOUD,
-        positions,
-      }),
+      createMessage([image.buffer]),
+      createMessage([positions.buffer]),
     ]);
 
     expect(transferablesForMcapResult(window)).toEqual([
@@ -56,15 +49,7 @@ function createWindow(
 }
 
 function createMessage(
-  visualization:
-    | {
-        readonly bytes: Uint8Array;
-        readonly kind: typeof VISUALIZATION_KIND.ENCODED_IMAGE;
-      }
-    | {
-        readonly kind: typeof VISUALIZATION_KIND.POINT_CLOUD;
-        readonly positions: Float32Array;
-      }
+  transferables: readonly Transferable[]
 ): McapDecodedMessage {
   return {
     channelId: 1,
@@ -73,18 +58,9 @@ function createMessage(
       decoderVersion: "1",
       output: {
         attributes: {},
-        visualization:
-          visualization.kind === VISUALIZATION_KIND.ENCODED_IMAGE
-            ? {
-                bytes: visualization.bytes,
-                kind: visualization.kind,
-              }
-            : {
-                fields: [],
-                kind: visualization.kind,
-                pointCount: visualization.positions.length / 3,
-                positions: visualization.positions,
-              },
+        resourceHints: {
+          transferables,
+        },
       },
       payload: {
         encoding: "protobuf",

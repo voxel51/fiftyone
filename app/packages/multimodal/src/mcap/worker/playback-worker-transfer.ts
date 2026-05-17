@@ -1,4 +1,3 @@
-import { VISUALIZATION_KIND } from "../../visualization";
 import type {
   McapDecodedMessage,
   McapSynchronizedMessageWindow,
@@ -8,18 +7,12 @@ import type {
  * Collects transferable buffers from decoded MCAP results before worker posting.
  */
 export function transferablesForMcapResult(result: unknown): Transferable[] {
-  const transferables = new Set<ArrayBuffer>();
+  const transferables = new Set<Transferable>();
 
   for (const message of decodedMessagesFromResult(result)) {
-    const visualization = message.decoded.output.visualization;
-    if (!visualization) {
-      continue;
-    }
-
-    if (visualization.kind === VISUALIZATION_KIND.ENCODED_IMAGE) {
-      addTransferableBuffer(transferables, visualization.bytes);
-    } else if (visualization.kind === VISUALIZATION_KIND.POINT_CLOUD) {
-      addTransferableBuffer(transferables, visualization.positions);
+    for (const transferable of message.decoded.output.resourceHints
+      ?.transferables ?? []) {
+      transferables.add(transferable);
     }
   }
 
@@ -59,13 +52,4 @@ function isSynchronizedWindow(
 
 function isDecodedMessage(value: unknown): value is McapDecodedMessage {
   return !!value && typeof value === "object" && "decoded" in value;
-}
-
-function addTransferableBuffer(
-  transferables: Set<ArrayBuffer>,
-  view: ArrayBufferView
-) {
-  if (view.buffer instanceof ArrayBuffer) {
-    transferables.add(view.buffer);
-  }
 }

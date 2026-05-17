@@ -6,10 +6,11 @@
  * decoded timing shape consumed by synchronized playback.
  */
 import type {
+  DecodeContext,
   DecodedSourceTimestamps,
   DecodedTiming,
 } from "../../../../decoders";
-import { asRecord, optionalBigInt, optionalContextRecord } from "./records";
+import { asRecord, optionalBigInt } from "./records";
 
 const NANOSECONDS_PER_SECOND = 1000000000n;
 
@@ -24,7 +25,7 @@ interface DecodeTimingContext {
  * embedded in the Foxglove message payload.
  */
 export function timingFromContext(
-  context: unknown,
+  context: DecodeContext,
   messageTimestampNs: bigint | undefined
 ): DecodedTiming {
   const timingContext = timingContextFromContext(context);
@@ -61,22 +62,15 @@ export function timestampNs(timestamp: Record<string, unknown> | undefined) {
   return seconds * NANOSECONDS_PER_SECOND + nanos;
 }
 
-function timingContextFromContext(
-  context: unknown
-): DecodeTimingContext | undefined {
-  const record = optionalContextRecord(context);
-  if (!record) {
-    return undefined;
-  }
-
-  const sourceTimestamps = sourceTimestampsFromValue(record.sourceTimestamps);
+function timingContextFromContext(context: DecodeContext): DecodeTimingContext {
+  const sourceTimestamps = sourceTimestampsFromValue(context.sourceTimestamps);
   const timeRangeStartKey =
-    typeof record.timeRangeStartKey === "string"
-      ? record.timeRangeStartKey
+    typeof context.timeRangeStartKey === "string"
+      ? context.timeRangeStartKey
       : undefined;
   const timeRangeStartNs =
-    typeof record.timeRangeStartNs === "bigint"
-      ? record.timeRangeStartNs
+    typeof context.timeRangeStartNs === "bigint"
+      ? context.timeRangeStartNs
       : undefined;
 
   return {

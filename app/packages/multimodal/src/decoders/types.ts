@@ -73,6 +73,18 @@ export interface DecodedTimeRange {
 export type DecodedSourceTimestamps = Readonly<Record<string, bigint>>;
 
 /**
+ * Runtime context passed to decoders by source adapters.
+ */
+export interface DecodeContext {
+  readonly schemaData?: Uint8Array;
+  readonly sourceTimestamps?: DecodedSourceTimestamps;
+  readonly streamId?: string;
+  readonly timeRangeStartKey?: string;
+  readonly timeRangeStartNs?: bigint;
+  readonly [key: string]: unknown;
+}
+
+/**
  * Generic timing metadata for playback, synchronization, and provenance.
  */
 export interface DecodedTiming {
@@ -81,10 +93,19 @@ export interface DecodedTiming {
 }
 
 /**
+ * Decoder-provided resource metadata used by generic caches and worker transfer.
+ */
+export interface DecodedResourceHints {
+  readonly sizeBytes?: number;
+  readonly transferables?: readonly Transferable[];
+}
+
+/**
  * Structured decoder output for downstream playback and visualization.
  */
 export interface DecodedOutput {
   readonly attributes?: Record<string, DecodedAttributeValue>;
+  readonly resourceHints?: DecodedResourceHints;
   readonly timing?: DecodedTiming;
   readonly visualization?: DecodedVisualization;
 }
@@ -97,5 +118,5 @@ export interface Decoder {
   readonly payload: PayloadDescriptor;
   readonly version: string;
 
-  decode<DecoderContext>(bytes: Uint8Array, ctx: DecoderContext): DecodedOutput;
+  decode(bytes: Uint8Array, ctx: DecodeContext): DecodedOutput;
 }
