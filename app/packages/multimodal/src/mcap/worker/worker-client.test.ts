@@ -15,15 +15,9 @@ const resourcesHarness = vi.hoisted(() => {
       }
       return;
     }),
-    readMessageTimes: vi.fn(async function* () {
-      for (const item of [] as never[]) {
-        yield item;
-      }
-      return;
-    }),
     readSynchronizedMessageBatch: vi.fn(async () => []),
     readSynchronizedMessages: vi.fn(),
-    readTimelineAnchors: vi.fn(async () => [42n]),
+    readTimelineRange: vi.fn(async () => createTimelineRange(1n, 42n)),
   };
 
   return {
@@ -51,17 +45,16 @@ describe("worker-backed MCAP resource client", () => {
     resourcesHarness.createMcapResourceClient.mockClear();
     resourcesHarness.inlineClient.dispose.mockClear();
     resourcesHarness.inlineClient.readDecodedMessages.mockClear();
-    resourcesHarness.inlineClient.readMessageTimes.mockClear();
     resourcesHarness.inlineClient.readSynchronizedMessageBatch.mockClear();
     resourcesHarness.inlineClient.readSynchronizedMessages.mockClear();
-    resourcesHarness.inlineClient.readTimelineAnchors.mockClear();
+    resourcesHarness.inlineClient.readTimelineRange.mockClear();
   });
 
   it("initializes the worker and maps resource calls to RPC messages", async () => {
     const { client, workers } = createClientHarness();
     const request = createTimelineRequest();
 
-    const anchors = client.readTimelineAnchors(request);
+    const range = client.readTimelineRange(request);
     const worker = workers[0];
 
     expect(worker.messages[0]).toEqual({
@@ -76,18 +69,18 @@ describe("worker-backed MCAP resource client", () => {
       id: 1,
       payload: request,
       priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
-      type: "readTimelineAnchors",
+      type: "readTimelineRange",
     });
 
-    worker.respond({ id: 1, ok: true, result: [1n, 2n] });
+    worker.respond({ id: 1, ok: true, result: createTimelineRange(1n, 2n) });
 
-    await expect(anchors).resolves.toEqual([1n, 2n]);
+    await expect(range).resolves.toEqual(createTimelineRange(1n, 2n));
   });
 
   it("sends playback batches at playback priority", async () => {
     const { client, workers } = createClientHarness();
     const request = {
-      anchorTimeNs: [1n, 2n],
+      timeNs: [1n, 2n],
       source: createSource("source:1"),
       topics: ["/camera"],
     };
@@ -109,7 +102,7 @@ describe("worker-backed MCAP resource client", () => {
   it("rejects failed worker responses", async () => {
     const { client, workers } = createClientHarness();
     const frame = client.readSynchronizedMessages({
-      anchorTimeNs: 1n,
+      timeNs: 1n,
       source: createSource("source:1"),
       topics: ["/camera"],
     });
@@ -119,9 +112,9 @@ describe("worker-backed MCAP resource client", () => {
     await expect(frame).rejects.toThrow("decode failed");
   });
 
-  it("streams message-time responses incrementally", async () => {
+  it("streams decoded-message responses incrementally", async () => {
     const { client, workers } = createClientHarness();
-    const stream = client.readMessageTimes({
+    const stream = client.readDecodedMessages({
       source: createSource("source:1"),
       topics: ["/camera"],
     });
@@ -130,20 +123,20 @@ describe("worker-backed MCAP resource client", () => {
     expect(workers[0].messages[1]).toMatchObject({
       id: 1,
       priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
-      type: "readMessageTimes",
+      type: "readDecodedMessages",
     });
 
     workers[0].respond({
       done: false,
       id: 1,
-      item: createMessageTime(1n),
+      item: createDecodedMessage(1n),
       ok: true,
       stream: true,
     });
 
     await expect(first).resolves.toEqual({
       done: false,
-      value: createMessageTime(1n),
+      value: createDecodedMessage(1n),
     });
 
     const second = stream.next();
@@ -162,33 +155,39 @@ describe("worker-backed MCAP resource client", () => {
 
   it("resets the worker on source changes and ignores stale responses", async () => {
     const { client, workers } = createClientHarness();
-    const first = client.readTimelineAnchors(createTimelineRequest("source:1"));
+    const first = client.readTimelineRange(createTimelineRequest("source:1"));
     const firstWorker = workers[0];
-    const second = client.readTimelineAnchors(
-      createTimelineRequest("source:2")
-    );
+    const second = client.readTimelineRange(createTimelineRequest("source:2"));
     const secondWorker = workers[1];
 
     expect(firstWorker.messages.at(-1)).toEqual({ type: "dispose" });
     expect(firstWorker.terminate).toHaveBeenCalledTimes(1);
     await expect(first).rejects.toThrow("different source");
 
-    firstWorker.respond({ id: 1, ok: true, result: [1n] });
-    secondWorker.respond({ id: 2, ok: true, result: [2n] });
+    firstWorker.respond({
+      id: 1,
+      ok: true,
+      result: createTimelineRange(1n, 1n),
+    });
+    secondWorker.respond({
+      id: 2,
+      ok: true,
+      result: createTimelineRange(2n, 2n),
+    });
 
-    await expect(second).resolves.toEqual([2n]);
+    await expect(second).resolves.toEqual(createTimelineRange(2n, 2n));
   });
 
   it("terminates the worker and rejects pending requests on dispose", async () => {
     const { client, workers } = createClientHarness();
-    const anchors = client.readTimelineAnchors(createTimelineRequest());
+    const range = client.readTimelineRange(createTimelineRequest());
     const worker = workers[0];
 
     client.dispose();
 
     expect(worker.messages.at(-1)).toEqual({ type: "dispose" });
     expect(worker.terminate).toHaveBeenCalledTimes(1);
-    await expect(anchors).rejects.toThrow("disposed");
+    await expect(range).rejects.toThrow("disposed");
   });
 
   it("falls back to the inline client when worker creation fails", async () => {
@@ -200,11 +199,13 @@ describe("worker-backed MCAP resource client", () => {
     });
     const request = createTimelineRequest();
 
-    await expect(client.readTimelineAnchors(request)).resolves.toEqual([42n]);
+    await expect(client.readTimelineRange(request)).resolves.toEqual(
+      createTimelineRange(1n, 42n)
+    );
 
     expect(resourcesHarness.createMcapResourceClient).toHaveBeenCalledTimes(1);
     expect(
-      resourcesHarness.inlineClient.readTimelineAnchors
+      resourcesHarness.inlineClient.readTimelineRange
     ).toHaveBeenCalledWith(request);
   });
 
@@ -216,7 +217,7 @@ describe("worker-backed MCAP resource client", () => {
       },
     });
 
-    expect(() => client.readTimelineAnchors(createTimelineRequest())).toThrow(
+    expect(() => client.readTimelineRange(createTimelineRequest())).toThrow(
       "worker blocked"
     );
   });
@@ -228,7 +229,7 @@ describe("worker-backed MCAP resource client", () => {
       workerFactory: () => worker as unknown as Worker,
     });
 
-    expect(() => client.readTimelineAnchors(createTimelineRequest())).toThrow(
+    expect(() => client.readTimelineRange(createTimelineRequest())).toThrow(
       "postMessage failed"
     );
 
@@ -239,14 +240,14 @@ describe("worker-backed MCAP resource client", () => {
 
   it("marks reset streams terminal after buffered values drain", async () => {
     const { client, workers } = createClientHarness();
-    const stream = client.readMessageTimes({
+    const stream = client.readDecodedMessages({
       source: createSource("source:1"),
       topics: ["/camera"],
     });
     const first = stream.next();
     const worker = workers[0];
-    const firstMessage = createMessageTime(1n);
-    const secondMessage = createMessageTime(2n);
+    const firstMessage = createDecodedMessage(1n);
+    const secondMessage = createDecodedMessage(2n);
 
     worker.respond({
       done: false,
@@ -292,9 +293,15 @@ function createClientHarness() {
 
 function createTimelineRequest(sourceId = "source:1") {
   return {
-    limit: 10,
     source: createSource(sourceId),
-    topic: "/camera",
+  };
+}
+
+function createTimelineRange(startTimeNs: bigint, endTimeNs: bigint) {
+  return {
+    activeTimeline: "log" as const,
+    endTimeNs,
+    startTimeNs,
   };
 }
 
@@ -306,14 +313,24 @@ function createSource(sourceId: string) {
   };
 }
 
-function createMessageTime(syncTimeNs: bigint) {
+function createDecodedMessage(timelineTimeNs: bigint) {
   return {
     channelId: 1,
-    logTimeNs: syncTimeNs,
-    publishTimeNs: syncTimeNs,
+    decoded: {
+      decoderId: "decoder",
+      decoderVersion: "1",
+      output: {
+        attributes: {},
+      },
+      payload: {
+        encoding: "protobuf",
+      },
+    },
+    logTimeNs: timelineTimeNs,
+    publishTimeNs: timelineTimeNs,
     sequence: 1,
-    syncTimeNs,
-    timestampSource: "log" as const,
+    timelineTimeNs,
+    activeTimeline: "log" as const,
     topic: "/camera",
   };
 }

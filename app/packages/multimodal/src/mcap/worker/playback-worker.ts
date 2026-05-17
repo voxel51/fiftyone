@@ -117,8 +117,8 @@ async function runRequest(
       return mcap.readSynchronizedMessageBatch(message.payload);
     case "readSynchronizedMessages":
       return mcap.readSynchronizedMessages(message.payload);
-    case "readTimelineAnchors":
-      return mcap.readTimelineAnchors(message.payload);
+    case "readTimelineRange":
+      return mcap.readTimelineRange(message.payload);
   }
 }
 
@@ -128,17 +128,6 @@ async function streamRequest(
   switch (message.type) {
     case "readDecodedMessages":
       for await (const item of mcap.readDecodedMessages(message.payload)) {
-        postResponse({
-          done: false,
-          id: message.id,
-          item,
-          ok: true,
-          stream: true,
-        });
-      }
-      break;
-    case "readMessageTimes":
-      for await (const item of mcap.readMessageTimes(message.payload)) {
         postResponse({
           done: false,
           id: message.id,
@@ -161,10 +150,7 @@ async function streamRequest(
 function isStreamRequest(
   message: McapPlaybackWorkerRpcRequest
 ): message is McapPlaybackWorkerRpcRequest<McapPlaybackWorkerStreamType> {
-  return (
-    message.type === "readDecodedMessages" ||
-    message.type === "readMessageTimes"
-  );
+  return message.type === "readDecodedMessages";
 }
 
 function ensureActiveSource(sourceKey: string) {

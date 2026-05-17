@@ -1,12 +1,11 @@
 import type {
   McapDecodedMessage,
-  McapMessageTime,
   McapReadDecodedMessagesRequest,
-  McapReadMessageTimesRequest,
   McapReadSynchronizedMessageBatchRequest,
   McapReadSynchronizedMessagesRequest,
-  McapReadTimelineAnchorsRequest,
+  McapReadTimelineRangeRequest,
   McapSynchronizedMessageWindow,
+  McapTimelineRange,
 } from "../types";
 
 /**
@@ -38,10 +37,9 @@ export type McapPlaybackWorkerFetchParameters = {
  */
 export type McapPlaybackWorkerRequestPayloadByType = {
   readonly readDecodedMessages: McapReadDecodedMessagesRequest;
-  readonly readMessageTimes: McapReadMessageTimesRequest;
   readonly readSynchronizedMessageBatch: McapReadSynchronizedMessageBatchRequest;
   readonly readSynchronizedMessages: McapReadSynchronizedMessagesRequest;
-  readonly readTimelineAnchors: McapReadTimelineAnchorsRequest;
+  readonly readTimelineRange: McapReadTimelineRangeRequest;
 };
 
 /**
@@ -50,7 +48,7 @@ export type McapPlaybackWorkerRequestPayloadByType = {
 export type McapPlaybackWorkerResultByType = {
   readonly readSynchronizedMessageBatch: readonly McapSynchronizedMessageWindow[];
   readonly readSynchronizedMessages: McapSynchronizedMessageWindow;
-  readonly readTimelineAnchors: readonly bigint[];
+  readonly readTimelineRange: McapTimelineRange;
 };
 
 /**
@@ -58,7 +56,6 @@ export type McapPlaybackWorkerResultByType = {
  */
 export type McapPlaybackWorkerStreamItemByType = {
   readonly readDecodedMessages: McapDecodedMessage;
-  readonly readMessageTimes: McapMessageTime;
 };
 
 /**

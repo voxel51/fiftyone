@@ -9,9 +9,9 @@ export { createMcapResourceClient } from "./resources";
 export { DEFAULT_MCAP_SYNC_TOLERANCE_NS } from "./sync";
 
 /**
- * MCAP timestamp source constants used by playback clocks.
+ * MCAP timeline constants used by playback clocks.
  */
-export { MCAP_TIMESTAMP_SOURCE } from "./types";
+export { MCAP_ACTIVE_TIMELINE } from "./types";
 
 /**
  * Options for constructing an MCAP resource client.
@@ -32,19 +32,18 @@ export type {
  */
 export type {
   McapDecodedMessage,
-  McapMessageTime,
   McapReadDecodedMessagesRequest,
-  McapReadMessageTimesRequest,
   McapReadSynchronizedMessageBatchRequest,
   McapReadSynchronizedMessagesRequest,
-  McapReadTimelineAnchorsRequest,
+  McapReadTimelineRangeRequest,
   McapResolvedStreamSyncPolicy,
   McapResourceClient,
   McapSourceDescriptor,
   McapStreamSyncPolicies,
   McapStreamSyncPolicy,
   McapSynchronizedMessageWindow,
-  McapTimestampSource,
+  McapTimelineRange,
+  McapActiveTimeline,
 } from "./types";
 
 /**

@@ -13,15 +13,14 @@ import {
 } from "./playback-worker-types";
 import type {
   McapDecodedMessage,
-  McapMessageTime,
   McapReadDecodedMessagesRequest,
-  McapReadMessageTimesRequest,
   McapReadSynchronizedMessageBatchRequest,
   McapReadSynchronizedMessagesRequest,
-  McapReadTimelineAnchorsRequest,
+  McapReadTimelineRangeRequest,
   McapResourceClient,
   McapSourceDescriptor,
   McapSynchronizedMessageWindow,
+  McapTimelineRange,
 } from "../types";
 
 /**
@@ -106,21 +105,10 @@ class WorkerMcapResourceClient implements McapResourceClient {
     }
   }
 
-  async *readMessageTimes(
-    request: McapReadMessageTimesRequest
-  ): AsyncGenerator<McapMessageTime, void, void> {
-    for await (const message of this.streamRequest(
-      "readMessageTimes",
-      request
-    )) {
-      yield message;
-    }
-  }
-
-  readTimelineAnchors(
-    request: McapReadTimelineAnchorsRequest
-  ): Promise<readonly bigint[]> {
-    return this.request("readTimelineAnchors", request);
+  readTimelineRange(
+    request: McapReadTimelineRangeRequest
+  ): Promise<McapTimelineRange> {
+    return this.request("readTimelineRange", request);
   }
 
   readSynchronizedMessages(
@@ -375,13 +363,11 @@ class WorkerMcapResourceClient implements McapResourceClient {
 type ParametersForWorkerType<Type extends McapPlaybackWorkerRpcType> =
   Type extends "readDecodedMessages"
     ? McapReadDecodedMessagesRequest
-    : Type extends "readMessageTimes"
-    ? McapReadMessageTimesRequest
     : Type extends "readSynchronizedMessageBatch"
     ? McapReadSynchronizedMessageBatchRequest
     : Type extends "readSynchronizedMessages"
     ? McapReadSynchronizedMessagesRequest
-    : McapReadTimelineAnchorsRequest;
+    : McapReadTimelineRangeRequest;
 
 function priorityForRequestType(type: McapPlaybackWorkerRpcType) {
   return type === "readSynchronizedMessageBatch"
@@ -453,9 +439,9 @@ function requestInlineClient<Type extends McapPlaybackWorkerUnaryType>(
       return client.readSynchronizedMessages(
         payload as McapReadSynchronizedMessagesRequest
       ) as Promise<McapPlaybackWorkerResultByType[Type]>;
-    case "readTimelineAnchors":
-      return client.readTimelineAnchors(
-        payload as McapReadTimelineAnchorsRequest
+    case "readTimelineRange":
+      return client.readTimelineRange(
+        payload as McapReadTimelineRangeRequest
       ) as Promise<McapPlaybackWorkerResultByType[Type]>;
   }
 
@@ -471,11 +457,6 @@ async function* streamInlineClient<Type extends McapPlaybackWorkerStreamType>(
     case "readDecodedMessages":
       yield* client.readDecodedMessages(
         payload as McapReadDecodedMessagesRequest
-      ) as AsyncGenerator<McapPlaybackWorkerStreamItemByType[Type], void, void>;
-      return;
-    case "readMessageTimes":
-      yield* client.readMessageTimes(
-        payload as McapReadMessageTimesRequest
       ) as AsyncGenerator<McapPlaybackWorkerStreamItemByType[Type], void, void>;
       return;
   }

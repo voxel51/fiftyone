@@ -5,37 +5,27 @@ import type { DecodedOutput } from "../decoders";
 import { PlaybackSyncMode } from "../schemas/v1";
 import { VISUALIZATION_KIND } from "../visualization";
 import { createMcapResourceClient } from "./resources";
-import { MCAP_TIMESTAMP_SOURCE, type McapSourceDescriptor } from "./types";
+import { MCAP_ACTIVE_TIMELINE, type McapSourceDescriptor } from "./types";
 
 type TypedMcapRecords = McapTypes.TypedMcapRecords;
 
 describe("MCAP resources", () => {
-  it("decodes indexed messages through the generic decode client", async () => {
+  it("decodes log-timeline messages through the generic decode client", async () => {
     const source = createMcapSourceDescriptor();
     const schemaData = new Uint8Array([9, 8, 7]);
     const messageBytes = new Uint8Array([1, 2, 3]);
     const message = createMessage(messageBytes);
-    const decodeClient: DecodeResourceClient = {
-      decode: vi.fn(async (request) => ({
-        context: request.context,
-        decoderId: "test-decoder",
-        decoderVersion: "1",
-        output: createTestDecodedOutput(),
-        payload: request.payload,
-      })),
-    };
+    const decodeClient = createTestDecodeClient();
     const client = createMcapResourceClient({
-      byteClient: {
-        readBytes: vi.fn(),
-      },
+      byteClient: { readBytes: vi.fn() },
       decodeClient,
-      readerFactory: vi.fn(async () => ({
-        channelsById: new Map([[7, createChannel()]]),
-        readMessages: async function* () {
-          yield message;
-        },
-        schemasById: new Map([[3, createSchema(schemaData)]]),
-      })),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([[7, createChannel()]]),
+          messages: [message],
+          schemasById: new Map([[3, createSchema(schemaData)]]),
+        })
+      ),
     });
 
     const messages = await collect(
@@ -48,18 +38,18 @@ describe("MCAP resources", () => {
 
     expect(messages).toHaveLength(1);
     expect(messages[0]).toMatchObject({
+      activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
       channelId: 7,
       logTimeNs: 100n,
       publishTimeNs: 101n,
       sequence: 2,
-      syncTimeNs: 100n,
-      timestampSource: MCAP_TIMESTAMP_SOURCE.LOG_TIME,
+      timelineTimeNs: 100n,
       topic: "/topic",
     });
     expect(decodeClient.decode).toHaveBeenCalledWith({
       bytes: messageBytes,
       cache: {
-        decoderOptionsKey: "timestampSource=log",
+        decoderOptionsKey: "activeTimeline=log",
         recordId: "7:100:101:2",
         source,
         streamId: "/topic",
@@ -83,74 +73,7 @@ describe("MCAP resources", () => {
     });
   });
 
-  it("groups nearest decoded messages for synchronized playback", async () => {
-    const source = createMcapSourceDescriptor();
-    const messages = [
-      createMessage(new Uint8Array([1]), {
-        channelId: 7,
-        logTime: 90n,
-        publishTime: 91n,
-      }),
-      createMessage(new Uint8Array([2]), {
-        channelId: 8,
-        logTime: 108n,
-        publishTime: 109n,
-      }),
-      createMessage(new Uint8Array([3]), {
-        channelId: 7,
-        logTime: 130n,
-        publishTime: 131n,
-      }),
-    ];
-    const decodeClient: DecodeResourceClient = {
-      decode: vi.fn(async (request) => ({
-        context: request.context,
-        decoderId: "test-decoder",
-        decoderVersion: "1",
-        output: createTestDecodedOutput(),
-        payload: request.payload,
-      })),
-    };
-    const client = createMcapResourceClient({
-      byteClient: {
-        readBytes: vi.fn(),
-      },
-      decodeClient,
-      readerFactory: vi.fn(async () => ({
-        channelsById: new Map([
-          [7, createChannel({ id: 7, topic: "/camera" })],
-          [8, createChannel({ id: 8, topic: "/lidar" })],
-        ]),
-        readMessages: async function* () {
-          for (const message of messages) {
-            yield message;
-          }
-        },
-        schemasById: new Map([[3, createSchema(new Uint8Array([9]))]]),
-      })),
-    });
-
-    const window = await client.readSynchronizedMessages({
-      anchorTimeNs: 100n,
-      source,
-      defaultStreamPolicy: {
-        mode: PlaybackSyncMode.NEAREST,
-        toleranceAfterNs: 20n,
-        toleranceBeforeNs: 20n,
-      },
-      topics: ["/camera", "/lidar"],
-    });
-
-    expect(window.messages.map((message) => message.topic)).toEqual([
-      "/camera",
-      "/lidar",
-    ]);
-    expect(window.messagesByTopic["/camera"]?.[0]?.syncTimeNs).toBe(90n);
-    expect(window.messagesByTopic["/lidar"]?.[0]?.syncTimeNs).toBe(108n);
-    expect(decodeClient.decode).toHaveBeenCalledTimes(2);
-  });
-
-  it("applies playback.proto sync modes per stream", async () => {
+  it("applies playback.proto sync modes per stream on the active log timeline", async () => {
     const source = createMcapSourceDescriptor();
     const messages = [
       createMessage(new Uint8Array([1]), {
@@ -176,27 +99,22 @@ describe("MCAP resources", () => {
     ];
     const decodeClient = createTestDecodeClient();
     const client = createMcapResourceClient({
-      byteClient: {
-        readBytes: vi.fn(),
-      },
+      byteClient: { readBytes: vi.fn() },
       decodeClient,
-      readerFactory: vi.fn(async () => ({
-        channelsById: new Map([
-          [7, createChannel({ id: 7, topic: "/camera" })],
-          [8, createChannel({ id: 8, topic: "/lidar" })],
-          [9, createChannel({ id: 9, topic: "/pose" })],
-        ]),
-        readMessages: async function* () {
-          for (const message of messages) {
-            yield message;
-          }
-        },
-        schemasById: new Map([[3, createSchema(new Uint8Array([9]))]]),
-      })),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [7, createChannel({ id: 7, topic: "/camera" })],
+            [8, createChannel({ id: 8, topic: "/lidar" })],
+            [9, createChannel({ id: 9, topic: "/pose" })],
+          ]),
+          messages,
+        })
+      ),
     });
 
     const window = await client.readSynchronizedMessages({
-      anchorTimeNs: 100n,
+      timeNs: 100n,
       source,
       streamPolicies: {
         "/camera": {
@@ -215,43 +133,11 @@ describe("MCAP resources", () => {
       topics: ["/camera", "/lidar", "/pose"],
     });
 
-    expect(window.messagesByTopic["/camera"]?.[0]?.syncTimeNs).toBe(90n);
-    expect(window.messagesByTopic["/lidar"]?.[0]?.syncTimeNs).toBe(108n);
-    expect(window.messagesByTopic["/pose"]?.[0]?.syncTimeNs).toBe(100n);
-  });
-
-  it("rejects tolerances that do not belong to the requested sync mode", async () => {
-    const client = createMcapResourceClient({
-      byteClient: {
-        readBytes: vi.fn(),
-      },
-      decodeClient: createTestDecodeClient(),
-      readerFactory: vi.fn(async () => ({
-        channelsById: new Map([
-          [7, createChannel({ id: 7, topic: "/camera" })],
-        ]),
-        readMessages: async function* () {
-          for (const message of [] as TypedMcapRecords["Message"][]) {
-            yield message;
-          }
-        },
-        schemasById: new Map([[3, createSchema(new Uint8Array([9]))]]),
-      })),
-    });
-
-    await expect(
-      client.readSynchronizedMessages({
-        anchorTimeNs: 100n,
-        source: createMcapSourceDescriptor(),
-        streamPolicies: {
-          "/camera": {
-            mode: PlaybackSyncMode.LATEST,
-            toleranceAfterNs: 20n,
-          },
-        },
-        topics: ["/camera"],
-      })
-    ).rejects.toThrow("toleranceAfterNs");
+    expect(window.activeTimeline).toBe(MCAP_ACTIVE_TIMELINE.LOG);
+    expect(window.timeNs).toBe(100n);
+    expect(window.messagesByTopic["/camera"]?.[0]?.timelineTimeNs).toBe(90n);
+    expect(window.messagesByTopic["/lidar"]?.[0]?.timelineTimeNs).toBe(108n);
+    expect(window.messagesByTopic["/pose"]?.[0]?.timelineTimeNs).toBe(100n);
   });
 
   it("reads synchronized playback batches with one raw scan and shared decode work", async () => {
@@ -273,37 +159,28 @@ describe("MCAP resources", () => {
         publishTime: 131n,
       }),
     ];
-    const decodeClient: DecodeResourceClient = {
-      decode: vi.fn(async (request) => ({
-        context: request.context,
-        decoderId: "test-decoder",
-        decoderVersion: "1",
-        output: createTestDecodedOutput(),
-        payload: request.payload,
-      })),
-    };
+    const decodeClient = createTestDecodeClient();
     const readMessages = vi.fn(async function* () {
       for (const message of messages) {
         yield message;
       }
     });
     const client = createMcapResourceClient({
-      byteClient: {
-        readBytes: vi.fn(),
-      },
+      byteClient: { readBytes: vi.fn() },
       decodeClient,
-      readerFactory: vi.fn(async () => ({
-        channelsById: new Map([
-          [7, createChannel({ id: 7, topic: "/camera" })],
-          [8, createChannel({ id: 8, topic: "/lidar" })],
-        ]),
-        readMessages,
-        schemasById: new Map([[3, createSchema(new Uint8Array([9]))]]),
-      })),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [7, createChannel({ id: 7, topic: "/camera" })],
+            [8, createChannel({ id: 8, topic: "/lidar" })],
+          ]),
+          readMessages,
+        })
+      ),
     });
 
     const windows = await client.readSynchronizedMessageBatch({
-      anchorTimeNs: [100n, 105n],
+      timeNs: [100n, 105n],
       source,
       defaultStreamPolicy: {
         mode: PlaybackSyncMode.NEAREST,
@@ -314,209 +191,113 @@ describe("MCAP resources", () => {
     });
 
     expect(windows).toHaveLength(2);
-    expect(windows[0]?.messages.map((message) => message.syncTimeNs)).toEqual([
-      90n,
-      108n,
-    ]);
-    expect(windows[1]?.messages.map((message) => message.syncTimeNs)).toEqual([
-      90n,
-      108n,
-    ]);
+    expect(
+      windows[0]?.messages.map((message) => message.timelineTimeNs)
+    ).toEqual([90n, 108n]);
+    expect(
+      windows[1]?.messages.map((message) => message.timelineTimeNs)
+    ).toEqual([90n, 108n]);
     expect(readMessages).toHaveBeenCalledTimes(1);
     expect(decodeClient.decode).toHaveBeenCalledTimes(2);
   });
 
-  it("reads message-time playback batches with one decoded scan", async () => {
-    const source = createMcapSourceDescriptor();
-    const messages = [
-      createMessage(new Uint8Array([90]), {
-        channelId: 7,
-        logTime: 90n,
-        publishTime: 91n,
-      }),
-      createMessage(new Uint8Array([108]), {
-        channelId: 8,
-        logTime: 108n,
-        publishTime: 109n,
-      }),
-      createMessage(new Uint8Array([130]), {
-        channelId: 7,
-        logTime: 130n,
-        publishTime: 131n,
-      }),
-    ];
-    const decodeClient: DecodeResourceClient = {
-      decode: vi.fn(async (request) => ({
-        context: request.context,
-        decoderId: "test-decoder",
-        decoderVersion: "1",
-        output: createTestDecodedOutput({
-          timing: {
-            sourceTimestamps: {
-              messageTime: BigInt(request.bytes[0] ?? 0),
-            },
-          },
-        }),
-        payload: request.payload,
-      })),
-    };
-    const readMessages = vi.fn(async function* () {
-      for (const message of messages) {
-        yield message;
-      }
-    });
-    const client = createMcapResourceClient({
-      byteClient: {
-        readBytes: vi.fn(),
-      },
-      decodeClient,
-      readerFactory: vi.fn(async () => ({
-        channelsById: new Map([
-          [7, createChannel({ id: 7, topic: "/camera" })],
-          [8, createChannel({ id: 8, topic: "/lidar" })],
-        ]),
-        readMessages,
-        schemasById: new Map([[3, createSchema(new Uint8Array([9]))]]),
-      })),
-    });
-
-    const windows = await client.readSynchronizedMessageBatch({
-      anchorTimeNs: [100n, 105n],
-      source,
-      defaultStreamPolicy: {
-        mode: PlaybackSyncMode.NEAREST,
-        toleranceAfterNs: 20n,
-        toleranceBeforeNs: 20n,
-      },
-      timestampSource: MCAP_TIMESTAMP_SOURCE.HEADER_TIME,
-      topics: ["/camera", "/lidar"],
-    });
-
-    expect(windows.map((window) => window.messages.length)).toEqual([2, 2]);
-    expect(windows[0]?.messages.map((message) => message.syncTimeNs)).toEqual([
-      90n,
-      108n,
-    ]);
-    expect(windows[1]?.messages.map((message) => message.syncTimeNs)).toEqual([
-      90n,
-      108n,
-    ]);
-    expect(readMessages).toHaveBeenCalledTimes(1);
-    expect(decodeClient.decode).toHaveBeenCalledTimes(3);
-  });
-
-  it("reads sorted timeline anchors and honors the requested limit", async () => {
-    const source = createMcapSourceDescriptor();
-    const messages = [
-      createMessage(new Uint8Array([3]), { logTime: 300n }),
-      createMessage(new Uint8Array([1]), { logTime: 100n }),
-      createMessage(new Uint8Array([2]), { logTime: 200n }),
-    ];
-    const readMessages = vi.fn(async function* () {
-      for (const message of messages) {
-        yield message;
-      }
-    });
-    const client = createMcapResourceClient({
-      byteClient: {
-        readBytes: vi.fn(),
-      },
-      decodeClient: createTestDecodeClient(),
-      readerFactory: vi.fn(async () => ({
-        channelsById: new Map([
-          [7, createChannel({ id: 7, topic: "/camera" })],
-        ]),
-        readMessages,
-        schemasById: new Map([[3, createSchema(new Uint8Array([9]))]]),
-      })),
-    });
-
-    await expect(
-      client.readTimelineAnchors({
-        limit: 2,
-        source,
-        topic: "/camera",
-      })
-    ).resolves.toEqual([100n, 300n]);
-    expect(readMessages).toHaveBeenCalledWith({
-      endTime: undefined,
-      startTime: undefined,
-      topics: ["/camera"],
-    });
-  });
-
-  it("uses indexed bounds for log-time timeline anchors only", async () => {
+  it("reads log timeline range from chunk indexes without scanning messages", async () => {
     const source = createMcapSourceDescriptor();
     const readMessages = vi.fn(async function* () {
       for (const message of [] as TypedMcapRecords["Message"][]) {
         yield message;
       }
     });
+    const readIndexedMessageTimes = vi.fn(async function* () {
+      yield {
+        channelId: 7,
+        chunkStartOffset: 10n,
+        logTimeNs: 100n,
+        messageOffset: 8n,
+        topic: "/camera",
+      };
+    });
     const client = createMcapResourceClient({
-      byteClient: {
-        readBytes: vi.fn(),
-      },
+      byteClient: { readBytes: vi.fn() },
       decodeClient: createTestDecodeClient(),
-      readerFactory: vi.fn(async () => ({
-        channelsById: new Map([
-          [7, createChannel({ id: 7, topic: "/camera" })],
-        ]),
-        readMessages,
-        schemasById: new Map([[3, createSchema(new Uint8Array([9]))]]),
-      })),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          chunkIndexes: [
+            createChunkIndex({
+              messageEndTime: 250n,
+              messageStartTime: 100n,
+            }),
+            createChunkIndex({
+              messageEndTime: 450n,
+              messageStartTime: 300n,
+            }),
+          ],
+          readIndexedMessageTimes,
+          readMessages,
+        })
+      ),
     });
 
-    await client.readTimelineAnchors({
-      endTimeNs: 20n,
-      source,
-      startTimeNs: 10n,
-      topic: "/camera",
+    await expect(
+      client.readTimelineRange({
+        source,
+      })
+    ).resolves.toEqual({
+      activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+      endTimeNs: 450n,
+      startTimeNs: 100n,
     });
-    expect(readMessages).toHaveBeenLastCalledWith({
-      endTime: 20n,
-      startTime: 10n,
-      topics: ["/camera"],
-    });
+    expect(readIndexedMessageTimes).not.toHaveBeenCalled();
+    expect(readMessages).not.toHaveBeenCalled();
+  });
 
-    await client.readTimelineAnchors({
-      endTimeNs: 20n,
-      source,
-      startTimeNs: 10n,
-      timestampSource: MCAP_TIMESTAMP_SOURCE.PUBLISH_TIME,
-      topic: "/camera",
+  it("rejects non-log active timelines until payload-aware paths are implemented", async () => {
+    const client = createMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () => createReader()),
     });
-    expect(readMessages).toHaveBeenLastCalledWith({
-      endTime: undefined,
-      startTime: undefined,
-      topics: ["/camera"],
-    });
+    const source = createMcapSourceDescriptor();
+
+    await expect(
+      client.readTimelineRange({
+        activeTimeline: MCAP_ACTIVE_TIMELINE.PUBLISH,
+        source,
+      })
+    ).rejects.toThrow("not implemented yet");
+    await expect(
+      collect(
+        client.readDecodedMessages({
+          activeTimeline: MCAP_ACTIVE_TIMELINE.HEADER_STAMP,
+          source,
+        })
+      )
+    ).rejects.toThrow("not implemented yet");
+    await expect(
+      client.readSynchronizedMessages({
+        activeTimeline: MCAP_ACTIVE_TIMELINE.PUBLISH,
+        source,
+        timeNs: 1n,
+        topics: ["/camera"],
+      })
+    ).rejects.toThrow("not implemented yet");
   });
 
   it("rejects byte reads past known source size before hitting the byte client", async () => {
     const source = createMcapSourceDescriptor();
     const readBytes = vi.fn();
     const client = createMcapResourceClient({
-      byteClient: {
-        readBytes,
-      },
+      byteClient: { readBytes },
       decodeClient: createTestDecodeClient(),
       readerFactory: vi.fn(async (_source, readable) => {
         await readable.read(128n, 1n);
-        return {
-          channelsById: new Map(),
-          readMessages: async function* () {
-            for (const message of [] as TypedMcapRecords["Message"][]) {
-              yield message;
-            }
-          },
-          schemasById: new Map(),
-        };
+        return createReader();
       }),
     });
 
     await expect(
       collect(
-        client.readMessageTimes({
+        client.readDecodedMessages({
           source,
           topics: ["/topic"],
         })
@@ -529,32 +310,33 @@ describe("MCAP resources", () => {
     const readerFactory = vi
       .fn()
       .mockRejectedValueOnce(new Error("temporary init failure"))
-      .mockResolvedValueOnce({
-        channelsById: new Map(),
-        readMessages: async function* () {
-          for (const message of [] as TypedMcapRecords["Message"][]) {
-            yield message;
-          }
-        },
-        schemasById: new Map(),
-      });
+      .mockResolvedValueOnce(
+        createReader({
+          chunkIndexes: [
+            createChunkIndex({
+              messageEndTime: 20n,
+              messageStartTime: 10n,
+            }),
+          ],
+        })
+      );
     const client = createMcapResourceClient({
-      byteClient: {
-        readBytes: vi.fn(),
-      },
+      byteClient: { readBytes: vi.fn() },
       decodeClient: createTestDecodeClient(),
       readerFactory,
     });
     const request = {
-      limit: 1,
       source: createMcapSourceDescriptor(),
-      topic: "/camera",
     };
 
-    await expect(client.readTimelineAnchors(request)).rejects.toThrow(
+    await expect(client.readTimelineRange(request)).rejects.toThrow(
       "temporary init failure"
     );
-    await expect(client.readTimelineAnchors(request)).resolves.toEqual([]);
+    await expect(client.readTimelineRange(request)).resolves.toEqual({
+      activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+      endTimeNs: 20n,
+      startTimeNs: 10n,
+    });
     expect(readerFactory).toHaveBeenCalledTimes(2);
   });
 });
@@ -575,6 +357,48 @@ function createMcapSourceDescriptor(): McapSourceDescriptor {
     sizeBytes: "128",
     sourceId: "source:1",
     url: "/media?filepath=%2Ftmp%2Fsample.mcap",
+  };
+}
+
+function createReader({
+  channelsById = new Map([[7, createChannel({ id: 7, topic: "/topic" })]]),
+  chunkIndexes = [],
+  messages = [],
+  readIndexedMessageTimes,
+  readMessages,
+  schemasById = new Map([[3, createSchema(new Uint8Array([9]))]]),
+}: {
+  readonly channelsById?: ReadonlyMap<number, TypedMcapRecords["Channel"]>;
+  readonly chunkIndexes?: readonly TypedMcapRecords["ChunkIndex"][];
+  readonly messages?: readonly TypedMcapRecords["Message"][];
+  readonly readIndexedMessageTimes?: () => AsyncGenerator<
+    {
+      readonly channelId: number;
+      readonly chunkStartOffset: bigint;
+      readonly logTimeNs: bigint;
+      readonly messageOffset: bigint;
+      readonly topic: string;
+    },
+    void,
+    void
+  >;
+  readonly readMessages?: (
+    args?: unknown
+  ) => AsyncGenerator<TypedMcapRecords["Message"], void, void>;
+  readonly schemasById?: ReadonlyMap<number, TypedMcapRecords["Schema"]>;
+} = {}) {
+  return {
+    channelsById,
+    chunkIndexes,
+    readIndexedMessageTimes,
+    readMessages:
+      readMessages ??
+      vi.fn(async function* () {
+        for (const message of messages) {
+          yield message;
+        }
+      }),
+    schemasById,
   };
 }
 
@@ -623,6 +447,23 @@ function createSchema(data: Uint8Array): TypedMcapRecords["Schema"] {
     id: 3,
     name: "foxglove.CompressedImage",
     type: "Schema",
+  };
+}
+
+function createChunkIndex(
+  options: Partial<TypedMcapRecords["ChunkIndex"]> = {}
+): TypedMcapRecords["ChunkIndex"] {
+  return {
+    chunkLength: options.chunkLength ?? 256n,
+    chunkStartOffset: options.chunkStartOffset ?? 1_000n,
+    compressedSize: options.compressedSize ?? 0n,
+    compression: options.compression ?? "",
+    messageEndTime: options.messageEndTime ?? 20n,
+    messageIndexLength: options.messageIndexLength ?? 0n,
+    messageIndexOffsets: options.messageIndexOffsets ?? new Map(),
+    messageStartTime: options.messageStartTime ?? 10n,
+    type: "ChunkIndex",
+    uncompressedSize: options.uncompressedSize ?? 0n,
   };
 }
 

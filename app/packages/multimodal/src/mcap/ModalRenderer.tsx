@@ -14,42 +14,52 @@ import { ImagePanel } from "../visualization/panels/image";
 import { PointCloudPanel } from "../visualization/panels/point-cloud";
 import { VISUALIZATION_KIND } from "../visualization";
 import {
+  MCAP_ACTIVE_TIMELINE,
+  type McapActiveTimeline,
   type McapDecodedMessage,
   type McapResourceClient,
   type McapStreamSyncPolicies,
   type McapSynchronizedMessageWindow,
+  type McapTimelineRange,
 } from "./types";
+import {
+  DEFAULT_MCAP_TIMELINE_MAX_TICKS,
+  DEFAULT_MCAP_TIMELINE_TICK_RATE_HZ,
+  createMcapTimelineTicks,
+} from "./timeline";
 import { getMcapSourceDescriptor, getSampleIdentifiers } from "./sample";
 import { createWorkerMcapResourceClient } from "./worker";
 
-const TIMELINE_TOPIC = "/CAM_FRONT/image_rect_compressed";
 const PLAYBACK_TOPICS = [
   "/CAM_FRONT/image_rect_compressed",
   "/CAM_FRONT_LEFT/image_rect_compressed",
   "/LIDAR_TOP",
 ] as const;
-const TIMELINE_LIMIT = 120;
-const SYNC_TOLERANCE_NS = 75_000_000n;
-const BASE_PLAY_INTERVAL_MS = 160;
-const PLAYBACK_SPEED_MULTIPLIER = 1.1;
-const PLAY_INTERVAL_MS = BASE_PLAY_INTERVAL_MS / PLAYBACK_SPEED_MULTIPLIER;
+const CAMERA_SYNC_LOOKBACK_NS = 120_000_000n;
+const LIDAR_SYNC_LOOKBACK_NS = 200_000_000n;
 const PLAYBACK_BATCH_FRAME_COUNT = 8;
 const PLAYBACK_WINDOW_CACHE_MAX_ENTRIES = PLAYBACK_BATCH_FRAME_COUNT * 8;
 const SEEK_DEBOUNCE_MS = 50;
-const STREAM_SYNC_POLICIES: McapStreamSyncPolicies = Object.fromEntries(
-  PLAYBACK_TOPICS.map((topic) => [
-    topic,
-    {
-      mode: PlaybackSyncMode.NEAREST,
-      toleranceAfterNs: SYNC_TOLERANCE_NS,
-      toleranceBeforeNs: SYNC_TOLERANCE_NS,
-    },
-  ])
-);
+const CAMERA_SYNC_POLICY = {
+  mode: PlaybackSyncMode.LATEST,
+  toleranceBeforeNs: CAMERA_SYNC_LOOKBACK_NS,
+};
+const STREAM_SYNC_POLICIES: McapStreamSyncPolicies = {
+  "/CAM_FRONT/image_rect_compressed": CAMERA_SYNC_POLICY,
+  "/CAM_FRONT_LEFT/image_rect_compressed": CAMERA_SYNC_POLICY,
+  "/LIDAR_TOP": {
+    mode: PlaybackSyncMode.LATEST,
+    toleranceBeforeNs: LIDAR_SYNC_LOOKBACK_NS,
+  },
+};
 const PLAYBACK_WINDOW_TOPICS_CACHE_KEY = PLAYBACK_TOPICS.join("\u001f");
 const PLAYBACK_WINDOW_SYNC_POLICY_CACHE_KEY =
   streamSyncPoliciesCacheKey(STREAM_SYNC_POLICIES);
-const PLAYBACK_WINDOW_TIMESTAMP_SOURCE_CACHE_KEY = "timestampSource=log";
+const ACTIVE_TIMELINE_OPTIONS = [
+  MCAP_ACTIVE_TIMELINE.LOG,
+  MCAP_ACTIVE_TIMELINE.PUBLISH,
+  MCAP_ACTIVE_TIMELINE.HEADER_STAMP,
+] as const;
 
 type LoadStatus = "idle" | "loading" | "ready" | "error";
 type FrameLoadReason = "load" | "playback" | "seek";
@@ -58,7 +68,14 @@ type StreamSpec = {
   readonly label: string;
   readonly topic: typeof PLAYBACK_TOPICS[number];
 };
+type DisplayMessagesByTopic = Partial<
+  Record<typeof PLAYBACK_TOPICS[number], McapDecodedMessage>
+>;
 type PlaybackWindowCache = LRUCache<string, McapSynchronizedMessageWindow>;
+type ModalRendererProps = SampleRendererProps & {
+  readonly maxTimelineTicks?: number;
+  readonly timelineTickRateHz?: number;
+};
 
 const STREAMS: readonly StreamSpec[] = [
   {
@@ -78,7 +95,11 @@ const STREAMS: readonly StreamSpec[] = [
 /**
  * Modal proof renderer for MCAP-backed multimodal samples.
  */
-export function ModalRenderer({ ctx }: SampleRendererProps) {
+export function ModalRenderer({
+  ctx,
+  maxTimelineTicks = DEFAULT_MCAP_TIMELINE_MAX_TICKS,
+  timelineTickRateHz = DEFAULT_MCAP_TIMELINE_TICK_RATE_HZ,
+}: ModalRendererProps) {
   const { datasetId, sampleId } = getSampleIdentifiers(ctx);
   const { source, sourceKey } = useMcapSourceDescriptor(ctx);
   const mcap = useMemo(() => createWorkerMcapResourceClient(), []);
@@ -92,26 +113,40 @@ export function ModalRenderer({ ctx }: SampleRendererProps) {
       ? { inventoryId: inventoryState.data.inventoryId }
       : null
   );
-  const [anchors, setAnchors] = useState<readonly bigint[]>([]);
-  const [anchorsSourceKey, setAnchorsSourceKey] = useState("");
+  const [activeTimeline, setActiveTimeline] = useState<McapActiveTimeline>(
+    MCAP_ACTIVE_TIMELINE.LOG
+  );
+  const [timelineRange, setTimelineRange] = useState<McapTimelineRange | null>(
+    null
+  );
+  const [timelineTicks, setTimelineTicks] = useState<readonly bigint[]>([]);
+  const [timelineSourceKey, setTimelineSourceKey] = useState("");
   const [frameIndex, setFrameIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [timelineStatus, setTimelineStatus] = useState<LoadStatus>("idle");
   const [frameStatus, setFrameStatus] = useState<LoadStatus>("idle");
-  const [playbackWindow, setPlaybackWindow] =
-    useState<McapSynchronizedMessageWindow | null>(null);
+  const [displayMessagesByTopic, setDisplayMessagesByTopic] =
+    useState<DisplayMessagesByTopic>({});
   const [error, setError] = useState<string | null>(null);
   const playbackWindowCache = usePlaybackWindowCache();
   const inFlightFrameRequestsRef = useRef(new Set<string>());
   const frameLoadReasonRef = useRef<FrameLoadReason>("load");
-  const currentAnchorTimeNsRef = useRef<bigint | undefined>(undefined);
+  const currentTimeNsRef = useRef<bigint | undefined>(undefined);
   const sourceKeyRef = useRef(sourceKey);
+  const heldMessagesByTopicRef = useRef(new Map<string, McapDecodedMessage>());
   const sourceProblem = sourceProblemMessage(source);
-  const anchorsReadyForSource = anchorsSourceKey === sourceKey;
-  const anchorTimeNs = anchorsReadyForSource ? anchors[frameIndex] : undefined;
+  const timelineKey = timelineCacheKey(
+    sourceKey,
+    activeTimeline,
+    timelineTickRateHz,
+    maxTimelineTicks
+  );
+  const timelineReadyForSource = timelineSourceKey === timelineKey;
+  const timeNs = timelineReadyForSource ? timelineTicks[frameIndex] : undefined;
+  const playIntervalMs = 1_000 / timelineTickRateHz;
   const relativeTimeNs =
-    anchorTimeNs !== undefined && anchors[0] !== undefined
-      ? anchorTimeNs - anchors[0]
+    timeNs !== undefined && timelineRange !== null
+      ? timeNs - timelineRange.startTimeNs
       : undefined;
 
   useEffect(() => {
@@ -119,15 +154,17 @@ export function ModalRenderer({ ctx }: SampleRendererProps) {
   }, [sourceKey]);
 
   useEffect(() => {
-    currentAnchorTimeNsRef.current = anchorTimeNs;
-  }, [anchorTimeNs]);
+    currentTimeNsRef.current = timeNs;
+  }, [timeNs]);
 
   useEffect(() => {
     if (!source || sourceProblem) {
-      setAnchors([]);
-      setAnchorsSourceKey("");
+      setTimelineRange(null);
+      setTimelineTicks([]);
+      setTimelineSourceKey("");
       setFrameIndex(0);
-      setPlaybackWindow(null);
+      heldMessagesByTopicRef.current.clear();
+      setDisplayMessagesByTopic({});
       playbackWindowCache.clear();
       inFlightFrameRequestsRef.current.clear();
       setTimelineStatus("idle");
@@ -138,30 +175,36 @@ export function ModalRenderer({ ctx }: SampleRendererProps) {
     frameLoadReasonRef.current = "load";
     playbackWindowCache.clear();
     inFlightFrameRequestsRef.current.clear();
-    setAnchors([]);
-    setAnchorsSourceKey("");
+    setTimelineRange(null);
+    setTimelineTicks([]);
+    setTimelineSourceKey("");
     setFrameIndex(0);
-    setPlaybackWindow(null);
+    heldMessagesByTopicRef.current.clear();
+    setDisplayMessagesByTopic({});
     setTimelineStatus("loading");
     setError(null);
 
     mcap
-      .readTimelineAnchors({
-        limit: TIMELINE_LIMIT,
+      .readTimelineRange({
+        activeTimeline,
         source,
-        topic: TIMELINE_TOPIC,
       })
-      .then((nextAnchors) => {
+      .then((range) => {
         if (cancelled) {
           return;
         }
 
-        setAnchors(nextAnchors);
-        setAnchorsSourceKey(sourceKey);
+        const nextTicks = createMcapTimelineTicks(range, {
+          maxTicks: maxTimelineTicks,
+          tickRateHz: timelineTickRateHz,
+        });
+        setTimelineRange(range);
+        setTimelineTicks(nextTicks);
+        setTimelineSourceKey(timelineKey);
         setFrameIndex(0);
-        setTimelineStatus(nextAnchors.length > 0 ? "ready" : "error");
-        if (nextAnchors.length === 0) {
-          setError(`No timeline messages found for ${TIMELINE_TOPIC}`);
+        setTimelineStatus(nextTicks.length > 0 ? "ready" : "error");
+        if (nextTicks.length === 0) {
+          setError(`No ${activeTimeline} timeline ticks found`);
         }
       })
       .catch((caughtError) => {
@@ -169,10 +212,12 @@ export function ModalRenderer({ ctx }: SampleRendererProps) {
           return;
         }
 
-        setAnchors([]);
-        setAnchorsSourceKey("");
+        setTimelineRange(null);
+        setTimelineTicks([]);
+        setTimelineSourceKey("");
         setFrameIndex(0);
-        setPlaybackWindow(null);
+        heldMessagesByTopicRef.current.clear();
+        setDisplayMessagesByTopic({});
         setTimelineStatus("error");
         setError(errorMessage(caughtError));
       });
@@ -180,24 +225,40 @@ export function ModalRenderer({ ctx }: SampleRendererProps) {
     return () => {
       cancelled = true;
     };
-  }, [mcap, playbackWindowCache, source, sourceKey, sourceProblem]);
+  }, [
+    activeTimeline,
+    maxTimelineTicks,
+    mcap,
+    playbackWindowCache,
+    source,
+    sourceProblem,
+    timelineKey,
+    timelineTickRateHz,
+  ]);
 
   useEffect(() => {
     if (
       !source ||
       sourceProblem ||
-      !anchorsReadyForSource ||
-      anchorTimeNs === undefined
+      !timelineReadyForSource ||
+      timeNs === undefined
     ) {
-      setPlaybackWindow(null);
+      heldMessagesByTopicRef.current.clear();
+      setDisplayMessagesByTopic({});
       setFrameStatus("idle");
       return;
     }
 
-    const cacheKey = frameCacheKey(sourceKey, anchorTimeNs);
+    const cacheKey = frameCacheKey(sourceKey, activeTimeline, timeNs);
     const cachedWindow = playbackWindowCache.get(cacheKey);
     if (cachedWindow) {
-      setPlaybackWindow(cachedWindow);
+      setDisplayMessagesByTopic(
+        displayMessagesForWindow(
+          cachedWindow,
+          heldMessagesByTopicRef.current,
+          frameLoadReasonRef.current === "playback"
+        )
+      );
       setFrameStatus("ready");
       return;
     }
@@ -222,30 +283,39 @@ export function ModalRenderer({ ctx }: SampleRendererProps) {
         setFrameStatus("loading");
         setError(null);
 
-        readSynchronizedFrame(mcap, source, anchorTimeNs)
+        readSynchronizedFrame(mcap, source, activeTimeline, timeNs)
           .then((window) => {
             playbackWindowCache.set(cacheKey, window);
             if (
               cancelled ||
               sourceKeyRef.current !== requestSourceKey ||
-              currentAnchorTimeNsRef.current !== anchorTimeNs
+              currentTimeNsRef.current !== timeNs
             ) {
               return;
             }
 
-            setPlaybackWindow(window);
+            setDisplayMessagesByTopic(
+              displayMessagesForWindow(
+                window,
+                heldMessagesByTopicRef.current,
+                frameLoadReasonRef.current === "playback"
+              )
+            );
             setFrameStatus("ready");
           })
           .catch((caughtError) => {
             if (
               cancelled ||
               sourceKeyRef.current !== requestSourceKey ||
-              currentAnchorTimeNsRef.current !== anchorTimeNs
+              currentTimeNsRef.current !== timeNs
             ) {
               return;
             }
 
-            setPlaybackWindow(null);
+            if (frameLoadReasonRef.current !== "playback") {
+              heldMessagesByTopicRef.current.clear();
+              setDisplayMessagesByTopic({});
+            }
             setFrameStatus("error");
             setError(errorMessage(caughtError));
           })
@@ -261,14 +331,15 @@ export function ModalRenderer({ ctx }: SampleRendererProps) {
       window.clearTimeout(timeout);
     };
   }, [
-    anchorTimeNs,
-    anchorsReadyForSource,
+    activeTimeline,
     isPlaying,
     mcap,
     playbackWindowCache,
     source,
     sourceKey,
     sourceProblem,
+    timeNs,
+    timelineReadyForSource,
   ]);
 
   useEffect(() => {
@@ -276,50 +347,59 @@ export function ModalRenderer({ ctx }: SampleRendererProps) {
       !isPlaying ||
       !source ||
       sourceProblem ||
-      !anchorsReadyForSource ||
-      anchorTimeNs === undefined
+      !timelineReadyForSource ||
+      timeNs === undefined
     ) {
       return;
     }
 
-    const lookaheadAnchors = playbackLookaheadAnchors(anchors, frameIndex);
-    const anchorsToLoad = lookaheadAnchors.filter((nextAnchorTimeNs) => {
-      const cacheKey = frameCacheKey(sourceKey, nextAnchorTimeNs);
+    const lookaheadTicks = playbackLookaheadTicks(timelineTicks, frameIndex);
+    const ticksToLoad = lookaheadTicks.filter((nextTimeNs) => {
+      const cacheKey = frameCacheKey(sourceKey, activeTimeline, nextTimeNs);
       return (
         !playbackWindowCache.has(cacheKey) &&
         !inFlightFrameRequestsRef.current.has(cacheKey)
       );
     });
 
-    if (anchorsToLoad.length === 0) {
+    if (ticksToLoad.length === 0) {
       const cachedWindow = playbackWindowCache.get(
-        frameCacheKey(sourceKey, anchorTimeNs)
+        frameCacheKey(sourceKey, activeTimeline, timeNs)
       );
       if (cachedWindow) {
-        setPlaybackWindow(cachedWindow);
+        setDisplayMessagesByTopic(
+          displayMessagesForWindow(
+            cachedWindow,
+            heldMessagesByTopicRef.current,
+            true
+          )
+        );
         setFrameStatus("ready");
       }
       return;
     }
 
     const requestSourceKey = sourceKey;
-    const cacheKeys = anchorsToLoad.map((nextAnchorTimeNs) =>
-      frameCacheKey(requestSourceKey, nextAnchorTimeNs)
+    const cacheKeys = ticksToLoad.map((nextTimeNs) =>
+      frameCacheKey(requestSourceKey, activeTimeline, nextTimeNs)
     );
     for (const cacheKey of cacheKeys) {
       inFlightFrameRequestsRef.current.add(cacheKey);
     }
 
-    if (!playbackWindowCache.has(frameCacheKey(sourceKey, anchorTimeNs))) {
+    if (
+      !playbackWindowCache.has(frameCacheKey(sourceKey, activeTimeline, timeNs))
+    ) {
       setFrameStatus("loading");
       setError(null);
     }
 
     mcap
       .readSynchronizedMessageBatch({
-        anchorTimeNs: anchorsToLoad,
+        activeTimeline,
         source,
         streamPolicies: STREAM_SYNC_POLICIES,
+        timeNs: ticksToLoad,
         topics: PLAYBACK_TOPICS,
       })
       .then((windows) => {
@@ -329,20 +409,26 @@ export function ModalRenderer({ ctx }: SampleRendererProps) {
 
         for (const window of windows) {
           playbackWindowCache.set(
-            frameCacheKey(requestSourceKey, window.anchorTimeNs),
+            frameCacheKey(requestSourceKey, activeTimeline, window.timeNs),
             window
           );
         }
 
-        const currentAnchorTimeNs = currentAnchorTimeNsRef.current;
+        const currentTimeNs = currentTimeNsRef.current;
         const currentWindow =
-          currentAnchorTimeNs === undefined
+          currentTimeNs === undefined
             ? undefined
             : playbackWindowCache.get(
-                frameCacheKey(requestSourceKey, currentAnchorTimeNs)
+                frameCacheKey(requestSourceKey, activeTimeline, currentTimeNs)
               );
         if (currentWindow) {
-          setPlaybackWindow(currentWindow);
+          setDisplayMessagesByTopic(
+            displayMessagesForWindow(
+              currentWindow,
+              heldMessagesByTopicRef.current,
+              true
+            )
+          );
           setFrameStatus("ready");
         }
       })
@@ -351,17 +437,24 @@ export function ModalRenderer({ ctx }: SampleRendererProps) {
           return;
         }
 
-        const currentAnchorTimeNs = currentAnchorTimeNsRef.current;
+        const currentTimeNs = currentTimeNsRef.current;
         const currentWindow =
-          currentAnchorTimeNs === undefined
+          currentTimeNs === undefined
             ? undefined
             : playbackWindowCache.get(
-                frameCacheKey(requestSourceKey, currentAnchorTimeNs)
+                frameCacheKey(requestSourceKey, activeTimeline, currentTimeNs)
               );
         if (!currentWindow) {
-          setPlaybackWindow(null);
           setFrameStatus("error");
           setError(errorMessage(caughtError));
+        } else {
+          setDisplayMessagesByTopic(
+            displayMessagesForWindow(
+              currentWindow,
+              heldMessagesByTopicRef.current,
+              true
+            )
+          );
         }
       })
       .finally(() => {
@@ -370,9 +463,7 @@ export function ModalRenderer({ ctx }: SampleRendererProps) {
         }
       });
   }, [
-    anchorTimeNs,
-    anchors,
-    anchorsReadyForSource,
+    activeTimeline,
     frameIndex,
     isPlaying,
     mcap,
@@ -380,20 +471,23 @@ export function ModalRenderer({ ctx }: SampleRendererProps) {
     source,
     sourceKey,
     sourceProblem,
+    timeNs,
+    timelineReadyForSource,
+    timelineTicks,
   ]);
 
   useEffect(() => {
-    if (!isPlaying || !anchorsReadyForSource || anchors.length <= 1) {
+    if (!isPlaying || !timelineReadyForSource || timelineTicks.length <= 1) {
       return undefined;
     }
 
     const interval = window.setInterval(() => {
       frameLoadReasonRef.current = "playback";
-      setFrameIndex((current) => (current + 1) % anchors.length);
-    }, PLAY_INTERVAL_MS);
+      setFrameIndex((current) => (current + 1) % timelineTicks.length);
+    }, playIntervalMs);
 
     return () => window.clearInterval(interval);
-  }, [anchors.length, anchorsReadyForSource, isPlaying]);
+  }, [isPlaying, playIntervalMs, timelineReadyForSource, timelineTicks.length]);
 
   const handlePlayClick = () => {
     setIsPlaying((playing) => {
@@ -408,7 +502,19 @@ export function ModalRenderer({ ctx }: SampleRendererProps) {
   const handleTimelineChange = (event: ChangeEvent<HTMLInputElement>) => {
     frameLoadReasonRef.current = "seek";
     setIsPlaying(false);
+    heldMessagesByTopicRef.current.clear();
+    setDisplayMessagesByTopic({});
     setFrameIndex(Number(event.currentTarget.value));
+  };
+
+  const handleActiveTimelineChange = (
+    event: ChangeEvent<HTMLSelectElement>
+  ) => {
+    frameLoadReasonRef.current = "load";
+    setIsPlaying(false);
+    heldMessagesByTopicRef.current.clear();
+    setDisplayMessagesByTopic({});
+    setActiveTimeline(event.currentTarget.value as McapActiveTimeline);
   };
 
   return (
@@ -434,8 +540,8 @@ export function ModalRenderer({ ctx }: SampleRendererProps) {
         <Notice tone="error">{error}</Notice>
       ) : (
         <Notice tone="info">
-          Source: {source?.sourceId ?? "unknown"} · {anchors.length} timeline
-          frames
+          Source: {source?.sourceId ?? "unknown"} · {activeTimeline} ·{" "}
+          {timelineTicks.length} timeline ticks
         </Notice>
       )}
 
@@ -443,15 +549,29 @@ export function ModalRenderer({ ctx }: SampleRendererProps) {
         {STREAMS.map((stream) => (
           <StreamPanel
             key={stream.topic}
-            message={playbackWindow?.messagesByTopic[stream.topic]?.[0]}
+            message={displayMessagesByTopic[stream.topic]}
             stream={stream}
           />
         ))}
       </div>
 
       <div style={styles.timeline}>
+        <label style={styles.timelineSelectLabel}>
+          Timeline
+          <select
+            onChange={handleActiveTimelineChange}
+            style={styles.select}
+            value={activeTimeline}
+          >
+            {ACTIVE_TIMELINE_OPTIONS.map((timeline) => (
+              <option key={timeline} value={timeline}>
+                {timeline}
+              </option>
+            ))}
+          </select>
+        </label>
         <button
-          disabled={anchors.length <= 1}
+          disabled={timelineTicks.length <= 1}
           onClick={handlePlayClick}
           style={styles.button}
           type="button"
@@ -459,16 +579,16 @@ export function ModalRenderer({ ctx }: SampleRendererProps) {
           {isPlaying ? "Pause" : "Play"}
         </button>
         <input
-          disabled={anchors.length <= 1}
-          max={Math.max(anchors.length - 1, 0)}
+          disabled={timelineTicks.length <= 1}
+          max={Math.max(timelineTicks.length - 1, 0)}
           min={0}
           onChange={handleTimelineChange}
           style={styles.range}
           type="range"
-          value={Math.min(frameIndex, Math.max(anchors.length - 1, 0))}
+          value={Math.min(frameIndex, Math.max(timelineTicks.length - 1, 0))}
         />
         <div style={styles.timeReadout}>
-          {anchors.length > 0 ? frameIndex + 1 : 0}/{anchors.length}
+          {timelineTicks.length > 0 ? frameIndex + 1 : 0}/{timelineTicks.length}
           {relativeTimeNs !== undefined
             ? ` · ${formatSeconds(relativeTimeNs)}`
             : ""}
@@ -511,43 +631,85 @@ function usePlaybackWindowCache(): PlaybackWindowCache {
 function readSynchronizedFrame(
   mcap: McapResourceClient,
   source: ByteSourceDescriptor,
-  anchorTimeNs: bigint
+  activeTimeline: McapActiveTimeline,
+  timeNs: bigint
 ) {
   return mcap.readSynchronizedMessages({
-    anchorTimeNs,
+    activeTimeline,
     source,
     streamPolicies: STREAM_SYNC_POLICIES,
+    timeNs,
     topics: PLAYBACK_TOPICS,
   });
 }
 
-function playbackLookaheadAnchors(
-  anchors: readonly bigint[],
-  frameIndex: number
-) {
-  const count = Math.min(PLAYBACK_BATCH_FRAME_COUNT, anchors.length);
-  const lookaheadAnchors: bigint[] = [];
+function playbackLookaheadTicks(ticks: readonly bigint[], frameIndex: number) {
+  const count = Math.min(PLAYBACK_BATCH_FRAME_COUNT, ticks.length);
+  const lookaheadTicks: bigint[] = [];
 
   for (let offset = 0; offset < count; offset += 1) {
-    const anchorTimeNs = anchors[(frameIndex + offset) % anchors.length];
-    if (
-      anchorTimeNs !== undefined &&
-      !lookaheadAnchors.includes(anchorTimeNs)
-    ) {
-      lookaheadAnchors.push(anchorTimeNs);
+    const timeNs = ticks[(frameIndex + offset) % ticks.length];
+    if (timeNs !== undefined && !lookaheadTicks.includes(timeNs)) {
+      lookaheadTicks.push(timeNs);
     }
   }
 
-  return lookaheadAnchors;
+  return lookaheadTicks;
 }
 
-function frameCacheKey(sourceKey: string, anchorTimeNs: bigint) {
+function displayMessagesForWindow(
+  window: McapSynchronizedMessageWindow,
+  heldMessagesByTopic: Map<string, McapDecodedMessage>,
+  allowHold: boolean
+): DisplayMessagesByTopic {
+  const messagesByTopic: DisplayMessagesByTopic = {};
+
+  for (const topic of PLAYBACK_TOPICS) {
+    const message = window.messagesByTopic[topic]?.[0];
+    if (message) {
+      heldMessagesByTopic.set(topic, message);
+      messagesByTopic[topic] = message;
+      continue;
+    }
+
+    if (allowHold) {
+      const heldMessage = heldMessagesByTopic.get(topic);
+      if (heldMessage) {
+        messagesByTopic[topic] = heldMessage;
+      }
+    } else {
+      heldMessagesByTopic.delete(topic);
+    }
+  }
+
+  return messagesByTopic;
+}
+
+function timelineCacheKey(
+  sourceKey: string,
+  activeTimeline: McapActiveTimeline,
+  tickRateHz: number,
+  maxTicks: number
+) {
   return [
     sourceKey,
-    anchorTimeNs.toString(),
+    activeTimeline,
+    tickRateHz.toString(),
+    maxTicks.toString(),
+  ].join("|");
+}
+
+function frameCacheKey(
+  sourceKey: string,
+  activeTimeline: McapActiveTimeline,
+  timeNs: bigint
+) {
+  return [
+    sourceKey,
+    activeTimeline,
+    timeNs.toString(),
     PLAYBACK_WINDOW_TOPICS_CACHE_KEY,
     PLAYBACK_WINDOW_SYNC_POLICY_CACHE_KEY,
-    PLAYBACK_WINDOW_TIMESTAMP_SOURCE_CACHE_KEY,
   ].join("|");
 }
 
@@ -580,7 +742,7 @@ function StreamPanel({
           <div style={styles.topic}>{stream.topic}</div>
         </div>
         <div style={styles.timestamp}>
-          {message ? formatSeconds(message.syncTimeNs) : "no frame"}
+          {message ? formatSeconds(message.timelineTimeNs) : "no frame"}
         </div>
       </div>
       <div style={styles.viewport}>
@@ -767,6 +929,14 @@ const styles: Record<string, CSSProperties> = {
   range: {
     flex: 1,
   },
+  select: {
+    background: "#0b1622",
+    border: "1px solid #32485e",
+    borderRadius: 4,
+    color: "#edf6ff",
+    fontSize: 12,
+    padding: "6px 8px",
+  },
   shell: {
     background: "#0b1622",
     boxSizing: "border-box",
@@ -799,6 +969,13 @@ const styles: Record<string, CSSProperties> = {
     display: "flex",
     gap: 12,
     padding: 10,
+  },
+  timelineSelectLabel: {
+    alignItems: "center",
+    color: "#c7d5e4",
+    display: "flex",
+    fontSize: 12,
+    gap: 6,
   },
   timestamp: {
     color: "#9fb3c8",

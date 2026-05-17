@@ -40,8 +40,8 @@ renders decoded visual outputs without knowing how the bytes were fetched.
 ## Runtime Flow
 
 1. UI hooks fetch inventory/playback-plan contracts through the query layer.
-2. The MCAP adapter uses those contracts to choose topics, timeline anchors,
-   sync policy, and byte ranges.
+2. The MCAP adapter uses those contracts to choose topics, the active timeline
+   range, sync policy, and byte ranges.
 3. Byte resources read MCAP ranges through app media URLs and populate the raw
    byte cache.
 4. The MCAP reader uses `@mcap/core` with local decompression handlers backed

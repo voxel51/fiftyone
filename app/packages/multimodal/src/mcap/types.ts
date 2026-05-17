@@ -2,28 +2,43 @@ import type { ByteSourceDescriptor, DecodeResourceResult } from "../client";
 import type { PlaybackSyncMode } from "../schemas/v1";
 
 /**
- * MCAP timestamp source selected by the playback clock/time track.
+ * MCAP timeline selected as the playback clock/time track.
  */
-export const MCAP_TIMESTAMP_SOURCE = Object.freeze({
-  HEADER_TIME: "header",
-  LOG_TIME: "log",
-  PUBLISH_TIME: "publish",
+export const MCAP_ACTIVE_TIMELINE = Object.freeze({
+  HEADER_STAMP: "header.stamp",
+  LOG: "log",
+  PUBLISH: "publish",
 } as const);
 
 /**
- * Supported MCAP timestamp sources used to derive playback sync time.
+ * Supported MCAP timelines used to derive playback synchronization time.
  */
-export type McapTimestampSource =
-  typeof MCAP_TIMESTAMP_SOURCE[keyof typeof MCAP_TIMESTAMP_SOURCE];
+export type McapActiveTimeline =
+  typeof MCAP_ACTIVE_TIMELINE[keyof typeof MCAP_ACTIVE_TIMELINE];
 
 /**
  * Stream-local playback sync policy. The mode comes from playback.proto; the
  * controller/UI owns choosing it per stream.
  */
 export interface McapStreamSyncPolicy {
+  /**
+   * Maximum number of messages to select for the stream in one window.
+   */
   readonly limit?: number;
+
+  /**
+   * Selection strategy used to match stream messages to the playback time.
+   */
   readonly mode?: PlaybackSyncMode;
+
+  /**
+   * Inclusive tolerance after the playback time for modes that support it.
+   */
   readonly toleranceAfterNs?: bigint;
+
+  /**
+   * Inclusive tolerance before the playback time for modes that support it.
+   */
   readonly toleranceBeforeNs?: bigint;
 }
 
@@ -38,9 +53,24 @@ export type McapStreamSyncPolicies = Readonly<
  * Sync policy after defaults have been resolved into concrete time bounds.
  */
 export interface McapResolvedStreamSyncPolicy {
+  /**
+   * Inclusive end bound used for message selection.
+   */
   readonly endTimeNs: bigint;
+
+  /**
+   * Concrete maximum number of messages selected for the stream.
+   */
   readonly limit: number;
+
+  /**
+   * Concrete playback sync mode after default/unspecified handling.
+   */
   readonly mode: PlaybackSyncMode;
+
+  /**
+   * Inclusive start bound used for message selection.
+   */
   readonly startTimeNs: bigint;
 }
 
@@ -53,40 +83,104 @@ export type McapSourceDescriptor = ByteSourceDescriptor;
  * Request for decoding an MCAP message window.
  */
 export interface McapReadDecodedMessagesRequest {
+  /**
+   * Optional inclusive upper time bound in the active timeline.
+   */
   readonly endTimeNs?: bigint;
+
+  /**
+   * Maximum number of decoded messages to yield.
+   */
   readonly limit?: number;
+
+  /**
+   * MCAP source to read through the shared byte-resource layer.
+   */
   readonly source: McapSourceDescriptor;
+
+  /**
+   * Optional inclusive lower time bound in the active timeline.
+   */
   readonly startTimeNs?: bigint;
-  readonly timestampSource?: McapTimestampSource;
+
+  /**
+   * Timeline used as playback synchronization time; defaults to MCAP log time.
+   */
+  readonly activeTimeline?: McapActiveTimeline;
+
+  /**
+   * Optional MCAP topics to include. Undefined means all topics.
+   */
   readonly topics?: readonly string[];
 }
 
 /**
- * Request for reading raw MCAP message timestamps without decoding payloads.
+ * Request for the playable time range of an MCAP timeline.
  */
-export type McapReadMessageTimesRequest = McapReadDecodedMessagesRequest;
+export interface McapReadTimelineRangeRequest {
+  /**
+   * Timeline used for the returned range; defaults to MCAP log time.
+   */
+  readonly activeTimeline?: McapActiveTimeline;
+
+  /**
+   * MCAP source to inspect for timeline bounds.
+   */
+  readonly source: McapSourceDescriptor;
+}
 
 /**
- * Request for playback timeline anchors from a single MCAP topic.
+ * Playable time range for one MCAP timeline.
  */
-export interface McapReadTimelineAnchorsRequest {
-  readonly endTimeNs?: bigint;
-  readonly limit?: number;
-  readonly source: McapSourceDescriptor;
-  readonly startTimeNs?: bigint;
-  readonly timestampSource?: McapTimestampSource;
-  readonly topic: string;
+export interface McapTimelineRange {
+  /**
+   * Timeline used for the returned range.
+   */
+  readonly activeTimeline: McapActiveTimeline;
+
+  /**
+   * Inclusive upper timeline bound.
+   */
+  readonly endTimeNs: bigint;
+
+  /**
+   * Inclusive lower timeline bound.
+   */
+  readonly startTimeNs: bigint;
 }
 
 /**
  * Request for a playback-oriented synchronized message window.
  */
 export interface McapReadSynchronizedMessagesRequest {
-  readonly anchorTimeNs: bigint;
+  /**
+   * Playback timeline time around which per-topic messages are selected.
+   */
+  readonly timeNs: bigint;
+
+  /**
+   * Fallback sync policy for topics without an explicit stream policy.
+   */
   readonly defaultStreamPolicy?: McapStreamSyncPolicy;
+
+  /**
+   * MCAP source to read through the shared byte-resource layer.
+   */
   readonly source: McapSourceDescriptor;
+
+  /**
+   * Topic-specific sync policies keyed by MCAP topic.
+   */
   readonly streamPolicies?: McapStreamSyncPolicies;
-  readonly timestampSource?: McapTimestampSource;
+
+  /**
+   * Timeline used as playback synchronization time; defaults to MCAP log time.
+   */
+  readonly activeTimeline?: McapActiveTimeline;
+
+  /**
+   * MCAP topics to include in the synchronized window.
+   */
   readonly topics: readonly string[];
 }
 
@@ -95,34 +189,55 @@ export interface McapReadSynchronizedMessagesRequest {
  * windows from the same source and topic set.
  */
 export interface McapReadSynchronizedMessageBatchRequest
-  extends Omit<McapReadSynchronizedMessagesRequest, "anchorTimeNs"> {
-  readonly anchorTimeNs: readonly bigint[];
+  extends Omit<McapReadSynchronizedMessagesRequest, "timeNs"> {
+  /**
+   * Playback times to resolve against the same source/topic/policy request.
+   */
+  readonly timeNs: readonly bigint[];
 }
 
 /**
  * Decoded MCAP message with playback identity and decoder output.
  */
 export interface McapDecodedMessage {
+  /**
+   * Numeric MCAP channel id that produced this message.
+   */
   readonly channelId: number;
-  readonly decoded: DecodeResourceResult;
-  readonly logTimeNs: bigint;
-  readonly publishTimeNs: bigint;
-  readonly sequence: number;
-  readonly syncTimeNs: bigint;
-  readonly timestampSource: McapTimestampSource;
-  readonly topic: string;
-}
 
-/**
- * Raw MCAP message timestamp used by playback timeline construction.
- */
-export interface McapMessageTime {
-  readonly channelId: number;
+  /**
+   * Decoder output for the message payload.
+   */
+  readonly decoded: DecodeResourceResult;
+
+  /**
+   * MCAP message log time.
+   */
   readonly logTimeNs: bigint;
+
+  /**
+   * MCAP message publish time.
+   */
   readonly publishTimeNs: bigint;
+
+  /**
+   * MCAP message sequence number.
+   */
   readonly sequence: number;
-  readonly syncTimeNs: bigint;
-  readonly timestampSource: McapTimestampSource;
+
+  /**
+   * Timeline time used by playback ordering and synchronization.
+   */
+  readonly timelineTimeNs: bigint;
+
+  /**
+   * Timeline used to compute timelineTimeNs.
+   */
+  readonly activeTimeline: McapActiveTimeline;
+
+  /**
+   * MCAP topic for the message channel.
+   */
   readonly topic: string;
 }
 
@@ -130,41 +245,79 @@ export interface McapMessageTime {
  * Synchronized MCAP playback window grouped by topic.
  */
 export interface McapSynchronizedMessageWindow {
-  readonly anchorTimeNs: bigint;
+  /**
+   * Playback timeline time this window was requested around.
+   */
+  readonly timeNs: bigint;
+
+  /**
+   * Inclusive upper bound covered by the resolved stream policies.
+   */
   readonly endTimeNs: bigint;
+
+  /**
+   * Selected decoded messages across all requested topics, ordered by timeline time.
+   */
   readonly messages: readonly McapDecodedMessage[];
+
+  /**
+   * Selected decoded messages grouped by requested topic.
+   */
   readonly messagesByTopic: Readonly<
     Record<string, readonly McapDecodedMessage[]>
   >;
+
+  /**
+   * Inclusive lower bound covered by the resolved stream policies.
+   */
   readonly startTimeNs: bigint;
+
+  /**
+   * Concrete stream policies used to construct this window.
+   */
   readonly streamPolicies: Readonly<
     Record<string, McapResolvedStreamSyncPolicy>
   >;
-  readonly timestampSource: McapTimestampSource;
+
+  /**
+   * Timeline used to compute message synchronization times in this window.
+   */
+  readonly activeTimeline: McapActiveTimeline;
 }
 
 /**
  * MCAP-specific resource client.
  */
 export interface McapResourceClient {
+  /**
+   * Releases adapter-owned caches/readers/workers.
+   */
   dispose(): void;
 
+  /**
+   * Streams decoded messages for the requested topics and time bounds.
+   */
   readDecodedMessages(
     request: McapReadDecodedMessagesRequest
   ): AsyncGenerator<McapDecodedMessage, void, void>;
 
-  readMessageTimes(
-    request: McapReadMessageTimesRequest
-  ): AsyncGenerator<McapMessageTime, void, void>;
+  /**
+   * Returns the playable time range for the active timeline.
+   */
+  readTimelineRange(
+    request: McapReadTimelineRangeRequest
+  ): Promise<McapTimelineRange>;
 
-  readTimelineAnchors(
-    request: McapReadTimelineAnchorsRequest
-  ): Promise<readonly bigint[]>;
-
+  /**
+   * Reads one synchronized decoded message window around a playback time.
+   */
   readSynchronizedMessages(
     request: McapReadSynchronizedMessagesRequest
   ): Promise<McapSynchronizedMessageWindow>;
 
+  /**
+   * Reads multiple synchronized windows for playback lookahead/prefetch.
+   */
   readSynchronizedMessageBatch(
     request: McapReadSynchronizedMessageBatchRequest
   ): Promise<readonly McapSynchronizedMessageWindow[]>;

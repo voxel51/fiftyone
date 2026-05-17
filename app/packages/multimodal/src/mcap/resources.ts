@@ -4,7 +4,6 @@ import {
   type ByteResourceClient,
   type DecodeExecutor,
   type DecodeResourceClient,
-  type DecodeResourceResult,
   type MultimodalResourcesClient,
 } from "../client/resources";
 import { createDecodeResourceClient } from "../client/resources/clients";
@@ -17,28 +16,28 @@ import {
   type McapReaderFactory,
 } from "./reader";
 import {
-  compareBigInt,
-  compareBySyncTime,
+  compareByTimelineTime,
   createWindowBounds,
   isWithinRange,
   maxBigInt,
   minBigInt,
   selectCandidatesForTopic,
-  selectSynchronizedWindow,
 } from "./sync";
 import {
-  MCAP_TIMESTAMP_SOURCE,
+  assertSupportedMcapActiveTimeline,
+  resolveMcapActiveTimeline,
+} from "./timeline";
+import {
+  type McapActiveTimeline,
   type McapDecodedMessage,
-  type McapMessageTime,
   type McapReadDecodedMessagesRequest,
-  type McapReadMessageTimesRequest,
   type McapReadSynchronizedMessageBatchRequest,
   type McapReadSynchronizedMessagesRequest,
-  type McapReadTimelineAnchorsRequest,
+  type McapReadTimelineRangeRequest,
   type McapResourceClient,
   type McapSourceDescriptor,
   type McapSynchronizedMessageWindow,
-  type McapTimestampSource,
+  type McapTimelineRange,
 } from "./types";
 
 type TypedMcapRecords = McapTypes.TypedMcapRecords;
@@ -47,7 +46,7 @@ interface McapRawMessageCandidate {
   readonly channel: TypedMcapRecords["Channel"];
   readonly message: TypedMcapRecords["Message"];
   readonly schema?: TypedMcapRecords["Schema"];
-  readonly syncTimeNs: bigint;
+  readonly timelineTimeNs: bigint;
   readonly topic: string;
 }
 
@@ -84,32 +83,32 @@ export function createMcapResourceClient(
   async function* readDecodedMessages(
     request: McapReadDecodedMessagesRequest
   ): AsyncGenerator<McapDecodedMessage, void, void> {
+    const activeTimeline = resolveMcapActiveTimeline(request.activeTimeline);
+    assertSupportedMcapActiveTimeline(activeTimeline);
     const reader = await getReader(
       readers,
       readerFactory,
       byteClient,
       request.source
     );
-    const timestampSource =
-      request.timestampSource ?? MCAP_TIMESTAMP_SOURCE.LOG_TIME;
     let count = 0;
 
     for await (const message of reader.readMessages({
-      endTime: indexedEndTimeNs(request.endTimeNs, timestampSource),
-      startTime: indexedStartTimeNs(request.startTimeNs, timestampSource),
+      endTime: request.endTimeNs,
+      startTime: request.startTimeNs,
       topics: request.topics,
     })) {
       const decodedMessage = await decodeMessage({
+        activeTimeline,
         decodeClient,
         message,
         reader,
         source: request.source,
-        timestampSource,
       });
 
       if (
         !isWithinRange(
-          decodedMessage.syncTimeNs,
+          decodedMessage.timelineTimeNs,
           request.startTimeNs,
           request.endTimeNs
         )
@@ -126,83 +125,31 @@ export function createMcapResourceClient(
     }
   }
 
-  async function* readMessageTimes(
-    request: McapReadMessageTimesRequest
-  ): AsyncGenerator<McapMessageTime, void, void> {
+  async function readTimelineRange(
+    request: McapReadTimelineRangeRequest
+  ): Promise<McapTimelineRange> {
+    const activeTimeline = resolveMcapActiveTimeline(request.activeTimeline);
+    assertSupportedMcapActiveTimeline(activeTimeline);
     const reader = await getReader(
       readers,
       readerFactory,
       byteClient,
       request.source
     );
-    const timestampSource =
-      request.timestampSource ?? MCAP_TIMESTAMP_SOURCE.LOG_TIME;
 
-    if (timestampSource === MCAP_TIMESTAMP_SOURCE.HEADER_TIME) {
-      for await (const message of readDecodedMessages(request)) {
-        yield {
-          channelId: message.channelId,
-          logTimeNs: message.logTimeNs,
-          publishTimeNs: message.publishTimeNs,
-          sequence: message.sequence,
-          syncTimeNs: message.syncTimeNs,
-          timestampSource,
-          topic: message.topic,
-        };
-      }
-      return;
+    if (reader.chunkIndexes.length === 0) {
+      throw new Error("MCAP log timeline has no indexed chunks");
     }
 
-    let count = 0;
-
-    for await (const message of reader.readMessages({
-      endTime: indexedEndTimeNs(request.endTimeNs, timestampSource),
-      startTime: indexedStartTimeNs(request.startTimeNs, timestampSource),
-      topics: request.topics,
-    })) {
-      const channel = reader.channelsById.get(message.channelId);
-      if (!channel) {
-        throw new Error(`Missing MCAP channel ${message.channelId}`);
-      }
-      const syncTimeNs = rawSyncTimeNs(message, timestampSource);
-      if (!isWithinRange(syncTimeNs, request.startTimeNs, request.endTimeNs)) {
-        continue;
-      }
-
-      yield {
-        channelId: message.channelId,
-        logTimeNs: message.logTime,
-        publishTimeNs: message.publishTime,
-        sequence: message.sequence,
-        syncTimeNs,
-        timestampSource,
-        topic: channel.topic,
-      };
-
-      count += 1;
-      if (request.limit !== undefined && count >= request.limit) {
-        return;
-      }
-    }
-  }
-
-  async function readTimelineAnchors(
-    request: McapReadTimelineAnchorsRequest
-  ): Promise<readonly bigint[]> {
-    const anchors: bigint[] = [];
-
-    for await (const message of readMessageTimes({
-      endTimeNs: request.endTimeNs,
-      limit: request.limit,
-      source: request.source,
-      startTimeNs: request.startTimeNs,
-      timestampSource: request.timestampSource,
-      topics: [request.topic],
-    })) {
-      anchors.push(message.syncTimeNs);
-    }
-
-    return anchors.sort(compareBigInt);
+    return {
+      activeTimeline,
+      endTimeNs: maxBigInt(
+        reader.chunkIndexes.map((chunkIndex) => chunkIndex.messageEndTime)
+      ),
+      startTimeNs: minBigInt(
+        reader.chunkIndexes.map((chunkIndex) => chunkIndex.messageStartTime)
+      ),
+    };
   }
 
   async function readSynchronizedMessages(
@@ -210,7 +157,7 @@ export function createMcapResourceClient(
   ): Promise<McapSynchronizedMessageWindow> {
     const windows = await readSynchronizedMessageBatch({
       ...request,
-      anchorTimeNs: [request.anchorTimeNs],
+      timeNs: [request.timeNs],
     });
     const window = windows[0];
     if (!window) {
@@ -223,15 +170,15 @@ export function createMcapResourceClient(
   async function readSynchronizedMessageBatch(
     request: McapReadSynchronizedMessageBatchRequest
   ): Promise<readonly McapSynchronizedMessageWindow[]> {
-    if (request.anchorTimeNs.length === 0) {
+    if (request.timeNs.length === 0) {
       return [];
     }
 
-    const timestampSource =
-      request.timestampSource ?? MCAP_TIMESTAMP_SOURCE.LOG_TIME;
-    const windowBounds = request.anchorTimeNs.map((anchorTimeNs) =>
+    const activeTimeline = resolveMcapActiveTimeline(request.activeTimeline);
+    assertSupportedMcapActiveTimeline(activeTimeline);
+    const windowBounds = request.timeNs.map((timeNs) =>
       createWindowBounds({
-        anchorTimeNs,
+        timeNs,
         defaultStreamPolicy: request.defaultStreamPolicy,
         streamPolicies: request.streamPolicies,
         topics: request.topics,
@@ -248,27 +195,6 @@ export function createMcapResourceClient(
       )
     );
 
-    if (timestampSource === MCAP_TIMESTAMP_SOURCE.HEADER_TIME) {
-      const candidatesByTopic = await collectDecodedCandidates({
-        endTimeNs,
-        readDecodedMessages,
-        source: request.source,
-        startTimeNs,
-        timestampSource,
-        topics: request.topics,
-      });
-
-      return windowBounds.map(({ anchorTimeNs, streamPolicies }) =>
-        selectSynchronizedWindow({
-          anchorTimeNs,
-          candidatesByTopic,
-          streamPolicies,
-          timestampSource,
-          topics: request.topics,
-        })
-      );
-    }
-
     const reader = await getReader(
       readers,
       readerFactory,
@@ -279,13 +205,12 @@ export function createMcapResourceClient(
       endTimeNs,
       reader,
       startTimeNs,
-      timestampSource,
       topics: request.topics,
     });
     const decodeCache = new Map<string, Promise<McapDecodedMessage>>();
 
     return Promise.all(
-      windowBounds.map(async ({ anchorTimeNs, streamPolicies }) => {
+      windowBounds.map(async ({ timeNs, streamPolicies }) => {
         const messagesByTopic: Record<string, readonly McapDecodedMessage[]> =
           {};
         const messages: McapDecodedMessage[] = [];
@@ -293,18 +218,18 @@ export function createMcapResourceClient(
         for (const topic of request.topics) {
           const selected = selectCandidatesForTopic(
             candidates.get(topic) ?? [],
-            anchorTimeNs,
+            timeNs,
             streamPolicies[topic],
             compareRawCandidateTieBreaker
           );
           const decoded = await Promise.all(
             selected.map((candidate) =>
               decodeRawCandidate({
+                activeTimeline,
                 candidate,
                 decodeCache,
                 decodeClient,
                 source: request.source,
-                timestampSource,
               })
             )
           );
@@ -312,10 +237,10 @@ export function createMcapResourceClient(
           messages.push(...decoded);
         }
 
-        messages.sort(compareBySyncTime);
+        messages.sort(compareByTimelineTime);
 
         return {
-          anchorTimeNs,
+          activeTimeline,
           endTimeNs: maxBigInt(
             Object.values(streamPolicies).map((policy) => policy.endTimeNs)
           ),
@@ -325,7 +250,7 @@ export function createMcapResourceClient(
             Object.values(streamPolicies).map((policy) => policy.startTimeNs)
           ),
           streamPolicies,
-          timestampSource,
+          timeNs,
         };
       })
     );
@@ -336,29 +261,28 @@ export function createMcapResourceClient(
       readers.clear();
     },
     readDecodedMessages,
-    readMessageTimes,
-    readTimelineAnchors,
+    readTimelineRange,
     readSynchronizedMessageBatch,
     readSynchronizedMessages,
   };
 }
 
 async function decodeMessage({
+  activeTimeline,
   decodeClient,
   channel,
   message,
   reader,
   schema,
   source,
-  timestampSource,
 }: {
+  readonly activeTimeline: McapActiveTimeline;
   readonly decodeClient: DecodeResourceClient;
   readonly channel?: TypedMcapRecords["Channel"];
   readonly message: TypedMcapRecords["Message"];
   readonly reader?: McapIndexedReaderLike;
   readonly schema?: TypedMcapRecords["Schema"];
   readonly source: McapSourceDescriptor;
-  readonly timestampSource: McapTimestampSource;
 }): Promise<McapDecodedMessage> {
   const resolvedChannel =
     channel ?? reader?.channelsById.get(message.channelId);
@@ -373,11 +297,11 @@ async function decodeMessage({
   const decoded = await decodeClient.decode({
     bytes: message.data,
     cache: {
-      decoderOptionsKey: `timestampSource=${timestampSource}`,
+      decoderOptionsKey: `activeTimeline=${activeTimeline}`,
       recordId: recordId(message),
       source,
       streamId: topic,
-      timeNs: cacheTimeNs(message, timestampSource),
+      timeNs: message.logTime,
     },
     context: {
       sourceTimestamps: {
@@ -385,26 +309,21 @@ async function decodeMessage({
         publishTime: message.publishTime,
       },
       streamId: topic,
-      timeRangeStartKey: timestampKey(timestampSource),
+      timeRangeStartKey: "logTime",
       topic,
     },
     payload,
     schemaData: resolvedSchema?.data,
   });
-  const syncTimeNs = syncTimeNsForDecodedMessage(
-    message,
-    decoded,
-    timestampSource
-  );
 
   return {
+    activeTimeline,
     channelId: message.channelId,
     decoded,
     logTimeNs: message.logTime,
     publishTimeNs: message.publishTime,
     sequence: message.sequence,
-    syncTimeNs,
-    timestampSource,
+    timelineTimeNs: message.logTime,
     topic,
   };
 }
@@ -413,20 +332,18 @@ async function collectRawCandidates({
   endTimeNs,
   reader,
   startTimeNs,
-  timestampSource,
   topics,
 }: {
   readonly endTimeNs: bigint;
   readonly reader: McapIndexedReaderLike;
   readonly startTimeNs: bigint;
-  readonly timestampSource: McapTimestampSource;
   readonly topics: readonly string[];
 }): Promise<Map<string, McapRawMessageCandidate[]>> {
   const candidates = new Map<string, McapRawMessageCandidate[]>();
 
   for await (const message of reader.readMessages({
-    endTime: indexedEndTimeNs(endTimeNs, timestampSource),
-    startTime: indexedStartTimeNs(startTimeNs, timestampSource),
+    endTime: endTimeNs,
+    startTime: startTimeNs,
     topics,
   })) {
     const channel = reader.channelsById.get(message.channelId);
@@ -434,8 +351,8 @@ async function collectRawCandidates({
       throw new Error(`Missing MCAP channel ${message.channelId}`);
     }
 
-    const syncTimeNs = rawSyncTimeNs(message, timestampSource);
-    if (!isWithinRange(syncTimeNs, startTimeNs, endTimeNs)) {
+    const timelineTimeNs = message.logTime;
+    if (!isWithinRange(timelineTimeNs, startTimeNs, endTimeNs)) {
       continue;
     }
 
@@ -444,7 +361,7 @@ async function collectRawCandidates({
       channel,
       message,
       schema: reader.schemasById.get(channel.schemaId),
-      syncTimeNs,
+      timelineTimeNs,
       topic: channel.topic,
     });
     candidates.set(channel.topic, topicCandidates);
@@ -453,68 +370,30 @@ async function collectRawCandidates({
   return candidates;
 }
 
-async function collectDecodedCandidates({
-  endTimeNs,
-  readDecodedMessages,
-  source,
-  startTimeNs,
-  timestampSource,
-  topics,
-}: {
-  readonly endTimeNs: bigint;
-  readonly readDecodedMessages: (
-    request: McapReadDecodedMessagesRequest
-  ) => AsyncGenerator<McapDecodedMessage, void, void>;
-  readonly source: McapSourceDescriptor;
-  readonly startTimeNs: bigint;
-  readonly timestampSource: McapTimestampSource;
-  readonly topics: readonly string[];
-}): Promise<Map<string, McapDecodedMessage[]>> {
-  const candidatesByTopic = new Map<string, McapDecodedMessage[]>();
-
-  for await (const message of readDecodedMessages({
-    endTimeNs,
-    source,
-    startTimeNs,
-    timestampSource,
-    topics,
-  })) {
-    if (message.syncTimeNs < startTimeNs || message.syncTimeNs > endTimeNs) {
-      continue;
-    }
-
-    const topicMessages = candidatesByTopic.get(message.topic) ?? [];
-    topicMessages.push(message);
-    candidatesByTopic.set(message.topic, topicMessages);
-  }
-
-  return candidatesByTopic;
-}
-
 async function decodeRawCandidate({
+  activeTimeline,
   candidate,
   decodeCache,
   decodeClient,
   source,
-  timestampSource,
 }: {
+  readonly activeTimeline: McapActiveTimeline;
   readonly candidate: McapRawMessageCandidate;
   readonly decodeCache: Map<string, Promise<McapDecodedMessage>>;
   readonly decodeClient: DecodeResourceClient;
   readonly source: McapSourceDescriptor;
-  readonly timestampSource: McapTimestampSource;
 }): Promise<McapDecodedMessage> {
   const key = recordId(candidate.message);
   let decoded = decodeCache.get(key);
 
   if (!decoded) {
     decoded = decodeMessage({
+      activeTimeline,
       channel: candidate.channel,
       decodeClient,
       message: candidate.message,
       schema: candidate.schema,
       source,
-      timestampSource,
     });
     decodeCache.set(key, decoded);
   }
@@ -531,80 +410,6 @@ function payloadFromChannel(
     schema: schema?.name,
     schemaEncoding: schema?.encoding,
   };
-}
-
-function indexedStartTimeNs(
-  startTimeNs: bigint | undefined,
-  timestampSource: McapTimestampSource
-): bigint | undefined {
-  return timestampSource === MCAP_TIMESTAMP_SOURCE.LOG_TIME
-    ? startTimeNs
-    : undefined;
-}
-
-function indexedEndTimeNs(
-  endTimeNs: bigint | undefined,
-  timestampSource: McapTimestampSource
-): bigint | undefined {
-  return timestampSource === MCAP_TIMESTAMP_SOURCE.LOG_TIME
-    ? endTimeNs
-    : undefined;
-}
-
-function timestampKey(timestampSource: McapTimestampSource) {
-  switch (timestampSource) {
-    case MCAP_TIMESTAMP_SOURCE.LOG_TIME:
-      return "logTime";
-    case MCAP_TIMESTAMP_SOURCE.PUBLISH_TIME:
-      return "publishTime";
-    case MCAP_TIMESTAMP_SOURCE.HEADER_TIME:
-      return "messageTime";
-  }
-}
-
-function cacheTimeNs(
-  message: TypedMcapRecords["Message"],
-  timestampSource: McapTimestampSource
-): bigint | undefined {
-  switch (timestampSource) {
-    case MCAP_TIMESTAMP_SOURCE.LOG_TIME:
-      return message.logTime;
-    case MCAP_TIMESTAMP_SOURCE.PUBLISH_TIME:
-      return message.publishTime;
-    case MCAP_TIMESTAMP_SOURCE.HEADER_TIME:
-      return undefined;
-  }
-}
-
-function syncTimeNsForDecodedMessage(
-  message: TypedMcapRecords["Message"],
-  decoded: DecodeResourceResult,
-  timestampSource: McapTimestampSource
-): bigint {
-  switch (timestampSource) {
-    case MCAP_TIMESTAMP_SOURCE.LOG_TIME:
-      return message.logTime;
-    case MCAP_TIMESTAMP_SOURCE.PUBLISH_TIME:
-      return message.publishTime;
-    case MCAP_TIMESTAMP_SOURCE.HEADER_TIME:
-      return (
-        decoded.output.timing?.sourceTimestamps?.messageTime ?? message.logTime
-      );
-  }
-}
-
-function rawSyncTimeNs(
-  message: TypedMcapRecords["Message"],
-  timestampSource: McapTimestampSource
-): bigint {
-  switch (timestampSource) {
-    case MCAP_TIMESTAMP_SOURCE.LOG_TIME:
-      return message.logTime;
-    case MCAP_TIMESTAMP_SOURCE.PUBLISH_TIME:
-      return message.publishTime;
-    case MCAP_TIMESTAMP_SOURCE.HEADER_TIME:
-      return message.logTime;
-  }
 }
 
 function compareRawCandidateTieBreaker(

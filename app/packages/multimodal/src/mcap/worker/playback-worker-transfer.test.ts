@@ -36,13 +36,13 @@ function createWindow(
   messages: readonly McapDecodedMessage[]
 ): McapSynchronizedMessageWindow {
   return {
-    anchorTimeNs: 1n,
+    activeTimeline: "log",
     endTimeNs: 1n,
     messages,
     messagesByTopic: {},
     startTimeNs: 1n,
     streamPolicies: {},
-    timestampSource: "log",
+    timeNs: 1n,
   };
 }
 
@@ -84,8 +84,8 @@ function createMessage(
     logTimeNs: 1n,
     publishTimeNs: 1n,
     sequence: 1,
-    syncTimeNs: 1n,
-    timestampSource: "log",
+    activeTimeline: "log",
+    timelineTimeNs: 1n,
     topic: "/topic",
   };
 }
