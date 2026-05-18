@@ -860,6 +860,12 @@ export class DetectionOverlay
    * @returns True if current bounds are valid
    */
   hasValidBounds(): boolean {
+    // An overlay without a coordinate system isn't attached to a scene yet
+    // (or has been detached); no way to validate bounds.
+    if (!this.coordinateSystem) {
+      return false;
+    }
+
     return BaseOverlay.validBounds(this.bounds);
   }
 
