@@ -89,29 +89,35 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
    * after a close / drag) and clears focus when the focused tile was
    * removed. This is the function MosaicGrid wires to `onChange`.
    */
-  const setLayout = useCallback((next: MosaicNode<string> | null) => {
-    setLayoutState(next);
-    const presentIds = new Set(collectTileIds(next));
-    setTiles((prev) => {
-      let changed = false;
-      const filtered: Record<string, TilingTile> = {};
-      for (const [id, entry] of Object.entries(prev)) {
-        if (presentIds.has(id)) {
-          filtered[id] = entry;
-        } else {
-          changed = true;
-          // Free per-tile atomFamily instances so dynamic tile ids
-          // don't accumulate in the store across long sessions.
+  const setLayout = useCallback(
+    (next: MosaicNode<string> | null) => {
+      setLayoutState(next);
+      const presentIds = new Set(collectTileIds(next));
+      // Diff outside the setTiles updater. React doesn't run state
+      // updaters synchronously (and Strict Mode replays them), so
+      // side effects belong here, not inside.
+      const idsToRemove = Object.keys(tiles).filter(
+        (id) => !presentIds.has(id)
+      );
+      if (idsToRemove.length > 0) {
+        setTiles((prev) => {
+          const filtered = { ...prev };
+          for (const id of idsToRemove) delete filtered[id];
+          return filtered;
+        });
+        // Free per-tile atomFamily entries so dynamic tile ids don't
+        // accumulate in the store across long sessions.
+        for (const id of idsToRemove) {
           tileSourceAtom.remove(id);
           tileSelectionAtom.remove(id);
         }
       }
-      return changed ? filtered : prev;
-    });
-    setFocusedTileId((current) =>
-      current && presentIds.has(current) ? current : null
-    );
-  }, []);
+      setFocusedTileId((current) =>
+        current && presentIds.has(current) ? current : null
+      );
+    },
+    [tiles]
+  );
 
   const addTile = useCallback(
     (
@@ -156,8 +162,12 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
   );
 
   const autoLayout = useCallback(() => {
-    setLayoutState((prev) => autoLayoutFn(collectTileIds(prev)));
-  }, []);
+    // Derive from the tiles map, not from the layout tree — a tile
+    // entry can exist in `tiles` without being placed in the tree
+    // yet (e.g. when `initialLayout` is null or partial), and we
+    // don't want auto-layout to silently drop it.
+    setLayoutState(autoLayoutFn(Object.keys(tiles)));
+  }, [tiles]);
 
   const registerSettings = useCallback(
     (tileId: string, Component: React.ComponentType) => {
