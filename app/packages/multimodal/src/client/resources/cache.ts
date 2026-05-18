@@ -1,7 +1,6 @@
 import { LRUCache } from "lru-cache";
 
 import type {
-  ByteRange,
   ByteRangeCache,
   ByteRangeReadRequest,
   ByteRangeReadResult,
@@ -39,11 +38,17 @@ export function byteRangeCacheKey(request: ByteRangeReadRequest): string {
  * Creates a stable cache key for a decoded output.
  */
 export function decodedOutputCacheKey(key: DecodedOutputCacheKey): string {
+  const payloadKey = serializeCacheKey([
+    key.payload.encoding,
+    key.payload.schemaEncoding ?? null,
+    key.payload.schema ?? null,
+  ]);
+
   return serializeCacheKey([
     key.decoderId,
     key.decoderVersion,
     key.decoderOptionsKey ?? null,
-    payloadCacheKey(key.payload),
+    payloadKey,
     key.streamId,
     key.recordId,
     key.timeNs?.toString() ?? null,
@@ -71,14 +76,77 @@ export function createMemoryByteRangeCache(
 
       // The cached byte client checks normalized fill-block keys first. This
       // fallback keeps direct cache users and custom fill policies reusable.
-      const containingHit = cache.find((candidate) =>
-        canServeRange(candidate, request)
-      );
+      const containingHit = cache.find((candidate) => {
+        const sourceMatches =
+          candidate.source.sourceId === request.source.sourceId &&
+          candidate.source.url === request.source.url;
+        if (!sourceMatches) {
+          return false;
+        }
+
+        const candidateSize =
+          candidate.source.sizeBytes ?? candidate.source.fingerprint?.sizeBytes;
+        const requestSize =
+          request.source.sizeBytes ?? request.source.fingerprint?.sizeBytes;
+        const sizeMatches =
+          candidateSize === undefined ||
+          requestSize === undefined ||
+          candidateSize === requestSize;
+
+        const candidateFirstChunkCrc =
+          candidate.source.fingerprint?.firstChunkCrc;
+        const requestFirstChunkCrc = request.source.fingerprint?.firstChunkCrc;
+        const firstChunkCrcMatches =
+          candidateFirstChunkCrc === undefined ||
+          requestFirstChunkCrc === undefined ||
+          candidateFirstChunkCrc === requestFirstChunkCrc;
+
+        const candidateLastChunkCrc =
+          candidate.source.fingerprint?.lastChunkCrc;
+        const requestLastChunkCrc = request.source.fingerprint?.lastChunkCrc;
+        const lastChunkCrcMatches =
+          candidateLastChunkCrc === undefined ||
+          requestLastChunkCrc === undefined ||
+          candidateLastChunkCrc === requestLastChunkCrc;
+
+        const rangeContainsRequest =
+          candidate.range.offset <= request.range.offset &&
+          candidate.range.offset + candidate.range.length >=
+            request.range.offset + request.range.length;
+
+        return (
+          sizeMatches &&
+          firstChunkCrcMatches &&
+          lastChunkCrcMatches &&
+          rangeContainsRequest
+        );
+      });
       if (!containingHit) {
         return undefined;
       }
 
-      return sliceByteRangeResult(containingHit, request.range);
+      const sliceStartOffset =
+        request.range.offset - containingHit.range.offset;
+      const maxSafeNumber = BigInt(Number.MAX_SAFE_INTEGER);
+      if (sliceStartOffset > maxSafeNumber) {
+        throw new Error(
+          `Byte length ${sliceStartOffset.toString()} exceeds safe number range`
+        );
+      }
+      if (request.range.length > maxSafeNumber) {
+        throw new Error(
+          `Byte length ${request.range.length.toString()} exceeds safe number range`
+        );
+      }
+
+      const start = Number(sliceStartOffset);
+      const end = start + Number(request.range.length);
+
+      return {
+        bytes: containingHit.bytes.subarray(start, end),
+        range: request.range,
+        source: containingHit.source,
+      };
     },
     async put(result) {
       setByteBoundedEntry(
@@ -108,12 +176,20 @@ export function createMemoryDecodedOutputCache(
       return cache.get(decodedOutputCacheKey(key));
     },
     async put(key, result) {
+      const hintedSize = result.output.resourceHints?.sizeBytes;
+      const resultSizeBytes =
+        hintedSize === undefined
+          ? estimateFieldSize(result.output)
+          : hintedSize +
+            estimateFieldSize(result.output.attributes) +
+            estimateFieldSize(result.output.timing);
+
       setByteBoundedEntry(
         cache,
         options,
         decodedOutputCacheKey(key),
         result,
-        estimateDecodeResultSize(result)
+        resultSizeBytes
       );
     },
   };
@@ -143,84 +219,6 @@ function setByteBoundedEntry<Value extends object>(
   });
 }
 
-function canServeRange(
-  candidate: ByteRangeReadResult,
-  request: ByteRangeReadRequest
-) {
-  return (
-    canServeSource(candidate.source, request.source) &&
-    containsRange(candidate.range, request.range)
-  );
-}
-
-function canServeSource(
-  candidate: ByteSourceDescriptor,
-  request: ByteSourceDescriptor
-) {
-  if (
-    candidate.sourceId !== request.sourceId ||
-    candidate.url !== request.url
-  ) {
-    return false;
-  }
-
-  return (
-    sizeMatches(candidate, request) &&
-    fingerprintFieldMatches(candidate, request, "firstChunkCrc") &&
-    fingerprintFieldMatches(candidate, request, "lastChunkCrc")
-  );
-}
-
-function sizeMatches(
-  candidate: ByteSourceDescriptor,
-  request: ByteSourceDescriptor
-) {
-  const candidateSize = candidate.sizeBytes ?? candidate.fingerprint?.sizeBytes;
-  const requestSize = request.sizeBytes ?? request.fingerprint?.sizeBytes;
-
-  return (
-    candidateSize === undefined ||
-    requestSize === undefined ||
-    candidateSize === requestSize
-  );
-}
-
-function fingerprintFieldMatches(
-  candidate: ByteSourceDescriptor,
-  request: ByteSourceDescriptor,
-  field: "firstChunkCrc" | "lastChunkCrc"
-) {
-  const candidateValue = candidate.fingerprint?.[field];
-  const requestValue = request.fingerprint?.[field];
-
-  return (
-    candidateValue === undefined ||
-    requestValue === undefined ||
-    candidateValue === requestValue
-  );
-}
-
-function containsRange(outer: ByteRange, inner: ByteRange) {
-  return (
-    outer.offset <= inner.offset &&
-    outer.offset + outer.length >= inner.offset + inner.length
-  );
-}
-
-function sliceByteRangeResult(
-  result: ByteRangeReadResult,
-  range: ByteRange
-): ByteRangeReadResult {
-  const start = safeNumber(range.offset - result.range.offset);
-  const end = start + safeNumber(range.length);
-
-  return {
-    bytes: result.bytes.subarray(start, end),
-    range,
-    source: result.source,
-  };
-}
-
 /**
  * Creates a stable key for byte-source identity.
  */
@@ -236,42 +234,11 @@ export function byteSourceCacheKey(source: ByteSourceDescriptor): string {
   ]);
 }
 
-function payloadCacheKey(payload: DecodedOutputCacheKey["payload"]): string {
-  return serializeCacheKey([
-    payload.encoding,
-    payload.schemaEncoding ?? null,
-    payload.schema ?? null,
-  ]);
-}
-
 /**
  * Serializes key parts without delimiter collisions.
  */
 export function serializeCacheKey(parts: readonly (string | null)[]): string {
   return JSON.stringify(parts);
-}
-
-function safeNumber(value: bigint): number {
-  if (value > BigInt(Number.MAX_SAFE_INTEGER)) {
-    throw new Error(
-      `Byte length ${value.toString()} exceeds safe number range`
-    );
-  }
-
-  return Number(value);
-}
-
-function estimateDecodeResultSize(result: DecodeResourceResult): number {
-  const hintedSize = result.output.resourceHints?.sizeBytes;
-  if (hintedSize !== undefined) {
-    return (
-      hintedSize +
-      estimateFieldSize(result.output.attributes) +
-      estimateFieldSize(result.output.timing)
-    );
-  }
-
-  return estimateFieldSize(result.output);
 }
 
 function estimateFieldSize(value: unknown): number {

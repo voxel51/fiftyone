@@ -1,24 +1,20 @@
 import { getFetchFunctionExtended } from "@fiftyone/utilities";
 import { defaultDecoderRegistry, type DecoderRegistry } from "../../decoders";
-import type { Decoder } from "../../decoders";
 import { byteRangeCacheKey, decodedOutputCacheKey } from "./cache";
 import {
   BYTE_SOURCE_READ_PROFILE,
   DEFAULT_LOCAL_BYTE_CACHE_BLOCK_SIZE_BYTES,
   DEFAULT_REMOTE_BYTE_CACHE_BLOCK_SIZE_BYTES,
-} from "./types";
+} from "./constants";
 import type {
   ByteCacheLayers,
-  ByteCacheBlockSizeBytes,
   ByteRange,
   ByteRangeReadRequest,
   ByteRangeReadResult,
   ByteResourceClient,
   DecodedOutputCache,
-  DecodedOutputCacheKey,
   DecodeExecutor,
   DecodeResourceClient,
-  DecodeResourceRequest,
   DecodeResourceResult,
 } from "./types";
 
@@ -52,7 +48,12 @@ export function createHttpByteResourceClient(
 ): ByteResourceClient {
   return {
     async readBytes(request) {
-      validateRange(request.range);
+      if (request.range.offset < 0n) {
+        throw new Error("Byte range offset must be non-negative");
+      }
+      if (request.range.length <= 0n) {
+        throw new Error("Byte range length must be positive");
+      }
 
       const expectedLength = safeNumber(request.range.length);
       const endOffset = request.range.offset + request.range.length - 1n;
@@ -69,21 +70,77 @@ export function createHttpByteResourceClient(
       });
       const bytes = new Uint8Array(buffer);
 
-      const totalSizeBytes = validateContentRange(
-        headers,
-        request.range,
-        expectedLength
+      // Validate the HTTP range contract before trusting the returned bytes.
+      const contentRange = headers?.get("Content-Range");
+      if (!contentRange) {
+        throw new Error(
+          "Expected Content-Range header for byte-range response"
+        );
+      }
+
+      const contentRangeMatch = /^bytes (\d+)-(\d+)\/(\d+|\*)$/.exec(
+        contentRange
       );
+      if (!contentRangeMatch) {
+        throw new Error(`Invalid Content-Range header '${contentRange}'`);
+      }
+
+      const contentRangeStart = BigInt(contentRangeMatch[1]);
+      const contentRangeEnd = BigInt(contentRangeMatch[2]);
+      if (
+        contentRangeStart !== request.range.offset ||
+        contentRangeEnd !== request.range.offset + request.range.length - 1n ||
+        safeNumber(contentRangeEnd - contentRangeStart + 1n) !== expectedLength
+      ) {
+        throw new Error(
+          `Expected Content-Range for ${request.range.offset.toString()}-${
+            request.range.offset + request.range.length - 1n
+          } but received '${contentRange}'`
+        );
+      }
+
+      const totalSizeBytes =
+        contentRangeMatch[3] === "*" ? undefined : BigInt(contentRangeMatch[3]);
+      if (totalSizeBytes !== undefined && contentRangeEnd >= totalSizeBytes) {
+        throw new Error(`Invalid Content-Range header '${contentRange}'`);
+      }
       if (bytes.byteLength !== expectedLength) {
         throw new Error(
           `Expected ${expectedLength} bytes but received ${bytes.byteLength}`
         );
       }
 
+      // Preserve discovered source size so later cache fills can align blocks.
+      let source = request.source;
+      if (totalSizeBytes !== undefined) {
+        const existingSizeBytes =
+          source.sizeBytes ?? source.fingerprint?.sizeBytes;
+        const parsedExistingSizeBytes =
+          existingSizeBytes === undefined || !/^\d+$/.test(existingSizeBytes)
+            ? undefined
+            : BigInt(existingSizeBytes);
+        if (
+          parsedExistingSizeBytes !== undefined &&
+          parsedExistingSizeBytes !== totalSizeBytes
+        ) {
+          throw new Error(
+            `Expected source size ${existingSizeBytes} but Content-Range reported ${totalSizeBytes.toString()}`
+          );
+        }
+
+        const sizeBytes = totalSizeBytes.toString();
+        if (source.sizeBytes !== sizeBytes) {
+          source = {
+            ...source,
+            sizeBytes,
+          };
+        }
+      }
+
       return {
         bytes,
         range: request.range,
-        source: sourceWithResolvedSize(request.source, totalSizeBytes),
+        source,
       };
     },
   };
@@ -101,17 +158,56 @@ export function createCachedByteResourceClient(
 
   return {
     async readBytes(request) {
-      const fillRequest =
-        request.cachePolicy?.blockFill === false
-          ? request
-          : byteCacheFillRequest(request, caches.blockSizeBytes);
-      const cachedFill = await readCachedBytes(caches, fillRequest);
+      // Widen small reads to cacheable blocks when the source size is known.
+      let fillRequest = request;
+      if (request.cachePolicy?.blockFill !== false) {
+        const blockSizeBytes =
+          typeof caches.blockSizeBytes === "function"
+            ? caches.blockSizeBytes(request)
+            : caches.blockSizeBytes ?? defaultByteCacheBlockSizeBytes(request);
+
+        if (
+          blockSizeBytes !== undefined &&
+          Number.isSafeInteger(blockSizeBytes) &&
+          blockSizeBytes > 0 &&
+          request.range.length < BigInt(blockSizeBytes)
+        ) {
+          const sizeBytes =
+            request.source.sizeBytes ?? request.source.fingerprint?.sizeBytes;
+          const sourceSize =
+            sizeBytes === undefined || !/^\d+$/.test(sizeBytes)
+              ? undefined
+              : BigInt(sizeBytes);
+
+          if (sourceSize !== undefined) {
+            const blockSize = BigInt(blockSizeBytes);
+            const offset = (request.range.offset / blockSize) * blockSize;
+            const blockEnd = offset + blockSize;
+            const end = blockEnd < sourceSize ? blockEnd : sourceSize;
+
+            if (end >= request.range.offset + request.range.length) {
+              fillRequest = {
+                ...request,
+                range: {
+                  length: end - offset,
+                  offset,
+                },
+              };
+            }
+          }
+        }
+      }
+
+      const cachedFill = await caches.memory.get(fillRequest);
       if (cachedFill) {
         return sliceByteRangeResult(cachedFill, request.range);
       }
 
-      if (!sameByteRange(fillRequest.range, request.range)) {
-        const cachedRequest = await readCachedBytes(caches, request);
+      if (
+        fillRequest.range.offset !== request.range.offset ||
+        fillRequest.range.length !== request.range.length
+      ) {
+        const cachedRequest = await caches.memory.get(request);
         if (cachedRequest) {
           return cachedRequest;
         }
@@ -158,14 +254,45 @@ export function createDecodeResourceClient({
     async decode(request) {
       const decoder = registry.find(request.payload);
       if (!decoder) {
-        throw new Error(
-          `No decoder registered for ${formatPayload(request.payload)}`
-        );
+        const payloadDescription = [
+          request.payload.encoding,
+          request.payload.schemaEncoding,
+          request.payload.schema,
+        ]
+          .filter(Boolean)
+          .join("/");
+
+        throw new Error(`No decoder registered for ${payloadDescription}`);
       }
 
-      const cacheKey = maybeDecodeCacheKey(request, decoder);
+      // Keep decode execution local to this request so cache/in-flight paths
+      // share the same selected decoder and request context.
+      const runDecode = async (): Promise<DecodeResourceResult> => ({
+        decoderId: decoder.id,
+        decoderVersion: decoder.version,
+        output: await executor.decode({
+          bytes: request.bytes,
+          context: request.context,
+          decoder,
+          payload: request.payload,
+        }),
+        payload: request.payload,
+      });
+
+      const cacheKey = request.cache
+        ? {
+            decoderId: decoder.id,
+            decoderOptionsKey: request.cache.decoderOptionsKey,
+            decoderVersion: decoder.version,
+            payload: request.payload,
+            recordId: request.cache.recordId,
+            source: request.cache.source,
+            streamId: request.cache.streamId,
+            timeNs: request.cache.timeNs,
+          }
+        : undefined;
       if (!cacheKey) {
-        return runDecode(request, decoder, executor);
+        return runDecode();
       }
 
       const cached = await cache.get(cacheKey);
@@ -179,7 +306,7 @@ export function createDecodeResourceClient({
         return pendingDecode;
       }
 
-      const decode = runDecode(request, decoder, executor)
+      const decode = runDecode()
         .then(async (result) => {
           await cache.put(cacheKey, result);
           return result;
@@ -191,167 +318,6 @@ export function createDecodeResourceClient({
 
       return decode;
     },
-  };
-}
-
-async function readCachedBytes(
-  caches: ByteCacheLayers,
-  request: ByteRangeReadRequest
-): Promise<ByteRangeReadResult | undefined> {
-  return caches.memory.get(request);
-}
-
-async function runDecode(
-  request: DecodeResourceRequest,
-  decoder: Decoder,
-  executor: DecodeExecutor
-): Promise<DecodeResourceResult> {
-  return {
-    decoderId: decoder.id,
-    decoderVersion: decoder.version,
-    output: await executor.decode({
-      bytes: request.bytes,
-      context: request.context,
-      decoder,
-      payload: request.payload,
-    }),
-    payload: request.payload,
-  };
-}
-
-function maybeDecodeCacheKey(
-  request: DecodeResourceRequest,
-  decoder: Decoder
-): DecodedOutputCacheKey | undefined {
-  if (!request.cache) {
-    return undefined;
-  }
-
-  return {
-    decoderId: decoder.id,
-    decoderOptionsKey: request.cache.decoderOptionsKey,
-    decoderVersion: decoder.version,
-    payload: request.payload,
-    recordId: request.cache.recordId,
-    source: request.cache.source,
-    streamId: request.cache.streamId,
-    timeNs: request.cache.timeNs,
-  };
-}
-
-function sameByteRange(left: ByteRange, right: ByteRange): boolean {
-  return left.offset === right.offset && left.length === right.length;
-}
-
-function byteCacheFillRequest(
-  request: ByteRangeReadRequest,
-  blockSizeBytes: ByteCacheBlockSizeBytes | undefined
-): ByteRangeReadRequest {
-  const resolvedBlockSizeBytes = resolveBlockSizeBytes(request, blockSizeBytes);
-
-  if (
-    !isPositiveSafeInteger(resolvedBlockSizeBytes) ||
-    request.range.length >= BigInt(resolvedBlockSizeBytes)
-  ) {
-    return request;
-  }
-
-  const sourceSize = sourceSizeBytes(request);
-  if (sourceSize === undefined) {
-    return request;
-  }
-
-  const blockSize = BigInt(resolvedBlockSizeBytes);
-  const offset = (request.range.offset / blockSize) * blockSize;
-  const end = minBigInt(offset + blockSize, sourceSize);
-  if (end < request.range.offset + request.range.length) {
-    return request;
-  }
-
-  return {
-    ...request,
-    range: {
-      length: end - offset,
-      offset,
-    },
-  };
-}
-
-function resolveBlockSizeBytes(
-  request: ByteRangeReadRequest,
-  blockSizeBytes: ByteCacheBlockSizeBytes | undefined
-): number | undefined {
-  if (typeof blockSizeBytes === "function") {
-    return blockSizeBytes(request);
-  }
-
-  return blockSizeBytes ?? defaultByteCacheBlockSizeBytes(request);
-}
-
-function validateContentRange(
-  headers: Headers | undefined,
-  range: ByteRange,
-  expectedLength: number
-): bigint | undefined {
-  const contentRange = headers?.get("Content-Range");
-  if (!contentRange) {
-    throw new Error("Expected Content-Range header for byte-range response");
-  }
-
-  const match = /^bytes (\d+)-(\d+)\/(\d+|\*)$/.exec(contentRange);
-  if (!match) {
-    throw new Error(`Invalid Content-Range header '${contentRange}'`);
-  }
-
-  const start = BigInt(match[1]);
-  const end = BigInt(match[2]);
-  if (
-    start !== range.offset ||
-    end !== range.offset + range.length - 1n ||
-    safeNumber(end - start + 1n) !== expectedLength
-  ) {
-    throw new Error(
-      `Expected Content-Range for ${range.offset.toString()}-${
-        range.offset + range.length - 1n
-      } but received '${contentRange}'`
-    );
-  }
-
-  const totalSizeBytes = match[3] === "*" ? undefined : BigInt(match[3]);
-  if (totalSizeBytes !== undefined && end >= totalSizeBytes) {
-    throw new Error(`Invalid Content-Range header '${contentRange}'`);
-  }
-
-  return totalSizeBytes;
-}
-
-function sourceWithResolvedSize(
-  source: ByteRangeReadRequest["source"],
-  totalSizeBytes: bigint | undefined
-) {
-  if (totalSizeBytes === undefined) {
-    return source;
-  }
-
-  const existingSizeBytes = source.sizeBytes ?? source.fingerprint?.sizeBytes;
-  const parsedExistingSizeBytes = parseSizeBytes(existingSizeBytes);
-  if (
-    parsedExistingSizeBytes !== undefined &&
-    parsedExistingSizeBytes !== totalSizeBytes
-  ) {
-    throw new Error(
-      `Expected source size ${existingSizeBytes} but Content-Range reported ${totalSizeBytes.toString()}`
-    );
-  }
-
-  const sizeBytes = totalSizeBytes.toString();
-  if (source.sizeBytes === sizeBytes) {
-    return source;
-  }
-
-  return {
-    ...source,
-    sizeBytes,
   };
 }
 
@@ -376,21 +342,6 @@ function sliceByteRangeResult(
   };
 }
 
-function sourceSizeBytes(request: ByteRangeReadRequest): bigint | undefined {
-  const sizeBytes =
-    request.source.sizeBytes ?? request.source.fingerprint?.sizeBytes;
-  return parseSizeBytes(sizeBytes);
-}
-
-function validateRange(range: ByteRange) {
-  if (range.offset < 0n) {
-    throw new Error("Byte range offset must be non-negative");
-  }
-  if (range.length <= 0n) {
-    throw new Error("Byte range length must be positive");
-  }
-}
-
 function safeNumber(value: bigint): number {
   if (value > BigInt(Number.MAX_SAFE_INTEGER)) {
     throw new Error(
@@ -399,26 +350,4 @@ function safeNumber(value: bigint): number {
   }
 
   return Number(value);
-}
-
-function minBigInt(left: bigint, right: bigint): bigint {
-  return left < right ? left : right;
-}
-
-function isPositiveSafeInteger(value: number | undefined): value is number {
-  return value !== undefined && Number.isSafeInteger(value) && value > 0;
-}
-
-function parseSizeBytes(value: string | undefined): bigint | undefined {
-  if (value === undefined || !/^\d+$/.test(value)) {
-    return undefined;
-  }
-
-  return BigInt(value);
-}
-
-function formatPayload(payload: DecodeResourceRequest["payload"]): string {
-  return [payload.encoding, payload.schemaEncoding, payload.schema]
-    .filter(Boolean)
-    .join("/");
 }

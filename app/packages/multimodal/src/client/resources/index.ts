@@ -12,8 +12,10 @@ import {
 import {
   DEFAULT_BYTE_CACHE_SIZE_BYTES,
   DEFAULT_DECODED_CACHE_SIZE_BYTES,
-  type CreateMultimodalResourcesClientOptions,
-  type MultimodalResourcesClient,
+} from "./constants";
+import type {
+  CreateMultimodalResourcesClientOptions,
+  MultimodalResourcesClient,
 } from "./types";
 
 /**
@@ -59,21 +61,9 @@ export function createMultimodalResourcesClient(
 }
 
 /**
- * Default resource client.
- */
-export const defaultMultimodalResourcesClient =
-  createMultimodalResourcesClient();
-
-/**
  * Public byte-cache constants and source profile values.
  */
-export {
-  BYTE_SOURCE_READ_PROFILE,
-  DEFAULT_BYTE_CACHE_SIZE_BYTES,
-  DEFAULT_DECODED_CACHE_SIZE_BYTES,
-  DEFAULT_LOCAL_BYTE_CACHE_BLOCK_SIZE_BYTES,
-  DEFAULT_REMOTE_BYTE_CACHE_BLOCK_SIZE_BYTES,
-} from "./types";
+export * from "./constants";
 
 /**
  * Public in-memory cache factories for custom resource client wiring.
