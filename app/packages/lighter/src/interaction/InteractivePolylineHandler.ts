@@ -294,7 +294,9 @@ export class InteractivePolylineHandler implements InteractionHandler {
     worldPoint: Point,
     modifiers: ClickEventModifiers
   ): void {
-    this.overlay.setPreviewAnchorFlipped(modifiers.metaKey);
+    this.overlay.setPreviewAnchorFlipped(
+      modifiers.metaKey || modifiers.ctrlKey
+    );
 
     // hide preview if:
     //   - creating a new segment (holding shift key)
