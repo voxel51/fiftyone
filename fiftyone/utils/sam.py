@@ -247,7 +247,7 @@ class SAMPromptMode(Enum):
     box_point_combo = 4
 
 
-class SegmentAnythingImageGetItem(fout.GetItem):
+class SegmentAnythingImageGetItem(fout.MediaGetItem):
     """A :class:`GetItem` that loads images, bounding boxes and/or keypoints to feed to
     :class:`SegmentAnythingModel` instances.
 

@@ -1109,7 +1109,7 @@ class FiftyOneTransformerForPoseEstimationConfig(FiftyOneTransformerConfig):
         self.dataset_index = self.parse_int(d, "dataset_index", default=0)
 
 
-class PoseEstimationGetItem(fout.GetItem):
+class PoseEstimationGetItem(fout.MediaGetItem):
     """A :class:`GetItem` that loads images and bounding boxes to feed to
     :class:`FiftyOneTransformerForPoseEstimation` instances.
 

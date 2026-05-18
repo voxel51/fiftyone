@@ -344,6 +344,50 @@ class GetItem(object):
             self._field_mapping[k] = v
 
 
+class MediaLoaderMixin(object):
+    """Mixin providing _load_media hook for :class:`GetItem`."""
+
+    def _load_media(self, d):
+        """Loads the media for a sample.
+
+        Subclasses should read whichever keys they require (typically
+        ``"filepath"``) from ``d`` and return the loaded media (e.g., a PIL
+        image, numpy array, or model-specific representation).
+
+        Args:
+            d: a dict mapping the :meth:`required_keys` from :class:`GetItem` to values from the
+                sample being processed
+
+        Returns:
+            the loaded media object
+        """
+        raise NotImplementedError("subclasses must implement _load_media()")
+
+
+class MediaGetItem(GetItem, MediaLoaderMixin):
+    """A :class:`GetItem` for loading model inputs which include
+    media (e.g., image, video etc.).
+
+    Subclasses must implement _load_media() to define how media is loaded.
+    """
+
+    def __init_subclass__(cls, **kwargs):
+        """Validates that subclasses implement _load_media.
+
+        Issues a warning if _load_media is not implemented.
+        """
+        super().__init_subclass__(**kwargs)
+
+        # Check if _load_media is implemented in this subclass
+        # (not just inherited from MediaLoaderMixin)
+        if "_load_media" not in cls.__dict__:
+            logger.warning(
+                f"{cls.__name__} inherits from MediaGetItem but does not "
+                f"implement _load_media(). This method should be implemented "
+                f"to define how media is loaded.",
+            )
+
+
 class TorchEmbeddingsMixin(fom.EmbeddingsMixin):
     """Mixin for Torch models that can generate embeddings.
 
@@ -613,7 +657,7 @@ class TorchImageModelConfig(foc.Config):
         self.device = self.parse_string(d, "device", default=None)
 
 
-class ImageGetItem(GetItem):
+class ImageGetItem(MediaGetItem):
     """A :class:`GetItem` that loads images to feed to :class:`TorchImageModel`
     instances.
 
@@ -2712,11 +2756,17 @@ class TorchVideoFramesIterableDataset(IterableDataset):
         """
         self.chunk_size = chunk_size if chunk_size is not None else 1
 
-        self.video_get_item = VideoFrameGetItem(get_item) if get_item else None
+        if isinstance(get_item, MediaLoaderMixin):
+            self.video_get_item = VideoFrameGetItem(get_item)
+        else:
+            raise TypeError(
+                f"Model's get_item must implement MediaLoaderMixin, got"
+                f"{type(get_item).__name__}"
+            )
         self.skip_failures = skip_failures
 
-        self.video_paths = samples.values("filepath")
-        self.sample_ids = samples.values("id")
+        self.video_paths = self._load_field(samples, "filepath")
+        self.sample_ids = self._load_field(samples, "id")
         self.sample_data = None
         self._extract_sample_data(samples)
 
@@ -2750,9 +2800,11 @@ class TorchVideoFramesIterableDataset(IterableDataset):
         # pylint:disable-next=protected-access
         food._disconnect()
 
+    def _load_field(self, samples, field_name):
+        return TorchSerializedList(samples.values(field_name))
+
     def _get_decoder_for_video(self, video_path, frame_range=None):
-        """
-        Get decoder for video.
+        """Returns decoder for video.
 
         Cache only the current video being processed.
         """
@@ -2812,7 +2864,9 @@ class TorchVideoFramesIterableDataset(IterableDataset):
                 if not field_name.startswith(samples._FRAMES_PREFIX)
                 else field_name
             )
-            self.sample_data[field_key] = samples.values(frame_field_name)
+            self.sample_data[field_key] = self._load_field(
+                samples, frame_field_name
+            )
 
     def __iter__(self):
         worker_info = get_worker_info()
