@@ -12,7 +12,7 @@
         "./client/resources": "./src/client/resources/index.ts",
         "./decoders": "./src/decoders/index.ts",
         "./inject": "./src/inject/index.ts",
-        "./mcap": "./src/mcap/index.ts",
+        "./adapters/mcap": "./src/adapters/mcap/index.ts",
         "./schemas/v1": "./src/schemas/v1/index.ts",
         "./visualization": "./src/visualization/index.ts",
         "./visualization/panels/image": "./src/visualization/panels/image.tsx",
@@ -38,8 +38,8 @@
             "inject": [
                 "src/inject/index.ts"
             ],
-            "mcap": [
-                "src/mcap/index.ts"
+            "adapters/mcap": [
+                "src/adapters/mcap/index.ts"
             ],
             "schemas/v1": [
                 "src/schemas/v1/index.ts"
