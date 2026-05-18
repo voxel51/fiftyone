@@ -10,17 +10,16 @@ Queries fetch small server-authored protobuf artifacts, such as scene inventory
 and playback plans. Query code lives under `src/client/queries`, with React
 wrappers under `src/client/hooks`.
 
-Queries do not read media bytes or decode payloads. They stay cheap, typed, and
-source-agnostic.
+Queries do not read media bytes or decode payloads. They are always format
+agnostic.
 
 ### Resources
 
-Resources do the heavier local work needed once the app knows what to play.
-They cover byte-range reads, decode execution, and bounded cache contracts
+Resources cover byte-range reads, decode execution, and bounded cache contracts
 under `src/client/resources`.
 
-Resources are still source-agnostic: a byte range is just `{ source, range }`,
-and a decode request is just `{ payload, bytes, context }`. Adapters decide
+While resources are source-agnostic: a byte range is just `{ source, range }`,
+and a decode request is just `{ payload, bytes, context }`. **Adapters** decide
 which ranges to read and which payload descriptors to decode.
 
 ### Adapters
@@ -29,23 +28,20 @@ Adapters compose queries and resources for a concrete source format. The MCAP
 adapter under `src/mcap` owns MCAP indexing, chunk decompression,
 channel/schema mapping, sync-window selection, worker playback, and
 adapter-owned decoder registration. Its public surface presents playback-ready
-APIs instead of exposing MCAP internals to the generic client package.
+APIs.
 
-### Supporting Contracts
+## Runtime Flow for Synchronized Playback
 
-`src/decoders` defines generic payload decoder interfaces. `src/visualization`
-renders decoded visual outputs without knowing how the bytes were fetched.
-`src/schemas/v1` is the shared generated protobuf contract surface.
-
-## Runtime Flow
-
-1. UI hooks fetch inventory/playback-plan contracts through the query layer.
-2. The MCAP adapter uses those contracts to choose topics, the active timeline
-   range, sync policy, and byte ranges.
-3. Byte resources read MCAP ranges through app media URLs and populate the raw
-   byte cache.
-4. The MCAP reader uses `@mcap/core` with local decompression handlers backed
-   by Foxglove's browser WASM codec packages for supported compressed chunks.
+1. Playback driver derives an MCAP byte source from the sample filepath and
+   creates a worker-backed MCAP resource client.
+2. The MCAP resource client initializes an `@mcap/core` indexed reader over app
+   media byte-range URLs, using the raw byte cache and decompression handlers.
+3. The modal asks the MCAP reader summary for topic inventory via
+   `readTopics(...)` and asks the same source for the active timeline range via
+   `readTimelineRange(...)`.
+4. The driver then reads synchronized windows with
+   `readSynchronizedMessages(...)` for load/seek and
+   `readSynchronizedMessageBatch(...)` for playback lookahead.
 5. MCAP messages are mapped to generic payload descriptors and decoded through
    the decode resource client.
 6. Decoded visualization outputs are cached and rendered by source-agnostic
@@ -60,64 +56,45 @@ resource client as inline execution, but exposes it through prioritized RPC:
 -   current-frame requests run before speculative playback batches,
 -   streaming reads return incremental values to the main thread,
 -   transferable buffers move decoded image/point-cloud data without extra
-    copies, and
--   worker startup can fall back to inline execution when configured.
+    copies
 
 ## Decompression
 
-The adapter delegates MCAP chunk decompression to Foxglove's browser WASM codec
-packages instead of instantiating `.wasm` binaries directly. The app keeps only
-a small local wrapper that:
-
--   exposes the chunk compressions this adapter supports today: `lz4` and
-    `zstd`,
--   validates MCAP decompressed sizes before they are handed to a codec
-    package, and
--   leaves codec runtime details, WASM loading, and Emscripten glue inside
-    upstream packages.
-
-The FiftyOne app Vite config enables `vite-plugin-wasm`, resolves the Foxglove
-package-local WASM imports as asset URLs, and teaches dependency optimization
-to keep those wrappers as browser-loadable CommonJS modules. The adapter
-installs a small `Buffer` shim before the codec packages load because those
-upstream wrappers return Node-style `Buffer` instances.
+The adapter delegates MCAP chunk decompression (usually zstd or lz4) to
+Foxglove's browser WASM codec packages.
 
 ## Caching
 
-The package has two in-memory cache tiers:
+Caching is split by ownership. The core media path has three architectural
+caches, described below.
 
--   The byte cache stores raw byte-range results by source identity and
-    half-open range. Remote/object-storage sources use larger fill blocks than
-    local sources to reduce round trips.
--   The decoded-output cache stores decoder results by decoder identity,
-    payload descriptor, source/record identity, timestamp, and decoder options.
+### Core Media Path
 
-The caches are intentionally app-local and bounded by estimated byte budgets.
-They avoid re-reading MCAP chunks and re-decoding repeated playback windows
-without changing server-side dataset state.
+1. **Raw byte-range cache**
 
-## Local Manual Test
+    `src/client/resources` keeps a bounded in-memory LRU of byte-range reads by
+    source identity and half-open range. This is the durable, format-agnostic
+    media cache. MCAP uses it through `ByteClientReadable`, but the cache
+    itself knows only about byte sources and ranges.
 
-Create a temporary MCAP dataset from the NuScenes scene file:
+    The cached byte client normalizes most small reads into source-aware fill
+    blocks before checking the cache. Local/unknown sources use smaller fill
+    blocks, while remote/object-storage sources use larger blocks to reduce
+    round trips. A later subrange read can be sliced from the cached fill
+    block.
 
-```python
-import fiftyone as fo
+2. **MCAP reader and index caches**
 
-dataset = fo.Dataset("mcap-nuscenes-scene-0002")
-dataset.add_sample(
-    fo.Sample(filepath="nuscenes/NuScenes-v1.0-trainval-scene-0002.mcap")
-)
-```
+    `src/mcap/reader` owns initialized MCAP readers per source. The reader
+    store prevents each playback request from rebuilding the MCAP reader,
+    reparsing summary metadata, and recreating the seekable reader wrapper.
 
-Then compute and persist the scene inventory:
+    The default reader also gives `@mcap/core` a message-index cache budget.
+    That cache is owned by the MCAP library, but the adapter sets the budget
+    because indexed message-time reads are on the playback hot path.
 
-```python
-from fiftyone.multimodal.adapters.mcap import McapAdapter
-from fiftyone.multimodal.db.mongo import MongoAdapter
+3. **Synchronized playback-window cache**
 
-inventory = McapAdapter.get_scene_inventory(dataset.first().filepath)
-MongoAdapter.write_scene_inventories(dataset, [inventory])
-```
-
-Start the app against that dataset. The modal renderer should show synchronized
-playback for the hardcoded NuScenes camera/lidar topics.
+    A playback window is the resolved answer for one frame: source, active
+    timeline, frame time, playback topics, and sync policies. This cache is
+    controller-policy-shaped, so it belongs with the playback driver.
