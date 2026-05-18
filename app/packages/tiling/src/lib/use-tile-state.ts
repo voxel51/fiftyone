@@ -30,7 +30,18 @@ export function useTileSource(): string | null {
  */
 export function useSetTileSource(): (sourceId: string | null) => void {
   const tileId = useTileId();
-  return useSetAtom(tileSourceAtom(tileId ?? NO_TILE));
+  const set = useSetAtom(tileSourceAtom(tileId ?? NO_TILE));
+  return useCallback(
+    (sourceId: string | null) => {
+      // Out-of-scope writes are real no-ops — don't touch the NO_TILE
+      // placeholder atom (state could otherwise survive across mounts).
+      if (!tileId) return;
+      set(sourceId);
+    },
+    // `set` is a Jotai setter (referentially stable from useSetAtom).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tileId]
+  );
 }
 
 /**
@@ -66,7 +77,15 @@ export function useTileSelection<T = unknown>(): T | null {
  */
 export function useSetTileSelection(): (selection: unknown) => void {
   const tileId = useTileId();
-  return useSetAtom(tileSelectionAtom(tileId ?? NO_TILE));
+  const set = useSetAtom(tileSelectionAtom(tileId ?? NO_TILE));
+  return useCallback(
+    (selection: unknown) => {
+      if (!tileId) return;
+      set(selection);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tileId]
+  );
 }
 
 /**

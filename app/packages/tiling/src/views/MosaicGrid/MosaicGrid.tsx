@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Mosaic,
   MosaicBranch,
@@ -64,16 +64,38 @@ const MosaicGrid: React.FC<MosaicGridProps> = ({
 }) => {
   const [expandedTileId, setExpandedTileId] = useState<string | null>(null);
   const preExpandLayout = useRef<MosaicNode<string> | null>(null);
+  // The post-expand layout we wrote via onChange. If `value` later
+  // diverges from this while a tile is still expanded, an external
+  // mutation happened (add/remove/reflow) and the snapshot is stale.
+  const expandedLayoutRef = useRef<MosaicNode<string> | null>(null);
+
+  useEffect(() => {
+    if (
+      expandedTileId !== null &&
+      expandedLayoutRef.current !== null &&
+      value !== expandedLayoutRef.current
+    ) {
+      preExpandLayout.current = null;
+    }
+  }, [value, expandedTileId]);
 
   const handleExpand = (id: string, path: MosaicBranch[]) => {
     if (expandedTileId === id) {
-      onChange(preExpandLayout.current);
+      // If the snapshot was invalidated by an external mutation while
+      // expanded, drop back to the current value instead of restoring a
+      // stale tree that would clobber those updates.
+      if (preExpandLayout.current !== null) {
+        onChange(preExpandLayout.current);
+      }
       preExpandLayout.current = null;
+      expandedLayoutRef.current = null;
       setExpandedTileId(null);
     } else {
       preExpandLayout.current = value;
       if (value !== null) {
-        onChange(updateTree(value, [createExpandUpdate(path, 100)]));
+        const next = updateTree(value, [createExpandUpdate(path, 100)]);
+        expandedLayoutRef.current = next;
+        onChange(next);
       }
       setExpandedTileId(id);
     }
@@ -242,6 +264,9 @@ export function addTileToLayout(
   targetId?: string | null
 ): MosaicNode<string> {
   if (layout === null) return newId;
+  if (collectTileIds(layout).includes(newId)) {
+    throw new Error(`Tile id "${newId}" already exists in layout`);
+  }
 
   const leaves = walkLeaves(layout);
   const target =

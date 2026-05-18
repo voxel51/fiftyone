@@ -1,3 +1,4 @@
+import { Provider as JotaiProvider, createStore } from "jotai";
 import React, {
   createContext,
   useCallback,
@@ -13,6 +14,7 @@ import {
   autoLayout as autoLayoutFn,
   collectTileIds,
 } from "../views/MosaicGrid/MosaicGrid";
+import { tileSelectionAtom, tileSourceAtom } from "./atoms";
 import type {
   AddTileOptions,
   TilingContextValue,
@@ -57,6 +59,17 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
       : initialLayout
   );
   const [focusedTileId, setFocusedTileId] = useState<string | null>(null);
+  // Mirror `focusedTileId` in a ref so `addTile` can resolve the target
+  // tile without nesting a `setLayoutState` inside the `setFocusedTileId`
+  // updater (state updaters must remain pure; nested setState calls
+  // duplicate in Strict Mode).
+  const focusedTileIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    focusedTileIdRef.current = focusedTileId;
+  }, [focusedTileId]);
+  // Per-instance Jotai store so multiple <TilingProvider>s on the same
+  // page each get isolated atom state (sources, selections, registry).
+  const jotaiStore = useMemo(() => createStore(), []);
   const [settings, setSettings] = useState<
     Record<string, React.ComponentType>
   >({});
@@ -87,6 +100,10 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
           filtered[id] = entry;
         } else {
           changed = true;
+          // Free per-tile atomFamily instances so dynamic tile ids
+          // don't accumulate in the store across long sessions.
+          tileSourceAtom.remove(id);
+          tileSelectionAtom.remove(id);
         }
       }
       return changed ? filtered : prev;
@@ -103,13 +120,12 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
     ): string => {
       const id = `${idPrefix}-${counterRef.current++}`;
       setTiles((prev) => ({ ...prev, [id]: tile }));
-      // Resolve target inside a functional setLayout so we don't capture
-      // a stale focusedTileId.
-      setFocusedTileId((currentFocused) => {
-        const target = targetId !== undefined ? targetId : currentFocused;
-        setLayoutState((prev) => addTileToLayout(prev, id, target));
-        return focus ? id : currentFocused;
-      });
+      // Resolve target from the focus ref (no nested setState inside
+      // setFocusedTileId — that would violate updater purity).
+      const target =
+        targetId !== undefined ? targetId : focusedTileIdRef.current;
+      setLayoutState((prev) => addTileToLayout(prev, id, target));
+      if (focus) setFocusedTileId(id);
       return id;
     },
     []
@@ -131,6 +147,10 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
         return stripped;
       });
       setFocusedTileId((current) => (current === id ? null : current));
+      // Release the per-tile atomFamily entries so the store doesn't
+      // grow unbounded across long sessions.
+      tileSourceAtom.remove(id);
+      tileSelectionAtom.remove(id);
     },
     []
   );
@@ -187,7 +207,9 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
   );
 
   return (
-    <TilingContext.Provider value={value}>{children}</TilingContext.Provider>
+    <JotaiProvider store={jotaiStore}>
+      <TilingContext.Provider value={value}>{children}</TilingContext.Provider>
+    </JotaiProvider>
   );
 };
 

@@ -57,7 +57,10 @@ const TilingInspectorSidebar: React.FC = () => {
 
 function formatSelection(value: unknown): string {
   try {
-    return JSON.stringify(value, null, 2);
+    // JSON.stringify returns `undefined` (without throwing) for top-level
+    // undefined / function / symbol values — fall back to String() so
+    // the <pre> never renders blank.
+    return JSON.stringify(value, null, 2) ?? String(value);
   } catch {
     return String(value);
   }

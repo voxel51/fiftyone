@@ -46,8 +46,8 @@ export interface TilingHeaderProps {
  * - Two right-aligned sidebar toggles using mirrored "panel" icons that
  *   visually convey which side they control
  *
- * Must be rendered inside a `PlaybackProvider` and a `TilingProvider`
- * — the menu depends on both for stream discovery and tile spawning.
+ * Must be rendered inside a `TilingProvider` — the menu depends on
+ * tiling context for type discovery and tile spawning.
  */
 const TilingHeader: React.FC<TilingHeaderProps> = ({
   fileName,
