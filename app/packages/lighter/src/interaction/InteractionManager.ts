@@ -13,6 +13,7 @@ import {
   type SegmentationToolState,
 } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useSegmentationMode";
 import { DetectionOverlay } from "../overlay/DetectionOverlay";
+import { KeypointOverlay } from "../overlay/KeypointOverlay";
 import type { InteractionState } from "../overlay/DetectionOverlay";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
 import type { Renderer2D } from "../renderer/Renderer2D";
@@ -345,7 +346,11 @@ export class InteractionManager {
       if (detectionModeBridge.isActive() || segmentationModeBridge.isActive()) {
         const isNonOverlay = !handler || handler.id === this.canonicalMediaId;
 
-        if (isNonOverlay) {
+        const isSelectInSegmentation =
+          segmentationModeBridge.isActive() &&
+          segmentationModeBridge.getActiveTool() === SegmentationTool.Select;
+
+        if (isNonOverlay && !isSelectInSegmentation) {
           this.renderer.disableZoomPan();
 
           this.pendingAction = {
@@ -1100,15 +1105,25 @@ export class InteractionManager {
         return;
       }
 
-      if (tool === SegmentationTool.AI) {
+      if (tool === SegmentationTool.AI && interactiveHandler) {
+        // For the keypoint overlay backing AI point selection,
+        // `hasValidBounds()` is true iff points have been placed — use it
+        // as the "session had in-progress work" signal so the bridge can
+        // tier between finalize and step-back-to-Select.
+        const overlay = interactiveHandler.getOverlay?.();
+        const pointsEstablished =
+          overlay instanceof KeypointOverlay && overlay.hasValidBounds();
+
         interactiveHandler.resetOverlay();
         this.removeHandler(interactiveHandler);
 
-        this.eventBus.dispatch("lighter:point-selection-finalize", {
-          eventId: generateUUID(),
-        });
+        if (pointsEstablished) {
+          this.eventBus.dispatch("lighter:point-selection-finalize", {
+            eventId: generateUUID(),
+          });
 
-        return;
+          return;
+        }
       }
     }
 
@@ -1120,19 +1135,12 @@ export class InteractionManager {
     }
 
     // ---- Tier 3: Exit the current mode ----
-
-    if (detectionModeBridge.isActive()) {
-      this.eventBus.dispatch("lighter:detection-mode-quit", {
-        eventId: generateUUID(),
-      });
-      return;
-    }
-
-    if (segmentationModeBridge.isActive()) {
-      this.eventBus.dispatch("lighter:segmentation-mode-quit", {
-        eventId: generateUUID(),
-      });
-    }
+    //
+    // Mode-agnostic dispatch; mode-specific handlers can decide whether they
+    // should deactivate
+    this.eventBus.dispatch("lighter:active-mode-quit-requested", {
+      eventId: generateUUID(),
+    });
   };
 
   private handleHover(point: Point, event: PointerEvent): void {
@@ -1444,6 +1452,7 @@ export class InteractionManager {
     this.canvas.removeEventListener("pointercancel", this.handlePointerCancel);
     this.canvas.removeEventListener("pointerleave", this.handlePointerLeave);
     this.canvas.removeEventListener("wheel", this.handleWheel);
+    this.canvas.removeEventListener("contextmenu", this.handleRightClick);
     document.removeEventListener("keydown", this.handleKeyDown);
     document.removeEventListener("keyup", this.handleKeyUp);
     this.eventBus.off("lighter:zoomed", this.handleZoomed);

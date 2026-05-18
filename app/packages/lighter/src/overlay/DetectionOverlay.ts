@@ -1228,7 +1228,10 @@ export class DetectionOverlay
    * Updates the pen cursor position for live preview rendering.
    */
   updatePenMousePosition(worldPoint: Point | null): void {
-    this.maskKeypoints?.setPreviewPoint(worldPoint);
+    if (!this.maskKeypoints) return;
+
+    this.maskKeypoints.setPreviewPoint(worldPoint);
+    this.markDirty();
   }
 
   /**

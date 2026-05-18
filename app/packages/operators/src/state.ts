@@ -37,7 +37,7 @@ import {
   resolveOperatorURI,
 } from "./operators";
 import { OperatorPromptType, Places } from "./types";
-import { OperatorExecutorOptions } from "./types-internal";
+import { OperatorExecutorOptions } from "./ts";
 import { generateOperatorSessionId, optimizeCtx } from "./utils";
 import { ValidationContext } from "./validation";
 

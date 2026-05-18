@@ -5,13 +5,9 @@ import { spaceNodeFromJSON } from "@fiftyone/spaces/src/utils";
 import type { SelectionStyle, SelectionType } from "@fiftyone/state";
 import { getFetchFunction, isNullish, ServerError } from "@fiftyone/utilities";
 import { CallbackInterface } from "recoil";
-import { QueueItemStatus } from "./constants";
+import { QueueItemStatus, RiskLevel } from "./constants";
 import * as types from "./types";
-import {
-  ExecutionCallback,
-  OperatorExecutorOptions,
-  RiskLevel,
-} from "./types-internal";
+import { ExecutionCallback, OperatorExecutorOptions } from "./ts";
 import { stringifyError } from "./utils";
 import { ValidationContext, ValidationError } from "./validation";
 
@@ -372,7 +368,7 @@ export class Operator {
     }
     return false;
   }
-  useHooks(): object {
+  useHooks(): unknown {
     // This can be overridden to use hooks in the execute function
     return {};
   }
@@ -392,10 +388,10 @@ export class Operator {
     }
     return null;
   }
-  async resolvePlacement(): Promise<void | types.Placement> {
+  async resolvePlacement(): Promise<void | null | types.Placement> {
     return null;
   }
-  async execute(ctx: ExecutionContext) {
+  async execute(ctx: ExecutionContext): Promise<unknown> {
     ctx;
     throw new Error(`Operator ${this.uri} does not implement execute`);
   }
