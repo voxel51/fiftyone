@@ -225,6 +225,30 @@ describe("usePointSelection", () => {
       expect(scene.removeOverlay).not.toHaveBeenCalled();
       expect(result.current.isActive).toBe(false);
     });
+
+    // Same-tick activate→deactivate with no re-render between exposes a
+    // stale-closure risk: the cleanup branch closure-captures
+    // `interactiveHandler` and `keypointOverlayId` from useAtom (only the
+    // idempotency guard reads fresh from the store). If the cleanup keeps
+    // relying on closures, this test fails — making it a regression net
+    // for any future refactor that re-introduces the stale-closure shape.
+    it("activate followed by immediate deactivate (same tick, no re-render) still tears down the handler and removes the overlay", () => {
+      const { scene, createdOverlay } = setupActiveScene();
+      const { result } = renderHook(() => usePointSelection());
+
+      act(() => {
+        result.current.activate();
+        result.current.deactivate();
+      });
+
+      const handlerInstance = hoisted.InteractiveKeypointHandler.mock
+        .instances[0] as { pruneCommands: ReturnType<typeof vi.fn> };
+
+      expect(handlerInstance.pruneCommands).toHaveBeenCalledTimes(1);
+      expect(scene.exitInteractiveMode).toHaveBeenCalledTimes(1);
+      expect(scene.removeOverlay).toHaveBeenCalledWith(createdOverlay.id);
+      expect(result.current.isActive).toBe(false);
+    });
   });
 
   describe("clearPoints", () => {
@@ -288,6 +312,42 @@ describe("usePointSelection", () => {
       act(() => result.current.deactivate());
       rerender();
       act(() => result.current.activate());
+      rerender();
+
+      expect(scene.addOverlay).toHaveBeenCalledTimes(2);
+      expect(scene.enterInteractiveMode).toHaveBeenCalledTimes(2);
+      expect(scene.removeOverlay).toHaveBeenCalledTimes(1);
+      expect(hoisted.InteractiveKeypointHandler).toHaveBeenCalledTimes(2);
+      expect(result.current.isActive).toBe(true);
+    });
+
+    // Same-tick activate→deactivate→activate (no re-renders between) — the
+    // immediate-toggle variant of the full-cycle test. Mirrors the
+    // stale-closure regression net inside `describe("deactivate")` but
+    // verifies the FULL cycle remains observably correct: the first
+    // session's overlay/handler get torn down before the second session's
+    // are installed.
+    it("immediate full-cycle (no re-renders between) — same observable state as the rerendered version", () => {
+      const scene = makeScene();
+      hoisted.sceneRef.value = scene;
+      let nextId = 0;
+      hoisted.overlayFactoryRef.value = {
+        create: vi.fn().mockImplementation(() => ({
+          id: `kp-${++nextId}`,
+        })),
+      };
+
+      const { result, rerender } = renderHook(() => usePointSelection());
+
+      act(() => {
+        result.current.activate();
+        result.current.deactivate();
+        result.current.activate();
+      });
+      // Trailing rerender() to flush React state — same convention as the
+      // other tests in this file. The "no re-render" property under test
+      // is the absence of a rerender BETWEEN the activate/deactivate
+      // calls, not after them.
       rerender();
 
       expect(scene.addOverlay).toHaveBeenCalledTimes(2);

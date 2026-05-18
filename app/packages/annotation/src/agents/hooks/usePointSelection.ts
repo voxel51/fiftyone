@@ -97,9 +97,9 @@ export const usePointSelection = (): PointSelection => {
     keypointOverlayIdAtom
   );
   const [isActive, setIsActive] = useAtom(pointSelectionActiveAtom);
-  const [interactiveHandler, setInteractiveHandler] = useAtom(
-    interactiveHandlerAtom
-  );
+  // deactivate() reads the current handler fresh from the store (see
+  // comment in `deactivate`), so we only need the setter side here.
+  const [, setInteractiveHandler] = useAtom(interactiveHandlerAtom);
 
   const { getOverlay, scene, overlayFactory } = useLighter();
   const eventBus = useLighterEventBus(
@@ -165,33 +165,36 @@ export const usePointSelection = (): PointSelection => {
   ]);
 
   const deactivate = useCallback(() => {
-    if (!getDefaultStore().get(pointSelectionActiveAtom)) {
+    const store = getDefaultStore();
+    if (!store.get(pointSelectionActiveAtom)) {
       return;
     }
 
+    // Read the handler + overlay id fresh from the store rather than from
+    // closure. Same rationale as the activate guard: a same-tick
+    // activate→deactivate pair (e.g. AI right-click finalize) has no
+    // re-render between, so the useAtom values captured by useCallback are
+    // still pre-activate `null`s. Reading fresh ensures cleanup tears down
+    // the resources activate just installed.
+    const currentHandler = store.get(interactiveHandlerAtom);
+    const currentOverlayId = store.get(keypointOverlayIdAtom);
+
     // Points are ephemeral:
     // drop any undo/redo entries pushed before tearing down interactive mode
-    interactiveHandler?.pruneCommands();
+    currentHandler?.pruneCommands();
     setInteractiveHandler(null);
 
     // Clear the interactive keypoint handler; deactivates point interaction
     scene?.exitInteractiveMode();
 
     // Remove the keypoint overlay; removes rendered points from the scene
-    if (keypointOverlayId) {
-      scene?.removeOverlay(keypointOverlayId);
+    if (currentOverlayId) {
+      scene?.removeOverlay(currentOverlayId);
       setKeypointOverlayId(null);
     }
 
     setIsActive(false);
-  }, [
-    interactiveHandler,
-    keypointOverlayId,
-    scene,
-    setInteractiveHandler,
-    setIsActive,
-    setKeypointOverlayId,
-  ]);
+  }, [scene, setInteractiveHandler, setIsActive, setKeypointOverlayId]);
 
   // Clear points from the overlay without removing the overlay from the scene
   const clearPoints = useCallback(() => {
