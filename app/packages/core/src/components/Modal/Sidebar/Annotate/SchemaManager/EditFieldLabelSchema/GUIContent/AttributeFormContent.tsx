@@ -17,7 +17,11 @@ import {
   TextVariant,
   Toggle,
 } from "@voxel51/voodo";
-import { ATTRIBUTE_TYPE_LABELS, ATTRIBUTE_TYPE_OPTIONS } from "../../constants";
+import {
+  ATTRIBUTE_TYPE_LABELS,
+  ATTRIBUTE_TYPE_OPTIONS,
+  BOOL_DEFAULT_OPTIONS,
+} from "../../constants";
 import { type AttributeFormData } from "../../utils";
 import ComponentTypeButton from "./ComponentTypeButton";
 import ListDefaultInput from "./ListDefaultInput";
@@ -259,6 +263,19 @@ const AttributeFormContent = ({
                     isNumeric={isNumericType}
                     error={defaultError}
                     readOnly={isFromOntology}
+                  />
+                ) : formState.type === "bool" ? (
+                  <Select
+                    exclusive
+                    portal
+                    value={formState.default}
+                    onChange={(value) => {
+                      if (typeof value === "string") {
+                        handleDefaultChange(value);
+                      }
+                    }}
+                    options={BOOL_DEFAULT_OPTIONS}
+                    disabled={isFromOntology}
                   />
                 ) : (
                   <Input

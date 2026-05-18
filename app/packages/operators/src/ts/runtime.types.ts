@@ -1,4 +1,4 @@
-import { ExecutionContext, OperatorResult } from "./operators";
+import { ExecutionContext, OperatorResult } from "../operators";
 
 export type ExecutionCallbackOptions = { ctx: ExecutionContext };
 export type ExecutionCallback = (
@@ -32,10 +32,3 @@ export type ResolvablePropertyOptions = {
   leading?: boolean;
   trailing?: boolean;
 };
-
-export enum RiskLevel {
-  LOW = "low",
-  MEDIUM = "medium",
-  HIGH = "high",
-  DANGEROUS = "dangerous",
-}
