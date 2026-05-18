@@ -330,7 +330,7 @@ export class InteractivePolylineHandler implements InteractionHandler {
     return "crosshair";
   }
 
-  onPointerUp(_point: Point, _event: PointerEvent): boolean {
+  onPointerUp(_params: OverlayEvent): boolean {
     if (this.dragPointId === null) {
       return true;
     }
