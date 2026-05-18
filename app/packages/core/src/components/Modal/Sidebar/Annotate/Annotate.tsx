@@ -28,9 +28,9 @@ const DISABLED_MESSAGES: Record<
       Annotation isn&rsquo;t supported for frames, clips, or materialized views.
     </p>
   ),
-  groupedDatasetNoSupportedSlices: (
+  groupDatasetNoSupportedSlices: (
     <p>
-      This grouped dataset has no slices that support annotation. Only image and
+      This group dataset has no slices that support annotation. Only image and
       3D slices can be annotated.
     </p>
   ),

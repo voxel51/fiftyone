@@ -5,6 +5,7 @@ import {
   datasetName,
   modalMode,
   useDisabledCheckboxPaths,
+  useIsGroupDataset,
   useModalExplorEntries,
 } from "@fiftyone/state";
 import { useAtomValue, useSetAtom } from "jotai";
@@ -38,8 +39,8 @@ const Explore = () => {
 
 const Sidebar = () => {
   const mode = useAtomValue(modalMode);
-  const { showAnnotationTab, disabledReason, isGroupedDataset } =
-    useCanAnnotate();
+  const { showAnnotationTab, disabledReason } = useCanAnnotate();
+  const isGroupDataset = useIsGroupDataset();
   const datasetNameValue = useRecoilValue(datasetName);
   const exploreFields = useRecoilValue(
     activeFields({ modal: true, expanded: false })
@@ -63,13 +64,10 @@ const Sidebar = () => {
   }, [showAnnotationTab, disabledReason, loadSchemas, datasetNameValue]);
 
   const showSliceSelector =
-    showAnnotationTab &&
-    mode === ANNOTATE &&
-    isGroupedDataset &&
-    !disabledReason;
+    showAnnotationTab && mode === ANNOTATE && isGroupDataset && !disabledReason;
 
   const showTransitionManager =
-    showAnnotationTab && isGroupedDataset && !disabledReason;
+    showAnnotationTab && isGroupDataset && !disabledReason;
 
   return (
     <SidebarContainer modal={true}>
