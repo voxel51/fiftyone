@@ -7,6 +7,7 @@ import {
 import { withSuspense } from "@fiftyone/state";
 import { isPrimitiveString } from "@fiftyone/utilities";
 import { Extension } from "@mui/icons-material";
+import { Box, IconButton, Tooltip } from "@mui/material";
 import styled from "styled-components";
 import { types } from ".";
 import OperatorIcon from "./OperatorIcon";
@@ -19,6 +20,8 @@ import {
 import { Placement, Places } from "./types";
 
 import { getStringAndNumberProps } from "@fiftyone/core/src/components/Actions/utils";
+import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
+import { useCallback } from "react";
 
 export function OperatorPlacementWithErrorBoundary(
   props: OperatorPlacementProps
@@ -74,6 +77,7 @@ export default withSuspense(OperatorPlacements, () => null);
 
 const componentByView = {
   Button: ButtonPlacement,
+  ComponentView: ComponentPlacement,
 };
 
 function getPlacementComponent(placement: Placement) {
@@ -89,14 +93,12 @@ function OperatorPlacement(props: OperatorPlacementProps) {
 }
 
 function ButtonPlacement(props: OperatorPlacementProps) {
-  const promptForInput = usePromptOperatorInput();
   const { operator, placement, place, adaptiveMenuItemProps, modal } = props;
-  const { uri, label: operatorLabel, name: operatorName } = operator;
+  const { label: operatorLabel, name: operatorName } = operator;
   const { view = {} } = placement;
   const { label } = view;
-  const { icon, darkIcon, lightIcon, prompt = true } = view?.options || {};
-  const { execute } = useOperatorExecutor(uri);
-  const canExecute = operator?.config?.canExecute;
+  const { icon, darkIcon, lightIcon } = view?.options || {};
+  const { canExecute, execute } = usePlacementControls(props);
 
   const showIcon =
     isPrimitiveString(icon) ||
@@ -115,14 +117,6 @@ function ButtonPlacement(props: OperatorPlacementProps) {
     />
   );
 
-  const handleClick = () => {
-    if (prompt) {
-      promptForInput(uri);
-    } else {
-      execute({});
-    }
-  };
-
   if (
     place === types.Places.SAMPLES_GRID_ACTIONS ||
     place === types.Places.SAMPLES_GRID_SECONDARY_ACTIONS ||
@@ -131,7 +125,7 @@ function ButtonPlacement(props: OperatorPlacementProps) {
     return (
       <PillButton
         {...(getStringAndNumberProps(adaptiveMenuItemProps) || {})}
-        onClick={handleClick}
+        onClick={execute}
         icon={showIcon && IconComponent}
         text={!showIcon && title}
         title={title}
@@ -142,15 +136,71 @@ function ButtonPlacement(props: OperatorPlacementProps) {
     );
   }
 
+  if (place === types.Places.HEADER_ACTIONS) {
+    return (
+      <Tooltip title={title} onClick={execute}>
+        <IconButton sx={{ p: 0 }}>{IconComponent}</IconButton>
+      </Tooltip>
+    );
+  }
+
   return (
     <SquareButton
       {...(getStringAndNumberProps(adaptiveMenuItemProps) || {})}
-      to={handleClick}
-      title={label}
+      to={execute}
+      title={title}
     >
       {IconComponent}
     </SquareButton>
   );
+}
+
+function ComponentPlacement(props: OperatorPlacementProps) {
+  const componentPlugins = useActivePlugins(PluginComponentType.Component, {});
+  const { canExecute, execute } = usePlacementControls(props);
+  const componentName = props.placement?.view?.options?.component;
+
+  if (!componentName) {
+    throw new Error(
+      "ComponentPlacement requires a component name as an argument"
+    );
+  }
+
+  const Component = componentPlugins.find(
+    (plugin) => plugin.name === componentName
+  )?.component;
+
+  if (!Component) {
+    throw new Error(
+      `Component ${componentName} not found among active plugins`
+    );
+  }
+
+  return (
+    <Box sx={{ maxHeight: "50px", maxWidth: "100px", overflow: "hidden" }}>
+      <Component canExecute={canExecute} execute={execute} {...props} />
+    </Box>
+  );
+}
+
+export function usePlacementControls(props: OperatorPlacementProps) {
+  const { operator, placement } = props;
+  const { prompt = true } = placement?.view?.options || {};
+  const { uri } = operator;
+  const canExecute = operator?.config?.canExecute;
+
+  const promptForInput = usePromptOperatorInput();
+  const { execute } = useOperatorExecutor(uri);
+
+  const handleClick = useCallback(() => {
+    if (prompt) {
+      promptForInput(uri);
+    } else {
+      execute({});
+    }
+  }, [prompt, promptForInput, uri, execute]);
+
+  return { canExecute, execute: handleClick };
 }
 
 type OperatorPlacementsProps = {

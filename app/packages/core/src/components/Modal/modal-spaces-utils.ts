@@ -13,8 +13,7 @@ export const useModalSpaces = () => {
 
   const panelsPredicate = useCallback(
     (panel: PluginComponentRegistration) =>
-      panel.panelOptions?.surfaces === "modal" ||
-      panel.panelOptions?.surfaces === "grid modal",
+      panel.panelOptions?.surfaces?.includes("modal"),
     []
   );
 

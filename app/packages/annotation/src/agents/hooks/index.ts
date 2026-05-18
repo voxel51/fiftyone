@@ -6,7 +6,11 @@ export * from "./useAIAnnotationActionGroup";
 export * from "./useAnnotationAgent";
 export * from "./useApplyInferenceResult";
 export { useInferenceStatus } from "./useInferenceStatus";
-export type { InferenceStatus, InferenceProgress } from "./useInferenceStatus";
+export type {
+  InferenceError,
+  InferenceProgress,
+  InferenceStatus,
+} from "./useInferenceStatus";
 export * from "./useRegisterAgentLifecycleEvents";
 export * from "./useSampleDescriptor";
 export * from "./usePointSelection";

@@ -1,4 +1,5 @@
 import { DetectionIcon } from "@fiftyone/components";
+import ErrorOutline from "@mui/icons-material/ErrorOutline";
 import Brush from "@mui/icons-material/Brush";
 import CallMerge from "@mui/icons-material/CallMerge";
 import Timeline from "@mui/icons-material/Timeline";
@@ -16,9 +17,11 @@ import {
 import { ReactElement } from "react";
 import { StatusItem } from "../../../ModalStatusBar";
 import {
+  InferenceError,
   InferenceProgress,
   InferenceStatus,
 } from "@fiftyone/annotation/src/agents";
+import { ProviderErrorKind } from "@fiftyone/annotation";
 
 export const DetectionStatus = (): ReactElement => (
   <StatusItem
@@ -102,6 +105,18 @@ const STATUS_LABELS: Record<InferenceStatus, string> = {
   error: "Inference error",
 };
 
+// Error kinds known to {@link ProviderError}; mapped to user-readable prefixes.
+const ERROR_KIND_LABELS: Record<ProviderErrorKind, string> = {
+  unsupported: "Unsupported browser",
+  download_failure: "Failed to download model",
+  encoder_failure: "Failed to encode image",
+  decoder_failure: "Failed to run inference",
+  inference_failure: "Inference failed",
+};
+
+const isActiveStatus = (status: InferenceStatus): boolean =>
+  status !== "idle" && status !== "error";
+
 const formatProgressLabel = (
   status: InferenceStatus,
   progress: InferenceProgress
@@ -117,12 +132,21 @@ const formatProgressLabel = (
   return `${base} (${pct}%)`;
 };
 
-export const AIInferringStatus = ({
+const formatErrorLabel = (error: InferenceError): string => {
+  if (!error) {
+    return STATUS_LABELS.error;
+  }
+
+  const prefix = ERROR_KIND_LABELS[error.kind] ?? STATUS_LABELS.error;
+  return error.message ? `${prefix}: ${error.message}` : prefix;
+};
+
+const AIInferringStatus = ({
   status,
-  progress = null,
+  progress,
 }: {
   status: InferenceStatus;
-  progress?: InferenceProgress;
+  progress: InferenceProgress;
 }): ReactElement => (
   <Stack
     orientation={Orientation.Row}
@@ -136,7 +160,20 @@ export const AIInferringStatus = ({
   </Stack>
 );
 
-export const AIFirstClickStatus = (): ReactElement => (
+const AIErrorStatus = ({ error }: { error: InferenceError }): ReactElement => (
+  <Stack
+    orientation={Orientation.Row}
+    align={Align.Center}
+    spacing={Spacing.Sm}
+  >
+    <ErrorOutline fontSize="small" color="error" />
+    <Text variant={TextVariant.Md} color={TextColor.Destructive}>
+      {formatErrorLabel(error)}
+    </Text>
+  </Stack>
+);
+
+const AIFirstClickStatus = (): ReactElement => (
   <Text variant={TextVariant.Md} color={TextColor.Secondary}>
     Click on an object to segment it
   </Text>
@@ -163,7 +200,7 @@ const Separator = () => (
   </Text>
 );
 
-export const AIPromptStatus = (): ReactElement => (
+const AIPromptStatus = (): ReactElement => (
   <Stack
     orientation={Orientation.Row}
     align={Align.Center}
@@ -181,3 +218,40 @@ export const AIPromptStatus = (): ReactElement => (
     </Text>
   </Stack>
 );
+
+/**
+ * Single status-bar component for the AI segmentation tool.
+ *
+ * Picks the right sub-state based on inference status, download progress,
+ * terminal error, and whether the user has placed any prompt points:
+ *
+ * - `"error"`            → {@link AIErrorStatus} with a readable message
+ * - active inference     → {@link AIInferringStatus} with progress %
+ * - no prompt points yet → {@link AIFirstClickStatus}
+ * - prompt points placed → {@link AIPromptStatus}
+ */
+export const AISegmentationStatus = ({
+  status,
+  progress,
+  error,
+  hasPoints,
+}: {
+  status: InferenceStatus;
+  progress: InferenceProgress;
+  error: InferenceError;
+  hasPoints: boolean;
+}): ReactElement => {
+  if (status === "error") {
+    return <AIErrorStatus error={error} />;
+  }
+
+  if (isActiveStatus(status)) {
+    return <AIInferringStatus status={status} progress={progress} />;
+  }
+
+  if (!hasPoints) {
+    return <AIFirstClickStatus />;
+  }
+
+  return <AIPromptStatus />;
+};

@@ -2137,6 +2137,7 @@ class Places(enum.Enum):
     MAP_ACTIONS = "map-actions"
     MAP_SECONDARY_ACTIONS = "map-secondary-actions"
     DISPLAY_OPTIONS = "display-options"
+    HEADER_ACTIONS = "header-actions"
 
     def to_json(self):
         return self.value
@@ -3540,6 +3541,23 @@ class TimerView(View):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
+
+class ComponentView(View):
+    """Represents a custom component view.
+
+    Args:
+        name: the name of the component to render. This should correspond to a
+            registered custom plugin component.
+    """
+
+    def __init__(self, name, **kwargs):
+        super().__init__(component=name, **kwargs)
+
+    def clone(self):
+        kwargs = dict(self._kwargs)
+        name = kwargs.pop("component")
+        return self.__class__(name, container=self.container, **kwargs)
 
 
 class Container(BaseType):

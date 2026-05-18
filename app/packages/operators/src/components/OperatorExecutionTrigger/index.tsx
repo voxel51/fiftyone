@@ -9,7 +9,7 @@ import {
   ExecutionCallback,
   ExecutionErrorCallback,
   OperatorExecutorOptions,
-} from "../../types-internal";
+} from "../../ts";
 import { OperatorExecutionMenu } from "../OperatorExecutionMenu";
 import RequiresOrchestrator from "../RequiresOrchestrator";
 

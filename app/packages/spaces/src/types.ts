@@ -1,6 +1,6 @@
 import { EnumType } from "typescript";
 import SpaceNode from "./SpaceNode";
-import { Layout } from "./enums";
+import { Layout, PANEL_AREA } from "./enums";
 
 export type SpacesRootProps = {
   id: string;
@@ -49,8 +49,8 @@ export type SpaceNodeJSON = {
 
 export type PanelProps = {
   node: SpaceNode;
-  spaceId: string;
   isModalPanel?: boolean;
+  style?: React.CSSProperties;
 };
 
 export type PanelTabProps = {
@@ -81,4 +81,23 @@ export type PanelsStateObject = {
 
 export type PanelsCloseEffect = {
   [panelId: string]: () => void;
+};
+
+export type PanelIdToScopeType = {
+  [panelId: string]: string;
+};
+
+export type PanelRendererProps = {
+  name: string;
+  id: string;
+};
+
+export type PanelAreaProps = {
+  id: PANEL_AREA;
+  resize?: {
+    defaultWidth?: number;
+    minWidth?: number;
+    maxWidth?: number;
+    direction: "left" | "right";
+  };
 };

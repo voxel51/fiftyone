@@ -32,6 +32,7 @@ import {
   savedLabel,
 } from "../Sidebar/Annotate/Edit/state";
 import { useDetectionMode } from "../Sidebar/Annotate/Edit/useDetectionMode";
+import { usePolylineMode } from "../Sidebar/Annotate/Edit/usePolylineMode";
 import {
   SegmentationTool,
   useSegmentationMode,
@@ -76,6 +77,7 @@ export const useBridge = (scene: Scene2D | null) => {
 
   const segmentationMode = useSegmentationMode();
   const detectionMode = useDetectionMode();
+  const polylineMode = usePolylineMode();
   const focus = useFocus();
 
   useAnnotationEventHandler(
@@ -180,10 +182,7 @@ export const useBridge = (scene: Scene2D | null) => {
       const f = focusRef.current;
       const s = sceneRef.current;
 
-      if (
-        sm.segmentationModeActive &&
-        sm.tool === SegmentationTool.Merge
-      ) {
+      if (sm.segmentationModeActive && sm.tool === SegmentationTool.Merge) {
         const overlay = s?.getOverlay(payload.id);
         if (overlay instanceof DetectionOverlay) {
           // Merge tool consumes the click; `true` means we should skip the
@@ -209,10 +208,7 @@ export const useBridge = (scene: Scene2D | null) => {
     useCallback((payload) => {
       const sm = segmentationModeRef.current;
 
-      if (
-        sm.segmentationModeActive &&
-        sm.tool === SegmentationTool.Merge
-      ) {
+      if (sm.segmentationModeActive && sm.tool === SegmentationTool.Merge) {
         return;
       }
 
@@ -229,10 +225,7 @@ export const useBridge = (scene: Scene2D | null) => {
     useCallback((payload) => {
       const sm = segmentationModeRef.current;
 
-      if (
-        sm.segmentationModeActive &&
-        sm.tool === SegmentationTool.Merge
-      ) {
+      if (sm.segmentationModeActive && sm.tool === SegmentationTool.Merge) {
         sm.mergeTool.clearMergeTarget();
         focusRef.current.deselectOverlay({
           ignoreSideEffects: payload.ignoreSideEffects,
@@ -390,6 +383,29 @@ export const useBridge = (scene: Scene2D | null) => {
     useCallback(() => {
       detectionMode.deactivateDetectionMode();
     }, [detectionMode])
+  );
+
+  // Generic "quit the active mode" request from global gestures (e.g.
+  // right-click on empty canvas). Each mode self-filters on its own active
+  // state so InteractionManager doesn't need to know about modes.
+  useEventHandler(
+    "lighter:active-mode-quit-requested",
+    useCallback(() => {
+      if (detectionMode.detectionModeActive) {
+        detectionMode.deactivateDetectionMode();
+        return;
+      }
+
+      if (segmentationMode.segmentationModeActive) {
+        segmentationMode.deactivateSegmentationMode();
+        return;
+      }
+
+      if (polylineMode.polylineModeActive) {
+        polylineMode.deactivatePolylineMode();
+        return;
+      }
+    }, [detectionMode, polylineMode, segmentationMode])
   );
 
   useEventHandler(

@@ -1,5 +1,6 @@
 import { atom, useAtomValue, useSetAtom } from "jotai";
 import type { AnnotationAgentLifecycleStatus } from "../types";
+import type { ProviderError } from "../../providers";
 
 /**
  * Coarse status surfaced to UI for AI-assisted inference.
@@ -20,21 +21,31 @@ export type InferenceProgress = {
   total: number;
 } | null;
 
+/**
+ * Last terminal error reported by the active agent. `null` once the agent
+ * transitions back out of the `"error"` state.
+ */
+export type InferenceError = ProviderError | null;
+
 const inferenceStatusAtom = atom<InferenceStatus>("idle");
 const inferenceProgressAtom = atom<InferenceProgress>(null);
+const inferenceErrorAtom = atom<InferenceError>(null);
 
 /**
- * Read-only hook for the current inference status and any in-flight progress.
+ * Read-only hook for the current inference status, any in-flight progress,
+ * and the last terminal error (if `status === "error"`).
  *
  * Use this in UI that needs to react to AI inference state (e.g. status
- * banners, progress indicators for model download).
+ * banners, progress indicators, error toasts).
  */
 export const useInferenceStatus = (): {
   status: InferenceStatus;
   progress: InferenceProgress;
+  error: InferenceError;
 } => ({
   status: useAtomValue(inferenceStatusAtom),
   progress: useAtomValue(inferenceProgressAtom),
+  error: useAtomValue(inferenceErrorAtom),
 });
 
 /**
@@ -45,3 +56,4 @@ export const useInferenceStatus = (): {
  */
 export const useSetInferenceStatus = () => useSetAtom(inferenceStatusAtom);
 export const useSetInferenceProgress = () => useSetAtom(inferenceProgressAtom);
+export const useSetInferenceError = () => useSetAtom(inferenceErrorAtom);
