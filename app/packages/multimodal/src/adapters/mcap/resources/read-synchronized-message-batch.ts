@@ -1,5 +1,5 @@
 import type { McapTypes } from "@mcap/core";
-import type { DecodeResourceClient } from "../../client/resources";
+import type { DecodeResourceClient } from "../../../client/resources";
 import {
   compareByTimelineTime,
   createWindowBounds,
@@ -7,15 +7,15 @@ import {
   maxBigInt,
   minBigInt,
   selectCandidatesForTopic,
-} from "./sync";
-import { decodeMcapMessage, mcapMessageRecordId } from "./message-decoder";
-import type { McapIndexedMessageTime, McapIndexedReaderLike } from "./reader";
-import type { McapTimelineStrategy } from "./timeline";
+} from "../sync";
+import { decodeMcapMessage, mcapMessageRecordId } from "../message-decoder";
+import type { McapIndexedMessageTime, McapIndexedReaderLike } from "../reader";
+import type { McapTimelineStrategy } from "../timeline";
 import type {
   McapDecodedMessage,
   McapReadSynchronizedMessageBatchRequest,
   McapSynchronizedMessageWindow,
-} from "./types";
+} from "../types";
 
 const INDEXED_LOOKUP_KEY_SEPARATOR = "\0";
 

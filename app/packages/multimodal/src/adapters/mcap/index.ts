@@ -2,11 +2,12 @@
  * React helper for MCAP renderer client lifecycle.
  */
 export { useMcapResourceClient } from "./hooks";
+export type { UseMcapResourceClientOptions } from "./hooks";
 
 /**
  * Public MCAP resource client factory.
  */
-export { createMcapResourceClient } from "./resources";
+export { createMcapResourceClient } from "./resource-client";
 
 /**
  * Default tolerance for synchronized MCAP playback windows.
@@ -21,7 +22,7 @@ export { MCAP_ACTIVE_TIMELINE } from "./types";
 /**
  * Options for constructing an MCAP resource client.
  */
-export type { CreateMcapResourceClientOptions } from "./resources";
+export type { CreateMcapResourceClientOptions } from "./resource-client";
 
 /**
  * Reader contracts exposed for tests and advanced adapter wiring.

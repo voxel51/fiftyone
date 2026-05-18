@@ -1,7 +1,10 @@
 import { create } from "@bufbuild/protobuf";
 import type { McapTypes } from "@mcap/core";
-import { StreamInventorySchema, type StreamInventory } from "../../schemas/v1";
-import type { McapIndexedReaderLike } from "./reader";
+import {
+  StreamInventorySchema,
+  type StreamInventory,
+} from "../../../schemas/v1";
+import type { McapIndexedReaderLike } from "../reader";
 
 const MCAP_METADATA_PREFIX = "mcap.";
 const MCAP_CHANNEL_METADATA_PREFIX = `${MCAP_METADATA_PREFIX}channel_metadata.`;

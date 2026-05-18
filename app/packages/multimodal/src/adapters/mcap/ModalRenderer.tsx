@@ -135,7 +135,7 @@ export function ModalRenderer({
   maxTimelineTicks = DEFAULT_MCAP_TIMELINE_MAX_TICKS,
   timelineTickRateHz = DEFAULT_MCAP_TIMELINE_TICK_RATE_HZ,
 }: ModalRendererProps) {
-  const mcap = useMcapResourceClient();
+  const mcap = useMcapResourceClient({ worker: true });
   const { source, sourceKey } = useMcapSourceDescriptor(ctx);
   // Playback data path: this POC reads MCAP bytes directly through the adapter's
   // worker-backed resource client. It does not currently depend on server-side

@@ -1,12 +1,12 @@
-import type { DecodeResourceClient } from "../../client/resources";
-import { isWithinRange } from "./sync";
-import { decodeMcapMessage } from "./message-decoder";
-import type { McapIndexedReaderLike } from "./reader";
-import type { McapTimelineStrategy } from "./timeline";
+import type { DecodeResourceClient } from "../../../client/resources";
+import { isWithinRange } from "../sync";
+import { decodeMcapMessage } from "../message-decoder";
+import type { McapIndexedReaderLike } from "../reader";
+import type { McapTimelineStrategy } from "../timeline";
 import type {
   McapDecodedMessage,
   McapReadDecodedMessagesRequest,
-} from "./types";
+} from "../types";
 
 /**
  * Streams decoded MCAP messages for one read request.

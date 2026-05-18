@@ -1,12 +1,12 @@
 import type { McapTypes } from "@mcap/core";
 import { describe, expect, it, vi } from "vitest";
-import type { ByteSourceDescriptor } from "../../client/resources";
-import type { DecodeResourceClient } from "../../client/resources";
-import type { DecodedOutput } from "../../decoders";
-import { PlaybackSyncMode } from "../../schemas/v1";
-import { VISUALIZATION_KIND } from "../../visualization";
-import { createMcapResourceClient } from "./resources";
-import { MCAP_ACTIVE_TIMELINE } from "./types";
+import type { ByteSourceDescriptor } from "../../../client/resources";
+import type { DecodeResourceClient } from "../../../client/resources";
+import type { DecodedOutput } from "../../../decoders";
+import { PlaybackSyncMode } from "../../../schemas/v1";
+import { VISUALIZATION_KIND } from "../../../visualization";
+import { createInlineMcapResourceClient } from "./inline";
+import { MCAP_ACTIVE_TIMELINE } from "../types";
 
 describe("MCAP resources", () => {
   it("reads topic inventory from summary channels without scanning messages", async () => {
@@ -17,7 +17,7 @@ describe("MCAP resources", () => {
       }
     });
     const decodeClient = createTestDecodeClient();
-    const client = createMcapResourceClient({
+    const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient,
       readerFactory: vi.fn(async () =>
@@ -104,7 +104,7 @@ describe("MCAP resources", () => {
   });
 
   it("matches MCAP adapter topic fallbacks for missing schema and stats", async () => {
-    const client = createMcapResourceClient({
+    const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient: createTestDecodeClient(),
       readerFactory: vi.fn(async () =>
@@ -173,7 +173,7 @@ describe("MCAP resources", () => {
     const messageBytes = new Uint8Array([1, 2, 3]);
     const message = createMessage(messageBytes);
     const decodeClient = createTestDecodeClient();
-    const client = createMcapResourceClient({
+    const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient,
       readerFactory: vi.fn(async () =>
@@ -254,7 +254,7 @@ describe("MCAP resources", () => {
         yield message;
       }
     });
-    const client = createMcapResourceClient({
+    const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient,
       readerFactory: vi.fn(async () =>
@@ -330,7 +330,7 @@ describe("MCAP resources", () => {
         yield lateCamera;
       }
     });
-    const client = createMcapResourceClient({
+    const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient,
       readerFactory: vi.fn(async () =>
@@ -377,7 +377,7 @@ describe("MCAP resources", () => {
 
   it("returns empty synchronized batches without opening a reader", async () => {
     const readerFactory = vi.fn();
-    const client = createMcapResourceClient({
+    const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient: createTestDecodeClient(),
       readerFactory,
@@ -409,7 +409,7 @@ describe("MCAP resources", () => {
         topic: "/camera",
       };
     });
-    const client = createMcapResourceClient({
+    const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient: createTestDecodeClient(),
       readerFactory: vi.fn(async () =>
@@ -446,7 +446,7 @@ describe("MCAP resources", () => {
   it("rejects byte reads past known source size before hitting the byte client", async () => {
     const source = createMcapSourceDescriptor();
     const readBytes = vi.fn();
-    const client = createMcapResourceClient({
+    const client = createInlineMcapResourceClient({
       byteClient: { readBytes },
       decodeClient: createTestDecodeClient(),
       readerFactory: vi.fn(async (_source, readable) => {
@@ -480,7 +480,7 @@ describe("MCAP resources", () => {
           ],
         })
       );
-    const client = createMcapResourceClient({
+    const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient: createTestDecodeClient(),
       readerFactory,

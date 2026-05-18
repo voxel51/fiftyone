@@ -4,8 +4,6 @@ import {
   serializeCacheKey,
 } from "../../../client/resources/cache";
 import type { ByteSourceDescriptor } from "../../../client/resources";
-import { createMcapResourceClient } from "../resources";
-import { runMcapPlaybackWorkerStreamRequest } from "./playback-worker-rpc";
 import { McapPlaybackWorkerTransport } from "./playback-worker-transport";
 import {
   type McapPlaybackWorkerFetchParameters,
@@ -30,15 +28,10 @@ import type {
 } from "../types";
 import type { StreamInventory } from "../../../schemas/v1";
 
-const INLINE_WORKER_REQUEST_ID = 0;
-const INLINE_WORKER_REQUEST_PRIORITY = 0;
-const INLINE_WORKER_SOURCE_KEY = "inline";
-
 /**
  * Options for creating a worker-backed MCAP resource client.
  */
 export interface CreateWorkerMcapResourceClientOptions {
-  readonly fallback?: "error" | "inline";
   readonly workerFactory?: () => Worker;
 }
 
@@ -48,30 +41,16 @@ export interface CreateWorkerMcapResourceClientOptions {
 export function createWorkerMcapResourceClient(
   options: CreateWorkerMcapResourceClientOptions = {}
 ): McapResourceClient {
-  const fallback = options.fallback ?? "inline";
   if (!options.workerFactory && typeof Worker === "undefined") {
-    if (fallback === "inline") {
-      return createMcapResourceClient();
-    }
-
     throw new Error("MCAP playback workers are not available");
   }
 
-  try {
-    return new WorkerMcapResourceClient(options);
-  } catch (error) {
-    if (fallback === "inline") {
-      return createMcapResourceClient();
-    }
-
-    throw error;
-  }
+  return new WorkerMcapResourceClient(options);
 }
 
 class WorkerMcapResourceClient implements McapResourceClient {
   private activeSourceKey = "";
   private disposed = false;
-  private inlineClient: McapResourceClient | undefined;
   private readonly transport = new McapPlaybackWorkerTransport(
     (sourceKey) => this.activeSourceKey === sourceKey
   );
@@ -84,8 +63,6 @@ class WorkerMcapResourceClient implements McapResourceClient {
   dispose() {
     this.disposed = true;
     this.resetWorker("MCAP worker disposed");
-    this.inlineClient?.dispose();
-    this.inlineClient = undefined;
   }
 
   async *readDecodedMessages(
@@ -132,12 +109,12 @@ class WorkerMcapResourceClient implements McapResourceClient {
     }
 
     const sourceKey = mcapWorkerSourceKey(payload.source);
-    const target = this.workerForSource(sourceKey);
-    if (!isWorker(target)) {
-      return requestInlineClient(target, type, payload);
-    }
-
-    return this.transport.request(target, sourceKey, type, payload);
+    return this.transport.request(
+      this.workerForSource(sourceKey),
+      sourceKey,
+      type,
+      payload
+    );
   }
 
   private async *streamRequest<Type extends McapPlaybackWorkerStreamType>(
@@ -149,16 +126,15 @@ class WorkerMcapResourceClient implements McapResourceClient {
     }
 
     const sourceKey = mcapWorkerSourceKey(payload.source);
-    const target = this.workerForSource(sourceKey);
-    if (!isWorker(target)) {
-      yield* streamInlineClient(target, type, payload);
-      return;
-    }
-
-    yield* this.transport.stream(target, sourceKey, type, payload);
+    yield* this.transport.stream(
+      this.workerForSource(sourceKey),
+      sourceKey,
+      type,
+      payload
+    );
   }
 
-  private workerForSource(sourceKey: string): Worker | McapResourceClient {
+  private workerForSource(sourceKey: string): Worker {
     if (this.worker && this.activeSourceKey === sourceKey) {
       return this.worker;
     }
@@ -175,10 +151,6 @@ class WorkerMcapResourceClient implements McapResourceClient {
     } catch (error) {
       disposeWorker(worker);
       this.resetWorker(errorMessage(error, "MCAP worker startup failed"));
-      if (this.options.fallback === "inline") {
-        return this.createMcapResourceClient();
-      }
-
       throw error instanceof Error ? error : new Error(String(error));
     }
 
@@ -223,57 +195,6 @@ class WorkerMcapResourceClient implements McapResourceClient {
 
     this.transport.rejectAll(reason);
   }
-
-  private createMcapResourceClient(): McapResourceClient {
-    this.inlineClient ??= createMcapResourceClient();
-
-    return this.inlineClient;
-  }
-}
-
-function isWorker(target: Worker | McapResourceClient): target is Worker {
-  return "postMessage" in target;
-}
-
-function requestInlineClient<Type extends McapPlaybackWorkerUnaryType>(
-  client: McapResourceClient,
-  type: Type,
-  payload: McapPlaybackWorkerRequestPayloadByType[Type]
-): Promise<McapPlaybackWorkerResultByType[Type]> {
-  switch (type) {
-    case "readSynchronizedMessageBatch":
-      return client.readSynchronizedMessageBatch(
-        payload as McapReadSynchronizedMessageBatchRequest
-      ) as Promise<McapPlaybackWorkerResultByType[Type]>;
-    case "readSynchronizedMessages":
-      return client.readSynchronizedMessages(
-        payload as McapReadSynchronizedMessagesRequest
-      ) as Promise<McapPlaybackWorkerResultByType[Type]>;
-    case "readTimelineRange":
-      return client.readTimelineRange(
-        payload as McapReadTimelineRangeRequest
-      ) as Promise<McapPlaybackWorkerResultByType[Type]>;
-    case "readTopics":
-      return client.readTopics(payload as McapReadTopicsRequest) as Promise<
-        McapPlaybackWorkerResultByType[Type]
-      >;
-  }
-
-  throw new Error(`Unsupported MCAP worker operation ${type}`);
-}
-
-async function* streamInlineClient<Type extends McapPlaybackWorkerStreamType>(
-  client: McapResourceClient,
-  type: Type,
-  payload: McapPlaybackWorkerRequestPayloadByType[Type]
-): AsyncGenerator<McapPlaybackWorkerStreamItemByType[Type], void, void> {
-  yield* runMcapPlaybackWorkerStreamRequest(client, {
-    id: INLINE_WORKER_REQUEST_ID,
-    payload,
-    priority: INLINE_WORKER_REQUEST_PRIORITY,
-    sourceKey: INLINE_WORKER_SOURCE_KEY,
-    type,
-  });
 }
 
 function disposeWorker(worker: Worker | undefined) {
@@ -286,8 +207,8 @@ function disposeWorker(worker: Worker | undefined) {
   worker.terminate();
 }
 
-function errorMessage(error: unknown, fallback: string): string {
-  return error instanceof Error ? error.message : fallback;
+function errorMessage(error: unknown, defaultMessage: string): string {
+  return error instanceof Error ? error.message : defaultMessage;
 }
 
 function workerFetchParameters(): McapPlaybackWorkerFetchParameters {

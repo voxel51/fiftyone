@@ -1,13 +1,26 @@
 import { useEffect, useMemo } from "react";
-import { createWorkerMcapResourceClient } from "./worker";
+import {
+  createMcapResourceClient,
+  type CreateMcapResourceClientOptions,
+} from "./resource-client";
 import type { McapResourceClient } from "./types";
 
 /**
- * Creates the worker-backed MCAP resource client for React renderers and owns
- * cleanup.
+ * Options for creating an MCAP resource client in React renderers.
  */
-export function useMcapResourceClient(): McapResourceClient {
-  const client = useMemo(() => createWorkerMcapResourceClient(), []);
+export type UseMcapResourceClientOptions = Pick<
+  CreateMcapResourceClientOptions,
+  "worker"
+>;
+
+/**
+ * Creates the MCAP resource client for React renderers and owns cleanup.
+ */
+export function useMcapResourceClient(
+  options: UseMcapResourceClientOptions = {}
+): McapResourceClient {
+  const { worker = false } = options;
+  const client = useMemo(() => createMcapResourceClient({ worker }), [worker]);
 
   useEffect(() => {
     return () => {

@@ -3,7 +3,7 @@ import {
   createMultimodalResourcesClient,
   type DecodedOutputCache,
 } from "../../../client/resources";
-import { createMcapResourceClient } from "../resources";
+import { createInlineMcapResourceClient } from "../resources";
 import {
   isMcapPlaybackWorkerStreamRequest,
   runMcapPlaybackWorkerStreamRequest,
@@ -30,6 +30,18 @@ type McapPlaybackWorkerScope = {
 
 const workerScope = self as unknown as McapPlaybackWorkerScope;
 const scheduler = new McapPlaybackWorkerScheduler();
+
+const transferSafeNoopDecodedOutputCache: DecodedOutputCache = {
+  clear() {
+    return Promise.resolve();
+  },
+  get() {
+    return Promise.resolve(undefined);
+  },
+  put() {
+    return Promise.resolve();
+  },
+};
 
 let activeSourceKey = "";
 let mcap = createWorkerResourceClient();
@@ -137,28 +149,15 @@ function transferablesForResponse(response: McapPlaybackWorkerResponse) {
 }
 
 function createWorkerResourceClient(): McapResourceClient {
-  return createMcapResourceClient({
+  return createInlineMcapResourceClient({
     resources: createMultimodalResourcesClient({
       caches: {
-        decoded: createTransferSafeNoopDecodedOutputCache(),
+        // Decoded visualization buffers are transferred to the UI thread.
+        // Reusing worker-cached decoded results would either return detached
+        // buffers or force extra clones, so playback-window reuse belongs on
+        // the main thread.
+        decoded: transferSafeNoopDecodedOutputCache,
       },
     }),
   });
-}
-
-function createTransferSafeNoopDecodedOutputCache(): DecodedOutputCache {
-  // Decoded visualization buffers are transferred to the UI thread. Reusing
-  // worker-cached decoded results would either return detached buffers or force
-  // extra clones, so playback-window reuse belongs on the main thread.
-  return {
-    clear() {
-      return Promise.resolve();
-    },
-    get() {
-      return Promise.resolve(undefined);
-    },
-    put() {
-      return Promise.resolve();
-    },
-  };
 }

@@ -1,5 +1,5 @@
 import { create } from "@bufbuild/protobuf";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { StreamInventorySchema } from "../../../schemas/v1";
 import {
   MCAP_PLAYBACK_WORKER_PRIORITY,
@@ -7,27 +7,6 @@ import {
   type McapPlaybackWorkerResponse,
 } from "./playback-worker-types";
 import { createWorkerMcapResourceClient } from "./worker-client";
-
-const resourcesHarness = vi.hoisted(() => {
-  const inlineClient = {
-    dispose: vi.fn(),
-    readDecodedMessages: vi.fn(async function* () {
-      for (const item of [] as never[]) {
-        yield item;
-      }
-      return;
-    }),
-    readSynchronizedMessageBatch: vi.fn(async () => []),
-    readSynchronizedMessages: vi.fn(),
-    readTopics: vi.fn(async () => []),
-    readTimelineRange: vi.fn(async () => createTimelineRange(1n, 42n)),
-  };
-
-  return {
-    createMcapResourceClient: vi.fn(() => inlineClient),
-    inlineClient,
-  };
-});
 
 vi.mock("@fiftyone/utilities", () => ({
   getFetchParameters: () => ({
@@ -39,21 +18,7 @@ vi.mock("@fiftyone/utilities", () => ({
     Object.assign({}, ...headers),
 }));
 
-vi.mock("../resources", () => ({
-  createMcapResourceClient: resourcesHarness.createMcapResourceClient,
-}));
-
 describe("worker-backed MCAP resource client", () => {
-  beforeEach(() => {
-    resourcesHarness.createMcapResourceClient.mockClear();
-    resourcesHarness.inlineClient.dispose.mockClear();
-    resourcesHarness.inlineClient.readDecodedMessages.mockClear();
-    resourcesHarness.inlineClient.readSynchronizedMessageBatch.mockClear();
-    resourcesHarness.inlineClient.readSynchronizedMessages.mockClear();
-    resourcesHarness.inlineClient.readTopics.mockClear();
-    resourcesHarness.inlineClient.readTimelineRange.mockClear();
-  });
-
   it("initializes the worker and maps resource calls to RPC messages", async () => {
     const { client, workers } = createClientHarness();
     const request = createTimelineRequest();
@@ -237,47 +202,8 @@ describe("worker-backed MCAP resource client", () => {
     await expect(range).rejects.toThrow("disposed");
   });
 
-  it("falls back to the inline client when worker creation fails", async () => {
+  it("rejects worker startup errors", async () => {
     const client = createWorkerMcapResourceClient({
-      fallback: "inline",
-      workerFactory: () => {
-        throw new Error("worker blocked");
-      },
-    });
-    const request = createTimelineRequest();
-
-    await expect(client.readTimelineRange(request)).resolves.toEqual(
-      createTimelineRange(1n, 42n)
-    );
-
-    expect(resourcesHarness.createMcapResourceClient).toHaveBeenCalledTimes(1);
-    expect(
-      resourcesHarness.inlineClient.readTimelineRange
-    ).toHaveBeenCalledWith(request);
-  });
-
-  it("falls back to inline topic reads when worker creation fails", async () => {
-    const client = createWorkerMcapResourceClient({
-      fallback: "inline",
-      workerFactory: () => {
-        throw new Error("worker blocked");
-      },
-    });
-    const request = {
-      source: createSource("source:topics"),
-    };
-
-    await expect(client.readTopics(request)).resolves.toEqual([]);
-
-    expect(resourcesHarness.createMcapResourceClient).toHaveBeenCalledTimes(1);
-    expect(resourcesHarness.inlineClient.readTopics).toHaveBeenCalledWith(
-      request
-    );
-  });
-
-  it("rejects worker startup errors when inline fallback is disabled", async () => {
-    const client = createWorkerMcapResourceClient({
-      fallback: "error",
       workerFactory: () => {
         throw new Error("worker blocked");
       },
@@ -291,7 +217,6 @@ describe("worker-backed MCAP resource client", () => {
   it("tears down partial workers when init postMessage throws", async () => {
     const worker = new MockWorker({ throwOnMessageType: "init" });
     const client = createWorkerMcapResourceClient({
-      fallback: "error",
       workerFactory: () => worker as unknown as Worker,
     });
 
@@ -346,7 +271,6 @@ describe("worker-backed MCAP resource client", () => {
 function createClientHarness() {
   const workers: MockWorker[] = [];
   const client = createWorkerMcapResourceClient({
-    fallback: "error",
     workerFactory: () => {
       const worker = new MockWorker();
       workers.push(worker);
