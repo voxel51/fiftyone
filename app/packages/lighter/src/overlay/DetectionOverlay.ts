@@ -829,9 +829,12 @@ export class DetectionOverlay
     const wasPainting = this.interactionState === "PAINTING";
 
     this.interactionState = "NONE";
-    this.mask?.paintEnd(this.bounds, () => {
+    const croppedBounds = this.mask?.paintEnd(this.bounds, () => {
       this.markDirty();
     });
+    if (croppedBounds) {
+      this.bounds = croppedBounds;
+    }
     this.moveStartPoint = undefined;
     this.moveStartPosition = undefined;
     this.moveStartBounds = undefined;
@@ -1201,7 +1204,7 @@ export class DetectionOverlay
       this.bounds = updatedBounds;
     }
 
-    this.mask.paintEnd(this.bounds, () => {
+    this.bounds = this.mask.paintEnd(this.bounds, () => {
       this.markDirty();
     });
 
