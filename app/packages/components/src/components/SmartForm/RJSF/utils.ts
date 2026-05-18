@@ -37,11 +37,28 @@ function isLabelValueWidgetPath(property: string, uiSchema: UiSchema): boolean {
   return isWidgetPath(property, uiSchema, "LabelValueWidget");
 }
 
+function _valueAt(data: Record<string, unknown>, property?: string): unknown {
+  if (!property) return undefined;
+  // RJSF property paths may have a leading "." (e.g. ".region"); strip it
+  // if present, then look up the (flat) key on the form data.
+  return data[property.replace(/^\./, "")];
+}
+
 export function transformErrors(
   errors: RJSFValidationError[],
-  uiSchema?: UiSchema
+  uiSchema?: UiSchema,
+  formData?: Record<string, unknown>
 ) {
   const filteredErrors = errors.filter((error) => {
+    // Drop type/enum errors whose value is null - if it is explicity
+    // set null we should respect it.
+    if (
+      formData &&
+      (error.name === "type" || error.name === "enum") &&
+      _valueAt(formData, error.property) === null
+    ) {
+      return false;
+    }
     if (!uiSchema) return true; // can't filter without the schema
     // We don't need to show validation errors on read-only fields.
     if (isLabelValueWidgetPath(error?.property ?? "", uiSchema)) {
