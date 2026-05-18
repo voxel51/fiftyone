@@ -706,7 +706,7 @@ downloading of credentials to machines, set the environment variable
 AI Model Weights
 ________________
 
-The Enterprise App ships with AI-assisted mask segmentation for annotation
+The FiftyOne Enterprise App ships with AI-assisted mask segmentation for annotation
 workflows. By default, the required model weights are served from Voxel51's
 CDN and no configuration is required.
 

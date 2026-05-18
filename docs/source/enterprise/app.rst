@@ -228,7 +228,7 @@ the modal to confirm this action.
 
 .. note::
 
-   The Enterprise App ships with AI-assisted mask segmentation for
+   The FiftyOne Enterprise App ships with AI-assisted mask segmentation for
    annotation workflows. The feature works out of the box with no
    configuration. Deployments that prefer to serve the model weights from
    their own infrastructure can do so via the
