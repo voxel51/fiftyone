@@ -534,8 +534,16 @@ export class MaskCanvas {
       const dw = (otherBounds.width / newBounds.width) * this.canvas.width;
       const dh = (otherBounds.height / newBounds.height) * this.canvas.height;
 
+      // Disable smoothing so the source's binary edge pixels don't get
+      // bilinear-spread across two destination pixels at fractional offsets.
+      // updateCanvas thresholds any non-zero alpha to fully opaque, so without
+      // this the anti-aliased fringe would be promoted to solid pixels and
+      // the mask would grow by ~1 pixel on each edge.
+      const prevSmoothing = this.context.imageSmoothingEnabled;
+      this.context.imageSmoothingEnabled = false;
       this.context.globalCompositeOperation = "source-over";
       this.context.drawImage(otherSource, dx, dy, dw, dh);
+      this.context.imageSmoothingEnabled = prevSmoothing;
     }
 
     this.paintEnd(newBounds, onEncoded);
