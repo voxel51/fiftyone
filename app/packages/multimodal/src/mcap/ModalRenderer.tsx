@@ -17,7 +17,7 @@ import {
   serializeCacheKey,
 } from "../client/resources/cache";
 import type { DecodedVisualization } from "../decoders";
-import { PlaybackSyncMode } from "../schemas/v1";
+import { PlaybackSyncMode, type StreamInventory } from "../schemas/v1";
 import { ImagePanel } from "../visualization/panels/image";
 import { PointCloudPanel } from "../visualization/panels/point-cloud";
 import { VISUALIZATION_KIND } from "../visualization";
@@ -76,7 +76,6 @@ type StreamSpec = {
 type DisplayMessagesByTopic = Partial<
   Record<typeof PLAYBACK_TOPICS[number], McapDecodedMessage>
 >;
-type PlaybackWindowCache = LRUCache<string, McapSynchronizedMessageWindow>;
 type TimelineBufferKind = "buffered" | "loading";
 type TimelineBufferSegment = {
   readonly kind: TimelineBufferKind;
@@ -155,6 +154,9 @@ export function ModalRenderer({
   const [isPlaying, setIsPlaying] = useState(false);
   const [timelineStatus, setTimelineStatus] = useState<LoadStatus>("idle");
   const [frameStatus, setFrameStatus] = useState<LoadStatus>("idle");
+  const [topicStatus, setTopicStatus] = useState<LoadStatus>("idle");
+  const [topics, setTopics] = useState<readonly StreamInventory[]>([]);
+  const [topicError, setTopicError] = useState<string | null>(null);
   const [displayMessagesByTopic, setDisplayMessagesByTopic] =
     useState<DisplayMessagesByTopic>({});
   const [error, setError] = useState<string | null>(null);
@@ -162,6 +164,8 @@ export function ModalRenderer({
     (version: number) => version + 1,
     0
   );
+  // POC placement: production playback should move this cache with the
+  // playback controller because its key is shaped by timeline and sync policy.
   const playbackWindowCache = usePlaybackWindowCache();
   // In-flight keys dedupe both current-frame and speculative playback requests.
   const inFlightFrameRequestsRef = useRef(new Set<string>());
@@ -205,6 +209,44 @@ export function ModalRenderer({
   useEffect(() => {
     currentTimeNsRef.current = timeNs;
   }, [timeNs]);
+
+  useEffect(() => {
+    if (!source || sourceProblem) {
+      setTopics([]);
+      setTopicStatus("idle");
+      setTopicError(null);
+      return;
+    }
+
+    let cancelled = false;
+    setTopics([]);
+    setTopicStatus("loading");
+    setTopicError(null);
+
+    mcap
+      .readTopics({ source })
+      .then((nextTopics) => {
+        if (cancelled) {
+          return;
+        }
+
+        setTopics(nextTopics);
+        setTopicStatus("ready");
+      })
+      .catch((caughtError) => {
+        if (cancelled) {
+          return;
+        }
+
+        setTopics([]);
+        setTopicStatus("error");
+        setTopicError(errorMessage(caughtError));
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [mcap, source, sourceKey, sourceProblem]);
 
   // Timeline discovery resets playback state because source, active timeline,
   // and tick generation define the frame-index coordinate system.
@@ -584,6 +626,11 @@ export function ModalRenderer({
         timelineStatus={timelineStatus}
         timelineTickCount={timelineTickCount}
       />
+      <TopicInventoryPanel
+        error={topicError}
+        status={topicStatus}
+        topics={topics}
+      />
     </div>
   );
 }
@@ -717,6 +764,55 @@ function TimelineBufferTrack({
   );
 }
 
+function TopicInventoryPanel({
+  error,
+  status,
+  topics,
+}: {
+  readonly error: string | null;
+  readonly status: LoadStatus;
+  readonly topics: readonly StreamInventory[];
+}) {
+  return (
+    <section style={styles.topicInventory}>
+      <div style={styles.topicInventoryHeader}>
+        <div style={styles.topicInventoryTitle}>Topics</div>
+        <div style={styles.topicInventoryCount}>
+          {topicInventorySummary(status, topics.length)}
+        </div>
+      </div>
+      {status === "loading" ? (
+        <div style={styles.topicInventoryEmpty}>Loading MCAP topics</div>
+      ) : status === "error" ? (
+        <div style={{ ...styles.notice, ...styles.noticeError }}>
+          {error ?? "Could not load MCAP topics"}
+        </div>
+      ) : topics.length === 0 ? (
+        <div style={styles.topicInventoryEmpty}>No topics found</div>
+      ) : (
+        <div style={styles.topicRows}>
+          {topics.map((topic) => (
+            <div key={topic.streamId} style={styles.topicRow}>
+              <div style={styles.topicNameCell}>
+                <div style={styles.topicName}>
+                  {topic.displayName || topic.streamId}
+                </div>
+                <div style={styles.topicStreamId}>{topic.streamId}</div>
+              </div>
+              <div style={styles.topicSchemaCell}>
+                {formatTopicPayload(topic)}
+              </div>
+              <div style={styles.topicRecordCell}>
+                {topic.recordCount ?? "unknown"}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function useMcapSourceDescriptor(ctx: SampleRendererProps["ctx"]) {
   const nextSource = getMcapSourceDescriptor(ctx);
   const nextSourceKey = mcapSourceKey(nextSource);
@@ -735,8 +831,14 @@ function useMcapSourceDescriptor(ctx: SampleRendererProps["ctx"]) {
   return sourceRef.current;
 }
 
-function usePlaybackWindowCache(): PlaybackWindowCache {
-  const cacheRef = useRef<PlaybackWindowCache | null>(null);
+function usePlaybackWindowCache(): LRUCache<
+  string,
+  McapSynchronizedMessageWindow
+> {
+  const cacheRef = useRef<LRUCache<
+    string,
+    McapSynchronizedMessageWindow
+  > | null>(null);
 
   if (!cacheRef.current) {
     cacheRef.current = new LRUCache<string, McapSynchronizedMessageWindow>({
@@ -807,7 +909,7 @@ function timelineBufferStatusForTicks({
 }: {
   readonly activeTimeline: McapActiveTimeline;
   readonly inFlightFrameRequestKeys: ReadonlySet<string>;
-  readonly playbackWindowCache: PlaybackWindowCache;
+  readonly playbackWindowCache: LRUCache<string, McapSynchronizedMessageWindow>;
   readonly sourceKey: string;
   readonly ticks: readonly bigint[];
 }): TimelineBufferStatus {
@@ -1091,6 +1193,32 @@ function formatSeconds(ns: bigint) {
   return `${(Number(ns) / 1_000_000_000).toFixed(3)}s`;
 }
 
+function formatTopicPayload(topic: StreamInventory) {
+  const payload = topic.payload;
+  if (!payload) {
+    return "unknown payload";
+  }
+
+  const schema = payload.schema ?? "unknown schema";
+  const schemaEncoding = payload.schemaEncoding
+    ? ` · ${payload.schemaEncoding}`
+    : "";
+
+  return `${schema} · ${payload.encoding}${schemaEncoding}`;
+}
+
+function topicInventorySummary(status: LoadStatus, topicCount: number) {
+  if (status === "loading") {
+    return "loading";
+  }
+
+  if (status === "error") {
+    return "error";
+  }
+
+  return `${topicCount} ${topicCount === 1 ? "topic" : "topics"}`;
+}
+
 function frameStatusLabel(timelineStatus: LoadStatus, frameStatus: LoadStatus) {
   if (timelineStatus === "loading") {
     return "loading timeline";
@@ -1278,6 +1406,82 @@ const styles: Record<string, CSSProperties> = {
     display: "flex",
     fontSize: 12,
     gap: 6,
+  },
+  topicInventory: {
+    background: "#111d2a",
+    border: "1px solid #27394b",
+    borderRadius: 6,
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
+    minHeight: 0,
+    padding: 10,
+  },
+  topicInventoryCount: {
+    color: "#9fb3c8",
+    fontSize: 12,
+    whiteSpace: "nowrap",
+  },
+  topicInventoryEmpty: {
+    color: "#9fb3c8",
+    fontSize: 12,
+    padding: "4px 0",
+  },
+  topicInventoryHeader: {
+    alignItems: "center",
+    display: "flex",
+    justifyContent: "space-between",
+  },
+  topicInventoryTitle: {
+    color: "#edf6ff",
+    fontSize: 13,
+    fontWeight: 700,
+  },
+  topicName: {
+    color: "#edf6ff",
+    fontSize: 12,
+    fontWeight: 700,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
+  topicNameCell: {
+    minWidth: 0,
+  },
+  topicRecordCell: {
+    color: "#c7d5e4",
+    fontSize: 12,
+    textAlign: "right",
+    whiteSpace: "nowrap",
+  },
+  topicRow: {
+    alignItems: "center",
+    borderTop: "1px solid #27394b",
+    display: "grid",
+    gap: 10,
+    gridTemplateColumns: "minmax(0, 1.4fr) minmax(0, 1fr) 72px",
+    minHeight: 34,
+    padding: "7px 0",
+  },
+  topicRows: {
+    maxHeight: 180,
+    overflow: "auto",
+  },
+  topicSchemaCell: {
+    color: "#c7d5e4",
+    fontSize: 12,
+    minWidth: 0,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
+  topicStreamId: {
+    color: "#9fb3c8",
+    fontSize: 11,
+    marginTop: 2,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
   },
   timestamp: {
     color: "#9fb3c8",
