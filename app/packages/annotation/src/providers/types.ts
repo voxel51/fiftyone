@@ -15,6 +15,27 @@ export interface InferenceRequest {
   points: PromptPoint[];
 }
 
+/**
+ * Inference from a transferable ImageBitmap (e.g., a video frame).
+ * `cacheKey` stands in for the URL when caching the encoder embedding.
+ */
+export interface BitmapInferenceRequest {
+  bitmap: ImageBitmap;
+  cacheKey: string;
+  points: PromptPoint[];
+}
+
+/**
+ * Encode-only request — runs the SAM2 image encoder on a frame and stores
+ * the embedding in the per-frame cache without running the decoder. Used
+ * for background pre-encoding so a later inferBitmap with the same
+ * cacheKey is decoder-only.
+ */
+export interface BitmapEncodeRequest {
+  bitmap: ImageBitmap;
+  cacheKey: string;
+}
+
 /** Coordinates: [0,1] normalized. */
 export interface BoundingBox {
   x: number;
@@ -49,6 +70,8 @@ export interface DownloadProgress {
 export type WorkerMessages = {
   loadModel: WorkerMessage<Record<string, never>, void>;
   embedAndDecode: WorkerMessage<InferenceRequest, InferenceResult>;
+  embedAndDecodeBitmap: WorkerMessage<BitmapInferenceRequest, InferenceResult>;
+  encodeBitmap: WorkerMessage<BitmapEncodeRequest, void>;
 };
 
 /** One-way worker-to-main-thread notification payloads. */

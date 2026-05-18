@@ -3,7 +3,11 @@ import type { ImageGeometry } from "./math";
 const DB_NAME = "fiftyone-embeddings";
 const STORE_NAME = "embeddings";
 const META_STORE = "metadata";
-export const MAX_CACHE_ENTRIES = 5;
+// Capped to fit video propagation: ~16 MB per embedding (SAM2 tiny),
+// 200 frames ≈ 3.2 GB IDB / RAM ceiling. Image-segmentation workflows
+// only ever touch a handful of distinct cacheKeys so this is also fine
+// for them (LRU evicts naturally).
+export const MAX_CACHE_ENTRIES = 200;
 
 interface StoredTensor {
   data: Float32Array;

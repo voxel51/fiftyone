@@ -1,6 +1,8 @@
 import { getFetchParameters, mergeHeaders } from "@fiftyone/utilities";
 import type {
   AnnotationProvider,
+  BitmapEncodeRequest,
+  BitmapInferenceRequest,
   DownloadProgress,
   DownloadProgressCallback,
   ErrorCallback,
@@ -166,6 +168,33 @@ export class BrowserAnnotationProvider implements AnnotationProvider {
     return promise;
   }
 
+  /**
+   * Run SAM2 against an ImageBitmap (e.g., a video frame).
+   * Used by video propagation; see videoPropagation.ts.
+   *
+   * NOTE: we don't pass the bitmap as a transferable. Firefox rejects the
+   * combination of payload-with-bitmap + transfer-list-with-bitmap
+   * ("invalid transferable array for structured clone"). Structured clone
+   * of a single bitmap is cheap (it's a handle, not pixel-copy) so this is
+   * a non-issue performance-wise.
+   */
+  async inferBitmap(request: BitmapInferenceRequest): Promise<InferenceResult> {
+    const { id, promise } = this.send("embedAndDecodeBitmap", request);
+    this.lastInferenceId = id;
+    return promise;
+  }
+
+  /**
+   * Encode-only — runs SAM2's image encoder on a frame and stores the
+   * embedding in the per-frame cache. No decoder, no return value. A
+   * later inferBitmap with the same cacheKey hits the cache and only
+   * runs the decoder.
+   */
+  async encodeBitmap(request: BitmapEncodeRequest): Promise<void> {
+    const { promise } = this.send("encodeBitmap", request);
+    return promise;
+  }
+
   // Client-side only: rejects the pending promise but the worker keeps computing.
   // Only aborts the most recent inference. Earlier in-flight requests are not cancelled.
   abort(): void {
@@ -195,7 +224,8 @@ export class BrowserAnnotationProvider implements AnnotationProvider {
 
   private send<T extends WorkerMessageType>(
     type: T,
-    payload: WorkerRequest<T>
+    payload: WorkerRequest<T>,
+    transfer?: Transferable[]
   ): { id: number; promise: Promise<WorkerResponse<T>> } {
     const id = this.nextId++;
     const promise = new Promise<WorkerResponse<T>>((resolve, reject) => {
@@ -203,7 +233,7 @@ export class BrowserAnnotationProvider implements AnnotationProvider {
         return reject(new Error("Worker not initialized"));
 
       this.pending.set(id, { resolve: resolve as (value: unknown) => void, reject });
-      this.worker.postMessage({ id, type, payload });
+      this.worker.postMessage({ id, type, payload }, transfer ?? []);
     });
     return { id, promise };
   }

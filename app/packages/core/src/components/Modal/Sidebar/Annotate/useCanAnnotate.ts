@@ -34,7 +34,8 @@ const MEDIA_TYPE_TO_DISABLED_REASON: Partial<
     >
   >
 > = {
-  video: "videoDataset",
+  // video intentionally omitted — propagation panel needs the Annotate
+  // tab to render so its mount point in <Actions/> is reachable.
 };
 
 export function getDisabledReason(

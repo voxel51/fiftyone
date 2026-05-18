@@ -475,6 +475,7 @@ const Actions = () => {
           </ItemRight>
         </Row>
         <SAM2Test />
+        <VideoPropagateTest />
       </ActionsDiv>
     </DeactivateAllContext.Provider>
   );
@@ -483,3 +484,4 @@ const Actions = () => {
 export default Actions;
 
 import { SAM2Test } from "./SAM2Test";
+import { VideoPropagateTest } from "./VideoPropagateTest";

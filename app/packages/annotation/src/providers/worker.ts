@@ -232,9 +232,78 @@ async function loadModel(): Promise<void> {
  * @param points Prompt points in normalized [0,1] coordinates
  * @returns The best mask (selected by IoU) in original image dimensions
  */
+/**
+ * Convert an ImageBitmap to ImageData via OffscreenCanvas. Used for video
+ * frames that come in via postMessage rather than URL fetch.
+ */
+function bitmapToImageData(bitmap: ImageBitmap): ImageData {
+  const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+  const ctx = canvas.getContext("2d");
+  if (!ctx)
+    throw new Error("Failed to get 2d context");
+  ctx.drawImage(bitmap, 0, 0);
+  return ctx.getImageData(0, 0, canvas.width, canvas.height);
+}
+
 async function embedAndDecode(
   imageUrl: string,
   points: PromptPoint[]
+): Promise<InferenceResult> {
+  const imageData = await loadImageData(imageUrl);
+  return embedAndDecodeFromImageData(imageData, CACHE_PREFIX + imageUrl, points);
+}
+
+async function embedAndDecodeBitmap(
+  bitmap: ImageBitmap,
+  cacheKey: string,
+  points: PromptPoint[],
+): Promise<InferenceResult> {
+  const imageData = bitmapToImageData(bitmap);
+  return embedAndDecodeFromImageData(imageData, CACHE_PREFIX + cacheKey, points);
+}
+
+/**
+ * Encode-only path used by background pre-encoding. Writes the embedding
+ * to the per-frame cache; no decoder work, no return value beyond void.
+ */
+async function encodeBitmap(
+  bitmap: ImageBitmap,
+  cacheKey: string,
+): Promise<void> {
+  if (!encoderSession)
+    throw new Error("Model not loaded");
+
+  const fullKey = CACHE_PREFIX + cacheKey;
+
+  // Skip if already in cache (mem-LRU or IDB).
+  const cached = await getEmbedding(fullKey, postWarningNotification);
+  if (cached) return;
+
+  const imageData = bitmapToImageData(bitmap);
+  const processed = preprocessImage(imageData);
+
+  const encResults = await encoderSession.run({
+    image: new ort.Tensor("float32", processed.tensor, [1, 3, SAM2_INPUT_SIZE, SAM2_INPUT_SIZE]),
+  });
+
+  await putEmbedding(fullKey, {
+    imageEmbed: { data: encResults["image_embed"].data as Float32Array, dims: [...encResults["image_embed"].dims] },
+    highResFeats0: { data: encResults["high_res_feats_0"].data as Float32Array, dims: [...encResults["high_res_feats_0"].dims] },
+    highResFeats1: { data: encResults["high_res_feats_1"].data as Float32Array, dims: [...encResults["high_res_feats_1"].dims] },
+    processedImage: {
+      originalWidth: processed.originalWidth,
+      originalHeight: processed.originalHeight,
+      scale: processed.scale,
+      padX: processed.padX,
+      padY: processed.padY,
+    },
+  }, postWarningNotification);
+}
+
+async function embedAndDecodeFromImageData(
+  imageData: ImageData,
+  cacheKey: string,
+  points: PromptPoint[],
 ): Promise<InferenceResult> {
   if (!encoderSession || !decoderSession)
     throw new Error("Model not loaded");
@@ -245,7 +314,6 @@ async function embedAndDecode(
   let encResults: Record<string, ort.Tensor>;
   let geometry: ImageGeometry;
 
-  const cacheKey = CACHE_PREFIX + imageUrl;
   const cached = await getEmbedding(cacheKey, postWarningNotification);
   let cacheHit = false;
 
@@ -265,7 +333,6 @@ async function embedAndDecode(
 
   if (!cacheHit) {
     postStatusNotification("encoding");
-    const imageData = await loadImageData(imageUrl);
     const processed = preprocessImage(imageData);
     geometry = processed;
 
@@ -351,6 +418,17 @@ self.onmessage = async (e: MessageEvent) => {
       const result = await embedAndDecode(payload.imageUrl, payload.points);
       postStatusNotification("ready");
       postResponse(id, "embedAndDecode", result, [result.mask.buffer as ArrayBuffer]);
+    } else if (type === "embedAndDecodeBitmap") {
+      const result = await embedAndDecodeBitmap(
+        payload.bitmap,
+        payload.cacheKey,
+        payload.points,
+      );
+      postStatusNotification("ready");
+      postResponse(id, "embedAndDecodeBitmap", result, [result.mask.buffer as ArrayBuffer]);
+    } else if (type === "encodeBitmap") {
+      await encodeBitmap(payload.bitmap, payload.cacheKey);
+      postResponse(id, "encodeBitmap", undefined as void);
     } else {
       postError(id, type, `Unknown message type: ${type}`);
     }
