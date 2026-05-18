@@ -113,6 +113,39 @@ export class SampleCanvasPom {
   }
 
   /**
+   * Drag the mouse from (x1,y1) to (x2,y2) with interpolated intermediate
+   * moves. Used for the brush tool, which paints a dab per `onMove` — a
+   * naive two-point move with no intermediates would leave a discontinuous
+   * stroke (only endpoints dabbed).
+   *
+   * @param x1 Start x in [0, 1]
+   * @param y1 Start y in [0, 1]
+   * @param x2 End x in [0, 1]
+   * @param y2 End y in [0, 1]
+   * @param steps Number of intermediate moves between start and end
+   */
+  async drag(x1: number, y1: number, x2: number, y2: number, steps = 10) {
+    const start = await this.#toScreenCoordinates(x1, y1);
+    const end = await this.#toScreenCoordinates(x2, y2);
+
+    this.#mouseX = start.x;
+    this.#mouseY = start.y;
+    await this.page.mouse.move(start.x, start.y);
+    await this.page.mouse.down();
+
+    for (let i = 1; i <= steps; i++) {
+      const t = i / steps;
+      const x = start.x + (end.x - start.x) * t;
+      const y = start.y + (end.y - start.y) * t;
+      this.#mouseX = x;
+      this.#mouseY = y;
+      await this.page.mouse.move(x, y);
+    }
+
+    await this.page.mouse.up();
+  }
+
+  /**
    * Mouse down on the sample canvas
    */
   async down() {
