@@ -546,21 +546,22 @@ export class MaskCanvas {
       this.context.imageSmoothingEnabled = prevSmoothing;
     }
 
-    this.paintEnd(newBounds, onEncoded);
-
-    return newBounds;
+    return this.paintEnd(newBounds, onEncoded);
   }
 
-  paintEnd(bounds: Rect, onEncoded?: () => void) {
-    if (!this.canvas) return;
+  paintEnd(bounds: Rect, onEncoded?: () => void): Rect {
+    if (!this.canvas) return bounds;
 
     this.lastPoint = undefined;
 
     // Rebuild the canvas to recolor + threshold anti-aliased edge pixels
-    // before the snapshot and encode.
+    // before computing tight bounds and snapshotting.
     this.updateCanvas(this.canvas.width, this.canvas.height);
 
-    this.postStrokeBounds = { ...bounds };
+    // Snap bounds down to the painted region.
+    const finalBounds = this.cropToContent(bounds) ?? bounds;
+
+    this.postStrokeBounds = { ...finalBounds };
     this.postStrokeSnapshot = this.takeSnapshot();
 
     // Refresh single-channel mask data so hit-testing reflects the edit.
@@ -576,6 +577,8 @@ export class MaskCanvas {
       .catch((err) => {
         console.error("[MaskCanvas] paintEnd encode failed:", err);
       });
+
+    return finalBounds;
   }
 
   getPaintStrokeData(): PaintStrokeData {
@@ -725,6 +728,43 @@ export class MaskCanvas {
       y: minY,
       width: newWidth,
       height: newHeight,
+    };
+  }
+
+  /**
+   * Crops the editing canvas to the tight bbox of opaque pixels and returns
+   * the corresponding world-space bounds. Returns `undefined` when the canvas
+   * is already tight, or when it is fully transparent (nothing to crop to).
+   */
+  private cropToContent(bounds: Rect): Rect | undefined {
+    if (!this.canvas || !this.context) return undefined;
+
+    const tight = this.getBounds();
+    if (!tight) return undefined;
+
+    const { width, height } = this.canvas;
+    const tightW = tight.maxX - tight.minX + 1;
+    const tightH = tight.maxY - tight.minY + 1;
+
+    if (
+      tight.minX === 0 &&
+      tight.minY === 0 &&
+      tightW === width &&
+      tightH === height
+    ) {
+      return undefined;
+    }
+
+    const pxW = bounds.width / width;
+    const pxH = bounds.height / height;
+
+    this.updateCanvas(tightW, tightH, -tight.minX, -tight.minY);
+
+    return {
+      x: bounds.x + tight.minX * pxW,
+      y: bounds.y + tight.minY * pxH,
+      width: tightW * pxW,
+      height: tightH * pxH,
     };
   }
 
