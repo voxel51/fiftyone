@@ -4,14 +4,18 @@
  */
 import type { SampleRendererProps } from "@fiftyone/plugins";
 import { LRUCache } from "lru-cache";
-import type { ChangeEvent, CSSProperties, ReactNode } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import type {
+  ChangeEvent,
+  CSSProperties,
+  MutableRefObject,
+  ReactNode,
+} from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import type { ByteSourceDescriptor } from "../client";
 import {
   byteSourceCacheKey,
   serializeCacheKey,
 } from "../client/resources/cache";
-import { usePlaybackPlan, useSceneInventory } from "../client/hooks";
 import type { DecodedVisualization } from "../decoders";
 import { PlaybackSyncMode } from "../schemas/v1";
 import { ImagePanel } from "../visualization/panels/image";
@@ -31,9 +35,11 @@ import {
   DEFAULT_MCAP_TIMELINE_TICK_RATE_HZ,
   createMcapTimelineTicks,
 } from "./timeline";
-import { getMcapSourceDescriptor, getSampleIdentifiers } from "./sample";
+import { getMcapSourceDescriptor } from "./sample";
 import { createWorkerMcapResourceClient } from "./worker";
 
+// NuScenes demo wiring. The production playback owner should replace this with
+// playback-plan streams, per-stream sync policy, and timeline controls.
 const PLAYBACK_TOPICS = [
   "/CAM_FRONT/image_rect_compressed",
   "/CAM_FRONT_LEFT/image_rect_compressed",
@@ -61,7 +67,7 @@ const PLAYBACK_WINDOW_SYNC_POLICY_CACHE_KEY =
 const ACTIVE_TIMELINE_OPTIONS = [MCAP_ACTIVE_TIMELINE.LOG] as const;
 
 type LoadStatus = "idle" | "loading" | "ready" | "error";
-type FrameLoadReason = "load" | "playback" | "seek";
+type FrameLoadIntent = "load" | "playback" | "seek";
 
 type StreamSpec = {
   readonly label: string;
@@ -71,6 +77,37 @@ type DisplayMessagesByTopic = Partial<
   Record<typeof PLAYBACK_TOPICS[number], McapDecodedMessage>
 >;
 type PlaybackWindowCache = LRUCache<string, McapSynchronizedMessageWindow>;
+type TimelineBufferKind = "buffered" | "loading";
+type TimelineBufferSegment = {
+  readonly kind: TimelineBufferKind;
+  readonly startPercent: number;
+  readonly widthPercent: number;
+};
+type TimelineBufferStatus = {
+  readonly bufferedFrameCount: number;
+  readonly loadingFrameCount: number;
+  readonly segments: readonly TimelineBufferSegment[];
+  readonly totalFrameCount: number;
+};
+type StreamGridProps = {
+  readonly messagesByTopic: DisplayMessagesByTopic;
+};
+type TimelineControlsProps = {
+  readonly activeTimeline: McapActiveTimeline;
+  readonly bufferStatus: TimelineBufferStatus;
+  readonly canPlay: boolean;
+  readonly frameIndex: number;
+  readonly frameStatus: LoadStatus;
+  readonly isPlaying: boolean;
+  readonly relativeTimeNs: bigint | undefined;
+  readonly timelineStatus: LoadStatus;
+  readonly timelineTickCount: number;
+  readonly onActiveTimelineChange: (
+    event: ChangeEvent<HTMLSelectElement>
+  ) => void;
+  readonly onPlayClick: () => void;
+  readonly onTimelineChange: (event: ChangeEvent<HTMLInputElement>) => void;
+};
 type ModalRendererProps = SampleRendererProps & {
   readonly maxTimelineTicks?: number;
   readonly timelineTickRateHz?: number;
@@ -99,19 +136,13 @@ export function ModalRenderer({
   maxTimelineTicks = DEFAULT_MCAP_TIMELINE_MAX_TICKS,
   timelineTickRateHz = DEFAULT_MCAP_TIMELINE_TICK_RATE_HZ,
 }: ModalRendererProps) {
-  const { datasetId, sampleId } = getSampleIdentifiers(ctx);
   const { source, sourceKey } = useMcapSourceDescriptor(ctx);
+  // Playback data path: this POC reads MCAP bytes directly through the
+  // worker-backed resource client. It does not currently depend on server-side
+  // inventory or playback-plan query artifacts.
   const mcap = useMemo(() => createWorkerMcapResourceClient(), []);
 
   useEffect(() => () => mcap.dispose(), [mcap]);
-  const inventoryState = useSceneInventory(
-    datasetId && sampleId ? { datasetId, sampleId } : null
-  );
-  const playbackPlanState = usePlaybackPlan(
-    inventoryState.status === "loaded" && inventoryState.data.inventoryId
-      ? { inventoryId: inventoryState.data.inventoryId }
-      : null
-  );
   const [activeTimeline, setActiveTimeline] = useState<McapActiveTimeline>(
     MCAP_ACTIVE_TIMELINE.LOG
   );
@@ -127,13 +158,21 @@ export function ModalRenderer({
   const [displayMessagesByTopic, setDisplayMessagesByTopic] =
     useState<DisplayMessagesByTopic>({});
   const [error, setError] = useState<string | null>(null);
+  const [, markPlaybackBufferChanged] = useReducer(
+    (version: number) => version + 1,
+    0
+  );
   const playbackWindowCache = usePlaybackWindowCache();
+  // In-flight keys dedupe both current-frame and speculative playback requests.
   const inFlightFrameRequestsRef = useRef(new Set<string>());
-  const frameLoadReasonRef = useRef<FrameLoadReason>("load");
+  const frameLoadIntentRef = useRef<FrameLoadIntent>("load");
   const currentTimeNsRef = useRef<bigint | undefined>(undefined);
-  const sourceKeyRef = useRef(sourceKey);
+  // LATEST sync can omit low-frequency streams at a given tick. During playback
+  // we hold the last visible stream message so the UI remains visually coherent.
   const heldMessagesByTopicRef = useRef(new Map<string, McapDecodedMessage>());
   const sourceProblem = sourceProblemMessage(source);
+  // The timeline key is the local playback epoch. If any input changes, old
+  // async reads are allowed to fill cache but not repaint the current UI.
   const timelineKey = timelineCacheKey(
     sourceKey,
     activeTimeline,
@@ -143,19 +182,32 @@ export function ModalRenderer({
   const timelineReadyForSource = timelineSourceKey === timelineKey;
   const timeNs = timelineReadyForSource ? timelineTicks[frameIndex] : undefined;
   const playIntervalMs = 1_000 / timelineTickRateHz;
+  const playbackEpochKeyRef = useRef(timelineKey);
+  const canPlay = timelineTicks.length > 1;
+  const timelineTickCount = timelineTicks.length;
   const relativeTimeNs =
     timeNs !== undefined && timelineRange !== null
       ? timeNs - timelineRange.startTimeNs
       : undefined;
+  const bufferStatus = timelineBufferStatusForTicks({
+    activeTimeline,
+    inFlightFrameRequestKeys: inFlightFrameRequestsRef.current,
+    playbackWindowCache,
+    sourceKey,
+    ticks: timelineTicks,
+  });
+  const playbackError = sourceProblem ?? error;
 
   useEffect(() => {
-    sourceKeyRef.current = sourceKey;
-  }, [sourceKey]);
+    playbackEpochKeyRef.current = timelineKey;
+  }, [timelineKey]);
 
   useEffect(() => {
     currentTimeNsRef.current = timeNs;
   }, [timeNs]);
 
+  // Timeline discovery resets playback state because source, active timeline,
+  // and tick generation define the frame-index coordinate system.
   useEffect(() => {
     if (!source || sourceProblem) {
       setTimelineRange(null);
@@ -166,14 +218,16 @@ export function ModalRenderer({
       setDisplayMessagesByTopic({});
       playbackWindowCache.clear();
       inFlightFrameRequestsRef.current.clear();
+      markPlaybackBufferChanged();
       setTimelineStatus("idle");
       return;
     }
 
     let cancelled = false;
-    frameLoadReasonRef.current = "load";
+    frameLoadIntentRef.current = "load";
     playbackWindowCache.clear();
     inFlightFrameRequestsRef.current.clear();
+    markPlaybackBufferChanged();
     setTimelineRange(null);
     setTimelineTicks([]);
     setTimelineSourceKey("");
@@ -235,6 +289,9 @@ export function ModalRenderer({
     timelineTickRateHz,
   ]);
 
+  // Current-frame lane. Load/seek should request exactly the visible frame at
+  // current-frame priority; playback intentionally defers misses to the batch
+  // lane so speculative lookahead and the visible frame share one read.
   useEffect(() => {
     if (
       !source ||
@@ -252,17 +309,13 @@ export function ModalRenderer({
     const cachedWindow = playbackWindowCache.get(cacheKey);
     if (cachedWindow) {
       setDisplayMessagesByTopic(
-        displayMessagesForWindow(
-          cachedWindow,
-          heldMessagesByTopicRef.current,
-          frameLoadReasonRef.current === "playback"
-        )
+        displayMessagesForWindow(cachedWindow, heldMessagesByTopicRef.current)
       );
       setFrameStatus("ready");
       return;
     }
 
-    if (isPlaying && frameLoadReasonRef.current === "playback") {
+    if (isPlaying && frameLoadIntentRef.current === "playback") {
       setFrameStatus("loading");
       setError(null);
       return;
@@ -275,49 +328,51 @@ export function ModalRenderer({
     }
 
     let cancelled = false;
-    const requestSourceKey = sourceKey;
+    const requestEpochKey = timelineKey;
     inFlightFrameRequestsRef.current.add(cacheKey);
+    markPlaybackBufferChanged();
     setFrameStatus("loading");
     setError(null);
 
-    readSynchronizedFrame(mcap, source, activeTimeline, timeNs)
+    readCurrentPlaybackWindow(mcap, source, activeTimeline, timeNs)
       .then((window) => {
         playbackWindowCache.set(cacheKey, window);
         if (
           cancelled ||
-          sourceKeyRef.current !== requestSourceKey ||
-          currentTimeNsRef.current !== timeNs
+          !isCurrentFrameRequest(
+            playbackEpochKeyRef,
+            currentTimeNsRef,
+            requestEpochKey,
+            timeNs
+          )
         ) {
           return;
         }
 
         setDisplayMessagesByTopic(
-          displayMessagesForWindow(
-            window,
-            heldMessagesByTopicRef.current,
-            frameLoadReasonRef.current === "playback"
-          )
+          displayMessagesForWindow(window, heldMessagesByTopicRef.current)
         );
         setFrameStatus("ready");
       })
       .catch((caughtError) => {
         if (
           cancelled ||
-          sourceKeyRef.current !== requestSourceKey ||
-          currentTimeNsRef.current !== timeNs
+          !isCurrentFrameRequest(
+            playbackEpochKeyRef,
+            currentTimeNsRef,
+            requestEpochKey,
+            timeNs
+          )
         ) {
           return;
         }
 
-        if (frameLoadReasonRef.current !== "playback") {
-          heldMessagesByTopicRef.current.clear();
-          setDisplayMessagesByTopic({});
-        }
         setFrameStatus("error");
         setError(errorMessage(caughtError));
       })
       .finally(() => {
         inFlightFrameRequestsRef.current.delete(cacheKey);
+        markPlaybackBufferChanged();
       });
 
     return () => {
@@ -332,9 +387,13 @@ export function ModalRenderer({
     sourceKey,
     sourceProblem,
     timeNs,
+    timelineKey,
     timelineReadyForSource,
   ]);
 
+  // Playback batch lane. This is the POC's speculative policy: while playing,
+  // ask the worker for the current tick plus a small lookahead window. The
+  // worker gives this RPC lower priority than explicit current-frame reads.
   useEffect(() => {
     if (
       !isPlaying ||
@@ -346,8 +405,8 @@ export function ModalRenderer({
       return;
     }
 
-    const lookaheadTicks = playbackLookaheadTicks(timelineTicks, frameIndex);
-    const ticksToLoad = lookaheadTicks.filter((nextTimeNs) => {
+    const batchTicks = playbackBatchTicks(timelineTicks, frameIndex);
+    const ticksToLoad = batchTicks.filter((nextTimeNs) => {
       const cacheKey = frameCacheKey(sourceKey, activeTimeline, nextTimeNs);
       return (
         !playbackWindowCache.has(cacheKey) &&
@@ -361,11 +420,7 @@ export function ModalRenderer({
       );
       if (cachedWindow) {
         setDisplayMessagesByTopic(
-          displayMessagesForWindow(
-            cachedWindow,
-            heldMessagesByTopicRef.current,
-            true
-          )
+          displayMessagesForWindow(cachedWindow, heldMessagesByTopicRef.current)
         );
         setFrameStatus("ready");
       }
@@ -373,12 +428,14 @@ export function ModalRenderer({
     }
 
     const requestSourceKey = sourceKey;
+    const requestEpochKey = timelineKey;
     const cacheKeys = ticksToLoad.map((nextTimeNs) =>
       frameCacheKey(requestSourceKey, activeTimeline, nextTimeNs)
     );
     for (const cacheKey of cacheKeys) {
       inFlightFrameRequestsRef.current.add(cacheKey);
     }
+    markPlaybackBufferChanged();
 
     if (
       !playbackWindowCache.has(frameCacheKey(sourceKey, activeTimeline, timeNs))
@@ -387,16 +444,9 @@ export function ModalRenderer({
       setError(null);
     }
 
-    mcap
-      .readSynchronizedMessageBatch({
-        activeTimeline,
-        source,
-        streamPolicies: STREAM_SYNC_POLICIES,
-        timeNs: ticksToLoad,
-        topics: PLAYBACK_TOPICS,
-      })
+    readPlaybackWindowBatch(mcap, source, activeTimeline, ticksToLoad)
       .then((windows) => {
-        if (sourceKeyRef.current !== requestSourceKey) {
+        if (!isCurrentPlaybackEpoch(playbackEpochKeyRef, requestEpochKey)) {
           return;
         }
 
@@ -418,15 +468,14 @@ export function ModalRenderer({
           setDisplayMessagesByTopic(
             displayMessagesForWindow(
               currentWindow,
-              heldMessagesByTopicRef.current,
-              true
+              heldMessagesByTopicRef.current
             )
           );
           setFrameStatus("ready");
         }
       })
       .catch((caughtError) => {
-        if (sourceKeyRef.current !== requestSourceKey) {
+        if (!isCurrentPlaybackEpoch(playbackEpochKeyRef, requestEpochKey)) {
           return;
         }
 
@@ -444,8 +493,7 @@ export function ModalRenderer({
           setDisplayMessagesByTopic(
             displayMessagesForWindow(
               currentWindow,
-              heldMessagesByTopicRef.current,
-              true
+              heldMessagesByTopicRef.current
             )
           );
         }
@@ -454,6 +502,7 @@ export function ModalRenderer({
         for (const cacheKey of cacheKeys) {
           inFlightFrameRequestsRef.current.delete(cacheKey);
         }
+        markPlaybackBufferChanged();
       });
   }, [
     activeTimeline,
@@ -465,35 +514,44 @@ export function ModalRenderer({
     sourceKey,
     sourceProblem,
     timeNs,
+    timelineKey,
     timelineReadyForSource,
     timelineTicks,
   ]);
 
+  // Clock lane. This moves the visible frame only; data loading is owned by the
+  // current-frame and playback-batch lanes above.
   useEffect(() => {
-    if (!isPlaying || !timelineReadyForSource || timelineTicks.length <= 1) {
+    if (!isPlaying || !timelineReadyForSource || !canPlay) {
       return undefined;
     }
 
     const interval = window.setInterval(() => {
-      frameLoadReasonRef.current = "playback";
+      frameLoadIntentRef.current = "playback";
       setFrameIndex((current) => (current + 1) % timelineTicks.length);
     }, playIntervalMs);
 
     return () => window.clearInterval(interval);
-  }, [isPlaying, playIntervalMs, timelineReadyForSource, timelineTicks.length]);
+  }, [
+    canPlay,
+    isPlaying,
+    playIntervalMs,
+    timelineReadyForSource,
+    timelineTicks.length,
+  ]);
 
   const handlePlayClick = () => {
     setIsPlaying((playing) => {
       const nextPlaying = !playing;
       if (nextPlaying) {
-        frameLoadReasonRef.current = "playback";
+        frameLoadIntentRef.current = "playback";
       }
       return nextPlaying;
     });
   };
 
   const handleTimelineChange = (event: ChangeEvent<HTMLInputElement>) => {
-    frameLoadReasonRef.current = "seek";
+    frameLoadIntentRef.current = "seek";
     setIsPlaying(false);
     setFrameIndex(Number(event.currentTarget.value));
   };
@@ -501,7 +559,7 @@ export function ModalRenderer({
   const handleActiveTimelineChange = (
     event: ChangeEvent<HTMLSelectElement>
   ) => {
-    frameLoadReasonRef.current = "load";
+    frameLoadIntentRef.current = "load";
     setIsPlaying(false);
     heldMessagesByTopicRef.current.clear();
     setDisplayMessagesByTopic({});
@@ -510,80 +568,150 @@ export function ModalRenderer({
 
   return (
     <div style={styles.shell}>
-      <div style={styles.header}>
-        <div>
-          <div style={styles.title}>MCAP synchronized playback POC</div>
-          <div style={styles.meta}>
-            Scene inventory: {inventoryState.data?.inventoryId ?? "loading"}
-          </div>
-          <div style={styles.meta}>
-            Playback plan: {playbackPlanState.data?.planId ?? "loading"}
-          </div>
-        </div>
-        <div style={styles.badge}>
-          {frameStatusLabel(timelineStatus, frameStatus)}
-        </div>
-      </div>
+      {playbackError ? <ErrorNotice>{playbackError}</ErrorNotice> : null}
+      <StreamGrid messagesByTopic={displayMessagesByTopic} />
+      <TimelineControls
+        activeTimeline={activeTimeline}
+        bufferStatus={bufferStatus}
+        canPlay={canPlay}
+        frameIndex={frameIndex}
+        frameStatus={frameStatus}
+        isPlaying={isPlaying}
+        onActiveTimelineChange={handleActiveTimelineChange}
+        onPlayClick={handlePlayClick}
+        onTimelineChange={handleTimelineChange}
+        relativeTimeNs={relativeTimeNs}
+        timelineStatus={timelineStatus}
+        timelineTickCount={timelineTickCount}
+      />
+    </div>
+  );
+}
 
-      {sourceProblem ? (
-        <Notice tone="error">{sourceProblem}</Notice>
-      ) : error ? (
-        <Notice tone="error">{error}</Notice>
-      ) : (
-        <Notice tone="info">
-          Source: {source?.sourceId ?? "unknown"} · {activeTimeline} ·{" "}
-          {timelineTicks.length} timeline ticks
-        </Notice>
-      )}
+// UI-only pieces below receive already-orchestrated playback state. Keeping
+// them dumb makes the data flow above easier to audit when playback evolves.
+function StreamGrid({ messagesByTopic }: StreamGridProps) {
+  return (
+    <div style={styles.streamGrid}>
+      {STREAMS.map((stream) => (
+        <StreamPanel
+          key={stream.topic}
+          message={messagesByTopic[stream.topic]}
+          stream={stream}
+        />
+      ))}
+    </div>
+  );
+}
 
-      <div style={styles.streamGrid}>
-        {STREAMS.map((stream) => (
-          <StreamPanel
-            key={stream.topic}
-            message={displayMessagesByTopic[stream.topic]}
-            stream={stream}
-          />
-        ))}
-      </div>
+function TimelineControls({
+  activeTimeline,
+  bufferStatus,
+  canPlay,
+  frameIndex,
+  frameStatus,
+  isPlaying,
+  onActiveTimelineChange,
+  onPlayClick,
+  onTimelineChange,
+  relativeTimeNs,
+  timelineStatus,
+  timelineTickCount,
+}: TimelineControlsProps) {
+  const maxFrameIndex = Math.max(timelineTickCount - 1, 0);
 
-      <div style={styles.timeline}>
-        <label style={styles.timelineSelectLabel}>
-          Timeline
-          <select
-            onChange={handleActiveTimelineChange}
-            style={styles.select}
-            value={activeTimeline}
-          >
-            {ACTIVE_TIMELINE_OPTIONS.map((timeline) => (
-              <option key={timeline} value={timeline}>
-                {timeline}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button
-          disabled={timelineTicks.length <= 1}
-          onClick={handlePlayClick}
-          style={styles.button}
-          type="button"
+  return (
+    <div style={styles.timeline}>
+      <label style={styles.timelineSelectLabel}>
+        Timeline
+        <select
+          onChange={onActiveTimelineChange}
+          style={styles.select}
+          value={activeTimeline}
         >
-          {isPlaying ? "Pause" : "Play"}
-        </button>
+          {ACTIVE_TIMELINE_OPTIONS.map((timeline) => (
+            <option key={timeline} value={timeline}>
+              {timeline}
+            </option>
+          ))}
+        </select>
+      </label>
+      <button
+        disabled={!canPlay}
+        onClick={onPlayClick}
+        style={styles.button}
+        type="button"
+      >
+        {isPlaying ? "Pause" : "Play"}
+      </button>
+      <div style={styles.timelineTrack}>
         <input
-          disabled={timelineTicks.length <= 1}
-          max={Math.max(timelineTicks.length - 1, 0)}
+          disabled={!canPlay}
+          max={maxFrameIndex}
           min={0}
-          onChange={handleTimelineChange}
+          onChange={onTimelineChange}
           style={styles.range}
           type="range"
-          value={Math.min(frameIndex, Math.max(timelineTicks.length - 1, 0))}
+          value={Math.min(frameIndex, maxFrameIndex)}
         />
-        <div style={styles.timeReadout}>
-          {timelineTicks.length > 0 ? frameIndex + 1 : 0}/{timelineTicks.length}
-          {relativeTimeNs !== undefined
-            ? ` · ${formatSeconds(relativeTimeNs)}`
-            : ""}
-        </div>
+        <TimelineBufferTrack
+          bufferStatus={bufferStatus}
+          frameIndex={frameIndex}
+          frameStatus={frameStatus}
+          timelineStatus={timelineStatus}
+        />
+      </div>
+      <div style={styles.timeReadout}>
+        {timelineTickCount > 0 ? frameIndex + 1 : 0}/{timelineTickCount}
+        {relativeTimeNs !== undefined
+          ? ` · ${formatSeconds(relativeTimeNs)}`
+          : ""}
+      </div>
+    </div>
+  );
+}
+
+function TimelineBufferTrack({
+  bufferStatus,
+  frameIndex,
+  frameStatus,
+  timelineStatus,
+}: {
+  readonly bufferStatus: TimelineBufferStatus;
+  readonly frameIndex: number;
+  readonly frameStatus: LoadStatus;
+  readonly timelineStatus: LoadStatus;
+}) {
+  const bufferLabel = timelineBufferLabel(bufferStatus);
+  const statusLabel = frameStatusLabel(timelineStatus, frameStatus);
+  const playheadPercent = timelineFramePercent(
+    frameIndex,
+    bufferStatus.totalFrameCount
+  );
+  const trackTitle = `${statusLabel} · ${bufferLabel}`;
+
+  return (
+    <div style={styles.bufferTrackShell}>
+      <div style={styles.bufferTrack} title={trackTitle}>
+        {bufferStatus.segments.map((segment, index) => (
+          <div
+            key={`${segment.kind}-${index}-${segment.startPercent}`}
+            style={timelineBufferSegmentStyle(segment)}
+          />
+        ))}
+        {bufferStatus.totalFrameCount > 0 ? (
+          <div
+            style={{
+              ...styles.bufferPlayhead,
+              ...timelineStatusMarkerStyle(timelineStatus, frameStatus),
+              left: `${playheadPercent}%`,
+            }}
+          />
+        ) : null}
+      </div>
+      <div style={styles.bufferStatus}>
+        <span style={styles.bufferFrameStatus}>{statusLabel}</span>
+        <span>{bufferLabel}</span>
       </div>
     </div>
   );
@@ -619,7 +747,7 @@ function usePlaybackWindowCache(): PlaybackWindowCache {
   return cacheRef.current;
 }
 
-function readSynchronizedFrame(
+function readCurrentPlaybackWindow(
   mcap: McapResourceClient,
   source: ByteSourceDescriptor,
   activeTimeline: McapActiveTimeline,
@@ -634,24 +762,181 @@ function readSynchronizedFrame(
   });
 }
 
-function playbackLookaheadTicks(ticks: readonly bigint[], frameIndex: number) {
-  const count = Math.min(PLAYBACK_BATCH_FRAME_COUNT, ticks.length);
-  const lookaheadTicks: bigint[] = [];
+function readPlaybackWindowBatch(
+  mcap: McapResourceClient,
+  source: ByteSourceDescriptor,
+  activeTimeline: McapActiveTimeline,
+  timeNs: readonly bigint[]
+) {
+  return mcap.readSynchronizedMessageBatch({
+    activeTimeline,
+    source,
+    streamPolicies: STREAM_SYNC_POLICIES,
+    timeNs,
+    topics: PLAYBACK_TOPICS,
+  });
+}
 
-  for (let offset = 0; offset < count; offset += 1) {
-    const timeNs = ticks[(frameIndex + offset) % ticks.length];
-    if (timeNs !== undefined && !lookaheadTicks.includes(timeNs)) {
-      lookaheadTicks.push(timeNs);
+// Async reads can resolve after a seek/source/timeline change. Treat the
+// timeline key as a local epoch so old responses cannot repaint the UI.
+function isCurrentPlaybackEpoch(
+  playbackEpochKeyRef: MutableRefObject<string>,
+  requestEpochKey: string
+) {
+  return playbackEpochKeyRef.current === requestEpochKey;
+}
+
+function isCurrentFrameRequest(
+  playbackEpochKeyRef: MutableRefObject<string>,
+  currentTimeNsRef: MutableRefObject<bigint | undefined>,
+  requestEpochKey: string,
+  timeNs: bigint
+) {
+  return (
+    isCurrentPlaybackEpoch(playbackEpochKeyRef, requestEpochKey) &&
+    currentTimeNsRef.current === timeNs
+  );
+}
+
+function timelineBufferStatusForTicks({
+  activeTimeline,
+  inFlightFrameRequestKeys,
+  playbackWindowCache,
+  sourceKey,
+  ticks,
+}: {
+  readonly activeTimeline: McapActiveTimeline;
+  readonly inFlightFrameRequestKeys: ReadonlySet<string>;
+  readonly playbackWindowCache: PlaybackWindowCache;
+  readonly sourceKey: string;
+  readonly ticks: readonly bigint[];
+}): TimelineBufferStatus {
+  let bufferedFrameCount = 0;
+  let loadingFrameCount = 0;
+  let currentKind: TimelineBufferKind | null = null;
+  let segmentStartIndex = 0;
+  const segments: TimelineBufferSegment[] = [];
+
+  const flushSegment = (endIndex: number) => {
+    if (currentKind === null || endIndex <= segmentStartIndex) {
+      return;
+    }
+
+    segments.push({
+      kind: currentKind,
+      startPercent: (segmentStartIndex / ticks.length) * 100,
+      widthPercent: ((endIndex - segmentStartIndex) / ticks.length) * 100,
+    });
+  };
+
+  for (let index = 0; index < ticks.length; index++) {
+    const timeNs = ticks[index];
+    const cacheKey =
+      timeNs === undefined
+        ? undefined
+        : frameCacheKey(sourceKey, activeTimeline, timeNs);
+    const nextKind =
+      cacheKey && inFlightFrameRequestKeys.has(cacheKey)
+        ? "loading"
+        : cacheKey && playbackWindowCache.has(cacheKey)
+        ? "buffered"
+        : null;
+
+    if (nextKind === "loading") {
+      loadingFrameCount++;
+    } else if (nextKind === "buffered") {
+      bufferedFrameCount++;
+    }
+
+    if (nextKind !== currentKind) {
+      flushSegment(index);
+      currentKind = nextKind;
+      segmentStartIndex = index;
     }
   }
 
-  return lookaheadTicks;
+  flushSegment(ticks.length);
+
+  return {
+    bufferedFrameCount,
+    loadingFrameCount,
+    segments,
+    totalFrameCount: ticks.length,
+  };
+}
+
+function timelineBufferSegmentStyle(
+  segment: TimelineBufferSegment
+): CSSProperties {
+  return {
+    ...styles.bufferSegment,
+    ...(segment.kind === "loading"
+      ? styles.bufferSegmentLoading
+      : styles.bufferSegmentBuffered),
+    left: `${segment.startPercent}%`,
+    width: `${segment.widthPercent}%`,
+  };
+}
+
+function timelineStatusMarkerStyle(
+  timelineStatus: LoadStatus,
+  frameStatus: LoadStatus
+): CSSProperties {
+  if (timelineStatus === "error" || frameStatus === "error") {
+    return styles.bufferPlayheadError;
+  }
+
+  if (timelineStatus === "loading" || frameStatus === "loading") {
+    return styles.bufferPlayheadLoading;
+  }
+
+  if (timelineStatus === "ready" && frameStatus === "ready") {
+    return styles.bufferPlayheadReady;
+  }
+
+  return styles.bufferPlayheadIdle;
+}
+
+function timelineBufferLabel(status: TimelineBufferStatus) {
+  const base = `${status.bufferedFrameCount}/${status.totalFrameCount} buffered`;
+
+  return status.loadingFrameCount > 0
+    ? `${base} · ${status.loadingFrameCount} loading`
+    : base;
+}
+
+function timelineFramePercent(frameIndex: number, totalFrameCount: number) {
+  if (totalFrameCount <= 1) {
+    return 0;
+  }
+
+  const clampedFrameIndex = Math.min(
+    Math.max(frameIndex, 0),
+    totalFrameCount - 1
+  );
+
+  return (clampedFrameIndex / (totalFrameCount - 1)) * 100;
+}
+
+// Includes the current tick first. During playback, the visible frame and
+// nearby lookahead frames intentionally share the lower-priority batch lane.
+function playbackBatchTicks(ticks: readonly bigint[], frameIndex: number) {
+  const count = Math.min(PLAYBACK_BATCH_FRAME_COUNT, ticks.length);
+  const batchTicks: bigint[] = [];
+
+  for (let offset = 0; offset < count; offset += 1) {
+    const timeNs = ticks[(frameIndex + offset) % ticks.length];
+    if (timeNs !== undefined && !batchTicks.includes(timeNs)) {
+      batchTicks.push(timeNs);
+    }
+  }
+
+  return batchTicks;
 }
 
 function displayMessagesForWindow(
   window: McapSynchronizedMessageWindow,
-  heldMessagesByTopic: Map<string, McapDecodedMessage>,
-  allowHold: boolean
+  heldMessagesByTopic: Map<string, McapDecodedMessage>
 ): DisplayMessagesByTopic {
   const messagesByTopic: DisplayMessagesByTopic = {};
 
@@ -663,13 +948,12 @@ function displayMessagesForWindow(
       continue;
     }
 
-    if (allowHold) {
-      const heldMessage = heldMessagesByTopic.get(topic);
-      if (heldMessage) {
-        messagesByTopic[topic] = heldMessage;
-      }
-    } else {
-      heldMessagesByTopic.delete(topic);
+    // Sparse sync windows are a timing fact, not a reason to visually blank the
+    // stream while a user scrubs. Keep the last visible message per stream; the
+    // tolerance policy remains owned by the MCAP sync layer.
+    const heldMessage = heldMessagesByTopic.get(topic);
+    if (heldMessage) {
+      messagesByTopic[topic] = heldMessage;
     }
   }
 
@@ -778,18 +1062,12 @@ function VisualizationFrame({
   return <div style={styles.empty}>Unsupported visualization</div>;
 }
 
-function Notice({
-  children,
-  tone,
-}: {
-  readonly children: ReactNode;
-  readonly tone: "error" | "info";
-}) {
+function ErrorNotice({ children }: { readonly children: ReactNode }) {
   return (
     <div
       style={{
         ...styles.notice,
-        ...(tone === "error" ? styles.noticeError : styles.noticeInfo),
+        ...styles.noticeError,
       }}
     >
       {children}
@@ -838,15 +1116,63 @@ function errorMessage(error: unknown) {
 }
 
 const styles: Record<string, CSSProperties> = {
-  badge: {
-    alignSelf: "flex-start",
-    background: "#193044",
-    border: "1px solid #32516b",
-    borderRadius: 4,
-    color: "#d9ecff",
-    fontSize: 12,
-    padding: "5px 8px",
+  bufferFrameStatus: {
+    color: "#edf6ff",
+    fontWeight: 700,
     textTransform: "uppercase",
+  },
+  bufferPlayhead: {
+    borderLeft: "2px dotted #94a3b8",
+    bottom: -3,
+    position: "absolute",
+    top: -3,
+    transform: "translateX(-1px)",
+    width: 0,
+  },
+  bufferPlayheadError: {
+    borderLeftColor: "#fb7185",
+  },
+  bufferPlayheadIdle: {
+    borderLeftColor: "#94a3b8",
+  },
+  bufferPlayheadLoading: {
+    borderLeftColor: "#f97316",
+  },
+  bufferPlayheadReady: {
+    borderLeftColor: "#f8fafc",
+  },
+  bufferSegment: {
+    bottom: 0,
+    minWidth: 1,
+    position: "absolute",
+    top: 0,
+  },
+  bufferSegmentBuffered: {
+    background: "#38bdf8",
+  },
+  bufferSegmentLoading: {
+    background: "#f97316",
+  },
+  bufferStatus: {
+    color: "#9fb3c8",
+    display: "flex",
+    fontSize: 11,
+    gap: 8,
+    lineHeight: 1,
+  },
+  bufferTrack: {
+    background: "#0b1622",
+    border: "1px solid #32485e",
+    borderRadius: 4,
+    height: 6,
+    overflow: "hidden",
+    position: "relative",
+    width: "100%",
+  },
+  bufferTrackShell: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 4,
   },
   button: {
     background: "#f97316",
@@ -863,17 +1189,6 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 13,
     padding: 16,
   },
-  header: {
-    alignItems: "center",
-    display: "flex",
-    justifyContent: "space-between",
-    gap: 16,
-  },
-  meta: {
-    color: "#9fb3c8",
-    fontSize: 12,
-    lineHeight: 1.6,
-  },
   notice: {
     borderRadius: 4,
     fontSize: 12,
@@ -884,11 +1199,6 @@ const styles: Record<string, CSSProperties> = {
     background: "#3a1820",
     border: "1px solid #7f3342",
     color: "#ffd7df",
-  },
-  noticeInfo: {
-    background: "#102638",
-    border: "1px solid #23455d",
-    color: "#c9dced",
   },
   panel: {
     background: "#111d2a",
@@ -912,7 +1222,7 @@ const styles: Record<string, CSSProperties> = {
     fontWeight: 700,
   },
   range: {
-    flex: 1,
+    width: "100%",
   },
   select: {
     background: "#0b1622",
@@ -955,6 +1265,13 @@ const styles: Record<string, CSSProperties> = {
     gap: 12,
     padding: 10,
   },
+  timelineTrack: {
+    display: "flex",
+    flex: 1,
+    flexDirection: "column",
+    gap: 4,
+    minWidth: 0,
+  },
   timelineSelectLabel: {
     alignItems: "center",
     color: "#c7d5e4",
@@ -966,12 +1283,6 @@ const styles: Record<string, CSSProperties> = {
     color: "#9fb3c8",
     fontSize: 12,
     whiteSpace: "nowrap",
-  },
-  title: {
-    color: "#ffffff",
-    fontSize: 17,
-    fontWeight: 800,
-    marginBottom: 4,
   },
   topic: {
     color: "#9fb3c8",
