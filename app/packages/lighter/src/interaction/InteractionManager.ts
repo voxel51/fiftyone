@@ -1135,19 +1135,12 @@ export class InteractionManager {
     }
 
     // ---- Tier 3: Exit the current mode ----
-
-    if (detectionModeBridge.isActive()) {
-      this.eventBus.dispatch("lighter:detection-mode-quit", {
-        eventId: generateUUID(),
-      });
-      return;
-    }
-
-    if (segmentationModeBridge.isActive()) {
-      this.eventBus.dispatch("lighter:segmentation-mode-quit", {
-        eventId: generateUUID(),
-      });
-    }
+    //
+    // Mode-agnostic dispatch; mode-specific handlers can decide whether they
+    // should deactivate
+    this.eventBus.dispatch("lighter:active-mode-quit-requested", {
+      eventId: generateUUID(),
+    });
   };
 
   private handleHover(point: Point, event: PointerEvent): void {
