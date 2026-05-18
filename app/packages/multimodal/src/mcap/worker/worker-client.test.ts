@@ -1,4 +1,6 @@
+import { create } from "@bufbuild/protobuf";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { StreamInventorySchema } from "../../schemas/v1";
 import {
   MCAP_PLAYBACK_WORKER_PRIORITY,
   type McapPlaybackWorkerRequest,
@@ -17,6 +19,7 @@ const resourcesHarness = vi.hoisted(() => {
     }),
     readSynchronizedMessageBatch: vi.fn(async () => []),
     readSynchronizedMessages: vi.fn(),
+    readTopics: vi.fn(async () => []),
     readTimelineRange: vi.fn(async () => createTimelineRange(1n, 42n)),
   };
 
@@ -47,6 +50,7 @@ describe("worker-backed MCAP resource client", () => {
     resourcesHarness.inlineClient.readDecodedMessages.mockClear();
     resourcesHarness.inlineClient.readSynchronizedMessageBatch.mockClear();
     resourcesHarness.inlineClient.readSynchronizedMessages.mockClear();
+    resourcesHarness.inlineClient.readTopics.mockClear();
     resourcesHarness.inlineClient.readTimelineRange.mockClear();
   });
 
@@ -75,6 +79,28 @@ describe("worker-backed MCAP resource client", () => {
     worker.respond({ id: 1, ok: true, result: createTimelineRange(1n, 2n) });
 
     await expect(range).resolves.toEqual(createTimelineRange(1n, 2n));
+  });
+
+  it("sends topic reads at idle-prefetch priority", async () => {
+    const { client, workers } = createClientHarness();
+    const request = {
+      source: createSource("source:1"),
+    };
+    const result = [createTopic("/camera")];
+
+    const topics = client.readTopics(request);
+    const worker = workers[0];
+
+    expect(worker.messages[1]).toMatchObject({
+      id: 1,
+      payload: request,
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH,
+      type: "readTopics",
+    });
+
+    worker.respond({ id: 1, ok: true, result });
+
+    await expect(topics).resolves.toEqual(result);
   });
 
   it("sends playback batches at playback priority", async () => {
@@ -230,6 +256,25 @@ describe("worker-backed MCAP resource client", () => {
     ).toHaveBeenCalledWith(request);
   });
 
+  it("falls back to inline topic reads when worker creation fails", async () => {
+    const client = createWorkerMcapResourceClient({
+      fallback: "inline",
+      workerFactory: () => {
+        throw new Error("worker blocked");
+      },
+    });
+    const request = {
+      source: createSource("source:topics"),
+    };
+
+    await expect(client.readTopics(request)).resolves.toEqual([]);
+
+    expect(resourcesHarness.createMcapResourceClient).toHaveBeenCalledTimes(1);
+    expect(resourcesHarness.inlineClient.readTopics).toHaveBeenCalledWith(
+      request
+    );
+  });
+
   it("rejects worker startup errors when inline fallback is disabled", async () => {
     const client = createWorkerMcapResourceClient({
       fallback: "error",
@@ -357,6 +402,21 @@ function createDecodedMessage(timelineTimeNs: bigint) {
     activeTimeline: "log" as const,
     topic: "/camera",
   };
+}
+
+function createTopic(topic: string) {
+  return create(StreamInventorySchema, {
+    displayName: topic,
+    metadata: {
+      "mcap.topic": topic,
+    },
+    payload: {
+      encoding: "protobuf",
+      schema: "foxglove.CompressedImage",
+      schemaEncoding: "protobuf",
+    },
+    streamId: topic,
+  });
 }
 
 class MockWorker {

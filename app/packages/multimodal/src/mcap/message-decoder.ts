@@ -1,22 +1,21 @@
 import type { McapTypes } from "@mcap/core";
 import type { DecodeResourceClient } from "../client/resources";
+import type { ByteSourceDescriptor } from "../client";
 import type { PayloadDescriptor } from "../decoders";
 import type { McapIndexedReaderLike } from "./reader";
 import type { McapTimelineStrategy } from "./timeline";
-import type { McapDecodedMessage, McapSourceDescriptor } from "./types";
-
-type TypedMcapRecords = McapTypes.TypedMcapRecords;
+import type { McapDecodedMessage } from "./types";
 
 /**
  * Inputs needed to decode one MCAP message into the adapter's playback shape.
  */
 export interface DecodeMcapMessageRequest {
-  readonly channel?: TypedMcapRecords["Channel"];
+  readonly channel?: McapTypes.TypedMcapRecords["Channel"];
   readonly decodeClient: DecodeResourceClient;
-  readonly message: TypedMcapRecords["Message"];
+  readonly message: McapTypes.TypedMcapRecords["Message"];
   readonly reader?: McapIndexedReaderLike;
-  readonly schema?: TypedMcapRecords["Schema"];
-  readonly source: McapSourceDescriptor;
+  readonly schema?: McapTypes.TypedMcapRecords["Schema"];
+  readonly source: ByteSourceDescriptor;
   readonly timeline: McapTimelineStrategy;
 }
 
@@ -79,8 +78,8 @@ export async function decodeMcapMessage({
  * Maps MCAP channel/schema metadata to the generic decoder payload descriptor.
  */
 export function payloadFromMcapChannel(
-  channel: TypedMcapRecords["Channel"],
-  schema: TypedMcapRecords["Schema"] | undefined
+  channel: McapTypes.TypedMcapRecords["Channel"],
+  schema: McapTypes.TypedMcapRecords["Schema"] | undefined
 ): PayloadDescriptor {
   return {
     encoding: channel.messageEncoding,
@@ -93,7 +92,7 @@ export function payloadFromMcapChannel(
  * Builds a stable per-message identity for decoded-output cache keys.
  */
 export function mcapMessageRecordId(
-  message: TypedMcapRecords["Message"]
+  message: McapTypes.TypedMcapRecords["Message"]
 ): string {
   return [
     message.channelId.toString(),

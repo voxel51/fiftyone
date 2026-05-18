@@ -78,7 +78,7 @@ export const foxglovePointCloudDecoder: Decoder = {
 function extractPositions(
   data: Uint8Array,
   pointStride: number,
-  fields: readonly PackedField[]
+  fields: readonly PointCloudField[]
 ): Float32Array {
   if (pointStride <= 0) {
     throw new Error(`Invalid point stride ${pointStride}`);
@@ -122,9 +122,7 @@ function extractPositions(
   return positions;
 }
 
-type PackedField = PointCloudField;
-
-function packedFields(values: readonly unknown[]): readonly PackedField[] {
+function packedFields(values: readonly unknown[]): readonly PointCloudField[] {
   return values.map((value) => {
     const record = asRecord(value);
 
@@ -137,9 +135,9 @@ function packedFields(values: readonly unknown[]): readonly PackedField[] {
 }
 
 function requiredFloat32Field(
-  fields: readonly PackedField[],
+  fields: readonly PointCloudField[],
   name: string
-): PackedField {
+): PointCloudField {
   const field = fields.find((candidate) => candidate.name === name);
 
   if (!field) {

@@ -5,11 +5,8 @@ import {
   createMcapReaderStore,
   parseMcapMessageIndexRecord,
   readIndexedMessageTimesForReader,
-  type McapInitializedReader,
-  type McapReadable,
+  type McapIndexedReaderLike,
 } from "./reader";
-
-type TypedMcapRecords = McapTypes.TypedMcapRecords;
 
 const MCAP_CHUNK_OPCODE = 0x06;
 const MCAP_MESSAGE_INDEX_OPCODE = 0x07;
@@ -193,8 +190,8 @@ async function collect<T>(
 function createReader({
   chunkIndexes,
 }: {
-  readonly chunkIndexes: readonly TypedMcapRecords["ChunkIndex"][];
-}): McapInitializedReader {
+  readonly chunkIndexes: readonly McapTypes.TypedMcapRecords["ChunkIndex"][];
+}): McapIndexedReaderLike {
   return {
     channelsById: new Map([
       [7, createChannel({ id: 7, topic: "/camera" })],
@@ -202,7 +199,7 @@ function createReader({
     ]),
     chunkIndexes,
     readMessages: vi.fn(async function* () {
-      for (const message of [] as TypedMcapRecords["Message"][]) {
+      for (const message of [] as McapTypes.TypedMcapRecords["Message"][]) {
         yield message;
       }
     }),
@@ -220,7 +217,7 @@ function createReadable(
     readonly offset: bigint;
     readonly size: bigint;
   }>;
-  readonly readable: McapReadable;
+  readonly readable: McapTypes.IReadable;
   readonly reads: Array<{ readonly offset: bigint; readonly size: bigint }>;
 } {
   const size = chunks.reduce(
@@ -250,7 +247,7 @@ function createReadable(
         return readRange(offset, readSize);
       }),
       size: vi.fn(async () => BigInt(buffer.byteLength)),
-    } as McapReadable,
+    } as McapTypes.IReadable,
     reads,
   };
 }
@@ -279,8 +276,8 @@ function createMessageIndexRecord(
 }
 
 function createChunkIndex(
-  options: Partial<TypedMcapRecords["ChunkIndex"]> = {}
-): TypedMcapRecords["ChunkIndex"] {
+  options: Partial<McapTypes.TypedMcapRecords["ChunkIndex"]> = {}
+): McapTypes.TypedMcapRecords["ChunkIndex"] {
   return {
     chunkLength: options.chunkLength ?? 256n,
     chunkStartOffset: options.chunkStartOffset ?? 1_000n,
@@ -310,8 +307,8 @@ function createSource({
 }
 
 function createChannel(
-  options: Partial<TypedMcapRecords["Channel"]> = {}
-): TypedMcapRecords["Channel"] {
+  options: Partial<McapTypes.TypedMcapRecords["Channel"]> = {}
+): McapTypes.TypedMcapRecords["Channel"] {
   return {
     id: options.id ?? 7,
     messageEncoding: "protobuf",

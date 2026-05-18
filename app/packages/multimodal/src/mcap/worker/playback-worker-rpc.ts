@@ -57,6 +57,10 @@ export const MCAP_PLAYBACK_WORKER_OPERATIONS: McapPlaybackWorkerOperationMap = {
     kind: "unary",
     priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
   },
+  readTopics: {
+    kind: "unary",
+    priority: MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH,
+  },
 };
 
 /**
@@ -91,6 +95,8 @@ export function runMcapPlaybackWorkerUnaryRequest(
       return client.readSynchronizedMessages(message.payload);
     case "readTimelineRange":
       return client.readTimelineRange(message.payload);
+    case "readTopics":
+      return client.readTopics(message.payload);
   }
 }
 

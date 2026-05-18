@@ -1,5 +1,5 @@
 import type { ByteSourceDescriptor, DecodeResourceResult } from "../client";
-import type { PlaybackSyncMode } from "../schemas/v1";
+import type { PlaybackSyncMode, StreamInventory } from "../schemas/v1";
 
 /**
  * MCAP timeline selected as the playback clock/time track.
@@ -73,11 +73,6 @@ export interface McapResolvedStreamSyncPolicy {
 }
 
 /**
- * MCAP source identity for byte-range reads.
- */
-export type McapSourceDescriptor = ByteSourceDescriptor;
-
-/**
  * Request for decoding an MCAP message window.
  */
 export interface McapReadDecodedMessagesRequest {
@@ -94,7 +89,7 @@ export interface McapReadDecodedMessagesRequest {
   /**
    * MCAP source to read through the shared byte-resource layer.
    */
-  readonly source: McapSourceDescriptor;
+  readonly source: ByteSourceDescriptor;
 
   /**
    * Optional inclusive lower time bound in the active timeline.
@@ -124,7 +119,17 @@ export interface McapReadTimelineRangeRequest {
   /**
    * MCAP source to inspect for timeline bounds.
    */
-  readonly source: McapSourceDescriptor;
+  readonly source: ByteSourceDescriptor;
+}
+
+/**
+ * Request for reading topic inventory from an MCAP summary.
+ */
+export interface McapReadTopicsRequest {
+  /**
+   * MCAP source to inspect for summary channel metadata.
+   */
+  readonly source: ByteSourceDescriptor;
 }
 
 /**
@@ -164,7 +169,7 @@ export interface McapReadSynchronizedMessagesRequest {
   /**
    * MCAP source to read through the shared byte-resource layer.
    */
-  readonly source: McapSourceDescriptor;
+  readonly source: ByteSourceDescriptor;
 
   /**
    * Topic-specific sync policies keyed by MCAP topic.
@@ -305,6 +310,13 @@ export interface McapResourceClient {
   readTimelineRange(
     request: McapReadTimelineRangeRequest
   ): Promise<McapTimelineRange>;
+
+  /**
+   * Reads stream inventory entries from MCAP summary channel metadata.
+   */
+  readTopics(
+    request: McapReadTopicsRequest
+  ): Promise<readonly StreamInventory[]>;
 
   /**
    * Reads one synchronized decoded message window around a playback time.

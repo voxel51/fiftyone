@@ -3,6 +3,7 @@ import {
   byteSourceCacheKey,
   serializeCacheKey,
 } from "../../client/resources/cache";
+import type { ByteSourceDescriptor } from "../../client";
 import { createMcapResourceClient } from "../resources";
 import { runMcapPlaybackWorkerStreamRequest } from "./playback-worker-rpc";
 import { McapPlaybackWorkerTransport } from "./playback-worker-transport";
@@ -21,12 +22,13 @@ import type {
   McapReadDecodedMessagesRequest,
   McapReadSynchronizedMessageBatchRequest,
   McapReadSynchronizedMessagesRequest,
+  McapReadTopicsRequest,
   McapReadTimelineRangeRequest,
   McapResourceClient,
-  McapSourceDescriptor,
   McapSynchronizedMessageWindow,
   McapTimelineRange,
 } from "../types";
+import type { StreamInventory } from "../../schemas/v1";
 
 const INLINE_WORKER_REQUEST_ID = 0;
 const INLINE_WORKER_REQUEST_PRIORITY = 0;
@@ -101,6 +103,12 @@ class WorkerMcapResourceClient implements McapResourceClient {
     request: McapReadTimelineRangeRequest
   ): Promise<McapTimelineRange> {
     return this.request("readTimelineRange", request);
+  }
+
+  readTopics(
+    request: McapReadTopicsRequest
+  ): Promise<readonly StreamInventory[]> {
+    return this.request("readTopics", request);
   }
 
   readSynchronizedMessages(
@@ -245,6 +253,10 @@ function requestInlineClient<Type extends McapPlaybackWorkerUnaryType>(
       return client.readTimelineRange(
         payload as McapReadTimelineRangeRequest
       ) as Promise<McapPlaybackWorkerResultByType[Type]>;
+    case "readTopics":
+      return client.readTopics(payload as McapReadTopicsRequest) as Promise<
+        McapPlaybackWorkerResultByType[Type]
+      >;
   }
 
   throw new Error(`Unsupported MCAP worker operation ${type}`);
@@ -288,7 +300,7 @@ function workerFetchParameters(): McapPlaybackWorkerFetchParameters {
   };
 }
 
-function mcapWorkerSourceKey(source: McapSourceDescriptor): string {
+function mcapWorkerSourceKey(source: ByteSourceDescriptor): string {
   return serializeCacheKey([
     source.readProfile ?? null,
     byteSourceCacheKey(source),

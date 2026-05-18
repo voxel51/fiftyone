@@ -130,7 +130,7 @@ function foxgloveWasmAsUrl(): Plugin {
       if (
         !source.endsWith(".wasm") ||
         !importer ||
-        !/[\\/]node_modules[\\/]@foxglove[\\/]wasm-(lz4|zstd)[\\/]/.test(
+        !/[\\/]node_modules[\\/]@foxglove[\\/]wasm-(lz4|zstd|bz2)[\\/]/.test(
           importer
         )
       ) {
@@ -153,12 +153,12 @@ function foxgloveWasmAsUrl(): Plugin {
 function foxgloveWasmOptimizeAsUrl() {
   const namespace = "foxglove-wasm-url";
   const wrapperPattern =
-    /[\\/]node_modules[\\/]@foxglove[\\/]wasm-(lz4|zstd)[\\/]dist[\\/]wasm-(lz4|zstd)\.js$/;
+    /[\\/]node_modules[\\/]@foxglove[\\/](?:wasm-(lz4|zstd)[\\/]dist[\\/]wasm-(lz4|zstd)|wasm-bz2[\\/]wasm[\\/]module)\.js$/;
 
   return {
     name: "foxglove-wasm-url",
     setup(build) {
-      build.onResolve({ filter: /^\.\/wasm-(lz4|zstd)\.wasm$/ }, (args) => {
+      build.onResolve({ filter: /^\.\/(?:wasm-(?:lz4|zstd)|module)\.wasm$/ }, (args) => {
         if (!wrapperPattern.test(args.importer)) {
           return undefined;
         }

@@ -1,35 +1,30 @@
-import type { McapTypes } from "@mcap/core";
+import { McapStreamReader, type McapTypes } from "@mcap/core";
 import type {
   McapIndexedMessageTime,
-  McapInitializedReader,
-  McapReadable,
+  McapIndexedReaderLike,
   McapReadIndexedMessageTimesRequest,
   ParsedMcapMessageIndexRecord,
 } from "./types";
 
-type TypedMcapRecords = McapTypes.TypedMcapRecords;
-
-type ExactMcapReadable = McapReadable & {
-  readExact?(offset: bigint, size: bigint): Promise<Uint8Array>;
+const MESSAGE_INDEX_RECORD_READER_OPTIONS: NonNullable<
+  ConstructorParameters<typeof McapStreamReader>[0]
+> = {
+  // We parse a single MessageIndex record slice, not a full MCAP stream.
+  noMagicPrefix: true,
+  // Surface accidental Chunk ranges as the wrong record type before processing chunk contents.
+  includeChunks: true,
+  // MessageIndex records are not compressed Chunk records.
+  decompressHandlers: {},
+  // CRC validation only applies to chunk/attachment data, not MessageIndex records.
+  validateCrcs: false,
 };
-
-const MCAP_RECORD_HEADER_BYTES = 9;
-const MCAP_RECORD_OPCODE_OFFSET_BYTES = 0;
-const MCAP_RECORD_LENGTH_OFFSET_BYTES = 1;
-const MCAP_MESSAGE_INDEX_OPCODE = 0x07;
-const MESSAGE_INDEX_CONTENT_HEADER_BYTES = 6;
-const MESSAGE_INDEX_RECORD_BYTES = 16;
-const MESSAGE_INDEX_CHANNEL_ID_OFFSET_BYTES = MCAP_RECORD_HEADER_BYTES;
-const MESSAGE_INDEX_RECORDS_BYTE_LENGTH_OFFSET_BYTES =
-  MESSAGE_INDEX_CHANNEL_ID_OFFSET_BYTES + 2;
-const MESSAGE_INDEX_RECORD_OFFSET_OFFSET_BYTES = 8;
 
 /**
  * Reads ordered MCAP message times directly from chunk message-index records.
  */
 export async function* readIndexedMessageTimesForReader(
-  reader: McapInitializedReader,
-  readable: McapReadable,
+  reader: McapIndexedReaderLike,
+  readable: McapTypes.IReadable,
   args: McapReadIndexedMessageTimesRequest = {}
 ): AsyncGenerator<McapIndexedMessageTime, void, void> {
   if (args.limit !== undefined && args.limit <= 0) {
@@ -113,84 +108,36 @@ export async function* readIndexedMessageTimesForReader(
 export function parseMcapMessageIndexRecord(
   bytes: Uint8Array
 ): ParsedMcapMessageIndexRecord {
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  if (view.byteLength < MCAP_RECORD_HEADER_BYTES) {
-    throw new Error("MCAP message index record is missing its record header");
-  }
+  const reader = new McapStreamReader(MESSAGE_INDEX_RECORD_READER_OPTIONS);
+  reader.append(bytes);
 
-  const opcode = view.getUint8(MCAP_RECORD_OPCODE_OFFSET_BYTES);
-  if (opcode !== MCAP_MESSAGE_INDEX_OPCODE) {
+  let record: McapTypes.TypedMcapRecord | undefined;
+  try {
+    record = reader.nextRecord();
+  } catch (error) {
     throw new Error(
-      `Expected MCAP MessageIndex record, found opcode ${opcode}`
+      `Expected MCAP MessageIndex record: ${errorMessage(
+        error,
+        "failed to parse record"
+      )}`
     );
   }
 
-  const recordLength = view.getBigUint64(MCAP_RECORD_LENGTH_OFFSET_BYTES, true);
-  if (recordLength > BigInt(Number.MAX_SAFE_INTEGER)) {
-    throw new Error(
-      `MCAP MessageIndex record length is too large: ${recordLength.toString()} bytes`
-    );
+  if (!record) {
+    throw new Error("MCAP MessageIndex record is incomplete");
   }
-
-  const recordLengthNumber = Number(recordLength);
-  if (recordLengthNumber < MESSAGE_INDEX_CONTENT_HEADER_BYTES) {
-    throw new Error(
-      `MCAP MessageIndex record length ${recordLengthNumber} is too small`
-    );
+  if (record.type !== "MessageIndex") {
+    throw new Error(`Expected MCAP MessageIndex record, found ${record.type}`);
   }
-
-  const recordEnd = MCAP_RECORD_HEADER_BYTES + recordLengthNumber;
-  if (recordEnd > view.byteLength) {
+  if (reader.bytesRemaining() !== 0) {
     throw new Error(
-      `MCAP MessageIndex record length ${recordLengthNumber} exceeds available bytes ${view.byteLength}`
+      `MCAP MessageIndex byte range has ${reader.bytesRemaining()} trailing bytes`
     );
-  }
-  if (recordEnd !== view.byteLength) {
-    throw new Error(
-      `MCAP MessageIndex byte range has ${
-        view.byteLength - recordEnd
-      } trailing bytes`
-    );
-  }
-
-  const channelId = view.getUint16(MESSAGE_INDEX_CHANNEL_ID_OFFSET_BYTES, true);
-  const recordsByteLength = view.getUint32(
-    MESSAGE_INDEX_RECORDS_BYTE_LENGTH_OFFSET_BYTES,
-    true
-  );
-  if (recordsByteLength % MESSAGE_INDEX_RECORD_BYTES !== 0) {
-    throw new Error(
-      `MCAP MessageIndex records length ${recordsByteLength} is not divisible by ${MESSAGE_INDEX_RECORD_BYTES}`
-    );
-  }
-
-  const recordsStart =
-    MCAP_RECORD_HEADER_BYTES + MESSAGE_INDEX_CONTENT_HEADER_BYTES;
-  const recordsEnd = recordsStart + recordsByteLength;
-  if (recordsEnd > recordEnd) {
-    throw new Error(
-      `MCAP MessageIndex records length ${recordsByteLength} exceeds record bounds`
-    );
-  }
-
-  const records: Array<readonly [bigint, bigint]> = [];
-  for (
-    let offset = recordsStart;
-    offset < recordsEnd;
-    offset += MESSAGE_INDEX_RECORD_BYTES
-  ) {
-    records.push([
-      view.getBigUint64(offset, true),
-      view.getBigUint64(
-        offset + MESSAGE_INDEX_RECORD_OFFSET_OFFSET_BYTES,
-        true
-      ),
-    ]);
   }
 
   return {
-    channelId,
-    records,
+    channelId: record.channelId,
+    records: record.records,
   };
 }
 
@@ -203,10 +150,10 @@ async function readChunkIndexedMessageTimes({
   startTimeNs,
 }: {
   readonly channelIds: ReadonlySet<number>;
-  readonly chunkIndex: TypedMcapRecords["ChunkIndex"];
+  readonly chunkIndex: McapTypes.TypedMcapRecords["ChunkIndex"];
   readonly endTimeNs: bigint | undefined;
-  readonly readable: McapReadable;
-  readonly reader: McapInitializedReader;
+  readonly readable: McapTypes.IReadable;
+  readonly reader: McapIndexedReaderLike;
   readonly startTimeNs: bigint | undefined;
 }): Promise<readonly McapIndexedMessageTime[]> {
   const entries: McapIndexedMessageTime[] = [];
@@ -249,18 +196,21 @@ async function readChunkIndexedMessageTimes({
 }
 
 function readExactRange(
-  readable: McapReadable,
+  readable: McapTypes.IReadable,
   offset: bigint,
   size: bigint
 ): Promise<Uint8Array> {
   return (
-    (readable as ExactMcapReadable).readExact?.(offset, size) ??
-    readable.read(offset, size)
+    (
+      readable as McapTypes.IReadable & {
+        readExact?(offset: bigint, size: bigint): Promise<Uint8Array>;
+      }
+    ).readExact?.(offset, size) ?? readable.read(offset, size)
   );
 }
 
 function channelIdsForTopics(
-  channelsById: ReadonlyMap<number, TypedMcapRecords["Channel"]>,
+  channelsById: ReadonlyMap<number, McapTypes.TypedMcapRecords["Channel"]>,
   topics: readonly string[] | undefined
 ): ReadonlySet<number> {
   const topicSet = topics === undefined ? undefined : new Set(topics);
@@ -276,7 +226,7 @@ function channelIdsForTopics(
 }
 
 function messageIndexRangeForChannel(
-  chunkIndex: TypedMcapRecords["ChunkIndex"],
+  chunkIndex: McapTypes.TypedMcapRecords["ChunkIndex"],
   channelId: number
 ): { readonly length: bigint; readonly offset: bigint } | undefined {
   const offset: bigint | undefined =
@@ -314,7 +264,7 @@ function messageIndexRangeForChannel(
 }
 
 function chunkOverlapsRange(
-  chunkIndex: TypedMcapRecords["ChunkIndex"],
+  chunkIndex: McapTypes.TypedMcapRecords["ChunkIndex"],
   startTimeNs: bigint | undefined,
   endTimeNs: bigint | undefined
 ): boolean {
@@ -329,7 +279,7 @@ function chunkOverlapsRange(
 }
 
 function chunksAreOrdered(
-  chunkIndexes: readonly TypedMcapRecords["ChunkIndex"][]
+  chunkIndexes: readonly McapTypes.TypedMcapRecords["ChunkIndex"][]
 ): boolean {
   let previousEndTime: bigint | undefined;
 
@@ -360,6 +310,10 @@ function isWithinIndexedRange(
   }
 
   return true;
+}
+
+function errorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
 }
 
 function compareIndexedMessageTimes(

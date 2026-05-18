@@ -3,10 +3,12 @@ import type {
   McapReadDecodedMessagesRequest,
   McapReadSynchronizedMessageBatchRequest,
   McapReadSynchronizedMessagesRequest,
+  McapReadTopicsRequest,
   McapReadTimelineRangeRequest,
   McapSynchronizedMessageWindow,
   McapTimelineRange,
 } from "../types";
+import type { StreamInventory } from "../../schemas/v1";
 
 /**
  * Priority levels used by the MCAP playback worker scheduler.
@@ -40,6 +42,7 @@ export type McapPlaybackWorkerRequestPayloadByType = {
   readonly readSynchronizedMessageBatch: McapReadSynchronizedMessageBatchRequest;
   readonly readSynchronizedMessages: McapReadSynchronizedMessagesRequest;
   readonly readTimelineRange: McapReadTimelineRangeRequest;
+  readonly readTopics: McapReadTopicsRequest;
 };
 
 /**
@@ -49,6 +52,7 @@ export type McapPlaybackWorkerResultByType = {
   readonly readSynchronizedMessageBatch: readonly McapSynchronizedMessageWindow[];
   readonly readSynchronizedMessages: McapSynchronizedMessageWindow;
   readonly readTimelineRange: McapTimelineRange;
+  readonly readTopics: readonly StreamInventory[];
 };
 
 /**

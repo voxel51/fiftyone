@@ -5,8 +5,6 @@ import type {
 } from "./reader";
 import { MCAP_ACTIVE_TIMELINE, type McapActiveTimeline } from "./types";
 
-type TypedMcapRecords = McapTypes.TypedMcapRecords;
-
 /**
  * Default playback timeline tick cadence used to sample MCAP ranges.
  */
@@ -57,12 +55,14 @@ export interface McapTimelineStrategy {
   /**
    * Returns the chunk-level inclusive end time for this timeline.
    */
-  chunkEndTimeNs(chunkIndex: TypedMcapRecords["ChunkIndex"]): bigint;
+  chunkEndTimeNs(chunkIndex: McapTypes.TypedMcapRecords["ChunkIndex"]): bigint;
 
   /**
    * Returns the chunk-level inclusive start time for this timeline.
    */
-  chunkStartTimeNs(chunkIndex: TypedMcapRecords["ChunkIndex"]): bigint;
+  chunkStartTimeNs(
+    chunkIndex: McapTypes.TypedMcapRecords["ChunkIndex"]
+  ): bigint;
 
   /**
    * Returns the timeline time for one indexed message entry, when supported.
@@ -92,7 +92,7 @@ export interface McapTimelineStrategy {
   /**
    * Returns the timeline time for one decoded MCAP message.
    */
-  messageTimeNs(message: TypedMcapRecords["Message"]): bigint;
+  messageTimeNs(message: McapTypes.TypedMcapRecords["Message"]): bigint;
 }
 
 const MCAP_LOG_TIMELINE_STRATEGY: McapTimelineStrategy = {

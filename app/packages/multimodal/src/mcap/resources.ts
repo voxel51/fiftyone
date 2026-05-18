@@ -17,11 +17,13 @@ import {
 import { mcapTimelineRangeFromReader } from "./timeline-range";
 import { readMcapSynchronizedMessageBatch } from "./synchronized-reader";
 import { resolveMcapTimelineStrategy } from "./timeline";
+import { readMcapTopics } from "./topics";
 import {
   type McapDecodedMessage,
   type McapReadDecodedMessagesRequest,
   type McapReadSynchronizedMessageBatchRequest,
   type McapReadSynchronizedMessagesRequest,
+  type McapReadTopicsRequest,
   type McapReadTimelineRangeRequest,
   type McapResourceClient,
   type McapSynchronizedMessageWindow,
@@ -79,6 +81,11 @@ export function createMcapResourceClient(
     return mcapTimelineRangeFromReader(reader, timeline);
   }
 
+  async function readTopics(request: McapReadTopicsRequest) {
+    const reader = await readerStore.get(request.source);
+    return readMcapTopics(reader);
+  }
+
   async function readSynchronizedMessages(
     request: McapReadSynchronizedMessagesRequest
   ): Promise<McapSynchronizedMessageWindow> {
@@ -117,6 +124,7 @@ export function createMcapResourceClient(
     },
     readDecodedMessages,
     readTimelineRange,
+    readTopics,
     readSynchronizedMessageBatch,
     readSynchronizedMessages,
   };

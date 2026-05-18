@@ -1,6 +1,5 @@
-import type { ByteResourceClient } from "../../client";
+import type { ByteResourceClient, ByteSourceDescriptor } from "../../client";
 import { byteSourceCacheKey } from "../../client/resources/cache";
-import type { McapSourceDescriptor } from "../types";
 import { ByteClientReadable } from "./byte-readable";
 import type { McapIndexedReaderLike, McapReaderFactory } from "./types";
 
@@ -9,7 +8,7 @@ import type { McapIndexedReaderLike, McapReaderFactory } from "./types";
  */
 export interface McapReaderStore {
   dispose(): void;
-  get(source: McapSourceDescriptor): Promise<McapIndexedReaderLike>;
+  get(source: ByteSourceDescriptor): Promise<McapIndexedReaderLike>;
 }
 
 /**

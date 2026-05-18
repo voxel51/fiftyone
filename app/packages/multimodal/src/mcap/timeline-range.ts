@@ -1,3 +1,4 @@
+import type { McapTypes } from "@mcap/core";
 import { maxBigInt, minBigInt } from "./sync";
 import type { McapIndexedReaderLike } from "./reader";
 import type { McapTimelineStrategy } from "./timeline";
@@ -14,17 +15,16 @@ export function mcapTimelineRangeFromReader(
     throw new Error("MCAP log timeline has no indexed chunks");
   }
 
+  const chunkIndexes: readonly McapTypes.TypedMcapRecords["ChunkIndex"][] =
+    reader.chunkIndexes;
+
   return {
     activeTimeline: timeline.id,
     endTimeNs: maxBigInt(
-      reader.chunkIndexes.map((chunkIndex) =>
-        timeline.chunkEndTimeNs(chunkIndex)
-      )
+      chunkIndexes.map((chunkIndex) => timeline.chunkEndTimeNs(chunkIndex))
     ),
     startTimeNs: minBigInt(
-      reader.chunkIndexes.map((chunkIndex) =>
-        timeline.chunkStartTimeNs(chunkIndex)
-      )
+      chunkIndexes.map((chunkIndex) => timeline.chunkStartTimeNs(chunkIndex))
     ),
   };
 }

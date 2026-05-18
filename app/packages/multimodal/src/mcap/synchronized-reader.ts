@@ -17,14 +17,12 @@ import type {
   McapSynchronizedMessageWindow,
 } from "./types";
 
-type TypedMcapRecords = McapTypes.TypedMcapRecords;
-
 const INDEXED_LOOKUP_KEY_SEPARATOR = "\0";
 
 interface McapRawMessageCandidate {
-  readonly channel: TypedMcapRecords["Channel"];
-  readonly message: TypedMcapRecords["Message"];
-  readonly schema?: TypedMcapRecords["Schema"];
+  readonly channel: McapTypes.TypedMcapRecords["Channel"];
+  readonly message: McapTypes.TypedMcapRecords["Message"];
+  readonly schema?: McapTypes.TypedMcapRecords["Schema"];
   readonly timelineTimeNs: bigint;
   readonly topic: string;
 }

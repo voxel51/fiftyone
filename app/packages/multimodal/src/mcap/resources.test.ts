@@ -1,15 +1,172 @@
 import type { McapTypes } from "@mcap/core";
 import { describe, expect, it, vi } from "vitest";
+import type { ByteSourceDescriptor } from "../client";
 import type { DecodeResourceClient } from "../client";
 import type { DecodedOutput } from "../decoders";
 import { PlaybackSyncMode } from "../schemas/v1";
 import { VISUALIZATION_KIND } from "../visualization";
 import { createMcapResourceClient } from "./resources";
-import { MCAP_ACTIVE_TIMELINE, type McapSourceDescriptor } from "./types";
-
-type TypedMcapRecords = McapTypes.TypedMcapRecords;
+import { MCAP_ACTIVE_TIMELINE } from "./types";
 
 describe("MCAP resources", () => {
+  it("reads topic inventory from summary channels without scanning messages", async () => {
+    const source = createMcapSourceDescriptor();
+    const readMessages = vi.fn(async function* () {
+      for (const message of [] as McapTypes.TypedMcapRecords["Message"][]) {
+        yield message;
+      }
+    });
+    const decodeClient = createTestDecodeClient();
+    const client = createMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient,
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              7,
+              createChannel({
+                id: 7,
+                metadata: new Map([["frame_id", "cam-front"]]),
+                topic: "/camera",
+              }),
+            ],
+            [
+              8,
+              createChannel({
+                id: 8,
+                metadata: new Map([["frame_id", "cam-left"]]),
+                topic: "/camera",
+              }),
+            ],
+            [9, createChannel({ id: 9, schemaId: 4, topic: "/lidar" })],
+          ]),
+          readMessages,
+          schemasById: new Map([
+            [
+              3,
+              createSchema(new Uint8Array([9]), {
+                name: "foxglove.CompressedImage",
+              }),
+            ],
+            [
+              4,
+              createSchema(new Uint8Array([8]), {
+                id: 4,
+                name: "foxglove.PointCloud",
+              }),
+            ],
+          ]),
+          statistics: createStatistics({
+            channelMessageCounts: new Map([
+              [7, 2n],
+              [8, 3n],
+              [9, 5n],
+            ]),
+          }),
+        })
+      ),
+    });
+
+    const topics = await client.readTopics({ source });
+
+    expect(topics.map((topic) => topic.streamId)).toEqual(["7", "8", "9"]);
+    expect(topics.map((topic) => topic.recordCount)).toEqual(["2", "3", "5"]);
+    expect(topics[0]).toMatchObject({
+      displayName: "/camera",
+      metadata: {
+        frame_id: "cam-front",
+        "mcap.channel_id": "7",
+        "mcap.channel_metadata.frame_id": "cam-front",
+        "mcap.message_encoding": "protobuf",
+        "mcap.schema_encoding": "protobuf",
+        "mcap.schema_id": "3",
+        "mcap.schema_name": "foxglove.CompressedImage",
+        "mcap.topic": "/camera",
+      },
+      payload: {
+        encoding: "protobuf",
+        schema: "foxglove.CompressedImage",
+        schemaEncoding: "protobuf",
+      },
+    });
+    expect(topics[2]).toMatchObject({
+      displayName: "/lidar",
+      payload: {
+        encoding: "protobuf",
+        schema: "foxglove.PointCloud",
+        schemaEncoding: "protobuf",
+      },
+      streamId: "9",
+    });
+    expect(readMessages).not.toHaveBeenCalled();
+    expect(decodeClient.decode).not.toHaveBeenCalled();
+  });
+
+  it("matches MCAP adapter topic fallbacks for missing schema and stats", async () => {
+    const client = createMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              7,
+              createChannel({
+                id: 7,
+                metadata: new Map([["source", "camera"]]),
+                schemaId: 0,
+              }),
+            ],
+            [
+              8,
+              createChannel({
+                id: 8,
+                metadata: new Map([["source", "lidar"]]),
+                schemaId: 99,
+                topic: "/lidar",
+              }),
+            ],
+          ]),
+          schemasById: new Map(),
+        })
+      ),
+    });
+
+    const topics = await client.readTopics({
+      source: createMcapSourceDescriptor(),
+    });
+
+    expect(topics).toMatchObject([
+      {
+        metadata: {
+          source: "camera",
+          "mcap.schema_id": "0",
+        },
+        payload: {
+          encoding: "protobuf",
+        },
+        recordCount: "0",
+        streamId: "7",
+      },
+      {
+        metadata: {
+          source: "lidar",
+          "mcap.schema_id": "99",
+        },
+        payload: {
+          encoding: "protobuf",
+        },
+        recordCount: "0",
+        streamId: "8",
+      },
+    ]);
+    expect(topics[0]?.payload?.schema).toBeUndefined();
+    expect(topics[0]?.payload?.schemaEncoding).toBeUndefined();
+    expect(topics[1]?.payload?.schema).toBeUndefined();
+    expect(topics[1]?.payload?.schemaEncoding).toBeUndefined();
+  });
+
   it("decodes log-timeline messages through the generic decode client", async () => {
     const source = createMcapSourceDescriptor();
     const schemaData = new Uint8Array([9, 8, 7]);
@@ -160,7 +317,7 @@ describe("MCAP resources", () => {
       readonly endTime?: bigint;
       readonly startTime?: bigint;
       readonly topics?: readonly string[];
-    }): AsyncGenerator<TypedMcapRecords["Message"], void, void> {
+    }): AsyncGenerator<McapTypes.TypedMcapRecords["Message"], void, void> {
       expect(args?.startTime).toBe(args?.endTime);
       const topic = args?.topics?.[0];
       if (topic === "/camera" && args?.startTime === 90n) {
@@ -239,7 +396,7 @@ describe("MCAP resources", () => {
   it("reads log timeline range from chunk indexes without scanning messages", async () => {
     const source = createMcapSourceDescriptor();
     const readMessages = vi.fn(async function* () {
-      for (const message of [] as TypedMcapRecords["Message"][]) {
+      for (const message of [] as McapTypes.TypedMcapRecords["Message"][]) {
         yield message;
       }
     });
@@ -355,7 +512,7 @@ async function collect<T>(
   return messages;
 }
 
-function createMcapSourceDescriptor(): McapSourceDescriptor {
+function createMcapSourceDescriptor(): ByteSourceDescriptor {
   return {
     sizeBytes: "128",
     sourceId: "source:1",
@@ -370,10 +527,14 @@ function createReader({
   readIndexedMessageTimes,
   readMessages,
   schemasById = new Map([[3, createSchema(new Uint8Array([9]))]]),
+  statistics,
 }: {
-  readonly channelsById?: ReadonlyMap<number, TypedMcapRecords["Channel"]>;
-  readonly chunkIndexes?: readonly TypedMcapRecords["ChunkIndex"][];
-  readonly messages?: readonly TypedMcapRecords["Message"][];
+  readonly channelsById?: ReadonlyMap<
+    number,
+    McapTypes.TypedMcapRecords["Channel"]
+  >;
+  readonly chunkIndexes?: readonly McapTypes.TypedMcapRecords["ChunkIndex"][];
+  readonly messages?: readonly McapTypes.TypedMcapRecords["Message"][];
   readonly readIndexedMessageTimes?: (args?: unknown) => AsyncGenerator<
     {
       readonly channelId: number;
@@ -389,8 +550,12 @@ function createReader({
     readonly endTime?: bigint;
     readonly startTime?: bigint;
     readonly topics?: readonly string[];
-  }) => AsyncGenerator<TypedMcapRecords["Message"], void, void>;
-  readonly schemasById?: ReadonlyMap<number, TypedMcapRecords["Schema"]>;
+  }) => AsyncGenerator<McapTypes.TypedMcapRecords["Message"], void, void>;
+  readonly schemasById?: ReadonlyMap<
+    number,
+    McapTypes.TypedMcapRecords["Schema"]
+  >;
+  readonly statistics?: McapTypes.TypedMcapRecords["Statistics"];
 } = {}) {
   return {
     channelsById,
@@ -404,6 +569,7 @@ function createReader({
         }
       }),
     schemasById,
+    statistics,
   };
 }
 
@@ -448,31 +614,51 @@ function createTestDecodedOutput(
 }
 
 function createChannel(
-  options: Partial<TypedMcapRecords["Channel"]> = {}
-): TypedMcapRecords["Channel"] {
+  options: Partial<McapTypes.TypedMcapRecords["Channel"]> = {}
+): McapTypes.TypedMcapRecords["Channel"] {
   return {
     id: options.id ?? 7,
-    messageEncoding: "protobuf",
-    metadata: new Map(),
-    schemaId: 3,
+    messageEncoding: options.messageEncoding ?? "protobuf",
+    metadata: options.metadata ?? new Map(),
+    schemaId: options.schemaId ?? 3,
     topic: options.topic ?? "/topic",
     type: "Channel",
   };
 }
 
-function createSchema(data: Uint8Array): TypedMcapRecords["Schema"] {
+function createSchema(
+  data: Uint8Array,
+  options: Partial<McapTypes.TypedMcapRecords["Schema"]> = {}
+): McapTypes.TypedMcapRecords["Schema"] {
   return {
     data,
-    encoding: "protobuf",
-    id: 3,
-    name: "foxglove.CompressedImage",
+    encoding: options.encoding ?? "protobuf",
+    id: options.id ?? 3,
+    name: options.name ?? "foxglove.CompressedImage",
     type: "Schema",
   };
 }
 
+function createStatistics(
+  options: Partial<McapTypes.TypedMcapRecords["Statistics"]> = {}
+): McapTypes.TypedMcapRecords["Statistics"] {
+  return {
+    attachmentCount: options.attachmentCount ?? 0,
+    channelCount: options.channelCount ?? 0,
+    channelMessageCounts: options.channelMessageCounts ?? new Map(),
+    chunkCount: options.chunkCount ?? 0,
+    messageCount: options.messageCount ?? 0n,
+    messageEndTime: options.messageEndTime ?? 0n,
+    messageStartTime: options.messageStartTime ?? 0n,
+    metadataCount: options.metadataCount ?? 0,
+    schemaCount: options.schemaCount ?? 0,
+    type: "Statistics",
+  };
+}
+
 function createChunkIndex(
-  options: Partial<TypedMcapRecords["ChunkIndex"]> = {}
-): TypedMcapRecords["ChunkIndex"] {
+  options: Partial<McapTypes.TypedMcapRecords["ChunkIndex"]> = {}
+): McapTypes.TypedMcapRecords["ChunkIndex"] {
   return {
     chunkLength: options.chunkLength ?? 256n,
     chunkStartOffset: options.chunkStartOffset ?? 1_000n,
@@ -489,8 +675,8 @@ function createChunkIndex(
 
 function createMessage(
   data: Uint8Array,
-  options: Partial<TypedMcapRecords["Message"]> = {}
-): TypedMcapRecords["Message"] {
+  options: Partial<McapTypes.TypedMcapRecords["Message"]> = {}
+): McapTypes.TypedMcapRecords["Message"] {
   return {
     channelId: options.channelId ?? 7,
     data,

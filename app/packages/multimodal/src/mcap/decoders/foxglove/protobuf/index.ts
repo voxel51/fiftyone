@@ -5,18 +5,12 @@
  * turns that schema data into cached protobufjs message types and decodes
  * message bytes into plain records for the concrete Foxglove decoders.
  */
+import type { Type } from "protobufjs";
 import type { DecodeContext, PayloadDescriptor } from "../../../../decoders";
-import { protobufFromBinaryDescriptor } from "./descriptors";
+import { protobufFromBinaryDescriptor } from "../../../mcap-support";
 import { asRecord } from "./records";
 
-type MessageTypeLike = {
-  decode(bytes: Uint8Array): unknown;
-};
-
-const messageTypeCache = new WeakMap<
-  Uint8Array,
-  Map<string, MessageTypeLike>
->();
+const messageTypeCache = new WeakMap<Uint8Array, Map<string, Type>>();
 
 /**
  * Decode protobuf payload bytes using schema data and schema name from the
@@ -43,10 +37,7 @@ export function decodeProtobufMessage(
   return asRecord(messageType.decode(bytes));
 }
 
-function getMessageType(
-  schemaData: Uint8Array,
-  schemaName: string
-): MessageTypeLike {
+function getMessageType(schemaData: Uint8Array, schemaName: string): Type {
   let typesBySchema = messageTypeCache.get(schemaData);
   if (!typesBySchema) {
     typesBySchema = new Map();
@@ -59,7 +50,7 @@ function getMessageType(
   }
 
   const root = protobufFromBinaryDescriptor(schemaData);
-  const messageType = root.lookupType(schemaName) as MessageTypeLike;
+  const messageType = root.lookupType(schemaName);
   typesBySchema.set(schemaName, messageType);
 
   return messageType;

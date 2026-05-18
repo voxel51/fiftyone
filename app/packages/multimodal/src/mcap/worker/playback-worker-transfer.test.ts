@@ -24,6 +24,18 @@ describe("MCAP playback worker transfer collection", () => {
   it("keeps timeline ranges cloneable without transferables", () => {
     expect(transferablesForMcapResult(createTimelineRange())).toEqual([]);
   });
+
+  it("keeps topic inventories cloneable without transferables", () => {
+    expect(
+      transferablesForMcapResult([
+        {
+          metadata: { "mcap.topic": "/camera" },
+          payload: { encoding: "protobuf" },
+          streamId: "/camera",
+        },
+      ])
+    ).toEqual([]);
+  });
 });
 
 function createTimelineRange(): McapTimelineRange {

@@ -12,8 +12,6 @@ export {
 export type {
   McapIndexedMessageTime,
   McapIndexedReaderLike,
-  McapInitializedReader,
-  McapReadable,
   McapReaderFactory,
   McapReadIndexedMessageTimesRequest,
   ParsedMcapMessageIndexRecord,

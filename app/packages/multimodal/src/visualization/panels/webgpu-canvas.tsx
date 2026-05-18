@@ -17,10 +17,6 @@ type RendererWithDreiCompat = THREE.WebGPURenderer & {
   }>;
 };
 
-type WebGpuCanvasGl = (
-  canvas: HTMLCanvasElement | OffscreenCanvas
-) => RootState["gl"];
-
 const DEFAULT_DPR: Dpr = [1, 2];
 const OPAQUE_CLEAR_ALPHA = 1;
 const DEFAULT_MAX_ANISOTROPY = 1;
@@ -94,7 +90,9 @@ export function WebGpuCanvas({
     onReadyRef.current?.(canvasStateRef.current);
   }, []);
 
-  const createRenderer = useCallback<WebGpuCanvasGl>(
+  const createRenderer = useCallback<
+    (canvas: HTMLCanvasElement | OffscreenCanvas) => RootState["gl"]
+  >(
     (canvas) => {
       const renderer = new THREE.WebGPURenderer({
         alpha: false,

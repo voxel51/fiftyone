@@ -1,9 +1,7 @@
 import type { SampleRendererProps } from "@fiftyone/plugins";
 import { getSampleSrc } from "@fiftyone/state";
-import { BYTE_SOURCE_READ_PROFILE } from "../client";
-import type { McapSourceDescriptor } from "./types";
+import { BYTE_SOURCE_READ_PROFILE, type ByteSourceDescriptor } from "../client";
 
-type SampleContext = SampleRendererProps["ctx"];
 type SampleRecord = {
   readonly _id?: unknown;
   readonly id?: unknown;
@@ -52,7 +50,7 @@ function remoteReadProfile(filepath: string) {
 /**
  * Extracts the dataset and sample identifiers.
  */
-export function getSampleIdentifiers(ctx: SampleContext): {
+export function getSampleIdentifiers(ctx: SampleRendererProps["ctx"]): {
   readonly datasetId: string | null;
   readonly sampleId: string | null;
 } {
@@ -70,8 +68,8 @@ export function getSampleIdentifiers(ctx: SampleContext): {
  * Builds an MCAP byte source from the modal sample filepath.
  */
 export function getMcapSourceDescriptor(
-  ctx: SampleContext
-): McapSourceDescriptor | null {
+  ctx: SampleRendererProps["ctx"]
+): ByteSourceDescriptor | null {
   const sampleRecord = ctx.sample.sample as SampleRecord;
   const filepath = normalizeIdentifier(sampleRecord.filepath);
 

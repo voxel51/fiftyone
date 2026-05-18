@@ -1,16 +1,15 @@
-import type { ByteResourceClient } from "../../client";
-import type { McapSourceDescriptor } from "../types";
-import type { McapReadable } from "./types";
+import type { McapTypes } from "@mcap/core";
+import type { ByteResourceClient, ByteSourceDescriptor } from "../../client";
 
 /**
  * Adapts the generic byte-resource client to the seekable MCAP readable API.
  */
-export class ByteClientReadable implements McapReadable {
-  private source: McapSourceDescriptor;
+export class ByteClientReadable implements McapTypes.IReadable {
+  private source: ByteSourceDescriptor;
   private resolvedSizeBytes?: bigint;
 
   constructor(
-    source: McapSourceDescriptor,
+    source: ByteSourceDescriptor,
     private readonly byteClient: ByteResourceClient
   ) {
     this.source = source;
@@ -73,7 +72,7 @@ export class ByteClientReadable implements McapReadable {
     return result.bytes;
   }
 
-  private updateSource(source: McapSourceDescriptor) {
+  private updateSource(source: ByteSourceDescriptor) {
     const sizeBytes = sourceSizeBytes(source);
     if (sizeBytes !== undefined) {
       this.resolvedSizeBytes = sizeBytes;
@@ -82,7 +81,7 @@ export class ByteClientReadable implements McapReadable {
   }
 }
 
-function sourceSizeBytes(source: McapSourceDescriptor): bigint | undefined {
+function sourceSizeBytes(source: ByteSourceDescriptor): bigint | undefined {
   const sizeBytes = source.sizeBytes ?? source.fingerprint?.sizeBytes;
   return sizeBytes === undefined ? undefined : BigInt(sizeBytes);
 }

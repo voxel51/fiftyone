@@ -21,11 +21,7 @@ export type { CreateMcapResourceClientOptions } from "./resources";
 /**
  * Reader contracts exposed for tests and advanced adapter wiring.
  */
-export type {
-  McapIndexedReaderLike,
-  McapReadable,
-  McapReaderFactory,
-} from "./reader";
+export type { McapIndexedReaderLike, McapReaderFactory } from "./reader";
 
 /**
  * Public MCAP resource, playback, and sync policy contracts.
@@ -35,10 +31,10 @@ export type {
   McapReadDecodedMessagesRequest,
   McapReadSynchronizedMessageBatchRequest,
   McapReadSynchronizedMessagesRequest,
+  McapReadTopicsRequest,
   McapReadTimelineRangeRequest,
   McapResolvedStreamSyncPolicy,
   McapResourceClient,
-  McapSourceDescriptor,
   McapStreamSyncPolicies,
   McapStreamSyncPolicy,
   McapSynchronizedMessageWindow,
