@@ -66,6 +66,7 @@ async function loadConfig() {
       },
     },
     worker: {
+      format: "es",
       plugins: () => [foxgloveWasmAsUrl(), wasm()],
     },
     resolve: {
