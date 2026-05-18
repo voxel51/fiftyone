@@ -396,12 +396,15 @@ export default function useLabels() {
             return;
           }
 
-          setLabels(result);
+          // Attach overlays to the scene before exposing them to the app.
+          // This ensures that geometry is grounded in some frame of reference.
           const initialOverlayIds = new Set<string>();
           for (const annotationLabel of result) {
             addLabelToRenderer(annotationLabel);
             initialOverlayIds.add(annotationLabel.data._id);
           }
+
+          setLabels(result);
           setInitialOverlayIds(initialOverlayIds);
 
           // In patches view with a single label, activate it for editing
@@ -436,10 +439,12 @@ export default function useLabels() {
               annotationLabel.data
             );
 
-            // new label, add it
+            // new label, add it. Attach to the scene first so the overlay
+            // has its coordinate system before any sidebar subscriber tries
+            // to read bounds off it.
             if (!updated) {
-              addLabelToStore(annotationLabel);
               addLabelToRenderer(annotationLabel);
+              addLabelToStore(annotationLabel);
             }
           });
         });
