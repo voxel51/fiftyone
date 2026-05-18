@@ -14,9 +14,8 @@ VIDEO = "video"
 IMAGE = "image"
 POINT_CLOUD = "point-cloud"
 THREE_D = "3d"
-MULTIMODAL = "multimodal"
 UNKNOWN = "unknown"
-MEDIA_TYPES = {IMAGE, VIDEO, POINT_CLOUD, THREE_D, MULTIMODAL, UNKNOWN}
+MEDIA_TYPES = {IMAGE, VIDEO, POINT_CLOUD, THREE_D, UNKNOWN}
 
 # Special media types
 GROUP = "group"
@@ -43,9 +42,6 @@ def get_media_type(filepath):
 
     if filepath.endswith(".fo3d"):
         return THREE_D
-
-    if filepath.endswith(".mcap"):
-        return MULTIMODAL
 
     return UNKNOWN
 
