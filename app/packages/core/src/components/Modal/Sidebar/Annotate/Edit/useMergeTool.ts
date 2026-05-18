@@ -54,11 +54,8 @@ export const useMergeTool = (): MergeTool => {
   const [mergeTargetId, setMergeTargetId] = useAtom(mergeTargetIdAtom);
   const commandBus = useCommandBus();
   const { scene, removeOverlay } = useLighter();
-  const {
-    addLabelToSidebar,
-    getLabelById,
-    removeLabelFromSidebar,
-  } = useLabelsContext();
+  const { addLabelToSidebar, getLabelById, removeLabelFromSidebar } =
+    useLabelsContext();
   const fieldSchema = useRecoilValue(
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
   );
@@ -66,9 +63,12 @@ export const useMergeTool = (): MergeTool => {
   const sidebarLabels = useAtomValue(labels);
   const disabled = useMemo(() => {
     const maskCount = sidebarLabels.reduce((count, label) => {
+      const data = label.data as {
+        mask?: unknown;
+        mask_path?: unknown;
+      };
       const hasMask =
-        label.type === "Detection" &&
-        !!(label.data as { mask?: unknown })?.mask;
+        label.type === "Detection" && !!(data?.mask || data?.mask_path);
 
       return hasMask ? count + 1 : count;
     }, 0);

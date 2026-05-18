@@ -39,6 +39,7 @@ import type { MaskSnapshot, PaintStrokeData } from "./MaskCanvas";
 import { MaskKeypoints } from "./MaskKeypoints";
 import type { SerializedMask } from "@fiftyone/utilities";
 import { BASE_ALPHA } from "@fiftyone/looker/src/constants";
+import type { OverlayMask } from "@fiftyone/looker/src/numpy";
 
 export type DetectionLabel = RawLookerLabel & {
   label: string;
@@ -60,6 +61,12 @@ export interface DetectionOverlayOptions {
   draggable?: boolean;
   resizeable?: boolean;
   selectable?: boolean;
+  /**
+   * A mask decoded out-of-band — typically from `label.mask_path` — that
+   * seeds the editing canvas without touching `label.mask`. When set, this
+   * takes precedence over `label.mask` for the initial mask source.
+   */
+  preDecodedMask?: OverlayMask;
 }
 
 export type ResizeRegion =
@@ -118,8 +125,9 @@ export class DetectionOverlay
     this.isResizeable = options.resizeable !== false;
     this.#relativeBounds = options.relativeBounds || NO_BOUNDS;
 
-    if (this.label.mask) {
-      this.mask = new MaskCanvas(this.label.mask);
+    const maskSource = options.preDecodedMask ?? this.label.mask;
+    if (maskSource) {
+      this.mask = new MaskCanvas(maskSource);
     }
   }
 

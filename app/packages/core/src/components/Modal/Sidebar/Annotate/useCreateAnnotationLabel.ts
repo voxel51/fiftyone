@@ -15,6 +15,7 @@ import {
   KeypointOverlay,
   PolylineOptions,
   PolylineOverlay,
+  decodeMaskPath,
   useLighter,
 } from "@fiftyone/lighter";
 import { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
@@ -32,11 +33,11 @@ export const useCreateAnnotationLabel = () => {
   const getSkeletonForField = useGetKeypointSkeleton();
 
   return useCallback(
-    (
+    async (
       field: string,
       type: LabelType,
       data: AnnotationLabel["data"]
-    ): AnnotationLabel => {
+    ): Promise<AnnotationLabel> => {
       if (type === CLASSIFICATION) {
         const overlay = overlayFactory.create<
           ClassificationOptions,
@@ -59,6 +60,12 @@ export const useCreateAnnotationLabel = () => {
         const fieldSchema = store.get(labelSchemaData(field));
         const isReadOnly = isFieldReadOnly(fieldSchema);
 
+        // Pre-decode `mask_path` masks.
+        const preDecodedMask =
+          !label?.mask && label?.mask_path
+            ? await decodeMaskPath(label.mask_path, field, DETECTION)
+            : undefined;
+
         const overlay = overlayFactory.create<
           DetectionOverlayOptions,
           DetectionOverlay
@@ -75,6 +82,7 @@ export const useCreateAnnotationLabel = () => {
             width: boundingBox[2],
             height: boundingBox[3],
           },
+          preDecodedMask,
         });
 
         return { data, overlay, path: field, type };

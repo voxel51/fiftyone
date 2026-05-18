@@ -125,7 +125,9 @@ export const useSegmentationMode = () => {
 
   const isEditingSegmentation =
     editingLabelType === DETECTION &&
-    (!!selectedLabel?.data?.mask || isEditingMask);
+    (!!selectedLabel?.data?.mask ||
+      !!selectedLabel?.data?.mask_path ||
+      isEditingMask);
 
   const noActiveFields = fields.length === 0;
   const disabled = isPatchView || noActiveFields;

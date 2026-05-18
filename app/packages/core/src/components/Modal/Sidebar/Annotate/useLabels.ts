@@ -74,7 +74,9 @@ const handleSample = async ({
 
     const array = Array.isArray(result) ? result : result ? [result] : [];
 
-    labels.push(...array.map((data) => createLabel(path, type, data)));
+    labels.push(
+      ...(await Promise.all(array.map((data) => createLabel(path, type, data))))
+    );
   }
 
   // Process fields in activeLabelSchemas that aren't in Recoil's activeFields
@@ -103,11 +105,13 @@ const handleSample = async ({
 
       if (Array.isArray(items)) {
         labels.push(
-          ...items.map((item) => createLabel(schemaPath, listInfo.type, item))
+          ...(await Promise.all(
+            items.map((item) => createLabel(schemaPath, listInfo.type, item))
+          ))
         );
       }
     } else if (KNOWN_SINGULAR_TYPES.has(cls)) {
-      labels.push(createLabel(schemaPath, cls as LabelType, fieldData));
+      labels.push(await createLabel(schemaPath, cls as LabelType, fieldData));
     } else {
       console.warn(`Unsupported label _cls "${cls}" for field "${schemaPath}"`);
     }
