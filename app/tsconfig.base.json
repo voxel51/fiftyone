@@ -6,7 +6,7 @@
                 "name": "typescript-plugin-css-modules"
             }
         ],
-        "module": "esnext",
+        "module": "nodenext",
         "target": "es2022",
         "types": ["node", "vite/client"],
         "lib": ["esnext", "dom", "dom.iterable"],
@@ -23,7 +23,7 @@
         "moduleDetection": "force",
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
-        "moduleResolution": "node",
+        "moduleResolution": "nodenext",
         "resolveJsonModule": true,
         "noEmit": true
     }
