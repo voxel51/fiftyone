@@ -22,8 +22,6 @@ import type {
   DecodeResourceResult,
 } from "./types";
 
-type FetchFunction = ReturnType<typeof getFetchFunctionExtended>;
-
 const DEFAULT_HTTP_BYTE_READ_RETRIES = 2;
 
 /**
@@ -50,7 +48,7 @@ export function defaultByteCacheBlockSizeBytes(
  * Creates an HTTP byte reader that sends explicit Range headers.
  */
 export function createHttpByteResourceClient(
-  fetchFunction?: FetchFunction
+  fetchFunction?: ReturnType<typeof getFetchFunctionExtended>
 ): ByteResourceClient {
   return {
     async readBytes(request) {
@@ -99,26 +97,28 @@ export function createCachedByteResourceClient(
   reader: ByteResourceClient,
   caches: ByteCacheLayers
 ): ByteResourceClient {
-  const inFlightReads = new Map<string, Promise<ByteRangeReadResult>>();
+  const pendingByteReads = new Map<string, Promise<ByteRangeReadResult>>();
 
   return {
     async readBytes(request) {
-      const cached = await readCachedBytes(caches, request);
-      if (cached) {
-        return cached;
-      }
-
       const fillRequest =
         request.cachePolicy?.blockFill === false
           ? request
           : byteCacheFillRequest(request, caches.blockSizeBytes);
-      const fillCached = await readCachedBytes(caches, fillRequest);
-      if (fillCached) {
-        return sliceByteRangeResult(fillCached, request.range);
+      const cachedFill = await readCachedBytes(caches, fillRequest);
+      if (cachedFill) {
+        return sliceByteRangeResult(cachedFill, request.range);
+      }
+
+      if (!sameByteRange(fillRequest.range, request.range)) {
+        const cachedRequest = await readCachedBytes(caches, request);
+        if (cachedRequest) {
+          return cachedRequest;
+        }
       }
 
       const fillKey = byteRangeCacheKey(fillRequest);
-      let fill = inFlightReads.get(fillKey);
+      let fill = pendingByteReads.get(fillKey);
       if (!fill) {
         fill = reader
           .readBytes(fillRequest)
@@ -128,9 +128,9 @@ export function createCachedByteResourceClient(
             return result;
           })
           .finally(() => {
-            inFlightReads.delete(fillKey);
+            pendingByteReads.delete(fillKey);
           });
-        inFlightReads.set(fillKey, fill);
+        pendingByteReads.set(fillKey, fill);
       }
 
       const result = await fill;
@@ -152,7 +152,7 @@ export function createDecodeResourceClient({
   readonly executor?: DecodeExecutor;
   readonly registry?: DecoderRegistry;
 }): DecodeResourceClient {
-  const inFlightDecodes = new Map<string, Promise<DecodeResourceResult>>();
+  const pendingDecodes = new Map<string, Promise<DecodeResourceResult>>();
 
   return {
     async decode(request) {
@@ -174,9 +174,9 @@ export function createDecodeResourceClient({
       }
 
       const inFlightKey = decodedOutputCacheKey(cacheKey);
-      const inFlight = inFlightDecodes.get(inFlightKey);
-      if (inFlight) {
-        return inFlight;
+      const pendingDecode = pendingDecodes.get(inFlightKey);
+      if (pendingDecode) {
+        return pendingDecode;
       }
 
       const decode = runDecode(request, decoder, executor)
@@ -185,9 +185,9 @@ export function createDecodeResourceClient({
           return result;
         })
         .finally(() => {
-          inFlightDecodes.delete(inFlightKey);
+          pendingDecodes.delete(inFlightKey);
         });
-      inFlightDecodes.set(inFlightKey, decode);
+      pendingDecodes.set(inFlightKey, decode);
 
       return decode;
     },
@@ -237,6 +237,10 @@ function maybeDecodeCacheKey(
     streamId: request.cache.streamId,
     timeNs: request.cache.timeNs,
   };
+}
+
+function sameByteRange(left: ByteRange, right: ByteRange): boolean {
+  return left.offset === right.offset && left.length === right.length;
 }
 
 function byteCacheFillRequest(

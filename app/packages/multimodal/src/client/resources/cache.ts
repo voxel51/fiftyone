@@ -12,11 +12,6 @@ import type {
 } from "./types";
 
 /**
- * Primitive value accepted by stable cache-key serialization.
- */
-export type CacheKeyPart = string | null;
-
-/**
  * Options for bounded in-memory caches.
  */
 export interface MemoryCacheOptions {
@@ -74,6 +69,8 @@ export function createMemoryByteRangeCache(
         return exactHit;
       }
 
+      // The cached byte client checks normalized fill-block keys first. This
+      // fallback keeps direct cache users and custom fill policies reusable.
       const containingHit = cache.find((candidate) =>
         canServeRange(candidate, request)
       );
@@ -250,7 +247,7 @@ function payloadCacheKey(payload: DecodedOutputCacheKey["payload"]): string {
 /**
  * Serializes key parts without delimiter collisions.
  */
-export function serializeCacheKey(parts: readonly CacheKeyPart[]): string {
+export function serializeCacheKey(parts: readonly (string | null)[]): string {
   return JSON.stringify(parts);
 }
 
