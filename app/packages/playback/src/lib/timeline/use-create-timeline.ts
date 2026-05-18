@@ -71,7 +71,7 @@ export const useCreateTimeline = (
   useEffect(() => {
     // missing config might be used as a technique to delay the initialization of the timeline
     if (!newTimelineProps.config) {
-      return;
+      return undefined;
     }
 
     addTimeline({ name: timelineName, config: newTimelineProps.config });

@@ -13,7 +13,7 @@
 // imperatively via store.get / store.set.
 // ---------------------------------------------------------------------------
 
-import { atom } from "jotai";
+import { atom, type PrimitiveAtom } from "jotai";
 import { atomFamily } from "jotai/utils";
 
 /**
@@ -24,7 +24,14 @@ import { atomFamily } from "jotai/utils";
  * Atoms persist for the lifetime of the store — a consumer that subscribes
  * before its stream registers will get `null` until the stream's first commit.
  */
-export const streamValueAtom = atomFamily((_id: string) => atom<unknown>(null));
+// `atom<unknown>(null)` would resolve to `PrimitiveAtom<unknown>` in
+// theory, but Jotai's overloads narrow it to a read-only `Atom<unknown>`
+// because the bare `null` initial value matches the read-fn overload
+// first. Cast preserves the writable shape so subclasses' onCommit can
+// call `store.set(streamValueAtom(id), ...)`.
+export const streamValueAtom = atomFamily(
+  (_id: string) => atom<unknown>(null) as PrimitiveAtom<unknown>
+);
 
 /**
  * The visual playhead position. Updates immediately on every seek, scrub, and
@@ -81,4 +88,10 @@ export const speedAtom = atom(1.0);
  * engine debounces updates to this atom during rapid scrubbing so streams
  * don't thrash. playheadAtom always updates immediately for smooth UI.
  */
-export const seekEventAtom = atom<{ time: number; seq: number } | null>(null);
+export type SeekEvent = { time: number; seq: number };
+// See `streamValueAtom` — same null-initial-value overload quirk; the
+// cast preserves the writable shape so `store.set(seekEventAtom, ...)`
+// keeps its setter signature.
+export const seekEventAtom = atom<SeekEvent | null>(
+  null
+) as PrimitiveAtom<SeekEvent | null>;

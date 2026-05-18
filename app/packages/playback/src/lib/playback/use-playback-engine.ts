@@ -125,12 +125,7 @@ export function usePlaybackEngine({
     (time: number, immediate = false) => {
       const fire = () => {
         seekSeqRef.current += 1;
-        // `atom<{...} | null>(null)` resolves to a read-only `Atom<T>`
-        // under Jotai's overloads (the bare `null` argument narrows
-        // `Value` against the read-only signature). Cast preserves the
-        // writable shape so `store.set` keeps its setter signature.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        store.set(seekEventAtom as any, { time, seq: seekSeqRef.current });
+        store.set(seekEventAtom, { time, seq: seekSeqRef.current });
       };
       if (seekDebounceRef.current) clearTimeout(seekDebounceRef.current);
       if (immediate) {
