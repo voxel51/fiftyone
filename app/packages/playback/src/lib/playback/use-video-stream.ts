@@ -37,7 +37,13 @@ export function useVideoStream(
     };
     apply();
     v.addEventListener("loadedmetadata", apply);
-    return () => v.removeEventListener("loadedmetadata", apply);
+    // `durationchange` also covers live streams / MSE / adaptive
+    // manifests where duration is refined after the initial metadata.
+    v.addEventListener("durationchange", apply);
+    return () => {
+      v.removeEventListener("loadedmetadata", apply);
+      v.removeEventListener("durationchange", apply);
+    };
   }, [videoRef]);
 
   // Register / re-register the stream when its duration becomes known.

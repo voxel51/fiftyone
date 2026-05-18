@@ -91,6 +91,11 @@ export abstract class PlaybackStreamBase<T> implements PlaybackStream {
    * Override only if you need to write to multiple atoms or do extra work.
    */
   onCommit(time: number, store: PlaybackStore): void {
+    // `streamValueAtom` is a generic atomFamily; TypeScript can't relate the
+    // per-instance `T` here to the family's `unknown` parameterization at the
+    // call site, so we widen for the write. Safe because we own both ends:
+    // this method publishes the same `T` that `getValue` returns. TODO: drop
+    // when Jotai's atomFamily generics infer the value type at use.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     store.set(streamValueAtom(this.id) as any, this.getValue(time));
   }

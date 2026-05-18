@@ -163,7 +163,7 @@ export const useCreateTimeline = (
       return;
     }
 
-    if (playHeadStateRef.current === "buffering") {
+    if (playHeadStateRef.current === PLAYHEAD_STATE_BUFFERING) {
       return;
     }
 
@@ -241,7 +241,9 @@ export const useCreateTimeline = (
         return;
       }
 
-      lastDrawTime.current = newTime - (elapsed % updateFreq);
+      // Use the ref so a closure-captured stale `updateFreq` can't drift
+      // the frame timing across re-renders.
+      lastDrawTime.current = newTime - (elapsed % updateFreqRef.current);
 
       // don't commit if: we're at the end of the timeline
       if (frameNumberRef.current === configRef.current.totalFrames) {
@@ -306,7 +308,8 @@ export const useCreateTimeline = (
           isLastDrawFinishedRef.current = true;
         });
     },
-    [pause, timelineName, updateFreq]
+    // updateFreq is read via updateFreqRef.current.
+    [pause, timelineName]
   );
 
   const startAnimation = useCallback(() => {

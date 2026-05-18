@@ -44,9 +44,13 @@ describe("resolveAtTime", () => {
       [0.95, "lo"],
       [1.05, "hi"],
     ]);
-    // Both at distance 0.05. Either is acceptable — assert it's one of them.
-    const result = resolveAtTime(cache, 1, NEAREST);
-    expect(["lo", "hi"]).toContain(result);
+    // Both at distance 0.05. Assert deterministic — repeated calls
+    // must return the same winner, not "either is fine".
+    const first = resolveAtTime(cache, 1, NEAREST);
+    expect(first).not.toBeNull();
+    for (let i = 0; i < 8; i++) {
+      expect(resolveAtTime(cache, 1, NEAREST)).toBe(first);
+    }
   });
 
   it("returns null when the only entry is just past the threshold", () => {

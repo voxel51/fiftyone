@@ -126,7 +126,8 @@ export const TrackProvider: React.FC<TrackProviderProps> = ({
       togglePin,
       setPinned,
     }),
-    [pinnedIds, togglePin, setPinned]
+    // togglePin / setPinned are useCallback([]) — referentially stable.
+    [pinnedIds]
   );
 
   return (

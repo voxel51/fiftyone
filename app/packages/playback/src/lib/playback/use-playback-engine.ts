@@ -125,6 +125,10 @@ export function usePlaybackEngine({
     (time: number, immediate = false) => {
       const fire = () => {
         seekSeqRef.current += 1;
+        // `atom<{...} | null>(null)` resolves to a read-only `Atom<T>`
+        // under Jotai's overloads (the bare `null` argument narrows
+        // `Value` against the read-only signature). Cast preserves the
+        // writable shape so `store.set` keeps its setter signature.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         store.set(seekEventAtom as any, { time, seq: seekSeqRef.current });
       };
@@ -279,8 +283,14 @@ export function usePlaybackEngine({
         if (checkAllReady(next)) doCommit(next);
       },
       setView: (start: number, end: number) => {
-        store.set(viewStartAtom, start);
-        store.set(viewEndAtom, end);
+        // Apply the same validation as setLoop so the visible window
+        // can't end up inverted, collapsed, or outside [0, duration].
+        const dur = store.get(durationAtom);
+        const vs = clamp(start, 0, dur);
+        const ve = clamp(end, 0, dur);
+        if (ve <= vs) return;
+        store.set(viewStartAtom, vs);
+        store.set(viewEndAtom, ve);
       },
       setLoop: (start: number, end: number) => {
         const dur = store.get(durationAtom);
@@ -314,7 +324,13 @@ export function usePlaybackEngine({
       },
       subscribeStream: (id: string) => {
         subscribersRef.current.set(id, (subscribersRef.current.get(id) ?? 0) + 1);
+        // One-shot cleanup. StrictMode's setup→cleanup→setup cycle (and
+        // any consumer that retains a stale cleanup) would otherwise
+        // double-decrement and drop a still-mounted stream.
+        let disposed = false;
         return () => {
+          if (disposed) return;
+          disposed = true;
           const next = (subscribersRef.current.get(id) ?? 1) - 1;
           if (next <= 0) {
             subscribersRef.current.delete(id);

@@ -292,9 +292,11 @@ export const addSubscriberAtom = atom(
     const bufferManager = get(_dataLoadedBuffers(name));
 
     set(_subscribers(name), (prev) => {
-      prev.set(subscription.id, subscription);
+      // Return a new Map so Jotai (reference-equality) notices the change.
+      const next = new Map(prev);
+      next.set(subscription.id, subscription);
       bufferManager.reset();
-      return prev;
+      return next;
     });
   }
 );
@@ -344,15 +346,10 @@ export const setFrameNumberAtom = atom(
       // otherwise we can render the frame immediately
       // and load range in background
       if (isCurrentValueNotInBuffer) {
-        try {
-          await allPromisesSettled;
-          bufferManager.addNewRange(newLoadRange);
-        } catch (e) {
-          // todo: handle error better, maybe retry
-          console.error(e);
-        } finally {
-          set(_currentBufferingRange(name), [0, 0]);
-        }
+        // Promise.allSettled never rejects — no try/catch needed.
+        await allPromisesSettled;
+        bufferManager.addNewRange(newLoadRange);
+        set(_currentBufferingRange(name), [0, 0]);
       } else {
         allPromisesSettled.then(() => {
           bufferManager.addNewRange(newLoadRange);
@@ -361,16 +358,13 @@ export const setFrameNumberAtom = atom(
       }
     }
 
-    const renderPromises: ReturnType<
-      SequenceTimelineSubscription["renderFrame"]
-    >[] = [];
-
-    // ask all subscribers to render new frame, and the change frame number
+    // `renderFrame` is declared as `void` (synchronous) on the
+    // subscription interface — call each subscriber inline; no
+    // promise collection / await needed.
     subscribers.forEach((subscriber) => {
-      renderPromises.push(subscriber.renderFrame(newFrameNumber));
+      subscriber.renderFrame(newFrameNumber);
     });
 
-    await Promise.allSettled(renderPromises);
     set(_frameNumbers(name), newFrameNumber);
   }
 );
