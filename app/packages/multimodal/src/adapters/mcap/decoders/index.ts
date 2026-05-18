@@ -10,7 +10,7 @@ export * from "./foxglove";
 /**
  * Built-in payload decoders used by the MCAP adapter.
  */
-export const mcapBuiltInDecoders: readonly Decoder[] = [...foxgloveDecoders];
+const mcapBuiltInDecoders: readonly Decoder[] = [...foxgloveDecoders];
 
 /**
  * Creates an MCAP decoder registry with adapter-owned built-ins.

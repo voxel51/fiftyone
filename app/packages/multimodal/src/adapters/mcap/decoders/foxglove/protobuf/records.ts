@@ -20,19 +20,6 @@ export function asRecord(value: unknown): Record<string, unknown> {
 }
 
 /**
- * Treat an optional decoder context as a plain record when it is object-like.
- */
-export function optionalContextRecord(
-  value: unknown
-): Record<string, unknown> | undefined {
-  if (!value || typeof value !== "object") {
-    return undefined;
-  }
-
-  return value as Record<string, unknown>;
-}
-
-/**
  * Read an optional nested record field from a decoded protobuf message.
  */
 export function optionalRecord(

@@ -1,7 +1,8 @@
 import type { McapTypes } from "@mcap/core";
-import type { DecodeResourceClient } from "../../client/resources";
-import type { ByteSourceDescriptor } from "../../client/resources";
-import type { PayloadDescriptor } from "../../decoders";
+import type {
+  ByteSourceDescriptor,
+  DecodeResourceClient,
+} from "../../client/resources";
 import type { McapIndexedReaderLike } from "./reader";
 import type { McapTimelineStrategy } from "./timeline";
 import type { McapDecodedMessage } from "./types";
@@ -59,7 +60,11 @@ export async function decodeMcapMessage({
       streamId: topic,
       timeRangeStartKey: timeline.decodeTimeRangeStartKey,
     },
-    payload: payloadFromMcapChannel(resolvedChannel, resolvedSchema),
+    payload: {
+      encoding: resolvedChannel.messageEncoding,
+      schema: resolvedSchema?.name,
+      schemaEncoding: resolvedSchema?.encoding,
+    },
   });
 
   return {
@@ -71,20 +76,6 @@ export async function decodeMcapMessage({
     sequence: message.sequence,
     timelineTimeNs,
     topic,
-  };
-}
-
-/**
- * Maps MCAP channel/schema metadata to the generic decoder payload descriptor.
- */
-export function payloadFromMcapChannel(
-  channel: McapTypes.TypedMcapRecords["Channel"],
-  schema: McapTypes.TypedMcapRecords["Schema"] | undefined
-): PayloadDescriptor {
-  return {
-    encoding: channel.messageEncoding,
-    schema: schema?.name,
-    schemaEncoding: schema?.encoding,
   };
 }
 
