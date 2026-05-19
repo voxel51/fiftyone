@@ -23,6 +23,7 @@ import fiftyone.zoo.models as fozm
 ultralytics = fou.lazy_import("ultralytics")
 torch = fou.lazy_import("torch")
 torchvision = fou.lazy_import("torchvision")
+_yoloe = fou.lazy_import("ultralytics.models.yolo.yoloe")
 
 
 def convert_ultralytics_model(model):
@@ -707,6 +708,171 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
             classes=self.config.filter_classes,
         )
 
+class YOLOEVPGetItem(fout.GetItem):
+    """A :class:`GetItem` that loads images and box prompt detections for
+    :class:`FiftyOneYOLOEVPModel` instances.
+
+    Args:
+        transform (None): a callable that maps a ``PIL.Image.Image`` to a
+            dict containing ``"img"`` (a ``torch.Tensor``) and ``"orig_img"``
+            (a ``numpy.ndarray``) keys
+        field_mapping (None): the user-supplied dict mapping keys in
+            :attr:`required_keys` to field names of their dataset
+    """
+
+    def __init__(self, transform=None, field_mapping=None, **kwargs):
+        super().__init__(field_mapping=field_mapping, **kwargs)
+        self._transform = transform
+
+    def __call__(self, d):
+        img = fout._load_image(d["filepath"], use_numpy=False, force_rgb=True)
+        if self._transform is None:
+            raise TypeError(
+                "YOLOEVPGetItem requires a transform to produce tensors"
+            )
+        result = self._transform(img)
+
+        prompt = d["prompt_field"]
+        if prompt is not None and prompt.detections:
+            bboxes, cls_indices, classes = _detections_to_visual_prompts(
+                prompt, img.width, img.height
+            )
+            result["visual_prompts"] = {
+                "bboxes": np.array(bboxes),
+                "cls": np.array(cls_indices),
+            }
+            result["vp_classes"] = classes
+        else:
+            result["visual_prompts"] = None
+            result["vp_classes"] = None
+
+        return result
+
+    @property
+    def required_keys(self):
+        return ["filepath", "prompt_field"]
+
+
+class FiftyOneYOLOEVPModelConfig(FiftyOneYOLOModelConfig):
+    """Configuration for a :class:`FiftyOneYOLOEVPModel`."""
+
+    pass
+
+
+class FiftyOneYOLOEVPModel(FiftyOneYOLOModel):
+    """YOLOE model with visual prompt (box prompt) support.
+
+    Args:
+        config: a :class:`FiftyOneYOLOEVPModelConfig`
+    """
+
+    @staticmethod
+    def collate_fn(batch):
+        visual_prompts = [item.get("visual_prompts") for item in batch]
+        vp_classes = [item.get("vp_classes") for item in batch]
+        orig_images = [img.get("orig_img") for img in batch]
+        orig_shapes = [_get_image_dims(img)[::-1] for img in orig_images]
+        images = torch.stack([img.get("img") for img in batch])
+        return {
+            "orig_imgs": orig_images,
+            "images": images,
+            "orig_shapes": orig_shapes,
+            "visual_prompts": visual_prompts,
+            "vp_classes": vp_classes,
+        }
+
+    def _predict_all(self, imgs):
+        # Inputs from build_get_item + fout.get_model_inputs_from_get_item
+        # arrive as a list of already-transformed per-sample dicts. Collate
+        # them here rather than letting the parent's transform-then-collate
+        # path try to re-transform the dicts.
+        if (
+            isinstance(imgs, list)
+            and imgs
+            and isinstance(imgs[0], dict)
+            and "img" in imgs[0]
+        ):
+            imgs = self.collate_fn(imgs)
+
+        visual_prompts = (
+            imgs.get("visual_prompts") if isinstance(imgs, dict) else None
+        )
+        if visual_prompts and any(vp is not None for vp in visual_prompts):
+            return self._predict_all_visual_prompts(
+                imgs["orig_imgs"],
+                imgs["visual_prompts"],
+                imgs["vp_classes"],
+            )
+
+        return super()._predict_all(imgs)
+
+    def _predict_all_visual_prompts(
+        self, orig_images, visual_prompts_list, vp_classes_list
+    ):
+        vp_predictor_cls = _get_yoloe_vp_predictor()
+        default_args = self._model.predictor.args
+        default_rect = default_args.rect
+        default_retina_masks = default_args.retina_masks
+        default_conf = default_args.conf
+
+        all_labels = []
+        try:
+            if not (
+                len(orig_images)
+                == len(visual_prompts_list)
+                == len(vp_classes_list)
+            ):
+                raise ValueError(
+                    "orig_images, visual_prompts_list, and vp_classes_list "
+                    "must have equal length"
+                )
+            # YOLOEVPSegPredictor requires per-image visual_prompts dicts,
+            # so batched prediction is not supported here.
+            for orig_img, visual_prompts, classes in zip(
+                orig_images, visual_prompts_list, vp_classes_list
+            ):
+                if visual_prompts is None:
+                    all_labels.append(fol.Detections())
+                    continue
+
+                results = self._model.predict(
+                    orig_img,
+                    visual_prompts=visual_prompts,
+                    predictor=vp_predictor_cls,
+                    rect=default_rect,
+                    retina_masks=default_retina_masks,
+                    save=False,
+                    mode="predict",
+                    verbose=False,
+                    device=self._device,
+                    conf=self.config.confidence_thresh
+                    if self.config.confidence_thresh is not None
+                    else default_conf,
+                )
+
+                labels = self._output_processor(
+                    results,
+                    None,
+                    vp_classes=classes,
+                    confidence_thresh=self.config.confidence_thresh,
+                    classes=self.config.filter_classes,
+                )
+
+                if isinstance(labels, list):
+                    labels = labels[0] if labels else fol.Detections()
+
+                all_labels.append(labels)
+        finally:
+            self._set_predictor(self.config, self._model)
+
+        return all_labels
+
+    def build_get_item(self, field_mapping=None):
+        return YOLOEVPGetItem(
+            transform=self._transforms,
+            field_mapping=field_mapping,
+        )
+
 
 def _get_image_dims(img):
     if isinstance(img, torch.Tensor):
@@ -1015,6 +1181,45 @@ class UltralyticsSegmentationOutputProcessor(
         )
 
 
+class YOLOEVPSegmentationOutputProcessor(
+    UltralyticsSegmentationOutputProcessor
+):
+    """Output processor for YOLOE visual-prompt segmentation.
+
+    The VP code path produces ultralytics ``Result`` objects directly (no
+    raw-tensor postprocess step). When ``vp_classes`` is provided, this
+    processor remaps each ``Result.names`` to the prompt's first-seen unique
+    class names before delegating to ``to_instances``. When ``vp_classes`` is
+    not provided (i.e., the prompt-free path through the same model), this
+    processor falls through to the standard segmentation behavior.
+    """
+
+    def __call__(
+        self,
+        output,
+        frame_size,
+        confidence_thresh=None,
+        classes=None,
+        vp_classes=None,
+        **kwargs,
+    ):
+        if vp_classes is not None:
+            names_map = dict(enumerate(vp_classes))
+            for r in output:
+                r.names = names_map
+            return self._parse_output(
+                output, frame_size, confidence_thresh, classes
+            )
+
+        return super().__call__(
+            output,
+            frame_size,
+            confidence_thresh=confidence_thresh,
+            classes=classes,
+            **kwargs,
+        )
+
+
 class UltralyticsPoseOutputProcessor(
     fout.OutputProcessor, UltralyticsPostProcessor
 ):
@@ -1061,3 +1266,30 @@ class UltralyticsOBBOutputProcessor(
         return obb_to_polylines(
             preds, confidence_thresh=confidence_thresh, classes=classes
         )
+
+
+def _detections_to_visual_prompts(detections, img_width, img_height):
+    dets = detections.detections
+    boxes = np.array([d.bounding_box for d in dets])
+    boxes[:, 2] += boxes[:, 0]
+    boxes[:, 3] += boxes[:, 1]
+    boxes[:, 0] *= img_width
+    boxes[:, 2] *= img_width
+    boxes[:, 1] *= img_height
+    boxes[:, 3] *= img_height
+
+    labels = [d.label for d in dets]
+    classes = list(dict.fromkeys(labels))
+    label_to_idx = {c: i for i, c in enumerate(classes)}
+    cls_indices = [label_to_idx[label] for label in labels]
+
+    return boxes.tolist(), cls_indices, classes
+
+
+def _get_yoloe_vp_predictor():
+    try:
+        return _yoloe.YOLOEVPSegPredictor
+    except (AttributeError, ImportError) as e:
+        raise AttributeError(
+            "Visual prompts require ultralytics>=8.4.0 with YOLOE support"
+        ) from e
