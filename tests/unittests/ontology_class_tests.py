@@ -994,6 +994,40 @@ class OntologySDKTests(unittest.TestCase):
         original = load_ontology("original")
         self.assertEqual(original.name, "original")
 
+    def test_save_overwrite_appends_new_version(self):
+        from fiftyone.core.ontology import load_ontology
+
+        self._make_ontology("versioned").save()
+
+        fresh = AnnotationOntology(
+            name="versioned",
+            description="rev 2",
+            attributes=[
+                AttributeSpec(name="x", type="bool", component="checkbox"),
+            ],
+        )
+        fresh.save(overwrite=True)
+
+        self.assertEqual(fresh.version, 2)
+
+        loaded = load_ontology("versioned")
+        self.assertEqual(loaded.version, 2)
+        self.assertEqual(loaded.description, "rev 2")
+        self.assertEqual(len(loaded.attributes), 1)
+        self.assertEqual(loaded.attributes[0].name, "x")
+
+    def test_save_without_overwrite_rejects_collision(self):
+        self._make_ontology("collide").save()
+
+        with self.assertRaises(ValueError):
+            self._make_ontology("collide").save()
+
+    def test_save_overwrite_no_existing_doc_creates_version_1(self):
+        fresh = self._make_ontology("brand_new")
+        fresh.save(overwrite=True)
+
+        self.assertEqual(fresh.version, 1)
+
 
 if __name__ == "__main__":
     unittest.main()
