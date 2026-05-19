@@ -14,6 +14,10 @@ import {
   prettify,
 } from "../utils/generic";
 import { ContentDiv, ContentHeader } from "./utils";
+import { CategoricalChartState } from "recharts/types/chart/types";
+
+const TOOLTIP_OFFSET_X = 8;
+const TOOLTIP_OFFSET_Y = -10;
 
 const Container = styled.div`
   overflow-y: hidden;
@@ -134,6 +138,9 @@ const makeData = (counts: readonly number[], values: readonly number[]) => {
 const HistogramRenderer: React.FC<{ path: string }> = ({ path }) => {
   const [ref, { height }] = useMeasure();
   const theme = useTheme();
+  const [tooltipPos, setTooltipPos] = React.useState<
+    { x: number; y: number } | undefined
+  >();
 
   const { data, ticks } = useData(path);
   const hasMore = data.length >= LIMIT;
@@ -187,6 +194,12 @@ const HistogramRenderer: React.FC<{ path: string }> = ({ path }) => {
         barCategoryGap={"4px"}
         data={strData}
         margin={{ top: 0, left: 0, bottom: 5, right: 5 }}
+        onMouseMove={(state: CategoricalChartState) => {
+          if (state?.chartX != null && state?.chartY != null) {
+            setTooltipPos({ x: state.chartX + TOOLTIP_OFFSET_X, y: state.chartY + TOOLTIP_OFFSET_Y});
+          }
+        }}
+        onMouseLeave={() => setTooltipPos(undefined)}
       >
         <XAxis
           dataKey="key"
@@ -204,6 +217,8 @@ const HistogramRenderer: React.FC<{ path: string }> = ({ path }) => {
         />
         <Tooltip
           cursor={false}
+          isAnimationActive={false}
+          position={tooltipPos}
           content={(point) => {
             const key = point?.payload[0]?.payload?.key;
             const count = point?.payload[0]?.payload?.count;
