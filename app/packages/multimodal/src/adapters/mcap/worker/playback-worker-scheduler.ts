@@ -64,7 +64,15 @@ export class McapPlaybackWorkerScheduler {
           continue;
         }
 
-        await job.run();
+        try {
+          await job.run();
+        } catch (error) {
+          console.error("MCAP playback worker job failed", {
+            error,
+            jobId: job.id,
+            sourceKey: job.sourceKey,
+          });
+        }
       }
     } finally {
       this.running = false;

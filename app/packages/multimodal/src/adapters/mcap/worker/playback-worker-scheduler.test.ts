@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { MCAP_PLAYBACK_WORKER_PRIORITY } from "./playback-worker-types";
 import { McapPlaybackWorkerScheduler } from "./playback-worker-scheduler";
 
@@ -71,6 +71,47 @@ describe("MCAP playback worker scheduler", () => {
     await flushAsync();
 
     expect(ran).toEqual(["first"]);
+  });
+
+  it("continues draining after a rejected job", async () => {
+    const scheduler = new McapPlaybackWorkerScheduler();
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const ran: string[] = [];
+
+    try {
+      scheduler.enqueue({
+        id: 1,
+        priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
+        run: async () => {
+          ran.push("failed");
+          throw new Error("boom");
+        },
+        sourceKey: "source",
+      });
+      scheduler.enqueue({
+        id: 2,
+        priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
+        run: async () => {
+          ran.push("next");
+        },
+        sourceKey: "source",
+      });
+
+      await flushAsync();
+
+      expect(ran).toEqual(["failed", "next"]);
+      expect(consoleError).toHaveBeenCalledWith(
+        "MCAP playback worker job failed",
+        expect.objectContaining({
+          jobId: 1,
+          sourceKey: "source",
+        })
+      );
+    } finally {
+      consoleError.mockRestore();
+    }
   });
 });
 

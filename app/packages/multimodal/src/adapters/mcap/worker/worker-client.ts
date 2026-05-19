@@ -143,24 +143,29 @@ class WorkerMcapResourceClient implements McapResourceClient {
     let worker: Worker | undefined;
     try {
       worker = this.createWorker();
+      // Wire handlers before init so a synchronous postMessage failure or very
+      // early worker response goes through the same transport/reset paths.
+      this.activeSourceKey = sourceKey;
+      this.worker = worker;
+      worker.onmessage = (event: MessageEvent<McapPlaybackWorkerResponse>) =>
+        this.transport.handleResponse(event.data);
+      worker.onerror = (event) => {
+        this.resetWorker(event.message || "MCAP worker error");
+      };
+
       const initRequest: McapPlaybackWorkerRequest = {
         payload: workerFetchParameters(),
         type: "init",
       };
       worker.postMessage(initRequest);
     } catch (error) {
-      disposeWorker(worker);
-      this.resetWorker(errorMessage(error, "MCAP worker startup failed"));
+      if (this.worker === worker) {
+        this.resetWorker(errorMessage(error, "MCAP worker startup failed"));
+      } else {
+        disposeWorker(worker);
+      }
       throw error instanceof Error ? error : new Error(String(error));
     }
-
-    this.activeSourceKey = sourceKey;
-    this.worker = worker;
-    this.worker.onmessage = (event: MessageEvent<McapPlaybackWorkerResponse>) =>
-      this.transport.handleResponse(event.data);
-    this.worker.onerror = (event) => {
-      this.resetWorker(event.message || "MCAP worker error");
-    };
 
     return this.worker;
   }

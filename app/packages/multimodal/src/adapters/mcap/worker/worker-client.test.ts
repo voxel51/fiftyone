@@ -34,6 +34,10 @@ describe("worker-backed MCAP resource client", () => {
       },
       type: "init",
     });
+    expect(worker.handlerSnapshots[0]).toEqual({
+      hasErrorHandler: true,
+      hasMessageHandler: true,
+    });
     expect(worker.messages[1]).toMatchObject({
       id: 1,
       payload: request,
@@ -344,6 +348,10 @@ function createTopic(topic: string) {
 }
 
 class MockWorker {
+  handlerSnapshots: Array<{
+    readonly hasErrorHandler: boolean;
+    readonly hasMessageHandler: boolean;
+  }> = [];
   messages: McapPlaybackWorkerRequest[] = [];
   onerror: ((event: ErrorEvent) => void) | null = null;
   onmessage:
@@ -354,6 +362,10 @@ class MockWorker {
       throw new Error("postMessage failed");
     }
 
+    this.handlerSnapshots.push({
+      hasErrorHandler: Boolean(this.onerror),
+      hasMessageHandler: Boolean(this.onmessage),
+    });
     this.messages.push(message);
   });
   terminate = vi.fn();

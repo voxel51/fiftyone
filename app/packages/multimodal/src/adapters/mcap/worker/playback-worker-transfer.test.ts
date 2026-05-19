@@ -36,6 +36,21 @@ describe("MCAP playback worker transfer collection", () => {
       ])
     ).toEqual([]);
   });
+
+  it("ignores decoded-message-shaped values with invalid resource hints", () => {
+    expect(transferablesForMcapResult({ decoded: null })).toEqual([]);
+    expect(
+      transferablesForMcapResult({
+        decoded: {
+          output: {
+            resourceHints: {
+              transferables: null,
+            },
+          },
+        },
+      })
+    ).toEqual([]);
+  });
 });
 
 function createTimelineRange(): McapTimelineRange {

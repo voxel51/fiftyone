@@ -118,21 +118,24 @@ export class McapPlaybackWorkerTransport {
     }
 
     const pending = this.pending.get(response.id);
-    if (!pending || !this.isActiveSource(pending.sourceKey)) {
-      if (!response.ok) {
-        const stream = this.streams.get(response.id);
-        if (stream && this.isActiveSource(stream.sourceKey)) {
-          this.failStream(response.id, stream, new Error(response.error));
-        }
+    if (pending) {
+      // A response can arrive after the client has moved to another source.
+      // It still owns this request id, so settle and remove it instead of
+      // leaving the caller's promise hanging.
+      this.pending.delete(response.id);
+      if (response.ok) {
+        pending.resolve(response.result);
+      } else {
+        pending.reject(new Error(response.error));
       }
       return;
     }
 
-    this.pending.delete(response.id);
-    if (response.ok) {
-      pending.resolve(response.result);
-    } else {
-      pending.reject(new Error(response.error));
+    if (!response.ok) {
+      const stream = this.streams.get(response.id);
+      if (stream) {
+        this.failStream(response.id, stream, new Error(response.error));
+      }
     }
   }
 
@@ -157,7 +160,13 @@ export class McapPlaybackWorkerTransport {
     response: Extract<McapPlaybackWorkerResponse, { readonly stream: true }>
   ) {
     const stream = this.streams.get(response.id);
-    if (!stream || !this.isActiveSource(stream.sourceKey)) {
+    if (!stream) {
+      return;
+    }
+    if (!this.isActiveSource(stream.sourceKey)) {
+      // Stale stream success has no active consumer anymore. Finish it so any
+      // awaiting iterator observes completion and the stream entry is released.
+      this.finishStream(response.id, stream);
       return;
     }
 

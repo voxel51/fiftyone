@@ -51,5 +51,29 @@ function isSynchronizedWindow(
 }
 
 function isDecodedMessage(value: unknown): value is McapDecodedMessage {
-  return !!value && typeof value === "object" && "decoded" in value;
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  const decoded = value.decoded;
+  if (!isRecord(decoded) || !isRecord(decoded.output)) {
+    return false;
+  }
+
+  // Transfer list extraction dereferences this path later; keep the guard strict
+  // so arbitrary worker payloads cannot crash transfer collection.
+  const resourceHints = decoded.output.resourceHints;
+  if (resourceHints === undefined) {
+    return true;
+  }
+
+  return (
+    isRecord(resourceHints) &&
+    (resourceHints.transferables === undefined ||
+      Array.isArray(resourceHints.transferables))
+  );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === "object";
 }
