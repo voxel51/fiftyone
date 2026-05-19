@@ -667,7 +667,9 @@
                 "type": "fiftyone.utils.sam3.SegmentAnything3ImageModel",
                 "config": {
                     "entrypoint_fcn": "sam3.model_builder.build_sam3_image_model",
-                    "entrypoint_args": {}
+                    "entrypoint_args": {},
+                    "tokenizer_base_filename": "bpe_simple_vocab_16e6.txt.gz",
+                    "tokenizer_base_url": "https://raw.githubusercontent.com/openai/CLIP/main/clip/bpe_simple_vocab_16e6.txt.gz"
                 }
             },
             "requirements": {
