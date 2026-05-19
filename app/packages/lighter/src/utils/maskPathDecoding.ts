@@ -7,7 +7,6 @@
  */
 
 import type { OverlayMask } from "@fiftyone/looker/src/numpy";
-import { getSampleSrc } from "@fiftyone/state/src/recoil/utils";
 import { v4 as uuidv4 } from "uuid";
 
 import MaskPathDecodeWorker from "./maskPathDecodeWorker?worker&inline";
@@ -127,18 +126,20 @@ const drain = (): void => {
 };
 
 /**
- * Fetches a mask image referenced by `mask_path` and decodes it into an
- * {@link OverlayMask}.
+ * Fetches a pre-resolved mask URL and decodes it into an {@link OverlayMask}.
+ *
+ * URL resolution is the caller's responsibility; the raw `mask_path` value
+ * on a label is not always directly fetchable and must be mapped to a real
+ * URL by the integration layer before reaching here.
  *
  * Returns `undefined` if the fetch or decode fails; callers should treat
  * this as "no mask available yet" and proceed without one.
  */
 export async function decodeMaskPath(
-  maskPath: string,
+  url: string,
   field: string,
   cls: string
 ): Promise<OverlayMask | undefined> {
-  const url = getSampleSrc(maskPath);
   const pool = ensurePool();
 
   if (!pool) {

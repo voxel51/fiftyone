@@ -36,7 +36,14 @@ export const useCreateAnnotationLabel = () => {
     async (
       field: string,
       type: LabelType,
-      data: AnnotationLabel["data"]
+      data: AnnotationLabel["data"],
+      options?: {
+        /**
+         * Callback to resolve media URLs for a sub-field of this label
+         * (e.g. `mask_path`).
+         */
+        resolveUrl?: (subField: string) => string | undefined;
+      }
     ): Promise<AnnotationLabel> => {
       if (type === CLASSIFICATION) {
         const overlay = overlayFactory.create<
@@ -60,10 +67,14 @@ export const useCreateAnnotationLabel = () => {
         const fieldSchema = store.get(labelSchemaData(field));
         const isReadOnly = isFieldReadOnly(fieldSchema);
 
-        // Pre-decode `mask_path` masks.
+        // Pre-decode `mask_path` masks. The caller-provided resolver maps
+        // the structural path to a fetchable URL; we don't fetch
+        // `label.mask_path` directly because the raw value is not always
+        // a fetchable URL on its own.
+        const maskUrl = options?.resolveUrl?.("mask_path");
         const preDecodedMask =
-          !label?.mask && label?.mask_path
-            ? await decodeMaskPath(label.mask_path, field, DETECTION)
+          !label?.mask && label?.mask_path && maskUrl
+            ? await decodeMaskPath(maskUrl, field, DETECTION)
             : undefined;
 
         const overlay = overlayFactory.create<

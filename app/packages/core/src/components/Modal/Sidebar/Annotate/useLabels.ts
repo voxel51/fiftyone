@@ -9,6 +9,8 @@ import {
   useCurrentSampleId,
   useModalSample,
 } from "@fiftyone/state";
+import { getNormalizedUrls } from "@fiftyone/state/src/utils";
+import { getSampleSrc } from "@fiftyone/state/src/recoil/utils";
 import { DETECTION } from "@fiftyone/utilities";
 import { atom, getDefaultStore, useAtomValue, useSetAtom } from "jotai";
 import { splitAtom, useAtomCallback } from "jotai/utils";
@@ -38,6 +40,45 @@ const LABEL_LIST_INFO: Record<string, { listKey: string; type: LabelType }> = {
   Keypoints: { listKey: "keypoints", type: "Keypoint" },
 };
 
+/**
+ * Builds a per-label URL resolver that maps sub-field names (e.g.
+ * `"mask_path"`) to fetchable media URLs.
+ *
+ * Resolution order:
+ *   1. Look up the sub-field's structural key (e.g.
+ *      `"ground_truth.detections[0].mask_path"`) in the sample's `sources`
+ *      map. Mirrors looker's key construction in
+ *      `app/packages/looker/src/worker/disk-overlay-decoder.ts`.
+ *   2. Fall back to `getSampleSrc(rawValue)` on the sub-field's raw value.
+ *
+ * Returns `undefined` if neither path produces a usable URL.
+ *
+ * The closure captures the label's structural context — the expanded
+ * sample path, whether the label is a list item, and its index — so the
+ * downstream factory can just ask by sub-field name without knowing where
+ * its label lives in the sample tree.
+ */
+const buildLabelResolveUrl = (
+  sources: { [key: string]: string },
+  expandedPath: string,
+  isList: boolean,
+  idx: number,
+  item: unknown
+): ((subField: string) => string | undefined) => {
+  return (subField: string) => {
+    const key = isList
+      ? `${expandedPath}[${idx}].${subField}`
+      : `${expandedPath}.${subField}`;
+
+    if (sources[key]) {
+      return sources[key];
+    }
+
+    const raw = get(item, subField);
+    return typeof raw === "string" ? getSampleSrc(raw) : undefined;
+  };
+};
+
 const handleSample = async ({
   createLabel,
   getFieldType,
@@ -52,6 +93,7 @@ const handleSample = async ({
   schemas: string[];
 }) => {
   const data = sample.sample;
+  const sources = getNormalizedUrls(sample.urls ?? {});
   const labels: AnnotationLabel[] = [];
 
   for (const path in paths) {
@@ -72,10 +114,24 @@ const handleSample = async ({
     }
     const result = get(data, paths[path]);
 
-    const array = Array.isArray(result) ? result : result ? [result] : [];
+    const isList = Array.isArray(result);
+    const array = isList ? result : result ? [result] : [];
+    const expandedPath = paths[path];
 
     labels.push(
-      ...(await Promise.all(array.map((data) => createLabel(path, type, data))))
+      ...(await Promise.all(
+        array.map((item, idx) =>
+          createLabel(path, type, item, {
+            resolveUrl: buildLabelResolveUrl(
+              sources,
+              expandedPath,
+              isList,
+              idx,
+              item
+            ),
+          })
+        )
+      ))
     );
   }
 
@@ -104,14 +160,35 @@ const handleSample = async ({
       ] as unknown[];
 
       if (Array.isArray(items)) {
+        const expandedPath = `${schemaPath}.${listInfo.listKey}`;
         labels.push(
           ...(await Promise.all(
-            items.map((item) => createLabel(schemaPath, listInfo.type, item))
+            items.map((item, idx) =>
+              createLabel(schemaPath, listInfo.type, item, {
+                resolveUrl: buildLabelResolveUrl(
+                  sources,
+                  expandedPath,
+                  true,
+                  idx,
+                  item
+                ),
+              })
+            )
           ))
         );
       }
     } else if (KNOWN_SINGULAR_TYPES.has(cls)) {
-      labels.push(await createLabel(schemaPath, cls as LabelType, fieldData));
+      labels.push(
+        await createLabel(schemaPath, cls as LabelType, fieldData, {
+          resolveUrl: buildLabelResolveUrl(
+            sources,
+            schemaPath,
+            false,
+            0,
+            fieldData
+          ),
+        })
+      );
     } else {
       console.warn(`Unsupported label _cls "${cls}" for field "${schemaPath}"`);
     }
