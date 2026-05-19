@@ -3483,7 +3483,7 @@ __metadata:
   resolution: "@fiftyone/playback@workspace:packages/playback"
   dependencies:
     "@eslint/compat": "npm:^1.1.1"
-    "@voxel51/voodo": "npm:^0.0.27"
+    "@voxel51/voodo": "npm:^0.0.30"
     eslint: "npm:9.7.0"
     eslint-plugin-react: "npm:^7.35.0"
     eslint-plugin-react-hooks: "npm:rc"
