@@ -3068,6 +3068,7 @@ __metadata:
     vite-plugin-relay: "npm:^1.0.7"
     vite-plugin-rewrite-all: "npm:^1.0.2"
     vite-plugin-svgr: "npm:^4.2.0"
+    vite-plugin-wasm: "npm:^3.6.0"
   peerDependencies:
     "@mui/icons-material": "*"
     "@react-spring/web": "*"
