@@ -2,7 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { CommandContextManager } from "@fiftyone/commands";
+import { CommandContextManager, type Undoable } from "@fiftyone/commands";
 import { ClickEventModifiers, getClickModifiers } from "@fiftyone/utilities";
 import { AddPolylinePointCommand } from "../commands/AddPolylinePointCommand";
 import { MoveKeypointPointCommand } from "../commands/MoveKeypointPointCommand";
@@ -100,6 +100,18 @@ export class InteractivePolylineHandler implements InteractionHandler {
   private activeSegmentIdx: number | null = null;
 
   /**
+   * Sticky endpoint for empty-space EXTEND clicks. Updated to the new point
+   * id after each extend so subsequent extends keep appending from the same
+   * end of the segment, rather than re-picking the nearest endpoint to the
+   * cursor each time. Validated on use against {@link PolylineOverlay} —
+   * if the point has been removed (undo, alt-delete) or is no longer an
+   * endpoint (edge insert), EXTEND falls back to the nearest-endpoint
+   * behavior. Meta-key still overrides to extend from the opposite end,
+   * which then becomes the new sticky.
+   */
+  private lastExtensionPointId: string | null = null;
+
+  /**
    * Saved `isDeletable` value from before the handler installed. Polyline
    * overlays are typically constructed with `deletable: false` so deletes are
    * blocked in non-edit contexts; an active editing session needs point
@@ -108,8 +120,49 @@ export class InteractivePolylineHandler implements InteractionHandler {
   private readonly priorIsDeletable: boolean;
 
   private setActiveSegmentIdx(segmentIdx: number | null): void {
+    // Invariant: sticky is only ever set on the active segment. When the
+    // user shifts focus to a segment that doesn't house the sticky point,
+    // clear sticky so reads don't need a segment-mismatch gate.
+    if (this.lastExtensionPointId !== null && segmentIdx !== null) {
+      const loc = this.overlay.findPointLocationById(this.lastExtensionPointId);
+      if (loc && loc.segmentIdx !== segmentIdx) {
+        this.setLastExtensionPointId(null);
+      }
+    }
     this.activeSegmentIdx = segmentIdx;
     this.overlay.setPreviewAnchorSegmentIdx(segmentIdx);
+  }
+
+  private setLastExtensionPointId(pointId: string | null): void {
+    this.lastExtensionPointId = pointId;
+    this.overlay.setPreviewAnchorPointId(pointId);
+  }
+
+  /**
+   * Pushes `cmd` onto the active undo context, wrapping execute/undo so the
+   * sticky pointer follows the command's lifecycle.
+   */
+  private pushWithStickyTracking(
+    cmd: Undoable,
+    stickyAfter: string | null
+  ): void {
+    const stickyBefore = this.lastExtensionPointId;
+    this.setLastExtensionPointId(stickyAfter);
+
+    const wrapped: Undoable = {
+      id: cmd.id,
+      execute: () => {
+        cmd.execute();
+        this.setLastExtensionPointId(stickyAfter);
+      },
+      undo: () => {
+        cmd.undo();
+        this.setLastExtensionPointId(stickyBefore);
+      },
+    };
+
+    CommandContextManager.instance().getActiveContext().pushUndoable(wrapped);
+    this.pushedCommandIds.add(cmd.id);
   }
 
   constructor(
@@ -219,13 +272,17 @@ export class InteractivePolylineHandler implements InteractionHandler {
       return true;
     }
 
-    // connect to the farthest endpoint when holding meta key,
-    // otherwise the nearest endpoint
-    if (modifiers.metaKey) {
-      this.extendFarthestEndpoint(worldPoint, rp);
-    } else {
+    // Meta/ctrl-click swaps from sticky to the opposite endpoint of the same
+    // segment. When sticky is absent or stale, fall back to farthest from
+    // cursor. Non-meta clicks prefer sticky, falling back to nearest.
+    if (modifiers.metaKey || modifiers.ctrlKey) {
+      if (this.tryExtendOppositeOfSticky(rp) === null) {
+        this.extendFarthestEndpoint(worldPoint, rp);
+      }
+    } else if (this.tryExtendFromSticky(rp) === null) {
       this.extendNearestEndpoint(worldPoint, rp);
     }
+
     return true;
   }
 
@@ -273,7 +330,9 @@ export class InteractivePolylineHandler implements InteractionHandler {
     worldPoint: Point,
     modifiers: ClickEventModifiers
   ): void {
-    this.overlay.setPreviewAnchorFlipped(modifiers.metaKey);
+    this.overlay.setPreviewAnchorFlipped(
+      modifiers.metaKey || modifiers.ctrlKey
+    );
 
     // hide preview if:
     //   - creating a new segment (holding shift key)
@@ -307,7 +366,7 @@ export class InteractivePolylineHandler implements InteractionHandler {
     return "crosshair";
   }
 
-  onPointerUp(_point: Point, _event: PointerEvent): boolean {
+  onPointerUp(_params: OverlayEvent): boolean {
     if (this.dragPointId === null) {
       return true;
     }
@@ -348,7 +407,14 @@ export class InteractivePolylineHandler implements InteractionHandler {
     this.overlay.setPreviewPoint(null);
     this.overlay.setPreviewAnchorSegmentIdx(null);
     this.overlay.setPreviewAnchorFlipped(false);
+    this.overlay.setPreviewAnchorPointId(null);
     this.overlay.setDeletable(this.priorIsDeletable);
+    // The select-click that triggered handler install ran the overlay's own
+    // onPointerDown (setting per-point drag state) before this handler took
+    // over dispatch. Pointer-up then routed to the handler, not the overlay,
+    // so that state would otherwise outlive the handler and re-engage drag
+    // on the next hover.
+    this.overlay.cancelPointDrag();
   }
 
   /**
@@ -417,14 +483,18 @@ export class InteractivePolylineHandler implements InteractionHandler {
     }
 
     const segCountBefore = this.overlay.getSegmentCount();
+    // If the deleted point is the current sticky, clear sticky on
+    // execute/redo and restore it on undo
+    const stickyAfter =
+      this.lastExtensionPointId === pointId ? null : this.lastExtensionPointId;
+
     const cmd = new RemovePolylinePointCommand(
       this.overlay,
       loc.segmentIdx,
       loc.indexInSegment
     );
     cmd.execute();
-    CommandContextManager.instance().getActiveContext().pushUndoable(cmd);
-    this.pushedCommandIds.add(cmd.id);
+    this.pushWithStickyTracking(cmd, stickyAfter);
 
     // If the segment was emptied, indices for following segments shift down.
     if (this.overlay.getSegmentCount() < segCountBefore) {
@@ -480,10 +550,8 @@ export class InteractivePolylineHandler implements InteractionHandler {
       undefined,
       true
     );
-    CommandContextManager.instance().getActiveContext().pushUndoable(cmd);
-    this.pushedCommandIds.add(cmd.id);
-
     this.setActiveSegmentIdx(newSegIdx);
+    this.pushWithStickyTracking(cmd, newId);
 
     return newId;
   }
@@ -516,6 +584,75 @@ export class InteractivePolylineHandler implements InteractionHandler {
     );
   }
 
+  /**
+   * Resolves the sticky last-extended point to a `{segmentIdx, end}`
+   * descriptor, or `null` if sticky should not apply. Returns `null` when:
+   *
+   *   - sticky was never set (no extends yet), or
+   *   - the sticky point was removed, or
+   *   - the sticky point is no longer an endpoint (e.g. inserting a point
+   *     on a closed polyline's closing edge pushes the old tail to an
+   *     interior position).
+   *
+   * Invariant: sticky is kept on the active segment by
+   * {@link setActiveSegmentIdx} (which clears it on segment switch) and is
+   * cleared on point removal at command-push time via
+   * {@link pushWithStickyTracking}.
+   */
+  private getStickyEndpoint(): {
+    segmentIdx: number;
+    end: "head" | "tail";
+  } | null {
+    if (!this.lastExtensionPointId) {
+      return null;
+    }
+
+    const loc = this.overlay.findPointLocationById(this.lastExtensionPointId);
+    if (!loc) {
+      return null;
+    }
+
+    const segLen = this.overlay.getSegmentLength(loc.segmentIdx);
+    if (loc.indexInSegment === 0) {
+      return { segmentIdx: loc.segmentIdx, end: "head" };
+    }
+    if (loc.indexInSegment === segLen - 1) {
+      return { segmentIdx: loc.segmentIdx, end: "tail" };
+    }
+    return null;
+  }
+
+  /**
+   * Sticky EXTEND — appends to the last-extended endpoint. Returns the new
+   * point id on success, or `null` so callers can fall back to
+   * nearest-endpoint behavior.
+   */
+  private tryExtendFromSticky(relativePoint: [number, number]): string | null {
+    const ep = this.getStickyEndpoint();
+    return ep ? this.extendFromEndpoint(relativePoint, ep) : null;
+  }
+
+  /**
+   * Meta-swap EXTEND — appends to the endpoint *opposite* the sticky one.
+   * The previous sticky might already be the geometric far endpoint from
+   * the cursor, so falling through to "farthest from cursor" would no-op;
+   * swapping by endpoint identity instead guarantees a real toggle.
+   * Returns `null` when no valid sticky exists, so callers can fall back
+   * to the unanchored farthest-endpoint behavior.
+   */
+  private tryExtendOppositeOfSticky(
+    relativePoint: [number, number]
+  ): string | null {
+    const ep = this.getStickyEndpoint();
+    if (!ep) {
+      return null;
+    }
+    return this.extendFromEndpoint(relativePoint, {
+      segmentIdx: ep.segmentIdx,
+      end: ep.end === "head" ? "tail" : "head",
+    });
+  }
+
   private extendFromEndpoint(
     relativePoint: [number, number],
     target: SegmentEndpoint
@@ -544,8 +681,7 @@ export class InteractivePolylineHandler implements InteractionHandler {
       newId,
       relativePoint
     );
-    CommandContextManager.instance().getActiveContext().pushUndoable(cmd);
-    this.pushedCommandIds.add(cmd.id);
+    this.pushWithStickyTracking(cmd, newId);
 
     return newId;
   }

@@ -87,15 +87,15 @@ export type { SelectionOptions } from "./selection/SelectionManager";
 
 // Command exports
 export { AddKeypointPointCommand } from "./commands/AddKeypointPointCommand";
-export { MergeDetectionsCommand } from "./commands/MergeDetectionsCommand";
-export type { MergeDetectionsCommandDeps } from "./commands/MergeDetectionsCommand";
 export { AddMaskKeypointCommand } from "./commands/AddMaskKeypointCommand";
 export { AddOverlayCommand } from "./commands/AddOverlayCommand";
+export { MergeDetectionsCommand } from "./commands/MergeDetectionsCommand";
 export { MoveKeypointPointCommand } from "./commands/MoveKeypointPointCommand";
 export { MoveOverlayCommand } from "./commands/MoveOverlayCommand";
 export { RemoveKeypointPointCommand } from "./commands/RemoveKeypointPointCommand";
 export { TransformOverlayCommand } from "./commands/TransformOverlayCommand";
 export { UpdateLabelCommand } from "./commands/UpdateLabelCommand";
+export type { MergeDetectionsCommandDeps } from "./commands/MergeDetectionsCommand";
 
 // Plugin exports
 // TODO: PluginRegistry is currently unused - this needs to be hooked with fiftyone plugins
@@ -122,6 +122,7 @@ export type {
 } from "./types";
 
 export { getOverlayColor } from "./utils/colorMapping";
+export { decodeMaskPath } from "./utils/maskPathDecoding";
 
 // Constants
 export { DEFAULT_ZOOM_PAD } from "./constants";

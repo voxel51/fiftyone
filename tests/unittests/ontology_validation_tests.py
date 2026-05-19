@@ -6,11 +6,7 @@ FiftyOne annotation ontology validation unit tests.
 |
 """
 
-import os
 import unittest
-
-# Ontology SDK is gated by VFF_ONTOLOGY_CA; enable for the whole module.
-os.environ.setdefault("VFF_ONTOLOGY_CA", "1")
 
 from fiftyone.core.annotation.attributes import (
     AttributeSpec,

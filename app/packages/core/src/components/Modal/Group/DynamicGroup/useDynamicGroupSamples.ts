@@ -9,7 +9,7 @@ export const useDynamicGroupSamples = () => {
   const slice = useRecoilValue(fos.groupSlice);
   const modalSlice = useRecoilValue(fos.modalGroupSlice);
   const view = useRecoilValue(fos.view);
-  const dynamicGroup = useRecoilValue(fos.groupByFieldValue);
+  const dynamicGroup = fos.useGroupByFieldValue();
   const dataset = useRecoilValue(fos.datasetName);
   const dynamicGroupIndex = useRecoilValue(fos.dynamicGroupIndex);
   const shouldRenderImavid = useRecoilValue(fos.shouldRenderImaVidLooker(true));
@@ -28,6 +28,11 @@ export const useDynamicGroupSamples = () => {
 
       // imavid has its own fetching logic
       if (shouldRenderImavid) {
+        return null;
+      }
+
+      // group key hasn't settled yet — skip the query
+      if (dynamicGroup === undefined) {
         return null;
       }
 

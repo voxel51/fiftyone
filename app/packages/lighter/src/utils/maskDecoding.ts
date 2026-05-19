@@ -16,20 +16,25 @@ export interface DecodedMask {
 }
 
 /**
- * Decodes a base64-encoded numpy mask string and paints it with the given
- * color, returning an ImageBitmap ready for rendering alongside the raw
- * single-channel pixel data for hit-testing.
+ * Decodes a mask source and paints it with the given color, returning an
+ * ImageBitmap ready for rendering alongside the raw single-channel pixel
+ * data for hit-testing.
  *
- * Pipeline: base64 → inflate → numpy parse → paint RGBA → ImageBitmap
+ * Accepts either a base64-encoded numpy string (inline `mask` field) or a
+ * pre-decoded {@link OverlayMask} (e.g. produced from a `mask_path` fetch).
+ * The string path runs the full base64 → inflate → numpy parse pipeline; the
+ * `OverlayMask` path skips straight to painting.
  *
- * @param maskData - Base64-encoded, zlib-compressed numpy array
- * @param color - CSS color string for non-zero mask pixels
+ * @param maskData - Base64-encoded compressed numpy string, or a decoded
+ *   {@link OverlayMask}.
+ * @param color - CSS color string for non-zero mask pixels.
  */
 export async function decodeMask(
-  maskData: string,
+  maskData: string | OverlayMask,
   color: string
 ): Promise<DecodedMask> {
-  const overlayMask = deserialize(maskData);
+  const overlayMask =
+    typeof maskData === "string" ? deserialize(maskData) : maskData;
   const rgbaBuffer = paintMask(overlayMask, color);
   const [height, width] = overlayMask.shape;
   const imageData = new ImageData(

@@ -1,6 +1,6 @@
 import { ExecutionContext } from "./operators";
 import { useOperatorPrompt } from "./state";
-import { ParamsType, ResolvablePropertyOptions } from "./types-internal";
+import { ParamsType, ResolvablePropertyOptions } from "./ts";
 
 export class BaseType {}
 

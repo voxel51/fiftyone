@@ -116,7 +116,13 @@ export default function RJSF(props: SmartFormProps) {
       onChange={handleChange}
       onSubmit={handleSubmit}
       showErrorList={false}
-      transformErrors={(errors) => transformErrors(errors, uiSchema)}
+      transformErrors={(errors) =>
+        transformErrors(
+          errors,
+          uiSchema,
+          deserializeFormData(data) as Record<string, unknown>
+        )
+      }
       {...props.formProps}
     />
   );

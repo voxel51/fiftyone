@@ -39,6 +39,7 @@ import type { MaskSnapshot, PaintStrokeData } from "./MaskCanvas";
 import { MaskKeypoints } from "./MaskKeypoints";
 import type { SerializedMask } from "@fiftyone/utilities";
 import { BASE_ALPHA } from "@fiftyone/looker/src/constants";
+import type { OverlayMask } from "@fiftyone/looker/src/numpy";
 
 export type DetectionLabel = RawLookerLabel & {
   label: string;
@@ -60,6 +61,12 @@ export interface DetectionOverlayOptions {
   draggable?: boolean;
   resizeable?: boolean;
   selectable?: boolean;
+  /**
+   * A mask decoded out-of-band — typically from `label.mask_path` — that
+   * seeds the editing canvas without touching `label.mask`. When set, this
+   * takes precedence over `label.mask` for the initial mask source.
+   */
+  preDecodedMask?: OverlayMask;
 }
 
 export type ResizeRegion =
@@ -104,6 +111,14 @@ export class DetectionOverlay
   private textBounds?: Rect;
 
   private mask?: MaskCanvas;
+  /**
+   * The mask source picked at construction time — inline `SerializedMask`
+   * if present, otherwise a pre-decoded `OverlayMask` from `mask_path`.
+   * Retained so {@link rehydrateMask} can reseed `MaskCanvas` after a
+   * destroy/re-add cycle (e.g. undoing a deletion) without depending on
+   * `label.mask`, which is `undefined` for `mask_path`-sourced overlays.
+   */
+  private maskSource?: SerializedMask | OverlayMask;
   private segmentationTool?: SegmentationToolState;
 
   // Pen tool state
@@ -118,8 +133,16 @@ export class DetectionOverlay
     this.isResizeable = options.resizeable !== false;
     this.#relativeBounds = options.relativeBounds || NO_BOUNDS;
 
-    if (this.label.mask) {
-      this.mask = new MaskCanvas(this.label.mask);
+    this.maskSource = options.preDecodedMask ?? this.label.mask;
+    if (this.maskSource) {
+      this.mask = new MaskCanvas(this.maskSource);
+    } else if (this.label.mask_path) {
+      // `mask_path` was present on the label but the caller didn't supply
+      // a decoded source (e.g. the URL couldn't be resolved). Construct an
+      // empty placeholder so `hasMask()` correctly reports "yes" — without
+      // it, the save flow would treat the missing canvas as a user
+      // deletion and wipe the mask_path on the backend.
+      this.mask = new MaskCanvas();
     }
   }
 
@@ -141,6 +164,9 @@ export class DetectionOverlay
     }
 
     if (label.mask) {
+      // Inline mask takes precedence over any `mask_path`-sourced
+      // `OverlayMask` we may have been carrying.
+      this.maskSource = label.mask;
       if (this.mask) {
         this.mask.updateSource(label.mask);
       } else {
@@ -151,6 +177,7 @@ export class DetectionOverlay
       // null — explicit removal
       // `undefined` can be cases when mask has not been saved yet - leave it alone
       const hadMask = !!this.mask;
+      this.maskSource = undefined;
       this.mask?.destroy();
       this.mask = undefined;
       if (hadMask) this.markDirty();
@@ -829,9 +856,12 @@ export class DetectionOverlay
     const wasPainting = this.interactionState === "PAINTING";
 
     this.interactionState = "NONE";
-    this.mask?.paintEnd(this.bounds, () => {
+    const croppedBounds = this.mask?.paintEnd(this.bounds, () => {
       this.markDirty();
     });
+    if (croppedBounds) {
+      this.bounds = croppedBounds;
+    }
     this.moveStartPoint = undefined;
     this.moveStartPosition = undefined;
     this.moveStartBounds = undefined;
@@ -852,6 +882,12 @@ export class DetectionOverlay
    * @returns True if current bounds are valid
    */
   hasValidBounds(): boolean {
+    // An overlay without a coordinate system isn't attached to a scene yet
+    // (or has been detached); no way to validate bounds.
+    if (!this.coordinateSystem) {
+      return false;
+    }
+
     return BaseOverlay.validBounds(this.bounds);
   }
 
@@ -1100,6 +1136,7 @@ export class DetectionOverlay
    */
   removeMask(): void {
     const hadMask = !!this.mask;
+    this.maskSource = undefined;
     this.mask?.destroy();
     this.mask = undefined;
     this.markDirty();
@@ -1201,7 +1238,7 @@ export class DetectionOverlay
       this.bounds = updatedBounds;
     }
 
-    this.mask.paintEnd(this.bounds, () => {
+    this.bounds = this.mask.paintEnd(this.bounds, () => {
       this.markDirty();
     });
 
@@ -1228,7 +1265,10 @@ export class DetectionOverlay
    * Updates the pen cursor position for live preview rendering.
    */
   updatePenMousePosition(worldPoint: Point | null): void {
-    this.maskKeypoints?.setPreviewPoint(worldPoint);
+    if (!this.maskKeypoints) return;
+
+    this.maskKeypoints.setPreviewPoint(worldPoint);
+    this.markDirty();
   }
 
   /**
@@ -1327,9 +1367,9 @@ export class DetectionOverlay
    */
   rehydrateMask(): void {
     if (this.mask) return;
-    if (!this.label.mask) return;
+    if (!this.maskSource) return;
 
-    this.mask = new MaskCanvas(this.label.mask);
+    this.mask = new MaskCanvas(this.maskSource);
 
     this.forceHoverLeave();
     this.markDirty();
