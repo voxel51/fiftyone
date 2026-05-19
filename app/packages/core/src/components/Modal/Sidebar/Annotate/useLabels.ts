@@ -41,25 +41,6 @@ const LABEL_LIST_INFO: Record<string, { listKey: string; type: LabelType }> = {
 };
 
 /**
- * Builds a per-label URL resolver that maps sub-field names (e.g.
- * `"mask_path"`) to fetchable media URLs.
- *
- * Resolution order:
- *   1. Look up the sub-field's structural key (e.g.
- *      `"ground_truth.detections[0].mask_path"`) in the sample's `sources`
- *      map. Mirrors looker's key construction in
- *      `app/packages/looker/src/worker/disk-overlay-decoder.ts`.
- *   2. Fall back to `getSampleSrc(rawValue)` on the sub-field's raw value.
- *
- * Returns `undefined` if neither path produces a usable URL.
- *
- * The closure captures the label's structural context — the expanded
- * sample path, whether the label is a list item, and its index — so the
- * downstream factory can just ask by sub-field name without knowing where
- * its label lives in the sample tree.
- */
-
-/**
  * Pulls fulfilled values out of a `Promise.allSettled` batch and logs
  * rejected ones. Used so one bad label decode doesn't abort the entire
  * sample's label hydration.
@@ -84,6 +65,24 @@ const collectFulfilled = <T>(
   return values;
 };
 
+/**
+ * Builds a per-label URL resolver that maps sub-field names (e.g.
+ * `"mask_path"`) to fetchable media URLs.
+ *
+ * Resolution order:
+ *   1. Look up the sub-field's structural key (e.g.
+ *      `"ground_truth.detections[0].mask_path"`) in the sample's `sources`
+ *      map. Mirrors looker's key construction in
+ *      `app/packages/looker/src/worker/disk-overlay-decoder.ts`.
+ *   2. Fall back to `getSampleSrc(rawValue)` on the sub-field's raw value.
+ *
+ * Returns `undefined` if neither path produces a usable URL.
+ *
+ * The closure captures the label's structural context — the expanded
+ * sample path, whether the label is a list item, and its index — so the
+ * downstream factory can just ask by sub-field name without knowing where
+ * its label lives in the sample tree.
+ */
 const buildLabelResolveUrl = (
   sources: { [key: string]: string },
   expandedPath: string,

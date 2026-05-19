@@ -88,8 +88,7 @@ export const useCreateAnnotationLabel = () => {
         ) {
           console.warn(
             `[mask-path] detection ${data._id} in field "${field}" has ` +
-              `mask_path but the caller did not provide a resolvable URL; ` +
-              `the mask will render as a placeholder.`
+              "mask_path but the caller did not provide a resolvable URL"
           );
         }
         const preDecodedMask =
@@ -99,7 +98,7 @@ export const useCreateAnnotationLabel = () => {
         if (label?.mask_path && !label?.mask && maskUrl && !preDecodedMask) {
           console.warn(
             `[mask-path] decode failed for detection ${data._id} in field ` +
-              `"${field}" (url=${maskUrl}); the mask will render as a placeholder.`
+              `"${field}" (url=${maskUrl})`
           );
         }
 
