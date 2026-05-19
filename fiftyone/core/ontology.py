@@ -354,6 +354,19 @@ def _objects_by_slug(name: str):
     )
 
 
+def save_ontology(ontology: Ontology, overwrite: bool = False) -> None:
+    """Saves the given ontology to the database.
+
+    Module-level mirror of :meth:`Ontology.save`, paired with
+    :func:`load_ontology` and :func:`delete_ontology`.
+
+    Args:
+        ontology: an :class:`Ontology` to save
+        overwrite: see :meth:`Ontology.save`
+    """
+    ontology.save(overwrite=overwrite)
+
+
 def load_ontology(name: str) -> Ontology:
     """Loads the latest version of an ontology by name.
 

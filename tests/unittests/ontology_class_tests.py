@@ -1028,6 +1028,32 @@ class OntologySDKTests(unittest.TestCase):
 
         self.assertEqual(fresh.version, 1)
 
+    def test_save_ontology_function_mirrors_instance_save(self):
+        from fiftyone.core.ontology import load_ontology, save_ontology
+
+        ao = self._make_ontology("via_module_fn")
+        save_ontology(ao)
+
+        self.assertEqual(ao.version, 1)
+        self.assertEqual(load_ontology("via_module_fn").name, "via_module_fn")
+
+    def test_save_ontology_function_forwards_overwrite(self):
+        from fiftyone.core.ontology import load_ontology, save_ontology
+
+        save_ontology(self._make_ontology("forwarded"))
+
+        fresh = AnnotationOntology(
+            name="forwarded",
+            description="rev 2",
+            attributes=[
+                AttributeSpec(name="x", type="bool", component="checkbox"),
+            ],
+        )
+        save_ontology(fresh, overwrite=True)
+
+        self.assertEqual(fresh.version, 2)
+        self.assertEqual(load_ontology("forwarded").description, "rev 2")
+
 
 if __name__ == "__main__":
     unittest.main()
