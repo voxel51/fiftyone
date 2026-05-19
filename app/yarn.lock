@@ -3001,7 +3001,7 @@ __metadata:
     "@biomejs/biome": "npm:^1.8.3"
     "@emotion/react": "npm:^11.14.0"
     "@emotion/styled": "npm:^11.14.0"
-    "@miris-inc/three": "npm:latest"
+    "@miris-inc/three": "npm:0.0.8-ec1b54d"
     "@react-three/drei": "npm:^10.7.6"
     "@react-three/fiber": "npm:^8.18.0"
     "@types/chroma-js": "npm:^3.1.1"
@@ -4143,10 +4143,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@miris-inc/three@npm:latest":
-  version: 0.0.7-86c2ee0
-  resolution: "@miris-inc/three@npm:0.0.7-86c2ee0"
-  checksum: 10/24f0fb237e5a695280e0ba2c14ec75f98733d4f6e638bdb4d845a7b51184f77a5d701c3bfd99d9a04e7a7b2c02b2a56650128d1edf97e17b5d4151fb26f11a4d
+"@miris-inc/three@npm:0.0.8-ec1b54d":
+  version: 0.0.8-ec1b54d
+  resolution: "@miris-inc/three@npm:0.0.8-ec1b54d"
+  checksum: 10/48b7c600122c1f8f0efbf4569de00ab351ab89f0ac9388b156c7b37b2d29c256122ddbeb9ed0ccc74227957eb13ba4d8fdefed86bba395f7ad77886143e233a6
   languageName: node
   linkType: hard
 
