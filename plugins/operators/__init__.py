@@ -23,7 +23,11 @@ import fiftyone.utils.data as foud
 from fiftyone.core.odm.workspace import default_workspace_factory
 
 from .group_by import GroupBy
-from .model_evaluation import ConfigureScenario, ConfigureScenarioPlotResolver
+from .model_evaluation import (
+    ConfigureScenario,
+    ConfigureScenarioPlotResolver,
+    ListScenarios,
+)
 from .annotation import (
     ActivateLabelSchemas,
     CreateAndActivateField,
@@ -36,6 +40,7 @@ from .annotation import (
     UpdateLabelSchema,
     ValidateLabelSchemas,
 )
+from .dataset import GetFieldSchema
 
 logger = logging.getLogger(__name__)
 
@@ -3507,6 +3512,7 @@ def register(p):
     p.register(DownloadFileOperator)
     p.register(ConfigureScenario)
     p.register(ConfigureScenarioPlotResolver)
+    p.register(ListScenarios)
 
     # view stages
     p.register(GroupBy)
@@ -3522,3 +3528,6 @@ def register(p):
     p.register(SetActiveLabelSchemas)
     p.register(UpdateLabelSchema)
     p.register(ValidateLabelSchemas)
+
+    # dataset
+    p.register(GetFieldSchema)

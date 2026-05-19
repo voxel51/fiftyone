@@ -6,7 +6,7 @@ import { ChromePicker } from "react-color";
 import { selector, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import Checkbox from "../../Common/Checkbox";
-import { colorBlindFriendlyPalette, isSameArray } from "../utils";
+import { isSameArray } from "../utils";
 import { colorPicker } from "./Colorpicker.module.css";
 
 interface ColorPaletteProps {
@@ -23,7 +23,10 @@ const isDefaultColorPool = selector({
 const isColorBlindColorPool = selector({
   key: "isColorBlindColorPool",
   get: ({ get }) =>
-    isSameArray(get(fos.colorScheme).colorPool, colorBlindFriendlyPalette),
+    isSameArray(
+      get(fos.colorScheme).colorPool,
+      fos.constants.COLOR_BLIND_FRIENDLY_PALETTE
+    ),
 });
 
 const ColorPalette: React.FC<ColorPaletteProps> = ({
@@ -160,7 +163,7 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
               v &&
               setColorScheme((current) => ({
                 ...current,
-                colorPool: colorBlindFriendlyPalette,
+                colorPool: fos.constants.COLOR_BLIND_FRIENDLY_PALETTE,
               }))
             }
           />
