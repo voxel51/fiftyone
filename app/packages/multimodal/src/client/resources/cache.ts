@@ -198,8 +198,13 @@ export function createMemoryDecodedOutputCache(
 function createByteBoundedCache<Value extends object>(
   options: MemoryCacheOptions
 ) {
+  const maxSizeBytes = normalizeCacheSizeBytes(
+    options.maxSizeBytes,
+    MIN_CACHE_SIZE_BYTES
+  );
+
   return new LRUCache<string, Value>({
-    maxSize: Math.max(MIN_CACHE_SIZE_BYTES, options.maxSizeBytes),
+    maxSize: maxSizeBytes,
   });
 }
 
@@ -210,12 +215,21 @@ function setByteBoundedEntry<Value extends object>(
   value: Value,
   sizeBytes: number
 ) {
-  if (sizeBytes > options.maxSizeBytes) {
+  const maxSizeBytes = normalizeCacheSizeBytes(
+    options.maxSizeBytes,
+    MIN_CACHE_SIZE_BYTES
+  );
+  const entrySizeBytes = normalizeCacheSizeBytes(
+    sizeBytes,
+    MIN_CACHE_ENTRY_SIZE_BYTES
+  );
+
+  if (entrySizeBytes > maxSizeBytes) {
     return;
   }
 
   cache.set(key, value, {
-    size: Math.max(MIN_CACHE_ENTRY_SIZE_BYTES, sizeBytes),
+    size: entrySizeBytes,
   });
 }
 
@@ -241,7 +255,21 @@ export function serializeCacheKey(parts: readonly (string | null)[]): string {
   return JSON.stringify(parts);
 }
 
-function estimateFieldSize(value: unknown): number {
+function normalizeCacheSizeBytes(value: number, minimum: number): number {
+  const sizeBytes = Number(value);
+  // lru-cache expects finite integer sizes. Keep invalid caller input from
+  // leaking NaN/Infinity/fractions into eviction and admission decisions.
+  if (!Number.isFinite(sizeBytes) || sizeBytes < minimum) {
+    return minimum;
+  }
+
+  return Math.floor(sizeBytes);
+}
+
+function estimateFieldSize(
+  value: unknown,
+  visited = new WeakSet<object>()
+): number {
   if (value === undefined || value === null) {
     return 0;
   }
@@ -261,12 +289,24 @@ function estimateFieldSize(value: unknown): number {
   if (typeof value === "boolean") {
     return ESTIMATED_BOOLEAN_FIELD_SIZE_BYTES;
   }
+  if (typeof value === "object") {
+    // Decoder outputs can contain arbitrary nested metadata. Treat repeated
+    // object references as already counted so circular shapes cannot recurse.
+    if (visited.has(value)) {
+      return 0;
+    }
+
+    visited.add(value);
+  }
   if (Array.isArray(value)) {
-    return value.reduce((size, item) => size + estimateFieldSize(item), 0);
+    return value.reduce(
+      (size, item) => size + estimateFieldSize(item, visited),
+      0
+    );
   }
   if (typeof value === "object") {
     return Object.values(value).reduce(
-      (size, item) => size + estimateFieldSize(item),
+      (size, item) => size + estimateFieldSize(item, visited),
       0
     );
   }

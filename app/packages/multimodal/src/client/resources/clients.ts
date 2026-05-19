@@ -1,4 +1,8 @@
-import { getFetchFunctionExtended } from "@fiftyone/utilities";
+import {
+  getFetchFunctionExtended,
+  type FetchFunctionConfig,
+  type FetchFunctionResult,
+} from "@fiftyone/utilities";
 import { defaultDecoderRegistry, type DecoderRegistry } from "../../decoders";
 import { byteRangeCacheKey, decodedOutputCacheKey } from "./cache";
 import {
@@ -19,6 +23,11 @@ import type {
 } from "./types";
 
 const DEFAULT_HTTP_BYTE_READ_RETRIES = 2;
+const DEFAULT_HTTP_BYTE_READ_TIMEOUT_MS = 30_000;
+
+type AbortableFetchFunction = <Body, Result>(
+  config: FetchFunctionConfig<Body> & { readonly signal?: AbortSignal }
+) => Promise<FetchFunctionResult<Result>>;
 
 /**
  * Default decode executor. It runs decoder work inline on the caller thread.
@@ -44,7 +53,7 @@ export function defaultByteCacheBlockSizeBytes(
  * Creates an HTTP byte reader that sends explicit Range headers.
  */
 export function createHttpByteResourceClient(
-  fetchFunction?: ReturnType<typeof getFetchFunctionExtended>
+  fetchFunction?: AbortableFetchFunction
 ): ByteResourceClient {
   return {
     async readBytes(request) {
@@ -57,17 +66,24 @@ export function createHttpByteResourceClient(
 
       const expectedLength = safeNumber(request.range.length);
       const endOffset = request.range.offset + request.range.length - 1n;
-      const { headers, response: buffer } = await (
-        fetchFunction ?? getFetchFunctionExtended()
-      )<undefined, ArrayBuffer>({
-        headers: {
-          Range: `bytes=${request.range.offset.toString()}-${endOffset.toString()}`,
-        },
-        method: "GET",
-        path: request.source.url,
-        result: "arrayBuffer",
-        retries: DEFAULT_HTTP_BYTE_READ_RETRIES,
-      });
+      const fetchBytes: AbortableFetchFunction =
+        fetchFunction ?? getFetchFunctionExtended();
+      // Abort is best-effort; Promise.race below is the actual guarantee that
+      // readBytes does not wait forever on a hung range request.
+      const controller = new AbortController();
+      const { headers, response: buffer } = await withHttpByteReadTimeout(
+        fetchBytes<undefined, ArrayBuffer>({
+          headers: {
+            Range: `bytes=${request.range.offset.toString()}-${endOffset.toString()}`,
+          },
+          method: "GET",
+          path: request.source.url,
+          result: "arrayBuffer",
+          retries: DEFAULT_HTTP_BYTE_READ_RETRIES,
+          signal: controller.signal,
+        }),
+        controller
+      );
       const bytes = new Uint8Array(buffer);
 
       // Validate the HTTP range contract before trusting the returned bytes.
@@ -144,6 +160,38 @@ export function createHttpByteResourceClient(
       };
     },
   };
+}
+
+function withHttpByteReadTimeout<Result>(
+  request: Promise<Result>,
+  controller: AbortController
+): Promise<Result> {
+  let timedOut = false;
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  const timeoutError = new Error(
+    `HTTP byte-range read timed out after ${DEFAULT_HTTP_BYTE_READ_TIMEOUT_MS}ms`
+  );
+  const timeoutRequest = new Promise<never>((_, reject) => {
+    timeout = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+      reject(timeoutError);
+    }, DEFAULT_HTTP_BYTE_READ_TIMEOUT_MS);
+  });
+
+  return Promise.race([request, timeoutRequest])
+    .catch((error) => {
+      if (timedOut) {
+        throw timeoutError;
+      }
+
+      throw error;
+    })
+    .finally(() => {
+      if (timeout) {
+        clearTimeout(timeout);
+      }
+    });
 }
 
 /**

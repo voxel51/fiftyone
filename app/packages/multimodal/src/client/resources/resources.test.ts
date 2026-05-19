@@ -26,7 +26,7 @@ import {
 } from "./index";
 
 type ExtendedFetchFunction = <Body, Result>(
-  config: FetchFunctionConfig<Body>
+  config: FetchFunctionConfig<Body> & { readonly signal?: AbortSignal }
 ) => Promise<FetchFunctionResult<Result>>;
 
 interface FetchCall {
@@ -35,6 +35,7 @@ interface FetchCall {
   readonly method: string;
   readonly path: string;
   readonly result: FetchFunctionConfig<unknown>["result"];
+  readonly signal: AbortSignal | undefined;
 }
 
 describe("multimodal resource clients", () => {
@@ -137,6 +138,49 @@ describe("multimodal resource clients", () => {
         streamId: "stream",
       })
     );
+  });
+
+  it("normalizes invalid byte-cache size options", async () => {
+    for (const maxSizeBytes of [0, -1, Number.NaN, Number.POSITIVE_INFINITY]) {
+      const cache = createMemoryByteRangeCache({ maxSizeBytes });
+      const request = createByteRangeReadRequest({
+        range: { length: 2n, offset: 0n },
+      });
+
+      await cache.put({
+        bytes: new Uint8Array([1, 2]),
+        range: request.range,
+        source: request.source,
+      });
+
+      await expect(cache.get(request)).resolves.toBeUndefined();
+    }
+  });
+
+  it("sizes circular decoded outputs without recursing forever", async () => {
+    const cache = createMemoryDecodedOutputCache({ maxSizeBytes: 128 });
+    const attributes: Record<string, unknown> = {};
+    attributes.self = attributes;
+
+    await expect(
+      cache.put(
+        {
+          decoderId: "decoder",
+          decoderVersion: "1",
+          payload: { encoding: "custom" },
+          recordId: "record",
+          streamId: "stream",
+        },
+        {
+          decoderId: "decoder",
+          decoderVersion: "1",
+          output: {
+            attributes: attributes as Record<string, never>,
+          },
+          payload: { encoding: "custom" },
+        }
+      )
+    ).resolves.toBeUndefined();
   });
 
   it("serves byte subranges from block cache fills", async () => {
@@ -336,6 +380,31 @@ describe("multimodal resource clients", () => {
     });
   });
 
+  it("times out hung HTTP byte-range reads", async () => {
+    vi.useFakeTimers();
+    try {
+      const client = createHttpByteResourceClient(
+        async <Body, Result>(
+          config: FetchFunctionConfig<Body> & { readonly signal?: AbortSignal }
+        ): Promise<FetchFunctionResult<Result>> =>
+          new Promise((_, reject) => {
+            config.signal?.addEventListener("abort", () => {
+              reject(new DOMException("aborted", "AbortError"));
+            });
+          })
+      );
+      const read = client.readBytes(createByteRangeReadRequest());
+      const rejection = expect(read).rejects.toThrow(
+        "HTTP byte-range read timed out"
+      );
+
+      await vi.advanceTimersByTimeAsync(30_000);
+      await rejection;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("uses decoded cache hits without re-running decoders", async () => {
     const payload = {
       encoding: "custom",
@@ -458,10 +527,10 @@ function createFetchMock(
 } {
   const calls: FetchCall[] = [];
   const extendedFetch: ExtendedFetchFunction = async <Body, Result>(
-    config: FetchFunctionConfig<Body>
+    config: FetchFunctionConfig<Body> & { readonly signal?: AbortSignal }
   ): Promise<FetchFunctionResult<Result>> => {
-    const { body, headers, method, path, result } = config;
-    calls.push({ body, headers, method, path, result });
+    const { body, headers, method, path, result, signal } = config;
+    calls.push({ body, headers, method, path, result, signal });
 
     const response = responses[path];
     if (!response) {
