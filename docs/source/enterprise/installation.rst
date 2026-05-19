@@ -749,4 +749,4 @@ Then upload both files to the location referenced by
 
 When a cloud path is used, URLs are signed automatically using the
 deployment's :ref:`cloud credentials <enterprise-cloud-credentials>`, so
-the `fiftyone-app` container must have access to the bucket.
+the `fiftyone-app` container must have read access to the bucket.
