@@ -5,7 +5,10 @@ import {
 } from "../../lib/playback/use-playback-state";
 import {
   Button,
+  ContextMenu,
   IconName,
+  MenuSeparator,
+  MenuTextItem,
   Size,
   Text,
   TextColor,
@@ -13,7 +16,7 @@ import {
   Variant,
 } from "@voxel51/voodo";
 import clsx from "clsx";
-import React from "react";
+import React, { useRef } from "react";
 import styles from "./TimelineTrack.module.css";
 
 /**
@@ -82,7 +85,9 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
 }) => {
   const viewStart = useViewStart();
   const viewEnd = useViewEnd();
-  const { seek } = usePlayback();
+  const { seek, setLoop } = usePlayback();
+
+  const laneRef = useRef<HTMLDivElement>(null);
 
   const viewDuration = viewEnd - viewStart;
   // Degenerate view (zero/negative width) — would produce NaN/Infinity
@@ -136,8 +141,13 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
       )}
 
       <div
+        ref={laneRef}
         className={styles.lane}
         onClick={(e) => {
+          // Portal-rendered context-menu items bubble through the React tree
+          // but live outside this element's DOM subtree — ignore them so
+          // dismissing the menu doesn't fire an unintended seek.
+          if (!e.currentTarget.contains(e.target as Node)) return;
           const target = e.target as HTMLElement;
           // Event markers / bars own their own click — don't seek twice.
           if (
@@ -173,47 +183,78 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
           .map((e, i) => {
             const handleClick = (ev: React.MouseEvent) => {
               ev.stopPropagation();
-              if (onEventClick) onEventClick(e);
-              else seek(e.startSec);
+              const lane = laneRef.current;
+              if (lane) {
+                const rect = lane.getBoundingClientRect();
+                const t =
+                  viewStart +
+                  Math.max(0, Math.min(1, (ev.clientX - rect.left) / rect.width)) *
+                    viewDuration;
+                seek(t);
+              }
+              onEventClick?.(e);
             };
-            if (e.endSec !== undefined) {
+            const isInterval = e.endSec !== undefined;
+            const menu = (
+              <>
+                <MenuTextItem onClick={() => seek(e.startSec)}>
+                  Move to start
+                </MenuTextItem>
+                <MenuTextItem
+                  disabled={!isInterval}
+                  onClick={() => isInterval && seek(e.endSec!)}
+                >
+                  Move to end
+                </MenuTextItem>
+                <MenuSeparator />
+                <MenuTextItem
+                  disabled={!isInterval}
+                  onClick={() => isInterval && setLoop(e.startSec, e.endSec!)}
+                >
+                  Shrink window to fit
+                </MenuTextItem>
+              </>
+            );
+            if (isInterval) {
               const left = pct(Math.max(e.startSec, viewStart));
-              const right = Math.min(e.endSec, viewEnd);
+              const right = Math.min(e.endSec!, viewEnd);
               const width = `${
                 ((right - Math.max(e.startSec, viewStart)) / viewDuration) *
                 100
               }%`;
               return (
-                <div
-                  key={i}
-                  className={styles.intervalBar}
-                  style={{
-                    left,
-                    width,
-                    background: `${color}99`,
-                    border: `1px solid ${color}`,
-                  }}
-                  title={
-                    e.label
-                      ? `${e.label}  (${e.startSec.toFixed(2)}–${e.endSec.toFixed(2)}s)`
-                      : `${labelText}  (${e.startSec.toFixed(2)}–${e.endSec.toFixed(2)}s)`
-                  }
-                  onClick={handleClick}
-                />
+                <ContextMenu key={i} menu={menu}>
+                  <div
+                    className={styles.intervalBar}
+                    style={{
+                      left,
+                      width,
+                      background: `${color}99`,
+                      border: `1px solid ${color}`,
+                    }}
+                    title={
+                      e.label
+                        ? `${e.label}  (${e.startSec.toFixed(2)}–${e.endSec!.toFixed(2)}s)`
+                        : `${labelText}  (${e.startSec.toFixed(2)}–${e.endSec!.toFixed(2)}s)`
+                    }
+                    onClick={handleClick}
+                  />
+                </ContextMenu>
               );
             }
             return (
-              <div
-                key={i}
-                className={styles.event}
-                style={{ left: pct(e.startSec), background: color }}
-                title={
-                  e.label
-                    ? `${e.label}  @ ${e.startSec.toFixed(3)}s`
-                    : `${labelText} @ ${e.startSec.toFixed(3)}s`
-                }
-                onClick={handleClick}
-              />
+              <ContextMenu key={i} menu={menu}>
+                <div
+                  className={styles.event}
+                  style={{ left: pct(e.startSec), background: color }}
+                  title={
+                    e.label
+                      ? `${e.label}  @ ${e.startSec.toFixed(3)}s`
+                      : `${labelText} @ ${e.startSec.toFixed(3)}s`
+                  }
+                  onClick={handleClick}
+                />
+              </ContextMenu>
             );
           })}
       </div>

@@ -218,16 +218,17 @@ describe("TimelineTrack", () => {
       expect(screen.getByTestId("playhead").textContent).toBe("6.000");
     });
 
-    it("clicking an event marker seeks to that event's start time", () => {
+    it("clicking an event marker seeks to the click position along the lane", () => {
       const { container } = renderTrack({
         track: { start: 0, end: 10, events: [3] },
       });
       const event = container.querySelector(`.${styles.event}`) as HTMLElement;
-      // The lane's click handler short-circuits on event targets so we
-      // don't double-seek; the event's own click handler seeks to its
-      // startSec (3 here).
+      // The event's onClick now computes the seek time from clientX so
+      // long interval bars can be scrubbed precisely. clientX:250 on a
+      // 1000-wide lane → 25% of view [0, 10] = 2.5s, regardless of the
+      // event's own startSec.
       fireEvent.click(event, { clientX: 250 });
-      expect(screen.getByTestId("playhead").textContent).toBe("3.000");
+      expect(screen.getByTestId("playhead").textContent).toBe("2.500");
     });
   });
 

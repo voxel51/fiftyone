@@ -293,6 +293,12 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
           e.stopPropagation();
           loopStartDrag.handleProps.onPointerDown(e);
         }}
+        onPointerUp={(e) => {
+          // pointerup bubbles — without stopPropagation the lane's onDragEnd
+          // fires with maxAbsDelta=0 and triggers an unintended seek.
+          e.stopPropagation();
+          loopStartDrag.handleProps.onPointerUp();
+        }}
       />
       <div
         className={styles.loopHandle}
@@ -301,6 +307,10 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
         onPointerDown={(e) => {
           e.stopPropagation();
           loopEndDrag.handleProps.onPointerDown(e);
+        }}
+        onPointerUp={(e) => {
+          e.stopPropagation();
+          loopEndDrag.handleProps.onPointerUp();
         }}
       />
 
@@ -322,6 +332,10 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
           onPointerDown={(e) => {
             e.stopPropagation();
             playheadDrag.handleProps.onPointerDown(e);
+          }}
+          onPointerUp={(e) => {
+            e.stopPropagation();
+            playheadDrag.handleProps.onPointerUp();
           }}
         >
           <div className={styles.playheadTriangle} />
