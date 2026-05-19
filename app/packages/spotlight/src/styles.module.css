@@ -59,6 +59,24 @@
 }
 
 
+/* HORIZONTAL MODE */
+
+.spotlight.horizontal {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.spotlight.horizontal .spotlightSection.horizontal {
+  height: 100%;
+  width: fit-content;
+  padding-left: 0;
+  padding-top: 14px;
+}
+
+.spotlight.horizontal .spotlightContainer {
+  /* height is set by JS to the viewport cross size; width is set by JS to the total column extents */
+}
+
 /* SCROLLBAR */
 
 .scrollbar {

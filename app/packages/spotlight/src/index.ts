@@ -6,6 +6,8 @@ import "@af-utils/scrollend-polyfill";
 
 import styles from "./styles.module.css";
 
+import { createAxis } from "./axis";
+import type { Axis } from "./axis";
 import {
   DEFAULT_MAX_ROWS,
   DEFAULT_OFFSET,
@@ -23,13 +25,17 @@ import {
 import createScrollReader from "./createScrollReader";
 import type { EventCallback, RowChange } from "./events";
 import { Load, Rejected } from "./events";
+import IterImpl from "./iter";
+import type { Renderer, Sibling } from "./section";
 import Section from "./section";
 import tile from "./tile";
 import type {
   At,
   ID,
   ItemData,
+  Iter,
   Measure,
+  Request,
   Response,
   SpotlightConfig,
   Updater,
@@ -45,8 +51,26 @@ import {
 export { Load, Rejected, RowChange } from "./events";
 export * from "./types";
 
+/**
+ * A cursor-based, justified-layout virtualized grid for rendering large collections of items.
+ *
+ * Items are laid out in rows whose heights are determined by a target aspect ratio, and only
+ * the rows near the viewport are rendered at any given time. Two internal {@link Section}
+ * instances — forward and backward — are swapped as the user scrolls to keep memory bounded.
+ *
+ * @typeParam K - Pagination cursor type passed to {@link SpotlightConfig.get}.
+ * @typeParam V - Arbitrary per-item payload type stored in {@link ItemData.data}.
+ *
+ * @example
+ * ```ts
+ * const spotlight = new Spotlight({ key: initialCursor, get, showItem, hideItem, detachItem, rowAspectRatioThreshold });
+ * spotlight.addEventListener("load", () => console.log("ready"));
+ * spotlight.attach("container-id");
+ * ```
+ */
 export default class Spotlight<K, V> extends EventTarget {
   readonly #aborter = new AbortController();
+  readonly #axis: Axis;
   readonly #config: SpotlightConfig<K, V>;
   readonly #element = create(DIV);
   readonly #keys = new WeakMap<ID, K>();
@@ -61,6 +85,9 @@ export default class Spotlight<K, V> extends EventTarget {
   #updater?: Updater;
   #validate?: (key: string, add: number) => void;
 
+  /**
+   * @param config - Grid configuration. `maxRows`, `offset`, and `spacing` default to {@link DEFAULT_MAX_ROWS}, {@link DEFAULT_OFFSET}, and {@link DEFAULT_SPACING} respectively.
+   */
   constructor(config: SpotlightConfig<K, V>) {
     super();
     this.#config = {
@@ -69,14 +96,18 @@ export default class Spotlight<K, V> extends EventTarget {
       spacing: DEFAULT_SPACING,
       ...config,
     };
+    this.#axis = createAxis(this.#config.horizontal);
     this.#element.classList.add(styles.spotlight);
     this.#config.scrollbar && this.#element.classList.add(styles.scrollbar);
+    this.#config.horizontal && this.#element.classList.add(styles.horizontal);
   }
 
+  /** True when the spotlight element is mounted in the DOM. */
   get attached() {
     return Boolean(this.#element.parentElement);
   }
 
+  /** True after the initial fill has completed and a `load` event has fired. */
   get loaded() {
     return this.#loaded;
   }
@@ -110,6 +141,10 @@ export default class Spotlight<K, V> extends EventTarget {
     super.removeEventListener(type, callback);
   }
 
+  /**
+   * Mounts the spotlight into a container. Defers the initial fill to the next rAF so the element has a measurable rect. Throws if already attached.
+   * @param elementOrElementId - The container element or its DOM id.
+   */
   attach(elementOrElementId: HTMLElement | string): void {
     if (this.attached) {
       throw new Error("spotlight is attached");
@@ -136,8 +171,8 @@ export default class Spotlight<K, V> extends EventTarget {
       requestAnimationFrame(() => {
         this.#rect = this.#element.getBoundingClientRect();
 
-        // wait for height
-        if (this.#rect.height) {
+        // wait for the primary dimension (height in vertical, width in horizontal)
+        if (this.#axis.primarySize(this.#rect)) {
           this.#fill();
           return;
         }
@@ -149,6 +184,7 @@ export default class Spotlight<K, V> extends EventTarget {
     fill();
   }
 
+  /** Aborts all listeners, destroys both sections, and removes the element from the DOM. */
   destroy(): void {
     this.#aborter.abort();
     this.#backward?.destroy();
@@ -157,6 +193,9 @@ export default class Spotlight<K, V> extends EventTarget {
     this.#scrollReader?.destroy();
   }
 
+  /**
+   * @returns A callback that loads the next page, or `undefined` when the forward section is exhausted.
+   */
   next() {
     if (this.#forward.finished) return undefined;
     return async () => {
@@ -164,6 +203,9 @@ export default class Spotlight<K, V> extends EventTarget {
     };
   }
 
+  /**
+   * @returns A callback that loads the previous page, or `undefined` when the backward section is exhausted.
+   */
   previous() {
     if (this.#backward.finished) return undefined;
     return async () => {
@@ -171,32 +213,170 @@ export default class Spotlight<K, V> extends EventTarget {
     };
   }
 
+  /**
+   * Notifies the spotlight of a byte-size change for an item; triggers memory-limit evaluation when `maxItemsSizeBytes` is configured.
+   * @param key - The item's description string.
+   * @param add - The updated size in bytes.
+   */
   sizeChange(key: string, add: number) {
     this.#validate?.(key, add);
   }
 
+  /**
+   * Applies `updater` to every currently rendered item and stores it so newly rendered items receive it too.
+   * @param updater - Called with each item's ID.
+   */
   updateItems(updater: Updater): void {
     this.#backward?.updateItems(updater);
     this.#forward?.updateItems(updater);
     this.#updater = updater;
   }
 
+  /**
+   * Creates an iterator for programmatic item navigation starting from the current forward section.
+   * @returns An {@link Iter} bound to the current focus and section state.
+   */
+  createIter(): Iter {
+    const ref = { section: this.#forward };
+    return new IterImpl(
+      this.#focus,
+      this.#createRequest(false),
+      this.#createRenderer(false, true),
+      ref.section,
+      this.#createSibling(ref)
+    );
+  }
+
+  /**
+   * Returns a Sibling that resolves the opposite section via a ref so iterators can cross section boundaries without holding stale pointers.
+   * @param ref - Mutable box holding the caller's current section; updated when `apply=true`.
+   * @returns A Sibling function for use with {@link Iter} and {@link Section}.
+   */
+  #createSibling(ref: { section: Section<K, V> }): Sibling<K, V> {
+    return (apply) => {
+      const result =
+        ref.section === this.#forward ? this.#backward : this.#forward;
+      if (apply) ref.section = result;
+      return result;
+    };
+  }
+
+  /**
+   * Returns a Renderer that applies new rows to the DOM and handles section swaps.
+   * @param reverse - When `true`, guards on `scrollTop < 0` and negates the scroll offset for backward loading.
+   * @param render - When `false`, skips the rAF and calls the runner synchronously; used during the initial fill.
+   * @returns A Renderer for use with {@link Section.next}.
+   */
+  #createRenderer(reverse: boolean, render: boolean): Renderer<K, V> {
+    return (runner) => {
+      if (!render) {
+        runner();
+        return;
+      }
+
+      const run = () =>
+        requestAnimationFrame(() => {
+          const scrollPos = this.#axis.scrollPos(this.#element);
+          const tooFar = reverse
+            ? scrollPos < ZERO
+            : scrollPos > this.#containerHeight;
+
+          if (tooFar || this.#scrollReader.zooming()) {
+            requestAnimationFrame(run);
+            return;
+          }
+
+          const result = runner();
+
+          let offset: false | number;
+          if (reverse) {
+            offset = typeof result.offset === "number" ? -result.offset : false;
+            if (result.section) {
+              const forward = this.#backward;
+              this.#backward = result.section;
+              this.#backward.attach(this.#element);
+              this.#forward.destroy();
+              this.#forward = forward;
+            }
+          } else {
+            const before = this.#containerHeight;
+            offset = false;
+            if (result.section) {
+              const backward = this.#forward;
+              this.#forward = result.section;
+              this.#forward.attach(this.#element);
+              this.#backward.destroy();
+              this.#backward = backward;
+              offset = before - this.#containerHeight + this.#config.spacing;
+            }
+          }
+
+          this.#render({
+            go: false,
+            offset,
+            zooming: false,
+            ...this.#measure(),
+          });
+        });
+
+      run();
+    };
+  }
+
+  /**
+   * Returns a Request that fetches a page and attaches the focus function.
+   * @param reverse - When `true`, reverses item order and swaps next/previous cursors for backward traversal.
+   * @returns A Request for use with {@link Section.next}.
+   */
+  #createRequest(reverse: boolean): Request<K, V> {
+    return async (key) => {
+      const { items, next, previous } = await this.#get(key);
+      return reverse
+        ? {
+            focus: this.#focus,
+            items: [...items].reverse(),
+            next: previous,
+            previous: next,
+          }
+        : { focus: this.#focus, items, next, previous };
+    };
+  }
+
+  /**
+   * Returns a Focus function that updates `#focused` and re-renders to scroll the item into view.
+   * A new function is returned each call so each Request closure captures an independent reference.
+   * @returns A Focus function; call with an ID to set focus, or with no argument to read it.
+   */
+  get #focus() {
+    return (id?: ID) => {
+      if (id) {
+        this.#focused = id;
+      }
+
+      this.#render({
+        at: { description: this.#focused.description, offset: ZERO },
+        ...this.#measure(),
+      });
+      return this.#focused;
+    };
+  }
+
   get #pivot() {
-    let base = this.#backward.height;
+    let base = this.#backward.primaryExtent;
     if (base) base += this.#config.spacing;
     return base;
   }
 
   get #aspectRatio() {
-    return this.#width / this.#height;
+    return this.#crossExtent / this.#height;
   }
 
   get #containerHeight() {
-    return this.#forward.height + this.#pivot;
+    return this.#forward.primaryExtent + this.#pivot;
   }
 
   get #height() {
-    return this.#rect.height;
+    return this.#axis.primarySize(this.#rect);
   }
 
   get #padding() {
@@ -221,7 +401,7 @@ export default class Spotlight<K, V> extends EventTarget {
     }
 
     use = use.slice(ZERO, use.length - ONE);
-    const current = this.#config.rowAspectRatioThreshold(this.#width);
+    const current = this.#config.rowAspectRatioThreshold(this.#crossExtent);
     let proposed = current;
     const itemAspectRatios = use.map(({ aspectRatio }) => aspectRatio);
     let tiledAspectRatio: number;
@@ -260,8 +440,8 @@ export default class Spotlight<K, V> extends EventTarget {
     return { backward, forward };
   }
 
-  get #width() {
-    return this.#rect.width - SCROLLBAR_WIDTH * TWO;
+  get #crossExtent() {
+    return this.#axis.crossSize(this.#rect) - SCROLLBAR_WIDTH * TWO;
   }
 
   #attachScrollReader() {
@@ -272,12 +452,13 @@ export default class Spotlight<K, V> extends EventTarget {
       this.#element,
       (zooming, dispatchOffset) =>
         this.#render({ dispatchOffset, zooming, ...this.#measure() }),
-      () => this.#zooming()
+      () => this.#zooming(),
+      this.#config.horizontal
     );
   }
 
   #measure() {
-    const ar = this.#config.rowAspectRatioThreshold(this.#width);
+    const ar = this.#config.rowAspectRatioThreshold(this.#crossExtent);
     const items: ItemData<K, V>[] = [];
     const map = new Map<string, number>();
     const promises: Promise<number>[] = [];
@@ -294,7 +475,7 @@ export default class Spotlight<K, V> extends EventTarget {
       map.set(key, add);
       if (
         sum(Array.from(map.values())) >= this.#config.maxItemsSizeBytes &&
-        this.#config.rowAspectRatioThreshold(this.#width) > ONE
+        this.#config.rowAspectRatioThreshold(this.#crossExtent) > ONE
       ) {
         this.#handleHighMemoryUsage(items, map, bytes / count);
       }
@@ -322,8 +503,8 @@ export default class Spotlight<K, V> extends EventTarget {
           const max = this.#loaded
             ? this.#config.maxItemsSizeBytes
             : // For initial load, reduce by three as a simple adjustment
-              // because only only enough items to fill the screen have been
-              // loaded. As opposed a screen height + padding render
+              // because only enough items to fill the screen have been
+              // loaded. As opposed to a screen height + padding render
               this.#config.maxItemsSizeBytes / THREE;
 
           if (bytes >= max && ar > ONE) {
@@ -375,7 +556,7 @@ export default class Spotlight<K, V> extends EventTarget {
     const top = findTop({
       at,
       offset,
-      scrollTop: this.#element.scrollTop,
+      scrollTop: this.#axis.scrollPos(this.#element),
       ...this.#sections,
     });
 
@@ -394,10 +575,10 @@ export default class Spotlight<K, V> extends EventTarget {
     });
 
     const forwardResult = this.#forward.render({
-      target: top - this.#padding - this.#backward.height,
+      target: top - this.#padding - this.#backward.primaryExtent,
       threshold: (n) =>
-        n < top + this.#height + this.#padding - this.#backward.height,
-      top: top - this.#backward.height + this.#config.offset,
+        n < top + this.#height + this.#padding - this.#backward.primaryExtent,
+      top: top - this.#backward.primaryExtent + this.#config.offset,
       ...params,
     });
 
@@ -420,7 +601,14 @@ export default class Spotlight<K, V> extends EventTarget {
       this.#backward.top = this.#config.offset;
     }
 
-    scrollToPosition({ at, el: this.#element, offset, top, ...this.#sections });
+    scrollToPosition({
+      at,
+      horizontal: this.#config.horizontal,
+      el: this.#element,
+      offset,
+      top,
+      ...this.#sections,
+    });
     this.#attachScrollReader();
     close?.();
     if (!zooming && backwardResult.more) this.#previous();
@@ -429,9 +617,9 @@ export default class Spotlight<K, V> extends EventTarget {
 
   #zooming() {
     return (
-      (this.#width /
+      (this.#crossExtent /
         (this.#height *
-          Math.max(this.#config.rowAspectRatioThreshold(this.#width), ONE))) *
+          Math.max(this.#config.rowAspectRatioThreshold(this.#crossExtent), ONE))) *
       ZOOMING_COEFFICIENT
     );
   }
@@ -442,12 +630,12 @@ export default class Spotlight<K, V> extends EventTarget {
       config: this.#config,
       direction: DIRECTION.FORWARD,
       edge: { key: this.#config.key, remainder: [] },
-      width: this.#width,
+      width: this.#crossExtent,
     });
     this.#forward.attach(this.#element);
 
     await this.#next(false);
-    while (!this.#forward.finished && this.#forward.height < this.#height) {
+    while (!this.#forward.finished && this.#forward.primaryExtent < this.#height) {
       await this.#next(false);
     }
 
@@ -492,7 +680,7 @@ export default class Spotlight<K, V> extends EventTarget {
           result.previous !== null
             ? { key: result.previous, remainder }
             : { key: null, remainder },
-        width: this.#width,
+        width: this.#crossExtent,
       });
       this.#backward.attach(this.#element);
     }
@@ -500,150 +688,29 @@ export default class Spotlight<K, V> extends EventTarget {
     return result;
   }
 
+  /**
+   * Loads the next page into the forward section.
+   * @param render - When `false`, skips rAF-gated DOM updates; used during the initial fill.
+   */
   async #next(render = true) {
-    const forward = async (key) => {
-      const { items, next, previous } = await this.#get(key);
-
-      return {
-        focus: (id?: ID) => {
-          if (id) {
-            this.#focused = id;
-          }
-
-          this.#render({
-            at: { description: this.#focused.description, offset: ZERO },
-            ...this.#measure(),
-          });
-          return this.#focused;
-        },
-        items,
-        next,
-        previous,
-      };
-    };
-
-    let section = this.#forward;
-    return await section.next(
-      forward,
-      (runner) => {
-        if (!render) {
-          runner();
-          return;
-        }
-
-        const run = () =>
-          requestAnimationFrame(() => {
-            if (
-              this.#element.scrollTop > this.#containerHeight ||
-              this.#scrollReader.zooming()
-            ) {
-              requestAnimationFrame(run);
-              return;
-            }
-
-            const { section } = runner();
-            const before = this.#containerHeight;
-            let offset: false | number = false;
-            if (section) {
-              const backward = this.#forward;
-              this.#forward = section;
-              this.#forward.attach(this.#element);
-              this.#backward.destroy();
-              this.#backward = backward;
-              offset = before - this.#containerHeight + this.#config.spacing;
-            }
-
-            this.#render({
-              go: false,
-              offset,
-              zooming: false,
-              ...this.#measure(),
-            });
-          });
-
-        run();
-      },
-      (apply) => {
-        const result =
-          section === this.#forward ? this.#backward : this.#forward;
-        if (apply) {
-          section = result;
-        }
-        return result;
-      }
+    const ref = { section: this.#forward };
+    return await ref.section.next(
+      this.#createRequest(false),
+      this.#createRenderer(false, render),
+      this.#createSibling(ref)
     );
   }
 
+  /**
+   * Loads the previous page into the backward section.
+   * @param render - When `false`, skips rAF-gated DOM updates; used during the initial fill.
+   */
   async #previous(render = true) {
-    const backward = async (key) => {
-      const { items, next, previous } = await this.#get(key);
-
-      return {
-        focus: (id?: ID) => {
-          if (id) {
-            this.#focused = id;
-          }
-
-          this.#render({
-            at: { description: this.#focused.description, offset: ZERO },
-            ...this.#measure(),
-          });
-          return this.#focused;
-        },
-        items: [...items].reverse(),
-        next: previous,
-        previous: next,
-      };
-    };
-
-    let section = this.#backward;
-    return await section.next(
-      backward,
-      (runner) => {
-        if (!render) {
-          runner();
-          return;
-        }
-
-        const run = () =>
-          requestAnimationFrame(() => {
-            if (
-              this.#element.scrollTop < ZERO ||
-              this.#scrollReader.zooming()
-            ) {
-              requestAnimationFrame(run);
-              return;
-            }
-
-            const result = runner();
-            const offset = result.offset;
-            if (result.section) {
-              const forward = this.#backward;
-              this.#backward = result.section;
-              this.#backward.attach(this.#element);
-
-              this.#forward.destroy();
-              this.#forward = forward;
-            }
-
-            this.#render({
-              go: false,
-              offset: typeof offset === "number" ? -offset : false,
-              zooming: false,
-              ...this.#measure(),
-            });
-          });
-
-        run();
-      },
-      (apply) => {
-        const result =
-          section === this.#forward ? this.#backward : this.#forward;
-        if (apply) {
-          section = result;
-        }
-        return result;
-      }
+    const ref = { section: this.#backward };
+    return await ref.section.next(
+      this.#createRequest(true),
+      this.#createRenderer(true, render),
+      this.#createSibling(ref)
     );
   }
 }
