@@ -60,7 +60,7 @@ Each notebook contains the necessary `pip install` commands at the beginning, so
 **System Requirements**
 
 - **Operating System:** Linux (Ubuntu 24.04), macOS
-- **Python:** 3.10, 3.11
+- **Python:** 3.10, 3.11, 3.12
 - **Memory:** 8GB RAM recommended (16GB for larger models)
 - **Storage:** 10GB free space for datasets and models
 - **GPU:** Optional but recommended for faster inference (CUDA-capable GPU)

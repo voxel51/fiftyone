@@ -54,7 +54,7 @@ Each notebook contains the necessary `pip install` commands at the beginning, so
 **System Requirements**
 
 - **Operating System:** Linux (Ubuntu 24.04), macOS
-- **Python:** 3.10, 3.11
+- **Python:** 3.10, 3.11, 3.12
 - **Memory:** 8GB RAM recommended for 3D operations
 - **Storage:** 5GB free space for 3D datasets
 - **Graphics:** GPU recommended for large point cloud visualization
