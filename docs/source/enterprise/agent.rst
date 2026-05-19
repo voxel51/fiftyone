@@ -23,13 +23,8 @@ _____
 1. Contact your Customer Success representative to enable the FiftyOne Agent
    for your deployment.
 
-2. Install the agent plugin. The FiftyOne Agent is packaged as a
-   :ref:`plugin <developing-plugins>` and is installed the same way as any
-   other Enterprise plugin. See
-   :ref:`Installing a plugin <enterprise-plugins-install>` for instructions.
-
-3. Open any dataset in the FiftyOne Enterprise App. You will see a new Agent
-   button in the bottom toolbar.
+2. Open any dataset in the FiftyOne Enterprise App. You will see a new Agent
+   button in the upper-right corner of the App.
 
 .. image:: https://cdn.voxel51.com/voxel-agent/enterprise/location_agent.webp
    :alt: fiftyone-agent-button-location
